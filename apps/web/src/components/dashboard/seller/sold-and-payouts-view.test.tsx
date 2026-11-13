@@ -65,11 +65,36 @@ describe("SoldAndPayoutsView", () => {
     expect(screen.queryByText(/premium/i)).toBeNull();
   });
 
-  it("keeps what the seller receives on a phone, where a row shows one figure cell", () => {
-    renderSold([lot("paid", { stage: "paid_out", net: "67240.00" })]);
-    const row = screen.getByRole("listitem", { name: /^Work paid,/ });
-    // The phone-only fact, hidden on a wide row (which shows the figure in its own cell).
-    const fact = within(row).getByText("£67,240.00 you receive");
-    expect(fact.closest("[data-record-fact]")?.className).toContain("@2xl:hidden");
+  it("on a phone, says the hammer and what the seller receives together, then the status", () => {
+    renderSold([
+      lot("paid", { stage: "paid_out", net: "67240.00" }),
+      lot("waiting", { stage: "buyer_paying" }),
+    ]);
+    const paid = screen.getByRole("listitem", { name: /^Work paid,/ });
+    const figures = paid.querySelector("[data-record-figures]");
+    const cells = [...(figures?.children ?? [])];
+    // Both cells show at every width, hammer first, each kept whole when the line wraps.
+    expect(cells.map((cell) => cell.textContent)).toEqual([
+      "hammer£82,000.00",
+      "you receive£67,240.00",
+    ]);
+    for (const cell of cells) {
+      expect(cell.className).not.toMatch(/(^|\s)hidden(\s|$)/);
+      expect(cell.className).toContain("whitespace-nowrap");
+    }
+    // The figures come first on a phone; the badge follows on its own line.
+    const status = paid.querySelector("[data-record-status]");
+    if (!figures || !status) throw new Error("figures and status");
+    expect(status.className).not.toContain("-order-1");
+    expect(figures.compareDocumentPosition(status) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    // Nothing is said twice in the facts.
+    expect(paid.querySelector("[data-record-meta]")?.textContent).not.toMatch(/you receive/);
+
+    // A figure not known yet reads as a fact beside the hammer: "you receive: After payment".
+    const waiting = screen.getByRole("listitem", { name: /^Work waiting,/ });
+    const label = within(waiting).getByText("you receive");
+    expect(label.className).toContain("after:content-[':']");
+    expect(label.className).toContain("@2xl:sr-only");
+    expect(label.className).not.toMatch(/(^|\s)sr-only/);
   });
 });

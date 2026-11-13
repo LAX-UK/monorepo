@@ -124,13 +124,6 @@ export function soldReceiveFigure(lot: Pick<SoldLot, "net" | "stage">): ReceiveF
   return { value: SELLER_COMMISSION_COPY.beingConfirmed, pending: true };
 }
 
-/** The receive figure as one fact on a phone, where the row shows a single figure cell. */
-export function receiveFact(figure: ReceiveFigureVm): string {
-  return figure.pending
-    ? `${SELLER_COMMISSION_COPY.youReceive}: ${figure.value}`
-    : `${figure.value} ${SELLER_COMMISSION_COPY.youReceive}`;
-}
-
 /**
  * The line a seller agrees to on a re-offer request, from the figures stored when the request
  * was made: "You receive £62,320.00: the offer of £76,000.00 less your 15% commission and VAT,

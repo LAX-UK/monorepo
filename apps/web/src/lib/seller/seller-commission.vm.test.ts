@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
   SELLER_COMMISSION_COPY,
-  receiveFact,
   recordedSaleFigures,
   reofferConsentLine,
   snapshotSaleFigures,
@@ -59,9 +58,10 @@ describe("recordedSaleFigures", () => {
 
 describe("soldReceiveFigure", () => {
   it("says After payment before the buyer pays", () => {
-    const figure = soldReceiveFigure({ net: null, stage: "buyer_paying" });
-    expect(figure).toEqual({ value: "After payment", pending: true });
-    expect(receiveFact(figure)).toBe("you receive: After payment");
+    expect(soldReceiveFigure({ net: null, stage: "buyer_paying" })).toEqual({
+      value: "After payment",
+      pending: true,
+    });
   });
 
   it("says Being confirmed while a paid sale cannot be priced yet", () => {
@@ -72,9 +72,10 @@ describe("soldReceiveFigure", () => {
   });
 
   it("shows the figure once known, and nothing for a sale refunded before payout", () => {
-    const figure = soldReceiveFigure({ net: "67240.00", stage: "paid_out" });
-    expect(figure).toEqual({ value: "£67,240.00", pending: false });
-    expect(receiveFact(figure)).toBe("£67,240.00 you receive");
+    expect(soldReceiveFigure({ net: "67240.00", stage: "paid_out" })).toEqual({
+      value: "£67,240.00",
+      pending: false,
+    });
     expect(soldReceiveFigure({ net: null, stage: "refunded" }).value).toBe("£0.00");
     expect(soldReceiveFigure({ net: "67240.00", stage: "refunded" }).value).toBe("£67,240.00");
   });

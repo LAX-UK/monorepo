@@ -4,7 +4,7 @@ import { MediaImage } from "@/components/ui/media-image";
 import { ListEmpty, ListLoadError, ListNoResults } from "@/components/workspace/list-states";
 import { useListQuery } from "@/components/workspace/use-list-query";
 import { CLIENT_ROUTES } from "@/lib/navigation/client-routes";
-import { SELLER_COMMISSION_COPY, receiveFact } from "@/lib/seller/seller-commission.vm";
+import { SELLER_COMMISSION_COPY } from "@/lib/seller/seller-commission.vm";
 import {
   PAYOUT_STATUS_BADGE,
   SOLD_SORTS,
@@ -72,8 +72,8 @@ function SoldRow({ record }: { record: SoldRecord }) {
       }
       title={record.title}
       meta={record.meta}
-      // A phone shows one figure cell (the hammer), so what the seller receives is said in the facts.
-      metaNarrow={receiveFact(record.receive)}
+      // A phone says both figures together, hammer first as the wide row's columns read.
+      figuresNarrow="all"
       figures={[
         { id: "hammer", value: record.hammer, label: SELLER_COMMISSION_COPY.hammer },
         {
