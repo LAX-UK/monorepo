@@ -44,8 +44,15 @@ export type LiveSocket = LiveSocketEmitter & {
 type PendingOp =
   | { kind: "on" | "off"; event: string; listener?: Listener | undefined }
   | { kind: "ioOn" | "ioOff"; event: string; listener?: Listener | undefined }
-  // biome-ignore lint/suspicious/noExplicitAny: emit arguments are passed through as given.
-  | { kind: "emit"; event: string; args: any[]; timeoutMs?: number };
+  | {
+      kind: "emit";
+      event: string;
+      // biome-ignore lint/suspicious/noExplicitAny: emit arguments are passed through as given.
+      args: any[];
+      /** For `timeout(ms).emit`: the ack deadline, `Date.now()`-based, set when it was called. */
+      deadline?: number;
+      timer?: ReturnType<typeof setTimeout>;
+    };
 
 export type SocketConnectionModule = { createSocketConnection: () => Socket };
 
@@ -117,8 +124,13 @@ export function createLazySocket(load: () => Promise<SocketConnectionModule>): L
           socket.io.off(op.event as never, op.listener);
           break;
         case "emit":
-          if (op.timeoutMs === undefined) socket.emit(op.event, ...op.args);
-          else socket.timeout(op.timeoutMs).emit(op.event, ...op.args);
+          if (op.deadline === undefined) socket.emit(op.event, ...op.args);
+          else {
+            clearTimeout(op.timer);
+            // The ack timer started when it was called, so it keeps only the time left.
+            const left = Math.max(1, op.deadline - Date.now());
+            socket.timeout(left).emit(op.event, ...op.args);
+          }
           break;
       }
     }
@@ -188,6 +200,25 @@ export function createLazySocket(load: () => Promise<SocketConnectionModule>): L
     if (op.kind === "ioOff") removeListener(managerListeners, op.event, op.listener);
   }
 
+  /**
+   * `timeout(ms).emit` before the client is in. As in Socket.IO, where the timer starts when
+   * `emit` is called even while disconnected, the ack hears `operation has timed out` `ms` after
+   * the call if the message has not gone by then, and the message is dropped so it is never sent.
+   */
+  // biome-ignore lint/suspicious/noExplicitAny: emit arguments are passed through as given.
+  function recordTimedEmit(event: string, args: any[], ms: number) {
+    const op: PendingOp = { kind: "emit", event, args, deadline: Date.now() + ms };
+    const ack = args[args.length - 1];
+    if (typeof ack === "function") {
+      op.timer = setTimeout(() => {
+        const index = pending.indexOf(op);
+        if (index !== -1) pending.splice(index, 1);
+        ack(new Error("operation has timed out"));
+      }, ms);
+    }
+    record(op);
+  }
+
   const manager: LiveSocketManager = {
     on(event, listener) {
       if (real) real.io.on(event as never, listener);
@@ -225,7 +256,7 @@ export function createLazySocket(load: () => Promise<SocketConnectionModule>): L
       return {
         emit(event, ...args) {
           if (real) real.timeout(ms).emit(event, ...args);
-          else record({ kind: "emit", event, args, timeoutMs: ms });
+          else recordTimedEmit(event, args, ms);
           return facade;
         },
       };

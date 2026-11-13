@@ -132,8 +132,12 @@ describe("createLazySocket", () => {
       ["on", "connect"],
       ["emit", "joinLot", { lotId: "l1" }, ack],
       ["io.on", "reconnect"],
-      ["timeoutEmit", "latencyProbe", 2000, { clientNow: 1 }, ack],
+      // The ack timer started at the call, so only what is left of the 2 s is passed on.
+      ["timeoutEmit", "latencyProbe", expect.any(Number), { clientNow: 1 }, ack],
     ]);
+    const left = fake.calls[5]?.[2] as number;
+    expect(left).toBeGreaterThan(1500);
+    expect(left).toBeLessThanOrEqual(2000);
   });
 
   it("delivers events to listeners that subscribed before the client arrived", async () => {
@@ -243,6 +247,55 @@ describe("createLazySocket", () => {
     expect(first.mock.calls).toEqual([["a"]]);
     expect(second.mock.calls).toEqual([["a"], ["b"]]);
     expect(late.mock.calls).toEqual([["a"], ["b"]]);
+  });
+
+  describe("timeout(ms).emit before the client arrives", () => {
+    beforeEach(() => {
+      vi.useFakeTimers();
+    });
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it("counts the ack timeout from the call, not from when the client arrives", async () => {
+      const loader = deferredLoader();
+      const socket = createLazySocket(loader.load);
+      const ack = vi.fn();
+      socket.timeout(2000).emit("latencyProbe", { clientNow: 1 }, ack);
+
+      await vi.advanceTimersByTimeAsync(1500);
+      const fake = buildFakeSocket();
+      loader.arrive(fake);
+      await vi.advanceTimersByTimeAsync(0);
+
+      expect(fake.calls).toEqual([["timeoutEmit", "latencyProbe", 500, { clientNow: 1 }, ack]]);
+      // Socket.IO owns the remaining 500 ms now; the facade's own timer is gone.
+      await vi.advanceTimersByTimeAsync(5000);
+      expect(ack).not.toHaveBeenCalled();
+    });
+
+    it("times the ack out on schedule while the client is still loading, and never sends it", async () => {
+      const loader = deferredLoader();
+      const socket = createLazySocket(loader.load);
+      const ack = vi.fn();
+      const otherAck = vi.fn();
+      socket.timeout(2000).emit("latencyProbe", { clientNow: 1 }, ack);
+      socket.emit("joinLot", { lotId: "l1" }, otherAck);
+
+      await vi.advanceTimersByTimeAsync(1999);
+      expect(ack).not.toHaveBeenCalled();
+      await vi.advanceTimersByTimeAsync(1);
+      expect(ack).toHaveBeenCalledTimes(1);
+      expect(ack.mock.calls[0]?.[0]).toBeInstanceOf(Error);
+      expect((ack.mock.calls[0]?.[0] as Error).message).toBe("operation has timed out");
+
+      const fake = buildFakeSocket();
+      loader.arrive(fake);
+      await vi.advanceTimersByTimeAsync(0);
+      expect(fake.calls).toEqual([["emit", "joinLot", { lotId: "l1" }, otherAck]]);
+      expect(ack).toHaveBeenCalledTimes(1);
+      expect(otherAck).not.toHaveBeenCalled();
+    });
   });
 
   describe("when the client cannot be fetched", () => {
