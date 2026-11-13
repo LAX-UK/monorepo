@@ -136,22 +136,31 @@ describe.skipIf(!url)(
       await client.query(migration);
     });
 
-    it("puts uninvoiced lots in a sale with bands back on the bands; invoiced lots keep their rate", async () => {
+    it("puts every lot in a sale with bands back on the bands, invoiced or not; the rollback restores the exact rates", async () => {
       await client.query(rollbackBody);
       const sale = { buyerPremiumRate: "0.2500", buyerPremiumTiers: standardBuyerPremiumBands() };
-      // Rows as the old schema left them: every lot holds the old 25% default.
+      // Rows as the old schema left them: the old 25% default, and one explicit 30%.
       const banded = { sale: bandedSaleId, status: "ended" as const, sold: true };
       const active = await insertLot("0.2500", { sale: bandedSaleId, status: "active" });
+      const explicit = await insertLot("0.3000", { sale: bandedSaleId });
       const soldNotInvoiced = await insertLot("0.2500", banded);
       const voidedOnly = await insertLot("0.2500", banded);
       await invoice(voidedOnly, true);
       const invoiced = await insertLot("0.2500", banded);
       await invoice(invoiced);
       const flat = await insertLot("0.2500", { status: "active" });
+      const invoiceTotals = async () =>
+        (
+          await client.query<{ total: string }>(
+            "select total_pence::text as total from bid_invoice where lot_id = any($1) order by lot_id, raised_at",
+            [[voidedOnly, invoiced]],
+          )
+        ).rows.map((r) => r.total);
+      const totalsBefore = await invoiceTotals();
 
       await client.query(migration);
 
-      for (const lotId of [active, soldNotInvoiced, voidedOnly]) {
+      for (const lotId of [active, explicit, soldNotInvoiced, voidedOnly, invoiced]) {
         const lotRate = await rateOf(lotId);
         expect(lotRate).toBeNull();
         const { source, policy } = resolveBuyerPremium({ lotRate, sale });
@@ -159,16 +168,23 @@ describe.skipIf(!url)(
         // £600,000: 15% of £500,000 + 10% of £100,000, not the old 25% default.
         expect(policy.computePremiumMinor(60_000_000)).toBe(8_500_000);
       }
-      expect(await rateOf(invoiced)).toBe("0.2500");
       expect(await rateOf(flat)).toBe("0.2500");
+      // Raised invoices are frozen.
+      expect(await invoiceTotals()).toEqual(totalsBefore);
 
-      // The rollback gives the cleared lots their sale's flat rate, which the old code never
-      // reads for a sale with bands; lots that kept a rate are untouched.
+      // The rollback gives every cleared lot back the exact rate it held, and drops the kept rates.
       await client.query(rollbackBody);
       expect(await column("lot")).toMatchObject({ is_nullable: "NO" });
-      expect(await rateOf(active)).toBe("0.2500");
-      expect(await rateOf(invoiced)).toBe("0.2500");
+      for (const lotId of [active, soldNotInvoiced, voidedOnly, invoiced, flat]) {
+        expect(await rateOf(lotId)).toBe("0.2500");
+      }
+      expect(await rateOf(explicit)).toBe("0.3000");
+      const kept = await client.query(
+        "select to_regclass('drizzle.lot_premium_rate_before_0380') is not null as present",
+      );
+      expect(kept.rows[0]?.present).toBe(false);
       await client.query(migration);
+      expect(await rateOf(invoiced)).toBeNull();
     });
   },
 );

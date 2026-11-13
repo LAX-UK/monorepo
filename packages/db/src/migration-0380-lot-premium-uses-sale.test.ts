@@ -34,17 +34,31 @@ describe("migration 0380 lot premium uses the sale's", () => {
     expect(migration).toContain(
       'ALTER TABLE "sale" ALTER COLUMN "buyer_premium_rate" SET DEFAULT 0.15',
     );
-    expect(migration).not.toMatch(/\bDELETE\b|\bINSERT\b|DROP COLUMN|DROP TABLE/);
+    expect(migration).not.toMatch(/\bDELETE\b|DROP COLUMN|DROP TABLE/);
+    // The only insert keeps the cleared rates, outside the application schema.
+    expect([...migration.matchAll(/\bINSERT INTO "([^"]+)"\."([^"]+)"/g)].map((m) => m[1])).toEqual(
+      ["drizzle"],
+    );
+    expect(migration.match(/\bINSERT\b/g)).toHaveLength(1);
   });
 
-  it("clears the rate only of uninvoiced lots in a sale with bands, after dropping NOT NULL", () => {
+  it("keeps, then clears, the rate of every lot in a sale with bands, invoiced or not", () => {
+    const keep = migration.slice(
+      migration.indexOf('INSERT INTO "drizzle"."lot_premium_rate_before_0380"'),
+    );
+    const insert = keep.slice(0, keep.indexOf(";") + 1);
+    expect(insert).toContain('jsonb_array_length(s."buyer_premium_tiers") > 0');
+    expect(insert).toContain('l."buyer_premium_rate" IS NOT NULL');
+    // No invoice guard: a voided invoice re-prices the lot from its rate (buyer default).
+    expect(insert).not.toMatch(/bid_invoice/);
     const updates = [...migration.matchAll(/UPDATE "lot"[\s\S]*?;/g)].map((m) => m[0]);
     expect(updates).toHaveLength(1);
     const update = updates[0] ?? "";
     expect(update).toContain('SET "buyer_premium_rate" = NULL');
-    expect(update).toContain('jsonb_array_length(s."buyer_premium_tiers") > 0');
-    expect(update).toMatch(/NOT EXISTS \(\s*SELECT 1 FROM "bid_invoice"[\s\S]*"voided_at" IS NULL/);
+    expect(update).toContain('FROM "drizzle"."lot_premium_rate_before_0380"');
     expect(migration.indexOf("DROP NOT NULL")).toBeLessThan(migration.indexOf(update));
+    expect(migration.indexOf(insert)).toBeLessThan(migration.indexOf(update));
+    expect(migration).not.toMatch(/UPDATE "bid_invoice"/);
   });
 
   it("matches the Drizzle schema", () => {
@@ -54,8 +68,14 @@ describe("migration 0380 lot premium uses the sale's", () => {
     expect(getTableColumns(sale).buyerPremiumRate.default).toBe("0.15");
   });
 
-  it("rolls back in one transaction, filling only the lots that use their sale's premium", () => {
+  it("rolls back in one transaction, restoring the kept rates, then filling the remaining NULLs", () => {
     expect(rollback).toMatch(/^BEGIN;/m);
+    const restore = rollback.indexOf('SET "buyer_premium_rate" = b."buyer_premium_rate"');
+    expect(restore).toBeGreaterThan(0);
+    expect(restore).toBeLessThan(rollback.indexOf("COALESCE("));
+    expect(rollback.indexOf('DROP TABLE "drizzle"."lot_premium_rate_before_0380"')).toBeGreaterThan(
+      rollback.indexOf("SET NOT NULL"),
+    );
     expect(rollback).toMatch(/COMMIT;/);
     expect(rollback).toMatch(/WHERE l\."buyer_premium_rate" IS NULL;/);
     expect(rollback).toContain('ALTER COLUMN "buyer_premium_rate" SET NOT NULL');
