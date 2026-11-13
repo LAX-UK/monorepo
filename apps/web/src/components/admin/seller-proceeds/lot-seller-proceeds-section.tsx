@@ -33,6 +33,7 @@ export function LotSellerProceedsSection({
   record = null,
   lotId = null,
   canSettleOutside = false,
+  replace = null,
   initialDialogOpen = false,
 }: {
   state: LotSellerProceedsState;
@@ -41,11 +42,14 @@ export function LotSellerProceedsSection({
   record?: RecordAgreementContext | null;
   /** May this person mark an ATG sale as settled outside LAX. */
   canSettleOutside?: boolean;
+  /** Set for an Administrator: the agreement on record can be replaced with a corrected one. */
+  replace?: RecordAgreementContext | null;
   /** For the review route only. */
   initialDialogOpen?: boolean;
 }) {
   const [recording, setRecording] = useState(initialDialogOpen);
   const [settling, setSettling] = useState(false);
+  const [replacing, setReplacing] = useState(false);
   const [saving, startSaving] = useTransition();
   const router = useRouter();
 
@@ -95,6 +99,10 @@ export function LotSellerProceedsSection({
       <StaffButton variant="secondary" size="sm" onClick={() => setSettling(true)}>
         Mark as settled outside LAX
       </StaffButton>
+    ) : replace ? (
+      <StaffButton variant="ghost" size="sm" onClick={() => setReplacing(true)}>
+        Replace with a corrected agreement
+      </StaffButton>
     ) : null;
 
   return (
@@ -109,6 +117,14 @@ export function LotSellerProceedsSection({
       />
       {record ? (
         <RecordAgreementDialog open={recording} onOpenChange={setRecording} context={record} />
+      ) : null}
+      {replace ? (
+        <RecordAgreementDialog
+          open={replacing}
+          onOpenChange={setReplacing}
+          context={replace}
+          replace
+        />
       ) : null}
       {canSettleOutside && lotId ? (
         <ConfirmActionDialog

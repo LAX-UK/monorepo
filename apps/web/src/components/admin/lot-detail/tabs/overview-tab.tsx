@@ -216,6 +216,7 @@ export function LotOverviewTab({
           state={sellerProceeds.state}
           record={sellerProceeds.record}
           canSettleOutside={sellerProceeds.canSettleOutside}
+          replace={sellerProceeds.replace}
         />
       ) : null}
       <Section title="Pricing and timing">

@@ -1,7 +1,10 @@
 import "server-only";
 import { getLotSellerProceeds } from "@/lib/data/http/admin-seller-proceeds.server";
 import type { LotSellerProceedsDto } from "@/lib/data/http/admin-seller-proceeds.shared";
-import { SELLER_AGREEMENT_RECORD_ACCESS } from "@/lib/navigation/staff-nav-access";
+import {
+  PLATFORM_ADMIN_ACCESS,
+  SELLER_AGREEMENT_RECORD_ACCESS,
+} from "@/lib/navigation/staff-nav-access";
 import { type StaffRoles, type UserRole, userHasAccessTo } from "@auction/types";
 import { lotName } from "./held-reasons";
 import {
@@ -19,6 +22,8 @@ export type LotSellerProceedsPage = {
   record: RecordAgreementContext | null;
   /** May this person mark an ATG sale as settled outside LAX. */
   canSettleOutside: boolean;
+  /** Set for an Administrator when the lot has an agreement that could be corrected. */
+  replace: RecordAgreementContext | null;
 };
 
 export function recordContextFor(facts: LotSellerProceedsDto): RecordAgreementContext | null {
@@ -44,15 +49,27 @@ export async function loadLotSellerProceeds(
     facts = await getLotSellerProceeds(lotId);
   } catch (error) {
     console.error("[loadLotSellerProceeds] Failed to load the seller's proceeds:", error);
-    return { state: { kind: "error" }, notice: null, record: null, canSettleOutside: false };
+    return {
+      state: { kind: "error" },
+      notice: null,
+      record: null,
+      canSettleOutside: false,
+      replace: null,
+    };
   }
   const canRecord =
     user !== null &&
     userHasAccessTo(user.role as UserRole, user.staffRoles, SELLER_AGREEMENT_RECORD_ACCESS);
+  const isAdministrator =
+    user !== null && userHasAccessTo(user.role as UserRole, user.staffRoles, PLATFORM_ADMIN_ACCESS);
+  const state = buildLotSellerProceeds(facts);
+  const correctable =
+    state.kind === "breakdown" && state.breakdown.rateSource !== null && !state.breakdown.paidOut;
   return {
-    state: buildLotSellerProceeds(facts),
+    state,
     notice: buildHeldPayoutNotice(facts),
     record: canRecord && facts ? recordContextFor(facts) : null,
     canSettleOutside: canRecord,
+    replace: isAdministrator && correctable && facts ? recordContextFor(facts) : null,
   };
 }
