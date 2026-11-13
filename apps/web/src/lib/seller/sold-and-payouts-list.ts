@@ -1,5 +1,6 @@
 import type { SoldLot } from "@/lib/data/http/workspace-selling.schema";
 import { formatMoney } from "@/lib/format-currency";
+import { type ReceiveFigureVm, soldReceiveFigure } from "@/lib/seller/seller-commission.vm";
 import { matchesEveryWord, searchParam } from "@/lib/workspace/list-search";
 import { LONDON_TIME_ZONE, formatMoment } from "@auction/datetime";
 import type { PayoutStatus } from "@auction/types";
@@ -40,8 +41,8 @@ export type SoldRecord = {
   /** "Autumn Modern British · lot 31 · sold 22 Oct" as facts. */
   meta: string[];
   hammer: string;
-  /** What the seller receives, once the buyer has paid; `null` before. */
-  net: string | null;
+  /** What the seller receives, or where that figure stands ("After payment", "Being confirmed"). */
+  receive: ReceiveFigureVm;
   badge: Badge;
   /** Where its money stands, for the "Money" filter. */
   stage: SoldStage;
@@ -73,7 +74,7 @@ export function soldRecord(lot: SoldLot, now: Date): SoldRecord {
       settled && lot.stage === "paid_out" ? `paid out ${day(settled)}` : null,
     ].filter((fact): fact is string => Boolean(fact)),
     hammer: formatMoney(lot.hammerPrice, "GBP"),
-    net: lot.net == null ? null : formatMoney(lot.net, "GBP"),
+    receive: soldReceiveFigure(lot),
     badge,
     stage: lot.stage,
     payoutHref: lot.payout ? payoutHref(lot.payout.id) : null,

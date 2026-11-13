@@ -1,15 +1,45 @@
-import type { PayoutDetailVm } from "@/lib/seller/payout-detail.vm";
+import type { PayoutDetailVm, PayoutLineVm } from "@/lib/seller/payout-detail.vm";
+import type { SellerChargeVm } from "@/lib/seller/seller-commission.vm";
 import { ButtonLink } from "@auction/ui/lax/button-link";
 import { StatusBadge } from "@auction/ui/lax/status-badge";
 import { pageTitleClass } from "@auction/ui/lax/styles";
 import { Download } from "lucide-react";
 
 const CELL = "px-4 py-3 text-lax-14 md:px-5";
+const FIGURE = `${CELL} text-right tabular-nums text-lax-fg`;
+
+/** A charge and, under it, its rate ("15%"), or "No VAT" when none was charged. */
+function Charge({ charge, noVat = false }: { charge: SellerChargeVm | null; noVat?: boolean }) {
+  if (!charge) return <span className="text-lax-muted">—</span>;
+  const under = charge.rate ?? (noVat ? "No VAT" : null);
+  return (
+    <>
+      {charge.amount}
+      {under ? <span className="block text-lax-13 text-lax-muted">{under}</span> : null}
+    </>
+  );
+}
+
+/** A sale on a phone: its split as one line of facts, each charge with its rate. */
+function phoneFacts(line: PayoutLineVm): string {
+  const sale = line.sale;
+  if (!sale) return line.lot ?? "";
+  const rated = (label: string, charge: SellerChargeVm) =>
+    `${label}${charge.rate ? ` ${charge.rate}` : ""} ${charge.amount}`;
+  return [
+    line.lot,
+    `hammer ${sale.hammer}`,
+    rated("commission", sale.commission),
+    sale.vat ? (sale.noVat ? "no VAT" : rated("VAT", sale.vat)) : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+}
 
 /**
- * One payout: what was paid and where it is, then each lot with its hammer, LAX's commission
- * and fees, and what the seller receives. On a phone each lot is a short block instead of a
- * table row.
+ * One payout: what was paid and where it is, then each lot with its hammer, the commission and
+ * the VAT on it at their rates, and what the seller receives; the totals are the sums of the
+ * lines. On a phone each lot is a short block instead of a table row.
  */
 export function PayoutDetail({ vm }: { vm: PayoutDetailVm }) {
   return (
@@ -30,15 +60,15 @@ export function PayoutDetail({ vm }: { vm: PayoutDetailVm }) {
 
       <dl className="grid overflow-hidden rounded-lax-card border border-lax-line bg-lax-surface md:grid-cols-3">
         <div className="flex flex-col gap-1 border-b border-lax-line p-5 md:border-r md:border-b-0">
-          <dt className="text-lax-13 text-lax-muted">Sales</dt>
+          <dt className="text-lax-13 text-lax-muted">Hammer</dt>
           <dd className="font-lax-display text-lax-24 font-semibold tabular-nums text-lax-fg">
-            {vm.gross}
+            {vm.totals.hammer}
           </dd>
         </div>
         <div className="flex flex-col gap-1 border-b border-lax-line p-5 md:border-r md:border-b-0">
-          <dt className="text-lax-13 text-lax-muted">Commission and fees</dt>
+          <dt className="text-lax-13 text-lax-muted">Commission and VAT</dt>
           <dd className="font-lax-display text-lax-24 font-semibold tabular-nums text-lax-fg">
-            {vm.fees}
+            {vm.totals.charges}
           </dd>
         </div>
         <div className="flex flex-col gap-2 p-5">
@@ -76,7 +106,10 @@ export function PayoutDetail({ vm }: { vm: PayoutDetailVm }) {
                   Hammer
                 </th>
                 <th scope="col" className={`${CELL} text-right font-normal`}>
-                  Commission and fees
+                  Commission
+                </th>
+                <th scope="col" className={`${CELL} text-right font-normal`}>
+                  VAT on commission
                 </th>
                 <th scope="col" className={`${CELL} text-right font-normal`}>
                   You receive
@@ -93,11 +126,14 @@ export function PayoutDetail({ vm }: { vm: PayoutDetailVm }) {
                     ) : null}
                   </td>
                   <td className={`${CELL} text-lax-muted`}>{line.lot}</td>
-                  <td className={`${CELL} text-right tabular-nums text-lax-fg`}>{line.hammer}</td>
-                  <td className={`${CELL} text-right tabular-nums text-lax-fg`}>{line.fees}</td>
-                  <td className={`${CELL} text-right font-semibold tabular-nums text-lax-fg`}>
-                    {line.receive}
+                  <td className={FIGURE}>{line.sale?.hammer}</td>
+                  <td className={FIGURE}>
+                    {line.sale ? <Charge charge={line.sale.commission} /> : null}
                   </td>
+                  <td className={FIGURE}>
+                    {line.sale ? <Charge charge={line.sale.vat} noVat={line.sale.noVat} /> : null}
+                  </td>
+                  <td className={`${FIGURE} font-semibold`}>{line.receive}</td>
                 </tr>
               ))}
             </tbody>
@@ -105,14 +141,15 @@ export function PayoutDetail({ vm }: { vm: PayoutDetailVm }) {
               <tr className="border-t border-lax-line">
                 <th
                   scope="row"
-                  colSpan={4}
+                  colSpan={2}
                   className={`${CELL} text-left font-semibold text-lax-fg`}
                 >
                   Total
                 </th>
-                <td className={`${CELL} text-right font-semibold tabular-nums text-lax-fg`}>
-                  {vm.total}
-                </td>
+                <td className={`${FIGURE} font-semibold`}>{vm.totals.hammer}</td>
+                <td className={`${FIGURE} font-semibold`}>{vm.totals.commission}</td>
+                <td className={`${FIGURE} font-semibold`}>{vm.totals.vat}</td>
+                <td className={`${FIGURE} font-semibold`}>{vm.totals.receive}</td>
               </tr>
             </tfoot>
           </table>
@@ -125,23 +162,30 @@ export function PayoutDetail({ vm }: { vm: PayoutDetailVm }) {
                     {line.receive}
                   </p>
                 </div>
-                {line.hammer ? (
-                  <p className="text-lax-13 text-lax-muted">
-                    {[line.lot, `hammer ${line.hammer}`, `commission and fees ${line.fees}`]
-                      .filter(Boolean)
-                      .join(" · ")}
-                  </p>
-                ) : line.note ? (
-                  <p className="text-lax-13 text-lax-muted">{line.note}</p>
+                {line.sale ? (
+                  <p className="text-lax-13 text-lax-muted">{phoneFacts(line)}</p>
                 ) : null}
+                {line.note ? <p className="text-lax-13 text-lax-muted">{line.note}</p> : null}
               </li>
             ))}
-            <li className="flex items-baseline justify-between gap-3 p-4">
-              <p className="text-lax-14 font-semibold text-lax-fg">Total</p>
-              <p className="text-lax-14 font-semibold tabular-nums text-lax-fg">{vm.total}</p>
+            <li className="flex flex-col gap-1 p-4">
+              <div className="flex items-baseline justify-between gap-3">
+                <p className="text-lax-14 font-semibold text-lax-fg">Total</p>
+                <p className="text-lax-14 font-semibold tabular-nums text-lax-fg">
+                  {vm.totals.receive}
+                </p>
+              </div>
+              <p className="text-lax-13 text-lax-muted">
+                {`hammer ${vm.totals.hammer} · commission ${vm.totals.commission} · VAT ${vm.totals.vat}`}
+              </p>
             </li>
           </ul>
         </div>
+        {vm.notes.map((note) => (
+          <p key={note} className="text-lax-13 text-lax-muted">
+            {note}
+          </p>
+        ))}
       </section>
     </div>
   );

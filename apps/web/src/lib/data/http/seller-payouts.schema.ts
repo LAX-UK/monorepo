@@ -1,7 +1,7 @@
 import { toObjectRecord } from "@/lib/data/http/object-guards";
 import { zCoerceDate, zNullableStringFromEmpty } from "@/lib/data/http/schema-coerce";
 import type { SellerPayoutPendingPreview } from "@/lib/data/http/seller-payouts.types";
-import type { Payout, PayoutStatus } from "@auction/types";
+import type { Payout, PayoutSellerTermsTotals, PayoutStatus } from "@auction/types";
 import { z } from "zod";
 
 export const sellerPayoutPendingPreviewSchema = z
@@ -15,6 +15,14 @@ export const sellerPayoutPendingPreviewSchema = z
       currency: String(row.currency ?? ""),
     }),
   ) as z.ZodType<SellerPayoutPendingPreview>;
+
+/** The hammer, commission and VAT totals of a payout paid from snapshots; `null` on older ones. */
+function parseSellerTermsTotals(raw: unknown): PayoutSellerTermsTotals | null {
+  const { hammer, commission, commissionVat } = toObjectRecord(raw);
+  if (typeof hammer !== "string" || typeof commission !== "string") return null;
+  if (typeof commissionVat !== "string") return null;
+  return { hammer, commission, commissionVat };
+}
 
 function parsePayoutRow(row: Record<string, unknown>): Payout {
   return {
@@ -36,6 +44,7 @@ function parsePayoutRow(row: Record<string, unknown>): Payout {
     statementUrl: zNullableStringFromEmpty.parse(row.statementUrl),
     statementGenerationError: zNullableStringFromEmpty.parse(row.statementGenerationError),
     createdAt: zCoerceDate.parse(row.createdAt),
+    sellerTermsTotals: parseSellerTermsTotals(row.sellerTermsTotals),
   };
 }
 
