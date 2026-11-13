@@ -1,4 +1,9 @@
-import { type PayoutReversalRefusal, payoutReversalRefusal, payoutTotals } from "@auction/domain";
+import {
+  type PayoutReversalRefusal,
+  payoutReversalRefusal,
+  payoutTakesLines,
+  payoutTotals,
+} from "@auction/domain";
 import { previewSettlement } from "@auction/finance-runtime";
 import type {
   IPayoutRepository,
@@ -85,10 +90,11 @@ export async function addAdjustment(
   return runner.runInTransaction(async (tx) => {
     const r = deps.payoutRepoForTx(tx);
     // The transfer step holds this row from reading the amount until the payout has left
-    // `scheduled`, so an adjustment either goes out with the transfer or is refused.
+    // `scheduled`, so an adjustment either goes out with the transfer or is refused. A payout
+    // whose last attempt has an unknown outcome is refused too: Stripe may hold its old amount.
     const found = await r.findByIdForUpdate(payoutId);
     if (!found) throw new PayoutNotFoundError();
-    if (found.status !== "scheduled") {
+    if (!payoutTakesLines(found)) {
       throw new PayoutStatusTransitionError("cannot_adjust_payout_in_terminal_state");
     }
 

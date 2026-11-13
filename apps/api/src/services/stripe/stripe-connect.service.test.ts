@@ -710,7 +710,7 @@ describe("StripeConnectService.initiateTransfer", () => {
         currency: "gbp",
         destination: "acct_123",
       }),
-      { idempotencyKey: "payout:transfer:po1" },
+      { idempotencyKey: "payout:transfer:po1:1000" },
     );
     expect(transfersCreate.mock.calls[0]?.[0]).not.toHaveProperty("source_transaction");
     expect(updateStatusIfCurrent).toHaveBeenCalledWith(

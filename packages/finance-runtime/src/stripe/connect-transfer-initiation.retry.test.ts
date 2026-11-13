@@ -72,19 +72,19 @@ describe("ConnectTransferInitiationService retry of a failed payout", () => {
     expect(createConnectTransfer).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({
-        idempotencyKey: `payout:transfer:payout-1:retry:${FAILED_AT.getTime()}`,
+        idempotencyKey: `payout:transfer:payout-1:48000:retry:${FAILED_AT.getTime()}`,
       }),
     );
   });
 
-  it("keeps the original key for the scheduled path", async () => {
+  it("keeps the payout and amount key for the scheduled path", async () => {
     const { service } = setup("scheduled");
 
     await service.initiateTransfer("payout-1");
 
     expect(createConnectTransfer).toHaveBeenCalledWith(
       expect.anything(),
-      expect.objectContaining({ idempotencyKey: "payout:transfer:payout-1" }),
+      expect.objectContaining({ idempotencyKey: "payout:transfer:payout-1:48000" }),
     );
   });
 

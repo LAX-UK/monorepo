@@ -337,6 +337,22 @@ describe("PayoutService.addAdjustment", () => {
     expect(repo.insertLine).not.toHaveBeenCalled();
   });
 
+  it("refuses a scheduled payout whose last transfer attempt has an unknown outcome", async () => {
+    const unknown = payout({
+      status: "scheduled",
+      failureReason: "stripe_transfer_outcome_unknown: unknown - socket hang up",
+    });
+    const repo = makeRepo({
+      findById: vi.fn().mockResolvedValue(unknown),
+      findByIdForUpdate: vi.fn().mockResolvedValue(unknown),
+    });
+    const svc = serviceFor(repo);
+    await expect(
+      svc.addAdjustment(ACTOR_ID, "po1", { amount: "10.00", note: "long enough note" }),
+    ).rejects.toBeInstanceOf(PayoutStatusTransitionError);
+    expect(repo.insertLine).not.toHaveBeenCalled();
+  });
+
   it("appends a positive adjustment and recomputes totals", async () => {
     const before = payout({ grossAmount: "1000.00", platformFee: "50.00", netAmount: "950.00" });
     const newLine: PayoutLine = {

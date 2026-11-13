@@ -127,6 +127,7 @@ class FakeDisputeStore implements IDisputeCaseRepository, IDisputePaymentReader 
     (this.allocations.find((a) => a.id === allocationId) as DisputeAllocationRecord).clawback =
       clawback;
   }
+  async lockPaymentsInTransaction(_tx: unknown, _paymentIds: readonly string[]) {}
   async listByChargeInTransaction(_tx: unknown, refs: { chargeId: string }) {
     const ids = this.charges.get(refs.chargeId) ?? [];
     return this.payments.filter((p) => ids.includes(p.paymentId));
@@ -423,6 +424,33 @@ describe("DisputeAllocationService", () => {
       ["a", "seller-a", "-40.00"],
       ["b", "seller-b", "-100.00"],
     ]);
+  });
+
+  it("locks every payment it moves a payout for before it moves any", async () => {
+    const lockPayments = vi.spyOn(t.store, "lockPaymentsInTransaction");
+    const record = caseOf(t.store);
+    await t.allocation.allocate({
+      caseId: record.id,
+      expectedVersion: 1,
+      actorUserId: "staff-1",
+      lines: [
+        { paymentId: "b", amountPence: 10_000 },
+        { paymentId: "a", amountPence: 5_000 },
+      ],
+    });
+    lockPayments.mockClear();
+
+    await t.recorder.record(
+      "funds_withdrawn",
+      t.event("charge.dispute.funds_withdrawn"),
+      dispute({ amount: 15_000 }),
+    );
+
+    expect(lockPayments).toHaveBeenCalledTimes(1);
+    expect([...(lockPayments.mock.calls[0]?.[1] ?? [])].sort()).toEqual(["a", "b"]);
+    const lockedAt = lockPayments.mock.invocationCallOrder[0] ?? Number.POSITIVE_INFINITY;
+    expect(t.addLine.mock.invocationCallOrder.every((at) => at > lockedAt)).toBe(true);
+    expect(t.addLine).toHaveBeenCalledTimes(2);
   });
 
   it("catches up with funds already withdrawn, and a case already closed", async () => {

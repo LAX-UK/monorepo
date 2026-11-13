@@ -10,7 +10,7 @@ import type { IDomainEventSink } from "../domain-event-sink.js";
 import type { IPayoutAdjustmentService } from "../interfaces/payout-adjustment.js";
 
 export type DisputeLineEffectsDeps = {
-  cases: Pick<IDisputeCaseRepository, "setClawbackInTransaction">;
+  cases: Pick<IDisputeCaseRepository, "setClawbackInTransaction" | "lockPaymentsInTransaction">;
   payoutAdjustments: Pick<IPayoutAdjustmentService, "addPaymentLineToOpenPayoutOrCreateClawback">;
   events: IDomainEventSink;
 };
@@ -41,9 +41,17 @@ export class DisputeLineEffects {
     reversalNote: string,
   ): Promise<void> {
     const funds = disputeFundsOf(record);
-    for (const line of lines) {
+    const moves = lines.flatMap((line) => {
       const effect = disputeLineEffect(funds, line.clawback);
-      if (!effect) continue;
+      return effect ? [{ line, effect }] : [];
+    });
+    // Every payment before any payout, as the refund paths lock: a case falling on several
+    // invoices would otherwise hold the first line's payout while it waits for the next payment.
+    await this.deps.cases.lockPaymentsInTransaction(
+      tx,
+      moves.filter(({ line }) => line.sellerSharePence > 0).map(({ line }) => line.paymentId),
+    );
+    for (const { line, effect } of moves) {
       if (effect === "withdraw") {
         await this.movePayout(tx, line, -line.sellerSharePence, "withdrawn", {
           note: `Dispute funds withdrawn: ${record.stripeDisputeId}`,

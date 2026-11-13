@@ -143,6 +143,11 @@ describe("payouts staff list view model", () => {
       canResolveBlocked: true,
     });
     expect(toPayoutsStaffRows([row], new Map())[0]?.seller).toBe("Seller 11111111");
+    // A scheduled payout whose last transfer attempt may have reached Stripe takes no adjustment.
+    const [unknown] = toPayoutsStaffRows([
+      { ...row, failureReason: "stripe_transfer_outcome_unknown: unknown - socket hang up" },
+    ]);
+    expect(unknown).toMatchObject({ canAdjust: false, canMarkPaid: true });
   });
 
   it("builds list links that drop one-off params and restart paging", () => {

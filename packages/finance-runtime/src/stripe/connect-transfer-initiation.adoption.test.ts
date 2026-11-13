@@ -97,7 +97,7 @@ describe("ConnectTransferInitiationService (finance-runtime) transfer decision",
         amount: 1000,
         metadata: expect.objectContaining({ payoutId: "p1" }),
       }),
-      { idempotencyKey: "payout:transfer:p1" },
+      { idempotencyKey: "payout:transfer:p1:1000" },
     );
   });
 

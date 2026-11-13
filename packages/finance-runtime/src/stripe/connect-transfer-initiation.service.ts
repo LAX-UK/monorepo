@@ -1,4 +1,9 @@
 import type { Database } from "@auction/db";
+import {
+  lastTransferOutcomeUnknown,
+  transferFailureReason,
+  transferOutcomeUnknownAfter,
+} from "@auction/domain";
 import type {
   IConnectTransferRepository,
   IPayoutRepository,
@@ -29,15 +34,19 @@ import type { IStripeClientFactory } from "./stripe-client-factory.js";
 import { executeWithStripeRetries } from "./stripe-retries.js";
 
 /**
- * Stripe replays the first answer for a key, including a failure, so a retry needs a key of its
- * own. It is tied to the failure being retried: staff who retry the same failure share one key
- * and cannot send the money twice, and a later failure gets a fresh one.
+ * Stripe replays the first answer for a key, including a failure, and refuses the key with other
+ * parameters, so a retry needs a key of its own. It names the amount: a payout whose net changed
+ * after a refused attempt sends the new net under a new key rather than being refused for 24h. It
+ * is tied to the failure being retried: staff who retry the same failure share one key, and a later
+ * failure gets a fresh one. A second transfer for the payout is prevented by
+ * `decideConnectTransfer`, which looks at what Stripe already holds for it before any create.
  */
 function transferIdempotencyKey(
   payout: { id: string; processedAt: Date | null },
+  amountMinor: number,
   opts: InitiateTransferOptions | undefined,
 ): string {
-  const base = `payout:transfer:${payout.id}`;
+  const base = `payout:transfer:${payout.id}:${amountMinor}`;
   return opts?.retryFailed ? `${base}:retry:${payout.processedAt?.getTime() ?? 0}` : base;
 }
 
@@ -91,7 +100,7 @@ export class ConnectTransferInitiationService {
   private async withLockedPayout<T>(
     payoutId: string,
     expected: { status: string; netAmount: string },
-    work: (repo: IPayoutRepository) => Promise<T>,
+    work: (repo: IPayoutRepository, locked: Payout) => Promise<T>,
   ): Promise<T | LockedStepRefusal> {
     const transactions = this.transactions;
     const rootRepo = this.payoutRepository;
@@ -111,7 +120,7 @@ export class ConnectTransferInitiationService {
         this.metrics.record("payout_transfer_amount_changed");
         return { ok: false, reason: "payout_changed" } as const;
       }
-      return work(repo);
+      return work(repo, locked);
     });
   }
 
@@ -248,7 +257,8 @@ export class ConnectTransferInitiationService {
     const step = await this.withLockedPayout(
       payoutId,
       expected,
-      async (repo): Promise<TransferStep> => {
+      async (repo, locked): Promise<TransferStep> => {
+        let createAttempted = false;
         try {
           // Stripe forgets idempotency keys after 24h, so a retry must look at what Stripe already
           // holds before it creates anything. One shared decision serves every caller.
@@ -276,6 +286,7 @@ export class ConnectTransferInitiationService {
             return { kind: "blocked", reason: decision.reason, transferIds: decision.transferIds };
           }
           const adopted = decision.kind === "adopt";
+          createAttempted = decision.kind !== "adopt";
           const transfer =
             decision.kind === "adopt"
               ? decision.transfer
@@ -290,7 +301,7 @@ export class ConnectTransferInitiationService {
                       payoutId: payout.id,
                       legalEntityId: payout.legalEntityId,
                     },
-                    idempotencyKey: transferIdempotencyKey(payout, opts),
+                    idempotencyKey: transferIdempotencyKey(payout, amountCents, opts),
                   }),
                 );
 
@@ -311,11 +322,17 @@ export class ConnectTransferInitiationService {
           }
           const errorCode = err.code ?? "unknown";
           const errorMessage = err.message ?? "Transfer failed after retries";
+          // Stripe may hold a transfer for this amount when the create's outcome is unknown, or when
+          // an earlier attempt's was and this one failed before it could find out. Such a payout
+          // takes no new lines (`payoutTakesLines`) until an attempt settles what Stripe holds.
+          const outcomeUnknown = createAttempted
+            ? transferOutcomeUnknownAfter(err)
+            : lastTransferOutcomeUnknown(locked);
           const moved3 = await repo.updateStatusIfCurrent(payoutId, startStatus, {
             status: opts?.keepScheduledOnTransferFailure ? "scheduled" : "failed",
             stripeTransferId: null,
             processedAt: opts?.keepScheduledOnTransferFailure ? null : new Date(),
-            failureReason: `stripe_transfer_failed: ${errorCode} - ${errorMessage}`,
+            failureReason: transferFailureReason({ outcomeUnknown, errorCode, errorMessage }),
           });
           if (!moved3) return { kind: "already_processed" };
           return { kind: "stripe_failed", errorCode, errorMessage };

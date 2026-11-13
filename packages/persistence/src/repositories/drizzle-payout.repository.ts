@@ -8,7 +8,12 @@ import {
   privateSaleDeal,
   saleSellerTerms,
 } from "@auction/db/schema";
-import { dealPayoutAmounts, minorUnitsToMoneyString, parsePayoutSearch } from "@auction/domain";
+import {
+  TRANSFER_OUTCOME_UNKNOWN_PREFIX,
+  dealPayoutAmounts,
+  minorUnitsToMoneyString,
+  parsePayoutSearch,
+} from "@auction/domain";
 import type {
   Payout,
   PayoutLine,
@@ -16,7 +21,7 @@ import type {
   PayoutSellerTermsTotals,
   PayoutStatus,
 } from "@auction/types";
-import { type SQL, and, asc, desc, eq, isNotNull, ne, sql } from "drizzle-orm";
+import { type SQL, and, asc, desc, eq, isNotNull, isNull, ne, notLike, or, sql } from "drizzle-orm";
 import type {
   CreatePayoutInput,
   IPayoutProcessorReader,
@@ -391,6 +396,14 @@ export class DrizzlePayoutRepository implements IPayoutRepository, IPayoutProces
     return rows[0] ? rowToPayout(rows[0]) : null;
   }
 
+  async lockPayment(paymentId: string): Promise<void> {
+    await this.db
+      .select({ id: payment.id })
+      .from(payment)
+      .where(eq(payment.id, paymentId))
+      .for("update");
+  }
+
   async lockSettlementForEntity(legalEntityId: string): Promise<void> {
     await this.db.execute(
       sql`select pg_advisory_xact_lock(hashtext(${`payout_settlement:${legalEntityId}`}))`,
@@ -692,8 +705,14 @@ export class DrizzlePayoutRepository implements IPayoutRepository, IPayoutProces
         and(
           eq(payout.legalEntityId, legalEntityId),
           // Only a payout whose transfer has not started can take new lines: once the transfer
-          // amount is read, a line would change the record but not the money sent.
+          // amount is read, a line would change the record but not the money sent. The same holds
+          // after an attempt whose outcome is unknown, as Stripe may hold a transfer for the amount
+          // it read (see `payoutTakesLines`).
           eq(payout.status, "scheduled"),
+          or(
+            isNull(payout.failureReason),
+            notLike(payout.failureReason, `${TRANSFER_OUTCOME_UNKNOWN_PREFIX}%`),
+          ),
         ),
       )
       .orderBy(desc(payout.periodEnd))
