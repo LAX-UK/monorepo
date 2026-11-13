@@ -316,3 +316,49 @@ describe("AccountingQueueList", () => {
     expect(screen.getByText("We could not reach the accounting service.")).toBeInTheDocument();
   });
 });
+
+describe("AccountingQueueList: payments", () => {
+  it("lists bank transfers part received above the documents, with nothing to try", () => {
+    renderList({
+      partFunded: [
+        {
+          reference: "LAX-BID-PAY-grp-0b6a7c1e",
+          kind: "Pay several",
+          buyer: "Collector Ltd",
+          received: "£1,000.01 of £2,500.00 received",
+          since: null,
+        },
+      ],
+    });
+    const list = screen.getByRole("list", { name: "Bank transfers part received" });
+    expect(within(list).getByText("LAX-BID-PAY-grp-0b6a7c1e")).toBeTruthy();
+    expect(
+      within(list).getByText(/Pay several · Collector Ltd · £1,000.01 of £2,500.00 received/),
+    ).toBeTruthy();
+    expect(
+      screen.getByText(
+        "Nothing goes to Books until the whole amount has arrived and been applied.",
+      ),
+    ).toBeTruthy();
+  });
+
+  it("shows a parked delivery invoice as waiting for the accountant, without Try again", () => {
+    renderList({
+      tab: "needs_person",
+      rows: toAccountingStaffRows([
+        accountingRow({
+          reference: "LAX-BID-INV-dlv-0b6a7c1e",
+          label: "Delivery invoice · Pay several",
+          state: "needs_review",
+          parked: "vat_on_delivery",
+          canTryAgain: false,
+          problem:
+            "Waiting for the accountant: VAT on delivery. This stays out of Books until they confirm how delivery is booked.",
+        }),
+      ]),
+    });
+    expect(screen.getAllByText("Waiting for the accountant").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Delivery invoice · Pay several").length).toBeGreaterThan(0);
+    expect(screen.queryByRole("button", { name: "Try again" })).toBeNull();
+  });
+});

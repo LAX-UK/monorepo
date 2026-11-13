@@ -59,7 +59,10 @@ export function AccountingDetailsSheet({
       {row ? (
         <div className="flex flex-col gap-4">
           {problem ? (
-            <Notice tone={row.state.tone === "danger" ? "danger" : "info"} title="Last problem">
+            <Notice
+              tone={row.state.tone === "danger" ? "danger" : row.parked ? "warning" : "info"}
+              title={row.parked ? row.state.label : "Last problem"}
+            >
               {problem}
             </Notice>
           ) : null}
@@ -80,6 +83,19 @@ export function AccountingDetailsSheet({
               { label: "Updated", value: <StaffDate value={row.updatedAt} withTime /> },
             ]}
           />
+          {row.appliedTo.length > 0 ? (
+            <section aria-label="Applied to" className="flex flex-col gap-2">
+              <h3 className="text-staff-sm font-medium text-staff-fg">Applied to</h3>
+              <KeyValueList
+                items={row.appliedTo.map((applied) => ({
+                  label: applied.reference,
+                  value: applied.amount,
+                  numeric: true,
+                }))}
+              />
+              {row.note ? <p className="text-staff-sm text-staff-muted">{row.note}</p> : null}
+            </section>
+          ) : null}
         </div>
       ) : null}
     </DetailPanel>

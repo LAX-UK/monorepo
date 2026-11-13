@@ -9,11 +9,14 @@ import {
 import {
   ACCOUNTING_DOCUMENT_TYPE_LABELS,
   ACCOUNTING_LOCKED_PERIOD_TEXT,
-  ACCOUNTING_PRODUCT_LABELS,
+  ACCOUNTING_PARKED_STATUS,
+  ACCOUNTING_PAYMENT_ORDER_TEXT,
   ACCOUNTING_QUEUE_TABS,
   ACCOUNTING_QUEUE_TAB_LABELS,
   type AccountingDocumentState,
   type AccountingOrganisation,
+  type AccountingParkReason,
+  type AccountingPartFundedTransfer,
   type AccountingQueueRow,
   type AccountingQueueTab,
   type AccountingTryAgainOutcome,
@@ -126,9 +129,14 @@ const STATE_PRESENTATION: Readonly<Record<AccountingDocumentState, StatusPresent
 };
 
 export function accountingStatePresentation(
-  row: Pick<AccountingQueueRow, "state" | "lockedPeriod" | "targetMode">,
+  row: Pick<AccountingQueueRow, "state" | "lockedPeriod" | "targetMode"> & {
+    parked?: AccountingParkReason | null;
+  },
 ): StatusPresentation {
   if (row.lockedPeriod) return { label: "Locked period", tone: "warning" };
+  if (row.state === "needs_review" && row.parked) {
+    return { label: ACCOUNTING_PARKED_STATUS[row.parked], tone: "warning" };
+  }
   if (row.state === "issued" && row.targetMode === "dry_run") {
     return { label: "Rehearsed", tone: "neutral" };
   }
@@ -170,6 +178,12 @@ export type AccountingStaffRow = {
   lockedPeriod: boolean;
   rehearsal: boolean;
   canTryAgain: boolean;
+  /** Kept out of Books until the accountant or a person decides; never tried again. */
+  parked: AccountingParkReason | null;
+  /** A payment's invoices, each with what it takes ("£120.00"); empty for other documents. */
+  appliedTo: { reference: string; amount: string }[];
+  /** For a payment: the order it is sent in. */
+  note: string | null;
 };
 
 export function toAccountingStaffRows(rows: readonly AccountingQueueRow[]): AccountingStaffRow[] {
@@ -178,7 +192,7 @@ export function toAccountingStaffRows(rows: readonly AccountingQueueRow[]): Acco
     return {
       id: row.id,
       reference: row.reference,
-      kind: `${documentType} · ${ACCOUNTING_PRODUCT_LABELS[row.product]}`,
+      kind: row.label,
       documentType,
       company: legalNameForOrganisation(row.organisation),
       amount: formatStaffMoney(row.grossPence, "GBP"),
@@ -192,8 +206,40 @@ export function toAccountingStaffRows(rows: readonly AccountingQueueRow[]): Acco
       lockedPeriod: row.lockedPeriod,
       rehearsal: row.targetMode === "dry_run",
       canTryAgain: row.canTryAgain,
+      parked: row.parked,
+      appliedTo: row.appliedTo.map((applied) => ({
+        reference: applied.reference,
+        amount: formatStaffMoney(applied.amountPence, "GBP"),
+      })),
+      note:
+        row.documentType === "payment" && row.parked === null
+          ? ACCOUNTING_PAYMENT_ORDER_TEXT
+          : null,
     };
   });
+}
+
+/** One bank transfer part received, as the panel lists it. */
+export type AccountingPartFundedRow = {
+  reference: string;
+  /** "Pay several" or "Bank transfer". */
+  kind: string;
+  buyer: string;
+  /** "£1,000.01 of £2,500.00 received". */
+  received: string;
+  since: string | null;
+};
+
+export function toPartFundedRows(
+  transfers: readonly AccountingPartFundedTransfer[],
+): AccountingPartFundedRow[] {
+  return transfers.map((t) => ({
+    reference: t.reference,
+    kind: t.paySeveral ? "Pay several" : "Bank transfer",
+    buyer: t.buyer,
+    received: `${formatStaffMoney(t.receivedPence, "GBP")} of ${formatStaffMoney(t.totalPence, "GBP")} received`,
+    since: t.since,
+  }));
 }
 
 /** The confirm dialog for trying a document again: the same document, the same reference. */

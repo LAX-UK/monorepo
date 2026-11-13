@@ -1,6 +1,7 @@
 import {
   ACCOUNTING_DOCUMENT_TYPES,
   ACCOUNTING_ORGANISATIONS,
+  ACCOUNTING_PARK_REASONS,
   ACCOUNTING_PRODUCTS,
   ACCOUNTING_QUEUE_TABS,
   type AccountingQueuePage,
@@ -16,6 +17,9 @@ export const accountingQueueRowSchema: z.ZodType<AccountingQueueRow> = z.object(
   id: z.string(),
   reference: z.string(),
   documentType: z.enum(ACCOUNTING_DOCUMENT_TYPES),
+  label: z.string(),
+  parked: z.enum(ACCOUNTING_PARK_REASONS).nullable(),
+  appliedTo: z.array(z.object({ reference: z.string(), amountPence: z.number().int() })),
   product: z.enum(ACCOUNTING_PRODUCTS),
   organisation,
   state: z.enum(["pending", "sending", "issued", "unknown", "needs_review", "failed", "cancelled"]),
@@ -49,6 +53,16 @@ export const accountingQueuePageSchema: z.ZodType<AccountingQueuePage> = z.objec
   offset: z.number().int(),
   unreadable: z.number().int(),
   canAct: z.boolean(),
+  partFundedTransfers: z.array(
+    z.object({
+      reference: z.string(),
+      paySeveral: z.boolean(),
+      buyer: z.string(),
+      receivedPence: z.number().int(),
+      totalPence: z.number().int(),
+      since: z.string().nullable(),
+    }),
+  ),
 });
 
 export const accountingTryAgainResultSchema: z.ZodType<AccountingTryAgainResult> = z.object({

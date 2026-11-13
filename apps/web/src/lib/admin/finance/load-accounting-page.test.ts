@@ -24,6 +24,7 @@ function page(overrides: object = {}) {
     offset: 0,
     unreadable: 0,
     canAct: true,
+    partFundedTransfers: [],
     ...overrides,
   };
 }
@@ -111,5 +112,32 @@ describe("loadAdminAccountingPage", () => {
     expect((await loadAdminAccountingPage({})).loadError).toBe(
       "You do not have access to accounting documents.",
     );
+  });
+
+  it("lists bank transfers part received, worded for the panel", async () => {
+    getPage.mockResolvedValue(
+      page({
+        partFundedTransfers: [
+          {
+            reference: "LAX-BID-PAY-grp-0b6a7c1e",
+            paySeveral: true,
+            buyer: "Collector Ltd",
+            receivedPence: 100_001,
+            totalPence: 250_000,
+            since: "2026-11-13T09:00:00.000Z",
+          },
+        ],
+      }),
+    );
+    const loaded = await loadAdminAccountingPage({});
+    expect(loaded.partFunded).toEqual([
+      {
+        reference: "LAX-BID-PAY-grp-0b6a7c1e",
+        kind: "Pay several",
+        buyer: "Collector Ltd",
+        received: "£1,000.01 of £2,500.00 received",
+        since: "2026-11-13T09:00:00.000Z",
+      },
+    ]);
   });
 });

@@ -6,6 +6,7 @@ import {
   ACCOUNTING_DESCRIPTION,
   ACCOUNTING_EMPTY_COPY,
   ACCOUNTING_REHEARSAL_NOTICE,
+  type AccountingPartFundedRow,
   type AccountingSearch,
   type AccountingStaffRow,
   ORGANISATION_SEGMENTS,
@@ -38,6 +39,8 @@ import {
   ACCOUNTING_LOCKED_PERIOD_ACKNOWLEDGEMENT,
   ACCOUNTING_LOCKED_PERIOD_TEXT,
   ACCOUNTING_NO_REASON_TEXT,
+  ACCOUNTING_PART_FUNDED_TEXT,
+  ACCOUNTING_PART_FUNDED_TITLE,
   type AccountingLastSent,
   type AccountingOrganisation,
   type AccountingQueueTab,
@@ -71,6 +74,8 @@ export type AccountingQueueListProps = {
   rehearsal: boolean;
   /** Stored documents that could not be read back; counted, not listed. */
   unreadable: number;
+  /** Bank transfers part received (Bid): listed for reconciliation, never sent to Books. */
+  partFunded?: AccountingPartFundedRow[];
 };
 
 /**
@@ -232,8 +237,13 @@ export function AccountingQueueList(props: AccountingQueueListProps) {
   const dialogCopy = dialogRow ? tryAgainCopy(dialogRow) : null;
   const lockedConfirm = Boolean(dialogRow?.lockedPeriod);
   const locked = rows.filter((row) => row.lockedPeriod).length;
+  const partFunded = props.partFunded ?? [];
   const hasNotice =
-    locked > 0 || props.rehearsal || props.unreadable > 0 || props.referenceError !== null;
+    locked > 0 ||
+    props.rehearsal ||
+    props.unreadable > 0 ||
+    props.referenceError !== null ||
+    partFunded.length > 0;
   const notices = (
     <>
       {props.referenceError ? (
@@ -251,6 +261,7 @@ export function AccountingQueueList(props: AccountingQueueListProps) {
           {ACCOUNTING_REHEARSAL_NOTICE}
         </Notice>
       ) : null}
+      {partFunded.length > 0 ? <PartFundedNotice transfers={partFunded} /> : null}
       {props.unreadable > 0 ? (
         <Notice tone="warning" title="Some documents could not be read">
           {props.unreadable === 1
@@ -484,4 +495,35 @@ function ProblemCell({ row, issued }: { row: AccountingStaffRow; issued: boolean
   }
   // Up to two lines, then an ellipsis; the whole reason is in the details sheet.
   return <span className="line-clamp-2 whitespace-normal">{row.problem}</span>;
+}
+
+/**
+ * Bank transfers that have partly arrived. Nothing is sent to Books for them: the payment goes once
+ * the whole amount has arrived and been applied. Listed so finance can reconcile what is in the
+ * bank against what is in the books.
+ */
+function PartFundedNotice({ transfers }: { transfers: AccountingPartFundedRow[] }) {
+  return (
+    <Notice tone="info" title={`${ACCOUNTING_PART_FUNDED_TITLE} (${transfers.length})`}>
+      <p>{ACCOUNTING_PART_FUNDED_TEXT}</p>
+      <ul className="mt-2 flex flex-col gap-1.5" aria-label={ACCOUNTING_PART_FUNDED_TITLE}>
+        {transfers.map((t) => (
+          <li key={t.reference} className="flex flex-wrap gap-x-2 break-words">
+            <span className="font-medium text-staff-fg [overflow-wrap:anywhere]">
+              {t.reference}
+            </span>
+            <span>
+              {t.kind} · {t.buyer} · {t.received}
+              {t.since ? (
+                <>
+                  {" "}
+                  · last <RelativeTime value={t.since} />
+                </>
+              ) : null}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </Notice>
+  );
 }
