@@ -6,6 +6,7 @@ import {
   SETTLE_GRACE_MS,
   buildCreditNoteFor,
   buildInvoice,
+  buildPayment,
   laxReference,
 } from "@auction/accounting-domain";
 import { closeDb, createDb } from "@auction/db";
@@ -50,6 +51,27 @@ function invoice(product: Product, sourceId: string, unitNetPence = 10_000): Acc
           role: "goods",
         },
       ],
+    }),
+  );
+}
+
+/** A Bid payment applied to the given invoices, each by its whole total. */
+function paymentFor(
+  invoices: readonly AccountingDocument[],
+  sourceId = newId(),
+): AccountingDocument {
+  const allocations = invoices.map((i) => ({
+    invoiceReference: i.reference,
+    amountPence: i.kind === "invoice" ? i.totals.grossPence : 0,
+  }));
+  return must(
+    buildPayment({
+      product: "bid",
+      sourceId,
+      contactReference: must(laxReference("bid", "contact", sourceId)),
+      receivedOn: "2031-03-02",
+      amountPence: allocations.reduce((sum, a) => sum + a.amountPence, 0),
+      allocations,
     }),
   );
 }
@@ -717,6 +739,150 @@ describe.skipIf(!HAS_DB)("accounting persistence (integration)", { timeout: 60_0
         }),
       );
       expect(late.record.status).toBe("unknown");
+    });
+  });
+
+  describe("a payment waits for its invoices (dependency ordering)", () => {
+    const claim = async (leaseToken: string) =>
+      must(
+        await repos.workQueue.claimNext({
+          provider: PROVIDER,
+          leaseToken,
+          leaseMs: LEASE_MS,
+          targetModes: ALL_MODES,
+        }),
+      );
+    const issue = async (id: string, leaseToken: string) => {
+      const stored = must(await repos.lookup.findByReference("bid", (await byId(id)).reference));
+      must(
+        await repos.transitions.apply(id, {
+          action: "complete_sending",
+          leaseToken,
+          outcome: {
+            status: "issued",
+            number: `INV-${newId()}`,
+            providerId: newId(),
+            pdfRef: null,
+            totals: (stored as NonNullable<typeof stored>).totals,
+          },
+        }),
+      );
+    };
+    const byId = async (id: string) => {
+      const rows = await owner.execute<{ lax_reference: string; state: string; attempts: number }>(
+        sql`select lax_reference, state, attempts from accounting_document where id = ${id}`,
+      );
+      const row = rows.rows[0];
+      if (!row) throw new Error(`no document ${id}`);
+      return { reference: row.lax_reference, state: row.state, attempts: row.attempts };
+    };
+
+    it("is not claimed before its invoice is issued, even when it is older; then it is", async () => {
+      const inv = invoice("bid", newId());
+      nowMs = T0;
+      const payment = await register(paymentFor([inv]));
+      nowMs = T0 + 1_000;
+      const invoiceRow = await register(inv);
+      const first = await claim("inv");
+      expect(first?.id).toBe(invoiceRow.stored.id);
+      expect(await claim("early")).toBeNull();
+      expect(await byId(payment.stored.id)).toMatchObject({ state: "pending", attempts: 0 });
+      await issue(invoiceRow.stored.id, "inv");
+      expect((await claim("pay"))?.id).toBe(payment.stored.id);
+    });
+
+    it("waits while its invoice failed, without holding up the documents behind it", async () => {
+      const inv = invoice("bid", newId());
+      const invoiceRow = await register(inv);
+      nowMs = T0 + 1_000;
+      const payment = await register(paymentFor([inv]));
+      nowMs = T0 + 2_000;
+      const later = await register(invoice("bid", newId()));
+      expect((await claim("inv"))?.id).toBe(invoiceRow.stored.id);
+      must(
+        await repos.transitions.apply(invoiceRow.stored.id, {
+          action: "complete_sending",
+          leaseToken: "inv",
+          outcome: { status: "rejected", reason: "zoho_books_validation_invalid_request" },
+        }),
+      );
+      expect((await claim("next"))?.id).toBe(later.stored.id);
+      expect(await claim("none")).toBeNull();
+      expect(await byId(payment.stored.id)).toMatchObject({ state: "pending", attempts: 0 });
+    });
+
+    it("waits for every invoice of a Pay several payment, and for an invoice not registered yet", async () => {
+      const a = invoice("bid", newId());
+      const b = invoice("bid", newId(), 2_501);
+      const aRow = await register(a);
+      nowMs = T0 + 1_000;
+      const payment = await register(paymentFor([a, b]));
+      expect((await claim("a"))?.id).toBe(aRow.stored.id);
+      await issue(aRow.stored.id, "a");
+      // b is not in the queue at all yet: the payment still waits.
+      expect(await claim("early")).toBeNull();
+      nowMs = T0 + 2_000;
+      const bRow = await register(b);
+      expect((await claim("b"))?.id).toBe(bRow.stored.id);
+      expect(await claim("still")).toBeNull();
+      await issue(bRow.stored.id, "b");
+      expect((await claim("pay"))?.id).toBe(payment.stored.id);
+    });
+
+    it("does not count an invoice issued for another target (a rehearsal) as in the books", async () => {
+      const inv = invoice("bid", newId());
+      const rehearsed = await register(inv);
+      expect((await claim("dry"))?.id).toBe(rehearsed.stored.id);
+      await issue(rehearsed.stored.id, "dry");
+      await setModes("test_org");
+      const payment = await register(paymentFor([inv]));
+      // The invoice has not reached the test organisation: the payment waits for it there.
+      expect(await claim("test")).toBeNull();
+      expect(await byId(payment.stored.id)).toMatchObject({ state: "pending" });
+    });
+  });
+
+  describe("parked documents", () => {
+    it("are stored straight into Needs a person, never claimed, and a replay leaves them parked", async () => {
+      const inv = invoice("bid", newId());
+      const parked = must(
+        await repos.registry.register({
+          document: inv,
+          sourceEventRef: `evt-${newId()}`,
+          park: "vat_on_delivery",
+        }),
+      );
+      expect(parked.created).toBe(true);
+      expect(parked.stored.record).toMatchObject({
+        status: "needs_review",
+        lookup: "clear",
+        issued: null,
+        reason: "accounting_parked_vat_on_delivery",
+      });
+      expect(await eventsOf(parked.stored.id)).toEqual(["created:->needs_review"]);
+      expect(
+        must(
+          await repos.workQueue.claimNext({
+            provider: PROVIDER,
+            leaseToken: "never",
+            leaseMs: LEASE_MS,
+            targetModes: ALL_MODES,
+          }),
+        ),
+      ).toBeNull();
+      const replay = must(
+        await repos.registry.register({ document: inv, sourceEventRef: "evt-2" }),
+      );
+      expect(replay.created).toBe(false);
+      expect(replay.stored.record.status).toBe("needs_review");
+      expect(await repos.transitions.apply(parked.stored.id, { action: "requeue" })).toMatchObject({
+        ok: false,
+        refusal: { code: "parked" },
+      });
+      expect(await eventsOf(parked.stored.id)).toEqual(["created:->needs_review"]);
+      expect(
+        must(await repos.transitions.apply(parked.stored.id, { action: "cancel" })).record.status,
+      ).toBe("cancelled");
     });
   });
 

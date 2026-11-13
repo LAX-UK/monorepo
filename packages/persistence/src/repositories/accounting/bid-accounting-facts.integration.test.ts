@@ -3,6 +3,7 @@ import {
   type BidInvoiceFacts,
   projectBidInvoiceRaised,
   projectBidPaymentCaptured,
+  projectBidPaymentGroupSettled,
   projectBidPaymentRefunded,
 } from "@auction/accounting-domain";
 import { type Database, closeDb, createDb } from "@auction/db";
@@ -10,11 +11,14 @@ import {
   bidInvoice,
   bidInvoiceLine,
   bidUserProfile,
+  deliveryQuote,
   domainEvent,
   legalEntity,
   legalEntityInvoiceDetails,
   lot,
   payment,
+  paymentGroup,
+  paymentGroupDelivery,
   paymentRefund,
   user,
 } from "@auction/db/schema";
@@ -283,6 +287,7 @@ describe.skipIf(!HAS_DB)("Bid accounting facts (integration)", { timeout: 60_000
           paymentId: raised.payment.id,
           invoice: expected,
           amountPence: 154_320,
+          currency: "GBP",
           capturedOn: "2031-11-13",
         },
       });
@@ -333,6 +338,153 @@ describe.skipIf(!HAS_DB)("Bid accounting facts (integration)", { timeout: 60_000
       expect(paid.ok && paid.value.documents[2]).toMatchObject({ amountPence: 154_320 });
       const credited = projectBidPaymentRefunded(refunded.facts);
       expect(credited.ok && credited.value.documents.length).toBe(4);
+    });
+  });
+
+  it("reads a settled Pay several payment from its stored rows, in pence, and the policy books it", async () => {
+    await inRolledBack(owner, async (tx) => {
+      const seeded = await seedWonLot(tx);
+      const first = await raise(tx, seeded);
+      const secondLotId = randomUUID();
+      await tx.insert(lot).values({
+        id: secondLotId,
+        sellerLegalEntityId: seeded.sellerEntityId,
+        title: `Books facts lot 2 ${seeded.tag}`,
+        images: [],
+        auctionType: "english" as const,
+        startingPrice: "100.00",
+        currentPrice: "333.33",
+        minBidIncrement: "10.00",
+        startTime: new Date(RAISED_AT.getTime() - 86_400_000),
+        endTime: RAISED_AT,
+        status: "ended" as const,
+        winnerId: seeded.buyerId,
+        buyerLegalEntityId: seeded.buyerEntityId,
+        createdAt: RAISED_AT,
+        updatedAt: RAISED_AT,
+      });
+      const second = await raise(
+        tx,
+        { ...seeded, lotId: secondLotId },
+        { hammerPence: 26_667, premiumPence: 6_666 },
+      );
+      const [group] = await tx
+        .insert(paymentGroup)
+        .values({
+          buyerLegalEntityId: seeded.buyerEntityId,
+          createdByUserId: seeded.buyerId,
+          status: "paid",
+          currency: "GBP",
+          // £1,543.20 + £333.33 + £45.01 of courier delivery.
+          totalAmount: "1921.54",
+          checkoutRail: "card",
+          // 00:30 on the 14th in London (GMT) is the 14th.
+          settledAt: new Date("2031-11-14T00:30:00Z"),
+        })
+        .returning({ id: paymentGroup.id });
+      const groupId = group?.id as string;
+      await tx
+        .update(payment)
+        .set({ paymentGroupId: groupId })
+        .where(sql`${payment.id} in (${first.payment.id}, ${second.payment.id})`);
+      const [quote] = await tx
+        .insert(deliveryQuote)
+        .values({
+          lotId: seeded.lotId,
+          buyerLegalEntityId: seeded.buyerEntityId,
+          status: "accepted",
+          destination: "Fixture address",
+          amount: "45.01",
+        })
+        .returning({ id: deliveryQuote.id });
+      await tx.insert(paymentGroupDelivery).values({
+        paymentGroupId: groupId,
+        deliveryQuoteId: quote?.id as string,
+        lotId: seeded.lotId,
+        amount: "45.01",
+      });
+
+      const reader = new DrizzleBidAccountingFactsReader(tx);
+      const read = await reader.paymentGroupSettled(groupId);
+      if (read.status !== "ready") throw new Error(`skipped: ${read.reason}`);
+      expect(read.facts).toMatchObject({
+        groupId,
+        buyer: { legalEntityId: seeded.buyerEntityId, name: `Collector Ltd ${seeded.tag}` },
+        currency: "GBP",
+        totalPence: 192_154,
+        settledOn: "2031-11-14",
+        deliveries: [{ quoteId: quote?.id, amountPence: 4_501 }],
+      });
+      expect(
+        read.facts.members
+          .map((m) => [m.paymentId, m.amountPence])
+          .sort((a, b) => String(a[0]).localeCompare(String(b[0]))),
+      ).toEqual(
+        [
+          [first.payment.id, 154_320],
+          [second.payment.id, 33_333],
+        ].sort((a, b) => String(a[0]).localeCompare(String(b[0]))),
+      );
+      // The single-payment flow leaves a group member to the group.
+      expect(await reader.paymentCaptured(first.payment.id, RAISED_AT)).toEqual({
+        status: "skip",
+        reason: "payment_in_group",
+      });
+
+      const projected = projectBidPaymentGroupSettled(read.facts);
+      if (!projected.ok) throw new Error(projected.refusal.message);
+      const paymentDoc = projected.value.documents.find((d) => d.kind === "payment");
+      expect(paymentDoc).toMatchObject({ amountPence: 192_154, unallocatedPence: 0 });
+      expect(projected.value.parked?.map((p) => p.reason)).toEqual([
+        "vat_on_delivery",
+        "vat_on_delivery",
+      ]);
+
+      // A group that was not paid (let go, or still open) gives the books nothing.
+      await tx
+        .update(paymentGroup)
+        .set({ status: "cancelled" })
+        .where(eq(paymentGroup.id, groupId));
+      expect(await reader.paymentGroupSettled(groupId)).toEqual({
+        status: "skip",
+        reason: "payment_group_not_paid",
+      });
+      expect(await reader.paymentGroupSettled(randomUUID())).toEqual({
+        status: "skip",
+        reason: "payment_group_not_found",
+      });
+    });
+  });
+
+  it("names a cancelled invoice for a payment taken before it was voided, so it can be parked", async () => {
+    await inRolledBack(owner, async (tx) => {
+      const seeded = await seedWonLot(tx);
+      const raised = await raise(tx, seeded);
+      await tx
+        .update(bidInvoice)
+        .set({ voidedAt: RAISED_AT })
+        .where(eq(bidInvoice.id, raised.invoice.id));
+      const reader = new DrizzleBidAccountingFactsReader(tx);
+      const captured = await reader.paymentCaptured(raised.payment.id, RAISED_AT);
+      expect(captured).toEqual({
+        status: "ready",
+        facts: {
+          paymentId: raised.payment.id,
+          invoice: {
+            invoiceId: raised.invoice.id,
+            buyer: expect.objectContaining({ legalEntityId: seeded.buyerEntityId }),
+            cancelled: true,
+          },
+          amountPence: 154_320,
+          currency: "GBP",
+          capturedOn: "2031-11-12",
+        },
+      });
+      if (captured.status !== "ready") throw new Error("not ready");
+      const projected = projectBidPaymentCaptured(captured.facts);
+      expect(projected.ok && projected.value.parked).toEqual([
+        { reference: `LAX-BID-PAY-${raised.payment.id}`, reason: "invoice_cancelled" },
+      ]);
     });
   });
 

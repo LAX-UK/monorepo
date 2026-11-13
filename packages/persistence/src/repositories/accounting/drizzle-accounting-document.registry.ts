@@ -4,6 +4,7 @@ import {
   documentTarget,
   legalEntityFor,
   ok,
+  parkedRecord,
   refuse,
 } from "@auction/accounting-domain";
 import type { Database } from "@auction/db";
@@ -31,7 +32,7 @@ export class DrizzleAccountingDocumentRegistry implements IAccountingDocumentReg
   ) {}
 
   async register(input: RegisterInput): Promise<Result<RegisterOutcome, RegisterCode>> {
-    const { document, sourceEventRef } = input;
+    const { document, sourceEventRef, park } = input;
     const checked = readDocumentPayload(document, {
       product: document.product,
       kind: document.kind,
@@ -43,6 +44,17 @@ export class DrizzleAccountingDocumentRegistry implements IAccountingDocumentReg
     const payload = JSON.parse(JSON.stringify(checked.value)) as Record<string, unknown>;
     const totals = documentTotals(checked.value);
     const at = this.clock.now();
+    // A parked document is stored straight into needs_review (never pending first), so no sender
+    // can claim it between two writes.
+    const parked = park ? parkedRecord(document.kind, document.reference, park) : null;
+    const parkedColumns =
+      parked?.status === "needs_review" && parked.lookup === "clear"
+        ? {
+            state: "needs_review" as const,
+            reviewLookup: "clear" as const,
+            needsReviewReason: parked.reason,
+          }
+        : {};
 
     return this.db.transaction(async (tx) => {
       // The document is aimed, once, at the provider and mode the switch names as it is created.
@@ -69,6 +81,7 @@ export class DrizzleAccountingDocumentRegistry implements IAccountingDocumentReg
           ...totals,
           targetProvider: target?.provider ?? null,
           targetMode: target?.mode ?? null,
+          ...parkedColumns,
           createdAt: at,
           updatedAt: at,
         })
@@ -87,9 +100,9 @@ export class DrizzleAccountingDocumentRegistry implements IAccountingDocumentReg
           documentId: inserted.id,
           action: "created",
           fromState: null,
-          toState: "pending",
+          toState: inserted.state,
           attempts: 0,
-          detail: { sourceEventRef, target },
+          detail: park ? { sourceEventRef, target, parked: park } : { sourceEventRef, target },
           occurredAt: at,
         });
         const stored = rowToStored(inserted, at.getTime());
@@ -97,8 +110,9 @@ export class DrizzleAccountingDocumentRegistry implements IAccountingDocumentReg
           ? ok({ created: true, stored: stored.value })
           : refuse("bad_document", stored.refusal.message);
       }
-      // The reference is taken for this target. The same document again is a replay; a different
-      // one is a bug.
+      // The reference is taken for this target. The same document again is a replay (its state is
+      // left as it is: parked or not, it was decided when it was first stored); a different one is
+      // a bug.
       const [existing] = await tx
         .select()
         .from(accountingDocument)

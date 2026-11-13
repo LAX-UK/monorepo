@@ -2,6 +2,7 @@ import type {
   AccountingDocument,
   BidInvoiceFacts,
   BidPaymentFacts,
+  BidPaymentGroupFacts,
   BidRefundsFacts,
   DocumentKind,
   DocumentRecord,
@@ -11,6 +12,7 @@ import type {
   LifecycleCode,
   LookupOutcome,
   Mode,
+  ParkReason,
   Product,
   QueueTab,
   Result,
@@ -58,6 +60,11 @@ export interface RegisterInput {
   readonly document: AccountingDocument;
   /** The event or row that caused this document, e.g. a domain event id. */
   readonly sourceEventRef: string;
+  /**
+   * Store it parked (needs_review, never sent) for this reason instead of queueing it. Only a new
+   * document is parked; a replay keeps the state it was first stored in.
+   */
+  readonly park?: ParkReason;
 }
 
 export interface RegisterOutcome {
@@ -136,7 +143,9 @@ export interface ClaimRequest {
  * `target`), and only while that provider is still in that mode: a Books claim in `test_org` or
  * `dry_run` never takes a document aimed at Xero live, and a flip of the switch never re-aims an
  * existing document. A document with no target, or whose provider is now `off`, is not handed out. A document whose lease ran
- * out is not handed out again: it becomes unknown and goes through lookup first.
+ * out is not handed out again: it becomes unknown and goes through lookup first. A payment is not
+ * handed out until every invoice it is applied to is issued for the same target
+ * (`documentsAwaited`); it waits, and the documents behind it are handed out meanwhile.
  */
 export interface IAccountingDocumentWorkQueue {
   claimNext(
@@ -208,6 +217,8 @@ export interface IBidAccountingFactsReader {
   invoiceRaised(invoiceId: string): Promise<FactsRead<BidInvoiceFacts>>;
   paymentCaptured(paymentId: string, capturedAt: Date): Promise<FactsRead<BidPaymentFacts>>;
   paymentRefunded(paymentId: string): Promise<FactsRead<BidRefundsFacts>>;
+  /** A settled "Pay several" group: its stored total, members and courier quotes. */
+  paymentGroupSettled(groupId: string): Promise<FactsRead<BidPaymentGroupFacts>>;
 }
 
 export interface AccountingQueueQuery {
