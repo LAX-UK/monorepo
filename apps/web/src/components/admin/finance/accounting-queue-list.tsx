@@ -13,7 +13,7 @@ import {
   accountingTabs,
   legalNamesForFilter,
   lockedPeriodTitle,
-  rowMetaLine,
+  rowMetaParts,
   tryAgainCopy,
   tryAgainToast,
 } from "@/lib/admin/finance/accounting-queue.vm";
@@ -193,7 +193,7 @@ export function AccountingQueueList(props: AccountingQueueListProps) {
         headerHidden: true,
         phoneOnly: true,
         mobile: "meta",
-        cell: (row) => rowMetaLine(row),
+        cell: (row) => <MetaLine row={row} />,
       },
       {
         id: "action",
@@ -523,6 +523,20 @@ function AccountingDetailsSheet({
         </div>
       ) : null}
     </DetailPanel>
+  );
+}
+
+/**
+ * The phone's "Tried 2 times · last Thu 12 Nov, 09:30 GMT". Where the row's Try again button
+ * narrows the column it wraps, first at the dot, rather than cutting the time off.
+ */
+function MetaLine({ row }: { row: AccountingStaffRow }) {
+  const [tries, last] = rowMetaParts(row);
+  return (
+    <span data-meta-line className="whitespace-normal break-words">
+      <span className="inline-block max-w-full">{tries} ·</span>{" "}
+      <span className="inline-block max-w-full">{last}</span>
+    </span>
   );
 }
 

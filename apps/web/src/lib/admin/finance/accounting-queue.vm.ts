@@ -210,10 +210,17 @@ export function tryAgainCopy(row: Pick<AccountingStaffRow, "reference" | "locked
   };
 }
 
+/** The two halves of the phone-only row meta: "Tried 3 times" and "last Wed 11 Nov, 09:30 GMT". */
+export function rowMetaParts(
+  row: Pick<AccountingStaffRow, "attempts" | "updatedAt">,
+): readonly [tries: string, last: string] {
+  const tries = row.attempts === 1 ? "Tried once" : `Tried ${row.attempts} times`;
+  return [tries, `last ${formatStaffDateTime(row.updatedAt)}`];
+}
+
 /** The phone-only row meta: "Tried 3 times · last Wed 11 Nov, 09:30 GMT". */
 export function rowMetaLine(row: Pick<AccountingStaffRow, "attempts" | "updatedAt">): string {
-  const tries = row.attempts === 1 ? "Tried once" : `Tried ${row.attempts} times`;
-  return `${tries} · last ${formatStaffDateTime(row.updatedAt)}`;
+  return rowMetaParts(row).join(" · ");
 }
 
 /** The heading over the locked-period explanation on the list. */

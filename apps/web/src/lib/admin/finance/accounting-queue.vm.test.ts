@@ -15,6 +15,7 @@ import {
   legalNamesForFilter,
   lockedPeriodTitle,
   rowMetaLine,
+  rowMetaParts,
   toAccountingStaffRows,
   tryAgainCopy,
   tryAgainToast,
@@ -99,6 +100,15 @@ describe("Accounting rows", () => {
     );
     expect(rowMetaLine({ attempts: 3, updatedAt: "2026-11-11T09:30:00Z" })).toMatch(
       /^Tried 3 times · last /,
+    );
+  });
+
+  it("splits the phone row meta at the dot, so it can wrap there and keep the time whole", () => {
+    const [tries, last] = rowMetaParts({ attempts: 2, updatedAt: "2026-11-12T09:30:00Z" });
+    expect(tries).toBe("Tried 2 times");
+    expect(last).toMatch(/^last .*12 Nov.*\d{2}:\d{2}/);
+    expect(rowMetaLine({ attempts: 2, updatedAt: "2026-11-12T09:30:00Z" })).toBe(
+      `${tries} · ${last}`,
     );
   });
 

@@ -145,6 +145,21 @@ describe("AccountingQueueList", () => {
     expect(within(first).getByText(/Tried twice|Tried 2 times/)).toBeInTheDocument();
   });
 
+  it("on a phone, lets the Tried line wrap beside Try again instead of cutting the time off", () => {
+    renderList();
+    const list = screen.getByRole("list", { name: "Accounting documents" });
+    const rows = within(list).getAllByRole("listitem");
+    expect(rows.length).toBeGreaterThan(0);
+    for (const row of rows) {
+      const meta = row.querySelector("[data-meta-line]");
+      if (!meta) throw new Error("no meta line");
+      // The kit's meta slot truncates; this line opts back into wrapping, whole time included.
+      expect(meta).toHaveClass("whitespace-normal");
+      expect(meta).not.toHaveClass("truncate");
+      expect(meta.textContent).toMatch(/^Tried (once|\d+ times) · last .+\d{2}:\d{2}/);
+    }
+  });
+
   it("lets the company control take a full row on a phone so Display is not cut off", () => {
     renderList();
     expect(screen.getByRole("group", { name: "Company" })).toHaveClass("max-sm:w-full");
