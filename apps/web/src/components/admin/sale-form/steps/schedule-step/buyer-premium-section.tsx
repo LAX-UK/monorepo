@@ -136,7 +136,7 @@ export function BuyerPremiumSection({
       />
       {mode === "flat" ? (
         // The choice above already says the rate is charged on the whole hammer.
-        <StaffPercentField {...f} name="buyerPremiumRate" label="Flat rate" placeholder="15" />
+        <StaffPercentField {...f} name="buyerPremiumRate" label="Flat rate" placeholder="e.g. 20" />
       ) : null}
       {mode === "bands" ? (
         <ListEditor
@@ -178,11 +178,7 @@ export function BuyerPremiumSection({
                 <FieldRow>
                   {index === 0 ? (
                     // Fixed at £0: shown in the same label and box rhythm as the field beside it.
-                    <Field
-                      id={startId}
-                      label="From hammer"
-                      description="Band 1 always starts at £0."
-                    >
+                    <Field id={startId} label="From hammer">
                       <output
                         id={startId}
                         className="flex h-lax-control-md items-center text-lax-14 tabular-nums text-lax-fg"
@@ -201,7 +197,7 @@ export function BuyerPremiumSection({
                     {...f}
                     name={`buyerPremiumTiers.${index}.rate`}
                     label="Rate"
-                    placeholder="15"
+                    placeholder="e.g. 20"
                   />
                 </FieldRow>
                 {error ? <FieldError id={errorId}>{error}</FieldError> : null}
