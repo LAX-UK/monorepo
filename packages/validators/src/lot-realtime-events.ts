@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { ParsedBidUpdateFromRealtime } from "./lot-bid-update.js";
 
 const moneyString = z.string();
 
@@ -141,24 +142,6 @@ export function encodeProxyCancelledRedisMessage(input: {
   );
 }
 
-/** Web-facing projection of a validated public `bid_placed` payload. */
-export type ParsedBidUpdateFromRealtime = {
-  lotId: string;
-  bidId: string;
-  bidderId: string;
-  amount: string;
-  currentPrice: string;
-  endTime?: string;
-  outbidUserId?: string;
-  emittedAt?: number;
-  isAutoBid?: boolean;
-  placedByUserId?: string;
-  autoBidStepAmount?: string;
-  placedVia?: string | null;
-  bidCount?: number;
-  reserveMet?: boolean;
-};
-
 export function bidPlacedRedisMessageToBidUpdate(
   message: LotRealtimeRedisMessage,
 ): ParsedBidUpdateFromRealtime | null {
@@ -182,12 +165,6 @@ export function bidPlacedRedisMessageToBidUpdate(
     ...(message.bidCount != null ? { bidCount: message.bidCount } : {}),
     ...(message.reserveMet !== undefined ? { reserveMet: message.reserveMet } : {}),
   };
-}
-
-export function parseBidUpdateFromRealtimeRaw(raw: unknown): ParsedBidUpdateFromRealtime | null {
-  const message = parseLotRealtimeRedisMessage(raw);
-  if (!message) return null;
-  return bidPlacedRedisMessageToBidUpdate(message);
 }
 
 /** Sealed active lots must never expose bidder-identifying fields on non-admin fan-out. */
