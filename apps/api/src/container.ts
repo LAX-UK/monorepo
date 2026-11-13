@@ -513,7 +513,11 @@ export function createContainer(env: Env): Container {
       createBaseLogger(env).warn(report, "payout totals differ from payout lines"),
   });
   const reoffer = createReofferServices({ db, platform, repos, payments });
-  const sellerProceeds = createSellerProceedsServices({ db, platform });
+  const sellerProceeds = createSellerProceedsServices({
+    db,
+    platform,
+    storage: infra.objectStorage,
+  });
   const organisationWorkspace = createOrganisationWorkspaceServices({
     db,
     legalEntities: repos.legalEntityRepository,

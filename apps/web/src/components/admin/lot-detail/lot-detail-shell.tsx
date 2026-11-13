@@ -19,7 +19,10 @@ import { type LaxArtReturnView, laxArtReturnTarget } from "@/lib/admin/lots/lax-
 import { lotDetailNotice, lotEditLink } from "@/lib/admin/lots/lot-detail-page.vm";
 import type { LotReofferBundle } from "@/lib/admin/reoffer/reoffer-bundle";
 import { reofferHeader } from "@/lib/admin/reoffer/reoffer-lot-state";
-import type { HeldPayoutNotice } from "@/lib/admin/seller-proceeds/lot-seller-proceeds.vm";
+import {
+  type HeldPayoutNotice,
+  RECORD_AGREEMENT_BUTTON_ID,
+} from "@/lib/admin/seller-proceeds/lot-seller-proceeds.vm";
 import type { RecordAgreementContext } from "@/lib/admin/seller-proceeds/record-agreement.vm";
 import { staffStatus } from "@/lib/admin/staff-kit-status";
 import { LOTS_ACCESS } from "@/lib/navigation/staff-nav-access";
@@ -304,7 +307,12 @@ export function LotDetailShell({
               alert={notice.tone === "danger"}
               actions={
                 notice.recordsAgreement && heldPayout?.record ? (
-                  <StaffButton size="sm" variant="primary" onClick={() => setRecording(true)}>
+                  <StaffButton
+                    id={RECORD_AGREEMENT_BUTTON_ID}
+                    size="sm"
+                    variant="primary"
+                    onClick={() => setRecording(true)}
+                  >
                     Record signed agreement
                   </StaffButton>
                 ) : notice.action ? (

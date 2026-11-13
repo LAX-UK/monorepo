@@ -217,6 +217,7 @@ export function LotOverviewTab({
           record={sellerProceeds.record}
           canSettleOutside={sellerProceeds.canSettleOutside}
           replace={sellerProceeds.replace}
+          agreementDocumentHref={sellerProceeds.agreementDocumentHref}
         />
       ) : null}
       <Section title="Pricing and timing">

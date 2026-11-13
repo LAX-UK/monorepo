@@ -12,6 +12,7 @@ import {
   type LotSellerProceedsState,
   buildHeldPayoutNotice,
   buildLotSellerProceeds,
+  signedAgreementDocumentHref,
 } from "./lot-seller-proceeds.vm";
 import type { RecordAgreementContext } from "./record-agreement.vm";
 
@@ -24,6 +25,8 @@ export type LotSellerProceedsPage = {
   canSettleOutside: boolean;
   /** Set for an Administrator when the lot has an agreement that could be corrected. */
   replace: RecordAgreementContext | null;
+  /** Opens the signed PDF on record through a short-lived link; for those who record agreements. */
+  agreementDocumentHref: string | null;
 };
 
 export function recordContextFor(facts: LotSellerProceedsDto): RecordAgreementContext | null {
@@ -55,6 +58,7 @@ export async function loadLotSellerProceeds(
       record: null,
       canSettleOutside: false,
       replace: null,
+      agreementDocumentHref: null,
     };
   }
   const canRecord =
@@ -71,5 +75,7 @@ export async function loadLotSellerProceeds(
     record: canRecord && facts ? recordContextFor(facts) : null,
     canSettleOutside: canRecord,
     replace: isAdministrator && correctable && facts ? recordContextFor(facts) : null,
+    agreementDocumentHref:
+      canRecord && facts?.agreement?.signedDocumentId ? signedAgreementDocumentHref(lotId) : null,
   };
 }

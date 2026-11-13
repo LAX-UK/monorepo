@@ -8,6 +8,8 @@ export type SellerProceedsErrorCode =
   | "no_consignment"
   | "agreement_on_record"
   | "lot_changed"
+  | "no_signed_document"
+  | "already_settled_outside"
   | "replace_needs_administrator"
   | "document_not_ready"
   | "not_sold_on_atg"

@@ -106,6 +106,21 @@ export function createAdminSellerProceedsRoutes(
     },
   );
 
+  /**
+   * GET /admin/seller-proceeds/lots/:lotId/signed-agreement/document: a one-minute link to the
+   * signed PDF on record, for those who record agreements (they hold and check the paper).
+   */
+  r.get(
+    "/lots/:lotId/signed-agreement/document",
+    requireAuth,
+    requireSellerAgreementRecord,
+    zValidator("param", lotIdOnlyParamSchema),
+    (c) => {
+      c.header("Cache-Control", "no-store");
+      return respond(c, () => sellerProceeds.agreementDocument.linkFor(c.req.valid("param").lotId));
+    },
+  );
+
   /** POST /admin/seller-proceeds/lots/:lotId/settled-outside: an ATG sale settled by hand. */
   r.post(
     "/lots/:lotId/settled-outside",

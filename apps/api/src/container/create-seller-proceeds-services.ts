@@ -13,8 +13,10 @@ import {
   DrizzleStaffPayoutSalesReader,
   DrizzleUploadObjectReader,
 } from "@auction/persistence/repositories";
+import type { IObjectStorage } from "../services/interfaces/object-storage.js";
 import { MarkSettledOutsideService } from "../services/seller-proceeds/mark-settled-outside.service.js";
 import { RecordSignedAgreementService } from "../services/seller-proceeds/record-signed-agreement.service.js";
+import { SignedAgreementDocumentService } from "../services/seller-proceeds/signed-agreement-document.service.js";
 import type { ContainerPlatformServices } from "./create-platform-services.js";
 
 export type ContainerSellerProceedsServices = {
@@ -23,22 +25,30 @@ export type ContainerSellerProceedsServices = {
   vatSetting: ICommissionVatSettingReader;
   recordAgreement: RecordSignedAgreementService;
   settledOutside: MarkSettledOutsideService;
+  agreementDocument: SignedAgreementDocumentService;
 };
 
 export function createSellerProceedsServices(input: {
   db: Database;
   platform: Pick<ContainerPlatformServices, "transactionRunner" | "domainEventSink">;
+  storage: Pick<IObjectStorage, "createPresignedGet">;
 }): ContainerSellerProceedsServices {
   const { db, platform } = input;
   const reader = new DrizzleStaffLotSellerProceedsReader(db);
+  const uploads = new DrizzleUploadObjectReader(db);
   return {
+    agreementDocument: new SignedAgreementDocumentService({
+      reader,
+      uploads,
+      storage: input.storage,
+    }),
     reader,
     payoutSales: new DrizzleStaffPayoutSalesReader(db),
     vatSetting: new DrizzleCommissionVatSettingReader(db),
     settledOutside: new MarkSettledOutsideService({ reader, events: platform.domainEventSink }),
     recordAgreement: new RecordSignedAgreementService({
       reader,
-      uploads: new DrizzleUploadObjectReader(db),
+      uploads,
       today: () => dayKey(new Date(), LONDON_TIME_ZONE),
       unitOfWork: (work) =>
         platform.transactionRunner.runInTransaction((tx) =>

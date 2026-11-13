@@ -1,6 +1,9 @@
 "use client";
 
-import type { LotSellerProceedsState } from "@/lib/admin/seller-proceeds/lot-seller-proceeds.vm";
+import {
+  type LotSellerProceedsState,
+  RECORD_AGREEMENT_BUTTON_ID,
+} from "@/lib/admin/seller-proceeds/lot-seller-proceeds.vm";
 import { markSettledOutsideAction } from "@/lib/admin/seller-proceeds/record-agreement.actions";
 import type { RecordAgreementContext } from "@/lib/admin/seller-proceeds/record-agreement.vm";
 import { handleStaffStepUp } from "@/lib/auth/step-up/staff-step-up.client";
@@ -12,6 +15,7 @@ import {
   Skeleton,
   StaffButton,
   type StaffLinkComponent,
+  TextLink,
 } from "@auction/staff-ui";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -34,20 +38,22 @@ export function LotSellerProceedsSection({
   lotId = null,
   canSettleOutside = false,
   replace = null,
-  initialDialogOpen = false,
+  agreementDocumentHref = null,
 }: {
   state: LotSellerProceedsState;
   lotId?: string | null;
-  /** Set when this person may record the seller's signed agreement. */
+  /**
+   * Set when this person may record the seller's signed agreement; the section then points to
+   * the button in the lot header's held notice.
+   */
   record?: RecordAgreementContext | null;
   /** May this person mark an ATG sale as settled outside LAX. */
   canSettleOutside?: boolean;
   /** Set for an Administrator: the agreement on record can be replaced with a corrected one. */
   replace?: RecordAgreementContext | null;
-  /** For the review route only. */
-  initialDialogOpen?: boolean;
+  /** Opens the signed agreement PDF on record, for those who may handle agreements. */
+  agreementDocumentHref?: string | null;
 }) {
-  const [recording, setRecording] = useState(initialDialogOpen);
   const [settling, setSettling] = useState(false);
   const [replacing, setReplacing] = useState(false);
   const [saving, startSaving] = useTransition();
@@ -90,11 +96,13 @@ export function LotSellerProceedsSection({
   }
 
   const { breakdown, note, action } = state;
+  // A held sale is recorded from the one button in the lot header's notice; this points to it.
   const actionButton =
     action === "record_agreement" && record ? (
-      <StaffButton variant="primary" size="sm" onClick={() => setRecording(true)}>
-        Record signed agreement
-      </StaffButton>
+      <p className="text-staff-sm text-staff-muted">
+        <TextLink href={`#${RECORD_AGREEMENT_BUTTON_ID}`}>Record the signed agreement</TextLink>{" "}
+        from the notice at the top of this page.
+      </p>
     ) : action === "mark_settled_outside" && canSettleOutside ? (
       <StaffButton variant="secondary" size="sm" onClick={() => setSettling(true)}>
         Mark as settled outside LAX
@@ -115,8 +123,13 @@ export function LotSellerProceedsSection({
         action={actionButton}
         className="rounded-none border-0 bg-transparent"
       />
-      {record ? (
-        <RecordAgreementDialog open={recording} onOpenChange={setRecording} context={record} />
+      {agreementDocumentHref ? (
+        <p className="border-t border-staff-line-subtle px-4 py-3 text-staff-sm">
+          <TextLink href={agreementDocumentHref} external>
+            Open signed agreement
+          </TextLink>{" "}
+          <span className="text-staff-muted">PDF</span>
+        </p>
       ) : null}
       {replace ? (
         <RecordAgreementDialog

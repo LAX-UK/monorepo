@@ -29,6 +29,7 @@ const OLD_RULE_ROW = {
     signedAt: new Date("2026-08-01T10:00:00Z"),
     source: "online",
     commissionPercent: "12.00",
+    pricedOnEarlierVersion: false,
   },
 };
 
@@ -57,8 +58,20 @@ function build(who: Who) {
   };
   const vatSetting = { read: vi.fn().mockResolvedValue("standard") };
   const settledOutside = { mark: vi.fn().mockResolvedValue(undefined) };
+  const agreementDocument = {
+    linkFor: vi
+      .fn()
+      .mockResolvedValue({ url: "https://files.test/signed?sig=1", expiresInSeconds: 60 }),
+  };
   const container = {
-    sellerProceeds: { reader, recordAgreement, payoutSales, vatSetting, settledOutside },
+    sellerProceeds: {
+      reader,
+      recordAgreement,
+      payoutSales,
+      vatSetting,
+      settledOutside,
+      agreementDocument,
+    },
     userSuspensionChecker: { isSuspended: vi.fn().mockResolvedValue(false) },
     admin: { stepUp: { isRecent: vi.fn().mockResolvedValue(who?.recent ?? true) } },
   } as unknown as ContainerSellerProceedsRoutesSlice;
@@ -75,7 +88,7 @@ function build(who: Who) {
   };
   const app = new Hono();
   app.route("/admin/seller-proceeds", createAdminSellerProceedsRoutes(container, authenticator));
-  return { app, reader, recordAgreement, payoutSales, settledOutside };
+  return { app, reader, recordAgreement, payoutSales, settledOutside, agreementDocument };
 }
 
 const get = (app: Hono, path: string) => app.request(`http://test/admin/seller-proceeds${path}`);
@@ -246,6 +259,36 @@ describe("seller proceeds routes", () => {
       const { app, settledOutside } = build(staff("finance", false));
       expect((await post(app, path, { reason: "Paid by bank transfer" })).status).toBe(403);
       expect(settledOutside.mark).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("opening the signed agreement PDF", () => {
+    const path = `/lots/${LOT}/signed-agreement/document`;
+    it.each([
+      ["administrator", 200],
+      ["sales_manager", 200],
+      ["finance", 200],
+      ["cataloguer", 403],
+      ["read_only", 403],
+    ])("%s gets %i", async (role, status) => {
+      const { app, agreementDocument } = build(staff(role));
+      const res = await get(app, path);
+      expect(res.status).toBe(status);
+      if (status === 200) {
+        expect(res.headers.get("cache-control")).toBe("no-store");
+        expect(await res.json()).toEqual({
+          data: { url: "https://files.test/signed?sig=1", expiresInSeconds: 60 },
+        });
+        expect(agreementDocument.linkFor).toHaveBeenCalledWith(LOT);
+      } else {
+        expect(agreementDocument.linkFor).not.toHaveBeenCalled();
+      }
+    });
+
+    it("turns away anonymous callers", async () => {
+      const { app, agreementDocument } = build(null);
+      expect((await get(app, path)).status).toBe(401);
+      expect(agreementDocument.linkFor).not.toHaveBeenCalled();
     });
   });
 });
