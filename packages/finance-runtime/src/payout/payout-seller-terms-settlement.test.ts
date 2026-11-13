@@ -31,11 +31,16 @@ const pounds = (amount: number) => Math.round(amount * 100);
 const input = { legalEntityId: SELLER, periodStart: new Date(0), periodEnd: new Date() };
 
 /** A sale priced by the one calculator on a signed agreement, with VAT on the commission. */
-function agreementTerms(lotId: string, hammerPence: number, commissionBps: number) {
+function agreementTerms(
+  lotId: string,
+  hammerPence: number,
+  commissionBps: number,
+  vat: "standard" | "not_registered" = "standard",
+) {
   const proceeds = sellerProceeds({
     hammerPence,
     party: { kind: "agreement", commissionBps },
-    vat: "standard",
+    vat,
   });
   if (proceeds.basis !== "agreement") throw new Error("expected a payable sale");
   return {
@@ -48,7 +53,7 @@ function agreementTerms(lotId: string, hammerPence: number, commissionBps: numbe
     agreementId: `agreement-${lotId}`,
     commissionBps,
     commissionPence: proceeds.commissionPence,
-    commissionVatTreatment: "standard",
+    commissionVatTreatment: vat,
     commissionVatBps: proceeds.vatBps,
     commissionVatPence: proceeds.vatPence,
     otherCharges: [],
@@ -148,6 +153,19 @@ describe("a payout run pays each sale from its seller terms", () => {
     });
     // The buyer's premium is LAX's: nothing on the payout is the £102,500.00 the buyer paid.
     expect(written.lines.map((l) => l.amount)).toEqual(["82000.00"]);
+  });
+
+  it("the Bid company not VAT-registered: commission only, no VAT line", async () => {
+    const { repo, written } = recordingRepo([
+      sale("p1", agreementTerms("lot-1", pounds(6_200), 1500, "not_registered"), "7750.00"),
+    ]);
+    await createSettlementCore(repo, input, null, storedSellerTerms());
+    expect(written.payout).toMatchObject({
+      grossAmount: "6200.00",
+      platformFee: "930.00",
+      netAmount: "5270.00",
+      sellerTermsTotals: { hammer: "6200.00", commission: "930.00", commissionVat: "0.00" },
+    });
   });
 
   it("only held sales: nothing is paid and each one is reported", async () => {
