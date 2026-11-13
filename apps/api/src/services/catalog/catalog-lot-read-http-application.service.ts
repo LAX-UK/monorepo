@@ -25,7 +25,10 @@ import { lotsWithCheckoutPricing } from "../../lib/lots-with-checkout-pricing.js
 import { mapLotToStaffListRow, mapLotToSummary } from "../../lib/mappers.js";
 import { presentLotImages } from "../../lib/media-presenters.js";
 import { buildConnectRequiredByLotId } from "../../lib/seller-connect-readiness.js";
-import { checkoutPricingFromInvoicedSale } from "../../lib/stored-checkout-pricing.js";
+import {
+  checkoutPricingFromInvoicedSale,
+  invoicedBuyersPremiumTerms,
+} from "../../lib/stored-checkout-pricing.js";
 import type { CachedCatalogueListService } from "../cached-catalogue-list.service.js";
 import type { ICatalogLotReadHttpApplicationService } from "../interfaces/catalog-routes/catalog-lot-read-http.js";
 import type {
@@ -251,6 +254,7 @@ export class CatalogLotReadHttpApplicationService implements ICatalogLotReadHttp
       sale,
       checkoutTotal: checkoutPricing.totalMajor,
       now: this.now(),
+      invoicedPremium: sold ? invoicedBuyersPremiumTerms(sold) : null,
     });
     return {
       status: 200,

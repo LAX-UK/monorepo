@@ -42,6 +42,11 @@ export function buildLotDetailBiddingView(input: {
   sale: Pick<Sale, "buyerPremiumRate" | "buyerPremiumTiers"> | null;
   checkoutTotal: string;
   now: Date;
+  /**
+   * For a sold lot whose invoice is raised: the premium the invoice charged, so the words match
+   * the invoiced figure. Left out, the premium comes from today's rules.
+   */
+  invoicedPremium?: BuyersPremiumTerms | null;
 }): LotDetailBiddingView {
   const { lot, sale } = input;
   const biddable = BIDDABLE.has(lot.status);
@@ -51,7 +56,9 @@ export function buildLotDetailBiddingView(input: {
     extendedUntil: lot.extendedUntil ? new Date(lot.extendedUntil).toISOString() : null,
     nextBidAmount: biddable ? nextBidAmount(lot) : null,
     validBidAmounts: biddable ? validBidAmounts(lot) : [],
-    buyersPremium: buyersPremiumTerms({ lotRate: lot.buyerPremiumRate, sale }),
+    buyersPremium:
+      (sold ? input.invoicedPremium : null) ??
+      buyersPremiumTerms({ lotRate: lot.buyerPremiumRate, sale }),
     hammerPrice: sold ? lot.currentPrice : null,
     soldForWithPremium: sold ? input.checkoutTotal : null,
   };

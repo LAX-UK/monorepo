@@ -185,7 +185,45 @@ describe("GET /lots/:id bidding facts", () => {
       hammerPrice: "7000.00",
       soldForWithPremium: "8400.00",
       checkoutPricing: { premiumMajor: "1400.00", totalMajor: "8400.00" },
+      // The words come from the invoice too: today's rule is the lot's own 25%.
+      buyersPremium: { kind: "flat", rate: "0.2000" },
     });
+  });
+
+  it("words a sold lot's premium as its banded invoice charged it, not the lot's legacy rate", async () => {
+    const reader = {
+      findInvoicedSalePrices: vi.fn(
+        async () =>
+          new Map([
+            [
+              lotId,
+              {
+                hammerPence: 60_000_000,
+                premiumPence: 8_500_000,
+                pricingPolicyId: "bands:[0:0.1500,50000000:0.1000]",
+              },
+            ],
+          ]),
+      ),
+    };
+    const { body } = await getDetail(
+      lot({
+        status: "ended",
+        winnerId: "user-1",
+        currentPrice: "600000.00",
+        buyerPremiumRate: "0.25",
+      }),
+      sale(),
+      reader,
+    );
+    expect(body.data.buyersPremium).toEqual({
+      kind: "banded",
+      bands: [
+        { fromHammer: "0.00", rate: "0.1500" },
+        { fromHammer: "500000.00", rate: "0.1000" },
+      ],
+    });
+    expect(body.data.soldForWithPremium).toBe("685000.00");
   });
 
   it("keeps the last bid of an unsold lot out of the result", async () => {

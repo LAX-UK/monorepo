@@ -3,6 +3,7 @@ import type { LotCheckoutPricing } from "./lot-checkout-pricing.js";
 import {
   checkoutPricingFromInvoice,
   checkoutPricingFromInvoicedSale,
+  invoicedBuyersPremiumTerms,
 } from "./stored-checkout-pricing.js";
 
 const live: LotCheckoutPricing = {
@@ -132,5 +133,46 @@ describe("checkoutPricingFromInvoicedSale", () => {
       pricingPolicyId: null,
     });
     expect(priced.policyId).toBe("flat:0.25");
+  });
+});
+
+describe("invoicedBuyersPremiumTerms", () => {
+  const sold = (pricingPolicyId: string | null, hammerPence = 60_000_000) => ({
+    hammerPence,
+    premiumPence: 0,
+    pricingPolicyId,
+  });
+
+  it("reads a flat invoice as that rate", () => {
+    expect(invoicedBuyersPremiumTerms(sold("flat:0.2000"))).toEqual({
+      kind: "flat",
+      rate: "0.2000",
+    });
+  });
+
+  it("reads a banded invoice as its bands, in order", () => {
+    expect(invoicedBuyersPremiumTerms(sold("bands:[50000000:0.1000,0:0.1500]"))).toEqual({
+      kind: "banded",
+      bands: [
+        { fromHammer: "0.00", rate: "0.1500" },
+        { fromHammer: "500000.00", rate: "0.1000" },
+      ],
+    });
+  });
+
+  it("reads an invoice raised before clause 11 (tiered) as the one rate its hammer reached", () => {
+    const tiers =
+      'tiered:[{"hammerThresholdMinor":0,"rate":"0.15"},{"hammerThresholdMinor":50000000,"rate":"0.10"}]';
+    expect(invoicedBuyersPremiumTerms(sold(tiers))).toEqual({ kind: "flat", rate: "0.10" });
+    expect(invoicedBuyersPremiumTerms(sold(tiers, 49_999_999))).toEqual({
+      kind: "flat",
+      rate: "0.15",
+    });
+  });
+
+  it("is null for a policy it cannot read, so the page uses today's rules", () => {
+    for (const id of [null, "", "flat:abc", "bands:[x:y]", "tiered:not json", "other:1"]) {
+      expect(invoicedBuyersPremiumTerms(sold(id))).toBeNull();
+    }
   });
 });

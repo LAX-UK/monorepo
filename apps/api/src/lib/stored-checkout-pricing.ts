@@ -1,3 +1,4 @@
+import { type BuyersPremiumTerms, bandFromStored, isBuyerPremiumRate } from "@auction/domain";
 import type { InvoicedSalePrice } from "@auction/persistence/interfaces";
 import type { InvoiceLine } from "@auction/types";
 import { isBandedPremiumPolicyId } from "@auction/validators";
@@ -63,4 +64,68 @@ export function checkoutPricingFromInvoicedSale(
     policyId,
     kind: kindOf(policyId),
   };
+}
+
+type StoredBand = { hammerThresholdMinor: number; rate: string };
+
+const isStoredBand = (band: unknown): band is StoredBand =>
+  typeof band === "object" &&
+  band !== null &&
+  Number.isSafeInteger((band as StoredBand).hammerThresholdMinor) &&
+  isBuyerPremiumRate((band as StoredBand).rate);
+
+/** `bands:[0:0.1500,50000000:0.1000]`, as the banded policy writes its id. */
+function bandsOfPolicyId(list: string): StoredBand[] | null {
+  const bands = list.split(",").map((entry) => {
+    const [threshold, rate] = entry.split(":");
+    return { hammerThresholdMinor: Number(threshold), rate: rate ?? "" };
+  });
+  return bands.length > 0 && bands.every(isStoredBand) ? bands : null;
+}
+
+/** `tiered:[{"hammerThresholdMinor":0,"rate":"0.15"},…]`, as the release before clause 11 wrote it. */
+function tiersOfPolicyId(json: string): StoredBand[] | null {
+  try {
+    const tiers: unknown = JSON.parse(json);
+    return Array.isArray(tiers) && tiers.length > 0 && tiers.every(isStoredBand) ? tiers : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * The premium a sold lot's invoice charged, in the lot page's terms, read from the invoice's
+ * pricing policy rather than today's rules, so the words match the invoiced figure:
+ * - `flat:<rate>`: that rate on the hammer;
+ * - `bands:[…]`: those bands, slice by slice;
+ * - `tiered:[…]` (raised before clause 11): one rate on the whole hammer, the band the hammer
+ *   reached, which is what that invoice charged.
+ * `null` when the invoice names no policy the page can read (the page then uses today's rules).
+ */
+export function invoicedBuyersPremiumTerms(sold: InvoicedSalePrice): BuyersPremiumTerms | null {
+  const id = sold.pricingPolicyId ?? "";
+  const flat = /^flat:(.+)$/u.exec(id)?.[1];
+  if (flat !== undefined) return isBuyerPremiumRate(flat) ? { kind: "flat", rate: flat } : null;
+  const banded = /^bands:\[(.+)\]$/u.exec(id)?.[1];
+  if (banded !== undefined) {
+    const bands = bandsOfPolicyId(banded);
+    if (!bands) return null;
+    return {
+      kind: "banded",
+      bands: [...bands]
+        .sort((a, b) => a.hammerThresholdMinor - b.hammerThresholdMinor)
+        .map(bandFromStored),
+    };
+  }
+  const tiered = /^tiered:(.+)$/u.exec(id)?.[1];
+  if (tiered !== undefined) {
+    const tiers = tiersOfPolicyId(tiered);
+    if (!tiers) return null;
+    const reached = [...tiers]
+      .sort((a, b) => a.hammerThresholdMinor - b.hammerThresholdMinor)
+      .filter((tier) => sold.hammerPence >= tier.hammerThresholdMinor)
+      .at(-1);
+    return reached ? { kind: "flat", rate: reached.rate } : null;
+  }
+  return null;
 }
