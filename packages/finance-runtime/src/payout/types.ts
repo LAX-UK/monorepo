@@ -1,3 +1,4 @@
+import type { HeldSettlementSale } from "@auction/domain";
 import type { PayoutLine, StripeConnectRequirementError } from "@auction/types";
 
 /**
@@ -21,13 +22,25 @@ export type ResolvedSettlementInput = {
   periodStart: Date;
   periodEnd: Date;
   reason?: string;
+  /**
+   * The payments the run holds locked; only these are paid, and any other waits for the next run.
+   * Left out, every payment waiting for the entity is paid.
+   */
+  heldPaymentIds?: ReadonlySet<string>;
 };
 
 export type CreateSettlementResult =
-  | { ok: true; payout: import("@auction/types").Payout & { lines: PayoutLine[] } }
+  | {
+      ok: true;
+      payout: import("@auction/types").Payout & { lines: PayoutLine[] };
+      /** Sales left out of this payout because their seller terms are held, with the reason. */
+      heldSales?: HeldSettlementSale[];
+    }
   | {
       ok: false;
       reason: "no_pending_payments" | import("@auction/domain").SettlementPeriodRefusal;
+      /** Sales waiting that the run could not pay, because their seller terms are held. */
+      heldSales?: HeldSettlementSale[];
     };
 
 export type BulkPayoutSettlementItemResult = {

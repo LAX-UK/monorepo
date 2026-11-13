@@ -1,4 +1,4 @@
-import type { DocumentKind, IssueOutcome, Product } from "@auction/accounting-domain";
+import type { DocumentKind, IssueOutcome, Product, WriteFence } from "@auction/accounting-domain";
 import { toIssueFailure } from "../outcome.js";
 import type { ZohoApi } from "./api.js";
 import { KIND_SPECS, asRecord, readProviderDocument } from "./kinds.js";
@@ -20,6 +20,8 @@ export interface CreateRequest {
    * it is not. Run on a fresh create and on a document adopted after a duplicate refusal.
    */
   readonly verify?: (item: BooksRecord) => string | null;
+  /** The send's lease, asked immediately before the create is sent (see `WriteFence`). */
+  readonly fence?: WriteFence;
 }
 
 /**
@@ -39,7 +41,13 @@ export class DocumentWriter {
   async create(request: CreateRequest): Promise<IssueOutcome> {
     const { org, kind } = request;
     const spec = KIND_SPECS[kind];
-    const reply = await this.api.post(org.organizationId, spec.path, request.body, request.query);
+    const reply = await this.api.post(
+      org.organizationId,
+      spec.path,
+      request.body,
+      request.query,
+      request.fence ? { fence: request.fence } : undefined,
+    );
     if (reply.ok) {
       const item = asRecord(asRecord(reply.value.body)?.[spec.itemKey]);
       const doc = item ? readProviderDocument(spec, item) : null;

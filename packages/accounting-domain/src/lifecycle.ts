@@ -1,6 +1,6 @@
 import { type DocumentKind, parseLaxReference } from "./document.js";
 import { type Totals, compareWithProviderTotals, isTotals } from "./money.js";
-import type { IssueOutcome, IssuedDocument, LookupOutcome } from "./ports.js";
+import type { IssueOutcome, IssuedDocument, LookupOutcome, ProviderDocument } from "./ports.js";
 import { type Result, ok, refuse } from "./result.js";
 
 export const STATUSES = [
@@ -36,6 +36,14 @@ export const CLOCK_SKEW_MS = 60 * 1000;
  * outlives a client timeout. A lookup that finds nothing is trusted only after it.
  */
 export const SETTLE_GRACE_MS = 60 * 1000;
+
+/**
+ * A write may start only while at least this much of its lease is left (`WriteFence`). A provider
+ * request timeout must not be longer, so a write started in time has ended, or been abandoned by
+ * the client, before the lease runs out; `SETTLE_GRACE_MS` then covers provider-side work and
+ * clock difference between workers before anyone trusts a lookup that finds nothing.
+ */
+export const WRITE_MARGIN_MS = 30 * 1000;
 
 export interface TotalsMismatch {
   readonly field: keyof Totals;
@@ -214,6 +222,13 @@ function acceptProviderDocument(
  * lease has expired by the time the answer arrives, the answer is not trusted: the record becomes
  * unknown and lookup decides. An issued answer whose totals differ from ours goes to needs_review
  * with the provider's identity kept (the document exists and must not be sent again).
+ *
+ * A `differs` answer that arrives while the record is still this lease's (even after the lease
+ * expired, as long as nobody has swept it) goes straight to a person with the provider's identity:
+ * the provider has told us it holds a document under our reference that is not the one we sent.
+ * An answer that no longer reaches the record (swept, or lost on the way) is refused here; the
+ * lookup that follows reads the document back with the same check and reaches the same end
+ * (`applyLookup`, `differs`).
  */
 export function completeSending(
   record: DocumentRecord,
@@ -225,13 +240,13 @@ export function completeSending(
   if (!isTime(nowMs)) return badTime();
   if (record.status !== "sending") return wrongState("complete a send", record.status);
   if (record.lease.token !== token) return refuse("lease_mismatch", "lease token does not match");
+  if (outcome.status === "differs") return holdDifferingDocument(record, outcome, expected);
   if (isLeaseExpired(record.lease, nowMs) || outcome.status === "unknown") {
     return ok(toUnknown(record));
   }
   if (outcome.status === "rejected") {
     return ok({ ...core(record), status: "failed", reason: outcome.reason });
   }
-  if (outcome.status === "differs") return holdDifferingDocument(record, outcome, expected);
   return acceptProviderDocument(record, outcome, expected);
 }
 
@@ -243,7 +258,7 @@ export function completeSending(
  */
 function holdDifferingDocument(
   record: DocumentRecord,
-  outcome: Extract<IssueOutcome, { status: "differs" }>,
+  outcome: ProviderDocument & { readonly reason: string },
   expected: Totals,
 ): Result<DocumentRecord, LifecycleCode> {
   if (!isTotals(outcome.totals) || !isTotals(expected)) {
@@ -265,7 +280,8 @@ function holdDifferingDocument(
 
 /**
  * Record a lookup by LAX reference (allowed from unknown, or needs_review while a lookup is owed).
- * found -> issued, or needs_review if its totals differ from ours. not_found is accepted only once
+ * found -> issued, or needs_review if its totals differ from ours. differs (it exists but reads
+ * back as not the one we sent) -> needs_review with the provider's identity, never requeued. not_found is accepted only once
  * the first request has settled (`nowMs >= settlesAtMs`); earlier it is refused with
  * `lookup_too_early`, because the request may still land. After that it makes the record pending
  * again (from unknown) or clears the duty (from needs_review). ambiguous -> needs_review with the
@@ -284,6 +300,8 @@ export function applyLookup(
   switch (outcome.status) {
     case "found":
       return acceptProviderDocument(record, outcome, expected);
+    case "differs":
+      return holdDifferingDocument(record, outcome, expected);
     case "not_found":
       if (nowMs < record.settlesAtMs) {
         return refuse(
@@ -311,6 +329,32 @@ export function applyLookup(
     case "unavailable":
       return ok(record);
   }
+}
+
+/**
+ * sending -> needs_review in one step, for a send the sender decided not to make (the document
+ * would reach the wrong organisation, say): nothing was sent, so no lookup is owed and no provider
+ * document is kept, and it is never `failed` (which would be requeued and claimed again). Only the
+ * lease's holder may withhold it; an expired but unswept lease still counts, since nothing left.
+ */
+export function withhold(
+  record: DocumentRecord,
+  token: string,
+  reason: string,
+): Result<DocumentRecord, LifecycleCode> {
+  if (record.status !== "sending") return wrongState("withhold a send", record.status);
+  if (record.lease.token !== token) return refuse("lease_mismatch", "lease token does not match");
+  if (typeof reason !== "string" || reason === "") {
+    return refuse("bad_outcome", "a withheld send needs a reason");
+  }
+  return ok({
+    ...core(record),
+    status: "needs_review",
+    lookup: "clear",
+    issued: null,
+    mismatch: null,
+    reason,
+  });
 }
 
 /** A person (or a rule) takes the record out of automation. Not from a finished or cancelled one. */

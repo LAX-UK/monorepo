@@ -1,4 +1,4 @@
-import type { SettlementPeriodRefusal } from "@auction/domain";
+import type { HeldSettlementSale, SettlementPeriodRefusal } from "@auction/domain";
 import type {
   CreatePayoutAdjustmentInput,
   Payout,
@@ -17,6 +17,8 @@ export type PendingPayoutPreview = {
   pendingNet: string;
   /** Number of payments that would be in the next payout. */
   paymentCount: number;
+  /** Paid sales the next payout would leave out, because their seller terms are held. */
+  heldCount?: number;
   currency: string;
   /** Capture time of the oldest payment waiting, when any is. */
   earliestCapturedAt?: Date | null;
@@ -42,15 +44,17 @@ export type CreateSettlementInput = {
   periodStart?: Date;
   /** Inclusive UTC end of period: the moment the run is made. */
   periodEnd: Date;
-  /** Optional override of the platform fee rate (decimal, e.g. 0.18). */
-  platformFeeRateOverride?: number;
   /** Why staff ran it, kept in the audit event. */
   reason?: string;
 };
 
 export type CreateSettlementResult =
-  | { ok: true; payout: PayoutWithLines }
-  | { ok: false; reason: "no_pending_payments" | SettlementPeriodRefusal };
+  | { ok: true; payout: PayoutWithLines; heldSales?: HeldSettlementSale[] }
+  | {
+      ok: false;
+      reason: "no_pending_payments" | SettlementPeriodRefusal;
+      heldSales?: HeldSettlementSale[];
+    };
 
 export type BulkPayoutSettlementItemResult = {
   legalEntityId: string;

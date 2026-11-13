@@ -388,10 +388,18 @@ export type {
 export type {
   IPaymentRefundLedger,
   IPaymentRefundReader,
+  IRefundReversalLedger,
   PaymentRefundEntry,
   PaymentRefundSource,
   PaymentRefundTotal,
+  RefundReversalTarget,
 } from "./payment-refund.repository.js";
+
+export type {
+  IStripeRefundWatchRepository,
+  StripeRefundSighting,
+  StripeRefundWatchRow,
+} from "./stripe-refund-watch.repository.js";
 
 export type { IQrCodeAnalyticsReader } from "./qr-code-analytics.reader.js";
 
@@ -658,7 +666,13 @@ export type {
   ListPayoutsFilter,
   PendingPaymentRow,
   ReconcileStripeTransferPatch,
+  SellerClawbackFacts,
 } from "./payout.repository.js";
+export type {
+  ISaleSellerTermsStore,
+  StoredInvoiceLine,
+  StoredSellerTerms,
+} from "./sale-seller-terms.store.js";
 
 export type {
   IPaymentExternalRefRepository,

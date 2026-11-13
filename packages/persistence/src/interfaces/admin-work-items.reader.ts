@@ -26,7 +26,8 @@ export type AdminWorkItemSourceRow = {
     | "reoffer_no_reply"
     | "reoffer_ready"
     | "reoffer_decision"
-    | "reoffer_accepted";
+    | "reoffer_accepted"
+    | "seller_payout_held";
   domain: "finance" | "compliance" | "catalogue" | "saleroom" | "fulfilment" | "clients";
   title: string;
   subtitle: string | null;
@@ -83,4 +84,6 @@ export interface IAdminWorkItemsReader {
   listRegisterLotMismatches(limit: number): Promise<AdminWorkItemSourceRow[]>;
   /** What a buyer default's re-offer leaves staff: no seller reply, ready to send, decide, accepted. */
   listReofferWork(limit: number, now: Date): Promise<AdminWorkItemSourceRow[]>;
+  /** Paid sales whose seller payout is held, with the fix each needs, until they are priced. */
+  listHeldSellerPayouts(limit: number): Promise<AdminWorkItemSourceRow[]>;
 }

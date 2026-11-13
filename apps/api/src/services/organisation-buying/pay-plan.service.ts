@@ -32,7 +32,11 @@ import type {
 } from "../interfaces/organisation-buying-service.js";
 import type { OrganisationMemberActor } from "../interfaces/organisation-membership-service.js";
 import type { IPaymentEligibilityGate } from "../payment/payment-eligibility.gate.js";
-import { type PayProgressResolver, groupedLotsOf } from "./pay-progress.resolver.js";
+import {
+  type PayProgressResolver,
+  firstProgressOf,
+  groupedLotsOf,
+} from "./pay-progress.resolver.js";
 import type { PurchaseCandidateReader, PurchaseEntry } from "./purchase-candidate.reader.js";
 import { buyingError, entityActorOf, memberIsPayer } from "./purchase-view.js";
 
@@ -158,7 +162,7 @@ export class PayPlanService implements IPayPlanService {
       classified,
       deliveryInPayment: this.deps.delivery !== null,
       delivery,
-      progress: firstProgress(entries, progressByGroup),
+      progress: firstProgressOf(entries, progressByGroup),
     });
     return { plan, winners };
   }
@@ -269,18 +273,6 @@ export class PayPlanService implements IPayPlanService {
       subject: hold.subject === actor.userId ? "payer" : "winner",
     };
   }
-}
-
-/** The payment under way for the first picked lot that has one. */
-function firstProgress(
-  entries: readonly PurchaseEntry[],
-  progressByGroup: ReadonlyMap<string, PayPlan["progress"]>,
-): PayPlan["progress"] {
-  for (const entry of entries) {
-    const progress = entry.flags.group ? progressByGroup.get(entry.flags.group.id) : null;
-    if (progress) return progress;
-  }
-  return null;
 }
 
 /** A pick that is not one of this account's purchases: left out, never described. */

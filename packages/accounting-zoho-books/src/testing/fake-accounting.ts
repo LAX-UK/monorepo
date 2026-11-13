@@ -7,6 +7,7 @@ import {
   type ContactPort,
   type CreditNote,
   type CreditNotePort,
+  type DestinationPort,
   type DocumentKind,
   type DocumentLookupPort,
   type Invoice,
@@ -20,6 +21,7 @@ import {
   type PaymentPort,
   type Product,
   type ProviderDocument,
+  type WriteFence,
   expectedTotals,
   legalEntityFor,
   parseLaxReference,
@@ -30,6 +32,13 @@ import { booksLineVat } from "../adapter/mappers/common.js";
 import { type ContactType, contactReferenceValue } from "../adapter/mappers/contact.js";
 import { ZOHO_BOOKS_REJECTIONS as R } from "../adapter/rejections.js";
 import { FaultQueue } from "./faults.js";
+import { BID_ORG_ID, SHOP_ORG_ID } from "./org-fixtures.js";
+
+/** The organisation each entity is held in, as in `testOrgConfigs()`. */
+const ORG_IDS: Readonly<Record<LegalEntity, string>> = {
+  london_art_exchange: SHOP_ORG_ID,
+  london_auction_xchange: BID_ORG_ID,
+};
 
 const PREFIX: Record<DocumentKind, string> = {
   invoice: "INV",
@@ -53,9 +62,13 @@ interface Held {
   /** What makes a resend the same document, beyond its reference (a payment's allocations). */
   readonly fingerprint: string;
   readonly contactType?: ContactType;
+  /** Held, but reads back different from what was sent (`read_back_differs`). */
+  readonly readBackDiffers?: boolean;
 }
 
 type Stop = Extract<IssueOutcome, { status: "rejected" | "unknown" }>;
+/** The adapter's reason for a write its fence refused (`ZohoFencedError`). */
+const FENCED = "zoho_books_fenced_lease_lost";
 const rejected = (reason: string): Stop => ({ status: "rejected", reason });
 
 /**
@@ -81,11 +94,17 @@ export class InMemoryAccounting implements AccountingPorts {
   }
 
   readonly invoices: InvoicePort = {
-    issueInvoice: (d: Invoice) =>
-      this.issue(d, [["contact", d.contactReference, "customer"]], "tax_exclusive"),
+    issueInvoice: (d: Invoice, fence?: WriteFence) =>
+      this.issue(
+        d,
+        [["contact", d.contactReference, "customer"]],
+        "tax_exclusive",
+        undefined,
+        fence,
+      ),
   };
   readonly creditNotes: CreditNotePort = {
-    issueCreditNote: (d: CreditNote) =>
+    issueCreditNote: (d: CreditNote, fence?: WriteFence) =>
       this.issue(
         d,
         [
@@ -93,28 +112,48 @@ export class InMemoryAccounting implements AccountingPorts {
           ["invoice", d.invoiceReference],
         ],
         "tax_inclusive",
+        undefined,
+        fence,
       ),
   };
   readonly payments: PaymentPort = {
-    recordPayment: (d: Payment) =>
-      this.issue(d, [
-        ["contact", d.contactReference, "customer"],
-        ...d.allocations.map((a): Need => ["invoice", a.invoiceReference]),
-      ]),
+    recordPayment: (d: Payment, fence?: WriteFence) =>
+      this.issue(
+        d,
+        [
+          ["contact", d.contactReference, "customer"],
+          ...d.allocations.map((a): Need => ["invoice", a.invoiceReference]),
+        ],
+        undefined,
+        undefined,
+        fence,
+      ),
   };
   readonly bills: BillPort = {
-    issueBill: (d: Bill) =>
-      this.issue(d, [["contact", d.contactReference, "vendor"]], "tax_exclusive"),
+    issueBill: (d: Bill, fence?: WriteFence) =>
+      this.issue(d, [["contact", d.contactReference, "vendor"]], "tax_exclusive", undefined, fence),
   };
   readonly contacts: ContactPort = {
-    upsertContact: (d: Contact) => this.issue(d, [], undefined, "customer"),
+    upsertContact: (d: Contact, fence?: WriteFence) =>
+      this.issue(d, [], undefined, "customer", fence),
   };
   readonly vendors: VendorPort = {
-    upsertVendor: (d: Contact) => this.issue(d, [], undefined, "vendor"),
+    upsertVendor: (d: Contact, fence?: WriteFence) => this.issue(d, [], undefined, "vendor", fence),
   };
-  readonly lookup: DocumentLookupPort = {
-    findByReference: async (product, kind, reference): Promise<LookupOutcome> => {
+  readonly destination: DestinationPort = {
+    destinationFor: (product) => {
       const entity = legalEntityFor(product);
+      return this.orgs[entity]
+        ? { kind: "organisation", organisationId: ORG_IDS[entity] }
+        : { kind: "unconfigured", reason: R.organisationNotConfigured };
+    },
+  };
+  /** Found by reference, then read back against the document as the adapter does (`differs`). */
+  readonly lookup: DocumentLookupPort = {
+    findDocument: async (document): Promise<LookupOutcome> => {
+      const { product, kind, reference } = document;
+      const entity = legalEntityFor(product);
+      if (document.entity !== entity) return { status: "unavailable", reason: R.entityMismatch };
       if (!this.orgs[entity]) return { status: "unavailable", reason: R.organisationNotConfigured };
       const parsed = parseLaxReference(reference);
       if (!parsed.ok || parsed.value.product !== product || parsed.value.kind !== kind) {
@@ -125,9 +164,18 @@ export class InMemoryAccounting implements AccountingPorts {
         return { status: "unavailable", reason: "fake_unreadable" };
       if (fault === "lookup_ambiguous") return { status: "ambiguous", count: 2 };
       const found = this.held.get(this.key(entity, kind, reference, "customer"));
-      return found ? { status: "found", ...found.doc } : { status: "not_found" };
+      if (!found) return { status: "not_found" };
+      return this.differs(found, document)
+        ? { status: "differs", reason: R.paymentMismatch, ...found.doc }
+        : { status: "found", ...found.doc };
     },
   };
+
+  /** Held under the reference, but not the document we would send (a payment's allocations). */
+  private differs(held: Held, document: AccountingDocument): boolean {
+    const fingerprint = document.kind === "payment" ? paymentFingerprint(document) : "";
+    return held.readBackDiffers === true || held.fingerprint !== fingerprint;
+  }
 
   private key(entity: LegalEntity, kind: DocumentKind, reference: string, type?: ContactType) {
     const value = kind === "contact" && type ? contactReferenceValue(reference, type) : reference;
@@ -167,6 +215,7 @@ export class InMemoryAccounting implements AccountingPorts {
     needs: readonly Need[],
     basis?: AmountBasis,
     contactType?: ContactType,
+    fence?: WriteFence,
   ): Promise<IssueOutcome> {
     const entity = legalEntityFor(doc.product);
     if (doc.entity !== entity || !LEGAL_ENTITIES.includes(doc.entity)) {
@@ -182,6 +231,8 @@ export class InMemoryAccounting implements AccountingPorts {
       const stop = this.lines(doc.lines, basis, org.vatRegistered);
       if (stop) return stop;
     }
+    // As the adapter: the write is the last step, and a fenced one is never sent.
+    if (fence && !(await fence.mayWrite())) return rejected(FENCED);
     const fault = this.faults.take();
     if (fault === "rate_limited") return rejected("fake_rate_limited");
     if (fault === "locked_period") return rejected("fake_locked_period");
@@ -190,7 +241,7 @@ export class InMemoryAccounting implements AccountingPorts {
     const fingerprint = doc.kind === "payment" ? paymentFingerprint(doc) : "";
     const existing = this.held.get(key);
     if (existing) {
-      if (existing.fingerprint !== fingerprint) {
+      if (this.differs(existing, doc)) {
         return { status: "differs", reason: R.paymentMismatch, ...existing.doc };
       }
       return { status: "issued", ...existing.doc };
@@ -210,8 +261,15 @@ export class InMemoryAccounting implements AccountingPorts {
         grossPence: mine.grossPence + drift,
       },
     };
-    this.held.set(key, { doc: provider, fingerprint, ...(contactType ? { contactType } : {}) });
+    const readBackDiffers = fault === "read_back_differs" && doc.kind === "payment";
+    this.held.set(key, {
+      doc: provider,
+      fingerprint,
+      ...(contactType ? { contactType } : {}),
+      ...(readBackDiffers ? { readBackDiffers } : {}),
+    });
     if (fault === "timeout_after_commit") return { status: "unknown", detail: "fake_timeout" };
+    if (readBackDiffers) return { status: "differs", reason: R.paymentMismatch, ...provider };
     return { status: "issued", ...provider };
   }
 }

@@ -13,6 +13,7 @@ import {
   API_PAYMENT_TRANSFER_REFERENCE_TABLES,
   API_PRIVATE_SALE_ARTWORK_HISTORY_TABLES,
   API_READ_TABLES,
+  API_REFUND_REVERSAL_TABLES,
   AUTH_ADDRESS_TABLES,
   AUTH_EXPORT_AUDIT_TABLES,
   AUTH_EXPORT_TABLES,
@@ -24,6 +25,7 @@ import {
   FINANCE_SETTING_READ_TABLES,
   LIFT_ZOHO_CAMPAIGNS_OPT_OUT_ROLES,
   SELLER_TERMS_INSERT_SELECT_TABLES,
+  SELLER_TERMS_RECOMPUTE_UPDATE_COLUMNS,
   SHOP_ARTWORK_REGISTER_CONFLICT_TABLES,
   SHOP_ARTWORK_REGISTER_EVENT_TABLES,
   SHOP_ARTWORK_REGISTER_OFFER_TABLES,
@@ -864,6 +866,13 @@ describe("migrate-roles invariants", () => {
     expect([...WORKER_READ_TABLES]).not.toContain("payment_transfer_reference");
   });
 
+  it("keeps refund reversals append-only for the Bid API and away from every other role", () => {
+    expect([...API_REFUND_REVERSAL_TABLES]).toEqual(["stripe_refund_reversal"]);
+    expect([...API_DENY_TABLES]).not.toContain("stripe_refund_reversal");
+    expect([...WORKER_FULL_TABLES]).not.toContain("stripe_refund_reversal");
+    expect([...WORKER_READ_TABLES]).not.toContain("stripe_refund_reversal");
+  });
+
   it("keeps accounting history append-only for the worker, read-only for the Bid API, and away from Shop", () => {
     expect([...API_ACCOUNTING_READ_TABLES].sort()).toEqual([
       "accounting_document",
@@ -888,8 +897,21 @@ describe("migrate-roles invariants", () => {
     }
   });
 
-  it("lets the API and the worker add seller terms but never rewrite them, and keeps both away from Shop", () => {
+  it("lets the API and the worker add seller terms and re-price a held one, and keeps both away from Shop", () => {
     expect([...SELLER_TERMS_INSERT_SELECT_TABLES]).toEqual(["sale_seller_terms"]);
+    // Re-pricing writes the figures and how they were made, never what the row is for, nor the
+    // hammer, premium and old-rule fee fixed when the invoice was raised.
+    for (const fixed of [
+      "id",
+      "payment_id",
+      "lot_id",
+      "seller_legal_entity_id",
+      "hammer_pence",
+      "premium_pence",
+      "legacy_platform_fee_pence",
+    ]) {
+      expect([...SELLER_TERMS_RECOMPUTE_UPDATE_COLUMNS]).not.toContain(fixed);
+    }
     expect([...FINANCE_SETTING_READ_TABLES]).toEqual(["bid_finance_setting"]);
     // The worker reads only the agreement columns the rule needs, never the whole table.
     expect([...WORKER_READ_TABLES]).not.toContain("consignment_agreement");

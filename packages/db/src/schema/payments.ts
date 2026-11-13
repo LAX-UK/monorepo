@@ -1,6 +1,8 @@
 import { relations, sql } from "drizzle-orm";
 import {
+  check,
   index,
+  integer,
   numeric,
   pgEnum,
   pgTable,
@@ -50,6 +52,18 @@ export const payment = pgTable(
     stripeRefundId: text("stripe_refund_id"),
     status: paymentStatusEnum("status").notNull().default("pending"),
     /**
+     * What the invoice's own bank transfer has delivered so far, in whole pence, from Stripe's
+     * partially-funded notice. Only ever raised, never above the invoice; 0 for an invoice paid
+     * through a group, whose figure is the group's `amount_received`.
+     */
+    transferReceivedPence: integer("transfer_received_pence").notNull().default(0),
+    /**
+     * The payment intent whose partially-funded notice set `transfer_received_pence`. A notice for
+     * another intent replaces the figure, and it is shown only while it is the invoice's current
+     * intent's, so money sent to an earlier attempt is never shown against a new one.
+     */
+    transferReceivedPaymentIntentId: text("transfer_received_payment_intent_id"),
+    /**
      * The "Pay several" payment this invoice is settled through, if any. Set while the group's
      * checkout is open and kept once it is paid; cleared when the group is cancelled.
      */
@@ -88,6 +102,7 @@ export const payment = pgTable(
       .on(table.createdAt)
       .where(sql`${table.status} in ('pending', 'cancelled')`),
     index("payment_buyer_id_status_idx").on(table.buyerId, table.status),
+    check("payment_transfer_received_pence_check", sql`${table.transferReceivedPence} >= 0`),
   ],
 );
 

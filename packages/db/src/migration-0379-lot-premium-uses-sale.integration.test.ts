@@ -11,12 +11,12 @@ const { Client } = pg;
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const read = (name: string) => readFileSync(join(__dirname, "../drizzle", name), "utf8");
 /** The rollback's statements without its own BEGIN/COMMIT, so the test's transaction holds them. */
-const rollbackBody = read("0375_rollback.sql").replace(/^BEGIN;$|^COMMIT;$/gm, "");
-const migration = read("0375_lot_premium_uses_sale.sql");
+const rollbackBody = read("0379_rollback.sql").replace(/^BEGIN;$|^COMMIT;$/gm, "");
+const migration = read("0379_lot_premium_uses_sale.sql");
 
 /** Everything runs inside one transaction that is rolled back at the end. */
 describe.skipIf(!url)(
-  "migration 0375 lot premium uses the sale's (database)",
+  "migration 0379 lot premium uses the sale's (database)",
   { timeout: 60_000 },
   () => {
     let client: pg.Client;

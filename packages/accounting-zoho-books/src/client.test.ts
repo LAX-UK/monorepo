@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { ZohoBudgetExhaustedError } from "./errors.js";
-import { toIssueFailure, toLookupFailure } from "./outcome.js";
+import { isTransientRejection, toIssueFailure, toLookupFailure } from "./outcome.js";
 import {
   FixedBudget,
   TEST_CLIENT_SECRET,
@@ -154,6 +154,75 @@ describe("retries", () => {
       await h.clock.settle(h.client.get(TEST_ORG, "/invoices/1"));
       expect(h.transport.requests.filter(api)).toHaveLength(1);
     }
+  });
+});
+
+describe("write fence", () => {
+  const fence = (answers: boolean[]) => {
+    const asked: number[] = [];
+    return {
+      asked,
+      mayWrite: async () => {
+        asked.push(asked.length);
+        return answers.shift() ?? false;
+      },
+    };
+  };
+
+  it("sends nothing when the fence refuses: the write is rejected, a passing refusal", async () => {
+    const h = createClientHarness();
+    await h.connect();
+    const lost = fence([false]);
+    const result = await h.clock.settle(
+      h.client.post(TEST_ORG, "/invoices", { total: 1 }, undefined, { fence: lost }),
+    );
+    expect(h.transport.requests.filter(api)).toHaveLength(0);
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error).toMatchObject({ kind: "fenced", certainty: "rejected" });
+    const outcome = toIssueFailure(result.error);
+    expect(outcome).toEqual({ status: "rejected", reason: "zoho_books_fenced_lease_lost" });
+    expect(isTransientRejection(outcome.status === "rejected" ? outcome.reason : "")).toBe(true);
+  });
+
+  it("asks again before a retry: a 429 wait that outlives the lease sends nothing more", async () => {
+    const h = createClientHarness();
+    await h.connect();
+    h.transport
+      .enqueue({ status: 429, body: {}, headers: { "retry-after": "5" } }, api)
+      .enqueue(zohoOkReply(), api);
+    const lease = fence([true, false]);
+    const result = await h.clock.settle(
+      h.client.post(TEST_ORG, "/invoices", { total: 1 }, undefined, { fence: lease }),
+    );
+    expect(lease.asked).toHaveLength(2);
+    expect(h.transport.requests.filter(api)).toHaveLength(1);
+    expect(result.ok ? null : result.error.kind).toBe("fenced");
+  });
+
+  it("is asked for writes only, and a write it allows goes out", async () => {
+    const h = createClientHarness();
+    await h.connect();
+    h.transport.enqueue(zohoOkReply(), api).enqueue(zohoOkReply(), api);
+    const held = fence([true]);
+    expect(
+      (await h.clock.settle(h.client.put(TEST_ORG, "/contacts/1", {}, undefined, { fence: held })))
+        .ok,
+    ).toBe(true);
+    expect(
+      (
+        await h.clock.settle(
+          h.client.request({
+            organizationId: TEST_ORG,
+            method: "GET",
+            path: "/invoices",
+            fence: fence([]),
+          }),
+        )
+      ).ok,
+    ).toBe(true);
+    expect(held.asked).toHaveLength(1);
+    expect(h.transport.requests.filter(api)).toHaveLength(2);
   });
 });
 

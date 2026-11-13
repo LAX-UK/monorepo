@@ -1,4 +1,10 @@
-import { type LegalEntity, type Product, legalEntityFor } from "@auction/accounting-domain";
+import {
+  type Destination,
+  type DestinationPort,
+  type LegalEntity,
+  type Product,
+  legalEntityFor,
+} from "@auction/accounting-domain";
 import type { ZohoBooksClient } from "../client.js";
 import type { ZohoOrgConfig, ZohoOrgConfigs } from "./org-config.js";
 import { ZOHO_BOOKS_REJECTIONS } from "./rejections.js";
@@ -29,4 +35,16 @@ export function orgFor(
   return org
     ? { ok: true, org, entity }
     : { ok: false, reason: ZOHO_BOOKS_REJECTIONS.organisationNotConfigured };
+}
+
+/** Where the Books adapter sends a product's documents: the organisation `orgFor` chooses. */
+export function booksDestination(orgs: ZohoOrgConfigs): DestinationPort {
+  return {
+    destinationFor: (product): Destination => {
+      const choice = orgFor(orgs, { product });
+      return choice.ok
+        ? { kind: "organisation", organisationId: choice.org.organizationId }
+        : { kind: "unconfigured", reason: choice.reason };
+    },
+  };
 }

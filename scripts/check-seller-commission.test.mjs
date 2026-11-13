@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
+import { existsSync } from "node:fs";
 import { test } from "node:test";
 import {
+  PAYMENT_RAISING_FILES,
+  SELLER_PAYING_FILES,
   findFlatFivePercent,
   findHammerTimesRate,
   findOldFeePolicy,
@@ -68,5 +71,11 @@ test("accepts 0.05 that is not a share of money", () => {
     "const fee = amountPence * 0.055;",
   ]) {
     assert.deepEqual(findFlatFivePercent(code), [], code);
+  }
+});
+
+test("guards files that exist: settlement and refunds never read the old fee policy", () => {
+  for (const path of [...PAYMENT_RAISING_FILES, ...SELLER_PAYING_FILES]) {
+    assert.ok(existsSync(new URL(`../${path}`, import.meta.url)), path);
   }
 });

@@ -1,11 +1,10 @@
 import type {
+  AccountingDocument,
   Bill,
   Contact,
   CreditNote,
-  DocumentKind,
   Invoice,
   Payment,
-  Product,
 } from "./document.js";
 import type { Totals } from "./money.js";
 
@@ -37,37 +36,59 @@ export type IssueOutcome =
   | { readonly status: "rejected"; readonly reason: string }
   | { readonly status: "unknown"; readonly detail?: string };
 
+/**
+ * What a lookup by LAX reference found. `differs` is the lookup's `differs`: the provider holds a
+ * document under our reference, but read back it is not the one we would send (checked field by
+ * field, the same check a send makes), so it goes to a person with the provider's identity.
+ */
 export type LookupOutcome =
   | ({ readonly status: "found" } & ProviderDocument)
+  | ({ readonly status: "differs"; readonly reason: string } & ProviderDocument)
   | { readonly status: "not_found" }
   | { readonly status: "ambiguous"; readonly count: number }
   | { readonly status: "unavailable"; readonly reason: string };
 
+/**
+ * Ties a send's writes to its lease. An adapter asks it immediately before every request that
+ * writes (a create or an update, and each retry of one), after any wait for a rate limit, a
+ * concurrency slot or a backoff. `false` means the send no longer holds its lease with room to
+ * finish (`WRITE_MARGIN_MS`): the request is not sent and the call ends `rejected` (nothing was
+ * written), never a create that could race the next holder's. A send given no fence writes
+ * unfenced; the sender always gives one.
+ */
+export interface WriteFence {
+  mayWrite(): Promise<boolean>;
+}
+
 export interface InvoicePort {
-  issueInvoice(invoice: Invoice): Promise<IssueOutcome>;
+  issueInvoice(invoice: Invoice, fence?: WriteFence): Promise<IssueOutcome>;
 }
 
 export interface PaymentPort {
-  recordPayment(payment: Payment): Promise<IssueOutcome>;
+  recordPayment(payment: Payment, fence?: WriteFence): Promise<IssueOutcome>;
 }
 
 export interface CreditNotePort {
-  issueCreditNote(creditNote: CreditNote): Promise<IssueOutcome>;
+  issueCreditNote(creditNote: CreditNote, fence?: WriteFence): Promise<IssueOutcome>;
 }
 
 export interface BillPort {
-  issueBill(bill: Bill): Promise<IssueOutcome>;
+  issueBill(bill: Bill, fence?: WriteFence): Promise<IssueOutcome>;
 }
 
 export interface ContactPort {
-  upsertContact(contact: Contact): Promise<IssueOutcome>;
+  upsertContact(contact: Contact, fence?: WriteFence): Promise<IssueOutcome>;
 }
 
 /**
  * Find a document by its LAX reference. After an unknown outcome this runs before any retry, and
- * only once the first request can no longer land (see `applyLookup`). The product says which legal
- * entity's books to search, so an adapter can never look in the wrong organisation.
+ * only once the first request can no longer land (see `applyLookup`). The document's product says
+ * which legal entity's books to search, so an adapter can never look in the wrong organisation.
+ * What it finds is read back against `document` with the same check a send makes (not its totals
+ * alone): a document that is not the one we would send is `differs`, never `found`, so an answer
+ * lost on the way back (a timeout, a swept lease) cannot turn a differing document into an
+ * issued one.
  */
 export interface DocumentLookupPort {
-  findByReference(product: Product, kind: DocumentKind, reference: string): Promise<LookupOutcome>;
+  findDocument(document: AccountingDocument): Promise<LookupOutcome>;
 }

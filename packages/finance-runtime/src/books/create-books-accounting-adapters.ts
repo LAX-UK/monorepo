@@ -1,8 +1,10 @@
-import type { TargetMode } from "@auction/accounting-domain";
+import type { DestinationBinding, TargetMode } from "@auction/accounting-domain";
 import {
   type AccountingPorts,
+  BOOKS_ORGANISATIONS,
   TRANSIENT_REJECTION_PREFIXES,
   createZohoBooksDryRunAdapter,
+  parseBooksDestinationBinding,
   parseOrgConfigs,
 } from "@auction/accounting-zoho-books";
 
@@ -19,6 +21,8 @@ export interface BooksAccountingEnv {
  */
 export interface BooksAccountingAdapters {
   readonly byMode: Readonly<Partial<Record<TargetMode, AccountingPorts>>>;
+  /** Where each writing mode may send each product's documents; the sender checks every call. */
+  readonly destinations: DestinationBinding;
   readonly transientErrorPrefixes: readonly string[];
 }
 
@@ -29,23 +33,30 @@ export interface BooksAccountingAdapters {
  * write gate bound to that kind of organisation. Without organisation settings nothing is built
  * and the accounting projector and sender do not run.
  *
- * Throws at start-up when the settings are present but incomplete or not JSON, so a broken
- * configuration is found when the worker starts, never on the first invoice.
+ * Throws at start-up when the settings are present but incomplete or not JSON, or disagree with
+ * the organisations each mode is bound to, so a broken configuration is found when the worker
+ * starts (the whole worker does not start, accounting or not), never on the first invoice.
  */
 export function createBooksAccountingAdapters(
   env: BooksAccountingEnv,
+  organisations: DestinationBinding = BOOKS_ORGANISATIONS,
 ): BooksAccountingAdapters | null {
   const raw = env.ZOHO_BOOKS_ORG_CONFIG?.trim();
   if (!raw) return null;
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(raw);
-  } catch {
-    throw new Error("ZOHO_BOOKS_ORG_CONFIG is not valid JSON");
-  }
-  const orgs = parseOrgConfigs(parsed);
+  const orgs = parseOrgConfigs(readJson(raw, "ZOHO_BOOKS_ORG_CONFIG"));
   return {
     byMode: { dry_run: createZohoBooksDryRunAdapter({ orgs }) },
+    // The organisation ids per mode live in one place (`BOOKS_ORGANISATIONS`), checked against
+    // the organisation settings here; tests pass their own.
+    destinations: parseBooksDestinationBinding(organisations, orgs),
     transientErrorPrefixes: TRANSIENT_REJECTION_PREFIXES,
   };
+}
+
+function readJson(raw: string, name: string): unknown {
+  try {
+    return JSON.parse(raw);
+  } catch {
+    throw new Error(`${name} is not valid JSON`);
+  }
 }

@@ -39,6 +39,7 @@ export function createAccountingRuntime(deps: {
       transitions: repos.transitions,
       settings: repos.settingReader,
       portsByMode: adapters.byMode,
+      destinations: adapters.destinations,
       transientErrorPrefixes: adapters.transientErrorPrefixes,
       newLeaseToken: randomUUID,
       log: deps.log,

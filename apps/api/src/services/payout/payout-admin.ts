@@ -1,11 +1,11 @@
 import { type PayoutReversalRefusal, payoutReversalRefusal, payoutTotals } from "@auction/domain";
+import { previewSettlement } from "@auction/finance-runtime";
 import type {
   IPayoutRepository,
   ReconcileStripeTransferPatch,
 } from "@auction/persistence/interfaces";
 import type { CreatePayoutAdjustmentInput, Payout, PayoutLineKind } from "@auction/types";
 import { roleHasCapability } from "@auction/types";
-import { subtractDecimal, sumDecimal } from "../../lib/decimal-money.js";
 import { recordMoneyPathEvent } from "../../middleware/metrics.js";
 import type { AdminPayoutListPage } from "../admin/admin-payout-list-query.service.js";
 import { AdminPayoutListQueryService } from "../admin/admin-payout-list-query.service.js";
@@ -21,7 +21,7 @@ import {
   type PayoutReversalActor,
   PayoutStatusTransitionError,
 } from "../interfaces/payout.js";
-import { DEFAULT_CURRENCY, type PayoutServiceDeps, settlementAmounts } from "./payout-helpers.js";
+import { DEFAULT_CURRENCY, type PayoutServiceDeps } from "./payout-helpers.js";
 
 export async function adminList(
   deps: PayoutServiceDeps,
@@ -50,24 +50,27 @@ export async function adminSettlementPreview(deps: PayoutServiceDeps, legalEntit
   return { pending, openPayout };
 }
 
+/**
+ * The next payout for a seller, priced as the run prices it: each sale from its seller terms, with
+ * held sales counted apart. Read in a transaction so the run's own readers are used; nothing is
+ * stored.
+ */
 export async function previewPending(
   deps: PayoutServiceDeps,
   legalEntityId: string,
 ): Promise<import("../interfaces/payout.js").PendingPayoutPreview> {
-  const rows = await deps.repo.findUnlinkedCapturedPayments(legalEntityId);
-  const settled = rows.map(settlementAmounts);
-  const grossAmount = sumDecimal(settled.map((r) => r.saleAmount));
-  const platformFee = sumDecimal(settled.map((r) => r.platformFee));
+  if (!deps.transactionRunner) throw new Error("payout_transactions_not_configured");
+  const preview = await deps.transactionRunner.runInTransaction((tx) =>
+    previewSettlement(deps.payoutRepoForTx(tx), deps.sellerTermsForTx(tx), legalEntityId),
+  );
   return {
-    pendingGross: grossAmount,
-    pendingPlatformFee: platformFee,
-    pendingNet: subtractDecimal(grossAmount, platformFee),
-    paymentCount: rows.length,
+    pendingGross: preview.pendingGross,
+    pendingPlatformFee: preview.pendingPlatformFee,
+    pendingNet: preview.pendingNet,
+    paymentCount: preview.paymentCount,
+    heldCount: preview.heldSales.length,
     currency: DEFAULT_CURRENCY,
-    earliestCapturedAt: rows.reduce<Date | null>(
-      (oldest, r) => (r.capturedAt && (!oldest || r.capturedAt < oldest) ? r.capturedAt : oldest),
-      null,
-    ),
+    earliestCapturedAt: preview.earliestCapturedAt,
   };
 }
 

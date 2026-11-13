@@ -1,3 +1,4 @@
+import { WRITE_MARGIN_MS } from "@auction/accounting-domain";
 import { Secret } from "./secret.js";
 
 export class ZohoBooksConfigError extends Error {
@@ -16,6 +17,7 @@ export interface ZohoBooksConfig {
   readonly clientSecret: Secret;
   /** The key of the AES-256-GCM envelope that seals tokens at rest. Required: there is no fallback. */
   readonly tokenDekKey: Secret;
+  /** At most `WRITE_MARGIN_MS`, so a write started inside its lease ends before the lease does. */
   readonly requestTimeoutMs: number;
   /** Total attempts per call, including the first. */
   readonly maxAttempts: number;
@@ -106,7 +108,8 @@ export function parseZohoBooksConfig(
     clientId: required(env, "ZOHO_BOOKS_CLIENT_ID"),
     clientSecret: new Secret(required(env, "ZOHO_BOOKS_CLIENT_SECRET")),
     tokenDekKey: new Secret(required(env, "ZOHO_BOOKS_TOKEN_DEK_KEY")),
-    requestTimeoutMs: positiveInt(env, "ZOHO_BOOKS_TIMEOUT_MS", 15_000, 120_000),
+    // A write started inside its lease must end before the lease does (`WRITE_MARGIN_MS`).
+    requestTimeoutMs: positiveInt(env, "ZOHO_BOOKS_TIMEOUT_MS", 15_000, WRITE_MARGIN_MS),
     maxAttempts: positiveInt(env, "ZOHO_BOOKS_MAX_ATTEMPTS", 3, 6),
     retryBaseDelayMs: positiveInt(env, "ZOHO_BOOKS_RETRY_BASE_MS", 500, 60_000),
     retryMaxDelayMs: positiveInt(env, "ZOHO_BOOKS_RETRY_MAX_MS", 8_000, 300_000),

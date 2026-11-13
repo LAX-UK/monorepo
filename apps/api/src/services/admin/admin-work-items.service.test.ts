@@ -47,6 +47,7 @@ function createReader(overrides: Partial<IAdminWorkItemsReader> = {}): IAdminWor
     listDeletionHolds: vi.fn().mockResolvedValue([]),
     listRegisterLotMismatches: vi.fn().mockResolvedValue([]),
     listReofferWork: vi.fn().mockResolvedValue([]),
+    listHeldSellerPayouts: vi.fn().mockResolvedValue([]),
     ...overrides,
   };
 }
@@ -219,6 +220,43 @@ describe("AdminWorkItemsService", () => {
       });
       expect(other.items.some((i) => i.kind.startsWith("reoffer_"))).toBe(false);
     }
+  });
+
+  it("tells sales managers about a held seller payout, linking to the lot where it is fixed", async () => {
+    const listHeldSellerPayouts = vi.fn().mockResolvedValue([
+      row({
+        sourceId: "terms-1",
+        kind: "seller_payout_held",
+        domain: "saleroom",
+        title: "Seller payout held — Lot 4: Field",
+        subtitle: "No signed agreement on record. Record the signed agreement to release it",
+        href: "/admin/lots/lot-4",
+        sourceUpdatedAt: new Date(),
+      }),
+    ]);
+    const service = new AdminWorkItemsService(createReader({ listHeldSellerPayouts }));
+    const query = { limit: 25, assignment: "all", urgentOnly: false } as const;
+    const asSales = await service.listWorkItems({
+      actorUserId: "u1",
+      actorRole: "staff",
+      actorStaffRoles: ["sales_manager"],
+      query,
+    });
+    expect(asSales.items).toEqual([
+      expect.objectContaining({
+        id: "seller_payout_held:terms-1",
+        href: "/admin/lots/lot-4",
+        severity: "high",
+        actions: [],
+      }),
+    ]);
+    const asCataloguer = await service.listWorkItems({
+      actorUserId: "u2",
+      actorRole: "staff",
+      actorStaffRoles: ["cataloguer"],
+      query,
+    });
+    expect(asCataloguer.items).toEqual([]);
   });
 
   it("does not show an entity review to finance-only staff, who cannot open the entity page", async () => {

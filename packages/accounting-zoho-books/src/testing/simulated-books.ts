@@ -172,6 +172,8 @@ export class SimulatedBooks implements ZohoTransport {
       ...(spec.numberField ? { [spec.numberField]: number } : {}),
       custom_field_hash: { [org.laxReferenceField.apiName]: reference },
     };
+    // Books holds the payment without a field we sent: every read-back of it differs from ours.
+    if (fault === "read_back_differs" && kind === "payment") record.currency_code = undefined;
     if (drift && typeof record.total === "number") {
       record.tax_total = pounds(pence(record.tax_total as number) + drift);
       record.total = pounds(pence(record.total as number) + drift);

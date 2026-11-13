@@ -19,6 +19,7 @@ import {
   requeue,
   retryDelayMs,
   startSending,
+  withhold,
 } from "@auction/accounting-domain";
 import type {
   ClaimRequest,
@@ -173,6 +174,15 @@ export class InMemoryAccountingStore
     return ok(row.stored);
   }
 
+  async holdsLease(documentId: string, leaseToken: string, minRemainingMs: number) {
+    const record = this.rows.get(documentId)?.stored.record;
+    return (
+      record?.status === "sending" &&
+      record.lease.token === leaseToken &&
+      record.lease.expiresAtMs > this.nowMs + minRemainingMs
+    );
+  }
+
   async listDue(request: DueWorkRequest): Promise<DueWork> {
     const waited = (attempts: number, sinceMs: number) =>
       attempts >= MAX_SEND_ATTEMPTS
@@ -206,7 +216,13 @@ export class InMemoryAccountingStore
       "outcome" in transition && "totals" in transition.outcome
         ? { providerTotals: transition.outcome.totals, expectedTotals: row.stored.totals }
         : {};
-    this.move(row, transition.action, next.value, detail);
+    // As the store does: a withheld send is an escalation in the history.
+    this.move(
+      row,
+      transition.action === "withhold" ? "escalate" : transition.action,
+      next.value,
+      detail,
+    );
     return ok(row.stored);
   }
 
@@ -226,6 +242,8 @@ export class InMemoryAccountingStore
         return applyLookup(record, transition.outcome, this.nowMs, expected);
       case "escalate":
         return escalate(record, transition.reason);
+      case "withhold":
+        return withhold(record, transition.leaseToken, transition.reason);
       case "requeue":
         return requeue(record);
       case "cancel":

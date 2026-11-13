@@ -29,6 +29,55 @@ export function groupedLotsOf(entries: readonly PurchaseEntry[]): GroupedLot[] {
 }
 
 /**
+ * Where a single invoice's own bank transfer stands, or `null` when it is not one under way with
+ * money already in. An invoice paid through a group is the group's to describe. A transfer with
+ * nothing received yet is left as before (the invoice reads as being confirmed): the figure comes
+ * only from Stripe's partially-funded notice, so none recorded is not proof none was sent.
+ */
+export function singleTransferProgressOf(entry: PurchaseEntry): PayPlanProgress | null {
+  const { row, flags } = entry;
+  const payment = row?.payment;
+  if (!row || !payment || flags.group || payment.status !== "authorized") return null;
+  const receivedPence = payment.transferReceivedPence ?? 0;
+  if (receivedPence <= 0) return null;
+  const totalPence = gbpAmountToPence(payment.amount);
+  return payProgressOf({
+    rail: "gb_bank_transfer",
+    status: "processing",
+    checkoutFinished: true,
+    totalPence,
+    receivedPence,
+    lots: [
+      {
+        lotId: row.lotId,
+        title: row.lotTitle,
+        lotNumber: row.lotNumber,
+        saleTitle: row.saleTitle,
+        totalPence,
+      },
+    ],
+    invoiceCount: 1,
+  });
+}
+
+/**
+ * The payment under way for the first picked lot that has one: the group holding it, or else the
+ * invoice's own part-paid transfer. The plan and the progress poll both read it this one way.
+ */
+export function firstProgressOf(
+  entries: readonly PurchaseEntry[],
+  progressByGroup: ReadonlyMap<string, PayPlanProgress | null>,
+): PayPlanProgress | null {
+  for (const entry of entries) {
+    const progress = entry.flags.group
+      ? (progressByGroup.get(entry.flags.group.id) ?? null)
+      : singleTransferProgressOf(entry);
+    if (progress) return progress;
+  }
+  return null;
+}
+
+/**
  * Where each payment under way for the picked lots stands. A group still on the hosted checkout
  * is under way only once the payer finished it, which only the provider can say, so it is asked.
  * If it cannot be asked the payment counts as under way: an invoice is never offered again on a

@@ -1,31 +1,11 @@
--- Rollback for 0375_lot_premium_uses_sale. Roll back the release first, then this.
---
--- The old schema needs a rate on every lot. Lots that use their sale's premium (NULL) are given
--- their sale's flat rate, or 15% for a lot outside a sale. Lots that already hold a rate are not
--- touched. This is safe for both kinds of NULL:
--- - lots the migration cleared (in a sale with bands, not invoiced): the old code charges a
---   banded sale's bands and never reads the lot rate, so the refilled value is unused. It is the
---   sale's flat rate rather than the 25% they held before, which matters only if staff later
---   remove the sale's bands;
--- - lots written by the new release without their own premium: the old code charges the rate it
---   reads, and the sale's flat rate is the premium the new release charged them.
--- Restores the 25% defaults and removes this migration's ledger row so a later deploy reapplies it.
+-- Rollback for 0375_payment_transfer_received. Roll back the application release first: it records
+-- the column from partially-funded notices and reads it for the Pay page. Without it the previous
+-- release shows no progress for a part-paid single-invoice transfer, as before.
 BEGIN;
 
 SET LOCAL lock_timeout = '5s';
-UPDATE "lot" AS l
-  SET "buyer_premium_rate" = COALESCE(
-    (SELECT s."buyer_premium_rate" FROM "sale" AS s WHERE s."id" = l."sale_id"),
-    0.15
-  )
-  WHERE l."buyer_premium_rate" IS NULL;
-ALTER TABLE "lot" ALTER COLUMN "buyer_premium_rate" SET NOT NULL;
-ALTER TABLE "lot" ALTER COLUMN "buyer_premium_rate" SET DEFAULT 0.25;
-COMMENT ON COLUMN "lot"."buyer_premium_rate" IS NULL;
-ALTER TABLE "sale" ALTER COLUMN "buyer_premium_rate" SET DEFAULT 0.25;
-COMMENT ON COLUMN "sale"."buyer_premium_tiers" IS
-  'Optional band-based tier override. JSONB array of {hammerThresholdMinor, rate} sorted ascending by threshold. NULL = no override (use lot.buyer_premium_rate).';
 
-DELETE FROM drizzle.__drizzle_migrations WHERE created_at = 1810555200000;
+ALTER TABLE "payment" DROP CONSTRAINT IF EXISTS "payment_transfer_received_pence_check";
+ALTER TABLE "payment" DROP COLUMN IF EXISTS "transfer_received_pence";
 
 COMMIT;

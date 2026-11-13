@@ -1,5 +1,6 @@
 import {
   type Invoice,
+  PRODUCTS,
   buildContact,
   buildInvoice,
   buildPayment,
@@ -8,8 +9,9 @@ import {
 import { describe, expect, it } from "vitest";
 import { ZohoBudgetExhaustedError, ZohoRateLimitedError, ZohoValidationError } from "../errors.js";
 import { isTransientRejection } from "../outcome.js";
-import { testOrgConfigs } from "../testing/index.js";
+import { rawOrgSettings, testOrgConfigs } from "../testing/index.js";
 import { DRY_RUN_NUMBER, createZohoBooksDryRunAdapter, dryRunProviderId } from "./dry-run.js";
+import { parseOrgConfigs } from "./org-config.js";
 import { ZOHO_BOOKS_REJECTIONS as R } from "./rejections.js";
 
 const unwrap = <T>(r: { ok: true; value: T } | { ok: false; refusal: { code: string } }): T => {
@@ -88,13 +90,22 @@ describe("Books dry run", () => {
   });
 
   it("finds nothing on lookup: nothing was ever written", async () => {
-    expect(
-      await ports.lookup.findByReference(
-        "bid",
-        "invoice",
-        invoice("bid", "margin_scheme").reference,
-      ),
-    ).toEqual({ status: "not_found" });
+    expect(await ports.lookup.findDocument(invoice("bid", "margin_scheme"))).toEqual({
+      status: "not_found",
+    });
+  });
+});
+
+describe("Books dry run destination", () => {
+  it("reaches no organisation for any product, even when the settings name the live books", () => {
+    const raw = rawOrgSettings() as Record<string, Record<string, unknown>>;
+    const live = parseOrgConfigs(
+      Object.fromEntries(Object.entries(raw).map(([k, v]) => [k, { ...v, environment: "live" }])),
+    );
+    const dry = createZohoBooksDryRunAdapter({ orgs: live });
+    for (const product of PRODUCTS) {
+      expect(dry.destination.destinationFor(product)).toEqual({ kind: "none" });
+    }
   });
 });
 

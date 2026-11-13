@@ -18,9 +18,10 @@ import {
   DrizzlePayoutRepository,
   DrizzleUnappliedMoneyReader,
 } from "@auction/persistence/repositories";
-import { eq, inArray, like } from "drizzle-orm";
+import { and, eq, inArray, like } from "drizzle-orm";
 import type Stripe from "stripe";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { FakeChargeRefunds } from "../../test/fake-charge-refunds.js";
 import { transactionRunnerFromDb } from "../../test/transaction-runner-from-db.js";
 import {
   deleteIdentityUserFixtures,
@@ -70,6 +71,8 @@ describe.skipIf(!HAS_DB)("refunds of unapplied money (integration)", () => {
     (_root, tx) => new DrizzlePayoutRepository(tx),
   );
   const refundRecords = new DrizzlePaymentRefundRepository(db);
+  // What Stripe lists as refunded on each charge; every refund here has succeeded.
+  const stripeRefunds = new FakeChargeRefunds();
   const webhooks = new StripePaymentWebhookService(
     runner,
     new DrizzlePaymentWebhookLookupReader(db),
@@ -82,9 +85,17 @@ describe.skipIf(!HAS_DB)("refunds of unapplied money (integration)", () => {
     null,
     null,
     recorder,
-    new UnappliedMoneyRefundHandler({ transactionRunner: runner, reader, recorder }),
+    new UnappliedMoneyRefundHandler({
+      transactionRunner: runner,
+      reader,
+      recorder,
+      chargeRefunds: stripeRefunds,
+    }),
     null,
     refundRecords,
+    undefined,
+    null,
+    stripeRefunds,
   );
 
   const run = randomUUID().slice(0, 8);
@@ -201,7 +212,7 @@ describe.skipIf(!HAS_DB)("refunds of unapplied money (integration)", () => {
     await deleteIdentityUserFixtures(db, [buyerId]);
   });
 
-  it("a paid-not-recorded task closes when the webhook captures it, and a later refund claws back the seller", async () => {
+  it("a paid-not-recorded task closes when the webhook captures it, and a refund before payout charges the seller nothing", async () => {
     const { pi, ch } = money();
     await new FinanceTaskLatePaymentRecorder(recorder, runner).recordPaid({
       paymentId,
@@ -218,14 +229,17 @@ describe.skipIf(!HAS_DB)("refunds of unapplied money (integration)", () => {
     expect((await payments.findById(paymentId))?.status).toBe("captured");
     expect(await reader.listOpen({ paymentIntentId: pi, limit: 5 })).toEqual([]);
 
+    stripeRefunds.show(ch, 10_000);
+
     const result = await webhooks.handleChargeRefunded(
       eventOf("charge.refunded", refunded(pi, ch)),
       refunded(pi, ch),
     );
     expect(result).toMatchObject({ processed: true, action: "refund_received" });
     expect((await payments.findById(paymentId))?.status).toBe("refunded");
-    const lines = await refundLines();
-    expect(lines.map((l) => Number(l.amount))).toContain(-100);
+    // The sale was never paid out, so nothing is taken back from the seller.
+    expect(await refundLines()).toEqual([]);
+    expect(await payouts.sumRefundLineCentsForPayment(paymentId)).toBe(10_000);
   });
 
   it("money on a cancelled invoice that finance refunds never claws back the unpaid seller", async () => {
@@ -239,6 +253,7 @@ describe.skipIf(!HAS_DB)("refunds of unapplied money (integration)", () => {
     await runner.runInTransaction((tx) =>
       payments.applyRefundedFromCancelledInTransaction(tx, paymentId, `re_um_${run}`),
     );
+    stripeRefunds.show(ch, 10_000);
     const result = await webhooks.handleChargeRefunded(
       eventOf("charge.refunded", refunded(pi, ch)),
       refunded(pi, ch),
@@ -253,6 +268,7 @@ describe.skipIf(!HAS_DB)("refunds of unapplied money (integration)", () => {
     await runner.runInTransaction((tx) =>
       payments.applyRefundedFromCancelledInTransaction(tx, paymentId, `re_um_${run}`),
     );
+    stripeRefunds.show(ch, 10_000);
     const result = await webhooks.handleChargeRefunded(
       eventOf("charge.refunded", refunded(pi, ch)),
       refunded(pi, ch),
@@ -279,6 +295,7 @@ describe.skipIf(!HAS_DB)("refunds of unapplied money (integration)", () => {
         note: "Refunding the duplicate from Stripe.",
       }),
     );
+    stripeRefunds.show(ch, 10_000);
     const refund = await webhooks.handleChargeRefunded(
       eventOf("charge.refunded", refunded(pi, ch)),
       refunded(pi, ch),
@@ -298,14 +315,17 @@ describe.skipIf(!HAS_DB)("refunds of unapplied money (integration)", () => {
       ({ ...refunded(pi, ch), amount_refunded: refundedPence }) as Stripe.Charge;
     // Each event reports a running total (40.00, then 75.00). Without the payment lock both read
     // nothing recorded, and the buyer and the seller would be given 115.00 between them.
+    // Both events read Stripe's list once both refunds went through: 75.00 in all.
+    stripeRefunds.show(ch, 7_500);
     const results = await Promise.all([
       webhooks.handleChargeRefunded(eventOf("charge.refunded", upTo(4_000)), upTo(4_000)),
       webhooks.handleChargeRefunded(eventOf("charge.refunded", upTo(7_500)), upTo(7_500)),
     ]);
     expect(results.map((r) => r.processed)).toEqual([true, true]);
     expect((await refundRecords.sumRefundedPence(paymentId)).pence).toBe(7_500);
-    const lines = await refundLines();
-    expect(lines.reduce((sum, l) => sum + Math.abs(Number(l.amount)), 0)).toBeCloseTo(75, 2);
+    // Not paid out: the seller is charged nothing, and their side counts the 75.00 as dealt with.
+    expect(await refundLines()).toEqual([]);
+    expect(await payouts.sumRefundLineCentsForPayment(paymentId)).toBe(7_500);
   });
 
   it("a staff refund and a card refund event for the same money are recorded once", async () => {
@@ -335,13 +355,22 @@ describe.skipIf(!HAS_DB)("refunds of unapplied money (integration)", () => {
         tx,
       });
     });
+    stripeRefunds.show(ch, 10_000);
     const cardEvent = webhooks.handleChargeRefunded(
       eventOf("charge.refunded", refunded(pi, ch)),
       refunded(pi, ch),
     );
     await Promise.all([staffRefund, cardEvent]);
     expect((await refundRecords.sumRefundedPence(paymentId)).pence).toBe(10_000);
-    const lines = await refundLines();
-    expect(lines.reduce((sum, l) => sum + Math.abs(Number(l.amount)), 0)).toBeCloseTo(100, 2);
+    // Not paid out: nothing is taken back from the seller, and the refund is announced once.
+    expect(await refundLines()).toEqual([]);
+    expect(await payouts.sumRefundLineCentsForPayment(paymentId)).toBe(10_000);
+    const announced = await db
+      .select({ id: domainEvent.id })
+      .from(domainEvent)
+      .where(
+        and(eq(domainEvent.aggregateId, paymentId), eq(domainEvent.eventType, "payment.refunded")),
+      );
+    expect(announced.length).toBeLessThanOrEqual(1);
   });
 });

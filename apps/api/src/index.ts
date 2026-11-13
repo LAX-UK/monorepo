@@ -17,6 +17,7 @@ import { startBidSsfRetentionSchedule } from "./infrastructure/bid-ssf-retention
 import type { LotJobScheduler } from "./jobs/lot-job-scheduler.js";
 import { closeBullBoardQueues } from "./lib/bull-board.js";
 import { runtimeOwnershipConfigFromApiEnv } from "./lib/runtime-ownership-config.js";
+import { logRefundEventSubscription } from "./services/stripe/stripe-refund-event-subscription-check.js";
 
 const env = loadEnv();
 assertRuntimeOwnership(runtimeOwnershipConfigFromApiEnv(env), "api");
@@ -101,6 +102,12 @@ if (!env.CRON_INTERNAL_SECRET && env.LIFECYCLE_EXECUTION_OWNER === "api") {
   setInterval(runLifecycleSweep, LIFECYCLE_MS);
   runLifecycleSweep();
 }
+
+// Read once, in the background: a warning if Stripe's payments endpoint lacks charge.refund.updated.
+// Never fails startup; refunds that finish later are settled by the refund reconcile job anyway.
+void logRefundEventSubscription(container.stripeClientFactory, console).catch((err) => {
+  reportBackground("stripe-refund-event-subscription", err);
+});
 
 const server = serve(
   {

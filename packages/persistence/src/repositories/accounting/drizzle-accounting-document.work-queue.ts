@@ -1,7 +1,7 @@
 import { type Result, ok, refuse, startSending } from "@auction/accounting-domain";
 import type { Database } from "@auction/db";
 import { accountingDocument, accountingSourceSetting } from "@auction/db/schema";
-import { and, asc, eq, exists, inArray, lte, or, sql } from "drizzle-orm";
+import { and, asc, eq, exists, gt, inArray, lte, or, sql } from "drizzle-orm";
 import type {
   AccountingClock,
   ClaimRequest,
@@ -35,6 +35,27 @@ export class DrizzleAccountingDocumentWorkQueue implements IAccountingDocumentWo
       if (step.kind === "claimed") return step.result;
     }
     return ok(null);
+  }
+
+  async holdsLease(
+    documentId: string,
+    leaseToken: string,
+    minRemainingMs: number,
+  ): Promise<boolean> {
+    const until = new Date(this.clock.now().getTime() + minRemainingMs);
+    const [row] = await this.db
+      .select({ id: accountingDocument.id })
+      .from(accountingDocument)
+      .where(
+        and(
+          eq(accountingDocument.id, documentId),
+          eq(accountingDocument.state, "sending"),
+          eq(accountingDocument.leaseToken, leaseToken),
+          gt(accountingDocument.leaseExpiresAt, until),
+        ),
+      )
+      .limit(1);
+    return row !== undefined;
   }
 
   /**

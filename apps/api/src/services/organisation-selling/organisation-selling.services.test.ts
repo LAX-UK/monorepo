@@ -23,7 +23,12 @@ const soldRows = [
     soldAt: new Date("2026-10-01T18:00:00Z"),
     hammerPrice: "4000.00",
     soldAfterAuction: false,
-    payment: { status: "captured" as const, amount: "5000.00", platformFee: "1000.00" },
+    payment: {
+      status: "captured" as const,
+      amount: "5000.00",
+      platformFee: "1000.00",
+      sellerSide: { amount: "5000.00", platformFee: "1000.00" },
+    },
     payout: {
       id: "po1",
       status: "paid" as const,
@@ -39,7 +44,12 @@ const soldRows = [
     soldAt: new Date("2026-10-01T18:00:00Z"),
     hammerPrice: "900.00",
     soldAfterAuction: true,
-    payment: { status: "pending" as const, amount: "1100.00", platformFee: "200.00" },
+    payment: {
+      status: "pending" as const,
+      amount: "1100.00",
+      platformFee: "200.00",
+      sellerSide: null,
+    },
     payout: null,
   },
 ];
@@ -137,7 +147,12 @@ describe("SoldAndPayoutsService", () => {
       ...soldRows[0],
       lotId: "qh",
       hammerPrice: "4800.00",
-      payment: { status: "captured" as const, amount: "6000.00", platformFee: "1200.00" },
+      payment: {
+        status: "captured" as const,
+        amount: "6000.00",
+        platformFee: "1200.00",
+        sellerSide: { amount: "6000.00", platformFee: "1200.00" },
+      },
       payout: { ...soldRows[0]?.payout, lineAmount: "4800.00" },
     };
     const list = vi.fn(async () => [sold]);
@@ -233,7 +248,12 @@ describe("SoldAndPayoutsService", () => {
     async (_name, status, payoutStatus, stage, net) => {
       const row = {
         ...soldRows[0],
-        payment: { status, amount: "5000.00", platformFee: "1000.00" },
+        payment: {
+          status,
+          amount: "5000.00",
+          platformFee: "1000.00",
+          sellerSide: { amount: "5000.00", platformFee: "1000.00" },
+        },
         payout: payoutStatus
           ? { id: "po1", status: payoutStatus, settledAt: null, lineAmount: "5000.00" }
           : null,
@@ -248,6 +268,32 @@ describe("SoldAndPayoutsService", () => {
       expect([item?.stage, item?.net]).toEqual([stage, net]);
     },
   );
+
+  it("shows what the seller receives from the signed agreement, and nothing while the sale is held", async () => {
+    const paidRow = (sellerSide: { amount: string; platformFee: string } | null) => ({
+      ...soldRows[0],
+      // The buyer paid £102,500.00; the premium is LAX's and never part of the seller's figure.
+      payment: {
+        status: "captured" as const,
+        amount: "102500.00",
+        platformFee: "5125.00",
+        sellerSide,
+      },
+      payout: null,
+    });
+    const service = new SoldAndPayoutsService({
+      sold: {
+        list: vi.fn(async () => [
+          paidRow({ amount: "82000.00", platformFee: "14760.00" }),
+          paidRow(null),
+        ]),
+      } as never,
+      payouts: { find: vi.fn() } as never,
+    });
+    const items = (await service.listSold(actor("owner"), { limit: 10, offset: 0 }))._unsafeUnwrap()
+      .items;
+    expect(items.map((i) => i.net)).toEqual(["67240.00", null]);
+  });
 
   it("exports sold lots in plain words", async () => {
     const csv = (await soldService().service.exportSoldCsv(actor("owner"), {}))._unsafeUnwrap();

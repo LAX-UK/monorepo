@@ -224,7 +224,16 @@ export class DrizzlePaymentRepository implements IPaymentWriteRepository {
   }
 
   async updateStripePaymentIntentId(id: string, stripePaymentIntentId: string): Promise<void> {
-    await this.db.update(payment).set({ stripePaymentIntentId }).where(eq(payment.id, id));
+    // A new intent replaces the old one: a transfer figure recorded for another intent is cleared.
+    const kept = sql`${payment.transferReceivedPaymentIntentId} IS NOT DISTINCT FROM ${stripePaymentIntentId}`;
+    await this.db
+      .update(payment)
+      .set({
+        stripePaymentIntentId,
+        transferReceivedPence: sql`CASE WHEN ${kept} THEN ${payment.transferReceivedPence} ELSE 0 END`,
+        transferReceivedPaymentIntentId: sql`CASE WHEN ${kept} THEN ${payment.transferReceivedPaymentIntentId} ELSE NULL END`,
+      })
+      .where(eq(payment.id, id));
   }
 
   async findByStripePaymentIntentId(stripePaymentIntentId: string): Promise<PaymentRecord | null> {
@@ -246,10 +255,45 @@ export class DrizzlePaymentRepository implements IPaymentWriteRepository {
     return rows.length > 0;
   }
 
+  async recordTransferReceivedInTransaction(
+    tx: Database,
+    id: string,
+    receivedPence: number,
+    paymentIntentId: string,
+  ): Promise<boolean> {
+    if (!Number.isSafeInteger(receivedPence) || receivedPence <= 0 || !paymentIntentId) {
+      return false;
+    }
+    const cap = sql`round(${payment.amount} * 100)::integer`;
+    const sameIntent = sql`${payment.transferReceivedPaymentIntentId} IS NOT DISTINCT FROM ${paymentIntentId}`;
+    // One statement. For the intent already recorded the figure only rises and is capped at the
+    // invoice, so a replayed or late notice (which reports less) changes nothing. A notice for
+    // another intent (a new transfer checkout) starts the figure again from what that intent
+    // holds. Only an invoice still waiting for its money, and only for the intent it is waiting
+    // on when one is stored, so a late notice for an earlier attempt is ignored.
+    const rows = await tx
+      .update(payment)
+      .set({
+        transferReceivedPence: sql`CASE WHEN ${sameIntent} THEN least(greatest(${payment.transferReceivedPence}, ${receivedPence}), ${cap}) ELSE least(${receivedPence}, ${cap}) END`,
+        transferReceivedPaymentIntentId: paymentIntentId,
+      })
+      .where(
+        and(
+          eq(payment.id, id),
+          inArray(payment.status, ["pending", "authorized"]),
+          sql`coalesce(nullif(${payment.stripePaymentIntentId}, ''), ${paymentIntentId}) = ${paymentIntentId}`,
+          sql`(NOT ${sameIntent} OR ${payment.transferReceivedPence} < least(${receivedPence}, ${cap}))`,
+        ),
+      )
+      .returning({ id: payment.id });
+    return rows.length > 0;
+  }
+
   async applyCancelledInTransaction(tx: Database, id: string): Promise<boolean> {
     const rows = await tx
       .update(payment)
-      .set({ status: "cancelled" })
+      // A cancelled attempt's transfer figure is not the next attempt's.
+      .set({ status: "cancelled", transferReceivedPence: 0, transferReceivedPaymentIntentId: null })
       .where(and(eq(payment.id, id), inArray(payment.status, ["pending", "authorized"])))
       .returning({ id: payment.id });
     return rows.length > 0;
@@ -275,11 +319,19 @@ export class DrizzlePaymentRepository implements IPaymentWriteRepository {
   async applyCapturedInTransaction(
     tx: Database,
     id: string,
-    opts: { stripeChargeId?: string | null },
+    opts: { stripeChargeId?: string | null; stripePaymentIntentId?: string | null },
   ): Promise<boolean> {
-    const patch: Partial<typeof payment.$inferInsert> = { status: "captured" };
+    const patch: {
+      status: "captured";
+      stripeChargeId?: string;
+      stripePaymentIntentId?: SQL;
+    } = { status: "captured" };
     if (opts.stripeChargeId != null && opts.stripeChargeId !== "") {
       patch.stripeChargeId = opts.stripeChargeId;
+    }
+    // Filled only where the row has none: a payment intent already recorded is never replaced.
+    if (opts.stripePaymentIntentId != null && opts.stripePaymentIntentId !== "") {
+      patch.stripePaymentIntentId = sql`coalesce(nullif(${payment.stripePaymentIntentId}, ''), ${opts.stripePaymentIntentId})`;
     }
     const rows = await tx
       .update(payment)
@@ -297,7 +349,8 @@ export class DrizzlePaymentRepository implements IPaymentWriteRepository {
   async applyReleasedFromManualReviewInTransaction(tx: Database, id: string): Promise<boolean> {
     const rows = await tx
       .update(payment)
-      .set({ status: "pending" })
+      // Released to be paid again: what an earlier transfer delivered is not shown against it.
+      .set({ status: "pending", transferReceivedPence: 0, transferReceivedPaymentIntentId: null })
       .where(and(eq(payment.id, id), eq(payment.status, "requires_manual_review")))
       .returning({ id: payment.id });
     return rows.length > 0;
@@ -306,7 +359,7 @@ export class DrizzlePaymentRepository implements IPaymentWriteRepository {
   async applyReopenedFromCancelledInTransaction(tx: Database, id: string): Promise<boolean> {
     const rows = await tx
       .update(payment)
-      .set({ status: "pending" })
+      .set({ status: "pending", transferReceivedPence: 0, transferReceivedPaymentIntentId: null })
       .where(and(eq(payment.id, id), eq(payment.status, "cancelled")))
       .returning({ id: payment.id });
     return rows.length > 0;
@@ -321,6 +374,15 @@ export class DrizzlePaymentRepository implements IPaymentWriteRepository {
       .update(payment)
       .set({ status: "refunded", stripeRefundId })
       .where(and(eq(payment.id, id), eq(payment.status, "cancelled")))
+      .returning({ id: payment.id });
+    return rows.length > 0;
+  }
+
+  async applyRefundReversedInTransaction(tx: Database, id: string): Promise<boolean> {
+    const rows = await tx
+      .update(payment)
+      .set({ status: "captured", stripeRefundId: null })
+      .where(and(eq(payment.id, id), eq(payment.status, "refunded")))
       .returning({ id: payment.id });
     return rows.length > 0;
   }

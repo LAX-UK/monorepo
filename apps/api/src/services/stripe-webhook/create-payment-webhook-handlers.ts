@@ -40,7 +40,7 @@ export type PaymentWebhookHandlers = {
 /** What "Pay several" adds to the payment webhooks: a group's settlement and charge events. */
 export type PaymentGroupWebhookDeps = {
   settlement: Pick<PaymentGroupSettlementService, "settle" | "markProcessing" | "release">;
-  chargeEvents: Pick<PaymentGroupChargeEvents, "chargeRefunded">;
+  chargeEvents: Pick<PaymentGroupChargeEvents, "chargeRefunded" | "refundUpdated">;
   groups: Pick<
     IPaymentGroupRepository,
     "findById" | "findBankTransferGroupsForCustomer" | "listMembers"

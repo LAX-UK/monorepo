@@ -447,7 +447,12 @@ describe("PaymentService", () => {
       capturePaymentIntent: vi.fn(),
       createRefund: vi.fn().mockImplementation(async () => {
         order.push("stripe_refund");
-        return { kind: "created" as const, refundId: "re_abc" };
+        return {
+          kind: "created" as const,
+          refundId: "re_abc",
+          status: "succeeded",
+          amountPence: 10_000,
+        };
       }),
       createCardCheckoutSession: vi.fn(),
       createBankTransferCheckoutSession: vi.fn(),
@@ -605,8 +610,8 @@ describe("PaymentService", () => {
     expect(publisher.publish).not.toHaveBeenCalled();
   });
 
-  it("persists refunded state when Stripe reports charge_already_refunded", async () => {
-    const { tx, db } = makeTxAndDb();
+  it("records nothing when Stripe reports charge_already_refunded: the refund webhooks record it once it succeeded", async () => {
+    const { db } = makeTxAndDb();
     const pay = { ...payment, stripeChargeId: "ch_done", status: "captured" as const };
     const stripe: IStripePaymentGateway = {
       isConfigured: () => true,
@@ -667,10 +672,9 @@ describe("PaymentService", () => {
       "administrator",
     ]);
     expect(result.isOk()).toBe(true);
-    expect(payments.applyRefundedInTransaction).toHaveBeenCalledWith(tx, pay.id, null);
-    expect(publisher.publish).toHaveBeenCalledWith(
-      expect.objectContaining({ eventType: "payment.refunded" }),
-    );
+    expect(db.transaction).not.toHaveBeenCalled();
+    expect(payments.applyRefundedInTransaction).not.toHaveBeenCalled();
+    expect(publisher.publish).not.toHaveBeenCalled();
   });
 
   it("rejects entity-scoped refunds for a different seller legal entity", async () => {

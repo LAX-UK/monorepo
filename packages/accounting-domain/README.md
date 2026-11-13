@@ -30,8 +30,9 @@ Time is always passed in (epoch ms for leases, `YYYY-MM-DD` for document dates);
 order 123 never collide inside one Books organisation. Source ids are lower case (`[a-z0-9_-]`, at most 64):
 providers may search references case-insensitively, so `abc` and `ABC` must not be two documents. Builders
 take a `sourceId`, never a reference string, and check every other reference they are given
-(`parseLaxReference`: contact, invoice) is of the right kind and product. `DocumentLookupPort.findByReference`
-takes the product so an adapter can never search the wrong organisation.
+(`parseLaxReference`: contact, invoice) is of the right kind and product. `DocumentLookupPort.findDocument`
+takes the document, so an adapter searches only its product's organisation and reads what it finds back
+against it.
 
 **Legal entity.** Bid → London Auction Xchange LTD. Shop and lax.art → London Art Exchange Ltd.
 
@@ -116,13 +117,23 @@ throw) and refuses two live sources; `parseSwitchConfig` turns unknown input int
   request may still land and a second create would duplicate it. **The runtime's HTTP timeout must be
   shorter than the lease**, and the grace covers provider-side work that outlives a client timeout.
   `found` is believed at any time.
+- A send's writes are tied to its lease (`WriteFence`): immediately before every create or update (and
+  every retry of one, after any rate-limit or queue wait) the adapter asks the sender, which asks the store
+  whether this lease token still holds the document with `WRITE_MARGIN_MS` (30 s) left. Once the lease was
+  swept or is about to run out, no write starts: the call ends `rejected` with a passing reason
+  (`zoho_books_fenced_lease_lost`), and whoever holds the document next looks it up before sending. A
+  write that did go out before the lease was lost is never repeated: its late answer is refused and the
+  lookup decides. The Books request timeout is capped at `WRITE_MARGIN_MS` at start-up.
 - `rejected` is a definite refusal by the provider, so `failed` can be requeued safely.
 - `differs` means the provider holds a document under our reference (just created, or adopted
   after a duplicate refusal) that does not read back as ours (a payment applied differently, say).
   It exists, so it becomes `needs_review` with the provider's identity kept (and a totals mismatch
   if there is one): like a totals difference, it can be neither requeued nor cancelled. It is never
   `failed`, because a failed record could be requeued and sent blindly. The runtime keeps both the
-  provider's totals and ours in the history row.
+  provider's totals and ours in the history row. The lookup can answer `differs` too: it reads the
+  document it finds back with the same check a send makes, so when the answer to a send never reaches
+  its lease (the lease was swept, the reply was lost or came late) `applyLookup` still ends in
+  `needs_review` with the provider's identity, never `issued`.
 - A `needs_review` record that holds a provider document (a totals mismatch) can be neither requeued nor
   cancelled: a person resolves it.
 - `issued` and `cancelled` are final.
@@ -203,7 +214,13 @@ rehearsal. A rehearsal is therefore run like this, and only like this:
    no HTTP client, and the sender only claims `dry_run` documents.
 2. End the rehearsal with Bid `xero_mode = live`, `books_mode = off`. The projector then moves its cursor
    past everything that follows, so a later Books step never replays it.
-3. `test_org` and `live` are not reachable in this phase (no writing adapter is wired). Before Bid goes
+3. `test_org` and `live` are not reachable in this phase (no writing adapter is wired). When they are,
+   each is bound to an organisation id, not trusted as a label: `DestinationBinding` (`destination.ts`,
+   the Books adapter's `BOOKS_ORGANISATIONS`, the one place those ids are written, checked against the
+   organisation settings at start-up) names the one organisation each writing mode may send each product's
+   documents to, and the sender asks the adapter where it would call (`DestinationPort`) before every
+   send or lookup. Any other organisation, nothing bound, or a `dry_run` adapter that names any
+   organisation at all, and the document goes to a person unsent. Before Bid goes
    `live` on Books, legacy Xero posting for Bid must be stopped by its own settings first: the switch
    cannot stop it, so `books_mode = live` with legacy Xero still posting would book the same sale twice.
 
