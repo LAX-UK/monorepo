@@ -79,7 +79,13 @@ function setup(
     unappliedMoney: { record: record$ },
     eligibility: { check: vi.fn(check) },
   };
-  return { service: new PaymentGroupSettlementService(deps), deps, captureInTransaction, record$ };
+  return {
+    service: new PaymentGroupSettlementService(deps),
+    deps,
+    captureInTransaction,
+    record$,
+    publish,
+  };
 }
 
 describe("PaymentGroupSettlementService.settle for accounts that cannot pay", () => {
@@ -201,8 +207,37 @@ describe("PaymentGroupSettlementService.settle for accounts that cannot pay", ()
       );
     });
 
+    it("tells the books in the same transaction, by reference only, which rows were settled", async () => {
+      const { service, publish } = setup(async () => ({ kind: "payable" }), withDelivery, [
+        courier,
+      ]);
+      await service.settle({ ...money, amountPence: 38_000 });
+      const settled = publish.mock.calls
+        .map(([event]) => event)
+        .filter((event) => event.eventType === "payment_group.settled");
+      expect(settled).toHaveLength(1);
+      expect(settled[0]).toMatchObject({
+        aggregateType: "payment_group",
+        aggregateId: "grp_1",
+        actingLegalEntityId: "org_1",
+      });
+      expect(Object.keys(settled[0].payload).sort()).toEqual([
+        "buyerLegalEntityId",
+        "deliveryQuoteIds",
+        "paymentGroupId",
+        "paymentIds",
+        "settledAt",
+      ]);
+      expect(settled[0].payload).toMatchObject({
+        paymentGroupId: "grp_1",
+        buyerLegalEntityId: "org_1",
+        paymentIds: ["pay_a", "pay_b"],
+        deliveryQuoteIds: ["quote_1"],
+      });
+    });
+
     it("captures nothing and alerts finance when only the invoices' money arrived", async () => {
-      const { service, captureInTransaction, record$ } = setup(
+      const { service, captureInTransaction, record$, publish } = setup(
         async () => ({ kind: "payable" }),
         withDelivery,
         [courier],
@@ -213,6 +248,9 @@ describe("PaymentGroupSettlementService.settle for accounts that cannot pay", ()
       });
       expect(captureInTransaction).not.toHaveBeenCalled();
       expect(record$).toHaveBeenCalledTimes(1);
+      expect(publish.mock.calls.map(([event]) => event.eventType)).not.toContain(
+        "payment_group.settled",
+      );
     });
   });
 

@@ -177,6 +177,7 @@ const LABELS: Record<string, string> = {
   "payment_group.created": "Several invoices put into one payment",
   "payment_group.processing": "Bank transfer started for several invoices",
   "payment_group.paid": "Several invoices paid together",
+  "payment_group.settled": "Payment for several invoices sent to the books",
   "payment_group.released": "Several invoices handed back to pay separately",
   "payment_group.settlement_refused": "Payment for several invoices needs reconciling",
   "payment_group.delivery_refunded": "Courier charge on a combined payment refunded",

@@ -215,6 +215,8 @@ export const EXCEPTION_PATHS: Record<string, Set<string>> = {
   /** Several invoices of one account put into one checkout ("Pay several"); amounts and rail. */
   "payment_group.created": new Set(["total", "checkoutRail"]),
   "payment_group.paid": new Set(["total"]),
+  /** References only: the group, the account, its payment and courier-quote rows, and when. */
+  "payment_group.settled": new Set(["paymentIds", "deliveryQuoteIds"]),
   /** Why the group's checkout ended (cancelled, expired, failed); operational codes only. */
   "payment_group.released": new Set(["reason"]),
   /** The repair took failed refunds back from a courier quote's or the unattributed figure. */

@@ -181,6 +181,22 @@ export class PaymentGroupSettlementService {
         actorUserId: null,
         actingLegalEntityId: group.buyerLegalEntityId,
       });
+      // For the books: references only, in this same transaction, so a settled group always has
+      // its event and a rolled-back one never does. Every amount is read from the stored rows.
+      await this.deps.events.withTx(tx).publish({
+        aggregateType: "payment_group",
+        aggregateId: group.id,
+        eventType: "payment_group.settled",
+        payload: {
+          paymentGroupId: group.id,
+          buyerLegalEntityId: group.buyerLegalEntityId,
+          paymentIds: members.map((m) => m.paymentId),
+          deliveryQuoteIds: deliveries.map((d) => d.quoteId),
+          settledAt: new Date().toISOString(),
+        },
+        actorUserId: null,
+        actingLegalEntityId: group.buyerLegalEntityId,
+      });
       paid = { group, members, deliveries };
       return { processed: true, action: "payment_intent_succeeded" } as const;
     });
