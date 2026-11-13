@@ -4,6 +4,7 @@ import {
   bidInvoice,
   bidInvoiceLine,
   consignmentAgreement,
+  domainEvent,
   itemSubmission,
   legalEntity,
   lot,
@@ -11,27 +12,38 @@ import {
   paymentRefund,
   payout,
   payoutLine,
+  processedStripeEvents,
   saleSellerTerms,
 } from "@auction/db/schema";
 import {
   PayoutAdjustmentService,
   type PayoutSettlementDeps,
+  REFUND_TRUE_UP_NOTE,
   createSettlement,
   payoutRepoForTx,
   settlementSellerTermsForTx,
 } from "@auction/finance-runtime";
 import {
   DrizzleAdminWorkItemsReader,
+  DrizzlePaymentRefundRepository,
+  DrizzlePaymentRepository,
+  DrizzlePaymentWebhookLookupReader,
   DrizzlePayoutRepository,
   DrizzleSoldLotsReader,
   DrizzleTransactionRunner,
 } from "@auction/persistence/repositories";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, like, sql } from "drizzle-orm";
+import type Stripe from "stripe";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
   deleteIdentityUserFixtures,
   seedIdentityUserFixtures,
 } from "../../testing/identity-user-fixtures.js";
+import { DomainEventSink } from "../domain-event-sink.js";
+import { DomainEventPublisher } from "../domain-event.publisher.js";
+import { executePaymentRefundLedger } from "../payment/refund-execution.js";
+import { StripePaymentWebhookService } from "../stripe-payment-webhook.service.js";
+import { PayoutAdjustmentService as ApiPayoutAdjustmentService } from "./payout-adjustment.service.js";
 
 const HAS_DB = Boolean(process.env.DATABASE_URL);
 const pounds = (amount: number) => Math.round(amount * 100);
@@ -216,6 +228,189 @@ describe.skipIf(!HAS_DB)("payout run on seller terms (integration)", () => {
   const linesOf = (payoutId: string) =>
     db.select().from(payoutLine).where(eq(payoutLine.payoutId, payoutId));
 
+  // The refund paths as they run in the API: a staff refund, and the card refund event.
+  const run = randomUUID().slice(0, 8);
+  const eventSink = new DomainEventSink(new DomainEventPublisher(), db);
+  const refundRecords = new DrizzlePaymentRefundRepository(db);
+  const payments = new DrizzlePaymentRepository(db);
+  const adjustments = new ApiPayoutAdjustmentService(
+    runner,
+    repo,
+    (_root, tx) => new DrizzlePayoutRepository(tx),
+  );
+  const webhooks = new StripePaymentWebhookService(
+    runner,
+    new DrizzlePaymentWebhookLookupReader(db),
+    payments,
+    repo,
+    adjustments,
+    {} as never,
+    eventSink,
+    { record: async () => undefined } as never,
+    null,
+    null,
+    null,
+    null,
+    null,
+    refundRecords,
+  );
+  let periodEnds = 10;
+  const nextPeriodEnd = () => new Date(Date.now() + 10_000 * periodEnds++);
+
+  /** Makes the sale a captured card payment, so a card refund event can name it. */
+  async function cardPayment(paymentId: string) {
+    const chargeId = `ch_terms_${run}_${randomUUID()}`;
+    await db.update(payment).set({ stripeChargeId: chargeId }).where(eq(payment.id, paymentId));
+    await db.insert(domainEvent).values({
+      aggregateType: "payment",
+      aggregateId: paymentId,
+      eventType: "payment.captured",
+      payload: {},
+      producer: "integration-test",
+    });
+    return chargeId;
+  }
+
+  /** The card refund event Stripe sends once this much of the charge has been refunded. */
+  const cardRefundEvent = (paymentId: string, chargeId: string, refundedPence: number) => {
+    const charge = {
+      id: chargeId,
+      amount: pounds(1_250),
+      amount_refunded: refundedPence,
+      currency: "gbp",
+      payment_intent: null,
+      metadata: { paymentId },
+    } as unknown as Stripe.Charge;
+    const event = {
+      id: `evt_terms_${run}_${randomUUID()}`,
+      type: "charge.refunded",
+      data: { object: charge },
+    } as unknown as Stripe.Event;
+    return webhooks.handleChargeRefunded(event, charge);
+  };
+
+  /** A staff part refund, as the refund paths record one: under the payment's row lock. */
+  const partRefund = (paymentId: string, pence: number) =>
+    runner.runInTransaction(async (tx) => {
+      const key = `staff-part-${randomUUID()}`;
+      await refundRecords.lockPaymentInTransaction(tx, paymentId);
+      await refundRecords.recordInTransaction(tx, {
+        paymentId,
+        idempotencyKey: key,
+        amountPence: pence,
+        currency: "GBP",
+        source: "staff",
+      });
+      await adjustments.addPaymentLineToOpenPayoutOrCreateClawback({
+        legalEntityId: sellerEntity,
+        paymentId,
+        amount: (-pence / 100).toFixed(2),
+        kind: "refund",
+        sourceEventId: key,
+        note: "Part refund",
+        tx,
+      });
+    });
+
+  /** A staff refund of the whole payment, through the API's own refund ledger. */
+  async function fullRefund(paymentId: string) {
+    const record = await payments.findById(paymentId);
+    if (!record) throw new Error("payment not found");
+    const result = await executePaymentRefundLedger(
+      {
+        payments,
+        paymentRefunds: refundRecords,
+        transactionRunner: runner,
+        domainEventSink: eventSink,
+        payoutAdjustments: adjustments,
+        paymentRefundReconcile: null,
+        xeroPaymentRecorder: null,
+      },
+      {
+        payment: record,
+        adminUserId: buyerId,
+        stripeRefundId: null,
+        via: "admin_manual",
+        sourceEventId: `staff-full-${paymentId}`,
+        clawbackNote: "Refund",
+        logViaField: false,
+      },
+    );
+    if (result.isErr()) throw result.error;
+  }
+
+  const refundLinesOf = (paymentId: string) =>
+    db
+      .select()
+      .from(payoutLine)
+      .where(and(eq(payoutLine.paymentId, paymentId), eq(payoutLine.kind, "refund")));
+
+  /** What the seller's ledger holds for the sale's refunds: the amount and the buyer refund. */
+  async function refundLedger(paymentId: string) {
+    const lines = await refundLinesOf(paymentId);
+    return {
+      chargedPence: lines.reduce((n, l) => n - Math.round(Number(l.amount) * 100), 0),
+      // A line from before this release answered for its own amount.
+      answeredPence: lines.reduce(
+        (n, l) => n + (l.buyerRefundPence ?? Math.abs(Math.round(Number(l.amount) * 100))),
+        0,
+      ),
+    };
+  }
+
+  async function announcements(paymentId: string) {
+    const rows = await db
+      .select({ id: domainEvent.id })
+      .from(domainEvent)
+      .where(
+        and(eq(domainEvent.aggregateId, paymentId), eq(domainEvent.eventType, "payment.refunded")),
+      );
+    return rows.length;
+  }
+
+  /**
+   * A payout run with a refund of `paymentId` started in the window between the run reading what
+   * was refunded and storing the sale line. The run carries on once the refund has committed or
+   * is waiting on a lock; `blocked` says which.
+   */
+  function runWithRefundInWindow(paymentId: string, refund: () => Promise<unknown>) {
+    const state: { refund: Promise<unknown> | null; blocked: boolean } = {
+      refund: null,
+      blocked: false,
+    };
+    const gated: PayoutSettlementDeps = {
+      ...deps,
+      sellerTermsForTx: (tx) => {
+        const inner = settlementSellerTermsForTx(tx);
+        return {
+          forPreview: (pending, seller) => inner.forPreview(pending, seller),
+          forRun: async (pending, seller) => {
+            if (pending.id === paymentId && !state.refund) {
+              let settled = false;
+              state.refund = refund().finally(() => {
+                settled = true;
+              });
+              state.refund.catch(() => undefined);
+              for (let i = 0; i < 200 && !settled; i++) {
+                const waiting = await db.execute<{ n: number }>(sql`
+                  SELECT count(*)::int AS n FROM pg_stat_activity
+                  WHERE datname = current_database() AND wait_event_type = 'Lock'
+                `);
+                if (Number(waiting.rows[0]?.n ?? 0) > 0) {
+                  state.blocked = true;
+                  break;
+                }
+                await new Promise((resolve) => setTimeout(resolve, 25));
+              }
+            }
+            return inner.forRun(pending, seller);
+          },
+        };
+      },
+    };
+    return { gated, state };
+  }
+
   beforeAll(async () => {
     await seedIdentityUserFixtures(db, [
       { id: buyerId, name: buyerId, email: `${buyerId}@integration.test` },
@@ -252,7 +447,11 @@ describe.skipIf(!HAS_DB)("payout run on seller terms (integration)", () => {
     ).map((p) => p.id);
     if (paymentIds.length) {
       await db.delete(paymentRefund).where(inArray(paymentRefund.paymentId, paymentIds));
+      await db.delete(domainEvent).where(inArray(domainEvent.aggregateId, paymentIds));
     }
+    await db
+      .delete(processedStripeEvents)
+      .where(like(processedStripeEvents.eventId, `evt_terms_${run}_%`));
     await db.delete(payment).where(inArray(payment.lotId, lotIds));
     await db.delete(bidInvoice).where(inArray(bidInvoice.lotId, lotIds));
     if (submissionIds.length) {
@@ -463,5 +662,187 @@ describe.skipIf(!HAS_DB)("payout run on seller terms (integration)", () => {
     // A card refund event for the same refund then finds nothing new for the seller, so the refund
     // is not announced twice.
     expect(await repo.sumRefundLineCentsForPayment(sale.paymentId)).toBe(pounds(2_500));
+  });
+
+  it("a part refund that lands while the run is paying the sale is charged to the seller, and a later card event does not announce it again", async () => {
+    const sale = await seedSale({
+      hammer: 1_000,
+      premium: 250,
+      commissionPercent: "15.00",
+      raised: "agreement",
+    });
+    const chargeId = await cardPayment(sale.paymentId);
+    const { gated, state } = runWithRefundInWindow(sale.paymentId, () =>
+      partRefund(sale.paymentId, pounds(500)),
+    );
+    const settled = await createSettlement(gated, null, {
+      legalEntityId: sellerEntity,
+      periodEnd: nextPeriodEnd(),
+    });
+    await state.refund;
+    expect(settled.ok).toBe(true);
+    if (!settled.ok) return;
+    const saleLine = (await linesOf(settled.payout.id)).find(
+      (l) => l.paymentId === sale.paymentId && l.kind === "sale",
+    );
+    expect(saleLine?.amount).toBe("1000.00");
+    // £820.00 net; £500 of £1,250 refunded takes back £328.00, so the seller keeps £492.00.
+    expect(await refundLedger(sale.paymentId)).toEqual({
+      chargedPence: pounds(328),
+      answeredPence: pounds(500),
+    });
+    expect(await repo.sumRefundLineCentsForPayment(sale.paymentId)).toBe(pounds(500));
+
+    // The card event for the same refund finds nothing new: no charge, no second announcement.
+    const card = await cardRefundEvent(sale.paymentId, chargeId, pounds(500));
+    expect(card).toMatchObject({ action: "skipped", reason: "no_new_refund_amount" });
+    expect(await announcements(sale.paymentId)).toBe(0);
+    expect((await refundLedger(sale.paymentId)).chargedPence).toBe(pounds(328));
+    // The run held the sale's payment row, so the refund waited for the sale line.
+    expect(state.blocked).toBe(true);
+  });
+
+  it("a full refund that lands while the run is paying the sale takes back the whole net, announced once", async () => {
+    const sale = await seedSale({
+      hammer: 1_000,
+      premium: 250,
+      commissionPercent: "15.00",
+      raised: "agreement",
+    });
+    const chargeId = await cardPayment(sale.paymentId);
+    const { gated, state } = runWithRefundInWindow(sale.paymentId, () =>
+      fullRefund(sale.paymentId),
+    );
+    const settled = await createSettlement(gated, null, {
+      legalEntityId: sellerEntity,
+      periodEnd: nextPeriodEnd(),
+    });
+    await state.refund;
+    expect(settled.ok).toBe(true);
+    // Paid £820.00 and charged £820.00: the seller keeps nothing of a sale refunded in full.
+    expect(await refundLedger(sale.paymentId)).toEqual({
+      chargedPence: pounds(820),
+      answeredPence: pounds(1_250),
+    });
+    expect(await announcements(sale.paymentId)).toBe(1);
+
+    const card = await cardRefundEvent(sale.paymentId, chargeId, pounds(1_250));
+    expect(card).toMatchObject({ action: "skipped", reason: "no_new_refund_amount" });
+    expect(await announcements(sale.paymentId)).toBe(1);
+    expect((await refundLedger(sale.paymentId)).chargedPence).toBe(pounds(820));
+    expect(state.blocked).toBe(true);
+  });
+
+  it("a refund whose share rounds to nothing is recorded at £0.00, so a card event does not announce it again", async () => {
+    const sale = await seedSale({
+      hammer: 1_000,
+      premium: 250,
+      commissionPercent: "15.00",
+      raised: "agreement",
+    });
+    const chargeId = await cardPayment(sale.paymentId);
+    const settled = await createSettlement(deps, null, {
+      legalEntityId: sellerEntity,
+      periodEnd: nextPeriodEnd(),
+    });
+    expect(settled.ok).toBe(true);
+    if (!settled.ok) return;
+    await db.update(payout).set({ status: "paid" }).where(eq(payout.id, settled.payout.id));
+
+    // 1p of £1,250 takes back 1p of the £820.00 net (0.656p, half-up).
+    await partRefund(sale.paymentId, 1);
+    expect(await refundLedger(sale.paymentId)).toEqual({ chargedPence: 1, answeredPence: 1 });
+    await db
+      .update(payout)
+      .set({ status: "paid" })
+      .where(and(eq(payout.legalEntityId, sellerEntity), eq(payout.status, "scheduled")));
+
+    // A second 1p: 2p of £1,250 is 1.312p of the net, so nothing more is due.
+    await partRefund(sale.paymentId, 1);
+    const zero = (await refundLinesOf(sale.paymentId)).find((l) => l.amount === "0.00");
+    expect(zero).toMatchObject({ buyerRefundPence: 1 });
+    expect(await refundLedger(sale.paymentId)).toEqual({ chargedPence: 1, answeredPence: 2 });
+    expect(await repo.sumRefundLineCentsForPayment(sale.paymentId)).toBe(2);
+
+    const card = await cardRefundEvent(sale.paymentId, chargeId, 2);
+    expect(card).toMatchObject({ action: "skipped", reason: "no_new_refund_amount" });
+    expect(await announcements(sale.paymentId)).toBe(0);
+
+    // A third 1p is measured from all three: 3p of £1,250 is 1.968p, so 1p more.
+    await partRefund(sale.paymentId, 1);
+    expect(await refundLedger(sale.paymentId)).toEqual({ chargedPence: 2, answeredPence: 3 });
+  });
+
+  it("a part refund charged in full by the previous release before payout is brought back to the seller's share as the sale is paid", async () => {
+    const sale = await seedSale({
+      hammer: 1_000,
+      premium: 250,
+      commissionPercent: "15.00",
+      raised: "agreement",
+    });
+    // As the previous release left it: the buyer's £500 refund on record (0344's backfill), and
+    // the whole £500 charged on a clawback payout already settled, with no buyer refund stored.
+    await db.insert(paymentRefund).values({
+      paymentId: sale.paymentId,
+      idempotencyKey: `old-release-${sale.paymentId}`,
+      amountPence: pounds(500),
+      currency: "GBP",
+      source: "staff",
+    });
+    const [clawback] = await db
+      .insert(payout)
+      .values({
+        legalEntityId: sellerEntity,
+        periodStart: new Date("2026-10-01T00:00:00Z"),
+        periodEnd: new Date("2026-10-01T00:00:01Z"),
+        grossAmount: "-500.00",
+        platformFee: "0.00",
+        stripeFee: "0.00",
+        netAmount: "-500.00",
+        currency: "GBP",
+        status: "paid",
+      })
+      .returning({ id: payout.id });
+    if (!clawback) throw new Error("payout was not stored");
+    await db.insert(payoutLine).values({
+      payoutId: clawback.id,
+      paymentId: sale.paymentId,
+      amount: "-500.00",
+      kind: "refund",
+      note: "Refund",
+    });
+
+    const settled = await createSettlement(deps, null, {
+      legalEntityId: sellerEntity,
+      periodEnd: nextPeriodEnd(),
+    });
+    expect(settled.ok).toBe(true);
+    if (!settled.ok) return;
+    // The share of £500 is £328.00, so £172.00 of the old charge comes back with the sale.
+    const trueUp = (await linesOf(settled.payout.id)).find(
+      (l) => l.paymentId === sale.paymentId && l.kind === "refund",
+    );
+    expect(trueUp).toMatchObject({
+      amount: "172.00",
+      buyerRefundPence: 0,
+      note: REFUND_TRUE_UP_NOTE,
+    });
+    expect(await refundLedger(sale.paymentId)).toEqual({
+      chargedPence: pounds(328),
+      answeredPence: pounds(500),
+    });
+    // The credit is not read as a refund to the buyer.
+    const topUp = await db.execute<{ added: number }>(
+      sql`SELECT payment_refund_backfill_from_payout_lines(${sale.paymentId}::uuid) AS added`,
+    );
+    expect(Number(topUp.rows[0]?.added)).toBe(0);
+    expect(await repo.sumRefundLineCentsForPayment(sale.paymentId)).toBe(pounds(500));
+
+    // A further £250 after payout is measured from the share: £750 of £1,250 is £492.00.
+    await partRefund(sale.paymentId, pounds(250));
+    expect(await refundLedger(sale.paymentId)).toEqual({
+      chargedPence: pounds(492),
+      answeredPence: pounds(750),
+    });
   });
 });

@@ -23,6 +23,9 @@ function setup(over: Partial<IPayoutRepository> = {}) {
     lockSettlementForEntity: async () => {
       calls.push("lock");
     },
+    lockPendingPayments: async () => {
+      calls.push("lock_payments");
+    },
     list: async () => {
       calls.push("period");
       return [];
@@ -53,7 +56,7 @@ describe("settlement period", () => {
     const { deps, calls, create } = setup();
     const result = await createSettlement(deps, null, { legalEntityId: ENTITY, periodEnd: NOW });
     expect(result.ok).toBe(true);
-    expect(calls).toEqual(["lock", "period"]);
+    expect(calls).toEqual(["lock", "lock_payments", "period"]);
     expect(create).toHaveBeenCalledWith(
       expect.objectContaining({ periodStart: new Date("2026-10-01"), periodEnd: NOW }),
     );

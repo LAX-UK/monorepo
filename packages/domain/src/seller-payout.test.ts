@@ -4,6 +4,7 @@ import {
   type SellerClawbackFacts,
   sellerClawbackPence,
   sellerRefundCharge,
+  sellerRefundChargeAtPayout,
   sellerTermsTotals,
   snapshotSaleLine,
 } from "./seller-payout.js";
@@ -196,7 +197,7 @@ describe("sellerRefundCharge", () => {
       buyerRefundPence: pounds(60_000),
     });
     expect(second?.chargePence).toBe(pounds(33_620));
-    // Nothing is left to charge once the net has been taken back.
+    // Nothing is left to charge once the net has been taken back; the refund is still answered.
     expect(
       sellerRefundCharge({
         facts: {
@@ -206,7 +207,32 @@ describe("sellerRefundCharge", () => {
         },
         buyerRefundPence: pounds(1),
       }),
-    ).toBeNull();
+    ).toEqual({ chargePence: 0, buyerRefundPence: pounds(1) });
+  });
+
+  it("a refund whose share rounds to nothing is charged £0.00 and still answered for", () => {
+    // £1,250 paid, £820 net: a 1p refund takes back 1p (0.656p, half-up), the second 1p nothing
+    // more (1.312p rounds to 1p), and the third 1p brings it to 2p (1.968p).
+    const facts: SellerClawbackFacts = {
+      paymentPence: pounds(1_250),
+      paidOut: { kind: "snapshot", sellerNetPence: pounds(820) },
+      clawedBackPence: 0,
+      buyerRefundAnsweredPence: 0,
+    };
+    const first = sellerRefundCharge({ facts, buyerRefundPence: 1 });
+    expect(first).toEqual({ chargePence: 1, buyerRefundPence: 1 });
+    const second = sellerRefundCharge({
+      facts: { ...facts, clawedBackPence: 1, buyerRefundAnsweredPence: 1 },
+      buyerRefundPence: 1,
+    });
+    expect(second).toEqual({ chargePence: 0, buyerRefundPence: 1 });
+    // Measured from both earlier refunds, because the zero line answered for the second.
+    expect(
+      sellerRefundCharge({
+        facts: { ...facts, clawedBackPence: 1, buyerRefundAnsweredPence: 2 },
+        buyerRefundPence: 1,
+      }),
+    ).toEqual({ chargePence: 1, buyerRefundPence: 1 });
   });
 
   it("a payout paid under the old rule is charged the refund as it stands", () => {
@@ -216,5 +242,64 @@ describe("sellerRefundCharge", () => {
         buyerRefundPence: pounds(500),
       }),
     ).toEqual({ chargePence: pounds(500), buyerRefundPence: pounds(500) });
+  });
+});
+
+describe("sellerRefundChargeAtPayout", () => {
+  // £1,000 hammer and £250 premium at 15% + VAT: the seller's net is £820.00.
+  const sale = { sellerNetPence: pounds(820), paymentPence: pounds(1_250) };
+
+  it("a part refund before payout is charged as the seller's share as the sale is paid", () => {
+    expect(
+      sellerRefundChargeAtPayout({
+        ...sale,
+        buyerRefundedPence: pounds(500),
+        clawedBackPence: 0,
+        buyerRefundAnsweredPence: 0,
+      }),
+    ).toEqual({ chargePence: pounds(328), buyerRefundPence: pounds(500) });
+  });
+
+  it("nothing refunded and nothing charged records nothing", () => {
+    expect(
+      sellerRefundChargeAtPayout({
+        ...sale,
+        buyerRefundedPence: 0,
+        clawedBackPence: 0,
+        buyerRefundAnsweredPence: 0,
+      }),
+    ).toBeNull();
+  });
+
+  it("gives back what the previous release charged in full beyond the seller's share", () => {
+    // £500 refunded before this release and charged as £500; the share is £328.00.
+    expect(
+      sellerRefundChargeAtPayout({
+        ...sale,
+        buyerRefundedPence: pounds(500),
+        clawedBackPence: pounds(500),
+        buyerRefundAnsweredPence: pounds(500),
+      }),
+    ).toEqual({ chargePence: -pounds(172), buyerRefundPence: 0 });
+    // With a further £250 refunded since, under this release: the share of £750 is £492.00.
+    expect(
+      sellerRefundChargeAtPayout({
+        ...sale,
+        buyerRefundedPence: pounds(750),
+        clawedBackPence: pounds(500),
+        buyerRefundAnsweredPence: pounds(500),
+      }),
+    ).toEqual({ chargePence: -pounds(8), buyerRefundPence: pounds(250) });
+  });
+
+  it("a charge already at the share records nothing more", () => {
+    expect(
+      sellerRefundChargeAtPayout({
+        ...sale,
+        buyerRefundedPence: pounds(500),
+        clawedBackPence: pounds(328),
+        buyerRefundAnsweredPence: pounds(500),
+      }),
+    ).toBeNull();
   });
 });

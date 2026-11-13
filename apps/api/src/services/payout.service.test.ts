@@ -50,6 +50,7 @@ function makeRepo(overrides: Partial<IPayoutRepository> = {}): IPayoutRepository
     findById: vi.fn().mockResolvedValue(null),
     findByIdForUpdate: vi.fn().mockResolvedValue(null),
     lockSettlementForEntity: vi.fn().mockResolvedValue(undefined),
+    lockPendingPayments: vi.fn().mockResolvedValue(undefined),
     findByStripeTransferId: vi.fn().mockResolvedValue(null),
     listLines: vi.fn().mockResolvedValue([]),
     findUnlinkedCapturedPayments: vi.fn().mockResolvedValue([]),

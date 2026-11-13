@@ -1423,6 +1423,7 @@ export {
   sellerClawbackPence,
   sellerDeductionsPence,
   sellerRefundCharge,
+  sellerRefundChargeAtPayout,
   sellerTermsTotals,
   snapshotSaleLine,
   type HeldSettlementSale,

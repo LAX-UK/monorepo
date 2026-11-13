@@ -9,7 +9,7 @@ import {
   minorUnitsToMoneyString,
   payoutTotals,
   resolveSettlementPeriod,
-  sellerRefundCharge,
+  sellerRefundChargeAtPayout,
   sellerTermsTotals,
   snapshotSaleLine,
 } from "@auction/domain";
@@ -73,28 +73,46 @@ const pounds = (pence: number) => minorUnitsToMoneyString(BigInt(pence));
 
 /** The note on a refund line the run adds for a part refund the buyer had before the payout. */
 export const REFUND_BEFORE_PAYOUT_NOTE = "Part refund to the buyer before this payout";
+/**
+ * The note on the line that gives back what an earlier release charged for a part refund before
+ * payout beyond the seller's share of it.
+ */
+export const REFUND_TRUE_UP_NOTE =
+  "Part refund before this payout: the charge made in full before the agreement rule, less the seller's share";
 
 /**
- * A part refund the buyer had before the sale was paid out is charged as the run pays the sale:
- * the seller's share of it, by the same rule a refund after payout follows. `null` when nothing is
- * charged (no refund, or what was refunded is already on the seller's ledger).
+ * The buyer's refunds before the sale was paid out, settled as the run pays the sale: the seller's
+ * share of them, by the same rule a refund after payout follows, less what is already on the
+ * seller's ledger for them. `null` when there is nothing to record. A charge made in full under the
+ * old rule before this release is brought back to the share here, so the line can be a credit.
  */
 async function refundBeforePayout(
   r: IPayoutRepository,
   pending: PendingPaymentRow,
   terms: PayableSellerTerms,
-): Promise<{ facts: PayoutLineFacts; chargePence: number; buyerRefundPence: number } | null> {
+): Promise<{
+  facts: PayoutLineFacts;
+  chargePence: number;
+  buyerRefundPence: number;
+  note: string;
+} | null> {
+  // A refund line from the previous release is copied to the buyer's record (migration 0344's
+  // backfill), so a sale with nothing refunded on that record has nothing on the ledger either.
   if (pending.refundedPence <= 0) return null;
   const facts = await r.findSellerClawbackFacts(pending.id);
-  const charge = sellerRefundCharge({
-    facts: { ...facts, paidOut: { kind: "snapshot", sellerNetPence: terms.sellerNetPence } },
-    buyerRefundPence: Math.max(0, pending.refundedPence - facts.buyerRefundAnsweredPence),
+  const charge = sellerRefundChargeAtPayout({
+    sellerNetPence: terms.sellerNetPence,
+    paymentPence: facts.paymentPence,
+    buyerRefundedPence: pending.refundedPence,
+    clawedBackPence: facts.clawedBackPence,
+    buyerRefundAnsweredPence: facts.buyerRefundAnsweredPence,
   });
   if (!charge) return null;
   return {
     facts: { kind: "refund", amount: pounds(-charge.chargePence) },
     chargePence: charge.chargePence,
     buyerRefundPence: charge.buyerRefundPence,
+    note: charge.chargePence < 0 ? REFUND_TRUE_UP_NOTE : REFUND_BEFORE_PAYOUT_NOTE,
   };
 }
 
@@ -197,7 +215,7 @@ export async function createSettlementCore(
         amount: refund.facts.amount,
         kind: "refund",
         createdByUserId: null,
-        note: REFUND_BEFORE_PAYOUT_NOTE,
+        note: refund.note,
         buyerRefundPence: refund.buyerRefundPence,
       });
       inserted.push({ line: refundLine, facts: refund.facts });
@@ -289,6 +307,12 @@ export async function createSettlement(
     // One settlement per legal entity at a time: a concurrent run waits here, then sees the
     // payments already on the first payout and finds nothing pending.
     await r.lockSettlementForEntity(input.legalEntityId);
+    // Then the rows of the payments it may pay, so what was refunded on each is read once no
+    // refund of them is in flight: a refund that started first is committed and seen below (and
+    // charged as the run pays the sale); one that starts now waits until the sale line is in place
+    // and charges the seller as a refund after payout. Refunds take only the payment row and never
+    // this run's advisory lock, so the order (advisory, then payment) cannot deadlock with them.
+    await r.lockPendingPayments(input.legalEntityId);
     // The period is read here, under the lock and through this transaction, so the settled period
     // another run just wrote is already visible and the two cannot overlap.
     const [latest] = await r.list({ legalEntityId: input.legalEntityId, limit: 1 });

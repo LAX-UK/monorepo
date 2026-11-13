@@ -139,7 +139,10 @@ export type SellerRefundCharge = { chargePence: number; buyerRefundPence: number
  * - Not paid out: nothing. The seller received nothing for the sale, and a sale refunded in full
  *   drops out of the payout run; a part refund is charged when the run pays the sale.
  * - Paid from a snapshot: the seller's share of everything refunded so far (see
- *   `sellerClawbackPence`), less what has already been charged back.
+ *   `sellerClawbackPence`), less what has already been charged back. When that comes to nothing
+ *   (rounding already took the penny, or the net is already taken back) the charge is zero, not
+ *   `null`: the line still records the buyer refund it answered for, so the same refund is not
+ *   taken as new again by a later event, and later refunds are measured from the right total.
  * - Paid under the old rule: the refund as it stands, as old payouts were charged. Finance reviews
  *   payouts paid under the old rule one by one; nothing here changes them.
  */
@@ -167,8 +170,48 @@ export function sellerRefundCharge(input: {
           buyerRefundedBeforePence + buyerRefundPence,
         ),
       });
-      const chargePence = due - facts.clawedBackPence;
-      return chargePence > 0 ? { chargePence, buyerRefundPence } : null;
+      return { chargePence: Math.max(0, due - facts.clawedBackPence), buyerRefundPence };
     }
   }
+}
+
+/**
+ * What the payout run charges the seller, as it pays a sale from its snapshot, for the buyer
+ * refunds made before the payout: the seller's share of everything refunded so far, less what is
+ * already on the seller's ledger for the sale. `null` when there is nothing to record.
+ *
+ * The charge can be negative. A part refund the release before this one handled before payout
+ * was charged in full (the buyer's refund, not the seller's share), and nothing since charges a
+ * sale before it is paid out; so whatever is on the ledger beyond the seller's share was charged
+ * under the old rule and is given back here, once, as the sale is paid. A zero charge with a new
+ * buyer refund is still recorded, for the reason `sellerRefundCharge` gives.
+ */
+export function sellerRefundChargeAtPayout(input: {
+  /** What the seller receives for the sale, from its snapshot. */
+  sellerNetPence: number;
+  /** What the buyer paid. */
+  paymentPence: number;
+  /** Everything the buyer's record says was refunded for the sale. */
+  buyerRefundedPence: number;
+  /** What is already on the seller's ledger for the sale's refunds (a positive figure). */
+  clawedBackPence: number;
+  /** The buyer refunds those charges answered for. */
+  buyerRefundAnsweredPence: number;
+}): SellerRefundCharge | null {
+  const { sellerNetPence, paymentPence, buyerRefundedPence } = input;
+  assertPence(buyerRefundedPence, "buyer refund");
+  assertPence(input.clawedBackPence, "charged back");
+  assertPence(input.buyerRefundAnsweredPence, "earlier buyer refunds");
+  const buyerRefundPence = Math.max(0, buyerRefundedPence - input.buyerRefundAnsweredPence);
+  const due = sellerClawbackPence({
+    sellerNetPence,
+    paymentPence,
+    buyerRefundedPence: Math.min(
+      paymentPence,
+      Math.max(buyerRefundedPence, input.buyerRefundAnsweredPence),
+    ),
+  });
+  const chargePence = due - input.clawedBackPence;
+  if (buyerRefundPence === 0 && chargePence === 0) return null;
+  return { chargePence, buyerRefundPence };
 }

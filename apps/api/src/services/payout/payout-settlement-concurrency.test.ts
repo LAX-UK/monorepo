@@ -40,6 +40,8 @@ function makeFixture() {
   const releases = new WeakMap<object, () => void>();
 
   const repo = {
+    // The payment rows are held under the entity lock below, so the fake need not hold them.
+    lockPendingPayments: async () => undefined,
     list: async () => {
       await tick();
       return payouts;

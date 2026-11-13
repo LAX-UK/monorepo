@@ -63,4 +63,25 @@ describe("migration 0374 payout seller terms", () => {
     expect(payout.commissionAmount.name).toBe("commission_amount");
     expect(payout.commissionVatAmount.name).toBe("commission_vat_amount");
   });
+
+  it("re-prices only held seller-terms rows, and the rollback removes the guard", () => {
+    expect(migration).toContain('CREATE TRIGGER "sale_seller_terms_reprice_held_only"');
+    expect(migration).toContain('BEFORE UPDATE ON "sale_seller_terms"');
+    expect(migration).toMatch(/IF OLD\."basis" = 'held' THEN\s+RETURN NEW;/);
+    expect(rollback).toContain('DROP TRIGGER IF EXISTS "sale_seller_terms_reprice_held_only"');
+    expect(rollback).toContain('DROP FUNCTION IF EXISTS "sale_seller_terms_reprice_held_only"()');
+  });
+
+  it("tops up the buyer's refund record from what each line answered for; the rollback restores 0344's", () => {
+    const answered = 'SUM(COALESCE(l."buyer_refund_pence", round(abs(l."amount") * 100)))';
+    const original = 'SUM(round(abs(l."amount") * 100))';
+    expect(migration).toContain(answered);
+    expect(rollback).toContain(original);
+    expect(rollback).not.toContain('buyer_refund_pence")');
+    // The function is replaced before the column it reads is dropped.
+    expect(rollback.indexOf("payment_refund_backfill_from_payout_lines")).toBeLessThan(
+      rollback.indexOf('DROP COLUMN IF EXISTS "buyer_refund_pence"'),
+    );
+    expect(read("0344_payment_refund.sql")).toContain(original);
+  });
 });

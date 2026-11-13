@@ -16,7 +16,7 @@ import type {
   PayoutSellerTermsTotals,
   PayoutStatus,
 } from "@auction/types";
-import { type SQL, and, desc, eq, isNotNull, ne, sql } from "drizzle-orm";
+import { type SQL, and, asc, desc, eq, isNotNull, ne, sql } from "drizzle-orm";
 import type {
   CreatePayoutInput,
   IPayoutProcessorReader,
@@ -394,6 +394,15 @@ export class DrizzlePayoutRepository implements IPayoutRepository, IPayoutProces
     );
   }
 
+  async lockPendingPayments(legalEntityId: string): Promise<void> {
+    await this.db
+      .select({ id: payment.id })
+      .from(payment)
+      .where(and(eq(payment.sellerLegalEntityId, legalEntityId), awaitingSettlement()))
+      .orderBy(asc(payment.id))
+      .for("update");
+  }
+
   async updateXeroBillId(payoutId: string, xeroBillId: string): Promise<void> {
     await this.db.update(payout).set({ xeroBillId }).where(eq(payout.id, payoutId));
   }
@@ -719,8 +728,14 @@ export class DrizzlePayoutRepository implements IPayoutRepository, IPayoutProces
           JOIN sale_seller_terms sst ON sst.id = pl.seller_terms_id
           WHERE pl.payment_id = "payment"."id" AND pl.kind = 'sale' LIMIT 1
         )`,
+        // A line from before this release (no buyer refund recorded) was always a charge, whatever
+        // its sign; a line since carries its sign, because the run can give back part of an
+        // earlier charge (see sellerRefundChargeAtPayout).
         clawedBackPence: sql<string>`COALESCE((
-          SELECT SUM(round(abs(pl.amount) * 100)) FROM payout_line pl
+          SELECT SUM(CASE
+            WHEN pl.buyer_refund_pence IS NULL THEN round(abs(pl.amount) * 100)
+            ELSE round(-pl.amount * 100)
+          END) FROM payout_line pl
           WHERE pl.payment_id = "payment"."id" AND pl.kind = 'refund'
         ), 0)::text`,
         buyerRefundAnsweredPence: sql<string>`(${refundLinesAnsweredSql(sql`"payment"."id"`)})::text`,

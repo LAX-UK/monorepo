@@ -149,7 +149,9 @@ export class PayoutAdjustmentService implements IPayoutAdjustmentPort {
   /**
    * What the line puts on the seller's ledger, or `null` when it puts nothing. A buyer's refund is
    * charged to the seller only as their share of what they received for the sale (nothing before
-   * the sale is paid out); every other line goes on as given.
+   * the sale is paid out); every other line goes on as given. A refund after payout whose share
+   * comes to nothing still goes on, at £0.00 with the buyer refund it answered for, so the refund
+   * is not taken as new (and announced again) by a later event for the same payment.
    */
   private async ledgerLine(
     r: IPayoutRepository,

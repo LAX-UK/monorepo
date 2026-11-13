@@ -78,6 +78,7 @@ describe("PayoutAdjustmentService aggregated refund lines", () => {
       findByStripeTransferId: vi.fn(),
       findByIdForUpdate: vi.fn(),
       lockSettlementForEntity: vi.fn(),
+      lockPendingPayments: vi.fn(),
       findUnlinkedCapturedPayments: vi.fn(),
       listLegalEntityIdsWithUnlinkedCapturedPayments: vi.fn(),
       listScheduledPayoutsAwaitingTransfer: vi.fn(),

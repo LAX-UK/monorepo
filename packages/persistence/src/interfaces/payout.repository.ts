@@ -81,6 +81,14 @@ export interface IPayoutReadRepository {
 
   /** Serialise settlement for one legal entity until the surrounding transaction ends. */
   lockSettlementForEntity(legalEntityId: string): Promise<void>;
+  /**
+   * Hold, until the surrounding transaction ends, the row of every payment waiting for this legal
+   * entity's payout run, in payment id order (the order a payment group locks its invoices in).
+   * Every refund path holds the payment row while it records the refund and charges the seller, so
+   * a refund either commits before the run reads what was refunded, or waits until the sale line
+   * is in place and is charged as a refund after payout. Taken after `lockSettlementForEntity`.
+   */
+  lockPendingPayments(legalEntityId: string): Promise<void>;
   /** Find a payout by its Stripe transfer id (webhook idempotency lookup). */
   findByStripeTransferId(stripeTransferId: string): Promise<Payout | null>;
   /** Lines for a payout, oldest-first by created_at. */

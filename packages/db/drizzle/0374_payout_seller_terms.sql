@@ -4,7 +4,9 @@
 -- VAT totals of the sales on it beside its existing totals, which keep their meaning: gross is the
 -- hammer total for new payouts and platform_fee is commission plus VAT. A refund line keeps the
 -- buyer's refund it answers for, because the seller is charged back only their share of it.
--- Additive: nullable columns that nothing reads until the new release is running.
+-- Additive: nullable columns that nothing reads until the new release is running. Two guards come
+-- with it: the top-up of the buyer's refund record reads what a refund line answered for, and a
+-- seller-terms row may be re-priced only while it is held.
 SET LOCAL lock_timeout = '30s';
 --> statement-breakpoint
 ALTER TABLE "payout_line"
@@ -53,3 +55,63 @@ END $$;
 --> statement-breakpoint
 CREATE INDEX IF NOT EXISTS "payout_line_seller_terms_idx"
   ON "payout_line" ("seller_terms_id") WHERE "seller_terms_id" IS NOT NULL;
+--> statement-breakpoint
+-- Migration 0344's top-up of the buyer's refund record, reading each refund line's buyer refund
+-- where the line keeps it. A line since this release can charge less than the buyer's refund (the
+-- seller's share), nothing (a share already taken back), or give back part of a charge made in
+-- full before this release; only what it answered for says what the buyer was refunded. A line
+-- from before keeps its amount, which was the buyer's refund, so those rows top up as before.
+CREATE OR REPLACE FUNCTION payment_refund_backfill_from_payout_lines(only_payment_id uuid DEFAULT NULL) RETURNS integer
+LANGUAGE plpgsql
+AS $fn$
+DECLARE
+  added integer;
+BEGIN
+  INSERT INTO "payment_refund" ("payment_id", "idempotency_key", "amount_pence", "currency", "source")
+  SELECT
+    t."payment_id",
+    'payout_ledger_topup:' || t."payment_id" || ':' || t."line_pence",
+    t."line_pence" - t."recorded_pence",
+    'GBP',
+    'payout_topup'
+  FROM (
+    SELECT
+      l."payment_id",
+      SUM(COALESCE(l."buyer_refund_pence", round(abs(l."amount") * 100)))::bigint AS "line_pence",
+      COALESCE((
+        SELECT SUM(r."amount_pence")
+        FROM "payment_refund" r
+        WHERE r."payment_id" = l."payment_id" AND r."currency" = 'GBP'
+      ), 0)::bigint AS "recorded_pence"
+    FROM "payout_line" l
+    WHERE l."kind" = 'refund'
+      AND l."payment_id" IS NOT NULL
+      AND (only_payment_id IS NULL OR l."payment_id" = only_payment_id)
+    GROUP BY l."payment_id"
+  ) t
+  WHERE t."line_pence" - t."recorded_pence" > 0
+  ON CONFLICT ("idempotency_key") DO NOTHING;
+  GET DIAGNOSTICS added = ROW_COUNT;
+  RETURN added;
+END;
+$fn$;
+--> statement-breakpoint
+-- Settlement may store figures over a held row only (the grant is on the figure columns; this is
+-- the row). A snapshot that is priced has been, or will be, paid from, and later clawbacks are
+-- read from it, so it is never rewritten, by any role, the owner included.
+CREATE OR REPLACE FUNCTION "sale_seller_terms_reprice_held_only"() RETURNS trigger
+LANGUAGE plpgsql AS $fn$
+BEGIN
+  IF OLD."basis" = 'held' THEN
+    RETURN NEW;
+  END IF;
+  RAISE EXCEPTION 'sale_seller_terms row % is %: only a held row is priced again', OLD."id", OLD."basis"
+    USING ERRCODE = 'restrict_violation';
+END;
+$fn$;
+--> statement-breakpoint
+DROP TRIGGER IF EXISTS "sale_seller_terms_reprice_held_only" ON "sale_seller_terms";
+--> statement-breakpoint
+CREATE TRIGGER "sale_seller_terms_reprice_held_only"
+  BEFORE UPDATE ON "sale_seller_terms"
+  FOR EACH ROW EXECUTE FUNCTION "sale_seller_terms_reprice_held_only"();
