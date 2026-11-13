@@ -28,6 +28,7 @@ const soldRows = [
       amount: "5000.00",
       platformFee: "1000.00",
       sellerSide: { amount: "5000.00", platformFee: "1000.00" },
+      sellerTerms: null,
     },
     payout: {
       id: "po1",
@@ -49,6 +50,7 @@ const soldRows = [
       amount: "1100.00",
       platformFee: "200.00",
       sellerSide: null,
+      sellerTerms: null,
     },
     payout: null,
   },
@@ -77,6 +79,7 @@ function soldService() {
               note: null,
               lot: { id: "l1", title: "Field", lotNumber: 4, hammerPrice: "4000.00" },
               payment: { amount: "5000.00", platformFee: "1000.00" },
+              sellerTerms: null,
               soldAfterAuction: true,
             },
             {
@@ -86,6 +89,7 @@ function soldService() {
               note: "Packing",
               lot: null,
               payment: null,
+              sellerTerms: null,
               soldAfterAuction: false,
             },
           ],
@@ -243,6 +247,7 @@ describe("SoldAndPayoutsService", () => {
     ["paid", "captured", null, "paid_by_buyer", "4000.00"],
     ["paid out", "captured", "paid", "paid_out", "4000.00"],
     ["refunded", "refunded", null, "refunded", null],
+    ["refunded after payout", "refunded", "paid", "refunded", "4000.00"],
   ] as const)(
     "a %s sale: stage and what the seller receives",
     async (_name, status, payoutStatus, stage, net) => {
@@ -298,13 +303,75 @@ describe("SoldAndPayoutsService", () => {
   it("exports sold lots in plain words", async () => {
     const csv = (await soldService().service.exportSoldCsv(actor("owner"), {}))._unsafeUnwrap();
     expect(csv.split("\n")[0]).toBe(
-      "Lot,Title,Sale,Sold on,Hammer price,Net to you,Sold after the auction,Status,Paid out on",
+      "Lot,Title,Sale,Sold on,Hammer,Commission rate,Commission,VAT on commission,You receive,How it sold,Status,Paid out on",
     );
     expect(csv).toContain("Paid out");
     expect(csv).toContain("Buyer paying");
-    // Only the lot that was sold on to the next bidder says so.
-    expect(csv).toContain("Dusk,Autumn,2026-10-01,900.00,,Yes,Buyer paying");
-    expect(csv).toContain("Field,Autumn,2026-10-01,4000.00,4000.00,,Paid out");
+    // How each lot sold, never who bought it.
+    expect(csv).toContain(
+      "Dusk,Autumn,2026-10-01,900.00,,,,,Sold after the auction to the next bidder,Buyer paying",
+    );
+    // Paid under the old rule: no snapshot, so no commission split, only what was paid.
+    expect(csv).toContain("Field,Autumn,2026-10-01,4000.00,,,,4000.00,Sold at auction,Paid out");
+  });
+
+  it("carries the snapshot's commission and VAT, as recorded, to the sold list, the export and the payout", async () => {
+    const terms = {
+      hammerPence: 8_200_000,
+      commissionBps: 1500,
+      commissionPence: 1_230_000,
+      vatTreatment: "standard" as const,
+      vatBps: 2000,
+      vatPence: 246_000,
+      netPence: 6_724_000,
+    };
+    const row = {
+      ...soldRows[0],
+      hammerPrice: "82000.00",
+      payment: {
+        status: "captured" as const,
+        amount: "102500.00",
+        platformFee: "5125.00",
+        sellerSide: { amount: "82000.00", platformFee: "14760.00" },
+        sellerTerms: terms,
+      },
+      payout: null,
+    };
+    const find = vi.fn(async () => ({
+      id: "po1",
+      status: "paid" as const,
+      currency: "GBP",
+      grossAmount: "82000.00",
+      platformFee: "14760.00",
+      stripeFee: "0.00",
+      netAmount: "67240.00",
+      periodStart: new Date(),
+      periodEnd: new Date(),
+      processedAt: null,
+      lines: [
+        {
+          id: "a",
+          kind: "sale",
+          amount: "82000.00",
+          note: null,
+          lot: { id: "l1", title: "Field", lotNumber: 4, hammerPrice: "82000.00" },
+          payment: { amount: "82000.00", platformFee: "14760.00" },
+          sellerTerms: terms,
+          soldAfterAuction: false,
+        },
+      ],
+    }));
+    const service = new SoldAndPayoutsService({
+      sold: { list: vi.fn(async () => [row]) } as never,
+      payouts: { find } as never,
+    });
+    const owner = actor("owner");
+    const [item] = (await service.listSold(owner, { limit: 10, offset: 0 }))._unsafeUnwrap().items;
+    expect(item).toMatchObject({ net: "67240.00", sellerTerms: terms });
+    const csv = (await service.exportSoldCsv(owner, {}))._unsafeUnwrap();
+    expect(csv).toContain("82000.00,15%,12300.00,2460.00,67240.00");
+    const detail = (await service.payoutDetail(owner, "po1"))._unsafeUnwrap();
+    expect(detail.lines[0]?.sellerTerms).toEqual(terms);
   });
 });
 

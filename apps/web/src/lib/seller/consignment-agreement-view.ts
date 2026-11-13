@@ -1,4 +1,5 @@
 import { formatDate, formatMoney } from "@/lib/ui/format";
+import { sellerCommissionTerm } from "@auction/domain";
 import type { ConsignmentAgreement } from "@auction/types";
 
 /** Names of the seller-conditions versions, for people. */
@@ -27,10 +28,6 @@ export function sellerMoney(value: string, currency: string): string {
   return formatMoney(value, currency);
 }
 
-function percent(value: string): string {
-  return `${String(Number.parseFloat(value))}%`;
-}
-
 /** The specialist's proposal and the acceptance, as the seller reads them. */
 export function consignmentAgreementViewModel(
   agreement: ConsignmentAgreement,
@@ -49,7 +46,10 @@ export function consignmentAgreementViewModel(
     });
   }
   if (agreement.commissionPercent) {
-    terms.push({ label: "Seller's commission", value: percent(agreement.commissionPercent) });
+    terms.push({
+      label: "Seller's commission",
+      value: sellerCommissionTerm(agreement.commissionPercent),
+    });
   }
   terms.push({ label: "Proposed", value: formatDate(agreement.proposedAt) });
   return {

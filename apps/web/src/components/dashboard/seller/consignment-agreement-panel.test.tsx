@@ -56,7 +56,9 @@ describe("ConsignmentAgreementPanel", () => {
     renderPanel();
     expect(screen.getByRole("heading", { name: "Consignment agreement" })).toBeVisible();
     expect(screen.getByText("£8,000 – £12,000")).toBeVisible();
-    expect(screen.getByText("15%")).toBeVisible();
+    // The commission is on the hammer, plus VAT, at the agreement's own rate.
+    expect(screen.getByText("Seller's commission")).toBeVisible();
+    expect(screen.getByText("15% of the hammer price, plus VAT")).toBeVisible();
     expect(screen.getByText("20. Submission and Acceptance of Property")).toBeInTheDocument();
     expect(
       screen.getByRole("region", { name: "Conditions for Sellers and Consignors" }),

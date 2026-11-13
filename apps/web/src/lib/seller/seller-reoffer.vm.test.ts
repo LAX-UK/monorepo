@@ -18,12 +18,14 @@ const view = (over: Partial<SellerReofferView> = {}): SellerReofferView => ({
   status: "awaiting_seller",
   consentStatus: "requested",
   offerMinor: 8_200_000,
-  // Settlement's split: a 25% premium on the hammer, and a 5% fee on that total.
+  // The signed agreement's 15% commission on the hammer, plus 20% VAT on it, as sellerProceeds
+  // worked them out when the request was made; the buyer's premium is never the seller's.
   proceeds: {
     offerSaleMinor: 10_250_000,
-    offerProceedsMinor: 9_737_500,
+    offerProceedsMinor: 6_724_000,
     originalHammerMinor: 8_800_000,
-    originalProceedsMinor: 10_450_000,
+    originalProceedsMinor: 7_216_000,
+    commissionBps: 1500,
   },
   reserveMinor: null,
   belowReserve: false,
@@ -66,45 +68,55 @@ describe("the waiting request", () => {
     expect(page.card.paragraphs.join(" ")).toContain("The next highest bidder bid £82,000.00");
     expect(page.subtitle).toBe("Lot 2 · ended Thu 29 Oct");
     expect(page.offer).toBe("£82,000.00");
-    expect(page.proceeds).toBe("£97,375.00");
+    expect(page.consent).toBe(
+      "You receive £67,240.00: the offer of £82,000.00 less your 15% commission and VAT, under your signed agreement.",
+    );
   });
 
-  it("shows the proceeds at both prices, split as the payout splits a sale, and the difference", () => {
+  it("shows what the seller receives at both prices, under the signed agreement, and the difference", () => {
     const money = vm(view()).money;
     expect(money?.rows).toEqual([
       { label: "Offer to the next bidder", value: "£82,000.00" },
-      { label: "Buyer's premium", value: "+£20,500.00" },
-      { label: "Commission and fees", value: "−£5,125.00" },
-      { label: "Estimated proceeds", value: "£97,375.00", strong: true },
-      { label: "At the original £88,000.00", value: "£104,500.00" },
-      { label: "Difference", value: "−£7,125.00" },
+      { label: "Commission (15%) and VAT", value: "−£14,760.00" },
+      { label: "You receive", value: "£67,240.00", strong: true },
+      { label: "At the original £88,000.00", value: "£72,160.00" },
+      { label: "Difference", value: "−£4,920.00" },
     ]);
-    // It never claims figures it does not hold.
-    expect(JSON.stringify(money)).not.toMatch(/VAT|consignment agreement/i);
+    // The buyer's premium is LAX's: it is never a row of the seller's figures.
+    expect(JSON.stringify(money)).not.toMatch(/premium|20,500/i);
   });
 
-  it("leaves out the premium row when there is no premium", () => {
-    const flat = view({
-      proceeds: {
-        offerSaleMinor: 8_200_000,
-        offerProceedsMinor: 7_790_000,
-        originalHammerMinor: 8_800_000,
-        originalProceedsMinor: 8_360_000,
-      },
-    });
-    expect(vm(flat).money?.rows.map((row) => row.label)).toEqual([
-      "Offer to the next bidder",
-      "Commission and fees",
-      "Estimated proceeds",
-      "At the original £88,000.00",
-      "Difference",
-    ]);
+  it("says the approved consent line, from the stored figures", () => {
+    const page = vm(
+      view({
+        offerMinor: 7_600_000,
+        proceeds: {
+          offerSaleMinor: 9_500_000,
+          offerProceedsMinor: 6_232_000,
+          originalHammerMinor: 8_200_000,
+          originalProceedsMinor: 6_724_000,
+          commissionBps: 1500,
+        },
+      }),
+    );
+    const line =
+      "You receive £62,320.00: the offer of £76,000.00 less your 15% commission and VAT, under your signed agreement.";
+    expect(page.consent).toBe(line);
+    expect(page.money?.note).toBe(line);
+  });
+
+  it("leaves the rate out when the agreement's rate cannot be read", () => {
+    const base = view().proceeds;
+    if (!base) throw new Error("fixture has proceeds");
+    const page = vm(view({ proceeds: { ...base, commissionBps: null } }));
+    expect(page.money?.rows[1]?.label).toBe("Commission and VAT");
+    expect(page.consent).toContain("less your commission and VAT");
   });
 
   it("shows no money to a member who does not see the payouts", () => {
     const page = vm(view({ proceeds: null }), viewer);
     expect(page.money).toBeNull();
-    expect(page.proceeds).toBeNull();
+    expect(page.consent).toBeNull();
     expect(page.offer).toBe("£82,000.00");
     const sold = vm(
       view({ status: "accepted", consentStatus: "given", soldAt: null, proceeds: null }),
@@ -181,7 +193,7 @@ describe("the request after it was answered", () => {
     expect(page.chip?.label).toBe("Sold after the auction");
     expect(page.card.heading).toBe("The Winter Study has a new buyer");
     expect(page.card.paragraphs).toEqual([
-      "Sold for £82,000.00 on Thu 12 Nov. We'll pay you once their payment clears, about £97,375.00.",
+      "Sold for £82,000.00 on Thu 12 Nov. We'll pay you once their payment clears, about £67,240.00.",
     ]);
     expect(page.money).toBeNull();
   });

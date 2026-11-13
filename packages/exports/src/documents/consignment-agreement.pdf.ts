@@ -1,6 +1,7 @@
 import { finished } from "node:stream/promises";
 import { legalEntityFor, productCopyrightLine } from "@auction/branding";
 import { LONDON_TIME_ZONE, formatLongMoment } from "@auction/datetime";
+import { sellerCommissionTerm } from "@auction/domain";
 import PDFDocument from "pdfkit";
 
 /** What a consignment agreement document says, already worded for the seller. */
@@ -30,6 +31,32 @@ function money(amount: string | null, currency: string): string {
   const n = Number.parseFloat(amount);
   if (Number.isNaN(n)) return `${amount} ${currency}`;
   return new Intl.NumberFormat("en-GB", { style: "currency", currency }).format(n);
+}
+
+/** The agreement's terms, label and value, in the order the PDF lists them. */
+export function agreementTermRows(
+  input: ConsignmentAgreementDocument,
+): readonly (readonly [string, string])[] {
+  return [
+    ["Work", input.workTitle],
+    ["Consigned for", input.sellerName],
+    ["Low estimate", money(input.estimateLow, input.currency)],
+    ["High estimate", money(input.estimateHigh, input.currency)],
+    [
+      "Reserve",
+      input.reservePrice === null ? "No reserve" : money(input.reservePrice, input.currency),
+    ],
+    [
+      "Seller's commission",
+      input.commissionPercent === null
+        ? "To be confirmed"
+        : sellerCommissionTerm(input.commissionPercent),
+    ],
+    ...(input.relistReserveFloor !== null
+      ? ([["Lowest reserve if relisted", money(input.relistReserveFloor, input.currency)]] as const)
+      : []),
+    ["Proposed", formatLongMoment(input.proposedAt, LONDON_TIME_ZONE)],
+  ];
 }
 
 /** One label and value per row, the way the agreement panel lists them. */
@@ -64,26 +91,7 @@ export async function renderConsignmentAgreementPdf(
   doc.moveDown(1);
 
   doc.fontSize(10);
-  rows(doc, [
-    ["Work", input.workTitle],
-    ["Consigned for", input.sellerName],
-    ["Low estimate", money(input.estimateLow, input.currency)],
-    ["High estimate", money(input.estimateHigh, input.currency)],
-    [
-      "Reserve",
-      input.reservePrice === null ? "No reserve" : money(input.reservePrice, input.currency),
-    ],
-    [
-      "Seller's commission",
-      input.commissionPercent === null
-        ? "To be confirmed"
-        : `${input.commissionPercent}% of the hammer price`,
-    ],
-    ...(input.relistReserveFloor !== null
-      ? ([["Lowest reserve if relisted", money(input.relistReserveFloor, input.currency)]] as const)
-      : []),
-    ["Proposed", formatLongMoment(input.proposedAt, LONDON_TIME_ZONE)],
-  ]);
+  rows(doc, agreementTermRows(input));
 
   doc.moveDown(0.8);
   doc.font("Helvetica-Bold").fontSize(11).fillColor("#111111").text("Terms", 50);

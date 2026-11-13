@@ -138,3 +138,45 @@ describe("the seller's view of a request", () => {
     expect(await service([row({ consentStatus: "not_needed" })]).listForSeller(owner)).toEqual([]);
   });
 });
+
+describe("the agreement's rate beside the seller's figure", () => {
+  const withRate = (bps: number | null) => {
+    const asked: Array<[string, string]> = [];
+    const reads = new ReofferReadsService({
+      db: never as never,
+      views: {
+        listForSellerAccount: async () => [row()],
+        findForSellerAccount: async () => row(),
+      } as never,
+      workflow: never as never,
+      pricing: never as never,
+      sellerRate: {
+        commissionBpsFor: async (lotId, entity) => {
+          asked.push([lotId, entity]);
+          return bps;
+        },
+      },
+    });
+    return { reads, asked };
+  };
+
+  it("carries the signed agreement's rate with the stored proceeds", async () => {
+    const { reads, asked } = withRate(1500);
+    const view = await reads.getForSeller(owner, "any");
+    expect(view.proceeds).toMatchObject({ offerProceedsMinor: 9_348_000, commissionBps: 1500 });
+    expect(asked).toEqual([["22222222-2222-4222-8222-222222222222", "e1"]]);
+  });
+
+  it("does not read the rate for a member who does not see the money", async () => {
+    const { reads, asked } = withRate(1500);
+    const [view] = await reads.listForSeller({ ...owner, role: "viewer" });
+    expect(view?.proceeds).toBeNull();
+    expect(asked).toEqual([]);
+  });
+
+  it("leaves the rate out when there is no signed agreement to read it from", async () => {
+    const { reads } = withRate(null);
+    const [view] = await reads.listForSeller(owner);
+    expect(view?.proceeds?.commissionBps).toBeNull();
+  });
+});

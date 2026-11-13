@@ -22,6 +22,7 @@ import type {
   SoldLotRow,
 } from "../interfaces/workspace-selling.readers.js";
 import { lotSoldAfterAuctionSql } from "../lib/lot-result-pending.sql.js";
+import { SELLER_TERMS_FIGURE_COLUMNS, sellerTermsFigures } from "../lib/seller-terms-figures.js";
 import { SALE_LINE_TERMS_COLUMNS, saleLinePaymentFacts } from "./sale-line-facts.js";
 import { submissionSenderSql } from "./submission-sender.sql.js";
 
@@ -128,6 +129,7 @@ export class DrizzleSoldLotsReader implements ISoldLotsReader {
         lineTermsId: payoutLine.sellerTermsId,
         termsBasis: saleSellerTerms.basis,
         ...SALE_LINE_TERMS_COLUMNS,
+        ...SELLER_TERMS_FIGURE_COLUMNS,
       })
       .from(payment)
       .leftJoin(payoutLine, and(eq(payoutLine.paymentId, payment.id), eq(payoutLine.kind, "sale")))
@@ -157,6 +159,9 @@ export class DrizzleSoldLotsReader implements ISoldLotsReader {
               amount: p.amount,
               platformFee: p.platformFee,
               sellerSide: soldLotSellerSide(p),
+              // A sale paid out under the old rule has no snapshot figures to show.
+              sellerTerms:
+                p.lineId !== null && p.lineTermsId === null ? null : sellerTermsFigures(p),
             }
           : null,
         payout:
@@ -196,6 +201,7 @@ export class DrizzlePayoutLinesReader implements IPayoutLinesReader {
         paymentAmount: payment.amount,
         paymentPlatformFee: payment.platformFee,
         ...SALE_LINE_TERMS_COLUMNS,
+        ...SELLER_TERMS_FIGURE_COLUMNS,
         soldAfterAuction: lotSoldAfterAuctionSql(),
       })
       .from(payoutLine)
@@ -225,6 +231,7 @@ export class DrizzlePayoutLinesReader implements IPayoutLinesReader {
             ? { id: l.lotId, title: l.lotTitle, lotNumber: l.lotNumber, hammerPrice: l.hammerPrice }
             : null,
         payment: saleLinePaymentFacts(l),
+        sellerTerms: l.kind === "sale" ? sellerTermsFigures(l) : null,
         soldAfterAuction: l.soldAfterAuction,
       })),
     };
