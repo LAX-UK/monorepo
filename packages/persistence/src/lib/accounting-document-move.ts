@@ -10,6 +10,7 @@ import {
   expireLease,
   refuse,
   requeue,
+  withhold,
 } from "@auction/accounting-domain";
 import type { Database } from "@auction/db";
 import { accountingDocument, accountingDocumentEvent } from "@auction/db/schema";
@@ -30,8 +31,18 @@ import {
 
 type Tx = Parameters<Parameters<Database["transaction"]>[0]>[0];
 
-/** Every history action: a `DocumentTransition` plus the two the queue and the registry make. */
-export type MoveAction = DocumentTransition["action"] | "start_sending" | "created";
+/**
+ * Every history action: a `DocumentTransition` plus the two the queue and the registry make. A
+ * withheld send is an escalation in the history (`historyAction`), with `unsent` in its detail.
+ */
+export type MoveAction =
+  | Exclude<DocumentTransition["action"], "withhold">
+  | "start_sending"
+  | "created";
+
+export function historyAction(transition: DocumentTransition): MoveAction {
+  return transition.action === "withhold" ? "escalate" : transition.action;
+}
 
 /** Ask the domain what the transition does; it alone decides what is legal. */
 export function decide(
@@ -49,6 +60,8 @@ export function decide(
       return applyLookup(record, transition.outcome, nowMs, expected);
     case "escalate":
       return escalate(record, transition.reason);
+    case "withhold":
+      return withhold(record, transition.leaseToken, transition.reason);
     case "requeue":
       return requeue(record);
     case "cancel":
@@ -79,6 +92,8 @@ export function transitionDetail(
     }
     case "escalate":
       return { reason: transition.reason };
+    case "withhold":
+      return { reason: transition.reason, unsent: true };
     default:
       return {};
   }
@@ -140,7 +155,7 @@ export async function applyLockedTransition(
   const next = decide(record.value, transition, at.getTime(), expected);
   if (!next.ok) return next;
   return persistMove(tx, row, record.value, {
-    action: transition.action,
+    action: historyAction(transition),
     next: next.value,
     detail: transitionDetail(transition, expected),
     at,

@@ -1,3 +1,4 @@
+import type { WriteFence } from "@auction/accounting-domain";
 import { InMemoryCallBudget } from "./call-budget.js";
 import { type ZohoResponse, classifyResponse } from "./classify.js";
 import type { ZohoBooksConfig } from "./config.js";
@@ -5,6 +6,7 @@ import {
   ZohoAuthError,
   ZohoBooksError,
   ZohoBudgetExhaustedError,
+  ZohoFencedError,
   ZohoRateLimitedError,
   type ZohoResult,
   ZohoUnknownError,
@@ -44,6 +46,16 @@ export interface ZohoCall {
   readonly query?: ZohoQuery;
   /** JSON body for POST/PUT. */
   readonly body?: unknown;
+  /**
+   * Asked immediately before each attempt of a write is sent (after the gate, budget, token and
+   * any retry wait). A refusal ends the call `fenced` (rejected: nothing was sent).
+   */
+  readonly fence?: WriteFence;
+}
+
+/** Options for a single write. */
+export interface ZohoWriteOptions {
+  readonly fence?: WriteFence;
 }
 
 export interface ZohoBooksClientDeps {
@@ -117,6 +129,7 @@ export class ZohoBooksClient {
     path: string,
     body: unknown,
     query?: ZohoQuery,
+    options?: ZohoWriteOptions,
   ): Promise<ZohoResult<ZohoResponse>> {
     return this.request({
       organizationId,
@@ -124,6 +137,7 @@ export class ZohoBooksClient {
       path,
       body,
       ...(query ? { query } : {}),
+      ...(options?.fence ? { fence: options.fence } : {}),
     });
   }
 
@@ -132,8 +146,16 @@ export class ZohoBooksClient {
     path: string,
     body: unknown,
     query?: ZohoQuery,
+    options?: ZohoWriteOptions,
   ): Promise<ZohoResult<ZohoResponse>> {
-    return this.request({ organizationId, method: "PUT", path, body, ...(query ? { query } : {}) });
+    return this.request({
+      organizationId,
+      method: "PUT",
+      path,
+      body,
+      ...(query ? { query } : {}),
+      ...(options?.fence ? { fence: options.fence } : {}),
+    });
   }
 
   delete(
@@ -244,6 +266,10 @@ export class ZohoBooksClient {
         },
         ...(built.body === undefined ? {} : { body: built.body }),
       };
+      // The last moment before the request leaves: a send that lost its lease writes nothing.
+      if (call.method !== "GET" && call.fence && !(await call.fence.mayWrite())) {
+        throw new ZohoFencedError({ code: "lease_lost" });
+      }
       this.logger.log("debug", "zoho_books.request", {
         organizationId: call.organizationId,
         method: call.method,

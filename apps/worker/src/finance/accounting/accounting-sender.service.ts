@@ -1,10 +1,14 @@
 import {
+  type DestinationBinding,
   type IssueOutcome,
   type LookupOutcome,
   type SwitchConfig,
   type TargetMode,
+  WRITE_MARGIN_MS,
+  type WriteFence,
   attemptsExhausted,
   booksTargetMode,
+  checkDestination,
 } from "@auction/accounting-domain";
 import type {
   IAccountingDocumentDueWork,
@@ -15,7 +19,10 @@ import type {
 } from "@auction/persistence/interfaces";
 import { type SenderPorts, sendThrough } from "./accounting-dispatch.js";
 
-/** Plan: two minutes; any provider call must time out well inside it. */
+/**
+ * Plan: two minutes. A write starts only while `WRITE_MARGIN_MS` of it is left (`fenceFor`), and a
+ * provider request times out within that margin, so a write never outlives the lease.
+ */
 export const SENDER_LEASE_MS = 2 * 60_000;
 const DEFAULT_BATCH = 25;
 
@@ -31,6 +38,12 @@ export interface AccountingSenderDeps {
   readonly settings: IAccountingSourceSettingReader;
   /** The Books ports per target mode this sender can serve; a mode not here is never claimed. */
   readonly portsByMode: Readonly<Partial<Record<TargetMode, SenderPorts>>>;
+  /**
+   * The Books organisation each writing mode may send each product's documents to. A document
+   * whose adapter would call any other organisation (or, in dry run, any organisation at all) is
+   * never sent: it goes to a person.
+   */
+  readonly destinations: DestinationBinding;
   readonly transientErrorPrefixes: readonly string[];
   readonly newLeaseToken: () => string;
   readonly log: AccountingSenderLog;
@@ -54,6 +67,10 @@ const IDLE: SenderTick = { active: false, sent: 0, lookedUp: 0, requeued: 0, esc
  * claims and sends. A document that has used every attempt goes to a person. It only ever claims
  * documents aimed at a mode it has ports for, so a rehearsal sender cannot touch a test or live
  * document, and with no product aimed at Books it does nothing.
+ *
+ * Before any call for a document (a send or a lookup) it checks where the adapter would make it:
+ * a mode is bound to an organisation id, not trusted as a label. A document whose adapter would
+ * reach another organisation is not sent or looked up, and goes to a person with the reason.
  */
 export class AccountingSender {
   private readonly modes: readonly TargetMode[];
@@ -116,15 +133,48 @@ export class AccountingSender {
     return mode === undefined ? undefined : this.deps.portsByMode[mode];
   }
 
+  /** Why the document must not be handed to `ports`, or null when it goes where it is bound. */
+  private wrongDestination(document: StoredAccountingDocument, ports: SenderPorts): string | null {
+    const mode = document.target?.mode;
+    if (mode === undefined) return "accounting_no_target";
+    let destination: ReturnType<SenderPorts["destination"]["destinationFor"]>;
+    try {
+      destination = ports.destination.destinationFor(document.product);
+    } catch (error) {
+      return `destination_unresolved: ${errorName(error)}`;
+    }
+    const checked = checkDestination(mode, document.product, destination, this.deps.destinations);
+    return checked.ok ? null : `${checked.refusal.code}: ${checked.refusal.message}`;
+  }
+
+  /**
+   * Leave a claimed document that must not be sent with a person, in one step (`withhold`):
+   * nothing was sent, and it never passes through `failed`, so it is never requeued and sent on
+   * its own whatever happens after.
+   */
+  private async holdUnsent(
+    document: StoredAccountingDocument,
+    token: string,
+    reason: string,
+  ): Promise<void> {
+    this.deps.log.warn(
+      { documentId: document.id, mode: document.target?.mode, reason },
+      "accounting_sender_wrong_destination",
+    );
+    await this.apply(document, { action: "withhold", leaseToken: token, reason });
+  }
+
   private async send(document: StoredAccountingDocument, token: string): Promise<void> {
     const ports = this.portsFor(document);
+    const wrong = ports ? this.wrongDestination(document, ports) : null;
+    if (wrong !== null) return this.holdUnsent(document, token, wrong);
     let outcome: IssueOutcome;
     if (!ports) {
       // Cannot happen through the claim (it filters by mode); refused so it is never left leased.
       outcome = { status: "rejected", reason: "accounting_no_adapter_for_mode" };
     } else {
       try {
-        outcome = await sendThrough(ports, document.document);
+        outcome = await sendThrough(ports, document.document, this.fenceFor(document, token));
       } catch (error) {
         // The request may have left: the outcome is unknown and a lookup decides.
         this.deps.log.warn(
@@ -156,6 +206,32 @@ export class AccountingSender {
       },
       "accounting_sender_sent",
     );
+  }
+
+  /**
+   * The send's writes are tied to its lease: immediately before each one the store is asked
+   * whether this token still holds it with `WRITE_MARGIN_MS` to run. Once it was swept or handed
+   * on, no create starts (the next holder looks the document up first, so nothing is made twice);
+   * a check that cannot be made counts as a lost lease.
+   */
+  private fenceFor(document: StoredAccountingDocument, token: string): WriteFence {
+    return {
+      mayWrite: async () => {
+        try {
+          if (await this.deps.workQueue.holdsLease(document.id, token, WRITE_MARGIN_MS)) {
+            return true;
+          }
+        } catch (error) {
+          this.deps.log.warn(
+            { documentId: document.id, err: errorName(error) },
+            "accounting_sender_lease_check_failed",
+          );
+          return false;
+        }
+        this.deps.log.warn({ documentId: document.id }, "accounting_sender_write_fenced");
+        return false;
+      },
+    };
   }
 
   private async settleDue(): Promise<Omit<SenderTick, "active" | "sent">> {
@@ -197,13 +273,22 @@ export class AccountingSender {
     }
     const ports = this.portsFor(document);
     if (!ports) return "none";
+    // A lookup in the wrong organisation could adopt a stranger's document as ours.
+    const wrong = this.wrongDestination(document, ports);
+    if (wrong !== null) {
+      this.deps.log.warn(
+        { documentId: document.id, mode: document.target?.mode, reason: wrong },
+        "accounting_sender_wrong_destination",
+      );
+      return (await this.apply(document, { action: "escalate", reason: wrong }))
+        ? "escalated"
+        : "none";
+    }
     let outcome: LookupOutcome;
     try {
-      outcome = await ports.lookup.findByReference(
-        document.product,
-        document.kind,
-        document.reference,
-      );
+      // Read back against the document, so a differing one goes to a person even when the
+      // answer to its send never reached the record (a swept lease, a lost reply).
+      outcome = await ports.lookup.findDocument(document.document);
     } catch (error) {
       // A lookup that could not be made settles nothing; the document stays unknown.
       outcome = { status: "unavailable", reason: errorName(error) };

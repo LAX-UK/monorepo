@@ -2,6 +2,7 @@ import type {
   BillPort,
   ContactPort,
   CreditNotePort,
+  DestinationPort,
   DocumentLookupPort,
   InvoicePort,
   PaymentPort,
@@ -19,4 +20,6 @@ export interface AccountingPorts {
   /** Vendors (payout recipients); a bill is only ever sent to one of these. */
   readonly vendors: VendorPort;
   readonly lookup: DocumentLookupPort;
+  /** Which organisation each product's documents would go to, asked before anything is sent. */
+  readonly destination: DestinationPort;
 }

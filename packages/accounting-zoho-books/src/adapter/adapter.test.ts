@@ -599,7 +599,7 @@ describe("lookup guards", () => {
               },
             },
     });
-    const out = await lookup(api).findByReference("shop", "invoice", invoice.reference);
+    const out = await lookup(api).findDocument(invoice);
     expect(out).toEqual({ status: "unavailable", reason: "zoho_books_reference_not_confirmed" });
   });
 
@@ -607,7 +607,7 @@ describe("lookup guards", () => {
     const api = scripted({
       get: () => ({ code: 0, invoices: [{ invoice_id: "1" }, { invoice_id: "2" }] }),
     });
-    expect(await lookup(api).findByReference("shop", "invoice", invoice.reference)).toEqual({
+    expect(await lookup(api).findDocument(invoice)).toEqual({
       status: "ambiguous",
       count: 2,
     });
@@ -615,31 +615,126 @@ describe("lookup guards", () => {
 
   it("only reads absence from an empty search or a 404, never from a failure", async () => {
     const empty = scripted({ get: () => ({ code: 0, invoices: [] }) });
-    expect((await lookup(empty).findByReference("shop", "invoice", invoice.reference)).status).toBe(
-      "not_found",
-    );
+    expect((await lookup(empty).findDocument(invoice)).status).toBe("not_found");
     const server = scripted({ get: () => new ZohoValidationError({ code: "invalid_request" }) });
-    expect(
-      (await lookup(server).findByReference("shop", "invoice", invoice.reference)).status,
-    ).toBe("unavailable");
+    expect((await lookup(server).findDocument(invoice)).status).toBe("unavailable");
     const notFound = scripted({ get: () => new ZohoNotFoundError({ code: "not_found" }) });
-    expect(
-      (await lookup(notFound).findByReference("shop", "invoice", invoice.reference)).status,
-    ).toBe("not_found");
+    expect((await lookup(notFound).findDocument(invoice)).status).toBe("not_found");
   });
 
   it("is unavailable for an unreadable list, a reference of another kind, or an organisation not set up", async () => {
     const garbled = scripted({ get: () => ({ code: 0, nope: true }) });
-    expect(
-      (await lookup(garbled).findByReference("shop", "invoice", invoice.reference)).status,
-    ).toBe("unavailable");
+    expect((await lookup(garbled).findDocument(invoice)).status).toBe("unavailable");
     const api = scripted({});
-    expect((await lookup(api).findByReference("shop", "payment", invoice.reference)).status).toBe(
-      "unavailable",
+    expect(
+      (
+        await lookup(api).findDocument({
+          ...invoice,
+          reference: invoice.reference.replace("-INV-", "-PAY-"),
+        })
+      ).status,
+    ).toBe("unavailable");
+    expect(
+      (
+        await lookup(api).findDocument({
+          ...invoice,
+          product: "bid",
+          entity: "london_auction_xchange",
+          reference: invoice.reference.replace("-SHOP-", "-BID-"),
+        })
+      ).status,
+    ).toBe("unavailable");
+  });
+});
+
+describe("lookup read-back (the life cycle's lookup)", () => {
+  const shopPayment = (allocated = invoice) =>
+    unwrap(
+      buildPayment({
+        product: "shop",
+        sourceId: "pay-read-back",
+        contactReference: buyer.reference,
+        receivedOn: "2026-11-12",
+        amountPence: 1_000,
+        allocations: [{ invoiceReference: allocated.reference, amountPence: 1_000 }],
+      }),
     );
-    expect((await lookup(api).findByReference("bid", "contact", "LAX-BID-CON-x")).status).toBe(
-      "unavailable",
-    );
+
+  async function withPayment() {
+    const h = await createAdapterHarness({
+      writes: { mode: "test_org", organizationIds: [SHOP_ORG_ID] },
+    });
+    await h.settle(h.ports.contacts.upsertContact(buyer));
+    await h.settle(h.ports.invoices.issueInvoice(invoice));
+    const made = await h.settle(h.ports.payments.recordPayment(shopPayment()));
+    if (made.status !== "issued") throw new Error(`expected issued, got ${made.status}`);
+    return { h, made };
+  }
+
+  it("finds a payment that reads back as the one we would send", async () => {
+    const { h, made } = await withPayment();
+    expect(await h.settle(h.ports.lookup.findDocument(shopPayment()))).toEqual({
+      ...made,
+      status: "found",
+    });
+  });
+
+  it("a payment whose own invoice cannot be found is differs (cannot be confirmed), never found", async () => {
+    const { h, made } = await withPayment();
+    const elsewhere = invoiceFor("shop", ["outside_scope"], "inv-never-sent");
+    const { status: _issued, ...held } = made;
+    // Same reference as the payment Books holds, but against an invoice Books does not have.
+    const ours = { ...shopPayment(elsewhere), reference: shopPayment().reference };
+    expect(await h.settle(h.ports.lookup.findDocument(ours))).toEqual({
+      status: "differs",
+      reason: `${R.readBackUnconfirmed}: zoho_books_invoice_missing`,
+      ...held,
+    });
+  });
+
+  it("a payment whose dependencies cannot be read now is unavailable, never found", async () => {
+    const payment = shopPayment();
+    const api = scripted({
+      get: (path) => {
+        if (path === "/customerpayments")
+          return { code: 0, customerpayments: [{ payment_id: "9" }] };
+        if (path === "/customerpayments/9") {
+          return {
+            code: 0,
+            payment: {
+              payment_id: "9",
+              payment_number: "PMT-9",
+              amount: 10,
+              custom_field_hash: { cf_lax_reference: payment.reference },
+            },
+          };
+        }
+        return new ZohoValidationError({ code: "invalid_request" });
+      },
+    });
+    expect((await adapter(api).lookup.findDocument(payment)).status).toBe("unavailable");
+  });
+
+  it("a contact held under our reference as a vendor is differs, never found", async () => {
+    const api = scripted({
+      get: (path) =>
+        path === "/contacts"
+          ? { code: 0, contacts: [{ contact_id: "5" }] }
+          : {
+              code: 0,
+              contact: {
+                contact_id: "5",
+                contact_name: "Ada",
+                contact_type: "vendor",
+                custom_field_hash: { cf_lax_reference: buyer.reference },
+              },
+            },
+    });
+    expect(await adapter(api).lookup.findDocument(buyer)).toMatchObject({
+      status: "differs",
+      reason: R.contactNotCustomer,
+      providerId: "5",
+    });
   });
 });
 
