@@ -13,9 +13,11 @@ import type { Socket } from "socket.io-client";
  * real socket then holds emits until it connects, exactly as before, and every listener is in
  * place for the first `connect`. After that every call goes straight to the real socket.
  *
- * If the client cannot be fetched, listeners hear it as a connection failure: the manager's
- * `error` and the socket's `connect_error`, then `reconnect_attempt` before each retry, with
- * Socket.IO's own default backoff (1 s doubling to 5 s, ±50%).
+ * If the client cannot be fetched, listeners hear exactly what Socket.IO raises when a handshake
+ * fails, with the same arguments: the manager's `error` and the socket's `connect_error` for every
+ * failure, `reconnect_attempt` (1, 2, …) before each retry, `reconnect_error` when a retry fails
+ * too, and `reconnect` once the connection finally opens. Retries use Socket.IO's default backoff
+ * (1 s doubling to 5 s, ±50%) and never give up, so `reconnect_failed` is never raised.
  */
 
 // biome-ignore lint/suspicious/noExplicitAny: Socket.IO listeners take any arguments.
@@ -125,19 +127,46 @@ export function createLazySocket(load: () => Promise<SocketConnectionModule>): L
     managerListeners.clear();
   }
 
+  /**
+   * After a failed fetch Socket.IO would report the eventual connection as a reconnection, so the
+   * first time the real manager opens it hears `reconnect` with the attempt count, unless the
+   * manager has started its own reconnection by then and reports it itself.
+   */
+  function reportReconnectOnOpen(socket: Socket, attempts: number) {
+    const manager = socket.io as unknown as {
+      on(event: string, fn: Listener): unknown;
+      off(event: string, fn: Listener): unknown;
+      emitReserved(event: string, ...args: unknown[]): unknown;
+    };
+    const stop = () => {
+      manager.off("open", onOpen);
+      manager.off("reconnect_attempt", stop);
+    };
+    const onOpen = () => {
+      stop();
+      manager.emitReserved("reconnect", attempts);
+    };
+    manager.on("open", onOpen);
+    manager.on("reconnect_attempt", stop);
+  }
+
   function start() {
     if (loading || real) return;
     loading = true;
+    const isRetry = attempt > 0;
     load().then(
       (mod) => {
         loading = false;
         const socket = mod.createSocketConnection();
         replay(socket);
+        if (isRetry) reportReconnectOnOpen(socket, attempt);
         real = socket;
       },
       (error: unknown) => {
         loading = false;
         const err = error instanceof Error ? error : new Error(String(error));
+        // The same order as a failed Socket.IO handshake: the manager's `error`, which the socket
+        // repeats as `connect_error`; a failed retry then also raises `reconnect_error`.
         notify(managerListeners, "error", err);
         notify(socketListeners, "connect_error", err);
         const delay = retryDelayMs(attempt);
@@ -146,6 +175,7 @@ export function createLazySocket(load: () => Promise<SocketConnectionModule>): L
           notify(managerListeners, "reconnect_attempt", attempt);
           start();
         }, delay);
+        if (isRetry) notify(managerListeners, "reconnect_error", err);
       },
     );
   }

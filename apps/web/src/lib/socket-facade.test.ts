@@ -57,6 +57,9 @@ function buildFakeSocket() {
         calls.push(["io.off", event]);
         remove(managerListeners, event, fn);
       },
+      emitReserved(event: string, ...args: unknown[]) {
+        fake.managerEmit(event, ...args);
+      },
     },
     /** The server sends an event, or the client raises a reserved one such as `connect`. */
     serverEmit(event: string, ...args: unknown[]) {
@@ -294,9 +297,100 @@ describe("createLazySocket", () => {
         "on:bidUpdate",
         "emit:joinLot",
         "emit:joinSaleroom",
+        // Watches for the first open, to report it as Socket.IO's `reconnect`.
+        "io.on:open",
+        "io.on:reconnect_attempt",
       ]);
       fake.serverEmit("bidUpdate", "x");
       expect(onBid).toHaveBeenCalledWith("x");
+    });
+
+    it("raises the same events, in the same order and with the same arguments, as Socket.IO", async () => {
+      const loads: ReturnType<typeof deferredLoader>[] = [];
+      const socket = createLazySocket(() => {
+        const next = deferredLoader();
+        loads.push(next);
+        return next.load();
+      });
+      const heard: unknown[][] = [];
+      const listen = (target: "socket" | "io", event: string) => {
+        const fn = (...args: unknown[]) => heard.push([event, ...args]);
+        if (target === "socket") socket.on(event, fn);
+        else socket.io.on(event, fn);
+      };
+      listen("socket", "connect_error");
+      for (const event of [
+        "error",
+        "reconnect_attempt",
+        "reconnect_error",
+        "reconnect",
+        "reconnect_failed",
+      ]) {
+        listen("io", event);
+      }
+
+      const first = new Error("Loading chunk 1 failed.");
+      const second = new Error("Loading chunk 1 failed again.");
+      loads[0]?.fail(first);
+      await vi.advanceTimersByTimeAsync(0);
+      await vi.advanceTimersByTimeAsync(1500);
+      loads[1]?.fail(second);
+      await vi.advanceTimersByTimeAsync(0);
+      await vi.advanceTimersByTimeAsync(3000);
+      const fake = buildFakeSocket();
+      loads[2]?.arrive(fake);
+      await vi.advanceTimersByTimeAsync(0);
+
+      // The client is in, but the connection is not open yet: no `reconnect` before that.
+      expect(heard.map((h) => h[0])).not.toContain("reconnect");
+      fake.managerEmit("open");
+      fake.managerEmit("open");
+
+      // socket.io-client 4.8 Manager: open fails → `error` (→ socket `connect_error`); a failed
+      // retry adds `reconnect_error` after scheduling the next one; success → `reconnect(n)`.
+      expect(heard).toEqual([
+        ["error", first],
+        ["connect_error", first],
+        ["reconnect_attempt", 1],
+        ["error", second],
+        ["connect_error", second],
+        ["reconnect_error", second],
+        ["reconnect_attempt", 2],
+        ["reconnect", 2],
+      ]);
+    });
+
+    it("leaves `reconnect` to Socket.IO when the real manager has to reconnect itself", async () => {
+      const loads: ReturnType<typeof deferredLoader>[] = [];
+      const socket = createLazySocket(() => {
+        const next = deferredLoader();
+        loads.push(next);
+        return next.load();
+      });
+      const onReconnect = vi.fn();
+      socket.io.on("reconnect", onReconnect);
+      loads[0]?.fail(new Error("offline"));
+      await vi.advanceTimersByTimeAsync(1500);
+      const fake = buildFakeSocket();
+      loads[1]?.arrive(fake);
+      await vi.advanceTimersByTimeAsync(0);
+
+      fake.managerEmit("reconnect_attempt", 1);
+      fake.managerEmit("open");
+      expect(onReconnect).not.toHaveBeenCalled();
+    });
+
+    it("raises no `reconnect` when the first fetch succeeds", async () => {
+      const loader = deferredLoader();
+      const socket = createLazySocket(loader.load);
+      const onReconnect = vi.fn();
+      socket.io.on("reconnect", onReconnect);
+      const fake = buildFakeSocket();
+      loader.arrive(fake);
+      await vi.advanceTimersByTimeAsync(0);
+      fake.managerEmit("open");
+      expect(onReconnect).not.toHaveBeenCalled();
+      expect(fake.calls.map((c) => `${c[0]}:${c[1]}`)).toEqual(["io.on:reconnect"]);
     });
 
     it("wraps a non-Error rejection in an Error", async () => {
