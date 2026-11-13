@@ -189,6 +189,7 @@ function paymentRow(
     stripeRefundId: null,
     status: "pending",
     transferReceivedPence: 0,
+    transferReceivedPaymentIntentId: null,
     paymentGroupId: null,
     invoiceId: null,
     createdAt: now,

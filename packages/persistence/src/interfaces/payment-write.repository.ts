@@ -169,13 +169,16 @@ export interface IPaymentLifecycleRepository {
   /** Atomically move pending → authorized (bank transfer in flight). */
   applyAuthorizedInTransaction(tx: Database, id: string): Promise<boolean>;
   /**
-   * Raises what the invoice's own bank transfer has delivered, in pence, capped at the invoice.
-   * False when nothing changed: the figure was already as high, or the invoice is not waiting.
+   * Records what the invoice's own bank transfer has delivered into `paymentIntentId`, in pence,
+   * capped at the invoice. For the intent already recorded it only rises; a notice for another
+   * intent replaces the figure. False when nothing changed: the figure was already as high, the
+   * invoice is not waiting, or the notice is for an intent other than the invoice's current one.
    */
   recordTransferReceivedInTransaction(
     tx: Database,
     id: string,
     receivedPence: number,
+    paymentIntentId: string,
   ): Promise<boolean>;
   /** Atomically cancel an open payment (pending or authorized). */
   applyCancelledInTransaction(tx: Database, id: string): Promise<boolean>;

@@ -224,7 +224,16 @@ export class DrizzlePaymentRepository implements IPaymentWriteRepository {
   }
 
   async updateStripePaymentIntentId(id: string, stripePaymentIntentId: string): Promise<void> {
-    await this.db.update(payment).set({ stripePaymentIntentId }).where(eq(payment.id, id));
+    // A new intent replaces the old one: a transfer figure recorded for another intent is cleared.
+    const kept = sql`${payment.transferReceivedPaymentIntentId} IS NOT DISTINCT FROM ${stripePaymentIntentId}`;
+    await this.db
+      .update(payment)
+      .set({
+        stripePaymentIntentId,
+        transferReceivedPence: sql`CASE WHEN ${kept} THEN ${payment.transferReceivedPence} ELSE 0 END`,
+        transferReceivedPaymentIntentId: sql`CASE WHEN ${kept} THEN ${payment.transferReceivedPaymentIntentId} ELSE NULL END`,
+      })
+      .where(eq(payment.id, id));
   }
 
   async findByStripePaymentIntentId(stripePaymentIntentId: string): Promise<PaymentRecord | null> {
@@ -250,20 +259,30 @@ export class DrizzlePaymentRepository implements IPaymentWriteRepository {
     tx: Database,
     id: string,
     receivedPence: number,
+    paymentIntentId: string,
   ): Promise<boolean> {
-    if (!Number.isSafeInteger(receivedPence) || receivedPence <= 0) return false;
-    // One statement: the figure only rises and is capped at the invoice, so a replayed or late
-    // notice (which reports less) changes nothing. Only an invoice still waiting for its money.
+    if (!Number.isSafeInteger(receivedPence) || receivedPence <= 0 || !paymentIntentId) {
+      return false;
+    }
+    const cap = sql`round(${payment.amount} * 100)::integer`;
+    const sameIntent = sql`${payment.transferReceivedPaymentIntentId} IS NOT DISTINCT FROM ${paymentIntentId}`;
+    // One statement. For the intent already recorded the figure only rises and is capped at the
+    // invoice, so a replayed or late notice (which reports less) changes nothing. A notice for
+    // another intent (a new transfer checkout) starts the figure again from what that intent
+    // holds. Only an invoice still waiting for its money, and only for the intent it is waiting
+    // on when one is stored, so a late notice for an earlier attempt is ignored.
     const rows = await tx
       .update(payment)
       .set({
-        transferReceivedPence: sql`least(greatest(${payment.transferReceivedPence}, ${receivedPence}), round(${payment.amount} * 100)::integer)`,
+        transferReceivedPence: sql`CASE WHEN ${sameIntent} THEN least(greatest(${payment.transferReceivedPence}, ${receivedPence}), ${cap}) ELSE least(${receivedPence}, ${cap}) END`,
+        transferReceivedPaymentIntentId: paymentIntentId,
       })
       .where(
         and(
           eq(payment.id, id),
           inArray(payment.status, ["pending", "authorized"]),
-          sql`${payment.transferReceivedPence} < least(${receivedPence}, round(${payment.amount} * 100)::integer)`,
+          sql`coalesce(nullif(${payment.stripePaymentIntentId}, ''), ${paymentIntentId}) = ${paymentIntentId}`,
+          sql`(NOT ${sameIntent} OR ${payment.transferReceivedPence} < least(${receivedPence}, ${cap}))`,
         ),
       )
       .returning({ id: payment.id });
@@ -273,7 +292,8 @@ export class DrizzlePaymentRepository implements IPaymentWriteRepository {
   async applyCancelledInTransaction(tx: Database, id: string): Promise<boolean> {
     const rows = await tx
       .update(payment)
-      .set({ status: "cancelled" })
+      // A cancelled attempt's transfer figure is not the next attempt's.
+      .set({ status: "cancelled", transferReceivedPence: 0, transferReceivedPaymentIntentId: null })
       .where(and(eq(payment.id, id), inArray(payment.status, ["pending", "authorized"])))
       .returning({ id: payment.id });
     return rows.length > 0;
@@ -329,7 +349,8 @@ export class DrizzlePaymentRepository implements IPaymentWriteRepository {
   async applyReleasedFromManualReviewInTransaction(tx: Database, id: string): Promise<boolean> {
     const rows = await tx
       .update(payment)
-      .set({ status: "pending" })
+      // Released to be paid again: what an earlier transfer delivered is not shown against it.
+      .set({ status: "pending", transferReceivedPence: 0, transferReceivedPaymentIntentId: null })
       .where(and(eq(payment.id, id), eq(payment.status, "requires_manual_review")))
       .returning({ id: payment.id });
     return rows.length > 0;
@@ -338,7 +359,7 @@ export class DrizzlePaymentRepository implements IPaymentWriteRepository {
   async applyReopenedFromCancelledInTransaction(tx: Database, id: string): Promise<boolean> {
     const rows = await tx
       .update(payment)
-      .set({ status: "pending" })
+      .set({ status: "pending", transferReceivedPence: 0, transferReceivedPaymentIntentId: null })
       .where(and(eq(payment.id, id), eq(payment.status, "cancelled")))
       .returning({ id: payment.id });
     return rows.length > 0;

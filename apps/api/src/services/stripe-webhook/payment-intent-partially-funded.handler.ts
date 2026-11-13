@@ -48,12 +48,14 @@ export class PaymentIntentPartiallyFundedHandler implements IPaymentIntentWebhoo
       }
 
       await this.deps.payments.applyAuthorizedInTransaction(tx, paymentId);
-      // What has arrived so far, for the Pay page's progress. Only raised: a replayed or older
-      // notice reports less and changes nothing.
+      // What has arrived so far into this intent, for the Pay page's progress. Only raised for
+      // the same intent: a replayed or older notice reports less and changes nothing, and a new
+      // transfer intent starts from what it holds.
       await this.deps.payments.recordTransferReceivedInTransaction(
         tx,
         paymentId,
         funding.receivedPence,
+        paymentIntent.id,
       );
 
       await this.deps.domainEventSink.withTx(tx).publish({

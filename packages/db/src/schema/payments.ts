@@ -58,6 +58,12 @@ export const payment = pgTable(
      */
     transferReceivedPence: integer("transfer_received_pence").notNull().default(0),
     /**
+     * The payment intent whose partially-funded notice set `transfer_received_pence`. A notice for
+     * another intent replaces the figure, and it is shown only while it is the invoice's current
+     * intent's, so money sent to an earlier attempt is never shown against a new one.
+     */
+    transferReceivedPaymentIntentId: text("transfer_received_payment_intent_id"),
+    /**
      * The "Pay several" payment this invoice is settled through, if any. Set while the group's
      * checkout is open and kept once it is paid; cleared when the group is cancelled.
      */

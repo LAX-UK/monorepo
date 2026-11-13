@@ -1109,7 +1109,7 @@ describe("StripePaymentWebhookService.handlePaymentIntentSucceeded", () => {
     expect(capture).not.toHaveBeenCalled();
     expect(applyAuthorized).toHaveBeenCalledWith(expect.anything(), "pay_1");
     // £50 of the £100 has arrived: kept for the Pay page's progress.
-    expect(recordReceived).toHaveBeenCalledWith(expect.anything(), "pay_1", 5000);
+    expect(recordReceived).toHaveBeenCalledWith(expect.anything(), "pay_1", 5000, "pi_partial");
     expect(publisher.publish).toHaveBeenCalledWith(
       expect.objectContaining({ eventType: "payment.bank_transfer_partially_funded" }),
     );

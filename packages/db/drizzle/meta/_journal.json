@@ -2570,6 +2570,13 @@
       "when": 1810641600000,
       "tag": "0375_stripe_refund_watch",
       "breakpoints": true
+    },
+    {
+      "idx": 368,
+      "version": "7",
+      "when": 1810728000000,
+      "tag": "0376_payment_transfer_received_intent",
+      "breakpoints": true
     }
   ]
 }

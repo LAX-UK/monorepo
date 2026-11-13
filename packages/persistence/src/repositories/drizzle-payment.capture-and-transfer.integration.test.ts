@@ -138,17 +138,17 @@ describe.skipIf(!HAS_DB)("payment capture and transfer receipts (integration)", 
       const id = await seedPayment(tx, { status: "authorized" });
       expect((await readRow(tx, id))?.transferReceivedPence).toBe(0);
 
-      expect(await repo.recordTransferReceivedInTransaction(tx, id, 4_000)).toBe(true);
+      expect(await repo.recordTransferReceivedInTransaction(tx, id, 4_000, "pi_t")).toBe(true);
       // A replayed or older notice reports the same or less: nothing changes.
-      expect(await repo.recordTransferReceivedInTransaction(tx, id, 4_000)).toBe(false);
-      expect(await repo.recordTransferReceivedInTransaction(tx, id, 2_500)).toBe(false);
+      expect(await repo.recordTransferReceivedInTransaction(tx, id, 4_000, "pi_t")).toBe(false);
+      expect(await repo.recordTransferReceivedInTransaction(tx, id, 2_500, "pi_t")).toBe(false);
       expect((await readRow(tx, id))?.transferReceivedPence).toBe(4_000);
 
-      expect(await repo.recordTransferReceivedInTransaction(tx, id, 7_500)).toBe(true);
-      expect(await repo.recordTransferReceivedInTransaction(tx, id, 15_000)).toBe(true);
+      expect(await repo.recordTransferReceivedInTransaction(tx, id, 7_500, "pi_t")).toBe(true);
+      expect(await repo.recordTransferReceivedInTransaction(tx, id, 15_000, "pi_t")).toBe(true);
       expect((await readRow(tx, id))?.transferReceivedPence).toBe(10_000);
-      expect(await repo.recordTransferReceivedInTransaction(tx, id, 20_000)).toBe(false);
-      expect(await repo.recordTransferReceivedInTransaction(tx, id, -1)).toBe(false);
+      expect(await repo.recordTransferReceivedInTransaction(tx, id, 20_000, "pi_t")).toBe(false);
+      expect(await repo.recordTransferReceivedInTransaction(tx, id, -1, "pi_t")).toBe(false);
       expect((await readRow(tx, id))?.transferReceivedPence).toBe(10_000);
     });
   });
@@ -157,8 +157,63 @@ describe.skipIf(!HAS_DB)("payment capture and transfer receipts (integration)", 
     await inRolledBack(async (tx) => {
       const repo = new DrizzlePaymentRepository(tx);
       const id = await seedPayment(tx, { status: "captured" });
-      expect(await repo.recordTransferReceivedInTransaction(tx, id, 5_000)).toBe(false);
+      expect(await repo.recordTransferReceivedInTransaction(tx, id, 5_000, "pi_t")).toBe(false);
       expect((await readRow(tx, id))?.transferReceivedPence).toBe(0);
+    });
+  });
+
+  it("ties the figure to its payment intent: a new intent starts again, a late notice for an old one is ignored", async () => {
+    await inRolledBack(async (tx) => {
+      const repo = new DrizzlePaymentRepository(tx);
+      const id = await seedPayment(tx, { status: "authorized", stripePaymentIntentId: "pi_one" });
+      expect(await repo.recordTransferReceivedInTransaction(tx, id, 3_000, "pi_one")).toBe(true);
+      expect(await readRow(tx, id)).toMatchObject({
+        transferReceivedPence: 3_000,
+        transferReceivedPaymentIntentId: "pi_one",
+      });
+
+      // A new transfer checkout replaces the intent: the earlier attempt's figure is cleared.
+      await repo.updateStripePaymentIntentId(id, "pi_two");
+      expect(await readRow(tx, id)).toMatchObject({
+        transferReceivedPence: 0,
+        transferReceivedPaymentIntentId: null,
+      });
+      // A late notice for the first intent is not the invoice's current one: ignored.
+      expect(await repo.recordTransferReceivedInTransaction(tx, id, 9_000, "pi_one")).toBe(false);
+      // The new intent's own figure starts from what it holds, even below the old one.
+      expect(await repo.recordTransferReceivedInTransaction(tx, id, 1_000, "pi_two")).toBe(true);
+      expect(await readRow(tx, id)).toMatchObject({
+        transferReceivedPence: 1_000,
+        transferReceivedPaymentIntentId: "pi_two",
+      });
+      // Setting the same intent again keeps its figure.
+      await repo.updateStripePaymentIntentId(id, "pi_two");
+      expect((await readRow(tx, id))?.transferReceivedPence).toBe(1_000);
+    });
+  });
+
+  it("clears the figure when the invoice stops waiting: cancelled, reopened, or released from review", async () => {
+    await inRolledBack(async (tx) => {
+      const repo = new DrizzlePaymentRepository(tx);
+      const id = await seedPayment(tx, { status: "authorized" });
+      await repo.recordTransferReceivedInTransaction(tx, id, 3_000, "pi_a");
+      expect(await repo.applyCancelledInTransaction(tx, id)).toBe(true);
+      expect(await readRow(tx, id)).toMatchObject({
+        transferReceivedPence: 0,
+        transferReceivedPaymentIntentId: null,
+      });
+      expect(await repo.applyReopenedFromCancelledInTransaction(tx, id)).toBe(true);
+      await repo.applyAuthorizedInTransaction(tx, id);
+      await repo.recordTransferReceivedInTransaction(tx, id, 2_000, "pi_b");
+      await repo.applyHeldMoneyInTransaction(tx, id, {
+        stripePaymentIntentId: "pi_b",
+        stripeChargeId: null,
+      });
+      expect(await repo.applyReleasedFromManualReviewInTransaction(tx, id)).toBe(true);
+      expect(await readRow(tx, id)).toMatchObject({
+        transferReceivedPence: 0,
+        transferReceivedPaymentIntentId: null,
+      });
     });
   });
 });

@@ -212,7 +212,7 @@ describe.skipIf(!HAS_DB)("pay plan (integration)", () => {
     const raised = await invoiced(transfer);
     await db.transaction(async (tx) => {
       await payments.applyAuthorizedInTransaction(tx, raised.payment.id);
-      await payments.recordTransferReceivedInTransaction(tx, raised.payment.id, 40_000);
+      await payments.recordTransferReceivedInTransaction(tx, raised.payment.id, 40_000, "pi_one");
     });
 
     const plan = (await service.plan(actor, [transfer.id]))._unsafeUnwrap();
@@ -230,5 +230,52 @@ describe.skipIf(!HAS_DB)("pay plan (integration)", () => {
     expect(plan.progress?.lots.map((l) => [l.lotId, l.totalPence])).toEqual([
       [transfer.id, 125_000],
     ]);
+  });
+
+  it("shows only what reached the transfer the invoice is waiting on, never an earlier attempt's", async () => {
+    // £400 arrived into the first transfer intent; the buyer then starts a new transfer.
+    const transfer = await newLot("1000.00");
+    const raised = await invoiced(transfer);
+    const paymentId = raised.payment.id;
+    await payments.updateStripePaymentIntentId(paymentId, "pi_first");
+    await db.transaction(async (tx) => {
+      await payments.applyAuthorizedInTransaction(tx, paymentId);
+      await payments.recordTransferReceivedInTransaction(tx, paymentId, 40_000, "pi_first");
+    });
+    expect((await service.plan(actor, [transfer.id]))._unsafeUnwrap().progress).toMatchObject({
+      receivedPence: 40_000,
+    });
+
+    // A new intent replaces the first: its figure is cleared, so nothing is shown as received.
+    await payments.updateStripePaymentIntentId(paymentId, "pi_second");
+    expect((await service.plan(actor, [transfer.id]))._unsafeUnwrap().progress).toBeNull();
+
+    await db.transaction(async (tx) => {
+      // A late notice for the first attempt is ignored; the new intent's own notice counts.
+      expect(
+        await payments.recordTransferReceivedInTransaction(tx, paymentId, 90_000, "pi_first"),
+      ).toBe(false);
+      expect(
+        await payments.recordTransferReceivedInTransaction(tx, paymentId, 10_000, "pi_second"),
+      ).toBe(true);
+    });
+    expect((await service.plan(actor, [transfer.id]))._unsafeUnwrap().progress).toMatchObject({
+      receivedPence: 10_000,
+      remainingPence: 115_000,
+    });
+
+    // Leaving the waiting states (cancelled here) clears the figure for any later attempt.
+    await db.transaction(async (tx) => {
+      expect(await payments.applyCancelledInTransaction(tx, paymentId)).toBe(true);
+      expect(await payments.applyReopenedFromCancelledInTransaction(tx, paymentId)).toBe(true);
+    });
+    const [row] = await db
+      .select({
+        pence: payment.transferReceivedPence,
+        intent: payment.transferReceivedPaymentIntentId,
+      })
+      .from(payment)
+      .where(eq(payment.id, paymentId));
+    expect(row).toEqual({ pence: 0, intent: null });
   });
 });
