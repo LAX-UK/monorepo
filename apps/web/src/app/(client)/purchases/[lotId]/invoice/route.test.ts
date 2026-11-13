@@ -46,6 +46,23 @@ describe("GET /purchases/[lotId]/invoice", () => {
     expect(await res.json()).toEqual({ error: "invoice_unavailable" });
   });
 
+  it("answers someone else's invoice exactly like a missing one", async () => {
+    fetchPdf.mockResolvedValueOnce(new Response("{}", { status: 403 }));
+    const theirs = await call();
+    fetchPdf.mockResolvedValueOnce(new Response("{}", { status: 404 }));
+    const missing = await call();
+    expect(theirs.status).toBe(404);
+    expect(missing.status).toBe(404);
+    expect(await theirs.json()).toEqual(await missing.json());
+  });
+
+  it("answers a failed API as unavailable", async () => {
+    fetchPdf.mockResolvedValueOnce(new Response("{}", { status: 500 }));
+    expect((await call()).status).toBe(503);
+    fetchPdf.mockRejectedValueOnce(new Error("down"));
+    expect((await call()).status).toBe(503);
+  });
+
   it("needs a signed-in member", async () => {
     getCurrent.mockResolvedValue(null);
     expect((await call()).status).toBe(401);

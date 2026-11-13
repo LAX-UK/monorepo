@@ -185,16 +185,18 @@ describe("POST /payments for an organisation's purchase", () => {
     expect(await res.json()).toMatchObject({ code: "not_organisation_payer" });
   });
 
-  it("refuses a removed member, even one who used to be finance", async () => {
+  it("refuses a removed member, even one who used to be finance, as not found", async () => {
     const { app } = mount("user-payer", { role: "finance", removed: true });
     const res = await pay(app);
-    expect(res.status).toBe(403);
-    expect(await res.json()).toMatchObject({ code: "not_a_member_of_buyer_account" });
+    expect(res.status).toBe(404);
+    expect(await res.json()).toMatchObject({ code: "purchase_not_found" });
   });
 
-  it("refuses someone with no membership at all", async () => {
+  it("answers someone with no membership at all as not found, never confirming the purchase", async () => {
     const { app } = mount("user-stranger", null);
-    expect((await pay(app)).status).toBe(403);
+    const res = await pay(app);
+    expect(res.status).toBe(404);
+    expect(await res.json()).toMatchObject({ code: "purchase_not_found" });
   });
 
   it("a payable organisation's checkout is left open", async () => {
