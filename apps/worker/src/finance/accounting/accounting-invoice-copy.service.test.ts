@@ -77,7 +77,11 @@ type MemoryCopy = AccountingDocumentCopy & {
  */
 class Copies implements IAccountingDocumentCopies {
   readonly copies = new Map<string, MemoryCopy>();
-  constructor(private readonly documents: StoredAccountingDocument[]) {}
+  constructor(
+    private readonly documents: StoredAccountingDocument[],
+    /** A store that (wrongly) lists every mode as due, to test the service's own guard. */
+    private readonly listsEveryMode = false,
+  ) {}
   async listUncopied(modes: readonly TargetMode[]) {
     return {
       documents: this.documents.filter(
@@ -100,7 +104,7 @@ class Copies implements IAccountingDocumentCopies {
           !copy.rehearsal &&
           !copy.emailOutboxId &&
           !copy.emailSkipped &&
-          d.target?.mode === "live"
+          (this.listsEveryMode || d.target?.mode === "live")
         );
       })
       .slice(0, limit);
@@ -156,9 +160,10 @@ function setUp(
     factsFor?: (invoiceId: string) => BidInvoiceEmailFacts | null;
     batch?: number;
     enqueueFails?: boolean;
+    listsEveryMode?: boolean;
   } = {},
 ) {
-  const copies = new Copies(documents);
+  const copies = new Copies(documents, opts.listsEveryMode);
   const putObject = vi.fn(async () => ({ url: "unused" }));
   let n = 0;
   const enqueue = vi.fn(async () => {
@@ -253,6 +258,10 @@ describe("AccountingInvoiceCopy", () => {
     expect(await service.tick()).toEqual({ stored: 0, emailed: 0 });
     expect(copies.copies.get("doc-test_org")).toMatchObject({ rehearsal: false });
     expect(enqueue).not.toHaveBeenCalled();
+    // The service refuses on its own too, even if the store listed the copy as due.
+    const listed = setUp("test_org", {}, undefined, { listsEveryMode: true });
+    expect(await listed.service.tick()).toEqual({ stored: 1, emailed: 0 });
+    expect(listed.enqueue).not.toHaveBeenCalled();
   });
 
   it("settles a cancelled invoice at the head of the list, so the one behind it is emailed", async () => {
