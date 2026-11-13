@@ -9,6 +9,7 @@ import type {
   PayoutStatementLineRow,
   PayoutStatementPayoutRow,
 } from "../interfaces/payout-statement.repository.js";
+import { type StatementRow, payoutStatementDocument } from "./payout-statement.document.js";
 
 export type PayoutStatementRenderInput = {
   payout: PayoutStatementPayoutRow;
@@ -29,10 +30,36 @@ function formatPeriod(start: Date, end: Date): string {
   return `${fmt(start)} — ${fmt(end)}`;
 }
 
-/** Who bought, in the seller's words: never the next bidder's name after a default (they stay private). */
-export function buyerPhrase(line: Pick<PayoutStatementLineRow, "buyerName" | "soldAfterAuction">) {
-  if (line.soldAfterAuction) return "sold after the auction to the next bidder";
-  return `buyer: ${line.buyerName?.trim() || "—"}`;
+/** The table's columns, left to right, across the page's 495pt between the margins. */
+const COLUMNS: readonly { key: keyof StatementRow; label: string; width: number }[] = [
+  { key: "work", label: "Work", width: 150 },
+  { key: "lot", label: "Lot", width: 40 },
+  { key: "hammer", label: "Hammer", width: 65 },
+  { key: "commission", label: "Commission", width: 85 },
+  { key: "vat", label: "VAT on commission", width: 75 },
+  { key: "receive", label: "You receive", width: 80 },
+];
+const LEFT = 50;
+
+function tableRow(
+  doc: PDFKit.PDFDocument,
+  cells: Record<keyof StatementRow, string>,
+  font: "Helvetica" | "Helvetica-Bold",
+): void {
+  const y = doc.y;
+  let x = LEFT;
+  let bottom = y;
+  doc.font(font);
+  for (const [index, column] of COLUMNS.entries()) {
+    doc.text(cells[column.key], x, y, {
+      width: column.width - 6,
+      align: index < 2 ? "left" : "right",
+    });
+    bottom = Math.max(bottom, doc.y);
+    x += column.width;
+  }
+  doc.x = LEFT;
+  doc.y = bottom + 4;
 }
 
 export async function renderPayoutStatementPdf(input: PayoutStatementRenderInput): Promise<Buffer> {
@@ -61,44 +88,39 @@ export async function renderPayoutStatementPdf(input: PayoutStatementRenderInput
   doc.text(`Payout reference: ${formatPayoutReference(pRow)}`);
   doc.moveDown();
 
-  const gross = pRow.grossAmount;
-  const pf = pRow.platformFee;
-  const sf = pRow.stripeFee;
-  const net = pRow.netAmount;
   const currency = pRow.currency;
-  const feePct =
-    Number.parseFloat(gross) > 0
-      ? ((Number.parseFloat(pf) / Number.parseFloat(gross)) * 100).toFixed(2)
-      : "0.00";
+  const statement = payoutStatementDocument({ payout: pRow, lines, now: new Date() });
 
-  doc.fontSize(11).text("Line items", { underline: true });
-  doc.moveDown(0.25);
-  doc.fontSize(9);
-  for (const line of lines) {
-    const kind = line.kind;
-    let desc: string;
-    if (line.paymentId && line.lotTitle) {
-      const lotRef =
-        line.lotNumber != null ? `Lot #${line.lotNumber}` : `Lot ${line.paymentId.slice(0, 8)}`;
-      desc = `${lotRef} — ${line.lotTitle} — ${buyerPhrase(line)}`;
-    } else if (line.dealReference) {
-      desc = `Private sale ${line.dealReference}`;
-    } else if (kind === "adjustment") {
-      desc = `Adjustment${line.note ? `: ${line.note}` : ""}`;
-    } else {
-      desc = `${kind}${line.note ? ` — ${line.note}` : ""}`;
-    }
-    doc.text(`• [${kind}] ${moneyFmt(String(line.amount), currency)} — ${desc}`);
-  }
+  doc.fontSize(11).font("Helvetica").text("In this payout", { underline: true });
+  doc.moveDown(0.4);
+  doc.fontSize(8).fillColor("#555555");
+  tableRow(
+    doc,
+    Object.fromEntries(COLUMNS.map((c) => [c.key, c.label])) as Record<keyof StatementRow, string>,
+    "Helvetica",
+  );
+  doc.fillColor("#000000");
+  for (const row of statement.rows) tableRow(doc, row, "Helvetica");
+  doc
+    .moveTo(LEFT, doc.y)
+    .lineTo(LEFT + 495, doc.y)
+    .strokeColor("#cccccc")
+    .stroke();
+  doc.moveDown(0.3);
+  tableRow(doc, statement.totals, "Helvetica-Bold");
+  doc.font("Helvetica");
 
   doc.moveDown();
-  doc.fontSize(11).text("Totals", { underline: true });
-  doc.moveDown(0.25);
+  doc.fontSize(9).fillColor("#444444");
+  for (const note of statement.notes) {
+    doc.text(note, LEFT, doc.y, { width: 495 });
+    doc.moveDown(0.3);
+  }
+  doc.fillColor("#000000");
+
+  doc.moveDown();
   doc.fontSize(10);
-  doc.text(`Gross: ${moneyFmt(gross, currency)}`);
-  doc.text(`Platform fee: ${moneyFmt(pf, currency)} (${feePct}% of gross)`);
-  doc.text(`Stripe fee: ${moneyFmt(sf, currency)}`);
-  doc.text(`Net payable: ${moneyFmt(net, currency)}`);
+  doc.text(`Payout amount: ${moneyFmt(pRow.netAmount, currency)}`);
   doc.text(`Currency: ${currency}`);
 
   doc.addPage();
@@ -128,9 +150,7 @@ export async function renderPayoutStatementPdf(input: PayoutStatementRenderInput
   const contact =
     env.PAYOUT_STATEMENT_CONTACT_EMAIL ?? env.EMAIL_REPLY_TO ?? env.EMAIL_FROM ?? "support@lax.bid";
   doc.text(`Stripe transfer reference: ${pRow.stripeTransferId ?? "—"}`);
-  doc.text(
-    `Settlement / processed: ${pRow.processedAt ? pRow.processedAt.toISOString().slice(0, 10) : "—"}`,
-  );
+  doc.text(`Paid out: ${statement.paidOut ?? "—"}`);
   doc.text(`Questions: ${contact}`);
   doc.text(productCopyrightLine("bid"));
   doc.fillColor("#000000");

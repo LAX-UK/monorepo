@@ -7,8 +7,13 @@ import {
   payout,
   payoutLine,
   privateSaleDeal,
+  saleSellerTerms,
 } from "@auction/db/schema";
-import { lotSoldAfterAuctionSql } from "@auction/persistence/lib";
+import {
+  SELLER_TERMS_FIGURE_COLUMNS,
+  lotSoldAfterAuctionSql,
+  sellerTermsFigures,
+} from "@auction/persistence/lib";
 import { eq, inArray } from "drizzle-orm";
 import type {
   IPayoutStatementRepository,
@@ -55,7 +60,7 @@ export class DrizzlePayoutStatementRepository implements IPayoutStatementReposit
   }
 
   async findPayoutLines(payoutId: string): Promise<PayoutStatementLineRow[]> {
-    return this.db
+    const rows = await this.db
       .select({
         lineId: payoutLine.id,
         kind: payoutLine.kind,
@@ -68,13 +73,36 @@ export class DrizzlePayoutStatementRepository implements IPayoutStatementReposit
         buyerName: bidIdentityDirectory.name,
         soldAfterAuction: lotSoldAfterAuctionSql(),
         dealReference: privateSaleDeal.reference,
+        lotHammerPrice: lot.currentPrice,
+        paymentAmount: payment.amount,
+        paymentPlatformFee: payment.platformFee,
+        ...SELLER_TERMS_FIGURE_COLUMNS,
       })
       .from(payoutLine)
       .leftJoin(privateSaleDeal, eq(payoutLine.privateSaleDealId, privateSaleDeal.id))
       .leftJoin(payment, eq(payoutLine.paymentId, payment.id))
       .leftJoin(lot, eq(payment.lotId, lot.id))
       .leftJoin(bidIdentityDirectory, eq(payment.buyerId, bidIdentityDirectory.subjectId))
-      .where(eq(payoutLine.payoutId, payoutId));
+      .leftJoin(saleSellerTerms, eq(saleSellerTerms.id, payoutLine.sellerTermsId))
+      .where(eq(payoutLine.payoutId, payoutId))
+      .orderBy(payoutLine.createdAt, payoutLine.id);
+    return rows.map((row) => ({
+      lineId: row.lineId,
+      kind: row.kind,
+      amount: row.amount,
+      note: row.note,
+      paymentId: row.paymentId,
+      createdByUserId: row.createdByUserId,
+      lotTitle: row.lotTitle,
+      lotNumber: row.lotNumber,
+      buyerName: row.buyerName,
+      soldAfterAuction: row.soldAfterAuction,
+      dealReference: row.dealReference,
+      lotHammerPrice: row.lotHammerPrice,
+      paymentAmount: row.paymentAmount,
+      paymentPlatformFee: row.paymentPlatformFee,
+      sellerTerms: row.kind === "sale" ? sellerTermsFigures(row) : null,
+    }));
   }
 
   async findAuthorNames(userIds: string[]): Promise<Map<string, string>> {

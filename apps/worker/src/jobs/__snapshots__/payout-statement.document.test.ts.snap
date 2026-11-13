@@ -1,0 +1,44 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`payoutStatementDocument > splits each sale from its snapshot, with the rates, and totals the rows 1`] = `
+{
+  "notes": [
+    "Commission is charged on the hammer price at the rate in your signed agreement, plus VAT. The buyer's premium is paid to LAX and isn't part of your proceeds.",
+  ],
+  "paidOut": "Thu 12 Nov, 04:49 GMT",
+  "rows": [
+    {
+      "commission": "−£12,300.00 (15%)",
+      "hammer": "£82,000.00",
+      "lot": "Lot 31",
+      "receive": "£67,240.00",
+      "vat": "−£2,460.00 (20%)",
+      "work": "Harbour at Dusk (buyer: A. Collector)",
+    },
+    {
+      "commission": "−£41.63 (12.5%)",
+      "hammer": "£333.00",
+      "lot": "Lot 32",
+      "receive": "£283.04",
+      "vat": "−£8.33 (20%)",
+      "work": "Small Study (sold after the auction to the next bidder)",
+    },
+    {
+      "commission": "",
+      "hammer": "",
+      "lot": "",
+      "receive": "−£50.00",
+      "vat": "",
+      "work": "Refund to a buyer: Frame damaged",
+    },
+  ],
+  "totals": {
+    "commission": "−£12,341.63",
+    "hammer": "£82,333.00",
+    "lot": "",
+    "receive": "£67,473.04",
+    "vat": "−£2,468.33",
+    "work": "Total",
+  },
+}
+`;

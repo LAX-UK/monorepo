@@ -1,3 +1,5 @@
+import type { SellerTermsFigures } from "@auction/types";
+
 export type PayoutStatementPayoutRow = {
   id: string;
   legalEntityId: string;
@@ -34,6 +36,13 @@ export type PayoutStatementLineRow = {
   soldAfterAuction: boolean;
   /** The private sale a line settles (its PS reference), never the buyer, who may stay anonymous. */
   dealReference: string | null;
+  /** The lot's hammer, as sold. */
+  lotHammerPrice: string | null;
+  /** The buyer's payment and the fee recorded on it, for a sale paid under the old rule. */
+  paymentAmount: string | null;
+  paymentPlatformFee: string | null;
+  /** The seller-terms snapshot a sale line pays, as recorded; `null` on other lines. */
+  sellerTerms: SellerTermsFigures | null;
 };
 
 export interface IPayoutStatementRepository {
