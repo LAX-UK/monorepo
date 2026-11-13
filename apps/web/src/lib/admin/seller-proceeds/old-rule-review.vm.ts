@@ -71,35 +71,37 @@ export function buildOldRuleRow(row: OldRuleRowDto, now: Date = new Date()): Old
 
 /** Columns of the downloaded review, in the order finance reads them. */
 export const OLD_RULE_CSV_COLUMNS = [
-  "Paid on",
-  "Seller",
-  "Lot",
-  "Title",
-  "Agreement",
-  "Hammer",
-  "Buyer paid",
-  "Old fee",
-  "Seller was paid",
-  "Agreement gives",
-  "Difference",
+  { key: "paidOn", header: "Paid on" },
+  { key: "seller", header: "Seller" },
+  { key: "lot", header: "Lot" },
+  { key: "title", header: "Title" },
+  { key: "agreement", header: "Agreement" },
+  { key: "hammer", header: "Hammer" },
+  { key: "buyerPaid", header: "Buyer paid" },
+  { key: "oldFee", header: "Old fee" },
+  { key: "sellerPaid", header: "Seller was paid" },
+  { key: "agreementGives", header: "Agreement gives" },
+  { key: "difference", header: "Difference" },
 ] as const;
+
+export type OldRuleCsvKey = (typeof OLD_RULE_CSV_COLUMNS)[number]["key"];
 
 const pounds = (pence: number) => (pence / 100).toFixed(2);
 
 /** One row of the CSV: plain figures in pounds, dates that do not move with the clock. */
-export function oldRuleCsvRow(row: OldRuleRowDto): string[] {
+export function oldRuleCsvRow(row: OldRuleRowDto): Record<OldRuleCsvKey, string> {
   const gives = row.agreementGives;
-  return [
-    formatStaffExportDate(row.paidAt ?? row.payoutCreatedAt),
-    row.sellerName ?? "",
-    row.lotNumber === null ? "" : String(row.lotNumber),
-    row.lotTitle,
-    row.agreement?.reference ?? "",
-    row.hammerPence === null ? "" : pounds(row.hammerPence),
-    pounds(poundsToPence(row.paymentAmount)),
-    pounds(poundsToPence(row.platformFee)),
-    pounds(row.paidNetPence),
-    gives.kind === "priced" ? pounds(gives.netPence) : UNPRICED[gives.reason],
-    row.differencePence === null ? "" : pounds(row.differencePence),
-  ];
+  return {
+    paidOn: formatStaffExportDate(row.paidAt ?? row.payoutCreatedAt),
+    seller: row.sellerName ?? "",
+    lot: row.lotNumber === null ? "" : String(row.lotNumber),
+    title: row.lotTitle,
+    agreement: row.agreement?.reference ?? "",
+    hammer: row.hammerPence === null ? "" : pounds(row.hammerPence),
+    buyerPaid: pounds(poundsToPence(row.paymentAmount)),
+    oldFee: pounds(poundsToPence(row.platformFee)),
+    sellerPaid: pounds(row.paidNetPence),
+    agreementGives: gives.kind === "priced" ? pounds(gives.netPence) : UNPRICED[gives.reason],
+    difference: row.differencePence === null ? "" : pounds(row.differencePence),
+  };
 }

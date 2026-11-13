@@ -35,8 +35,7 @@ describe("buildOldRuleRow", () => {
 describe("oldRuleCsvRow", () => {
   it("writes plain pounds and fixed dates, one value per column", () => {
     const row = oldRuleCsvRow(priced);
-    expect(row).toHaveLength(OLD_RULE_CSV_COLUMNS.length);
-    expect(row).toEqual([
+    expect(OLD_RULE_CSV_COLUMNS.map((c) => row[c.key])).toEqual([
       "1 Oct 2026",
       "Northbank Gallery Ltd",
       "3",
@@ -49,6 +48,6 @@ describe("oldRuleCsvRow", () => {
       "856.00",
       "-331.50",
     ]);
-    expect(oldRuleCsvRow(unpriced)[9]).toBe("No signed agreement");
+    expect(oldRuleCsvRow(unpriced).agreementGives).toBe("No signed agreement");
   });
 });
