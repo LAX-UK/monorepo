@@ -1,6 +1,8 @@
 import { sql } from "drizzle-orm";
 import {
   bigint,
+  boolean,
+  check,
   index,
   integer,
   jsonb,
@@ -78,6 +80,41 @@ export const accountingDocument = pgTable(
       .on(table.createdAt, table.id)
       .where(sql`${table.state} IN ('pending', 'sending')`),
     index("accounting_document_state_idx").on(table.state, table.updatedAt),
+  ],
+);
+
+/**
+ * LAX's own copy of the PDF the provider made for an issued document (migration 0381), kept in
+ * document storage under `storageKey`. Buyers download this copy. The "Your invoice" email is
+ * queued from the row at most once, and never for a rehearsal (CHECK).
+ */
+export const accountingDocumentCopy = pgTable(
+  "accounting_document_copy",
+  {
+    documentId: uuid("document_id")
+      .primaryKey()
+      .references(() => accountingDocument.id, { onDelete: "restrict" }),
+    storageKey: text("storage_key").notNull().unique("accounting_document_copy_storage_key_uq"),
+    contentType: text("content_type")
+      .$type<"application/pdf">()
+      .notNull()
+      .default("application/pdf"),
+    byteSize: integer("byte_size").notNull(),
+    sha256: text("sha256").notNull(),
+    /** Made by a dry run (a page that says so), not by the provider. */
+    rehearsal: boolean("rehearsal").notNull(),
+    storedAt: timestamp("stored_at", { mode: "date", withTimezone: true }).defaultNow().notNull(),
+    emailQueuedAt: timestamp("email_queued_at", { mode: "date", withTimezone: true }),
+    emailOutboxId: uuid("email_outbox_id"),
+  },
+  (table) => [
+    check(
+      "accounting_document_copy_no_rehearsal_email_ck",
+      sql`NOT (${table.rehearsal} AND ${table.emailQueuedAt} IS NOT NULL)`,
+    ),
+    index("accounting_document_copy_email_due_idx")
+      .on(table.storedAt)
+      .where(sql`${table.emailQueuedAt} IS NULL AND NOT ${table.rehearsal}`),
   ],
 );
 

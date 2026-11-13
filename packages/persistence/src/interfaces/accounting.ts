@@ -266,4 +266,100 @@ export interface AccountingAttention {
 /** What the accounting watch checks: how long work has been waiting for a person or the sender. */
 export interface IAccountingAttentionReader {
   read(pendingModes: readonly TargetMode[]): Promise<AccountingAttention>;
+  /**
+   * Bid invoices queued for Books in one of `modes` before `queuedBefore` that are still not
+   * issued with LAX's copy stored (cancelled ones aside): the buyer sees "taking longer than usual".
+   * `oldestSince` is when the oldest was queued.
+   */
+  delayedBidInvoices(modes: readonly TargetMode[], queuedBefore: Date): Promise<QueueAge>;
+}
+
+/** LAX's stored copy of the PDF for an issued document. */
+export interface AccountingDocumentCopy {
+  readonly documentId: string;
+  readonly storageKey: string;
+  readonly byteSize: number;
+  readonly sha256: string;
+  /** Made by a dry run, not the provider: never emailed, never shown to a buyer as Books'. */
+  readonly rehearsal: boolean;
+  readonly storedAt: Date;
+}
+
+/** An issued Bid invoice whose stored copy is ready to email (never a rehearsal). */
+export interface InvoiceEmailDue {
+  readonly documentId: string;
+  /** The Bid invoice the document was made from (its LAX reference's source id). */
+  readonly invoiceId: string;
+  /** The provider's invoice number. */
+  readonly number: string;
+  readonly storageKey: string;
+}
+
+/**
+ * The worker's side of the stored copies: which issued invoices have none yet, recording one,
+ * and the "Your invoice" email queued once per copy.
+ */
+export interface IAccountingDocumentCopies {
+  /** Issued Bid invoices aimed at one of `modes` that have no stored copy yet, newest first. */
+  listUncopied(
+    modes: readonly TargetMode[],
+    limit: number,
+  ): Promise<Result<StoredAccountingDocument[], StoredDocumentCode>>;
+  /** Records a copy; false when the document already has one (another worker was first). */
+  record(copy: AccountingDocumentCopy): Promise<boolean>;
+  /** Copies of issued Bid invoices whose email is not queued yet; never a rehearsal. */
+  listEmailDue(limit: number): Promise<InvoiceEmailDue[]>;
+  /** Notes the email as queued; false when it already was (the note is made once). */
+  markEmailQueued(documentId: string, outboxId: string, at: Date): Promise<boolean>;
+}
+
+/** What the "Your invoice" email says, read from the invoice's own rows. */
+export interface BidInvoiceEmailFacts {
+  readonly invoiceId: string;
+  readonly lotId: string;
+  readonly lotTitle: string;
+  readonly totalPence: number;
+  /** When the invoice's payment was captured, or null while it is owed. */
+  readonly paidAt: Date | null;
+  readonly dueAt: Date;
+  readonly cancelled: boolean;
+  /** The member who pays it, when one is known (a payment row names them). */
+  readonly payer: { readonly userId: string; readonly email: string; readonly name: string } | null;
+  /** The billing email the buyer account's finance team set, when there is one. */
+  readonly billingEmail: string | null;
+  readonly buyerLegalEntityId: string;
+}
+
+export interface IBidInvoiceEmailFactsReader {
+  forInvoice(invoiceId: string): Promise<BidInvoiceEmailFacts | null>;
+}
+
+/** One Books document for a Bid invoice, as the buyer's invoice card reads it. */
+export interface BidInvoiceBooksDocument {
+  readonly documentId: string;
+  readonly targetMode: TargetMode;
+  readonly record: DocumentRecord;
+  readonly grossPence: number;
+  /** When the record last changed: for an issued document, when it was issued (issued is final). */
+  readonly updatedAt: Date;
+  readonly copy: { readonly storageKey: string; readonly rehearsal: boolean } | null;
+}
+
+/** A Bid invoice and the Books documents made for it, for the buyer's invoice card. */
+export interface BidInvoiceBooksState {
+  readonly invoice: {
+    readonly id: string;
+    readonly raisedAt: Date;
+    readonly voidedAt: Date | null;
+    readonly totalPence: number;
+  };
+  /** The invoice document per target mode (at most one each). */
+  readonly invoices: readonly BidInvoiceBooksDocument[];
+  /** Credit notes made against the invoice, oldest first, every mode. */
+  readonly creditNotes: readonly BidInvoiceBooksDocument[];
+}
+
+/** Reads one Bid invoice's Books documents and their stored copies (the Bid API, read only). */
+export interface IBidInvoiceBooksReader {
+  read(invoiceId: string): Promise<Result<BidInvoiceBooksState | null, StoredDocumentCode>>;
 }

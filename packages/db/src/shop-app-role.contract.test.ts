@@ -1,6 +1,7 @@
 import pg from "pg";
 import { describe, expect, it } from "vitest";
 import {
+  API_ACCOUNTING_COPY_READ_TABLES,
   API_ACCOUNTING_READ_TABLES,
   API_ACCOUNTING_SETTING_TABLES,
   SHOP_COMMERCE_TABLES,
@@ -249,7 +250,11 @@ describe.skipIf(!SHOP_URL)("shop_app role contract", { timeout: 60_000 }, () => 
     await withShopClient(async (client) => {
       const rows = await readTablePrivileges(
         client,
-        [...API_ACCOUNTING_READ_TABLES, ...API_ACCOUNTING_SETTING_TABLES],
+        [
+          ...API_ACCOUNTING_READ_TABLES,
+          ...API_ACCOUNTING_SETTING_TABLES,
+          ...API_ACCOUNTING_COPY_READ_TABLES,
+        ],
         ["SELECT", "INSERT", "UPDATE", "DELETE"],
       );
       expectTablePrivileges(rows, () => false);

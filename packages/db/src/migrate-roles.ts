@@ -286,6 +286,17 @@ export const API_ACCOUNTING_REQUEUE_COLUMNS = WORKER_ACCOUNTING_DOCUMENT_UPDATE_
   (column) => column !== "provider",
 );
 export const WORKER_ACCOUNTING_APPEND_ONLY_TABLES = ["accounting_document_event"] as const;
+/**
+ * LAX's stored copies of issued documents' PDFs (migration 0381). The worker records a copy once
+ * and later notes, once, that its email was queued (those two columns only); the Bid API reads
+ * them to show and serve the buyer's invoice. Nobody deletes a copy. No other role has access.
+ */
+export const WORKER_ACCOUNTING_COPY_TABLES = ["accounting_document_copy"] as const;
+export const WORKER_ACCOUNTING_COPY_UPDATE_COLUMNS = [
+  "email_queued_at",
+  "email_outbox_id",
+] as const;
+export const API_ACCOUNTING_COPY_READ_TABLES = ["accounting_document_copy"] as const;
 export const WORKER_ACCOUNTING_READ_TABLES = ["accounting_source_setting"] as const;
 /**
  * What a seller is paid for each sale, fixed when the buyer's invoice is raised (migration 0372).
@@ -1211,6 +1222,10 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
             }
             continue;
           }
+          if ((API_ACCOUNTING_COPY_READ_TABLES as readonly string[]).includes(tableName)) {
+            await grantIfExists(client, "api_app", tableName, "SELECT");
+            continue;
+          }
           if ((API_ACCOUNTING_SETTING_TABLES as readonly string[]).includes(tableName)) {
             // Read only until a staff route changes the switch; that route's PR grants
             // UPDATE (xero_mode, books_mode, updated_at, updated_by) and nothing wider.
@@ -1438,6 +1453,15 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
         }
         for (const tableName of WORKER_ACCOUNTING_READ_TABLES) {
           await grantIfExists(client, "worker_app", tableName, "SELECT");
+        }
+        for (const tableName of WORKER_ACCOUNTING_COPY_TABLES) {
+          await grantIfExists(client, "worker_app", tableName, "INSERT, SELECT");
+          await grantColumnUpdateIfExists(
+            client,
+            "worker_app",
+            tableName,
+            WORKER_ACCOUNTING_COPY_UPDATE_COLUMNS,
+          );
         }
         for (const tableName of WORKER_ZOHO_CAMPAIGNS_SUPPRESSION_TABLES) {
           await grantIfExists(client, "worker_app", tableName, "INSERT, SELECT, UPDATE");
