@@ -1,4 +1,7 @@
-import type { SellerVatTreatment } from "@/lib/data/http/admin-seller-proceeds.shared";
+import type {
+  SellerHeldReason,
+  SellerVatTreatment,
+} from "@/lib/data/http/admin-seller-proceeds.shared";
 import { commissionPercentToBps, sellerProceeds } from "@auction/domain";
 import {
   SIGNED_AGREEMENT_FIELDS,
@@ -7,7 +10,7 @@ import {
   checkSignedAgreement,
   signedAgreementCommission,
 } from "@auction/validators";
-import { BID_COMPANY_NAME } from "./held-reasons";
+import { BID_COMPANY_NAME, HELD_REASON_LABEL } from "./held-reasons";
 
 /** What the record dialog needs to know about the held sale. Figures are the snapshot's. */
 export type RecordAgreementContext = {
@@ -113,7 +116,22 @@ export function previewRecordedAgreement(
   };
 }
 
-/** "Agreement recorded. Lot 21 joins the next payout." */
-export function recordedToast(lot: string): string {
-  return `Agreement recorded. ${lot} joins the next payout.`;
+/** What the API says recording did to the lot's sale. */
+export type RecordedSale =
+  | { kind: "released" }
+  | { kind: "still_held"; reason: SellerHeldReason }
+  | { kind: "already_paid" }
+  | { kind: "already_priced" }
+  | { kind: "no_sale" };
+
+/**
+ * The toast after recording: the payout promise only when the API reports the sale released;
+ * a sale that stays held says why; anything else is just recorded.
+ */
+export function recordedToast(lot: string, sale: RecordedSale | null): string {
+  if (sale?.kind === "released") return `Agreement recorded. ${lot} joins the next payout.`;
+  if (sale?.kind === "still_held") {
+    return `Agreement recorded. ${lot}'s payout is still held: ${HELD_REASON_LABEL[sale.reason]}.`;
+  }
+  return "Agreement recorded.";
 }

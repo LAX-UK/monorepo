@@ -26,7 +26,10 @@ const context = {
 };
 
 function setup(
-  record = vi.fn().mockResolvedValue({ ok: true, data: { sellerNetPence: 530_720 } }),
+  record = vi.fn().mockResolvedValue({
+    ok: true,
+    data: { sellerNetPence: 530_720, sale: { kind: "released" } },
+  }),
 ) {
   const onOpenChange = vi.fn();
   const upload = vi
@@ -43,6 +46,23 @@ function setup(
     />,
   );
   return { record, upload, onOpenChange };
+}
+
+async function fillAndRecord() {
+  const [commission] = screen.getAllByRole("textbox");
+  fireEvent.change(commission as HTMLElement, { target: { value: "12" } });
+  const date = screen.getByLabelText("Signed on");
+  fireEvent.change(date, { target: { value: "03/10/2026" } });
+  fireEvent.blur(date);
+  const pdf = new File(["%PDF"], "agreement.pdf", { type: "application/pdf" });
+  const input = document.querySelector('input[type="file"]') as HTMLInputElement;
+  fireEvent.change(input, { target: { files: [pdf] } });
+  await screen.findByText("agreement.pdf");
+  fireEvent.change(screen.getByLabelText("Why it's recorded here"), {
+    target: { value: "Signed on paper at the gallery" },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Record agreement" }));
+  return pdf;
 }
 
 describe("RecordAgreementDialog", () => {
@@ -88,22 +108,10 @@ describe("RecordAgreementDialog", () => {
     expect(preview).toHaveTextContent("Seller will receive£5,307.20");
   });
 
-  it("uploads the PDF, records the agreement and says the lot joins the next payout", async () => {
+  it("says the lot joins the next payout only when the API reports the sale released", async () => {
     const { record, upload, onOpenChange } = setup();
-    const [commission] = screen.getAllByRole("textbox");
-    fireEvent.change(commission as HTMLElement, { target: { value: "12" } });
-    const date = screen.getByLabelText("Signed on");
-    fireEvent.change(date, { target: { value: "03/10/2026" } });
-    fireEvent.blur(date);
-    const pdf = new File(["%PDF"], "agreement.pdf", { type: "application/pdf" });
-    const input = document.querySelector('input[type="file"]') as HTMLInputElement;
-    fireEvent.change(input, { target: { files: [pdf] } });
-    await screen.findByText("agreement.pdf");
+    const pdf = await fillAndRecord();
     expect(upload).toHaveBeenCalledWith(pdf);
-    fireEvent.change(screen.getByLabelText("Why it's recorded here"), {
-      target: { value: "Signed on paper at the gallery" },
-    });
-    fireEvent.click(screen.getByRole("button", { name: "Record agreement" }));
     await waitFor(() => expect(record).toHaveBeenCalled());
     expect(record.mock.calls[0]?.[0]).toMatchObject({
       lotId: context.lotId,
@@ -118,6 +126,32 @@ describe("RecordAgreementDialog", () => {
       ),
     );
     expect(onOpenChange).toHaveBeenCalledWith(false);
+  });
+
+  it("names what still holds the payout when the API reports the sale still held", async () => {
+    setup(
+      vi.fn().mockResolvedValue({
+        ok: true,
+        data: { sellerNetPence: null, sale: { kind: "still_held", reason: "negative_net" } },
+      }),
+    );
+    await fillAndRecord();
+    await waitFor(() =>
+      expect(toastSuccess).toHaveBeenCalledWith(
+        "Agreement recorded. Lot 21's payout is still held: Deductions are more than the hammer.",
+      ),
+    );
+  });
+
+  it("says only 'Agreement recorded.' when the sale was already paid", async () => {
+    setup(
+      vi.fn().mockResolvedValue({
+        ok: true,
+        data: { sellerNetPence: null, sale: { kind: "already_paid" } },
+      }),
+    );
+    await fillAndRecord();
+    await waitFor(() => expect(toastSuccess).toHaveBeenCalledWith("Agreement recorded."));
   });
 
   it("refuses a file that is not a PDF without uploading it", async () => {

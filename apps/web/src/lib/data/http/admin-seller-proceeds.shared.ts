@@ -6,7 +6,7 @@ import { z } from "zod";
  * server page can hand them to client components. Nothing here works a figure out.
  */
 
-const heldReasonSchema = z.enum([
+export const heldReasonSchema = z.enum([
   "no_agreement",
   "not_accepted",
   "no_commission",

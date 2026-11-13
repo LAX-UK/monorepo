@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { BID_COMPANY_NAME } from "./held-reasons";
 import {
   checkRecordAgreement,
   previewRecordedAgreement,
@@ -79,7 +80,30 @@ describe("previewRecordedAgreement", () => {
 });
 
 describe("recordedToast", () => {
-  it("says the lot joins the next payout", () => {
-    expect(recordedToast("Lot 21")).toBe("Agreement recorded. Lot 21 joins the next payout.");
+  it("promises the next payout only when the API reports the sale released", () => {
+    expect(recordedToast("Lot 21", { kind: "released" })).toBe(
+      "Agreement recorded. Lot 21 joins the next payout.",
+    );
+  });
+
+  it("names what still holds the payout when the sale stays held", () => {
+    expect(recordedToast("Lot 21", { kind: "still_held", reason: "vat_setting_missing" })).toBe(
+      "Agreement recorded. Lot 21's payout is still held: VAT setting for Bid Company Ltd is missing.".replace(
+        "Bid Company Ltd",
+        BID_COMPANY_NAME,
+      ),
+    );
+    expect(recordedToast("Lot 21", { kind: "still_held", reason: "negative_net" })).toBe(
+      "Agreement recorded. Lot 21's payout is still held: Deductions are more than the hammer.",
+    );
+  });
+
+  it.each([
+    [{ kind: "already_paid" as const }],
+    [{ kind: "already_priced" as const }],
+    [{ kind: "no_sale" as const }],
+    [null],
+  ])("says only 'Agreement recorded.' for %o", (sale) => {
+    expect(recordedToast("Lot 21", sale)).toBe("Agreement recorded.");
   });
 });

@@ -162,7 +162,7 @@ export function RecordAgreementDialog({
     const result = await record({ lotId: context.lotId, ...draft, replace });
     setPhase("editing");
     if (result.ok) {
-      toast.success(recordedToast(context.lot));
+      toast.success(recordedToast(context.lot, result.data?.sale ?? null));
       onOpenChange(false);
       onRecorded?.();
       router.refresh();
