@@ -16,7 +16,12 @@ import type {
   DeliveryQuoteRow,
   RecordPerson,
 } from "@auction/persistence/interfaces";
-import type { BankTransferInstructions, PayPlan, PayPlanProgress } from "@auction/types";
+import type {
+  BankTransferInstructions,
+  PayPlan,
+  PayPlanProgress,
+  PurchaseInvoiceCard,
+} from "@auction/types";
 import type { Result } from "neverthrow";
 import type { OrganisationMemberActor } from "./organisation-membership-service.js";
 
@@ -178,6 +183,16 @@ export type PurchaseInvoicePdf = { pdf: Buffer; filename: string };
 
 export interface IPurchaseInvoicePdfService {
   render(actor: OrganisationMemberActor, lotId: string): BuyingResult<PurchaseInvoicePdf>;
+}
+
+/** The buyer's invoice card (Books) on a purchase, and LAX's stored copies behind its links. */
+export interface IPurchaseInvoiceBooksService {
+  card(actor: OrganisationMemberActor, lotId: string): BuyingResult<PurchaseInvoiceCard>;
+  document(
+    actor: OrganisationMemberActor,
+    lotId: string,
+    documentId: string,
+  ): BuyingResult<PurchaseInvoicePdf>;
 }
 
 /** The account details and reference of a bank transfer already chosen for the picked lots. */

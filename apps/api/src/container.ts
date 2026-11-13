@@ -448,6 +448,7 @@ export function createContainer(env: Env): Container {
     env,
     lots: repos.lotRepo,
     sales: repos.saleRepo,
+    storage: infra.objectStorage,
     accounts: repos.legalEntityRepository,
     onboarding: userMisc.accountOnboardingGate,
     transactionRunner: platform.transactionRunner,

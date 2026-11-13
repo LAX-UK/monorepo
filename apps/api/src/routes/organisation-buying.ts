@@ -3,6 +3,7 @@ import {
   payPlanQuerySchema,
   paySeveralBodySchema,
   paySeveralStartBodySchema,
+  purchaseDocumentParamSchema,
   purchaseLotIdParamSchema,
   reportPurchaseProblemSchema,
   requestDeliveryQuoteSchema,
@@ -64,6 +65,7 @@ export function createOrganisationBuyingRoutes(
     paySeveral,
     payTransfer,
     invoicePdf,
+    invoiceBooks,
     payProgress,
     deliveryQuotes,
     collection,
@@ -171,6 +173,41 @@ export function createOrganisationBuyingRoutes(
     zValidator("param", purchaseLotIdParamSchema),
     async (c) => {
       const result = await invoicePdf.render(memberActor(c), c.req.valid("param").lotId);
+      if (result.isErr()) {
+        const e = result.error;
+        return c.json({ error: e.code, message: e.message }, e.status);
+      }
+      c.header("Content-Type", "application/pdf");
+      c.header("X-Content-Type-Options", "nosniff");
+      c.header("Content-Disposition", `attachment; filename="${result.value.filename}"`);
+      c.header("Cache-Control", "no-store");
+      return c.body(new Uint8Array(result.value.pdf));
+    },
+  );
+
+  // The buyer's invoice card: where the invoice Books issues stands. Never cached.
+  r.get(
+    "/purchases/:lotId/invoice-card",
+    requireAuth,
+    requireBuyerRole,
+    requireContext,
+    zValidator("param", purchaseLotIdParamSchema),
+    async (c) => {
+      c.header("Cache-Control", "no-store");
+      return respond(c, await invoiceBooks.card(memberActor(c), c.req.valid("param").lotId));
+    },
+  );
+
+  // LAX's stored copy of the invoice or a credit note Books issued, for the member who pays it.
+  r.get(
+    "/purchases/:lotId/documents/:documentId",
+    requireAuth,
+    requireBuyerRole,
+    requireContext,
+    zValidator("param", purchaseDocumentParamSchema),
+    async (c) => {
+      const { lotId, documentId } = c.req.valid("param");
+      const result = await invoiceBooks.document(memberActor(c), lotId, documentId);
       if (result.isErr()) {
         const e = result.error;
         return c.json({ error: e.code, message: e.message }, e.status);
