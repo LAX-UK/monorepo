@@ -1,5 +1,5 @@
-import type { StaffRoles } from "@auction/types";
-import { Hono } from "hono";
+import { ACCOUNTING_QUEUE_WRITE_ACCESS, type StaffRoles, userHasAccessTo } from "@auction/types";
+import { Hono, type MiddlewareHandler } from "hono";
 import { describe, expect, it, vi } from "vitest";
 import { requireFinanceAccess } from "../../middleware/require-capability.js";
 import type { IAccountingQueueService } from "../../services/interfaces/accounting-queue.js";
@@ -22,7 +22,20 @@ const read = (res: Response) => res.json() as Promise<Body>;
 const DOC_ID = "5b0f3a50-1f43-4f63-9f2b-5e8f3f7f1a10";
 const counts = { needs_person: 1, failed: 2, waiting: 0, issued: 3 };
 
-function build(staffRoles: StaffRoles = ["finance"], queue: Partial<IAccountingQueueService> = {}) {
+/**
+ * The mount's `finance.read` gate. Every role holding `finance.read` today also holds the write, so
+ * a test of the write guard swaps in a gate that lets the request through, as a future read-only
+ * finance role would be let through, leaving the route's own guard as the only check.
+ */
+const passReadGate: MiddlewareHandler = async (_c, next) => {
+  await next();
+};
+
+function build(
+  staffRoles: StaffRoles = ["finance"],
+  queue: Partial<IAccountingQueueService> = {},
+  financeGate: MiddlewareHandler = requireFinanceAccess,
+) {
   const service = {
     list: vi.fn(async (request) => ({
       tab: request.tab,
@@ -49,7 +62,7 @@ function build(staffRoles: StaffRoles = ["finance"], queue: Partial<IAccountingQ
     c.set("userStaffRoles", staffRoles);
     await next();
   });
-  app.use("/finance/*", requireFinanceAccess);
+  app.use("/finance/*", financeGate);
   attachAdminAccountingRoutes(
     app,
     { admin: { accountingQueue: service } } as never,
@@ -134,12 +147,25 @@ describe("POST /finance/accounting/:id/try-again", () => {
     expect(service.tryAgain).toHaveBeenCalledTimes(1);
   });
 
-  it("refuses people without the finance write permission", async () => {
+  it("refuses people without the finance read permission at the mount", async () => {
     for (const role of ["read_only", "sales_manager"] as const) {
       const { app, service } = build([role]);
       expect((await tryAgain(app)).status, role).toBe(403);
       expect(service.tryAgain).not.toHaveBeenCalled();
     }
+  });
+
+  it("refuses people who may read the page but lack the finance write permission", async () => {
+    for (const role of ["read_only", "sales_manager"] as const) {
+      expect(userHasAccessTo("staff", [role], ACCOUNTING_QUEUE_WRITE_ACCESS), role).toBe(false);
+      const { app, service } = build([role], {}, passReadGate);
+      expect((await tryAgain(app)).status, role).toBe(403);
+      expect(service.tryAgain).not.toHaveBeenCalled();
+    }
+    // The same stand-in gate lets a finance person through, so the 403 above is the write guard's.
+    const { app, service } = build(["finance"], {}, passReadGate);
+    expect((await tryAgain(app)).status).toBe(200);
+    expect(service.tryAgain).toHaveBeenCalledTimes(1);
   });
 
   it("refuses a document id that is not a uuid", async () => {
