@@ -3,7 +3,6 @@ import {
   domainEvent,
   legalEntity,
   payment,
-  paymentRefund,
   payout,
   payoutLine,
   privateSaleDeal,
@@ -120,15 +119,15 @@ function dealLineFacts(deal: {
  * not LAX's own stock (whose proceeds are LAX's and are never paid out).
  */
 function awaitingSettlement(): SQL {
-  return sql`${payment.status} = 'captured'
-    AND (${payment.amount})::numeric > 0
+  return sql`"payment"."status" = 'captured'
+    AND ("payment"."amount")::numeric > 0
     AND NOT EXISTS (
       SELECT 1 FROM payout_line pl
-      WHERE pl.payment_id = ${payment.id} AND pl.kind = 'sale'
+      WHERE pl.payment_id = "payment"."id" AND pl.kind = 'sale'
     )
     AND NOT EXISTS (
       SELECT 1 FROM sale_seller_terms sst
-      WHERE sst.payment_id = ${payment.id} AND sst.basis = 'lax_owned'
+      WHERE sst.payment_id = "payment"."id" AND sst.basis = 'lax_owned'
     )`;
 }
 
@@ -459,8 +458,8 @@ export class DrizzlePayoutRepository implements IPayoutRepository, IPayoutProces
         lotId: payment.lotId,
         terms: saleSellerTerms,
         refundedPence: sql<string>`COALESCE((
-          SELECT SUM(${paymentRefund.amountPence}) FROM ${paymentRefund}
-          WHERE ${paymentRefund.paymentId} = ${payment.id} AND ${paymentRefund.currency} = 'GBP'
+          SELECT SUM(pr.amount_pence) FROM payment_refund pr
+          WHERE pr.payment_id = "payment"."id" AND pr.currency = 'GBP'
         ), 0)::text`,
       })
       .from(payment)
@@ -693,21 +692,22 @@ export class DrizzlePayoutRepository implements IPayoutRepository, IPayoutProces
   }
 
   async findSellerClawbackFacts(paymentId: string): Promise<SellerClawbackFacts> {
+    // The subqueries name the payment row in full: in a select list a bare column is ambiguous.
     const [row] = await this.db
       .select({
         paymentAmount: payment.amount,
         saleLineId: sql<string | null>`(
           SELECT pl.id FROM payout_line pl
-          WHERE pl.payment_id = ${payment.id} AND pl.kind = 'sale' LIMIT 1
+          WHERE pl.payment_id = "payment"."id" AND pl.kind = 'sale' LIMIT 1
         )`,
         sellerNetPence: sql<string | null>`(
           SELECT sst.seller_net_pence::text FROM payout_line pl
           JOIN sale_seller_terms sst ON sst.id = pl.seller_terms_id
-          WHERE pl.payment_id = ${payment.id} AND pl.kind = 'sale' LIMIT 1
+          WHERE pl.payment_id = "payment"."id" AND pl.kind = 'sale' LIMIT 1
         )`,
         clawedBackPence: sql<string>`COALESCE((
           SELECT SUM(round(abs(pl.amount) * 100)) FROM payout_line pl
-          WHERE pl.payment_id = ${payment.id} AND pl.kind = 'refund'
+          WHERE pl.payment_id = "payment"."id" AND pl.kind = 'refund'
         ), 0)::text`,
       })
       .from(payment)

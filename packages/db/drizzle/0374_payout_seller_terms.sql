@@ -43,7 +43,9 @@ BEGIN
       ADD CONSTRAINT "payout_seller_terms_totals_ck" CHECK (
         ("hammer_amount" IS NULL AND "commission_amount" IS NULL AND "commission_vat_amount" IS NULL)
         OR (
-          "hammer_amount" >= 0 AND "commission_amount" >= 0 AND "commission_vat_amount" >= 0
+          "hammer_amount" IS NOT NULL AND "commission_amount" IS NOT NULL
+          AND "commission_vat_amount" IS NOT NULL
+          AND "hammer_amount" >= 0 AND "commission_amount" >= 0 AND "commission_vat_amount" >= 0
         )
       );
   END IF;

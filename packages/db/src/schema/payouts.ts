@@ -83,7 +83,7 @@ export const payout = pgTable(
     check("payout_currency_gbp", sql`${table.currency} = 'GBP'`),
     check(
       "payout_seller_terms_totals_ck",
-      sql`(${table.hammerAmount} IS NULL AND ${table.commissionAmount} IS NULL AND ${table.commissionVatAmount} IS NULL) OR (${table.hammerAmount} >= 0 AND ${table.commissionAmount} >= 0 AND ${table.commissionVatAmount} >= 0)`,
+      sql`(${table.hammerAmount} IS NULL AND ${table.commissionAmount} IS NULL AND ${table.commissionVatAmount} IS NULL) OR (${table.hammerAmount} IS NOT NULL AND ${table.commissionAmount} IS NOT NULL AND ${table.commissionVatAmount} IS NOT NULL AND ${table.hammerAmount} >= 0 AND ${table.commissionAmount} >= 0 AND ${table.commissionVatAmount} >= 0)`,
     ),
     check(
       "payout_status_check",
