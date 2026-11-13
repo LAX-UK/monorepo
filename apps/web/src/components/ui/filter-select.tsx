@@ -41,6 +41,8 @@ type Props = {
   serializeValue?: (value: string) => string | null;
   /** Inject shared pending navigation (e.g. marketing catalog context). */
   usePendingNavigation?: () => PendingNavigation;
+  /** Focus the select trigger when it mounts (e.g. it replaces a focused stand-in). */
+  autoFocus?: boolean | undefined;
 };
 
 function defaultPendingNavigation(): PendingNavigation {
@@ -68,6 +70,7 @@ export function FilterSelect({
   ariaLabel,
   serializeValue,
   usePendingNavigation = defaultPendingNavigation,
+  autoFocus,
 }: Props) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -113,7 +116,12 @@ export function FilterSelect({
 
   return (
     <Select value={selectValue} onValueChange={onValueChange} disabled={pending}>
-      <SelectTrigger className={className} aria-busy={pending} aria-label={ariaLabel}>
+      <SelectTrigger
+        className={className}
+        aria-busy={pending}
+        aria-label={ariaLabel}
+        autoFocus={autoFocus}
+      >
         <SelectValue placeholder={placeholder} />
       </SelectTrigger>
       <SelectContent className="z-[var(--z-floating,70)]">
