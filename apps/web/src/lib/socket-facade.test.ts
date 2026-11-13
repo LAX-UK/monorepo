@@ -559,6 +559,67 @@ describe("createLazySocket", () => {
       expect(fake.calls.map((c) => `${c[0]}:${c[1]}`)).toEqual(["io.on:reconnect"]);
     });
 
+    it("tells onLoadFailure about each failure in a row, after listeners have heard it", async () => {
+      const heard: string[] = [];
+      const loads: ReturnType<typeof deferredLoader>[] = [];
+      const socket = createLazySocket(
+        () => {
+          const next = deferredLoader();
+          loads.push(next);
+          return next.load();
+        },
+        { onLoadFailure: (err, failures) => heard.push(`failure ${failures}: ${err.message}`) },
+      );
+      socket.on("connect_error", () => heard.push("connect_error"));
+      loads[0]?.fail(new Error("a"));
+      await vi.advanceTimersByTimeAsync(1500);
+      loads[1]?.fail(new Error("b"));
+      await vi.advanceTimersByTimeAsync(0);
+      expect(heard).toEqual(["connect_error", "failure 1: a", "connect_error", "failure 2: b"]);
+    });
+
+    it("retries at once when the browser comes back online, then waits again", async () => {
+      const loads: ReturnType<typeof deferredLoader>[] = [];
+      const socket = createLazySocket(() => {
+        const next = deferredLoader();
+        loads.push(next);
+        return next.load();
+      });
+      const onReconnectAttempt = vi.fn();
+      socket.io.on("reconnect_attempt", onReconnectAttempt);
+      loads[0]?.fail(new TypeError("Failed to fetch"));
+      await vi.advanceTimersByTimeAsync(100);
+      expect(loads).toHaveLength(1);
+
+      window.dispatchEvent(new Event("online"));
+      expect(loads).toHaveLength(2);
+      expect(onReconnectAttempt).toHaveBeenCalledWith(1);
+
+      // The backoff timer that was cancelled does not fire a second fetch.
+      await vi.advanceTimersByTimeAsync(5000);
+      expect(loads).toHaveLength(2);
+      const fake = buildFakeSocket();
+      loads[1]?.arrive(fake);
+      await vi.advanceTimersByTimeAsync(0);
+      // Once in, a later online event fetches nothing.
+      window.dispatchEvent(new Event("online"));
+      expect(loads).toHaveLength(2);
+    });
+
+    it("keeps every retry at least 500 ms apart through more than a thousand failures", async () => {
+      const setTimeoutSpy = vi.spyOn(globalThis, "setTimeout");
+      const socket = createLazySocket(() => Promise.reject(new Error("offline")));
+      const onReconnectAttempt = vi.fn();
+      socket.io.on("reconnect_attempt", onReconnectAttempt);
+      // Up to 5 s apart: 1200 retries fit in 6000 s. Advance in steps so each rejection settles.
+      for (let i = 0; i < 1200; i += 1) await vi.advanceTimersByTimeAsync(5000);
+      expect(onReconnectAttempt.mock.calls.length).toBeGreaterThanOrEqual(1200);
+      const delays = setTimeoutSpy.mock.calls.map((c) => c[1] as number);
+      expect(delays.length).toBeGreaterThanOrEqual(1200);
+      expect(delays.every((d) => Number.isFinite(d) && d >= 500 && d <= 5000)).toBe(true);
+      setTimeoutSpy.mockRestore();
+    });
+
     it("wraps a non-Error rejection in an Error", async () => {
       const loader = deferredLoader();
       const socket = createLazySocket(loader.load);

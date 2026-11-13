@@ -1,3 +1,4 @@
+import { createStaleChunkRecovery } from "@/lib/socket-chunk-recovery";
 import type { Socket } from "socket.io-client";
 
 /**
@@ -17,7 +18,11 @@ import type { Socket } from "socket.io-client";
  * fails, with the same arguments: the manager's `error` and the socket's `connect_error` for every
  * failure, `reconnect_attempt` (1, 2, …) before each retry, `reconnect_error` when a retry fails
  * too, and `reconnect` once the connection finally opens. Retries use Socket.IO's default backoff
- * (1 s doubling to 5 s, ±50%) and never give up, so `reconnect_failed` is never raised.
+ * (1 s doubling to 5 s, ±50%) and never give up, so `reconnect_failed` is never raised; while
+ * it lasts the health port stays "connecting", as for a server that cannot be reached, so the
+ * connection notice escalates to "paused" with a Refresh button. A retry also runs as soon as the
+ * browser comes back online. If the client's file has gone because a deploy replaced it, retrying
+ * cannot help: `socket-chunk-recovery.ts` then reloads the page once, onto the new build.
  */
 
 // biome-ignore lint/suspicious/noExplicitAny: Socket.IO listeners take any arguments.
@@ -84,7 +89,18 @@ export function retryDelayMs(attempt: number): number {
 export const MAX_PENDING_EMITS = 100;
 
 /** Builds a lazy socket around `load`. Exported for tests; the app uses `getSocket()`. */
-export function createLazySocket(load: () => Promise<SocketConnectionModule>): LiveSocket {
+export type LazySocketOptions = {
+  /**
+   * Told about every failed fetch of the client, with how many have failed in a row, after
+   * listeners have heard it. `getSocket()` uses it to recover from a deploy (`socket-chunk-recovery`).
+   */
+  onLoadFailure?: (error: Error, failures: number) => void;
+};
+
+export function createLazySocket(
+  load: () => Promise<SocketConnectionModule>,
+  options: LazySocketOptions = {},
+): LiveSocket {
   let real: Socket | null = null;
   let loading = false;
   let attempt = 0;
@@ -174,15 +190,27 @@ export function createLazySocket(load: () => Promise<SocketConnectionModule>): L
         // repeats as `connect_error`; a failed retry then also raises `reconnect_error`.
         notify("ioOn", "error", err);
         notify("on", "connect_error", err);
-        const delay = retryDelayMs(attempt);
-        attempt += 1;
-        setTimeout(() => {
-          notify("ioOn", "reconnect_attempt", attempt);
-          start();
-        }, delay);
+        scheduleRetry(retryDelayMs(attempt));
         if (isRetry) notify("ioOn", "reconnect_error", err);
+        options.onLoadFailure?.(err, attempt);
       },
     );
+  }
+
+  /**
+   * Waits `delay` before fetching again, or less if the browser comes back online first: a lost
+   * connection is the usual reason a fetch fails, and the client is wanted as soon as it is back.
+   */
+  function scheduleRetry(delay: number) {
+    attempt += 1;
+    const retry = () => {
+      clearTimeout(timer);
+      if (typeof window !== "undefined") window.removeEventListener("online", retry);
+      notify("ioOn", "reconnect_attempt", attempt);
+      start();
+    };
+    const timer = setTimeout(retry, delay);
+    if (typeof window !== "undefined") window.addEventListener("online", retry);
   }
 
   /**
@@ -296,6 +324,11 @@ export function createLazySocket(load: () => Promise<SocketConnectionModule>): L
 let socket: LiveSocket | null = null;
 
 export function getSocket(): LiveSocket {
-  if (!socket) socket = createLazySocket(() => import("@/lib/socket-connection"));
+  if (!socket) {
+    socket = createLazySocket(
+      () => import("@/lib/socket-connection"),
+      typeof window === "undefined" ? {} : { onLoadFailure: createStaleChunkRecovery() },
+    );
+  }
   return socket;
 }
