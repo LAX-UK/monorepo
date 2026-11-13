@@ -7,7 +7,8 @@ import {
 } from "@/app/(marketing)/sell/private-sales/actions";
 import { useAppSession } from "@/lib/auth/use-app-session";
 import { SITE_CONTACT_EMAIL } from "@/lib/brand";
-import { publicFormErrorMap, submitFailureCopy } from "@/lib/forms/error-copy";
+import { submitFailureCopy } from "@/lib/forms/error-copy";
+import { lazyResolver } from "@/lib/forms/lazy-resolver";
 import { useFormErrorSummary } from "@/lib/forms/use-form-error-summary";
 import {
   type EnquirerOrganisation,
@@ -20,13 +21,11 @@ import {
   type EnquiryFormValues,
   type EnquiryPath,
   emptyEnquiryValues,
-  enquiryFormSchema,
 } from "@/lib/private-sales/enquiry-values";
 import { Button } from "@auction/ui/lax/button";
 import { ErrorSummary } from "@auction/ui/lax/error-summary";
 import { Notice } from "@auction/ui/lax/notice";
 import { SegmentedControl } from "@auction/ui/lax/tabs";
-import { zodResolver } from "@hookform/resolvers/zod";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { EnquiringAsCard } from "./enquiring-as-card";
@@ -55,6 +54,10 @@ async function draftToken(): Promise<string | null> {
 }
 
 /** Keeps the address in step with the path, so the page can be shared on either. */
+const enquiryFormResolver = lazyResolver<EnquiryFormValues>(() =>
+  import("./enquiry-card.validation").then((m) => m.enquiryFormResolver),
+);
+
 function rememberPath(path: EnquiryPath) {
   const url = new URL(window.location.href);
   url.searchParams.set("path", path);
@@ -80,7 +83,7 @@ export function EnquiryCard({ initialPath, onAnother }: Props) {
   const queued = useRef<EnquiryFormValues | null>(null);
 
   const form = useForm<EnquiryFormValues>({
-    resolver: zodResolver(enquiryFormSchema as never, { errorMap: publicFormErrorMap } as never),
+    resolver: enquiryFormResolver,
     defaultValues: emptyEnquiryValues(initialPath),
     reValidateMode: "onBlur",
     shouldFocusError: false,
@@ -194,6 +197,7 @@ export function EnquiryCard({ initialPath, onAnother }: Props) {
         </Notice>
       ) : (
         <form
+          onFocus={enquiryFormResolver.preload}
           onSubmit={onSubmit}
           noValidate
           aria-label={path === "sell" ? "Sell privately enquiry" : "Buy privately enquiry"}

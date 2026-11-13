@@ -1,5 +1,6 @@
 "use client";
 
+import { lazyResolver } from "@/lib/forms/lazy-resolver";
 import {
   PRESS_FILTER_ALL,
   PRESS_MENTION_TYPE_OPTIONS,
@@ -14,19 +15,14 @@ import { Field } from "@auction/ui/lax/field";
 import { TextInput } from "@auction/ui/lax/input";
 import { NativeSelect } from "@auction/ui/lax/native-select";
 import { cn } from "@auction/ui/lib/utils";
-import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { Controller, useForm } from "react-hook-form";
-import { z } from "zod";
+import type { PressFilterValues } from "./press-filter-form.validation";
 
-const pressFilterSchema = z.object({
-  q: z.string().trim().max(200),
-  year: z.string(),
-  mentionType: z.string(),
-});
-
-type PressFilterValues = z.infer<typeof pressFilterSchema>;
+const pressFilterResolver = lazyResolver<PressFilterValues>(() =>
+  import("./press-filter-form.validation").then((m) => m.pressFilterResolver),
+);
 
 type Props = {
   initialParams: PressHubParams;
@@ -56,7 +52,7 @@ export function PressFilterForm({
 }: Props) {
   const router = useRouter();
   const form = useForm<PressFilterValues>({
-    resolver: zodResolver(pressFilterSchema),
+    resolver: pressFilterResolver,
     defaultValues: pressHubParamsToFilterFormValues(initialParams),
   });
 
@@ -77,6 +73,7 @@ export function PressFilterForm({
 
   return (
     <form
+      onFocus={pressFilterResolver.preload}
       id={formId}
       className={cn(
         isSheet

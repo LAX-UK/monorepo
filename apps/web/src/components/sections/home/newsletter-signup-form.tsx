@@ -1,15 +1,19 @@
 "use client";
 
-import { publicFormResolver } from "@/lib/forms/public-form-resolver";
+import { lazyResolver } from "@/lib/forms/lazy-resolver";
 import { defaultNewsletterSubmitter } from "@/lib/newsletter/services/newsletter.client";
 import { useNewsletterSubmit } from "@/lib/newsletter/use-newsletter-submit";
 import { Button } from "@auction/ui/lax/button";
 import { Field } from "@auction/ui/lax/field";
 import { TextInput } from "@auction/ui/lax/input";
 import { Notice } from "@auction/ui/lax/notice";
-import { type NewsletterSubscribeInput, newsletterSubscribeSchema } from "@auction/validators";
+import type { NewsletterSubscribeInput } from "@auction/validators";
 import { type FormEvent, useState } from "react";
 import { useForm } from "react-hook-form";
+
+const newsletterResolver = lazyResolver<NewsletterSubscribeInput>(() =>
+  import("./newsletter-signup-form.validation").then((m) => m.newsletterSignupResolver),
+);
 
 /** Email sign-up for the newsletter, in the home page's closing band. */
 export function NewsletterSignupForm() {
@@ -19,7 +23,7 @@ export function NewsletterSignupForm() {
   );
 
   const form = useForm<NewsletterSubscribeInput>({
-    resolver: publicFormResolver(newsletterSubscribeSchema),
+    resolver: newsletterResolver,
     defaultValues: { email: "" },
     reValidateMode: "onBlur",
   });
@@ -56,6 +60,7 @@ export function NewsletterSignupForm() {
 
   return (
     <form
+      onFocus={newsletterResolver.preload}
       onSubmit={onSubmit}
       className="mx-auto flex w-full max-w-[420px] flex-col gap-3 text-left"
       noValidate
