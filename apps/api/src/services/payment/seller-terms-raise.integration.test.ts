@@ -91,6 +91,8 @@ describe.skipIf(!HAS_DB)("seller terms at raise (integration)", () => {
       auctionType: "english",
       startingPrice: "100.00",
       currentPrice: options.price ?? "1000.00",
+      // The lot's own 25% premium: the figures below are worked at it.
+      buyerPremiumRate: "0.25",
       minBidIncrement: "10.00",
       startTime: new Date(Date.now() - 10 * day),
       endTime: new Date(Date.now() - 2 * day),

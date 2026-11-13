@@ -1,7 +1,12 @@
 import { formatWholeMoney, lotChargeCurrency } from "@/lib/format-currency";
 import { soldPriceWithPremium } from "@/lib/hang/hang-label";
 import { classifyLotLifecycle } from "@/lib/lot/lot-lifecycle";
-import { type CardPriceLine, cardPriceLine, lotPriceHasBids } from "@auction/domain";
+import {
+  type BuyerPremiumSaleTerms,
+  type CardPriceLine,
+  cardPriceLine,
+  lotPriceHasBids,
+} from "@auction/domain";
 import type { Lot, LotTimingSource, Sale } from "@auction/types";
 import { toLotCardTimingVM } from "@auction/validators";
 
@@ -39,16 +44,20 @@ export type LotCardLineModel = {
   endsAt: string | null;
 };
 
-/** The buyer's price of a sold lot: the server's total when it sent one, else hammer plus premium. */
+/**
+ * The buyer's price of a sold lot: the server's total when it sent one, else hammer plus the
+ * premium the shared resolver gives. Without the sale's premium or a rate of the lot's own there
+ * is nothing safe to add, so no price is shown.
+ */
 function soldForWithPremium(
   lot: LotCardLineSource,
   lifecycle: string,
-  tiers: Sale["buyerPremiumTiers"] | undefined,
+  premiumSale: BuyerPremiumSaleTerms | null | undefined,
 ): string | null {
   if (lifecycle !== "endedSold") return null;
   if (lot.checkoutPricing) return lot.checkoutPricing.totalMajor;
-  if (tiers === undefined && lot.buyerPremiumRate == null) return null;
-  return soldPriceWithPremium(lot, { buyerPremiumTiers: tiers ?? null });
+  if (!premiumSale && lot.buyerPremiumRate == null) return null;
+  return soldPriceWithPremium(lot, premiumSale ?? null);
 }
 
 /** Whether a status badge still earns its place: the line already says anything with a clock. */
@@ -71,8 +80,8 @@ export function lotCardLineModel(
   opts: {
     /** The parent sale, when known, so the lifecycle knows about the room. */
     sale?: LotCardLineSale;
-    /** The sale's premium tiers, so a sold lot reads the buyer's price, as the lot page does. */
-    premiumTiers?: Sale["buyerPremiumTiers"];
+    /** The sale's premium, so a sold lot reads the buyer's price, as the lot page does. */
+    premiumSale?: BuyerPremiumSaleTerms | null;
   } = {},
 ): LotCardLineModel {
   const sale = opts.sale ?? null;
@@ -85,7 +94,7 @@ export function lotCardLineModel(
       starting: lot.startingPrice,
       current: lot.currentPrice,
       hammer: lifecycle === "endedSold" ? lot.currentPrice : null,
-      soldForWithPremium: soldForWithPremium(lot, lifecycle, opts.premiumTiers),
+      soldForWithPremium: soldForWithPremium(lot, lifecycle, opts.premiumSale),
     },
     estimate: estimateOf(lot),
     // Cards print whole pounds; invoices and receipts keep their pence elsewhere.

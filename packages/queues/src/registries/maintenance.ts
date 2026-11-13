@@ -1,5 +1,6 @@
 import {
   ALERT_DIGEST_QUEUE_NAME,
+  FAILED_JOBS_WATCH_QUEUE_NAME,
   GC_PENDING_UPLOADS_QUEUE_NAME,
   IMAGE_CLEANUP_QUEUE_NAME,
   IMPERSONATION_SWEEPER_QUEUE_NAME,
@@ -174,5 +175,24 @@ export const MAINTENANCE_QUEUE_REGISTRY = {
       removeOnFail: 50,
     },
     description: "Daily alert digest at 08:00 London time",
+  },
+  [FAILED_JOBS_WATCH_QUEUE_NAME]: {
+    producers: ["worker"],
+    consumer: "worker",
+    criticality: "background",
+    pauseOrder: null,
+    // Daily, like the alert digest: its Sentry cron monitor watches that it ran, not a heartbeat.
+    heartbeatKey: null,
+    dlq: false,
+    showInUi: false,
+    allowUiRetries: false,
+    repeatable: true,
+    defaultJobOptions: {
+      attempts: 3,
+      backoff: { type: "exponential", delay: 60_000 },
+      removeOnComplete: 10,
+      removeOnFail: 50,
+    },
+    description: "Daily Failed jobs watch at 08:00 London: new or growing kinds of failure",
   },
 } as const satisfies Record<string, QueueDefinition>;

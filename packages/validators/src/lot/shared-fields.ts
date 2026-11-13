@@ -50,7 +50,8 @@ export const createLotBodySchema = z.object({
   startingPrice: decimalString,
   reservePrice: decimalString.optional(),
   buyNowPrice: decimalString.optional(),
-  buyerPremiumRate: buyerPremiumRateString.optional(),
+  /** The lot's own premium; `null` (or left out) means the lot uses its sale's premium. */
+  buyerPremiumRate: buyerPremiumRateString.nullable().optional(),
   minBidIncrement: decimalString.optional(),
   autoBidEnabled: z.boolean().optional(),
   autoBidStepMin: decimalString.optional(),

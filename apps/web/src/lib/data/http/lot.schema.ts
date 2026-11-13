@@ -1,7 +1,14 @@
 import { parseGalleryImages } from "@/lib/data/http/gallery-image.schema";
 import { isIndexableObject, toObjectRecord } from "@/lib/data/http/object-guards";
 import { zCoerceDate, zStringArrayFromUnknown } from "@/lib/data/http/schema-coerce";
-import type { Lot, LotMarketingDetails, LotWithSaleZone, PublicLotView } from "@auction/types";
+import {
+  type Lot,
+  type LotMarketingDetails,
+  type LotWithSaleZone,
+  type PublicLotView,
+  isBuyerPremiumSource,
+} from "@auction/types";
+import { isBandedPremiumPolicyId, isBuyerPremiumRate } from "@auction/validators";
 import { z } from "zod";
 
 function parseMarketingDetails(raw: unknown): LotMarketingDetails {
@@ -20,10 +27,52 @@ function parseCheckoutPricing(raw: unknown): Lot["checkoutPricing"] | undefined 
   const kind: "flat" | "tiered" =
     rawKind === "tiered" || rawKind === "flat"
       ? rawKind
-      : policyId.startsWith("tiered:")
+      : isBandedPremiumPolicyId(policyId)
         ? "tiered"
         : "flat";
-  return { hammerMajor, premiumMajor, totalMajor, policyId, kind };
+  const premium = parseResolvedPremium(raw.premium);
+  const premiumLabel = typeof raw.premiumLabel === "string" ? raw.premiumLabel.trim() : "";
+  return {
+    hammerMajor,
+    premiumMajor,
+    totalMajor,
+    policyId,
+    kind,
+    ...(premium ? { premium } : {}),
+    ...(premiumLabel ? { premiumLabel } : {}),
+  };
+}
+
+/** The premium the server resolved for the lot: where it came from, its terms and its slices. */
+function parseResolvedPremium(raw: unknown): NonNullable<Lot["checkoutPricing"]>["premium"] {
+  if (!isIndexableObject(raw) || !isIndexableObject(raw.schedule)) return undefined;
+  const source = raw.source;
+  if (!isBuyerPremiumSource(source)) return undefined;
+  const schedule = raw.schedule;
+  const rate = (value: unknown) =>
+    typeof value === "string" && isBuyerPremiumRate(value) ? value : null;
+  const breakdown = (Array.isArray(raw.breakdown) ? raw.breakdown : []).flatMap(
+    (slice: unknown) => {
+      if (!isIndexableObject(slice)) return [];
+      const r = rate(slice.rate);
+      const base = Number(slice.baseMinor);
+      return r && Number.isSafeInteger(base) && base >= 0 ? [{ rate: r, baseMinor: base }] : [];
+    },
+  );
+  if (schedule.kind === "flat") {
+    const flat = rate(schedule.rate);
+    return flat ? { source, schedule: { kind: "flat", rate: flat }, breakdown } : undefined;
+  }
+  if (schedule.kind !== "bands" || !Array.isArray(schedule.bands)) return undefined;
+  const bands = schedule.bands.flatMap((band: unknown) => {
+    if (!isIndexableObject(band)) return [];
+    const r = rate(band.rate);
+    const from = Number(band.hammerThresholdMinor);
+    return r && Number.isSafeInteger(from) && from >= 0
+      ? [{ hammerThresholdMinor: from, rate: r }]
+      : [];
+  });
+  return bands.length > 0 ? { source, schedule: { kind: "bands", bands }, breakdown } : undefined;
 }
 
 function nullableString(value: unknown): string | null {
@@ -73,9 +122,10 @@ const lotRowSchema = z
       reservePrice: row.reservePrice == null ? null : String(row.reservePrice),
       buyNowPrice: row.buyNowPrice == null ? null : String(row.buyNowPrice),
       currentPrice: String(row.currentPrice),
+      // `null`: the lot uses its sale's premium (never a made-up default rate).
       buyerPremiumRate:
         row.buyerPremiumRate == null || row.buyerPremiumRate === ""
-          ? "0.25"
+          ? null
           : String(row.buyerPremiumRate),
       ...(checkoutPricing !== undefined ? { checkoutPricing } : {}),
       minBidIncrement:

@@ -8,15 +8,10 @@ import type {
   UseFormReturn,
 } from "react-hook-form";
 import type { StreamUrlVerificationGate } from "../../stream-url-verify-control";
+import type { SaleTierBandPreview } from "../../use-sale-tier-preview";
 
-export type TierPreview =
-  | { ok: false }
-  | {
-      ok: true;
-      kind: "tiered" | "flat";
-      at250k: { hammer: string; premium: string };
-      at600k: { hammer: string; premium: string };
-    };
+/** The premium the sale form's choice would charge, in words and as a worked example. */
+export type TierPreview = SaleTierBandPreview;
 
 export type SaleScheduleStepProps = {
   form: UseFormReturn<AdminSaleFormValues>;

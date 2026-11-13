@@ -137,7 +137,7 @@ describe("price block by lifecycle", () => {
     expect(vm).toMatchObject({
       label: "Sold for",
       amountText: "£8,750",
-      subLine: "Hammer £7,000 plus 25% buyer's premium",
+      subLine: "Hammer £7,000 plus £1,750 buyer's premium",
     });
   });
 

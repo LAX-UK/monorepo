@@ -259,6 +259,9 @@ export class ConnectTransferInitiationService {
       expected,
       async (repo, locked): Promise<TransferStep> => {
         let createAttempted = false;
+        // Set when any create attempt in the retry loop may have reached Stripe. A later attempt
+        // that Stripe turns away (a rate limit, say) does not undo that: the first may have sent.
+        let createMayHaveSent = false;
         try {
           // Stripe forgets idempotency keys after 24h, so a retry must look at what Stripe already
           // holds before it creates anything. One shared decision serves every caller.
@@ -302,6 +305,14 @@ export class ConnectTransferInitiationService {
                       legalEntityId: payout.legalEntityId,
                     },
                     idempotencyKey: transferIdempotencyKey(payout, amountCents, opts),
+                  }).catch((createErr: unknown) => {
+                    if (
+                      createErr instanceof StripeSdk.errors.StripeError &&
+                      transferOutcomeUnknownAfter(createErr)
+                    ) {
+                      createMayHaveSent = true;
+                    }
+                    throw createErr;
                   }),
                 );
 
@@ -325,8 +336,10 @@ export class ConnectTransferInitiationService {
           // Stripe may hold a transfer for this amount when the create's outcome is unknown, or when
           // an earlier attempt's was and this one failed before it could find out. Such a payout
           // takes no new lines (`payoutTakesLines`) until an attempt settles what Stripe holds.
+          // Only the attempts decide it, not the last error alone: a rate limit (429) is a request
+          // Stripe turned away, so on its own it is a definite non-send that the next run retries.
           const outcomeUnknown = createAttempted
-            ? transferOutcomeUnknownAfter(err)
+            ? createMayHaveSent || transferOutcomeUnknownAfter(err)
             : lastTransferOutcomeUnknown(locked);
           const moved3 = await repo.updateStatusIfCurrent(payoutId, startStatus, {
             status: opts?.keepScheduledOnTransferFailure ? "scheduled" : "failed",

@@ -7,6 +7,7 @@ import {
   resolvePublicSaleListFilter,
   viewerCanSeeNonPublicCatalog,
 } from "@auction/validators";
+import { withInvoicedSalePrices } from "../../lib/invoiced-sale-prices.js";
 import { presentCatalogueRowForPublic } from "../../lib/lot-public-view.js";
 import {
   presentLotsImages,
@@ -81,10 +82,16 @@ export async function getSaleDetailForPublicApi(
           presentLotsImages(deps.mediaUrlResolver, rows, deps.mediaAssetEnricher),
         ),
   ]);
-  // Staff see the real buyer and price; everyone else sees an open result as "ended".
+  // Staff see the real buyer and price; everyone else sees an open result as "ended". Sold lots
+  // whose invoice is raised show what it charged.
+  const priced = await withInvoicedSalePrices(
+    deps.invoicedSalePrices,
+    canPreview ? lots : await withPublicLotResults(deps.publicLotResults, lots),
+    () => saleWithPlatform,
+  );
   const visibleLots = canPreview
-    ? lots
-    : (await withPublicLotResults(deps.publicLotResults, lots))
+    ? priced
+    : priced
         .filter((lot) => isPublicCatalogueLot(lot, saleWithPlatform))
         .map(presentCatalogueRowForPublic);
   return { data: { sale, lots: visibleLots, viewer: { isFollowing } } };
@@ -139,12 +146,20 @@ export async function listSalesForPublicApi(
           )
         ).map((lot) => [lot.id, lot]),
       );
-  const rows = shown
-    ? listed.map(({ sale, lots }) => ({
-        sale,
-        lots: lots.map((lot) => shown.get(lot.id) ?? lot),
-      }))
-    : listed;
+  const saleById = new Map(listed.map(({ sale }) => [sale.id, sale]));
+  const priced = new Map(
+    (
+      await withInvoicedSalePrices(
+        deps.invoicedSalePrices,
+        listed.flatMap(({ lots }) => lots.map((lot) => shown?.get(lot.id) ?? lot)),
+        (lot) => (lot.saleId ? (saleById.get(lot.saleId) ?? null) : null),
+      )
+    ).map((lot) => [lot.id, lot]),
+  );
+  const rows = listed.map(({ sale, lots }) => ({
+    sale,
+    lots: lots.map((lot) => priced.get(lot.id) ?? lot),
+  }));
   const data = await presentSalesWithLotsImages(
     deps.catalogueMediaUrlResolver,
     rows,
@@ -203,13 +218,15 @@ export async function listSaleLotsPageForPublicApi(
     await withAtgLotResults(deps.saleChannelReader, sale, page.items),
     deps.mediaAssetEnricher,
   );
+  // Sold lots whose invoice is raised show what it charged.
+  const priced = await withInvoicedSalePrices(
+    deps.invoicedSalePrices,
+    canPreview ? items : await withPublicLotResults(deps.publicLotResults, items),
+    () => sale,
+  );
   return {
     data: {
-      items: canPreview
-        ? items
-        : (await withPublicLotResults(deps.publicLotResults, items)).map(
-            presentCatalogueRowForPublic,
-          ),
+      items: canPreview ? priced : priced.map(presentCatalogueRowForPublic),
       total: page.total,
       limit: opts.limit,
       offset: opts.offset,

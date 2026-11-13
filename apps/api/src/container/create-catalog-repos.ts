@@ -16,6 +16,7 @@ import type {
   IConditionReportRequestRepository,
   ICoverAnalysisReader,
   IDisplayPairingRepository,
+  IInvoicedSalePriceReader,
   IItemSubmissionRepository,
   ILotDocumentRepository,
   ILotLifecycleSnapshotReader,
@@ -67,6 +68,7 @@ import {
   DrizzleAtgLinkReader,
   DrizzleAtgSaleSettingsWriter,
   DrizzleAttentionFeedReader,
+  DrizzleBidInvoiceRepository,
   DrizzleCategoryRepository,
   DrizzleConditionReportRequestRepository,
   DrizzleCoverAnalysisReader,
@@ -162,6 +164,8 @@ export type CatalogRepositories = {
   saleBiddersReader: ISaleBiddersReader;
   saleResultLotsReader: ISaleResultLotsReader;
   publicLotResultReader: IPublicLotResultReader;
+  /** What sold lots' live invoices charged, for public prices and results. */
+  invoicedSalePriceReader: IInvoicedSalePriceReader;
   saleroomDisplaySnapshotReader: ISaleroomDisplaySnapshotReader;
   qrCodeAnalyticsReader: IQrCodeAnalyticsReader;
   mediaAssetReader: IMediaAssetReader;
@@ -219,6 +223,7 @@ export function createCatalogRepositories(db: Database): CatalogRepositories {
   const saleBiddersReader = new DrizzleSaleBiddersReader(db);
   const saleResultLotsReader = new DrizzleSaleResultLotsReader(db);
   const publicLotResultReader = new DrizzlePublicLotResultReader(db);
+  const invoicedSalePriceReader = new DrizzleBidInvoiceRepository(db);
   const saleroomDisplaySnapshotReader = new DrizzleSaleroomDisplaySnapshotReader(db);
   const qrCodeAnalyticsReader = new DrizzleQrCodeAnalyticsReader(db);
   const mediaAssetReader = new DrizzleMediaAssetReader(db);
@@ -275,6 +280,7 @@ export function createCatalogRepositories(db: Database): CatalogRepositories {
     saleBiddersReader,
     saleResultLotsReader,
     publicLotResultReader,
+    invoicedSalePriceReader,
     saleroomDisplaySnapshotReader,
     qrCodeAnalyticsReader,
     mediaAssetReader,

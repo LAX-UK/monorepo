@@ -79,6 +79,10 @@ export function StaffRadio({
       className={cn(
         boxBase,
         "rounded-full text-staff-ink",
+        // A disabled choice keeps the control border (3:1), so a fixed set of options (a
+        // published sale's premium) still reads as a set; the sunken fill and the dimmed label
+        // say it cannot change.
+        "disabled:border-staff-control-border",
         "data-[state=checked]:border-staff-ink",
         "focus-visible:border-staff-ink focus-visible:ring-0",
         className,

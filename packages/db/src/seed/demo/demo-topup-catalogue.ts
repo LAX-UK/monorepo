@@ -37,7 +37,6 @@ const COVERS = [
   unsplash("1518998053901-5348d3961a04"),
 ] as const;
 
-export const BUYER_PREMIUM_RATE = 0.25;
 /** The seller commission LAX keeps from what the buyer paid, on a payout. */
 export const SELLER_COMMISSION_RATE = 0.1;
 
@@ -134,7 +133,6 @@ export function demoPayment(
     invoice: priceSeedInvoice({
       paymentId: input.id,
       hammerPounds: input.hammer,
-      rate: BUYER_PREMIUM_RATE,
       raisedAt: input.createdAt,
     }),
   };

@@ -140,6 +140,15 @@ paths:
       summary: Manually end an onsite sale and its scheduled/active lots (admin)
       requestBody:
         $ref: "#/components/requestBodies/OptionalReason"
+  /sales/{id}/lots/use-sale-premium:
+    parameters:
+      - $ref: "#/components/parameters/SaleId"
+    post:
+      summary: Put unsold, not-yet-open lots back on the sale's buyer's premium (admin, audited)
+      description: |
+        Body `{ "lotIds": [uuid, ...] }` (1–500). Clears each lot's own premium so it charges the
+        sale's. Only draft and scheduled lots with no winner change; others are returned in
+        `skipped` with a reason. Records `sale.lot_premiums_reset` with the previous rates.
   /sales/{id}/lots/attach/{lotId}:
     parameters:
       - $ref: "#/components/parameters/SaleId"

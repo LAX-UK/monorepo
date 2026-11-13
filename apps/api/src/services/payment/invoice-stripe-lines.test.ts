@@ -20,7 +20,9 @@ const tieredSale = {
     { hammerThresholdMinor: 50_000_000, rate: "0.1000" },
   ],
 } as unknown as Sale;
-const tieredLot = (price: string) => ({ ...lot(price), saleId: "sale-1" }) as unknown as Lot;
+/** A lot in the banded sale with no premium of its own, so the sale's bands apply. */
+const tieredLot = (price: string) =>
+  ({ ...lot(price), saleId: "sale-1", buyerPremiumRate: null }) as unknown as Lot;
 
 function invoiceFor(paymentLot: Lot, sale: Sale | null, id = "inv-1"): BidInvoiceRecord {
   const built = buildInvoiceLines(paymentLot, sale);
@@ -47,8 +49,9 @@ function sessionTotal(items: { unitAmountCents: number }[]): number {
 describe("single checkout lines", () => {
   it.each([
     ["flat sale", lot("1000.00"), null, 125_000],
-    ["tiered sale, below the band edge", tieredLot("499999.99"), tieredSale, 57_499_999],
-    ["tiered sale, at the band edge", tieredLot("500000.00"), tieredSale, 55_000_000],
+    ["banded sale, below the band edge", tieredLot("499999.99"), tieredSale, 57_499_999],
+    ["banded sale, at the band edge", tieredLot("500000.00"), tieredSale, 57_500_000],
+    ["banded sale, above the band edge", tieredLot("600000.00"), tieredSale, 68_500_000],
   ] as const)(
     "%s: the session total is the invoice total is the payment amount",
     (_n, l, sale, pence) => {

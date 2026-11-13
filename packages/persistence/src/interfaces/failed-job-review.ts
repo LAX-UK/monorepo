@@ -64,3 +64,26 @@ export interface IFailedJobDisposition {
   /** Puts discarded jobs back in review; returns the ids that changed. */
   restore(ids: readonly string[]): Promise<string[]>;
 }
+
+/**
+ * Failures waiting for review that read the same: one job type, one job name (or event type), one
+ * first error line. Counts only, for the alert that watches Failed jobs grow; no payload is read.
+ */
+export type FailedJobNeedsReviewGroup = {
+  /** The Failed jobs "Job type" value: a queue (`send-email`), or `delivery:zoho`, `webhook:stripe`. */
+  jobType: string;
+  /** The background job's name, or the event type an integration carried; null when unknown. */
+  jobName: string | null;
+  /** The first non-empty line of the stored error, unscrubbed: scrub it before it is shown. */
+  errorLine: string;
+  count: number;
+  /** How many of them first failed at or after the `since` asked for. */
+  newSince: number;
+  firstFailedAt: Date;
+  lastFailedAt: Date;
+};
+
+/** Groups what the Failed jobs page shows under Needs review, for one kind of source. */
+export interface IFailedJobNeedsReviewGroups {
+  needsReviewGroups(since: Date): Promise<FailedJobNeedsReviewGroup[]>;
+}

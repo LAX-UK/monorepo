@@ -191,6 +191,7 @@ export function buildLotPageViewModel(input: {
     lot: auction,
     artist: artistForAccordion,
     documents: lotDocuments,
+    premiumSale: saleBundle?.sale ?? null,
   });
   const rail = mapSiblingsToRailVM(
     auction,

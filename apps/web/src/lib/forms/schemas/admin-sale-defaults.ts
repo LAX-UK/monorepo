@@ -2,7 +2,7 @@ import { defaultScheduleInstants } from "@auction/datetime";
 import type { Sale } from "@auction/types";
 import { toDatetimeFormString } from "@auction/ui/lib/datetime";
 import { DEFAULT_SALE_TIME_ZONE } from "@auction/validators";
-import type { AdminSaleFormValues } from "./admin-sale-form";
+import { type AdminSaleFormValues, saleBuyerPremiumModeOf } from "./admin-sale-form";
 
 export type SaleWithPresentedCovers = Sale & { coverImagePresentedUrls?: string[] };
 
@@ -47,6 +47,7 @@ export function saleToAdminSaleFormValues(sale: Sale): AdminSaleFormValues {
     previewStartTime: sale.previewStartTime
       ? toDatetimeFormString(sale.previewStartTime, sale.timeZone)
       : "",
+    buyerPremiumMode: saleBuyerPremiumModeOf(sale),
     buyerPremiumRate: sale.buyerPremiumRate,
     buyerPremiumTiers: (sale.buyerPremiumTiers ?? []).map((t) => ({
       hammerThresholdMajor: String(t.hammerThresholdMinor / 100),
@@ -85,7 +86,9 @@ export function emptyAdminSaleFormValues(
     startTime: toDatetimeFormString(start, timeZone),
     endTime: toDatetimeFormString(end, timeZone),
     previewStartTime: "",
-    buyerPremiumRate: "0.25",
+    // New sales charge the standard premium in the Conditions of Sale unless staff choose otherwise.
+    buyerPremiumMode: "standard",
+    buyerPremiumRate: "",
     buyerPremiumTiers: [],
     terms: "",
   };

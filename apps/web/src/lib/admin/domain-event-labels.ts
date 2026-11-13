@@ -240,6 +240,7 @@ const LABELS: Record<string, string> = {
   "sale.test_flag_changed": "Sale test setting changed",
   "sale.cancelled": "Sale cancelled",
   "sale.ended": "Sale marked ended",
+  "sale.lot_premiums_reset": "Lots put back on the sale's buyer's premium",
   "sale_registration.decided": "Sale registration decided",
   "sale_registration.bid_limit_changed": "Sale registration bidding limit changed",
   "sale.soft_deleted": "Sale deleted",

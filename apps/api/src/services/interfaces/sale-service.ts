@@ -8,6 +8,7 @@ import type { Result } from "neverthrow";
 import type { LotAttachedToSalePayload } from "../../domain/lot-events.js";
 import type { AuthzError, LotError } from "../../lib/errors.js";
 import type { presentSaleAdminImages } from "../../lib/media-presenters.js";
+import type { UseSalePremiumOutcome } from "../sale/sale-lot-premium.js";
 import type { UpdateSaleBody } from "../sale/sale-update-draft.js";
 import type { SalePublishOptions } from "./sale-publish.js";
 
@@ -122,6 +123,15 @@ export interface ISaleLotMembershipService {
     lotId: string,
     userStaffRoles?: StaffRoles | undefined,
   ): Promise<Result<void, LotError | AuthzError>>;
+
+  /** Puts unsold lots that have not opened back on the sale's premium; audited. */
+  useSalePremiumForLots(input: {
+    actorUserId: string;
+    userRole: string;
+    userStaffRoles?: StaffRoles | undefined;
+    saleId: string;
+    lotIds: readonly string[];
+  }): Promise<Result<UseSalePremiumOutcome, LotError | AuthzError>>;
 }
 
 export interface ISaleService

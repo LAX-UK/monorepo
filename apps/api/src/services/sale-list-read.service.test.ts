@@ -300,3 +300,44 @@ describe("SaleListReadService preview lots with an open result", () => {
     expect(data[0]?.previewLots[0]).toMatchObject({ currentPrice: "900.00", hasWinner: true });
   });
 });
+
+describe("SaleListReadService sold preview lots", () => {
+  it("prices a sold, invoiced preview lot from its invoice, in one read", async () => {
+    const ended = { ...sale("s1"), status: "ended", buyerPremiumRate: "0.25" } as Sale;
+    const sold = {
+      ...lotRow("sold", "s1"),
+      status: "ended",
+      winnerId: "buyer",
+      currentPrice: "1000.00",
+      buyerPremiumRate: null,
+    } as Lot;
+    const lotRepo = {
+      countLotsBySaleIds: vi.fn(async () => new Map<string, number>()),
+      findPreviewLotsBySaleIds: vi.fn(async () => [sold, lotRow("live", "s1")]),
+    };
+    const invoices = {
+      findInvoicedSalePrices: vi.fn(
+        async () =>
+          new Map([
+            ["sold", { hammerPence: 100_000, premiumPence: 20_000, pricingPolicyId: null }],
+          ]),
+      ),
+    };
+    const svc = new SaleListReadService(
+      { list: vi.fn(async () => [ended]) } as never,
+      lotRepo as never,
+      { resolveManyUnique: vi.fn(async () => new Map()) } as never,
+      { lookupByKeys: vi.fn(async () => new Map()), buildGalleryImages: vi.fn() } as never,
+      null,
+      null,
+      null,
+      invoices,
+    );
+
+    const { data } = await svc.listForPublicApi({ limit: 20, offset: 0 });
+
+    expect(invoices.findInvoicedSalePrices).toHaveBeenCalledWith(["sold"]);
+    // The sale's 25% today would say £1,250; the invoice charged £1,200.
+    expect(data[0]?.previewLots[0]?.checkoutPricing?.totalMajor).toBe("1200.00");
+  });
+});

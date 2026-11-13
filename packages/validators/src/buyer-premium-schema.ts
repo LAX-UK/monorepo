@@ -1,4 +1,15 @@
+import { rateToTenThousandths } from "@auction/domain";
 import { z } from "zod";
+
+const RATE_PATTERN = /^\d(\.\d{1,4})?$/u;
+
+const tierSchema = z.object({
+  hammerThresholdMinor: z.number().int().nonnegative().finite(),
+  rate: z
+    .string()
+    .regex(RATE_PATTERN, "Rate must be a decimal between 0 and 1 with up to 4 d.p.")
+    .refine((s) => rateToTenThousandths(s) !== null, "Rate must be between 0 and 1"),
+});
 
 /**
  * Zod schema for `BuyerPremiumTier` rows on `sale.buyer_premium_tiers`.
@@ -7,20 +18,9 @@ import { z } from "zod";
  * - non-empty array
  * - thresholds non-negative integers (minor units)
  * - rates are decimal strings between 0 and 1 with up to 4 d.p.
- * - first tier MUST start at threshold 0 (covers all hammer values)
+ * - first band MUST start at threshold 0 (covers all hammer values)
  * - thresholds strictly ascending and unique
  */
-const tierSchema = z.object({
-  hammerThresholdMinor: z.number().int().nonnegative().finite(),
-  rate: z
-    .string()
-    .regex(/^\d(\.\d{1,4})?$/u, "Rate must be a decimal between 0 and 1 with up to 4 d.p.")
-    .refine((s) => {
-      const n = Number.parseFloat(s);
-      return n >= 0 && n <= 1;
-    }, "Rate must be between 0 and 1"),
-});
-
 export const buyerPremiumTiersSchema = z
   .array(tierSchema)
   .min(1, "Buyer premium tiers must have at least one entry")

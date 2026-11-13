@@ -27,6 +27,7 @@ import {
 } from "@auction/validators";
 import type { ReofferMemberActor } from "./reoffer-actors.js";
 import { ReofferError } from "./reoffer-errors.js";
+import { buyersPremiumMinorOf } from "./reoffer-invoice-pricing.js";
 import type { IReofferPricing, IReofferSellerRate } from "./reoffer-ports.js";
 
 export type ReofferReadsServiceDeps = {
@@ -223,11 +224,8 @@ export class ReofferReadsService {
     });
   }
 
-  private async premiumOf(lotId: string, buyerLegalEntityId: string, hammerPence: number) {
-    const priced = await this.deps.pricing.priceFor({ lotId, buyerLegalEntityId, hammerPence });
-    return priced.lines
-      .filter((l) => l.kind === "buyers_premium")
-      .reduce((sum, l) => sum + l.amountPence, 0);
+  private premiumOf(lotId: string, buyerLegalEntityId: string, hammerPence: number) {
+    return buyersPremiumMinorOf(this.deps.pricing, { lotId, buyerLegalEntityId, hammerPence });
   }
 }
 

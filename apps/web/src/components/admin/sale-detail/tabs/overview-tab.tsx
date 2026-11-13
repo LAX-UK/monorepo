@@ -2,12 +2,14 @@
 
 import { AuditTimeline } from "@/components/admin/audit/audit-timeline";
 import { useSaleDetailReadiness } from "@/components/admin/sale-detail/sale-detail-readiness-context";
+import { SalePremiumSection } from "@/components/admin/sale-detail/sale-premium-section";
 import type { AdminKpiPeriodDays } from "@/lib/admin/admin-kpi-period";
 import type { CatalogReadinessResult } from "@/lib/admin/catalog-readiness";
 import type { ConnectRequiredByLotId } from "@/lib/admin/connect-readiness";
 import { toIssueItems } from "@/lib/admin/detail-board/to-issue-items";
 import type { DetailStatRow } from "@/lib/admin/detail-board/types";
 import { useSaleAttentionDismiss } from "@/lib/admin/detail-board/use-sale-attention-dismiss";
+import { buildSalePremiumOverview } from "@/lib/admin/sales/sale-premium-overview";
 import type { AdminSaleAttention } from "@/lib/data/http/admin-sale-attention.server";
 import type { AdminSaleDetailMetrics } from "@/lib/data/http/admin-sale-detail-metrics.server";
 import type { AdminSaleOverviewKpiTrends } from "@/lib/data/http/admin-sale-overview-kpi-trends.server";
@@ -19,15 +21,12 @@ import {
 import {
   DetailColumns,
   IssueList,
-  type KeyValueItem,
   KeyValueList,
   Section,
   StaffButton,
   StaffDate,
   type StaffLinkComponent,
   StatGrid,
-  formatGbp,
-  formatStaffPercent,
 } from "@auction/staff-ui";
 import { Banknote, Gavel, Layers, Scale, UserCheck, Users } from "@auction/staff-ui/icons";
 import type { Lot, Sale } from "@auction/types";
@@ -73,22 +72,6 @@ type Props = {
   kpiTrends?: AdminSaleOverviewKpiTrends | null;
   kpiPeriodDays?: AdminKpiPeriodDays;
 };
-
-/** The flat rate, or one row per band: "From £500,000.00" · "15%". */
-function buyerPremiumItems(sale: Sale): KeyValueItem[] {
-  const tiers = sale.buyerPremiumTiers ?? [];
-  if (tiers.length > 0) {
-    return tiers.map((tier) => ({
-      label: `From ${formatGbp(tier.hammerThresholdMinor)}`,
-      value: formatStaffPercent(tier.rate),
-      numeric: true,
-    }));
-  }
-  const rate = sale.buyerPremiumRate?.trim();
-  return [
-    { label: "Flat rate", value: rate ? formatStaffPercent(rate) : "Not set", numeric: true },
-  ];
-}
 
 /**
  * The sale at a glance: its numbers, what needs doing (open setup checks, bidders waiting,
@@ -142,6 +125,7 @@ export function SaleOverviewTab({
       };
     });
   const issues = toIssueItems(rows);
+  const premium = useMemo(() => buildSalePremiumOverview(sale, lots), [sale, lots]);
 
   const rail = (
     <>
@@ -195,9 +179,7 @@ export function SaleOverviewTab({
           <KeyValueList items={[{ label: "Bids", value: "None yet" }]} />
         )}
       </Section>
-      <Section title="Buyer's premium" description="Charged on the hammer price.">
-        <KeyValueList items={buyerPremiumItems(sale)} />
-      </Section>
+      <SalePremiumSection saleId={saleId} overview={premium} />
     </DetailColumns>
   );
 }

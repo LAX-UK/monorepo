@@ -3,14 +3,17 @@ import { failedJobs } from "@auction/db/schema";
 import { type SQL, and, asc, desc, eq, inArray, isNotNull, isNull, ne, sql } from "drizzle-orm";
 import type {
   FailedJobFilter,
+  FailedJobNeedsReviewGroup,
   FailedJobRecord,
   FailedJobRecordWithPayload,
   FailedJobReviewView,
   FailedJobSearch,
   FailedJobSearchResult,
   IFailedJobDisposition,
+  IFailedJobNeedsReviewGroups,
   IFailedJobReviewReader,
 } from "../interfaces/failed-job-review.js";
+import { firstErrorLine } from "../lib/first-error-line.js";
 import { containsPattern } from "../lib/like-pattern.js";
 import { INTEGRATION_DISPOSITION_QUEUE } from "./drizzle-integration-dead-letter.repository.js";
 
@@ -71,7 +74,7 @@ function filterConditions(input: FailedJobFilter, options: { ignoreQueue?: boole
 }
 
 export class DrizzleFailedJobReviewRepository
-  implements IFailedJobReviewReader, IFailedJobDisposition
+  implements IFailedJobReviewReader, IFailedJobDisposition, IFailedJobNeedsReviewGroups
 {
   constructor(private readonly db: Database) {}
 
@@ -109,6 +112,25 @@ export class DrizzleFailedJobReviewRepository
 
     const counts = Object.fromEntries(viewCounts) as Record<FailedJobReviewView, number>;
     return { rows, total: counts[input.view], counts, queues: queueCounts };
+  }
+
+  async needsReviewGroups(since: Date): Promise<FailedJobNeedsReviewGroup[]> {
+    const errorLine = firstErrorLine(sql`${failedJobs.errorMessage}`);
+    return this.db
+      .select({
+        jobType: failedJobs.originalQueue,
+        jobName: failedJobs.originalJobName,
+        errorLine,
+        count: sql<number>`count(*)::int`,
+        newSince: sql<number>`(count(*) FILTER (WHERE ${failedJobs.firstFailedAt} >= ${since.toISOString()}::timestamptz))::int`,
+        firstFailedAt: sql<Date>`min(${failedJobs.firstFailedAt})`.mapWith(
+          failedJobs.firstFailedAt,
+        ),
+        lastFailedAt: sql<Date>`max(${failedJobs.failedAt})`.mapWith(failedJobs.failedAt),
+      })
+      .from(failedJobs)
+      .where(VIEW_PREDICATES.needs_review)
+      .groupBy(failedJobs.originalQueue, failedJobs.originalJobName, errorLine);
   }
 
   async findForReview(id: string): Promise<FailedJobRecordWithPayload | null> {

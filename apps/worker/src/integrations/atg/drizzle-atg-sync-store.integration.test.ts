@@ -53,6 +53,8 @@ async function withSeededSale(run: (store: DrizzleAtgSyncStore, db: Database) =>
       await tx.insert(sale).values({
         id: saleId,
         title: "ATG sale",
+        // ATG takes one flat premium per auction; this sale charges 25%.
+        buyerPremiumRate: "0.25",
         startTime: new Date("2026-10-20T10:00:00Z"),
         endTime: new Date("2026-11-01T18:00:00Z"),
         createdByLegalEntityId: sellerLeId,

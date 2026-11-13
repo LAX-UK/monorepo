@@ -20,19 +20,49 @@ describe("soldPriceWithPremium", () => {
     );
   });
 
-  it("uses the sale's bands in preference to the lot's rate", () => {
+  it("uses the lot's own premium in preference to the sale's bands", () => {
     const sale = {
+      buyerPremiumRate: "0.25",
       buyerPremiumTiers: [
-        { hammerThresholdMinor: 0, rate: "0.30" },
-        { hammerThresholdMinor: 1_000_000, rate: "0.20" },
+        { hammerThresholdMinor: 0, rate: "0.15" },
+        { hammerThresholdMinor: 50_000_000, rate: "0.10" },
       ],
     };
     expect(soldPriceWithPremium({ currentPrice: "1000.00", buyerPremiumRate: "0.25" }, sale)).toBe(
-      "1300.00",
+      "1250.00",
     );
-    expect(soldPriceWithPremium({ currentPrice: "10000.00", buyerPremiumRate: "0.25" }, sale)).toBe(
-      "12000.00",
+  });
+
+  it("charges the sale's bands slice by slice for a lot without its own premium", () => {
+    const sale = {
+      buyerPremiumRate: "0.25",
+      buyerPremiumTiers: [
+        { hammerThresholdMinor: 0, rate: "0.15" },
+        { hammerThresholdMinor: 50_000_000, rate: "0.10" },
+      ],
+    };
+    expect(soldPriceWithPremium({ currentPrice: "600000.00", buyerPremiumRate: null }, sale)).toBe(
+      "685000.00",
     );
+  });
+
+  it("reads the server's total when the lot carries one", () => {
+    expect(
+      soldPriceWithPremium(
+        {
+          currentPrice: "600000.00",
+          buyerPremiumRate: null,
+          checkoutPricing: {
+            hammerMajor: "600000.00",
+            premiumMajor: "85000.00",
+            totalMajor: "685000.00",
+            policyId: "bands:[0:0.1500,50000000:0.1000]",
+            kind: "tiered",
+          },
+        },
+        null,
+      ),
+    ).toBe("685000.00");
   });
 });
 

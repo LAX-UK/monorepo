@@ -1,6 +1,10 @@
 "use client";
 
 import { preloadBidDialog } from "@/components/lot-page/bid/bid-dialog.lazy";
+import {
+  BUYER_PREMIUM_CONDITIONS_HREF,
+  CONDITIONS_OF_SALE_LABEL,
+} from "@/lib/lot/buyer-premium-copy";
 import type { BidEntry, BidEntryControl, BidEntryDestination, BidMode } from "@auction/domain";
 import { Button } from "@auction/ui/lax/button";
 import { ButtonLink } from "@auction/ui/lax/button-link";
@@ -124,10 +128,29 @@ export function BidEntryControls({
       {help ? (
         <p className="m-0 text-lax-13 leading-5 text-lax-muted">
           {help.text}
+          {help.withConditions ? (
+            <>
+              {" "}
+              <Link
+                href={BUYER_PREMIUM_CONDITIONS_HREF}
+                className="whitespace-nowrap text-lax-fg underline underline-offset-2"
+              >
+                {CONDITIONS_OF_SALE_LABEL}
+              </Link>
+            </>
+          ) : null}
           {help.withBiddingGuide ? (
             <>
               {" "}
-              <Link href="/faq" className="text-lax-fg underline underline-offset-2">
+              {help.withConditions ? (
+                <>
+                  <span aria-hidden="true">·</span>{" "}
+                </>
+              ) : null}
+              <Link
+                href="/faq"
+                className="whitespace-nowrap text-lax-fg underline underline-offset-2"
+              >
                 How bidding works
               </Link>
             </>

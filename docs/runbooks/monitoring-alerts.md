@@ -235,6 +235,33 @@ UPDATE lot_reoffer
    AND close_reason LIKE 'invoice_not_raised:%';
 ```
 
+## Failed jobs growing (`failed_jobs_growing`)
+
+Failures can pile up on Bid admin › Failed jobs for weeks without anyone looking, many of them the same failure over and over. The worker's `failed-jobs-watch` job reads the Failed jobs stores every day at 08:00 London and raises **one** alert (Sentry warning `failed_jobs_growing`, logged at `warn`) when, in Needs review:
+
+- **a new group appears**: a job type and error code first seen in the last 24 hours, or
+- **a group grows**: one group gained 10 or more failures in the last 24 hours, or
+- **the whole list grows**: Needs review gained 25 or more in the last 24 hours, whatever the groups.
+
+A group is one job type (the Failed jobs **Job type** filter value, such as `send-email` or `delivery:zoho`, with the job name or event type) and one error code. The error code is the code the error starts with when it has one (`ZOHO_INVALID_DATA`), otherwise `err-` and a fingerprint of the error line Failed jobs shows. The alert carries no error text and no payload, only names, codes, counts and times.
+
+**What the alert says.** `groups` lists up to 10 groups, most new failures first, each with `jobType`, `job` (label), `errorCode`, `count`, `newInWindow`, `firstSeen`, `lastSeen`, `reasons` (`new`, `grew`) and `page`, the Failed jobs link filtered to that job type; `moreGroups` counts the rest. `total` and `totalNewInWindow` are for all of Needs review; `totalGrew` says the whole-list threshold was crossed, and when only that fired, `groups` shows the groups that grew most.
+
+**What to do.**
+
+1. Open the `page` of the first group (Bid admin › Failed jobs, Needs review, filtered to the job type) and open one failure to read the full error.
+2. Fix the cause first: a configuration or credential (Zoho, Xero, Postmark), a field the other side refuses, a bug in the handler. A failure that will fail again is not worth retrying.
+3. Then retry the group (or select the rows and retry), or discard it with a reason when it should never run again, such as a test record. Either takes the rows out of Needs review.
+4. If the cause needs a code change, open a ticket with the job type and error code from the alert and leave the rows in Needs review until it ships.
+
+Zoho Books documents also show on Failed jobs but are not counted here: the accounting watch alerts on them (`accounting_needs_person_overdue`).
+
+**When it alerts again.** A group, and the whole-list alert, stays quiet once it has alerted until its count is higher than when it alerted, or 7 days have passed. What was alerted is kept in Redis (`ops:failed-jobs-watch:alerted`); losing it costs at most one repeat alert.
+
+**Thresholds.** Worker env, with these defaults: `FAILED_JOBS_ALERT_GROUP_GROWTH=10`, `FAILED_JOBS_ALERT_TOTAL_GROWTH=25`, `FAILED_JOBS_ALERT_WINDOW_HOURS=24`, `FAILED_JOBS_ALERT_REPEAT_DAYS=7`.
+
+**Set-up.** Add a Sentry issue alert on the worker project for the message `failed_jobs_growing` routed to on-call. Add `failed-jobs-watch` to `SENTRY_MONITOR_SLUGS` and create the cron monitor (daily, 08:00 Europe/London, about 30 minutes margin); a missed check-in means the watch stopped. Without the entry the job runs unmonitored. The job has no heartbeat, like the alert digest: a daily job would fail a freshness check 23 hours a day.
+
 ## Related
 
 - [Scale monitoring](./scale-monitoring.md)

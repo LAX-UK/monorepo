@@ -2,24 +2,20 @@ import { getMinNextBidAmount } from "@/lib/bid/lot-min-bid";
 import { formatMoney } from "@/lib/format-currency";
 import { lotEstimateLine } from "@/lib/lot-marketing-display";
 import { lotPriceDisplay } from "@/lib/lot-price-display";
+import { lotBuyerPremiumCopy } from "@/lib/lot/buyer-premium-copy";
 import type { Lot, PublicLotView } from "@auction/types";
 import { toLotCardTimingVM } from "@auction/validators";
 import type { LotQuickLookEnrichment } from "./enrichment-types";
 
-function formatBuyerPremiumHint(rate: string): string | undefined {
-  const n = Number.parseFloat(rate);
-  if (Number.isFinite(n) && n > 0 && n <= 1) {
-    return `Buyer's premium ${Math.round(n * 100)}%`;
-  }
-  return undefined;
-}
-
-/** Build enrichment payload from a full Lot record. */
+/**
+ * Build enrichment payload from a full Lot record. The premium line is the one the lot charges
+ * (`lotBuyerPremiumCopy`): the server's resolved premium, or the lot's own rate.
+ */
 export function lotQuickLookEnrichmentFromLot(lot: Lot | PublicLotView): LotQuickLookEnrichment {
   const est = lotEstimateLine(lot);
   const price = lotPriceDisplay(lot);
   const { startTime, endTime } = toLotCardTimingVM(lot);
-  const premiumHint = formatBuyerPremiumHint(lot.buyerPremiumRate);
+  const premiumHint = lotBuyerPremiumCopy(lot)?.sentence;
 
   const enrichment: LotQuickLookEnrichment = {
     medium: lot.medium,

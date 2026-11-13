@@ -1,12 +1,5 @@
 import type { IBidRepository, ILotRepository } from "@auction/persistence/interfaces";
 
-function formatBuyerPremiumLabel(rate: string | null | undefined): string | null {
-  if (!rate?.trim()) return null;
-  const pct = Number.parseFloat(rate);
-  if (Number.isNaN(pct)) return rate;
-  return `${Math.round(pct * 100)}%`;
-}
-
 export type AdminLotDetailMetrics = {
   currentHammer: string | null;
   startingPrice: string | null;
@@ -16,7 +9,6 @@ export type AdminLotDetailMetrics = {
   bidCount: number;
   uniqueBidders: number;
   reserveMet: boolean | null;
-  buyerPremiumLabel: string | null;
   /** Public lot page views; null until analytics aggregate ships — see apps/web/src/lib/admin/README-lot-page-views.md */
   pageViewCount: number | null;
 };
@@ -59,7 +51,6 @@ export class AdminLotDetailMetricsService implements IAdminLotDetailMetricsServi
       bidCount,
       uniqueBidders: bidderIds.length,
       reserveMet,
-      buyerPremiumLabel: formatBuyerPremiumLabel(lot.buyerPremiumRate),
       pageViewCount: null,
     };
   }

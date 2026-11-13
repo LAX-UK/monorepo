@@ -73,6 +73,26 @@ export interface IBidInvoiceBatchReader {
   ): Promise<Map<string, BidInvoiceRecord>>;
 }
 
+/**
+ * What a sold lot's live invoice charged for the lot itself: the hammer and the buyer's premium.
+ * Lines that belong to the buyer alone (VAT, delivery, resale right) are left out, so the figure
+ * is safe to show to anyone who may see the lot's result.
+ */
+export type InvoicedSalePrice = {
+  hammerPence: number;
+  premiumPence: number;
+  pricingPolicyId: string | null;
+};
+
+/** The invoiced price of sold lots, for public pages and results. */
+export interface IInvoicedSalePriceReader {
+  /**
+   * For each lot whose current buyer account has a live invoice that itemises the hammer: what
+   * that invoice charged, in one read. Other lots are absent.
+   */
+  findInvoicedSalePrices(lotIds: readonly string[]): Promise<Map<string, InvoicedSalePrice>>;
+}
+
 /** The key of a (lot, buyer account) pair in a batch read. */
 export function bidInvoiceKey(lotId: string, buyerLegalEntityId: string): string {
   return `${lotId}:${buyerLegalEntityId}`;

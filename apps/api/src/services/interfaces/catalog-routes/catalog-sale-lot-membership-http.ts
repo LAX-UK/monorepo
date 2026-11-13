@@ -1,6 +1,7 @@
 import type { Lot, LotStatus, StaffRoles, UserRole } from "@auction/types";
 import type { createNestedLotForSaleSchema } from "@auction/validators";
 import type { z } from "zod";
+import type { UseSalePremiumOutcome } from "../../sale/sale-lot-premium.js";
 import type { CatalogRouteOutcome } from "./catalog-route-http.js";
 
 export type PresentedLot = Lot;
@@ -36,6 +37,15 @@ export interface ICatalogSaleLotMembershipHttpApplicationService {
     staffRoles: StaffRoles | undefined;
     reason?: string;
   }): Promise<CatalogRouteOutcome<PresentedLot>>;
+
+  /** Puts unsold lots back on the sale's premium (clears their own rate); audited. */
+  useSalePremiumForLots(input: {
+    userId: string;
+    role: UserRole;
+    saleId: string;
+    lotIds: readonly string[];
+    staffRoles: StaffRoles | undefined;
+  }): Promise<CatalogRouteOutcome<UseSalePremiumOutcome>>;
 
   setLotStatus(input: {
     userId: string;

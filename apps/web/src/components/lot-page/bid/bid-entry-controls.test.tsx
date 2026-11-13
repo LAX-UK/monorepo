@@ -33,7 +33,7 @@ const base: BidEntryInput = {
   position: "none",
   nextBid: "7250.00",
   agentLimitLeft: null,
-  premiumPercent: "25%",
+  premiumTerms: "15% up to £500,000, then 10% on the part above",
   format: { money: (amount) => `£${Number(amount).toLocaleString("en-GB")}` },
 };
 
@@ -72,7 +72,11 @@ describe("BidEntryControls", () => {
     expect(onOpen).toHaveBeenLastCalledWith("next");
     fireEvent.click(screen.getByRole("button", { name: "Set a maximum bid" }));
     expect(onOpen).toHaveBeenLastCalledWith("maximum");
-    expect(screen.getByText(/25% buyer's premium is added/)).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Buyer's premium: 15% up to £500,000, then 10% on the part above. It is added to the hammer price.",
+      ),
+    ).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "How bidding works" })).toHaveAttribute("href", "/faq");
   });
 
@@ -175,5 +179,19 @@ describe("viewer announcements", () => {
       </LotAnnouncerProvider>,
     );
     expect(screen.getByRole("status")).toHaveTextContent("You're the highest bidder at £7,250.");
+  });
+});
+
+describe("BidEntryControls, the premium help", () => {
+  it("links the Conditions of Sale beside the premium, then how bidding works", () => {
+    draw();
+    expect(
+      screen.getByText(/Buyer's premium: 15% up to £500,000, then 10% on the part above\./),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Conditions of Sale" })).toHaveAttribute(
+      "href",
+      "/terms",
+    );
+    expect(screen.getByRole("link", { name: "How bidding works" })).toHaveAttribute("href", "/faq");
   });
 });

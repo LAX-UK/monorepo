@@ -20,8 +20,12 @@ import type { AdminLotDetailMetrics } from "@/lib/data/http/admin-lot-detail-met
 import type { AdminLotOverviewKpiTrends } from "@/lib/data/http/admin-lot-overview-kpi-trends.server";
 import { lotAuctionTypeLabel } from "@/lib/presenters/lot-auction-type-presentation";
 import { formatMoney } from "@/lib/ui/format";
-import { formatStaffPercent } from "@auction/staff-ui";
 import type { Lot } from "@auction/types";
+import {
+  type BuyerPremiumSaleTerms,
+  describeBuyerPremium,
+  resolveBuyerPremium,
+} from "@auction/validators";
 
 export type LotOverviewViewModel = {
   kpiTiles: DetailBoardKpiTile[];
@@ -44,6 +48,22 @@ function withTrendOverlay(
     return { ...tile, ...applyFlatKpiTrendOverlay(snapshot, periodDays) };
   }
   return { ...tile, ...applyKpiTrendOverlay(bundle, periodDays) };
+}
+
+/**
+ * The lot's premium in words, through the shared resolver. A lot with its own premium says so,
+ * so staff can see at a glance it does not follow the sale.
+ */
+export function lotPremiumLabel(
+  lot: Pick<Lot, "buyerPremiumRate" | "saleId">,
+  sale: BuyerPremiumSaleTerms | null,
+): string | null {
+  if (lot.saleId && !sale && lot.buyerPremiumRate == null) return null;
+  const { schedule, source } = resolveBuyerPremium({ lotRate: lot.buyerPremiumRate, sale });
+  const terms = describeBuyerPremium(schedule);
+  if (source === "lot") return `${terms} (this lot's own premium)`;
+  if (source === "standard") return `${terms} (standard)`;
+  return `${terms} (the sale's premium)`;
 }
 
 function readinessSeverity(severity: "required" | "warning"): DetailAttentionRow["severity"] {
@@ -75,9 +95,7 @@ export function buildLotOverviewViewModel(input: {
   const metrics = input.metrics ?? null;
   const periodDays = input.periodDays ?? 30;
 
-  const premiumLabel = auction.buyerPremiumRate?.trim()
-    ? formatStaffPercent(auction.buyerPremiumRate)
-    : (metrics?.buyerPremiumLabel ?? null);
+  const premiumLabel = lotPremiumLabel(auction, context.sale);
 
   const estimateValue = formatLotEstimate(auction);
   const reserveValue = auction.reservePrice

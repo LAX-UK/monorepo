@@ -1,8 +1,9 @@
 import { mapPressRefToVM } from "@/components/sections/press/mappers";
 import { atgLiveBidLabel } from "@/lib/catalog/atg-white-label";
-import { formatEstimateRangeWhole, formatMoney } from "@/lib/format-currency";
+import { formatEstimateRangeWhole } from "@/lib/format-currency";
 import { type LotCardLineModel, lotCardLineModel } from "@/lib/lot-card/lot-card-line";
 import { lotEstimateLine } from "@/lib/lot-marketing-display";
+import { saleBuyerPremiumCopy } from "@/lib/lot/buyer-premium-copy";
 import type { CatalogLinkParams } from "@/lib/marketing/catalog-links";
 import { lotCatalogHref } from "@/lib/marketing/catalog-links";
 import type {
@@ -26,7 +27,7 @@ import {
   formatWhen,
 } from "@auction/datetime";
 import { type LotMediaTreatmentIndex, lotMediaTreatment } from "@auction/domain";
-import type { BuyerPremiumTier, Lot, Sale, SaleDayMedia } from "@auction/types";
+import type { Lot, Sale, SaleDayMedia } from "@auction/types";
 import { toLotCardTimingVM, toSaleCardTimingVM, toSaleCountdownEndIso } from "@auction/validators";
 import {
   buildGoogleMapsEmbedUrl,
@@ -69,27 +70,6 @@ export function formatHeroDateLine(sale: Sale): string {
   const range = formatSaleDateLabel(sale.startTime, sale.endTime, sale.timeZone);
   const time = formatTimeWithZone(sale.startTime, sale.timeZone);
   return [range, time].join(" · ");
-}
-
-function formatBuyerPremiumDisplay(rate: string, tiers: BuyerPremiumTier[] | null): string {
-  if (tiers && tiers.length > 0) {
-    return "Tiered — see table";
-  }
-  const n = Number.parseFloat(rate);
-  if (Number.isFinite(n) && n > 0 && n <= 1) {
-    return `${Math.round(n * 100)}%`;
-  }
-  return rate;
-}
-
-export function formatBuyerPremiumTierLabel(tier: BuyerPremiumTier, currency = "GBP"): string {
-  const thresholdMajor = tier.hammerThresholdMinor / 100;
-  const ratePct = Math.round(Number.parseFloat(tier.rate) * 100);
-  const thresholdLabel =
-    thresholdMajor <= 0
-      ? "All hammer prices"
-      : `From ${formatMoney(String(thresholdMajor), currency)}`;
-  return `${thresholdLabel}: ${ratePct}%`;
 }
 
 /** Aggregate estimate range across lots when the full catalogue is loaded. */
@@ -239,8 +219,8 @@ export function mapLotToCardVM(
     catalogLinkParams?: CatalogLinkParams;
     /** Sale is selling on ATG: LAX prices are not the ATG bids, so show where to bid or the result. */
     atgState?: "live" | "ended";
-    /** The sale's premium tiers, so a sold lot reads the buyer's price like the lot page. */
-    premiumTiers?: Sale["buyerPremiumTiers"];
+    /** The sale's premium, so a sold lot reads the buyer's price like the lot page. */
+    premiumSale?: Pick<Sale, "buyerPremiumRate" | "buyerPremiumTiers">;
     /** How each department shows its lots; left out, every lot is a wall work. */
     treatments?: LotMediaTreatmentIndex;
   },
@@ -249,7 +229,7 @@ export function mapLotToCardVM(
   const cardLine = opts.atgState
     ? atgCardLine(opts.atgState, lot)
     : lotCardLineModel(lot, opts.now, {
-        ...(opts.premiumTiers !== undefined ? { premiumTiers: opts.premiumTiers } : {}),
+        ...(opts.premiumSale !== undefined ? { premiumSale: opts.premiumSale } : {}),
       });
   // Quick look and the image overlay read a label and a value: a lot with no price says its
   // outcome as the value.
@@ -342,8 +322,7 @@ export function mapSaleToOverviewVM(
     endLabel: formatLongDateTime(sale.endTime),
     previewLabel: sale.previewStartTime ? formatLongDateTime(sale.previewStartTime) : null,
     formatLabel,
-    buyerPremiumLabel: formatBuyerPremiumDisplay(sale.buyerPremiumRate, sale.buyerPremiumTiers),
-    buyerPremiumTiers: sale.buyerPremiumTiers,
+    buyerPremiumLabel: saleBuyerPremiumCopy(sale).terms,
     categoryLabel: opts.categoryLabel,
     categoryLabels,
     tags,

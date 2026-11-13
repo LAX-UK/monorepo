@@ -14,6 +14,7 @@ import type { ILotService } from "../interfaces/lot-service.js";
 import type { IMediaAssetEnricher } from "../interfaces/media-asset-enricher.js";
 import type { IMediaUrlResolver } from "../interfaces/media-url-resolver.js";
 import type { ISaleService } from "../interfaces/sale-service.js";
+import type { UseSalePremiumOutcome } from "../sale/sale-lot-premium.js";
 
 export class CatalogSaleLotMembershipHttpApplicationService
   implements ICatalogSaleLotMembershipHttpApplicationService
@@ -100,6 +101,24 @@ export class CatalogSaleLotMembershipHttpApplicationService
     });
     if (result.isErr()) return catalogRouteFromResult(result);
     return { kind: "ok", data: await this.present(result.value) };
+  }
+
+  async useSalePremiumForLots(input: {
+    userId: string;
+    role: UserRole;
+    saleId: string;
+    lotIds: readonly string[];
+    staffRoles: StaffRoles | undefined;
+  }): Promise<CatalogRouteOutcome<UseSalePremiumOutcome>> {
+    const result = await this.saleService.useSalePremiumForLots({
+      actorUserId: input.userId,
+      userRole: input.role,
+      userStaffRoles: input.staffRoles,
+      saleId: input.saleId,
+      lotIds: input.lotIds,
+    });
+    if (result.isErr()) return catalogRouteFromResult(result);
+    return { kind: "ok", data: result.value };
   }
 
   async setLotStatus(input: {

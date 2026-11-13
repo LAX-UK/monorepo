@@ -67,6 +67,7 @@ function makeRepo(overrides: Partial<IPayoutRepository> = {}): IPayoutRepository
     findOpenPayoutForEntity: vi.fn().mockResolvedValue(null),
     lineExistsForSourceEvent: vi.fn().mockResolvedValue(false),
     listScheduledPayoutsAwaitingTransfer: vi.fn().mockResolvedValue([]),
+    listScheduledPayoutsWithNegativeNet: vi.fn().mockResolvedValue([]),
     sumRefundLineCentsForPayment: vi.fn().mockResolvedValue(0),
     findSellerClawbackFacts: vi.fn().mockResolvedValue({
       paymentPence: 0,
@@ -833,6 +834,7 @@ describe("PayoutService.runBulkSettlementWithTransfers", () => {
     const repo = makeRepo({
       listLegalEntityIdsWithUnlinkedCapturedPayments: vi.fn().mockResolvedValue(entities),
       listScheduledPayoutsAwaitingTransfer: vi.fn().mockResolvedValue([]),
+      listScheduledPayoutsWithNegativeNet: vi.fn().mockResolvedValue([]),
       findUnlinkedCapturedPayments: vi
         .fn()
         .mockImplementation(async (id: string) =>
@@ -881,6 +883,7 @@ describe("PayoutService.runBulkSettlementWithTransfers", () => {
     const repo = makeRepo({
       listLegalEntityIdsWithUnlinkedCapturedPayments: vi.fn().mockResolvedValue([e1, e2, e3, e4]),
       listScheduledPayoutsAwaitingTransfer: vi.fn().mockResolvedValue([]),
+      listScheduledPayoutsWithNegativeNet: vi.fn().mockResolvedValue([]),
       findUnlinkedCapturedPayments: vi
         .fn()
         .mockResolvedValue(pending([{ id: "p1", amount: "10.00", platformFee: "0.50" }])),
@@ -933,6 +936,7 @@ describe("PayoutService.runBulkSettlementWithTransfers", () => {
     const repo = makeRepo({
       listLegalEntityIdsWithUnlinkedCapturedPayments: listUnlinked,
       listScheduledPayoutsAwaitingTransfer: listResume,
+      listScheduledPayoutsWithNegativeNet: vi.fn().mockResolvedValue([]),
       findUnlinkedCapturedPayments: vi
         .fn()
         .mockResolvedValue(pending([{ id: "p1", amount: "10.00", platformFee: "0.50" }])),

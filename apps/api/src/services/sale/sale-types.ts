@@ -5,7 +5,7 @@ import type {
 } from "@auction/persistence/interfaces";
 import type { ILegalEntityRepository } from "@auction/persistence/interfaces";
 import type { ILotRepository, ISaleRepository } from "@auction/persistence/interfaces";
-import type { IRepositoryFactory } from "@auction/persistence/interfaces";
+import type { IInvoicedSalePriceReader, IRepositoryFactory } from "@auction/persistence/interfaces";
 import type { IVenueRepository } from "@auction/persistence/interfaces";
 import type { PlatformCatalogLegalEntityIdProvider } from "../../lib/platform-catalog-legal-entity.js";
 import type { IDomainEventSink } from "../domain-event-sink.js";
@@ -45,6 +45,8 @@ export type SaleServiceDeps = {
   saleChannelReader?: ISaleChannelReader | null | undefined;
   /** Unset when not wired; public reads then show every ended lot as the lot row says. */
   publicLotResults?: IPublicLotResultReader | null | undefined;
+  /** Unset when not wired; sold lots are then priced under the current rules, not their invoice. */
+  invoicedSalePrices?: IInvoicedSalePriceReader | null | undefined;
   /** Takes a cancelled lot off active telephone bookings. Unset when bookings are not wired. */
   telephoneBookings?: LotBookingRemoval | null | undefined;
 };

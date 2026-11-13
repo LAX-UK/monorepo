@@ -23,6 +23,10 @@
     "./migrate-roles": {
       "types": "./dist/migrate-roles.d.ts",
       "default": "./dist/migrate-roles.js"
+    },
+    "./migrate-runner": {
+      "types": "./dist/migrate-runner.d.ts",
+      "default": "./dist/migrate-runner.js"
     }
   },
   "scripts": {

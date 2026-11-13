@@ -79,6 +79,7 @@ import { registerCollectionWorkers } from "../workers/register-collection-worker
 import { registerComplianceWorkers } from "../workers/register-compliance-workers.js";
 import { registerCronWorkers } from "../workers/register-cron-workers.js";
 import { registerEmailWorker } from "../workers/register-email-worker.js";
+import { registerFailedJobsWatchWorker } from "../workers/register-failed-jobs-watch-worker.js";
 import { registerMarketingWorkers } from "../workers/register-marketing-workers.js";
 import { registerMediaWorkers } from "../workers/register-media-workers.js";
 import { registerPayoutWorkers } from "../workers/register-payout-workers.js";
@@ -96,6 +97,7 @@ import { createAccountingRuntime } from "./create-accounting-runtime.js";
 import { createAtgSyncRuntime } from "./create-atg-sync-runtime.js";
 import { createBidAlertRuntime } from "./create-bid-alert-runtime.js";
 import { createExportProviderDeps } from "./create-export-provider-deps.js";
+import { createFailedJobsWatch } from "./create-failed-jobs-watch.js";
 import { createReofferClock } from "./create-reoffer-clock.js";
 import { createWorkerRepositories } from "./create-worker-repositories.js";
 import { createZohoArtworkListing } from "./create-zoho-artwork-listing.js";
@@ -126,6 +128,7 @@ export type WorkerContainer = {
   purgeWorkers: ReturnType<typeof registerPurgeWorkers>;
   alertWorkers: ReturnType<typeof registerAlertWorkers>;
   accountingWorkers: ReturnType<typeof registerAccountingWorkers>;
+  failedJobsWatchWorkers: ReturnType<typeof registerFailedJobsWatchWorker>;
   atgSyncWorkers: ReturnType<typeof registerAtgSyncWorker>;
   subjectExportWorkers: ReturnType<typeof registerSubjectExportWorker>;
   cronWorkers: ReturnType<typeof registerCronWorkers>;
@@ -476,6 +479,10 @@ export function createWorkerContainer(): WorkerContainer {
   });
   const alertWorkers = registerAlertWorkers(deps, bidAlerts);
   const accountingWorkers = registerAccountingWorkers(deps, accounting);
+  const failedJobsWatchWorkers = registerFailedJobsWatchWorker(
+    deps,
+    createFailedJobsWatch({ env, db, redis, log }),
+  );
   const cronWorkers = registerCronWorkers(deps);
   const zohoListingWorkers = registerZohoListingWorker(
     deps,
@@ -523,6 +530,7 @@ export function createWorkerContainer(): WorkerContainer {
       ...purgeWorkers.errorHandlers,
       ...alertWorkers.errorHandlers,
       ...accountingWorkers.errorHandlers,
+      ...failedJobsWatchWorkers.errorHandlers,
       ...cronWorkers.errorHandlers,
       ...zohoListingWorkers.errorHandlers,
       ...atgSyncWorkers.errorHandlers,
@@ -709,6 +717,7 @@ export function createWorkerContainer(): WorkerContainer {
     purgeWorkers,
     alertWorkers,
     accountingWorkers,
+    failedJobsWatchWorkers,
     cronWorkers,
     zohoListingWorkers,
     atgSyncWorkers,
@@ -747,6 +756,7 @@ export async function shutdownWorkerContainer(
         container.purgeWorkers.close(),
         container.alertWorkers.close(),
         container.accountingWorkers.close(),
+        container.failedJobsWatchWorkers.close(),
         container.cronWorkers.close(),
         container.zohoListingWorkers.close(),
         container.atgSyncWorkers.close(),

@@ -11,7 +11,6 @@ export type AdminLotDetailMetrics = {
   bidCount: number;
   uniqueBidders: number;
   reserveMet: boolean | null;
-  buyerPremiumLabel: string | null;
   pageViewCount: number | null;
 };
 
@@ -24,7 +23,6 @@ export const EMPTY_ADMIN_LOT_DETAIL_METRICS: AdminLotDetailMetrics = {
   bidCount: 0,
   uniqueBidders: 0,
   reserveMet: null,
-  buyerPremiumLabel: null,
   pageViewCount: null,
 };
 

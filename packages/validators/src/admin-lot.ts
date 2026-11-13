@@ -26,6 +26,11 @@ export const attachLotToSaleBodySchema = z.object({
   via: z.enum(["attach_endpoint", "wizard"]).optional().default("attach_endpoint"),
 });
 
+/** `POST /sales/:id/lots/use-sale-premium`: the lots to put back on their sale's premium. */
+export const useSalePremiumForLotsBodySchema = z.object({
+  lotIds: z.array(z.string().uuid()).min(1).max(500),
+});
+
 export const returnLotToInventoryBodySchema = z.object({
   reason: z.string().trim().min(1).max(500),
   confirmVoided: z.boolean().optional(),

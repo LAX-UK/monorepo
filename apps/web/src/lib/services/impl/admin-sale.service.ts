@@ -9,6 +9,7 @@ import type {
   IAdminSaleService,
   MarkSaleEndedBody,
   UpdateSaleInput,
+  UseSalePremiumResult,
 } from "../interfaces/admin-sale-service";
 
 function readEntityId(body: unknown): string | undefined {
@@ -130,6 +131,20 @@ export class AdminSaleService implements IAdminSaleService {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ via }),
+      },
+    );
+  }
+
+  async useSalePremiumForLots(
+    saleId: string,
+    lotIds: readonly string[],
+  ): Promise<ServiceResult<{ data: UseSalePremiumResult }>> {
+    return this.api.json<{ data: UseSalePremiumResult }>(
+      `/sales/${encodeURIComponent(saleId)}/lots/use-sale-premium`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ lotIds }),
       },
     );
   }

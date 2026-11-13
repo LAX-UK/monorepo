@@ -8,6 +8,7 @@
  * Admin login: admin@lax.bid / Password123!
  */
 import { randomUUID } from "node:crypto";
+import { standardBuyerPremiumBands } from "@auction/validators";
 import { hashPassword } from "@better-auth/utils/password";
 import { drizzle } from "drizzle-orm/node-postgres";
 import pg from "pg";
@@ -16,6 +17,7 @@ import { buildPgPoolConfig } from "../../ssl.js";
 import { assertDevSeedMayRunDestructiveClear } from "../runners/dev-seed-guard.js";
 import { buildPressDemoSaleRow } from "../shared/press-demo.js";
 import { insertSeedInvoices, totalOnlySeedInvoice } from "../shared/seed-invoice.js";
+import { SEED_BUYER_PREMIUM_TERMS } from "../shared/terms.js";
 import { seedCollectionJourneys } from "./collection-journeys-seed.js";
 import { DEMO_SEED_NOW } from "./demo-seed-clock.js";
 import { seedOrganisationJourneys } from "./organisation-journeys-seed.js";
@@ -3156,12 +3158,8 @@ export async function runLegacyDemoSeed() {
       endTime: new Date(now + 14 * day),
       previewStartTime: new Date(now - 1 * day),
       buyerPremiumRate: "0.15",
-      buyerPremiumTiers: [
-        { hammerThresholdMinor: 0, rate: "0.1500" },
-        { hammerThresholdMinor: 50_000_000, rate: "0.1000" },
-      ],
-      terms:
-        "LAX London Auction House buyer's premium is 15% on hammer up to £500,000 and 10% at or above £500,000 (band-based on the whole hammer); full conditions of sale apply.",
+      buyerPremiumTiers: standardBuyerPremiumBands(),
+      terms: `${SEED_BUYER_PREMIUM_TERMS} Full conditions of sale apply.`,
       createdBy: ADMIN_ID,
       createdAt: stamp,
       updatedAt: stamp,

@@ -7,6 +7,8 @@ import {
   lotLiveStatusLabel,
   lotLiveStatusTone,
   resolveSaleLotsBoardMode,
+  saleLotsBoardFilters,
+  saleLotsLensFromQuery,
 } from "./sale-lots-tab.vm";
 
 function makeLot(overrides: Partial<Lot> = {}): Lot {
@@ -79,5 +81,26 @@ describe("sale-lots-tab.vm", () => {
     expect(lotLiveStatusLabel("ended", null)).toBe("Unsold");
     expect(lotLiveStatusTone("ended", "user-1")).toBe("sold");
     expect(lotLiveStatusTone("ended", null)).toBe("neutral");
+  });
+
+  it("opens on the Own premium filter from the overview's link, and keeps only those lots", () => {
+    expect(saleLotsLensFromQuery("own")).toBe("own-premium");
+    expect(saleLotsLensFromQuery(undefined)).toBe("all");
+    expect(saleLotsLensFromQuery(["own"])).toBe("all");
+    const own = filterSaleLotsByLens(lots, "own-premium", saleContext, "live", (lot) =>
+      ["1", "3"].includes(lot.id),
+    );
+    expect(own.map((lot) => lot.id)).toEqual(["1", "3"]);
+  });
+
+  it("offers the Own premium filter only while some lot charges its own premium", () => {
+    expect(saleLotsBoardFilters("catalog").map((f) => f.id)).not.toContain("own-premium");
+    expect(saleLotsBoardFilters("catalog", { ownPremium: true }).at(-1)).toEqual({
+      id: "own-premium",
+      label: "Own premium",
+    });
+    expect(saleLotsBoardFilters("live", { ownPremium: true }).map((f) => f.id)).toContain(
+      "own-premium",
+    );
   });
 });
