@@ -145,6 +145,55 @@ describe("LegalEntityAccessService.getLegalEntityDetailForUser", () => {
     });
   });
 
+  it("gives staff viewing as the client exactly the fields a member reads", async () => {
+    const withInternals: LegalEntity = {
+      ...baseEntity,
+      stripeConnectAccountId: "acct_internal",
+      stripeCustomerId: "cus_internal",
+      xeroContactId: "xero-internal",
+      platformFeeBps: 250,
+      marginSchemeEligible: true,
+    };
+    const membership = { legalEntityId: entityId, userId, role: "owner", isPrimaryAdmin: true };
+    const member = createSut({
+      repo: {
+        findById: vi.fn().mockResolvedValue(withInternals),
+        findActiveMembership: vi.fn().mockResolvedValue(membership),
+      },
+    });
+    const staff = createSut({
+      repo: { findById: vi.fn().mockResolvedValue(withInternals) },
+      session: {
+        validateForRequest: vi.fn().mockResolvedValue({
+          ok: true,
+          session: { expiresAt: new Date(Date.now() + 60_000) },
+        }),
+      },
+    });
+    const asMember = await member.svc.getLegalEntityDetailForUser({
+      userId,
+      userRole: "client",
+      legalEntityId: entityId,
+      actingLegalEntityCookie: null,
+    });
+    const asStaff = await staff.svc.getLegalEntityDetailForUser({
+      userId,
+      userRole: "staff",
+      userStaffRoles: ["administrator"],
+      legalEntityId: entityId,
+      actingLegalEntityCookie: { v: 1, e: entityId, i: { sid: "session-uuid" } },
+    });
+    if (asMember.status !== 200 || asStaff.status !== 200) throw new Error("expected 200");
+    const { membership: _memberRole, ...memberFields } = asMember.body.data;
+    const { membership: _viewRole, ...staffFields } = asStaff.body.data;
+    expect(staffFields).toEqual(memberFields);
+    expect(staffFields).not.toHaveProperty("stripeConnectAccountId");
+    expect(staffFields).not.toHaveProperty("stripeCustomerId");
+    expect(staffFields).not.toHaveProperty("xeroContactId");
+    expect(staffFields).not.toHaveProperty("platformFeeBps");
+    expect(staffFields).toMatchObject({ stripeConnectAccountLinked: true });
+  });
+
   it("records audit and returns impersonation_session_expired when validation says expired", async () => {
     const { svc, impersonationAuditService } = createSut({
       session: {
