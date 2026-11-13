@@ -108,9 +108,10 @@ export interface IPayoutReadRepository {
    * not yet linked to any payout line (used by bulk settlement cron).
    */
   listLegalEntityIdsWithUnlinkedCapturedPayments(): Promise<string[]>;
-  /** Find the most recent payout for a legal entity that is still
-   * modifiable (scheduled or in_transit). Used for inserting negative lines
-   * from refunds/disputes. Returns null if no such payout exists.
+  /** Find the most recent payout for a legal entity that can still take
+   * lines: `scheduled` only, since once its transfer has started a line would
+   * change the record but not the money sent. Used for refund, give-back and
+   * dispute lines. Returns null if no such payout exists.
    */
   findOpenPayoutForEntity(legalEntityId: string): Promise<Payout | null>;
   /** Check if a payout line with the given sourceEventId already exists.

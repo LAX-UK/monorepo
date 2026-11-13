@@ -85,6 +85,7 @@ export function createPayoutSettlementRuntime(
     input.payoutRepo,
     input.domainEventPublisher,
     input.metrics ?? noMoneyPathMetrics,
+    { runner: input.transactionRunner },
   );
 
   return {

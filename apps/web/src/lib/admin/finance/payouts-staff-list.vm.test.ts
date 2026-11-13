@@ -104,12 +104,13 @@ describe("payouts staff list view model", () => {
 
   it("turns rows into plain data with the seller's name and the steps open to the payout", () => {
     const names = new Map([[row.legalEntityId, "Gallery One"]]);
-    const [scheduled, paid, failed, blocked] = toPayoutsStaffRows(
+    const [scheduled, paid, failed, blocked, inTransit] = toPayoutsStaffRows(
       [
         row,
         { ...row, id: "p2", status: "paid" },
         { ...row, id: "p3", status: "failed" },
         { ...row, id: "p4", status: "transfer_blocked" },
+        { ...row, id: "p5", status: "in_transit" },
       ],
       names,
     );
@@ -125,6 +126,8 @@ describe("payouts staff list view model", () => {
       canResolveBlocked: false,
     });
     expect(paid).toMatchObject({ canMarkPaid: false, canAdjust: false, canReverse: true });
+    // Its transfer has started: a line now would not change the money sent.
+    expect(inTransit).toMatchObject({ canMarkPaid: true, canAdjust: false, canReverse: true });
     expect(failed).toMatchObject({
       canMarkPaid: false,
       canAdjust: false,

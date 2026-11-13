@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { inlinePayoutTransactions } from "./connect-transfer-initiation.test-util.js";
 
 const createConnectTransfer = vi.fn();
 vi.mock("@auction/stripe-connect", () => ({
@@ -38,6 +39,9 @@ function setup(status: string) {
     { get: () => ({}) } as never,
     { syncAccountFromStripe: vi.fn().mockResolvedValue({ ready: true }) } as never,
     payoutRepository as never,
+    undefined,
+    undefined,
+    inlinePayoutTransactions(),
   );
   return { service, payoutRepository };
 }

@@ -125,7 +125,8 @@ export function toPayoutsStaffRows(
       paidAt: payoutPaidAt(row),
       createdAt: row.createdAt,
       canMarkPaid: open,
-      canAdjust: open,
+      // A line on a payout whose transfer has started would not change the money sent.
+      canAdjust: row.status === "scheduled",
       canReverse: row.status === "paid" || row.status === "in_transit",
       canRetryTransfer: row.status === "failed",
       canResolveBlocked: row.status === "transfer_blocked",

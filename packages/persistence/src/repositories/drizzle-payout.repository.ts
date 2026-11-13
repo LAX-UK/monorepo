@@ -691,7 +691,9 @@ export class DrizzlePayoutRepository implements IPayoutRepository, IPayoutProces
       .where(
         and(
           eq(payout.legalEntityId, legalEntityId),
-          sql`${payout.status} IN ('scheduled', 'in_transit')`,
+          // Only a payout whose transfer has not started can take new lines: once the transfer
+          // amount is read, a line would change the record but not the money sent.
+          eq(payout.status, "scheduled"),
         ),
       )
       .orderBy(desc(payout.periodEnd))

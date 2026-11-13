@@ -76,7 +76,8 @@ describe("PayoutAdjustmentService aggregated refund lines", () => {
       }),
       countCreatedAtByDay: vi.fn().mockResolvedValue(new Map()),
       findByStripeTransferId: vi.fn(),
-      findByIdForUpdate: vi.fn(),
+      // The open payout, read again under its row lock.
+      findByIdForUpdate: vi.fn().mockResolvedValue(openPayout),
       lockSettlementForEntity: vi.fn(),
       lockPendingPayments: vi.fn(),
       findUnlinkedCapturedPayments: vi.fn(),

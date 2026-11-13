@@ -144,7 +144,7 @@ export class PayoutAdjustmentService implements IPayoutAdjustmentPort {
     >,
     ledger: LedgerLine,
   ): Promise<boolean> {
-    const openPayout = await r.findOpenPayoutForEntity(input.legalEntityId);
+    const openPayout = await this.lockOpenPayout(r, input.legalEntityId);
 
     if (openPayout) {
       if (input.sourceEventId && (await r.lineExistsForSourceEvent(input.sourceEventId))) {
@@ -206,6 +206,26 @@ export class PayoutAdjustmentService implements IPayoutAdjustmentPort {
       buyerRefundPence: ledger.buyerRefundPence,
     });
     return true;
+  }
+
+  /**
+   * The seller's open payout, its row locked (`FOR UPDATE`) and seen still `scheduled` under the
+   * lock, or `null` when none is open. The transfer step holds the same row lock from reading the
+   * amount until the payout has left `scheduled`, so a line either lands before the amount is read
+   * (and is sent with it) or finds the payout gone and goes on a new one. Callers already hold the
+   * payment's lock, which every refund and settlement path takes before any payout row, so the
+   * order is settlement advisory lock, then payment, then payout.
+   */
+  private async lockOpenPayout(r: IPayoutRepository, legalEntityId: string) {
+    // A payout that left `scheduled` while we waited for its lock is no longer open; look again,
+    // since another scheduled payout may be the open one now.
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const candidate = await r.findOpenPayoutForEntity(legalEntityId);
+      if (!candidate) return null;
+      const locked = await r.findByIdForUpdate(candidate.id);
+      if (locked?.status === "scheduled") return locked;
+    }
+    return null;
   }
 
   /**

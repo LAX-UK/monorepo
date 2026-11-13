@@ -147,9 +147,10 @@ export interface IPayoutRepository {
   /** clear error when re-enqueuing generation (e.g. admin retry). */
   clearStatementGenerationError(payoutId: string): Promise<void>;
 
-  /** Find the most recent payout for a legal entity that is still
-   * modifiable (scheduled or in_transit). Used for inserting negative lines
-   * from refunds/disputes. Returns null if no such payout exists.
+  /** Find the most recent payout for a legal entity that can still take
+   * lines: `scheduled` only, since once its transfer has started a line would
+   * change the record but not the money sent. Used for refund, give-back and
+   * dispute lines. Returns null if no such payout exists.
    */
   findOpenPayoutForEntity(legalEntityId: string): Promise<Payout | null>;
 

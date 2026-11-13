@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { ConnectTransferInitiationService } from "./connect-transfer-initiation.service.js";
+import { inlinePayoutTransactions } from "./connect-transfer-initiation.test-util.js";
 
 type FakeTransfer = Record<string, unknown> & { id: string };
 
@@ -63,6 +64,8 @@ function setup(
       listLines: vi.fn().mockResolvedValue([]),
     } as never,
     { publish } as never,
+    undefined,
+    inlinePayoutTransactions(),
   );
   return { service, stripe, publish, updateStatusIfCurrent, log };
 }
