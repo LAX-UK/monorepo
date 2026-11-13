@@ -34,7 +34,8 @@ export type StatementDocument = {
   paidOut: string | null;
 };
 
-const MINUS = "−";
+/** The PDF's standard font has no "−" (U+2212), so deductions use the ASCII minus. */
+const MINUS = "-";
 const DASH = "—";
 
 /** Sold after the auction, in the seller's words: the next bidder stays private. */
