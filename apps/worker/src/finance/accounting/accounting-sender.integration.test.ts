@@ -15,7 +15,8 @@ import { BID_ORG_ID, InMemoryAccounting } from "@auction/accounting-zoho-books/t
 import { closeDb, createDb } from "@auction/db";
 import { createAccountingRepositories } from "@auction/persistence/repositories";
 import { sql } from "drizzle-orm";
-import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { holdAccountingTablesLock } from "../../testing/accounting-tables-lock.js";
 import type { SenderPorts } from "./accounting-dispatch.js";
 import { AccountingSender, SENDER_LEASE_MS } from "./accounting-sender.service.js";
 
@@ -59,6 +60,8 @@ function rehearsing(ports: SenderPorts, overrides: Partial<SenderPorts> = {}): S
     ...overrides,
   };
 }
+
+holdAccountingTablesLock({ beforeAll, afterAll });
 
 /** The sender over the real accounting tables, as `worker_app` when that role is configured. */
 describe.skipIf(!HAS_DB)("accounting sender (integration)", { timeout: 60_000 }, () => {

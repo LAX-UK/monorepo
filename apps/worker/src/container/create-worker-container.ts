@@ -388,7 +388,15 @@ export function createWorkerContainer(): WorkerContainer {
   const zohoArtworkWriteback = createZohoArtworkWriteback({ env, db, log });
   const zohoArtworkListing = createZohoArtworkListing({ env, db, log });
   const zohoFulfilment = createZohoFulfilmentMirror({ env, db, log });
-  const accounting = createAccountingRuntime({ env, db, log, sentryMonitorSlugs });
+  const accounting = createAccountingRuntime({
+    env,
+    db,
+    log,
+    sentryMonitorSlugs,
+    storage: uploadStorage,
+    // The outbox is built with the email workers below; the sender only queues mail after start-up.
+    email: { enqueue: (input) => emailWorkers.emailOutboxService.enqueue(input) },
+  });
   const zohoCampaignsSuppression = createZohoCampaignsSuppressionRuntime({ env, db, log });
   const webhookProcessorDeps: ProcessInboundWebhookDeps = {
     env,

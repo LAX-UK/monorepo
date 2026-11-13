@@ -62,6 +62,7 @@ function ctxWith(options: {
       project,
     },
     sender: { tick: vi.fn() },
+    invoiceCopy: { tick: vi.fn().mockResolvedValue({ stored: 0, emailed: 0 }) },
     senderCheckIn: vi.fn(async (tick: () => Promise<void>) => tick()),
     cursorStart: { startAtLatestEvent: vi.fn(), moveToLatestEvent: vi.fn() },
   } as unknown as AccountingRuntime;
@@ -312,5 +313,19 @@ describe("accounting sender step", () => {
     await processAccountingSender(ctx);
     expect(accounting.senderCheckIn).toHaveBeenCalledTimes(1);
     expect(accounting.sender.tick).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps the stored copies after the sender, even when the sender's tick fails", async () => {
+    const { ctx, accounting } = ctxWith({ active: true });
+    (accounting.sender.tick as ReturnType<typeof vi.fn>).mockRejectedValue(new Error("db down"));
+    await processAccountingSender(ctx);
+    expect(accounting.invoiceCopy.tick).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps a failing copy tick to itself", async () => {
+    const { ctx, accounting } = ctxWith({ active: true });
+    (accounting.invoiceCopy.tick as ReturnType<typeof vi.fn>).mockRejectedValue(new Error("s3"));
+    await expect(processAccountingSender(ctx)).resolves.toBeUndefined();
+    expect(ctx.log.error).toHaveBeenCalledWith(expect.anything(), "accounting_copy_tick_failed");
   });
 });
