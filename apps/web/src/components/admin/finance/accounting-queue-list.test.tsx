@@ -108,13 +108,46 @@ describe("AccountingQueueList", () => {
     const tabs = screen.getByRole("navigation", { name: /views/i });
     expect(within(tabs).getByRole("link", { name: /Needs a person/ })).toHaveTextContent("4");
     expect(within(tabs).getByRole("link", { name: /Failed/ })).toHaveTextContent("2");
-    expect(within(tabs).getByRole("link", { name: /Issued/ })).toHaveTextContent("5");
+    expect(within(tabs).getByRole("link", { name: /Issued today/ })).toHaveTextContent("5");
   });
 
   it("leaves the Issued tab uncounted when nothing was issued today", () => {
     renderList({ issuedToday: 0 });
     const tabs = screen.getByRole("navigation", { name: /views/i });
     expect(within(tabs).getByRole("link", { name: /Issued/ })).not.toHaveTextContent(/\d/);
+  });
+
+  it("gives Last problem the table's spare room and keeps the phone's Tried line out of the table", () => {
+    renderList();
+    const table = screen.getByRole("grid", { name: "Accounting documents" });
+    const headers = within(table)
+      .getAllByRole("columnheader")
+      .map((th) => th.textContent);
+    expect(headers).toContain("Last problem");
+    expect(headers).not.toContain("Tried");
+    // The flexible column sets no width of its own; the table keeps room for it.
+    const problem = within(table).getByRole("columnheader", { name: "Last problem" });
+    expect(problem.style.width).toBe("");
+    expect(table.style.getPropertyValue("--staff-table-min-lg")).not.toBe("");
+  });
+
+  it("on a phone, shows the whole reference, the status under it and the last problem", () => {
+    renderList();
+    const list = screen.getByRole("list", { name: "Accounting documents" });
+    const [first] = within(list).getAllByRole("listitem");
+    if (!first) throw new Error("no rows");
+    // The reference wraps instead of being cut.
+    expect(within(first).getByText("LAX-BID-INV-01hx3")).not.toHaveClass("truncate");
+    expect(
+      within(first).getByText("A line carries VAT, but Books has no VAT rate set up for it."),
+    ).toHaveClass("line-clamp-2");
+    expect(within(first).getByText("Failed")).toBeInTheDocument();
+    expect(within(first).getByText(/Tried twice|Tried 2 times/)).toBeInTheDocument();
+  });
+
+  it("lets the company control take a full row on a phone so Display is not cut off", () => {
+    renderList();
+    expect(screen.getByRole("group", { name: "Company" })).toHaveClass("max-sm:w-full");
   });
 
   it("names the source and when it last reached Books", () => {
