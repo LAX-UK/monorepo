@@ -77,7 +77,7 @@ export function PayPage({ vm }: { vm: PayPageVm }) {
         ) : null}
         {vm.progress && vm.lots.length > 0 && vm.money ? (
           // A payment under way: the bank details first when there are any, then the money, then the lots.
-          <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start">
+          <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem] lg:grid-rows-[auto_1fr] lg:items-start">
             {vm.progress.details || vm.progress.detailsUnavailable ? (
               <div className="min-w-0 lg:col-start-1">
                 <PayTransferPanel progress={vm.progress} />
@@ -93,7 +93,7 @@ export function PayPage({ vm }: { vm: PayPageVm }) {
         ) : null}
         {!vm.progress && vm.lots.length > 0 && vm.money ? (
           // On a phone the order is lots, payment, delivery; from lg the payment is the rail.
-          <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start">
+          <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem] lg:grid-rows-[auto_1fr] lg:items-start">
             <div className="min-w-0 lg:col-start-1">
               <PayLotsPanel lots={vm.lots} />
             </div>
