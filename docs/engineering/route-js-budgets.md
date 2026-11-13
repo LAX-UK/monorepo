@@ -224,9 +224,11 @@ with the part of the Socket.IO API the app uses: `on`, `off`, `emit`, `timeout(m
 
 | Before the client has arrived | Behaviour |
 | --- | --- |
-| `on`, `off`, `emit`, `timeout().emit`, `io.on`, `io.off` | recorded in one list, in call order, and replayed on the real socket as soon as it is created, before any event can arrive. Socket.IO then holds the emits until it connects, as it always did, so room joins and leaves, listeners and the first `connect` happen in the same order as before |
+| `on`, `off`, `emit`, `io.on`, `io.off` | recorded in one list, in call order, and replayed on the real socket as soon as it is created, before any event can arrive. Socket.IO then holds the emits until it connects, as it always did, so room joins and leaves, listeners and the first `connect` happen in the same order as before. Listeners are kept as their net effect and at most 100 messages wait (oldest dropped first; live surfaces join again on `connect`) |
+| `timeout(ms).emit` | as above, but the ack timer starts at the call, as in Socket.IO: if the client is still loading after `ms` the ack hears `operation has timed out` and the message is never sent |
 | `connected` | `false`, as it was while the socket was connecting |
-| The chunk cannot be fetched | listeners hear a connection failure: the manager's `error` and the socket's `connect_error`, then `reconnect_attempt` before each retry, with Socket.IO's default backoff (1 s doubling to 5 s, ±50%), indefinitely |
+| The chunk cannot be fetched | listeners hear what Socket.IO raises for a failed handshake: `error` and `connect_error` for each failure, `reconnect_attempt` before each retry, `reconnect_error` when a retry fails, `reconnect` when the connection finally opens. Retries use Socket.IO's default backoff (1 s doubling to 5 s, ±50%, never under 500 ms) indefinitely, and run at once when the browser comes back online. The health dot stays "connecting" and the notice escalates to "paused" with Refresh, as for an unreachable server |
+| A deploy removed the chunk | after 3 failures in a row while online, the chunk is checked with an uncached `HEAD`; on 404 or 410 the page reloads once onto the new build (at most once per tab every 10 minutes, `lib/socket-chunk-recovery.client.ts`) |
 
 After that every call goes straight to the real socket: reconnects, room rejoin on `connect`, the
 latency probe and every event are Socket.IO's own, unchanged.
