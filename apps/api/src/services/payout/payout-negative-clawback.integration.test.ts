@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { createDb } from "@auction/db";
-import { legalEntity, lot, payment, payout, payoutLine, user } from "@auction/db/schema";
+import { legalEntity, lot, payment, payout, payoutLine } from "@auction/db/schema";
 import {
   ConnectTransferInitiationService,
   type PayoutSettlementDeps,
@@ -15,6 +15,10 @@ import {
 } from "@auction/persistence/repositories";
 import { eq, inArray } from "drizzle-orm";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import {
+  deleteIdentityUserFixtures,
+  seedIdentityUserFixtures,
+} from "../../testing/identity-user-fixtures.js";
 import { PayoutAdjustmentService } from "./payout-adjustment.service.js";
 
 const HAS_DB = Boolean(process.env.DATABASE_URL);
@@ -99,14 +103,9 @@ describe.skipIf(!HAS_DB)("negative scheduled payouts on the payout run (integrat
 
   beforeAll(async () => {
     const now = new Date();
-    await db.insert(user).values({
-      id: userId,
-      name: "Negative Payout",
-      email: `${userId}@integration.test`,
-      emailVerified: true,
-      createdAt: now,
-      updatedAt: now,
-    });
+    await seedIdentityUserFixtures(db, [
+      { id: userId, name: "Negative Payout", email: `${userId}@integration.test` },
+    ]);
     await db.insert(legalEntity).values(
       [buyerId, sellerId].map((id, i) => ({
         id,
@@ -163,7 +162,7 @@ describe.skipIf(!HAS_DB)("negative scheduled payouts on the payout run (integrat
     await db.delete(payment).where(eq(payment.lotId, lotId));
     await db.delete(lot).where(eq(lot.id, lotId));
     await db.delete(legalEntity).where(inArray(legalEntity.id, [buyerId, sellerId]));
-    await db.delete(user).where(eq(user.id, userId));
+    await deleteIdentityUserFixtures(db, [userId]);
   });
 
   it("moves a payout made negative by a line with no open payout to clawback (P8)", async () => {

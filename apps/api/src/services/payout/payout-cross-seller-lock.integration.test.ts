@@ -1,15 +1,19 @@
 import { randomUUID } from "node:crypto";
 import { createDb } from "@auction/db";
-import { legalEntity, lot, payment, payout, payoutLine, user } from "@auction/db/schema";
+import { legalEntity, lot, payment, payout, payoutLine } from "@auction/db/schema";
 import type { DisputeAllocationRecord, DisputeCaseRecord } from "@auction/persistence/interfaces";
 import {
   DrizzleDisputeCaseRepository,
   DrizzlePayoutRepository,
 } from "@auction/persistence/repositories";
-import { eq, inArray } from "drizzle-orm";
+import { inArray } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { mockDomainEventSink } from "../../test/domain-event-sink-mock.js";
 import { transactionRunnerFromDb } from "../../test/transaction-runner-from-db.js";
+import {
+  deleteIdentityUserFixtures,
+  seedIdentityUserFixtures,
+} from "../../testing/identity-user-fixtures.js";
 import { DisputeLineEffects } from "../disputes/dispute-line-effects.js";
 import type { AddPaymentPayoutLineInput } from "../interfaces/payout-adjustment.js";
 import { PayoutAdjustmentService } from "./payout-adjustment.service.js";
@@ -38,14 +42,9 @@ describe.skipIf(!HAS_DB)("payouts of several sellers in one transaction (integra
 
   beforeAll(async () => {
     const now = new Date();
-    await db.insert(user).values({
-      id: userId,
-      name: "Cross Seller",
-      email: `${userId}@integration.test`,
-      emailVerified: true,
-      createdAt: now,
-      updatedAt: now,
-    });
+    await seedIdentityUserFixtures(db, [
+      { id: userId, name: "Cross Seller", email: `${userId}@integration.test` },
+    ]);
     await db.insert(legalEntity).values(
       [buyerId, sellerA, sellerB].map((id, i) => ({
         id,
@@ -121,7 +120,7 @@ describe.skipIf(!HAS_DB)("payouts of several sellers in one transaction (integra
     await db.delete(payment).where(inArray(payment.lotId, lotIds));
     await db.delete(lot).where(inArray(lot.id, lotIds));
     await db.delete(legalEntity).where(inArray(legalEntity.id, [buyerId, sellerA, sellerB]));
-    await db.delete(user).where(eq(user.id, userId));
+    await deleteIdentityUserFixtures(db, [userId]);
   });
 
   const caseRecord = (n: number) =>
