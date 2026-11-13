@@ -1,7 +1,12 @@
 import { SETTLEMENT_PERIOD_FLOOR } from "@auction/domain";
 import type { IPayoutRepository } from "@auction/persistence/interfaces";
 import { describe, expect, it, vi } from "vitest";
-import { makeSettlementRepo, payoutRow, pending } from "./payout-bulk-settlement-parity.helpers.js";
+import {
+  makeSettlementRepo,
+  payoutRow,
+  pending,
+  storedSellerTerms,
+} from "./payout-bulk-settlement-parity.helpers.js";
 import type { PayoutSettlementDeps } from "./payout-helpers.js";
 import { createSettlement, runBulkSettlement } from "./payout-settlement.js";
 
@@ -17,6 +22,10 @@ function setup(over: Partial<IPayoutRepository> = {}) {
   const tx = makeSettlementRepo({
     lockSettlementForEntity: async () => {
       calls.push("lock");
+    },
+    lockPendingPayments: async () => {
+      calls.push("lock_payments");
+      return ["p1"];
     },
     list: async () => {
       calls.push("period");
@@ -38,6 +47,7 @@ function setup(over: Partial<IPayoutRepository> = {}) {
     domainEventSink: { withTx: () => ({ publish: async () => undefined }) },
     payoutAdjustments: undefined,
     payoutRepoForTx: () => tx,
+    sellerTermsForTx: () => storedSellerTerms(),
   };
   return { deps, calls, create };
 }
@@ -47,7 +57,7 @@ describe("settlement period", () => {
     const { deps, calls, create } = setup();
     const result = await createSettlement(deps, null, { legalEntityId: ENTITY, periodEnd: NOW });
     expect(result.ok).toBe(true);
-    expect(calls).toEqual(["lock", "period"]);
+    expect(calls).toEqual(["lock", "lock_payments", "period"]);
     expect(create).toHaveBeenCalledWith(
       expect.objectContaining({ periodStart: new Date("2026-10-01"), periodEnd: NOW }),
     );

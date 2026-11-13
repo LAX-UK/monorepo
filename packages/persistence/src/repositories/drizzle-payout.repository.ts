@@ -6,10 +6,17 @@ import {
   payout,
   payoutLine,
   privateSaleDeal,
+  saleSellerTerms,
 } from "@auction/db/schema";
 import { dealPayoutAmounts, minorUnitsToMoneyString, parsePayoutSearch } from "@auction/domain";
-import type { Payout, PayoutLine, PayoutLineKind, PayoutStatus } from "@auction/types";
-import { type SQL, and, desc, eq, isNotNull, ne, sql } from "drizzle-orm";
+import type {
+  Payout,
+  PayoutLine,
+  PayoutLineKind,
+  PayoutSellerTermsTotals,
+  PayoutStatus,
+} from "@auction/types";
+import { type SQL, and, asc, desc, eq, isNotNull, ne, sql } from "drizzle-orm";
 import type {
   CreatePayoutInput,
   IPayoutProcessorReader,
@@ -18,11 +25,33 @@ import type {
   ListPayoutsFilter,
   PendingPaymentRow,
   ReconcileStripeTransferPatch,
+  SellerClawbackFacts,
 } from "../interfaces/payout.repository.js";
 import { queryCreatedAtDailyCounts } from "./created-at-daily-count.query.js";
+import { SALE_LINE_TERMS_COLUMNS, saleLinePaymentFacts } from "./sale-line-facts.js";
+import { sellerTermsSnapshotFromRow } from "./seller-terms-row.js";
 
 type PayoutRow = typeof payout.$inferSelect;
 type PayoutLineRow = typeof payoutLine.$inferSelect;
+
+function sellerTermsTotalsOf(row: PayoutRow): PayoutSellerTermsTotals | null {
+  if (row.hammerAmount === null || row.commissionAmount === null) return null;
+  if (row.commissionVatAmount === null) return null;
+  return {
+    hammer: String(row.hammerAmount),
+    commission: String(row.commissionAmount),
+    commissionVat: String(row.commissionVatAmount),
+  };
+}
+
+/** The three seller-terms totals as stored: all set, or all empty. */
+function sellerTermsTotalsColumns(totals: PayoutSellerTermsTotals | null | undefined) {
+  return {
+    hammerAmount: totals?.hammer ?? null,
+    commissionAmount: totals?.commission ?? null,
+    commissionVatAmount: totals?.commissionVat ?? null,
+  };
+}
 
 function rowToPayout(row: PayoutRow): Payout {
   return {
@@ -43,6 +72,7 @@ function rowToPayout(row: PayoutRow): Payout {
     statementUrl: row.statementUrl ?? null,
     statementGenerationError: row.statementGenerationError ?? null,
     createdAt: row.createdAt,
+    sellerTermsTotals: sellerTermsTotalsOf(row),
   };
 }
 
@@ -52,6 +82,8 @@ function rowToLine(row: PayoutLineRow): PayoutLine {
     payoutId: row.payoutId,
     paymentId: row.paymentId ?? null,
     privateSaleDealId: row.privateSaleDealId ?? null,
+    sellerTermsId: row.sellerTermsId ?? null,
+    buyerRefundPence: row.buyerRefundPence ?? null,
     amount: String(row.amount),
     kind: row.kind as PayoutLineKind,
     createdByUserId: row.createdByUserId ?? null,
@@ -80,6 +112,37 @@ function dealLineFacts(deal: {
     amount: minorUnitsToMoneyString(BigInt(amounts.grossMinor)),
     platformFee: minorUnitsToMoneyString(BigInt(amounts.deductionsMinor)),
   };
+}
+
+/**
+ * The buyer refunds a payment's refund lines answered for, in pence, added up with their sign: a
+ * line taking back a failed refund answers for a negative buyer refund and cancels the charge it
+ * reverses. A line written before lines recorded it answered for its own amount, with its sign (a
+ * charge was the buyer's refund, and a compensating line from a failed refund cancels it), as the
+ * buyer's refund top-up reads it (0378).
+ */
+function refundLinesAnsweredSql(paymentId: SQL): SQL {
+  return sql`COALESCE((
+    SELECT SUM(COALESCE(pl.buyer_refund_pence, round(-pl.amount * 100)))
+    FROM payout_line pl WHERE pl.payment_id = ${paymentId} AND pl.kind = 'refund'
+  ), 0)`;
+}
+
+/**
+ * A lot payment waiting for a payout run: captured, for more than nothing, on no payout yet, and
+ * not LAX's own stock (whose proceeds are LAX's and are never paid out).
+ */
+function awaitingSettlement(): SQL {
+  return sql`"payment"."status" = 'captured'
+    AND ("payment"."amount")::numeric > 0
+    AND NOT EXISTS (
+      SELECT 1 FROM payout_line pl
+      WHERE pl.payment_id = "payment"."id" AND pl.kind = 'sale'
+    )
+    AND NOT EXISTS (
+      SELECT 1 FROM sale_seller_terms sst
+      WHERE sst.payment_id = "payment"."id" AND sst.basis = 'lax_owned'
+    )`;
 }
 
 /** Escapes `%`, `_` and `\\` so typed text is matched literally by LIKE. */
@@ -126,6 +189,7 @@ export class DrizzlePayoutRepository implements IPayoutRepository, IPayoutProces
         netAmount: input.netAmount,
         currency: input.currency,
         status: "scheduled",
+        ...sellerTermsTotalsColumns(input.sellerTermsTotals),
       })
       .returning();
     if (!row) throw new Error("payout_create_failed");
@@ -143,6 +207,8 @@ export class DrizzlePayoutRepository implements IPayoutRepository, IPayoutProces
         createdByUserId: input.createdByUserId,
         note: input.note,
         sourceEventId: input.sourceEventId ?? null,
+        sellerTermsId: input.sellerTermsId ?? null,
+        buyerRefundPence: input.buyerRefundPence ?? null,
       })
       .onConflictDoNothing()
       .returning();
@@ -331,6 +397,23 @@ export class DrizzlePayoutRepository implements IPayoutRepository, IPayoutProces
     );
   }
 
+  async lockPendingPayments(legalEntityId: string): Promise<string[]> {
+    const rows = await this.db
+      .select({ id: payment.id })
+      .from(payment)
+      .where(and(eq(payment.sellerLegalEntityId, legalEntityId), awaitingSettlement()))
+      .orderBy(asc(payment.id))
+      .for("update");
+    const ids = rows.map((row) => row.id);
+    // A refund the previous release handled has a payout line and no row in the buyer's refund
+    // record until the backfill is run again. Copied now, under the lock, as the refund paths do,
+    // it is part of what the run reads as refunded before payout.
+    for (const id of ids) {
+      await this.db.execute(sql`SELECT payment_refund_backfill_from_payout_lines(${id}::uuid)`);
+    }
+    return ids;
+  }
+
   async updateXeroBillId(payoutId: string, xeroBillId: string): Promise<void> {
     await this.db.update(payout).set({ xeroBillId }).where(eq(payout.id, payoutId));
   }
@@ -376,22 +459,23 @@ export class DrizzlePayoutRepository implements IPayoutRepository, IPayoutProces
       .select({
         line: payoutLine,
         paymentAmount: payment.amount,
-        platformFee: payment.platformFee,
+        paymentPlatformFee: payment.platformFee,
+        ...SALE_LINE_TERMS_COLUMNS,
         dealPriceMinor: privateSaleDeal.priceMinor,
         dealCommissionBps: privateSaleDeal.sellerCommissionBps,
         dealCostsMinor: privateSaleDeal.costsMinor,
       })
       .from(payoutLine)
       .leftJoin(payment, eq(payment.id, payoutLine.paymentId))
+      .leftJoin(saleSellerTerms, eq(saleSellerTerms.id, payoutLine.sellerTermsId))
       .leftJoin(privateSaleDeal, eq(privateSaleDeal.id, payoutLine.privateSaleDealId))
       .where(eq(payoutLine.payoutId, payoutId))
       .orderBy(payoutLine.createdAt);
-    return rows.map(({ line, paymentAmount, platformFee, ...deal }) => ({
+    return rows.map(({ line, dealPriceMinor, dealCommissionBps, dealCostsMinor, ...sale }) => ({
       ...rowToLine(line),
       payment:
-        paymentAmount != null && platformFee != null
-          ? { amount: String(paymentAmount), platformFee: String(platformFee) }
-          : dealLineFacts(deal),
+        saleLinePaymentFacts(sale) ??
+        dealLineFacts({ dealPriceMinor, dealCommissionBps, dealCostsMinor }),
     }));
   }
 
@@ -402,19 +486,16 @@ export class DrizzlePayoutRepository implements IPayoutRepository, IPayoutProces
         amount: payment.amount,
         platformFee: payment.platformFee,
         capturedAt: payment.createdAt,
+        lotId: payment.lotId,
+        terms: saleSellerTerms,
+        refundedPence: sql<string>`COALESCE((
+          SELECT SUM(pr.amount_pence) FROM payment_refund pr
+          WHERE pr.payment_id = "payment"."id" AND pr.currency = 'GBP'
+        ), 0)::text`,
       })
       .from(payment)
-      .where(
-        and(
-          eq(payment.sellerLegalEntityId, legalEntityId),
-          eq(payment.status, "captured"),
-          sql`(${payment.amount})::numeric > 0`,
-          sql`NOT EXISTS (
-            SELECT 1 FROM payout_line pl
-            WHERE pl.payment_id = ${payment.id} AND pl.kind = 'sale'
-          )`,
-        ),
-      )
+      .leftJoin(saleSellerTerms, eq(saleSellerTerms.paymentId, payment.id))
+      .where(and(eq(payment.sellerLegalEntityId, legalEntityId), awaitingSettlement()))
       .orderBy(payment.createdAt);
 
     return rows.map((r) => ({
@@ -422,7 +503,11 @@ export class DrizzlePayoutRepository implements IPayoutRepository, IPayoutProces
       amount: String(r.amount),
       platformFee: String(r.platformFee),
       capturedAt: r.capturedAt,
-      settlementAmount: String(r.amount),
+      lotId: r.lotId ?? null,
+      sellerTerms: r.terms
+        ? { id: r.terms.id, snapshot: sellerTermsSnapshotFromRow(r.terms) }
+        : null,
+      refundedPence: Number(r.refundedPence),
     }));
   }
 
@@ -430,17 +515,7 @@ export class DrizzlePayoutRepository implements IPayoutRepository, IPayoutProces
     const rows = await this.db
       .selectDistinct({ legalEntityId: payment.sellerLegalEntityId })
       .from(payment)
-      .where(
-        and(
-          eq(payment.status, "captured"),
-          isNotNull(payment.sellerLegalEntityId),
-          sql`NOT EXISTS (
-            SELECT 1 FROM payout_line pl
-            WHERE pl.payment_id = ${payment.id} AND pl.kind = 'sale'
-          )`,
-          sql`(${payment.amount})::numeric > 0`,
-        ),
-      );
+      .where(and(isNotNull(payment.sellerLegalEntityId), awaitingSettlement()));
     return rows
       .map((r) => r.legalEntityId)
       .filter((id): id is string => typeof id === "string" && id.length > 0);
@@ -464,7 +539,12 @@ export class DrizzlePayoutRepository implements IPayoutRepository, IPayoutProces
 
   async updateTotals(
     payoutId: string,
-    totals: { grossAmount: string; platformFee: string; netAmount: string },
+    totals: {
+      grossAmount: string;
+      platformFee: string;
+      netAmount: string;
+      sellerTermsTotals?: PayoutSellerTermsTotals | null;
+    },
   ): Promise<Payout> {
     const [row] = await this.db
       .update(payout)
@@ -472,6 +552,10 @@ export class DrizzlePayoutRepository implements IPayoutRepository, IPayoutProces
         grossAmount: totals.grossAmount,
         platformFee: totals.platformFee,
         netAmount: totals.netAmount,
+        // Left out, the totals of the sales on the payout stay as they are.
+        ...(totals.sellerTermsTotals !== undefined
+          ? sellerTermsTotalsColumns(totals.sellerTermsTotals)
+          : {}),
       })
       .where(eq(payout.id, payoutId))
       .returning();
@@ -625,14 +709,60 @@ export class DrizzlePayoutRepository implements IPayoutRepository, IPayoutProces
   }
 
   async sumRefundLineCentsForPayment(paymentId: string): Promise<number> {
-    const rows = await this.db
+    // A sale on no payout owes the seller nothing back, so the seller's side has dealt with every
+    // buyer refund recorded for it. Once it is paid out, the refund lines say what they answered for.
+    const result = await this.db.execute<{ total: string }>(sql`
+      SELECT (CASE
+        WHEN EXISTS (
+          SELECT 1 FROM payout_line pl WHERE pl.payment_id = ${paymentId} AND pl.kind = 'sale'
+        ) THEN ${refundLinesAnsweredSql(sql`${paymentId}::uuid`)}
+        ELSE COALESCE((
+          SELECT SUM(pr.amount_pence) FROM payment_refund pr
+          WHERE pr.payment_id = ${paymentId} AND pr.currency = 'GBP'
+        ), 0)
+      END)::text AS total
+    `);
+    return Number(result.rows[0]?.total ?? "0");
+  }
+
+  async findSellerClawbackFacts(paymentId: string): Promise<SellerClawbackFacts> {
+    // The subqueries name the payment row in full: in a select list a bare column is ambiguous.
+    const [row] = await this.db
       .select({
-        total: sql<string>`COALESCE(SUM(${payoutLine.amount}), 0)`,
+        paymentAmount: payment.amount,
+        saleLineId: sql<string | null>`(
+          SELECT pl.id FROM payout_line pl
+          WHERE pl.payment_id = "payment"."id" AND pl.kind = 'sale' LIMIT 1
+        )`,
+        sellerNetPence: sql<string | null>`(
+          SELECT sst.seller_net_pence::text FROM payout_line pl
+          JOIN sale_seller_terms sst ON sst.id = pl.seller_terms_id
+          WHERE pl.payment_id = "payment"."id" AND pl.kind = 'sale' LIMIT 1
+        )`,
+        // Every line with its sign: a charge takes money back, and a credit (the run's true-up of
+        // a charge made in full, or a failed refund given back) cancels part of one.
+        clawedBackPence: sql<string>`COALESCE((
+          SELECT SUM(round(-pl.amount * 100)) FROM payout_line pl
+          WHERE pl.payment_id = "payment"."id" AND pl.kind = 'refund'
+        ), 0)::text`,
+        buyerRefundAnsweredPence: sql<string>`(${refundLinesAnsweredSql(sql`"payment"."id"`)})::text`,
       })
-      .from(payoutLine)
-      .where(and(eq(payoutLine.paymentId, paymentId), eq(payoutLine.kind, "refund")));
-    const totalMajor = Number.parseFloat(rows[0]?.total ?? "0");
-    return Math.round(Math.abs(totalMajor) * 100);
+      .from(payment)
+      .where(eq(payment.id, paymentId))
+      .limit(1);
+    if (!row) throw new Error(`payment ${paymentId} not found`);
+    const paidOut: SellerClawbackFacts["paidOut"] =
+      row.saleLineId === null
+        ? { kind: "not_paid_out" }
+        : row.sellerNetPence === null
+          ? { kind: "old_rule" }
+          : { kind: "snapshot", sellerNetPence: Number(row.sellerNetPence) };
+    return {
+      paymentPence: Math.round(Number.parseFloat(String(row.paymentAmount)) * 100),
+      paidOut,
+      clawedBackPence: Number(row.clawedBackPence),
+      buyerRefundAnsweredPence: Number(row.buyerRefundAnsweredPence),
+    };
   }
 
   async findLineForPaymentAndKind(
@@ -658,12 +788,14 @@ export class DrizzlePayoutRepository implements IPayoutRepository, IPayoutProces
     lineId: string,
     amount: string,
     sourceEventId?: string | null,
+    buyerRefundPence?: number | null,
   ): Promise<PayoutLine> {
     const [row] = await this.db
       .update(payoutLine)
       .set({
         amount,
         ...(sourceEventId !== undefined ? { sourceEventId } : {}),
+        ...(buyerRefundPence !== undefined ? { buyerRefundPence } : {}),
       })
       .where(eq(payoutLine.id, lineId))
       .returning();

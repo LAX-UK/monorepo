@@ -58,6 +58,18 @@ export type Payout = {
   createdAt: Date;
   /** The seller's display name; filled by list reads, so a list never looks it up per row. */
   legalEntityName?: string | null;
+  /**
+   * The hammer, commission and VAT on commission of the lot sales on the payout, from their
+   * seller-terms snapshots. `null` on payouts made before payouts were paid from the snapshot.
+   */
+  sellerTermsTotals?: PayoutSellerTermsTotals | null;
+};
+
+/** A payout's lot sales split the way the seller-terms snapshot splits each one. */
+export type PayoutSellerTermsTotals = {
+  hammer: string;
+  commission: string;
+  commissionVat: string;
 };
 
 /** Payout Line - individual line item in a payout */
@@ -72,7 +84,18 @@ export type PayoutLine = {
   createdByUserId: string | null;
   note: string | null;
   createdAt: Date;
-  /** The buyer payment a sale line settles and LAX's fee on it; read with the line. */
+  /** The seller-terms snapshot a lot's sale line pays; `null` on lines paid under the old rule. */
+  sellerTermsId?: string | null;
+  /**
+   * On a refund line: the buyer's refund, in pence, the line answers for; negative on a line giving
+   * back a failed refund (the buyer refund it reverses).
+   */
+  buyerRefundPence?: number | null;
+  /**
+   * What a sale line's split is worked from, read with the line. For a line paid from a seller-terms
+   * snapshot: the hammer, and the commission plus the VAT on it. For a line paid under the old rule:
+   * the buyer's payment and LAX's fee on it.
+   */
   payment?: { amount: string; platformFee: string } | null;
 };
 

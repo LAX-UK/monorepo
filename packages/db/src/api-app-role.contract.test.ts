@@ -10,6 +10,7 @@ import {
   API_SSF_RECEIVER_TABLES,
   FINANCE_SETTING_READ_TABLES,
   SELLER_TERMS_INSERT_SELECT_TABLES,
+  SELLER_TERMS_RECOMPUTE_UPDATE_COLUMNS,
 } from "./migrate-roles.js";
 import {
   expectTablePrivileges,
@@ -17,6 +18,17 @@ import {
 } from "./role-contract/table-privileges.test-helpers.js";
 import { expectZohoBooksConnectionGrants } from "./role-contract/zoho-books-connection-privileges.test-helpers.js";
 import { buildPgConnectionConfig } from "./ssl.js";
+
+/** Every column of the seller-terms table, including the ones settlement must never rewrite. */
+const SELLER_TERMS_PROBE_COLUMNS = [
+  ...SELLER_TERMS_RECOMPUTE_UPDATE_COLUMNS,
+  "payment_id",
+  "lot_id",
+  "seller_legal_entity_id",
+  "hammer_pence",
+  "premium_pence",
+  "legacy_platform_fee_pence",
+] as const;
 
 const API_URL = process.env.DATABASE_URL_API ?? process.env.API_APP_DATABASE_URL;
 const { Client } = pg;
@@ -90,7 +102,7 @@ describe.skipIf(!API_URL)("api_app role contract", { timeout: 60_000 }, () => {
     });
   });
 
-  it("adds seller terms and reads them, never changes or deletes them, and only reads the finance settings", async () => {
+  it("adds seller terms, reads them, may re-price only their figures, and only reads the finance settings", async () => {
     await withApiClient(async (client) => {
       const privileges = ["SELECT", "INSERT", "UPDATE", "DELETE"];
       const terms = await readTablePrivileges(
@@ -101,6 +113,16 @@ describe.skipIf(!API_URL)("api_app role contract", { timeout: 60_000 }, () => {
       expectTablePrivileges(terms, (row) => ["SELECT", "INSERT"].includes(row.privilege));
       const settings = await readTablePrivileges(client, FINANCE_SETTING_READ_TABLES, privileges);
       expectTablePrivileges(settings, (row) => row.privilege === "SELECT");
+      // Settlement re-prices a held sale over its row: the figures only, never what the row is for.
+      for (const column of SELLER_TERMS_PROBE_COLUMNS) {
+        const allowed = await client.query<{ allowed: boolean }>(
+          `select has_column_privilege(current_user, 'public.sale_seller_terms', $1, 'UPDATE') as allowed`,
+          [column],
+        );
+        expect(allowed.rows[0]?.allowed, column).toBe(
+          (SELLER_TERMS_RECOMPUTE_UPDATE_COLUMNS as readonly string[]).includes(column),
+        );
+      }
     });
   });
 

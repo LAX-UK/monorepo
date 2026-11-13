@@ -253,7 +253,7 @@ async function reverseFailedRefund(
     seller: allocateRefundReversal(Math.max(0, -sellerCorrection), measured.sellerReversible),
     note: `Refund failed: ${charge.id}`,
   });
-  if (taken.buyerPence === 0 && taken.sellerPence === 0) {
+  if (taken.buyerPence === 0 && taken.sellerRefundPence === 0) {
     return { processed: true, action: "skipped", reason: "no_new_refund_amount" };
   }
   recordMoneyPathEvent("refund_reversed_after_failure");
@@ -266,7 +266,10 @@ async function reverseFailedRefund(
     eventType: "payment.refund_reversed",
     payload: {
       stripeChargeId: charge.id,
-      amountCents: Math.max(taken.buyerPence, taken.sellerPence),
+      amountCents: Math.max(taken.buyerPence, taken.sellerRefundPence),
+      // What the seller was given back: their share of the reversed refund that they had been
+      // charged, which is less than the buyer's refund for a sale paid from its snapshot.
+      sellerAmountCents: taken.sellerPence,
       cumulativeRefundedCents,
       currency: charge.currency,
       sellerLegalEntityId: paymentRow.sellerLegalEntityId,

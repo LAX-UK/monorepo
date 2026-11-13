@@ -140,6 +140,7 @@ export { DrizzleCollectionLotFactsReader } from "./drizzle-collection-lot-facts.
 export { DrizzleCollectionPlaceRepository } from "./drizzle-collection-place.repository.js";
 export { DrizzleCollectionSettingsRepository } from "./drizzle-collection-settings.repository.js";
 export { DrizzlePayoutRepository } from "./drizzle-payout.repository.js";
+export { DrizzleSaleSellerTermsStore } from "./drizzle-sale-seller-terms.store.js";
 export { DrizzlePaymentExternalRefRepository } from "./drizzle-payment-external-ref.repository.js";
 export { DrizzleXeroConnectionRepository } from "./drizzle-xero-connection.repository.js";
 export { DrizzleXeroWebhookEventRepository } from "./drizzle-xero-webhook-event.repository.js";

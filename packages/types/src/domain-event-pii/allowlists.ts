@@ -162,6 +162,7 @@ export const EXCEPTION_PATHS: Record<string, Set<string>> = {
   "payment.refund_reversed": new Set([
     "stripeChargeId",
     "amountCents",
+    "sellerAmountCents",
     "cumulativeRefundedCents",
     "currency",
     "via",

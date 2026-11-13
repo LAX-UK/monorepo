@@ -38,7 +38,7 @@ export type GroupRefundRepairDeps = {
   payments: Pick<IPaymentLifecycleRepository, "applyRefundReversedInTransaction">;
   paymentRefunds: IPaymentRefundLedger & IRefundReversalLedger;
   sellerRefundedCents: (tx: Database, paymentId: string) => Promise<number>;
-  payoutAdjustments: Pick<IPayoutAdjustmentService, "addPaymentLineToOpenPayoutOrCreateClawback">;
+  payoutAdjustments: Pick<IPayoutAdjustmentService, "giveBackFailedRefund">;
   events: IDomainEventSink;
 };
 
@@ -301,7 +301,7 @@ export class GroupRefundRepairService {
       seller: allocateRefundReversal(-sellerCorrectionPence, sellerReversible),
       note: `Refund repair (failed refund): ${run.group.stripeChargeId}`,
     });
-    if (taken.buyerPence === 0 && taken.sellerPence === 0) return;
+    if (taken.buyerPence === 0 && taken.sellerRefundPence === 0) return;
     if (succeededPence < invoicePence) {
       await this.deps.payments.applyRefundReversedInTransaction(tx, member.paymentId);
     }
@@ -311,7 +311,10 @@ export class GroupRefundRepairService {
       eventType: "payment.refund_reversed",
       payload: {
         stripeChargeId: run.group.stripeChargeId,
-        amountCents: Math.max(taken.buyerPence, taken.sellerPence),
+        amountCents: Math.max(taken.buyerPence, taken.sellerRefundPence),
+        // What the seller was given back: their share of the reversed refund that they had been
+        // charged, which is less than the buyer's refund for a sale paid from its snapshot.
+        sellerAmountCents: taken.sellerPence,
         cumulativeRefundedCents: succeededPence,
         currency: "GBP",
         sellerLegalEntityId: member.sellerLegalEntityId,

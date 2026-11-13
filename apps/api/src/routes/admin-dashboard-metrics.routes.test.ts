@@ -588,6 +588,7 @@ describe("admin dashboard metrics routes", () => {
       listDeletionHolds: empty,
       listRegisterLotMismatches: empty,
       listReofferWork: empty,
+      listHeldSellerPayouts: vi.fn().mockResolvedValue([]),
     };
     const workItems = new AdminWorkItemsService(reader);
     const container = createDashboardMetricsContainer({}, {}, {}, {}, workItems);

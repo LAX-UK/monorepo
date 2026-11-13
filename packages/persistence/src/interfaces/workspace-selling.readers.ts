@@ -40,8 +40,18 @@ export type SoldLotRow = {
   hammerPrice: string;
   /** The first buyer did not pay and the lot was re-awarded to the next bidder. */
   soldAfterAuction: boolean;
-  /** The buyer's payment, open or settled, or `null` before one exists. */
-  payment: { status: PaymentStatus; amount: string; platformFee: string } | null;
+  /**
+   * The buyer's payment, open or settled, or `null` before one exists. `sellerSide` is what the
+   * seller's figure is worked from: the snapshot's hammer and its commission plus VAT; the buyer's
+   * payment and the old fee for a sale paid out under the old rule; `null` while it cannot be known
+   * (the sale is held, or was raised before snapshots and is not paid out yet).
+   */
+  payment: {
+    status: PaymentStatus;
+    amount: string;
+    platformFee: string;
+    sellerSide: { amount: string; platformFee: string } | null;
+  } | null;
   /** The payout the sale is on, or `null` while it is on none; with the amount its line settles. */
   payout: { id: string; status: PayoutStatus; settledAt: Date | null; lineAmount: string } | null;
 };

@@ -1,4 +1,5 @@
-import type { IPayoutRepository, PendingPaymentRow } from "@auction/persistence/interfaces";
+import { pending, storedSellerTerms } from "@auction/finance-runtime";
+import type { IPayoutRepository } from "@auction/persistence/interfaces";
 import type { Payout, PayoutLine } from "@auction/types";
 import { describe, expect, it, vi } from "vitest";
 import { mockDomainEventSink } from "../test/domain-event-sink-mock.js";
@@ -16,7 +17,7 @@ const ACTOR_ID = "user-actor";
 
 function makeRepo(overrides: Partial<IPayoutRepository> = {}): IPayoutRepository {
   const insertLine = overrides.insertLine ?? vi.fn();
-  return {
+  const repo = {
     create: vi.fn(),
     insertLine,
     tryInsertSaleLine:
@@ -65,10 +66,23 @@ function makeRepo(overrides: Partial<IPayoutRepository> = {}): IPayoutRepository
     lineExistsForSourceEvent: vi.fn().mockResolvedValue(false),
     listScheduledPayoutsAwaitingTransfer: vi.fn().mockResolvedValue([]),
     sumRefundLineCentsForPayment: vi.fn().mockResolvedValue(0),
+    findSellerClawbackFacts: vi.fn().mockResolvedValue({
+      paymentPence: 0,
+      paidOut: { kind: "not_paid_out" },
+      clawedBackPence: 0,
+      buyerRefundAnsweredPence: 0,
+    }),
     findLineForPaymentAndKind: vi.fn().mockResolvedValue(null),
     updateLineAmount: vi.fn(),
     ...overrides,
-  };
+  } as IPayoutRepository;
+  if (!overrides.lockPendingPayments) {
+    // With nothing racing the run, it holds every payment it then finds.
+    repo.lockPendingPayments = vi.fn(async (legalEntityId: string) =>
+      (await repo.findUnlinkedCapturedPayments(legalEntityId)).map((p) => p.id),
+    );
+  }
+  return repo;
 }
 
 /** Service wired with a pass-through transaction runner that hands the same fake repo to every transaction. */
@@ -79,17 +93,11 @@ function serviceFor(repo: IPayoutRepository, publish = vi.fn().mockResolvedValue
     mockDomainEventSink(publish),
     undefined,
     () => repo,
+    undefined,
+    undefined,
+    undefined,
+    () => storedSellerTerms(),
   );
-}
-
-function pending(rows: Partial<PendingPaymentRow>[]): PendingPaymentRow[] {
-  return rows.map((r, i) => ({
-    id: r.id ?? `p${i + 1}`,
-    amount: r.amount ?? "100.00",
-    platformFee: r.platformFee ?? "5.00",
-    capturedAt: r.capturedAt ?? new Date(`2026-01-0${i + 1}T00:00:00Z`),
-    ...(r.settlementAmount !== undefined ? { settlementAmount: r.settlementAmount } : {}),
-  }));
 }
 
 function payout(overrides: Partial<Payout> = {}): Payout {
@@ -126,12 +134,31 @@ describe("PayoutService.previewPending", () => {
       pendingPlatformFee: "0.00",
       pendingNet: "0.00",
       paymentCount: 0,
+      heldCount: 0,
       currency: "GBP",
       earliestCapturedAt: null,
     });
   });
 
-  it("aggregates gross / fee / net across captured payments", async () => {
+  it("leaves held sales out of the figures and counts them apart", async () => {
+    const repo = makeRepo({
+      findUnlinkedCapturedPayments: vi.fn().mockResolvedValue(
+        pending([
+          { amount: "100.00", platformFee: "5.00" },
+          { id: "held", sellerTerms: null },
+        ]),
+      ),
+    });
+    const preview = await serviceFor(repo).previewPending(ENTITY_ID);
+    expect(preview).toMatchObject({
+      pendingGross: "100.00",
+      pendingNet: "95.00",
+      paymentCount: 1,
+      heldCount: 1,
+    });
+  });
+
+  it("aggregates hammer / commission and VAT / net across the sales the run would pay", async () => {
     const repo = makeRepo({
       findUnlinkedCapturedPayments: vi.fn().mockResolvedValue(
         pending([
@@ -225,17 +252,12 @@ describe("PayoutService.createSettlement", () => {
     );
   });
 
-  it("settles at gross sale line when a partial refund clawback exists (Option A)", async () => {
-    const created = payout({
-      id: "po-partial",
-      grossAmount: "100.00",
-      platformFee: "5.00",
-      netAmount: "95.00",
-    });
+  it("pays each sale line from its snapshot: the line is the hammer and points at the terms", async () => {
     const insertLine = vi.fn(async (input) => ({
       id: "line-1",
       payoutId: input.payoutId,
       paymentId: input.paymentId ?? null,
+      sellerTermsId: input.sellerTermsId ?? null,
       amount: input.amount,
       kind: input.kind,
       createdByUserId: input.createdByUserId ?? null,
@@ -243,36 +265,24 @@ describe("PayoutService.createSettlement", () => {
       createdAt: new Date(),
     }));
     const repo = makeRepo({
-      findUnlinkedCapturedPayments: vi.fn().mockResolvedValue(
-        pending([
-          {
-            id: "pay-partial",
-            amount: "100.00",
-            platformFee: "5.00",
-            settlementAmount: "100.00",
-          },
-        ]),
-      ),
-      create: vi.fn().mockResolvedValue(created),
+      findUnlinkedCapturedPayments: vi
+        .fn()
+        .mockResolvedValue(pending([{ id: "pay-1", amount: "100.00", platformFee: "5.00" }])),
+      create: vi.fn().mockResolvedValue(payout({ id: "po-1" })),
       tryInsertSaleLine: insertLine,
     });
-    const svc = serviceFor(repo);
-    const result = await svc.createSettlement(ACTOR_ID, {
+    const result = await serviceFor(repo).createSettlement(ACTOR_ID, {
       legalEntityId: ENTITY_ID,
       periodStart: new Date("2026-01-01"),
       periodEnd: new Date("2026-01-31"),
     });
-
     expect(result.ok).toBe(true);
-    expect(repo.create).toHaveBeenCalledWith(
-      expect.objectContaining({
-        grossAmount: "100.00",
-        platformFee: "5.00",
-        netAmount: "95.00",
-      }),
-    );
     expect(insertLine).toHaveBeenCalledWith(
-      expect.objectContaining({ paymentId: "pay-partial", amount: "100.00", kind: "sale" }),
+      expect.objectContaining({
+        paymentId: "pay-1",
+        amount: "100.00",
+        sellerTermsId: "terms-pay-1",
+      }),
     );
   });
 });

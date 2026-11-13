@@ -108,6 +108,15 @@ export function planAutomaticDisputeAllocation(
 /**
  * The seller's part of an amount allocated to their invoice: the same proportion as their net
  * share of the invoice. The house keeps its own fee's part, and any rounding.
+ *
+ * OPEN DECISION (finance owner, before seller commission PR 4): this still prices the seller's
+ * share from the payment's stored platform fee (the old rule: invoice total less 5% of hammer
+ * plus premium), not from the sale's seller-terms snapshot that payouts now pay from. For a sale
+ * paid from its snapshot a lost dispute can charge the seller more than they received (on the
+ * £82,000 hammer example, up to £97,375.00 against a £67,240.00 payout), and a dispute is charged
+ * before payout where a refund is not. Refunds use `sellerRefundCharge`; disputes do not yet.
+ * Behaviour is unchanged here on purpose until finance decides the rule; do not switch it without
+ * that sign-off.
  */
 export function disputeSellerSharePence(
   allocatedPence: number,

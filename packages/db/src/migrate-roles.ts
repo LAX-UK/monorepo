@@ -279,11 +279,33 @@ export const WORKER_ACCOUNTING_READ_TABLES = ["accounting_source_setting"] as co
 /**
  * What a seller is paid for each sale, fixed when the buyer's invoice is raised (migration 0372).
  * Both payment-raising processes (the API at checkout, the worker at lot end) write the row in the
- * invoice's transaction and read it; nobody updates or deletes it. `bid_finance_setting` holds the
+ * invoice's transaction and read it; nobody deletes it, and settlement may only re-price a held
+ * row (see `SELLER_TERMS_RECOMPUTE_UPDATE_COLUMNS`). `bid_finance_setting` holds the
  * Bid company's finance settings: both roles read it, and the staff route that changes it gets its
  * own UPDATE grant in the PR that adds the route. No other role has access.
  */
 export const SELLER_TERMS_INSERT_SELECT_TABLES = ["sale_seller_terms"] as const;
+/**
+ * Settlement (the API when staff run it, the worker on its schedule) prices a held sale again once
+ * its facts are in place, such as a recorded agreement, and stores the result over the held row
+ * (migration 0378). It writes only the figures and how they were made: never which payment, lot or
+ * seller the row is for, nor the hammer, premium or old-rule fee fixed when the invoice was raised.
+ */
+export const SELLER_TERMS_RECOMPUTE_UPDATE_COLUMNS = [
+  "basis",
+  "held_reason",
+  "agreement_id",
+  "commission_bps",
+  "commission_pence",
+  "commission_vat_treatment",
+  "commission_vat_bps",
+  "commission_vat_pence",
+  "other_charges",
+  "seller_net_pence",
+  "rule_version",
+  "source",
+  "computed_at",
+] as const;
 export const FINANCE_SETTING_READ_TABLES = ["bid_finance_setting"] as const;
 /**
  * The worker reads the signed agreement behind a lot to price the seller's side at lot end, and
@@ -1151,6 +1173,12 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
           }
           if ((SELLER_TERMS_INSERT_SELECT_TABLES as readonly string[]).includes(tableName)) {
             await grantIfExists(client, "api_app", tableName, "INSERT, SELECT");
+            await grantColumnUpdateIfExists(
+              client,
+              "api_app",
+              tableName,
+              SELLER_TERMS_RECOMPUTE_UPDATE_COLUMNS,
+            );
             continue;
           }
           if ((FINANCE_SETTING_READ_TABLES as readonly string[]).includes(tableName)) {
@@ -1357,6 +1385,12 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
         }
         for (const tableName of SELLER_TERMS_INSERT_SELECT_TABLES) {
           await grantIfExists(client, "worker_app", tableName, "INSERT, SELECT");
+          await grantColumnUpdateIfExists(
+            client,
+            "worker_app",
+            tableName,
+            SELLER_TERMS_RECOMPUTE_UPDATE_COLUMNS,
+          );
         }
         for (const tableName of FINANCE_SETTING_READ_TABLES) {
           await grantIfExists(client, "worker_app", tableName, "SELECT");

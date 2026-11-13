@@ -26,6 +26,7 @@ export const adminWorkItemKindSchema = z.enum([
   "reoffer_ready",
   "reoffer_decision",
   "reoffer_accepted",
+  "seller_payout_held",
 ]);
 
 export const adminWorkItemDomainSchema = z.enum([

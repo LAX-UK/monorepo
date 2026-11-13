@@ -967,19 +967,29 @@ describe.skipIf(!HAS_DB)("pay several: one payment for several invoices (integra
     const pi = succeeded(groupId);
     await webhooks.handlePaymentIntentSucceeded(eventOf("payment_intent.succeeded", pi), pi);
     // The previous release, still running during the rollout, handled the first refund (25.00):
-    // it wrote the seller's refund line and nothing in the buyer's record.
+    // it wrote the seller's refund line (as it did before payout too) and nothing in the buyer's
+    // record.
     const oldKey = `evt_old_${run}:${ids.a}`;
-    await runner.runInTransaction((tx) =>
-      payoutAdjustments.addPaymentLineToOpenPayoutOrCreateClawback({
-        legalEntityId: sellerId,
-        paymentId: ids.a,
-        amount: "-25.00",
-        kind: "refund",
-        sourceEventId: oldKey,
-        note: "Refund: previous release",
-        tx,
-      }),
-    );
+    const now = new Date();
+    const oldPayout = await payouts.create({
+      legalEntityId: sellerId,
+      periodStart: new Date(now.getTime() - 1),
+      periodEnd: now,
+      grossAmount: "-25.00",
+      platformFee: "0.00",
+      stripeFee: "0.00",
+      netAmount: "-25.00",
+      currency: "GBP",
+    });
+    await payouts.insertLine({
+      payoutId: oldPayout.id,
+      paymentId: ids.a,
+      amount: "-25.00",
+      kind: "refund",
+      createdByUserId: null,
+      note: "Refund: previous release",
+      sourceEventId: oldKey,
+    });
     expect((await paymentRefunds.sumRefundedPence(ids.a)).pence).toBe(0);
     const charge = {
       id: pi.latest_charge as string,
@@ -1036,7 +1046,15 @@ describe.skipIf(!HAS_DB)("pay several: one payment for several invoices (integra
     ];
     await webhooks.handleChargeRefunded(eventOf("charge.refunded", charge), charge);
     expect((await paymentRefunds.sumRefundedPence(ids.a)).pence).toBe(13_000);
-    expect(await payouts.sumRefundLineCentsForPayment(ids.a)).toBe(10_000);
+    // The sale is on no payout, so the seller is charged nothing for it and their side counts
+    // every buyer refund as dealt with.
+    expect(await payouts.sumRefundLineCentsForPayment(ids.a)).toBe(13_000);
+    expect(
+      await db
+        .select({ id: payoutLine.id })
+        .from(payoutLine)
+        .where(and(eq(payoutLine.paymentId, ids.a), eq(payoutLine.kind, "refund"))),
+    ).toEqual([]);
     expect((await statusOf(ids.a)).status).toBe("refunded");
 
     // The same refunds reported again change nothing.

@@ -6,6 +6,7 @@ import {
   runBulkSettlementParity,
   settlementDeps,
   snapshotBulkResult,
+  storedSellerTerms,
 } from "@auction/finance-runtime";
 import { describe, expect, it, vi } from "vitest";
 import { mockDomainEventSink } from "../../test/domain-event-sink-mock.js";
@@ -41,6 +42,7 @@ describe("API payout bulk settlement parity (finance-runtime bridge)", () => {
       payoutAdjustments: undefined,
       payoutRepoForTx: () => repo,
       payoutProcessorsForTx: () => ({ listProcessorUserIds: async () => [] }),
+      sellerTermsForTx: () => storedSellerTerms(),
     };
     const [direct, viaApi] = [
       await runBulkSettlementParity(settlementDeps(repo), initiateTransfer),

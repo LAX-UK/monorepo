@@ -138,6 +138,7 @@ export {
 export {
   createSettlement,
   createSettlementCore,
+  REFUND_TRUE_UP_NOTE,
   runBulkSettlement,
 } from "./payout/payout-settlement.js";
 export {
@@ -145,6 +146,7 @@ export {
   outcomeFromTransfer,
 } from "./payout/payout-bulk-transfer.js";
 export {
+  type GiveBackFailedRefundInput,
   PayoutAdjustmentService,
   type PayoutRepoForTx,
 } from "./payout/payout-adjustment.service.js";
@@ -164,6 +166,8 @@ export {
   makeSettlementRepo,
   pending,
   payoutRow,
+  pricedTerms,
+  storedSellerTerms,
   runBulkSettlementParity,
   settlementDeps,
   snapshotBulkResult,
@@ -171,9 +175,14 @@ export {
 export {
   type PayoutSettlementDeps,
   payoutRepoForTx,
-  settlementAmounts,
+  settlementSellerTermsForTx,
   DEFAULT_CURRENCY,
 } from "./payout/payout-helpers.js";
+export {
+  SettlementSellerTerms,
+  type ISettlementSellerTerms,
+} from "./payout/settlement-seller-terms.js";
+export { previewSettlement, type SettlementPreview } from "./payout/settlement-preview.js";
 export {
   NO_UNAPPLIED_MONEY_RECORDER,
   UnappliedMoneyRecorder,
