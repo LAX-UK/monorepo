@@ -1,3 +1,4 @@
+import type { IInvoicedSalePriceReader } from "@auction/persistence/interfaces";
 import type { Lot, Sale } from "@auction/types";
 import { Hono } from "hono";
 import { describe, expect, it, vi } from "vitest";
@@ -49,7 +50,11 @@ function sale(over: Partial<Sale> = {}): Partial<Sale> {
   return { id: saleId, status: "active", deliveryMode: "online", ...over };
 }
 
-async function getDetail(row: Lot, saleRow: Partial<Sale> = sale()) {
+async function getDetail(
+  row: Lot,
+  saleRow: Partial<Sale> = sale(),
+  invoicedSalePrices?: IInvoicedSalePriceReader,
+) {
   const app = new Hono();
   const lotReadHttp = createCatalogLotReadHttpFixture({
     lotService: {
@@ -64,6 +69,7 @@ async function getDetail(row: Lot, saleRow: Partial<Sale> = sale()) {
     },
     cachedCatalogueListService: {} as never,
     now: () => NOW,
+    ...(invoicedSalePrices ? { invoicedSalePrices } : {}),
   });
   const container = {
     userSuspensionChecker: { isSuspended: vi.fn().mockResolvedValue(false) },
@@ -114,12 +120,12 @@ describe("GET /lots/:id bidding facts", () => {
     expect(amounts.slice(0, 2)).toEqual(["7250.00", "7500.00"]);
   });
 
-  it("returns a flat buyer's premium, or bands when the sale sets them", async () => {
-    const flat = await getDetail(lot());
-    expect(flat.body.data.buyersPremium).toEqual({ kind: "flat", rate: "0.25" });
+  it("returns the premium the lot charges: its own, else the sale's bands", async () => {
+    const own = await getDetail(lot());
+    expect(own.body.data.buyersPremium).toEqual({ kind: "flat", rate: "0.25", source: "lot" });
 
     const banded = await getDetail(
-      lot(),
+      lot({ buyerPremiumRate: null }),
       sale({
         buyerPremiumTiers: [
           { hammerThresholdMinor: 0, rate: "0.2" },
@@ -133,7 +139,15 @@ describe("GET /lots/:id bidding facts", () => {
         { fromHammer: "0.00", rate: "0.2" },
         { fromHammer: "500000.00", rate: "0.1" },
       ],
+      source: "sale_bands",
     });
+
+    // A lot's own premium wins over the sale's bands.
+    const override = await getDetail(
+      lot({ buyerPremiumRate: "0.18" }),
+      sale({ buyerPremiumTiers: [{ hammerThresholdMinor: 0, rate: "0.2" }] }),
+    );
+    expect(override.body.data.buyersPremium).toEqual({ kind: "flat", rate: "0.18", source: "lot" });
   });
 
   it("exposes the hammer and the price with premium on an ended sold lot, and no next bid", async () => {
@@ -146,6 +160,70 @@ describe("GET /lots/:id bidding facts", () => {
       nextBidAmount: null,
       validBidAmounts: [],
     });
+  });
+
+  it("shows an invoiced sold lot at what its invoice charged, not today's premium", async () => {
+    // Invoiced at 20% before the lot's rate changed; today's rule would give £8,750.
+    const reader = {
+      findInvoicedSalePrices: vi.fn(
+        async () =>
+          new Map([
+            [
+              lotId,
+              { hammerPence: 700_000, premiumPence: 140_000, pricingPolicyId: "flat:0.2000" },
+            ],
+          ]),
+      ),
+    };
+    const { body } = await getDetail(
+      lot({ status: "ended", winnerId: "user-1", currentPrice: "7000.00" }),
+      sale(),
+      reader,
+    );
+    expect(reader.findInvoicedSalePrices).toHaveBeenCalledWith([lotId]);
+    expect(body.data).toMatchObject({
+      hammerPrice: "7000.00",
+      soldForWithPremium: "8400.00",
+      checkoutPricing: { premiumMajor: "1400.00", totalMajor: "8400.00" },
+      // The words come from the invoice too: today's rule is the lot's own 25%.
+      buyersPremium: { kind: "flat", rate: "0.2000" },
+    });
+  });
+
+  it("words a sold lot's premium as its banded invoice charged it, not the lot's legacy rate", async () => {
+    const reader = {
+      findInvoicedSalePrices: vi.fn(
+        async () =>
+          new Map([
+            [
+              lotId,
+              {
+                hammerPence: 60_000_000,
+                premiumPence: 8_500_000,
+                pricingPolicyId: "bands:[0:0.1500,50000000:0.1000]",
+              },
+            ],
+          ]),
+      ),
+    };
+    const { body } = await getDetail(
+      lot({
+        status: "ended",
+        winnerId: "user-1",
+        currentPrice: "600000.00",
+        buyerPremiumRate: "0.25",
+      }),
+      sale(),
+      reader,
+    );
+    expect(body.data.buyersPremium).toEqual({
+      kind: "banded",
+      bands: [
+        { fromHammer: "0.00", rate: "0.1500" },
+        { fromHammer: "500000.00", rate: "0.1000" },
+      ],
+    });
+    expect(body.data.soldForWithPremium).toBe("685000.00");
   });
 
   it("keeps the last bid of an unsold lot out of the result", async () => {

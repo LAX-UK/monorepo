@@ -59,7 +59,9 @@ export {
 export {
   bandFromStored,
   buyersPremiumTerms,
+  describeBuyersPremiumTerms,
   premiumRateFor,
+  scheduleOfTerms,
   type BuyersPremiumBand,
   type BuyersPremiumTerms,
 } from "./buyers-premium.js";

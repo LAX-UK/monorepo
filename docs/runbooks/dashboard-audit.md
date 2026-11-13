@@ -191,7 +191,7 @@ flowchart TB
   end
   subgraph api [API]
     Routes[Hono routes]
-    Policy[buildBuyerPremiumPolicy]
+    Policy[resolveBuyerPremium]
     Routes --> Policy
   end
   DC -->|authedServerFetch| Routes

@@ -41,7 +41,9 @@ stays `scheduled` with a failure reason starting `stripe_transfer_outcome_unknow
 new lines until a later attempt finds out (it adopts the transfer Stripe holds, or creates one when
 there is none). New lines meanwhile go on a new payout. A failure reason starting
 `stripe_transfer_failed:` means Stripe refused the request: no transfer exists, and the payout keeps
-taking lines. The next attempt sends the new net under a new idempotency key, which names the amount.
+taking lines. The create is retried a few times in one attempt, and the outcome stays unknown when
+any of those retries may have reached Stripe, even if a later one was rate limited (429). An attempt
+that was only ever rate limited sent nothing and is retried on the next run. The next attempt sends the new net under a new idempotency key, which names the amount.
 
 An `amount_mismatch` on a payout from before this rule (2026-11) is most likely lines added after
 an attempt whose outcome was unknown: compare the Stripe transfer with the net before those lines.

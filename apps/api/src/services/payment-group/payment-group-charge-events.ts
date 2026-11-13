@@ -26,7 +26,10 @@ export type PaymentGroupChargeEventsDeps = {
   >;
   gateway: Pick<IPaymentGroupGateway, "listChargeRefunds">;
   payments: Pick<IPaymentLifecycleRepository, "applyRefundedInTransaction">;
-  payoutAdjustments: Pick<IPayoutAdjustmentService, "addPaymentLineToOpenPayoutOrCreateClawback">;
+  payoutAdjustments: Pick<
+    IPayoutAdjustmentService,
+    "addPaymentLineToOpenPayoutOrCreateClawback" | "lockOpenPayoutsForSellers"
+  >;
   /** What the buyer was refunded for each invoice so far, and where each new refund is kept. */
   paymentRefunds: IPaymentRefundLedger;
   /** What the seller's ledger already holds as refunded for the payment, in pence. */
@@ -113,6 +116,12 @@ export class PaymentGroupChargeEvents {
       const locked = await this.deps.groups.lockInTransaction(tx, group.id);
       if (!locked) return GROUP_NOT_FOUND;
       const members = [...locked.members].sort((a, b) => a.paymentId.localeCompare(b.paymentId));
+      // Then the sellers' payouts, in one order, before any line: the invoices can belong to
+      // several sellers, and another group's refund or dispute may move the same sellers' payouts.
+      await this.deps.payoutAdjustments.lockOpenPayoutsForSellers({
+        legalEntityIds: members.map((m) => m.sellerLegalEntityId),
+        tx,
+      });
       const attribution = attributeGroupRefunds(
         members.map((m) => ({ paymentId: m.paymentId, amountPence: gbpAmountToPence(m.amount) })),
         refunds,

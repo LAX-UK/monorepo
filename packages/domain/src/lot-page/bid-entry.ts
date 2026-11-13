@@ -32,6 +32,8 @@ export type BidEntryHelp = {
   text: string;
   /** Whether "How bidding works" follows the text. */
   withBiddingGuide: boolean;
+  /** Whether a link to the Conditions of Sale (which set the premium) follows the text. */
+  withConditions: boolean;
 };
 
 /** The action area of a lot the viewer can take part in: what to press, and why not when they can't. */
@@ -53,8 +55,8 @@ export type BidEntryInput = {
   nextBid: string | null;
   /** What an agent has left under their limit for this sale; `null` when no limit applies. */
   agentLimitLeft: string | null;
-  /** "25%": the buyer's premium as the page prints it. */
-  premiumPercent: string | null;
+  /** The buyer's premium in words ("15% up to £500,000, then 10% on the part above"), from `describeBuyersPremiumTerms`. */
+  premiumTerms: string | null;
   format: { money(amount: string): string };
 };
 
@@ -88,10 +90,11 @@ function bidLabelOf(input: BidEntryInput): { label: string; start: BidMode } {
 }
 
 function biddingHelp(input: BidEntryInput): BidEntryHelp | null {
-  if (input.lifecycle === "scheduled" || !input.premiumPercent) return null;
+  if (input.lifecycle === "scheduled" || !input.premiumTerms) return null;
   return {
-    text: `${input.premiumPercent} buyer's premium is added to the hammer price.`,
+    text: `Buyer's premium: ${input.premiumTerms}. It is added to the hammer price.`,
     withBiddingGuide: true,
+    withConditions: true,
   };
 }
 
@@ -151,12 +154,12 @@ const ENTRY_BY_ACTION: Readonly<Partial<Record<ResolvedLotAction, Builder>>> = {
       ),
       disabledReason: null,
     },
-    help: { text: SIGN_IN_HELP, withBiddingGuide: false },
+    help: { text: SIGN_IN_HELP, withBiddingGuide: false, withConditions: false },
   }),
   register: () => ({
     ...EMPTY,
     primary: { control: go("register", "Register to bid"), disabledReason: null },
-    help: { text: REGISTER_HELP, withBiddingGuide: false },
+    help: { text: REGISTER_HELP, withBiddingGuide: false, withConditions: false },
   }),
   registration_pending: (input) => ({
     ...EMPTY,

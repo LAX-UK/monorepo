@@ -1,149 +1,252 @@
-/**
- * Buyer's premium arithmetic and policies. No schema library here: lot and sale pages compute the
- * premium in the browser. The Zod schema for tier rows is in `buyer-premium-schema.ts`.
+import {
+  type BuyerPremiumSaleTerms,
+  STANDARD_BUYER_PREMIUM,
+  STANDARD_BUYER_PREMIUM_BANDS,
+  isBuyerPremiumRate,
+  minorUnitsToMoneyString,
+  parseMoneyToMinorUnits,
+  premiumMinorFor,
+  premiumSlicesMinor,
+  rateToTenThousandths,
+  resolveBuyerPremiumSchedule,
+  saleBuyerPremiumSchedule,
+  sortedPremiumBands,
+} from "@auction/domain";
+import type {
+  BuyerPremiumPolicy,
+  BuyerPremiumSchedule,
+  BuyerPremiumSlice,
+  BuyerPremiumSource,
+  BuyerPremiumTier,
+} from "@auction/types";
+
+/*
+ * The buyer's premium as policies. The maths and the rule for which premium a lot charges live in
+ * `@auction/domain` (`buyer-premium-maths.ts`); this module wraps them. No schema library here:
+ * lot and sale pages compute the premium in the browser. The Zod schema for band rows is in
+ * `buyer-premium-schema.ts`.
  */
-import type { BuyerPremiumPolicy, BuyerPremiumTier } from "@auction/types";
+export {
+  type BuyerPremiumSaleTerms,
+  STANDARD_BUYER_PREMIUM,
+  STANDARD_BUYER_PREMIUM_BANDS,
+  isBuyerPremiumRate,
+  rateToTenThousandths,
+  saleBuyerPremiumSchedule,
+};
+
+/** A copy of the standard bands to store on a sale (rows are written, never shared). */
+export function standardBuyerPremiumBands(): BuyerPremiumTier[] {
+  return STANDARD_BUYER_PREMIUM_BANDS.map((band) => ({ ...band }));
+}
+
+const RATE_SCALE = 10_000n;
+
+/** A pence amount as a non-negative bigint; anything else is 0. */
+function safeMinor(minor: number): bigint {
+  return Number.isSafeInteger(minor) && minor > 0 ? BigInt(minor) : 0n;
+}
 
 /**
- * Banker's rounding (round-half-to-even) of a decimal fraction × integer minor units.
- * Returns a non-negative integer (in minor units). Used by the strategies.
+ * `hammerMinor` × `rate`, rounded half up to the penny with integer maths (no floats).
+ * A rate that is not a valid premium rate charges nothing.
  */
 export function roundPremiumMinor(hammerMinor: number, rate: string): number {
-  if (!Number.isFinite(hammerMinor) || hammerMinor < 0) return 0;
-  const rateNum = Number.parseFloat(rate);
-  if (!Number.isFinite(rateNum) || rateNum <= 0) return 0;
-  const raw = hammerMinor * rateNum;
-  return bankersRound(raw);
-}
-
-function bankersRound(value: number): number {
-  const floor = Math.floor(value);
-  const diff = value - floor;
-  if (diff < 0.5) return floor;
-  if (diff > 0.5) return floor + 1;
-  return floor % 2 === 0 ? floor : floor + 1;
+  return Number(premiumMinorFor({ kind: "flat", rate }, safeMinor(hammerMinor)));
 }
 
 /**
- * Convert a decimal-major string ("123.45") to integer minor units (12345).
- * Negative / non-numeric inputs round to 0 (defensive — invariant guarded at write time).
+ * Convert a decimal-major string ("123.45") to integer minor units (12345), from the digits
+ * (no floats). Negative / non-numeric inputs give 0 (defensive — invariant guarded at write time).
  */
 export function majorToMinor(major: string): number {
   const trimmed = (major ?? "").trim();
-  if (!trimmed) return 0;
-  if (!/^-?\d+(\.\d+)?$/u.test(trimmed)) return 0;
-  const n = Number.parseFloat(trimmed);
-  if (!Number.isFinite(n) || n < 0) return 0;
-  return Math.round(n * 100);
+  if (!/^\d+(\.\d+)?$/u.test(trimmed)) return 0;
+  return Number(parseMoneyToMinorUnits(trimmed));
 }
 
 export function minorToMajor(minor: number): string {
   if (!Number.isFinite(minor) || minor < 0) return "0.00";
-  const major = Math.round(minor) / 100;
-  return major.toFixed(2);
+  return minorUnitsToMoneyString(BigInt(Math.round(minor)));
 }
 
-/**
- * Flat-rate buyer premium — current behaviour for lots without sale-level tier override.
- *
- * Single Responsibility: one rate × hammer → premium.
- */
-export class FlatRateBuyerPremiumPolicy implements BuyerPremiumPolicy {
-  readonly id: string;
-  constructor(private readonly rate: string) {
-    this.id = `flat:${rate}`;
-  }
+/** A rate written to 4 d.p. ("0.15" → "0.1500"), so ids and comparisons are stable. */
+function canonicalRate(rate: string): string {
+  const units = rateToTenThousandths(rate);
+  if (units === null) return rate;
+  const whole = units / RATE_SCALE;
+  return `${whole}.${(units % RATE_SCALE).toString().padStart(4, "0")}`;
+}
+
+/** A schedule's slices of `hammerMinor`, as the policies report them. */
+function slicesOf(schedule: BuyerPremiumSchedule, hammerMinor: number): BuyerPremiumSlice[] {
+  return premiumSlicesMinor(schedule, safeMinor(hammerMinor)).map((slice) => ({
+    rate: slice.rate,
+    baseMinor: Number(slice.baseMinor),
+  }));
+}
+
+/** Shared behaviour of the two policies: both charge their schedule through the domain maths. */
+abstract class ScheduleBuyerPremiumPolicy implements BuyerPremiumPolicy {
+  abstract readonly id: string;
+  abstract readonly schedule: BuyerPremiumSchedule;
+
   computePremiumMinor(hammerMinor: number): number {
-    return roundPremiumMinor(hammerMinor, this.rate);
+    return Number(premiumMinorFor(this.schedule, safeMinor(hammerMinor)));
   }
+
+  breakdown(hammerMinor: number): BuyerPremiumSlice[] {
+    return slicesOf(this.schedule, hammerMinor);
+  }
+
+  abstract rateFor(hammerMinor: number): string;
+
+  computePremiumMajor(hammerMajor: string): string {
+    return minorToMajor(this.computePremiumMinor(majorToMinor(hammerMajor)));
+  }
+}
+
+/** One rate on the whole hammer: a sale's flat rate, or a lot's own premium. */
+export class FlatRateBuyerPremiumPolicy extends ScheduleBuyerPremiumPolicy {
+  readonly id: string;
+  readonly schedule: BuyerPremiumSchedule;
+
+  constructor(private readonly rate: string) {
+    super();
+    this.id = `flat:${rate}`;
+    this.schedule = { kind: "flat", rate };
+  }
+
   rateFor(): string {
     return this.rate;
   }
-  computePremiumMajor(hammerMajor: string): string {
-    return minorToMajor(this.computePremiumMinor(majorToMinor(hammerMajor)));
-  }
 }
 
 /**
- * Band-based tiered premium. The rate that applies to the WHOLE hammer is the
- * one whose `hammerThresholdMinor` is the highest ≤ hammer (not progressive).
+ * Bands charged slice by slice: each band's rate applies only to the part of the hammer between
+ * its threshold and the next band's. With the standard bands a £600,000 hammer pays
+ * 15% of £500,000 + 10% of £100,000 = £85,000, and the premium never drops at a band edge.
  *
- * Sales config example (sales.csv): `[15% under £500k, 10% above]` →
- *  - hammer £499,999.99 → 15% on the whole hammer
- *  - hammer £500,000.00 → 10% on the whole hammer
- *
- * Open/Closed: a new pricing rule (e.g. progressive / slabs) is a new class, no edits here.
+ * The slices are added exactly (in ten-thousandths of a penny) and the total is rounded once,
+ * half up, so the premium is the same however the hammer is split.
  */
-export class TieredBuyerPremiumPolicy implements BuyerPremiumPolicy {
+export class BandedBuyerPremiumPolicy extends ScheduleBuyerPremiumPolicy {
   readonly id: string;
-  private readonly sortedTiers: BuyerPremiumTier[];
+  readonly schedule: BuyerPremiumSchedule;
+  private readonly bands: readonly BuyerPremiumTier[];
 
-  constructor(tiers: readonly BuyerPremiumTier[]) {
-    if (tiers.length === 0) {
-      throw new Error("TieredBuyerPremiumPolicy: tiers must be non-empty");
+  constructor(bands: readonly BuyerPremiumTier[]) {
+    super();
+    if (bands.length === 0) {
+      throw new Error("BandedBuyerPremiumPolicy: bands must be non-empty");
     }
-    this.sortedTiers = [...tiers].sort((a, b) => a.hammerThresholdMinor - b.hammerThresholdMinor);
-    if (this.sortedTiers[0]?.hammerThresholdMinor !== 0) {
-      throw new Error("TieredBuyerPremiumPolicy: first tier must start at hammerThresholdMinor 0");
+    const sorted = sortedPremiumBands(bands);
+    if (sorted[0]?.hammerThresholdMinor !== 0) {
+      throw new Error("BandedBuyerPremiumPolicy: the first band must start at 0");
     }
-    this.id = `tiered:${JSON.stringify(this.sortedTiers)}`;
-  }
-
-  computePremiumMinor(hammerMinor: number): number {
-    const tier = this.selectTier(hammerMinor);
-    return roundPremiumMinor(hammerMinor, tier.rate);
+    for (let i = 1; i < sorted.length; i++) {
+      if ((sorted[i]?.hammerThresholdMinor ?? 0) <= (sorted[i - 1]?.hammerThresholdMinor ?? 0)) {
+        throw new Error("BandedBuyerPremiumPolicy: band thresholds must be strictly ascending");
+      }
+    }
+    this.bands = sorted;
+    this.schedule = { kind: "bands", bands: sorted };
+    this.id = `bands:[${sorted.map((b) => `${b.hammerThresholdMinor}:${canonicalRate(b.rate)}`).join(",")}]`;
   }
 
   rateFor(hammerMinor: number): string {
-    return this.selectTier(hammerMinor).rate;
-  }
-
-  computePremiumMajor(hammerMajor: string): string {
-    return minorToMajor(this.computePremiumMinor(majorToMinor(hammerMajor)));
-  }
-
-  /** Highest-threshold tier whose lower bound is ≤ hammer. */
-  private selectTier(hammerMinor: number): BuyerPremiumTier {
-    const safe = Number.isFinite(hammerMinor) && hammerMinor >= 0 ? hammerMinor : 0;
-    let chosen = this.sortedTiers[0];
-    if (!chosen) {
-      throw new Error("TieredBuyerPremiumPolicy: empty tiers (invariant)");
-    }
-    for (const t of this.sortedTiers) {
-      if (safe >= t.hammerThresholdMinor) {
-        chosen = t;
-      } else {
-        break;
-      }
-    }
-    return chosen;
+    const slices = this.breakdown(hammerMinor);
+    return (slices[slices.length - 1] ?? this.bands[0])?.rate ?? "0";
   }
 }
 
+/** The policy that charges `schedule`. */
+export function buildBuyerPremiumPolicy(schedule: BuyerPremiumSchedule): BuyerPremiumPolicy {
+  return schedule.kind === "bands" && schedule.bands.length > 0
+    ? new BandedBuyerPremiumPolicy(schedule.bands)
+    : new FlatRateBuyerPremiumPolicy(schedule.kind === "flat" ? schedule.rate : "0");
+}
+
 /**
- * Pricing context: where the strategy reads its inputs from.
- * - `saleTiers`: optional sale-level tier override (from `sale.buyer_premium_tiers`).
- * - `lotRate`: per-lot flat rate (from `lot.buyer_premium_rate`, the existing source of truth).
- *
- * Decision: when `saleTiers` is non-null and non-empty it overrides the lot rate.
- * This preserves the existing per-lot rate as the default while letting a sale opt into
- * band-based pricing without editing every lot row.
+ * Pricing context: the lot's own premium (`lot.buyer_premium_rate`, `null` unless staff set
+ * one) and its sale's terms (`null` for a lot outside a sale).
  */
 export type BuyerPremiumContext = {
-  saleTiers?: readonly BuyerPremiumTier[] | null;
-  lotRate: string;
+  lotRate: string | null | undefined;
+  sale: BuyerPremiumSaleTerms | null | undefined;
+};
+
+export type ResolvedBuyerPremium = {
+  source: BuyerPremiumSource;
+  schedule: BuyerPremiumSchedule;
+  policy: BuyerPremiumPolicy;
 };
 
 /**
- * Dependency-inverted factory: callers depend on `BuyerPremiumPolicy`, not on concrete classes.
- *
- * `buildBuyerPremiumPolicy({ saleTiers, lotRate })`
- *  - returns `TieredBuyerPremiumPolicy` when `saleTiers` is present and non-empty
- *  - returns `FlatRateBuyerPremiumPolicy(lotRate)` otherwise (existing behaviour)
+ * Which premium a lot charges (`resolveBuyerPremiumSchedule`: the lot's own, else the sale's
+ * bands, else the sale's flat rate, else the published standard), with the policy that charges it.
  */
-export function buildBuyerPremiumPolicy(ctx: BuyerPremiumContext): BuyerPremiumPolicy {
-  if (ctx.saleTiers && ctx.saleTiers.length > 0) {
-    return new TieredBuyerPremiumPolicy(ctx.saleTiers);
+export function resolveBuyerPremium(ctx: BuyerPremiumContext): ResolvedBuyerPremium {
+  const { source, schedule } = resolveBuyerPremiumSchedule(ctx);
+  return { source, schedule, policy: buildBuyerPremiumPolicy(schedule) };
+}
+
+/** Whether two schedules charge the same on every hammer. */
+export function sameBuyerPremiumSchedule(
+  a: BuyerPremiumSchedule,
+  b: BuyerPremiumSchedule,
+): boolean {
+  return buildBuyerPremiumPolicy(a).id === buildBuyerPremiumPolicy(b).id || flatEqualsBands(a, b);
+}
+
+/** A flat rate and a single band from 0 at the same rate charge the same. */
+function flatEqualsBands(a: BuyerPremiumSchedule, b: BuyerPremiumSchedule): boolean {
+  const one = (s: BuyerPremiumSchedule) =>
+    s.kind === "flat" ? s.rate : s.bands.length === 1 ? (s.bands[0]?.rate ?? null) : null;
+  const ra = one(a);
+  const rb = one(b);
+  return ra !== null && rb !== null && rateToTenThousandths(ra) === rateToTenThousandths(rb);
+}
+
+/**
+ * Whether a lot's own premium charges something other than its sale's. Lots without their own
+ * premium use the sale's and never differ.
+ */
+export function lotPremiumDiffersFromSale(
+  lotRate: string | null | undefined,
+  sale: BuyerPremiumSaleTerms,
+): boolean {
+  if (!isBuyerPremiumRate(lotRate)) return false;
+  return !sameBuyerPremiumSchedule(
+    { kind: "flat", rate: lotRate },
+    saleBuyerPremiumSchedule(sale).schedule,
+  );
+}
+
+/**
+ * Whether a policy id names a banded (or, on invoices raised before banding, tiered) premium.
+ * Ids look like `flat:0.2500`, `bands:[…]` or the older `tiered:[…]`.
+ */
+export function isBandedPremiumPolicyId(policyId: string | null | undefined): boolean {
+  return Boolean(policyId && (policyId.startsWith("bands:") || policyId.startsWith("tiered:")));
+}
+
+/**
+ * The premium a new sale is created with. Staff who chose bands or a flat rate keep their choice;
+ * a sale created with neither gets the standard bands, so no new sale starts on a stray rate.
+ */
+export function newSaleBuyerPremium(input: {
+  buyerPremiumRate?: string | undefined;
+  buyerPremiumTiers?: readonly BuyerPremiumTier[] | null | undefined;
+}): { buyerPremiumRate?: string; buyerPremiumTiers: BuyerPremiumTier[] | null } {
+  if (input.buyerPremiumTiers !== undefined) {
+    return {
+      ...(input.buyerPremiumRate !== undefined ? { buyerPremiumRate: input.buyerPremiumRate } : {}),
+      buyerPremiumTiers: input.buyerPremiumTiers ? [...input.buyerPremiumTiers] : null,
+    };
   }
-  return new FlatRateBuyerPremiumPolicy(ctx.lotRate);
+  if (input.buyerPremiumRate !== undefined) {
+    return { buyerPremiumRate: input.buyerPremiumRate, buyerPremiumTiers: null };
+  }
+  return { buyerPremiumTiers: standardBuyerPremiumBands() };
 }

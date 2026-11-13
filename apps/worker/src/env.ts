@@ -148,6 +148,15 @@ export const envSchema = z
       z.boolean().default(false),
     ),
     QR_SCAN_RETENTION_DAYS: z.coerce.number().int().min(1).max(3650).default(90),
+    /**
+     * The daily Failed jobs watch (08:00 London). It alerts when a kind of failure is new or gains
+     * this many in the window, or Needs review as a whole gains the total; a kind that alerted is
+     * quiet until it grows further or the repeat days pass. See docs/runbooks/monitoring-alerts.md.
+     */
+    FAILED_JOBS_ALERT_GROUP_GROWTH: z.coerce.number().int().min(1).max(10_000).default(10),
+    FAILED_JOBS_ALERT_TOTAL_GROWTH: z.coerce.number().int().min(1).max(100_000).default(25),
+    FAILED_JOBS_ALERT_WINDOW_HOURS: z.coerce.number().int().min(1).max(168).default(24),
+    FAILED_JOBS_ALERT_REPEAT_DAYS: z.coerce.number().int().min(1).max(90).default(7),
     /** Optional ClamAV daemon for SoF document malware scanning. */
     CLAMAV_HOST: z.preprocess(emptyToUndefined, z.string().optional()),
     CLAMAV_PORT: z.coerce.number().int().min(1).max(65535).default(3310),

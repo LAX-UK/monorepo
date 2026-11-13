@@ -10,7 +10,6 @@ import { demoImageUrl } from "./demo-images.js";
  * Pure: no database access.
  */
 import {
-  BUYER_PREMIUM_RATE,
   type DemoBid,
   type DemoCatalogue,
   type DemoFulfilment,
@@ -628,5 +627,4 @@ export function buildFullCatalogue(now: number, actors: FullActors): DemoCatalog
   };
 }
 
-export { BUYER_PREMIUM_RATE };
 export const FULL_SALE_KEYS = SALES.map((s) => s.key);

@@ -111,6 +111,7 @@ export function SaleScheduleStep({
         append={append}
         remove={remove}
         tierBandPreview={tierBandPreview}
+        syncsToAtg={timeZoneFixedByAtg}
       />
     </>
   );

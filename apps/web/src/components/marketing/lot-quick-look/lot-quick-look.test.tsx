@@ -196,7 +196,7 @@ describe("lotQuickLookEnrichmentFromLot", () => {
     expect(enrichment.currentBidValue).toBeTruthy();
     expect(enrichment.minNextBidLabel).toBe("Min. next bid");
     expect(enrichment.minNextBidValue).toBeTruthy();
-    expect(enrichment.buyersPremiumHint).toBe("Buyer's premium 25%");
+    expect(enrichment.buyersPremiumHint).toBe("Buyer's premium: 25% on the hammer");
     expect(enrichment.images).toHaveLength(2);
   });
 

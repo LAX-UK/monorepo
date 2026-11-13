@@ -14,7 +14,7 @@ export type ArtistNames = Readonly<Record<string, string>>;
  */
 export function homeLotCard(
   lot: Lot,
-  sale: Pick<Sale, "buyerPremiumTiers"> | null,
+  sale: Pick<Sale, "buyerPremiumRate" | "buyerPremiumTiers"> | null,
   artistNames: ArtistNames,
   now: Date,
   treatments: LotMediaTreatmentIndex = {},
@@ -30,6 +30,6 @@ export function homeLotCard(
     watchable: lot.status === "active" || lot.status === "scheduled",
     details: [label.eyebrow],
     estimate: lotEstimateLine(lot),
-    line: lotCardLineModel(lot, now, { premiumTiers: sale?.buyerPremiumTiers ?? null }),
+    line: lotCardLineModel(lot, now, { premiumSale: sale }),
   };
 }

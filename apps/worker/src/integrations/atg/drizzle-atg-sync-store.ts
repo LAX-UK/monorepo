@@ -110,7 +110,8 @@ export class DrizzleAtgSyncStore implements AtgSyncStore {
         startingPrice: row.startingPrice,
         reservePrice: row.reservePrice,
         buyNowPrice: row.buyNowPrice,
-        buyerPremiumRate: row.buyerPremiumRate,
+        // A lot without its own premium charges the sale's, which is what ATG is sent.
+        buyerPremiumRate: row.buyerPremiumRate ?? saleRow.buyerPremiumRate,
         endTime: row.endTime,
         marketingDetails: row.marketingDetails,
         updatedAt: row.updatedAt,

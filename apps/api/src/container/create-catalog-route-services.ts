@@ -1,5 +1,9 @@
 import type { Database } from "@auction/db";
-import type { ILegalEntityRepository, IRepositoryFactory } from "@auction/persistence/interfaces";
+import type {
+  IInvoicedSalePriceReader,
+  ILegalEntityRepository,
+  IRepositoryFactory,
+} from "@auction/persistence/interfaces";
 import type { ArtistDeleteService } from "../services/artist-delete.service.js";
 import type { ArtistProfileService } from "../services/artist-profile.service.js";
 import type { CachedCatalogueListService } from "../services/cached-catalogue-list.service.js";
@@ -49,6 +53,7 @@ export type CreateCatalogRouteServicesInput = {
   lotLifecycleQueryService: LotLifecycleQueryService;
   stripeConnectService: IStripeConnectService;
   legalEntityRepository: ILegalEntityRepository;
+  invoicedSalePriceReader: IInvoicedSalePriceReader;
   saleListReadService: SaleListReadService;
   saleResultsSummaryService: ISaleResultsSummaryService;
   repoFactory: IRepositoryFactory;
@@ -84,6 +89,8 @@ export function createCatalogRouteServices(
       input.mediaAssetEnricher,
       input.db,
       input.objectStorage,
+      undefined,
+      input.invoicedSalePriceReader,
     ),
     saleReadHttp: new CatalogSaleReadHttpApplicationService(
       input.saleListReadService,

@@ -36,9 +36,11 @@ describe.skipIf(!HAS_DB)("Stripe checkout lines from stored invoices (integratio
   const buyerId = randomUUID();
   const sellerId = randomUUID();
   const saleId = randomUUID();
+  // Lots without their own premium: the sale's bands apply, slice by slice.
   const edgeLots = [
     { id: randomUUID(), hammer: "499999.99", totalPence: 57_499_999 },
-    { id: randomUUID(), hammer: "500000.00", totalPence: 55_000_000 },
+    { id: randomUUID(), hammer: "500000.00", totalPence: 57_500_000 },
+    { id: randomUUID(), hammer: "600000.00", totalPence: 68_500_000 },
   ];
   const flatLot = { id: randomUUID(), hammer: "1000.00", totalPence: 125_000 };
   const allLots = [...edgeLots, flatLot];
@@ -93,7 +95,8 @@ describe.skipIf(!HAS_DB)("Stripe checkout lines from stored invoices (integratio
         auctionType: "english" as const,
         startingPrice: "10.00",
         currentPrice: l.hammer,
-        buyerPremiumRate: "0.25",
+        // The flat lot outside the sale has its own 25%; the others use the sale's bands.
+        buyerPremiumRate: l === flatLot ? "0.25" : null,
         minBidIncrement: "10.00",
         startTime: new Date(now.getTime() - 3 * 86_400_000),
         endTime: new Date(now.getTime() - 86_400_000),

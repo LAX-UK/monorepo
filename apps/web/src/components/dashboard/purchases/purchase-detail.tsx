@@ -155,7 +155,14 @@ export function PurchaseDetail({
             <dl className="flex flex-col gap-2 text-lax-14">
               {card.breakdown.map((line) => (
                 <div key={line.label} className="flex justify-between gap-4">
-                  <dt className="text-lax-muted">{line.label}</dt>
+                  <dt className="min-w-0 text-lax-muted">
+                    {line.label}
+                    {line.detail ? (
+                      <span className="block text-lax-13 leading-5 text-lax-muted">
+                        {line.detail}
+                      </span>
+                    ) : null}
+                  </dt>
                   <dd className="text-right tabular-nums text-lax-fg">{line.value}</dd>
                 </div>
               ))}

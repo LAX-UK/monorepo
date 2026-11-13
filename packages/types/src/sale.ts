@@ -164,11 +164,12 @@ export type Sale = {
   startTime: Date;
   endTime: Date;
   previewStartTime: Date | null;
+  /** The sale's flat premium ("0.25"); used only when the sale has no bands. */
   buyerPremiumRate: string;
   /**
-   * Optional band-based premium tier override (sale-level). When present and non-empty
-   * the pricing factory uses these tiers in preference to each lot's `buyerPremiumRate`.
-   * See `docs/runbooks/buyer-premium-tiers.md`.
+   * The sale's premium bands, charged slice by slice. When present and non-empty they apply to
+   * every lot without its own premium, and `buyerPremiumRate` is not used. New sales get the
+   * standard bands (`STANDARD_BUYER_PREMIUM_BANDS`). See `docs/runbooks/buyer-premium-tiers.md`.
    */
   buyerPremiumTiers: BuyerPremiumTier[] | null;
   terms: string | null;

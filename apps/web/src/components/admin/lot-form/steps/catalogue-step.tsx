@@ -1,6 +1,7 @@
 "use client";
 
 import { getLotCatalogueProfile } from "@/lib/admin/lot-catalogue";
+import { salePremiumTermsFor } from "@/lib/admin/lot-catalogue/lot-premium-field";
 import type { AdminLotFormValues } from "@/lib/forms/schemas/admin-lot-form";
 import type { ArtistProfile, CategoryNode, Sale } from "@auction/types";
 import type { UseFormReturn } from "react-hook-form";
@@ -15,10 +16,11 @@ type Props = {
   form: UseFormReturn<AdminLotFormValues>;
   categories: CategoryNode[];
   artists: ArtistProfile[];
-  sales: Pick<
+  sales: (Pick<
     Sale,
     "id" | "title" | "status" | "deliveryMode" | "startTime" | "endTime" | "timeZone"
-  >[];
+  > &
+    Partial<Pick<Sale, "buyerPremiumRate" | "buyerPremiumTiers">>)[];
   showArtistField?: boolean;
   onEditLotType?: () => void;
 };
@@ -33,13 +35,15 @@ export function LotCatalogueStep({
 }: Props) {
   const auctionType = form.watch("auctionType");
   const profile = getLotCatalogueProfile(auctionType);
+  const saleId = form.watch("saleId");
+  const salePremium = salePremiumTermsFor(sales.find((s) => s.id === saleId));
 
   return (
     <div className="flex flex-col gap-6">
       {onEditLotType ? (
         <LotTypeSummaryBanner profile={profile} onEditLotType={onEditLotType} />
       ) : null}
-      <CataloguePricingSection form={form} fields={profile.fields} />
+      <CataloguePricingSection form={form} fields={profile.fields} salePremium={salePremium} />
       <CatalogueBiddingSection form={form} fields={profile.fields} />
       <CatalogueScheduleSection form={form} fields={profile.fields} sales={sales} />
       <CatalogueDetailsSection

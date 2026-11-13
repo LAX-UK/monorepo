@@ -1,3 +1,4 @@
+import type { Database } from "@auction/db";
 import {
   type PayoutRepoForTx,
   PayoutAdjustmentService as SharedPayoutAdjustmentService,
@@ -33,6 +34,13 @@ export class PayoutAdjustmentService implements IPayoutAdjustmentService {
 
   giveBackFailedRefund(input: GiveBackFailedRefundInput): Promise<{ sellerPence: number }> {
     return this.bridged.giveBackFailedRefund(input);
+  }
+
+  lockOpenPayoutsForSellers(input: {
+    legalEntityIds: readonly string[];
+    tx: Database;
+  }): Promise<void> {
+    return this.bridged.lockOpenPayoutsForSellers(input);
   }
 
   recalculateTotalsFromLines(repo: IPayoutRepository, payoutId: string): Promise<void> {

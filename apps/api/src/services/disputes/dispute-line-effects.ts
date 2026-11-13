@@ -11,7 +11,10 @@ import type { IPayoutAdjustmentService } from "../interfaces/payout-adjustment.j
 
 export type DisputeLineEffectsDeps = {
   cases: Pick<IDisputeCaseRepository, "setClawbackInTransaction" | "lockPaymentsInTransaction">;
-  payoutAdjustments: Pick<IPayoutAdjustmentService, "addPaymentLineToOpenPayoutOrCreateClawback">;
+  payoutAdjustments: Pick<
+    IPayoutAdjustmentService,
+    "addPaymentLineToOpenPayoutOrCreateClawback" | "lockOpenPayoutsForSellers"
+  >;
   events: IDomainEventSink;
 };
 
@@ -47,10 +50,17 @@ export class DisputeLineEffects {
     });
     // Every payment before any payout, as the refund paths lock: a case falling on several
     // invoices would otherwise hold the first line's payout while it waits for the next payment.
+    const paying = moves.filter(({ line }) => line.sellerSharePence > 0);
     await this.deps.cases.lockPaymentsInTransaction(
       tx,
-      moves.filter(({ line }) => line.sellerSharePence > 0).map(({ line }) => line.paymentId),
+      paying.map(({ line }) => line.paymentId),
     );
+    // Then every seller's payout, in one order, before any moves: a case on a group charge moves
+    // several sellers' payouts, and another such case or a group refund may move the same ones.
+    await this.deps.payoutAdjustments.lockOpenPayoutsForSellers({
+      legalEntityIds: paying.map(({ line }) => line.sellerLegalEntityId),
+      tx,
+    });
     for (const { line, effect } of moves) {
       if (effect === "withdraw") {
         await this.movePayout(tx, line, -line.sellerSharePence, "withdrawn", {
