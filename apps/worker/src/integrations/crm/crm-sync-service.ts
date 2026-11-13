@@ -23,7 +23,10 @@ import {
   CrmLeadConversionHandler,
 } from "./handlers/crm-lead-conversion-handler.js";
 import { CrmPaidBuyerHandler } from "./handlers/crm-paid-buyer-handler.js";
-import { CrmPersonSyncHandler } from "./handlers/crm-person-sync-handler.js";
+import {
+  CrmPersonSyncHandler,
+  type CrmPersonSyncHandlerDeps,
+} from "./handlers/crm-person-sync-handler.js";
 import { CrmShopRecordSyncHandler } from "./handlers/crm-shop-record-sync-handler.js";
 import { CrmSubjectLifecycleHandler } from "./handlers/crm-subject-lifecycle-handler.js";
 
@@ -39,6 +42,8 @@ export type CrmSyncServiceDeps = {
   enquiryReader: CrmEnquiryReader;
   dealNamingReader: CrmDealNamingReader;
   shopEnquiryReader: CrmShopEnquiryReader;
+  /** Told when a person upsert leaves out an optional field the CRM refused. */
+  onPersonFieldDropped?: CrmPersonSyncHandlerDeps["onFieldDropped"];
 };
 
 export class CrmSyncService {
@@ -53,6 +58,7 @@ export class CrmSyncService {
     this.personHandler = new CrmPersonSyncHandler({
       gateway: deps.gateway,
       linkRepo: deps.linkRepo,
+      ...(deps.onPersonFieldDropped ? { onFieldDropped: deps.onPersonFieldDropped } : {}),
       onContactLinked: async (subjectId) => {
         // The person now has a Contact: waiting purchases become Deals on it.
         await dealHandlerRef.current?.releaseHeldDealsForSubject(subjectId);
