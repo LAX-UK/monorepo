@@ -1,4 +1,8 @@
 import type { AccountChrome, AccountOption } from "@/lib/navigation/account-switcher-model";
+import {
+  type WorkspaceAccessDenied,
+  workspaceAccessDenied,
+} from "@/lib/presenters/workspace-access/workspace-access";
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
@@ -38,11 +42,12 @@ const SWITCHER: AccountChrome["switcher"] = {
 function renderWith(
   current: AccountOption,
   switcher: AccountChrome["switcher"],
-  denied: { page: string | null; openedBy: string | null },
+  denied: { page: string | null; openedBy: string | null; back?: WorkspaceAccessDenied["back"] },
+  next = "/organisation/payouts",
 ) {
   render(
     <AccountChromeProvider account={{ current, switcher }}>
-      <NoAccess next="/organisation/payouts" denied={denied} />
+      <NoAccess next={next} denied={{ back: null, ...denied }} />
     </AccountChromeProvider>,
   );
 }
@@ -61,9 +66,32 @@ describe("NoAccess", () => {
   });
 
   it("never says Go to My bids inside an organisation", () => {
-    renderWith(gallery, SWITCHER, { page: "this consignment", openedBy: null });
+    renderWith(gallery, SWITCHER, { page: "Payouts", openedBy: null });
     expect(screen.queryByText(/My bids/)).toBeNull();
     expect(screen.getByRole("link", { name: "Back to Home" })).toBeVisible();
+  });
+
+  it("goes back to Consignments from a consignment, in either kind of account", () => {
+    const next = "/selling/consignments/s1";
+    renderWith(personal, SWITCHER, workspaceAccessDenied(next, null), next);
+    expect(screen.getByRole("link", { name: "Back to Consignments" })).toHaveAttribute(
+      "href",
+      "/selling/consignments",
+    );
+    expect(screen.queryByText(/My bids/)).toBeNull();
+  });
+
+  it("goes back to Consignments from a consignment inside an organisation", () => {
+    const next = "/selling/consignments/s1";
+    renderWith(gallery, SWITCHER, workspaceAccessDenied(next, { role: "viewer" }), next);
+    expect(screen.getByRole("link", { name: "Back to Consignments" })).toBeVisible();
+    expect(screen.queryByRole("link", { name: "Back to Home" })).toBeNull();
+  });
+
+  it("keeps Back to My bids for a bid", () => {
+    const next = "/bids/telephone/b1";
+    renderWith(personal, SWITCHER, workspaceAccessDenied(next, null), next);
+    expect(screen.getByRole("link", { name: "Back to My bids" })).toHaveAttribute("href", "/bids");
   });
 
   it("offers switching first when the page belongs to another account", () => {
@@ -78,7 +106,6 @@ describe("NoAccess", () => {
     ).toBeVisible();
     const [first] = screen.getAllByRole("button");
     expect(first).toHaveAccessibleName(/Switch account/);
-    expect(screen.getByRole("link", { name: "Back to My bids" })).toHaveAttribute("href", "/bids");
   });
 
   it("has no Switch account for someone with one account", () => {
