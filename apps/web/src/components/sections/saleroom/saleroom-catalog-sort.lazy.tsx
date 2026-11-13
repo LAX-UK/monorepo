@@ -1,7 +1,7 @@
 "use client";
 
 import { useDeferredModule } from "@/hooks/use-deferred-module";
-import { Button } from "@auction/ui/lax";
+import { Button } from "@auction/ui/lax/button";
 import { type KeyboardEvent, useState } from "react";
 
 const loadSort = () =>
