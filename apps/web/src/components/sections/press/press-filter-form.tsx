@@ -1,6 +1,7 @@
 "use client";
 
-import { lazyResolver } from "@/lib/forms/lazy-resolver";
+import { searchFailureCopy } from "@/lib/forms/error-copy";
+import { lazyResolver, lazyResolverFailure } from "@/lib/forms/lazy-resolver";
 import {
   PRESS_FILTER_ALL,
   PRESS_MENTION_TYPE_OPTIONS,
@@ -20,8 +21,9 @@ import { useEffect } from "react";
 import { Controller, useForm } from "react-hook-form";
 import type { PressFilterValues } from "./press-filter-form.validation";
 
-const pressFilterResolver = lazyResolver<PressFilterValues>(() =>
-  import("./press-filter-form.validation").then((m) => m.pressFilterResolver),
+const pressFilterResolver = lazyResolver<PressFilterValues>(
+  () => import("./press-filter-form.validation").then((m) => m.pressFilterResolver),
+  { failureMessage: searchFailureCopy },
 );
 
 type Props = {
@@ -60,6 +62,7 @@ export function PressFilterForm({
     form.reset(pressHubParamsToFilterFormValues(initialParams));
   }, [initialParams, form]);
 
+  const loadFailure = lazyResolverFailure(form.formState.errors);
   const isSheet = variant === "sheet";
   const resultCountLabel = resultCount != null ? formatPressArticleCount(resultCount) : null;
   const yearOptions = [
@@ -88,7 +91,14 @@ export function PressFilterForm({
       noValidate
     >
       <div className="flex min-w-0 flex-col gap-2">
-        <Field label="Search" optional quiet id={inputId} error={form.formState.errors.q?.message}>
+        <Field
+          label="Search"
+          optional
+          quiet
+          id={inputId}
+          error={form.formState.errors.q?.message ?? loadFailure}
+          announce={Boolean(loadFailure)}
+        >
           <TextInput type="search" placeholder="Outlet, headline, sale…" {...form.register("q")} />
         </Field>
         {resultCountLabel ? (

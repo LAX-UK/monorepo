@@ -1,7 +1,8 @@
 "use client";
 
 import { trackSearch } from "@/lib/analytics/events";
-import { lazyResolver } from "@/lib/forms/lazy-resolver";
+import { searchFailureCopy } from "@/lib/forms/error-copy";
+import { lazyResolver, lazyResolverFailure } from "@/lib/forms/lazy-resolver";
 import type { SearchEndingWindow } from "@/lib/marketing/parse-search-params";
 import type { LotStatus } from "@auction/types";
 import { Button } from "@auction/ui/lax/button";
@@ -13,8 +14,9 @@ import type { ComponentProps } from "react";
 import { useForm } from "react-hook-form";
 import type { SearchFilterValues } from "./search-filter-form.validation";
 
-const searchFilterResolver = lazyResolver<SearchFilterValues>(() =>
-  import("./search-filter-form.validation").then((m) => m.searchFilterResolver),
+const searchFilterResolver = lazyResolver<SearchFilterValues>(
+  () => import("./search-filter-form.validation").then((m) => m.searchFilterResolver),
+  { failureMessage: searchFailureCopy },
 );
 
 export function SearchFilterForm({
@@ -48,6 +50,7 @@ export function SearchFilterForm({
     defaultValues: { q: initialQ },
   });
 
+  const loadFailure = lazyResolverFailure(form.formState.errors);
   const isSheet = variant === "sheet";
   const showSubmit = !isSheet;
 
@@ -85,7 +88,8 @@ export function SearchFilterForm({
         optional
         quiet
         id={inputId}
-        error={form.formState.errors.q?.message}
+        error={form.formState.errors.q?.message ?? loadFailure}
+        announce={Boolean(loadFailure)}
         className="min-w-0 flex-1"
       >
         <TextInput

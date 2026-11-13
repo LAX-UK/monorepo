@@ -31,6 +31,12 @@ export const errorCopy = {
   invalid: "Check this answer and try again",
 } as const;
 
+/**
+ * A search or filter box whose check could not be fetched (offline, or a release replaced the
+ * page's scripts). These forms have no server step, so this is their only failure message.
+ */
+export const searchFailureCopy = "Search didn't load. Check your connection and try again.";
+
 /** Server failure for a submitted form: the notice title and its detail. */
 export const submitFailureCopy = {
   title: "We couldn't send your message",

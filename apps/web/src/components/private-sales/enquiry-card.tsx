@@ -8,7 +8,7 @@ import {
 import { useAppSession } from "@/lib/auth/use-app-session";
 import { SITE_CONTACT_EMAIL } from "@/lib/brand";
 import { submitFailureCopy } from "@/lib/forms/error-copy";
-import { lazyResolver } from "@/lib/forms/lazy-resolver";
+import { lazyResolver, lazyResolverFailure } from "@/lib/forms/lazy-resolver";
 import { useFormErrorSummary } from "@/lib/forms/use-form-error-summary";
 import {
   type EnquirerOrganisation,
@@ -54,8 +54,9 @@ async function draftToken(): Promise<string | null> {
 }
 
 /** Keeps the address in step with the path, so the page can be shared on either. */
-const enquiryFormResolver = lazyResolver<EnquiryFormValues>(() =>
-  import("./enquiry-card.validation").then((m) => m.enquiryFormResolver),
+const enquiryFormResolver = lazyResolver<EnquiryFormValues>(
+  () => import("./enquiry-card.validation").then((m) => m.enquiryFormResolver),
+  { failureMessage: submitFailureCopy.title },
 );
 
 function rememberPath(path: EnquiryPath) {
@@ -144,6 +145,8 @@ export function EnquiryCard({ initialPath, onAnother }: Props) {
     [uploads.uploadIds, uploads.draftToken, choice.legalEntityId],
   );
 
+  // The form's check could not be fetched: the same notice as a failed send.
+  const shownFailure = failure ?? lazyResolverFailure(form.formState.errors);
   const pendingFiles = uploads.items.filter((item) => item.state === "uploading").length;
 
   // A send that was asked for while files were still being checked goes when the last one is.
@@ -204,11 +207,11 @@ export function EnquiryCard({ initialPath, onAnother }: Props) {
           className="flex flex-col gap-5"
         >
           <ErrorSummary errors={summary.errors} focusKey={summary.focusKey} />
-          {failure ? (
+          {shownFailure ? (
             <Notice tone="danger" alert title={submitFailureCopy.title}>
-              {failure === submitFailureCopy.title
+              {shownFailure === submitFailureCopy.title
                 ? submitFailureCopy.detail(SITE_CONTACT_EMAIL)
-                : `${failure} Your answers are still here.`}
+                : `${shownFailure} Your answers are still here.`}
             </Notice>
           ) : null}
           <input

@@ -2,6 +2,7 @@
 
 import { applyActionFieldErrors } from "@/lib/forms/apply-action-field-errors";
 import type { ActionResult } from "@/lib/forms/form-result";
+import { lazyResolverFailure } from "@/lib/forms/lazy-resolver";
 import { notify } from "@/lib/ui/notify";
 import { useCallback, useState, useTransition } from "react";
 import type { DefaultValues, FieldValues, Resolver, UseFormProps } from "react-hook-form";
@@ -27,7 +28,10 @@ type ActionFormOptions<TFieldValues extends FieldValues, TData> = {
   focusInvalidField?: boolean;
 };
 
-/** RHF + server action: runs the action in a transition, maps `ActionResult` field errors to the form.
+/**
+ * RHF + server action: runs the action in a transition, maps `ActionResult` field errors to the form.
+ * `rootError` is the failed action's message, or the `lazyResolver` failure when the form's check
+ * could not be fetched (the submit then ends without running the action).
  */
 export function useActionForm<TFieldValues extends FieldValues, TData = void>({
   resolver,
@@ -83,6 +87,6 @@ export function useActionForm<TFieldValues extends FieldValues, TData = void>({
     form,
     onSubmit,
     isSubmitting: isPending || form.formState.isSubmitting,
-    rootError,
+    rootError: rootError ?? lazyResolverFailure(form.formState.errors),
   };
 }

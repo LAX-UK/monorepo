@@ -20,8 +20,9 @@ import Link from "next/link";
 import { useState } from "react";
 import { Controller } from "react-hook-form";
 
-const contactFormResolver = lazyResolver<ContactFormValues>(() =>
-  import("./contact-form.validation").then((m) => m.contactFormResolver),
+const contactFormResolver = lazyResolver<ContactFormValues>(
+  () => import("./contact-form.validation").then((m) => m.contactFormResolver),
+  { failureMessage: submitFailureCopy.title },
 );
 
 const topics = [
