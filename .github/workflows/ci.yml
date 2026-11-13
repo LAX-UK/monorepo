@@ -893,6 +893,11 @@ jobs:
         env:
           DATABASE_URL: ${{ env.DATABASE_URL_API }}
 
+      # The unlinked originals report reads lax.art's artworks by column grant; run the reader's own
+      # queries as api_app, so a lost grant fails here and not as a 500 on the Bid admin page.
+      - name: Unlinked originals report as api_app
+        run: pnpm --filter @auction/persistence exec vitest run --maxWorkers=2 src/repositories/artwork-register/register-integrity.integration.test.ts
+
       # The invoice raise locks the lot (FOR UPDATE) before inserting; run it under both app roles
       # that raise invoices, so a lost grant fails here and not as `permission denied` at lot end.
       - name: Invoice raise lot lock as api_app
