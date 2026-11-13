@@ -1,4 +1,5 @@
 import type { SaleLineBreakdown, SoldLotPayoutStage } from "@auction/domain";
+import type { SellerTermsFigures } from "@auction/types";
 import type { Result } from "neverthrow";
 import type { OrganisationMemberActor } from "./organisation-membership-service.js";
 
@@ -28,6 +29,11 @@ export type SoldLotView = {
   stage: SoldLotPayoutStage;
   /** What reaches the seller once the buyer has paid; `null` before then. */
   net: string | null;
+  /**
+   * The seller-terms snapshot the sale is paid from, as recorded, while `net` is shown and comes
+   * from one; `null` otherwise (paid under the old rule, held, or not paid yet).
+   */
+  sellerTerms: SellerTermsFigures | null;
   payout: { id: string; settledAt: Date | null } | null;
 };
 
@@ -39,6 +45,8 @@ export type PayoutLineView = {
   lot: { id: string; title: string; lotNumber: number | null; hammerPrice: string } | null;
   /** Sale lines split into gross, commission and fees, and net; other lines carry the amount. */
   breakdown: SaleLineBreakdown | null;
+  /** The snapshot a sale line pays, as recorded; `null` on lines paid under the old rule. */
+  sellerTerms: SellerTermsFigures | null;
   /** The sale was re-awarded to the next bidder after the first buyer did not pay. */
   soldAfterAuction: boolean;
   amount: string;
