@@ -246,6 +246,30 @@ export class DrizzlePaymentRepository implements IPaymentWriteRepository {
     return rows.length > 0;
   }
 
+  async recordTransferReceivedInTransaction(
+    tx: Database,
+    id: string,
+    receivedPence: number,
+  ): Promise<boolean> {
+    if (!Number.isSafeInteger(receivedPence) || receivedPence <= 0) return false;
+    // One statement: the figure only rises and is capped at the invoice, so a replayed or late
+    // notice (which reports less) changes nothing. Only an invoice still waiting for its money.
+    const rows = await tx
+      .update(payment)
+      .set({
+        transferReceivedPence: sql`least(greatest(${payment.transferReceivedPence}, ${receivedPence}), round(${payment.amount} * 100)::integer)`,
+      })
+      .where(
+        and(
+          eq(payment.id, id),
+          inArray(payment.status, ["pending", "authorized"]),
+          sql`${payment.transferReceivedPence} < least(${receivedPence}, round(${payment.amount} * 100)::integer)`,
+        ),
+      )
+      .returning({ id: payment.id });
+    return rows.length > 0;
+  }
+
   async applyCancelledInTransaction(tx: Database, id: string): Promise<boolean> {
     const rows = await tx
       .update(payment)
@@ -275,11 +299,19 @@ export class DrizzlePaymentRepository implements IPaymentWriteRepository {
   async applyCapturedInTransaction(
     tx: Database,
     id: string,
-    opts: { stripeChargeId?: string | null },
+    opts: { stripeChargeId?: string | null; stripePaymentIntentId?: string | null },
   ): Promise<boolean> {
-    const patch: Partial<typeof payment.$inferInsert> = { status: "captured" };
+    const patch: {
+      status: "captured";
+      stripeChargeId?: string;
+      stripePaymentIntentId?: SQL;
+    } = { status: "captured" };
     if (opts.stripeChargeId != null && opts.stripeChargeId !== "") {
       patch.stripeChargeId = opts.stripeChargeId;
+    }
+    // Filled only where the row has none: a payment intent already recorded is never replaced.
+    if (opts.stripePaymentIntentId != null && opts.stripePaymentIntentId !== "") {
+      patch.stripePaymentIntentId = sql`coalesce(nullif(${payment.stripePaymentIntentId}, ''), ${opts.stripePaymentIntentId})`;
     }
     const rows = await tx
       .update(payment)

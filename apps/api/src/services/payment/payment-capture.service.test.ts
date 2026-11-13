@@ -466,4 +466,64 @@ describe("PaymentCaptureService", () => {
       stripeChargeId: "ch_from_pi",
     });
   });
+
+  describe("the payment intent on the captured row", () => {
+    const row = (stripePaymentIntentId: string | null) => ({
+      id: "pay1",
+      lotId: "lot1",
+      paidByUserId: "u1",
+      amount: "100.00",
+      status: "pending",
+      stripeChargeId: null,
+      stripePaymentIntentId,
+      sellerLegalEntityId: "le_seller",
+    });
+
+    it("stores the intent of a card checkout whose row has none, with the charge", async () => {
+      const applyCapturedInTransaction = vi.fn().mockResolvedValue(true);
+      const svc = makeCaptureService({
+        payments: { findById: vi.fn().mockResolvedValue(row(null)), applyCapturedInTransaction },
+      });
+      await svc.capture({
+        paymentId: "pay1",
+        via: "stripe_checkout_webhook",
+        stripeChargeId: "ch_card",
+        stripePaymentIntentId: "pi_card",
+      });
+      expect(applyCapturedInTransaction).toHaveBeenCalledWith({}, "pay1", {
+        stripeChargeId: "ch_card",
+        stripePaymentIntentId: "pi_card",
+      });
+    });
+
+    it("keeps an intent already on the row", async () => {
+      const applyCapturedInTransaction = vi.fn().mockResolvedValue(true);
+      const svc = makeCaptureService({
+        payments: {
+          findById: vi.fn().mockResolvedValue(row("pi_recorded")),
+          applyCapturedInTransaction,
+        },
+      });
+      await svc.capture({
+        paymentId: "pay1",
+        via: "stripe_checkout_webhook",
+        stripeChargeId: "ch_card",
+        stripePaymentIntentId: "pi_other",
+      });
+      expect(applyCapturedInTransaction).toHaveBeenCalledWith({}, "pay1", {
+        stripeChargeId: "ch_card",
+      });
+    });
+
+    it("stores no intent when none is known (a capture by staff)", async () => {
+      const applyCapturedInTransaction = vi.fn().mockResolvedValue(true);
+      const svc = makeCaptureService({
+        payments: { findById: vi.fn().mockResolvedValue(row(null)), applyCapturedInTransaction },
+      });
+      await svc.capture({ paymentId: "pay1", via: "admin_manual", stripeChargeId: "ch_card" });
+      expect(applyCapturedInTransaction).toHaveBeenCalledWith({}, "pay1", {
+        stripeChargeId: "ch_card",
+      });
+    });
+  });
 });

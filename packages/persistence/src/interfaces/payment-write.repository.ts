@@ -157,13 +157,26 @@ export interface IPaymentLifecycleRepository {
   listStaleAuthorizedBefore(
     cutoff: Date,
   ): Promise<{ id: string; lotId: string; buyerId: string }[]>;
+  /**
+   * Marks the payment captured. The charge id is stored when given; the payment intent id only
+   * where the row has none yet.
+   */
   applyCapturedInTransaction(
     tx: Database,
     id: string,
-    opts: { stripeChargeId?: string | null },
+    opts: { stripeChargeId?: string | null; stripePaymentIntentId?: string | null },
   ): Promise<boolean>;
   /** Atomically move pending → authorized (bank transfer in flight). */
   applyAuthorizedInTransaction(tx: Database, id: string): Promise<boolean>;
+  /**
+   * Raises what the invoice's own bank transfer has delivered, in pence, capped at the invoice.
+   * False when nothing changed: the figure was already as high, or the invoice is not waiting.
+   */
+  recordTransferReceivedInTransaction(
+    tx: Database,
+    id: string,
+    receivedPence: number,
+  ): Promise<boolean>;
   /** Atomically cancel an open payment (pending or authorized). */
   applyCancelledInTransaction(tx: Database, id: string): Promise<boolean>;
   /**
