@@ -84,6 +84,11 @@ export type AccountPurchaseFactsRow = {
     raisedAt: Date;
     /** The due date stored on the invoice; `null` for a payment with no stored invoice. */
     dueAt: Date | null;
+    /**
+     * What the invoice's own bank transfer has delivered so far, in whole pence. Absent reads as
+     * 0; an invoice paid through a group keeps its figure on the group instead.
+     */
+    transferReceivedPence?: number;
   } | null;
   fulfilment:
     | (FulfilmentFacts & {

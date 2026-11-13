@@ -90,7 +90,11 @@ describe("DrizzlePaymentRepository", () => {
 
     const ok = await repo.applyCancelledInTransaction(tx, "pay-1");
     expect(ok).toBe(true);
-    expect(set).toHaveBeenCalledWith({ status: "cancelled" });
+    expect(set).toHaveBeenCalledWith({
+      status: "cancelled",
+      transferReceivedPence: 0,
+      transferReceivedPaymentIntentId: null,
+    });
   });
 });
 

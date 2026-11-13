@@ -1,4 +1,9 @@
 export type { FinanceRuntimeEnv } from "./env-slice.js";
+export {
+  createBooksAccountingAdapters,
+  type BooksAccountingAdapters,
+  type BooksAccountingEnv,
+} from "./books/create-books-accounting-adapters.js";
 export { xeroOAuthConfigured } from "./env-slice.js";
 export {
   createXeroAccountingStack,

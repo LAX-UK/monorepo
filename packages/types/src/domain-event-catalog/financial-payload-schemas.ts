@@ -3,6 +3,20 @@ import { lotEndedPayloadSchema } from "./lot-payload-schemas.js";
 
 const isoDateTime = z.string().datetime();
 
+/**
+ * A Bid invoice raised for a won lot. Ids and the total only: readers fetch the rest. The total is
+ * positive because a Bid invoice is: the table refuses a total of 0p (`bid_invoice_total_check`),
+ * and the event is written in the same transaction as the invoice, so a 0p event cannot exist.
+ * If Bid ever allows a 0p invoice, relax both together and let the accounting policy refuse it.
+ */
+export const invoiceRaisedPayloadSchemaV1 = z.object({
+  invoiceId: z.string().uuid(),
+  lotId: z.string().uuid(),
+  buyerLegalEntityId: z.string().uuid(),
+  totalPence: z.number().int().positive(),
+  raisedAt: isoDateTime,
+});
+
 export const paymentCapturedPayloadSchemaV1 = z.object({
   paymentId: z.string().uuid(),
   lotId: z.string().uuid(),

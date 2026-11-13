@@ -35,6 +35,7 @@ import {
 import { and, eq, inArray, like, sql } from "drizzle-orm";
 import type Stripe from "stripe";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { FakeChargeRefunds } from "../../test/fake-charge-refunds.js";
 import {
   deleteIdentityUserFixtures,
   seedIdentityUserFixtures,
@@ -238,6 +239,8 @@ describe.skipIf(!HAS_DB)("payout run on seller terms (integration)", () => {
     repo,
     (_root, tx) => new DrizzlePayoutRepository(tx),
   );
+  // What Stripe lists as refunded on each charge; every refund here has succeeded.
+  const stripeRefunds = new FakeChargeRefunds();
   const webhooks = new StripePaymentWebhookService(
     runner,
     new DrizzlePaymentWebhookLookupReader(db),
@@ -253,6 +256,9 @@ describe.skipIf(!HAS_DB)("payout run on seller terms (integration)", () => {
     null,
     null,
     refundRecords,
+    undefined,
+    null,
+    stripeRefunds,
   );
   let periodEnds = 10;
   const nextPeriodEnd = () => new Date(Date.now() + 10_000 * periodEnds++);
@@ -286,6 +292,7 @@ describe.skipIf(!HAS_DB)("payout run on seller terms (integration)", () => {
       type: "charge.refunded",
       data: { object: charge },
     } as unknown as Stripe.Event;
+    stripeRefunds.show(chargeId, refundedPence);
     return webhooks.handleChargeRefunded(event, charge);
   };
 

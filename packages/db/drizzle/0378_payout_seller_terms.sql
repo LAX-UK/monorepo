@@ -56,11 +56,13 @@ END $$;
 CREATE INDEX IF NOT EXISTS "payout_line_seller_terms_idx"
   ON "payout_line" ("seller_terms_id") WHERE "seller_terms_id" IS NOT NULL;
 --> statement-breakpoint
--- Migration 0344's top-up of the buyer's refund record, reading each refund line's buyer refund
--- where the line keeps it. A line since this release can charge less than the buyer's refund (the
--- seller's share), nothing (a share already taken back), or give back part of a charge made in
+-- The top-up of the buyer's refund record (0344, signed by 0376), reading each refund line's buyer
+-- refund where the line keeps it. A line since this release can charge less than the buyer's refund
+-- (the seller's share), nothing (a share already taken back), or give back part of a charge made in
 -- full before this release; only what it answered for says what the buyer was refunded. A line
--- from before keeps its amount, which was the buyer's refund, so those rows top up as before.
+-- that keeps no buyer refund counts its amount with its sign, as 0376 does: a charge was the
+-- buyer's refund, and a compensating line (a failed refund given back) cancels the line it
+-- corrects, so those rows top up exactly as they did after 0376.
 CREATE OR REPLACE FUNCTION payment_refund_backfill_from_payout_lines(only_payment_id uuid DEFAULT NULL) RETURNS integer
 LANGUAGE plpgsql
 AS $fn$
@@ -77,7 +79,7 @@ BEGIN
   FROM (
     SELECT
       l."payment_id",
-      SUM(COALESCE(l."buyer_refund_pence", round(abs(l."amount") * 100)))::bigint AS "line_pence",
+      SUM(COALESCE(l."buyer_refund_pence", round(-l."amount" * 100)))::bigint AS "line_pence",
       COALESCE((
         SELECT SUM(r."amount_pence")
         FROM "payment_refund" r

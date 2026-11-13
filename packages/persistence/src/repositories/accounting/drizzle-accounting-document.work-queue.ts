@@ -1,7 +1,7 @@
 import { type Result, ok, refuse, startSending } from "@auction/accounting-domain";
 import type { Database } from "@auction/db";
 import { accountingDocument, accountingSourceSetting } from "@auction/db/schema";
-import { and, asc, eq, exists, lte, or } from "drizzle-orm";
+import { and, asc, eq, exists, inArray, lte, or, sql } from "drizzle-orm";
 import type {
   AccountingClock,
   ClaimRequest,
@@ -45,7 +45,8 @@ export class DrizzleAccountingDocumentWorkQueue implements IAccountingDocumentWo
    * A pending document is handed only to the provider and mode it was created for (its recorded
    * target) and only while that provider is still in that mode for the product. So a Books worker
    * in `test_org` or `dry_run` can never take a document aimed at Xero live, and a flip of the
-   * switch never re-aims one (`off` matches no target). The switch is read in the same statement
+   * switch never re-aims one (`off` matches no target). Only the target modes the caller says it
+   * can serve are handed out (a rehearsal-only sender never gets a test or live document). The switch is read in the same statement
    * as the claim (the worker may only SELECT it, so it cannot lock it). Settling a lapsed lease only
    * demotes a stuck `sending` row to `unknown` and calls no provider, so it ignores the switch.
    */
@@ -60,6 +61,9 @@ export class DrizzleAccountingDocumentWorkQueue implements IAccountingDocumentWo
             and(
               eq(accountingDocument.state, "pending"),
               eq(accountingDocument.targetProvider, request.provider),
+              request.targetModes.length > 0
+                ? inArray(accountingDocument.targetMode, [...request.targetModes])
+                : sql`false`,
               exists(
                 this.db
                   .select({ product: accountingSourceSetting.product })

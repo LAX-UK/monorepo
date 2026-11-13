@@ -6,9 +6,9 @@ import { payout, payoutLine } from "./schema/payouts.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const read = (name: string) => readFileSync(join(__dirname, "../drizzle", name), "utf8");
-const TAG = "0374_payout_seller_terms";
+const TAG = "0378_payout_seller_terms";
 const migration = read(`${TAG}.sql`);
-const rollback = read("0374_rollback.sql");
+const rollback = read("0378_rollback.sql");
 const journal = JSON.parse(read("meta/_journal.json")) as {
   entries: { idx: number; tag: string; when: number }[];
 };
@@ -28,7 +28,7 @@ const CONSTRAINTS = [
   "payout_seller_terms_totals_ck",
 ] as const;
 
-describe("migration 0374 payout seller terms", () => {
+describe("migration 0378 payout seller terms", () => {
   it("follows the entry before it with the next idx and a later stamp, and precedes later ones", () => {
     const at = journal.entries.findIndex((e) => e.tag === TAG);
     expect(at).toBeGreaterThan(0);
@@ -72,17 +72,27 @@ describe("migration 0374 payout seller terms", () => {
     expect(rollback).toContain('DROP FUNCTION IF EXISTS "sale_seller_terms_reprice_held_only"()');
   });
 
-  it("tops up the buyer's refund record from what each line answered for; the rollback restores 0344's", () => {
-    const answered = 'SUM(COALESCE(l."buyer_refund_pence", round(abs(l."amount") * 100)))';
-    const original = 'SUM(round(abs(l."amount") * 100))';
+  it("tops up the buyer's refund record from what each line answered for; the rollback restores 0376's", () => {
+    // A line that keeps no buyer refund counts with its sign, as 0376 does, so a compensating line
+    // (a failed refund given back to the seller) still cancels the line it corrects.
+    const answered = 'SUM(COALESCE(l."buyer_refund_pence", round(-l."amount" * 100)))';
+    const signed = 'round(-SUM(l."amount") * 100)::bigint AS "line_pence"';
     expect(migration).toContain(answered);
-    expect(rollback).toContain(original);
+    expect(migration).not.toContain("abs(");
+    expect(rollback).toContain(signed);
+    expect(rollback).not.toContain("abs(");
     expect(rollback).not.toContain('buyer_refund_pence")');
     // The function is replaced before the column it reads is dropped.
     expect(rollback.indexOf("payment_refund_backfill_from_payout_lines")).toBeLessThan(
       rollback.indexOf('DROP COLUMN IF EXISTS "buyer_refund_pence"'),
     );
-    expect(read("0344_payment_refund.sql")).toContain(original);
+    expect(read("0376_stripe_refund_watch.sql")).toContain(signed);
+  });
+
+  it("locks refund lines before the guard reads them, so none is written between the check and the drop", () => {
+    const lock = rollback.indexOf('LOCK TABLE "payout_line" IN SHARE MODE;');
+    expect(lock).toBeGreaterThan(rollback.indexOf("BEGIN;"));
+    expect(lock).toBeLessThan(rollback.indexOf("DO $$"));
   });
 
   it("stops the rollback, before it changes anything, while a refund line charged by the new rule", () => {

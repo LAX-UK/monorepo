@@ -12,7 +12,7 @@ const { Client } = pg;
 type Row = Record<string, unknown>;
 
 /** Every probe runs in a savepoint inside one transaction that is rolled back at the end. */
-describe.skipIf(!url)("migration 0374 payout seller terms (database)", { timeout: 60_000 }, () => {
+describe.skipIf(!url)("migration 0378 payout seller terms (database)", { timeout: 60_000 }, () => {
   let client: pg.Client;
   let sellerId: string;
   let paymentId: string;
@@ -153,7 +153,7 @@ describe.skipIf(!url)("migration 0374 payout seller terms (database)", { timeout
 });
 
 const rollbackSql = () =>
-  readFile(resolve(import.meta.dirname, "../drizzle/0374_rollback.sql"), "utf8");
+  readFile(resolve(import.meta.dirname, "../drizzle/0378_rollback.sql"), "utf8");
 
 /** A seller's captured payment; returns the seller and payment ids. */
 async function seedPayment(pool: pg.Pool): Promise<{ sellerId: string; paymentId: string }> {
@@ -215,7 +215,7 @@ async function runRollback(pool: pg.Pool): Promise<void> {
   }
 }
 
-describe.skipIf(!url)("migration 0374 rollback", { timeout: 120_000 }, () => {
+describe.skipIf(!url)("migration 0378 rollback", { timeout: 120_000 }, () => {
   it("refuses while a refund line charged other than the buyer's refund, and runs once none does", async () => {
     await withTemporaryDatabase(async (pool) => {
       await runMigrationsPerTransaction(pool);
@@ -239,7 +239,7 @@ describe.skipIf(!url)("migration 0374 rollback", { timeout: 120_000 }, () => {
       await refundLine("172.00", 0, "true-up");
 
       await expect(runRollback(pool)).rejects.toThrow(
-        /2 refund line\(s\) charge the seller other than the buyer's refund; 0374 is forward-fix only/,
+        /2 refund line\(s\) charge the seller other than the buyer's refund; 0378 is forward-fix only/,
       );
       // Nothing was rolled back.
       expect(await hasBuyerRefundColumn(pool)).toBe(true);

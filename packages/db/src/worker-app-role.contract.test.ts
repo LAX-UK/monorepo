@@ -110,6 +110,36 @@ describe.skipIf(!WORKER_URL)("worker_app role contract", { timeout: 60_000 }, ()
     });
   });
 
+  it("reads what the Bid accounting facts need, writes invoice.raised and starts a projector cursor", async () => {
+    await withWorkerClient(async (client) => {
+      const can = async (table: string, privilege: string) =>
+        (
+          await client.query<{ allowed: boolean }>(
+            "select has_table_privilege(current_user, $1, $2) as allowed",
+            [`public.${table}`, privilege],
+          )
+        ).rows[0]?.allowed;
+      for (const table of [
+        "bid_invoice",
+        "bid_invoice_line",
+        "payment",
+        "payment_refund",
+        "legal_entity",
+        "legal_entity_invoice_details",
+        "domain_events",
+      ]) {
+        expect(await can(table, "SELECT"), table).toBe(true);
+      }
+      // The worker raises invoices, and invoice.raised is written in the same transaction.
+      expect(await can("domain_events", "INSERT")).toBe(true);
+      // The accounting projector's cursor starts at the newest event the first time it runs.
+      expect(await can("projector_state", "INSERT")).toBe(true);
+      // While Books is switched off the cursor is moved to the newest event every tick, so the
+      // events of that time are never projected when it is switched on again.
+      expect(await can("projector_state", "UPDATE")).toBe(true);
+    });
+  });
+
   it("creates and advances accounting documents, only adds to their history, and reads the switch", async () => {
     await withWorkerClient(async (client) => {
       const privileges = ["SELECT", "INSERT", "UPDATE", "DELETE"];

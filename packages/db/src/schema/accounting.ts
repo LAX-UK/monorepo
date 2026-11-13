@@ -7,12 +7,13 @@ import {
   pgTable,
   text,
   timestamp,
-  uniqueIndex,
+  unique,
   uuid,
 } from "drizzle-orm/pg-core";
 
 /**
- * A document to send to the accounting provider (Xero or Zoho Books), one row per LAX reference.
+ * A document to send to the accounting provider (Xero or Zoho Books), one row per LAX reference and
+ * target (provider and mode).
  * The columns follow the accounting domain's life cycle (`@auction/accounting-domain`): which of
  * them may be set in which `state` is enforced by CHECK constraints in migration 0368, repeated
  * here only where drizzle-kit needs the columns. Times are timestamptz; the domain's epoch
@@ -62,11 +63,17 @@ export const accountingDocument = pgTable(
     updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true }).defaultNow().notNull(),
   },
   (table) => [
-    uniqueIndex("accounting_document_reference_uid").on(
-      table.product,
-      table.legalEntity,
-      table.laxReference,
-    ),
+    // One document per reference and target (migration 0374): a rehearsal in `dry_run` never
+    // holds a reference the test or live organisation needs. Rows with no target share one slot.
+    unique("accounting_document_reference_target_uq")
+      .on(
+        table.product,
+        table.legalEntity,
+        table.laxReference,
+        table.targetProvider,
+        table.targetMode,
+      )
+      .nullsNotDistinct(),
     index("accounting_document_claim_idx")
       .on(table.createdAt, table.id)
       .where(sql`${table.state} IN ('pending', 'sending')`),

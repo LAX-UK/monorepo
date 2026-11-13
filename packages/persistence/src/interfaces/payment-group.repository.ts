@@ -147,6 +147,32 @@ export interface IPaymentGroupRepository {
     unattributedPence: number,
   ): Promise<boolean>;
   /**
+   * Groups paid by a charge that hold any refund (a buyer refund row, a seller refund line, a
+   * courier refund or unattributed excess), in id order after `afterId`: what the refund repair
+   * command checks against Stripe.
+   */
+  listChargedGroupsWithRefunds(input: {
+    afterId: string | null;
+    limit: number;
+  }): Promise<{ id: string; stripeChargeId: string }[]>;
+  /**
+   * Lowers what is held as refunded for a quote of the group to `refundedPence`, inside `tx` (the
+   * group is locked by the caller). Only the explicit refund repair uses it, for a total counted
+   * under the old rule from a refund that later failed; `true` only when it went down.
+   */
+  lowerDeliveryRefundedInTransaction(
+    tx: Database,
+    groupId: string,
+    quoteId: string,
+    refundedPence: number,
+  ): Promise<boolean>;
+  /** As `lowerDeliveryRefundedInTransaction`, for the refund no invoice or quote could take. */
+  lowerUnattributedRefundInTransaction(
+    tx: Database,
+    groupId: string,
+    unattributedPence: number,
+  ): Promise<boolean>;
+  /**
    * Moves the group from one of `from` to `to` inside `tx`; `false` when it was not in `from`.
    * Settling (`paid` or `cancelled`) stamps `settledAt`; the Stripe references are recorded when
    * given.

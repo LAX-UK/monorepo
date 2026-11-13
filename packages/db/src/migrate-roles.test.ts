@@ -13,6 +13,7 @@ import {
   API_PAYMENT_TRANSFER_REFERENCE_TABLES,
   API_PRIVATE_SALE_ARTWORK_HISTORY_TABLES,
   API_READ_TABLES,
+  API_REFUND_REVERSAL_TABLES,
   AUTH_ADDRESS_TABLES,
   AUTH_EXPORT_AUDIT_TABLES,
   AUTH_EXPORT_TABLES,
@@ -863,6 +864,13 @@ describe("migrate-roles invariants", () => {
     expect([...API_DENY_TABLES]).not.toContain("payment_transfer_reference");
     expect([...WORKER_FULL_TABLES]).not.toContain("payment_transfer_reference");
     expect([...WORKER_READ_TABLES]).not.toContain("payment_transfer_reference");
+  });
+
+  it("keeps refund reversals append-only for the Bid API and away from every other role", () => {
+    expect([...API_REFUND_REVERSAL_TABLES]).toEqual(["stripe_refund_reversal"]);
+    expect([...API_DENY_TABLES]).not.toContain("stripe_refund_reversal");
+    expect([...WORKER_FULL_TABLES]).not.toContain("stripe_refund_reversal");
+    expect([...WORKER_READ_TABLES]).not.toContain("stripe_refund_reversal");
   });
 
   it("keeps accounting history append-only for the worker, read-only for the Bid API, and away from Shop", () => {

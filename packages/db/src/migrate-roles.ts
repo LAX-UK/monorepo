@@ -239,6 +239,12 @@ export const API_PRIVATE_SALE_ARTWORK_HISTORY_TABLES = [
  */
 export const API_PAYMENT_TRANSFER_REFERENCE_TABLES = ["payment_transfer_reference"] as const;
 /**
+ * Each failed or cancelled Stripe refund taken back from a record (migration 0376), the guard
+ * that takes one back at most once. Append-only, so api_app gets INSERT and SELECT only; no
+ * other role touches it.
+ */
+export const API_REFUND_REVERSAL_TABLES = ["stripe_refund_reversal"] as const;
+/**
  * Accounting documents and their history (migration 0368). The Bid API only reads them, and
  * changes the per-product source switch that staff routes expose; the worker creates and advances
  * documents, adds to their history and reads the switch. History is append-only: nobody gets
@@ -282,7 +288,7 @@ export const SELLER_TERMS_INSERT_SELECT_TABLES = ["sale_seller_terms"] as const;
 /**
  * Settlement (the API when staff run it, the worker on its schedule) prices a held sale again once
  * its facts are in place, such as a recorded agreement, and stores the result over the held row
- * (migration 0374). It writes only the figures and how they were made: never which payment, lot or
+ * (migration 0378). It writes only the figures and how they were made: never which payment, lot or
  * seller the row is for, nor the hammer, premium or old-rule fee fixed when the invoice was raised.
  */
 export const SELLER_TERMS_RECOMPUTE_UPDATE_COLUMNS = [
@@ -1195,7 +1201,8 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
           }
           if (
             (API_PAYMENT_REFUND_TABLES as readonly string[]).includes(tableName) ||
-            (API_PAYMENT_TRANSFER_REFERENCE_TABLES as readonly string[]).includes(tableName)
+            (API_PAYMENT_TRANSFER_REFERENCE_TABLES as readonly string[]).includes(tableName) ||
+            (API_REFUND_REVERSAL_TABLES as readonly string[]).includes(tableName)
           ) {
             await grantIfExists(client, "api_app", tableName, "INSERT, SELECT");
             continue;

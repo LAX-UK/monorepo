@@ -102,12 +102,16 @@ describe("StripePaymentGroupGateway", () => {
     ).rejects.toThrow();
   });
 
-  it("reads each refund with the invoice it names, counting only money returned", async () => {
+  it("reads each refund with the invoice it names, counting only refunds that succeeded", async () => {
     const refunds = [
       { amount: 500, status: "succeeded", metadata: { paymentId: "pay-2" } },
-      { amount: 200, status: "pending", metadata: {} },
+      { amount: 200, status: "succeeded", metadata: {} },
       { amount: 300, status: "succeeded", metadata: { deliveryQuoteId: "q-1" } },
       { amount: 900, status: "failed", metadata: { paymentId: "pay-3" } },
+      // Still on their way: either can yet fail, so neither is money returned.
+      { amount: 400, status: "pending", metadata: { paymentId: "pay-2" } },
+      { amount: 700, status: "requires_action", metadata: { deliveryQuoteId: "q-1" } },
+      { amount: 600, status: "canceled", metadata: { paymentId: "pay-2" } },
     ];
     const list = vi.fn(() => ({
       async *[Symbol.asyncIterator]() {

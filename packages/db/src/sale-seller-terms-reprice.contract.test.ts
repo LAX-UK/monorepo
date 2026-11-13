@@ -21,7 +21,7 @@ async function failure(client: pg.Client, text: string, values: unknown[]) {
 }
 
 /**
- * Settlement re-prices a held sale over its seller-terms row (migration 0374). The grant lets the
+ * Settlement re-prices a held sale over its seller-terms row (migration 0378). The grant lets the
  * application roles write the figure columns; the row guard lets them write only a held row, so a
  * snapshot that is priced (and has been or will be paid from) is never rewritten.
  */

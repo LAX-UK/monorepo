@@ -41,6 +41,8 @@ export const STRIPE_PAYMENT_EVENT_HANDLERS: Partial<
     ),
   "charge.refunded": (service, event) =>
     service.handleChargeRefunded(event, event.data.object as Stripe.Charge),
+  "charge.refund.updated": (service, event) =>
+    service.handleChargeRefundUpdated(event, event.data.object as Stripe.Refund),
   "checkout.session.async_payment_failed": (service, event) =>
     service.handleCheckoutSessionAsyncPaymentFailed(
       event,

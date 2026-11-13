@@ -9,6 +9,7 @@ import type {
 import type { IEnsurePersonalLegalEntityService } from "@auction/persistence/lib";
 import type pino from "pino";
 import type { WorkerEnv } from "../../env.js";
+import type { AccountingRuntime } from "../../finance/accounting/accounting-runtime.js";
 import type { CrmSyncService } from "../../integrations/crm/crm-sync-service.js";
 import type { XeroLiveExecutorPorts } from "../../integrations/xero/xero-live-executor.js";
 import type { ZohoListingWriteback } from "../../integrations/zoho/artwork/listing/zoho-listing-writeback.js";
@@ -99,6 +100,8 @@ export type ProjectorRunContext = {
   zohoArtworkListing?: ZohoListingWriteback | undefined;
   /** Mirrors print groups to Zoho CRM; absent while the mirror mode is off. */
   zohoFulfilment?: ZohoFulfilmentMirror | undefined;
+  /** Accounting projector and sender for Books; absent while Books is not configured. */
+  accounting?: AccountingRuntime | undefined;
 };
 
 export interface Projector {

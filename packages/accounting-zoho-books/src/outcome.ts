@@ -22,3 +22,17 @@ export function toLookupFailure(
     ? { status: "not_found" }
     : { status: "unavailable", reason: error.reason };
 }
+
+/**
+ * Refusals that mean "not now" rather than "not this": Books did not act (rate limit, or the day's
+ * call budget is spent), so the same request may succeed later. Every other refusal is about the
+ * document itself and waits for a person. A refusal reason starts with one of these.
+ */
+export const TRANSIENT_REJECTION_PREFIXES: readonly string[] = [
+  "zoho_books_rate_limited_",
+  "zoho_books_budget_exhausted_",
+];
+
+export function isTransientRejection(reason: string): boolean {
+  return TRANSIENT_REJECTION_PREFIXES.some((prefix) => reason.startsWith(prefix));
+}

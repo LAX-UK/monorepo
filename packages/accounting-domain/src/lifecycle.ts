@@ -231,7 +231,36 @@ export function completeSending(
   if (outcome.status === "rejected") {
     return ok({ ...core(record), status: "failed", reason: outcome.reason });
   }
+  if (outcome.status === "differs") return holdDifferingDocument(record, outcome, expected);
   return acceptProviderDocument(record, outcome, expected);
+}
+
+/**
+ * The provider made (or already held) a document under our reference that is not the one we sent.
+ * It exists, so it is kept beside the record and goes to a person: never failed (a failed record
+ * could be requeued and sent again) and never issued. A totals difference, if there is one, is kept
+ * too; the reason says what differed.
+ */
+function holdDifferingDocument(
+  record: DocumentRecord,
+  outcome: Extract<IssueOutcome, { status: "differs" }>,
+  expected: Totals,
+): Result<DocumentRecord, LifecycleCode> {
+  if (!isTotals(outcome.totals) || !isTotals(expected)) {
+    return refuse("bad_outcome", "provider totals must be whole pence; nothing was recorded");
+  }
+  if (typeof outcome.reason !== "string" || outcome.reason === "") {
+    return refuse("bad_outcome", "a differing document needs a reason");
+  }
+  const match = compareWithProviderTotals(expected, outcome.totals);
+  return ok({
+    ...core(record),
+    status: "needs_review",
+    lookup: "clear",
+    issued: { number: outcome.number, providerId: outcome.providerId, pdfRef: outcome.pdfRef },
+    mismatch: match.matches ? null : { field: match.field, differencePence: match.differencePence },
+    reason: `provider document differs from ours: ${outcome.reason}`,
+  });
 }
 
 /**

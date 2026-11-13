@@ -27,6 +27,8 @@ export interface CreateRequest {
  * same reference is refused by Books (the unique LAX reference field), and that refusal is
  * answered by looking the document up and adopting it, so a duplicate becomes the same document,
  * never a second one. A reply we cannot read is `unknown`, because Books may have made the document.
+ * A document Books holds under our reference that reads back different from what we sent (`verify`)
+ * is `differs`: it exists, so it is kept for a person and never sent again or treated as refused.
  */
 export class DocumentWriter {
   constructor(
@@ -42,8 +44,11 @@ export class DocumentWriter {
       const item = asRecord(asRecord(reply.value.body)?.[spec.itemKey]);
       const doc = item ? readProviderDocument(spec, item) : null;
       if (!item || !doc) return { status: "unknown", detail: "zoho_books_unreadable_document" };
+      // Books made it: a read-back that is not what we sent is held for a person, never a refusal.
       const mismatch = request.verify?.(item) ?? null;
-      return mismatch ? { status: "rejected", reason: mismatch } : { status: "issued", ...doc };
+      return mismatch
+        ? { status: "differs", reason: mismatch, ...doc }
+        : { status: "issued", ...doc };
     }
     const { error } = reply;
     const duplicate =
@@ -69,8 +74,9 @@ export class DocumentWriter {
     switch (found.outcome.status) {
       case "found": {
         const mismatch = found.item ? (request.verify?.(found.item) ?? null) : null;
-        if (mismatch) return { status: "rejected", reason: mismatch };
         const { status: _status, ...doc } = found.outcome;
+        // Books holds a document under our reference: if it is not ours as sent, a person decides.
+        if (mismatch) return { status: "differs", reason: mismatch, ...doc };
         return { status: "issued", ...doc };
       }
       case "not_found":

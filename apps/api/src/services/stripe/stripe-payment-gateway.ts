@@ -34,7 +34,13 @@ export type StripeRefundInput = {
 };
 
 export type StripeRefundGatewayResult =
-  | { kind: "created"; refundId: string }
+  | {
+      kind: "created";
+      refundId: string;
+      /** Stripe's status for the refund: only `succeeded` has returned the money yet. */
+      status: string;
+      amountPence: number;
+    }
   | { kind: "already_refunded" };
 
 export type {
@@ -144,7 +150,12 @@ export class StripePaymentGateway implements IStripePaymentGateway {
           params.metadata = { paymentId: input.paymentId };
         }
         const refund = await stripe.refunds.create(params, { idempotencyKey });
-        return { kind: "created", refundId: refund.id };
+        return {
+          kind: "created",
+          refundId: refund.id,
+          status: refund.status ?? "",
+          amountPence: refund.amount,
+        };
       } catch (err) {
         if (err instanceof Stripe.errors.StripeError && err.code === "charge_already_refunded") {
           return { kind: "already_refunded" };

@@ -8,7 +8,7 @@ import {
   paymentGroupDelivery,
 } from "@auction/db/schema";
 import type { PaymentGroupStatus } from "@auction/domain";
-import { and, asc, desc, eq, gte, inArray, isNull, lt, lte, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gt, gte, inArray, isNull, lt, lte, or, sql } from "drizzle-orm";
 import type {
   ChargeableDeliveryQuote,
   ClaimPaymentGroupInput,
@@ -336,6 +336,73 @@ export class DrizzlePaymentGroupRepository implements IPaymentGroupRepository {
         and(
           eq(paymentGroup.id, groupId),
           lt(paymentGroup.refundUnattributedPence, unattributedPence),
+        ),
+      )
+      .returning({ id: paymentGroup.id });
+    return rows.length > 0;
+  }
+
+  async listChargedGroupsWithRefunds(input: {
+    afterId: string | null;
+    limit: number;
+  }): Promise<{ id: string; stripeChargeId: string }[]> {
+    const limit = Math.max(1, Math.min(Math.trunc(input.limit), 500));
+    const rows = await this.db
+      .select({ id: paymentGroup.id, stripeChargeId: paymentGroup.stripeChargeId })
+      .from(paymentGroup)
+      .where(
+        and(
+          sql`${paymentGroup.stripeChargeId} IS NOT NULL`,
+          input.afterId ? gt(paymentGroup.id, input.afterId) : undefined,
+          or(
+            gt(paymentGroup.refundUnattributedPence, 0),
+            sql`EXISTS (SELECT 1 FROM "payment_group_delivery" d WHERE d."payment_group_id" = ${paymentGroup.id} AND d."refunded_pence" > 0)`,
+            sql`EXISTS (SELECT 1 FROM "payment" p JOIN "payment_refund" r ON r."payment_id" = p."id" WHERE p."payment_group_id" = ${paymentGroup.id})`,
+            sql`EXISTS (SELECT 1 FROM "payment" p JOIN "payout_line" l ON l."payment_id" = p."id" WHERE p."payment_group_id" = ${paymentGroup.id} AND l."kind" = 'refund')`,
+          ),
+        ),
+      )
+      .orderBy(asc(paymentGroup.id))
+      .limit(limit);
+    return rows.flatMap((r) =>
+      r.stripeChargeId ? [{ id: r.id, stripeChargeId: r.stripeChargeId }] : [],
+    );
+  }
+
+  async lowerDeliveryRefundedInTransaction(
+    tx: Database,
+    groupId: string,
+    quoteId: string,
+    refundedPence: number,
+  ): Promise<boolean> {
+    if (!Number.isSafeInteger(refundedPence) || refundedPence < 0) return false;
+    const rows = await tx
+      .update(paymentGroupDelivery)
+      .set({ refundedPence })
+      .where(
+        and(
+          eq(paymentGroupDelivery.paymentGroupId, groupId),
+          eq(paymentGroupDelivery.deliveryQuoteId, quoteId),
+          gt(paymentGroupDelivery.refundedPence, refundedPence),
+        ),
+      )
+      .returning({ id: paymentGroupDelivery.id });
+    return rows.length > 0;
+  }
+
+  async lowerUnattributedRefundInTransaction(
+    tx: Database,
+    groupId: string,
+    unattributedPence: number,
+  ): Promise<boolean> {
+    if (!Number.isSafeInteger(unattributedPence) || unattributedPence < 0) return false;
+    const rows = await tx
+      .update(paymentGroup)
+      .set({ refundUnattributedPence: unattributedPence })
+      .where(
+        and(
+          eq(paymentGroup.id, groupId),
+          gt(paymentGroup.refundUnattributedPence, unattributedPence),
         ),
       )
       .returning({ id: paymentGroup.id });

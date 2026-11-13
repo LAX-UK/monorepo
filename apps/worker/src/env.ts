@@ -184,6 +184,12 @@ export const envSchema = z
      * `live` records it. Read-only towards Zoho in every mode.
      */
     ZOHO_CAMPAIGNS_SUPPRESSION_SYNC_MODE: z.enum(["off", "dry_run", "live"]).default("off"),
+    /**
+     * Zoho Books organisation settings (JSON, checked when the worker starts). Unset: the accounting
+     * projector and sender are not built. Set: they run for products whose accounting switch aims
+     * at Books, in rehearsal only (dry run). No setting here can make the worker write to Books.
+     */
+    ZOHO_BOOKS_ORG_CONFIG: z.preprocess(emptyToUndefined, z.string().optional()),
     /** LAX Shop's API, for the inventory machine routes the listing reads lax.art through. */
     SHOP_API_INVENTORY_BASE_URL: z.preprocess(emptyToUndefined, z.string().url().optional()),
     /** The credential pair LAX Shop and LAX Bid hold for the inventory machine routes. */

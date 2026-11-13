@@ -70,8 +70,8 @@ export function LaxLogo({
   className = "",
   imageSrc,
   imageAlt = `${SITE_SHORT_NAME} London Auction House`,
-  imageWidth = 660,
-  imageHeight = 200,
+  imageWidth = 1108,
+  imageHeight = 288,
   hideTagline = false,
   surfaceTone = "on-light",
   children,
@@ -91,13 +91,17 @@ export function LaxLogo({
   const src = imageSrc === "" ? null : (imageSrc ?? SITE_LOGO_PATH);
   const imgMax =
     variant === "footer"
-      ? "max-h-[60px] max-w-[min(100%,320px)]"
+      ? "h-[60px] max-w-[min(100%,320px)] object-contain object-left"
       : variant === "auth"
         ? "max-h-[98px] max-w-[min(100%,512px)]"
         : "h-8 max-w-[160px] sm:h-10 sm:max-w-[180px]";
   const shellClassName = cn("flex flex-col", variant === "auth" && "items-center", className);
   const isAboveFold = variant === "header" || variant === "auth";
-  const imageClassName = cn("lax-logo-img h-auto w-auto motion-reduce:transition-none", imgMax);
+  const imageClassName = cn(
+    "lax-logo-img w-auto motion-reduce:transition-none",
+    variant === "footer" ? null : "h-auto",
+    imgMax,
+  );
   const onDarkSurface = surfaceTone === "on-dark";
   const darkImgClassName = cn(imageClassName, onDarkSurface ? "hidden" : "block dark:hidden");
   const lightImgClassName = cn(imageClassName, onDarkSurface ? "block" : "hidden dark:block");

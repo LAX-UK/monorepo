@@ -15,6 +15,7 @@ import type { ILotFulfilmentPaymentHook } from "@auction/persistence/interfaces"
 import type {
   IPaymentRefundLedger,
   IPaymentWriteRepository,
+  IStripeRefundWatchRepository,
   PaymentRecord,
 } from "@auction/persistence/interfaces";
 import type { IAddressRepository } from "@auction/persistence/interfaces";
@@ -74,13 +75,18 @@ import {
   type IPaymentEligibilityGate,
   PaymentEligibilityGate,
 } from "./payment/payment-eligibility.gate.js";
-import { refundManualReviewPayment, refundPayment } from "./payment/payment-refund-ops.js";
+import {
+  completeDeferredStaffRefund,
+  refundManualReviewPayment,
+  refundPayment,
+} from "./payment/payment-refund-ops.js";
 import type { PaymentRefundReconcileService } from "./payment/payment-refund-reconcile.service.js";
 import type {
   CreatePendingPaymentResult,
   PaymentServiceDeps,
 } from "./payment/payment-service-types.js";
 import type { PaymentTierPolicy } from "./payment/payment-tier.policy.js";
+import type { StaffRefundContext } from "./payment/refund-execution.js";
 import type { IStripePaymentGateway } from "./stripe/stripe-payment-gateway.js";
 
 export type { CreatePendingPaymentResult } from "./payment/payment-service-types.js";
@@ -156,6 +162,7 @@ export class PaymentService
     invoices: (IBidInvoiceReader & IBidInvoiceRaiseRepository) | null = null,
     invoiceDueDates: InvoiceDueDateExtender | null = null,
     paymentRefunds: IPaymentRefundLedger | null = null,
+    refundWatch: Pick<IStripeRefundWatchRepository, "watch"> | null = null,
   ) {
     const invoiceStore = invoices ?? UNWIRED_INVOICES;
     const checkoutOrchestratorDeps: CheckoutOrchestratorDeps = {
@@ -196,6 +203,7 @@ export class PaymentService
       payoutAdjustments,
       paymentRefundReconcile,
       paymentRefunds,
+      refundWatch,
       xeroPaymentRecorder,
       addresses,
       settlementCompliance,
@@ -366,6 +374,14 @@ export class PaymentService
       userStaffRoles,
       reason,
     );
+  }
+
+  /** Records a staff refund Stripe has now reported succeeded (see `completeDeferredStaffRefund`). */
+  completeDeferredStaffRefund(
+    context: StaffRefundContext,
+    stripeRefundId: string,
+  ): Promise<Result<void, AuthzError | PaymentProviderError>> {
+    return completeDeferredStaffRefund(this.deps, context, stripeRefundId);
   }
 
   cancelPendingAsBuyer(

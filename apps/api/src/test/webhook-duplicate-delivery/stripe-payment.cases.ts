@@ -9,6 +9,7 @@ import { PaymentIntentProcessingHandler } from "../../services/stripe-webhook/pa
 import { PaymentIntentSucceededHandler } from "../../services/stripe-webhook/payment-intent-succeeded.handler.js";
 import type { StripePaymentWebhookDeps } from "../../services/stripe-webhook/payment-webhook-lookup.js";
 import { UnappliedMoneyRefundHandler } from "../../services/stripe-webhook/unapplied-money-refund.handler.js";
+import { succeededRefunds } from "../fake-charge-refunds.js";
 import {
   type DeliveryCase,
   duplicateEventResult,
@@ -176,6 +177,7 @@ export const stripePaymentCases: DeliveryCase[] = [
           listOpenByChargeId: async () => [],
         },
         recorder: { resolveRefundedCharge: resolve },
+        chargeRefunds: succeededRefunds(100),
       });
       const charge = { id: "ch_duplicate_delivery", amount: 100, amount_refunded: 100 };
       return {

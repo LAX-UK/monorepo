@@ -5,6 +5,8 @@ import type {
   DealPaymentSettlementService,
 } from "../private-sale-deal/deal-payment-settlement.service.js";
 import { chargeIdFromPaymentIntent } from "../stripe/stripe-charge-id.js";
+import type { IChargeRefundsReader } from "../stripe/stripe-charge-refunds.js";
+import { chargeRefundTotals, isCountedRefund } from "../stripe/stripe-refund-status.js";
 import type { ICheckoutSessionWebhookHandler } from "./checkout-session-webhook-handler.js";
 import type { PaymentWebhookHandlers } from "./create-payment-webhook-handlers.js";
 import type { IPaymentIntentWebhookHandler } from "./payment-intent-webhook-handler.js";
@@ -146,17 +148,22 @@ export function withDealPaymentHandlers(
   };
 }
 
-/** A refund made on a deal's charge, in the payment provider, is recorded on the deal payment. */
+/**
+ * A refund made on a deal's charge, in the payment provider, is recorded on the deal payment. Only
+ * refunds Stripe reports succeeded count; a pending one is watched and recorded once it succeeds.
+ */
 export async function dealChargeRefunded(
   deals: DealPaymentWebhookDeps,
   event: Stripe.Event,
   charge: Stripe.Charge,
+  chargeRefunds: Pick<IChargeRefundsReader, "listChargeRefunds">,
 ): Promise<PaymentWebhookResult | null> {
   if (!(await deals.payments.findByChargeId(charge.id))) return null;
+  const refunds = await chargeRefunds.listChargeRefunds(charge.id);
   return deals.settlement.refunded({
     eventId: event.id,
     chargeId: charge.id,
-    refundedMinor: charge.amount_refunded,
-    refundId: charge.refunds?.data[0]?.id ?? null,
+    refundedMinor: chargeRefundTotals(refunds).countedPence,
+    refundId: refunds.find((r) => isCountedRefund(r.status))?.id ?? null,
   });
 }

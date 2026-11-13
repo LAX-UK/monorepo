@@ -1,10 +1,11 @@
 import { z } from "zod";
+import { THEME_PREFERENCES } from "./ui-preference-defaults.js";
 
-export const themeSchema = z.enum(["light", "dark", "system"]);
+export { DEFAULT_THEME_PREFERENCE, THEME_PREFERENCES } from "./ui-preference-defaults.js";
+
+export const themeSchema = z.enum(THEME_PREFERENCES);
 
 export type ThemePreference = z.infer<typeof themeSchema>;
-
-export const DEFAULT_THEME_PREFERENCE = "system" as const satisfies ThemePreference;
 
 /** Stored default for catalogue layout; `auto` = follow per-route cookie / fallback. */
 export const layoutViewDefaultSchema = z.enum(["grid", "card", "list", "auto"]);

@@ -226,6 +226,11 @@ export class DrizzleAccountPurchaseFactsReader implements IAccountPurchaseFactsR
           amount: payment.amount,
           raisedAt: payment.createdAt,
           dueAt: bidInvoice.dueAt,
+          // Only the figure of the intent the invoice is waiting on (see the column).
+          transferReceivedPence:
+            sql<number>`CASE WHEN ${payment.transferReceivedPaymentIntentId} IS NULL OR nullif(${payment.stripePaymentIntentId}, '') IS NULL OR ${payment.transferReceivedPaymentIntentId} = ${payment.stripePaymentIntentId} THEN ${payment.transferReceivedPence} ELSE 0 END`.mapWith(
+              Number,
+            ),
         })
         .from(payment)
         .leftJoin(bidInvoice, eq(bidInvoice.id, payment.invoiceId))
@@ -274,7 +279,14 @@ export class DrizzleAccountPurchaseFactsReader implements IAccountPurchaseFactsR
         wonBy: l.winnerId ? { userId: l.winnerId, name: l.winnerName ?? null } : null,
         wonAt: l.wonAt,
         payment: p
-          ? { id: p.id, status: p.status, amount: p.amount, raisedAt: p.raisedAt, dueAt: p.dueAt }
+          ? {
+              id: p.id,
+              status: p.status,
+              amount: p.amount,
+              raisedAt: p.raisedAt,
+              dueAt: p.dueAt,
+              transferReceivedPence: p.transferReceivedPence,
+            }
           : null,
         fulfilment: f
           ? {
