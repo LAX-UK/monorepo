@@ -168,6 +168,7 @@ export type {
   BulkSettlementEntityOutcomeLog,
   BulkSettlementTransferPort,
   BulkSettlementWithTransfersResult,
+  ConfirmedSettlement,
   IConnectAccountReadinessSync,
   InitiateTransferOptions,
   InitiateTransferResult,
@@ -201,6 +202,7 @@ export {
 export {
   previewSettlement,
   type SettlementPreview,
+  type SettlementPreviewDeal,
   type SettlementPreviewHeldSale,
   type SettlementPreviewReadySale,
   type SettlementPreviewSale,

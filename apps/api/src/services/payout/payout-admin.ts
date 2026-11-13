@@ -18,6 +18,7 @@ import type {
   AdminListPayoutsFilter,
   MarkPaidInput,
   PayoutWithLines,
+  PendingPreviewDeal,
   PendingPreviewSale,
   PendingPreviewSaleLabel,
   PendingPreviewTotals,
@@ -69,7 +70,13 @@ export async function previewPending(
 ): Promise<import("../interfaces/payout.js").PendingPayoutPreview> {
   if (!deps.transactionRunner) throw new Error("payout_transactions_not_configured");
   const preview = await deps.transactionRunner.runInTransaction((tx) =>
-    previewSettlement(deps.payoutRepoForTx(tx), deps.sellerTermsForTx(tx), legalEntityId),
+    previewSettlement(
+      deps.payoutRepoForTx(tx),
+      deps.sellerTermsForTx(tx),
+      legalEntityId,
+      // The run's own source of released deals, read through the same transaction.
+      deps.dealPayoutsForTx?.(tx) ?? null,
+    ),
   );
   const labels = await labelsFor(deps, preview.sales);
   const sales = preview.sales.map(
@@ -80,7 +87,8 @@ export async function previewPending(
   );
   return {
     sales,
-    totals: previewTotals(sales),
+    deals: preview.deals,
+    totals: previewTotals(sales, preview.deals),
     pendingGross: preview.pendingGross,
     pendingPlatformFee: preview.pendingPlatformFee,
     pendingNet: preview.pendingNet,
@@ -115,15 +123,26 @@ async function labelsFor(
   );
 }
 
-/** The preview's totals are its ready lines added up, so the screen never shows a second sum. */
-export function previewTotals(sales: readonly PendingPreviewSale[]): PendingPreviewTotals {
+/**
+ * The preview's totals are its ready lines and deals added up, so the screen never shows a second
+ * sum and the net is what the run pays.
+ */
+export function previewTotals(
+  sales: readonly PendingPreviewSale[],
+  deals: readonly PendingPreviewDeal[] = [],
+): PendingPreviewTotals {
   const totals: PendingPreviewTotals = {
     hammerPence: 0,
     commissionPence: 0,
     commissionVatPence: 0,
     refundChargePence: 0,
+    dealsNetPence: 0,
     netPence: 0,
   };
+  for (const deal of deals) {
+    totals.dealsNetPence += deal.netPence;
+    totals.netPence += deal.netPence;
+  }
   for (const sale of sales) {
     if (sale.kind !== "ready") continue;
     totals.hammerPence += sale.hammerPence;

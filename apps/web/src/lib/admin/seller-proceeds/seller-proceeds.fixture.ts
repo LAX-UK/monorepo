@@ -4,6 +4,7 @@ import type {
   OldRuleRowDto,
   PayoutSalesDto,
   SellerTermsDto,
+  SettlementPreviewDealDto,
   SettlementPreviewSaleDto,
 } from "@/lib/data/http/admin-seller-proceeds.shared";
 
@@ -147,9 +148,50 @@ export const FIXTURE_PREVIEW_SALES: SettlementPreviewSaleDto[] = [
   },
 ];
 
+/** A released private sale the run pays beside the lots: £18,000, 12% commission, £150 costs. */
+export const FIXTURE_PREVIEW_DEALS: SettlementPreviewDealDto[] = [
+  {
+    dealId: "00000000-0000-4000-8000-0000000004d1",
+    reference: "PS-2026-0042",
+    pricePence: 1_800_000,
+    commissionPence: 216_000,
+    costsPence: 15_000,
+    netPence: 1_569_000,
+  },
+];
+
+/** The totals as the API sends them: its ready lines and deals added up (the API's job, here). */
+function apiTotals(
+  sales: readonly SettlementPreviewSaleDto[],
+  deals: readonly SettlementPreviewDealDto[],
+) {
+  const totals = {
+    hammerPence: 0,
+    commissionPence: 0,
+    commissionVatPence: 0,
+    refundChargePence: 0,
+    dealsNetPence: 0,
+    netPence: 0,
+  };
+  for (const sale of sales) {
+    if (sale.kind !== "ready") continue;
+    totals.hammerPence += sale.hammerPence;
+    totals.commissionPence += sale.commissionPence;
+    totals.commissionVatPence += sale.commissionVatPence;
+    totals.refundChargePence += sale.refundChargePence;
+    totals.netPence += sale.netPence;
+  }
+  for (const deal of deals) {
+    totals.dealsNetPence += deal.netPence;
+    totals.netPence += deal.netPence;
+  }
+  return totals;
+}
+
 export function fixtureSettlementPreview(
   sales: SettlementPreviewSaleDto[] = FIXTURE_PREVIEW_SALES,
   over: Partial<AdminSettlementPreview> = {},
+  deals: SettlementPreviewDealDto[] = [],
 ): AdminSettlementPreview {
   return {
     pending: {
@@ -159,7 +201,8 @@ export function fixtureSettlementPreview(
       paymentCount: sales.filter((sale) => sale.kind === "ready").length,
       currency: "GBP",
       sales,
-      totals: null,
+      deals,
+      totals: apiTotals(sales, deals),
     },
     openPayout: null,
     ...over,

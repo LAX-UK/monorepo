@@ -2,8 +2,10 @@ import type { AdminPayoutRow } from "@/lib/data/http/admin-parse.server";
 import { parseAdminPayoutRow } from "@/lib/data/http/admin-parse.server";
 import { adminPayoutRowsSchema } from "@/lib/data/http/admin-payments.schema";
 import {
+  type SettlementPreviewDealDto,
   type SettlementPreviewSaleDto,
   type SettlementPreviewTotalsDto,
+  settlementPreviewDealSchema,
   settlementPreviewSaleSchema,
   settlementPreviewTotalsSchema,
 } from "@/lib/data/http/admin-seller-proceeds.shared";
@@ -60,8 +62,10 @@ export type AdminSettlementPreview = {
     currency: string;
     /** Every waiting sale, ready or held; empty from an API that predates sale lines. */
     sales: SettlementPreviewSaleDto[];
-    /** The ready lines added up by the API; `null` from an API that predates them. */
-    totals: SettlementPreviewTotalsDto | null;
+    /** Released private-sale deals the run would pay. */
+    deals: SettlementPreviewDealDto[];
+    /** The ready lines and deals added up by the API: the only totals the screen shows. */
+    totals: SettlementPreviewTotalsDto;
   };
   openPayout: AdminPayoutRow | null;
 };
@@ -154,7 +158,8 @@ const settlementPreviewSchema = z.object({
     paymentCount: z.coerce.number(),
     currency: z.coerce.string(),
     sales: z.array(settlementPreviewSaleSchema).optional().default([]),
-    totals: settlementPreviewTotalsSchema.nullable().optional().default(null),
+    deals: z.array(settlementPreviewDealSchema).optional().default([]),
+    totals: settlementPreviewTotalsSchema,
   }),
   openPayout: z.union([z.null(), z.unknown()]).transform((value): AdminPayoutRow | null => {
     if (value == null) return null;

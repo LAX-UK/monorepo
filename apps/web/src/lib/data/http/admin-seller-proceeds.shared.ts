@@ -117,11 +117,24 @@ export const settlementPreviewSaleSchema = z.discriminatedUnion("kind", [
 ]);
 export type SettlementPreviewSaleDto = z.infer<typeof settlementPreviewSaleSchema>;
 
+/** A released private-sale deal the run would pay, split as the run splits it. */
+export const settlementPreviewDealSchema = z.object({
+  dealId: z.string(),
+  reference: z.string(),
+  pricePence: pence,
+  commissionPence: pence,
+  costsPence: pence,
+  netPence: pence,
+});
+export type SettlementPreviewDealDto = z.infer<typeof settlementPreviewDealSchema>;
+
+/** The API's totals: the ready sales and the deals added up there, never again on screen. */
 export const settlementPreviewTotalsSchema = z.object({
   hammerPence: pence,
   commissionPence: pence,
   commissionVatPence: pence,
   refundChargePence: pence,
+  dealsNetPence: pence.optional().default(0),
   netPence: pence,
 });
 export type SettlementPreviewTotalsDto = z.infer<typeof settlementPreviewTotalsSchema>;

@@ -1,8 +1,8 @@
 import type { AdminSettlementPreview } from "@/lib/data/http/admin-payouts.shared";
 import type {
   SellerAgreementRef,
+  SettlementPreviewDealDto,
   SettlementPreviewSaleDto,
-  SettlementPreviewTotalsDto,
 } from "@/lib/data/http/admin-seller-proceeds.shared";
 import { formatBpsAsPercent, formatStaffMoney } from "@auction/staff-ui";
 import {
@@ -46,6 +46,23 @@ export type SettlementRow = {
   held: { reason: string; canRecord: boolean } | null;
 };
 
+/** A released private-sale deal the run pays, as a row. */
+export type SettlementDealRow = {
+  id: string;
+  reference: string;
+  price: string;
+  commission: string;
+  costs: string;
+  net: string;
+};
+
+/** What the confirm sends back, so the run pays exactly this or refuses. */
+export type ConfirmedSettlement = {
+  netPence: number;
+  paymentIds: string[];
+  dealIds: string[];
+};
+
 export type SettlementSummary = {
   /** "Sales ready 3 of 4". */
   readyLabel: string;
@@ -54,6 +71,8 @@ export type SettlementSummary = {
   hammer: string;
   commission: string;
   vat: string;
+  /** What the deals pay, or null when there are none. */
+  deals: string | null;
   net: string;
 };
 
@@ -64,10 +83,17 @@ export type SettlementPreviewModel =
   | {
       kind: "sales";
       rows: SettlementRow[];
+      dealRows: SettlementDealRow[];
       summary: SettlementSummary;
       premiumLine: string;
       /** Set when there is something to pay. */
-      run: { label: string; amount: string; confirmTitle: string; confirmBody: string } | null;
+      run: {
+        label: string;
+        amount: string;
+        confirmTitle: string;
+        confirmBody: string;
+        confirmed: ConfirmedSettlement;
+      } | null;
       /** Why the run button is off: "Every sale is held". */
       disabledReason: string | null;
     };
@@ -116,24 +142,22 @@ function rowFor(sale: SettlementPreviewSaleDto, currency: string): SettlementRow
   };
 }
 
-/** The ready lines added up: the one source of every total on the page. */
-export function sumReady(sales: readonly SettlementPreviewSaleDto[]): SettlementPreviewTotalsDto {
-  const totals = {
-    hammerPence: 0,
-    commissionPence: 0,
-    commissionVatPence: 0,
-    refundChargePence: 0,
-    netPence: 0,
+function dealRowFor(deal: SettlementPreviewDealDto, currency: string): SettlementDealRow {
+  return {
+    id: deal.dealId,
+    reference: deal.reference,
+    price: money(deal.pricePence, currency),
+    commission: minus(deal.commissionPence, currency),
+    costs: minus(deal.costsPence, currency),
+    net: money(deal.netPence, currency),
   };
-  for (const sale of sales) {
-    if (sale.kind !== "ready") continue;
-    totals.hammerPence += sale.hammerPence;
-    totals.commissionPence += sale.commissionPence;
-    totals.commissionVatPence += sale.commissionVatPence;
-    totals.refundChargePence += sale.refundChargePence;
-    totals.netPence += sale.netPence;
-  }
-  return totals;
+}
+
+function paidFrom(ready: number, deals: number): string {
+  const parts = [];
+  if (ready > 0) parts.push(ready === 1 ? "1 ready sale" : `${ready} ready sales`);
+  if (deals > 0) parts.push(deals === 1 ? "1 private sale" : `${deals} private sales`);
+  return parts.join(" and ");
 }
 
 function heldSentence(held: readonly SettlementRow[]): string {
@@ -167,8 +191,9 @@ export function buildSettlementPreview(
   const { pending, openPayout } = preview;
   const currency = pending.currency;
   if (openPayout) return { kind: "open_payout", statusLabel: statusLabel(openPayout.status) };
-  if (pending.sales.length === 0 && pending.paymentCount === 0)
+  if (pending.sales.length === 0 && pending.deals.length === 0) {
     return { kind: "nothing_to_settle" };
+  }
 
   const rows = pending.sales.map((sale) => rowFor(sale, currency));
   if (pending.sales.some((sale) => sale.kind === "held" && sale.reason === "vat_setting_missing")) {
@@ -176,31 +201,42 @@ export function buildSettlementPreview(
   }
   const held = rows.filter((row) => row.held);
   const ready = rows.length - held.length;
-  const totals = sumReady(pending.sales);
+  const dealRows = pending.deals.map((deal) => dealRowFor(deal, currency));
+  // Every figure is the API's: the run's own lines added up there, never again here.
+  const totals = pending.totals;
   const amount = money(totals.netPence, currency);
-  const sales = ready === 1 ? "1 ready sale" : `${ready} ready sales`;
+  const payable = ready + dealRows.length;
   return {
     kind: "sales",
     rows,
+    dealRows,
     summary: {
       readyLabel: `Sales ready ${ready} of ${rows.length}`,
       heldLabel: held.length > 0 ? `${held.length} held` : null,
       hammer: money(totals.hammerPence, currency),
       commission: money(totals.commissionPence, currency),
       vat: money(totals.commissionVatPence, currency),
+      deals: dealRows.length > 0 ? money(totals.dealsNetPence, currency) : null,
       net: amount,
     },
     premiumLine: `Buyer's premium on these sales is kept by LAX and isn't part of this payout.${heldSentence(held)}`,
     run:
-      ready > 0
+      payable > 0
         ? {
             label: `Run settlement for ${amount}`,
             amount,
             confirmTitle: `Pay ${amount} to ${sellerName} now?`,
-            confirmBody: `A payout is created at once from the ${sales} above and sent to the seller's payout account.${stayHeld(held)} It cannot be undone from here.`,
+            confirmBody: `A payout is created at once from the ${paidFrom(ready, dealRows.length)} above and sent to the seller's payout account.${stayHeld(held)} It cannot be undone from here.`,
+            confirmed: {
+              netPence: totals.netPence,
+              paymentIds: pending.sales.flatMap((sale) =>
+                sale.kind === "ready" ? [sale.paymentId] : [],
+              ),
+              dealIds: pending.deals.map((deal) => deal.dealId),
+            },
           }
         : null,
-    disabledReason: ready === 0 ? "Every sale is held" : null,
+    disabledReason: payable === 0 ? "Every sale is held" : null,
   };
 }
 
@@ -214,4 +250,7 @@ export const SETTLEMENT_COPY = {
   vatCompany: BID_COMPANY_NAME,
   reasonLabel: "Reason for running this settlement",
   reasonHint: "Kept with the payout and in the audit log.",
+  figuresChangedTitle: "Figures changed — review again",
+  figuresChanged:
+    "What this seller would be paid changed since you opened the preview, so nothing was paid. The preview has been refreshed; check it and confirm again.",
 } as const;

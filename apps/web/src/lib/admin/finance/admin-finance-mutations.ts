@@ -30,7 +30,21 @@ function redirectSettlement(code: SettlementResultCode): never {
   redirect(settlementResultHref(code));
 }
 
-export async function runPayoutSettlementAction(formData: FormData): Promise<void> {
+/** A refusal the settlement dialog shows in place instead of leaving the page. */
+export type SettlementRunOutcome = { error: "figures_changed" } | undefined;
+
+/** The confirmed preview the form carries, as JSON; anything malformed is not sent. */
+function confirmedFrom(formData: FormData): unknown {
+  const raw = formValue(formData, "confirmed");
+  if (!raw) return undefined;
+  try {
+    return JSON.parse(raw) as unknown;
+  } catch {
+    return undefined;
+  }
+}
+
+export async function runPayoutSettlementAction(formData: FormData): Promise<SettlementRunOutcome> {
   return instrumentServerAction(
     "runPayoutSettlementAction",
     async () => {
@@ -48,11 +62,20 @@ export async function runPayoutSettlementAction(formData: FormData): Promise<voi
           "Content-Type": "application/json",
           [IDEMPOTENCY_KEY_HEADER]: idempotencyKeyFrom(formData),
         },
-        body: JSON.stringify({ legalEntityId, dryRun: false, reason }),
+        body: JSON.stringify({
+          legalEntityId,
+          dryRun: false,
+          reason,
+          confirmed: confirmedFrom(formData),
+        }),
       });
       await redirectIfStaffStepUpRequired(res, SETTLEMENT_PATH);
       if (!res.ok) {
         const body = (await res.json().catch(() => ({}))) as { error?: unknown };
+        // The run would pay something other than what was confirmed: say so in the dialog.
+        if (res.status === 409 && body.error === "figures_changed") {
+          return { error: "figures_changed" } as const;
+        }
         const periodRefused =
           res.status === 409 &&
           typeof body.error === "string" &&

@@ -49,7 +49,7 @@ function stepUp(): Response {
   );
 }
 
-async function redirectTarget(run: () => Promise<void>): Promise<string> {
+async function redirectTarget(run: () => Promise<unknown>): Promise<string> {
   try {
     await run();
   } catch (error) {
@@ -179,5 +179,18 @@ describe("finance mutations", () => {
     const target = await redirectTarget(() => runPayoutSettlementAction(form({})));
     expect(target).toBe("/admin/payouts/settlement?result=missing_seller");
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("sends the confirmed preview and hands 'figures changed' back to the dialog, not a redirect", async () => {
+    const confirmed = { netPence: 7_222_850, paymentIds: ["p1", "p2"], dealIds: ["d1"] };
+    fetchMock.mockResolvedValue(
+      new Response(JSON.stringify({ error: "figures_changed" }), { status: 409 }),
+    );
+    const outcome = await runPayoutSettlementAction(
+      form({ legalEntityId: ENTITY_ID, reason: REASON, confirmed: JSON.stringify(confirmed) }),
+    );
+    expect(outcome).toEqual({ error: "figures_changed" });
+    const init = fetchMock.mock.calls[0]?.[1] as { body: string };
+    expect(JSON.parse(init.body)).toMatchObject({ confirmed });
   });
 });

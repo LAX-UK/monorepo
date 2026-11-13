@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { FIXTURE_PREVIEW_SALES, fixtureSettlementPreview } from "./seller-proceeds.fixture";
-import { buildSettlementPreview, sumReady } from "./settlement-preview.vm";
+import {
+  FIXTURE_PREVIEW_DEALS,
+  FIXTURE_PREVIEW_SALES,
+  fixtureSettlementPreview,
+} from "./seller-proceeds.fixture";
+import { buildSettlementPreview } from "./settlement-preview.vm";
 
 const statusLabel = (status: string) => (status === "scheduled" ? "Scheduled" : status);
 
@@ -37,6 +41,7 @@ describe("buildSettlementPreview", () => {
       hammer: "£82,759.66",
       commission: "£8,775.97",
       vat: "£1,755.19",
+      deals: null,
       net: "£72,228.50",
     });
   });
@@ -60,16 +65,80 @@ describe("buildSettlementPreview", () => {
       confirmTitle: "Pay £72,228.50 to Northbank Gallery Ltd now?",
       confirmBody:
         "A payout is created at once from the 3 ready sales above and sent to the seller's payout account. Lot 21 stays held. It cannot be undone from here.",
+      confirmed: {
+        netPence: 7_222_850,
+        paymentIds: FIXTURE_PREVIEW_SALES.flatMap((sale) =>
+          sale.kind === "ready" ? [sale.paymentId] : [],
+        ),
+        dealIds: [],
+      },
     });
     expect(model.disabledReason).toBeNull();
   });
 
-  it("totals are the lines added up, to the penny", () => {
-    const totals = sumReady(FIXTURE_PREVIEW_SALES);
-    expect(totals.netPence).toBe(3_520_000 + 2_140_000 + 1_562_850);
-    expect(totals.hammerPence - totals.commissionPence - totals.commissionVatPence).toBe(
-      totals.netPence,
+  it("shows the API's totals and confirms the API's net, never a sum of its own", () => {
+    const preview = fixtureSettlementPreview();
+    // Totals that are not the rows added up: the screen must still show these.
+    preview.pending.totals = {
+      hammerPence: 100,
+      commissionPence: 20,
+      commissionVatPence: 4,
+      refundChargePence: 0,
+      dealsNetPence: 0,
+      netPence: 76,
+    };
+    const model = sales(buildSettlementPreview(preview, "Northbank Gallery Ltd", statusLabel));
+    expect(model.summary).toMatchObject({
+      hammer: "£1.00",
+      commission: "£0.20",
+      vat: "£0.04",
+      net: "£0.76",
+    });
+    expect(model.run?.amount).toBe("£0.76");
+    expect(model.run?.confirmed.netPence).toBe(76);
+  });
+
+  it("lists released private sales, pays them and counts them in the confirmed amount", () => {
+    const model = sales(
+      buildSettlementPreview(
+        fixtureSettlementPreview(undefined, {}, FIXTURE_PREVIEW_DEALS),
+        "Northbank Gallery Ltd",
+        statusLabel,
+      ),
     );
+    expect(model.dealRows).toEqual([
+      {
+        id: FIXTURE_PREVIEW_DEALS[0]?.dealId,
+        reference: "PS-2026-0042",
+        price: "£18,000.00",
+        commission: "−£2,160.00",
+        costs: "−£150.00",
+        net: "£15,690.00",
+      },
+    ]);
+    expect(model.summary.deals).toBe("£15,690.00");
+    expect(model.summary.net).toBe("£87,918.50");
+    expect(model.run).toMatchObject({
+      confirmTitle: "Pay £87,918.50 to Northbank Gallery Ltd now?",
+      confirmBody:
+        "A payout is created at once from the 3 ready sales and 1 private sale above and sent to the seller's payout account. Lot 21 stays held. It cannot be undone from here.",
+      confirmed: { netPence: 8_791_850, dealIds: [FIXTURE_PREVIEW_DEALS[0]?.dealId] },
+    });
+  });
+
+  it("a seller with only released private sales can be paid, not 'nothing to settle'", () => {
+    const model = sales(
+      buildSettlementPreview(
+        fixtureSettlementPreview([], {}, FIXTURE_PREVIEW_DEALS),
+        "Northbank Gallery Ltd",
+        statusLabel,
+      ),
+    );
+    expect(model.run).toMatchObject({
+      amount: "£15,690.00",
+      confirmed: { netPence: 1_569_000, paymentIds: [] },
+    });
+    expect(model.disabledReason).toBeNull();
   });
 
   it("turns the run off when every sale is held", () => {

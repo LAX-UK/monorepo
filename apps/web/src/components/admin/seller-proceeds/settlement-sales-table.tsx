@@ -2,6 +2,7 @@
 
 import type {
   RowRateSource,
+  SettlementDealRow,
   SettlementRow,
 } from "@/lib/admin/seller-proceeds/settlement-preview.vm";
 import { StaffButton, TextLink, cn, formatStaffExportDate } from "@auction/staff-ui";
@@ -120,6 +121,52 @@ export function SettlementSalesTable({
                   </td>
                 </>
               )}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+/**
+ * The released private sales the run pays beside the lots, each split as the run splits it: the
+ * price, less the commission and the agreed costs.
+ */
+export function SettlementDealsTable({ rows }: { rows: readonly SettlementDealRow[] }) {
+  return (
+    <div className="overflow-x-auto rounded-staff-lg border border-staff-line">
+      <table className="w-full min-w-[560px] border-collapse text-staff-sm">
+        <caption className="sr-only">Private sales waiting to settle</caption>
+        <thead>
+          <tr>
+            <th scope="col" className={HEAD}>
+              Private sale
+            </th>
+            <th scope="col" className={cn(HEAD, "text-right")}>
+              Price
+            </th>
+            <th scope="col" className={cn(HEAD, "text-right")}>
+              Commission
+            </th>
+            <th scope="col" className={cn(HEAD, "text-right")}>
+              Costs
+            </th>
+            <th scope="col" className={cn(HEAD, "text-right")}>
+              Net to seller
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row) => (
+            <tr key={row.id}>
+              <th scope="row" className={cn(CELL, "text-left font-medium")}>
+                {row.reference}
+              </th>
+              <td className={cn(CELL, NUM)}>{row.price}</td>
+              <td className={cn(CELL, NUM)}>{row.commission}</td>
+              <td className={cn(CELL, NUM)}>{row.costs}</td>
+              <td className={cn(CELL, NUM, "font-medium")}>{row.net}</td>
             </tr>
           ))}
         </tbody>

@@ -10,6 +10,8 @@ import {
 } from "./interfaces/payout.js";
 import type { InitiateTransferResult } from "./interfaces/stripe-connect.js";
 import { PayoutService } from "./payout.service.js";
+import { previewPending } from "./payout/payout-admin.js";
+import type { PayoutServiceDeps } from "./payout/payout-helpers.js";
 
 const ENTITY_ID = "00000000-0000-4000-8000-000000000001";
 const OTHER_ENTITY_ID = "00000000-0000-4000-8000-000000000099";
@@ -131,11 +133,13 @@ describe("PayoutService.previewPending", () => {
     const svc = serviceFor(repo);
     await expect(svc.previewPending(ENTITY_ID)).resolves.toEqual({
       sales: [],
+      deals: [],
       totals: {
         hammerPence: 0,
         commissionPence: 0,
         commissionVatPence: 0,
         refundChargePence: 0,
+        dealsNetPence: 0,
         netPence: 0,
       },
       pendingGross: "0.00",
@@ -239,10 +243,57 @@ describe("PayoutService.previewPending sale lines", () => {
       commissionPence: ready.reduce((sum, sale) => sum + sale.commissionPence, 0),
       commissionVatPence: ready.reduce((sum, sale) => sum + sale.commissionVatPence, 0),
       refundChargePence: 0,
+      dealsNetPence: 0,
       netPence: ready.reduce((sum, sale) => sum + sale.netPence, 0),
     });
     // The pounds the run pays agree with the lines to the penny.
     expect(Math.round(Number(preview.pendingNet) * 100)).toBe(preview.totals?.netPence);
+  });
+});
+
+describe("PayoutService.previewPending released deals", () => {
+  it("shows the released deals the run would pay, from the run's own deal source, in the totals", async () => {
+    const repo = makeRepo();
+    const findUnsettledReleased = vi.fn().mockResolvedValue([
+      {
+        dealId: "deal-1",
+        reference: "PS-0001",
+        sellerLegalEntityId: ENTITY_ID,
+        priceMinor: 100_000,
+        sellerCommissionBps: 1000,
+        costsMinor: 0,
+      },
+    ]);
+    const dealPayouts = { findUnsettledReleased } as never;
+    const preview = await previewPending(
+      {
+        repo,
+        transactionRunner: { runInTransaction: (fn) => fn({} as never) },
+        domainEventSink: undefined,
+        payoutAdjustments: undefined,
+        payoutRepoForTx: () => repo,
+        payoutProcessorsForTx: () => ({ listProcessorUserIds: async () => [] }),
+        problemNotifier: undefined,
+        dealPayouts,
+        dealPayoutsForTx: () => dealPayouts,
+        sellerTermsForTx: () => storedSellerTerms(),
+        saleLabels: undefined,
+      } as PayoutServiceDeps,
+      ENTITY_ID,
+    );
+    expect(findUnsettledReleased).toHaveBeenCalledWith(ENTITY_ID);
+    expect(preview.deals).toEqual([
+      {
+        dealId: "deal-1",
+        reference: "PS-0001",
+        pricePence: 100_000,
+        commissionPence: 10_000,
+        costsPence: 0,
+        netPence: 90_000,
+      },
+    ]);
+    expect(preview.totals).toMatchObject({ dealsNetPence: 90_000, netPence: 90_000 });
+    expect(preview.pendingNet).toBe("900.00");
   });
 });
 

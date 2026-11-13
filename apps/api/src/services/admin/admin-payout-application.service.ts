@@ -7,7 +7,7 @@ import type {
   IPayoutSettlementService,
   PayoutReversalActor,
 } from "../interfaces/payout.js";
-import type { AdminListPayoutsFilter } from "../interfaces/payout.js";
+import type { AdminListPayoutsFilter, ConfirmedSettlement } from "../interfaces/payout.js";
 import type { AdminBlockedPayoutResolutionService } from "./admin-blocked-payout-resolution.service.js";
 import type { AdminFailedPayoutRetryService } from "./admin-failed-payout-retry.service.js";
 import type { AdminPayoutListPage } from "./admin-payout-list-query.service.js";
@@ -38,13 +38,19 @@ export class AdminPayoutApplicationService implements IAdminPayoutApplicationSer
    */
   async createSettlement(
     actorUserId: string,
-    input: { legalEntityId: string; reason: string; periodStart?: Date },
+    input: {
+      legalEntityId: string;
+      reason: string;
+      periodStart?: Date;
+      confirmed?: ConfirmedSettlement;
+    },
   ): Promise<CreateSettlementResult> {
     return this.settlements.createSettlement(actorUserId, {
       legalEntityId: input.legalEntityId,
       periodEnd: this.now(),
       ...(input.periodStart ? { periodStart: input.periodStart } : {}),
       reason: input.reason,
+      ...(input.confirmed ? { confirmed: input.confirmed } : {}),
     });
   }
 

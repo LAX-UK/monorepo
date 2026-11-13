@@ -406,6 +406,26 @@ describe("POST /admin/payouts/run-settlement", () => {
     });
   });
 
+  it("passes what the person confirmed to the run, and answers 409 figures_changed when it differs", async () => {
+    const { app, payouts } = mount("finance");
+    payouts.createSettlement.mockResolvedValueOnce({ ok: false, reason: "figures_changed" });
+    const confirmed = {
+      netPence: 7_222_850,
+      paymentIds: ["00000000-0000-4000-8000-0000000000a1"],
+      dealIds: ["00000000-0000-4000-8000-0000000000d1"],
+    };
+
+    const res = await post(app, "/run-settlement", { ...run, confirmed }, key("settlement-c-1"));
+
+    expect(payouts.createSettlement).toHaveBeenCalledWith(ACTOR_ID, {
+      legalEntityId: ENTITY_ID,
+      reason: REASON,
+      confirmed,
+    });
+    expect(res.status).toBe(409);
+    expect(await res.json()).toEqual({ error: "figures_changed" });
+  });
+
   it("answers 409 with the period code when the period overlaps a settled one", async () => {
     const { app, payouts } = mount("finance");
     payouts.createSettlement.mockResolvedValueOnce({
