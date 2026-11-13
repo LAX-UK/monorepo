@@ -186,6 +186,13 @@ export function tryAgainCopy(row: Pick<AccountingStaffRow, "reference" | "locked
   };
 }
 
+/** The heading over the locked-period explanation on the list. */
+export function lockedPeriodTitle(count: number): string {
+  return count === 1
+    ? "1 document is dated in a locked period"
+    : `${count} documents are dated in a locked period`;
+}
+
 /** What the person is told once the request is in. */
 export function tryAgainToast(outcome: AccountingTryAgainOutcome, reference: string): string {
   return outcome === "requeued"

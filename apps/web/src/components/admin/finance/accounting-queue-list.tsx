@@ -12,6 +12,7 @@ import {
   accountingFilterChips,
   accountingHref,
   accountingTabs,
+  lockedPeriodTitle,
   tryAgainCopy,
   tryAgainToast,
 } from "@/lib/admin/finance/accounting-queue.vm";
@@ -28,6 +29,7 @@ import {
   StatusBadge,
   TextLink,
 } from "@auction/staff-ui";
+import { ACCOUNTING_LOCKED_PERIOD_TEXT } from "@auction/types";
 import type { AccountingQueueTab } from "@auction/types";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
@@ -71,6 +73,7 @@ export function AccountingQueueList(props: AccountingQueueListProps) {
       {
         id: "document",
         header: "Document",
+        width: "19%",
         mobile: "title",
         cell: (row) => <PrimaryCell secondary={row.kind}>{row.reference}</PrimaryCell>,
       },
@@ -85,9 +88,7 @@ export function AccountingQueueList(props: AccountingQueueListProps) {
       {
         id: "problem",
         header: tab === "issued" ? "In Books" : "Last problem",
-        width: "32%",
         mobile: "meta",
-        truncate: false,
         cell: (row) => <ProblemCell row={row} issued={tab === "issued"} />,
       },
       {
@@ -176,8 +177,14 @@ export function AccountingQueueList(props: AccountingQueueListProps) {
   };
 
   const dialogCopy = confirming ? tryAgainCopy(confirming.row) : null;
+  const locked = rows.filter((row) => row.lockedPeriod).length;
   const notices = (
     <>
+      {locked > 0 ? (
+        <Notice tone="warning" title={lockedPeriodTitle(locked)}>
+          {ACCOUNTING_LOCKED_PERIOD_TEXT}
+        </Notice>
+      ) : null}
       {props.rehearsal ? (
         <Notice tone="info" title="Rehearsal only">
           {ACCOUNTING_REHEARSAL_NOTICE}
@@ -201,7 +208,7 @@ export function AccountingQueueList(props: AccountingQueueListProps) {
         Link={ListLink}
         listKey="bid-admin.accounting"
         access={canAct ? "full" : "read-only"}
-        notice={props.rehearsal || props.unreadable > 0 ? notices : undefined}
+        notice={locked > 0 || props.rehearsal || props.unreadable > 0 ? notices : undefined}
         views={
           <DataViews views={accountingTabs(search, props.counts)} activeId={tab} Link={ListLink} />
         }

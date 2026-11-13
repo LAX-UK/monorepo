@@ -108,6 +108,11 @@ describe("AccountingQueueList", () => {
     await waitFor(() => expect(refresh).toHaveBeenCalled());
   });
 
+  it("explains a locked period above the list", () => {
+    renderList({ tab: "needs_person" });
+    expect(screen.getByText("1 document is dated in a locked period")).toBeInTheDocument();
+  });
+
   it("asks for confirmation of today's date before trying a locked period again", async () => {
     renderList();
     const menu = await openActions("LAX-ART-CN-7");

@@ -10,6 +10,7 @@ import {
   accountingTabs,
   activeAccountingTab,
   activeOrganisation,
+  lockedPeriodTitle,
   toAccountingStaffRows,
   tryAgainCopy,
   tryAgainToast,
@@ -128,6 +129,11 @@ describe("Try again", () => {
     const copy = tryAgainCopy({ reference: "LAX-BID-INV-01hx3", lockedPeriod: true });
     expect(copy.description).toContain("today's date");
     expect(copy.description).toContain("Only try again once that is confirmed.");
+  });
+
+  it("heads the locked-period explanation with how many documents it covers", () => {
+    expect(lockedPeriodTitle(1)).toBe("1 document is dated in a locked period");
+    expect(lockedPeriodTitle(3)).toBe("3 documents are dated in a locked period");
   });
 
   it("tells the person what happened", () => {
