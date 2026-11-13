@@ -107,6 +107,9 @@ export function createDeviceSessionHook(options: {
         });
       });
     }
-    return withAppendedSetCookie(response, deviceMarkerSetCookie(marker));
+    // A response that sets the marker belongs to one browser: no cache may keep or share it.
+    const marked = withAppendedSetCookie(response, deviceMarkerSetCookie(marker));
+    marked.headers.set("cache-control", "private, no-store");
+    return marked;
   };
 }

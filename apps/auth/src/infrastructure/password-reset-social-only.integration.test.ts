@@ -1,11 +1,18 @@
 import { randomUUID } from "node:crypto";
-import { type Auth, type AuthPorts, type CredentialEmailInput, createAuth } from "@auction/auth";
+import {
+  type Auth,
+  type AuthPorts,
+  type CredentialEmailInput,
+  createAuth,
+  decideAuthorizeTwoFactorStep,
+} from "@auction/auth";
 import { createIdentityAuthPorts, createIdentityDb } from "@auction/identity-db";
 import { account, session, user, verification } from "@auction/identity-db/schema";
 import { base32 } from "@better-auth/utils/base32";
 import { createOTP } from "@better-auth/utils/otp";
 import { and, eq, inArray } from "drizzle-orm";
 import { afterAll, describe, expect, it } from "vitest";
+import { createTwoFactorRequirementReader } from "../services/two-factor-requirement.service.js";
 import { buildDrizzleDatabase } from "./build-drizzle-database.js";
 
 /**
@@ -231,5 +238,44 @@ describe.skipIf(!DATABASE_URL)("password reset for a social-only person", () => 
     await expect(
       auth.api.getSession({ headers: new Headers({ cookie: cookieHeader(challenged) }) }),
     ).resolves.toBeNull();
+  });
+
+  it("sends an organisation member who has not enrolled to two-step setup after a password sign-in", async () => {
+    const { auth, ports, sink } = buildHarness({ orgTwoFactorRequired: true });
+    const person = await createSocialOnlyUser();
+    await resetThroughEmailedLink(auth, sink, person.email);
+
+    // Nothing to challenge: the password sign-in succeeds and the person has not enrolled.
+    const signIn = await postJson(auth, "/sign-in/email", {
+      email: person.email,
+      password: NEW_PASSWORD,
+    });
+    expect(signIn.status).toBe(200);
+    const body = (await signIn.json()) as { twoFactorRedirect?: boolean };
+    expect(body.twoFactorRedirect).toBeFalsy();
+    const session = await auth.api.getSession({
+      headers: new Headers({ cookie: cookieHeader(signIn) }),
+    });
+    expect(session).not.toBeNull();
+    expect(session?.user?.id).toBe(person.id);
+    expect(session?.user?.twoFactorEnabled).toBeFalsy();
+
+    // The organisation's policy, read through the issuer's requirement service, decides the step.
+    const requirement = await createTwoFactorRequirementReader(ports.twoFactorPolicyStore)(
+      person.id,
+    );
+    expect(requirement).toEqual({
+      required: true,
+      sources: [{ scope: "org", legalEntityId: "org-reset-test" }],
+    });
+    expect(
+      decideAuthorizeTwoFactorStep({
+        requestsSilver: false,
+        requiredByPolicy: requirement.required,
+        mfaCompletedAt: null,
+        twoFactorEnabled: Boolean(session?.user?.twoFactorEnabled),
+        canEnrolTotp: true,
+      }),
+    ).toBe("setup");
   });
 });
