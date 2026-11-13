@@ -29,7 +29,8 @@ export function lotToAdminLotFormValues(auction: LotWithSaleZone): AdminLotFormV
     startingPrice: auction.startingPrice,
     reservePrice: auction.reservePrice ?? "",
     buyNowPrice: auction.buyNowPrice ?? "",
-    buyerPremiumRate: auction.buyerPremiumRate,
+    // Empty: the lot uses its sale's premium.
+    buyerPremiumRate: auction.buyerPremiumRate ?? "",
     minBidIncrement: auction.minBidIncrement,
     autoBidEnabled: auction.autoBidEnabled ?? true,
     autoBidStepMin: auction.autoBidStepMin ?? "",

@@ -44,6 +44,7 @@ export function stubCatalogRouteServices(
       detachLot: vi.fn(),
       cancelLotOnSale: vi.fn(),
       setLotStatus: vi.fn(),
+      useSalePremiumForLots: vi.fn(),
     },
     lotLifecycleHttp: {
       bulkLots: vi.fn(),

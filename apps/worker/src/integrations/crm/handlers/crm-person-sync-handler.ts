@@ -1,9 +1,12 @@
 import type { ICrmRecordLinkRepository } from "@auction/persistence/interfaces";
+import { prepareCrmEmail } from "../crm-email.js";
 import { CRM_ENTITY, CRM_FIELD, CRM_LEAD_ONLY_FIELDS } from "../crm-field-constants.js";
 import {
   CrmGatewayError,
+  crmEmailRejectedError,
   crmPersonNotLinkedError,
   crmRecordRefusedError,
+  crmRefusalReason,
 } from "../crm-gateway-error.js";
 import type { CrmFieldValue, CrmGateway, CrmRecordResult } from "../crm-gateway.js";
 import {
@@ -48,6 +51,41 @@ function refusalOf(source: CrmRecordResult | CrmGatewayError): Refusal | null {
     : null;
 }
 
+/**
+ * The error for a record the CRM refused. A refusal of the Email value is recorded as
+ * `email_rejected_by_zoho`: the same address would be refused again, so it is not retried.
+ */
+function refusedError(failed: { code?: string | undefined; fieldApiName?: string | undefined }) {
+  if (failed.code === "INVALID_DATA" && failed.fieldApiName === "Email") {
+    return crmEmailRejectedError(crmRefusalReason({ status: 400, ...failed }));
+  }
+  return crmRecordRefusedError(failed);
+}
+
+/**
+ * The email as the CRM is sent it, in the search address and in the `Email` field: trimmed, with
+ * the domain in lower-case ASCII. An address Zoho cannot store is not sent at all.
+ */
+function withPreparedEmail(
+  email: string,
+  fields: Record<string, unknown>,
+):
+  | { ok: true; email: string; fields: Record<string, unknown> }
+  | { ok: false; error: CrmGatewayError } {
+  let prepared = email;
+  if (email) {
+    const check = prepareCrmEmail(email);
+    if (!check.ok) return { ok: false, error: crmEmailRejectedError(check.problem, 422) };
+    prepared = check.email;
+  }
+  if (!("Email" in fields) || fields.Email === null) {
+    return { ok: true, email: prepared, fields };
+  }
+  const check = prepareCrmEmail(typeof fields.Email === "string" ? fields.Email : "");
+  if (!check.ok) return { ok: false, error: crmEmailRejectedError(check.problem, 422) };
+  return { ok: true, email: prepared, fields: { ...fields, Email: check.email } };
+}
+
 function droppableField(
   refusal: Refusal | null,
   fields: Record<string, CrmFieldValue>,
@@ -63,8 +101,8 @@ export class CrmPersonSyncHandler {
 
   async syncPerson(
     subjectId: string,
-    email: string,
-    fields: Record<string, unknown>,
+    rawEmail: string,
+    rawFields: Record<string, unknown>,
     mode: "upsert" | "patch",
     options?: {
       allowStaleLinkRecovery?: boolean;
@@ -78,6 +116,10 @@ export class CrmPersonSyncHandler {
     if (await this.deps.linkRepo.isErased(CRM_ENTITY.subject, subjectId)) {
       return { outcome: "skipped", reason: "subject_erased" };
     }
+
+    const prepared = withPreparedEmail(rawEmail, rawFields);
+    if (!prepared.ok) return { outcome: "fatal", error: prepared.error };
+    const { email, fields } = prepared;
 
     const link = await this.deps.linkRepo.findByEntity(CRM_ENTITY.subject, subjectId);
     const patchDecision = evaluatePersonPatch({ mode, link });
@@ -117,7 +159,7 @@ export class CrmPersonSyncHandler {
         fields: fields as Record<string, string | number | boolean | null>,
       });
       if (result.status === "error") {
-        if (options?.allowStaleLinkRecovery === false) throw crmRecordRefusedError(result);
+        if (options?.allowStaleLinkRecovery === false) throw refusedError(result);
         return this.recoverStalePersonLink(subjectId, emailForSearch, fields, result);
       }
       return {
@@ -142,7 +184,7 @@ export class CrmPersonSyncHandler {
 
     const result = await this.upsertDroppingRefusedFields(module, upsertFields);
     if (result.status === "error") {
-      if (options?.allowStaleLinkRecovery === false) throw crmRecordRefusedError(result);
+      if (options?.allowStaleLinkRecovery === false) throw refusedError(result);
       return this.recoverStalePersonLink(subjectId, emailForSearch, upsertFields, result);
     }
     await this.deps.linkRepo.upsertLink({
@@ -190,7 +232,9 @@ export class CrmPersonSyncHandler {
       const refusal = refusalOf(outcome);
       const field = dropped < MAX_DROPPED_FIELDS ? droppableField(refusal, sending) : null;
       if (!field || !refusal) {
-        if (outcome instanceof CrmGatewayError) throw outcome;
+        if (outcome instanceof CrmGatewayError) {
+          throw refusal?.fieldApiName === "Email" ? refusedError(refusal) : outcome;
+        }
         return outcome;
       }
       this.deps.onFieldDropped?.({ module, fieldApiName: field, code: refusal.code });
@@ -205,14 +249,15 @@ export class CrmPersonSyncHandler {
     fields: Record<string, unknown>,
     failed: { code?: string; message?: string; fieldApiName?: string },
   ): Promise<CrmSyncResult> {
-    if (failed.code !== "INVALID_DATA" || !email) {
-      throw crmRecordRefusedError(failed);
+    // A refused Email is the address itself, not a stale link: looking it up would not help.
+    if (failed.code !== "INVALID_DATA" || !email || failed.fieldApiName === "Email") {
+      throw refusedError(failed);
     }
     const emailMatch =
       (await this.deps.gateway.findByEmail({ module: "Contacts", email })) ??
       (await this.deps.gateway.findByEmail({ module: "Leads", email }));
     if (!emailMatch) {
-      throw crmRecordRefusedError(failed);
+      throw refusedError(failed);
     }
     await this.deps.linkRepo.upsertLink({
       entityType: CRM_ENTITY.subject,

@@ -25,6 +25,7 @@ function setup(
   const paymentRefunds = opts.paymentRefunds ?? new InMemoryPaymentRefunds();
   const sellerLedger = opts.sellerLedger ?? new Map<string, number>();
   // A clawback line lands in the seller's ledger, as it does in the payout lines table.
+  const lockPayouts = vi.fn(async (_input: { legalEntityIds: readonly string[] }) => {});
   const addLine = vi.fn(async (line: { paymentId: string; amount: string }) => {
     const pence = Math.round(Math.abs(Number(line.amount)) * 100);
     sellerLedger.set(line.paymentId, (sellerLedger.get(line.paymentId) ?? 0) + pence);
@@ -66,7 +67,10 @@ function setup(
     groups: groups as never,
     gateway: { listChargeRefunds: vi.fn(async () => current) },
     payments: { applyRefundedInTransaction: applyRefunded },
-    payoutAdjustments: { addPaymentLineToOpenPayoutOrCreateClawback: addLine },
+    payoutAdjustments: {
+      addPaymentLineToOpenPayoutOrCreateClawback: addLine,
+      lockOpenPayoutsForSellers: lockPayouts,
+    },
     paymentRefunds,
     sellerRefundedCents: async (_tx, paymentId) => sellerLedger.get(paymentId) ?? 0,
     events: { withTx: () => ({ publish }) } as never,
@@ -78,6 +82,7 @@ function setup(
     groups,
     sellerLedger,
     addLine,
+    lockPayouts,
     applyRefunded,
     publish,
     setRefunds: (next: typeof refunds) => {
@@ -110,6 +115,26 @@ describe("PaymentGroupChargeEvents.chargeRefunded", () => {
         source: "group_webhook",
       },
     ]);
+  });
+
+  it("holds both sellers' payouts after the group and before any line", async () => {
+    const { events, groups, addLine, lockPayouts } = setup([
+      { paymentId: "pay-a", amountPence: 2_500 },
+      { paymentId: "pay-b", amountPence: 1_000 },
+    ]);
+    await events.chargeRefunded(event("evt_1"), charge);
+
+    expect(lockPayouts).toHaveBeenCalledTimes(1);
+    expect([...(lockPayouts.mock.calls[0]?.[0].legalEntityIds ?? [])].sort()).toEqual([
+      "seller-1",
+      "seller-2",
+    ]);
+    const groupAt =
+      groups.lockInTransaction.mock.invocationCallOrder[0] ?? Number.POSITIVE_INFINITY;
+    const payoutsAt = lockPayouts.mock.invocationCallOrder[0] ?? Number.POSITIVE_INFINITY;
+    expect(payoutsAt).toBeGreaterThan(groupAt);
+    expect(addLine).toHaveBeenCalledTimes(2);
+    expect(addLine.mock.invocationCallOrder.every((at) => at > payoutsAt)).toBe(true);
   });
 
   it("records only what is new on a later refund of the same invoice", async () => {

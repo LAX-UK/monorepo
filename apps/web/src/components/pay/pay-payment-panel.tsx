@@ -31,7 +31,12 @@ export function PayPaymentPanel({
       <dl className="flex flex-col gap-2 text-lax-14">
         {money.lines.map((line, index) => (
           <div key={`${index}-${line.label}`} className="flex justify-between gap-4">
-            <dt className="text-lax-muted">{line.label}</dt>
+            <dt className="min-w-0 text-lax-muted">
+              {line.label}
+              {line.detail ? (
+                <span className="block text-lax-13 leading-5 text-lax-muted">{line.detail}</span>
+              ) : null}
+            </dt>
             <dd className="text-right tabular-nums text-lax-fg">{line.amount}</dd>
           </div>
         ))}

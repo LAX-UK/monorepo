@@ -31,6 +31,7 @@ describe("API payout bulk settlement parity (finance-runtime bridge)", () => {
       listLegalEntityIdsWithUnlinkedCapturedPayments: vi.fn().mockResolvedValue([e1]),
       findUnlinkedCapturedPayments: vi.fn().mockResolvedValue(pending([{}])),
       listScheduledPayoutsAwaitingTransfer: vi.fn().mockResolvedValue([]),
+      listScheduledPayoutsWithNegativeNet: vi.fn().mockResolvedValue([]),
       create,
       insertLine,
     });

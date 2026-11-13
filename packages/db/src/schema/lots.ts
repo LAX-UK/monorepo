@@ -73,9 +73,11 @@ export const lot = pgTable(
     reservePrice: numeric("reserve_price", { precision: 18, scale: 2 }),
     buyNowPrice: numeric("buy_now_price", { precision: 18, scale: 2 }),
     currentPrice: numeric("current_price", { precision: 18, scale: 2 }).notNull(),
-    buyerPremiumRate: numeric("buyer_premium_rate", { precision: 5, scale: 4 })
-      .notNull()
-      .default("0.25"),
+    /**
+     * The lot's own buyer's premium, set only when staff override the sale's. NULL means the lot
+     * uses its sale's premium (bands, else flat rate); see `resolveBuyerPremium`. No default.
+     */
+    buyerPremiumRate: numeric("buyer_premium_rate", { precision: 5, scale: 4 }),
     startTime: timestamp("start_time", { mode: "date", withTimezone: true }).notNull(),
     endTime: timestamp("end_time", { mode: "date", withTimezone: true }).notNull(),
     /** Set when a late bid extends the close (anti-sniping): the end time the extension produced. */

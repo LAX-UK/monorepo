@@ -284,6 +284,7 @@ export const ALL_LIVE_DOMAIN_EVENT_TYPES = [
   "sale.cancelled",
   "sale.created",
   "sale.ended",
+  "sale.lot_premiums_reset",
   "sale.published",
   "sale.rescheduled",
   "sale.soft_deleted",

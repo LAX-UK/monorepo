@@ -1,5 +1,7 @@
-/** Default buyer's premium fraction (25%) for seeded sales. */
-export const DEFAULT_BUYER_PREMIUM_RATE = "0.25" as const;
+import { STANDARD_BUYER_PREMIUM, describeBuyerPremium } from "@auction/validators";
+
+/** The buyer's premium line seeded sales print in their terms: the published standard. */
+export const SEED_BUYER_PREMIUM_TERMS = `Buyer's premium: ${describeBuyerPremium(STANDARD_BUYER_PREMIUM)}.`;
 
 /** Placeholder until ops supplies final PDF / hosted copy. */
 export const DEFAULT_CONDITIONS_OF_SALE =

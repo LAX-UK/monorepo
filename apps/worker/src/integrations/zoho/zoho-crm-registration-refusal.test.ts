@@ -61,7 +61,7 @@ function fakeZoho(upsertAnswers: Array<[number, unknown]>): Sent[] {
   return sent;
 }
 
-function registration() {
+function registration(email = "person@example.test") {
   const intent = mapDomainEventToCrmIntent(
     {
       id: 7,
@@ -70,7 +70,7 @@ function registration() {
       schemaVersion: 1,
       payload: {
         userId: "subject-1",
-        email: "person@example.test",
+        email,
         name: "Ada",
         source: "credential",
       },
@@ -94,8 +94,8 @@ function handler(links: InMemoryCrmLinkRepo, onFieldDropped = vi.fn()) {
   );
   return {
     onFieldDropped,
-    sync: () => {
-      const intent = registration();
+    sync: (email?: string) => {
+      const intent = registration(email);
       return new CrmPersonSyncHandler({
         gateway,
         linkRepo: links,
@@ -200,6 +200,80 @@ describe("user.registered when Zoho refuses the lead", () => {
     for (const request of upserts(sent)) {
       expect(request.path).toBe("/crm/v8/Leads/upsert");
       expect(request.body?.duplicate_check_fields).toEqual([CRM_FIELD.subjectExternalId, "Email"]);
+    }
+    expect(links.rows.size).toBe(1);
+    expect((await links.findByEntity("subject", "subject-1"))?.zohoRecordId).toBe("lead-1");
+  });
+});
+
+/**
+ * The nightly Identity acceptance run signs up `<local>+lax-<label>-acceptance-<run>-<attempt>-<job>@
+ * <domain>`: with a source mailbox over 16 characters before the `@`, that local part is longer than
+ * the 64 characters mail standards allow, and Zoho refuses the Email (all 49 failures on test).
+ */
+const ACCEPTANCE_SIGN_UP =
+  "identity.acceptance+lax-refresh-acceptance-19012345678-1-live-contracts@example.com";
+
+describe("user.registered when Zoho cannot take the email", () => {
+  beforeEach(() => {
+    vi.stubGlobal("fetch", vi.fn());
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.clearAllMocks();
+  });
+
+  it("records email_rejected_by_zoho, not a retry, when Zoho refuses the Email value", async () => {
+    const sent = fakeZoho([[400, refused("INVALID_DATA", "Email")]]);
+    const error = await handler(new InMemoryCrmLinkRepo())
+      .sync()
+      .then(() => null)
+      .catch((err: unknown) => err);
+
+    expect(formatDeliveryError(error)).toBe(
+      "email_rejected_by_zoho:zoho_crm_http_400:INVALID_DATA:Email",
+    );
+    expect(classifyDeliveryError(error)).toBe("fatal");
+    expect(upserts(sent)).toHaveLength(1);
+    // The refused address is not looked up again after the refusal.
+    expect(sent.filter((request) => request.path.endsWith("/coql"))).toHaveLength(2);
+  });
+
+  it("does not send an address whose local part is over 64 characters", async () => {
+    const sent = fakeZoho([]);
+    const links = new InMemoryCrmLinkRepo();
+
+    const result = await handler(links).sync(ACCEPTANCE_SIGN_UP);
+
+    expect(result.outcome).toBe("fatal");
+    if (result.outcome !== "fatal") throw new Error("expected fatal");
+    expect(formatDeliveryError(result.error)).toBe("email_rejected_by_zoho:local_part_too_long");
+    expect(classifyDeliveryError(result.error)).toBe("fatal");
+    expect(sent).toHaveLength(0);
+    expect(links.rows.size).toBe(0);
+  });
+
+  it("sends the address trimmed with its domain in lower case, and a Retry updates the same lead", async () => {
+    const sent = fakeZoho([
+      [200, SUCCESS],
+      [200, { data: [{ ...SUCCESS.data[0], message: "record updated" }] }],
+    ]);
+    const links = new InMemoryCrmLinkRepo();
+    const run = handler(links);
+
+    expect((await run.sync("  Ada.Lovelace+news@Example.COM \n")).outcome).toBe("success");
+    expect((await run.sync("  Ada.Lovelace+news@Example.COM \n")).outcome).toBe("success");
+
+    const sentUpserts = upserts(sent);
+    expect(sentUpserts).toHaveLength(2);
+    for (const request of sentUpserts) {
+      expect(firstRecord(request).Email).toBe("Ada.Lovelace+news@example.com");
+      expect(request.body?.duplicate_check_fields).toEqual([CRM_FIELD.subjectExternalId, "Email"]);
+    }
+    const lookups = sent.filter((request) => request.path.endsWith("/coql"));
+    for (const lookup of lookups) {
+      expect(String(lookup.body?.select_query)).toContain("'Ada.Lovelace+news@example.com'");
     }
     expect(links.rows.size).toBe(1);
     expect((await links.findByEntity("subject", "subject-1"))?.zohoRecordId).toBe("lead-1");

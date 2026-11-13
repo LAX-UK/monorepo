@@ -51,7 +51,9 @@ describe("the Pay page, ready to pay", () => {
     const payment = screen.getByRole("region", { name: "Payment" });
     expect(within(payment).getByText("Hammer price")).toBeInTheDocument();
     expect(within(payment).getByText("£1,900.00")).toBeInTheDocument();
-    expect(within(payment).getByText("Buyer's premium (25%)")).toBeInTheDocument();
+    // The premium's rate sits on a muted second line under its name.
+    expect(within(payment).getByText("Buyer's premium")).toBeInTheDocument();
+    expect(within(payment).getByText("25%")).toBeInTheDocument();
     expect(within(payment).getByText("Total to pay")).toBeInTheDocument();
     expect(within(payment).getByText("£2,375.00", { selector: "dd" })).toBeInTheDocument();
     expect(

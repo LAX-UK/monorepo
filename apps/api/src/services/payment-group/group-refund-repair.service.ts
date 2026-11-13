@@ -38,7 +38,10 @@ export type GroupRefundRepairDeps = {
   payments: Pick<IPaymentLifecycleRepository, "applyRefundReversedInTransaction">;
   paymentRefunds: IPaymentRefundLedger & IRefundReversalLedger;
   sellerRefundedCents: (tx: Database, paymentId: string) => Promise<number>;
-  payoutAdjustments: Pick<IPayoutAdjustmentService, "giveBackFailedRefund">;
+  payoutAdjustments: Pick<
+    IPayoutAdjustmentService,
+    "giveBackFailedRefund" | "lockOpenPayoutsForSellers"
+  >;
   events: IDomainEventSink;
 };
 
@@ -197,6 +200,14 @@ export class GroupRefundRepairService {
       const succeeded = refunds.filter((r) => isCountedRefund(r.status));
       const returnedNothing = refunds.filter((r) => isReturnedNothing(r.status));
       const members = [...locked.members].sort((a, b) => a.paymentId.localeCompare(b.paymentId));
+      // A repair that applies gives back to several sellers in one transaction: their payouts are
+      // held in one order first, as a group refund holds them (a dry run moves none).
+      if (operatorUserId !== null) {
+        await this.deps.payoutAdjustments.lockOpenPayoutsForSellers({
+          legalEntityIds: members.map((m) => m.sellerLegalEntityId),
+          tx,
+        });
+      }
       const counted = attribute(members, locked.deliveries, succeeded);
       const failed = failedRefundsByRecord(members, locked.deliveries, returnedNothing);
       const repair: GroupRepair = {

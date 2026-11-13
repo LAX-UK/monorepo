@@ -128,8 +128,8 @@ export type SaleOverviewVM = {
   endLabel: string;
   previewLabel: string | null;
   formatLabel: string;
+  /** The premium the sale's lots charge, in words: "15% up to £500,000, then 10% on the part above". */
   buyerPremiumLabel: string;
-  buyerPremiumTiers: import("@auction/types").BuyerPremiumTier[] | null;
   categoryLabel: string | null;
   categoryLabels: string[];
   tags: string[];

@@ -13,6 +13,7 @@ import type { NoticeTone } from "@auction/ui/lax/notice";
 import { formatGbp } from "@auction/ui/lib/money";
 import { GATE_COPY, INVOICE_LINE_KIND_LABEL, LEFT_OUT_REASON_COPY, PAY_COPY } from "./pay-copy";
 import { type PayMethod, type PayMethodsVm, payMethodsVm } from "./pay-methods";
+import { premiumLineParts } from "./premium-line";
 
 /** What the page is showing, which decides its layout and whether Pay is offered at all. */
 export type PayState =
@@ -37,7 +38,12 @@ export type PayNotice = {
   action?: { label: string; href: string };
 };
 
-export type PayLine = { label: string; amount: string };
+export type PayLine = {
+  label: string;
+  amount: string;
+  /** How the line was worked out, on a muted second line: the premium's rate or slices. */
+  detail?: string;
+};
 
 /** One lot's delivery in the payment: a courier quote joining it, or a choice still to make. */
 export type PayDeliveryRowVm = {
@@ -195,7 +201,10 @@ export function lotSubtitle(payable: Pick<PayPlanPayable, "lotNumber" | "saleTit
 }
 
 function lineVm(line: InvoiceLine): PayLine {
-  return { label: line.label, amount: formatGbp(line.amountPence) };
+  const amount = formatGbp(line.amountPence);
+  if (line.kind !== "buyers_premium") return { label: line.label, amount };
+  const { label, detail } = premiumLineParts(line.label);
+  return { label, amount, ...(detail ? { detail } : {}) };
 }
 
 function lotVm(

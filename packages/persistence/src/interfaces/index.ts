@@ -634,6 +634,8 @@ export type {
   OpenInvoiceScope,
   IBidInvoiceRaiseRepository,
   IBidInvoiceReader,
+  IInvoicedSalePriceReader,
+  InvoicedSalePrice,
   NewBidInvoice,
   RaisedInvoice,
 } from "./bid-invoice.repository.js";

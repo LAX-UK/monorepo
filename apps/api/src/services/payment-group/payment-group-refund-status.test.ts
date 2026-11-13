@@ -48,6 +48,7 @@ function setup() {
 
   const paymentRefunds = new InMemoryPaymentRefunds();
   const sellerLedger = new Map<string, number>();
+  const lockPayouts = vi.fn(async (_input: { legalEntityIds: readonly string[] }) => {});
   const addLine = vi.fn(async (line: { paymentId: string; amount: string }) => {
     const pence = Math.round(Math.abs(Number(line.amount)) * 100);
     sellerLedger.set(line.paymentId, (sellerLedger.get(line.paymentId) ?? 0) + pence);
@@ -83,7 +84,10 @@ function setup() {
     } as never,
     gateway,
     payments: { applyRefundedInTransaction: vi.fn().mockResolvedValue(true) },
-    payoutAdjustments: { addPaymentLineToOpenPayoutOrCreateClawback: addLine },
+    payoutAdjustments: {
+      addPaymentLineToOpenPayoutOrCreateClawback: addLine,
+      lockOpenPayoutsForSellers: lockPayouts,
+    },
     paymentRefunds,
     sellerRefundedCents: async (_tx, paymentId) => sellerLedger.get(paymentId) ?? 0,
     events: { withTx: () => ({ publish }) } as never,

@@ -1,5 +1,7 @@
 import {
+  SITE_BUYERS_PREMIUM_ABOVE_THRESHOLD,
   SITE_BUYERS_PREMIUM_STANDARD,
+  SITE_BUYERS_PREMIUM_THRESHOLD,
   SITE_CONSIGNMENT_EMAIL,
   SITE_CONTACT_EMAIL,
   SITE_PRESS_EMAIL,
@@ -85,7 +87,8 @@ export const faqGroups: FaqGroup[] = [
       {
         id: "buyers-premium",
         title: "Is there a buyer’s premium?",
-        body: `A buyer’s premium of ${SITE_BUYERS_PREMIUM_STANDARD} is applied to the hammer price of each lot. This is displayed within the auction details and reflected in the final invoice issued to the successful bidder.`,
+        // Word for word the premium sentence of the Conditions of Sale (clause 11).
+        body: `Unless stated otherwise, LAX Bid’s buyer’s premium is ${SITE_BUYERS_PREMIUM_STANDARD} on the hammer price up to ${SITE_BUYERS_PREMIUM_THRESHOLD} and ${SITE_BUYERS_PREMIUM_ABOVE_THRESHOLD} on any balance above ${SITE_BUYERS_PREMIUM_THRESHOLD}. This is displayed within the auction details and reflected in the final invoice issued to the successful bidder.`,
       },
       {
         id: "additional-charges",

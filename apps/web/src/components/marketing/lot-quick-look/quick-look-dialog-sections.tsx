@@ -1,7 +1,12 @@
 import { LotStatusTimer } from "@/components/marketing/lot-status-badge";
 import { MediaImage } from "@/components/ui/media-image";
+import {
+  BUYER_PREMIUM_CONDITIONS_HREF,
+  CONDITIONS_OF_SALE_LABEL,
+} from "@/lib/lot/buyer-premium-copy";
 import { Button } from "@auction/ui/lax/button";
 import { cn } from "@auction/ui/lib/utils";
+import Link from "next/link";
 import type { ReactNode, TouchEvent } from "react";
 import { useRef } from "react";
 import { LotQuickLookDeckNav } from "./lot-quick-look-deck-nav";
@@ -327,7 +332,15 @@ export function QuickLookMetaPanel({
         <QuickLookPricingCards vm={vm} />
 
         {vm.buyersPremiumHint ? (
-          <p className="font-body text-xs text-on-surface-variant">{vm.buyersPremiumHint}</p>
+          <p className="font-body text-xs text-on-surface-variant">
+            {vm.buyersPremiumHint}.{" "}
+            <Link
+              href={BUYER_PREMIUM_CONDITIONS_HREF}
+              className="whitespace-nowrap underline underline-offset-2 hover:text-on-surface"
+            >
+              {CONDITIONS_OF_SALE_LABEL}
+            </Link>
+          </p>
         ) : null}
 
         {deckLength > 1 ? (

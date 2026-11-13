@@ -1,6 +1,6 @@
 import type { Sale } from "@auction/types";
 import type { CreateSaleInput as ValidatorCreateSale } from "@auction/validators";
-import { englishOnlyAdminLotAuctionTypeViolation } from "@auction/validators";
+import { englishOnlyAdminLotAuctionTypeViolation, newSaleBuyerPremium } from "@auction/validators";
 import { LotError } from "../../lib/errors.js";
 import { resolveLotTimingForSale } from "../../lib/lot-sale-timing.js";
 import { publishSaleEvent, recordLotLifecycle, txRepos } from "./sale-mutation-context.js";
@@ -27,7 +27,8 @@ export async function createSale(
     snapshotAddress: false,
   });
   if (snapshot.isErr()) throw snapshot.error;
-  const normalizedInput = { ...input, ...snapshot.value };
+  // A sale created without a premium gets the standard bands (15% up to £500,000, 10% above).
+  const normalizedInput = { ...input, ...snapshot.value, ...newSaleBuyerPremium(input) };
   const sale = await deps.saleRepo.create({ ...normalizedInput, createdByLegalEntityId });
   await deps.qrCodeService?.getOrCreateDefault({
     entityType: "sale",

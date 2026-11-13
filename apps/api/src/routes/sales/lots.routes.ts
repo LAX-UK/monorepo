@@ -6,6 +6,7 @@ import {
   saleIdParamSchema,
   saleLotIdParamSchema,
   updateLotStatusBodySchema,
+  useSalePremiumForLotsBodySchema,
 } from "@auction/validators";
 import { respondCatalogRouteOutcome } from "../../lib/catalog-route-response.js";
 import { zValidator } from "../../lib/z-validator.js";
@@ -29,6 +30,24 @@ export function attachSaleLotsRoutes(r: SaleHono, deps: SaleLotMembershipRouteDe
         c,
         await http().addLot({ role, saleId: id, body, staffRoles }),
         201,
+      );
+    },
+  );
+
+  r.post(
+    "/:id/lots/use-sale-premium",
+    requireAuth,
+    zValidator("param", saleIdParamSchema),
+    zValidator("json", useSalePremiumForLotsBodySchema),
+    async (c) => {
+      const userId = c.get("userId") as string;
+      const role = (c.get("userRole") ?? "client") as UserRole;
+      const staffRoles = c.get("userStaffRoles");
+      const { id } = c.req.valid("param");
+      const { lotIds } = c.req.valid("json");
+      return respondCatalogRouteOutcome(
+        c,
+        await http().useSalePremiumForLots({ userId, role, saleId: id, lotIds, staffRoles }),
       );
     },
   );

@@ -182,6 +182,7 @@ export function makeSettlementRepo(overrides: Partial<IPayoutRepository> = {}): 
     findOpenPayoutForEntity: async () => null,
     lineExistsForSourceEvent: async () => false,
     listScheduledPayoutsAwaitingTransfer: async () => [],
+    listScheduledPayoutsWithNegativeNet: async () => [],
     sumRefundLineCentsForPayment: async () => 0,
     findSellerClawbackFacts: async () => ({
       paymentPence: 0,

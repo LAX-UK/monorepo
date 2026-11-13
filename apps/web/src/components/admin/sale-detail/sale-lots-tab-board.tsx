@@ -13,6 +13,7 @@ import {
   adminSetLotStatusResultAction,
 } from "@/lib/admin/catalog-lifecycle/admin-catalog-lifecycle-mutations";
 import { saleSetupHref } from "@/lib/admin/sale-setup";
+import { lotChargesOwnPremium } from "@/lib/admin/sales/sale-premium-overview";
 import { staffStatus } from "@/lib/admin/staff-kit-status";
 import {
   type SaleLotsFilterContext,
@@ -38,7 +39,7 @@ import {
   rowActionsColumn,
   staffButtonVariants,
 } from "@auction/staff-ui";
-import type { CategoryNode, Lot, SaleDeliveryMode, SaleStatus } from "@auction/types";
+import type { CategoryNode, Lot, Sale, SaleDeliveryMode, SaleStatus } from "@auction/types";
 import { Plus } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -52,8 +53,12 @@ type Props = {
     startTime: Date;
     endTime: Date;
     timeZone: string;
+    /** The sale's premium; with it the "Own premium" filter can find lots that differ. */
+    premium?: Pick<Sale, "buyerPremiumRate" | "buyerPremiumTiers">;
   };
   lots: Lot[];
+  /** The filter the page opens on, from its address (`?premium=own`). */
+  initialLens?: SaleLotsLens;
   canManageAuction?: boolean;
   categories?: CategoryNode[];
   englishOnlyAuctionsLocked?: boolean;
@@ -121,12 +126,20 @@ export function SaleLotsTabBoard({
   categories = [],
   englishOnlyAuctionsLocked = false,
   artistNameById = {},
+  initialLens = "all",
 }: Props) {
   const router = useRouter();
   const confirm = useStaffConfirm();
   const boardMode = resolveSaleLotsBoardMode(sale.status);
-  const filters = saleLotsBoardFilters(boardMode);
-  const [lens, setLens] = useState<SaleLotsLens>("all");
+  const premium = sale.premium;
+  const chargesOwnPremium = useMemo(
+    () => (lot: Lot) => (premium ? lotChargesOwnPremium(lot, premium) : false),
+    [premium],
+  );
+  const [lens, setLens] = useState<SaleLotsLens>(initialLens);
+  const filters = saleLotsBoardFilters(boardMode, {
+    ownPremium: lens === "own-premium" || lots.some(chargesOwnPremium),
+  });
   const [search, setSearch] = useState("");
   const [attachOpen, setAttachOpen] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
@@ -151,12 +164,12 @@ export function SaleLotsTabBoard({
 
   const rows = useMemo(
     () =>
-      filterSaleLotsByLens(lots, lens, saleContext, boardMode)
+      filterSaleLotsByLens(lots, lens, saleContext, boardMode, chargesOwnPremium)
         .filter((lot) =>
           matchesSaleLotSearch({ title: lot.title, lotNumber: lot.lotNumber }, search),
         )
         .map(toRow),
-    [lots, lens, saleContext, boardMode, search],
+    [lots, lens, saleContext, boardMode, search, chargesOwnPremium],
   );
 
   const returnEligible = lots.filter(
