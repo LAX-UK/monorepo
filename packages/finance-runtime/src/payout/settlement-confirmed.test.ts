@@ -7,7 +7,11 @@ import {
   pending,
   storedSellerTerms,
 } from "./payout-bulk-settlement-parity.helpers.js";
-import { SettlementFiguresChangedError, createSettlementCore } from "./payout-settlement.js";
+import {
+  SettlementFiguresChangedError,
+  createSettlementCore,
+  matchesConfirmed,
+} from "./payout-settlement.js";
 import { previewSettlement } from "./settlement-preview.js";
 
 const DEAL: PrivateSalePayoutDeal = {
@@ -195,6 +199,62 @@ describe("settlement run bound to the confirmed preview", () => {
     );
     expect(result).toMatchObject({ ok: false, reason: "figures_changed" });
     expect(create).not.toHaveBeenCalled();
+  });
+
+  it("refuses when the net is the same but one sale is a different payment", async () => {
+    const create = vi.fn(async (i) => payoutRow({ ...i }));
+    let rows = pending([
+      { id: "p1", amount: "6000.00", platformFee: "1200.00" },
+      { id: "p2", amount: "900.00", platformFee: "108.00" },
+    ]);
+    const repo = makeSettlementRepo({ create, findUnlinkedCapturedPayments: async () => rows });
+    const { confirmed } = await confirmFrom(repo, dealStore([]));
+    // p2 was paid elsewhere and p3, of exactly the same amounts, became ready in its place.
+    rows = pending([
+      { id: "p1", amount: "6000.00", platformFee: "1200.00" },
+      { id: "p3", amount: "900.00", platformFee: "108.00" },
+    ]);
+    const { confirmed: now } = await confirmFrom(repo, dealStore([]));
+    expect(now.netPence).toBe(confirmed.netPence);
+    const result = await createSettlementCore(
+      repo,
+      { ...input, confirmed },
+      dealStore([]),
+      storedSellerTerms(),
+    );
+    expect(result).toMatchObject({ ok: false, reason: "figures_changed" });
+    expect(create).not.toHaveBeenCalled();
+  });
+
+  it("refuses when the net is the same but one deal is a different deal", async () => {
+    const create = vi.fn(async (i) => payoutRow({ ...i }));
+    const repo = makeSettlementRepo({
+      create,
+      findUnlinkedCapturedPayments: async () => pending([{ id: "p1" }]),
+    });
+    const { confirmed } = await confirmFrom(repo, dealStore([DEAL]));
+    // The confirmed deal went back and another deal of exactly the same figures was released.
+    const other = dealStore([{ ...DEAL, dealId: "00000000-0000-4000-8000-0000000000d2" }]);
+    const { confirmed: now } = await confirmFrom(repo, other);
+    expect(now.netPence).toBe(confirmed.netPence);
+    const result = await createSettlementCore(
+      repo,
+      { ...input, confirmed },
+      other,
+      storedSellerTerms(),
+    );
+    expect(result).toMatchObject({ ok: false, reason: "figures_changed" });
+    expect(create).not.toHaveBeenCalled();
+  });
+
+  it("matchesConfirmed compares the net, the payment ids and the deal ids, each on its own", () => {
+    const actual = { netPence: 100, paymentIds: ["p1", "p2"], dealIds: ["d1"] };
+    expect(
+      matchesConfirmed({ netPence: 100, paymentIds: ["p2", "p1"], dealIds: ["d1"] }, actual),
+    ).toBe(true);
+    expect(matchesConfirmed({ ...actual, netPence: 101 }, actual)).toBe(false);
+    expect(matchesConfirmed({ ...actual, paymentIds: ["p1", "p3"] }, actual)).toBe(false);
+    expect(matchesConfirmed({ ...actual, dealIds: ["d2"] }, actual)).toBe(false);
   });
 
   it("a confirmed run whose sale line is skipped throws so the transaction rolls back", async () => {
