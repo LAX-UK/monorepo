@@ -29,6 +29,7 @@ export function createAccountingQueue(input: {
   return {
     accountingQueue: new AccountingQueueService({
       browser: repos.browser,
+      partFunded: repos.partFunded,
       transitions: repos.transitions,
       audit: new DomainEventAccountingAuditTrail(input.domainEventSink),
       booksLink: createBooksDocumentLinks(input.env),

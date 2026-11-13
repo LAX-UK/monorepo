@@ -1,14 +1,24 @@
-import { type DocumentRecord, canTryAgain, isLockedPeriodReason } from "@auction/accounting-domain";
+import {
+  type DocumentRecord,
+  canTryAgain,
+  isLockedPeriodReason,
+  laxReference,
+  parkReasonOf,
+} from "@auction/accounting-domain";
 import type {
   IAccountingDocumentBrowser,
   IAccountingDocumentTransitions,
+  IPartFundedTransfersReader,
+  PartFundedTransfer,
   StoredAccountingDocument,
 } from "@auction/persistence/interfaces";
 import {
   ACCOUNTING_ORGANISATIONS,
+  type AccountingPartFundedTransfer,
   type AccountingQueuePage,
   type AccountingQueueRow,
   type AccountingTryAgainResult,
+  accountingDocumentLabel,
   accountingProblemCode,
   accountingProblemText,
   accountingTotalsMismatchText,
@@ -24,6 +34,8 @@ import type {
 
 export type AccountingQueueDeps = {
   browser: IAccountingDocumentBrowser;
+  /** Bank transfers part received (Bid): listed for reconciliation, never booked. */
+  partFunded: IPartFundedTransfersReader;
   transitions: IAccountingDocumentTransitions;
   audit: IAccountingAuditTrail;
   booksLink: BooksDocumentLink;
@@ -61,6 +73,27 @@ function isOrganisation(value: string): value is AccountingQueueRow["organisatio
 
 const ALREADY_QUEUED = new Set<DocumentRecord["status"]>(["pending", "sending"]);
 
+/** How many part-funded transfers the page lists at most. */
+const PART_FUNDED_LIMIT = 50;
+
+/** The LAX reference a part-funded transfer's payment will carry once it is booked. */
+function transferReference(transfer: PartFundedTransfer): string {
+  const sourceId = transfer.source === "payment_group" ? `grp-${transfer.id}` : transfer.id;
+  const reference = laxReference("bid", "payment", sourceId);
+  return reference.ok ? reference.value : transfer.id;
+}
+
+function toTransfer(transfer: PartFundedTransfer): AccountingPartFundedTransfer {
+  return {
+    reference: transferReference(transfer),
+    paySeveral: transfer.source === "payment_group",
+    buyer: transfer.buyer,
+    receivedPence: transfer.receivedPence,
+    totalPence: transfer.totalPence,
+    since: transfer.since ? transfer.since.toISOString() : null,
+  };
+}
+
 /**
  * Finance › Accounting. Reads the queue tab by tab for both companies or one, and puts a refused
  * document back in the queue when a person asks: the same document, under the same LAX reference.
@@ -78,6 +111,9 @@ export class AccountingQueueService implements IAccountingQueueService {
       limit: request.limit,
       offset: request.offset,
     });
+    // Bid takes bank transfers; they belong to London Auction Xchange's books.
+    const bid = request.organisation === null || request.organisation === "london_auction_xchange";
+    const transfers = bid ? await this.deps.partFunded.list(PART_FUNDED_LIMIT) : [];
     return {
       tab: request.tab,
       organisation: request.organisation,
@@ -93,6 +129,7 @@ export class AccountingQueueService implements IAccountingQueueService {
       offset: request.offset,
       unreadable: page.unreadable.length,
       canAct: request.canAct,
+      partFundedTransfers: transfers.map(toTransfer),
     };
   }
 
@@ -150,6 +187,15 @@ export class AccountingQueueService implements IAccountingQueueService {
       id: document.id,
       reference: document.reference,
       documentType: document.kind,
+      label: accountingDocumentLabel(document.kind, document.product, document.reference),
+      parked: record.status === "needs_review" ? parkReasonOf(record.reason) : null,
+      appliedTo:
+        document.document.kind === "payment"
+          ? document.document.allocations.map((a) => ({
+              reference: a.invoiceReference,
+              amountPence: a.amountPence,
+            }))
+          : [],
       product: document.product,
       organisation,
       state: record.status,

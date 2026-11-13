@@ -252,6 +252,24 @@ export interface AccountingQueuePage {
   readonly lastSent: AccountingLastSent | null;
 }
 
+/** A bank transfer that has partly arrived; no Books document is made for it. */
+export interface PartFundedTransfer {
+  /** An invoice's own payment, or a "Pay several" group. */
+  readonly source: "payment" | "payment_group";
+  readonly id: string;
+  /** The paying account's name. */
+  readonly buyer: string;
+  readonly receivedPence: number;
+  readonly totalPence: number;
+  /** When the provider last reported money arriving, where it is stored. */
+  readonly since: Date | null;
+}
+
+/** Bank transfers part received, oldest first, for the Accounting page (read only). */
+export interface IPartFundedTransfersReader {
+  list(limit: number): Promise<readonly PartFundedTransfer[]>;
+}
+
 /**
  * What staff see of the queue (Finance › Accounting): one tab at a time, per company or both.
  * The tabs follow `queueTabFor` in the domain; cancelled documents are in none.

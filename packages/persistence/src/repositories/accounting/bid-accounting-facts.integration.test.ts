@@ -27,6 +27,7 @@ import { and, eq, sql } from "drizzle-orm";
 import { afterAll, describe, expect, it } from "vitest";
 import { DrizzleBidInvoiceRepository } from "../drizzle-bid-invoice.repository.js";
 import { DrizzleBidAccountingFactsReader } from "./drizzle-bid-accounting-facts.reader.js";
+import { DrizzlePartFundedTransfersReader } from "./drizzle-part-funded-transfers.reader.js";
 
 const OWNER_URL = process.env.DATABASE_URL;
 const HAS_DB = Boolean(OWNER_URL);
@@ -514,6 +515,69 @@ describe.skipIf(!HAS_DB)("Bid accounting facts (integration)", { timeout: 60_000
         status: "skip",
         reason: "payment_without_invoice",
       });
+    });
+  });
+
+  it("lists bank transfers that have only partly arrived, from the stored figures; nothing else", async () => {
+    await inRolledBack(owner, async (tx) => {
+      // Only this case's rows: everything else in the shared database is out of the window.
+      await tx.execute(
+        sql`update payment set transfer_received_pence = 0 where transfer_received_pence > 0`,
+      );
+      await tx.execute(
+        sql`update payment_group set amount_received = 0 where status = 'processing'`,
+      );
+      const seeded = await seedWonLot(tx);
+      const raised = await raise(tx, seeded);
+      const reader = new DrizzlePartFundedTransfersReader(tx);
+      expect(await reader.list(50)).toEqual([]);
+      await tx
+        .update(payment)
+        .set({ status: "authorized", transferReceivedPence: 40_000 })
+        .where(eq(payment.id, raised.payment.id));
+      const [group] = await tx
+        .insert(paymentGroup)
+        .values({
+          buyerLegalEntityId: seeded.buyerEntityId,
+          createdByUserId: seeded.buyerId,
+          status: "processing",
+          currency: "GBP",
+          totalAmount: "2500.00",
+          amountReceived: "1000.01",
+          checkoutRail: "gb_bank_transfer",
+          receivedEventAt: new Date("2031-11-13T09:00:00Z"),
+        })
+        .returning({ id: paymentGroup.id });
+      // Both rows were made in this one transaction (the same now()), so their order is the ids'.
+      const listed = [...(await reader.list(50))].sort((a, b) => a.source.localeCompare(b.source));
+      expect(listed).toEqual([
+        {
+          source: "payment",
+          id: raised.payment.id,
+          buyer: `Collector Ltd ${seeded.tag}`,
+          receivedPence: 40_000,
+          totalPence: 154_320,
+          since: null,
+        },
+        {
+          source: "payment_group",
+          id: group?.id,
+          buyer: `Collector Ltd ${seeded.tag}`,
+          receivedPence: 100_001,
+          totalPence: 250_000,
+          since: new Date("2031-11-13T09:00:00Z"),
+        },
+      ]);
+      // All of it arrived (and is applied, or about to be): no longer part funded.
+      await tx
+        .update(payment)
+        .set({ transferReceivedPence: 154_320 })
+        .where(eq(payment.id, raised.payment.id));
+      await tx
+        .update(paymentGroup)
+        .set({ status: "paid" })
+        .where(eq(paymentGroup.id, group?.id as string));
+      expect(await reader.list(50)).toEqual([]);
     });
   });
 });

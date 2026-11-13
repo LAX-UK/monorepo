@@ -13,6 +13,7 @@ import type {
   IAccountingSourceSettingWriter,
   IBidInvoiceBooksReader,
   IBidInvoiceEmailFactsReader,
+  IPartFundedTransfersReader,
 } from "../../interfaces/accounting.js";
 import { DrizzleAccountingAttentionReader } from "./drizzle-accounting-attention.reader.js";
 import { DrizzleAccountingDocumentCopies } from "./drizzle-accounting-document-copies.js";
@@ -26,6 +27,7 @@ import { DrizzleAccountingSourceSettingReader } from "./drizzle-accounting-sourc
 import { DrizzleAccountingSourceSettingWriter } from "./drizzle-accounting-source-setting.writer.js";
 import { DrizzleBidInvoiceBooksReader } from "./drizzle-bid-invoice-books.reader.js";
 import { DrizzleBidInvoiceEmailFactsReader } from "./drizzle-bid-invoice-email-facts.reader.js";
+import { DrizzlePartFundedTransfersReader } from "./drizzle-part-funded-transfers.reader.js";
 
 /** Each role's process takes the ports it is granted; the interfaces are what callers depend on. */
 export interface AccountingRepositories {
@@ -44,6 +46,8 @@ export interface AccountingRepositories {
   readonly invoiceEmailFacts: IBidInvoiceEmailFactsReader;
   /** One Bid invoice's Books documents and copies, for the buyer's card (the Bid API). */
   readonly bidInvoiceBooks: IBidInvoiceBooksReader;
+  /** Bank transfers part received, for the Accounting page (the Bid API). */
+  readonly partFunded: IPartFundedTransfersReader;
 }
 
 /** The one place the accounting repositories are assembled (container registration). */
@@ -64,5 +68,6 @@ export function createAccountingRepositories(
     copies: new DrizzleAccountingDocumentCopies(db, clock),
     invoiceEmailFacts: new DrizzleBidInvoiceEmailFactsReader(db),
     bidInvoiceBooks: new DrizzleBidInvoiceBooksReader(db, clock),
+    partFunded: new DrizzlePartFundedTransfersReader(db),
   };
 }
