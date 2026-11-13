@@ -15,6 +15,7 @@ describe("bulk settlement parity (shared finance-runtime)", () => {
     const repo = makeSettlementRepo({
       listLegalEntityIdsWithUnlinkedCapturedPayments: vi.fn().mockResolvedValue([]),
       listScheduledPayoutsAwaitingTransfer: vi.fn().mockResolvedValue([]),
+      listScheduledPayoutsWithNegativeNet: vi.fn().mockResolvedValue([]),
     });
     const initiateTransfer = vi.fn();
     const r = await runBulkSettlementParity(settlementDeps(repo), initiateTransfer);
@@ -29,6 +30,7 @@ describe("bulk settlement parity (shared finance-runtime)", () => {
       listLegalEntityIdsWithUnlinkedCapturedPayments: vi.fn().mockResolvedValue([e1]),
       findUnlinkedCapturedPayments: vi.fn().mockResolvedValue([]),
       listScheduledPayoutsAwaitingTransfer: vi.fn().mockResolvedValue([]),
+      listScheduledPayoutsWithNegativeNet: vi.fn().mockResolvedValue([]),
     });
     const r = await runBulkSettlementParity(settlementDeps(repo), vi.fn());
     expect(snapshotBulkResult(r).settlementOutcomes).toEqual([
@@ -53,6 +55,7 @@ describe("bulk settlement parity (shared finance-runtime)", () => {
       listLegalEntityIdsWithUnlinkedCapturedPayments: vi.fn().mockResolvedValue([e1]),
       findUnlinkedCapturedPayments: vi.fn().mockResolvedValue(pending([{}])),
       listScheduledPayoutsAwaitingTransfer: vi.fn().mockResolvedValue([]),
+      listScheduledPayoutsWithNegativeNet: vi.fn().mockResolvedValue([]),
       create,
       insertLine,
     });
@@ -98,6 +101,7 @@ describe("bulk settlement parity (shared finance-runtime)", () => {
     const repo = makeSettlementRepo({
       listLegalEntityIdsWithUnlinkedCapturedPayments: vi.fn().mockResolvedValue(entities),
       listScheduledPayoutsAwaitingTransfer: vi.fn().mockResolvedValue([]),
+      listScheduledPayoutsWithNegativeNet: vi.fn().mockResolvedValue([]),
       findUnlinkedCapturedPayments: vi.fn().mockResolvedValue(pending([{}])),
       create,
       insertLine,
@@ -147,6 +151,7 @@ describe("bulk settlement parity (shared finance-runtime)", () => {
     const repo = makeSettlementRepo({
       listLegalEntityIdsWithUnlinkedCapturedPayments: listUnlinked,
       listScheduledPayoutsAwaitingTransfer: listResume,
+      listScheduledPayoutsWithNegativeNet: vi.fn().mockResolvedValue([]),
       findUnlinkedCapturedPayments: vi.fn().mockResolvedValue(pending([{}])),
       create,
       insertLine,

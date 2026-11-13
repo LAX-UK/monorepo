@@ -122,6 +122,24 @@ export class PayoutAdjustmentService implements IPayoutAdjustmentPort {
     });
   }
 
+  /**
+   * Holds the open payouts of every seller a transaction is about to move, in one global order
+   * (legal entity id, then payout id), before it changes any. Call it from a transaction that
+   * moves payouts for several sellers (a group refund, a dispute over a group charge), after it
+   * holds the payments. Without it, two such transactions over the same sellers can each hold one
+   * seller's payout and wait for the other's. A transaction for one seller needs nothing up front:
+   * `postLine` takes that seller's payout. The later `postLine` calls take the same rows again,
+   * which is a no-op for a transaction that holds them.
+   */
+  async lockOpenPayoutsForSellers(input: {
+    legalEntityIds: readonly string[];
+    tx: Database;
+  }): Promise<void> {
+    const sellers = [...new Set(input.legalEntityIds)];
+    if (sellers.length < 2) return;
+    await this.resolveRepoForTx(this.repo, input.tx).lockOpenPayoutsForEntities(sellers);
+  }
+
   private async inTransaction<T>(
     tx: Database | undefined,
     work: (r: IPayoutRepository) => Promise<T>,
@@ -218,7 +236,8 @@ export class PayoutAdjustmentService implements IPayoutAdjustmentPort {
    * the amount is read (and is sent with it) or finds the payout gone and goes on a new one.
    *
    * Lock order: settlement advisory lock, then payments (in id order when there are several), then
-   * payout. `postLine` takes the line's payment just before this, so the order holds for every
+   * payouts (in legal entity id, then payout id order when there are several sellers: see
+   * `lockOpenPayoutsForSellers`). `postLine` takes the line's payment just before this, so the order holds for every
    * caller: refund paths already hold it (re-entrant), and dispute paths, which lock the dispute
    * case and not the payment, take it here rather than waiting for it on the line's foreign key
    * while holding the payout.

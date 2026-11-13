@@ -137,6 +137,21 @@ export async function runBulkSettlementWithTransfers(
     pushTransferLog(outcomeFromTransfer(p.legalEntityId, p.id, tr, true));
   }
 
+  // Last, the payouts a refund or dispute line made with a negative net (it found no open payout
+  // to go on). Lines that landed on one during this run are already in its net: one netted to zero
+  // or more is sent above or next run, and one still negative goes to `clawback_pending` through
+  // the transfer step's own negative-net path (read again under the payout's lock), where staff
+  // see it in the clawback views. Left scheduled, nothing would ever pick it up.
+  const negativePayouts = await deps.repo.listScheduledPayoutsWithNegativeNet(1000);
+  for (const p of negativePayouts) {
+    if (attemptedTransferPayoutIds.has(p.id)) {
+      continue;
+    }
+    attemptedTransferPayoutIds.add(p.id);
+    const tr = await port.initiateTransfer(p.id, { keepScheduledOnTransferFailure: true });
+    pushTransferLog(outcomeFromTransfer(p.legalEntityId, p.id, tr, true));
+  }
+
   const createdCount = settlementItems.filter((i) => i.outcome === "created").length;
   return {
     settlement: {

@@ -123,6 +123,14 @@ export interface IPayoutReadRepository {
    * refund, give-back and dispute lines. Returns null if no such payout exists.
    */
   findOpenPayoutForEntity(legalEntityId: string): Promise<Payout | null>;
+  /**
+   * Hold (`FOR UPDATE`), until the surrounding transaction ends, every payout that can take lines
+   * (as `findOpenPayoutForEntity` reads them) for these legal entities, in one global order: legal
+   * entity id, then payout id. A transaction that moves payouts for several sellers takes this
+   * before it changes any, so two such transactions over the same sellers queue on the first payout
+   * instead of each holding one the other needs. Take it after the payments, as every line does.
+   */
+  lockOpenPayoutsForEntities(legalEntityIds: readonly string[]): Promise<void>;
   /** Check if a payout line with the given sourceEventId already exists.
    * Used for idempotency in webhook handlers.
    */
@@ -213,6 +221,11 @@ export interface IPayoutLifecycleRepository {
    * includes rows awaiting a Connect transfer retry after a transient failure.
    */
   listScheduledPayoutsAwaitingTransfer(limit?: number): Promise<Payout[]>;
+  /** `scheduled` payouts with a negative net and no `stripe_transfer_id`: a refund or dispute
+   * line that found no open payout made a payout of its own. Nothing is sent for them; the payout
+   * run moves each one still negative to `clawback_pending`. Oldest first.
+   */
+  listScheduledPayoutsWithNegativeNet(limit?: number): Promise<Payout[]>;
 }
 
 export type AdminPayoutListSummary = {

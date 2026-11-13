@@ -25,6 +25,16 @@ export interface IPayoutAdjustmentService {
    */
   giveBackFailedRefund(input: GiveBackFailedRefundInput): Promise<{ sellerPence: number }>;
 
+  /**
+   * Hold the open payouts of several sellers in one global order (legal entity id, then payout id)
+   * before a transaction moves any of them. Call it after the payments are held. A no-op for fewer
+   * than two sellers.
+   */
+  lockOpenPayoutsForSellers(input: {
+    legalEntityIds: readonly string[];
+    tx: Database;
+  }): Promise<void>;
+
   /** Recompute payout gross/net totals from line amounts. */
   recalculateTotalsFromLines(repo: IPayoutRepository, payoutId: string): Promise<void>;
 }
