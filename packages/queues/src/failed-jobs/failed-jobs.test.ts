@@ -68,6 +68,17 @@ describe("error summary", () => {
     expect(scrubErrorMessage("")).toBe("No error was recorded.");
   });
 
+  it("keeps a CRM refusal's code and field so staff can see why", () => {
+    for (const reason of [
+      "zoho_crm_http_400:INVALID_DATA:Lead_Source",
+      "zoho_crm_http_400:MANDATORY_NOT_FOUND:Last_Name",
+      "zoho_crm_http_400:INVALID_DATA:duplicate_check_fields",
+    ]) {
+      expect(summariseError(reason)).toBe(reason);
+      expect(scrubErrorMessage(reason)).toBe(reason);
+    }
+  });
+
   it("caps and scrubs the full message", () => {
     const full = scrubErrorMessage(`mail to a@b.com\n${"x ".repeat(2_000)}`);
     expect(full).not.toContain("a@b.com");
