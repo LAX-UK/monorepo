@@ -1,14 +1,19 @@
 import type { Database } from "@auction/db";
+import { SellerTermsPolicy } from "@auction/domain";
 import type {
   IPayoutRepository,
   IPrivateSaleDealPayoutStore,
 } from "@auction/persistence/interfaces";
 import {
+  DrizzleCommissionVatSettingReader,
   DrizzlePayoutRepository,
   DrizzlePrivateSaleDealPayoutStore,
+  DrizzleSaleSellerTermsStore,
+  DrizzleSellerTermsFactsReader,
 } from "@auction/persistence/repositories";
 import type { IDomainEventSinkPort } from "../domain-event-sink-port.js";
 import type { PayoutAdjustmentService } from "./payout-adjustment.service.js";
+import { type ISettlementSellerTerms, SettlementSellerTerms } from "./settlement-seller-terms.js";
 
 export function payoutRepoForTx(_rootRepo: IPayoutRepository, tx: Database): IPayoutRepository {
   return new DrizzlePayoutRepository(tx);
@@ -16,6 +21,20 @@ export function payoutRepoForTx(_rootRepo: IPayoutRepository, tx: Database): IPa
 
 export function dealPayoutsForTx(tx: Database): IPrivateSaleDealPayoutStore {
   return new DrizzlePrivateSaleDealPayoutStore(tx);
+}
+
+/**
+ * The seller terms a payout run pays from, for a transaction scope: the signed agreement's rule,
+ * read and stored through the run's own transaction.
+ */
+export function settlementSellerTermsForTx(tx: Database): ISettlementSellerTerms {
+  return new SettlementSellerTerms(
+    new SellerTermsPolicy(
+      new DrizzleSellerTermsFactsReader(tx),
+      new DrizzleCommissionVatSettingReader(tx),
+    ),
+    new DrizzleSaleSellerTermsStore(tx),
+  );
 }
 
 export type PayoutSettlementDeps = {
@@ -27,6 +46,8 @@ export type PayoutSettlementDeps = {
   domainEventSink: IDomainEventSinkPort | null;
   payoutAdjustments: PayoutAdjustmentService | undefined;
   payoutRepoForTx: (tx: Database) => IPayoutRepository;
+  /** Where each sale stands for the run: paid from its seller terms, held, or LAX's own. */
+  sellerTermsForTx: (tx: Database) => ISettlementSellerTerms;
 };
 
 export const DEFAULT_CURRENCY = "GBP";
@@ -38,21 +59,4 @@ export async function listSettlementEntityIds(deps: PayoutSettlementDeps): Promi
     deps.dealPayouts?.listSellerLegalEntityIdsWithUnsettledReleased() ?? [],
   ]);
   return [...new Set([...lots, ...deals])];
-}
-
-export function settlementAmounts(p: {
-  amount: string;
-  platformFee: string;
-  settlementAmount?: string;
-}): {
-  saleAmount: string;
-  platformFee: string;
-} {
-  const saleAmount = p.settlementAmount ?? p.amount;
-  const full = Number.parseFloat(p.amount);
-  const ratio = full > 0 ? Number.parseFloat(saleAmount) / full : 1;
-  return {
-    saleAmount,
-    platformFee: (Number.parseFloat(p.platformFee) * ratio).toFixed(2),
-  };
 }

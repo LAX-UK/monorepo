@@ -1,7 +1,12 @@
 import { SETTLEMENT_PERIOD_FLOOR } from "@auction/domain";
 import type { IPayoutRepository } from "@auction/persistence/interfaces";
 import { describe, expect, it, vi } from "vitest";
-import { makeSettlementRepo, payoutRow, pending } from "./payout-bulk-settlement-parity.helpers.js";
+import {
+  makeSettlementRepo,
+  payoutRow,
+  pending,
+  storedSellerTerms,
+} from "./payout-bulk-settlement-parity.helpers.js";
 import type { PayoutSettlementDeps } from "./payout-helpers.js";
 import { createSettlement, runBulkSettlement } from "./payout-settlement.js";
 
@@ -38,6 +43,7 @@ function setup(over: Partial<IPayoutRepository> = {}) {
     domainEventSink: { withTx: () => ({ publish: async () => undefined }) },
     payoutAdjustments: undefined,
     payoutRepoForTx: () => tx,
+    sellerTermsForTx: () => storedSellerTerms(),
   };
   return { deps, calls, create };
 }

@@ -656,7 +656,13 @@ export type {
   ListPayoutsFilter,
   PendingPaymentRow,
   ReconcileStripeTransferPatch,
+  SellerClawbackFacts,
 } from "./payout.repository.js";
+export type {
+  ISaleSellerTermsStore,
+  StoredInvoiceLine,
+  StoredSellerTerms,
+} from "./sale-seller-terms.store.js";
 
 export type {
   IPaymentExternalRefRepository,

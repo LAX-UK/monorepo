@@ -1,12 +1,21 @@
-import type { Payout, PayoutLine, PayoutLineKind } from "@auction/types";
+import type { SellerClawbackFacts } from "@auction/domain";
+import type { Payout, PayoutLine, PayoutLineKind, PayoutSellerTermsTotals } from "@auction/types";
+import type { StoredSellerTerms } from "./sale-seller-terms.store.js";
 
+/** A captured lot payment that is on no payout yet, with what settlement pays it from. */
 export type PendingPaymentRow = {
   id: string;
+  /** What the buyer paid. */
   amount: string;
+  /** The old-rule fee stored on the payment; kept for audit, never paid from. */
   platformFee: string;
   capturedAt: Date | null;
-  /** Sale line amount after prior refund/dispute payout lines (defaults to `amount`). */
-  settlementAmount?: string;
+  /** The lot the payment is for. */
+  lotId: string | null;
+  /** The payment's seller-terms snapshot, or `null` when it was raised before snapshots. */
+  sellerTerms: StoredSellerTerms | null;
+  /** What the buyer has been refunded for the payment so far, in pence. */
+  refundedPence: number;
 };
 
 export type CreatePayoutInput = {
@@ -18,6 +27,8 @@ export type CreatePayoutInput = {
   stripeFee: string;
   netAmount: string;
   currency: string;
+  /** The hammer, commission and VAT of the lot sales the payout pays from their snapshots. */
+  sellerTermsTotals?: PayoutSellerTermsTotals | null;
 };
 
 export type InsertPayoutLineInput = {
@@ -29,7 +40,14 @@ export type InsertPayoutLineInput = {
   note: string | null;
   /** Stripe event ID for webhook-originated lines (idempotency). */
   sourceEventId?: string | null;
+  /** On a lot's sale line: the seller-terms snapshot it pays. */
+  sellerTermsId?: string | null;
+  /** On a refund line: the buyer's refund, in pence, the line answers for. */
+  buyerRefundPence?: number | null;
 };
+
+/** What a buyer's refund is charged back to the seller from: see `SellerClawbackFacts`. */
+export type { SellerClawbackFacts };
 
 export type ListPayoutsFilter = {
   legalEntityId?: string;
@@ -85,11 +103,14 @@ export interface IPayoutReadRepository {
    * Used for idempotency in webhook handlers.
    */
   lineExistsForSourceEvent(sourceEventId: string): Promise<boolean>;
-  /** Sum of existing refund payout lines for a payment, in PENCE (positive value).
-   * Used by the `charge.refunded` webhook to compute per-event refund delta
-   * because Stripe's `amount_refunded` field is cumulative across all refunds.
+  /** The buyer refunds the seller's ledger has answered for, for a payment, in PENCE (positive).
+   * A refund line records the buyer's refund it answers for; one written before that was recorded
+   * answers for its own amount. Used by the `charge.refunded` webhook to compute per-event refund
+   * delta because Stripe's `amount_refunded` field is cumulative across all refunds.
    */
   sumRefundLineCentsForPayment(paymentId: string): Promise<number>;
+  /** What a refund of the payment is charged back to the seller from. */
+  findSellerClawbackFacts(paymentId: string): Promise<SellerClawbackFacts>;
   /** Existing adjustment line for a payment on a specific payout (refund/dispute aggregation). */
   findLineForPaymentAndKind(
     payoutId: string,
@@ -112,7 +133,12 @@ export interface IPayoutWriteRepository {
    */
   updateTotals(
     payoutId: string,
-    totals: { grossAmount: string; platformFee: string; netAmount: string },
+    totals: {
+      grossAmount: string;
+      platformFee: string;
+      netAmount: string;
+      sellerTermsTotals?: PayoutSellerTermsTotals | null;
+    },
   ): Promise<Payout>;
   /** Transition the payout's status (and processedAt + stripeTransferId
    * when paid). Returns the updated row.
@@ -152,6 +178,7 @@ export interface IPayoutWriteRepository {
     lineId: string,
     amount: string,
     sourceEventId?: string | null,
+    buyerRefundPence?: number | null,
   ): Promise<PayoutLine>;
 }
 

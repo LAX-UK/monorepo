@@ -159,6 +159,8 @@ export {
   makeSettlementRepo,
   pending,
   payoutRow,
+  pricedTerms,
+  storedSellerTerms,
   runBulkSettlementParity,
   settlementDeps,
   snapshotBulkResult,
@@ -166,9 +168,13 @@ export {
 export {
   type PayoutSettlementDeps,
   payoutRepoForTx,
-  settlementAmounts,
+  settlementSellerTermsForTx,
   DEFAULT_CURRENCY,
 } from "./payout/payout-helpers.js";
+export {
+  SettlementSellerTerms,
+  type ISettlementSellerTerms,
+} from "./payout/settlement-seller-terms.js";
 export {
   NO_UNAPPLIED_MONEY_RECORDER,
   UnappliedMoneyRecorder,

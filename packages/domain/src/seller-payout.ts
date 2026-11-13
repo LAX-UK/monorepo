@@ -111,3 +111,63 @@ export function sellerClawbackPence(input: SellerClawbackInput): number {
   const paid = BigInt(paymentPence);
   return Number((net * refunded * 2n + paid) / (paid * 2n));
 }
+
+/** What a buyer's refund is charged back to the seller from, for one sale. Whole pence. */
+export type SellerClawbackFacts = {
+  /** What the buyer paid. */
+  paymentPence: number;
+  /**
+   * How the sale was paid out: from its snapshot (the seller's net), under the old rule (a sale
+   * line with no snapshot), or not at all yet.
+   */
+  paidOut:
+    | { kind: "snapshot"; sellerNetPence: number }
+    | { kind: "old_rule" }
+    | { kind: "not_paid_out" };
+  /** What has been charged back to the seller for it so far (a positive figure). */
+  clawedBackPence: number;
+};
+
+/** A refund line on the seller's ledger: what is charged now and the buyer refund it answers for. */
+export type SellerRefundCharge = { chargePence: number; buyerRefundPence: number };
+
+/**
+ * What a buyer's refund charges the seller, or `null` when it charges nothing.
+ *
+ * - Not paid out: nothing. The seller received nothing for the sale, and a sale refunded in full
+ *   drops out of the payout run; a part refund is charged when the run pays the sale.
+ * - Paid from a snapshot: the seller's share of everything refunded so far (see
+ *   `sellerClawbackPence`), less what has already been charged back.
+ * - Paid under the old rule: the refund as it stands, as old payouts were charged. Finance reviews
+ *   payouts paid under the old rule one by one; nothing here changes them.
+ */
+export function sellerRefundCharge(input: {
+  facts: SellerClawbackFacts;
+  /** The buyer refunds the seller's ledger has already answered for. */
+  buyerRefundedBeforePence: number;
+  /** The buyer refund being handled now. */
+  buyerRefundPence: number;
+}): SellerRefundCharge | null {
+  const { facts, buyerRefundedBeforePence, buyerRefundPence } = input;
+  assertPence(buyerRefundedBeforePence, "earlier buyer refunds");
+  assertPence(buyerRefundPence, "buyer refund");
+  if (buyerRefundPence === 0) return null;
+  switch (facts.paidOut.kind) {
+    case "not_paid_out":
+      return null;
+    case "old_rule":
+      return { chargePence: buyerRefundPence, buyerRefundPence };
+    case "snapshot": {
+      const due = sellerClawbackPence({
+        sellerNetPence: facts.paidOut.sellerNetPence,
+        paymentPence: facts.paymentPence,
+        buyerRefundedPence: Math.min(
+          facts.paymentPence,
+          buyerRefundedBeforePence + buyerRefundPence,
+        ),
+      });
+      const chargePence = due - facts.clawedBackPence;
+      return chargePence > 0 ? { chargePence, buyerRefundPence } : null;
+    }
+  }
+}

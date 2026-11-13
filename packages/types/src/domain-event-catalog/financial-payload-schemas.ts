@@ -55,6 +55,42 @@ export const payoutPaidPayloadSchemaV1 = z.object({
   via: z.string(),
 });
 
+const pence = z.number().int().nonnegative();
+
+/**
+ * One lot sale a payout pays, split as its seller-terms snapshot splits it, so the accounts never
+ * work the split out again: the hammer, the agreement's commission and the VAT on it, and what the
+ * seller receives (hammer - commission - VAT).
+ */
+export const payoutSettledSaleSchemaV1 = z.object({
+  paymentId: z.string().uuid(),
+  lotId: z.string().uuid(),
+  sellerTermsId: z.string().uuid(),
+  agreementId: z.string().uuid(),
+  hammerPence: pence,
+  commissionBps: z.number().int().min(0).max(10_000),
+  commissionPence: pence,
+  commissionVatTreatment: z.enum(["standard", "not_registered"]),
+  commissionVatBps: z.number().int().min(0).max(10_000),
+  commissionVatPence: pence,
+  sellerNetPence: pence,
+});
+
+/** A sale the run left out because its seller terms are held, with the reason staff fix. */
+export const payoutHeldSaleSchemaV1 = z.object({
+  paymentId: z.string().uuid(),
+  lotId: z.string().uuid().nullable(),
+  reason: z.enum([
+    "no_agreement",
+    "not_accepted",
+    "no_commission",
+    "other_seller",
+    "vat_setting_missing",
+    "negative_net",
+    "legacy_invoice",
+  ]),
+});
+
 export const payoutSettlementCreatedPayloadSchemaV1 = z.object({
   legalEntityId: z.string().uuid(),
   grossAmount: z.string(),
@@ -66,6 +102,13 @@ export const payoutSettlementCreatedPayloadSchemaV1 = z.object({
   periodStart: isoDateTime,
   periodEnd: isoDateTime,
   source: z.enum(["admin", "bulk_cron"]),
+  /** The hammer, commission and VAT totals of the lot sales on the payout; absent when it has none. */
+  hammerAmount: z.string().optional(),
+  commissionAmount: z.string().optional(),
+  commissionVatAmount: z.string().optional(),
+  /** Each lot sale the payout pays, from its snapshot. Absent on events from before snapshots. */
+  sales: z.array(payoutSettledSaleSchemaV1).optional(),
+  heldSales: z.array(payoutHeldSaleSchemaV1).optional(),
 });
 
 /** Xero projector consumes lot.ended — reuse frozen lot schema. */

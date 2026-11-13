@@ -43,6 +43,8 @@ export function adminWorkItemHref(
     case "reoffer_decision":
     case "reoffer_accepted":
       return subjectId ? adminRoutes.lot(subjectId) : adminRoutes.lots.list();
+    case "seller_payout_held":
+      return requireId(kind, subjectId, adminRoutes.lot);
     case "payment_overdue":
       return requireId(kind, subjectId, adminRoutes.lot);
     case "submission_review":

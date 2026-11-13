@@ -1,22 +1,30 @@
 import {
+  type HeldSettlementSale,
   PRIVATE_SALE_DEAL_EVENT_AGGREGATE,
+  type PayableSellerTerms,
   type PayoutLineFacts,
+  type SellerTermsTotals,
+  type SettlementSale,
   dealPayoutAmounts,
   minorUnitsToMoneyString,
   payoutTotals,
   resolveSettlementPeriod,
+  sellerRefundCharge,
+  sellerTermsTotals,
+  snapshotSaleLine,
 } from "@auction/domain";
 import type {
   IPayoutRepository,
   IPrivateSaleDealPayoutStore,
+  PendingPaymentRow,
 } from "@auction/persistence/interfaces";
 import type { PayoutLine, PrivateSalePayoutDeal } from "@auction/types";
 import {
   DEFAULT_CURRENCY,
   type PayoutSettlementDeps,
   listSettlementEntityIds,
-  settlementAmounts,
 } from "./payout-helpers.js";
+import type { ISettlementSellerTerms } from "./settlement-seller-terms.js";
 import type {
   BulkPayoutSettlementResult,
   CreateSettlementInput,
@@ -27,9 +35,18 @@ import type {
 /** A deal queued on the payout, so the run can tell the deal it is on its way. */
 export type QueuedDealPayout = { dealId: string; reference: string; netToSellerMinor: number };
 
+/** A lot sale the payout pays, with the snapshot it pays from. */
+export type SettledSale = {
+  paymentId: string;
+  sellerTermsId: string;
+  terms: PayableSellerTerms;
+};
+
 export type CreatedSettlementResult = CreateSettlementResult & {
   /** The deals this payout settles; empty for a payout of lot payments only. */
   queuedDeals?: QueuedDealPayout[];
+  /** The lot sales this payout pays, each from its seller-terms snapshot. */
+  settledSales?: SettledSale[];
 };
 
 /** A released deal as a payout line: the price, split like a lot's into commission and costs. */
@@ -52,62 +69,140 @@ function dealLine(deal: PrivateSalePayoutDeal) {
   return { gross, facts, netMinor: amounts.netMinor };
 }
 
+const pounds = (pence: number) => minorUnitsToMoneyString(BigInt(pence));
+
+/** The note on a refund line the run adds for a part refund the buyer had before the payout. */
+export const REFUND_BEFORE_PAYOUT_NOTE = "Part refund to the buyer before this payout";
+
+/**
+ * A part refund the buyer had before the sale was paid out is charged as the run pays the sale:
+ * the seller's share of it, by the same rule a refund after payout follows. `null` when nothing is
+ * charged (no refund, or what was refunded is already on the seller's ledger).
+ */
+async function refundBeforePayout(
+  r: IPayoutRepository,
+  pending: PendingPaymentRow,
+  terms: PayableSellerTerms,
+): Promise<{ facts: PayoutLineFacts; chargePence: number; buyerRefundPence: number } | null> {
+  if (pending.refundedPence <= 0) return null;
+  const facts = await r.findSellerClawbackFacts(pending.id);
+  const before = await r.sumRefundLineCentsForPayment(pending.id);
+  const charge = sellerRefundCharge({
+    facts: { ...facts, paidOut: { kind: "snapshot", sellerNetPence: terms.sellerNetPence } },
+    buyerRefundedBeforePence: before,
+    buyerRefundPence: Math.max(0, pending.refundedPence - before),
+  });
+  if (!charge) return null;
+  return {
+    facts: { kind: "refund", amount: pounds(-charge.chargePence) },
+    chargePence: charge.chargePence,
+    buyerRefundPence: charge.buyerRefundPence,
+  };
+}
+
+const heldOf = (sales: readonly SettlementSale[]): HeldSettlementSale[] =>
+  sales.flatMap((sale) =>
+    sale.kind === "held"
+      ? [{ paymentId: sale.paymentId, lotId: sale.lotId, reason: sale.reason }]
+      : [],
+  );
+
+/**
+ * One payout for a seller: every captured sale paid from its seller-terms snapshot (the hammer,
+ * less the agreement's commission and the VAT on it), and every released deal. A sale whose terms
+ * are held is left out with its reason and the rest are paid; LAX's own stock is never paid out.
+ * The stored totals are the lines added up, and the hammer, commission and VAT totals are kept
+ * beside them.
+ */
 export async function createSettlementCore(
   r: IPayoutRepository,
   input: ResolvedSettlementInput,
-  deals?: IPrivateSaleDealPayoutStore | null,
+  deals: IPrivateSaleDealPayoutStore | null,
+  sellerTerms: ISettlementSellerTerms,
 ): Promise<CreatedSettlementResult> {
   const pending = await r.findUnlinkedCapturedPayments(input.legalEntityId);
   const pendingDeals = (await deals?.findUnsettledReleased(input.legalEntityId)) ?? [];
-  if (pending.length === 0 && pendingDeals.length === 0) {
-    return { ok: false, reason: "no_pending_payments" };
+  // One at a time: each sale's terms are read and stored through the run's transaction.
+  const sales: SettlementSale[] = [];
+  for (const p of pending) sales.push(await sellerTerms.forRun(p, input.legalEntityId));
+  const heldSales = heldOf(sales);
+  const ready = sales.flatMap((sale) => (sale.kind === "ready" ? [sale] : []));
+  if (ready.length === 0 && pendingDeals.length === 0) {
+    return { ok: false, reason: "no_pending_payments", heldSales };
   }
 
-  const settled = pending.map((p) => ({ ...p, ...settlementAmounts(p) }));
-  const stripeFee = "0.00";
-  // Stored totals are the lines added up with the split the payout page shows.
-  const saleLine = (p: (typeof pending)[number], saleAmount: string): PayoutLineFacts => ({
-    kind: "sale",
-    amount: saleAmount,
-    payment: { amount: p.amount, platformFee: p.platformFee },
-  });
+  const byPayment = new Map(pending.map((p) => [p.id, p]));
+  const saleLines = [];
+  for (const sale of ready) {
+    const payment = byPayment.get(sale.paymentId);
+    if (!payment) continue;
+    saleLines.push({
+      sale,
+      line: snapshotSaleLine(sale.terms),
+      refund: await refundBeforePayout(r, payment, sale.terms),
+    });
+  }
   const dealLines = pendingDeals.flatMap((deal) => {
     const line = dealLine(deal);
     return line ? [{ deal, ...line }] : [];
   });
-  const initial = payoutTotals(
+
+  const stripeFee = "0.00";
+  const totalsOf = (lineFacts: PayoutLineFacts[], paid: readonly PayableSellerTerms[]) => ({
+    ...payoutTotals(lineFacts, stripeFee),
+    sellerTerms: paid.length > 0 ? sellerTermsTotals(paid) : null,
+  });
+  const initial = totalsOf(
     [
-      ...pending.map((p, i) => saleLine(p, settled[i]?.saleAmount ?? p.amount)),
+      ...saleLines.flatMap((s) => (s.refund ? [s.line.facts, s.refund.facts] : [s.line.facts])),
       ...dealLines.map((d) => d.facts),
     ],
-    stripeFee,
+    saleLines.map((s) => s.sale.terms),
   );
-  const { gross: grossAmount, platformFee, net: netAmount } = initial;
 
   const created = await r.create({
     legalEntityId: input.legalEntityId,
     periodStart: input.periodStart,
     periodEnd: input.periodEnd,
-    grossAmount,
-    platformFee,
+    grossAmount: initial.gross,
+    platformFee: initial.platformFee,
     stripeFee,
-    netAmount,
+    netAmount: initial.net,
     currency: DEFAULT_CURRENCY,
+    sellerTermsTotals: initial.sellerTerms,
   });
 
   const inserted: { line: PayoutLine; facts: PayoutLineFacts }[] = [];
-  for (const p of settled) {
-    const line = await r.tryInsertSaleLine({
+  const settledSales: SettledSale[] = [];
+  for (const { sale, line, refund } of saleLines) {
+    const saleLine = await r.tryInsertSaleLine({
       payoutId: created.id,
-      paymentId: p.id,
-      amount: p.saleAmount,
+      paymentId: sale.paymentId,
+      amount: line.amount,
       kind: "sale",
       createdByUserId: null,
       note: null,
+      sellerTermsId: sale.sellerTermsId,
     });
-    if (line) {
-      const original = pending.find((x) => x.id === p.id);
-      inserted.push({ line, facts: saleLine(original ?? p, p.saleAmount) });
+    // Another run paid this sale first: it is on that payout, not this one.
+    if (!saleLine) continue;
+    inserted.push({ line: saleLine, facts: line.facts });
+    settledSales.push({
+      paymentId: sale.paymentId,
+      sellerTermsId: sale.sellerTermsId,
+      terms: sale.terms,
+    });
+    if (refund) {
+      const refundLine = await r.insertLine({
+        payoutId: created.id,
+        paymentId: sale.paymentId,
+        amount: refund.facts.amount,
+        kind: "refund",
+        createdByUserId: null,
+        note: REFUND_BEFORE_PAYOUT_NOTE,
+        buyerRefundPence: refund.buyerRefundPence,
+      });
+      inserted.push({ line: refundLine, facts: refund.facts });
     }
   }
   const queuedDeals: QueuedDealPayout[] = [];
@@ -131,25 +226,54 @@ export async function createSettlementCore(
     throw new Error("no_settlement_lines_inserted");
   }
 
-  if (inserted.length < pending.length + dealLines.length) {
-    const adjusted = payoutTotals(
+  const result = { ok: true as const, queuedDeals, heldSales, settledSales };
+  const expected = saleLines.reduce((n, s) => n + (s.refund ? 2 : 1), 0) + dealLines.length;
+  if (inserted.length < expected) {
+    const adjusted = totalsOf(
       inserted.map((x) => x.facts),
-      stripeFee,
+      settledSales.map((s) => s.terms),
     );
     await r.updateTotals(created.id, {
       grossAmount: adjusted.gross,
       platformFee: adjusted.platformFee,
       netAmount: adjusted.net,
+      sellerTermsTotals: adjusted.sellerTerms,
     });
     const refreshed = (await r.findById(created.id)) ?? created;
-    return {
-      ok: true,
-      payout: { ...refreshed, lines: inserted.map((x) => x.line) },
-      queuedDeals,
-    };
+    return { ...result, payout: { ...refreshed, lines: inserted.map((x) => x.line) } };
   }
 
-  return { ok: true, payout: { ...created, lines: inserted.map((x) => x.line) }, queuedDeals };
+  return { ...result, payout: { ...created, lines: inserted.map((x) => x.line) } };
+}
+
+/**
+ * Each sale on the payout as the accounts read it, so nothing downstream works the split out
+ * again: the hammer, the agreement's commission and the VAT on it, and what the seller receives.
+ */
+function settledSaleLines(sales: readonly SettledSale[]) {
+  return sales.map(({ paymentId, sellerTermsId, terms }) => ({
+    paymentId,
+    lotId: terms.lotId,
+    sellerTermsId,
+    agreementId: terms.agreementId,
+    hammerPence: terms.hammerPence,
+    commissionBps: terms.commissionBps,
+    commissionPence: terms.commissionPence,
+    commissionVatTreatment: terms.commissionVatTreatment,
+    commissionVatBps: terms.commissionVatBps,
+    commissionVatPence: terms.commissionVatPence,
+    sellerNetPence: terms.sellerNetPence,
+  }));
+}
+
+function sellerTermsPayload(totals: SellerTermsTotals | null | undefined) {
+  return totals
+    ? {
+        hammerAmount: totals.hammer,
+        commissionAmount: totals.commission,
+        commissionVatAmount: totals.commissionVat,
+      }
+    : {};
 }
 
 export async function createSettlement(
@@ -187,7 +311,12 @@ export async function createSettlement(
       periodEnd: period.periodEnd,
       ...(input.reason !== undefined ? { reason: input.reason } : {}),
     };
-    const result = await createSettlementCore(r, resolved, deps.dealPayoutsForTx?.(tx) ?? null);
+    const result = await createSettlementCore(
+      r,
+      resolved,
+      deps.dealPayoutsForTx?.(tx) ?? null,
+      deps.sellerTermsForTx(tx),
+    );
     if (!result.ok) {
       return result;
     }
@@ -208,6 +337,9 @@ export async function createSettlement(
         periodEnd: resolved.periodEnd.toISOString(),
         source,
         ...(input.reason !== undefined ? { reason: input.reason } : {}),
+        ...sellerTermsPayload(result.payout.sellerTermsTotals),
+        sales: settledSaleLines(result.settledSales ?? []),
+        heldSales: result.heldSales ?? [],
       },
       actorUserId: actorUserId,
       actingLegalEntityId: input.legalEntityId,

@@ -1,5 +1,10 @@
 import type { Database } from "@auction/db";
-import { payoutTotals } from "@auction/domain";
+import {
+  minorUnitsToMoneyString,
+  parseMoneyToMinorUnits,
+  payoutTotals,
+  sellerRefundCharge,
+} from "@auction/domain";
 import type { IPayoutRepository, ITransactionRunner } from "@auction/persistence/interfaces";
 import type { PayoutLineKind } from "@auction/types";
 import { sumDecimal } from "../decimal-money.js";
@@ -15,12 +20,19 @@ export type PayoutRepoForTx = (rootRepo: IPayoutRepository, tx: Database) => IPa
 export type AddPaymentPayoutLineInput = {
   legalEntityId: string;
   paymentId: string;
+  /**
+   * The line's amount (negative for money taken back). For a refund, the buyer's refund: what the
+   * seller is charged for it is worked out here, from what they received for the sale.
+   */
   amount: string;
   kind: PayoutLineKind;
   sourceEventId?: string | null;
   note: string | null;
   tx?: Database;
 };
+
+/** A line as it goes on the seller's ledger. */
+type LedgerLine = { amount: string; buyerRefundPence: number | null };
 
 export class PayoutAdjustmentService implements IPayoutAdjustmentPort {
   constructor(
@@ -57,6 +69,8 @@ export class PayoutAdjustmentService implements IPayoutAdjustmentPort {
   ): Promise<void> {
     const run = async (tx: Database) => {
       const r = this.resolveRepoForTx(this.repo, tx);
+      const ledger = await this.ledgerLine(r, input);
+      if (!ledger) return;
       const openPayout = await r.findOpenPayoutForEntity(input.legalEntityId);
 
       if (openPayout) {
@@ -70,8 +84,15 @@ export class PayoutAdjustmentService implements IPayoutAdjustmentPort {
             input.kind,
           );
           if (existing) {
-            const aggregatedAmount = sumDecimal([existing.amount, input.amount]);
-            await r.updateLineAmount(existing.id, aggregatedAmount, input.sourceEventId ?? null);
+            const aggregatedAmount = sumDecimal([existing.amount, ledger.amount]);
+            await r.updateLineAmount(
+              existing.id,
+              aggregatedAmount,
+              input.sourceEventId ?? null,
+              ledger.buyerRefundPence === null
+                ? undefined
+                : (existing.buyerRefundPence ?? 0) + ledger.buyerRefundPence,
+            );
             await this.recalculateTotalsFromLines(r, openPayout.id);
             return;
           }
@@ -79,11 +100,12 @@ export class PayoutAdjustmentService implements IPayoutAdjustmentPort {
         await r.insertLine({
           payoutId: openPayout.id,
           paymentId: input.paymentId,
-          amount: input.amount,
+          amount: ledger.amount,
           kind: input.kind,
           createdByUserId: null,
           note: input.note,
           sourceEventId: input.sourceEventId ?? null,
+          buyerRefundPence: ledger.buyerRefundPence,
         });
         await this.recalculateTotalsFromLines(r, openPayout.id);
         return;
@@ -94,20 +116,21 @@ export class PayoutAdjustmentService implements IPayoutAdjustmentPort {
         legalEntityId: input.legalEntityId,
         periodStart: new Date(now.getTime() - 1),
         periodEnd: now,
-        grossAmount: input.amount,
+        grossAmount: ledger.amount,
         platformFee: "0.00",
         stripeFee: "0.00",
-        netAmount: input.amount,
+        netAmount: ledger.amount,
         currency: DEFAULT_CURRENCY,
       });
       await r.insertLine({
         payoutId: created.id,
         paymentId: input.paymentId,
-        amount: input.amount,
+        amount: ledger.amount,
         kind: input.kind as PayoutLineKind,
         createdByUserId: null,
         note: input.note,
         sourceEventId: input.sourceEventId ?? null,
+        buyerRefundPence: ledger.buyerRefundPence,
       });
     };
 
@@ -116,6 +139,29 @@ export class PayoutAdjustmentService implements IPayoutAdjustmentPort {
       return;
     }
     await this.transactionRunner.runInTransaction(run);
+  }
+
+  /**
+   * What the line puts on the seller's ledger, or `null` when it puts nothing. A buyer's refund is
+   * charged to the seller only as their share of what they received for the sale (nothing before
+   * the sale is paid out); every other line goes on as given.
+   */
+  private async ledgerLine(
+    r: IPayoutRepository,
+    input: AddPaymentPayoutLineInput,
+  ): Promise<LedgerLine | null> {
+    if (input.kind !== "refund") return { amount: input.amount, buyerRefundPence: null };
+    const buyerRefundPence = Number(-parseMoneyToMinorUnits(input.amount));
+    const charge = sellerRefundCharge({
+      facts: await r.findSellerClawbackFacts(input.paymentId),
+      buyerRefundedBeforePence: await r.sumRefundLineCentsForPayment(input.paymentId),
+      buyerRefundPence: Math.max(0, buyerRefundPence),
+    });
+    if (!charge) return null;
+    return {
+      amount: minorUnitsToMoneyString(BigInt(-charge.chargePence)),
+      buyerRefundPence: charge.buyerRefundPence,
+    };
   }
 
   async recalculateTotalsFromLines(repo: IPayoutRepository, payoutId: string): Promise<void> {
