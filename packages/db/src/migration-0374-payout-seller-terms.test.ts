@@ -84,4 +84,12 @@ describe("migration 0374 payout seller terms", () => {
     );
     expect(read("0344_payment_refund.sql")).toContain(original);
   });
+
+  it("stops the rollback, before it changes anything, while a refund line charged by the new rule", () => {
+    const guard = rollback.indexOf("RAISE EXCEPTION");
+    expect(guard).toBeGreaterThan(-1);
+    expect(rollback).toContain(`"buyer_refund_pence" <> -"amount" * 100`);
+    expect(rollback).toMatch(/^-- Forward-fix only once/m);
+    expect(guard).toBeLessThan(rollback.indexOf("DROP TRIGGER"));
+  });
 });

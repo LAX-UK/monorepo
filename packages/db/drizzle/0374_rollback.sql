@@ -3,9 +3,36 @@
 -- lose their hammer, commission and VAT totals (gross, platform fee and net are unchanged), and
 -- refund lines lose the buyer's refund they answered for. The top-up of the buyer's refund record
 -- goes back to reading line amounts, and seller-terms rows lose the held-only re-pricing guard.
+--
+-- Forward-fix only once this release has charged a refund by the new rule. The previous release
+-- reads a refund line's amount as the buyer's refund, so a line that charged the seller's share,
+-- nothing, or a credit would be misread: the top-up would record buyer refunds that never happened
+-- and the next refund event would charge the seller again. The rollback stops while any such line
+-- exists. To check first:
+--   SELECT count(*) FROM "payout_line"
+--   WHERE "kind" = 'refund' AND "buyer_refund_pence" IS NOT NULL
+--     AND "buyer_refund_pence" <> -"amount" * 100;
 BEGIN;
 
 SET LOCAL lock_timeout = '30s';
+-- The column is gone once the rollback has run, so it is read only while it is there.
+DO $$
+DECLARE
+  new_rule_lines bigint;
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = current_schema() AND table_name = 'payout_line'
+      AND column_name = 'buyer_refund_pence'
+  ) THEN
+    SELECT count(*) INTO new_rule_lines FROM "payout_line"
+    WHERE "kind" = 'refund' AND "buyer_refund_pence" IS NOT NULL
+      AND "buyer_refund_pence" <> -"amount" * 100;
+    IF new_rule_lines > 0 THEN
+      RAISE EXCEPTION '% refund line(s) charge the seller other than the buyer''s refund; 0374 is forward-fix only once such lines exist', new_rule_lines;
+    END IF;
+  END IF;
+END $$;
 DROP TRIGGER IF EXISTS "sale_seller_terms_reprice_held_only" ON "sale_seller_terms";
 DROP FUNCTION IF EXISTS "sale_seller_terms_reprice_held_only"();
 -- The top-up as migration 0344 wrote it: it must not read the column dropped below.
