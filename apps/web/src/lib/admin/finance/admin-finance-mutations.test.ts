@@ -29,6 +29,7 @@ const { runPayoutSettlementAction } = await import("./admin-finance-mutations");
 const ENTITY_ID = "c2d8e6f1-b373-4f8a-a2c1-05b7d4e699a4";
 const REASON = "Month-end settlement run";
 const KEY = "key-for-this-form-instance";
+const CONFIRMED = JSON.stringify({ netPence: 9_500, paymentIds: ["p1"], dealIds: [] });
 
 function form(fields: Record<string, string>): FormData {
   const fd = new FormData();
@@ -76,7 +77,12 @@ describe("finance mutations", () => {
 
     await redirectTarget(() =>
       runPayoutSettlementAction(
-        form({ legalEntityId: ENTITY_ID, reason: REASON, idempotencyKey: KEY }),
+        form({
+          legalEntityId: ENTITY_ID,
+          reason: REASON,
+          idempotencyKey: KEY,
+          confirmed: CONFIRMED,
+        }),
       ),
     );
 
@@ -88,7 +94,9 @@ describe("finance mutations", () => {
     fetchMock.mockResolvedValue(ok());
 
     await redirectTarget(() =>
-      runPayoutSettlementAction(form({ legalEntityId: ENTITY_ID, reason: REASON })),
+      runPayoutSettlementAction(
+        form({ legalEntityId: ENTITY_ID, reason: REASON, confirmed: CONFIRMED }),
+      ),
     );
 
     expect(sentHeaders()["Idempotency-Key"]).toMatch(/^[0-9a-f-]{36}$/);
@@ -98,7 +106,9 @@ describe("finance mutations", () => {
     fetchMock.mockResolvedValue(stepUp());
 
     const target = await redirectTarget(() =>
-      runPayoutSettlementAction(form({ legalEntityId: ENTITY_ID, reason: REASON })),
+      runPayoutSettlementAction(
+        form({ legalEntityId: ENTITY_ID, reason: REASON, confirmed: CONFIRMED }),
+      ),
     );
 
     expect(target).toBe(
@@ -114,7 +124,9 @@ describe("finance mutations", () => {
     fetchMock.mockResolvedValue(stepUp());
 
     const target = await redirectTarget(() =>
-      runPayoutSettlementAction(form({ legalEntityId: ENTITY_ID, reason: REASON })),
+      runPayoutSettlementAction(
+        form({ legalEntityId: ENTITY_ID, reason: REASON, confirmed: CONFIRMED }),
+      ),
     );
 
     expect(target).toBe(
@@ -125,7 +137,9 @@ describe("finance mutations", () => {
   it("reports success with a code, never text", async () => {
     fetchMock.mockResolvedValue(ok());
     const target = await redirectTarget(() =>
-      runPayoutSettlementAction(form({ legalEntityId: ENTITY_ID, reason: REASON })),
+      runPayoutSettlementAction(
+        form({ legalEntityId: ENTITY_ID, reason: REASON, confirmed: CONFIRMED }),
+      ),
     );
     expect(target).toBe("/admin/payouts/settlement?result=started");
   });
@@ -135,7 +149,9 @@ describe("finance mutations", () => {
       new Response(JSON.stringify({ error: "<b>internal detail</b>" }), { status: 409 }),
     );
     const target = await redirectTarget(() =>
-      runPayoutSettlementAction(form({ legalEntityId: ENTITY_ID, reason: REASON })),
+      runPayoutSettlementAction(
+        form({ legalEntityId: ENTITY_ID, reason: REASON, confirmed: CONFIRMED }),
+      ),
     );
     expect(target).toBe("/admin/payouts/settlement?result=blocked");
   });
@@ -145,7 +161,9 @@ describe("finance mutations", () => {
       new Response(JSON.stringify({ error: "settlement_period_overlaps" }), { status: 409 }),
     );
     const target = await redirectTarget(() =>
-      runPayoutSettlementAction(form({ legalEntityId: ENTITY_ID, reason: REASON })),
+      runPayoutSettlementAction(
+        form({ legalEntityId: ENTITY_ID, reason: REASON, confirmed: CONFIRMED }),
+      ),
     );
     expect(target).toBe("/admin/payouts/settlement?result=period_conflict");
   });
@@ -161,7 +179,9 @@ describe("finance mutations", () => {
   it("sends the reason with the run", async () => {
     fetchMock.mockResolvedValue(ok());
     await redirectTarget(() =>
-      runPayoutSettlementAction(form({ legalEntityId: ENTITY_ID, reason: REASON })),
+      runPayoutSettlementAction(
+        form({ legalEntityId: ENTITY_ID, reason: REASON, confirmed: CONFIRMED }),
+      ),
     );
     const init = fetchMock.mock.calls[0]?.[1] as { body: string };
     expect(JSON.parse(init.body)).toMatchObject({ legalEntityId: ENTITY_ID, reason: REASON });
@@ -170,7 +190,9 @@ describe("finance mutations", () => {
   it("maps a server failure to the retry code", async () => {
     fetchMock.mockResolvedValue(new Response("{}", { status: 502 }));
     const target = await redirectTarget(() =>
-      runPayoutSettlementAction(form({ legalEntityId: ENTITY_ID, reason: REASON })),
+      runPayoutSettlementAction(
+        form({ legalEntityId: ENTITY_ID, reason: REASON, confirmed: CONFIRMED }),
+      ),
     );
     expect(target).toBe("/admin/payouts/settlement?result=failed");
   });
@@ -192,5 +214,19 @@ describe("finance mutations", () => {
     expect(outcome).toEqual({ error: "figures_changed" });
     const init = fetchMock.mock.calls[0]?.[1] as { body: string };
     expect(JSON.parse(init.body)).toMatchObject({ confirmed });
+  });
+
+  it.each([
+    ["missing", undefined],
+    ["empty", ""],
+    ["not JSON", "{netPence: 1"],
+    ["JSON but not an object", "42"],
+    ["null", "null"],
+  ])("refuses without calling the API when the confirmed figures are %s", async (_label, value) => {
+    const fields: Record<string, string> = { legalEntityId: ENTITY_ID, reason: REASON };
+    if (value !== undefined) fields.confirmed = value;
+    const outcome = await runPayoutSettlementAction(form(fields));
+    expect(outcome).toEqual({ error: "figures_changed" });
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });

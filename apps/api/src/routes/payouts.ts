@@ -211,7 +211,7 @@ export function createAdminPayoutRoutes(
           legalEntityId: body.legalEntityId,
           reason: body.reason,
           ...(body.periodStart ? { periodStart: new Date(body.periodStart) } : {}),
-          ...(body.confirmed ? { confirmed: body.confirmed } : {}),
+          confirmed: body.confirmed,
         });
         if (!result.ok) return c.json({ error: result.reason }, 409);
         return c.json({ data: result.payout }, 201);

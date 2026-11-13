@@ -33,12 +33,18 @@ function redirectSettlement(code: SettlementResultCode): never {
 /** A refusal the settlement dialog shows in place instead of leaving the page. */
 export type SettlementRunOutcome = { error: "figures_changed" } | undefined;
 
-/** The confirmed preview the form carries, as JSON; anything malformed is not sent. */
-function confirmedFrom(formData: FormData): unknown {
+/**
+ * The confirmed preview the form carries, as JSON. `undefined` when it is missing or malformed:
+ * the run is never sent without the figures the person confirmed.
+ */
+function confirmedFrom(formData: FormData): Record<string, unknown> | undefined {
   const raw = formValue(formData, "confirmed");
   if (!raw) return undefined;
   try {
-    return JSON.parse(raw) as unknown;
+    const parsed = JSON.parse(raw) as unknown;
+    return parsed !== null && typeof parsed === "object" && !Array.isArray(parsed)
+      ? (parsed as Record<string, unknown>)
+      : undefined;
   } catch {
     return undefined;
   }
@@ -55,6 +61,9 @@ export async function runPayoutSettlementAction(formData: FormData): Promise<Set
       if (!legalEntityId) redirectSettlement("missing_seller");
       const reason = formValue(formData, "reason");
       if (reason.length < SETTLEMENT_REASON_MIN) redirectSettlement("reason_required");
+      // Nothing confirmed to bind the run to: ask for a fresh preview rather than pay unbound.
+      const confirmed = confirmedFrom(formData);
+      if (!confirmed) return { error: "figures_changed" } as const;
 
       const res = await authedServerFetch("/admin/payouts/run-settlement", {
         method: "POST",
@@ -66,7 +75,7 @@ export async function runPayoutSettlementAction(formData: FormData): Promise<Set
           legalEntityId,
           dryRun: false,
           reason,
-          confirmed: confirmedFrom(formData),
+          confirmed,
         }),
       });
       await redirectIfStaffStepUpRequired(res, SETTLEMENT_PATH);
