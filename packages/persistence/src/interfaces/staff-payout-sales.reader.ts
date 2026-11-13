@@ -8,6 +8,8 @@ export type StaffLineAgreement = {
   source: "online" | "recorded";
   /** As stored ("12.00"); read only to compare an old-rule payment with its agreement. */
   commissionPercent: string | null;
+  /** The sale was priced on this agreement and the row has changed since. */
+  pricedOnEarlierVersion: boolean;
 };
 
 /** One sale on a payout, every figure as stored on its line and snapshot. */

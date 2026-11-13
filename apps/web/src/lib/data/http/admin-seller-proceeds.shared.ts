@@ -31,6 +31,10 @@ const agreementSchema = z.object({
   source: z.enum(["online", "recorded"]),
   legalEntityId: z.string().optional(),
   commissionPercent: z.string().nullable().optional(),
+  /** The signed PDF staff recorded with it; opened through a short-lived link. */
+  signedDocumentId: z.string().nullable().optional().default(null),
+  /** The sale was priced on this agreement before it was corrected. */
+  pricedOnEarlierVersion: z.boolean().optional().default(false),
 });
 export type SellerAgreementRef = z.infer<typeof agreementSchema>;
 
@@ -145,6 +149,7 @@ const lineAgreementSchema = z.object({
   signedAt: isoDate.nullable(),
   source: z.enum(["online", "recorded"]),
   commissionPercent: z.string().nullable(),
+  pricedOnEarlierVersion: z.boolean().optional().default(false),
 });
 
 const heldSaleSchema = z.object({

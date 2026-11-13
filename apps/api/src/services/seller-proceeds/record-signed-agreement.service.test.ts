@@ -269,6 +269,8 @@ describe("RecordSignedAgreementService", () => {
         signedAt: new Date("2026-10-03T10:00:00Z"),
         commissionPercent: "15.00",
         source: "online",
+        signedDocumentId: null,
+        pricedOnEarlierVersion: false,
       },
     });
 
@@ -320,6 +322,8 @@ describe("RecordSignedAgreementService", () => {
           signedAt: new Date("2026-10-03T10:00:00Z"),
           commissionPercent: "15.00",
           source: "online",
+          signedDocumentId: null,
+          pricedOnEarlierVersion: false,
         },
       }),
     );

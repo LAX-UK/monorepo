@@ -13,6 +13,7 @@ import {
   saleSellerTerms,
   user,
 } from "@auction/db/schema";
+import { eq } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 import { DrizzleStaffPayoutSalesReader } from "./drizzle-staff-payout-sales.reader.js";
 import { DrizzleStaffLotSellerProceedsReader } from "./drizzle-staff-seller-proceeds.reader.js";
@@ -276,6 +277,24 @@ describe.skipIf(!HAS_DB)("staff lot seller proceeds reader (integration)", () =>
           agreement: { reference: `C-${reference}` },
         });
         expect(onPayout?.heldForSeller.map((h) => h.lotId)).toEqual([held.lotId]);
+        expect(paidFacts?.agreement?.pricedOnEarlierVersion).toBe(false);
+        expect(onPayout?.sales[0]?.agreement?.pricedOnEarlierVersion).toBe(false);
+
+        // An Administrator corrects the agreement the sale was paid on: the sale keeps its
+        // snapshot's 12%, and both screens say it was priced on an earlier version.
+        await tx
+          .update(consignmentAgreement)
+          .set({ commissionPercent: "15.00", updatedAt: new Date(Date.now() + 1000) })
+          .where(eq(consignmentAgreement.submissionId, paid.submissionId));
+        const corrected = await reader.forLot(paid.lotId);
+        expect(corrected?.sale?.terms?.commissionBps).toBe(1200);
+        expect(corrected?.agreement).toMatchObject({
+          commissionPercent: "15.00",
+          pricedOnEarlierVersion: true,
+        });
+        const correctedLine = (await payouts.forPayout(paidPayoutId))?.sales[0];
+        expect(correctedLine?.terms?.commissionBps).toBe(1200);
+        expect(correctedLine?.agreement?.pricedOnEarlierVersion).toBe(true);
 
         const oldOne = await payouts.forPayout(oldPayout.id);
         expect(oldOne?.payout.hammerAmount).toBeNull();

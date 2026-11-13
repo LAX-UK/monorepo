@@ -33,6 +33,13 @@ export type StaffAgreementFacts = {
   signedAt: Date | null;
   commissionPercent: string | null;
   source: "online" | "recorded";
+  /** The signed PDF staff recorded with it, when there is one. */
+  signedDocumentId: string | null;
+  /**
+   * The sale was priced on this agreement and the row has changed since (corrected by an
+   * Administrator): the sale keeps its snapshot's figures, which are an earlier version's.
+   */
+  pricedOnEarlierVersion: boolean;
 };
 
 /** The buyer's frozen invoice, as far as the seller's side needs it. */

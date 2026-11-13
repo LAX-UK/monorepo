@@ -20,6 +20,7 @@ import type {
   StaffPayoutSaleLine,
   StaffPayoutSales,
 } from "../interfaces/staff-payout-sales.reader.js";
+import { pricedOnEarlierVersion } from "./agreement-version.js";
 
 const money = (value: unknown) => String(value);
 
@@ -54,6 +55,8 @@ export class DrizzleStaffPayoutSalesReader implements IStaffPayoutSalesReader {
           commissionVatBps: saleSellerTerms.commissionVatBps,
           commissionVatPence: saleSellerTerms.commissionVatPence,
           sellerNetPence: saleSellerTerms.sellerNetPence,
+          agreementId: saleSellerTerms.agreementId,
+          computedAt: saleSellerTerms.computedAt,
         },
       })
       .from(payoutLine)
@@ -64,8 +67,12 @@ export class DrizzleStaffPayoutSalesReader implements IStaffPayoutSalesReader {
       .orderBy(asc(lot.lotNumber), asc(payoutLine.createdAt));
 
     const lotIds = lines.map((line) => line.lotId);
-    const [agreements, heldForSeller] = await Promise.all([
+    const pricedOn = lines.flatMap((line) =>
+      line.terms?.agreementId ? [line.terms.agreementId] : [],
+    );
+    const [agreements, snapshotAgreements, heldForSeller] = await Promise.all([
       this.agreementsFor(lotIds),
+      this.agreementsById(pricedOn),
       this.heldFor(row.legalEntityId),
     ]);
 
@@ -101,7 +108,11 @@ export class DrizzleStaffPayoutSalesReader implements IStaffPayoutSalesReader {
         oldRule: priced
           ? null
           : { paymentAmount: money(line.paymentAmount), platformFee: money(line.platformFee) },
-        agreement: agreements.get(line.lotId) ?? null,
+        // The agreement the sale was priced on, flagged when that row changed since.
+        agreement:
+          priced && t?.agreementId && snapshotAgreements.has(t.agreementId)
+            ? this.versioned(snapshotAgreements.get(t.agreementId), t)
+            : (agreements.get(line.lotId) ?? null),
       };
     });
 
@@ -183,6 +194,56 @@ export class DrizzleStaffPayoutSalesReader implements IStaffPayoutSalesReader {
     };
   }
 
+  /** The agreements some sales were priced on, by id, with when each row last changed. */
+  private async agreementsById(
+    ids: readonly string[],
+  ): Promise<Map<string, StaffLineAgreement & { updatedAt: Date }>> {
+    const byId = new Map<string, StaffLineAgreement & { updatedAt: Date }>();
+    if (ids.length === 0) return byId;
+    const rows = await this.db
+      .select({
+        id: consignmentAgreement.id,
+        referenceNumber: itemSubmission.referenceNumber,
+        submissionId: itemSubmission.id,
+        acceptedAt: consignmentAgreement.acceptedAt,
+        source: consignmentAgreement.source,
+        commissionPercent: consignmentAgreement.commissionPercent,
+        updatedAt: consignmentAgreement.updatedAt,
+      })
+      .from(consignmentAgreement)
+      .innerJoin(itemSubmission, eq(itemSubmission.id, consignmentAgreement.submissionId))
+      .where(inArray(consignmentAgreement.id, [...new Set(ids)]));
+    for (const row of rows) {
+      byId.set(row.id, {
+        reference: consignmentReference(row.referenceNumber),
+        submissionId: row.submissionId,
+        signedAt: row.acceptedAt ?? null,
+        source: row.source === "recorded" ? "recorded" : "online",
+        commissionPercent: row.commissionPercent === null ? null : String(row.commissionPercent),
+        pricedOnEarlierVersion: false,
+        updatedAt: row.updatedAt,
+      });
+    }
+    return byId;
+  }
+
+  private versioned(
+    found: (StaffLineAgreement & { updatedAt: Date }) | undefined,
+    terms: { commissionBps: number | null; computedAt: Date | null },
+  ): StaffLineAgreement | null {
+    if (!found) return null;
+    const { updatedAt, ...agreement } = found;
+    return {
+      ...agreement,
+      pricedOnEarlierVersion:
+        terms.computedAt !== null &&
+        pricedOnEarlierVersion(
+          { commissionBps: terms.commissionBps, computedAt: terms.computedAt },
+          { commissionPercent: agreement.commissionPercent, updatedAt },
+        ),
+    };
+  }
+
   /** The agreement behind each lot: the lot seller's own first, then an accepted one. */
   private async agreementsFor(lotIds: readonly string[]): Promise<Map<string, StaffLineAgreement>> {
     const byLot = new Map<string, StaffLineAgreement>();
@@ -213,6 +274,7 @@ export class DrizzleStaffPayoutSalesReader implements IStaffPayoutSalesReader {
         signedAt: row.acceptedAt ?? null,
         source: row.source === "recorded" ? "recorded" : "online",
         commissionPercent: row.commissionPercent === null ? null : String(row.commissionPercent),
+        pricedOnEarlierVersion: false,
       });
     }
     return byLot;

@@ -171,11 +171,43 @@ describe("buildLotSellerProceeds", () => {
             submissionId: "s",
             signedAt: "2026-10-03T12:00:00.000Z",
             source: "recorded",
+            signedDocumentId: null,
+            pricedOnEarlierVersion: false,
           },
         }),
       ),
     );
-    expect(model.breakdown.rateSource).toEqual({ kind: "recorded_by_staff" });
+    expect(model.breakdown.rateSource).toEqual({
+      kind: "recorded_by_staff",
+      reference: "C-1042",
+      href: "/admin/inbox/s",
+      earlierVersion: false,
+    });
+  });
+
+  it("takes the rate from the snapshot and says when the agreement was corrected since", () => {
+    const model = breakdownOf(
+      buildLotSellerProceeds(
+        fixtureLotProceeds({
+          agreement: {
+            reference: "C-1042",
+            submissionId: "s",
+            signedAt: "2026-10-03T12:00:00.000Z",
+            source: "online",
+            commissionPercent: "15.00",
+            signedDocumentId: null,
+            pricedOnEarlierVersion: true,
+          },
+        }),
+      ),
+    );
+    // The snapshot's 12% stands; the live row's 15% is never shown as the rate.
+    expect(model.breakdown.commission?.rateBps).toBe(1200);
+    expect(model.breakdown.rateSource).toMatchObject({
+      kind: "agreement",
+      reference: "C-1042",
+      earlierVersion: true,
+    });
   });
 
   it("holds a sale with no figures and offers to record the agreement", () => {

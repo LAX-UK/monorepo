@@ -15,18 +15,35 @@ import { agreementHref } from "./lot-seller-proceeds.vm";
 
 /** Where a sale's rate comes from, on a preview or payout row. */
 export type RowRateSource =
-  | { kind: "agreement"; reference: string; href: string; signedAt: string | null }
-  | { kind: "recorded_by_staff"; reference: string; href: string }
+  | {
+      kind: "agreement";
+      reference: string;
+      href: string;
+      signedAt: string | null;
+      earlierVersion: boolean;
+    }
+  | { kind: "recorded_by_staff"; reference: string; href: string; earlierVersion: boolean }
   | null;
 
 export function rowRateSource(
-  agreement: Pick<SellerAgreementRef, "reference" | "submissionId" | "signedAt" | "source"> | null,
+  agreement:
+    | (Pick<SellerAgreementRef, "reference" | "submissionId" | "signedAt" | "source"> & {
+        pricedOnEarlierVersion?: boolean;
+      })
+    | null,
 ): RowRateSource {
   if (!agreement) return null;
   const href = agreementHref(agreement.submissionId);
+  const earlierVersion = agreement.pricedOnEarlierVersion ?? false;
   return agreement.source === "recorded"
-    ? { kind: "recorded_by_staff", reference: agreement.reference, href }
-    : { kind: "agreement", reference: agreement.reference, href, signedAt: agreement.signedAt };
+    ? { kind: "recorded_by_staff", reference: agreement.reference, href, earlierVersion }
+    : {
+        kind: "agreement",
+        reference: agreement.reference,
+        href,
+        signedAt: agreement.signedAt,
+        earlierVersion,
+      };
 }
 
 export type SettlementRow = {

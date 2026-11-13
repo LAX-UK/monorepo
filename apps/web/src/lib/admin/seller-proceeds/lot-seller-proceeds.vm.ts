@@ -26,6 +26,17 @@ export function agreementHref(submissionId: string): string {
   return `/admin/inbox/${encodeURIComponent(submissionId)}`;
 }
 
+/** The held notice's "Record signed agreement" button, which the section's text points to. */
+export const RECORD_AGREEMENT_BUTTON_ID = "record-signed-agreement";
+
+/**
+ * Opens a lot's signed agreement PDF: the route asks the API for a link that works for a minute,
+ * after checking the person may handle agreements, and sends the browser to it.
+ */
+export function signedAgreementDocumentHref(lotId: string): string {
+  return `/admin/lots/${encodeURIComponent(lotId)}/signed-agreement`;
+}
+
 /** What the section offers to do next. */
 export type ProceedsAction = "record_agreement" | "mark_settled_outside" | null;
 
@@ -70,15 +81,24 @@ export function premiumRateLabel(ratePercent: string | null, premiumPence: numbe
   return `${match[1]}${fraction ? `.${fraction}` : ""}%`;
 }
 
+/**
+ * Where the snapshot's rate comes from: the agreement it was priced on, said to be an earlier
+ * version when that agreement has been corrected since (the figures stay the snapshot's).
+ */
 function rateSourceFor(agreement: SellerAgreementRef | null): SettlementRateSource | null {
   if (!agreement) return null;
-  if (agreement.source === "recorded") return { kind: "recorded_by_staff" };
+  const href = agreementHref(agreement.submissionId);
+  const earlierVersion = agreement.pricedOnEarlierVersion ?? false;
+  if (agreement.source === "recorded") {
+    return { kind: "recorded_by_staff", reference: agreement.reference, href, earlierVersion };
+  }
   if (!agreement.signedAt) return null;
   return {
     kind: "agreement",
     reference: agreement.reference,
     signedAt: agreement.signedAt,
-    href: agreementHref(agreement.submissionId),
+    href,
+    earlierVersion,
   };
 }
 

@@ -27,6 +27,7 @@ import type {
   StaffSellerTermsFacts,
   StaffSellerTermsSource,
 } from "../interfaces/staff-seller-proceeds.reader.js";
+import { pricedOnEarlierVersion } from "./agreement-version.js";
 import { DrizzleCommissionVatSettingReader } from "./drizzle-seller-terms-facts.reader.js";
 
 /** The audit event that records an ATG sale settled with its seller outside LAX. */
@@ -67,6 +68,8 @@ const AGREEMENT_COLUMNS = {
   acceptedAt: consignmentAgreement.acceptedAt,
   commissionPercent: consignmentAgreement.commissionPercent,
   source: consignmentAgreement.source,
+  signedDocumentId: consignmentAgreement.signedDocumentId,
+  updatedAt: consignmentAgreement.updatedAt,
 } as const;
 
 type AgreementRow = {
@@ -77,17 +80,33 @@ type AgreementRow = {
   acceptedAt: Date | null;
   commissionPercent: string | null;
   source: string;
+  signedDocumentId: string | null;
+  updatedAt: Date;
 };
 
-function agreementFacts(row: AgreementRow): StaffAgreementFacts {
+/** The agreement as staff refer to it; `priced` is the snapshot when the sale was priced on it. */
+function agreementFacts(
+  row: AgreementRow,
+  priced: {
+    agreementId: string | null;
+    commissionBps: number | null;
+    computedAt: Date;
+  } | null = null,
+): StaffAgreementFacts {
+  const commissionPercent = row.commissionPercent === null ? null : String(row.commissionPercent);
   return {
     id: row.id,
     submissionId: row.submissionId,
     reference: consignmentReference(row.referenceNumber),
     legalEntityId: row.legalEntityId,
     signedAt: row.acceptedAt ?? null,
-    commissionPercent: row.commissionPercent === null ? null : String(row.commissionPercent),
+    commissionPercent,
     source: row.source === "recorded" ? "recorded" : "online",
+    signedDocumentId: row.signedDocumentId ?? null,
+    pricedOnEarlierVersion:
+      priced !== null &&
+      priced.agreementId === row.id &&
+      pricedOnEarlierVersion(priced, { commissionPercent, updatedAt: row.updatedAt }),
   };
 }
 
@@ -125,10 +144,21 @@ export class DrizzleStaffLotSellerProceedsReader
       lotRow.atgSold === true ? this.settledOutsideAt(lotId) : Promise.resolve(null),
     ]);
     const snapshotAgreementId = sale?.agreementId ?? null;
-    const agreement =
+    const terms = sale?.facts.terms ?? null;
+    const priced =
+      terms && terms.basis === "agreement"
+        ? {
+            agreementId: snapshotAgreementId,
+            commissionBps: terms.commissionBps,
+            computedAt: terms.computedAt,
+          }
+        : null;
+    // The agreement the sale was priced on, flagged when the row has changed since.
+    const row =
       snapshotAgreementId && snapshotAgreementId !== submission.agreement?.id
-        ? await this.agreementById(snapshotAgreementId)
-        : submission.agreement;
+        ? await this.agreementRowById(snapshotAgreementId)
+        : submission.agreementRow;
+    const agreement = row ? agreementFacts(row, priced) : null;
 
     return {
       lotId: lotRow.lotId,
@@ -310,7 +340,11 @@ export class DrizzleStaffLotSellerProceedsReader
   private async submissionAgreement(
     lotId: string,
     sellerLegalEntityId: string | null,
-  ): Promise<{ submissionId: string | null; agreement: StaffAgreementFacts | null }> {
+  ): Promise<{
+    submissionId: string | null;
+    agreement: StaffAgreementFacts | null;
+    agreementRow: AgreementRow | null;
+  }> {
     const [row] = await this.db
       .select({ submissionId: itemSubmission.id, agreement: AGREEMENT_COLUMNS })
       .from(itemSubmission)
@@ -323,18 +357,22 @@ export class DrizzleStaffLotSellerProceedsReader
         desc(itemSubmission.createdAt),
       )
       .limit(1);
-    if (!row) return { submissionId: null, agreement: null };
-    const agreement = row.agreement?.id ? agreementFacts(row.agreement as AgreementRow) : null;
-    return { submissionId: row.submissionId, agreement };
+    if (!row) return { submissionId: null, agreement: null, agreementRow: null };
+    const agreementRow = row.agreement?.id ? (row.agreement as AgreementRow) : null;
+    return {
+      submissionId: row.submissionId,
+      agreement: agreementRow ? agreementFacts(agreementRow) : null,
+      agreementRow,
+    };
   }
 
-  private async agreementById(id: string): Promise<StaffAgreementFacts | null> {
+  private async agreementRowById(id: string): Promise<AgreementRow | null> {
     const [row] = await this.db
       .select(AGREEMENT_COLUMNS)
       .from(consignmentAgreement)
       .innerJoin(itemSubmission, eq(itemSubmission.id, consignmentAgreement.submissionId))
       .where(eq(consignmentAgreement.id, id))
       .limit(1);
-    return row ? agreementFacts(row as AgreementRow) : null;
+    return (row as AgreementRow | undefined) ?? null;
   }
 }

@@ -43,4 +43,21 @@ describe("buildPayoutPanel", () => {
     });
     expect(panel.inPayoutLabel).toBe("1 sale");
   });
+
+  it("keeps the snapshot's rate and says a sale was priced on an earlier version of its agreement", () => {
+    const corrected = structuredClone(FIXTURE_PAYOUT_SALES);
+    const line = corrected.sales[1];
+    if (!line?.agreement) throw new Error("fixture line has an agreement");
+    line.agreement = {
+      ...line.agreement,
+      commissionPercent: "15.00",
+      pricedOnEarlierVersion: true,
+    };
+    const panel = buildPayoutPanel(corrected);
+    expect(panel.lines[1]).toMatchObject({
+      rate: "Commission 12% · VAT 20%",
+      rateSource: { kind: "agreement", reference: "C-1042", earlierVersion: true },
+    });
+    expect(panel.lines[0]?.rateSource).toMatchObject({ earlierVersion: false });
+  });
 });

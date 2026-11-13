@@ -72,6 +72,8 @@ export function fixtureLotProceeds(
       submissionId: "00000000-0000-4000-8000-0000000000f1",
       signedAt: "2026-10-03T10:00:00.000Z",
       source: "online",
+      signedDocumentId: null,
+      pricedOnEarlierVersion: false,
     },
     submissionId: "00000000-0000-4000-8000-0000000000f1",
     vatSetting: "standard",
@@ -84,6 +86,8 @@ const agreement = (reference: string, n: number) => ({
   submissionId: `00000000-0000-4000-8000-00000000010${n}`,
   signedAt: "2026-10-03T10:00:00.000Z",
   source: "online" as const,
+  signedDocumentId: null,
+  pricedOnEarlierVersion: false,
 });
 
 /** Northbank Gallery Ltd's waiting sales: three ready, Lot 21 held. Net £72,228.50. */
@@ -294,6 +298,7 @@ export const FIXTURE_OLD_RULE_PAYOUT_SALES: PayoutSalesDto = {
         signedAt: "2026-08-01T10:00:00.000Z",
         source: "online",
         commissionPercent: "12.00",
+        pricedOnEarlierVersion: false,
       },
     },
   ],

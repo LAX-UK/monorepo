@@ -5,7 +5,13 @@ import type {
   SettlementDealRow,
   SettlementRow,
 } from "@/lib/admin/seller-proceeds/settlement-preview.vm";
-import { StaffButton, TextLink, cn, formatStaffExportDate } from "@auction/staff-ui";
+import {
+  EARLIER_AGREEMENT_VERSION,
+  StaffButton,
+  TextLink,
+  cn,
+  formatStaffExportDate,
+} from "@auction/staff-ui";
 import Link from "next/link";
 
 /** Where a row's rate comes from, in a cell: the agreement and when it was signed. */
@@ -23,6 +29,9 @@ export function RateSourceCell({ source }: { source: RowRateSource }) {
             ? `Signed ${formatStaffExportDate(source.signedAt)}`
             : null}
       </span>
+      {source.earlierVersion ? (
+        <span className="text-staff-xs text-staff-warning-fg">{EARLIER_AGREEMENT_VERSION}</span>
+      ) : null}
     </span>
   );
 }
