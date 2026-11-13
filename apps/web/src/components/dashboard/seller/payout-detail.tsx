@@ -14,26 +14,56 @@ function Charge({ charge, noVat = false }: { charge: SellerChargeVm | null; noVa
   const under = charge.rate ?? (noVat ? "No VAT" : null);
   return (
     <>
-      {charge.amount}
+      <Amount>{charge.amount}</Amount>
       {under ? <span className="block text-lax-13 text-lax-muted">{under}</span> : null}
     </>
   );
 }
 
+/** An amount kept whole on its line: a minus sign never ends one line and its figure the next. */
+function Amount({ children }: { children: string }) {
+  return <span className="whitespace-nowrap">{children}</span>;
+}
+
+/** Facts with "·" between them, each a label and an amount kept whole. */
+type Fact = readonly [label: string, amount: string] | string;
+
+function Facts({ items }: { items: readonly (Fact | null)[] }) {
+  const shown = items.filter((item): item is Fact => item !== null && item !== "");
+  return (
+    <>
+      {shown.map((item, index) => (
+        <span key={typeof item === "string" ? item : item[0]}>
+          {index > 0 ? " · " : null}
+          {typeof item === "string" ? (
+            item
+          ) : (
+            <>
+              {item[0]} <Amount>{item[1]}</Amount>
+            </>
+          )}
+        </span>
+      ))}
+    </>
+  );
+}
+
 /** A sale on a phone: its split as one line of facts, each charge with its rate. */
-function phoneFacts(line: PayoutLineVm): string {
+function PhoneFacts({ line }: { line: PayoutLineVm }) {
   const sale = line.sale;
-  if (!sale) return line.lot ?? "";
+  if (!sale) return <>{line.lot ?? ""}</>;
   const rated = (label: string, charge: SellerChargeVm) =>
-    `${label}${charge.rate ? ` ${charge.rate}` : ""} ${charge.amount}`;
-  return [
-    line.lot,
-    `hammer ${sale.hammer}`,
-    rated("commission", sale.commission),
-    sale.vat ? (sale.noVat ? "no VAT" : rated("VAT", sale.vat)) : null,
-  ]
-    .filter(Boolean)
-    .join(" · ");
+    [`${label}${charge.rate ? ` ${charge.rate}` : ""}`, charge.amount] as const;
+  return (
+    <Facts
+      items={[
+        line.lot,
+        ["hammer", sale.hammer],
+        rated("commission", sale.commission),
+        sale.vat ? (sale.noVat ? "no VAT" : rated("VAT", sale.vat)) : null,
+      ]}
+    />
+  );
 }
 
 /**
@@ -163,7 +193,9 @@ export function PayoutDetail({ vm }: { vm: PayoutDetailVm }) {
                   </p>
                 </div>
                 {line.sale ? (
-                  <p className="text-lax-13 text-lax-muted">{phoneFacts(line)}</p>
+                  <p className="text-lax-13 text-lax-muted">
+                    <PhoneFacts line={line} />
+                  </p>
                 ) : null}
                 {line.note ? <p className="text-lax-13 text-lax-muted">{line.note}</p> : null}
               </li>
@@ -176,7 +208,13 @@ export function PayoutDetail({ vm }: { vm: PayoutDetailVm }) {
                 </p>
               </div>
               <p className="text-lax-13 text-lax-muted">
-                {`hammer ${vm.totals.hammer} · commission ${vm.totals.commission} · VAT ${vm.totals.vat}`}
+                <Facts
+                  items={[
+                    ["hammer", vm.totals.hammer],
+                    ["commission", vm.totals.commission],
+                    ["VAT", vm.totals.vat],
+                  ]}
+                />
               </p>
             </li>
           </ul>

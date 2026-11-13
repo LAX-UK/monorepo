@@ -64,8 +64,11 @@ export function buildPayoutRows(payouts: readonly Payout[], sellerEntityId: stri
         sellerTerms: payout.sellerTermsTotals
           ? {
               hammer: formatMoney(payout.sellerTermsTotals.hammer, payout.currency),
-              commission: formatMoney(payout.sellerTermsTotals.commission, payout.currency),
-              commissionVat: formatMoney(payout.sellerTermsTotals.commissionVat, payout.currency),
+              commission: formatDeduction(payout.sellerTermsTotals.commission, payout.currency),
+              commissionVat: formatDeduction(
+                payout.sellerTermsTotals.commissionVat,
+                payout.currency,
+              ),
             }
           : null,
         net: formatMoney(payout.netAmount, payout.currency),

@@ -84,6 +84,19 @@ describe("PayoutDetail", () => {
     );
   });
 
+  it("keeps each signed amount whole, with the one minus sign, on a phone and a wide page", () => {
+    const { container } = renderPayout();
+    for (const amount of ["−£12,300.00", "−£2,460.00"]) {
+      const spans = [...container.querySelectorAll("span.whitespace-nowrap")].filter(
+        (span) => span.textContent === amount,
+      );
+      // The table cell, the phone line, and the phone totals.
+      expect(spans).toHaveLength(3);
+    }
+    // No other dash stands in for a minus anywhere on the page.
+    expect(container.textContent).not.toMatch(/[-–]£/);
+  });
+
   it("says no VAT when the company was not VAT-registered", () => {
     renderPayout({
       lines: detail.lines.map((line) => ({

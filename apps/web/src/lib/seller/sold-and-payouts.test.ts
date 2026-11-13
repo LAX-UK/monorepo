@@ -113,7 +113,9 @@ describe("payoutsCsv", () => {
     expect(header).toBe(
       "period,reference,status,hammer,commission,vat_on_commission,sales,commission_and_fees,you_receive,payout_id",
     );
-    expect(lines[0]).toContain('"£82,000.00","£12,300.00","£2,460.00"');
+    // Deductions carry the one minus sign the page uses (U+2212), as in commission_and_fees.
+    expect(lines[0]).toContain('"£82,000.00","\u2212£12,300.00","\u2212£2,460.00"');
+    expect(payoutsCsv(rows)).not.toMatch(/[-–]£/);
     expect(lines[0]).toContain('"£67,240.00",p2');
     expect(lines[1]).toContain("paid,,,,");
     expect(payoutsCsv(rows)).not.toMatch(/premium/i);
