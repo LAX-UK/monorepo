@@ -2,6 +2,7 @@ import type { Database } from "@auction/db";
 import {
   bidInvoice,
   bidInvoiceLine,
+  domainEvent,
   legalEntity,
   lot,
   payment,
@@ -191,6 +192,21 @@ export class DrizzleBidInvoiceRepository
           )
           .returning();
         record = toRecord(inserted, lineRows);
+        // In the same transaction as the invoice, so the books hear of exactly the invoices that exist.
+        await database.insert(domainEvent).values({
+          aggregateType: "bid_invoice",
+          aggregateId: inserted.id,
+          eventType: "invoice.raised",
+          producer: "packages/db",
+          payload: {
+            invoiceId: inserted.id,
+            lotId: inserted.lotId,
+            buyerLegalEntityId: inserted.buyerLegalEntityId,
+            totalPence: inserted.totalPence,
+            raisedAt: inserted.raisedAt.toISOString(),
+          },
+          schemaVersion: 1,
+        });
       } else {
         const existing = await findLive(database, invoice.lotId, invoice.buyerLegalEntityId);
         if (!existing) throw new Error("Invoice insert conflicted but no live invoice was found");

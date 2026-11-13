@@ -1,5 +1,8 @@
 import type {
   AccountingDocument,
+  BidInvoiceFacts,
+  BidPaymentFacts,
+  BidRefundsFacts,
   DocumentKind,
   DocumentRecord,
   DocumentTarget,
@@ -13,6 +16,7 @@ import type {
   Source,
   SwitchCode,
   SwitchConfig,
+  TargetMode,
   Totals,
 } from "@auction/accounting-domain";
 
@@ -106,6 +110,12 @@ export interface IAccountingDocumentTransitions {
 
 export interface ClaimRequest {
   readonly provider: AccountingProvider;
+  /**
+   * The target modes the caller can serve. A pending document aimed at any other mode is left
+   * alone, so a sender that can only rehearse never takes a document aimed at a test or the live
+   * organisation, whatever the switch says.
+   */
+  readonly targetModes: readonly TargetMode[];
   /** Chosen by the caller (the domain reads no randomness); only its holder may complete the send. */
   readonly leaseToken: string;
   readonly leaseMs: number;
@@ -125,6 +135,34 @@ export interface IAccountingDocumentWorkQueue {
   ): Promise<Result<StoredAccountingDocument | null, TransitionCode>>;
 }
 
+export interface DueWorkRequest {
+  readonly provider: AccountingProvider;
+  readonly targetModes: readonly TargetMode[];
+  /**
+   * A failed document whose last error starts with one of these was refused for a passing reason
+   * (a rate limit, the day's budget) and is retried; any other failure waits for a person.
+   */
+  readonly transientErrorPrefixes: readonly string[];
+  readonly limit: number;
+}
+
+export interface DueWork {
+  /**
+   * Documents due for their next automatic step, oldest first: `unknown` ones whose first request
+   * has settled and whose retry wait has passed (they are looked up), and `failed` ones refused for
+   * a passing reason whose wait has passed (they are requeued). The wait grows with the attempts
+   * made (`retryDelayMs`); a document that has used every attempt is due at once, for a person.
+   */
+  readonly documents: readonly StoredAccountingDocument[];
+  /** Rows the domain would not read back; left untouched and reported, never acted on. */
+  readonly unreadable: readonly string[];
+}
+
+/** What the sender does between sends: settle unknown outcomes and retry passing refusals. */
+export interface IAccountingDocumentDueWork {
+  listDue(request: DueWorkRequest): Promise<DueWork>;
+}
+
 export interface IAccountingSourceSettingReader {
   read(): Promise<Result<SwitchConfig, SwitchCode>>;
 }
@@ -140,4 +178,19 @@ export interface SourceSettingChange {
 /** Staff change the switch here; the domain's rule (one live source per product) decides. */
 export interface IAccountingSourceSettingWriter {
   update(change: SourceSettingChange): Promise<Result<SwitchConfig, SwitchCode | "not_found">>;
+}
+
+/** Facts for one flow: ready to project, or a plain reason this event gives the books nothing. */
+export type FactsRead<T> =
+  | { readonly status: "ready"; readonly facts: T }
+  | { readonly status: "skip"; readonly reason: string };
+
+/**
+ * Reads what a Bid accounting flow needs from the stored rows (the events carry ids only). Money
+ * comes back in whole pence, dates as London calendar days, ids lower case.
+ */
+export interface IBidAccountingFactsReader {
+  invoiceRaised(invoiceId: string): Promise<FactsRead<BidInvoiceFacts>>;
+  paymentCaptured(paymentId: string, capturedAt: Date): Promise<FactsRead<BidPaymentFacts>>;
+  paymentRefunded(paymentId: string): Promise<FactsRead<BidRefundsFacts>>;
 }

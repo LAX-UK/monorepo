@@ -3,6 +3,15 @@ import { lotEndedPayloadSchema } from "./lot-payload-schemas.js";
 
 const isoDateTime = z.string().datetime();
 
+/** A Bid invoice raised for a won lot. Ids and the total only: readers fetch the rest. */
+export const invoiceRaisedPayloadSchemaV1 = z.object({
+  invoiceId: z.string().uuid(),
+  lotId: z.string().uuid(),
+  buyerLegalEntityId: z.string().uuid(),
+  totalPence: z.number().int().positive(),
+  raisedAt: isoDateTime,
+});
+
 export const paymentCapturedPayloadSchemaV1 = z.object({
   paymentId: z.string().uuid(),
   lotId: z.string().uuid(),

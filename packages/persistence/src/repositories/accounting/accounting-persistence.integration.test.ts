@@ -23,6 +23,7 @@ const T0 = Date.parse("2031-03-01T10:00:00Z");
 let nowMs = T0;
 const clock = { now: () => new Date(nowMs) };
 const LEASE_MS = 60_000;
+const ALL_MODES = ["dry_run", "test_org", "live"] as const;
 const PROVIDER: AccountingProvider = "books";
 
 function must<T, C extends string>(result: Result<T, C>): T {
@@ -206,7 +207,12 @@ describe.skipIf(!HAS_DB)("accounting persistence (integration)", { timeout: 60_0
 
   describe("a document is claimed only by the provider and mode it was created for (D4b)", () => {
     const claim = (provider: AccountingProvider) =>
-      repos.workQueue.claimNext({ provider, leaseToken: randomUUID(), leaseMs: LEASE_MS });
+      repos.workQueue.claimNext({
+        provider,
+        leaseToken: randomUUID(),
+        leaseMs: LEASE_MS,
+        targetModes: ALL_MODES,
+      });
     const targetOf = async (id: string) =>
       (
         await owner.execute<{ target_provider: string | null; target_mode: string | null }>(
@@ -411,7 +417,12 @@ describe.skipIf(!HAS_DB)("accounting persistence (integration)", { timeout: 60_0
     it("reads a row whose lease a slightly faster worker clock granted", async () => {
       const doc = await register(invoice("shop", newId()));
       must(
-        await repos.workQueue.claimNext({ provider: PROVIDER, leaseToken: "t", leaseMs: LEASE_MS }),
+        await repos.workQueue.claimNext({
+          provider: PROVIDER,
+          leaseToken: "t",
+          leaseMs: LEASE_MS,
+          targetModes: ALL_MODES,
+        }),
       );
       // A reader 30 s behind the granting clock still loads the row (the skew margin).
       const behind = createAccountingRepositories(worker, { now: () => new Date(nowMs - 30_000) });
@@ -472,6 +483,7 @@ describe.skipIf(!HAS_DB)("accounting persistence (integration)", { timeout: 60_0
             provider: PROVIDER,
             leaseToken: randomUUID(),
             leaseMs: LEASE_MS,
+            targetModes: ALL_MODES,
           }),
         ),
       );
@@ -495,11 +507,21 @@ describe.skipIf(!HAS_DB)("accounting persistence (integration)", { timeout: 60_0
       nowMs = T0 + 1_000;
       await register(invoice("bid", newId()));
       const first = must(
-        await repos.workQueue.claimNext({ provider: PROVIDER, leaseToken: "a", leaseMs: LEASE_MS }),
+        await repos.workQueue.claimNext({
+          provider: PROVIDER,
+          leaseToken: "a",
+          leaseMs: LEASE_MS,
+          targetModes: ALL_MODES,
+        }),
       );
       expect(first?.id).toBe(older.stored.id);
       must(
-        await repos.workQueue.claimNext({ provider: PROVIDER, leaseToken: "b", leaseMs: LEASE_MS }),
+        await repos.workQueue.claimNext({
+          provider: PROVIDER,
+          leaseToken: "b",
+          leaseMs: LEASE_MS,
+          targetModes: ALL_MODES,
+        }),
       );
       expect(
         must(
@@ -507,6 +529,7 @@ describe.skipIf(!HAS_DB)("accounting persistence (integration)", { timeout: 60_0
             provider: PROVIDER,
             leaseToken: "c",
             leaseMs: LEASE_MS,
+            targetModes: ALL_MODES,
           }),
         ),
       ).toBeNull();
@@ -519,6 +542,7 @@ describe.skipIf(!HAS_DB)("accounting persistence (integration)", { timeout: 60_0
           provider: PROVIDER,
           leaseToken: "gone",
           leaseMs: LEASE_MS,
+          targetModes: ALL_MODES,
         }),
       );
       expect(claimed?.id).toBe(stored.id);
@@ -531,6 +555,7 @@ describe.skipIf(!HAS_DB)("accounting persistence (integration)", { timeout: 60_0
             provider: PROVIDER,
             leaseToken: "x",
             leaseMs: LEASE_MS,
+            targetModes: ALL_MODES,
           }),
         ),
       ).toBeNull();
@@ -542,7 +567,12 @@ describe.skipIf(!HAS_DB)("accounting persistence (integration)", { timeout: 60_0
       nowMs = T0 + LEASE_MS;
       const next = await register(invoice("bid", newId()));
       const reclaimed = must(
-        await repos.workQueue.claimNext({ provider: PROVIDER, leaseToken: "y", leaseMs: LEASE_MS }),
+        await repos.workQueue.claimNext({
+          provider: PROVIDER,
+          leaseToken: "y",
+          leaseMs: LEASE_MS,
+          targetModes: ALL_MODES,
+        }),
       );
       // The lapsed one is settled to unknown on the way; the caller gets the next pending one.
       expect(reclaimed?.id).toBe(next.stored.id);
@@ -582,6 +612,7 @@ describe.skipIf(!HAS_DB)("accounting persistence (integration)", { timeout: 60_0
           provider: PROVIDER,
           leaseToken: "slow",
           leaseMs: LEASE_MS,
+          targetModes: ALL_MODES,
         }),
       );
       nowMs = T0 + LEASE_MS + 5;
@@ -610,6 +641,7 @@ describe.skipIf(!HAS_DB)("accounting persistence (integration)", { timeout: 60_0
           provider: PROVIDER,
           leaseToken: "tok",
           leaseMs: LEASE_MS,
+          targetModes: ALL_MODES,
         }),
       );
       expect(claimed?.id).toBe(stored.id);
@@ -669,6 +701,46 @@ describe.skipIf(!HAS_DB)("accounting persistence (integration)", { timeout: 60_0
       for (const action of ["requeue", "cancel"] as const) {
         const refused = await repos.transitions.apply(stored.id, { action });
         expect(refused.ok).toBe(false);
+      }
+    });
+
+    it("holds a document that differs on read-back for a person, with both totals on record", async () => {
+      const stored = await sending();
+      const theirs = { ...stored.totals, grossPence: stored.totals.grossPence + 1 };
+      const done = must(
+        await repos.transitions.apply(stored.id, {
+          action: "complete_sending",
+          leaseToken: "tok",
+          outcome: {
+            status: "differs",
+            reason: "zoho_books_payment_mismatch",
+            number: "PMT-9",
+            providerId: "books-9",
+            pdfRef: null,
+            totals: theirs,
+          },
+        }),
+      );
+      expect(done.record).toMatchObject({
+        status: "needs_review",
+        lookup: "clear",
+        issued: { providerId: "books-9", number: "PMT-9" },
+        mismatch: { field: "grossPence", differencePence: 1 },
+      });
+      const [last] = (
+        await owner.execute<{ detail: Record<string, unknown> }>(
+          sql`select detail from accounting_document_event
+              where document_id = ${stored.id} order by id desc limit 1`,
+        )
+      ).rows;
+      expect(last?.detail).toEqual({
+        outcome: "differs",
+        reason: "zoho_books_payment_mismatch",
+        providerTotals: theirs,
+        expectedTotals: stored.totals,
+      });
+      for (const action of ["requeue", "cancel"] as const) {
+        expect((await repos.transitions.apply(stored.id, { action })).ok).toBe(false);
       }
     });
 
@@ -757,6 +829,117 @@ describe.skipIf(!HAS_DB)("accounting persistence (integration)", { timeout: 60_0
       ]);
       expect(results.filter((r) => r.ok)).toHaveLength(1);
       expect((await eventsOf(stored.id)).filter((e) => e.startsWith("cancel"))).toHaveLength(1);
+    });
+  });
+
+  describe("due work (retries with backoff, then a person)", () => {
+    const due = (prefixes: readonly string[] = ["zoho_books_rate_limited_"]) =>
+      repos.dueWork.listDue({
+        provider: PROVIDER,
+        targetModes: ["dry_run"],
+        transientErrorPrefixes: prefixes,
+        limit: 1000,
+      });
+    const dueIds = async (prefixes?: readonly string[]) =>
+      (await due(prefixes)).documents.map((d) => d.id);
+
+    async function sentAndAnswered(outcome: "unknown" | { reason: string }) {
+      const { stored } = await register(invoice("bid", newId()));
+      const claimed = must(
+        await repos.workQueue.claimNext({
+          provider: PROVIDER,
+          leaseToken: "due",
+          leaseMs: LEASE_MS,
+          targetModes: ["dry_run"],
+        }),
+      );
+      expect(claimed?.id).toBe(stored.id);
+      must(
+        await repos.transitions.apply(stored.id, {
+          action: "complete_sending",
+          leaseToken: "due",
+          outcome:
+            outcome === "unknown"
+              ? { status: "unknown" }
+              : { status: "rejected", reason: outcome.reason },
+        }),
+      );
+      return stored.id;
+    }
+
+    it("an unknown outcome is due for lookup only once it has settled and the first wait has passed", async () => {
+      const id = await sentAndAnswered("unknown");
+      const settles = T0 + LEASE_MS + SETTLE_GRACE_MS;
+      nowMs = settles + 29_000;
+      expect(await dueIds()).not.toContain(id);
+      nowMs = settles + 30_000;
+      expect(await dueIds()).toContain(id);
+    });
+
+    it("a passing refusal is retried after its wait; any other refusal waits for a person", async () => {
+      const passing = await sentAndAnswered({ reason: "zoho_books_rate_limited_http_429" });
+      const lasting = await sentAndAnswered({ reason: "zoho_books_mapping_no_tax_id" });
+      nowMs = T0 + 29_000;
+      expect(await dueIds()).not.toContain(passing);
+      nowMs = T0 + 30_000;
+      const ids = await dueIds();
+      expect(ids).toContain(passing);
+      expect(ids).not.toContain(lasting);
+      // A prefix is matched literally: "_" is not a wildcard.
+      expect(await dueIds(["zoho_books_rate_limited"])).toContain(passing);
+      expect(await dueIds(["zoho%"])).not.toContain(passing);
+    });
+
+    it("waits longer after each attempt, and a document out of attempts is due at once", async () => {
+      const id = await sentAndAnswered({ reason: "zoho_books_rate_limited_http_429" });
+      await owner.execute(sql`update accounting_document set attempts = 3 where id = ${id}`);
+      nowMs = T0 + 119_000;
+      expect(await dueIds()).not.toContain(id);
+      nowMs = T0 + 120_000;
+      expect(await dueIds()).toContain(id);
+      await owner.execute(sql`update accounting_document set attempts = 8 where id = ${id}`);
+      nowMs = T0;
+      expect(await dueIds()).toContain(id);
+    });
+
+    it("lists only the modes asked for", async () => {
+      const id = await sentAndAnswered("unknown");
+      nowMs = T0 + 10 * 60_000;
+      const other = await repos.dueWork.listDue({
+        provider: PROVIDER,
+        targetModes: ["test_org", "live"],
+        transientErrorPrefixes: [],
+        limit: 1000,
+      });
+      expect(other.documents.map((d) => d.id)).not.toContain(id);
+    });
+  });
+
+  describe("claiming by target mode", () => {
+    it("a rehearsal-only sender never takes a document aimed at a test organisation", async () => {
+      await setModes("test_org");
+      const doc = await register(invoice("bid", newId()));
+      const dryOnly = await repos.workQueue.claimNext({
+        provider: PROVIDER,
+        leaseToken: "m",
+        leaseMs: LEASE_MS,
+        targetModes: ["dry_run"],
+      });
+      expect(must(dryOnly)).toBeNull();
+      const none = await repos.workQueue.claimNext({
+        provider: PROVIDER,
+        leaseToken: "m",
+        leaseMs: LEASE_MS,
+        targetModes: [],
+      });
+      expect(must(none)).toBeNull();
+      const testOrg = await repos.workQueue.claimNext({
+        provider: PROVIDER,
+        leaseToken: "m",
+        leaseMs: LEASE_MS,
+        targetModes: ["test_org"],
+      });
+      expect(must(testOrg)?.id).toBe(doc.stored.id);
     });
   });
 
