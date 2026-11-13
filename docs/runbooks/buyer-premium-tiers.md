@@ -1,43 +1,53 @@
-# Tiered buyer's premium — implementation reference
+# Buyer's premium — implementation reference
 
-> Status: **shipped** (migration, validators, API, admin tier editor on draft sales, dev-seed demo
-> sale, checkout DTOs). Optional polish and future pricing models listed under follow-ups.
+> Status: **shipped**. Standard clause 11 bands, slice-by-slice charging, half-up rounding, one
+> resolver on every surface, admin premium editor on draft sales, and a pre-deploy check.
 > Owner: catalogue + payments squad.
 
 ## Motivation
 
-The original schema stored a single flat rate per sale (`sale.buyer_premium_rate`). LAX sales have
-two-tier pricing (e.g. 15% under £500 k, 10% at or above), so a single rate always under- or
-over-charged one segment. A tiered strategy with band-based application fixes the invoice math
-faithfully.
+LAX's Conditions of Sale (clause 11) set a banded buyer's premium: **15% up to £500,000, then 10%
+on the part above**. A single flat rate always under- or over-charged one segment. The premium is
+now charged band by band (slice by slice) so each part of the hammer pays its own band's rate, and
+every surface — invoice, checkout, lot page, results — reads it from one resolver.
+
+## Precedence: which premium a lot charges
+
+`resolveBuyerPremium({ lotRate, sale })` decides, in order:
+
+1. **the lot's own premium** — `lot.buyer_premium_rate`, set only when staff override the sale on
+   that lot. `source: "lot"`, charged as a flat rate on the whole hammer.
+2. **the sale's bands** — `sale.buyer_premium_tiers`, when non-empty. `source: "sale_bands"`.
+3. **the sale's flat rate** — `sale.buyer_premium_rate`, when the sale has no bands.
+   `source: "sale_flat"`.
+4. **the published standard** — the clause 11 bands, for a lot outside any sale.
+   `source: "standard"`.
+
+> **This reverses the old precedence.** Before migration 0375 a sale's bands always won and the
+> lot rate was read only in a sale without bands. Now the lot rate is an **override** that wins.
+> `lot.buyer_premium_rate` is nullable: `NULL` means "use the sale's premium". A new sale is
+> created with the standard bands unless staff pick a flat rate.
 
 ## What is shipped
 
 | Layer | Location | Notes |
 |---|---|---|
-| Type definitions | `packages/types/src/buyer-premium.ts` | `BuyerPremiumTier`, `BuyerPremiumPolicy` interface |
-| Zod validation | `packages/validators/src/buyer-premium.ts` | `buyerPremiumTiersSchema`, strategy classes, factory |
-| DB migration | `packages/db/drizzle/0060_buyer_premium_tiers.sql` | Adds nullable `buyer_premium_tiers jsonb` column + CHECK |
-| DB schema | `packages/db/src/schema/sales.ts` | Drizzle column typed as `BuyerPremiumTier[] \| null` |
-| API: payment total | `apps/api/src/services/payment.service.ts` | `totalDue()` calls `buildBuyerPremiumPolicy` |
-| API: checkout pricing | `apps/api/src/lib/lot-checkout-pricing.ts` | Emits `checkoutPricing.kind` on lot DTO |
-| Web: checkout VM | `apps/web/src/lib/data/view-models/dashboard-checkout.vm.ts` | Uses `kind` discriminant, no string-sniffing |
-| Web: admin tier bands | `apps/web/src/components/admin/admin-sale-form.tsx` | Draft-only **Create / Edit sale** at `/admin/sales/new` and `/admin/sales/:id/edit`; `useFieldArray`, major-unit thresholds → minor in mapper |
-| Web: admin sale form schema | `apps/web/src/lib/forms/schemas/admin-sale-form.ts` | `normalizeAdminFormTiersToApi` + `safeParseCreateSaleFromForm` / `safeParseUpdateSaleFromForm` |
-| Web: sale form defaults | `apps/web/src/lib/forms/schemas/admin-sale-defaults.ts` | Edit loads `buyerPremiumTiers` from `Sale`; create starts with empty bands (flat rate only) |
-| Dev seed | `packages/db/src/seed/dev/legacy-demo-seed.ts` | **Spring Contemporary Evening Sale** seeds two-tier bands (15% / 10% at £500k) for local testing |
-| Tests | `packages/validators/src/buyer-premium.test.ts` | Rounding, tier boundaries, factory, schema |
+| Maths (no floats) | `packages/domain/src/buyer-premium-maths.ts` | Slice sums in ten-thousandths of a penny, rounded once |
+| Wording | `packages/domain/src/buyer-premium-wording.ts` | `describeBuyerPremium`, `describeBuyerPremiumBreakdown` |
+| Resolver + policies | `packages/validators/src/buyer-premium.ts` | `resolveBuyerPremium`, `buildBuyerPremiumPolicy`, `FlatRateBuyerPremiumPolicy`, `BandedBuyerPremiumPolicy` |
+| Types | `packages/types/src/buyer-premium.ts` | `BuyerPremiumTier`, `BuyerPremiumSchedule`, `BuyerPremiumSource`, `BuyerPremiumPolicy` |
+| Invoice lines | `packages/validators/src/invoice-lines.ts` | `buildInvoiceLines` — the one money path |
+| Checkout pricing | `packages/validators/src/lot-checkout-pricing.ts` | `computeLotCheckoutPricing` emits `checkoutPricing` on the lot DTO |
+| Invoiced prices | `apps/api/src/lib/invoiced-sale-prices.ts`, `stored-checkout-pricing.ts` | Sold lots show what their live invoice charged, batched |
+| DB migration | `packages/db/drizzle/0375_lot_premium_uses_sale.sql` | Lot rate nullable; clears it for uninvoiced lots in banded sales |
+| DB schema | `packages/db/src/schema/{sales,lots}.ts` | `buyer_premium_tiers jsonb`, nullable `buyer_premium_rate` |
+| Pre-deploy check | `apps/api/scripts/verify-buyer-premium-config.ts` | Read-only; `--pre-deploy` gates the 0375 release |
+| Admin sale/lot premium | `apps/web/src/components/admin/sale-form/...`, `.../lot-form/...` | Bands or flat on the sale; per-lot override |
+| Tests | `packages/validators/src/buyer-premium*.test.ts`, `apps/api/src/services/buyer-premium-invoice.integration.test.ts` | Maths, precedence, invoice, bulk reset |
 
 ## Data model
 
-```sql
-ALTER TABLE "sale" ADD COLUMN IF NOT EXISTS "buyer_premium_tiers" jsonb;
-```
-
-The column is **nullable**. `NULL` means "no tier override; use `lot.buyer_premium_rate`" (existing
-flat-rate behaviour preserved).
-
-When set, it is a JSON array of tier objects sorted ascending by `hammerThresholdMinor`:
+`sale.buyer_premium_tiers` (JSONB, nullable) — the sale's bands, ascending from threshold 0:
 
 ```json
 [
@@ -46,122 +56,96 @@ When set, it is a JSON array of tier objects sorted ascending by `hammerThreshol
 ]
 ```
 
-`hammerThresholdMinor` is in **minor units** (pence for GBP). The example above represents 15%
-under £500 000 and 10% at or above £500 000.
+`hammerThresholdMinor` is in minor units (pence). `NULL` means the sale charges its flat
+`buyer_premium_rate`.
 
-### DB-level guard
+`lot.buyer_premium_rate` (`numeric(5,4)`, nullable) — the lot's own premium, a staff override.
+`NULL` means "use the sale's premium". Migration 0375 dropped its old `NOT NULL DEFAULT 0.25`.
 
-A `CHECK` constraint enforces that when the column is not NULL, it is a non-empty JSON array:
+Detailed validation (first threshold 0, ascending, rate bounds) is enforced by
+`buyerPremiumTiersSchema` (Zod) before any write.
 
-```sql
-CHECK (
-  "buyer_premium_tiers" IS NULL
-  OR (
-    jsonb_typeof("buyer_premium_tiers") = 'array'
-    AND jsonb_array_length("buyer_premium_tiers") >= 1
-  )
-)
-```
+## Band semantics: slice by slice (marginal), not whole-hammer
 
-Detailed field validation (ascending thresholds, first threshold = 0, rate bounds) is enforced in
-the Zod layer (`buyerPremiumTiersSchema`) before any write reaches the DB.
+Each band's rate applies **only to the part of the hammer between its threshold and the next
+band's**. The slices are summed exactly (in ten-thousandths of a penny) and the total is rounded
+**once, half up** (not banker's), so the premium is the same however the hammer is split and never
+drops at a band edge.
 
-## Tier semantics: band-based, not progressive
-
-The rate applied to the **whole hammer** is the one whose `hammerThresholdMinor` is the highest
-value ≤ hammer. This is **not** a progressive/slab model.
-
-| Hammer | Selected tier | Premium |
+| Hammer | Premium | How |
 |---|---|---|
-| £499,999.99 | 15% (threshold 0) | £74,999.99 |
-| £500,000.00 | 10% (threshold £500 k) | £50,000.00 |
+| £499,999.99 | £74,999.99 | 15% of the whole |
+| £500,000.00 | £75,000.00 | 15% of £500,000 |
+| £600,000.00 | £85,000.00 | 15% of £500,000 + 10% of £100,000 |
 
-Rounding is **banker's rounding** (round-half-to-even) to whole pence.
+A lot's own rate (`source: "lot"`) is flat: one rate on the whole hammer.
 
-## Strategy pattern (SOLID)
-
-### Interface — `packages/types/src/buyer-premium.ts`
-
-```ts
-export interface BuyerPremiumPolicy {
-  computePremiumMinor(hammerMinor: number): number;
-  computePremiumMajor(hammerMajor: string): string;
-  readonly id: string; // e.g. "flat:0.1500" | "tiered:[{0,0.15},{50000000,0.10}]"
-}
-```
-
-### Concrete strategies — `packages/validators/src/buyer-premium.ts`
-
-| Class | When used |
-|---|---|
-| `FlatRateBuyerPremiumPolicy` | `sale.buyer_premium_tiers` is NULL or empty |
-| `TieredBuyerPremiumPolicy` | `sale.buyer_premium_tiers` is a non-empty array |
-
-Both live in `@auction/validators` — pure value objects, no DB client, usable server and client.
-
-### Factory
+## The resolver (SOLID)
 
 ```ts
-export function buildBuyerPremiumPolicy(ctx: BuyerPremiumContext): BuyerPremiumPolicy {
-  if (ctx.saleTiers && ctx.saleTiers.length > 0) {
-    return new TieredBuyerPremiumPolicy(ctx.saleTiers);
-  }
-  return new FlatRateBuyerPremiumPolicy(ctx.lotRate);
-}
+// packages/validators/src/buyer-premium.ts
+export function resolveBuyerPremium(ctx: { lotRate; sale }): {
+  source: BuyerPremiumSource;      // "lot" | "sale_bands" | "sale_flat" | "standard"
+  schedule: BuyerPremiumSchedule;  // { kind: "flat", rate } | { kind: "bands", bands }
+  policy: BuyerPremiumPolicy;      // charges the schedule, reports its slices
+};
+
+export function buildBuyerPremiumPolicy(schedule: BuyerPremiumSchedule): BuyerPremiumPolicy;
 ```
 
-`ctx.saleTiers` comes from `sale.buyerPremiumTiers`; `ctx.lotRate` from `lot.buyerPremiumRate`.
-Callers depend only on `BuyerPremiumPolicy` — Dependency Inversion.
+- `FlatRateBuyerPremiumPolicy` — one rate on the whole hammer (a sale's flat rate, or a lot's own).
+- `BandedBuyerPremiumPolicy` — bands charged slice by slice; input sorted, first band must start
+  at 0, thresholds strictly ascending.
 
-## Lot DTO enrichment
+Every caller (invoice lines, checkout pricing, lot page, results, hang labels, copy, the verify
+script) depends on `resolveBuyerPremium` / the policy interface, never on the JSONB shape.
 
-`computeLotCheckoutPricing(lot, sale)` in `apps/api/src/lib/lot-checkout-pricing.ts` emits a
-`checkoutPricing` field on every lot response consumed by the dashboard:
+## Sold lots show what they were charged
 
-```ts
-{
-  hammerMajor: string;
-  premiumMajor: string;
-  totalMajor: string;
-  policyId: string;           // "flat:0.1500" | "tiered:[…]"
-  kind: "flat" | "tiered";    // discriminant — no string-sniffing on clients
-}
+For a sold lot with a live invoice, the public surfaces price from the stored invoice lines, not
+from today's rules: `apps/api/src/lib/invoiced-sale-prices.ts` (`withInvoicedSalePrices`) overlays
+`checkoutPricing` from `IInvoicedSalePriceReader.findInvoicedSalePrices` (one batched read for a
+list). Historical invoices, receipts and sold lines keep the figure the buyer actually paid.
+
+## Migration 0375 and the pre-deploy check
+
+Migration `0375_lot_premium_uses_sale.sql`:
+
+- drops `lot.buyer_premium_rate`'s `NOT NULL DEFAULT 0.25` (NULL now means "use the sale's");
+- defaults `sale.buyer_premium_rate` to `0.15`;
+- **clears `lot.buyer_premium_rate` for uninvoiced lots in a sale with non-empty bands.** The old
+  code never read those rates (a banded sale's bands always won), so clearing them keeps behaviour
+  exactly and stops the stored 25% default becoming an override that reprices live or
+  sold-but-not-invoiced lots. Invoiced lots and lots in flat-rate sales are untouched.
+
+**Before deploying the release**, run the pre-deploy check against production:
+
+```sh
+pnpm --filter @auction/api exec tsx scripts/verify-buyer-premium-config.ts --pre-deploy
 ```
 
-The web checkout VM (`dashboard-checkout.vm.ts`) branches on `kind`, never on `policyId` text.
+It is read-only (SELECTs only). With `--pre-deploy` it applies 0375's lot-rate change first and
+flags every lot open for bidding, or sold but not yet invoiced, whose premium would still change —
+lots staff cannot fix. **Any flagged lot (exit code 1) blocks the deploy.** Without the flag it
+reports the premium each lot in a draft/scheduled/active/ended sale would be charged and marks
+unsold lots whose own premium differs from their sale's.
 
-## Validation — `packages/validators/src/buyer-premium.ts`
+`0375_rollback.sql` refills every NULL rate with the sale's flat rate (or 15% outside a sale)
+before restoring `NOT NULL DEFAULT 0.25`, so it cannot fail on NULL rows. The refilled value is
+unused for a banded sale (bands still win under the old code). Run it in a quiet window
+(`lock_timeout = 5s`).
 
-`buyerPremiumTiersSchema` (Zod) enforces:
+## Putting lots back on the sale's premium (bulk reset)
 
-- Non-empty, maximum 16 tiers.
-- `hammerThresholdMinor`: non-negative integer.
-- First tier must start at `hammerThresholdMinor: 0` (guarantees full coverage).
-- Thresholds strictly ascending and unique.
-- `rate`: decimal string, 0–1 with up to 4 d.p.
-
-Use this schema to validate any write (API `PATCH /sales/:id`, admin sale form mapper) before
-persisting.
-
-## SOLID summary
-
-- **S** — Each strategy owns exactly one pricing rule.
-- **O** — New rules (progressive slabs, charity 0%, estate-only) add a new class; no edits to
-  existing strategies or callers.
-- **L** — Both strategies satisfy `BuyerPremiumPolicy`; callers never need to downcast.
-- **I** — Callers depend on `BuyerPremiumPolicy`, not on schema or strategy internals.
-- **D** — `payment.service.ts` and `lot-checkout-pricing.ts` depend on the interface + factory,
-  not on the JSONB shape or concrete classes.
+`useSalePremiumForLots` (`apps/api/src/services/sale/sale-lot-premium.ts`) clears the own-rate of
+chosen lots in one locking statement
+(`clearOwnPremiumOfUnopenedLots`): only lots still draft or scheduled, with no winner and a rate of
+their own, change — re-checked under their row lock inside the transaction, so a lot that opens for
+bidding mid-reset is left as it is and reported skipped. The change and its audit entry
+(`sale.lot_premiums_reset`, with each changed lot's previous rate) are written together.
 
 ## Follow-ups (optional / future)
 
-1. **Read-only “resolved premium” in buyer-facing UI** — e.g. saleroom or lot drawer: show the
-   effective band and sample premium at current hammer without duplicating math (reuse
-   `buildBuyerPremiumPolicy` + sale/lot context).
-2. **Catalogue CSV → tiers** — if a bulk import pipeline returns two-column under/over rates,
-   map into `buyer_premium_tiers` at import time (no CSV path in repo seed today; dev demo is
-   hardcoded in `legacy-demo-seed.ts`).
-3. **Progressive (slab) variant** — new `BuyerPremiumPolicy` implementation if a sale ever needs
-   slab pricing; callers stay on the factory interface.
-4. **Multi-currency rounding** — switch to a `Money` value object when multi-currency support lands.
-5. **Seller commission tiers** — parallel design; tracked separately from buyer premium.
+1. **Progressive within a band** — not needed today; the slice model already covers clause 11.
+2. **Multi-currency rounding** — switch to a `Money` value object when multi-currency lands.
+3. **Seller commission tiers** — parallel design, tracked separately.
