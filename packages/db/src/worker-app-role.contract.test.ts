@@ -7,6 +7,7 @@ import { createDb } from "./client.js";
 import {
   FINANCE_SETTING_READ_TABLES,
   SELLER_TERMS_INSERT_SELECT_TABLES,
+  SELLER_TERMS_RECOMPUTE_UPDATE_COLUMNS,
   WORKER_ACCOUNTING_APPEND_ONLY_TABLES,
   WORKER_ACCOUNTING_DOCUMENT_TABLES,
   WORKER_ACCOUNTING_DOCUMENT_UPDATE_COLUMNS,
@@ -44,6 +45,17 @@ import {
   payoutLine,
 } from "./schema/index.js";
 import { buildPgConnectionConfig } from "./ssl.js";
+
+/** Every column of the seller-terms table, including the ones settlement must never rewrite. */
+const SELLER_TERMS_PROBE_COLUMNS = [
+  ...SELLER_TERMS_RECOMPUTE_UPDATE_COLUMNS,
+  "payment_id",
+  "lot_id",
+  "seller_legal_entity_id",
+  "hammer_pence",
+  "premium_pence",
+  "legacy_platform_fee_pence",
+] as const;
 
 const WORKER_URL = process.env.DATABASE_URL_WORKER ?? process.env.WORKER_APP_DATABASE_URL;
 const { Client } = pg;
@@ -141,7 +153,7 @@ describe.skipIf(!WORKER_URL)("worker_app role contract", { timeout: 60_000 }, ()
     });
   });
 
-  it("adds seller terms and reads them, reads the finance settings and the agreements behind a lot", async () => {
+  it("adds seller terms, re-prices only their figures, reads the finance settings and the agreements behind a lot", async () => {
     await withWorkerClient(async (client) => {
       const privileges = ["SELECT", "INSERT", "UPDATE", "DELETE"];
       const terms = await readTablePrivileges(
@@ -152,6 +164,16 @@ describe.skipIf(!WORKER_URL)("worker_app role contract", { timeout: 60_000 }, ()
       expectTablePrivileges(terms, (row) => ["SELECT", "INSERT"].includes(row.privilege));
       const settings = await readTablePrivileges(client, FINANCE_SETTING_READ_TABLES, privileges);
       expectTablePrivileges(settings, (row) => row.privilege === "SELECT");
+      // Settlement re-prices a held sale over its row: the figures only, never what the row is for.
+      for (const column of SELLER_TERMS_PROBE_COLUMNS) {
+        const allowed = await client.query<{ allowed: boolean }>(
+          `select has_column_privilege(current_user, 'public.sale_seller_terms', $1, 'UPDATE') as allowed`,
+          [column],
+        );
+        expect(allowed.rows[0]?.allowed, column).toBe(
+          (SELLER_TERMS_RECOMPUTE_UPDATE_COLUMNS as readonly string[]).includes(column),
+        );
+      }
       // The agreement is read column by column: the table-level check sees nothing, and only the
       // columns the rule needs are readable.
       const agreements = await readTablePrivileges(client, ["consignment_agreement"], privileges);
