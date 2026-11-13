@@ -115,6 +115,17 @@ function dealLineFacts(deal: {
 }
 
 /**
+ * The buyer refunds a payment's refund lines answered for, in pence. A line written before lines
+ * recorded it answered for its own amount.
+ */
+function refundLinesAnsweredSql(paymentId: SQL): SQL {
+  return sql`COALESCE((
+    SELECT SUM(COALESCE(pl.buyer_refund_pence, round(abs(pl.amount) * 100)))
+    FROM payout_line pl WHERE pl.payment_id = ${paymentId} AND pl.kind = 'refund'
+  ), 0)`;
+}
+
+/**
  * A lot payment waiting for a payout run: captured, for more than nothing, on no payout yet, and
  * not LAX's own stock (whose proceeds are LAX's and are never paid out).
  */
@@ -678,17 +689,20 @@ export class DrizzlePayoutRepository implements IPayoutRepository, IPayoutProces
   }
 
   async sumRefundLineCentsForPayment(paymentId: string): Promise<number> {
-    // A line that records the buyer's refund it answers for counts that; a line written before
-    // lines recorded it answered for its own amount.
-    const rows = await this.db
-      .select({
-        total: sql<string>`COALESCE(SUM(COALESCE(
-          ${payoutLine.buyerRefundPence}, round(abs(${payoutLine.amount}) * 100)
-        )), 0)::text`,
-      })
-      .from(payoutLine)
-      .where(and(eq(payoutLine.paymentId, paymentId), eq(payoutLine.kind, "refund")));
-    return Number(rows[0]?.total ?? "0");
+    // A sale on no payout owes the seller nothing back, so the seller's side has dealt with every
+    // buyer refund recorded for it. Once it is paid out, the refund lines say what they answered for.
+    const result = await this.db.execute<{ total: string }>(sql`
+      SELECT (CASE
+        WHEN EXISTS (
+          SELECT 1 FROM payout_line pl WHERE pl.payment_id = ${paymentId} AND pl.kind = 'sale'
+        ) THEN ${refundLinesAnsweredSql(sql`${paymentId}::uuid`)}
+        ELSE COALESCE((
+          SELECT SUM(pr.amount_pence) FROM payment_refund pr
+          WHERE pr.payment_id = ${paymentId} AND pr.currency = 'GBP'
+        ), 0)
+      END)::text AS total
+    `);
+    return Number(result.rows[0]?.total ?? "0");
   }
 
   async findSellerClawbackFacts(paymentId: string): Promise<SellerClawbackFacts> {
@@ -709,6 +723,7 @@ export class DrizzlePayoutRepository implements IPayoutRepository, IPayoutProces
           SELECT SUM(round(abs(pl.amount) * 100)) FROM payout_line pl
           WHERE pl.payment_id = "payment"."id" AND pl.kind = 'refund'
         ), 0)::text`,
+        buyerRefundAnsweredPence: sql<string>`(${refundLinesAnsweredSql(sql`"payment"."id"`)})::text`,
       })
       .from(payment)
       .where(eq(payment.id, paymentId))
@@ -724,6 +739,7 @@ export class DrizzlePayoutRepository implements IPayoutRepository, IPayoutProces
       paymentPence: Math.round(Number.parseFloat(String(row.paymentAmount)) * 100),
       paidOut,
       clawedBackPence: Number(row.clawedBackPence),
+      buyerRefundAnsweredPence: Number(row.buyerRefundAnsweredPence),
     };
   }
 

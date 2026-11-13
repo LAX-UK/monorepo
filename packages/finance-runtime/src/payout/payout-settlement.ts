@@ -86,11 +86,9 @@ async function refundBeforePayout(
 ): Promise<{ facts: PayoutLineFacts; chargePence: number; buyerRefundPence: number } | null> {
   if (pending.refundedPence <= 0) return null;
   const facts = await r.findSellerClawbackFacts(pending.id);
-  const before = await r.sumRefundLineCentsForPayment(pending.id);
   const charge = sellerRefundCharge({
     facts: { ...facts, paidOut: { kind: "snapshot", sellerNetPence: terms.sellerNetPence } },
-    buyerRefundedBeforePence: before,
-    buyerRefundPence: Math.max(0, pending.refundedPence - before),
+    buyerRefundPence: Math.max(0, pending.refundedPence - facts.buyerRefundAnsweredPence),
   });
   if (!charge) return null;
   return {

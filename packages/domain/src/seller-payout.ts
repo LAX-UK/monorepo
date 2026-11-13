@@ -126,6 +126,8 @@ export type SellerClawbackFacts = {
     | { kind: "not_paid_out" };
   /** What has been charged back to the seller for it so far (a positive figure). */
   clawedBackPence: number;
+  /** The buyer refunds those charges answered for. */
+  buyerRefundAnsweredPence: number;
 };
 
 /** A refund line on the seller's ledger: what is charged now and the buyer refund it answers for. */
@@ -143,12 +145,11 @@ export type SellerRefundCharge = { chargePence: number; buyerRefundPence: number
  */
 export function sellerRefundCharge(input: {
   facts: SellerClawbackFacts;
-  /** The buyer refunds the seller's ledger has already answered for. */
-  buyerRefundedBeforePence: number;
   /** The buyer refund being handled now. */
   buyerRefundPence: number;
 }): SellerRefundCharge | null {
-  const { facts, buyerRefundedBeforePence, buyerRefundPence } = input;
+  const { facts, buyerRefundPence } = input;
+  const buyerRefundedBeforePence = facts.buyerRefundAnsweredPence;
   assertPence(buyerRefundedBeforePence, "earlier buyer refunds");
   assertPence(buyerRefundPence, "buyer refund");
   if (buyerRefundPence === 0) return null;

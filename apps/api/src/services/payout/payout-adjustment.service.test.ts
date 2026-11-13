@@ -88,12 +88,13 @@ describe("PayoutAdjustmentService aggregated refund lines", () => {
       setStatementUrl: vi.fn(),
       setStatementGenerationError: vi.fn(),
       clearStatementGenerationError: vi.fn(),
-      sumRefundLineCentsForPayment: vi.fn().mockResolvedValue(2000),
+      sumRefundLineCentsForPayment: vi.fn(),
       // Paid out under the old rule: the refund is charged as it stands.
       findSellerClawbackFacts: vi.fn().mockResolvedValue({
         paymentPence: 10_000,
         paidOut: { kind: "old_rule" },
         clawedBackPence: 2000,
+        buyerRefundAnsweredPence: 2000,
       }),
     };
     const db = {

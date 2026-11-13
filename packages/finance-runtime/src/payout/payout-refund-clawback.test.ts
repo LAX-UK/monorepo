@@ -12,14 +12,14 @@ const PAID_FROM_SNAPSHOT: SellerClawbackFacts = {
   paymentPence: pounds(102_500),
   paidOut: { kind: "snapshot", sellerNetPence: pounds(67_240) },
   clawedBackPence: 0,
+  buyerRefundAnsweredPence: 0,
 };
 
-function ledger(facts: SellerClawbackFacts, refundedBefore = 0) {
+function ledger(facts: SellerClawbackFacts) {
   const lines: InsertPayoutLineInput[] = [];
   const create = vi.fn(async (input) => payoutRow({ ...input, id: "clawback" }));
   const repo = makeSettlementRepo({
     findSellerClawbackFacts: async () => facts,
-    sumRefundLineCentsForPayment: async () => refundedBefore,
     create,
     insertLine: vi.fn(async (line: InsertPayoutLineInput) => {
       lines.push(line);
@@ -68,10 +68,11 @@ describe("a buyer's refund charges the seller what they received, not the buyer'
   });
 
   it("a second part refund charges only what is left of the seller's share", async () => {
-    const { lines, refund } = ledger(
-      { ...PAID_FROM_SNAPSHOT, clawedBackPence: pounds(33_620) },
-      pounds(51_250),
-    );
+    const { lines, refund } = ledger({
+      ...PAID_FROM_SNAPSHOT,
+      clawedBackPence: pounds(33_620),
+      buyerRefundAnsweredPence: pounds(51_250),
+    });
     await refund("-51250.00");
     expect(lines[0]).toMatchObject({ amount: "-33620.00", buyerRefundPence: pounds(51_250) });
   });

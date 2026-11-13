@@ -159,7 +159,6 @@ export class PayoutAdjustmentService implements IPayoutAdjustmentPort {
     const buyerRefundPence = Number(-parseMoneyToMinorUnits(input.amount));
     const charge = sellerRefundCharge({
       facts: await r.findSellerClawbackFacts(input.paymentId),
-      buyerRefundedBeforePence: await r.sumRefundLineCentsForPayment(input.paymentId),
       buyerRefundPence: Math.max(0, buyerRefundPence),
     });
     if (!charge) return null;

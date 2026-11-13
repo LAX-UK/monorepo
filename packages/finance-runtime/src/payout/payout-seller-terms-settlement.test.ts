@@ -210,6 +210,7 @@ describe("a payout run pays each sale from its seller terms", () => {
       paymentPence: pounds(102_500),
       paidOut: { kind: "not_paid_out" },
       clawedBackPence: 0,
+      buyerRefundAnsweredPence: 0,
     });
     await createSettlementCore(repo, input, null, storedSellerTerms());
     const refund = written.lines.find((l) => l.kind === "refund");

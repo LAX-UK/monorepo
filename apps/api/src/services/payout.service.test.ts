@@ -70,6 +70,7 @@ function makeRepo(overrides: Partial<IPayoutRepository> = {}): IPayoutRepository
       paymentPence: 0,
       paidOut: { kind: "not_paid_out" },
       clawedBackPence: 0,
+      buyerRefundAnsweredPence: 0,
     }),
     findLineForPaymentAndKind: vi.fn().mockResolvedValue(null),
     updateLineAmount: vi.fn(),

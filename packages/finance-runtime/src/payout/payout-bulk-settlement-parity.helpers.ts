@@ -186,6 +186,7 @@ export function makeSettlementRepo(overrides: Partial<IPayoutRepository> = {}): 
       paymentPence: 0,
       paidOut: { kind: "not_paid_out" },
       clawedBackPence: 0,
+      buyerRefundAnsweredPence: 0,
     }),
     findLineForPaymentAndKind: async () => null,
     updateLineAmount: async () => undefined,

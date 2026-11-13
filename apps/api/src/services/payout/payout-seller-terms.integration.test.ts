@@ -8,6 +8,7 @@ import {
   legalEntity,
   lot,
   payment,
+  paymentRefund,
   payout,
   payoutLine,
   saleSellerTerms,
@@ -246,6 +247,12 @@ describe.skipIf(!HAS_DB)("payout run on seller terms (integration)", () => {
       await db.delete(payout).where(inArray(payout.id, ids));
     }
     await db.delete(saleSellerTerms).where(inArray(saleSellerTerms.lotId, lotIds));
+    const paymentIds = (
+      await db.select({ id: payment.id }).from(payment).where(inArray(payment.lotId, lotIds))
+    ).map((p) => p.id);
+    if (paymentIds.length) {
+      await db.delete(paymentRefund).where(inArray(paymentRefund.paymentId, paymentIds));
+    }
     await db.delete(payment).where(inArray(payment.lotId, lotIds));
     await db.delete(bidInvoice).where(inArray(bidInvoice.lotId, lotIds));
     if (submissionIds.length) {
@@ -420,5 +427,41 @@ describe.skipIf(!HAS_DB)("payout run on seller terms (integration)", () => {
     // £1,000 at 15% + VAT paid the seller £820.00; that is what comes back.
     expect(refund).toMatchObject({ amount: "-820.00", buyerRefundPence: pounds(1_250) });
     expect(await repo.sumRefundLineCentsForPayment(sale.paymentId)).toBe(pounds(1_250));
+  });
+
+  it("a refund before payout charges the seller nothing, and the seller's side counts it as dealt with", async () => {
+    const sale = await seedSale({
+      hammer: 2_000,
+      premium: 500,
+      commissionPercent: "15.00",
+      raised: "agreement",
+    });
+    await runner.runInTransaction(async (tx) => {
+      // The buyer's refund is recorded first, as every refund path does.
+      await tx.insert(paymentRefund).values({
+        paymentId: sale.paymentId,
+        idempotencyKey: `staff-${sale.paymentId}`,
+        amountPence: pounds(2_500),
+        currency: "GBP",
+        source: "staff",
+      });
+      await new PayoutAdjustmentService(runner, repo).addPaymentLineToOpenPayoutOrCreateClawback({
+        legalEntityId: sellerEntity,
+        paymentId: sale.paymentId,
+        amount: "-2500.00",
+        kind: "refund",
+        sourceEventId: `staff-${sale.paymentId}`,
+        note: "Refund",
+        tx,
+      });
+    });
+    const lines = await db
+      .select()
+      .from(payoutLine)
+      .where(eq(payoutLine.paymentId, sale.paymentId));
+    expect(lines).toEqual([]);
+    // A card refund event for the same refund then finds nothing new for the seller, so the refund
+    // is not announced twice.
+    expect(await repo.sumRefundLineCentsForPayment(sale.paymentId)).toBe(pounds(2_500));
   });
 });

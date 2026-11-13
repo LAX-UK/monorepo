@@ -166,15 +166,12 @@ describe("sellerRefundCharge", () => {
     paymentPence: pounds(102_500),
     paidOut: { kind: "snapshot", sellerNetPence: pounds(67_240) },
     clawedBackPence: 0,
+    buyerRefundAnsweredPence: 0,
   };
 
   it("a full refund after payout charges the seller their net, not the buyer's total", () => {
     expect(
-      sellerRefundCharge({
-        facts: paidFromSnapshot,
-        buyerRefundedBeforePence: 0,
-        buyerRefundPence: pounds(102_500),
-      }),
+      sellerRefundCharge({ facts: paidFromSnapshot, buyerRefundPence: pounds(102_500) }),
     ).toEqual({ chargePence: pounds(67_240), buyerRefundPence: pounds(102_500) });
   });
 
@@ -182,30 +179,31 @@ describe("sellerRefundCharge", () => {
     expect(
       sellerRefundCharge({
         facts: { ...paidFromSnapshot, paidOut: { kind: "not_paid_out" } },
-        buyerRefundedBeforePence: 0,
         buyerRefundPence: pounds(102_500),
       }),
     ).toBeNull();
   });
 
   it("two part refunds add up to exactly the net, never more", () => {
-    const first = sellerRefundCharge({
-      facts: paidFromSnapshot,
-      buyerRefundedBeforePence: 0,
-      buyerRefundPence: pounds(51_250),
-    });
+    const first = sellerRefundCharge({ facts: paidFromSnapshot, buyerRefundPence: pounds(51_250) });
     expect(first).toEqual({ chargePence: pounds(33_620), buyerRefundPence: pounds(51_250) });
     const second = sellerRefundCharge({
-      facts: { ...paidFromSnapshot, clawedBackPence: first?.chargePence ?? 0 },
-      buyerRefundedBeforePence: pounds(51_250),
+      facts: {
+        ...paidFromSnapshot,
+        clawedBackPence: first?.chargePence ?? 0,
+        buyerRefundAnsweredPence: pounds(51_250),
+      },
       buyerRefundPence: pounds(60_000),
     });
     expect(second?.chargePence).toBe(pounds(33_620));
     // Nothing is left to charge once the net has been taken back.
     expect(
       sellerRefundCharge({
-        facts: { ...paidFromSnapshot, clawedBackPence: pounds(67_240) },
-        buyerRefundedBeforePence: pounds(102_500),
+        facts: {
+          ...paidFromSnapshot,
+          clawedBackPence: pounds(67_240),
+          buyerRefundAnsweredPence: pounds(102_500),
+        },
         buyerRefundPence: pounds(1),
       }),
     ).toBeNull();
@@ -215,7 +213,6 @@ describe("sellerRefundCharge", () => {
     expect(
       sellerRefundCharge({
         facts: { ...paidFromSnapshot, paidOut: { kind: "old_rule" } },
-        buyerRefundedBeforePence: 0,
         buyerRefundPence: pounds(500),
       }),
     ).toEqual({ chargePence: pounds(500), buyerRefundPence: pounds(500) });
