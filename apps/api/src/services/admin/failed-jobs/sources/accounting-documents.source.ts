@@ -30,7 +30,13 @@ const EMPTY_COUNTS = { needs_review: 0, retried: 0, discarded: 0 } as const;
 /** Where staff handle these documents; the screen links each row there. */
 const HANDLED_ON = "Try it again from Finance › Accounting.";
 
-function failedAt(document: StoredAccountingDocument): string {
+/** When Books first had trouble with the document: when it entered the queue. */
+function firstFailedAt(document: StoredAccountingDocument): string {
+  return document.createdAt.toISOString();
+}
+
+/** When Books last had trouble with it: its last change. */
+function lastFailedAt(document: StoredAccountingDocument): string {
   return document.updatedAt.toISOString();
 }
 
@@ -105,7 +111,6 @@ export class AccountingDocumentsSource implements FailedJobSourceAdapter {
   }
 
   private summary(document: StoredAccountingDocument): FailedJobSummary {
-    const at = failedAt(document);
     return {
       // `accounting:<tab>:<id>`, so the screen opens the Accounting tab the document is in.
       id: `${FAILED_JOB_ID_PREFIXES.accounting}${queueTabFor(document.record) ?? "failed"}:${document.id}`,
@@ -114,11 +119,11 @@ export class AccountingDocumentsSource implements FailedJobSourceAdapter {
       queue: BOOKS_QUEUE_ID,
       typeLabel: `${ACCOUNTING_DOCUMENT_TYPE_LABELS[document.kind]} to Zoho Books`,
       jobLabel: document.reference,
-      sourceLabel: "Integration · Zoho Books",
+      sourceLabel: "Integrations · Zoho Books",
       errorSummary: accountingProblemText(reasonOf(document)),
       attempts: document.record.attempts,
-      firstFailedAt: at,
-      lastFailedAt: at,
+      firstFailedAt: firstFailedAt(document),
+      lastFailedAt: lastFailedAt(document),
       state: "needs_review",
       mayRepeat: false,
       retry: { allowed: false, reason: HANDLED_ON },
