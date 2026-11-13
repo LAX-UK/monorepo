@@ -5,7 +5,22 @@
 -- again. The domain refuses the requeue too (`requeue` answers `parked`); this holds the table to
 -- it whatever the application does. Everything else in 0379's rule is unchanged. Other roles are
 -- not affected. A refusal is `insufficient_privilege` (42501), as before.
+--
+-- A parked document was never sent, so it has no provider. 0368's `provider_sent_ck` allowed that
+-- only for `pending` and `cancelled`; it now also allows a parked review: nothing tried
+-- (`attempts` 0), nothing owed, no provider document, and a parked reason.
 SET LOCAL lock_timeout = '5s';
+--> statement-breakpoint
+ALTER TABLE "accounting_document" DROP CONSTRAINT IF EXISTS "accounting_document_provider_sent_ck";
+--> statement-breakpoint
+ALTER TABLE "accounting_document" ADD CONSTRAINT "accounting_document_provider_sent_ck" CHECK (
+  "provider" IS NOT NULL
+  OR ("attempts" = 0 AND (
+    "state" IN ('pending', 'cancelled')
+    OR ("state" = 'needs_review' AND "review_lookup" = 'clear' AND "provider_id" IS NULL
+      AND starts_with("needs_review_reason", 'accounting_parked_'))
+  ))
+);
 --> statement-breakpoint
 CREATE OR REPLACE FUNCTION "accounting_document_api_requeue_only"() RETURNS trigger
 LANGUAGE plpgsql AS $fn$

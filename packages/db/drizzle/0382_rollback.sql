@@ -1,10 +1,17 @@
 -- Rollback for 0382_accounting_parked_documents. Roll back the release first, then this.
 -- It restores 0379's requeue rule for api_app (which does not know parked documents; the domain
--- still refuses to requeue one). No data is changed. Also removes this migration's ledger row so
--- a later deploy reapplies it.
+-- still refuses to requeue one) and 0368's `provider_sent_ck`. That CHECK is added back NOT VALID,
+-- so parked rows already stored stay as they are (no data is changed) while no new one can be
+-- written by the earlier release. Also removes this migration's ledger row so a later deploy
+-- reapplies it.
 BEGIN;
 
 SET LOCAL lock_timeout = '5s';
+ALTER TABLE "accounting_document" DROP CONSTRAINT IF EXISTS "accounting_document_provider_sent_ck";
+ALTER TABLE "accounting_document" ADD CONSTRAINT "accounting_document_provider_sent_ck" CHECK (
+  "provider" IS NOT NULL
+  OR ("attempts" = 0 AND "state" IN ('pending', 'cancelled'))
+) NOT VALID;
 CREATE OR REPLACE FUNCTION "accounting_document_api_requeue_only"() RETURNS trigger
 LANGUAGE plpgsql AS $fn$
 BEGIN
