@@ -54,7 +54,8 @@ const LOT_WIZARD_FIELD_STEPS = 3;
 type SaleOption = Pick<
   Sale,
   "id" | "title" | "status" | "deliveryMode" | "startTime" | "endTime" | "timeZone"
->;
+> &
+  Partial<Pick<Sale, "buyerPremiumRate" | "buyerPremiumTiers">>;
 
 type Props = {
   mode: "create" | "edit";

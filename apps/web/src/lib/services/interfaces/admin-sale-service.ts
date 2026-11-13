@@ -12,6 +12,11 @@ import type { z } from "zod";
 import type { ServiceResult } from "../http/service-result";
 
 export type CreateSaleInput = z.infer<typeof createSaleSchema>;
+/** What `POST /sales/:id/lots/use-sale-premium` reports. */
+export type UseSalePremiumResult = {
+  updatedLotIds: string[];
+  skipped: { lotId: string; reason: "not_in_sale" | "not_editable" | "already_uses_sale" }[];
+};
 export type CreateNestedLotForSaleInput = z.infer<typeof createNestedLotForSaleSchema>;
 export type UpdateSaleInput = z.infer<typeof updateSaleSchema>;
 export type CancelSaleBody = z.infer<typeof cancelSaleBodySchema>;
@@ -43,6 +48,11 @@ export interface IAdminSaleService {
     via?: "attach_endpoint" | "wizard",
   ): Promise<ServiceResult<Record<string, unknown>>>;
   detachLot(saleId: string, lotId: string): Promise<ServiceResult<Record<string, unknown>>>;
+  /** Puts unsold lots that have not opened back on the sale's buyer's premium. */
+  useSalePremiumForLots(
+    saleId: string,
+    lotIds: readonly string[],
+  ): Promise<ServiceResult<{ data: UseSalePremiumResult }>>;
   markEnded(id: string, body: MarkSaleEndedBody): Promise<ServiceResult<Record<string, unknown>>>;
   cancelLot(
     saleId: string,

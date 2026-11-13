@@ -1,7 +1,15 @@
-import { StaffMoneyField, StaffPercentField } from "@/components/admin/forms/staff-form-fields";
-import type { AdminSaleFormValues } from "@/lib/forms/schemas/admin-sale-form";
-import { formatMoney } from "@/lib/ui/format";
+import {
+  StaffMoneyField,
+  StaffPercentField,
+  StaffRadioField,
+} from "@/components/admin/forms/staff-form-fields";
+import {
+  type AdminSaleFormValues,
+  type SaleBuyerPremiumMode,
+  standardBuyerPremiumTierRows,
+} from "@/lib/forms/schemas/admin-sale-form";
 import { FieldRow, FormSection, KeyValueList, ListEditor, Notice } from "@auction/staff-ui";
+import { STANDARD_BUYER_PREMIUM, describeBuyerPremium } from "@auction/validators";
 import type {
   FieldArrayWithId,
   UseFieldArrayAppend,
@@ -20,9 +28,34 @@ type Props = {
   tierBandPreview: TierPreview;
 };
 
+const STANDARD_TERMS = describeBuyerPremium(STANDARD_BUYER_PREMIUM);
+
+export const BUYER_PREMIUM_MODE_OPTIONS: ReadonlyArray<{
+  value: SaleBuyerPremiumMode;
+  label: string;
+  description: string;
+}> = [
+  {
+    value: "standard",
+    label: `Standard: ${STANDARD_TERMS}`,
+    description: "The premium in the Conditions of Sale. Use it unless the sale has agreed terms.",
+  },
+  {
+    value: "flat",
+    label: "Flat rate",
+    description: "One rate on the whole hammer price.",
+  },
+  {
+    value: "bands",
+    label: "Custom bands",
+    description: "Each rate is charged on the part of the hammer inside its band.",
+  },
+];
+
 /**
- * The buyer's premium: one flat rate, or bands where the rate for the whole hammer is the band
- * whose threshold is the highest still at or below it. The first band starts at £0.
+ * The buyer's premium every lot in the sale charges unless a lot has its own: the standard
+ * premium, one flat rate, or bands charged slice by slice. A worked example shows what the
+ * choice charges. Fixed once the sale is published.
  */
 export function BuyerPremiumSection({
   form,
@@ -33,58 +66,66 @@ export function BuyerPremiumSection({
   tierBandPreview,
 }: Props) {
   const f = { control: form.control, formId: SALE_FORM_ID, disabled: !isDraft } as const;
+  const mode = form.watch("buyerPremiumMode");
   return (
     <FormSection
       title="Buyer's premium"
-      description="A flat rate, or bands by hammer price. Fixed once the sale is published."
+      description="Charged to the buyer on top of the hammer price. Fixed once the sale is published."
     >
-      <StaffPercentField
+      <StaffRadioField<AdminSaleFormValues, SaleBuyerPremiumMode>
         {...f}
-        name="buyerPremiumRate"
-        label="Flat rate"
-        optional
-        placeholder="25"
-        description="Charged on the hammer price when there are no bands."
+        name="buyerPremiumMode"
+        label="Premium"
+        options={BUYER_PREMIUM_MODE_OPTIONS}
+        onChanged={(next) => {
+          // Custom bands start from the standard ones, so staff edit rather than retype them.
+          if (next === "bands" && fields.length === 0) append(standardBuyerPremiumTierRows());
+        }}
       />
-      <ListEditor
-        items={fields}
-        getKey={(item) => item.id}
-        itemLabel={(index) => `band ${index + 1}`}
-        addLabel={fields.length === 0 ? "Add bands" : "Add band"}
-        emptyText="No bands: the flat rate applies to every hammer price."
-        max={16}
-        disabled={!isDraft}
-        onAdd={() => append({ hammerThresholdMajor: fields.length === 0 ? "0" : "", rate: "" })}
-        onRemove={(index) => remove(index)}
-        renderItem={(_item, index) => (
-          <FieldRow>
-            {index === 0 ? (
-              <KeyValueList items={[{ label: "From hammer", value: "£0.00", numeric: true }]} />
-            ) : (
-              <StaffMoneyField
+      {mode === "flat" ? (
+        <StaffPercentField
+          {...f}
+          name="buyerPremiumRate"
+          label="Flat rate"
+          placeholder="15"
+          description="Charged on the whole hammer price."
+        />
+      ) : null}
+      {mode === "bands" ? (
+        <ListEditor
+          items={fields}
+          getKey={(item) => item.id}
+          itemLabel={(index) => `band ${index + 1}`}
+          addLabel="Add band"
+          emptyText="No bands yet. Add the first band, which starts at £0."
+          max={16}
+          disabled={!isDraft}
+          onAdd={() => append({ hammerThresholdMajor: fields.length === 0 ? "0" : "", rate: "" })}
+          onRemove={(index) => remove(index)}
+          renderItem={(_item, index) => (
+            <FieldRow>
+              {index === 0 ? (
+                <KeyValueList items={[{ label: "From hammer", value: "£0.00", numeric: true }]} />
+              ) : (
+                <StaffMoneyField
+                  {...f}
+                  name={`buyerPremiumTiers.${index}.hammerThresholdMajor`}
+                  label="From hammer"
+                />
+              )}
+              <StaffPercentField
                 {...f}
-                name={`buyerPremiumTiers.${index}.hammerThresholdMajor`}
-                label="From hammer"
+                name={`buyerPremiumTiers.${index}.rate`}
+                label="Rate"
+                placeholder="15"
               />
-            )}
-            <StaffPercentField
-              {...f}
-              name={`buyerPremiumTiers.${index}.rate`}
-              label="Rate"
-              placeholder="15"
-            />
-          </FieldRow>
-        )}
-      />
+            </FieldRow>
+          )}
+        />
+      ) : null}
       {tierBandPreview.ok ? (
-        <Notice
-          tone="info"
-          title={`Example with ${tierBandPreview.kind === "tiered" ? "these bands" : "the flat rate"}`}
-        >
-          {formatMoney(tierBandPreview.at250k.hammer)} hammer → buyer premium{" "}
-          {formatMoney(tierBandPreview.at250k.premium)}.{" "}
-          {formatMoney(tierBandPreview.at600k.hammer)} hammer → premium{" "}
-          {formatMoney(tierBandPreview.at600k.premium)}.
+        <Notice tone="info" title={`Buyer's premium: ${tierBandPreview.terms}`}>
+          {tierBandPreview.example}.
         </Notice>
       ) : null}
     </FormSection>

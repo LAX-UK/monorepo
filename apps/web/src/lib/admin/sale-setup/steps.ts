@@ -32,6 +32,7 @@ export const SALE_SETUP_SALE_STEP_FIELDS = {
     "streamUrl",
     "locationName",
     "locationPostcode",
+    "buyerPremiumMode",
     "buyerPremiumRate",
     "buyerPremiumTiers",
   ],

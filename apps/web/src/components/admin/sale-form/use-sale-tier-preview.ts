@@ -1,41 +1,62 @@
 "use client";
 
-import { normalizeAdminFormTiersToApi } from "@/lib/forms/schemas/admin-sale-form";
-import type { AdminSaleFormValues } from "@/lib/forms/schemas/admin-sale-form";
-import { buildBuyerPremiumPolicy } from "@auction/validators";
+import {
+  type AdminSaleFormValues,
+  buyerPremiumPayloadFromForm,
+} from "@/lib/forms/schemas/admin-sale-form";
+import type { BuyerPremiumSchedule } from "@auction/types";
+import { buyerPremiumWorkedExample, describeBuyerPremium } from "@auction/validators";
 import { useMemo } from "react";
 import type { UseFormReturn } from "react-hook-form";
+
+/** The hammer the worked example uses: past the standard band edge, so both rates show. */
+export const PREMIUM_EXAMPLE_HAMMER_MINOR = 60_000_000;
 
 export type SaleTierBandPreview =
   | { ok: false }
   | {
       ok: true;
-      kind: "tiered" | "flat";
-      at250k: { hammer: string; premium: string };
-      at600k: { hammer: string; premium: string };
+      /** "15% up to £500,000, 10% above". */
+      terms: string;
+      /** "On a £600,000 hammer the buyer pays £85,000 premium". */
+      example: string;
     };
+
+/** The premium the form's choice would charge, in words and as a worked example. */
+export function saleBuyerPremiumPreview(
+  values: Pick<AdminSaleFormValues, "buyerPremiumMode" | "buyerPremiumRate" | "buyerPremiumTiers">,
+): SaleTierBandPreview {
+  const payload = buyerPremiumPayloadFromForm(values);
+  if (!payload.ok) return { ok: false };
+  const { buyerPremiumRate, buyerPremiumTiers } = payload.data;
+  let schedule: BuyerPremiumSchedule;
+  if (buyerPremiumTiers && buyerPremiumTiers.length > 0) {
+    schedule = { kind: "bands", bands: buyerPremiumTiers };
+  } else if (buyerPremiumRate) {
+    schedule = { kind: "flat", rate: buyerPremiumRate };
+  } else {
+    return { ok: false };
+  }
+  return {
+    ok: true,
+    terms: describeBuyerPremium(schedule),
+    example: buyerPremiumWorkedExample(schedule, PREMIUM_EXAMPLE_HAMMER_MINOR),
+  };
+}
 
 export function useSaleTierBandPreview(
   form: UseFormReturn<AdminSaleFormValues>,
 ): SaleTierBandPreview {
-  const tierRowsWatch = form.watch("buyerPremiumTiers");
-  const buyerPremiumRateWatch = form.watch("buyerPremiumRate");
-
-  return useMemo(() => {
-    const parsed = normalizeAdminFormTiersToApi(tierRowsWatch);
-    if (!parsed.ok) return { ok: false as const };
-    const policy = buildBuyerPremiumPolicy({
-      saleTiers: parsed.data,
-      lotRate: buyerPremiumRateWatch.trim() || "0.25",
-    });
-    const exLow = "250000";
-    const exHigh = "600000";
-    const kind = parsed.data && parsed.data.length > 0 ? ("tiered" as const) : ("flat" as const);
-    return {
-      ok: true as const,
-      kind,
-      at250k: { hammer: exLow, premium: policy.computePremiumMajor(exLow) },
-      at600k: { hammer: exHigh, premium: policy.computePremiumMajor(exHigh) },
-    };
-  }, [tierRowsWatch, buyerPremiumRateWatch]);
+  const mode = form.watch("buyerPremiumMode");
+  const rate = form.watch("buyerPremiumRate");
+  const tiers = form.watch("buyerPremiumTiers");
+  return useMemo(
+    () =>
+      saleBuyerPremiumPreview({
+        buyerPremiumMode: mode,
+        buyerPremiumRate: rate,
+        buyerPremiumTiers: tiers,
+      }),
+    [mode, rate, tiers],
+  );
 }

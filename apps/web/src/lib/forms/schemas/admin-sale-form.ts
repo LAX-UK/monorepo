@@ -1,7 +1,8 @@
-import type { BuyerPremiumTier } from "@auction/types";
+import type { BuyerPremiumTier, Sale } from "@auction/types";
 import { saleDeliveryModes } from "@auction/types";
 import { instantFromDatetimeFormString } from "@auction/ui/lib/datetime";
 import {
+  STANDARD_BUYER_PREMIUM_BANDS,
   buyerPremiumTiersSchema,
   createSaleSchema,
   isAllowedStreamUrl,
@@ -13,6 +14,8 @@ import {
   normalizeUkPostcode,
   saleTimeZoneMessage,
   saleTimeZoneProblem,
+  sameBuyerPremiumSchedule,
+  standardBuyerPremiumBands,
   updateSaleSchema,
 } from "@auction/validators";
 import { z } from "zod";
@@ -32,6 +35,13 @@ export const adminSaleTierRowSchema = z.object({
   /** Empty rows are ignored; a filled one is a rate like the flat rate. */
   rate: optionalBuyerPremiumRateSchema,
 });
+
+/**
+ * How the sale charges its buyer's premium: the published standard (15% up to £500,000, 10%
+ * above), one flat rate, or staff-defined bands.
+ */
+export const saleBuyerPremiumModes = ["standard", "flat", "bands"] as const;
+export type SaleBuyerPremiumMode = (typeof saleBuyerPremiumModes)[number];
 
 export const adminSaleFormValuesSchema = z
   .object({
@@ -62,8 +72,10 @@ export const adminSaleFormValuesSchema = z
     startTime: z.string().min(1, "Start is required"),
     endTime: z.string().min(1, "End is required"),
     previewStartTime: z.string(),
+    buyerPremiumMode: z.enum(saleBuyerPremiumModes),
+    /** The flat rate, read when the mode is `flat`. */
     buyerPremiumRate: optionalBuyerPremiumRateSchema,
-    /** Band rows; empty = flat rate only (`buyerPremiumRate`). */
+    /** Band rows, read when the mode is `bands`. */
     buyerPremiumTiers: z.array(adminSaleTierRowSchema).max(16),
     terms: z.string().max(50_000),
   })
@@ -130,6 +142,23 @@ export const adminSaleFormValuesSchema = z
         path: ["heroVideoUrl"],
       });
     }
+    if (values.buyerPremiumMode === "flat" && !values.buyerPremiumRate.trim()) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Enter the flat rate",
+        path: ["buyerPremiumRate"],
+      });
+    }
+    if (
+      values.buyerPremiumMode === "bands" &&
+      values.buyerPremiumTiers.every((row) => !row.rate.trim())
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Add at least one band",
+        path: ["buyerPremiumTiers"],
+      });
+    }
     if (isSaleroomDeliveryMode(values.deliveryMode)) {
       const postcode = values.locationPostcode.trim();
       if (postcode) {
@@ -186,6 +215,51 @@ export function normalizeAdminFormTiersToApi(
     return { ok: false, error: parsed.error };
   }
   return { ok: true, data: parsed.data };
+}
+
+/** The mode a saved sale's premium is in: bands equal to the standard read as the standard. */
+export function saleBuyerPremiumModeOf(
+  sale: Pick<Sale, "buyerPremiumTiers">,
+): SaleBuyerPremiumMode {
+  const tiers = sale.buyerPremiumTiers;
+  if (!tiers || tiers.length === 0) return "flat";
+  return sameBuyerPremiumSchedule(
+    { kind: "bands", bands: tiers },
+    { kind: "bands", bands: STANDARD_BUYER_PREMIUM_BANDS },
+  )
+    ? "standard"
+    : "bands";
+}
+
+/** The standard bands as form rows, a starting point for custom bands. */
+export function standardBuyerPremiumTierRows(): AdminSaleFormValues["buyerPremiumTiers"] {
+  return STANDARD_BUYER_PREMIUM_BANDS.map((band) => ({
+    hammerThresholdMajor: String(band.hammerThresholdMinor / 100),
+    rate: band.rate,
+  }));
+}
+
+/**
+ * The premium the API stores for the chosen mode: the standard bands, the flat rate (no bands),
+ * or the staff's bands. `null` when the band rows do not parse.
+ */
+export function buyerPremiumPayloadFromForm(
+  values: Pick<AdminSaleFormValues, "buyerPremiumMode" | "buyerPremiumRate" | "buyerPremiumTiers">,
+):
+  | { ok: true; data: { buyerPremiumRate?: string; buyerPremiumTiers: BuyerPremiumTier[] | null } }
+  | { ok: false; error: z.ZodError } {
+  if (values.buyerPremiumMode === "standard") {
+    return { ok: true, data: { buyerPremiumTiers: standardBuyerPremiumBands() } };
+  }
+  if (values.buyerPremiumMode === "flat") {
+    const rate = values.buyerPremiumRate.trim();
+    return {
+      ok: true,
+      data: { ...(rate ? { buyerPremiumRate: rate } : {}), buyerPremiumTiers: null },
+    };
+  }
+  const tiers = normalizeAdminFormTiersToApi(values.buyerPremiumTiers);
+  return tiers.ok ? { ok: true, data: { buyerPremiumTiers: tiers.data } } : tiers;
 }
 
 type LocationFormFieldKey =
@@ -258,9 +332,9 @@ function pickHeroFields(values: AdminSaleFormValues): {
 }
 
 export function safeParseCreateSaleFromForm(values: AdminSaleFormValues) {
-  const tiers = normalizeAdminFormTiersToApi(values.buyerPremiumTiers);
-  if (!tiers.ok) {
-    return { success: false as const, error: tiers.error };
+  const premium = buyerPremiumPayloadFromForm(values);
+  if (!premium.ok) {
+    return { success: false as const, error: premium.error };
   }
   const isSaleroom = isSaleroomDeliveryMode(values.deliveryMode);
   const zone = readingZone(values.timeZone);
@@ -284,8 +358,7 @@ export function safeParseCreateSaleFromForm(values: AdminSaleFormValues) {
     previewStartTime: values.previewStartTime.trim()
       ? instantFromDatetimeFormString(values.previewStartTime, zone)
       : undefined,
-    buyerPremiumRate: values.buyerPremiumRate.trim() || undefined,
-    ...(tiers.data !== null ? { buyerPremiumTiers: tiers.data } : {}),
+    ...premium.data,
     terms: values.terms.trim() || undefined,
   });
 }
@@ -304,9 +377,9 @@ export function safeParseUpdatePublishedSaleFromForm(values: AdminSaleFormValues
 }
 
 export function safeParseUpdateSaleFromForm(values: AdminSaleFormValues) {
-  const tiers = normalizeAdminFormTiersToApi(values.buyerPremiumTiers);
-  if (!tiers.ok) {
-    return { success: false as const, error: tiers.error };
+  const premium = buyerPremiumPayloadFromForm(values);
+  if (!premium.ok) {
+    return { success: false as const, error: premium.error };
   }
   const streamRaw = values.streamUrl.trim();
   const isSaleroom = isSaleroomDeliveryMode(values.deliveryMode);
@@ -335,8 +408,7 @@ export function safeParseUpdateSaleFromForm(values: AdminSaleFormValues) {
     previewStartTime: values.previewStartTime.trim()
       ? instantFromDatetimeFormString(values.previewStartTime, zone)
       : undefined,
-    buyerPremiumRate: values.buyerPremiumRate.trim() || undefined,
-    buyerPremiumTiers: tiers.data,
+    ...premium.data,
     terms: values.terms.trim() || undefined,
   });
 }
