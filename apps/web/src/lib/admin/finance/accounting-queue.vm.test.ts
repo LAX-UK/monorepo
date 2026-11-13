@@ -49,7 +49,7 @@ describe("Accounting URL state", () => {
       ["needs_person", "Needs a person", 3],
       ["failed", "Failed", undefined],
       ["waiting", "Waiting", 12],
-      ["issued", "Issued", 7],
+      ["issued", "Issued today", 7],
     ]);
     expect(tabs[0]?.href).toBe("/admin/finance/accounting?organisation=london_auction_xchange");
     // Nothing issued today leaves the Issued tab without a count.

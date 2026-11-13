@@ -88,8 +88,11 @@ export function accountingHref(
 /** The tabs a person works through, each with its count while it has work in it. */
 const COUNTED_TABS: readonly AccountingQueueTab[] = ["needs_person", "failed", "waiting"];
 
+/** The Issued tab's label: its count is the documents that reached Books today (London). */
+export const ISSUED_TODAY_TAB_LABEL = "Issued today";
+
 /**
- * The queue tabs. The waiting tabs carry the count waiting; Issued carries how many reached Books
+ * The queue tabs. The waiting tabs carry the count waiting; Issued today carries how many reached Books
  * today (London), so staff see the day's progress rather than the lifetime total.
  */
 export function accountingTabs(
@@ -103,7 +106,8 @@ export function accountingTabs(
       tab === "issued" ? issuedToday > 0 : COUNTED_TABS.includes(tab) && counts[tab] > 0;
     return {
       id: tab,
-      label: ACCOUNTING_QUEUE_TAB_LABELS[tab],
+      // The Issued count is how many reached Books today, so the label says so.
+      label: tab === "issued" ? ISSUED_TODAY_TAB_LABEL : ACCOUNTING_QUEUE_TAB_LABELS[tab],
       href: accountingHref(search, { tab: tab === DEFAULT_ACCOUNTING_TAB ? null : tab }),
       ...(shows ? { count } : {}),
     };

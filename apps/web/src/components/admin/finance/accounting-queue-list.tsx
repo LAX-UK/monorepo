@@ -106,37 +106,44 @@ export function AccountingQueueList(props: AccountingQueueListProps) {
       {
         id: "document",
         header: "Document",
-        width: "19%",
+        width: "172px",
         mobile: "title",
-        cell: (row) => <PrimaryCell secondary={row.kind}>{row.reference}</PrimaryCell>,
+        truncate: false, // the LAX reference is read whole: it wraps, never cut
+        cell: (row) => (
+          <PrimaryCell secondary={row.kind} wrap>
+            {row.reference}
+          </PrimaryCell>
+        ),
       },
       {
         id: "state",
         header: "Status",
-        width: "148px",
-        mobile: "badge",
+        width: "136px",
+        mobile: "meta",
         truncate: false,
         cell: (row) => <StatusBadge tone={row.state.tone}>{row.state.label}</StatusBadge>,
       },
       {
         id: "problem",
         header: tab === "issued" ? "In Books" : "Last problem",
-        // Long problems wrap to two lines rather than clip, so a phone reads the whole reason.
+        minWidth: "220px", // matters most after Document, so it takes the spare room
         truncate: false,
+        mobile: "detail",
         cell: (row) => <ProblemCell row={row} issued={tab === "issued"} />,
       },
       {
         id: "company",
         header: "Company",
-        width: "15%",
+        width: "140px",
         hideBelow: "lg",
         mobile: "hidden",
-        cell: (row) => row.company,
+        truncate: false, // the legal name wraps to a second line rather than being cut
+        cell: (row) => <span className="line-clamp-2 whitespace-normal">{row.company}</span>,
       },
       {
         id: "amount",
         header: "Amount",
-        width: "112px",
+        width: "96px",
         numeric: true,
         sortable: true,
         sortValue: (row) => row.grossPence,
@@ -147,7 +154,7 @@ export function AccountingQueueList(props: AccountingQueueListProps) {
       {
         id: "attempts",
         header: "Attempts",
-        width: "96px",
+        width: "92px",
         numeric: true,
         sortable: true,
         sortValue: (row) => row.attempts,
@@ -159,32 +166,32 @@ export function AccountingQueueList(props: AccountingQueueListProps) {
       {
         id: "updated",
         header: "Updated",
-        width: "120px",
+        width: "112px",
         sortable: true,
         sortValue: (row) => Date.parse(row.updatedAt),
         defaultSortDirection: "desc",
         hideBelow: "md",
         mobile: "hidden",
         truncate: false,
-        cell: (row) => <StaffDate value={row.updatedAt} withTime />,
+        cell: (row) => <StaffDate value={row.updatedAt} withTime className="whitespace-normal" />,
       },
       {
         id: "created",
         header: "Created",
-        width: "120px",
+        width: "112px",
         sortable: true,
         sortValue: (row) => Date.parse(row.createdAt),
         defaultSortDirection: "desc",
         hideBelow: "xl",
         mobile: "hidden",
         truncate: false,
-        cell: (row) => <StaffDate value={row.createdAt} withTime />,
+        cell: (row) => <StaffDate value={row.createdAt} withTime className="whitespace-normal" />,
       },
       {
-        // "Tried 3 times · last Wed 11 Nov, 09:30 GMT" — only on the phone layout.
         id: "tried",
         header: "Tried",
         headerHidden: true,
+        phoneOnly: true,
         mobile: "meta",
         cell: (row) => rowMetaLine(row),
       },
@@ -192,7 +199,7 @@ export function AccountingQueueList(props: AccountingQueueListProps) {
         id: "action",
         header: "Action",
         headerHidden: true,
-        width: "112px",
+        width: "104px",
         truncate: false,
         mobile: "actions",
         cell: (row) => <RowAction row={row} canAct={canAct} onTryAgain={askTryAgain} />,
@@ -283,6 +290,7 @@ export function AccountingQueueList(props: AccountingQueueListProps) {
         filters={
           <SegmentedControl
             label="Company"
+            className="max-sm:w-full max-sm:*:flex-1"
             value={organisation ?? ""}
             options={ORGANISATION_SEGMENTS}
             onValueChange={(value) =>
@@ -537,5 +545,5 @@ function ProblemCell({ row, issued }: { row: AccountingStaffRow; issued: boolean
     return <span className="text-staff-muted">{text}</span>;
   }
   // Up to two lines, then an ellipsis; the whole reason is in the details sheet.
-  return <span className="line-clamp-2">{row.problem}</span>;
+  return <span className="line-clamp-2 whitespace-normal">{row.problem}</span>;
 }
