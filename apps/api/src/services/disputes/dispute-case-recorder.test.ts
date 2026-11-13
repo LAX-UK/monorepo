@@ -156,13 +156,17 @@ function setup() {
   const publish = vi.fn().mockResolvedValue(undefined);
   const events = mockDomainEventSink(publish);
   const addLine = vi.fn().mockResolvedValue(undefined);
+  const lockPayouts = vi.fn().mockResolvedValue(undefined);
   const claimed = new Set<string>();
   const transactionRunner = {
     runInTransaction: <T>(fn: (tx: never) => Promise<T>) => fn({} as never),
   };
   const effects = new DisputeLineEffects({
     cases: store,
-    payoutAdjustments: { addPaymentLineToOpenPayoutOrCreateClawback: addLine },
+    payoutAdjustments: {
+      addPaymentLineToOpenPayoutOrCreateClawback: addLine,
+      lockOpenPayoutsForSellers: lockPayouts,
+    },
     events,
   });
   const recorder = new DisputeCaseRecorder({
@@ -191,7 +195,7 @@ function setup() {
   const event = (type: string, created = 1_798_000_000 + n) =>
     ({ id: `evt_${++n}`, type, created }) as unknown as Stripe.Event;
   const eventTypes = () => publish.mock.calls.map(([e]) => e.eventType);
-  return { store, publish, addLine, recorder, allocation, event, eventTypes };
+  return { store, publish, addLine, lockPayouts, recorder, allocation, event, eventTypes };
 }
 
 const dispute = (over: Partial<Stripe.Dispute> = {}) =>
@@ -451,6 +455,38 @@ describe("DisputeAllocationService", () => {
     const lockedAt = lockPayments.mock.invocationCallOrder[0] ?? Number.POSITIVE_INFINITY;
     expect(t.addLine.mock.invocationCallOrder.every((at) => at > lockedAt)).toBe(true);
     expect(t.addLine).toHaveBeenCalledTimes(2);
+  });
+
+  it("holds every seller's payout, after the payments and before any line moves", async () => {
+    const lockPayments = vi.spyOn(t.store, "lockPaymentsInTransaction");
+    const record = caseOf(t.store);
+    await t.allocation.allocate({
+      caseId: record.id,
+      expectedVersion: 1,
+      actorUserId: "staff-1",
+      lines: [
+        { paymentId: "b", amountPence: 10_000 },
+        { paymentId: "a", amountPence: 5_000 },
+      ],
+    });
+    lockPayments.mockClear();
+    t.lockPayouts.mockClear();
+
+    await t.recorder.record(
+      "funds_withdrawn",
+      t.event("charge.dispute.funds_withdrawn"),
+      dispute({ amount: 15_000 }),
+    );
+
+    expect(t.lockPayouts).toHaveBeenCalledTimes(1);
+    expect([...(t.lockPayouts.mock.calls[0]?.[0]?.legalEntityIds ?? [])].sort()).toEqual([
+      "seller-a",
+      "seller-b",
+    ]);
+    const paymentsAt = lockPayments.mock.invocationCallOrder[0] ?? Number.POSITIVE_INFINITY;
+    const payoutsAt = t.lockPayouts.mock.invocationCallOrder[0] ?? Number.POSITIVE_INFINITY;
+    expect(payoutsAt).toBeGreaterThan(paymentsAt);
+    expect(t.addLine.mock.invocationCallOrder.every((at) => at > payoutsAt)).toBe(true);
   });
 
   it("catches up with funds already withdrawn, and a case already closed", async () => {

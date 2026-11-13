@@ -56,6 +56,7 @@ export function bridgePayoutAdjustmentService(
     addPaymentLineToOpenPayoutOrCreateClawback: (input) =>
       svc.addPaymentLineToOpenPayoutOrCreateClawbackFull(input),
     giveBackFailedRefund: (input) => svc.giveBackFailedRefund(input),
+    lockOpenPayoutsForSellers: (input) => svc.lockOpenPayoutsForSellers(input),
     recalculateTotalsFromLines: (repo, payoutId) => svc.recalculateTotalsFromLines(repo, payoutId),
   };
 }

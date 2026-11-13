@@ -30,6 +30,7 @@ function scheduledPayout(failureReason: string | null = null) {
 function fakeRepo(openPayout: ReturnType<typeof scheduledPayout>): IPayoutRepository {
   return {
     findOpenPayoutForEntity: vi.fn().mockResolvedValue(openPayout),
+    lockOpenPayoutsForEntities: vi.fn().mockResolvedValue(undefined),
     lineExistsForSourceEvent: vi.fn().mockResolvedValue(false),
     findLineForPaymentAndKind: vi.fn().mockResolvedValue({
       id: "line-refund-1",

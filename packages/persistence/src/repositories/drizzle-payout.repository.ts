@@ -21,7 +21,20 @@ import type {
   PayoutSellerTermsTotals,
   PayoutStatus,
 } from "@auction/types";
-import { type SQL, and, asc, desc, eq, isNotNull, isNull, ne, notLike, or, sql } from "drizzle-orm";
+import {
+  type SQL,
+  and,
+  asc,
+  desc,
+  eq,
+  inArray,
+  isNotNull,
+  isNull,
+  ne,
+  notLike,
+  or,
+  sql,
+} from "drizzle-orm";
 import type {
   CreatePayoutInput,
   IPayoutProcessorReader,
@@ -176,6 +189,22 @@ function listWhere(filter: Omit<ListPayoutsFilter, "limit" | "offset">): SQL | u
     searchCondition,
   ].filter((c): c is NonNullable<typeof c> => c !== undefined);
   return conditions.length > 0 ? and(...conditions) : undefined;
+}
+
+/**
+ * A payout that can take new lines: only one whose transfer has not started, since once the
+ * transfer amount is read a line would change the record but not the money sent. The same holds
+ * after an attempt whose outcome is unknown, as Stripe may hold a transfer for the amount it read
+ * (see `payoutTakesLines`).
+ */
+function payoutTakesLinesSql(): SQL | undefined {
+  return and(
+    eq(payout.status, "scheduled"),
+    or(
+      isNull(payout.failureReason),
+      notLike(payout.failureReason, `${TRANSFER_OUTCOME_UNKNOWN_PREFIX}%`),
+    ),
+  );
 }
 
 export class DrizzlePayoutRepository implements IPayoutRepository, IPayoutProcessorReader {
@@ -701,23 +730,21 @@ export class DrizzlePayoutRepository implements IPayoutRepository, IPayoutProces
     const rows = await this.db
       .select()
       .from(payout)
-      .where(
-        and(
-          eq(payout.legalEntityId, legalEntityId),
-          // Only a payout whose transfer has not started can take new lines: once the transfer
-          // amount is read, a line would change the record but not the money sent. The same holds
-          // after an attempt whose outcome is unknown, as Stripe may hold a transfer for the amount
-          // it read (see `payoutTakesLines`).
-          eq(payout.status, "scheduled"),
-          or(
-            isNull(payout.failureReason),
-            notLike(payout.failureReason, `${TRANSFER_OUTCOME_UNKNOWN_PREFIX}%`),
-          ),
-        ),
-      )
+      .where(and(eq(payout.legalEntityId, legalEntityId), payoutTakesLinesSql()))
       .orderBy(desc(payout.periodEnd))
       .limit(1);
     return rows[0] ? rowToPayout(rows[0]) : null;
+  }
+
+  async lockOpenPayoutsForEntities(legalEntityIds: readonly string[]): Promise<void> {
+    if (legalEntityIds.length === 0) return;
+    // Rows are locked in the order they are returned, so the sort is the lock order.
+    await this.db
+      .select({ id: payout.id })
+      .from(payout)
+      .where(and(inArray(payout.legalEntityId, [...legalEntityIds]), payoutTakesLinesSql()))
+      .orderBy(asc(payout.legalEntityId), asc(payout.id))
+      .for("update");
   }
 
   async lineExistsForSourceEvent(sourceEventId: string): Promise<boolean> {
