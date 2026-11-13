@@ -136,6 +136,45 @@ describe("accounting projection", () => {
     ]);
   });
 
+  it("after a rehearsal, re-projects the contact and invoice for the new target before what names them", async () => {
+    const { store, projection } = setUp();
+    await projection.project(raised);
+    expect(store.documents()).toHaveLength(2);
+
+    // The rehearsal is over: Bid moves to the test organisation and the invoice is paid.
+    store.setBooks("test_org");
+    expect(await projection.project(captured)).toMatchObject({ created: 3, replayed: 0 });
+    const testOrg = store
+      .documents()
+      .filter((d) => d.target?.mode === "test_org")
+      .map((d) => d.kind);
+    expect(testOrg).toEqual(["contact", "invoice", "payment"]);
+    // The rehearsal rows stand as they were, still aimed at dry run.
+    expect(
+      store
+        .documents()
+        .filter((d) => d.target?.mode === "dry_run")
+        .map((d) => d.kind),
+    ).toEqual(["contact", "invoice"]);
+
+    // A refund then credits an invoice the test organisation already holds: a replay.
+    expect(await projection.project(refunded)).toMatchObject({ created: 1, replayed: 2 });
+  });
+
+  it("with Xero live, takes nothing whatever Books says, like the sender", async () => {
+    const { store, projection, facts } = setUp();
+    for (const books of ["dry_run", "test_org"] as const) {
+      const shadow = { xero: "live", books } as const;
+      store.config = { bid: shadow, shop: shadow, lax_art: shadow };
+      expect(await projection.activity()).toBe("inactive");
+      expect(await projection.project(raised)).toEqual({
+        outcome: "skipped",
+        reason: "books_not_selected",
+      });
+    }
+    expect(facts.invoiceRaised).not.toHaveBeenCalled();
+  });
+
   it("keeps a contact already queued with other details, and refuses any other clash", async () => {
     const { store, projection } = setUp();
     await projection.project(raised);
@@ -213,6 +252,8 @@ describe("accounting projection", () => {
     expect(error).toBeInstanceOf(AccountingSwitchUnreadableError);
     expect(classifyDeliveryError(error)).toBe("retryable");
     expect(await projection.isActive()).toBe(false);
+    // Unreadable is not "off": the projector must not move its cursor on it.
+    expect(await projection.activity()).toBe("unreadable");
   });
 
   it("reads exactly the event types the catalogue routes to the accounting consumer", async () => {

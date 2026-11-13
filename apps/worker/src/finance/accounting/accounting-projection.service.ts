@@ -1,7 +1,7 @@
 import {
   type Product,
   type SwitchConfig,
-  documentTarget,
+  booksTargetMode,
   whenReferenceHeld,
 } from "@auction/accounting-domain";
 import type {
@@ -52,6 +52,8 @@ export class AccountingSwitchUnreadableError extends Error {
   }
 }
 
+export type ProjectorActivity = "active" | "inactive" | "unreadable";
+
 export interface AccountingProjectionDeps {
   readonly facts: IBidAccountingFactsReader;
   readonly settings: IAccountingSourceSettingReader;
@@ -59,9 +61,9 @@ export interface AccountingProjectionDeps {
   readonly routes?: Readonly<Record<string, AccountingEventRoute>>;
 }
 
-/** Does the switch aim this product's new documents at Books (in any mode)? */
+/** Does the switch aim this product's new documents at Books (in any mode)? Same rule as the sender. */
 function aimsAtBooks(config: SwitchConfig, product: Product): boolean {
-  return documentTarget(config[product])?.provider === "books";
+  return booksTargetMode(config[product]) !== null;
 }
 
 /**
@@ -83,11 +85,22 @@ export class AccountingProjection {
     return Object.keys(this.routes);
   }
 
-  /** Is any product aimed at Books? If not, the projector does nothing at all this tick. */
-  async isActive(): Promise<boolean> {
+  /**
+   * Is any product aimed at Books? `inactive` lets the projector move its cursor past the events
+   * of the moment (they belong to whatever else books them); `unreadable` says nothing either way,
+   * so the projector leaves everything as it is and tries again next tick.
+   */
+  async activity(): Promise<ProjectorActivity> {
     const config = await this.deps.settings.read();
-    if (!config.ok) return false;
-    return Object.values(this.routes).some((r) => aimsAtBooks(config.value, r.product));
+    if (!config.ok) return "unreadable";
+    return Object.values(this.routes).some((r) => aimsAtBooks(config.value, r.product))
+      ? "active"
+      : "inactive";
+  }
+
+  /** Is any product aimed at Books? If not, the projector projects nothing this tick. */
+  async isActive(): Promise<boolean> {
+    return (await this.activity()) === "active";
   }
 
   async project(event: AccountingEvent): Promise<ProjectionOutcome> {

@@ -265,6 +265,63 @@ describe("accounting sender", () => {
     expect(statusOf(shop.value.reference)).toBe("issued");
   });
 
+  it("with Xero live and Books in rehearsal, stays idle exactly as the projector does", async () => {
+    const { store, sender, queue } = setUp();
+    await queue();
+    const shadow = { xero: "live", books: "dry_run" } as const;
+    store.config = { bid: shadow, shop: shadow, lax_art: shadow };
+    expect(await sender.tick()).toMatchObject({ active: false, sent: 0 });
+    expect(store.claims).toBe(0);
+  });
+
+  it("a reference rehearsed in dry run is queued again, pending, for the test organisation and sent there", async () => {
+    const testOrg = new InMemoryAccounting();
+    const dryRun = createZohoBooksDryRunAdapter({ orgs: testOrgConfigs() });
+    const { store, queue } = setUp({ ports: { dry_run: dryRun } });
+    await queue();
+    const rehearsal = new AccountingSender({
+      workQueue: store,
+      dueWork: store,
+      transitions: store,
+      settings: store,
+      portsByMode: { dry_run: dryRun },
+      transientErrorPrefixes: [],
+      newLeaseToken: () => "lease-rehearsal",
+      log,
+    });
+    await rehearsal.tick();
+    const rehearsed = store.byReference(CONTACT, { provider: "books", mode: "dry_run" });
+    expect(rehearsed?.record.status).toBe("issued");
+
+    store.setBooks("test_org");
+    await queue();
+    for (const reference of [CONTACT, INVOICE, PAYMENT]) {
+      expect(store.byReference(reference, { provider: "books", mode: "test_org" })?.record).toEqual(
+        expect.objectContaining({ status: "pending" }),
+      );
+    }
+    let n = 0;
+    const testSender = new AccountingSender({
+      workQueue: store,
+      dueWork: store,
+      transitions: store,
+      settings: store,
+      portsByMode: { test_org: testOrg },
+      transientErrorPrefixes: [],
+      newLeaseToken: () => `lease-test-${++n}`,
+      log,
+    });
+    expect(await testSender.tick()).toMatchObject({ active: true, sent: 3 });
+    for (const reference of [CONTACT, INVOICE, PAYMENT]) {
+      expect(
+        store.byReference(reference, { provider: "books", mode: "test_org" })?.record.status,
+      ).toBe("issued");
+    }
+    expect((await testOrg.lookup.findByReference("bid", "payment", PAYMENT)).status).toBe("found");
+    // The rehearsal rows are untouched.
+    expect(store.byReference(CONTACT, { provider: "books", mode: "dry_run" })).toEqual(rehearsed);
+  });
+
   it("does nothing at all when no product is aimed at a mode it serves", async () => {
     const { store, sender, queue } = setUp({ books: "test_org" });
     await queue();

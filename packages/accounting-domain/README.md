@@ -159,11 +159,53 @@ refusal waits for a person. After `MAX_SEND_ATTEMPTS` (8) the document is escala
 
 ## Storage
 
-`@auction/persistence` stores these records (tables from migration 0368; see `repositories/accounting`). A row
+`@auction/persistence` stores these records (tables from migration 0368, reference key from 0374; see
+`repositories/accounting`). A row
 is one `DocumentRecord` plus the document, and CHECK constraints allow only the combinations `parseRecord`
 accepts. Every move calls the functions above and writes the new state and a history row together; the
 history table is append-only for every role. The source switch is one row per product (`xero_mode`,
 `books_mode`, never both `live`). Dry run: nothing calls a provider.
+
+### One document per reference and target
+
+A reference is held once **per target** (provider and mode), not once overall (migration 0374: unique
+`(product, legal_entity, lax_reference, target_provider, target_mode)`, `NULLS NOT DISTINCT`, so the rows
+with no target share one slot). `register` looks the reference up under the target the switch names now.
+So a document rehearsed in Books `dry_run` (answered `issued` as `DRY-RUN`) keeps its row and history, and
+when the switch moves Bid to `test_org` (later `live`) the same reference is registered again, `pending`,
+for that target. Every Bid flow registers the contact and invoice again before what refers to them
+(contact, invoice, then payment or credit notes), so a payment or refund after the move brings the buyer
+and the invoice to the new organisation first; the sender claims oldest first within a target. A
+rehearsal row is never reused, never re-aimed and never deleted.
+
+### Switching Books on and off
+
+The accounting projector's cursor starts at the newest event the first time it runs. While no product is
+aimed at Books it is moved to the newest event on every tick, and any delivery still queued is settled as
+skipped (`books_not_selected`). So turning Books on, the first time or again, projects only what happens
+from then on: the events of a time Books was off belong to whatever booked them then (Xero) and are never
+replayed under a later switch. A history backfill is its own, explicit command (not built). If the switch
+cannot be read, nothing moves.
+
+### Rehearsing Books for Bid beside legacy Xero
+
+`booksTargetMode(product)` is the one rule for both the Books projector and the Books sender: Books takes a
+product's documents only when `documentTarget` names Books. With Bid `xero_mode = live` (the seed and the
+default) Books takes nothing, whatever `books_mode` says, so nothing is queued and nothing is sent.
+
+Legacy Xero posting does **not** read this switch; it is governed by its own settings (the worker's
+`XERO_PROJECTOR_MODE`, `XERO_API_WRITES_DISABLED` and the Xero connection), and stays as it is during a
+rehearsal. A rehearsal is therefore run like this, and only like this:
+
+1. Bid: `xero_mode = off`, `books_mode = dry_run` (via the switch writer, which records who changed it).
+   Here `xero_mode` means "the new pipeline does not aim Bid at Xero"; legacy Xero keeps booking Bid as
+   before. Nothing is posted twice: the only Books adapter the worker builds is the dry run, which holds
+   no HTTP client, and the sender only claims `dry_run` documents.
+2. End the rehearsal with Bid `xero_mode = live`, `books_mode = off`. The projector then moves its cursor
+   past everything that follows, so a later Books step never replays it.
+3. `test_org` and `live` are not reachable in this phase (no writing adapter is wired). Before Bid goes
+   `live` on Books, legacy Xero posting for Bid must be stopped by its own settings first: the switch
+   cannot stop it, so `books_mode = live` with legacy Xero still posting would book the same sale twice.
 
 ## Out of scope for this phase
 

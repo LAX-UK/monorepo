@@ -4,6 +4,7 @@ import {
   type SwitchConfig,
   type TargetMode,
   attemptsExhausted,
+  booksTargetMode,
 } from "@auction/accounting-domain";
 import type {
   IAccountingDocumentDueWork,
@@ -98,10 +99,16 @@ export class AccountingSender {
     return this.aimsAtServedMode(config.value);
   }
 
+  /**
+   * Is some product aimed at Books in a mode this sender serves? The projector's rule
+   * (`booksTargetMode`), so the sender is active exactly when the projector queues for it. Work
+   * left for a mode Books is no longer aimed at waits, untouched, until it is aimed there again.
+   */
   private aimsAtServedMode(config: SwitchConfig): boolean {
-    return Object.values(config).some((product) =>
-      (this.modes as readonly string[]).includes(product.books),
-    );
+    return Object.values(config).some((product) => {
+      const mode = booksTargetMode(product);
+      return mode !== null && this.modes.includes(mode);
+    });
   }
 
   private portsFor(document: StoredAccountingDocument): SenderPorts | undefined {

@@ -39,7 +39,7 @@ const DELIVERY = {
 };
 
 function ctxWith(options: {
-  active: boolean;
+  active: boolean | "unreadable";
   project?: () => Promise<ProjectionOutcome>;
 }) {
   const project = vi.fn(
@@ -53,12 +53,16 @@ function ctxWith(options: {
   );
   const accounting = {
     projection: {
-      isActive: vi.fn().mockResolvedValue(options.active),
+      activity: vi
+        .fn()
+        .mockResolvedValue(
+          options.active === "unreadable" ? "unreadable" : options.active ? "active" : "inactive",
+        ),
       eventTypes: () => ["invoice.raised", "payment.captured", "payment.refunded"],
       project,
     },
     sender: { tick: vi.fn() },
-    cursorStart: { startAtLatestEvent: vi.fn() },
+    cursorStart: { startAtLatestEvent: vi.fn(), moveToLatestEvent: vi.fn() },
   } as unknown as AccountingRuntime;
   const ctx = {
     projectorStateRepo: { advanceCursorLiteralName: vi.fn() },
@@ -91,12 +95,33 @@ describe("accounting projector", () => {
     expect(ctx.domainEventReader.listLockedForProjector).not.toHaveBeenCalled();
   });
 
-  it("with no product aimed at Books, reads the switch and writes nothing", async () => {
-    const { ctx, accounting } = ctxWith({ active: false });
+  it("with no product aimed at Books, queues nothing and moves its cursor past the events of now", async () => {
+    const { ctx, accounting } = ctxWith({
+      active: false,
+      project: async () => ({ outcome: "skipped", reason: "books_not_selected" }),
+    });
+    (ctx.deliveryRepo?.claim as ReturnType<typeof vi.fn>)
+      .mockResolvedValueOnce([DELIVERY])
+      .mockResolvedValue([]);
     await processAccountingProjector(ctx);
+    expect(accounting.cursorStart.moveToLatestEvent).toHaveBeenCalledWith(ACCOUNTING_PROJECTOR);
     expect(accounting.cursorStart.startAtLatestEvent).not.toHaveBeenCalled();
     expect(ctx.domainEventReader.listLockedForProjector).not.toHaveBeenCalled();
     expect(ctx.deliveryRepo?.ensurePending).not.toHaveBeenCalled();
+    // A delivery queued before Books was switched off is settled now, skipped, not kept for later.
+    expect(ctx.deliveryRepo?.markSkipped).toHaveBeenCalledWith(
+      expect.objectContaining({ reason: "books_not_selected" }),
+    );
+  });
+
+  it("with a switch it cannot read, moves nothing and runs nothing", async () => {
+    const { ctx, accounting, project } = ctxWith({ active: "unreadable" });
+    await processAccountingProjector(ctx);
+    expect(accounting.cursorStart.moveToLatestEvent).not.toHaveBeenCalled();
+    expect(accounting.cursorStart.startAtLatestEvent).not.toHaveBeenCalled();
+    expect(ctx.domainEventReader.listLockedForProjector).not.toHaveBeenCalled();
+    expect(ctx.deliveryRepo?.claim).not.toHaveBeenCalled();
+    expect(project).not.toHaveBeenCalled();
   });
 
   it("starts at the newest event, queues its own deliveries and projects each one", async () => {
@@ -148,6 +173,121 @@ describe("accounting projector", () => {
     await processAccountingProjector(ctx);
     expect(project).not.toHaveBeenCalled();
     expect(ctx.deliveryRepo?.deadLetter).toHaveBeenCalled();
+  });
+});
+
+/**
+ * The event log, the projector's cursor and its delivery ledger held in memory, with the same
+ * rules as the database: the cursor only moves forward, a delivery is queued once per event.
+ */
+function eventLogWorld() {
+  const events: (typeof EVENT)[] = [];
+  let cursor: number | null = null;
+  const pending: { id: number; eventId: number }[] = [];
+  const queued = new Set<number>();
+  let active = false;
+  const projected: number[] = [];
+  const newest = () => Math.max(0, ...events.map((e) => e.id));
+  const accounting = {
+    projection: {
+      activity: async () => (active ? "active" : "inactive"),
+      eventTypes: () => ["invoice.raised"],
+      project: async (event: typeof EVENT): Promise<ProjectionOutcome> => {
+        if (!active) return { outcome: "skipped", reason: "books_not_selected" };
+        projected.push(event.id);
+        return { outcome: "projected", created: 2, replayed: 0, kept: 0 };
+      },
+    },
+    sender: { tick: vi.fn() },
+    cursorStart: {
+      startAtLatestEvent: async () => {
+        cursor ??= newest();
+      },
+      moveToLatestEvent: async () => {
+        cursor = Math.max(cursor ?? 0, newest());
+      },
+    },
+  } as unknown as AccountingRuntime;
+  const ctx = {
+    projectorStateRepo: {
+      advanceCursorLiteralName: async (_name: string, id: number) => {
+        cursor = Math.max(cursor ?? 0, id);
+      },
+    },
+    domainEventReader: {
+      listLockedForProjector: async () => events.filter((e) => e.id > (cursor ?? 0)),
+      getById: async (id: number) => events.find((e) => e.id === id),
+    },
+    transactionRunner: { runInTransaction: async (fn: (tx: never) => unknown) => fn({} as never) },
+    log: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
+    deliveryRepo: {
+      ensurePending: async ({ eventId }: { eventId: number }) => {
+        if (queued.has(eventId)) return;
+        queued.add(eventId);
+        pending.push({ id: eventId * 10, eventId });
+      },
+      claim: async () => {
+        const next = pending.shift();
+        return next ? [{ ...DELIVERY, id: next.id, eventId: next.eventId }] : [];
+      },
+      renewLease: vi.fn(),
+      markSucceeded: vi.fn(),
+      markSkipped: vi.fn(),
+      scheduleRetry: vi.fn(),
+      deadLetter: vi.fn(),
+      oldestPendingAt: async () => null,
+    },
+    accounting,
+  } as unknown as ProjectorRunContext;
+  return {
+    ctx,
+    projected,
+    emit: (id: number) => events.push({ ...EVENT, id }),
+    setActive: (on: boolean) => {
+      active = on;
+    },
+    tick: () => processAccountingProjector(ctx),
+  };
+}
+
+describe("accounting projector, switched off and on again", () => {
+  it("never projects the events of the time Books was off", async () => {
+    const world = eventLogWorld();
+    world.emit(1);
+    world.setActive(true);
+    await world.tick();
+    world.emit(2);
+    await world.tick();
+    expect(world.projected).toEqual([2]);
+
+    // Books is switched off (back to Xero): these events are Xero's.
+    world.setActive(false);
+    world.emit(3);
+    await world.tick();
+    world.emit(4);
+    await world.tick();
+
+    // Books is switched on again: only what happens from now on is projected.
+    world.setActive(true);
+    await world.tick();
+    world.emit(5);
+    await world.tick();
+    expect(world.projected).toEqual([2, 5]);
+  });
+
+  it("does not project a gap that opened before the first tick that saw Books off", async () => {
+    const world = eventLogWorld();
+    world.setActive(true);
+    await world.tick();
+    world.setActive(false);
+    // Events written between the switch flip and the next tick are still skipped.
+    world.emit(1);
+    world.emit(2);
+    await world.tick();
+    world.setActive(true);
+    world.emit(3);
+    await world.tick();
+    expect(world.projected).toEqual([3]);
   });
 });
 
