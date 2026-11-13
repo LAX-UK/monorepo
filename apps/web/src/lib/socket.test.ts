@@ -30,7 +30,10 @@ describe("getSocket", () => {
     const { getSocket } = await import("./socket");
     getSocket();
 
-    expect(io).toHaveBeenCalledTimes(1);
+    // The client is fetched on demand, so the connection opens a tick later.
+    await vi.waitFor(() => {
+      expect(io).toHaveBeenCalledTimes(1);
+    });
     const options = io.mock.calls[0]?.[1] as {
       auth: (cb: (data: { token?: string }) => void) => void;
     };
@@ -50,6 +53,9 @@ describe("getSocket", () => {
     const { getSocket } = await import("./socket");
     getSocket();
 
+    await vi.waitFor(() => {
+      expect(io).toHaveBeenCalledTimes(1);
+    });
     const options = io.mock.calls[0]?.[1] as {
       auth: (cb: (data: { token?: string }) => void) => void;
     };
