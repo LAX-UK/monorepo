@@ -1,5 +1,6 @@
 import { entityActorCan } from "@auction/domain";
 import {
+  ACCOUNTING_QUEUE_WRITE_ACCESS,
   ADMIN_DASHBOARD_ACCESS,
   AML_REVIEW_ACCESS,
   ARTISTS_ACCESS,
@@ -160,6 +161,8 @@ export const requirePaymentManualReviewWrite = createRequireAccess(
 );
 
 export const requireDisputeAllocationWrite = createRequireAccess(DISPUTE_ALLOCATION_WRITE_ACCESS);
+/** Try a refused accounting document again (Finance › Accounting). */
+export const requireAccountingQueueWrite = createRequireAccess(ACCOUNTING_QUEUE_WRITE_ACCESS);
 
 export const requirePlatformAdminFull = createRequireAccess(PLATFORM_ADMIN_ACCESS);
 export const requireUsersDirectory = createRequireAccess(USERS_DIRECTORY_ACCESS);

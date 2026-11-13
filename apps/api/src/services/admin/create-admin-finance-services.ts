@@ -6,6 +6,7 @@ import type {
 } from "@auction/persistence/interfaces";
 import type { Env } from "../../env.js";
 import type { IDomainEventSink } from "../domain-event-sink.js";
+import type { IAccountingQueueService } from "../interfaces/accounting-queue.js";
 import type { AdminFinanceRouteServices } from "../interfaces/admin-routes/admin-finance-routes.js";
 import type { IPayoutStatementApplicationService } from "../interfaces/finance-routes/finance-payout-statement.js";
 import type { IPaymentAdminService } from "../interfaces/payment-service.js";
@@ -22,6 +23,7 @@ import { AdminStripeConnectApplicationService } from "./admin-stripe-connect-app
 import { AdminXeroApplicationService } from "./admin-xero-application.service.js";
 
 export type CreateAdminFinanceServicesInput = {
+  accountingQueue: IAccountingQueueService;
   paymentService: IPaymentAdminService;
   unappliedMoneyHandling: IUnappliedMoneyHandling;
   adminPaymentListQueryService: AdminPaymentListQueryService;
@@ -53,6 +55,7 @@ export function createAdminFinanceServices(
   input: CreateAdminFinanceServicesInput,
 ): AdminFinanceServicesCore {
   return {
+    accountingQueue: input.accountingQueue,
     payments: new AdminPaymentsApplicationService(
       input.paymentService,
       input.adminPaymentListQueryService,

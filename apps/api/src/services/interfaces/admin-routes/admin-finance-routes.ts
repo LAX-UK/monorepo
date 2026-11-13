@@ -7,6 +7,7 @@ import type { StaffRoles } from "@auction/types";
 import type { Result } from "neverthrow";
 import type { AuthzError } from "../../../lib/errors.js";
 import type { AdminNavCounts } from "../../admin/admin-nav-counts.service.js";
+import type { IAccountingQueueService } from "../accounting-queue.js";
 import type { AdminKpiPeriodDays, AdminKpiTrendBundle } from "../admin-kpi-trend.js";
 import type { IStripeConnectService } from "../stripe-connect.js";
 
@@ -202,6 +203,8 @@ export interface IAdminFinanceDashboardQueryService
     IAdminManualReviewPaymentQueryService {}
 
 export type AdminFinanceRouteServices = {
+  /** Finance › Accounting: documents sent to the books, and trying a refused one again. */
+  accountingQueue: IAccountingQueueService;
   payments: IAdminPaymentsApplicationService;
   stripeConnect: IAdminStripeConnectApplicationService;
   xero: IXeroAdminApplicationService;

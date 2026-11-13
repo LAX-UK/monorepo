@@ -138,6 +138,7 @@ export const ALL_LIVE_DOMAIN_EVENT_TYPES = [
   "failed_job.discarded",
   "failed_job.restored",
   "failed_job.retried",
+  "accounting_document.retry_requested",
   "data_request.viewed",
   "data_request.logged",
   "data_request.updated",
@@ -848,6 +849,12 @@ const REGISTRY_OVERRIDES: Partial<Record<LiveDomainEventType, RegistryOverride>>
     piiClassification: "operational",
   },
   "failed_job.retried": {
+    producers: ["apps/api"],
+    consumers: [],
+    idempotencyPolicy: "none",
+    piiClassification: "operational",
+  },
+  "accounting_document.retry_requested": {
     producers: ["apps/api"],
     consumers: [],
     idempotencyPolicy: "none",
