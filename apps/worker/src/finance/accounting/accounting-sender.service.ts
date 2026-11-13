@@ -4,6 +4,8 @@ import {
   type LookupOutcome,
   type SwitchConfig,
   type TargetMode,
+  WRITE_MARGIN_MS,
+  type WriteFence,
   attemptsExhausted,
   booksTargetMode,
   checkDestination,
@@ -17,7 +19,10 @@ import type {
 } from "@auction/persistence/interfaces";
 import { type SenderPorts, sendThrough } from "./accounting-dispatch.js";
 
-/** Plan: two minutes; any provider call must time out well inside it. */
+/**
+ * Plan: two minutes. A write starts only while `WRITE_MARGIN_MS` of it is left (`fenceFor`), and a
+ * provider request times out within that margin, so a write never outlives the lease.
+ */
 export const SENDER_LEASE_MS = 2 * 60_000;
 const DEFAULT_BATCH = 25;
 
@@ -169,7 +174,7 @@ export class AccountingSender {
       outcome = { status: "rejected", reason: "accounting_no_adapter_for_mode" };
     } else {
       try {
-        outcome = await sendThrough(ports, document.document);
+        outcome = await sendThrough(ports, document.document, this.fenceFor(document, token));
       } catch (error) {
         // The request may have left: the outcome is unknown and a lookup decides.
         this.deps.log.warn(
@@ -201,6 +206,32 @@ export class AccountingSender {
       },
       "accounting_sender_sent",
     );
+  }
+
+  /**
+   * The send's writes are tied to its lease: immediately before each one the store is asked
+   * whether this token still holds it with `WRITE_MARGIN_MS` to run. Once it was swept or handed
+   * on, no create starts (the next holder looks the document up first, so nothing is made twice);
+   * a check that cannot be made counts as a lost lease.
+   */
+  private fenceFor(document: StoredAccountingDocument, token: string): WriteFence {
+    return {
+      mayWrite: async () => {
+        try {
+          if (await this.deps.workQueue.holdsLease(document.id, token, WRITE_MARGIN_MS)) {
+            return true;
+          }
+        } catch (error) {
+          this.deps.log.warn(
+            { documentId: document.id, err: errorName(error) },
+            "accounting_sender_lease_check_failed",
+          );
+          return false;
+        }
+        this.deps.log.warn({ documentId: document.id }, "accounting_sender_write_fenced");
+        return false;
+      },
+    };
   }
 
   private async settleDue(): Promise<Omit<SenderTick, "active" | "sent">> {

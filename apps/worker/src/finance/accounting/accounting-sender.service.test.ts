@@ -6,13 +6,18 @@ import {
   MAX_SEND_ATTEMPTS,
   type Payment,
   SETTLE_GRACE_MS,
+  WRITE_MARGIN_MS,
+  type WriteFence,
   buildContact,
   buildPayment,
   expectedTotals,
   projectBidPaymentCaptured,
   retryDelayMs,
 } from "@auction/accounting-domain";
-import { createZohoBooksDryRunAdapter } from "@auction/accounting-zoho-books";
+import {
+  TRANSIENT_REJECTION_PREFIXES,
+  createZohoBooksDryRunAdapter,
+} from "@auction/accounting-zoho-books";
 import {
   BID_ORG_ID,
   InMemoryAccounting,
@@ -99,7 +104,7 @@ function setUp(
     settings: store,
     portsByMode: options.ports ?? { dry_run: rehearsing(fake) },
     destinations: options.destinations ?? BOUND,
-    transientErrorPrefixes: ["fake_rate_limited"],
+    transientErrorPrefixes: ["fake_rate_limited", ...TRANSIENT_REJECTION_PREFIXES],
     newLeaseToken: () => `lease-${++n}`,
     log,
   });
@@ -529,6 +534,105 @@ describe("accounting sender, a differing payment whose answer never reaches its 
       expect(store.byReference(PAYMENT)?.record).toMatchObject(HELD);
       return answer; // late: refused, the record stays with a person
     });
+  });
+});
+
+describe("accounting sender, writes tied to the lease", () => {
+  /**
+   * The contact and invoice go first; the payment's first send runs `during` before Books is asked
+   * and `after` once it has answered.
+   */
+  async function sendPayment(
+    during: (ctx: { store: InMemoryAccountingStore }) => Promise<void>,
+    after: (
+      answer: IssueOutcome,
+      ctx: { store: InMemoryAccountingStore },
+    ) => Promise<void> = async () => {},
+  ) {
+    const { store, fake, queue, sender: plain } = setUp();
+    await queue(bidDocuments().slice(0, 2));
+    await plain.tick();
+    // Only the first send is disturbed; any later one runs as usual.
+    const recordPayment = vi.fn(async (payment: Payment, fence?: WriteFence) => {
+      const first = recordPayment.mock.calls.length === 1;
+      if (first) await during({ store });
+      const answer = await fake.payments.recordPayment(payment, fence);
+      if (first) await after(answer, { store });
+      return answer;
+    });
+    let n = 0;
+    const sender = new AccountingSender({
+      workQueue: store,
+      dueWork: store,
+      transitions: store,
+      settings: store,
+      portsByMode: { dry_run: { ...rehearsing(fake), payments: { recordPayment } } },
+      destinations: BOUND,
+      transientErrorPrefixes: TRANSIENT_REJECTION_PREFIXES,
+      newLeaseToken: () => `pay-lease-${++n}`,
+      log,
+    });
+    await queue([PAYMENT_DOC]);
+    await sender.tick();
+    return { store, fake, sender, recordPayment };
+  }
+
+  const sweep = async (store: InMemoryAccountingStore) => {
+    store.nowMs += SENDER_LEASE_MS + 1;
+    await store.claimNext({
+      provider: "books",
+      leaseToken: "other-worker",
+      leaseMs: SENDER_LEASE_MS,
+      targetModes: ["dry_run"],
+    });
+  };
+
+  it("no create starts once the lease was swept: the next holder looks up, finds nothing, and sends once", async () => {
+    const { store, fake, sender, recordPayment } = await sendPayment(({ store }) => sweep(store));
+    // Nothing was written by the fenced send.
+    expect((await fake.lookup.findDocument(PAYMENT_DOC)).status).toBe("not_found");
+    expect(store.byReference(PAYMENT)?.record.status).toBe("unknown");
+    store.nowMs += SETTLE_GRACE_MS + retryDelayMs(2) + 1;
+    await sender.tick();
+    expect(store.byReference(PAYMENT)?.record.status).toBe("issued");
+    expect(recordPayment).toHaveBeenCalledTimes(2);
+    expect((await fake.lookup.findDocument(PAYMENT_DOC)).status).toBe("found");
+  });
+
+  it("no create starts with less than the write margin of the lease left; it is retried later", async () => {
+    const { store, fake, sender } = await sendPayment(async ({ store }) => {
+      store.nowMs += SENDER_LEASE_MS - WRITE_MARGIN_MS;
+    });
+    expect((await fake.lookup.findDocument(PAYMENT_DOC)).status).toBe("not_found");
+    expect(store.byReference(PAYMENT)?.record).toMatchObject({
+      status: "failed",
+      reason: "zoho_books_fenced_lease_lost",
+    });
+    store.nowMs += retryDelayMs(1) + 1;
+    await sender.tick();
+    await sender.tick();
+    expect(store.byReference(PAYMENT)?.record.status).toBe("issued");
+  });
+
+  it("a lease that cannot be checked counts as lost: nothing is written", async () => {
+    const { store, fake } = await sendPayment(async ({ store }) => {
+      vi.spyOn(store, "holdsLease").mockRejectedValue(new Error("db down"));
+    });
+    expect((await fake.lookup.findDocument(PAYMENT_DOC)).status).toBe("not_found");
+    expect(store.byReference(PAYMENT)?.record).toMatchObject({ status: "failed" });
+  });
+
+  it("a lease lost after the create went out is looked up, never created again", async () => {
+    const { store, fake, sender, recordPayment } = await sendPayment(
+      async () => {},
+      async (_answer, { store }) => sweep(store),
+    );
+    expect(store.byReference(PAYMENT)?.record.status).toBe("unknown");
+    store.nowMs += SETTLE_GRACE_MS + retryDelayMs(2) + 1;
+    await sender.tick();
+    expect(store.byReference(PAYMENT)?.record.status).toBe("issued");
+    expect(recordPayment).toHaveBeenCalledTimes(1);
+    expect((await fake.lookup.findDocument(PAYMENT_DOC)).status).toBe("found");
   });
 });
 

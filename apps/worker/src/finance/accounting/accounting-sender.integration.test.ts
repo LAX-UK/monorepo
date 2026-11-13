@@ -1,10 +1,13 @@
 import {
   type AccountingDocument,
   type BidPaymentFacts,
+  type Contact,
   type DestinationBinding,
   type IssueOutcome,
   type Payment,
   SETTLE_GRACE_MS,
+  WRITE_MARGIN_MS,
+  type WriteFence,
   expectedTotals,
   projectBidPaymentCaptured,
 } from "@auction/accounting-domain";
@@ -207,6 +210,63 @@ describe.skipIf(!HAS_DB)("accounting sender (integration)", { timeout: 60_000 },
 
   it("a differing payment whose answer was lost ends with a person, never issued", async () => {
     await differingPaymentWhoseAnswerIsLost(async () => ({ status: "unknown", detail: "timeout" }));
+  });
+
+  it("holds a lease only for its token, while sending, with the margin still to run", async () => {
+    await aimBooks("dry_run");
+    const [contact] = bidDocuments();
+    await queue([contact as AccountingDocument]);
+    const token = `lease-${crypto.randomUUID()}`;
+    const claimed = await repos.workQueue.claimNext({
+      provider: "books",
+      leaseToken: token,
+      leaseMs: SENDER_LEASE_MS,
+      targetModes: ["dry_run"],
+    });
+    const id = claimed.ok && claimed.value ? claimed.value.id : "";
+    expect(await repos.workQueue.holdsLease(id, token, WRITE_MARGIN_MS)).toBe(true);
+    expect(await repos.workQueue.holdsLease(id, "someone-else", WRITE_MARGIN_MS)).toBe(false);
+    nowMs += SENDER_LEASE_MS - WRITE_MARGIN_MS;
+    expect(await repos.workQueue.holdsLease(id, token, WRITE_MARGIN_MS)).toBe(false);
+    expect(await repos.workQueue.holdsLease(id, token, 0)).toBe(true);
+    nowMs += WRITE_MARGIN_MS;
+    // Swept by the next claim: unknown, so the lease is no longer held at all.
+    await repos.workQueue.claimNext({
+      provider: "books",
+      leaseToken: `other-${crypto.randomUUID()}`,
+      leaseMs: SENDER_LEASE_MS,
+      targetModes: ["test_org"],
+    });
+    expect((await stored(contact?.reference as string, "dry_run"))?.status).toBe("unknown");
+    expect(await repos.workQueue.holdsLease(id, token, 0)).toBe(false);
+  });
+
+  it("starts no create after its lease was swept; the next holder finds nothing and sends once", async () => {
+    await aimBooks("dry_run");
+    const [contact] = bidDocuments();
+    const fake = new InMemoryAccounting();
+    const upsertContact = vi.fn(async (c: Contact, fence?: WriteFence) => {
+      if (upsertContact.mock.calls.length === 1) {
+        nowMs += SENDER_LEASE_MS + 1;
+        await repos.workQueue.claimNext({
+          provider: "books",
+          leaseToken: `other-${crypto.randomUUID()}`,
+          leaseMs: SENDER_LEASE_MS,
+          targetModes: ["test_org"],
+        });
+      }
+      return fake.contacts.upsertContact(c, fence);
+    });
+    const sender = senderFor({ dry_run: rehearsing(fake, { contacts: { upsertContact } }) });
+    await queue([contact as AccountingDocument]);
+    await sender.tick();
+    expect((await fake.lookup.findDocument(contact as AccountingDocument)).status).toBe(
+      "not_found",
+    );
+    nowMs += SETTLE_GRACE_MS + 60 * 60_000;
+    await sender.tick();
+    expect((await stored(contact?.reference as string, "dry_run"))?.status).toBe("issued");
+    expect(upsertContact).toHaveBeenCalledTimes(2);
   });
 
   it("never sends a dry run document through an adapter that names a Books organisation", async () => {

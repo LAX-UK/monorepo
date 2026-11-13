@@ -140,6 +140,12 @@ export interface IAccountingDocumentWorkQueue {
   claimNext(
     request: ClaimRequest,
   ): Promise<Result<StoredAccountingDocument | null, TransitionCode>>;
+  /**
+   * Does `leaseToken` still hold the document's lease, with at least `minRemainingMs` of it left?
+   * Asked immediately before a provider write: false once the lease was swept (the document went
+   * unknown), handed to someone else, or is about to run out.
+   */
+  holdsLease(documentId: string, leaseToken: string, minRemainingMs: number): Promise<boolean>;
 }
 
 export interface DueWorkRequest {

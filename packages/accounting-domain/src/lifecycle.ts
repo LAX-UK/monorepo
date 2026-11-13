@@ -37,6 +37,14 @@ export const CLOCK_SKEW_MS = 60 * 1000;
  */
 export const SETTLE_GRACE_MS = 60 * 1000;
 
+/**
+ * A write may start only while at least this much of its lease is left (`WriteFence`). A provider
+ * request timeout must not be longer, so a write started in time has ended, or been abandoned by
+ * the client, before the lease runs out; `SETTLE_GRACE_MS` then covers provider-side work and
+ * clock difference between workers before anyone trusts a lookup that finds nothing.
+ */
+export const WRITE_MARGIN_MS = 30 * 1000;
+
 export interface TotalsMismatch {
   readonly field: keyof Totals;
   readonly differencePence: number;

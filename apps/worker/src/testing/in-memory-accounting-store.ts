@@ -174,6 +174,15 @@ export class InMemoryAccountingStore
     return ok(row.stored);
   }
 
+  async holdsLease(documentId: string, leaseToken: string, minRemainingMs: number) {
+    const record = this.rows.get(documentId)?.stored.record;
+    return (
+      record?.status === "sending" &&
+      record.lease.token === leaseToken &&
+      record.lease.expiresAtMs > this.nowMs + minRemainingMs
+    );
+  }
+
   async listDue(request: DueWorkRequest): Promise<DueWork> {
     const waited = (attempts: number, sinceMs: number) =>
       attempts >= MAX_SEND_ATTEMPTS

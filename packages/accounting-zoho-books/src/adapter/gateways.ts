@@ -12,6 +12,7 @@ import type {
   PaymentPort,
   Product,
   Result,
+  WriteFence,
 } from "@auction/accounting-domain";
 import { toIssueFailure } from "../outcome.js";
 import { type ZohoApi, orgFor } from "./api.js";
@@ -106,7 +107,7 @@ export type ReadBack = { readonly check: ReadBackCheck | null } | { readonly sto
 export class ZohoInvoiceGateway implements InvoicePort {
   constructor(private readonly deps: GatewayDeps) {}
 
-  async issueInvoice(invoice: Invoice): Promise<IssueOutcome> {
+  async issueInvoice(invoice: Invoice, fence?: WriteFence): Promise<IssueOutcome> {
     const ready = await prepare(this.deps, invoice, [
       { kind: "contact", reference: invoice.contactReference, contactType: "customer" },
     ]);
@@ -119,6 +120,7 @@ export class ZohoInvoiceGateway implements InvoicePort {
       product: invoice.product,
       kind: "invoice",
       reference: invoice.reference,
+      ...(fence ? { fence } : {}),
       body: built.body,
     });
   }
@@ -127,7 +129,7 @@ export class ZohoInvoiceGateway implements InvoicePort {
 export class ZohoCreditNoteGateway implements CreditNotePort {
   constructor(private readonly deps: GatewayDeps) {}
 
-  async issueCreditNote(creditNote: CreditNote): Promise<IssueOutcome> {
+  async issueCreditNote(creditNote: CreditNote, fence?: WriteFence): Promise<IssueOutcome> {
     const ready = await prepare(this.deps, creditNote, [
       { kind: "contact", reference: creditNote.contactReference, contactType: "customer" },
       { kind: "invoice", reference: creditNote.invoiceReference },
@@ -141,6 +143,7 @@ export class ZohoCreditNoteGateway implements CreditNotePort {
       product: creditNote.product,
       kind: "credit_note",
       reference: creditNote.reference,
+      ...(fence ? { fence } : {}),
       body: built.body,
       query: { invoice_id: invoiceId },
     });
@@ -218,7 +221,7 @@ export async function paymentReadBack(
 export class ZohoPaymentGateway implements PaymentPort {
   constructor(private readonly deps: GatewayDeps) {}
 
-  async recordPayment(payment: Payment): Promise<IssueOutcome> {
+  async recordPayment(payment: Payment, fence?: WriteFence): Promise<IssueOutcome> {
     const ready = await prepare(this.deps, payment, paymentDependencies(payment));
     if ("stop" in ready) return ready.stop;
     const built = buildPaymentBody(payment, ready.ids, ready.org);
@@ -228,6 +231,7 @@ export class ZohoPaymentGateway implements PaymentPort {
       product: payment.product,
       kind: "payment",
       reference: payment.reference,
+      ...(fence ? { fence } : {}),
       body: built.body,
       verify: paymentCheck(built.body),
     });
@@ -237,7 +241,7 @@ export class ZohoPaymentGateway implements PaymentPort {
 export class ZohoBillGateway implements BillPort {
   constructor(private readonly deps: GatewayDeps) {}
 
-  async issueBill(bill: Bill): Promise<IssueOutcome> {
+  async issueBill(bill: Bill, fence?: WriteFence): Promise<IssueOutcome> {
     const ready = await prepare(this.deps, bill, [
       { kind: "contact", reference: bill.contactReference, contactType: "vendor" },
     ]);
@@ -250,6 +254,7 @@ export class ZohoBillGateway implements BillPort {
       product: bill.product,
       kind: "bill",
       reference: bill.reference,
+      ...(fence ? { fence } : {}),
       body: built.body,
     });
   }
@@ -257,7 +262,7 @@ export class ZohoBillGateway implements BillPort {
 
 /** Seller and artist payouts are billed to a vendor contact, kept apart from the customer one. */
 export interface VendorPort {
-  upsertVendor(contact: Contact): Promise<IssueOutcome>;
+  upsertVendor(contact: Contact, fence?: WriteFence): Promise<IssueOutcome>;
 }
 
 /** A contact is ours only as the type we keep it as: a customer is never a vendor, or the reverse. */
@@ -281,7 +286,7 @@ class ContactUpsert {
     private readonly type: ContactType,
   ) {}
 
-  async upsert(contact: Contact): Promise<IssueOutcome> {
+  async upsert(contact: Contact, fence?: WriteFence): Promise<IssueOutcome> {
     const ready = await prepare(this.deps, contact, []);
     if ("stop" in ready) return ready.stop;
     const { org } = ready;
@@ -304,11 +309,12 @@ class ContactUpsert {
           storedValue,
           body: contactCreateBody(contact, this.type, org),
           verify,
+          ...(fence ? { fence } : {}),
         });
       case "found": {
         const wrongType = verify(found.item ?? {});
         if (wrongType) return { status: "rejected", reason: wrongType };
-        return this.update(org, found.outcome.providerId, contact);
+        return this.update(org, found.outcome.providerId, contact, fence);
       }
       case "ambiguous":
         return { status: "rejected", reason: "zoho_books_contact_ambiguous" };
@@ -317,12 +323,19 @@ class ContactUpsert {
     }
   }
 
-  private async update(org: ZohoOrgConfig, id: string, contact: Contact): Promise<IssueOutcome> {
+  private async update(
+    org: ZohoOrgConfig,
+    id: string,
+    contact: Contact,
+    fence: WriteFence | undefined,
+  ): Promise<IssueOutcome> {
     const spec = KIND_SPECS.contact;
     const reply = await this.api.put(
       org.organizationId,
       `${spec.path}/${id}`,
       contactUpdateBody(contact),
+      undefined,
+      fence ? { fence } : undefined,
     );
     if (!reply.ok) return toIssueFailure(reply.error);
     const doc = readProviderDocument(spec, asRecord(reply.value.body)?.[spec.itemKey]);
@@ -338,8 +351,8 @@ export class ZohoContactGateway implements ContactPort {
   constructor(deps: GatewayDeps, api: ZohoApi) {
     this.upsert = new ContactUpsert(deps, api, "customer");
   }
-  upsertContact(contact: Contact): Promise<IssueOutcome> {
-    return this.upsert.upsert(contact);
+  upsertContact(contact: Contact, fence?: WriteFence): Promise<IssueOutcome> {
+    return this.upsert.upsert(contact, fence);
   }
 }
 
@@ -349,7 +362,7 @@ export class ZohoVendorGateway implements VendorPort {
   constructor(deps: GatewayDeps, api: ZohoApi) {
     this.upsert = new ContactUpsert(deps, api, "vendor");
   }
-  upsertVendor(contact: Contact): Promise<IssueOutcome> {
-    return this.upsert.upsert(contact);
+  upsertVendor(contact: Contact, fence?: WriteFence): Promise<IssueOutcome> {
+    return this.upsert.upsert(contact, fence);
   }
 }

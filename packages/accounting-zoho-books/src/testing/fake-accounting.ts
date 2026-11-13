@@ -21,6 +21,7 @@ import {
   type PaymentPort,
   type Product,
   type ProviderDocument,
+  type WriteFence,
   expectedTotals,
   legalEntityFor,
   parseLaxReference,
@@ -66,6 +67,8 @@ interface Held {
 }
 
 type Stop = Extract<IssueOutcome, { status: "rejected" | "unknown" }>;
+/** The adapter's reason for a write its fence refused (`ZohoFencedError`). */
+const FENCED = "zoho_books_fenced_lease_lost";
 const rejected = (reason: string): Stop => ({ status: "rejected", reason });
 
 /**
@@ -91,11 +94,17 @@ export class InMemoryAccounting implements AccountingPorts {
   }
 
   readonly invoices: InvoicePort = {
-    issueInvoice: (d: Invoice) =>
-      this.issue(d, [["contact", d.contactReference, "customer"]], "tax_exclusive"),
+    issueInvoice: (d: Invoice, fence?: WriteFence) =>
+      this.issue(
+        d,
+        [["contact", d.contactReference, "customer"]],
+        "tax_exclusive",
+        undefined,
+        fence,
+      ),
   };
   readonly creditNotes: CreditNotePort = {
-    issueCreditNote: (d: CreditNote) =>
+    issueCreditNote: (d: CreditNote, fence?: WriteFence) =>
       this.issue(
         d,
         [
@@ -103,24 +112,33 @@ export class InMemoryAccounting implements AccountingPorts {
           ["invoice", d.invoiceReference],
         ],
         "tax_inclusive",
+        undefined,
+        fence,
       ),
   };
   readonly payments: PaymentPort = {
-    recordPayment: (d: Payment) =>
-      this.issue(d, [
-        ["contact", d.contactReference, "customer"],
-        ...d.allocations.map((a): Need => ["invoice", a.invoiceReference]),
-      ]),
+    recordPayment: (d: Payment, fence?: WriteFence) =>
+      this.issue(
+        d,
+        [
+          ["contact", d.contactReference, "customer"],
+          ...d.allocations.map((a): Need => ["invoice", a.invoiceReference]),
+        ],
+        undefined,
+        undefined,
+        fence,
+      ),
   };
   readonly bills: BillPort = {
-    issueBill: (d: Bill) =>
-      this.issue(d, [["contact", d.contactReference, "vendor"]], "tax_exclusive"),
+    issueBill: (d: Bill, fence?: WriteFence) =>
+      this.issue(d, [["contact", d.contactReference, "vendor"]], "tax_exclusive", undefined, fence),
   };
   readonly contacts: ContactPort = {
-    upsertContact: (d: Contact) => this.issue(d, [], undefined, "customer"),
+    upsertContact: (d: Contact, fence?: WriteFence) =>
+      this.issue(d, [], undefined, "customer", fence),
   };
   readonly vendors: VendorPort = {
-    upsertVendor: (d: Contact) => this.issue(d, [], undefined, "vendor"),
+    upsertVendor: (d: Contact, fence?: WriteFence) => this.issue(d, [], undefined, "vendor", fence),
   };
   readonly destination: DestinationPort = {
     destinationFor: (product) => {
@@ -197,6 +215,7 @@ export class InMemoryAccounting implements AccountingPorts {
     needs: readonly Need[],
     basis?: AmountBasis,
     contactType?: ContactType,
+    fence?: WriteFence,
   ): Promise<IssueOutcome> {
     const entity = legalEntityFor(doc.product);
     if (doc.entity !== entity || !LEGAL_ENTITIES.includes(doc.entity)) {
@@ -212,6 +231,8 @@ export class InMemoryAccounting implements AccountingPorts {
       const stop = this.lines(doc.lines, basis, org.vatRegistered);
       if (stop) return stop;
     }
+    // As the adapter: the write is the last step, and a fenced one is never sent.
+    if (fence && !(await fence.mayWrite())) return rejected(FENCED);
     const fault = this.faults.take();
     if (fault === "rate_limited") return rejected("fake_rate_limited");
     if (fault === "locked_period") return rejected("fake_locked_period");

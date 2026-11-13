@@ -16,6 +16,7 @@ import {
 } from "@auction/accounting-domain";
 import type { AccountingPorts } from "../adapter/index.js";
 import { ZOHO_BOOKS_REJECTIONS as R } from "../adapter/rejections.js";
+import { isTransientRejection } from "../outcome.js";
 import type { TestApi } from "./contract.js";
 import type { FaultInjector } from "./faults.js";
 import { BID_ORG_ID, SHOP_ORG_ID } from "./org-fixtures.js";
@@ -631,6 +632,50 @@ export function runAccountingContract(
           reason: "zoho_books_contact_missing",
         });
         await notIssued(s, doc);
+      });
+    });
+
+    describe("write fence", () => {
+      const lost = { mayWrite: async () => false };
+      const held = { mayWrite: async () => true };
+      const FENCED = { status: "rejected", reason: "zoho_books_fenced_lease_lost" };
+
+      it("a create its fence refuses is rejected as passing, and nothing is created", async () => {
+        const s = await withContact();
+        const doc = invoice(SHOP, "inv-fenced", [NO_VAT_GOODS]);
+        expect(await s.settle(s.ports.invoices.issueInvoice(doc, lost))).toEqual(FENCED);
+        expect(isTransientRejection(FENCED.reason)).toBe(true);
+        await notIssued(s, doc);
+        issuedOf(await s.settle(s.ports.invoices.issueInvoice(doc, held)));
+      });
+
+      it("refuses every kind's write, a contact's update included", async () => {
+        const s = await withContact();
+        expect(await s.settle(s.ports.contacts.upsertContact(contact(SHOP), lost))).toEqual(FENCED);
+        expect(
+          await s.settle(s.ports.contacts.upsertContact(contact(SHOP, "new-1"), lost)),
+        ).toEqual(FENCED);
+        expect(await s.settle(s.ports.vendors.upsertVendor(contact(SHOP, "v-1"), lost))).toEqual(
+          FENCED,
+        );
+        const a = invoice(SHOP, "inv-for-pay-fenced", [NO_VAT_GOODS]);
+        issuedOf(await s.settle(s.ports.invoices.issueInvoice(a)));
+        const payment = must(
+          buildPayment({
+            product: SHOP,
+            sourceId: "pay-fenced",
+            contactReference: a.contactReference,
+            receivedOn: "2026-11-12",
+            amountPence: a.totals.grossPence,
+            allocations: [{ invoiceReference: a.reference, amountPence: a.totals.grossPence }],
+          }),
+        );
+        expect(await s.settle(s.ports.payments.recordPayment(payment, lost))).toEqual(FENCED);
+        await notIssued(s, payment);
+        issuedOf(await s.settle(s.ports.vendors.upsertVendor(contact(SHOP, "seller-1"))));
+        const payout = bill(SHOP, "bill-fenced", [NO_VAT_GOODS]);
+        expect(await s.settle(s.ports.bills.issueBill(payout, lost))).toEqual(FENCED);
+        await notIssued(s, payout);
       });
     });
 

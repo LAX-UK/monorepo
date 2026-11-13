@@ -8,6 +8,7 @@ import type {
   InvoicePort,
   IssueOutcome,
   PaymentPort,
+  WriteFence,
 } from "@auction/accounting-domain";
 
 /**
@@ -29,26 +30,29 @@ type Senders = {
   readonly [K in AccountingDocument["kind"]]: (
     ports: SenderPorts,
     document: Extract<AccountingDocument, { kind: K }>,
+    fence: WriteFence,
   ) => Promise<IssueOutcome>;
 };
 
 /** One row per document kind; a new kind adds a row and a port. */
 const SENDERS: Senders = {
-  invoice: (ports, d) => ports.invoices.issueInvoice(d),
-  payment: (ports, d) => ports.payments.recordPayment(d),
-  credit_note: (ports, d) => ports.creditNotes.issueCreditNote(d),
-  bill: (ports, d) => ports.bills.issueBill(d),
-  contact: (ports, d) => ports.contacts.upsertContact(d),
+  invoice: (ports, d, fence) => ports.invoices.issueInvoice(d, fence),
+  payment: (ports, d, fence) => ports.payments.recordPayment(d, fence),
+  credit_note: (ports, d, fence) => ports.creditNotes.issueCreditNote(d, fence),
+  bill: (ports, d, fence) => ports.bills.issueBill(d, fence),
+  contact: (ports, d, fence) => ports.contacts.upsertContact(d, fence),
 };
 
-/** Hand a document to the port for its kind. */
+/** Hand a document to the port for its kind; its writes go out only while `fence` allows. */
 export function sendThrough(
   ports: SenderPorts,
   document: AccountingDocument,
+  fence: WriteFence,
 ): Promise<IssueOutcome> {
   const send = SENDERS[document.kind] as (
     p: SenderPorts,
     d: AccountingDocument,
+    f: WriteFence,
   ) => Promise<IssueOutcome>;
-  return send(ports, document);
+  return send(ports, document, fence);
 }

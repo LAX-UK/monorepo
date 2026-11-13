@@ -117,6 +117,13 @@ throw) and refuses two live sources; `parseSwitchConfig` turns unknown input int
   request may still land and a second create would duplicate it. **The runtime's HTTP timeout must be
   shorter than the lease**, and the grace covers provider-side work that outlives a client timeout.
   `found` is believed at any time.
+- A send's writes are tied to its lease (`WriteFence`): immediately before every create or update (and
+  every retry of one, after any rate-limit or queue wait) the adapter asks the sender, which asks the store
+  whether this lease token still holds the document with `WRITE_MARGIN_MS` (30 s) left. Once the lease was
+  swept or is about to run out, no write starts: the call ends `rejected` with a passing reason
+  (`zoho_books_fenced_lease_lost`), and whoever holds the document next looks it up before sending. A
+  write that did go out before the lease was lost is never repeated: its late answer is refused and the
+  lookup decides. The Books request timeout is capped at `WRITE_MARGIN_MS` at start-up.
 - `rejected` is a definite refusal by the provider, so `failed` can be requeued safely.
 - `differs` means the provider holds a document under our reference (just created, or adopted
   after a duplicate refusal) that does not read back as ours (a payment applied differently, say).
