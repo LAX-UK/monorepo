@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
+import { enquiryFormSchema } from "./enquiry-form-schema";
 import {
   type EnquiryFormValues,
   budgetOptions,
   contactPreferenceOptions,
   departmentOptions,
   emptyEnquiryValues,
-  enquiryFormSchema,
   parseLocation,
   parsePriceInMindMinor,
   timingOptions,

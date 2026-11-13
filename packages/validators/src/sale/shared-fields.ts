@@ -1,7 +1,7 @@
 import { saleDeliveryModes } from "@auction/types";
 import type { SaleDeliveryMode } from "@auction/types";
 import { z } from "zod";
-import { buyerPremiumTiersSchema } from "../buyer-premium.js";
+import { buyerPremiumTiersSchema } from "../buyer-premium-schema.js";
 import { createNestedLotForSaleSchema } from "../lot/create-update.js";
 import { mediaReferenceSchema } from "../media.js";
 import { isUkPostcode, normalizeUkPostcode } from "../onsite-location.js";

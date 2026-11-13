@@ -1,7 +1,7 @@
 import { redirectForOnboardingRequired } from "@/lib/auth/account-onboarding-required.client";
 import type { BidWriter, PlaceBidInput, PlaceBidResult } from "@/lib/data/contracts";
+import { parseBidRow } from "@/lib/data/http/bid-row";
 import { getBrowserHc } from "@/lib/data/http/hc-browser";
-import { parseBid } from "@/lib/data/http/parse";
 import { parseRefusalDetails } from "@/lib/data/http/refusal-details";
 import { clearClientActingLegalEntityId } from "@/lib/legal-entity/client-acting-context";
 import { notifyAdminCannotBuyIfNeeded } from "@/lib/ui/admin-cannot-buy";
@@ -73,7 +73,7 @@ export function createHttpBidWriter(actingEntityId?: string): BidWriter {
       if (!json.data) {
         return { ok: false, error: "Invalid response", status: res.status };
       }
-      return { ok: true, bid: parseBid(json.data) };
+      return { ok: true, bid: parseBidRow(json.data) };
     },
   };
 }

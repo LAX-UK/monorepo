@@ -3,7 +3,9 @@
 import { submitAbsenteeBidRequest } from "@/app/(marketing)/lot/[slug]/[id]/onsite-participation-actions";
 import { SITE_SUPPORT_EMAIL } from "@/lib/brand";
 import { useActionForm } from "@/lib/forms/use-action-form";
+import { zodFormResolver } from "@/lib/forms/zod-form-resolver";
 import {
+  type AbsenteeBidFormValues,
   type OnsiteParticipationContext,
   absenteeBidFormSchema,
   buildAbsenteeMailto,
@@ -81,8 +83,8 @@ type AbsenteeProps = {
 export function OnsiteAbsenteeBidForm({ ctx, triggerClassName }: AbsenteeProps) {
   const [open, setOpen] = useState(false);
   const [done, setDone] = useState(false);
-  const { form, onSubmit, isSubmitting, rootError } = useActionForm({
-    schema: absenteeBidFormSchema,
+  const { form, onSubmit, isSubmitting, rootError } = useActionForm<AbsenteeBidFormValues>({
+    resolver: zodFormResolver(absenteeBidFormSchema),
     defaultValues: {
       maxHammerBid: "",
       name: "",

@@ -1,4 +1,4 @@
-import { parseBidSchema } from "@/lib/data/http/bid.schema";
+import { bidSchema } from "@/lib/data/http/bid.schema";
 import { parseLotSchema, parsePublicLotViewSchema } from "@/lib/data/http/lot.schema";
 import { isIndexableObject } from "@/lib/data/http/object-guards";
 import { parseSaleSchema } from "@/lib/data/http/sale.schema";
@@ -109,7 +109,7 @@ describe("core row schema parity", () => {
       clerkUserId: "clerk-1",
       createdAt: "2026-01-01T00:00:00.000Z",
     };
-    expect(parseBidSchema(fixture)).toEqual(legacyParseBid(fixture));
+    expect(bidSchema.parse(fixture)).toEqual(legacyParseBid(fixture));
   });
 
   it("sale schema matches legacy defaults for missing deliveryMode", () => {

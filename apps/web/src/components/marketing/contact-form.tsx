@@ -2,8 +2,9 @@
 
 import { submitContactFormResult } from "@/app/(marketing)/contact/actions";
 import { SITE_CONTACT_EMAIL } from "@/lib/brand";
-import { contactFormValuesSchema } from "@/lib/contact/contact-input";
-import { publicFormErrorMap, submitFailureCopy } from "@/lib/forms/error-copy";
+import type { ContactFormValues } from "@/lib/contact/contact-input";
+import { submitFailureCopy } from "@/lib/forms/error-copy";
+import { lazyResolver } from "@/lib/forms/lazy-resolver";
 import { useActionForm } from "@/lib/forms/use-action-form";
 import { useFormErrorSummary } from "@/lib/forms/use-form-error-summary";
 import { contactIntentFromSearchParams } from "@/lib/marketing/contact-intent-copy";
@@ -18,6 +19,11 @@ import { Notice } from "@auction/ui/lax/notice";
 import Link from "next/link";
 import { useState } from "react";
 import { Controller } from "react-hook-form";
+
+const contactFormResolver = lazyResolver<ContactFormValues>(
+  () => import("./contact-form.validation").then((m) => m.contactFormResolver),
+  { failureMessage: submitFailureCopy.title },
+);
 
 const topics = [
   { value: "buying", label: "Buying" },
@@ -64,7 +70,7 @@ export function ContactForm({
   const intentConfig = contactIntentFromSearchParams({ intent, type: sellType, sale });
   const [done, setDone] = useState(false);
   const { form, onSubmit, isSubmitting, rootError } = useActionForm({
-    schema: contactFormValuesSchema,
+    resolver: contactFormResolver,
     defaultValues: {
       name: "",
       firstName: "",
@@ -81,7 +87,6 @@ export function ContactForm({
           : values,
       ),
     onSuccess: () => setDone(true),
-    errorMap: publicFormErrorMap,
     // The summary takes focus after a failed submit, and a failed send shows in the form's notice.
     formOptions: { reValidateMode: "onBlur", shouldFocusError: false },
     focusInvalidField: false,
@@ -114,7 +119,12 @@ export function ContactForm({
   }
 
   return (
-    <form onSubmit={onSubmit} className="mt-6 flex max-w-[520px] flex-col gap-5" noValidate>
+    <form
+      onFocus={contactFormResolver.preload}
+      onSubmit={onSubmit}
+      className="mt-6 flex max-w-[520px] flex-col gap-5"
+      noValidate
+    >
       {intentConfig.headline ? (
         <p className="text-lax-ui text-lax-muted">{intentConfig.headline}</p>
       ) : null}
