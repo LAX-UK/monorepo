@@ -85,6 +85,41 @@ describe("device session hook", () => {
     expect(call.deviceHash).not.toContain(marker);
   });
 
+  it("never lets a response that sets the marker be cached", async () => {
+    const { hook } = setup({ response: "new" });
+    const fresh = await hook({
+      request: requestAt("/api/auth/sign-in/email"),
+      response: signedIn(),
+      path: "/api/auth/sign-in/email",
+    });
+    expect(markerCookieOf(fresh)).toBeDefined();
+    expect(fresh.headers.get("cache-control")).toBe("private, no-store");
+
+    // Also overrides a weaker header the route set, and applies to the page-load renewal.
+    const loose = signedIn();
+    loose.headers.set("cache-control", "max-age=30");
+    const overridden = await hook({
+      request: requestAt("/api/auth/sign-in/email"),
+      response: loose,
+      path: "/api/auth/sign-in/email",
+    });
+    expect(overridden.headers.get("cache-control")).toBe("private, no-store");
+
+    const renewed = await hook({
+      request: requestAt(
+        "/api/auth/oauth2/authorize",
+        `${DEVICE_MARKER_COOKIE}=${mintDeviceMarker()}`,
+        {
+          "sec-fetch-mode": "navigate",
+        },
+      ),
+      response: new Response("<html></html>"),
+      path: "/api/auth/oauth2/authorize",
+    });
+    expect(markerCookieOf(renewed)).toBeDefined();
+    expect(renewed.headers.get("cache-control")).toBe("private, no-store");
+  });
+
   it("recognises the same browser by its marker and renews it", async () => {
     const marker = mintDeviceMarker();
     const { hook, takeOver } = setup({ response: "new" });
