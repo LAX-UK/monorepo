@@ -11,6 +11,8 @@ import type {
   BidInvoiceEmailFacts,
   IAccountingDocumentCopies,
   InvoiceEmailDue,
+  InvoiceEmailDueList,
+  InvoiceEmailSkipReason,
   StoredAccountingDocument,
 } from "@auction/persistence/interfaces";
 import { describe, expect, it, vi } from "vitest";
@@ -32,7 +34,11 @@ function invoice(): Invoice {
   return projected.value.documents[1] as Invoice;
 }
 
-function issuedDocument(mode: TargetMode, number = "INV-000123"): StoredAccountingDocument {
+function issuedDocument(
+  mode: TargetMode,
+  number = "INV-000123",
+  id = `doc-${mode}`,
+): StoredAccountingDocument {
   const document = invoice();
   const record: DocumentRecord = {
     kind: "invoice",
@@ -42,7 +48,7 @@ function issuedDocument(mode: TargetMode, number = "INV-000123"): StoredAccounti
     issued: { number, providerId: `p-${mode}`, pdfRef: "/invoices/1" },
   };
   return {
-    id: `doc-${mode}`,
+    id,
     product: "bid",
     legalEntity: "london_auction_xchange",
     kind: "invoice",
@@ -59,9 +65,18 @@ function issuedDocument(mode: TargetMode, number = "INV-000123"): StoredAccounti
   };
 }
 
-/** The copies table in memory, with the same rules: one copy per document, one email note. */
+type MemoryCopy = AccountingDocumentCopy & {
+  emailOutboxId?: string;
+  emailSkipped?: InvoiceEmailSkipReason;
+};
+
+/**
+ * The copies table in memory, with the same rules: one copy per document, its email settled once
+ * (queued or skipped), only live invoices listed as due, oldest stored first, `limit` at a time.
+ * A document's invoice id is `invoice-<document id>`; a document numbered "" does not read back.
+ */
 class Copies implements IAccountingDocumentCopies {
-  readonly copies = new Map<string, AccountingDocumentCopy & { emailOutboxId?: string }>();
+  readonly copies = new Map<string, MemoryCopy>();
   constructor(private readonly documents: StoredAccountingDocument[]) {}
   async listUncopied(modes: readonly TargetMode[]) {
     return {
@@ -76,23 +91,46 @@ class Copies implements IAccountingDocumentCopies {
     this.copies.set(copy.documentId, copy);
     return true;
   }
-  async listEmailDue(): Promise<InvoiceEmailDue[]> {
-    return this.documents
+  async listEmailDue(limit: number): Promise<InvoiceEmailDueList> {
+    const listed = this.documents
       .filter((d) => {
         const copy = this.copies.get(d.id);
-        return copy && !copy.rehearsal && !copy.emailOutboxId && d.target?.mode !== "dry_run";
+        return (
+          copy &&
+          !copy.rehearsal &&
+          !copy.emailOutboxId &&
+          !copy.emailSkipped &&
+          d.target?.mode === "live"
+        );
       })
-      .map((d) => ({
+      .slice(0, limit);
+    const due: InvoiceEmailDue[] = [];
+    const unreadable: string[] = [];
+    for (const d of listed) {
+      const number = d.record.status === "issued" ? d.record.issued.number : "";
+      if (!number) {
+        unreadable.push(d.id);
+        continue;
+      }
+      due.push({
         documentId: d.id,
-        invoiceId: INVOICE_ID,
-        number: d.record.status === "issued" ? d.record.issued.number : "",
+        invoiceId: `invoice-${d.id}`,
+        number,
         storageKey: this.copies.get(d.id)?.storageKey ?? "",
-      }));
+      });
+    }
+    return { due, unreadable };
   }
   async markEmailQueued(documentId: string, outboxId: string) {
     const copy = this.copies.get(documentId);
-    if (!copy || copy.emailOutboxId) return false;
+    if (!copy || copy.emailOutboxId || copy.emailSkipped) return false;
     this.copies.set(documentId, { ...copy, emailOutboxId: outboxId });
+    return true;
+  }
+  async markEmailSkipped(documentId: string, reason: InvoiceEmailSkipReason) {
+    const copy = this.copies.get(documentId);
+    if (!copy || copy.emailOutboxId || copy.emailSkipped) return false;
+    this.copies.set(documentId, { ...copy, emailSkipped: reason });
     return true;
   }
 }
@@ -114,11 +152,20 @@ function setUp(
   mode: TargetMode,
   pdf: Partial<Record<TargetMode, DocumentPdfPort>> = {},
   documents = [issuedDocument(mode)],
+  opts: {
+    factsFor?: (invoiceId: string) => BidInvoiceEmailFacts | null;
+    batch?: number;
+    enqueueFails?: boolean;
+  } = {},
 ) {
   const copies = new Copies(documents);
   const putObject = vi.fn(async () => ({ url: "unused" }));
   let n = 0;
-  const enqueue = vi.fn(async () => ({ outboxId: `outbox-${++n}` }));
+  const enqueue = vi.fn(async () => {
+    if (opts.enqueueFails) throw new Error("outbox down");
+    return { outboxId: `outbox-${++n}` };
+  });
+  const log = { info: vi.fn(), warn: vi.fn() };
   const fetched = (rehearsal: boolean): DocumentPdfPort => ({
     fetchPdf: vi.fn(async () => ({
       status: "fetched" as const,
@@ -139,13 +186,14 @@ function setUp(
     },
     pdfsByMode: { [mode]: fetched(mode === "dry_run"), ...pdf },
     storage: { putObject },
-    emailFacts: { forInvoice: async () => facts },
+    emailFacts: { forInvoice: async (invoiceId) => (opts.factsFor ?? (() => facts))(invoiceId) },
     email: { enqueue },
     webBaseUrl: "https://lax.bid/",
     now: () => NOW,
-    log: { info: vi.fn(), warn: vi.fn() },
+    log,
+    ...(opts.batch ? { batch: opts.batch } : {}),
   });
-  return { service, copies, putObject, enqueue };
+  return { service, copies, putObject, enqueue, log };
 }
 
 describe("AccountingInvoiceCopy", () => {
@@ -167,8 +215,8 @@ describe("AccountingInvoiceCopy", () => {
     expect(enqueue).not.toHaveBeenCalled();
   });
 
-  it("stores the Books PDF and emails the payer and the billing inbox once", async () => {
-    const { service, enqueue } = setUp("test_org");
+  it("stores the Books PDF and emails the payer and the billing inbox once (live)", async () => {
+    const { service, enqueue } = setUp("live");
     expect(await service.tick()).toEqual({ stored: 1, emailed: 1 });
     expect(enqueue).toHaveBeenCalledTimes(2);
     expect(enqueue).toHaveBeenNthCalledWith(
@@ -177,14 +225,14 @@ describe("AccountingInvoiceCopy", () => {
         template: "bid-invoice-issued",
         to: "maya@example.test",
         userId: "user-1",
-        idempotencyKey: "bid-invoice-issued:doc-test_org",
+        idempotencyKey: "bid-invoice-issued:doc-live",
         vars: expect.objectContaining({
           invoiceNumber: "INV-000123",
           total: "£1,543.20",
           settlement: { kind: "paid", on: "Thu 12 Nov, 14:05 GMT" },
           purchaseUrl: "https://lax.bid/purchases/7a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d",
           storedAttachment: expect.objectContaining({
-            storageKey: "accounting/london_auction_xchange/doc-test_org.pdf",
+            storageKey: "accounting/london_auction_xchange/doc-live.pdf",
           }),
         }),
       }),
@@ -196,6 +244,83 @@ describe("AccountingInvoiceCopy", () => {
     // Once: the next tick finds nothing to store and nothing to send.
     expect(await service.tick()).toEqual({ stored: 0, emailed: 0 });
     expect(enqueue).toHaveBeenCalledTimes(2);
+  });
+
+  it("treats the test organisation like a dry run: keeps the copy, emails no one", async () => {
+    // Its documents are not tax invoices; no buyer is ever sent one.
+    const { service, copies, enqueue } = setUp("test_org");
+    expect(await service.tick()).toEqual({ stored: 1, emailed: 0 });
+    expect(await service.tick()).toEqual({ stored: 0, emailed: 0 });
+    expect(copies.copies.get("doc-test_org")).toMatchObject({ rehearsal: false });
+    expect(enqueue).not.toHaveBeenCalled();
+  });
+
+  it("settles a cancelled invoice at the head of the list, so the one behind it is emailed", async () => {
+    const cancelled = issuedDocument("live", "INV-000001", "doc-a");
+    const valid = issuedDocument("live", "INV-000002", "doc-b");
+    const { service, copies, enqueue, log } = setUp("live", {}, [cancelled, valid], {
+      batch: 1,
+      factsFor: (invoiceId) => ({ ...facts, invoiceId, cancelled: invoiceId === "invoice-doc-a" }),
+    });
+    // Both copies are stored; emails go one at a time: the cancelled one first, settled as
+    // skipped for good.
+    expect(await service.tick()).toEqual({ stored: 2, emailed: 0 });
+    expect(copies.copies.get("doc-a")?.emailSkipped).toBe("invoice_cancelled");
+    expect(log.warn).toHaveBeenCalledWith(
+      { documentId: "doc-a", reason: "invoice_cancelled" },
+      "accounting_invoice_email_skipped",
+    );
+    expect(await service.tick()).toEqual({ stored: 0, emailed: 1 });
+    expect(enqueue).toHaveBeenCalledWith(
+      expect.objectContaining({ idempotencyKey: "bid-invoice-issued:doc-b" }),
+    );
+    expect(enqueue).not.toHaveBeenCalledWith(
+      expect.objectContaining({ idempotencyKey: "bid-invoice-issued:doc-a" }),
+    );
+    expect(copies.copies.get("doc-b")?.emailOutboxId).toBe("outbox-1");
+  });
+
+  it("settles every kind of copy it will never email, and keeps one that only failed", async () => {
+    const missing = issuedDocument("live", "INV-000001", "doc-missing");
+    const nobody = issuedDocument("live", "INV-000002", "doc-nobody");
+    const unreadable = issuedDocument("live", "", "doc-unreadable");
+    const { service, copies, enqueue } = setUp("live", {}, [missing, nobody, unreadable], {
+      factsFor: (invoiceId) =>
+        invoiceId === "invoice-doc-missing"
+          ? null
+          : { ...facts, invoiceId, payer: null, billingEmail: null },
+    });
+    await service.tick();
+    expect(copies.copies.get("doc-missing")?.emailSkipped).toBe("invoice_missing");
+    expect(copies.copies.get("doc-nobody")?.emailSkipped).toBe("no_recipient");
+    expect(copies.copies.get("doc-unreadable")?.emailSkipped).toBe("unreadable_document");
+    expect(enqueue).not.toHaveBeenCalled();
+
+    // An outbox error is not final: the copy stays due and is tried again.
+    const failing = setUp("live", {}, undefined, { enqueueFails: true });
+    await failing.service.tick();
+    await failing.service.tick();
+    expect(failing.enqueue).toHaveBeenCalledTimes(2);
+    expect(failing.copies.copies.get("doc-live")).not.toHaveProperty("emailSkipped");
+    expect(failing.copies.copies.get("doc-live")?.emailOutboxId).toBeUndefined();
+  });
+
+  it("sends a former member nothing: only the billing inbox is emailed", async () => {
+    // The facts name no payer when the member who paid has left or no longer pays.
+    const { service, copies, enqueue } = setUp("live", {}, undefined, {
+      factsFor: (invoiceId) => ({ ...facts, invoiceId, payer: null }),
+    });
+    expect(await service.tick()).toEqual({ stored: 1, emailed: 1 });
+    expect(enqueue).toHaveBeenCalledTimes(1);
+    expect(enqueue).toHaveBeenCalledWith(
+      expect.objectContaining({
+        to: "accounts@example.test",
+        recipientResolution: "snapshot",
+        idempotencyKey: `bid-invoice-issued-billing:${facts.buyerLegalEntityId}:doc-live`,
+      }),
+    );
+    expect(enqueue).not.toHaveBeenCalledWith(expect.objectContaining({ userId: "user-1" }));
+    expect(copies.copies.get("doc-live")?.emailOutboxId).toBe("outbox-1");
   });
 
   it("never keeps a rehearsal page as a test or live invoice's copy", async () => {

@@ -11,6 +11,7 @@ import type {
   IAccountingSourceSettingReader,
   IBidInvoiceEmailFactsReader,
   InvoiceEmailDue,
+  InvoiceEmailSkipReason,
   StoredAccountingDocument,
 } from "@auction/persistence/interfaces";
 import { composeBidInvoiceEmail } from "./bid-invoice-email.js";
@@ -57,9 +58,15 @@ export interface CopyTick {
  * - The PDF is fetched through the same adapter the document was sent with (in dry run, a page
  *   that says it is a rehearsal), stored in document storage, and recorded. A fetch that fails is
  *   tried again next tick; nothing is recorded until the file is stored.
- * - The email goes only for an invoice Books issued in `test_org` or `live`, never a rehearsal
- *   (the query, this service and a table constraint each refuse it), with an idempotency key per
- *   document, so the outbox holds one message however often this runs.
+ * - The email goes only for an invoice Books issued `live`: never a rehearsal, and never a test
+ *   organisation's invoice, which is not a tax invoice (this service and the query each refuse
+ *   both; the table refuses to record a rehearsal as emailed). Each message has an idempotency key
+ *   per document, so the outbox holds one however often this runs.
+ * - Every listed copy is settled, so none holds a place at the head of the list: it is queued, or
+ *   skipped for good (cancelled, nobody to send it to, unreadable) with a warning. Only an error
+ *   leaves it due, to try again next tick.
+ * - It goes to the payer while they may still pay (an organisation's current member with a payer
+ *   role) and to the account's billing inbox; a former member gets nothing.
  */
 export class AccountingInvoiceCopy {
   private readonly batch: number;
@@ -72,8 +79,8 @@ export class AccountingInvoiceCopy {
     const modes = await this.activeModes();
     if (modes.length === 0) return { stored: 0, emailed: 0 };
     const stored = await this.storeCopies(modes);
-    // A rehearsal emails no one: only an invoice issued in a writing mode is ever listed.
-    const emailed = modes.some((mode) => mode !== "dry_run") ? await this.sendEmails() : 0;
+    // A rehearsal or a test organisation emails no one: only an invoice Books issued live is.
+    const emailed = modes.includes("live") ? await this.sendEmails() : 0;
     return { stored, emailed };
   }
 
@@ -140,7 +147,10 @@ export class AccountingInvoiceCopy {
   }
 
   private async sendEmails(): Promise<number> {
-    const due = await this.deps.copies.listEmailDue(this.batch);
+    const { due, unreadable } = await this.deps.copies.listEmailDue(this.batch);
+    for (const documentId of unreadable) {
+      await this.skip(documentId, "unreadable_document");
+    }
     let emailed = 0;
     for (const copy of due) {
       try {
@@ -156,9 +166,40 @@ export class AccountingInvoiceCopy {
     return emailed;
   }
 
+  /** Settles a copy's email as never to be sent, so it leaves the due list; says why. */
+  private async skip(documentId: string, reason: InvoiceEmailSkipReason): Promise<void> {
+    try {
+      await this.deps.copies.markEmailSkipped(documentId, reason, this.deps.now());
+      this.deps.log.warn({ documentId, reason }, "accounting_invoice_email_skipped");
+    } catch (error) {
+      this.deps.log.warn(
+        { documentId, reason, err: error instanceof Error ? error.name : "unknown" },
+        "accounting_invoice_email_failed",
+      );
+    }
+  }
+
   private async sendEmail(copy: InvoiceEmailDue): Promise<boolean> {
     const facts = await this.deps.emailFacts.forInvoice(copy.invoiceId);
-    if (!facts?.payer || facts.cancelled) return false;
+    if (!facts) {
+      await this.skip(copy.documentId, "invoice_missing");
+      return false;
+    }
+    if (facts.cancelled) {
+      await this.skip(copy.documentId, "invoice_cancelled");
+      return false;
+    }
+    const payer = facts.payer;
+    // The finance team's billing inbox gets its own copy, unless it is the payer's own address.
+    const billing =
+      facts.billingEmail &&
+      (!payer || facts.billingEmail.toLowerCase() !== payer.email.toLowerCase())
+        ? facts.billingEmail
+        : null;
+    if (!payer && !billing) {
+      await this.skip(copy.documentId, "no_recipient");
+      return false;
+    }
     const now = this.deps.now();
     const base = this.deps.webBaseUrl.replace(/\/$/, "");
     const lotUrl = `${base}/purchases/${encodeURIComponent(facts.lotId)}`;
@@ -171,18 +212,20 @@ export class AccountingInvoiceCopy {
         userName,
         now,
       });
-    const queued = await this.deps.email.enqueue({
-      template: "bid-invoice-issued",
-      to: facts.payer.email,
-      userId: facts.payer.userId,
-      category: "transactional",
-      idempotencyKey: `bid-invoice-issued:${copy.documentId}`,
-      vars: compose(facts.payer.name),
-    });
-    // The finance team's billing inbox gets its own copy, unless it is the payer's own address.
-    const billing = facts.billingEmail;
-    if (billing && billing.toLowerCase() !== facts.payer.email.toLowerCase()) {
-      await this.deps.email.enqueue({
+    let outboxId: string | null = null;
+    if (payer) {
+      const queued = await this.deps.email.enqueue({
+        template: "bid-invoice-issued",
+        to: payer.email,
+        userId: payer.userId,
+        category: "transactional",
+        idempotencyKey: `bid-invoice-issued:${copy.documentId}`,
+        vars: compose(payer.name),
+      });
+      outboxId = queued.outboxId;
+    }
+    if (billing) {
+      const queued = await this.deps.email.enqueue({
         template: "bid-invoice-issued",
         to: billing,
         recipientResolution: "snapshot",
@@ -190,9 +233,14 @@ export class AccountingInvoiceCopy {
         idempotencyKey: `bid-invoice-issued-billing:${facts.buyerLegalEntityId}:${copy.documentId}`,
         vars: compose(null),
       });
+      outboxId ??= queued.outboxId;
     }
-    await this.deps.copies.markEmailQueued(copy.documentId, queued.outboxId, now);
-    this.deps.log.info({ documentId: copy.documentId }, "accounting_invoice_email_queued");
+    if (outboxId === null) return false;
+    await this.deps.copies.markEmailQueued(copy.documentId, outboxId, now);
+    this.deps.log.info(
+      { documentId: copy.documentId, toPayer: payer !== null, toBilling: billing !== null },
+      "accounting_invoice_email_queued",
+    );
     return true;
   }
 }

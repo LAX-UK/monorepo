@@ -303,18 +303,46 @@ export interface InvoiceEmailDue {
 }
 
 /**
+ * Why an invoice's email was settled without sending it; each is final.
+ * - `invoice_missing`: the Bid invoice the document names no longer exists.
+ * - `invoice_cancelled`: the invoice was cancelled before its email went.
+ * - `no_recipient`: no current payer and no billing inbox to send it to.
+ * - `unreadable_document`: the row does not read back as a numbered Bid invoice.
+ */
+export type InvoiceEmailSkipReason =
+  | "invoice_missing"
+  | "invoice_cancelled"
+  | "no_recipient"
+  | "unreadable_document";
+
+/** The copies whose email is due, and the due rows that could not be read (settled as skipped). */
+export interface InvoiceEmailDueList {
+  readonly due: readonly InvoiceEmailDue[];
+  /** Document ids listed as due whose row does not read back as a numbered Bid invoice. */
+  readonly unreadable: readonly string[];
+}
+
+/**
  * The worker's side of the stored copies: which issued invoices have none yet, recording one,
- * and the "Your invoice" email queued once per copy.
+ * and the "Your invoice" email settled once per copy (queued, or skipped for good).
  */
 export interface IAccountingDocumentCopies {
   /** Issued Bid invoices aimed at one of `modes` that have no stored copy yet, newest first. */
   listUncopied(modes: readonly TargetMode[], limit: number): Promise<UncopiedDocuments>;
   /** Records a copy; false when the document already has one (another worker was first). */
   record(copy: AccountingDocumentCopy): Promise<boolean>;
-  /** Copies of issued Bid invoices whose email is not queued yet; never a rehearsal. */
-  listEmailDue(limit: number): Promise<InvoiceEmailDue[]>;
-  /** Notes the email as queued; false when it already was (the note is made once). */
+  /**
+   * Copies of Bid invoices Books issued live whose email is not settled yet, oldest first; never
+   * a rehearsal, never a test organisation's invoice.
+   */
+  listEmailDue(limit: number): Promise<InvoiceEmailDueList>;
+  /** Notes the email as queued; false when it was already settled (the note is made once). */
   markEmailQueued(documentId: string, outboxId: string, at: Date): Promise<boolean>;
+  /**
+   * Settles the email as never to be sent, so the copy leaves the due list; false when it was
+   * already settled.
+   */
+  markEmailSkipped(documentId: string, reason: InvoiceEmailSkipReason, at: Date): Promise<boolean>;
 }
 
 /** What the "Your invoice" email says, read from the invoice's own rows. */

@@ -7,6 +7,8 @@ import type {
   AccountingDocumentCopy,
   IAccountingDocumentCopies,
   InvoiceEmailDue,
+  InvoiceEmailDueList,
+  InvoiceEmailSkipReason,
   StoredAccountingDocument,
   UncopiedDocuments,
 } from "../../interfaces/accounting.js";
@@ -68,7 +70,7 @@ export class DrizzleAccountingDocumentCopies implements IAccountingDocumentCopie
     return inserted.length > 0;
   }
 
-  async listEmailDue(limit: number): Promise<InvoiceEmailDue[]> {
+  async listEmailDue(limit: number): Promise<InvoiceEmailDueList> {
     const rows = await this.db
       .select({
         documentId: c.documentId,
@@ -82,19 +84,30 @@ export class DrizzleAccountingDocumentCopies implements IAccountingDocumentCopie
         and(
           BID_INVOICE,
           eq(d.state, "issued"),
-          // A rehearsal is never emailed (the table refuses it too).
+          // A rehearsal is never emailed, and neither is a test organisation's invoice: only an
+          // invoice Books issued live reaches a buyer.
           eq(c.rehearsal, false),
-          inArray(d.targetMode, ["test_org", "live"]),
+          eq(d.targetMode, "live"),
           isNull(c.emailQueuedAt),
+          isNull(c.emailSkippedAt),
         ),
       )
       .orderBy(asc(c.storedAt), asc(c.documentId))
       .limit(limit);
     const due: InvoiceEmailDue[] = [];
+    const unreadable: string[] = [];
     for (const row of rows) {
       const parsed = parseLaxReference(row.reference);
-      if (!parsed.ok || row.number === null) continue;
-      if (parsed.value.product !== "bid" || parsed.value.kind !== "invoice") continue;
+      if (
+        !parsed.ok ||
+        row.number === null ||
+        parsed.value.product !== "bid" ||
+        parsed.value.kind !== "invoice"
+      ) {
+        // Named, so the caller settles it and it never holds a place at the head of the list.
+        unreadable.push(row.documentId);
+        continue;
+      }
       due.push({
         documentId: row.documentId,
         invoiceId: parsed.value.sourceId,
@@ -102,14 +115,34 @@ export class DrizzleAccountingDocumentCopies implements IAccountingDocumentCopie
         storageKey: row.storageKey,
       });
     }
-    return due;
+    return { due, unreadable };
   }
 
   async markEmailQueued(documentId: string, outboxId: string, at: Date): Promise<boolean> {
     const updated = await this.db
       .update(c)
       .set({ emailQueuedAt: at, emailOutboxId: outboxId })
-      .where(and(eq(c.documentId, documentId), isNull(c.emailQueuedAt), eq(c.rehearsal, false)))
+      .where(
+        and(
+          eq(c.documentId, documentId),
+          isNull(c.emailQueuedAt),
+          isNull(c.emailSkippedAt),
+          eq(c.rehearsal, false),
+        ),
+      )
+      .returning({ documentId: c.documentId });
+    return updated.length > 0;
+  }
+
+  async markEmailSkipped(
+    documentId: string,
+    reason: InvoiceEmailSkipReason,
+    at: Date,
+  ): Promise<boolean> {
+    const updated = await this.db
+      .update(c)
+      .set({ emailSkippedAt: at, emailSkipReason: reason })
+      .where(and(eq(c.documentId, documentId), isNull(c.emailQueuedAt), isNull(c.emailSkippedAt)))
       .returning({ documentId: c.documentId });
     return updated.length > 0;
   }
