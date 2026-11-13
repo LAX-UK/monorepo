@@ -42,7 +42,10 @@ export type InsertPayoutLineInput = {
   sourceEventId?: string | null;
   /** On a lot's sale line: the seller-terms snapshot it pays. */
   sellerTermsId?: string | null;
-  /** On a refund line: the buyer's refund, in pence, the line answers for. */
+  /**
+   * On a refund line: the buyer's refund, in pence, the line answers for. Negative on a line giving
+   * back a failed refund: the buyer refund it reverses (its amount is then zero or more).
+   */
   buyerRefundPence?: number | null;
 };
 
@@ -115,8 +118,10 @@ export interface IPayoutReadRepository {
    */
   lineExistsForSourceEvent(sourceEventId: string): Promise<boolean>;
   /** The buyer refunds the seller's ledger has answered for, for a payment, in PENCE (positive).
-   * A refund line records the buyer's refund it answers for; one written before that was recorded
-   * answers for its own amount. Used by the `charge.refunded` webhook to compute per-event refund
+   * A refund line records the buyer's refund it answers for (negative on a line giving back a
+   * failed refund); one written before that was recorded answers for its own amount, with its
+   * sign. The lines are added up with their sign, so a give-back cancels the charge it reverses.
+   * Used by the `charge.refunded` webhook to compute per-event refund
    * delta because Stripe's `amount_refunded` field is cumulative across all refunds.
    */
   sumRefundLineCentsForPayment(paymentId: string): Promise<number>;

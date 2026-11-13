@@ -146,6 +146,7 @@ export {
   outcomeFromTransfer,
 } from "./payout/payout-bulk-transfer.js";
 export {
+  type GiveBackFailedRefundInput,
   PayoutAdjustmentService,
   type PayoutRepoForTx,
 } from "./payout/payout-adjustment.service.js";

@@ -86,7 +86,10 @@ export type PayoutLine = {
   createdAt: Date;
   /** The seller-terms snapshot a lot's sale line pays; `null` on lines paid under the old rule. */
   sellerTermsId?: string | null;
-  /** On a refund line: the buyer's refund, in pence, the line answers for. */
+  /**
+   * On a refund line: the buyer's refund, in pence, the line answers for; negative on a line giving
+   * back a failed refund (the buyer refund it reverses).
+   */
   buyerRefundPence?: number | null;
   /**
    * What a sale line's split is worked from, read with the line. For a line paid from a seller-terms

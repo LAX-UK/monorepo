@@ -14,6 +14,7 @@ import {
   payoutLine,
   processedStripeEvents,
   saleSellerTerms,
+  stripeRefundReversal,
 } from "@auction/db/schema";
 import {
   PayoutAdjustmentService,
@@ -33,6 +34,7 @@ import {
   DrizzleTransactionRunner,
 } from "@auction/persistence/repositories";
 import { and, eq, inArray, like, sql } from "drizzle-orm";
+import { ok } from "neverthrow";
 import type Stripe from "stripe";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { FakeChargeRefunds } from "../../test/fake-charge-refunds.js";
@@ -44,6 +46,7 @@ import { DomainEventSink } from "../domain-event-sink.js";
 import { DomainEventPublisher } from "../domain-event.publisher.js";
 import { executePaymentRefundLedger } from "../payment/refund-execution.js";
 import { StripePaymentWebhookService } from "../stripe-payment-webhook.service.js";
+import { StripeRefundReconcileService } from "../stripe-webhook/stripe-refund-reconcile.service.js";
 import { PayoutAdjustmentService as ApiPayoutAdjustmentService } from "./payout-adjustment.service.js";
 
 const HAS_DB = Boolean(process.env.DATABASE_URL);
@@ -357,9 +360,10 @@ describe.skipIf(!HAS_DB)("payout run on seller terms (integration)", () => {
     const lines = await refundLinesOf(paymentId);
     return {
       chargedPence: lines.reduce((n, l) => n - Math.round(Number(l.amount) * 100), 0),
-      // A line from before this release answered for its own amount.
+      // Added up with their sign: a line from before this release answered for its own amount,
+      // and a line giving back a failed refund answers for it as a negative figure.
       answeredPence: lines.reduce(
-        (n, l) => n + (l.buyerRefundPence ?? Math.abs(Math.round(Number(l.amount) * 100))),
+        (n, l) => n + (l.buyerRefundPence ?? -Math.round(Number(l.amount) * 100)),
         0,
       ),
     };
@@ -373,6 +377,138 @@ describe.skipIf(!HAS_DB)("payout run on seller terms (integration)", () => {
         and(eq(domainEvent.aggregateId, paymentId), eq(domainEvent.eventType, "payment.refunded")),
       );
     return rows.length;
+  }
+
+  /** The card charge of a £1,250 sale as Stripe sends it; its refunds are read from Stripe's list. */
+  const chargeOf = (paymentId: string, chargeId: string) =>
+    ({
+      id: chargeId,
+      amount: pounds(1_250),
+      amount_refunded: 0,
+      currency: "gbp",
+      payment_intent: null,
+      metadata: { paymentId },
+    }) as unknown as Stripe.Charge;
+
+  /** A `charge.refunded` event, settling the charge against Stripe's list as it stands. */
+  const chargeRefunded = (paymentId: string, chargeId: string) => {
+    const charge = chargeOf(paymentId, chargeId);
+    const event = {
+      id: `evt_terms_${run}_${randomUUID()}`,
+      type: "charge.refunded",
+      data: { object: charge },
+    } as unknown as Stripe.Event;
+    return webhooks.handleChargeRefunded(event, charge);
+  };
+
+  /** A card refund of the sale that succeeds at Stripe and is counted by its event. */
+  async function cardRefund(paymentId: string, chargeId: string, pence: number) {
+    const id = `re_terms_${run}_${randomUUID()}`;
+    stripeRefunds.add({ id, chargeId, amountPence: pence, status: "succeeded" });
+    await chargeRefunded(paymentId, chargeId);
+    return id;
+  }
+
+  /** Stripe now reports the refund failed; `charge.refunded` settles the charge again. */
+  function refundFails(refundId: string, paymentId: string, chargeId: string) {
+    stripeRefunds.setStatus(refundId, "failed");
+    return chargeRefunded(paymentId, chargeId);
+  }
+
+  /** The seller's open payouts are paid, so the next line goes on a payout of its own. */
+  const payOpenPayouts = () =>
+    db
+      .update(payout)
+      .set({ status: "paid" })
+      .where(
+        and(
+          eq(payout.legalEntityId, sellerEntity),
+          inArray(payout.status, ["scheduled", "in_transit"]),
+        ),
+      );
+
+  /** A £1,000 hammer and £250 premium card sale at 15% + VAT, paid out (£820.00 net). */
+  async function paidOutCardSale() {
+    const sale = await seedSale({
+      hammer: 1_000,
+      premium: 250,
+      commissionPercent: "15.00",
+      raised: "agreement",
+    });
+    const chargeId = await cardPayment(sale.paymentId);
+    stripeRefunds.charges.set(chargeId, chargeOf(sale.paymentId, chargeId));
+    await payOpenPayouts();
+    const settled = await createSettlement(deps, null, {
+      legalEntityId: sellerEntity,
+      periodEnd: nextPeriodEnd(),
+    });
+    if (!settled.ok) throw new Error("the sale was not paid out");
+    await payOpenPayouts();
+    return { ...sale, chargeId };
+  }
+
+  /** What `payment.refund_reversed` announced for the payment. */
+  async function reversals(paymentId: string) {
+    const rows = await db
+      .select({ payload: domainEvent.payload })
+      .from(domainEvent)
+      .where(
+        and(
+          eq(domainEvent.aggregateId, paymentId),
+          eq(domainEvent.eventType, "payment.refund_reversed"),
+        ),
+      );
+    return rows.map((r) => r.payload);
+  }
+
+  /** The lines giving back a failed refund: refund lines answering for a negative buyer refund. */
+  const giveBackLinesOf = async (paymentId: string) =>
+    (await refundLinesOf(paymentId)).filter((l) => (l.buyerRefundPence ?? 0) < 0);
+
+  /** What the buyer's refund top-up (0378) would add for the payment now. */
+  async function topUpAdds(paymentId: string) {
+    const added = await db.execute<{ added: number }>(
+      sql`SELECT payment_refund_backfill_from_payout_lines(${paymentId}::uuid) AS added`,
+    );
+    return Number(added.rows[0]?.added);
+  }
+
+  /** As the previous release left a £500 refund charged in full: on record and on a paid payout. */
+  async function oldReleaseFullCharge(paymentId: string, refundKey: string) {
+    await db.insert(paymentRefund).values({
+      paymentId,
+      idempotencyKey: refundKey,
+      amountPence: pounds(500),
+      currency: "GBP",
+      source: "card_webhook",
+    });
+    await oldReleaseLine(paymentId, "-500.00", "Refund");
+  }
+
+  /** A refund line the previous release wrote (no buyer refund kept), on a paid payout of its own. */
+  async function oldReleaseLine(paymentId: string, amount: string, note: string) {
+    const [old] = await db
+      .insert(payout)
+      .values({
+        legalEntityId: sellerEntity,
+        periodStart: new Date("2026-10-03T00:00:00Z"),
+        periodEnd: new Date("2026-10-03T00:00:01Z"),
+        grossAmount: amount,
+        platformFee: "0.00",
+        stripeFee: "0.00",
+        netAmount: amount,
+        currency: "GBP",
+        status: "paid",
+      })
+      .returning({ id: payout.id });
+    if (!old) throw new Error("payout was not stored");
+    await db.insert(payoutLine).values({
+      payoutId: old.id,
+      paymentId,
+      amount,
+      kind: "refund",
+      note,
+    });
   }
 
   /**
@@ -459,6 +595,12 @@ describe.skipIf(!HAS_DB)("payout run on seller terms (integration)", () => {
     await db
       .delete(processedStripeEvents)
       .where(like(processedStripeEvents.eventId, `evt_terms_${run}_%`));
+    await db
+      .delete(processedStripeEvents)
+      .where(like(processedStripeEvents.eventId, `refund_reconcile:re_terms_${run}_%`));
+    await db
+      .delete(stripeRefundReversal)
+      .where(like(stripeRefundReversal.stripeRefundId, `re_terms_${run}_%`));
     await db.delete(payment).where(inArray(payment.lotId, lotIds));
     await db.delete(bidInvoice).where(inArray(bidInvoice.lotId, lotIds));
     if (submissionIds.length) {
@@ -958,6 +1100,214 @@ describe.skipIf(!HAS_DB)("payout run on seller terms (integration)", () => {
     expect(await refundLedger(sale.paymentId)).toEqual({
       chargedPence: pounds(328),
       answeredPence: pounds(500),
+    });
+  });
+  describe("a refund that fails after it was counted gives the seller back what it charged them", () => {
+    it("a £500 refund charged at the £328.00 share is given back on one line, announced once", async () => {
+      const sale = await paidOutCardSale();
+      const refundId = await cardRefund(sale.paymentId, sale.chargeId, pounds(500));
+      expect(await refundLedger(sale.paymentId)).toEqual({
+        chargedPence: pounds(328),
+        answeredPence: pounds(500),
+      });
+      await payOpenPayouts();
+
+      expect(await refundFails(refundId, sale.paymentId, sale.chargeId)).toMatchObject({
+        action: "refund_reversed",
+      });
+      // Another event for the charge finds nothing left to take back.
+      expect(await chargeRefunded(sale.paymentId, sale.chargeId)).toMatchObject({
+        action: "skipped",
+      });
+
+      expect(await giveBackLinesOf(sale.paymentId)).toEqual([
+        expect.objectContaining({ amount: "328.00", buyerRefundPence: -pounds(500) }),
+      ]);
+      expect(await refundLedger(sale.paymentId)).toEqual({ chargedPence: 0, answeredPence: 0 });
+      expect(await repo.sumRefundLineCentsForPayment(sale.paymentId)).toBe(0);
+      expect((await refundRecords.sumRefundedPence(sale.paymentId)).pence).toBe(0);
+      expect(await topUpAdds(sale.paymentId)).toBe(0);
+      expect(await reversals(sale.paymentId)).toEqual([
+        expect.objectContaining({ amountCents: pounds(500), sellerAmountCents: pounds(328) }),
+      ]);
+
+      // The same refund made again, and succeeding, charges the share once more.
+      await cardRefund(sale.paymentId, sale.chargeId, pounds(500));
+      expect(await refundLedger(sale.paymentId)).toEqual({
+        chargedPence: pounds(328),
+        answeredPence: pounds(500),
+      });
+    });
+
+    it("one of two £250 refunds failing gives back £164.00, what the share of £250 less is", async () => {
+      const sale = await paidOutCardSale();
+      await cardRefund(sale.paymentId, sale.chargeId, pounds(250));
+      await payOpenPayouts();
+      const second = await cardRefund(sale.paymentId, sale.chargeId, pounds(250));
+      await payOpenPayouts();
+      expect(await refundLedger(sale.paymentId)).toEqual({
+        chargedPence: pounds(328),
+        answeredPence: pounds(500),
+      });
+
+      await refundFails(second, sale.paymentId, sale.chargeId);
+
+      expect(await giveBackLinesOf(sale.paymentId)).toEqual([
+        expect.objectContaining({ amount: "164.00", buyerRefundPence: -pounds(250) }),
+      ]);
+      expect(await refundLedger(sale.paymentId)).toEqual({
+        chargedPence: pounds(164),
+        answeredPence: pounds(250),
+      });
+      expect(await repo.sumRefundLineCentsForPayment(sale.paymentId)).toBe(pounds(250));
+      expect(await reversals(sale.paymentId)).toEqual([
+        expect.objectContaining({ amountCents: pounds(250), sellerAmountCents: pounds(164) }),
+      ]);
+    });
+
+    it("a refund that fails before payout leaves the sale to be paid as if it was never refunded", async () => {
+      // Refunded, and failed, while the sale waits for its payout: this release charged nothing
+      // for it, so nothing is given back.
+      const fresh = await seedSale({
+        hammer: 1_000,
+        premium: 250,
+        commissionPercent: "15.00",
+        raised: "agreement",
+      });
+      const freshCharge = await cardPayment(fresh.paymentId);
+      const freshRefund = await cardRefund(fresh.paymentId, freshCharge, pounds(500));
+      await refundFails(freshRefund, fresh.paymentId, freshCharge);
+      expect(await refundLinesOf(fresh.paymentId)).toEqual([]);
+      expect(await reversals(fresh.paymentId)).toEqual([
+        expect.objectContaining({ amountCents: pounds(500), sellerAmountCents: 0 }),
+      ]);
+
+      // Charged in full by the previous release before payout, then failed before payout: the
+      // whole charge comes back, so the run has nothing to true up.
+      const old = await seedSale({
+        hammer: 1_000,
+        premium: 250,
+        commissionPercent: "15.00",
+        raised: "agreement",
+      });
+      const oldCharge = await cardPayment(old.paymentId);
+      const oldRefund = `re_terms_${run}_${randomUUID()}`;
+      await oldReleaseFullCharge(old.paymentId, `old-release-${old.paymentId}`);
+      stripeRefunds.add({
+        id: oldRefund,
+        chargeId: oldCharge,
+        amountPence: pounds(500),
+        status: "failed",
+      });
+      await chargeRefunded(old.paymentId, oldCharge);
+      expect(await giveBackLinesOf(old.paymentId)).toEqual([
+        expect.objectContaining({ amount: "500.00", buyerRefundPence: -pounds(500) }),
+      ]);
+      expect(await reversals(old.paymentId)).toEqual([
+        expect.objectContaining({ amountCents: pounds(500), sellerAmountCents: pounds(500) }),
+      ]);
+
+      await payOpenPayouts();
+      const settled = await createSettlement(deps, null, {
+        legalEntityId: sellerEntity,
+        periodEnd: nextPeriodEnd(),
+      });
+      expect(settled.ok).toBe(true);
+      if (!settled.ok) return;
+      const lines = await linesOf(settled.payout.id);
+      for (const paymentId of [fresh.paymentId, old.paymentId]) {
+        // The sale is paid its £820.00 net, and no refund is charged or trued up.
+        expect(lines.filter((l) => l.paymentId === paymentId)).toEqual([
+          expect.objectContaining({ kind: "sale", amount: "1000.00" }),
+        ]);
+        expect(await refundLedger(paymentId)).toEqual({ chargedPence: 0, answeredPence: 0 });
+        expect((await refundRecords.sumRefundedPence(paymentId)).pence).toBe(0);
+      }
+    });
+
+    it("the webhook and the refund reconcile job racing over the failure give back once", async () => {
+      const sale = await paidOutCardSale();
+      const refundId = await cardRefund(sale.paymentId, sale.chargeId, pounds(500));
+      await payOpenPayouts();
+      stripeRefunds.setStatus(refundId, "failed");
+      const job = new StripeRefundReconcileService({
+        watch: {
+          claimDue: async () => [
+            {
+              stripeRefundId: refundId,
+              stripeChargeId: sale.chargeId,
+              status: "succeeded",
+              amountPence: pounds(500),
+              paymentId: sale.paymentId,
+              staffRefund: null,
+              attempts: 0,
+            },
+          ],
+          reschedule: async () => undefined,
+          markSettled: async () => undefined,
+        },
+        refunds: stripeRefunds,
+        settleCharge: (event, charge) => webhooks.handleChargeRefunded(event, charge),
+        completeStaffRefund: async () => ok(undefined),
+      });
+
+      const [, summary] = await Promise.all([
+        chargeRefunded(sale.paymentId, sale.chargeId),
+        job.run(),
+      ]);
+      expect(summary).toMatchObject({ settled: 1, failed: 0 });
+
+      expect(await giveBackLinesOf(sale.paymentId)).toEqual([
+        expect.objectContaining({ amount: "328.00", buyerRefundPence: -pounds(500) }),
+      ]);
+      expect(await refundLedger(sale.paymentId)).toEqual({ chargedPence: 0, answeredPence: 0 });
+      expect(await reversals(sale.paymentId)).toHaveLength(1);
+    });
+
+    it("lines the previous release wrote, with no buyer refund kept, add up with their sign", async () => {
+      // Charged in full after payout by the previous release, then failed: all £500 comes back.
+      const charged = await paidOutCardSale();
+      await oldReleaseFullCharge(charged.paymentId, `old-release-${charged.paymentId}`);
+      const failed = `re_terms_${run}_${randomUUID()}`;
+      stripeRefunds.add({
+        id: failed,
+        chargeId: charged.chargeId,
+        amountPence: pounds(500),
+        status: "failed",
+      });
+      await chargeRefunded(charged.paymentId, charged.chargeId);
+      expect(await giveBackLinesOf(charged.paymentId)).toEqual([
+        expect.objectContaining({ amount: "500.00", buyerRefundPence: -pounds(500) }),
+      ]);
+      expect(await refundLedger(charged.paymentId)).toEqual({ chargedPence: 0, answeredPence: 0 });
+      expect(await repo.sumRefundLineCentsForPayment(charged.paymentId)).toBe(0);
+      expect(await topUpAdds(charged.paymentId)).toBe(0);
+      expect(await reversals(charged.paymentId)).toEqual([
+        expect.objectContaining({ sellerAmountCents: pounds(500) }),
+      ]);
+      // A later £250 refund is measured from what stands: nothing, so the share of £250.
+      await payOpenPayouts();
+      await cardRefund(charged.paymentId, charged.chargeId, pounds(250));
+      expect(await refundLedger(charged.paymentId)).toEqual({
+        chargedPence: pounds(164),
+        answeredPence: pounds(250),
+      });
+
+      // The previous release's charge and its own compensating line for the failed refund: they
+      // cancel, so the next refund is new and charged at the share.
+      const compensated = await paidOutCardSale();
+      await oldReleaseLine(compensated.paymentId, "-500.00", "Refund");
+      await oldReleaseLine(compensated.paymentId, "500.00", "Refund failed");
+      expect(await repo.sumRefundLineCentsForPayment(compensated.paymentId)).toBe(0);
+      expect(await repo.findSellerClawbackFacts(compensated.paymentId)).toMatchObject({
+        clawedBackPence: 0,
+        buyerRefundAnsweredPence: 0,
+      });
+      await cardRefund(compensated.paymentId, compensated.chargeId, pounds(250));
+      expect(await refundLedger(compensated.paymentId)).toEqual({
+        chargedPence: pounds(164),
+        answeredPence: pounds(250),
+      });
     });
   });
 });

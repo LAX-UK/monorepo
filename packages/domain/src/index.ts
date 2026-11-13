@@ -1424,6 +1424,7 @@ export {
   sellerDeductionsPence,
   sellerRefundCharge,
   sellerRefundChargeAtPayout,
+  sellerRefundGiveBack,
   sellerTermsTotals,
   snapshotSaleLine,
   type HeldSettlementSale,

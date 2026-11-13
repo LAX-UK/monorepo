@@ -130,7 +130,10 @@ export type SellerClawbackFacts = {
   buyerRefundAnsweredPence: number;
 };
 
-/** A refund line on the seller's ledger: what is charged now and the buyer refund it answers for. */
+/**
+ * A refund line on the seller's ledger: what is charged now (below zero: given back) and the buyer
+ * refund it answers for (below zero: a failed buyer refund it takes back).
+ */
 export type SellerRefundCharge = { chargePence: number; buyerRefundPence: number };
 
 /**
@@ -162,17 +165,56 @@ export function sellerRefundCharge(input: {
     case "old_rule":
       return { chargePence: buyerRefundPence, buyerRefundPence };
     case "snapshot": {
-      const due = sellerClawbackPence({
-        sellerNetPence: facts.paidOut.sellerNetPence,
-        paymentPence: facts.paymentPence,
-        buyerRefundedPence: Math.min(
-          facts.paymentPence,
-          buyerRefundedBeforePence + buyerRefundPence,
-        ),
-      });
+      const due = sellerChargeTargetPence(facts, buyerRefundedBeforePence + buyerRefundPence);
       return { chargePence: Math.max(0, due - facts.clawedBackPence), buyerRefundPence };
     }
   }
+}
+
+/**
+ * What the seller's refund lines should have charged in all, once they answer for this much buyer
+ * refund: their share of it for a sale paid from its snapshot, and the refund as it stands
+ * otherwise (as the old rule charged it, and as the previous release charged before payout).
+ */
+function sellerChargeTargetPence(facts: SellerClawbackFacts, buyerRefundedPence: number): number {
+  if (facts.paidOut.kind !== "snapshot") return buyerRefundedPence;
+  return sellerClawbackPence({
+    sellerNetPence: facts.paidOut.sellerNetPence,
+    paymentPence: facts.paymentPence,
+    buyerRefundedPence: Math.min(facts.paymentPence, buyerRefundedPence),
+  });
+}
+
+/**
+ * What giving back a buyer refund that failed does to the seller's ledger, or `null` when it does
+ * nothing. Charging is cumulative (the lines' charges add up to the target for the buyer refund
+ * they answer for), so a failed refund lowers the buyer refund answered for, and the seller gets
+ * back exactly what they were charged beyond the target for what is left: never more than was
+ * charged, and only their share for a sale paid from its snapshot.
+ *
+ * The result is a line with a negative `buyerRefundPence` (the buyer refund it reverses) and a
+ * `chargePence` of zero or below (what is given back). It is recorded even when nothing is given
+ * back (the seller was never charged for it, or the share rounded to nothing), so the lines keep
+ * answering for exactly the buyer refunds that stand. Only what the lines answered for can be
+ * reversed: a refund the seller's ledger never took (one before payout, which charges nothing)
+ * leaves it untouched.
+ */
+export function sellerRefundGiveBack(input: {
+  facts: SellerClawbackFacts;
+  /** The failed buyer refund being taken back (a positive figure). */
+  reversedBuyerRefundPence: number;
+}): SellerRefundCharge | null {
+  const { facts } = input;
+  assertPence(input.reversedBuyerRefundPence, "reversed buyer refund");
+  assertPence(facts.buyerRefundAnsweredPence, "earlier buyer refunds");
+  assertPence(facts.clawedBackPence, "charged back");
+  const reversedPence = Math.min(input.reversedBuyerRefundPence, facts.buyerRefundAnsweredPence);
+  if (reversedPence === 0) return null;
+  const target = sellerChargeTargetPence(facts, facts.buyerRefundAnsweredPence - reversedPence);
+  return {
+    chargePence: Math.min(0, target - facts.clawedBackPence),
+    buyerRefundPence: -reversedPence,
+  };
 }
 
 /**

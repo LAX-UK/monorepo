@@ -37,7 +37,16 @@ function ledger(facts: SellerClawbackFacts) {
       note: "Refund",
       tx: {} as never,
     });
-  return { lines, create, refund };
+  const giveBack = (buyerRefundPence: number) =>
+    service.giveBackFailedRefund({
+      legalEntityId: "seller",
+      paymentId: "pay-1",
+      buyerRefundPence,
+      sourceEventId: "refund_reversal:re_1:pay-1",
+      note: "Refund failed",
+      tx: {} as never,
+    });
+  return { lines, create, refund, giveBack };
 }
 
 describe("a buyer's refund charges the seller what they received, not the buyer's total", () => {
@@ -102,5 +111,49 @@ describe("a buyer's refund charges the seller what they received, not the buyer'
       tx: {} as never,
     });
     expect(lines[0]).toMatchObject({ kind: "dispute", amount: "-200.00", buyerRefundPence: null });
+  });
+});
+
+describe("a failed buyer refund gives the seller back what it charged them", () => {
+  it("gives back the share charged, on one line reversing the buyer's refund", async () => {
+    const { lines, create, giveBack } = ledger({
+      ...PAID_FROM_SNAPSHOT,
+      clawedBackPence: pounds(67_240),
+      buyerRefundAnsweredPence: pounds(102_500),
+    });
+    expect(await giveBack(pounds(102_500))).toEqual({ sellerPence: pounds(67_240) });
+    expect(lines).toEqual([
+      expect.objectContaining({
+        kind: "refund",
+        amount: "67240.00",
+        buyerRefundPence: -pounds(102_500),
+        sourceEventId: "refund_reversal:re_1:pay-1",
+      }),
+    ]);
+    expect(create).toHaveBeenCalledWith(
+      expect.objectContaining({ grossAmount: "67240.00", netAmount: "67240.00" }),
+    );
+  });
+
+  it("records the reversal at £0.00 when the seller was charged nothing for it", async () => {
+    const { lines, giveBack } = ledger({ ...PAID_FROM_SNAPSHOT, buyerRefundAnsweredPence: 1 });
+    expect(await giveBack(1)).toEqual({ sellerPence: 0 });
+    expect(lines).toEqual([expect.objectContaining({ amount: "0.00", buyerRefundPence: -1 })]);
+  });
+
+  it("writes nothing for a refund the seller's lines never answered for", async () => {
+    const { lines, create, giveBack } = ledger({
+      ...PAID_FROM_SNAPSHOT,
+      paidOut: { kind: "not_paid_out" },
+    });
+    expect(await giveBack(pounds(500))).toEqual({ sellerPence: 0 });
+    expect(lines).toEqual([]);
+    expect(create).not.toHaveBeenCalled();
+  });
+
+  it("will not charge a positive refund amount, which would silently give nothing back", async () => {
+    const { lines, refund } = ledger(PAID_FROM_SNAPSHOT);
+    await expect(refund("500.00")).rejects.toThrow(RangeError);
+    expect(lines).toEqual([]);
   });
 });

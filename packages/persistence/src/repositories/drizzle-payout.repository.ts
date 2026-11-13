@@ -115,12 +115,15 @@ function dealLineFacts(deal: {
 }
 
 /**
- * The buyer refunds a payment's refund lines answered for, in pence. A line written before lines
- * recorded it answered for its own amount.
+ * The buyer refunds a payment's refund lines answered for, in pence, added up with their sign: a
+ * line taking back a failed refund answers for a negative buyer refund and cancels the charge it
+ * reverses. A line written before lines recorded it answered for its own amount, with its sign (a
+ * charge was the buyer's refund, and a compensating line from a failed refund cancels it), as the
+ * buyer's refund top-up reads it (0378).
  */
 function refundLinesAnsweredSql(paymentId: SQL): SQL {
   return sql`COALESCE((
-    SELECT SUM(COALESCE(pl.buyer_refund_pence, round(abs(pl.amount) * 100)))
+    SELECT SUM(COALESCE(pl.buyer_refund_pence, round(-pl.amount * 100)))
     FROM payout_line pl WHERE pl.payment_id = ${paymentId} AND pl.kind = 'refund'
   ), 0)`;
 }
@@ -736,14 +739,10 @@ export class DrizzlePayoutRepository implements IPayoutRepository, IPayoutProces
           JOIN sale_seller_terms sst ON sst.id = pl.seller_terms_id
           WHERE pl.payment_id = "payment"."id" AND pl.kind = 'sale' LIMIT 1
         )`,
-        // A line from before this release (no buyer refund recorded) was always a charge, whatever
-        // its sign; a line since carries its sign, because the run can give back part of an
-        // earlier charge (see sellerRefundChargeAtPayout).
+        // Every line with its sign: a charge takes money back, and a credit (the run's true-up of
+        // a charge made in full, or a failed refund given back) cancels part of one.
         clawedBackPence: sql<string>`COALESCE((
-          SELECT SUM(CASE
-            WHEN pl.buyer_refund_pence IS NULL THEN round(abs(pl.amount) * 100)
-            ELSE round(-pl.amount * 100)
-          END) FROM payout_line pl
+          SELECT SUM(round(-pl.amount * 100)) FROM payout_line pl
           WHERE pl.payment_id = "payment"."id" AND pl.kind = 'refund'
         ), 0)::text`,
         buyerRefundAnsweredPence: sql<string>`(${refundLinesAnsweredSql(sql`"payment"."id"`)})::text`,

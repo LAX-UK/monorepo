@@ -5,6 +5,7 @@ import {
   sellerClawbackPence,
   sellerRefundCharge,
   sellerRefundChargeAtPayout,
+  sellerRefundGiveBack,
   sellerTermsTotals,
   snapshotSaleLine,
 } from "./seller-payout.js";
@@ -242,6 +243,114 @@ describe("sellerRefundCharge", () => {
         buyerRefundPence: pounds(500),
       }),
     ).toEqual({ chargePence: pounds(500), buyerRefundPence: pounds(500) });
+  });
+});
+
+describe("sellerRefundGiveBack", () => {
+  // £1,000 hammer and £250 premium at 15% + VAT: the seller's net is £820.00.
+  const paid: SellerClawbackFacts = {
+    paymentPence: pounds(1_250),
+    paidOut: { kind: "snapshot", sellerNetPence: pounds(820) },
+    clawedBackPence: pounds(328),
+    buyerRefundAnsweredPence: pounds(500),
+  };
+
+  it("a failed £500 refund gives back the £328.00 share it charged, and reverses the £500", () => {
+    expect(sellerRefundGiveBack({ facts: paid, reversedBuyerRefundPence: pounds(500) })).toEqual({
+      chargePence: -pounds(328),
+      buyerRefundPence: -pounds(500),
+    });
+  });
+
+  it("one of two £250 refunds failing gives back the difference to the share of what stands", () => {
+    // £500 answered and £328.00 charged; £250 still stands, whose share is £164.00.
+    expect(sellerRefundGiveBack({ facts: paid, reversedBuyerRefundPence: pounds(250) })).toEqual({
+      chargePence: -pounds(164),
+      buyerRefundPence: -pounds(250),
+    });
+  });
+
+  it("never gives back more than was charged, and records the reversal when nothing was", () => {
+    // The 1p refund's share rounded to nothing: the reversal is still recorded, at £0.00.
+    expect(
+      sellerRefundGiveBack({
+        facts: { ...paid, clawedBackPence: 0, buyerRefundAnsweredPence: 1 },
+        reversedBuyerRefundPence: 1,
+      }),
+    ).toEqual({ chargePence: 0, buyerRefundPence: -1 });
+    // Already given back elsewhere: nothing more comes back.
+    expect(
+      sellerRefundGiveBack({
+        facts: { ...paid, clawedBackPence: pounds(100) },
+        reversedBuyerRefundPence: pounds(250),
+      }),
+    ).toEqual({ chargePence: 0, buyerRefundPence: -pounds(250) });
+  });
+
+  it("reverses only what the seller's lines answered for", () => {
+    // A refund before payout charges nothing and puts no line on the ledger: nothing to reverse.
+    expect(
+      sellerRefundGiveBack({
+        facts: {
+          ...paid,
+          paidOut: { kind: "not_paid_out" },
+          clawedBackPence: 0,
+          buyerRefundAnsweredPence: 0,
+        },
+        reversedBuyerRefundPence: pounds(500),
+      }),
+    ).toBeNull();
+    // More reversed than the lines answered for: only what they answered for is taken back.
+    expect(sellerRefundGiveBack({ facts: paid, reversedBuyerRefundPence: pounds(600) })).toEqual({
+      chargePence: -pounds(328),
+      buyerRefundPence: -pounds(500),
+    });
+  });
+
+  it("a refund charged in full by the previous release is given back in full", () => {
+    const fullCharge = { clawedBackPence: pounds(500), buyerRefundAnsweredPence: pounds(500) };
+    for (const paidOut of [{ kind: "old_rule" }, { kind: "not_paid_out" }] as const) {
+      expect(
+        sellerRefundGiveBack({
+          facts: { ...paid, ...fullCharge, paidOut },
+          reversedBuyerRefundPence: pounds(500),
+        }),
+      ).toEqual({ chargePence: -pounds(500), buyerRefundPence: -pounds(500) });
+    }
+    // On a sale paid from its snapshot, the give-back takes the ledger to the share of what
+    // stands: £250 stands, so the seller keeps £164.00 charged of the old £500.
+    expect(
+      sellerRefundGiveBack({
+        facts: { ...paid, ...fullCharge },
+        reversedBuyerRefundPence: pounds(250),
+      }),
+    ).toEqual({ chargePence: -pounds(336), buyerRefundPence: -pounds(250) });
+  });
+
+  it("a charge, then a give-back, then the same refund again charges the share once more", () => {
+    const back = sellerRefundGiveBack({ facts: paid, reversedBuyerRefundPence: pounds(500) });
+    const after: SellerClawbackFacts = {
+      ...paid,
+      clawedBackPence: paid.clawedBackPence + (back?.chargePence ?? 0),
+      buyerRefundAnsweredPence: paid.buyerRefundAnsweredPence + (back?.buyerRefundPence ?? 0),
+    };
+    expect(after).toMatchObject({ clawedBackPence: 0, buyerRefundAnsweredPence: 0 });
+    expect(sellerRefundCharge({ facts: after, buyerRefundPence: pounds(500) })).toEqual({
+      chargePence: pounds(328),
+      buyerRefundPence: pounds(500),
+    });
+  });
+
+  it("rejects amounts that are not whole, non-negative pence", () => {
+    expect(() => sellerRefundGiveBack({ facts: paid, reversedBuyerRefundPence: -1 })).toThrow(
+      RangeError,
+    );
+    expect(() =>
+      sellerRefundGiveBack({
+        facts: { ...paid, buyerRefundAnsweredPence: -1 },
+        reversedBuyerRefundPence: 1,
+      }),
+    ).toThrow(RangeError);
   });
 });
 
