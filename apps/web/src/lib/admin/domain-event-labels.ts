@@ -149,6 +149,8 @@ const LABELS: Record<string, string> = {
   "lot.reoffer_expired": "Offer to bidder expired",
   "lot.reoffer_withdrawn": "Offer withdrawn",
   "lot.reawarded": "Lot re-awarded to the next bidder",
+  "lot.seller_agreement_recorded": "Seller's signed agreement recorded",
+  "lot.seller_settled_outside_lax": "ATG sale settled with the seller outside LAX",
 
   "invoice.raised": "Invoice raised",
 

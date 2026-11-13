@@ -11,7 +11,6 @@ import {
   payment,
   saleSellerTerms,
   uploadObject,
-  user,
 } from "@auction/db/schema";
 import {
   DrizzleSaleSellerTermsStore,
@@ -22,6 +21,7 @@ import {
 } from "@auction/persistence/repositories";
 import { and, eq } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
+import { seedIdentityUserFixtures } from "../../testing/identity-user-fixtures.js";
 import { DomainEventSink } from "../domain-event-sink.js";
 import { DomainEventPublisher } from "../domain-event.publisher.js";
 import { RecordSignedAgreementService } from "./record-signed-agreement.service.js";
@@ -48,16 +48,10 @@ describe.skipIf(!HAS_DB)("recording a signed agreement (integration)", () => {
     try {
       await db.transaction(async (tx) => {
         const conn = tx as unknown as Database;
-        for (const id of [staffId, buyerId]) {
-          await tx.insert(user).values({
-            id,
-            name: id,
-            email: `${id}@integration.test`,
-            emailVerified: true,
-            createdAt: now,
-            updatedAt: now,
-          });
-        }
+        await seedIdentityUserFixtures(
+          tx,
+          [staffId, buyerId].map((id) => ({ id, name: id, email: `${id}@integration.test` })),
+        );
         for (const [id, name] of [
           [seller, "Fixture Gallery Ltd"],
           [buyer, "Fixture Buyer"],
