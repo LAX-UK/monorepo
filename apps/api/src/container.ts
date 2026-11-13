@@ -311,6 +311,7 @@ export function createContainer(env: Env): Container {
     consignmentThreadSweep: consignmentMessages.sweep,
     paymentReminders: buyerDefault.paymentReminders,
     dealSettlementFollowUps: payments.privateSaleDeals.settlementFollowUps,
+    stripeRefundReconcile: payments.stripeRefundReconcile,
   });
   const catalogRoutes = createCatalogRouteServices({
     saleService: catalog.saleService,

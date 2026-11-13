@@ -5,7 +5,11 @@ import type {
   InvoiceDueDateExtender,
   InvoiceRaiser,
 } from "@auction/finance-runtime";
-import type { IBidInvoiceReader, IPaymentRefundLedger } from "@auction/persistence/interfaces";
+import type {
+  IBidInvoiceReader,
+  IPaymentRefundLedger,
+  IStripeRefundWatchRepository,
+} from "@auction/persistence/interfaces";
 import type { ILegalEntityRepository } from "@auction/persistence/interfaces";
 import type { ILotFulfilmentPaymentHook } from "@auction/persistence/interfaces";
 import type { IPaymentWriteRepository } from "@auction/persistence/interfaces";
@@ -73,6 +77,8 @@ export type PaymentServiceDeps = {
   paymentRefundReconcile: PaymentRefundReconcileService | null;
   /** The buyer-side refund record; a refund is not made without it. */
   paymentRefunds: IPaymentRefundLedger | null;
+  /** Where a staff refund Stripe has not finished is kept until it is final. */
+  refundWatch?: Pick<IStripeRefundWatchRepository, "watch"> | null;
   xeroPaymentRecorder: IXeroPaymentRecorder | null;
   addresses: IAddressRepository | null;
   settlementCompliance: ISettlementCompliancePolicy | null;

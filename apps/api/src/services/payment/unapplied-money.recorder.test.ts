@@ -3,6 +3,7 @@ import type { UnappliedMoney } from "@auction/domain";
 import type Stripe from "stripe";
 import { describe, expect, it, vi } from "vitest";
 import { mockDomainEventSink } from "../../test/domain-event-sink-mock.js";
+import { succeededRefunds } from "../../test/fake-charge-refunds.js";
 import { UnappliedMoneyRefundHandler } from "../stripe-webhook/unapplied-money-refund.handler.js";
 import { NO_UNAPPLIED_MONEY_RECORDER, UnappliedMoneyRecorder } from "./unapplied-money.recorder.js";
 
@@ -285,6 +286,7 @@ describe("UnappliedMoneyRefundHandler", () => {
         wasEverUnapplied: vi.fn().mockResolvedValue(false),
       },
       recorder: { resolveRefundedCharge: vi.fn() },
+      chargeRefunds: succeededRefunds(125000),
     });
     await expect(handler.handle(event, charge(125000))).resolves.toBeNull();
   });
@@ -299,6 +301,7 @@ describe("UnappliedMoneyRefundHandler", () => {
         wasEverUnapplied: vi.fn().mockResolvedValue(true),
       },
       recorder: { resolveRefundedCharge },
+      chargeRefunds: succeededRefunds(125000),
     });
     await expect(handler.handle(event, charge(125000))).resolves.toEqual({
       processed: true,
@@ -318,6 +321,7 @@ describe("UnappliedMoneyRefundHandler", () => {
         wasEverUnapplied: vi.fn().mockResolvedValue(true),
       },
       recorder: { resolveRefundedCharge },
+      chargeRefunds: succeededRefunds(125000),
     });
     await expect(handler.handle(event, charge(125000))).resolves.toBeNull();
     expect(resolveRefundedCharge).not.toHaveBeenCalled();
@@ -333,6 +337,7 @@ describe("UnappliedMoneyRefundHandler", () => {
         wasEverUnapplied: vi.fn().mockResolvedValue(true),
       },
       recorder: { resolveRefundedCharge },
+      chargeRefunds: succeededRefunds(125000),
     });
     await expect(handler.handle(event, charge(125000))).resolves.toMatchObject({
       processed: true,
@@ -350,6 +355,7 @@ describe("UnappliedMoneyRefundHandler", () => {
         wasEverUnapplied: vi.fn().mockResolvedValue(true),
       },
       recorder: { resolveRefundedCharge },
+      chargeRefunds: succeededRefunds(1000),
     });
     await expect(handler.handle(event, charge(1000))).resolves.toMatchObject({
       reason: "refunded_in_part",

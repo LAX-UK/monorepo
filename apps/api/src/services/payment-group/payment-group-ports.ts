@@ -73,6 +73,6 @@ export interface IPaymentGroupGateway {
    * `null` while it has issued none (the payer has not chosen the transfer yet).
    */
   bankTransferInstructions(sessionId: string): Promise<BankTransferInstructions | null>;
-  /** Every refund that went through, or is going through, against the charge. */
+  /** Every refund against the charge that has gone through (succeeded); pending ones are left out. */
   listChargeRefunds(chargeId: string): Promise<GroupChargeRefund[]>;
 }

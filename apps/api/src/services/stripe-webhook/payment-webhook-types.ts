@@ -7,6 +7,7 @@ export type PaymentWebhookResult = {
     | "dispute_funds_reinstated"
     | "dispute_closed"
     | "refund_received"
+    | "refund_reversed"
     | "payment_intent_succeeded"
     | "payment_intent_succeeded_terminal_blocked"
     | "payment_intent_succeeded_held"

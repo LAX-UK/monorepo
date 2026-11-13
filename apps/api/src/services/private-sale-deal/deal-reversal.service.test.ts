@@ -19,6 +19,8 @@ function setup(
     /** The answer to each look at the payout, in order; the last answer repeats. */
     payoutLooks?: boolean[];
     stripe?: boolean;
+    /** The status Stripe gives the refund it creates. */
+    refundStatus?: string;
   } = {},
 ) {
   const looks = [...(over.payoutLooks ?? [])];
@@ -40,10 +42,13 @@ function setup(
     transitions: { transition: vi.fn() },
     claims: { claim: async () => true },
   });
-  const createRefund = vi.fn(async (_input: { sequence?: number }) => ({
+  const createRefund = vi.fn(async (input: { sequence?: number; amount?: number }) => ({
     kind: "created" as const,
     refundId: "re_1",
+    status: over.refundStatus ?? "succeeded",
+    amountPence: input.amount ?? 0,
   }));
+  const watch = vi.fn(async () => undefined);
   const expireCheckout = vi.fn(async () => undefined);
   const transition = vi.fn(async () => ({ kind: "ok" as const, deal }));
   const service = new DealReversalService({
@@ -56,8 +61,9 @@ function setup(
     transitions: { transition },
     transactionRunner: inlineTransactions,
     scopeForTx,
+    refundWatch: { watch },
   });
-  return { service, payments, events, createRefund, expireCheckout, transition, unapplied };
+  return { service, payments, events, createRefund, expireCheckout, transition, unapplied, watch };
 }
 
 describe("DealReversalService.refund", () => {
@@ -155,6 +161,43 @@ describe("DealReversalService.refund", () => {
     });
     expect(createRefund).not.toHaveBeenCalled();
   });
+
+  it.each(["pending", "requires_action"])(
+    "records nothing while Stripe's refund is %s, and watches it until it is final",
+    async (refundStatus) => {
+      const { service, payments, events, watch } = setup({ refundStatus });
+      const before = events.events.length;
+      expect(await service.refund({ dealId: "deal-1", actorUserId: "u-fin" })).toEqual({
+        ok: true,
+        refundedMinor: 4_800_000,
+        remainingMinor: 0,
+        pendingAtProvider: true,
+      });
+      expect(payments.rows[0]).toMatchObject({ status: "paid", refundedMinor: 0 });
+      expect(events.events).toHaveLength(before);
+      expect(watch).toHaveBeenCalledWith([
+        expect.objectContaining({
+          stripeRefundId: "re_1",
+          stripeChargeId: "ch_1",
+          status: refundStatus,
+          amountPence: 4_800_000,
+        }),
+      ]);
+    },
+  );
+
+  it.each(["failed", "canceled"])(
+    "records nothing and reports the refund could not be made when Stripe's refund is %s",
+    async (refundStatus) => {
+      const { service, payments, watch } = setup({ refundStatus });
+      expect(await service.refund({ dealId: "deal-1", actorUserId: "u-fin" })).toEqual({
+        ok: false,
+        error: "refund_unavailable",
+      });
+      expect(payments.rows[0]).toMatchObject({ status: "paid", refundedMinor: 0 });
+      expect(watch).not.toHaveBeenCalled();
+    },
+  );
 
   it("reports when the payment provider is not available", async () => {
     const { service } = setup({ stripe: false });

@@ -8,6 +8,7 @@ import type Stripe from "stripe";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { tryClaimProcessedStripeEvent } from "../lib/stripe-processed-event.js";
 import { mockDomainEventSink } from "../test/domain-event-sink-mock.js";
+import { FakeChargeRefunds } from "../test/fake-charge-refunds.js";
 import { InMemoryPaymentRefunds } from "../test/in-memory-payment-refunds.js";
 import type { IDisputeWebhookRecorder } from "./disputes/dispute-case-recorder.js";
 import type { IDomainEventSink } from "./domain-event-sink.js";
@@ -83,6 +84,11 @@ function createWebhookService(deps: {
   paymentRefunds?: InMemoryPaymentRefunds;
   /** Pence of refund lines the seller's ledger already holds for the payment. */
   sellerRefundedCents?: number;
+  /**
+   * Stripe's refunds for each charge. Without it each charge handed to `handleChargeRefunded` is
+   * read as Stripe listing its `amount_refunded` as one succeeded refund.
+   */
+  stripeRefunds?: FakeChargeRefunds;
 }) {
   // The seller's ledger, which every clawback line lands in, as it does in the payout lines table.
   let sellerCents = deps.sellerRefundedCents ?? 0;
@@ -101,6 +107,7 @@ function createWebhookService(deps: {
     ...deps.payoutRepository,
   } as IPayoutRepository;
   const paymentRefunds = deps.paymentRefunds ?? new InMemoryPaymentRefunds();
+  const stripeRefunds = deps.stripeRefunds ?? new FakeChargeRefunds();
   const publisher = deps.publisher ?? mockDomainEventSink();
   const unappliedMoney = deps.unappliedMoney ?? {
     record: vi.fn().mockResolvedValue(undefined),
@@ -109,7 +116,9 @@ function createWebhookService(deps: {
   };
   const payments = {
     applyRefundedInTransaction: vi.fn().mockResolvedValue(true),
+    applyRefundReversedInTransaction: vi.fn().mockResolvedValue(true),
     applyAuthorizedInTransaction: vi.fn().mockResolvedValue(true),
+    recordTransferReceivedInTransaction: vi.fn().mockResolvedValue(true),
     applyCancelledInTransaction: vi.fn().mockResolvedValue(true),
     findById: vi.fn().mockResolvedValue({
       id: "pay_1",
@@ -159,9 +168,21 @@ function createWebhookService(deps: {
     null,
     deps.paymentEligibility ?? null,
     paymentRefunds,
+    undefined,
+    null,
+    stripeRefunds,
   );
+  if (!deps.stripeRefunds) {
+    const handle = svc.handleChargeRefunded.bind(svc);
+    svc.handleChargeRefunded = (event, charge) => {
+      stripeRefunds.show(charge.id, charge.amount_refunded ?? 0);
+      return handle(event, charge);
+    };
+  }
   return {
     svc,
+    stripeRefunds,
+    payments,
     payoutAdjustments,
     paymentCapture,
     payoutRepository,
@@ -219,6 +240,57 @@ describe("StripePaymentWebhookService dispute webhooks", () => {
       "closed",
     ]);
     expect(record).toHaveBeenCalledWith("created", event, dispute);
+  });
+});
+
+describe("StripePaymentWebhookService.handleChargeRefundUpdated", () => {
+  beforeEach(() => {
+    vi.mocked(tryClaimProcessedStripeEvent).mockReset();
+    vi.mocked(tryClaimProcessedStripeEvent).mockResolvedValue({ claimed: true });
+  });
+
+  it("settles a refund on a single invoice's charge from Stripe's list, as charge.refunded does", async () => {
+    const stripeRefunds = new FakeChargeRefunds();
+    stripeRefunds.charges.set("ch_single", {
+      id: "ch_single",
+      amount: 10_000,
+      currency: "gbp",
+      payment_intent: "pi_single",
+      metadata: { paymentId: "pay_1" },
+    } as unknown as Stripe.Charge);
+    stripeRefunds.add({
+      id: "re_1",
+      chargeId: "ch_single",
+      amountPence: 2_500,
+      status: "succeeded",
+    });
+    const { svc, paymentRefunds, payoutAdjustments } = createWebhookService({
+      db: mockDbWithPayment({
+        id: "pay_1",
+        sellerLegalEntityId: "le_s",
+        status: "captured",
+        amount: "100.00",
+      }),
+      stripeRefunds,
+    });
+    const refund = { id: "re_1", charge: "ch_single", currency: "gbp" } as Stripe.Refund;
+    const event = { id: "evt_ru", type: "charge.refund.updated" } as Stripe.Event;
+    await expect(svc.handleChargeRefundUpdated(event, refund)).resolves.toEqual({
+      processed: true,
+      action: "refund_received",
+    });
+    expect(paymentRefunds.entries.map((e) => e.amountPence)).toEqual([2_500]);
+    expect(payoutAdjustments.addPaymentLineToOpenPayoutOrCreateClawback).toHaveBeenCalledTimes(1);
+  });
+
+  it("answers a refund naming no charge without failing", async () => {
+    const { svc } = createWebhookService({ stripeRefunds: new FakeChargeRefunds() });
+    await expect(
+      svc.handleChargeRefundUpdated(
+        { id: "evt_x" } as Stripe.Event,
+        { id: "re_x", charge: null } as unknown as Stripe.Refund,
+      ),
+    ).resolves.toMatchObject({ processed: true, reason: "missing_charge_id" });
   });
 });
 
@@ -530,9 +602,32 @@ describe("StripePaymentWebhookService.handleChargeRefunded — the buyer's refun
       {} as never,
       mockDomainEventSink(),
       { record: vi.fn() },
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      undefined,
+      null,
+      new FakeChargeRefunds().succeeded(charge(4000).id, 4000),
     );
     await expect(unwired.handleChargeRefunded(event("evt_1"), charge(4000))).rejects.toThrow(
       "Payment refunds are not wired",
+    );
+    // Without Stripe's refund list nothing can be measured either: it fails and is retried.
+    const noList = new StripePaymentWebhookService(
+      { runInTransaction: async (fn: (tx: never) => Promise<unknown>) => fn({} as never) } as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      mockDomainEventSink(),
+      { record: vi.fn() },
+    );
+    await expect(noList.handleChargeRefunded(event("evt_1"), charge(4000))).rejects.toThrow(
+      "Charge refunds are not wired",
     );
   });
 });
@@ -968,6 +1063,7 @@ describe("StripePaymentWebhookService.handlePaymentIntentSucceeded", () => {
     vi.mocked(tryClaimProcessedStripeEvent).mockResolvedValue({ claimed: true });
     const capture = vi.fn();
     const applyAuthorized = vi.fn().mockResolvedValue(true);
+    const recordReceived = vi.fn().mockResolvedValue(true);
     const publish = vi.fn().mockResolvedValue(undefined);
     const db = mockDbWithPayment({
       id: "pay_1",
@@ -989,6 +1085,7 @@ describe("StripePaymentWebhookService.handlePaymentIntentSucceeded", () => {
           status: "pending",
         }),
         applyAuthorizedInTransaction: applyAuthorized,
+        recordTransferReceivedInTransaction: recordReceived,
       },
     });
     const event = {
@@ -1011,6 +1108,8 @@ describe("StripePaymentWebhookService.handlePaymentIntentSucceeded", () => {
     expect(result).toEqual({ processed: true, action: "payment_intent_partially_funded" });
     expect(capture).not.toHaveBeenCalled();
     expect(applyAuthorized).toHaveBeenCalledWith(expect.anything(), "pay_1");
+    // £50 of the £100 has arrived: kept for the Pay page's progress.
+    expect(recordReceived).toHaveBeenCalledWith(expect.anything(), "pay_1", 5000, "pi_partial");
     expect(publisher.publish).toHaveBeenCalledWith(
       expect.objectContaining({ eventType: "payment.bank_transfer_partially_funded" }),
     );

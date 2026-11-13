@@ -2,6 +2,7 @@ import { payment } from "@auction/db/schema";
 import type {
   IPaymentRefundLedger,
   IPaymentWebhookLookupReader,
+  IRefundReversalLedger,
 } from "@auction/persistence/interfaces";
 import type { ITransactionRunner } from "@auction/persistence/interfaces";
 import type { IPaymentWriteRepository } from "@auction/persistence/interfaces";
@@ -15,13 +16,18 @@ import type { IUnappliedMoneyRecorder } from "../payment/unapplied-money.recorde
 
 import type { IPaymentEligibilityGate } from "@auction/finance-runtime";
 
+import type { IChargeRefundsReader } from "../stripe/stripe-charge-refunds.js";
+
 export type StripePaymentWebhookDeps = {
   transactionRunner: ITransactionRunner;
   paymentWebhookLookup: IPaymentWebhookLookupReader;
   payments: IPaymentWriteRepository;
   payoutRepository: IPayoutRepository;
-  /** What the buyer was refunded: where a refund's delta is measured from, and recorded to. */
-  paymentRefunds: IPaymentRefundLedger;
+  /**
+   * What the buyer was refunded: where a refund's delta is measured from, and recorded to, with
+   * the failed refunds already taken back from each invoice.
+   */
+  paymentRefunds: IPaymentRefundLedger & IRefundReversalLedger;
   payoutAdjustments: IPayoutAdjustmentService;
   paymentCapture: IPaymentCaptureService;
   domainEventSink: IDomainEventSink;
@@ -34,6 +40,11 @@ export type StripePaymentWebhookDeps = {
   paymentEligibility: IPaymentEligibilityGate | null;
   /** Where a capture's failed follow-up steps are reported; they never fail the webhook. */
   errorReporter?: IErrorReporter;
+  /**
+   * Stripe's refunds for a charge: what a refund event is measured against (only succeeded
+   * refunds count). Absent where it is not wired; a refund event then fails and is retried.
+   */
+  chargeRefunds?: IChargeRefundsReader;
 };
 
 export type PaymentRowLookup = {
