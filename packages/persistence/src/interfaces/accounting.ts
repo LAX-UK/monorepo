@@ -206,8 +206,16 @@ export interface AccountingQueueQuery {
   readonly tab: QueueTab;
   /** One company's books, or both when null. */
   readonly legalEntity: LegalEntity | null;
+  /** A single document by its exact LAX reference, within the tab and company; null for all. */
+  readonly reference?: string | null;
   readonly limit: number;
   readonly offset: number;
+}
+
+/** The latest document that reached Books (or was rehearsed) for the company (or both). */
+export interface AccountingLastSent {
+  readonly at: Date;
+  readonly rehearsal: boolean;
 }
 
 export interface AccountingQueuePage {
@@ -219,6 +227,10 @@ export interface AccountingQueuePage {
   readonly total: number;
   /** Documents in each tab under the filter. */
   readonly counts: Readonly<Record<QueueTab, number>>;
+  /** Documents issued to Books today (London), under the company filter. */
+  readonly issuedToday: number;
+  /** The latest issued document for the company filter, whatever the tab; null when there is none. */
+  readonly lastSent: AccountingLastSent | null;
 }
 
 /**

@@ -97,13 +97,22 @@ export type AccountingQueueRow = {
   canTryAgain: boolean;
 };
 
+/** The last document that reached Books (or, in a rehearsal, was rehearsed), for the header. */
+export type AccountingLastSent = { at: string; rehearsal: boolean };
+
 export type AccountingQueuePage = {
   tab: AccountingQueueTab;
   organisation: AccountingOrganisation | null;
+  /** The LAX reference search in force, as validated; null when there is none. */
+  reference: string | null;
   rows: AccountingQueueRow[];
   /** Documents in this tab under the filter. */
   total: number;
   counts: Record<AccountingQueueTab, number>;
+  /** Documents that reached Books today (London), under the same filters. */
+  issuedToday: number;
+  /** The latest document issued for the company (or both), whatever the search; null for none. */
+  lastSent: AccountingLastSent | null;
   limit: number;
   offset: number;
   /** Stored rows that could not be read back; they are counted but not listed. */
@@ -134,6 +143,18 @@ const KIND_NAME: Readonly<Record<string, string>> = {
   conflict: "Books holds a conflicting record",
 };
 
+/** Each refusal ends with the next step, so a row says what will happen and what a person can do. */
+const KIND_NEXT_STEP: Readonly<Record<string, string>> = {
+  auth: "Ask engineering to reconnect Books.",
+  rate_limited: "We'll keep trying; you can also try now.",
+  budget_exhausted: "It sends again once the allowance resets; you can also try now.",
+  server: "We'll keep trying; you can also try now.",
+  network: "We'll keep trying; you can also try now.",
+  unknown: "Check Books for this reference, then try again.",
+  not_found: "Check Books, then try again.",
+  conflict: "Check Books for this reference, then try again.",
+};
+
 const CODE_TEXT: Readonly<Record<string, string>> = {
   zoho_books_organisation_not_configured: "This company's Books organisation is not set up yet.",
   zoho_books_entity_mismatch:
@@ -159,18 +180,33 @@ const CODE_TEXT: Readonly<Record<string, string>> = {
   accounting_no_adapter_for_mode: "Nothing is set up to send documents for this mode.",
 };
 
-/** The text staff read for a locked period, in the list and in the try-again dialog. */
+/** The short "Last problem" line for a locked period, approved copy for the row. */
+export const ACCOUNTING_LOCKED_PERIOD_PROBLEM =
+  "This falls in a period your accountant has closed.";
+
+/**
+ * What staff read about a locked period in the list notice and the try-again dialog: the problem,
+ * then the next step. Booking it on today's date is not yet built, so the step is to have the
+ * accountant reopen the period in Books; trying again before that repeats the same refusal.
+ */
 export const ACCOUNTING_LOCKED_PERIOD_TEXT =
-  "The document's date is in a period that is locked in Books. A person must confirm it can be booked on today's date before it is tried again.";
+  "This falls in a period your accountant has closed in Books. Ask them to reopen it before you try again, or it will be refused the same way.";
+
+/** The acknowledgement a person ticks before trying a locked-period document again. */
+export const ACCOUNTING_LOCKED_PERIOD_ACKNOWLEDGEMENT =
+  "I've asked the accountant to reopen the period in Books.";
+
+/** Shown for a refused document that Books returned with no reason. */
+export const ACCOUNTING_NO_REASON_TEXT = "Books gave no reason.";
 
 const LOCKED_PERIOD_SUFFIX = "_period_locked";
 
 function codeText(code: string): string {
-  if (code.endsWith(LOCKED_PERIOD_SUFFIX)) return ACCOUNTING_LOCKED_PERIOD_TEXT;
+  if (code.endsWith(LOCKED_PERIOD_SUFFIX)) return ACCOUNTING_LOCKED_PERIOD_PROBLEM;
   const known = CODE_TEXT[code];
   if (known) return known;
   const kind = Object.keys(KIND_NAME).find((k) => code.startsWith(`zoho_books_${k}_`));
-  if (kind) return `${KIND_NAME[kind]}.`;
+  if (kind) return `${KIND_NAME[kind]}. ${KIND_NEXT_STEP[kind] ?? ""}`.trim();
   return "Books refused the document.";
 }
 

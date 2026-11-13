@@ -42,7 +42,10 @@ function build(
       organisation: request.organisation,
       rows: [],
       total: 0,
+      reference: request.reference,
       counts,
+      issuedToday: 0,
+      lastSent: null,
       limit: request.limit,
       offset: request.offset,
       unreadable: 0,
@@ -88,6 +91,7 @@ describe("GET /finance/accounting", () => {
     expect(service.list).toHaveBeenCalledWith({
       tab: "failed",
       organisation: "london_art_exchange",
+      reference: null,
       limit: 20,
       offset: 40,
       canAct: true,
@@ -101,16 +105,31 @@ describe("GET /finance/accounting", () => {
     expect(service.list).toHaveBeenCalledWith({
       tab: "needs_person",
       organisation: null,
+      reference: null,
       limit: 50,
       offset: 0,
       canAct: true,
     });
   });
 
-  it("refuses an unknown tab or company", async () => {
-    const { app } = build();
+  it("passes a validated LAX reference through to the service", async () => {
+    const { app, service } = build(["finance"]);
+    const res = await app.request("/finance/accounting?reference=LAX-BID-INV-01hx3");
+    expect(res.status).toBe(200);
+    expect(service.list).toHaveBeenCalledWith(
+      expect.objectContaining({ reference: "LAX-BID-INV-01hx3" }),
+    );
+  });
+
+  it("refuses an unknown tab or company, or a reference that is not one", async () => {
+    const { app, service } = build();
     expect((await app.request("/finance/accounting?tab=cancelled")).status).toBe(400);
     expect((await app.request("/finance/accounting?organisation=bid")).status).toBe(400);
+    expect((await app.request("/finance/accounting?reference=not a reference")).status).toBe(400);
+    expect(
+      (await app.request("/finance/accounting?reference=DROP%20TABLE%20accounting")).status,
+    ).toBe(400);
+    expect(service.list).not.toHaveBeenCalled();
   });
 
   it("is a Finance page: read-only staff and other roles cannot open it", async () => {

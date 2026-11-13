@@ -34,7 +34,7 @@ export function attachAdminAccountingRoutes(
     "/finance/accounting",
     zValidator("query", adminAccountingQueueQuerySchema),
     async (c) => {
-      const { tab, organisation, limit, offset } = c.req.valid("query");
+      const { tab, organisation, reference, limit, offset } = c.req.valid("query");
       const canAct = userHasAccessTo(
         c.get("userRole") as UserRole,
         c.get("userStaffRoles") as StaffRoles | undefined,
@@ -43,6 +43,7 @@ export function attachAdminAccountingRoutes(
       const page = await container.admin.accountingQueue.list({
         tab,
         organisation: organisation ?? null,
+        reference: reference ?? null,
         limit,
         offset,
         canAct,

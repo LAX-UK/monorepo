@@ -60,15 +60,21 @@ export class AccountingQueueService implements IAccountingQueueService {
     const page = await this.deps.browser.list({
       tab: request.tab,
       legalEntity: request.organisation,
+      reference: request.reference,
       limit: request.limit,
       offset: request.offset,
     });
     return {
       tab: request.tab,
       organisation: request.organisation,
+      reference: request.reference,
       rows: page.documents.map((document) => this.toRow(document, request.canAct)),
       total: page.total,
       counts: { ...page.counts },
+      issuedToday: page.issuedToday,
+      lastSent: page.lastSent
+        ? { at: page.lastSent.at.toISOString(), rehearsal: page.lastSent.rehearsal }
+        : null,
       limit: request.limit,
       offset: request.offset,
       unreadable: page.unreadable.length,

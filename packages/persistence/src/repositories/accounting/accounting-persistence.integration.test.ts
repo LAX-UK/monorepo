@@ -1107,6 +1107,65 @@ describe.skipIf(!HAS_DB)("accounting persistence (integration)", { timeout: 60_0
       expect(bid.documents.map((d) => d.id)).not.toContain(shop.id);
     });
 
+    async function issued(number: string, product: Product = "bid") {
+      const { stored } = await register(invoice(product, newId()));
+      must(
+        await repos.workQueue.claimNext({
+          provider: PROVIDER,
+          leaseToken: "tok",
+          leaseMs: LEASE_MS,
+          targetModes: ALL_MODES,
+        }),
+      );
+      return must(
+        await repos.transitions.apply(stored.id, {
+          action: "complete_sending",
+          leaseToken: "tok",
+          outcome: {
+            status: "issued",
+            number,
+            providerId: `books-${number}`,
+            pdfRef: null,
+            totals: stored.totals,
+          },
+        }),
+      );
+    }
+
+    it("counts today's issued documents, names the last one sent, and finds one by reference", async () => {
+      const done = await issued("INV-TODAY");
+      const page = await staff.browser.list({
+        tab: "issued",
+        legalEntity: null,
+        limit: 500,
+        offset: 0,
+      });
+      expect(page.documents.map((d) => d.id)).toContain(done.id);
+      expect(page.issuedToday).toBeGreaterThanOrEqual(1);
+      expect(page.lastSent).not.toBeNull();
+      expect(page.lastSent?.rehearsal).toBe(done.target?.mode === "dry_run");
+
+      const byRef = await staff.browser.list({
+        tab: "issued",
+        legalEntity: null,
+        reference: done.reference,
+        limit: 50,
+        offset: 0,
+      });
+      expect(byRef.documents.map((d) => d.id)).toEqual([done.id]);
+      expect(byRef.total).toBe(1);
+
+      const none = await staff.browser.list({
+        tab: "issued",
+        legalEntity: null,
+        reference: "LAX-BID-INV-does-not-exist",
+        limit: 50,
+        offset: 0,
+      });
+      expect(none.documents).toEqual([]);
+      expect(none.total).toBe(0);
+    });
+
     it("tries the same document again under the same reference, records who asked, and only once", async () => {
       const failed = await refused("zoho_books_validation_invalid_request");
       const again = must(

@@ -81,6 +81,8 @@ class FakeQueue implements IAccountingDocumentBrowser, IAccountingDocumentTransi
       unreadable: ["bad-row"],
       total: 1,
       counts: { needs_person: 2, failed: 1, waiting: 0, issued: 4 },
+      issuedToday: 3,
+      lastSent: { at: new Date("2026-11-11T09:00:00Z"), rehearsal: false },
     };
   }
 
@@ -121,14 +123,30 @@ describe("AccountingQueueService.list", () => {
     const page = await service.list({
       tab: "failed",
       organisation: "london_auction_xchange",
+      reference: "LAX-BID-INV-abc",
       limit: 25,
       offset: 50,
       canAct: true,
     });
     expect(queue.queries).toEqual([
-      { tab: "failed", legalEntity: "london_auction_xchange", limit: 25, offset: 50 },
+      {
+        tab: "failed",
+        legalEntity: "london_auction_xchange",
+        reference: "LAX-BID-INV-abc",
+        limit: 25,
+        offset: 50,
+      },
     ]);
-    expect(page).toMatchObject({ total: 1, unreadable: 1, canAct: true, limit: 25, offset: 50 });
+    expect(page).toMatchObject({
+      total: 1,
+      unreadable: 1,
+      canAct: true,
+      limit: 25,
+      offset: 50,
+      issuedToday: 3,
+      reference: "LAX-BID-INV-abc",
+      lastSent: { at: "2026-11-11T09:00:00.000Z", rehearsal: false },
+    });
     expect(page.counts).toEqual({ needs_person: 2, failed: 1, waiting: 0, issued: 4 });
     expect(page.rows[0]).toMatchObject({
       reference: invoice.reference,
@@ -149,6 +167,7 @@ describe("AccountingQueueService.list", () => {
     const page = await service.list({
       tab: "failed",
       organisation: null,
+      reference: null,
       limit: 50,
       offset: 0,
       canAct: false,
@@ -164,13 +183,14 @@ describe("AccountingQueueService.list", () => {
       await locked.service.list({
         tab: "needs_person",
         organisation: null,
+        reference: null,
         limit: 50,
         offset: 0,
         canAct: true,
       })
     ).rows[0];
     expect(lockedRow?.lockedPeriod).toBe(true);
-    expect(lockedRow?.problem).toContain("today's date");
+    expect(lockedRow?.problem).toBe("This falls in a period your accountant has closed.");
 
     const issued = setUp(
       stored({ status: "issued", issued: { number: "INV-9", providerId: "123456", pdfRef: null } }),
@@ -179,6 +199,7 @@ describe("AccountingQueueService.list", () => {
       await issued.service.list({
         tab: "issued",
         organisation: null,
+        reference: null,
         limit: 50,
         offset: 0,
         canAct: true,

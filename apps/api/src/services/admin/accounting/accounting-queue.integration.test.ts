@@ -227,7 +227,7 @@ describe.skipIf(!HAS_DB)("Finance › Accounting API (integration)", { timeout: 
     const person = await read(await hono.request("/finance/accounting?tab=needs_person&limit=100"));
     const lockedRow = person.data.rows.find((r: { id: string }) => r.id === locked.id);
     expect(lockedRow).toMatchObject({ lockedPeriod: true });
-    expect(lockedRow?.problem).toContain("today's date");
+    expect(lockedRow?.problem).toContain("accountant has closed");
 
     const page = await read(await hono.request("/finance/accounting?tab=failed&limit=1&offset=0"));
     expect(page.data.rows).toHaveLength(1);

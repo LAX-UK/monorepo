@@ -9,6 +9,8 @@ import type {
 export type AccountingQueueRequest = {
   tab: AccountingQueueTab;
   organisation: AccountingOrganisation | null;
+  /** An exact LAX reference to find within the tab and company; null for the whole tab. */
+  reference: string | null;
   limit: number;
   offset: number;
   /** The person may try documents again; decided by the route from their permissions. */

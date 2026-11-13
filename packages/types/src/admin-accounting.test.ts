@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  ACCOUNTING_LOCKED_PERIOD_PROBLEM,
   ACCOUNTING_LOCKED_PERIOD_TEXT,
   accountingProblemCode,
   accountingProblemText,
@@ -17,12 +18,15 @@ describe("accounting problems in plain English", () => {
     );
   });
 
-  it("words a client error by its kind, and never shows an unknown code raw", () => {
+  it("words a client error by its kind, ending with the next step, never a raw code", () => {
     expect(accountingProblemText("zoho_books_auth_reauth_required")).toBe(
-      "Books would not accept our sign-in.",
+      "Books would not accept our sign-in. Ask engineering to reconnect Books.",
     );
     expect(accountingProblemText("zoho_books_budget_exhausted_daily_budget_spent")).toBe(
-      "Today's Books call allowance is used up.",
+      "Today's Books call allowance is used up. It sends again once the allowance resets; you can also try now.",
+    );
+    expect(accountingProblemText("zoho_books_network_timeout")).toBe(
+      "Books could not be reached. We'll keep trying; you can also try now.",
     );
     expect(accountingProblemText("zoho_books_validation_http_418")).toBe(
       "Books refused the document.",
@@ -30,14 +34,17 @@ describe("accounting problems in plain English", () => {
     expect(accountingProblemText("something_new")).toBe("Books refused the document.");
   });
 
-  it("explains a locked period, however it was reported", () => {
+  it("explains a locked period in the accountant's terms, however it was reported", () => {
     expect(accountingProblemText("zoho_books_validation_period_locked")).toBe(
-      ACCOUNTING_LOCKED_PERIOD_TEXT,
+      ACCOUNTING_LOCKED_PERIOD_PROBLEM,
     );
     expect(accountingProblemText("refused 8 times: fake_period_locked")).toBe(
-      `Refused 8 times. ${ACCOUNTING_LOCKED_PERIOD_TEXT}`,
+      `Refused 8 times. ${ACCOUNTING_LOCKED_PERIOD_PROBLEM}`,
     );
-    expect(ACCOUNTING_LOCKED_PERIOD_TEXT).toContain("today's date");
+    expect(ACCOUNTING_LOCKED_PERIOD_PROBLEM).toBe(
+      "This falls in a period your accountant has closed.",
+    );
+    expect(ACCOUNTING_LOCKED_PERIOD_TEXT).toContain("reopen it");
   });
 
   it("words the life cycle's own reasons", () => {
