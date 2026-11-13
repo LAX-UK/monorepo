@@ -2612,6 +2612,13 @@
       "when": 1811073600000,
       "tag": "0381_accounting_document_copy",
       "breakpoints": true
+    },
+    {
+      "idx": 374,
+      "version": "7",
+      "when": 1811160000000,
+      "tag": "0382_accounting_parked_documents",
+      "breakpoints": true
     }
   ]
 }

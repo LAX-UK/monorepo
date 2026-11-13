@@ -68,7 +68,13 @@ async function probe(
  * documents), hand their ids to `fn`, and remove them afterwards. `fn` must leave no history.
  */
 async function withOwnerDocuments<T>(
-  fn: (ids: { failed: string; issued: string; withheld: string; differs: string }) => Promise<T>,
+  fn: (ids: {
+    failed: string;
+    issued: string;
+    withheld: string;
+    differs: string;
+    parked: string;
+  }) => Promise<T>,
 ): Promise<T> {
   const owner = new Client(buildPgConnectionConfig(OWNER_URL ?? ""));
   await owner.connect();
@@ -115,7 +121,15 @@ async function withOwnerDocuments<T>(
       "2",
       "provider document differs from ours: reference",
     );
-    return await fn({ failed, issued, withheld, differs });
+    // Parked for the accountant (a delivery invoice waiting on VAT): never sent, never tried again.
+    const parked = await insert(
+      `LAX-BID-INV-p-${suffix}`,
+      "needs_review",
+      null,
+      null,
+      "accounting_parked_vat_on_delivery",
+    );
+    return await fn({ failed, issued, withheld, differs, parked });
   } finally {
     if (ids.length > 0) {
       await owner.query("delete from accounting_document where id = any($1::uuid[])", [ids]);
@@ -244,7 +258,7 @@ describe.skipIf(!API_URL)("api_app role contract", { timeout: 60_000 }, () => {
   it.skipIf(!OWNER_URL)(
     "can only requeue a document and record who asked: never forge an outcome, a Books id or history",
     async () => {
-      await withOwnerDocuments(async ({ failed, issued, withheld, differs }) => {
+      await withOwnerDocuments(async ({ failed, issued, withheld, differs, parked }) => {
         await withApiClient(async (client) => {
           await client.query("BEGIN");
           try {
@@ -339,6 +353,11 @@ describe.skipIf(!API_URL)("api_app role contract", { timeout: 60_000 }, () => {
                 mismatch_field = null, mismatch_difference_pence = null, updated_at = now()
               where id = $1`;
             expect(await probe(client, requeueWithheld, [withheld])).toBeUndefined();
+
+            // A parked document (waiting for the accountant, or for a person to decide) may not.
+            expect(await probe(client, requeueWithheld, [parked]), "requeue a parked one").toBe(
+              "42501",
+            );
           } finally {
             await client.query("ROLLBACK");
           }

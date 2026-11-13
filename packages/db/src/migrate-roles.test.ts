@@ -437,6 +437,14 @@ describe("migrate-roles invariants", () => {
     expect([...WORKER_DENY_TABLES]).toContain("passkey");
   });
 
+  it("lets the worker read a settled Pay several payment for the books, and nothing more", () => {
+    for (const table of ["payment_group", "payment_group_delivery"]) {
+      expect([...WORKER_READ_TABLES]).toContain(table);
+      expect([...WORKER_FULL_TABLES]).not.toContain(table);
+      expect([...WORKER_DENY_TABLES]).not.toContain(table);
+    }
+  });
+
   it("WORKER_READ_TABLES includes identity_lifecycle_outbox (outbox relay job)", () => {
     expect([...WORKER_READ_TABLES]).toContain("identity_lifecycle_outbox");
   });

@@ -471,6 +471,12 @@ export const WORKER_READ_TABLES = [
   "collection_exception",
   "collection_booking",
   "collection_booking_lot",
+  /**
+   * The books (Zoho Books) read a settled "Pay several" payment: its stored total, currency and
+   * day, and the courier quotes charged with the lots. Read only; the API settles groups.
+   */
+  "payment_group",
+  "payment_group_delivery",
   /** The storage reminder sweep reads each lot's eligibility to collect: a courier quote accepted, a dispute open. */
   "delivery_quote",
   "dispute_case",
