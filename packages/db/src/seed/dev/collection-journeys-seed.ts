@@ -8,8 +8,10 @@
  * Visits are placed by working days from the day the seed runs, because a buyer can only change a
  * visit that is still ahead and staff can only mark one not collected once it has started.
  */
+import { standardBuyerPremiumBands } from "@auction/validators";
 import type { drizzle } from "drizzle-orm/node-postgres";
 import * as schema from "../../schema/index.js";
+import { SEED_BUYER_PREMIUM_TERMS } from "../shared/terms.js";
 import {
   addDays,
   COLLECTION_JOURNEY_IDS as ids,
@@ -65,8 +67,9 @@ export async function seedCollectionJourneys(db: Db, actors: CollectionJourneyAc
     status: "ended",
     startTime: new Date(now.getTime() - 30 * DAY),
     endTime: new Date(now.getTime() - 10 * DAY),
-    buyerPremiumRate: "0.25",
-    terms: "Collection from the gallery, Monday to Friday.",
+    buyerPremiumRate: "0.15",
+    buyerPremiumTiers: standardBuyerPremiumBands(),
+    terms: `Collection from the gallery, Monday to Friday. ${SEED_BUYER_PREMIUM_TERMS}`,
     venueId: ids.venue,
     createdByLegalEntityId: actors.laxStockId,
   });
@@ -117,7 +120,6 @@ export async function seedCollectionJourneys(db: Db, actors: CollectionJourneyAc
     saleId: ids.sale,
     images: [IMAGE],
     auctionType: "english" as const,
-    buyerPremiumRate: "0.25",
     dutchDecrementIntervalMs: 60_000,
     // Small amounts: enough lots at a higher price would trip the source-of-funds threshold, which
     // holds collection, and push the buyer's card limit for the other journeys.

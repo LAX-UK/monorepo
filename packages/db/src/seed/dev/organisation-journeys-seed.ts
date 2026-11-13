@@ -7,9 +7,11 @@
  * Dates here follow the wall clock, not the demo clock: bidding checks the real time, so the
  * lots a journey bids on must end in the future whenever the seed is run.
  */
+import { standardBuyerPremiumBands } from "@auction/validators";
 import { inArray } from "drizzle-orm";
 import type { drizzle } from "drizzle-orm/node-postgres";
 import * as schema from "../../schema/index.js";
+import { SEED_BUYER_PREMIUM_TERMS } from "../shared/terms.js";
 import { BUYER_AGENT_BID_LIMIT, ORGANISATION_JOURNEY_IDS } from "./organisation-journey-ids.js";
 
 type Db = ReturnType<typeof drizzle<typeof schema>>;
@@ -48,16 +50,11 @@ export async function seedOrganisationJourneys(db: Db, actors: OrganisationJourn
   const ended = new Date(today - 3 * DAY);
   const lotDefaults: Pick<
     typeof schema.lot.$inferInsert,
-    | "sellerLegalEntityId"
-    | "images"
-    | "auctionType"
-    | "buyerPremiumRate"
-    | "dutchDecrementIntervalMs"
+    "sellerLegalEntityId" | "images" | "auctionType" | "dutchDecrementIntervalMs"
   > = {
     sellerLegalEntityId: actors.sellerAccountId,
     images: [IMAGE],
     auctionType: "english",
-    buyerPremiumRate: "0.25",
     dutchDecrementIntervalMs: 60_000,
   };
 
@@ -97,8 +94,9 @@ export async function seedOrganisationJourneys(db: Db, actors: OrganisationJourn
     startTime: earlier,
     endTime: later,
     previewStartTime: earlier,
-    buyerPremiumRate: "0.25",
-    terms: "Online bidding closes lot by lot.",
+    buyerPremiumRate: "0.15",
+    buyerPremiumTiers: standardBuyerPremiumBands(),
+    terms: `Online bidding closes lot by lot. ${SEED_BUYER_PREMIUM_TERMS}`,
     createdByLegalEntityId: actors.laxStockId,
   });
 
