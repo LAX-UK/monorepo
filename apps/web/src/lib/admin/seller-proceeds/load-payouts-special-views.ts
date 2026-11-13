@@ -45,9 +45,27 @@ export async function loadHeldSalesView(): Promise<{
   }
 }
 
+/** The most rows one export reads: well beyond the review's size, a guard against a runaway. */
+export const OLD_RULE_EXPORT_MAX = 10_000;
+const OLD_RULE_EXPORT_PAGE = 200;
+
+/**
+ * Every sale paid under the old rule as CSV rows, not just the page on screen: read page by page
+ * through the API, which checks the person may read payouts. Called from the client.
+ */
+export async function exportOldRuleCsv(): Promise<Record<OldRuleCsvKey, string>[]> {
+  "use server";
+  const rows: Record<OldRuleCsvKey, string>[] = [];
+  for (let offset = 0; offset < OLD_RULE_EXPORT_MAX; offset += OLD_RULE_EXPORT_PAGE) {
+    const page = await getOldRulePage({ limit: OLD_RULE_EXPORT_PAGE, offset });
+    rows.push(...page.data.map(oldRuleCsvRow));
+    if (page.data.length < OLD_RULE_EXPORT_PAGE || rows.length >= page.meta.total) break;
+  }
+  return rows;
+}
+
 export async function loadOldRuleView(search: PayoutsListSearch): Promise<{
   rows: OldRuleRow[];
-  csvRows: Record<OldRuleCsvKey, string>[];
   total: number;
   loadError: string | null;
   pagination: { summary: string; prevHref: string | null; nextHref: string | null } | null;
@@ -60,7 +78,6 @@ export async function loadOldRuleView(search: PayoutsListSearch): Promise<{
     const shown = page.data.length;
     return {
       rows: page.data.map((row) => buildOldRuleRow(row)),
-      csvRows: page.data.map(oldRuleCsvRow),
       total,
       loadError: null,
       pagination:
@@ -80,6 +97,6 @@ export async function loadOldRuleView(search: PayoutsListSearch): Promise<{
     };
   } catch (error) {
     console.error("[loadOldRuleView]", error);
-    return { rows: [], csvRows: [], total: 0, loadError: LOAD_ERROR, pagination: null };
+    return { rows: [], total: 0, loadError: LOAD_ERROR, pagination: null };
   }
 }

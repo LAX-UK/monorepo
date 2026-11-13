@@ -32,6 +32,7 @@ import {
 } from "@auction/staff-ui";
 import Link from "next/link";
 import { useMemo, useState } from "react";
+import { toast } from "sonner";
 
 const DESCRIPTION =
   "Seller payouts. Run settlement, add adjustments, mark transfers as paid and reverse payouts.";
@@ -153,15 +154,16 @@ export function HeldSalesList({
 export function OldRuleList({
   search,
   rows,
-  csvRows,
   total,
   loadError,
   pagination,
+  exportRows,
 }: {
   search: PayoutsListSearch;
   rows: OldRuleRow[];
-  csvRows: Record<OldRuleCsvKey, string>[];
   total: number;
+  /** Every row for the export, not just this page (a server action). */
+  exportRows: () => Promise<Record<OldRuleCsvKey, string>[]>;
   loadError: string | null;
   pagination: { summary: string; prevHref: string | null; nextHref: string | null } | null;
 }) {
@@ -223,11 +225,16 @@ export function OldRuleList({
       exportAction={
         <CsvExportMenu
           noun="sales"
-          shown={rows.length}
+          // The export is every sale paid under the old rule, whichever page is on screen.
+          shown={total}
           total={total}
-          onExport={() =>
-            downloadCsv(`payouts-old-rule-${londonToday()}.csv`, OLD_RULE_CSV_COLUMNS, csvRows)
-          }
+          onExport={() => {
+            void exportRows().then(
+              (all) =>
+                downloadCsv(`payouts-old-rule-${londonToday()}.csv`, OLD_RULE_CSV_COLUMNS, all),
+              () => toast.error("The export could not be made. Try again in a moment."),
+            );
+          }}
         />
       }
       views={<Views search={search} view="old_rule" />}

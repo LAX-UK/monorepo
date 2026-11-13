@@ -9,6 +9,7 @@ import {
   activePayoutsView,
 } from "@/lib/admin/finance/payouts-staff-list.vm";
 import {
+  exportOldRuleCsv,
   loadHeldSalesView,
   loadOldRuleView,
   loadPayoutSales,
@@ -47,7 +48,7 @@ export default async function AdminPayoutsPage({
   }
   if (view === "old_rule") {
     const old = await loadOldRuleView(sp);
-    return <OldRuleList search={plainSearch(sp)} {...old} />;
+    return <OldRuleList search={plainSearch(sp)} {...old} exportRows={exportOldRuleCsv} />;
   }
 
   const page = await loadAdminPayoutsListPage(sp);

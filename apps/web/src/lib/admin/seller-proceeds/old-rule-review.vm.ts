@@ -1,4 +1,5 @@
 import type { OldRuleRowDto } from "@/lib/data/http/admin-seller-proceeds.shared";
+import { minorUnitsToMoneyString } from "@auction/domain";
 import {
   formatBpsAsPercent,
   formatStaffDate,
@@ -6,7 +7,7 @@ import {
   formatStaffMoney,
 } from "@auction/staff-ui";
 import { lotName } from "./held-reasons";
-import { poundsToPence } from "./pounds";
+import { poundsToPenceOrNull } from "./pounds";
 
 export const OLD_RULE_NOTICE =
   "Paid before seller payouts followed the signed agreement. Each row compares what the seller was paid with what their agreement gives. Nothing here changes a payout. Finance decides each one and marks it reviewed.";
@@ -82,13 +83,28 @@ export const OLD_RULE_CSV_COLUMNS = [
   { key: "sellerPaid", header: "Seller was paid" },
   { key: "agreementGives", header: "Agreement gives" },
   { key: "difference", header: "Difference" },
+  { key: "direction", header: "Difference is" },
 ] as const;
 
 export type OldRuleCsvKey = (typeof OLD_RULE_CSV_COLUMNS)[number]["key"];
 
-const pounds = (pence: number) => (pence / 100).toFixed(2);
+/** Plain pounds for a spreadsheet ("1250.50"), by the shared money formatter; blank when unknown. */
+const pounds = (pence: number | null) =>
+  pence === null ? "" : minorUnitsToMoneyString(BigInt(pence));
 
-/** One row of the CSV: plain figures in pounds, dates that do not move with the clock. */
+/** Which way the agreement differs from what was paid, so the amount itself stays a number. */
+function direction(differencePence: number | null): string {
+  if (differencePence === null) return "";
+  if (differencePence > 0) return "Seller was paid less";
+  if (differencePence < 0) return "Seller was paid more";
+  return "Same";
+}
+
+/**
+ * One row of the CSV: plain, unsigned figures in pounds so a spreadsheet reads every amount as a
+ * number (a leading minus would be escaped as text), the difference's direction in its own
+ * column, a blank for a figure that cannot be read, and dates that do not move with the clock.
+ */
 export function oldRuleCsvRow(row: OldRuleRowDto): Record<OldRuleCsvKey, string> {
   const gives = row.agreementGives;
   return {
@@ -97,11 +113,12 @@ export function oldRuleCsvRow(row: OldRuleRowDto): Record<OldRuleCsvKey, string>
     lot: row.lotNumber === null ? "" : String(row.lotNumber),
     title: row.lotTitle,
     agreement: row.agreement?.reference ?? "",
-    hammer: row.hammerPence === null ? "" : pounds(row.hammerPence),
-    buyerPaid: pounds(poundsToPence(row.paymentAmount)),
-    oldFee: pounds(poundsToPence(row.platformFee)),
+    hammer: pounds(row.hammerPence),
+    buyerPaid: pounds(poundsToPenceOrNull(row.paymentAmount)),
+    oldFee: pounds(poundsToPenceOrNull(row.platformFee)),
     sellerPaid: pounds(row.paidNetPence),
     agreementGives: gives.kind === "priced" ? pounds(gives.netPence) : UNPRICED[gives.reason],
-    difference: row.differencePence === null ? "" : pounds(row.differencePence),
+    difference: row.differencePence === null ? "" : pounds(Math.abs(row.differencePence)),
+    direction: direction(row.differencePence),
   };
 }

@@ -1,3 +1,4 @@
+import { escapeCsvCell, formatCsvDocument } from "@auction/exports";
 import { describe, expect, it } from "vitest";
 import { OLD_RULE_CSV_COLUMNS, buildOldRuleRow, oldRuleCsvRow } from "./old-rule-review.vm";
 import { FIXTURE_OLD_RULE_ROWS } from "./seller-proceeds.fixture";
@@ -46,8 +47,38 @@ describe("oldRuleCsvRow", () => {
       "62.50",
       "1187.50",
       "856.00",
-      "-331.50",
+      "331.50",
+      "Seller was paid more",
     ]);
     expect(oldRuleCsvRow(unpriced).agreementGives).toBe("No signed agreement");
+  });
+
+  it("keeps every amount a number once the shared CSV escaping has run", () => {
+    const row = oldRuleCsvRow(priced);
+    const amounts = [
+      "hammer",
+      "buyerPaid",
+      "oldFee",
+      "sellerPaid",
+      "agreementGives",
+      "difference",
+    ] as const;
+    for (const key of amounts) expect(escapeCsvCell(row[key])).toMatch(/^\d+\.\d{2}$/);
+    expect(formatCsvDocument([...OLD_RULE_CSV_COLUMNS], [row])).not.toContain("'-");
+  });
+
+  it("names the direction for an underpaid seller and a sale that matches", () => {
+    expect(oldRuleCsvRow({ ...priced, differencePence: 2_500 })).toMatchObject({
+      difference: "25.00",
+      direction: "Seller was paid less",
+    });
+    expect(oldRuleCsvRow({ ...priced, differencePence: 0 }).direction).toBe("Same");
+    expect(oldRuleCsvRow(unpriced)).toMatchObject({ difference: "", direction: "" });
+  });
+
+  it("writes a blank, not £0.00, for an amount it cannot read", () => {
+    const row = oldRuleCsvRow({ ...priced, paymentAmount: "not money", platformFee: "" });
+    expect(row.buyerPaid).toBe("");
+    expect(row.oldFee).toBe("");
   });
 });
