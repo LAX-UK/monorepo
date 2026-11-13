@@ -7,8 +7,10 @@ import {
   summariseSaleResults,
 } from "@auction/domain";
 import type {
+  IInvoicedSalePriceReader,
   ISaleChannelReader,
   ISaleResultLotsReader,
+  InvoicedSalePrice,
   SaleResultLotRow,
 } from "@auction/persistence/interfaces";
 import type { Sale } from "@auction/types";
@@ -28,8 +30,14 @@ function externalState(sale: Sale): "live" | "ended" | null {
   return sale.sellingPlatform === "atg" ? (sale.atgAuctionState ?? null) : null;
 }
 
-function withPremiumFor(sale: Sale) {
+/**
+ * A sold lot's price with the premium: what its invoice charged once raised, else what the
+ * resolver charges now.
+ */
+function withPremiumFor(sale: Sale, invoiced: ReadonlyMap<string, InvoicedSalePrice>) {
   return (lot: SaleResultLot & { premiumRate: string | null }): string => {
+    const sold = invoiced.get(lot.id);
+    if (sold) return minorUnitsToMoneyString(BigInt(sold.hammerPence + sold.premiumPence));
     const { policy } = resolveBuyerPremium({ lotRate: lot.premiumRate, sale });
     const hammer = parseMoneyToMinorUnits(lot.currentPrice);
     const premium = parseMoneyToMinorUnits(policy.computePremiumMajor(lot.currentPrice));
@@ -60,6 +68,7 @@ export class SaleResultsSummaryService implements ISaleResultsSummaryService {
   constructor(
     private readonly lots: ISaleResultLotsReader,
     private readonly channel: Pick<ISaleChannelReader, "getSoldLotIds"> | null,
+    private readonly invoicedPrices: IInvoicedSalePriceReader | null = null,
     private readonly now: () => Date = () => new Date(),
   ) {}
 
@@ -71,6 +80,7 @@ export class SaleResultsSummaryService implements ISaleResultsSummaryService {
     if (due.length === 0) return out;
 
     const rowsBySale = await this.lots.listBySaleIds(due.map((s) => s.id));
+    const invoiced = await this.invoicedPricesOf([...rowsBySale.values()].flat());
     const now = this.now();
     await Promise.all(
       due.map(async (sale) => {
@@ -91,11 +101,18 @@ export class SaleResultsSummaryService implements ISaleResultsSummaryService {
           },
           lots,
           now,
-          withPremium: withPremiumFor(sale),
+          withPremium: withPremiumFor(sale, invoiced),
         });
         if (summary) out.set(sale.id, summary);
       }),
     );
     return out;
+  }
+
+  /** The invoices of every sold lot across the sales, in one read. */
+  private async invoicedPricesOf(rows: readonly SaleResultLotRow[]) {
+    const sold = rows.filter((r) => r.status === "ended" && r.hasWinner && !r.resultPending);
+    if (!this.invoicedPrices || sold.length === 0) return new Map<string, InvoicedSalePrice>();
+    return this.invoicedPrices.findInvoicedSalePrices(sold.map((r) => r.id));
   }
 }

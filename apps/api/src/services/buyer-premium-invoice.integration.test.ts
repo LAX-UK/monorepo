@@ -190,6 +190,30 @@ describe.skipIf(!HAS_DB)("buyer's premium on raised invoices (integration)", () 
     expect(Math.round(Number(paid.amount) * 100)).toBe(invoice.totalPence);
   });
 
+  it("public pages read each sold lot's invoiced hammer and premium, in one read", async () => {
+    const prices = await invoices.findInvoicedSalePrices([
+      sold.override.id,
+      sold.bands.id,
+      draft.differs.id,
+    ]);
+    expect(prices.get(sold.override.id)).toEqual({
+      hammerPence: 60_000_000,
+      premiumPence: 12_000_000,
+      pricingPolicyId: "flat:0.2000",
+    });
+    expect(prices.get(sold.bands.id)).toMatchObject({ premiumPence: 8_500_000 });
+    expect(prices.has(draft.differs.id)).toBe(false);
+  });
+
+  it("ignores an invoice once the lot has moved to another buyer account", async () => {
+    await db.update(lot).set({ buyerLegalEntityId: sellerId }).where(eq(lot.id, sold.flat.id));
+    try {
+      expect((await invoices.findInvoicedSalePrices([sold.flat.id])).size).toBe(0);
+    } finally {
+      await db.update(lot).set({ buyerLegalEntityId: buyerId }).where(eq(lot.id, sold.flat.id));
+    }
+  });
+
   it("a lot stored without a premium reads back as using its sale's", async () => {
     const row = await lotRepo.findById(sold.bands.id);
     expect(row?.buyerPremiumRate).toBeNull();

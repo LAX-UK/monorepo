@@ -1,4 +1,4 @@
-import type { SaleResultLotRow } from "@auction/persistence/interfaces";
+import type { InvoicedSalePrice, SaleResultLotRow } from "@auction/persistence/interfaces";
 import type { Sale } from "@auction/types";
 import { describe, expect, it, vi } from "vitest";
 import { SaleResultsSummaryService } from "./sale-results-summary.service.js";
@@ -28,7 +28,11 @@ const row = (id: string, overrides: Partial<SaleResultLotRow> = {}): SaleResultL
   ...overrides,
 });
 
-function service(rowsBySale: Record<string, SaleResultLotRow[]>, sold: Set<string> = new Set()) {
+function service(
+  rowsBySale: Record<string, SaleResultLotRow[]>,
+  sold: Set<string> = new Set(),
+  invoiced: Record<string, InvoicedSalePrice> = {},
+) {
   const lots = {
     listBySaleIds: vi.fn(
       async (ids: string[]) =>
@@ -36,7 +40,18 @@ function service(rowsBySale: Record<string, SaleResultLotRow[]>, sold: Set<strin
     ),
   };
   const channel = { getSoldLotIds: vi.fn(async () => sold) };
-  return { svc: new SaleResultsSummaryService(lots, channel, () => NOW), lots, channel };
+  const invoices = {
+    findInvoicedSalePrices: vi.fn(
+      async (ids: readonly string[]) =>
+        new Map(ids.flatMap((id) => (invoiced[id] ? [[id, invoiced[id]] as const] : []))),
+    ),
+  };
+  return {
+    svc: new SaleResultsSummaryService(lots, channel, invoices, () => NOW),
+    lots,
+    channel,
+    invoices,
+  };
 }
 
 describe("SaleResultsSummaryService", () => {
@@ -73,6 +88,29 @@ describe("SaleResultsSummaryService", () => {
     const tiers = [{ hammerThresholdMinor: 0, rate: "0.10" }];
     const summaries = await svc.summarise([sale({ buyerPremiumTiers: tiers })]);
     expect(summaries.get("s1")).toMatchObject({ totalWithPremium: "1250.00" });
+  });
+
+  it("totals an invoiced lot at what its invoice charged, in one read for every sale", async () => {
+    // Invoiced before clause 11 at 10% on the whole hammer; today's bands would give £85,000.
+    const { svc, invoices } = service(
+      {
+        s1: [row("a", { currentPrice: "600000.00", buyerPremiumRate: null }), row("b")],
+        s2: [row("c", { saleId: "s2" }), row("d", { saleId: "s2", hasWinner: false })],
+      },
+      new Set(),
+      { a: { hammerPence: 60_000_000, premiumPence: 6_000_000, pricingPolicyId: "tiered:x" } },
+    );
+    const tiers = [
+      { hammerThresholdMinor: 0, rate: "0.15" },
+      { hammerThresholdMinor: 50_000_000, rate: "0.10" },
+    ];
+    const summaries = await svc.summarise([sale({ buyerPremiumTiers: tiers }), sale({ id: "s2" })]);
+    expect(summaries.get("s1")).toMatchObject({
+      totalWithPremium: "661250.00",
+      topLot: { lotId: "a", priceWithPremium: "660000.00" },
+    });
+    expect(invoices.findInvoicedSalePrices).toHaveBeenCalledTimes(1);
+    expect(invoices.findInvoicedSalePrices).toHaveBeenCalledWith(["a", "b", "c"]);
   });
 
   it("is finalising while a lot is still in a soft-close extension", async () => {

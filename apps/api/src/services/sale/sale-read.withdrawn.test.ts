@@ -126,3 +126,31 @@ describe("public sale catalogue page with withdrawn lots", () => {
     );
   });
 });
+
+describe("public sale lots of a sold, invoiced lot", () => {
+  const invoices = () => ({
+    findInvoicedSalePrices: vi.fn(
+      async () =>
+        new Map([["a", { hammerPence: 90_000, premiumPence: 18_000, pricingPolicyId: null }]]),
+    ),
+  });
+  const withInvoices = (reader: ReturnType<typeof invoices>) =>
+    ({
+      ...deps(sale({ buyerPremiumRate: "0.25" }), lots),
+      invoicedSalePrices: reader,
+    }) as SaleServiceDeps;
+
+  it("shows the invoiced price on the sale page and its paged catalogue", async () => {
+    const reader = invoices();
+    const detail = await getSaleDetailForPublicApi(withInvoices(reader), "s1", undefined);
+    const page = await listSaleLotsPageForPublicApi(withInvoices(reader), "s1", {
+      limit: 40,
+      offset: 0,
+    });
+    // Today's 25% would say £1,125; the invoice charged £1,080.
+    for (const rows of [detail?.data.lots, page?.data.items]) {
+      expect((rows?.[0] as Lot | undefined)?.checkoutPricing?.totalMajor).toBe("1080.00");
+    }
+    expect(reader.findInvoicedSalePrices).toHaveBeenCalledWith(["a"]);
+  });
+});

@@ -1,3 +1,4 @@
+import type { IInvoicedSalePriceReader } from "@auction/persistence/interfaces";
 import type { Lot, Sale } from "@auction/types";
 import { Hono } from "hono";
 import { describe, expect, it, vi } from "vitest";
@@ -49,7 +50,11 @@ function sale(over: Partial<Sale> = {}): Partial<Sale> {
   return { id: saleId, status: "active", deliveryMode: "online", ...over };
 }
 
-async function getDetail(row: Lot, saleRow: Partial<Sale> = sale()) {
+async function getDetail(
+  row: Lot,
+  saleRow: Partial<Sale> = sale(),
+  invoicedSalePrices?: IInvoicedSalePriceReader,
+) {
   const app = new Hono();
   const lotReadHttp = createCatalogLotReadHttpFixture({
     lotService: {
@@ -64,6 +69,7 @@ async function getDetail(row: Lot, saleRow: Partial<Sale> = sale()) {
     },
     cachedCatalogueListService: {} as never,
     now: () => NOW,
+    ...(invoicedSalePrices ? { invoicedSalePrices } : {}),
   });
   const container = {
     userSuspensionChecker: { isSuspended: vi.fn().mockResolvedValue(false) },
@@ -153,6 +159,32 @@ describe("GET /lots/:id bidding facts", () => {
       soldForWithPremium: "8750.00",
       nextBidAmount: null,
       validBidAmounts: [],
+    });
+  });
+
+  it("shows an invoiced sold lot at what its invoice charged, not today's premium", async () => {
+    // Invoiced at 20% before the lot's rate changed; today's rule would give £8,750.
+    const reader = {
+      findInvoicedSalePrices: vi.fn(
+        async () =>
+          new Map([
+            [
+              lotId,
+              { hammerPence: 700_000, premiumPence: 140_000, pricingPolicyId: "flat:0.2000" },
+            ],
+          ]),
+      ),
+    };
+    const { body } = await getDetail(
+      lot({ status: "ended", winnerId: "user-1", currentPrice: "7000.00" }),
+      sale(),
+      reader,
+    );
+    expect(reader.findInvoicedSalePrices).toHaveBeenCalledWith([lotId]);
+    expect(body.data).toMatchObject({
+      hammerPrice: "7000.00",
+      soldForWithPremium: "8400.00",
+      checkoutPricing: { premiumMajor: "1400.00", totalMajor: "8400.00" },
     });
   });
 

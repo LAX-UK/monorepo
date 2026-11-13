@@ -1,5 +1,8 @@
 import type { Database } from "@auction/db";
-import type { ILegalEntityRepository } from "@auction/persistence/interfaces";
+import type {
+  IInvoicedSalePriceReader,
+  ILegalEntityRepository,
+} from "@auction/persistence/interfaces";
 import { vi } from "vitest";
 import type { CachedCatalogueListService } from "../services/cached-catalogue-list.service.js";
 import { CatalogLotReadHttpApplicationService } from "../services/catalog/catalog-lot-read-http-application.service.js";
@@ -26,6 +29,7 @@ export type CatalogLotReadHttpFixtureInput = {
   db?: Database;
   objectStorage?: IObjectStorage;
   now?: () => Date;
+  invoicedSalePrices?: IInvoicedSalePriceReader;
 };
 
 const defaultMediaUrlResolver: IMediaUrlResolver = {
@@ -63,5 +67,6 @@ export function createCatalogLotReadHttpFixture(
     (input.db ?? {}) as Database,
     (input.objectStorage ?? { getPublicUrl: vi.fn((k: string) => k) }) as IObjectStorage,
     input.now,
+    input.invoicedSalePrices ?? null,
   );
 }

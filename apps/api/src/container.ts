@@ -326,6 +326,7 @@ export function createContainer(env: Env): Container {
     lotLifecycleQueryService: catalog.lotLifecycleQueryService,
     stripeConnectService: platform.stripeConnectService,
     legalEntityRepository: repos.legalEntityRepository,
+    invoicedSalePriceReader: repos.invoicedSalePriceReader,
     saleListReadService: catalog.saleListReadService,
     saleResultsSummaryService: catalog.saleResultsSummaryService,
     repoFactory: repos.repoFactory,
