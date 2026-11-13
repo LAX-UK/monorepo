@@ -97,7 +97,8 @@ async function refundBeforePayout(
   note: string;
 } | null> {
   // A refund line from the previous release is copied to the buyer's record (migration 0344's
-  // backfill), so a sale with nothing refunded on that record has nothing on the ledger either.
+  // backfill, run again for each payment the run holds), so a sale with nothing refunded on that
+  // record has nothing on the ledger either.
   if (pending.refundedPence <= 0) return null;
   const facts = await r.findSellerClawbackFacts(pending.id);
   const charge = sellerRefundChargeAtPayout({

@@ -401,7 +401,14 @@ export class DrizzlePayoutRepository implements IPayoutRepository, IPayoutProces
       .where(and(eq(payment.sellerLegalEntityId, legalEntityId), awaitingSettlement()))
       .orderBy(asc(payment.id))
       .for("update");
-    return rows.map((row) => row.id);
+    const ids = rows.map((row) => row.id);
+    // A refund the previous release handled has a payout line and no row in the buyer's refund
+    // record until the backfill is run again. Copied now, under the lock, as the refund paths do,
+    // it is part of what the run reads as refunded before payout.
+    for (const id of ids) {
+      await this.db.execute(sql`SELECT payment_refund_backfill_from_payout_lines(${id}::uuid)`);
+    }
+    return ids;
   }
 
   async updateXeroBillId(payoutId: string, xeroBillId: string): Promise<void> {

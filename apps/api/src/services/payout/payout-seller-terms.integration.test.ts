@@ -896,4 +896,61 @@ describe.skipIf(!HAS_DB)("payout run on seller terms (integration)", () => {
       answeredPence: pounds(750),
     });
   });
+
+  it("a refund the previous release left only on the ledger is recorded for the buyer and brought back to the share as the sale is paid", async () => {
+    const sale = await seedSale({
+      hammer: 1_000,
+      premium: 250,
+      commissionPercent: "15.00",
+      raised: "agreement",
+    });
+    // The whole £500 charged by the previous release, and nothing on the buyer's refund record:
+    // 0344's backfill ran before this line was written.
+    const [clawback] = await db
+      .insert(payout)
+      .values({
+        legalEntityId: sellerEntity,
+        periodStart: new Date("2026-10-02T00:00:00Z"),
+        periodEnd: new Date("2026-10-02T00:00:01Z"),
+        grossAmount: "-500.00",
+        platformFee: "0.00",
+        stripeFee: "0.00",
+        netAmount: "-500.00",
+        currency: "GBP",
+        status: "paid",
+      })
+      .returning({ id: payout.id });
+    if (!clawback) throw new Error("payout was not stored");
+    await db.insert(payoutLine).values({
+      payoutId: clawback.id,
+      paymentId: sale.paymentId,
+      amount: "-500.00",
+      kind: "refund",
+      note: "Refund",
+    });
+
+    const settled = await createSettlement(deps, null, {
+      legalEntityId: sellerEntity,
+      periodEnd: nextPeriodEnd(),
+    });
+    expect(settled.ok).toBe(true);
+    if (!settled.ok) return;
+    const recorded = await db
+      .select({ amountPence: paymentRefund.amountPence, source: paymentRefund.source })
+      .from(paymentRefund)
+      .where(eq(paymentRefund.paymentId, sale.paymentId));
+    expect(recorded).toEqual([{ amountPence: pounds(500), source: "payout_topup" }]);
+    const trueUp = (await linesOf(settled.payout.id)).find(
+      (l) => l.paymentId === sale.paymentId && l.kind === "refund",
+    );
+    expect(trueUp).toMatchObject({
+      amount: "172.00",
+      buyerRefundPence: 0,
+      note: REFUND_TRUE_UP_NOTE,
+    });
+    expect(await refundLedger(sale.paymentId)).toEqual({
+      chargedPence: pounds(328),
+      answeredPence: pounds(500),
+    });
+  });
 });
