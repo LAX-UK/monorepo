@@ -3,6 +3,13 @@ import type { ParsedBidUpdateFromRealtime } from "./lot-bid-update.js";
 
 const moneyString = z.string();
 
+/**
+ * The `bid_placed` contract below (this record, `lotRealtimeBidPlacedSealedSchema` and
+ * `lotRealtimeBidPlacedPublicSchema`) is also checked by hand, without Zod, in `lot-bid-update.ts`
+ * for public pages. A change here needs the same change there; `lot-bid-update.test.ts` fails
+ * until the two agree.
+ */
+
 /** Minimal bid row embedded in Redis `bid_placed` payloads (full object may include extra fields). */
 export const lotRealtimeBidRecordSchema = z
   .object({

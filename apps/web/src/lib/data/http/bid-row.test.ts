@@ -4,7 +4,7 @@ import type { Bid } from "@auction/types";
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
 import { parseBidRow } from "./bid-row";
-import { parseBidSchema } from "./bid.schema";
+import { bidSchema } from "./bid.schema";
 
 /**
  * `parseBidRow` replaced the Zod bid schema on lot and sale pages. These tests hold it to that
@@ -53,7 +53,7 @@ function expectSameAnswer(raw: unknown) {
   expect(Object.keys(actual)).toEqual(Object.keys(expected));
   expect(comparable(actual)).toEqual(comparable(expected));
   expect(actual.createdAt).toBeInstanceOf(Date);
-  expect(comparable(parseBidSchema(raw))).toEqual(comparable(expected));
+  expect(comparable(bidSchema.parse(raw))).toEqual(comparable(expected));
 }
 
 const full = {

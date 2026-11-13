@@ -2,7 +2,7 @@ import { errorCopy } from "@/lib/forms/error-copy";
 import { publicFormResolver } from "@/lib/forms/public-form-resolver";
 import { z } from "zod";
 
-export const searchFilterSchema = z.object({
+const searchFilterSchema = z.object({
   q: z.string().trim().max(200, errorCopy.maxLength(200, "your search")),
 });
 
