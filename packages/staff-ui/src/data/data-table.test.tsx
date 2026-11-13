@@ -118,6 +118,36 @@ describe("DataTable", () => {
     expect([...selected].sort()).toEqual(["a", "b", "c"]);
   });
 
+  it("gives a non-selectable row no checkbox and leaves it out of select all", () => {
+    let selected = new Set<string>();
+    const onChange = vi.fn((next: Set<string>) => {
+      selected = next;
+    });
+    render(
+      <DataTable
+        label="People"
+        columns={columns}
+        data={rows}
+        getRowId={(r) => r.id}
+        selectedIds={selected}
+        onSelectedIdsChange={onChange}
+        // Mary (c) cannot be acted on.
+        isRowSelectable={(row) => row.id !== "c"}
+        bulkActions={() => null}
+      />,
+    );
+    expect(within(grid()).getByRole("checkbox", { name: "Select row 1" })).toBeInTheDocument();
+    expect(
+      within(grid()).queryByRole("checkbox", { name: "Select row 3" }),
+    ).not.toBeInTheDocument();
+    // Space on the non-selectable row does nothing.
+    fireEvent.keyDown(bodyRows()[2] as HTMLElement, { key: " " });
+    expect([...selected]).toEqual([]);
+    // Select-all picks only the two selectable rows.
+    fireEvent.click(screen.getByRole("checkbox", { name: "Select all rows on this page" }));
+    expect([...selected].sort()).toEqual(["a", "b"]);
+  });
+
   it("sorts locally when a column has a sort value, and marks the header", () => {
     render(<DataTable label="People" columns={columns} data={rows} getRowId={(r) => r.id} />);
     fireEvent.click(screen.getByRole("button", { name: "Total" }));
