@@ -3,11 +3,14 @@ import {
   bidIdentityDirectory,
   bidInvoice,
   domainEvent,
+  legalEntity,
   legalEntityInvoiceDetails,
+  legalEntityMember,
   lot,
   payment,
 } from "@auction/db/schema";
-import { and, desc, eq, sql } from "drizzle-orm";
+import { buyerPaymentAuthority } from "@auction/domain";
+import { and, desc, eq, isNotNull, isNull, sql } from "drizzle-orm";
 import type {
   BidInvoiceEmailFacts,
   IBidInvoiceEmailFactsReader,
@@ -16,6 +19,10 @@ import type {
 /**
  * What the "Your invoice" email says, read from the invoice's own rows: the lot, the stored
  * total and due date, whether it is paid (and when), and who it goes to. Read-only.
+ *
+ * The payer is only named while they may still pay this purchase, by the same rule as the
+ * download routes (`buyerPaymentAuthority`): for an organisation, an active member whose role
+ * moves its money. A member who has since left, or lost that role, is not emailed the invoice.
  */
 export class DrizzleBidInvoiceEmailFactsReader implements IBidInvoiceEmailFactsReader {
   constructor(private readonly db: Database) {}
@@ -29,11 +36,14 @@ export class DrizzleBidInvoiceEmailFactsReader implements IBidInvoiceEmailFactsR
         dueAt: bidInvoice.dueAt,
         voidedAt: bidInvoice.voidedAt,
         buyerLegalEntityId: bidInvoice.buyerLegalEntityId,
+        buyerAccountKind: legalEntity.kind,
+        lotWinnerId: lot.winnerId,
         lotTitle: lot.title,
         billingEmail: legalEntityInvoiceDetails.billingEmail,
       })
       .from(bidInvoice)
       .innerJoin(lot, eq(lot.id, bidInvoice.lotId))
+      .innerJoin(legalEntity, eq(legalEntity.id, bidInvoice.buyerLegalEntityId))
       .leftJoin(
         legalEntityInvoiceDetails,
         eq(legalEntityInvoiceDetails.legalEntityId, bidInvoice.buyerLegalEntityId),
@@ -56,6 +66,8 @@ export class DrizzleBidInvoiceEmailFactsReader implements IBidInvoiceEmailFactsR
       .where(eq(payment.invoiceId, invoice.id))
       .orderBy(desc(payment.createdAt), desc(payment.id))
       .limit(1);
+
+    const payer = latest ? await this.currentPayer(invoice, latest) : null;
 
     let paidAt: Date | null = null;
     if (latest && (latest.status === "captured" || latest.status === "refunded")) {
@@ -82,9 +94,43 @@ export class DrizzleBidInvoiceEmailFactsReader implements IBidInvoiceEmailFactsR
       paidAt,
       dueAt: invoice.dueAt,
       cancelled: invoice.voidedAt !== null,
-      payer: latest ? { userId: latest.userId, email: latest.email, name: latest.name } : null,
+      payer,
       billingEmail: invoice.billingEmail ?? null,
       buyerLegalEntityId: invoice.buyerLegalEntityId,
     };
+  }
+
+  /** The latest payment's member, while they still pay for the buyer account; otherwise null. */
+  private async currentPayer(
+    invoice: {
+      buyerLegalEntityId: string;
+      buyerAccountKind: "individual" | "organisation";
+      lotWinnerId: string | null;
+    },
+    latest: { userId: string; email: string; name: string },
+  ): Promise<BidInvoiceEmailFacts["payer"]> {
+    const [membership] =
+      invoice.buyerAccountKind === "organisation"
+        ? await this.db
+            .select({ role: legalEntityMember.role })
+            .from(legalEntityMember)
+            .where(
+              and(
+                eq(legalEntityMember.legalEntityId, invoice.buyerLegalEntityId),
+                eq(legalEntityMember.userId, latest.userId),
+                isNull(legalEntityMember.removedAt),
+                isNotNull(legalEntityMember.acceptedAt),
+              ),
+            )
+            .limit(1)
+        : [];
+    const decision = buyerPaymentAuthority({
+      payerUserId: latest.userId,
+      lot: { winnerId: invoice.lotWinnerId, buyerAccountKind: invoice.buyerAccountKind },
+      membership: membership ? { role: membership.role } : null,
+    });
+    return decision.allowed
+      ? { userId: latest.userId, email: latest.email, name: latest.name }
+      : null;
   }
 }

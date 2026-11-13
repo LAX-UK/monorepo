@@ -355,7 +355,12 @@ export interface BidInvoiceEmailFacts {
   readonly paidAt: Date | null;
   readonly dueAt: Date;
   readonly cancelled: boolean;
-  /** The member who pays it, when one is known (a payment row names them). */
+  /**
+   * Who pays it, when they may still be told: the account holder for a personal purchase, or for
+   * an organisation the member the latest payment names while they are still an active member
+   * with a payer role (owner, admin or finance; the same rule as the download routes). A former
+   * member, or one whose role no longer pays, is null.
+   */
   readonly payer: { readonly userId: string; readonly email: string; readonly name: string } | null;
   /** The billing email the buyer account's finance team set, when there is one. */
   readonly billingEmail: string | null;
