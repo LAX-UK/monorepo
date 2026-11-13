@@ -69,6 +69,7 @@ export { DrizzleAdminDisputeCaseEnrichmentReader } from "./drizzle-admin-dispute
 export { DrizzleAdminMarketingEventOutboxRepository } from "./drizzle-admin-marketing-event-outbox.repository.js";
 export { DrizzleAdminSaleOperationsSnapshotReader } from "./drizzle-admin-sale-operations-snapshot.reader.js";
 export { DrizzlePaymentRefundRepository } from "./drizzle-payment-refund.repository.js";
+export { DrizzleStripeRefundWatchRepository } from "./drizzle-stripe-refund-watch.repository.js";
 export { DrizzleConnectTransferRepository } from "./drizzle-connect-transfer.repository.js";
 export {
   DrizzlePaymentRefundReconcileRepository,
@@ -139,6 +140,7 @@ export { DrizzleCollectionLotFactsReader } from "./drizzle-collection-lot-facts.
 export { DrizzleCollectionPlaceRepository } from "./drizzle-collection-place.repository.js";
 export { DrizzleCollectionSettingsRepository } from "./drizzle-collection-settings.repository.js";
 export { DrizzlePayoutRepository } from "./drizzle-payout.repository.js";
+export { DrizzleSaleSellerTermsStore } from "./drizzle-sale-seller-terms.store.js";
 export { DrizzlePaymentExternalRefRepository } from "./drizzle-payment-external-ref.repository.js";
 export { DrizzleXeroConnectionRepository } from "./drizzle-xero-connection.repository.js";
 export { DrizzleXeroWebhookEventRepository } from "./drizzle-xero-webhook-event.repository.js";

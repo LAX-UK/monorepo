@@ -21,6 +21,7 @@ import {
   DrizzlePrivateSaleDealRepository,
   DrizzleSellerTermsFactsReader,
   DrizzleStalePaymentCanceller,
+  DrizzleStripeRefundWatchRepository,
   DrizzleUnappliedMoneyReader,
 } from "@auction/persistence/repositories";
 import type { Env } from "../env.js";
@@ -64,8 +65,10 @@ import {
 } from "../services/payment/unapplied-money-handling.service.js";
 import { UnappliedMoneyRecorder } from "../services/payment/unapplied-money.recorder.js";
 import { StripePaymentWebhookService } from "../services/stripe-payment-webhook.service.js";
+import { StripeRefundReconcileService } from "../services/stripe-webhook/stripe-refund-reconcile.service.js";
 import { UnappliedMoneyRefundHandler } from "../services/stripe-webhook/unapplied-money-refund.handler.js";
 import { StripeCashBalanceGateway } from "../services/stripe/cash-balance-gateway.js";
+import { StripeChargeRefunds } from "../services/stripe/stripe-charge-refunds.js";
 import { CheckoutSessionLifecycle } from "../services/stripe/stripe-checkout-session-lifecycle.js";
 import { StripeCustomerGateway } from "../services/stripe/stripe-customer.gateway.js";
 import { StripePaymentGateway } from "../services/stripe/stripe-payment-gateway.js";
@@ -115,6 +118,8 @@ export type ContainerPaymentsServices = {
   bidInvoices: DrizzleBidInvoiceRepository;
   invoiceRaiser: InvoiceRaiser;
   stripePaymentWebhookService: StripePaymentWebhookService | null;
+  /** Re-reads refunds Stripe had not finished and settles them; null where Stripe is not set up. */
+  stripeRefundReconcile: StripeRefundReconcileService | null;
   xeroOAuthService: XeroOAuthService | null;
   adminMetricsService: AdminMetricsService;
   /** "Pay several": one checkout for several invoices of an account. */
@@ -353,6 +358,10 @@ export function createPaymentsServices(
     listUnpaidWithCheckout: (limit: number) => staleCanceller.listUnpaidWithCheckout(limit),
   });
   const bidInvoiceRepo = repos.bidInvoiceRepository;
+  // Refunds Stripe has not finished are watched until final; every refund path reads the charge's
+  // refunds through this one reader, so the unfinished ones are always watched.
+  const refundWatch = new DrizzleStripeRefundWatchRepository(db);
+  const chargeRefunds = new StripeChargeRefunds(stripeClientFactory, refundWatch);
   const paymentService = new PaymentService(
     lotRepo,
     paymentRepo,
@@ -392,6 +401,7 @@ export function createPaymentsServices(
     bidInvoiceRepo,
     new InvoiceDueDateExtender(bidInvoiceRepo),
     repos.paymentRefundRepository,
+    refundWatch,
   );
 
   const invoiceRaiser = new InvoiceRaiser({ invoices: bidInvoiceRepo, sales: saleRepo });
@@ -434,6 +444,7 @@ export function createPaymentsServices(
     db,
     env,
     stripeClientFactory,
+    chargeRefunds,
     transactionRunner: platform.transactionRunner,
     payments: paymentRepo,
     paymentRefunds: repos.paymentRefundRepository,
@@ -471,6 +482,7 @@ export function createPaymentsServices(
     unappliedMoney,
     lockLinks: createDealLockLinks({ db, env }),
     media: complianceMedia.mediaUrlResolver,
+    refundWatch,
   });
 
   const stripePaymentWebhookService: StripePaymentWebhookService | null =
@@ -496,6 +508,7 @@ export function createPaymentsServices(
             transactionRunner: platform.transactionRunner,
             reader: unappliedMoneyReader,
             recorder: unappliedMoney,
+            chargeRefunds,
           }),
           paymentEligibility,
           repos.paymentRefundRepository,
@@ -506,8 +519,21 @@ export function createPaymentsServices(
             groups: paymentGroups.webhooks.groups,
             deals: new DrizzlePrivateSaleDealRepository(db),
           },
+          chargeRefunds,
         )
       : null;
+
+  const stripeRefundReconcile = stripePaymentWebhookService
+    ? new StripeRefundReconcileService({
+        watch: refundWatch,
+        refunds: chargeRefunds,
+        settleCharge: (event, charge) =>
+          stripePaymentWebhookService.handleChargeRefunded(event, charge),
+        completeStaffRefund: (context, stripeRefundId) =>
+          paymentService.completeDeferredStaffRefund(context, stripeRefundId),
+        log: console,
+      })
+    : null;
 
   const xeroOAuthService = xeroEnvEnabled ? new XeroOAuthService(redis, env, xeroConnRepo) : null;
 
@@ -542,6 +568,7 @@ export function createPaymentsServices(
     }),
     lotInvoiceInitiationService,
     stripePaymentWebhookService,
+    stripeRefundReconcile,
     xeroOAuthService,
     adminMetricsService,
     paymentGroupCheckout: paymentGroups.checkout,

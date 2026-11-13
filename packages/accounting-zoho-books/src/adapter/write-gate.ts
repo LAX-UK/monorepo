@@ -21,7 +21,7 @@ export type ZohoWriteMode =
 export const DRY_RUN: ZohoWriteMode = { mode: "dry_run" };
 
 /** The only kind of organisation each writing mode may reach. */
-const WRITE_MODE_ENVIRONMENT: Readonly<Record<"test_org" | "live", ZohoOrgEnvironment>> = {
+export const WRITE_MODE_ENVIRONMENT: Readonly<Record<"test_org" | "live", ZohoOrgEnvironment>> = {
   test_org: "test",
   live: "live",
 };
@@ -74,10 +74,14 @@ export class WriteGate {
       Promise.resolve(zohoFail(new ZohoValidationError({ code: "writes_disabled" })));
     return {
       get: (organizationId, path, query) => api.get(organizationId, path, query),
-      post: (organizationId, path, body, query) =>
-        this.permits(organizationId) ? api.post(organizationId, path, body, query) : refused(),
-      put: (organizationId, path, body, query) =>
-        this.permits(organizationId) ? api.put(organizationId, path, body, query) : refused(),
+      post: (organizationId, path, body, query, options) =>
+        this.permits(organizationId)
+          ? api.post(organizationId, path, body, query, options)
+          : refused(),
+      put: (organizationId, path, body, query, options) =>
+        this.permits(organizationId)
+          ? api.put(organizationId, path, body, query, options)
+          : refused(),
     };
   }
 }

@@ -6,6 +6,9 @@
  * - `rate_limited`: refused before anything happens.
  * - `locked_period`: refused because the date is in a locked accounting period.
  * - `totals_drift`: the document is made but the provider's total is a penny off ours.
+ * - `read_back_differs`: a payment is made, but what the provider holds and answers with leaves out
+ *   a field we sent (its currency), so it reads back different from ours. Payments are the kind
+ *   read back field by field; other kinds are made as usual.
  * - `lookup_unavailable`: the search answers with something unreadable.
  * - `lookup_ambiguous`: the search finds two documents with the reference.
  */
@@ -14,6 +17,7 @@ export const WRITE_FAULTS = [
   "rate_limited",
   "locked_period",
   "totals_drift",
+  "read_back_differs",
 ] as const;
 export const LOOKUP_FAULTS = ["lookup_unavailable", "lookup_ambiguous"] as const;
 export const FAULTS = [...WRITE_FAULTS, ...LOOKUP_FAULTS] as const;

@@ -2,19 +2,24 @@ import { payoutTotals } from "@auction/domain";
 import type { PayoutLine } from "@auction/types";
 import { describe, expect, it, vi } from "vitest";
 import { PayoutAdjustmentService } from "./payout-adjustment.service.js";
-import { makeSettlementRepo, payoutRow, pending } from "./payout-bulk-settlement-parity.helpers.js";
+import {
+  makeSettlementRepo,
+  payoutRow,
+  pending,
+  storedSellerTerms,
+} from "./payout-bulk-settlement-parity.helpers.js";
 import { createSettlementCore } from "./payout-settlement.js";
 
 const PAYMENT = { amount: "6000.00", platformFee: "1200.00" };
 
 describe("a payout's stored totals are its lines added up", () => {
-  it("at creation: the totals equal payoutTotals of the lines, for a part-settled payment too", async () => {
-    const stored: { lines: PayoutLine[]; create?: Record<string, string> } = { lines: [] };
+  it("at creation: the totals equal payoutTotals of the lines, split from their snapshots", async () => {
+    const stored: { lines: PayoutLine[]; create?: Record<string, unknown> } = { lines: [] };
     const repo = makeSettlementRepo({
       findUnlinkedCapturedPayments: vi.fn().mockResolvedValue(
         pending([
           { id: "p1", amount: "6000.00", platformFee: "1200.00" },
-          { id: "p2", amount: "300.00", platformFee: "10.00", settlementAmount: "100.00" },
+          { id: "p2", amount: "300.00", platformFee: "10.00" },
         ]),
       ),
       create: vi.fn(async (input) => {
@@ -26,6 +31,7 @@ describe("a payout's stored totals are its lines added up", () => {
           id: `l-${input.paymentId}`,
           payoutId: input.payoutId,
           paymentId: input.paymentId,
+          sellerTermsId: input.sellerTermsId ?? null,
           amount: input.amount,
           kind: "sale" as const,
           createdByUserId: null,
@@ -36,23 +42,26 @@ describe("a payout's stored totals are its lines added up", () => {
         return line;
       }),
     });
-    const result = await createSettlementCore(repo, {
-      legalEntityId: "e1",
-      periodStart: new Date(0),
-      periodEnd: new Date(),
-    });
+    const result = await createSettlementCore(
+      repo,
+      { legalEntityId: "e1", periodStart: new Date(0), periodEnd: new Date() },
+      null,
+      storedSellerTerms(),
+    );
     expect(result.ok).toBe(true);
+    // Read back as every screen reads them: each line split from the snapshot it points at.
     const facts = stored.lines.map((line) => ({
       ...line,
       payment: line.paymentId === "p1" ? PAYMENT : { amount: "300.00", platformFee: "10.00" },
     }));
+    expect(stored.lines.map((l) => l.sellerTermsId)).toEqual(["terms-p1", "terms-p2"]);
     const expected = payoutTotals(facts, "0.00");
     expect(stored.create).toMatchObject({
       grossAmount: expected.gross,
       platformFee: expected.platformFee,
       netAmount: expected.net,
     });
-    expect(expected.net).toBe("4896.67");
+    expect(expected.net).toBe("5090.00");
   });
 
   it("after an adjustment: recalculating stores payoutTotals of the lines", async () => {

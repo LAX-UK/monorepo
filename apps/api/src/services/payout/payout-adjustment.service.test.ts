@@ -78,6 +78,7 @@ describe("PayoutAdjustmentService aggregated refund lines", () => {
       findByStripeTransferId: vi.fn(),
       findByIdForUpdate: vi.fn(),
       lockSettlementForEntity: vi.fn(),
+      lockPendingPayments: vi.fn(),
       findUnlinkedCapturedPayments: vi.fn(),
       listLegalEntityIdsWithUnlinkedCapturedPayments: vi.fn(),
       listScheduledPayoutsAwaitingTransfer: vi.fn(),
@@ -89,6 +90,13 @@ describe("PayoutAdjustmentService aggregated refund lines", () => {
       setStatementGenerationError: vi.fn(),
       clearStatementGenerationError: vi.fn(),
       sumRefundLineCentsForPayment: vi.fn(),
+      // Paid out under the old rule: the refund is charged as it stands.
+      findSellerClawbackFacts: vi.fn().mockResolvedValue({
+        paymentPence: 10_000,
+        paidOut: { kind: "old_rule" },
+        clawedBackPence: 2000,
+        buyerRefundAnsweredPence: 2000,
+      }),
     };
     const db = {
       transaction: vi.fn(async (fn: (tx: Database) => Promise<void>) => fn(db as Database)),
@@ -109,6 +117,12 @@ describe("PayoutAdjustmentService aggregated refund lines", () => {
     });
 
     expect(repo.insertLine).not.toHaveBeenCalled();
-    expect(repo.updateLineAmount).toHaveBeenCalledWith("line-refund-1", "-40.00", "evt_refund_2");
+    // The line now answers for both refunds: the £20.00 it held and the £20.00 added.
+    expect(repo.updateLineAmount).toHaveBeenCalledWith(
+      "line-refund-1",
+      "-40.00",
+      "evt_refund_2",
+      4000,
+    );
   });
 });

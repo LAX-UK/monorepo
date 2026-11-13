@@ -41,6 +41,7 @@ import type { IUnappliedMoneyRecorder } from "../services/payment/unapplied-mone
 import { payoutRepoForTx } from "../services/payout/payout-helpers.js";
 import type { PaymentGroupWebhookDeps } from "../services/stripe-webhook/create-payment-webhook-handlers.js";
 import { PAYMENT_WEBHOOK_EVENT_SOURCE } from "../services/stripe-webhook/payment-webhook-types.js";
+import type { IChargeRefundsReader } from "../services/stripe/stripe-charge-refunds.js";
 import type { IStripePaymentGateway } from "../services/stripe/stripe-payment-gateway.js";
 import { StripePaymentGroupGateway } from "../services/stripe/stripe-payment-group.gateway.js";
 
@@ -72,6 +73,8 @@ export type CreatePaymentGroupServicesInput = {
   unappliedMoney: Pick<IUnappliedMoneyRecorder, "record">;
   eligibility: IPaymentEligibilityGate;
   errorReporter: IErrorReporter;
+  /** Stripe's refunds for a charge, watching unfinished ones; a reader of its own when absent. */
+  chargeRefunds?: IChargeRefundsReader;
 };
 
 /** Each invoice gets its accounting invoice first, as a single-invoice checkout does. */
@@ -107,7 +110,9 @@ export function createPaymentGroupServices(
   input: CreatePaymentGroupServicesInput,
 ): PaymentGroupServices {
   const groups = new DrizzlePaymentGroupRepository(input.db);
-  const gateway = new StripePaymentGroupGateway(input.stripeClientFactory);
+  const gateway = input.chargeRefunds
+    ? new StripePaymentGroupGateway(input.stripeClientFactory, input.chargeRefunds)
+    : new StripePaymentGroupGateway(input.stripeClientFactory);
   const claims: IProviderEventClaim = {
     claim: async (tx, eventId) =>
       (await tryClaimProcessedStripeEvent(tx, eventId, PAYMENT_WEBHOOK_EVENT_SOURCE)).claimed,

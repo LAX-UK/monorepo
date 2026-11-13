@@ -6,6 +6,7 @@ import type { ITransactionRunner } from "@auction/persistence/interfaces";
 import type { IPayoutRepository } from "@auction/persistence/interfaces";
 import type {
   AddPaymentPayoutLineInput,
+  GiveBackFailedRefundInput,
   IPayoutAdjustmentService,
 } from "../interfaces/payout-adjustment.js";
 import { bridgePayoutAdjustmentService } from "./finance-payout-bridge.js";
@@ -28,6 +29,10 @@ export class PayoutAdjustmentService implements IPayoutAdjustmentService {
 
   addPaymentLineToOpenPayoutOrCreateClawback(input: AddPaymentPayoutLineInput): Promise<void> {
     return this.bridged.addPaymentLineToOpenPayoutOrCreateClawback(input);
+  }
+
+  giveBackFailedRefund(input: GiveBackFailedRefundInput): Promise<{ sellerPence: number }> {
+    return this.bridged.giveBackFailedRefund(input);
   }
 
   recalculateTotalsFromLines(repo: IPayoutRepository, payoutId: string): Promise<void> {

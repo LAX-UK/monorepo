@@ -5,16 +5,16 @@ import { describe, expect, it } from "vitest";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const read = (name: string) => readFileSync(join(__dirname, "../drizzle", name), "utf8");
-const TAG = "0378_accounting_requeue_guard";
+const TAG = "0379_accounting_requeue_guard";
 const migration = read(`${TAG}.sql`);
-const rollback = read("0378_rollback.sql");
+const rollback = read("0379_rollback.sql");
 const journal = JSON.parse(read("meta/_journal.json")) as {
   entries: { idx: number; tag: string; when: number }[];
 };
 const index = journal.entries.findIndex((e) => e.tag === TAG);
 const entry = journal.entries[index];
 
-describe("migration 0378 accounting requeue guard", () => {
+describe("migration 0379 accounting requeue guard", () => {
   it("is journalled once, right after the previous migration, with a later timestamp", () => {
     expect(index).toBeGreaterThan(0);
     expect(journal.entries.filter((e) => e.tag === TAG)).toHaveLength(1);

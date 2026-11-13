@@ -18,7 +18,8 @@ export type ZohoErrorKind =
   | "server"
   | "network"
   | "unknown"
-  | "budget_exhausted";
+  | "budget_exhausted"
+  | "fenced";
 
 export type ZohoCertainty = "rejected" | "unknown";
 
@@ -152,4 +153,17 @@ export function zohoOk<T>(value: T): ZohoResult<T> {
 
 export function zohoFail<T = never>(error: ZohoBooksError): ZohoResult<T> {
   return { ok: false, error };
+}
+
+/**
+ * A write the caller's fence refused just before it would have been sent (the send lost its lease,
+ * or has too little of it left): never sent, so `rejected`, and passing (the document is looked
+ * after by whoever holds it next).
+ */
+export class ZohoFencedError extends ZohoBooksError {
+  readonly kind = "fenced";
+  readonly certainty = "rejected";
+  constructor(init: ZohoErrorInit) {
+    super("ZohoFencedError", init);
+  }
 }

@@ -97,6 +97,8 @@ export type DocumentTransition =
     }
   | { readonly action: "apply_lookup"; readonly outcome: LookupOutcome }
   | { readonly action: "escalate"; readonly reason: string }
+  /** A claimed send the sender decided not to make; recorded in the history as an escalation. */
+  | { readonly action: "withhold"; readonly leaseToken: string; readonly reason: string }
   /** `requestedBy` is the staff user who asked, kept in the history row; absent for the sender's own retries. */
   | { readonly action: "requeue"; readonly requestedBy?: string }
   | { readonly action: "cancel" };
@@ -140,6 +142,12 @@ export interface IAccountingDocumentWorkQueue {
   claimNext(
     request: ClaimRequest,
   ): Promise<Result<StoredAccountingDocument | null, TransitionCode>>;
+  /**
+   * Does `leaseToken` still hold the document's lease, with at least `minRemainingMs` of it left?
+   * Asked immediately before a provider write: false once the lease was swept (the document went
+   * unknown), handed to someone else, or is about to run out.
+   */
+  holdsLease(documentId: string, leaseToken: string, minRemainingMs: number): Promise<boolean>;
 }
 
 export interface DueWorkRequest {

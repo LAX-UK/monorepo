@@ -4,7 +4,11 @@ import { gbpAmountToPence } from "../../lib/decimal-money.js";
 import { AuthzError, PaymentProviderError } from "../../lib/errors.js";
 import { paymentProviderErrorFromUnknown } from "./payment-service-errors.js";
 import { type PaymentServiceDeps, REFUND_BLOCKED_STATUSES } from "./payment-service-types.js";
-import { executePaymentRefundLedger } from "./refund-execution.js";
+import {
+  type StaffRefundContext,
+  deferUnlessRefundSucceeded,
+  executePaymentRefundLedger,
+} from "./refund-execution.js";
 
 /**
  * A payment settled together with other invoices shares their charge, so its refund names the
@@ -80,6 +84,21 @@ export async function refundPayment(
     return err(paymentProviderErrorFromUnknown(e));
   }
 
+  const context: StaffRefundContext = {
+    paymentId,
+    adminUserId,
+    via: "admin_manual",
+    ...(staffReason ? { staffReason } : {}),
+    sourceEventId: `admin_refund:${paymentId}`,
+    clawbackNote: `Admin refund: ${paymentId}`,
+    logViaField: false,
+  };
+  const deferred = await deferUnlessRefundSucceeded(deps.refundWatch ?? null, {
+    chargeId: p.stripeChargeId,
+    outcome: refundOutcome,
+    context,
+  });
+  if (deferred) return deferred;
   const stripeRefundId = refundOutcome.kind === "created" ? refundOutcome.refundId : null;
 
   return executePaymentRefundLedger(
@@ -92,16 +111,7 @@ export async function refundPayment(
       paymentRefundReconcile: deps.paymentRefundReconcile,
       xeroPaymentRecorder: deps.xeroPaymentRecorder,
     },
-    {
-      payment: p,
-      adminUserId,
-      stripeRefundId,
-      via: "admin_manual",
-      ...(staffReason ? { staffReason } : {}),
-      sourceEventId: `admin_refund:${paymentId}`,
-      clawbackNote: `Admin refund: ${paymentId}`,
-      logViaField: false,
-    },
+    { ...context, payment: p, stripeRefundId },
   );
 }
 
@@ -127,19 +137,38 @@ export async function refundManualReviewPayment(
     return err(new PaymentProviderError("Payment refund persistence is not configured", 500));
   }
 
+  const context: StaffRefundContext = {
+    paymentId,
+    adminUserId,
+    via: "admin_manual_review",
+    eventReason: "seller_archived",
+    ...(reason ? { staffReason: reason } : {}),
+    sourceEventId: `admin_manual_review_refund:${paymentId}`,
+    clawbackNote: `Manual review refund: ${paymentId}`,
+    logViaField: true,
+  };
   let stripeRefundId: string | null = null;
   if (p.stripeChargeId && deps.stripePayments?.isConfigured()) {
+    let refundOutcome: Awaited<
+      ReturnType<NonNullable<PaymentServiceDeps["stripePayments"]>["createRefund"]>
+    >;
     try {
-      const refundOutcome = await deps.stripePayments.createRefund({
+      refundOutcome = await deps.stripePayments.createRefund({
         chargeId: p.stripeChargeId,
         amount: gbpAmountToPence(p.amount),
         reason: "requested_by_customer",
         ...groupedRefundRef(p),
       });
-      stripeRefundId = refundOutcome.kind === "created" ? refundOutcome.refundId : null;
     } catch (e) {
       return err(paymentProviderErrorFromUnknown(e));
     }
+    const deferred = await deferUnlessRefundSucceeded(deps.refundWatch ?? null, {
+      chargeId: p.stripeChargeId,
+      outcome: refundOutcome,
+      context,
+    });
+    if (deferred) return deferred;
+    stripeRefundId = refundOutcome.kind === "created" ? refundOutcome.refundId : null;
   }
 
   return executePaymentRefundLedger(
@@ -152,16 +181,36 @@ export async function refundManualReviewPayment(
       paymentRefundReconcile: deps.paymentRefundReconcile,
       xeroPaymentRecorder: deps.xeroPaymentRecorder,
     },
+    { ...context, payment: p, stripeRefundId },
+  );
+}
+
+/**
+ * A staff refund Stripe had not finished when it was made has now succeeded (the refund reconcile
+ * job saw it): it is recorded exactly as it would have been then, under the same keys. If the
+ * webhooks recorded the refund first the payment is already refunded and nothing more is written.
+ */
+export async function completeDeferredStaffRefund(
+  deps: PaymentServiceDeps,
+  context: StaffRefundContext,
+  stripeRefundId: string,
+): Promise<Result<void, AuthzError | PaymentProviderError>> {
+  const p = await deps.payments.findById(context.paymentId);
+  if (!p) return err(new AuthzError("Payment not found", 404));
+  if (p.status === "refunded") return ok(undefined);
+  if (!deps.transactionRunner || !deps.domainEventSink || !deps.paymentRefunds) {
+    return err(new PaymentProviderError("Payment refund persistence is not configured", 500));
+  }
+  return executePaymentRefundLedger(
     {
-      payment: p,
-      adminUserId,
-      stripeRefundId,
-      via: "admin_manual_review",
-      eventReason: "seller_archived",
-      ...(reason ? { staffReason: reason } : {}),
-      sourceEventId: `admin_manual_review_refund:${paymentId}`,
-      clawbackNote: `Manual review refund: ${paymentId}`,
-      logViaField: true,
+      payments: deps.payments,
+      paymentRefunds: deps.paymentRefunds,
+      transactionRunner: deps.transactionRunner,
+      domainEventSink: deps.domainEventSink,
+      payoutAdjustments: deps.payoutAdjustments,
+      paymentRefundReconcile: deps.paymentRefundReconcile,
+      xeroPaymentRecorder: deps.xeroPaymentRecorder,
     },
+    { ...context, payment: p, stripeRefundId },
   );
 }

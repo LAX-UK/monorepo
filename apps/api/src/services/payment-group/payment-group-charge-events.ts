@@ -63,13 +63,43 @@ const paymentIntentIdOf = (pi: string | { id: string } | null | undefined) =>
 export class PaymentGroupChargeEvents {
   constructor(private readonly deps: PaymentGroupChargeEventsDeps) {}
 
-  async chargeRefunded(
+  chargeRefunded(event: Stripe.Event, charge: Stripe.Charge): Promise<PaymentWebhookResult | null> {
+    return this.reconcileRefunds(event, {
+      id: charge.id,
+      paymentIntentId: paymentIntentIdOf(charge.payment_intent),
+      currency: charge.currency,
+    });
+  }
+
+  /**
+   * A refund on a group's charge changed status (`charge.refund.updated`): a pending refund that
+   * succeeded is counted now, and one that failed or was cancelled was never counted. Either way
+   * the group is brought up to what Stripe holds as returned, exactly as on `charge.refunded`, so
+   * the two events may arrive in any order or more than once.
+   */
+  refundUpdated(event: Stripe.Event, refund: Stripe.Refund): Promise<PaymentWebhookResult | null> {
+    const chargeId =
+      typeof refund.charge === "string" ? refund.charge : (refund.charge?.id ?? null);
+    if (!chargeId) return Promise.resolve(null);
+    return this.reconcileRefunds(event, {
+      id: chargeId,
+      paymentIntentId: paymentIntentIdOf(refund.payment_intent),
+      currency: refund.currency,
+    });
+  }
+
+  /**
+   * Brings the group's invoices, courier quotes and unattributed excess up to the refunds Stripe
+   * lists as succeeded on the charge. Stripe's list is the one source of truth; what is stored only
+   * rises to it, so a replayed, late or reordered event adds nothing and nothing goes negative.
+   */
+  private async reconcileRefunds(
     event: Stripe.Event,
-    charge: Stripe.Charge,
+    charge: { id: string; paymentIntentId: string | null; currency: string },
   ): Promise<PaymentWebhookResult | null> {
     const group = await this.deps.groups.findByStripeRefs({
       chargeId: charge.id,
-      paymentIntentId: paymentIntentIdOf(charge.payment_intent),
+      paymentIntentId: charge.paymentIntentId,
     });
     if (!group) return null;
     // Stripe is asked before the transaction, so no lock is held across the network call. What

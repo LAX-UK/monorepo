@@ -45,6 +45,7 @@ export function toPayoutSettlementDeps(deps: PayoutServiceDeps): PayoutSettlemen
     payoutRepoForTx: deps.payoutRepoForTx,
     dealPayouts: deps.dealPayouts,
     dealPayoutsForTx: deps.dealPayoutsForTx,
+    sellerTermsForTx: deps.sellerTermsForTx,
   };
 }
 
@@ -54,6 +55,7 @@ export function bridgePayoutAdjustmentService(
   return {
     addPaymentLineToOpenPayoutOrCreateClawback: (input) =>
       svc.addPaymentLineToOpenPayoutOrCreateClawbackFull(input),
+    giveBackFailedRefund: (input) => svc.giveBackFailedRefund(input),
     recalculateTotalsFromLines: (repo, payoutId) => svc.recalculateTotalsFromLines(repo, payoutId),
   };
 }

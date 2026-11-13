@@ -188,6 +188,8 @@ export const envSchema = z
      * Zoho Books organisation settings (JSON, checked when the worker starts). Unset: the accounting
      * projector and sender are not built. Set: they run for products whose accounting switch aims
      * at Books, in rehearsal only (dry run). No setting here can make the worker write to Books.
+     * The organisation each writing mode may reach is named in code (`BOOKS_ORGANISATIONS`), not
+     * here; an organisation configured here that disagrees with it stops the worker at start-up.
      */
     ZOHO_BOOKS_ORG_CONFIG: z.preprocess(emptyToUndefined, z.string().optional()),
     /** LAX Shop's API, for the inventory machine routes the listing reads lax.art through. */

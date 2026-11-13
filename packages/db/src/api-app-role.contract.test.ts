@@ -10,6 +10,7 @@ import {
   API_SSF_RECEIVER_TABLES,
   FINANCE_SETTING_READ_TABLES,
   SELLER_TERMS_INSERT_SELECT_TABLES,
+  SELLER_TERMS_RECOMPUTE_UPDATE_COLUMNS,
 } from "./migrate-roles.js";
 import {
   expectTablePrivileges,
@@ -17,6 +18,17 @@ import {
 } from "./role-contract/table-privileges.test-helpers.js";
 import { expectZohoBooksConnectionGrants } from "./role-contract/zoho-books-connection-privileges.test-helpers.js";
 import { buildPgConnectionConfig } from "./ssl.js";
+
+/** Every column of the seller-terms table, including the ones settlement must never rewrite. */
+const SELLER_TERMS_PROBE_COLUMNS = [
+  ...SELLER_TERMS_RECOMPUTE_UPDATE_COLUMNS,
+  "payment_id",
+  "lot_id",
+  "seller_legal_entity_id",
+  "hammer_pence",
+  "premium_pence",
+  "legacy_platform_fee_pence",
+] as const;
 
 const API_URL = process.env.DATABASE_URL_API ?? process.env.API_APP_DATABASE_URL;
 const OWNER_URL = process.env.DATABASE_URL_OWNER;
@@ -55,25 +67,28 @@ async function probe(
  * documents), hand their ids to `fn`, and remove them afterwards. `fn` must leave no history.
  */
 async function withOwnerDocuments<T>(
-  fn: (ids: { failed: string; issued: string }) => Promise<T>,
+  fn: (ids: { failed: string; issued: string; withheld: string; differs: string }) => Promise<T>,
 ): Promise<T> {
   const owner = new Client(buildPgConnectionConfig(OWNER_URL ?? ""));
   await owner.connect();
   const suffix = `contract-${process.pid}-${Date.now()}`;
   const insert = async (
     reference: string,
-    state: "failed" | "issued",
+    state: "failed" | "issued" | "needs_review",
     lastErrorClass: string | null,
     providerId: string | null,
+    reviewReason: string | null = null,
   ) => {
     const result = await owner.query<{ id: string }>(
       `insert into accounting_document (product, legal_entity, kind, lax_reference,
          source_event_ref, payload, net_pence, vat_pence, gross_pence, provider, target_provider,
-         target_mode, attempts, state, last_error_class, provider_id, provider_number)
+         target_mode, attempts, state, last_error_class, provider_id, provider_number,
+         review_lookup, needs_review_reason)
        values ('bid', 'london_auction_xchange', 'invoice', $1, 'evt', '{}', 100, 20, 120,
-         'books', 'books', 'dry_run', 1, $2, $3, $4::text, case when $4::text is null then null else 'INV-1' end)
+         'books', 'books', 'dry_run', 1, $2, $3, $4::text, case when $4::text is null then null else 'INV-1' end,
+         case when $5::text is null then null else 'clear' end, $5::text)
        returning id`,
-      [reference, state, lastErrorClass, providerId],
+      [reference, state, lastErrorClass, providerId, reviewReason],
     );
     const id = result.rows[0]?.id as string;
     ids.push(id);
@@ -83,7 +98,23 @@ async function withOwnerDocuments<T>(
   try {
     const failed = await insert(`LAX-BID-INV-f-${suffix}`, "failed", "contract_refused", null);
     const issued = await insert(`LAX-BID-INV-i-${suffix}`, "issued", null, "1");
-    return await fn({ failed, issued });
+    // The two review shapes the sender's withhold and read-back produce: nothing sent (requeueable),
+    // and a provider document that is not ours (never requeueable).
+    const withheld = await insert(
+      `LAX-BID-INV-w-${suffix}`,
+      "needs_review",
+      null,
+      null,
+      "wrong organisation",
+    );
+    const differs = await insert(
+      `LAX-BID-INV-d-${suffix}`,
+      "needs_review",
+      null,
+      "2",
+      "provider document differs from ours: reference",
+    );
+    return await fn({ failed, issued, withheld, differs });
   } finally {
     if (ids.length > 0) {
       await owner.query("delete from accounting_document where id = any($1::uuid[])", [ids]);
@@ -167,7 +198,7 @@ describe.skipIf(!API_URL)("api_app role contract", { timeout: 60_000 }, () => {
   it.skipIf(!OWNER_URL)(
     "can only requeue a document and record who asked: never forge an outcome, a Books id or history",
     async () => {
-      await withOwnerDocuments(async ({ failed, issued }) => {
+      await withOwnerDocuments(async ({ failed, issued, withheld, differs }) => {
         await withApiClient(async (client) => {
           await client.query("BEGIN");
           try {
@@ -204,6 +235,13 @@ describe.skipIf(!API_URL)("api_app role contract", { timeout: 60_000 }, () => {
                 `update accounting_document set state = 'pending', provider_id = null,
                    provider_number = null, pdf_ref = null where id = $1`,
                 [issued],
+              ],
+              [
+                "requeue a document whose provider document differs from ours",
+                `update accounting_document set state = 'pending', provider_id = null,
+                   provider_number = null, pdf_ref = null, review_lookup = null,
+                   needs_review_reason = null where id = $1`,
+                [differs],
               ],
               [
                 "add a history row of another kind",
@@ -247,6 +285,14 @@ describe.skipIf(!API_URL)("api_app role contract", { timeout: 60_000 }, () => {
               "with anything beside who asked",
             ).toBe("42501");
             expect(await historyRow('{"requestedBy":"staff-1"}')).toBeUndefined();
+
+            // A withheld send (nothing reached the provider) may be tried again, like a failure.
+            const requeueWithheld = `update accounting_document set state = 'pending', attempts = 1,
+                lease_token = null, lease_expires_at = null, settles_at = null, review_lookup = null,
+                needs_review_reason = null, provider_id = null, provider_number = null, pdf_ref = null,
+                mismatch_field = null, mismatch_difference_pence = null, updated_at = now()
+              where id = $1`;
+            expect(await probe(client, requeueWithheld, [withheld])).toBeUndefined();
           } finally {
             await client.query("ROLLBACK");
           }
@@ -255,7 +301,7 @@ describe.skipIf(!API_URL)("api_app role contract", { timeout: 60_000 }, () => {
     },
   );
 
-  it("adds seller terms and reads them, never changes or deletes them, and only reads the finance settings", async () => {
+  it("adds seller terms, reads them, may re-price only their figures, and only reads the finance settings", async () => {
     await withApiClient(async (client) => {
       const privileges = ["SELECT", "INSERT", "UPDATE", "DELETE"];
       const terms = await readTablePrivileges(
@@ -266,6 +312,16 @@ describe.skipIf(!API_URL)("api_app role contract", { timeout: 60_000 }, () => {
       expectTablePrivileges(terms, (row) => ["SELECT", "INSERT"].includes(row.privilege));
       const settings = await readTablePrivileges(client, FINANCE_SETTING_READ_TABLES, privileges);
       expectTablePrivileges(settings, (row) => row.privilege === "SELECT");
+      // Settlement re-prices a held sale over its row: the figures only, never what the row is for.
+      for (const column of SELLER_TERMS_PROBE_COLUMNS) {
+        const allowed = await client.query<{ allowed: boolean }>(
+          `select has_column_privilege(current_user, 'public.sale_seller_terms', $1, 'UPDATE') as allowed`,
+          [column],
+        );
+        expect(allowed.rows[0]?.allowed, column).toBe(
+          (SELLER_TERMS_RECOMPUTE_UPDATE_COLUMNS as readonly string[]).includes(column),
+        );
+      }
     });
   });
 
@@ -376,6 +432,17 @@ describe.skipIf(!API_URL)("api_app role contract", { timeout: 60_000 }, () => {
       const rows = await readTablePrivileges(
         client,
         ["payment_refund"],
+        ["SELECT", "INSERT", "UPDATE", "DELETE"],
+      );
+      expectTablePrivileges(rows, (row) => ["SELECT", "INSERT"].includes(row.privilege));
+    });
+  });
+
+  it("appends refund reversals and reads them, never changing or removing one", async () => {
+    await withApiClient(async (client) => {
+      const rows = await readTablePrivileges(
+        client,
+        ["stripe_refund_reversal"],
         ["SELECT", "INSERT", "UPDATE", "DELETE"],
       );
       expectTablePrivileges(rows, (row) => ["SELECT", "INSERT"].includes(row.privilege));

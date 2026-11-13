@@ -5,6 +5,7 @@ import type {
 import type {
   IPaymentRefundLedger,
   IPaymentWriteRepository,
+  IRefundReversalLedger,
 } from "@auction/persistence/interfaces";
 import type { IPayoutRepository } from "@auction/persistence/interfaces";
 import type Stripe from "stripe";
@@ -39,16 +40,19 @@ import {
   ReferenceNotingHandler,
 } from "./stripe-webhook/transfer-reference.js";
 import type { UnappliedMoneyRefundHandler } from "./stripe-webhook/unapplied-money-refund.handler.js";
+import type { IChargeRefundsReader } from "./stripe/stripe-charge-refunds.js";
 
 export type { PaymentWebhookResult } from "./stripe-webhook/payment-webhook-types.js";
 
 import type { IPaymentEligibilityGate } from "@auction/finance-runtime";
 
 /** Without the refund record no refund can be measured or kept, so the webhook fails and is retried. */
-const UNWIRED_PAYMENT_REFUNDS: IPaymentRefundLedger = {
+const UNWIRED_PAYMENT_REFUNDS: IPaymentRefundLedger & IRefundReversalLedger = {
   recordInTransaction: () => Promise.reject(new Error("Payment refunds are not wired")),
   lockPaymentInTransaction: () => Promise.reject(new Error("Payment refunds are not wired")),
   sumRefundedPenceInTransaction: () => Promise.reject(new Error("Payment refunds are not wired")),
+  reversedRefundIdsInTransaction: () => Promise.reject(new Error("Payment refunds are not wired")),
+  recordReversalInTransaction: () => Promise.reject(new Error("Payment refunds are not wired")),
 };
 
 /** Routes Stripe payment webhooks to segregated handlers (no business logic). */
@@ -71,9 +75,10 @@ export class StripePaymentWebhookService {
     unappliedMoney: IUnappliedMoneyRecorder | null = null,
     private readonly unappliedRefunds: UnappliedMoneyRefundHandler | null = null,
     paymentEligibility: IPaymentEligibilityGate | null = null,
-    paymentRefunds: IPaymentRefundLedger | null = null,
+    paymentRefunds: (IPaymentRefundLedger & IRefundReversalLedger) | null = null,
     errorReporter?: IErrorReporter,
     private readonly transferChecks: TransferCheckDeps | null = null,
+    chargeRefunds: IChargeRefundsReader | null = null,
   ) {
     this.deps = {
       transactionRunner,
@@ -87,6 +92,7 @@ export class StripePaymentWebhookService {
       unappliedMoney: unappliedMoney ?? NO_UNAPPLIED_MONEY_RECORDER,
       paymentEligibility,
       ...(errorReporter ? { errorReporter } : {}),
+      ...(chargeRefunds ? { chargeRefunds } : {}),
     };
     const handlers = createPaymentWebhookHandlers(this.deps, paymentGroups);
     const routed = dealPayments ? withDealPaymentHandlers(handlers, dealPayments) : handlers;
@@ -207,6 +213,11 @@ export class StripePaymentWebhookService {
     return this.disputes.record("closed", event, dispute);
   }
 
+  /**
+   * A charge was refunded, or one of its refunds changed: unapplied money, a deal's payment, a
+   * Pay several charge and a single invoice are each measured against the refunds Stripe lists as
+   * succeeded on the charge. The refund reconcile job settles a watched refund through here too.
+   */
   async handleChargeRefunded(
     event: Stripe.Event,
     charge: Stripe.Charge,
@@ -214,11 +225,36 @@ export class StripePaymentWebhookService {
     const unapplied = await this.unappliedRefunds?.handle(event, charge);
     if (unapplied) return unapplied;
     const deal = this.dealPayments
-      ? await dealChargeRefunded(this.dealPayments, event, charge)
+      ? await dealChargeRefunded(this.dealPayments, event, charge, this.chargeRefundsReader())
       : null;
     if (deal) return deal;
     const grouped = await this.paymentGroups?.chargeEvents.chargeRefunded(event, charge);
     return grouped ?? handleChargeRefunded(this.deps, event, charge);
+  }
+
+  /**
+   * A refund changed status (`charge.refund.updated`). A Pay several charge is reconciled from
+   * the refund alone; any other charge is read again from Stripe and settled exactly as on
+   * `charge.refunded`, so a pending refund that succeeded is counted and one that failed after
+   * it was counted is taken back. The endpoint need not be subscribed to this event: the refund
+   * reconcile job reaches the same path for every refund it watches.
+   */
+  async handleChargeRefundUpdated(
+    event: Stripe.Event,
+    refund: Stripe.Refund,
+  ): Promise<PaymentWebhookResult> {
+    const grouped = await this.paymentGroups?.chargeEvents.refundUpdated(event, refund);
+    if (grouped) return grouped;
+    const chargeId =
+      typeof refund.charge === "string" ? refund.charge : (refund.charge?.id ?? null);
+    if (!chargeId) return { processed: true, action: "skipped", reason: "missing_charge_id" };
+    const charge = await this.chargeRefundsReader().retrieveCharge(chargeId);
+    return this.handleChargeRefunded(event, charge);
+  }
+
+  private chargeRefundsReader(): IChargeRefundsReader {
+    if (!this.deps.chargeRefunds) throw new Error("Charge refunds are not wired");
+    return this.deps.chargeRefunds;
   }
 
   /** Money moved in a buyer's transfer balance: checked for a transfer applied to another invoice. */

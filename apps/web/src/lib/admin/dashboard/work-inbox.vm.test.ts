@@ -109,6 +109,7 @@ describe("workItemGuidance", () => {
       "Send the offer to the next bidder from the lot.",
     );
     expect(workItemGuidance({ kind: "reoffer_decision", actions: [] })).toContain("next bidder");
+    expect(workItemGuidance({ kind: "seller_payout_held", actions: [] })).toContain("next payout");
     expect(workItemGuidance({ kind: "reoffer_no_reply", actions: [] })).toContain("seller");
     expect(workItemGuidance({ kind: "reoffer_accepted", actions: [] })).toContain("invoiced");
   });
