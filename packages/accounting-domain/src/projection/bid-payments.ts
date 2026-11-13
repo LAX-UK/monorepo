@@ -57,8 +57,8 @@ export interface BidGroupMemberFacts {
 
 /** A courier quote charged in a "Pay several" payment (a `payment_group_delivery` row). */
 export interface BidGroupDeliveryFacts {
-  /** The `payment_group_delivery` row's id: the delivery invoice's source. */
-  readonly deliveryId: string;
+  /** The courier quote's id (charged once, for good): the delivery invoice's source. */
+  readonly quoteId: string;
   readonly amountPence: Pence;
 }
 
@@ -218,7 +218,7 @@ function deliveryInvoice(
   const booking = DELIVERY_BOOKING ?? DELIVERY_DRAFT;
   return buildInvoice({
     product: "bid",
-    sourceId: `${DELIVERY_INVOICE_PREFIX}${delivery.deliveryId}`,
+    sourceId: `${DELIVERY_INVOICE_PREFIX}${delivery.quoteId}`,
     contactReference: contact.reference,
     issuedOn: settledOn,
     dueOn: settledOn,

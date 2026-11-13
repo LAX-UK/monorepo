@@ -197,7 +197,7 @@ describe("Pay several settled", () => {
         total += paid;
       }
       const deliveries =
-        rng() < 0.5 ? [{ deliveryId: DELIVERY_ID, amountPence: int(rng, 1, 99_999) }] : [];
+        rng() < 0.5 ? [{ quoteId: DELIVERY_ID, amountPence: int(rng, 1, 99_999) }] : [];
       total += deliveries.reduce((sum, d) => sum + d.amountPence, 0);
       const payment = paymentOf(
         must(projectBidPaymentGroupSettled(group({ members, deliveries, totalPence: total })))
@@ -256,7 +256,7 @@ describe("Pay several settled", () => {
   describe("a courier quote paid with the lots", () => {
     const withDelivery = group({
       totalPence: 154_320 * 2 + 4_500,
-      deliveries: [{ deliveryId: DELIVERY_ID, amountPence: 4_500 }],
+      deliveries: [{ quoteId: DELIVERY_ID, amountPence: 4_500 }],
     });
 
     it("has no booking until the accountant answers (the extension point)", () => {
@@ -288,7 +288,7 @@ describe("Pay several settled", () => {
     });
 
     it("refuses a delivery charge of nothing", () => {
-      const facts = group({ deliveries: [{ deliveryId: DELIVERY_ID, amountPence: 0 }] });
+      const facts = group({ deliveries: [{ quoteId: DELIVERY_ID, amountPence: 0 }] });
       expect(projectBidPaymentGroupSettled(facts).ok).toBe(false);
     });
   });
@@ -303,7 +303,7 @@ describe("Pay several settled", () => {
             member(1, 154_320),
             { paymentId: paymentId(2), amountPence: 154_320, invoice: cancelled },
           ],
-          deliveries: [{ deliveryId: DELIVERY_ID, amountPence: 4_500 }],
+          deliveries: [{ quoteId: DELIVERY_ID, amountPence: 4_500 }],
         }),
       ),
     );
