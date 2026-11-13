@@ -28,6 +28,44 @@ transfer" or "one clean matching transfer". The reason is on the payout
 
 The seller is not paid again by a blocked payout, and a retry does not apply to it.
 
+## Lines added around a transfer attempt
+
+Refund, give-back and dispute lines (and staff adjustments) go only on a `scheduled` payout, never
+on one whose transfer has started. The transfer step holds the payout row (`FOR UPDATE`) from
+reading the net until the payout has left `scheduled`, so a line either lands first and is sent
+with the transfer, or goes on the seller's next payout.
+
+An attempt can end with its outcome unknown: the connection to Stripe failed or Stripe answered
+with a server error, so Stripe may already hold a transfer for the net that was read. The payout
+stays `scheduled` with a failure reason starting `stripe_transfer_outcome_unknown:`, and takes no
+new lines until a later attempt finds out (it adopts the transfer Stripe holds, or creates one when
+there is none). New lines meanwhile go on a new payout. A failure reason starting
+`stripe_transfer_failed:` means Stripe refused the request: no transfer exists, and the payout keeps
+taking lines. The next attempt sends the new net under a new idempotency key, which names the amount.
+
+An `amount_mismatch` on a payout from before this rule (2026-11) is most likely lines added after
+an attempt whose outcome was unknown: compare the Stripe transfer with the net before those lines.
+
+### How long a line waits for a transfer
+
+The row lock is held across the Stripe calls of the transfer step: the check of what Stripe holds
+(for payouts created before 2026-06-01, also a scan of up to 100 list pages) and the create. Each call is
+tried up to 3 times with 2 s and 4 s back-off, and each request can take up to Stripe's 80 s
+client timeout. Normally the hold is well under a few seconds. While Stripe is failing it can reach
+several minutes. The bulk run sends one payout at a time, so at most one seller's payout is held.
+
+A line for that seller's payout (a refund, give-back, dispute line or staff adjustment) waits for
+the hold while it holds the payment's row, so a second refund of the same payment also waits.
+There is deliberately no `lock_timeout` on the line side: a timeout would abort the refund or
+dispute transaction and turn a wait into a failure that relies on a retry (the refund reconcile
+queue, Stripe re-sending the webhook, or staff repeating a dispute allocation). Deadlocks are still
+detected by Postgres within `deadlock_timeout`. Every line takes the payment before the payout, so
+the line side and the transfer side do not form a cycle.
+
+If refunds or dispute webhooks for one seller hang during a Stripe incident, look for sessions
+waiting on a lock (`pg_stat_activity` with `wait_event_type = 'Lock'`) behind a transfer, and
+pause the payout run (`DISABLE_PAYOUT_SETTLEMENT=true`) until Stripe recovers.
+
 ## Checks in Stripe
 
 Use the seller's connected account and the transfer ids named on the payout.
