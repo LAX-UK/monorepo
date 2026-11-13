@@ -127,15 +127,19 @@ export function DetailPanel<L extends string = string>({
   // The list's row for the record shown, kept while the panel is open: the list unmarks it as
   // the panel closes, before focus comes back.
   const shownRow = React.useRef<HTMLElement | null>(null);
+  // Whether the panel was a queue while open: the app drops `queue` in the same render it closes.
+  const wasQueue = React.useRef(false);
   React.useEffect(() => {
-    if (open) shownRow.current = activeTableRow() ?? shownRow.current;
+    if (!open) return;
+    shownRow.current = activeTableRow() ?? shownRow.current;
+    wasQueue.current = Boolean(queue);
   });
   const rowShown = () => (shownRow.current?.isConnected ? shownRow.current : activeTableRow());
   // A panel opened from the URL, or after the list re-rendered, returns to the active row.
   const returnToOpener = useReturnFocus(open, rowShown);
   // A queue may have stepped on from the row that opened it: focus goes to the record last shown.
   const returnFocus = (event: Event) => {
-    const row = queue ? rowShown() : null;
+    const row = wasQueue.current ? rowShown() : null;
     if (!row) {
       returnToOpener(event);
       return;

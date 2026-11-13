@@ -164,6 +164,8 @@ describe("a work queue's panel", () => {
   it("closes on Esc, steps back over its history entry and returns focus to the row", async () => {
     const back = vi.spyOn(window.history, "back").mockImplementation(() => {});
     renderQueue();
+    // As in a browser, the clicked link has focus as the panel opens.
+    titleLink("Hold 5").focus();
     fireEvent.click(titleLink("Hold 5"));
     await screen.findByRole("dialog");
     fireEvent.keyDown(dialog(), { key: "j" });
