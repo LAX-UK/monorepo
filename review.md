@@ -202,3 +202,52 @@ There is no `review-notes-pr1356` screenshot branch.
 | F11 | Info | UI | No screenshots; dates show a time where the copy says [date] |
 
 ### Verdict: FIX FIRST
+
+## Fixes after review
+
+Fixed on `bk7-bid-invoices-books`, pushed at `9691a758`. That push also merges main (`00f9daab`, which adds no migration, so 0381 is still the next free number) and the branch's own commit `3f9c9d3a`. The owner's decisions were applied as stated.
+
+How it was checked:
+- Throwaway Postgres 16 on port 55432, with `db:migrate` and `db:roles` applied to a fresh database after the merges.
+- Tests ran in batches with `--maxWorkers=2`, as `worker_app` and `api_app`. No test was skipped.
+
+| Area | Result |
+|---|---|
+| worker | 273 passed |
+| api | 287 passed |
+| web | 92 passed |
+| accounting-domain | 220 passed |
+| accounting-zoho-books | 286 passed |
+| email | 234 passed |
+| types | 323 passed |
+| persistence | 186 passed |
+| db roles and migrations | 152 passed |
+
+- Typecheck (9 workspaces), `lint:layers`, `lint:deps` and biome: clean.
+- `verify-migration-pairs`: ok. The 0381 pair also ran rollback, forward, rollback, forward on a copy of the migrated database.
+
+| # | Commit(s) | What changed | Test evidence | Mutation |
+|---|---|---|---|---|
+| F1 | `2807cecf`, `2bf5f949`, `1c33c933` | Adds `email_skipped_at` and `email_skip_reason`; due rows need both email states null. Every listed row is settled: queued, or skipped (`invoice_cancelled`, `invoice_missing`, `no_recipient`, `unreadable_document`) with the warning `accounting_invoice_email_skipped`. An outbox error leaves the row due. | Unit: a batch of 1 with the cancelled invoice first, then the valid one is emailed; every skip kind; an error stays due. Integration: the same order on the real outbox (A skipped, B queued, nothing in the outbox for A). Your test 3 is adopted, inverted. | Skip made a no-op: **killed** (2 unit, 1 integration). `email_skipped_at IS NULL` dropped from the query: **killed** (3 integration). |
+| F2 | `534de2ee`, `1c33c933` | The facts reader names the payer only if `buyerPaymentAuthority` allows them: an active, accepted member with the owner, admin or finance role (the download rule). Otherwise only the billing inbox is emailed, and the queued note records the billing outbox id. | Integration: one removed member and one demoted to viewer. The outbox holds only the billing row for each. Unit: billing only when there is no payer. | Authority check forced true: **killed** (former-member test). |
+| F3 | `f66ba0d9`, `2bf5f949`, `1229f0b3`, `edc4b722` | `invoiceStanding` returns `lax` unless the mode is `live`. The due list uses `target_mode = 'live'`, the service sends only when `live` is aimed, and `servable` needs `live`. | Standing, API card and integration cases for test_org (lax, the copy is kept, no email, not listed due). A unit case where the store wrongly lists a test_org copy: still no email. | Standing reverted: **killed** (domain, API, integration). Query back to test_org and live: **killed**. Service back to `some(m => m !== 'dry_run')`: **killed** (unit). |
+| F4 | `1229f0b3`, `1c33c933` | `issuedAt` = `min(occurred_at)` of the document's events with `to_state = 'issued'`. `updatedAt` was removed from the reader's type. | Integration: `updated_at` moved three days later; `issuedAt` still equals the event time. API: an exact `issuedAt`. | — |
+| F5 | `1229f0b3` | Credit notes removed from the reader, type, API card and document, web schema, view-model and component. Noted in the PR body. | Card and component tests: one link only, no credit row. | — |
+| F6 | `2fd93ac7` | A `noStore` middleware runs first on both API routes and sets the header after the chain, so refusals get it too. The web route answers anything but a 200 PDF (signed out, 4xx, 5xx, 204, a throw) with one uncached 404 `document_unavailable`. Comment corrected. | API: 401, 403, 404 and 400 on both routes all carry `no-store`. Web: nine non-success cases, each 404, `no-store` and the same body. | — |
+| F7 | `2807cecf`, `2bf5f949`, `1c33c933` | A BEFORE UPDATE trigger makes `email_queued_at`, `email_outbox_id`, `email_skipped_at` and `email_skip_reason` write-once. A CHECK forbids both queued and skipped. The comments and the runbook say the no-rehearsal CHECK guards the record, not the send. | Integration as `worker_app` (the current user is asserted): clearing, rewriting the outbox id, re-stamping, clearing or changing a skip, and queueing a skipped row are all rejected. | Trigger dropped in the DB: **killed** (write-once test). |
+| F8 | `4ac815e8` | `storedEmailAttachments` returns nothing for any template except `bid-invoice-issued`. The key must start with `accounting/` and end with `.pdf`. | Keys under other prefixes or with other suffixes throw; three other templates carrying a planted attachment return `[]`. | Template check: **killed**. Prefix: **killed**. Suffix: **killed**. |
+| F9 | `1229f0b3`, `1c33c933` | API: a live document with a rehearsal copy is refused (M6 alone); dry_run and test_org with a real copy are refused (M7 alone); a cancelled invoice gives 404 with no read (M8); another account's document gives 404 with no storage read. Your concurrency tests 1 and 2 are adopted on `live` (6 copiers on the real outbox; 6 concurrent projections). | All pass. | M6, M7, M8: **killed** (each by its own test). |
+| F10 | `2807cecf` | All CHECKs are declared in `schema/accounting.ts`: the 5 reviewed plus the 3 new ones. | Typecheck and db tests pass. | — |
+| F11 | `b6e272e4` | "Issued Thu 12 Nov, 14:05 GMT" keeps the time. "This invoice was cancelled on Mon 16 Nov." gives the day only, in London; the year is shown when it differs. | View-model: the day only, a summer late-evening London day, and a previous year. | — |
+
+Mutations were applied one at a time. The package was rebuilt where needed, the tests run, then the file restored (F7: the trigger was dropped and recreated). `git status` was clean after every run.
+
+One run of the F1a mutation also failed the dry-run integration case. Unmutated runs passed 4 times in a row, and the branch's own commit `3f9c9d3a` (which scopes that case's `putObject` check to its own key) is now merged.
+
+UI: screenshots are on `review-notes-pr1356` under `shots/round2/` (`index.md`).
+- Coverage: preparing, delayed, issued, cancelled, lax (unchanged) and a long invoice number, each at 1440x900 light and dark and at 375x812 light, plus the email (payer due, payer paid, billing, 375px).
+- Rendering: a temporary, uncommitted dev route with the real card in `PurchaseDetail` and `ClientShell`, under `next dev`.
+- No horizontal scroll at 375px; the long number wraps.
+- `shots/round1/` already held an earlier round from before this review, so these were added as round 2 in a normal commit instead of re-creating the branch.
+
+Left as is (owner call): `accounting_bid_invoice_delayed` still counts dry-run and test-org invoices. It is staff-facing, and the runbook says so.
