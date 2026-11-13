@@ -5,7 +5,7 @@ import {
   type StaleChunkRecoveryDeps,
   chunkUrlOf,
   createStaleChunkRecovery,
-} from "./socket-chunk-recovery";
+} from "./socket-chunk-recovery.client";
 
 const CHUNK_URL = "https://test.lax.bid/_next/static/chunks/98870.0123abcd.js";
 

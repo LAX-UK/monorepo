@@ -1,4 +1,4 @@
-import { createStaleChunkRecovery } from "@/lib/socket-chunk-recovery";
+import { createStaleChunkRecovery } from "@/lib/socket-chunk-recovery.client";
 import type { Socket } from "socket.io-client";
 
 /**
@@ -22,7 +22,7 @@ import type { Socket } from "socket.io-client";
  * it lasts the health port stays "connecting", as for a server that cannot be reached, so the
  * connection notice escalates to "paused" with a Refresh button. A retry also runs as soon as the
  * browser comes back online. If the client's file has gone because a deploy replaced it, retrying
- * cannot help: `socket-chunk-recovery.ts` then reloads the page once, onto the new build.
+ * cannot help: `socket-chunk-recovery.client.ts` then reloads the page once, onto the new build.
  */
 
 // biome-ignore lint/suspicious/noExplicitAny: Socket.IO listeners take any arguments.
@@ -64,7 +64,7 @@ export type SocketConnectionModule = { createSocketConnection: () => Socket };
 const RECONNECT_DELAY_MS = 1000;
 const RECONNECT_DELAY_MAX_MS = 5000;
 const RANDOMIZATION_FACTOR = 0.5;
-/** 1 s × 2^3 already passes the 5 s ceiling, so a larger exponent changes nothing but can overflow. */
+/** 1 s × 2^3 already passes the 5 s ceiling: a larger exponent changes nothing but can overflow. */
 const MAX_BACKOFF_EXPONENT = 8;
 /** The jitter can take at most half the delay away, so no retry comes sooner than this. */
 const MIN_RETRY_DELAY_MS = RECONNECT_DELAY_MS * (1 - RANDOMIZATION_FACTOR);
@@ -92,7 +92,8 @@ export const MAX_PENDING_EMITS = 100;
 export type LazySocketOptions = {
   /**
    * Told about every failed fetch of the client, with how many have failed in a row, after
-   * listeners have heard it. `getSocket()` uses it to recover from a deploy (`socket-chunk-recovery`).
+   * listeners have heard it. `getSocket()` uses it to recover from a deploy
+   * (`socket-chunk-recovery.client.ts`).
    */
   onLoadFailure?: (error: Error, failures: number) => void;
 };
