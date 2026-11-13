@@ -6,6 +6,7 @@ import { LegalEntityHealthPanel } from "@/components/admin/legal-entities/legal-
 import { ExportButton } from "@/components/exports/export-button";
 import { formatLegalEntityKindSubkind } from "@/lib/admin/legal-entity-list-presenter";
 import type { AdminLegalEntityDetailBundle } from "@/lib/admin/load-admin-legal-entity-detail";
+import { sellerCommissionFact } from "@/lib/admin/seller-proceeds/held-reasons";
 import { presentStripeConnectAccount } from "@/lib/admin/stripe-connect-staff-presenter";
 import type { AdminDomainEventRow } from "@/lib/data/http/admin.server";
 import { buildLegalEntityOverviewViewModel } from "@/lib/data/view-models/legal-entity-overview.vm";
@@ -47,6 +48,7 @@ export function LegalEntityOverviewTab({
 }: Props) {
   const vm = buildLegalEntityOverviewViewModel({ entity, health, pendingDocCount });
   const stripeAccount = presentStripeConnectAccount(entity.stripeConnectAccountId);
+  const commission = sellerCommissionFact(entity.id);
   const tile = (id: string) => vm.kpiTiles.find((item) => item.id === id);
   const stats = ["stripe", "requirements", "documents"].flatMap((id) => {
     const item = tile(id);
@@ -127,9 +129,15 @@ export function LegalEntityOverviewTab({
             },
             { label: "Managed by LAX", value: entity.isLaxManaged ? "Yes" : "No" },
             {
-              label: "Platform fee",
-              value: entity.platformFeeBps != null ? `${entity.platformFeeBps} bps` : null,
-              numeric: true,
+              label: commission.label,
+              value: (
+                <span>
+                  {commission.text} ·{" "}
+                  <TextLink href={commission.link.href} Link={NextLink}>
+                    {commission.link.label}
+                  </TextLink>
+                </span>
+              ),
             },
           ]}
         />

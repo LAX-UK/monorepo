@@ -1,3 +1,4 @@
+import { standardBuyerPremiumBands } from "@auction/validators";
 import type { SalePressRef } from "../../schema/sales.js";
 
 /** Stable ID for the press hub demo sale (ended, with curated coverage). */
@@ -103,7 +104,8 @@ export function buildPressDemoSaleRow(now: number, day: number) {
     startTime: endedStart,
     endTime: endedEnd,
     previewStartTime: new Date(now - 65 * day),
-    buyerPremiumRate: "0.25",
+    buyerPremiumRate: "0.15",
+    buyerPremiumTiers: standardBuyerPremiumBands(),
     terms: "Demo sale for press hub seed data only.",
     auctionDayImages: DEMO_AUCTION_DAY_IMAGES,
     pressCoverage: DEMO_PRESS_COVERAGE,

@@ -243,6 +243,23 @@ export const PAYOUT_PROCESS_ACCESS: CapabilityRequirement = {
   anyOf: ["payout.process", "platform.admin.full"],
 };
 
+/**
+ * The seller's side of a sold lot (its commission, VAT on commission and what the seller
+ * receives): whoever can open the lot, and finance, who pay it out.
+ */
+export const SELLER_PROCEEDS_READ_ACCESS: CapabilityRequirement = {
+  anyOf: [...requirementCapabilities(LOTS_READ_ACCESS), "finance.read", "payout.read"],
+};
+
+/**
+ * Recording a seller's signed consignment agreement so a held sale can be paid: the sales team
+ * who hold the paper, and finance, who run the payout. Replacing one already on record is
+ * Administrator only (`PLATFORM_ADMIN_ACCESS`).
+ */
+export const SELLER_AGREEMENT_RECORD_ACCESS: CapabilityRequirement = {
+  anyOf: ["auction.manage", "payout.process", "platform.admin.full"],
+};
+
 export const PAYOUT_REVERSE_ACCESS: CapabilityRequirement = {
   anyOf: ["payout.reverse", "platform.admin.full"],
 };

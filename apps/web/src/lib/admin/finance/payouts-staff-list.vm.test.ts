@@ -158,20 +158,48 @@ describe("payouts staff list view model", () => {
     expect(payoutPanelHref(search, null)).toBe("/admin/payouts?status=paid&offset=50");
   });
 
-  it("offers a view for every payout status and knows which one is active", () => {
+  it("offers the desk's views and knows which one is active", () => {
     expect(payoutsViews({}).map((view) => view.label)).toEqual([
       "All",
       "Scheduled",
-      "In transit",
       "Paid",
-      "Failed",
-      "Reversed",
-      "Clawback pending",
-      "Blocked, needs review",
+      "Held sales",
+      "Paid under the old rule",
     ]);
     expect(payoutsViews({ status: "paid" })[0]?.href).toBe("/admin/payouts");
+    expect(payoutsViews({})[3]?.href).toBe("/admin/payouts?view=held");
+    expect(payoutsViews({ view: "held" })[2]?.href).toBe("/admin/payouts?status=paid");
+    // A status the attention strip links to still filters the list.
     expect(activePayoutsView({ status: "failed" })).toBe("failed");
+    expect(activePayoutsView({ view: "old_rule" })).toBe("old_rule");
     expect(activePayoutsView({ status: "nonsense" })).toBe("all");
+  });
+
+  it("shows the hammer of a payout paid on the agreement, and none for an old-rule payout", () => {
+    const raw = {
+      id: "p1",
+      legalEntityId: "e1",
+      periodStart: "2026-11-01T00:00:00.000Z",
+      periodEnd: "2026-11-13T00:00:00.000Z",
+      grossAmount: "82759.66",
+      platformFee: "10531.16",
+      stripeFee: "0.00",
+      netAmount: "72228.50",
+      currency: "GBP",
+      status: "paid",
+      stripeTransferId: null,
+      xeroBillId: null,
+      failureReason: null,
+      processedAt: "2026-11-13T09:00:00.000Z",
+      statementUrl: null,
+      statementGenerationError: null,
+      createdAt: "2026-11-12T04:49:00.000Z",
+      hammerAmount: "82759.66",
+    } as const;
+    const base = toPayoutsStaffRows([raw]);
+    expect(base[0]).toMatchObject({ hammer: "£82,759.66", net: "£72,228.50", oldRule: false });
+    const old = toPayoutsStaffRows([{ ...raw, hammerAmount: null }]);
+    expect(old[0]).toMatchObject({ hammer: "", oldRule: true });
   });
 
   it("lists the waiting work, each linking to where it is handled", () => {

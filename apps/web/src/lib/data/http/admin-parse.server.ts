@@ -37,6 +37,11 @@ export type AdminPayoutRow = {
   createdAt: string;
   /** The seller's display name, joined by the list read. */
   legalEntityName?: string | null;
+  /**
+   * The hammer of the lot sales on the payout, from their seller-terms snapshots; `null` on a
+   * payout paid before payouts followed the signed agreement.
+   */
+  hammerAmount?: string | null;
 };
 
 export function isPaymentStatus(s: string): s is PaymentStatus {
@@ -111,5 +116,13 @@ export function parseAdminPayoutRow(raw: unknown): AdminPayoutRow {
       typeof o.legalEntityName === "string" && o.legalEntityName.trim()
         ? o.legalEntityName.trim()
         : null,
+    hammerAmount: sellerTermsHammer(o.sellerTermsTotals),
   };
+}
+
+/** The hammer total a payout's seller-terms totals carry, or null when it has none. */
+function sellerTermsHammer(raw: unknown): string | null {
+  if (!raw || typeof raw !== "object") return null;
+  const hammer = (raw as { hammer?: unknown }).hammer;
+  return hammer == null ? null : String(hammer);
 }

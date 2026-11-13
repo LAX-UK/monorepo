@@ -2,6 +2,7 @@ import { LotDetailShell } from "@/components/admin/lot-detail/lot-detail-shell";
 import { computeLotDetailReadiness } from "@/lib/admin/compute-lot-detail-readiness";
 import { loadLotConnectRequired } from "@/lib/admin/connect-readiness";
 import { loadAdminLotDetail } from "@/lib/admin/load-lot-detail";
+import { loadLotSellerProceeds } from "@/lib/admin/seller-proceeds/load-lot-seller-proceeds";
 import { withdrawalsListController } from "@/lib/admin/withdrawals-list-controller";
 import { requireAdminCapability } from "@/lib/auth/require-admin-capability";
 import { getLotReofferBundle } from "@/lib/data/http/admin-reoffers.server";
@@ -40,6 +41,7 @@ export default async function AdminLotDetailLayout({ params, children }: Props) 
     selling,
     laxArtReturn,
     reoffers,
+    sellerProceeds,
   ] = await Promise.all([
     loadAdminLotDetail(id),
     getServerLotBids(id, 100).catch(() => []),
@@ -56,6 +58,7 @@ export default async function AdminLotDetailLayout({ params, children }: Props) 
       : Promise.resolve(null),
     canManageAuction ? getServerLaxArtReturn(id) : Promise.resolve(null),
     getLotReofferBundle(id),
+    loadLotSellerProceeds(id, user),
   ]);
 
   const publishReadiness = computeLotDetailReadiness({
@@ -81,6 +84,11 @@ export default async function AdminLotDetailLayout({ params, children }: Props) 
       selling={selling}
       laxArtReturn={laxArtReturn}
       reoffers={reoffers}
+      heldPayout={
+        sellerProceeds.notice
+          ? { notice: sellerProceeds.notice, record: sellerProceeds.record }
+          : null
+      }
     >
       {children}
     </LotDetailShell>

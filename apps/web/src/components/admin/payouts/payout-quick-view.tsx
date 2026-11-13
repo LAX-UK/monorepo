@@ -1,6 +1,8 @@
 "use client";
 
+import { PayoutSalesPanel } from "@/components/admin/seller-proceeds/payout-sales-panel";
 import type { PayoutsStaffRow } from "@/lib/admin/finance/payouts-staff-list.vm";
+import type { PayoutSalesDto } from "@/lib/data/http/admin-seller-proceeds.shared";
 import {
   CellLink,
   DetailPanel,
@@ -31,6 +33,8 @@ export function PayoutQuickView({
   onReleaseBlocked,
   onReverse,
   moneyActions = [],
+  loadSales,
+  initialSales,
 }: {
   row: PayoutsStaffRow | null;
   canProcess: boolean;
@@ -44,7 +48,12 @@ export function PayoutQuickView({
   onReverse: (row: PayoutsStaffRow) => void;
   /** The row menu's money actions, for the panel's `…`. */
   moneyActions?: readonly OverflowAction[];
+  /** Reads the payout's sale lines; when given, the panel shows each sale and the held ones. */
+  loadSales?: (payoutId: string) => Promise<PayoutSalesDto | null>;
+  /** For the review route: the sale lines already loaded. */
+  initialSales?: PayoutSalesDto;
 }) {
+  const bySale = Boolean(loadSales || initialSales);
   const sellerHref = row ? `/admin/legal-entities/${encodeURIComponent(row.legalEntityId)}` : "";
   const showFooter =
     row !== null &&
@@ -71,10 +80,15 @@ export function PayoutQuickView({
       summary={
         row
           ? [
-              { label: "Gross", value: row.gross, numeric: true },
-              { label: "Platform fee", value: row.platformFee, numeric: true },
-              { label: "Stripe fee", value: row.stripeFee, numeric: true },
-              { label: "Net", value: row.net, numeric: true },
+              // With sale lines the money is broken down below, from the payout's stored totals.
+              ...(bySale
+                ? []
+                : [
+                    { label: "Gross", value: row.gross, numeric: true },
+                    { label: "Platform fee", value: row.platformFee, numeric: true },
+                    { label: "Stripe fee", value: row.stripeFee, numeric: true },
+                    { label: "Net", value: row.net, numeric: true },
+                  ]),
               {
                 label: "Seller",
                 value: (
@@ -203,6 +217,13 @@ export function PayoutQuickView({
             <Notice tone="warning" title="The statement PDF is unavailable" className="mb-4">
               {row.statementError}
             </Notice>
+          ) : null}
+          {bySale ? (
+            <PayoutSalesPanel
+              payoutId={row.id}
+              loadSales={loadSales ?? (async () => initialSales ?? null)}
+              {...(initialSales ? { initial: initialSales } : {})}
+            />
           ) : null}
         </>
       ) : null}

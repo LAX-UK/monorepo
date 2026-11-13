@@ -62,8 +62,9 @@ export function buildLegalEntityOverviewViewModel(
     },
     {
       id: "fee",
-      label: "Platform fee",
-      value: entity.platformFeeBps != null ? `${entity.platformFeeBps} bps` : "—",
+      // Commission is set by each signed consignment agreement, never by the account.
+      label: "Commission",
+      value: "By agreement",
       trendTone: "muted",
     },
   ];

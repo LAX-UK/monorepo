@@ -286,6 +286,9 @@ services:
       KYC_ONBOARDING_ENABLED: ${KYC_ONBOARDING_ENABLED:-false}
       FULL_BUYER_ONBOARDING_ENABLED: ${FULL_BUYER_ONBOARDING_ENABLED:-false}
       MARKETING_PROMPTS_ENABLED: ${MARKETING_PROMPTS_ENABLED:-false}
+      # When seller payouts began to follow each signed agreement (ISO time, set on that deploy).
+      # Unset: the staff notice about the change is not shown.
+      SELLER_RULE_GO_LIVE_AT: ${SELLER_RULE_GO_LIVE_AT:-}
     depends_on:
       api:
         condition: service_healthy

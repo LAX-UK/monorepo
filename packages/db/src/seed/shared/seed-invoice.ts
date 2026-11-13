@@ -33,14 +33,15 @@ export type SeedInvoice = {
 const invoiceIdFor = (paymentId: string) => uuidV5(SEED_INVOICE_NAMESPACE, paymentId);
 
 /**
- * The lines of a lot sold at `hammerPounds`: at a flat premium `rate` (0.25 = 25%) when given,
- * else at the standard premium (15% up to £500,000, then 10% on the part above), as the application prices it.
+ * The lines of a lot sold at `hammerPounds` with no premium of its own, in a sale on the standard
+ * bands (15% up to £500,000, then 10% on the part above), as the application prices it. A seed
+ * never types a premium rate: it asks the calculator.
  */
-export function priceHammer(hammerPounds: number, rate: number | null = null) {
+export function priceHammer(hammerPounds: number) {
   return buildInvoiceLines(
     {
       currentPrice: hammerPounds.toFixed(2),
-      buyerPremiumRate: rate === null ? null : rate.toFixed(4),
+      buyerPremiumRate: null,
       saleId: null,
     } as unknown as Lot,
     null,
@@ -51,11 +52,9 @@ export function priceHammer(hammerPounds: number, rate: number | null = null) {
 export function priceSeedInvoice(input: {
   paymentId: string;
   hammerPounds: number;
-  /** A flat premium; left out (or `null`), the standard premium applies. */
-  rate?: number | null;
   raisedAt: Date;
 }): SeedInvoice {
-  const priced = priceHammer(input.hammerPounds, input.rate ?? null);
+  const priced = priceHammer(input.hammerPounds);
   return {
     id: invoiceIdFor(input.paymentId),
     lines: priced.lines,

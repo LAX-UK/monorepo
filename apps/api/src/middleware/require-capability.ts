@@ -52,6 +52,8 @@ import {
   SALEROOM_ACCESS,
   SALES_ACCESS,
   SALES_READ_ACCESS,
+  SELLER_AGREEMENT_RECORD_ACCESS,
+  SELLER_PROCEEDS_READ_ACCESS,
   STAFF_ACCESS_REVIEW_ACCESS,
   STAFF_EMAIL_CHANGE_ACCESS,
   STAFF_ROLES_READ_ACCESS,
@@ -165,6 +167,10 @@ export const requireDisputeAllocationWrite = createRequireAccess(DISPUTE_ALLOCAT
 export const requireAccountingQueueWrite = createRequireAccess(ACCOUNTING_QUEUE_WRITE_ACCESS);
 
 export const requirePlatformAdminFull = createRequireAccess(PLATFORM_ADMIN_ACCESS);
+/** A sold lot's seller proceeds: whoever can open the lot, and finance. */
+export const requireSellerProceedsRead = createRequireAccess(SELLER_PROCEEDS_READ_ACCESS);
+/** Record a seller's signed consignment agreement for a held sale. */
+export const requireSellerAgreementRecord = createRequireAccess(SELLER_AGREEMENT_RECORD_ACCESS);
 export const requireUsersDirectory = createRequireAccess(USERS_DIRECTORY_ACCESS);
 export const requireUserModeration = createRequireAccess(USER_MODERATION_ACCESS);
 export const requireStaffEmailChange = createRequireAccess(STAFF_EMAIL_CHANGE_ACCESS);

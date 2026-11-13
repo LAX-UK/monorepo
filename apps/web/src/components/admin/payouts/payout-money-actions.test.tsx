@@ -38,6 +38,8 @@ const payout: PayoutsStaffRow = {
   legalEntityId: "entity_1",
   seller: "Gallery One",
   period: "1 Oct 2026 – 31 Oct 2026",
+  hammer: "",
+  oldRule: true,
   periodStart: "2026-10-01T00:00:00.000Z",
   gross: "£5,000.00",
   platformFee: "£500.00",

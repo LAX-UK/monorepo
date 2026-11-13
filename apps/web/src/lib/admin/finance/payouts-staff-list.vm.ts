@@ -43,6 +43,10 @@ export type PayoutsStaffRow = {
   /** "1 Oct 2026 – 31 Oct 2026". */
   period: string;
   periodStart: string;
+  /** The hammer of the sales paid; empty on a payout paid under the old rule. */
+  hammer: string;
+  /** Paid before payouts followed the signed agreement: its figures are as paid. */
+  oldRule: boolean;
   gross: string;
   platformFee: string;
   stripeFee: string;
@@ -112,6 +116,8 @@ export function toPayoutsStaffRows(
         sellerFallback(row.legalEntityId),
       period: payoutPeriod(row.periodStart, row.periodEnd),
       periodStart: row.periodStart,
+      hammer: row.hammerAmount ? formatPayoutAmount(row.hammerAmount, row.currency) : "",
+      oldRule: !row.hammerAmount,
       gross: formatPayoutAmount(row.grossAmount, row.currency),
       platformFee: formatPayoutAmount(row.platformFee, row.currency),
       stripeFee: formatPayoutAmount(row.stripeFee, row.currency),
@@ -154,22 +160,38 @@ export function payoutPanelHref(search: PayoutsListSearch, payoutId: string | nu
   return buildListHref(PAYOUTS_LIST_PATH, base, { payout: payoutId });
 }
 
-export type PayoutsViewId = "all" | PayoutStatus;
+/** Views that list something other than payouts: held sales, and sales paid under the old rule. */
+export type PayoutsSpecialView = "held" | "old_rule";
+export type PayoutsViewId = "all" | PayoutStatus | PayoutsSpecialView;
+
+const SPECIAL_VIEWS: readonly PayoutsSpecialView[] = ["held", "old_rule"];
 
 export function activePayoutsView(search: PayoutsListSearch): PayoutsViewId {
+  const view = typeof search.view === "string" ? search.view : "";
+  if ((SPECIAL_VIEWS as readonly string[]).includes(view)) return view as PayoutsSpecialView;
   const status = typeof search.status === "string" ? search.status : "";
   return (payoutStatuses as readonly string[]).includes(status) ? (status as PayoutStatus) : "all";
 }
 
-/** The status views, in the order a payout moves through them. */
+/** The views the desk works from. Other statuses stay reachable from the attention strip. */
 export function payoutsViews(search: PayoutsListSearch): StaffDataView[] {
   return [
-    { id: "all", label: "All", href: payoutsListHref(search, { status: null }) },
-    ...payoutStatuses.map((status) => ({
+    { id: "all", label: "All", href: payoutsListHref(search, { status: null, view: null }) },
+    ...(["scheduled", "paid"] as const).map((status) => ({
       id: status,
       label: presentPayoutStatus(status).label,
-      href: payoutsListHref(search, { status }),
+      href: payoutsListHref(search, { status, view: null }),
     })),
+    {
+      id: "held",
+      label: "Held sales",
+      href: payoutsListHref(search, { status: null, view: "held" }),
+    },
+    {
+      id: "old_rule",
+      label: "Paid under the old rule",
+      href: payoutsListHref(search, { status: null, view: "old_rule" }),
+    },
   ];
 }
 

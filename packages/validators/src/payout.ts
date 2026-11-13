@@ -81,6 +81,16 @@ export const runSettlementSchema = z.object({
   reason: payoutActionReasonSchema,
   /** Optional start of the period; it must follow the last settled period. Defaults to that end. */
   periodStart: z.string().datetime().optional(),
+  /**
+   * What the person confirmed from the preview: the net in pence and the ready payments and
+   * released deals behind it. Required: the run pays exactly this or refuses with
+   * `figures_changed`, so a staff run is never unbound. (The nightly run does not use this route.)
+   */
+  confirmed: z.object({
+    netPence: z.number().int().safe(),
+    paymentIds: z.array(z.string().uuid()).max(5000),
+    dealIds: z.array(z.string().uuid()).max(5000),
+  }),
 });
 
 export type RunSettlementInput = z.infer<typeof runSettlementSchema>;

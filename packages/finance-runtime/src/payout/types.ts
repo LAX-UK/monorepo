@@ -14,6 +14,21 @@ export type CreateSettlementInput = {
   periodStart?: Date;
   /** Why staff ran it, kept in the audit event. */
   reason?: string;
+  /**
+   * What the person confirmed from the preview. When given, the run pays exactly this or nothing:
+   * any other net, sale or deal is refused as `figures_changed`.
+   */
+  confirmed?: ConfirmedSettlement;
+};
+
+/** The preview a person confirmed: what the seller receives and the sales and deals that make it. */
+export type ConfirmedSettlement = {
+  /** What the seller receives, in pence. */
+  netPence: number;
+  /** The payments of the ready sales. */
+  paymentIds: readonly string[];
+  /** The released private-sale deals. */
+  dealIds: readonly string[];
 };
 
 /** The period the settlement covers, once it has been worked out. */
@@ -27,6 +42,8 @@ export type ResolvedSettlementInput = {
    * Left out, every payment waiting for the entity is paid.
    */
   heldPaymentIds?: ReadonlySet<string>;
+  /** What the person confirmed; the run refuses to pay anything else. */
+  confirmed?: ConfirmedSettlement;
 };
 
 export type CreateSettlementResult =
@@ -38,7 +55,14 @@ export type CreateSettlementResult =
     }
   | {
       ok: false;
-      reason: "no_pending_payments" | import("@auction/domain").SettlementPeriodRefusal;
+      /**
+       * `figures_changed`: the run would pay something other than what was confirmed (a sale became
+       * ready or was paid, a deal was released, an amount moved). Nothing is stored.
+       */
+      reason:
+        | "no_pending_payments"
+        | "figures_changed"
+        | import("@auction/domain").SettlementPeriodRefusal;
       /** Sales waiting that the run could not pay, because their seller terms are held. */
       heldSales?: HeldSettlementSale[];
     };

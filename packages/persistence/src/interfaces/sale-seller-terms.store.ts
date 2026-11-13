@@ -26,5 +26,9 @@ export interface ISaleSellerTermsStore {
    * Stores a held sale's new pricing over its row. Only a row that is still held changes: the
    * payment, lot, seller, hammer, premium and old-rule fee stay as they were raised.
    */
-  repriceHeld(id: string, snapshot: SellerTermsSnapshot): Promise<StoredSellerTerms>;
+  repriceHeld(
+    id: string,
+    snapshot: SellerTermsSnapshot,
+    source?: "recomputed_at_payout" | "agreement_recorded",
+  ): Promise<StoredSellerTerms>;
 }

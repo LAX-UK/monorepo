@@ -4,16 +4,19 @@ import {
   lotPublishBlockedReason,
 } from "@/lib/admin/catalog-readiness";
 import { draftSaleLotPublishBanner } from "@/lib/admin/sale-setup/field-copy";
+import type { HeldPayoutNotice } from "@/lib/admin/seller-proceeds/lot-seller-proceeds.vm";
 import { formatStaffDateTime } from "@auction/staff-ui";
 import type { LotStatus } from "@auction/types";
 
 /** The one notice a lot page shows about the whole lot, most urgent first. */
 export type LotDetailNotice = {
-  id: "withdrawal" | "connect" | "draft-sale" | "readiness";
+  id: "withdrawal" | "payout-held" | "connect" | "draft-sale" | "readiness";
   tone: "info" | "warning" | "danger";
   title: string;
   body: string;
   action: { label: string; href: string } | null;
+  /** The notice's action is recording the seller's signed agreement, in a dialog. */
+  recordsAgreement?: boolean;
 };
 
 /**
@@ -31,6 +34,8 @@ export function lotDetailNotice(input: {
   canManageCatalog: boolean;
   /** When the seller asked to withdraw the lot (ISO), while the request waits. */
   withdrawalRequestedAt?: string | null;
+  /** A sold lot whose buyer has paid but whose seller payout is held. */
+  heldPayout?: HeldPayoutNotice | null;
 }): LotDetailNotice | null {
   if (input.withdrawalRequestedAt) {
     return {
@@ -39,6 +44,17 @@ export function lotDetailNotice(input: {
       title: "The seller has asked to withdraw this lot",
       body: `Asked ${formatStaffDateTime(input.withdrawalRequestedAt)}. Approve or decline the request from the lot's actions.`,
       action: null,
+    };
+  }
+  if (input.heldPayout) {
+    const held = input.heldPayout;
+    return {
+      id: "payout-held",
+      tone: "danger",
+      title: held.title,
+      body: held.body,
+      action: held.settingsHref ? { label: "Open settings", href: held.settingsHref } : null,
+      recordsAgreement: held.canRecord,
     };
   }
   if (input.status !== "draft") return null;

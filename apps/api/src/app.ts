@@ -85,6 +85,7 @@ import { createLegacySaleAlertRoutes } from "./routes/sale-alerts-legacy.js";
 import { createSaleDocumentRoutes } from "./routes/sale-documents.js";
 import { createSaleroomDisplayRoutes } from "./routes/saleroom-display.js";
 import { createSaleRoutes } from "./routes/sales.js";
+import { createAdminSellerProceedsRoutes } from "./routes/seller-proceeds.js";
 import { createServerTimeRoutes } from "./routes/server-time.js";
 import { createBidSsfEventsRoute } from "./routes/ssf-events.js";
 import { createStripeConnectRoutes } from "./routes/stripe-connect.js";
@@ -311,6 +312,7 @@ export function createApp(container: Container, env: Env, authenticator: IAuthen
     .route("/payouts", createPayoutRoutes(container, authenticator))
     .route("/private-sales", createPrivateSaleDealRoutes(container, authenticator))
     .route("/admin/payouts", createAdminPayoutRoutes(container, authenticator))
+    .route("/admin/seller-proceeds", createAdminSellerProceedsRoutes(container, authenticator))
     .route("/webhooks/stripe", createStripeWebhookRoutes(container))
     .route("/webhooks/veriff", createVeriffWebhookRoutes(container))
     .route("/email", createEmailRoutes(container))
