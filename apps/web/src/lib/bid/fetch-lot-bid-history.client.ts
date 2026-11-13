@@ -1,7 +1,7 @@
 import type { BidHistoryEntry } from "@/components/sections/artwork/bid-history";
 import { mapBidToHistoryEntry } from "@/lib/bid/map-bid-to-history-entry";
+import { parseBidRow } from "@/lib/data/http/bid-row";
 import { browserApiBase, browserFetch, getBrowserHc } from "@/lib/data/http/hc-browser";
-import { parseBid } from "@/lib/data/http/parse";
 
 export type LotBidHistoryRow = {
   id: string;
@@ -40,7 +40,7 @@ export async function fetchLotBidHistory(
     });
     if (!res.ok) return null;
     const body = (await res.json()) as { data: unknown[] };
-    return body.data.map((row) => mapBidToHistoryEntry(parseBid(row)));
+    return body.data.map((row) => mapBidToHistoryEntry(parseBidRow(row)));
   } catch {
     return null;
   }

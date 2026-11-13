@@ -1,38 +1,9 @@
-import { toObjectRecord } from "@/lib/data/http/object-guards";
-import { zCoerceDate, zNullableStringFromEmpty } from "@/lib/data/http/schema-coerce";
+import { parseBidRow } from "@/lib/data/http/bid-row";
 import type { Bid } from "@auction/types";
 import { z } from "zod";
 
-const bidRowSchema = z.preprocess(toObjectRecord, z.record(z.unknown())).transform((row): Bid => {
-  const placedByUserId =
-    row.placedByUserId == null || row.placedByUserId === ""
-      ? undefined
-      : String(row.placedByUserId);
-  // A public row names no bidder; its per-lot reference keeps one bidder apart from another.
-  const bidderRef =
-    row.bidderRef == null || row.bidderRef === "" ? undefined : String(row.bidderRef);
-  const bidderId =
-    row.bidderId == null || row.bidderId === ""
-      ? (placedByUserId ?? bidderRef)
-      : String(row.bidderId);
-  const placedVia = zNullableStringFromEmpty.parse(row.placedVia);
-  const clerkUserId = zNullableStringFromEmpty.parse(row.clerkUserId);
-
-  return {
-    id: String(row.id),
-    lotId: String(row.lotId ?? row.auctionId),
-    ...(bidderId ? { bidderId } : {}),
-    ...(placedByUserId ? { placedByUserId } : {}),
-    amount: String(row.amount),
-    isWinning: Boolean(row.isWinning),
-    isAutoBid: Boolean(row.isAutoBid),
-    maxAutoBidAmount: row.maxAutoBidAmount == null ? null : String(row.maxAutoBidAmount),
-    autoBidStepAmount: row.autoBidStepAmount == null ? null : String(row.autoBidStepAmount),
-    placedVia,
-    clerkUserId,
-    createdAt: zCoerceDate.parse(row.createdAt),
-  };
-});
+/** The bid row as a Zod schema, for envelopes that compose schemas; the reading is `parseBidRow`. */
+const bidRowSchema = z.unknown().transform((row): Bid => parseBidRow(row));
 
 export const bidSchema = bidRowSchema as z.ZodType<Bid>;
 
