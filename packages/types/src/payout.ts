@@ -109,3 +109,19 @@ export type CreatePayoutAdjustmentInput = {
 export type ReversePayoutInput = {
   reason: string;
 };
+
+/**
+ * A sale's seller figures as its seller-terms snapshot recorded them, in whole pence: the
+ * hammer, the signed agreement's commission on it and the VAT on that commission, and what the
+ * seller receives. Screens show these as they are; nothing re-works them.
+ */
+export type SellerTermsFigures = {
+  hammerPence: number;
+  commissionBps: number;
+  commissionPence: number;
+  /** `not_registered`: the Bid company is not VAT-registered, so no VAT is charged. */
+  vatTreatment: "standard" | "not_registered";
+  vatBps: number;
+  vatPence: number;
+  netPence: number;
+};

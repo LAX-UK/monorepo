@@ -1420,6 +1420,12 @@ export {
   type SellerProceedsParty,
 } from "./seller-proceeds.js";
 export {
+  SELLER_PAYOUT_NOTE,
+  notVatRegisteredLine,
+  ratePercentLabel,
+  sellerCommissionTerm,
+} from "./seller-rate.js";
+export {
   sellerClawbackPence,
   sellerDeductionsPence,
   sellerRefundCharge,
