@@ -88,6 +88,14 @@ describe("migration 0375 stripe refund watch", () => {
   });
 });
 
+describe.each(["0374", "0375", "0376"])("rollback %s", (number) => {
+  it("runs in one transaction, so its lock timeout applies", () => {
+    const rollback = read(`${number}_rollback.sql`);
+    expect(rollback).toMatch(/^BEGIN;\n\nSET LOCAL lock_timeout = '5s';/m);
+    expect(rollback.trimEnd()).toMatch(/COMMIT;$/);
+  });
+});
+
 describe("migration 0376 transfer received intent", () => {
   it("adds one nullable column and drops only it on rollback", () => {
     expect(read("0376_payment_transfer_received_intent.sql")).toContain(
