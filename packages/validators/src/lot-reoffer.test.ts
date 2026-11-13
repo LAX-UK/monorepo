@@ -27,6 +27,7 @@ const sellerView = {
     offerProceedsMinor: 97_375_00,
     originalHammerMinor: 88_000_00,
     originalProceedsMinor: 104_500_00,
+    commissionBps: 1500,
   },
   reserveMinor: 85_000_00,
   belowReserve: true,

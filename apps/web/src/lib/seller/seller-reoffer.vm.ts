@@ -1,5 +1,7 @@
+import { reofferConsentLine } from "@/lib/seller/seller-commission.vm";
 import { formatMoney } from "@/lib/ui/format";
 import { LONDON_TIME_ZONE, formatDayMonth, formatWeekday, formatWhen } from "@auction/datetime";
+import { ratePercentLabel } from "@auction/domain";
 import { INVOICE_PAYMENT_DUE_DAYS } from "@auction/types";
 import type { SellerReofferProceeds, SellerReofferView } from "@auction/validators";
 
@@ -48,11 +50,12 @@ export type SellerReofferVm = {
   id: string;
   lotTitle: string;
   /**
-   * The price offered and what the seller would receive, as the Agree sheet repeats them. The
-   * proceeds are `null` for a member who does not see the account's payouts.
+   * The price offered, and the line that says what the seller would receive under their signed
+   * agreement, as the Agree sheet repeats them. The line is `null` for a member who does not see
+   * the account's payouts.
    */
   offer: string;
-  proceeds: string | null;
+  consent: string | null;
   /** "Lot 2 · ended Thu 29 Oct". */
   subtitle: string;
   chip: SellerReofferChip | null;
@@ -295,28 +298,36 @@ const STATES: Record<SellerReofferState, StateEntry> = {
 };
 
 /**
- * The seller's figures, split the way Sold & payouts splits a sale: what the buyer pays (the
- * hammer and the buyer's premium), less LAX's commission and fees on it, is what the seller
- * receives. The rows add up to the figure the payout will show for the same hammer.
+ * The seller's figures, from the proceeds worked out by the signed agreement's rule when the
+ * request was made: the offer, less the commission and the VAT on it, is what the seller
+ * receives. The buyer's premium is LAX's and never part of the seller's figures.
  */
 function moneyOf(view: SellerReofferView, proceeds: SellerReofferProceeds): SellerReofferMoneyVm {
-  const premium = proceeds.offerSaleMinor - view.offerMinor;
-  const fees = proceeds.offerSaleMinor - proceeds.offerProceedsMinor;
+  const charges = view.offerMinor - proceeds.offerProceedsMinor;
   const shortfall = proceeds.originalProceedsMinor - proceeds.offerProceedsMinor;
+  const rate =
+    proceeds.commissionBps === null ? "" : ` (${ratePercentLabel(proceeds.commissionBps)})`;
   return {
     rows: [
       { label: "Offer to the next bidder", value: money(view.offerMinor) },
-      ...(premium > 0 ? [{ label: "Buyer's premium", value: `+${money(premium)}` }] : []),
-      { label: "Commission and fees", value: `−${money(fees)}` },
-      { label: "Estimated proceeds", value: money(proceeds.offerProceedsMinor), strong: true },
+      { label: `Commission${rate} and VAT`, value: `−${money(charges)}` },
+      { label: "You receive", value: money(proceeds.offerProceedsMinor), strong: true },
       {
         label: `At the original ${money(proceeds.originalHammerMinor)}`,
         value: money(proceeds.originalProceedsMinor),
       },
       ...(shortfall > 0 ? [{ label: "Difference", value: `−${money(shortfall)}` }] : []),
     ],
-    note: "Worked out the way your payout is. You're paid once the buyer's payment clears.",
+    note: consentLine(view, proceeds),
   };
+}
+
+function consentLine(view: SellerReofferView, proceeds: SellerReofferProceeds): string {
+  return reofferConsentLine({
+    offerMinor: view.offerMinor,
+    proceedsMinor: proceeds.offerProceedsMinor,
+    commissionBps: proceeds.commissionBps,
+  });
 }
 
 export function sellerReofferVm(
@@ -332,7 +343,7 @@ export function sellerReofferVm(
     id: view.id,
     lotTitle: view.lotTitle,
     offer: money(view.offerMinor),
-    proceeds: view.proceeds ? money(view.proceeds.offerProceedsMinor) : null,
+    consent: view.proceeds ? consentLine(view, view.proceeds) : null,
     subtitle: `${lot} · ended ${day(view.lotEndedAt, now)}`,
     chip: entry.chip(ctx),
     card: { state, ...entry.card(ctx) },

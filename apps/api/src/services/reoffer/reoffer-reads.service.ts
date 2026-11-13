@@ -28,13 +28,15 @@ import {
 import type { ReofferMemberActor } from "./reoffer-actors.js";
 import { ReofferError } from "./reoffer-errors.js";
 import { buyersPremiumMinorOf } from "./reoffer-invoice-pricing.js";
-import type { IReofferPricing } from "./reoffer-ports.js";
+import type { IReofferPricing, IReofferSellerRate } from "./reoffer-ports.js";
 
 export type ReofferReadsServiceDeps = {
   db: Database;
   views: IReofferViewsReader;
   workflow: Pick<IReofferWorkflowReader, "placedBids" | "latestDefault" | "defaultById">;
   pricing: IReofferPricing;
+  /** The signed agreement's commission rate, said beside the seller's figure. */
+  sellerRate?: IReofferSellerRate;
 };
 
 /** Lots LAX owns need no answer from anyone, so there is nothing to show a seller. */
@@ -79,14 +81,29 @@ export class ReofferReadsService {
     this.requireSellerRead(actor);
     const rows = await this.deps.views.listForSellerAccount(actor.legalEntityId);
     const money = seesSellerMoney(actor);
-    return rows.filter(isAskedOfSeller).map((row) => sellerView(row, money));
+    const views: SellerReofferView[] = [];
+    for (const row of rows.filter(isAskedOfSeller)) {
+      views.push(sellerView(row, money, await this.rateFor(row, actor, money)));
+    }
+    return views;
   }
 
   async getForSeller(actor: ReofferMemberActor, reofferId: string): Promise<SellerReofferView> {
     this.requireSellerRead(actor);
     const row = await this.deps.views.findForSellerAccount(actor.legalEntityId, reofferId);
     if (!row) throw new ReofferError("offer_not_found", "This request does not exist.");
-    return sellerView(row, seesSellerMoney(actor));
+    const money = seesSellerMoney(actor);
+    return sellerView(row, money, await this.rateFor(row, actor, money));
+  }
+
+  /** The agreement's rate, for a member who sees the money; nothing is read for anyone else. */
+  private async rateFor(
+    row: SellerConsentRequestRow,
+    actor: ReofferMemberActor,
+    withMoney: boolean,
+  ): Promise<number | null> {
+    if (!withMoney || !this.deps.sellerRate) return null;
+    return this.deps.sellerRate.commissionBpsFor(row.lotId, actor.legalEntityId);
   }
 
   private requireSellerRead(actor: ReofferMemberActor): void {
@@ -286,7 +303,11 @@ function seesSellerMoney(actor: ReofferMemberActor): boolean {
   return entityActorCan(memberOf(actor), "entity.payouts.read");
 }
 
-function sellerView(row: SellerConsentRequestRow, withMoney: boolean): SellerReofferView {
+function sellerView(
+  row: SellerConsentRequestRow,
+  withMoney: boolean,
+  commissionBps: number | null,
+): SellerReofferView {
   const { terms } = row;
   return sellerReofferViewSchema.parse({
     id: row.reofferId,
@@ -304,6 +325,7 @@ function sellerView(row: SellerConsentRequestRow, withMoney: boolean): SellerReo
           offerProceedsMinor: terms.proceedsAtOfferPence,
           originalHammerMinor: terms.originalHammerPence,
           originalProceedsMinor: terms.proceedsAtOriginalPence,
+          commissionBps,
         }
       : null,
     reserveMinor: terms.reservePence,

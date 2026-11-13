@@ -1,6 +1,12 @@
 import { NewsletterSignupForm } from "@/components/sections/home/newsletter-signup-form";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it } from "vitest";
+
+// The form's check is loaded on first use; load it once up front so the first test does not
+// spend its wait on transforming the module.
+beforeAll(async () => {
+  await import("@/components/sections/home/newsletter-signup-form.validation");
+}, 30_000);
 
 describe("NewsletterSignupForm focus", () => {
   it("keeps the default focus colour elsewhere", () => {

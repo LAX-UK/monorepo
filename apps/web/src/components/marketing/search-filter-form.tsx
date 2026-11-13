@@ -1,8 +1,8 @@
 "use client";
 
 import { trackSearch } from "@/lib/analytics/events";
-import { errorCopy } from "@/lib/forms/error-copy";
-import { publicFormResolver } from "@/lib/forms/public-form-resolver";
+import { searchFailureCopy } from "@/lib/forms/error-copy";
+import { lazyResolver, lazyResolverFailure } from "@/lib/forms/lazy-resolver";
 import type { SearchEndingWindow } from "@/lib/marketing/parse-search-params";
 import type { LotStatus } from "@auction/types";
 import { Button } from "@auction/ui/lax/button";
@@ -12,13 +12,12 @@ import { cn } from "@auction/ui/lib/utils";
 import { useRouter } from "next/navigation";
 import type { ComponentProps } from "react";
 import { useForm } from "react-hook-form";
-import { z } from "zod";
+import type { SearchFilterValues } from "./search-filter-form.validation";
 
-const searchFilterSchema = z.object({
-  q: z.string().trim().max(200, errorCopy.maxLength(200, "your search")),
-});
-
-type SearchFilterValues = z.infer<typeof searchFilterSchema>;
+const searchFilterResolver = lazyResolver<SearchFilterValues>(
+  () => import("./search-filter-form.validation").then((m) => m.searchFilterResolver),
+  { failureMessage: searchFailureCopy },
+);
 
 export function SearchFilterForm({
   initialQ,
@@ -47,15 +46,17 @@ export function SearchFilterForm({
 }) {
   const router = useRouter();
   const form = useForm<SearchFilterValues>({
-    resolver: publicFormResolver(searchFilterSchema),
+    resolver: searchFilterResolver,
     defaultValues: { q: initialQ },
   });
 
+  const loadFailure = lazyResolverFailure(form.formState.errors);
   const isSheet = variant === "sheet";
   const showSubmit = !isSheet;
 
   return (
     <form
+      onFocus={searchFilterResolver.preload}
       id={formId}
       className={
         variant === "default"
@@ -87,7 +88,8 @@ export function SearchFilterForm({
         optional
         quiet
         id={inputId}
-        error={form.formState.errors.q?.message}
+        error={form.formState.errors.q?.message ?? loadFailure}
+        announce={Boolean(loadFailure)}
         className="min-w-0 flex-1"
       >
         <TextInput

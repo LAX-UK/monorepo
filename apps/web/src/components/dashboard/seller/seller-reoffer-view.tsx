@@ -80,7 +80,7 @@ export function SellerReofferView({ vm }: { vm: SellerReofferVm }) {
                 reofferId={vm.id}
                 lotTitle={vm.lotTitle}
                 offer={vm.offer}
-                proceeds={vm.proceeds}
+                consent={vm.consent}
               />
             ) : null}
             {card.contact ? (

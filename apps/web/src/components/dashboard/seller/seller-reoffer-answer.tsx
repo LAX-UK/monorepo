@@ -30,18 +30,21 @@ const PREFERENCES: ReadonlyArray<{
 type Props = {
   reofferId: string;
   lotTitle: string;
-  /** "£82,000.00" and "£72,160.00": what the sheet repeats before the seller agrees. */
+  /** "£76,000.00": the price the sheet repeats before the seller agrees. */
   offer: string;
-  /** What the seller would receive; `null` for a member who does not see the payouts. */
-  proceeds: string | null;
+  /**
+   * "You receive £62,320.00: the offer of £76,000.00 less your 15% commission and VAT, under your
+   * signed agreement."; `null` for a member who does not see the payouts.
+   */
+  consent: string | null;
 };
 
 /**
- * The seller's two answers. Agree asks once more, with the price and what they would receive;
+ * The seller's two answers. Agree asks once more, with the price and what they would receive under their agreement;
  * "Not this time" asks what they would rather happen. A request that closed or was answered while
  * the sheet was open reloads the page to show where it stands, never a second try.
  */
-export function SellerReofferAnswer({ reofferId, lotTitle, offer, proceeds }: Props) {
+export function SellerReofferAnswer({ reofferId, lotTitle, offer, consent }: Props) {
   const router = useRouter();
   const [sheet, setSheet] = useState<"agree" | "decline" | null>(null);
   const [preference, setPreference] = useState<DeclinePreference | "">("");
@@ -98,7 +101,7 @@ export function SellerReofferAnswer({ reofferId, lotTitle, offer, proceeds }: Pr
         open={sheet === "agree"}
         onOpenChange={(open) => (open ? setSheet("agree") : close())}
         title={`Agree to offer ${lotTitle} to the next bidder at ${offer}?`}
-        description={`We'll send them the offer shortly. If they accept, they pay within ${PAYMENT_TERM} and we pay you once it clears.${proceeds ? ` Estimated proceeds ${proceeds}.` : ""}`}
+        description={`We'll send them the offer shortly. If they accept, they pay within ${PAYMENT_TERM} and we pay you once it clears.${consent ? ` ${consent}` : ""}`}
         footerLayout="stacked"
         footer={
           <>

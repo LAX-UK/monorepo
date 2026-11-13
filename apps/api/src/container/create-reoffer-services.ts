@@ -1,5 +1,5 @@
 import type { Database } from "@auction/db";
-import { SellerTermsPolicy } from "@auction/domain";
+import { SellerTermsPolicy, commissionPercentToBps } from "@auction/domain";
 import {
   DrizzleArtworkRegisterRepository,
   DrizzleCommissionVatSettingReader,
@@ -19,7 +19,11 @@ import { ReofferConsentService } from "../services/reoffer/reoffer-consent.servi
 import { invoiceReofferPricing } from "../services/reoffer/reoffer-invoice-pricing.js";
 import { lotOwnershipFromAccount } from "../services/reoffer/reoffer-lot-ownership.js";
 import { ReofferOfferService } from "../services/reoffer/reoffer-offer.service.js";
-import type { IReofferInvoicing, IReofferPricing } from "../services/reoffer/reoffer-ports.js";
+import type {
+  IReofferInvoicing,
+  IReofferPricing,
+  IReofferSellerRate,
+} from "../services/reoffer/reoffer-ports.js";
 import { ReofferPreviewService } from "../services/reoffer/reoffer-preview.service.js";
 import { ReofferReadsService } from "../services/reoffer/reoffer-reads.service.js";
 import { ReofferResponseService } from "../services/reoffer/reoffer-response.service.js";
@@ -67,6 +71,14 @@ export function createReofferServices(input: {
     invoiceRaiser: payments.invoiceRaiser,
   });
   const proceeds = settlementSellerProceeds({ pricing, terms });
+  // The rate of the same signed agreement the proceeds were worked out on.
+  const sellerRate: IReofferSellerRate = {
+    async commissionBpsFor(lotId, sellerLegalEntityId) {
+      const agreement = await sellerFacts.agreementForLot(lotId, sellerLegalEntityId);
+      if (!agreement?.acceptedAt || agreement.legalEntityId !== sellerLegalEntityId) return null;
+      return commissionPercentToBps(agreement.commissionPercent);
+    },
+  };
   const invoicing: IReofferInvoicing = {
     async raiseFor(lotId) {
       await payments.lotInvoiceInitiationService.ensureForLot(lotId);
@@ -98,6 +110,7 @@ export function createReofferServices(input: {
       views: new DrizzleReofferViewsReader(db),
       workflow,
       pricing,
+      sellerRate,
     }),
     preview: new ReofferPreviewService({
       db,

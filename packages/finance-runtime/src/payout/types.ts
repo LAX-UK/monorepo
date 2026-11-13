@@ -66,6 +66,7 @@ export type InitiateTransferResult =
         | "internal_misconfiguration"
         | "payout_not_found"
         | "payout_already_processed"
+        | "payout_changed"
         | "entity_not_found"
         | "no_connect_account"
         | "connect_not_ready"

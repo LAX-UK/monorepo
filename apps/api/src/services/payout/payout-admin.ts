@@ -1,4 +1,9 @@
-import { type PayoutReversalRefusal, payoutReversalRefusal, payoutTotals } from "@auction/domain";
+import {
+  type PayoutReversalRefusal,
+  payoutReversalRefusal,
+  payoutTakesLines,
+  payoutTotals,
+} from "@auction/domain";
 import { previewSettlement } from "@auction/finance-runtime";
 import type {
   IPayoutRepository,
@@ -81,35 +86,42 @@ export async function addAdjustment(
   input: CreatePayoutAdjustmentInput,
   kind: PayoutLineKind = "adjustment",
 ): Promise<PayoutWithLines> {
-  const found = await deps.repo.findById(payoutId);
-  if (!found) throw new PayoutNotFoundError();
-  if (found.status !== "scheduled" && found.status !== "in_transit") {
-    throw new PayoutStatusTransitionError("cannot_adjust_payout_in_terminal_state");
-  }
+  const { runner } = requireTransactional(deps);
+  return runner.runInTransaction(async (tx) => {
+    const r = deps.payoutRepoForTx(tx);
+    // The transfer step holds this row from reading the amount until the payout has left
+    // `scheduled`, so an adjustment either goes out with the transfer or is refused. A payout
+    // whose last attempt has an unknown outcome is refused too: Stripe may hold its old amount.
+    const found = await r.findByIdForUpdate(payoutId);
+    if (!found) throw new PayoutNotFoundError();
+    if (!payoutTakesLines(found)) {
+      throw new PayoutStatusTransitionError("cannot_adjust_payout_in_terminal_state");
+    }
 
-  await deps.repo.insertLine({
-    payoutId,
-    paymentId: null,
-    amount: input.amount,
-    kind,
-    createdByUserId: actorUserId,
-    note: input.note,
-  });
-
-  if (deps.payoutAdjustments) {
-    await deps.payoutAdjustments.recalculateTotalsFromLines(deps.repo, payoutId);
-  } else {
-    const totals = payoutTotals(await deps.repo.listLines(payoutId), found.stripeFee);
-    await deps.repo.updateTotals(payoutId, {
-      grossAmount: totals.gross,
-      platformFee: totals.platformFee,
-      netAmount: totals.net,
+    await r.insertLine({
+      payoutId,
+      paymentId: null,
+      amount: input.amount,
+      kind,
+      createdByUserId: actorUserId,
+      note: input.note,
     });
-  }
 
-  const updated = (await deps.repo.findById(payoutId)) ?? found;
-  const lines = await deps.repo.listLines(payoutId);
-  return { ...updated, lines };
+    if (deps.payoutAdjustments) {
+      await deps.payoutAdjustments.recalculateTotalsFromLines(r, payoutId);
+    } else {
+      const totals = payoutTotals(await r.listLines(payoutId), found.stripeFee);
+      await r.updateTotals(payoutId, {
+        grossAmount: totals.gross,
+        platformFee: totals.platformFee,
+        netAmount: totals.net,
+      });
+    }
+
+    const updated = (await r.findById(payoutId)) ?? found;
+    const lines = await r.listLines(payoutId);
+    return { ...updated, lines };
+  });
 }
 
 /**

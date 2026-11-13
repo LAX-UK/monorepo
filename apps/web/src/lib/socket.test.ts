@@ -78,6 +78,9 @@ describe("getSocket", () => {
 
     it("reports a connection error, checks the chunk, and reloads the page once", async () => {
       vi.useFakeTimers();
+      // No jitter: retries wait exactly 1 s, 2 s, then 4 s, so the 5 s window below holds the
+      // first failure and two retries. With jitter a third retry (≥ 3.5 s in) could land inside it.
+      vi.spyOn(Math, "random").mockReturnValue(0);
       const chunkError = Object.assign(
         new Error(`Loading chunk 98870 failed.\n(error: ${chunkUrl})`),
         {
@@ -113,6 +116,7 @@ describe("getSocket", () => {
       expect(window.sessionStorage.getItem("lax:live-socket-chunk-reload-at")).not.toBeNull();
       expect(io).not.toHaveBeenCalled();
       consoleError.mockRestore();
+      vi.mocked(Math.random).mockRestore();
     });
   });
 });

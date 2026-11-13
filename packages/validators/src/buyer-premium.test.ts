@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
+import { buyerPremiumTiersSchema } from "./buyer-premium-schema.js";
 import {
   BandedBuyerPremiumPolicy,
   FlatRateBuyerPremiumPolicy,
   STANDARD_BUYER_PREMIUM,
   STANDARD_BUYER_PREMIUM_BANDS,
   buildBuyerPremiumPolicy,
-  buyerPremiumTiersSchema,
   isBandedPremiumPolicyId,
   lotPremiumDiffersFromSale,
   majorToMinor,

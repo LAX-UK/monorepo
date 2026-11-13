@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { ConnectTransferInitiationService } from "./connect-transfer-initiation.service.js";
+import { inlinePayoutTransactions } from "./connect-transfer-initiation.test-util.js";
 
 const silentLog = { warn: () => {}, error: () => {}, info: () => {} };
 
@@ -24,6 +25,7 @@ function negativePayoutService(metrics?: { record: (event: string) => void }) {
     } as never,
     { publish },
     metrics,
+    inlinePayoutTransactions(),
   );
   return { service, publish };
 }

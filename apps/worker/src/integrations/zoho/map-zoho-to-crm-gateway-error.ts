@@ -17,11 +17,12 @@ export function mapZohoErrorToCrmGatewayError(err: unknown): CrmGatewayError {
   if (err instanceof ZohoCrmHttpError) {
     const retryable = classifyZohoError(err) === "retryable";
     return new CrmGatewayError({
-      code: "http_error",
+      code: err.zohoCode ?? "http_error",
       message: err.message,
       status: err.status,
       retryable,
       ...(err.retryAfterMs !== undefined ? { retryAfterMs: err.retryAfterMs } : {}),
+      ...(err.fieldApiName !== undefined ? { fieldApiName: err.fieldApiName } : {}),
     });
   }
   if (err instanceof ZohoCrmAuthError) {

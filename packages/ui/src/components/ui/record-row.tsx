@@ -68,6 +68,12 @@ export type RecordRowProps = {
    */
   figures?: readonly RecordFigure[];
   /**
+   * How a narrow list shows `figures`: only the first beside the status (`"lead"`, the default),
+   * or every one (`"all"`), on one line in the wide row's order with "·" between them, each
+   * "value label" kept together when the line wraps, and the status on the line under them.
+   */
+  figuresNarrow?: "lead" | "all";
+  /**
    * Line the row up with the other rows of its list: on a wide list the status and the action
    * keep their width even when this row has none (pass `action={null}` to keep the action
    * column on a row without one), so figures and badges form columns. A narrow
@@ -127,27 +133,51 @@ export type RecordFigure = {
  * fixed width, so the columns of a list line up from row to row; narrow, only the first shows,
  * as "value label" on one line.
  */
-function RecordFigures({ figures }: { figures: readonly RecordFigure[] }) {
-  return (
-    <dl data-record-figures className="flex min-w-0 items-baseline gap-6 @2xl:shrink-0">
+function RecordFigures({
+  figures,
+  all = false,
+}: {
+  figures: readonly RecordFigure[];
+  /** Narrow, show every figure on one line with "·" between them (`figuresNarrow="all"`). */
+  all?: boolean;
+}) {
+  const list = (
+    <dl
+      data-record-figures
+      className={cn(
+        "flex min-w-0 items-baseline @2xl:shrink-0",
+        // Each figure carries its dot in front, and the line is shifted left by one dot (and its
+        // gap) and clipped, so a wrapped line starts with a figure, not a dot, as in the facts.
+        all ? "-ml-5 flex-wrap @2xl:ml-0 @2xl:flex-nowrap @2xl:gap-6" : "gap-6",
+      )}
+    >
       {figures.map((figure, index) => (
         <div
           key={figure.id ?? figure.label}
           className={cn(
             "min-w-0 items-baseline gap-1",
             "@2xl:w-28 @2xl:flex-col @2xl:items-end @2xl:gap-0 @2xl:text-right",
-            index === 0 ? "flex" : "hidden @2xl:flex",
+            all
+              ? "flex shrink-0 whitespace-nowrap before:w-4 before:shrink-0 before:text-center before:font-body before:text-label-3 before:text-on-surface-variant before:content-['·'_/_''] @2xl:shrink @2xl:whitespace-normal @2xl:before:content-none"
+              : index === 0
+                ? "flex"
+                : "hidden @2xl:flex",
             figure.roomyWhenAway && "[html.tz-away_&]:@2xl:w-36",
           )}
         >
           <dt
             // Joined, not merged: the type step and the colour are both `text-` classes.
             className={
-              figure.pending || figure.note
+              figure.note
                 ? "sr-only"
-                : `truncate font-body text-label-3 leading-5 text-on-surface-variant ${
-                    figure.labelFirst ? "order-1 @2xl:order-2" : "order-2"
-                  }`
+                : figure.pending
+                  ? all
+                    ? // Narrow, the label reads first, as a fact: "you receive: After payment".
+                      "order-1 font-body text-label-3 leading-5 text-on-surface-variant after:content-[':'] @2xl:sr-only"
+                    : "sr-only"
+                  : `truncate font-body text-label-3 leading-5 text-on-surface-variant ${
+                      figure.labelFirst ? "order-1 @2xl:order-2" : "order-2"
+                    }`
             }
           >
             {figure.label}
@@ -155,7 +185,10 @@ function RecordFigures({ figures }: { figures: readonly RecordFigure[] }) {
           <dd
             className={
               figure.pending
-                ? "font-body text-label-3 leading-5 text-on-surface-variant"
+                ? all
+                  ? // Narrow, said at the weight of the figure beside it; wide, muted in its cell.
+                    "order-2 font-body text-sm leading-5.5 font-medium text-on-surface @2xl:text-label-3 @2xl:leading-5 @2xl:font-normal @2xl:text-on-surface-variant"
+                  : "font-body text-label-3 leading-5 text-on-surface-variant"
                 : `truncate font-body text-sm leading-5.5 font-medium tabular-nums text-on-surface ${
                     figure.labelFirst ? "order-2 @2xl:order-1" : "order-1"
                   }`
@@ -171,6 +204,13 @@ function RecordFigures({ figures }: { figures: readonly RecordFigure[] }) {
         </div>
       ))}
     </dl>
+  );
+  return all ? (
+    <div className="min-w-0 basis-full overflow-hidden @2xl:basis-auto @2xl:overflow-visible">
+      {list}
+    </div>
+  ) : (
+    list
   );
 }
 
@@ -238,6 +278,7 @@ export function RecordRow({
   status,
   value,
   figures = [],
+  figuresNarrow = "lead",
   aligned = false,
   action,
   needsYou = false,
@@ -297,14 +338,17 @@ export function RecordRow({
                   "@2xl:shrink-0 @2xl:flex-nowrap @2xl:justify-end",
                 )}
               >
-                {figures.length > 0 ? <RecordFigures figures={figures} /> : null}
+                {figures.length > 0 ? (
+                  <RecordFigures figures={figures} all={figuresNarrow === "all"} />
+                ) : null}
                 {isShown(status) || aligned ? (
                   <span
                     data-record-status
                     className={cn(
                       "shrink-0",
-                      // Narrow, the status leads the line and the figure follows it.
-                      figures.length > 0 && "-order-1 @2xl:order-none",
+                      // Narrow, the status leads the line and the figure follows it; with every
+                      // figure shown, the figures take their own line and the status follows.
+                      figures.length > 0 && figuresNarrow === "lead" && "-order-1 @2xl:order-none",
                       aligned && "@2xl:flex @2xl:w-32 @2xl:justify-start",
                       !isShown(status) && "hidden",
                     )}

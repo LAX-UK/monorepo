@@ -6,8 +6,9 @@ import { httpContactDispatcher } from "@/lib/contact/http-contact-dispatcher.ser
 import { type ActionResult, actionFailure, actionSuccess } from "@/lib/forms/form-result";
 import { instrumentServerAction } from "@/lib/observability/instrument-server-action";
 import type { EnquirerOrganisation } from "@/lib/private-sales/enquiring-as";
+import { enquiryFormSchema } from "@/lib/private-sales/enquiry-form-schema";
 import { toEnquiryPayload } from "@/lib/private-sales/enquiry-payload";
-import { type EnquiryFormValues, enquiryFormSchema } from "@/lib/private-sales/enquiry-values";
+import type { EnquiryFormValues } from "@/lib/private-sales/enquiry-values";
 import { createInMemorySlidingWindowRateLimiter } from "@/lib/rate-limit/in-memory-rate-limiter";
 
 const sendLimiter = createInMemorySlidingWindowRateLimiter({ windowMs: 60_000, maxPerWindow: 4 });

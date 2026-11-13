@@ -82,6 +82,14 @@ export interface IPayoutReadRepository {
   /** Find a payout and lock its row until the surrounding transaction ends (SELECT FOR UPDATE). */
   findByIdForUpdate(payoutId: string): Promise<Payout | null>;
 
+  /**
+   * Hold the payment's row (`FOR UPDATE`) until the surrounding transaction ends. A line for a
+   * payment takes it before the payout's row, the order every refund and settlement path locks in,
+   * so a path that does not already hold it cannot wait for the payment while holding the payout.
+   * Re-entrant: a no-op for a transaction that already holds it.
+   */
+  lockPayment(paymentId: string): Promise<void>;
+
   /** Serialise settlement for one legal entity until the surrounding transaction ends. */
   lockSettlementForEntity(legalEntityId: string): Promise<void>;
   /**
@@ -108,9 +116,11 @@ export interface IPayoutReadRepository {
    * not yet linked to any payout line (used by bulk settlement cron).
    */
   listLegalEntityIdsWithUnlinkedCapturedPayments(): Promise<string[]>;
-  /** Find the most recent payout for a legal entity that is still
-   * modifiable (scheduled or in_transit). Used for inserting negative lines
-   * from refunds/disputes. Returns null if no such payout exists.
+  /** Find the most recent payout for a legal entity that can still take
+   * lines: `scheduled` only, since once its transfer has started a line would
+   * change the record but not the money sent, and not one whose last transfer
+   * attempt ended with its outcome unknown (`payoutTakesLines`). Used for
+   * refund, give-back and dispute lines. Returns null if no such payout exists.
    */
   findOpenPayoutForEntity(legalEntityId: string): Promise<Payout | null>;
   /** Check if a payout line with the given sourceEventId already exists.

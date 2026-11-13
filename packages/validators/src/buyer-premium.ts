@@ -19,11 +19,12 @@ import type {
   BuyerPremiumSource,
   BuyerPremiumTier,
 } from "@auction/types";
-import { z } from "zod";
 
 /*
- * The buyer's premium as policies and input schemas. The maths and the rule for which premium a
- * lot charges live in `@auction/domain` (`buyer-premium-maths.ts`); this module wraps them.
+ * The buyer's premium as policies. The maths and the rule for which premium a lot charges live in
+ * `@auction/domain` (`buyer-premium-maths.ts`); this module wraps them. No schema library here:
+ * lot and sale pages compute the premium in the browser. The Zod schema for band rows is in
+ * `buyer-premium-schema.ts`.
  */
 export {
   type BuyerPremiumSaleTerms,
@@ -39,54 +40,7 @@ export function standardBuyerPremiumBands(): BuyerPremiumTier[] {
   return STANDARD_BUYER_PREMIUM_BANDS.map((band) => ({ ...band }));
 }
 
-const RATE_PATTERN = /^\d(\.\d{1,4})?$/u;
 const RATE_SCALE = 10_000n;
-
-const tierSchema = z.object({
-  hammerThresholdMinor: z.number().int().nonnegative().finite(),
-  rate: z
-    .string()
-    .regex(RATE_PATTERN, "Rate must be a decimal between 0 and 1 with up to 4 d.p.")
-    .refine((s) => rateToTenThousandths(s) !== null, "Rate must be between 0 and 1"),
-});
-
-/**
- * Zod schema for `BuyerPremiumTier` rows on `sale.buyer_premium_tiers`.
- *
- * Validation:
- * - non-empty array
- * - thresholds non-negative integers (minor units)
- * - rates are decimal strings between 0 and 1 with up to 4 d.p.
- * - first band MUST start at threshold 0 (covers all hammer values)
- * - thresholds strictly ascending and unique
- */
-export const buyerPremiumTiersSchema = z
-  .array(tierSchema)
-  .min(1, "Buyer premium tiers must have at least one entry")
-  .max(16, "Buyer premium tiers capped at 16 entries")
-  .superRefine((tiers, ctx) => {
-    if (tiers[0]?.hammerThresholdMinor !== 0) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "First tier must start at hammerThresholdMinor 0",
-        path: [0, "hammerThresholdMinor"],
-      });
-    }
-    for (let i = 1; i < tiers.length; i++) {
-      const prev = tiers[i - 1];
-      const cur = tiers[i];
-      if (!prev || !cur) continue;
-      if (cur.hammerThresholdMinor <= prev.hammerThresholdMinor) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: "Tiers must be strictly ascending by hammerThresholdMinor",
-          path: [i, "hammerThresholdMinor"],
-        });
-      }
-    }
-  });
-
-export type BuyerPremiumTiers = z.infer<typeof buyerPremiumTiersSchema>;
 
 /** A pence amount as a non-negative bigint; anything else is 0. */
 function safeMinor(minor: number): bigint {

@@ -149,3 +149,8 @@ export { isPgUniqueViolation, pgUniqueViolationConstraint } from "./pg-unique-vi
 export { collectionRequestCanonical } from "./collection-request-canonical.js";
 export { lockReofferLotThenOffer, type LockedReoffer } from "./lock-reoffer-lot-then-offer.js";
 export { lotResultPendingSql, lotSoldAfterAuctionSql } from "./lot-result-pending.sql.js";
+export {
+  SELLER_TERMS_FIGURE_COLUMNS,
+  type SellerTermsFiguresRow,
+  sellerTermsFigures,
+} from "./seller-terms-figures.js";
