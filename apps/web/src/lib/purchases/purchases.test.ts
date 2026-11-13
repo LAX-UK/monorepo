@@ -2,6 +2,7 @@ import type { AccountPurchaseFacts } from "@/lib/data/http/account-buying.types"
 import type { LotFulfilmentSnapshot } from "@/lib/data/http/payments.schema";
 import { type AccountHold, type HoldHolder, PURCHASE_LIST_LIMIT } from "@auction/domain";
 import type { Lot, PortfolioRow } from "@auction/types";
+import { STANDARD_BUYER_PREMIUM_BANDS } from "@auction/validators";
 import { describe, expect, it } from "vitest";
 import { owedFor } from "./owed-fixtures.test-util";
 import {
@@ -388,6 +389,45 @@ describe("buildPurchasesVm", () => {
       iso: "2026-12-24T12:00:00.000Z",
       zone: "Europe/London",
     });
+  });
+
+  it("names the premium as the stored invoice does, with its slices on a second line", () => {
+    const invoiced = row("lot-5", 5, null);
+    invoiced.lot.checkoutPricing = {
+      hammerMajor: "600000.00",
+      premiumMajor: "85000.00",
+      totalMajor: "685000.00",
+      policyId: "bands:[0:0.1500,50000000:0.1000]",
+      kind: "tiered",
+      premiumLabel: "Buyer's premium (15% of £500,000 + 10% of £100,000)",
+    };
+    const [card] = buildPurchasesVm(sources({ rows: [invoiced] })).cardsByTab["to-pay"];
+    expect(card?.breakdown[1]).toEqual({
+      label: "Buyer's premium",
+      value: "£85,000.00",
+      detail: "15% of £500,000 + 10% of £100,000",
+    });
+  });
+
+  it("explains an uninvoiced banded premium from the slices it was priced in", () => {
+    const live = row("lot-5", 5, null);
+    live.lot.checkoutPricing = {
+      hammerMajor: "600000.00",
+      premiumMajor: "85000.00",
+      totalMajor: "685000.00",
+      policyId: "bands:x",
+      kind: "tiered",
+      premium: {
+        source: "sale_bands",
+        schedule: { kind: "bands", bands: [...STANDARD_BUYER_PREMIUM_BANDS] },
+        breakdown: [
+          { rate: "0.1500", baseMinor: 50_000_000 },
+          { rate: "0.1000", baseMinor: 10_000_000 },
+        ],
+      },
+    };
+    const [card] = buildPurchasesVm(sources({ rows: [live] })).cardsByTab["to-pay"];
+    expect(card?.breakdown[1]?.detail).toBe("15% of £500,000 + 10% of £100,000");
   });
 
   it("shows a due purchase with its deadline, breakdown and its own page", () => {

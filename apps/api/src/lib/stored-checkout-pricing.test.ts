@@ -47,7 +47,25 @@ describe("checkoutPricingFromInvoice", () => {
       totalMajor: "1250.00",
       policyId: "flat:0.25",
       kind: "flat",
+      premiumLabel: "Buyer's premium (25%)",
     });
+  });
+
+  it("carries the invoice's own premium line label, so the receipt names the slices charged", () => {
+    const priced = checkoutPricingFromInvoice(live, {
+      totalPence: 68_500_000,
+      pricingPolicyId: "bands:[0:0.1500,50000000:0.1000]",
+      lines: [
+        { kind: "hammer", label: "Hammer price", ratePercent: null, amountPence: 60_000_000 },
+        {
+          kind: "buyers_premium",
+          label: "Buyer's premium (15% of £500,000 + 10% of £100,000)",
+          ratePercent: null,
+          amountPence: 8_500_000,
+        },
+      ],
+    });
+    expect(priced.premiumLabel).toBe("Buyer's premium (15% of £500,000 + 10% of £100,000)");
   });
 
   it("reports a tiered invoice as tiered", () => {

@@ -50,10 +50,31 @@ describe("one lot, ready to pay", () => {
   it("shows the invoice's own lines and the server's total", () => {
     expect(vm.money?.lines).toEqual([
       { label: "Hammer price", amount: "£1,900.00" },
-      { label: "Buyer's premium (25%)", amount: "£475.00" },
+      { label: "Buyer's premium", amount: "£475.00", detail: "25%" },
     ]);
     expect(vm.money?.totalLabel).toBe("Total to pay");
     expect(vm.money?.total).toBe("£2,375.00");
+  });
+
+  it("puts a banded premium's slices on a second line under its name", () => {
+    const banded = planOf([
+      payable(LOT_A, 60_000_000, 8_500_000, {
+        lines: [
+          { kind: "hammer", label: "Hammer price", ratePercent: null, amountPence: 60_000_000 },
+          {
+            kind: "buyers_premium",
+            label: "Buyer's premium (15% of £500,000 + 10% of £100,000)",
+            ratePercent: null,
+            amountPence: 8_500_000,
+          },
+        ],
+      }),
+    ]);
+    expect(build(banded).money?.lines[1]).toEqual({
+      label: "Buyer's premium",
+      amount: "£85,000.00",
+      detail: "15% of £500,000 + 10% of £100,000",
+    });
   });
 
   it("names the company that issues the invoice, and numbers only once they exist", () => {

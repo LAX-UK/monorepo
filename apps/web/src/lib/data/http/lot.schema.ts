@@ -31,7 +31,16 @@ function parseCheckoutPricing(raw: unknown): Lot["checkoutPricing"] | undefined 
         ? "tiered"
         : "flat";
   const premium = parseResolvedPremium(raw.premium);
-  return { hammerMajor, premiumMajor, totalMajor, policyId, kind, ...(premium ? { premium } : {}) };
+  const premiumLabel = typeof raw.premiumLabel === "string" ? raw.premiumLabel.trim() : "";
+  return {
+    hammerMajor,
+    premiumMajor,
+    totalMajor,
+    policyId,
+    kind,
+    ...(premium ? { premium } : {}),
+    ...(premiumLabel ? { premiumLabel } : {}),
+  };
 }
 
 /** The premium the server resolved for the lot: where it came from, its terms and its slices. */

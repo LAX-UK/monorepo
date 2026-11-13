@@ -121,6 +121,11 @@ export type Lot = {
       schedule: BuyerPremiumSchedule;
       breakdown: BuyerPremiumSlice[];
     };
+    /**
+     * The buyer's premium line as the stored invoice names it, e.g. "Buyer's premium (15% of
+     * £500,000 + 10% of £100,000)"; present only on figures read from the buyer's own invoice.
+     */
+    premiumLabel?: string;
   };
   /** Minimum raise over current price (English / buy-it-now paths). */
   minBidIncrement: string;

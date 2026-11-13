@@ -33,12 +33,16 @@ export function checkoutPricingFromInvoice(
   if (!hasHammer) {
     return { ...live, totalMajor: gbpPenceToMajorString(invoice.totalPence), policyId, kind };
   }
+  const premiumLines = invoice.lines.filter((line) => line.kind === "buyers_premium");
+  const [premiumLine] = premiumLines;
   return {
     hammerMajor: gbpPenceToMajorString(penceOf(invoice.lines, "hammer")),
     premiumMajor: gbpPenceToMajorString(penceOf(invoice.lines, "buyers_premium")),
     totalMajor: gbpPenceToMajorString(invoice.totalPence),
     policyId,
     kind,
+    // The receipt names the premium as the invoice does; several premium lines have no one name.
+    ...(premiumLines.length === 1 && premiumLine ? { premiumLabel: premiumLine.label } : {}),
   };
 }
 
