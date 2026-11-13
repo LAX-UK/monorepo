@@ -3,6 +3,7 @@
 import type { LinkComponent } from "@auction/ui/lax";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import type * as React from "react";
+import { recordHrefInList } from "../data/list-state.js";
 import { StaffButton } from "../primitives/button.js";
 import { StaffTooltip } from "../primitives/menu.js";
 import { useStaffShortcut } from "./shortcuts.js";
@@ -36,12 +37,16 @@ const COUNT = new Intl.NumberFormat("en-GB");
  * "‹ 3 of 50 ›" in a record's header, to work through a list without going back to it. K opens
  * the previous record and J the next, as in the list. At either end the button is disabled
  * rather than wrapping round.
+ *
+ * With `listQuery` (the list's state, as the record's `?list=` carries it), the previous and next
+ * records keep it too, so paging never loses the list's view, search, filters or sort.
  */
 export function RecordPager({
   position,
   total,
-  previousHref,
-  nextHref,
+  previousHref: previousRecordHref,
+  nextHref: nextRecordHref,
+  listQuery,
   noun = "record",
   Link,
   navigate,
@@ -51,6 +56,8 @@ export function RecordPager({
   total: number;
   previousHref: string | null;
   nextHref: string | null;
+  /** The list this record was opened from (`listQueryFromRecord`), kept on the next record. */
+  listQuery?: string | null;
   /** What the list holds, singular: "order" gives "Previous order". */
   noun?: string;
   Link: LinkComponent;
@@ -62,6 +69,9 @@ export function RecordPager({
    */
   shortcuts?: boolean;
 }) {
+  const inList = (href: string | null) => (href ? recordHrefInList(href, listQuery) : null);
+  const previousHref = inList(previousRecordHref);
+  const nextHref = inList(nextRecordHref);
   useStaffShortcut(
     shortcuts && previousHref
       ? {
