@@ -68,6 +68,7 @@ import { createPlatformServices } from "./container/create-platform-services.js"
 import { createPurchaseProblemDesk } from "./container/create-purchase-problem-desk.js";
 import { createReofferServices } from "./container/create-reoffer-services.js";
 import { createRepositories } from "./container/create-repositories.js";
+import { createSellerProceedsServices } from "./container/create-seller-proceeds-services.js";
 import { createSubmissionRouteServices } from "./container/create-submission-route-services.js";
 import { createUserMiscServices } from "./container/create-user-misc-services.js";
 import { createUserNotificationComposition } from "./container/create-user-notification-composition.js";
@@ -512,6 +513,7 @@ export function createContainer(env: Env): Container {
       createBaseLogger(env).warn(report, "payout totals differ from payout lines"),
   });
   const reoffer = createReofferServices({ db, platform, repos, payments });
+  const sellerProceeds = createSellerProceedsServices({ db, platform });
   const organisationWorkspace = createOrganisationWorkspaceServices({
     db,
     legalEntities: repos.legalEntityRepository,
@@ -893,6 +895,7 @@ export function createContainer(env: Env): Container {
     organisationBuying: organisationBuying.client,
     organisationSelling,
     reoffer,
+    sellerProceeds,
     organisationAccess,
     organisationWorkspace,
     organisationTeam,

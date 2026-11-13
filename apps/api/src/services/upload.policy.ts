@@ -8,7 +8,13 @@ import {
   ENQUIRY_IMAGE_TYPES,
 } from "@auction/domain";
 import type { StaffRoles, UserRole } from "@auction/types";
-import { CONSIGNMENT_INBOX_REPLY_ACCESS, roleHasCapability, userHasAccessTo } from "@auction/types";
+import {
+  CONSIGNMENT_INBOX_REPLY_ACCESS,
+  SELLER_AGREEMENT_RECORD_ACCESS,
+  roleHasCapability,
+  userHasAccessTo,
+} from "@auction/types";
+import { SIGNED_AGREEMENT_MAX_BYTES } from "@auction/validators";
 
 export const uploadKinds = [
   "avatar",
@@ -26,6 +32,7 @@ export const uploadKinds = [
   "consignment_message_attachment",
   "enquiry_image",
   "enquiry_document",
+  "signed_consignment_agreement",
 ] as const;
 export type UploadKind = (typeof uploadKinds)[number];
 
@@ -71,6 +78,12 @@ export const uploadPolicies: Record<UploadKind, UploadPolicy> = {
     maxBytes: 25 * 1024 * 1024,
     allowedContentTypes: ["application/pdf", "image/jpeg", "image/png", "image/webp"],
     keyPrefix: "uploads/pending/lot-documents",
+  },
+  signed_consignment_agreement: {
+    /** A scanned paper agreement staff record for a seller: a PDF, kept with the consignment. */
+    maxBytes: SIGNED_AGREEMENT_MAX_BYTES,
+    allowedContentTypes: ["application/pdf"],
+    keyPrefix: "uploads/pending/consignment-agreements",
   },
   sale_document: {
     maxBytes: 25 * 1024 * 1024,
@@ -160,6 +173,18 @@ const uploadRejections: Partial<
       limit,
     }),
   },
+  signed_consignment_agreement: {
+    type: (limit) => ({
+      code: "attachment_type",
+      error: "Add the signed agreement as a PDF.",
+      limit,
+    }),
+    size: (limit) => ({
+      code: "attachment_too_large",
+      error: `The signed agreement is larger than ${megabytes(limit.maxBytes)}. Use a smaller PDF.`,
+      limit,
+    }),
+  },
   enquiry_document: {
     type: (limit) => ({ code: "attachment_type", error: "Use a PDF.", limit }),
     size: (limit) => ({
@@ -214,6 +239,8 @@ export function canUploadKind(
         roleHasCapability(role, "auction.manage", staffRoles) ||
         roleHasCapability(role, "catalogue.write", staffRoles)
       );
+    case "signed_consignment_agreement":
+      return userHasAccessTo(role, staffRoles, SELLER_AGREEMENT_RECORD_ACCESS);
     case "submission_document":
       return (
         roleHasCapability(role, "platform.admin.full", staffRoles) ||

@@ -106,6 +106,7 @@ import type { ContainerPlatformServices } from "./create-platform-services.js";
 import type { ContainerReofferServices } from "./create-reoffer-services.js";
 import type { ContainerRepositories } from "./create-repositories.js";
 import type { ContainerSaleRegistrationServices } from "./create-sale-registration-services.js";
+import type { ContainerSellerProceedsServices } from "./create-seller-proceeds-services.js";
 import type { ContainerUserMiscServices } from "./create-user-misc-services.js";
 import type { ContainerUserNotificationComposition } from "./create-user-notification-composition.js";
 import type { ContainerUserProfileServices } from "./create-user-profile-services.js";
@@ -377,6 +378,17 @@ export type ContainerReofferSlice = {
   reoffer: ContainerReofferServices;
 };
 
+/** A sold lot's seller proceeds for staff, and recording a seller's signed agreement. */
+export type ContainerSellerProceedsSlice = {
+  sellerProceeds: ContainerSellerProceedsServices;
+};
+
+/** Staff seller-proceeds routes: platform staff and finance, with step-up for recording. */
+export type ContainerSellerProceedsRoutesSlice = ContainerSellerProceedsSlice &
+  Pick<Container, "userSuspensionChecker"> & {
+    admin: Pick<Container["admin"], "stepUp">;
+  };
+
 /** The client workspace's selling modules for the acting account (`organisationSelling`). */
 export type ContainerOrganisationSellingSlice = {
   organisationSelling: OrganisationSellingServices;
@@ -440,6 +452,7 @@ export type ContainerComposedSlices = ContainerRootSlice &
   ContainerOrganisationBuyingSlice &
   ContainerOrganisationSellingSlice &
   ContainerReofferSlice &
+  ContainerSellerProceedsSlice &
   ContainerOrganisationAccessSlice &
   ContainerOrganisationWorkspaceSlice &
   ContainerOrganisationTeamSlice &
