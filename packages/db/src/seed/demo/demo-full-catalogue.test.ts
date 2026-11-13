@@ -1,10 +1,10 @@
 import { invoiceDueAt } from "@auction/domain";
+import { BandedBuyerPremiumPolicy, STANDARD_BUYER_PREMIUM_BANDS } from "@auction/validators";
 import { describe, expect, it } from "vitest";
 import { assertDemoFullTarget } from "../runners/demo-full-cli.js";
 import { buildFullCatalogue } from "./demo-full-catalogue.js";
 import { approvedExposurePounds } from "./demo-full-seed.js";
 import { DEPARTMENTS, WORKS } from "./demo-full-works.js";
-import { BUYER_PREMIUM_RATE } from "./demo-topup-catalogue.js";
 
 const actors = {
   collectorUserId: "collector",
@@ -121,7 +121,9 @@ describe.each(CLOCKS)("full demo catalogue at %d", (now) => {
         expect(sum).toBe(p.invoice.totalPence);
         expect(p.invoice.lines.map((l) => l.kind)).toEqual(["hammer", "buyers_premium"]);
         expect(p.invoice.lines[0]?.amountPence).toBe(Math.round(p.hammer * 100));
-        expect(p.invoice.totalPence).toBe(Math.round(p.hammer * 100 * (1 + BUYER_PREMIUM_RATE)));
+        const hammerPence = Math.round(p.hammer * 100);
+        const premium = new BandedBuyerPremiumPolicy(STANDARD_BUYER_PREMIUM_BANDS);
+        expect(p.invoice.totalPence).toBe(hammerPence + premium.computePremiumMinor(hammerPence));
         expect(p.invoice.source).toBe("raised");
         expect(p.invoice.raisedAt.getTime()).toBe(p.createdAt.getTime());
         expect(p.invoice.dueAt.getTime()).toBe(invoiceDueAt(p.createdAt).getTime());

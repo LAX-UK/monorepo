@@ -5,7 +5,7 @@ import type {
 } from "@auction/persistence/interfaces";
 import type { ILegalEntityRepository } from "@auction/persistence/interfaces";
 import type { ILotRepository, ISaleRepository } from "@auction/persistence/interfaces";
-import type { IRepositoryFactory } from "@auction/persistence/interfaces";
+import type { IInvoicedSalePriceReader, IRepositoryFactory } from "@auction/persistence/interfaces";
 import type { IVenueRepository } from "@auction/persistence/interfaces";
 import type { Lot, Sale, StaffRoles } from "@auction/types";
 import type {
@@ -32,6 +32,7 @@ import {
   attachExistingLotToSale,
   detachLotFromSale,
 } from "./sale/sale-lot-membership.js";
+import { useSalePremiumForLots } from "./sale/sale-lot-premium.js";
 import {
   findByIds,
   getById,
@@ -70,6 +71,7 @@ export type SaleServiceOptions = {
   repoFactory?: IRepositoryFactory | null;
   saleChannelReader?: ISaleChannelReader | null;
   publicLotResults?: IPublicLotResultReader | null;
+  invoicedSalePrices?: IInvoicedSalePriceReader | null;
   telephoneBookings?: LotBookingRemoval | null;
   salePublishService: ISalePublishService;
 };
@@ -100,6 +102,7 @@ export class SaleService implements ISaleService {
       repoFactory: opts.repoFactory ?? null,
       saleChannelReader: opts.saleChannelReader ?? null,
       publicLotResults: opts.publicLotResults ?? null,
+      invoicedSalePrices: opts.invoicedSalePrices ?? null,
       telephoneBookings: opts.telephoneBookings ?? null,
     };
     this.publishService = opts.salePublishService;
@@ -219,6 +222,12 @@ export class SaleService implements ISaleService {
     userStaffRoles?: StaffRoles | undefined,
   ): Promise<Result<void, LotError | AuthzError>> {
     return detachLotFromSale(this.deps, userRole, saleId, lotId, userStaffRoles);
+  }
+
+  useSalePremiumForLots(
+    input: Parameters<ISaleService["useSalePremiumForLots"]>[0],
+  ): ReturnType<ISaleService["useSalePremiumForLots"]> {
+    return useSalePremiumForLots(this.deps, input);
   }
 
   async updateDraft(

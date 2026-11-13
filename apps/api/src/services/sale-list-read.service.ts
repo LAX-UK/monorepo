@@ -1,5 +1,6 @@
 import type { SaleResultsSummary } from "@auction/domain";
 import type {
+  IInvoicedSalePriceReader,
   ILotRepository,
   IPublicLotResultReader,
   ISaleChannelReader,
@@ -12,6 +13,7 @@ import {
   resolvePublicSaleListFilter,
   viewerCanSeeNonPublicCatalog,
 } from "@auction/validators";
+import { withInvoicedSalePrices } from "../lib/invoiced-sale-prices.js";
 import { mapLotToSummary } from "../lib/mappers.js";
 import { presentSalesWithLotsImages } from "../lib/media-presenters.js";
 import { withPublicLotResults } from "../lib/public-lot-result.js";
@@ -47,6 +49,8 @@ export class SaleListReadService implements ISaleListReadService {
     private readonly resultsSummaries: ISaleResultsSummaryService | null = null,
     /** Lots whose result is still open; the public preview shows only that they ended. */
     private readonly publicLotResults: IPublicLotResultReader | null = null,
+    /** Sold lots show what their invoice charged. */
+    private readonly invoicedSalePrices: IInvoicedSalePriceReader | null = null,
   ) {}
 
   async listForPublicApi(
@@ -82,9 +86,14 @@ export class SaleListReadService implements ISaleListReadService {
       this.lotRepo.findPreviewLotsBySaleIds(saleIds, PREVIEW_LOTS_PER_SALE, visibilityOpts),
     ]);
     // Staff see the real buyer and price; everyone else sees an open result as "ended".
-    const previewLots = canPreview
-      ? foundPreviewLots
-      : await withPublicLotResults(this.publicLotResults, foundPreviewLots);
+    const saleById = new Map(sales.map((s) => [s.id, s]));
+    const previewLots = await withInvoicedSalePrices(
+      this.invoicedSalePrices,
+      canPreview
+        ? foundPreviewLots
+        : await withPublicLotResults(this.publicLotResults, foundPreviewLots),
+      (lot) => (lot.saleId ? (saleById.get(lot.saleId) ?? null) : null),
+    );
 
     const previewsBySale = new Map<string, Lot[]>();
     for (const lot of previewLots) {

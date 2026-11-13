@@ -78,8 +78,8 @@ function buildProfile(auctionType: LotAuctionType): LotCatalogueProfile {
     buyerPremiumRate: {
       visible: true,
       label: "Buyer's premium",
-      helpText: "Charged on the hammer price.",
-      placeholder: "25",
+      helpText: "Uses the sale's premium unless you set one for this lot.",
+      placeholder: "e.g. 20",
       section: "pricing" as const,
     },
     categoryIds: {

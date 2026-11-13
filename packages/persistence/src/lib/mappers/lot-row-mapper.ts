@@ -46,7 +46,7 @@ export function mapLotRow(row: LotRow, categoryIds: string[] = []): Lot {
     reservePrice: row.reservePrice !== null ? String(row.reservePrice) : null,
     buyNowPrice: row.buyNowPrice !== null ? String(row.buyNowPrice) : null,
     currentPrice: String(row.currentPrice),
-    buyerPremiumRate: String(row.buyerPremiumRate),
+    buyerPremiumRate: row.buyerPremiumRate != null ? String(row.buyerPremiumRate) : null,
     minBidIncrement: String(row.minBidIncrement),
     autoBidEnabled: row.autoBidEnabled ?? true,
     autoBidStepMin: row.autoBidStepMin !== null ? String(row.autoBidStepMin) : null,

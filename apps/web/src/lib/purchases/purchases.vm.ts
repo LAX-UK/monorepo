@@ -4,6 +4,7 @@ import type { LotFulfilmentSnapshot } from "@/lib/data/http/payments.schema";
 import { formatMoney, lotChargeCurrency } from "@/lib/format-currency";
 import { CLIENT_ROUTES, organisationHref } from "@/lib/navigation/client-routes";
 import { payHref } from "@/lib/pay/pay-links";
+import { premiumLineParts } from "@/lib/pay/premium-line";
 import { lotPath } from "@/lib/seo/url";
 import { formatDate, formatDayMonthOnly } from "@auction/datetime";
 import { LONDON_TIME_ZONE, formatWhen } from "@auction/datetime";
@@ -19,6 +20,7 @@ import {
 } from "@auction/domain";
 import type { PortfolioRow } from "@auction/types";
 import { formatGbp } from "@auction/ui/lib/money";
+import { describeBuyerPremiumBreakdown } from "@auction/validators";
 import { PURCHASE_STATE_LABEL } from "./purchase-labels";
 import { purchaseProblemHref } from "./purchase-problem";
 import {
@@ -87,7 +89,8 @@ export type PurchaseCardVm = {
   wonAt: number;
   /** `null` when the purchase ended early (refunded or cancelled). */
   steps: PurchaseStepVm[] | null;
-  breakdown: { label: string; value: string }[];
+  /** The money lines; `detail` is how a line was worked out (the premium's rate or slices). */
+  breakdown: { label: string; value: string; detail?: string }[];
   primaryAction: { label: string; href: string } | null;
   invoiceHref: string | null;
   problemHref: string | null;
@@ -318,14 +321,30 @@ function stepsFor(
   }));
 }
 
+/**
+ * How the premium was worked out, as Pay shows it: the invoice's own premium line once one is
+ * raised ("15% of £500,000 + 10% of £100,000"), else the slices the resolver priced it in.
+ */
+function premiumDetail(
+  pricing: NonNullable<PortfolioRow["lot"]["checkoutPricing"]>,
+): string | null {
+  if (pricing.premiumLabel) return premiumLineParts(pricing.premiumLabel).detail;
+  return pricing.premium ? describeBuyerPremiumBreakdown(pricing.premium.breakdown) || null : null;
+}
+
 function breakdownFor(row: PortfolioRow, paidBy: string | null): PurchaseCardVm["breakdown"] {
   const pricing = row.lot.checkoutPricing;
   const lines: PurchaseCardVm["breakdown"] = [];
   if (pricing) {
     const currency = lotChargeCurrency(row.lot);
+    const detail = premiumDetail(pricing);
     lines.push(
       { label: "Hammer price", value: formatMoney(pricing.hammerMajor, currency) },
-      { label: "Buyer's premium", value: formatMoney(pricing.premiumMajor, currency) },
+      {
+        label: "Buyer's premium",
+        value: formatMoney(pricing.premiumMajor, currency),
+        ...(detail ? { detail } : {}),
+      },
     );
   }
   if (paidBy) lines.push({ label: "Paid by", value: paidBy });

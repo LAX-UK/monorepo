@@ -3,7 +3,7 @@ import { lotNotDeleted } from "@auction/db";
 import { artistProfile, bid, legalEntity, lot, lotCategories } from "@auction/db/schema";
 import type { CreateLotInput, Lot } from "@auction/types";
 import type { UpdateLotMarketingDetailsInput } from "@auction/validators";
-import { and, asc, desc, eq, inArray } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNotNull, isNull, sql } from "drizzle-orm";
 import type {
   ArchiveEndedAggregateFilter,
   ILotRepository,
@@ -296,6 +296,34 @@ export class DrizzleLotRepository implements ILotRepository {
 
   async markArchivedSellerOnDraftScheduledLots(sellerLegalEntityId: string): Promise<number> {
     return markArchivedSellerOnDraftScheduledLots(this.db, sellerLegalEntityId);
+  }
+
+  async clearOwnPremiumOfUnopenedLots(
+    saleId: string,
+    lotIds: readonly string[],
+  ): Promise<{ lotId: string; previousRate: string }[]> {
+    if (lotIds.length === 0) return [];
+    // FOR UPDATE re-evaluates the WHERE on the latest row version, so a lot that opened for
+    // bidding (or was won) while this waited for its lock is left as it is.
+    const unopened = and(
+      inArray(lot.id, [...lotIds]),
+      eq(lot.saleId, saleId),
+      inArray(lot.status, ["draft", "scheduled"]),
+      isNull(lot.winnerId),
+      isNotNull(lot.buyerPremiumRate),
+      lotNotDeleted(),
+    );
+    const result = await this.db.execute(sql`
+      WITH target AS (
+        SELECT ${lot.id} AS id, ${lot.buyerPremiumRate}::text AS previous_rate
+        FROM ${lot} WHERE ${unopened} FOR UPDATE
+      )
+      UPDATE ${lot} SET "buyer_premium_rate" = NULL, "updated_at" = now()
+      FROM target WHERE ${lot.id} = target.id
+      RETURNING target.id AS "lotId", target.previous_rate AS "previousRate"
+    `);
+    const rows = Array.isArray(result) ? result : (result as { rows: unknown[] }).rows;
+    return rows as { lotId: string; previousRate: string }[];
   }
 
   async update(id: string, input: Partial<CreateLotInput>): Promise<Lot> {

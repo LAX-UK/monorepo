@@ -18,6 +18,8 @@ import {
   type IBidInvoiceDueDateRepository,
   type IBidInvoiceRaiseRepository,
   type IBidInvoiceReader,
+  type IInvoicedSalePriceReader,
+  type InvoicedSalePrice,
   type OpenInvoiceScope,
   type RaisedInvoice,
   bidInvoiceKey,
@@ -92,10 +94,48 @@ export class DrizzleBidInvoiceRepository
   implements
     IBidInvoiceReader,
     IBidInvoiceBatchReader,
+    IInvoicedSalePriceReader,
     IBidInvoiceRaiseRepository,
     IBidInvoiceDueDateRepository
 {
   constructor(private readonly db: Database) {}
+
+  async findInvoicedSalePrices(lotIds: readonly string[]): Promise<Map<string, InvoicedSalePrice>> {
+    if (lotIds.length === 0) return new Map();
+    const amountOf = (kind: InvoiceLineKind) =>
+      sql<
+        string | null
+      >`sum(${bidInvoiceLine.amountPence}) filter (where ${bidInvoiceLine.kind} = ${kind})`;
+    const rows = await this.db
+      .select({
+        lotId: bidInvoice.lotId,
+        pricingPolicyId: bidInvoice.pricingPolicyId,
+        hammerPence: amountOf("hammer"),
+        premiumPence: amountOf("buyers_premium"),
+      })
+      .from(bidInvoice)
+      .innerJoin(
+        lot,
+        and(
+          eq(lot.id, bidInvoice.lotId),
+          eq(lot.buyerLegalEntityId, bidInvoice.buyerLegalEntityId),
+        ),
+      )
+      .innerJoin(bidInvoiceLine, eq(bidInvoiceLine.invoiceId, bidInvoice.id))
+      .where(and(isNull(bidInvoice.voidedAt), inArray(bidInvoice.lotId, [...new Set(lotIds)])))
+      .groupBy(bidInvoice.id);
+    const prices = new Map<string, InvoicedSalePrice>();
+    for (const row of rows) {
+      // A legacy invoice holds one total line: there is no hammer to show on its own.
+      if (row.hammerPence === null) continue;
+      prices.set(row.lotId, {
+        hammerPence: Number(row.hammerPence),
+        premiumPence: Number(row.premiumPence ?? 0),
+        pricingPolicyId: row.pricingPolicyId,
+      });
+    }
+    return prices;
+  }
 
   async findLiveByLotAndBuyerAccount(
     lotId: string,

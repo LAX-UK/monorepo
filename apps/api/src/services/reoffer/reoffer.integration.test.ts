@@ -192,6 +192,8 @@ describe.skipIf(!HAS_DB)("re-offer API services (integration)", () => {
       auctionType: "english",
       startingPrice: "100.00",
       currentPrice: "1000.00",
+      // The lot's own 25% premium: the figures below are worked at it.
+      buyerPremiumRate: "0.25",
       minBidIncrement: "10.00",
       startTime: new Date("2026-10-01T10:00:00Z"),
       endTime: new Date("2026-10-10T10:00:00Z"),

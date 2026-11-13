@@ -1,5 +1,8 @@
 import type { Database } from "@auction/db";
-import type { ILegalEntityRepository } from "@auction/persistence/interfaces";
+import type {
+  IInvoicedSalePriceReader,
+  ILegalEntityRepository,
+} from "@auction/persistence/interfaces";
 import {
   type Lot,
   type UserRole,
@@ -12,6 +15,7 @@ import {
   viewerCanSeeNonPublicCatalog,
 } from "@auction/validators";
 import { canReadCatalogueAdmin } from "../../lib/catalogue-auth.js";
+import { invoicedSalePricesOf } from "../../lib/invoiced-sale-prices.js";
 import { listLotDocumentsPublic } from "../../lib/list-lot-documents-public.js";
 import { computeLotCheckoutPricing } from "../../lib/lot-checkout-pricing.js";
 import { buildLotDetailBiddingView } from "../../lib/lot-detail-bidding-view.js";
@@ -21,6 +25,10 @@ import { lotsWithCheckoutPricing } from "../../lib/lots-with-checkout-pricing.js
 import { mapLotToStaffListRow, mapLotToSummary } from "../../lib/mappers.js";
 import { presentLotImages } from "../../lib/media-presenters.js";
 import { buildConnectRequiredByLotId } from "../../lib/seller-connect-readiness.js";
+import {
+  checkoutPricingFromInvoicedSale,
+  invoicedBuyersPremiumTerms,
+} from "../../lib/stored-checkout-pricing.js";
 import type { CachedCatalogueListService } from "../cached-catalogue-list.service.js";
 import type { ICatalogLotReadHttpApplicationService } from "../interfaces/catalog-routes/catalog-lot-read-http.js";
 import type {
@@ -50,6 +58,8 @@ export class CatalogLotReadHttpApplicationService implements ICatalogLotReadHttp
     private readonly db: Database,
     private readonly objectStorage: IObjectStorage,
     private readonly now: () => Date = () => new Date(),
+    /** Sold lots show what their invoice charged; unset, they are priced under today's rules. */
+    private readonly invoicedSalePrices: IInvoicedSalePriceReader | null = null,
   ) {}
 
   async listLots(input: {
@@ -136,7 +146,10 @@ export class CatalogLotReadHttpApplicationService implements ICatalogLotReadHttp
         return { data: (withZone as Lot[]).map(mapLotToStaffListRow) };
       }
 
-      const withPricing = await lotsWithCheckoutPricing({ saleService: this.saleService }, rows);
+      const withPricing = await lotsWithCheckoutPricing(
+        { saleService: this.saleService, invoicedSalePrices: this.invoicedSalePrices },
+        rows,
+      );
       return { data: withPricing.map(mapLotToSummary) };
     };
 
@@ -232,13 +245,16 @@ export class CatalogLotReadHttpApplicationService implements ICatalogLotReadHttp
       input.viewer.role ?? undefined,
       input.viewer.staffRoles,
     );
-    const checkoutPricing = computeLotCheckoutPricing(masked, sale);
+    const live = computeLotCheckoutPricing(masked, sale);
+    const sold = (await invoicedSalePricesOf(this.invoicedSalePrices, [masked])).get(masked.id);
+    const checkoutPricing = sold ? checkoutPricingFromInvoicedSale(live, sold) : live;
     const visible = withSaleTimeZone({ ...masked, checkoutPricing }, sale);
     const bidding = buildLotDetailBiddingView({
       lot: visible,
       sale,
       checkoutTotal: checkoutPricing.totalMajor,
       now: this.now(),
+      invoicedPremium: sold ? invoicedBuyersPremiumTerms(sold) : null,
     });
     return {
       status: 200,

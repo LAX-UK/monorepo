@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { standardBuyerPremiumBands } from "@auction/validators";
 /**
  * Demo top-up: adds what a live demo needs on top of an environment that already has the base
  * demo seed (or real review data), without removing or resetting anything.
@@ -20,9 +21,9 @@ import type { NodePgQueryResultHKT } from "drizzle-orm/node-postgres";
 import type { PgDatabase } from "drizzle-orm/pg-core";
 import * as schema from "../../schema/index.js";
 import { insertSeedInvoices, penceToPounds, priceHammer } from "../shared/seed-invoice.js";
+import { SEED_BUYER_PREMIUM_TERMS } from "../shared/terms.js";
 import { DEMO_ARTIST_LIST } from "./demo-artists.js";
 import {
-  BUYER_PREMIUM_RATE,
   type DemoActors,
   type DemoCatalogue,
   SELLER_COMMISSION_RATE,
@@ -48,7 +49,7 @@ const money = (pounds: number) => pounds.toFixed(2);
  * use the same two figures as the payment, so a payout's totals equal its lines added up. The
  * amount paid is the invoice's total, worked out by the application's calculator.
  */
-const paidFor = (hammer: number) => priceHammer(hammer, BUYER_PREMIUM_RATE).totalPence / 100;
+const paidFor = (hammer: number) => priceHammer(hammer).totalPence / 100;
 const commissionOn = (hammer: number) => paidFor(hammer) * SELLER_COMMISSION_RATE;
 
 export type DemoTopUpResult = {
@@ -374,8 +375,9 @@ export async function writeCatalogue(db: Db, catalogue: DemoCatalogue, base: Bas
         coverImages: [sale.coverImage],
         deliveryMode: sale.deliveryMode,
         allowOnlineBidsBeforeGoLive: sale.deliveryMode === "hybrid",
-        buyerPremiumRate: BUYER_PREMIUM_RATE.toFixed(4),
-        terms: "Buyer's premium of 25% is added to the hammer price. Payment is due within 7 days.",
+        buyerPremiumRate: "0.1500",
+        buyerPremiumTiers: standardBuyerPremiumBands(),
+        terms: `${SEED_BUYER_PREMIUM_TERMS} Payment is due within 7 days.`,
         createdByLegalEntityId: base.laxStockId,
         venueId: sale.atVenue ? base.venueId : null,
         ...(sale.atVenue
@@ -421,7 +423,6 @@ export async function writeCatalogue(db: Db, catalogue: DemoCatalogue, base: Bas
         reservePrice: money(lot.reservePrice),
         currentPrice: money(lot.currentPrice),
         minBidIncrement: money(lot.minBidIncrement),
-        buyerPremiumRate: BUYER_PREMIUM_RATE.toFixed(4),
         sellerLegalEntityId: lot.sellerEntityId,
         artistId: lot.artistId,
         winnerId: lot.winnerUserId,

@@ -1,4 +1,5 @@
 import { SaleLotsTabBoard } from "@/components/admin/sale-detail/sale-lots-tab-board";
+import type { SaleLotsLens } from "@/lib/data/view-models/sale-lots-tab.vm";
 import type { CategoryNode, Lot, Sale } from "@auction/types";
 
 type Props = {
@@ -9,6 +10,7 @@ type Props = {
   categories?: CategoryNode[];
   englishOnlyAuctionsLocked?: boolean;
   artistNameById?: Record<string, string>;
+  initialLens?: SaleLotsLens;
 };
 
 export function SaleLotsTab({
@@ -19,6 +21,7 @@ export function SaleLotsTab({
   categories = [],
   englishOnlyAuctionsLocked = false,
   artistNameById = {},
+  initialLens = "all",
 }: Props) {
   return (
     <SaleLotsTabBoard
@@ -29,7 +32,12 @@ export function SaleLotsTab({
         startTime: sale.startTime,
         endTime: sale.endTime,
         timeZone: sale.timeZone,
+        premium: {
+          buyerPremiumRate: sale.buyerPremiumRate,
+          buyerPremiumTiers: sale.buyerPremiumTiers,
+        },
       }}
+      initialLens={initialLens}
       lots={lots}
       canManageAuction={canManageAuction}
       categories={categories}

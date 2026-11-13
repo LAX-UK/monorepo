@@ -162,7 +162,7 @@ describe("buildLotPageView lifecycles", () => {
     expect(view.price).toMatchObject({
       label: "Sold for",
       amountText: "£8,750",
-      subLine: "Hammer £7,000 plus 25% buyer's premium",
+      subLine: "Hammer £7,000 plus £1,750 buyer's premium",
     });
     expect(view.rows.at(-1)).toMatchObject({
       label: "Ended",

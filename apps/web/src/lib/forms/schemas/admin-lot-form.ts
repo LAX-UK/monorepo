@@ -303,7 +303,10 @@ function buildCreateLotRaw(v: AdminLotFormValues, opts?: { forUpdate?: boolean }
     startingPrice: v.startingPrice.trim(),
     reservePrice: (v.reservePrice && String(v.reservePrice).trim()) || undefined,
     buyNowPrice: (v.buyNowPrice && String(v.buyNowPrice).trim()) || undefined,
-    buyerPremiumRate: (v.buyerPremiumRate && String(v.buyerPremiumRate).trim()) || undefined,
+    // Empty means "use the sale's premium": left out on create, cleared (null) on update.
+    buyerPremiumRate:
+      (v.buyerPremiumRate && String(v.buyerPremiumRate).trim()) ||
+      (opts?.forUpdate ? null : undefined),
     minBidIncrement: (v.minBidIncrement && String(v.minBidIncrement).trim()) || undefined,
     autoBidEnabled: v.autoBidEnabled,
     autoBidStepMin: (v.autoBidStepMin && String(v.autoBidStepMin).trim()) || undefined,

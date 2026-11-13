@@ -1,5 +1,6 @@
 import type { InvoiceLine, Lot, Sale } from "@auction/types";
-import { buildBuyerPremiumPolicy } from "./buyer-premium.js";
+import { buyerPremiumLineLabel, formatPremiumPercent } from "./buyer-premium-wording.js";
+import { resolveBuyerPremium } from "./buyer-premium.js";
 import { majorToPence } from "./major-to-pence.js";
 
 /** The sale a lot belongs to could not be found, so its buyer's premium cannot be priced. */
@@ -13,14 +14,13 @@ export class InvoiceSaleMissingError extends Error {
 export type InvoiceLines = {
   lines: InvoiceLine[];
   totalPence: number;
-  /** The premium policy the lines were worked out with (`flat:0.2500`, `tiered:[…]`). */
+  /** The premium policy the lines were worked out with (`flat:0.2500`, `bands:[…]`). */
   policyId: string;
 };
 
 /** A fraction such as "0.2500" as a percentage without trailing zeros ("25", "12.5"). */
 function percentOf(fraction: string): string {
-  const percent = Number.parseFloat(fraction) * 100;
-  return Number.isFinite(percent) ? String(Number(percent.toFixed(3))) : "0";
+  return formatPremiumPercent(fraction).replace(/%$/u, "");
 }
 
 /**
@@ -29,8 +29,10 @@ function percentOf(fraction: string): string {
  * is raised at lot end and at checkout. Each part is rounded to the penny first, so the total is
  * always exactly the sum of its lines.
  *
- * A lot in a sale needs that sale: a sale's premium tiers override the lot's flat rate, so pricing
- * without the sale would freeze a wrong total. A missing sale throws.
+ * The premium is the lot's own when staff set one, else its sale's bands or flat rate
+ * (`resolveBuyerPremium`). A lot in a sale needs that sale, so pricing without it would freeze a
+ * wrong total: a missing sale throws. A banded premium's line says how it was worked out
+ * ("Buyer's premium (15% of £500,000 + 10% of £100,000)") and carries no single rate.
  *
  * VAT, import VAT and Artist's Resale Right lines are not produced until the accountant has
  * confirmed the rules. The premium label does not say whether VAT is included for the same reason.
@@ -38,14 +40,10 @@ function percentOf(fraction: string): string {
 export function buildInvoiceLines(lot: Lot, sale: Sale | null): InvoiceLines {
   if (lot.saleId && !sale) throw new InvoiceSaleMissingError(lot.saleId);
 
-  const policy = buildBuyerPremiumPolicy({
-    saleTiers: sale?.buyerPremiumTiers ?? null,
-    lotRate: lot.buyerPremiumRate,
-  });
+  const { policy, schedule } = resolveBuyerPremium({ lotRate: lot.buyerPremiumRate, sale });
   const hammerPence = majorToPence(lot.currentPrice);
   const premiumPence = policy.computePremiumMinor(hammerPence);
-  const ratePercent = percentOf(policy.rateFor(hammerPence));
-  const tiered = policy.id.startsWith("tiered:");
+  const ratePercent = schedule.kind === "flat" ? percentOf(schedule.rate) : null;
 
   const lines: InvoiceLine[] = [
     { kind: "hammer", label: "Hammer price", ratePercent: null, amountPence: hammerPence },
@@ -53,7 +51,7 @@ export function buildInvoiceLines(lot: Lot, sale: Sale | null): InvoiceLines {
   if (premiumPence > 0) {
     lines.push({
       kind: "buyers_premium",
-      label: tiered ? "Buyer's premium (tiered)" : `Buyer's premium (${ratePercent}%)`,
+      label: buyerPremiumLineLabel(schedule, policy.breakdown(hammerPence)),
       ratePercent,
       amountPence: premiumPence,
     });

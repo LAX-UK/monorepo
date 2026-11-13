@@ -169,6 +169,33 @@ export async function adminAttachLotToSaleResultAction(
   });
 }
 
+/**
+ * Puts the chosen lots back on their sale's buyer's premium. The API changes only unsold lots
+ * whose bidding has not opened, records who did it, and says how many changed.
+ */
+export async function adminUseSalePremiumForLotsResultAction(
+  saleId: string,
+  lotIds: readonly string[],
+): Promise<ActionResult<{ updated: number; skipped: number }>> {
+  return instrumentServerAction("adminUseSalePremiumForLotsResultAction", async () => {
+    const denied = await denyUnlessAdminCapability(LOTS_ACCESS);
+    if (denied && !denied.ok) return denied;
+    const sid = saleId.trim();
+    const ids = lotIds.map((id) => id.trim()).filter(Boolean);
+    if (!sid || ids.length === 0) return actionFailure("Missing sale or lots");
+    const { adminSales } = getWriteContainer();
+    const r = await adminSales.useSalePremiumForLots(sid, ids);
+    if (!r.ok) return actionFailure(r.message, undefined, r.status);
+    revalidateAdminSaleDetail(sid);
+    revalidatePath("/admin/lots");
+    revalidatePath("/lot", "layout");
+    return actionSuccess({
+      updated: r.data.data.updatedLotIds.length,
+      skipped: r.data.data.skipped.length,
+    });
+  });
+}
+
 export async function adminDetachLotFromSaleResultAction(
   saleId: string,
   lotId: string,

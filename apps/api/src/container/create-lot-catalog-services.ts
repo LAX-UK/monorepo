@@ -285,11 +285,13 @@ export function createLotCatalogServices(
     repoFactory,
     saleChannelReader,
     publicLotResults: repos.publicLotResultReader,
+    invoicedSalePrices: repos.invoicedSalePriceReader,
     salePublishService,
   });
   const saleResultsSummaryService = new SaleResultsSummaryService(
     repos.saleResultLotsReader,
     saleChannelReader,
+    repos.invoicedSalePriceReader,
   );
   const saleListReadService = new SaleListReadService(
     saleRepo,
@@ -299,6 +301,7 @@ export function createLotCatalogServices(
     saleChannelReader,
     saleResultsSummaryService,
     repos.publicLotResultReader,
+    repos.invoicedSalePriceReader,
   );
   const pressArchiveReadService = new PressArchiveReadService(
     new SalePressArchiveRepository(saleRepo),

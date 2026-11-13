@@ -1,5 +1,5 @@
+import { saleBuyerPremiumCopy } from "@/lib/lot/buyer-premium-copy";
 import { formatMoney } from "@/lib/ui/format";
-import { formatGbp, formatStaffPercent } from "@auction/staff-ui";
 import type { Lot, Sale } from "@auction/types";
 
 export function sumLotHammers(lots: Lot[]): string {
@@ -11,18 +11,11 @@ export function sumLotHammers(lots: Lot[]): string {
   return formatMoney(total);
 }
 
-/** "25% on the hammer", or the bands: "20% from £0.00, 15% from £500,000.00". */
+/** The sale's premium in words: "15% up to £500,000, then 10% on the part above" or "20% on the hammer". */
 export function buyerPremiumSummary(
   sale: Pick<Sale, "buyerPremiumRate" | "buyerPremiumTiers">,
 ): string {
-  const tiers = sale.buyerPremiumTiers;
-  if (tiers && tiers.length > 0) {
-    return tiers
-      .map((t) => `${formatStaffPercent(t.rate)} from ${formatGbp(t.hammerThresholdMinor)}`)
-      .join(", ");
-  }
-  if (!sale.buyerPremiumRate?.trim()) return "Not set";
-  return `${formatStaffPercent(sale.buyerPremiumRate)} on the hammer`;
+  return saleBuyerPremiumCopy(sale).terms;
 }
 
 export function venueOneLiner(sale: Sale): string | null {

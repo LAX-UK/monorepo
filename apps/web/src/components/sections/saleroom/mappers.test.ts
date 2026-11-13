@@ -173,7 +173,7 @@ describe("mapSaleToOverviewVM", () => {
     });
     expect(vm.status).toBe("scheduled");
     expect(vm.categoryLabel).toBe("Contemporary");
-    expect(vm.buyerPremiumLabel).toBe("25%");
+    expect(vm.buyerPremiumLabel).toBe("25% on the hammer");
     expect(vm.formatLabel).toBe("In-person");
     expect(vm.showSalePageStream).toBe(true);
     expect(vm.streamPresentation?.sectionHeading).toBe("Live stream");
@@ -247,14 +247,22 @@ describe("mapSaleToOverviewVM", () => {
     expect(vm.showLocation).toBe(true);
   });
 
-  it("maps tiered buyer premium label", () => {
+  it("says the sale's banded premium in words", () => {
     const sale: Sale = {
       ...baseSale,
-      buyerPremiumTiers: [{ hammerThresholdMinor: 0, rate: "0.1500" }],
+      buyerPremiumTiers: [
+        { hammerThresholdMinor: 0, rate: "0.1500" },
+        { hammerThresholdMinor: 50_000_000, rate: "0.1000" },
+      ],
     };
     const vm = mapSaleToOverviewVM(sale, { categoryLabel: null, categoryLabels: [] });
-    expect(vm.buyerPremiumLabel).toBe("Tiered — see table");
-    expect(vm.buyerPremiumTiers).toHaveLength(1);
+    expect(vm.buyerPremiumLabel).toBe("15% up to £500,000, then 10% on the part above");
+  });
+
+  it("says a flat premium on the hammer", () => {
+    const sale: Sale = { ...baseSale, buyerPremiumRate: "0.2", buyerPremiumTiers: null };
+    const vm = mapSaleToOverviewVM(sale, { categoryLabel: null, categoryLabels: [] });
+    expect(vm.buyerPremiumLabel).toBe("20% on the hammer");
   });
 
   it("uses an explicit locationMapUrl override when provided", () => {

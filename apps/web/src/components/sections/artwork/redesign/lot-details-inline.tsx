@@ -1,4 +1,8 @@
 import { formatMoney } from "@/lib/format-currency";
+import {
+  BUYER_PREMIUM_CONDITIONS_HREF,
+  CONDITIONS_OF_SALE_LABEL,
+} from "@/lib/lot/buyer-premium-copy";
 import { lotShowsBidAction } from "@/lib/lot/lot-bid-action";
 import { lotDetailsReserveLine } from "@/lib/lot/reserve-presentation";
 import { lotAuctionTypeLabel } from "@/lib/presenters/lot-auction-type-presentation";
@@ -8,6 +12,8 @@ import { Fragment } from "react";
 
 type Props = {
   lot: Lot | PublicLotView;
+  /** The premium the lot charges, in words (`lotBuyerPremiumCopy`); `null` leaves the line out. */
+  premiumTerms: string | null;
   /** Min next bid and sale end (live auction UX preserved) */
   minNextBid: string;
   saleEndLocalLabel: string;
@@ -22,6 +28,7 @@ type Props = {
  */
 export function LotDetailsInline({
   lot,
+  premiumTerms,
   minNextBid,
   saleEndLocalLabel,
   currentPrice,
@@ -78,17 +85,14 @@ export function LotDetailsInline({
         <li>
           {biddingOpen ? "Closes" : "Closed"}: {saleEndLocalLabel}
         </li>
-        <li>
-          Buyer&apos;s premium: {((Number(lot.buyerPremiumRate) || 0) * 100).toFixed(0)}% on the
-          hammer
-        </li>
+        {premiumTerms ? <li>Buyer&apos;s premium: {premiumTerms}</li> : null}
       </ul>
       <div className="flex flex-wrap gap-4">
         <Link
-          href="/terms"
+          href={BUYER_PREMIUM_CONDITIONS_HREF}
           className="text-center text-base font-semibold leading-6 tracking-[0.8px] text-on-surface underline"
         >
-          Conditions of business
+          {CONDITIONS_OF_SALE_LABEL}
         </Link>
         <Link
           href="/faq"

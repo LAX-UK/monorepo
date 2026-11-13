@@ -3,7 +3,15 @@ import type { Sale } from "@auction/types";
 
 export type AssignableSale = Pick<
   Sale,
-  "id" | "title" | "status" | "deliveryMode" | "startTime" | "endTime" | "timeZone"
+  | "id"
+  | "title"
+  | "status"
+  | "deliveryMode"
+  | "startTime"
+  | "endTime"
+  | "timeZone"
+  | "buyerPremiumRate"
+  | "buyerPremiumTiers"
 >;
 
 export type LotFormAssignableSalesResult = {
