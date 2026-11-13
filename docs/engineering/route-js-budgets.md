@@ -272,6 +272,23 @@ re-recorded from that build (`--write-baseline`), and each group's budget is the
 `--suggest` gives and the one it had: public 451, listing 525, sale 560, lot 545 KB; checkout (544)
 and account (626) keep their budgets.
 
+## Account and checkout back under their earlier size
+
+Two causes of the account and checkout growth above, both modules shipped twice:
+
+| What | Was | Now |
+| --- | --- | --- |
+| Notification parsers in the account frame (`use-user-notifications`, `use-unread-notifications`, `use-notifications-inbox`) | imported from `lib/data/http/parse`, whose index builds the lot and sale schemas; the `(client)` layout kept its own copy of those schemas while the page loaded them again | imported from `parse/notifications.parse.ts`, so the account frame no longer carries the lot and sale schemas |
+| `client-routes.ts`, `lib/marketing/chrome.ts`, `@auction/branding` `marketing-chrome` | under webpack's 20 KB split size, so copied into the root layout and into several shared chunks the same page loads (an account page had three copies of `client-routes`) | one `shell-routes` chunk (`next.config.ts`, a `cacheGroups` entry for these three files only). The root layout imports all three, so every page already loaded them |
+
+Measured on production builds (Sentry on, gzip, start-up set), before the Zod change, then `main`,
+then this change: settings 501.0, 506.2, 497.7 KB; notifications 503.4, 508.5, 501.1; checkout
+456.2, 457.8, 451.5; bids 532.4, 530.3, 523.1; purchases 507.9, 509.4, 502.0. Public pages also
+lose 1.4 to 3.3 KB (home 409.8 to 407.5, sale page 508.6 to 505.3). Sign-in and onboarding pages
+(`(task)`), which had no duplicate copies, gain about 0.5 KB for the extra file. The ratchets were
+re-recorded from that build and each budget is the lower of `--suggest` and its previous value:
+public 449, listing 523, sale 556, lot 542, checkout 538, account 620 KB.
+
 ## Enforcement
 
 `enforce` is set per group. A route over budget in a group with `"enforce": true` is an error line
