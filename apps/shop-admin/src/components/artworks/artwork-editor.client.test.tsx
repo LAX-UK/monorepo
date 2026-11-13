@@ -261,6 +261,17 @@ describe("artwork editor", () => {
     window.history.replaceState(null, "", "/artworks/a-1");
   });
 
+  describe("layout", () => {
+    it("draws one divider above the actions: the last section's, not a second rule", () => {
+      renderEditor({ detail: null });
+      const form = screen.getByRole("form", { name: "New artwork" });
+      const cancel = within(form).getByRole("link", { name: "Cancel" });
+      const actions = cancel.parentElement?.parentElement as HTMLElement;
+      expect(actions.className).not.toContain("border-t");
+      expect(actions.previousElementSibling?.className).toContain("border-b");
+    });
+  });
+
   describe("validation", () => {
     it("shows each problem beside its field and in a linked summary", () => {
       renderEditor({ detail: null });
