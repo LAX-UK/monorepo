@@ -1,4 +1,5 @@
 import type { Database } from "@auction/db";
+import type { ISettlementSellerTerms } from "@auction/finance-runtime";
 import type {
   IPayoutProcessorReader,
   IPayoutRepository,
@@ -40,23 +41,8 @@ export type PayoutServiceDeps = {
   dealPayoutsForTx?: ((tx: Database) => IPrivateSaleDealPayoutStore) | undefined;
   /** Tells the account when a payout fails or is reversed; told after the change commits. */
   problemNotifier?: IPayoutProblemNotifier | undefined;
+  /** Where each sale stands for a payout run: paid from its seller terms, held, or LAX's own. */
+  sellerTermsForTx: (tx: Database) => ISettlementSellerTerms;
 };
 
 export const DEFAULT_CURRENCY = "GBP";
-
-export function settlementAmounts(p: {
-  amount: string;
-  platformFee: string;
-  settlementAmount?: string;
-}): {
-  saleAmount: string;
-  platformFee: string;
-} {
-  const saleAmount = p.settlementAmount ?? p.amount;
-  const full = Number.parseFloat(p.amount);
-  const ratio = full > 0 ? Number.parseFloat(saleAmount) / full : 1;
-  return {
-    saleAmount,
-    platformFee: (Number.parseFloat(p.platformFee) * ratio).toFixed(2),
-  };
-}

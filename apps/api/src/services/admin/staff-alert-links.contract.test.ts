@@ -49,6 +49,7 @@ const WORK_ITEM_SAMPLES: Record<AdminWorkItemSourceKind, AdminWorkItemLinkIds> =
   reoffer_ready: { subjectId: "lot-1" },
   reoffer_decision: { subjectId: "lot-1" },
   reoffer_accepted: { subjectId: "lot-1" },
+  seller_payout_held: { subjectId: "lot-1" },
 };
 
 const KINDS = Object.keys(WORK_ITEM_SAMPLES) as AdminWorkItemSourceKind[];

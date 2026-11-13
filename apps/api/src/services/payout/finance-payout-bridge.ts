@@ -45,6 +45,7 @@ export function toPayoutSettlementDeps(deps: PayoutServiceDeps): PayoutSettlemen
     payoutRepoForTx: deps.payoutRepoForTx,
     dealPayouts: deps.dealPayouts,
     dealPayoutsForTx: deps.dealPayoutsForTx,
+    sellerTermsForTx: deps.sellerTermsForTx,
   };
 }
 

@@ -46,6 +46,8 @@ const SLA_MS: Partial<Record<AdminWorkItemSourceKind, number>> = {
   reoffer_no_reply: 24 * 60 * 60 * 1000,
   reoffer_ready: 24 * 60 * 60 * 1000,
   reoffer_decision: 48 * 60 * 60 * 1000,
+  // The buyer has paid and the seller's money waits on a fix only staff can make.
+  seller_payout_held: 48 * 60 * 60 * 1000,
 };
 
 /** Kinds due in business days (Monday to Friday) rather than hours. */
@@ -92,6 +94,7 @@ const BASE_SEVERITY: Record<AdminWorkItemSourceKind, WorkItemSeverity> = {
   reoffer_ready: "high",
   reoffer_decision: "high",
   reoffer_accepted: "low",
+  seller_payout_held: "high",
 };
 
 export function applyWorkItemSla(

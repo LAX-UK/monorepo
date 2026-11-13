@@ -34,6 +34,11 @@ export type AddPaymentPayoutLineInput = {
 /** A line as it goes on the seller's ledger. */
 type LedgerLine = { amount: string; buyerRefundPence: number | null };
 
+/** The buyer refund a refund line answers for; a line from before that was recorded, its amount. */
+function buyerRefundAnsweredBy(line: { amount: string; buyerRefundPence?: number | null }): number {
+  return line.buyerRefundPence ?? Number(-parseMoneyToMinorUnits(line.amount));
+}
+
 export class PayoutAdjustmentService implements IPayoutAdjustmentPort {
   constructor(
     private readonly transactionRunner: ITransactionRunner,
@@ -91,7 +96,7 @@ export class PayoutAdjustmentService implements IPayoutAdjustmentPort {
               input.sourceEventId ?? null,
               ledger.buyerRefundPence === null
                 ? undefined
-                : (existing.buyerRefundPence ?? 0) + ledger.buyerRefundPence,
+                : buyerRefundAnsweredBy(existing) + ledger.buyerRefundPence,
             );
             await this.recalculateTotalsFromLines(r, openPayout.id);
             return;

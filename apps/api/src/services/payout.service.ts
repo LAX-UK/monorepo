@@ -1,4 +1,5 @@
 import type { Database } from "@auction/db";
+import { type ISettlementSellerTerms, settlementSellerTermsForTx } from "@auction/finance-runtime";
 import type {
   IPayoutProcessorReader,
   IPayoutRepository,
@@ -68,6 +69,7 @@ export class PayoutService implements IPayoutService {
     processorsForTx: (tx: Database) => IPayoutProcessorReader = payoutProcessorReaderForTx,
     problemNotifier?: IPayoutProblemNotifier,
     dealPayouts?: IPrivateSaleDealPayoutStore,
+    sellerTermsForTx: (tx: Database) => ISettlementSellerTerms = settlementSellerTermsForTx,
   ) {
     this.deps = {
       repo,
@@ -80,6 +82,7 @@ export class PayoutService implements IPayoutService {
       problemNotifier,
       dealPayouts,
       dealPayoutsForTx: dealPayouts && transactionRunner ? dealPayoutsForTx : undefined,
+      sellerTermsForTx,
     };
   }
 

@@ -175,6 +175,7 @@ export {
   SettlementSellerTerms,
   type ISettlementSellerTerms,
 } from "./payout/settlement-seller-terms.js";
+export { previewSettlement, type SettlementPreview } from "./payout/settlement-preview.js";
 export {
   NO_UNAPPLIED_MONEY_RECORDER,
   UnappliedMoneyRecorder,

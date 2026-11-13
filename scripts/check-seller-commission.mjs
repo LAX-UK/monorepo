@@ -20,6 +20,19 @@ export const PAYMENT_RAISING_FILES = [
   "packages/finance-runtime/src/lot-invoice-initiation.service.ts",
 ];
 
+/**
+ * What pays sellers and charges them back: settlement pays from the seller-terms snapshot, and a
+ * refund charges the seller their share of it. None of it may read the old fee policy.
+ */
+export const SELLER_PAYING_FILES = [
+  "packages/finance-runtime/src/payout/payout-settlement.ts",
+  "packages/finance-runtime/src/payout/settlement-seller-terms.ts",
+  "packages/finance-runtime/src/payout/settlement-preview.ts",
+  "packages/finance-runtime/src/payout/payout-adjustment.service.ts",
+  "packages/finance-runtime/src/payout/payout-helpers.ts",
+  "apps/api/src/services/payout/payout-admin.ts",
+];
+
 const ROOTS = ["apps", "packages"];
 const SKIP_DIRS = new Set(["node_modules", "dist", ".next", ".turbo", "coverage"]);
 const SOURCE_FILE = /\.[cm]?tsx?$/;
@@ -98,7 +111,7 @@ function main() {
       }
     }
   }
-  for (const path of PAYMENT_RAISING_FILES) {
+  for (const path of [...PAYMENT_RAISING_FILES, ...SELLER_PAYING_FILES]) {
     for (const hit of findOldFeePolicy(readFileSync(join(repoRoot, path), "utf8"))) {
       violations.push(
         `${path}:${hit.line}  reads the old platform fee policy; use the seller-terms policy`,

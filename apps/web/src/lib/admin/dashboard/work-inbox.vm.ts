@@ -59,6 +59,8 @@ const WORK_KIND_GUIDANCE: Partial<Record<AdminWorkItem["kind"], string>> = {
   reoffer_ready: "Send the offer to the next bidder from the lot.",
   reoffer_decision: "Offer the lot to the next bidder, or return it to inventory.",
   reoffer_accepted: "Nothing to do. The new buyer has been invoiced.",
+  seller_payout_held:
+    "Fix what the item names from the lot. The sale joins the next payout once it is fixed.",
 };
 
 const DEFAULT_GUIDANCE = "Open the record to deal with it";

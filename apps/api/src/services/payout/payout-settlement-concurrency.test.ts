@@ -1,4 +1,5 @@
 import type { Database } from "@auction/db";
+import { pending, storedSellerTerms } from "@auction/finance-runtime";
 import type { IPayoutRepository } from "@auction/persistence/interfaces";
 import type { Payout, PayoutLine } from "@auction/types";
 import { describe, expect, it, vi } from "vitest";
@@ -47,13 +48,7 @@ function makeFixture() {
       await tick();
       return ["pay-1", "pay-2"]
         .filter((id) => !settledPaymentIds.has(id))
-        .map((id) => ({
-          id,
-          amount: "100.00",
-          platformFee: "5.00",
-          capturedAt: new Date("2026-01-01"),
-          settlementAmount: "100.00",
-        }));
+        .map((id) => pending([{ id, amount: "100.00", platformFee: "5.00" }])[0]);
     },
     create: async () => {
       await tick();
@@ -95,6 +90,10 @@ function makeFixture() {
     mockDomainEventSink(publish),
     undefined,
     repoForTx,
+    undefined,
+    undefined,
+    undefined,
+    () => storedSellerTerms(),
   );
   return { svc, payouts, publish };
 }
@@ -114,7 +113,9 @@ describe("settlement under concurrency", () => {
     ]);
 
     expect(results.filter((r) => r.ok)).toHaveLength(1);
-    expect(results.filter((r) => !r.ok)).toEqual([{ ok: false, reason: "no_pending_payments" }]);
+    expect(results.filter((r) => !r.ok)).toEqual([
+      { ok: false, reason: "no_pending_payments", heldSales: [] },
+    ]);
     expect(payouts).toHaveLength(1);
     const created = publish.mock.calls.filter(
       (c) => c[0].eventType === "payout.settlement_created",
