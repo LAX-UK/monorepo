@@ -1,15 +1,17 @@
-import { type BuyersPremiumTerms, scheduleOfTerms } from "@auction/domain";
-import type { BuyerPremiumSchedule, BuyerPremiumSource, Lot, Sale } from "@auction/types";
 import {
   type BuyerPremiumSaleTerms,
+  type BuyersPremiumTerms,
   describeBuyerPremium,
-  resolveBuyerPremium,
-} from "@auction/validators";
+  resolveBuyerPremiumSchedule,
+  scheduleOfTerms,
+} from "@auction/domain";
+import type { BuyerPremiumSchedule, BuyerPremiumSource, Lot, Sale } from "@auction/types";
 
 /*
  * What buyers read about the buyer's premium, from the one resolver behind every charge: the
  * lot's own premium, else its sale's bands, else its sale's flat rate. Pages never print a rate
- * the invoice would not charge.
+ * the invoice would not charge. Only the domain's resolver and wording are imported (no pricing
+ * policies or input schemas), because the quick look loads this in the browser on every page.
  */
 
 /** Where the Conditions of Sale (clause 11 sets the standard premium) live. */
@@ -44,7 +46,10 @@ export function lotBuyerPremiumCopy(
   sale?: BuyerPremiumSaleTerms | null,
 ): BuyerPremiumCopy | null {
   if (sale || !lot.saleId) {
-    const { schedule, source } = resolveBuyerPremium({ lotRate: lot.buyerPremiumRate, sale });
+    const { schedule, source } = resolveBuyerPremiumSchedule({
+      lotRate: lot.buyerPremiumRate,
+      sale,
+    });
     return copyOf(schedule, source);
   }
   const resolved = lot.checkoutPricing?.premium;
@@ -57,7 +62,7 @@ export function lotBuyerPremiumCopy(
 export function saleBuyerPremiumCopy(
   sale: Pick<Sale, "buyerPremiumRate" | "buyerPremiumTiers">,
 ): BuyerPremiumCopy {
-  const { schedule, source } = resolveBuyerPremium({ lotRate: null, sale });
+  const { schedule, source } = resolveBuyerPremiumSchedule({ lotRate: null, sale });
   return copyOf(schedule, source);
 }
 

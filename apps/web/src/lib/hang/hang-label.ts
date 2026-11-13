@@ -3,14 +3,16 @@ import { formatHangMoney } from "@/lib/hang/hang-money";
 import { lotEstimateLine } from "@/lib/lot-marketing-display";
 import { lotWasSold } from "@/lib/lot/lot-outcome";
 import { LONDON_TIME_ZONE, formatMoment } from "@auction/datetime";
-import { lotHeadlineLabel, lotPriceHasBids } from "@auction/domain";
-import type { Lot, Sale } from "@auction/types";
 import {
   type BuyerPremiumSaleTerms,
-  majorToMinor,
-  minorToMajor,
-  resolveBuyerPremium,
-} from "@auction/validators";
+  lotHeadlineLabel,
+  lotPriceHasBids,
+  minorUnitsToMoneyString,
+  parseMoneyToMinorUnits,
+  premiumMinorFor,
+  resolveBuyerPremiumSchedule,
+} from "@auction/domain";
+import type { Lot, Sale } from "@auction/types";
 
 /** Everything a wall label prints, as plain data: the page decides how it looks. */
 export type HangLabelModel = {
@@ -31,16 +33,19 @@ export type HangLabelContext = {
 
 /**
  * The hammer plus the buyer's premium: what the buyer paid, which is what a result shows. The
- * server's figure (`checkoutPricing`) when the lot carries it, else the shared resolver's.
+ * server's figure (`checkoutPricing`) when the lot carries it, else the shared resolver's. It
+ * uses the domain maths directly (not the validators' pricing policies) to keep home and sale
+ * cards light in the browser.
  */
 export function soldPriceWithPremium(
   lot: Pick<Lot, "currentPrice" | "buyerPremiumRate"> & Partial<Pick<Lot, "checkoutPricing">>,
   sale: BuyerPremiumSaleTerms | null,
 ): string {
   if (lot.checkoutPricing) return lot.checkoutPricing.totalMajor;
-  const { policy } = resolveBuyerPremium({ lotRate: lot.buyerPremiumRate, sale });
-  const hammerMinor = majorToMinor(lot.currentPrice);
-  return minorToMajor(hammerMinor + policy.computePremiumMinor(hammerMinor));
+  const { schedule } = resolveBuyerPremiumSchedule({ lotRate: lot.buyerPremiumRate, sale });
+  const parsed = parseMoneyToMinorUnits(lot.currentPrice);
+  const hammerMinor = parsed > 0n ? parsed : 0n;
+  return minorUnitsToMoneyString(hammerMinor + premiumMinorFor(schedule, hammerMinor));
 }
 
 function lotEyebrow(lot: Pick<Lot, "lotNumber" | "id">): string {

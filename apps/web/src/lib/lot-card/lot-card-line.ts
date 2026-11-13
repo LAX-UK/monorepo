@@ -1,9 +1,14 @@
 import { formatWholeMoney, lotChargeCurrency } from "@/lib/format-currency";
 import { soldPriceWithPremium } from "@/lib/hang/hang-label";
 import { classifyLotLifecycle } from "@/lib/lot/lot-lifecycle";
-import { type CardPriceLine, cardPriceLine, lotPriceHasBids } from "@auction/domain";
+import {
+  type BuyerPremiumSaleTerms,
+  type CardPriceLine,
+  cardPriceLine,
+  lotPriceHasBids,
+} from "@auction/domain";
 import type { Lot, LotTimingSource, Sale } from "@auction/types";
-import { type BuyerPremiumSaleTerms, toLotCardTimingVM } from "@auction/validators";
+import { toLotCardTimingVM } from "@auction/validators";
 
 type LotCardLineSale =
   | (Pick<Sale, "status" | "deliveryMode"> & Partial<Pick<Sale, "allowOnlineBidsBeforeGoLive">>)
