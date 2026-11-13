@@ -7,7 +7,8 @@
  * refund can still fail or be cancelled; it is counted when Stripe reports it succeeded, whether
  * that is learnt from `charge.refund.updated` or from the reconcile job re-reading it. A refund
  * that ends `failed` or `canceled` returned nothing; if it had been counted (by the previous
- * release, or because Stripe reversed a succeeded refund) a compensating entry takes it back.
+ * release, or because Stripe reversed a succeeded refund) a compensating entry takes it back,
+ * at most once per refund and record.
  */
 
 /** Stripe's refund statuses. */
@@ -77,18 +78,61 @@ export function chargeRefundTotals(
 /**
  * How far a recorded refund total must move to match Stripe, in pence. Above zero: a refund went
  * through that is not recorded yet. Below zero: the record holds more than went through, and only
- * as much as refunds that failed or were cancelled explain is taken back; anything else above
- * Stripe's figure (money returned outside Stripe, for one) is left for finance. Zero: in step.
+ * as much as `reversiblePence` (refunds that failed or were cancelled and have not been taken back
+ * from this record yet, see {@link reversibleRefunds}) is taken back; anything else above Stripe's
+ * figure (money returned outside Stripe, for one) is left for finance. Zero: in step.
  */
 export function refundCorrectionPence(input: {
   recordedPence: number;
   countedPence: number;
-  returnedNothingPence: number;
+  reversiblePence: number;
 }): number {
-  const { recordedPence, countedPence, returnedNothingPence } = input;
+  const { recordedPence, countedPence, reversiblePence } = input;
   if (countedPence > recordedPence) return countedPence - recordedPence;
   if (recordedPence > countedPence) {
-    return 0 - Math.min(recordedPence - countedPence, Math.max(0, returnedNothingPence));
+    return 0 - Math.min(recordedPence - countedPence, Math.max(0, reversiblePence));
   }
   return 0;
+}
+
+/** A refund that returned nothing and how much of it may still be taken back from one record. */
+export type ReversibleRefund = { stripeRefundId: string; amountPence: number };
+
+/**
+ * The refunds that failed or were cancelled and have not been taken back from a record yet. A
+ * refund is taken back from a record at most once, whichever path sees it first (the webhook, the
+ * reconcile job, the repair), so one already taken back explains nothing more.
+ */
+export function reversibleRefunds(
+  refunds: readonly Pick<ChargeRefund, "id" | "amountPence" | "status">[],
+  alreadyReversed: ReadonlySet<string>,
+): ReversibleRefund[] {
+  return refunds
+    .filter((r) => isReturnedNothing(r.status) && r.amountPence > 0 && !alreadyReversed.has(r.id))
+    .map((r) => ({ stripeRefundId: r.id, amountPence: r.amountPence }))
+    .sort((a, b) => a.stripeRefundId.localeCompare(b.stripeRefundId));
+}
+
+/** Adds up what the refunds could take back. */
+export function sumReversiblePence(refunds: readonly ReversibleRefund[]): number {
+  return refunds.reduce((sum, r) => sum + r.amountPence, 0);
+}
+
+/**
+ * Splits `takeBackPence` (a negative correction's size) across the refunds that explain it, in
+ * order, each up to its amount: one entry per refund, each written once, keyed by that refund.
+ */
+export function allocateRefundReversal(
+  takeBackPence: number,
+  refunds: readonly ReversibleRefund[],
+): ReversibleRefund[] {
+  const shares: ReversibleRefund[] = [];
+  let left = takeBackPence;
+  for (const refund of refunds) {
+    if (left <= 0) break;
+    const amountPence = Math.min(left, refund.amountPence);
+    shares.push({ stripeRefundId: refund.stripeRefundId, amountPence });
+    left -= amountPence;
+  }
+  return shares;
 }

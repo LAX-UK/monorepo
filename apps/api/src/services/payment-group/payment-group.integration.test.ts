@@ -13,6 +13,7 @@ import {
   payout,
   payoutLine,
   processedStripeEvents,
+  stripeRefundReversal,
   stripeRefundWatch,
 } from "@auction/db/schema";
 import { UNAPPLIED_MONEY_EVENT } from "@auction/domain";
@@ -222,6 +223,30 @@ describe.skipIf(!HAS_DB)("pay several: one payment for several invoices (integra
   };
   const succeeded = (groupId: string, over: Partial<Stripe.PaymentIntent> = {}) =>
     intent({ amount: 20_000, metadata: { paymentGroupId: groupId }, ...over });
+  const refundId = () => `re_ps_${run}_${randomUUID()}`;
+  const published = (eventType: string, aggregateId: string) =>
+    publish.mock.calls
+      .map(([e]) => e as { eventType: string; aggregateId: string; actorUserId: string | null })
+      .filter((e) => e.eventType === eventType && e.aggregateId === aggregateId);
+  const unattributedOf = async (groupId: string) =>
+    (
+      await db
+        .select({ pence: paymentGroup.refundUnattributedPence })
+        .from(paymentGroup)
+        .where(eq(paymentGroup.id, groupId))
+    )[0]?.pence;
+  const repairWith = (stripe: FakeChargeRefunds) =>
+    new GroupRefundRepairService({
+      transactionRunner: runner,
+      groups,
+      refunds: stripe,
+      payments,
+      paymentRefunds,
+      sellerRefundedCents: (tx, paymentId) =>
+        new DrizzlePayoutRepository(tx).sumRefundLineCentsForPayment(paymentId),
+      payoutAdjustments,
+      events,
+    });
 
   beforeAll(async () => {
     const now = new Date();
@@ -301,6 +326,9 @@ describe.skipIf(!HAS_DB)("pay several: one payment for several invoices (integra
       await db.delete(paymentRefund).where(inArray(paymentRefund.paymentId, paymentIds));
       await db.delete(payoutLine).where(inArray(payoutLine.paymentId, paymentIds));
     }
+    await db
+      .delete(stripeRefundReversal)
+      .where(like(stripeRefundReversal.stripeRefundId, `re_ps_${run}_%`));
     await db.delete(payment).where(inArray(payment.lotId, lotIds));
     await db.delete(bidInvoice).where(inArray(bidInvoice.lotId, lotIds));
     await db.delete(paymentGroup).where(eq(paymentGroup.buyerLegalEntityId, orgId));
@@ -783,26 +811,23 @@ describe.skipIf(!HAS_DB)("pay several: one payment for several invoices (integra
     } as unknown as Stripe.Charge;
     await webhooks.handleChargeRefunded(eventOf("charge.refunded", charge), charge);
     const stripe = new FakeChargeRefunds();
-    stripe.add({ chargeId, amountPence: 2_500, status: "failed", paymentId: ids.a });
-    stripe.add({ chargeId, amountPence: 1_000, status: "failed" });
-    stripe.add({ chargeId, amountPence: 500, status: "succeeded", paymentId: ids.b });
-    const repair = new GroupRefundRepairService({
-      transactionRunner: runner,
-      groups,
-      refunds: stripe,
-      payments,
-      paymentRefunds,
-      sellerRefundedCents: (tx, paymentId) =>
-        new DrizzlePayoutRepository(tx).sumRefundLineCentsForPayment(paymentId),
-      payoutAdjustments,
-      events,
+    stripe.add({
+      id: refundId(),
+      chargeId,
+      amountPence: 2_500,
+      status: "failed",
+      paymentId: ids.a,
     });
-    const reversed = () =>
-      publish.mock.calls.filter(
-        ([e]) =>
-          (e as { eventType: string }).eventType === "payment.refund_reversed" &&
-          (e as { aggregateId: string }).aggregateId === ids.a,
-      ).length;
+    stripe.add({ id: refundId(), chargeId, amountPence: 1_000, status: "failed" });
+    stripe.add({
+      id: refundId(),
+      chargeId,
+      amountPence: 500,
+      status: "succeeded",
+      paymentId: ids.b,
+    });
+    const repair = repairWith(stripe);
+    const reversed = () => published("payment.refund_reversed", ids.a);
 
     const dry = await repair.run({ apply: false, groupId });
     expect(dry.groups).toHaveLength(1);
@@ -819,21 +844,122 @@ describe.skipIf(!HAS_DB)("pay several: one payment for several invoices (integra
     });
     // A dry run writes nothing.
     expect((await paymentRefunds.sumRefundedPence(ids.a)).pence).toBe(2_500);
-    expect(reversed()).toBe(0);
+    expect(reversed()).toHaveLength(0);
+    // Applying names the staff member who runs it.
+    await expect(repair.run({ apply: true, groupId } as never)).rejects.toThrow(/operator/);
 
-    await repair.run({ apply: true, groupId });
-    const again = await repair.run({ apply: true, groupId });
+    await repair.run({ apply: true, groupId, operatorUserId: payerId });
+    const again = await repair.run({ apply: true, groupId, operatorUserId: payerId });
 
     expect(again.groups.filter((g) => g.groupId === groupId)).toEqual([]);
     expect((await paymentRefunds.sumRefundedPence(ids.a)).pence).toBe(0);
     expect(await payouts.sumRefundLineCentsForPayment(ids.a)).toBe(0);
     expect((await paymentRefunds.sumRefundedPence(ids.b)).pence).toBe(500);
-    const [row] = await db
-      .select({ pence: paymentGroup.refundUnattributedPence })
-      .from(paymentGroup)
+    expect(await unattributedOf(groupId)).toBe(0);
+    expect(reversed()).toHaveLength(1);
+    expect(reversed()[0]).toMatchObject({
+      actorUserId: payerId,
+      payload: { amountCents: 2_500, via: "refund_repair" },
+    });
+    // The lowered unattributed figure is announced too, with the operator.
+    const lowered = published("payment_group.refund_reversed", groupId);
+    expect(lowered).toHaveLength(1);
+    expect(lowered[0]).toMatchObject({
+      actorUserId: payerId,
+      payload: {
+        paymentGroupId: groupId,
+        stripeChargeId: chargeId,
+        deliveryQuoteId: null,
+        amountCents: 1_000,
+        previousCents: 1_000,
+        correctedCents: 0,
+        via: "refund_repair",
+      },
+    });
+  });
+
+  it("the repair applied twice with an unexplained excess writes nothing the second time", async () => {
+    const groupId = await startOk([ids.a, ids.b]);
+    const pi = succeeded(groupId);
+    await webhooks.handlePaymentIntentSucceeded(eventOf("payment_intent.succeeded", pi), pi);
+    const chargeId = pi.latest_charge as string;
+    // Invoice a: £25 counted while pending that then failed, and £10 recorded outside Stripe.
+    // The group: £15 unattributed, of which a £10 refund that failed explains £10.
+    await runner.runInTransaction(async (tx) => {
+      await paymentRefunds.lockPaymentInTransaction(tx, ids.a);
+      await paymentRefunds.recordInTransaction(tx, {
+        paymentId: ids.a,
+        idempotencyKey: `evt_old_${run}_${groupId}:${ids.a}`,
+        amountPence: 2_500,
+        currency: "GBP",
+        source: "group_webhook",
+      });
+      await paymentRefunds.recordInTransaction(tx, {
+        paymentId: ids.a,
+        idempotencyKey: `staff_bank_${run}_${groupId}`,
+        amountPence: 1_000,
+        currency: "GBP",
+        source: "staff",
+      });
+      await payoutAdjustments.addPaymentLineToOpenPayoutOrCreateClawback({
+        legalEntityId: sellerId,
+        paymentId: ids.a,
+        amount: "-35.00",
+        kind: "refund",
+        sourceEventId: `evt_old_${run}_${groupId}:${ids.a}`,
+        note: "Refund",
+        tx,
+      });
+    });
+    await db
+      .update(paymentGroup)
+      .set({ refundUnattributedPence: 1_500 })
       .where(eq(paymentGroup.id, groupId));
-    expect(row?.pence).toBe(0);
-    expect(reversed()).toBe(1);
+    const stripe = new FakeChargeRefunds();
+    stripe.add({
+      id: refundId(),
+      chargeId,
+      amountPence: 2_500,
+      status: "failed",
+      paymentId: ids.a,
+    });
+    stripe.add({ id: refundId(), chargeId, amountPence: 1_000, status: "canceled" });
+    const repair = repairWith(stripe);
+    const writes = async () => ({
+      buyer: (await paymentRefunds.sumRefundedPence(ids.a)).pence,
+      seller: await payouts.sumRefundLineCentsForPayment(ids.a),
+      unattributed: await unattributedOf(groupId),
+      rows: (await db.select().from(paymentRefund).where(eq(paymentRefund.paymentId, ids.a)))
+        .length,
+      lines: (
+        await db
+          .select()
+          .from(payoutLine)
+          .where(and(eq(payoutLine.paymentId, ids.a), eq(payoutLine.kind, "refund")))
+      ).length,
+      notices:
+        published("payment.refund_reversed", ids.a).length +
+        published("payment_group.refund_reversed", groupId).length,
+    });
+
+    const first = await repair.run({ apply: true, groupId, operatorUserId: payerId });
+    expect(first.groups[0]?.unexplained).toBe(true);
+    const afterFirst = await writes();
+    expect(afterFirst).toMatchObject({
+      buyer: 1_000,
+      seller: 1_000,
+      unattributed: 500,
+      notices: 2,
+    });
+
+    const second = await repair.run({ apply: true, groupId, operatorUserId: payerId });
+    // Still reported for finance, and nothing more is written.
+    expect(second.groups[0]).toMatchObject({ unexplained: true });
+    expect(second.groups[0]?.members.find((m) => m.paymentId === ids.a)).toMatchObject({
+      buyerCorrectionPence: 0,
+      sellerCorrectionPence: 0,
+    });
+    expect(await writes()).toEqual(afterFirst);
   });
 
   it("does not charge the seller back again for a refund the previous release handled", async () => {

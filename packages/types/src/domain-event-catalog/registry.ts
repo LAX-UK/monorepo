@@ -261,6 +261,7 @@ export const ALL_LIVE_DOMAIN_EVENT_TYPES = [
   "payment_group.dispute_needs_allocation",
   "payment_group.paid",
   "payment_group.processing",
+  "payment_group.refund_reversed",
   "payment_group.refund_unattributed",
   "payment_group.released",
   "payment_group.settlement_refused",

@@ -176,6 +176,7 @@ const LABELS: Record<string, string> = {
   "payment_group.settlement_refused": "Payment for several invoices needs reconciling",
   "payment_group.delivery_refunded": "Courier charge on a combined payment refunded",
   "payment_group.refund_unattributed": "Refund on a combined payment needs an invoice",
+  "payment_group.refund_reversed": "Failed refund taken back from a combined payment",
   "payment_group.dispute_needs_allocation": "Dispute on a combined payment needs allocating",
 
   "payout.scheduled": "Payout scheduled",

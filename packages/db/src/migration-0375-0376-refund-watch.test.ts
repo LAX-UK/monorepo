@@ -4,6 +4,10 @@ import { fileURLToPath } from "node:url";
 import { getTableColumns } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 import { PAYMENT_REFUND_SOURCES } from "./schema/payment-refund.js";
+import {
+  STRIPE_REFUND_REVERSAL_TARGETS,
+  stripeRefundReversal,
+} from "./schema/stripe-refund-reversal.js";
 import { stripeRefundWatch } from "./schema/stripe-refund-watch.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -44,6 +48,18 @@ describe("migration 0375 stripe refund watch", () => {
     }
   });
 
+  it("keys each refund reversal by Stripe refund and record, so one is taken back once", () => {
+    expect(migration).toMatch(/CREATE TABLE IF NOT EXISTS "stripe_refund_reversal"/);
+    for (const column of Object.values(getTableColumns(stripeRefundReversal))) {
+      expect(migration).toContain(`"${column.name}"`);
+    }
+    expect(migration).toContain(
+      `CONSTRAINT "stripe_refund_reversal_pk" PRIMARY KEY ("stripe_refund_id", "target", "target_id")`,
+    );
+    const targets = migration.slice(migration.indexOf('"stripe_refund_reversal_target_ck" CHECK'));
+    for (const target of STRIPE_REFUND_REVERSAL_TARGETS) expect(targets).toContain(`'${target}'`);
+  });
+
   it("allows a negative buyer refund row only as a refund_reversal, checked on every row", () => {
     expect(migration).toContain(
       `CHECK ("amount_pence" > 0 OR ("source" = 'refund_reversal' AND "amount_pence" < 0)) NOT VALID`,
@@ -67,6 +83,8 @@ describe("migration 0375 stripe refund watch", () => {
     expect(rollback).toContain(`CHECK ("amount_pence" > 0)`);
     expect(rollback).toContain(`SUM(round(abs(l."amount") * 100))::bigint AS "line_pence"`);
     expect(rollback).toMatch(/DROP TABLE IF EXISTS "stripe_refund_watch"/);
+    expect(rollback).toContain(`IF EXISTS (SELECT 1 FROM "stripe_refund_reversal")`);
+    expect(rollback).toMatch(/DROP TABLE IF EXISTS "stripe_refund_reversal"/);
   });
 });
 

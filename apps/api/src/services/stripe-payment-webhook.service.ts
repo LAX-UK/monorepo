@@ -5,6 +5,7 @@ import type {
 import type {
   IPaymentRefundLedger,
   IPaymentWriteRepository,
+  IRefundReversalLedger,
 } from "@auction/persistence/interfaces";
 import type { IPayoutRepository } from "@auction/persistence/interfaces";
 import type Stripe from "stripe";
@@ -46,10 +47,12 @@ export type { PaymentWebhookResult } from "./stripe-webhook/payment-webhook-type
 import type { IPaymentEligibilityGate } from "@auction/finance-runtime";
 
 /** Without the refund record no refund can be measured or kept, so the webhook fails and is retried. */
-const UNWIRED_PAYMENT_REFUNDS: IPaymentRefundLedger = {
+const UNWIRED_PAYMENT_REFUNDS: IPaymentRefundLedger & IRefundReversalLedger = {
   recordInTransaction: () => Promise.reject(new Error("Payment refunds are not wired")),
   lockPaymentInTransaction: () => Promise.reject(new Error("Payment refunds are not wired")),
   sumRefundedPenceInTransaction: () => Promise.reject(new Error("Payment refunds are not wired")),
+  reversedRefundIdsInTransaction: () => Promise.reject(new Error("Payment refunds are not wired")),
+  recordReversalInTransaction: () => Promise.reject(new Error("Payment refunds are not wired")),
 };
 
 /** Routes Stripe payment webhooks to segregated handlers (no business logic). */
@@ -72,7 +75,7 @@ export class StripePaymentWebhookService {
     unappliedMoney: IUnappliedMoneyRecorder | null = null,
     private readonly unappliedRefunds: UnappliedMoneyRefundHandler | null = null,
     paymentEligibility: IPaymentEligibilityGate | null = null,
-    paymentRefunds: IPaymentRefundLedger | null = null,
+    paymentRefunds: (IPaymentRefundLedger & IRefundReversalLedger) | null = null,
     errorReporter?: IErrorReporter,
     private readonly transferChecks: TransferCheckDeps | null = null,
     chargeRefunds: IChargeRefundsReader | null = null,

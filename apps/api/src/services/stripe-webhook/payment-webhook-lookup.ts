@@ -2,6 +2,7 @@ import { payment } from "@auction/db/schema";
 import type {
   IPaymentRefundLedger,
   IPaymentWebhookLookupReader,
+  IRefundReversalLedger,
 } from "@auction/persistence/interfaces";
 import type { ITransactionRunner } from "@auction/persistence/interfaces";
 import type { IPaymentWriteRepository } from "@auction/persistence/interfaces";
@@ -22,8 +23,11 @@ export type StripePaymentWebhookDeps = {
   paymentWebhookLookup: IPaymentWebhookLookupReader;
   payments: IPaymentWriteRepository;
   payoutRepository: IPayoutRepository;
-  /** What the buyer was refunded: where a refund's delta is measured from, and recorded to. */
-  paymentRefunds: IPaymentRefundLedger;
+  /**
+   * What the buyer was refunded: where a refund's delta is measured from, and recorded to, with
+   * the failed refunds already taken back from each invoice.
+   */
+  paymentRefunds: IPaymentRefundLedger & IRefundReversalLedger;
   payoutAdjustments: IPayoutAdjustmentService;
   paymentCapture: IPaymentCaptureService;
   domainEventSink: IDomainEventSink;

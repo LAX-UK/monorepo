@@ -56,3 +56,35 @@ export interface IPaymentRefundLedger {
   lockPaymentInTransaction(tx: Database, paymentId: string): Promise<boolean>;
   sumRefundedPenceInTransaction(tx: Database, paymentId: string): Promise<PaymentRefundTotal>;
 }
+
+/**
+ * A record a failed or cancelled Stripe refund can be taken back from: an invoice's buyer record
+ * or seller lines (id: the payment id), a courier quote's refunded figure (id: the quote id) or a
+ * group's unattributed figure (id: the group id).
+ */
+export type RefundReversalTarget = {
+  kind: "buyer" | "seller" | "delivery" | "unattributed";
+  id: string;
+};
+
+/**
+ * Which failed or cancelled Stripe refunds have been taken back from which record. A refund is
+ * taken back from a record at most once, whichever path sees it (the webhook, the refund
+ * reconcile job, the repair command). Read and write it under the lock that guards the record.
+ */
+export interface IRefundReversalLedger {
+  /** The Stripe refund ids already taken back from the record. */
+  reversedRefundIdsInTransaction(
+    tx: Database,
+    target: RefundReversalTarget,
+  ): Promise<ReadonlySet<string>>;
+  /**
+   * Records that `amountPence` (above zero) of a Stripe refund is taken back from the record;
+   * false when that refund was taken back from it before, in which case nothing may be written.
+   */
+  recordReversalInTransaction(
+    tx: Database,
+    target: RefundReversalTarget,
+    reversal: { stripeRefundId: string; amountPence: number },
+  ): Promise<boolean>;
+}

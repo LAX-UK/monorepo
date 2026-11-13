@@ -388,9 +388,11 @@ export type {
 export type {
   IPaymentRefundLedger,
   IPaymentRefundReader,
+  IRefundReversalLedger,
   PaymentRefundEntry,
   PaymentRefundSource,
   PaymentRefundTotal,
+  RefundReversalTarget,
 } from "./payment-refund.repository.js";
 
 export type {

@@ -60,6 +60,9 @@ describe.skipIf(!HAS_DB)("payment refund record (integration)", () => {
     await db.execute(sql`
       delete from payment_refund where payment_id in
         (select p.id from payment p where p.buyer_legal_entity_id = ${entity})`);
+    await db.execute(
+      sql`delete from stripe_refund_reversal where stripe_refund_id like ${`re_rv_${run}_%`}`,
+    );
     for (const lotId of lotIds) await db.execute(sql`delete from lot where id = ${lotId}`);
     await db.execute(sql`delete from legal_entity where id = ${entity}`);
     await db.execute(sql`delete from "user" where id = ${buyer}`);
@@ -167,5 +170,26 @@ describe.skipIf(!HAS_DB)("payment refund record (integration)", () => {
       values (${third}, ${paymentId}, -10.00, 'refund', ${`bf-${run}-3`})`);
     await db.transaction((tx) => repo.lockPaymentInTransaction(tx, paymentId));
     expect((await repo.sumRefundedPence(paymentId)).pence).toBe(1_000);
+  });
+
+  it("takes a Stripe refund back from a record once, and from each record on its own", async () => {
+    const paymentId = await payment();
+    const buyerRecord = { kind: "buyer", id: paymentId } as const;
+    const sellerRecord = { kind: "seller", id: paymentId } as const;
+    const re = `re_rv_${run}_1`;
+    const reverse = (target: typeof buyerRecord | typeof sellerRecord, amountPence: number) =>
+      db.transaction((tx) =>
+        repo.recordReversalInTransaction(tx, target, { stripeRefundId: re, amountPence }),
+      );
+    const reversed = (target: typeof buyerRecord | typeof sellerRecord) =>
+      db.transaction((tx) => repo.reversedRefundIdsInTransaction(tx, target));
+
+    expect(await reversed(buyerRecord)).toEqual(new Set());
+    expect(await reverse(buyerRecord, 2_500)).toBe(true);
+    expect(await reverse(buyerRecord, 1_000)).toBe(false);
+    expect(await reverse(sellerRecord, 2_500)).toBe(true);
+    expect(await reversed(buyerRecord)).toEqual(new Set([re]));
+    expect(await reversed({ kind: "buyer", id: randomUUID() })).toEqual(new Set());
+    await expect(reverse(buyerRecord, 0)).rejects.toThrow(RangeError);
   });
 });

@@ -121,12 +121,13 @@ The previous release counted a Pay several refund while it was still pending. If
 DATABASE_URL=... STRIPE_SECRET_KEY=... pnpm --filter @auction/api repair:group-refund-totals
 # One group, then apply after finance has reviewed the dry run.
 ... repair:group-refund-totals -- --group <payment group id>
-... repair:group-refund-totals -- --apply [--group <id>] [--limit <n>]
+... repair:group-refund-totals -- --apply --operator <staff user id> [--group <id>] [--limit <n>]
 ```
 
 - The command only takes back as much as the charge's `failed` or `canceled` refunds explain. Anything else above Stripe is printed as `UNEXPLAINED` and left for finance.
 - Groups with a refund still pending are flagged and can be left for the reconcile job.
-- `--apply` writes each correction once, measured under the group's lock. Each correction is a negative `refund_reversal` buyer row, a seller line that gives back the clawback, the lowered courier or unattributed figure, and a `payment.refund_reversed` notice. A second run reports nothing left to repair.
+- `--apply` needs `--operator <staff user id>`, the staff member running it. Every change is announced with them as the actor.
+- `--apply` measures each group under its lock against Stripe's list read under that lock. Each failed refund is taken back from each record at most once. The reversal ledger (`stripe_refund_reversal`) keys it by Stripe refund id and is shared with the webhook and the reconcile job. A correction is a negative `refund_reversal` buyer row, a seller line that gives back the clawback, and a `payment.refund_reversed` notice. A lowered courier or unattributed figure is announced as `payment_group.refund_reversed`. A second run writes nothing; anything still `UNEXPLAINED` is printed again for finance.
 - It never raises a total. That is the normal reconcile's job.
 
 ## 5. Cutover sequence

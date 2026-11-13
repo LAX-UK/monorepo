@@ -5,6 +5,10 @@
 --     succeeded, failed or been cancelled it settles the charge's totals through the same path as
 --     the webhook and marks the row settled. A refund staff made while it was still pending keeps
 --     who made it and why (staff_refund), so it is recorded as their refund once it succeeds.
+--   * stripe_refund_reversal: one row per failed or cancelled Stripe refund taken back from a record
+--     that had counted it (an invoice's buyer record or seller lines, a courier quote's or a group's
+--     unattributed refunded figure). Keyed by refund and record, so a refund is taken back at most
+--     once whichever path sees it: the webhook, the reconcile job or the repair command.
 --   * payment_refund may now hold a compensating (negative) row, source 'refund_reversal', written
 --     when a refund that had been counted is reported failed or cancelled. Every other source stays
 --     above zero.
@@ -36,6 +40,19 @@ CREATE TABLE IF NOT EXISTS "stripe_refund_watch" (
 CREATE INDEX IF NOT EXISTS "stripe_refund_watch_due_idx" ON "stripe_refund_watch" ("next_check_at") WHERE "settled_at" IS NULL;
 --> statement-breakpoint
 CREATE INDEX IF NOT EXISTS "stripe_refund_watch_charge_idx" ON "stripe_refund_watch" ("stripe_charge_id");
+--> statement-breakpoint
+CREATE TABLE IF NOT EXISTS "stripe_refund_reversal" (
+  "stripe_refund_id" text NOT NULL,
+  "target" text NOT NULL,
+  "target_id" text NOT NULL,
+  "amount_pence" integer NOT NULL,
+  "created_at" timestamp with time zone DEFAULT now() NOT NULL,
+  CONSTRAINT "stripe_refund_reversal_pk" PRIMARY KEY ("stripe_refund_id", "target", "target_id"),
+  CONSTRAINT "stripe_refund_reversal_target_ck" CHECK ("target" IN ('buyer', 'seller', 'delivery', 'unattributed')),
+  CONSTRAINT "stripe_refund_reversal_amount_ck" CHECK ("amount_pence" > 0)
+);
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "stripe_refund_reversal_target_idx" ON "stripe_refund_reversal" ("target", "target_id");
 --> statement-breakpoint
 ALTER TABLE "payment_refund" DROP CONSTRAINT IF EXISTS "payment_refund_source_ck";
 --> statement-breakpoint

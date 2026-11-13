@@ -216,6 +216,8 @@ export const EXCEPTION_PATHS: Record<string, Set<string>> = {
   "payment_group.paid": new Set(["total"]),
   /** Why the group's checkout ended (cancelled, expired, failed); operational codes only. */
   "payment_group.released": new Set(["reason"]),
+  /** The repair took failed refunds back from a courier quote's or the unattributed figure. */
+  "payment_group.refund_reversed": new Set(["via"]),
   /** Why money received for a group was not applied (an operational code). */
   "payment_group.settlement_refused": new Set(["reason"]),
   /** Which dispute stage needs the finance team to allocate it across the invoices. */

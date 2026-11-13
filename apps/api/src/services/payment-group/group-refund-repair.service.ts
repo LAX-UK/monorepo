@@ -4,17 +4,25 @@ import type {
   IPaymentGroupRepository,
   IPaymentLifecycleRepository,
   IPaymentRefundLedger,
+  IRefundReversalLedger,
   ITransactionRunner,
+  LockedPaymentGroup,
+  RefundReversalTarget,
 } from "@auction/persistence/interfaces";
 import { gbpAmountToPence } from "../../lib/decimal-money.js";
 import type { IDomainEventSink } from "../domain-event-sink.js";
 import type { IPayoutAdjustmentService } from "../interfaces/payout-adjustment.js";
+import { takeBackFailedRefunds } from "../payment/take-back-failed-refunds.js";
 import type { IChargeRefundsReader } from "../stripe/stripe-charge-refunds.js";
 import {
   type ChargeRefund,
+  type ReversibleRefund,
+  allocateRefundReversal,
   isCountedRefund,
   isReturnedNothing,
   refundCorrectionPence,
+  reversibleRefunds,
+  sumReversiblePence,
 } from "../stripe/stripe-refund-status.js";
 
 export type GroupRefundRepairDeps = {
@@ -28,7 +36,7 @@ export type GroupRefundRepairDeps = {
   >;
   refunds: Pick<IChargeRefundsReader, "listChargeRefunds">;
   payments: Pick<IPaymentLifecycleRepository, "applyRefundReversedInTransaction">;
-  paymentRefunds: IPaymentRefundLedger;
+  paymentRefunds: IPaymentRefundLedger & IRefundReversalLedger;
   sellerRefundedCents: (tx: Database, paymentId: string) => Promise<number>;
   payoutAdjustments: Pick<IPayoutAdjustmentService, "addPaymentLineToOpenPayoutOrCreateClawback">;
   events: IDomainEventSink;
@@ -68,6 +76,11 @@ export type GroupRefundRepairReport = {
   groups: GroupRepair[];
 };
 
+/** A dry run, or an applied run with the staff member who runs it (recorded on every change). */
+export type GroupRefundRepairRun =
+  | { apply: false; operatorUserId?: string | null }
+  | { apply: true; operatorUserId: string };
+
 function attribute(
   members: readonly { paymentId: string; amount: string }[],
   deliveries: readonly { quoteId: string; amount: string }[],
@@ -84,28 +97,70 @@ function attribute(
   );
 }
 
+/** The failed or cancelled refunds on a group's charge, split by the record each one counted on. */
+type FailedRefundsByRecord = {
+  byPayment: Map<string, ChargeRefund[]>;
+  byDelivery: Map<string, ChargeRefund[]>;
+  unattributed: ChargeRefund[];
+};
+
+/**
+ * Attributes each failed refund on its own, as the webhook attributes refunds, so every record
+ * knows which Stripe refunds (and how much of each) it may have counted: the key a reversal is
+ * written once under.
+ */
+function failedRefundsByRecord(
+  members: readonly { paymentId: string; amount: string }[],
+  deliveries: readonly { quoteId: string; amount: string }[],
+  refunds: readonly ChargeRefund[],
+): FailedRefundsByRecord {
+  const split: FailedRefundsByRecord = {
+    byPayment: new Map(),
+    byDelivery: new Map(),
+    unattributed: [],
+  };
+  const add = (into: Map<string, ChargeRefund[]>, key: string, refund: ChargeRefund) =>
+    into.set(key, [...(into.get(key) ?? []), refund]);
+  for (const refund of refunds) {
+    const one = attribute(members, deliveries, [refund]);
+    for (const [paymentId, amountPence] of one.refundedPenceByPayment) {
+      add(split.byPayment, paymentId, { ...refund, amountPence });
+    }
+    for (const [quoteId, amountPence] of one.refundedPenceByDelivery) {
+      add(split.byDelivery, quoteId, { ...refund, amountPence });
+    }
+    if (one.unattributedPence > 0) {
+      split.unattributed.push({ ...refund, amountPence: one.unattributedPence });
+    }
+  }
+  return split;
+}
+
 /**
  * The explicit repair for Pay several totals counted under the old rule, which counted a refund
  * while it was still pending: one that then failed kept the buyer's record, the seller's clawback,
  * a courier quote's refunded figure or the unattributed excess above what went back. Never run
  * automatically.
  *
- * Each group is measured against its charge's refunds as Stripe lists them now. A total above
- * what succeeded is brought down only as far as the refunds that failed or were cancelled
- * explain; anything else above Stripe is reported as unexplained and left alone. A dry run (the
- * default) writes nothing. Applied, each correction is measured under the group's lock and written
- * once (a compensating buyer row, a seller line giving back the clawback, the lowered figure and a
- * `payment.refund_reversed` notice), so running it again finds nothing to do.
+ * Each group is measured, under its lock, against its charge's refunds as Stripe lists them at
+ * that moment. A total above what succeeded is brought down only as far as refunds that failed or
+ * were cancelled, and have not been taken back from that record yet, explain; anything else above
+ * Stripe is reported as unexplained and left alone. A dry run (the default) writes nothing.
+ * Applied, each failed refund is taken back from each record at most once (keyed by the Stripe
+ * refund in the reversal ledger, shared with the webhook and the reconcile job): a compensating
+ * buyer row, a seller line giving back the clawback, the lowered courier or unattributed figure,
+ * each announced with the operator who ran it. Running it again writes nothing.
  */
 export class GroupRefundRepairService {
   constructor(private readonly deps: GroupRefundRepairDeps) {}
 
-  async run(input: {
-    apply: boolean;
-    groupId?: string;
-    limit?: number;
-    batchSize?: number;
-  }): Promise<GroupRefundRepairReport> {
+  async run(
+    input: GroupRefundRepairRun & { groupId?: string; limit?: number; batchSize?: number },
+  ): Promise<GroupRefundRepairReport> {
+    if (input.apply && !input.operatorUserId) {
+      throw new Error("An applied repair needs the operator (staff user id) who runs it");
+    }
+    const operatorUserId = input.apply ? input.operatorUserId : null;
     const report: GroupRefundRepairReport = { apply: input.apply, checked: 0, groups: [] };
     const limit = input.limit ?? Number.POSITIVE_INFINITY;
     let afterId: string | null = null;
@@ -120,28 +175,30 @@ export class GroupRefundRepairService {
         if (input.groupId && group.id !== input.groupId) continue;
         if (report.checked >= limit) break;
         report.checked += 1;
-        const repair = await this.repairGroup(group, input.apply);
+        const repair = await this.repairGroup(group, operatorUserId);
         if (repair) report.groups.push(repair);
       }
     }
     return report;
   }
 
-  private async repairGroup(
+  /** `operatorUserId` set: apply. Null: dry run. */
+  private repairGroup(
     group: { id: string; stripeChargeId: string },
-    apply: boolean,
+    operatorUserId: string | null,
   ): Promise<GroupRepair | null> {
-    const refunds = await this.deps.refunds.listChargeRefunds(group.stripeChargeId);
-    const succeeded = refunds.filter((r) => isCountedRefund(r.status));
-    const returnedNothing = refunds.filter((r) => isReturnedNothing(r.status));
-    const pendingRefunds = refunds.length - succeeded.length - returnedNothing.length;
-
     return this.deps.transactionRunner.runInTransaction(async (tx) => {
       const locked = await this.deps.groups.lockInTransaction(tx, group.id);
       if (!locked) return null;
+      // Read while the group is held, so no event can record a refund between the read and the
+      // correction: a list read earlier could show a refund as pending that has since succeeded
+      // and been counted, and a real refund would then look unexplained or be taken back.
+      const refunds = await this.deps.refunds.listChargeRefunds(group.stripeChargeId);
+      const succeeded = refunds.filter((r) => isCountedRefund(r.status));
+      const returnedNothing = refunds.filter((r) => isReturnedNothing(r.status));
       const members = [...locked.members].sort((a, b) => a.paymentId.localeCompare(b.paymentId));
       const counted = attribute(members, locked.deliveries, succeeded);
-      const failed = attribute(members, locked.deliveries, returnedNothing);
+      const failed = failedRefundsByRecord(members, locked.deliveries, returnedNothing);
       const repair: GroupRepair = {
         groupId: group.id,
         stripeChargeId: group.stripeChargeId,
@@ -149,117 +206,27 @@ export class GroupRefundRepairService {
         deliveries: [],
         unattributed: { recordedPence: 0, succeededPence: 0, correctionPence: 0 },
         unexplained: false,
-        pendingRefunds,
+        pendingRefunds: refunds.length - succeeded.length - returnedNothing.length,
       };
+      const run: RepairStep = { tx, group, locked, operatorUserId, repair };
 
       for (const member of members) {
-        const invoicePence = gbpAmountToPence(member.amount);
-        await this.deps.paymentRefunds.lockPaymentInTransaction(tx, member.paymentId);
-        const { pence: recordedBuyerPence } =
-          await this.deps.paymentRefunds.sumRefundedPenceInTransaction(tx, member.paymentId);
-        const recordedSellerPence = await this.deps.sellerRefundedCents(tx, member.paymentId);
-        const succeededPence = counted.refundedPenceByPayment.get(member.paymentId) ?? 0;
-        const failedPence = failed.refundedPenceByPayment.get(member.paymentId) ?? 0;
-        const buyerCorrectionPence = Math.min(
-          0,
-          refundCorrectionPence({
-            recordedPence: recordedBuyerPence,
-            countedPence: succeededPence,
-            returnedNothingPence: failedPence,
-          }),
+        await this.repairMember(
+          run,
+          member,
+          counted.refundedPenceByPayment.get(member.paymentId) ?? 0,
+          failed.byPayment.get(member.paymentId) ?? [],
         );
-        const sellerCorrectionPence = Math.min(
-          0,
-          refundCorrectionPence({
-            recordedPence: Math.min(recordedSellerPence, invoicePence),
-            countedPence: Math.min(succeededPence, invoicePence),
-            returnedNothingPence: failedPence,
-          }),
-        );
-        if (
-          recordedBuyerPence + buyerCorrectionPence > succeededPence ||
-          Math.min(recordedSellerPence, invoicePence) + sellerCorrectionPence >
-            Math.min(succeededPence, invoicePence)
-        ) {
-          repair.unexplained = true;
-        }
-        if (
-          recordedBuyerPence === succeededPence &&
-          Math.min(recordedSellerPence, invoicePence) === Math.min(succeededPence, invoicePence)
-        ) {
-          continue;
-        }
-        repair.members.push({
-          paymentId: member.paymentId,
-          recordedBuyerPence,
-          recordedSellerPence,
-          succeededPence,
-          buyerCorrectionPence,
-          sellerCorrectionPence,
-        });
-        if (!apply || (buyerCorrectionPence === 0 && sellerCorrectionPence === 0)) continue;
-        await this.applyMember(tx, group, member, {
-          succeededPence,
-          invoicePence,
-          buyerCorrectionPence,
-          sellerCorrectionPence,
-          recordedBuyerPence,
-          recordedSellerPence,
-        });
       }
-
       for (const delivery of locked.deliveries) {
-        const succeededPence = counted.refundedPenceByDelivery.get(delivery.quoteId) ?? 0;
-        const failedPence = failed.refundedPenceByDelivery.get(delivery.quoteId) ?? 0;
-        if (delivery.refundedPence === succeededPence) continue;
-        const correctionPence = Math.min(
-          0,
-          refundCorrectionPence({
-            recordedPence: delivery.refundedPence,
-            countedPence: succeededPence,
-            returnedNothingPence: failedPence,
-          }),
-        );
-        if (delivery.refundedPence + correctionPence > succeededPence) repair.unexplained = true;
-        repair.deliveries.push({
-          quoteId: delivery.quoteId,
-          recordedPence: delivery.refundedPence,
-          succeededPence,
-          correctionPence,
-        });
-        if (apply && correctionPence < 0) {
-          await this.deps.groups.lowerDeliveryRefundedInTransaction(
-            tx,
-            group.id,
-            delivery.quoteId,
-            delivery.refundedPence + correctionPence,
-          );
-        }
-      }
-
-      const unattributedCorrection = Math.min(
-        0,
-        refundCorrectionPence({
-          recordedPence: locked.refundUnattributedPence,
-          countedPence: counted.unattributedPence,
-          returnedNothingPence: failed.unattributedPence,
-        }),
-      );
-      repair.unattributed = {
-        recordedPence: locked.refundUnattributedPence,
-        succeededPence: counted.unattributedPence,
-        correctionPence: unattributedCorrection,
-      };
-      if (locked.refundUnattributedPence + unattributedCorrection > counted.unattributedPence) {
-        repair.unexplained = true;
-      }
-      if (apply && unattributedCorrection < 0) {
-        await this.deps.groups.lowerUnattributedRefundInTransaction(
-          tx,
-          group.id,
-          locked.refundUnattributedPence + unattributedCorrection,
+        await this.repairDelivery(
+          run,
+          delivery,
+          counted.refundedPenceByDelivery.get(delivery.quoteId) ?? 0,
+          failed.byDelivery.get(delivery.quoteId) ?? [],
         );
       }
+      await this.repairUnattributed(run, counted.unattributedPence, failed.unattributed);
 
       const changed =
         repair.members.length > 0 ||
@@ -269,59 +236,211 @@ export class GroupRefundRepairService {
     });
   }
 
-  private async applyMember(
-    tx: Database,
-    group: { id: string; stripeChargeId: string },
-    member: { paymentId: string; sellerLegalEntityId: string },
-    m: {
-      succeededPence: number;
-      invoicePence: number;
-      buyerCorrectionPence: number;
-      sellerCorrectionPence: number;
-      recordedBuyerPence: number;
-      recordedSellerPence: number;
-    },
+  private async repairMember(
+    run: RepairStep,
+    member: { paymentId: string; sellerLegalEntityId: string; amount: string },
+    succeededPence: number,
+    failed: readonly ChargeRefund[],
   ): Promise<void> {
-    // Keyed by what is corrected, so a second run (which finds nothing left) writes nothing, and
-    // a later, different correction of the same invoice is a row of its own.
-    const key = `refund_repair:${member.paymentId}:${m.recordedBuyerPence}:${m.recordedSellerPence}:${m.succeededPence}`;
-    if (m.succeededPence < m.invoicePence) {
+    const { tx, repair } = run;
+    const invoicePence = gbpAmountToPence(member.amount);
+    await this.deps.paymentRefunds.lockPaymentInTransaction(tx, member.paymentId);
+    const { pence: recordedBuyerPence } =
+      await this.deps.paymentRefunds.sumRefundedPenceInTransaction(tx, member.paymentId);
+    const recordedSellerPence = await this.deps.sellerRefundedCents(tx, member.paymentId);
+    const buyerReversible = await this.reversible(
+      tx,
+      { kind: "buyer", id: member.paymentId },
+      failed,
+    );
+    const sellerReversible = await this.reversible(
+      tx,
+      { kind: "seller", id: member.paymentId },
+      failed,
+    );
+    const sellerRecorded = Math.min(recordedSellerPence, invoicePence);
+    const sellerSucceeded = Math.min(succeededPence, invoicePence);
+    const buyerCorrectionPence = Math.min(
+      0,
+      refundCorrectionPence({
+        recordedPence: recordedBuyerPence,
+        countedPence: succeededPence,
+        reversiblePence: sumReversiblePence(buyerReversible),
+      }),
+    );
+    const sellerCorrectionPence = Math.min(
+      0,
+      refundCorrectionPence({
+        recordedPence: sellerRecorded,
+        countedPence: sellerSucceeded,
+        reversiblePence: sumReversiblePence(sellerReversible),
+      }),
+    );
+    if (
+      recordedBuyerPence + buyerCorrectionPence > succeededPence ||
+      sellerRecorded + sellerCorrectionPence > sellerSucceeded
+    ) {
+      repair.unexplained = true;
+    }
+    if (recordedBuyerPence === succeededPence && sellerRecorded === sellerSucceeded) return;
+    repair.members.push({
+      paymentId: member.paymentId,
+      recordedBuyerPence,
+      recordedSellerPence,
+      succeededPence,
+      buyerCorrectionPence,
+      sellerCorrectionPence,
+    });
+    if (!run.operatorUserId || (buyerCorrectionPence === 0 && sellerCorrectionPence === 0)) return;
+
+    const taken = await takeBackFailedRefunds(this.deps, tx, {
+      paymentId: member.paymentId,
+      sellerLegalEntityId: member.sellerLegalEntityId,
+      currency: "GBP",
+      buyer: allocateRefundReversal(-buyerCorrectionPence, buyerReversible),
+      seller: allocateRefundReversal(-sellerCorrectionPence, sellerReversible),
+      note: `Refund repair (failed refund): ${run.group.stripeChargeId}`,
+    });
+    if (taken.buyerPence === 0 && taken.sellerPence === 0) return;
+    if (succeededPence < invoicePence) {
       await this.deps.payments.applyRefundReversedInTransaction(tx, member.paymentId);
-    }
-    if (m.buyerCorrectionPence < 0) {
-      await this.deps.paymentRefunds.recordInTransaction(tx, {
-        paymentId: member.paymentId,
-        idempotencyKey: key,
-        amountPence: m.buyerCorrectionPence,
-        currency: "GBP",
-        source: "refund_reversal",
-      });
-    }
-    if (m.sellerCorrectionPence < 0) {
-      await this.deps.payoutAdjustments.addPaymentLineToOpenPayoutOrCreateClawback({
-        legalEntityId: member.sellerLegalEntityId,
-        paymentId: member.paymentId,
-        amount: (-m.sellerCorrectionPence / 100).toFixed(2),
-        kind: "refund",
-        sourceEventId: key,
-        note: `Refund repair (failed refund): ${group.stripeChargeId}`,
-        tx,
-      });
     }
     await this.deps.events.withTx(tx).publish({
       aggregateType: "payment",
       aggregateId: member.paymentId,
       eventType: "payment.refund_reversed",
       payload: {
-        stripeChargeId: group.stripeChargeId,
-        amountCents: -Math.min(m.buyerCorrectionPence, m.sellerCorrectionPence),
-        cumulativeRefundedCents: m.succeededPence,
+        stripeChargeId: run.group.stripeChargeId,
+        amountCents: Math.max(taken.buyerPence, taken.sellerPence),
+        cumulativeRefundedCents: succeededPence,
         currency: "GBP",
         sellerLegalEntityId: member.sellerLegalEntityId,
         via: "refund_repair",
       },
-      actorUserId: null,
+      actorUserId: run.operatorUserId,
       actingLegalEntityId: member.sellerLegalEntityId,
     });
   }
+
+  private async repairDelivery(
+    run: RepairStep,
+    delivery: { quoteId: string; refundedPence: number },
+    succeededPence: number,
+    failed: readonly ChargeRefund[],
+  ): Promise<void> {
+    if (delivery.refundedPence === succeededPence) return;
+    const target = { kind: "delivery", id: delivery.quoteId } as const;
+    const reversible = await this.reversible(run.tx, target, failed);
+    const correctionPence = Math.min(
+      0,
+      refundCorrectionPence({
+        recordedPence: delivery.refundedPence,
+        countedPence: succeededPence,
+        reversiblePence: sumReversiblePence(reversible),
+      }),
+    );
+    if (delivery.refundedPence + correctionPence > succeededPence) run.repair.unexplained = true;
+    run.repair.deliveries.push({
+      quoteId: delivery.quoteId,
+      recordedPence: delivery.refundedPence,
+      succeededPence,
+      correctionPence,
+    });
+    await this.lowerFigure(run, target, delivery.refundedPence, reversible, correctionPence, (to) =>
+      this.deps.groups.lowerDeliveryRefundedInTransaction(
+        run.tx,
+        run.group.id,
+        delivery.quoteId,
+        to,
+      ),
+    );
+  }
+
+  private async repairUnattributed(
+    run: RepairStep,
+    succeededPence: number,
+    failed: readonly ChargeRefund[],
+  ): Promise<void> {
+    const recordedPence = run.locked.refundUnattributedPence;
+    const target = { kind: "unattributed", id: run.group.id } as const;
+    const reversible = await this.reversible(run.tx, target, failed);
+    const correctionPence = Math.min(
+      0,
+      refundCorrectionPence({
+        recordedPence,
+        countedPence: succeededPence,
+        reversiblePence: sumReversiblePence(reversible),
+      }),
+    );
+    run.repair.unattributed = { recordedPence, succeededPence, correctionPence };
+    if (recordedPence + correctionPence > succeededPence) run.repair.unexplained = true;
+    await this.lowerFigure(run, target, recordedPence, reversible, correctionPence, (to) =>
+      this.deps.groups.lowerUnattributedRefundInTransaction(run.tx, run.group.id, to),
+    );
+  }
+
+  /**
+   * Applied runs only: takes the failed refunds back from a courier quote's or the group's
+   * unattributed figure, each refund claimed once in the reversal ledger, lowers the figure by
+   * what was claimed and announces it with the operator.
+   */
+  private async lowerFigure(
+    run: RepairStep,
+    target: RefundReversalTarget,
+    recordedPence: number,
+    reversible: readonly ReversibleRefund[],
+    correctionPence: number,
+    lower: (toPence: number) => Promise<boolean>,
+  ): Promise<void> {
+    if (!run.operatorUserId || correctionPence >= 0) return;
+    let takenPence = 0;
+    for (const share of allocateRefundReversal(-correctionPence, reversible)) {
+      if (await this.deps.paymentRefunds.recordReversalInTransaction(run.tx, target, share)) {
+        takenPence += share.amountPence;
+      }
+    }
+    if (takenPence === 0) return;
+    if (!(await lower(recordedPence - takenPence))) {
+      // Measured under the group's lock, so it cannot have moved; never keep a claim it lacks.
+      throw new Error(`Refund figure of group ${run.group.id} changed under its lock`);
+    }
+    await this.deps.events.withTx(run.tx).publish({
+      aggregateType: "payment_group",
+      aggregateId: run.group.id,
+      eventType: "payment_group.refund_reversed",
+      payload: {
+        paymentGroupId: run.group.id,
+        stripeChargeId: run.group.stripeChargeId,
+        deliveryQuoteId: target.kind === "delivery" ? target.id : null,
+        amountCents: takenPence,
+        previousCents: recordedPence,
+        correctedCents: recordedPence - takenPence,
+        currency: "GBP",
+        via: "refund_repair",
+      },
+      actorUserId: run.operatorUserId,
+      actingLegalEntityId: run.locked.group.buyerLegalEntityId,
+    });
+  }
+
+  private async reversible(
+    tx: Database,
+    target: RefundReversalTarget,
+    failed: readonly ChargeRefund[],
+  ): Promise<ReversibleRefund[]> {
+    return reversibleRefunds(
+      failed,
+      await this.deps.paymentRefunds.reversedRefundIdsInTransaction(tx, target),
+    );
+  }
 }
+
+/** One group being repaired, under its lock. */
+type RepairStep = {
+  tx: Database;
+  group: { id: string; stripeChargeId: string };
+  locked: LockedPaymentGroup;
+  /** Set: the run applies and records this operator. Null: dry run. */
+  operatorUserId: string | null;
+  repair: GroupRepair;
+};

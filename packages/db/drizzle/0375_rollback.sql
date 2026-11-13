@@ -1,6 +1,7 @@
 -- Rollback for 0375_stripe_refund_watch. Roll back the application release first: it writes the
--- watch rows and compensating refund rows. Refuses to run while a compensating row exists, since
--- the previous checks cannot hold it; finance must review those payments first.
+-- watch rows, compensating refund rows and refund reversals. Refuses to run while a compensating
+-- row or a reversal exists, since the previous checks cannot hold them; finance must review those
+-- payments and groups first.
 BEGIN;
 
 SET LOCAL lock_timeout = '5s';
@@ -8,6 +9,9 @@ DO $$
 BEGIN
   IF EXISTS (SELECT 1 FROM "payment_refund" WHERE "source" = 'refund_reversal') THEN
     RAISE EXCEPTION 'payment_refund holds refund_reversal rows; review them before rolling back 0375';
+  END IF;
+  IF EXISTS (SELECT 1 FROM "stripe_refund_reversal") THEN
+    RAISE EXCEPTION 'stripe_refund_reversal holds rows; review them before rolling back 0375';
   END IF;
 END $$;
 ALTER TABLE "payment_refund" DROP CONSTRAINT IF EXISTS "payment_refund_amount_positive";
@@ -49,6 +53,7 @@ BEGIN
 END;
 $fn$;
 REVOKE ALL ON FUNCTION payment_refund_backfill_from_payout_lines(uuid) FROM PUBLIC;
+DROP TABLE IF EXISTS "stripe_refund_reversal";
 DROP TABLE IF EXISTS "stripe_refund_watch";
 
 COMMIT;

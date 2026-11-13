@@ -9,6 +9,7 @@ import {
   payout,
   payoutLine,
   processedStripeEvents,
+  stripeRefundReversal,
   stripeRefundWatch,
 } from "@auction/db/schema";
 import {
@@ -220,6 +221,9 @@ describe.skipIf(!HAS_DB)(
       await db
         .delete(stripeRefundWatch)
         .where(like(stripeRefundWatch.stripeChargeId, `ch_sr_${run}_%`));
+      await db
+        .delete(stripeRefundReversal)
+        .where(like(stripeRefundReversal.stripeRefundId, `re_sr_${run}_%`));
       await db.delete(payment).where(eq(payment.lotId, lotId));
     };
 
@@ -508,6 +512,123 @@ describe.skipIf(!HAS_DB)(
         ),
       ).toMatchObject({ reason: "no_new_refund_amount" });
       expect(await buyerRows()).toEqual([{ amount: 1_000, source: "staff" }]);
+      expect(await announced("payment.refund_reversed")).toEqual([]);
+    });
+
+    /** As the previous release left a refund it counted while pending: recorded and clawed back. */
+    const countedByPreviousRelease = (amountPence: number, key: string) =>
+      runner.runInTransaction(async (tx) => {
+        await refundRecords.lockPaymentInTransaction(tx, paymentId);
+        await refundRecords.recordInTransaction(tx, {
+          paymentId,
+          idempotencyKey: key,
+          amountPence,
+          currency: "GBP",
+          source: "card_webhook",
+        });
+        await payoutAdjustments.addPaymentLineToOpenPayoutOrCreateClawback({
+          legalEntityId: sellerId,
+          paymentId,
+          amount: (-amountPence / 100).toFixed(2),
+          kind: "refund",
+          sourceEventId: key,
+          note: "Refund",
+          tx,
+        });
+      });
+
+    it("staff £10 outside Stripe and £25 counted while pending that then failed: the webhook and then the job take the £25 back once", async () => {
+      // £10 refunded by staff outside Stripe (left for finance), clawed back from the seller.
+      await runner.runInTransaction(async (tx) => {
+        await refundRecords.lockPaymentInTransaction(tx, paymentId);
+        await refundRecords.recordInTransaction(tx, {
+          paymentId,
+          idempotencyKey: `staff_bank:${run}:${paymentId}`,
+          amountPence: 1_000,
+          currency: "GBP",
+          source: "staff",
+        });
+        await payoutAdjustments.addPaymentLineToOpenPayoutOrCreateClawback({
+          legalEntityId: sellerId,
+          paymentId,
+          amount: "-10.00",
+          kind: "refund",
+          sourceEventId: `staff_bank:${run}:${paymentId}`,
+          note: "Refund outside Stripe",
+          tx,
+        });
+      });
+      const re = `re_sr_${run}_${randomUUID()}`;
+      stripe.add({ id: re, chargeId: ch, amountPence: 2_500, status: "pending" });
+      await countedByPreviousRelease(2_500, `evt_sr_${run}_old_${paymentId}`);
+      await watch.watch([
+        {
+          stripeRefundId: re,
+          stripeChargeId: ch,
+          status: "pending",
+          amountPence: 2_500,
+          paymentId,
+        },
+      ]);
+
+      stripe.setStatus(re, "failed");
+      expect(
+        await webhooks.handleChargeRefundUpdated(
+          eventOf("charge.refund.updated", refundObject(re)),
+          refundObject(re),
+        ),
+      ).toMatchObject({ action: "refund_reversed" });
+      expect((await refundRecords.sumRefundedPence(paymentId)).pence).toBe(1_000);
+
+      // The job settles the same failed refund, then another refund event arrives: nothing more.
+      expect(await runJob()).toMatchObject({ settled: 1 });
+      await webhooks.handleChargeRefunded(
+        eventOf("charge.refunded", chargeObject()),
+        chargeObject(),
+      );
+
+      expect((await buyerRows()).map((r) => [r.amount, r.source])).toEqual([
+        [1_000, "staff"],
+        [2_500, "card_webhook"],
+        [-2_500, "refund_reversal"],
+      ]);
+      expect((await refundRecords.sumRefundedPence(paymentId)).pence).toBe(1_000);
+      expect((await sellerLines()).reduce((a, b) => a + b, 0)).toBeCloseTo(-10, 2);
+      const reversed = await announced("payment.refund_reversed");
+      expect(reversed).toHaveLength(1);
+      expect(reversed[0]?.payload).toMatchObject({ amountCents: 2_500 });
+    });
+
+    it("an event that read Stripe's list before a refund succeeded takes nothing back once it holds the payment", async () => {
+      // R1 £25 failed, R2 £25 pending. Event X reads the list; R2 then succeeds and event Y
+      // records it before X takes the payment's lock.
+      const r1 = `re_sr_${run}_${randomUUID()}`;
+      const r2 = `re_sr_${run}_${randomUUID()}`;
+      stripe.add({ id: r1, chargeId: ch, amountPence: 2_500, status: "failed" });
+      stripe.add({ id: r2, chargeId: ch, amountPence: 2_500, status: "pending" });
+      const read = stripe.listChargeRefunds.bind(stripe);
+      vi.spyOn(stripe, "listChargeRefunds").mockImplementationOnce(async (chargeId) => {
+        const stale = await read(chargeId);
+        stripe.setStatus(r2, "succeeded");
+        expect(
+          await webhooks.handleChargeRefundUpdated(
+            eventOf("charge.refund.updated", refundObject(r2)),
+            refundObject(r2),
+          ),
+        ).toMatchObject({ action: "refund_received" });
+        return stale;
+      });
+
+      expect(
+        await webhooks.handleChargeRefunded(
+          eventOf("charge.refunded", chargeObject()),
+          chargeObject(),
+        ),
+      ).toMatchObject({ reason: "no_new_refund_amount" });
+
+      expect(await buyerRows()).toEqual([{ amount: 2_500, source: "card_webhook" }]);
+      expect(await sellerLines()).toEqual([-25]);
+      expect(await announced("payment.refunded")).toHaveLength(1);
       expect(await announced("payment.refund_reversed")).toEqual([]);
     });
   },

@@ -217,6 +217,17 @@ describe.skipIf(!API_URL)("api_app role contract", { timeout: 60_000 }, () => {
     });
   });
 
+  it("appends refund reversals and reads them, never changing or removing one", async () => {
+    await withApiClient(async (client) => {
+      const rows = await readTablePrivileges(
+        client,
+        ["stripe_refund_reversal"],
+        ["SELECT", "INSERT", "UPDATE", "DELETE"],
+      );
+      expectTablePrivileges(rows, (row) => ["SELECT", "INSERT"].includes(row.privilege));
+    });
+  });
+
   it("creates, reads, changes and removes re-offers and seller answers", async () => {
     await withApiClient(async (client) => {
       const rows = await readTablePrivileges(

@@ -7,12 +7,15 @@
  *   DATABASE_URL=... STRIPE_SECRET_KEY=... pnpm --filter @auction/api repair:group-refund-totals
  * One group:
  *   ... repair:group-refund-totals -- --group <payment group id>
- * Apply (writes the compensating entries, once):
- *   ... repair:group-refund-totals -- --apply [--group <id>] [--limit <n>]
+ * Apply (writes the compensating entries, once), naming the staff member who runs it; every
+ * change is announced with them as the actor:
+ *   ... repair:group-refund-totals -- --apply --operator <staff user id> [--group <id>] [--limit <n>]
  *
- * Safe to run again: corrections are measured under each group's lock and written once, so a
- * second run reports nothing left to repair. Only what refunds that failed or were cancelled
- * explain is taken back; anything else above Stripe is printed as UNEXPLAINED for finance.
+ * Safe to run again: corrections are measured under each group's lock against Stripe's list read
+ * under that lock, and each failed refund is taken back from each record at most once (shared
+ * with the webhook and the reconcile job), so a second run writes nothing. Only what refunds that
+ * failed or were cancelled explain is taken back; anything else above Stripe is printed as
+ * UNEXPLAINED for finance, on every run.
  * See docs/runbooks/stripe-connect-go-live.md ("Refund totals repair").
  */
 import { createDb } from "@auction/db";
@@ -30,17 +33,26 @@ if (!url || !process.env.STRIPE_SECRET_KEY) {
 }
 
 const apply = process.argv.includes("--apply");
+const operatorUserId = argValue("--operator")?.trim();
+if (apply && (!operatorUserId || operatorUserId.startsWith("--"))) {
+  console.error("--apply needs --operator <staff user id>: the staff member running the repair.");
+  process.exit(1);
+}
 const groupId = argValue("--group");
 const limitArg = argValue("--limit");
 const service = createGroupRefundRepair(createDb(url), process.env.STRIPE_SECRET_KEY);
 
 const report = await service.run({
-  apply,
+  ...(apply && operatorUserId ? { apply: true, operatorUserId } : { apply: false }),
   ...(groupId ? { groupId } : {}),
   ...(limitArg ? { limit: Number(limitArg) } : {}),
 });
 
-console.log(apply ? "APPLY: writing corrections." : "DRY RUN: nothing is written. Add --apply.");
+console.log(
+  apply
+    ? `APPLY: writing corrections as operator ${operatorUserId}.`
+    : "DRY RUN: nothing is written. Add --apply --operator <staff user id>.",
+);
 for (const group of report.groups) {
   console.log(
     `group ${group.groupId} charge ${group.stripeChargeId}${group.unexplained ? " UNEXPLAINED" : ""}${group.pendingRefunds > 0 ? ` (${group.pendingRefunds} refund(s) still pending)` : ""}`,
