@@ -25,11 +25,12 @@ export interface InvoiceStandingInput {
 
 /**
  * - `lax`: Books does not issue this invoice (it is not aimed at Books, or only rehearses it), so
- *   the buyer has LAX's own invoice as before. A rehearsal never shows a buyer a Books number.
+ *   the buyer has LAX's own invoice exactly as before (a cancelled one too). A rehearsal never
+ *   shows a buyer a Books number.
  * - `preparing` / `delayed`: Books will issue it, and it is not issued with a stored copy yet;
  *   `delayed` once that has taken longer than `INVOICE_DELAYED_AFTER_MS`.
  * - `issued`: in Books under its number, and LAX holds the PDF the buyer downloads.
- * - `cancelled`: the invoice was cancelled; it is owed no more.
+ * - `cancelled`: the invoice was cancelled (Books issuing for real); it is owed no more.
  */
 export type InvoiceStanding =
   | { readonly kind: "lax" }
@@ -44,9 +45,11 @@ export type InvoiceStanding =
  * never from a dry run (its number is `DRY-RUN`, not the provider's).
  */
 export function invoiceStanding(input: InvoiceStandingInput, nowMs: number): InvoiceStanding {
-  if (input.cancelledAtMs !== null)
-    return { kind: "cancelled", cancelledAtMs: input.cancelledAtMs };
+  // Books off or only rehearsing: the buyer's page is exactly as it was before Books.
   if (input.booksMode === null || input.booksMode === "dry_run") return { kind: "lax" };
+  if (input.cancelledAtMs !== null) {
+    return { kind: "cancelled", cancelledAtMs: input.cancelledAtMs };
+  }
   const record = input.document?.record;
   if (record?.status === "issued" && input.document?.copyStored) {
     return { kind: "issued", number: record.issued.number };

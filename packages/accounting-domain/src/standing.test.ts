@@ -80,13 +80,14 @@ describe("invoiceStanding", () => {
     });
   });
 
-  it("says cancelled whatever Books holds", () => {
+  it("says cancelled whatever Books holds, once Books issues for real", () => {
     const cancelledAtMs = RAISED + 1_000;
     const cancelled = input({ cancelledAtMs, document: { record: issued, copyStored: true } });
     expect(invoiceStanding(cancelled, RAISED)).toEqual({ kind: "cancelled", cancelledAtMs });
-    expect(invoiceStanding({ ...cancelled, booksMode: null }, RAISED)).toEqual({
-      kind: "cancelled",
-      cancelledAtMs,
+    // Books off or rehearsing: the page is as it was before Books, cancelled or not.
+    expect(invoiceStanding({ ...cancelled, booksMode: null }, RAISED)).toEqual({ kind: "lax" });
+    expect(invoiceStanding({ ...cancelled, booksMode: "dry_run" }, RAISED)).toEqual({
+      kind: "lax",
     });
   });
 });
