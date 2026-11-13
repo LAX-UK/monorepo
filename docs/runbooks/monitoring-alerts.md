@@ -300,6 +300,30 @@ send: the worker enqueues the email before it notes it, so the guards that keep 
 organisation's invoice) out of the outbox are the worker's due-list query (`target_mode = 'live'`,
 `rehearsal = false`) and the service, which only sends while Bid is aimed at Books live.
 
+### Bid payments to Books (Finance › Accounting)
+
+- **Card, or a bank transfer once all of it is applied** (`payment.captured`): one customer payment
+  into the Stripe clearing account, `LAX-BID-PAY-<payment>`, applied in full to its invoice.
+- **Pay several** (`payment_group.settled`, written in the settlement transaction, references only):
+  ONE payment, `LAX-BID-PAY-grp-<group>`, applied to each invoice by its own payment row's amount.
+  The allocations must equal the group's stored total to the penny, or the event goes to the failed
+  deliveries (`allocation_mismatch`).
+- **Order.** A payment is sent only once every invoice it pays is issued in the same books. Until
+  then it waits in **Waiting** without using an attempt; a refused invoice keeps its payment waiting
+  with it, and trying the invoice again lets the payment follow.
+- **Parked, in Needs a person** (never sent, no Try again; Cancel only):
+  - "Waiting for the accountant: VAT on delivery": a courier quote paid with the lots makes a
+    delivery invoice, `LAX-BID-INV-dlv-<quote>`; it and the Pay several payment that includes it are
+    parked until the accountant says how delivery is booked (`DELIVERY_BOOKING` in the accounting
+    domain). The lots' invoices go as usual. When the answer is in: set the booking, cancel the
+    parked drafts, and project the group's event again.
+  - "The invoice this pays was cancelled after it was paid": refund the buyer or reinstate the
+    invoice.
+- **Bank transfers part received** are listed above the documents on the page. Nothing goes to
+  Books for them until the whole amount has arrived; the payment then arrives through
+  `payment.captured` (or the group's `payment_group.settled`). Money that could not be applied stays
+  a finance task (unapplied money) and makes no Books document.
+
 ## Related
 
 - [Scale monitoring](./scale-monitoring.md)
