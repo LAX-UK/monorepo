@@ -9,6 +9,8 @@ import { pickValidator } from "./content-type-validators.js";
 const MALWARE_SCAN_KINDS: ReadonlySet<string> = new Set([
   "source_of_funds_document",
   "consignment_message_attachment",
+  // A seller's signed paper agreement, scanned or emailed in, that staff and finance open.
+  "signed_consignment_agreement",
   ...ENQUIRY_UPLOAD_KINDS,
 ]);
 
