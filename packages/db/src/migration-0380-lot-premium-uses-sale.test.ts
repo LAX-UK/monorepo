@@ -8,16 +8,16 @@ import { sale } from "./schema/sales.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const read = (name: string) => readFileSync(join(__dirname, "../drizzle", name), "utf8");
-const TAG = "0379_lot_premium_uses_sale";
+const TAG = "0380_lot_premium_uses_sale";
 const migration = read(`${TAG}.sql`);
-const rollback = read("0379_rollback.sql");
+const rollback = read("0380_rollback.sql");
 const journal = JSON.parse(read("meta/_journal.json")) as {
   entries: { idx: number; tag: string; when: number }[];
 };
 const index = journal.entries.findIndex((e) => e.tag === TAG);
 const entry = journal.entries[index];
 
-describe("migration 0379 lot premium uses the sale's", () => {
+describe("migration 0380 lot premium uses the sale's", () => {
   it("is journalled once, right after the previous migration, with a later timestamp", () => {
     expect(index).toBeGreaterThan(0);
     expect(journal.entries.filter((e) => e.tag === TAG)).toHaveLength(1);

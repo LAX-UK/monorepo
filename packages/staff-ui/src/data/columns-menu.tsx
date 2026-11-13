@@ -105,7 +105,9 @@ export function ColumnsMenu<T>({
   locked?: readonly string[];
 }) {
   const fixed = new Set(locked ?? (columns[0] ? [columns[0].id] : []));
-  const choices = columns.filter((column) => !fixed.has(column.id) && !column.headerHidden);
+  const choices = columns.filter(
+    (column) => !fixed.has(column.id) && !column.headerHidden && !column.phoneOnly,
+  );
   if (choices.length === 0) return null;
   return (
     <StaffMenu>

@@ -1,10 +1,13 @@
 import { buildListHref } from "@/lib/admin/admin-list-params";
 import { dayRangeLabel } from "@/lib/admin/day-range-label";
+import { accountingHref } from "@/lib/admin/finance/accounting-queue.vm";
 import { searchChipLabel } from "@auction/staff-ui";
 import {
+  FAILED_JOB_ID_PREFIXES,
   FAILED_JOB_SOURCE_FAMILY_LABELS,
   type FailedJobSourceFamily,
   type FailedJobView,
+  isAccountingQueueTab,
   isFailedJobSourceFamily,
   isFailedJobView,
 } from "@auction/types";
@@ -88,7 +91,15 @@ export function decodeFailedJobId(segment: string): string {
   }
 }
 
+/**
+ * Where a row opens: its own page, or for a Zoho Books document (`accounting:<tab>:<id>`) the
+ * Finance › Accounting tab it is in, where it is tried again under the same LAX reference.
+ */
 export function failedJobHref(id: string): string {
+  if (id.startsWith(FAILED_JOB_ID_PREFIXES.accounting)) {
+    const tab = id.slice(FAILED_JOB_ID_PREFIXES.accounting.length).split(":")[0] ?? "";
+    return accountingHref({}, { tab: isAccountingQueueTab(tab) ? tab : null });
+  }
   return `${FAILED_JOBS_PATH}/${encodeURIComponent(id)}`;
 }
 

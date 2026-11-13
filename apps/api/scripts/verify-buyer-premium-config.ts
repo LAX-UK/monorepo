@@ -10,7 +10,7 @@
  *   pnpm --filter @auction/api exec tsx scripts/verify-buyer-premium-config.ts --sale=<saleId>
  *   pnpm --filter @auction/api exec tsx scripts/verify-buyer-premium-config.ts --pre-deploy
  *
- * PRE-DEPLOY CHECK for migration 0379 (run with `--pre-deploy` against production before the
+ * PRE-DEPLOY CHECK for migration 0380 (run with `--pre-deploy` against production before the
  * release; see docs/runbooks/buyer-premium-tiers.md): flags every lot open for bidding, or sold
  * but not yet invoiced, that the release would charge under a different premium than the old
  * code did (the migration's change to lot rates is applied first). Staff cannot change these
@@ -31,7 +31,7 @@ import {
 } from "@auction/validators";
 import { and, eq, inArray, isNull } from "drizzle-orm";
 import {
-  lotRateAfterMigration0379,
+  lotRateAfterMigration0380,
   premiumChangedAtDeploy,
 } from "../src/lib/buyer-premium-deploy-check.js";
 
@@ -141,7 +141,7 @@ for (const sale of sales) {
     if (changed) repriced += 1;
     if (differs) misconfigured += 1;
     const lotRate = preDeploy
-      ? lotRateAfterMigration0379({ lotRate: lot.buyerPremiumRate, hasLiveInvoice: false }, sale)
+      ? lotRateAfterMigration0380({ lotRate: lot.buyerPremiumRate, hasLiveInvoice: false }, sale)
       : lot.buyerPremiumRate;
     const { policy, source } = resolveBuyerPremium({ lotRate, sale });
     const hammer = lot.currentPrice;
@@ -156,7 +156,7 @@ for (const sale of sales) {
 }
 
 console.log(
-  `\nChecked ${totalLots} lot(s) across ${sales.length} sale(s)${preDeploy ? ", with migration 0379 applied" : ""}.`,
+  `\nChecked ${totalLots} lot(s) across ${sales.length} sale(s)${preDeploy ? ", with migration 0380 applied" : ""}.`,
 );
 console.log(
   repriced > 0

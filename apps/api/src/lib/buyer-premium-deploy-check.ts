@@ -8,7 +8,7 @@ import {
 } from "@auction/validators";
 
 /*
- * The pre-deploy check for the clause 11 release (migration 0379). Before it, a sale's bands
+ * The pre-deploy check for the clause 11 release (migration 0380). Before it, a sale's bands
  * always won and a lot's own rate was read only in a sale without bands. After it, a lot's own
  * rate wins. The migration clears the rate of uninvoiced lots in a sale with bands so nothing is
  * repriced; this check proves it, lot by lot, for the lots whose premium can no longer be fixed
@@ -39,8 +39,8 @@ export function legacyBuyerPremiumSchedule(
   return isBuyerPremiumRate(lotRate) ? { kind: "flat", rate: lotRate } : null;
 }
 
-/** The lot rate migration 0379 leaves: cleared for an uninvoiced lot in a sale with bands. */
-export function lotRateAfterMigration0379(
+/** The lot rate migration 0380 leaves: cleared for an uninvoiced lot in a sale with bands. */
+export function lotRateAfterMigration0380(
   lot: Pick<PremiumCheckLot, "lotRate" | "hasLiveInvoice">,
   sale: BuyerPremiumSaleTerms | null,
 ): string | null {
@@ -59,7 +59,7 @@ export function lockedPremiumReason(lot: PremiumCheckLot): LockedPremiumReason |
 /**
  * Whether a lot whose premium is locked would be charged under a different premium than the old
  * release charged it. Bands compared with the same bands count as unchanged: charging them slice
- * by slice is the clause 11 fix itself. `preDeploy` applies migration 0379's change first, for a
+ * by slice is the clause 11 fix itself. `preDeploy` applies migration 0380's change first, for a
  * run against the database before the migration.
  */
 export function premiumChangedAtDeploy(
@@ -70,7 +70,7 @@ export function premiumChangedAtDeploy(
   const reason = lockedPremiumReason(lot);
   if (!reason) return null;
   const legacy = legacyBuyerPremiumSchedule(lot.lotRate, sale);
-  const lotRate = opts.preDeploy ? lotRateAfterMigration0379(lot, sale) : lot.lotRate;
+  const lotRate = opts.preDeploy ? lotRateAfterMigration0380(lot, sale) : lot.lotRate;
   const { schedule } = resolveBuyerPremium({ lotRate, sale });
   return legacy && sameBuyerPremiumSchedule(legacy, schedule) ? null : reason;
 }

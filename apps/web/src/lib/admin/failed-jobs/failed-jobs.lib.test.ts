@@ -68,6 +68,14 @@ describe("failedJobsHref", () => {
 
   it("links one job with its id escaped", () => {
     expect(failedJobHref("dlq:email:1")).toBe("/admin/failed-jobs/dlq%3Aemail%3A1");
+    // A Zoho Books document opens on Finance › Accounting, in the tab it is in.
+    expect(failedJobHref("accounting:failed:5b0f3a50")).toBe(
+      "/admin/finance/accounting?tab=failed",
+    );
+    expect(failedJobHref("accounting:needs_person:5b0f3a50")).toBe(
+      "/admin/finance/accounting?tab=needs_person",
+    );
+    expect(failedJobHref("accounting:nonsense:5b0f3a50")).toBe("/admin/finance/accounting");
   });
 });
 

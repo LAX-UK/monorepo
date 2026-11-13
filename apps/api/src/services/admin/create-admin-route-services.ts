@@ -45,6 +45,7 @@ import type { BuyerDefaultService } from "../buyer-default/buyer-default.service
 import type { CategoryService } from "../category.service.js";
 import type { IDomainEventSink } from "../domain-event-sink.js";
 import type { ImpersonationAuditService } from "../impersonation-audit.service.js";
+import type { IAccountingQueueService } from "../interfaces/accounting-queue.js";
 import type {
   AdminMetricsQueryServices,
   AdminRouteServicesWithoutSatellites,
@@ -198,6 +199,7 @@ export type CreateAdminRouteServicesInput = {
   adminDisputeCaseEnrichmentReader: IAdminDisputeCaseEnrichmentReader;
   disputeAllocationQueueReader: IDisputeAllocationQueueReader;
   disputeDesk: IAdminDisputeDeskService;
+  accountingQueue: IAccountingQueueService;
   bidRepo: IBidRepository;
   payoutService: IPayoutAdminService;
   payoutRepository: Pick<IPayoutRepository, "findById" | "findByStripeTransferId">;
@@ -277,6 +279,7 @@ export function createAdminRouteServices(
   });
 
   const finance = createAdminFinanceServices({
+    accountingQueue: input.accountingQueue,
     paymentService: input.paymentService,
     unappliedMoneyHandling: input.unappliedMoneyHandling,
     adminPaymentListQueryService: input.adminPaymentListQueryService,

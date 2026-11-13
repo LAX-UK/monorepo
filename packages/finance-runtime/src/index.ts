@@ -4,6 +4,19 @@ export {
   type BooksAccountingAdapters,
   type BooksAccountingEnv,
 } from "./books/create-books-accounting-adapters.js";
+export {
+  AccountingQueueService,
+  type AccountingQueueDeps,
+} from "./books/accounting-queue.service.js";
+export { createBooksDocumentLinks } from "./books/books-document-links.js";
+export type {
+  AccountingQueueRequest,
+  AccountingTryAgainRequest,
+  AccountingTryAgainResponse,
+  BooksDocumentLink,
+  IAccountingAuditTrail,
+  IAccountingQueueService,
+} from "./interfaces/accounting-queue.js";
 export { xeroOAuthConfigured } from "./env-slice.js";
 export {
   createXeroAccountingStack,

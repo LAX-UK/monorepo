@@ -56,7 +56,7 @@ describe("premiumChangedAtDeploy", () => {
     }
   });
 
-  it("clears them once migration 0379 is applied (or simulated before it)", () => {
+  it("clears them once migration 0380 is applied (or simulated before it)", () => {
     for (const input of [live, soldNotInvoiced]) {
       expect(premiumChangedAtDeploy(input, banded, { preDeploy: true })).toBeNull();
       expect(

@@ -153,14 +153,17 @@ describe("integration rows on the list", () => {
     const forFinance = await service.list(query, finance);
     expect(forFinance.sources.map((source) => source.id)).toEqual(["integrations"]);
     expect(forFinance.canAct).toBe(true);
-    expect(forFinance.limitedTo).toBe("Integrations · Xero");
+    expect(forFinance.limitedTo).toBe("Integrations · Xero, Integrations · Zoho Books");
     const forReadOnly = await service.list(query, readOnly);
     expect(forReadOnly.sources.map((source) => source.id)).toEqual([
       "background_jobs",
       "integrations",
     ]);
     expect(forReadOnly.canAct).toBe(false);
-    expect(forReadOnly.limitedTo).toBeNull();
+    // Zoho Books documents are a Finance page, so read-only staff do not see that source.
+    expect(forReadOnly.limitedTo).toBe(
+      "Background jobs, Integrations · Xero, Integrations · Zoho CRM, Integrations · Other",
+    );
     expect(forReadOnly.rows.every((row) => !row.canAct)).toBe(true);
   });
 

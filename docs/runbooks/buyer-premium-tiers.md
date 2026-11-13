@@ -23,7 +23,7 @@ every surface — invoice, checkout, lot page, results — reads it from one res
 4. **the published standard** — the clause 11 bands, for a lot outside any sale.
    `source: "standard"`.
 
-> **This reverses the old precedence.** Before migration 0379 a sale's bands always won and the
+> **This reverses the old precedence.** Before migration 0380 a sale's bands always won and the
 > lot rate was read only in a sale without bands. Now the lot rate is an **override** that wins.
 > `lot.buyer_premium_rate` is nullable: `NULL` means "use the sale's premium". A new sale is
 > created with the standard bands unless staff pick a flat rate.
@@ -39,9 +39,9 @@ every surface — invoice, checkout, lot page, results — reads it from one res
 | Invoice lines | `packages/validators/src/invoice-lines.ts` | `buildInvoiceLines` — the one money path |
 | Checkout pricing | `packages/validators/src/lot-checkout-pricing.ts` | `computeLotCheckoutPricing` emits `checkoutPricing` on the lot DTO |
 | Invoiced prices | `apps/api/src/lib/invoiced-sale-prices.ts`, `stored-checkout-pricing.ts` | Sold lots show what their live invoice charged, batched |
-| DB migration | `packages/db/drizzle/0379_lot_premium_uses_sale.sql` | Lot rate nullable; clears it for uninvoiced lots in banded sales |
+| DB migration | `packages/db/drizzle/0380_lot_premium_uses_sale.sql` | Lot rate nullable; clears it for uninvoiced lots in banded sales |
 | DB schema | `packages/db/src/schema/{sales,lots}.ts` | `buyer_premium_tiers jsonb`, nullable `buyer_premium_rate` |
-| Pre-deploy check | `apps/api/scripts/verify-buyer-premium-config.ts` | Read-only; `--pre-deploy` gates the 0379 release |
+| Pre-deploy check | `apps/api/scripts/verify-buyer-premium-config.ts` | Read-only; `--pre-deploy` gates the 0380 release |
 | Admin sale/lot premium | `apps/web/src/components/admin/sale-form/...`, `.../lot-form/...` | Bands or flat on the sale; per-lot override |
 | Tests | `packages/validators/src/buyer-premium*.test.ts`, `apps/api/src/services/buyer-premium-invoice.integration.test.ts` | Maths, precedence, invoice, bulk reset |
 
@@ -60,7 +60,7 @@ every surface — invoice, checkout, lot page, results — reads it from one res
 `buyer_premium_rate`.
 
 `lot.buyer_premium_rate` (`numeric(5,4)`, nullable) — the lot's own premium, a staff override.
-`NULL` means "use the sale's premium". Migration 0379 dropped its old `NOT NULL DEFAULT 0.25`.
+`NULL` means "use the sale's premium". Migration 0380 dropped its old `NOT NULL DEFAULT 0.25`.
 
 Detailed validation (first threshold 0, ascending, rate bounds) is enforced by
 `buyerPremiumTiersSchema` (Zod) before any write.
@@ -107,9 +107,9 @@ from today's rules: `apps/api/src/lib/invoiced-sale-prices.ts` (`withInvoicedSal
 `checkoutPricing` from `IInvoicedSalePriceReader.findInvoicedSalePrices` (one batched read for a
 list). Historical invoices, receipts and sold lines keep the figure the buyer actually paid.
 
-## Migration 0379 and the pre-deploy check
+## Migration 0380 and the pre-deploy check
 
-Migration `0379_lot_premium_uses_sale.sql`:
+Migration `0380_lot_premium_uses_sale.sql`:
 
 - drops `lot.buyer_premium_rate`'s `NOT NULL DEFAULT 0.25` (NULL now means "use the sale's");
 - defaults `sale.buyer_premium_rate` to `0.15`;
@@ -124,13 +124,13 @@ Migration `0379_lot_premium_uses_sale.sql`:
 pnpm --filter @auction/api exec tsx scripts/verify-buyer-premium-config.ts --pre-deploy
 ```
 
-It is read-only (SELECTs only). With `--pre-deploy` it applies 0379's lot-rate change first and
+It is read-only (SELECTs only). With `--pre-deploy` it applies 0380's lot-rate change first and
 flags every lot open for bidding, or sold but not yet invoiced, whose premium would still change —
 lots staff cannot fix. **Any flagged lot (exit code 1) blocks the deploy.** Without the flag it
 reports the premium each lot in a draft/scheduled/active/ended sale would be charged and marks
 unsold lots whose own premium differs from their sale's.
 
-`0379_rollback.sql` refills every NULL rate with the sale's flat rate (or 15% outside a sale)
+`0380_rollback.sql` refills every NULL rate with the sale's flat rate (or 15% outside a sale)
 before restoring `NOT NULL DEFAULT 0.25`, so it cannot fail on NULL rows. The refilled value is
 unused for a banded sale (bands still win under the old code). Run it in a quiet window
 (`lock_timeout = 5s`).

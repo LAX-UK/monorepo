@@ -34,6 +34,7 @@
     "check:compliance-dip": "node scripts/check-compliance-routes-dip.mjs"
   },
   "dependencies": {
+    "@auction/accounting-domain": "workspace:*",
     "@auction/alerts": "workspace:*",
     "@auction/artwork-register-contracts": "workspace:*",
     "@auction/auth": "workspace:*",

@@ -17,6 +17,17 @@ export interface ZohoResponse {
   readonly body: unknown;
 }
 
+/**
+ * Zoho codes that name a refusal the rest of the system must tell apart. 4151: the transaction
+ * date is in a period locked in Books, so the document cannot be booked on that date; it ends in
+ * the shared `_period_locked` suffix (`@auction/accounting-domain`) so staff see it as such.
+ */
+const NAMED_ZOHO_CODES: Readonly<Record<number, string>> = { 4151: "period_locked" };
+
+function validationCode(zohoCode: number | undefined, fallback: string): string {
+  return (zohoCode !== undefined && NAMED_ZOHO_CODES[zohoCode]) || fallback;
+}
+
 function zohoCodeOf(body: unknown): number | undefined {
   if (typeof body !== "object" || body === null) return undefined;
   const code = (body as { code?: unknown }).code;
@@ -47,7 +58,11 @@ export function classifyResponse(
     if (zohoCode !== undefined && zohoCode !== 0) {
       return {
         ok: false,
-        error: new ZohoValidationError({ code: "rejected_by_zoho", httpStatus: status, zohoCode }),
+        error: new ZohoValidationError({
+          code: validationCode(zohoCode, "rejected_by_zoho"),
+          httpStatus: status,
+          zohoCode,
+        }),
       };
     }
     return { ok: true, value: { status, body: parsed.value } };
@@ -86,7 +101,10 @@ export function classifyResponse(
     return {
       ok: false,
       error: new ZohoValidationError({
-        code: status === 400 || status === 422 ? "invalid_request" : `http_${status}`,
+        code: validationCode(
+          zohoCode,
+          status === 400 || status === 422 ? "invalid_request" : `http_${status}`,
+        ),
         ...base,
       }),
     };

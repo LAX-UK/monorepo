@@ -235,7 +235,7 @@ export class InMemoryAccounting implements AccountingPorts {
     if (fence && !(await fence.mayWrite())) return rejected(FENCED);
     const fault = this.faults.take();
     if (fault === "rate_limited") return rejected("fake_rate_limited");
-    if (fault === "locked_period") return rejected("fake_locked_period");
+    if (fault === "locked_period") return rejected("fake_period_locked");
 
     const key = this.key(entity, doc.kind, doc.reference, contactType);
     const fingerprint = doc.kind === "payment" ? paymentFingerprint(doc) : "";

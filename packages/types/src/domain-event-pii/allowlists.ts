@@ -461,6 +461,14 @@ export const EXCEPTION_PATHS: Record<string, Set<string>> = {
   "data_request.enquiry_erasure_requested": new Set(["reference"]),
   "data_request.enquiries_erased": new Set(["reference"]),
   "failed_job.retried": new Set(["queue", "jobName", "confirmRepeat"]),
+  "accounting_document.retry_requested": new Set([
+    "reference",
+    "documentType",
+    "product",
+    "organisation",
+    "fromState",
+    "reason",
+  ]),
   "failed_job.discarded": new Set(["queue", "jobName", "reason", "note"]),
   "failed_job.restored": new Set(["queue", "jobName"]),
   /** A contact form message arrived or was handled: the topic only; what the sender wrote stays on the enquiry. */

@@ -130,6 +130,11 @@ export type ConfirmActionDialogProps = {
    * reference) and the confirm button stays disabled until it matches exactly.
    */
   typedConfirmation?: string;
+  /**
+   * Keeps the confirm button disabled while this is true, for an acknowledgement the caller gates
+   * on (a checkbox in `children`). The button re-enables when the caller clears it.
+   */
+  confirmDisabled?: boolean;
   children?: React.ReactNode;
 };
 
@@ -151,6 +156,7 @@ export function ConfirmActionDialog({
   onConfirm,
   reason,
   typedConfirmation,
+  confirmDisabled = false,
   children,
 }: ConfirmActionDialogProps) {
   const cancelRef = React.useRef<HTMLButtonElement>(null);
@@ -186,7 +192,7 @@ export function ConfirmActionDialog({
       reasonRef.current?.focus();
       return;
     }
-    if (!typedMatches) return;
+    if (!typedMatches || confirmDisabled) return;
     onConfirm({ reason: trimmed });
   };
 
@@ -210,7 +216,7 @@ export function ConfirmActionDialog({
           <StaffButton
             variant={tone === "danger" ? "danger" : "primary"}
             loading={loading}
-            disabled={!typedMatches}
+            disabled={!typedMatches || confirmDisabled}
             onClick={confirm}
           >
             {confirmLabel}

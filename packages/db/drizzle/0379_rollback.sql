@@ -1,30 +1,14 @@
--- Rollback for 0379_lot_premium_uses_sale. Roll back the release first, then this.
---
--- The old schema needs a rate on every lot. Lots that use their sale's premium (NULL) are given
--- their sale's flat rate, or 15% for a lot outside a sale. Lots that already hold a rate are not
--- touched. This is safe for both kinds of NULL:
--- - lots the migration cleared (in a sale with bands, not invoiced): the old code charges a
---   banded sale's bands and never reads the lot rate, so the refilled value is unused. It is the
---   sale's flat rate rather than the 25% they held before, which matters only if staff later
---   remove the sale's bands;
--- - lots written by the new release without their own premium: the old code charges the rate it
---   reads, and the sale's flat rate is the premium the new release charged them.
--- Restores the 25% defaults and removes this migration's ledger row so a later deploy reapplies it.
+-- Rollback for 0379_accounting_requeue_guard. Roll back the release first, then this.
+-- It removes the triggers that hold the Bid API role to the requeue move; the column grants from
+-- db:roles still apply. No data is changed. Also removes this migration's ledger row so a later
+-- deploy reapplies it.
 BEGIN;
 
 SET LOCAL lock_timeout = '5s';
-UPDATE "lot" AS l
-  SET "buyer_premium_rate" = COALESCE(
-    (SELECT s."buyer_premium_rate" FROM "sale" AS s WHERE s."id" = l."sale_id"),
-    0.15
-  )
-  WHERE l."buyer_premium_rate" IS NULL;
-ALTER TABLE "lot" ALTER COLUMN "buyer_premium_rate" SET NOT NULL;
-ALTER TABLE "lot" ALTER COLUMN "buyer_premium_rate" SET DEFAULT 0.25;
-COMMENT ON COLUMN "lot"."buyer_premium_rate" IS NULL;
-ALTER TABLE "sale" ALTER COLUMN "buyer_premium_rate" SET DEFAULT 0.25;
-COMMENT ON COLUMN "sale"."buyer_premium_tiers" IS
-  'Optional band-based tier override. JSONB array of {hammerThresholdMinor, rate} sorted ascending by threshold. NULL = no override (use lot.buyer_premium_rate).';
+DROP TRIGGER IF EXISTS "accounting_document_event_api_requeue_only" ON "accounting_document_event";
+DROP TRIGGER IF EXISTS "accounting_document_api_requeue_only" ON "accounting_document";
+DROP FUNCTION IF EXISTS "accounting_document_event_api_requeue_only"();
+DROP FUNCTION IF EXISTS "accounting_document_api_requeue_only"();
 
 DELETE FROM drizzle.__drizzle_migrations WHERE created_at = 1810900800000;
 

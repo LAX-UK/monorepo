@@ -26,6 +26,23 @@ describe("PrimaryCell", () => {
     expect(img).toHaveAttribute("alt", "");
   });
 
+  it("wraps a title that must be read whole instead of shortening it", () => {
+    render(
+      <>
+        <PrimaryCell secondary="Invoice">
+          LAX-BID-INV-0b6a7c1e-1111-4a5b-8c9d-000000000001
+        </PrimaryCell>
+        <PrimaryCell wrap secondary="Invoice">
+          LAX-BID-INV-0b6a7c1e-1111-4a5b-8c9d-000000000002
+        </PrimaryCell>
+      </>,
+    );
+    expect(screen.getByText(/0001$/)).toHaveClass("truncate");
+    const wrapped = screen.getByText(/0002$/);
+    expect(wrapped).not.toHaveClass("truncate");
+    expect(wrapped).toHaveClass("whitespace-normal", "break-words");
+  });
+
   it("shows a named placeholder when the record has no picture yet", () => {
     render(
       <PrimaryCell thumbnail={{ src: null, missingLabel: "No photos yet" }}>
