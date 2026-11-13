@@ -82,3 +82,20 @@ export function crmRecordRefusedError(
     ...(fieldApiName ? { fieldApiName } : {}),
   });
 }
+
+/** The stored reason when a person's email cannot be sent to, or is refused by, Zoho. */
+export const EMAIL_REJECTED_BY_ZOHO = "email_rejected_by_zoho";
+
+/**
+ * A person's email Zoho cannot store. The delivery is parked, not retried: sending the same
+ * address again gets the same refusal. The reason names the rule or Zoho's code, never the address.
+ */
+export function crmEmailRejectedError(detail: string, status = 400): CrmGatewayError {
+  return new CrmGatewayError({
+    code: EMAIL_REJECTED_BY_ZOHO,
+    message: `${EMAIL_REJECTED_BY_ZOHO}:${detail}`,
+    status,
+    retryable: false,
+    fieldApiName: "Email",
+  });
+}
