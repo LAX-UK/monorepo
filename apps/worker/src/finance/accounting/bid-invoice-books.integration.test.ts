@@ -218,7 +218,9 @@ describe.skipIf(!HAS_DB)("Bid invoices to Books (integration)", { timeout: 60_00
     mode: "dry_run" | "test_org",
     ports: SenderPorts & Pick<InMemoryAccounting, "pdfs">,
   ) {
-    const putObject = vi.fn(async () => ({ url: "unused" }));
+    const putObject = vi.fn(async (_key: string, _body: Buffer, _type: string) => ({
+      url: "unused",
+    }));
     const enqueue = vi.fn(async () => ({ outboxId: randomUUID() }));
     const service = new AccountingInvoiceCopy({
       copies: repos.copies,
@@ -315,7 +317,10 @@ describe.skipIf(!HAS_DB)("Bid invoices to Books (integration)", { timeout: 60_00
     const [document] = state.value.invoices;
     expect(document?.record).toMatchObject({ status: "issued", issued: { number: "DRY-RUN" } });
     expect(document?.copy).toMatchObject({ rehearsal: true });
-    expect(putObject).toHaveBeenCalledTimes(1);
+    // This case's own copy was stored once (other rehearsed rows in the shared database may be too).
+    const key = `accounting/london_auction_xchange/${document?.documentId}.pdf`;
+    expect(document?.copy?.storageKey).toBe(key);
+    expect(putObject.mock.calls.filter(([stored]) => stored === key)).toHaveLength(1);
     expect(enqueue).not.toHaveBeenCalled();
     // A rehearsal can never be marked emailed: the store and the table both refuse it.
     if (!document) throw new Error("document");
