@@ -22,6 +22,12 @@ export type DataColumn<T> = {
   numeric?: boolean;
   /** CSS width for the column, e.g. "120px" or "20%". Unset columns share the rest. */
   width?: string;
+  /**
+   * For a column with no `width`, which takes the room the others leave: the narrowest it may
+   * get, in px (e.g. "240px"). Below that the table scrolls sideways rather than squeeze it.
+   * Only px widths of the other columns are counted, at the breakpoints where they show.
+   */
+  minWidth?: string;
   /** The column can be sorted; with `sortValue` the table sorts locally, else via onSortChange. */
   sortable?: boolean;
   sortValue?: (row: T) => string | number | null;
@@ -35,10 +41,16 @@ export type DataColumn<T> = {
   /** Hidden below this breakpoint in the table layout. */
   hideBelow?: "md" | "lg" | "xl";
   /**
-   * The role this column plays in the phone layout: the row's title, a badge on the right, a meta
-   * fact under the title, the row's actions at the far right, or left out.
+   * Only for the phone layout: the table leaves the column out, and so does the Columns menu.
+   * For a fact the table already shows across other columns, gathered into one phone meta line.
    */
-  mobile?: "title" | "badge" | "meta" | "actions" | "hidden";
+  phoneOnly?: boolean;
+  /**
+   * The role this column plays in the phone layout: the row's title, a badge on the right, a
+   * line of its own under the title that wraps rather than being cut (the cell sets any line
+   * clamp), a meta fact under that, the row's actions at the far right, or left out.
+   */
+  mobile?: "title" | "badge" | "detail" | "meta" | "actions" | "hidden";
 };
 
 /**

@@ -107,6 +107,31 @@ function ariaSort(column: { id: string }, sort: SortState | null) {
   return sort.direction === "asc" ? ("ascending" as const) : ("descending" as const);
 }
 
+function pixels(value: string | undefined): number {
+  const match = value ? /^(\d+(?:\.\d+)?)px$/.exec(value.trim()) : null;
+  return match ? Number(match[1]) : 0;
+}
+
+/**
+ * The table's least width at each table breakpoint, when a column sets `minWidth`: the px widths
+ * of the columns showing there plus the flexible column's minimum. Null when none sets one.
+ */
+export function tableMinWidths<T>(
+  columns: readonly DataColumn<T>[],
+  selectable: boolean,
+): { md: number; lg: number; xl: number } | null {
+  if (!columns.some((column) => column.minWidth)) return null;
+  const widthOf = (column: DataColumn<T>) => pixels(column.width) || pixels(column.minWidth);
+  const sum = (shows: (column: DataColumn<T>) => boolean) =>
+    (selectable ? 44 : 0) +
+    columns.filter(shows).reduce((total, column) => total + widthOf(column), 0);
+  return {
+    md: sum((column) => !column.hideBelow || column.hideBelow === "md"),
+    lg: sum((column) => column.hideBelow !== "xl"),
+    xl: sum(() => true),
+  };
+}
+
 function truncationOf<T>(column: DataColumn<T>) {
   return column.truncate ?? (column.numeric ? false : "end");
 }
@@ -423,8 +448,12 @@ export function DataTable<T>({
   const showSkeleton = loading && rows.length === 0;
   const showEmpty = !loading && !error && rows.length === 0;
   const selectedRows = selectable ? rows.filter((row) => isSelected(getRowId(row))) : [];
+  // Phone-only columns (a gathered meta line) have no place in the table layout.
+  const tableColumns = columns.filter((c) => !c.phoneOnly);
+  const minWidths = tableMinWidths(tableColumns, Boolean(selectable));
   const titleColumn = columns.find((c) => c.mobile === "title") ?? columns[0];
   const badgeColumns = columns.filter((c) => c.mobile === "badge");
+  const detailColumns = columns.filter((c) => c.mobile === "detail");
   const metaColumns = columns.filter((c) => c.mobile === "meta");
   const actionColumns = columns.filter((c) => c.mobile === "actions");
   const noun = bulkNoun ?? { one: "row", other: "rows" };
@@ -520,7 +549,20 @@ export function DataTable<T>({
                     {...(selectable ? { "aria-multiselectable": true } : {})}
                     aria-busy={loading || undefined}
                     aria-rowcount={rows.length + 1}
-                    className="w-full table-fixed border-collapse text-staff-sm"
+                    {...(minWidths
+                      ? {
+                          style: {
+                            "--staff-table-min-md": `${minWidths.md}px`,
+                            "--staff-table-min-lg": `${minWidths.lg}px`,
+                            "--staff-table-min-xl": `${minWidths.xl}px`,
+                          } as React.CSSProperties,
+                        }
+                      : {})}
+                    className={cn(
+                      "w-full table-fixed border-collapse text-staff-sm",
+                      minWidths &&
+                        "md:min-w-(--staff-table-min-md) lg:min-w-(--staff-table-min-lg) xl:min-w-(--staff-table-min-xl)",
+                    )}
                   >
                     <thead>
                       <tr className={cn("h-9", !headerSticks && "border-b border-staff-line")}>
@@ -549,7 +591,7 @@ export function DataTable<T>({
                             />
                           </th>
                         ) : null}
-                        {columns.map((column, index) => (
+                        {tableColumns.map((column, index) => (
                           <th
                             key={column.id}
                             scope="col"
@@ -559,7 +601,7 @@ export function DataTable<T>({
                               "px-3 text-staff-xs font-medium whitespace-nowrap text-staff-muted",
                               column.numeric ? "text-right" : "text-left",
                               index === 0 && !selectable && "pl-4",
-                              index === columns.length - 1 && "pr-4",
+                              index === tableColumns.length - 1 && "pr-4",
                               column.hideBelow && hideBelowClass[column.hideBelow],
                               stickyHeadCell,
                               index === 0 &&
@@ -623,7 +665,7 @@ export function DataTable<T>({
                                   <Skeleton className="size-4" />
                                 </td>
                               ) : null}
-                              {columns.map((column, index) => (
+                              {tableColumns.map((column, index) => (
                                 <td
                                   key={column.id}
                                   className={cn(
@@ -705,7 +747,7 @@ export function DataTable<T>({
                                     <td aria-hidden className={cn("pl-4", selectSticky)} />
                                   )
                                 ) : null}
-                                {columns.map((column, columnIndex) => {
+                                {tableColumns.map((column, columnIndex) => {
                                   const truncate = truncationOf(column);
                                   const value = column.cell(row);
                                   const empty = isEmptyCellValue(value);
@@ -718,7 +760,7 @@ export function DataTable<T>({
                                         truncate === false && "whitespace-nowrap",
                                         column.numeric && "text-right tabular-nums",
                                         columnIndex === 0 && !selectable && "pl-4",
-                                        columnIndex === columns.length - 1 && "pr-4",
+                                        columnIndex === tableColumns.length - 1 && "pr-4",
                                         column.hideBelow && hideBelowClass[column.hideBelow],
                                         columnIndex === 0 &&
                                           firstSticky(selectable ? "left-11" : "left-0"),
@@ -800,6 +842,18 @@ export function DataTable<T>({
                                   </div>
                                 ) : null}
                               </div>
+                              {detailColumns.map((column) => {
+                                const value = column.cell(row);
+                                if (isEmptyCellValue(value)) return null;
+                                return (
+                                  <div
+                                    key={column.id}
+                                    className="min-w-0 break-words text-staff-xs text-staff-fg"
+                                  >
+                                    {value}
+                                  </div>
+                                );
+                              })}
                               {metaColumns.length > 0 ? (
                                 <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-0.5 text-staff-xs text-staff-muted">
                                   {metaColumns.map((column) => {

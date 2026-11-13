@@ -139,6 +139,8 @@ describe("ListPage", () => {
       }),
     );
     expect(tabsRow()).not.toContainElement(display());
+    // The controls never run past the card: capped at the row, they wrap onto another line.
+    expect(display().parentElement).toHaveClass("max-w-full", "flex-wrap");
     second.unmount();
 
     // No tabs, no search: one slim row, the count on the left and Display on the right.
