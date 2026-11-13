@@ -12,7 +12,7 @@ Stripe allows **one scope per destination** ([Connect webhooks](https://docs.str
 | Veriff event (optional) | **Veriff Customer Portal** | `https://api.yourdomain.com/webhooks/veriff/event` | Session progress (`started`, `submitted`) |
 | Connect accounts | **Connected accounts** | `/webhooks/stripe/connect` | `account.updated`, `capability.updated`, `account.external_account.created`, `account.external_account.updated` (payout bank changes: Activity and the required notice to owners, admins and finance) |
 | Transfers | **Your account** | `/webhooks/stripe/transfers` | `transfer.created`, `transfer.updated`, `transfer.reversed` |
-| Payments | **Your account** | `/webhooks/stripe/payments` | `payment_intent.succeeded`, `payment_intent.processing`, `payment_intent.partially_funded`, `payment_intent.payment_failed`, `payment_intent.canceled`, `charge.dispute.*`, `charge.refunded`, `charge.refund.updated` (without it a combined payment's pending refund is not counted once it succeeds), `payment_intent.requires_action`, `cash_balance.funds_available`, `customer_cash_balance_transaction.created` (without the last two, a transfer applied to the wrong invoice is not reported) |
+| Payments | **Your account** | `/webhooks/stripe/payments` | `payment_intent.succeeded`, `payment_intent.processing`, `payment_intent.partially_funded`, `payment_intent.payment_failed`, `payment_intent.canceled`, `charge.dispute.*`, `charge.refunded`, `charge.refund.updated` (optional: see "Refunds that finish later" below), `payment_intent.requires_action`, `cash_balance.funds_available`, `customer_cash_balance_transaction.created` (without the last two, a transfer applied to the wrong invoice is not reported) |
 
 Optional: `radar.early_fraud_warning.created` (Payments), `payout.failed` (Connected accounts).
 - [ ] **Connect accounts destination** also subscribes to `account.application.deauthorized` (seller revokes platform access).
@@ -100,6 +100,34 @@ Optional: `radar.early_fraud_warning.created` (Payments), `payout.failed` (Conne
 - [ ] Finance knows how to use **Legal entities → Stripe Connect requirements** admin queue.
 - [ ] Support macro for “Connect incomplete” links sellers to `/dashboard/seller/connect` (individuals) or team onboarding for organisations.
 - [ ] Primary seller/org flows use **embedded Connect** (`ConnectWorkspace`); hosted redirect onboarding is **admin fallback only** (`POST /admin/legal-entities/:id/stripe-connect/onboarding-link`).
+
+### Refunds that finish later
+
+A refund counts (is recorded for the buyer, clawed back from the seller and announced as `payment.refunded`) only once Stripe reports it `succeeded`. This is the same for single invoices, Pay several charges, staff refunds, deal payments and unapplied money. A `pending` or `requires_action` refund is saved in `stripe_refund_watch` when it is first seen, from the refund call or a `charge.refunded` event. Nothing depends on a Stripe Dashboard change:
+
+- The worker's `stripe-refund-reconcile` job runs every 15 minutes and calls `POST /internal/jobs/stripe-refund-reconcile`. Each run re-reads up to 50 watched refunds that are due. A refund that is still not final is checked again after 5 minutes, then after twice as long each time, up to every 6 hours. Once a refund is final the job settles its charge through the same code as the webhook and marks the row settled.
+- A staff refund that was still pending when it was made is recorded as that staff member's refund, with the same keys, once it succeeds. If it fails, nothing is recorded.
+- If a refund that was counted is later reported `failed` or `canceled`, a compensating entry takes it back exactly once on a single invoice. The buyer's record gets a negative `refund_reversal` row, the seller gets a positive refund line that gives back the clawback, the invoice returns from `refunded` to `captured`, and `payment.refund_reversed` is announced. Xero credit notes are not reversed automatically: finance handles them from the `payment.refund_reversed` event. On a Pay several charge, totals only rise on their own. Use the repair command below to bring them down.
+- If the endpoint also receives `charge.refund.updated`, refunds are settled as soon as they change. The webhook and the job can both see the same refund in any order and it is still counted once. At startup the API reads the webhook endpoints with the existing secret key and logs `stripe_webhook_missing_charge_refund_updated` (a warning, never a failure) if the payments endpoint lacks the event. If the key cannot read endpoints (a restricted key), it logs `stripe_webhook_subscription_unreadable` instead.
+
+Check the queue: `select stripe_refund_id, status, attempts, next_check_at, last_error from stripe_refund_watch where settled_at is null order by next_check_at;`. A row with a growing `attempts` and a `last_error` needs a look. The job retries it with backoff whatever the error.
+
+### Refund totals repair (Pay several, once after this release)
+
+The previous release counted a Pay several refund while it was still pending. If such a refund then failed, the group's totals stayed too high: the buyer's record, the seller's clawback, a courier quote's refunded figure or the unattributed excess. This is never repaired automatically. Run the command explicitly. It only reads unless you pass `--apply`:
+
+```sh
+# Dry run: lists every group whose totals differ from Stripe's succeeded refunds.
+DATABASE_URL=... STRIPE_SECRET_KEY=... pnpm --filter @auction/api repair:group-refund-totals
+# One group, then apply after finance has reviewed the dry run.
+... repair:group-refund-totals -- --group <payment group id>
+... repair:group-refund-totals -- --apply [--group <id>] [--limit <n>]
+```
+
+- The command only takes back as much as the charge's `failed` or `canceled` refunds explain. Anything else above Stripe is printed as `UNEXPLAINED` and left for finance.
+- Groups with a refund still pending are flagged and can be left for the reconcile job.
+- `--apply` writes each correction once, measured under the group's lock. Each correction is a negative `refund_reversal` buyer row, a seller line that gives back the clawback, the lowered courier or unattributed figure, and a `payment.refund_reversed` notice. A second run reports nothing left to repair.
+- It never raises a total. That is the normal reconcile's job.
 
 ## 5. Cutover sequence
 
