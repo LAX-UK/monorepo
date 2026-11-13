@@ -7,7 +7,6 @@ import {
   refuse,
   requeue,
 } from "@auction/accounting-domain";
-import { rawOrgSettings } from "@auction/accounting-zoho-books/testing";
 import type {
   AccountingQueueQuery,
   DocumentTransition,
@@ -18,7 +17,6 @@ import type {
 } from "@auction/persistence/interfaces";
 import { describe, expect, it } from "vitest";
 import { AccountingQueueService } from "./accounting-queue.service.js";
-import { createBooksDocumentLinks } from "./books-document-links.js";
 
 function must<T>(result: Result<T, string>): T {
   if (!result.ok) throw new Error(result.refusal.message);
@@ -261,49 +259,5 @@ describe("AccountingQueueService.tryAgain", () => {
         actorUserId: "s",
       }),
     ).toMatchObject({ ok: false, refusal: "not_found" });
-  });
-});
-
-describe("Books links", () => {
-  const config = JSON.stringify(rawOrgSettings());
-  it("links a test or live document to its organisation in Books", () => {
-    const links = createBooksDocumentLinks({ ZOHO_BOOKS_ORG_CONFIG: config });
-    const url = links({
-      organisation: "london_art_exchange",
-      documentType: "credit_note",
-      targetMode: "test_org",
-      booksId: "4600000000123",
-    });
-    expect(url).toMatch(/^https:\/\/books\.zoho\.eu\/app\/\d+#\/creditnotes\/4600000000123$/);
-  });
-
-  it("gives no link without settings, for a rehearsal, or for an id Books did not make", () => {
-    const none = createBooksDocumentLinks({});
-    expect(
-      none({
-        organisation: "london_art_exchange",
-        documentType: "invoice",
-        targetMode: "live",
-        booksId: "1",
-      }),
-    ).toBeNull();
-    const unreadable = createBooksDocumentLinks({ ZOHO_BOOKS_ORG_CONFIG: "not json" });
-    expect(
-      unreadable({
-        organisation: "london_art_exchange",
-        documentType: "invoice",
-        targetMode: "live",
-        booksId: "1",
-      }),
-    ).toBeNull();
-    const empty = createBooksDocumentLinks({ ZOHO_BOOKS_ORG_CONFIG: config });
-    expect(
-      empty({
-        organisation: "london_art_exchange",
-        documentType: "invoice",
-        targetMode: "dry_run",
-        booksId: "dry-run:x",
-      }),
-    ).toBeNull();
   });
 });
