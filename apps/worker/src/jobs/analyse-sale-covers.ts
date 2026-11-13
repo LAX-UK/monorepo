@@ -3,13 +3,13 @@ import {
   breakpointsMeasuredForSlot,
   effectiveCoverSide,
 } from "@auction/domain";
+import type { CoverImageAnalyser } from "@auction/image-processing";
 import type pino from "pino";
 import type {
   ICoverAnalysisJobRepository,
   PendingCoverSlot,
 } from "../interfaces/cover-analysis-job.repository.js";
 import { normalizeCatalogueKey } from "../lib/catalogue-image-keys.js";
-import type { CoverImageAnalyser } from "../lib/cover-image-analyser.js";
 import type { UploadStorage } from "../lib/upload-storage.js";
 
 /** How many cover slots one run measures; the next run takes the rest. */

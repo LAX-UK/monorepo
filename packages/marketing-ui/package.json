@@ -64,6 +64,10 @@
       "types": "./dist/cover/cover-neutral.d.ts",
       "default": "./dist/cover/cover-neutral.js"
     },
+    "./cover/cover-photo": {
+      "types": "./dist/cover/cover-photo.d.ts",
+      "default": "./dist/cover/cover-photo.js"
+    },
     "./cover/cover-sources": {
       "types": "./dist/cover/cover-sources.d.ts",
       "default": "./dist/cover/cover-sources.js"

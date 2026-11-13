@@ -1,9 +1,9 @@
+import { photoFromCover } from "@auction/marketing-ui/cover/cover-photo";
 import type { SaleCoverSlotAsset, SaleCoverSlotAssets } from "@auction/types";
 import { describe, expect, it } from "vitest";
 import {
   type BidCoverLot,
   type BidCoverSaleVM,
-  photoFromCover,
   plateFromLot,
   toBidCoverSlide,
   toBidCoverSlides,

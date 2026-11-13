@@ -1,4 +1,5 @@
 import { coverAnalysisHash } from "@auction/domain";
+import type { CoverImageAnalyser } from "@auction/image-processing";
 import type { SaleCoverSlot } from "@auction/types";
 import { describe, expect, it, vi } from "vitest";
 import type {
@@ -6,7 +7,6 @@ import type {
   ICoverAnalysisJobRepository,
   PendingCoverSlot,
 } from "../interfaces/cover-analysis-job.repository.js";
-import type { CoverImageAnalyser } from "../lib/cover-image-analyser.js";
 import { analyseSaleCoversJob } from "./analyse-sale-covers.js";
 
 const warn = vi.fn();

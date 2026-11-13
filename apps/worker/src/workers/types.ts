@@ -1,6 +1,7 @@
 import type { AlertRetentionStore } from "@auction/alerts";
 import type { createDb } from "@auction/db";
 import type { IExportProviderDeps } from "@auction/exports/providers";
+import type { CoverImageAnalyser } from "@auction/image-processing";
 import type { IMarketingProfileReader } from "@auction/marketing-events";
 import type {
   INotificationWriteRepository,
@@ -35,7 +36,6 @@ import type { IStaffOpsRecipientReader } from "../interfaces/staff-ops-recipient
 import type { IUploadValidationRepository } from "../interfaces/upload-validation.repository.js";
 import type { IWorkerDomainEventSink } from "../interfaces/worker-domain-event-sink.js";
 import type { IZohoCampaignsOptOutLiftRepository } from "../interfaces/zoho-campaigns-suppression.repository.js";
-import type { CoverImageAnalyser } from "../lib/cover-image-analyser.js";
 import type { IMalwareScanner } from "../lib/malware-scanner.js";
 import type { SharpImageProcessor } from "../lib/sharp-image-processor.js";
 import type { createUploadStorage } from "../lib/upload-storage.js";

@@ -1,14 +1,14 @@
 import { bidCoverSrcSet } from "@/lib/media/bid-image-src-set";
-import { COVER_PLATE_MIN_LONG_SIDE, COVER_SLOT_FLOORS } from "@auction/domain/cover";
+import { COVER_PLATE_MIN_LONG_SIDE } from "@auction/domain/cover";
+import { photoFromCover } from "@auction/marketing-ui/cover/cover-photo";
 import type {
   CoverFilm,
   CoverMedia,
   CoverPhotoMedia,
-  CoverPhotoSlot,
   CoverPlateMedia,
   CoverSlide,
 } from "@auction/marketing-ui/cover/cover-types";
-import type { SaleCoverSlotAsset, SaleCoverSlotAssets, SaleDeliveryMode } from "@auction/types";
+import type { SaleCoverSlotAssets, SaleDeliveryMode } from "@auction/types";
 import { type CoverSaleStatus, coverTimeLine } from "./cover-time";
 
 /** The lot a cover is credited to, or whose photograph makes the plate. */
@@ -139,47 +139,6 @@ export function withBidViewer(
     ...rest,
     ...(swap.link ? { link: swap.link } : {}),
     ...(swap.status ? { status: swap.status } : {}),
-  };
-}
-
-function toPhotoSlot(asset: SaleCoverSlotAsset): CoverPhotoSlot {
-  return {
-    src: asset.src,
-    width: asset.width,
-    height: asset.height,
-    ...(asset.blurDataURL ? { blurDataURL: asset.blurDataURL } : {}),
-    focal: asset.focal,
-    ...(asset.keep ? { keep: asset.keep } : {}),
-    zoom: asset.zoom,
-  };
-}
-
-/**
- * The cover photograph, when there is one that can carry text: the default slot is measured,
- * at least the floor wide, and its tone reaches contrast. Anything else is not used, and the
- * next source (the plate) takes over.
- */
-export function photoFromCover(cover: SaleCoverSlotAssets | undefined): CoverPhotoMedia | null {
-  const base = cover?.default;
-  if (!base || base.analysisStatus !== "ready" || !base.colours) return null;
-  if (base.width < COVER_SLOT_FLOORS.default.minWidth) return null;
-  if (!base.scrim.desktop) return null;
-  const wide = cover.wide;
-  const phone = cover.phone;
-  return {
-    kind: "photo",
-    alt: base.alt,
-    side: base.side,
-    slots: {
-      default: toPhotoSlot(base),
-      ...(wide ? { wide: toPhotoSlot(wide) } : {}),
-      ...(phone ? { phone: toPhotoSlot(phone) } : {}),
-    },
-    scrim: {
-      desktop: base.scrim.desktop,
-      wide: wide?.scrim.wide ?? base.scrim.wide ?? null,
-    },
-    colour: base.colours.dominant,
   };
 }
 

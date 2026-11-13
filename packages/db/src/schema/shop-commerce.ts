@@ -1,3 +1,4 @@
+import type { CoverAnalysis } from "@auction/types";
 import { relations, sql } from "drizzle-orm";
 import {
   type AnyPgColumn,
@@ -5,6 +6,7 @@ import {
   boolean,
   check,
   date,
+  doublePrecision,
   index,
   integer,
   jsonb,
@@ -2060,3 +2062,36 @@ export const shopCatalogueSetting = pgTable("shop_catalogue_setting", {
   updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true }).defaultNow().notNull(),
   updatedBy: text("updated_by"),
 });
+
+/**
+ * The picture staff chose to lead the Shop home's first screen: one row (`id` is always `home`),
+ * absent while the home leads with the newest edition as before. The stored `analysis` is what
+ * the picture measured at save time (colours and the scrim that keeps the type readable), so the
+ * public read needs no image work. The picture is a media key, never a copy.
+ */
+export const shopHomeCover = pgTable(
+  "shop_home_cover",
+  {
+    id: text("id").primaryKey().default("home"),
+    mediaKey: text("media_key").notNull(),
+    width: integer("width").notNull(),
+    height: integer("height").notNull(),
+    blurDataUrl: text("blur_data_url"),
+    /** Where the subject sits in the picture, 0 (left or top) to 1 (right or bottom). */
+    focalX: doublePrecision("focal_x").notNull(),
+    focalY: doublePrecision("focal_y").notNull(),
+    alt: text("alt").notNull(),
+    analysis: jsonb("analysis").$type<CoverAnalysis>().notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true }).defaultNow().notNull(),
+    updatedBySubjectId: text("updated_by_subject_id"),
+  },
+  (table) => [
+    check("shop_home_cover_single_row", sql`${table.id} = 'home'`),
+    check("shop_home_cover_size", sql`${table.width} > 0 AND ${table.height} > 0`),
+    check(
+      "shop_home_cover_focal_range",
+      sql`${table.focalX} BETWEEN 0 AND 1 AND ${table.focalY} BETWEEN 0 AND 1`,
+    ),
+    check("shop_home_cover_alt_length", sql`char_length(${table.alt}) BETWEEN 1 AND 500`),
+  ],
+);

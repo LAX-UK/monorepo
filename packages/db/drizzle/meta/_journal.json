@@ -2549,6 +2549,13 @@
       "when": 1810209600000,
       "tag": "0372_sale_seller_terms",
       "breakpoints": true
+    },
+    {
+      "idx": 365,
+      "version": "7",
+      "when": 1810382400000,
+      "tag": "0373_shop_home_cover",
+      "breakpoints": true
     }
   ]
 }

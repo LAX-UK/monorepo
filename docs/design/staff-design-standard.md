@@ -1084,7 +1084,9 @@ invalid (for fields).**
   - Disabled fields have a sunken background with disabled text, and are skipped from
     submission.
 - **Check:** all fields in a row share the same height and baseline.
-- **Kit:** `MET` (`staffFieldBox`, `TextInput` sizes, read-only style).
+- **Kit:** `MET` (`staffFieldBox`, `TextInput` sizes, read-only style). `FocalPointPicker` marks a
+  picture's subject by pointer or arrow keys, announces each move, and keeps a white-and-black marker
+  that is a documented exception to the colour tokens because it sits on the photograph.
 - **Sources:** [carbon-input-style] [carbon-readonly]
 
 **CRF-6. Checkboxes and radios are 16px with a ≥ 24px hit area. Switches are 32×20px.**

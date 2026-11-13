@@ -6,6 +6,7 @@ function createDeps() {
   return createMinimalShopApiTestDeps({
     catalogue: {
       deliveryRegions: { read: async () => testDeliveryRegionsState() },
+      homeCover: { read: async () => ({ cover: null }) },
       listPublicArtworks: async () => ({ items: [] }),
       getPublicArtwork: async () => null,
       listArtworkObjectTypeFacets: async () => [],

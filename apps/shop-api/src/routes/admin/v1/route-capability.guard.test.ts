@@ -25,6 +25,7 @@ const OPEN_TO_ANY_STAFF: Record<string, string> = {
   "PUT /admin/v1/saved-views/order": "Only the person's own views, checked per list.",
   "DELETE /admin/v1/saved-views/:id": "Only the person's own views, checked per list.",
   "GET /admin/v1/home-features": "Read-only: the lists show only what the home pages already show.",
+  "GET /admin/v1/home-cover": "Read-only: it shows only the picture the Shop home already shows.",
   "GET /admin/v1/delivery-regions":
     "Read-only: buyers see the same regions and lead times on the public delivery page.",
 };
