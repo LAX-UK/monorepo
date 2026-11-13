@@ -1,6 +1,11 @@
 import type { Socket } from "socket.io-client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { type SocketConnectionModule, createLazySocket, retryDelayMs } from "./socket";
+import {
+  MAX_PENDING_EMITS,
+  type SocketConnectionModule,
+  createLazySocket,
+  retryDelayMs,
+} from "./socket";
 
 // biome-ignore lint/suspicious/noExplicitAny: test listeners take any arguments.
 type Listener = (...args: any[]) => void;
@@ -247,6 +252,114 @@ describe("createLazySocket", () => {
     expect(first.mock.calls).toEqual([["a"]]);
     expect(second.mock.calls).toEqual([["a"], ["b"]]);
     expect(late.mock.calls).toEqual([["a"], ["b"]]);
+  });
+
+  describe("the buffer while the client is loading", () => {
+    it("stays bounded through mount and unmount churn, keeping the newest messages", async () => {
+      const loader = deferredLoader();
+      const socket = createLazySocket(loader.load);
+      const kept = vi.fn();
+      socket.on("bidUpdate", kept);
+      for (let i = 0; i < 1000; i += 1) {
+        const onBid = () => {};
+        const onConnect = () => {};
+        socket.emit("joinLot", { lotId: `l${i}` }, () => {});
+        socket.on("bidUpdate", onBid);
+        socket.on("connect", onConnect);
+        socket.off("bidUpdate", onBid);
+        socket.off("connect", onConnect);
+        socket.emit("leaveLot", { lotId: `l${i}` }, () => {});
+      }
+      socket.emit("joinLot", { lotId: "current" });
+
+      const fake = buildFakeSocket();
+      loader.arrive(fake);
+      await flush();
+
+      const listenerCalls = fake.calls.filter((c) => c[0] !== "emit");
+      expect(listenerCalls).toEqual([["on", "bidUpdate"]]);
+      const emits = fake.calls.filter((c) => c[0] === "emit");
+      expect(emits).toHaveLength(MAX_PENDING_EMITS);
+      expect(emits.at(-1)).toEqual(["emit", "joinLot", { lotId: "current" }]);
+      expect(emits[0]?.[2]).toEqual({ lotId: "l950" });
+      fake.serverEmit("bidUpdate", 1);
+      expect(kept).toHaveBeenCalledTimes(1);
+    });
+
+    it("times out a dropped timeout emit at once and never calls a dropped plain ack", async () => {
+      vi.useFakeTimers();
+      try {
+        const loader = deferredLoader();
+        const socket = createLazySocket(loader.load);
+        const timedAck = vi.fn();
+        const plainAck = vi.fn();
+        socket.timeout(60_000).emit("latencyProbe", {}, timedAck);
+        socket.emit("joinLot", { lotId: "old" }, plainAck);
+        for (let i = 0; i < MAX_PENDING_EMITS - 2; i += 1) socket.emit("ping", i);
+        expect(timedAck).not.toHaveBeenCalled();
+
+        socket.emit("ping", "overflow");
+        expect(timedAck).toHaveBeenCalledTimes(1);
+        expect((timedAck.mock.calls[0]?.[0] as Error).message).toBe("operation has timed out");
+        socket.emit("ping", "overflow 2");
+
+        const fake = buildFakeSocket();
+        loader.arrive(fake);
+        await vi.advanceTimersByTimeAsync(60_000);
+        const sent = fake.calls.map((c) => c[1]);
+        expect(sent).not.toContain("latencyProbe");
+        expect(sent).not.toContain("joinLot");
+        expect(sent).toHaveLength(MAX_PENDING_EMITS);
+        expect(timedAck).toHaveBeenCalledTimes(1);
+        expect(plainAck).not.toHaveBeenCalled();
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it("cancels listeners the way the emitter would: first match, or every one for a bare off", async () => {
+      const loader = deferredLoader();
+      const socket = createLazySocket(loader.load);
+      const a = vi.fn();
+      const b = vi.fn();
+      socket.on("bidUpdate", a);
+      socket.on("bidUpdate", b);
+      socket.on("bidUpdate", a);
+      socket.off("bidUpdate", a);
+      socket.on("lotEnded", a);
+      socket.on("lotEnded", b);
+      socket.off("lotEnded");
+
+      const fake = buildFakeSocket();
+      loader.arrive(fake);
+      await flush();
+      fake.serverEmit("bidUpdate", 1);
+      fake.serverEmit("lotEnded", 1);
+
+      expect(fake.calls).toEqual([
+        ["on", "bidUpdate"],
+        ["on", "bidUpdate"],
+      ]);
+      expect(a).toHaveBeenCalledTimes(1);
+      expect(b).toHaveBeenCalledTimes(1);
+      // Same result as a socket that was there all along: b then a.
+      expect(b.mock.invocationCallOrder[0]).toBeLessThan(a.mock.invocationCallOrder[0] ?? 0);
+    });
+
+    it("keeps one bare io.off, which also clears Socket.IO's own manager listeners", async () => {
+      const loader = deferredLoader();
+      const socket = createLazySocket(loader.load);
+      const onReconnect = vi.fn();
+      socket.io.on("reconnect", onReconnect);
+      socket.io.off("reconnect");
+      socket.io.off("reconnect");
+      socket.io.off("reconnect", onReconnect);
+
+      const fake = buildFakeSocket();
+      loader.arrive(fake);
+      await flush();
+      expect(fake.calls).toEqual([["io.off", "reconnect"]]);
+    });
   });
 
   describe("timeout(ms).emit before the client arrives", () => {

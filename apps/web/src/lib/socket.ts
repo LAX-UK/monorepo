@@ -77,36 +77,31 @@ export function retryDelayMs(attempt: number): number {
   return Math.max(MIN_RETRY_DELAY_MS, Math.min(ms, RECONNECT_DELAY_MAX_MS));
 }
 
-function removeListener(map: Map<string, Listener[]>, event: string, listener?: Listener) {
-  if (!listener) {
-    map.delete(event);
-    return;
-  }
-  const list = map.get(event);
-  if (!list) return;
-  const index = list.indexOf(listener);
-  if (index !== -1) list.splice(index, 1);
-}
-
-function addListener(map: Map<string, Listener[]>, event: string, listener: Listener) {
-  const list = map.get(event);
-  if (list) list.push(listener);
-  else map.set(event, [listener]);
-}
-
-function notify(map: Map<string, Listener[]>, event: string, ...args: unknown[]) {
-  for (const listener of [...(map.get(event) ?? [])]) listener(...args);
-}
+/**
+ * Most messages that can wait for the client. Past this the oldest is dropped (see `record`). Live
+ * surfaces join their rooms again on `connect`, so only stale churn is lost.
+ */
+export const MAX_PENDING_EMITS = 100;
 
 /** Builds a lazy socket around `load`. Exported for tests; the app uses `getSocket()`. */
 export function createLazySocket(load: () => Promise<SocketConnectionModule>): LiveSocket {
   let real: Socket | null = null;
   let loading = false;
   let attempt = 0;
+  /**
+   * What to replay, in call order. Listeners are kept as their net effect, so this holds at most
+   * the listeners currently wanted plus `MAX_PENDING_EMITS` messages.
+   */
   const pending: PendingOp[] = [];
-  // Mirrors of what is registered before the client arrives, for load-failure notices.
-  const socketListeners = new Map<string, Listener[]>();
-  const managerListeners = new Map<string, Listener[]>();
+
+  /** Calls the listeners registered so far, as the client would (load failures only). */
+  function notify(kind: "on" | "ioOn", event: string, ...args: unknown[]) {
+    const listeners: Listener[] = [];
+    for (const op of pending) {
+      if (op.kind === kind && op.event === event && op.listener) listeners.push(op.listener);
+    }
+    for (const listener of listeners) listener(...args);
+  }
 
   function replay(socket: Socket) {
     for (const op of pending) {
@@ -135,8 +130,6 @@ export function createLazySocket(load: () => Promise<SocketConnectionModule>): L
       }
     }
     pending.length = 0;
-    socketListeners.clear();
-    managerListeners.clear();
   }
 
   /**
@@ -179,25 +172,58 @@ export function createLazySocket(load: () => Promise<SocketConnectionModule>): L
         const err = error instanceof Error ? error : new Error(String(error));
         // The same order as a failed Socket.IO handshake: the manager's `error`, which the socket
         // repeats as `connect_error`; a failed retry then also raises `reconnect_error`.
-        notify(managerListeners, "error", err);
-        notify(socketListeners, "connect_error", err);
+        notify("ioOn", "error", err);
+        notify("on", "connect_error", err);
         const delay = retryDelayMs(attempt);
         attempt += 1;
         setTimeout(() => {
-          notify(managerListeners, "reconnect_attempt", attempt);
+          notify("ioOn", "reconnect_attempt", attempt);
           start();
         }, delay);
-        if (isRetry) notify(managerListeners, "reconnect_error", err);
+        if (isRetry) notify("ioOn", "reconnect_error", err);
       },
     );
   }
 
+  /**
+   * Buffers one call, keeping the buffer bounded:
+   * - `off(event, fn)` cancels the first buffered `on(event, fn)`, as the emitter would remove the
+   *   first match, and `off(event)` cancels every buffered `on(event)`. Nothing else is registered
+   *   on the socket yet, so the `off` itself has nothing left to do and is not kept. The manager
+   *   works the same, except a bare `io.off(event)`, which also removes Socket.IO's own manager
+   *   listeners and so is kept (only the latest one per event).
+   * - Messages are capped at `MAX_PENDING_EMITS`. The oldest is dropped first; a dropped
+   *   `timeout(ms).emit` hears `operation has timed out` at once, a plain ack is never called
+   *   (Socket.IO does not call it for a message it never sent).
+   */
   function record(op: PendingOp) {
+    if (op.kind === "off" || op.kind === "ioOff") {
+      const onKind = op.kind === "off" ? "on" : "ioOn";
+      for (let i = 0; i < pending.length; i += 1) {
+        const other = pending[i];
+        if (other?.kind !== onKind || other.event !== op.event) continue;
+        if (op.listener && other.listener !== op.listener) continue;
+        pending.splice(i, 1);
+        i -= 1;
+        if (op.listener) break;
+      }
+      if (op.kind === "off" || op.listener) return;
+      const earlier = pending.findIndex(
+        (other) => other.kind === "ioOff" && other.event === op.event && !other.listener,
+      );
+      if (earlier !== -1) pending.splice(earlier, 1);
+    }
     pending.push(op);
-    if (op.kind === "on" && op.listener) addListener(socketListeners, op.event, op.listener);
-    if (op.kind === "off") removeListener(socketListeners, op.event, op.listener);
-    if (op.kind === "ioOn" && op.listener) addListener(managerListeners, op.event, op.listener);
-    if (op.kind === "ioOff") removeListener(managerListeners, op.event, op.listener);
+    if (op.kind !== "emit") return;
+    let emits = 0;
+    for (const other of pending) if (other.kind === "emit") emits += 1;
+    if (emits <= MAX_PENDING_EMITS) return;
+    const oldest = pending.findIndex((other) => other.kind === "emit");
+    const [dropped] = pending.splice(oldest, 1);
+    if (dropped?.kind === "emit" && dropped.timer !== undefined) {
+      clearTimeout(dropped.timer);
+      dropped.args[dropped.args.length - 1](new Error("operation has timed out"));
+    }
   }
 
   /**
