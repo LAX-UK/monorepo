@@ -37,9 +37,13 @@ export function SalePremiumSection({ saleId, overview }: Props) {
   const confirm = () => {
     setFailure(null);
     startTransition(async () => {
-      const result = await adminUseSalePremiumForLotsResultAction(saleId, overview.editableLotIds);
-      if (!result.ok) {
-        setFailure(result.error || "The lots could not be changed. Try again.");
+      // A refusal or a failed request keeps the dialog open with the reason; nothing changed.
+      const result = await adminUseSalePremiumForLotsResultAction(
+        saleId,
+        overview.editableLotIds,
+      ).catch(() => null);
+      if (!result?.ok) {
+        setFailure(result?.error || "The lots could not be changed. Try again.");
         return;
       }
       setOpen(false);
