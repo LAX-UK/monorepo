@@ -24,7 +24,7 @@
           ]
         },
         "lot": {
-          "budgetKb": 589,
+          "budgetKb": 578,
           "enforce": true,
           "match": ["^/\\(marketing\\)/(lot|artist)/"]
         },

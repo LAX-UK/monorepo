@@ -1,6 +1,6 @@
 "use client";
 
-import { sendVerificationEmailForReturnPath } from "@/lib/auth/services/send-verification-email.service";
+import { sendVerificationEmailOnDemand } from "@/lib/auth/services/send-verification-email.lazy";
 import type {
   BidBlockerAction,
   BidBlockerPresentation,
@@ -34,7 +34,7 @@ function VerificationEmailAction({
       loading={sending}
       onClick={() => {
         setSending(true);
-        void sendVerificationEmailForReturnPath({ email, next })
+        void sendVerificationEmailOnDemand({ email, next })
           .then((result) => {
             if (result.ok) notify.success("Verification email sent");
             else notify.error(result.message);

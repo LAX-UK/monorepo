@@ -192,6 +192,26 @@ subscription with the lot cards and the mobile summary bar, and the socket is th
 plan. The toast library still reaches the sale page through the time chip's zone dialog
 (`@auction/ui/time`), which every product shares.
 
+## Library trims
+
+The third-party code in the first scripts of public pages was checked against what the pages
+actually use. Lenis is not touched.
+
+| Library | Was | Now |
+| --- | --- | --- |
+| `zod` (12.9 KB) | in the frame of every page: the attribution cookie check (`parseMarketingAttributionSnapshot`), the theme default (`DEFAULT_THEME_PREFERENCE`) and the account switcher's count check | gone from the frame. The snapshot and count checks are written out by hand and give the same answers as the Zod schemas they replace (equivalence tests in `marketing-attribution-parse.test.ts` and `account-needs-you.client.test.ts`). The Zod schemas for API bodies are in `marketing-attribution-schema.ts`, and the theme values in `ui-preference-defaults.ts` |
+| `better-auth` client (about 10 KB with `@better-fetch/fetch` and `nanostores`) | on the lot page, for the "send verification email" buttons | fetched when one of those buttons is pressed (`send-verification-email.lazy.ts`). The button shows its busy state as before while the code loads, and a failed fetch reads as a failed send |
+| `@date-fns/tz`, `@radix-ui/react-slot`, `better-auth`, `cmdk`, `date-fns`, `embla-carousel-react`, `jose` | listed in `apps/web/package.json` but never imported by the app | removed from the app's dependencies. The workspace packages that use them still declare them, and the lockfile resolves the same versions |
+
+Zod is still on home, the sales list, the sale page and the lot page. There, live-bid events
+(`lot-realtime-events`), the lot and sale response schemas and the newsletter form use it. Those
+go with the socket step.
+
+Measured on the CI build (Sentry on, gzip, start-up set): the frame of a content page went from
+362.6 to 349.5 KB, about from 370.5 to 357.4 KB, terms from 367.4 to 354.4 KB and the lot page from
+536.6 to 524.7 KB. Home (434.2), the sales list (476.3) and the sale page (539.2) are unchanged: the
+frame is smaller, but their own page scripts now carry zod. The lot group's budget is now 578 KB.
+
 ## Enforcement
 
 `enforce` is set per group. A route over budget in a group with `"enforce": true` is an error line

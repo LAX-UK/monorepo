@@ -1,6 +1,6 @@
 "use client";
 
-import { sendVerificationEmailForReturnPath } from "@/lib/auth/services/send-verification-email.service";
+import { sendVerificationEmailOnDemand } from "@/lib/auth/services/send-verification-email.lazy";
 import { notify } from "@/lib/ui/notify";
 import { Button } from "@auction/ui/components/button";
 import type { ComponentProps } from "react";
@@ -34,7 +34,7 @@ export function SendVerificationEmailButton({
       disabled={sending}
       onClick={() => {
         setSending(true);
-        void sendVerificationEmailForReturnPath({ email, next })
+        void sendVerificationEmailOnDemand({ email, next })
           .then((result) => {
             if (!result.ok) {
               notify.error(result.message);

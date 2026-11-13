@@ -40,6 +40,7 @@ export * from "./marketing-enquiry.js";
 export * from "./private-sale-deal.js";
 export * from "./admin-purchase-problems.js";
 export * from "./marketing-attribution.js";
+export * from "./marketing-attribution-schema.js";
 export * from "./user.js";
 export * from "./watchlist.js";
 export * from "./artist-watchlist.js";
