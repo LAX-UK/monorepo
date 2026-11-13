@@ -45,7 +45,7 @@ export function LotSellerProceedsSection({
         <div
           aria-busy="true"
           aria-label="Loading the seller's proceeds"
-          className="flex flex-col gap-3 p-4"
+          className="flex flex-col gap-3"
         >
           <Skeleton className="h-5 w-full" />
           <Skeleton className="h-5 w-4/5" />
@@ -58,7 +58,7 @@ export function LotSellerProceedsSection({
   if (state.kind === "error") {
     return (
       <Section title={TITLE}>
-        <div className="p-4">
+        <div>
           <Notice tone="danger" title="The seller's proceeds could not load">
             Reload the page to try again. The sale itself is not affected.
           </Notice>
@@ -69,7 +69,7 @@ export function LotSellerProceedsSection({
   if (state.kind === "no_snapshot") {
     return (
       <Section title={TITLE}>
-        <p className="p-4 text-staff-sm text-staff-muted">{state.message}</p>
+        <p className="text-staff-sm text-staff-muted">{state.message}</p>
       </Section>
     );
   }
@@ -88,9 +88,14 @@ export function LotSellerProceedsSection({
 
   return (
     <Section title={TITLE} bodyClassName="p-0">
-      <div className="p-4">
-        <SettlementBreakdown {...breakdown} Link={NextLink} note={note} action={actionButton} />
-      </div>
+      {/* The section is the card: the receipt sits in it without a second border. */}
+      <SettlementBreakdown
+        {...breakdown}
+        Link={NextLink}
+        note={note}
+        action={actionButton}
+        className="rounded-none border-0 bg-transparent"
+      />
       {record ? (
         <RecordAgreementDialog open={recording} onOpenChange={setRecording} context={record} />
       ) : null}

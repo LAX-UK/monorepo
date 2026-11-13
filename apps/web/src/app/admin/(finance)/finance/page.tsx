@@ -1,7 +1,9 @@
 import { FinanceHub } from "@/components/admin/finance/finance-hub";
+import { FinanceRuleNotice } from "@/components/admin/seller-proceeds/finance-rule-notice";
 import { findStaffNavItemForPath } from "@/components/layout/staff-nav";
 import { financeAttention, financeTools } from "@/lib/admin/finance/finance-hub.vm";
 import { loadAdminFinanceHubPage } from "@/lib/admin/finance/load-finance-hub-page";
+import { loadFinanceNotice } from "@/lib/admin/seller-proceeds/load-finance-notice";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
 import { canOpenAdminRoute } from "@/lib/navigation/admin-route-access";
 import { metadataForPrivate } from "@/lib/seo/metadata-factory";
@@ -14,9 +16,10 @@ export const metadata: Metadata = metadataForPrivate(
 );
 
 export default async function FinanceAdminHomePage() {
-  const [user, { financeIssues, navCounts, failedPayouts, loadError }] = await Promise.all([
+  const [user, { financeIssues, navCounts, failedPayouts, loadError }, notice] = await Promise.all([
     getServerSessionUser(),
     loadAdminFinanceHubPage(),
+    loadFinanceNotice(),
   ]);
   // Only queues this person can open: a link to a page that would refuse them is a dead end.
   const canOpen = (href: string) =>
@@ -35,6 +38,11 @@ export default async function FinanceAdminHomePage() {
       )}
       tools={financeTools(navCounts)}
       loadError={loadError}
+      notice={
+        notice ? (
+          <FinanceRuleNotice content={notice.content} dismissCookie={notice.dismissCookie} />
+        ) : null
+      }
     />
   );
 }

@@ -10,6 +10,7 @@ import {
   type StaffLinkComponent,
 } from "@auction/staff-ui";
 import Link from "next/link";
+import type { ReactNode } from "react";
 
 const NextLink: StaffLinkComponent = Link;
 
@@ -21,10 +22,13 @@ export function FinanceHub({
   attention,
   tools,
   loadError,
+  notice = null,
 }: {
   attention: readonly AttentionItem[];
   tools: readonly LinkListItem[];
   loadError?: string | null;
+  /** A notice for everyone on the desk, above the queues. */
+  notice?: ReactNode;
 }) {
   return (
     <div className="flex flex-col gap-6">
@@ -32,6 +36,7 @@ export function FinanceHub({
         title="Finance"
         description="Payments, payouts, disputes and the accounts, starting with what needs you."
       />
+      {notice}
       {loadError ? (
         <Notice tone="warning" title="Some queues could not load">
           {loadError} The counts below may be incomplete.
