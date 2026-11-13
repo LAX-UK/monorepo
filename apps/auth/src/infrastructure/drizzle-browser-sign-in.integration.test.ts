@@ -357,7 +357,7 @@ describe.skipIf(!DATABASE_URL)("ending one browser's sign-in, against Postgres",
       return {
         reserve,
         sweep: new SessionExpirySweep(
-          new DrizzleSessionExpiryStore(database),
+          new DrizzleSessionExpiryStore(database, [ANN, BEN]),
           { reserve },
           () => now,
         ),
@@ -430,7 +430,7 @@ describe.skipIf(!DATABASE_URL)("ending one browser's sign-in, against Postgres",
     it("skips records another instance is already working on, so none is handled twice", async () => {
       await record("rec-1", ANN, past);
       await record("rec-2", ANN, new Date(past.getTime() + 1));
-      const store = new DrizzleSessionExpiryStore(database);
+      const store = new DrizzleSessionExpiryStore(database, [ANN, BEN]);
       const seenByOther: string[][] = [];
       const seenByFirst: string[][] = [];
 
@@ -443,8 +443,9 @@ describe.skipIf(!DATABASE_URL)("ending one browser's sign-in, against Postgres",
       });
       await first;
 
-      expect(seenByFirst).toEqual([["rec-1"]]);
-      expect(seenByOther).toEqual([["rec-2"]]);
+      // The sweep takes records in no particular order; what matters is that none is taken twice.
+      expect(seenByFirst).toHaveLength(1);
+      expect([...seenByFirst.flat(), ...seenByOther.flat()].sort()).toEqual(["rec-1", "rec-2"]);
       const left = await database
         .select({ id: session.id })
         .from(session)
@@ -454,7 +455,7 @@ describe.skipIf(!DATABASE_URL)("ending one browser's sign-in, against Postgres",
 
     it("deletes nothing when the durable write fails, and a later run takes the records", async () => {
       await record("rec", ANN, past);
-      const store = new DrizzleSessionExpiryStore(database);
+      const store = new DrizzleSessionExpiryStore(database, [ANN, BEN]);
 
       await expect(
         store.endExpired(now, 10, async () => {
@@ -480,7 +481,7 @@ describe.skipIf(!DATABASE_URL)("ending one browser's sign-in, against Postgres",
         .set({ expiresAt: new Date(now.getTime() + DAY) })
         .where(eq(session.id, "rec"));
 
-      const store = new DrizzleSessionExpiryStore(database);
+      const store = new DrizzleSessionExpiryStore(database, [ANN, BEN]);
       await expect(store.endExpired(now, 10, async () => "x")).resolves.toBeNull();
       const [still] = await database
         .select({ id: session.id })

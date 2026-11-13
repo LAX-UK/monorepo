@@ -10,6 +10,8 @@ export type DayGallerySectionHeaderProps = {
   total: number;
   showViewAll: boolean;
   onViewAll: () => void;
+  /** The control is pointed at or focused: a chance to fetch what pressing it opens. */
+  onIntent?: () => void;
 };
 
 export function DayGallerySectionHeader({
@@ -17,6 +19,7 @@ export function DayGallerySectionHeader({
   total,
   showViewAll,
   onViewAll,
+  onIntent,
 }: DayGallerySectionHeaderProps) {
   return (
     <MarketingSectionHeader
@@ -33,7 +36,13 @@ export function DayGallerySectionHeader({
       subtitle={subtitle}
       action={
         showViewAll ? (
-          <Button type="button" variant="ghost" onClick={onViewAll}>
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={onViewAll}
+            onPointerEnter={onIntent}
+            onFocus={onIntent}
+          >
             <span>View all ({total})</span>
             <span className="sr-only"> auction day media</span>
             <ChevronRight aria-hidden />

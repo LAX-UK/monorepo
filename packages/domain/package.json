@@ -22,6 +22,7 @@
     "test:exhaustive-tz": "EXHAUSTIVE_TZ=1 vitest run src/payment-reminder.zones.test.ts"
   },
   "dependencies": {
+    "@auction/accounting-domain": "workspace:*",
     "@auction/datetime": "workspace:*",
     "@auction/types": "workspace:*"
   },

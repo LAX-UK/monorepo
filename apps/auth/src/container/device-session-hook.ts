@@ -8,6 +8,7 @@ import {
 import type { SessionTakeoverService } from "../services/session-takeover.service.js";
 import {
   type SecurityEffectLogger,
+  describeError,
   settleSecurityEffect,
 } from "../services/settle-security-effect.js";
 import {
@@ -64,6 +65,10 @@ export function createDeviceSessionHook(options: {
   takeover: Pick<SessionTakeoverService, "takeOver">;
   hasher: Pick<DeviceMarkerHasher, "hash">;
   readSession: SessionReader;
+  /** Like `readSession`, but may answer from the signed cookie cache (no database read). */
+  readCachedSession: SessionReader;
+  /** Notes that a sign-in was used, so that idle records can be ended. */
+  activity: { record(sessionId: string): Promise<void> };
   log: SecurityEffectLogger;
 }): DeviceSessionHook {
   return async ({ request, response, path }) => {
@@ -72,6 +77,17 @@ export function createDeviceSessionHook(options: {
     const newToken = readResponseSessionToken(response);
     // The same cookie again is a refresh of the record the browser already holds, not a sign-in.
     const isNewSignIn = newToken !== null && newToken !== readRequestSessionToken(request);
+    // Serving the cookie of a signed-in browser is use of that sign-in. The record is named by the
+    // session library after it checked the cookie; the marker plays no part.
+    if (!isNewSignIn && readRequestSessionToken(request) !== null) {
+      try {
+        const current = await options.readCachedSession(request.headers);
+        if (current?.id) await options.activity.record(current.id);
+      } catch (error) {
+        // The next use notes it; never worth failing or retrying a request for.
+        options.log.warn({ path, ...describeError(error) }, "session_activity_failed");
+      }
+    }
     // The marker is renewed when a sign-in happens or the browser loads a page, not on every call.
     if (!isNewSignIn && !(carried && isBrowserNavigation(request))) return response;
 

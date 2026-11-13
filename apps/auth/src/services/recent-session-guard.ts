@@ -1,5 +1,6 @@
 import { ACCOUNT_STEP_UP_MAX_AGE_SECONDS } from "@auction/identity-contracts";
 import type { IdentityOperationsService, IdentitySession } from "./identity-operations.service.js";
+import { sessionEndReason } from "./session-lifetime-policy.js";
 
 /**
  * Decides whether the sign-in LAX Account holds (its `sid`) is genuine and recent enough for a
@@ -16,7 +17,10 @@ export class RecentSessionGuard {
   async liveSessions(subjectId: string): Promise<IdentitySession[]> {
     const nowMs = this.now().getTime();
     const sessions = await this.operations.listSessions(subjectId);
-    return sessions.filter((session) => session.expiresAt.getTime() > nowMs);
+    // A record over its idle or absolute limit is not signed in, whether or not the sweep has
+    // deleted it yet.
+    const now = new Date(nowMs);
+    return sessions.filter((session) => sessionEndReason(session, session.isStaff, now) === null);
   }
 
   /**

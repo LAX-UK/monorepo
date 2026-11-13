@@ -173,6 +173,8 @@ export const SHOP_COMMERCE_APPEND_ONLY_TABLES = [
   "shop_edition_stock_batch",
 ] as const;
 export const API_DENY_TABLES = [
+  /** Sealed Zoho Books OAuth tokens: only the worker, the process that calls Books, may touch them. */
+  "zoho_books_connection",
   "user",
   "session",
   "session_lineage",
@@ -268,6 +270,25 @@ export const WORKER_ACCOUNTING_DOCUMENT_UPDATE_COLUMNS = [
 ] as const;
 export const WORKER_ACCOUNTING_APPEND_ONLY_TABLES = ["accounting_document_event"] as const;
 export const WORKER_ACCOUNTING_READ_TABLES = ["accounting_source_setting"] as const;
+/**
+ * What a seller is paid for each sale, fixed when the buyer's invoice is raised (migration 0372).
+ * Both payment-raising processes (the API at checkout, the worker at lot end) write the row in the
+ * invoice's transaction and read it; nobody updates or deletes it. `bid_finance_setting` holds the
+ * Bid company's finance settings: both roles read it, and the staff route that changes it gets its
+ * own UPDATE grant in the PR that adds the route. No other role has access.
+ */
+export const SELLER_TERMS_INSERT_SELECT_TABLES = ["sale_seller_terms"] as const;
+export const FINANCE_SETTING_READ_TABLES = ["bid_finance_setting"] as const;
+/**
+ * The worker reads the signed agreement behind a lot to price the seller's side at lot end, and
+ * only the columns the rule needs: not the reserve, the estimates or the recorded-copy details.
+ */
+export const WORKER_SELLER_TERMS_READ_COLUMNS = [
+  [
+    "consignment_agreement",
+    ["id", "submission_id", "legal_entity_id", "accepted_at", "proposed_at", "commission_percent"],
+  ],
+] as const;
 /** Shop Identity owns only its local Identity projection. */
 export const SHOP_PRODUCT_PROFILE_TABLES = [
   "shop_user_profile",
@@ -559,6 +580,33 @@ export const WORKER_ZOHO_ARTWORK_SYNC_TABLES = [
   "zoho_artwork_sync_outcome",
   "zoho_listing_sync_run",
   "zoho_sync_health",
+] as const;
+/**
+ * Zoho Books connections (sealed OAuth tokens). Only the worker, the process that calls Books, is
+ * granted anything, and only by column: it reads the token columns, creates a connection and updates
+ * the token and status columns. It never deletes, truncates or rewrites `id`, `organization_id` or
+ * `created_at`. `api_app` is denied (API_DENY_TABLES); `shop_app` and `auth_app` get nothing. If a
+ * staff "connect Books" route is added to the API later, give it column-level INSERT/UPDATE on the
+ * write columns and no SELECT on the sealed ones.
+ */
+export const WORKER_ZOHO_BOOKS_TABLES = ["zoho_books_connection"] as const;
+export const WORKER_ZOHO_BOOKS_SELECT_COLUMNS = [
+  "organization_id",
+  "refresh_token_sealed",
+  "access_token_sealed",
+  "access_token_expires_at",
+  "connection_status",
+  "last_refresh_error_code",
+  "updated_at",
+] as const;
+export const WORKER_ZOHO_BOOKS_INSERT_COLUMNS = WORKER_ZOHO_BOOKS_SELECT_COLUMNS;
+export const WORKER_ZOHO_BOOKS_UPDATE_COLUMNS = [
+  "refresh_token_sealed",
+  "access_token_sealed",
+  "access_token_expires_at",
+  "connection_status",
+  "last_refresh_error_code",
+  "updated_at",
 ] as const;
 /**
  * The alert engine's Bid tables: the matching projector records matches and announcements, and the
@@ -955,6 +1003,21 @@ async function grantColumnUpdateIfExists(
   );
 }
 
+async function grantColumnPrivilegeIfExists(
+  client: pg.Client,
+  role: RoleName,
+  tableName: string,
+  privilege: "select" | "insert" | "update",
+  columns: readonly string[],
+  schemaName = "public",
+): Promise<void> {
+  if (!(await tableExists(client, tableName, schemaName)) || columns.length === 0) return;
+  const columnList = columns.map(quoteIdent).join(", ");
+  await client.query(
+    `grant ${privilege} (${columnList}) on table ${quoteIdent(schemaName)}.${quoteIdent(tableName)} to ${quoteIdent(role)}`,
+  );
+}
+
 async function grantColumnSelectIfExists(
   client: pg.Client,
   role: RoleName,
@@ -1078,6 +1141,14 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
           }
           if ((API_SSF_RECEIVER_TABLES as readonly string[]).includes(tableName)) {
             await grantIfExists(client, "api_app", tableName, "INSERT, SELECT, DELETE");
+            continue;
+          }
+          if ((SELLER_TERMS_INSERT_SELECT_TABLES as readonly string[]).includes(tableName)) {
+            await grantIfExists(client, "api_app", tableName, "INSERT, SELECT");
+            continue;
+          }
+          if ((FINANCE_SETTING_READ_TABLES as readonly string[]).includes(tableName)) {
+            await grantIfExists(client, "api_app", tableName, "SELECT");
             continue;
           }
           if ((API_ACCOUNTING_READ_TABLES as readonly string[]).includes(tableName)) {
@@ -1277,6 +1348,17 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
         for (const tableName of WORKER_ARTWORK_REGISTER_APPEND_ONLY_TABLES) {
           await grantIfExists(client, "worker_app", tableName, "INSERT, SELECT");
         }
+        for (const tableName of SELLER_TERMS_INSERT_SELECT_TABLES) {
+          await grantIfExists(client, "worker_app", tableName, "INSERT, SELECT");
+        }
+        for (const tableName of FINANCE_SETTING_READ_TABLES) {
+          await grantIfExists(client, "worker_app", tableName, "SELECT");
+        }
+        for (const [tableName, columns] of WORKER_SELLER_TERMS_READ_COLUMNS) {
+          // A table-wide SELECT from an earlier build of this grant is taken back first.
+          await revokeIfExists(client, "worker_app", tableName, "SELECT");
+          await grantColumnSelectIfExists(client, "worker_app", tableName, columns);
+        }
         for (const tableName of WORKER_ACCOUNTING_DOCUMENT_TABLES) {
           // The worker moves a document along its life cycle; it never rewrites what the document
           // says (payload, totals, product, reference), so UPDATE is column by column.
@@ -1308,6 +1390,17 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
         }
         for (const tableName of WORKER_ZOHO_ARTWORK_SYNC_TABLES) {
           await grantIfExists(client, "worker_app", tableName, "INSERT, SELECT, UPDATE");
+        }
+        for (const tableName of WORKER_ZOHO_BOOKS_TABLES) {
+          // Start from nothing so a table-level grant from an earlier run is removed, then grant by column.
+          await revokeIfExists(client, "worker_app", tableName);
+          for (const [privilege, columns] of [
+            ["select", WORKER_ZOHO_BOOKS_SELECT_COLUMNS],
+            ["insert", WORKER_ZOHO_BOOKS_INSERT_COLUMNS],
+            ["update", WORKER_ZOHO_BOOKS_UPDATE_COLUMNS],
+          ] as const) {
+            await grantColumnPrivilegeIfExists(client, "worker_app", tableName, privilege, columns);
+          }
         }
         for (const tableName of WORKER_UNSOLD_CHOICE_DEADLINE_TABLES) {
           await grantIfExists(client, "worker_app", tableName, "INSERT, SELECT");

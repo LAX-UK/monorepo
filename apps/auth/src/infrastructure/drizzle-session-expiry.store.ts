@@ -1,14 +1,22 @@
 import type { IdentityDatabase } from "@auction/identity-db";
-import { session, sessionLineage } from "@auction/identity-db/schema";
-import { asc, inArray, lte } from "drizzle-orm";
+import { session } from "@auction/identity-db/schema";
+import { and, inArray, notInArray } from "drizzle-orm";
 import type {
   ExpiredSession,
   SessionExpiryStore,
 } from "../services/session-expiry-sweep.service.js";
-import { deleteTokensIssuedUnder } from "./drizzle-oauth-token-sign-in.store.js";
+import { endLockedSessions } from "./drizzle-session-ending.js";
+import { sweepScans } from "./session-lifetime.sql.js";
 
 export class DrizzleSessionExpiryStore implements SessionExpiryStore {
-  constructor(private readonly db: IdentityDatabase) {}
+  /**
+   * `onlyUsers` limits the sweep to those people's records. The running service leaves it unset; it
+   * is for tests that share a database, so one test's sweep never ends another's fixtures.
+   */
+  constructor(
+    private readonly db: IdentityDatabase,
+    private readonly onlyUsers?: readonly string[],
+  ) {}
 
   async endExpired<T>(
     now: Date,
@@ -16,31 +24,27 @@ export class DrizzleSessionExpiryStore implements SessionExpiryStore {
     beforeDelete: (batch: readonly ExpiredSession[]) => Promise<T>,
   ): Promise<{ ended: number; prepared: T } | null> {
     return this.db.transaction(async (tx) => {
-      const rows = await tx
-        .select({ id: session.id, userId: session.userId })
-        .from(session)
-        .where(lte(session.expiresAt, now))
-        .orderBy(asc(session.expiresAt), asc(session.id))
-        .limit(limit)
-        .for("update", { skipLocked: true });
-      if (rows.length === 0) return null;
-      const ids = rows.map((row) => row.id);
-      const lineage = await tx
-        .select({ previousSid: sessionLineage.previousSid, sessionId: sessionLineage.sessionId })
-        .from(sessionLineage)
-        .where(inArray(sessionLineage.sessionId, ids));
-      const batch = rows.map((row) => ({
-        ...row,
-        previousSids: lineage
-          .filter((entry) => entry.sessionId === row.id)
-          .map((entry) => entry.previousSid),
-      }));
-      const prepared = await beforeDelete(batch);
-      await tx.delete(session).where(inArray(session.id, ids));
-      for (const entry of batch) {
-        await deleteTokensIssuedUnder(tx, entry.userId, [entry.id, ...entry.previousSids]);
+      // Each scan is selective on its own (see `sweepScans`); no ordering, since the records taken
+      // here are deleted and a later run finds the rest.
+      const rows: { id: string; userId: string }[] = [];
+      for (const scan of sweepScans(now)) {
+        if (rows.length >= limit) break;
+        const taken = await tx
+          .select({ id: session.id, userId: session.userId })
+          .from(session)
+          .where(
+            and(
+              scan,
+              this.onlyUsers ? inArray(session.userId, [...this.onlyUsers]) : undefined,
+              notInArray(session.id, rows.length > 0 ? rows.map((r) => r.id) : [""]),
+            ),
+          )
+          .limit(limit - rows.length)
+          .for("update", { skipLocked: true });
+        rows.push(...taken);
       }
-      return { ended: batch.length, prepared };
+      if (rows.length === 0) return null;
+      return endLockedSessions(tx, rows, beforeDelete);
     });
   }
 }

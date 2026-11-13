@@ -1,4 +1,4 @@
-import { invoiceDueAt } from "@auction/domain";
+import { type SellerTermsSnapshot, invoiceDueAt } from "@auction/domain";
 import type {
   BidInvoiceRecord,
   CreatePaymentRow,
@@ -112,8 +112,10 @@ export class InvoiceRaiser {
     lot: Lot;
     priced: PricedInvoice;
     payment: Omit<CreatePaymentRow, "amount" | "invoiceId">;
+    /** What the seller is paid, stored with the payment in the same transaction. */
+    sellerTerms: SellerTermsSnapshot;
   }): Promise<RaisedInvoice> {
-    const { lot, priced, payment } = input;
+    const { lot, priced, payment, sellerTerms } = input;
     if (!lot.winnerId || !lot.buyerLegalEntityId || !lot.sellerLegalEntityId) {
       throw new InvoiceInvariantError(
         "A lot needs its winner and its buyer and seller accounts to be invoiced",
@@ -135,6 +137,7 @@ export class InvoiceRaiser {
       // The lot as it was read: the store raises nothing if it has since moved on.
       winnerId: lot.winnerId,
       payment,
+      sellerTerms,
     });
   }
 }

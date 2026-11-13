@@ -145,7 +145,7 @@ export class ReofferStartService {
     const sequence = records.length + 1;
     const now = this.now();
     const requirement = consentRequirement({
-      ownership: this.deps.ownership.of(lot.sellerLegalEntityId),
+      ownership: await this.deps.ownership.of(lot.sellerLegalEntityId),
       offerMinor: next.bidder.amountMinor,
       reserveMinor: lot.reservePence,
     });

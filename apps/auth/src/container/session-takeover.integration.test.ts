@@ -105,6 +105,7 @@ describe.skipIf(!DATABASE_URL)("one sign-in record per browser", () => {
           db,
           auth: betterAuth as never,
           durable,
+          activity: { record: vi.fn(async () => undefined) },
           secrets: { deviceMarker: MARKER_SECRET, issuer: "issuer-secret-0123456789" },
           log,
         }),

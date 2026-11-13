@@ -103,13 +103,20 @@ describe.skipIf(!DATABASE_URL)("the device list's data, against Postgres", () =>
     const signedInAt = new Date(now.getTime() - 3 * DAY);
     const lastSeenAt = new Date(now.getTime() - 60_000);
     await record(`${ANN}-a`, ANN, { signedInAt, lastSeenAt, country: "GB" });
-    await record(`${ANN}-old`, ANN);
+    const createdAt = new Date(now.getTime() - 2 * DAY);
+    const updatedAt = new Date(now.getTime() - 3_600_000);
+    await record(`${ANN}-old`, ANN, { createdAt, updatedAt, signedInAt: null, lastSeenAt: null });
     const rows = await repository.listForSubject(ANN);
     const byId = new Map(rows.map((row) => [row.id, row]));
-    expect(byId.get(`${ANN}-a`)).toMatchObject({ signedInAt, lastSeenAt, country: "GB" });
+    expect(byId.get(`${ANN}-a`)).toMatchObject({
+      signedInAt,
+      lastActiveAt: lastSeenAt,
+      country: "GB",
+    });
+    // A record from before those times were kept reads its own creation and last update instead.
     expect(byId.get(`${ANN}-old`)).toMatchObject({
-      signedInAt: null,
-      lastSeenAt: null,
+      signedInAt: createdAt,
+      lastActiveAt: updatedAt,
       country: null,
       clientIds: [],
     });

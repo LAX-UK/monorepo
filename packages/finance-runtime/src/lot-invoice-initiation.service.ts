@@ -23,8 +23,8 @@ import {
 } from "./notifications/invoice-recipients.js";
 import { formatPaymentDueDate } from "./payment-due-date.js";
 import type { PaymentTierPolicy } from "./payment-tier.policy.js";
-import type { IPlatformFeePolicy } from "./platform-fee.policy.js";
 import { resolveNewPaymentReviewDecision } from "./resolve-manual-review-reason.js";
+import type { ISellerTermsAtRaise } from "./seller-terms-at-raise.js";
 import type { ISettlementCompliancePolicy } from "./settlement-compliance.policy.js";
 
 export type EnsureLotInvoiceResult = {
@@ -81,7 +81,7 @@ export class LotInvoiceInitiationService {
     private readonly payments: IPaymentWriteRepository,
     private readonly settlementCompliance: ISettlementCompliancePolicy,
     private readonly paymentTierPolicy: PaymentTierPolicy,
-    private readonly platformFeePolicy: IPlatformFeePolicy,
+    private readonly sellerTermsAtRaise: ISellerTermsAtRaise,
     private readonly accounting: IInvoiceAccountingProvider,
     private readonly notificationOutbox: ILotInvoiceNotificationOutbox,
     private readonly notificationFactory: ILotInvoiceNotificationFactory,
@@ -188,10 +188,7 @@ export class LotInvoiceInitiationService {
       this.metrics.record(`settlement_compliance_hold_${reviewDecision.manualReviewReason}`);
     }
 
-    const platformFee = await this.platformFeePolicy.computePlatformFeeFromPence(
-      sellerLegalEntityId,
-      amountPence,
-    );
+    const { sellerTerms, platformFee } = await this.sellerTermsAtRaise.forInvoice({ lot, priced });
 
     let raised: RaisedInvoice;
     try {
@@ -207,6 +204,7 @@ export class LotInvoiceInitiationService {
           stripePaymentIntentId: null,
           status: reviewDecision.requiresManualReview ? "requires_manual_review" : "pending",
         },
+        sellerTerms,
       });
     } catch (err) {
       // Defaulted, re-awarded or moved to another account since it was read above: nothing was

@@ -20,12 +20,12 @@ const baseProps = {
 };
 
 describe("SaleroomCatalogToolbarRow", () => {
-  it("renders mobile filter trigger and view switcher on one row", () => {
+  it("renders mobile filter trigger and view switcher on one row", async () => {
     searchParams = new URLSearchParams();
 
     render(<SaleroomCatalogToolbarRow {...baseProps} />);
 
-    expect(screen.getAllByRole("button", { name: /Filters/i }).length).toBeGreaterThan(0);
+    expect((await screen.findAllByRole("button", { name: /Filters/i })).length).toBeGreaterThan(0);
     expect(screen.getAllByRole("group", { name: "View" }).length).toBe(1);
     expect(screen.queryByTestId("mobile-trailing-row")).not.toBeInTheDocument();
 
@@ -33,13 +33,13 @@ describe("SaleroomCatalogToolbarRow", () => {
     expect(allLink.closest(".hidden.lg\\:flex")).toBeTruthy();
   });
 
-  it("shows filter badge and active status chip when status is set", () => {
+  it("shows filter badge and active status chip when status is set", async () => {
     searchParams = new URLSearchParams("status=live");
 
     render(<SaleroomCatalogToolbarRow {...baseProps} />);
 
     expect(
-      screen.getAllByRole("button", { name: /Filters.*1 active filters/i }).length,
+      (await screen.findAllByRole("button", { name: /Filters.*1 active filters/i })).length,
     ).toBeGreaterThan(0);
     expect(screen.getByLabelText("Active filters")).toBeInTheDocument();
     const activeFilters = screen.getByLabelText("Active filters");
@@ -76,6 +76,14 @@ describe("SaleroomCatalogToolbarRow", () => {
     );
 
     expect(screen.getByLabelText("Active filters")).toBeInTheDocument();
+  });
+
+  it("shows the sort choice as text first and as a select once its part has loaded", async () => {
+    searchParams = new URLSearchParams("sort=priceDesc");
+
+    render(<SaleroomCatalogToolbarRow {...baseProps} />);
+
+    expect(await screen.findByRole("combobox", { name: "Sort lots" })).toBeInTheDocument();
   });
 
   it("offers search only from the search threshold", () => {

@@ -16,8 +16,17 @@ function setup(sessions: { request?: string | null; response?: string | null } =
     const id = cookie.includes("session_token=new") ? sessions.response : sessions.request;
     return id ? { id } : null;
   });
-  const hook = createDeviceSessionHook({ takeover: { takeOver }, hasher, readSession, log });
-  return { hook, takeOver, log, readSession };
+  const readCachedSession = vi.fn(readSession);
+  const record = vi.fn(async (_sessionId: string) => undefined);
+  const hook = createDeviceSessionHook({
+    takeover: { takeOver },
+    hasher,
+    readSession,
+    readCachedSession,
+    activity: { record },
+    log,
+  });
+  return { hook, takeOver, log, readSession, readCachedSession, record };
 }
 
 const signedIn = (token = "new.sig", extra: string[] = []) => {
@@ -143,6 +152,66 @@ describe("device session hook", () => {
     expect(await hook({ request: requestAt("/a"), response: failed, path: "/a" })).toBe(failed);
     expect(await hook({ request: requestAt("/a"), response: clearing, path: "/a" })).toBe(clearing);
     expect(takeOver).not.toHaveBeenCalled();
+  });
+
+  describe("noting that a sign-in was used", () => {
+    it("notes the record the session library names for a request that carries a session cookie", async () => {
+      const { hook, record, readCachedSession, takeOver } = setup({ request: "rec" });
+      await hook({
+        request: requestAt("/api/auth/get-session", "better-auth.session_token=rec.sig"),
+        response: new Response("{}", { status: 200 }),
+        path: "/api/auth/get-session",
+      });
+      expect(readCachedSession).toHaveBeenCalledOnce();
+      expect(record).toHaveBeenCalledExactlyOnceWith("rec");
+      expect(takeOver).not.toHaveBeenCalled();
+    });
+
+    it("does not look at the device marker or a cookie-less request", async () => {
+      const { hook, record } = setup({ request: "rec" });
+      const marker = mintDeviceMarker();
+      await hook({
+        request: requestAt("/api/auth/get-session", `${DEVICE_MARKER_COOKIE}=${marker}`),
+        response: new Response("{}", { status: 200 }),
+        path: "/api/auth/get-session",
+      });
+      expect(record).not.toHaveBeenCalled();
+    });
+
+    it("does not note a sign-in that is only just being made, and not a refused request", async () => {
+      const first = setup({ request: "old", response: "new" });
+      await first.hook({
+        request: requestAt("/api/auth/sign-in/email", "better-auth.session_token=old.sig"),
+        response: signedIn(),
+        path: "/api/auth/sign-in/email",
+      });
+      expect(first.record).not.toHaveBeenCalled();
+
+      const refused = setup({ request: "rec" });
+      await refused.hook({
+        request: requestAt("/api/auth/get-session", "better-auth.session_token=rec.sig"),
+        response: new Response("{}", { status: 401 }),
+        path: "/api/auth/get-session",
+      });
+      expect(refused.record).not.toHaveBeenCalled();
+    });
+
+    it("never fails the request when noting the use fails, and says so", async () => {
+      const { hook, record, log } = setup({ request: "rec" });
+      record.mockRejectedValueOnce(new Error("db down"));
+      const response = new Response("{}", { status: 200 });
+      await expect(
+        hook({
+          request: requestAt("/api/auth/get-session", "better-auth.session_token=rec.sig"),
+          response,
+          path: "/api/auth/get-session",
+        }),
+      ).resolves.toBe(response);
+      expect(log.warn).toHaveBeenCalledWith(
+        expect.objectContaining({ errorMessage: "db down" }),
+        "session_activity_failed",
+      );
+    });
   });
 
   it("renews the marker when the browser loads a page, without a sign-in", async () => {

@@ -12,6 +12,8 @@ export type DayGalleryOverflowTileProps = {
   /** Optional preview image shown blurred beneath the overlay. */
   backgroundSrc?: string | null;
   onClick: () => void;
+  /** The tile is pointed at or focused: a chance to fetch what pressing it opens. */
+  onIntent?: () => void;
 };
 
 export function DayGalleryOverflowTile({
@@ -20,6 +22,7 @@ export function DayGalleryOverflowTile({
   hasVideos,
   backgroundSrc,
   onClick,
+  onIntent,
 }: DayGalleryOverflowTileProps) {
   const mediaNoun = hasVideos ? "photos and videos" : "photographs";
 
@@ -33,6 +36,8 @@ export function DayGalleryOverflowTile({
       )}
       aria-label={`View all ${total} auction day ${mediaNoun}`}
       onClick={onClick}
+      onPointerEnter={onIntent}
+      onFocus={onIntent}
     >
       {backgroundSrc ? (
         <MediaImage

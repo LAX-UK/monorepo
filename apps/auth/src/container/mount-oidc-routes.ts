@@ -79,6 +79,7 @@ import type { PasskeyEnrolmentGrants } from "../services/passkey-enrolment-grant
 import { RecentSessionGuard } from "../services/recent-session-guard.js";
 import type { IRefreshTokenFamilyRepository } from "../services/refresh-token-family.ports.js";
 import type { RefreshedIdTokenService } from "../services/refreshed-id-token.service.js";
+import { IDENTIFY_ONLY } from "../services/session-read-query.js";
 import { hasStaffMarker } from "../services/staff-marker.js";
 import type { SubjectExportService } from "../services/subject-export.service.js";
 import { createSubjectReadRateLimiter } from "../services/subject-read-rate-limiter.js";
@@ -181,7 +182,7 @@ export function mountOidcRoutes(app: Hono, options: OidcRouteMountOptions): void
     "/api/auth/*",
     createAuthIssuerRateLimitMiddleware(rateLimitStore, options.clientIp, {
       resolveSubjectId: async (headers) => {
-        const session = await options.auth.api.getSession({ headers });
+        const session = await options.auth.api.getSession({ headers, query: IDENTIFY_ONLY });
         return session?.user?.id ?? null;
       },
     }),
@@ -360,7 +361,7 @@ export function mountOidcRoutes(app: Hono, options: OidcRouteMountOptions): void
   const accountOrigin = (env.LAX_ACCOUNT_ORIGIN ?? DEFAULT_LAX_ACCOUNT_ORIGIN).replace(/\/+$/, "");
   /** The issuer session the browser's cookie holds, reduced to the two ids the routes need. */
   const readBrowserSession = async (headers: Headers) => {
-    const found = await options.auth.api.getSession({ headers });
+    const found = await options.auth.api.getSession({ headers, query: IDENTIFY_ONLY });
     const sessionId = found?.session?.id;
     const userId = found?.user?.id;
     return sessionId && userId ? { session: { id: sessionId }, user: { id: userId } } : null;
@@ -537,7 +538,7 @@ export function mountOidcRoutes(app: Hono, options: OidcRouteMountOptions): void
       revokeIdentitySession: (sessionId) =>
         services.oidc.logout.revokeIdentitySessions([sessionId]),
       currentSession: async (headers) => {
-        const session = await options.auth.api.getSession({ headers });
+        const session = await options.auth.api.getSession({ headers, query: IDENTIFY_ONLY });
         const subjectId = session?.user?.id;
         const sessionId = session?.session?.id;
         if (!subjectId || !sessionId) return null;

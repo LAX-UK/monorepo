@@ -24,11 +24,59 @@ export function readRequestRegion(headers: Headers | undefined): string | null {
 
 export function buildSessionDatabaseHooks(deps: AuthHookDeps) {
   return {
+    update: {
+      // Better Auth renews `expires_at` by 7 days on use. The renewal never goes past the idle or
+      // absolute limit, and a renewal that would land in the past is refused. The record is named by the session the request was already served from
+      // (Better Auth sets it on the request context before it renews).
+      before: async (
+        data: { expiresAt?: Date | undefined },
+        context?: {
+          context?: { session?: { session?: { id?: string; userId?: string } } | null } | null;
+        } | null,
+      ) => {
+        const current = context?.context?.session?.session;
+        if (
+          !deps.sessionExpiry ||
+          !(data.expiresAt instanceof Date) ||
+          !current?.id ||
+          !current.userId
+        ) {
+          return;
+        }
+        const expiresAt = await deps.sessionExpiry.clamp({
+          userId: current.userId,
+          sessionId: current.id,
+          expiresAt: data.expiresAt,
+        });
+        // A record that is already over (written before the limits were enforced, or held by a
+        // person whose limits have since become shorter) is not renewed into the past: Better
+        // Auth would still serve the renewing request. Refusing the update refuses the request.
+        if (expiresAt.getTime() <= (deps.sessionExpiry.now?.() ?? new Date()).getTime()) {
+          return false;
+        }
+        return { data: { expiresAt } };
+      },
+    },
     create: {
-      before: async (sess: { userId: string }, context?: { path?: string | undefined } | null) => {
+      before: async (
+        sess: { userId: string; expiresAt?: Date | undefined },
+        context?: { path?: string | undefined } | null,
+      ) => {
         await assertUserNotSuspendedForSession(deps.ports.subjectStatusReader, sess.userId);
+        const lifetime =
+          deps.sessionExpiry && sess.expiresAt instanceof Date
+            ? {
+                data: {
+                  expiresAt: await deps.sessionExpiry.clamp({
+                    userId: sess.userId,
+                    sessionId: null,
+                    expiresAt: sess.expiresAt,
+                  }),
+                },
+              }
+            : undefined;
         // SM14: staff are never signed in by Google or Apple, even through a link made earlier.
-        if (!isSocialSessionPath(context?.path) || socialFlow(context).newUser) return;
+        if (!isSocialSessionPath(context?.path) || socialFlow(context).newUser) return lifetime;
         // A failed read stops the sign-in on the hosted page with a code it can explain, never a
         // bare server error.
         const subject = await readSocialSubjectReporting(deps, sess.userId).catch(() => {
@@ -48,6 +96,7 @@ export function buildSessionDatabaseHooks(deps: AuthHookDeps) {
             code: SOCIAL_SIGN_IN_ERROR_CODES.staffNotAllowed,
           });
         }
+        return lifetime;
       },
       after: async (
         sess: {

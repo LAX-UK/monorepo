@@ -20,6 +20,7 @@ import {
   deleteIdentityUserFixtures,
   seedIdentityUserFixtures,
 } from "../../testing/identity-user-fixtures.js";
+import { heldSellerTerms, sellerTermsForTests } from "../../testing/seller-terms.js";
 import { createPaymentRecordForWinner } from "./create-pending-for-winner.pipeline.js";
 import type { PaymentServiceDeps } from "./payment-service-types.js";
 
@@ -67,6 +68,7 @@ describe.skipIf(!HAS_DB)("raising an invoice (integration)", () => {
     return found;
   }
 
+  const termsFor = (l: Lot) => heldSellerTerms(l.id, sellerEntity);
   const paymentRow = (l: Lot) => ({
     lotId: l.id,
     paidByUserId: buyerId,
@@ -123,7 +125,12 @@ describe.skipIf(!HAS_DB)("raising an invoice (integration)", () => {
   it("stores the invoice, its lines and the payment together, and they add up", async () => {
     const l = await newLot("1000.00");
     const priced = await raiser.price(l);
-    const raised = await raiser.raise({ lot: l, priced, payment: paymentRow(l) });
+    const raised = await raiser.raise({
+      lot: l,
+      priced,
+      payment: paymentRow(l),
+      sellerTerms: termsFor(l),
+    });
 
     const { invoiceRows, paymentRows, lineRows } = await stored(l.id);
     expect(invoiceRows).toHaveLength(1);
@@ -151,7 +158,12 @@ describe.skipIf(!HAS_DB)("raising an invoice (integration)", () => {
       invoices,
       sales: null,
       now: () => new Date("2026-06-01T10:00:00Z"),
-    }).raise({ lot: l, priced: await raiser.price(l), payment: paymentRow(l) });
+    }).raise({
+      lot: l,
+      priced: await raiser.price(l),
+      payment: paymentRow(l),
+      sellerTerms: termsFor(l),
+    });
     expect(first.invoice.dueAt.toISOString()).toBe("2026-06-08T22:59:59.999Z");
 
     // The payment expires, and the lot's price is edited afterwards.
@@ -168,7 +180,12 @@ describe.skipIf(!HAS_DB)("raising an invoice (integration)", () => {
     const priced = await later.price(edited);
     expect(priced.totalPence).toBe(125_000);
     expect(priced.existing?.id).toBe(first.invoice.id);
-    const retry = await later.raise({ lot: edited, priced, payment: paymentRow(edited) });
+    const retry = await later.raise({
+      lot: edited,
+      priced,
+      payment: paymentRow(edited),
+      sellerTerms: termsFor(edited),
+    });
 
     expect(retry.invoiceCreated).toBe(false);
     expect(retry.invoice.id).toBe(first.invoice.id);
@@ -186,7 +203,12 @@ describe.skipIf(!HAS_DB)("raising an invoice (integration)", () => {
   it("refuses to raise a payment that disagrees with the live invoice", async () => {
     const l = await newLot("1000.00");
     const priced = await raiser.price(l);
-    const first = await raiser.raise({ lot: l, priced, payment: paymentRow(l) });
+    const first = await raiser.raise({
+      lot: l,
+      priced,
+      payment: paymentRow(l),
+      sellerTerms: termsFor(l),
+    });
     await payments.updateStatus(first.payment.id, "cancelled");
 
     await expect(
@@ -201,6 +223,7 @@ describe.skipIf(!HAS_DB)("raising an invoice (integration)", () => {
           existing: null,
         },
         payment: paymentRow(l),
+        sellerTerms: termsFor(l),
       }),
     ).rejects.toThrow(/totals 125000 pence/);
 
@@ -212,8 +235,8 @@ describe.skipIf(!HAS_DB)("raising an invoice (integration)", () => {
     const l = await newLot("2500.00");
     const [a, b] = await Promise.all([raiser.price(l), raiser.price(l)]);
     const outcomes = await Promise.allSettled([
-      raiser.raise({ lot: l, priced: a, payment: paymentRow(l) }),
-      raiser.raise({ lot: l, priced: b, payment: paymentRow(l) }),
+      raiser.raise({ lot: l, priced: a, payment: paymentRow(l), sellerTerms: termsFor(l) }),
+      raiser.raise({ lot: l, priced: b, payment: paymentRow(l), sellerTerms: termsFor(l) }),
     ]);
 
     const won = outcomes.filter((o) => o.status === "fulfilled");
@@ -247,10 +270,7 @@ describe.skipIf(!HAS_DB)("raising an invoice (integration)", () => {
           STRIPE_ABSOLUTE_MAX: 999_999.99,
         }),
       ),
-      {
-        computePlatformFee: async () => "0.00",
-        computePlatformFeeFromPence: async () => "0.00",
-      },
+      sellerTermsForTests(),
       { isConfigured: () => false, ensureInvoiceForPayment: async () => ({ ok: true }) } as never,
       { stageDispatch: async () => undefined },
       {
@@ -281,6 +301,7 @@ describe.skipIf(!HAS_DB)("raising an invoice (integration)", () => {
         amount: "5000.00",
         priced,
         platformFee: "0.00",
+        sellerTerms: termsFor(l),
         requiresManualReview: false,
         manualReviewReason: null,
       }),

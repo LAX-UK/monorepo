@@ -7,13 +7,14 @@ import {
   LotFulfilmentPaymentSync,
   LotInvoiceInitiationService,
   PaymentTierPolicy,
-  PlatformFeePolicy,
   SourceOfFundsGateService,
+  createSellerTermsAtRaise,
 } from "@auction/finance-runtime";
 import type { XeroAccountingStack } from "@auction/finance-runtime";
 import {
   DrizzleAmlHoldStore,
   DrizzleBidInvoiceRepository,
+  DrizzleCommissionVatSettingReader,
   DrizzleLegalEntityMembershipReader,
   DrizzleLegalEntityNotificationRecipientRepository,
   DrizzleLegalEntityReader,
@@ -23,6 +24,7 @@ import {
   DrizzleNotificationOutboxRepository,
   DrizzlePaymentRepository,
   DrizzleSaleRepository,
+  DrizzleSellerTermsFactsReader,
   DrizzleSourceOfFundsRepository,
   DrizzleTransactionRunner,
   DrizzleUserRepository,
@@ -84,7 +86,11 @@ export function createWorkerLotInvoiceInitiationService(input: {
     payments,
     createWorkerSettlementCompliance(db, env, domainEventSink),
     new PaymentTierPolicy(tierLimits),
-    new PlatformFeePolicy(legalEntities),
+    createSellerTermsAtRaise({
+      facts: new DrizzleSellerTermsFactsReader(db),
+      vatSetting: new DrizzleCommissionVatSettingReader(db),
+      legalEntities,
+    }),
     xeroStack.accountingProvider,
     {
       stageDispatch: async ({ userId, payload, idempotencyKey }) => {

@@ -5,6 +5,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 const preloaded = vi.hoisted(() => ({ count: 0 }));
+const preloadSheet = vi.hoisted(() => vi.fn());
 
 const mediaLightboxMock = vi.fn(
   ({
@@ -32,6 +33,14 @@ vi.mock("@/components/gallery/engine/media-lightbox", () => {
   return {
     MediaLightbox: (props: Parameters<typeof mediaLightboxMock>[0]) => mediaLightboxMock(props),
   };
+});
+
+vi.mock("@/components/sections/saleroom/day-gallery/day-gallery-view-all-sheet.lazy", async () => {
+  const actual = await vi.importActual<
+    typeof import("@/components/sections/saleroom/day-gallery/day-gallery-view-all-sheet.lazy")
+  >("@/components/sections/saleroom/day-gallery/day-gallery-view-all-sheet.lazy");
+  preloadSheet.mockImplementation(actual.preloadDayGalleryViewAllSheet);
+  return { ...actual, preloadDayGalleryViewAllSheet: preloadSheet };
 });
 
 vi.mock("@/components/ui/media-image", () => ({
@@ -110,7 +119,10 @@ describe("SaleroomDayGallery", () => {
     );
 
     clickFirstButton(/View all \(15\)/i);
-    expect(screen.getAllByRole("button", { name: /Open photo/i })).toHaveLength(15);
+    // The sheet is fetched when View all is pressed, so it arrives a moment later.
+    await waitFor(() =>
+      expect(screen.getAllByRole("button", { name: /Open photo/i })).toHaveLength(15),
+    );
 
     clickFirstButton("Open photo 3 of 15: Photo 3");
     // The viewer is fetched when a picture is opened, so it arrives a moment later.
@@ -146,16 +158,51 @@ describe("SaleroomDayGallery", () => {
     expect(document.activeElement).toBe(thumbnail);
   });
 
-  it("opens the sheet from the overflow tile", () => {
+  it("opens the sheet from the overflow tile", async () => {
     render(
       <SaleroomDayGallery vm={makeVm(Array.from({ length: 15 }, (_, i) => imageItem(i + 1)))} />,
     );
 
     clickFirstButton(/View all 15 auction day photographs/);
-    expect(screen.getAllByRole("button", { name: /Open photo/i })).toHaveLength(15);
+    await waitFor(() =>
+      expect(screen.getAllByRole("button", { name: /Open photo/i })).toHaveLength(15),
+    );
   });
 
-  it("renders video play affordance in preview and sheet", () => {
+  it.each([
+    ["pointed at", fireEvent.pointerEnter],
+    ["focused", fireEvent.focus],
+  ] as const)(
+    "starts fetching the sheet when View all is %s, before it is pressed",
+    (_, intent) => {
+      render(
+        <SaleroomDayGallery vm={makeVm(Array.from({ length: 15 }, (_, i) => imageItem(i + 1)))} />,
+      );
+      preloadSheet.mockClear();
+      const viewAll = screen.getByRole("button", { name: /View all \(15\)/i });
+      expect(preloadSheet).not.toHaveBeenCalled();
+
+      intent(viewAll);
+
+      expect(preloadSheet).toHaveBeenCalledTimes(1);
+      expect(screen.queryByText("All auction day media")).toBeNull();
+    },
+  );
+
+  it("starts fetching the sheet when the overflow tile is pointed at or focused", () => {
+    render(
+      <SaleroomDayGallery vm={makeVm(Array.from({ length: 15 }, (_, i) => imageItem(i + 1)))} />,
+    );
+    preloadSheet.mockClear();
+    const tile = screen.getByRole("button", { name: /View all 15 auction day photographs/ });
+
+    fireEvent.pointerEnter(tile);
+    fireEvent.focus(tile);
+
+    expect(preloadSheet).toHaveBeenCalledTimes(2);
+  });
+
+  it("renders video play affordance in preview and sheet", async () => {
     const items = [
       ...Array.from({ length: 12 }, (_, i) => imageItem(i + 1)),
       videoItem(13),
@@ -165,7 +212,7 @@ describe("SaleroomDayGallery", () => {
     render(<SaleroomDayGallery vm={makeVm(items)} />);
 
     clickFirstButton(/View all \(15\)/i);
-    expect(screen.getByRole("button", { name: /Play video 13 of 15/i })).toBeTruthy();
+    expect(await screen.findByRole("button", { name: /Play video 13 of 15/i })).toBeTruthy();
   });
 
   it("shows dynamic subtitle with total count for large sets", () => {

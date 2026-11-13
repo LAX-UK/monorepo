@@ -12,6 +12,7 @@ import { account, user } from "@auction/identity-db/schema";
 import { and, eq } from "drizzle-orm";
 import type { MiddlewareHandler } from "hono";
 import type { OidcRpSessionRepository } from "../services/oidc-session-coordinator.js";
+import { IDENTIFY_ONLY } from "../services/session-read-query.js";
 
 function requestsSilverAcr(acrValues: string | null): boolean {
   if (!acrValues) return false;
@@ -88,7 +89,10 @@ export function createTwoFactorAuthorizeGateMiddleware(options: {
       return;
     }
 
-    const liveSession = await options.auth.api.getSession({ headers: c.req.raw.headers });
+    const liveSession = await options.auth.api.getSession({
+      headers: c.req.raw.headers,
+      query: IDENTIFY_ONLY,
+    });
     const identitySessionId = liveSession?.session?.id;
     const subjectId = liveSession?.user?.id;
     if (!identitySessionId || !subjectId) {

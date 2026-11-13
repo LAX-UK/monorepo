@@ -1,4 +1,5 @@
 import type { Database } from "@auction/db";
+import type { SellerTermsSnapshot } from "@auction/domain";
 import type { InvoiceLine, InvoiceSource } from "@auction/types";
 import type { CreatePaymentRow, PaymentRecord } from "./payment-write.repository.js";
 
@@ -102,6 +103,9 @@ export interface IBidInvoiceRaiseRepository {
    * `invoice.buyerLegalEntityId`; otherwise it throws `BidInvoiceLotMovedError` and stores nothing.
    * `winnerId` is the lot's winner as the caller read it; the payer (`payment.paidByUserId`) is
    * that winner at lot end, or one of the buying account's payers at checkout.
+   * `sellerTerms` is what the seller is paid for the sale, fixed with the payment: it is stored in
+   * the same transaction, so a payment never exists without its terms, and a retry that joins a
+   * live invoice gets its own terms with its own payment.
    * When the lot already has a live invoice for the buyer account (a retry after the previous
    * payment expired, or a request that raced this one) the existing invoice is used as is: it is
    * not priced again and its due date does not move, and the payment row takes its total.
@@ -112,6 +116,7 @@ export interface IBidInvoiceRaiseRepository {
     invoice: NewBidInvoice;
     winnerId: string;
     payment: Omit<CreatePaymentRow, "amount" | "invoiceId">;
+    sellerTerms: SellerTermsSnapshot;
   }): Promise<RaisedInvoice>;
 }
 

@@ -1,11 +1,12 @@
 import type { IdentityDatabase } from "@auction/identity-db";
 import { oidcRpSession, session, sessionLineage } from "@auction/identity-db/schema";
-import { and, eq, gt, inArray, or } from "drizzle-orm";
+import { and, eq, inArray, or } from "drizzle-orm";
 import type { Redis } from "ioredis";
 import type {
   OidcCodeCorrelationStore,
   OidcRpSessionRepository,
 } from "../services/oidc-session-coordinator.js";
+import { sessionIsLive } from "./session-lifetime.sql.js";
 
 const CORRELATION_KEY_PREFIX = "oidc:authorization-session:";
 
@@ -55,7 +56,7 @@ export class DrizzleOidcRpSessionRepository implements OidcRpSessionRepository {
   }
 
   /**
-   * The Identity session behind `sid` while it is still signed in (not ended or expired). A `sid`
+   * The Identity session behind `sid` while it is still signed in (not ended, expired, idle too long or signed in too long). A `sid`
    * that a newer sign-in in the same browser took over resolves to the record that replaced it.
    */
   async findLiveIdentitySession(identitySessionId: string, now: Date) {
@@ -81,7 +82,7 @@ export class DrizzleOidcRpSessionRepository implements OidcRpSessionRepository {
                 .where(eq(sessionLineage.previousSid, identitySessionId)),
             ),
           ),
-          gt(session.expiresAt, now),
+          sessionIsLive(now),
         ),
       )
       .limit(1);

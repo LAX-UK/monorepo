@@ -15,6 +15,7 @@ import {
   expectTablePrivileges,
   readTablePrivileges,
 } from "./role-contract/table-privileges.test-helpers.js";
+import { expectZohoBooksConnectionGrants } from "./role-contract/zoho-books-connection-privileges.test-helpers.js";
 import { buildPgConnectionConfig } from "./ssl.js";
 
 const SHOP_URL = process.env.DATABASE_URL_SHOP;
@@ -33,6 +34,12 @@ async function withShopClient<T>(fn: (client: pg.Client) => Promise<T>): Promise
 }
 
 describe.skipIf(!SHOP_URL)("shop_app role contract", { timeout: 60_000 }, () => {
+  it("has no privilege at all on the sealed Zoho Books tokens", async () => {
+    await withShopClient(async (client) => {
+      await expectZohoBooksConnectionGrants(client);
+    });
+  });
+
   it("updates only the shop Sold-while-live columns, so it cannot re-point or reopen an item", async () => {
     await withShopClient(async (client) => {
       const rows = await client.query<{ column_name: string; allowed: boolean }>(

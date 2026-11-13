@@ -1,5 +1,12 @@
 import type { Database } from "@auction/db";
-import { bidInvoice, bidInvoiceLine, legalEntity, lot, payment } from "@auction/db/schema";
+import {
+  bidInvoice,
+  bidInvoiceLine,
+  legalEntity,
+  lot,
+  payment,
+  saleSellerTerms,
+} from "@auction/db/schema";
 import type { InvoiceLine, InvoiceLineKind, InvoiceSource } from "@auction/types";
 import { and, asc, eq, gte, inArray, isNull, lt, notExists, sql } from "drizzle-orm";
 import {
@@ -15,8 +22,23 @@ import {
   bidInvoiceKey,
 } from "../interfaces/bid-invoice.repository.js";
 import { mapPaymentRow } from "./drizzle-payment.repository.js";
+import { decimalToPence } from "./lot-reoffer.mappers.js";
+import { sellerTermsRow } from "./seller-terms-row.js";
 
 type InvoiceRow = typeof bidInvoice.$inferSelect;
+
+/**
+ * The payment's stored `platform_fee` as whole pence, for the terms row. It is a record for
+ * reconciliation only, so a figure that cannot be read is left unset rather than failing the raise.
+ */
+function legacyFeePence(platformFee: string | null): number | null {
+  if (platformFee === null) return null;
+  try {
+    return decimalToPence(platformFee);
+  } catch {
+    return null;
+  }
+}
 type LineRow = typeof bidInvoiceLine.$inferSelect;
 
 function toLine(row: LineRow): InvoiceLine {
@@ -128,7 +150,7 @@ export class DrizzleBidInvoiceRepository
   }
 
   async raise(input: Parameters<IBidInvoiceRaiseRepository["raise"]>[0]): Promise<RaisedInvoice> {
-    const { invoice, winnerId, payment: paymentRow } = input;
+    const { invoice, winnerId, payment: paymentRow, sellerTerms } = input;
     return this.db.transaction(async (tx) => {
       const database = tx as unknown as Database;
       await lockLotSoldTo(database, invoice.lotId, winnerId, invoice.buyerLegalEntityId);
@@ -199,6 +221,9 @@ export class DrizzleBidInvoiceRepository
         })
         .returning();
       if (!created) throw new Error("Payment insert failed");
+      await database
+        .insert(saleSellerTerms)
+        .values(sellerTermsRow(created.id, sellerTerms, legacyFeePence(created.platformFee)));
       return { invoice: record, payment: mapPaymentRow(created, null), invoiceCreated: !!inserted };
     });
   }

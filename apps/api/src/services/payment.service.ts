@@ -1,6 +1,7 @@
 import {
   type IHeldInvoiceCheckouts,
   type IInvoiceRecipients,
+  type ISellerTermsAtRaise,
   type InvoiceDueDateExtender,
   InvoiceRaiser,
 } from "@auction/finance-runtime";
@@ -40,7 +41,6 @@ import type {
   IPaymentMaintenanceService,
 } from "./interfaces/payment-service.js";
 import type { IPayoutAdjustmentService } from "./interfaces/payout-adjustment.js";
-import type { IPlatformFeePolicy } from "./interfaces/platform-fee.js";
 import type { MediaUrlResolver } from "./media-url-resolver.js";
 import type { NotificationDispatcher } from "./notification.dispatcher.js";
 import type { NotificationFactory } from "./notification.factory.js";
@@ -107,6 +107,11 @@ const UNWIRED_INVOICES: IBidInvoiceReader & IBidInvoiceRaiseRepository = {
   raise: () => Promise.reject(new Error("Invoices are not wired")),
 };
 
+/** Without the seller's terms nothing can be raised, rather than raising on a guessed rate. */
+const UNWIRED_SELLER_TERMS: ISellerTermsAtRaise = {
+  forInvoice: () => Promise.reject(new Error("Seller terms are not wired")),
+};
+
 /** Without the account to read, nothing can be checked, so nothing is paid. */
 const REFUSE_ALL_ELIGIBILITY: IPaymentEligibilityGate = {
   check: async () => ({ kind: "refused", reason: "organisation_closed" }),
@@ -133,7 +138,7 @@ export class PaymentService
     lotFulfilmentHooks: ILotFulfilmentPaymentHook | null = null,
     sales: ISaleRepository | null = null,
     _marketingEvents: IMarketingEventService | null = null,
-    platformFeePolicy: IPlatformFeePolicy | null = null,
+    sellerTerms: ISellerTermsAtRaise | null = null,
     paymentCapture: IPaymentCaptureService | null = null,
     stripeCheckout: IStripeCheckoutService | null = null,
     payoutAdjustments: IPayoutAdjustmentService | null = null,
@@ -185,7 +190,7 @@ export class PaymentService
       invoiceRaiser: new InvoiceRaiser({ invoices: invoiceStore, sales }),
       invoices: invoiceStore,
       invoiceDueDates,
-      platformFeePolicy,
+      sellerTerms: sellerTerms ?? UNWIRED_SELLER_TERMS,
       paymentCapture,
       stripeCheckout,
       payoutAdjustments,
