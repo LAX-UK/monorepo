@@ -47,6 +47,7 @@ export class DrizzleBidAccountingFactsReader implements IBidAccountingFactsReade
     if (row.voidedAt !== null) return skip("invoice_voided");
     const lines = await this.db
       .select({
+        id: bidInvoiceLine.id,
         kind: bidInvoiceLine.kind,
         label: bidInvoiceLine.label,
         amountPence: bidInvoiceLine.amountPence,
