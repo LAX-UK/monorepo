@@ -13,9 +13,19 @@ import { ZohoBooksConfigError } from "../config.js";
  * values (chart of accounts, tax codes, items, numbering, templates); nothing here is hard-coded in
  * a mapper. The shape is checked once, at start-up, by `parseOrgConfigs`.
  */
+/**
+ * Whether a Books organisation holds the company's real books (`live`) or is a rehearsal copy
+ * (`test`). Stated per organisation with no default, and checked by the write gate: a `test_org`
+ * adapter can only write to a `test` organisation, a `live` one only to a `live` organisation.
+ */
+export const ORG_ENVIRONMENTS = ["test", "live"] as const;
+export type ZohoOrgEnvironment = (typeof ORG_ENVIRONMENTS)[number];
+
 export interface ZohoOrgConfig {
   /** The Books organisation (one per legal entity). */
   readonly organizationId: string;
+  /** A rehearsal organisation or the real books; the write gate binds each write mode to one. */
+  readonly environment: ZohoOrgEnvironment;
   /** The custom field that Books refuses to accept twice, carrying the LAX reference. */
   readonly laxReferenceField: {
     /** Id used when writing the value. */
@@ -146,6 +156,9 @@ function parseOrg(value: unknown, entity: LegalEntity): ZohoOrgConfig {
   const p = entity;
   const raw = record(value, p);
   if (typeof raw.vatRegistered !== "boolean") fail(`${p}_vat_registered`, "missing");
+  if (!(ORG_ENVIRONMENTS as readonly unknown[]).includes(raw.environment)) {
+    fail(`${p}_environment`, "missing");
+  }
   const vatRegistered = raw.vatRegistered;
   const field = record(raw.laxReferenceField, `${p}_reference_field`);
   const apiName = field.apiName;
@@ -163,6 +176,7 @@ function parseOrg(value: unknown, entity: LegalEntity): ZohoOrgConfig {
   };
   return {
     organizationId: id(raw.organizationId, `${p}_organization`),
+    environment: raw.environment as ZohoOrgEnvironment,
     laxReferenceField: { fieldId: id(field.fieldId, `${p}_reference_field_id`), apiName },
     duplicateValueZohoCodes: parseCodes(raw.duplicateValueZohoCodes, `${p}_duplicate_codes`),
     vatRegistered,
@@ -188,8 +202,8 @@ function parseOrg(value: unknown, entity: LegalEntity): ZohoOrgConfig {
  * Read the per-organisation settings from plain data (for example JSON from the environment) and
  * refuse anything incomplete, so a missing id is found when the process starts rather than on the
  * first invoice. An entity may be left out (the Bid organisation does not exist yet); a document for
- * it is then refused with a clear reason. Each organisation must say whether it is VAT registered:
- * the parser never assumes either answer. Two entities may never share one Books organisation.
+ * it is then refused with a clear reason. Each organisation must say whether it is VAT registered
+ * and whether it is a test or the live organisation: the parser never assumes either answer. Two entities may never share one Books organisation.
  */
 export function parseOrgConfigs(input: unknown): ZohoOrgConfigs {
   const raw = record(input, "configs");

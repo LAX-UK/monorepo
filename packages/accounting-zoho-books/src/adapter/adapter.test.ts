@@ -509,6 +509,44 @@ describe("write guard", () => {
       "write_mode_invalid",
     );
   });
+
+  it("binds each writing mode to its kind of organisation: test_org to test, live to live", () => {
+    const code = (f: () => unknown) => {
+      try {
+        f();
+      } catch (error) {
+        if (error instanceof ZohoBooksConfigError) return error.code;
+        throw error;
+      }
+      return "accepted";
+    };
+    const testOrgs = testOrgConfigs();
+    expect(
+      code(() => new WriteGate({ mode: "live", organizationIds: [SHOP_ORG_ID] }, testOrgs)),
+    ).toBe("write_allow_list_wrong_environment");
+    expect(
+      code(() => new WriteGate({ mode: "test_org", organizationIds: [SHOP_ORG_ID] }, testOrgs)),
+    ).toBe("accepted");
+
+    const raw = rawOrgSettings() as Record<string, Record<string, unknown>>;
+    const liveShop = parseOrgConfigs({
+      ...raw,
+      london_art_exchange: { ...raw.london_art_exchange, environment: "live" },
+    });
+    expect(
+      code(() => new WriteGate({ mode: "test_org", organizationIds: [SHOP_ORG_ID] }, liveShop)),
+    ).toBe("write_allow_list_wrong_environment");
+    // One wrong id refuses the whole list: a rehearsal can never also reach the real books.
+    expect(
+      code(
+        () =>
+          new WriteGate({ mode: "test_org", organizationIds: [BID_ORG_ID, SHOP_ORG_ID] }, liveShop),
+      ),
+    ).toBe("write_allow_list_wrong_environment");
+    expect(
+      code(() => new WriteGate({ mode: "live", organizationIds: [SHOP_ORG_ID] }, liveShop)),
+    ).toBe("accepted");
+  });
 });
 
 /** An API whose replies the test scripts, for the shapes the simulator never produces. */
@@ -796,7 +834,7 @@ describe("read-back of what Books holds", () => {
     );
   });
 
-  it("refuses a payment that reads back different in invoice, amount, currency or date", async () => {
+  it("holds for a person a payment that reads back different in invoice, amount, currency or date", async () => {
     const differences: Json[] = [
       { invoices: [{ invoice_id: "6", amount_applied: 115 }] },
       { invoices: [{ invoice_id: "5", amount_applied: 100 }] },
@@ -809,9 +847,10 @@ describe("read-back of what Books holds", () => {
     ];
     for (const difference of differences) {
       for (const api of [paymentApi(held(difference)), paymentApi("duplicate", held(difference))]) {
-        expect(await adapter(api).payments.recordPayment(payment)).toEqual({
-          status: "rejected",
+        expect(await adapter(api).payments.recordPayment(payment)).toMatchObject({
+          status: "differs",
           reason: R.paymentMismatch,
+          providerId: expect.any(String),
         });
       }
     }

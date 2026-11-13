@@ -22,6 +22,7 @@ import { DRY_RUN, WriteGate, type ZohoWriteMode } from "./write-gate.js";
 import { DocumentWriter } from "./writer.js";
 
 export * from "./org-config.js";
+export { DRY_RUN_NUMBER, createZohoBooksDryRunAdapter, dryRunProviderId } from "./dry-run.js";
 export * from "./rejections.js";
 export { penceToPounds, poundsToPence } from "./money-format.js";
 export { booksLineVat } from "./mappers/common.js";

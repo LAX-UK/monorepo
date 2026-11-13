@@ -1,13 +1,14 @@
 import { ZohoBooksConfigError } from "../config.js";
 import { ZohoValidationError, zohoFail } from "../errors.js";
 import type { ZohoApi } from "./api.js";
-import type { ZohoOrgConfigs } from "./org-config.js";
+import type { ZohoOrgConfigs, ZohoOrgEnvironment } from "./org-config.js";
 
 /**
  * Whether the adapter may write. `dry_run` (the default) sends no create or update at all, to any
- * organisation. `test_org` and `live` both write, but only to the organisations named, and the
- * caller has to say which one it means: there is no way to get a writing adapter by leaving
- * something out.
+ * organisation. `test_org` and `live` both write, but only to the organisations named, each of
+ * which must be configured as that mode's environment (`test_org` → a `test` organisation,
+ * `live` → a `live` one), and the caller has to say which one it means: there is no way to get a
+ * writing adapter by leaving something out, or to point a rehearsal at the real books.
  */
 export type ZohoWriteMode =
   | { readonly mode: "dry_run" }
@@ -18,6 +19,12 @@ export type ZohoWriteMode =
     };
 
 export const DRY_RUN: ZohoWriteMode = { mode: "dry_run" };
+
+/** The only kind of organisation each writing mode may reach. */
+const WRITE_MODE_ENVIRONMENT: Readonly<Record<"test_org" | "live", ZohoOrgEnvironment>> = {
+  test_org: "test",
+  live: "live",
+};
 
 /**
  * The adapter's own write guard. Gateways ask `permits` before doing anything for a document, so a
@@ -38,10 +45,21 @@ export class WriteGate {
     if (mode.mode !== "test_org" && mode.mode !== "live") {
       throw new ZohoBooksConfigError("write_mode_invalid");
     }
-    const configured = new Set(Object.values(orgs).map((o) => o?.organizationId));
+    const environmentOf = new Map(
+      Object.values(orgs).map((o) => [o?.organizationId, o?.environment] as const),
+    );
     if (mode.organizationIds.length === 0) throw new ZohoBooksConfigError("write_allow_list_empty");
+    const wanted = WRITE_MODE_ENVIRONMENT[mode.mode];
     for (const id of mode.organizationIds) {
-      if (!configured.has(id)) throw new ZohoBooksConfigError("write_allow_list_unknown_org");
+      const environment = environmentOf.get(id);
+      if (environment === undefined) {
+        throw new ZohoBooksConfigError("write_allow_list_unknown_org");
+      }
+      // The mode is not a label: a test_org adapter can reach only test organisations, a live
+      // one only the live organisations, whatever ids it is handed.
+      if (environment !== wanted) {
+        throw new ZohoBooksConfigError("write_allow_list_wrong_environment");
+      }
     }
     this.allowed = new Set(mode.organizationIds);
   }

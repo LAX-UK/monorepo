@@ -64,7 +64,7 @@ const rejected = (reason: string): Stop => ({ status: "rejected", reason });
  * refused when the document's entity disagrees; dependencies looked for in that organisation only;
  * customers and vendors kept apart; VAT refused for an organisation that is not registered, and
  * refused where Books would work out a different VAT; one document per LAX reference (a repeat
- * returns the same identity, a payment repeat with other allocations is refused). The reasons are
+ * returns the same identity, a payment repeat with other allocations `differs`). The reasons are
  * the adapter's own codes, so a test against the fake sees what it would see against Books.
  */
 export class InMemoryAccounting implements AccountingPorts {
@@ -190,7 +190,9 @@ export class InMemoryAccounting implements AccountingPorts {
     const fingerprint = doc.kind === "payment" ? paymentFingerprint(doc) : "";
     const existing = this.held.get(key);
     if (existing) {
-      if (existing.fingerprint !== fingerprint) return rejected(R.paymentMismatch);
+      if (existing.fingerprint !== fingerprint) {
+        return { status: "differs", reason: R.paymentMismatch, ...existing.doc };
+      }
       return { status: "issued", ...existing.doc };
     }
 

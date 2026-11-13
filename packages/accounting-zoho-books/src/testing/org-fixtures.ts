@@ -30,6 +30,7 @@ function orgSettings(
   const id = (n: number) => String(base + n);
   return {
     organizationId,
+    environment: "test",
     laxReferenceField: { fieldId: id(1), apiName: "cf_lax_reference" },
     duplicateValueZohoCodes: [DUPLICATE_ZOHO_CODE],
     vatRegistered: tax !== null,
