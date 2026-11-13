@@ -1,4 +1,5 @@
 import { buildContact } from "@auction/accounting-domain";
+import { BOOKS_ORGANISATIONS } from "@auction/accounting-zoho-books";
 import { BID_ORG_ID, rawOrgSettings } from "@auction/accounting-zoho-books/testing";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createBooksAccountingAdapters } from "./create-books-accounting-adapters.js";
@@ -41,26 +42,33 @@ describe("Books accounting adapters", () => {
     expect(built?.destinations).toEqual({});
   });
 
-  it("binds a test_org product to its test organisation, and never to the live one", () => {
-    const destinations = JSON.stringify({ test_org: { bid: BID_ORG_ID } });
+  it("binds nothing by default: the organisations each mode may reach are named in code, and none yet", () => {
+    expect(BOOKS_ORGANISATIONS).toEqual({});
     expect(
-      createBooksAccountingAdapters({
-        ZOHO_BOOKS_ORG_CONFIG: config("test"),
-        ZOHO_BOOKS_DESTINATIONS: destinations,
-      })?.destinations,
-    ).toEqual({ test_org: { bid: BID_ORG_ID } });
+      createBooksAccountingAdapters({ ZOHO_BOOKS_ORG_CONFIG: config("test") })?.destinations,
+    ).toEqual({});
+  });
+
+  it("binds a test_org product to its test organisation, and refuses to start when the settings call it live", () => {
+    const organisations = { test_org: { bid: BID_ORG_ID } };
+    expect(
+      createBooksAccountingAdapters({ ZOHO_BOOKS_ORG_CONFIG: config("test") }, organisations)
+        ?.destinations,
+    ).toEqual(organisations);
     expect(() =>
-      createBooksAccountingAdapters({
-        ZOHO_BOOKS_ORG_CONFIG: config("live"),
-        ZOHO_BOOKS_DESTINATIONS: destinations,
-      }),
+      createBooksAccountingAdapters({ ZOHO_BOOKS_ORG_CONFIG: config("live") }, organisations),
     ).toThrow("zoho_books_config_destination_binding_wrong_environment");
+  });
+
+  it("refuses to start when the settings declare the live organisation a test one", () => {
+    // The live organisation is named once, under live: configuring it as `test` cannot make it a
+    // rehearsal target, whatever else is typed.
     expect(() =>
-      createBooksAccountingAdapters({
-        ZOHO_BOOKS_ORG_CONFIG: config("test"),
-        ZOHO_BOOKS_DESTINATIONS: "{",
-      }),
-    ).toThrow("ZOHO_BOOKS_DESTINATIONS is not valid JSON");
+      createBooksAccountingAdapters(
+        { ZOHO_BOOKS_ORG_CONFIG: config("test") },
+        { live: { bid: BID_ORG_ID } },
+      ),
+    ).toThrow("zoho_books_config_destination_binding_wrong_environment");
   });
 
   it("the rehearsal answers without any network call", async () => {

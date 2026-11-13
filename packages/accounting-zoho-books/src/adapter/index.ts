@@ -25,6 +25,7 @@ export { orgFor, type OrgChoice, type ZohoApi } from "./api.js";
 export type { VendorPort } from "./gateways.js";
 export { DRY_RUN, type ZohoWriteMode } from "./write-gate.js";
 export { parseBooksDestinationBinding } from "./destination-binding.js";
+export { BOOKS_ORGANISATIONS } from "./organisations.js";
 
 /**
  * Builds the Books implementation of the accounting ports. Stateless: it holds the client and the

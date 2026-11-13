@@ -19,7 +19,7 @@ import { DrizzleProjectorCursorStart } from "../repositories/drizzle-projector-c
  * adapters come from `createBooksAccountingAdapters`, which builds the dry run alone.
  */
 export function createAccountingRuntime(deps: {
-  env: Pick<WorkerEnv, "ZOHO_BOOKS_ORG_CONFIG" | "ZOHO_BOOKS_DESTINATIONS">;
+  env: Pick<WorkerEnv, "ZOHO_BOOKS_ORG_CONFIG">;
   db: ReturnType<typeof createDb>;
   log: Logger;
 }): AccountingRuntime | undefined {

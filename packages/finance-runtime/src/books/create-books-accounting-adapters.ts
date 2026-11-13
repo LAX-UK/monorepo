@@ -1,6 +1,7 @@
 import type { DestinationBinding, TargetMode } from "@auction/accounting-domain";
 import {
   type AccountingPorts,
+  BOOKS_ORGANISATIONS,
   TRANSIENT_REJECTION_PREFIXES,
   createZohoBooksDryRunAdapter,
   parseBooksDestinationBinding,
@@ -11,13 +12,6 @@ import {
 export interface BooksAccountingEnv {
   /** The per-organisation Books settings, as JSON (`parseOrgConfigs`). Unset: Books is not built. */
   readonly ZOHO_BOOKS_ORG_CONFIG?: string | undefined;
-  /**
-   * The Books organisation each writing mode may send each product's documents to, as JSON
-   * (`{"test_org":{"bid":"<organisation id>"}}`). Checked against the organisation settings at
-   * start-up: a `test_org` id must be a `test` organisation. Unset: nothing is bound, so no
-   * document aimed at `test_org` or `live` is ever sent. It enables no write on its own.
-   */
-  readonly ZOHO_BOOKS_DESTINATIONS?: string | undefined;
 }
 
 /**
@@ -39,22 +33,22 @@ export interface BooksAccountingAdapters {
  * write gate bound to that kind of organisation. Without organisation settings nothing is built
  * and the accounting projector and sender do not run.
  *
- * Throws at start-up when the settings are present but incomplete or not JSON, so a broken
- * configuration is found when the worker starts, never on the first invoice.
+ * Throws at start-up when the settings are present but incomplete or not JSON, or disagree with
+ * the organisations each mode is bound to, so a broken configuration is found when the worker
+ * starts (the whole worker does not start, accounting or not), never on the first invoice.
  */
 export function createBooksAccountingAdapters(
   env: BooksAccountingEnv,
+  organisations: DestinationBinding = BOOKS_ORGANISATIONS,
 ): BooksAccountingAdapters | null {
   const raw = env.ZOHO_BOOKS_ORG_CONFIG?.trim();
   if (!raw) return null;
   const orgs = parseOrgConfigs(readJson(raw, "ZOHO_BOOKS_ORG_CONFIG"));
-  const bound = env.ZOHO_BOOKS_DESTINATIONS?.trim();
   return {
     byMode: { dry_run: createZohoBooksDryRunAdapter({ orgs }) },
-    destinations: parseBooksDestinationBinding(
-      bound ? readJson(bound, "ZOHO_BOOKS_DESTINATIONS") : undefined,
-      orgs,
-    ),
+    // The organisation ids per mode live in one place (`BOOKS_ORGANISATIONS`), checked against
+    // the organisation settings here; tests pass their own.
+    destinations: parseBooksDestinationBinding(organisations, orgs),
     transientErrorPrefixes: TRANSIENT_REJECTION_PREFIXES,
   };
 }
