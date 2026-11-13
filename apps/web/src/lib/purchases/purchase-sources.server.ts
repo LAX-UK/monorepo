@@ -17,9 +17,11 @@ import type { PurchaseSources } from "./purchases.vm";
  */
 async function invoicesFor(scope: AccountScope): Promise<MyPaymentRow[]> {
   const { account } = scope;
-  if (account.kind === "personal") {
+  if (account.kind === "personal" && !account.isImpersonation) {
     return (await getServerDataContainer()).payments.listMine();
   }
+  // Support viewing a person's account reads its invoices by the account, like an organisation's.
+  if (account.kind === "personal") return getServerEntityPayments();
   return accountPurchaseScope(account.actor) === "all" ? getServerEntityPayments() : [];
 }
 

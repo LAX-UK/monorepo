@@ -10,7 +10,13 @@ import type { AccountScope, IAccountScope, ScopedAccount } from "./account-scope
 
 /** The account a resolved acting membership stands for. */
 export function scopedAccountFor(acting: LegalEntitySummary | null): ScopedAccount {
-  if (acting?.kind !== "organisation") return { kind: "personal", id: acting?.id ?? null };
+  if (acting?.kind !== "organisation") {
+    return {
+      kind: "personal",
+      id: acting?.id ?? null,
+      ...(acting?.isImpersonation ? { isImpersonation: true } : {}),
+    };
+  }
   return {
     kind: "organisation",
     id: acting.id,

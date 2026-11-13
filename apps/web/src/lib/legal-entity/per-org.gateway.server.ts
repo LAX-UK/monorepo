@@ -30,6 +30,41 @@ export interface IPerOrgGateway {
 
 type AuthedFetch = typeof authedServerFetch;
 
+type ViewedBody = {
+  data?:
+    | (MemberLegalEntity & {
+        membership?: { role?: string; isPrimaryAdmin?: boolean; isImpersonation?: boolean };
+      })
+    | null;
+};
+
+/**
+ * The context of an organisation a staff member is viewing as the client, from the API's answer
+ * to `GET /legal-entities/:id`; `null` unless that answer is a live view session of an
+ * organisation (the API validated the session for this very account).
+ */
+export function viewedOrganisationOf(body: unknown): PerOrganisationContext | null {
+  const row = (body as ViewedBody | null)?.data;
+  const membership = row?.membership;
+  if (!row || row.kind !== "organisation" || !membership?.isImpersonation || !membership.role) {
+    return null;
+  }
+  const { membership: _m, ...entity } = row;
+  return {
+    member: {
+      id: row.id,
+      displayName: row.displayName,
+      kind: row.kind,
+      subkind: row.subkind,
+      status: row.status,
+      role: membership.role as LegalEntitySummary["role"],
+      isPrimaryAdmin: membership.isPrimaryAdmin ?? false,
+      isImpersonation: true,
+    },
+    entity: entity as MemberLegalEntity,
+  };
+}
+
 export function createPerOrgGateway(fetcher: AuthedFetch = authedServerFetch): IPerOrgGateway {
   const hub = createOrganisationHubGateway(fetcher);
   return {
@@ -78,7 +113,10 @@ export function createPerOrgGateway(fetcher: AuthedFetch = authedServerFetch): I
           failure: buildDashboardSliceFailure("legalEntities", res.status, code),
         };
       }
-      return { kind: "not_found" };
+      // Support staff viewing as the client are not members: the API answers with the viewed
+      // organisation and a read-only impersonation membership, which opens every reading tab.
+      const viewed = viewedOrganisationOf(await res.json().catch(() => null));
+      return viewed ? { kind: "ok", context: viewed } : { kind: "not_found" };
     },
   };
 }
