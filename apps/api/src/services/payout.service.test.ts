@@ -17,7 +17,7 @@ const ACTOR_ID = "user-actor";
 
 function makeRepo(overrides: Partial<IPayoutRepository> = {}): IPayoutRepository {
   const insertLine = overrides.insertLine ?? vi.fn();
-  return {
+  const repo = {
     create: vi.fn(),
     insertLine,
     tryInsertSaleLine:
@@ -50,7 +50,6 @@ function makeRepo(overrides: Partial<IPayoutRepository> = {}): IPayoutRepository
     findById: vi.fn().mockResolvedValue(null),
     findByIdForUpdate: vi.fn().mockResolvedValue(null),
     lockSettlementForEntity: vi.fn().mockResolvedValue(undefined),
-    lockPendingPayments: vi.fn().mockResolvedValue(undefined),
     findByStripeTransferId: vi.fn().mockResolvedValue(null),
     listLines: vi.fn().mockResolvedValue([]),
     findUnlinkedCapturedPayments: vi.fn().mockResolvedValue([]),
@@ -76,7 +75,14 @@ function makeRepo(overrides: Partial<IPayoutRepository> = {}): IPayoutRepository
     findLineForPaymentAndKind: vi.fn().mockResolvedValue(null),
     updateLineAmount: vi.fn(),
     ...overrides,
-  };
+  } as IPayoutRepository;
+  if (!overrides.lockPendingPayments) {
+    // With nothing racing the run, it holds every payment it then finds.
+    repo.lockPendingPayments = vi.fn(async (legalEntityId: string) =>
+      (await repo.findUnlinkedCapturedPayments(legalEntityId)).map((p) => p.id),
+    );
+  }
+  return repo;
 }
 
 /** Service wired with a pass-through transaction runner that hands the same fake repo to every transaction. */

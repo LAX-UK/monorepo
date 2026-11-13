@@ -733,6 +733,57 @@ describe.skipIf(!HAS_DB)("payout run on seller terms (integration)", () => {
     expect(state.blocked).toBe(true);
   });
 
+  it("a sale captured after the run locked the payments it pays is left to the next run", async () => {
+    const held = await seedSale({
+      hammer: 1_000,
+      premium: 250,
+      commissionPercent: "15.00",
+      raised: "agreement",
+    });
+    const late = await seedSale({
+      hammer: 2_000,
+      premium: 500,
+      commissionPercent: "15.00",
+      raised: "agreement",
+    });
+    await db.update(payment).set({ status: "authorized" }).where(eq(payment.id, late.paymentId));
+    // The capture commits on its own connection just after the run has locked its payments, so
+    // the run never holds the late sale's row.
+    const captureAfterLock: PayoutSettlementDeps = {
+      ...deps,
+      payoutRepoForTx: (tx) => {
+        const r = payoutRepoForTx(repo, tx);
+        const lock = r.lockPendingPayments.bind(r);
+        r.lockPendingPayments = async (legalEntityId) => {
+          const locked = await lock(legalEntityId);
+          await db
+            .update(payment)
+            .set({ status: "captured" })
+            .where(eq(payment.id, late.paymentId));
+          return locked;
+        };
+        return r;
+      },
+    };
+    const first = await createSettlement(captureAfterLock, null, {
+      legalEntityId: sellerEntity,
+      periodEnd: nextPeriodEnd(),
+    });
+    expect(first.ok).toBe(true);
+    if (!first.ok) return;
+    expect((await linesOf(first.payout.id)).map((l) => l.paymentId)).toEqual([held.paymentId]);
+
+    const next = await createSettlement(deps, null, {
+      legalEntityId: sellerEntity,
+      periodEnd: nextPeriodEnd(),
+    });
+    expect(next.ok).toBe(true);
+    if (!next.ok) return;
+    expect(await linesOf(next.payout.id)).toEqual([
+      expect.objectContaining({ paymentId: late.paymentId, kind: "sale", amount: "2000.00" }),
+    ]);
+  });
+
   it("a refund whose share rounds to nothing is recorded at £0.00, so a card event does not announce it again", async () => {
     const sale = await seedSale({
       hammer: 1_000,

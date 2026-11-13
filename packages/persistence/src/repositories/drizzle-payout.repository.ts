@@ -394,13 +394,14 @@ export class DrizzlePayoutRepository implements IPayoutRepository, IPayoutProces
     );
   }
 
-  async lockPendingPayments(legalEntityId: string): Promise<void> {
-    await this.db
+  async lockPendingPayments(legalEntityId: string): Promise<string[]> {
+    const rows = await this.db
       .select({ id: payment.id })
       .from(payment)
       .where(and(eq(payment.sellerLegalEntityId, legalEntityId), awaitingSettlement()))
       .orderBy(asc(payment.id))
       .for("update");
+    return rows.map((row) => row.id);
   }
 
   async updateXeroBillId(payoutId: string, xeroBillId: string): Promise<void> {

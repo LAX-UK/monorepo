@@ -116,6 +116,16 @@ async function refundBeforePayout(
   };
 }
 
+/** The payments waiting for this run: those it holds, when it holds any. */
+async function pendingPayments(
+  r: IPayoutRepository,
+  legalEntityId: string,
+  heldPaymentIds: ReadonlySet<string> | undefined,
+): Promise<PendingPaymentRow[]> {
+  const pending = await r.findUnlinkedCapturedPayments(legalEntityId);
+  return heldPaymentIds ? pending.filter((p) => heldPaymentIds.has(p.id)) : pending;
+}
+
 const heldOf = (sales: readonly SettlementSale[]): HeldSettlementSale[] =>
   sales.flatMap((sale) =>
     sale.kind === "held"
@@ -136,7 +146,7 @@ export async function createSettlementCore(
   deals: IPrivateSaleDealPayoutStore | null,
   sellerTerms: ISettlementSellerTerms,
 ): Promise<CreatedSettlementResult> {
-  const pending = await r.findUnlinkedCapturedPayments(input.legalEntityId);
+  const pending = await pendingPayments(r, input.legalEntityId, input.heldPaymentIds);
   const pendingDeals = (await deals?.findUnsettledReleased(input.legalEntityId)) ?? [];
   // One at a time: each sale's terms are read and stored through the run's transaction.
   const sales: SettlementSale[] = [];
@@ -312,11 +322,12 @@ export async function createSettlement(
     // charged as the run pays the sale); one that starts now waits until the sale line is in place
     // and charges the seller as a refund after payout. Refunds take only the payment row and never
     // this run's advisory lock, so the order (advisory, then payment) cannot deadlock with them.
-    await r.lockPendingPayments(input.legalEntityId);
+    // A payment that becomes payable after this is not held, so it is left to the next run.
+    const heldPaymentIds = new Set(await r.lockPendingPayments(input.legalEntityId));
     // The period is read here, under the lock and through this transaction, so the settled period
     // another run just wrote is already visible and the two cannot overlap.
     const [latest] = await r.list({ legalEntityId: input.legalEntityId, limit: 1 });
-    const waiting = await r.findUnlinkedCapturedPayments(input.legalEntityId);
+    const waiting = await pendingPayments(r, input.legalEntityId, heldPaymentIds);
     const period = resolveSettlementPeriod({
       now: input.periodEnd,
       requestedStart: input.periodStart,
@@ -332,6 +343,7 @@ export async function createSettlement(
       periodStart: period.periodStart,
       periodEnd: period.periodEnd,
       ...(input.reason !== undefined ? { reason: input.reason } : {}),
+      heldPaymentIds,
     };
     const result = await createSettlementCore(
       r,

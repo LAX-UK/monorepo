@@ -41,7 +41,7 @@ function makeFixture() {
 
   const repo = {
     // The payment rows are held under the entity lock below, so the fake need not hold them.
-    lockPendingPayments: async () => undefined,
+    lockPendingPayments: async () => ["pay-1", "pay-2"].filter((id) => !settledPaymentIds.has(id)),
     list: async () => {
       await tick();
       return payouts;

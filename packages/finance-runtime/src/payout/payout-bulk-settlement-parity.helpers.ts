@@ -134,7 +134,7 @@ export function makeSettlementRepo(overrides: Partial<IPayoutRepository> = {}): 
     createdAt: new Date(),
   });
 
-  return {
+  const repo = {
     create: async (input) => payoutRow({ legalEntityId: input.legalEntityId }),
     insertLine: defaultInsertLine,
     tryInsertSaleLine: async (input) => defaultInsertLine({ payoutId: input.payoutId }),
@@ -166,7 +166,6 @@ export function makeSettlementRepo(overrides: Partial<IPayoutRepository> = {}): 
     findById: async () => null,
     findByIdForUpdate: async () => null,
     lockSettlementForEntity: async () => undefined,
-    lockPendingPayments: async () => undefined,
     findByStripeTransferId: async () => null,
     listLines: async () => [],
     findUnlinkedCapturedPayments: async () => [],
@@ -193,6 +192,12 @@ export function makeSettlementRepo(overrides: Partial<IPayoutRepository> = {}): 
     updateLineAmount: async () => undefined,
     ...overrides,
   } as IPayoutRepository;
+  if (!overrides.lockPendingPayments) {
+    // With nothing racing the run, it holds every payment it then finds.
+    repo.lockPendingPayments = async (legalEntityId) =>
+      (await repo.findUnlinkedCapturedPayments(legalEntityId)).map((p) => p.id);
+  }
+  return repo;
 }
 
 export function settlementDeps(repo: IPayoutRepository): PayoutSettlementDeps {

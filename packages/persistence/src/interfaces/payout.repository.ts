@@ -87,8 +87,10 @@ export interface IPayoutReadRepository {
    * Every refund path holds the payment row while it records the refund and charges the seller, so
    * a refund either commits before the run reads what was refunded, or waits until the sale line
    * is in place and is charged as a refund after payout. Taken after `lockSettlementForEntity`.
+   * Returns the ids it holds: a payment that becomes payable after this is not held, so the run
+   * leaves it to the next one.
    */
-  lockPendingPayments(legalEntityId: string): Promise<void>;
+  lockPendingPayments(legalEntityId: string): Promise<string[]>;
   /** Find a payout by its Stripe transfer id (webhook idempotency lookup). */
   findByStripeTransferId(stripeTransferId: string): Promise<Payout | null>;
   /** Lines for a payout, oldest-first by created_at. */

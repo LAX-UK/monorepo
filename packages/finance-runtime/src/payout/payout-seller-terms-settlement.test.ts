@@ -16,6 +16,7 @@ import {
   makeSettlementRepo,
   payoutRow,
   pending,
+  settlementDeps,
   storedSellerTerms,
 } from "./payout-bulk-settlement-parity.helpers.js";
 import type { PayoutSettlementDeps } from "./payout-helpers.js";
@@ -417,5 +418,33 @@ describe("net never below zero", () => {
         vat: "standard",
       }),
     ).toMatchObject({ basis: "held", reason: "negative_net" });
+  });
+});
+
+describe("a payout run pays only the payments it holds", () => {
+  it("a sale that became payable after the lock is left to the next run", async () => {
+    const { repo, written } = recordingRepo(mixedPayout());
+    repo.lockPendingPayments = async () => ["p1", "p3"];
+    const publish = vi.fn(async () => undefined);
+    const deps = { ...settlementDeps(repo), domainEventSink: { withTx: () => ({ publish }) } };
+    const result = await createSettlement(deps, "staff-1", {
+      legalEntityId: SELLER,
+      periodEnd: new Date(),
+    });
+    expect(result.ok).toBe(true);
+    expect(written.lines.map((line) => line.paymentId)).toEqual(["p1", "p3"]);
+    const event = publish.mock.calls[0]?.[0] as unknown as { payload: Record<string, unknown> };
+    expect(event.payload.heldSales).toEqual([]);
+  });
+
+  it("holding none of them pays nothing", async () => {
+    const { repo, written } = recordingRepo(mixedPayout());
+    repo.lockPendingPayments = async () => [];
+    const result = await createSettlement(settlementDeps(repo), null, {
+      legalEntityId: SELLER,
+      periodEnd: new Date(),
+    });
+    expect(result).toMatchObject({ ok: false });
+    expect(written.lines).toEqual([]);
   });
 });

@@ -25,6 +25,7 @@ function setup(over: Partial<IPayoutRepository> = {}) {
     },
     lockPendingPayments: async () => {
       calls.push("lock_payments");
+      return ["p1"];
     },
     list: async () => {
       calls.push("period");

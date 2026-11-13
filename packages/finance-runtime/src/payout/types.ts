@@ -22,6 +22,11 @@ export type ResolvedSettlementInput = {
   periodStart: Date;
   periodEnd: Date;
   reason?: string;
+  /**
+   * The payments the run holds locked; only these are paid, and any other waits for the next run.
+   * Left out, every payment waiting for the entity is paid.
+   */
+  heldPaymentIds?: ReadonlySet<string>;
 };
 
 export type CreateSettlementResult =
