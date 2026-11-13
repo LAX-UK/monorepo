@@ -227,24 +227,26 @@ export function RecordAgreementDialog({
           description={COPY.commissionHint}
           error={errors.commissionPercent}
         >
-          <TextInput
-            inputMode="decimal"
-            autoComplete="off"
-            value={draft.commissionPercent}
-            onChange={(event) => set({ commissionPercent: event.target.value })}
-            trailing="%"
-            className="max-w-40"
-            disabled={busy}
-          />
+          <div className="max-w-40">
+            <TextInput
+              inputMode="decimal"
+              autoComplete="off"
+              value={draft.commissionPercent}
+              onChange={(event) => set({ commissionPercent: event.target.value })}
+              trailing="%"
+              disabled={busy}
+            />
+          </div>
         </Field>
         <Field id={ids.signedOn} label={COPY.signedOn} error={errors.signedOn}>
-          <DateInput
-            value={draft.signedOn || null}
-            onValueChange={(day) => set({ signedOn: day ?? "" })}
-            max={today}
-            className="max-w-48"
-            disabled={busy}
-          />
+          <div className="max-w-48">
+            <DateInput
+              value={draft.signedOn || null}
+              onValueChange={(day) => set({ signedOn: day ?? "" })}
+              max={today}
+              disabled={busy}
+            />
+          </div>
         </Field>
         <Field
           id={ids.document}

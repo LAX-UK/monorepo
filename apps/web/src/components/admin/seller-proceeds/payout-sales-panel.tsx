@@ -60,11 +60,15 @@ export function PayoutSalesPanel({
 
   if (state.kind === "loading") {
     return (
-      <div aria-busy="true" aria-label="Loading the payout's sales" className="flex flex-col gap-2">
+      <output
+        aria-busy="true"
+        aria-label="Loading the payout's sales"
+        className="flex flex-col gap-2"
+      >
         <Skeleton className="h-5 w-full" />
         <Skeleton className="h-5 w-4/5" />
         <Skeleton className="h-5 w-3/5" />
-      </div>
+      </output>
     );
   }
   if (state.kind === "error") {

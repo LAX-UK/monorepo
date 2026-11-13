@@ -57,7 +57,7 @@ export function LotSellerProceedsSection({
   if (state.kind === "loading") {
     return (
       <Section title={TITLE}>
-        <div
+        <output
           aria-busy="true"
           aria-label="Loading the seller's proceeds"
           className="flex flex-col gap-3"
@@ -66,7 +66,7 @@ export function LotSellerProceedsSection({
           <Skeleton className="h-5 w-4/5" />
           <Skeleton className="h-5 w-3/5" />
           <Skeleton className="h-6 w-full" />
-        </div>
+        </output>
       </Section>
     );
   }

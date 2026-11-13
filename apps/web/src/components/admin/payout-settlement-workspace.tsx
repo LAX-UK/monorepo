@@ -149,7 +149,7 @@ export function PayoutSettlementWorkspace({
                 {previewError}
               </Notice>
             ) : loading || !model ? (
-              <div
+              <output
                 aria-busy="true"
                 aria-label="Loading the preview"
                 className="flex flex-col gap-3"
@@ -158,7 +158,7 @@ export function PayoutSettlementWorkspace({
                 <Skeleton className="h-9 w-full" />
                 <Skeleton className="h-9 w-full" />
                 <Skeleton className="h-9 w-full" />
-              </div>
+              </output>
             ) : model.kind === "open_payout" ? (
               <Notice tone="warning" title={SETTLEMENT_COPY.openPayoutTitle}>
                 It is {model.statusLabel.toLowerCase()}. Settle or cancel it from{" "}
