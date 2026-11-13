@@ -231,11 +231,21 @@ describe("completeSending", () => {
       refusal: { code: "bad_outcome" },
     });
   });
-  it("a differing answer after the lease expired is not trusted either", () => {
+  it("a differing answer after the lease expired still goes to a person, never to a lookup", () => {
+    // As unknown, a lookup by reference would find the document with our totals and record it
+    // issued, and the difference Books reported would be lost.
     const outcome: IssueOutcome = { ...issuedOutcome, status: "differs", reason: "x" };
-    expect(completeSending(rec("sending"), "t1", outcome, lease.expiresAtMs, totals)).toMatchObject(
-      { ok: true, value: { status: "unknown" } },
-    );
+    const late = must(completeSending(rec("sending"), "t1", outcome, lease.expiresAtMs, totals));
+    expect(late).toMatchObject({
+      status: "needs_review",
+      lookup: "clear",
+      issued: doc,
+      reason: "provider document differs from ours: x",
+    });
+    expect(statusAfter(requeue(late))).toBe("refused");
+    expect(
+      completeSending(rec("sending"), "other", outcome, lease.expiresAtMs, totals),
+    ).toMatchObject({ ok: false, refusal: { code: "lease_mismatch" } });
   });
   it("rejected -> failed with the reason", () => {
     expect(

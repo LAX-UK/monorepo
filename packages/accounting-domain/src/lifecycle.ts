@@ -214,6 +214,11 @@ function acceptProviderDocument(
  * lease has expired by the time the answer arrives, the answer is not trusted: the record becomes
  * unknown and lookup decides. An issued answer whose totals differ from ours goes to needs_review
  * with the provider's identity kept (the document exists and must not be sent again).
+ *
+ * A `differs` answer is the exception to the expired lease: the provider has told us it holds a
+ * document under our reference that is not the one we sent. A lookup by reference cannot see that
+ * difference (it compares totals only) and would record the document as issued, so it goes to a
+ * person with the provider's identity, lease or no lease. The token still has to match.
  */
 export function completeSending(
   record: DocumentRecord,
@@ -225,13 +230,13 @@ export function completeSending(
   if (!isTime(nowMs)) return badTime();
   if (record.status !== "sending") return wrongState("complete a send", record.status);
   if (record.lease.token !== token) return refuse("lease_mismatch", "lease token does not match");
+  if (outcome.status === "differs") return holdDifferingDocument(record, outcome, expected);
   if (isLeaseExpired(record.lease, nowMs) || outcome.status === "unknown") {
     return ok(toUnknown(record));
   }
   if (outcome.status === "rejected") {
     return ok({ ...core(record), status: "failed", reason: outcome.reason });
   }
-  if (outcome.status === "differs") return holdDifferingDocument(record, outcome, expected);
   return acceptProviderDocument(record, outcome, expected);
 }
 
