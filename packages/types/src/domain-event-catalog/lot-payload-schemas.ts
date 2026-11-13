@@ -171,6 +171,35 @@ export const lotSoftDeletedPayloadSchema = z.object({
   deleted_at: z.string().datetime(),
 });
 
+/**
+ * Staff recorded a seller's signed paper consignment agreement for a lot whose payout was held.
+ * The audit entry keeps the commission, the signing date, the signed file and why it was recorded
+ * by staff; a correction keeps the figures it replaced.
+ */
+export const lotSellerAgreementRecordedPayloadSchema = z.object({
+  lotId: z.string().uuid(),
+  submissionId: z.string().uuid(),
+  agreementId: z.string().uuid(),
+  sellerLegalEntityId: z.string().uuid(),
+  commissionPercent: z.string(),
+  signedAt: z.string().datetime(),
+  signedDocumentId: z.string().uuid(),
+  reason: z.string().min(1),
+  replace: z.boolean(),
+  previousAgreement: z
+    .object({
+      agreementId: z.string().uuid(),
+      commissionPercent: z.string().nullable(),
+      acceptedAt: z.string().datetime().nullable(),
+      source: z.string(),
+      signedDocumentId: z.string().uuid().nullable(),
+    })
+    .nullable(),
+  /** The held sale the agreement released, and what its seller now receives. */
+  releasedSellerTermsId: z.string().uuid().nullable(),
+  sellerNetPence: z.number().int().nonnegative().nullable(),
+});
+
 export const LotEventSchemas = {
   "lot.created": lotCreatedPayloadSchema,
   "lot.activated": lotActivatedPayloadSchema,
@@ -196,6 +225,7 @@ export const LotEventSchemas = {
   "lot.reoffer_withdrawn": lotReofferWithdrawnPayloadSchema,
   "lot.reawarded": lotReawardedPayloadSchema,
   "lot.soft_deleted": lotSoftDeletedPayloadSchema,
+  "lot.seller_agreement_recorded": lotSellerAgreementRecordedPayloadSchema,
 } as const;
 
 export type LotEventType = keyof typeof LotEventSchemas;

@@ -280,6 +280,7 @@ export const EXCEPTION_PATHS: Record<string, Set<string>> = {
   "legal_entity.payout_bank_changed": new Set(["bank_last4", "bank_name"]),
   /** lot voided at close (anti-shilling). */
   "lot.voided": new Set(["reason"]),
+  "lot.seller_agreement_recorded": new Set(["reason", "commissionPercent"]),
   "sale.created": new Set(["from_status", "to_status", "deliveryMode", "lotCount", "isTest"]),
   "sale.published": new Set(["from_status", "to_status", "lotCount", "deliveryMode"]),
   "sale.unpublished": new Set(["from_status", "to_status"]),
