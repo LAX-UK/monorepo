@@ -18,7 +18,7 @@ import {
   user,
 } from "@auction/db/schema";
 import { SELLER_RULE_VERSION } from "@auction/domain";
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { afterAll, describe, expect, it } from "vitest";
 import { DrizzleBidInvoiceRepository } from "../drizzle-bid-invoice.repository.js";
 import { DrizzleBidAccountingFactsReader } from "./drizzle-bid-accounting-facts.reader.js";
@@ -98,24 +98,36 @@ async function seedWonLot(tx: Database) {
   return { tag, buyerId, sellerEntityId, buyerEntityId, lotId };
 }
 
-async function raise(tx: Database, seeded: Awaited<ReturnType<typeof seedWonLot>>) {
+async function raise(
+  tx: Database,
+  seeded: Awaited<ReturnType<typeof seedWonLot>>,
+  amounts: { hammerPence: number; premiumPence: number } = {
+    hammerPence: 123_456,
+    premiumPence: 30_864,
+  },
+) {
   const repo = new DrizzleBidInvoiceRepository(tx);
   return repo.raise({
     invoice: {
       lotId: seeded.lotId,
       buyerLegalEntityId: seeded.buyerEntityId,
       sellerLegalEntityId: seeded.sellerEntityId,
-      totalPence: 154_320,
+      totalPence: amounts.hammerPence + amounts.premiumPence,
       raisedAt: RAISED_AT,
       dueAt: DUE_AT,
       pricingPolicyId: null,
       lines: [
-        { kind: "hammer", label: "Hammer price", ratePercent: null, amountPence: 123_456 },
+        {
+          kind: "hammer",
+          label: "Hammer price",
+          ratePercent: null,
+          amountPence: amounts.hammerPence,
+        },
         {
           kind: "buyers_premium",
           label: "Buyer's premium (25%)",
           ratePercent: "25",
-          amountPence: 30_864,
+          amountPence: amounts.premiumPence,
         },
       ],
     },
@@ -133,8 +145,8 @@ async function raise(tx: Database, seeded: Awaited<ReturnType<typeof seedWonLot>
       heldReason: "no_agreement",
       lotId: seeded.lotId,
       sellerLegalEntityId: seeded.sellerEntityId,
-      hammerPence: 123_456,
-      premiumPence: 30_864,
+      hammerPence: amounts.hammerPence,
+      premiumPence: amounts.premiumPence,
       ruleVersion: SELLER_RULE_VERSION,
     },
   });
@@ -186,6 +198,38 @@ describe.skipIf(!HAS_DB)("Bid accounting facts (integration)", { timeout: 60_000
           ),
         );
       expect(again).toHaveLength(1);
+    });
+  });
+
+  it("a Bid invoice of 0p cannot be raised, so no invoice.raised event of 0p is ever written", async () => {
+    // The invoice.raised schema asks for a positive total because the invoice table does too
+    // (bid_invoice_total_check): a fully discounted invoice is refused before any event exists.
+    await inRolledBack(owner, async (tx) => {
+      const seeded = await seedWonLot(tx);
+      const refused = await tx
+        .transaction(async (savepoint) => {
+          await raise(savepoint as unknown as Database, seeded, {
+            hammerPence: 0,
+            premiumPence: 0,
+          });
+        })
+        .then(
+          () => null,
+          (error: unknown) => error as { cause?: { constraint?: string }; constraint?: string },
+        );
+      expect(refused?.cause?.constraint ?? refused?.constraint).toBe("bid_invoice_total_check");
+      const invoices = await tx.select().from(bidInvoice).where(eq(bidInvoice.lotId, seeded.lotId));
+      expect(invoices).toHaveLength(0);
+      const events = await tx
+        .select()
+        .from(domainEvent)
+        .where(
+          and(
+            eq(domainEvent.eventType, "invoice.raised"),
+            sql`${domainEvent.payload}->>'lotId' = ${seeded.lotId}`,
+          ),
+        );
+      expect(events).toHaveLength(0);
     });
   });
 
