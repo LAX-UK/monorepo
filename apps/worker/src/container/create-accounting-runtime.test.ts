@@ -20,6 +20,8 @@ describe("createAccountingRuntime", () => {
     });
     expect(runtime?.projection).toBeDefined();
     expect(runtime?.sender).toBeDefined();
+    expect(runtime?.watch).toBeDefined();
+    expect(runtime?.senderCheckIn).toEqual(expect.any(Function));
     expect(log.info).toHaveBeenCalledWith({ modes: ["dry_run"] }, "accounting_runtime_built");
   });
 

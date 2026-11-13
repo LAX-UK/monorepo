@@ -17,6 +17,8 @@ export type QueueRuntimeEnv = {
   lifecycleExecutionOwner?: "api" | "worker" | undefined;
   /** ATG White Label sync (ATG_SYNC_ENABLED); the atg-sync queue exists only while on. */
   atgSyncEnabled?: boolean | undefined;
+  /** Zoho Books organisation settings are present (ZOHO_BOOKS_ORG_CONFIG), so the accounting runtime runs. */
+  accountingBooksEnabled?: boolean | undefined;
 };
 
 export type QueueDefinition = {

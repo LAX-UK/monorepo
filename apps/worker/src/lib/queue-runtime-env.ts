@@ -11,5 +11,6 @@ export function queueRuntimeEnvFromWorkerEnv(env: WorkerEnv): QueueRuntimeEnv {
     marketingEventsEnabled: isMarketingEventsEnabled(env),
     lifecycleExecutionOwner: env.LIFECYCLE_EXECUTION_OWNER,
     atgSyncEnabled: env.ATG_SYNC_ENABLED,
+    accountingBooksEnabled: Boolean(env.ZOHO_BOOKS_ORG_CONFIG?.trim()),
   };
 }
