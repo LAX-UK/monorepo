@@ -108,7 +108,11 @@ export function SubmissionSellerDocumentsPanel({
       </div>
       <div className="flex flex-col gap-4 px-4 pb-5 sm:px-6">
         {loadFailure ? (
-          <DashboardSliceErrorAlert failure={loadFailure} />
+          <DashboardSliceErrorAlert
+            failure={loadFailure}
+            headingLevel="h3"
+            title="Your documents couldn't be loaded"
+          />
         ) : documents.length > 0 ? (
           <ul aria-label="Your documents" className="flex flex-col gap-2">
             {documents.map((doc) => {

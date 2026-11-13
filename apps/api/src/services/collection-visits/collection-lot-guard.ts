@@ -1,6 +1,7 @@
 import {
   type CollectionBlockReason,
   type CollectionSelectionLot,
+  accountPurchaseScope,
   collectionBlockMessage,
   collectionBooker,
   collectionEligibility,
@@ -14,6 +15,13 @@ import type { CollectionLotLine } from "@auction/types";
 import { err, ok } from "neverthrow";
 import type { OrganisationMemberActor } from "../interfaces/organisation-membership-service.js";
 import { type CollectionVisitResult, visitError } from "./collection-visit.errors.js";
+
+/** Whether the member sees only the purchases they won themselves (a buyer agent). */
+function followsOwnOnly(actor: OrganisationMemberActor): boolean {
+  return (
+    accountPurchaseScope({ role: actor.role, isImpersonation: actor.isImpersonation }) === "own"
+  );
+}
 
 export type ResolvedLots = {
   records: CollectionLotRecord[];
@@ -39,7 +47,8 @@ export type ResolveOptions = {
  *    account's lot is never confirmed to exist);
  * 2. up to 20, each once, from one collection place;
  * 3. the person may book them: their own wins for a buyer agent, any paid lot for an organisation's
- *    owners, admins and finance, their own wins on a personal account; never while viewing as the account;
+ *    owners, admins and finance, their own wins on a personal account; never while viewing as the account.
+ *    A lot they do not follow (someone else's win) is "not found" too, like in their purchases;
  * 4. each lot can be collected: paid and cleared, no check open, not delivered, not already booked.
  */
 export class CollectionLotGuard {
@@ -86,6 +95,11 @@ export class CollectionLotGuard {
       if (decision.allowed) continue;
       if (decision.reason === "read_only") return err(visitError("read_only"));
       if (decision.reason === "not_member") return err(visitError("insufficient_entity_role"));
+      // A lot the person does not follow (someone else's personal purchase, or a colleague's win
+      // for a buyer agent who sees only their own) is answered as not found, never confirmed.
+      if (decision.reason === "not_winner" || followsOwnOnly(actor)) {
+        return err(visitError("lot_not_found"));
+      }
       return err(
         visitError("lot_not_yours_to_book", { lotId: record.lotId, reason: decision.reason }),
       );

@@ -11,6 +11,7 @@ import {
 } from "@/components/kyc";
 import { isSafeNextPath } from "@/lib/auth/post-auth-destination";
 import { normalizeKycReturnUrl } from "@/lib/kyc";
+import { buttonVariants } from "@auction/ui/lax/button-variants";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
@@ -84,6 +85,8 @@ export function VerifyIdentityClient({ initialStatus }: Props) {
         onStartSession={onStartSession}
         onPhaseChange={setPhase}
         onComplete={onComplete}
+        // The page's one primary action, on the system primary fill like every client page.
+        buttonClassName={buttonVariants({ variant: "primary", size: "md" })}
       />
     </div>
   );

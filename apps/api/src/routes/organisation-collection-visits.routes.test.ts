@@ -181,8 +181,9 @@ describe("what each role may do", () => {
     owner: { list: 200, book: 201 },
     admin: { list: 200, book: 201 },
     finance: { list: 200, book: 201 },
-    // A buyer agent follows and books only what they won; this lot was won by the owner.
-    buyer_agent: { list: 200, book: 403 },
+    // A buyer agent follows and books only what they won; this lot was won by the owner, so it
+    // is not found for them, never confirmed to exist.
+    buyer_agent: { list: 200, book: 404 },
     consignor: { list: 403, book: 403 },
     viewer: { list: 403, book: 403 },
   };

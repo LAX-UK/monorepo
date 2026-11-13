@@ -108,11 +108,11 @@ export function buildLegalEntityAccessFailure(
     return {
       code,
       status,
-      title: "Could not load submissions",
+      title: "Your consignments couldn't be loaded",
       message:
         status === 401
-          ? "Your session expired. Sign in again to view your submissions."
-          : "Something went wrong while loading your submissions. Try again.",
+          ? "Your session ended. Sign in again to see your consignments."
+          : "This is on our side. Try again in a moment.",
       actions: [
         { kind: "retry", label: DASHBOARD_CTA.tryAgain, href: DASHBOARD_ROUTES.consignments },
       ],
@@ -121,7 +121,8 @@ export function buildLegalEntityAccessFailure(
   return {
     code,
     status,
-    title: context === "members" ? "Could not load members" : "Organisation access issue",
+    title:
+      context === "members" ? "Members couldn't be loaded" : "This organisation couldn't be opened",
     message: describeLegalEntityAccessMessage(status, code),
     actions: [
       { kind: "retry", label: DASHBOARD_CTA.tryAgain, href: DASHBOARD_ROUTES.organisations },

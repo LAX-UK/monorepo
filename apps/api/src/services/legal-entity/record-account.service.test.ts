@@ -46,11 +46,15 @@ describe("RecordAccountService", () => {
     });
   });
 
-  it("refuses a record of an organisation the person is not in, without naming it", async () => {
-    await expect(service(OTHER).accountFor("u1", "consignment", "s1")).resolves.toEqual({
-      kind: "no_access",
-    });
-  });
+  it.each(["consignment", "purchase", "reoffer"] as const)(
+    "answers a %s of an account the person is not in exactly like a missing one",
+    async (kind) => {
+      const theirs = await service(OTHER).accountFor("u1", kind, "r1");
+      const missing = await service(null).accountFor("u1", kind, "r1");
+      expect(theirs).toEqual({ kind: "not_found" });
+      expect(theirs).toEqual(missing);
+    },
+  );
 
   it("refuses organisation records while organisations are switched off", async () => {
     await expect(service(GALLERY, false).accountFor("u1", "consignment", "s1")).resolves.toEqual({

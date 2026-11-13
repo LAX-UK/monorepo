@@ -81,63 +81,35 @@ type SliceDefaults = {
   retryHref: string;
 };
 
+/** The plain line under a "couldn't be loaded" title: on our side, and what to do. */
+const ON_OUR_SIDE = "This is on our side. Try again in a moment.";
+const SIGN_IN_AGAIN = "Your session ended. Sign in again to carry on.";
+const NO_ACCESS = "Your role in this account doesn't include this.";
+
+/** The line under the title, by status: sign in again, not this role, or on our side. */
+function plainReason(status: number): string {
+  if (status === 401) return SIGN_IN_AGAIN;
+  if (status === 403) return NO_ACCESS;
+  return ON_OUR_SIDE;
+}
+
+/** One surface's failure: "<What> couldn't be loaded", the plain reason, and Try again. */
+function couldNotLoad(what: string, retryHref: string): SliceDefaults {
+  return { title: `${what} couldn't be loaded`, message: plainReason, retryHref };
+}
+
 const SLICE_DEFAULTS: Record<DashboardSlice, SliceDefaults> = {
-  session: {
-    title: "Session issue",
-    message: (s) =>
-      s === 401 ? "Your session expired. Sign in again." : "Could not load your account session.",
-    retryHref: DASHBOARD_ROUTES.signIn,
-  },
-  bids: {
-    title: "Could not load bids",
-    message: () => "Something went wrong while loading your bids. Try again.",
-    retryHref: DASHBOARD_ROUTES.bids,
-  },
-  conditionReports: {
-    title: "Could not load condition reports",
-    message: () => "Something went wrong while loading your condition report requests. Try again.",
-    retryHref: DASHBOARD_ROUTES.bids,
-  },
-  telephoneBids: {
-    title: "Could not load telephone bookings",
-    message: () => "Something went wrong while loading your telephone bookings. Try again.",
-    retryHref: DASHBOARD_ROUTES.bids,
-  },
-  portfolio: {
-    title: "Could not load purchases",
-    message: () => "Something went wrong while loading your purchases. Try again.",
-    retryHref: DASHBOARD_ROUTES.purchases,
-  },
-  payments: {
-    title: "Could not load payments",
-    message: () => "Something went wrong while loading your payments. Try again.",
-    retryHref: DASHBOARD_ROUTES.purchases,
-  },
-  watchlist: {
-    title: "Could not load watchlist",
-    message: () => "Something went wrong while loading your watchlist. Try again.",
-    retryHref: DASHBOARD_ROUTES.watchlist,
-  },
-  artistFollow: {
-    title: "Could not load followed artists",
-    message: () => "Something went wrong while loading followed artists. Try again.",
-    retryHref: DASHBOARD_ROUTES.artistFollow,
-  },
-  activeLots: {
-    title: "Could not load live inventory",
-    message: () => "Something went wrong while loading live lots. Try again.",
-    retryHref: DASHBOARD_ROUTES.home,
-  },
-  notifications: {
-    title: "Could not load notifications",
-    message: () => "Something went wrong while loading notifications. Try again.",
-    retryHref: DASHBOARD_ROUTES.notifications,
-  },
-  sellerLots: {
-    title: "Could not load your lots",
-    message: () => "Something went wrong while loading your lots. Try again.",
-    retryHref: DASHBOARD_ROUTES.consignmentsInSale,
-  },
+  session: couldNotLoad("Your account", DASHBOARD_ROUTES.signIn),
+  bids: couldNotLoad("Your bids", DASHBOARD_ROUTES.bids),
+  conditionReports: couldNotLoad("Your condition report requests", DASHBOARD_ROUTES.bids),
+  telephoneBids: couldNotLoad("Your telephone bookings", DASHBOARD_ROUTES.bids),
+  portfolio: couldNotLoad("Your purchases", DASHBOARD_ROUTES.purchases),
+  payments: couldNotLoad("Your payments", DASHBOARD_ROUTES.purchases),
+  watchlist: couldNotLoad("The lots you follow", DASHBOARD_ROUTES.watchlist),
+  artistFollow: couldNotLoad("The artists you follow", DASHBOARD_ROUTES.artistFollow),
+  activeLots: couldNotLoad("Live lots", DASHBOARD_ROUTES.home),
+  notifications: couldNotLoad("Your notifications", DASHBOARD_ROUTES.notifications),
+  sellerLots: couldNotLoad("Your lots in sales", DASHBOARD_ROUTES.consignmentsInSale),
   sellerPayouts: {
     title: "Could not load payouts",
     message: (s) =>
@@ -158,46 +130,17 @@ const SLICE_DEFAULTS: Record<DashboardSlice, SliceDefaults> = {
     message: () => "Something went wrong while loading payout setup. Try again.",
     retryHref: DASHBOARD_ROUTES.sellerConnect,
   },
-  categories: {
-    title: "Could not load categories",
-    message: () => "Something went wrong while loading categories. Try again.",
-    retryHref: DASHBOARD_ROUTES.watchlist,
-  },
-  legalEntities: {
-    title: "Could not load organisations",
-    message: () => "Something went wrong while loading your organisations. Try again.",
-    retryHref: DASHBOARD_ROUTES.organisations,
-  },
-  submissions: {
-    title: "Could not load submissions",
-    message: () => "Something went wrong while loading your submissions. Try again.",
-    retryHref: DASHBOARD_ROUTES.consignments,
-  },
-  orgMembers: {
-    title: "Could not load members",
-    message: () => "Something went wrong while loading members. Try again.",
-    retryHref: DASHBOARD_ROUTES.organisations,
-  },
-  invitations: {
-    title: "Could not load invitations",
-    message: () => "Something went wrong while loading invitations. Try again.",
-    retryHref: DASHBOARD_ROUTES.invitations,
-  },
-  kyc: {
-    title: "Verification unavailable",
-    message: () => "Could not load identity verification status. Try again.",
-    retryHref: "/onboarding/identity?next=%2Fdashboard&source=dashboard",
-  },
-  orgOnboarding: {
-    title: "Onboarding status unavailable",
-    message: () => "Could not load organisation onboarding status.",
-    retryHref: DASHBOARD_ROUTES.organisations,
-  },
-  settings: {
-    title: "Settings unavailable",
-    message: () => "Something went wrong. Try again.",
-    retryHref: "/settings",
-  },
+  categories: couldNotLoad("Categories", DASHBOARD_ROUTES.watchlist),
+  legalEntities: couldNotLoad("Your organisations", DASHBOARD_ROUTES.organisations),
+  submissions: couldNotLoad("Your consignments", DASHBOARD_ROUTES.consignments),
+  orgMembers: couldNotLoad("Members", DASHBOARD_ROUTES.organisations),
+  invitations: couldNotLoad("Invitations", DASHBOARD_ROUTES.invitations),
+  kyc: couldNotLoad(
+    "Your identity check",
+    "/onboarding/identity?next=%2Fdashboard&source=dashboard",
+  ),
+  orgOnboarding: couldNotLoad("Your organisation's setup", DASHBOARD_ROUTES.organisations),
+  settings: couldNotLoad("Your settings", "/settings"),
 };
 
 function defaultActions(defaults: SliceDefaults, status: number): DashboardAction[] {

@@ -1675,7 +1675,9 @@ describe("PaymentService", () => {
     );
     expect(nonWinnerResult.isErr()).toBe(true);
     if (nonWinnerResult.isErr()) {
-      expect(nonWinnerResult.error.message).toBe("Only the winning bidder can pay for this lot");
+      // Someone else's purchase is answered as not found, so it is never confirmed to exist.
+      expect(nonWinnerResult.error.message).toBe("Purchase not found");
+      expect(nonWinnerResult.error.status).toBe(404);
     }
   });
 
