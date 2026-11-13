@@ -11,7 +11,7 @@ import { StaffCheckbox } from "../primitives/choice.js";
 import { useStaffShortcut } from "../shell/shortcuts.js";
 import { BulkActionBar, TableSelectionProvider } from "./bulk-action-bar.js";
 import { EmptyValue, isEmptyCellValue } from "./cells.js";
-import { rememberListReturn, takeListReturn, watchListReturns } from "./list-return.js";
+import { rememberListReturn, takeListReturn } from "./list-return.js";
 import { findRowLink, isRowLink, openInNewTab, selectingTextIn, wantsNewTab } from "./row-link.js";
 import type {
   BulkSelectionScope,
@@ -574,15 +574,14 @@ export function DataTable<T>({
   const cardRefs = React.useRef<Array<HTMLLIElement | null>>([]);
   const [returnedId, setReturnedId] = React.useState<string | null>(null);
   const returnChecked = React.useRef(false);
-  React.useEffect(() => {
-    if (rowHref) watchListReturns();
-  }, [rowHref]);
   React.useLayoutEffect(() => {
     if (!rowHref || returnChecked.current || loading) return;
     returnChecked.current = true;
     const entry = takeListReturn();
     if (!entry) return;
-    const restoreScroll = () => window.scrollTo({ top: entry.scrollY, left: window.scrollX });
+    // Instant: the page may scroll smoothly, and the list should simply be where it was.
+    const restoreScroll = () =>
+      window.scrollTo({ top: entry.scrollY, left: window.scrollX, behavior: "instant" });
     restoreScroll();
     // The router may settle its own scroll after the first paint; ours wins.
     const frame = window.requestAnimationFrame?.(restoreScroll);

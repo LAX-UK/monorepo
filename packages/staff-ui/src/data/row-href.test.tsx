@@ -4,7 +4,7 @@ import * as React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { PrimaryCell } from "./cells.js";
 import { DataTable, type DataTableProps } from "./data-table.js";
-import { LIST_RETURN_STORAGE_KEY, resetListReturnForTests } from "./list-return.js";
+import { LIST_RETURN_STATE_KEY } from "./list-return.js";
 import type { DataColumn } from "./types.js";
 
 type Row = { id: string; name: string };
@@ -67,8 +67,6 @@ function setup(props: Partial<DataTableProps<Row>> = {}) {
 let open: ReturnType<typeof vi.spyOn>;
 beforeEach(() => {
   open = vi.spyOn(window, "open").mockImplementation(() => null);
-  window.sessionStorage.clear();
-  resetListReturnForTests();
 });
 afterEach(() => {
   open.mockRestore();
@@ -207,21 +205,24 @@ describe("Back to a list", () => {
   it("restores the scroll, focuses the row that was opened and marks it briefly", () => {
     vi.useFakeTimers();
     try {
-      window.history.replaceState(null, "", "/people?status=live&sort=-name");
+      window.history.replaceState({ router: "kept" }, "", "/people?status=live&sort=-name");
       const scrollTo = vi.spyOn(window, "scrollTo").mockImplementation(() => {});
       Object.defineProperty(window, "scrollY", { configurable: true, value: 640 });
 
       const first = setup();
       fireEvent.click(first.noteCell(1));
       expect(first.visit).toHaveBeenCalledWith("/people/b");
-      const saved = JSON.parse(window.sessionStorage.getItem(LIST_RETURN_STORAGE_KEY) ?? "{}");
-      expect(saved).toMatchObject({ listUrl: "/people?status=live&sort=-name", rowId: "b" });
+      // The list's own history entry remembers the row, beside the router's state.
+      const listEntry = window.history.state;
+      expect(listEntry).toEqual({
+        router: "kept",
+        [LIST_RETURN_STATE_KEY]: { rowId: "b", scrollY: 640 },
+      });
       first.grid.remove();
 
-      // The record page, then Back.
+      // The record page, then Back to the list's entry.
       window.history.pushState(null, "", "/people/b");
-      window.history.replaceState(null, "", "/people?status=live&sort=-name");
-      window.dispatchEvent(new PopStateEvent("popstate"));
+      window.history.replaceState(listEntry, "", "/people?status=live&sort=-name");
       Object.defineProperty(window, "scrollY", { configurable: true, value: 0 });
       // jsdom has no layout: make the table layout count as shown.
       const offsetParent = vi
@@ -229,7 +230,7 @@ describe("Back to a list", () => {
         .mockReturnValue(document.body);
 
       const back = setup();
-      expect(scrollTo).toHaveBeenCalledWith({ top: 640, left: 0 });
+      expect(scrollTo).toHaveBeenCalledWith({ top: 640, left: 0, behavior: "instant" });
       const row = back.bodyRows[1] as HTMLElement;
       expect(row).toHaveFocus();
       expect(row).toHaveAttribute("data-staff-returned");
@@ -238,8 +239,8 @@ describe("Back to a list", () => {
         vi.advanceTimersByTime(2000);
       });
       expect(row).not.toHaveAttribute("data-staff-returned");
-      // Read once: the remembered row is forgotten.
-      expect(window.sessionStorage.getItem(LIST_RETURN_STORAGE_KEY)).toBeNull();
+      // Read once: the mark is gone, the router's state stays.
+      expect(window.history.state).toEqual({ router: "kept" });
       offsetParent.mockRestore();
       scrollTo.mockRestore();
     } finally {
@@ -254,6 +255,8 @@ describe("Back to a list", () => {
     fireEvent.click(first.noteCell(0));
     first.grid.remove();
 
+    // A link to the list: a new history entry, without the mark.
+    window.history.pushState(null, "", "/people");
     const again = setup();
     expect(scrollTo).not.toHaveBeenCalled();
     expect(again.bodyRows[0]).not.toHaveAttribute("data-staff-returned");
