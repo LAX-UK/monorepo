@@ -4,6 +4,7 @@ import { SellingPlatformBadge } from "@/components/admin/atg/selling-platform-ba
 import { LotDetailReadinessProvider } from "@/components/admin/lot-detail/lot-detail-readiness-context";
 import { lotDetailTabHref } from "@/components/admin/lot-detail/lot-detail-types";
 import { type LotActionTarget, useLotActions } from "@/components/admin/lots/use-lot-actions";
+import { RecordAgreementDialog } from "@/components/admin/seller-proceeds/record-agreement-dialog";
 import { StaffDetailTabs } from "@/components/admin/staff/staff-detail-tabs";
 import { StaffEditableTitle } from "@/components/admin/staff/staff-editable-title";
 import { adminUpdateLotTitleFieldAction } from "@/lib/actions/admin/field-updates";
@@ -18,6 +19,11 @@ import { type LaxArtReturnView, laxArtReturnTarget } from "@/lib/admin/lots/lax-
 import { lotDetailNotice, lotEditLink } from "@/lib/admin/lots/lot-detail-page.vm";
 import type { LotReofferBundle } from "@/lib/admin/reoffer/reoffer-bundle";
 import { reofferHeader } from "@/lib/admin/reoffer/reoffer-lot-state";
+import {
+  type HeldPayoutNotice,
+  RECORD_AGREEMENT_BUTTON_ID,
+} from "@/lib/admin/seller-proceeds/lot-seller-proceeds.vm";
+import type { RecordAgreementContext } from "@/lib/admin/seller-proceeds/record-agreement.vm";
 import { staffStatus } from "@/lib/admin/staff-kit-status";
 import { LOTS_ACCESS } from "@/lib/navigation/staff-nav-access";
 import { lotAuctionTypeLabel } from "@/lib/presenters/lot-auction-type/lot-auction-type-registry";
@@ -39,7 +45,7 @@ import { type AtgLotSellingSummary, atgLotSellingBadge } from "@auction/types";
 import { Copy, ExternalLink, Pencil } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { type ReactNode, useCallback, useMemo } from "react";
+import { type ReactNode, useCallback, useMemo, useState } from "react";
 
 const NextLink: StaffLinkComponent = Link;
 
@@ -54,6 +60,8 @@ type Props = {
   canDecideWithdrawals?: boolean;
   /** When the seller asked to withdraw the lot (ISO), while the request waits for a decision. */
   withdrawalRequestedAt?: string | null;
+  /** A held seller payout on a sold lot, and the agreement this person may record for it. */
+  heldPayout?: { notice: HeldPayoutNotice; record: RecordAgreementContext | null } | null;
   publishReadiness?: CatalogReadinessResult | null;
   /** Where the lot sells: its ATG state, or lax.bid with the rest of its sale. */
   selling?: AtgLotSellingSummary | null;
@@ -80,6 +88,7 @@ export function LotDetailShell({
   canManageAuction = false,
   canDecideWithdrawals = false,
   withdrawalRequestedAt = null,
+  heldPayout = null,
   publishReadiness: publishReadinessProp,
   selling = null,
   laxArtReturn = null,
@@ -88,6 +97,10 @@ export function LotDetailShell({
 }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  // The Inbox task links here with `?record=agreement` to open the record dialog straight away.
+  const [recording, setRecording] = useState(
+    () => searchParams.get("record") === "agreement" && Boolean(heldPayout?.record),
+  );
   const { auction, context } = bundle;
   const publicHref = lotPath({ id: auction.id, title: auction.title });
   const baseStatus = staffStatus("lot", auction.status, { lot: { winnerId: auction.winnerId } });
@@ -182,9 +195,11 @@ export function LotDetailShell({
         readiness: publishReadiness,
         canManageCatalog,
         withdrawalRequestedAt,
+        heldPayout: heldPayout?.notice ?? null,
       }),
     [
       withdrawalRequestedAt,
+      heldPayout,
       lotId,
       auction.status,
       connectBlocked,
@@ -291,7 +306,16 @@ export function LotDetailShell({
               title={notice.title}
               alert={notice.tone === "danger"}
               actions={
-                notice.action ? (
+                notice.recordsAgreement && heldPayout?.record ? (
+                  <StaffButton
+                    id={RECORD_AGREEMENT_BUTTON_ID}
+                    size="sm"
+                    variant="primary"
+                    onClick={() => setRecording(true)}
+                  >
+                    Record signed agreement
+                  </StaffButton>
+                ) : notice.action ? (
                   <StaffButton asChild size="sm" variant="secondary">
                     <Link href={notice.action.href}>{notice.action.label}</Link>
                   </StaffButton>
@@ -339,6 +363,13 @@ export function LotDetailShell({
         </LotDetailReadinessProvider>
       </DetailPage>
       {lotActions.dialogs}
+      {heldPayout?.record ? (
+        <RecordAgreementDialog
+          open={recording}
+          onOpenChange={setRecording}
+          context={heldPayout.record}
+        />
+      ) : null}
     </>
   );
 }

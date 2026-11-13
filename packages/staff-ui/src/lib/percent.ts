@@ -43,3 +43,13 @@ export function formatStaffPercent(rate: string | number): string {
   if (!/^\d+(\.\d*)?$/.test(text)) return text;
   return `${formatRateAsPercent(text)}%`;
 }
+
+/**
+ * Whole basis points as a percentage: 1200 → "12%", 1250 → "12.5%", 5 → "0.05%". Worked on the
+ * digits, so no floating-point step can change the rate an agreement states.
+ */
+export function formatBpsAsPercent(bps: number): string {
+  if (!Number.isSafeInteger(bps) || bps < 0) return String(bps);
+  const digits = String(bps).padStart(3, "0");
+  return `${trimZeros(digits.slice(0, -2), digits.slice(-2))}%`;
+}

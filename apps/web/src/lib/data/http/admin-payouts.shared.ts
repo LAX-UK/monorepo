@@ -1,6 +1,14 @@
 import type { AdminPayoutRow } from "@/lib/data/http/admin-parse.server";
 import { parseAdminPayoutRow } from "@/lib/data/http/admin-parse.server";
 import { adminPayoutRowsSchema } from "@/lib/data/http/admin-payments.schema";
+import {
+  type SettlementPreviewDealDto,
+  type SettlementPreviewSaleDto,
+  type SettlementPreviewTotalsDto,
+  settlementPreviewDealSchema,
+  settlementPreviewSaleSchema,
+  settlementPreviewTotalsSchema,
+} from "@/lib/data/http/admin-seller-proceeds.shared";
 import { isIndexableObject } from "@/lib/data/http/object-guards";
 import type { PayoutStatus } from "@auction/types";
 import { z } from "zod";
@@ -52,6 +60,12 @@ export type AdminSettlementPreview = {
     pendingNet: string;
     paymentCount: number;
     currency: string;
+    /** Every waiting sale, ready or held; empty from an API that predates sale lines. */
+    sales: SettlementPreviewSaleDto[];
+    /** Released private-sale deals the run would pay. */
+    deals: SettlementPreviewDealDto[];
+    /** The ready lines and deals added up by the API: the only totals the screen shows. */
+    totals: SettlementPreviewTotalsDto;
   };
   openPayout: AdminPayoutRow | null;
 };
@@ -143,6 +157,9 @@ const settlementPreviewSchema = z.object({
     pendingNet: z.coerce.string(),
     paymentCount: z.coerce.number(),
     currency: z.coerce.string(),
+    sales: z.array(settlementPreviewSaleSchema).optional().default([]),
+    deals: z.array(settlementPreviewDealSchema).optional().default([]),
+    totals: settlementPreviewTotalsSchema,
   }),
   openPayout: z.union([z.null(), z.unknown()]).transform((value): AdminPayoutRow | null => {
     if (value == null) return null;

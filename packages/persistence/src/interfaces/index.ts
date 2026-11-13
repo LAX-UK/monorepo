@@ -107,7 +107,11 @@ export type {
   PublishUserEmailVerifiedInput,
 } from "./user-email-verified.publisher.js";
 
-export type { IUploadObjectReader } from "./upload-object.reader.js";
+export type {
+  IUploadObjectDescriber,
+  IUploadObjectReader,
+  UploadObjectDescription,
+} from "./upload-object.reader.js";
 
 export type {
   IUploadPersistenceRepository,
@@ -675,6 +679,37 @@ export type {
   StoredInvoiceLine,
   StoredSellerTerms,
 } from "./sale-seller-terms.store.js";
+export type {
+  IStaffLotSellerProceedsReader,
+  IStaffSaleLabelsReader,
+  StaffAgreementFacts,
+  StaffInvoiceFacts,
+  StaffLotSaleFacts,
+  StaffLotSellerProceedsFacts,
+  StaffSaleLabel,
+  StaffSalePayoutFacts,
+  StaffSellerTermsFacts,
+  StaffSellerTermsSource,
+} from "./staff-seller-proceeds.reader.js";
+export type {
+  IStaffPayoutSalesReader,
+  StaffHeldSale,
+  StaffLineAgreement,
+  StaffOldRuleSale,
+  StaffPayoutSaleLine,
+  StaffPayoutSales,
+} from "./staff-payout-sales.reader.js";
+export type {
+  ISignedAgreementWriter,
+  LockedAgreement,
+  RecordSignedAgreementInput,
+  RecordedAgreement,
+  ReplacedAgreement,
+} from "./signed-agreement.writer.js";
+export {
+  AgreementAlreadyRecordedError,
+  SignedDocumentInUseError,
+} from "./signed-agreement.writer.js";
 
 export type {
   IPaymentExternalRefRepository,

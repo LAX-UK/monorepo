@@ -334,7 +334,12 @@ describe("POST /admin/payouts/:payoutId/reverse", () => {
 });
 
 describe("POST /admin/payouts/run-settlement", () => {
-  const run = { legalEntityId: ENTITY_ID, dryRun: false, reason: REASON };
+  const CONFIRMED = {
+    netPence: 9_500,
+    paymentIds: ["00000000-0000-4000-8000-0000000000a9"],
+    dealIds: [],
+  };
+  const run = { legalEntityId: ENTITY_ID, dryRun: false, reason: REASON, confirmed: CONFIRMED };
 
   it.each(["administrator", "finance"])(
     "lets %s run a settlement for one entity",
@@ -347,6 +352,7 @@ describe("POST /admin/payouts/run-settlement", () => {
       expect(payouts.createSettlement).toHaveBeenCalledWith(ACTOR_ID, {
         legalEntityId: ENTITY_ID,
         reason: REASON,
+        confirmed: CONFIRMED,
       });
     },
   );
@@ -385,7 +391,7 @@ describe("POST /admin/payouts/run-settlement", () => {
     const res = await post(
       app,
       "/run-settlement",
-      { legalEntityId: ENTITY_ID, dryRun: false },
+      { legalEntityId: ENTITY_ID, dryRun: false, confirmed: CONFIRMED },
       key("settlement-reason-1"),
     );
 
@@ -403,7 +409,52 @@ describe("POST /admin/payouts/run-settlement", () => {
       legalEntityId: ENTITY_ID,
       reason: REASON,
       periodStart: new Date(periodStart),
+      confirmed: CONFIRMED,
     });
+  });
+
+  it.each([
+    ["without confirmed figures", "unbound-1", undefined],
+    [
+      "with confirmed figures missing the deal ids",
+      "unbound-2",
+      { netPence: 9_500, paymentIds: [] },
+    ],
+    ["with a fractional net", "unbound-3", { netPence: 9_500.5, paymentIds: [], dealIds: [] }],
+    ["with confirmed set to null", "unbound-4", null],
+  ])(
+    "refuses a run %s with 400, and settles nothing",
+    async (_label, idempotencyKey, confirmed) => {
+      const { app, payouts } = mount("finance");
+      const { confirmed: _omit, ...unbound } = run;
+      const body = confirmed === undefined ? unbound : { ...unbound, confirmed };
+
+      const res = await post(app, "/run-settlement", body, key(`settlement-${idempotencyKey}`));
+
+      expect(res.status).toBe(400);
+      expect(await res.json()).toMatchObject({ errorCode: "validation_failed" });
+      expect(payouts.createSettlement).not.toHaveBeenCalled();
+    },
+  );
+
+  it("passes what the person confirmed to the run, and answers 409 figures_changed when it differs", async () => {
+    const { app, payouts } = mount("finance");
+    payouts.createSettlement.mockResolvedValueOnce({ ok: false, reason: "figures_changed" });
+    const confirmed = {
+      netPence: 7_222_850,
+      paymentIds: ["00000000-0000-4000-8000-0000000000a1"],
+      dealIds: ["00000000-0000-4000-8000-0000000000d1"],
+    };
+
+    const res = await post(app, "/run-settlement", { ...run, confirmed }, key("settlement-c-1"));
+
+    expect(payouts.createSettlement).toHaveBeenCalledWith(ACTOR_ID, {
+      legalEntityId: ENTITY_ID,
+      reason: REASON,
+      confirmed,
+    });
+    expect(res.status).toBe(409);
+    expect(await res.json()).toEqual({ error: "figures_changed" });
   });
 
   it("answers 409 with the period code when the period overlaps a settled one", async () => {
@@ -422,7 +473,12 @@ describe("POST /admin/payouts/run-settlement", () => {
   it("requires a legal entity", async () => {
     const { app, payouts } = mount("finance");
 
-    const res = await post(app, "/run-settlement", { dryRun: false }, key("settlement-key-4"));
+    const res = await post(
+      app,
+      "/run-settlement",
+      { dryRun: false, reason: REASON, confirmed: CONFIRMED },
+      key("settlement-key-4"),
+    );
 
     expect(res.status).toBe(400);
     expect(payouts.createSettlement).not.toHaveBeenCalled();

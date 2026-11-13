@@ -51,8 +51,12 @@ export class DrizzleSaleSellerTermsStore implements ISaleSellerTermsStore {
     return stored(await this.byPayment(input.paymentId));
   }
 
-  async repriceHeld(id: string, snapshot: SellerTermsSnapshot): Promise<StoredSellerTerms> {
-    const row = sellerTermsRow("", snapshot, null, "recomputed_at_payout");
+  async repriceHeld(
+    id: string,
+    snapshot: SellerTermsSnapshot,
+    source: "recomputed_at_payout" | "agreement_recorded" = "recomputed_at_payout",
+  ): Promise<StoredSellerTerms> {
+    const row = sellerTermsRow("", snapshot, null, source);
     // Only the figures and how they were made; what the row is for stays as it was raised.
     const [updated] = await this.db
       .update(saleSellerTerms)

@@ -150,7 +150,12 @@ export interface IAdminPayoutApplicationService {
   adminSettlementPreview(legalEntityId: string): Promise<unknown>;
   createSettlement(
     actorUserId: string,
-    input: { legalEntityId: string; reason: string; periodStart?: Date },
+    input: {
+      legalEntityId: string;
+      reason: string;
+      periodStart?: Date;
+      confirmed?: import("../payout.js").ConfirmedSettlement;
+    },
   ): Promise<{ ok: true; payout: unknown } | { ok: false; reason: string }>;
   addAdjustment(
     actorUserId: string,

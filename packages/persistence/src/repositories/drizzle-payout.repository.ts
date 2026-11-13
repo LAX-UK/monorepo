@@ -46,6 +46,7 @@ import type {
   SellerClawbackFacts,
 } from "../interfaces/payout.repository.js";
 import { queryCreatedAtDailyCounts } from "./created-at-daily-count.query.js";
+import { SETTLED_OUTSIDE_EVENT } from "./drizzle-staff-seller-proceeds.reader.js";
 import { SALE_LINE_TERMS_COLUMNS, saleLinePaymentFacts } from "./sale-line-facts.js";
 import { sellerTermsSnapshotFromRow } from "./seller-terms-row.js";
 
@@ -147,8 +148,9 @@ function refundLinesAnsweredSql(paymentId: SQL): SQL {
 }
 
 /**
- * A lot payment waiting for a payout run: captured, for more than nothing, on no payout yet, and
- * not LAX's own stock (whose proceeds are LAX's and are never paid out).
+ * A lot payment waiting for a payout run: captured, for more than nothing, on no payout yet, not
+ * LAX's own stock (whose proceeds are LAX's and are never paid out), and not a sale staff marked
+ * as settled with the seller outside LAX (an ATG sale paid by hand is never paid again by a run).
  */
 function awaitingSettlement(): SQL {
   return sql`"payment"."status" = 'captured'
@@ -160,6 +162,12 @@ function awaitingSettlement(): SQL {
     AND NOT EXISTS (
       SELECT 1 FROM sale_seller_terms sst
       WHERE sst.payment_id = "payment"."id" AND sst.basis = 'lax_owned'
+    )
+    AND NOT EXISTS (
+      SELECT 1 FROM domain_events de
+      WHERE de.aggregate_type = 'lot'
+        AND de.aggregate_id = "payment"."lot_id"::text
+        AND de.event_type = ${SETTLED_OUTSIDE_EVENT}
     )`;
 }
 
@@ -189,6 +197,15 @@ function listWhere(filter: Omit<ListPayoutsFilter, "limit" | "offset">): SQL | u
     searchCondition,
   ].filter((c): c is NonNullable<typeof c> => c !== undefined);
   return conditions.length > 0 ? and(...conditions) : undefined;
+}
+
+/**
+ * The per-seller settlement lock: a payout run holds it for its whole transaction, and anything
+ * that changes what a run would pay a seller takes it first, in the same order (this lock, then
+ * the payment rows in id order, then seller terms and payouts).
+ */
+export function settlementLockSql(legalEntityId: string): SQL {
+  return sql`select pg_advisory_xact_lock(hashtext(${`payout_settlement:${legalEntityId}`}))`;
 }
 
 /**
@@ -434,9 +451,7 @@ export class DrizzlePayoutRepository implements IPayoutRepository, IPayoutProces
   }
 
   async lockSettlementForEntity(legalEntityId: string): Promise<void> {
-    await this.db.execute(
-      sql`select pg_advisory_xact_lock(hashtext(${`payout_settlement:${legalEntityId}`}))`,
-    );
+    await this.db.execute(settlementLockSql(legalEntityId));
   }
 
   async lockPendingPayments(legalEntityId: string): Promise<string[]> {

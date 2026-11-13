@@ -18,6 +18,10 @@ import type {
   AdminListPayoutsFilter,
   MarkPaidInput,
   PayoutWithLines,
+  PendingPreviewDeal,
+  PendingPreviewSale,
+  PendingPreviewSaleLabel,
+  PendingPreviewTotals,
   StripeTransferReconciliationInput,
 } from "../interfaces/payout.js";
 import {
@@ -66,9 +70,25 @@ export async function previewPending(
 ): Promise<import("../interfaces/payout.js").PendingPayoutPreview> {
   if (!deps.transactionRunner) throw new Error("payout_transactions_not_configured");
   const preview = await deps.transactionRunner.runInTransaction((tx) =>
-    previewSettlement(deps.payoutRepoForTx(tx), deps.sellerTermsForTx(tx), legalEntityId),
+    previewSettlement(
+      deps.payoutRepoForTx(tx),
+      deps.sellerTermsForTx(tx),
+      legalEntityId,
+      // The run's own source of released deals, read through the same transaction.
+      deps.dealPayoutsForTx?.(tx) ?? null,
+    ),
+  );
+  const labels = await labelsFor(deps, preview.sales);
+  const sales = preview.sales.map(
+    (sale): PendingPreviewSale => ({
+      ...sale,
+      ...(labels.get(sale.lotId ?? "") ?? { lotNumber: null, lotTitle: null, agreement: null }),
+    }),
   );
   return {
+    sales,
+    deals: preview.deals,
+    totals: previewTotals(sales, preview.deals),
     pendingGross: preview.pendingGross,
     pendingPlatformFee: preview.pendingPlatformFee,
     pendingNet: preview.pendingNet,
@@ -77,6 +97,61 @@ export async function previewPending(
     currency: DEFAULT_CURRENCY,
     earliestCapturedAt: preview.earliestCapturedAt,
   };
+}
+
+async function labelsFor(
+  deps: PayoutServiceDeps,
+  sales: readonly { lotId: string | null }[],
+): Promise<Map<string, PendingPreviewSaleLabel>> {
+  const lotIds = sales.flatMap((sale) => (sale.lotId ? [sale.lotId] : []));
+  if (!deps.saleLabels || lotIds.length === 0) return new Map();
+  const labels = await deps.saleLabels.saleLabels(lotIds);
+  return new Map(
+    labels.map((label) => [
+      label.lotId,
+      {
+        lotNumber: label.lotNumber,
+        lotTitle: label.lotTitle,
+        agreement: label.agreement && {
+          reference: label.agreement.reference,
+          submissionId: label.agreement.submissionId,
+          signedAt: label.agreement.signedAt,
+          source: label.agreement.source,
+        },
+      },
+    ]),
+  );
+}
+
+/**
+ * The preview's totals are its ready lines and deals added up, so the screen never shows a second
+ * sum and the net is what the run pays.
+ */
+export function previewTotals(
+  sales: readonly PendingPreviewSale[],
+  deals: readonly PendingPreviewDeal[] = [],
+): PendingPreviewTotals {
+  const totals: PendingPreviewTotals = {
+    hammerPence: 0,
+    commissionPence: 0,
+    commissionVatPence: 0,
+    refundChargePence: 0,
+    dealsNetPence: 0,
+    netPence: 0,
+  };
+  for (const deal of deals) {
+    totals.dealsNetPence += deal.netPence;
+    totals.netPence += deal.netPence;
+  }
+  for (const sale of sales) {
+    if (sale.kind !== "ready") continue;
+    totals.hammerPence += sale.hammerPence;
+    totals.commissionPence += sale.commissionPence;
+    totals.commissionVatPence += sale.commissionVatPence;
+    totals.refundChargePence += sale.refundChargePence;
+    totals.netPence += sale.netPence;
+  }
+  return totals;
 }
 
 export async function addAdjustment(

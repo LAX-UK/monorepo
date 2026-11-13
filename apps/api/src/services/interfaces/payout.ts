@@ -10,7 +10,78 @@ import type {
 import type { InitiateTransferResult } from "./stripe-connect.js";
 
 /** Aggregate row used by the seller "next payout" tile. */
+/** How a sale is named on the preview: its lot and the agreement its rate comes from. */
+export type PendingPreviewSaleLabel = {
+  lotNumber: number | null;
+  lotTitle: string | null;
+  agreement: {
+    reference: string;
+    submissionId: string;
+    signedAt: Date | null;
+    source: "online" | "recorded";
+  } | null;
+};
+
+/** One waiting sale on the settlement preview, every figure from its snapshot, in pence. */
+export type PendingPreviewSale = PendingPreviewSaleLabel &
+  (
+    | {
+        kind: "ready";
+        paymentId: string;
+        lotId: string;
+        hammerPence: number;
+        commissionBps: number;
+        commissionPence: number;
+        commissionVatTreatment: "standard" | "not_registered";
+        commissionVatBps: number;
+        commissionVatPence: number;
+        refundChargePence: number;
+        netPence: number;
+      }
+    | {
+        kind: "held";
+        paymentId: string;
+        lotId: string | null;
+        reason: import("@auction/domain").SellerTermsHeldReason;
+        hammerPence: number | null;
+      }
+  );
+
+/** A released private-sale deal the run would pay, in pence. */
+export type PendingPreviewDeal = {
+  dealId: string;
+  reference: string;
+  pricePence: number;
+  commissionPence: number;
+  costsPence: number;
+  netPence: number;
+};
+
+/** The preview a person confirmed: the run refuses to pay anything else. */
+export type ConfirmedSettlement = {
+  netPence: number;
+  paymentIds: readonly string[];
+  dealIds: readonly string[];
+};
+
+/** The preview's totals: the ready lines and the deals added up, nothing else. */
+export type PendingPreviewTotals = {
+  hammerPence: number;
+  commissionPence: number;
+  commissionVatPence: number;
+  refundChargePence: number;
+  /** The deals' prices, less their commission and costs, are in `dealsNetPence`. */
+  dealsNetPence: number;
+  /** What the seller receives: the ready sales and the deals. */
+  netPence: number;
+};
+
 export type PendingPayoutPreview = {
+  /** Every waiting sale, ready or held, in capture order. */
+  sales?: PendingPreviewSale[];
+  /** Every released private-sale deal the run would pay. */
+  deals?: PendingPreviewDeal[];
+  totals?: PendingPreviewTotals;
   /** Sum of payments captured but not yet allocated to a payout. */
   pendingGross: string;
   pendingPlatformFee: string;
@@ -46,13 +117,15 @@ export type CreateSettlementInput = {
   periodEnd: Date;
   /** Why staff ran it, kept in the audit event. */
   reason?: string;
+  /** What the person confirmed from the preview; the run pays exactly this or refuses. */
+  confirmed?: ConfirmedSettlement;
 };
 
 export type CreateSettlementResult =
   | { ok: true; payout: PayoutWithLines; heldSales?: HeldSettlementSale[] }
   | {
       ok: false;
-      reason: "no_pending_payments" | SettlementPeriodRefusal;
+      reason: "no_pending_payments" | "figures_changed" | SettlementPeriodRefusal;
       heldSales?: HeldSettlementSale[];
     };
 

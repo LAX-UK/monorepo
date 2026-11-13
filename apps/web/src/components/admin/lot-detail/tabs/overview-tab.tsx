@@ -5,12 +5,14 @@ import { useLotDetailReadiness } from "@/components/admin/lot-detail/lot-detail-
 import { lotDetailTabHref } from "@/components/admin/lot-detail/lot-detail-types";
 import { BuyerDefaultCard } from "@/components/admin/reoffer/buyer-default-card";
 import { ReofferCardSection } from "@/components/admin/reoffer/reoffer-card-section";
+import { LotSellerProceedsSection } from "@/components/admin/seller-proceeds/lot-seller-proceeds-section";
 import type { AdminKpiPeriodDays } from "@/lib/admin/admin-kpi-period";
 import { toIssueItems } from "@/lib/admin/detail-board/to-issue-items";
 import type { DetailStatRow } from "@/lib/admin/detail-board/types";
 import type { LotDetailContext } from "@/lib/admin/lot-detail-context";
 import type { LotReofferBundle } from "@/lib/admin/reoffer/reoffer-bundle";
 import { offerPriceTile, openOffer, showsReofferCard } from "@/lib/admin/reoffer/reoffer-lot-state";
+import type { LotSellerProceedsPage } from "@/lib/admin/seller-proceeds/load-lot-seller-proceeds";
 import type { AdminLotAttention } from "@/lib/data/http/admin-lot-attention.server";
 import type { AdminLotDetailMetrics } from "@/lib/data/http/admin-lot-detail-metrics.server";
 import type { AdminLotOverviewKpiTrends } from "@/lib/data/http/admin-lot-overview-kpi-trends.server";
@@ -55,6 +57,8 @@ type Props = {
   /** The lot's re-offer story; left out for a lot that cannot have one. */
   reoffers?: LotReofferBundle | null;
   reofferAccess?: { canAct: boolean; canRecordAnswer: boolean };
+  /** The seller's side of a sold lot; left out before it sells. */
+  sellerProceeds?: LotSellerProceedsPage | null;
 };
 
 /** Facts the page header already shows (type, sale, artist) or the numbers above repeat. */
@@ -77,6 +81,7 @@ export function LotOverviewTab({
   kpiPeriodDays = 30,
   reoffers = null,
   reofferAccess = { canAct: false, canRecordAnswer: false },
+  sellerProceeds = null,
 }: Props) {
   const readinessContext = useLotDetailReadiness();
   const readiness = readinessContext?.publishReadiness ?? null;
@@ -203,6 +208,16 @@ export function LotOverviewTab({
           }}
           canAct={reofferAccess.canAct}
           canRecordAnswer={reofferAccess.canRecordAnswer}
+        />
+      ) : null}
+      {sellerProceeds ? (
+        <LotSellerProceedsSection
+          lotId={lotId}
+          state={sellerProceeds.state}
+          record={sellerProceeds.record}
+          canSettleOutside={sellerProceeds.canSettleOutside}
+          replace={sellerProceeds.replace}
+          agreementDocumentHref={sellerProceeds.agreementDocumentHref}
         />
       ) : null}
       <Section title="Pricing and timing">

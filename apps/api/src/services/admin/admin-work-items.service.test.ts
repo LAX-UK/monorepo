@@ -228,7 +228,7 @@ describe("AdminWorkItemsService", () => {
         sourceId: "terms-1",
         kind: "seller_payout_held",
         domain: "saleroom",
-        title: "Seller payout held — Lot 4: Field",
+        title: "Payout held: no signed agreement — Lot 4 · Field",
         subtitle: "No signed agreement on record. Record the signed agreement to release it",
         href: "/admin/lots/lot-4",
         sourceUpdatedAt: new Date(),

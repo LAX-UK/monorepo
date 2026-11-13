@@ -70,6 +70,7 @@ export class PayoutService implements IPayoutService {
     problemNotifier?: IPayoutProblemNotifier,
     dealPayouts?: IPrivateSaleDealPayoutStore,
     sellerTermsForTx: (tx: Database) => ISettlementSellerTerms = settlementSellerTermsForTx,
+    saleLabels?: import("@auction/persistence/interfaces").IStaffSaleLabelsReader,
   ) {
     this.deps = {
       repo,
@@ -83,6 +84,7 @@ export class PayoutService implements IPayoutService {
       dealPayouts,
       dealPayoutsForTx: dealPayouts && transactionRunner ? dealPayoutsForTx : undefined,
       sellerTermsForTx,
+      saleLabels,
     };
   }
 

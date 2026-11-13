@@ -7,6 +7,7 @@ import {
   type SettlementSale,
   dealPayoutAmounts,
   minorUnitsToMoneyString,
+  parseMoneyToMinorUnits,
   payoutTotals,
   resolveSettlementPeriod,
   sellerRefundChargeAtPayout,
@@ -27,6 +28,7 @@ import {
 import type { ISettlementSellerTerms } from "./settlement-seller-terms.js";
 import type {
   BulkPayoutSettlementResult,
+  ConfirmedSettlement,
   CreateSettlementInput,
   CreateSettlementResult,
   ResolvedSettlementInput,
@@ -50,7 +52,7 @@ export type CreatedSettlementResult = CreateSettlementResult & {
 };
 
 /** A released deal as a payout line: the price, split like a lot's into commission and costs. */
-function dealLine(deal: PrivateSalePayoutDeal) {
+export function dealLine(deal: PrivateSalePayoutDeal) {
   const amounts = dealPayoutAmounts({
     priceMinor: deal.priceMinor,
     sellerCommissionBps: deal.sellerCommissionBps,
@@ -66,7 +68,7 @@ function dealLine(deal: PrivateSalePayoutDeal) {
       platformFee: minorUnitsToMoneyString(BigInt(amounts.deductionsMinor)),
     },
   };
-  return { gross, facts, netMinor: amounts.netMinor };
+  return { gross, facts, amounts, netMinor: amounts.netMinor };
 }
 
 const pounds = (pence: number) => minorUnitsToMoneyString(BigInt(pence));
@@ -86,8 +88,8 @@ export const REFUND_TRUE_UP_NOTE =
  * seller's ledger for them. `null` when there is nothing to record. A charge made in full under the
  * old rule before this release is brought back to the share here, so the line can be a credit.
  */
-async function refundBeforePayout(
-  r: IPayoutRepository,
+export async function refundBeforePayout(
+  r: Pick<IPayoutRepository, "findSellerClawbackFacts">,
   pending: PendingPaymentRow,
   terms: PayableSellerTerms,
 ): Promise<{
@@ -127,6 +129,37 @@ async function pendingPayments(
   return heldPaymentIds ? pending.filter((p) => heldPaymentIds.has(p.id)) : pending;
 }
 
+const sameIds = (a: readonly string[], b: readonly string[]) => {
+  if (a.length !== b.length) return false;
+  const left = [...a].sort();
+  const right = [...b].sort();
+  return left.every((id, i) => id === right[i]);
+};
+
+/** Whether the run would pay exactly what the person confirmed from the preview. */
+export function matchesConfirmed(
+  confirmed: ConfirmedSettlement,
+  actual: { netPence: number; paymentIds: readonly string[]; dealIds: readonly string[] },
+): boolean {
+  return (
+    confirmed.netPence === actual.netPence &&
+    sameIds(confirmed.paymentIds, actual.paymentIds) &&
+    sameIds(confirmed.dealIds, actual.dealIds)
+  );
+}
+
+/**
+ * Thrown inside the run's transaction when a confirmed run would pay anything other than what was
+ * confirmed, so the transaction rolls back (no snapshot, backfill, payout or line is kept) and the
+ * caller answers `figures_changed`.
+ */
+export class SettlementFiguresChangedError extends Error {
+  constructor(readonly heldSales: HeldSettlementSale[] = []) {
+    super("figures_changed");
+    this.name = "SettlementFiguresChangedError";
+  }
+}
+
 const heldOf = (sales: readonly SettlementSale[]): HeldSettlementSale[] =>
   sales.flatMap((sale) =>
     sale.kind === "held"
@@ -155,7 +188,12 @@ export async function createSettlementCore(
   const heldSales = heldOf(sales);
   const ready = sales.flatMap((sale) => (sale.kind === "ready" ? [sale] : []));
   if (ready.length === 0 && pendingDeals.length === 0) {
-    return { ok: false, reason: "no_pending_payments", heldSales };
+    // Something was confirmed and nothing is left to pay it with: it was paid, or it went back.
+    return {
+      ok: false,
+      reason: input.confirmed ? "figures_changed" : "no_pending_payments",
+      heldSales,
+    };
   }
 
   const byPayment = new Map(pending.map((p) => [p.id, p]));
@@ -186,6 +224,16 @@ export async function createSettlementCore(
     ],
     saleLines.map((s) => s.sale.terms),
   );
+  if (
+    input.confirmed &&
+    !matchesConfirmed(input.confirmed, {
+      netPence: Number(parseMoneyToMinorUnits(initial.net)),
+      paymentIds: saleLines.map((s) => s.sale.paymentId),
+      dealIds: dealLines.map((d) => d.deal.dealId),
+    })
+  ) {
+    return { ok: false, reason: "figures_changed", heldSales };
+  }
 
   const created = await r.create({
     legalEntityId: input.legalEntityId,
@@ -255,6 +303,10 @@ export async function createSettlementCore(
 
   const result = { ok: true as const, queuedDeals, heldSales, settledSales };
   const expected = saleLines.reduce((n, s) => n + (s.refund ? 2 : 1), 0) + dealLines.length;
+  // A confirmed run pays exactly what was confirmed or nothing: a skipped line rolls it all back.
+  if (input.confirmed && inserted.length < expected) {
+    throw new SettlementFiguresChangedError(heldSales);
+  }
   if (inserted.length < expected) {
     const adjusted = totalsOf(
       inserted.map((x) => x.facts),
@@ -312,7 +364,27 @@ export async function createSettlement(
   if (!deps.transactionRunner || !publisher) {
     throw new Error("payout_transactions_not_configured");
   }
+  const txDeps = { ...deps, transactionRunner: deps.transactionRunner };
 
+  try {
+    return await runSettlementTransaction(txDeps, publisher, actorUserId, input);
+  } catch (err) {
+    // The transaction rolled back: nothing the refused run read or priced is kept.
+    if (err instanceof SettlementFiguresChangedError) {
+      return { ok: false, reason: "figures_changed", heldSales: err.heldSales };
+    }
+    throw err;
+  }
+}
+
+async function runSettlementTransaction(
+  deps: PayoutSettlementDeps & {
+    transactionRunner: NonNullable<PayoutSettlementDeps["transactionRunner"]>;
+  },
+  publisher: NonNullable<PayoutSettlementDeps["domainEventSink"]>,
+  actorUserId: string | null,
+  input: CreateSettlementInput,
+): Promise<CreateSettlementResult> {
   return await deps.transactionRunner.runInTransaction(async (tx) => {
     const r = deps.payoutRepoForTx(tx);
     // One settlement per legal entity at a time: a concurrent run waits here, then sees the
@@ -345,6 +417,7 @@ export async function createSettlement(
       periodEnd: period.periodEnd,
       ...(input.reason !== undefined ? { reason: input.reason } : {}),
       heldPaymentIds,
+      ...(input.confirmed ? { confirmed: input.confirmed } : {}),
     };
     const result = await createSettlementCore(
       r,
@@ -353,6 +426,11 @@ export async function createSettlement(
       deps.sellerTermsForTx(tx),
     );
     if (!result.ok) {
+      // Throw rather than return, so the seller-terms snapshots and refund backfill this run
+      // wrote before the check are rolled back with it.
+      if (result.reason === "figures_changed") {
+        throw new SettlementFiguresChangedError(result.heldSales ?? []);
+      }
       return result;
     }
     const source = actorUserId ? "admin" : "bulk_cron";

@@ -151,6 +151,7 @@ export {
 export {
   createSettlement,
   createSettlementCore,
+  SettlementFiguresChangedError,
   REFUND_TRUE_UP_NOTE,
   runBulkSettlement,
 } from "./payout/payout-settlement.js";
@@ -168,6 +169,7 @@ export type {
   BulkSettlementEntityOutcomeLog,
   BulkSettlementTransferPort,
   BulkSettlementWithTransfersResult,
+  ConfirmedSettlement,
   IConnectAccountReadinessSync,
   InitiateTransferOptions,
   InitiateTransferResult,
@@ -198,7 +200,14 @@ export {
   SettlementSellerTerms,
   type ISettlementSellerTerms,
 } from "./payout/settlement-seller-terms.js";
-export { previewSettlement, type SettlementPreview } from "./payout/settlement-preview.js";
+export {
+  previewSettlement,
+  type SettlementPreview,
+  type SettlementPreviewDeal,
+  type SettlementPreviewHeldSale,
+  type SettlementPreviewReadySale,
+  type SettlementPreviewSale,
+} from "./payout/settlement-preview.js";
 export {
   NO_UNAPPLIED_MONEY_RECORDER,
   UnappliedMoneyRecorder,

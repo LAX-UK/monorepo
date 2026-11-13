@@ -16,6 +16,7 @@ import {
   payoutsViews,
 } from "@/lib/admin/finance/payouts-staff-list.vm";
 import type { AdminPayoutListSummary } from "@/lib/data/http/admin-payouts.shared";
+import type { PayoutSalesDto } from "@/lib/data/http/admin-seller-proceeds.shared";
 import {
   CellLink,
   type DataColumn,
@@ -44,6 +45,10 @@ export type PayoutsStaffListProps = {
   pageSize: number;
   pagination: { summary: string; prevHref: string | null; nextHref: string | null } | null;
   loadError: string | null;
+  /** Reads a payout's sale lines for its panel. */
+  loadSales?: (payoutId: string) => Promise<PayoutSalesDto | null>;
+  /** For the review route: open with this payout's sale lines. */
+  initialSales?: PayoutSalesDto;
 };
 
 /**
@@ -145,13 +150,14 @@ export function PayoutsStaffList(props: PayoutsStaffListProps) {
         ),
       },
       {
-        id: "gross",
-        header: "Gross",
+        id: "hammer",
+        header: "Hammer",
         width: "128px",
         numeric: true,
         hideBelow: "lg",
         mobile: "hidden",
-        cell: (row) => row.gross,
+        cell: (row) =>
+          row.oldRule ? <span className="text-staff-muted">Old rule</span> : row.hammer,
       },
       {
         id: "net",
@@ -291,6 +297,8 @@ export function PayoutsStaffList(props: PayoutsStaffListProps) {
         onReleaseBlocked={money.releaseBlocked}
         onReverse={money.reverse}
         moneyActions={openRow ? money.actionsFor(openRow) : []}
+        {...(props.loadSales ? { loadSales: props.loadSales } : {})}
+        {...(props.initialSales ? { initialSales: props.initialSales } : {})}
       />
       {money.dialogs}
     </>

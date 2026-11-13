@@ -5,6 +5,10 @@ import { type AdminLotDetailBundle, loadAdminLotDetail } from "@/lib/admin/load-
 import type { LotDetailContext } from "@/lib/admin/lot-detail-context";
 import type { LotReofferBundle } from "@/lib/admin/reoffer/reoffer-bundle";
 import {
+  type LotSellerProceedsPage,
+  loadLotSellerProceeds,
+} from "@/lib/admin/seller-proceeds/load-lot-seller-proceeds";
+import {
   type AdminLotAttention,
   getAdminLotAttention,
 } from "@/lib/data/http/admin-lot-attention.server";
@@ -43,6 +47,8 @@ export type LotOverviewPageModel = {
   reoffers: LotReofferBundle;
   /** What this person may do with the Re-offer card. */
   reofferAccess: { canAct: boolean; canRecordAnswer: boolean };
+  /** The seller's side of a sold lot: every role that can open the lot sees it. */
+  sellerProceeds: LotSellerProceedsPage;
 };
 
 /** Data/composition boundary for `/admin/lots/[id]` overview tab. */
@@ -68,7 +74,10 @@ export async function loadAdminLotOverviewPage(
   ]);
   const canSeeAtg =
     user != null && userHasAccessTo(user.role as UserRole, user.staffRoles, SALES_ACCESS);
-  const atgLot = canSeeAtg ? await getAtgLotSyncView(bundle.auction.saleId, lotId) : null;
+  const [atgLot, sellerProceeds] = await Promise.all([
+    canSeeAtg ? getAtgLotSyncView(bundle.auction.saleId, lotId) : Promise.resolve(null),
+    loadLotSellerProceeds(lotId, user),
+  ]);
 
   return {
     lotId,
@@ -88,5 +97,6 @@ export async function loadAdminLotOverviewPage(
         userHasAccessTo(user.role as UserRole, user.staffRoles, BUYER_DEFAULT_ACCESS),
       canRecordAnswer: canSeeAtg,
     },
+    sellerProceeds,
   };
 }

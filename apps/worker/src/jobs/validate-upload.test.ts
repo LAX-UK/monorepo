@@ -193,6 +193,39 @@ describe("validateUploadJob for enquiry files", () => {
   });
 });
 
+describe("validateUploadJob for a signed consignment agreement", () => {
+  it("scans the seller's signed PDF before staff can open it", async () => {
+    const rejectUpload = vi.fn().mockResolvedValue(undefined);
+    const activateUpload = vi.fn();
+    const scanner = { scan: vi.fn().mockResolvedValue({ clean: false, reason: "malware" }) };
+    const result = await validateUploadJob({
+      uploadValidationRepo: {
+        findUploadedById: vi.fn().mockResolvedValue({
+          id: "u-agr",
+          key: "uploads/pending/consignment-agreements/x",
+          status: "uploaded",
+          kind: "signed_consignment_agreement",
+          declaredContentType: "application/pdf",
+          declaredByteSize: 100,
+        }),
+        rejectUpload,
+        activateUpload,
+      } as never,
+      storage: {
+        headObject: vi.fn().mockResolvedValue({ byteSize: 100, contentType: "application/pdf" }),
+        getObjectBytes: vi.fn().mockResolvedValue(Buffer.from("%PDF-1.4\n")),
+      } as never,
+      uploadId: "u-agr",
+      log: { info: vi.fn(), warn: vi.fn() } as never,
+      malwareScanner: scanner,
+    });
+    expect(result.validated).toBe(false);
+    expect(scanner.scan).toHaveBeenCalled();
+    expect(rejectUpload).toHaveBeenCalledWith("u-agr", "malware", expect.anything());
+    expect(activateUpload).not.toHaveBeenCalled();
+  });
+});
+
 describe("gcUnsentEnquiryUploads", () => {
   const NOW = new Date("2026-11-03T12:00:00Z");
 

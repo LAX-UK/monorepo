@@ -171,6 +171,50 @@ export const lotSoftDeletedPayloadSchema = z.object({
   deleted_at: z.string().datetime(),
 });
 
+/**
+ * Staff recorded a seller's signed paper consignment agreement for a lot whose payout was held.
+ * The audit entry keeps the commission, the signing date, the signed file and why it was recorded
+ * by staff; a correction keeps the figures it replaced.
+ */
+export const lotSellerAgreementRecordedPayloadSchema = z.object({
+  lotId: z.string().uuid(),
+  submissionId: z.string().uuid(),
+  agreementId: z.string().uuid(),
+  sellerLegalEntityId: z.string().uuid(),
+  commissionPercent: z.string(),
+  signedAt: z.string().datetime(),
+  signedDocumentId: z.string().uuid(),
+  reason: z.string().min(1),
+  replace: z.boolean(),
+  previousAgreement: z
+    .object({
+      agreementId: z.string().uuid(),
+      commissionPercent: z.string().nullable(),
+      acceptedAt: z.string().datetime().nullable(),
+      source: z.string(),
+      signedDocumentId: z.string().uuid().nullable(),
+    })
+    .nullable(),
+  /**
+   * What recording did to the sale, decided under the run's locks: released into the next payout,
+   * still held (with the reason), already paid on a payout, already priced, or no sale yet.
+   */
+  saleOutcome: z.enum(["released", "still_held", "already_paid", "already_priced", "no_sale"]),
+  heldReason: z.string().nullable(),
+  /** The held sale the agreement released, and what its seller now receives. */
+  releasedSellerTermsId: z.string().uuid().nullable(),
+  sellerNetPence: z.number().int().nonnegative().nullable(),
+});
+
+/** Staff settled an ATG sale with its seller outside LAX, following the ATG settlement runbook. */
+export const lotSellerSettledOutsideLaxPayloadSchema = z.object({
+  lotId: z.string().uuid(),
+  paymentId: z.string().uuid().nullable(),
+  reason: z.string().min(1),
+  /** What the seller was owed, from the sale's snapshot, when it has one. */
+  sellerNetPence: z.number().int().nonnegative().nullable(),
+});
+
 export const LotEventSchemas = {
   "lot.created": lotCreatedPayloadSchema,
   "lot.activated": lotActivatedPayloadSchema,
@@ -196,6 +240,8 @@ export const LotEventSchemas = {
   "lot.reoffer_withdrawn": lotReofferWithdrawnPayloadSchema,
   "lot.reawarded": lotReawardedPayloadSchema,
   "lot.soft_deleted": lotSoftDeletedPayloadSchema,
+  "lot.seller_agreement_recorded": lotSellerAgreementRecordedPayloadSchema,
+  "lot.seller_settled_outside_lax": lotSellerSettledOutsideLaxPayloadSchema,
 } as const;
 
 export type LotEventType = keyof typeof LotEventSchemas;
