@@ -1,8 +1,8 @@
-import { readFileSync } from "node:fs";
 import { finished } from "node:stream/promises";
 import { legalEntityFor, productCopyrightLine } from "@auction/branding";
 import { LONDON_TIME_ZONE, formatDate, formatWeekday } from "@auction/datetime";
 import PDFDocument from "pdfkit";
+import { documentFonts } from "./fonts.js";
 
 /** One line of an invoice as it was raised, in whole pence. */
 export type BidInvoiceDocumentLine = {
@@ -43,26 +43,6 @@ export class InvoiceTotalMismatchError extends Error {
     super(`Invoice lines add up to ${sumPence} pence, not the invoice total of ${totalPence}`);
     this.name = "InvoiceTotalMismatchError";
   }
-}
-
-/**
- * Noto Sans (SIL Open Font License) is embedded so names print in Latin, Latin Extended, Greek
- * and Cyrillic scripts as well as the standard PDF fonts would; the PDF base fonts cover only
- * Western European text. Scripts outside those (for example Arabic or CJK) are not in the font.
- */
-const FONT_FILES = {
-  regular: "NotoSans_400Regular.ttf",
-  bold: "NotoSans_700Bold.ttf",
-} as const;
-
-let fontBuffers: { regular: Buffer; bold: Buffer } | null = null;
-
-function invoiceFonts(): { regular: Buffer; bold: Buffer } {
-  fontBuffers ??= {
-    regular: readFileSync(new URL(`../../fonts/${FONT_FILES.regular}`, import.meta.url)),
-    bold: readFileSync(new URL(`../../fonts/${FONT_FILES.bold}`, import.meta.url)),
-  };
-  return fontBuffers;
 }
 
 const GBP = new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP" });
@@ -180,7 +160,7 @@ export async function renderBidInvoicePdf(input: BidInvoiceDocument): Promise<Bu
   });
   const chunks: Buffer[] = [];
   doc.on("data", (c: Buffer) => chunks.push(c));
-  const fonts = invoiceFonts();
+  const fonts = documentFonts();
   doc.registerFont("Body", fonts.regular);
   doc.registerFont("Body-Bold", fonts.bold);
 

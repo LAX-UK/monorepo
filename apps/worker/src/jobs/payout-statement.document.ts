@@ -34,8 +34,8 @@ export type StatementDocument = {
   paidOut: string | null;
 };
 
-/** The PDF's standard font has no "−" (U+2212), so deductions use the ASCII minus. */
-const MINUS = "-";
+/** The one minus sign the money formatter uses (U+2212); the statement embeds a font that has it. */
+const MINUS = "\u2212";
 const DASH = "—";
 
 /** Sold after the auction, in the seller's words: the next bidder stays private. */
@@ -49,6 +49,11 @@ function money(pence: number, currency: string): string {
     Math.abs(pence) / 100,
   );
   return pence < 0 ? `${MINUS}${formatted}` : formatted;
+}
+
+/** An amount as the statement prints it, a negative one with the minus sign: "−£50.00". */
+export function statementMoney(amount: string, currency: string): string {
+  return money(Number(parseMoneyToMinorUnits(amount)), currency);
 }
 
 const deduction = (pence: number, currency: string) =>

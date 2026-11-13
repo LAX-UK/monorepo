@@ -2,6 +2,7 @@ import { finished } from "node:stream/promises";
 import { legalEntityFor, productCopyrightLine } from "@auction/branding";
 import { formatDate, runtimeTimeZone } from "@auction/datetime";
 import { formatPayoutReference } from "@auction/domain";
+import { documentFonts } from "@auction/exports/documents";
 import PDFDocument from "pdfkit";
 import type { WorkerEnv } from "../env.js";
 import type {
@@ -9,7 +10,11 @@ import type {
   PayoutStatementLineRow,
   PayoutStatementPayoutRow,
 } from "../interfaces/payout-statement.repository.js";
-import { type StatementRow, payoutStatementDocument } from "./payout-statement.document.js";
+import {
+  type StatementRow,
+  payoutStatementDocument,
+  statementMoney,
+} from "./payout-statement.document.js";
 
 export type PayoutStatementRenderInput = {
   payout: PayoutStatementPayoutRow;
@@ -20,9 +25,8 @@ export type PayoutStatementRenderInput = {
 };
 
 function moneyFmt(amount: string, currency: string): string {
-  const n = Number.parseFloat(amount);
-  if (Number.isNaN(n)) return `${amount} ${currency}`;
-  return new Intl.NumberFormat("en-GB", { style: "currency", currency }).format(n);
+  if (Number.isNaN(Number.parseFloat(amount))) return `${amount} ${currency}`;
+  return statementMoney(amount, currency);
 }
 
 function formatPeriod(start: Date, end: Date): string {
@@ -44,7 +48,7 @@ const LEFT = 50;
 function tableRow(
   doc: PDFKit.PDFDocument,
   cells: Record<keyof StatementRow, string>,
-  font: "Helvetica" | "Helvetica-Bold",
+  font: "Body" | "Body-Bold",
 ): void {
   const y = doc.y;
   let x = LEFT;
@@ -69,6 +73,11 @@ export async function renderPayoutStatementPdf(input: PayoutStatementRenderInput
   const doc = new PDFDocument({ margin: 50, size: "A4" });
   const chunks: Buffer[] = [];
   doc.on("data", (c: Buffer) => chunks.push(c));
+  // Embedded, so names in other scripts print and deductions carry the true minus sign.
+  const fonts = documentFonts();
+  doc.registerFont("Body", fonts.regular);
+  doc.registerFont("Body-Bold", fonts.bold);
+  doc.font("Body");
 
   const entityDisplayName =
     entityRow.legalName?.trim() || entityRow.displayName?.trim() || entityRow.id.slice(0, 8);
@@ -91,24 +100,24 @@ export async function renderPayoutStatementPdf(input: PayoutStatementRenderInput
   const currency = pRow.currency;
   const statement = payoutStatementDocument({ payout: pRow, lines, now: new Date() });
 
-  doc.fontSize(11).font("Helvetica").text("In this payout", { underline: true });
+  doc.fontSize(11).font("Body").text("In this payout", { underline: true });
   doc.moveDown(0.4);
   doc.fontSize(8).fillColor("#555555");
   tableRow(
     doc,
     Object.fromEntries(COLUMNS.map((c) => [c.key, c.label])) as Record<keyof StatementRow, string>,
-    "Helvetica",
+    "Body",
   );
   doc.fillColor("#000000");
-  for (const row of statement.rows) tableRow(doc, row, "Helvetica");
+  for (const row of statement.rows) tableRow(doc, row, "Body");
   doc
     .moveTo(LEFT, doc.y)
     .lineTo(LEFT + 495, doc.y)
     .strokeColor("#cccccc")
     .stroke();
   doc.moveDown(0.3);
-  tableRow(doc, statement.totals, "Helvetica-Bold");
-  doc.font("Helvetica");
+  tableRow(doc, statement.totals, "Body-Bold");
+  doc.font("Body");
 
   doc.moveDown();
   doc.fontSize(9).fillColor("#444444");

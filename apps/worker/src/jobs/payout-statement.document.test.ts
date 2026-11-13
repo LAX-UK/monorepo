@@ -2,7 +2,11 @@ import { sellerProceeds } from "@auction/domain";
 import type { SellerTermsFigures } from "@auction/types";
 import { describe, expect, it } from "vitest";
 import type { PayoutStatementLineRow } from "../interfaces/payout-statement.repository.js";
-import { buyerPhrase, payoutStatementDocument } from "./payout-statement.document.js";
+import {
+  buyerPhrase,
+  payoutStatementDocument,
+  statementMoney,
+} from "./payout-statement.document.js";
 import { renderPayoutStatementPdf } from "./payout-statement.renderer.js";
 
 describe("buyerPhrase", () => {
@@ -100,22 +104,22 @@ describe("payoutStatementDocument", () => {
       work: "Harbour at Dusk (buyer: A. Collector)",
       lot: "Lot 31",
       hammer: "£82,000.00",
-      commission: "-£12,300.00 (15%)",
-      vat: "-£2,460.00 (20%)",
+      commission: "−£12,300.00 (15%)",
+      vat: "−£2,460.00 (20%)",
       receive: "£67,240.00",
     });
     // Half a penny of commission rounds up: 12.5% of £333.00 is £41.625.
     expect(document.rows[1]).toMatchObject({
       work: "Small Study (sold after the auction to the next bidder)",
-      commission: "-£41.63 (12.5%)",
-      vat: "-£8.33 (20%)",
+      commission: "−£41.63 (12.5%)",
+      vat: "−£8.33 (20%)",
       receive: "£283.04",
     });
     // The totals are the rows added up: £67,240.00 + £283.04 − £50.00.
     expect(document.totals).toMatchObject({
       hammer: "£82,333.00",
-      commission: "-£12,341.63",
-      vat: "-£2,468.33",
+      commission: "−£12,341.63",
+      vat: "−£2,468.33",
       receive: "£67,473.04",
     });
     expect(document.paidOut).toBe("Thu 12 Nov, 04:49 GMT");
@@ -147,11 +151,11 @@ describe("payoutStatementDocument", () => {
     });
     expect(document.rows[0]).toMatchObject({
       hammer: "£4,000.00",
-      commission: "-£1,000.00",
+      commission: "−£1,000.00",
       vat: "—",
       receive: "£4,000.00",
     });
-    expect(document.rows[1]).toMatchObject({ work: "Transfer fee", receive: "-£8.80" });
+    expect(document.rows[1]).toMatchObject({ work: "Transfer fee", receive: "−£8.80" });
     expect(document.totals.receive).toBe("£3,991.20");
     expect(document.notes).toEqual([
       "Commission is charged on the hammer price at the rate in your signed agreement, plus VAT. The buyer's premium is paid to LAX and isn't part of your proceeds.",
@@ -180,5 +184,17 @@ describe("payoutStatementDocument", () => {
       env: {} as never,
     });
     expect(pdf.subarray(0, 5).toString()).toBe("%PDF-");
+    // The embedded font, which has the minus sign the deductions use; not a base font without it.
+    const raw = pdf.toString("latin1");
+    expect(raw).toMatch(/\/BaseFont \/[A-Z]{6}\+NotoSans/);
+    expect(raw).not.toMatch(/\/BaseFont \/Helvetica/);
+  });
+});
+
+describe("statementMoney", () => {
+  it("writes a negative amount with the money formatter's minus sign (U+2212)", () => {
+    expect(statementMoney("-50.00", "GBP")).toBe("\u2212£50.00");
+    expect(statementMoney("67240.00", "GBP")).toBe("£67,240.00");
+    expect(statementMoney("0.00", "GBP")).toBe("£0.00");
   });
 });
