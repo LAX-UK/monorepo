@@ -66,12 +66,38 @@ describe("parseAdminSettlementPreviewBody", () => {
           pendingNet: "90.00",
           paymentCount: 3,
           currency: "GBP",
+          totals: {
+            hammerPence: 10_000,
+            commissionPence: 833,
+            commissionVatPence: 167,
+            refundChargePence: 0,
+            netPence: 9_000,
+          },
         },
         openPayout: null,
       },
     });
 
     expect(result.pending.paymentCount).toBe(3);
+    expect(result.pending.sales).toEqual([]);
+    expect(result.pending.totals).toMatchObject({ netPence: 9_000, dealsNetPence: 0 });
     expect(result.openPayout).toBeNull();
+  });
+
+  it("refuses a preview without the API's totals rather than showing figures it would have to add up", () => {
+    expect(() =>
+      parseAdminSettlementPreviewBody({
+        data: {
+          pending: {
+            pendingGross: "100.00",
+            pendingPlatformFee: "10.00",
+            pendingNet: "90.00",
+            paymentCount: 3,
+            currency: "GBP",
+          },
+          openPayout: null,
+        },
+      }),
+    ).toThrow();
   });
 });
