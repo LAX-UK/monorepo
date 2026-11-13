@@ -103,7 +103,7 @@ export function createZohoBooksDryRunAdapter(deps: {
     contacts: { upsertContact: contact("customer") },
     vendors,
     lookup: {
-      findByReference: (): Promise<LookupOutcome> => Promise.resolve({ status: "not_found" }),
+      findDocument: (): Promise<LookupOutcome> => Promise.resolve({ status: "not_found" }),
     },
     // It holds no client: whatever the settings name, it reaches no organisation.
     destination: { destinationFor: () => ({ kind: "none" }) },

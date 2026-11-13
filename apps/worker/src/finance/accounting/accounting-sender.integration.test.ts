@@ -75,11 +75,12 @@ describe.skipIf(!HAS_DB)("accounting sender (integration)", { timeout: 60_000 },
   });
 
   beforeEach(async () => {
-    // Nothing left to claim from an earlier case or suite.
+    // Nothing left to claim, look up or requeue from an earlier case or suite: a failed or unknown
+    // row would otherwise be settled by a later case's tick and interfere with it.
     await owner.execute(sql`
       update accounting_document
          set state = 'cancelled', lease_token = null, lease_expires_at = null, settles_at = null
-       where state in ('pending', 'sending')`);
+       where state in ('pending', 'sending', 'failed', 'unknown')`);
   });
 
   async function aimBooks(mode: "dry_run" | "test_org") {
@@ -148,6 +149,64 @@ describe.skipIf(!HAS_DB)("accounting sender (integration)", { timeout: 60_000 },
     await sender.tick();
     expect(await stored(payment.reference, "dry_run")).toMatchObject(held);
     expect(recordPayment).toHaveBeenCalledTimes(1);
+  });
+
+  /**
+   * Books makes the payment and reads it back different, but the answer does not reach the record
+   * on its lease (`after` decides how). The lookup after the settle time must still leave it with
+   * a person, Books' id kept, and never send it again.
+   */
+  async function differingPaymentWhoseAnswerIsLost(
+    after: (answer: IssueOutcome) => Promise<IssueOutcome>,
+  ) {
+    await aimBooks("dry_run");
+    const documents = bidDocuments();
+    const payment = documents[2] as Payment;
+    const fake = new InMemoryAccounting();
+    const recordPayment = vi.fn(async (p: Payment): Promise<IssueOutcome> => {
+      fake.faults.inject("read_back_differs");
+      return after(await fake.payments.recordPayment(p));
+    });
+    const sender = senderFor({ dry_run: rehearsing(fake, { payments: { recordPayment } }) });
+    // One at a time, so they are claimed in order (rows created at one instant go in id order).
+    for (const document of documents) {
+      await queue([document]);
+      nowMs += 1;
+    }
+    await sender.tick();
+    expect((await stored(payment.reference, "dry_run"))?.status).toBe("unknown");
+
+    nowMs += SENDER_LEASE_MS + SETTLE_GRACE_MS + 60 * 60_000;
+    await sender.tick();
+    const held = {
+      status: "needs_review",
+      lookup: "clear",
+      issued: { providerId: expect.any(String) },
+      reason: "provider document differs from ours: zoho_books_payment_mismatch",
+    };
+    expect(await stored(payment.reference, "dry_run")).toMatchObject(held);
+    nowMs += 24 * 60 * 60_000;
+    await sender.tick();
+    expect(await stored(payment.reference, "dry_run")).toMatchObject(held);
+    expect(recordPayment).toHaveBeenCalledTimes(1);
+  }
+
+  it("a differing payment whose lease was swept mid-send ends with a person, never issued", async () => {
+    await differingPaymentWhoseAnswerIsLost(async (answer) => {
+      nowMs += SENDER_LEASE_MS + 1;
+      // Another worker's claim sweeps the lapsed lease: the record becomes unknown.
+      await repos.workQueue.claimNext({
+        provider: "books",
+        leaseToken: `other-${crypto.randomUUID()}`,
+        leaseMs: SENDER_LEASE_MS,
+        targetModes: ["test_org"],
+      });
+      return answer;
+    });
+  });
+
+  it("a differing payment whose answer was lost ends with a person, never issued", async () => {
+    await differingPaymentWhoseAnswerIsLost(async () => ({ status: "unknown", detail: "timeout" }));
   });
 
   it("never sends a dry run document through an adapter that names a Books organisation", async () => {

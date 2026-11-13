@@ -1,4 +1,5 @@
 import {
+  type AccountingDocument,
   type Invoice,
   type IssueOutcome,
   type LineInput,
@@ -11,6 +12,7 @@ import {
   buildPayment,
   compareWithProviderTotals,
   expectedTotals,
+  legalEntityFor,
 } from "@auction/accounting-domain";
 import type { AccountingPorts } from "../adapter/index.js";
 import { ZOHO_BOOKS_REJECTIONS as R } from "../adapter/rejections.js";
@@ -143,13 +145,10 @@ export function runAccountingContract(
     return s;
   }
 
-  async function notIssued(
-    s: AccountingSubject,
-    product: Product,
-    kind: "invoice" | "bill" | "credit_note" | "payment",
-    reference: string,
-  ) {
-    const found = await s.settle(s.ports.lookup.findByReference(product, kind, reference));
+  /** Nothing is held for the document (looked for as its own product's entity would hold it). */
+  async function notIssued(s: AccountingSubject, document: AccountingDocument) {
+    const asFiled = { ...document, entity: legalEntityFor(document.product) } as AccountingDocument;
+    const found = await s.settle(s.ports.lookup.findDocument(asFiled));
     expect(found.status).toBe("not_found");
   }
 
@@ -230,16 +229,14 @@ export function runAccountingContract(
         const doc = invoice(SHOP, "inv-vendor", [NO_VAT_GOODS]);
         const out = await s.settle(s.ports.invoices.issueInvoice(doc));
         expect(out).toEqual({ status: "rejected", reason: "zoho_books_contact_missing" });
-        await notIssued(s, SHOP, "invoice", doc.reference);
+        await notIssued(s, doc);
       });
 
       it("finds an issued invoice by reference with the same identity and totals", async () => {
         const s = await withContact();
         const doc = invoice(SHOP, "inv-find", [NO_VAT_GOODS]);
         const out = issuedOf(await s.settle(s.ports.invoices.issueInvoice(doc)));
-        const found = await s.settle(
-          s.ports.lookup.findByReference(SHOP, "invoice", doc.reference),
-        );
+        const found = await s.settle(s.ports.lookup.findDocument(doc));
         expect(found.status).toBe("found");
         if (found.status !== "found") return;
         expect(found.providerId).toBe(out.providerId);
@@ -249,7 +246,7 @@ export function runAccountingContract(
 
       it("reports not_found for a reference nothing was issued for", async () => {
         const s = await withContact();
-        await notIssued(s, SHOP, "invoice", invoice(SHOP, "inv-never", [NO_VAT_GOODS]).reference);
+        await notIssued(s, invoice(SHOP, "inv-never", [NO_VAT_GOODS]));
       });
 
       it("is unavailable for a reference of another kind or product", async () => {
@@ -257,11 +254,17 @@ export function runAccountingContract(
         const doc = invoice(SHOP, "inv-kind", [NO_VAT_GOODS]);
         issuedOf(await s.settle(s.ports.invoices.issueInvoice(doc)));
         const wrongKind = await s.settle(
-          s.ports.lookup.findByReference(SHOP, "bill", doc.reference),
+          s.ports.lookup.findDocument({
+            ...doc,
+            reference: doc.reference.replace("-INV-", "-BILL-"),
+          }),
         );
         expect(wrongKind.status).toBe("unavailable");
         const wrongProduct = await s.settle(
-          s.ports.lookup.findByReference("lax_art", "invoice", doc.reference),
+          s.ports.lookup.findDocument({
+            ...doc,
+            reference: doc.reference.replace("-SHOP-", "-ART-"),
+          }),
         );
         expect(wrongProduct.status).toBe("unavailable");
       });
@@ -271,7 +274,7 @@ export function runAccountingContract(
         issuedOf(await s.settle(s.ports.contacts.upsertContact(contact(BID))));
         issuedOf(await s.settle(s.ports.contacts.upsertContact(contact(SHOP))));
         issuedOf(await s.settle(s.ports.invoices.issueInvoice(invoice(BID, "same-id", [GOODS]))));
-        await notIssued(s, SHOP, "invoice", invoice(SHOP, "same-id", [GOODS]).reference);
+        await notIssued(s, invoice(SHOP, "same-id", [GOODS]));
       });
     });
 
@@ -288,7 +291,7 @@ export function runAccountingContract(
           status: "rejected",
           reason: R.entityMismatch,
         });
-        await notIssued(s, BID, "invoice", doc.reference);
+        await notIssued(s, doc);
       });
 
       it("refuses a Shop invoice that claims the Bid entity", async () => {
@@ -303,7 +306,7 @@ export function runAccountingContract(
           status: "rejected",
           reason: R.entityMismatch,
         });
-        await notIssued(s, SHOP, "invoice", doc.reference);
+        await notIssued(s, doc);
       });
 
       it("refuses a Bid invoice whose contact is a Shop contact, even when both exist", async () => {
@@ -318,7 +321,7 @@ export function runAccountingContract(
           status: "rejected",
           reason: R.entityMismatch,
         });
-        await notIssued(s, BID, "invoice", doc.reference);
+        await notIssued(s, doc);
       });
 
       it("refuses a document for the Bid entity while its organisation is not configured", async () => {
@@ -327,9 +330,7 @@ export function runAccountingContract(
           status: "rejected",
           reason: R.organisationNotConfigured,
         });
-        const found = await s.settle(
-          s.ports.lookup.findByReference(BID, "contact", contact(BID).reference),
-        );
+        const found = await s.settle(s.ports.lookup.findDocument(contact(BID)));
         expect(found.status).toBe("unavailable");
         issuedOf(await s.settle(s.ports.contacts.upsertContact(contact(SHOP))));
       });
@@ -370,7 +371,7 @@ export function runAccountingContract(
           status: "rejected",
           reason: R.vatOnUnregisteredEntity,
         });
-        await notIssued(s, SHOP, "invoice", doc.reference);
+        await notIssued(s, doc);
       });
 
       it("refuses a standard-rated line with no VAT in it for that organisation too", async () => {
@@ -391,7 +392,7 @@ export function runAccountingContract(
           status: "rejected",
           reason: R.vatOnUnregisteredEntity,
         });
-        await notIssued(s, SHOP, "bill", doc.reference);
+        await notIssued(s, doc);
       });
     });
 
@@ -460,10 +461,29 @@ export function runAccountingContract(
         // Sent again it is the same payment, held again: never a second one.
         const again = await s.settle(s.ports.payments.recordPayment(payment));
         expect(again).toEqual(made);
-        const found = await s.settle(
-          s.ports.lookup.findByReference(SHOP, "payment", payment.reference),
+        // A lookup reads it back with the same check: differs, with the same identity, never found.
+        expect(await s.settle(s.ports.lookup.findDocument(payment))).toEqual(made);
+      });
+
+      it("a payment held under our reference with other allocations is differs on lookup, not found", async () => {
+        const { s, a, b } = await twoInvoices();
+        const first = issuedOf(await s.settle(s.ports.payments.recordPayment(pay("pay-3", a, b))));
+        const ours = {
+          ...pay("pay-3", a, b),
+          allocations: [{ invoiceReference: a.reference, amountPence: a.totals.grossPence }],
+        };
+        // As after a lost answer: only the lookup can tell, and it must read the payment back.
+        expect(await s.settle(s.ports.lookup.findDocument(ours))).toEqual({
+          status: "differs",
+          reason: R.paymentMismatch,
+          number: first.number,
+          providerId: first.providerId,
+          pdfRef: first.pdfRef,
+          totals: first.totals,
+        });
+        expect((await s.settle(s.ports.lookup.findDocument(pay("pay-3", a, b)))).status).toBe(
+          "found",
         );
-        expect(found.status === "found" ? found.providerId : found.status).toBe(made.providerId);
       });
 
       it("a lost answer on a payment is unknown, it can be found, and a resend is the same payment", async () => {
@@ -471,9 +491,7 @@ export function runAccountingContract(
         const payment = pay("pay-lost", a, b);
         s.faults.inject("timeout_after_commit");
         expect((await s.settle(s.ports.payments.recordPayment(payment))).status).toBe("unknown");
-        const found = await s.settle(
-          s.ports.lookup.findByReference(SHOP, "payment", payment.reference),
-        );
+        const found = await s.settle(s.ports.lookup.findDocument(payment));
         expect(found.status).toBe("found");
         const resent = issuedOf(await s.settle(s.ports.payments.recordPayment(payment)));
         if (found.status === "found") expect(resent.providerId).toBe(found.providerId);
@@ -551,7 +569,7 @@ export function runAccountingContract(
           status: "rejected",
           reason: R.vatDiffersFromBooks,
         });
-        await notIssued(s, BID, "credit_note", note.reference);
+        await notIssued(s, note);
       });
 
       it("a credit note a penny off on read-back is reported as it is, never adjusted", async () => {
@@ -571,9 +589,7 @@ export function runAccountingContract(
         const note = credited(inv, "cn-lost");
         s.faults.inject("timeout_after_commit");
         expect((await s.settle(s.ports.creditNotes.issueCreditNote(note))).status).toBe("unknown");
-        const found = await s.settle(
-          s.ports.lookup.findByReference(BID, "credit_note", note.reference),
-        );
+        const found = await s.settle(s.ports.lookup.findDocument(note));
         expect(found.status).toBe("found");
         const resent = issuedOf(await s.settle(s.ports.creditNotes.issueCreditNote(note)));
         if (found.status === "found") expect(resent.providerId).toBe(found.providerId);
@@ -614,7 +630,7 @@ export function runAccountingContract(
           status: "rejected",
           reason: "zoho_books_contact_missing",
         });
-        await notIssued(s, SHOP, "bill", doc.reference);
+        await notIssued(s, doc);
       });
     });
 
@@ -622,19 +638,15 @@ export function runAccountingContract(
       it("an unreadable search is unavailable, never not_found", async () => {
         const s = await withContact();
         s.faults.inject("lookup_unavailable");
-        const ref = invoice(SHOP, "inv-unread", [NO_VAT_GOODS]).reference;
-        expect((await s.settle(s.ports.lookup.findByReference(SHOP, "invoice", ref))).status).toBe(
-          "unavailable",
-        );
+        const ref = invoice(SHOP, "inv-unread", [NO_VAT_GOODS]);
+        expect((await s.settle(s.ports.lookup.findDocument(ref))).status).toBe("unavailable");
       });
 
       it("two documents for one reference are ambiguous", async () => {
         const s = await withContact();
         s.faults.inject("lookup_ambiguous");
-        const ref = invoice(SHOP, "inv-amb", [NO_VAT_GOODS]).reference;
-        expect((await s.settle(s.ports.lookup.findByReference(SHOP, "invoice", ref))).status).toBe(
-          "ambiguous",
-        );
+        const ref = invoice(SHOP, "inv-amb", [NO_VAT_GOODS]);
+        expect((await s.settle(s.ports.lookup.findDocument(ref))).status).toBe("ambiguous");
       });
 
       it("a dependency that cannot be confirmed is unknown and nothing is created", async () => {
@@ -642,7 +654,7 @@ export function runAccountingContract(
         const doc = invoice(SHOP, "inv-dep-unread", [NO_VAT_GOODS]);
         s.faults.inject("lookup_unavailable");
         expect((await s.settle(s.ports.invoices.issueInvoice(doc))).status).toBe("unknown");
-        await notIssued(s, SHOP, "invoice", doc.reference);
+        await notIssued(s, doc);
       });
 
       it("an ambiguous dependency is a rejection and nothing is created", async () => {
@@ -653,7 +665,7 @@ export function runAccountingContract(
           status: "rejected",
           reason: "zoho_books_contact_ambiguous",
         });
-        await notIssued(s, SHOP, "invoice", doc.reference);
+        await notIssued(s, doc);
       });
     });
 
@@ -664,9 +676,7 @@ export function runAccountingContract(
         s.faults.inject("timeout_after_commit");
         const lost = await s.settle(s.ports.invoices.issueInvoice(doc));
         expect(lost.status).toBe("unknown");
-        const found = await s.settle(
-          s.ports.lookup.findByReference(SHOP, "invoice", doc.reference),
-        );
+        const found = await s.settle(s.ports.lookup.findDocument(doc));
         expect(found.status).toBe("found");
         const resent = issuedOf(await s.settle(s.ports.invoices.issueInvoice(doc)));
         if (found.status === "found") expect(resent.providerId).toBe(found.providerId);
@@ -678,7 +688,7 @@ export function runAccountingContract(
         s.faults.inject("rate_limited");
         expect((await s.settle(s.ports.invoices.issueInvoice(doc))).status).toBe("rejected");
         s.faults.clear();
-        await notIssued(s, SHOP, "invoice", doc.reference);
+        await notIssued(s, doc);
       });
 
       it("a locked period is a clean rejection and nothing is created", async () => {
@@ -686,7 +696,7 @@ export function runAccountingContract(
         const doc = invoice(SHOP, "inv-locked", [NO_VAT_GOODS]);
         s.faults.inject("locked_period");
         expect((await s.settle(s.ports.invoices.issueInvoice(doc))).status).toBe("rejected");
-        await notIssued(s, SHOP, "invoice", doc.reference);
+        await notIssued(s, doc);
       });
 
       it("a total that is a penny off is reported as it is, never adjusted away", async () => {

@@ -1,6 +1,6 @@
 import { type DocumentKind, parseLaxReference } from "./document.js";
 import { type Totals, compareWithProviderTotals, isTotals } from "./money.js";
-import type { IssueOutcome, IssuedDocument, LookupOutcome } from "./ports.js";
+import type { IssueOutcome, IssuedDocument, LookupOutcome, ProviderDocument } from "./ports.js";
 import { type Result, ok, refuse } from "./result.js";
 
 export const STATUSES = [
@@ -215,10 +215,12 @@ function acceptProviderDocument(
  * unknown and lookup decides. An issued answer whose totals differ from ours goes to needs_review
  * with the provider's identity kept (the document exists and must not be sent again).
  *
- * A `differs` answer is the exception to the expired lease: the provider has told us it holds a
- * document under our reference that is not the one we sent. A lookup by reference cannot see that
- * difference (it compares totals only) and would record the document as issued, so it goes to a
- * person with the provider's identity, lease or no lease. The token still has to match.
+ * A `differs` answer that arrives while the record is still this lease's (even after the lease
+ * expired, as long as nobody has swept it) goes straight to a person with the provider's identity:
+ * the provider has told us it holds a document under our reference that is not the one we sent.
+ * An answer that no longer reaches the record (swept, or lost on the way) is refused here; the
+ * lookup that follows reads the document back with the same check and reaches the same end
+ * (`applyLookup`, `differs`).
  */
 export function completeSending(
   record: DocumentRecord,
@@ -248,7 +250,7 @@ export function completeSending(
  */
 function holdDifferingDocument(
   record: DocumentRecord,
-  outcome: Extract<IssueOutcome, { status: "differs" }>,
+  outcome: ProviderDocument & { readonly reason: string },
   expected: Totals,
 ): Result<DocumentRecord, LifecycleCode> {
   if (!isTotals(outcome.totals) || !isTotals(expected)) {
@@ -270,7 +272,8 @@ function holdDifferingDocument(
 
 /**
  * Record a lookup by LAX reference (allowed from unknown, or needs_review while a lookup is owed).
- * found -> issued, or needs_review if its totals differ from ours. not_found is accepted only once
+ * found -> issued, or needs_review if its totals differ from ours. differs (it exists but reads
+ * back as not the one we sent) -> needs_review with the provider's identity, never requeued. not_found is accepted only once
  * the first request has settled (`nowMs >= settlesAtMs`); earlier it is refused with
  * `lookup_too_early`, because the request may still land. After that it makes the record pending
  * again (from unknown) or clears the duty (from needs_review). ambiguous -> needs_review with the
@@ -289,6 +292,8 @@ export function applyLookup(
   switch (outcome.status) {
     case "found":
       return acceptProviderDocument(record, outcome, expected);
+    case "differs":
+      return holdDifferingDocument(record, outcome, expected);
     case "not_found":
       if (nowMs < record.settlesAtMs) {
         return refuse(

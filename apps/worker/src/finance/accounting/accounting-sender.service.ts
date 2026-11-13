@@ -259,11 +259,9 @@ export class AccountingSender {
     }
     let outcome: LookupOutcome;
     try {
-      outcome = await ports.lookup.findByReference(
-        document.product,
-        document.kind,
-        document.reference,
-      );
+      // Read back against the document, so a differing one goes to a person even when the
+      // answer to its send never reached the record (a swept lease, a lost reply).
+      outcome = await ports.lookup.findDocument(document.document);
     } catch (error) {
       // A lookup that could not be made settles nothing; the document stays unknown.
       outcome = { status: "unavailable", reason: errorName(error) };

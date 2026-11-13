@@ -347,6 +347,37 @@ describe("applyLookup", () => {
       value: r,
     });
   });
+  it("differs -> needs_review with the provider's identity, from unknown or an owed review, at any time", () => {
+    // The answer to the send never reached the record (a swept lease, a lost reply): the lookup
+    // reads the document back and finds it is not the one we sent. It must not end issued.
+    const differs: LookupOutcome = { ...found, status: "differs", reason: "payment_mismatch" };
+    for (const from of [rec("unknown"), owedReview()]) {
+      const held = must(applyLookup(from, differs, 0, totals));
+      expect(held).toEqual({
+        ...base,
+        status: "needs_review",
+        lookup: "clear",
+        issued: { number: "INV-1", providerId: "p1", pdfRef: "pdf" },
+        mismatch: null,
+        reason: "provider document differs from ours: payment_mismatch",
+      });
+      // It exists in the provider: never sent again, never cancelled.
+      expect(statusAfter(requeue(held))).toBe("refused");
+      expect(statusAfter(cancel(held))).toBe("refused");
+    }
+    const drifted = must(
+      applyLookup(
+        rec("unknown"),
+        { ...differs, totals: { ...totals, grossPence: 1 } },
+        NOW,
+        totals,
+      ),
+    );
+    expect(drifted).toMatchObject({ mismatch: { field: "grossPence" } });
+    expect(applyLookup(rec("unknown"), { ...differs, reason: "" }, NOW, totals)).toMatchObject({
+      refusal: { code: "bad_outcome" },
+    });
+  });
   it("a review that still owes a lookup can be resolved by one", () => {
     expect(statusAfter(applyLookup(owedReview(), found, NOW, totals))).toBe("issued");
   });

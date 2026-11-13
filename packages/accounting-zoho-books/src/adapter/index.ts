@@ -10,6 +10,7 @@ import {
 } from "./gateways.js";
 import { ZohoDocumentLookup } from "./lookup.js";
 import type { ZohoOrgConfigs } from "./org-config.js";
+import { ZohoReadBackLookup } from "./read-back.js";
 import { DRY_RUN, WriteGate, type ZohoWriteMode } from "./write-gate.js";
 import { DocumentWriter } from "./writer.js";
 
@@ -51,7 +52,7 @@ export function createZohoBooksAdapter(deps: {
     bills: new ZohoBillGateway(gateway),
     contacts: new ZohoContactGateway(gateway, api),
     vendors: new ZohoVendorGateway(gateway, api),
-    lookup,
+    lookup: new ZohoReadBackLookup(lookup, deps.orgs),
     destination: booksDestination(deps.orgs),
   };
 }

@@ -52,6 +52,7 @@ function mapped<T>(result: Result<T, string>): { body: T } | { stop: Stop } {
 }
 
 type Prepared = { readonly org: ZohoOrgConfig; readonly ids: readonly string[] } | { stop: Stop };
+type Resolved = { readonly ids: readonly string[] } | { stop: Stop };
 
 /**
  * Everything every document does before it is built, in one order: choose the organisation from
@@ -70,16 +71,37 @@ async function prepare(
   if (!deps.gate.permits(org.organizationId)) {
     return { stop: { status: "rejected", reason: ZOHO_BOOKS_REJECTIONS.writesDisabled } };
   }
-  const foreign = sameProduct(doc.product, dependencies);
+  const resolved = await resolveAll(deps.lookup, org, doc.product, dependencies);
+  return "stop" in resolved ? resolved : { org, ids: resolved.ids };
+}
+
+/** Refuse dependencies of another product, then find each one's Books id in `org`, in order. */
+async function resolveAll(
+  lookup: ZohoDocumentLookup,
+  org: ZohoOrgConfig,
+  product: Product,
+  dependencies: readonly Dependency[],
+): Promise<Resolved> {
+  const foreign = sameProduct(product, dependencies);
   if (foreign) return { stop: foreign };
   const ids: string[] = [];
   for (const dependency of dependencies) {
-    const resolved = await resolveProviderId(deps.lookup, org, doc.product, dependency);
+    const resolved = await resolveProviderId(lookup, org, product, dependency);
     if (resolved.status === "stop") return { stop: resolved.outcome };
     ids.push(resolved.id);
   }
-  return { org, ids };
+  return { ids };
 }
+
+/** Says why the document Books holds is not the one we sent, or null when it is. */
+export type ReadBackCheck = (item: BooksRecord) => string | null;
+
+/**
+ * How to check, for one document, that what Books holds under its reference is the one we would
+ * send: a check (null when its totals are all there is to compare), or why it cannot be worked out.
+ * Built with lookups only, so a lookup can run it in any write mode.
+ */
+export type ReadBack = { readonly check: ReadBackCheck | null } | { readonly stop: Stop };
 
 export class ZohoInvoiceGateway implements InvoicePort {
   constructor(private readonly deps: GatewayDeps) {}
@@ -153,33 +175,61 @@ export function paymentMatches(sent: PaymentBody, item: BooksRecord): boolean {
   return true;
 }
 
+function paymentDependencies(payment: Payment): readonly Dependency[] {
+  return [
+    { kind: "contact", reference: payment.contactReference, contactType: "customer" },
+    ...payment.allocations.map(
+      (a): Dependency => ({ kind: "invoice", reference: a.invoiceReference }),
+    ),
+  ];
+}
+
+/** The payment body for Books, from the customer and invoice ids resolved in its organisation. */
+function buildPaymentBody(
+  payment: Payment,
+  ids: readonly string[],
+  org: ZohoOrgConfig,
+): { body: PaymentBody } | { stop: Stop } {
+  const [customerId, ...invoiceIds] = ids as [string, ...string[]];
+  const byReference = new Map<string, string>();
+  payment.allocations.forEach((a, i) => {
+    const id = invoiceIds[i];
+    if (id !== undefined) byReference.set(a.invoiceReference, id);
+  });
+  return mapped(paymentBody(payment, customerId, byReference, org));
+}
+
+function paymentCheck(sent: PaymentBody): ReadBackCheck {
+  return (item) => (paymentMatches(sent, item) ? null : ZOHO_BOOKS_REJECTIONS.paymentMismatch);
+}
+
+/** A payment is read back field by field against the body we would send to `org`. */
+export async function paymentReadBack(
+  lookup: ZohoDocumentLookup,
+  payment: Payment,
+  org: ZohoOrgConfig,
+): Promise<ReadBack> {
+  const resolved = await resolveAll(lookup, org, payment.product, paymentDependencies(payment));
+  if ("stop" in resolved) return resolved;
+  const built = buildPaymentBody(payment, resolved.ids, org);
+  return "stop" in built ? built : { check: paymentCheck(built.body) };
+}
+
 export class ZohoPaymentGateway implements PaymentPort {
   constructor(private readonly deps: GatewayDeps) {}
 
   async recordPayment(payment: Payment): Promise<IssueOutcome> {
-    const ready = await prepare(this.deps, payment, [
-      { kind: "contact", reference: payment.contactReference, contactType: "customer" },
-      ...payment.allocations.map(
-        (a): Dependency => ({ kind: "invoice", reference: a.invoiceReference }),
-      ),
-    ]);
+    const ready = await prepare(this.deps, payment, paymentDependencies(payment));
     if ("stop" in ready) return ready.stop;
-    const [customerId, ...invoiceIds] = ready.ids as [string, ...string[]];
-    const byReference = new Map<string, string>();
-    payment.allocations.forEach((a, i) => {
-      const id = invoiceIds[i];
-      if (id !== undefined) byReference.set(a.invoiceReference, id);
-    });
-    const built = mapped(paymentBody(payment, customerId, byReference, ready.org));
+    const built = buildPaymentBody(payment, ready.ids, ready.org);
     if ("stop" in built) return built.stop;
-    const sent = built.body;
     return this.deps.writer.create({
       org: ready.org,
       product: payment.product,
       kind: "payment",
       reference: payment.reference,
-      body: sent,
-      verify: (item) => (paymentMatches(sent, item) ? null : ZOHO_BOOKS_REJECTIONS.paymentMismatch),
+      body: built.body,
+      verify: paymentCheck(built.body),
     });
   }
 }
@@ -210,6 +260,15 @@ export interface VendorPort {
   upsertVendor(contact: Contact): Promise<IssueOutcome>;
 }
 
+/** A contact is ours only as the type we keep it as: a customer is never a vendor, or the reverse. */
+export function contactTypeCheck(type: ContactType): ReadBackCheck {
+  const wrongType =
+    type === "vendor"
+      ? ZOHO_BOOKS_REJECTIONS.contactNotVendor
+      : ZOHO_BOOKS_REJECTIONS.contactNotCustomer;
+  return (item) => (item.contact_type === type ? null : wrongType);
+}
+
 /**
  * Create the contact as a customer or vendor, or bring the existing one's name up to date. Found
  * by its reference value, so one legal-entity id is one Books contact of each type however often
@@ -227,15 +286,7 @@ class ContactUpsert {
     if ("stop" in ready) return ready.stop;
     const { org } = ready;
     const storedValue = contactReferenceValue(contact.reference, this.type);
-    const wrongType: Stop = {
-      status: "rejected",
-      reason:
-        this.type === "vendor"
-          ? ZOHO_BOOKS_REJECTIONS.contactNotVendor
-          : ZOHO_BOOKS_REJECTIONS.contactNotCustomer,
-    };
-    const verify = (item: BooksRecord) =>
-      item.contact_type === this.type ? null : wrongType.reason;
+    const verify = contactTypeCheck(this.type);
     const found = await this.deps.lookup.findIn(
       org,
       contact.product,
@@ -254,9 +305,11 @@ class ContactUpsert {
           body: contactCreateBody(contact, this.type, org),
           verify,
         });
-      case "found":
-        if (!found.item || verify(found.item)) return wrongType;
+      case "found": {
+        const wrongType = verify(found.item ?? {});
+        if (wrongType) return { status: "rejected", reason: wrongType };
         return this.update(org, found.outcome.providerId, contact);
+      }
       case "ambiguous":
         return { status: "rejected", reason: "zoho_books_contact_ambiguous" };
       case "unavailable":

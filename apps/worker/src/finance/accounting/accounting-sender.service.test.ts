@@ -2,12 +2,15 @@ import {
   type AccountingDocument,
   type BidPaymentFacts,
   type DestinationBinding,
+  type IssueOutcome,
   MAX_SEND_ATTEMPTS,
+  type Payment,
   SETTLE_GRACE_MS,
   buildContact,
   buildPayment,
   expectedTotals,
   projectBidPaymentCaptured,
+  retryDelayMs,
 } from "@auction/accounting-domain";
 import { createZohoBooksDryRunAdapter } from "@auction/accounting-zoho-books";
 import {
@@ -46,6 +49,11 @@ function bidDocuments(): readonly AccountingDocument[] {
   if (!projected.ok) throw new Error(projected.refusal.message);
   return projected.value.documents;
 }
+const [CONTACT_DOC, , PAYMENT_DOC] = bidDocuments() as [
+  AccountingDocument,
+  AccountingDocument,
+  AccountingDocument,
+];
 const [CONTACT, INVOICE, PAYMENT] = bidDocuments().map((d) => d.reference) as [
   string,
   string,
@@ -139,7 +147,7 @@ describe("accounting sender", () => {
     await queue();
     await sender.tick();
     for (const reference of [CONTACT, INVOICE, PAYMENT]) expect(statusOf(reference)).toBe("issued");
-    const found = await fake.lookup.findByReference("bid", "payment", PAYMENT);
+    const found = await fake.lookup.findDocument(PAYMENT_DOC);
     expect(found.status).toBe("found");
   });
 
@@ -347,7 +355,7 @@ describe("accounting sender", () => {
         store.byReference(reference, { provider: "books", mode: "test_org" })?.record.status,
       ).toBe("issued");
     }
-    expect((await testOrg.lookup.findByReference("bid", "payment", PAYMENT)).status).toBe("found");
+    expect((await testOrg.lookup.findDocument(PAYMENT_DOC)).status).toBe("found");
     // The rehearsal rows are untouched.
     expect(store.byReference(CONTACT, { provider: "books", mode: "dry_run" })).toEqual(rehearsed);
   });
@@ -375,16 +383,10 @@ describe("accounting sender", () => {
     if (!shop.ok) throw new Error(shop.refusal.message);
     await queue([shop.value]);
     await sender.tick();
-    expect((await testOrg.lookup.findByReference("bid", "contact", CONTACT)).status).toBe("found");
-    expect((await rehearsal.lookup.findByReference("bid", "contact", CONTACT)).status).toBe(
-      "not_found",
-    );
-    expect(
-      (await rehearsal.lookup.findByReference("shop", "contact", shop.value.reference)).status,
-    ).toBe("found");
-    expect(
-      (await testOrg.lookup.findByReference("shop", "contact", shop.value.reference)).status,
-    ).toBe("not_found");
+    expect((await testOrg.lookup.findDocument(CONTACT_DOC)).status).toBe("found");
+    expect((await rehearsal.lookup.findDocument(CONTACT_DOC)).status).toBe("not_found");
+    expect((await rehearsal.lookup.findDocument(shop.value)).status).toBe("found");
+    expect((await testOrg.lookup.findDocument(shop.value)).status).toBe("not_found");
   });
 });
 
@@ -431,6 +433,99 @@ describe("accounting sender, a document Books holds but reads back different", (
     expect(await sender.tick()).toMatchObject({ sent: 0, lookedUp: 0, requeued: 0 });
     expect(store.byReference(PAYMENT)?.record).toMatchObject(held);
     expect(recordPayment).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("accounting sender, a differing payment whose answer never reaches its lease", () => {
+  const HELD = {
+    status: "needs_review",
+    lookup: "clear",
+    issued: { number: expect.any(String), providerId: expect.any(String) },
+    reason: "provider document differs from ours: zoho_books_payment_mismatch",
+  };
+
+  /**
+   * Books makes the payment and reads it back different; then `after` decides what becomes of the
+   * answer on its way back (swept, lost, or late). Whatever happens, the record must end with a
+   * person, Books' id kept, and the payment is never sent again.
+   */
+  async function run(
+    after: (
+      answer: IssueOutcome,
+      ctx: { store: InMemoryAccountingStore; other: AccountingSender },
+    ) => Promise<IssueOutcome>,
+  ) {
+    const { store, fake, queue } = setUp();
+    const deps = {
+      workQueue: store,
+      dueWork: store,
+      transitions: store,
+      settings: store,
+      destinations: BOUND,
+      transientErrorPrefixes: [],
+      log,
+    };
+    // Another worker (a second replica, or the next one during a deploy) over the same store.
+    const other = new AccountingSender({
+      ...deps,
+      portsByMode: { dry_run: rehearsing(fake) },
+      newLeaseToken: () => `other-${store.nowMs}`,
+    });
+    const recordPayment = vi.fn(async (payment: Payment) => {
+      fake.faults.inject("read_back_differs");
+      return after(await fake.payments.recordPayment(payment), { store, other });
+    });
+    const sender = new AccountingSender({
+      ...deps,
+      portsByMode: { dry_run: { ...rehearsing(fake), payments: { recordPayment } } },
+      newLeaseToken: () => `lease-${store.nowMs}`,
+    });
+    await queue();
+    await sender.tick();
+    // The life cycle settles it: a lookup once the first request can no longer land.
+    store.nowMs += SENDER_LEASE_MS + SETTLE_GRACE_MS + retryDelayMs(1) + 1;
+    await sender.tick();
+    expect(store.byReference(PAYMENT)?.record).toMatchObject(HELD);
+    // Long after, nothing is looked up, requeued or sent again for it.
+    store.nowMs += 24 * 60 * 60_000;
+    expect(await sender.tick()).toMatchObject({ sent: 0, lookedUp: 0, requeued: 0 });
+    expect(store.byReference(PAYMENT)?.record).toMatchObject(HELD);
+    expect(recordPayment).toHaveBeenCalledTimes(1);
+  }
+
+  it("the lease is swept by another worker while the send is in flight", async () => {
+    await run(async (answer, { store }) => {
+      store.nowMs += SENDER_LEASE_MS + 1;
+      const swept = await store.claimNext({
+        provider: "books",
+        leaseToken: "other-worker",
+        leaseMs: SENDER_LEASE_MS,
+        targetModes: ["dry_run"],
+      });
+      expect(swept.ok).toBe(true);
+      expect(store.byReference(PAYMENT)?.record.status).toBe("unknown");
+      return answer;
+    });
+  });
+
+  it("the answer is lost on the way back (a timeout after Books made it)", async () => {
+    await run(async () => ({ status: "unknown", detail: "zoho_books_timeout" }));
+  });
+
+  it("the sender throws after Books made it", async () => {
+    await run(async () => {
+      throw new Error("after the POST");
+    });
+  });
+
+  it("the answer arrives after another worker swept the lease and looked the payment up", async () => {
+    await run(async (answer, { store, other }) => {
+      store.nowMs += SENDER_LEASE_MS + SETTLE_GRACE_MS + 1;
+      await other.tick(); // sweeps the lease: unknown
+      await other.tick(); // looks it up: read back, it differs
+      expect(store.byReference(PAYMENT)?.record).toMatchObject(HELD);
+      return answer; // late: refused, the record stays with a person
+    });
   });
 });
 
@@ -512,7 +607,7 @@ describe("accounting sender, organisation binding", () => {
     expect(store.byReference(CONTACT, target)?.record.status).toBe("unknown");
 
     // The binding now names another organisation (a configuration change between ticks).
-    const lookup = vi.spyOn(testOrg.lookup, "findByReference");
+    const lookup = vi.spyOn(testOrg.lookup, "findDocument");
     const rebound = new AccountingSender({
       workQueue: store,
       dueWork: store,

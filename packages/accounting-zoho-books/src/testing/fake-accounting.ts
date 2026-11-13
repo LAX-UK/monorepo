@@ -130,9 +130,12 @@ export class InMemoryAccounting implements AccountingPorts {
         : { kind: "unconfigured", reason: R.organisationNotConfigured };
     },
   };
+  /** Found by reference, then read back against the document as the adapter does (`differs`). */
   readonly lookup: DocumentLookupPort = {
-    findByReference: async (product, kind, reference): Promise<LookupOutcome> => {
+    findDocument: async (document): Promise<LookupOutcome> => {
+      const { product, kind, reference } = document;
       const entity = legalEntityFor(product);
+      if (document.entity !== entity) return { status: "unavailable", reason: R.entityMismatch };
       if (!this.orgs[entity]) return { status: "unavailable", reason: R.organisationNotConfigured };
       const parsed = parseLaxReference(reference);
       if (!parsed.ok || parsed.value.product !== product || parsed.value.kind !== kind) {
@@ -143,9 +146,18 @@ export class InMemoryAccounting implements AccountingPorts {
         return { status: "unavailable", reason: "fake_unreadable" };
       if (fault === "lookup_ambiguous") return { status: "ambiguous", count: 2 };
       const found = this.held.get(this.key(entity, kind, reference, "customer"));
-      return found ? { status: "found", ...found.doc } : { status: "not_found" };
+      if (!found) return { status: "not_found" };
+      return this.differs(found, document)
+        ? { status: "differs", reason: R.paymentMismatch, ...found.doc }
+        : { status: "found", ...found.doc };
     },
   };
+
+  /** Held under the reference, but not the document we would send (a payment's allocations). */
+  private differs(held: Held, document: AccountingDocument): boolean {
+    const fingerprint = document.kind === "payment" ? paymentFingerprint(document) : "";
+    return held.readBackDiffers === true || held.fingerprint !== fingerprint;
+  }
 
   private key(entity: LegalEntity, kind: DocumentKind, reference: string, type?: ContactType) {
     const value = kind === "contact" && type ? contactReferenceValue(reference, type) : reference;
@@ -208,7 +220,7 @@ export class InMemoryAccounting implements AccountingPorts {
     const fingerprint = doc.kind === "payment" ? paymentFingerprint(doc) : "";
     const existing = this.held.get(key);
     if (existing) {
-      if (existing.readBackDiffers || existing.fingerprint !== fingerprint) {
+      if (this.differs(existing, doc)) {
         return { status: "differs", reason: R.paymentMismatch, ...existing.doc };
       }
       return { status: "issued", ...existing.doc };

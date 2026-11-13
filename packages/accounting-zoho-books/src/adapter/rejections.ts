@@ -26,6 +26,12 @@ export const ZOHO_BOOKS_REJECTIONS = {
   contactNotVendor: "zoho_books_contact_not_vendor",
   /** A payment Books holds under our reference differs from ours (invoice, amount, currency, date). */
   paymentMismatch: "zoho_books_payment_mismatch",
+  /**
+   * Books holds a document under our reference, but what it should be checked against could not
+   * be worked out (one of its dependencies is missing, or the request could not be built), so it
+   * cannot be confirmed as ours: a person decides. Followed by the reason it could not be.
+   */
+  readBackUnconfirmed: "zoho_books_read_back_unconfirmed",
 } as const;
 
 export type ZohoBooksRejection = (typeof ZOHO_BOOKS_REJECTIONS)[keyof typeof ZOHO_BOOKS_REJECTIONS];

@@ -90,13 +90,9 @@ describe("Books dry run", () => {
   });
 
   it("finds nothing on lookup: nothing was ever written", async () => {
-    expect(
-      await ports.lookup.findByReference(
-        "bid",
-        "invoice",
-        invoice("bid", "margin_scheme").reference,
-      ),
-    ).toEqual({ status: "not_found" });
+    expect(await ports.lookup.findDocument(invoice("bid", "margin_scheme"))).toEqual({
+      status: "not_found",
+    });
   });
 });
 

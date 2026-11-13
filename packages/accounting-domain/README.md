@@ -30,8 +30,9 @@ Time is always passed in (epoch ms for leases, `YYYY-MM-DD` for document dates);
 order 123 never collide inside one Books organisation. Source ids are lower case (`[a-z0-9_-]`, at most 64):
 providers may search references case-insensitively, so `abc` and `ABC` must not be two documents. Builders
 take a `sourceId`, never a reference string, and check every other reference they are given
-(`parseLaxReference`: contact, invoice) is of the right kind and product. `DocumentLookupPort.findByReference`
-takes the product so an adapter can never search the wrong organisation.
+(`parseLaxReference`: contact, invoice) is of the right kind and product. `DocumentLookupPort.findDocument`
+takes the document, so an adapter searches only its product's organisation and reads what it finds back
+against it.
 
 **Legal entity.** Bid → London Auction Xchange LTD. Shop and lax.art → London Art Exchange Ltd.
 
@@ -122,7 +123,10 @@ throw) and refuses two live sources; `parseSwitchConfig` turns unknown input int
   It exists, so it becomes `needs_review` with the provider's identity kept (and a totals mismatch
   if there is one): like a totals difference, it can be neither requeued nor cancelled. It is never
   `failed`, because a failed record could be requeued and sent blindly. The runtime keeps both the
-  provider's totals and ours in the history row.
+  provider's totals and ours in the history row. The lookup can answer `differs` too: it reads the
+  document it finds back with the same check a send makes, so when the answer to a send never reaches
+  its lease (the lease was swept, the reply was lost or came late) `applyLookup` still ends in
+  `needs_review` with the provider's identity, never `issued`.
 - A `needs_review` record that holds a provider document (a totals mismatch) can be neither requeued nor
   cancelled: a person resolves it.
 - `issued` and `cancelled` are final.
