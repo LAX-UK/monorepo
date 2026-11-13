@@ -431,6 +431,33 @@ export function runAccountingContract(
         expect(again.providerId).toBe(out.providerId);
       });
 
+      it("records one payment applied exactly across every invoice it settles (Pay several)", async () => {
+        const { s, a, b } = await twoInvoices();
+        const exact = a.totals.grossPence + b.totals.grossPence;
+        const payment = pay("pay-several", a, b, exact);
+        expect(payment.kind === "payment" && payment.unallocatedPence).toBe(0);
+        const out = issuedOf(await s.settle(s.ports.payments.recordPayment(payment)));
+        expect(out.totals).toEqual(expectedTotals(payment));
+        expect(out.totals.grossPence).toBe(exact);
+      });
+
+      it("refuses a payment whose invoice is not in the books yet, posting nothing; then records it once", async () => {
+        const s = await withContact();
+        const a = invoice(SHOP, "pay-early-a", [NO_VAT_GOODS]);
+        const b = invoice(SHOP, "pay-early-b", [NO_VAT_GOODS]);
+        issuedOf(await s.settle(s.ports.invoices.issueInvoice(a)));
+        const payment = pay("pay-early", a, b, a.totals.grossPence + b.totals.grossPence);
+        const early = await s.settle(s.ports.payments.recordPayment(payment));
+        expect(early).toEqual({ status: "rejected", reason: "zoho_books_invoice_missing" });
+        expect(await s.settle(s.ports.lookup.findDocument(payment))).toEqual({
+          status: "not_found",
+        });
+        issuedOf(await s.settle(s.ports.invoices.issueInvoice(b)));
+        const made = issuedOf(await s.settle(s.ports.payments.recordPayment(payment)));
+        const again = issuedOf(await s.settle(s.ports.payments.recordPayment(payment)));
+        expect(again.providerId).toBe(made.providerId);
+      });
+
       it("holds for a person a payment held under our reference with other allocations", async () => {
         const { s, a, b } = await twoInvoices();
         const first = issuedOf(await s.settle(s.ports.payments.recordPayment(pay("pay-2", a, b))));
