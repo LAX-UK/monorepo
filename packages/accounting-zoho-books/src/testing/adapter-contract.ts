@@ -16,6 +16,7 @@ import type { AccountingPorts } from "../adapter/index.js";
 import { ZOHO_BOOKS_REJECTIONS as R } from "../adapter/rejections.js";
 import type { TestApi } from "./contract.js";
 import type { FaultInjector } from "./faults.js";
+import { BID_ORG_ID, SHOP_ORG_ID } from "./org-fixtures.js";
 
 /** What the contract needs from an implementation of the accounting ports. */
 export interface AccountingSubject {
@@ -334,6 +335,33 @@ export function runAccountingContract(
       });
     });
 
+    describe("destination", () => {
+      it("names the organisation each product's documents go to, the one chosen for the document", async () => {
+        const s = await makeSubject();
+        const { destination } = s.ports;
+        expect(destination.destinationFor(BID)).toEqual({
+          kind: "organisation",
+          organisationId: BID_ORG_ID,
+        });
+        expect(destination.destinationFor(SHOP)).toEqual({
+          kind: "organisation",
+          organisationId: SHOP_ORG_ID,
+        });
+        expect(destination.destinationFor("lax_art")).toEqual({
+          kind: "organisation",
+          organisationId: SHOP_ORG_ID,
+        });
+      });
+
+      it("cannot name one for a product whose organisation is not configured", async () => {
+        const s = await makeSubject({ withoutBid: true });
+        expect(s.ports.destination.destinationFor(BID)).toEqual({
+          kind: "unconfigured",
+          reason: R.organisationNotConfigured,
+        });
+      });
+    });
+
     describe("VAT registration", () => {
       it("refuses a VAT line for the organisation that is not VAT registered, and creates nothing", async () => {
         const s = await withContact(SHOP);
@@ -418,6 +446,24 @@ export function runAccountingContract(
           pdfRef: first.pdfRef,
           totals: first.totals,
         });
+      });
+
+      it("a payment Books makes but reads back different is held with its identity, and never made twice", async () => {
+        const { s, a, b } = await twoInvoices();
+        const payment = pay("pay-read-back", a, b);
+        s.faults.inject("read_back_differs");
+        const made = await s.settle(s.ports.payments.recordPayment(payment));
+        // It exists in Books: never a refusal (which could be retried as a new create).
+        if (made.status !== "differs") throw new Error(`expected differs, got ${made.status}`);
+        expect(made.reason).toBe(R.paymentMismatch);
+        expect(made.totals).toEqual(expectedTotals(payment));
+        // Sent again it is the same payment, held again: never a second one.
+        const again = await s.settle(s.ports.payments.recordPayment(payment));
+        expect(again).toEqual(made);
+        const found = await s.settle(
+          s.ports.lookup.findByReference(SHOP, "payment", payment.reference),
+        );
+        expect(found.status === "found" ? found.providerId : found.status).toBe(made.providerId);
       });
 
       it("a lost answer on a payment is unknown, it can be found, and a resend is the same payment", async () => {

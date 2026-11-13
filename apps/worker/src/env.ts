@@ -190,6 +190,13 @@ export const envSchema = z
      * at Books, in rehearsal only (dry run). No setting here can make the worker write to Books.
      */
     ZOHO_BOOKS_ORG_CONFIG: z.preprocess(emptyToUndefined, z.string().optional()),
+    /**
+     * The Books organisation each writing mode may send each product's documents to (JSON, e.g.
+     * `{"test_org":{"bid":"<organisation id>"}}`), checked against ZOHO_BOOKS_ORG_CONFIG when the
+     * worker starts. The sender refuses, and hands to a person, any document whose adapter would
+     * call another organisation. Unset: nothing is bound. It enables no write on its own.
+     */
+    ZOHO_BOOKS_DESTINATIONS: z.preprocess(emptyToUndefined, z.string().optional()),
     /** LAX Shop's API, for the inventory machine routes the listing reads lax.art through. */
     SHOP_API_INVENTORY_BASE_URL: z.preprocess(emptyToUndefined, z.string().url().optional()),
     /** The credential pair LAX Shop and LAX Bid hold for the inventory machine routes. */

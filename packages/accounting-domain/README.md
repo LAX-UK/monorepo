@@ -203,7 +203,12 @@ rehearsal. A rehearsal is therefore run like this, and only like this:
    no HTTP client, and the sender only claims `dry_run` documents.
 2. End the rehearsal with Bid `xero_mode = live`, `books_mode = off`. The projector then moves its cursor
    past everything that follows, so a later Books step never replays it.
-3. `test_org` and `live` are not reachable in this phase (no writing adapter is wired). Before Bid goes
+3. `test_org` and `live` are not reachable in this phase (no writing adapter is wired). When they are,
+   each is bound to an organisation id, not trusted as a label: `DestinationBinding` (`destination.ts`,
+   worker `ZOHO_BOOKS_DESTINATIONS`) names the one organisation each writing mode may send each product's
+   documents to, and the sender asks the adapter where it would call (`DestinationPort`) before every
+   send or lookup. Any other organisation, nothing bound, or a `dry_run` adapter that names any
+   organisation at all, and the document goes to a person unsent. Before Bid goes
    `live` on Books, legacy Xero posting for Bid must be stopped by its own settings first: the switch
    cannot stop it, so `books_mode = live` with legacy Xero still posting would book the same sale twice.
 

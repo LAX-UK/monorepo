@@ -1,14 +1,21 @@
 import {
   type AccountingDocument,
   type BidPaymentFacts,
+  type DestinationBinding,
   MAX_SEND_ATTEMPTS,
   SETTLE_GRACE_MS,
   buildContact,
   buildPayment,
+  expectedTotals,
   projectBidPaymentCaptured,
 } from "@auction/accounting-domain";
 import { createZohoBooksDryRunAdapter } from "@auction/accounting-zoho-books";
-import { InMemoryAccounting, testOrgConfigs } from "@auction/accounting-zoho-books/testing";
+import {
+  BID_ORG_ID,
+  InMemoryAccounting,
+  SHOP_ORG_ID,
+  testOrgConfigs,
+} from "@auction/accounting-zoho-books/testing";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { InMemoryAccountingStore } from "../../testing/in-memory-accounting-store.js";
 import type { SenderPorts } from "./accounting-dispatch.js";
@@ -47,10 +54,30 @@ const [CONTACT, INVOICE, PAYMENT] = bidDocuments().map((d) => d.reference) as [
 
 const log = { info: vi.fn(), warn: vi.fn() };
 
+/** Each writing mode bound to the fixture's test organisations. */
+const BOUND: DestinationBinding = { test_org: { bid: BID_ORG_ID, shop: SHOP_ORG_ID } };
+
+/**
+ * The fake as a rehearsal adapter: it answers as Books would and, like the dry run, reaches no
+ * organisation. The fake itself names the Books organisation it stands for.
+ */
+function rehearsing(ports: SenderPorts): SenderPorts {
+  return {
+    invoices: ports.invoices,
+    payments: ports.payments,
+    creditNotes: ports.creditNotes,
+    bills: ports.bills,
+    contacts: ports.contacts,
+    lookup: ports.lookup,
+    destination: { destinationFor: () => ({ kind: "none" }) },
+  };
+}
+
 function setUp(
   options: {
     ports?: Partial<Record<"dry_run" | "test_org", SenderPorts>>;
     books?: "off" | "dry_run" | "test_org";
+    destinations?: DestinationBinding;
   } = {},
 ) {
   const store = new InMemoryAccountingStore();
@@ -62,7 +89,8 @@ function setUp(
     dueWork: store,
     transitions: store,
     settings: store,
-    portsByMode: options.ports ?? { dry_run: fake },
+    portsByMode: options.ports ?? { dry_run: rehearsing(fake) },
+    destinations: options.destinations ?? BOUND,
     transientErrorPrefixes: ["fake_rate_limited"],
     newLeaseToken: () => `lease-${++n}`,
     log,
@@ -285,6 +313,7 @@ describe("accounting sender", () => {
       transitions: store,
       settings: store,
       portsByMode: { dry_run: dryRun },
+      destinations: BOUND,
       transientErrorPrefixes: [],
       newLeaseToken: () => "lease-rehearsal",
       log,
@@ -307,6 +336,7 @@ describe("accounting sender", () => {
       transitions: store,
       settings: store,
       portsByMode: { test_org: testOrg },
+      destinations: BOUND,
       transientErrorPrefixes: [],
       newLeaseToken: () => `lease-test-${++n}`,
       log,
@@ -332,7 +362,9 @@ describe("accounting sender", () => {
   it("sends each document only through the adapter of the mode it was created for", async () => {
     const rehearsal = new InMemoryAccounting();
     const testOrg = new InMemoryAccounting();
-    const { store, sender, queue } = setUp({ ports: { dry_run: rehearsal, test_org: testOrg } });
+    const { store, sender, queue } = setUp({
+      ports: { dry_run: rehearsing(rehearsal), test_org: testOrg },
+    });
     store.config = {
       bid: { xero: "off", books: "test_org" },
       shop: { xero: "off", books: "dry_run" },
@@ -353,5 +385,152 @@ describe("accounting sender", () => {
     expect(
       (await testOrg.lookup.findByReference("shop", "contact", shop.value.reference)).status,
     ).toBe("not_found");
+  });
+});
+
+describe("accounting sender, a document Books holds but reads back different", () => {
+  it("holds it for a person with Books' id even when the answer comes after the lease, and never sends it again", async () => {
+    const { store, fake, queue } = setUp();
+    const recordPayment = vi.fn(
+      async (payment: Parameters<typeof fake.payments.recordPayment>[0]) => {
+        // Books made it, read it back different, and the answer arrived after the lease ran out.
+        store.nowMs += SENDER_LEASE_MS + 1;
+        return {
+          status: "differs" as const,
+          reason: "zoho_books_payment_mismatch",
+          number: "PMT-000009",
+          providerId: "7000000000009",
+          pdfRef: null,
+          totals: expectedTotals(payment),
+        };
+      },
+    );
+    const sender = new AccountingSender({
+      workQueue: store,
+      dueWork: store,
+      transitions: store,
+      settings: store,
+      portsByMode: { dry_run: { ...rehearsing(fake), payments: { recordPayment } } },
+      destinations: BOUND,
+      transientErrorPrefixes: [],
+      newLeaseToken: () => `lease-${store.nowMs}`,
+      log,
+    });
+    await queue();
+    await sender.tick();
+    const held = {
+      status: "needs_review",
+      lookup: "clear",
+      issued: { number: "PMT-000009", providerId: "7000000000009" },
+      reason: "provider document differs from ours: zoho_books_payment_mismatch",
+    };
+    expect(store.byReference(PAYMENT)?.record).toMatchObject(held);
+
+    // Long after: nothing is looked up, requeued or sent again for it.
+    store.nowMs += 24 * 60 * 60_000;
+    expect(await sender.tick()).toMatchObject({ sent: 0, lookedUp: 0, requeued: 0 });
+    expect(store.byReference(PAYMENT)?.record).toMatchObject(held);
+    expect(recordPayment).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("accounting sender, organisation binding", () => {
+  it("never hands a dry run document to an adapter that would reach a Books organisation", async () => {
+    // The fake stands for a Books adapter: it names the Bid test organisation.
+    const fake = new InMemoryAccounting();
+    const upsert = vi.spyOn(fake.contacts, "upsertContact");
+    const { sender, queue, store } = setUp({ ports: { dry_run: fake } });
+    await queue([bidDocuments()[0] as AccountingDocument]);
+    expect(await sender.tick()).toMatchObject({ sent: 1 });
+    expect(upsert).not.toHaveBeenCalled();
+    expect(store.byReference(CONTACT)?.record).toMatchObject({
+      status: "needs_review",
+      lookup: "clear",
+      issued: null,
+      reason: expect.stringMatching(/^rehearsal_reaches_organisation: /),
+    });
+    // Held for a person: never requeued and tried again on its own.
+    store.nowMs += 24 * 60 * 60_000;
+    expect(await sender.tick()).toMatchObject({ sent: 0, requeued: 0 });
+    expect(upsert).not.toHaveBeenCalled();
+  });
+
+  it("refuses a test_org document whose adapter would call another organisation than the one bound", async () => {
+    const testOrg = new InMemoryAccounting();
+    const upsert = vi.spyOn(testOrg.contacts, "upsertContact");
+    const { sender, queue, store } = setUp({
+      books: "test_org",
+      ports: { test_org: testOrg },
+      destinations: { test_org: { bid: "9000000000777" } },
+    });
+    await queue([bidDocuments()[0] as AccountingDocument]);
+    await sender.tick();
+    expect(upsert).not.toHaveBeenCalled();
+    const record = store.byReference(CONTACT, { provider: "books", mode: "test_org" })?.record;
+    expect(record).toMatchObject({ status: "needs_review", lookup: "clear", issued: null });
+    expect(record?.status === "needs_review" ? record.reason : "").toBe(
+      `destination_mismatch: bid in test_org: the adapter would send to organisation ${BID_ORG_ID}, bound is 9000000000777`,
+    );
+  });
+
+  it("sends nothing in test_org while no organisation is bound for the product", async () => {
+    const testOrg = new InMemoryAccounting();
+    const upsert = vi.spyOn(testOrg.contacts, "upsertContact");
+    const { sender, queue, store } = setUp({
+      books: "test_org",
+      ports: { test_org: testOrg },
+      destinations: { test_org: { shop: SHOP_ORG_ID } },
+    });
+    await queue([bidDocuments()[0] as AccountingDocument]);
+    await sender.tick();
+    expect(upsert).not.toHaveBeenCalled();
+    expect(
+      store.byReference(CONTACT, { provider: "books", mode: "test_org" })?.record,
+    ).toMatchObject({
+      status: "needs_review",
+      reason: expect.stringMatching(/^destination_not_bound: /),
+    });
+  });
+
+  it("sends a test_org document to the organisation bound for it", async () => {
+    const testOrg = new InMemoryAccounting();
+    const { sender, queue, store } = setUp({ books: "test_org", ports: { test_org: testOrg } });
+    await queue([bidDocuments()[0] as AccountingDocument]);
+    await sender.tick();
+    expect(store.byReference(CONTACT, { provider: "books", mode: "test_org" })?.record.status).toBe(
+      "issued",
+    );
+  });
+
+  it("does not look an unknown document up in another organisation: it goes to a person, lookup owed", async () => {
+    const testOrg = new InMemoryAccounting();
+    const { store, queue, sender } = setUp({ books: "test_org", ports: { test_org: testOrg } });
+    await queue([bidDocuments()[0] as AccountingDocument]);
+    testOrg.faults.inject("timeout_after_commit");
+    await sender.tick();
+    const target = { provider: "books", mode: "test_org" } as const;
+    expect(store.byReference(CONTACT, target)?.record.status).toBe("unknown");
+
+    // The binding now names another organisation (a configuration change between ticks).
+    const lookup = vi.spyOn(testOrg.lookup, "findByReference");
+    const rebound = new AccountingSender({
+      workQueue: store,
+      dueWork: store,
+      transitions: store,
+      settings: store,
+      portsByMode: { test_org: testOrg },
+      destinations: { test_org: { bid: "9000000000777" } },
+      transientErrorPrefixes: [],
+      newLeaseToken: () => "lease-rebound",
+      log,
+    });
+    store.nowMs += SENDER_LEASE_MS + SETTLE_GRACE_MS + 60_000;
+    expect(await rebound.tick()).toMatchObject({ lookedUp: 0, escalated: 1, sent: 0 });
+    expect(lookup).not.toHaveBeenCalled();
+    expect(store.byReference(CONTACT, target)?.record).toMatchObject({
+      status: "needs_review",
+      lookup: "owed",
+      reason: expect.stringMatching(/^destination_mismatch: /),
+    });
   });
 });

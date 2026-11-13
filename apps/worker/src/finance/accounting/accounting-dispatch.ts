@@ -3,6 +3,7 @@ import type {
   BillPort,
   ContactPort,
   CreditNotePort,
+  DestinationPort,
   DocumentLookupPort,
   InvoicePort,
   IssueOutcome,
@@ -20,6 +21,8 @@ export interface SenderPorts {
   readonly bills: BillPort;
   readonly contacts: ContactPort;
   readonly lookup: DocumentLookupPort;
+  /** Where the adapter would send each product's documents; checked before every call. */
+  readonly destination: DestinationPort;
 }
 
 type Senders = {

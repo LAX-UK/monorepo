@@ -21,7 +21,7 @@ export type ZohoWriteMode =
 export const DRY_RUN: ZohoWriteMode = { mode: "dry_run" };
 
 /** The only kind of organisation each writing mode may reach. */
-const WRITE_MODE_ENVIRONMENT: Readonly<Record<"test_org" | "live", ZohoOrgEnvironment>> = {
+export const WRITE_MODE_ENVIRONMENT: Readonly<Record<"test_org" | "live", ZohoOrgEnvironment>> = {
   test_org: "test",
   live: "live",
 };

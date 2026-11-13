@@ -7,6 +7,7 @@ import {
   type ContactPort,
   type CreditNote,
   type CreditNotePort,
+  type DestinationPort,
   type DocumentKind,
   type DocumentLookupPort,
   type Invoice,
@@ -30,6 +31,13 @@ import { booksLineVat } from "../adapter/mappers/common.js";
 import { type ContactType, contactReferenceValue } from "../adapter/mappers/contact.js";
 import { ZOHO_BOOKS_REJECTIONS as R } from "../adapter/rejections.js";
 import { FaultQueue } from "./faults.js";
+import { BID_ORG_ID, SHOP_ORG_ID } from "./org-fixtures.js";
+
+/** The organisation each entity is held in, as in `testOrgConfigs()`. */
+const ORG_IDS: Readonly<Record<LegalEntity, string>> = {
+  london_art_exchange: SHOP_ORG_ID,
+  london_auction_xchange: BID_ORG_ID,
+};
 
 const PREFIX: Record<DocumentKind, string> = {
   invoice: "INV",
@@ -53,6 +61,8 @@ interface Held {
   /** What makes a resend the same document, beyond its reference (a payment's allocations). */
   readonly fingerprint: string;
   readonly contactType?: ContactType;
+  /** Held, but reads back different from what was sent (`read_back_differs`). */
+  readonly readBackDiffers?: boolean;
 }
 
 type Stop = Extract<IssueOutcome, { status: "rejected" | "unknown" }>;
@@ -111,6 +121,14 @@ export class InMemoryAccounting implements AccountingPorts {
   };
   readonly vendors: VendorPort = {
     upsertVendor: (d: Contact) => this.issue(d, [], undefined, "vendor"),
+  };
+  readonly destination: DestinationPort = {
+    destinationFor: (product) => {
+      const entity = legalEntityFor(product);
+      return this.orgs[entity]
+        ? { kind: "organisation", organisationId: ORG_IDS[entity] }
+        : { kind: "unconfigured", reason: R.organisationNotConfigured };
+    },
   };
   readonly lookup: DocumentLookupPort = {
     findByReference: async (product, kind, reference): Promise<LookupOutcome> => {
@@ -190,7 +208,7 @@ export class InMemoryAccounting implements AccountingPorts {
     const fingerprint = doc.kind === "payment" ? paymentFingerprint(doc) : "";
     const existing = this.held.get(key);
     if (existing) {
-      if (existing.fingerprint !== fingerprint) {
+      if (existing.readBackDiffers || existing.fingerprint !== fingerprint) {
         return { status: "differs", reason: R.paymentMismatch, ...existing.doc };
       }
       return { status: "issued", ...existing.doc };
@@ -210,8 +228,15 @@ export class InMemoryAccounting implements AccountingPorts {
         grossPence: mine.grossPence + drift,
       },
     };
-    this.held.set(key, { doc: provider, fingerprint, ...(contactType ? { contactType } : {}) });
+    const readBackDiffers = fault === "read_back_differs" && doc.kind === "payment";
+    this.held.set(key, {
+      doc: provider,
+      fingerprint,
+      ...(contactType ? { contactType } : {}),
+      ...(readBackDiffers ? { readBackDiffers } : {}),
+    });
     if (fault === "timeout_after_commit") return { status: "unknown", detail: "fake_timeout" };
+    if (readBackDiffers) return { status: "differs", reason: R.paymentMismatch, ...provider };
     return { status: "issued", ...provider };
   }
 }

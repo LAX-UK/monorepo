@@ -1,8 +1,9 @@
-import type { TargetMode } from "@auction/accounting-domain";
+import type { DestinationBinding, TargetMode } from "@auction/accounting-domain";
 import {
   type AccountingPorts,
   TRANSIENT_REJECTION_PREFIXES,
   createZohoBooksDryRunAdapter,
+  parseBooksDestinationBinding,
   parseOrgConfigs,
 } from "@auction/accounting-zoho-books";
 
@@ -10,6 +11,13 @@ import {
 export interface BooksAccountingEnv {
   /** The per-organisation Books settings, as JSON (`parseOrgConfigs`). Unset: Books is not built. */
   readonly ZOHO_BOOKS_ORG_CONFIG?: string | undefined;
+  /**
+   * The Books organisation each writing mode may send each product's documents to, as JSON
+   * (`{"test_org":{"bid":"<organisation id>"}}`). Checked against the organisation settings at
+   * start-up: a `test_org` id must be a `test` organisation. Unset: nothing is bound, so no
+   * document aimed at `test_org` or `live` is ever sent. It enables no write on its own.
+   */
+  readonly ZOHO_BOOKS_DESTINATIONS?: string | undefined;
 }
 
 /**
@@ -19,6 +27,8 @@ export interface BooksAccountingEnv {
  */
 export interface BooksAccountingAdapters {
   readonly byMode: Readonly<Partial<Record<TargetMode, AccountingPorts>>>;
+  /** Where each writing mode may send each product's documents; the sender checks every call. */
+  readonly destinations: DestinationBinding;
   readonly transientErrorPrefixes: readonly string[];
 }
 
@@ -37,15 +47,22 @@ export function createBooksAccountingAdapters(
 ): BooksAccountingAdapters | null {
   const raw = env.ZOHO_BOOKS_ORG_CONFIG?.trim();
   if (!raw) return null;
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(raw);
-  } catch {
-    throw new Error("ZOHO_BOOKS_ORG_CONFIG is not valid JSON");
-  }
-  const orgs = parseOrgConfigs(parsed);
+  const orgs = parseOrgConfigs(readJson(raw, "ZOHO_BOOKS_ORG_CONFIG"));
+  const bound = env.ZOHO_BOOKS_DESTINATIONS?.trim();
   return {
     byMode: { dry_run: createZohoBooksDryRunAdapter({ orgs }) },
+    destinations: parseBooksDestinationBinding(
+      bound ? readJson(bound, "ZOHO_BOOKS_DESTINATIONS") : undefined,
+      orgs,
+    ),
     transientErrorPrefixes: TRANSIENT_REJECTION_PREFIXES,
   };
+}
+
+function readJson(raw: string, name: string): unknown {
+  try {
+    return JSON.parse(raw);
+  } catch {
+    throw new Error(`${name} is not valid JSON`);
+  }
 }

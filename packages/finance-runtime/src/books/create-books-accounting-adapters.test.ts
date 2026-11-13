@@ -1,5 +1,5 @@
 import { buildContact } from "@auction/accounting-domain";
-import { rawOrgSettings } from "@auction/accounting-zoho-books/testing";
+import { BID_ORG_ID, rawOrgSettings } from "@auction/accounting-zoho-books/testing";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createBooksAccountingAdapters } from "./create-books-accounting-adapters.js";
 
@@ -33,6 +33,34 @@ describe("Books accounting adapters", () => {
       expect(Object.keys(built?.byMode ?? {})).toEqual(["dry_run"]);
       expect(built?.transientErrorPrefixes).toContain("zoho_books_rate_limited_");
     }
+  });
+
+  it("the rehearsal reaches no organisation, and nothing is bound for a writing mode by default", () => {
+    const built = createBooksAccountingAdapters({ ZOHO_BOOKS_ORG_CONFIG: config("live") });
+    expect(built?.byMode.dry_run?.destination.destinationFor("bid")).toEqual({ kind: "none" });
+    expect(built?.destinations).toEqual({});
+  });
+
+  it("binds a test_org product to its test organisation, and never to the live one", () => {
+    const destinations = JSON.stringify({ test_org: { bid: BID_ORG_ID } });
+    expect(
+      createBooksAccountingAdapters({
+        ZOHO_BOOKS_ORG_CONFIG: config("test"),
+        ZOHO_BOOKS_DESTINATIONS: destinations,
+      })?.destinations,
+    ).toEqual({ test_org: { bid: BID_ORG_ID } });
+    expect(() =>
+      createBooksAccountingAdapters({
+        ZOHO_BOOKS_ORG_CONFIG: config("live"),
+        ZOHO_BOOKS_DESTINATIONS: destinations,
+      }),
+    ).toThrow("zoho_books_config_destination_binding_wrong_environment");
+    expect(() =>
+      createBooksAccountingAdapters({
+        ZOHO_BOOKS_ORG_CONFIG: config("test"),
+        ZOHO_BOOKS_DESTINATIONS: "{",
+      }),
+    ).toThrow("ZOHO_BOOKS_DESTINATIONS is not valid JSON");
   });
 
   it("the rehearsal answers without any network call", async () => {

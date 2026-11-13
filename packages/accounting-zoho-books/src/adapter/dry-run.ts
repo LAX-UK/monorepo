@@ -41,7 +41,8 @@ type Built = Result<unknown, string>;
  * is handed. A document whose request can be built is answered `issued` under a rehearsal
  * identity (`DRY-RUN`, `dry-run:<reference>`) with our own totals; one that cannot is `rejected`
  * with the adapter's own reason, exactly as Books mode would refuse it. Nothing is held, so a
- * lookup always finds nothing: nothing was ever written.
+ * lookup always finds nothing: nothing was ever written. Asked where it sends, it names no
+ * organisation, so a sender can tell it from an adapter that would reach Books.
  *
  * The request body itself is not kept: it carries names and emails, and the document history it
  * would go into is append-only.
@@ -104,6 +105,8 @@ export function createZohoBooksDryRunAdapter(deps: {
     lookup: {
       findByReference: (): Promise<LookupOutcome> => Promise.resolve({ status: "not_found" }),
     },
+    // It holds no client: whatever the settings name, it reaches no organisation.
+    destination: { destinationFor: () => ({ kind: "none" }) },
   };
 }
 

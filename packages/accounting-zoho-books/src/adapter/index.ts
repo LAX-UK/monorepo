@@ -1,5 +1,5 @@
 import type { AccountingPorts } from "./accounting-ports.js";
-import type { ZohoApi } from "./api.js";
+import { type ZohoApi, booksDestination } from "./api.js";
 import {
   ZohoBillGateway,
   ZohoContactGateway,
@@ -23,6 +23,7 @@ export { contactReferenceValue, type ContactType } from "./mappers/contact.js";
 export { orgFor, type OrgChoice, type ZohoApi } from "./api.js";
 export type { VendorPort } from "./gateways.js";
 export { DRY_RUN, type ZohoWriteMode } from "./write-gate.js";
+export { parseBooksDestinationBinding } from "./destination-binding.js";
 
 /**
  * Builds the Books implementation of the accounting ports. Stateless: it holds the client and the
@@ -51,5 +52,6 @@ export function createZohoBooksAdapter(deps: {
     contacts: new ZohoContactGateway(gateway, api),
     vendors: new ZohoVendorGateway(gateway, api),
     lookup,
+    destination: booksDestination(deps.orgs),
   };
 }
