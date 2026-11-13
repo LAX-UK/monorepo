@@ -9,22 +9,30 @@ describe("seed invoices", () => {
     const invoice = priceSeedInvoice({
       paymentId: "p1",
       hammerPounds: 1_500,
-      rate: 0.25,
       raisedAt,
     });
     expect(invoice.lines.map((l) => [l.kind, l.amountPence])).toEqual([
       ["hammer", 150_000],
-      ["buyers_premium", 37_500],
+      ["buyers_premium", 22_500],
     ]);
-    expect(invoice.totalPence).toBe(187_500);
+    expect(invoice.totalPence).toBe(172_500);
     expect(invoice.dueAt.getTime()).toBe(invoiceDueAt(raisedAt).getTime());
     expect(invoice.source).toBe("raised");
   });
 
+  it("charges 15% up to £500,000 and 10% above, never a flat 25%", () => {
+    const premium = (hammerPounds: number) =>
+      priceSeedInvoice({ paymentId: "p", hammerPounds, raisedAt }).lines.find(
+        (l) => l.kind === "buyers_premium",
+      )?.amountPence;
+    expect(premium(500_000)).toBe(7_500_000);
+    expect(premium(600_000)).toBe(8_500_000);
+  });
+
   it("gives the same invoice id to the same payment on every run", () => {
-    const a = priceSeedInvoice({ paymentId: "p1", hammerPounds: 10, rate: 0.25, raisedAt });
-    const b = priceSeedInvoice({ paymentId: "p1", hammerPounds: 10, rate: 0.25, raisedAt });
-    const c = priceSeedInvoice({ paymentId: "p2", hammerPounds: 10, rate: 0.25, raisedAt });
+    const a = priceSeedInvoice({ paymentId: "p1", hammerPounds: 10, raisedAt });
+    const b = priceSeedInvoice({ paymentId: "p1", hammerPounds: 10, raisedAt });
+    const c = priceSeedInvoice({ paymentId: "p2", hammerPounds: 10, raisedAt });
     expect(a.id).toBe(b.id);
     expect(a.id).not.toBe(c.id);
   });
