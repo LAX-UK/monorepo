@@ -1,7 +1,7 @@
 "use client";
 
 import { useDeferredModule } from "@/hooks/use-deferred-module";
-import { Button } from "@auction/ui/components/button";
+import { Button } from "@auction/ui/lax";
 import { type KeyboardEvent, useState } from "react";
 
 const loadSort = () =>
@@ -10,11 +10,11 @@ const loadSort = () =>
   );
 
 /**
- * The kit button with the sort trigger's measurements: it replaces the kit's ghost hover and its
- * size-step height, padding and line height so the stand-in looks exactly as it always has.
+ * The LAX kit button with the sort trigger's measurements: it replaces the kit's ghost hover and its
+ * size-step height, padding, radius, font and line height so the stand-in looks exactly as it always has.
  */
 const STAND_IN_CLASS =
-  "h-10 min-h-10 pointer-coarse:min-h-10 justify-start gap-0 rounded-md border border-outline-variant/40 bg-surface-container-lowest px-3 font-label text-xs font-medium leading-4 text-on-surface-variant ring-offset-background hover:bg-surface-container-lowest hover:text-on-surface-variant focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2";
+  "h-10 min-h-10 pointer-coarse:min-h-10 justify-start gap-0 rounded-md border border-outline-variant/40 bg-surface-container-lowest px-3 font-label text-xs font-medium leading-4 text-on-surface-variant hover:bg-surface-container-lowest hover:text-on-surface-variant active:bg-surface-container-lowest";
 
 /**
  * The sort select and its list library are fetched once the page has hydrated, not with its first
@@ -39,7 +39,7 @@ export function LazySaleroomCatalogSort({ sortLabel }: { sortLabel: string }) {
     <Button
       type="button"
       variant="ghost"
-      size="default"
+      size="md"
       className={STAND_IN_CLASS}
       aria-label={`Sort: ${sortLabel}`}
       onPointerEnter={retryIfFailed}
