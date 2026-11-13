@@ -66,6 +66,22 @@ describe("ColumnsMenu", () => {
       "true",
     );
   });
+  it("leaves out a phone-only column, which the table never shows", () => {
+    function Harness() {
+      const visibility = useColumnVisibility("lots-phone");
+      return (
+        <ColumnsMenu
+          columns={[...columns, { id: "seen", header: "Seen", phoneOnly: true, cell: () => null }]}
+          visibility={visibility}
+        />
+      );
+    }
+    render(<Harness />);
+    expect(screen.getAllByRole("menuitemcheckbox").map((item) => item.textContent)).toEqual([
+      "Status",
+      "Xero invoice",
+    ]);
+  });
 });
 
 describe("RowActions", () => {

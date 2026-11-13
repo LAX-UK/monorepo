@@ -22,6 +22,7 @@ describe("STRIPE_PAYMENT_EVENT_HANDLERS", () => {
         "charge.dispute.funds_reinstated",
         "charge.dispute.funds_withdrawn",
         "charge.dispute.updated",
+        "charge.refund.updated",
         "charge.refunded",
         "checkout.session.async_payment_failed",
         "checkout.session.expired",
@@ -82,5 +83,21 @@ describe("dispatchStripePaymentEvent", () => {
       reason: "missing_charge_id",
     });
     expect(handleDisputeCreated).toHaveBeenCalledWith(event, dispute);
+  });
+
+  it("delegates charge.refund.updated to the service handler", async () => {
+    const refund = { id: "re_1", charge: "ch_1" } as Stripe.Refund;
+    const handleChargeRefundUpdated = vi.fn().mockResolvedValue({
+      processed: true,
+      action: "refund_received",
+    });
+    const service = makeService({ handleChargeRefundUpdated });
+    const event = { type: "charge.refund.updated", data: { object: refund } } as Stripe.Event;
+
+    await expect(dispatchStripePaymentEvent(service, event)).resolves.toEqual({
+      processed: true,
+      action: "refund_received",
+    });
+    expect(handleChargeRefundUpdated).toHaveBeenCalledWith(event, refund);
   });
 });

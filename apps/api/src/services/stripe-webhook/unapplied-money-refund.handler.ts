@@ -2,6 +2,8 @@ import type { ITransactionRunner, IUnappliedMoneyReader } from "@auction/persist
 import type Stripe from "stripe";
 import { tryClaimProcessedStripeEvent } from "../../lib/stripe-processed-event.js";
 import type { IUnappliedMoneyRecorder } from "../payment/unapplied-money.recorder.js";
+import type { IChargeRefundsReader } from "../stripe/stripe-charge-refunds.js";
+import { chargeRefundTotals } from "../stripe/stripe-refund-status.js";
 import {
   PAYMENT_WEBHOOK_EVENT_SOURCE,
   type PaymentWebhookResult,
@@ -21,6 +23,8 @@ export class UnappliedMoneyRefundHandler {
         "listOpenByChargeId" | "isChargeOfPaidInvoice" | "wasEverUnapplied"
       >;
       recorder: Pick<IUnappliedMoneyRecorder, "resolveRefundedCharge">;
+      /** Stripe's refunds for the charge: only succeeded ones count as money returned. */
+      chargeRefunds: Pick<IChargeRefundsReader, "listChargeRefunds">;
     },
   ) {}
 
@@ -32,6 +36,10 @@ export class UnappliedMoneyRefundHandler {
     // Any other charge ever reported as unapplied money, open or closed, is never an invoice's
     // own money: its refund never touches an invoice or a seller's payout.
     if (!(await this.deps.reader.wasEverUnapplied(charge.id))) return null;
+    // A pending refund can still fail: the finance task is closed only once the money went back.
+    const { countedPence } = chargeRefundTotals(
+      await this.deps.chargeRefunds.listChargeRefunds(charge.id),
+    );
     return this.deps.transactionRunner.runInTransaction(async (tx) => {
       const { claimed } = await tryClaimProcessedStripeEvent(
         tx,
@@ -39,7 +47,7 @@ export class UnappliedMoneyRefundHandler {
         PAYMENT_WEBHOOK_EVENT_SOURCE,
       );
       if (!claimed) return { processed: false, action: "skipped", reason: "duplicate_event" };
-      const fullyRefunded = (charge.amount_refunded ?? 0) >= (charge.amount ?? 0);
+      const fullyRefunded = countedPence >= (charge.amount ?? 0);
       if (fullyRefunded) await this.deps.recorder.resolveRefundedCharge(tx, charge.id);
       return {
         processed: true,

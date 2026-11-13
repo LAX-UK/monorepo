@@ -7,6 +7,7 @@ import {
   payout,
   payoutLine,
   sale,
+  saleSellerTerms,
   unsoldLotChoice,
 } from "@auction/db/schema";
 import { and, desc, eq, gte, inArray, isNotNull, isNull, lt, sql } from "drizzle-orm";
@@ -21,6 +22,7 @@ import type {
   SoldLotRow,
 } from "../interfaces/workspace-selling.readers.js";
 import { lotSoldAfterAuctionSql } from "../lib/lot-result-pending.sql.js";
+import { SALE_LINE_TERMS_COLUMNS, saleLinePaymentFacts } from "./sale-line-facts.js";
 import { submissionSenderSql } from "./submission-sender.sql.js";
 
 export class DrizzleAgreementDocumentFactsReader implements IAgreementDocumentFactsReader {
@@ -48,6 +50,32 @@ export class DrizzleAgreementDocumentFactsReader implements IAgreementDocumentFa
 
 /** Payments that stand for the sale: open or settled, not cancelled. */
 const LIVE_PAYMENT = ["pending", "authorized", "captured", "requires_manual_review", "refunded"];
+
+/**
+ * What a sold lot's seller figure is worked from: the sale line's own basis once it is on a payout
+ * (its snapshot, or the old rule it was paid under), else a priced snapshot. Nothing when the sale
+ * is held or was raised before snapshots, so no screen shows a figure the payout will not pay.
+ */
+function soldLotSellerSide(p: {
+  amount: string;
+  platformFee: string;
+  lineId: string | null;
+  lineTermsId: string | null;
+  termsBasis: string | null;
+  termsHammerPence: number | null;
+  termsCommissionPence: number | null;
+  termsVatPence: number | null;
+}): { amount: string; platformFee: string } | null {
+  const paidUnderOldRule = p.lineId !== null && p.lineTermsId === null;
+  const priced = !paidUnderOldRule && p.termsBasis === "agreement";
+  return saleLinePaymentFacts({
+    paymentAmount: paidUnderOldRule ? p.amount : null,
+    paymentPlatformFee: paidUnderOldRule ? p.platformFee : null,
+    termsHammerPence: priced ? p.termsHammerPence : null,
+    termsCommissionPence: priced ? p.termsCommissionPence : null,
+    termsVatPence: priced ? p.termsVatPence : null,
+  });
+}
 
 export class DrizzleSoldLotsReader implements ISoldLotsReader {
   constructor(private readonly db: Database) {}
@@ -95,11 +123,16 @@ export class DrizzleSoldLotsReader implements ISoldLotsReader {
         payoutId: payout.id,
         payoutStatus: payout.status,
         settledAt: payout.processedAt,
+        lineId: payoutLine.id,
         lineAmount: payoutLine.amount,
+        lineTermsId: payoutLine.sellerTermsId,
+        termsBasis: saleSellerTerms.basis,
+        ...SALE_LINE_TERMS_COLUMNS,
       })
       .from(payment)
       .leftJoin(payoutLine, and(eq(payoutLine.paymentId, payment.id), eq(payoutLine.kind, "sale")))
       .leftJoin(payout, eq(payout.id, payoutLine.payoutId))
+      .leftJoin(saleSellerTerms, eq(saleSellerTerms.paymentId, payment.id))
       .where(
         and(
           inArray(
@@ -118,7 +151,14 @@ export class DrizzleSoldLotsReader implements ISoldLotsReader {
       const p = byLot.get(l.lotId);
       return {
         ...l,
-        payment: p ? { status: p.status, amount: p.amount, platformFee: p.platformFee } : null,
+        payment: p
+          ? {
+              status: p.status,
+              amount: p.amount,
+              platformFee: p.platformFee,
+              sellerSide: soldLotSellerSide(p),
+            }
+          : null,
         payout:
           p?.payoutId && p.payoutStatus
             ? {
@@ -154,11 +194,13 @@ export class DrizzlePayoutLinesReader implements IPayoutLinesReader {
         lotNumber: lot.lotNumber,
         hammerPrice: lot.currentPrice,
         paymentAmount: payment.amount,
-        platformFee: payment.platformFee,
+        paymentPlatformFee: payment.platformFee,
+        ...SALE_LINE_TERMS_COLUMNS,
         soldAfterAuction: lotSoldAfterAuctionSql(),
       })
       .from(payoutLine)
       .leftJoin(payment, eq(payment.id, payoutLine.paymentId))
+      .leftJoin(saleSellerTerms, eq(saleSellerTerms.id, payoutLine.sellerTermsId))
       .leftJoin(lot, eq(lot.id, payment.lotId))
       .where(eq(payoutLine.payoutId, payoutId))
       .orderBy(payoutLine.createdAt, payoutLine.id);
@@ -182,10 +224,7 @@ export class DrizzlePayoutLinesReader implements IPayoutLinesReader {
           l.lotId && l.lotTitle && l.hammerPrice
             ? { id: l.lotId, title: l.lotTitle, lotNumber: l.lotNumber, hammerPrice: l.hammerPrice }
             : null,
-        payment:
-          l.paymentAmount && l.platformFee
-            ? { amount: l.paymentAmount, platformFee: l.platformFee }
-            : null,
+        payment: saleLinePaymentFacts(l),
         soldAfterAuction: l.soldAfterAuction,
       })),
     };

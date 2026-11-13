@@ -9,9 +9,11 @@ import type {
   IPrivateSaleDealPaymentReader,
   IPrivateSaleDealPayoutStore,
   IPrivateSaleDealReader,
+  IStripeRefundWatchRepository,
   ITransactionRunner,
 } from "@auction/persistence/interfaces";
 import type { IStripeCaptureRefundGateway } from "../stripe/stripe-payment-gateway.js";
+import { isCountedRefund, isReturnedNothing } from "../stripe/stripe-refund-status.js";
 import type { IDealCheckoutGateway } from "./deal-payment-ports.js";
 import type {
   DealPaymentScope,
@@ -34,7 +36,16 @@ export type RefundDealError =
   | "refund_unavailable";
 
 export type RefundDealResult =
-  | { ok: true; refundedMinor: number; remainingMinor: number }
+  | {
+      ok: true;
+      refundedMinor: number;
+      remainingMinor: number;
+      /**
+       * Stripe accepted the refund but has not finished it: nothing is recorded yet. It is
+       * recorded once Stripe reports it succeeded (the refund webhooks or the reconcile job).
+       */
+      pendingAtProvider?: true;
+    }
   | { ok: false; error: RefundDealError };
 
 export type DealReversalDeps = {
@@ -50,6 +61,8 @@ export type DealReversalDeps = {
   transitions: Pick<DealTransitionService, "transition">;
   transactionRunner: ITransactionRunner;
   scopeForTx: (tx: Database) => DealPaymentScope;
+  /** Where a refund Stripe has not finished is kept until it is final. */
+  refundWatch?: Pick<IStripeRefundWatchRepository, "watch"> | null;
 };
 
 /**
@@ -97,6 +110,37 @@ export class DealReversalService {
       sequence: paid.refundedMinor,
       reason: "requested_by_customer",
     });
+    // Only a refund that went through is recorded (see `stripe-refund-status`). One Stripe did not
+    // make records nothing; one still pending is watched and recorded once it succeeds, by the
+    // deal's refund webhook path, which measures the charge's succeeded refunds.
+    if (refund.kind === "already_refunded") {
+      // Stripe says the charge was refunded already, whatever that refund's status: its own
+      // webhook records it once it has succeeded.
+      return {
+        ok: true,
+        refundedMinor: amount,
+        remainingMinor: remaining - amount,
+        pendingAtProvider: true,
+      };
+    }
+    if (!isCountedRefund(refund.status)) {
+      if (isReturnedNothing(refund.status)) return { ok: false, error: "refund_unavailable" };
+      await this.deps.refundWatch?.watch([
+        {
+          stripeRefundId: refund.refundId,
+          stripeChargeId: paid.stripeChargeId,
+          status: refund.status,
+          amountPence: refund.amountPence,
+          paymentId: null,
+        },
+      ]);
+      return {
+        ok: true,
+        refundedMinor: amount,
+        remainingMinor: remaining - amount,
+        pendingAtProvider: true,
+      };
+    }
     await this.deps.transactionRunner.runInTransaction(async (tx) => {
       const scope = this.deps.scopeForTx(tx);
       const locked = await scope.payments.findByIdForUpdate(paid.id);
@@ -105,7 +149,7 @@ export class DealReversalService {
       // it landed first, the higher of the two is the same figure and nothing is counted twice.
       await this.deps.settlement.recordRefund(scope, locked, {
         refundedMinor: Math.max(locked.refundedMinor, paid.refundedMinor + amount),
-        refundId: refund.kind === "created" ? refund.refundId : null,
+        refundId: refund.refundId,
       });
     });
     return { ok: true, refundedMinor: amount, remainingMinor: remaining - amount };

@@ -8,11 +8,14 @@ export const ACCOUNTING_SENDER = "accounting_sender";
  */
 export async function processAccountingSender(ctx: ProjectorRunContext): Promise<void> {
   if (!ctx.accounting) return;
+  const { sender, senderCheckIn } = ctx.accounting;
   try {
-    const tick = await ctx.accounting.sender.tick();
-    if (tick.active && tick.sent + tick.lookedUp + tick.requeued + tick.escalated > 0) {
-      ctx.log.info({ ...tick }, "accounting_sender_tick");
-    }
+    await senderCheckIn(async () => {
+      const tick = await sender.tick();
+      if (tick.active && tick.sent + tick.lookedUp + tick.requeued + tick.escalated > 0) {
+        ctx.log.info({ ...tick }, "accounting_sender_tick");
+      }
+    });
   } catch (err) {
     ctx.log.error({ err }, "accounting_sender_tick_failed");
   }

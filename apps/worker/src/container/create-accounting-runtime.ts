@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import type { TargetMode } from "@auction/accounting-domain";
 import type { createDb } from "@auction/db";
 import { createBooksAccountingAdapters } from "@auction/finance-runtime";
 import {
@@ -7,10 +8,17 @@ import {
 } from "@auction/persistence/repositories";
 import type { Logger } from "pino";
 import type { WorkerEnv } from "../env.js";
+import { createAccountingAlertSink } from "../finance/accounting/accounting-alerts.js";
+import { ACCOUNTING_CRON_MONITORS } from "../finance/accounting/accounting-alerts.js";
 import { AccountingProjection } from "../finance/accounting/accounting-projection.service.js";
 import type { AccountingRuntime } from "../finance/accounting/accounting-runtime.js";
 import { AccountingSender } from "../finance/accounting/accounting-sender.service.js";
+import { AccountingWatch } from "../finance/accounting/accounting-watch.service.js";
+import { throttledCronMonitor } from "../lib/sentry-cron.js";
 import { DrizzleProjectorCursorStart } from "../repositories/drizzle-projector-cursor-start.js";
+
+/** The sender runs every couple of seconds; its cron monitor hears from it every 5 minutes. */
+const SENDER_CHECK_IN_EVERY_MS = 5 * 60_000;
 
 /**
  * Builds the accounting projector and sender for Books. Without Books organisation settings
@@ -22,6 +30,7 @@ export function createAccountingRuntime(deps: {
   env: Pick<WorkerEnv, "ZOHO_BOOKS_ORG_CONFIG">;
   db: ReturnType<typeof createDb>;
   log: Logger;
+  sentryMonitorSlugs?: Record<string, string>;
 }): AccountingRuntime | undefined {
   const adapters = createBooksAccountingAdapters(deps.env);
   if (!adapters) return undefined;
@@ -39,10 +48,23 @@ export function createAccountingRuntime(deps: {
       transitions: repos.transitions,
       settings: repos.settingReader,
       portsByMode: adapters.byMode,
+      destinations: adapters.destinations,
       transientErrorPrefixes: adapters.transientErrorPrefixes,
       newLeaseToken: randomUUID,
       log: deps.log,
     }),
     cursorStart: new DrizzleProjectorCursorStart(deps.db),
+    watch: new AccountingWatch({
+      attention: repos.attention,
+      settings: repos.settingReader,
+      senderModes: Object.keys(adapters.byMode) as TargetMode[],
+      alerts: createAccountingAlertSink(deps.log),
+      now: () => new Date(),
+    }),
+    senderCheckIn: throttledCronMonitor(
+      ACCOUNTING_CRON_MONITORS.sender,
+      deps.sentryMonitorSlugs ?? {},
+      SENDER_CHECK_IN_EVERY_MS,
+    ),
   };
 }

@@ -48,6 +48,8 @@ export type AdminPaymentsRoutesContainer = AdminRoutePick<"payments" | "manualRe
 
 export type AdminDisputeDeskRoutesContainer = AdminRoutePick<"disputeDesk">;
 
+export type AdminAccountingRoutesContainer = AdminRoutePick<"accountingQueue">;
+
 export type AdminFinanceDisputesRoutesContainer = AdminRoutePick<
   "domainEvents" | "disputeCases" | "payments"
 >;

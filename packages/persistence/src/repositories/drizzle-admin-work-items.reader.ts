@@ -36,6 +36,7 @@ import type {
 import { adminWorkItemHref } from "../lib/admin-work-item-href.js";
 import { findRegisterLotMismatches } from "./artwork-register/register-lot-mismatch.query.js";
 import { BLOCKED_CAPTURE_EVENT, toBlockedCapture } from "./blocked-capture.query.js";
+import { DrizzleHeldSellerTermsWorkItemsReader } from "./drizzle-held-seller-terms-work-items.reader.js";
 import { DrizzleReofferWorkItemsReader } from "./drizzle-reoffer-work-items.reader.js";
 import { DrizzleUnappliedMoneyReader } from "./drizzle-unapplied-money.reader.js";
 import { lotWorkItemTitle, sentenceCase } from "./work-item-labels.js";
@@ -755,6 +756,10 @@ export class DrizzleAdminWorkItemsReader implements IAdminWorkItemsReader {
 
   async listReofferWork(limit: number, now: Date): Promise<AdminWorkItemSourceRow[]> {
     return new DrizzleReofferWorkItemsReader(this.db).list(limit, now);
+  }
+
+  async listHeldSellerPayouts(limit: number): Promise<AdminWorkItemSourceRow[]> {
+    return new DrizzleHeldSellerTermsWorkItemsReader(this.db).list(limit);
   }
 
   async listRegisterLotMismatches(limit: number): Promise<AdminWorkItemSourceRow[]> {

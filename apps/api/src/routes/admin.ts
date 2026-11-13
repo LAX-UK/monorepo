@@ -19,6 +19,7 @@ import { createAdminOnsiteEventRoutes } from "./admin-onsite-events.js";
 import { attachAdminQueuesRoutes } from "./admin-queues.js";
 import { attachAdminStripeConnectRoutes } from "./admin-stripe-connect.routes.js";
 import type { AdminHono, AdminStaffMutationGuards } from "./admin/_shared.js";
+import { attachAdminAccountingRoutes } from "./admin/accounting.routes.js";
 import { attachAdminAtgRoutes } from "./admin/atg.routes.js";
 import { attachAdminAuditRoutes } from "./admin/audit.routes.js";
 import { attachAdminCatalogRoutes } from "./admin/catalog.routes.js";
@@ -200,6 +201,7 @@ export function createAdminRoutes(
   attachAdminFinanceIssueRoutes(finance, container);
   attachAdminFinanceRoutes(finance, container);
   attachAdminDisputeDeskRoutes(finance, container, guards);
+  attachAdminAccountingRoutes(finance, container, guards);
 
   // Private sale deals are worked by sales and finance alike, so like payments they mount here:
   // each route carries its own capability guard and the platform shell is not required.

@@ -57,6 +57,16 @@ describe("QUEUE_REGISTRY", () => {
     expect(listWorkerHeartbeatKeys(enabled)).toContain("worker:heartbeat:atg-sync");
   });
 
+  it("watches the Zoho Books queue, with its readiness heartbeat, only when Books is configured", () => {
+    const base = { appEnv: "production" as const, marketingEventsEnabled: false };
+    expect(listEnabledQueues(base).map((q) => q.name)).not.toContain("accounting-watch");
+    expect(listWorkerHeartbeatKeys(base)).not.toContain("worker:heartbeat:accounting-watch");
+
+    const enabled = { ...base, accountingBooksEnabled: true };
+    expect(listEnabledQueues(enabled).map((q) => q.name)).toContain("accounting-watch");
+    expect(listWorkerHeartbeatKeys(enabled)).toContain("worker:heartbeat:accounting-watch");
+  });
+
   it("dedupes ATG jobs per target", () => {
     const ids = [
       atgSyncJobId({ name: "atg.push-sale", data: { saleId: "s1" } }),

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
+import { BUDGET_WARNING_EVENT, budgetWarningAt } from "./client.js";
 import { ZohoBudgetExhaustedError } from "./errors.js";
-import { toIssueFailure, toLookupFailure } from "./outcome.js";
+import { isTransientRejection, toIssueFailure, toLookupFailure } from "./outcome.js";
 import {
   FixedBudget,
   TEST_CLIENT_SECRET,
@@ -157,6 +158,75 @@ describe("retries", () => {
   });
 });
 
+describe("write fence", () => {
+  const fence = (answers: boolean[]) => {
+    const asked: number[] = [];
+    return {
+      asked,
+      mayWrite: async () => {
+        asked.push(asked.length);
+        return answers.shift() ?? false;
+      },
+    };
+  };
+
+  it("sends nothing when the fence refuses: the write is rejected, a passing refusal", async () => {
+    const h = createClientHarness();
+    await h.connect();
+    const lost = fence([false]);
+    const result = await h.clock.settle(
+      h.client.post(TEST_ORG, "/invoices", { total: 1 }, undefined, { fence: lost }),
+    );
+    expect(h.transport.requests.filter(api)).toHaveLength(0);
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error).toMatchObject({ kind: "fenced", certainty: "rejected" });
+    const outcome = toIssueFailure(result.error);
+    expect(outcome).toEqual({ status: "rejected", reason: "zoho_books_fenced_lease_lost" });
+    expect(isTransientRejection(outcome.status === "rejected" ? outcome.reason : "")).toBe(true);
+  });
+
+  it("asks again before a retry: a 429 wait that outlives the lease sends nothing more", async () => {
+    const h = createClientHarness();
+    await h.connect();
+    h.transport
+      .enqueue({ status: 429, body: {}, headers: { "retry-after": "5" } }, api)
+      .enqueue(zohoOkReply(), api);
+    const lease = fence([true, false]);
+    const result = await h.clock.settle(
+      h.client.post(TEST_ORG, "/invoices", { total: 1 }, undefined, { fence: lease }),
+    );
+    expect(lease.asked).toHaveLength(2);
+    expect(h.transport.requests.filter(api)).toHaveLength(1);
+    expect(result.ok ? null : result.error.kind).toBe("fenced");
+  });
+
+  it("is asked for writes only, and a write it allows goes out", async () => {
+    const h = createClientHarness();
+    await h.connect();
+    h.transport.enqueue(zohoOkReply(), api).enqueue(zohoOkReply(), api);
+    const held = fence([true]);
+    expect(
+      (await h.clock.settle(h.client.put(TEST_ORG, "/contacts/1", {}, undefined, { fence: held })))
+        .ok,
+    ).toBe(true);
+    expect(
+      (
+        await h.clock.settle(
+          h.client.request({
+            organizationId: TEST_ORG,
+            method: "GET",
+            path: "/invoices",
+            fence: fence([]),
+          }),
+        )
+      ).ok,
+    ).toBe(true);
+    expect(held.asked).toHaveLength(1);
+    expect(h.transport.requests.filter(api)).toHaveLength(2);
+  });
+});
+
 describe("timeouts", () => {
   it("ends a request that never answers after requestTimeoutMs and aborts it", async () => {
     const h = createClientHarness({ config: { requestTimeoutMs: 2_000 } });
@@ -227,6 +297,17 @@ describe("limits", () => {
       name: "zoho_books_daily_calls_used",
       value: 2,
     });
+  });
+
+  it("warns once when the day's calls go past 80% of the budget", async () => {
+    const h = createClientHarness({ config: { dailyCallBudget: 5 } });
+    await h.connect();
+    for (let i = 0; i < 5; i++) h.transport.enqueue(zohoOkReply(), api);
+    for (let i = 0; i < 5; i++) await h.clock.settle(h.client.get(TEST_ORG, "/invoices"));
+    const warnings = h.logger.entries.filter((e) => e.event === BUDGET_WARNING_EVENT);
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0]).toMatchObject({ level: "warn", fields: { used: 5, limit: 5 } });
+    expect(budgetWarningAt(1_000)).toBe(801);
   });
 
   it("counts every attempt, retries included, against the budget", async () => {
@@ -329,6 +410,22 @@ describe("logging", () => {
 });
 
 describe("domain mapping", () => {
+  it("names a refusal for a locked period, in a 4xx or in a 200 body", async () => {
+    const h = createClientHarness();
+    await h.connect();
+    h.transport
+      .enqueue(zohoErrorReply(400, 4151, "transaction date is locked"), api)
+      .enqueue({ status: 200, body: { code: 4151, message: "locked" } }, api);
+    for (let i = 0; i < 2; i++) {
+      const result = await h.clock.settle(h.client.post(TEST_ORG, "/invoices", { total: 1 }));
+      if (result.ok) throw new Error("expected a refusal");
+      expect(toIssueFailure(result.error)).toEqual({
+        status: "rejected",
+        reason: "zoho_books_validation_period_locked",
+      });
+    }
+  });
+
   it("tells the domain rejected apart from unknown", async () => {
     const h = createClientHarness();
     await h.connect();

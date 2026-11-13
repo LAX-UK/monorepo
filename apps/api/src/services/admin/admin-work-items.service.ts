@@ -75,6 +75,8 @@ export const WORK_ITEM_KIND_ACCESS: Record<AdminWorkItemSourceKind, CapabilityRe
   reoffer_ready: SALES_ACCESS,
   reoffer_decision: SALES_ACCESS,
   reoffer_accepted: SALES_ACCESS,
+  // The fix (recording the signed agreement) starts from the lot page, which sales staff act from.
+  seller_payout_held: SALES_ACCESS,
 };
 
 const REVIEW_TASK_SOURCE_ACCESS: CapabilityRequirement = {
@@ -171,6 +173,7 @@ function stampActions(
     case "reoffer_ready":
     case "reoffer_decision":
     case "reoffer_accepted":
+    case "seller_payout_held":
       break;
   }
 
@@ -297,6 +300,10 @@ export class AdminWorkItemsService {
         // All four re-offer kinds share one access rule and one query.
         access: WORK_ITEM_KIND_ACCESS.reoffer_no_reply,
         fetch: () => this.reader.listReofferWork(perSourceLimit, this.now()),
+      },
+      {
+        access: WORK_ITEM_KIND_ACCESS.seller_payout_held,
+        fetch: () => this.reader.listHeldSellerPayouts(perSourceLimit),
       },
     ];
 

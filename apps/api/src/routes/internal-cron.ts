@@ -248,6 +248,19 @@ export function createInternalCronRoutes(container: ContainerInternalCronRoutesS
     return c.json({ data });
   });
 
+  /**
+   * Re-reads refunds Stripe had not finished (pending or requires_action) and settles each one
+   * that is now final, exactly once. A bounded batch per call; safe to repeat or overlap.
+   */
+  r.post("/stripe-refund-reconcile", async (c) => {
+    const gate = auth(c);
+    if (!gate.ok) return c.json(gate.body, gate.status);
+    const reconcile = container.platformCron.stripeRefundReconcile;
+    if (!reconcile) return c.json({ data: { skipped: "stripe_not_configured" } });
+    const data = await reconcile.run();
+    return c.json({ data });
+  });
+
   r.post("/watched-lot-reminders", async (c) => {
     const gate = auth(c);
     if (!gate.ok) return c.json(gate.body, gate.status);

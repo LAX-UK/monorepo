@@ -1,4 +1,6 @@
 import {
+  ACCOUNTING_QUEUE_READ_ACCESS,
+  ACCOUNTING_QUEUE_WRITE_ACCESS,
   DELIVERY_REPLAY_ACCESS,
   FAILED_JOBS_READ_ACCESS,
   FAILED_JOBS_WRITE_ACCESS,
@@ -26,6 +28,7 @@ export const FAILED_JOB_SOURCES = [
   "background_jobs",
   "integrations.xero",
   "integrations.zoho",
+  "integrations.books",
   "integrations.other",
 ] as const;
 export type FailedJobSource = (typeof FAILED_JOB_SOURCES)[number];
@@ -35,6 +38,7 @@ export const FAILED_JOB_SOURCE_LABELS: Readonly<Record<FailedJobSource, string>>
   background_jobs: "Background jobs",
   "integrations.xero": "Integrations · Xero",
   "integrations.zoho": "Integrations · Zoho CRM",
+  "integrations.books": "Integrations · Zoho Books",
   "integrations.other": "Integrations · Other",
 };
 
@@ -55,11 +59,15 @@ export function failedJobSourceFamily(source: FailedJobSource): FailedJobSourceF
   return source === "background_jobs" ? "background_jobs" : "integrations";
 }
 
-/** The job id carries its source: `job:` for background jobs, `delivery:` and `webhook:` for integrations. */
+/**
+ * The job id carries its source: `job:` for background jobs, `delivery:` and `webhook:` for
+ * integrations, `accounting:` for a Books document (handled on Finance › Accounting).
+ */
 export const FAILED_JOB_ID_PREFIXES = {
   job: "job:",
   delivery: "delivery:",
   webhook: "webhook:",
+  accounting: "accounting:",
 } as const;
 
 export type FailedJobSourceAccess = {
@@ -81,6 +89,8 @@ export const FAILED_JOB_SOURCE_ACCESS: Readonly<Record<FailedJobSource, FailedJo
     act: "finance.platform.write",
   },
   "integrations.zoho": { read: readOrWrite(DELIVERY_REPLAY_ACCESS), act: DELIVERY_REPLAY_ACCESS },
+  // Shown here, handled on Finance › Accounting: the same people, with that page's permissions.
+  "integrations.books": { read: ACCOUNTING_QUEUE_READ_ACCESS, act: ACCOUNTING_QUEUE_WRITE_ACCESS },
   "integrations.other": { read: readOrWrite(DELIVERY_REPLAY_ACCESS), act: DELIVERY_REPLAY_ACCESS },
 };
 

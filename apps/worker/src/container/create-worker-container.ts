@@ -72,6 +72,7 @@ import { UnsoldChoiceDeadlineRecorder } from "../projectors/unsold-choice-deadli
 import { UnsoldFollowUpOpener } from "../projectors/unsold-follow-up.js";
 import { RetentionHoldAlerts } from "../retention/kyc-retention-hold-alert.js";
 import { ShopIdentityProjectionService } from "../services/shop-identity-projection.service.js";
+import { registerAccountingWorkers } from "../workers/register-accounting-workers.js";
 import { registerAlertWorkers } from "../workers/register-alert-workers.js";
 import { registerAtgSyncWorker } from "../workers/register-atg-sync-worker.js";
 import { registerCollectionWorkers } from "../workers/register-collection-workers.js";
@@ -124,6 +125,7 @@ export type WorkerContainer = {
   reofferWorkers: ReturnType<typeof registerReofferWorkers>;
   purgeWorkers: ReturnType<typeof registerPurgeWorkers>;
   alertWorkers: ReturnType<typeof registerAlertWorkers>;
+  accountingWorkers: ReturnType<typeof registerAccountingWorkers>;
   atgSyncWorkers: ReturnType<typeof registerAtgSyncWorker>;
   subjectExportWorkers: ReturnType<typeof registerSubjectExportWorker>;
   cronWorkers: ReturnType<typeof registerCronWorkers>;
@@ -382,7 +384,7 @@ export function createWorkerContainer(): WorkerContainer {
   const zohoArtworkWriteback = createZohoArtworkWriteback({ env, db, log });
   const zohoArtworkListing = createZohoArtworkListing({ env, db, log });
   const zohoFulfilment = createZohoFulfilmentMirror({ env, db, log });
-  const accounting = createAccountingRuntime({ env, db, log });
+  const accounting = createAccountingRuntime({ env, db, log, sentryMonitorSlugs });
   const zohoCampaignsSuppression = createZohoCampaignsSuppressionRuntime({ env, db, log });
   const webhookProcessorDeps: ProcessInboundWebhookDeps = {
     env,
@@ -472,6 +474,7 @@ export function createWorkerContainer(): WorkerContainer {
     log,
   });
   const alertWorkers = registerAlertWorkers(deps, bidAlerts);
+  const accountingWorkers = registerAccountingWorkers(deps, accounting);
   const cronWorkers = registerCronWorkers(deps);
   const zohoListingWorkers = registerZohoListingWorker(
     deps,
@@ -518,6 +521,7 @@ export function createWorkerContainer(): WorkerContainer {
       ...reofferWorkers.errorHandlers,
       ...purgeWorkers.errorHandlers,
       ...alertWorkers.errorHandlers,
+      ...accountingWorkers.errorHandlers,
       ...cronWorkers.errorHandlers,
       ...zohoListingWorkers.errorHandlers,
       ...atgSyncWorkers.errorHandlers,
@@ -570,6 +574,7 @@ export function createWorkerContainer(): WorkerContainer {
           heartbeat("watched-lot-reminders"),
           heartbeat("staff-role-expiry"),
           heartbeat("private-sale-settlement-follow-ups"),
+          heartbeat("stripe-refund-reconcile"),
           heartbeat("consignment-thread-sweep"),
           heartbeat("lot-lifecycle-tick"),
           heartbeat("expire-stale-payments"),
@@ -702,6 +707,7 @@ export function createWorkerContainer(): WorkerContainer {
     reofferWorkers,
     purgeWorkers,
     alertWorkers,
+    accountingWorkers,
     cronWorkers,
     zohoListingWorkers,
     atgSyncWorkers,
@@ -739,6 +745,7 @@ export async function shutdownWorkerContainer(
         container.reofferWorkers.close(),
         container.purgeWorkers.close(),
         container.alertWorkers.close(),
+        container.accountingWorkers.close(),
         container.cronWorkers.close(),
         container.zohoListingWorkers.close(),
         container.atgSyncWorkers.close(),

@@ -131,9 +131,15 @@ export class PaymentCaptureService implements IPaymentCaptureService, IPaymentCa
           }
         : null;
 
-    const captureOpts: { stripeChargeId?: string | null } = {};
+    const captureOpts: { stripeChargeId?: string | null; stripePaymentIntentId?: string | null } =
+      {};
     if (resolvedChargeId) {
       captureOpts.stripeChargeId = resolvedChargeId;
+    }
+    // A checkout-paid card invoice has no payment intent on its row until now; without it the
+    // row could only be matched to Stripe by its charge. A recorded one is kept as it is.
+    if (input.stripePaymentIntentId && !p.stripePaymentIntentId) {
+      captureOpts.stripePaymentIntentId = input.stripePaymentIntentId;
     }
     const captured = await this.payments.applyCapturedInTransaction(
       tx,

@@ -91,6 +91,9 @@ export class DisputeLineEffects {
     ctx: { note: string; stripeDisputeId: string },
   ): Promise<void> {
     if (line.sellerSharePence > 0) {
+      // A dispute line goes on the ledger as given (only refunds are re-priced from the
+      // seller-terms snapshot), and its share is still the old fee rule's: see the open decision
+      // on `disputeSellerSharePence`.
       await this.deps.payoutAdjustments.addPaymentLineToOpenPayoutOrCreateClawback({
         legalEntityId: line.sellerLegalEntityId,
         paymentId: line.paymentId,

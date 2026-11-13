@@ -1,16 +1,20 @@
 import type { Database } from "@auction/db";
-import { payment, paymentRefund } from "@auction/db/schema";
-import { eq, sql } from "drizzle-orm";
+import { payment, paymentRefund, stripeRefundReversal } from "@auction/db/schema";
+import { and, eq, sql } from "drizzle-orm";
 import type {
   IPaymentRefundLedger,
   IPaymentRefundReader,
+  IRefundReversalLedger,
   PaymentRefundEntry,
   PaymentRefundTotal,
+  RefundReversalTarget,
 } from "../interfaces/payment-refund.repository.js";
 
 const GBP = "GBP";
 
-export class DrizzlePaymentRefundRepository implements IPaymentRefundReader, IPaymentRefundLedger {
+export class DrizzlePaymentRefundRepository
+  implements IPaymentRefundReader, IPaymentRefundLedger, IRefundReversalLedger
+{
   constructor(private readonly db: Database) {}
 
   sumRefundedPence(paymentId: string): Promise<PaymentRefundTotal> {
@@ -35,9 +39,15 @@ export class DrizzlePaymentRefundRepository implements IPaymentRefundReader, IPa
   }
 
   async recordInTransaction(tx: Database, entry: PaymentRefundEntry): Promise<boolean> {
-    if (!Number.isSafeInteger(entry.amountPence) || entry.amountPence <= 0) {
+    const reversal = entry.source === "refund_reversal";
+    if (
+      !Number.isSafeInteger(entry.amountPence) ||
+      (reversal ? entry.amountPence >= 0 : entry.amountPence <= 0)
+    ) {
       throw new RangeError(
-        `A refund is a whole number of pence above zero, got ${entry.amountPence}`,
+        reversal
+          ? `A refund reversal is a whole number of pence below zero, got ${entry.amountPence}`
+          : `A refund is a whole number of pence above zero, got ${entry.amountPence}`,
       );
     }
     const rows = await tx
@@ -52,6 +62,45 @@ export class DrizzlePaymentRefundRepository implements IPaymentRefundReader, IPa
       })
       .onConflictDoNothing({ target: paymentRefund.idempotencyKey })
       .returning({ id: paymentRefund.id });
+    return rows.length > 0;
+  }
+
+  async reversedRefundIdsInTransaction(
+    tx: Database,
+    target: RefundReversalTarget,
+  ): Promise<ReadonlySet<string>> {
+    const rows = await tx
+      .select({ id: stripeRefundReversal.stripeRefundId })
+      .from(stripeRefundReversal)
+      .where(
+        and(
+          eq(stripeRefundReversal.target, target.kind),
+          eq(stripeRefundReversal.targetId, target.id),
+        ),
+      );
+    return new Set(rows.map((r) => r.id));
+  }
+
+  async recordReversalInTransaction(
+    tx: Database,
+    target: RefundReversalTarget,
+    reversal: { stripeRefundId: string; amountPence: number },
+  ): Promise<boolean> {
+    if (!Number.isSafeInteger(reversal.amountPence) || reversal.amountPence <= 0) {
+      throw new RangeError(
+        `A refund reversal takes back a whole number of pence above zero, got ${reversal.amountPence}`,
+      );
+    }
+    const rows = await tx
+      .insert(stripeRefundReversal)
+      .values({
+        stripeRefundId: reversal.stripeRefundId,
+        target: target.kind,
+        targetId: target.id,
+        amountPence: reversal.amountPence,
+      })
+      .onConflictDoNothing()
+      .returning({ id: stripeRefundReversal.stripeRefundId });
     return rows.length > 0;
   }
 

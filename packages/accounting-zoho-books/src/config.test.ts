@@ -1,3 +1,4 @@
+import { WRITE_MARGIN_MS } from "@auction/accounting-domain";
 import { describe, expect, it } from "vitest";
 import { ZohoBooksConfigError, parseZohoBooksConfig } from "./config.js";
 import { Secret } from "./secret.js";
@@ -16,6 +17,15 @@ describe("parseZohoBooksConfig", () => {
     expect(config.accountsBaseUrl).toBe("https://accounts.zoho.eu");
     expect(config.ratePerMinute).toBe(100);
     expect(config.maxConcurrent).toBe(5);
+  });
+
+  it("refuses a request timeout longer than the write margin of a lease", () => {
+    expect(
+      parseZohoBooksConfig({ ...base, ZOHO_BOOKS_TIMEOUT_MS: String(WRITE_MARGIN_MS) }),
+    ).toMatchObject({ requestTimeoutMs: WRITE_MARGIN_MS });
+    expect(() =>
+      parseZohoBooksConfig({ ...base, ZOHO_BOOKS_TIMEOUT_MS: String(WRITE_MARGIN_MS + 1) }),
+    ).toThrow("zoho_books_config_zoho_books_timeout_ms_invalid");
   });
 
   it("fails closed without client id, secret or token key", () => {

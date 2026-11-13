@@ -15,10 +15,10 @@ import {
   stripeLineName,
   truncateForStripe,
 } from "../payment/stripe-checkout-product-display.js";
+import { type IChargeRefundsReader, StripeChargeRefunds } from "./stripe-charge-refunds.js";
+import { isCountedRefund } from "./stripe-refund-status.js";
 
 const PRODUCT_NAME_MAX = 250;
-/** Refunds that took or are taking money back; failed and cancelled ones returned nothing. */
-const COUNTED_REFUND_STATUSES = new Set(["succeeded", "pending", "requires_action"]);
 
 /** The idempotency key of a group's checkout: one per group and rail, never per attempt. */
 export function groupCheckoutIdempotencyKey(
@@ -94,7 +94,13 @@ export function groupStripeLineItems(
 
 /** Stripe Checkout for "Pay several": one session and one PaymentIntent for the whole group. */
 export class StripePaymentGroupGateway implements IPaymentGroupGateway {
-  constructor(private readonly stripeFactory: IStripeClientFactory) {}
+  constructor(
+    private readonly stripeFactory: IStripeClientFactory,
+    private readonly chargeRefunds: Pick<
+      IChargeRefundsReader,
+      "listChargeRefunds"
+    > = new StripeChargeRefunds(stripeFactory),
+  ) {}
 
   isConfigured(): boolean {
     return this.stripeFactory.get() !== null;
@@ -193,17 +199,19 @@ export class StripePaymentGroupGateway implements IPaymentGroupGateway {
     }
   }
 
+  /**
+   * Only a refund that has gone through counts (see `stripe-refund-status`). A pending refund is
+   * left out here and watched; it is counted once Stripe reports it succeeded, whether that is
+   * learnt from `charge.refund.updated` or from the refund reconcile job.
+   */
   async listChargeRefunds(chargeId: string): Promise<GroupChargeRefund[]> {
-    const stripe = this.stripeFactory.require();
-    const refunds: GroupChargeRefund[] = [];
-    for await (const refund of stripe.refunds.list({ charge: chargeId, limit: 100 })) {
-      if (!COUNTED_REFUND_STATUSES.has(refund.status ?? "")) continue;
-      refunds.push({
-        paymentId: refund.metadata?.paymentId ?? null,
-        deliveryQuoteId: refund.metadata?.deliveryQuoteId ?? null,
-        amountPence: refund.amount,
-      });
-    }
-    return refunds;
+    const refunds = await this.chargeRefunds.listChargeRefunds(chargeId);
+    return refunds
+      .filter((refund) => isCountedRefund(refund.status))
+      .map((refund) => ({
+        paymentId: refund.paymentId,
+        deliveryQuoteId: refund.deliveryQuoteId,
+        amountPence: refund.amountPence,
+      }));
   }
 }

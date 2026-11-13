@@ -1,5 +1,6 @@
 import type Stripe from "stripe";
 import { describe, expect, it, vi } from "vitest";
+import { FakeChargeRefunds } from "../../test/fake-charge-refunds.js";
 import type { PaymentWebhookHandlers } from "./create-payment-webhook-handlers.js";
 import {
   dealChargeRefunded,
@@ -115,13 +116,17 @@ describe("deal payment webhook routing", () => {
     const { settlement, payments } = setup();
     const deps = { settlement, payments };
     const other = { id: "ch_lot", amount_refunded: 100 } as Stripe.Charge;
-    expect(await dealChargeRefunded(deps, event, other)).toBeNull();
+    const refunds = new FakeChargeRefunds();
+    // Only the succeeded refund counts; the pending one is left until it succeeds.
+    refunds.add({ id: "re_1", chargeId: "ch_deal", amountPence: 4_800_000, status: "succeeded" });
+    refunds.add({ id: "re_2", chargeId: "ch_deal", amountPence: 1_000, status: "pending" });
+    expect(await dealChargeRefunded(deps, event, other, refunds)).toBeNull();
     const deal = {
       id: "ch_deal",
       amount_refunded: 4_800_000,
       refunds: { data: [{ id: "re_1" }] },
     } as unknown as Stripe.Charge;
-    await dealChargeRefunded(deps, event, deal);
+    await dealChargeRefunded(deps, event, deal, refunds);
     expect(settlement.refunded).toHaveBeenCalledWith({
       eventId: "evt_1",
       chargeId: "ch_deal",

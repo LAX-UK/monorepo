@@ -377,6 +377,8 @@ export function FailedJobsList(props: FailedJobsListProps) {
           onRowOpen: (row) => navigate(failedJobHref(row.id)),
           selectedIds: selected,
           onSelectedIdsChange: setSelected,
+          // A row nothing can be done to (a Books document, handled on Accounting) has no checkbox.
+          isRowSelectable: (row) => row.canAct,
           bulkNoun: { one: "job", other: "jobs" },
           bulkActions,
           rowActions: {

@@ -12,7 +12,11 @@ import type { FinanceRuntimeEnv } from "./env-slice.js";
 import { type IMoneyPathMetrics, noMoneyPathMetrics } from "./money-path-metrics.js";
 import { PayoutAdjustmentService } from "./payout/payout-adjustment.service.js";
 import { runBulkSettlementWithTransfers } from "./payout/payout-bulk-transfer.js";
-import { type PayoutSettlementDeps, payoutRepoForTx } from "./payout/payout-helpers.js";
+import {
+  type PayoutSettlementDeps,
+  payoutRepoForTx,
+  settlementSellerTermsForTx,
+} from "./payout/payout-helpers.js";
 import type {
   BulkSettlementTransferPort,
   BulkSettlementWithTransfersResult,
@@ -58,6 +62,7 @@ export function createPayoutSettlementRuntime(
     domainEventSink: input.domainEventSink,
     payoutAdjustments,
     payoutRepoForTx: (tx: Database) => payoutRepoForTx(input.payoutRepo, tx),
+    sellerTermsForTx: settlementSellerTermsForTx,
   };
 
   const stripeFactory = new StripeClientFactory(input.env.STRIPE_SECRET_KEY);

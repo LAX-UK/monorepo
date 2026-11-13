@@ -6,12 +6,12 @@
       "ignore": ["^/admin", "^/dev/", "^/display/"],
       "groups": {
         "public": {
-          "budgetKb": 465,
+          "budgetKb": 451,
           "enforce": true,
           "match": []
         },
         "sale": {
-          "budgetKb": 570,
+          "budgetKb": 560,
           "enforce": true,
           "match": ["^/\\(marketing\\)/sales/\\[slug\\]/\\[id\\]"]
         },
@@ -24,16 +24,16 @@
           ]
         },
         "lot": {
-          "budgetKb": 556,
+          "budgetKb": 545,
           "enforce": true,
           "match": ["^/\\(marketing\\)/(lot|artist)/"]
         },
         "checkout": {
-          "budgetKb": 556,
+          "budgetKb": 544,
           "match": ["^/\\(client\\)/purchases/(checkout|pay|collect)"]
         },
         "account": {
-          "budgetKb": 638,
+          "budgetKb": 626,
           "match": ["^/\\((client|task)\\)/"]
         }
       },

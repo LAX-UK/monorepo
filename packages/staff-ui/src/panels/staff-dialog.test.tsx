@@ -87,6 +87,14 @@ describe("ConfirmActionDialog", () => {
     expect(onConfirm).toHaveBeenCalledWith({ reason: "BACS-20441" });
   });
 
+  it("keeps the confirm disabled while an acknowledgement is pending", () => {
+    const onConfirm = renderDialog({ tone: "default", confirmDisabled: true });
+    const confirm = screen.getByRole("button", { name: "Refund £20.00" });
+    expect(confirm).toBeDisabled();
+    fireEvent.click(confirm);
+    expect(onConfirm).not.toHaveBeenCalled();
+  });
+
   it("keeps a catastrophic action disabled until the reference is typed exactly", () => {
     const onConfirm = renderDialog({
       title: "Delete sale LAX-10432?",

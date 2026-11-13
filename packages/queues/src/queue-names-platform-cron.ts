@@ -12,6 +12,8 @@ export const STAFF_ROLE_EXPIRY_QUEUE_NAME = "staff-role-expiry" as const;
 /** Daily check for settled private sales whose artwork the register does not show as sold. */
 export const PRIVATE_SALE_SETTLEMENT_FOLLOW_UPS_QUEUE_NAME =
   "private-sale-settlement-follow-ups" as const;
+/** Re-reads Stripe refunds that were not final and settles each one once it is. */
+export const STRIPE_REFUND_RECONCILE_QUEUE_NAME = "stripe-refund-reconcile" as const;
 export const CONSIGNMENT_THREAD_SWEEP_QUEUE_NAME = "consignment-thread-sweep" as const;
 export const SHOP_STOCK_RECONCILIATION_QUEUE_NAME = "shop-stock-reconciliation" as const;
 /** Refreshes the Zoho listing of lots whose sale has just started on its own time. */

@@ -1030,6 +1030,181 @@ describe.skipIf(!HAS_DB)("accounting persistence (integration)", { timeout: 60_0
     });
   });
 
+  describe("staff view and try again (Finance › Accounting)", () => {
+    // The page runs as the Bid API role when it is configured, so its grants are exercised too.
+    const api = createDb(API_URL || (OWNER_URL as string));
+    const staff = createAccountingRepositories(api, clock);
+    afterAll(async () => {
+      await closeDb(api);
+    });
+
+    async function refused(reason: string, product: Product = "bid") {
+      const { stored } = await register(invoice(product, newId()));
+      must(
+        await repos.workQueue.claimNext({
+          provider: PROVIDER,
+          leaseToken: "tok",
+          leaseMs: LEASE_MS,
+          targetModes: ALL_MODES,
+        }),
+      );
+      return must(
+        await repos.transitions.apply(stored.id, {
+          action: "complete_sending",
+          leaseToken: "tok",
+          outcome: { status: "rejected", reason },
+        }),
+      );
+    }
+
+    async function idsIn(tab: "needs_person" | "failed" | "waiting" | "issued", entity = null) {
+      const page = await staff.browser.list({ tab, legalEntity: entity, limit: 500, offset: 0 });
+      return page.documents.map((d) => d.id);
+    }
+
+    it("lists each document in its tab, a locked period with the documents that need a person", async () => {
+      const before = await staff.browser.list({
+        tab: "failed",
+        legalEntity: null,
+        limit: 1,
+        offset: 0,
+      });
+      const plain = await refused("zoho_books_validation_invalid_request");
+      const locked = await refused("zoho_books_validation_period_locked");
+      expect(await idsIn("failed")).toContain(plain.id);
+      expect(await idsIn("failed")).not.toContain(locked.id);
+      expect(await idsIn("needs_person")).toContain(locked.id);
+      const after = await staff.browser.list({
+        tab: "failed",
+        legalEntity: null,
+        limit: 1,
+        offset: 0,
+      });
+      expect(after.counts.failed).toBe(before.counts.failed + 1);
+      expect(after.counts.needs_person).toBe(before.counts.needs_person + 1);
+      expect(after.total).toBe(after.counts.failed);
+      expect(after.documents).toHaveLength(1);
+    });
+
+    it("filters by company", async () => {
+      const shop = await refused("zoho_books_validation_invalid_request", "shop");
+      const art = (
+        await staff.browser.list({
+          tab: "failed",
+          legalEntity: "london_art_exchange",
+          limit: 500,
+          offset: 0,
+        })
+      ).documents;
+      expect(art.map((d) => d.id)).toContain(shop.id);
+      expect(art.every((d) => d.legalEntity === "london_art_exchange")).toBe(true);
+      const bid = await staff.browser.list({
+        tab: "failed",
+        legalEntity: "london_auction_xchange",
+        limit: 500,
+        offset: 0,
+      });
+      expect(bid.documents.map((d) => d.id)).not.toContain(shop.id);
+    });
+
+    async function issued(number: string, product: Product = "bid") {
+      const { stored } = await register(invoice(product, newId()));
+      must(
+        await repos.workQueue.claimNext({
+          provider: PROVIDER,
+          leaseToken: "tok",
+          leaseMs: LEASE_MS,
+          targetModes: ALL_MODES,
+        }),
+      );
+      return must(
+        await repos.transitions.apply(stored.id, {
+          action: "complete_sending",
+          leaseToken: "tok",
+          outcome: {
+            status: "issued",
+            number,
+            providerId: `books-${number}`,
+            pdfRef: null,
+            totals: stored.totals,
+          },
+        }),
+      );
+    }
+
+    it("counts today's issued documents, names the last one sent, and finds one by reference", async () => {
+      const done = await issued("INV-TODAY");
+      const page = await staff.browser.list({
+        tab: "issued",
+        legalEntity: null,
+        limit: 500,
+        offset: 0,
+      });
+      expect(page.documents.map((d) => d.id)).toContain(done.id);
+      expect(page.issuedToday).toBeGreaterThanOrEqual(1);
+      expect(page.lastSent).not.toBeNull();
+      expect(page.lastSent?.rehearsal).toBe(done.target?.mode === "dry_run");
+
+      const byRef = await staff.browser.list({
+        tab: "issued",
+        legalEntity: null,
+        reference: done.reference,
+        limit: 50,
+        offset: 0,
+      });
+      expect(byRef.documents.map((d) => d.id)).toEqual([done.id]);
+      expect(byRef.total).toBe(1);
+
+      const none = await staff.browser.list({
+        tab: "issued",
+        legalEntity: null,
+        reference: "LAX-BID-INV-does-not-exist",
+        limit: 50,
+        offset: 0,
+      });
+      expect(none.documents).toEqual([]);
+      expect(none.total).toBe(0);
+    });
+
+    it("tries the same document again under the same reference, records who asked, and only once", async () => {
+      const failed = await refused("zoho_books_validation_invalid_request");
+      const again = must(
+        await staff.transitions.apply(failed.id, { action: "requeue", requestedBy: "staff-1" }),
+      );
+      expect(again.id).toBe(failed.id);
+      expect(again.reference).toBe(failed.reference);
+      expect(again.record.status).toBe("pending");
+      expect(again.lastErrorClass).toBe("zoho_books_validation_invalid_request");
+      const second = await staff.transitions.apply(failed.id, {
+        action: "requeue",
+        requestedBy: "staff-1",
+      });
+      expect(second.ok).toBe(false);
+      const history = await owner.execute<{ action: string; detail: Record<string, unknown> }>(
+        sql`select action, detail from accounting_document_event
+            where document_id = ${failed.id} and action = 'requeue'`,
+      );
+      expect(history.rows).toEqual([{ action: "requeue", detail: { requestedBy: "staff-1" } }]);
+      const count = await owner.execute<{ n: number }>(
+        sql`select count(*)::int as n from accounting_document where lax_reference = ${failed.reference}`,
+      );
+      expect(count.rows[0]?.n).toBe(1);
+      expect(must(await staff.browser.findById(failed.id))?.record.status).toBe("pending");
+      expect(must(await staff.browser.findById(randomUUID()))).toBeNull();
+    });
+
+    it("reports how long work has waited for a person and for the sender", async () => {
+      await refused("zoho_books_validation_period_locked");
+      const attention = await staff.attention.read(["dry_run"]);
+      expect(attention.needsPerson.count).toBeGreaterThan(0);
+      expect(attention.needsPerson.oldestSince).toBeInstanceOf(Date);
+      await register(invoice("bid", newId()));
+      const waiting = await staff.attention.read(["dry_run"]);
+      expect(waiting.pending.count).toBeGreaterThan(0);
+      expect((await staff.attention.read([])).pending).toEqual({ count: 0, oldestSince: null });
+    });
+  });
+
   describe("history is append-only", () => {
     async function oneEventId() {
       const { stored } = await register(invoice("bid", newId()));
@@ -1075,38 +1250,41 @@ describe.skipIf(!HAS_DB)("accounting persistence (integration)", { timeout: 60_0
       },
     );
 
-    it.skipIf(!API_URL)("lets the Bid API read history and nothing else", async () => {
-      // biome-ignore lint/style/noNonNullAssertion: gated by API_URL
-      const api = createDb(API_URL!);
-      try {
-        const { id, documentId } = await oneEventId();
-        const read = await api.execute(
-          sql`select id from accounting_document_event where id = ${id}`,
-        );
-        expect(read.rows).toHaveLength(1);
-        expect(
-          await rejectedCode(
-            api.execute(sql`
-              insert into accounting_document_event (document_id, action, from_state, to_state, attempts, occurred_at)
-              values (${documentId}, 'cancel', 'pending', 'cancelled', 0, now())`),
-          ),
-        ).toBe("42501");
-        for (const statement of [
-          sql`update accounting_document_event set action = 'cancel' where id = ${id}`,
-          sql`delete from accounting_document_event where id = ${id}`,
-          sql`update accounting_document set state = 'cancelled' where id = ${documentId}`,
-          sql`delete from accounting_document where id = ${documentId}`,
-        ]) {
-          expect(await rejectedCode(api.execute(statement))).toBe("42501");
+    it.skipIf(!API_URL)(
+      "lets the Bid API read history and add only a requeue, never change it, and never rewrite or forge a document",
+      async () => {
+        // biome-ignore lint/style/noNonNullAssertion: gated by API_URL
+        const api = createDb(API_URL!);
+        try {
+          const { id, documentId } = await oneEventId();
+          const read = await api.execute(
+            sql`select id from accounting_document_event where id = ${id}`,
+          );
+          expect(read.rows).toHaveLength(1);
+          for (const statement of [
+            sql`update accounting_document_event set action = 'cancel' where id = ${id}`,
+            sql`delete from accounting_document_event where id = ${id}`,
+            sql`update accounting_document set gross_pence = 1 where id = ${documentId}`,
+            sql`update accounting_document set provider = 'xero' where id = ${documentId}`,
+            // The requeue columns are grantable, but a trigger allows only the requeue itself.
+            sql`update accounting_document set state = 'issued', provider_id = 'ATTACKER-9', provider_number = 'INV-FORGED' where id = ${documentId}`,
+            sql`insert into accounting_document_event (document_id, action, from_state, to_state, attempts, detail, occurred_at)
+              values (${documentId}, 'complete_sending', 'sending', 'issued', 1, '{"requestedBy":"not-real"}', now())`,
+            sql`delete from accounting_document where id = ${documentId}`,
+            sql`insert into accounting_document (product, legal_entity, kind, lax_reference, source_event_ref, payload, net_pence, vat_pence, gross_pence)
+              values ('bid', 'london_auction_xchange', 'invoice', 'LAX-BID-INV-x', 'e', '{}', 1, 0, 1)`,
+          ]) {
+            expect(await rejectedCode(api.execute(statement))).toBe("42501");
+          }
+          const documents = await api.execute(
+            sql`select id from accounting_document where id = ${documentId}`,
+          );
+          expect(documents.rows).toHaveLength(1);
+        } finally {
+          await closeDb(api);
         }
-        const documents = await api.execute(
-          sql`select id from accounting_document where id = ${documentId}`,
-        );
-        expect(documents.rows).toHaveLength(1);
-      } finally {
-        await closeDb(api);
-      }
-    });
+      },
+    );
 
     it.skipIf(!WORKER_URL)("never lets the worker delete a document", async () => {
       const { documentId } = await oneEventId();

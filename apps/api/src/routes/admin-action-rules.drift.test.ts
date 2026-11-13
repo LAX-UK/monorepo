@@ -381,6 +381,8 @@ const SOURCE_ROLES: Record<FailedJobSource, { read: UserStaffRole[]; act: UserSt
     act: ["administrator", "finance"],
   },
   "integrations.zoho": { read: ["administrator", "read_only"], act: ["administrator"] },
+  // Handled on Finance › Accounting, with that page's finance permissions.
+  "integrations.books": { read: ["administrator", "finance"], act: ["administrator", "finance"] },
   "integrations.other": { read: ["administrator", "read_only"], act: ["administrator"] },
 };
 

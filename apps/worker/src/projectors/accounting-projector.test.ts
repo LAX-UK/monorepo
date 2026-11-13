@@ -62,6 +62,7 @@ function ctxWith(options: {
       project,
     },
     sender: { tick: vi.fn() },
+    senderCheckIn: vi.fn(async (tick: () => Promise<void>) => tick()),
     cursorStart: { startAtLatestEvent: vi.fn(), moveToLatestEvent: vi.fn() },
   } as unknown as AccountingRuntime;
   const ctx = {
@@ -297,5 +298,19 @@ describe("accounting sender step", () => {
     (accounting.sender.tick as ReturnType<typeof vi.fn>).mockRejectedValue(new Error("db down"));
     await expect(processAccountingSender(ctx)).resolves.toBeUndefined();
     expect(ctx.log.error).toHaveBeenCalled();
+  });
+
+  it("runs each tick inside the sender's cron monitor check-in", async () => {
+    const { ctx, accounting } = ctxWith({ active: true });
+    (accounting.sender.tick as ReturnType<typeof vi.fn>).mockResolvedValue({
+      active: true,
+      sent: 0,
+      lookedUp: 0,
+      requeued: 0,
+      escalated: 0,
+    });
+    await processAccountingSender(ctx);
+    expect(accounting.senderCheckIn).toHaveBeenCalledTimes(1);
+    expect(accounting.sender.tick).toHaveBeenCalledTimes(1);
   });
 });

@@ -38,11 +38,13 @@ import {
 import { attachAdminSatelliteServices } from "../services/admin/create-admin-satellite-services.js";
 import { AdminFailedJobsService } from "../services/admin/failed-jobs/admin-failed-jobs.service.js";
 import { DomainEventFailedJobAuditTrail } from "../services/admin/failed-jobs/failed-job-audit-trail.js";
+import { AccountingDocumentsSource } from "../services/admin/failed-jobs/sources/accounting-documents.source.js";
 import { BackgroundJobsSource } from "../services/admin/failed-jobs/sources/background-jobs.source.js";
 import { IntegrationDeliveriesSource } from "../services/admin/failed-jobs/sources/integration-deliveries.source.js";
 import type { BuyerDefaultService } from "../services/buyer-default/buyer-default.service.js";
 import type { AdminRouteServices } from "../services/interfaces/admin-routes.js";
 import type { IPayoutStatementApplicationService } from "../services/interfaces/finance-routes/finance-payout-statement.js";
+import { createAccountingQueue } from "./create-accounting-queue.js";
 import type { ContainerBiddingSaleroom } from "./create-bidding-saleroom.js";
 import type { ContainerCatalogServices } from "./create-catalog-services.js";
 import type { ContainerComplianceMedia } from "./create-compliance-media.js";
@@ -169,6 +171,7 @@ export function createAdminServices(input: CreateAdminServicesInput): ContainerA
   } = userMisc;
   const { adminUserReader } = repos;
 
+  const accounting = createAccountingQueue({ db, domainEventSink, env });
   const adminBase = createAdminRouteServices({
     transactionRunner: platform.transactionRunner,
     domainEventSink,
@@ -255,6 +258,7 @@ export function createAdminServices(input: CreateAdminServicesInput): ContainerA
     adminDisputeCaseEnrichmentReader,
     disputeAllocationQueueReader,
     disputeDesk: createAdminDisputeDesk({ db, allocator: payments.disputeAllocationService }),
+    accountingQueue: accounting.accountingQueue,
     bidRepo: repoFactory.root.bid,
     payoutService: platform.payoutService,
     payoutRepository,
@@ -370,6 +374,7 @@ export function createAdminServices(input: CreateAdminServicesInput): ContainerA
             deliveries: new DrizzleDomainEventDeliveryRepository(db),
             webhooks: integrationDeadLetterRepository,
           }),
+          new AccountingDocumentsSource({ browser: accounting.accountingBrowser }),
         ],
         audit: new DomainEventFailedJobAuditTrail(domainEventSink, adminDomainEventReader),
         actionsEnabled: env.FAILED_JOB_ACTIONS_ENABLED,

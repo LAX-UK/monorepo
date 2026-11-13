@@ -71,6 +71,7 @@ const LABELS: Record<string, string> = {
   "data_request.enquiries_erased": "Data request enquiries erased",
 
   "failed_job.retried": "Failed job retried",
+  "accounting_document.retry_requested": "Accounting document tried again",
   "failed_job.discarded": "Failed job discarded",
   "failed_job.restored": "Failed job restored",
 
@@ -155,6 +156,7 @@ const LABELS: Record<string, string> = {
   "payment.authorized": "Payment authorised",
   "payment.captured": "Payment captured",
   "payment.refunded": "Payment refunded",
+  "payment.refund_reversed": "Refund failed after it was counted",
   "payment.cancelled": "Payment cancelled",
   "payment.bank_transfer_partially_funded": "Bank transfer partly received",
   "payment.capture_blocked_terminal_status": "Capture blocked on a closed payment",
@@ -177,6 +179,7 @@ const LABELS: Record<string, string> = {
   "payment_group.settlement_refused": "Payment for several invoices needs reconciling",
   "payment_group.delivery_refunded": "Courier charge on a combined payment refunded",
   "payment_group.refund_unattributed": "Refund on a combined payment needs an invoice",
+  "payment_group.refund_reversed": "Failed refund taken back from a combined payment",
   "payment_group.dispute_needs_allocation": "Dispute on a combined payment needs allocating",
 
   "payout.scheduled": "Payout scheduled",

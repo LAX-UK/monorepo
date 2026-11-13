@@ -7,6 +7,7 @@ import {
   SHOP_STOCK_RECONCILIATION_QUEUE_NAME,
   STAFF_ROLE_EXPIRY_QUEUE_NAME,
   STALE_SUBMISSION_DRAFT_REMINDERS_QUEUE_NAME,
+  STRIPE_REFUND_RECONCILE_QUEUE_NAME,
   WATCHED_LOT_REMINDERS_QUEUE_NAME,
 } from "@auction/queues";
 import { Queue, Worker } from "bullmq";
@@ -17,6 +18,7 @@ import { runPrivateSaleSettlementFollowUpsJob } from "../jobs/private-sale-settl
 import { runShopStockReconciliationJob } from "../jobs/shop-stock-reconciliation.job.js";
 import { runStaffRoleExpiryJob } from "../jobs/staff-role-expiry.js";
 import { runStaleSubmissionDraftRemindersJob } from "../jobs/stale-submission-draft-reminders.js";
+import { runStripeRefundReconcileJob } from "../jobs/stripe-refund-reconcile.js";
 import { runWatchedLotRemindersJob } from "../jobs/watched-lot-reminders.js";
 import { withSentryCronMonitor } from "../lib/sentry-cron.js";
 import { registerFinanceAndLifecycleCronWorkers } from "./register-finance-cron-workers.js";
@@ -295,6 +297,43 @@ export function registerCronWorkers(deps: WorkerBootstrapDeps): CronWorkersHandl
     queue: PRIVATE_SALE_SETTLEMENT_FOLLOW_UPS_QUEUE_NAME,
   });
   closables.push(settlementFollowUpsWorker, settlementFollowUpsQueue);
+
+  const refundReconcileQueue = new Queue(STRIPE_REFUND_RECONCILE_QUEUE_NAME, bullConnection);
+  const refundReconcileWorker = new Worker(
+    STRIPE_REFUND_RECONCILE_QUEUE_NAME,
+    async () => {
+      await withSentryCronMonitor(
+        STRIPE_REFUND_RECONCILE_QUEUE_NAME,
+        sentryMonitorSlugs,
+        async () => {
+          await runStripeRefundReconcileJob({
+            apiBaseUrl: env.API_INTERNAL_BASE_URL,
+            cronSecret,
+            log,
+          });
+          await heartbeat(STRIPE_REFUND_RECONCILE_QUEUE_NAME);
+        },
+      );
+    },
+    // One run at a time per worker (the default); the API also leases each refund it takes.
+    bullConnection,
+  );
+  refundReconcileWorker.on("failed", (job, err) => {
+    reportWorkerJobFailure(STRIPE_REFUND_RECONCILE_QUEUE_NAME, job, err);
+  });
+  // Every 15 minutes: each refund has its own backoff, so a run only reads the refunds now due.
+  void refundReconcileQueue.add(
+    STRIPE_REFUND_RECONCILE_QUEUE_NAME,
+    {},
+    {
+      jobId: "repeat-stripe-refund-reconcile",
+      repeat: { every: 15 * 60 * 1000 },
+      removeOnComplete: 50,
+    },
+  );
+  log.info("stripe-refund-reconcile repeat registered (every 15 minutes)");
+  errorHandlers.push({ worker: refundReconcileWorker, queue: STRIPE_REFUND_RECONCILE_QUEUE_NAME });
+  closables.push(refundReconcileWorker, refundReconcileQueue);
 
   const threadSweepQueue = new Queue(CONSIGNMENT_THREAD_SWEEP_QUEUE_NAME, bullConnection);
   const threadSweepWorker = new Worker(

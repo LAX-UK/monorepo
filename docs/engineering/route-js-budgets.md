@@ -187,9 +187,9 @@ Measured on the CI build (Sentry on, gzip, start-up set): the sale page went fro
 lot each load one more file) and the runtime's chunk map names the new chunks. Their module sets
 did not change, and their ratchets were re-recorded. The sale group's budget is now 593 KB.
 
-Not moved: the live session provider, the live lot banner and the socket client. They share one
-subscription with the lot cards and the mobile summary bar, and the socket is the last PR of the
-plan. The toast library still reaches the sale page through the time chip's zone dialog
+Not moved: the live session provider and the live lot banner. They share one subscription with
+the lot cards and the mobile summary bar. The socket client itself now loads on demand (see "Live
+socket loaded on demand"). The toast library still reaches the sale page through the time chip's zone dialog
 (`@auction/ui/time`), which every product shares.
 
 ## Library trims
@@ -210,6 +210,34 @@ Measured on the CI build (Sentry on, gzip, start-up set): the frame of a content
 362.6 to 349.5 KB, about from 370.5 to 357.4 KB, terms from 367.4 to 354.4 KB and the lot page from
 536.6 to 524.7 KB. Home (434.2), the sales list (476.3) and the sale page (539.2) are unchanged: the
 frame is smaller, but their own page scripts now carry zod. The lot group's budget is now 578 KB.
+
+## Live socket loaded on demand
+
+`socket.io-client` and `engine.io-client` are a separate chunk, fetched by the first call to
+`getSocket()` (`lib/socket.ts`). That call is where the client used to connect, and every live
+surface makes it on mount (the lot and sale providers already in render), so a live sale or a lot
+open for bidding starts fetching at once, not on interaction. `getSocket()` returns a stand-in
+with the part of the Socket.IO API the app uses: `on`, `off`, `emit`, `timeout(ms).emit`,
+`connected`, and `io.on` / `io.off` for the manager. The connection itself is opened by
+`lib/socket-connection.ts`, with the same URL, transport, ticket auth and options as before.
+
+| Before the client has arrived | Behaviour |
+| --- | --- |
+| `on`, `off`, `emit`, `io.on`, `io.off` | recorded in one list, in call order, and replayed on the real socket as soon as it is created, before any event can arrive. Socket.IO then holds the emits until it connects, as it always did, so room joins and leaves, listeners and the first `connect` happen in the same order as before. Listeners are kept as their net effect and at most 100 messages wait (oldest dropped first; live surfaces join again on `connect`) |
+| `timeout(ms).emit` | as above, but the ack timer starts at the call, as in Socket.IO: if the client is still loading after `ms` the ack hears `operation has timed out` and the message is never sent |
+| `connected` | `false`, as it was while the socket was connecting |
+| The chunk cannot be fetched | listeners hear what Socket.IO raises for a failed handshake: `error` and `connect_error` for each failure, `reconnect_attempt` before each retry, `reconnect_error` when a retry fails, `reconnect` when the connection finally opens. Retries use Socket.IO's default backoff (1 s doubling to 5 s, ±50%, never under 500 ms) indefinitely, and run at once when the browser comes back online. The health dot stays "connecting" and the notice escalates to "paused" with Refresh, as for an unreachable server |
+| A deploy removed the chunk | after 3 failures in a row while online, the chunk is checked with an uncached `HEAD`; on 404 or 410 the page reloads once onto the new build (at most once per tab every 10 minutes, `lib/socket-chunk-recovery.client.ts`) |
+
+After that every call goes straight to the real socket: reconnects, room rejoin on `connect`, the
+latency probe and every event are Socket.IO's own, unchanged.
+
+Measured on a production build (Sentry on, gzip, start-up set): home went from 434.2 to 422.3 KB,
+the sale page from 539.3 to 527.9 KB, the lot page from 524.7 to 514.0 KB, and the signed-in
+account frame by 11.3 KB (`(client)/layout` reaches the user notification socket). Content pages
+and the sales list grew by 1.0 KB: their frame holds the same 100 modules as before, but webpack
+now splits them into four files instead of three, and each file is compressed on its own. Their
+ratchets were re-recorded. Budgets: public 465, sale 581, lot 566, checkout 544, account 626 KB.
 
 ## Zod, date-fns and Sentry tracing off public first load
 
@@ -233,14 +261,16 @@ The Sentry bytes do not change. The debug code was already stripped, and the tra
 the shared bundle: `@sentry/nextjs` imports its tracing integration statically, and
 `removeTracing` would take tracing away from the account and staff areas too.
 
-Measured locally (production build, Sentry on, gzip, start-up set), before and after: sale page
-539.3 to 517.6 KB, lot page 524.7 to 505.0, contact 393.0 to 376.5, artist profile 491.3 to 475.3,
-search 492.4 to 476.8, private sales 412.0 to 396.8, sales list 476.3 to 462.3, press 409.5 to
-395.8, home 434.1 to 422.2. Pages that did not carry Zod grew by 0.2 to 1.7 KB, and account pages
-by 2.6 to 6 KB: webpack regrouped shared chunks once those modules stopped being shared with
-public pages, and a few (kit buttons, `client-routes`, `sale.schema`) now sit in two start-up files.
-The budgets are now public 465, listing 525, sale 570 and lot 556 KB; the account and checkout
-budgets are not raised.
+Measured on a production build of this change merged with the live socket split above (Sentry on,
+gzip, start-up set), `main` then this change: sale page 528.7 to 508.6 KB, lot page 514.8 to 495.0,
+contact 394.1 to 376.6, artist profile 480.8 to 463.3, search 492.6 to 476.6, private sales 413.0
+to 396.8, sales list 476.4 to 461.7, press 410.6 to 395.8, home 423.1 to 409.8. Pages that did not
+carry Zod moved by -2.8 to +0.8 KB, checkout by +0.7 to +0.8 KB and account pages by up to +4.3 KB:
+webpack regrouped shared chunks once those modules stopped being shared with public pages, and a few
+(kit buttons, `client-routes`, `sale.schema`) now sit in two start-up files. The ratchets were
+re-recorded from that build (`--write-baseline`), and each group's budget is the lower of the one
+`--suggest` gives and the one it had: public 451, listing 525, sale 560, lot 545 KB; checkout (544)
+and account (626) keep their budgets.
 
 ## Enforcement
 
@@ -398,8 +428,8 @@ column says which step of the page-weight plan removes it.
 | `lucide-react` | 7.5 | | 9.7 | 9.4 | | 6 |
 | `vaul` | | | 8.5 | | | 5 |
 
-Live-sale socket code (`socket.io-client`, `engine.io-client`) sits further down on the sale and lot
-pages and goes in step 7. Lenis is part of the frame and stays exactly as it is.
+Live-sale socket code (`socket.io-client`, `engine.io-client`) sat further down on the sale and lot
+pages; step 7 moved it to a chunk fetched on first use. Lenis is part of the frame and stays exactly as it is.
 
 ## Raising a budget on purpose
 

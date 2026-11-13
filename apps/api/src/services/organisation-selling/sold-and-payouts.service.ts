@@ -69,9 +69,10 @@ function soldView(row: SoldLotRow): SoldLotView {
     paymentStatus: row.payment?.status ?? null,
     payoutStatus: row.payout?.status ?? null,
   });
-  const paid = row.payment && row.payment.status === "captured";
-  // The amount the sale settles: its payout line once it is on a payout, else the whole payment.
-  const settled = row.payout?.lineAmount ?? row.payment?.amount ?? "0.00";
+  const paid = row.payment?.status === "captured";
+  // What the seller's figure is worked from: the snapshot, or the old rule a paid-out sale was
+  // paid under. Unknown while the sale is held, so no figure is shown rather than a wrong one.
+  const sellerSide = paid ? (row.payment?.sellerSide ?? null) : null;
   return {
     lotId: row.lotId,
     lotTitle: row.lotTitle,
@@ -81,14 +82,14 @@ function soldView(row: SoldLotRow): SoldLotView {
     hammerPrice: row.hammerPrice,
     soldAfterAuction: row.soldAfterAuction,
     stage,
-    net:
-      paid && row.payment
-        ? saleLineBreakdown({
-            lineAmount: settled,
-            paymentAmount: row.payment.amount,
-            platformFee: row.payment.platformFee,
-          }).net
-        : null,
+    net: sellerSide
+      ? saleLineBreakdown({
+          // The amount the sale settles: its payout line once it is on a payout.
+          lineAmount: row.payout?.lineAmount ?? sellerSide.amount,
+          paymentAmount: sellerSide.amount,
+          platformFee: sellerSide.platformFee,
+        }).net
+      : null,
     payout: row.payout ? { id: row.payout.id, settledAt: row.payout.settledAt } : null,
   };
 }

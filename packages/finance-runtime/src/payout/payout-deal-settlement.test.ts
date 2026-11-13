@@ -2,7 +2,12 @@ import { payoutTotals } from "@auction/domain";
 import type { IPrivateSaleDealPayoutStore } from "@auction/persistence/interfaces";
 import type { PayoutLine, PrivateSalePayoutDeal } from "@auction/types";
 import { describe, expect, it, vi } from "vitest";
-import { makeSettlementRepo, payoutRow, pending } from "./payout-bulk-settlement-parity.helpers.js";
+import {
+  makeSettlementRepo,
+  payoutRow,
+  pending,
+  storedSellerTerms,
+} from "./payout-bulk-settlement-parity.helpers.js";
 import { listSettlementEntityIds } from "./payout-helpers.js";
 import { createSettlementCore } from "./payout-settlement.js";
 
@@ -47,7 +52,7 @@ describe("settling a released private sale deal", () => {
   it("pays the price less commission and agreed costs", async () => {
     const create = vi.fn(async (i) => payoutRow({ ...i }));
     const repo = makeSettlementRepo({ create });
-    const result = await createSettlementCore(repo, input, dealStore([DEAL]));
+    const result = await createSettlementCore(repo, input, dealStore([DEAL]), storedSellerTerms());
     expect(result.ok).toBe(true);
     // £48,000.00 gross, £7,450.00 taken (15% commission and £250.00 costs), £40,550.00 net.
     expect(create).toHaveBeenCalledWith(
@@ -69,7 +74,7 @@ describe("settling a released private sale deal", () => {
       findUnlinkedCapturedPayments: async () =>
         pending([{ id: "p1", amount: "6000.00", platformFee: "1200.00" }]),
     });
-    await createSettlementCore(repo, input, dealStore([DEAL]));
+    await createSettlementCore(repo, input, dealStore([DEAL]), storedSellerTerms());
     const expected = payoutTotals(
       [
         {
@@ -93,9 +98,10 @@ describe("settling a released private sale deal", () => {
 
   it("holds back a deal that is not released and paid: nothing pending", async () => {
     const repo = makeSettlementRepo();
-    expect(await createSettlementCore(repo, input, dealStore([]))).toEqual({
+    expect(await createSettlementCore(repo, input, dealStore([]), storedSellerTerms())).toEqual({
       ok: false,
       reason: "no_pending_payments",
+      heldSales: [],
     });
   });
 
@@ -107,7 +113,7 @@ describe("settling a released private sale deal", () => {
         pending([{ id: "p1", amount: "100.00", platformFee: "10.00" }]),
     });
     const store = dealStore([DEAL], { insertSaleLine: vi.fn(async () => null) });
-    const result = await createSettlementCore(repo, input, store);
+    const result = await createSettlementCore(repo, input, store, storedSellerTerms());
     expect(result.ok && result.queuedDeals).toEqual([]);
     expect(updateTotals).toHaveBeenCalledWith(
       "po1",
@@ -119,7 +125,7 @@ describe("settling a released private sale deal", () => {
     const repo = makeSettlementRepo();
     const store = dealStore([{ ...DEAL, sellerCommissionBps: null as unknown as number }]);
     // The store never returns such a deal; the run still refuses to price one from a guess.
-    await expect(createSettlementCore(repo, input, store)).rejects.toThrow(
+    await expect(createSettlementCore(repo, input, store, storedSellerTerms())).rejects.toThrow(
       "no_settlement_lines_inserted",
     );
   });
@@ -134,6 +140,7 @@ describe("settling a released private sale deal", () => {
       domainEventSink: null,
       payoutAdjustments: undefined,
       payoutRepoForTx: () => repo,
+      sellerTermsForTx: () => storedSellerTerms(),
       dealPayouts: dealStore([DEAL, { ...DEAL, dealId: "deal-2", sellerLegalEntityId: "e3" }]),
     });
     expect(ids.sort()).toEqual(["e1", "e2", "e3"]);

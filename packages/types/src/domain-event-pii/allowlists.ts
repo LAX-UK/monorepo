@@ -158,6 +158,15 @@ export const EXCEPTION_PATHS: Record<string, Set<string>> = {
     "reason",
     "staffReason",
   ]),
+  /** A counted refund Stripe reported failed or cancelled: taken back from the totals. */
+  "payment.refund_reversed": new Set([
+    "stripeChargeId",
+    "amountCents",
+    "sellerAmountCents",
+    "cumulativeRefundedCents",
+    "currency",
+    "via",
+  ]),
   /** Buyer payment paused because seller was archived before capture. */
   "payment.requires_manual_review": new Set([
     "paymentId",
@@ -208,6 +217,8 @@ export const EXCEPTION_PATHS: Record<string, Set<string>> = {
   "payment_group.paid": new Set(["total"]),
   /** Why the group's checkout ended (cancelled, expired, failed); operational codes only. */
   "payment_group.released": new Set(["reason"]),
+  /** The repair took failed refunds back from a courier quote's or the unattributed figure. */
+  "payment_group.refund_reversed": new Set(["via"]),
   /** Why money received for a group was not applied (an operational code). */
   "payment_group.settlement_refused": new Set(["reason"]),
   /** Which dispute stage needs the finance team to allocate it across the invoices. */
@@ -449,6 +460,14 @@ export const EXCEPTION_PATHS: Record<string, Set<string>> = {
   "data_request.enquiry_erasure_requested": new Set(["reference"]),
   "data_request.enquiries_erased": new Set(["reference"]),
   "failed_job.retried": new Set(["queue", "jobName", "confirmRepeat"]),
+  "accounting_document.retry_requested": new Set([
+    "reference",
+    "documentType",
+    "product",
+    "organisation",
+    "fromState",
+    "reason",
+  ]),
   "failed_job.discarded": new Set(["queue", "jobName", "reason", "note"]),
   "failed_job.restored": new Set(["queue", "jobName"]),
   /** A contact form message arrived or was handled: the topic only; what the sender wrote stays on the enquiry. */

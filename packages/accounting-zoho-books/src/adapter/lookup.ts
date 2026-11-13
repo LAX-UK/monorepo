@@ -1,6 +1,5 @@
 import {
   type DocumentKind,
-  type DocumentLookupPort,
   type LookupOutcome,
   type Product,
   parseLaxReference,
@@ -12,21 +11,25 @@ import type { ZohoOrgConfig, ZohoOrgConfigs } from "./org-config.js";
 
 export type BooksRecord = Readonly<Record<string, unknown>>;
 
+/** What a search by reference can say: it finds by identity, so never `differs` on its own. */
+export type IdentityOutcome = Exclude<LookupOutcome, { readonly status: "differs" }>;
+
 /** A lookup's outcome, and the document Books returned when it found one (for further checks). */
 export interface OrgLookup {
-  readonly outcome: LookupOutcome;
+  readonly outcome: IdentityOutcome;
   readonly item: BooksRecord | null;
 }
 
-const miss = (outcome: LookupOutcome): OrgLookup => ({ outcome, item: null });
+const miss = (outcome: IdentityOutcome): OrgLookup => ({ outcome, item: null });
 
 /**
  * Finds a document in the right organisation by its LAX reference custom field. A hit is only
  * believed when the document read back carries that exact reference, so a filter Books ignored can
  * never make us adopt someone else's document. Absence is only ever "the search found nothing";
- * anything unclear is `unavailable`, which the life cycle never turns into a resend.
+ * anything unclear is `unavailable`, which the life cycle never turns into a resend. It finds by
+ * identity only; the life cycle's lookup (`ZohoReadBackLookup`) also checks what it finds.
  */
-export class ZohoDocumentLookup implements DocumentLookupPort {
+export class ZohoDocumentLookup {
   constructor(
     private readonly api: ZohoApi,
     private readonly orgs: ZohoOrgConfigs,
@@ -36,7 +39,7 @@ export class ZohoDocumentLookup implements DocumentLookupPort {
     product: Product,
     kind: DocumentKind,
     reference: string,
-  ): Promise<LookupOutcome> {
+  ): Promise<IdentityOutcome> {
     const choice = orgFor(this.orgs, { product });
     if (!choice.ok) return { status: "unavailable", reason: choice.reason };
     return (await this.findIn(choice.org, product, kind, reference)).outcome;

@@ -47,6 +47,7 @@ export * from "./telephone-booking.js";
 export * from "./onsite-event.js";
 export * from "./sale-expected-guests.js";
 export * from "./admin-dispute-case.js";
+export * from "./admin-accounting.js";
 export * from "./admin-dispute-desk.js";
 export * from "./press.js";
 export * from "./atg.js";

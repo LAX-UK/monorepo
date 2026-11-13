@@ -21,6 +21,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
     "backfill:dispute-cases": "tsx scripts/backfill-dispute-cases.ts",
+    "repair:group-refund-totals": "tsx scripts/repair-group-refund-totals.ts",
     "check:admin-dip": "node scripts/check-admin-routes-dip.mjs",
     "check:bidding-dip": "node scripts/check-bidding-routes-dip.mjs",
     "check:org-dip": "node scripts/check-org-routes-dip.mjs",
@@ -33,6 +34,7 @@
     "check:compliance-dip": "node scripts/check-compliance-routes-dip.mjs"
   },
   "dependencies": {
+    "@auction/accounting-domain": "workspace:*",
     "@auction/alerts": "workspace:*",
     "@auction/artwork-register-contracts": "workspace:*",
     "@auction/auth": "workspace:*",
