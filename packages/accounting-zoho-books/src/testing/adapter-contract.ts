@@ -759,3 +759,77 @@ export function runAccountingContract(
     });
   });
 }
+
+/** What the PDF contract needs: the ports, and whether a fetched PDF is a rehearsal stand-in. */
+export interface PdfSubject {
+  readonly ports: AccountingPorts;
+  readonly rehearsal: boolean;
+}
+
+const BID_HAMMER: LineInput = {
+  description: "Hammer price",
+  quantity: 1,
+  unitNetPence: 120_000,
+  treatment: "margin_scheme",
+  role: "goods",
+};
+const BID_PREMIUM: LineInput = {
+  description: "Buyer's premium (25%)",
+  quantity: 1,
+  unitNetPence: 30_000,
+  treatment: "margin_scheme",
+  role: "goods",
+};
+
+/**
+ * The stored copy's contract, for every implementation that can make one: the PDF of an invoice
+ * it issued is fetched by the identity it gave, and nothing else is (a payment, a stranger's id).
+ * A rehearsal says so (`rehearsal: true`), so it is never shown as the provider's own.
+ */
+export function runDocumentPdfContract(
+  api: TestApi,
+  makeSubject: () => PdfSubject | Promise<PdfSubject>,
+): void {
+  const { describe, it, expect } = api;
+
+  async function issuedBidInvoice() {
+    const s = await makeSubject();
+    issuedOf(await s.ports.contacts.upsertContact(contact(BID)));
+    const doc = invoice(BID, "pdf-1", [BID_HAMMER, BID_PREMIUM]);
+    const issued = issuedOf(await s.ports.invoices.issueInvoice(doc));
+    return { s, doc, issued };
+  }
+
+  describe("stored copy (PDF)", () => {
+    it("fetches the PDF of an invoice it issued", async () => {
+      const { s, doc, issued } = await issuedBidInvoice();
+      const pdf = await s.ports.pdfs.fetchPdf(doc, issued);
+      if (pdf.status !== "fetched") throw new Error(`expected fetched, got ${pdf.reason}`);
+      expect(pdf.contentType).toBe("application/pdf");
+      expect(new TextDecoder().decode(pdf.bytes.slice(0, 5))).toBe("%PDF-");
+      expect(pdf.rehearsal).toBe(s.rehearsal);
+    });
+
+    it("has no PDF for a document it did not issue under that identity", async () => {
+      const { s, doc, issued } = await issuedBidInvoice();
+      const stranger = { ...issued, providerId: "someone-else" };
+      expect((await s.ports.pdfs.fetchPdf(doc, stranger)).status).toBe("unavailable");
+    });
+
+    it("has no PDF for a payment", async () => {
+      const { s, doc } = await issuedBidInvoice();
+      const payment = must(
+        buildPayment({
+          product: BID,
+          sourceId: "pdf-pay-1",
+          contactReference: doc.contactReference,
+          receivedOn: "2026-11-12",
+          amountPence: doc.totals.grossPence,
+          allocations: [{ invoiceReference: doc.reference, amountPence: doc.totals.grossPence }],
+        }),
+      );
+      const recorded = issuedOf(await s.ports.payments.recordPayment(payment));
+      expect((await s.ports.pdfs.fetchPdf(payment, recorded)).status).toBe("unavailable");
+    });
+  });
+}

@@ -7,6 +7,7 @@ import {
   type IssueOutcome,
   type LookupOutcome,
   type Payment,
+  type PdfOutcome,
   type Result,
   expectedTotals,
 } from "@auction/accounting-domain";
@@ -18,7 +19,10 @@ import { type ContactType, contactCreateBody } from "./mappers/contact.js";
 import { creditNoteBody } from "./mappers/credit-note.js";
 import { invoiceBody } from "./mappers/invoice.js";
 import { paymentBody } from "./mappers/payment.js";
+import { penceToPounds } from "./money-format.js";
 import type { ZohoOrgConfig, ZohoOrgConfigs } from "./org-config.js";
+import { rehearsalPdf } from "./rehearsal-pdf.js";
+import { ZOHO_BOOKS_REJECTIONS } from "./rejections.js";
 import { type Dependency, sameProduct } from "./resolve.js";
 
 /** The Books id a dependency would have; never sent anywhere, only lets a mapper build its body. */
@@ -105,6 +109,11 @@ export function createZohoBooksDryRunAdapter(deps: {
     lookup: {
       findDocument: (): Promise<LookupOutcome> => Promise.resolve({ status: "not_found" }),
     },
+    // Books made nothing, so there is no Books PDF: a page that says it is a rehearsal stands in.
+    pdfs: {
+      fetchPdf: (doc, issued): Promise<PdfOutcome> =>
+        Promise.resolve(rehearsalPdfFor(doc, issued.providerId)),
+    },
     // It holds no client: whatever the settings name, it reaches no organisation.
     destination: { destinationFor: () => ({ kind: "none" }) },
   };
@@ -132,5 +141,29 @@ function rehearsal(
     providerId: dryRunProviderId(doc.reference),
     pdfRef: null,
     totals: expectedTotals(doc),
+  };
+}
+
+const GBP = new Intl.NumberFormat("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+/** The rehearsal page for a rehearsed invoice or credit note; anything else has no PDF. */
+function rehearsalPdfFor(doc: AccountingDocument, providerId: string): PdfOutcome {
+  const rehearsed = providerId === dryRunProviderId(doc.reference);
+  if ((doc.kind !== "invoice" && doc.kind !== "credit_note") || !rehearsed) {
+    return { status: "unavailable", reason: ZOHO_BOOKS_REJECTIONS.pdfNotAvailable };
+  }
+  const totals = expectedTotals(doc);
+  const pounds = (pence: number) => `GBP ${GBP.format(penceToPounds(pence))}`;
+  return {
+    status: "fetched",
+    contentType: "application/pdf",
+    rehearsal: true,
+    bytes: rehearsalPdf([
+      `Reference ${doc.reference}`,
+      `Number ${DRY_RUN_NUMBER}`,
+      `Net ${pounds(totals.netPence)}`,
+      `VAT ${pounds(totals.vatPence)}`,
+      `Total ${pounds(totals.grossPence)}`,
+    ]),
   };
 }
