@@ -1,6 +1,6 @@
 "use client";
 
-import { useReturnFocus } from "@auction/ui/lax";
+import { Kbd, type LinkComponent, useReturnFocus } from "@auction/ui/lax";
 
 import {
   Sheet,
@@ -9,14 +9,22 @@ import {
   SheetDescription,
   SheetTitle,
 } from "@auction/ui/components/sheet";
-import { X } from "lucide-react";
+import { ArrowUpRight, ChevronDown, ChevronUp, X } from "lucide-react";
 import * as React from "react";
 import { type KeyValueItem, KeyValueList } from "../display/key-value-list.js";
 import { discardPrompt } from "../forms/unsaved-changes.js";
 import { STAFF_LAYER, cn } from "../lib/cn.js";
 import { StaffButton } from "../primitives/button.js";
+import { StaffTooltip } from "../primitives/menu.js";
 import { MetaItem } from "../shell/page-header.js";
+import { isTypingTarget, useStaffShortcut, useStaffShortcuts } from "../shell/shortcuts.js";
+import type { PanelQueue } from "./queue-panel.js";
 import { ConfirmActionDialog } from "./staff-dialog.js";
+
+/** The way out of a panel to the record's page: the same words on every panel. */
+export const OPEN_FULL_PAGE_LABEL = "Open full page";
+
+const COUNT = new Intl.NumberFormat("en-GB");
 
 /** The row a list marks as the open record (`DataTable` sets `data-active` on it). */
 function activeTableRow(): HTMLElement | null {
@@ -44,8 +52,19 @@ export type DetailPanelProps<L extends string = string> = {
    * label is left out of the summary.
    */
   meta?: readonly PanelMetaFact[];
-  /** Header actions beside close, e.g. "Open full page". */
+  /** Header actions beside close. For the record's page, use `fullPage`. */
   headerActions?: React.ReactNode;
+  /**
+   * The record's full page, when it has one: "Open full page" (↗) first among the header
+   * actions, in the same words on every panel.
+   */
+  fullPage?: { href: string; Link: LinkComponent };
+  /**
+   * A work queue (PRD-7, R2): the panel shows its place ("3 of 12") and steps to the previous
+   * and next record with K and J, or the ↑ and ↓ buttons, without closing. `useQueuePanel`
+   * builds it.
+   */
+  queue?: PanelQueue;
   /** An OverflowMenu (`…`) with the record's other actions, destructive last. */
   overflow?: React.ReactNode;
   /** A Notice about the whole record, above everything else in the panel. */
@@ -90,6 +109,8 @@ export function DetailPanel<L extends string = string>({
   status,
   meta,
   headerActions,
+  fullPage,
+  queue,
   overflow,
   notice,
   summary,
@@ -103,8 +124,25 @@ export function DetailPanel<L extends string = string>({
 }: DetailPanelProps<L>) {
   const [confirmingClose, setConfirmingClose] = React.useState(false);
   const titleRef = React.useRef<HTMLHeadingElement>(null);
+  // The list's row for the record shown, kept while the panel is open: the list unmarks it as
+  // the panel closes, before focus comes back.
+  const shownRow = React.useRef<HTMLElement | null>(null);
+  React.useEffect(() => {
+    if (open) shownRow.current = activeTableRow() ?? shownRow.current;
+  });
+  const rowShown = () => (shownRow.current?.isConnected ? shownRow.current : activeTableRow());
   // A panel opened from the URL, or after the list re-rendered, returns to the active row.
-  const returnFocus = useReturnFocus(open, activeTableRow);
+  const returnToOpener = useReturnFocus(open, rowShown);
+  // A queue may have stepped on from the row that opened it: focus goes to the record last shown.
+  const returnFocus = (event: Event) => {
+    const row = queue ? rowShown() : null;
+    if (!row) {
+      returnToOpener(event);
+      return;
+    }
+    event.preventDefault();
+    row.focus({ preventScroll: true });
+  };
   const shown = new Set<string>([
     ...(meta ?? []).map((fact) => fact.label),
     ...(headerFacts ?? []),
@@ -115,6 +153,8 @@ export function DetailPanel<L extends string = string>({
     if (!next && dirty) setConfirmingClose(true);
     else onOpenChange(next);
   };
+  const stepping = useQueueStepping(open ? queue : undefined, dirty);
+  const actions = fullPage || headerActions || overflow || queue;
   return (
     <>
       <Sheet open={open} onOpenChange={requestOpenChange}>
@@ -134,6 +174,7 @@ export function DetailPanel<L extends string = string>({
             titleRef.current?.focus({ preventScroll: true });
           }}
           onCloseAutoFocus={returnFocus}
+          onKeyDown={stepping.onKeyDown}
         >
           <div className="flex min-h-0 flex-1 flex-col">
             {/* On a phone the actions take their own row under the title, so the title keeps the
@@ -157,9 +198,10 @@ export function DetailPanel<L extends string = string>({
                 ) : (
                   <SheetDescription className="sr-only">Details</SheetDescription>
                 )}
-                {meta && meta.length > 0 ? (
+                {(meta && meta.length > 0) || queue ? (
                   <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-staff-sm text-staff-muted">
-                    {meta.map((fact) => (
+                    {queue ? <QueuePosition queue={queue} /> : null}
+                    {meta?.map((fact) => (
                       <MetaItem key={fact.label} label={fact.label}>
                         {fact.value}
                       </MetaItem>
@@ -167,8 +209,19 @@ export function DetailPanel<L extends string = string>({
                   </div>
                 ) : null}
               </div>
-              {headerActions || overflow ? (
+              {actions ? (
                 <div className="order-3 -ml-2 flex basis-full items-center gap-1 sm:order-2 sm:-mt-1 sm:ml-0 sm:basis-auto">
+                  {queue ? <QueueStepButtons queue={queue} /> : null}
+                  {fullPage ? (
+                    <StaffButton
+                      asChild
+                      variant="ghost"
+                      size="sm"
+                      icon={<ArrowUpRight aria-hidden />}
+                    >
+                      <fullPage.Link href={fullPage.href}>{OPEN_FULL_PAGE_LABEL}</fullPage.Link>
+                    </StaffButton>
+                  ) : null}
                   {headerActions}
                   {overflow}
                 </div>
@@ -198,8 +251,25 @@ export function DetailPanel<L extends string = string>({
               {children}
               {activity ? <PanelSection title="Activity">{activity}</PanelSection> : null}
             </section>
+            {/* The last row of the flex column, so it stays in view however long the panel; on a
+                phone, clear of the home indicator. */}
             {footer ? (
-              <footer className="flex flex-wrap items-center justify-end gap-2 border-t border-staff-line bg-staff-surface px-5 py-3">
+              <footer
+                data-staff-panel-footer=""
+                className="sticky bottom-0 flex flex-wrap items-center justify-end gap-2 border-t border-staff-line bg-staff-surface px-5 pt-3 pb-[max(--spacing(3),env(safe-area-inset-bottom))]"
+              >
+                {queue ? (
+                  <p
+                    aria-hidden
+                    className="mr-auto hidden items-center gap-1 text-staff-xs text-staff-muted sm:flex"
+                  >
+                    <Kbd>J</Kbd>
+                    <Kbd>K</Kbd>
+                    <span className="mr-2">next</span>
+                    <Kbd>Esc</Kbd>
+                    <span>close</span>
+                  </p>
+                ) : null}
                 {footer}
               </footer>
             ) : null}
@@ -221,6 +291,96 @@ export function DetailPanel<L extends string = string>({
       />
     </>
   );
+}
+
+/** "3 of 12" in the panel's meta line; said again when J or K moves to another record. */
+function QueuePosition({ queue }: { queue: PanelQueue }) {
+  return (
+    <span
+      data-staff-queue-position=""
+      aria-live="polite"
+      aria-atomic="true"
+      className="tabular-nums"
+    >
+      <span className="text-staff-fg">{COUNT.format(queue.position)}</span> of{" "}
+      {COUNT.format(queue.total)}
+      <span className="sr-only"> in this queue</span>
+    </span>
+  );
+}
+
+function QueueStepButtons({ queue }: { queue: PanelQueue }) {
+  const noun = queue.noun ?? "record";
+  const button = (
+    onStep: (() => void) | null,
+    label: string,
+    key: string,
+    icon: React.ReactNode,
+  ) => (
+    <StaffTooltip label={label} shortcut={key}>
+      <StaffButton
+        variant="ghost"
+        size="icon-sm"
+        aria-label={label}
+        aria-keyshortcuts={key}
+        // Stays focusable at the ends, so focus is not lost when the last record is reached.
+        aria-disabled={onStep ? undefined : true}
+        className={cn(!onStep && "opacity-50")}
+        onClick={() => onStep?.()}
+      >
+        {icon}
+      </StaffButton>
+    </StaffTooltip>
+  );
+  return (
+    <div className="flex items-center">
+      {button(queue.onPrevious, `Previous ${noun}`, "K", <ChevronUp aria-hidden />)}
+      {button(queue.onNext, `Next ${noun}`, "J", <ChevronDown aria-hidden />)}
+    </div>
+  );
+}
+
+/**
+ * J and K step through the queue while the panel is open. Through the shell's shortcut registry
+ * when there is one (so the `?` sheet lists them, they take over the list's own J and K, and the
+ * person's "single-key shortcuts off" is respected); otherwise on the panel itself. Never while
+ * typing, and never away from unsaved changes.
+ */
+function useQueueStepping(queue: PanelQueue | undefined, dirty: boolean) {
+  const registry = useStaffShortcuts();
+  const live = queue && !dirty ? queue : undefined;
+  const noun = queue?.noun ?? "record";
+  useStaffShortcut(
+    registry && live
+      ? {
+          id: "staff:panel-next",
+          keys: "j",
+          label: `Next ${noun}`,
+          group: "Panels",
+          handler: () => live.onNext?.(),
+        }
+      : null,
+  );
+  useStaffShortcut(
+    registry && live
+      ? {
+          id: "staff:panel-previous",
+          keys: "k",
+          label: `Previous ${noun}`,
+          group: "Panels",
+          handler: () => live.onPrevious?.(),
+        }
+      : null,
+  );
+  const onKeyDown = (event: React.KeyboardEvent) => {
+    if (registry || !live || event.metaKey || event.ctrlKey || event.altKey) return;
+    if (isTypingTarget(event.target)) return;
+    const step = event.key === "j" ? live.onNext : event.key === "k" ? live.onPrevious : undefined;
+    if (step === undefined) return;
+    event.preventDefault();
+    step?.();
+  };
+  return { onKeyDown };
 }
 
 /** A labelled block inside a panel: small heading, content below, 24px apart from the next. */
