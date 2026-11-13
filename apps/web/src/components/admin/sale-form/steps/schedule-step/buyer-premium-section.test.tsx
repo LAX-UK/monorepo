@@ -6,7 +6,13 @@ import { describe, expect, it, vi } from "vitest";
 import { saleBuyerPremiumPreview } from "../../use-sale-tier-preview";
 import { BuyerPremiumSection } from "./buyer-premium-section";
 
-function Harness({ values }: { values: Partial<AdminSaleFormValues> }) {
+function Harness({
+  values,
+  syncsToAtg,
+}: {
+  values: Partial<AdminSaleFormValues>;
+  syncsToAtg?: boolean;
+}) {
   const defaults = { ...emptyAdminSaleFormValues(), ...values };
   const form = useForm<AdminSaleFormValues>({ defaultValues: defaults });
   return (
@@ -17,6 +23,7 @@ function Harness({ values }: { values: Partial<AdminSaleFormValues> }) {
       append={vi.fn()}
       remove={vi.fn()}
       tierBandPreview={saleBuyerPremiumPreview(defaults)}
+      syncsToAtg={syncsToAtg}
     />
   );
 }
@@ -34,6 +41,20 @@ describe("BuyerPremiumSection", () => {
     expect(
       screen.getByText("On a £600,000 hammer the buyer pays £85,000 premium."),
     ).toBeInTheDocument();
+  });
+
+  it("keeps a polite status line, and prompts to fix invalid bands instead of vanishing", () => {
+    render(<Harness values={{ buyerPremiumMode: "bands" }} />);
+    const status = screen.getByRole("status");
+    expect(status).toHaveTextContent("Fix the bands to see an example.");
+  });
+
+  it("tells staff an ATG-synced sale takes one flat rate, and stays silent otherwise", () => {
+    const { unmount } = render(<Harness values={{}} />);
+    expect(screen.queryByText(/ATG takes one flat rate/)).not.toBeInTheDocument();
+    unmount();
+    render(<Harness values={{}} syncsToAtg />);
+    expect(screen.getByText(/ATG takes one flat rate/)).toBeInTheDocument();
   });
 
   it("asks for the rate when the sale charges a flat rate", () => {

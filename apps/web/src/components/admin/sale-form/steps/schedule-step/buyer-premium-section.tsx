@@ -26,6 +26,8 @@ type Props = {
   append: UseFieldArrayAppend<AdminSaleFormValues, "buyerPremiumTiers">;
   remove: UseFieldArrayRemove;
   tierBandPreview: TierPreview;
+  /** The sale syncs to ATG, which takes a single flat rate — staff see a note to that effect. */
+  syncsToAtg?: boolean | undefined;
 };
 
 const STANDARD_TERMS = describeBuyerPremium(STANDARD_BUYER_PREMIUM);
@@ -64,6 +66,7 @@ export function BuyerPremiumSection({
   append,
   remove,
   tierBandPreview,
+  syncsToAtg = false,
 }: Props) {
   const f = { control: form.control, formId: SALE_FORM_ID, disabled: !isDraft } as const;
   const mode = form.watch("buyerPremiumMode");
@@ -72,6 +75,12 @@ export function BuyerPremiumSection({
       title="Buyer's premium"
       description="Charged to the buyer on top of the hammer price. Fixed once the sale is published."
     >
+      {syncsToAtg ? (
+        <Notice tone="info" title="This sale syncs to ATG">
+          ATG takes one flat rate for the whole hammer, so a sale with bands cannot sync. Choose a
+          flat rate for the rate ATG should charge.
+        </Notice>
+      ) : null}
       <StaffRadioField<AdminSaleFormValues, SaleBuyerPremiumMode>
         {...f}
         name="buyerPremiumMode"
@@ -123,11 +132,18 @@ export function BuyerPremiumSection({
           )}
         />
       ) : null}
-      {tierBandPreview.ok ? (
-        <Notice tone="info" title={`Buyer's premium: ${tierBandPreview.terms}`}>
-          {tierBandPreview.example}.
-        </Notice>
-      ) : null}
+      {/* A persistent status region: it announces the worked example as it changes, and keeps a
+          line here when the bands are not yet valid instead of vanishing silently. */}
+      <Notice
+        tone="info"
+        title={tierBandPreview.ok ? `Buyer's premium: ${tierBandPreview.terms}` : "Buyer's premium"}
+      >
+        {tierBandPreview.ok
+          ? `${tierBandPreview.example}.`
+          : mode === "bands"
+            ? "Fix the bands to see an example."
+            : "Enter a flat rate to see an example."}
+      </Notice>
     </FormSection>
   );
 }
