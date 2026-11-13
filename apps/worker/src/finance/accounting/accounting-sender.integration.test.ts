@@ -223,6 +223,19 @@ describe.skipIf(!HAS_DB)("accounting sender (integration)", { timeout: 60_000 },
       issued: null,
       reason: expect.stringMatching(/^rehearsal_reaches_organisation: /),
     });
+    // Held in one step, recorded as an escalation from sending: it was never failed.
+    const history = await owner.execute(sql`
+      select e.action, e.from_state, e.to_state, e.detail
+        from accounting_document_event e
+        join accounting_document d on d.id = e.document_id
+       where d.lax_reference = ${contact?.reference as string} and d.target_mode = 'dry_run'
+       order by e.id`);
+    expect(history.rows.map((r) => [r.action, r.from_state, r.to_state])).toEqual([
+      ["created", null, "pending"],
+      ["start_sending", "pending", "sending"],
+      ["escalate", "sending", "needs_review"],
+    ]);
+    expect(history.rows.at(-1)?.detail).toMatchObject({ unsent: true });
   });
 
   it("refuses a test_org document bound to another organisation, and sends one bound to its own", async () => {

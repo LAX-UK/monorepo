@@ -323,6 +323,32 @@ export function applyLookup(
   }
 }
 
+/**
+ * sending -> needs_review in one step, for a send the sender decided not to make (the document
+ * would reach the wrong organisation, say): nothing was sent, so no lookup is owed and no provider
+ * document is kept, and it is never `failed` (which would be requeued and claimed again). Only the
+ * lease's holder may withhold it; an expired but unswept lease still counts, since nothing left.
+ */
+export function withhold(
+  record: DocumentRecord,
+  token: string,
+  reason: string,
+): Result<DocumentRecord, LifecycleCode> {
+  if (record.status !== "sending") return wrongState("withhold a send", record.status);
+  if (record.lease.token !== token) return refuse("lease_mismatch", "lease token does not match");
+  if (typeof reason !== "string" || reason === "") {
+    return refuse("bad_outcome", "a withheld send needs a reason");
+  }
+  return ok({
+    ...core(record),
+    status: "needs_review",
+    lookup: "clear",
+    issued: null,
+    mismatch: null,
+    reason,
+  });
+}
+
 /** A person (or a rule) takes the record out of automation. Not from a finished or cancelled one. */
 export function escalate(
   record: DocumentRecord,

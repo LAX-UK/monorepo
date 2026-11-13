@@ -19,6 +19,7 @@ import {
   requeue,
   retryDelayMs,
   startSending,
+  withhold,
 } from "@auction/accounting-domain";
 import type {
   ClaimRequest,
@@ -206,7 +207,13 @@ export class InMemoryAccountingStore
       "outcome" in transition && "totals" in transition.outcome
         ? { providerTotals: transition.outcome.totals, expectedTotals: row.stored.totals }
         : {};
-    this.move(row, transition.action, next.value, detail);
+    // As the store does: a withheld send is an escalation in the history.
+    this.move(
+      row,
+      transition.action === "withhold" ? "escalate" : transition.action,
+      next.value,
+      detail,
+    );
     return ok(row.stored);
   }
 
@@ -226,6 +233,8 @@ export class InMemoryAccountingStore
         return applyLookup(record, transition.outcome, this.nowMs, expected);
       case "escalate":
         return escalate(record, transition.reason);
+      case "withhold":
+        return withhold(record, transition.leaseToken, transition.reason);
       case "requeue":
         return requeue(record);
       case "cancel":

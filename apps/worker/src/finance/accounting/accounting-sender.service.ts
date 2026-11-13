@@ -143,8 +143,9 @@ export class AccountingSender {
   }
 
   /**
-   * Leave a claimed document that must not be sent with a person: recorded as refused (nothing was
-   * sent), then escalated at once, so it is never requeued and sent on its own.
+   * Leave a claimed document that must not be sent with a person, in one step (`withhold`):
+   * nothing was sent, and it never passes through `failed`, so it is never requeued and sent on
+   * its own whatever happens after.
    */
   private async holdUnsent(
     document: StoredAccountingDocument,
@@ -155,12 +156,7 @@ export class AccountingSender {
       { documentId: document.id, mode: document.target?.mode, reason },
       "accounting_sender_wrong_destination",
     );
-    const refused = await this.apply(document, {
-      action: "complete_sending",
-      leaseToken: token,
-      outcome: { status: "rejected", reason },
-    });
-    if (refused) await this.apply(document, { action: "escalate", reason });
+    await this.apply(document, { action: "withhold", leaseToken: token, reason });
   }
 
   private async send(document: StoredAccountingDocument, token: string): Promise<void> {

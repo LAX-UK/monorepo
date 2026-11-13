@@ -117,6 +117,9 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
+const refuseAll = async () =>
+  ({ ok: false, refusal: { code: "not_found", message: "gone" } }) as const;
+
 describe("accounting sender", () => {
   it("with the switch on Xero, nothing runs and nothing is claimed", async () => {
     const { store, sender, queue } = setUp({ books: "off" });
@@ -548,6 +551,26 @@ describe("accounting sender, organisation binding", () => {
     store.nowMs += 24 * 60 * 60_000;
     expect(await sender.tick()).toMatchObject({ sent: 0, requeued: 0 });
     expect(upsert).not.toHaveBeenCalled();
+  });
+
+  it("holds an unsent document in one step: never failed, even when nothing else can be applied after it", async () => {
+    const fake = new InMemoryAccounting();
+    const { sender, queue, store } = setUp({ ports: { dry_run: fake } });
+    // The process dies (or the store refuses) right after the first transition of the hold.
+    const apply = store.apply.bind(store);
+    let applied = 0;
+    vi.spyOn(store, "apply").mockImplementation(async (id, transition) =>
+      applied++ === 0 ? apply(id, transition) : refuseAll(),
+    );
+    await queue([bidDocuments()[0] as AccountingDocument]);
+    await sender.tick();
+    expect(store.byReference(CONTACT)?.record).toMatchObject({
+      status: "needs_review",
+      lookup: "clear",
+      issued: null,
+      reason: expect.stringMatching(/^rehearsal_reaches_organisation: /),
+    });
+    expect(store.historyOf(CONTACT).map((h) => h.action)).toEqual(["start_sending", "escalate"]);
   });
 
   it("refuses a test_org document whose adapter would call another organisation than the one bound", async () => {

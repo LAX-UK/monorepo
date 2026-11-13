@@ -96,6 +96,8 @@ export type DocumentTransition =
     }
   | { readonly action: "apply_lookup"; readonly outcome: LookupOutcome }
   | { readonly action: "escalate"; readonly reason: string }
+  /** A claimed send the sender decided not to make; recorded in the history as an escalation. */
+  | { readonly action: "withhold"; readonly leaseToken: string; readonly reason: string }
   | { readonly action: "requeue" }
   | { readonly action: "cancel" };
 

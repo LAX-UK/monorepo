@@ -17,6 +17,7 @@ import {
   parseRecord,
   requeue,
   startSending,
+  withhold,
 } from "./lifecycle.js";
 import type { Totals } from "./money.js";
 import type { IssueOutcome, LookupOutcome } from "./ports.js";
@@ -388,6 +389,32 @@ describe("applyLookup", () => {
     expect(applyLookup(rec("unknown"), found, Number.NaN, totals)).toMatchObject({
       refusal: { code: "bad_time" },
     });
+  });
+});
+
+describe("withhold", () => {
+  it("sending -> needs_review in one step: nothing sent, nothing owed, never requeued", () => {
+    const held = must(withhold(rec("sending"), "t1", "destination_mismatch: x"));
+    expect(held).toEqual({
+      ...base,
+      status: "needs_review",
+      lookup: "clear",
+      issued: null,
+      mismatch: null,
+      reason: "destination_mismatch: x",
+    });
+    // A person decides: the automation never requeues it on its own (only a person's requeue).
+    expect(statusAfter(escalate(held, "again"))).toBe("refused");
+    expect(parseRecord(held, NOW)).toEqual({ ok: true, value: held });
+  });
+  it("only the lease's holder may withhold, even after the lease expired, and only with a reason", () => {
+    expect(withhold(rec("sending"), "other", "r")).toMatchObject({
+      refusal: { code: "lease_mismatch" },
+    });
+    expect(withhold(rec("sending"), "t1", "")).toMatchObject({ refusal: { code: "bad_outcome" } });
+    for (const s of STATUSES.filter((x) => x !== "sending")) {
+      expect(statusAfter(withhold(rec(s), "t1", "r"))).toBe("refused");
+    }
   });
 });
 
