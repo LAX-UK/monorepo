@@ -1,5 +1,5 @@
 import type { BuyerPremiumTier } from "@auction/types";
-import { buildBuyerPremiumPolicy } from "../buyer-premium.js";
+import { resolveBuyerPremium } from "../buyer-premium.js";
 import { addMoneyStrings } from "../money-compare.js";
 
 export type SalePremiumContext = {
@@ -19,21 +19,14 @@ export type SaleBidVolumeByDayAndLot = {
   lotBuyerPremiumRate: string | null;
 };
 
-function resolveLotRate(lotRate: string | null, saleRate: string): string {
-  return lotRate?.trim() ? lotRate : saleRate;
-}
-
 function lotExpectedRevenueMajor(lot: SaleLotRevenueInput, sale: SalePremiumContext): string {
   const hammer = lot.currentPrice?.trim() ? lot.currentPrice : "0";
-  const policy = buildBuyerPremiumPolicy({
-    saleTiers: sale.buyerPremiumTiers,
-    lotRate: resolveLotRate(lot.buyerPremiumRate, sale.buyerPremiumRate),
-  });
+  const { policy } = resolveBuyerPremium({ lotRate: lot.buyerPremiumRate, sale });
   const premium = policy.computePremiumMajor(hammer);
   return addMoneyStrings(hammer, premium);
 }
 
-/** Tiered expected revenue across all lots in a sale (hammer + buyer premium). */
+/** Expected revenue across all lots in a sale (hammer + each lot's resolved buyer's premium). */
 export function computeSaleExpectedRevenue(input: {
   lots: readonly SaleLotRevenueInput[];
   sale: SalePremiumContext;
@@ -47,15 +40,12 @@ export function computeSaleExpectedRevenue(input: {
 
 function revenuePenceForBidVolume(row: SaleBidVolumeByDayAndLot, sale: SalePremiumContext): number {
   const hammerPence = Math.max(0, row.amountPence);
-  const policy = buildBuyerPremiumPolicy({
-    saleTiers: sale.buyerPremiumTiers,
-    lotRate: resolveLotRate(row.lotBuyerPremiumRate, sale.buyerPremiumRate),
-  });
+  const { policy } = resolveBuyerPremium({ lotRate: row.lotBuyerPremiumRate, sale });
   const premiumPence = policy.computePremiumMinor(hammerPence);
   return hammerPence + premiumPence;
 }
 
-/** Aggregate tiered revenue (hammer + premium) per UTC day from bid volume rows. */
+/** Revenue (hammer + each lot's resolved premium) per UTC day from bid volume rows. */
 export function composeTieredRevenueDailySeries(input: {
   rows: readonly SaleBidVolumeByDayAndLot[];
   sale: SalePremiumContext;

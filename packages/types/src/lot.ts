@@ -1,4 +1,9 @@
 import type { AuctionTimingValue } from "./auction-timing.js";
+import type {
+  BuyerPremiumSchedule,
+  BuyerPremiumSlice,
+  BuyerPremiumSource,
+} from "./buyer-premium.js";
 
 /** Matches DB enum `auction_type` on `lot`. */
 export const lotAuctionTypes = ["english", "dutch", "sealed", "buy_it_now"] as const;
@@ -93,20 +98,29 @@ export type Lot = {
   reservePrice: string | null;
   buyNowPrice: string | null;
   currentPrice: string;
-  /** Decimal fraction, e.g. "0.25" for 25% buyer's premium on hammer. */
-  buyerPremiumRate: string;
+  /**
+   * The lot's own buyer's premium ("0.20" for 20%), set only when staff override the sale's.
+   * `null` means the lot uses its sale's premium (see `resolveBuyerPremium`).
+   */
+  buyerPremiumRate: string | null;
   /**
    * When present, server-computed hammer / premium / total in **major currency** (e.g. GBP)
-   * using `buildBuyerPremiumPolicy` (sale-level tiers override per-lot rate). Used by dashboard
-   * portfolio, checkout, and any client that must not duplicate premium math.
+   * using `resolveBuyerPremium` (lot override, else the sale's bands, else the sale's flat rate).
+   * Used by dashboard portfolio, checkout, and any client that must not duplicate premium math.
    */
   checkoutPricing?: {
     hammerMajor: string;
     premiumMajor: string;
     totalMajor: string;
     policyId: string;
-    /** Discriminant — avoids string-parsing on consumers. */
+    /** Discriminant — avoids string-parsing on consumers. `tiered` is a banded premium. */
     kind: "flat" | "tiered";
+    /** The premium that applies and where it came from; absent on figures read from an invoice. */
+    premium?: {
+      source: BuyerPremiumSource;
+      schedule: BuyerPremiumSchedule;
+      breakdown: BuyerPremiumSlice[];
+    };
   };
   /** Minimum raise over current price (English / buy-it-now paths). */
   minBidIncrement: string;
@@ -248,8 +262,8 @@ export type CreateLotInput = {
   startingPrice: string;
   reservePrice?: string | undefined;
   buyNowPrice?: string | undefined;
-  /** Optional; defaults per DB (e.g. 0.25). */
-  buyerPremiumRate?: string | undefined;
+  /** The lot's own premium; left out (or `null`), the lot uses its sale's premium. */
+  buyerPremiumRate?: string | null | undefined;
   minBidIncrement?: string | undefined;
   autoBidEnabled?: boolean | undefined;
   autoBidStepMin?: string | undefined;

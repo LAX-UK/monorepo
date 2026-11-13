@@ -21,24 +21,31 @@ describe("bidSummary", () => {
     });
   });
 
-  it("applies the band the hammer reaches to the whole hammer", () => {
+  it("charges bands slice by slice and shows how", () => {
     const banded = {
       kind: "banded",
       bands: [
-        { fromHammer: "0.00", rate: "0.25" },
-        { fromHammer: "10000.00", rate: "0.2" },
+        { fromHammer: "0.00", rate: "0.15" },
+        { fromHammer: "500000.00", rate: "0.1" },
       ],
     } as const;
-    expect(bidSummary(banded, "9999.00").premium).toBe("2499.75");
-    expect(bidSummary(banded, "10000.00")).toMatchObject({
-      percentLabel: "20%",
-      premium: "2000.00",
+    expect(bidSummary(banded, "499999.99")).toMatchObject({
+      percentLabel: "15%",
+      premium: "75000.00",
+    });
+    expect(bidSummary(banded, "500000.00").premium).toBe("75000.00");
+    expect(bidSummary(banded, "500000.01").premium).toBe("75000.00");
+    expect(bidSummary(banded, "600000.00")).toMatchObject({
+      percentLabel: "15% of £500,000 + 10% of £100,000",
+      premium: "85000.00",
+      total: "685000.00",
     });
   });
 
-  it("rounds half pennies to the even penny", () => {
-    expect(bidSummary({ kind: "flat", rate: "0.25" }, "0.02").premium).toBe("0.00");
+  it("rounds half pennies up, as the invoice does", () => {
+    expect(bidSummary({ kind: "flat", rate: "0.25" }, "0.02").premium).toBe("0.01");
     expect(bidSummary({ kind: "flat", rate: "0.25" }, "0.06").premium).toBe("0.02");
+    expect(bidSummary({ kind: "flat", rate: "0.05" }, "0.50").premium).toBe("0.03");
   });
 
   it("has no premium when the rate is zero", () => {
@@ -216,7 +223,7 @@ describe("bid entry", () => {
     position: "none",
     nextBid: "7250.00",
     agentLimitLeft: null,
-    premiumPercent: "25%",
+    premiumTerms: "25% on the hammer",
     format,
   };
 
@@ -231,7 +238,9 @@ describe("bid entry", () => {
       start: "maximum",
       label: "Set a maximum bid",
     });
-    expect(entry.help?.text).toBe("25% buyer's premium is added to the hammer price.");
+    expect(entry.help?.text).toBe(
+      "Buyer's premium: 25% on the hammer. It is added to the hammer price.",
+    );
   });
 
   it("lets someone leading set a maximum instead of bidding again", () => {

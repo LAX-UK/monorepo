@@ -1,4 +1,9 @@
-import { moneyGt, moneyGte, parseMoneyToMinorUnits } from "../money-compare.js";
+import {
+  minorUnitsToMoneyString,
+  moneyGt,
+  moneyGte,
+  parseMoneyToMinorUnits,
+} from "../money-compare.js";
 import {
   type LotLifecycleKind,
   type LotStatusTone,
@@ -139,10 +144,11 @@ function soldHeadline(input: PriceBlockInput): Headline {
       ? input.amounts.current
       : null;
   if (isPositive(soldForWithPremium) && hammerAmount && moneyGt(soldForWithPremium, hammerAmount)) {
-    const percent = premiumPercentLabel(hammerAmount, soldForWithPremium);
-    const subLine = percent
-      ? `Hammer ${format.money(hammerAmount)} plus ${percent} buyer's premium`
-      : `Hammer ${format.money(hammerAmount)} plus buyer's premium`;
+    // The premium actually charged, as an amount: a banded premium has no single rate to quote.
+    const premium = minorUnitsToMoneyString(
+      parseMoneyToMinorUnits(soldForWithPremium) - parseMoneyToMinorUnits(hammerAmount),
+    );
+    const subLine = `Hammer ${format.money(hammerAmount)} plus ${format.money(premium)} buyer's premium`;
     return headlineWithAmount("Sold for", soldForWithPremium, subLine, format);
   }
   // No premium to report: the hammer is the whole price, and the label says so.

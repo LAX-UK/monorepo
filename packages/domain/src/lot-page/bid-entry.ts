@@ -53,8 +53,8 @@ export type BidEntryInput = {
   nextBid: string | null;
   /** What an agent has left under their limit for this sale; `null` when no limit applies. */
   agentLimitLeft: string | null;
-  /** "25%": the buyer's premium as the page prints it. */
-  premiumPercent: string | null;
+  /** The buyer's premium in words ("15% up to £500,000, 10% above"), from `describeBuyersPremiumTerms`. */
+  premiumTerms: string | null;
   format: { money(amount: string): string };
 };
 
@@ -88,9 +88,9 @@ function bidLabelOf(input: BidEntryInput): { label: string; start: BidMode } {
 }
 
 function biddingHelp(input: BidEntryInput): BidEntryHelp | null {
-  if (input.lifecycle === "scheduled" || !input.premiumPercent) return null;
+  if (input.lifecycle === "scheduled" || !input.premiumTerms) return null;
   return {
-    text: `${input.premiumPercent} buyer's premium is added to the hammer price.`,
+    text: `Buyer's premium: ${input.premiumTerms}. It is added to the hammer price.`,
     withBiddingGuide: true,
   };
 }

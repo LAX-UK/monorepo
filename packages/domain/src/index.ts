@@ -239,6 +239,27 @@ export {
   type SellerWithoutPayouts,
 } from "./sale-go-live-guard.js";
 export {
+  STANDARD_BUYER_PREMIUM,
+  STANDARD_BUYER_PREMIUM_BANDS,
+  type BuyerPremiumSaleTerms,
+  type PremiumSliceMinor,
+  isBuyerPremiumRate,
+  premiumMinorFor,
+  premiumSlicesMinor,
+  rateToTenThousandths,
+  resolveBuyerPremiumSchedule,
+  saleBuyerPremiumSchedule,
+  sortedPremiumBands,
+} from "./buyer-premium-maths.js";
+export {
+  buyerPremiumLineLabel,
+  buyerPremiumWorkedExample,
+  describeBuyerPremium,
+  describeBuyerPremiumBreakdown,
+  formatPremiumMoney,
+  formatPremiumPercent,
+} from "./buyer-premium-wording.js";
+export {
   addMoneyStrings,
   minMoneyStrings,
   minorUnitsToMoneyString,

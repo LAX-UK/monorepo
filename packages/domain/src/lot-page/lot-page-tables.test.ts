@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { groupBidderAttention } from "./bidder-attention.js";
-import { buyersPremiumTerms, premiumRateFor } from "./buyers-premium.js";
+import {
+  buyersPremiumTerms,
+  describeBuyersPremiumTerms,
+  premiumRateFor,
+} from "./buyers-premium.js";
 import { cardStateLine } from "./card-state-line.js";
 import {
   LOT_LIFECYCLE_COPY,
@@ -165,21 +169,24 @@ describe("next bid and valid amounts", () => {
 });
 
 describe("buyer's premium terms", () => {
-  it("is flat when the sale has no bands", () => {
-    expect(buyersPremiumTerms({ lotRate: "0.25", bands: null })).toEqual({
-      kind: "flat",
-      rate: "0.25",
-    });
-    expect(buyersPremiumTerms({ lotRate: "0.25", bands: [] }).kind).toBe("flat");
+  const bands = [
+    { hammerThresholdMinor: 50_000_000, rate: "0.1" },
+    { hammerThresholdMinor: 0, rate: "0.15" },
+  ];
+
+  it("uses the sale's flat rate when the sale has no bands and the lot has no rate", () => {
+    expect(
+      buyersPremiumTerms({
+        lotRate: null,
+        sale: { buyerPremiumRate: "0.2", buyerPremiumTiers: null },
+      }),
+    ).toEqual({ kind: "flat", rate: "0.2", source: "sale_flat" });
   });
 
-  it("bands override the lot rate and convert thresholds to major units", () => {
+  it("uses the sale's bands, converting thresholds to major units", () => {
     const terms = buyersPremiumTerms({
-      lotRate: "0.25",
-      bands: [
-        { hammerThresholdMinor: 50_000_000, rate: "0.1" },
-        { hammerThresholdMinor: 0, rate: "0.15" },
-      ],
+      lotRate: null,
+      sale: { buyerPremiumRate: "0.25", buyerPremiumTiers: bands },
     });
     expect(terms).toEqual({
       kind: "banded",
@@ -187,9 +194,28 @@ describe("buyer's premium terms", () => {
         { fromHammer: "0.00", rate: "0.15" },
         { fromHammer: "500000.00", rate: "0.1" },
       ],
+      source: "sale_bands",
     });
     expect(premiumRateFor(terms, "499999.99")).toBe("0.15");
-    expect(premiumRateFor(terms, "500000.00")).toBe("0.1");
+    expect(premiumRateFor(terms, "500000.00")).toBe("0.15");
+    expect(premiumRateFor(terms, "500000.01")).toBe("0.1");
+    expect(describeBuyersPremiumTerms(terms)).toBe("15% up to £500,000, 10% above");
+  });
+
+  it("a lot's own premium overrides the sale's bands", () => {
+    const terms = buyersPremiumTerms({
+      lotRate: "0.25",
+      sale: { buyerPremiumRate: "0.25", buyerPremiumTiers: bands },
+    });
+    expect(terms).toEqual({ kind: "flat", rate: "0.25", source: "lot" });
+    expect(describeBuyersPremiumTerms(terms)).toBe("25% on the hammer");
+  });
+
+  it("a lot without a sale or a rate pays the standard premium", () => {
+    expect(buyersPremiumTerms({ lotRate: null, sale: null })).toMatchObject({
+      kind: "banded",
+      source: "standard",
+    });
   });
 });
 

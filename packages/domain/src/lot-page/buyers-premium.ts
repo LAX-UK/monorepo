@@ -1,6 +1,13 @@
+import type { BuyerPremiumSchedule, BuyerPremiumSource } from "@auction/types";
+import {
+  type BuyerPremiumSaleTerms,
+  premiumSlicesMinor,
+  resolveBuyerPremiumSchedule,
+} from "../buyer-premium-maths.js";
+import { describeBuyerPremium } from "../buyer-premium-wording.js";
 import { minorUnitsToMoneyString, parseMoneyToMinorUnits } from "../money-compare.js";
 
-/** One band of a banded premium: the rate applies to the whole hammer from this amount up. */
+/** One band of a banded premium: the rate applies to the part of the hammer from here up. */
 export type BuyersPremiumBand = {
   /** The lowest hammer, in major units, the band covers. */
   fromHammer: string;
@@ -9,13 +16,13 @@ export type BuyersPremiumBand = {
 };
 
 /**
- * The buyer's premium a lot carries, in the shape a client needs to show the premium and the
- * total for any amount: one rate, or bands where the band reached by the hammer sets the rate on
- * the whole hammer.
+ * The buyer's premium a lot charges, in the shape a client needs to show the premium and the
+ * total for any amount: one rate, or bands charged slice by slice. `source` says whether it is
+ * the lot's own premium or its sale's (see `resolveBuyerPremiumSchedule`).
  */
 export type BuyersPremiumTerms =
-  | { kind: "flat"; rate: string }
-  | { kind: "banded"; bands: readonly BuyersPremiumBand[] };
+  | { kind: "flat"; rate: string; source?: BuyerPremiumSource }
+  | { kind: "banded"; bands: readonly BuyersPremiumBand[]; source?: BuyerPremiumSource };
 
 /** A stored band keeps its threshold in minor units; the wire shape uses major units. */
 export function bandFromStored(tier: {
@@ -28,29 +35,44 @@ export function bandFromStored(tier: {
   };
 }
 
+/** The premium a lot charges (its own, else its sale's), in the wire shape. */
 export function buyersPremiumTerms(input: {
-  lotRate: string;
-  bands: readonly { hammerThresholdMinor: number; rate: string }[] | null | undefined;
+  lotRate: string | null | undefined;
+  sale: BuyerPremiumSaleTerms | null | undefined;
 }): BuyersPremiumTerms {
-  if (input.bands && input.bands.length > 0) {
+  const { source, schedule } = resolveBuyerPremiumSchedule(input);
+  if (schedule.kind === "bands") {
     return {
       kind: "banded",
-      bands: [...input.bands]
+      bands: [...schedule.bands]
         .sort((a, b) => a.hammerThresholdMinor - b.hammerThresholdMinor)
         .map(bandFromStored),
+      source,
     };
   }
-  return { kind: "flat", rate: input.lotRate };
+  return { kind: "flat", rate: schedule.rate, source };
 }
 
-/** The rate that applies to a hammer under the terms, as a decimal fraction string. */
+/** The terms as a schedule, for the shared maths and wording. */
+export function scheduleOfTerms(terms: BuyersPremiumTerms): BuyerPremiumSchedule {
+  if (terms.kind === "flat") return { kind: "flat", rate: terms.rate };
+  return {
+    kind: "bands",
+    bands: terms.bands.map((band) => ({
+      hammerThresholdMinor: Number(parseMoneyToMinorUnits(band.fromHammer)),
+      rate: band.rate,
+    })),
+  };
+}
+
+/** The terms in plain words: "15% up to £500,000, 10% above", "25% on the hammer". */
+export function describeBuyersPremiumTerms(terms: BuyersPremiumTerms): string {
+  return describeBuyerPremium(scheduleOfTerms(terms));
+}
+
+/** The rate charged on the top slice of `hammer`, as a decimal fraction string. */
 export function premiumRateFor(terms: BuyersPremiumTerms, hammer: string): string {
   if (terms.kind === "flat") return terms.rate;
-  const hammerMinor = parseMoneyToMinorUnits(hammer);
-  let rate = terms.bands[0]?.rate ?? "0";
-  for (const band of terms.bands) {
-    if (hammerMinor >= parseMoneyToMinorUnits(band.fromHammer)) rate = band.rate;
-    else break;
-  }
-  return rate;
+  const slices = premiumSlicesMinor(scheduleOfTerms(terms), parseMoneyToMinorUnits(hammer));
+  return slices[slices.length - 1]?.rate ?? terms.bands[0]?.rate ?? "0";
 }
