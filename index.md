@@ -1,3 +1,91 @@
+# Review screenshots: PR #1349, round 2
+
+Fixes after the independent review: the states each fix changes.
+
+- **How they were made:** the same way as round 1. A temporary dev route, not committed, rendered the real components inside the real staff shell (Bid admin navigation, fixture Administrator) from `next dev`, captured with Playwright. All data is invented fixture data.
+- **Sizes:** 1440×900 light, 1440×900 dark and 375×812 light, at 2× pixel density. Pages are captured full length; dialogs and the open export menu at viewport size.
+- **File names:** `<state>-<width>-<theme>.png`.
+- **Accessibility:** axe (WCAG 2.0/2.1/2.2 A and AA) on every state at 1440 in light and dark: 22 runs, no violations. Results in `shots/round2/axe.json`.
+- **What is not product UI:** the round icon at the bottom left is the Next.js dev-mode indicator; the cookie banner was hidden; in the lot views the header is a simplified stand-in around the real held notice and Seller proceeds section; `old-rule-csv` renders the exported file's rows as a plain table.
+
+## Lot page
+
+| State | 1440 light | 1440 dark | 375 light |
+|---|---|---|---|
+| Held lot: one 'Record signed agreement' button, in the header notice; the section links to it | [open](shots/round2/lot-held-1440-light.png) | [open](shots/round2/lot-held-1440-dark.png) | [open](shots/round2/lot-held-375-light.png) |
+| Rate from the snapshot, 'Priced on an earlier version of this agreement', and 'Open signed agreement' | [open](shots/round2/lot-earlier-version-1440-light.png) | [open](shots/round2/lot-earlier-version-1440-dark.png) | [open](shots/round2/lot-earlier-version-375-light.png) |
+
+### Held lot: one 'Record signed agreement' button, in the header notice; the section links to it
+
+![Held lot: one 'Record signed agreement' button, in the header notice; the section links to it, 1440 light](shots/round2/lot-held-1440-light.png)
+
+### Rate from the snapshot, 'Priced on an earlier version of this agreement', and 'Open signed agreement'
+
+![Rate from the snapshot, 'Priced on an earlier version of this agreement', and 'Open signed agreement', 1440 light](shots/round2/lot-earlier-version-1440-light.png)
+
+## Record signed agreement
+
+| State | 1440 light | 1440 dark | 375 light |
+|---|---|---|---|
+| Recorded, sale released: 'Agreement recorded. Lot 21 joins the next payout.' | [open](shots/round2/record-recorded-released-1440-light.png) | [open](shots/round2/record-recorded-released-1440-dark.png) | [open](shots/round2/record-recorded-released-375-light.png) |
+| Recorded, sale still held: 'Agreement recorded.' and what still holds it | [open](shots/round2/record-recorded-still-held-1440-light.png) | [open](shots/round2/record-recorded-still-held-1440-dark.png) | [open](shots/round2/record-recorded-still-held-375-light.png) |
+
+### Recorded, sale released: 'Agreement recorded. Lot 21 joins the next payout.'
+
+![Recorded, sale released: 'Agreement recorded. Lot 21 joins the next payout.', 1440 light](shots/round2/record-recorded-released-1440-light.png)
+
+### Recorded, sale still held: 'Agreement recorded.' and what still holds it
+
+![Recorded, sale still held: 'Agreement recorded.' and what still holds it, 1440 light](shots/round2/record-recorded-still-held-1440-light.png)
+
+## Settlement run
+
+| State | 1440 light | 1440 dark | 375 light |
+|---|---|---|---|
+| Preview with three ready sales, Lot 21 held and a released private sale | [open](shots/round2/settle-deals-1440-light.png) | [open](shots/round2/settle-deals-1440-dark.png) | [open](shots/round2/settle-deals-375-light.png) |
+| A seller with only a released private sale: payable, not 'Nothing to settle' | [open](shots/round2/settle-deals-only-1440-light.png) | [open](shots/round2/settle-deals-only-1440-dark.png) | [open](shots/round2/settle-deals-only-375-light.png) |
+| Confirm: Pay £87,918.50, lots and the private sale | [open](shots/round2/settle-confirm-deals-1440-light.png) | [open](shots/round2/settle-confirm-deals-1440-dark.png) | [open](shots/round2/settle-confirm-deals-375-light.png) |
+| The run refused: 'Figures changed — review again', preview reloaded | [open](shots/round2/settle-figures-changed-1440-light.png) | [open](shots/round2/settle-figures-changed-1440-dark.png) | [open](shots/round2/settle-figures-changed-375-light.png) |
+
+### Preview with three ready sales, Lot 21 held and a released private sale
+
+![Preview with three ready sales, Lot 21 held and a released private sale, 1440 light](shots/round2/settle-deals-1440-light.png)
+
+### A seller with only a released private sale: payable, not 'Nothing to settle'
+
+![A seller with only a released private sale: payable, not 'Nothing to settle', 1440 light](shots/round2/settle-deals-only-1440-light.png)
+
+### Confirm: Pay £87,918.50, lots and the private sale
+
+![Confirm: Pay £87,918.50, lots and the private sale, 1440 light](shots/round2/settle-confirm-deals-1440-light.png)
+
+### The run refused: 'Figures changed — review again', preview reloaded
+
+![The run refused: 'Figures changed — review again', preview reloaded, 1440 light](shots/round2/settle-figures-changed-1440-light.png)
+
+## Payouts
+
+| State | 1440 light | 1440 dark | 375 light |
+|---|---|---|---|
+| Payout panel: Lot 12 priced on an earlier version of its agreement | [open](shots/round2/payouts-panel-earlier-1440-light.png) | [open](shots/round2/payouts-panel-earlier-1440-dark.png) | [open](shots/round2/payouts-panel-earlier-375-light.png) |
+| Paid under the old rule: export offers all rows | [open](shots/round2/old-rule-export-1440-light.png) | [open](shots/round2/old-rule-export-1440-dark.png) | [open](shots/round2/old-rule-export-375-light.png) |
+| The exported CSV: unsigned amounts and a 'Difference is' column | [open](shots/round2/old-rule-csv-1440-light.png) | [open](shots/round2/old-rule-csv-1440-dark.png) | [open](shots/round2/old-rule-csv-375-light.png) |
+
+### Payout panel: Lot 12 priced on an earlier version of its agreement
+
+![Payout panel: Lot 12 priced on an earlier version of its agreement, 1440 light](shots/round2/payouts-panel-earlier-1440-light.png)
+
+### Paid under the old rule: export offers all rows
+
+![Paid under the old rule: export offers all rows, 1440 light](shots/round2/old-rule-export-1440-light.png)
+
+### The exported CSV: unsigned amounts and a 'Difference is' column
+
+![The exported CSV: unsigned amounts and a 'Difference is' column, 1440 light](shots/round2/old-rule-csv-1440-light.png)
+
+
+---
+
 # Review screenshots: PR #1349, round 1
 
 Staff: seller proceeds, settlement preview and recording signed agreements.
