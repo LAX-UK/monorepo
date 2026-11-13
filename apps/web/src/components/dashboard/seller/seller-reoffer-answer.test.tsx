@@ -17,8 +17,8 @@ function open() {
     <SellerReofferAnswer
       reofferId={ID}
       lotTitle="The Winter Study"
-      offer="£82,000.00"
-      proceeds="£72,160.00"
+      offer="£76,000.00"
+      consent="You receive £62,320.00: the offer of £76,000.00 less your 15% commission and VAT, under your signed agreement."
     />,
   );
 }
@@ -31,14 +31,18 @@ describe("SellerReofferAnswer", () => {
     notify.error.mockReset();
   });
 
-  it("asks again with the price and the proceeds before agreeing, and sends nothing until they do", async () => {
+  it("asks again with the price and what the seller receives under their agreement before agreeing, and sends nothing until they do", async () => {
     answer.mockResolvedValue({ ok: true, data: undefined });
     open();
     fireEvent.click(screen.getByRole("button", { name: "Agree" }));
     expect(
-      await screen.findByText("Agree to offer The Winter Study to the next bidder at £82,000.00?"),
+      await screen.findByText("Agree to offer The Winter Study to the next bidder at £76,000.00?"),
     ).toBeTruthy();
-    expect(screen.getByText(/Estimated proceeds £72,160.00/)).toBeTruthy();
+    expect(
+      screen.getByText(
+        /You receive £62,320\.00: the offer of £76,000\.00 less your 15% commission and VAT, under your signed agreement\./,
+      ),
+    ).toBeTruthy();
     // Sending is a staff step, so the sheet promises "shortly", and the buyer's term is the invoice's.
     expect(
       screen.getByText(/We'll send them the offer shortly\. .* pay within 7 days/),

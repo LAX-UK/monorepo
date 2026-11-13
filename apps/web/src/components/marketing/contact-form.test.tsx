@@ -1,6 +1,6 @@
 import { ContactForm } from "@/components/marketing/contact-form";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 const submit = vi.fn();
 
@@ -27,6 +27,12 @@ vi.mock("next/link", () => ({
     <a {...props}>{children}</a>
   ),
 }));
+
+// The form's check is loaded on first use; load it once up front so the first test does not
+// spend its wait on transforming the module.
+beforeAll(async () => {
+  await import("@/components/marketing/contact-form.validation");
+}, 30_000);
 
 describe("ContactForm", () => {
   beforeEach(() => {

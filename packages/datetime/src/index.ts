@@ -1,15 +1,8 @@
 export { LONDON_TIME_ZONE } from "./constants.js";
 export { cityName } from "./city.js";
 export { type DateInput, toDate } from "./date-input.js";
-export {
-  addCalendarDays,
-  addCalendarKeyDays,
-  calendarDaysBetween,
-  dayKey,
-  dayOffset,
-  endOfDay,
-  startOfDay,
-} from "./day.js";
+export { addCalendarKeyDays, calendarDaysBetween, dayKey, dayOffset } from "./day.js";
+export { addCalendarDays, endOfDay, startOfDay } from "./day-zoned.js";
 export {
   calendarYear,
   formatDate,

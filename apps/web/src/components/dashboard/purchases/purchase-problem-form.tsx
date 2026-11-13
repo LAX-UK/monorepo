@@ -2,6 +2,7 @@
 
 import { useActionForm } from "@/lib/forms/use-action-form";
 import { useFormErrorSummary } from "@/lib/forms/use-form-error-summary";
+import { zodFormResolver } from "@/lib/forms/zod-form-resolver";
 import {
   PURCHASE_PROBLEM_CATEGORY_OPTIONS,
   PURCHASE_PROBLEM_FIELD_IDS,
@@ -34,7 +35,7 @@ export function PurchaseProblemForm({
 }) {
   const router = useRouter();
   const { form, onSubmit, isSubmitting, rootError } = useActionForm({
-    schema: purchaseProblemFormSchema,
+    resolver: zodFormResolver(purchaseProblemFormSchema),
     defaultValues: { category: "" as PurchaseProblemFormValues["category"], message: "" },
     action: (values) => reportPurchaseProblemAction(lotId, values),
     // The purchase page shows "Problem reported" with the reference.

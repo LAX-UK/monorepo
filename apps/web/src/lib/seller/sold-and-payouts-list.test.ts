@@ -27,6 +27,7 @@ function sold(id: string, overrides: Partial<SoldLot> = {}): SoldLot {
     soldAfterAuction: false,
     stage: "buyer_paying",
     net: null,
+    sellerTerms: null,
     payout: null,
     ...overrides,
   };
@@ -36,7 +37,7 @@ describe("soldRecord", () => {
   it("reads where the money stands, with the date once it is paid out", () => {
     const paying = soldRecord(sold("a"), NOW);
     expect(paying.badge.label).toBe("Buyer paying");
-    expect(paying.net).toBeNull();
+    expect(paying.receive).toEqual({ value: "After payment", pending: true });
     expect(paying.hammer).toBe("£9,200.00");
     expect(paying.meta).toEqual(["Autumn Modern British", "lot 31", "sold 22 Oct"]);
     const paid = soldRecord(
@@ -54,7 +55,7 @@ describe("soldRecord", () => {
       "sold 22 Oct",
       "paid out 26 Sep",
     ]);
-    expect(paid.net).toBe("£8,096.00");
+    expect(paid.receive).toEqual({ value: "£8,096.00", pending: false });
     expect(paid.payoutHref).toBe("/selling/payouts/p1");
   });
 
@@ -126,6 +127,7 @@ describe("payoutDetailVm", () => {
         note: null,
         lot: { id: "lot", title: "Marsh in October", lotNumber: 7, hammerPrice: "14600.00" },
         breakdown: { gross: "14600.00", commissionAndFees: "2363.40", net: "12236.60" },
+        sellerTerms: null,
         soldAfterAuction: false,
         amount: "14600.00",
       },
@@ -135,6 +137,7 @@ describe("payoutDetailVm", () => {
         note: "Frame damaged",
         lot: null,
         breakdown: null,
+        sellerTerms: null,
         soldAfterAuction: false,
         amount: "-50.00",
       },
@@ -158,12 +161,12 @@ describe("payoutDetailVm", () => {
     expect(vm.statusNote).toBe("Sent yesterday, usually 2 working days");
     expect(vm.lines[0]).toMatchObject({
       lot: "Lot 7",
-      fees: "\u2212£2,363.40",
       receive: "£12,236.60",
+      sale: { hammer: "£14,600.00", commission: { amount: "\u2212£2,363.40" }, vat: null },
     });
     expect(vm.lines[1]).toMatchObject({
       work: "Refund to a buyer",
-      hammer: null,
+      sale: null,
       receive: "-£50.00",
     });
     expect(vm.statementHref).toBe("/legal-entities/le-1/payouts/5b400001-0000/statement");

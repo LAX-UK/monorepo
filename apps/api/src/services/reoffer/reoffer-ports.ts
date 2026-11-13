@@ -44,6 +44,15 @@ export interface IReofferSellerProceeds {
   }): Promise<{ salePence: number; proceedsPence: number }>;
 }
 
+/**
+ * The commission rate of the signed agreement a lot's proceeds are worked out on, in basis
+ * points, so the seller reads the rate beside the figure; `null` when there is no signed
+ * agreement of the seller's with a rate.
+ */
+export interface IReofferSellerRate {
+  commissionBpsFor(lotId: string, sellerLegalEntityId: string): Promise<number | null>;
+}
+
 export interface IReofferLotOwnership {
   /** Whether the seller account is LAX's own stock (the account's subkind), or a seller. */
   of(sellerLegalEntityId: string | null): Promise<LotOwnership>;

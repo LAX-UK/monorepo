@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
+import { buyerPremiumTiersSchema } from "./buyer-premium-schema.js";
 import {
   FlatRateBuyerPremiumPolicy,
   TieredBuyerPremiumPolicy,
   buildBuyerPremiumPolicy,
-  buyerPremiumTiersSchema,
   majorToMinor,
   minorToMajor,
   roundPremiumMinor,

@@ -16,6 +16,11 @@ export type PayoutRow = {
   gross: string;
   /** LAX's commission and fees, plus the transfer fee when there was one. */
   fees: string;
+  /**
+   * The hammer, commission and VAT on commission of its sales, from their snapshots; `null` on a
+   * payout made before payouts were paid from the snapshot.
+   */
+  sellerTerms: { hammer: string; commission: string; commissionVat: string } | null;
   net: string;
   status: Payout["status"];
   statementHref: string;
@@ -56,6 +61,16 @@ export function buildPayoutRows(payouts: readonly Payout[], sellerEntityId: stri
         reference: formatPayoutReference(payout),
         gross: formatMoney(payout.grossAmount, payout.currency),
         fees: formatDeduction(Number.isFinite(fees) ? fees : 0, payout.currency),
+        sellerTerms: payout.sellerTermsTotals
+          ? {
+              hammer: formatMoney(payout.sellerTermsTotals.hammer, payout.currency),
+              commission: formatDeduction(payout.sellerTermsTotals.commission, payout.currency),
+              commissionVat: formatDeduction(
+                payout.sellerTermsTotals.commissionVat,
+                payout.currency,
+              ),
+            }
+          : null,
         net: formatMoney(payout.netAmount, payout.currency),
         status: payout.status,
         statementHref: payoutStatementHref(sellerEntityId, payout.id),
@@ -83,13 +98,31 @@ export function buildPayoutDestination(input: {
   };
 }
 
-/** Payouts as CSV, one line each, amounts as the page shows them. */
+/**
+ * Payouts as CSV, one line each, amounts as the page shows them. The hammer, commission and VAT
+ * on commission come from the sales' snapshots and are blank on a payout made before them.
+ */
 export function payoutsCsv(payouts: readonly PayoutRow[]): string {
   return csvDocument(
-    ["period", "status", "sales", "commission_and_fees", "amount", "payout_id"],
+    [
+      "period",
+      "reference",
+      "status",
+      "hammer",
+      "commission",
+      "vat_on_commission",
+      "sales",
+      "commission_and_fees",
+      "you_receive",
+      "payout_id",
+    ],
     payouts.map((payout) => [
       payout.period,
+      payout.reference,
       payout.status,
+      payout.sellerTerms?.hammer ?? "",
+      payout.sellerTerms?.commission ?? "",
+      payout.sellerTerms?.commissionVat ?? "",
       payout.gross,
       payout.fees,
       payout.net,

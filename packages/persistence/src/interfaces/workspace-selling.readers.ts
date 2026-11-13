@@ -1,3 +1,4 @@
+import type { SellerTermsFigures } from "@auction/types";
 import type { SubmissionSenderFilter } from "./item-submission.repository.js";
 
 /** What the agreement document names besides the agreement itself. */
@@ -51,6 +52,8 @@ export type SoldLotRow = {
     amount: string;
     platformFee: string;
     sellerSide: { amount: string; platformFee: string } | null;
+    /** The snapshot's figures, as recorded, while the sale is paid from one; else `null`. */
+    sellerTerms: SellerTermsFigures | null;
   } | null;
   /** The payout the sale is on, or `null` while it is on none; with the amount its line settles. */
   payout: { id: string; status: PayoutStatus; settledAt: Date | null; lineAmount: string } | null;
@@ -75,6 +78,8 @@ export type PayoutLineRow = {
   note: string | null;
   lot: { id: string; title: string; lotNumber: number | null; hammerPrice: string } | null;
   payment: { amount: string; platformFee: string } | null;
+  /** The snapshot a sale line pays, as recorded; `null` on a line paid under the old rule. */
+  sellerTerms: SellerTermsFigures | null;
   /** The sale line settles a lot that was re-awarded to the next bidder after a default. */
   soldAfterAuction: boolean;
 };

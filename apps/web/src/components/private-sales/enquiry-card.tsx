@@ -7,7 +7,8 @@ import {
 } from "@/app/(marketing)/sell/private-sales/actions";
 import { useAppSession } from "@/lib/auth/use-app-session";
 import { SITE_CONTACT_EMAIL } from "@/lib/brand";
-import { publicFormErrorMap, submitFailureCopy } from "@/lib/forms/error-copy";
+import { submitFailureCopy } from "@/lib/forms/error-copy";
+import { lazyResolver, lazyResolverFailure } from "@/lib/forms/lazy-resolver";
 import { useFormErrorSummary } from "@/lib/forms/use-form-error-summary";
 import {
   type EnquirerOrganisation,
@@ -20,13 +21,11 @@ import {
   type EnquiryFormValues,
   type EnquiryPath,
   emptyEnquiryValues,
-  enquiryFormSchema,
 } from "@/lib/private-sales/enquiry-values";
 import { Button } from "@auction/ui/lax/button";
 import { ErrorSummary } from "@auction/ui/lax/error-summary";
 import { Notice } from "@auction/ui/lax/notice";
 import { SegmentedControl } from "@auction/ui/lax/tabs";
-import { zodResolver } from "@hookform/resolvers/zod";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { EnquiringAsCard } from "./enquiring-as-card";
@@ -55,6 +54,11 @@ async function draftToken(): Promise<string | null> {
 }
 
 /** Keeps the address in step with the path, so the page can be shared on either. */
+const enquiryFormResolver = lazyResolver<EnquiryFormValues>(
+  () => import("./enquiry-card.validation").then((m) => m.enquiryFormResolver),
+  { failureMessage: submitFailureCopy.title },
+);
+
 function rememberPath(path: EnquiryPath) {
   const url = new URL(window.location.href);
   url.searchParams.set("path", path);
@@ -80,7 +84,7 @@ export function EnquiryCard({ initialPath, onAnother }: Props) {
   const queued = useRef<EnquiryFormValues | null>(null);
 
   const form = useForm<EnquiryFormValues>({
-    resolver: zodResolver(enquiryFormSchema as never, { errorMap: publicFormErrorMap } as never),
+    resolver: enquiryFormResolver,
     defaultValues: emptyEnquiryValues(initialPath),
     reValidateMode: "onBlur",
     shouldFocusError: false,
@@ -141,6 +145,8 @@ export function EnquiryCard({ initialPath, onAnother }: Props) {
     [uploads.uploadIds, uploads.draftToken, choice.legalEntityId],
   );
 
+  // The form's check could not be fetched: the same notice as a failed send.
+  const shownFailure = failure ?? lazyResolverFailure(form.formState.errors);
   const pendingFiles = uploads.items.filter((item) => item.state === "uploading").length;
 
   // A send that was asked for while files were still being checked goes when the last one is.
@@ -194,17 +200,18 @@ export function EnquiryCard({ initialPath, onAnother }: Props) {
         </Notice>
       ) : (
         <form
+          onFocus={enquiryFormResolver.preload}
           onSubmit={onSubmit}
           noValidate
           aria-label={path === "sell" ? "Sell privately enquiry" : "Buy privately enquiry"}
           className="flex flex-col gap-5"
         >
           <ErrorSummary errors={summary.errors} focusKey={summary.focusKey} />
-          {failure ? (
+          {shownFailure ? (
             <Notice tone="danger" alert title={submitFailureCopy.title}>
-              {failure === submitFailureCopy.title
+              {shownFailure === submitFailureCopy.title
                 ? submitFailureCopy.detail(SITE_CONTACT_EMAIL)
-                : `${failure} Your answers are still here.`}
+                : `${shownFailure} Your answers are still here.`}
             </Notice>
           ) : null}
           <input

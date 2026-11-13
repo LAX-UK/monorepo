@@ -24,6 +24,7 @@ const view = {
     offerProceedsMinor: 9_737_500,
     originalHammerMinor: 8_800_000,
     originalProceedsMinor: 10_450_000,
+    commissionBps: 1500,
   },
   reserveMinor: null,
   belowReserve: false,

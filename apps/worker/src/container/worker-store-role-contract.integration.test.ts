@@ -27,6 +27,8 @@ import {
   DrizzleArtworkRegisterRepository,
   DrizzleBidAccountingFactsReader,
   DrizzleBidRepository,
+  DrizzleFailedJobReviewRepository,
+  DrizzleIntegrationDeadLetterRepository,
   DrizzleItemSubmissionRepository,
   DrizzleLotLifecycleSnapshotRepository,
   DrizzleLotRegisterLinkReader,
@@ -121,6 +123,8 @@ const STORES: Record<string, Store> = {
   DrizzleExportLegalEntityReader,
   DrizzleBidAccountingFactsReader,
   DrizzleProjectorCursorStart,
+  DrizzleFailedJobReviewRepository,
+  DrizzleIntegrationDeadLetterRepository,
 } as Record<string, Store>;
 
 /** Built by `DrizzleRepositoryFactory`, which a container file builds, not by a container file itself. */
@@ -145,6 +149,25 @@ const API_ONLY_METHODS: Record<string, readonly string[]> = {
   DrizzleUnsoldLotFollowUpRepository: ["completeByStaff", "settleOnReturn"],
   DrizzleLotRepository: ["create", "update"],
   DrizzleSaleRepository: ["create", "update"],
+  // The Failed jobs watch only counts what needs review; the review itself is the API's.
+  DrizzleFailedJobReviewRepository: [
+    "search",
+    "findForReview",
+    "findManyForReview",
+    "discard",
+    "restore",
+  ],
+  DrizzleIntegrationDeadLetterRepository: [
+    "listFailedWebhooks",
+    "search",
+    "findForReview",
+    "findManyForReview",
+    "claimRetry",
+    "releaseRetry",
+    "discard",
+    "restore",
+    "requeue",
+  ],
 };
 
 type Call = { method: string; parameters: string[] };

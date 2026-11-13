@@ -203,9 +203,8 @@ actually use. Lenis is not touched.
 | `better-auth` client (about 10 KB with `@better-fetch/fetch` and `nanostores`) | on the lot page, for the "send verification email" buttons | fetched when one of those buttons is pressed (`send-verification-email.lazy.ts`). The button shows its busy state as before while the code loads, and a failed fetch reads as a failed send |
 | `@date-fns/tz`, `@radix-ui/react-slot`, `better-auth`, `cmdk`, `date-fns`, `embla-carousel-react`, `jose` | listed in `apps/web/package.json` but never imported by the app | removed from the app's dependencies. The workspace packages that use them still declare them, and the lockfile resolves the same versions |
 
-Zod is still on home, the sales list, the sale page and the lot page. There, live-bid events
-(`lot-realtime-events`), the lot and sale response schemas and the newsletter form use it. Those
-go with the socket step.
+Zod was still on home, the sales list, the sale page and the lot page then (live-bid events, the
+lot and sale response schemas and the newsletter form); see the next section.
 
 Measured on the CI build (Sentry on, gzip, start-up set): the frame of a content page went from
 362.6 to 349.5 KB, about from 370.5 to 357.4 KB, terms from 367.4 to 354.4 KB and the lot page from
@@ -239,6 +238,39 @@ account frame by 11.3 KB (`(client)/layout` reaches the user notification socket
 and the sales list grew by 1.0 KB: their frame holds the same 100 modules as before, but webpack
 now splits them into four files instead of three, and each file is compressed on its own. Their
 ratchets were re-recorded. Budgets: public 465, sale 581, lot 566, checkout 544, account 626 KB.
+
+## Zod, date-fns and Sentry tracing off public first load
+
+The rest of the library work: no public Bid page loads Zod or date-fns in its first scripts, and
+public pages no longer run browser performance tracing. Lenis is unchanged.
+
+| What | Was | Now |
+| --- | --- | --- |
+| Public form checks (newsletter, search box, press filters, contact, private sales enquiry) | Zod and `@hookform/resolvers` in the page scripts | each form's schema is in a `*.validation.ts` module behind `lazyResolver` (`lib/forms/lazy-resolver.ts`): fetched when a field first takes focus, or on the first check. The form, its messages and its focus handling are unchanged. `useActionForm` takes a `resolver` instead of a schema. If the module cannot be fetched (offline, or a release removed the old chunks), the submit ends instead of hanging: the button resets, the form shows its own failure message (contact and private sales: "We couldn't send your message"; newsletter: its sign-up failure banner; search box and press filters: "Search didn't load") and the next submit fetches the module again (`*.lazy.failure.test.tsx`) |
+| `publicFormErrorMap` | imported Zod for `z.ZodIssueCode` | uses the same codes as strings and only a type import |
+| Live bid updates (`parseBidUpdateFromRealtimeRaw`) | the Zod union of every realtime event | a hand-written check in `@auction/validators` (`lot-bid-update.ts`), held to the Zod contract by equivalence tests on crafted and random payloads |
+| Bid rows (bid writer, bid history refetch) | `parse/index.ts`, which builds every lot, sale and submission schema | `parseBidRow` (`lib/data/http/bid-row.ts`), plain code; `bidSchema` now wraps it. Equivalence tests against the previous schema |
+| Lot snapshot after a socket reconnect | the lot schema in the page scripts | the lot schema is fetched alongside the request; a failed fetch reads as a failed refetch, as any other failure did |
+| Buyer's premium | `buyer-premium.ts` built the tier schema at load | the schema is in `buyer-premium-schema.ts`; the policies have no Zod |
+| `@auction/datetime` day helpers | `day.ts` pulled date-fns and `@date-fns/tz` into every page for `addCalendarDays` | `startOfDay`, `endOfDay` and `addCalendarDays` are in `day-zoned.ts`; the formatters import `day.ts` only |
+| Zone offsets | `tzOffset` from `@date-fns/tz` | `zoneOffsetMinutes` (`zone-offset.ts`), a port of the same function checked against it for every zone the runtime knows. `public-formatters-no-date-fns.test.ts` keeps date-fns out of the formatters' imports |
+| Browser tracing | on every page | from the first account (`(client)`), sign-in (`(task)`) or staff (`admin`) page of the session (`lib/observability/sentry-client-options.ts`). A session that loads one of those pages starts with tracing; a session that loads a public page has no tracing integration and no sample rates, so it sends no transactions, until it client-navigates into one of those areas: `onRouterTransitionStart` then adds the same sample rates and the tracing integration (`client.addIntegration`, already in the bundle, no page-load span) before the navigation span starts, so that navigation is traced too. Error reporting is the same on every page. The sampler decides a navigation span by the page it opens and drops public pages' spans |
+| Sentry debug code | stripped through the deprecated `disableLogger` | `webpack.treeshake.removeDebugLogging` (same `__SENTRY_DEBUG__ = false`) |
+
+The Sentry bytes do not change. The debug code was already stripped, and the tracing code stays in
+the shared bundle: `@sentry/nextjs` imports its tracing integration statically, and
+`removeTracing` would take tracing away from the account and staff areas too.
+
+Measured on a production build of this change merged with the live socket split above (Sentry on,
+gzip, start-up set), `main` then this change: sale page 528.7 to 508.6 KB, lot page 514.8 to 495.0,
+contact 394.1 to 376.6, artist profile 480.8 to 463.3, search 492.6 to 476.6, private sales 413.0
+to 396.8, sales list 476.4 to 461.7, press 410.6 to 395.8, home 423.1 to 409.8. Pages that did not
+carry Zod moved by -2.8 to +0.8 KB, checkout by +0.7 to +0.8 KB and account pages by up to +4.3 KB:
+webpack regrouped shared chunks once those modules stopped being shared with public pages, and a few
+(kit buttons, `client-routes`, `sale.schema`) now sit in two start-up files. The ratchets were
+re-recorded from that build (`--write-baseline`), and each group's budget is the lower of the one
+`--suggest` gives and the one it had: public 451, listing 525, sale 560, lot 545 KB; checkout (544)
+and account (626) keep their budgets.
 
 ## Enforcement
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { renderConsignmentAgreementPdf } from "./consignment-agreement.pdf.js";
+import { agreementTermRows, renderConsignmentAgreementPdf } from "./consignment-agreement.pdf.js";
 
 const base = {
   reference: "C-1042",
@@ -30,5 +30,25 @@ describe("renderConsignmentAgreementPdf", () => {
       accepted: { byName: "Maya Okafor", at: new Date("2026-11-02T14:10:00Z") },
     });
     expect(pdf.subarray(0, 5).toString()).toBe("%PDF-");
+  });
+});
+
+describe("the agreement's terms, as the PDF states them", () => {
+  it("states the commission on the hammer, plus VAT, at the agreement's rate", () => {
+    const accepted = {
+      ...base,
+      relistReserveFloor: "2000.00",
+      accepted: { byName: "Maya Okafor", at: new Date("2026-11-02T14:10:00Z") },
+    };
+    expect(agreementTermRows(accepted)).toMatchSnapshot();
+  });
+
+  it("states a rate with pence as the agreement stores it, and none while it is unset", () => {
+    const rate = (commissionPercent: string | null) =>
+      agreementTermRows({ ...base, commissionPercent }).find(
+        ([label]) => label === "Seller's commission",
+      )?.[1];
+    expect(rate("12.50")).toBe("12.5% of the hammer price, plus VAT");
+    expect(rate(null)).toBe("To be confirmed");
   });
 });

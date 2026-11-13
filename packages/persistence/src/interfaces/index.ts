@@ -73,12 +73,14 @@ export type {
 export type { IFailedJobRepository, FailedJobReplayRow } from "./failed-job.repository.js";
 export type {
   FailedJobFilter,
+  FailedJobNeedsReviewGroup,
   FailedJobRecord,
   FailedJobRecordWithPayload,
   FailedJobReviewView,
   FailedJobSearch,
   FailedJobSearchResult,
   IFailedJobDisposition,
+  IFailedJobNeedsReviewGroups,
   IFailedJobReviewReader,
 } from "./failed-job-review.js";
 

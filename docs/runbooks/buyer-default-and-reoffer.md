@@ -158,8 +158,13 @@ All are under **Sales**, and Finance sees them too.
   **paid**. Accepting the offer is not enough: until payment it still shows Ended.
 - A lot that goes back to inventory and does not sell later shows **Not sold**, as any lot does.
 - The seller's **Sold & payouts** list and payout lines say the sale was "sold after the auction",
-  and the payout statement reads "sold after the auction to the next bidder", without naming them.
+  and the payout statement and the sold CSV read "sold after the auction to the next bidder".
   The seller is paid from the new sale only, when the new invoice is paid.
+- Nothing a seller sees names or identifies a buyer, original or re-awarded: not the statement,
+  the CSV, Sold & payouts, the payout page, the re-offer pages, notifications or the seller API.
+  LAX pays the seller itself, so the buyer's identity is not needed to complete the sale. An
+  ordinary sale reads "sold at auction". If a seller asks who bought, the answer is no; staff
+  surfaces still show the buyer.
 - The original hammer price is never shown publicly. It stays on the Buyer default card, for staff.
 
 ## Lots sold on ATG

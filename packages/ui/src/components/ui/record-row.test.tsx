@@ -330,3 +330,48 @@ describe("RecordRow figure notes and narrow facts", () => {
     );
   });
 });
+
+describe("RecordRow figuresNarrow", () => {
+  const figures = [
+    { id: "hammer", value: "£82,000.00", label: "hammer" },
+    { id: "receive", value: "After payment", label: "you receive", pending: true },
+  ];
+
+  it("shows only the lead figure on a narrow row by default, after the status", () => {
+    render(
+      <RecordList aria-label="Sold">
+        <RecordRow title="Lot" figures={figures} status={<span>Sold</span>} />
+      </RecordList>,
+    );
+    const cells = [...(document.querySelector("[data-record-figures]")?.children ?? [])];
+    expect(cells[1]?.className).toContain("hidden @2xl:flex");
+    expect(document.querySelector("[data-record-status]")?.className).toContain("-order-1");
+    expect(screen.getByText("you receive").className).toBe("sr-only");
+  });
+
+  it("shows every figure on a narrow row, each kept whole, then the status", () => {
+    render(
+      <RecordList aria-label="Sold">
+        <RecordRow title="Lot" figures={figures} figuresNarrow="all" status={<span>Sold</span>} />
+      </RecordList>,
+    );
+    const list = document.querySelector("[data-record-figures]") as HTMLElement;
+    expect(list.className).toContain("flex-wrap");
+    for (const cell of list.children) {
+      expect(cell.className).toContain("whitespace-nowrap");
+      expect(cell.className).toContain("before:content-['·'_/_'']");
+      expect(cell.className).not.toContain("hidden");
+    }
+    // The figures take their own line; the status is not moved ahead of them.
+    expect(list.parentElement?.className).toContain("basis-full");
+    expect(document.querySelector("[data-record-status]")?.className).not.toContain("-order-1");
+    // A pending figure reads label first on a narrow row and stays for readers when wide.
+    const label = screen.getByText("you receive");
+    expect(label.className).toContain("order-1");
+    expect(label.className).toContain("@2xl:sr-only");
+    // Its words carry the figure's weight on a narrow row, and stay muted in a wide cell.
+    const value = screen.getByText("After payment");
+    expect(value.className).toContain("font-medium text-on-surface");
+    expect(value.className).toContain("@2xl:text-on-surface-variant");
+  });
+});

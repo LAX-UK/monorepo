@@ -1,0 +1,38 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`the agreement's terms, as the PDF states them > states the commission on the hammer, plus VAT, at the agreement's rate 1`] = `
+[
+  [
+    "Work",
+    "Harbour at Dusk",
+  ],
+  [
+    "Consigned for",
+    "Northbank Gallery",
+  ],
+  [
+    "Low estimate",
+    "£3,000.00",
+  ],
+  [
+    "High estimate",
+    "£5,000.00",
+  ],
+  [
+    "Reserve",
+    "£2,800.00",
+  ],
+  [
+    "Seller's commission",
+    "15% of the hammer price, plus VAT",
+  ],
+  [
+    "Lowest reserve if relisted",
+    "£2,000.00",
+  ],
+  [
+    "Proposed",
+    "1 November 2026 at 10:00",
+  ],
+]
+`;

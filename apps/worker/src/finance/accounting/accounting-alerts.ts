@@ -1,4 +1,9 @@
-import { Sentry } from "@auction/observability";
+import {
+  type AlertCapture,
+  type AlertLog,
+  type AlertSink,
+  createAlertSink,
+} from "../../lib/alert-sink.js";
 
 /**
  * The accounting alerts, one message each. A message here is logged at its level and sent to
@@ -39,35 +44,16 @@ export const ACCOUNTING_CRON_MONITORS = {
 } as const;
 
 /** Where an alert goes. */
-export interface AccountingAlertSink {
-  raise(alert: AccountingAlert, details: Readonly<Record<string, unknown>>): void;
-}
+export type AccountingAlertSink = AlertSink<AccountingAlert>;
 
-export interface AccountingAlertLog {
-  warn(details: Record<string, unknown>, message: string): void;
-  error(details: Record<string, unknown>, message: string): void;
-}
-
-type Capture = (
-  message: string,
-  context: { level: "warning" | "error"; extra: Record<string, unknown> },
-) => void;
+export type AccountingAlertLog = AlertLog;
 
 /** Logs the alert and sends it to Sentry, where the alert rule for its message pages the team. */
 export function createAccountingAlertSink(
   log: AccountingAlertLog,
-  capture: Capture = (message, context) => {
-    Sentry.captureMessage(message, context);
-  },
+  capture?: AlertCapture,
 ): AccountingAlertSink {
-  return {
-    raise(alert, details) {
-      const extra = { ...details };
-      if (alert.level === "error") log.error(extra, alert.message);
-      else log.warn(extra, alert.message);
-      capture(alert.message, { level: alert.level, extra });
-    },
-  };
+  return createAlertSink<AccountingAlert>(log, capture);
 }
 
 const ALERT_BY_EVENT = new Map<string, AccountingAlert>(

@@ -4,6 +4,7 @@ import { MediaImage } from "@/components/ui/media-image";
 import { ListEmpty, ListLoadError, ListNoResults } from "@/components/workspace/list-states";
 import { useListQuery } from "@/components/workspace/use-list-query";
 import { CLIENT_ROUTES } from "@/lib/navigation/client-routes";
+import { SELLER_COMMISSION_COPY } from "@/lib/seller/seller-commission.vm";
 import {
   PAYOUT_STATUS_BADGE,
   SOLD_SORTS,
@@ -71,11 +72,16 @@ function SoldRow({ record }: { record: SoldRecord }) {
       }
       title={record.title}
       meta={record.meta}
+      // A phone says both figures together, hammer first as the wide row's columns read.
+      figuresNarrow="all"
       figures={[
-        { id: "hammer", value: record.hammer, label: "hammer" },
-        record.net
-          ? { id: "net", value: record.net, label: "you receive" }
-          : { id: "net", value: "After payment", label: "you receive", pending: true },
+        { id: "hammer", value: record.hammer, label: SELLER_COMMISSION_COPY.hammer },
+        {
+          id: "receive",
+          value: record.receive.value,
+          label: SELLER_COMMISSION_COPY.youReceive,
+          pending: record.receive.pending,
+        },
       ]}
       aligned
       status={
@@ -303,6 +309,7 @@ export function SoldAndPayoutsView({
                 <SoldRow key={record.lotId} record={record} />
               ))}
             </RecordList>
+            <p className="text-lax-13 text-lax-muted">{SELLER_COMMISSION_COPY.soldNote}</p>
             <ShowingCount shown={shown.length} total={shown.length} />
           </>
         )}

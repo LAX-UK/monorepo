@@ -3,6 +3,10 @@ import { failedJobs, webhookEvent } from "@auction/db/schema";
 import { and, asc, eq, inArray, isNotNull, isNull, ne, sql } from "drizzle-orm";
 import type { SQL } from "drizzle-orm";
 import type {
+  FailedJobNeedsReviewGroup,
+  IFailedJobNeedsReviewGroups,
+} from "../interfaces/failed-job-review.js";
+import type {
   FailedWebhookRow,
   IIntegrationDeadLetterDisposition,
   IIntegrationDeadLetterReader,
@@ -15,6 +19,7 @@ import type {
   IntegrationSearchResult,
   IntegrationView,
 } from "../interfaces/integration-dead-letter.reader.js";
+import { firstErrorLine } from "../lib/first-error-line.js";
 import { containsPattern } from "../lib/like-pattern.js";
 
 /** Marks a decision row as belonging to an integration delivery, not to a background job. */
@@ -149,7 +154,11 @@ function seedValues(seed: IntegrationDispositionSeed) {
  * the failed-jobs table under the delivery's prefixed id, so one store holds every decision.
  */
 export class DrizzleIntegrationDeadLetterRepository
-  implements IIntegrationDeadLetterReader, IIntegrationDeadLetterDisposition, IWebhookRetryQueue
+  implements
+    IIntegrationDeadLetterReader,
+    IIntegrationDeadLetterDisposition,
+    IWebhookRetryQueue,
+    IFailedJobNeedsReviewGroups
 {
   constructor(private readonly db: Database) {}
 
@@ -215,6 +224,27 @@ export class DrizzleIntegrationDeadLetterRepository
         count: Number(row.count),
       })),
     };
+  }
+
+  async needsReviewGroups(since: Date): Promise<FailedJobNeedsReviewGroup[]> {
+    const errorLine = firstErrorLine(sql`i.error_message`);
+    const result = await this.db.execute(sql`WITH i AS (${ITEMS})
+      SELECT i.kind || ':' || i.name AS "jobType", i.event_type AS "jobName",
+             ${errorLine} AS "errorLine", count(*)::int AS count,
+             (count(*) FILTER (WHERE i.first_failed_at >= ${since.toISOString()}::timestamptz))::int AS "newSince",
+             min(i.first_failed_at) AS "firstFailedAt", max(i.failed_at) AS "lastFailedAt"
+      FROM i LEFT JOIN failed_jobs f ON f.id = i.id
+      WHERE ${VIEW_PREDICATES.needs_review}
+      GROUP BY 1, 2, 3`);
+    return rowsOf(result).map((row) => ({
+      jobType: String(row.jobType),
+      jobName: asStringOrNull(row.jobName),
+      errorLine: String(row.errorLine ?? ""),
+      count: Number(row.count),
+      newSince: Number(row.newSince),
+      firstFailedAt: asDate(row.firstFailedAt),
+      lastFailedAt: asDate(row.lastFailedAt),
+    }));
   }
 
   async findForReview(id: string): Promise<IntegrationDeadLetterWithPayload | null> {

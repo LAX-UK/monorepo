@@ -7,6 +7,7 @@ import {
   recordDeliveryOutcome,
   recordZohoCrmApiCreditsRemaining,
 } from "../lib/delivery-metrics.js";
+import { formatDeliveryError } from "../lib/delivery-retry.js";
 import { claimAndRunDomainEventDeliveriesWithBudget } from "./lib/domain-event-delivery-runner.js";
 import type { Projector, ProjectorRunContext } from "./lib/projector.types.js";
 import { redactDomainEventPayload } from "./lib/redact-pii.js";
@@ -65,8 +66,17 @@ async function deliverZohoEvent(
       recordDeliveryOutcome("zoho", "skipped");
       return { skipped: true, reason: result.reason };
     case "retry":
-      return { ok: false, error: result.error };
     case "fatal":
+      // The reason is the stored one: the HTTP status, Zoho's code and the field it named.
+      ctx.log[result.outcome === "fatal" ? "warn" : "info"](
+        {
+          eventId: event.id,
+          eventType: event.eventType,
+          outcome: result.outcome,
+          reason: formatDeliveryError(result.error),
+        },
+        "zoho_crm_delivery_failed",
+      );
       return { ok: false, error: result.error };
     default:
       return { skipped: true, reason: "unknown_outcome" };

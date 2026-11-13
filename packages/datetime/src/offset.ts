@@ -1,8 +1,8 @@
-import { tzOffset } from "@date-fns/tz";
+import { zoneOffsetMinutes } from "./zone-offset.js";
 
 /** Minutes east of UTC that `zone` is on at `instant` (London in summer: 60). */
 export function offsetMinutes(instant: Date, zone: string): number {
-  return tzOffset(zone, instant);
+  return zoneOffsetMinutes(zone, instant);
 }
 
 /** True when both zones show the same clock at that instant, whatever their names. */

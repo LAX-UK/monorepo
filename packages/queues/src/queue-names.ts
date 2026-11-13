@@ -26,6 +26,8 @@ export const GC_PENDING_UPLOADS_QUEUE_NAME = "gc-pending-uploads" as const;
 export const IMPERSONATION_SWEEPER_QUEUE_NAME = "impersonation-sweeper" as const;
 /** The daily alert digest: one repeat job at 08:00 London time. */
 export const ALERT_DIGEST_QUEUE_NAME = "alert-digest" as const;
+/** Watches Failed jobs (Needs review) for new or growing kinds of failure: daily, 08:00 London. */
+export const FAILED_JOBS_WATCH_QUEUE_NAME = "failed-jobs-watch" as const;
 export const PAYOUT_SETTLEMENT_QUEUE_NAME = "payout-settlement" as const;
 export const PAYOUT_STATEMENTS_QUEUE_NAME = "payout-statements" as const;
 export const LEGAL_ENTITY_ARCHIVE_QUEUE_NAME = "legal-entity-archive" as const;
