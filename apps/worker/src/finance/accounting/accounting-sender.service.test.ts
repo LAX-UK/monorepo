@@ -36,6 +36,7 @@ const PAYMENT_ID = "0b6a7c1e-3333-4a5b-8c9d-000000000003";
 const paid: BidPaymentFacts = {
   paymentId: PAYMENT_ID,
   amountPence: 154_320,
+  currency: "GBP",
   capturedOn: "2031-03-02",
   invoice: {
     invoiceId: INVOICE_ID,

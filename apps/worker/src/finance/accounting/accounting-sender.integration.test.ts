@@ -33,6 +33,7 @@ function bidDocuments(): readonly AccountingDocument[] {
   const facts: BidPaymentFacts = {
     paymentId: id(),
     amountPence: 12_000,
+    currency: "GBP",
     capturedOn: "2031-03-02",
     invoice: {
       invoiceId: id(),

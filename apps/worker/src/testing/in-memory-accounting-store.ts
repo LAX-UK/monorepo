@@ -10,11 +10,13 @@ import {
   cancel,
   completeSending,
   documentTarget,
+  documentsAwaited,
   escalate,
   expectedTotals,
   expireLease,
   newRecord,
   ok,
+  parkedRecord,
   refuse,
   requeue,
   retryDelayMs,
@@ -132,7 +134,9 @@ export class InMemoryAccountingStore
       totals: expectedTotals(document),
       provider: null,
       target,
-      record: newRecord(document.kind, document.reference),
+      record: input.park
+        ? parkedRecord(document.kind, document.reference, input.park)
+        : newRecord(document.kind, document.reference),
       lastErrorClass: null,
       createdAt: new Date(this.nowMs + this.seq),
       updatedAt: new Date(this.nowMs),
@@ -160,7 +164,11 @@ export class InMemoryAccountingStore
           target !== null &&
           target.provider === request.provider &&
           request.targetModes.includes(target.mode) &&
-          this.config[row.stored.product][request.provider] === target.mode
+          this.config[row.stored.product][request.provider] === target.mode &&
+          // As the work queue: a payment waits until its invoices are issued for its target.
+          documentsAwaited(row.stored.document).every(
+            (reference) => this.byReference(reference, target)?.record.status === "issued",
+          )
         );
       })
       .sort((a, b) => a.stored.createdAt.getTime() - b.stored.createdAt.getTime());
