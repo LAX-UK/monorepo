@@ -92,9 +92,12 @@ export function LotDetailShell({
   reoffers = null,
   children,
 }: Props) {
-  const [recording, setRecording] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
+  // The Inbox task links here with `?record=agreement` to open the record dialog straight away.
+  const [recording, setRecording] = useState(
+    () => searchParams.get("record") === "agreement" && Boolean(heldPayout?.record),
+  );
   const { auction, context } = bundle;
   const publicHref = lotPath({ id: auction.id, title: auction.title });
   const baseStatus = staffStatus("lot", auction.status, { lot: { winnerId: auction.winnerId } });

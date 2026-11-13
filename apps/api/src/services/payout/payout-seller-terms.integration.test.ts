@@ -697,10 +697,11 @@ describe.skipIf(!HAS_DB)("payout run on seller terms (integration)", () => {
     // The held sale is an Inbox task for the sales team, naming its fix; its figure is not shown.
     const workItems = new DrizzleAdminWorkItemsReader(db);
     const heldItem = (await workItems.listHeldSellerPayouts(200)).find(
-      (item) => item.href === `/admin/lots/${held.lotId}`,
+      (item) => item.href === `/admin/lots/${held.lotId}?record=agreement`,
     );
     expect(heldItem).toMatchObject({
       kind: "seller_payout_held",
+      title: expect.stringMatching(/^Payout held: no signed agreement — /),
       subtitle: "No signed agreement on record. Record the signed agreement to release it",
     });
     const soldBefore = await new DrizzleSoldLotsReader(db).list({
