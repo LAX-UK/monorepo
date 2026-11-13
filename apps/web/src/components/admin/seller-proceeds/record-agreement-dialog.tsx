@@ -9,6 +9,7 @@ import {
   RECORD_AGREEMENT_COPY as COPY,
   type RecordAgreementContext,
   type RecordAgreementDraft,
+  type RecordedSale,
   checkRecordAgreement,
   previewRecordedAgreement,
   recordedToast,
@@ -44,7 +45,7 @@ type Props = {
   /** Records the agreement; the server action by default. */
   record?: (
     input: RecordAgreementInput,
-  ) => Promise<ActionResult<{ sellerNetPence: number | null }>>;
+  ) => Promise<ActionResult<{ sellerNetPence: number | null; sale: RecordedSale | null }>>;
   /** Sends the signed PDF to document storage; the upload lifecycle by default. */
   upload?: (file: File) => Promise<{ uploadObjectId: string }>;
   /** The London calendar day; today by default. */
