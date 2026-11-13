@@ -48,6 +48,20 @@ describe("invoiceStanding", () => {
     });
   });
 
+  it("treats the test organisation like a dry run: never a Books invoice, never late", () => {
+    // Its documents are not tax invoices, and no buyer is told one is coming or is late.
+    for (const record of [issued, pending]) {
+      const atTestOrg = input({ booksMode: "test_org", document: { record, copyStored: true } });
+      expect(invoiceStanding(atTestOrg, RAISED + 10 * INVOICE_DELAYED_AFTER_MS)).toEqual({
+        kind: "lax",
+      });
+    }
+    expect(invoiceStanding(input({ booksMode: "test_org" }), RAISED)).toEqual({ kind: "lax" });
+    expect(
+      invoiceStanding(input({ booksMode: "test_org", cancelledAtMs: RAISED + 1 }), RAISED),
+    ).toEqual({ kind: "lax" });
+  });
+
   it("is being prepared until Books issued it and the copy is stored", () => {
     expect(invoiceStanding(input({}), RAISED)).toEqual({ kind: "preparing" });
     expect(
@@ -61,7 +75,6 @@ describe("invoiceStanding", () => {
 
   it("is late after 30 minutes, not at 30 minutes", () => {
     const waiting = input({
-      booksMode: "test_org",
       document: { record: pending, copyStored: false },
     });
     expect(invoiceStanding(waiting, RAISED + INVOICE_DELAYED_AFTER_MS)).toEqual({
@@ -84,9 +97,12 @@ describe("invoiceStanding", () => {
     const cancelledAtMs = RAISED + 1_000;
     const cancelled = input({ cancelledAtMs, document: { record: issued, copyStored: true } });
     expect(invoiceStanding(cancelled, RAISED)).toEqual({ kind: "cancelled", cancelledAtMs });
-    // Books off or rehearsing: the page is as it was before Books, cancelled or not.
+    // Books off, rehearsing or at the test organisation: the page is as it was, cancelled or not.
     expect(invoiceStanding({ ...cancelled, booksMode: null }, RAISED)).toEqual({ kind: "lax" });
     expect(invoiceStanding({ ...cancelled, booksMode: "dry_run" }, RAISED)).toEqual({
+      kind: "lax",
+    });
+    expect(invoiceStanding({ ...cancelled, booksMode: "test_org" }, RAISED)).toEqual({
       kind: "lax",
     });
   });

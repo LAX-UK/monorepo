@@ -24,13 +24,14 @@ export interface InvoiceStandingInput {
 }
 
 /**
- * - `lax`: Books does not issue this invoice (it is not aimed at Books, or only rehearses it), so
- *   the buyer has LAX's own invoice exactly as before (a cancelled one too). A rehearsal never
- *   shows a buyer a Books number.
- * - `preparing` / `delayed`: Books will issue it, and it is not issued with a stored copy yet;
+ * - `lax`: Books does not issue this invoice to the buyer (it is not aimed at Books, only
+ *   rehearses it, or issues it in the test organisation, whose documents are not tax invoices), so
+ *   the buyer has LAX's own invoice exactly as before (a cancelled one too). Neither a rehearsal
+ *   nor a test organisation ever shows a buyer a Books number.
+ * - `preparing` / `delayed`: Books issues it live, and it is not issued with a stored copy yet;
  *   `delayed` once that has taken longer than `INVOICE_DELAYED_AFTER_MS`.
- * - `issued`: in Books under its number, and LAX holds the PDF the buyer downloads.
- * - `cancelled`: the invoice was cancelled (Books issuing for real); it is owed no more.
+ * - `issued`: in Books (live) under its number, and LAX holds the PDF the buyer downloads.
+ * - `cancelled`: the invoice was cancelled (Books issuing live); it is owed no more.
  */
 export type InvoiceStanding =
   | { readonly kind: "lax" }
@@ -41,12 +42,13 @@ export type InvoiceStanding =
 
 /**
  * Where the buyer's invoice stands. Pure: the caller reads the rows and passes the time in. A
- * number is only ever shown once the provider issued the document and its PDF is stored, and
- * never from a dry run (its number is `DRY-RUN`, not the provider's).
+ * number is only ever shown once the provider issued the document live and its PDF is stored:
+ * never from a dry run (its number is `DRY-RUN`) or the test organisation.
  */
 export function invoiceStanding(input: InvoiceStandingInput, nowMs: number): InvoiceStanding {
-  // Books off or only rehearsing: the buyer's page is exactly as it was before Books.
-  if (input.booksMode === null || input.booksMode === "dry_run") return { kind: "lax" };
+  // Books off, only rehearsing, or aimed at the test organisation: the buyer's page is exactly
+  // as it was before Books.
+  if (input.booksMode !== "live") return { kind: "lax" };
   if (input.cancelledAtMs !== null) {
     return { kind: "cancelled", cancelledAtMs: input.cancelledAtMs };
   }

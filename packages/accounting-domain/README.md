@@ -17,7 +17,7 @@ stores records and calls providers live elsewhere and depend on this package, ne
 | Source switch | `source-switch.ts` | One live source per product; refuses two. |
 | Projection | `projection/` | One pure policy per money flow: facts in, documents out, idempotent by LAX reference. |
 | Retries | `retry.ts` | Wait between attempts (30 s doubling to 30 min); 8 attempts, then a person. |
-| Buyer's invoice | `standing.ts` | Where a buyer's invoice stands for their card: LAX's own (Books off or rehearsing), being prepared, late after 30 minutes, issued (only with LAX's stored copy), cancelled. |
+| Buyer's invoice | `standing.ts` | Where a buyer's invoice stands for their card: LAX's own (Books off, rehearsing, or at the test organisation), being prepared, late after 30 minutes, issued (only with LAX's stored copy), cancelled. |
 | Stored copy | `ports.ts` `DocumentPdfPort` | The provider's PDF of an issued document, fetched once so LAX keeps its own copy; a dry run answers with a page marked as a rehearsal. |
 
 Every function that can say no returns `Result<T, Code>` (`ok` / `refusal`) instead of throwing; none of the
