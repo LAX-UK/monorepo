@@ -168,3 +168,75 @@ describe("formatBpsAsPercent", () => {
     expect(formatBpsAsPercent(bps)).toBe(text);
   });
 });
+
+describe("SettlementBreakdown accessibility", () => {
+  it.each<[string, Partial<SettlementBreakdownProps>]>([
+    ["ready", {}],
+    ["held", { status: { kind: "held" }, commission: null, vat: null, netPence: null }],
+    ["paid out", { status: { kind: "paid_out", paidAt: "2026-11-12T09:00:00Z" }, paidOut: true }],
+    [
+      "priced on an earlier version",
+      {
+        rateSource: {
+          kind: "agreement",
+          reference: "C-1042",
+          signedAt: "2026-10-03T10:00:00Z",
+          href: "/admin/inbox/sub-1",
+          earlierVersion: true,
+        },
+      },
+    ],
+  ])("has no axe violations when %s", async (_name, over) => {
+    const axe = (await import("axe-core")).default;
+    const { container } = render(<SettlementBreakdown {...ready} {...over} />);
+    const results = await axe.run(container, {
+      runOnly: { type: "tag", values: ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"] },
+      // jsdom does not lay out or paint, so contrast is checked in the browser captures.
+      rules: { "color-contrast": { enabled: false } },
+    });
+    expect(results.violations.map((v) => `${v.id}: ${v.help}`)).toEqual([]);
+  });
+});
+
+describe("SettlementBreakdown agreement version", () => {
+  it("says the sale was priced on an earlier version next to the reference", () => {
+    render(
+      <SettlementBreakdown
+        {...ready}
+        rateSource={{
+          kind: "agreement",
+          reference: "C-1042",
+          signedAt: "2026-10-03T10:00:00Z",
+          href: "/admin/inbox/sub-1",
+          earlierVersion: true,
+        }}
+      />,
+    );
+    expect(screen.getByText(/Agreement C-1042/).closest("p")).toHaveTextContent(
+      "Agreement C-1042 · signed 3 Oct 2026 · Priced on an earlier version of this agreement",
+    );
+  });
+
+  it("names a recorded agreement by its reference when it has one", () => {
+    render(
+      <SettlementBreakdown
+        {...ready}
+        rateSource={{
+          kind: "recorded_by_staff",
+          reference: "C-1042",
+          href: "/admin/inbox/sub-1",
+          earlierVersion: true,
+        }}
+      />,
+    );
+    expect(screen.getByRole("link", { name: "Agreement C-1042" })).toBeInTheDocument();
+    expect(screen.getByText(/recorded by staff/)).toHaveTextContent(
+      "· recorded by staff · Priced on an earlier version of this agreement",
+    );
+  });
+
+  it("says nothing extra while the agreement is the one the sale was priced on", () => {
+    render(<SettlementBreakdown {...ready} />);
+    expect(screen.queryByText(/earlier version/)).not.toBeInTheDocument();
+  });
+});

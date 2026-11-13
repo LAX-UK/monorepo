@@ -27,8 +27,19 @@ export type SettlementRateSource =
       readonly reference: string;
       readonly signedAt: Date | string;
       readonly href: string;
+      /** The sale was priced on this agreement before it was corrected. */
+      readonly earlierVersion?: boolean;
     }
-  | { readonly kind: "recorded_by_staff" };
+  | {
+      readonly kind: "recorded_by_staff";
+      /** The consignment's reference and where it opens, when known. */
+      readonly reference?: string;
+      readonly href?: string;
+      readonly earlierVersion?: boolean;
+    };
+
+/** Said beside the reference when the sale was priced on the agreement before a correction. */
+export const EARLIER_AGREEMENT_VERSION = "Priced on an earlier version of this agreement";
 
 /** VAT on the commission: charged at a rate, or not charged because the company is not registered. */
 export type SettlementVat =
@@ -144,13 +155,27 @@ function deduction(pence: number | null | undefined, currency: string): React.Re
 }
 
 function RateSourceLine({ source, Link }: { source: SettlementRateSource; Link?: LinkComponent }) {
-  if (source.kind === "recorded_by_staff") return <span>Recorded by staff</span>;
+  const earlier = source.earlierVersion ? (
+    <span className="text-staff-warning-fg"> · {EARLIER_AGREEMENT_VERSION}</span>
+  ) : null;
+  if (source.kind === "recorded_by_staff") {
+    if (!source.reference || !source.href) return <span>Recorded by staff{earlier}</span>;
+    return (
+      <span>
+        <TextLink href={source.href} {...(Link ? { Link } : {})}>
+          Agreement {source.reference}
+        </TextLink>{" "}
+        · recorded by staff{earlier}
+      </span>
+    );
+  }
   return (
     <span>
       <TextLink href={source.href} {...(Link ? { Link } : {})}>
         Agreement {source.reference}
       </TextLink>{" "}
       · signed {formatStaffExportDate(source.signedAt)}
+      {earlier}
     </span>
   );
 }
