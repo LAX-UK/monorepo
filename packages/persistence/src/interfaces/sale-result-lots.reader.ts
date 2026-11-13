@@ -6,7 +6,8 @@ export type SaleResultLotRow = {
   saleId: string;
   status: LotStatus;
   currentPrice: string;
-  buyerPremiumRate: string;
+  /** The lot's own premium; `null` when it uses the sale's. */
+  buyerPremiumRate: string | null;
   hasWinner: boolean;
   /** The winner did not pay and the lot is being offered on: no result to publish yet. */
   resultPending: boolean;
