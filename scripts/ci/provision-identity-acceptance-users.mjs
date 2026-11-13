@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { createHash } from "node:crypto";
 import { appendFile, writeFile } from "node:fs/promises";
 import { pathToFileURL } from "node:url";
 import pg from "pg";
@@ -10,6 +11,16 @@ const ACCOUNT_LABELS = {
   REFRESH_TEST_EMAIL: "refresh",
 };
 
+/** Mail standards allow 64 characters before the `@`; Zoho CRM refuses a longer address. */
+const MAX_LOCAL_PART_LENGTH = 64;
+/** Zoho CRM's Email field holds at most 100 characters. */
+const MAX_EMAIL_LENGTH = 100;
+
+/**
+ * The run's alias of the acceptance mailbox. When the run id does not fit in 64 characters before
+ * the `@`, a short hash of it stands in, so every sign-up is still unique to its run and an
+ * address Zoho CRM (and other mail systems) can take.
+ */
 export function deriveAcceptanceEmail(sourceEmail, label, runId) {
   const separator = sourceEmail.lastIndexOf("@");
   if (separator < 1 || separator === sourceEmail.length - 1) {
@@ -17,8 +28,18 @@ export function deriveAcceptanceEmail(sourceEmail, label, runId) {
   }
   const local = sourceEmail.slice(0, separator).split("+")[0];
   const domain = sourceEmail.slice(separator + 1);
-  const suffix = runId ? `-${runId}` : "";
-  return `${local}+lax-${label}-acceptance${suffix}@${domain}`.toLowerCase();
+  const full = `${local}+lax-${label}-acceptance${runId ? `-${runId}` : ""}`;
+  const aliasLocal =
+    full.length <= MAX_LOCAL_PART_LENGTH || !runId
+      ? full
+      : `${local}+lax-${label}-${createHash("sha256").update(runId).digest("hex").slice(0, 12)}`;
+  const email = `${aliasLocal}@${domain}`.toLowerCase();
+  if (aliasLocal.length > MAX_LOCAL_PART_LENGTH || email.length > MAX_EMAIL_LENGTH) {
+    throw new Error(
+      "IDENTITY_ACCEPTANCE_EMAIL is too long for a run alias: use a mailbox with a shorter name",
+    );
+  }
+  return email;
 }
 
 async function ensureUser(client, authBase, email, password, label) {
