@@ -27,6 +27,7 @@ export default async function AdminLotOverviewPage({ params, searchParams }: Pro
         kpiPeriodDays={page.kpiPeriodDays}
         reoffers={page.reoffers}
         reofferAccess={page.reofferAccess}
+        sellerProceeds={page.sellerProceeds}
       />
     </>
   );

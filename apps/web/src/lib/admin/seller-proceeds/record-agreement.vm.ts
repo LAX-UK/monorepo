@@ -9,6 +9,17 @@ import {
 } from "@auction/validators";
 import { BID_COMPANY_NAME } from "./held-reasons";
 
+/** What the record dialog needs to know about the held sale. Figures are the snapshot's. */
+export type RecordAgreementContext = {
+  lotId: string;
+  /** "Lot 21". */
+  lot: string;
+  lotTitle: string;
+  sellerName: string | null;
+  hammerPence: number;
+  vatSetting: SellerVatTreatment | null;
+};
+
 export type RecordAgreementDraft = {
   commissionPercent: string;
   signedOn: string;

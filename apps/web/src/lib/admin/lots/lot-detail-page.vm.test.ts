@@ -55,6 +55,36 @@ describe("lot detail notice", () => {
     expect(notice?.body).toContain("Tue 20 Oct");
   });
 
+  it("tells staff a sold lot's payout is held and offers to record the agreement", () => {
+    const notice = lotDetailNotice({
+      ...base,
+      status: "ended",
+      heldPayout: {
+        title: "Payout held: no signed agreement",
+        body: "Lot 21 sold for £6,200.00 and the buyer has paid.",
+        canRecord: true,
+        settingsHref: null,
+      },
+    });
+    expect(notice).toMatchObject({
+      id: "payout-held",
+      tone: "danger",
+      title: "Payout held: no signed agreement",
+      action: null,
+      recordsAgreement: true,
+    });
+  });
+
+  it("keeps a withdrawal request ahead of a held payout", () => {
+    const notice = lotDetailNotice({
+      ...base,
+      status: "ended",
+      withdrawalRequestedAt: "2026-10-20T09:00:00.000Z",
+      heldPayout: { title: "t", body: "b", canRecord: true, settingsHref: null },
+    });
+    expect(notice?.id).toBe("withdrawal");
+  });
+
   it("says the seller cannot be paid before anything else on a draft, linking to the seller", () => {
     const notice = lotDetailNotice({ ...base, connectRequired: true });
     expect(notice).toMatchObject({ id: "connect", tone: "danger" });

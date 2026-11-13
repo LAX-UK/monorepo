@@ -173,6 +173,12 @@ export function buildLotSellerProceeds(facts: LotSellerProceedsDto | null): LotS
   return { kind: "breakdown", breakdown, note: noteFor(status, terms), action };
 }
 
+/** The section as the page renders it, including while it loads or when it could not load. */
+export type LotSellerProceedsState =
+  | LotSellerProceedsModel
+  | { kind: "loading" }
+  | { kind: "error" };
+
 /** The lot header's notice for a held sale whose buyer has paid. */
 export type HeldPayoutNotice = {
   title: string;
