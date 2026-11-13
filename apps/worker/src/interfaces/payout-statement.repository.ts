@@ -31,10 +31,9 @@ export type PayoutStatementLineRow = {
   createdByUserId: string | null;
   lotTitle: string | null;
   lotNumber: number | null;
-  buyerName: string | null;
   /** The lot was re-awarded to the next bidder after the first buyer did not pay. */
   soldAfterAuction: boolean;
-  /** The private sale a line settles (its PS reference), never the buyer, who may stay anonymous. */
+  /** The private sale a line settles (its PS reference). A seller's statement never names the buyer. */
   dealReference: string | null;
   /** The lot's hammer, as sold. */
   lotHammerPrice: string | null;

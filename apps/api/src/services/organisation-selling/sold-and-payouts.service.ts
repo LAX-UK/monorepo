@@ -56,10 +56,19 @@ const SOLD_COLUMNS: ExportColumn[] = [
   { key: "commission", header: "Commission" },
   { key: "commissionVat", header: "VAT on commission" },
   { key: "net", header: "You receive" },
-  { key: "soldAfterAuction", header: "Sold after the auction" },
+  { key: "howItSold", header: "How it sold" },
   { key: "status", header: "Status" },
   { key: "paidOutOn", header: "Paid out on" },
 ];
+
+/**
+ * How a lot sold, in the seller's words. A seller is never told who bought: LAX pays the seller
+ * itself, so the buyer's identity is not needed to complete the sale.
+ */
+const HOW_IT_SOLD = {
+  auction: "Sold at auction",
+  afterAuction: "Sold after the auction to the next bidder",
+} as const;
 
 const isoDay = (d: Date | null) => (d ? d.toISOString().slice(0, 10) : "");
 const pounds = (pence: number) => minorUnitsToMoneyString(BigInt(pence));
@@ -161,7 +170,7 @@ export class SoldAndPayoutsService implements ISoldAndPayoutsService {
         commission: view.sellerTerms ? pounds(view.sellerTerms.commissionPence) : "",
         commissionVat: view.sellerTerms ? pounds(view.sellerTerms.vatPence) : "",
         net: view.net ?? "",
-        soldAfterAuction: view.soldAfterAuction ? "Yes" : "",
+        howItSold: view.soldAfterAuction ? HOW_IT_SOLD.afterAuction : HOW_IT_SOLD.auction,
         status: STAGE_WORDS[view.stage],
         paidOutOn: view.stage === "paid_out" ? isoDay(view.payout?.settledAt ?? null) : "",
       };
@@ -192,13 +201,28 @@ export class SoldAndPayoutsService implements ISoldAndPayoutsService {
         derived,
       });
     }
+    // Field by field, so nothing about the buyer can ride along to the seller.
     return ok({
-      ...found,
+      id: found.id,
+      status: found.status,
+      currency: found.currency,
+      grossAmount: found.grossAmount,
+      platformFee: found.platformFee,
+      stripeFee: found.stripeFee,
+      netAmount: found.netAmount,
+      periodStart: found.periodStart,
+      periodEnd: found.periodEnd,
+      processedAt: found.processedAt,
       lines: found.lines.map((line) => ({
         id: line.id,
         kind: line.kind,
         note: line.note,
-        lot: line.lot,
+        lot: line.lot && {
+          id: line.lot.id,
+          title: line.lot.title,
+          lotNumber: line.lot.lotNumber,
+          hammerPrice: line.lot.hammerPrice,
+        },
         amount: line.amount,
         breakdown: payoutLineBreakdown(line),
         sellerTerms: line.sellerTerms,

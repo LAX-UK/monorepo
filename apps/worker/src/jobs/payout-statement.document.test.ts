@@ -1,29 +1,24 @@
 import { sellerProceeds } from "@auction/domain";
 import type { SellerTermsFigures } from "@auction/types";
-import { describe, expect, it } from "vitest";
+import PDFDocument from "pdfkit";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { PayoutStatementLineRow } from "../interfaces/payout-statement.repository.js";
 import {
-  buyerPhrase,
   payoutStatementDocument,
+  soldPhrase,
   statementMoney,
 } from "./payout-statement.document.js";
 import { renderPayoutStatementPdf } from "./payout-statement.renderer.js";
 
-describe("buyerPhrase", () => {
-  it("names the buyer on an ordinary sale", () => {
-    expect(buyerPhrase({ buyerName: " A. Collector ", soldAfterAuction: false })).toBe(
-      "buyer: A. Collector",
+describe("soldPhrase", () => {
+  it("says an ordinary sale sold at auction", () => {
+    expect(soldPhrase({ soldAfterAuction: false })).toBe("sold at auction");
+  });
+
+  it("says a lot sold on after a default was sold after the auction to the next bidder", () => {
+    expect(soldPhrase({ soldAfterAuction: true })).toBe(
+      "sold after the auction to the next bidder",
     );
-  });
-
-  it("shows a dash when the buyer has no name on record", () => {
-    expect(buyerPhrase({ buyerName: null, soldAfterAuction: false })).toBe("buyer: —");
-  });
-
-  it("says a sale sold on after a default was sold after the auction, without the next bidder's name", () => {
-    const phrase = buyerPhrase({ buyerName: "Zed Quincy", soldAfterAuction: true });
-    expect(phrase).toBe("sold after the auction to the next bidder");
-    expect(phrase).not.toContain("Quincy");
   });
 });
 
@@ -59,7 +54,6 @@ const saleLine = (over: Partial<PayoutStatementLineRow>): PayoutStatementLineRow
   createdByUserId: null,
   lotTitle: "Harbour at Dusk",
   lotNumber: 31,
-  buyerName: "A. Collector",
   soldAfterAuction: false,
   dealReference: null,
   lotHammerPrice: null,
@@ -101,7 +95,7 @@ describe("payoutStatementDocument", () => {
       ],
     });
     expect(document.rows[0]).toEqual({
-      work: "Harbour at Dusk (buyer: A. Collector)",
+      work: "Harbour at Dusk (sold at auction)",
       lot: "Lot 31",
       hammer: "£82,000.00",
       commission: "−£12,300.00 (15%)",
@@ -189,6 +183,82 @@ describe("payoutStatementDocument", () => {
     expect(raw).toMatch(/\/BaseFont \/[A-Z]{6}\+NotoSans/);
     expect(raw).not.toMatch(/\/BaseFont \/Helvetica/);
   });
+});
+
+describe("the statement never names the buyer", () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  // Whatever a line carries (a buyer's name, email or paddle number arriving on the row by
+  // mistake), the seller's statement says only how the lot sold.
+  const BUYER = {
+    buyerName: "A. Collector",
+    buyerEmail: "a.collector@example.com",
+    paddle: "P-417",
+  };
+  const withBuyer = (over: Partial<PayoutStatementLineRow>) =>
+    ({ ...saleLine(over), ...BUYER }) as PayoutStatementLineRow;
+  const inputs: PayoutStatementLineRow[][] = [
+    [withBuyer({ amount: "82000.00", sellerTerms: snapshot(8_200_000, 1500) })],
+    [withBuyer({ soldAfterAuction: true, amount: "333.00", sellerTerms: snapshot(33_300, 1250) })],
+    [withBuyer({ amount: "5000.00", paymentAmount: "5000.00", paymentPlatformFee: "1000.00" })],
+    [withBuyer({ amount: "10.00" })],
+    [withBuyer({ lotTitle: null, lotNumber: null, kind: "refund", amount: "-50.00" })],
+    [withBuyer({ lotTitle: null, lotNumber: null, dealReference: "PS-0042", amount: "900.00" })],
+  ];
+  const leaks = (text: string) =>
+    Object.values(BUYER)
+      .filter((value) => text.includes(value))
+      .concat(/\(buyer:/i.test(text) ? ["(buyer:"] : []);
+
+  it.each(inputs.map((lines, index) => [index, lines] as const))(
+    "input %i: no buyer in the document's rows",
+    (_index, lines) => {
+      const document = payoutStatementDocument({ payout, now: NOW, lines });
+      expect(leaks(JSON.stringify(document))).toEqual([]);
+    },
+  );
+
+  it.each(inputs.map((lines, index) => [index, lines] as const))(
+    "input %i: no buyer in any text the PDF draws",
+    async (_index, lines) => {
+      const drawn: string[] = [];
+      const text = PDFDocument.prototype.text;
+      vi.spyOn(PDFDocument.prototype, "text").mockImplementation(function (
+        this: PDFKit.PDFDocument,
+        ...args: Parameters<typeof text>
+      ) {
+        drawn.push(String(args[0]));
+        return text.apply(this, args);
+      });
+      await renderPayoutStatementPdf({
+        payout: {
+          id: "5b400001-0000-4000-8000-000000000000",
+          legalEntityId: "le",
+          periodStart: new Date("2026-11-01T00:00:00Z"),
+          periodEnd: new Date("2026-11-11T00:00:00Z"),
+          grossAmount: "0.00",
+          platformFee: "0.00",
+          stripeFee: "0.00",
+          netAmount: "0.00",
+          currency: "GBP",
+          xeroBillId: null,
+          stripeTransferId: null,
+          processedAt: payout.processedAt,
+        },
+        entity: {
+          id: "le",
+          legalName: "Northbank Gallery Ltd",
+          displayName: null,
+          vatNumber: null,
+        },
+        lines,
+        authorNames: new Map(),
+        env: {} as never,
+      });
+      expect(drawn.length).toBeGreaterThan(0);
+      expect(leaks(drawn.join("\n"))).toEqual([]);
+    },
+  );
 });
 
 describe("statementMoney", () => {

@@ -70,7 +70,6 @@ export class DrizzlePayoutStatementRepository implements IPayoutStatementReposit
         createdByUserId: payoutLine.createdByUserId,
         lotTitle: lot.title,
         lotNumber: lot.lotNumber,
-        buyerName: bidIdentityDirectory.name,
         soldAfterAuction: lotSoldAfterAuctionSql(),
         dealReference: privateSaleDeal.reference,
         lotHammerPrice: lot.currentPrice,
@@ -82,7 +81,6 @@ export class DrizzlePayoutStatementRepository implements IPayoutStatementReposit
       .leftJoin(privateSaleDeal, eq(payoutLine.privateSaleDealId, privateSaleDeal.id))
       .leftJoin(payment, eq(payoutLine.paymentId, payment.id))
       .leftJoin(lot, eq(payment.lotId, lot.id))
-      .leftJoin(bidIdentityDirectory, eq(payment.buyerId, bidIdentityDirectory.subjectId))
       .leftJoin(saleSellerTerms, eq(saleSellerTerms.id, payoutLine.sellerTermsId))
       .where(eq(payoutLine.payoutId, payoutId))
       .orderBy(payoutLine.createdAt, payoutLine.id);
@@ -95,7 +93,6 @@ export class DrizzlePayoutStatementRepository implements IPayoutStatementReposit
       createdByUserId: row.createdByUserId,
       lotTitle: row.lotTitle,
       lotNumber: row.lotNumber,
-      buyerName: row.buyerName,
       soldAfterAuction: row.soldAfterAuction,
       dealReference: row.dealReference,
       lotHammerPrice: row.lotHammerPrice,

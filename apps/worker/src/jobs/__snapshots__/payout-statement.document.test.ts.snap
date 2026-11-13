@@ -13,7 +13,7 @@ exports[`payoutStatementDocument > splits each sale from its snapshot, with the 
       "lot": "Lot 31",
       "receive": "£67,240.00",
       "vat": "−£2,460.00 (20%)",
-      "work": "Harbour at Dusk (buyer: A. Collector)",
+      "work": "Harbour at Dusk (sold at auction)",
     },
     {
       "commission": "−£41.63 (12.5%)",

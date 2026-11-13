@@ -38,10 +38,12 @@ export type StatementDocument = {
 const MINUS = "\u2212";
 const DASH = "—";
 
-/** Sold after the auction, in the seller's words: the next bidder stays private. */
-export function buyerPhrase(line: Pick<PayoutStatementLineRow, "buyerName" | "soldAfterAuction">) {
-  if (line.soldAfterAuction) return "sold after the auction to the next bidder";
-  return `buyer: ${line.buyerName?.trim() || DASH}`;
+/**
+ * How a lot sold, in the seller's words. A seller is never told who bought: LAX pays the seller
+ * itself, so the buyer's identity is not needed to complete the sale.
+ */
+export function soldPhrase(line: Pick<PayoutStatementLineRow, "soldAfterAuction">): string {
+  return line.soldAfterAuction ? "sold after the auction to the next bidder" : "sold at auction";
 }
 
 function money(pence: number, currency: string): string {
@@ -81,7 +83,7 @@ function otherWork(line: PayoutStatementLineRow): string {
 
 function buildRow(line: PayoutStatementLineRow, currency: string): Built {
   const lot = line.lotNumber != null ? `Lot ${line.lotNumber}` : "";
-  const work = line.lotTitle ? `${line.lotTitle} (${buyerPhrase(line)})` : otherWork(line);
+  const work = line.lotTitle ? `${line.lotTitle} (${soldPhrase(line)})` : otherWork(line);
   const terms = line.sellerTerms;
   if (terms) {
     const noVat = terms.vatTreatment === "not_registered";

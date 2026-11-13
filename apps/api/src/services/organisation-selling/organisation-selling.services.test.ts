@@ -303,14 +303,16 @@ describe("SoldAndPayoutsService", () => {
   it("exports sold lots in plain words", async () => {
     const csv = (await soldService().service.exportSoldCsv(actor("owner"), {}))._unsafeUnwrap();
     expect(csv.split("\n")[0]).toBe(
-      "Lot,Title,Sale,Sold on,Hammer,Commission rate,Commission,VAT on commission,You receive,Sold after the auction,Status,Paid out on",
+      "Lot,Title,Sale,Sold on,Hammer,Commission rate,Commission,VAT on commission,You receive,How it sold,Status,Paid out on",
     );
     expect(csv).toContain("Paid out");
     expect(csv).toContain("Buyer paying");
-    // Only the lot that was sold on to the next bidder says so.
-    expect(csv).toContain("Dusk,Autumn,2026-10-01,900.00,,,,,Yes,Buyer paying");
+    // How each lot sold, never who bought it.
+    expect(csv).toContain(
+      "Dusk,Autumn,2026-10-01,900.00,,,,,Sold after the auction to the next bidder,Buyer paying",
+    );
     // Paid under the old rule: no snapshot, so no commission split, only what was paid.
-    expect(csv).toContain("Field,Autumn,2026-10-01,4000.00,,,,4000.00,,Paid out");
+    expect(csv).toContain("Field,Autumn,2026-10-01,4000.00,,,,4000.00,Sold at auction,Paid out");
   });
 
   it("carries the snapshot's commission and VAT, as recorded, to the sold list, the export and the payout", async () => {
