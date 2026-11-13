@@ -27,14 +27,24 @@ describe("migration 0375 lot premium uses the sale's", () => {
     );
   });
 
-  it("makes the lot rate nullable with no default, and changes no rows", () => {
+  it("makes the lot rate nullable with no default", () => {
     expect(migration).toMatch(/SET LOCAL lock_timeout = '5s'/);
     expect(migration).toContain('ALTER COLUMN "buyer_premium_rate" DROP NOT NULL');
     expect(migration).toContain('ALTER COLUMN "buyer_premium_rate" DROP DEFAULT');
     expect(migration).toContain(
       'ALTER TABLE "sale" ALTER COLUMN "buyer_premium_rate" SET DEFAULT 0.15',
     );
-    expect(migration).not.toMatch(/\bUPDATE\b|\bDELETE\b|\bINSERT\b|DROP COLUMN|DROP TABLE/);
+    expect(migration).not.toMatch(/\bDELETE\b|\bINSERT\b|DROP COLUMN|DROP TABLE/);
+  });
+
+  it("clears the rate only of uninvoiced lots in a sale with bands, after dropping NOT NULL", () => {
+    const updates = [...migration.matchAll(/UPDATE "lot"[\s\S]*?;/g)].map((m) => m[0]);
+    expect(updates).toHaveLength(1);
+    const update = updates[0] ?? "";
+    expect(update).toContain('SET "buyer_premium_rate" = NULL');
+    expect(update).toContain('jsonb_array_length(s."buyer_premium_tiers") > 0');
+    expect(update).toMatch(/NOT EXISTS \(\s*SELECT 1 FROM "bid_invoice"[\s\S]*"voided_at" IS NULL/);
+    expect(migration.indexOf("DROP NOT NULL")).toBeLessThan(migration.indexOf(update));
   });
 
   it("matches the Drizzle schema", () => {

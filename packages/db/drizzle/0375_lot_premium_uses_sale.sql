@@ -4,9 +4,12 @@
 -- sale's premium" (its bands, else its flat rate). It loses its 25% default, so a lot created
 -- without a rate no longer silently charges 25%.
 --
--- No row is changed. Every existing lot keeps the rate it holds, so lots already sold or
--- invoiced keep what they were charged, and unsold lots whose stored 25% differs from their
--- sale's premium are listed for staff on the sale page rather than changed here.
+-- One set of rows changes: lots in a sale with bands that have no live invoice. The old code
+-- never read their rate (a sale's bands always won), so clearing it keeps them on the bands they
+-- were already priced on. Without this, the stored rate (usually the old 25% default) would
+-- become an override and reprice active lots mid-bidding and sold lots whose invoice is not yet
+-- raised. Invoiced lots keep their rate untouched (every surface reads their invoice), and lots
+-- in flat-rate sales keep theirs, because the old code charged it.
 --
 -- `sale.buyer_premium_rate` (the flat rate, used only when a sale has no bands) defaults to 15%,
 -- the standard's first band, instead of 25%. The application gives every new sale the standard
@@ -17,6 +20,17 @@ SET LOCAL lock_timeout = '5s';
 ALTER TABLE "lot" ALTER COLUMN "buyer_premium_rate" DROP DEFAULT;
 --> statement-breakpoint
 ALTER TABLE "lot" ALTER COLUMN "buyer_premium_rate" DROP NOT NULL;
+--> statement-breakpoint
+UPDATE "lot" AS l
+  SET "buyer_premium_rate" = NULL
+  FROM "sale" AS s
+  WHERE s."id" = l."sale_id"
+    AND l."buyer_premium_rate" IS NOT NULL
+    AND jsonb_typeof(s."buyer_premium_tiers") = 'array'
+    AND jsonb_array_length(s."buyer_premium_tiers") > 0
+    AND NOT EXISTS (
+      SELECT 1 FROM "bid_invoice" AS i WHERE i."lot_id" = l."id" AND i."voided_at" IS NULL
+    );
 --> statement-breakpoint
 COMMENT ON COLUMN "lot"."buyer_premium_rate" IS
   'The lot''s own buyer''s premium, set only when staff override the sale''s. NULL = use the sale''s premium (bands, else flat rate).';

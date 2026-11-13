@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { resolveBuyerPremium, standardBuyerPremiumBands } from "@auction/validators";
 import pg from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { buildPgConnectionConfig } from "./ssl.js";
@@ -20,7 +21,9 @@ describe.skipIf(!url)(
   () => {
     let client: pg.Client;
     let saleId: string;
+    let bandedSaleId: string;
     let sellerId: string;
+    let userId: string;
 
     const one = async (text: string, values: unknown[] = []) =>
       (await client.query<{ id: string }>(text, values)).rows[0]?.id as string;
@@ -34,11 +37,34 @@ describe.skipIf(!url)(
       return rows[0];
     }
 
-    async function insertLot(rate: string | null): Promise<string> {
+    async function insertLot(
+      rate: string | null,
+      opts: { sale?: string; status?: "active" | "ended"; sold?: boolean } = {},
+    ): Promise<string> {
+      const sold = opts.sold === true;
+      const cols = ["sale_id", "seller_legal_entity_id", "status"];
+      const values: unknown[] = [opts.sale ?? saleId, sellerId, opts.status ?? "draft"];
+      if (rate !== null) {
+        cols.push("buyer_premium_rate");
+        values.push(rate);
+      }
+      if (sold) {
+        cols.push("winner_id", "buyer_legal_entity_id");
+        values.push(userId, sellerId);
+      }
+      const params = values.map((_, i) => `$${i + 1}`).join(", ");
       return one(
-        `insert into lot (sale_id, title, auction_type, starting_price, current_price, start_time, end_time, seller_legal_entity_id${rate === null ? "" : ", buyer_premium_rate"})
-       values ($1, 'Lot', 'english', 0, 0, now(), now() + interval '1 day', $2${rate === null ? "" : ", $3"}) returning id`,
-        rate === null ? [saleId, sellerId] : [saleId, sellerId, rate],
+        `insert into lot (title, auction_type, starting_price, current_price, start_time, end_time, ${cols.join(", ")})
+       values ('Lot', 'english', 0, ${sold ? "600000" : "0"}, now(), now() + interval '1 day', ${params}) returning id`,
+        values,
+      );
+    }
+
+    async function invoice(lotId: string, voided = false): Promise<void> {
+      await client.query(
+        `insert into bid_invoice (lot_id, buyer_legal_entity_id, seller_legal_entity_id, total_pence, raised_at, due_at, voided_at)
+       values ($1, $2, $2, 66000000, now(), now() + interval '7 days', ${voided ? "now()" : "null"})`,
+        [lotId, sellerId],
       );
     }
 
@@ -55,7 +81,7 @@ describe.skipIf(!url)(
       client = new Client(buildPgConnectionConfig(url));
       await client.connect();
       await client.query("begin");
-      const userId = `u-${Date.now()}`;
+      userId = `u-${Date.now()}`;
       await client.query(
         `insert into "user" (id, name, email, created_at, updated_at)
        values ($1, 'Seller', $2, now(), now())`,
@@ -71,6 +97,11 @@ describe.skipIf(!url)(
        values ('Sale', now(), now() + interval '1 day', $1, 0.2) returning id`,
         [sellerId],
       );
+      bandedSaleId = await one(
+        `insert into sale (title, start_time, end_time, created_by_legal_entity_id, buyer_premium_rate, buyer_premium_tiers)
+       values ('Banded sale', now(), now() + interval '1 day', $1, 0.25, $2) returning id`,
+        [sellerId, JSON.stringify(standardBuyerPremiumBands())],
+      );
     });
 
     afterAll(async () => {
@@ -85,7 +116,7 @@ describe.skipIf(!url)(
       expect(await rateOf(await insertLot(null))).toBeNull();
     });
 
-    it("keeps every existing lot's rate through the migration, and the rollback refills only NULLs", async () => {
+    it("keeps the rate of lots in a flat-rate sale, and the rollback refills only NULLs", async () => {
       await client.query(rollbackBody);
       expect(await column("lot")).toMatchObject({ is_nullable: "NO" });
       // Rows written under the old schema: an explicit 25% and the old 25% default.
@@ -102,6 +133,41 @@ describe.skipIf(!url)(
       await client.query(rollbackBody);
       expect(await rateOf(usesSale)).toBe("0.2000");
       expect(await rateOf(explicit)).toBe("0.2500");
+      await client.query(migration);
+    });
+
+    it("puts uninvoiced lots in a sale with bands back on the bands; invoiced lots keep their rate", async () => {
+      await client.query(rollbackBody);
+      const sale = { buyerPremiumRate: "0.2500", buyerPremiumTiers: standardBuyerPremiumBands() };
+      // Rows as the old schema left them: every lot holds the old 25% default.
+      const banded = { sale: bandedSaleId, status: "ended" as const, sold: true };
+      const active = await insertLot("0.2500", { sale: bandedSaleId, status: "active" });
+      const soldNotInvoiced = await insertLot("0.2500", banded);
+      const voidedOnly = await insertLot("0.2500", banded);
+      await invoice(voidedOnly, true);
+      const invoiced = await insertLot("0.2500", banded);
+      await invoice(invoiced);
+      const flat = await insertLot("0.2500", { status: "active" });
+
+      await client.query(migration);
+
+      for (const lotId of [active, soldNotInvoiced, voidedOnly]) {
+        const lotRate = await rateOf(lotId);
+        expect(lotRate).toBeNull();
+        const { source, policy } = resolveBuyerPremium({ lotRate, sale });
+        expect(source).toBe("sale_bands");
+        // £600,000: 15% of £500,000 + 10% of £100,000, not the old 25% default.
+        expect(policy.computePremiumMinor(60_000_000)).toBe(8_500_000);
+      }
+      expect(await rateOf(invoiced)).toBe("0.2500");
+      expect(await rateOf(flat)).toBe("0.2500");
+
+      // The rollback gives the cleared lots their sale's flat rate, which the old code never
+      // reads for a sale with bands; lots that kept a rate are untouched.
+      await client.query(rollbackBody);
+      expect(await column("lot")).toMatchObject({ is_nullable: "NO" });
+      expect(await rateOf(active)).toBe("0.2500");
+      expect(await rateOf(invoiced)).toBe("0.2500");
       await client.query(migration);
     });
   },
