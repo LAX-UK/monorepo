@@ -147,7 +147,8 @@ describe("DataTable rowHref: every row is a real link", () => {
     const visit = vi.fn();
     render(<Selectable />);
     const grid = screen.getByRole("grid", { name: "People" });
-    fireEvent.click(within(grid).getByRole("checkbox", { name: "Select row 1" }).closest("td")!);
+    const firstCheckbox = within(grid).getByRole("checkbox", { name: "Select row 1" });
+    fireEvent.click(firstCheckbox.closest("td") as HTMLElement);
     fireEvent.click(within(grid).getByRole("link", { name: "Mary" }), { shiftKey: true });
     const bodyRows = within(grid).getAllByRole("row").slice(1);
     expect(bodyRows.map((row) => row.getAttribute("aria-selected"))).toEqual([
