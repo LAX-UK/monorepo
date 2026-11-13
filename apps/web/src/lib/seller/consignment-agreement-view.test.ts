@@ -23,7 +23,7 @@ describe("consignmentAgreementViewModel", () => {
     expect(consignmentAgreementViewModel(base).terms).toEqual([
       { label: "Estimate", value: "£8,000 – £12,000" },
       { label: "Reserve", value: "£7,000" },
-      { label: "Seller's commission", value: "15%" },
+      { label: "Seller's commission", value: "15% of the hammer price, plus VAT" },
       { label: "Proposed", value: "4 Oct 2026" },
     ]);
   });

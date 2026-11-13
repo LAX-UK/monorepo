@@ -1,4 +1,4 @@
-import { parseBidSchema } from "@/lib/data/http/bid.schema";
+import { parseBidRow } from "@/lib/data/http/bid-row";
 import { parseLotSchema, parsePublicLotViewSchema } from "@/lib/data/http/lot.schema";
 import { parseSaleSchema } from "@/lib/data/http/sale.schema";
 import { parseItemSubmissionSchema } from "@/lib/data/http/submissions.schema";
@@ -39,5 +39,5 @@ export function parseItemSubmission(raw: unknown): ItemSubmission {
 }
 
 export function parseBid(raw: unknown): Bid {
-  return parseBidSchema(raw);
+  return parseBidRow(raw);
 }

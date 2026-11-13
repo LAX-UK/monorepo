@@ -1,6 +1,6 @@
 import type { Payout } from "@auction/types";
 import { describe, expect, it } from "vitest";
-import { buildPayoutDestination, buildPayoutRows } from "./sold-and-payouts.vm";
+import { buildPayoutDestination, buildPayoutRows, payoutsCsv } from "./sold-and-payouts.vm";
 
 describe("buildPayoutRows", () => {
   it("shows fees as a deduction and links each statement", () => {
@@ -76,5 +76,48 @@ describe("buildPayoutDestination", () => {
         account: { state: "ready", account: { ...account, status: "failed" } },
       }).bankFailed,
     ).toBe(true);
+  });
+});
+
+describe("payoutsCsv", () => {
+  const base = {
+    legalEntityId: "le",
+    periodStart: new Date("2026-11-01T00:00:00Z"),
+    periodEnd: new Date("2026-11-11T00:00:00Z"),
+    platformFee: "14760.00",
+    stripeFee: "0.00",
+    currency: "GBP",
+    status: "paid",
+  } as const;
+
+  it("carries the hammer, commission and VAT on commission from the snapshots, as the page shows them", () => {
+    const rows = buildPayoutRows(
+      [
+        {
+          ...base,
+          id: "p2",
+          grossAmount: "82000.00",
+          netAmount: "67240.00",
+          sellerTermsTotals: {
+            hammer: "82000.00",
+            commission: "12300.00",
+            commissionVat: "2460.00",
+          },
+        } as Payout,
+        // Paid before snapshots: no split to show, only what was recorded.
+        { ...base, id: "p1", grossAmount: "5000.00", netAmount: "4000.00" } as Payout,
+      ],
+      "le",
+    );
+    const [header, ...lines] = payoutsCsv(rows).trim().split(/\r?\n/);
+    expect(header).toBe(
+      "period,reference,status,hammer,commission,vat_on_commission,sales,commission_and_fees,you_receive,payout_id",
+    );
+    // Deductions carry the one minus sign the page uses (U+2212), as in commission_and_fees.
+    expect(lines[0]).toContain('"£82,000.00","\u2212£12,300.00","\u2212£2,460.00"');
+    expect(payoutsCsv(rows)).not.toMatch(/[-–]£/);
+    expect(lines[0]).toContain('"£67,240.00",p2');
+    expect(lines[1]).toContain("paid,,,,");
+    expect(payoutsCsv(rows)).not.toMatch(/premium/i);
   });
 });

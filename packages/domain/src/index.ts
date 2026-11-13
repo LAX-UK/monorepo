@@ -1084,6 +1084,14 @@ export {
   type ActivityKind,
 } from "./organisation-activity.js";
 export {
+  TRANSFER_OUTCOME_UNKNOWN_PREFIX,
+  TRANSFER_REFUSED_PREFIX,
+  lastTransferOutcomeUnknown,
+  payoutTakesLines,
+  transferFailureReason,
+  transferOutcomeUnknownAfter,
+} from "./payout-transfer-attempt.js";
+export {
   consignmentReference,
   payoutLineBreakdown,
   payoutTotals,
@@ -1419,6 +1427,12 @@ export {
   type SellerProceedsInput,
   type SellerProceedsParty,
 } from "./seller-proceeds.js";
+export {
+  SELLER_PAYOUT_NOTE,
+  notVatRegisteredLine,
+  ratePercentLabel,
+  sellerCommissionTerm,
+} from "./seller-rate.js";
 export {
   sellerClawbackPence,
   sellerDeductionsPence,

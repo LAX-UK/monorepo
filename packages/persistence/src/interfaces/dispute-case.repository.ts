@@ -117,6 +117,12 @@ export interface IDisputeCaseRepository {
     allocationId: string,
     clawback: DisputeLineClawback,
   ): Promise<void>;
+  /**
+   * Holds the payments' rows (`FOR UPDATE`, in payment id order) until the transaction ends. A case
+   * that moves payouts for several payments takes them all before any payout, the order the refund
+   * paths lock in, so it never holds a payout while it waits for one of the payments.
+   */
+  lockPaymentsInTransaction(tx: Database, paymentIds: readonly string[]): Promise<void>;
 }
 
 /** How many cases wait for the finance team to allocate them. */

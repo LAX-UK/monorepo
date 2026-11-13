@@ -154,8 +154,13 @@ const sentryBuildOptions = {
   silent: !process.env.CI,
   widenClientFileUpload: true,
   tunnelRoute: "/sentry-tunnel",
-  disableLogger: true,
   automaticVercelMonitors: false,
+  webpack: {
+    // Strip the SDK's debug logging from every bundle (`__SENTRY_DEBUG__ = false`); it only
+    // prints with `debug: true`, which no build sets. Tracing code stays: the account and staff
+    // areas keep browser tracing (see `src/lib/observability/sentry-client-options.ts`).
+    treeshake: { removeDebugLogging: true },
+  },
   ...(process.env.SENTRY_AUTH_TOKEN ? { authToken: process.env.SENTRY_AUTH_TOKEN } : {}),
 };
 

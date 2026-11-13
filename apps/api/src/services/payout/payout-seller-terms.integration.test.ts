@@ -16,7 +16,9 @@ import {
   saleSellerTerms,
   stripeRefundReversal,
 } from "@auction/db/schema";
+import { TRANSFER_OUTCOME_UNKNOWN_PREFIX } from "@auction/domain";
 import {
+  ConnectTransferInitiationService,
   PayoutAdjustmentService,
   type PayoutSettlementDeps,
   REFUND_TRUE_UP_NOTE,
@@ -36,6 +38,7 @@ import {
 import { and, eq, inArray, like, sql } from "drizzle-orm";
 import { ok } from "neverthrow";
 import type Stripe from "stripe";
+import StripeSdk from "stripe";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { FakeChargeRefunds } from "../../test/fake-charge-refunds.js";
 import {
@@ -1309,6 +1312,348 @@ describe.skipIf(!HAS_DB)("payout run on seller terms (integration)", () => {
         chargedPence: pounds(164),
         answeredPence: pounds(250),
       });
+    });
+  });
+
+  describe("a payout line never lands on a payout whose transfer has started", () => {
+    /** The Stripe side of a transfer: none exists yet, and creating one can be held mid-call. */
+    function fakeConnectStripe() {
+      const created: number[] = [];
+      let entered = () => {};
+      let release = () => {};
+      const createEntered = new Promise<void>((resolve) => {
+        entered = resolve;
+      });
+      let gate: Promise<void> = Promise.resolve();
+      const stripe = {
+        transfers: {
+          list: async () => ({ data: [], has_more: false }),
+          create: async (params: { amount: number }) => {
+            entered();
+            await gate;
+            created.push(params.amount);
+            return { id: `tr_terms_${run}_${randomUUID()}` };
+          },
+        },
+        charges: { retrieve: async () => ({ currency: "gbp" }) },
+      };
+      const holdCreate = () => {
+        gate = new Promise<void>((resolve) => {
+          release = resolve;
+        });
+      };
+      const transfers = new ConnectTransferInitiationService(
+        { warn: () => {}, error: () => {}, info: () => {} } as never,
+        {
+          findLegalEntityById: async () => ({ stripeConnectAccountId: "acct_terms" }),
+          findStripeChargeIdByPaymentId: async () => null,
+        } as never,
+        { get: () => stripe } as never,
+        { syncAccountFromStripe: async () => ({ ready: true }) } as never,
+        repo,
+        null,
+        undefined,
+        { runner },
+      );
+      return { transfers, created, createEntered, holdCreate, release: () => release() };
+    }
+
+    /** Waits until some session in this database is waiting for a row lock. */
+    async function someoneWaitsForALock(timeoutMs = 2_000): Promise<boolean> {
+      const until = Date.now() + timeoutMs;
+      while (Date.now() < until) {
+        const waiting = await db.execute<{ n: number }>(
+          sql`SELECT count(*)::int AS n FROM pg_stat_activity
+              WHERE datname = current_database() AND wait_event_type = 'Lock'`,
+        );
+        if (Number(waiting.rows[0]?.n) > 0) return true;
+        await new Promise((resolve) => setTimeout(resolve, 20));
+      }
+      return false;
+    }
+
+    /** A card sale on a payout that is scheduled and not yet transferred. */
+    async function scheduledCardSale() {
+      const sale = await seedSale({
+        hammer: 1_000,
+        premium: 250,
+        commissionPercent: "15.00",
+        raised: "agreement",
+      });
+      await cardPayment(sale.paymentId);
+      await payOpenPayouts();
+      const settled = await createSettlement(deps, null, {
+        legalEntityId: sellerEntity,
+        periodEnd: nextPeriodEnd(),
+      });
+      if (!settled.ok) throw new Error("the sale was not paid out");
+      const [saleLine] = await db
+        .select({ payoutId: payoutLine.payoutId })
+        .from(payoutLine)
+        .where(and(eq(payoutLine.paymentId, sale.paymentId), eq(payoutLine.kind, "sale")));
+      if (!saleLine) throw new Error("the sale has no payout line");
+      return { ...sale, payoutId: saleLine.payoutId };
+    }
+
+    const payoutRow = async (id: string) => {
+      const [row] = await db.select().from(payout).where(eq(payout.id, id));
+      if (!row) throw new Error("payout not found");
+      return row;
+    };
+
+    it("a dispute line and a refund on the same payment both land: the dispute waits for the payment, not the payout", async () => {
+      const sale = await scheduledCardSale();
+      const before = await payoutRow(sale.payoutId);
+
+      // A staff refund holds the payment, as every refund path does, and has not reached the payout.
+      let paymentHeld = () => {};
+      const held = new Promise<void>((resolve) => {
+        paymentHeld = resolve;
+      });
+      let goOn = () => {};
+      const resumed = new Promise<void>((resolve) => {
+        goOn = resolve;
+      });
+      const key = `staff-part-${randomUUID()}`;
+      const refund = runner.runInTransaction(async (tx) => {
+        await refundRecords.lockPaymentInTransaction(tx, sale.paymentId);
+        await refundRecords.recordInTransaction(tx, {
+          paymentId: sale.paymentId,
+          idempotencyKey: key,
+          amountPence: pounds(100),
+          currency: "GBP",
+          source: "staff",
+        });
+        paymentHeld();
+        await resumed;
+        await adjustments.addPaymentLineToOpenPayoutOrCreateClawback({
+          legalEntityId: sellerEntity,
+          paymentId: sale.paymentId,
+          amount: "-100.00",
+          kind: "refund",
+          sourceEventId: key,
+          note: "Part refund",
+          tx,
+        });
+      });
+      await held;
+
+      // A dispute's funds are withdrawn on another connection: the dispute paths lock the case,
+      // not the payment, so the line takes the payment itself before the payout.
+      const disputeLine = adjustments.addPaymentLineToOpenPayoutOrCreateClawback({
+        legalEntityId: sellerEntity,
+        paymentId: sale.paymentId,
+        amount: "-50.00",
+        kind: "dispute",
+        sourceEventId: `dispute:dp_${run}_${randomUUID()}:${sale.paymentId}:withdrawn`,
+        note: "Dispute funds withdrawn",
+      });
+      const waited = await someoneWaitsForALock();
+      goOn();
+      const outcomes = await Promise.allSettled([refund, disputeLine]);
+
+      expect(waited).toBe(true);
+      // Neither side is aborted as a deadlock (40P01).
+      const failures = outcomes.flatMap((o) =>
+        o.status === "rejected" ? [String((o.reason as Error).cause ?? o.reason)] : [],
+      );
+      expect(failures).toEqual([]);
+      const lines = await linesOf(sale.payoutId);
+      expect(lines.map((l) => l.kind).sort()).toEqual(["dispute", "refund", "sale"]);
+      const after = await payoutRow(sale.payoutId);
+      expect(after.status).toBe("scheduled");
+      // The payout's net moved by exactly the two new lines: nothing was lost or counted twice.
+      const added = lines
+        .filter((l) => l.kind !== "sale")
+        .reduce((sum, l) => sum + pounds(Number(l.amount)), 0);
+      expect(added).toBeLessThan(0);
+      expect(pounds(Number(after.netAmount))).toBe(pounds(Number(before.netAmount)) + added);
+    });
+
+    it("after a transfer attempt whose outcome is unknown, a refund goes on a new payout and the next run sends what Stripe already holds", async () => {
+      const sale = await scheduledCardSale();
+      const scheduled = await payoutRow(sale.payoutId);
+      // Stripe creates the transfer, but every answer is lost on the way back.
+      const held: Stripe.Transfer[] = [];
+      let answers = false;
+      const stripe = {
+        transfers: {
+          list: async () => ({ data: held, has_more: false }),
+          create: async (params: Stripe.TransferCreateParams) => {
+            if (held.length === 0) {
+              held.push({
+                id: `tr_terms_${run}_${randomUUID()}`,
+                amount: params.amount,
+                amount_reversed: 0,
+                currency: params.currency,
+                destination: params.destination,
+                transfer_group: params.transfer_group,
+                metadata: params.metadata,
+                reversed: false,
+              } as unknown as Stripe.Transfer);
+            }
+            if (!answers) {
+              throw new StripeSdk.errors.StripeConnectionError({ message: "socket hang up" });
+            }
+            return held[0];
+          },
+        },
+        charges: { retrieve: async () => ({ currency: "gbp" }) },
+      };
+      const transfers = new ConnectTransferInitiationService(
+        { warn: () => {}, error: () => {}, info: () => {} } as never,
+        {
+          findLegalEntityById: async () => ({ stripeConnectAccountId: "acct_terms" }),
+          findStripeChargeIdByPaymentId: async () => null,
+        } as never,
+        { get: () => stripe } as never,
+        { syncAccountFromStripe: async () => ({ ready: true }) } as never,
+        repo,
+        null,
+        undefined,
+        { runner },
+      );
+      const bulkRun = () =>
+        transfers.initiateTransfer(sale.payoutId, { keepScheduledOnTransferFailure: true });
+
+      await expect(bulkRun()).resolves.toMatchObject({ ok: false, reason: "stripe_error" });
+      const unknown = await payoutRow(sale.payoutId);
+      expect(unknown.status).toBe("scheduled");
+      expect(unknown.failureReason).toMatch(new RegExp(`^${TRANSFER_OUTCOME_UNKNOWN_PREFIX}`));
+      expect(await repo.findOpenPayoutForEntity(sellerEntity)).toBeNull();
+
+      await partRefund(sale.paymentId, pounds(100));
+
+      // The refund is charged on a payout of its own; the attempted one keeps the amount Stripe holds.
+      const [refundLine] = await refundLinesOf(sale.paymentId);
+      expect(refundLine?.payoutId).not.toBe(sale.payoutId);
+      expect((await payoutRow(sale.payoutId)).netAmount).toBe(scheduled.netAmount);
+
+      answers = true;
+      await expect(bulkRun()).resolves.toMatchObject({ ok: true });
+      const sent = await payoutRow(sale.payoutId);
+      expect(sent).toMatchObject({ status: "in_transit", stripeTransferId: held[0]?.id });
+      expect(held).toHaveLength(1);
+      expect(held[0]?.amount).toBe(pounds(Number(sent.netAmount)));
+    }, 30_000);
+
+    it("a give-back for a failed refund while the payout it was charged on is in transit goes on a new payout", async () => {
+      const sale = await paidOutCardSale();
+      const refundId = await cardRefund(sale.paymentId, sale.chargeId, pounds(500));
+      const [charge] = await refundLinesOf(sale.paymentId);
+      if (!charge) throw new Error("the refund was not charged");
+      // The charge's payout has started its transfer.
+      await db
+        .update(payout)
+        .set({ status: "in_transit", stripeTransferId: `tr_terms_${run}_${randomUUID()}` })
+        .where(eq(payout.id, charge.payoutId));
+      const inTransit = await payoutRow(charge.payoutId);
+
+      await refundFails(refundId, sale.paymentId, sale.chargeId);
+
+      // The in-transit payout and its lines are as they were when the transfer started.
+      expect(await payoutRow(charge.payoutId)).toMatchObject({
+        status: "in_transit",
+        netAmount: inTransit.netAmount,
+      });
+      expect(await linesOf(charge.payoutId)).toEqual([
+        expect.objectContaining({ id: charge.id, amount: "-328.00" }),
+      ]);
+      // The £328.00 comes back on a payout of its own, still to be transferred.
+      const [giveBack] = await giveBackLinesOf(sale.paymentId);
+      expect(giveBack).toMatchObject({ amount: "328.00", buyerRefundPence: -pounds(500) });
+      expect(giveBack?.payoutId).not.toBe(charge.payoutId);
+      expect(await payoutRow(giveBack?.payoutId ?? "")).toMatchObject({
+        status: "scheduled",
+        netAmount: "328.00",
+      });
+      expect(await refundLedger(sale.paymentId)).toEqual({ chargedPence: 0, answeredPence: 0 });
+    });
+
+    it("a refund that arrives while the transfer is being created waits, then goes to the next payout", async () => {
+      const sale = await scheduledCardSale();
+      const stripe = fakeConnectStripe();
+      stripe.holdCreate();
+
+      const transfer = stripe.transfers.initiateTransfer(sale.payoutId);
+      await stripe.createEntered;
+      // The transfer holds the payout while Stripe creates it; the refund starts on another
+      // connection and must wait for it rather than change what is being sent.
+      const refund = partRefund(sale.paymentId, pounds(100));
+      const waited = await someoneWaitsForALock();
+      stripe.release();
+      await expect(transfer).resolves.toMatchObject({ ok: true });
+      await refund;
+
+      expect(waited).toBe(true);
+      const transferred = await payoutRow(sale.payoutId);
+      expect(transferred.status).toBe("in_transit");
+      expect(stripe.created).toEqual([pounds(Number(transferred.netAmount))]);
+      const refundLines = await refundLinesOf(sale.paymentId);
+      expect(refundLines).toHaveLength(1);
+      expect(refundLines[0]?.payoutId).not.toBe(sale.payoutId);
+      expect(await payoutRow(refundLines[0]?.payoutId ?? "")).toMatchObject({
+        status: "scheduled",
+      });
+    });
+
+    it("a refund that holds the payout first is sent with it: the transfer that read the old amount stops, the next sends the new net", async () => {
+      const sale = await scheduledCardSale();
+      const before = await payoutRow(sale.payoutId);
+      const stripe = fakeConnectStripe();
+
+      let lineAdded = () => {};
+      const added = new Promise<void>((resolve) => {
+        lineAdded = resolve;
+      });
+      let commit = () => {};
+      const committed = new Promise<void>((resolve) => {
+        commit = resolve;
+      });
+      const key = `staff-part-${randomUUID()}`;
+      const refund = runner.runInTransaction(async (tx) => {
+        await refundRecords.lockPaymentInTransaction(tx, sale.paymentId);
+        await refundRecords.recordInTransaction(tx, {
+          paymentId: sale.paymentId,
+          idempotencyKey: key,
+          amountPence: pounds(100),
+          currency: "GBP",
+          source: "staff",
+        });
+        await adjustments.addPaymentLineToOpenPayoutOrCreateClawback({
+          legalEntityId: sellerEntity,
+          paymentId: sale.paymentId,
+          amount: "-100.00",
+          kind: "refund",
+          sourceEventId: key,
+          note: "Part refund",
+          tx,
+        });
+        lineAdded();
+        await committed;
+      });
+      await added;
+
+      // The transfer reads the payout before the refund commits, then waits for its row.
+      const first = stripe.transfers.initiateTransfer(sale.payoutId);
+      const waited = await someoneWaitsForALock();
+      commit();
+      await refund;
+
+      expect(waited).toBe(true);
+      await expect(first).resolves.toEqual({ ok: false, reason: "payout_changed" });
+      expect(stripe.created).toEqual([]);
+      const changed = await payoutRow(sale.payoutId);
+      expect(changed.status).toBe("scheduled");
+      expect(changed.netAmount).not.toBe(before.netAmount);
+      expect((await refundLinesOf(sale.paymentId))[0]?.payoutId).toBe(sale.payoutId);
+
+      await expect(stripe.transfers.initiateTransfer(sale.payoutId)).resolves.toMatchObject({
+        ok: true,
+      });
+      const transferred = await payoutRow(sale.payoutId);
+      expect(transferred.status).toBe("in_transit");
+      expect(stripe.created).toEqual([pounds(Number(transferred.netAmount))]);
     });
   });
 });

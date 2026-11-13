@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
+import { parseBidUpdateFromRealtimeRaw } from "./lot-bid-update.js";
 import {
   bidPlacedRedisMessageToBidUpdate,
   encodeBidPlacedPublicRedisMessage,
   encodeBidPlacedSealedRedisMessage,
-  parseBidUpdateFromRealtimeRaw,
   parseLotRealtimeRedisMessage,
   sealedBidPlacedHasNoBidderIdentity,
 } from "./lot-realtime-events.js";

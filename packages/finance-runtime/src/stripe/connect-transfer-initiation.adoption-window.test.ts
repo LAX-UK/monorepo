@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { ConnectTransferInitiationService } from "./connect-transfer-initiation.service.js";
+import { inlinePayoutTransactions } from "./connect-transfer-initiation.test-util.js";
 
 const silentLog = { warn: () => {}, error: () => {}, info: () => {} };
 
@@ -68,6 +69,8 @@ function setup(stripe: ReturnType<typeof fakeStripe>, opts: { casLoses?: boolean
     { syncAccountFromStripe: vi.fn().mockResolvedValue({ ready: true }) } as never,
     payoutRepository as never,
     sink as never,
+    undefined,
+    inlinePayoutTransactions(),
   );
   return {
     service,

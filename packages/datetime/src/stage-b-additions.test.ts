@@ -2,7 +2,8 @@ import { TZDate } from "@date-fns/tz";
 import { addDays } from "date-fns";
 import { describe, expect, it } from "vitest";
 import { LONDON_TIME_ZONE } from "./constants.js";
-import { addCalendarDays, dayKey } from "./day.js";
+import { addCalendarDays } from "./day-zoned.js";
+import { dayKey } from "./day.js";
 import { shortMonthFormat } from "./zone-formats.js";
 
 const ZONES = [LONDON_TIME_ZONE, "Europe/Paris", "America/New_York", "UTC"];

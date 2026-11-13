@@ -2,7 +2,7 @@ import { buildListHref } from "@/lib/admin/admin-list-params";
 import { staffStatus } from "@/lib/admin/staff-kit-status";
 import type { AdminPayoutListSummary } from "@/lib/data/http/admin-payouts.shared";
 import type { AdminPayoutRow } from "@/lib/data/http/admin.server";
-import { formatPayoutReference } from "@auction/domain";
+import { formatPayoutReference, payoutTakesLines } from "@auction/domain";
 import {
   type AttentionStripItem,
   type Metric,
@@ -131,7 +131,8 @@ export function toPayoutsStaffRows(
       paidAt: payoutPaidAt(row),
       createdAt: row.createdAt,
       canMarkPaid: open,
-      canAdjust: open,
+      // A line on a payout whose transfer has started, or may have, would not change the money sent.
+      canAdjust: payoutTakesLines(row),
       canReverse: row.status === "paid" || row.status === "in_transit",
       canRetryTransfer: row.status === "failed",
       canResolveBlocked: row.status === "transfer_blocked",

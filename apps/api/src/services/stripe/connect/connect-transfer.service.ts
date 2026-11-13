@@ -44,6 +44,7 @@ export class ConnectTransferService {
       payoutRepository,
       domainEventSink,
       { record: recordMoneyPathEvent },
+      { runner: transactionRunner },
     );
   }
 

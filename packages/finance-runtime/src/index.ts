@@ -173,7 +173,10 @@ export type {
   InitiateTransferResult,
   TransferAdoptionVerification,
 } from "./payout/types.js";
-export { ConnectTransferInitiationService } from "./stripe/connect-transfer-initiation.service.js";
+export {
+  ConnectTransferInitiationService,
+  type PayoutTransferTransactions,
+} from "./stripe/connect-transfer-initiation.service.js";
 export {
   entityId,
   makeSettlementRepo,

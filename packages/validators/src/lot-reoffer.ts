@@ -107,6 +107,11 @@ export const sellerReofferProceedsSchema = z
     originalHammerMinor: pence,
     /** What the seller would have received at the original hammer. */
     originalProceedsMinor: pence,
+    /**
+     * The signed agreement's commission rate, in basis points, said beside the figure; `null`
+     * when it cannot be read.
+     */
+    commissionBps: z.number().int().min(0).max(10_000).nullable(),
   })
   .strict();
 export type SellerReofferProceeds = z.infer<typeof sellerReofferProceedsSchema>;

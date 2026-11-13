@@ -2,9 +2,11 @@ import {
   type PayoutTotals,
   type SoldLotPayoutStage,
   entityActorCan,
+  minorUnitsToMoneyString,
   payoutLineBreakdown,
   payoutTotals,
   payoutTotalsDiffer,
+  ratePercentLabel,
   saleLineBreakdown,
   soldLotPayoutStage,
 } from "@auction/domain";
@@ -49,14 +51,27 @@ const SOLD_COLUMNS: ExportColumn[] = [
   { key: "title", header: "Title" },
   { key: "sale", header: "Sale" },
   { key: "soldOn", header: "Sold on" },
-  { key: "hammer", header: "Hammer price" },
-  { key: "net", header: "Net to you" },
-  { key: "soldAfterAuction", header: "Sold after the auction" },
+  { key: "hammer", header: "Hammer" },
+  { key: "commissionRate", header: "Commission rate" },
+  { key: "commission", header: "Commission" },
+  { key: "commissionVat", header: "VAT on commission" },
+  { key: "net", header: "You receive" },
+  { key: "howItSold", header: "How it sold" },
   { key: "status", header: "Status" },
   { key: "paidOutOn", header: "Paid out on" },
 ];
 
+/**
+ * How a lot sold, in the seller's words. A seller is never told who bought: LAX pays the seller
+ * itself, so the buyer's identity is not needed to complete the sale.
+ */
+const HOW_IT_SOLD = {
+  auction: "Sold at auction",
+  afterAuction: "Sold after the auction to the next bidder",
+} as const;
+
 const isoDay = (d: Date | null) => (d ? d.toISOString().slice(0, 10) : "");
+const pounds = (pence: number) => minorUnitsToMoneyString(BigInt(pence));
 
 /** The calendar year as a half-open range in UTC, for the year filter. */
 function yearRange(year: number | undefined): { from?: Date; to?: Date } {
@@ -69,7 +84,11 @@ function soldView(row: SoldLotRow): SoldLotView {
     paymentStatus: row.payment?.status ?? null,
     payoutStatus: row.payout?.status ?? null,
   });
-  const paid = row.payment?.status === "captured";
+  // The buyer paid, or the sale was paid out before its buyer was refunded: the seller's figure
+  // is what the sale was paid on.
+  const paid =
+    row.payment?.status === "captured" ||
+    (row.payment?.status === "refunded" && row.payout !== null);
   // What the seller's figure is worked from: the snapshot, or the old rule a paid-out sale was
   // paid under. Unknown while the sale is held, so no figure is shown rather than a wrong one.
   const sellerSide = paid ? (row.payment?.sellerSide ?? null) : null;
@@ -90,6 +109,7 @@ function soldView(row: SoldLotRow): SoldLotView {
           platformFee: sellerSide.platformFee,
         }).net
       : null,
+    sellerTerms: sellerSide ? (row.payment?.sellerTerms ?? null) : null,
     payout: row.payout ? { id: row.payout.id, settledAt: row.payout.settledAt } : null,
   };
 }
@@ -146,8 +166,11 @@ export class SoldAndPayoutsService implements ISoldAndPayoutsService {
         sale: view.saleTitle ?? "",
         soldOn: isoDay(view.soldAt),
         hammer: view.hammerPrice,
+        commissionRate: view.sellerTerms ? ratePercentLabel(view.sellerTerms.commissionBps) : "",
+        commission: view.sellerTerms ? pounds(view.sellerTerms.commissionPence) : "",
+        commissionVat: view.sellerTerms ? pounds(view.sellerTerms.vatPence) : "",
         net: view.net ?? "",
-        soldAfterAuction: view.soldAfterAuction ? "Yes" : "",
+        howItSold: view.soldAfterAuction ? HOW_IT_SOLD.afterAuction : HOW_IT_SOLD.auction,
         status: STAGE_WORDS[view.stage],
         paidOutOn: view.stage === "paid_out" ? isoDay(view.payout?.settledAt ?? null) : "",
       };
@@ -178,15 +201,31 @@ export class SoldAndPayoutsService implements ISoldAndPayoutsService {
         derived,
       });
     }
+    // Field by field, so nothing about the buyer can ride along to the seller.
     return ok({
-      ...found,
+      id: found.id,
+      status: found.status,
+      currency: found.currency,
+      grossAmount: found.grossAmount,
+      platformFee: found.platformFee,
+      stripeFee: found.stripeFee,
+      netAmount: found.netAmount,
+      periodStart: found.periodStart,
+      periodEnd: found.periodEnd,
+      processedAt: found.processedAt,
       lines: found.lines.map((line) => ({
         id: line.id,
         kind: line.kind,
         note: line.note,
-        lot: line.lot,
+        lot: line.lot && {
+          id: line.lot.id,
+          title: line.lot.title,
+          lotNumber: line.lot.lotNumber,
+          hammerPrice: line.lot.hammerPrice,
+        },
         amount: line.amount,
         breakdown: payoutLineBreakdown(line),
+        sellerTerms: line.sellerTerms,
         soldAfterAuction: line.soldAfterAuction,
       })),
     });

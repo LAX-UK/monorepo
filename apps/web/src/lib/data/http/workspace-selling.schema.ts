@@ -12,6 +12,18 @@ export const SOLD_LOT_STAGES = [
   "refunded",
 ] as const;
 
+/** A sale's seller figures as its seller-terms snapshot recorded them, in whole pence. */
+export const sellerTermsFiguresSchema = z.object({
+  hammerPence: z.number().int(),
+  commissionBps: z.number().int(),
+  commissionPence: z.number().int(),
+  vatTreatment: z.enum(["standard", "not_registered"]),
+  vatBps: z.number().int(),
+  vatPence: z.number().int(),
+  netPence: z.number().int(),
+});
+export type SellerTermsFiguresView = z.infer<typeof sellerTermsFiguresSchema>;
+
 export const soldLotSchema = z.object({
   lotId: z.string(),
   lotTitle: z.string(),
@@ -23,6 +35,8 @@ export const soldLotSchema = z.object({
   soldAfterAuction: z.boolean().default(false),
   stage: z.enum(SOLD_LOT_STAGES),
   net: z.string().nullable(),
+  /** The snapshot `net` comes from, as recorded; `null` for a sale paid under the old rule. */
+  sellerTerms: sellerTermsFiguresSchema.nullable().default(null),
   payout: z.object({ id: z.string(), settledAt: zCoerceDate.nullable() }).nullable(),
 });
 export type SoldLot = z.infer<typeof soldLotSchema>;
@@ -46,6 +60,8 @@ const payoutLineSchema = z.object({
     })
     .nullable(),
   breakdown: breakdownSchema.nullable(),
+  /** The snapshot a sale line pays, as recorded; `null` on lines paid under the old rule. */
+  sellerTerms: sellerTermsFiguresSchema.nullable().default(null),
   soldAfterAuction: z.boolean().default(false),
   amount: z.string(),
 });

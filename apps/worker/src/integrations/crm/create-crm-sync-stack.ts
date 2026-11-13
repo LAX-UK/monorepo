@@ -16,7 +16,9 @@ export function createCrmSyncService(input: {
   db: Database;
   linkRepo: ICrmRecordLinkRepository;
   gateway: CrmGateway;
+  log?: { warn: (context: Record<string, unknown>, message: string) => void };
 }): CrmSyncService {
+  const log = input.log;
   const deps: CrmSyncServiceDeps = {
     gateway: input.gateway,
     linkRepo: input.linkRepo,
@@ -26,6 +28,12 @@ export function createCrmSyncService(input: {
     enquiryReader: createDrizzleCrmEnquiryReader(input.db),
     dealNamingReader: createDrizzleCrmDealNamingReader(input.db),
     shopEnquiryReader: createDrizzleCrmShopEnquiryReader(input.db),
+    ...(log
+      ? {
+          // Only the field's API name and Zoho's code: never the value that was refused.
+          onPersonFieldDropped: (dropped) => log.warn(dropped, "zoho_crm_person_field_dropped"),
+        }
+      : {}),
     mapperContext: {
       leadStatusNew: input.env.ZOHO_CRM_LEAD_STATUS_NEW,
       ...(input.env.LAX_ART_PUBLIC_URL ? { artPublicUrl: input.env.LAX_ART_PUBLIC_URL } : {}),
