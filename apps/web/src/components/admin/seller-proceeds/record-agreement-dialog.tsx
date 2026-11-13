@@ -29,7 +29,11 @@ import {
   TextArea,
   TextInput,
 } from "@auction/staff-ui";
-import { SIGNED_AGREEMENT_MAX_BYTES, type SignedAgreementErrors } from "@auction/validators";
+import {
+  SIGNED_AGREEMENT_EARLIEST_DAY,
+  SIGNED_AGREEMENT_MAX_BYTES,
+  type SignedAgreementErrors,
+} from "@auction/validators";
 import { useRouter } from "next/navigation";
 import { useId, useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -244,6 +248,7 @@ export function RecordAgreementDialog({
             <DateInput
               value={draft.signedOn || null}
               onValueChange={(day) => set({ signedOn: day ?? "" })}
+              min={SIGNED_AGREEMENT_EARLIEST_DAY}
               max={today}
               disabled={busy}
             />

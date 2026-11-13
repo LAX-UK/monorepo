@@ -17,7 +17,7 @@ describe("checkRecordAgreement", () => {
     expect(check.summary).toBe("Check 4 fields");
     expect(check.list.map((item) => item.message)).toEqual([
       "Enter the commission from the signed agreement, from 0% to 50%.",
-      "Enter the date it was signed.",
+      "Enter the date it was signed, from 1 January 2000 to today.",
       "Add the signed agreement as a PDF.",
       "Say why it's recorded here, in at least 10 characters.",
     ]);

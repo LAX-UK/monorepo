@@ -6,6 +6,9 @@ export const SIGNED_AGREEMENT_MAX_BYTES = 20 * 1024 * 1024;
 /** The highest commission a recorded agreement may carry, in percent. */
 export const SIGNED_AGREEMENT_MAX_COMMISSION_PERCENT = 50;
 
+/** The earliest signing date a recorded agreement may carry: nothing LAX holds is older. */
+export const SIGNED_AGREEMENT_EARLIEST_DAY = "2000-01-01";
+
 /** The shortest reason that says why the agreement is recorded by staff. */
 export const SIGNED_AGREEMENT_REASON_MIN = 10;
 
@@ -15,7 +18,7 @@ export type SignedAgreementField = "commissionPercent" | "document" | "signedOn"
 export const SIGNED_AGREEMENT_MESSAGES: Readonly<Record<SignedAgreementField, string>> = {
   commissionPercent: "Enter the commission from the signed agreement, from 0% to 50%.",
   document: "Add the signed agreement as a PDF.",
-  signedOn: "Enter the date it was signed.",
+  signedOn: "Enter the date it was signed, from 1 January 2000 to today.",
   reason: "Say why it's recorded here, in at least 10 characters.",
 };
 
@@ -55,12 +58,13 @@ function isPastOrToday(day: string, today: string): boolean {
     date.getUTCFullYear() === Number(y) &&
     date.getUTCMonth() === Number(m) - 1 &&
     date.getUTCDate() === Number(d);
-  return real && day.trim() <= today;
+  return real && day.trim() >= SIGNED_AGREEMENT_EARLIEST_DAY && day.trim() <= today;
 }
 
 /**
  * What is wrong with a signed agreement before it is recorded, field by field. `today` is the
- * London calendar day ("2026-11-13"): an agreement cannot be signed after it.
+ * London calendar day ("2026-11-13"): an agreement cannot be signed after it, nor before
+ * 1 January 2000.
  */
 export function checkSignedAgreement(
   input: SignedAgreementInput,

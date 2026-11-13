@@ -38,7 +38,7 @@ describe("checkSignedAgreement", () => {
     });
   });
 
-  it.each(["2026-11-14", "2026-02-30", "03/10/2026"])(
+  it.each(["2026-11-14", "2026-02-30", "03/10/2026", "1999-12-31", "0201-10-03", "3026-10-03"])(
     "refuses a signing date of %s",
     (signedOn) => {
       expect(checkSignedAgreement({ ...valid, signedOn }, TODAY)).toEqual({
@@ -46,6 +46,10 @@ describe("checkSignedAgreement", () => {
       });
     },
   );
+
+  it.each(["2000-01-01", TODAY])("accepts a signing date of %s", (signedOn) => {
+    expect(checkSignedAgreement({ ...valid, signedOn }, TODAY)).toEqual({});
+  });
 
   it("counts the reason without its surrounding spaces", () => {
     expect(checkSignedAgreement({ ...valid, reason: "   too short   " }, TODAY)).toEqual({
