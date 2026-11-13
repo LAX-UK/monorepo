@@ -64,6 +64,9 @@ import BackupCodesRegeneratedEmail, {
 import BidEnquiryReceivedEmail, {
   subject as bidEnquiryReceivedSubject,
 } from "./templates/bid-enquiry-received.js";
+import BidInvoiceIssuedEmail, {
+  subject as bidInvoiceIssuedSubject,
+} from "./templates/bid-invoice-issued.js";
 import BidOutbidEmail, { subject as bidOutbidSubject } from "./templates/bid-outbid.js";
 import BiddingLimitChangedNoticeEmail, {
   subject as biddingLimitChangedNoticeSubject,
@@ -611,6 +614,10 @@ const renderers: { [T in TemplateName]: TemplateRenderer<T> } = {
   "payment-invoice": {
     subject: paymentInvoiceSubject,
     component: (vars) => <PaymentInvoiceEmail {...vars} />,
+  },
+  "bid-invoice-issued": {
+    subject: bidInvoiceIssuedSubject,
+    component: (vars) => <BidInvoiceIssuedEmail {...vars} />,
   },
   "admin-impersonation-notice": {
     subject: adminImpersonationNoticeSubject,

@@ -38,6 +38,27 @@ export class AccountingEventPayloadError extends Error {
   }
 }
 
+/**
+ * The invoice's stored lines are not the ones its `invoice.raised` event named. Not retried: a
+ * person looks at the invoice (the lines are frozen at raise, so this should never happen).
+ */
+export class AccountingInvoiceLinesChangedError extends Error {
+  readonly retryable = false;
+  readonly code = "invoice_lines_changed";
+  constructor(invoiceId: string) {
+    super(`accounting_invoice_lines_changed:${invoiceId}`);
+    this.name = "AccountingInvoiceLinesChangedError";
+  }
+}
+
+/** The lines read are exactly the raised ones, in the same order. */
+function sameLines(raised: readonly string[], lines: readonly { readonly id?: string }[]): boolean {
+  return (
+    raised.length === lines.length &&
+    raised.every((id, index) => id.toLowerCase() === lines[index]?.id?.toLowerCase())
+  );
+}
+
 function route<F extends BuiltFlow>(
   product: Product,
   flow: F,
@@ -64,10 +85,16 @@ function route<F extends BuiltFlow>(
  * catalogue routes to the `accounting` consumer.
  */
 export const ACCOUNTING_EVENT_ROUTES: Readonly<Record<string, AccountingEventRoute>> = {
-  "invoice.raised": route("bid", "bid_invoice_raised", (facts, event) => {
+  "invoice.raised": route("bid", "bid_invoice_raised", async (facts, event) => {
     const payload = invoiceRaisedPayloadSchemaV1.safeParse(event.payload);
     if (!payload.success) throw new AccountingEventPayloadError(event.eventType);
-    return facts.invoiceRaised(payload.data.invoiceId);
+    const read = await facts.invoiceRaised(payload.data.invoiceId);
+    const raised = payload.data.lineIds;
+    if (read.status === "ready" && raised && !sameLines(raised, read.facts.lines)) {
+      // The lines are frozen when the invoice is raised: different ones are a fault, never booked.
+      throw new AccountingInvoiceLinesChangedError(payload.data.invoiceId);
+    }
+    return read;
   }),
   "payment.captured": route("bid", "bid_payment_captured", (facts, event) => {
     const payload = paymentCapturedPayloadSchemaV1.safeParse(event.payload);

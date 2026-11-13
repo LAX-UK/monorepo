@@ -9,3 +9,6 @@ export { DrizzleAccountingSourceSettingReader } from "./drizzle-accounting-sourc
 export { DrizzleAccountingSourceSettingWriter } from "./drizzle-accounting-source-setting.writer.js";
 export { createAccountingRepositories } from "./create-accounting-repositories.js";
 export { DrizzleBidAccountingFactsReader } from "./drizzle-bid-accounting-facts.reader.js";
+export { DrizzleAccountingDocumentCopies } from "./drizzle-accounting-document-copies.js";
+export { DrizzleBidInvoiceBooksReader } from "./drizzle-bid-invoice-books.reader.js";
+export { DrizzleBidInvoiceEmailFactsReader } from "./drizzle-bid-invoice-email-facts.reader.js";

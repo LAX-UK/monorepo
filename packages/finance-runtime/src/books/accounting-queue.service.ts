@@ -11,6 +11,7 @@ import {
   type AccountingTryAgainResult,
   accountingProblemCode,
   accountingProblemText,
+  accountingTotalsMismatchText,
 } from "@auction/types";
 import type {
   AccountingQueueRequest,
@@ -33,6 +34,19 @@ function reasonOf(record: DocumentRecord, lastErrorClass: string | null): string
   if (record.status === "failed" || record.status === "needs_review") return record.reason;
   if (record.status === "pending" || record.status === "unknown") return lastErrorClass;
   return null;
+}
+
+/**
+ * What staff are told. A totals difference names Books' own figure (ours plus the difference),
+ * so the person can see what Books holds without opening it.
+ */
+function problemText(document: StoredAccountingDocument, reason: string | null): string | null {
+  const { record } = document;
+  if (record.status === "needs_review" && record.lookup === "clear" && record.mismatch) {
+    const { field, differencePence } = record.mismatch;
+    return accountingTotalsMismatchText(field, document.totals[field] + differencePence);
+  }
+  return reason === null ? null : accountingProblemText(reason);
 }
 
 function issuedOf(record: DocumentRecord): { number: string; providerId: string } | null {
@@ -144,7 +158,7 @@ export class AccountingQueueService implements IAccountingQueueService {
       attempts: record.attempts,
       createdAt: document.createdAt.toISOString(),
       updatedAt: document.updatedAt.toISOString(),
-      problem: reason === null ? null : accountingProblemText(reason),
+      problem: problemText(document, reason),
       problemCode: reason === null ? null : accountingProblemCode(reason),
       lockedPeriod: record.status === "failed" && isLockedPeriodReason(record.reason),
       books:

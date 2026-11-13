@@ -1,3 +1,4 @@
+import { ok as domainOk } from "@auction/accounting-domain";
 import { renderBidInvoicePdf } from "@auction/exports/documents";
 import type { IBidInvoiceReader } from "@auction/persistence/interfaces";
 import type { LegalEntityMemberRole } from "@auction/types";
@@ -18,6 +19,7 @@ import { PayProgressResolver } from "../services/organisation-buying/pay-progres
 import { PaySeveralService } from "../services/organisation-buying/pay-several.service.js";
 import { PayTransferService } from "../services/organisation-buying/pay-transfer.service.js";
 import { PurchaseCandidateReader } from "../services/organisation-buying/purchase-candidate.reader.js";
+import { PurchaseInvoiceBooksService } from "../services/organisation-buying/purchase-invoice-books.service.js";
 import { PurchaseInvoicePdfService } from "../services/organisation-buying/purchase-invoice-pdf.service.js";
 import { PurchaseProblemService } from "../services/organisation-buying/purchase-problem.service.js";
 import { InMemoryPurchaseProblems } from "../testing/in-memory-purchase-problems.js";
@@ -31,6 +33,10 @@ import {
   seedPurchases,
 } from "../testing/in-memory-workspace-buying.js";
 import { createOrganisationBuyingRoutes } from "./organisation-buying.js";
+
+/** The stored copy of the invoice Books issued (live) for every purchase in these tests. */
+const BOOKS_DOCUMENT = "dddddddd-0000-4000-8000-000000000001";
+const STORED_PDF = Buffer.from("%PDF-1.4\n% stored Books copy\n%%EOF\n");
 
 function mount(
   role: LegalEntityMemberRole,
@@ -180,6 +186,47 @@ function mount(
         refunds: { sumRefundedPence: async () => ({ pence: 0, otherCurrencies: [] }) },
         metrics: { record: () => undefined },
         log: { warn: () => undefined },
+      }),
+      invoiceBooks: new PurchaseInvoiceBooksService({
+        candidates,
+        invoices,
+        settings: {
+          read: async () =>
+            domainOk({
+              bid: { xero: "off", books: "live" },
+              shop: { xero: "off", books: "off" },
+              lax_art: { xero: "off", books: "off" },
+            }),
+        },
+        books: {
+          read: async (invoiceId) =>
+            domainOk({
+              invoice: {
+                id: invoiceId,
+                raisedAt: new Date("2026-11-10T10:00:00Z"),
+                voidedAt: null,
+                totalPence: 100_010,
+              },
+              invoices: [
+                {
+                  documentId: BOOKS_DOCUMENT,
+                  targetMode: "live" as const,
+                  record: {
+                    kind: "invoice",
+                    reference: `LAX-BID-INV-${invoiceId}`,
+                    attempts: 1,
+                    status: "issued",
+                    issued: { number: "INV-000123", providerId: "46", pdfRef: null },
+                  },
+                  grossPence: 100_010,
+                  issuedAt: new Date("2026-11-12T14:05:00Z"),
+                  copy: { storageKey: "accounting/x/doc.pdf", rehearsal: false },
+                },
+              ],
+            }),
+        },
+        storage: { getObjectBytes: async () => STORED_PDF },
+        now: () => NOW,
       }),
       payTransfer: new PayTransferService({
         candidates,
@@ -337,6 +384,29 @@ const MATRIX: Record<
   // The invoice is for the people who pay it.
   "GET /purchases/:lotId/invoice.pdf": {
     call: (app) => app.request(`/legal-entities/purchases/${LOTS.due}/invoice.pdf`),
+    expected: {
+      owner: 200,
+      admin: 200,
+      finance: 200,
+      buyer_agent: 403,
+      consignor: 403,
+      viewer: 403,
+    },
+  },
+  // The Books invoice card and its stored copies are for the people who pay, as the invoice is.
+  "GET /purchases/:lotId/invoice-card": {
+    call: (app) => app.request(`/legal-entities/purchases/${LOTS.due}/invoice-card`),
+    expected: {
+      owner: 200,
+      admin: 200,
+      finance: 200,
+      buyer_agent: 403,
+      consignor: 403,
+      viewer: 403,
+    },
+  },
+  "GET /purchases/:lotId/documents/:documentId": {
+    call: (app) => app.request(`/legal-entities/purchases/${LOTS.due}/documents/${BOOKS_DOCUMENT}`),
     expected: {
       owner: 200,
       admin: 200,
@@ -562,6 +632,79 @@ describe("organisation buying routes", () => {
 
     it("refuses an id that is not a lot id", async () => {
       expect((await get("finance", "nope")).status).toBe(400);
+    });
+  });
+
+  describe("GET /purchases/:lotId/invoice-card and the stored copy", () => {
+    it("tells the payer the Books number and where its stored copy is, never cached", async () => {
+      const res = await mount("finance").request(
+        `/legal-entities/purchases/${LOTS.due}/invoice-card`,
+      );
+      expect(res.status).toBe(200);
+      expect(res.headers.get("cache-control")).toBe("no-store");
+      expect(await res.json()).toMatchObject({
+        data: {
+          state: "issued",
+          invoiceNumber: "INV-000123",
+          issuedAt: "2026-11-12T14:05:00.000Z",
+          invoiceDocumentId: BOOKS_DOCUMENT,
+          cancelledAt: null,
+        },
+      });
+    });
+
+    it("never lets a refusal be cached either, whatever refused it", async () => {
+      const card = `/legal-entities/purchases/${LOTS.due}/invoice-card`;
+      const doc = `/legal-entities/purchases/${LOTS.due}/documents/${BOOKS_DOCUMENT}`;
+      const refusals = [
+        [await mount("finance", { signedOut: true }).request(card), 401],
+        [await mount("finance", { signedOut: true }).request(doc), 401],
+        [await mount("viewer").request(card), 403],
+        [await mount("viewer").request(doc), 403],
+        [
+          await mount("finance").request(
+            `/legal-entities/purchases/${LOTS.otherAccount}/invoice-card`,
+          ),
+          404,
+        ],
+        [
+          await mount("finance").request(
+            `/legal-entities/purchases/${LOTS.due}/documents/${"dddddddd-0000-4000-8000-0000000000ff"}`,
+          ),
+          404,
+        ],
+        [await mount("finance").request("/legal-entities/purchases/nope/invoice-card"), 400],
+        [
+          await mount("finance").request(`/legal-entities/purchases/${LOTS.due}/documents/nope`),
+          400,
+        ],
+      ] as const;
+      for (const [res, status] of refusals) {
+        expect(res.status).toBe(status);
+        expect(res.headers.get("cache-control")).toBe("no-store");
+      }
+    });
+
+    it("downloads LAX's stored copy, and nothing it does not hold", async () => {
+      const base = `/legal-entities/purchases/${LOTS.due}/documents`;
+      const res = await mount("finance").request(`${base}/${BOOKS_DOCUMENT}`);
+      expect(res.status).toBe(200);
+      expect(res.headers.get("content-type")).toBe("application/pdf");
+      expect(res.headers.get("cache-control")).toBe("no-store");
+      expect(res.headers.get("content-disposition")).toBe(
+        'attachment; filename="invoice-INV-000123.pdf"',
+      );
+      expect(Buffer.from(await res.arrayBuffer())).toEqual(STORED_PDF);
+      const other = await mount("finance").request(`${base}/dddddddd-0000-4000-8000-0000000000ff`);
+      expect(other.status).toBe(404);
+      expect((await mount("finance").request(`${base}/nope`)).status).toBe(400);
+    });
+
+    it("does not confirm the invoice of a lot that is another account's", async () => {
+      const res = await mount("finance").request(
+        `/legal-entities/purchases/${LOTS.otherAccount}/invoice-card`,
+      );
+      expect(res.status).toBe(404);
     });
   });
 

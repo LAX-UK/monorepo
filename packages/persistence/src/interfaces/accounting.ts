@@ -266,4 +266,138 @@ export interface AccountingAttention {
 /** What the accounting watch checks: how long work has been waiting for a person or the sender. */
 export interface IAccountingAttentionReader {
   read(pendingModes: readonly TargetMode[]): Promise<AccountingAttention>;
+  /**
+   * Bid invoices queued for Books in one of `modes` before `queuedBefore` that are still not
+   * issued with LAX's copy stored (cancelled ones aside): the buyer sees "taking longer than usual".
+   * `oldestSince` is when the oldest was queued.
+   */
+  delayedBidInvoices(modes: readonly TargetMode[], queuedBefore: Date): Promise<QueueAge>;
+}
+
+/** LAX's stored copy of the PDF for an issued document. */
+export interface AccountingDocumentCopy {
+  readonly documentId: string;
+  readonly storageKey: string;
+  readonly byteSize: number;
+  readonly sha256: string;
+  /** Made by a dry run, not the provider: never emailed, never shown to a buyer as Books'. */
+  readonly rehearsal: boolean;
+  readonly storedAt: Date;
+}
+
+/** Issued documents without a stored copy; a row that cannot be read is named, not fatal. */
+export interface UncopiedDocuments {
+  readonly documents: readonly StoredAccountingDocument[];
+  /** Ids of rows that did not read back as a document; the others are still listed. */
+  readonly unreadable: readonly string[];
+}
+
+/** An issued Bid invoice whose stored copy is ready to email (never a rehearsal). */
+export interface InvoiceEmailDue {
+  readonly documentId: string;
+  /** The Bid invoice the document was made from (its LAX reference's source id). */
+  readonly invoiceId: string;
+  /** The provider's invoice number. */
+  readonly number: string;
+  readonly storageKey: string;
+}
+
+/**
+ * Why an invoice's email was settled without sending it; each is final.
+ * - `invoice_missing`: the Bid invoice the document names no longer exists.
+ * - `invoice_cancelled`: the invoice was cancelled before its email went.
+ * - `no_recipient`: no current payer and no billing inbox to send it to.
+ * - `unreadable_document`: the row does not read back as a numbered Bid invoice.
+ */
+export type InvoiceEmailSkipReason =
+  | "invoice_missing"
+  | "invoice_cancelled"
+  | "no_recipient"
+  | "unreadable_document";
+
+/** The copies whose email is due, and the due rows that could not be read (settled as skipped). */
+export interface InvoiceEmailDueList {
+  readonly due: readonly InvoiceEmailDue[];
+  /** Document ids listed as due whose row does not read back as a numbered Bid invoice. */
+  readonly unreadable: readonly string[];
+}
+
+/**
+ * The worker's side of the stored copies: which issued invoices have none yet, recording one,
+ * and the "Your invoice" email settled once per copy (queued, or skipped for good).
+ */
+export interface IAccountingDocumentCopies {
+  /** Issued Bid invoices aimed at one of `modes` that have no stored copy yet, newest first. */
+  listUncopied(modes: readonly TargetMode[], limit: number): Promise<UncopiedDocuments>;
+  /** Records a copy; false when the document already has one (another worker was first). */
+  record(copy: AccountingDocumentCopy): Promise<boolean>;
+  /**
+   * Copies of Bid invoices Books issued live whose email is not settled yet, oldest first; never
+   * a rehearsal, never a test organisation's invoice.
+   */
+  listEmailDue(limit: number): Promise<InvoiceEmailDueList>;
+  /** Notes the email as queued; false when it was already settled (the note is made once). */
+  markEmailQueued(documentId: string, outboxId: string, at: Date): Promise<boolean>;
+  /**
+   * Settles the email as never to be sent, so the copy leaves the due list; false when it was
+   * already settled.
+   */
+  markEmailSkipped(documentId: string, reason: InvoiceEmailSkipReason, at: Date): Promise<boolean>;
+}
+
+/** What the "Your invoice" email says, read from the invoice's own rows. */
+export interface BidInvoiceEmailFacts {
+  readonly invoiceId: string;
+  readonly lotId: string;
+  readonly lotTitle: string;
+  readonly totalPence: number;
+  /** When the invoice's payment was captured, or null while it is owed. */
+  readonly paidAt: Date | null;
+  readonly dueAt: Date;
+  readonly cancelled: boolean;
+  /**
+   * Who pays it, when they may still be told: the account holder for a personal purchase, or for
+   * an organisation the member the latest payment names while they are still an active member
+   * with a payer role (owner, admin or finance; the same rule as the download routes). A former
+   * member, or one whose role no longer pays, is null.
+   */
+  readonly payer: { readonly userId: string; readonly email: string; readonly name: string } | null;
+  /** The billing email the buyer account's finance team set, when there is one. */
+  readonly billingEmail: string | null;
+  readonly buyerLegalEntityId: string;
+}
+
+export interface IBidInvoiceEmailFactsReader {
+  forInvoice(invoiceId: string): Promise<BidInvoiceEmailFacts | null>;
+}
+
+/** One Books document for a Bid invoice, as the buyer's invoice card reads it. */
+export interface BidInvoiceBooksDocument {
+  readonly documentId: string;
+  readonly targetMode: TargetMode;
+  readonly record: DocumentRecord;
+  readonly grossPence: number;
+  /**
+   * When the document was issued: the `occurred_at` of its transition to `issued` in the event
+   * log (never the row's `updated_at`, which later writes move). Null when not issued.
+   */
+  readonly issuedAt: Date | null;
+  readonly copy: { readonly storageKey: string; readonly rehearsal: boolean } | null;
+}
+
+/** A Bid invoice and the Books documents made for it, for the buyer's invoice card. */
+export interface BidInvoiceBooksState {
+  readonly invoice: {
+    readonly id: string;
+    readonly raisedAt: Date;
+    readonly voidedAt: Date | null;
+    readonly totalPence: number;
+  };
+  /** The invoice document per target mode (at most one each). */
+  readonly invoices: readonly BidInvoiceBooksDocument[];
+}
+
+/** Reads one Bid invoice's Books documents and their stored copies (the Bid API, read only). */
+export interface IBidInvoiceBooksReader {
+  read(invoiceId: string): Promise<Result<BidInvoiceBooksState | null, StoredDocumentCode>>;
 }

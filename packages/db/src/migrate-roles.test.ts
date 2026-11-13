@@ -6,6 +6,7 @@ import { PgTable } from "drizzle-orm/pg-core";
 import ts from "typescript";
 import { beforeAll, describe, expect, it } from "vitest";
 import {
+  API_ACCOUNTING_COPY_READ_TABLES,
   API_ACCOUNTING_HISTORY_TABLES,
   API_ACCOUNTING_READ_TABLES,
   API_ACCOUNTING_REQUEUE_COLUMNS,
@@ -37,6 +38,8 @@ import {
   SHOP_COMMERCE_TABLES,
   SHOP_SUBJECT_EXPORT_READ_TABLES,
   WORKER_ACCOUNTING_APPEND_ONLY_TABLES,
+  WORKER_ACCOUNTING_COPY_TABLES,
+  WORKER_ACCOUNTING_COPY_UPDATE_COLUMNS,
   WORKER_ACCOUNTING_DOCUMENT_TABLES,
   WORKER_ACCOUNTING_DOCUMENT_UPDATE_COLUMNS,
   WORKER_ACCOUNTING_READ_TABLES,
@@ -893,9 +896,19 @@ describe("migrate-roles invariants", () => {
     expect([...WORKER_ACCOUNTING_DOCUMENT_TABLES]).toEqual(["accounting_document"]);
     expect([...WORKER_ACCOUNTING_APPEND_ONLY_TABLES]).toEqual(["accounting_document_event"]);
     expect([...WORKER_ACCOUNTING_READ_TABLES]).toEqual(["accounting_source_setting"]);
+    // Stored copies: the worker records them and settles the email once; the API only reads them.
+    expect([...WORKER_ACCOUNTING_COPY_TABLES]).toEqual(["accounting_document_copy"]);
+    expect([...WORKER_ACCOUNTING_COPY_UPDATE_COLUMNS].sort()).toEqual([
+      "email_outbox_id",
+      "email_queued_at",
+      "email_skip_reason",
+      "email_skipped_at",
+    ]);
+    expect([...API_ACCOUNTING_COPY_READ_TABLES]).toEqual(["accounting_document_copy"]);
     const accounting = [
       ...API_ACCOUNTING_READ_TABLES,
       ...API_ACCOUNTING_SETTING_TABLES,
+      ...API_ACCOUNTING_COPY_READ_TABLES,
     ] as string[];
     // The worker's lists carry no broader grant for these tables, and no role list denies the pair
     // that must stay reachable.

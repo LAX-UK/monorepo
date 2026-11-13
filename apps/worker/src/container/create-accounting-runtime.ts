@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import type { TargetMode } from "@auction/accounting-domain";
 import type { createDb } from "@auction/db";
+import type { IEmailService } from "@auction/email";
 import { createBooksAccountingAdapters } from "@auction/finance-runtime";
 import {
   DrizzleBidAccountingFactsReader,
@@ -10,6 +11,7 @@ import type { Logger } from "pino";
 import type { WorkerEnv } from "../env.js";
 import { createAccountingAlertSink } from "../finance/accounting/accounting-alerts.js";
 import { ACCOUNTING_CRON_MONITORS } from "../finance/accounting/accounting-alerts.js";
+import { AccountingInvoiceCopy } from "../finance/accounting/accounting-invoice-copy.service.js";
 import { AccountingProjection } from "../finance/accounting/accounting-projection.service.js";
 import type { AccountingRuntime } from "../finance/accounting/accounting-runtime.js";
 import { AccountingSender } from "../finance/accounting/accounting-sender.service.js";
@@ -27,10 +29,14 @@ const SENDER_CHECK_IN_EVERY_MS = 5 * 60_000;
  * adapters come from `createBooksAccountingAdapters`, which builds the dry run alone.
  */
 export function createAccountingRuntime(deps: {
-  env: Pick<WorkerEnv, "ZOHO_BOOKS_ORG_CONFIG">;
+  env: Pick<WorkerEnv, "ZOHO_BOOKS_ORG_CONFIG" | "WEB_ORIGIN">;
   db: ReturnType<typeof createDb>;
   log: Logger;
   sentryMonitorSlugs?: Record<string, string>;
+  /** Document storage, where LAX keeps its copy of each issued invoice's PDF. */
+  storage: { putObject(key: string, body: Buffer, contentType: string): Promise<unknown> };
+  /** The email outbox; only an invoice Books issued for real is ever emailed. */
+  email: Pick<IEmailService, "enqueue">;
 }): AccountingRuntime | undefined {
   const adapters = createBooksAccountingAdapters(deps.env);
   if (!adapters) return undefined;
@@ -51,6 +57,19 @@ export function createAccountingRuntime(deps: {
       destinations: adapters.destinations,
       transientErrorPrefixes: adapters.transientErrorPrefixes,
       newLeaseToken: randomUUID,
+      log: deps.log,
+    }),
+    invoiceCopy: new AccountingInvoiceCopy({
+      copies: repos.copies,
+      settings: repos.settingReader,
+      pdfsByMode: Object.fromEntries(
+        Object.entries(adapters.byMode).map(([mode, ports]) => [mode, ports.pdfs]),
+      ),
+      storage: deps.storage,
+      emailFacts: repos.invoiceEmailFacts,
+      email: deps.email,
+      webBaseUrl: deps.env.WEB_ORIGIN,
+      now: () => new Date(),
       log: deps.log,
     }),
     cursorStart: new DrizzleProjectorCursorStart(deps.db),

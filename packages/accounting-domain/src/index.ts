@@ -11,3 +11,4 @@ export * from "./refund.js";
 export * from "./result.js";
 export * from "./retry.js";
 export * from "./source-switch.js";
+export * from "./standing.js";

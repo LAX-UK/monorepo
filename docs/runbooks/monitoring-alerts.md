@@ -262,6 +262,44 @@ Zoho Books documents also show on Failed jobs but are not counted here: the acco
 
 **Set-up.** Add a Sentry issue alert on the worker project for the message `failed_jobs_growing` routed to on-call. Add `failed-jobs-watch` to `SENTRY_MONITOR_SLUGS` and create the cron monitor (daily, 08:00 Europe/London, about 30 minutes margin); a missed check-in means the watch stopped. Without the entry the job runs unmonitored. The job has no heartbeat, like the alert digest: a daily job would fail a freshness check 23 hours a day.
 
+## Bid invoice late for Books (`accounting_bid_invoice_delayed`)
+
+**What it means.** A buyer's Bid invoice was queued for Zoho Books more than 30 minutes ago and is
+still not issued with LAX's copy of its PDF stored. With Books live, the buyer's invoice card on
+their purchase now reads "This is taking longer than usual. Our team has been told. Your payment is
+not affected." (In dry run or the test organisation buyers keep LAX's own invoice and are told
+nothing; the alert is then for staff only.) The accounting watch (cron `accounting-watch`, every 15 minutes) raises it at most once a run, with
+`count`, `oldestSince`, the Books `modes` and the `page` (Finance › Accounting).
+
+**What to do.** Open Finance › Accounting. A document in **Needs a person** says why (a totals
+difference reads "Books worked out £…. The totals must match before it can be issued."); one in
+**Waiting** for long means the sender or Books is stuck (see `accounting_sender_missed`). An invoice
+issued in Books whose PDF could not be fetched shows as issued: the worker fetches it again every
+tick (`accounting_copy_unavailable` in the logs names the document and the reason). Paying is never
+blocked by any of this.
+
+**Set-up.** Add a Sentry issue alert on the worker project for the message
+`accounting_bid_invoice_delayed`, routed to finance on-call.
+
+### The "Your invoice" email (Bid, Books live only)
+
+Once LAX holds the stored copy of an invoice Books issued **live**, the worker emails it once to the
+payer (an organisation's current member with the owner, admin or finance role; a former member gets
+nothing) and to the account's billing inbox. Dry run and the test organisation email no one.
+
+Each stored copy's email is settled exactly once in `accounting_document_copy`: queued
+(`email_queued_at`, `email_outbox_id`) or skipped for good (`email_skipped_at`, `email_skip_reason`:
+`invoice_cancelled`, `invoice_missing`, `no_recipient`, `unreadable_document`). A skip logs the
+warning `accounting_invoice_email_skipped` with the document id and the reason; nothing is retried,
+so a skipped invoice never holds up the ones behind it. An outbox error is not a skip: the copy stays
+due and is tried next tick (`accounting_invoice_email_failed`). A trigger makes the four columns
+write-once (NULL to a value, never changed or cleared), for every role.
+
+The `no_rehearsal_email_ck` CHECK refuses to *record* a rehearsal as emailed. It does not stop a
+send: the worker enqueues the email before it notes it, so the guards that keep a rehearsal (or a test
+organisation's invoice) out of the outbox are the worker's due-list query (`target_mode = 'live'`,
+`rehearsal = false`) and the service, which only sends while Bid is aimed at Books live.
+
 ## Related
 
 - [Scale monitoring](./scale-monitoring.md)

@@ -1,6 +1,8 @@
 import { sql } from "drizzle-orm";
 import {
   bigint,
+  boolean,
+  check,
   index,
   integer,
   jsonb,
@@ -78,6 +80,77 @@ export const accountingDocument = pgTable(
       .on(table.createdAt, table.id)
       .where(sql`${table.state} IN ('pending', 'sending')`),
     index("accounting_document_state_idx").on(table.state, table.updatedAt),
+  ],
+);
+
+/**
+ * LAX's own copy of the PDF the provider made for an issued document (migration 0381), kept in
+ * document storage under `storageKey`. Buyers download this copy.
+ *
+ * The "Your invoice" email is settled from the row once: queued (`emailQueuedAt` and
+ * `emailOutboxId`) or skipped for good (`emailSkippedAt` and `emailSkipReason`), never both. A
+ * trigger makes those four columns write-once (NULL to a value only). `no_rehearsal_email_ck`
+ * refuses to record a rehearsal as emailed; it constrains the record, not the send (the email is
+ * enqueued before it is noted here), so the worker's query and service are what keep rehearsals
+ * out of the outbox.
+ */
+export const accountingDocumentCopy = pgTable(
+  "accounting_document_copy",
+  {
+    documentId: uuid("document_id")
+      .primaryKey()
+      .references(() => accountingDocument.id, { onDelete: "restrict" }),
+    storageKey: text("storage_key").notNull().unique("accounting_document_copy_storage_key_uq"),
+    contentType: text("content_type")
+      .$type<"application/pdf">()
+      .notNull()
+      .default("application/pdf"),
+    byteSize: integer("byte_size").notNull(),
+    sha256: text("sha256").notNull(),
+    /** Made by a dry run (a page that says so), not by the provider. */
+    rehearsal: boolean("rehearsal").notNull(),
+    storedAt: timestamp("stored_at", { mode: "date", withTimezone: true }).defaultNow().notNull(),
+    emailQueuedAt: timestamp("email_queued_at", { mode: "date", withTimezone: true }),
+    emailOutboxId: uuid("email_outbox_id"),
+    /** When the email was settled without sending (the invoice was cancelled, nobody to send to). */
+    emailSkippedAt: timestamp("email_skipped_at", { mode: "date", withTimezone: true }),
+    emailSkipReason: text("email_skip_reason"),
+  },
+  (table) => [
+    check(
+      "accounting_document_copy_content_type_ck",
+      sql`${table.contentType} = 'application/pdf'`,
+    ),
+    check(
+      "accounting_document_copy_size_ck",
+      sql`${table.byteSize} > 0 AND ${table.byteSize} <= 10485760`,
+    ),
+    check("accounting_document_copy_sha256_ck", sql`${table.sha256} ~ '^[0-9a-f]{64}$'`),
+    check(
+      "accounting_document_copy_email_pair_ck",
+      sql`(${table.emailQueuedAt} IS NULL) = (${table.emailOutboxId} IS NULL)`,
+    ),
+    check(
+      "accounting_document_copy_no_rehearsal_email_ck",
+      sql`NOT (${table.rehearsal} AND ${table.emailQueuedAt} IS NOT NULL)`,
+    ),
+    check(
+      "accounting_document_copy_email_skip_pair_ck",
+      sql`(${table.emailSkippedAt} IS NULL) = (${table.emailSkipReason} IS NULL)`,
+    ),
+    check(
+      "accounting_document_copy_email_settled_once_ck",
+      sql`${table.emailQueuedAt} IS NULL OR ${table.emailSkippedAt} IS NULL`,
+    ),
+    check(
+      "accounting_document_copy_email_skip_reason_ck",
+      sql`${table.emailSkipReason} IS NULL OR ${table.emailSkipReason} ~ '^[a-z_]{1,64}$'`,
+    ),
+    index("accounting_document_copy_email_due_idx")
+      .on(table.storedAt)
+      .where(
+        sql`${table.emailQueuedAt} IS NULL AND ${table.emailSkippedAt} IS NULL AND NOT ${table.rehearsal}`,
+      ),
   ],
 );
 
