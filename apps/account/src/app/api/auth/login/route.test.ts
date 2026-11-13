@@ -1,7 +1,8 @@
-import { LAX_ACCOUNT_LOGIN_COOKIE } from "@/lib/session-cookie";
+import { openPendingLogin } from "@/lib/pending-login-cookie";
 import { startAccountLogin } from "@/server/application/start-account-login";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+const KEY = "k".repeat(32);
 const sessionGet = vi.fn();
 const cookieValues = new Map<string, string>();
 const cookieSet = vi.fn();
@@ -18,8 +19,13 @@ vi.mock("@/server/container", () => ({
       publicOrigin: "https://account.test",
       oidcIssuer: "https://auth.test",
       oidcClientId: "lax-account-web",
+      sessionEncryptionKey: KEY,
     },
-    cookies: { sessionCookie: "lax_account_session", secure: true },
+    cookies: {
+      sessionCookie: "lax_account_session",
+      loginCookie: "__Host-lax-account-login",
+      secure: true,
+    },
     sessions: { get: sessionGet },
     startAccountLogin,
   }),
@@ -35,8 +41,8 @@ const reauth = (extra = "") =>
   );
 
 function pendingSaved(): Record<string, unknown> {
-  const call = cookieSet.mock.calls.find(([name]) => name === LAX_ACCOUNT_LOGIN_COOKIE);
-  return JSON.parse(call?.[1] as string);
+  const call = cookieSet.mock.calls.find(([name]) => name === "__Host-lax-account-login");
+  return JSON.parse(openPendingLogin(call?.[1] as string, KEY) as string);
 }
 
 describe("GET /api/auth/login", () => {
@@ -44,6 +50,15 @@ describe("GET /api/auth/login", () => {
     sessionGet.mockReset();
     cookieSet.mockReset();
     cookieValues.clear();
+  });
+
+  it("stores the pending sign-in signed, under a __Host- name, Secure, Path=/ and no Domain", async () => {
+    await GET(new Request("https://account.test/api/auth/login?returnTo=/account"));
+    const call = cookieSet.mock.calls.find(([name]) => name === "__Host-lax-account-login");
+    expect(call?.[1]).not.toContain("{");
+    expect(call?.[2]).toMatchObject({ secure: true, path: "/", httpOnly: true });
+    expect(call?.[2]).not.toHaveProperty("domain");
+    expect(cookieSet.mock.calls.some(([name]) => name === "lax-account-login-pending")).toBe(false);
   });
 
   it("asks for a fresh sign-in on behalf of the person signed in here, and remembers who", async () => {
