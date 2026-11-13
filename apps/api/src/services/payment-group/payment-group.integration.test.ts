@@ -499,7 +499,7 @@ describe.skipIf(!HAS_DB)("pay several: one payment for several invoices (integra
         payments,
         capture: capturer,
         events: new DomainEventSink(
-          new DomainEventPublisher({ publishValidateMode: "strict" }),
+          new DomainEventPublisher({ publishValidateMode: "enforce" }),
           db,
         ),
         claims,
