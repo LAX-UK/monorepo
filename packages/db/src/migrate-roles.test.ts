@@ -896,11 +896,13 @@ describe("migrate-roles invariants", () => {
     expect([...WORKER_ACCOUNTING_DOCUMENT_TABLES]).toEqual(["accounting_document"]);
     expect([...WORKER_ACCOUNTING_APPEND_ONLY_TABLES]).toEqual(["accounting_document_event"]);
     expect([...WORKER_ACCOUNTING_READ_TABLES]).toEqual(["accounting_source_setting"]);
-    // Stored copies: the worker records them and notes the email once; the API only reads them.
+    // Stored copies: the worker records them and settles the email once; the API only reads them.
     expect([...WORKER_ACCOUNTING_COPY_TABLES]).toEqual(["accounting_document_copy"]);
     expect([...WORKER_ACCOUNTING_COPY_UPDATE_COLUMNS].sort()).toEqual([
       "email_outbox_id",
       "email_queued_at",
+      "email_skip_reason",
+      "email_skipped_at",
     ]);
     expect([...API_ACCOUNTING_COPY_READ_TABLES]).toEqual(["accounting_document_copy"]);
     const accounting = [

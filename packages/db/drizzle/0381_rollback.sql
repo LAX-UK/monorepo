@@ -6,5 +6,6 @@ BEGIN;
 
 SET LOCAL lock_timeout = '5s';
 DROP TABLE IF EXISTS "accounting_document_copy";
+DROP FUNCTION IF EXISTS "accounting_document_copy_email_write_once"();
 
 COMMIT;

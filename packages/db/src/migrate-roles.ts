@@ -288,13 +288,16 @@ export const API_ACCOUNTING_REQUEUE_COLUMNS = WORKER_ACCOUNTING_DOCUMENT_UPDATE_
 export const WORKER_ACCOUNTING_APPEND_ONLY_TABLES = ["accounting_document_event"] as const;
 /**
  * LAX's stored copies of issued documents' PDFs (migration 0381). The worker records a copy once
- * and later notes, once, that its email was queued (those two columns only); the Bid API reads
- * them to show and serve the buyer's invoice. Nobody deletes a copy. No other role has access.
+ * and later settles its email once, as queued or skipped (those four columns only; a trigger makes
+ * them write-once); the Bid API reads them to show and serve the buyer's invoice. Nobody deletes a
+ * copy. No other role has access.
  */
 export const WORKER_ACCOUNTING_COPY_TABLES = ["accounting_document_copy"] as const;
 export const WORKER_ACCOUNTING_COPY_UPDATE_COLUMNS = [
   "email_queued_at",
   "email_outbox_id",
+  "email_skipped_at",
+  "email_skip_reason",
 ] as const;
 export const API_ACCOUNTING_COPY_READ_TABLES = ["accounting_document_copy"] as const;
 export const WORKER_ACCOUNTING_READ_TABLES = ["accounting_source_setting"] as const;
