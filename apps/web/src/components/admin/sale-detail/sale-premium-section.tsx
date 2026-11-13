@@ -58,13 +58,17 @@ export function SalePremiumSection({ saleId, overview }: Props) {
         saleId,
         overview.editableLotIds,
       ).catch(() => null);
-      if (!result?.ok) {
-        setFailure(result?.error || "The request did not reach the server.");
-        return;
-      }
-      setOpen(false);
-      notify.success(`${lotsWord(result.data?.updated ?? 0)} now use the sale's premium`);
-      router.refresh();
+      // Updates after an await are wrapped again so they land with `pending` ending: otherwise
+      // "Try again" shows while the button is still busy, and a quick press is lost.
+      startTransition(() => {
+        if (!result?.ok) {
+          setFailure(result?.error || "The request did not reach the server.");
+          return;
+        }
+        setOpen(false);
+        notify.success(`${lotsWord(result.data?.updated ?? 0)} now use the sale's premium`);
+        router.refresh();
+      });
     });
   };
 
