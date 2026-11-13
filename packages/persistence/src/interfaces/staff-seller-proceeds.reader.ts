@@ -83,3 +83,20 @@ export type StaffLotSellerProceedsFacts = {
 export interface IStaffLotSellerProceedsReader {
   forLot(lotId: string): Promise<StaffLotSellerProceedsFacts | null>;
 }
+
+/** How staff name a sale on a list: the lot, and the agreement its rate comes from. */
+export type StaffSaleLabel = {
+  lotId: string;
+  lotNumber: number | null;
+  lotTitle: string;
+  /** The lot's agreement (the seller's own first), if there is one. */
+  agreement: Pick<
+    StaffAgreementFacts,
+    "id" | "reference" | "submissionId" | "signedAt" | "source"
+  > | null;
+};
+
+/** Names the lots of several sales at once, for previews and payout lines. */
+export interface IStaffSaleLabelsReader {
+  saleLabels(lotIds: readonly string[]): Promise<StaffSaleLabel[]>;
+}

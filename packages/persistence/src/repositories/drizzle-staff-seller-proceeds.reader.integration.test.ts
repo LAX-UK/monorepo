@@ -14,6 +14,7 @@ import {
   user,
 } from "@auction/db/schema";
 import { describe, expect, it } from "vitest";
+import { DrizzleStaffPayoutSalesReader } from "./drizzle-staff-payout-sales.reader.js";
 import { DrizzleStaffLotSellerProceedsReader } from "./drizzle-staff-seller-proceeds.reader.js";
 
 const HAS_DB = Boolean(process.env.DATABASE_URL);
@@ -58,7 +59,7 @@ describe.skipIf(!HAS_DB)("staff lot seller proceeds reader (integration)", () =>
           } as typeof legalEntity.$inferInsert);
         }
 
-        async function sale(input: { paidOut: boolean; held: boolean }) {
+        async function sale(input: { paidOut: boolean; held: boolean; fixedReference?: boolean }) {
           const lotId = randomUUID();
           await tx.insert(lot).values({
             id: lotId,
@@ -81,7 +82,7 @@ describe.skipIf(!HAS_DB)("staff lot seller proceeds reader (integration)", () =>
             legalEntityId: seller,
             title: "Consigned work",
             convertedLotId: lotId,
-            ...(input.held ? {} : { referenceNumber: reference }),
+            ...(input.fixedReference ? { referenceNumber: reference } : {}),
           });
           const agreementId = input.held
             ? null
@@ -193,10 +194,10 @@ describe.skipIf(!HAS_DB)("staff lot seller proceeds reader (integration)", () =>
               sellerTermsId: terms.id,
             } as typeof payoutLine.$inferInsert);
           }
-          return { lotId, submissionId };
+          return { lotId, submissionId, paymentId: paid.id };
         }
 
-        const paid = await sale({ paidOut: true, held: false });
+        const paid = await sale({ paidOut: true, held: false, fixedReference: true });
         const held = await sale({ paidOut: false, held: true });
         const reader = new DrizzleStaffLotSellerProceedsReader(tx as unknown as Database);
 
@@ -229,6 +230,77 @@ describe.skipIf(!HAS_DB)("staff lot seller proceeds reader (integration)", () =>
         expect(heldFacts?.submissionId).toBe(held.submissionId);
 
         expect(await reader.forLot(randomUUID())).toBeNull();
+
+        const labels = await reader.saleLabels([paid.lotId, held.lotId, paid.lotId]);
+        expect(labels).toHaveLength(2);
+        expect(labels.find((l) => l.lotId === paid.lotId)?.agreement).toMatchObject({
+          reference: `C-${reference}`,
+          submissionId: paid.submissionId,
+        });
+        expect(labels.find((l) => l.lotId === held.lotId)?.agreement).toBeNull();
+        expect(await reader.saleLabels([])).toEqual([]);
+
+        // A sale paid before the rule: its line pays the buyer's payment, with no snapshot.
+        const old = await sale({ paidOut: false, held: false });
+        const [oldPayout] = await tx
+          .insert(payout)
+          .values({
+            legalEntityId: seller,
+            periodStart: new Date("2026-09-01T00:00:00Z"),
+            periodEnd: new Date("2026-09-30T00:00:00Z"),
+            grossAmount: "7750.00",
+            platformFee: "0.00",
+            stripeFee: "0.00",
+            netAmount: "7750.00",
+            status: "paid",
+            processedAt: new Date("2026-10-01T09:00:00Z"),
+          } as typeof payout.$inferInsert)
+          .returning({ id: payout.id });
+        if (!oldPayout) throw new Error("payout not stored");
+        await tx.insert(payoutLine).values({
+          payoutId: oldPayout.id,
+          paymentId: old.paymentId,
+          kind: "sale",
+          amount: "7750.00",
+        } as typeof payoutLine.$inferInsert);
+
+        const payouts = new DrizzleStaffPayoutSalesReader(tx as unknown as Database);
+        const paidPayoutId = paidFacts?.sale?.payout?.id as string;
+        const onPayout = await payouts.forPayout(paidPayoutId);
+        expect(onPayout?.payout).toMatchObject({ hammerAmount: "6200.00", status: "paid" });
+        expect(onPayout?.sales).toHaveLength(1);
+        expect(onPayout?.sales[0]).toMatchObject({
+          lotId: paid.lotId,
+          terms: { commissionBps: 1200, sellerNetPence: 530_720 },
+          oldRule: null,
+          agreement: { reference: `C-${reference}` },
+        });
+        expect(onPayout?.heldForSeller.map((h) => h.lotId)).toEqual([held.lotId]);
+
+        const oldOne = await payouts.forPayout(oldPayout.id);
+        expect(oldOne?.payout.hammerAmount).toBeNull();
+        expect(oldOne?.sales[0]).toMatchObject({
+          terms: null,
+          oldRule: { paymentAmount: "7750.00", platformFee: "0.00" },
+        });
+
+        const review = await payouts.oldRuleSales({ limit: 500, offset: 0 });
+        const mine = review.rows.filter((row) => row.legalEntityId === seller);
+        expect(mine).toHaveLength(1);
+        expect(mine[0]).toMatchObject({
+          lotId: old.lotId,
+          hammerPence: 620_000,
+          sellerName: "Fixture Gallery Ltd",
+          agreement: { commissionPercent: "12.00" },
+        });
+        expect(review.total).toBeGreaterThanOrEqual(1);
+        expect(await payouts.forPayout(randomUUID())).toBeNull();
+        const everyHeld = await payouts.heldSales(500);
+        expect(everyHeld.find((h) => h.lotId === held.lotId)).toMatchObject({
+          sellerName: "Fixture Gallery Ltd",
+          heldReason: "no_agreement",
+          hammerPence: 620_000,
+        });
         throw rollback;
       });
     } catch (error) {

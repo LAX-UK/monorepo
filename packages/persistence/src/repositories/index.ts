@@ -145,6 +145,7 @@ export {
   DrizzleSignedAgreementWriter,
   RECORDED_AGREEMENT_TERMS_VERSION,
 } from "./drizzle-signed-agreement.writer.js";
+export { DrizzleStaffPayoutSalesReader } from "./drizzle-staff-payout-sales.reader.js";
 export { DrizzleStaffLotSellerProceedsReader } from "./drizzle-staff-seller-proceeds.reader.js";
 export { DrizzlePaymentExternalRefRepository } from "./drizzle-payment-external-ref.repository.js";
 export { DrizzleXeroConnectionRepository } from "./drizzle-xero-connection.repository.js";

@@ -17,10 +17,12 @@ import { type SellerTermsHeldReason, consignmentReference } from "@auction/domai
 import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import type {
   IStaffLotSellerProceedsReader,
+  IStaffSaleLabelsReader,
   StaffAgreementFacts,
   StaffInvoiceFacts,
   StaffLotSaleFacts,
   StaffLotSellerProceedsFacts,
+  StaffSaleLabel,
   StaffSellerTermsFacts,
   StaffSellerTermsSource,
 } from "../interfaces/staff-seller-proceeds.reader.js";
@@ -90,7 +92,9 @@ function agreementFacts(row: AgreementRow): StaffAgreementFacts {
  * invoice (premium line and total), the payout it was paid on, and the agreement behind it.
  * Every figure is read as stored; nothing is priced here.
  */
-export class DrizzleStaffLotSellerProceedsReader implements IStaffLotSellerProceedsReader {
+export class DrizzleStaffLotSellerProceedsReader
+  implements IStaffLotSellerProceedsReader, IStaffSaleLabelsReader
+{
   constructor(private readonly db: Database) {}
 
   async forLot(lotId: string): Promise<StaffLotSellerProceedsFacts | null> {
@@ -133,6 +137,53 @@ export class DrizzleStaffLotSellerProceedsReader implements IStaffLotSellerProce
       submissionId: submission.submissionId,
       vatSetting,
     };
+  }
+
+  async saleLabels(lotIds: readonly string[]): Promise<StaffSaleLabel[]> {
+    if (lotIds.length === 0) return [];
+    const ids = [...new Set(lotIds)];
+    const [lots, agreements] = await Promise.all([
+      this.db
+        .select({ lotId: lot.id, lotNumber: lot.lotNumber, lotTitle: lot.title })
+        .from(lot)
+        .where(inArray(lot.id, ids)),
+      this.db
+        .select({
+          lotId: itemSubmission.convertedLotId,
+          sellerMatches: sql<boolean>`${consignmentAgreement.legalEntityId} = ${lot.sellerLegalEntityId}`,
+          agreement: AGREEMENT_COLUMNS,
+        })
+        .from(itemSubmission)
+        .innerJoin(consignmentAgreement, eq(consignmentAgreement.submissionId, itemSubmission.id))
+        .innerJoin(lot, eq(lot.id, itemSubmission.convertedLotId))
+        .where(inArray(itemSubmission.convertedLotId, ids))
+        .orderBy(
+          desc(sql`${consignmentAgreement.legalEntityId} = ${lot.sellerLegalEntityId}`),
+          sql`${consignmentAgreement.acceptedAt} is null`,
+          desc(consignmentAgreement.acceptedAt),
+        ),
+    ]);
+    const byLot = new Map<string, StaffAgreementFacts>();
+    for (const row of agreements) {
+      if (row.lotId && !byLot.has(row.lotId)) byLot.set(row.lotId, agreementFacts(row.agreement));
+    }
+    return lots.map((row) => {
+      const agreement = byLot.get(row.lotId) ?? null;
+      return {
+        lotId: row.lotId,
+        lotNumber: row.lotNumber,
+        lotTitle: row.lotTitle,
+        agreement: agreement
+          ? {
+              id: agreement.id,
+              reference: agreement.reference,
+              submissionId: agreement.submissionId,
+              signedAt: agreement.signedAt,
+              source: agreement.source,
+            }
+          : null,
+      };
+    });
   }
 
   private async liveSale(

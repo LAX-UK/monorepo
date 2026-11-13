@@ -677,14 +677,24 @@ export type {
 } from "./sale-seller-terms.store.js";
 export type {
   IStaffLotSellerProceedsReader,
+  IStaffSaleLabelsReader,
   StaffAgreementFacts,
   StaffInvoiceFacts,
   StaffLotSaleFacts,
   StaffLotSellerProceedsFacts,
+  StaffSaleLabel,
   StaffSalePayoutFacts,
   StaffSellerTermsFacts,
   StaffSellerTermsSource,
 } from "./staff-seller-proceeds.reader.js";
+export type {
+  IStaffPayoutSalesReader,
+  StaffHeldSale,
+  StaffLineAgreement,
+  StaffOldRuleSale,
+  StaffPayoutSaleLine,
+  StaffPayoutSales,
+} from "./staff-payout-sales.reader.js";
 export type {
   ISignedAgreementWriter,
   RecordSignedAgreementInput,
