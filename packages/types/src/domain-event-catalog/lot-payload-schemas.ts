@@ -195,6 +195,12 @@ export const lotSellerAgreementRecordedPayloadSchema = z.object({
       signedDocumentId: z.string().uuid().nullable(),
     })
     .nullable(),
+  /**
+   * What recording did to the sale, decided under the run's locks: released into the next payout,
+   * still held (with the reason), already paid on a payout, already priced, or no sale yet.
+   */
+  saleOutcome: z.enum(["released", "still_held", "already_paid", "already_priced", "no_sale"]),
+  heldReason: z.string().nullable(),
   /** The held sale the agreement released, and what its seller now receives. */
   releasedSellerTermsId: z.string().uuid().nullable(),
   sellerNetPence: z.number().int().nonnegative().nullable(),

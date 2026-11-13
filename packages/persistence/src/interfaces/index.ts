@@ -697,9 +697,14 @@ export type {
 } from "./staff-payout-sales.reader.js";
 export type {
   ISignedAgreementWriter,
+  LockedAgreement,
   RecordSignedAgreementInput,
   RecordedAgreement,
   ReplacedAgreement,
+} from "./signed-agreement.writer.js";
+export {
+  AgreementAlreadyRecordedError,
+  SignedDocumentInUseError,
 } from "./signed-agreement.writer.js";
 
 export type {

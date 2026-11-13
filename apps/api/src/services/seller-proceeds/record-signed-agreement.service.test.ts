@@ -1,13 +1,18 @@
 import type { SellerTermsSnapshot } from "@auction/domain";
-import type {
-  StaffLotSellerProceedsFacts,
-  UploadObjectDescription,
+import {
+  AgreementAlreadyRecordedError,
+  type LockedAgreement,
+  type RecordedAgreement,
+  SignedDocumentInUseError,
+  type StaffLotSellerProceedsFacts,
+  type UploadObjectDescription,
 } from "@auction/persistence/interfaces";
 import { SIGNED_AGREEMENT_MESSAGES } from "@auction/validators";
 import { describe, expect, it, vi } from "vitest";
 import {
   type RecordSignedAgreementCommand,
   RecordSignedAgreementService,
+  SIGNED_AGREEMENT_DOCUMENT_IN_USE,
 } from "./record-signed-agreement.service.js";
 import { SellerProceedsError } from "./seller-proceeds-errors.js";
 
@@ -77,21 +82,74 @@ const command: RecordSignedAgreementCommand = {
   actor: { userId: STAFF, isAdministrator: false },
 };
 
-function setup(facts: StaffLotSellerProceedsFacts | null = heldFacts(), upload = pdf) {
-  const recordSigned = vi.fn().mockResolvedValue({ agreementId: AGREEMENT, replaced: null });
-  const repriceHeld = vi.fn(async (id: string, snapshot: SellerTermsSnapshot) => ({
-    id,
-    snapshot,
-  }));
+/** The agreement row as the writer reads it under its lock, from the facts' agreement. */
+function lockedRowOf(facts: StaffLotSellerProceedsFacts | null): LockedAgreement | null {
+  const a = facts?.agreement;
+  return a
+    ? {
+        id: a.id,
+        legalEntityId: a.legalEntityId,
+        commissionPercent: a.commissionPercent,
+        acceptedAt: a.signedAt,
+      }
+    : null;
+}
+
+function setup(
+  facts: StaffLotSellerProceedsFacts | null = heldFacts(),
+  upload = pdf,
+  inTx: {
+    /** The lot as read inside the transaction, after the lock; the same as before by default. */
+    facts?: StaffLotSellerProceedsFacts | null;
+    /** The agreement row under its lock; the facts' agreement by default. */
+    agreement?: LockedAgreement | null;
+  } = {},
+) {
+  const order: string[] = [];
+  const recordSigned = vi.fn(async () => {
+    order.push("recordSigned");
+    return { agreementId: AGREEMENT, replaced: null } as RecordedAgreement;
+  });
+  const repriceHeld = vi.fn(async (id: string, snapshot: SellerTermsSnapshot) => {
+    order.push("repriceHeld");
+    return { id, snapshot };
+  });
+  const factsInTx = inTx.facts === undefined ? facts : inTx.facts;
+  const agreementInTx = inTx.agreement === undefined ? lockedRowOf(factsInTx) : inTx.agreement;
+  const agreements = {
+    lockSettlement: vi.fn(async (id: string) => {
+      order.push(`lockSettlement:${id}`);
+    }),
+    lockSale: vi.fn(async (sale: { paymentId: string; sellerTermsId: string | null }) => {
+      order.push(`lockSale:${sale.paymentId}:${sale.sellerTermsId}`);
+    }),
+    lockAgreement: vi.fn(async () => {
+      order.push("lockAgreement");
+      return agreementInTx;
+    }),
+    claimDocument: vi.fn(async () => {
+      order.push("claimDocument");
+    }),
+    recordSigned,
+  };
   const publish = vi.fn().mockResolvedValue(undefined);
+  const factsReadInTx = vi.fn(async () => {
+    order.push("readFacts");
+    return factsInTx;
+  });
   const service = new RecordSignedAgreementService({
     reader: { forLot: vi.fn().mockResolvedValue(facts) },
     uploads: { describe: vi.fn().mockResolvedValue(upload) },
     unitOfWork: (work) =>
-      work({ agreements: { recordSigned }, sellerTerms: { repriceHeld }, events: { publish } }),
+      work({
+        facts: { forLot: factsReadInTx },
+        agreements,
+        sellerTerms: { repriceHeld },
+        events: { publish },
+      }),
     today: () => "2026-11-13",
   });
-  return { service, recordSigned, repriceHeld, publish };
+  return { service, recordSigned, repriceHeld, publish, agreements, order };
 }
 
 async function refusal(promise: Promise<unknown>): Promise<SellerProceedsError> {
@@ -134,6 +192,7 @@ describe("RecordSignedAgreementService", () => {
       agreementId: AGREEMENT,
       releasedSellerTermsId: TERMS,
       sellerNetPence: 530_720,
+      sale: { kind: "released", sellerTermsId: TERMS, sellerNetPence: 530_720 },
     });
     expect(publish).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -147,6 +206,8 @@ describe("RecordSignedAgreementService", () => {
           reason: "Signed on paper at the gallery",
           replace: false,
           previousAgreement: null,
+          saleOutcome: "released",
+          heldReason: null,
           sellerNetPence: 530_720,
         }),
       }),
@@ -274,5 +335,120 @@ describe("RecordSignedAgreementService", () => {
       heldReason: "vat_setting_missing",
     });
     expect(result.releasedSellerTermsId).toBeNull();
+    expect(result.sale).toEqual({ kind: "still_held", reason: "vat_setting_missing" });
+  });
+
+  describe("decides under the run's locks, in the run's order", () => {
+    it("takes the seller's settlement lock, then the payment and its terms, then the agreement row, before deciding", async () => {
+      const { service, order } = setup();
+      await service.record(command);
+      expect(order).toEqual([
+        `lockSettlement:${SELLER}`,
+        "readFacts",
+        `lockSale:pay-1:${TERMS}`,
+        "lockAgreement",
+        "claimDocument",
+        "readFacts",
+        "recordSigned",
+        "repriceHeld",
+      ]);
+    });
+
+    it("refuses a second, non-Administrator submission once the first has recorded the agreement (double submit)", async () => {
+      // Both submissions read the lot before either committed: no agreement. The second one
+      // reaches the agreement row after the first committed, and finds it recorded.
+      const { service, recordSigned, publish } = setup(heldFacts(), pdf, {
+        agreement: {
+          id: AGREEMENT,
+          legalEntityId: SELLER,
+          commissionPercent: "12.00",
+          acceptedAt: new Date("2026-10-03T12:00:00Z"),
+        },
+      });
+      const error = await refusal(service.record(command));
+      expect(error.status).toBe(409);
+      expect(error.code).toBe("agreement_on_record");
+      expect(recordSigned).not.toHaveBeenCalled();
+      expect(publish).not.toHaveBeenCalled();
+    });
+
+    it("still asks for an Administrator to replace when the agreement appeared after the first read", async () => {
+      const { service, recordSigned } = setup(heldFacts(), pdf, {
+        agreement: {
+          id: AGREEMENT,
+          legalEntityId: SELLER,
+          commissionPercent: "12.00",
+          acceptedAt: new Date("2026-10-03T12:00:00Z"),
+        },
+      });
+      const error = await refusal(service.record({ ...command, replace: true }));
+      expect(error.code).toBe("replace_needs_administrator");
+      expect(recordSigned).not.toHaveBeenCalled();
+    });
+
+    it("maps a concurrent insert that lost the unique index to 409, not a 500", async () => {
+      const { service, recordSigned } = setup();
+      recordSigned.mockRejectedValueOnce(new AgreementAlreadyRecordedError());
+      const error = await refusal(service.record(command));
+      expect(error.status).toBe(409);
+      expect(error.code).toBe("agreement_on_record");
+    });
+
+    it("says the sale was already paid, not released, when a run paid it before the locks were taken", async () => {
+      const paid = heldFacts();
+      const sale = paid.sale as NonNullable<StaffLotSellerProceedsFacts["sale"]>;
+      const afterRun = heldFacts({
+        sale: {
+          ...sale,
+          terms: { ...(sale.terms as NonNullable<typeof sale.terms>), basis: "agreement" },
+          payout: { id: "po-1", status: "scheduled", processedAt: null },
+        },
+      });
+      const { service, repriceHeld, publish } = setup(paid, pdf, { facts: afterRun });
+      const result = await service.record(command);
+      expect(repriceHeld).not.toHaveBeenCalled();
+      expect(result).toMatchObject({
+        releasedSellerTermsId: null,
+        sellerNetPence: null,
+        sale: { kind: "already_paid" },
+      });
+      expect(publish.mock.calls[0]?.[0].payload).toMatchObject({
+        saleOutcome: "already_paid",
+        releasedSellerTermsId: null,
+        sellerNetPence: null,
+      });
+    });
+
+    it("reports a held sale the store would not reprice (priced meanwhile) as already priced", async () => {
+      const { service, repriceHeld, publish } = setup();
+      repriceHeld.mockImplementationOnce(async (id: string) => ({
+        id,
+        snapshot: { basis: "lax_owned" } as SellerTermsSnapshot,
+      }));
+      const result = await service.record(command);
+      expect(result.sale).toEqual({ kind: "already_priced" });
+      expect(publish.mock.calls[0]?.[0].payload).toMatchObject({
+        saleOutcome: "already_priced",
+        releasedSellerTermsId: null,
+      });
+    });
+
+    it("refuses when the lot's seller changed between the first read and the lock", async () => {
+      const { service, recordSigned } = setup(heldFacts(), pdf, {
+        facts: heldFacts({ sellerLegalEntityId: "another-seller" }),
+      });
+      const error = await refusal(service.record(command));
+      expect(error.code).toBe("lot_changed");
+      expect(recordSigned).not.toHaveBeenCalled();
+    });
+
+    it("refuses a PDF already used for another consignment's agreement", async () => {
+      const { service, agreements, recordSigned } = setup();
+      agreements.claimDocument.mockRejectedValueOnce(new SignedDocumentInUseError());
+      const error = await refusal(service.record(command));
+      expect(error.status).toBe(422);
+      expect(error.fields).toEqual({ document: SIGNED_AGREEMENT_DOCUMENT_IN_USE });
+      expect(recordSigned).not.toHaveBeenCalled();
+    });
   });
 });

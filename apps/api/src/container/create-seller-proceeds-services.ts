@@ -43,6 +43,7 @@ export function createSellerProceedsServices(input: {
       unitOfWork: (work) =>
         platform.transactionRunner.runInTransaction((tx) =>
           work({
+            facts: new DrizzleStaffLotSellerProceedsReader(tx as unknown as Database),
             agreements: new DrizzleSignedAgreementWriter(tx),
             sellerTerms: new DrizzleSaleSellerTermsStore(tx as unknown as Database),
             events: platform.domainEventSink.withTx(tx),

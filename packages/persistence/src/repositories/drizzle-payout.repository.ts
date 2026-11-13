@@ -178,6 +178,15 @@ function listWhere(filter: Omit<ListPayoutsFilter, "limit" | "offset">): SQL | u
   return conditions.length > 0 ? and(...conditions) : undefined;
 }
 
+/**
+ * The per-seller settlement lock: a payout run holds it for its whole transaction, and anything
+ * that changes what a run would pay a seller takes it first, in the same order (this lock, then
+ * the payment rows in id order, then seller terms and payouts).
+ */
+export function settlementLockSql(legalEntityId: string): SQL {
+  return sql`select pg_advisory_xact_lock(hashtext(${`payout_settlement:${legalEntityId}`}))`;
+}
+
 export class DrizzlePayoutRepository implements IPayoutRepository, IPayoutProcessorReader {
   constructor(private readonly db: Database) {}
 
@@ -405,9 +414,7 @@ export class DrizzlePayoutRepository implements IPayoutRepository, IPayoutProces
   }
 
   async lockSettlementForEntity(legalEntityId: string): Promise<void> {
-    await this.db.execute(
-      sql`select pg_advisory_xact_lock(hashtext(${`payout_settlement:${legalEntityId}`}))`,
-    );
+    await this.db.execute(settlementLockSql(legalEntityId));
   }
 
   async lockPendingPayments(legalEntityId: string): Promise<string[]> {

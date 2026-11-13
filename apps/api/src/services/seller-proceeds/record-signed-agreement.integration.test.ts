@@ -171,6 +171,7 @@ describe.skipIf(!HAS_DB)("recording a signed agreement (integration)", () => {
           unitOfWork: (work) =>
             runner.runInTransaction((inner) =>
               work({
+                facts: new DrizzleStaffLotSellerProceedsReader(inner as unknown as Database),
                 agreements: new DrizzleSignedAgreementWriter(inner),
                 sellerTerms: new DrizzleSaleSellerTermsStore(inner as unknown as Database),
                 events: sink.withTx(inner),
@@ -188,7 +189,11 @@ describe.skipIf(!HAS_DB)("recording a signed agreement (integration)", () => {
           actor: { userId: staffId, isAdministrator: false },
         };
         const result = await service.record(command);
-        expect(result).toMatchObject({ releasedSellerTermsId: held.id, sellerNetPence: 530_720 });
+        expect(result).toMatchObject({
+          releasedSellerTermsId: held.id,
+          sellerNetPence: 530_720,
+          sale: { kind: "released" },
+        });
 
         const [agreement] = await tx
           .select()
