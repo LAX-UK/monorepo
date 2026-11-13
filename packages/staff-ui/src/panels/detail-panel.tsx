@@ -1,6 +1,6 @@
 "use client";
 
-import { Kbd, type LinkComponent, useReturnFocus } from "@auction/ui/lax";
+import { type LinkComponent, useReturnFocus } from "@auction/ui/lax";
 
 import {
   Sheet,
@@ -258,18 +258,6 @@ export function DetailPanel<L extends string = string>({
                 data-staff-panel-footer=""
                 className="sticky bottom-0 flex flex-wrap items-center justify-end gap-2 border-t border-staff-line bg-staff-surface px-5 pt-3 pb-[max(--spacing(3),env(safe-area-inset-bottom))]"
               >
-                {queue ? (
-                  <p
-                    aria-hidden
-                    className="mr-auto hidden items-center gap-1 text-staff-xs text-staff-muted sm:flex"
-                  >
-                    <Kbd>J</Kbd>
-                    <Kbd>K</Kbd>
-                    <span className="mr-2">next</span>
-                    <Kbd>Esc</Kbd>
-                    <span>close</span>
-                  </p>
-                ) : null}
                 {footer}
               </footer>
             ) : null}
