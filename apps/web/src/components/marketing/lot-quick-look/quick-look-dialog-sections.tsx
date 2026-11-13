@@ -1,6 +1,9 @@
 import { LotStatusTimer } from "@/components/marketing/lot-status-badge";
 import { MediaImage } from "@/components/ui/media-image";
-import { BUYER_PREMIUM_CONDITIONS_HREF } from "@/lib/lot/buyer-premium-copy";
+import {
+  BUYER_PREMIUM_CONDITIONS_HREF,
+  CONDITIONS_OF_SALE_LABEL,
+} from "@/lib/lot/buyer-premium-copy";
 import { Button } from "@auction/ui/lax/button";
 import { cn } from "@auction/ui/lib/utils";
 import Link from "next/link";
@@ -333,9 +336,9 @@ export function QuickLookMetaPanel({
             {vm.buyersPremiumHint}.{" "}
             <Link
               href={BUYER_PREMIUM_CONDITIONS_HREF}
-              className="underline underline-offset-2 hover:text-on-surface"
+              className="whitespace-nowrap underline underline-offset-2 hover:text-on-surface"
             >
-              Conditions of Sale
+              {CONDITIONS_OF_SALE_LABEL}
             </Link>
           </p>
         ) : null}

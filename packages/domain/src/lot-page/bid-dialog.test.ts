@@ -241,6 +241,8 @@ describe("bid entry", () => {
     expect(entry.help?.text).toBe(
       "Buyer's premium: 25% on the hammer. It is added to the hammer price.",
     );
+    // The premium help links the Conditions of Sale that set it, and the bidding guide.
+    expect(entry.help).toMatchObject({ withConditions: true, withBiddingGuide: true });
   });
 
   it("lets someone leading set a maximum instead of bidding again", () => {

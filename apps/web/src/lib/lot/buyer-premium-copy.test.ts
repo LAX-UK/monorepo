@@ -4,7 +4,6 @@ import { describe, expect, it } from "vitest";
 import {
   lotBuyerPremiumCopy,
   saleBuyerPremiumCopy,
-  soldPremiumBreakdown,
   termsBuyerPremiumCopy,
 } from "./buyer-premium-copy";
 
@@ -90,34 +89,5 @@ describe("termsBuyerPremiumCopy (the lot detail response's terms)", () => {
         source: "sale_bands",
       }).terms,
     ).toBe("15% up to £500,000, then 10% on the part above");
-  });
-});
-
-describe("soldPremiumBreakdown", () => {
-  it("explains a banded premium slice by slice and says nothing for one rate", () => {
-    const priced = (breakdown: { rate: string; baseMinor: number }[]) =>
-      ({
-        checkoutPricing: {
-          hammerMajor: "600000.00",
-          premiumMajor: "85000.00",
-          totalMajor: "685000.00",
-          policyId: "x",
-          kind: "tiered",
-          premium: {
-            source: "sale_bands",
-            schedule: { kind: "bands", bands: [...STANDARD_BUYER_PREMIUM_BANDS] },
-            breakdown,
-          },
-        },
-      }) as Pick<Lot, "checkoutPricing">;
-    expect(
-      soldPremiumBreakdown(
-        priced([
-          { rate: "0.1500", baseMinor: 50_000_000 },
-          { rate: "0.1000", baseMinor: 10_000_000 },
-        ]),
-      ),
-    ).toBe("15% of £500,000 + 10% of £100,000");
-    expect(soldPremiumBreakdown(priced([{ rate: "0.1500", baseMinor: 100 }]))).toBeNull();
   });
 });

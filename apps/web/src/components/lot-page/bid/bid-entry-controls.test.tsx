@@ -181,3 +181,17 @@ describe("viewer announcements", () => {
     expect(screen.getByRole("status")).toHaveTextContent("You're the highest bidder at £7,250.");
   });
 });
+
+describe("BidEntryControls, the premium help", () => {
+  it("links the Conditions of Sale beside the premium, then how bidding works", () => {
+    draw();
+    expect(
+      screen.getByText(/Buyer's premium: 15% up to £500,000, then 10% on the part above\./),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Conditions of Sale" })).toHaveAttribute(
+      "href",
+      "/terms",
+    );
+    expect(screen.getByRole("link", { name: "How bidding works" })).toHaveAttribute("href", "/faq");
+  });
+});

@@ -1,4 +1,8 @@
 import { formatMoney } from "@/lib/format-currency";
+import {
+  BUYER_PREMIUM_CONDITIONS_HREF,
+  CONDITIONS_OF_SALE_LABEL,
+} from "@/lib/lot/buyer-premium-copy";
 import { lotShowsBidAction } from "@/lib/lot/lot-bid-action";
 import { lotDetailsReserveLine } from "@/lib/lot/reserve-presentation";
 import { lotAuctionTypeLabel } from "@/lib/presenters/lot-auction-type-presentation";
@@ -85,10 +89,10 @@ export function LotDetailsInline({
       </ul>
       <div className="flex flex-wrap gap-4">
         <Link
-          href="/terms"
+          href={BUYER_PREMIUM_CONDITIONS_HREF}
           className="text-center text-base font-semibold leading-6 tracking-[0.8px] text-on-surface underline"
         >
-          Conditions of business
+          {CONDITIONS_OF_SALE_LABEL}
         </Link>
         <Link
           href="/faq"

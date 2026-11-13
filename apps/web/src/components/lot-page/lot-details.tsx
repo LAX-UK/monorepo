@@ -1,5 +1,8 @@
 import type { LotDetailsView } from "@/lib/lot-page/lot-details";
-import { BUYER_PREMIUM_CONDITIONS_HREF } from "@/lib/lot/buyer-premium-copy";
+import {
+  BUYER_PREMIUM_CONDITIONS_HREF,
+  CONDITIONS_OF_SALE_LABEL,
+} from "@/lib/lot/buyer-premium-copy";
 import { FactList } from "@auction/ui/lax/fact-list";
 import Link from "next/link";
 
@@ -80,7 +83,7 @@ export function LotDetails({ details, premiumTerms }: Props) {
           </p>
           <div className="flex flex-wrap gap-x-4 gap-y-2">
             <Link href={BUYER_PREMIUM_CONDITIONS_HREF} className={TEXT_LINK}>
-              Conditions of business
+              {CONDITIONS_OF_SALE_LABEL}
             </Link>
             <Link href="/faq" className={TEXT_LINK}>
               How bidding works

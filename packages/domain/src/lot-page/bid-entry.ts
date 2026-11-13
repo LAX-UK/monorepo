@@ -32,6 +32,8 @@ export type BidEntryHelp = {
   text: string;
   /** Whether "How bidding works" follows the text. */
   withBiddingGuide: boolean;
+  /** Whether a link to the Conditions of Sale (which set the premium) follows the text. */
+  withConditions: boolean;
 };
 
 /** The action area of a lot the viewer can take part in: what to press, and why not when they can't. */
@@ -92,6 +94,7 @@ function biddingHelp(input: BidEntryInput): BidEntryHelp | null {
   return {
     text: `Buyer's premium: ${input.premiumTerms}. It is added to the hammer price.`,
     withBiddingGuide: true,
+    withConditions: true,
   };
 }
 
@@ -151,12 +154,12 @@ const ENTRY_BY_ACTION: Readonly<Partial<Record<ResolvedLotAction, Builder>>> = {
       ),
       disabledReason: null,
     },
-    help: { text: SIGN_IN_HELP, withBiddingGuide: false },
+    help: { text: SIGN_IN_HELP, withBiddingGuide: false, withConditions: false },
   }),
   register: () => ({
     ...EMPTY,
     primary: { control: go("register", "Register to bid"), disabledReason: null },
-    help: { text: REGISTER_HELP, withBiddingGuide: false },
+    help: { text: REGISTER_HELP, withBiddingGuide: false, withConditions: false },
   }),
   registration_pending: (input) => ({
     ...EMPTY,

@@ -3,7 +3,6 @@ import type { BuyerPremiumSchedule, BuyerPremiumSource, Lot, Sale } from "@aucti
 import {
   type BuyerPremiumSaleTerms,
   describeBuyerPremium,
-  describeBuyerPremiumBreakdown,
   resolveBuyerPremium,
 } from "@auction/validators";
 
@@ -15,6 +14,9 @@ import {
 
 /** Where the Conditions of Sale (clause 11 sets the standard premium) live. */
 export const BUYER_PREMIUM_CONDITIONS_HREF = "/terms";
+
+/** The one name every link to those Conditions uses, wherever the premium is mentioned. */
+export const CONDITIONS_OF_SALE_LABEL = "Conditions of Sale";
 
 export type BuyerPremiumCopy = {
   /** "15% up to £500,000, then 10% on the part above" or "20% on the hammer". */
@@ -62,14 +64,4 @@ export function saleBuyerPremiumCopy(
 /** The terms the lot detail response sent (already resolved on the server), in words. */
 export function termsBuyerPremiumCopy(terms: BuyersPremiumTerms): BuyerPremiumCopy {
   return copyOf(scheduleOfTerms(terms), terms.source ?? "sale_flat");
-}
-
-/**
- * How a premium charged on a sold lot was worked out: "15% of £500,000 + 10% of £100,000", or
- * `null` for one rate (the amount and the rate say it all).
- */
-export function soldPremiumBreakdown(lot: Pick<Lot, "checkoutPricing">): string | null {
-  const premium = lot.checkoutPricing?.premium;
-  if (!premium || premium.breakdown.length < 2) return null;
-  return describeBuyerPremiumBreakdown(premium.breakdown);
 }

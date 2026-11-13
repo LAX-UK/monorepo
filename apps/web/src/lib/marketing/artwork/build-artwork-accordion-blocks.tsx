@@ -3,6 +3,10 @@ import { LotDetailsInline } from "@/components/sections/artwork/redesign/lot-det
 import { getMinNextBidAmount } from "@/lib/bid/lot-min-bid";
 import type { PublicUser } from "@/lib/data/contracts";
 import type { LotDocumentPublicRow } from "@/lib/data/lot-documents-public";
+import {
+  BUYER_PREMIUM_CONDITIONS_HREF,
+  CONDITIONS_OF_SALE_LABEL,
+} from "@/lib/lot/buyer-premium-copy";
 import { lotBuyerPremiumCopy } from "@/lib/lot/buyer-premium-copy";
 import { resolveLotReserveContext } from "@/lib/lot/reserve-presentation";
 import {
@@ -76,10 +80,10 @@ export function buildArtworkPageAccordionBlocks(args: {
         </p>
         <div className="flex flex-wrap gap-4 pt-1">
           <Link
-            href="/terms"
+            href={BUYER_PREMIUM_CONDITIONS_HREF}
             className="font-label text-xs font-medium text-link underline-offset-4 hover:underline"
           >
-            Conditions of Business
+            {CONDITIONS_OF_SALE_LABEL}
           </Link>
           <Link
             href="/faq"

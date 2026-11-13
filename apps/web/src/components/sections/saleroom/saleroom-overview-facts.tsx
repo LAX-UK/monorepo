@@ -1,4 +1,7 @@
-import { BUYER_PREMIUM_CONDITIONS_HREF } from "@/lib/lot/buyer-premium-copy";
+import {
+  BUYER_PREMIUM_CONDITIONS_HREF,
+  CONDITIONS_OF_SALE_LABEL,
+} from "@/lib/lot/buyer-premium-copy";
 import { LabelCaps } from "@auction/ui/components/typography";
 import Link from "next/link";
 import type { SaleOverviewVM } from "./view-models";
@@ -80,7 +83,7 @@ export function SaleroomOverviewFacts({ overview }: Props) {
           href={BUYER_PREMIUM_CONDITIONS_HREF}
           className="text-on-surface underline-offset-4 hover:underline"
         >
-          Conditions of Sale
+          {CONDITIONS_OF_SALE_LABEL}
         </Link>
       </p>
     </div>
