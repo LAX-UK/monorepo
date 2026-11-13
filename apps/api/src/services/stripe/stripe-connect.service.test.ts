@@ -174,6 +174,24 @@ function injectStripeOnService(service: StripeConnectService, stripe: Stripe): v
   if (inner.stripeFactory) inner.stripeFactory = factory;
 }
 
+/**
+ * Runs the transfer step's payout lock inline over the mock repository: these tests use a mock
+ * database, so the step reads the "locked" payout through the repository's own `findById`.
+ */
+function useInlinePayoutLock(service: StripeConnectService): void {
+  const inner = service as unknown as {
+    transferService?: { initiationService?: { transactions: unknown } };
+  };
+  if (!inner.transferService?.initiationService) throw new Error("transfer service not built");
+  inner.transferService.initiationService.transactions = {
+    runner: { runInTransaction: (fn: (tx: unknown) => Promise<unknown>) => fn({}) },
+    payoutRepoForTx: (root: IPayoutRepository) => ({
+      ...root,
+      findByIdForUpdate: root.findById,
+    }),
+  };
+}
+
 describe("StripeConnectService.handleTransferEvent", () => {
   it("reconciles transfer.created as paid (transfers complete synchronously)", async () => {
     const payoutService = makePayoutService(payout());
@@ -372,6 +390,7 @@ describe("StripeConnectService.initiateTransfer", () => {
       payoutRepo,
       makeDomainEventSink(),
     );
+    useInlinePayoutLock(svc);
 
     const result = await svc.initiateTransfer("missing_payout");
 
@@ -390,6 +409,7 @@ describe("StripeConnectService.initiateTransfer", () => {
       payoutRepo,
       makeDomainEventSink(),
     );
+    useInlinePayoutLock(svc);
 
     const result = await svc.initiateTransfer("po1");
 
@@ -414,6 +434,7 @@ describe("StripeConnectService.initiateTransfer", () => {
       payoutRepo,
       makeDomainEventSink(),
     );
+    useInlinePayoutLock(svc);
 
     const result = await svc.initiateTransfer("po1");
 
@@ -439,6 +460,7 @@ describe("StripeConnectService.initiateTransfer", () => {
       payoutRepo,
       publisher,
     );
+    useInlinePayoutLock(svc);
 
     const result = await svc.initiateTransfer("po1");
 
@@ -474,6 +496,7 @@ describe("StripeConnectService.initiateTransfer", () => {
       payoutRepo,
       makeDomainEventSink(),
     );
+    useInlinePayoutLock(svc);
 
     const result = await svc.initiateTransfer("po1");
 
@@ -499,6 +522,7 @@ describe("StripeConnectService.initiateTransfer", () => {
       payoutRepo,
       publisher,
     );
+    useInlinePayoutLock(svc);
 
     const result = await svc.initiateTransfer("po1");
 
@@ -520,6 +544,7 @@ describe("StripeConnectService.initiateTransfer", () => {
       payoutRepo,
       publisher,
     );
+    useInlinePayoutLock(svc);
 
     const result = await svc.initiateTransfer("po1");
 
@@ -590,6 +615,7 @@ describe("StripeConnectService.initiateTransfer", () => {
       payoutRepo,
       publisher,
     );
+    useInlinePayoutLock(svc);
     injectStripeOnService(svc, {
       transfers: {
         list: vi.fn().mockResolvedValue({ data: [], has_more: false }),
@@ -662,6 +688,7 @@ describe("StripeConnectService.initiateTransfer", () => {
       payoutRepo,
       makeDomainEventSink(),
     );
+    useInlinePayoutLock(svc);
     injectStripeOnService(svc, {
       transfers: {
         list: vi.fn().mockResolvedValue({ data: [], has_more: false }),
@@ -683,7 +710,7 @@ describe("StripeConnectService.initiateTransfer", () => {
         currency: "gbp",
         destination: "acct_123",
       }),
-      { idempotencyKey: "payout:transfer:po1" },
+      { idempotencyKey: "payout:transfer:po1:1000" },
     );
     expect(transfersCreate.mock.calls[0]?.[0]).not.toHaveProperty("source_transaction");
     expect(updateStatusIfCurrent).toHaveBeenCalledWith(
@@ -703,7 +730,12 @@ describe("StripeConnectService.initiateTransfer", () => {
     });
     const updateStatusIfCurrent = vi.fn().mockResolvedValue(null);
     const updateStatus = vi.fn();
-    const findById = vi.fn().mockResolvedValueOnce(payoutRow).mockResolvedValueOnce(paidRow);
+    // Read before the transfer, again under the payout's lock, then after the missed CAS.
+    const findById = vi
+      .fn()
+      .mockResolvedValueOnce(payoutRow)
+      .mockResolvedValueOnce(payoutRow)
+      .mockResolvedValueOnce(paidRow);
     const payoutRepo = {
       findById,
       updateStatus,
@@ -740,6 +772,7 @@ describe("StripeConnectService.initiateTransfer", () => {
       payoutRepo,
       publisher,
     );
+    useInlinePayoutLock(svc);
     injectStripeOnService(svc, {
       transfers: {
         list: vi.fn().mockResolvedValue({ data: [], has_more: false }),

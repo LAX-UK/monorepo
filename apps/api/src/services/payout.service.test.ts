@@ -317,12 +317,40 @@ const SALE_LINE: PayoutLine = {
 describe("PayoutService.addAdjustment", () => {
   it("rejects adjustments on terminal-state payouts", async () => {
     const repo = makeRepo({
-      findById: vi.fn().mockResolvedValue(payout({ status: "paid" })),
+      findByIdForUpdate: vi.fn().mockResolvedValue(payout({ status: "paid" })),
     });
     const svc = serviceFor(repo);
     await expect(
       svc.addAdjustment(ACTOR_ID, "po1", { amount: "10.00", note: "long enough note" }),
     ).rejects.toBeInstanceOf(PayoutStatusTransitionError);
+  });
+
+  it("refuses a payout whose transfer has started, read under its row lock", async () => {
+    const repo = makeRepo({
+      findById: vi.fn().mockResolvedValue(payout({ status: "scheduled" })),
+      findByIdForUpdate: vi.fn().mockResolvedValue(payout({ status: "in_transit" })),
+    });
+    const svc = serviceFor(repo);
+    await expect(
+      svc.addAdjustment(ACTOR_ID, "po1", { amount: "10.00", note: "long enough note" }),
+    ).rejects.toBeInstanceOf(PayoutStatusTransitionError);
+    expect(repo.insertLine).not.toHaveBeenCalled();
+  });
+
+  it("refuses a scheduled payout whose last transfer attempt has an unknown outcome", async () => {
+    const unknown = payout({
+      status: "scheduled",
+      failureReason: "stripe_transfer_outcome_unknown: unknown - socket hang up",
+    });
+    const repo = makeRepo({
+      findById: vi.fn().mockResolvedValue(unknown),
+      findByIdForUpdate: vi.fn().mockResolvedValue(unknown),
+    });
+    const svc = serviceFor(repo);
+    await expect(
+      svc.addAdjustment(ACTOR_ID, "po1", { amount: "10.00", note: "long enough note" }),
+    ).rejects.toBeInstanceOf(PayoutStatusTransitionError);
+    expect(repo.insertLine).not.toHaveBeenCalled();
   });
 
   it("appends a positive adjustment and recomputes totals", async () => {
@@ -343,7 +371,8 @@ describe("PayoutService.addAdjustment", () => {
       netAmount: "1050.00",
     });
     const repo = makeRepo({
-      findById: vi.fn().mockResolvedValueOnce(before).mockResolvedValueOnce(after),
+      findByIdForUpdate: vi.fn().mockResolvedValue(before),
+      findById: vi.fn().mockResolvedValue(after),
       insertLine: vi.fn().mockResolvedValue(newLine),
       updateTotals: vi.fn().mockResolvedValue(after),
       listLines: vi.fn().mockResolvedValue([SALE_LINE, newLine]),
@@ -371,7 +400,7 @@ describe("PayoutService.addAdjustment", () => {
       netAmount: "900.00",
     });
     const repo = makeRepo({
-      findById: vi.fn().mockResolvedValue(before),
+      findByIdForUpdate: vi.fn().mockResolvedValue(before),
       insertLine: vi.fn().mockResolvedValue({} as PayoutLine),
       updateTotals: vi.fn().mockResolvedValue(after),
       listLines: vi.fn().mockResolvedValue([

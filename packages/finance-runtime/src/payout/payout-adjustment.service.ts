@@ -2,6 +2,7 @@ import type { Database } from "@auction/db";
 import {
   minorUnitsToMoneyString,
   parseMoneyToMinorUnits,
+  payoutTakesLines,
   payoutTotals,
   sellerRefundCharge,
   sellerRefundGiveBack,
@@ -144,7 +145,9 @@ export class PayoutAdjustmentService implements IPayoutAdjustmentPort {
     >,
     ledger: LedgerLine,
   ): Promise<boolean> {
-    const openPayout = await r.findOpenPayoutForEntity(input.legalEntityId);
+    // The payment before the payout: see `lockOpenPayout`.
+    await r.lockPayment(input.paymentId);
+    const openPayout = await this.lockOpenPayout(r, input.legalEntityId);
 
     if (openPayout) {
       if (input.sourceEventId && (await r.lineExistsForSourceEvent(input.sourceEventId))) {
@@ -206,6 +209,30 @@ export class PayoutAdjustmentService implements IPayoutAdjustmentPort {
       buyerRefundPence: ledger.buyerRefundPence,
     });
     return true;
+  }
+
+  /**
+   * The seller's open payout, its row locked (`FOR UPDATE`) and seen still open under the lock
+   * (`payoutTakesLines`), or `null` when none is open. The transfer step holds the same row lock
+   * from reading the amount until the payout has left `scheduled`, so a line either lands before
+   * the amount is read (and is sent with it) or finds the payout gone and goes on a new one.
+   *
+   * Lock order: settlement advisory lock, then payments (in id order when there are several), then
+   * payout. `postLine` takes the line's payment just before this, so the order holds for every
+   * caller: refund paths already hold it (re-entrant), and dispute paths, which lock the dispute
+   * case and not the payment, take it here rather than waiting for it on the line's foreign key
+   * while holding the payout.
+   */
+  private async lockOpenPayout(r: IPayoutRepository, legalEntityId: string) {
+    // A payout that stopped taking lines while we waited for its lock is no longer open; look again,
+    // since another scheduled payout may be the open one now.
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const candidate = await r.findOpenPayoutForEntity(legalEntityId);
+      if (!candidate) return null;
+      const locked = await r.findByIdForUpdate(candidate.id);
+      if (locked && payoutTakesLines(locked)) return locked;
+    }
+    return null;
   }
 
   /**

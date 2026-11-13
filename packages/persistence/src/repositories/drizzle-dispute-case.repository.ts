@@ -239,6 +239,16 @@ export class DrizzleDisputeCaseRepository
       .where(eq(disputeAllocation.id, allocationId));
   }
 
+  async lockPaymentsInTransaction(tx: Database, paymentIds: readonly string[]): Promise<void> {
+    if (paymentIds.length === 0) return;
+    await tx
+      .select({ id: payment.id })
+      .from(payment)
+      .where(inArray(payment.id, [...paymentIds]))
+      .orderBy(asc(payment.id))
+      .for("update");
+  }
+
   async countAwaitingAllocation(): Promise<number> {
     const [row] = await this.db
       .select({ count: sql<number>`count(*)::int` })

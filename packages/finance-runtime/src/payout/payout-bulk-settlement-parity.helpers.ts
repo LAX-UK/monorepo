@@ -166,6 +166,7 @@ export function makeSettlementRepo(overrides: Partial<IPayoutRepository> = {}): 
     findById: async () => null,
     findByIdForUpdate: async () => null,
     lockSettlementForEntity: async () => undefined,
+    lockPayment: async () => undefined,
     findByStripeTransferId: async () => null,
     listLines: async () => [],
     findUnlinkedCapturedPayments: async () => [],
