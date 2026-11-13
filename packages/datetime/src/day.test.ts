@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { dayKey, dayOffset, endOfDay, startOfDay } from "./day.js";
+import { endOfDay, startOfDay } from "./day-zoned.js";
+import { dayKey, dayOffset } from "./day.js";
 import { offsetMinutes } from "./offset.js";
 
 describe("offsetMinutes at the instant", () => {
