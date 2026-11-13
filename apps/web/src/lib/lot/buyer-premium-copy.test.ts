@@ -22,8 +22,8 @@ const lot = (over: Partial<Lot> = {}) =>
 describe("lotBuyerPremiumCopy (what buyers read on the lot page and quick look)", () => {
   it("states the sale's bands for a lot without its own premium", () => {
     expect(lotBuyerPremiumCopy(lot(), bandedSale)).toEqual({
-      terms: "15% up to £500,000, 10% above",
-      sentence: "Buyer's premium: 15% up to £500,000, 10% above",
+      terms: "15% up to £500,000, then 10% on the part above",
+      sentence: "Buyer's premium: 15% up to £500,000, then 10% on the part above",
       source: "sale_bands",
     });
   });
@@ -56,7 +56,9 @@ describe("lotBuyerPremiumCopy (what buyers read on the lot page and quick look)"
         },
       },
     });
-    expect(lotBuyerPremiumCopy(priced)?.terms).toBe("15% up to £500,000, 10% above");
+    expect(lotBuyerPremiumCopy(priced)?.terms).toBe(
+      "15% up to £500,000, then 10% on the part above",
+    );
   });
 
   it("never guesses a rate for a lot in a sale it cannot see", () => {
@@ -71,7 +73,7 @@ describe("lotBuyerPremiumCopy (what buyers read on the lot page and quick look)"
 describe("saleBuyerPremiumCopy (the sale page)", () => {
   it("says the standard bands in plain words", () => {
     expect(saleBuyerPremiumCopy(bandedSale).sentence).toBe(
-      "Buyer's premium: 15% up to £500,000, 10% above",
+      "Buyer's premium: 15% up to £500,000, then 10% on the part above",
     );
   });
 });
@@ -87,7 +89,7 @@ describe("termsBuyerPremiumCopy (the lot detail response's terms)", () => {
         ],
         source: "sale_bands",
       }).terms,
-    ).toBe("15% up to £500,000, 10% above");
+    ).toBe("15% up to £500,000, then 10% on the part above");
   });
 });
 

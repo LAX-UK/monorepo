@@ -27,8 +27,8 @@ export function formatPremiumMoney(minor: number): string {
 /**
  * The premium in plain words:
  * - flat: "25% on the hammer";
- * - two bands: "15% up to £500,000, 10% above";
- * - more: "20% up to £100,000, 15% from £100,000 to £500,000, 10% above".
+ * - two bands: "15% up to £500,000, then 10% on the part above";
+ * - more: "20% up to £100,000, 15% from £100,000 to £500,000, then 10% on the part above".
  */
 export function describeBuyerPremium(schedule: BuyerPremiumSchedule): string {
   if (schedule.kind === "flat") return `${formatPremiumPercent(schedule.rate)} on the hammer`;
@@ -40,7 +40,8 @@ export function describeBuyerPremium(schedule: BuyerPremiumSchedule): string {
     .map((band, i) => {
       const rate = formatPremiumPercent(band.rate);
       const next = bands[i + 1];
-      if (!next) return `${rate} above`;
+      // "then … on the part above" so the top band never reads as the rate on the whole hammer.
+      if (!next) return `then ${rate} on the part above`;
       const upTo = formatPremiumMoney(next.hammerThresholdMinor);
       return i === 0
         ? `${rate} up to ${upTo}`

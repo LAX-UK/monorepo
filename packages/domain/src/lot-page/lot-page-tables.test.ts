@@ -199,7 +199,9 @@ describe("buyer's premium terms", () => {
     expect(premiumRateFor(terms, "499999.99")).toBe("0.15");
     expect(premiumRateFor(terms, "500000.00")).toBe("0.15");
     expect(premiumRateFor(terms, "500000.01")).toBe("0.1");
-    expect(describeBuyersPremiumTerms(terms)).toBe("15% up to £500,000, 10% above");
+    expect(describeBuyersPremiumTerms(terms)).toBe(
+      "15% up to £500,000, then 10% on the part above",
+    );
   });
 
   it("a lot's own premium overrides the sale's bands", () => {

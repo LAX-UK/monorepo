@@ -16,7 +16,7 @@ export type SaleTierBandPreview =
   | { ok: false }
   | {
       ok: true;
-      /** "15% up to £500,000, 10% above". */
+      /** "15% up to £500,000, then 10% on the part above". */
       terms: string;
       /** "On a £600,000 hammer the buyer pays £85,000 premium". */
       example: string;

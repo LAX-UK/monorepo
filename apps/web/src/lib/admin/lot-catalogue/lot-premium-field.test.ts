@@ -9,9 +9,9 @@ describe("lot form buyer's premium wording", () => {
   });
 
   it("says the lot uses the sale's premium by default", () => {
-    expect(salePremium).toBe("15% up to £500,000, 10% above");
+    expect(salePremium).toBe("15% up to £500,000, then 10% on the part above");
     expect(lotPremiumFieldView({ salePremium, lotRate: "" }).usesSaleLine).toBe(
-      "Uses the sale's premium: 15% up to £500,000, 10% above",
+      "Uses the sale's premium: 15% up to £500,000, then 10% on the part above",
     );
   });
 
@@ -24,10 +24,10 @@ describe("lot form buyer's premium wording", () => {
 
   it("notes an override against the sale's premium", () => {
     expect(lotPremiumFieldView({ salePremium, lotRate: "0.2" }).overrideNote).toBe(
-      "This lot charges its own premium: 20% on the hammer. The sale charges 15% up to £500,000, 10% above.",
+      "This lot charges its own premium: 20% on the hammer. The sale charges 15% up to £500,000, then 10% on the part above.",
     );
     expect(lotPremiumFieldView({ salePremium, lotRate: "" }).overrideNote).toBe(
-      "This lot will charge its own premium. The sale charges 15% up to £500,000, 10% above.",
+      "This lot will charge its own premium. The sale charges 15% up to £500,000, then 10% on the part above.",
     );
   });
 });

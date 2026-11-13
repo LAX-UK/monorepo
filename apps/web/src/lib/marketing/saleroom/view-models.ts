@@ -128,7 +128,7 @@ export type SaleOverviewVM = {
   endLabel: string;
   previewLabel: string | null;
   formatLabel: string;
-  /** The premium the sale's lots charge, in words: "15% up to £500,000, 10% above". */
+  /** The premium the sale's lots charge, in words: "15% up to £500,000, then 10% on the part above". */
   buyerPremiumLabel: string;
   categoryLabel: string | null;
   categoryLabels: string[];

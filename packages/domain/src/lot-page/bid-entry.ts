@@ -53,7 +53,7 @@ export type BidEntryInput = {
   nextBid: string | null;
   /** What an agent has left under their limit for this sale; `null` when no limit applies. */
   agentLimitLeft: string | null;
-  /** The buyer's premium in words ("15% up to £500,000, 10% above"), from `describeBuyersPremiumTerms`. */
+  /** The buyer's premium in words ("15% up to £500,000, then 10% on the part above"), from `describeBuyersPremiumTerms`. */
   premiumTerms: string | null;
   format: { money(amount: string): string };
 };

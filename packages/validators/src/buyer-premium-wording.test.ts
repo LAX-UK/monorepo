@@ -11,7 +11,9 @@ import { BandedBuyerPremiumPolicy, STANDARD_BUYER_PREMIUM } from "./buyer-premiu
 
 describe("buyer's premium wording", () => {
   it("says the standard premium as the Conditions do", () => {
-    expect(describeBuyerPremium(STANDARD_BUYER_PREMIUM)).toBe("15% up to £500,000, 10% above");
+    expect(describeBuyerPremium(STANDARD_BUYER_PREMIUM)).toBe(
+      "15% up to £500,000, then 10% on the part above",
+    );
   });
 
   it("says a flat rate on the hammer", () => {
@@ -29,7 +31,7 @@ describe("buyer's premium wording", () => {
           { hammerThresholdMinor: 50_000_000, rate: "0.1" },
         ],
       }),
-    ).toBe("20% up to £100,000, 15% from £100,000 to £500,000, 10% above");
+    ).toBe("20% up to £100,000, 15% from £100,000 to £500,000, then 10% on the part above");
   });
 
   it("says a single band as one rate", () => {

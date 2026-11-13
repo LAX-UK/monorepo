@@ -24,7 +24,7 @@ export function salePremiumTermsFor(
 }
 
 export type LotPremiumFieldView = {
-  /** "Uses the sale's premium: 15% up to £500,000, 10% above". */
+  /** "Uses the sale's premium: 15% up to £500,000, then 10% on the part above". */
   usesSaleLine: string;
   /** Shown while the lot has its own premium. */
   overrideNote: string;

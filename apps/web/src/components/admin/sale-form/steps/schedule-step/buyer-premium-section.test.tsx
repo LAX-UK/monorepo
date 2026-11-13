@@ -25,7 +25,9 @@ describe("BuyerPremiumSection", () => {
   it("preselects the standard premium for a new sale and shows a worked example", () => {
     render(<Harness values={{}} />);
     expect(
-      screen.getByRole("radio", { name: /Standard: 15% up to £500,000, 10% above/ }),
+      screen.getByRole("radio", {
+        name: /Standard: 15% up to £500,000, then 10% on the part above/,
+      }),
     ).toBeChecked();
     expect(screen.getByRole("radio", { name: /Flat rate/ })).not.toBeChecked();
     expect(screen.getByRole("radio", { name: /Custom bands/ })).not.toBeChecked();
@@ -57,7 +59,7 @@ describe("saleBuyerPremiumPreview", () => {
       }),
     ).toEqual({
       ok: true,
-      terms: "20% up to £100,000, 10% above",
+      terms: "20% up to £100,000, then 10% on the part above",
       example: "On a £600,000 hammer the buyer pays £70,000 premium",
     });
   });

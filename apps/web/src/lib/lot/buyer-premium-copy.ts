@@ -17,9 +17,9 @@ import {
 export const BUYER_PREMIUM_CONDITIONS_HREF = "/terms";
 
 export type BuyerPremiumCopy = {
-  /** "15% up to £500,000, 10% above" or "20% on the hammer". */
+  /** "15% up to £500,000, then 10% on the part above" or "20% on the hammer". */
   terms: string;
-  /** "Buyer's premium: 15% up to £500,000, 10% above". */
+  /** "Buyer's premium: 15% up to £500,000, then 10% on the part above". */
   sentence: string;
   source: BuyerPremiumSource;
 };

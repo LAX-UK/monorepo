@@ -30,7 +30,7 @@ export type LotTemplateData = {
   artist: { id: string; name: string; href: string; lifespan: string | null } | null;
   factsLine: string | null;
   details: LotDetailsView;
-  /** The premium the lot charges, in words ("15% up to £500,000, 10% above"); null when not for sale. */
+  /** The premium the lot charges, in words ("15% up to £500,000, then 10% on the part above"); null when not for sale. */
   premiumTerms: string | null;
   sale: { href: string; label: string };
   initialWatching: boolean;

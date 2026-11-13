@@ -256,7 +256,7 @@ describe("mapSaleToOverviewVM", () => {
       ],
     };
     const vm = mapSaleToOverviewVM(sale, { categoryLabel: null, categoryLabels: [] });
-    expect(vm.buyerPremiumLabel).toBe("15% up to £500,000, 10% above");
+    expect(vm.buyerPremiumLabel).toBe("15% up to £500,000, then 10% on the part above");
   });
 
   it("says a flat premium on the hammer", () => {

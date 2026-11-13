@@ -65,7 +65,7 @@ export function scheduleOfTerms(terms: BuyersPremiumTerms): BuyerPremiumSchedule
   };
 }
 
-/** The terms in plain words: "15% up to £500,000, 10% above", "25% on the hammer". */
+/** The terms in plain words: "15% up to £500,000, then 10% on the part above", "25% on the hammer". */
 export function describeBuyersPremiumTerms(terms: BuyersPremiumTerms): string {
   return describeBuyerPremium(scheduleOfTerms(terms));
 }

@@ -25,7 +25,7 @@ describe("buildSalePremiumOverview (staff sale overview)", () => {
   it("says the sale's premium in words with a worked example", () => {
     const vm = buildSalePremiumOverview(standardSale, []);
     expect(vm).toMatchObject({
-      terms: "15% up to £500,000, 10% above",
+      terms: "15% up to £500,000, then 10% on the part above",
       example: "On a £600,000 hammer the buyer pays £85,000 premium",
       isStandard: true,
       differingLots: [],

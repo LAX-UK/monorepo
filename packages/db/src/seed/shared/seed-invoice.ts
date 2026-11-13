@@ -34,7 +34,7 @@ const invoiceIdFor = (paymentId: string) => uuidV5(SEED_INVOICE_NAMESPACE, payme
 
 /**
  * The lines of a lot sold at `hammerPounds`: at a flat premium `rate` (0.25 = 25%) when given,
- * else at the standard premium (15% up to £500,000, 10% above), as the application prices it.
+ * else at the standard premium (15% up to £500,000, then 10% on the part above), as the application prices it.
  */
 export function priceHammer(hammerPounds: number, rate: number | null = null) {
   return buildInvoiceLines(

@@ -11,7 +11,7 @@ export function sumLotHammers(lots: Lot[]): string {
   return formatMoney(total);
 }
 
-/** The sale's premium in words: "15% up to £500,000, 10% above" or "20% on the hammer". */
+/** The sale's premium in words: "15% up to £500,000, then 10% on the part above" or "20% on the hammer". */
 export function buyerPremiumSummary(
   sale: Pick<Sale, "buyerPremiumRate" | "buyerPremiumTiers">,
 ): string {

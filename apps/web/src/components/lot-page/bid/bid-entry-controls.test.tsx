@@ -33,7 +33,7 @@ const base: BidEntryInput = {
   position: "none",
   nextBid: "7250.00",
   agentLimitLeft: null,
-  premiumTerms: "15% up to £500,000, 10% above",
+  premiumTerms: "15% up to £500,000, then 10% on the part above",
   format: { money: (amount) => `£${Number(amount).toLocaleString("en-GB")}` },
 };
 
@@ -74,7 +74,7 @@ describe("BidEntryControls", () => {
     expect(onOpen).toHaveBeenLastCalledWith("maximum");
     expect(
       screen.getByText(
-        "Buyer's premium: 15% up to £500,000, 10% above. It is added to the hammer price.",
+        "Buyer's premium: 15% up to £500,000, then 10% on the part above. It is added to the hammer price.",
       ),
     ).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "How bidding works" })).toHaveAttribute("href", "/faq");
