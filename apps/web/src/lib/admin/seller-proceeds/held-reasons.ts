@@ -58,3 +58,19 @@ export function lotName(lot: { lotNumber: number | null; lotTitle: string | null
   if (lot.lotNumber !== null) return `Lot ${lot.lotNumber}`;
   return lot.lotTitle ?? "This lot";
 }
+
+/** A seller's commission, wherever an account's terms are listed: it lives on each agreement. */
+export function sellerCommissionFact(legalEntityId: string): {
+  label: string;
+  text: string;
+  link: { label: string; href: string };
+} {
+  return {
+    label: "Commission",
+    text: "Set by each signed consignment agreement",
+    link: {
+      label: "See agreements",
+      href: `/admin/legal-entities/${encodeURIComponent(legalEntityId)}/sales`,
+    },
+  };
+}

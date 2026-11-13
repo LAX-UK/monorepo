@@ -260,3 +260,14 @@ describe("premiumRateLabel", () => {
     expect(premiumRateLabel(null, 155_000)).toBe("£1,550.00");
   });
 });
+
+describe("sellerCommissionFact", () => {
+  it("points at the agreements instead of an account-wide rate", async () => {
+    const { sellerCommissionFact } = await import("./held-reasons");
+    expect(sellerCommissionFact("le 1")).toEqual({
+      label: "Commission",
+      text: "Set by each signed consignment agreement",
+      link: { label: "See agreements", href: "/admin/legal-entities/le%201/sales" },
+    });
+  });
+});
