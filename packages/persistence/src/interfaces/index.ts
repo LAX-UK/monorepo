@@ -105,7 +105,11 @@ export type {
   PublishUserEmailVerifiedInput,
 } from "./user-email-verified.publisher.js";
 
-export type { IUploadObjectReader } from "./upload-object.reader.js";
+export type {
+  IUploadObjectDescriber,
+  IUploadObjectReader,
+  UploadObjectDescription,
+} from "./upload-object.reader.js";
 
 export type {
   IUploadPersistenceRepository,
@@ -671,6 +675,22 @@ export type {
   StoredInvoiceLine,
   StoredSellerTerms,
 } from "./sale-seller-terms.store.js";
+export type {
+  IStaffLotSellerProceedsReader,
+  StaffAgreementFacts,
+  StaffInvoiceFacts,
+  StaffLotSaleFacts,
+  StaffLotSellerProceedsFacts,
+  StaffSalePayoutFacts,
+  StaffSellerTermsFacts,
+  StaffSellerTermsSource,
+} from "./staff-seller-proceeds.reader.js";
+export type {
+  ISignedAgreementWriter,
+  RecordSignedAgreementInput,
+  RecordedAgreement,
+  ReplacedAgreement,
+} from "./signed-agreement.writer.js";
 
 export type {
   IPaymentExternalRefRepository,
