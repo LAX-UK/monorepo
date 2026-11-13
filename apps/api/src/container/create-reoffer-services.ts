@@ -1,6 +1,5 @@
 import type { Database } from "@auction/db";
 import { SellerTermsPolicy } from "@auction/domain";
-import { gbpPenceToMajorString } from "@auction/finance-runtime";
 import {
   DrizzleArtworkRegisterRepository,
   DrizzleCommissionVatSettingReader,
@@ -17,6 +16,7 @@ import {
 import { RegisterArtworkPlaceGuard } from "../services/reoffer/register-artwork-place.guard.js";
 import { RegisterMoneyPauseGuard } from "../services/reoffer/register-money-pause.guard.js";
 import { ReofferConsentService } from "../services/reoffer/reoffer-consent.service.js";
+import { invoiceReofferPricing } from "../services/reoffer/reoffer-invoice-pricing.js";
 import { lotOwnershipFromAccount } from "../services/reoffer/reoffer-lot-ownership.js";
 import { ReofferOfferService } from "../services/reoffer/reoffer-offer.service.js";
 import type { IReofferInvoicing, IReofferPricing } from "../services/reoffer/reoffer-ports.js";
@@ -62,22 +62,10 @@ export function createReofferServices(input: {
   };
 
   // The same pricing the invoice uses, so the total the bidder is shown is the total they are billed.
-  const pricing: IReofferPricing = {
-    async priceFor({ lotId, buyerLegalEntityId, hammerPence }) {
-      const found = await input.repos.lotRepo.findById(lotId);
-      if (!found) throw new Error(`Lot ${lotId} not found for pricing`);
-      const priced = await payments.invoiceRaiser.price({
-        ...found,
-        buyerLegalEntityId,
-        currentPrice: gbpPenceToMajorString(hammerPence),
-      });
-      return {
-        lines: priced.lines,
-        totalPence: priced.totalPence,
-        invoiceDueAt: priced.existing?.dueAt ?? null,
-      };
-    },
-  };
+  const pricing: IReofferPricing = invoiceReofferPricing({
+    lots: input.repos.lotRepo,
+    invoiceRaiser: payments.invoiceRaiser,
+  });
   const proceeds = settlementSellerProceeds({ pricing, terms });
   const invoicing: IReofferInvoicing = {
     async raiseFor(lotId) {
