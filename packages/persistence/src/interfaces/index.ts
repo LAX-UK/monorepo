@@ -393,6 +393,12 @@ export type {
   PaymentRefundTotal,
 } from "./payment-refund.repository.js";
 
+export type {
+  IStripeRefundWatchRepository,
+  StripeRefundSighting,
+  StripeRefundWatchRow,
+} from "./stripe-refund-watch.repository.js";
+
 export type { IQrCodeAnalyticsReader } from "./qr-code-analytics.reader.js";
 
 export type {

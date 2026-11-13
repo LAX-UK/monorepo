@@ -7,6 +7,7 @@ import type {
   IKycRepository,
   ILegalEntityMembershipReader,
   ISourceOfFundsRepository,
+  IStripeRefundWatchRepository,
   ITransactionRunner,
   IUserRepository,
   IWatchlistScreeningReader,
@@ -115,6 +116,8 @@ export type CreatePrivateSaleDealServicesInput = {
   lockLinks: DealLockLinks;
   /** Resolves an artwork's picture to an address. */
   media: Pick<IMediaUrlResolver, "resolveManyUnique">;
+  /** Where a refund Stripe has not finished is kept until it is final. */
+  refundWatch?: Pick<IStripeRefundWatchRepository, "watch"> | null;
 };
 
 /** Private sale deals: the state machine, the buyer's payment, refunds and the seller's payout. */
@@ -203,6 +206,7 @@ export function createPrivateSaleDealServices(
     transitions,
     transactionRunner: input.transactionRunner,
     scopeForTx,
+    refundWatch: input.refundWatch ?? null,
   });
   const transfers = new DealTransferService({ deals, payments, checkout: gateway, settlement });
   const parties = new DealPartyResolver({

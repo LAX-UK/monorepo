@@ -158,6 +158,14 @@ export const EXCEPTION_PATHS: Record<string, Set<string>> = {
     "reason",
     "staffReason",
   ]),
+  /** A counted refund Stripe reported failed or cancelled: taken back from the totals. */
+  "payment.refund_reversed": new Set([
+    "stripeChargeId",
+    "amountCents",
+    "cumulativeRefundedCents",
+    "currency",
+    "via",
+  ]),
   /** Buyer payment paused because seller was archived before capture. */
   "payment.requires_manual_review": new Set([
     "paymentId",

@@ -19,13 +19,16 @@ export const PAYMENT_REFUND_SOURCES = [
   "staff",
   "blocked_capture",
   "payout_topup",
+  /** A compensating row: a refund that was counted, then reported failed or cancelled by Stripe. */
+  "refund_reversal",
 ] as const;
 export type PaymentRefundSource = (typeof PAYMENT_REFUND_SOURCES)[number];
 
 /**
  * What the buyer was given back for a payment: one row per refund (or per step of a refund
  * reported as a running total), written in the same transaction as the `payment.refunded` event.
- * The invoice document sums it. Append-only: a row is never changed or removed.
+ * The invoice document sums it. Append-only: a row is never changed or removed. A refund counted
+ * and later reported failed is taken back by a negative `refund_reversal` row, never by an edit.
  */
 export const paymentRefund = pgTable(
   "payment_refund",
@@ -49,11 +52,14 @@ export const paymentRefund = pgTable(
   (table) => [
     uniqueIndex("payment_refund_idempotency_key_uidx").on(table.idempotencyKey),
     index("payment_refund_payment_id_idx").on(table.paymentId),
-    check("payment_refund_amount_positive", sql`${table.amountPence} > 0`),
+    check(
+      "payment_refund_amount_positive",
+      sql`${table.amountPence} > 0 OR (${table.source} = 'refund_reversal' AND ${table.amountPence} < 0)`,
+    ),
     check("payment_refund_currency_ck", sql`${table.currency} ~ '^[A-Z]{3}$'`),
     check(
       "payment_refund_source_ck",
-      sql`${table.source} IN ('card_webhook', 'group_webhook', 'staff', 'blocked_capture', 'payout_topup')`,
+      sql`${table.source} IN ('card_webhook', 'group_webhook', 'staff', 'blocked_capture', 'payout_topup', 'refund_reversal')`,
     ),
   ],
 );

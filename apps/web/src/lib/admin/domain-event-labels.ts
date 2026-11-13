@@ -153,6 +153,7 @@ const LABELS: Record<string, string> = {
   "payment.authorized": "Payment authorised",
   "payment.captured": "Payment captured",
   "payment.refunded": "Payment refunded",
+  "payment.refund_reversed": "Refund failed after it was counted",
   "payment.cancelled": "Payment cancelled",
   "payment.bank_transfer_partially_funded": "Bank transfer partly received",
   "payment.capture_blocked_terminal_status": "Capture blocked on a closed payment",

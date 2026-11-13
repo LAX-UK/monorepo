@@ -21,6 +21,7 @@ import {
 import { eq, inArray, like } from "drizzle-orm";
 import type Stripe from "stripe";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { FakeChargeRefunds } from "../../test/fake-charge-refunds.js";
 import { transactionRunnerFromDb } from "../../test/transaction-runner-from-db.js";
 import {
   deleteIdentityUserFixtures,
@@ -70,6 +71,8 @@ describe.skipIf(!HAS_DB)("refunds of unapplied money (integration)", () => {
     (_root, tx) => new DrizzlePayoutRepository(tx),
   );
   const refundRecords = new DrizzlePaymentRefundRepository(db);
+  // What Stripe lists as refunded on each charge; every refund here has succeeded.
+  const stripeRefunds = new FakeChargeRefunds();
   const webhooks = new StripePaymentWebhookService(
     runner,
     new DrizzlePaymentWebhookLookupReader(db),
@@ -82,9 +85,17 @@ describe.skipIf(!HAS_DB)("refunds of unapplied money (integration)", () => {
     null,
     null,
     recorder,
-    new UnappliedMoneyRefundHandler({ transactionRunner: runner, reader, recorder }),
+    new UnappliedMoneyRefundHandler({
+      transactionRunner: runner,
+      reader,
+      recorder,
+      chargeRefunds: stripeRefunds,
+    }),
     null,
     refundRecords,
+    undefined,
+    null,
+    stripeRefunds,
   );
 
   const run = randomUUID().slice(0, 8);
@@ -218,6 +229,8 @@ describe.skipIf(!HAS_DB)("refunds of unapplied money (integration)", () => {
     expect((await payments.findById(paymentId))?.status).toBe("captured");
     expect(await reader.listOpen({ paymentIntentId: pi, limit: 5 })).toEqual([]);
 
+    stripeRefunds.show(ch, 10_000);
+
     const result = await webhooks.handleChargeRefunded(
       eventOf("charge.refunded", refunded(pi, ch)),
       refunded(pi, ch),
@@ -239,6 +252,7 @@ describe.skipIf(!HAS_DB)("refunds of unapplied money (integration)", () => {
     await runner.runInTransaction((tx) =>
       payments.applyRefundedFromCancelledInTransaction(tx, paymentId, `re_um_${run}`),
     );
+    stripeRefunds.show(ch, 10_000);
     const result = await webhooks.handleChargeRefunded(
       eventOf("charge.refunded", refunded(pi, ch)),
       refunded(pi, ch),
@@ -253,6 +267,7 @@ describe.skipIf(!HAS_DB)("refunds of unapplied money (integration)", () => {
     await runner.runInTransaction((tx) =>
       payments.applyRefundedFromCancelledInTransaction(tx, paymentId, `re_um_${run}`),
     );
+    stripeRefunds.show(ch, 10_000);
     const result = await webhooks.handleChargeRefunded(
       eventOf("charge.refunded", refunded(pi, ch)),
       refunded(pi, ch),
@@ -279,6 +294,7 @@ describe.skipIf(!HAS_DB)("refunds of unapplied money (integration)", () => {
         note: "Refunding the duplicate from Stripe.",
       }),
     );
+    stripeRefunds.show(ch, 10_000);
     const refund = await webhooks.handleChargeRefunded(
       eventOf("charge.refunded", refunded(pi, ch)),
       refunded(pi, ch),
@@ -298,6 +314,8 @@ describe.skipIf(!HAS_DB)("refunds of unapplied money (integration)", () => {
       ({ ...refunded(pi, ch), amount_refunded: refundedPence }) as Stripe.Charge;
     // Each event reports a running total (40.00, then 75.00). Without the payment lock both read
     // nothing recorded, and the buyer and the seller would be given 115.00 between them.
+    // Both events read Stripe's list once both refunds went through: 75.00 in all.
+    stripeRefunds.show(ch, 7_500);
     const results = await Promise.all([
       webhooks.handleChargeRefunded(eventOf("charge.refunded", upTo(4_000)), upTo(4_000)),
       webhooks.handleChargeRefunded(eventOf("charge.refunded", upTo(7_500)), upTo(7_500)),
@@ -335,6 +353,7 @@ describe.skipIf(!HAS_DB)("refunds of unapplied money (integration)", () => {
         tx,
       });
     });
+    stripeRefunds.show(ch, 10_000);
     const cardEvent = webhooks.handleChargeRefunded(
       eventOf("charge.refunded", refunded(pi, ch)),
       refunded(pi, ch),

@@ -39,6 +39,7 @@ export type CreatePlatformCronRouteServicesInput = {
   consignmentThreadSweep: ConsignmentThreadSweepService;
   paymentReminders: Pick<PaymentReminderService, "sendDueReminders">;
   dealSettlementFollowUps: Pick<DealSettlementFollowUpService, "raiseNew">;
+  stripeRefundReconcile: PlatformCronRouteServices["stripeRefundReconcile"];
 };
 
 export function createPlatformCronRouteServices(
@@ -64,6 +65,7 @@ export function createPlatformCronRouteServices(
     ]),
     paymentReminders: input.paymentReminders,
     dealSettlementFollowUps: input.dealSettlementFollowUps,
+    stripeRefundReconcile: input.stripeRefundReconcile,
     watchedLotReminders: new WatchedLotReminderJob({
       reminders: input.watchlistReminders,
       dispatcher: input.notificationDispatcher,

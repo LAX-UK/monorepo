@@ -193,6 +193,11 @@ export interface IPaymentLifecycleRepository {
     id: string,
     stripeRefundId: string | null,
   ): Promise<boolean>;
+  /**
+   * A refund that marked the payment refunded was reported failed or cancelled by Stripe, so the
+   * money stayed: the payment goes back to captured. Only from refunded.
+   */
+  applyRefundReversedInTransaction(tx: Database, id: string): Promise<boolean>;
   /** Atomically move a payment from manual review to pending (finance release). */
   applyReleasedFromManualReviewInTransaction(tx: Database, id: string): Promise<boolean>;
   /** Atomically reopen a cancelled payment as pending (finance reinstates a blocked capture). */

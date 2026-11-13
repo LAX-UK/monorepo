@@ -357,6 +357,15 @@ export class DrizzlePaymentRepository implements IPaymentWriteRepository {
     return rows.length > 0;
   }
 
+  async applyRefundReversedInTransaction(tx: Database, id: string): Promise<boolean> {
+    const rows = await tx
+      .update(payment)
+      .set({ status: "captured", stripeRefundId: null })
+      .where(and(eq(payment.id, id), eq(payment.status, "refunded")))
+      .returning({ id: payment.id });
+    return rows.length > 0;
+  }
+
   async applyRefundedInTransaction(
     tx: Database,
     id: string,

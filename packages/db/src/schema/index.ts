@@ -114,6 +114,7 @@ export * from "./legal-entity-onboarding-progress.js";
 export * from "./payouts.js";
 export * from "./payment-refund-reconcile.js";
 export * from "./payment-refund.js";
+export * from "./stripe-refund-watch.js";
 export * from "./kyc.js";
 export * from "./kyc-retention-tombstone.js";
 export * from "./visitor-sale-alerts.js";

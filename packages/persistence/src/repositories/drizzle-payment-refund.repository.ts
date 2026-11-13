@@ -35,9 +35,15 @@ export class DrizzlePaymentRefundRepository implements IPaymentRefundReader, IPa
   }
 
   async recordInTransaction(tx: Database, entry: PaymentRefundEntry): Promise<boolean> {
-    if (!Number.isSafeInteger(entry.amountPence) || entry.amountPence <= 0) {
+    const reversal = entry.source === "refund_reversal";
+    if (
+      !Number.isSafeInteger(entry.amountPence) ||
+      (reversal ? entry.amountPence >= 0 : entry.amountPence <= 0)
+    ) {
       throw new RangeError(
-        `A refund is a whole number of pence above zero, got ${entry.amountPence}`,
+        reversal
+          ? `A refund reversal is a whole number of pence below zero, got ${entry.amountPence}`
+          : `A refund is a whole number of pence above zero, got ${entry.amountPence}`,
       );
     }
     const rows = await tx

@@ -15,6 +15,8 @@ import type { IUnappliedMoneyRecorder } from "../payment/unapplied-money.recorde
 
 import type { IPaymentEligibilityGate } from "@auction/finance-runtime";
 
+import type { IChargeRefundsReader } from "../stripe/stripe-charge-refunds.js";
+
 export type StripePaymentWebhookDeps = {
   transactionRunner: ITransactionRunner;
   paymentWebhookLookup: IPaymentWebhookLookupReader;
@@ -34,6 +36,11 @@ export type StripePaymentWebhookDeps = {
   paymentEligibility: IPaymentEligibilityGate | null;
   /** Where a capture's failed follow-up steps are reported; they never fail the webhook. */
   errorReporter?: IErrorReporter;
+  /**
+   * Stripe's refunds for a charge: what a refund event is measured against (only succeeded
+   * refunds count). Absent where it is not wired; a refund event then fails and is retried.
+   */
+  chargeRefunds?: IChargeRefundsReader;
 };
 
 export type PaymentRowLookup = {

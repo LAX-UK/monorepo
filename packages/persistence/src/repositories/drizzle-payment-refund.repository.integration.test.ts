@@ -54,6 +54,10 @@ describe.skipIf(!HAS_DB)("payment refund record (integration)", () => {
 
   afterAll(async () => {
     await db.execute(sql`
+      delete from payout_line where payment_id in
+        (select p.id from payment p where p.buyer_legal_entity_id = ${entity})`);
+    await db.execute(sql`delete from payout where legal_entity_id = ${entity}`);
+    await db.execute(sql`
       delete from payment_refund where payment_id in
         (select p.id from payment p where p.buyer_legal_entity_id = ${entity})`);
     for (const lotId of lotIds) await db.execute(sql`delete from lot where id = ${lotId}`);
@@ -112,5 +116,56 @@ describe.skipIf(!HAS_DB)("payment refund record (integration)", () => {
       }),
     ).rejects.toThrow("rollback");
     expect((await repo.sumRefundedPence(paymentId)).pence).toBe(0);
+  });
+
+  it("takes a refund back only with a negative refund_reversal row, which the sum includes", async () => {
+    const paymentId = await payment();
+    await record(paymentId, `r-${run}-1`, 2_500);
+    const reverse = (amountPence: number, source: "refund_reversal" | "card_webhook") =>
+      db.transaction((tx) =>
+        repo.recordInTransaction(tx, {
+          paymentId,
+          idempotencyKey: `r-${run}-${source}-${amountPence}`,
+          amountPence,
+          currency: "GBP",
+          source,
+        }),
+      );
+    await expect(reverse(2_500, "refund_reversal")).rejects.toThrow(RangeError);
+    await expect(reverse(-2_500, "card_webhook")).rejects.toThrow(RangeError);
+    expect(await reverse(-2_500, "refund_reversal")).toBe(true);
+    expect(await reverse(-2_500, "refund_reversal")).toBe(false);
+    expect((await repo.sumRefundedPence(paymentId)).pence).toBe(0);
+    // The table holds the same rule, whatever writes to it.
+    await expect(
+      db.execute(sql`
+        insert into payment_refund (payment_id, idempotency_key, amount_pence, currency, source)
+        values (${paymentId}, ${`r-${run}-raw`}, -1, 'GBP', 'staff')`),
+    ).rejects.toThrow();
+  });
+
+  it("the payout-line backfill adds a compensating seller line with its sign, never as a second refund", async () => {
+    const paymentId = await payment();
+    // A £25 refund clawed back in one payout, then given back in the next one when Stripe
+    // reported the refund failed: one line per payout, opposite signs.
+    const [first, second, third] = [randomUUID(), randomUUID(), randomUUID()];
+    for (const payoutId of [first, second, third]) {
+      await db.execute(sql`
+        insert into payout (id, legal_entity_id, period_start, period_end, gross_amount,
+           platform_fee, stripe_fee, net_amount)
+        values (${payoutId}, ${entity}, now() - interval '1 day', now(), 0, 0, 0, 0)`);
+    }
+    await db.execute(sql`
+      insert into payout_line (payout_id, payment_id, amount, kind, source_event_id)
+      values (${first}, ${paymentId}, -25.00, 'refund', ${`bf-${run}-1`}),
+             (${second}, ${paymentId}, 25.00, 'refund', ${`bf-${run}-2`})`);
+    await db.transaction((tx) => repo.lockPaymentInTransaction(tx, paymentId));
+    expect((await repo.sumRefundedPence(paymentId)).pence).toBe(0);
+    // A refund line alone is still copied in as before.
+    await db.execute(sql`
+      insert into payout_line (payout_id, payment_id, amount, kind, source_event_id)
+      values (${third}, ${paymentId}, -10.00, 'refund', ${`bf-${run}-3`})`);
+    await db.transaction((tx) => repo.lockPaymentInTransaction(tx, paymentId));
+    expect((await repo.sumRefundedPence(paymentId)).pence).toBe(1_000);
   });
 });

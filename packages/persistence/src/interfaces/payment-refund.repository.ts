@@ -6,7 +6,9 @@ export type PaymentRefundSource =
   | "group_webhook"
   | "staff"
   | "blocked_capture"
-  | "payout_topup";
+  | "payout_topup"
+  /** A compensating row for a counted refund Stripe later reported failed or cancelled. */
+  | "refund_reversal";
 
 export type PaymentRefundEntry = {
   paymentId: string;
@@ -18,7 +20,10 @@ export type PaymentRefundEntry = {
   idempotencyKey: string;
   /** The Stripe refund id, when one is known. */
   stripeRefundId?: string | null;
-  /** Whole minor units, greater than zero. */
+  /**
+   * Whole minor units, greater than zero; below zero only for `refund_reversal`, the compensating
+   * row of a refund that was counted and then failed.
+   */
   amountPence: number;
   /** ISO 4217 code, any case. */
   currency: string;

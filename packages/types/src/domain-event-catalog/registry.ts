@@ -252,6 +252,7 @@ export const ALL_LIVE_DOMAIN_EVENT_TYPES = [
   "payment.dispute_opened",
   "payment.manual_review_released",
   "payment.refunded",
+  "payment.refund_reversed",
   "payment.requires_manual_review",
   "payment.unapplied_money_received",
   "payment.unapplied_money_resolved",
