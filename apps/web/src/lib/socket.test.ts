@@ -30,7 +30,10 @@ describe("getSocket", () => {
     const { getSocket } = await import("./socket");
     getSocket();
 
-    expect(io).toHaveBeenCalledTimes(1);
+    // The client is fetched on demand, so the connection opens a tick later.
+    await vi.waitFor(() => {
+      expect(io).toHaveBeenCalledTimes(1);
+    });
     const options = io.mock.calls[0]?.[1] as {
       auth: (cb: (data: { token?: string }) => void) => void;
     };
@@ -50,6 +53,9 @@ describe("getSocket", () => {
     const { getSocket } = await import("./socket");
     getSocket();
 
+    await vi.waitFor(() => {
+      expect(io).toHaveBeenCalledTimes(1);
+    });
     const options = io.mock.calls[0]?.[1] as {
       auth: (cb: (data: { token?: string }) => void) => void;
     };
@@ -57,6 +63,56 @@ describe("getSocket", () => {
     options.auth(cb);
     await vi.waitFor(() => {
       expect(cb).toHaveBeenCalledWith({});
+    });
+  });
+
+  describe("after a deploy has removed the client's chunk", () => {
+    const chunkUrl = "https://test.lax.bid/_next/static/chunks/98870.0123abcd.js";
+
+    afterEach(() => {
+      vi.doUnmock("@/lib/socket-connection");
+      vi.unstubAllGlobals();
+      vi.useRealTimers();
+      window.sessionStorage.clear();
+    });
+
+    it("reports a connection error, checks the chunk, and reloads the page once", async () => {
+      vi.useFakeTimers();
+      const chunkError = Object.assign(
+        new Error(`Loading chunk 98870 failed.\n(error: ${chunkUrl})`),
+        {
+          name: "ChunkLoadError",
+          type: "error",
+          request: chunkUrl,
+        },
+      );
+      vi.doMock("@/lib/socket-connection", () => {
+        throw chunkError;
+      });
+      const fetchSpy = vi.fn(async () => new Response(null, { status: 404 }));
+      vi.stubGlobal("fetch", fetchSpy);
+      // jsdom cannot navigate; the reload is recorded in sessionStorage just before it is asked for.
+      const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+
+      const { getSocket } = await import("./socket");
+      const socket = getSocket();
+      const onConnectError = vi.fn();
+      const onReconnectAttempt = vi.fn();
+      socket.on("connect_error", onConnectError);
+      socket.io.on("reconnect_attempt", onReconnectAttempt);
+
+      await vi.advanceTimersByTimeAsync(0);
+      expect(onConnectError).toHaveBeenCalledTimes(1);
+      expect(fetchSpy).not.toHaveBeenCalled();
+
+      // Two more failures (≤ 1.5 s + ≤ 3 s), then the chunk is checked.
+      await vi.advanceTimersByTimeAsync(5000);
+      expect(onReconnectAttempt).toHaveBeenCalledWith(2);
+      expect(onConnectError).toHaveBeenCalledTimes(3);
+      expect(fetchSpy).toHaveBeenCalledWith(chunkUrl, { method: "HEAD", cache: "no-store" });
+      expect(window.sessionStorage.getItem("lax:live-socket-chunk-reload-at")).not.toBeNull();
+      expect(io).not.toHaveBeenCalled();
+      consoleError.mockRestore();
     });
   });
 });
