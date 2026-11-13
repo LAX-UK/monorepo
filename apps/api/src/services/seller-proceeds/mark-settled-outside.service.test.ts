@@ -17,7 +17,8 @@ function facts(soldOnAtg: boolean): StaffLotSellerProceedsFacts {
     settledOutsideAt: null,
     sale: {
       paymentId: PAYMENT,
-      paymentStatus: "captured",
+      // An ATG sale whose LAX checkout was never paid: LAX will not pay the seller for it.
+      paymentStatus: "pending",
       terms: { sellerNetPence: 530_720 } as never,
       invoice: null,
       payout: null,
@@ -101,5 +102,73 @@ describe("MarkSettledOutsideService", () => {
     expect(lockSale).toHaveBeenCalledWith({ paymentId: PAYMENT, sellerTermsId: null });
     expect((error as SellerProceedsError).code).toBe("already_settled_outside");
     expect(publish).not.toHaveBeenCalled();
+  });
+
+  describe("a sale LAX pays, or is about to pay, is never also settled by hand", () => {
+    const withSale = (sale: Partial<NonNullable<StaffLotSellerProceedsFacts["sale"]>>) => {
+      const base = facts(true);
+      // biome-ignore lint/style/noNonNullAssertion: the fixture always has a sale
+      return { ...base, sale: { ...base.sale!, ...sale } };
+    };
+
+    it.each([
+      [
+        "already on a LAX payout",
+        withSale({
+          paymentStatus: "captured",
+          payout: { id: "po-1", status: "scheduled", processedAt: null },
+        }),
+        "sale_on_lax_payout",
+      ],
+      [
+        "already paid out by LAX",
+        withSale({
+          paymentStatus: "captured",
+          payout: { id: "po-1", status: "paid", processedAt: new Date("2026-11-01T10:00:00Z") },
+        }),
+        "sale_on_lax_payout",
+      ],
+      [
+        "captured and waiting for the next payout run",
+        withSale({ paymentStatus: "captured" }),
+        "sale_awaiting_lax_payout",
+      ],
+    ] as const)("refuses (409) a sale %s", async (_name, found, code) => {
+      const { service, publish, lockSale } = setup(found);
+      const error = await service.mark(input).catch((e: unknown) => e);
+      expect(error).toBeInstanceOf(SellerProceedsError);
+      expect((error as SellerProceedsError).status).toBe(409);
+      expect((error as SellerProceedsError).code).toBe(code);
+      expect(lockSale).not.toHaveBeenCalled();
+      expect(publish).not.toHaveBeenCalled();
+    });
+
+    it("refuses a sale captured while the mark waited for the payment's lock", async () => {
+      const { service, publish, lockSale } = setup(
+        facts(true),
+        withSale({ paymentStatus: "captured" }),
+      );
+      const error = await service.mark(input).catch((e: unknown) => e);
+      expect(lockSale).toHaveBeenCalledOnce();
+      expect((error as SellerProceedsError).code).toBe("sale_awaiting_lax_payout");
+      expect(publish).not.toHaveBeenCalled();
+    });
+
+    it("marks a captured sale of LAX's own stock, which no run pays out", async () => {
+      const { service, publish } = setup(
+        withSale({ paymentStatus: "captured", terms: { basis: "lax_owned" } as never }),
+      );
+      await service.mark(input);
+      expect(publish).toHaveBeenCalledOnce();
+    });
+
+    it.each(["pending", "authorized", "refunded"] as const)(
+      "marks a %s sale that is on no payout",
+      async (paymentStatus) => {
+        const { service, publish } = setup(withSale({ paymentStatus }));
+        await service.mark(input);
+        expect(publish).toHaveBeenCalledOnce();
+      },
+    );
   });
 });

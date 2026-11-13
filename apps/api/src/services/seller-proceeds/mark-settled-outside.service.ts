@@ -2,6 +2,7 @@ import { LONDON_TIME_ZONE, dayKey } from "@auction/datetime";
 import type {
   ISignedAgreementWriter,
   IStaffLotSellerProceedsReader,
+  StaffLotSellerProceedsFacts,
 } from "@auction/persistence/interfaces";
 import type { IDomainEventSink } from "../domain-event-sink.js";
 import { SellerProceedsError } from "./seller-proceeds-errors.js";
@@ -52,11 +53,15 @@ export class MarkSettledOutsideService {
       );
     }
     if (facts.settledOutsideAt) throw alreadyMarked(facts.settledOutsideAt);
+    refuseIfPaidByLax(facts.sale);
     const paymentId = facts.sale.paymentId;
     await this.deps.unitOfWork(async ({ facts: inTx, locks, events }) => {
+      // The payout run takes the same payment row, so under this lock neither can pay the sale
+      // while the other is deciding.
       await locks.lockSale({ paymentId, sellerTermsId: null });
       const now = await inTx.forLot(input.lotId);
       if (now?.settledOutsideAt) throw alreadyMarked(now.settledOutsideAt);
+      if (now?.sale) refuseIfPaidByLax(now.sale);
       await events.publish({
         aggregateType: "lot",
         aggregateId: input.lotId,
@@ -71,6 +76,27 @@ export class MarkSettledOutsideService {
         },
       });
     });
+  }
+}
+
+/**
+ * A sale LAX pays, or is about to pay, is never also settled by hand: one already on a LAX payout,
+ * or captured and waiting for the next payout run (which pays it unless it is LAX's own stock).
+ */
+function refuseIfPaidByLax(sale: NonNullable<StaffLotSellerProceedsFacts["sale"]>): void {
+  if (sale.payout) {
+    throw new SellerProceedsError(
+      "sale_on_lax_payout",
+      409,
+      "This sale is already on a LAX payout, so it cannot be settled outside LAX.",
+    );
+  }
+  if (sale.paymentStatus === "captured" && sale.terms?.basis !== "lax_owned") {
+    throw new SellerProceedsError(
+      "sale_awaiting_lax_payout",
+      409,
+      "This sale is paid through LAX and waiting for the next payout run, so it cannot be settled outside LAX.",
+    );
   }
 }
 

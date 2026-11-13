@@ -10,6 +10,8 @@ export type SellerProceedsErrorCode =
   | "lot_changed"
   | "no_signed_document"
   | "already_settled_outside"
+  | "sale_on_lax_payout"
+  | "sale_awaiting_lax_payout"
   | "replace_needs_administrator"
   | "document_not_ready"
   | "not_sold_on_atg"
