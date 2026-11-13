@@ -203,14 +203,44 @@ actually use. Lenis is not touched.
 | `better-auth` client (about 10 KB with `@better-fetch/fetch` and `nanostores`) | on the lot page, for the "send verification email" buttons | fetched when one of those buttons is pressed (`send-verification-email.lazy.ts`). The button shows its busy state as before while the code loads, and a failed fetch reads as a failed send |
 | `@date-fns/tz`, `@radix-ui/react-slot`, `better-auth`, `cmdk`, `date-fns`, `embla-carousel-react`, `jose` | listed in `apps/web/package.json` but never imported by the app | removed from the app's dependencies. The workspace packages that use them still declare them, and the lockfile resolves the same versions |
 
-Zod is still on home, the sales list, the sale page and the lot page. There, live-bid events
-(`lot-realtime-events`), the lot and sale response schemas and the newsletter form use it. Those
-go with the socket step.
+Zod was still on home, the sales list, the sale page and the lot page then (live-bid events, the
+lot and sale response schemas and the newsletter form); see the next section.
 
 Measured on the CI build (Sentry on, gzip, start-up set): the frame of a content page went from
 362.6 to 349.5 KB, about from 370.5 to 357.4 KB, terms from 367.4 to 354.4 KB and the lot page from
 536.6 to 524.7 KB. Home (434.2), the sales list (476.3) and the sale page (539.2) are unchanged: the
 frame is smaller, but their own page scripts now carry zod. The lot group's budget is now 578 KB.
+
+## Zod, date-fns and Sentry tracing off public first load
+
+The rest of the library work: no public Bid page loads Zod or date-fns in its first scripts, and
+public pages no longer run browser performance tracing. Lenis is unchanged.
+
+| What | Was | Now |
+| --- | --- | --- |
+| Public form checks (newsletter, search box, press filters, contact, private sales enquiry) | Zod and `@hookform/resolvers` in the page scripts | each form's schema is in a `*.validation.ts` module behind `lazyResolver` (`lib/forms/lazy-resolver.ts`): fetched when a field first takes focus, or on the first check. The form, its messages and its focus handling are unchanged. `useActionForm` takes a `resolver` instead of a schema |
+| `publicFormErrorMap` | imported Zod for `z.ZodIssueCode` | uses the same codes as strings and only a type import |
+| Live bid updates (`parseBidUpdateFromRealtimeRaw`) | the Zod union of every realtime event | a hand-written check in `@auction/validators` (`lot-bid-update.ts`), held to the Zod contract by equivalence tests on crafted and random payloads |
+| Bid rows (bid writer, bid history refetch) | `parse/index.ts`, which builds every lot, sale and submission schema | `parseBidRow` (`lib/data/http/bid-row.ts`), plain code; `bidSchema` now wraps it. Equivalence tests against the previous schema |
+| Lot snapshot after a socket reconnect | the lot schema in the page scripts | the lot schema is fetched alongside the request; a failed fetch reads as a failed refetch, as any other failure did |
+| Buyer's premium | `buyer-premium.ts` built the tier schema at load | the schema is in `buyer-premium-schema.ts`; the policies have no Zod |
+| `@auction/datetime` day helpers | `day.ts` pulled date-fns and `@date-fns/tz` into every page for `addCalendarDays` | `startOfDay`, `endOfDay` and `addCalendarDays` are in `day-zoned.ts`; the formatters import `day.ts` only |
+| Zone offsets | `tzOffset` from `@date-fns/tz` | `zoneOffsetMinutes` (`zone-offset.ts`), a port of the same function checked against it for every zone the runtime knows. `public-formatters-no-date-fns.test.ts` keeps date-fns out of the formatters' imports |
+| Browser tracing | on every page | only when the page first loaded is in the account (`(client)`), sign-in (`(task)`) or staff (`admin`) area (`lib/observability/sentry-client-options.ts`). Public pages get no tracing integration and no sample rates, so they send no transactions; error reporting is the same on every page. After a client navigation from an account page to a public one, the sampler drops the public page's spans |
+| Sentry debug code | stripped through the deprecated `disableLogger` | `webpack.treeshake.removeDebugLogging` (same `__SENTRY_DEBUG__ = false`) |
+
+The Sentry bytes do not change. The debug code was already stripped, and the tracing code stays in
+the shared bundle: `@sentry/nextjs` imports its tracing integration statically, and
+`removeTracing` would take tracing away from the account and staff areas too.
+
+Measured locally (production build, Sentry on, gzip, start-up set), before and after: sale page
+539.3 to 517.6 KB, lot page 524.7 to 505.0, contact 393.0 to 376.5, artist profile 491.3 to 475.3,
+search 492.4 to 476.8, private sales 412.0 to 396.8, sales list 476.3 to 462.3, press 409.5 to
+395.8, home 434.1 to 422.2. Pages that did not carry Zod grew by 0.2 to 1.7 KB, and account pages
+by 2.6 to 6 KB: webpack regrouped shared chunks once those modules stopped being shared with
+public pages, and a few (kit buttons, `client-routes`, `sale.schema`) now sit in two start-up files.
+The budgets are now public 465, listing 525, sale 570 and lot 556 KB; the account and checkout
+budgets are not raised.
 
 ## Enforcement
 
