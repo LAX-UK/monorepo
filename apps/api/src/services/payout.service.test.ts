@@ -130,6 +130,14 @@ describe("PayoutService.previewPending", () => {
     });
     const svc = serviceFor(repo);
     await expect(svc.previewPending(ENTITY_ID)).resolves.toEqual({
+      sales: [],
+      totals: {
+        hammerPence: 0,
+        commissionPence: 0,
+        commissionVatPence: 0,
+        refundChargePence: 0,
+        netPence: 0,
+      },
       pendingGross: "0.00",
       pendingPlatformFee: "0.00",
       pendingNet: "0.00",
@@ -174,6 +182,67 @@ describe("PayoutService.previewPending", () => {
     expect(preview.pendingPlatformFee).toBe("67.53");
     expect(preview.pendingNet).toBe("1282.97");
     expect(preview.paymentCount).toBe(3);
+  });
+});
+
+describe("PayoutService.previewPending sale lines", () => {
+  it("lists every sale with its own figures, held ones with their reason, and totals that are the lines added up", async () => {
+    const repo = makeRepo({
+      findUnlinkedCapturedPayments: vi.fn().mockResolvedValue(
+        pending([
+          { amount: "100.00", platformFee: "5.00" },
+          { amount: "250.50", platformFee: "12.53" },
+          { id: "held", sellerTerms: null },
+        ]),
+      ),
+    });
+    const saleLabels = {
+      saleLabels: vi.fn().mockResolvedValue([
+        {
+          lotId: "lot-p1",
+          lotNumber: 4,
+          lotTitle: "Harbour at Dusk",
+          agreement: {
+            id: "agr-1",
+            reference: "C-1042",
+            submissionId: "sub-1",
+            signedAt: new Date("2026-10-03T10:00:00Z"),
+            source: "online",
+          },
+        },
+      ]),
+    };
+    const svc = new PayoutService(
+      repo,
+      { runInTransaction: (fn) => fn({} as never) },
+      mockDomainEventSink(vi.fn().mockResolvedValue(undefined)),
+      undefined,
+      () => repo,
+      undefined,
+      undefined,
+      undefined,
+      () => storedSellerTerms(),
+      saleLabels,
+    );
+    const preview = await svc.previewPending(ENTITY_ID);
+    const sales = preview.sales ?? [];
+    expect(sales.map((sale) => sale.kind)).toEqual(["ready", "ready", "held"]);
+    expect(sales[0]).toMatchObject({
+      lotNumber: 4,
+      lotTitle: "Harbour at Dusk",
+      agreement: { reference: "C-1042" },
+    });
+    expect(sales[2]).toMatchObject({ kind: "held", reason: "legacy_invoice", lotNumber: null });
+    const ready = sales.flatMap((sale) => (sale.kind === "ready" ? [sale] : []));
+    expect(preview.totals).toEqual({
+      hammerPence: ready.reduce((sum, sale) => sum + sale.hammerPence, 0),
+      commissionPence: ready.reduce((sum, sale) => sum + sale.commissionPence, 0),
+      commissionVatPence: ready.reduce((sum, sale) => sum + sale.commissionVatPence, 0),
+      refundChargePence: 0,
+      netPence: ready.reduce((sum, sale) => sum + sale.netPence, 0),
+    });
+    // The pounds the run pays agree with the lines to the penny.
+    expect(Math.round(Number(preview.pendingNet) * 100)).toBe(preview.totals?.netPence);
   });
 });
 

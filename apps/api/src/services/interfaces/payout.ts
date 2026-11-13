@@ -10,7 +10,56 @@ import type {
 import type { InitiateTransferResult } from "./stripe-connect.js";
 
 /** Aggregate row used by the seller "next payout" tile. */
+/** How a sale is named on the preview: its lot and the agreement its rate comes from. */
+export type PendingPreviewSaleLabel = {
+  lotNumber: number | null;
+  lotTitle: string | null;
+  agreement: {
+    reference: string;
+    submissionId: string;
+    signedAt: Date | null;
+    source: "online" | "recorded";
+  } | null;
+};
+
+/** One waiting sale on the settlement preview, every figure from its snapshot, in pence. */
+export type PendingPreviewSale = PendingPreviewSaleLabel &
+  (
+    | {
+        kind: "ready";
+        paymentId: string;
+        lotId: string;
+        hammerPence: number;
+        commissionBps: number;
+        commissionPence: number;
+        commissionVatTreatment: "standard" | "not_registered";
+        commissionVatBps: number;
+        commissionVatPence: number;
+        refundChargePence: number;
+        netPence: number;
+      }
+    | {
+        kind: "held";
+        paymentId: string;
+        lotId: string | null;
+        reason: import("@auction/domain").SellerTermsHeldReason;
+        hammerPence: number | null;
+      }
+  );
+
+/** The preview's totals: the ready lines added up, nothing else. */
+export type PendingPreviewTotals = {
+  hammerPence: number;
+  commissionPence: number;
+  commissionVatPence: number;
+  refundChargePence: number;
+  netPence: number;
+};
+
 export type PendingPayoutPreview = {
+  /** Every waiting sale, ready or held, in capture order. */
+  sales?: PendingPreviewSale[];
+  totals?: PendingPreviewTotals;
   /** Sum of payments captured but not yet allocated to a payout. */
   pendingGross: string;
   pendingPlatformFee: string;

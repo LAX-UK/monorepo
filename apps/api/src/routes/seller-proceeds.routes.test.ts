@@ -9,6 +9,28 @@ import { createAdminSellerProceedsRoutes } from "./seller-proceeds.js";
 
 const LOT = "11111111-1111-4111-8111-111111111111";
 const UPLOAD = "22222222-2222-4222-8222-222222222222";
+const PAYOUT = "33333333-3333-4333-8333-333333333333";
+const OLD_RULE_ROW = {
+  lineId: "line-1",
+  payoutId: PAYOUT,
+  payoutCreatedAt: new Date("2026-09-30T09:00:00Z"),
+  paidAt: new Date("2026-10-01T09:00:00Z"),
+  legalEntityId: "seller-1",
+  sellerName: "Northbank Gallery Ltd",
+  lotId: "lot-1",
+  lotNumber: 12,
+  lotTitle: "Harbour at Dusk",
+  paymentAmount: "1250.00",
+  platformFee: "62.50",
+  hammerPence: 100_000,
+  agreement: {
+    reference: "C-1042",
+    submissionId: "sub-1",
+    signedAt: new Date("2026-08-01T10:00:00Z"),
+    source: "online",
+    commissionPercent: "12.00",
+  },
+};
 
 const BODY = {
   commissionPercent: "12",
@@ -28,8 +50,14 @@ function build(who: Who) {
       sellerNetPence: 530_720,
     }),
   };
+  const payoutSales = {
+    forPayout: vi.fn().mockResolvedValue({ payout: { id: PAYOUT }, sales: [], heldForSeller: [] }),
+    heldSales: vi.fn().mockResolvedValue([]),
+    oldRuleSales: vi.fn().mockResolvedValue({ rows: [OLD_RULE_ROW], total: 1 }),
+  };
+  const vatSetting = { read: vi.fn().mockResolvedValue("standard") };
   const container = {
-    sellerProceeds: { reader, recordAgreement },
+    sellerProceeds: { reader, recordAgreement, payoutSales, vatSetting },
     userSuspensionChecker: { isSuspended: vi.fn().mockResolvedValue(false) },
     admin: { stepUp: { isRecent: vi.fn().mockResolvedValue(who?.recent ?? true) } },
   } as unknown as ContainerSellerProceedsRoutesSlice;
@@ -46,7 +74,7 @@ function build(who: Who) {
   };
   const app = new Hono();
   app.route("/admin/seller-proceeds", createAdminSellerProceedsRoutes(container, authenticator));
-  return { app, reader, recordAgreement };
+  return { app, reader, recordAgreement, payoutSales };
 }
 
 const get = (app: Hono, path: string) => app.request(`http://test/admin/seller-proceeds${path}`);
@@ -151,6 +179,46 @@ describe("seller proceeds routes", () => {
         code: "invalid_agreement",
         fields: { document: SIGNED_AGREEMENT_MESSAGES.document },
       });
+    });
+  });
+
+  describe("payout lines, held sales and the old-rule review", () => {
+    it.each([
+      ["administrator", 200],
+      ["finance", 200],
+      ["sales_manager", 403],
+      ["cataloguer", 403],
+    ])("%s gets %i", async (role, status) => {
+      const { app } = build(staff(role));
+      expect((await get(app, `/payouts/${PAYOUT}`)).status).toBe(status);
+      expect((await get(app, "/held-sales")).status).toBe(status);
+      expect((await get(app, "/old-rule")).status).toBe(status);
+    });
+
+    it("answers not found for an unknown payout", async () => {
+      const { app, payoutSales } = build(staff("finance"));
+      payoutSales.forPayout.mockResolvedValue(null);
+      expect((await get(app, `/payouts/${PAYOUT}`)).status).toBe(404);
+    });
+
+    it("pages the old-rule review and sets each sale beside what its agreement gives", async () => {
+      const { app, payoutSales } = build(staff("finance"));
+      const res = await get(app, "/old-rule?limit=20&offset=40");
+      expect(payoutSales.oldRuleSales).toHaveBeenCalledWith({ limit: 20, offset: 40 });
+      const body = (await res.json()) as {
+        data: { paidNetPence: number; agreementGives: { netPence: number } }[];
+        meta: unknown;
+      };
+      expect(body.meta).toEqual({ total: 1, limit: 20, offset: 40 });
+      expect(body.data[0]).toMatchObject({
+        paidNetPence: 118_750,
+        agreementGives: { kind: "priced", netPence: 85_600 },
+      });
+    });
+
+    it("refuses an out-of-range page size", async () => {
+      const { app } = build(staff("finance"));
+      expect((await get(app, "/old-rule?limit=1000")).status).toBe(400);
     });
   });
 });

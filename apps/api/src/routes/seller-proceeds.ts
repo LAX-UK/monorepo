@@ -6,16 +6,25 @@ import {
 } from "@auction/types";
 import { lotIdOnlyParamSchema, recordSignedAgreementBodySchema } from "@auction/validators";
 import { type Context, Hono } from "hono";
+import { z } from "zod";
 import type { ContainerSellerProceedsRoutesSlice } from "../container/container-slices.js";
 import { zValidator } from "../lib/z-validator.js";
 import { createRequireAuth } from "../middleware/require-auth.js";
 import {
+  requirePayoutRead,
   requireSellerAgreementRecord,
   requireSellerProceedsRead,
 } from "../middleware/require-capability.js";
 import { createRequireRecentStaffAuth } from "../middleware/require-recent-staff-auth.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
+import { oldRuleReviewRow } from "../services/seller-proceeds/old-rule-review.js";
 import { SellerProceedsError } from "../services/seller-proceeds/seller-proceeds-errors.js";
+
+const payoutIdParamSchema = z.object({ payoutId: z.string().uuid() });
+const pageQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(200).default(50),
+  offset: z.coerce.number().int().min(0).default(0),
+});
 
 /** Runs one step and answers with its data, or with the refusal's code, words and field errors. */
 async function respond<T>(c: Context, step: () => Promise<T>) {
@@ -93,6 +102,46 @@ export function createAdminSellerProceedsRoutes(
           },
         }),
       );
+    },
+  );
+
+  /** GET /admin/seller-proceeds/payouts/:payoutId: each sale on the payout, and those held. */
+  r.get(
+    "/payouts/:payoutId",
+    requireAuth,
+    requirePayoutRead,
+    zValidator("param", payoutIdParamSchema),
+    async (c) => {
+      const found = await sellerProceeds.payoutSales.forPayout(c.req.valid("param").payoutId);
+      if (!found) return c.json({ error: "This payout no longer exists.", code: "not_found" }, 404);
+      return c.json({ data: found });
+    },
+  );
+
+  /** GET /admin/seller-proceeds/held-sales: every paid sale waiting on a missing fact. */
+  r.get("/held-sales", requireAuth, requirePayoutRead, async (c) => {
+    return c.json({ data: await sellerProceeds.payoutSales.heldSales(500) });
+  });
+
+  /**
+   * GET /admin/seller-proceeds/old-rule: sales paid before payouts followed the signed agreement,
+   * each beside what the agreement gives. Read only.
+   */
+  r.get(
+    "/old-rule",
+    requireAuth,
+    requirePayoutRead,
+    zValidator("query", pageQuerySchema),
+    async (c) => {
+      const page = c.req.valid("query");
+      const [{ rows, total }, vat] = await Promise.all([
+        sellerProceeds.payoutSales.oldRuleSales(page),
+        sellerProceeds.vatSetting.read(),
+      ]);
+      return c.json({
+        data: rows.map((row) => oldRuleReviewRow(row, vat)),
+        meta: { total, limit: page.limit, offset: page.offset },
+      });
     },
   );
 

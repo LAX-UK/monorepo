@@ -43,6 +43,8 @@ export type PayoutServiceDeps = {
   problemNotifier?: IPayoutProblemNotifier | undefined;
   /** Where each sale stands for a payout run: paid from its seller terms, held, or LAX's own. */
   sellerTermsForTx: (tx: Database) => ISettlementSellerTerms;
+  /** Names each sale's lot and agreement on the settlement preview; left out where unused. */
+  saleLabels?: import("@auction/persistence/interfaces").IStaffSaleLabelsReader | undefined;
 };
 
 export const DEFAULT_CURRENCY = "GBP";

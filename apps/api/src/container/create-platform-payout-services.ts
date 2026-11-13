@@ -2,6 +2,7 @@ import type { Database } from "@auction/db";
 import {
   DrizzleInvoiceDetailsRepository,
   DrizzlePrivateSaleDealPayoutStore,
+  DrizzleStaffLotSellerProceedsReader,
 } from "@auction/persistence/repositories";
 import type { Env } from "../env.js";
 import { createBaseLogger } from "../lib/logger.js";
@@ -81,6 +82,8 @@ export function createPlatformPayoutServices(
       core.notificationFactory,
     ),
     new DrizzlePrivateSaleDealPayoutStore(input.db),
+    undefined,
+    new DrizzleStaffLotSellerProceedsReader(input.db),
   );
   const payoutService: IPayoutService = payoutServiceInstance;
   const payoutSellerService: IPayoutSellerService = payoutServiceInstance;
