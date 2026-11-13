@@ -11,6 +11,7 @@ import {
   buildPayment,
   compareWithProviderTotals,
   expectedTotals,
+  isLockedPeriodReason,
 } from "@auction/accounting-domain";
 import type { AccountingPorts } from "../adapter/index.js";
 import { ZOHO_BOOKS_REJECTIONS as R } from "../adapter/rejections.js";
@@ -639,7 +640,9 @@ export function runAccountingContract(
         const s = await withContact();
         const doc = invoice(SHOP, "inv-locked", [NO_VAT_GOODS]);
         s.faults.inject("locked_period");
-        expect((await s.settle(s.ports.invoices.issueInvoice(doc))).status).toBe("rejected");
+        const out = await s.settle(s.ports.invoices.issueInvoice(doc));
+        expect(out.status).toBe("rejected");
+        if (out.status === "rejected") expect(isLockedPeriodReason(out.reason)).toBe(true);
         await notIssued(s, SHOP, "invoice", doc.reference);
       });
 

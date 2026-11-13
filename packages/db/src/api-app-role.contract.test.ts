@@ -2,7 +2,7 @@ import pg from "pg";
 import { describe, expect, it } from "vitest";
 import { readUserReadCutoverFromEnv } from "./applied-user-read-cutover.js";
 import {
-  API_ACCOUNTING_READ_TABLES,
+  API_ACCOUNTING_REQUEUE_COLUMNS,
   API_ACCOUNTING_SETTING_TABLES,
   API_DENY_TABLES,
   API_PRODUCT_PROFILE_TABLES,
@@ -76,11 +76,25 @@ describe.skipIf(!API_URL)("api_app role contract", { timeout: 60_000 }, () => {
     });
   });
 
-  it("only reads accounting documents, their history and the source switch", async () => {
+  it("reads accounting documents, requeues one by its state columns, adds to its history, and only reads the switch", async () => {
     await withApiClient(async (client) => {
       const privileges = ["SELECT", "INSERT", "UPDATE", "DELETE"];
-      const documents = await readTablePrivileges(client, API_ACCOUNTING_READ_TABLES, privileges);
+      const documents = await readTablePrivileges(client, ["accounting_document"], privileges);
+      // UPDATE is by column (below), so the table-level check sees SELECT alone.
       expectTablePrivileges(documents, (row) => row.privilege === "SELECT");
+      const columns = await client.query<{ column_name: string; allowed: boolean }>(
+        `select column_name::text,
+                has_column_privilege(current_user, 'public.accounting_document', column_name, 'UPDATE') as allowed
+           from information_schema.columns
+          where table_schema = 'public' and table_name = 'accounting_document'`,
+      );
+      const updatable = columns.rows.filter((row) => row.allowed).map((row) => row.column_name);
+      expect(updatable.sort()).toEqual([...API_ACCOUNTING_REQUEUE_COLUMNS].sort());
+      for (const fixed of ["payload", "net_pence", "gross_pence", "lax_reference", "provider"]) {
+        expect(updatable, fixed).not.toContain(fixed);
+      }
+      const history = await readTablePrivileges(client, ["accounting_document_event"], privileges);
+      expectTablePrivileges(history, (row) => ["SELECT", "INSERT"].includes(row.privilege));
       const settings = await readTablePrivileges(client, API_ACCOUNTING_SETTING_TABLES, privileges);
       expectTablePrivileges(settings, (row) => row.privilege === "SELECT");
       const column = await client.query<{ allowed: boolean }>(

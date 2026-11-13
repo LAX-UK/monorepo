@@ -12,6 +12,7 @@ import type {
   LookupOutcome,
   Mode,
   Product,
+  QueueTab,
   Result,
   Source,
   SwitchCode,
@@ -96,7 +97,8 @@ export type DocumentTransition =
     }
   | { readonly action: "apply_lookup"; readonly outcome: LookupOutcome }
   | { readonly action: "escalate"; readonly reason: string }
-  | { readonly action: "requeue" }
+  /** `requestedBy` is the staff user who asked, kept in the history row; absent for the sender's own retries. */
+  | { readonly action: "requeue"; readonly requestedBy?: string }
   | { readonly action: "cancel" };
 
 /**
@@ -198,4 +200,50 @@ export interface IBidAccountingFactsReader {
   invoiceRaised(invoiceId: string): Promise<FactsRead<BidInvoiceFacts>>;
   paymentCaptured(paymentId: string, capturedAt: Date): Promise<FactsRead<BidPaymentFacts>>;
   paymentRefunded(paymentId: string): Promise<FactsRead<BidRefundsFacts>>;
+}
+
+export interface AccountingQueueQuery {
+  readonly tab: QueueTab;
+  /** One company's books, or both when null. */
+  readonly legalEntity: LegalEntity | null;
+  readonly limit: number;
+  readonly offset: number;
+}
+
+export interface AccountingQueuePage {
+  /** The tab's documents under the filter, oldest change first (Issued: newest first). */
+  readonly documents: readonly StoredAccountingDocument[];
+  /** Rows the domain would not read back; counted in the totals, never shown as documents. */
+  readonly unreadable: readonly string[];
+  /** Documents in the chosen tab under the filter. */
+  readonly total: number;
+  /** Documents in each tab under the filter. */
+  readonly counts: Readonly<Record<QueueTab, number>>;
+}
+
+/**
+ * What staff see of the queue (Finance › Accounting): one tab at a time, per company or both.
+ * The tabs follow `queueTabFor` in the domain; cancelled documents are in none.
+ */
+export interface IAccountingDocumentBrowser {
+  list(query: AccountingQueueQuery): Promise<AccountingQueuePage>;
+  findById(id: string): Promise<Result<StoredAccountingDocument | null, StoredDocumentCode>>;
+}
+
+export interface QueueAge {
+  readonly count: number;
+  /** When the longest-waiting one last changed; null when there are none. */
+  readonly oldestSince: Date | null;
+}
+
+export interface AccountingAttention {
+  /** Documents a person must look at (the Needs a person tab). */
+  readonly needsPerson: QueueAge;
+  /** Documents queued for Books and not yet claimed (`pending`), by target mode the sender serves. */
+  readonly pending: QueueAge;
+}
+
+/** What the accounting watch checks: how long work has been waiting for a person or the sender. */
+export interface IAccountingAttentionReader {
+  read(pendingModes: readonly TargetMode[]): Promise<AccountingAttention>;
 }

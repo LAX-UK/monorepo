@@ -1,4 +1,5 @@
 export * from "./allocation.js";
+export * from "./attention.js";
 export * from "./dates.js";
 export * from "./document.js";
 export * from "./lifecycle.js";

@@ -79,6 +79,8 @@ export function transitionDetail(
     }
     case "escalate":
       return { reason: transition.reason };
+    case "requeue":
+      return transition.requestedBy === undefined ? {} : { requestedBy: transition.requestedBy };
     default:
       return {};
   }
