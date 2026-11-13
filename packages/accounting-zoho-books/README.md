@@ -85,6 +85,8 @@ organisation exists) is refused with a clear reason.
 | Dependencies | `adapter/resolve.ts` | A contact or invoice we refer to is found by reference in the document's organisation. Missing is a rejection; not confirmable is `unknown`. |
 | Totals | `adapter/kinds.ts` | Books' sub total, tax and total are read back as whole pence (a fraction of a penny is `unknown`). The domain compares them with ours; a difference goes to review. |
 
+| Stored copy (PDF) | `adapter/pdf.ts`, `adapter/dry-run.ts`, `adapter/rehearsal-pdf.ts` | `pdfs.fetchPdf(document, issued)` gives the PDF of an issued invoice or credit note so LAX keeps its own copy (buyers download that copy, never a Books link). The dry run answers with a one-page PDF that says it is a rehearsal and carries only the reference and totals. The Books adapter answers `zoho_books_pdf_not_built` until the client can read bytes (the PDF endpoint is not JSON); it is built with the test-organisation step. Contract: `runDocumentPdfContract`, run against the fake and the dry run. |
+
 Every reason the adapter itself refuses with is in `ZOHO_BOOKS_REJECTIONS` (`adapter/rejections.ts`).
 
 `@auction/accounting-zoho-books/testing` adds `InMemoryAccounting` (the fake), `SimulatedBooks` (Books at the

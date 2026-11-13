@@ -262,6 +262,24 @@ Zoho Books documents also show on Failed jobs but are not counted here: the acco
 
 **Set-up.** Add a Sentry issue alert on the worker project for the message `failed_jobs_growing` routed to on-call. Add `failed-jobs-watch` to `SENTRY_MONITOR_SLUGS` and create the cron monitor (daily, 08:00 Europe/London, about 30 minutes margin); a missed check-in means the watch stopped. Without the entry the job runs unmonitored. The job has no heartbeat, like the alert digest: a daily job would fail a freshness check 23 hours a day.
 
+## Bid invoice late for Books (`accounting_bid_invoice_delayed`)
+
+**What it means.** A buyer's Bid invoice was queued for Zoho Books more than 30 minutes ago and is
+still not issued with LAX's copy of its PDF stored. The buyer's invoice card on their purchase now
+reads "This is taking longer than usual. Our team has been told. Your payment is not affected." The
+accounting watch (cron `accounting-watch`, every 15 minutes) raises it at most once a run, with
+`count`, `oldestSince`, the Books `modes` and the `page` (Finance › Accounting).
+
+**What to do.** Open Finance › Accounting. A document in **Needs a person** says why (a totals
+difference reads "Books worked out £…. The totals must match before it can be issued."); one in
+**Waiting** for long means the sender or Books is stuck (see `accounting_sender_missed`). An invoice
+issued in Books whose PDF could not be fetched shows as issued: the worker fetches it again every
+tick (`accounting_copy_unavailable` in the logs names the document and the reason). Paying is never
+blocked by any of this.
+
+**Set-up.** Add a Sentry issue alert on the worker project for the message
+`accounting_bid_invoice_delayed`, routed to finance on-call.
+
 ## Related
 
 - [Scale monitoring](./scale-monitoring.md)
