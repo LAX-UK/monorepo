@@ -19,6 +19,7 @@ import { expectZohoBooksConnectionGrants } from "./role-contract/zoho-books-conn
 import { buildPgConnectionConfig } from "./ssl.js";
 
 const API_URL = process.env.DATABASE_URL_API ?? process.env.API_APP_DATABASE_URL;
+const OWNER_URL = process.env.DATABASE_URL_OWNER;
 const { Client } = pg;
 
 async function withApiClient<T>(fn: (client: pg.Client) => Promise<T>): Promise<T> {
@@ -29,6 +30,65 @@ async function withApiClient<T>(fn: (client: pg.Client) => Promise<T>): Promise<
     return await fn(client);
   } finally {
     await client.end();
+  }
+}
+
+/** Run one statement in a savepoint; returns the SQLSTATE it was refused with, if any. */
+async function probe(
+  client: pg.Client,
+  text: string,
+  values: unknown[],
+): Promise<string | undefined> {
+  await client.query("SAVEPOINT probe");
+  try {
+    await client.query(text, values);
+    await client.query("RELEASE SAVEPOINT probe");
+    return undefined;
+  } catch (error) {
+    await client.query("ROLLBACK TO SAVEPOINT probe");
+    return (error as { code?: string }).code;
+  }
+}
+
+/**
+ * As the owner, add a refused document and one the provider issued (the API role cannot insert
+ * documents), hand their ids to `fn`, and remove them afterwards. `fn` must leave no history.
+ */
+async function withOwnerDocuments<T>(
+  fn: (ids: { failed: string; issued: string }) => Promise<T>,
+): Promise<T> {
+  const owner = new Client(buildPgConnectionConfig(OWNER_URL ?? ""));
+  await owner.connect();
+  const suffix = `contract-${process.pid}-${Date.now()}`;
+  const insert = async (
+    reference: string,
+    state: "failed" | "issued",
+    lastErrorClass: string | null,
+    providerId: string | null,
+  ) => {
+    const result = await owner.query<{ id: string }>(
+      `insert into accounting_document (product, legal_entity, kind, lax_reference,
+         source_event_ref, payload, net_pence, vat_pence, gross_pence, provider, target_provider,
+         target_mode, attempts, state, last_error_class, provider_id, provider_number)
+       values ('bid', 'london_auction_xchange', 'invoice', $1, 'evt', '{}', 100, 20, 120,
+         'books', 'books', 'dry_run', 1, $2, $3, $4::text, case when $4::text is null then null else 'INV-1' end)
+       returning id`,
+      [reference, state, lastErrorClass, providerId],
+    );
+    const id = result.rows[0]?.id as string;
+    ids.push(id);
+    return id;
+  };
+  const ids: string[] = [];
+  try {
+    const failed = await insert(`LAX-BID-INV-f-${suffix}`, "failed", "contract_refused", null);
+    const issued = await insert(`LAX-BID-INV-i-${suffix}`, "issued", null, "1");
+    return await fn({ failed, issued });
+  } finally {
+    if (ids.length > 0) {
+      await owner.query("delete from accounting_document where id = any($1::uuid[])", [ids]);
+    }
+    await owner.end();
   }
 }
 
@@ -103,6 +163,97 @@ describe.skipIf(!API_URL)("api_app role contract", { timeout: 60_000 }, () => {
       expect(column.rows[0]).toEqual({ allowed: false });
     });
   });
+
+  it.skipIf(!OWNER_URL)(
+    "can only requeue a document and record who asked: never forge an outcome, a Books id or history",
+    async () => {
+      await withOwnerDocuments(async ({ failed, issued }) => {
+        await withApiClient(async (client) => {
+          await client.query("BEGIN");
+          try {
+            const forbidden: [string, string, unknown[]][] = [
+              [
+                "forge an issued outcome with a Books id",
+                `update accounting_document set state = 'issued', provider_id = 'ATTACKER-9',
+                   provider_number = 'INV-FORGED', lease_token = null where id = $1`,
+                [failed],
+              ],
+              [
+                "set a Books document id while requeueing",
+                `update accounting_document set state = 'pending', provider_id = '123',
+                   provider_number = 'INV-1' where id = $1`,
+                [failed],
+              ],
+              [
+                "reset the attempts",
+                `update accounting_document set state = 'pending', attempts = 0 where id = $1`,
+                [failed],
+              ],
+              [
+                "rewrite the last error",
+                `update accounting_document set state = 'pending', last_error_class = null where id = $1`,
+                [failed],
+              ],
+              [
+                "move to any state but pending",
+                `update accounting_document set state = 'cancelled' where id = $1`,
+                [failed],
+              ],
+              [
+                "requeue a document the provider already issued",
+                `update accounting_document set state = 'pending', provider_id = null,
+                   provider_number = null, pdf_ref = null where id = $1`,
+                [issued],
+              ],
+              [
+                "add a history row of another kind",
+                `insert into accounting_document_event
+                   (document_id, action, from_state, to_state, attempts, detail, occurred_at)
+                 values ($1, 'complete_sending', 'sending', 'issued', 1, '{"requestedBy":"not-real"}', now())`,
+                [failed],
+              ],
+              [
+                "add a requeue row for a document that was not requeued",
+                `insert into accounting_document_event
+                   (document_id, action, from_state, to_state, attempts, detail, occurred_at)
+                 values ($1, 'requeue', 'failed', 'pending', 1, '{"requestedBy":"staff-1"}', now())`,
+                [failed],
+              ],
+            ];
+            for (const [what, text, values] of forbidden) {
+              expect(await probe(client, text, values), what).toBe("42501");
+            }
+
+            // The real requeue, as the persistence layer writes it, and its history row.
+            const requeue = `update accounting_document set state = 'pending', attempts = 1,
+                lease_token = null, lease_expires_at = null, settles_at = null, review_lookup = null,
+                needs_review_reason = null, provider_id = null, provider_number = null, pdf_ref = null,
+                mismatch_field = null, mismatch_difference_pence = null,
+                last_error_class = 'contract_refused', updated_at = now()
+              where id = $1`;
+            expect(await probe(client, requeue, [failed])).toBeUndefined();
+            const historyRow = (detail: string) =>
+              probe(
+                client,
+                `insert into accounting_document_event
+                   (document_id, action, from_state, to_state, attempts, detail, occurred_at)
+                 values ($1, 'requeue', 'failed', 'pending', 1, $2::jsonb, now())`,
+                [failed, detail],
+              );
+            expect(await historyRow("{}"), "without who asked").toBe("42501");
+            expect(await historyRow('{"requestedBy":""}'), "with an empty actor").toBe("42501");
+            expect(
+              await historyRow('{"requestedBy":"staff-1","outcome":"issued"}'),
+              "with anything beside who asked",
+            ).toBe("42501");
+            expect(await historyRow('{"requestedBy":"staff-1"}')).toBeUndefined();
+          } finally {
+            await client.query("ROLLBACK");
+          }
+        });
+      });
+    },
+  );
 
   it("adds seller terms and reads them, never changes or deletes them, and only reads the finance settings", async () => {
     await withApiClient(async (client) => {

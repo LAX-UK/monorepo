@@ -245,7 +245,9 @@ export const API_PAYMENT_TRANSFER_REFERENCE_TABLES = ["payment_transfer_referenc
  * move to its history; it changes the per-product source switch that staff routes expose. The
  * worker creates and advances documents, adds to their history and reads the switch. History is
  * append-only: nobody gets UPDATE or DELETE on it (a trigger refuses them for the owner too). No
- * other role has access.
+ * other role has access. Column grants cannot limit the values written, so triggers (migration
+ * 0378) hold the API to the requeue itself: a document only from `failed` or a cleared review to
+ * `pending`, with no provider document, and a history row only of that requeue, naming who asked.
  */
 export const API_ACCOUNTING_READ_TABLES = [
   "accounting_document",

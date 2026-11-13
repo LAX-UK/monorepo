@@ -1192,7 +1192,7 @@ describe.skipIf(!HAS_DB)("accounting persistence (integration)", { timeout: 60_0
     );
 
     it.skipIf(!API_URL)(
-      "lets the Bid API read and add history, never change it, and never rewrite a document",
+      "lets the Bid API read history and add only a requeue, never change it, and never rewrite or forge a document",
       async () => {
         // biome-ignore lint/style/noNonNullAssertion: gated by API_URL
         const api = createDb(API_URL!);
@@ -1207,6 +1207,10 @@ describe.skipIf(!HAS_DB)("accounting persistence (integration)", { timeout: 60_0
             sql`delete from accounting_document_event where id = ${id}`,
             sql`update accounting_document set gross_pence = 1 where id = ${documentId}`,
             sql`update accounting_document set provider = 'xero' where id = ${documentId}`,
+            // The requeue columns are grantable, but a trigger allows only the requeue itself.
+            sql`update accounting_document set state = 'issued', provider_id = 'ATTACKER-9', provider_number = 'INV-FORGED' where id = ${documentId}`,
+            sql`insert into accounting_document_event (document_id, action, from_state, to_state, attempts, detail, occurred_at)
+              values (${documentId}, 'complete_sending', 'sending', 'issued', 1, '{"requestedBy":"not-real"}', now())`,
             sql`delete from accounting_document where id = ${documentId}`,
             sql`insert into accounting_document (product, legal_entity, kind, lax_reference, source_event_ref, payload, net_pence, vat_pence, gross_pence)
               values ('bid', 'london_auction_xchange', 'invoice', 'LAX-BID-INV-x', 'e', '{}', 1, 0, 1)`,
