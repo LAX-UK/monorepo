@@ -653,6 +653,38 @@ describe("organisation buying routes", () => {
       });
     });
 
+    it("never lets a refusal be cached either, whatever refused it", async () => {
+      const card = `/legal-entities/purchases/${LOTS.due}/invoice-card`;
+      const doc = `/legal-entities/purchases/${LOTS.due}/documents/${BOOKS_DOCUMENT}`;
+      const refusals = [
+        [await mount("finance", { signedOut: true }).request(card), 401],
+        [await mount("finance", { signedOut: true }).request(doc), 401],
+        [await mount("viewer").request(card), 403],
+        [await mount("viewer").request(doc), 403],
+        [
+          await mount("finance").request(
+            `/legal-entities/purchases/${LOTS.otherAccount}/invoice-card`,
+          ),
+          404,
+        ],
+        [
+          await mount("finance").request(
+            `/legal-entities/purchases/${LOTS.due}/documents/${"dddddddd-0000-4000-8000-0000000000ff"}`,
+          ),
+          404,
+        ],
+        [await mount("finance").request("/legal-entities/purchases/nope/invoice-card"), 400],
+        [
+          await mount("finance").request(`/legal-entities/purchases/${LOTS.due}/documents/nope`),
+          400,
+        ],
+      ] as const;
+      for (const [res, status] of refusals) {
+        expect(res.status).toBe(status);
+        expect(res.headers.get("cache-control")).toBe("no-store");
+      }
+    });
+
     it("downloads LAX's stored copy, and nothing it does not hold", async () => {
       const base = `/legal-entities/purchases/${LOTS.due}/documents`;
       const res = await mount("finance").request(`${base}/${BOOKS_DOCUMENT}`);

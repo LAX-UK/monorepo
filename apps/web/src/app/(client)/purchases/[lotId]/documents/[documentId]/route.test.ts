@@ -40,18 +40,26 @@ describe("GET /purchases/[lotId]/documents/[documentId]", () => {
     );
   });
 
-  it("answers a refusal as unavailable, and a failure as 503", async () => {
-    fetchPdf.mockResolvedValue(new Response("{}", { status: 404 }));
-    expect((await call()).status).toBe(404);
-    fetchPdf.mockRejectedValue(new Error("down"));
-    const res = await call();
-    expect(res.status).toBe(503);
-    expect(await res.json()).toEqual({ error: "document_unavailable" });
+  it("answers every refusal and failure with the same uncached 404", async () => {
+    const answers: Response[] = [];
+    for (const status of [400, 401, 403, 404, 500, 502, 503, 204]) {
+      fetchPdf.mockResolvedValueOnce(new Response(status === 204 ? null : "{}", { status }));
+      answers.push(await call());
+    }
+    fetchPdf.mockRejectedValueOnce(new Error("down"));
+    answers.push(await call());
+    getCurrent.mockResolvedValueOnce(null);
+    answers.push(await call());
+    for (const res of answers) {
+      expect(res.status).toBe(404);
+      expect(res.headers.get("cache-control")).toBe("no-store");
+      expect(await res.json()).toEqual({ error: "document_unavailable" });
+    }
   });
 
-  it("needs a signed-in member", async () => {
+  it("needs a signed-in member, and asks the API nothing without one", async () => {
     getCurrent.mockResolvedValue(null);
-    expect((await call()).status).toBe(401);
+    expect((await call()).status).toBe(404);
     expect(fetchPdf).not.toHaveBeenCalled();
   });
 });

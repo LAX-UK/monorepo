@@ -32,6 +32,15 @@ function memberActor(c: BuyingContext): OrganisationMemberActor {
   };
 }
 
+/**
+ * `Cache-Control: no-store` on every response of a route, set after the rest of the chain has run
+ * so a refusal (401, 403, 404, a validation error) is never cached either.
+ */
+const noStore: MiddlewareHandler = async (c, next) => {
+  await next();
+  c.res.headers.set("Cache-Control", "no-store");
+};
+
 function respond<T>(c: BuyingContext, result: Result<T, OrganisationBuyingError>) {
   return result.match(
     (data) => c.json({ data }),
@@ -185,22 +194,22 @@ export function createOrganisationBuyingRoutes(
     },
   );
 
-  // The buyer's invoice card: where the invoice Books issues stands. Never cached.
+  // The buyer's invoice card: where the invoice Books issues stands. Never cached, refusals too.
   r.get(
     "/purchases/:lotId/invoice-card",
+    noStore,
     requireAuth,
     requireBuyerRole,
     requireContext,
     zValidator("param", purchaseLotIdParamSchema),
-    async (c) => {
-      c.header("Cache-Control", "no-store");
-      return respond(c, await invoiceBooks.card(memberActor(c), c.req.valid("param").lotId));
-    },
+    async (c) => respond(c, await invoiceBooks.card(memberActor(c), c.req.valid("param").lotId)),
   );
 
-  // LAX's stored copy of the invoice or a credit note Books issued, for the member who pays it.
+  // LAX's stored copy of the invoice Books issued, for the member who pays it. Never cached,
+  // refusals too.
   r.get(
     "/purchases/:lotId/documents/:documentId",
+    noStore,
     requireAuth,
     requireBuyerRole,
     requireContext,
@@ -215,7 +224,6 @@ export function createOrganisationBuyingRoutes(
       c.header("Content-Type", "application/pdf");
       c.header("X-Content-Type-Options", "nosniff");
       c.header("Content-Disposition", `attachment; filename="${result.value.filename}"`);
-      c.header("Cache-Control", "no-store");
       return c.body(new Uint8Array(result.value.pdf));
     },
   );
