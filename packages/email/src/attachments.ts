@@ -1,4 +1,7 @@
+import type { StoredEmailAttachment } from "./templates/types/shared.js";
 import type { TemplateName, TemplateVarsByName } from "./types.js";
+
+export type { StoredEmailAttachment };
 
 /** A file that travels with an email, ready for a mail provider (content is base64). */
 export type EmailAttachment = {
@@ -30,4 +33,31 @@ export function emailAttachments<T extends TemplateName>(
       contentBase64: Buffer.from(calendar.content, "utf8").toString("base64"),
     },
   ];
+}
+
+type WithStored = { storedAttachment?: StoredEmailAttachment | null };
+
+const SAFE_KEY = /^[A-Za-z0-9][A-Za-z0-9/._-]{0,255}$/;
+const SAFE_NAME = /^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$/;
+
+/**
+ * Files in LAX's document storage an email carries (the stored copy of a Books invoice). The
+ * sender reads each by its key when it sends; a key or name that is not plainly safe is refused
+ * here rather than read or put in a header.
+ */
+export function storedEmailAttachments<T extends TemplateName>(
+  _template: T,
+  vars: TemplateVarsByName[T],
+): StoredEmailAttachment[] {
+  const stored = (vars as WithStored).storedAttachment;
+  if (!stored) return [];
+  if (
+    !SAFE_KEY.test(stored.storageKey) ||
+    stored.storageKey.includes("..") ||
+    !SAFE_NAME.test(stored.filename) ||
+    stored.contentType !== "application/pdf"
+  ) {
+    throw new Error("stored_email_attachment_invalid");
+  }
+  return [stored];
 }

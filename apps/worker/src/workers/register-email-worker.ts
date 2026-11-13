@@ -46,6 +46,7 @@ export function registerEmailWorker(deps: WorkerBootstrapDeps): EmailWorkersHand
     sentryMonitorSlugs,
     heartbeat,
     reportWorkerJobFailure,
+    uploadStorage,
   } = deps;
 
   const emailSender =
@@ -57,6 +58,8 @@ export function registerEmailWorker(deps: WorkerBootstrapDeps): EmailWorkersHand
           replyTo: env.EMAIL_REPLY_TO,
           transactionalStream: env.POSTMARK_TRANSACTIONAL_STREAM,
           broadcastStream: env.POSTMARK_BROADCAST_STREAM,
+          // A stored invoice copy is attached from document storage when the email is sent.
+          storedFiles: uploadStorage,
         })
       : new ConsoleEmailSender();
 
