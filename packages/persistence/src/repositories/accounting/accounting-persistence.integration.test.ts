@@ -131,7 +131,7 @@ describe.skipIf(!HAS_DB)("accounting persistence (integration)", { timeout: 60_0
   });
 
   describe("references", () => {
-    it("holds one document per product, entity and reference", async () => {
+    it("holds one document per product, entity, reference and target", async () => {
       const id = newId();
       const first = await register(invoice("bid", id));
       expect(first.created).toBe(true);
@@ -148,7 +148,26 @@ describe.skipIf(!HAS_DB)("accounting persistence (integration)", { timeout: 60_0
       expect(different.ok).toBe(false);
       if (!different.ok) expect(different.refusal.code).toBe("reference_in_use");
 
-      // The database refuses a duplicate even when the repository is bypassed.
+      // The database refuses a duplicate for the same target even when the repository is bypassed.
+      const duplicate = await rejectedCode(
+        owner.execute(sql`
+          insert into accounting_document
+            (product, legal_entity, kind, lax_reference, source_event_ref, payload, net_pence, vat_pence, gross_pence,
+             target_provider, target_mode)
+          values ('bid', 'london_auction_xchange', 'invoice', ${first.stored.reference}, 'x', '{}'::jsonb, 1, 0, 1,
+                  'books', 'dry_run')`),
+      );
+      expect(duplicate).toBe("23505");
+    });
+
+    it("keeps one document with no target per reference", async () => {
+      await setModes("off");
+      const id = newId();
+      const first = await register(invoice("bid", id));
+      expect(first.stored.target).toBeNull();
+      const replay = await register(invoice("bid", id));
+      expect(replay.created).toBe(false);
+      expect(replay.stored.id).toBe(first.stored.id);
       const duplicate = await rejectedCode(
         owner.execute(sql`
           insert into accounting_document
@@ -156,6 +175,74 @@ describe.skipIf(!HAS_DB)("accounting persistence (integration)", { timeout: 60_0
           values ('bid', 'london_auction_xchange', 'invoice', ${first.stored.reference}, 'x', '{}'::jsonb, 1, 0, 1)`),
       );
       expect(duplicate).toBe("23505");
+    });
+
+    it("a reference rehearsed in dry_run is queued again, pending, for test_org and the test_org sender claims it", async () => {
+      const id = newId();
+      const rehearsed = await register(invoice("bid", id));
+      expect(rehearsed.stored.target).toEqual({ provider: "books", mode: "dry_run" });
+      // The rehearsal sends it, as the dry run adapter answers: issued, final.
+      must(
+        await repos.workQueue.claimNext({
+          provider: PROVIDER,
+          leaseToken: "rehearsal",
+          leaseMs: LEASE_MS,
+          targetModes: ["dry_run"],
+        }),
+      );
+      must(
+        await repos.transitions.apply(rehearsed.stored.id, {
+          action: "complete_sending",
+          leaseToken: "rehearsal",
+          outcome: {
+            status: "issued",
+            number: "DRY-RUN",
+            providerId: `dry-run:${rehearsed.stored.reference}`,
+            pdfRef: null,
+            totals: rehearsed.stored.totals,
+          },
+        }),
+      );
+
+      // Later, the switch moves Bid to the test organisation; the same document is projected again.
+      nowMs = T0 + 60 * 60_000;
+      await setModes("test_org");
+      const again = await register(invoice("bid", id));
+      expect(again.created).toBe(true);
+      expect(again.stored.id).not.toBe(rehearsed.stored.id);
+      expect(again.stored.target).toEqual({ provider: "books", mode: "test_org" });
+      expect(again.stored.record.status).toBe("pending");
+      // A replay for the test organisation finds its own row, not the rehearsal's.
+      const replay = await register(invoice("bid", id));
+      expect(replay).toMatchObject({ created: false, stored: { id: again.stored.id } });
+
+      const claimed = must(
+        await repos.workQueue.claimNext({
+          provider: PROVIDER,
+          leaseToken: "test-org",
+          leaseMs: LEASE_MS,
+          targetModes: ["test_org"],
+        }),
+      );
+      expect(claimed?.id).toBe(again.stored.id);
+      expect(claimed?.record.status).toBe("sending");
+
+      // Each target's row is read on its own; the rehearsal row is untouched.
+      const dryRow = must(
+        await repos.lookup.findByReference("bid", rehearsed.stored.reference, {
+          provider: "books",
+          mode: "dry_run",
+        }),
+      );
+      expect(dryRow?.id).toBe(rehearsed.stored.id);
+      expect(dryRow?.record.status).toBe("issued");
+      const latest = must(await repos.lookup.findByReference("bid", rehearsed.stored.reference));
+      expect(latest?.id).toBe(again.stored.id);
+      expect(await eventsOf(rehearsed.stored.id)).toEqual([
+        "created:->pending",
+        "start_sending:pending>sending",
+        "complete_sending:sending>issued",
+      ]);
     });
 
     it("keeps the same source id in two products apart and looks each up by product", async () => {

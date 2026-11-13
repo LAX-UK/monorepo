@@ -65,16 +65,21 @@ export interface RegisterOutcome {
   readonly stored: StoredAccountingDocument;
 }
 
-/** Add a document to the queue. Idempotent per reference. */
+/** Add a document to the queue. Idempotent per reference and target (the switch's current one). */
 export interface IAccountingDocumentRegistry {
   register(input: RegisterInput): Promise<Result<RegisterOutcome, RegisterCode>>;
 }
 
-/** Look a document up by its LAX reference (the product says which legal entity's books). */
+/**
+ * Look a document up by its LAX reference (the product says which legal entity's books). A
+ * reference is held once per target, so pass the target (null for the row with none) to read that
+ * one; without it the most recently created document for the reference is returned.
+ */
 export interface IAccountingDocumentLookup {
   findByReference(
     product: Product,
     reference: string,
+    target?: DocumentTarget | null,
   ): Promise<Result<StoredAccountingDocument | null, StoredDocumentCode>>;
 }
 

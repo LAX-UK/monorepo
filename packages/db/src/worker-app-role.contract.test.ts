@@ -122,6 +122,9 @@ describe.skipIf(!WORKER_URL)("worker_app role contract", { timeout: 60_000 }, ()
       expect(await can("domain_events", "INSERT")).toBe(true);
       // The accounting projector's cursor starts at the newest event the first time it runs.
       expect(await can("projector_state", "INSERT")).toBe(true);
+      // While Books is switched off the cursor is moved to the newest event every tick, so the
+      // events of that time are never projected when it is switched on again.
+      expect(await can("projector_state", "UPDATE")).toBe(true);
     });
   });
 

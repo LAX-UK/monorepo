@@ -1,6 +1,7 @@
 import {
   type AccountingDocument,
   type DocumentRecord,
+  type DocumentTarget,
   MAX_SEND_ATTEMPTS,
   type Result,
   type SwitchConfig,
@@ -79,12 +80,29 @@ export class InMemoryAccountingStore
     return [...this.rows.values()].map((r) => r.stored);
   }
 
-  byReference(reference: string): StoredAccountingDocument | undefined {
-    return this.documents().find((d) => d.reference === reference);
+  /**
+   * The document for a reference and target (null: the row with none). Without a target, the one
+   * created last: a reference is held once per target, as in the database.
+   */
+  byReference(
+    reference: string,
+    target?: DocumentTarget | null,
+  ): StoredAccountingDocument | undefined {
+    return this.rowFor(reference, target)?.stored;
   }
 
-  historyOf(reference: string): Row["history"] {
-    return [...this.rows.values()].find((r) => r.stored.reference === reference)?.history ?? [];
+  historyOf(reference: string, target?: DocumentTarget | null): Row["history"] {
+    return this.rowFor(reference, target)?.history ?? [];
+  }
+
+  private rowFor(reference: string, target?: DocumentTarget | null): Row | undefined {
+    return [...this.rows.values()]
+      .filter(
+        (r) =>
+          r.stored.reference === reference &&
+          (target === undefined || sameTarget(r.stored.target, target)),
+      )
+      .at(-1);
   }
 
   async read(): Promise<Result<SwitchConfig, never>> {
@@ -92,7 +110,8 @@ export class InMemoryAccountingStore
   }
 
   async register(input: RegisterInput): Promise<Result<RegisterOutcome, "reference_in_use">> {
-    const existing = this.byReference(input.document.reference);
+    const target = documentTarget(this.config[input.document.product]);
+    const existing = this.byReference(input.document.reference, target);
     if (existing) {
       return JSON.stringify(existing.document) === JSON.stringify(input.document)
         ? ok({ created: false, stored: existing })
@@ -111,7 +130,7 @@ export class InMemoryAccountingStore
       document,
       totals: expectedTotals(document),
       provider: null,
-      target: documentTarget(this.config[document.product]),
+      target,
       record: newRecord(document.kind, document.reference),
       lastErrorClass: null,
       createdAt: new Date(this.nowMs + this.seq),
@@ -229,4 +248,8 @@ export class InMemoryAccountingStore
     row.updatedAtMs = this.nowMs;
     row.history.push({ action, detail });
   }
+}
+
+function sameTarget(a: DocumentTarget | null, b: DocumentTarget | null): boolean {
+  return a?.provider === b?.provider && a?.mode === b?.mode;
 }
