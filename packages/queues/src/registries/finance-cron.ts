@@ -1,4 +1,5 @@
 import {
+  ACCOUNTING_WATCH_QUEUE_NAME,
   CLEANUP_DISPLAY_PAIRINGS_QUEUE_NAME,
   ENSURE_LOT_INVOICES_QUEUE_NAME,
   EXPIRE_STALE_PAYMENTS_QUEUE_NAME,
@@ -8,10 +9,31 @@ import {
   RETRY_XERO_STRIPE_CAPTURE_SYNC_QUEUE_NAME,
   RETRY_XERO_WEBHOOK_FAILURES_QUEUE_NAME,
 } from "../queue-names-finance-cron.js";
-import type { QueueDefinition } from "../types.js";
+import type { QueueDefinition, QueueRuntimeEnv } from "../types.js";
+
+const accountingBooksEnabled = (env: QueueRuntimeEnv) => env.accountingBooksEnabled === true;
 
 /** Worker-scheduled finance HTTP cron proxies (consumer worker → API internal/jobs). */
 export const FINANCE_CRON_QUEUE_REGISTRY = {
+  [ACCOUNTING_WATCH_QUEUE_NAME]: {
+    producers: ["worker"],
+    consumer: "worker",
+    criticality: "normal",
+    pauseOrder: null,
+    heartbeatKey: "accounting-watch",
+    dlq: false,
+    showInUi: false,
+    allowUiRetries: false,
+    repeatable: true,
+    defaultJobOptions: {
+      attempts: 2,
+      backoff: { type: "exponential", delay: 60_000 },
+      removeOnComplete: 50,
+      removeOnFail: 50,
+    },
+    description: "Zoho Books queue watch: documents waiting for a person, a sender that stopped",
+    enabledWhen: accountingBooksEnabled,
+  },
   [EXPIRE_STALE_PAYMENTS_QUEUE_NAME]: {
     producers: ["worker"],
     consumer: "worker",

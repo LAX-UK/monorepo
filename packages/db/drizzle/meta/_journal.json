@@ -2591,6 +2591,13 @@
       "when": 1810814400000,
       "tag": "0378_payout_seller_terms",
       "breakpoints": true
+    },
+    {
+      "idx": 371,
+      "version": "7",
+      "when": 1810900800000,
+      "tag": "0379_accounting_requeue_guard",
+      "breakpoints": true
     }
   ]
 }

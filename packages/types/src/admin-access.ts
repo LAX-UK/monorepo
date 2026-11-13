@@ -212,6 +212,12 @@ export const PAYMENT_MANUAL_REVIEW_WRITE_ACCESS: CapabilityRequirement = "financ
  */
 export const DISPUTE_ALLOCATION_WRITE_ACCESS: CapabilityRequirement = "finance.platform.write";
 
+/** Finance › Accounting: see the documents sent to the books, like every Finance page. */
+export const ACCOUNTING_QUEUE_READ_ACCESS: CapabilityRequirement = FINANCE_ACCESS;
+
+/** Try a refused accounting document again. Platform-wide finance write, like the Xero sync. */
+export const ACCOUNTING_QUEUE_WRITE_ACCESS: CapabilityRequirement = "finance.platform.write";
+
 /**
  * Approve or decline a seller's request to withdraw a lot. Withdrawing cancels the lot and
  * can pull it out of a sale, so it follows `auction.manage`, not the wider catalogue access.

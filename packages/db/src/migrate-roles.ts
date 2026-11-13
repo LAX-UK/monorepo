@@ -245,15 +245,22 @@ export const API_PAYMENT_TRANSFER_REFERENCE_TABLES = ["payment_transfer_referenc
  */
 export const API_REFUND_REVERSAL_TABLES = ["stripe_refund_reversal"] as const;
 /**
- * Accounting documents and their history (migration 0368). The Bid API only reads them, and
- * changes the per-product source switch that staff routes expose; the worker creates and advances
- * documents, adds to their history and reads the switch. History is append-only: nobody gets
- * UPDATE or DELETE on it (a trigger refuses them for the owner too). No other role has access.
+ * Accounting documents and their history (migration 0368). The Bid API reads them for the
+ * Finance › Accounting page, and puts a refused document back in the queue when staff try it
+ * again (the life cycle's requeue: state columns only, never what the document says), adding that
+ * move to its history; it changes the per-product source switch that staff routes expose. The
+ * worker creates and advances documents, adds to their history and reads the switch. History is
+ * append-only: nobody gets UPDATE or DELETE on it (a trigger refuses them for the owner too). No
+ * other role has access. Column grants cannot limit the values written, so triggers (migration
+ * 0379) hold the API to the requeue itself: a document only from `failed` or a cleared review to
+ * `pending`, with no provider document, and a history row only of that requeue, naming who asked.
  */
 export const API_ACCOUNTING_READ_TABLES = [
   "accounting_document",
   "accounting_document_event",
 ] as const;
+export const API_ACCOUNTING_REQUEUE_TABLES = ["accounting_document"] as const;
+export const API_ACCOUNTING_HISTORY_TABLES = ["accounting_document_event"] as const;
 export const API_ACCOUNTING_SETTING_TABLES = ["accounting_source_setting"] as const;
 export const WORKER_ACCOUNTING_DOCUMENT_TABLES = ["accounting_document"] as const;
 /** The columns the work queue and the transitions write; see `lifecycleColumns` in persistence. */
@@ -274,6 +281,10 @@ export const WORKER_ACCOUNTING_DOCUMENT_UPDATE_COLUMNS = [
   "last_error_class",
   "updated_at",
 ] as const;
+/** What a staff requeue writes: the worker's columns except `provider` (a requeue never sets it). */
+export const API_ACCOUNTING_REQUEUE_COLUMNS = WORKER_ACCOUNTING_DOCUMENT_UPDATE_COLUMNS.filter(
+  (column) => column !== "provider",
+);
 export const WORKER_ACCOUNTING_APPEND_ONLY_TABLES = ["accounting_document_event"] as const;
 export const WORKER_ACCOUNTING_READ_TABLES = ["accounting_source_setting"] as const;
 /**
@@ -1187,6 +1198,17 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
           }
           if ((API_ACCOUNTING_READ_TABLES as readonly string[]).includes(tableName)) {
             await grantIfExists(client, "api_app", tableName, "SELECT");
+            if ((API_ACCOUNTING_REQUEUE_TABLES as readonly string[]).includes(tableName)) {
+              await grantColumnUpdateIfExists(
+                client,
+                "api_app",
+                tableName,
+                API_ACCOUNTING_REQUEUE_COLUMNS,
+              );
+            }
+            if ((API_ACCOUNTING_HISTORY_TABLES as readonly string[]).includes(tableName)) {
+              await grantIfExists(client, "api_app", tableName, "INSERT");
+            }
             continue;
           }
           if ((API_ACCOUNTING_SETTING_TABLES as readonly string[]).includes(tableName)) {

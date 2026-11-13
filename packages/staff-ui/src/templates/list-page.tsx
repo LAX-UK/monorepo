@@ -287,7 +287,9 @@ export function ListPage<T>({
   // is ever left holding a control or two and empty space.
   const controls =
     filters || period || display ? (
-      <div className="flex shrink-0 flex-wrap items-center gap-2">
+      // Capped at the row's width so on a phone the controls wrap onto a second line rather than
+      // run past the card's edge (a segmented control and Display do not fit side by side).
+      <div className="flex max-w-full shrink-0 flex-wrap items-center gap-2">
         {filters}
         {period}
         {display}
@@ -298,12 +300,16 @@ export function ListPage<T>({
       {views ? (
         <div
           className={cn(
-            "flex min-w-0 items-center gap-2 px-2",
+            // Wraps on a phone so the tabs keep a full row of their own: when the controls share
+            // this band (no search), they drop below the tabs instead of squeezing them to "F.".
+            "flex min-w-0 flex-wrap items-center gap-2 px-2",
             search && "border-b border-staff-line-subtle",
           )}
         >
-          <div className="min-w-0 flex-1">{views}</div>
-          {!search && controls ? <div className="py-1 pr-1">{controls}</div> : null}
+          <div className="min-w-0 flex-1 max-sm:basis-full">{views}</div>
+          {!search && controls ? (
+            <div className="max-w-full py-1 pr-1 max-sm:ml-auto">{controls}</div>
+          ) : null}
         </div>
       ) : null}
       {search ? (

@@ -239,7 +239,7 @@ describe("accounting sender", () => {
     await sender.tick();
     expect(store.byReference(CONTACT)?.record).toMatchObject({
       status: "failed",
-      reason: "fake_locked_period",
+      reason: "fake_period_locked",
       attempts: 1,
     });
   });

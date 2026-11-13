@@ -12,6 +12,7 @@ import { canOpenAdminRoute } from "@/lib/navigation/admin-route-access";
  * Grouped for accordion UI; flattened for command palette and legacy consumers.
  */
 import {
+  ACCOUNTING_QUEUE_READ_ACCESS,
   AML_REVIEW_ACCESS,
   ARTISTS_ACCESS,
   AUDIT_DOMAIN_EVENTS_ACCESS,
@@ -374,6 +375,13 @@ function buildStaffNavGroupSpecs(
           icon: Banknote,
           requirement: FINANCE_ACCESS,
           ...navBadge(navCounts.payoutsFailed, "danger"),
+        },
+        {
+          id: "accounting",
+          href: "/admin/finance/accounting",
+          label: "Accounting",
+          icon: ScrollText,
+          requirement: ACCOUNTING_QUEUE_READ_ACCESS,
         },
         {
           id: "xero",

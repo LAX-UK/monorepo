@@ -209,6 +209,11 @@ const envSchema = z
      * Unset, the notice route answers 503 and nothing is stored.
      */
     ZOHO_ARTWORK_WEBHOOK_SECRET: z.preprocess(emptyToUndefined, z.string().min(32).optional()),
+    /**
+     * Zoho Books organisation settings (the worker's JSON). Read here only to link an issued
+     * document to Books on Finance › Accounting; unset, the page shows Books numbers without links.
+     */
+    ZOHO_BOOKS_ORG_CONFIG: z.preprocess(emptyToUndefined, z.string().optional()),
     EMAIL_UNSUBSCRIBE_SECRET: z.string().min(16).default("dev-email-unsubscribe-secret"),
     /** Signs the confirm and stop links in alert emails. Separate from the account unsubscribe secret. */
     ALERT_LINK_SECRET: z.string().min(16).default(DEV_ALERT_LINK_SECRET),

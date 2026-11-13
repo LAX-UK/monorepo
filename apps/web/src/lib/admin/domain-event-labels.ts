@@ -71,6 +71,7 @@ const LABELS: Record<string, string> = {
   "data_request.enquiries_erased": "Data request enquiries erased",
 
   "failed_job.retried": "Failed job retried",
+  "accounting_document.retry_requested": "Accounting document tried again",
   "failed_job.discarded": "Failed job discarded",
   "failed_job.restored": "Failed job restored",
 

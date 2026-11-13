@@ -75,6 +75,7 @@ export function PrimaryCell({
   external = false,
   thumbnail,
   unread,
+  wrap = false,
 }: {
   children: React.ReactNode;
   href?: string | null;
@@ -90,6 +91,11 @@ export function PrimaryCell({
    * the dot's slot and the titles line up.
    */
   unread?: boolean;
+  /**
+   * Wraps a long title onto more lines instead of shortening it, for a reference that must be
+   * read whole. Give the column `truncate: false` so the table does not cut it either.
+   */
+  wrap?: boolean;
 }) {
   if (unread !== undefined) {
     return (
@@ -104,6 +110,7 @@ export function PrimaryCell({
           {...(thumbnail ? { thumbnail } : {})}
           secondary={secondary}
           external={external}
+          wrap={wrap}
         >
           {unread ? (
             <>
@@ -129,6 +136,7 @@ export function PrimaryCell({
           {...(Link ? { Link } : {})}
           secondary={secondary}
           external={external}
+          wrap={wrap}
         >
           {children}
         </PrimaryCell>
@@ -140,17 +148,35 @@ export function PrimaryCell({
       <a
         href={href}
         {...(external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
-        className={cn(staffCellLinkClass, "font-medium text-staff-fg")}
+        className={cn(
+          staffCellLinkClass,
+          "font-medium text-staff-fg",
+          wrap && "whitespace-normal break-words",
+        )}
       >
         {children}
       </a>
     ) : (
-      <Link href={href} className={cn(staffCellLinkClass, "font-medium text-staff-fg")}>
+      <Link
+        href={href}
+        className={cn(
+          staffCellLinkClass,
+          "font-medium text-staff-fg",
+          wrap && "whitespace-normal break-words",
+        )}
+      >
         {children}
       </Link>
     )
   ) : (
-    <span className="block truncate font-medium text-staff-fg">{children}</span>
+    <span
+      className={cn(
+        "block font-medium text-staff-fg",
+        wrap ? "whitespace-normal break-words" : "truncate",
+      )}
+    >
+      {children}
+    </span>
   );
   if (isEmptyCellValue(secondary)) return label;
   return (

@@ -85,6 +85,16 @@ const RETRYABLE_SERVER = new Set([500, 502, 503, 504]);
  * retried here: it is `unknown`, and the domain looks the document up before trying again. A 401
  * gets one token refresh and replay (safe for every method: Zoho refused it before acting).
  */
+/** Share of the daily call budget past which staff are warned, before Books stops answering. */
+export const BUDGET_WARNING_SHARE = 0.8;
+/** Logged once a day per organisation when the budget passes `BUDGET_WARNING_SHARE`. */
+export const BUDGET_WARNING_EVENT = "zoho_books.budget_past_warning";
+
+/** The call number that first goes past the warning share of `limit` (81 of 100). */
+export function budgetWarningAt(limit: number): number {
+  return Math.floor(limit * BUDGET_WARNING_SHARE) + 1;
+}
+
 export class ZohoBooksClient {
   private readonly clock: Clock;
   private readonly budget: CallBudget;
@@ -342,6 +352,14 @@ export class ZohoBooksClient {
       throw new ZohoBudgetExhaustedError({ code: "budget_unavailable" });
     }
     this.metrics.gauge(METRIC.budgetUsed, decision.used, { organization: organizationId });
+    if (decision.allowed && decision.used === budgetWarningAt(decision.limit)) {
+      // Once a day per organisation: the call that takes the budget past its warning share.
+      this.logger.log("warn", BUDGET_WARNING_EVENT, {
+        organizationId,
+        used: decision.used,
+        limit: decision.limit,
+      });
+    }
     if (!decision.allowed) {
       this.metrics.increment(METRIC.budgetExhausted, { organization: organizationId });
       this.logger.log("error", "zoho_books.budget_exhausted", {

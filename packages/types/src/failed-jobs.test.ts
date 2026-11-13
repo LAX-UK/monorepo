@@ -24,13 +24,15 @@ describe("FAILED_JOB_SOURCE_ACCESS", () => {
     expect(sourcesFor("administrator", "act")).toEqual([...FAILED_JOB_SOURCES]);
   });
 
-  it("gives finance Xero only, to read and to act", () => {
-    expect(sourcesFor("finance", "read")).toEqual(["integrations.xero"]);
-    expect(sourcesFor("finance", "act")).toEqual(["integrations.xero"]);
+  it("gives finance Xero and Zoho Books only, to read and to act", () => {
+    expect(sourcesFor("finance", "read")).toEqual(["integrations.xero", "integrations.books"]);
+    expect(sourcesFor("finance", "act")).toEqual(["integrations.xero", "integrations.books"]);
   });
 
-  it("lets read-only staff look at every source and change none", () => {
-    expect(sourcesFor("read_only", "read")).toEqual([...FAILED_JOB_SOURCES]);
+  it("lets read-only staff look at every source but Zoho Books (a Finance page) and change none", () => {
+    expect(sourcesFor("read_only", "read")).toEqual(
+      FAILED_JOB_SOURCES.filter((source) => source !== "integrations.books"),
+    );
     expect(sourcesFor("read_only", "act")).toEqual([]);
   });
 

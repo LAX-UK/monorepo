@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { BUDGET_WARNING_EVENT, budgetWarningAt } from "./client.js";
 import { ZohoBudgetExhaustedError } from "./errors.js";
 import { isTransientRejection, toIssueFailure, toLookupFailure } from "./outcome.js";
 import {
@@ -298,6 +299,17 @@ describe("limits", () => {
     });
   });
 
+  it("warns once when the day's calls go past 80% of the budget", async () => {
+    const h = createClientHarness({ config: { dailyCallBudget: 5 } });
+    await h.connect();
+    for (let i = 0; i < 5; i++) h.transport.enqueue(zohoOkReply(), api);
+    for (let i = 0; i < 5; i++) await h.clock.settle(h.client.get(TEST_ORG, "/invoices"));
+    const warnings = h.logger.entries.filter((e) => e.event === BUDGET_WARNING_EVENT);
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0]).toMatchObject({ level: "warn", fields: { used: 5, limit: 5 } });
+    expect(budgetWarningAt(1_000)).toBe(801);
+  });
+
   it("counts every attempt, retries included, against the budget", async () => {
     const budget = new FixedBudget(10);
     const h = createClientHarness({ budget });
@@ -398,6 +410,22 @@ describe("logging", () => {
 });
 
 describe("domain mapping", () => {
+  it("names a refusal for a locked period, in a 4xx or in a 200 body", async () => {
+    const h = createClientHarness();
+    await h.connect();
+    h.transport
+      .enqueue(zohoErrorReply(400, 4151, "transaction date is locked"), api)
+      .enqueue({ status: 200, body: { code: 4151, message: "locked" } }, api);
+    for (let i = 0; i < 2; i++) {
+      const result = await h.clock.settle(h.client.post(TEST_ORG, "/invoices", { total: 1 }));
+      if (result.ok) throw new Error("expected a refusal");
+      expect(toIssueFailure(result.error)).toEqual({
+        status: "rejected",
+        reason: "zoho_books_validation_period_locked",
+      });
+    }
+  });
+
   it("tells the domain rejected apart from unknown", async () => {
     const h = createClientHarness();
     await h.connect();

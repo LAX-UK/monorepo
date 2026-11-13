@@ -1,4 +1,5 @@
 import {
+  ACCOUNTING_QUEUE_READ_ACCESS,
   AML_REVIEW_ACCESS,
   COLLECTIONS_READ_ACCESS,
   CONDITION_REPORTS_READ_ACCESS,
@@ -45,6 +46,11 @@ export const ADMIN_ROUTE_TABLE = [
   { pattern: "/admin/clients/[id]", area: "platform", requirement: USERS_DIRECTORY_ACCESS },
   { pattern: "/admin/sales", area: "platform", requirement: SALE_CATALOG_READ_ACCESS },
   { pattern: "/admin/finance", area: "finance", requirement: FINANCE_ACCESS },
+  {
+    pattern: "/admin/finance/accounting",
+    area: "finance",
+    requirement: ACCOUNTING_QUEUE_READ_ACCESS,
+  },
   { pattern: "/admin/saleroom", area: "platform", requirement: SALEROOM_ACCESS },
   { pattern: "/admin/submissions", area: "platform", requirement: SUBMISSIONS_READ_ACCESS },
   { pattern: "/admin/payments", area: "finance", requirement: FINANCE_ACCESS },

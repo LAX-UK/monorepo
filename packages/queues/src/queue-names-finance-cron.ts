@@ -6,6 +6,8 @@ export const RETRY_REFUND_RECONCILES_QUEUE_NAME = "retry-refund-reconciles" as c
 export const REFRESH_XERO_TOKENS_QUEUE_NAME = "refresh-xero-tokens" as const;
 export const ENSURE_LOT_INVOICES_QUEUE_NAME = "ensure-lot-invoices" as const;
 export const CLEANUP_DISPLAY_PAIRINGS_QUEUE_NAME = "cleanup-display-pairings" as const;
+/** Watches the Zoho Books document queue: work waiting too long for a person or the sender. */
+export const ACCOUNTING_WATCH_QUEUE_NAME = "accounting-watch" as const;
 
 /** @deprecated Import from `@auction/queues` platform cron names; kept for worker/API importers. */
 export { LOT_LIFECYCLE_TICK_QUEUE_NAME } from "./queue-names-platform-cron.js";

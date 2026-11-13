@@ -42,6 +42,11 @@ export type DataTableProps<T> = {
   selectedIds?: ReadonlySet<string>;
   onSelectedIdsChange?: (ids: Set<string>) => void;
   /**
+   * Which rows may be selected, when selection is on. A row this returns false for shows no
+   * checkbox and is left out of "select all" and the bulk actions, for rows nothing can be done to.
+   */
+  isRowSelectable?: (row: T) => boolean;
+  /**
    * Offers "Select all N matching" once every row on the page is selected, for lists with more
    * matching rows than one page shows.
    */
@@ -100,6 +105,31 @@ function compareValues(a: string | number | null, b: string | number | null): nu
 function ariaSort(column: { id: string }, sort: SortState | null) {
   if (!sort || sort.columnId !== column.id) return "none" as const;
   return sort.direction === "asc" ? ("ascending" as const) : ("descending" as const);
+}
+
+function pixels(value: string | undefined): number {
+  const match = value ? /^(\d+(?:\.\d+)?)px$/.exec(value.trim()) : null;
+  return match ? Number(match[1]) : 0;
+}
+
+/**
+ * The table's least width at each table breakpoint, when a column sets `minWidth`: the px widths
+ * of the columns showing there plus the flexible column's minimum. Null when none sets one.
+ */
+export function tableMinWidths<T>(
+  columns: readonly DataColumn<T>[],
+  selectable: boolean,
+): { md: number; lg: number; xl: number } | null {
+  if (!columns.some((column) => column.minWidth)) return null;
+  const widthOf = (column: DataColumn<T>) => pixels(column.width) || pixels(column.minWidth);
+  const sum = (shows: (column: DataColumn<T>) => boolean) =>
+    (selectable ? 44 : 0) +
+    columns.filter(shows).reduce((total, column) => total + widthOf(column), 0);
+  return {
+    md: sum((column) => !column.hideBelow || column.hideBelow === "md"),
+    lg: sum((column) => column.hideBelow !== "xl"),
+    xl: sum(() => true),
+  };
 }
 
 function truncationOf<T>(column: DataColumn<T>) {
@@ -165,6 +195,7 @@ export function DataTable<T>({
   onSortChange,
   selectedIds,
   onSelectedIdsChange,
+  isRowSelectable,
   selectAllMatching,
   bulkActions,
   bulkNoun,
@@ -219,10 +250,19 @@ export function DataTable<T>({
   }, [data, columns, sort, onSortChange]);
 
   const ids = React.useMemo(() => rows.map(getRowId), [rows, getRowId]);
+  const rowSelectable = React.useCallback(
+    (row: T) => (isRowSelectable ? isRowSelectable(row) : true),
+    [isRowSelectable],
+  );
+  // Only rows something can be done to carry a checkbox and count toward "select all".
+  const selectableIds = React.useMemo(
+    () => (selectable ? rows.filter(rowSelectable).map(getRowId) : []),
+    [selectable, rows, rowSelectable, getRowId],
+  );
   const allMatching = selectable && Boolean(selectAllMatching?.active);
   const isSelected = (id: string) => allMatching || Boolean(selectedIds?.has(id));
-  const pageSelectedCount = selectable ? ids.filter(isSelected).length : 0;
-  const allSelected = pageSelectedCount > 0 && pageSelectedCount === ids.length;
+  const pageSelectedCount = selectable ? selectableIds.filter(isSelected).length : 0;
+  const allSelected = pageSelectedCount > 0 && pageSelectedCount === selectableIds.length;
   const someSelected = pageSelectedCount > 0 && !allSelected;
   const selectedCount = allMatching ? (selectAllMatching?.total ?? 0) : pageSelectedCount;
 
@@ -247,14 +287,17 @@ export function DataTable<T>({
   /** Toggles one row, or with `extend` sets every row from the last one toggled to this one. */
   const toggleRow = (index: number, extend = false) => {
     const id = ids[index];
-    if (id === undefined) return;
-    const current = new Set(allMatching ? ids : selectedIds);
+    const row = rows[index];
+    if (id === undefined || row === undefined || !rowSelectable(row)) return;
+    const current = new Set(allMatching ? selectableIds : selectedIds);
     const on = !current.has(id);
     const from = extend && anchorIndex.current !== null ? anchorIndex.current : index;
     const [start, end] = from < index ? [from, index] : [index, from];
     for (let i = start; i <= end; i += 1) {
       const rowId = ids[i];
-      if (rowId === undefined) continue;
+      const spanned = rows[i];
+      // A range never selects a row that cannot be acted on, even when dragged across one.
+      if (rowId === undefined || spanned === undefined || !rowSelectable(spanned)) continue;
       if (on) current.add(rowId);
       else current.delete(rowId);
     }
@@ -264,7 +307,7 @@ export function DataTable<T>({
 
   const toggleAll = () => {
     anchorIndex.current = null;
-    setSelected(allSelected ? new Set() : new Set(ids));
+    setSelected(allSelected ? new Set() : new Set(selectableIds));
   };
 
   const focusRow = (index: number) => {
@@ -405,8 +448,12 @@ export function DataTable<T>({
   const showSkeleton = loading && rows.length === 0;
   const showEmpty = !loading && !error && rows.length === 0;
   const selectedRows = selectable ? rows.filter((row) => isSelected(getRowId(row))) : [];
+  // Phone-only columns (a gathered meta line) have no place in the table layout.
+  const tableColumns = columns.filter((c) => !c.phoneOnly);
+  const minWidths = tableMinWidths(tableColumns, Boolean(selectable));
   const titleColumn = columns.find((c) => c.mobile === "title") ?? columns[0];
   const badgeColumns = columns.filter((c) => c.mobile === "badge");
+  const detailColumns = columns.filter((c) => c.mobile === "detail");
   const metaColumns = columns.filter((c) => c.mobile === "meta");
   const actionColumns = columns.filter((c) => c.mobile === "actions");
   const noun = bulkNoun ?? { one: "row", other: "rows" };
@@ -502,7 +549,20 @@ export function DataTable<T>({
                     {...(selectable ? { "aria-multiselectable": true } : {})}
                     aria-busy={loading || undefined}
                     aria-rowcount={rows.length + 1}
-                    className="w-full table-fixed border-collapse text-staff-sm"
+                    {...(minWidths
+                      ? {
+                          style: {
+                            "--staff-table-min-md": `${minWidths.md}px`,
+                            "--staff-table-min-lg": `${minWidths.lg}px`,
+                            "--staff-table-min-xl": `${minWidths.xl}px`,
+                          } as React.CSSProperties,
+                        }
+                      : {})}
+                    className={cn(
+                      "w-full table-fixed border-collapse text-staff-sm",
+                      minWidths &&
+                        "md:min-w-(--staff-table-min-md) lg:min-w-(--staff-table-min-lg) xl:min-w-(--staff-table-min-xl)",
+                    )}
                   >
                     <thead>
                       <tr className={cn("h-9", !headerSticks && "border-b border-staff-line")}>
@@ -531,7 +591,7 @@ export function DataTable<T>({
                             />
                           </th>
                         ) : null}
-                        {columns.map((column, index) => (
+                        {tableColumns.map((column, index) => (
                           <th
                             key={column.id}
                             scope="col"
@@ -541,7 +601,7 @@ export function DataTable<T>({
                               "px-3 text-staff-xs font-medium whitespace-nowrap text-staff-muted",
                               column.numeric ? "text-right" : "text-left",
                               index === 0 && !selectable && "pl-4",
-                              index === columns.length - 1 && "pr-4",
+                              index === tableColumns.length - 1 && "pr-4",
                               column.hideBelow && hideBelowClass[column.hideBelow],
                               stickyHeadCell,
                               index === 0 &&
@@ -605,7 +665,7 @@ export function DataTable<T>({
                                   <Skeleton className="size-4" />
                                 </td>
                               ) : null}
-                              {columns.map((column, index) => (
+                              {tableColumns.map((column, index) => (
                                 <td
                                   key={column.id}
                                   className={cn(
@@ -667,22 +727,27 @@ export function DataTable<T>({
                                 )}
                               >
                                 {selectable ? (
-                                  <td
-                                    {...selectCellProps(index)}
-                                    className={cn(
-                                      "cursor-pointer pl-4 [&>button]:flex",
-                                      selectSticky,
-                                    )}
-                                  >
-                                    <StaffCheckbox
-                                      aria-label={`Select row ${index + 1}`}
-                                      checked={selected}
-                                      onClick={passClickToCell}
-                                      tabIndex={-1}
-                                    />
-                                  </td>
+                                  rowSelectable(row) ? (
+                                    <td
+                                      {...selectCellProps(index)}
+                                      className={cn(
+                                        "cursor-pointer pl-4 [&>button]:flex",
+                                        selectSticky,
+                                      )}
+                                    >
+                                      <StaffCheckbox
+                                        aria-label={`Select row ${index + 1}`}
+                                        checked={selected}
+                                        onClick={passClickToCell}
+                                        tabIndex={-1}
+                                      />
+                                    </td>
+                                  ) : (
+                                    // Keeps the column's width so the cells below stay aligned.
+                                    <td aria-hidden className={cn("pl-4", selectSticky)} />
+                                  )
                                 ) : null}
-                                {columns.map((column, columnIndex) => {
+                                {tableColumns.map((column, columnIndex) => {
                                   const truncate = truncationOf(column);
                                   const value = column.cell(row);
                                   const empty = isEmptyCellValue(value);
@@ -695,7 +760,7 @@ export function DataTable<T>({
                                         truncate === false && "whitespace-nowrap",
                                         column.numeric && "text-right tabular-nums",
                                         columnIndex === 0 && !selectable && "pl-4",
-                                        columnIndex === columns.length - 1 && "pr-4",
+                                        columnIndex === tableColumns.length - 1 && "pr-4",
                                         column.hideBelow && hideBelowClass[column.hideBelow],
                                         columnIndex === 0 &&
                                           firstSticky(selectable ? "left-11" : "left-0"),
@@ -746,17 +811,21 @@ export function DataTable<T>({
                             )}
                           >
                             {selectable ? (
-                              // A 44px column the height of the row: the whole strip selects.
-                              <span
-                                {...selectCellProps(index)}
-                                className="-my-3 flex w-11 shrink-0 cursor-pointer justify-center self-stretch pt-3.5"
-                              >
-                                <StaffCheckbox
-                                  aria-label={`Select row ${index + 1}`}
-                                  checked={selected}
-                                  onClick={passClickToCell}
-                                />
-                              </span>
+                              rowSelectable(row) ? (
+                                // A 44px column the height of the row: the whole strip selects.
+                                <span
+                                  {...selectCellProps(index)}
+                                  className="-my-3 flex w-11 shrink-0 cursor-pointer justify-center self-stretch pt-3.5"
+                                >
+                                  <StaffCheckbox
+                                    aria-label={`Select row ${index + 1}`}
+                                    checked={selected}
+                                    onClick={passClickToCell}
+                                  />
+                                </span>
+                              ) : (
+                                <span aria-hidden className="w-11 shrink-0" />
+                              )
                             ) : null}
                             <div className="flex min-w-0 flex-1 flex-col gap-1">
                               <div className="flex min-w-0 items-start justify-between gap-3">
@@ -773,6 +842,18 @@ export function DataTable<T>({
                                   </div>
                                 ) : null}
                               </div>
+                              {detailColumns.map((column) => {
+                                const value = column.cell(row);
+                                if (isEmptyCellValue(value)) return null;
+                                return (
+                                  <div
+                                    key={column.id}
+                                    className="min-w-0 break-words text-staff-xs text-staff-fg"
+                                  >
+                                    {value}
+                                  </div>
+                                );
+                              })}
                               {metaColumns.length > 0 ? (
                                 <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-0.5 text-staff-xs text-staff-muted">
                                   {metaColumns.map((column) => {

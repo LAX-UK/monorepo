@@ -164,6 +164,9 @@ importers:
 
   apps/api:
     dependencies:
+      '@auction/accounting-domain':
+        specifier: workspace:*
+        version: link:../../packages/accounting-domain
       '@auction/alerts':
         specifier: workspace:*
         version: link:../../packages/alerts
