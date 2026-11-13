@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { type Database, createDbFromPool } from "@auction/db";
+import { type Database, closeDb, createDb } from "@auction/db";
 import {
   readJournalMigrations,
   runMigrationsPerTransaction,
@@ -14,7 +14,7 @@ import {
   DrizzleSaleRepository,
 } from "@auction/persistence/repositories";
 import { standardBuyerPremiumBands } from "@auction/validators";
-import pg from "pg";
+import { sql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { heldSellerTerms } from "../../testing/seller-terms.js";
 import { buyersPremiumMinorOf, invoiceReofferPricing } from "./reoffer-invoice-pricing.js";
@@ -37,9 +37,11 @@ const BANDS_LABEL = "Buyer's premium (15% of £500,000 + 10% of £100,000)";
  */
 describe.skipIf(!adminUrl)("a legacy-invoiced lot after a buyer default (integration)", () => {
   const databaseName = `auction_h2_${randomUUID().replaceAll("-", "")}`;
-  let admin: pg.Client;
-  let pool: pg.Pool;
-  let db: Database;
+  let admin: Database | undefined;
+  let db: Database | undefined;
+  /** The pg pool behind `db`, as the migration runner takes it. */
+  type Pool = Parameters<typeof runMigrationsPerTransaction>[0];
+  let pool: Pool;
 
   const lotId = randomUUID();
   const buyerUserId = `h2-buyer-${randomUUID().slice(0, 8)}`;
@@ -53,12 +55,12 @@ describe.skipIf(!adminUrl)("a legacy-invoiced lot after a buyer default (integra
     if (!adminUrl) return;
     const server = new URL(adminUrl);
     server.pathname = "/postgres";
-    admin = new pg.Client({ connectionString: server.toString() });
-    await admin.connect();
-    await admin.query(`CREATE DATABASE "${databaseName}"`);
+    admin = createDb(server.toString());
+    await admin.execute(sql.raw(`CREATE DATABASE "${databaseName}"`));
     const target = new URL(adminUrl);
     target.pathname = `/${databaseName}`;
-    pool = new pg.Pool({ connectionString: target.toString() });
+    db = createDb(target.toString());
+    pool = (db as Database & { $client: Pool }).$client;
 
     const migrations = readJournalMigrations();
     const index = migrations.findIndex((m) =>
@@ -111,21 +113,26 @@ describe.skipIf(!adminUrl)("a legacy-invoiced lot after a buyer default (integra
     );
 
     await runMigrationsPerTransaction(pool);
-    db = createDbFromPool(pool);
   }, 120_000);
 
   afterAll(async () => {
-    await pool?.end();
+    if (db) await closeDb(db);
     if (!admin) return;
-    await admin.query(
-      "select pg_terminate_backend(pid) from pg_stat_activity where datname = $1 and pid <> pg_backend_pid()",
-      [databaseName],
+    await admin.execute(
+      sql`select pg_terminate_backend(pid) from pg_stat_activity where datname = ${databaseName} and pid <> pg_backend_pid()`,
     );
-    await admin.query(`DROP DATABASE IF EXISTS "${databaseName}"`);
-    await admin.end();
+    await admin.execute(sql.raw(`DROP DATABASE IF EXISTS "${databaseName}"`));
+    await closeDb(admin);
   });
 
+  /** The database the test runs on; set once `beforeAll` has migrated it. */
+  const store = (): Database => {
+    if (!db) throw new Error("database not set up");
+    return db;
+  };
+
   const services = () => {
+    const db = store();
     const lots = new DrizzleLotRepository(db);
     const invoiceRaiser = new InvoiceRaiser({
       invoices: new DrizzleBidInvoiceRepository(db),
@@ -136,6 +143,7 @@ describe.skipIf(!adminUrl)("a legacy-invoiced lot after a buyer default (integra
 
   it("prices the re-offer, the re-raised invoice and the shortfall on the bands", async () => {
     const { lots, invoiceRaiser, pricing } = services();
+    const db = store();
     expect((await lots.findById(lotId))?.buyerPremiumRate).toBeNull();
 
     // The buyer defaults: the invoice is voided so the lot can be invoiced afresh.
