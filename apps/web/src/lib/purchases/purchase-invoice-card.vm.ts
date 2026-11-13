@@ -1,5 +1,5 @@
 import { CLIENT_ROUTES } from "@/lib/navigation/client-routes";
-import { LONDON_TIME_ZONE, formatWhen } from "@auction/datetime";
+import { LONDON_TIME_ZONE, formatDayMonth, formatWeekday, formatWhen } from "@auction/datetime";
 import type { PurchaseInvoiceCard } from "@auction/types";
 
 /** A download on the card: LAX's stored copy of the Books invoice, or LAX's own invoice. */
@@ -25,7 +25,12 @@ export type PurchaseInvoiceCardVm =
       meta: string;
       download: InvoiceCardLink;
     }
-  | { kind: "cancelled"; title: string; detail: string }
+  | {
+      kind: "cancelled";
+      title: string;
+      /** "This invoice was cancelled on Mon 16 Nov. You owe nothing on it." */
+      detail: string;
+    }
   | {
       /** Books does not issue this invoice (yet): LAX's own invoice, as before. */
       kind: "lax";
@@ -52,6 +57,12 @@ export function purchaseDocumentHref(lotId: string, documentId: string): string 
 /** "Thu 12 Nov, 14:05 GMT": the shared moment style, in London (the invoice's own zone). */
 function moment(iso: string, now: Date): string {
   return formatWhen(new Date(iso), LONDON_TIME_ZONE, now);
+}
+
+/** "Mon 16 Nov": the day only (the moment style's short form), in London. */
+function day(iso: string, now: Date): string {
+  const at = new Date(iso);
+  return `${formatWeekday(at, LONDON_TIME_ZONE)} ${formatDayMonth(at, LONDON_TIME_ZONE, now)}`;
 }
 
 /**
@@ -104,7 +115,7 @@ export function purchaseInvoiceCard(input: {
         kind: "cancelled",
         title: INVOICE_CARD_COPY.cancelledTitle,
         detail: card.cancelledAt
-          ? `This invoice was cancelled on ${moment(card.cancelledAt, now)}. You owe nothing on it.`
+          ? `This invoice was cancelled on ${day(card.cancelledAt, now)}. You owe nothing on it.`
           : "This invoice was cancelled. You owe nothing on it.",
       };
     case "lax":

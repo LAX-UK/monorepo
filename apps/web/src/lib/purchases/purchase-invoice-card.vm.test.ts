@@ -62,12 +62,22 @@ describe("purchaseInvoiceCard", () => {
     });
   });
 
-  it("says when it was cancelled and that nothing is owed", () => {
-    expect(vm({ state: "cancelled", cancelledAt: "2026-11-12T16:30:00.000Z" })).toEqual({
+  it("says the day it was cancelled (no time) and that nothing is owed", () => {
+    expect(vm({ state: "cancelled", cancelledAt: "2026-11-16T16:30:00.000Z" })).toEqual({
       kind: "cancelled",
       title: "Invoice cancelled",
-      detail: "This invoice was cancelled on Thu 12 Nov, 16:30 GMT. You owe nothing on it.",
+      detail: "This invoice was cancelled on Mon 16 Nov. You owe nothing on it.",
     });
+    // The day is London's: 23:30 GMT on the 15th in summer time is already the 16th.
+    const lateInSummer = vm({ state: "cancelled", cancelledAt: "2026-07-15T23:30:00.000Z" });
+    expect(lateInSummer.kind === "cancelled" && lateInSummer.detail).toBe(
+      "This invoice was cancelled on Thu 16 Jul. You owe nothing on it.",
+    );
+    // A cancellation in another year names it.
+    const lastYear = vm({ state: "cancelled", cancelledAt: "2025-12-30T10:00:00.000Z" });
+    expect(lastYear.kind === "cancelled" && lastYear.detail).toBe(
+      "This invoice was cancelled on Tue 30 Dec 2025. You owe nothing on it.",
+    );
   });
 
   it("keeps LAX's own invoice when Books does not issue it, or its card cannot be read", () => {
