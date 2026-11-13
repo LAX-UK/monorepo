@@ -83,7 +83,7 @@ export type AccountingQueueRow = {
   /** The LAX reference, e.g. LAX-BID-INV-01h…; the same for every try. */
   reference: string;
   documentType: AccountingDocumentType;
-  /** What it is, in a few words: "Payment · Pay several", "Delivery invoice · Pay several". */
+  /** What it is, in a few words: "Payment · Pay several", "Delivery · Pay several". */
   label: string;
   /** Kept here and never sent until this is settled; null when it goes to Books as usual. */
   parked: AccountingParkReason | null;
@@ -241,7 +241,7 @@ export const ACCOUNTING_PART_FUNDED_TEXT =
 
 /**
  * A row's few words: "Payment · Pay several" for one payment of several invoices, "Delivery
- * invoice · Pay several" for a courier quote paid with them, otherwise "Invoice · Bid". Read from
+ * · Pay several" (a delivery invoice) for a courier quote paid with them, otherwise "Invoice · Bid". Read from
  * the LAX reference, which says where the document comes from.
  */
 export function accountingDocumentLabel(
@@ -252,7 +252,7 @@ export function accountingDocumentLabel(
   const sourceId = /^LAX-[A-Z]+-[A-Z]+-(.+)$/.exec(reference)?.[1] ?? "";
   if (documentType === "payment" && sourceId.startsWith("grp-")) return "Payment · Pay several";
   if (documentType === "invoice" && sourceId.startsWith("dlv-")) {
-    return "Delivery invoice · Pay several";
+    return "Delivery · Pay several";
   }
   return `${ACCOUNTING_DOCUMENT_TYPE_LABELS[documentType]} · ${ACCOUNTING_PRODUCT_LABELS[product]}`;
 }

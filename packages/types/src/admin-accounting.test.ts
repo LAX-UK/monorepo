@@ -96,7 +96,7 @@ describe("Accounting page: payments", () => {
       "Payment · Pay several",
     );
     expect(accountingDocumentLabel("invoice", "bid", "LAX-BID-INV-dlv-0b6a7c1e-6666")).toBe(
-      "Delivery invoice · Pay several",
+      "Delivery · Pay several",
     );
     expect(accountingDocumentLabel("payment", "bid", "LAX-BID-PAY-0b6a7c1e-3333")).toBe(
       "Payment · Bid",

@@ -222,7 +222,7 @@ describe("Accounting rows for payments", () => {
     const [row] = toAccountingStaffRows([
       accountingRow({
         reference: "LAX-BID-INV-dlv-0b6a7c1e",
-        label: "Delivery invoice · Pay several",
+        label: "Delivery · Pay several",
         state: "needs_review",
         parked: "vat_on_delivery",
         canTryAgain: false,
@@ -232,7 +232,7 @@ describe("Accounting rows for payments", () => {
     ]);
     expect(row?.state).toEqual({ label: "Waiting for the accountant", tone: "warning" });
     expect(row).toMatchObject({
-      kind: "Delivery invoice · Pay several",
+      kind: "Delivery · Pay several",
       canTryAgain: false,
       note: null,
     });

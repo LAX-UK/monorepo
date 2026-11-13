@@ -122,7 +122,8 @@ export function AccountingQueueList(props: AccountingQueueListProps) {
       {
         id: "state",
         header: "Status",
-        width: "136px",
+        // Wide enough for "Waiting for the accountant" on one line.
+        width: "176px",
         mobile: "meta",
         truncate: false,
         cell: (row) => <StatusBadge tone={row.state.tone}>{row.state.label}</StatusBadge>,
@@ -130,7 +131,7 @@ export function AccountingQueueList(props: AccountingQueueListProps) {
       {
         id: "problem",
         header: tab === "issued" ? "In Books" : "Last problem",
-        minWidth: "220px", // matters most after Document, so it takes the spare room
+        minWidth: "180px", // matters most after Document, so it takes the spare room
         truncate: false,
         mobile: "detail",
         cell: (row) => <ProblemCell row={row} issued={tab === "issued"} />,

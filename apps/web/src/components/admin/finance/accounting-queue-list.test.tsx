@@ -348,7 +348,7 @@ describe("AccountingQueueList: payments", () => {
       rows: toAccountingStaffRows([
         accountingRow({
           reference: "LAX-BID-INV-dlv-0b6a7c1e",
-          label: "Delivery invoice · Pay several",
+          label: "Delivery · Pay several",
           state: "needs_review",
           parked: "vat_on_delivery",
           canTryAgain: false,
@@ -358,7 +358,7 @@ describe("AccountingQueueList: payments", () => {
       ]),
     });
     expect(screen.getAllByText("Waiting for the accountant").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("Delivery invoice · Pay several").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Delivery · Pay several").length).toBeGreaterThan(0);
     expect(screen.queryByRole("button", { name: "Try again" })).toBeNull();
   });
 });
