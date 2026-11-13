@@ -42,7 +42,7 @@ export function TelephoneBidDetailContent({ bookingId }: Props) {
       const detail = await fetchTelephoneBookingDetail(bookingId);
       if (cancelled?.()) return null;
       if (!detail) {
-        setLoadError("Booking not found or you do not have access.");
+        setLoadError("Try again, or go back to your telephone bookings.");
         return null;
       }
       setLoadError(null);
@@ -75,9 +75,12 @@ export function TelephoneBidDetailContent({ bookingId }: Props) {
           slice: "telephoneBids",
           code: null,
           status: 404,
-          title: "Could not load booking",
+          title: "This telephone booking couldn't be loaded",
           message: loadError,
-          actions: [{ kind: "navigate", label: "Back to list", href: "/bids#telephone-bids" }],
+          actions: [
+            { kind: "retry", label: "Try again", href: `/bids/telephone/${bookingId}` },
+            { kind: "navigate", label: "Back to bids", href: "/bids#telephone-bids" },
+          ],
         }}
       />
     );

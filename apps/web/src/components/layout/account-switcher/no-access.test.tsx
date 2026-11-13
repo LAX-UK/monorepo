@@ -71,7 +71,11 @@ describe("NoAccess", () => {
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(
       "You don't have access to this consignment",
     );
-    expect(screen.getByText(/It belongs to an account you aren't using/)).toBeVisible();
+    expect(
+      screen.getByText(
+        "It isn't available in the account you're using. If it's in another of your accounts, switch to that one.",
+      ),
+    ).toBeVisible();
     const [first] = screen.getAllByRole("button");
     expect(first).toHaveAccessibleName(/Switch account/);
     expect(screen.getByRole("link", { name: "Back to My bids" })).toHaveAttribute("href", "/bids");
@@ -81,8 +85,12 @@ describe("NoAccess", () => {
     renderWith(personal, null, { page: null, openedBy: null });
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("You don't have access");
     expect(
-      screen.getByText(/This page belongs to an organisation you aren't a member of/),
+      screen.getByText(
+        "This page isn't available in your account. If someone sent you the link, check it with them.",
+      ),
     ).toBeVisible();
+    // Nothing suggests the page belongs to an organisation or that an owner could invite them.
+    expect(screen.queryByText(/member of|invite you|owner/i)).toBeNull();
     expect(screen.queryByRole("button", { name: /Switch account/ })).toBeNull();
   });
 });
