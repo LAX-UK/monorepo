@@ -47,7 +47,7 @@ describe("migration 0344 payment refund", () => {
     expect(migration).toContain(
       `CHECK ("source" IN ('card_webhook', 'group_webhook', 'staff', 'blocked_capture', 'payout_topup'))`,
     );
-    // `refund_reversal` came later, with 0375 (see its own test).
+    // `refund_reversal` came later, with 0376 (see its own test).
     for (const source of PAYMENT_REFUND_SOURCES.filter((s) => s !== "refund_reversal")) {
       expect(migration).toContain(`'${source}'`);
     }

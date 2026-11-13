@@ -1,48 +1,15 @@
+/**
+ * Marketing attribution helpers. This module has no schema library: it is in the first scripts of
+ * every Bid page (the attribution cookie), so the snapshot check is written out by hand. The Zod
+ * schemas for API bodies live in `marketing-attribution-schema.ts`; the parser here accepts and
+ * returns exactly what those schemas do (see the equivalence tests).
+ */
 import type { MarketingAttributionSnapshot, MarketingAttributionTouch } from "@auction/types";
 import {
   MARKETING_ATTRIBUTION_VERSION,
   decodeUtf8Base64Url,
   encodeUtf8Base64Url,
 } from "@auction/types";
-import { z } from "zod";
-
-const touchField = z.string().trim().min(1).max(256);
-
-export const marketingAttributionTouchSchema = z.object({
-  capturedAt: z.string().datetime({ offset: true }),
-  landingPath: z.string().trim().min(1).max(2048),
-  utmSource: touchField.optional(),
-  utmMedium: touchField.optional(),
-  utmCampaign: touchField.optional(),
-  utmId: touchField.optional(),
-  utmTerm: touchField.optional(),
-  utmContent: touchField.optional(),
-  utmSourcePlatform: touchField.optional(),
-  utmCreativeFormat: touchField.optional(),
-  utmMarketingTactic: touchField.optional(),
-  gclid: touchField.optional(),
-  gbraid: touchField.optional(),
-  wbraid: touchField.optional(),
-  dclid: touchField.optional(),
-  fbclid: touchField.optional(),
-  msclkid: touchField.optional(),
-});
-
-export const marketingAttributionSnapshotSchema = z
-  .object({
-    version: z.literal(MARKETING_ATTRIBUTION_VERSION),
-    firstTouch: marketingAttributionTouchSchema.optional(),
-    lastTouch: marketingAttributionTouchSchema.optional(),
-  })
-  .refine((snapshot) => snapshot.firstTouch !== undefined || snapshot.lastTouch !== undefined, {
-    message: "At least one attribution touch is required",
-  });
-
-export const marketingAttributionPutBodySchema = z.object({
-  snapshot: marketingAttributionSnapshotSchema,
-});
-
-export type MarketingAttributionPutBody = z.infer<typeof marketingAttributionPutBodySchema>;
 
 const URL_PARAM_TO_TOUCH: ReadonlyArray<{
   param: string;
@@ -188,8 +155,6 @@ function touchCapturedMs(touch: MarketingAttributionTouch): number {
   return Date.parse(touch.capturedAt);
 }
 
-type ParsedTouch = z.infer<typeof marketingAttributionTouchSchema>;
-
 const OPTIONAL_TOUCH_KEYS: ReadonlyArray<
   keyof Omit<MarketingAttributionTouch, "capturedAt" | "landingPath">
 > = [
@@ -210,31 +175,67 @@ const OPTIONAL_TOUCH_KEYS: ReadonlyArray<
   "msclkid",
 ];
 
-function normalizeTouch(touch: ParsedTouch): MarketingAttributionTouch {
-  const out: MarketingAttributionTouch = {
-    capturedAt: touch.capturedAt,
-    landingPath: touch.landingPath,
-  };
+/**
+ * An ISO date-time with `Z` or a numeric offset, any number of fraction digits, seconds optional;
+ * the calendar check includes leap years. The same pattern as Zod 3's
+ * `z.string().datetime({ offset: true })`.
+ */
+const DATETIME_WITH_OFFSET =
+  /^((\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-((0[13578]|1[02])-(0[1-9]|[12]\d|3[01])|(0[469]|11)-(0[1-9]|[12]\d|30)|(02)-(0[1-9]|1\d|2[0-8])))T([01]\d|2[0-3]):[0-5]\d(:[0-5]\d(\.\d+)?)?(Z|([+-]\d{2}:?\d{2}))$/;
+
+/** What Zod 3 parses as an object: not null, an array, a promise-like, a Map, a Set or a Date. */
+function isObjectInput(value: unknown): value is Record<string, unknown> {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) return false;
+  const candidate = value as { then?: unknown; catch?: unknown };
+  if (typeof candidate.then === "function" && typeof candidate.catch === "function") return false;
+  return !(value instanceof Map || value instanceof Set || value instanceof Date);
+}
+
+/** A string trimmed and between `max` and 1 characters long, or `null`. */
+function trimmedField(value: unknown, max: number): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  return trimmed.length >= 1 && trimmed.length <= max ? trimmed : null;
+}
+
+/** One touch, fields trimmed and unknown keys dropped, or `null` when any field is invalid. */
+function parseTouch(value: unknown): MarketingAttributionTouch | null {
+  if (!isObjectInput(value)) return null;
+  const { capturedAt } = value;
+  if (typeof capturedAt !== "string" || !DATETIME_WITH_OFFSET.test(capturedAt)) return null;
+  const landingPath = trimmedField(value.landingPath, 2048);
+  if (landingPath === null) return null;
+  const out: MarketingAttributionTouch = { capturedAt, landingPath };
   for (const key of OPTIONAL_TOUCH_KEYS) {
-    const value = touch[key];
-    if (value !== undefined) {
-      out[key] = value;
-    }
+    const raw = value[key];
+    if (raw === undefined) continue;
+    const field = trimmedField(raw, 256);
+    if (field === null) return null;
+    out[key] = field;
   }
   return out;
 }
 
-/** Zod-safe parse into a snapshot compatible with exactOptionalPropertyTypes. */
+/**
+ * The stored snapshot (`version` 1 and at least one valid touch), compatible with
+ * exactOptionalPropertyTypes, or `null` when it is not one.
+ */
 export function parseMarketingAttributionSnapshot(
   value: unknown,
 ): MarketingAttributionSnapshot | null {
-  const parsed = marketingAttributionSnapshotSchema.safeParse(value);
-  if (!parsed.success) return null;
-  const data = parsed.data;
-  const out: MarketingAttributionSnapshot = { version: data.version };
-  if (data.firstTouch !== undefined) out.firstTouch = normalizeTouch(data.firstTouch);
-  if (data.lastTouch !== undefined) out.lastTouch = normalizeTouch(data.lastTouch);
-  return out;
+  if (!isObjectInput(value) || value.version !== MARKETING_ATTRIBUTION_VERSION) return null;
+  const out: MarketingAttributionSnapshot = { version: MARKETING_ATTRIBUTION_VERSION };
+  if (value.firstTouch !== undefined) {
+    const firstTouch = parseTouch(value.firstTouch);
+    if (firstTouch === null) return null;
+    out.firstTouch = firstTouch;
+  }
+  if (value.lastTouch !== undefined) {
+    const lastTouch = parseTouch(value.lastTouch);
+    if (lastTouch === null) return null;
+    out.lastTouch = lastTouch;
+  }
+  return out.firstTouch !== undefined || out.lastTouch !== undefined ? out : null;
 }
 
 /** Merge incoming landing into snapshot (first write-once, last when newer campaign). */

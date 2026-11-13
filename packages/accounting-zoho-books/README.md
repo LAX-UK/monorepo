@@ -2,8 +2,9 @@
 
 The Zoho Books HTTP client and the Books adapter for the Xero → Zoho Books move. The client sends
 requests and says, in typed errors, what happened. The adapter (`src/adapter`) implements the
-`@auction/accounting-domain` ports on top of it. Nothing calls either at runtime yet (no apps wiring,
-Books mode stays off) and no test touches the network.
+`@auction/accounting-domain` ports on top of it. At runtime the worker uses only the rehearsal adapter
+(`createBooksAccountingAdapters` in `@auction/finance-runtime`); the HTTP client and the writing adapter are
+not wired yet, and no test touches the network.
 
 Depends on `@auction/accounting-domain` (outcome types) and `@auction/identity-contracts` (the token
 envelope). `lint:layers` forbids anything else in the workspace, apps, the database and frameworks.
@@ -59,7 +60,8 @@ The shared budget, rate and refresh lock above, and a `ZohoTokenStore` adapter o
 `createZohoBooksAdapter({ api, orgs, writes })` returns one port per document kind (`invoices`, `payments`,
 `creditNotes`, `bills`), `contacts` (customers), `vendors` (payout recipients) and `lookup`. Each is its own
 small class, so a caller depends only on the port it uses. `orgs` comes from `parseOrgConfigs`, which checks the
-per-organisation settings when the process starts: the Books organisation id, the custom field that carries the
+per-organisation settings when the process starts: the Books organisation id, whether it is a test or the live
+organisation (required, no default), the custom field that carries the
 LAX reference, whether the organisation is VAT registered (required, no default), tax ids per VAT treatment, item
 and revenue account per line role, the Stripe clearing deposit account, the bill expense account, optional
 templates and numbering groups. None of this is hard-coded in a mapper. An entity left out (Bid, until its
@@ -67,7 +69,8 @@ organisation exists) is refused with a clear reason.
 
 | Concern | Where | Rule |
 | --- | --- | --- |
-| Writes | `adapter/write-gate.ts` | Dry-run by default: every create and update is refused with `zoho_books_writes_disabled` before any request (dependency lookups included). Writing needs `writes: { mode: "test_org" \| "live", organizationIds }`, and each id must be a configured organisation. The API handed to the gateways also refuses POST/PUT to any organisation not on that list. |
+| Writes | `adapter/write-gate.ts` | Dry-run by default: every create and update is refused with `zoho_books_writes_disabled` before any request (dependency lookups included). Writing needs `writes: { mode: "test_org" \| "live", organizationIds }`, and each id must be a configured organisation of that mode's kind: `test_org` only reaches organisations configured `environment: "test"`, `live` only `environment: "live"` (`write_allow_list_wrong_environment` otherwise), so the mode is never just a label. The API handed to the gateways also refuses POST/PUT to any organisation not on that list. |
+| Rehearsal | `adapter/dry-run.ts` | `createZohoBooksDryRunAdapter({ orgs })` builds the exact request the Books adapter would (same organisation choice, dependency checks and mappers, so the same refusals) and sends nothing: it holds no HTTP client. A request that can be built is answered `issued` as `DRY-RUN` / `dry-run:<reference>` with our totals; the body is not kept (it carries personal data). Lookups find nothing. |
 | One organisation per document | `adapter/api.ts` `orgFor`, `adapter/gateways.ts` `prepare` | The organisation is chosen once, from the product. A document whose `entity` disagrees, or that refers to a contact or invoice of another product, is refused (`zoho_books_entity_mismatch`) before any request. Every dependency lookup, the write and the duplicate-adopt lookup use that one organisation. |
 | VAT registration | `adapter/org-config.ts`, `adapter/mappers/common.ts` | `vatRegistered` is stated per organisation. When false, no tax id may be configured or sent, and a line that carries VAT or claims the standard rate is refused (`zoho_books_mapping_vat_on_unregistered_entity`) and held for staff: never sent without its VAT, never sent with it. |
 | VAT to the penny | `adapter/mappers/common.ts` `lineTax` | Books works VAT out per line from what we send; it cannot be handed our figure. A line is only sent when the VAT Books will compute (half-up, per line, inclusive or exclusive) equals the VAT LAX stated; otherwise `zoho_books_mapping_vat_differs_from_books`, nothing sent. Totals read back are still compared by the domain (a difference goes to review, never adjusted). |
@@ -75,7 +78,7 @@ organisation exists) is refused with a clear reason.
 | Customers and vendors | `adapter/mappers/contact.ts`, `adapter/resolve.ts` | Invoices, credit notes and payments go to a `customer` contact; bills only to a `vendor` contact (`vendors.upsertVendor`). A vendor's reference field holds the LAX reference with a `:vendor` suffix, because the field is unique across all contacts and one person may be both. A contact read back with the wrong type is refused. |
 | Kinds | `adapter/kinds.ts` | One row per kind: path, list and item keys, id and number fields, how to read totals. A new kind adds a row. |
 | Duplicate guard | `adapter/writer.ts` | Every document carries the LAX reference in a custom field Books refuses to accept twice. A create refused with one of the organisation's duplicate-value codes is looked up and adopted, so a repeat is the same document. The adapter keeps no state. |
-| Payments read back | `adapter/gateways.ts` `paymentMatches` | A payment (fresh or adopted) is only accepted when Books holds the same customer, amount, currency, date and amount applied to each invoice; otherwise `zoho_books_payment_mismatch`. |
+| Payments read back | `adapter/gateways.ts` `paymentMatches`, `adapter/writer.ts` | A payment (fresh or adopted) is only accepted when Books holds the same customer, amount, currency, date and amount applied to each invoice. Otherwise the answer is `differs` (reason `zoho_books_payment_mismatch`) with Books' identity and totals: the document exists, so it goes to a person and is never retried. The same holds for a new contact that reads back as the wrong type. |
 | Lookup | `adapter/lookup.ts` | Searches the kind's collection by the custom field, then reads the document and requires the stored reference to equal the one asked for, so a filter Books ignored can never adopt another document. Absence is only an empty search or a 404. |
 | Dependencies | `adapter/resolve.ts` | A contact or invoice we refer to is found by reference in the document's organisation. Missing is a rejection; not confirmable is `unknown`. |
 | Totals | `adapter/kinds.ts` | Books' sub total, tax and total are read back as whole pence (a fraction of a penny is `unknown`). The domain compares them with ours; a difference goes to review. |

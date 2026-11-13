@@ -25,9 +25,15 @@ export interface ProviderDocument extends IssuedDocument {
   readonly totals: Totals;
 }
 
-/** What a provider call can end in. `unknown` covers timeouts and anything we cannot tell. */
+/**
+ * What a provider call can end in. `unknown` covers timeouts and anything we cannot tell.
+ * `differs` means the provider holds a document under our reference (just created, or adopted
+ * after a duplicate refusal) but, read back, it is not the one we sent: it exists, so it is never
+ * sent again or treated as a refusal, and a person decides what to do with it.
+ */
 export type IssueOutcome =
   | ({ readonly status: "issued" } & ProviderDocument)
+  | ({ readonly status: "differs"; readonly reason: string } & ProviderDocument)
   | { readonly status: "rejected"; readonly reason: string }
   | { readonly status: "unknown"; readonly detail?: string };
 

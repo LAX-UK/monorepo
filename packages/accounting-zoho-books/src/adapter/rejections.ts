@@ -1,7 +1,8 @@
 /**
  * Every reason the adapter itself refuses a document, as a fixed code a caller can branch on. A
- * refusal here means nothing was posted for the document (or, for a read-back mismatch, that what
- * Books holds is not what we sent): it is held for staff, never retried blindly and never adjusted.
+ * refusal here means nothing was posted for the document. A read-back mismatch (a payment or contact
+ * Books holds under our reference that is not what we sent) comes back as `differs` with Books'
+ * identity, never as a refusal: it is held for staff, never retried and never adjusted.
  */
 export const ZOHO_BOOKS_REJECTIONS = {
   /** No Books organisation is configured for the document's legal entity (Bid, until it exists). */

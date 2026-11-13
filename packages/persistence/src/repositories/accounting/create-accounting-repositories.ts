@@ -1,6 +1,7 @@
 import type { Database } from "@auction/db";
 import type {
   AccountingClock,
+  IAccountingDocumentDueWork,
   IAccountingDocumentLookup,
   IAccountingDocumentRegistry,
   IAccountingDocumentTransitions,
@@ -8,6 +9,7 @@ import type {
   IAccountingSourceSettingReader,
   IAccountingSourceSettingWriter,
 } from "../../interfaces/accounting.js";
+import { DrizzleAccountingDocumentDueWork } from "./drizzle-accounting-document.due-work.js";
 import { DrizzleAccountingDocumentReader } from "./drizzle-accounting-document.reader.js";
 import { DrizzleAccountingDocumentRegistry } from "./drizzle-accounting-document.registry.js";
 import { DrizzleAccountingDocumentTransitions } from "./drizzle-accounting-document.transitions.js";
@@ -21,6 +23,7 @@ export interface AccountingRepositories {
   readonly registry: IAccountingDocumentRegistry;
   readonly transitions: IAccountingDocumentTransitions;
   readonly workQueue: IAccountingDocumentWorkQueue;
+  readonly dueWork: IAccountingDocumentDueWork;
   readonly settingReader: IAccountingSourceSettingReader;
   readonly settingWriter: IAccountingSourceSettingWriter;
 }
@@ -35,6 +38,7 @@ export function createAccountingRepositories(
     registry: new DrizzleAccountingDocumentRegistry(db, clock),
     transitions: new DrizzleAccountingDocumentTransitions(db, clock),
     workQueue: new DrizzleAccountingDocumentWorkQueue(db, clock),
+    dueWork: new DrizzleAccountingDocumentDueWork(db, clock),
     settingReader: new DrizzleAccountingSourceSettingReader(db),
     settingWriter: new DrizzleAccountingSourceSettingWriter(db, clock),
   };

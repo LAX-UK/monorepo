@@ -149,6 +149,8 @@ const LABELS: Record<string, string> = {
   "lot.reoffer_withdrawn": "Offer withdrawn",
   "lot.reawarded": "Lot re-awarded to the next bidder",
 
+  "invoice.raised": "Invoice raised",
+
   "payment.created": "Payment created",
   "payment.authorized": "Payment authorised",
   "payment.captured": "Payment captured",

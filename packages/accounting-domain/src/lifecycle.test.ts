@@ -185,6 +185,58 @@ describe("completeSending", () => {
     expect(statusAfter(cancel(r))).toBe("refused");
     expect(statusAfter(escalate(r, "x"))).toBe("refused");
   });
+  it("a document that differs on read-back goes to a person, identity kept, never failed", () => {
+    const differs: IssueOutcome = {
+      ...issuedOutcome,
+      status: "differs",
+      reason: "zoho_books_payment_mismatch",
+    };
+    const r = must(completeSending(rec("sending"), "t1", differs, NOW, totals));
+    expect(r).toEqual({
+      ...base,
+      status: "needs_review",
+      lookup: "clear",
+      issued: doc,
+      mismatch: null,
+      reason: "provider document differs from ours: zoho_books_payment_mismatch",
+    });
+    expect(statusAfter(startSending(r, lease, NOW))).toBe("refused");
+    expect(statusAfter(requeue(r))).toBe("refused");
+    expect(statusAfter(cancel(r))).toBe("refused");
+    expect(statusAfter(escalate(r, "x"))).toBe("refused");
+  });
+  it("a differing document keeps a totals difference too", () => {
+    const theirs = { ...totals, grossPence: 11_999 };
+    const outcome: IssueOutcome = {
+      ...issuedOutcome,
+      status: "differs",
+      reason: "x",
+      totals: theirs,
+    };
+    const r = must(completeSending(rec("sending"), "t1", outcome, NOW, totals));
+    expect(r).toMatchObject({
+      status: "needs_review",
+      mismatch: { field: "grossPence", differencePence: -1 },
+    });
+  });
+  it("a differing document with unreadable totals or no reason changes nothing", () => {
+    const bad = (outcome: IssueOutcome) =>
+      completeSending(rec("sending"), "t1", outcome, NOW, totals);
+    const fractional = { ...totals, netPence: 1.5 };
+    expect(
+      bad({ ...issuedOutcome, status: "differs", reason: "x", totals: fractional }),
+    ).toMatchObject({ ok: false, refusal: { code: "bad_outcome" } });
+    expect(bad({ ...issuedOutcome, status: "differs", reason: "" })).toMatchObject({
+      ok: false,
+      refusal: { code: "bad_outcome" },
+    });
+  });
+  it("a differing answer after the lease expired is not trusted either", () => {
+    const outcome: IssueOutcome = { ...issuedOutcome, status: "differs", reason: "x" };
+    expect(completeSending(rec("sending"), "t1", outcome, lease.expiresAtMs, totals)).toMatchObject(
+      { ok: true, value: { status: "unknown" } },
+    );
+  });
   it("rejected -> failed with the reason", () => {
     expect(
       completeSending(rec("sending"), "t1", { status: "rejected", reason: "bad VAT" }, NOW, totals),

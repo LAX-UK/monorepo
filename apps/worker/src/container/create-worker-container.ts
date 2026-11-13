@@ -91,6 +91,7 @@ import {
   createReportWorkerJobFailure,
   registerWorkerErrorHandlers,
 } from "../workers/worker-utils.js";
+import { createAccountingRuntime } from "./create-accounting-runtime.js";
 import { createAtgSyncRuntime } from "./create-atg-sync-runtime.js";
 import { createBidAlertRuntime } from "./create-bid-alert-runtime.js";
 import { createExportProviderDeps } from "./create-export-provider-deps.js";
@@ -381,6 +382,7 @@ export function createWorkerContainer(): WorkerContainer {
   const zohoArtworkWriteback = createZohoArtworkWriteback({ env, db, log });
   const zohoArtworkListing = createZohoArtworkListing({ env, db, log });
   const zohoFulfilment = createZohoFulfilmentMirror({ env, db, log });
+  const accounting = createAccountingRuntime({ env, db, log });
   const zohoCampaignsSuppression = createZohoCampaignsSuppressionRuntime({ env, db, log });
   const webhookProcessorDeps: ProcessInboundWebhookDeps = {
     env,
@@ -636,6 +638,7 @@ export function createWorkerContainer(): WorkerContainer {
       ...(zohoArtworkWriteback ? { zohoArtworkWriteback } : {}),
       ...(zohoArtworkListing ? { zohoArtworkListing: zohoArtworkListing.writeback } : {}),
       ...(zohoFulfilment ? { zohoFulfilment } : {}),
+      ...(accounting ? { accounting } : {}),
       artworkOfferLock: new BidOfferLockRecorder(
         new ArtworkOfferLock(new DrizzleArtworkRegisterRepository(db)),
         new DrizzleLotRegisterLinkReader(db),

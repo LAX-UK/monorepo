@@ -239,7 +239,7 @@ export const API_PRIVATE_SALE_ARTWORK_HISTORY_TABLES = [
  */
 export const API_PAYMENT_TRANSFER_REFERENCE_TABLES = ["payment_transfer_reference"] as const;
 /**
- * Each failed or cancelled Stripe refund taken back from a record (migration 0375), the guard
+ * Each failed or cancelled Stripe refund taken back from a record (migration 0376), the guard
  * that takes one back at most once. Append-only, so api_app gets INSERT and SELECT only; no
  * other role touches it.
  */

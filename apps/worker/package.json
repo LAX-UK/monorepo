@@ -19,6 +19,7 @@
     "replay:crm-skipped": "tsx --env-file=../../.env src/scripts/replay-crm-skipped.ts"
   },
   "dependencies": {
+    "@auction/accounting-domain": "workspace:*",
     "@auction/alerts": "workspace:*",
     "@auction/artwork-register-contracts": "workspace:*",
     "@auction/background-runtime": "workspace:*",
@@ -60,6 +61,7 @@
     "zod": "^3.24.1"
   },
   "devDependencies": {
+    "@auction/accounting-zoho-books": "workspace:*",
     "@auction/config-ts": "workspace:*",
     "@types/node": "^22.10.5",
     "@types/pdfkit": "^0.13.9",

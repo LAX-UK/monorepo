@@ -16,7 +16,7 @@ const journal = JSON.parse(read("meta/_journal.json")) as {
   entries: { idx: number; tag: string; when: number }[];
 };
 
-describe.each(["0375_stripe_refund_watch", "0376_payment_transfer_received_intent"])(
+describe.each(["0376_stripe_refund_watch", "0377_payment_transfer_received_intent"])(
   "migration %s",
   (tag) => {
     it("is journalled once, after the entry before it in both idx and time", () => {
@@ -37,9 +37,9 @@ describe.each(["0375_stripe_refund_watch", "0376_payment_transfer_received_inten
   },
 );
 
-describe("migration 0375 stripe refund watch", () => {
-  const migration = read("0375_stripe_refund_watch.sql");
-  const rollback = read("0375_rollback.sql");
+describe("migration 0376 stripe refund watch", () => {
+  const migration = read("0376_stripe_refund_watch.sql");
+  const rollback = read("0376_rollback.sql");
 
   it("creates every column the schema declares", () => {
     expect(migration).toMatch(/CREATE TABLE IF NOT EXISTS "stripe_refund_watch"/);
@@ -88,7 +88,7 @@ describe("migration 0375 stripe refund watch", () => {
   });
 });
 
-describe.each(["0374", "0375", "0376"])("rollback %s", (number) => {
+describe.each(["0375", "0376", "0377"])("rollback %s", (number) => {
   it("runs in one transaction, so its lock timeout applies", () => {
     const rollback = read(`${number}_rollback.sql`);
     expect(rollback).toMatch(/^BEGIN;\n\nSET LOCAL lock_timeout = '5s';/m);
@@ -96,12 +96,12 @@ describe.each(["0374", "0375", "0376"])("rollback %s", (number) => {
   });
 });
 
-describe("migration 0376 transfer received intent", () => {
+describe("migration 0377 transfer received intent", () => {
   it("adds one nullable column and drops only it on rollback", () => {
-    expect(read("0376_payment_transfer_received_intent.sql")).toContain(
+    expect(read("0377_payment_transfer_received_intent.sql")).toContain(
       `ALTER TABLE "payment" ADD COLUMN IF NOT EXISTS "transfer_received_payment_intent_id" text;`,
     );
-    expect(read("0376_rollback.sql")).toContain(
+    expect(read("0377_rollback.sql")).toContain(
       `ALTER TABLE "payment" DROP COLUMN IF EXISTS "transfer_received_payment_intent_id";`,
     );
   });

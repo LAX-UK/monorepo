@@ -12,7 +12,7 @@ import {
   accountingDocumentEvent,
   accountingSourceSetting,
 } from "@auction/db/schema";
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import type {
   AccountingClock,
   IAccountingDocumentRegistry,
@@ -47,6 +47,9 @@ export class DrizzleAccountingDocumentRegistry implements IAccountingDocumentReg
     return this.db.transaction(async (tx) => {
       // The document is aimed, once, at the provider and mode the switch names as it is created.
       // No row for the product (never seeded) means no target, so nobody takes the document.
+      // A reference is held once per target: a rehearsal (`dry_run`) row never stands in for
+      // the test or live organisation, so when the switch moves on, the same reference is queued
+      // again, `pending`, for the new target. The rows with no target share one slot.
       const [setting] = await tx
         .select()
         .from(accountingSourceSetting)
@@ -74,6 +77,8 @@ export class DrizzleAccountingDocumentRegistry implements IAccountingDocumentReg
             accountingDocument.product,
             accountingDocument.legalEntity,
             accountingDocument.laxReference,
+            accountingDocument.targetProvider,
+            accountingDocument.targetMode,
           ],
         })
         .returning();
@@ -92,7 +97,8 @@ export class DrizzleAccountingDocumentRegistry implements IAccountingDocumentReg
           ? ok({ created: true, stored: stored.value })
           : refuse("bad_document", stored.refusal.message);
       }
-      // The reference is taken. The same document again is a replay; a different one is a bug.
+      // The reference is taken for this target. The same document again is a replay; a different
+      // one is a bug.
       const [existing] = await tx
         .select()
         .from(accountingDocument)
@@ -101,6 +107,8 @@ export class DrizzleAccountingDocumentRegistry implements IAccountingDocumentReg
             eq(accountingDocument.product, document.product),
             eq(accountingDocument.legalEntity, legalEntityFor(document.product)),
             eq(accountingDocument.laxReference, document.reference),
+            sql`${accountingDocument.targetProvider} is not distinct from ${target?.provider ?? null}`,
+            sql`${accountingDocument.targetMode} is not distinct from ${target?.mode ?? null}`,
           ),
         );
       if (!existing || !isDeepStrictEqual(existing.payload, payload)) {

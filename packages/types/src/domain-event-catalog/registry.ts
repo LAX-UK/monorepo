@@ -6,6 +6,7 @@ import {
   artworkRegisterStockCodeAssignedPayloadSchemaV1,
 } from "./artwork-register-payload-schemas.js";
 import {
+  invoiceRaisedPayloadSchemaV1,
   paymentCapturedPayloadSchemaV1,
   paymentRefundedPayloadSchemaV1,
   payoutPaidPayloadSchemaV1,
@@ -156,6 +157,7 @@ export const ALL_LIVE_DOMAIN_EVENT_TYPES = [
   "dispute_case.allocated",
   "dispute_case.needs_allocation",
   "export.requested",
+  "invoice.raised",
   "item_submission.restricted_entity_write",
   "kyc.verified",
   "legal_entity.approved",
@@ -597,16 +599,23 @@ const REGISTRY_OVERRIDES: Partial<Record<LiveDomainEventType, RegistryOverride>>
     consumers: ["lot_lifecycle_snapshot"],
     piiClassification: "none",
   },
+  /** A Bid invoice was raised; ids only, written in the same transaction as the invoice. */
+  "invoice.raised": {
+    schema: invoiceRaisedPayloadSchemaV1,
+    producers: ["packages/db"],
+    consumers: ["accounting"],
+    piiClassification: "none",
+  },
   "payment.captured": {
     schema: paymentCapturedPayloadSchemaV1,
-    consumers: ["artwork_offer_lock", "xero", "zoho"],
+    consumers: ["accounting", "artwork_offer_lock", "xero", "zoho"],
     piiClassification: "contains_pii",
   },
   "payment.dispute_closed": { consumers: ["notification_fanout"] },
   "payment.dispute_opened": { consumers: ["notification_fanout"] },
   "payment.refunded": {
     schema: paymentRefundedPayloadSchemaV1,
-    consumers: ["payment_refund_notify", "xero", "zoho"],
+    consumers: ["accounting", "payment_refund_notify", "xero", "zoho"],
   },
   "payout.paid": {
     schema: payoutPaidPayloadSchemaV1,

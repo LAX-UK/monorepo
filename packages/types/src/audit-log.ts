@@ -8,6 +8,7 @@ export type AuditLogView = (typeof AUDIT_LOG_VIEW_IDS)[number];
 
 export const AUDIT_LOG_VIEW_PREFIXES: Readonly<Record<AuditLogView, readonly string[]>> = {
   finance: [
+    "invoice.",
     "payment.",
     "payment_group.",
     "dispute_case.",

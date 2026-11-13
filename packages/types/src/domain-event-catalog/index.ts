@@ -122,6 +122,7 @@ export {
 } from "./sale-payload-schemas.js";
 export { alertSubscriptionConfirmedPayloadSchemaV1 } from "./alert-payload-schemas.js";
 export {
+  invoiceRaisedPayloadSchemaV1,
   paymentCapturedPayloadSchemaV1,
   paymentRefundedPayloadSchemaV1,
   payoutPaidPayloadSchemaV1,
