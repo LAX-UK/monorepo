@@ -71,17 +71,46 @@ describe("Bid invoice raised", () => {
     expect(invoice.totals.grossPence).toBe(5_000);
   });
 
-  it("refuses a line kind with no booking instead of guessing its VAT", () => {
+  it("refuses a line kind waiting for the accountant instead of guessing its VAT", () => {
+    for (const kind of ["vat_on_hammer", "artists_resale_right"]) {
+      const facts = invoiceFacts({
+        lines: [
+          { kind: "hammer", label: "Hammer price", amountPence: 5_000 },
+          { kind, label: kind, amountPence: 1_000 },
+        ],
+      });
+      expect(projectBidInvoiceRaised(facts)).toMatchObject({
+        ok: false,
+        refusal: { code: "line_awaiting_accountant" },
+      });
+    }
+  });
+
+  it("refuses a line kind no one has named", () => {
     const facts = invoiceFacts({
       lines: [
         { kind: "hammer", label: "Hammer price", amountPence: 5_000 },
-        { kind: "vat_on_hammer", label: "VAT on hammer", amountPence: 1_000 },
+        { kind: "storage", label: "Storage", amountPence: 1_000 },
       ],
     });
     expect(projectBidInvoiceRaised(facts)).toMatchObject({
       ok: false,
       refusal: { code: "unmapped_line" },
     });
+  });
+
+  it("books the premium under the label it was raised with, never worked out again", () => {
+    const label = "Buyer's premium (25% to £100,000, then 20%)";
+    const facts = invoiceFacts({
+      lines: [
+        { kind: "hammer", label: "Hammer price", amountPence: 12_000_000 },
+        // Not 25% of the hammer: the stored figure is what is booked.
+        { kind: "buyers_premium", label, amountPence: 2_900_000 },
+      ],
+    });
+    const invoice = must(projectBidInvoiceRaised(facts)).documents[1] as Invoice;
+    expect(invoice.lines[1]).toMatchObject({ description: label, unitNetPence: 2_900_000 });
+    expect(invoice.totals.grossPence).toBe(14_900_000);
   });
 
   it("does not take a booking from the object prototype", () => {

@@ -210,7 +210,7 @@ describe("accounting projection", () => {
     );
     const error = await projection.project(raised).catch((e: unknown) => e);
     expect(error).toBeInstanceOf(AccountingProjectionRefusedError);
-    expect((error as AccountingProjectionRefusedError).code).toBe("unmapped_line");
+    expect((error as AccountingProjectionRefusedError).code).toBe("line_awaiting_accountant");
     expect(classifyDeliveryError(error)).toBe("fatal");
     expect(store.documents()).toHaveLength(0);
   });

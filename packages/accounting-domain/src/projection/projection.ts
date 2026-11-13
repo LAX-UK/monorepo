@@ -18,6 +18,8 @@ export type ProjectionCode =
   | DocumentCode
   /** An invoice line of a kind no mapping says how to book yet (VAT treatment and role). */
   | "unmapped_line"
+  /** An invoice line of a kind waiting for the accountant to say how it is booked (ARR, say). */
+  | "line_awaiting_accountant"
   /** A payment larger than what its invoices still owe: a remainder is never spread. */
   | "payment_exceeds_invoice"
   /** The facts handed in do not describe a possible state (an id that is not a source id, say). */
