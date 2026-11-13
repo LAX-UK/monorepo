@@ -4,6 +4,7 @@ import {
   type Mode,
   type ProductSwitch,
   type SwitchConfig,
+  booksTargetMode,
   documentTarget,
   mayClaim,
   parseSwitchConfig,
@@ -152,5 +153,30 @@ describe("document target", () => {
     expect(mayClaim(target, sw("off", "live"), "books")).toBe(false);
     expect(mayClaim(target, sw("off", "live"), "xero")).toBe(false);
     expect(mayClaim(null, sw("live", "live"), "xero")).toBe(false);
+  });
+});
+
+describe("Books target mode", () => {
+  it("is Books' own mode only when the switch aims the product's documents at Books", () => {
+    for (const xero of MODES) {
+      for (const books of MODES) {
+        if (xero === "live" && books === "live") continue;
+        const target = documentTarget(sw(xero, books));
+        expect(booksTargetMode(sw(xero, books))).toBe(
+          target?.provider === "books" ? target.mode : null,
+        );
+      }
+    }
+  });
+  it("takes nothing while Xero is live, whatever Books says", () => {
+    for (const books of ["off", "dry_run", "test_org"] as const) {
+      expect(booksTargetMode(sw("live", books))).toBeNull();
+    }
+  });
+  it("rehearses only with Xero away from live and not rehearsing too", () => {
+    expect(booksTargetMode(sw("off", "dry_run"))).toBe("dry_run");
+    expect(booksTargetMode(sw("off", "test_org"))).toBe("test_org");
+    expect(booksTargetMode(sw("dry_run", "dry_run"))).toBeNull();
+    expect(booksTargetMode(sw("off", "off"))).toBeNull();
   });
 });

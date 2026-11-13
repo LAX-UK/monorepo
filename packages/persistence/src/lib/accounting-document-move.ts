@@ -56,12 +56,27 @@ export function decide(
   }
 }
 
-/** What is worth keeping about a transition's input in its history row (never the lease token). */
-export function transitionDetail(transition: DocumentTransition): Record<string, unknown> {
+/**
+ * What is worth keeping about a transition's input in its history row (never the lease token).
+ * When the provider reports totals (an issued, found or differing document), both its totals and
+ * ours are kept, so a difference found on read-back is on record with both sides, to the penny.
+ */
+export function transitionDetail(
+  transition: DocumentTransition,
+  expected: Totals,
+): Record<string, unknown> {
   switch (transition.action) {
     case "complete_sending":
-    case "apply_lookup":
-      return { outcome: transition.outcome.status };
+    case "apply_lookup": {
+      const outcome = transition.outcome;
+      if (!("totals" in outcome)) return { outcome: outcome.status };
+      return {
+        outcome: outcome.status,
+        ...(outcome.status === "differs" ? { reason: outcome.reason } : {}),
+        providerTotals: outcome.totals,
+        expectedTotals: expected,
+      };
+    }
     case "escalate":
       return { reason: transition.reason };
     default:
@@ -121,12 +136,13 @@ export async function applyLockedTransition(
 ): Promise<Result<StoredAccountingDocument, TransitionCode>> {
   const record = rowToRecord(row, at.getTime());
   if (!record.ok) return refuse("bad_stored_document", record.refusal.message);
-  const next = decide(record.value, transition, at.getTime(), rowTotals(row));
+  const expected = rowTotals(row);
+  const next = decide(record.value, transition, at.getTime(), expected);
   if (!next.ok) return next;
   return persistMove(tx, row, record.value, {
     action: transition.action,
     next: next.value,
-    detail: transitionDetail(transition),
+    detail: transitionDetail(transition, expected),
     at,
   });
 }

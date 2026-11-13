@@ -25,6 +25,7 @@ import {
   BidAlertTopicStore,
   BidAlertWatcherReader,
   DrizzleArtworkRegisterRepository,
+  DrizzleBidAccountingFactsReader,
   DrizzleBidRepository,
   DrizzleItemSubmissionRepository,
   DrizzleLotLifecycleSnapshotRepository,
@@ -51,6 +52,7 @@ import {
 import ts from "typescript";
 import { describe, expect, it } from "vitest";
 import { DrizzleAtgSyncStore } from "../integrations/atg/drizzle-atg-sync-store.js";
+import { DrizzleProjectorCursorStart } from "../repositories/drizzle-projector-cursor-start.js";
 import { DrizzleZohoCampaignsSuppressionRepository } from "../repositories/drizzle-zoho-campaigns-suppression.repository.js";
 import { ShopIdentityProjectionService } from "../services/shop-identity-projection.service.js";
 import type { WorkerDb } from "../workers/types.js";
@@ -117,6 +119,8 @@ const STORES: Record<string, Store> = {
   DrizzleExportDomainEventsQuery,
   DrizzleExportPayoutReader,
   DrizzleExportLegalEntityReader,
+  DrizzleBidAccountingFactsReader,
+  DrizzleProjectorCursorStart,
 } as Record<string, Store>;
 
 /** Built by `DrizzleRepositoryFactory`, which a container file builds, not by a container file itself. */

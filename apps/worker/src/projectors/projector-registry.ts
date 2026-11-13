@@ -1,3 +1,5 @@
+import { createAccountingProjector } from "./accounting-projector.js";
+import { createAccountingSender } from "./accounting-sender.js";
 import { processAdminImpersonationNotify } from "./admin-impersonation-notify.js";
 import { AML_MATCH_REVIEW_PROJECTOR, processAmlMatchReview } from "./aml-match-review.js";
 import { ARTWORK_OFFER_LOCK_PROJECTOR, processArtworkOfferLock } from "./artwork-offer-lock.js";
@@ -347,6 +349,8 @@ export function createDefaultProjectorRegistry(): ProjectorRegistry {
         });
       },
     },
+    createAccountingProjector(),
+    createAccountingSender(),
   ];
 
   return new ProjectorRegistry(projectors);

@@ -101,6 +101,18 @@ export function documentTarget(product: ProductSwitch): DocumentTarget | null {
 }
 
 /**
+ * The mode in which Books takes a product's new documents, or null when the switch aims them
+ * elsewhere (Xero live, both off, or both rehearsing). This is the one rule that says whether the
+ * Books projector projects a product and whether the Books sender works for it, so the two never
+ * disagree. With Xero `live`, Books takes nothing, whatever its own mode says: a Bid rehearsal
+ * needs Xero away from `live` in the switch (see the README, "Rehearsing Books").
+ */
+export function booksTargetMode(product: ProductSwitch): TargetMode | null {
+  const target = documentTarget(product);
+  return target?.provider === "books" ? target.mode : null;
+}
+
+/**
  * May `provider` take a document aimed at `target`, given the product's switch now? Only the
  * provider and mode the document was created for, and only while that provider is still in that
  * mode: a Books claim in `test_org` can never take a document aimed at Xero live, and a flip of

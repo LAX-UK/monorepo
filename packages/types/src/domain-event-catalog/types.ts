@@ -16,6 +16,7 @@ export type DomainEventConsumer =
   | "zoho_fulfilment"
   | "artwork_offer_lock"
   | "xero"
+  | "accounting"
   | "notifications"
   | "lot_lifecycle_snapshot"
   | "aml_match_review"

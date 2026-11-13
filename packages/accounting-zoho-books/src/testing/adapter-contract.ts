@@ -400,16 +400,23 @@ export function runAccountingContract(
         expect(again.providerId).toBe(out.providerId);
       });
 
-      it("refuses to adopt a payment held under our reference with other allocations", async () => {
+      it("holds for a person a payment held under our reference with other allocations", async () => {
         const { s, a, b } = await twoInvoices();
-        issuedOf(await s.settle(s.ports.payments.recordPayment(pay("pay-2", a, b))));
+        const first = issuedOf(await s.settle(s.ports.payments.recordPayment(pay("pay-2", a, b))));
         const changed = {
           ...pay("pay-2", a, b),
           allocations: [{ invoiceReference: a.reference, amountPence: a.totals.grossPence }],
         };
-        expect(await s.settle(s.ports.payments.recordPayment(changed))).toEqual({
-          status: "rejected",
+        const held = await s.settle(s.ports.payments.recordPayment(changed));
+        // Books holds a payment under our reference that is not ours: kept with its identity for a
+        // person, never a refusal that could be retried.
+        expect(held).toEqual({
+          status: "differs",
           reason: R.paymentMismatch,
+          number: first.number,
+          providerId: first.providerId,
+          pdfRef: first.pdfRef,
+          totals: first.totals,
         });
       });
 

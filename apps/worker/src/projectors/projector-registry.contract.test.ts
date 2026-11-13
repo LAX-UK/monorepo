@@ -1,5 +1,7 @@
 import type { IEmailService } from "@auction/email";
 import { describe, expect, it, vi } from "vitest";
+import { ACCOUNTING_PROJECTOR } from "./accounting-projector.js";
+import { ACCOUNTING_SENDER } from "./accounting-sender.js";
 import { AML_MATCH_REVIEW_PROJECTOR } from "./aml-match-review.js";
 import { ARTWORK_OFFER_LOCK_PROJECTOR } from "./artwork-offer-lock.js";
 import { BID_ALERT_MATCHING_PROJECTOR } from "./bid-alert-matching.js";
@@ -53,6 +55,8 @@ const EXPECTED_PROJECTOR_ORDER = [
   ZOHO_FULFILMENT_PROJECTOR,
   ZOHO_CAMPAIGNS_OPT_OUT_LIFT_PROJECTOR,
   COLLECTION_BOOKING_NOTIFY_PROJECTOR,
+  ACCOUNTING_PROJECTOR,
+  ACCOUNTING_SENDER,
 ] as const;
 
 function baseCtx(overrides: Partial<ProjectorRunContext> = {}): ProjectorRunContext {
@@ -181,6 +185,15 @@ describe("createDefaultProjectorRegistry", () => {
       }),
     );
     expect(on).toContain(ZOHO_FULFILMENT_PROJECTOR);
+  });
+
+  it("runs the accounting projector and sender only while Books is configured", () => {
+    const off = registry.listEnabledProjectorNames(baseCtx());
+    expect(off).not.toContain(ACCOUNTING_PROJECTOR);
+    expect(off).not.toContain(ACCOUNTING_SENDER);
+    const on = registry.listEnabledProjectorNames(baseCtx({ accounting: {} as never }));
+    expect(on).toContain(ACCOUNTING_PROJECTOR);
+    expect(on).toContain(ACCOUNTING_SENDER);
   });
 
   it("skips email projectors when emailService or supportContactEmail is missing", () => {

@@ -68,6 +68,15 @@ describe("per-organisation config", () => {
     }
   });
 
+  it("requires every organisation to say whether it is a test or the live organisation", () => {
+    for (const value of [undefined, "prod", "LIVE", true, null]) {
+      const input = raw();
+      setAt(input, ["environment"], value);
+      expect(codeOf(input)).toBe("org_london_art_exchange_environment_missing");
+    }
+    expect(parseOrgConfigs(raw()).london_art_exchange?.environment).toBe("test");
+  });
+
   it("reads London Art Exchange as not VAT registered, with no tax ids at all", () => {
     const shop = parseOrgConfigs(raw()).london_art_exchange;
     expect(shop?.vatRegistered).toBe(false);
