@@ -3,7 +3,7 @@ export * from "./tokens.js";
 export { cn } from "./lib/cn.js";
 export { formatGbp, formatPenceAsPounds, parsePoundsToPence, readCookie } from "@auction/ui";
 export type { ParsedPence } from "@auction/ui";
-export { formatStaffPercent } from "./lib/percent.js";
+export { formatBpsAsPercent, formatStaffPercent } from "./lib/percent.js";
 export {
   formatStaffDate,
   formatStaffDateTime,
@@ -61,6 +61,19 @@ export {
 } from "@auction/ui/lax";
 export type { StatusPresentation } from "@auction/ui/lax";
 export { KeyValueList } from "./display/key-value-list.js";
+export {
+  SettlementBreakdown,
+  sellerReceivesLabel,
+  settlementStatusLabel,
+} from "./display/settlement-breakdown.js";
+export type {
+  SettlementBreakdownFigures,
+  SettlementBreakdownProps,
+  SettlementBreakdownStatus,
+  SettlementPremium,
+  SettlementRateSource,
+  SettlementVat,
+} from "./display/settlement-breakdown.js";
 export { Notice } from "@auction/ui/lax";
 export { RecordImage } from "./display/record-image.js";
 export { RecordThumbnail } from "./display/record-thumbnail.js";
