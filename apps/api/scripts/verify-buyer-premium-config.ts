@@ -11,28 +11,30 @@
  *   pnpm --filter @auction/api exec tsx scripts/verify-buyer-premium-config.ts --pre-deploy
  *
  * PRE-DEPLOY CHECK for migration 0380 (run with `--pre-deploy` against production before the
- * release; see docs/runbooks/buyer-premium-tiers.md): flags every lot open for bidding, or sold
- * but not yet invoiced, that the release would charge under a different premium than the old
- * code did (the migration's change to lot rates is applied first). Staff cannot change these
- * lots, so any flagged lot blocks the deploy. Without `--pre-deploy` the database is read as it
- * stands.
+ * release; see docs/runbooks/buyer-premium-tiers.md): the migration's change to lot rates is
+ * applied first, then it flags every lot open for bidding, or sold but not yet invoiced, that the
+ * release would charge under a different premium than the old code did, and every lot in a sale
+ * with bands (invoiced too) that would still hold a rate differing from the bands. Staff cannot
+ * change these lots, so any flagged lot blocks the deploy. Without `--pre-deploy` the database is
+ * read as it stands.
  *
- * Performs only SELECTs. Exit code 1 if any lot is flagged, or any unsold lot that has not opened
- * has its own premium that differs from its sale's (the sale page lists these for staff).
+ * Performs only SELECTs. The exit status comes from `premiumCheckExitCode`: 1 if any lot is
+ * flagged; without `--pre-deploy`, also if any unsold lot that has not opened has its own premium
+ * that differs from its sale's (the sale page lists these for staff; marked ⚠).
  */
 import { createDb } from "@auction/db";
 import { bidInvoice, lot as lotTable, sale as saleTable } from "@auction/db/schema";
 import {
   addMoneyStrings,
   describeBuyerPremium,
-  lotPremiumDiffersFromSale,
   resolveBuyerPremium,
   saleBuyerPremiumSchedule,
 } from "@auction/validators";
 import { and, eq, inArray, isNull } from "drizzle-orm";
 import {
-  lotRateAfterMigration0380,
-  premiumChangedAtDeploy,
+  checkPremiumLot,
+  premiumCheckExitCode,
+  saleWithoutBandsNotice,
 } from "../src/lib/buyer-premium-deploy-check.js";
 
 const saleArg = process.argv.find((a) => a.startsWith("--sale="))?.slice("--sale=".length);
@@ -45,7 +47,6 @@ const POUNDS = new Intl.NumberFormat("en-GB", {
   maximumFractionDigits: 2,
 });
 const gbp = (major: string) => `£${POUNDS.format(Number.parseFloat(major))}`;
-const UNOPENED = new Set(["draft", "scheduled"]);
 
 const sales = await db
   .select({
@@ -71,8 +72,7 @@ if (sales.length === 0) {
   process.exit(0);
 }
 
-let misconfigured = 0;
-let repriced = 0;
+const totals = { changed: 0, differsFromSale: 0, bandedOverride: 0 };
 let totalLots = 0;
 
 for (const sale of sales) {
@@ -80,6 +80,8 @@ for (const sale of sales) {
     `\n=== Sale ${sale.title} [${sale.id}] status=${sale.status} mode=${sale.deliveryMode} ===`,
   );
   console.log(`  sale premium: ${describeBuyerPremium(saleBuyerPremiumSchedule(sale).schedule)}`);
+  const noBands = saleWithoutBandsNotice(sale);
+  if (noBands) console.log(`  ⓘ ${noBands}`);
 
   const lots = await db
     .select({
@@ -120,34 +122,35 @@ for (const sale of sales) {
   for (const lot of lots) {
     totalLots += 1;
     const label = `Lot #${lot.lotNumber ?? "-"} ${lot.title.slice(0, 40)} [${lot.status}]`;
-    if (invoiced.has(lot.id)) {
-      console.log(`    ${label} | invoiced: shows and charges its stored invoice`);
-      continue;
-    }
-    const changed = premiumChangedAtDeploy(
+    const hasLiveInvoice = invoiced.has(lot.id);
+    const check = checkPremiumLot(
       {
         status: lot.status,
         hasWinner: lot.winnerId !== null,
-        hasLiveInvoice: false,
+        hasLiveInvoice,
         lotRate: lot.buyerPremiumRate,
       },
       sale,
       { preDeploy },
     );
-    const differs =
-      UNOPENED.has(lot.status) &&
-      lot.winnerId === null &&
-      lotPremiumDiffersFromSale(lot.buyerPremiumRate, sale);
-    if (changed) repriced += 1;
-    if (differs) misconfigured += 1;
-    const lotRate = preDeploy
-      ? lotRateAfterMigration0380({ lotRate: lot.buyerPremiumRate, hasLiveInvoice: false }, sale)
-      : lot.buyerPremiumRate;
-    const { policy, source } = resolveBuyerPremium({ lotRate, sale });
+    if (check.changed) totals.changed += 1;
+    if (check.differsFromSale) totals.differsFromSale += 1;
+    if (check.bandedOverride) totals.bandedOverride += 1;
+    const override = check.bandedOverride
+      ? `✖ keeps its own ${check.lotRate} in a sale with bands: re-priced at it if its invoice is voided | `
+      : "";
+    if (hasLiveInvoice) {
+      console.log(`  ${override || "  "}${label} | invoiced: shows and charges its stored invoice`);
+      continue;
+    }
+    const { policy, source } = resolveBuyerPremium({ lotRate: check.lotRate, sale });
     const hammer = lot.currentPrice;
     const premium = policy.computePremiumMajor(hammer);
-    const kind = source === "lot" ? `lot's own ${lotRate}` : source;
-    const flag = changed ? `✖ ${changed}: premium changes at deploy | ` : differs ? "⚠ " : "  ";
+    const kind = source === "lot" ? `lot's own ${check.lotRate}` : source;
+    const flag = check.changed
+      ? `✖ ${check.changed}: premium changes at deploy | `
+      : override ||
+        (check.differsFromSale ? "⚠ " : check.noLegacyRate ? "ⓘ no legacy rate | " : "  ");
     console.log(
       `  ${flag}${label} | hammer ${gbp(hammer)} | premium ${gbp(premium)} (${kind}) | ` +
         `total ${gbp(addMoneyStrings(hammer, premium))}`,
@@ -159,14 +162,21 @@ console.log(
   `\nChecked ${totalLots} lot(s) across ${sales.length} sale(s)${preDeploy ? ", with migration 0380 applied" : ""}.`,
 );
 console.log(
-  repriced > 0
-    ? `✖ ${repriced} live or sold-but-not-invoiced lot(s) would be charged a different premium than before. Do not deploy.`
+  totals.changed > 0
+    ? `✖ ${totals.changed} live or sold-but-not-invoiced lot(s) would be charged a different premium than before. Do not deploy.`
     : "No live or sold-but-not-invoiced lot changes premium.",
 );
+if (preDeploy) {
+  console.log(
+    totals.bandedOverride > 0
+      ? `✖ ${totals.bandedOverride} lot(s) in a sale with bands would still hold a rate differing from the bands. Do not deploy.`
+      : "No lot in a sale with bands keeps a rate of its own.",
+  );
+}
 console.log(
-  misconfigured > 0
-    ? `⚠ ${misconfigured} unsold lot(s) have their own premium that differs from their sale's — check the sale page.`
+  totals.differsFromSale > 0
+    ? `⚠ ${totals.differsFromSale} unsold lot(s) have their own premium that differs from their sale's — check the sale page${preDeploy ? " (does not block the deploy)" : ""}.`
     : "Every unsold lot charges its sale's premium, or its own premium equals it.",
 );
 
-process.exit(repriced > 0 || misconfigured > 0 ? 1 : 0);
+process.exit(premiumCheckExitCode(totals, { preDeploy }));
