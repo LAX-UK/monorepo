@@ -230,6 +230,9 @@ describe.skipIf(!HAS_DB)("Bid invoices to Books (integration)", { timeout: 60_00
       webBaseUrl: "https://lax.bid",
       now: () => new Date(),
       log,
+      // Other suites leave issued rows this copier cannot fetch (their adapters are gone, and
+      // some are dated ahead by their own clocks); a wide batch always reaches this case's row.
+      batch: 1_000,
     });
     return { service, putObject, enqueue };
   }

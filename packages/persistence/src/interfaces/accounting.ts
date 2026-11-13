@@ -285,6 +285,13 @@ export interface AccountingDocumentCopy {
   readonly storedAt: Date;
 }
 
+/** Issued documents without a stored copy; a row that cannot be read is named, not fatal. */
+export interface UncopiedDocuments {
+  readonly documents: readonly StoredAccountingDocument[];
+  /** Ids of rows that did not read back as a document; the others are still listed. */
+  readonly unreadable: readonly string[];
+}
+
 /** An issued Bid invoice whose stored copy is ready to email (never a rehearsal). */
 export interface InvoiceEmailDue {
   readonly documentId: string;
@@ -301,10 +308,7 @@ export interface InvoiceEmailDue {
  */
 export interface IAccountingDocumentCopies {
   /** Issued Bid invoices aimed at one of `modes` that have no stored copy yet, newest first. */
-  listUncopied(
-    modes: readonly TargetMode[],
-    limit: number,
-  ): Promise<Result<StoredAccountingDocument[], StoredDocumentCode>>;
+  listUncopied(modes: readonly TargetMode[], limit: number): Promise<UncopiedDocuments>;
   /** Records a copy; false when the document already has one (another worker was first). */
   record(copy: AccountingDocumentCopy): Promise<boolean>;
   /** Copies of issued Bid invoices whose email is not queued yet; never a rehearsal. */

@@ -1,4 +1,4 @@
-import { type Result, type TargetMode, ok, parseLaxReference } from "@auction/accounting-domain";
+import { type TargetMode, parseLaxReference } from "@auction/accounting-domain";
 import type { Database } from "@auction/db";
 import { accountingDocument, accountingDocumentCopy } from "@auction/db/schema";
 import { and, asc, desc, eq, inArray, isNull, notExists, sql } from "drizzle-orm";
@@ -8,7 +8,7 @@ import type {
   IAccountingDocumentCopies,
   InvoiceEmailDue,
   StoredAccountingDocument,
-  StoredDocumentCode,
+  UncopiedDocuments,
 } from "../../interfaces/accounting.js";
 import { rowToStored } from "../../lib/accounting-document-row.js";
 
@@ -24,11 +24,8 @@ export class DrizzleAccountingDocumentCopies implements IAccountingDocumentCopie
     private readonly clock: AccountingClock,
   ) {}
 
-  async listUncopied(
-    modes: readonly TargetMode[],
-    limit: number,
-  ): Promise<Result<StoredAccountingDocument[], StoredDocumentCode>> {
-    if (modes.length === 0) return ok([]);
+  async listUncopied(modes: readonly TargetMode[], limit: number): Promise<UncopiedDocuments> {
+    if (modes.length === 0) return { documents: [], unreadable: [] };
     const rows = await this.db
       .select()
       .from(d)
@@ -45,13 +42,14 @@ export class DrizzleAccountingDocumentCopies implements IAccountingDocumentCopie
       .orderBy(desc(d.updatedAt), desc(d.id))
       .limit(limit);
     const nowMs = this.clock.now().getTime();
-    const out: StoredAccountingDocument[] = [];
+    const documents: StoredAccountingDocument[] = [];
+    const unreadable: string[] = [];
     for (const row of rows) {
       const stored = rowToStored(row, nowMs);
-      if (!stored.ok) return stored;
-      out.push(stored.value);
+      if (stored.ok) documents.push(stored.value);
+      else unreadable.push(row.id);
     }
-    return ok(out);
+    return { documents, unreadable };
   }
 
   async record(copy: AccountingDocumentCopy): Promise<boolean> {

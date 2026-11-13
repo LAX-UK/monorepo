@@ -91,12 +91,11 @@ export class AccountingInvoiceCopy {
 
   private async storeCopies(modes: readonly TargetMode[]): Promise<number> {
     const uncopied = await this.deps.copies.listUncopied(modes, this.batch);
-    if (!uncopied.ok) {
-      this.deps.log.warn({ code: uncopied.refusal.code }, "accounting_copy_unreadable");
-      return 0;
+    for (const id of uncopied.unreadable) {
+      this.deps.log.warn({ documentId: id }, "accounting_copy_unreadable_document");
     }
     let stored = 0;
-    for (const document of uncopied.value) {
+    for (const document of uncopied.documents) {
       if (await this.storeCopy(document)) stored += 1;
     }
     return stored;

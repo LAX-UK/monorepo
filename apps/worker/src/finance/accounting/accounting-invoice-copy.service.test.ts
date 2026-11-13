@@ -64,11 +64,12 @@ class Copies implements IAccountingDocumentCopies {
   readonly copies = new Map<string, AccountingDocumentCopy & { emailOutboxId?: string }>();
   constructor(private readonly documents: StoredAccountingDocument[]) {}
   async listUncopied(modes: readonly TargetMode[]) {
-    return ok(
-      this.documents.filter(
+    return {
+      documents: this.documents.filter(
         (d) => d.target && modes.includes(d.target.mode) && !this.copies.has(d.id),
       ),
-    );
+      unreadable: [],
+    };
   }
   async record(copy: AccountingDocumentCopy) {
     if (this.copies.has(copy.documentId)) return false;
