@@ -1,6 +1,6 @@
 import type { Socket } from "socket.io-client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { type SocketConnectionModule, createLazySocket } from "./socket";
+import { type SocketConnectionModule, createLazySocket, retryDelayMs } from "./socket";
 
 // biome-ignore lint/suspicious/noExplicitAny: test listeners take any arguments.
 type Listener = (...args: any[]) => void;
@@ -309,5 +309,32 @@ describe("createLazySocket", () => {
       expect(onConnectError.mock.calls[0]?.[0]).toBeInstanceOf(Error);
       expect((onConnectError.mock.calls[0]?.[0] as Error).message).toBe("offline");
     });
+  });
+});
+
+describe("retryDelayMs", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("matches Socket.IO's default backoff for the first retries", () => {
+    // rand 0 → even → minus branch with no deviation; rand 0.99 → odd → plus 49%.
+    vi.spyOn(Math, "random").mockReturnValue(0);
+    expect([0, 1, 2, 3].map(retryDelayMs)).toEqual([1000, 2000, 4000, 5000]);
+    vi.spyOn(Math, "random").mockReturnValue(0.99);
+    expect(retryDelayMs(0)).toBe(1495);
+  });
+
+  it("never returns a zero, NaN or out-of-range delay, however many attempts have failed", () => {
+    const randoms = [0, 0.05, 0.1, 0.25, 0.5, 0.75, 0.9, 0.99, 0.999999];
+    for (let attempt = 0; attempt <= 3000; attempt += 1) {
+      for (const r of randoms) {
+        vi.spyOn(Math, "random").mockReturnValue(r);
+        const delay = retryDelayMs(attempt);
+        expect(Number.isFinite(delay), `attempt ${attempt}, random ${r}`).toBe(true);
+        expect(delay).toBeGreaterThanOrEqual(500);
+        expect(delay).toBeLessThanOrEqual(5000);
+      }
+    }
   });
 });

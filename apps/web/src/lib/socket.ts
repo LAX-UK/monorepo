@@ -50,13 +50,22 @@ export type SocketConnectionModule = { createSocketConnection: () => Socket };
 const RECONNECT_DELAY_MS = 1000;
 const RECONNECT_DELAY_MAX_MS = 5000;
 const RANDOMIZATION_FACTOR = 0.5;
+/** 1 s × 2^3 already passes the 5 s ceiling, so a larger exponent changes nothing but can overflow. */
+const MAX_BACKOFF_EXPONENT = 8;
+/** The jitter can take at most half the delay away, so no retry comes sooner than this. */
+const MIN_RETRY_DELAY_MS = RECONNECT_DELAY_MS * (1 - RANDOMIZATION_FACTOR);
 
-function retryDelayMs(attempt: number): number {
-  let ms = RECONNECT_DELAY_MS * 2 ** attempt;
+/**
+ * Socket.IO's default reconnection backoff (`backo2`): 1 s doubling to 5 s, ±50%. Unlike the
+ * original, the exponent is capped, so after ~1000 failures `2 ** attempt` cannot become
+ * `Infinity` (and the jitter `NaN`, which `setTimeout` treats as no delay at all).
+ */
+export function retryDelayMs(attempt: number): number {
+  let ms = RECONNECT_DELAY_MS * 2 ** Math.min(Math.max(attempt, 0), MAX_BACKOFF_EXPONENT);
   const rand = Math.random();
   const deviation = Math.floor(rand * RANDOMIZATION_FACTOR * ms);
   ms = (Math.floor(rand * 10) & 1) === 0 ? ms - deviation : ms + deviation;
-  return Math.min(ms, RECONNECT_DELAY_MAX_MS);
+  return Math.max(MIN_RETRY_DELAY_MS, Math.min(ms, RECONNECT_DELAY_MAX_MS));
 }
 
 function removeListener(map: Map<string, Listener[]>, event: string, listener?: Listener) {
