@@ -10,9 +10,9 @@ import {
   type Result,
   expectedTotals,
 } from "@auction/accounting-domain";
+import type { AccountingPorts } from "./accounting-ports.js";
 import { orgFor } from "./api.js";
 import type { VendorPort } from "./gateways.js";
-import type { AccountingPorts } from "./index.js";
 import { billBody } from "./mappers/bill.js";
 import { type ContactType, contactCreateBody } from "./mappers/contact.js";
 import { creditNoteBody } from "./mappers/credit-note.js";

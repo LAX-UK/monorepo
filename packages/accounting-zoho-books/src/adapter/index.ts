@@ -1,14 +1,6 @@
-import type {
-  BillPort,
-  ContactPort,
-  CreditNotePort,
-  DocumentLookupPort,
-  InvoicePort,
-  PaymentPort,
-} from "@auction/accounting-domain";
+import type { AccountingPorts } from "./accounting-ports.js";
 import type { ZohoApi } from "./api.js";
 import {
-  type VendorPort,
   ZohoBillGateway,
   ZohoContactGateway,
   ZohoCreditNoteGateway,
@@ -22,6 +14,7 @@ import { DRY_RUN, WriteGate, type ZohoWriteMode } from "./write-gate.js";
 import { DocumentWriter } from "./writer.js";
 
 export * from "./org-config.js";
+export type { AccountingPorts } from "./accounting-ports.js";
 export { DRY_RUN_NUMBER, createZohoBooksDryRunAdapter, dryRunProviderId } from "./dry-run.js";
 export * from "./rejections.js";
 export { penceToPounds, poundsToPence } from "./money-format.js";
@@ -30,19 +23,6 @@ export { contactReferenceValue, type ContactType } from "./mappers/contact.js";
 export { orgFor, type OrgChoice, type ZohoApi } from "./api.js";
 export type { VendorPort } from "./gateways.js";
 export { DRY_RUN, type ZohoWriteMode } from "./write-gate.js";
-
-/** One port per document kind. A caller takes only the ports it needs (interface segregation). */
-export interface AccountingPorts {
-  readonly invoices: InvoicePort;
-  readonly payments: PaymentPort;
-  readonly creditNotes: CreditNotePort;
-  readonly bills: BillPort;
-  /** Customers. */
-  readonly contacts: ContactPort;
-  /** Vendors (payout recipients); a bill is only ever sent to one of these. */
-  readonly vendors: VendorPort;
-  readonly lookup: DocumentLookupPort;
-}
 
 /**
  * Builds the Books implementation of the accounting ports. Stateless: it holds the client and the

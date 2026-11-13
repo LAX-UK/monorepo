@@ -3,17 +3,15 @@ import {
   assertDomainEventConsumerContract,
   listDomainEventTypesForConsumer,
 } from "@auction/types";
-import { deliveryRepoForProjectorTransaction } from "../../container/delivery-repo-for-projector-transaction.js";
 import type { CrmSyncResult } from "../../integrations/crm/crm-sync-result.js";
-import type { ProjectorDbConnection } from "../../interfaces/worker-db.types.js";
 import {
   recordDeliveryOldestPendingAgeSeconds,
   recordDeliveryOutcome,
 } from "../../lib/delivery-metrics.js";
 import { claimAndRunDomainEventDeliveriesWithBudget } from "./domain-event-delivery-runner.js";
 import type { ProjectorRunContext } from "./projector.types.js";
+import { queueConsumerDeliveries } from "./queue-consumer-deliveries.js";
 
-const BATCH_LIMIT = 100;
 const TICK_TIME_BUDGET_MS = 2_000;
 
 /** Sends one domain event to Zoho and says how it went. */
@@ -38,28 +36,7 @@ export async function processZohoProductDeliveries(
 ): Promise<void> {
   if (!ctx.deliveryRepo) throw new Error(`${consumer}_missing_delivery_repo`);
   const deliveryRepo = ctx.deliveryRepo;
-  const eventTypes = listDomainEventTypesForConsumer(consumer);
-
-  await ctx.transactionRunner.runInTransaction(async (tx) => {
-    const txDeliveryRepo = deliveryRepoForProjectorTransaction(tx, deliveryRepo);
-    const events = await ctx.domainEventReader.listLockedForProjector(
-      consumer,
-      BATCH_LIMIT,
-      tx as ProjectorDbConnection,
-      { eventTypes },
-    );
-    for (const event of events) {
-      await txDeliveryRepo.ensurePending({
-        consumer,
-        eventId: event.id,
-        idempotencyKey: `${consumer}:${event.id}`,
-      });
-    }
-    const maxId = Math.max(0, ...events.map((event) => event.id));
-    if (maxId > 0) {
-      await ctx.projectorStateRepo.advanceCursorLiteralName(consumer, maxId, tx);
-    }
-  });
+  await queueConsumerDeliveries(ctx, consumer, listDomainEventTypesForConsumer(consumer));
 
   await claimAndRunDomainEventDeliveriesWithBudget({
     consumer,

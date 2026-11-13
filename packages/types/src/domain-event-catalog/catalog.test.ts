@@ -185,4 +185,26 @@ describe("DOMAIN_EVENT_REGISTRY", () => {
   it("refreshes the Zoho listing when a lot is soft-deleted", () => {
     expect(DOMAIN_EVENT_REGISTRY["lot.soft_deleted"].consumers).toContain("zoho_artwork_listing");
   });
+  it("routes Bid invoices, payments and refunds to the accounting consumer; invoice.raised is ids only", () => {
+    const entry = DOMAIN_EVENT_REGISTRY["invoice.raised"];
+    expect(entry.consumers).toEqual(["accounting"]);
+    expect(entry.producers).toEqual(["packages/db"]);
+    expect(entry.piiClassification).toBe("none");
+    expect(DOMAIN_EVENT_REGISTRY["payment.captured"].consumers).toContain("accounting");
+    expect(DOMAIN_EVENT_REGISTRY["payment.refunded"].consumers).toContain("accounting");
+    const payload = {
+      invoiceId: "11111111-1111-4111-8111-111111111111",
+      lotId: "22222222-2222-4222-8222-222222222222",
+      buyerLegalEntityId: "33333333-3333-4333-8333-333333333333",
+      totalPence: 154_320,
+      raisedAt: "2026-11-12T10:00:00.000Z",
+    };
+    expect(parseDomainEventPayload("invoice.raised", 1, payload)).toEqual({
+      ok: true,
+      data: payload,
+    });
+    expect(parseDomainEventPayload("invoice.raised", 1, { ...payload, totalPence: 0 }).ok).toBe(
+      false,
+    );
+  });
 });

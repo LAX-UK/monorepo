@@ -16,6 +16,8 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@auction/accounting-domain": "workspace:*",
+    "@auction/accounting-zoho-books": "workspace:*",
     "@auction/connect": "workspace:*",
     "@auction/datetime": "workspace:*",
     "@auction/domain": "workspace:*",
