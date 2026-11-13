@@ -56,11 +56,23 @@ describe("SaleResultsSummaryService", () => {
     });
   });
 
-  it("uses the sale's tiered premium over the lot rate", async () => {
+  it("uses the sale's bands for a lot without its own premium, slice by slice", async () => {
+    const { svc } = service({
+      s1: [row("a", { currentPrice: "600000.00", buyerPremiumRate: null })],
+    });
+    const tiers = [
+      { hammerThresholdMinor: 0, rate: "0.15" },
+      { hammerThresholdMinor: 50_000_000, rate: "0.10" },
+    ];
+    const summaries = await svc.summarise([sale({ buyerPremiumTiers: tiers })]);
+    expect(summaries.get("s1")).toMatchObject({ totalWithPremium: "685000.00" });
+  });
+
+  it("charges a lot's own premium over the sale's bands", async () => {
     const { svc } = service({ s1: [row("a", { currentPrice: "1000.00" })] });
     const tiers = [{ hammerThresholdMinor: 0, rate: "0.10" }];
     const summaries = await svc.summarise([sale({ buyerPremiumTiers: tiers })]);
-    expect(summaries.get("s1")).toMatchObject({ totalWithPremium: "1100.00" });
+    expect(summaries.get("s1")).toMatchObject({ totalWithPremium: "1250.00" });
   });
 
   it("is finalising while a lot is still in a soft-close extension", async () => {

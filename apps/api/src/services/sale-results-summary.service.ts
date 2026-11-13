@@ -12,7 +12,7 @@ import type {
   SaleResultLotRow,
 } from "@auction/persistence/interfaces";
 import type { Sale } from "@auction/types";
-import { buildBuyerPremiumPolicy } from "@auction/validators";
+import { resolveBuyerPremium } from "@auction/validators";
 
 /** What list and detail reads need to attach results to sales. */
 export interface ISaleResultsSummaryService {
@@ -29,11 +29,8 @@ function externalState(sale: Sale): "live" | "ended" | null {
 }
 
 function withPremiumFor(sale: Sale) {
-  return (lot: SaleResultLot & { premiumRate: string }): string => {
-    const policy = buildBuyerPremiumPolicy({
-      saleTiers: sale.buyerPremiumTiers ?? null,
-      lotRate: lot.premiumRate,
-    });
+  return (lot: SaleResultLot & { premiumRate: string | null }): string => {
+    const { policy } = resolveBuyerPremium({ lotRate: lot.premiumRate, sale });
     const hammer = parseMoneyToMinorUnits(lot.currentPrice);
     const premium = parseMoneyToMinorUnits(policy.computePremiumMajor(lot.currentPrice));
     return minorUnitsToMoneyString(hammer + premium);
@@ -44,7 +41,7 @@ function toResultLot(
   row: SaleResultLotRow,
   external: boolean,
   soldExternally: ReadonlySet<string>,
-): SaleResultLot & { premiumRate: string } {
+): SaleResultLot & { premiumRate: string | null } {
   return {
     id: row.id,
     status: row.status,

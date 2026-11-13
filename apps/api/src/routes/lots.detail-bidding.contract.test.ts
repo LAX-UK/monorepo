@@ -114,12 +114,12 @@ describe("GET /lots/:id bidding facts", () => {
     expect(amounts.slice(0, 2)).toEqual(["7250.00", "7500.00"]);
   });
 
-  it("returns a flat buyer's premium, or bands when the sale sets them", async () => {
-    const flat = await getDetail(lot());
-    expect(flat.body.data.buyersPremium).toEqual({ kind: "flat", rate: "0.25" });
+  it("returns the premium the lot charges: its own, else the sale's bands", async () => {
+    const own = await getDetail(lot());
+    expect(own.body.data.buyersPremium).toEqual({ kind: "flat", rate: "0.25", source: "lot" });
 
     const banded = await getDetail(
-      lot(),
+      lot({ buyerPremiumRate: null }),
       sale({
         buyerPremiumTiers: [
           { hammerThresholdMinor: 0, rate: "0.2" },
@@ -133,7 +133,15 @@ describe("GET /lots/:id bidding facts", () => {
         { fromHammer: "0.00", rate: "0.2" },
         { fromHammer: "500000.00", rate: "0.1" },
       ],
+      source: "sale_bands",
     });
+
+    // A lot's own premium wins over the sale's bands.
+    const override = await getDetail(
+      lot({ buyerPremiumRate: "0.18" }),
+      sale({ buyerPremiumTiers: [{ hammerThresholdMinor: 0, rate: "0.2" }] }),
+    );
+    expect(override.body.data.buyersPremium).toEqual({ kind: "flat", rate: "0.18", source: "lot" });
   });
 
   it("exposes the hammer and the price with premium on an ended sold lot, and no next bid", async () => {

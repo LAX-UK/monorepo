@@ -32,6 +32,7 @@ import {
   attachExistingLotToSale,
   detachLotFromSale,
 } from "./sale/sale-lot-membership.js";
+import { useSalePremiumForLots } from "./sale/sale-lot-premium.js";
 import {
   findByIds,
   getById,
@@ -219,6 +220,12 @@ export class SaleService implements ISaleService {
     userStaffRoles?: StaffRoles | undefined,
   ): Promise<Result<void, LotError | AuthzError>> {
     return detachLotFromSale(this.deps, userRole, saleId, lotId, userStaffRoles);
+  }
+
+  useSalePremiumForLots(
+    input: Parameters<ISaleService["useSalePremiumForLots"]>[0],
+  ): ReturnType<ISaleService["useSalePremiumForLots"]> {
+    return useSalePremiumForLots(this.deps, input);
   }
 
   async updateDraft(

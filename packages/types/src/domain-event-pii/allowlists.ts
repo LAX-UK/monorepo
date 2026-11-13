@@ -278,6 +278,7 @@ export const EXCEPTION_PATHS: Record<string, Set<string>> = {
   "sale.soft_deleted": new Set(["title", "from_status", "lotCount", "deleted_at"]),
   "lot.soft_deleted": new Set(["title", "from_status", "saleId", "deleted_at"]),
   "sale.ended": new Set(["from_status", "to_status", "reason"]),
+  "sale.lot_premiums_reset": new Set(["lot_ids", "previous_rates", "differed_from_sale"]),
   "venue.created": new Set(["legalEntityId", "name", "slug", "status"]),
   "venue.updated": new Set(["legalEntityId", "name", "slug", "status", "changedFields"]),
   "venue.archived": new Set(["legalEntityId", "name", "slug", "status"]),

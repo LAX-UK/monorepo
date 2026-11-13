@@ -39,7 +39,7 @@ function lotSold(lot: Pick<Lot, "status" | "winnerId" | "hasWinner" | "atgSold">
 /** Pure: the lot is already masked for the viewer (a sealed lot's real price is never read here). */
 export function buildLotDetailBiddingView(input: {
   lot: Lot | PublicLotView;
-  sale: Pick<Sale, "buyerPremiumTiers"> | null;
+  sale: Pick<Sale, "buyerPremiumRate" | "buyerPremiumTiers"> | null;
   checkoutTotal: string;
   now: Date;
 }): LotDetailBiddingView {
@@ -51,10 +51,7 @@ export function buildLotDetailBiddingView(input: {
     extendedUntil: lot.extendedUntil ? new Date(lot.extendedUntil).toISOString() : null,
     nextBidAmount: biddable ? nextBidAmount(lot) : null,
     validBidAmounts: biddable ? validBidAmounts(lot) : [],
-    buyersPremium: buyersPremiumTerms({
-      lotRate: lot.buyerPremiumRate,
-      bands: sale?.buyerPremiumTiers ?? null,
-    }),
+    buyersPremium: buyersPremiumTerms({ lotRate: lot.buyerPremiumRate, sale }),
     hammerPrice: sold ? lot.currentPrice : null,
     soldForWithPremium: sold ? input.checkoutTotal : null,
   };

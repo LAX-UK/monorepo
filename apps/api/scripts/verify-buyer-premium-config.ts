@@ -1,21 +1,24 @@
 /**
  * READ-ONLY pre-launch check: prints the buyer's premium that checkout will actually charge for
  * every lot in upcoming/active sales, using the SAME resolver as the money path
- * (`buildBuyerPremiumPolicy` → `PaymentService.totalDuePence`). Use it to confirm the premium
- * amount is correct (e.g. tiered 15%/10%) before opening a sale — checkout uses
- * `sale.buyerPremiumTiers` if set, otherwise `lot.buyerPremiumRate` (DB default 0.25 = 25%);
- * `sale.buyerPremiumRate` is NOT used by checkout.
+ * (`resolveBuyerPremium` → `buildInvoiceLines`): the lot's own premium if staff set one, else the
+ * sale's bands (charged slice by slice), else the sale's flat rate.
  *
  * Run:
  *   pnpm --filter @auction/api exec tsx scripts/verify-buyer-premium-config.ts
  *   pnpm --filter @auction/api exec tsx scripts/verify-buyer-premium-config.ts --sale=<saleId>
  *
- * Performs only SELECTs. Exit code 1 if any lot looks misconfigured (flat 25% default on a lot
- * whose sale has no tiers), so it can gate a deploy/check step.
+ * Performs only SELECTs. Exit code 1 if any lot has its own premium that differs from its sale's
+ * (the sale page lists these for staff), so it can gate a deploy/check step.
  */
 import { createDb } from "@auction/db";
 import { lot as lotTable, sale as saleTable } from "@auction/db/schema";
-import { buildBuyerPremiumPolicy } from "@auction/validators";
+import {
+  addMoneyStrings,
+  describeBuyerPremium,
+  lotPremiumDiffersFromSale,
+  resolveBuyerPremium,
+} from "@auction/validators";
 import { and, eq, inArray, isNull } from "drizzle-orm";
 
 const saleArg = process.argv.find((a) => a.startsWith("--sale="))?.slice("--sale=".length);
@@ -62,9 +65,11 @@ for (const sale of sales) {
     `\n=== Sale ${sale.title} [${sale.id}] status=${sale.status} mode=${sale.deliveryMode} ===`,
   );
   console.log(
-    `  sale.buyerPremiumRate=${sale.buyerPremiumRate} (display only) · tiers=${
-      tiersActive ? JSON.stringify(tiers) : "none"
-    }`,
+    `  sale premium: ${describeBuyerPremium(
+      tiersActive && tiers
+        ? { kind: "bands", bands: tiers }
+        : { kind: "flat", rate: sale.buyerPremiumRate },
+    )}`,
   );
 
   const lots = await db
@@ -87,20 +92,16 @@ for (const sale of sales) {
 
   for (const lot of lots) {
     totalLots += 1;
-    const policy = buildBuyerPremiumPolicy({
-      saleTiers: tiers,
-      lotRate: lot.buyerPremiumRate,
-    });
+    const { policy, source } = resolveBuyerPremium({ lotRate: lot.buyerPremiumRate, sale });
     const hammer = lot.currentPrice;
     const premium = policy.computePremiumMajor(hammer);
-    const total = (Number.parseFloat(hammer) + Number.parseFloat(premium)).toFixed(2);
-    const kind = policy.id.startsWith("tiered:") ? "tiered" : "flat";
-    const suspect =
-      kind === "flat" && Number.parseFloat(lot.buyerPremiumRate) === 0.25 && !tiersActive;
+    const total = addMoneyStrings(hammer, premium);
+    const kind = source === "lot" ? `lot's own ${lot.buyerPremiumRate}` : source;
+    const suspect = lotPremiumDiffersFromSale(lot.buyerPremiumRate, sale);
     if (suspect) misconfigured += 1;
     console.log(
       `  ${suspect ? "⚠ " : "  "}Lot #${lot.lotNumber ?? "-"} ${lot.title.slice(0, 40)} | ` +
-        `hammer ${gbp(hammer)} | premium ${gbp(premium)} (${kind}, lotRate=${lot.buyerPremiumRate}) | ` +
+        `hammer ${gbp(hammer)} | premium ${gbp(premium)} (${kind}) | ` +
         `total ${gbp(total)}`,
     );
   }
@@ -109,8 +110,8 @@ for (const sale of sales) {
 console.log(
   `\nChecked ${totalLots} lot(s) across ${sales.length} sale(s). ${
     misconfigured > 0
-      ? `⚠ ${misconfigured} lot(s) use the flat 25% default with no sale tiers — confirm this is intended.`
-      : "No 25%-default-without-tiers lots found."
+      ? `⚠ ${misconfigured} lot(s) have their own premium that differs from their sale's — check the sale page.`
+      : "Every lot charges its sale's premium, or its own premium equals it."
   }`,
 );
 

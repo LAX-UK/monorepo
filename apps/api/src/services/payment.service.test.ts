@@ -1198,12 +1198,12 @@ describe("PaymentService", () => {
     );
   });
 
-  it("applies sale-level tier override to total when present (tier band switches at threshold)", async () => {
+  it("charges the sale's bands slice by slice for a lot without its own premium", async () => {
     const tieredLot: Lot = {
       ...lot,
       saleId: "sale-tier",
-      currentPrice: "499999.99",
-      buyerPremiumRate: "0.1000",
+      currentPrice: "600000.00",
+      buyerPremiumRate: null,
     };
     const saleWithTiers: Sale = {
       id: "sale-tier",
@@ -1304,9 +1304,8 @@ describe("PaymentService", () => {
       CHECKOUT_ADDRESS_ID,
     );
     expect(result.isOk()).toBe(true);
-    // Hammer 499_999.99 → tier @ 0 → 15% → banker's-rounded premium = 75000.00
-    // Without tiers the lot's flat 10% would have produced 549999.99 → we assert the tier wins.
-    expect(payments.create).toHaveBeenCalledWith(expect.objectContaining({ amount: "574999.99" }));
+    // Hammer £600,000: 15% of £500,000 + 10% of £100,000 = £85,000 premium.
+    expect(payments.create).toHaveBeenCalledWith(expect.objectContaining({ amount: "685000.00" }));
     expect(sales.findById).toHaveBeenCalledWith("sale-tier");
   });
 
