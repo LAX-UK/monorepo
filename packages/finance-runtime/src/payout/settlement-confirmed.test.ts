@@ -7,7 +7,7 @@ import {
   pending,
   storedSellerTerms,
 } from "./payout-bulk-settlement-parity.helpers.js";
-import { createSettlementCore } from "./payout-settlement.js";
+import { SettlementFiguresChangedError, createSettlementCore } from "./payout-settlement.js";
 import { previewSettlement } from "./settlement-preview.js";
 
 const DEAL: PrivateSalePayoutDeal = {
@@ -195,6 +195,61 @@ describe("settlement run bound to the confirmed preview", () => {
     );
     expect(result).toMatchObject({ ok: false, reason: "figures_changed" });
     expect(create).not.toHaveBeenCalled();
+  });
+
+  it("a confirmed run whose sale line is skipped throws so the transaction rolls back", async () => {
+    const updateTotals = vi.fn(async () => undefined);
+    const repo = makeSettlementRepo({
+      create: vi.fn(async (i) => payoutRow({ ...i })),
+      findUnlinkedCapturedPayments: async () => pending([{ id: "p1" }, { id: "p2" }]),
+      // Another run paid p2 first.
+      tryInsertSaleLine: async (i) =>
+        i.paymentId === "p2"
+          ? null
+          : {
+              id: `line-${i.paymentId}`,
+              payoutId: i.payoutId,
+              paymentId: i.paymentId,
+              privateSaleDealId: null,
+              amount: i.amount,
+              kind: "sale",
+              createdByUserId: null,
+              note: null,
+              createdAt: new Date(),
+            },
+      updateTotals,
+    });
+    const { confirmed } = await confirmFrom(repo, dealStore([]));
+    await expect(
+      createSettlementCore(repo, { ...input, confirmed }, dealStore([]), storedSellerTerms()),
+    ).rejects.toBeInstanceOf(SettlementFiguresChangedError);
+    expect(updateTotals).not.toHaveBeenCalled();
+  });
+
+  it("an unconfirmed run (the nightly run) whose sale line is skipped lowers the totals instead", async () => {
+    const updateTotals = vi.fn(async () => undefined);
+    const repo = makeSettlementRepo({
+      create: vi.fn(async (i) => payoutRow({ ...i })),
+      findUnlinkedCapturedPayments: async () => pending([{ id: "p1" }, { id: "p2" }]),
+      tryInsertSaleLine: async (i) =>
+        i.paymentId === "p2"
+          ? null
+          : {
+              id: `line-${i.paymentId}`,
+              payoutId: i.payoutId,
+              paymentId: i.paymentId,
+              privateSaleDealId: null,
+              amount: i.amount,
+              kind: "sale",
+              createdByUserId: null,
+              note: null,
+              createdAt: new Date(),
+            },
+      updateTotals,
+    });
+    const result = await createSettlementCore(repo, input, dealStore([]), storedSellerTerms());
+    expect(result.ok).toBe(true);
+    expect(updateTotals).toHaveBeenCalledTimes(1);
   });
 
   it("refuses when what was confirmed has already been paid", async () => {
