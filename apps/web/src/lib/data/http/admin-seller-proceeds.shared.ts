@@ -59,6 +59,7 @@ export const lotSellerProceedsSchema = z.object({
   sellerLegalEntityId: z.string().nullable(),
   sellerName: z.string().nullable(),
   soldOnAtg: z.boolean(),
+  settledOutsideAt: isoDate.nullable().optional().default(null),
   sale: z
     .object({
       paymentId: z.string(),

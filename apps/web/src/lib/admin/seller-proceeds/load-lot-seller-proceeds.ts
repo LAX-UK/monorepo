@@ -17,6 +17,8 @@ export type LotSellerProceedsPage = {
   notice: HeldPayoutNotice | null;
   /** Set when this person may record the seller's signed agreement for a held sale. */
   record: RecordAgreementContext | null;
+  /** May this person mark an ATG sale as settled outside LAX. */
+  canSettleOutside: boolean;
 };
 
 export function recordContextFor(facts: LotSellerProceedsDto): RecordAgreementContext | null {
@@ -42,7 +44,7 @@ export async function loadLotSellerProceeds(
     facts = await getLotSellerProceeds(lotId);
   } catch (error) {
     console.error("[loadLotSellerProceeds] Failed to load the seller's proceeds:", error);
-    return { state: { kind: "error" }, notice: null, record: null };
+    return { state: { kind: "error" }, notice: null, record: null, canSettleOutside: false };
   }
   const canRecord =
     user !== null &&
@@ -51,5 +53,6 @@ export async function loadLotSellerProceeds(
     state: buildLotSellerProceeds(facts),
     notice: buildHeldPayoutNotice(facts),
     record: canRecord && facts ? recordContextFor(facts) : null,
+    canSettleOutside: canRecord,
   };
 }

@@ -77,3 +77,35 @@ export async function recordSignedAgreementAction(
     );
   });
 }
+
+/** Marks an ATG sale as settled with its seller outside LAX; the reason goes to the audit log. */
+export async function markSettledOutsideAction(input: {
+  lotId: string;
+  reason: string;
+}): Promise<ActionResult<void>> {
+  return instrumentServerAction("markSettledOutsideAction", async () => {
+    const denied = await denyUnlessAdminCapability(SELLER_AGREEMENT_RECORD_ACCESS);
+    if (denied) return denied;
+    const lotId = lotIdSchema.safeParse(input.lotId);
+    if (!lotId.success) return actionFailure("This lot could not be found.", undefined, 404);
+    const res = await authedServerFetch(
+      `/admin/seller-proceeds/lots/${encodeURIComponent(lotId.data)}/settled-outside`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reason: input.reason }),
+      },
+    );
+    if (res.ok) {
+      revalidatePath(`/admin/lots/${lotId.data}`);
+      return actionSuccess(undefined);
+    }
+    if (await isStaffStepUpResponse(res)) return stepUpRequiredFailure();
+    const body = (await res.json().catch(() => ({}))) as Refusal;
+    return actionFailure(
+      typeof body.error === "string" ? body.error : "The sale could not be marked as settled.",
+      undefined,
+      res.status,
+    );
+  });
+}

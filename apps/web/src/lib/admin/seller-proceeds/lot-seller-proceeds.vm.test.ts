@@ -130,6 +130,16 @@ describe("buildLotSellerProceeds", () => {
     expect(model.action).toBe("mark_settled_outside");
   });
 
+  it("records when an ATG sale was settled outside LAX and stops asking", () => {
+    const model = breakdownOf(
+      buildLotSellerProceeds(
+        fixtureLotProceeds({ soldOnAtg: true, settledOutsideAt: "2026-11-12T04:49:00.000Z" }),
+      ),
+    );
+    expect(model.action).toBeNull();
+    expect(model.note).toBe(`${NOTES.atg} Marked as settled outside LAX Thu 12 Nov, 04:49 GMT.`);
+  });
+
   it("names the company when it is not VAT-registered", () => {
     const model = breakdownOf(
       buildLotSellerProceeds(

@@ -9,6 +9,7 @@ import {
   type SettlementPremium,
   type SettlementRateSource,
   type SettlementVat,
+  formatStaffDateTime,
   formatStaffMoney,
 } from "@auction/staff-ui";
 import {
@@ -161,7 +162,10 @@ export function buildLotSellerProceeds(facts: LotSellerProceedsDto | null): LotS
   };
 
   let action: ProceedsAction = null;
-  if (status.kind === "settle_by_hand") action = "mark_settled_outside";
+  let note = noteFor(status, terms);
+  if (status.kind === "settle_by_hand" && facts.settledOutsideAt) {
+    note = `${NOTES.atg} Marked as settled outside LAX ${formatStaffDateTime(facts.settledOutsideAt)}.`;
+  } else if (status.kind === "settle_by_hand") action = "mark_settled_outside";
   else if (
     status.kind === "held" &&
     terms.heldReason &&
@@ -170,7 +174,7 @@ export function buildLotSellerProceeds(facts: LotSellerProceedsDto | null): LotS
   ) {
     action = "record_agreement";
   }
-  return { kind: "breakdown", breakdown, note: noteFor(status, terms), action };
+  return { kind: "breakdown", breakdown, note, action };
 }
 
 /** The section as the page renders it, including while it loads or when it could not load. */

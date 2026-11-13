@@ -211,7 +211,12 @@ export function LotOverviewTab({
         />
       ) : null}
       {sellerProceeds ? (
-        <LotSellerProceedsSection state={sellerProceeds.state} record={sellerProceeds.record} />
+        <LotSellerProceedsSection
+          lotId={lotId}
+          state={sellerProceeds.state}
+          record={sellerProceeds.record}
+          canSettleOutside={sellerProceeds.canSettleOutside}
+        />
       ) : null}
       <Section title="Pricing and timing">
         <KeyValueList items={vm.commercialRows.filter(keep).map(statItem)} />

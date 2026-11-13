@@ -63,6 +63,7 @@ export function fixtureLotProceeds(
     sellerLegalEntityId: "00000000-0000-4000-8000-0000000000d1",
     sellerName: "Northbank Gallery Ltd",
     soldOnAtg: false,
+    settledOutsideAt: null,
     sale: saleOver === null ? null : sale,
     agreement: {
       id: "00000000-0000-4000-8000-0000000000e1",

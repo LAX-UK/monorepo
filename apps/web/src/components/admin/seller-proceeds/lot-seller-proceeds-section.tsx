@@ -1,8 +1,11 @@
 "use client";
 
 import type { LotSellerProceedsState } from "@/lib/admin/seller-proceeds/lot-seller-proceeds.vm";
+import { markSettledOutsideAction } from "@/lib/admin/seller-proceeds/record-agreement.actions";
 import type { RecordAgreementContext } from "@/lib/admin/seller-proceeds/record-agreement.vm";
+import { handleStaffStepUp } from "@/lib/auth/step-up/staff-step-up.client";
 import {
+  ConfirmActionDialog,
   Notice,
   Section,
   SettlementBreakdown,
@@ -11,7 +14,9 @@ import {
   type StaffLinkComponent,
 } from "@auction/staff-ui";
 import Link from "next/link";
-import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useState, useTransition } from "react";
+import { toast } from "sonner";
 import { RecordAgreementDialog } from "./record-agreement-dialog";
 
 const NextLink: StaffLinkComponent = Link;
@@ -26,17 +31,23 @@ const TITLE = "Seller proceeds";
 export function LotSellerProceedsSection({
   state,
   record = null,
-  onMarkSettledOutside,
+  lotId = null,
+  canSettleOutside = false,
   initialDialogOpen = false,
 }: {
   state: LotSellerProceedsState;
+  lotId?: string | null;
   /** Set when this person may record the seller's signed agreement. */
   record?: RecordAgreementContext | null;
-  onMarkSettledOutside?: () => void;
+  /** May this person mark an ATG sale as settled outside LAX. */
+  canSettleOutside?: boolean;
   /** For the review route only. */
   initialDialogOpen?: boolean;
 }) {
   const [recording, setRecording] = useState(initialDialogOpen);
+  const [settling, setSettling] = useState(false);
+  const [saving, startSaving] = useTransition();
+  const router = useRouter();
 
   if (state.kind === "none") return null;
   if (state.kind === "loading") {
@@ -80,8 +91,8 @@ export function LotSellerProceedsSection({
       <StaffButton variant="primary" size="sm" onClick={() => setRecording(true)}>
         Record signed agreement
       </StaffButton>
-    ) : action === "mark_settled_outside" && onMarkSettledOutside ? (
-      <StaffButton variant="secondary" size="sm" onClick={onMarkSettledOutside}>
+    ) : action === "mark_settled_outside" && canSettleOutside ? (
+      <StaffButton variant="secondary" size="sm" onClick={() => setSettling(true)}>
         Mark as settled outside LAX
       </StaffButton>
     ) : null;
@@ -98,6 +109,36 @@ export function LotSellerProceedsSection({
       />
       {record ? (
         <RecordAgreementDialog open={recording} onOpenChange={setRecording} context={record} />
+      ) : null}
+      {canSettleOutside && lotId ? (
+        <ConfirmActionDialog
+          open={settling}
+          onOpenChange={(open) => {
+            if (!saving) setSettling(open);
+          }}
+          title="Mark this ATG sale as settled outside LAX?"
+          description="Do this once the seller has been paid by hand under the ATG settlement runbook. LAX will not pay this sale."
+          confirmLabel="Mark as settled"
+          cancelLabel="Not now"
+          loading={saving}
+          reason={{
+            label: "How it was settled",
+            description: "Kept in the audit log.",
+            minLength: 10,
+          }}
+          onConfirm={({ reason }) =>
+            startSaving(async () => {
+              const result = await markSettledOutsideAction({ lotId, reason });
+              if (result.ok) {
+                toast.success("Marked as settled outside LAX.");
+                setSettling(false);
+                router.refresh();
+              } else if (!handleStaffStepUp(result)) {
+                toast.error(result.error);
+              }
+            })
+          }
+        />
       ) : null}
     </Section>
   );
