@@ -84,6 +84,19 @@ export function createDrizzleCrmPaymentLotReader(db: Database): CrmPaymentLotRea
   };
 }
 
+/** Zoho's single-line text and URL fields hold 255 characters; a longer value is refused. */
+const CRM_TEXT_FIELD_MAX = 255;
+
+/**
+ * A landing page that fits Zoho's URL field. A long one loses its query string first (the UTM
+ * values in it are sent in their own fields), then is cut to the limit.
+ */
+export function landingPageForCrm(url: string): string {
+  if (url.length <= CRM_TEXT_FIELD_MAX) return url;
+  const withoutQuery = url.split(/[?#]/, 1)[0] ?? url;
+  return withoutQuery.slice(0, CRM_TEXT_FIELD_MAX);
+}
+
 export function createDrizzleCrmAttributionReader(db: Database): CrmAttributionReader {
   return {
     async loadFirstTouchFields(userId: string): Promise<Record<string, CrmFieldValue> | null> {
@@ -95,14 +108,21 @@ export function createDrizzleCrmAttributionReader(db: Database): CrmAttributionR
       if (!row?.firstTouch || typeof row.firstTouch !== "object") return null;
       const touch = row.firstTouch as Record<string, unknown>;
       const fields: Record<string, CrmFieldValue> = {};
-      if (typeof touch.utm_source === "string") fields[CRM_FIELD.utmSource] = touch.utm_source;
-      if (typeof touch.utm_medium === "string") fields[CRM_FIELD.utmMedium] = touch.utm_medium;
-      if (typeof touch.utm_campaign === "string")
-        fields[CRM_FIELD.utmCampaign] = touch.utm_campaign;
-      if (typeof touch.utm_content === "string") fields[CRM_FIELD.utmContent] = touch.utm_content;
-      if (typeof touch.utm_term === "string") fields[CRM_FIELD.utmTerm] = touch.utm_term;
-      if (typeof touch.landing_page === "string") {
-        fields[CRM_FIELD.landingPageUrl] = touch.landing_page;
+      const utm: ReadonlyArray<[string, string]> = [
+        ["utm_source", CRM_FIELD.utmSource],
+        ["utm_medium", CRM_FIELD.utmMedium],
+        ["utm_campaign", CRM_FIELD.utmCampaign],
+        ["utm_content", CRM_FIELD.utmContent],
+        ["utm_term", CRM_FIELD.utmTerm],
+      ];
+      for (const [key, field] of utm) {
+        const value = touch[key];
+        if (typeof value === "string" && value.trim()) {
+          fields[field] = value.trim().slice(0, CRM_TEXT_FIELD_MAX);
+        }
+      }
+      if (typeof touch.landing_page === "string" && touch.landing_page.trim()) {
+        fields[CRM_FIELD.landingPageUrl] = landingPageForCrm(touch.landing_page.trim());
       }
       return Object.keys(fields).length > 0 ? fields : null;
     },

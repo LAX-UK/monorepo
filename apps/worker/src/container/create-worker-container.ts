@@ -168,6 +168,7 @@ export function createWorkerContainer(): WorkerContainer {
           db,
           linkRepo: repositories.crmRecordLinkRepo,
           gateway: crmGateway,
+          log,
         })
       : undefined;
   const exportProviderDeps = createExportProviderDeps(db);
