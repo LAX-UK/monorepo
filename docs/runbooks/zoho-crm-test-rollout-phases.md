@@ -91,6 +91,7 @@ What the worker does by itself:
 
 - **Optional field refused (`INVALID_DATA` on a field other than `Email`, `Last_Name` or `LAX_Subject_ID`):** the field is left out and the lead is sent again, so the person is still recorded. Each field left out is logged as `zoho_crm_person_field_dropped` with its API name. Fix the setting in Zoho so the field is filled again for new sign-ups.
 - **`Last_Name`:** always sent. A one-word name is the surname, no name uses the email's local part, then `Customer`; names are cut to Zoho's lengths (First 40, Last 80).
+- **`Email`:** sent trimmed, with the domain in lower case and an internationalised domain in its ASCII (`xn--`) form. The address is read from the stored `user.registered` event, which holds it in full; only Failed jobs shows it masked (`a•••••@e•••••.com`).
 - **UTM fields and `Landing_Page_URL`:** cut to 255 characters; a long landing page loses its query string first.
 
 What to check in Zoho (LAX Integration Test sandbox, Setup › Customization › Modules › Leads), by the code in the reason:
@@ -103,6 +104,8 @@ What to check in Zoho (LAX Integration Test sandbox, Setup › Customization ›
 | `INVALID_DATA:Lead_Source_Detailed` | The field is single line text (255), or, if it was made a picklist, it has `LAX Account sign-up`. |
 | `INVALID_DATA:LAX_Subject_ID` or `:duplicate_check_fields` | `LAX_Subject_ID` exists on Leads and Contacts, is single line text and is marked unique ("Do not allow duplicate values"); upsert matches on it, then on Email. |
 | `MANDATORY_NOT_FOUND:<field>` | Someone made `<field>` mandatory on the Leads layout (for example a "Signed up with" field). The platform does not send it: make it optional for the integration user's layout, or ask for it to be mapped. |
+| `email_rejected_by_zoho:<rule>` | The worker did not send the address: it breaks a rule Zoho's Email field enforces (`local_part_too_long`: over 64 characters before the `@`; `too_long`: over 100 characters; `invalid_local_part`: characters other than plain ASCII letters, digits and ``!#$%&'*+/=?^_`{|}~-`` before the `@`; `invalid_domain`). The same address would be refused again, so the delivery is parked. Correct the address in LAX Account (the change syncs as a profile update), or dismiss the delivery if it is a test account. |
+| `email_rejected_by_zoho:zoho_crm_http_400:INVALID_DATA:Email` | Zoho refused the address itself. Check the Leads Email field's validation rules in Zoho; the delivery is parked, not retried. |
 | `DUPLICATE_DATA:<field>` | `<field>` is unique in Zoho and another Lead or Contact already holds the value. Merge the records in Zoho, then Retry. |
 | `INVALID_QUERY:<column>` | The integration user lost field access to `<column>` on Contacts or Leads (the email lookup runs before the upsert). |
 
