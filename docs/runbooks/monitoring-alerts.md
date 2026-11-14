@@ -300,6 +300,39 @@ send: the worker enqueues the email before it notes it, so the guards that keep 
 organisation's invoice) out of the outbox are the worker's due-list query (`target_mode = 'live'`,
 `rehearsal = false`) and the service, which only sends while Bid is aimed at Books live.
 
+## Shop invoices to Books (London Art Exchange)
+
+**What happens.** When a Shop order is paid, the Shop writes `shop.accounting.order_paid` in the
+same transaction (references only: the order and its line ids). With the Shop aimed at Books, the
+worker books, in London Art Exchange's organisation only:
+
+- the buyer's contact;
+- the order's invoice under the Shop's own number (`LAX-INV-…`, Books' automatic numbering off for
+  it), its lines exactly as stored on the order: each print or product, each frame at the price it
+  was sold for, and UK delivery (or the collection charge), VAT-inclusive with the VAT stored;
+- the customer payment of the whole order into the Stripe clearing account, applied to that invoice.
+
+Books' totals are checked against LAX's; a difference holds the invoice in **Needs a person** with
+Books' figure, as for Bid. Lines that are not the ones the event named, or that do not add up to
+the order's total, are refused for a person, never booked.
+
+**Delivery outside the UK.** A delivery quote's VAT waits for the accountant. It is never put on
+the order's invoice and never sent: it is stored as its own invoice
+(`LAX-SHOP-INV-<order>-delivery`), parked in **Needs a person** as "Waiting for the accountant: VAT
+on outside-UK delivery", with no VAT stated, and it cannot be tried again (staff can only cancel
+it). The payment still books every penny the buyer paid; the quote's part is left unapplied on the
+buyer's account until the accountant answers.
+
+**The buyer's card and email.** On the Shop order page the buyer sees the same card as on a Bid
+purchase (being prepared, late after 30 minutes, issued with "Download invoice (PDF)" from LAX's
+stored copy, cancelled), only while the Shop is aimed at Books **live**. In dry run or the test
+organisation the page is unchanged and nobody is emailed. With Books live the worker emails "Your
+invoice [number] from LAX Shop" once, with the stored copy attached, to the order's owner now (the
+guest, or the account that claimed the order; an erased guest or a closed account gets nothing),
+settling every copy as queued or skipped exactly as for Bid. Before Shop goes live, set the worker's
+`SHOP_STOREFRONT_URL` (the email's link) and give the Shop API read access to the document
+storage's `accounting/london_art_exchange/` keys.
+
 ## Related
 
 - [Scale monitoring](./scale-monitoring.md)

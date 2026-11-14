@@ -17,6 +17,7 @@ stores records and calls providers live elsewhere and depend on this package, ne
 | Source switch | `source-switch.ts` | One live source per product; refuses two. |
 | Projection | `projection/` | One pure policy per money flow: facts in, documents out, idempotent by LAX reference. |
 | Retries | `retry.ts` | Wait between attempts (30 s doubling to 30 min); 8 attempts, then a person. |
+| Parking | `parking.ts` | A document kept from the books until the accountant or a person decides: stored `needs_review` with a reason `accounting_parked_<why>`, never claimed, never requeued, only cancelled. |
 | Buyer's invoice | `standing.ts` | Where a buyer's invoice stands for their card: LAX's own (Books off, rehearsing, or at the test organisation), being prepared, late after 30 minutes, issued (only with LAX's stored copy), cancelled. |
 | Stored copy | `ports.ts` `DocumentPdfPort` | The provider's PDF of an issued document, fetched once so LAX keeps its own copy; a dry run answers with a page marked as a rehearsal. |
 
@@ -152,6 +153,7 @@ same facts always give the same documents, so a redelivered event is a replay.
 | `bid_invoice_raised` | contact, invoice | Lines from the stored invoice (the `invoice.raised` event names them by id; other lines are refused); `BID_LINE_BOOKINGS` says how each line kind is booked (hammer and premium as margin-scheme goods until the accountant confirms; the premium keeps the label it was raised with). VAT on the premium and the artist's resale right wait for the accountant: a kind in `BID_LINES_AWAITING_ACCOUNTANT` is refused (`line_awaiting_accountant`), an unknown kind too (`unmapped_line`), never guessed. A line of 0p is left out. |
 | `bid_payment_captured` | contact, invoice, payment | All of the payment applied to its invoice; a payment for more than the invoice is refused (a remainder is never spread). |
 | `bid_payment_refunded` | contact, invoice, one credit note per refund | Every refund of the payment replayed oldest first through `buildCreditNoteFor`, so each credit note is exactly its refund and they never total more than was paid. |
+| `shop_order_paid` | contact, invoice, (parked delivery invoice), payment | The order's invoice in London Art Exchange under the Shop's own number (`buildInclusiveInvoice`: lines VAT-inclusive with the VAT stored when sold, never worked out again; a line sold with no VAT recorded is booked with none). Goods, framing (the frame's price as sold) and UK delivery or collection are lines on it; the lines must add up to the order's total. Delivery outside the UK is never on it: it is its own invoice with no VAT stated, parked (`vat_on_outside_uk_delivery`, never sent). The payment books the whole order into clearing, applied to the invoice; the parked delivery's part is left unapplied. |
 | others in `ACCOUNTING_FLOWS` | none yet | Placeholders that project nothing until their own change builds them. |
 
 `whenReferenceHeld(kind)`: a contact already registered with other details is kept (its details are
