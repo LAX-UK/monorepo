@@ -12,6 +12,7 @@ import { createClientIpResolver } from "../infrastructure/client-ip.js";
 import { createBrowserErrorPageMiddleware } from "../middleware/browser-error-page.js";
 import { createOidcPromptCookieHardeningMiddleware } from "../middleware/oidc-prompt-cookie-hardening.js";
 import { createSecurityHeadersMiddleware } from "../middleware/security-headers.js";
+import { createOidcLoginPromptReader } from "../services/oidc-login-prompt.js";
 import { IDENTIFY_ONLY } from "../services/session-read-query.js";
 import { hasStaffMarker } from "../services/staff-marker.js";
 import {
@@ -109,6 +110,10 @@ export function createAuthApp(options: CreateAuthAppOptions): Hono {
         staff: await hasStaffMarker(options.oidc.socialSubjectPorts, subjectId),
       };
     },
+    // The secret the OIDC provider signs its prompt cookie with, as Better Auth resolved it.
+    readLoginPrompt: createOidcLoginPromptReader(
+      async () => ((await options.oidc.auth.$context) as { secret: string }).secret,
+    ),
   });
   app.use("/api/auth/oauth2/authorize", async (c, next) => {
     const normalized = normalizeAuthorizePromptForCreate(new URL(c.req.url));
