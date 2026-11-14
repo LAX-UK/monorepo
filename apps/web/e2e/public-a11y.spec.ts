@@ -107,7 +107,7 @@ test.describe("public site accessibility @a11y @public-a11y", () => {
     await expect(page.getByRole("region", { name: "Cookies" })).toBeVisible();
     await scan(page, "cookie-banner", "1440 light");
     routesChecked.add("cookie-banner");
-    const settings = page.getByRole("button", { name: "Settings", exact: true });
+    const settings = page.getByRole("button", { name: "Cookie settings", exact: true });
     if (await settings.isVisible()) {
       await settings.click();
       await expect(page.getByRole("dialog")).toBeVisible();

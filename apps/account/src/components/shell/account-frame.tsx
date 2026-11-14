@@ -10,7 +10,12 @@ import {
   siteCopyrightYear,
 } from "@auction/branding";
 import type { LaxFamilyLinkVm } from "@auction/lax-ecosystem";
-import { LaxFamilyBar, LaxLockup, MarketingFooter } from "@auction/marketing-ui";
+import {
+  EssentialCookiesDialog,
+  LaxFamilyBar,
+  LaxLockup,
+  MarketingFooter,
+} from "@auction/marketing-ui";
 import type { ReactNode } from "react";
 import { AccountAvatarMenu } from "./account-avatar-menu.client";
 import { AccountMenuSheet } from "./account-menu-sheet.client";
@@ -130,6 +135,7 @@ export function AccountFrame({
         columns={buildAccountFooterColumns(products, support)}
         copyright={accountCopyright()}
       />
+      <EssentialCookiesDialog productName="LAX Account" />
     </div>
   );
 }

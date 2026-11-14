@@ -23,11 +23,12 @@ describe("buildAccountFooterColumns", () => {
     const columns = buildAccountFooterColumns(products, support);
     expect(columns.map((column) => column.id)).toEqual(["lax-products", "help", "legal"]);
     const labels = columns[0]?.links.map((link) => link.label);
-    expect(labels).toEqual(expect.arrayContaining(["lax.bid", "lax.shop", "lax.art"]));
+    expect(labels).toEqual(expect.arrayContaining(["lax.bid", "LAX Shop", "lax.art"]));
     expect(labels).not.toContain("LAX Account");
     expect(columns[2]?.links).toEqual([
       { label: "Terms", href: "https://lax.bid/terms" },
       { label: "Privacy", href: "https://lax.bid/privacy" },
+      { label: "Cookie settings", href: "#cookie-settings" },
     ]);
   });
 
