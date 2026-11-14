@@ -9,9 +9,18 @@ import {
 } from "./held-erasure-recheck.service.js";
 
 const NOW = new Date("2031-03-02T00:00:00Z");
-const counts = (held: number): DataRequestOutcome<EnquiryErasureCounts> => ({
+const counts = (
+  held: number,
+  hold?: { until: Date | null; withoutEnd: boolean },
+): DataRequestOutcome<EnquiryErasureCounts> => ({
   ok: true,
-  value: { enquiries: held === 0 ? 1 : 0, notes: 0, attachments: 0, held } as EnquiryErasureCounts,
+  value: {
+    enquiries: held === 0 ? 1 : 0,
+    notes: 0,
+    attachments: 0,
+    held,
+    ...(hold ? { hold } : {}),
+  } as EnquiryErasureCounts,
 });
 
 function setup(due: DueHeldErasure[]) {
@@ -56,9 +65,27 @@ describe("HeldErasureRecheckService", () => {
 
   it("leaves a request behind a deal that is still open to wait for the next re-check", async () => {
     const { service, queue, erasures } = setup([held({ reason: "open_deal", heldUntil: null })]);
-    erasures.rerunHeldErasure.mockResolvedValueOnce(counts(1));
+    erasures.rerunHeldErasure.mockResolvedValueOnce(counts(1, { until: null, withoutEnd: false }));
     expect(await service.run()).toEqual({ released: 0, waiting: 1, needsStaff: 0 });
     expect(queue.needsStaff).not.toHaveBeenCalled();
+  });
+
+  it("leaves a request whose hold moved to a later date waiting under the plan the re-run stored", async () => {
+    const { service, queue, erasures, onNeedsStaff } = setup([held()]);
+    const later = new Date("2031-06-01T00:00:00Z");
+    erasures.rerunHeldErasure.mockResolvedValueOnce(counts(1, { until: later, withoutEnd: false }));
+    expect(await service.run()).toEqual({ released: 0, waiting: 1, needsStaff: 0 });
+    expect(queue.needsStaff).not.toHaveBeenCalled();
+    expect(onNeedsStaff).not.toHaveBeenCalled();
+  });
+
+  it("hands staff a request whose hold end has passed and is still held", async () => {
+    const { service, queue, erasures } = setup([held()]);
+    erasures.rerunHeldErasure.mockResolvedValueOnce(
+      counts(1, { until: new Date("2031-03-01T00:00:00Z"), withoutEnd: false }),
+    );
+    expect(await service.run()).toEqual({ released: 0, waiting: 0, needsStaff: 1 });
+    expect(queue.needsStaff).toHaveBeenCalledWith("DR-0007", "still_held");
   });
 
   it("hands staff a request still held after its hold should have ended, and says so once", async () => {
