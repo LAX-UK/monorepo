@@ -1,18 +1,24 @@
 import type { SupportLinksVm } from "@/server/domain/account-links";
 import signInGallery from "@auction/branding/images/signin-gallery.webp";
 import { LaxLockup } from "@auction/marketing-ui";
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { AccountFooter } from "./shell/account-frame";
 import { AccountThemeToggle } from "./shell/account-theme-toggle.client";
 
 /** `next/image` hands back an object; Vite, in tests, hands back the URL. */
 const galleryUrl = typeof signInGallery === "string" ? signInGallery : signInGallery.src;
+const galleryStyle = { "--sign-in-gallery": `url("${galleryUrl}")` } as CSSProperties;
 
 /**
  * The signed-out frame LAX Account shares with the issuer's sign-in pages: the panel on the left
  * (lockup and theme toggle, the content, then who provides the account), and a gallery painting
  * on the right from `lg`. Phones and tablets get the panel alone, so a form is the first thing
- * on screen and the keyboard never pushes it below a picture.
+ * on screen and the keyboard never pushes it below a picture; the painting is a background set
+ * only from `lg`, so they never download it.
+ *
+ * The painting hangs whole (never cropped) on a wall taken from its own colours, in a column as
+ * tall as the viewport that stays put while a long page scrolls, so its size follows the window
+ * alone and never the content beside it.
  *
  * The issuer's pages cannot use React, so `packages/auth` draws the same frame in HTML from the
  * same tokens (`hosted-auth/html.ts`); keep the two in step.
@@ -44,12 +50,14 @@ export function SignInSplit({
         </div>
       </div>
       {/* The painting is decoration: the panel says everything the page means. */}
-      <div className="relative hidden flex-1 overflow-hidden bg-surface-container lg:block">
-        <img
-          src={galleryUrl}
-          alt=""
-          fetchPriority="high"
-          className="absolute inset-0 size-full object-cover object-[50%_40%]"
+      <div
+        aria-hidden="true"
+        className="sticky top-0 hidden h-screen flex-1 items-center justify-center self-start bg-art-wall supports-[height:100dvh]:h-dvh lg:flex"
+      >
+        <div
+          data-testid="sign-in-painting"
+          style={galleryStyle}
+          className="aspect-square w-[min(82%,82vh)] bg-contain bg-center bg-no-repeat [box-shadow:var(--art-shadow)] supports-[height:100dvh]:w-[min(82%,82dvh)] lg:bg-(image:--sign-in-gallery)"
         />
       </div>
     </div>

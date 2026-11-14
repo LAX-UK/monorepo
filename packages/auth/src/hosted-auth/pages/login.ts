@@ -11,7 +11,6 @@ import {
   viewChrome,
 } from "../html.js";
 import { hostedLegalProduct } from "../legal-links.js";
-import { HOSTED_AUTH_ASSET_VERSION } from "../policy.js";
 import { socialActions } from "../social-actions.js";
 import {
   type HostedAuthView,
@@ -32,7 +31,7 @@ function phoneAndSignUp(view: HostedAuthView): string {
   }
   const signUp = `<p class="links-secondary">Don't have an account? ${continuationAnchor("Sign up", "/sign-up", view.flow)}</p>`;
   return `<div class="links links--stacked" data-login-chrome="footer">${signUp}</div>
-    ${oneAccountSection(`?v=${HOSTED_AUTH_ASSET_VERSION}`)}`;
+    ${oneAccountSection()}`;
 }
 
 function magicLinkInsteadButton(view: HostedAuthView): string {

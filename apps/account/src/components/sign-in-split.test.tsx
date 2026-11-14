@@ -26,9 +26,38 @@ describe("SignInSplit", () => {
     expect(html).toContain('href="https://lax.bid/faq"');
   });
 
-  it("shows the painting from lg only, as decoration", () => {
-    expect(html).toMatch(
-      /<div class="[^"]*hidden[^"]*lg:block[^"]*"><img src="[^"]*signin-gallery[^"]*" alt=""/,
+  it("hangs the whole painting from lg only, as decoration a phone never downloads", () => {
+    expect(html).not.toContain("<img");
+    const column = html.match(
+      /<div aria-hidden="true" class="([^"]*)"><div data-testid="sign-in-painting"/,
+    )?.[1];
+    expect(column?.split(" ")).toEqual(
+      expect.arrayContaining([
+        "hidden",
+        "lg:flex",
+        "sticky",
+        "top-0",
+        "self-start",
+        "h-screen",
+        "supports-[height:100dvh]:h-dvh",
+        "bg-art-wall",
+      ]),
     );
+    const painting = html.match(
+      /<div data-testid="sign-in-painting" style="([^"]*)" class="([^"]*)"/,
+    );
+    expect(painting?.[1]).toMatch(/--sign-in-gallery:url\(&quot;[^&]*signin-gallery[^&]*&quot;\)/);
+    const classes = painting?.[2]?.split(" ") ?? [];
+    expect(classes).toEqual(
+      expect.arrayContaining([
+        "bg-contain",
+        "aspect-square",
+        "w-[min(82%,82vh)]",
+        "lg:bg-(image:--sign-in-gallery)",
+        "[box-shadow:var(--art-shadow)]",
+      ]),
+    );
+    expect(classes.some((c) => c.includes("cover"))).toBe(false);
+    expect(classes).not.toContain("bg-(image:--sign-in-gallery)");
   });
 });

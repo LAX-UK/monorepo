@@ -45,6 +45,15 @@ export const HOSTED_AUTH_TOKENS = {
   /** Behind the painting while it loads (Account's `--color-surface-container`). */
   surfaceContainer: "#eeeeee",
   darkSurfaceContainer: "#333534",
+  /**
+   * The wall the painting hangs on: the painting's own pale blue-grey wall, lifted towards white
+   * (sampled at #c6ced0), and on dark its slate wall (#566b6b) taken down towards the page.
+   */
+  artWall: "#dfe4e5",
+  darkArtWall: "#343f3f",
+  /** Hairlines between quiet marks (Account's `--color-outline-variant`). */
+  outlineVariant: "#dcdce0",
+  darkOutlineVariant: "#5c5a54",
   darkPageBg: "#121414",
   darkSurface: "#1a1c1c",
   darkTextSecondary: "#c9c5bc",

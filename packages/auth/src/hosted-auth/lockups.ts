@@ -38,6 +38,9 @@ export const HOSTED_PRODUCT_LOCKUPS: Readonly<Record<HostedNamedProduct, Product
   art: { light: "lax-art.svg", dark: "lax-art-dark.svg", aspect: 780.68 / 281.06 },
 };
 
+/** Height of the quiet product marks under "One account for all of LAX", in CSS pixels. */
+export const PRODUCT_MARK_HEIGHT = 18;
+
 /** Every lockup file the issuer serves. */
 export const HOSTED_LOCKUP_FILES: readonly string[] = [
   hostedLockupFilename("light"),
@@ -49,6 +52,8 @@ export const HOSTED_IMAGE_ASSET_DIR = "images";
 export const HOSTED_IMAGE_BASE_PATH = "/hosted-auth/images";
 /** The gallery painting beside the sign-in panel, the same one LAX Account shows. */
 export const HOSTED_GALLERY_IMAGE = "signin-gallery.webp";
+/** Width / height of the painting (1200 x 1200), so it hangs whole at its own proportions. */
+export const HOSTED_GALLERY_ASPECT = 1;
 
 /** Variable-weight Latin subsets of the two brand typefaces. */
 export const HOSTED_FONT_FILES = {

@@ -55,6 +55,9 @@
   --color-control-border: var(--brand-field-edge);
   --color-input-border: var(--color-control-border);
   --color-surface-container: #eeeeee;
+  /* The wall the sign-in painting hangs on: its own pale blue-grey wall, lifted towards white.
+     Matches --color-art-wall in packages/auth (hosted-auth/tokens.ts). */
+  --color-art-wall: #dfe4e5;
   --color-surface-container-low: #f3f3f3;
   --color-surface-container-lowest: #ffffff;
   --color-surface-container-high: #e8e8e8;
@@ -85,7 +88,14 @@
   --font-label: var(--font-outfit), ui-sans-serif, system-ui, sans-serif;
 }
 
+:root {
+  /* The light shadow under the sign-in painting, as under a work hung in a gallery. Matches
+     --art-shadow in packages/auth (hosted-auth/styles.ts). */
+  --art-shadow: 0 1px 2px rgb(25 25 25 / 0.08), 0 16px 40px -12px rgb(25 25 25 / 0.28);
+}
+
 html.dark {
+  --art-shadow: 0 1px 2px rgb(0 0 0 / 0.3), 0 16px 40px -12px rgb(0 0 0 / 0.55);
   --color-page-bg: #121414;
   --color-footer-bg: #0d0f0f;
   --color-background: #121414;
@@ -110,6 +120,8 @@ html.dark {
   --color-product-shop: #d6a8d4;
   --color-control-border: var(--brand-field-edge-on-dark);
   --color-surface-container: #333534;
+  /* The painting's slate wall, taken down towards the page. */
+  --color-art-wall: #343f3f;
   --color-surface-container-low: #2d2f2e;
   --color-surface-container-lowest: #0f1111;
   --color-surface-container-high: #383a39;

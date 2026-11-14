@@ -1,8 +1,13 @@
+import type { HostedNamedProduct } from "./brand.js";
 import {
   HOSTED_FONT_FILES,
+  HOSTED_GALLERY_ASPECT,
   HOSTED_GALLERY_IMAGE,
   HOSTED_IMAGE_BASE_PATH,
+  HOSTED_LOCKUP_BASE_PATH,
+  HOSTED_PRODUCT_LOCKUPS,
   type HostedFontFile,
+  PRODUCT_MARK_HEIGHT,
   hostedFontPath,
 } from "./lockups.js";
 import { HOSTED_AUTH_ASSET_VERSION } from "./policy.js";
@@ -28,6 +33,9 @@ const DARK_TOKENS = `
     --color-on-surface: ${t.lightCream};
     --color-on-surface-variant: ${t.darkTextSecondary};
     --color-border: ${t.darkBorder};
+    --color-outline-variant: ${t.darkOutlineVariant};
+    --color-art-wall: ${t.darkArtWall};
+    --art-shadow: 0 1px 2px rgb(0 0 0 / 0.3), 0 16px 40px -12px rgb(0 0 0 / 0.55);
     --color-input-border: ${t.darkInputBorder};
     --color-link: ${t.lightCream};
     --color-accent: ${t.accentOnDark};
@@ -61,6 +69,22 @@ const SYSTEM_DARK_IMAGES = `
 const GALLERY_URL = `${HOSTED_IMAGE_BASE_PATH}/${HOSTED_GALLERY_IMAGE}?v=${HOSTED_AUTH_ASSET_VERSION}`;
 
 /**
+ * Each product mark is its lockup's shape filled with one muted ink, so the row stays quiet and
+ * crisp in either theme whatever colours the files carry. The width keeps the lockup's aspect.
+ */
+const PRODUCT_MARK_SHAPES = (Object.keys(HOSTED_PRODUCT_LOCKUPS) as HostedNamedProduct[])
+  .map((product) => {
+    const lockup = HOSTED_PRODUCT_LOCKUPS[product];
+    const url = `url("${HOSTED_LOCKUP_BASE_PATH}/${lockup.light}?v=${HOSTED_AUTH_ASSET_VERSION}")`;
+    return `.product-mark--${product} {
+  width: ${Math.round(PRODUCT_MARK_HEIGHT * lockup.aspect)}px;
+  -webkit-mask-image: ${url};
+  mask-image: ${url};
+}`;
+  })
+  .join("\n\n");
+
+/**
  * Issuer-hosted credential CSS. Every hosted page is the LAX Account, so the accent is its
  * teal for all products; navy is LAX Bid's and never appears here (LAX colour rule).
  * The frame, fields and buttons follow LAX Account's signed-out page and forms (`SignInSplit`,
@@ -80,6 +104,9 @@ ${fontFace("Outfit", HOSTED_FONT_FILES.outfit)}
   --color-on-surface: ${t.ink};
   --color-on-surface-variant: ${t.textSecondary};
   --color-border: ${t.border};
+  --color-outline-variant: ${t.outlineVariant};
+  --color-art-wall: ${t.artWall};
+  --art-shadow: 0 1px 2px rgb(25 25 25 / 0.08), 0 16px 40px -12px rgb(25 25 25 / 0.28);
   --color-input-border: ${t.inputBorder};
   --color-link: ${t.ink};
   --color-accent: ${t.accent};
@@ -271,13 +298,31 @@ body {
     padding-top: 2.5rem;
   }
 
-  /* Decoration only, so it is a background: a phone never downloads it. It stretches with the
-     panel, so a long form never leaves an empty strip below the painting. */
+  /* The painting hangs whole, centred on a wall taken from its own colours. The column is the
+     viewport's height and stays put while a long form scrolls past, so the painting's size
+     depends on the window alone and never changes between sign-in and sign-up. Decoration only,
+     so it is a background: a phone never downloads it. */
   .auth-art {
-    display: block;
+    display: flex;
     flex: 1;
-    min-height: 100vh;
-    background: var(--color-surface-container) url("${GALLERY_URL}") 50% 40% / cover no-repeat;
+    align-items: center;
+    justify-content: center;
+    align-self: flex-start;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    height: 100dvh;
+    background: var(--color-art-wall);
+  }
+
+  .auth-art::before {
+    content: "";
+    display: block;
+    width: min(82%, ${82 * HOSTED_GALLERY_ASPECT}vh);
+    width: min(82%, ${82 * HOSTED_GALLERY_ASPECT}dvh);
+    aspect-ratio: ${HOSTED_GALLERY_ASPECT};
+    background: url("${GALLERY_URL}") center / contain no-repeat;
+    box-shadow: var(--art-shadow);
   }
 }
 
@@ -812,20 +857,46 @@ a:focus-visible {
   color: var(--color-on-surface-variant);
 }
 
+/* A small, quiet row: one muted ink, hairlines between, on the text's left edge. */
 .product-marks {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
-  gap: 0.75rem 2rem;
+  gap: 1rem;
   margin: 0.25rem 0 0;
   padding: 0;
   list-style: none;
 }
 
+.product-marks li {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.product-marks li + li::before {
+  content: "";
+  width: 1px;
+  height: 0.875rem;
+  background: var(--color-outline-variant);
+}
+
 .product-mark {
   display: block;
-  height: 1.5rem;
-  width: auto;
+  flex-shrink: 0;
+  height: ${PRODUCT_MARK_HEIGHT}px;
+  background-color: var(--color-on-surface-variant);
+  -webkit-mask: center / contain no-repeat;
+  mask: center / contain no-repeat;
+}
+
+${PRODUCT_MARK_SHAPES}
+
+@media (forced-colors: active) {
+  .product-mark {
+    forced-color-adjust: none;
+    background-color: CanvasText;
+  }
 }
 
 .staff-access-note {
