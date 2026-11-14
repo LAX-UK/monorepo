@@ -30,6 +30,8 @@ export class FakeCheckoutStripe {
   >();
   readonly keys: string[] = [];
   failExpireFor = new Set<string>();
+  /** Sessions the buyer completes while they are being closed. */
+  readonly completeOnExpire = new Set<string>();
   readonly intents = new Map<
     string,
     { status: string; amount: number; received: number; remaining: number }
@@ -39,6 +41,8 @@ export class FakeCheckoutStripe {
   readonly cancelRefusedFor = new Set<string>();
   failCancelFor = new Set<string>();
   private seq = 0;
+  /** Session ids are `<prefix><n>`; a database-backed test sets a prefix unique to its run. */
+  idPrefix = "cs_";
 
   createCardCheckoutSession = (input: CreateCheckoutSessionInput) => this.create("card", input);
   createBankTransferCheckoutSession = (input: CreateCheckoutSessionInput) =>
@@ -57,7 +61,7 @@ export class FakeCheckoutStripe {
       return seen.result;
     }
     this.seq += 1;
-    const id = `cs_${this.seq}`;
+    const id = `${this.idPrefix}${this.seq}`;
     const result = { sessionId: id, url: `https://stripe/${id}`, paymentIntentId: null };
     this.sessions.set(id, {
       id,
@@ -73,11 +77,19 @@ export class FakeCheckoutStripe {
   async expireCheckoutSession(id: string) {
     if (this.failExpireFor.has(id)) throw new Error("stripe unavailable");
     const s = this.sessions.get(id);
-    if (s?.status !== "open") return;
+    if (!s) return null;
+    // The buyer pays on the page between the caller's read and the expire: the gateway's own
+    // read sees it complete and leaves it.
+    if (this.completeOnExpire.has(id) && s.status === "open") {
+      s.status = "complete";
+      s.paymentStatus = "paid";
+    }
+    if (s.status !== "open") return s.status;
     s.status = "expired";
     // Stripe cancels the payment intent of the Checkout session it expires.
     const intent = s.paymentIntent ? this.intents.get(s.paymentIntent) : null;
     if (intent && intent.status !== "succeeded") intent.status = "canceled";
+    return s.status;
   }
 
   async retrieveCheckoutSession(id: string) {
@@ -234,13 +246,31 @@ export class InMemoryCheckoutSessionLedger
 }
 
 /** Pay on an invoice the way the rails do: the parameters are the checkout's own content. */
+/** A fixture price per line name, so a changed list of lines is a changed amount. */
+const linePriceCents = (name: string) =>
+  [...name].reduce((sum, ch) => sum + ch.charCodeAt(0), 0) * 100;
+
 export function payOn(
   lifecycle: CheckoutSessionLifecycle,
   stripe: FakeCheckoutStripe,
   rail: CheckoutSessionRail,
   lines: string[],
+  /** How the invoice is shown (title, hero image URL): not part of the money asked for. */
+  display: { title?: string; imageUrl?: string } = {},
 ) {
-  const parameters = { paymentId: "pay-1", lines };
+  const lineItems = lines.map((name) => ({
+    name: display.title ? `${display.title}: ${name}` : name,
+    unitAmountCents: linePriceCents(name),
+    ...(display.imageUrl ? { images: [display.imageUrl] } : {}),
+  }));
+  const money = {
+    paymentId: "pay-1",
+    amountCents: lineItems.reduce((sum, line) => sum + line.unitAmountCents, 0),
+    currency: "gbp",
+    lineItems,
+  };
+  // As the real rails do: bank transfer also names the Stripe customer, card does not.
+  const parameters = rail === "bank" ? { ...money, stripeCustomerId: "cus_fixture" } : money;
   return lifecycle.openOrRenew(rail, "pay-1", parameters, (idempotencyKey) =>
     rail === "card"
       ? stripe.createCardCheckoutSession({ ...parameters, idempotencyKey } as never)

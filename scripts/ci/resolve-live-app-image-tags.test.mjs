@@ -126,6 +126,42 @@ describe("resolveLiveTerraformImageTags", () => {
     }
   });
 
+  it("keeps shop, shop-api, shop-admin, shop-identity, account and art on their live SHAs when app_image_tag is pinned", () => {
+    const tags = resolveLiveTerraformImageTags(
+      {
+        services: [
+          ...liveServices,
+          { name: "account", image: { tag: sha("7") } },
+          { name: "art", image: { tag: sha("2") } },
+          { name: "api", image: { tag: sha("3") } },
+        ],
+        workers: [{ name: "worker", image: { tag: sha("3") } }],
+        jobs: [{ name: "migrate", image: { tag: sha("3") } }],
+      },
+      { inputAppImageTag: sha("9") },
+    );
+    assert.equal(tags.app_image_tag, sha("9"));
+    // The pin moves only the monorepo app components; every other component stays as it runs.
+    assert.deepEqual(
+      {
+        shop: tags.shop_image_tag,
+        shop_api: tags.shop_api_image_tag,
+        shop_admin: tags.shop_admin_image_tag,
+        shop_identity: tags.shop_identity_image_tag,
+        account: tags.account_image_tag,
+        art: tags.art_image_tag,
+      },
+      {
+        shop: sha("c"),
+        shop_api: sha("e"),
+        shop_admin: sha("f"),
+        shop_identity: sha("d"),
+        account: sha("7"),
+        art: sha("2"),
+      },
+    );
+  });
+
   it("falls back to the shared tag for a component with a rolling live tag", () => {
     const tags = resolveLiveTerraformImageTags({
       services: [

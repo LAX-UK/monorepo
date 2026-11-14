@@ -101,6 +101,20 @@ sequenceDiagram
   - Ambiguous text: text that contains both the receiving payment's own reference and another payment's is treated as a match and raises nothing.
 - The task is one per ledger entry. The Work inbox titles it "Bank transfer applied to another invoice".
 
+## Rolling back the checkout session money fingerprint (code rollback)
+
+From the payment hardening release (PR #1372), `payment_checkout_session.parameters_fingerprint` holds `<parameters>.<money>` (two 16-hex-character fingerprints joined by a dot). Earlier releases compare the column with the parameters fingerprint alone, so after a code rollback they do not recognise rows written by this release. They then start again at idempotency key `...:n0`, and within Stripe's 24 h key window Stripe replays the first session for those parameters. A buyer whose earlier session at the same parameters closed cannot open that rail for up to 24 h. No money is affected.
+
+When rolling the API back to a release before #1372, run this once, after the old code is serving (rows written by the new code before the switch are then fixed too). It needs no schema change and is safe to run more than once:
+
+```sql
+UPDATE payment_checkout_session
+   SET parameters_fingerprint = split_part(parameters_fingerprint, '.', 1)
+ WHERE parameters_fingerprint LIKE '%.%';
+```
+
+Rolling forward again needs nothing: rows with the parameters fingerprint only are read as "money unknown", and a card session among them is closed and replaced (the safe side). This is not part of `0384_rollback.sql`: migration 0384 only adds a unique index on `domain_events` and does not touch `payment_checkout_session`, and the column change is in the code, not the schema.
+
 ## Related
 
 - [Xero + Stripe platform setup](./xero-stripe-payment-setup.md)

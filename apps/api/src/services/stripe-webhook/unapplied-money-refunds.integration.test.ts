@@ -242,6 +242,55 @@ describe.skipIf(!HAS_DB)("refunds of unapplied money (integration)", () => {
     expect(await payouts.sumRefundLineCentsForPayment(paymentId)).toBe(10_000);
   });
 
+  it("a captured invoice that recorded only the intent keeps its own refund, even when a task carried that intent", async () => {
+    const { pi, ch } = money();
+    // A task raised before the payment was recorded, carrying the intent but no charge id.
+    await new FinanceTaskLatePaymentRecorder(recorder, runner).recordPaid({
+      paymentId,
+      amountPence: 10_000,
+      buyerLegalEntityId: buyerEntityId,
+      state: { kind: "paid", paymentIntentId: pi, chargeId: null, amountReceivedPence: 10_000 },
+    });
+    // Captured with no charge id (the charge lookup at capture found none).
+    const noCharge = { ...succeeded(pi, ch), latest_charge: null } as Stripe.PaymentIntent;
+    await webhooks.handlePaymentIntentSucceeded(
+      eventOf("payment_intent.succeeded", noCharge),
+      noCharge,
+    );
+    const captured = await payments.findById(paymentId);
+    expect(captured?.status).toBe("captured");
+    expect(captured?.stripeChargeId ?? null).toBeNull();
+    expect(captured?.stripePaymentIntentId).toBe(pi);
+    expect(await reader.wasEverUnapplied({ chargeId: ch, paymentIntentId: pi })).toBe(true);
+    expect(await reader.isChargeOfPaidInvoice({ chargeId: ch, paymentIntentId: pi })).toBe(true);
+    expect(await reader.isChargeOfPaidInvoice({ chargeId: ch, paymentIntentId: null })).toBe(false);
+    expect(
+      await reader.isChargeOfPaidInvoice({ chargeId: ch, paymentIntentId: `${pi}_other` }),
+    ).toBe(false);
+
+    stripeRefunds.show(ch, 10_000);
+    const result = await webhooks.handleChargeRefunded(
+      eventOf("charge.refunded", refunded(pi, ch)),
+      refunded(pi, ch),
+    );
+    // The invoice's refund handling: the invoice is refunded and the seller's side counts it.
+    expect(result).toMatchObject({ processed: true, action: "refund_received" });
+    expect((await payments.findById(paymentId))?.status).toBe("refunded");
+    expect(await payouts.sumRefundLineCentsForPayment(paymentId)).toBe(10_000);
+  });
+
+  it("an invoice that recorded a different charge is not matched by its intent", async () => {
+    const { pi, ch } = money();
+    await webhooks.handlePaymentIntentSucceeded(
+      eventOf("payment_intent.succeeded", succeeded(pi, ch)),
+      succeeded(pi, ch),
+    );
+    expect(await reader.isChargeOfPaidInvoice({ chargeId: ch, paymentIntentId: pi })).toBe(true);
+    expect(
+      await reader.isChargeOfPaidInvoice({ chargeId: `${ch}_other`, paymentIntentId: pi }),
+    ).toBe(false);
+  });
+
   it("money on a cancelled invoice that finance refunds never claws back the unpaid seller", async () => {
     await reset("cancelled");
     const { pi, ch } = money();
@@ -262,6 +311,41 @@ describe.skipIf(!HAS_DB)("refunds of unapplied money (integration)", () => {
     expect(await refundLines()).toEqual([]);
   });
 
+  it("money paid on a cancelled invoice that recorded its intent, then refunded, closes the task", async () => {
+    await reset("cancelled");
+    const { pi, ch } = money();
+    // The invoice recorded its payment intent at checkout but never a charge, then was cancelled.
+    await db.update(payment).set({ stripePaymentIntentId: pi }).where(eq(payment.id, paymentId));
+    // The buyer pays anyway: the money is unapplied (an invoice_cancelled task).
+    await webhooks.handlePaymentIntentSucceeded(
+      eventOf("payment_intent.succeeded", succeeded(pi, ch)),
+      succeeded(pi, ch),
+    );
+    const open = await reader.listOpen({ paymentIntentId: pi, limit: 5 });
+    expect(open).toHaveLength(1);
+    expect(open[0]?.reason).toBe("invoice_cancelled");
+    // Finance refunds it from the closed-payment item (refundBlockedCapture marks it refunded).
+    await runner.runInTransaction((tx) =>
+      payments.applyRefundedFromCancelledInTransaction(tx, paymentId, `re_um_${run}`),
+    );
+    const closed = await payments.findById(paymentId);
+    expect(closed?.status).toBe("refunded");
+    expect(closed?.stripeChargeId ?? null).toBeNull();
+    expect(closed?.stripePaymentIntentId).toBe(pi);
+    // Never captured, so the charge is not this invoice's money, whatever its status.
+    expect(await reader.isChargeOfPaidInvoice({ chargeId: ch, paymentIntentId: pi })).toBe(false);
+
+    stripeRefunds.show(ch, 10_000);
+    const result = await webhooks.handleChargeRefunded(
+      eventOf("charge.refunded", refunded(pi, ch)),
+      refunded(pi, ch),
+    );
+    expect(result).toMatchObject({ processed: true, action: "unapplied_money_refunded" });
+    // The money went back, so finance's task is closed and the seller is not touched.
+    expect(await reader.listOpen({ paymentIntentId: pi, limit: 5 })).toEqual([]);
+    expect(await refundLines()).toEqual([]);
+  });
+
   it("a refunded closed invoice with no task (raised before this change) is not clawed back either", async () => {
     await reset("cancelled");
     const { pi, ch } = money();
@@ -276,6 +360,29 @@ describe.skipIf(!HAS_DB)("refunds of unapplied money (integration)", () => {
     expect(result).toMatchObject({ reason: "refund_of_money_not_applied" });
     expect(await refundLines()).toEqual([]);
   });
+
+  it.each(["refunded", "cancelled"] as const)(
+    "a never-captured (%s) invoice that recorded the refunded charge and intent is not clawed back",
+    async (status) => {
+      await reset("cancelled");
+      const { pi, ch } = money();
+      // The closed invoice recorded the money's ids, but it was never captured (no
+      // payment.captured event): the money never reached the seller.
+      await db
+        .update(payment)
+        .set({ status, stripeChargeId: ch, stripePaymentIntentId: pi })
+        .where(eq(payment.id, paymentId));
+      stripeRefunds.show(ch, 10_000);
+      const result = await webhooks.handleChargeRefunded(
+        eventOf("charge.refunded", refunded(pi, ch)),
+        refunded(pi, ch),
+      );
+      expect(result).toMatchObject({ processed: true, reason: "refund_of_money_not_applied" });
+      expect(await refundLines()).toEqual([]);
+      expect(await payouts.sumRefundLineCentsForPayment(paymentId)).toBe(0);
+      expect((await refundRecords.sumRefundedPence(paymentId)).pence).toBe(0);
+    },
+  );
 
   it("a duplicate payment on an invoice marked paid by staff, handled then refunded, claws back nobody", async () => {
     // Staff recorded the invoice as paid (no Stripe charge on it); the buyer also paid by card.

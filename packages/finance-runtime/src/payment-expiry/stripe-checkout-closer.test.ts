@@ -33,6 +33,7 @@ function stripe(fake: Fake) {
     closer: new StripeCheckoutCloser({ get: () => client as unknown as Stripe }),
     expire,
     cancel,
+    client,
   };
 }
 
@@ -46,6 +47,31 @@ describe("StripeCheckoutCloser", () => {
     });
     await expect(closer.closeAndRead(input)).resolves.toEqual({ kind: "no_money" });
     expect(expire).toHaveBeenCalledWith("cs_1");
+  });
+
+  it("reports a checkout closed on an earlier pass as already closed, and closes nothing", async () => {
+    const { closer, expire, cancel } = stripe({
+      sessions: { cs_1: { id: "cs_1", status: "expired", payment_intent: "pi_1" } },
+      intents: { pi_1: { id: "pi_1", status: "canceled", amount: 10_000 } },
+    });
+    await expect(closer.closeAndRead(input)).resolves.toEqual({
+      kind: "no_money",
+      alreadyClosed: true,
+    });
+    expect(expire).not.toHaveBeenCalled();
+    expect(cancel).not.toHaveBeenCalled();
+  });
+
+  it("a session expired by another caller while we close it is not counted as closed by us", async () => {
+    const { closer, client } = stripe({});
+    // Read open, the expire call is refused (the fake has no `expire`), the re-read finds it expired.
+    client.checkout.sessions.retrieve
+      .mockResolvedValueOnce({ id: "cs_1", status: "open", payment_intent: null })
+      .mockResolvedValueOnce({ id: "cs_1", status: "expired", payment_intent: null });
+    await expect(closer.closeAndRead(input)).resolves.toEqual({
+      kind: "no_money",
+      alreadyClosed: true,
+    });
   });
 
   it("a session that completed while being closed is re-read and its payment reported", async () => {

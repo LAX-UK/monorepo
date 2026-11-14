@@ -49,8 +49,11 @@ export class StripeCheckoutCloser implements IPaymentProviderCloser {
     }
     try {
       const intentIds = new Set<string>(input.paymentIntentId ? [input.paymentIntentId] : []);
+      // Whether this call expired a session or cancelled an intent itself.
+      let closedNow = false;
       for (const sessionId of input.checkoutSessionIds) {
-        const session = await this.closeSession(stripe, sessionId);
+        const { session, expired } = await this.closeSession(stripe, sessionId);
+        if (expired) closedNow = true;
         if (session.status === "open") {
           return { kind: "unknown", error: "checkout_session_still_open" };
         }
@@ -68,7 +71,8 @@ export class StripeCheckoutCloser implements IPaymentProviderCloser {
 
       let inFlight: ProviderMoneyState | null = null;
       for (const intentId of intentIds) {
-        const pi = await this.closeIntent(stripe, intentId);
+        const { pi, cancelled } = await this.closeIntent(stripe, intentId);
+        if (cancelled) closedNow = true;
         if (pi.status === "succeeded") {
           return {
             kind: "paid",
@@ -85,34 +89,50 @@ export class StripeCheckoutCloser implements IPaymentProviderCloser {
           return { kind: "unknown", error: `payment_intent_${pi.status}` };
         }
       }
-      return inFlight ?? { kind: "no_money" };
+      return (
+        inFlight ?? (closedNow ? { kind: "no_money" } : { kind: "no_money", alreadyClosed: true })
+      );
     } catch (err) {
       return { kind: "unknown", error: message(err) };
     }
   }
 
-  private async closeSession(stripe: Stripe, sessionId: string) {
+  private async closeSession(
+    stripe: Stripe,
+    sessionId: string,
+  ): Promise<{ session: Stripe.Checkout.Session; expired: boolean }> {
     const session = await executeWithStripeRetries(() =>
       stripe.checkout.sessions.retrieve(sessionId),
     );
-    if (session.status !== "open") return session;
+    if (session.status !== "open") return { session, expired: false };
     try {
-      return await executeWithStripeRetries(() => stripe.checkout.sessions.expire(sessionId));
+      const closed = await executeWithStripeRetries(() =>
+        stripe.checkout.sessions.expire(sessionId),
+      );
+      return { session: closed, expired: closed.status === "expired" };
     } catch {
       // It completed (or expired) while we were closing it: read what it became.
-      return executeWithStripeRetries(() => stripe.checkout.sessions.retrieve(sessionId));
+      const now = await executeWithStripeRetries(() =>
+        stripe.checkout.sessions.retrieve(sessionId),
+      );
+      return { session: now, expired: false };
     }
   }
 
-  private async closeIntent(stripe: Stripe, intentId: string): Promise<Stripe.PaymentIntent> {
+  private async closeIntent(
+    stripe: Stripe,
+    intentId: string,
+  ): Promise<{ pi: Stripe.PaymentIntent; cancelled: boolean }> {
     const pi = await executeWithStripeRetries(() => stripe.paymentIntents.retrieve(intentId));
-    if (!CANCELLABLE.has(pi.status) || isPartFunded(pi)) return pi;
+    if (!CANCELLABLE.has(pi.status) || isPartFunded(pi)) return { pi, cancelled: false };
     try {
-      return await executeWithStripeRetries(() =>
+      const closed = await executeWithStripeRetries(() =>
         stripe.paymentIntents.cancel(intentId, {}, { idempotencyKey: `cancel:${intentId}` }),
       );
+      return { pi: closed, cancelled: closed.status === "canceled" };
     } catch {
-      return executeWithStripeRetries(() => stripe.paymentIntents.retrieve(intentId));
+      const now = await executeWithStripeRetries(() => stripe.paymentIntents.retrieve(intentId));
+      return { pi: now, cancelled: false };
     }
   }
 }

@@ -32,6 +32,21 @@ describe("migration 0316 shop order list keyset index", () => {
     expect(rollback).toMatch(/SET LOCAL lock_timeout = '5s'/);
   });
 
+  it("runs the rollback in its own transaction, so its SET LOCAL takes effect", () => {
+    // SET LOCAL outside a transaction only warns and does nothing: the rollback runs by hand
+    // (psql), not in the transactional runner, so it must open and close its own.
+    expect(rollback).toMatch(/^BEGIN;$/m);
+    expect(rollback).toMatch(/^COMMIT;$/m);
+    const begin = rollback.indexOf("BEGIN;");
+    const setLocal = rollback.indexOf("SET LOCAL lock_timeout");
+    const drop = rollback.indexOf("DROP INDEX");
+    const commit = rollback.lastIndexOf("COMMIT;");
+    expect(begin).toBeGreaterThan(-1);
+    expect(begin).toBeLessThan(setLocal);
+    expect(setLocal).toBeLessThan(drop);
+    expect(drop).toBeLessThan(commit);
+  });
+
   it("rolls back by dropping the index", () => {
     expect(rollback).toMatch(/DROP INDEX IF EXISTS "shop_order_created_id_idx"/);
   });

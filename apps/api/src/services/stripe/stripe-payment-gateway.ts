@@ -60,8 +60,12 @@ export interface IStripeCheckoutGateway {
   ): Promise<CreateCheckoutSessionResult>;
   retrievePaymentIntent(paymentIntentId: string): Promise<Stripe.PaymentIntent>;
   retrieveCheckoutSession(sessionId: string): Promise<Stripe.Checkout.Session>;
-  /** Closes one Checkout session; one already closed or completed is left as it is. */
-  expireCheckoutSession(sessionId: string): Promise<void>;
+  /**
+   * Closes one Checkout session; one already closed or completed is left as it is. Returns the
+   * session's status once done ("expired" only when it is closed; "complete" when the buyer
+   * finished it first), or null when Stripe is not configured.
+   */
+  expireCheckoutSession(sessionId: string): Promise<Stripe.Checkout.Session["status"]>;
   /** Cancels a PaymentIntent; one already cancelled, or gone, is left as it is. */
   cancelPaymentIntent(paymentIntentId: string): Promise<void>;
   findChargeIdForPayment(paymentId: string): Promise<string | null>;
@@ -290,14 +294,17 @@ export class StripePaymentGateway implements IStripePaymentGateway {
     return executeWithStripeRetries(() => stripe.checkout.sessions.retrieve(sessionId));
   }
 
-  async expireCheckoutSession(sessionId: string): Promise<void> {
+  async expireCheckoutSession(sessionId: string): Promise<Stripe.Checkout.Session["status"]> {
     const stripe = this.stripe;
-    if (!stripe) return;
+    if (!stripe) return null;
     const session = await executeWithStripeRetries(() =>
       stripe.checkout.sessions.retrieve(sessionId),
     );
-    if (session.status !== "open") return;
-    await executeWithStripeRetries(() => stripe.checkout.sessions.expire(sessionId));
+    if (session.status !== "open") return session.status;
+    const expired = await executeWithStripeRetries(() =>
+      stripe.checkout.sessions.expire(sessionId),
+    );
+    return expired.status;
   }
 
   /**
