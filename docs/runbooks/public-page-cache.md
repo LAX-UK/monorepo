@@ -14,10 +14,17 @@ something old.
 - **The session-free API reads behind the pages are shared** in the Next.js Data Cache
   (`apps/web/src/lib/data/http/public-catalogue.server.ts`), each under the tag of the lot or sale
   it shows (`public-lot:<id>`, `public-sale:<id>`), with a 60 s fallback window.
-- **Live bid state is never drawn from those reads.** The current price, the next bid, the lot's
-  status and close time, the bid history and the leading bidder are placeholders in the HTML and
-  are filled in the browser from a no-store read and the socket. The bid button stays disabled
-  until that first live read lands.
+- **Live bid state is never drawn from those reads.** On the lot page, the current price, the next
+  bid, the status badge, the close time and countdown, the bid history and the leading bidder are
+  placeholders in the HTML (same size, no layout shift). They are filled in the browser from a
+  no-store read (`/lots/:id`, `/lots/:id/bids`, `/lots/:id/bid-history`) and the socket. The bid
+  button stays disabled, and no countdown or time announcement starts, until that first live read
+  lands. If it fails, the placeholders stay and the read is retried; nothing falls back to the
+  cache.
+- **Sale catalogue cards** are drawn with placeholders for the price line, the status pill, the
+  close and the bid action. On mount the browser repeats the same catalogue page reads
+  (`/sales/:id/lots?limit&offset&sort`) no-store, fills the cards, and reads them again every
+  minute while the page is visible. A bid therefore no longer needs to drop the sale's cached reads.
 - **What is personal** (watching, your bids, registration, telephone booking) comes from
   `/api/sales/:id/me` and `/api/lots/:id/me` in the browser (`private, no-store`).
 
@@ -94,6 +101,18 @@ routing and the tag mapping follow.
 2. Fix the configuration. Nothing needs replaying: pages refresh on their window, and a staff edit
    or the next event for the item drops it again. To refresh one item at once, make and undo a
    harmless staff edit on it.
+
+## Known limits of the "no bid state in the page" rule
+
+These still render from the cached sale reads and are dropped by lot-end and sale events, not by
+bids:
+
+- The sale hero's count of live lots, and the catalogue's status filter chips and counts (which
+  lots are listed under "live", "upcoming" or "ended").
+- The highlights of an ended sale (sold works and their prices). These are results, dropped when
+  each lot ends.
+- An ATG-owned sale's cards, which show where to bid or the ATG result (not LAX bid state).
+- The room-only (onsite) lot layout's hero, which has no web bidding.
 
 ## Follow-ups
 
