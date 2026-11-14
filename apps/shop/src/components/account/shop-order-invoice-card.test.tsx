@@ -20,6 +20,7 @@ describe("ShopOrderInvoiceCard", () => {
           detail:
             "This is taking longer than usual. Our team has been told. Your payment is not affected.",
           note: "PDF available once issued",
+          delivery: null,
         }}
       />,
     );
@@ -36,6 +37,7 @@ describe("ShopOrderInvoiceCard", () => {
           title: "Invoice LAX-INV-000124",
           meta: "Issued Thu 12 Nov, 14:05 GMT",
           refund: null,
+          delivery: null,
           download: { label: "Download invoice (PDF)", href: "/account/orders/o/documents/d" },
         }}
       />,
@@ -54,6 +56,7 @@ describe("ShopOrderInvoiceCard", () => {
           title: "Invoice LAX-INV-000124",
           meta: "Issued Thu 12 Nov, 14:05 GMT",
           refund: "A refund was made on Mon 16 Nov.",
+          delivery: null,
           download: { label: "Download invoice (PDF)", href: "/account/orders/o/documents/d" },
         }}
       />,
@@ -61,6 +64,22 @@ describe("ShopOrderInvoiceCard", () => {
     expect(screen.getByText("A refund was made on Mon 16 Nov.")).toBeTruthy();
     expect(screen.getByRole("link", { name: "Download invoice (PDF)" })).toBeTruthy();
     expect(screen.queryByText(/cancelled/i)).toBeNull();
+  });
+
+  it("on an outside-UK order, says the delivery is invoiced separately", () => {
+    render(
+      <ShopOrderInvoiceCard
+        card={{
+          kind: "issued",
+          title: "Invoice LAX-INV-000124",
+          meta: "Issued Thu 12 Nov, 14:05 GMT",
+          refund: null,
+          delivery: "Delivery outside the UK is invoiced separately.",
+          download: { label: "Download invoice (PDF)", href: "/account/orders/o/documents/d" },
+        }}
+      />,
+    );
+    expect(screen.getByText("Delivery outside the UK is invoiced separately.")).toBeTruthy();
   });
 
   it("says when it was cancelled, with no link", () => {

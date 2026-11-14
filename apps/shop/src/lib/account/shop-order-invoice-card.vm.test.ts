@@ -37,6 +37,7 @@ describe("shopOrderInvoiceCard", () => {
       title: "Invoice being prepared",
       detail: "We'll email your invoice as soon as it's ready.",
       note: "PDF available once issued",
+      delivery: null,
     });
   });
 
@@ -70,6 +71,7 @@ describe("shopOrderInvoiceCard", () => {
       title: "Invoice LAX-INV-000124",
       meta: "Issued Thu 12 Nov, 14:05 GMT",
       refund: null,
+      delivery: null,
       download: {
         label: "Download invoice (PDF)",
         href: `/account/orders/${ORDER_ID}/documents/${DOCUMENT_ID}`,
@@ -96,6 +98,34 @@ describe("shopOrderInvoiceCard", () => {
       download: { href: `/account/orders/${ORDER_ID}/documents/${DOCUMENT_ID}` },
     });
     expect(JSON.stringify(vm)).not.toMatch(/cancel/i);
+  });
+
+  it("outside the UK: says the delivery is invoiced separately, while being prepared and once issued", () => {
+    for (const state of ["preparing", "delayed"] as const) {
+      expect(
+        shopOrderInvoiceCard({
+          orderId: ORDER_ID,
+          card: card({ state }),
+          outsideUk: true,
+          now: NOW,
+        }),
+      ).toMatchObject({ kind: state, delivery: "Delivery outside the UK is invoiced separately." });
+    }
+    const issued = shopOrderInvoiceCard({
+      orderId: ORDER_ID,
+      card: card({
+        state: "issued",
+        invoiceNumber: "LAX-INV-000124",
+        issuedAt: "2026-11-12T14:05:00.000Z",
+        invoiceDocumentId: DOCUMENT_ID,
+      }),
+      outsideUk: true,
+      now: NOW,
+    });
+    expect(issued).toMatchObject({
+      kind: "issued",
+      delivery: "Delivery outside the UK is invoiced separately.",
+    });
   });
 
   it("never shows a number without its stored copy", () => {

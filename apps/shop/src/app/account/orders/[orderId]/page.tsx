@@ -80,6 +80,7 @@ export default async function AccountOrderDetailPage({ params }: OrderDetailPage
   const invoiceCard = shopOrderInvoiceCard({
     orderId,
     card: orderResult.data.paidAt ? await fetchShopOrderInvoiceCard(orderId) : null,
+    outsideUk: orderResult.data.fulfilment === "international_quotation",
     now,
   });
   const wayfinding = shopPageWayfinding.orderDetail(order.title);

@@ -408,7 +408,9 @@ that knows it) and Release works on them as before.
 purchase (being prepared, late after 30 minutes, issued with "Download invoice (PDF)" from LAX's
 stored copy, cancelled), only while the Shop is aimed at Books **live**. A refund does not cancel the
 invoice (it is credited later): a refunded order keeps the issued card and its download, with "A
-refund was made on [day].", and LAX's own invoice under "Help with this order". In dry run or the
+refund was made on [day].", and LAX's own document under "Help with this order" as "Order receipt
+(PDF)". On an order delivered outside the UK the card also says "Delivery outside the UK is
+invoiced separately." (the delivery invoice is issued on its own once released). In dry run or the
 test organisation the page is unchanged and nobody is emailed. With Books live the worker emails
 "Your invoice [number] from LAX Shop" once, with the stored copy attached and that invoice's own
 total, to the order's owner now (the guest, or the account that claimed the order; an erased guest,

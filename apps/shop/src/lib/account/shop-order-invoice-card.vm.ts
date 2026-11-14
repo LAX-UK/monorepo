@@ -16,6 +16,8 @@ export type ShopOrderInvoiceCardVm =
       detail: string;
       /** "PDF available once issued": there is nothing to download yet. */
       note: string;
+      /** On an order delivered outside the UK: its delivery is not on this invoice. */
+      delivery: string | null;
     }
   | {
       kind: "issued";
@@ -27,6 +29,8 @@ export type ShopOrderInvoiceCardVm =
        * invoice being cancelled (a refund is credited later; the invoice stands).
        */
       refund: string | null;
+      /** On an order delivered outside the UK: its delivery is not on this invoice. */
+      delivery: string | null;
       download: { label: string; href: string };
     }
   | {
@@ -48,6 +52,13 @@ export const SHOP_INVOICE_CARD_COPY = {
     "This is taking longer than usual. Our team has been told. Your payment is not affected.",
   download: "Download invoice (PDF)",
   cancelledTitle: "Invoice cancelled",
+  /** The order's total includes a delivery outside the UK that this invoice does not. */
+  outsideUkDelivery: "Delivery outside the UK is invoiced separately.",
+  /**
+   * LAX's own document under "Help with this order" on a refunded order, beside Books' invoice
+   * in the card: a different document, so a different name.
+   */
+  orderReceipt: "Order receipt (PDF)",
 } as const;
 
 /** Where LAX's stored copy downloads from, through the storefront (the session goes too). */
@@ -69,10 +80,13 @@ function day(iso: string, now: Date): string {
 export function shopOrderInvoiceCard(input: {
   orderId: string;
   card: ShopOrderInvoiceCard | null;
+  /** Delivered outside the UK: the delivery is invoiced on its own, later. */
+  outsideUk?: boolean;
   now: Date;
 }): ShopOrderInvoiceCardVm {
   const { card, now } = input;
   if (!card) return { kind: "lax" };
+  const delivery = input.outsideUk ? SHOP_INVOICE_CARD_COPY.outsideUkDelivery : null;
   switch (card.state) {
     case "preparing":
     case "delayed":
@@ -84,6 +98,7 @@ export function shopOrderInvoiceCard(input: {
             ? SHOP_INVOICE_CARD_COPY.delayedDetail
             : SHOP_INVOICE_CARD_COPY.preparingDetail,
         note: SHOP_INVOICE_CARD_COPY.pdfLater,
+        delivery,
       };
     case "issued":
       // A number is only ever shown with LAX's stored copy behind it.
@@ -93,6 +108,7 @@ export function shopOrderInvoiceCard(input: {
         title: `Invoice ${card.invoiceNumber}`,
         meta: `Issued ${moment(card.issuedAt, now)}`,
         refund: card.refundedAt ? `A refund was made on ${day(card.refundedAt, now)}.` : null,
+        delivery,
         download: {
           label: SHOP_INVOICE_CARD_COPY.download,
           href: shopOrderDocumentHref(input.orderId, card.invoiceDocumentId),

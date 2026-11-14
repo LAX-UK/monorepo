@@ -51,6 +51,7 @@ export function ShopOrderInvoiceCard({ card }: { card: ShopOrderInvoiceCardVm })
             <output className="shop-invoice-card__warning">{card.detail}</output>
           ) : null}
           <p className="shop-invoice-card__text">{card.note}</p>
+          {card.delivery ? <p className="shop-invoice-card__text">{card.delivery}</p> : null}
         </div>
       ) : null}
       {card.kind === "issued" ? (
@@ -59,6 +60,7 @@ export function ShopOrderInvoiceCard({ card }: { card: ShopOrderInvoiceCardVm })
             <p className="shop-invoice-card__title">{card.title}</p>
             <p className="shop-invoice-card__text">{card.meta}</p>
             {card.refund ? <p className="shop-invoice-card__text">{card.refund}</p> : null}
+            {card.delivery ? <p className="shop-invoice-card__text">{card.delivery}</p> : null}
           </div>
           <a
             href={card.download.href}
