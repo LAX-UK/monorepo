@@ -348,7 +348,10 @@ export function createApp(container: Container, env: Env, authenticator: IAuthen
     .route("/admin", createAdminRoutes(container, authenticator))
     .route("/webhooks", createWebhookRoutes(container))
     .route("/webhooks", createXeroWebhookRoutes(container))
-    .route("/webhooks", createZohoBooksWebhookRoutes(container));
+    .route(
+      "/webhooks",
+      createZohoBooksWebhookRoutes(container, { rateLimitStore: container.rateLimitStore }),
+    );
 
   assertBullBoardProductionSafety(env);
   mountBullBoard(app, connectionOptionsFromRedisUrl(env.REDIS_URL), env, {

@@ -3,14 +3,22 @@ import { bodyLimit } from "hono/body-limit";
 import type { ContainerXeroWebhookRoutesSlice } from "../container.js";
 import { asHttpStatus } from "../lib/http-status.js";
 import { ZOHO_BOOKS_SIGNATURE_HEADER } from "../lib/zoho-books-notice-signature.js";
+import { createRateLimitMiddleware } from "../middleware/rate-limit.js";
 import { ZOHO_BOOKS_NOTICE_MAX_BYTES } from "../services/finance/zoho-books-notice-ingress-application.service.js";
+import type { IRateLimitStore } from "../services/interfaces/rate-limit-store.js";
 
 /**
  * Signed notices from a Zoho Books workflow (`POST /webhooks/zoho-books/notices`). Every answer
- * has no body and is never cached.
+ * has no body and is never cached. The route is public: it is rate limited per client address,
+ * like the Xero and Postmark webhooks, before anything is read.
  */
-export function createZohoBooksWebhookRoutes(container: ContainerXeroWebhookRoutesSlice) {
+export function createZohoBooksWebhookRoutes(
+  container: ContainerXeroWebhookRoutesSlice,
+  deps: { readonly rateLimitStore: IRateLimitStore },
+) {
   const r = new Hono();
+
+  r.use("/zoho-books/*", createRateLimitMiddleware(deps.rateLimitStore));
 
   r.post(
     "/zoho-books/notices",

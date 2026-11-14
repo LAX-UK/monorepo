@@ -454,13 +454,20 @@ and records what Books says (below). Every answer has no body and `Cache-Control
 
 **What it means.** A request reached the Books notice route with no signature, or one that does
 not match the configured secret. It was refused with a bare 401 and nothing was stored. The alert
-gives only `reason` (`missing` or `invalid`), never anything from the request.
+gives only `reason` (`missing` or `invalid`), never anything from the request. The route is public
+and rate limited per client address, like the Xero and Postmark webhooks.
 
-**What to do.** A few of these after the secret token changes in Books mean the two copies no longer
-match: set the same value in Books and in `ZOHO_BOOKS_NOTICE_SECRET`. Rotate it in Books first, then
-in the API. Until both match, notices are refused, and the nightly check still reads every document.
-Sustained refusals with no change on our side go to security on-call. Error level, sent to Sentry,
-routed to finance on-call with the other accounting alerts.
+- `missing`: logged at warn only, never sent to Sentry. This is what ordinary internet scanning of
+  a public route looks like.
+- `invalid`: logged at error and sent to Sentry as a warning, every one grouped into one issue. The
+  Sentry alert rule should page on a rate of these (for example more than 10 in an hour), not on
+  each event. Until that rule exists (see the PR's known gaps), watch the issue's event count.
+
+**What to do.** A burst of `invalid` right after the secret token changes in Books means the two
+copies no longer match: set the same value in Books and in `ZOHO_BOOKS_NOTICE_SECRET`. Rotate it in
+Books first, then in the API. Until both match, notices are refused, and the nightly check still
+reads every document. A sustained rate of `invalid` with no change on our side goes to security
+on-call. Routed to finance on-call with the other accounting alerts.
 
 ### The nightly status check (cron `accounting-reconcile`, 02:15 London)
 

@@ -5,6 +5,7 @@ import {
   ZOHO_BOOKS_NOTICE_MAX_BYTES,
   ZohoBooksNoticeIngressApplicationService,
 } from "../services/finance/zoho-books-notice-ingress-application.service.js";
+import type { IRateLimitStore } from "../services/interfaces/rate-limit-store.js";
 import { createZohoBooksWebhookRoutes } from "./zoho-books-webhook.js";
 
 const SECRET = "books-notice-test-secret-0123456789abcdef"; // gitleaks:allow
@@ -15,7 +16,9 @@ const BODY = JSON.stringify({
   event_time: new Date().toISOString(),
 });
 
-function appWith(secret: string | undefined) {
+const allow: IRateLimitStore = { increment: vi.fn(async () => ({ allowed: true, remaining: 99 })) };
+
+function appWith(secret: string | undefined, rateLimitStore: IRateLimitStore = allow) {
   const claims: string[] = [];
   const alerts = { signatureFailed: vi.fn() };
   const service = new ZohoBooksNoticeIngressApplicationService(
@@ -32,7 +35,9 @@ function appWith(secret: string | undefined) {
   );
   const app = new Hono().route(
     "/webhooks",
-    createZohoBooksWebhookRoutes({ finance: { zohoBooksNotices: service } } as never),
+    createZohoBooksWebhookRoutes({ finance: { zohoBooksNotices: service } } as never, {
+      rateLimitStore,
+    }),
   );
   return { app, claims, alerts };
 }
@@ -128,5 +133,28 @@ describe("POST /webhooks/zoho-books/notices", () => {
       handle.mockRestore();
     }
     expect(claims).toEqual([]);
+  });
+
+  it("is rate limited per client before anything is read or alerted", async () => {
+    const deny: IRateLimitStore = {
+      increment: vi.fn(async () => ({ allowed: false, remaining: 0, retryAfterSec: 30 })),
+    };
+    const { app, claims, alerts } = appWith(SECRET, deny);
+    const handle = vi.spyOn(ZohoBooksNoticeIngressApplicationService.prototype, "handle");
+    try {
+      const res = await post(app, null);
+      expect(res.status).toBe(429);
+      expect(res.headers.get("retry-after")).toBe("30");
+      expect(handle).not.toHaveBeenCalled();
+    } finally {
+      handle.mockRestore();
+    }
+    expect(alerts.signatureFailed).not.toHaveBeenCalled();
+    expect(claims).toEqual([]);
+    expect(deny.increment).toHaveBeenCalledWith(
+      expect.stringContaining("/webhooks/zoho-books/notices"),
+      expect.any(Number),
+      expect.any(Number),
+    );
   });
 });
