@@ -5,7 +5,7 @@ import { requireFinanceAccess } from "../../middleware/require-capability.js";
 import type { IAccountingQueueService } from "../../services/interfaces/accounting-queue.js";
 import { createTestStaffGuards } from "../../testing/staff-mutation-guards.js";
 import type { AdminHono } from "./_shared.js";
-import { attachAdminAccountingRoutes } from "./accounting.routes.js";
+import { attachAdminAccountingNoStore, attachAdminAccountingRoutes } from "./accounting.routes.js";
 
 type Body = {
   data: {
@@ -74,6 +74,8 @@ function build(
     c.set("userStaffRoles", staffRoles);
     await next();
   });
+  // As the admin router mounts them: no-store first, then the finance gate, then the routes.
+  attachAdminAccountingNoStore(app);
   app.use("/finance/*", financeGate);
   attachAdminAccountingRoutes(
     app,
@@ -269,5 +271,32 @@ describe("POST /finance/accounting/:id/release", () => {
       expect(res.status, refusal).toBe(status);
       expect(await res.json()).toEqual({ error: `why ${refusal}`, code: refusal });
     }
+  });
+});
+
+describe("Cache-Control: no-store on every Accounting response", () => {
+  const noStore = (res: Response) => res.headers.get("Cache-Control");
+
+  it("on the page: 200, 400 for a bad query, and 403 from the finance gate", async () => {
+    expect(noStore(await build(["finance"]).app.request("/finance/accounting"))).toBe("no-store");
+    const bad = await build(["finance"]).app.request("/finance/accounting?tab=cancelled");
+    expect(bad.status).toBe(400);
+    expect(noStore(bad)).toBe("no-store");
+    const refused = await build(["sales_manager"]).app.request("/finance/accounting");
+    expect(refused.status).toBe(403);
+    expect(noStore(refused)).toBe("no-store");
+  });
+
+  it("on a try again and a release: 200, 400 for a bad id, and 403 without the write", async () => {
+    const { app } = build(["finance"]);
+    expect(noStore(await tryAgain(app))).toBe("no-store");
+    expect(noStore(await releaseDocument(app))).toBe("no-store");
+    const bad = await releaseDocument(app, "key-0201-bad", "not-a-uuid");
+    expect(bad.status).toBe(400);
+    expect(noStore(bad)).toBe("no-store");
+    const readOnly = build(["read_only"], {}, passReadGate).app;
+    const refused = await releaseDocument(readOnly, "key-0202-ro");
+    expect(refused.status).toBe(403);
+    expect(noStore(refused)).toBe("no-store");
   });
 });

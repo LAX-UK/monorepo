@@ -19,7 +19,10 @@ import { createAdminOnsiteEventRoutes } from "./admin-onsite-events.js";
 import { attachAdminQueuesRoutes } from "./admin-queues.js";
 import { attachAdminStripeConnectRoutes } from "./admin-stripe-connect.routes.js";
 import type { AdminHono, AdminStaffMutationGuards } from "./admin/_shared.js";
-import { attachAdminAccountingRoutes } from "./admin/accounting.routes.js";
+import {
+  attachAdminAccountingNoStore,
+  attachAdminAccountingRoutes,
+} from "./admin/accounting.routes.js";
 import { attachAdminAtgRoutes } from "./admin/atg.routes.js";
 import { attachAdminAuditRoutes } from "./admin/audit.routes.js";
 import { attachAdminCatalogRoutes } from "./admin/catalog.routes.js";
@@ -189,6 +192,8 @@ export function createAdminRoutes(
   // `requirePlatformShell`. Guards are path-scoped (not `use("*")`) so they don't
   // leak onto platform paths once this sub-app is merged into the parent router.
   const finance: AdminHono = new Hono();
+  // First, so even the finance gate's refusal of an Accounting request is never cached.
+  attachAdminAccountingNoStore(finance);
   finance.use("/finance/*", requireFinanceAccess);
   finance.use("/metrics/finance-issues", requireFinanceAccess);
   finance.use("/payments/:id/xero-sync", requireFinanceAccess);

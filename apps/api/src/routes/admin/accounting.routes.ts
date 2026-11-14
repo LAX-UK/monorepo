@@ -10,6 +10,7 @@ import {
   adminAccountingDocumentIdParamSchema,
   adminAccountingQueueQuerySchema,
 } from "@auction/validators";
+import type { MiddlewareHandler } from "hono";
 import { zValidator } from "../../lib/z-validator.js";
 import { requireAccountingQueueWrite } from "../../middleware/require-capability.js";
 import type { AdminAccountingRoutesContainer } from "../../services/interfaces/admin-routes/admin-route-container-slices.js";
@@ -20,6 +21,23 @@ const REFUSAL_STATUS: Readonly<Record<AccountingTryAgainRefusal, 404 | 409 | 422
   not_allowed: 409,
   unreadable: 422,
 };
+
+/**
+ * `Cache-Control: no-store` on every Accounting response (it carries account names, which for an
+ * individual buyer are a person's). Set after the rest of the chain has run, so a refusal (403,
+ * 400, 404, 409) is never cached either. Mounted before the `/finance/*` gate
+ * (`attachAdminAccountingNoStore`), so the gate's own refusal carries it too.
+ */
+const noStore: MiddlewareHandler = async (c, next) => {
+  await next();
+  c.res.headers.set("Cache-Control", "no-store");
+};
+
+/** Register before any other `/finance/*` middleware: see `noStore`. */
+export function attachAdminAccountingNoStore(finance: AdminHono): void {
+  finance.use("/finance/accounting", noStore);
+  finance.use("/finance/accounting/*", noStore);
+}
 
 const RELEASE_REFUSAL_STATUS: Readonly<Record<AccountingReleaseRefusal, 404 | 409 | 422>> = {
   not_found: 404,
