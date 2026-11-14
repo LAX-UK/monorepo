@@ -137,11 +137,16 @@ export function AccountingQueueList(props: AccountingQueueListProps) {
       {
         id: "state",
         header: "Status",
-        // Wide enough for "Waiting for the accountant" on one line.
-        width: "176px",
+        // Wide enough for "Waiting for the accountant" on one line, with room before the next
+        // column so the badge never sits against "Last problem".
+        width: "188px",
         mobile: "meta",
         truncate: false,
-        cell: (row) => <StatusBadge tone={row.state.tone}>{row.state.label}</StatusBadge>,
+        cell: (row) => (
+          <span className="inline-block pr-3">
+            <StatusBadge tone={row.state.tone}>{row.state.label}</StatusBadge>
+          </span>
+        ),
       },
       {
         id: "problem",
@@ -576,7 +581,7 @@ function PartFundedNotice({ transfers }: { transfers: AccountingPartFundedRow[] 
             <span className="font-medium text-staff-fg [overflow-wrap:anywhere]">
               {t.reference}
             </span>
-            <span>
+            <span className="text-staff-muted">
               {t.kind} · {t.buyer} · {t.received}
               {t.since ? (
                 <>
