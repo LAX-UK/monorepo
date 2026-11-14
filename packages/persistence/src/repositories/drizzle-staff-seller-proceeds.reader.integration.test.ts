@@ -13,8 +13,10 @@ import {
   saleSellerTerms,
   user,
 } from "@auction/db/schema";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
+import { supersedeAgreement } from "./agreement-version.js";
+import { DrizzleSellerTermsFactsReader } from "./drizzle-seller-terms-facts.reader.js";
 import { DrizzleStaffPayoutSalesReader } from "./drizzle-staff-payout-sales.reader.js";
 import { DrizzleStaffLotSellerProceedsReader } from "./drizzle-staff-seller-proceeds.reader.js";
 
@@ -222,6 +224,7 @@ describe.skipIf(!HAS_DB)("staff lot seller proceeds reader (integration)", () =>
           reference: `C-${reference}`,
           submissionId: paid.submissionId,
           source: "online",
+          version: 1,
         });
 
         const heldFacts = await reader.forLot(held.lotId);
@@ -280,27 +283,82 @@ describe.skipIf(!HAS_DB)("staff lot seller proceeds reader (integration)", () =>
         expect(paidFacts?.agreement?.pricedOnEarlierVersion).toBe(false);
         expect(onPayout?.sales[0]?.agreement?.pricedOnEarlierVersion).toBe(false);
 
-        // An Administrator corrects the agreement the sale was paid on: the sale keeps its
-        // snapshot's 12%, and both screens say it was priced on an earlier version.
-        await tx
-          .update(consignmentAgreement)
-          .set({ commissionPercent: "15.00", updatedAt: new Date(Date.now() + 1000) })
+        // An Administrator corrects the agreement the sale was paid on: the correction is its
+        // next version. The sale keeps version 1 and its 12%, and both screens name version 1,
+        // superseded; the lot's current agreement is the new version.
+        const [signed] = await tx
+          .select()
+          .from(consignmentAgreement)
           .where(eq(consignmentAgreement.submissionId, paid.submissionId));
+        if (!signed) throw new Error("agreement not stored");
+        // The correction and the reads run under the app roles' own grants, as in production.
+        await tx.execute(sql`set local role api_app`);
+        // The correction states an earlier signing date, so only the current-version filter (not
+        // the most-recently-signed order) can pick version 2.
+        const v2 = await supersedeAgreement(
+          tx,
+          signed,
+          { commissionPercent: "15.00", acceptedAt: new Date("2026-10-01T10:00:00Z") },
+          new Date(),
+        );
         const corrected = await reader.forLot(paid.lotId);
         expect(corrected?.sale?.terms?.commissionBps).toBe(1200);
         expect(corrected?.agreement).toMatchObject({
-          commissionPercent: "15.00",
+          id: signed.id,
+          commissionPercent: "12.00",
+          version: 1,
           pricedOnEarlierVersion: true,
         });
         const correctedLine = (await payouts.forPayout(paidPayoutId))?.sales[0];
         expect(correctedLine?.terms?.commissionBps).toBe(1200);
-        expect(correctedLine?.agreement?.pricedOnEarlierVersion).toBe(true);
+        expect(correctedLine?.agreement).toMatchObject({
+          commissionPercent: "12.00",
+          version: 1,
+          pricedOnEarlierVersion: true,
+        });
+        const [label] = await reader.saleLabels([paid.lotId]);
+        expect(label?.agreement?.id).toBe(v2);
+        // The next sale is priced on the current version, read by the worker column by column.
+        await tx.execute(sql`set local role worker_app`);
+        const next = await new DrizzleSellerTermsFactsReader(
+          tx as unknown as Database,
+        ).agreementForLot(paid.lotId, seller);
+        expect(next).toMatchObject({ id: v2, commissionPercent: "15.00" });
+        await tx.execute(sql`reset role`);
 
         const oldOne = await payouts.forPayout(oldPayout.id);
         expect(oldOne?.payout.hammerAmount).toBeNull();
         expect(oldOne?.sales[0]).toMatchObject({
           terms: null,
           oldRule: { paymentAmount: "7750.00", platformFee: "0.00" },
+        });
+        // A sale priced on no agreement names the lot's current version, never as superseded.
+        const [oldSigned] = await tx
+          .select()
+          .from(consignmentAgreement)
+          .where(eq(consignmentAgreement.submissionId, old.submissionId));
+        if (!oldSigned) throw new Error("agreement not stored");
+        await supersedeAgreement(tx, oldSigned, { commissionPercent: "14.00" }, new Date());
+        expect((await payouts.forPayout(oldPayout.id))?.sales[0]?.agreement).toMatchObject({
+          version: 2,
+          pricedOnEarlierVersion: false,
+        });
+        const [heldSigned] = await tx
+          .insert(consignmentAgreement)
+          .values({
+            submissionId: held.submissionId,
+            legalEntityId: seller,
+            termsVersion: "v1",
+            commissionPercent: "12.00",
+            acceptedAt: new Date("2026-10-03T10:00:00Z"),
+          })
+          .returning();
+        if (!heldSigned) throw new Error("agreement not stored");
+        await supersedeAgreement(tx, heldSigned, { commissionPercent: "14.00" }, new Date());
+        expect((await reader.forLot(held.lotId))?.agreement).toMatchObject({
+          version: 2,
+          commissionPercent: "14.00",
+          pricedOnEarlierVersion: false,
         });
 
         const review = await payouts.oldRuleSales({ limit: 500, offset: 0 });
@@ -310,7 +368,8 @@ describe.skipIf(!HAS_DB)("staff lot seller proceeds reader (integration)", () =>
           lotId: old.lotId,
           hammerPence: 620_000,
           sellerName: "Fixture Gallery Ltd",
-          agreement: { commissionPercent: "12.00" },
+          // Paid before the rule, on no version: compared with the current one.
+          agreement: { commissionPercent: "14.00", version: 2 },
         });
         expect(review.total).toBeGreaterThanOrEqual(1);
         expect(await payouts.forPayout(randomUUID())).toBeNull();

@@ -20,7 +20,6 @@ import type {
   StaffPayoutSaleLine,
   StaffPayoutSales,
 } from "../interfaces/staff-payout-sales.reader.js";
-import { pricedOnEarlierVersion } from "./agreement-version.js";
 
 const money = (value: unknown) => String(value);
 
@@ -108,10 +107,10 @@ export class DrizzleStaffPayoutSalesReader implements IStaffPayoutSalesReader {
         oldRule: priced
           ? null
           : { paymentAmount: money(line.paymentAmount), platformFee: money(line.platformFee) },
-        // The agreement the sale was priced on, flagged when that row changed since.
+        // The version the sale was priced on, flagged when a later version superseded it.
         agreement:
-          priced && t?.agreementId && snapshotAgreements.has(t.agreementId)
-            ? this.versioned(snapshotAgreements.get(t.agreementId), t)
+          priced && t?.agreementId
+            ? (snapshotAgreements.get(t.agreementId) ?? agreements.get(line.lotId) ?? null)
             : (agreements.get(line.lotId) ?? null),
       };
     });
@@ -194,11 +193,9 @@ export class DrizzleStaffPayoutSalesReader implements IStaffPayoutSalesReader {
     };
   }
 
-  /** The agreements some sales were priced on, by id, with when each row last changed. */
-  private async agreementsById(
-    ids: readonly string[],
-  ): Promise<Map<string, StaffLineAgreement & { updatedAt: Date }>> {
-    const byId = new Map<string, StaffLineAgreement & { updatedAt: Date }>();
+  /** The agreement versions some sales were priced on, by id, superseded or not. */
+  private async agreementsById(ids: readonly string[]): Promise<Map<string, StaffLineAgreement>> {
+    const byId = new Map<string, StaffLineAgreement>();
     if (ids.length === 0) return byId;
     const rows = await this.db
       .select({
@@ -208,7 +205,8 @@ export class DrizzleStaffPayoutSalesReader implements IStaffPayoutSalesReader {
         acceptedAt: consignmentAgreement.acceptedAt,
         source: consignmentAgreement.source,
         commissionPercent: consignmentAgreement.commissionPercent,
-        updatedAt: consignmentAgreement.updatedAt,
+        version: consignmentAgreement.version,
+        supersededAt: consignmentAgreement.supersededAt,
       })
       .from(consignmentAgreement)
       .innerJoin(itemSubmission, eq(itemSubmission.id, consignmentAgreement.submissionId))
@@ -220,28 +218,11 @@ export class DrizzleStaffPayoutSalesReader implements IStaffPayoutSalesReader {
         signedAt: row.acceptedAt ?? null,
         source: row.source === "recorded" ? "recorded" : "online",
         commissionPercent: row.commissionPercent === null ? null : String(row.commissionPercent),
-        pricedOnEarlierVersion: false,
-        updatedAt: row.updatedAt,
+        version: row.version,
+        pricedOnEarlierVersion: row.supersededAt !== null,
       });
     }
     return byId;
-  }
-
-  private versioned(
-    found: (StaffLineAgreement & { updatedAt: Date }) | undefined,
-    terms: { commissionBps: number | null; computedAt: Date | null },
-  ): StaffLineAgreement | null {
-    if (!found) return null;
-    const { updatedAt, ...agreement } = found;
-    return {
-      ...agreement,
-      pricedOnEarlierVersion:
-        terms.computedAt !== null &&
-        pricedOnEarlierVersion(
-          { commissionBps: terms.commissionBps, computedAt: terms.computedAt },
-          { commissionPercent: agreement.commissionPercent, updatedAt },
-        ),
-    };
   }
 
   /** The agreement behind each lot: the lot seller's own first, then an accepted one. */
@@ -256,9 +237,16 @@ export class DrizzleStaffPayoutSalesReader implements IStaffPayoutSalesReader {
         acceptedAt: consignmentAgreement.acceptedAt,
         source: consignmentAgreement.source,
         commissionPercent: consignmentAgreement.commissionPercent,
+        version: consignmentAgreement.version,
       })
       .from(itemSubmission)
-      .innerJoin(consignmentAgreement, eq(consignmentAgreement.submissionId, itemSubmission.id))
+      .innerJoin(
+        consignmentAgreement,
+        and(
+          eq(consignmentAgreement.submissionId, itemSubmission.id),
+          isNull(consignmentAgreement.supersededAt),
+        ),
+      )
       .innerJoin(lot, eq(lot.id, itemSubmission.convertedLotId))
       .where(inArray(itemSubmission.convertedLotId, [...new Set(lotIds)]))
       .orderBy(
@@ -274,6 +262,7 @@ export class DrizzleStaffPayoutSalesReader implements IStaffPayoutSalesReader {
         signedAt: row.acceptedAt ?? null,
         source: row.source === "recorded" ? "recorded" : "online",
         commissionPercent: row.commissionPercent === null ? null : String(row.commissionPercent),
+        version: row.version,
         pricedOnEarlierVersion: false,
       });
     }

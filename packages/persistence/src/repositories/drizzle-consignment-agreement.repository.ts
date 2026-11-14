@@ -33,6 +33,9 @@ function mapAgreement(row: AgreementRow): ConsignmentAgreement {
   };
 }
 
+/** The current version: an edited signed agreement leaves its earlier versions superseded. */
+const CURRENT = isNull(consignmentAgreement.supersededAt);
+
 export class DrizzleConsignmentAgreementRepository implements IConsignmentAgreementRepository {
   constructor(private readonly db: Database) {}
 
@@ -40,7 +43,7 @@ export class DrizzleConsignmentAgreementRepository implements IConsignmentAgreem
     const [row] = await this.db
       .select()
       .from(consignmentAgreement)
-      .where(eq(consignmentAgreement.submissionId, submissionId))
+      .where(and(eq(consignmentAgreement.submissionId, submissionId), CURRENT))
       .limit(1);
     return row ? mapAgreement(row) : null;
   }
@@ -49,7 +52,7 @@ export class DrizzleConsignmentAgreementRepository implements IConsignmentAgreem
     const rows = await this.db
       .select()
       .from(consignmentAgreement)
-      .where(eq(consignmentAgreement.legalEntityId, legalEntityId));
+      .where(and(eq(consignmentAgreement.legalEntityId, legalEntityId), CURRENT));
     return rows.map(mapAgreement);
   }
 
@@ -58,7 +61,7 @@ export class DrizzleConsignmentAgreementRepository implements IConsignmentAgreem
     const rows = await this.db
       .select()
       .from(consignmentAgreement)
-      .where(inArray(consignmentAgreement.submissionId, [...submissionIds]));
+      .where(and(inArray(consignmentAgreement.submissionId, [...submissionIds]), CURRENT));
     return rows.map(mapAgreement);
   }
 
@@ -110,6 +113,7 @@ export class DrizzleConsignmentAgreementRepository implements IConsignmentAgreem
       .values(values)
       .onConflictDoUpdate({
         target: consignmentAgreement.submissionId,
+        targetWhere: CURRENT,
         set: { ...values, reminderDay3SentAt: null, reminderDay7SentAt: null },
         // An accepted agreement is a record; a new proposal never rewrites it.
         setWhere: isNull(consignmentAgreement.acceptedAt),
@@ -135,6 +139,7 @@ export class DrizzleConsignmentAgreementRepository implements IConsignmentAgreem
         and(
           eq(consignmentAgreement.submissionId, input.submissionId),
           isNull(consignmentAgreement.acceptedAt),
+          CURRENT,
         ),
       );
     return this.findBySubmissionId(input.submissionId);
@@ -148,7 +153,7 @@ export class DrizzleConsignmentAgreementRepository implements IConsignmentAgreem
     await this.db
       .update(consignmentAgreement)
       .set({ relistReserveFloor: floor, updatedAt: at })
-      .where(eq(consignmentAgreement.submissionId, submissionId));
+      .where(and(eq(consignmentAgreement.submissionId, submissionId), CURRENT));
     return this.findBySubmissionId(submissionId);
   }
 

@@ -29,6 +29,7 @@ const OLD_RULE_ROW = {
     signedAt: new Date("2026-08-01T10:00:00Z"),
     source: "online",
     commissionPercent: "12.00",
+    version: 1,
     pricedOnEarlierVersion: false,
   },
 };
