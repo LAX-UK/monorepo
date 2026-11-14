@@ -245,3 +245,153 @@ Other results on the merged head:
   | web (Accounting) | 507 passed |
 
 - **Residual.** The database holds a release to its shape: parked to pending, document unchanged except a delivery draft rebuilt with the same reference and gross. Whether the reason is settled is the application's decision from the stored rows, because at row level a requeue and a release of a parked row look the same.
+
+## Recheck
+
+Independent recheck of the fixes on `bk8-books-payments` at `d479f62e` (merge of `origin/main` at `f5670a31`). `origin/main` is now at `bec48024`; its last migration is still 0381, so 0382 is still the next free number and is the last entry in the branch's journal. Each claimed fix was checked against the code, not the table.
+
+### How it was checked
+
+- `corepack enable && pnpm install --frozen-lockfile && pnpm -r --filter './packages/**' build`: ok.
+- Throwaway Postgres 16.15 (initdb under `/var/tmp`, port 55432). `db:migrate` (374 migrations) and `db:roles` on a fresh database; tests ran with the owner, `api_app` and `worker_app` URLs set, so the 0382 triggers were exercised as `api_app`.
+- Tests in small batches, `--maxWorkers=2`. Nothing failed.
+
+  | Area | Result |
+  |---|---|
+  | accounting-domain | 255 passed |
+  | accounting-zoho-books | 290 passed |
+  | types | 326 passed |
+  | finance-runtime | 228 passed |
+  | persistence (accounting, payment group) | 93 passed |
+  | db (api_app and worker_app role contracts, roles) | 118 passed |
+  | worker (accounting, projectors; incl. the 5 recheck cases below) | 289 passed |
+  | api (accounting routes, payment group, failed jobs, accounting audit) | 201 passed |
+  | web (Accounting components, view model, actions) | 330 passed |
+
+  Strict R1 (six concurrent senders) passed 5 more times in a row; the sender integration suite (F3) passed.
+- Recheck cases on real concurrent transactions, in a scratch file next to the guards suite (not pushed; same fixtures):
+  - **RC1** two staff release the same parked delivery invoice at the same moment, on separate `api_app` connections: one `released`, one `already_queued`; one `release` history row, one audit event, gross unchanged.
+  - **RC2** a release while another transaction holds the parked row's lock and cancels it: the release waits, then is refused (`not_allowed`); no history, no audit.
+  - **RC3** a payment parked `invoice_cancelled`, the Bid invoice reinstated, Release pressed, and the invoice voided again by a concurrent commit after the release has read the rows but before the move: see N1.
+  - **RC4** a release while a concurrent transaction cancels the paid invoice in Accounting: the release goes through (it read before the commit), and the next sender tick parks the payment again (`invoice_cancelled`). It is never issued.
+  - **RC5** direct updates as `api_app` against the 0382 clause: see N2 and N4.
+- Mutation tests. Each was applied, rebuilt where needed, run, and restored; `git status` was clean after each.
+
+  | # | Mutation | Result |
+  |---|---|---|
+  | MR1 | `resolveParked`: the "still parked" refusal removed | **killed**: 2 domain (`release.test.ts`), 1 runtime (`accounting-queue.release.test.ts`), 2 integration (R6, R6b) |
+  | MR2 | API: `requireAccountingQueueWrite` removed from `POST /finance/accounting/:id/release` | **killed**: 2 route tests (permission gate; 403 with no-store) |
+  | MR3 | 0382 trigger: the release clause's `NEW.gross_pence = OLD.gross_pence` replaced with `true` (on the live test database) | **killed**: api_app role contract; contract green again once restored |
+
+- Migration 0382 rollback and forward, twice, on a copy of the tested database with 27 parked rows (19 `vat_on_delivery`, 8 `invoice_cancelled`): both cycles ran cleanly. All 27 were cancelled, each with one `cancel` history row (`rollback: 0382`), and none were left parked. After forward and `db:roles`, `api_app` has its release columns again. See N3 for what does not come back.
+- Screenshots `review-notes-pr1359` `shots/round2/`: the Release dialog at 1440 light and dark and at 375 light, and the delivery details at 1440 dark and 375 light. The dialog names the LAX reference and says nothing changes if the reason is not settled. At 375 the buttons stack full width with no horizontal scroll. The parked notice has its title once and ends "Then press Release." Dark mode follows the tokens.
+
+### The fixes, as found
+
+- **F1 Release: holds, with N1 to N3.**
+  - A parked `needs_review` document goes to `pending` only through `release`.
+  - The API projects the stored Bid rows again with the policy that parked it (`resolveParked`). It refuses if the rows still park the document, no longer make it, or make a different document.
+  - Only a `vat_on_delivery` invoice may be rebuilt, and then only with the same reference, kind and gross. A payment is not released while an invoice it pays is cancelled in Accounting.
+  - The documented recovery runs end to end (R6, R6b): refused while unresolved, then issued in order with `attempts` 1.
+  - Release is gated server-side by `requireAccountingQueueWrite` plus an Idempotency-Key (MR2), not only hidden in the UI (`canRelease` follows `canAct`).
+  - It writes a `release` history row (`requestedBy`, `parked`, `rebuilt`) and an `accounting_document.release_requested` audit event. The event is in the catalogue and the PII allowlist and has a web label.
+  - The 0382 clause allows `api_app` only parked `needs_review` (clear, no provider id) → `pending`. The document is unchanged, except a parked delivery invoice rebuilt under the same LAX reference and gross. Requeue of a parked row is refused, and so are a moved gross, a changed payment payload, a changed `lax_reference`, a `release` history row without `requestedBy`, and a `park` history row from `api_app` (RC5).
+  - Concurrent double release and release-vs-cancel serialise on the row lock (RC1, RC2).
+- **F2: holds.**
+  - The claim's own statement requires everything awaited to be `issued`: a payment's invoices, and an invoice's or credit note's contact (`AWAITED_ISSUED`), under `FOR UPDATE SKIP LOCKED`.
+  - At read committed, a sender only sees a contact once its `issued` is committed, so an invoice cannot overtake its contact under concurrency.
+  - Strict R1 passed 6/6 here.
+- **F3: holds.** The sender read-back test queues at distinct times, and the suite is green.
+- **F4: holds.**
+  - A cancelled awaited invoice parks the payment (`parkStranded`, every tick, `SKIP LOCKED`, history `park`). RC4 shows this also catches a release that races an Accounting cancel.
+  - Every other wait (awaited invoice failed, needing a person, or not registered) raises the delayed-accounting alert after 6 hours, with `documentType: "payment"`.
+  - The row and the details name what the payment waits for.
+  - Invoices now waiting for their contact are not in the 6-hour count, but Bid invoices are still covered by the existing 30-minute delayed Bid invoice alert. No path was found where a payment waits with no alert and no parked state.
+- **F5: holds** (web tests and screenshots).
+- **F6: holds, but only one way** (N3). Parked rows are cancelled with history before 0379's rules come back, so the earlier release cannot requeue a parked delivery draft.
+- **F7: holds.**
+  - `noStore` is registered on `/finance/accounting` and `/finance/accounting/*` before the finance gate, and it sets the header after the chain has run.
+  - A minimal Hono reproduction of the same ordering confirms the header is present on the gate's 403 and on a 500 from a throwing handler, as well as on the 200/400/403 the route tests assert.
+- **F8 to F10: hold** as described.
+- **Dry run.**
+  - `DELIVERY_BOOKING` is still `null`, and no infrastructure, environment or deploy file changed.
+  - No Zoho Books adapter change targets `live` or `test_org`.
+  - Every send in these tests went to the in-memory Books.
+
+### Findings
+
+#### N1 — Low — The release decision is not atomic with the Bid rows it was made on
+
+`release` reads the Bid rows, decides, and then moves the document in a separate transaction, and nothing locks the rows it decided on. In RC3, the Bid invoice was voided again by a concurrent commit after the check had read it. The payment was still released, and the next tick issued it to Books against an invoice that is voided in Bid.
+
+- **Unlike RC4:** an Accounting cancel is re-parked by `parkStranded`. A Bid void is not.
+- **Why only Low:**
+  - The window is the few milliseconds between the read and the move.
+  - It needs a staff void at that exact moment.
+  - The same thing can already happen when an invoice is voided just after a payment is projected.
+  - Books is dry run only.
+
+**Fix:** in the release transaction, after locking the document, re-read the deciding Bid row with `FOR SHARE` (`bid_invoice.voided_at` for `invoice_cancelled`; the group and its `payment_group_delivery` rows for `vat_on_delivery`) and refuse if it no longer matches. Or pass the rows' version into `transitions.apply` and compare there. Add RC3 as a regression test.
+
+#### N2 — Low — The 0382 rebuilt-draft clause pins only the reference, kind and gross
+
+As `api_app`, a release of a parked delivery invoice may also, in the same update:
+
+- swap `payload.contactReference` to another contact;
+- drop the payload's lines;
+- move `net_pence`/`vat_pence` freely while keeping the gross (RC5).
+
+The application path cannot do any of this: `readDocumentPayload` re-checks the rebuilt document. But the trigger is the database's guard against a faulty or compromised API, and a swapped contact would send a delivery invoice to the wrong customer's account once Books is live.
+
+**Fix:** in the clause, also require:
+
+- `NEW.payload -> 'contactReference' = OLD.payload -> 'contactReference'`;
+- the same currency and date fields;
+- `NEW.net_pence + NEW.vat_pence = NEW.gross_pence`;
+- the payload's line total equals `NEW.gross_pence`.
+
+Add these three probes to `api-app-role.contract.test.ts`.
+
+#### N3 — Low — Rolling back 0382 abandons every parked document for good
+
+The rollback cancels all parked rows. After 0382 is applied again they stay `cancelled`, and no path brings them back: Release only takes a parked row, a cancelled row keeps its LAX reference, and there is no re-projection tool. The rollback header's "projected anew only by a person" names a step that does not exist. In this recheck, 27 parked documents (8 of them payments) were left `cancelled` after rollback and forward. Harmless in dry run, but it is a money gap if a rollback ever runs once Books is live.
+
+**Fix:** pick one:
+
+- Restore 0379's function in the rollback with one extra condition: refuse when `starts_with(OLD.needs_review_reason, 'accounting_parked_')`. Leave the parked rows as they are. The earlier release then cannot requeue them, and re-applying 0382 brings Release back. This was the second option in F6.
+- Keep the cancel, but say in the rollback header and the runbook that the rollback must not run once Books has left dry run, and list the cancelled references.
+
+#### N4 — Info — The database cannot tell a release of a still-parked row from a settled one
+
+As `api_app`, parked to `pending` with the document unchanged is allowed whatever the Bid rows say (RC5). The fixer records this as a residual. It is accepted: whether the reason is settled is the application's decision, and that guard is covered (MR1).
+
+#### N5 — Info — The payment-waiting alert
+
+- It reuses the `accounting_bid_invoice_delayed` message, so it groups with the buyer-invoice alert in the alerting tool. It also measures age from `created_at`, so a payment released after a long park alerts at once if its invoice is not yet issued.
+- **Fix:** consider its own message key, and measuring from the last transition (`updated_at`).
+
+#### N6 — Info — Audit events are written after the move commits
+
+The `release_requested` audit event is written after the move has committed, not in the same transaction, the same as the existing `retry_requested`. If the publish fails, the `release` history row still names who asked. This is acceptable, and it is noted for consistency with the audit log.
+
+### Severity table
+
+| # | Severity | Area | Summary |
+|---|---|---|---|
+| N1 | Low | Money / concurrency | Release check and move are not atomic with the Bid rows; a concurrent re-void can let a payment through (RC3) |
+| N2 | Low | DB / defence in depth | 0382 rebuilt-draft clause lets `api_app` change the contact, lines and VAT split with the same reference and gross |
+| N3 | Low | DB / ops | 0382 rollback is reversible for the schema but abandons parked documents for good |
+| N4 | Info | DB | Settled-or-not is the application's decision (accepted residual) |
+| N5 | Info | Ops | Payment-waiting alert shares the invoice-delayed message; age from `created_at` |
+| N6 | Info | Audit | Audit event written after the move commits (as for Try again) |
+
+The ten review findings are fixed as the table claims, and the owner's rules still hold:
+
+- Dry run only.
+- Delivery stays parked and is never sent until it is released.
+- Amounts come from stored rows, and allocations are exact.
+- Release is permission-gated server-side, recorded in history and audit, and serialised against itself and against cancel.
+
+N1 to N3 are small, are not reachable in dry run, and should be closed before Books leaves dry run.
+
+### Recheck verdict: SHIP
