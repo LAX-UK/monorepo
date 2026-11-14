@@ -212,7 +212,29 @@
   scroll-padding-bottom: var(--spacing-staff-bulk-bar-clearance);
 }
 
+/* Back to a list: the row that was opened shows the selected tint for a moment, then fades.
+   Colour only, so nothing on the page moves. */
+@keyframes staff-row-returned {
+  from {
+    background-color: var(--lax-selected);
+  }
+  to {
+    background-color: transparent;
+  }
+}
+
+[data-staff-returned] {
+  animation: staff-row-returned 2s ease-out;
+}
+
 @media (prefers-reduced-motion: reduce) {
+  /* No fade: the tint holds, then goes, for as long as the row stays marked. */
+  [data-staff-ui] [data-staff-returned],
+  [data-staff-returned] {
+    animation: none !important;
+    background-color: var(--lax-selected);
+  }
+
   [data-staff-ui] *,
   [data-staff-ui] *::before,
   [data-staff-ui] *::after {

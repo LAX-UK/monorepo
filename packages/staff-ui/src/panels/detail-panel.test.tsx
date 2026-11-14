@@ -115,4 +115,24 @@ describe("DetailPanel", () => {
     fireEvent.click(screen.getByRole("button", { name: "Discard changes" }));
     expect(onOpenChange).toHaveBeenCalledWith(false);
   });
+
+  it("keeps the footer's actions in view, clear of a phone's home indicator", () => {
+    render(
+      <DetailPanel
+        open
+        onOpenChange={() => {}}
+        title="Hold 3"
+        footer={<button type="button">Release hold</button>}
+      >
+        <p>Order details</p>
+      </DetailPanel>,
+    );
+    const footer = screen
+      .getByRole("button", { name: "Release hold" })
+      .closest("[data-staff-panel-footer]");
+    expect(footer).toHaveClass("sticky", "bottom-0");
+    expect(footer?.className).toContain("env(safe-area-inset-bottom)");
+    // Full width below 640px: the panel's own width only applies from `sm`.
+    expect(screen.getByRole("dialog")).toHaveClass("w-full", "sm:w-[480px]");
+  });
 });

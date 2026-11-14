@@ -52,4 +52,17 @@ describe("RecordPager", () => {
     expect(navigate).not.toHaveBeenCalled();
     expect(screen.getByRole("link", { name: "Next thread" }).getAttribute("href")).toBe("/c");
   });
+
+  it("keeps the list's query on the previous and next records", () => {
+    const navigate = pager({
+      previousHref: "/admin/lots/6",
+      nextHref: "/admin/lots/8",
+      listQuery: "status=live&sort=-ends",
+    });
+    expect(screen.getByRole("link", { name: "Previous thread" }).getAttribute("href")).toBe(
+      "/admin/lots/6?list=status%3Dlive%26sort%3D-ends",
+    );
+    fireEvent.keyDown(document.body, { key: "j" });
+    expect(navigate).toHaveBeenCalledWith("/admin/lots/8?list=status%3Dlive%26sort%3D-ends");
+  });
 });
