@@ -1,3 +1,4 @@
+import { webPublicCacheInvalidatorFromEnv } from "@auction/background-runtime";
 import {
   AbsenteeBidService,
   BidPlacementLimitGuard,
@@ -6,6 +7,7 @@ import {
   type INotificationOutboxService,
   LotStrategyFactory,
   NotificationFactory,
+  PublicPageCacheNotificationSender,
   SaleroomOnBlockPolicy,
   createBidPlacer,
 } from "@auction/bidding-runtime";
@@ -25,6 +27,7 @@ import {
   DrizzleSaleroomSessionLookup,
 } from "@auction/persistence/repositories";
 import type { Redis } from "ioredis";
+import pino from "pino";
 import type { WorkerEnv } from "../env.js";
 import type { IWorkerDomainEventSink } from "../interfaces/worker-domain-event-sink.js";
 import { WorkerLotLifecycleEventRecorder } from "../lifecycle/worker-lifecycle-event-recorder.js";
@@ -66,7 +69,13 @@ export function createWorkerBiddingComposition(
 
   const lotJobs = new WorkerLotJobScheduler(redis);
   const cache = new WorkerRedisCacheProvider(redis);
-  const notifications = new WorkerRedisBidNotificationSender(redis);
+  const publicPageLog = pino({ name: "web-public-cache" });
+  // An absentee bid or a timed close run here changes the public lot and sale pages too.
+  const notifications = new PublicPageCacheNotificationSender(
+    new WorkerRedisBidNotificationSender(redis),
+    webPublicCacheInvalidatorFromEnv(env),
+    (err, lotId) => publicPageLog.warn({ err, lotId }, "web_public_cache_invalidate_failed"),
+  );
   const idempotencyStore = new WorkerRedisIdempotencyStore(redis);
   const notificationFactory = new NotificationFactory();
   const outboxRepo = new DrizzleNotificationOutboxRepository(db);

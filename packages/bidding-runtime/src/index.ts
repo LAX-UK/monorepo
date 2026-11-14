@@ -85,3 +85,7 @@ export {
 } from "./kyc/evaluate-kyc-threshold.js";
 export { NotificationFactory } from "./notification-factory.js";
 export { LotStrategyFactory } from "./strategies/lot-strategy.factory.js";
+export {
+  PublicPageCacheNotificationSender,
+  type PublicPageCacheInvalidator,
+} from "./public-page-cache-notification.sender.js";
