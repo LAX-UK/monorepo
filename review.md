@@ -208,3 +208,90 @@ I could not change the PR body through git, so these edits are listed here for w
 - **Concurrency:** each document's record is taken under an advisory transaction lock.
 - **Missed-run alert:** it counts from the first run ever started. A cron that never fires relies on the `accounting-reconcile` cron monitor.
 - **Migration:** the body says 0385 is "the next free number on main". That holds only until #1375 merges, so it still needs renumbering then (F1).
+
+## Final recheck
+
+Branch `bk14-books-notices` at `8ce4f1af`, the same head the fixes above were written for. The PR branch was not changed. Postgres 16 throwaway cluster on port 55432, `db:migrate` and `db:roles` applied, Books integration tests run as `worker_app`, `--maxWorkers=2`. No `next build`.
+
+### Verdict: FIX FIRST
+
+F3 to F10 are fixed, and every guard listed for them was mutation-checked again: each mutation was caught (table below). F2 is fixed for what it was raised for: LAX's own payment is never reported as a hand payment. But the hold-back added for F2 has no end. A real payment recorded by hand in Books can stay unreported for good, with nothing telling finance it exists. That is a new Medium (F12), and on this last round a Medium blocks.
+
+### F12: Medium (money visibility). A hand payment can be held back for good
+
+- **Where:**
+  - `packages/persistence/src/repositories/accounting/drizzle-accounting-books-status.ts`: `SETTLED_PAYMENT_STATES` and `unresolved`.
+  - `packages/accounting-domain/src/books-status.ts`: `decideBooksStatus`, the `heldBack` branch.
+  - `accounting-status-check.service.ts`: the hold is logged only at info (`accounting_status_payments_held_back`).
+- **Scenario:** A LAX payment applied to the invoice is in `needs_review` with `lookup: "clear"` and its Books document known. Books holds it, but its totals differ from LAX's. The life cycle has no way out of that state. `requeue`, `release` and `cancel` all refuse it ("a person must resolve it"), and no action in the code resolves it. While it stays there, `unresolved` is true for the invoice. Any other Books payment on that invoice is held back on every read: no task, no snapshot entry, and no alert.
+- **Reproduced:** In a scratch integration test (not pushed), run as `worker_app`, the LAX payment was put in that state and a separate cheque was added to the Books invoice. Thirty notice-driven reads, one per simulated day, opened no task for the cheque. The snapshot never held it, and nothing above info level mentioned it.
+- **Why it matters:**
+  - The `needs_person` alert does fire for LAX's payment document, but it says nothing about the cheque waiting behind it.
+  - The runbook says the hold lasts "until finance resolves it on the accounting attention list". For this state, LAX gives finance no action that resolves it.
+  - Nothing is marked paid, so no money moves wrongly. The risk is that money received is never seen by finance.
+- **The hold is also wider than it needs to be:**
+  - A LAX payment whose Books id LAX already holds is matched by that id. It does not make other payments ambiguous.
+  - `failed` means Books refused it outright, so there is nothing in Books to confuse with.
+  - A parked or withheld `needs_review` (`lookup: "clear"`, no Books document) was never sent.
+  - Only `sending`, `unknown` and `needs_review` with a lookup owed can be in Books without LAX knowing its id. A `pending` that was never sent cannot.
+- **Fix (either is enough to unblock; both are better):**
+  - Treat a LAX payment as unresolved only while its Books identity really is unknown: `sending`, `unknown`, or `needs_review` with `lookup = 'owed'`. Those settle on their own through the lookup.
+  - Bound the hold. Store when a payment was first held, for example `held_since` per Books payment id on the status row. After N days (3 is suggested), raise a warning alert naming the invoice reference, or open the finance task with a "possibly LAX's own, check first" note. Add a test where a payment held past N days is surfaced, and check that the test fails without the bound.
+  - Update the runbook to match.
+
+### Recheck of each finding
+
+| Finding | Correct | Regression in touched code | Guard tested (mutations re-run) |
+|---|---|---|---|
+| F1 migration number | Not blocking, as instructed. Nothing at runtime uses the 0385 name or number: no SQL, schema or role code reads it. It appears only in comments and in test files. The migration SQL does not reference its own tag or ledger row. Its object names do not overlap with main's `0385_accounting_credit_note_refunds`. | none | n/a |
+| F2 LAX's own payment | Yes. It is LAX's own by Books id in any document state, or by reference when there is no Books id. Other payments are held while a LAX payment is unsettled. A held payment is not snapshotted and is reported once, after the LAX payment settles. All 8 state cases pass as `worker_app`. | The hold has no end: see F12. | Only `issued` ids counted: caught. `unresolved` forced false: caught (12 failures). No reference match: caught. Held-back id snapshotted: caught. Hold removed: caught. Every applied reference matched: caught. |
+| F3 budget | Yes. Each night builds a fresh `CallBudgetShare`. Notices get a separate daily share of 50. A notice for a document read in the last 10 minutes is not read again. `ZohoDocumentStatusReader` requires a `CallBudget`, and `createZohoBooksAdapter` requires `budget`. A read counts once, through the share. | none | Process-long night share: caught. Share per notice: caught. Notices on the night's allowance: caught. Recent-read skip removed: caught. Reader ignores budget: caught. Client ignores per-call budget: caught. |
+| F4 replay | Yes. `event_time` must be a string inside the signed body and is normalised to ISO. A notice is refused when it is missing, unparseable, older than 24 h or more than 5 min ahead. The dedupe key is built only from organisation, module, entity id and time. Nothing prunes `webhook_event`, so a replay within the 24 h window is deduped. | none | Freshness check removed: caught. Age bound removed: caught. Ahead bound removed: caught. String check removed: caught. Event time dropped from the dedupe key: caught by the API tests (the queues tests alone do not catch it). |
+| F5 rate limit and Sentry | Yes. There is a route-level rate limit with the same defaults as Xero and Postmark. `missing` goes to warn only. `invalid` goes to Sentry as a warning with a fixed fingerprint. The API logger does not forward to Sentry. | none | Rate limit removed: caught. `missing` sent to Sentry: caught. Fingerprint removed: caught. |
+| F6 body limit | Yes. `bodyLimit` of 16 KiB, with a bare 413 and `no-store`. | none | Raised to 10 MiB: caught. |
+| F7 split payment | Yes. The key now includes the invoice reference. | none | Reference dropped from the key: caught. |
+| F8 concurrency | Yes. A `pg_advisory_xact_lock` is taken per document inside the transaction, and the snapshot is re-read and decided from under the lock. The recheck mark is cleared only if it was set before the read began. | none | Lock removed: caught. Decided from the earlier read: caught. Recheck always cleared: caught. |
+| F9 untested guards | Yes. | none | `onConflictDoNothing` removed: caught. `!secret` removed: caught. |
+| F10 missed-run alert | Yes. The window counts from the last finished run, else the first run ever started, else the worker's start. A run that failed still sets the first-started time. | none | First run ignored: caught. Latest run used instead of the first: caught. |
+
+Three mutations first failed to compile because they left a variable unused (`noUnusedLocals`). They were rewritten to keep the variable in use, and all three were caught as listed.
+
+### Persistence `atg-public-catalog.sql.integration` failure
+
+This is not a blocker. It does not reproduce in CI's configuration on either branch:
+
+- **CI's configuration:** a fresh database per job, owner `DATABASE_URL`, `DATABASE_URL_SHOP` as `shop_app`, and no worker or api URLs.
+- **`origin/main` at `e5c65039`:** 159 files and 946 tests passed, 11 skipped.
+- **This branch:** 158 files and 938 tests passed, 11 skipped.
+- **On the shared database after the worker and api suites:** the branch also passed in full this time.
+
+The earlier failure is order- and leftover-dependent. Follow-up: make that test independent of rows other suites leave behind.
+
+### Test runs
+
+- **`packages/accounting-domain`:** 298 passed.
+- **`packages/accounting-zoho-books`:** 320 passed.
+- **`packages/queues`:** 72 passed.
+- **`apps/worker`:** 1842 passed, 477 skipped. The Books status-check integration suite ran 15 tests as `worker_app`.
+- **`apps/api` Zoho Books tests:** 25 passed.
+- **`packages/persistence`** (CI configuration, fresh database): 938 passed, 11 skipped.
+
+### At merge (F1, not blocking)
+
+Renumber after #1375 (0385, already on main) and #1376 (0386). The renumber touches:
+
+- the SQL and rollback file names;
+- the journal entry: a new `idx` (378 or later) and a `when` later than main's 1811419200000;
+- the rollback's `DELETE … WHERE created_at = …`;
+- `FINAL_FOLDER_MILLIS` in `migration-main-upgrade.integration.test.ts`;
+- the migration test's file name and `TAG`;
+- the "0385" comments in the schema, `migrate-roles.ts`, the persistence interface and the store.
+
+`migrate-roles.ts` will also need a textual merge with main.
+
+### Follow-ups (not blocking)
+
+- **Notice share is per process:** each worker process keeps its own daily notice share. With N workers, notices can spend N×50 reads a day. `keepFree` (400) still protects sending.
+- **`atg-public-catalog` isolation:** make the test independent of leftover rows (see above).
+- **F11:** the Terraform Sentry rules, including the rate rule for `invalid`, and the `accounting-reconcile` monitor slug are still missing.
+- **PR body:** apply the edits listed under "PR body changes still needed", and add the F12 fix once it is made.
