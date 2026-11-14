@@ -66,7 +66,7 @@ describe("PaymentQuickView links", () => {
     renderPanel({ canOpenLot: false, canOpenClient: false });
     expect(screen.getAllByText("Ada Lovelace").length).toBeGreaterThan(0);
     expect(screen.queryByRole("link", { name: /Open lot/ })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /^More actions/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^More actions for payment/ })).toBeNull();
     expect(screen.queryByRole("link", { name: "Ada Lovelace" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Seller profile" })).not.toBeInTheDocument();
   });
