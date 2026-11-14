@@ -493,7 +493,7 @@ describe.skipIf(!WORKER_URL)("worker_app role contract", { timeout: 60_000 }, ()
     });
   });
 
-  it("reads of the accounting history only which action a document holds; appends, never changes", async () => {
+  it("reads of the accounting history only which action a document holds and when it moved; appends, never changes", async () => {
     await withWorkerClient(async (client) => {
       for (const [table, columns] of WORKER_ACCOUNTING_HISTORY_READ_COLUMNS) {
         const all = await client.query<{ column_name: string; allowed: boolean }>(

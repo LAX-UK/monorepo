@@ -859,6 +859,133 @@ describe.skipIf(!HAS_DB)("Shop invoices to Books (integration)", { timeout: 60_0
     });
   });
 
+  describe("the remainder step's list and its lock", () => {
+    const ZERO: LineBooking = { role: "delivery", treatment: "zero" };
+
+    /** An outside-UK order paid, sent, its delivery invoice released and issued live. */
+    async function issuedDelivery(held: InMemoryAccounting, deliveryPence = 2_000) {
+      await aimShop("live");
+      const seeded = await seedPaidOrder(owner, { scope: "outside_uk", deliveryPence });
+      await projection().project(seeded.event);
+      await drain(sender("live", held));
+      const parked = (await documentsFor(seeded)).find((d) => d.laxReference.endsWith("-delivery"));
+      await releaser(ZERO).service.release({ documentId: parked?.id as string, actorUserId: "s" });
+      await drain(sender("live", held));
+      const issued = (await documentsFor(seeded)).find((d) => d.id === parked?.id);
+      expect(issued?.state).toBe("issued");
+      return { seeded, invoiceId: parked?.id as string };
+    }
+
+    async function settledRows(documentId: string) {
+      return owner
+        .select()
+        .from(accountingDocumentEvent)
+        .where(
+          and(
+            eq(accountingDocumentEvent.documentId, documentId),
+            eq(accountingDocumentEvent.action, "apply_remainder"),
+          ),
+        );
+    }
+
+    const books = () =>
+      new InMemoryAccounting({ orgs: { london_art_exchange: { vatRegistered: false } } });
+
+    it("RC-A: a worker settling from a list made before another settled it does nothing (re-check under the lock)", async () => {
+      const held = books();
+      const { invoiceId } = await issuedDelivery(held);
+      // Worker B lists the invoice as due...
+      const listed = await repos.remainders.listDue(["live"], 1_000);
+      const stale = {
+        due: listed.due.filter((pair) => pair.invoice.id === invoiceId),
+        unreadable: [],
+      };
+      expect(stale.due).toHaveLength(1);
+      // ...worker A then settles it...
+      const calls = vi.fn(held.remainders.applyRemainder.bind(held.remainders));
+      const ports = { applyRemainder: calls };
+      expect(await remainder("live", ports).tick()).toMatchObject({ applied: 1 });
+      // ...and B goes on from its stale list: its locked select finds it settled.
+      const b = new AccountingRemainder({
+        remainders: {
+          listDue: async () => stale,
+          settleExclusively: (id, step) => repos.remainders.settleExclusively(id, step),
+        },
+        settings: repos.settingReader,
+        portsByMode: { live: ports },
+        log,
+      });
+      expect(await b.tick()).toEqual({ applied: 0, refused: 0 });
+      expect(calls).toHaveBeenCalledTimes(1);
+      expect(await settledRows(invoiceId)).toHaveLength(1);
+    });
+
+    it("does not list a delivery invoice until its order payment is issued in the same books, so it never holds the head of the list", async () => {
+      const held = books();
+      const blocked = await issuedDelivery(held, 1_200);
+      const next = await issuedDelivery(held, 1_300);
+      const payment = `LAX-SHOP-PAY-${blocked.seeded.orderId}`;
+      // The older invoice's payment is held for a person (sent, then not settled): nothing to apply.
+      await owner.execute(sql`
+        update accounting_document
+           set state = 'needs_review', review_lookup = 'clear', needs_review_reason = 'rc_payment_held'
+         where lax_reference = ${payment} and target_mode = 'live'`);
+      // With a batch of one, the next invoice is listed: the held one takes no place.
+      const head = await repos.remainders.listDue(["live"], 1);
+      expect(head.due.map((pair) => pair.invoice.id)).toEqual([next.invoiceId]);
+      await owner.execute(sql`
+        update accounting_document
+           set state = 'issued', review_lookup = null, needs_review_reason = null
+         where lax_reference = ${payment} and target_mode = 'live'`);
+      const all = (await repos.remainders.listDue(["live"], 1_000)).due.map((p) => p.invoice.id);
+      expect(all).toEqual(expect.arrayContaining([blocked.invoiceId, next.invoiceId]));
+      await remainder("live", held.remainders).tick();
+    });
+
+    it("puts an invoice whose answer was unknown behind one not tried yet, and the watch counts both until settled", async () => {
+      const held = books();
+      const first = await issuedDelivery(held, 1_500);
+      const second = await issuedDelivery(held, 2_500);
+      const later = new Date(Date.now() + 7 * 60 * 60_000);
+      const before = await repos.attention.unsettledRemainders(["live"], later);
+      expect(before.count).toBeGreaterThanOrEqual(2);
+      expect(before.oldestSince).toBeInstanceOf(Date);
+      // Nothing issued six hours ago yet.
+      const sixHoursAgo = new Date(Date.now() - 6 * 60 * 60_000);
+      expect((await repos.attention.unsettledRemainders(["live"], sixHoursAgo)).count).toBe(0);
+
+      const order = async () =>
+        (await repos.remainders.listDue(["live"], 1_000)).due
+          .map((pair) => pair.invoice.id)
+          .filter((id) => id === first.invoiceId || id === second.invoiceId);
+      expect(await order()).toEqual([first.invoiceId, second.invoiceId]);
+      // Books' answer cannot be read for the first: nothing recorded, the attempt noted.
+      const unknown = new AccountingRemainder({
+        remainders: {
+          listDue: async (modes, limit) => {
+            const all = await repos.remainders.listDue(modes, limit);
+            return { ...all, due: all.due.filter((p) => p.invoice.id === first.invoiceId) };
+          },
+          settleExclusively: (id, step) => repos.remainders.settleExclusively(id, step),
+        },
+        settings: repos.settingReader,
+        portsByMode: { live: { applyRemainder: async () => ({ status: "unknown" as const }) } },
+        log,
+      });
+      expect(await unknown.tick()).toEqual({ applied: 0, refused: 0 });
+      expect(await settledRows(first.invoiceId)).toHaveLength(0);
+      expect(await order()).toEqual([second.invoiceId, first.invoiceId]);
+
+      expect(await remainder("live", held.remainders).tick()).toMatchObject({
+        applied: expect.any(Number),
+      });
+      expect(await settledRows(first.invoiceId)).toHaveLength(1);
+      expect(await settledRows(second.invoiceId)).toHaveLength(1);
+      const after = await repos.attention.unsettledRemainders(["live"], later);
+      expect(after.count).toBe(before.count - 2);
+    });
+  });
+
   describe("who the invoice email goes to (the order's owner now, while reachable)", () => {
     async function issuedLive(options: { guest?: boolean } = {}) {
       await aimShop("live");

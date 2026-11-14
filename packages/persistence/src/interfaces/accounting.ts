@@ -400,6 +400,12 @@ export interface IAccountingAttentionReader {
    * `oldestSince` is when the oldest was queued.
    */
   waitingPayments(modes: readonly TargetMode[], queuedBefore: Date): Promise<QueueAge>;
+  /**
+   * Shop outside-UK delivery invoices in one of `modes`, issued before `issuedBefore`, whose order
+   * payment's rest has not been applied to them yet (no `apply_remainder`): the buyer's credit is
+   * still unapplied in Books. `oldestSince` is when the oldest was issued.
+   */
+  unsettledRemainders(modes: readonly TargetMode[], issuedBefore: Date): Promise<QueueAge>;
 }
 
 /** LAX's stored copy of the PDF for an issued document. */

@@ -301,12 +301,14 @@ export const API_ACCOUNTING_RELEASE_COLUMNS = [
 ] as const;
 export const WORKER_ACCOUNTING_APPEND_ONLY_TABLES = ["accounting_document_event"] as const;
 /**
- * The worker reads which documents' history already holds an action, column by column: the
- * follow-up step that applies a Shop order payment's unapplied rest to its outside-UK delivery
- * invoice (migration 0383) is settled once, by an `apply_remainder` row. Nothing else of history.
+ * The worker reads which documents' history already holds an action, and when a document moved
+ * to which state, column by column: the follow-up step that applies a Shop order payment's
+ * unapplied rest to its outside-UK delivery invoice (migration 0383) is settled once, by an
+ * `apply_remainder` row, and the watch alerts when one issued hours ago is still not settled.
+ * Nothing else of history (no detail, nobody who asked).
  */
 export const WORKER_ACCOUNTING_HISTORY_READ_COLUMNS = [
-  ["accounting_document_event", ["document_id", "action"]],
+  ["accounting_document_event", ["document_id", "action", "to_state", "occurred_at"]],
 ] as const;
 /**
  * Release of a parked Shop outside-UK delivery invoice (staff, in the Bid API's Accounting page)

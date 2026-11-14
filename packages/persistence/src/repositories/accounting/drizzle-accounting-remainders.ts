@@ -1,7 +1,7 @@
 import { type TargetMode, shopDeliveryPaymentReference } from "@auction/accounting-domain";
 import type { Database } from "@auction/db";
 import { accountingDocument, accountingDocumentEvent } from "@auction/db/schema";
-import { and, asc, eq, inArray, like, notExists, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, sql } from "drizzle-orm";
 import type {
   AccountingClock,
   IAccountingRemainders,
@@ -10,23 +10,17 @@ import type {
   RemainderRecord,
 } from "../../interfaces/accounting.js";
 import { rowToStored } from "../../lib/accounting-document-row.js";
+import {
+  APPLY_REMAINDER,
+  DELIVERY_INVOICE,
+  PAYMENT_ISSUED,
+  UNSETTLED,
+} from "../../lib/accounting-remainder-due.js";
 
 const d = accountingDocument;
 const e = accountingDocumentEvent;
 
-/** The history action that settles a remainder (migration 0383). */
-export const APPLY_REMAINDER = "apply_remainder";
-
-/** Shop outside-UK delivery invoices: `LAX-SHOP-INV-<order>-delivery`. */
-const DELIVERY_INVOICE = and(
-  eq(d.product, "shop"),
-  eq(d.kind, "invoice"),
-  like(d.laxReference, "LAX-SHOP-INV-%-delivery"),
-);
-
-const UNSETTLED = notExists(
-  sql`(select 1 from ${e} where ${e.documentId} = ${d.id} and ${e.action} = ${APPLY_REMAINDER})`,
-);
+export { APPLY_REMAINDER };
 
 export class DrizzleAccountingRemainders implements IAccountingRemainders {
   constructor(
@@ -46,8 +40,13 @@ export class DrizzleAccountingRemainders implements IAccountingRemainders {
           eq(d.targetProvider, "books"),
           inArray(d.targetMode, [...modes]),
           UNSETTLED,
+          // Only once the order's payment is issued in the same books: a row whose payment never
+          // is would otherwise keep its place at the head of the list on every tick.
+          PAYMENT_ISSUED,
         ),
       )
+      // Oldest change first; a row whose last answer was unknown was touched then (see
+      // settleExclusively), so it goes behind the ones not yet tried.
       .orderBy(asc(d.updatedAt), asc(d.id))
       .limit(limit);
     const nowMs = this.clock.now().getTime();
@@ -100,7 +99,12 @@ export class DrizzleAccountingRemainders implements IAccountingRemainders {
         .for("update", { skipLocked: true });
       if (!held) return false;
       const record = await step();
-      if (record === null) return false;
+      if (record === null) {
+        // No answer to record (Books' answer could not be read): note the attempt, so the next
+        // run tries the invoices not yet tried before this one again.
+        await tx.update(d).set({ updatedAt: this.clock.now() }).where(eq(d.id, held.id));
+        return false;
+      }
       await tx.insert(e).values({
         documentId: held.id,
         action: APPLY_REMAINDER,

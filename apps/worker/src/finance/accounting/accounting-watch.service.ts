@@ -29,6 +29,13 @@ export const SENDER_MISSED_AFTER_MS = 15 * 60_000;
  */
 export const PAYMENT_WAITING_AFTER_MS = 6 * 60 * 60_000;
 
+/**
+ * How long an issued Shop outside-UK delivery invoice may wait for the order payment's rest to be
+ * applied to it. The step runs after every send; hours mean Books' answer keeps failing or the
+ * payment is refused.
+ */
+export const REMAINDER_UNSETTLED_AFTER_MS = 6 * 60 * 60_000;
+
 export interface AccountingWatchDeps {
   readonly attention: IAccountingAttentionReader;
   readonly settings: IAccountingSourceSettingReader;
@@ -44,13 +51,15 @@ export interface WatchResult {
   readonly senderMissed: boolean;
   readonly bidInvoiceDelayed: boolean;
   readonly paymentWaiting: boolean;
+  readonly remainderDelayed: boolean;
 }
 
 /**
  * Checks the Books document queue for what a person should know about: a document that has
  * waited for a person for more than one working day, documents the sender should have taken
  * long ago (it has stopped, or is failing before it claims), buyers' Bid invoices still being
- * prepared after 30 minutes, and payments still waiting for their invoice after six hours. Runs as a cron; each run raises at most one alert of each kind, with
+ * prepared after 30 minutes, payments still waiting for their invoice after six hours, and Shop
+ * delivery invoices issued six hours ago whose payment's rest is not applied yet. Runs as a cron; each run raises at most one alert of each kind, with
  * the count and the oldest time.
  */
 export class AccountingWatch {
@@ -113,7 +122,28 @@ export class AccountingWatch {
         page: "/admin/finance/accounting?tab=waiting",
       });
     }
-    return { needsPersonOverdue, senderMissed, bidInvoiceDelayed, paymentWaiting };
+    // A Shop delivery invoice issued hours ago whose payment's rest is still not applied to it.
+    const unsettled = await this.deps.attention.unsettledRemainders(
+      modes,
+      new Date(now.getTime() - REMAINDER_UNSETTLED_AFTER_MS),
+    );
+    const remainderDelayed = unsettled.count > 0 && unsettled.oldestSince !== null;
+    if (remainderDelayed) {
+      this.deps.alerts.raise(ACCOUNTING_ALERTS.shopRemainderDelayed, {
+        documentType: "invoice",
+        count: unsettled.count,
+        oldestSince: unsettled.oldestSince?.toISOString(),
+        modes,
+        page: "/admin/finance/accounting",
+      });
+    }
+    return {
+      needsPersonOverdue,
+      senderMissed,
+      bidInvoiceDelayed,
+      paymentWaiting,
+      remainderDelayed,
+    };
   }
 
   /**

@@ -384,6 +384,12 @@ recover it: a cancelled document keeps its reference and is never sent.
 5. If the worker logs `accounting_remainder_refused` (the payment no longer holds enough
    unapplied, say it was applied elsewhere by hand), the history says why: apply the remainder by
    hand in Books, from that payment to that invoice, and note it on the order.
+6. The step only looks at a delivery invoice once the order's payment is issued in the same
+   books. If Books' answer cannot be read (`accounting_remainder_unknown`), nothing is recorded,
+   the attempt is noted, and the invoice goes behind the others to be asked again next run. If a
+   delivery invoice has been issued for more than six hours with no `apply_remainder`, the watch
+   raises `accounting_shop_remainder_delayed` (delayed accounting, routed to finance on-call):
+   check the order's payment in Books and the worker's `accounting_remainder_*` logs.
 
 Rolling back migration 0383 cancels every parked outside-UK delivery (a `cancel` history row each)
 before 0382's rules are restored; such an order's delivery is then projected anew only by a person.

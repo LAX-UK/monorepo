@@ -24,6 +24,12 @@ export const ACCOUNTING_ALERTS = {
    * SHOP_STOREFRONT_URL is unset, not https, or local. Raised every tick while any waits.
    */
   shopInvoiceEmailRefused: { message: "accounting_shop_invoice_email_refused", level: "error" },
+  /**
+   * Delayed accounting, Shop: an outside-UK delivery invoice was issued more than six hours ago
+   * and the order payment's unapplied rest has still not been applied to it (no `apply_remainder`
+   * in its history): the buyer's credit sits unapplied in Books.
+   */
+  shopRemainderDelayed: { message: "accounting_shop_remainder_delayed", level: "warning" },
   /** Documents are queued for Books but the sender has not claimed any for too long. */
   senderMissed: { message: "accounting_sender_missed", level: "error" },
   /** The day's Books calls passed 80% of the budget (`BUDGET_WARNING_EVENT` in the Books client). */
