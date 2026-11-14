@@ -1,11 +1,14 @@
 import { VenuesStaffList } from "@/components/admin/venues/venues-staff-list";
 import { loadAdminVenuesListPage } from "@/lib/admin/catalog/load-venues-list-page";
 import {
+  sortVenuesStaffRows,
   toVenuesStaffRows,
+  venuePanelRedirect,
   venuesActiveView,
   venuesFilterChips,
   venuesListHref,
   venuesRangeSummary,
+  venuesSortState,
   venuesViews,
 } from "@/lib/admin/venues/venues-staff-list.vm";
 import { metadataForPrivate } from "@/lib/seo/metadata-factory";
@@ -25,17 +28,23 @@ export default async function AdminVenuesPage({
   searchParams: Promise<SearchParams>;
 }) {
   const sp = await searchParams;
+  // The venue panel is gone: an old shared `?venue=` link opens the venue's page.
+  const panelRedirect = venuePanelRedirect(sp);
+  if (panelRedirect) redirect(panelRedirect);
   if ((sp.new ?? "").toString().trim() === "1") {
     redirect("/admin/venues/new");
   }
   const loaded = await loadAdminVenuesListPage(sp);
   const { query, venues, total, listError, legalEntityId, legalEntityDisplayName } = loaded;
   const organisation = { id: legalEntityId, name: legalEntityDisplayName };
+  // The venues API does not sort: the page of venues is put in the URL's order here.
+  const sort = venuesSortState(sp.sort);
 
   return (
     <VenuesStaffList
-      rows={toVenuesStaffRows(venues)}
+      rows={sortVenuesStaffRows(toVenuesStaffRows(venues), sort)}
       search={sp}
+      sort={sort}
       views={venuesViews(sp)}
       activeView={venuesActiveView(loaded.includeArchived)}
       filterChips={venuesFilterChips(sp, organisation)}

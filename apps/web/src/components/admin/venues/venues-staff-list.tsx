@@ -1,15 +1,15 @@
 "use client";
 
-import { useListPanel } from "@/components/admin/staff/use-list-panel";
 import { useStaffListNavigation } from "@/components/admin/staff/use-staff-list-navigation";
 import { useVenueActions } from "@/components/admin/venues/use-venue-actions";
-import { VenueQuickView } from "@/components/admin/venues/venue-quick-view";
 import { searchAdminLegalEntitiesBrowseAction } from "@/lib/actions/admin-legal-entities-browse";
+import { listQueryOf } from "@/lib/admin/list-record";
 import {
+  VENUES_DEFAULT_SORT,
   type VenuesListSearch,
   type VenuesStaffRow,
-  venuePanelHref,
   venuesListHref,
+  venuesSortHref,
 } from "@/lib/admin/venues/venues-staff-list.vm";
 import { useViewerCapabilities } from "@/lib/auth/capabilities/viewer-capabilities-context";
 import { VENUES_ACCESS } from "@/lib/navigation/staff-nav-access";
@@ -21,11 +21,13 @@ import {
   FilterSheet,
   ListPage,
   PrimaryCell,
+  type SortState,
   StaffButton,
   type DataView as StaffDataView,
   StaffDate,
   StatusBadge,
   TableSearch,
+  recordHrefInList,
 } from "@auction/staff-ui";
 import { Plus } from "lucide-react";
 import Link from "next/link";
@@ -34,6 +36,8 @@ import { useCallback, useMemo } from "react";
 export type VenuesStaffListProps = {
   rows: VenuesStaffRow[];
   search: VenuesListSearch;
+  /** The URL's sort; the server has already put the rows in this order. */
+  sort: SortState;
   views: StaffDataView[];
   activeView: string;
   filterChips: Array<{ id: string; label: string; clearHref: string }>;
@@ -57,20 +61,20 @@ async function searchOrganisations(query: string): Promise<EntityOption[]> {
 
 /**
  * Bid's reusable onsite venues on the staff list template: active or all venues, search, an
- * organisation filter, and a record panel deep-linked with `?venue=`. Every row's `…` menu opens
- * the venue, its page, editor and organisation, and archives it after a confirmation.
+ * organisation filter and a sort kept in the URL. A row opens the venue's page, which keeps this
+ * list's query for Previous and Next; Back returns to the list as it was. Every row's `…` menu
+ * opens the venue's page, editor and organisation, and archives it after a confirmation.
  */
 export function VenuesStaffList(props: VenuesStaffListProps) {
   const { rows, search, organisation } = props;
   const { pending, navigate, Link: ListLink } = useStaffListNavigation();
   // Read-only staff see the list without creating, editing or archiving.
   const canManage = useViewerCapabilities().can(VENUES_ACCESS);
-  const panelHref = useCallback((id: string | null) => venuePanelHref(search, id), [search]);
-  const panel = useListPanel({
-    param: "venue",
-    initialId: typeof search.venue === "string" ? search.venue : null,
-    hrefFor: panelHref,
-  });
+  const listQuery = useMemo(() => listQueryOf(search, ["venue"]), [search]);
+  const recordHref = useCallback(
+    (row: VenuesStaffRow) => recordHrefInList(row.href, listQuery),
+    [listQuery],
+  );
   const venueActions = useVenueActions();
   const q = typeof search.q === "string" ? search.q : "";
 
@@ -81,9 +85,8 @@ export function VenuesStaffList(props: VenuesStaffListProps) {
         header: "Venue",
         mobile: "title",
         sortable: true,
-        sortValue: (row) => row.name.toLocaleLowerCase("en-GB"),
         cell: (row) => (
-          <PrimaryCell href={panelHref(row.id)} Link={panel.PanelLink} secondary={row.slugLabel}>
+          <PrimaryCell href={recordHref(row)} Link={Link} secondary={row.slugLabel}>
             {row.name}
           </PrimaryCell>
         ),
@@ -92,7 +95,6 @@ export function VenuesStaffList(props: VenuesStaffListProps) {
         id: "organisation",
         header: "Organisation",
         sortable: true,
-        sortValue: (row) => row.organisation.toLocaleLowerCase("en-GB"),
         width: "240px",
         hideBelow: "md",
         mobile: "meta",
@@ -121,7 +123,6 @@ export function VenuesStaffList(props: VenuesStaffListProps) {
         id: "updated",
         header: "Updated",
         sortable: true,
-        sortValue: (row) => row.updatedAt,
         defaultSortDirection: "desc",
         width: "120px",
         hideBelow: "xl",
@@ -130,7 +131,7 @@ export function VenuesStaffList(props: VenuesStaffListProps) {
         cell: (row) => <StaffDate value={row.updatedAt} />,
       },
     ],
-    [panelHref, panel.PanelLink, ListLink],
+    [recordHref, ListLink],
   );
 
   const activeFilters = props.filterChips.map((chip) => ({
@@ -138,7 +139,6 @@ export function VenuesStaffList(props: VenuesStaffListProps) {
     label: chip.label,
     onRemove: () => navigate(chip.clearHref),
   }));
-  const openRow = rows.find((row) => row.id === panel.openId) ?? null;
 
   return (
     <>
@@ -216,14 +216,14 @@ export function VenuesStaffList(props: VenuesStaffListProps) {
           getRowId: (row) => row.id,
           defaultDensity: "comfortable",
           defaultHiddenColumns: ["updated"],
-          defaultSort: { columnId: "venue", direction: "asc" },
-          onRowOpen: (row) => panel.show(row.id),
-          activeRowId: panel.openId,
+          defaultSort: VENUES_DEFAULT_SORT,
+          sort: props.sort,
+          onSortChange: (sort) => navigate(venuesSortHref(search, sort)),
+          rowHref: recordHref,
           rowActions: {
             label: (row) => `Actions for venue ${row.name}`,
             actions: (row) => [
-              { id: "open", label: "Open details", onSelect: () => panel.show(row.id) },
-              { id: "page", label: "Open venue page", href: row.href },
+              { id: "page", label: "Open venue page", href: recordHref(row) },
               ...(canManage ? [{ id: "edit", label: "Edit venue", href: row.editHref }] : []),
               { id: "organisation", label: "Open organisation", href: row.organisationHref },
               ...(canManage ? venueActions.actionsFor(row) : []),
@@ -235,11 +235,6 @@ export function VenuesStaffList(props: VenuesStaffListProps) {
           onChange: (size) => navigate(venuesListHref(search, { limit: size })),
         }}
         pagination={props.pagination}
-      />
-      <VenueQuickView
-        row={openRow}
-        onClose={() => panel.show(null)}
-        actions={openRow && canManage ? venueActions.actionsFor(openRow) : []}
       />
       {venueActions.dialogs}
     </>
