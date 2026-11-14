@@ -5,8 +5,9 @@ import { fireEvent, render, screen, waitFor, within } from "@testing-library/rea
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AccountingQueueList, type AccountingQueueListProps } from "./accounting-queue-list";
 
-const { tryAgain, refresh, navigate } = vi.hoisted(() => ({
+const { tryAgain, release, refresh, navigate } = vi.hoisted(() => ({
   tryAgain: vi.fn(),
+  release: vi.fn(),
   refresh: vi.fn(),
   navigate: vi.fn(),
 }));
@@ -18,6 +19,7 @@ vi.mock("next/navigation", () => ({
 }));
 vi.mock("@/lib/actions/admin/admin-accounting", () => ({
   tryAgainAccountingDocumentAction: tryAgain,
+  releaseAccountingDocumentAction: release,
 }));
 vi.mock("@/components/admin/staff/use-staff-list-navigation", () => ({
   useStaffListNavigation: () => ({
@@ -360,5 +362,70 @@ describe("AccountingQueueList: payments", () => {
     expect(screen.getAllByText("Waiting for the accountant").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Delivery · Pay several").length).toBeGreaterThan(0);
     expect(screen.queryByRole("button", { name: "Try again" })).toBeNull();
+  });
+
+  it("offers Release on a parked row to someone who may act, confirms, and sends it", async () => {
+    release.mockResolvedValue({
+      ok: true,
+      data: {
+        id: "doc-p",
+        reference: "LAX-BID-INV-dlv-0b6a7c1e",
+        outcome: "released",
+        rebuilt: true,
+      },
+    });
+    renderList({
+      tab: "needs_person",
+      rows: toAccountingStaffRows([
+        accountingRow({
+          id: "doc-p",
+          reference: "LAX-BID-INV-dlv-0b6a7c1e",
+          state: "needs_review",
+          parked: "vat_on_delivery",
+          canTryAgain: false,
+          canRelease: true,
+        }),
+      ]),
+    });
+    expect(screen.queryByRole("button", { name: "Try again" })).toBeNull();
+    fireEvent.click(screen.getAllByRole("button", { name: "Release" })[0] as HTMLElement);
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByText("Release LAX-BID-INV-dlv-0b6a7c1e?")).toBeTruthy();
+    expect(
+      within(dialog).getByText(/If the reason is not settled, nothing changes\./),
+    ).toBeTruthy();
+    fireEvent.click(within(dialog).getByRole("button", { name: "Release" }));
+    await waitFor(() => expect(release).toHaveBeenCalledTimes(1));
+    expect(release.mock.calls[0]?.[0]).toMatchObject({ documentId: "doc-p" });
+    expect(tryAgain).not.toHaveBeenCalled();
+  });
+
+  it("shows the API's reason when a release is refused, and offers no Release to someone who may only look", async () => {
+    release.mockResolvedValue({
+      ok: false,
+      error:
+        "The accountant has not yet confirmed how delivery is booked, so this stays out of Books.",
+    });
+    const parked = toAccountingStaffRows([
+      accountingRow({
+        id: "doc-p",
+        reference: "LAX-BID-INV-dlv-0b6a7c1e",
+        state: "needs_review",
+        parked: "vat_on_delivery",
+        canTryAgain: false,
+        canRelease: true,
+      }),
+    ]);
+    const { unmount } = renderList({ tab: "needs_person", rows: parked });
+    fireEvent.click(screen.getAllByRole("button", { name: "Release" })[0] as HTMLElement);
+    const dialog = await screen.findByRole("dialog");
+    fireEvent.click(within(dialog).getByRole("button", { name: "Release" }));
+    expect(await within(dialog).findByText("The document was not released")).toBeTruthy();
+    expect(
+      within(dialog).getByText(/accountant has not yet confirmed how delivery is booked/),
+    ).toBeTruthy();
+    unmount();
+    renderList({ tab: "needs_person", rows: parked, canAct: false });
+    expect(screen.queryByRole("button", { name: "Release" })).toBeNull();
   });
 });

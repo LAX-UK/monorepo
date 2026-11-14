@@ -183,6 +183,14 @@ export class DrizzleBidAccountingFactsReader implements IBidAccountingFactsReade
     });
   }
 
+  async deliveryGroupOf(quoteId: string): Promise<string | null> {
+    const [row] = await this.db
+      .select({ groupId: paymentGroupDelivery.paymentGroupId })
+      .from(paymentGroupDelivery)
+      .where(eq(paymentGroupDelivery.deliveryQuoteId, quoteId));
+    return row ? row.groupId.toLowerCase() : null;
+  }
+
   async paymentRefunded(paymentId: string): Promise<FactsRead<BidRefundsFacts>> {
     const found = await this.payment(paymentId);
     if (found.status === "skip") return found;

@@ -1,9 +1,10 @@
 -- Rollback for 0382_accounting_parked_documents. Roll back the release first, then this.
--- It restores 0379's requeue rule for api_app (which does not know parked documents; the domain
--- still refuses to requeue one) and 0368's `provider_sent_ck`. That CHECK is added back NOT VALID,
--- so parked rows already stored stay as they are (no data is changed) while no new one can be
--- written by the earlier release. Also removes this migration's ledger row so a later deploy
--- reapplies it.
+-- It restores 0379's requeue rules for api_app (which do not know parked documents or releases),
+-- 0368's `provider_sent_ck` and history actions, and takes back api_app's UPDATE on the document
+-- and its totals (granted for the release alone; the earlier release's requeue rule does not
+-- guard them). The CHECKs are added back NOT VALID, so rows and history already stored stay as
+-- they are while nothing new of this kind can be written by the earlier release. Also removes this
+-- migration's ledger row so a later deploy reapplies it.
 BEGIN;
 
 SET LOCAL lock_timeout = '5s';
@@ -11,6 +12,11 @@ ALTER TABLE "accounting_document" DROP CONSTRAINT IF EXISTS "accounting_document
 ALTER TABLE "accounting_document" ADD CONSTRAINT "accounting_document_provider_sent_ck" CHECK (
   "provider" IS NOT NULL
   OR ("attempts" = 0 AND "state" IN ('pending', 'cancelled'))
+) NOT VALID;
+ALTER TABLE "accounting_document_event" DROP CONSTRAINT IF EXISTS "accounting_document_event_action_ck";
+ALTER TABLE "accounting_document_event" ADD CONSTRAINT "accounting_document_event_action_ck" CHECK (
+  "action" IN ('created', 'start_sending', 'expire_lease', 'complete_sending', 'apply_lookup',
+    'escalate', 'requeue', 'cancel')
 ) NOT VALID;
 CREATE OR REPLACE FUNCTION "accounting_document_api_requeue_only"() RETURNS trigger
 LANGUAGE plpgsql AS $fn$
@@ -36,6 +42,38 @@ BEGIN
   RETURN NEW;
 END;
 $fn$;
+CREATE OR REPLACE FUNCTION "accounting_document_event_api_requeue_only"() RETURNS trigger
+LANGUAGE plpgsql AS $fn$
+BEGIN
+  IF current_user <> 'api_app' THEN
+    RETURN NEW;
+  END IF;
+  IF NOT COALESCE((
+    NEW."action" = 'requeue'
+    AND NEW."from_state" IN ('failed', 'needs_review')
+    AND NEW."to_state" = 'pending'
+    AND jsonb_typeof(NEW."detail" -> 'requestedBy') = 'string'
+    AND NEW."detail" ->> 'requestedBy' <> ''
+    AND NEW."detail" - 'requestedBy' = '{}'::jsonb
+    AND EXISTS (
+      SELECT 1 FROM "accounting_document" d
+       WHERE d."id" = NEW."document_id" AND d."state" = 'pending' AND d."attempts" = NEW."attempts"
+    )
+  ), false) THEN
+    RAISE EXCEPTION 'api_app may only record a requeue, with who asked for it'
+      USING ERRCODE = 'insufficient_privilege';
+  END IF;
+  RETURN NEW;
+END;
+$fn$;
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'api_app') THEN
+    REVOKE UPDATE ("payload", "net_pence", "vat_pence", "gross_pence")
+      ON "accounting_document" FROM api_app;
+  END IF;
+END
+$$;
 
 DELETE FROM drizzle.__drizzle_migrations WHERE created_at = 1811160000000;
 

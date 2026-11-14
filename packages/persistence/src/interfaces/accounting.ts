@@ -108,6 +108,18 @@ export type DocumentTransition =
   | { readonly action: "withhold"; readonly leaseToken: string; readonly reason: string }
   /** `requestedBy` is the staff user who asked, kept in the history row; absent for the sender's own retries. */
   | { readonly action: "requeue"; readonly requestedBy?: string }
+  /**
+   * A parked document whose reason is settled, queued again by the staff user who asked. The
+   * caller has checked the stored rows (`resolveParked`); `document` replaces the parked draft
+   * (same kind and LAX reference) when it was rebuilt, and is absent when it is unchanged.
+   */
+  | {
+      readonly action: "release";
+      readonly requestedBy: string;
+      readonly document?: AccountingDocument;
+    }
+  /** A queued document that can never be sent as it stands, parked for a person. */
+  | { readonly action: "park"; readonly reason: ParkReason }
   | { readonly action: "cancel" };
 
 /**
@@ -220,6 +232,8 @@ export interface IBidAccountingFactsReader {
   paymentRefunded(paymentId: string): Promise<FactsRead<BidRefundsFacts>>;
   /** A settled "Pay several" group: its stored total, members and courier quotes. */
   paymentGroupSettled(groupId: string): Promise<FactsRead<BidPaymentGroupFacts>>;
+  /** The "Pay several" group a courier quote was charged in; null when it was not. */
+  deliveryGroupOf(quoteId: string): Promise<string | null>;
 }
 
 export interface AccountingQueueQuery {

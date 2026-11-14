@@ -6,6 +6,7 @@ import {
   ACCOUNTING_QUEUE_TABS,
   type AccountingQueuePage,
   type AccountingQueueRow,
+  type AccountingReleaseResult,
   type AccountingTryAgainResult,
 } from "@auction/types";
 import { z } from "zod";
@@ -33,6 +34,7 @@ export const accountingQueueRowSchema: z.ZodType<AccountingQueueRow> = z.object(
   lockedPeriod: z.boolean(),
   books: z.object({ number: z.string(), id: z.string(), url: z.string().nullable() }).nullable(),
   canTryAgain: z.boolean(),
+  canRelease: z.boolean(),
 });
 
 export const accountingQueuePageSchema: z.ZodType<AccountingQueuePage> = z.object({
@@ -69,4 +71,11 @@ export const accountingTryAgainResultSchema: z.ZodType<AccountingTryAgainResult>
   id: z.string(),
   reference: z.string(),
   outcome: z.enum(["requeued", "already_queued"]),
+});
+
+export const accountingReleaseResultSchema: z.ZodType<AccountingReleaseResult> = z.object({
+  id: z.string(),
+  reference: z.string(),
+  outcome: z.enum(["released", "already_queued"]),
+  rebuilt: z.boolean(),
 });

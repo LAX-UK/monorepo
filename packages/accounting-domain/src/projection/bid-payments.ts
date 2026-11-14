@@ -17,7 +17,7 @@ import {
   bidContact,
   bidInvoice,
 } from "./bid.js";
-import type { ParkedDocument, ProjectionCode, ProjectionPolicy } from "./projection.js";
+import type { ParkedDocument, Projection, ProjectionCode, ProjectionPolicy } from "./projection.js";
 
 /**
  * A Bid invoice that was cancelled (voided) after the money for it was taken. Only who it was for
@@ -87,8 +87,10 @@ export interface BidPaymentGroupFacts {
  *
  * Extension point: once the accountant confirms, set the role and treatment here (a VAT-inclusive
  * price needs a tax-inclusive line, so `deliveryInvoice` changes with it). Drafts parked before
- * then hold their references with the draft's details: cancel them in Accounting first, then the
- * group's event is projected again.
+ * then are not cancelled or projected again: staff press Release on each in Accounting. The
+ * release rebuilds the delivery invoice from the stored rows with this booking (what was charged
+ * must stay the same), replaces the draft under the same LAX reference and queues it; then the
+ * payment is released and is sent once its invoices are in Books (`resolveParked`).
  */
 export const DELIVERY_BOOKING: LineBooking | null = null;
 
@@ -179,8 +181,8 @@ function exactPayment(input: {
  * (a replay when the invoice was already projected), then the payment into the Stripe clearing
  * account, all of it applied to the invoice. A payment for more than the invoice is refused: the
  * remainder would sit unexplained on the buyer's account. A payment for an invoice that has since
- * been cancelled is built and parked (`invoice_cancelled`): a person decides whether it is
- * refunded or the invoice reinstated; the cancelled invoice is not booked again.
+ * been cancelled is built and parked (`invoice_cancelled`): a person refunds the buyer, or
+ * reinstates the invoice in Bid and releases the payment; the cancelled invoice is not booked again.
  */
 export const projectBidPaymentCaptured: ProjectionPolicy<BidPaymentFacts> = (facts) => {
   const money = checkMoney(facts.currency, facts.amountPence);
@@ -211,11 +213,12 @@ function deliveryInvoice(
   delivery: BidGroupDeliveryFacts,
   contact: Contact,
   settledOn: string,
+  deliveryBooking: LineBooking | null,
 ): Result<Invoice, ProjectionCode> {
   if (!isPence(delivery.amountPence) || delivery.amountPence <= 0) {
     return refuse("bad_amount", "a delivery charge must be positive whole pence");
   }
-  const booking = DELIVERY_BOOKING ?? DELIVERY_DRAFT;
+  const booking = deliveryBooking ?? DELIVERY_DRAFT;
   return buildInvoice({
     product: "bid",
     sourceId: `${DELIVERY_INVOICE_PREFIX}${delivery.quoteId}`,
@@ -246,7 +249,20 @@ function deliveryInvoice(
  *   accountant (`vat_on_delivery`); the lots' own invoices are still booked;
  * - the payment, when an invoice it settles was cancelled since (`invoice_cancelled`).
  */
-export const projectBidPaymentGroupSettled: ProjectionPolicy<BidPaymentGroupFacts> = (facts) => {
+export function bidPaymentGroupSettledPolicy(
+  deliveryBooking: LineBooking | null,
+): ProjectionPolicy<BidPaymentGroupFacts> {
+  return (facts) => projectGroup(facts, deliveryBooking);
+}
+
+/** The policy in force: delivery booked as `DELIVERY_BOOKING` says (parked while it is null). */
+export const projectBidPaymentGroupSettled: ProjectionPolicy<BidPaymentGroupFacts> =
+  bidPaymentGroupSettledPolicy(DELIVERY_BOOKING);
+
+function projectGroup(
+  facts: BidPaymentGroupFacts,
+  deliveryBooking: LineBooking | null,
+): Result<Projection, ProjectionCode> {
   const money = checkMoney(facts.currency, facts.totalPence);
   if (!money.ok) return money;
   if (facts.members.length === 0)
@@ -269,14 +285,14 @@ export const projectBidPaymentGroupSettled: ProjectionPolicy<BidPaymentGroupFact
     allocations.push({ invoiceReference: paid.value.reference, amountPence: member.amountPence });
   }
   for (const delivery of facts.deliveries) {
-    const invoice = deliveryInvoice(delivery, contact.value, facts.settledOn);
+    const invoice = deliveryInvoice(delivery, contact.value, facts.settledOn, deliveryBooking);
     if (!invoice.ok) return invoice;
     documents.push(invoice.value);
     allocations.push({
       invoiceReference: invoice.value.reference,
       amountPence: delivery.amountPence,
     });
-    if (DELIVERY_BOOKING === null) {
+    if (deliveryBooking === null) {
       parked.push({ reference: invoice.value.reference, reason: "vat_on_delivery" });
       paymentParkedFor ??= "vat_on_delivery";
     }
@@ -294,4 +310,4 @@ export const projectBidPaymentGroupSettled: ProjectionPolicy<BidPaymentGroupFact
   if (paymentParkedFor)
     parked.push({ reference: payment.value.reference, reason: paymentParkedFor });
   return ok({ documents, parked });
-};
+}

@@ -108,6 +108,11 @@ export type AccountingQueueRow = {
   books: { number: string; id: string; url: string | null } | null;
   /** The person may try this document again now. */
   canTryAgain: boolean;
+  /**
+   * The person may ask to release this parked document (they hold the finance write permission).
+   * Whether its reason is settled is checked when they ask, against the stored rows.
+   */
+  canRelease: boolean;
 };
 
 /**
@@ -163,6 +168,35 @@ export type AccountingTryAgainResult = {
 
 /** Why a try again was refused; the route words each one for staff. */
 export type AccountingTryAgainRefusal = "not_found" | "not_allowed" | "unreadable";
+
+export type AccountingReleaseOutcome = "released" | "already_queued";
+
+export type AccountingReleaseResult = {
+  id: string;
+  reference: string;
+  outcome: AccountingReleaseOutcome;
+  /** The parked draft was replaced by the document rebuilt from the stored rows. */
+  rebuilt: boolean;
+};
+
+/** Why a release was refused. `unresolved`: the reason it is parked is not settled yet. */
+export type AccountingReleaseRefusal = "not_found" | "not_allowed" | "unreadable" | "unresolved";
+
+/** What staff are told when a parked document cannot be released yet, by why it is parked. */
+export const ACCOUNTING_RELEASE_UNRESOLVED_TEXT: Readonly<Record<AccountingParkReason, string>> = {
+  vat_on_delivery:
+    "The accountant has not yet confirmed how delivery is booked, so this stays out of Books.",
+  invoice_cancelled:
+    "The invoice this pays is still cancelled. Reinstate it in Bid first, or refund the buyer.",
+};
+
+/** A payment applied to an invoice that was cancelled in Accounting cannot be sent. */
+export const ACCOUNTING_RELEASE_INVOICE_CANCELLED_TEXT =
+  "An invoice this pays was cancelled in Accounting, so it cannot be sent to Books. Refund the buyer.";
+
+/** Rebuilt from what Bid holds now, the document is not the one that was parked. */
+export const ACCOUNTING_RELEASE_CHANGED_TEXT =
+  "This no longer matches what Bid holds for it. Ask engineering to look at it before it is released.";
 
 const ACCOUNTING_PARKED_TEXT_VAT =
   "Waiting for the accountant: VAT on delivery. This stays out of Books until they confirm how delivery is booked.";

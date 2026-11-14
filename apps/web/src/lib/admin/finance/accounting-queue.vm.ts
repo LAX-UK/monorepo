@@ -19,6 +19,7 @@ import {
   type AccountingPartFundedTransfer,
   type AccountingQueueRow,
   type AccountingQueueTab,
+  type AccountingReleaseOutcome,
   type AccountingTryAgainOutcome,
   isAccountingOrganisation,
   isAccountingQueueTab,
@@ -178,7 +179,9 @@ export type AccountingStaffRow = {
   lockedPeriod: boolean;
   rehearsal: boolean;
   canTryAgain: boolean;
-  /** Kept out of Books until the accountant or a person decides; never tried again. */
+  /** The person may ask to release this parked document; the API checks its reason is settled. */
+  canRelease: boolean;
+  /** Kept out of Books until the accountant or a person decides; released, never tried again. */
   parked: AccountingParkReason | null;
   /** A payment's invoices, each with what it takes ("£120.00"); empty for other documents. */
   appliedTo: { reference: string; amount: string }[];
@@ -206,6 +209,7 @@ export function toAccountingStaffRows(rows: readonly AccountingQueueRow[]): Acco
       lockedPeriod: row.lockedPeriod,
       rehearsal: row.targetMode === "dry_run",
       canTryAgain: row.canTryAgain,
+      canRelease: row.canRelease,
       parked: row.parked,
       appliedTo: row.appliedTo.map((applied) => ({
         reference: applied.reference,
@@ -254,6 +258,29 @@ export function tryAgainCopy(row: Pick<AccountingStaffRow, "reference" | "locked
     description: row.lockedPeriod ? `${ACCOUNTING_LOCKED_PERIOD_TEXT} ${same}` : same,
     confirmLabel: "Try again",
   };
+}
+
+/**
+ * The confirm dialog for releasing a parked document: it is checked against what Bid holds now and
+ * queued under the same reference, or refused with the reason if that is not settled yet.
+ */
+export function releaseCopy(row: Pick<AccountingStaffRow, "reference">): {
+  title: string;
+  description: string;
+  confirmLabel: string;
+} {
+  return {
+    title: `Release ${row.reference}?`,
+    description: `Release it once the reason it is parked is settled. It is checked against what Bid holds now and queued for Books under the same LAX reference ${row.reference}. If the reason is not settled, nothing changes.`,
+    confirmLabel: "Release",
+  };
+}
+
+/** What the person is told once a release is in. */
+export function releaseToast(outcome: AccountingReleaseOutcome, reference: string): string {
+  return outcome === "released"
+    ? `${reference} is released and queued for Books`
+    : `${reference} was already queued`;
 }
 
 /** The two halves of the phone-only row meta: "Tried 3 times" and "last Wed 11 Nov, 09:30 GMT". */

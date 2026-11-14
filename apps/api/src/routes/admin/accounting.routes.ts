@@ -1,5 +1,6 @@
 import {
   ACCOUNTING_QUEUE_WRITE_ACCESS,
+  type AccountingReleaseRefusal,
   type AccountingTryAgainRefusal,
   type StaffRoles,
   type UserRole,
@@ -20,10 +21,18 @@ const REFUSAL_STATUS: Readonly<Record<AccountingTryAgainRefusal, 404 | 409 | 422
   unreadable: 422,
 };
 
+const RELEASE_REFUSAL_STATUS: Readonly<Record<AccountingReleaseRefusal, 404 | 409 | 422>> = {
+  not_found: 404,
+  not_allowed: 409,
+  unresolved: 409,
+  unreadable: 422,
+};
+
 /**
  * Finance › Accounting: the documents sent to the books for both companies (`finance.read`,
- * applied to every `/finance/*` route), and trying a refused one again (platform finance write and
- * an Idempotency-Key). A try again requeues the same document under the same LAX reference.
+ * applied to every `/finance/*` route), trying a refused one again and releasing a parked one
+ * whose reason is settled (each needs the platform finance write and an Idempotency-Key). Both
+ * queue the same document under the same LAX reference.
  */
 export function attachAdminAccountingRoutes(
   finance: AdminHono,
@@ -67,6 +76,27 @@ export function attachAdminAccountingRoutes(
         return c.json(
           { error: answer.message, code: answer.refusal },
           REFUSAL_STATUS[answer.refusal],
+        );
+      }
+      return c.json({ data: answer.value });
+    },
+  );
+
+  finance.post(
+    "/finance/accounting/:id/release",
+    requireAccountingQueueWrite,
+    guards.idempotent("accounting.release"),
+    zValidator("param", adminAccountingDocumentIdParamSchema),
+    async (c) => {
+      const { id } = c.req.valid("param");
+      const answer = await container.admin.accountingQueue.release({
+        documentId: id,
+        actorUserId: c.get("userId") as string,
+      });
+      if (!answer.ok) {
+        return c.json(
+          { error: answer.message, code: answer.refusal },
+          RELEASE_REFUSAL_STATUS[answer.refusal],
         );
       }
       return c.json({ data: answer.value });

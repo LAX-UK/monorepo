@@ -1,7 +1,10 @@
 "use client";
 
 import { useStaffListNavigation } from "@/components/admin/staff/use-staff-list-navigation";
-import { tryAgainAccountingDocumentAction } from "@/lib/actions/admin/admin-accounting";
+import {
+  releaseAccountingDocumentAction,
+  tryAgainAccountingDocumentAction,
+} from "@/lib/actions/admin/admin-accounting";
 import {
   ACCOUNTING_DESCRIPTION,
   ACCOUNTING_EMPTY_COPY,
@@ -14,6 +17,8 @@ import {
   accountingTabs,
   legalNamesForFilter,
   lockedPeriodTitle,
+  releaseCopy,
+  releaseToast,
   rowMetaParts,
   tryAgainCopy,
   tryAgainToast,
@@ -81,8 +86,9 @@ export type AccountingQueueListProps = {
 /**
  * Finance › Accounting on the staff list template: what LAX sends to Zoho Books for both
  * companies, one tab per stage (needs a person, failed, waiting, in Books). "Try again" sends the
- * same document under the same LAX reference, after a confirm; it is offered only to people with
- * the finance write permission and only where the document's state allows it. The header names the
+ * same document under the same LAX reference, after a confirm; "Release" queues a parked one once
+ * its reason is settled (the API checks that against the stored rows). Both are offered only to
+ * people with the finance write permission and only where the document's state allows it. The header names the
  * source and when it last reached Books; a row opens a details sheet, and each row's main action
  * is a visible button as well as an entry in its … menu.
  */
@@ -90,9 +96,12 @@ export function AccountingQueueList(props: AccountingQueueListProps) {
   const { search, rows, tab, canAct, organisation } = props;
   const router = useRouter();
   const { pending, navigate, Link: ListLink } = useStaffListNavigation();
-  const [confirming, setConfirming] = useState<{ row: AccountingStaffRow; key: string } | null>(
-    null,
-  );
+  const [confirming, setConfirming] = useState<{
+    row: AccountingStaffRow;
+    key: string;
+    /** Try a refused document again, or release a parked one. */
+    action: RowActionKind;
+  } | null>(null);
   const [acknowledged, setAcknowledged] = useState(false);
   const [details, setDetails] = useState<AccountingStaffRow | null>(null);
   const [failure, setFailure] = useState<string | null>(null);
@@ -102,7 +111,12 @@ export function AccountingQueueList(props: AccountingQueueListProps) {
   const askTryAgain = useCallback((row: AccountingStaffRow) => {
     setFailure(null);
     setAcknowledged(false);
-    setConfirming({ row, key: crypto.randomUUID() });
+    setConfirming({ row, key: crypto.randomUUID(), action: "try_again" });
+  }, []);
+  const askRelease = useCallback((row: AccountingStaffRow) => {
+    setFailure(null);
+    setAcknowledged(false);
+    setConfirming({ row, key: crypto.randomUUID(), action: "release" });
   }, []);
 
   const columns = useMemo<DataColumn<AccountingStaffRow>[]>(
@@ -207,26 +221,34 @@ export function AccountingQueueList(props: AccountingQueueListProps) {
         width: "104px",
         truncate: false,
         mobile: "actions",
-        cell: (row) => <RowAction row={row} canAct={canAct} onTryAgain={askTryAgain} />,
+        cell: (row) => (
+          <RowAction row={row} canAct={canAct} onTryAgain={askTryAgain} onRelease={askRelease} />
+        ),
       },
     ],
-    [tab, canAct, askTryAgain],
+    [tab, canAct, askTryAgain, askRelease],
   );
 
   const copy = ACCOUNTING_EMPTY_COPY[tab];
 
   const submit = () => {
     if (!confirming) return;
-    const { row, key } = confirming;
+    const { row, key, action } = confirming;
     setFailure(null);
     startTransition(async () => {
-      const result = await tryAgainAccountingDocumentAction({
-        documentId: row.id,
-        idempotencyKey: key,
-      });
+      const input = { documentId: row.id, idempotencyKey: key };
+      const result =
+        action === "release"
+          ? await releaseAccountingDocumentAction(input)
+          : await tryAgainAccountingDocumentAction(input);
       if (result.ok) {
         setConfirming(null);
-        notify.success(tryAgainToast(result.data?.outcome ?? "requeued", row.reference));
+        const outcome = result.data?.outcome;
+        notify.success(
+          action === "release"
+            ? releaseToast(outcome === "already_queued" ? outcome : "released", row.reference)
+            : tryAgainToast(outcome === "already_queued" ? outcome : "requeued", row.reference),
+        );
         router.refresh();
         return;
       }
@@ -235,8 +257,13 @@ export function AccountingQueueList(props: AccountingQueueListProps) {
   };
 
   const dialogRow = confirming?.row ?? null;
-  const dialogCopy = dialogRow ? tryAgainCopy(dialogRow) : null;
-  const lockedConfirm = Boolean(dialogRow?.lockedPeriod);
+  const releasing = confirming?.action === "release";
+  const dialogCopy = dialogRow
+    ? releasing
+      ? releaseCopy(dialogRow)
+      : tryAgainCopy(dialogRow)
+    : null;
+  const lockedConfirm = !releasing && Boolean(dialogRow?.lockedPeriod);
   const locked = rows.filter((row) => row.lockedPeriod).length;
   const partFunded = props.partFunded ?? [];
   const hasNotice =
@@ -334,7 +361,8 @@ export function AccountingQueueList(props: AccountingQueueListProps) {
           defaultHiddenColumns: ["created"],
           rowActions: {
             label: (row) => `Actions for ${row.documentType.toLowerCase()} ${row.reference}`,
-            actions: (row) => rowMenuActions(row, { canAct, onTryAgain: askTryAgain }),
+            actions: (row) =>
+              rowMenuActions(row, { canAct, onTryAgain: askTryAgain, onRelease: askRelease }),
           },
         }}
         pageSize={{
@@ -350,6 +378,10 @@ export function AccountingQueueList(props: AccountingQueueListProps) {
         onTryAgain={(row) => {
           setDetails(null);
           askTryAgain(row);
+        }}
+        onRelease={(row) => {
+          setDetails(null);
+          askRelease(row);
         }}
       />
       <ConfirmActionDialog
@@ -375,7 +407,11 @@ export function AccountingQueueList(props: AccountingQueueListProps) {
           </div>
         ) : null}
         {failure ? (
-          <Notice tone="danger" alert title="The document was not sent again">
+          <Notice
+            tone="danger"
+            alert
+            title={releasing ? "The document was not released" : "The document was not sent again"}
+          >
             {failure}
           </Notice>
         ) : null}
@@ -410,16 +446,30 @@ function SourceLine({
   );
 }
 
-/** The row's main action as a button: try a failed one again, or open an issued one in Books. */
+type RowActionKind = "try_again" | "release";
+
+/**
+ * The row's main action as a button: try a failed one again, release a parked one, or open an
+ * issued one in Books.
+ */
 function RowAction({
   row,
   canAct,
   onTryAgain,
+  onRelease,
 }: {
   row: AccountingStaffRow;
   canAct: boolean;
   onTryAgain: (row: AccountingStaffRow) => void;
+  onRelease: (row: AccountingStaffRow) => void;
 }) {
+  if (canAct && row.canRelease) {
+    return (
+      <StaffButton size="sm" variant="secondary" onClick={() => onRelease(row)}>
+        Release
+      </StaffButton>
+    );
+  }
   if (canAct && row.canTryAgain) {
     return (
       <StaffButton size="sm" variant="secondary" onClick={() => onTryAgain(row)}>
@@ -439,10 +489,17 @@ function RowAction({
   return null;
 }
 
-type RowMenuDeps = { canAct: boolean; onTryAgain: (row: AccountingStaffRow) => void };
+type RowMenuDeps = {
+  canAct: boolean;
+  onTryAgain: (row: AccountingStaffRow) => void;
+  onRelease: (row: AccountingStaffRow) => void;
+};
 
-function rowMenuActions(row: AccountingStaffRow, { canAct, onTryAgain }: RowMenuDeps) {
+function rowMenuActions(row: AccountingStaffRow, { canAct, onTryAgain, onRelease }: RowMenuDeps) {
   return [
+    ...(canAct && row.canRelease
+      ? [{ id: "release", label: "Release", onSelect: () => onRelease(row) }]
+      : []),
     ...(canAct && row.canTryAgain
       ? [{ id: "try-again", label: "Try again", onSelect: () => onTryAgain(row) }]
       : []),

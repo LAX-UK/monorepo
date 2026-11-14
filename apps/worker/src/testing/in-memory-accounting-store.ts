@@ -16,8 +16,10 @@ import {
   expireLease,
   newRecord,
   ok,
+  park,
   parkedRecord,
   refuse,
+  release,
   requeue,
   retryDelayMs,
   startSending,
@@ -254,6 +256,10 @@ export class InMemoryAccountingStore
         return withhold(record, transition.leaseToken, transition.reason);
       case "requeue":
         return requeue(record);
+      case "release":
+        return release(record);
+      case "park":
+        return park(record, transition.reason);
       case "cancel":
         return cancel(record);
     }

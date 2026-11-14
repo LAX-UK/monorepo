@@ -3,6 +3,8 @@ export type {
   AccountingQueueRequest,
   AccountingTryAgainRequest,
   AccountingTryAgainResponse,
+  AccountingReleaseRequest,
+  AccountingReleaseResponse,
   IAccountingAuditTrail,
   IAccountingQueueService,
 } from "@auction/finance-runtime";

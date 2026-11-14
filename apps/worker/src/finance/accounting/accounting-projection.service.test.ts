@@ -85,6 +85,7 @@ function factsReader(over: Partial<IBidAccountingFactsReader> = {}): IBidAccount
       }),
     ),
     paymentGroupSettled: vi.fn(async () => ready(groupFacts())),
+    deliveryGroupOf: vi.fn(async () => GROUP_ID),
     ...over,
   };
 }

@@ -5,7 +5,10 @@ import {
   createBooksDocumentLinks,
 } from "@auction/finance-runtime";
 import type { IAccountingDocumentBrowser } from "@auction/persistence/interfaces";
-import { createAccountingRepositories } from "@auction/persistence/repositories";
+import {
+  DrizzleBidAccountingFactsReader,
+  createAccountingRepositories,
+} from "@auction/persistence/repositories";
 import type { Env } from "../env.js";
 import { DomainEventAccountingAuditTrail } from "../services/admin/accounting/accounting-audit-trail.js";
 import type { IDomainEventSink } from "../services/domain-event-sink.js";
@@ -17,8 +20,9 @@ export type ContainerAccountingQueue = {
 };
 
 /**
- * Finance › Accounting: reads the accounting documents and requeues one when staff try it again.
- * Nothing here sends to Books; the worker's sender does, in the mode each document was made for.
+ * Finance › Accounting: reads the accounting documents, requeues one when staff try it again and
+ * releases a parked one once its reason is settled (rebuilt from the stored Bid rows). Nothing here
+ * sends to Books; the worker's sender does, in the mode each document was made for.
  */
 export function createAccountingQueue(input: {
   db: Database;
@@ -33,6 +37,8 @@ export function createAccountingQueue(input: {
       transitions: repos.transitions,
       audit: new DomainEventAccountingAuditTrail(input.domainEventSink),
       booksLink: createBooksDocumentLinks(input.env),
+      facts: new DrizzleBidAccountingFactsReader(input.db),
+      lookup: repos.lookup,
     }),
     accountingBrowser: repos.browser,
   };

@@ -22,6 +22,7 @@ export function accountingRow(overrides: Partial<AccountingQueueRow> = {}): Acco
     lockedPeriod: false,
     books: null,
     canTryAgain: true,
+    canRelease: false,
     ...overrides,
   };
   // The label follows the document unless a test names one, as the API words it.

@@ -72,6 +72,7 @@ const LABELS: Record<string, string> = {
 
   "failed_job.retried": "Failed job retried",
   "accounting_document.retry_requested": "Accounting document tried again",
+  "accounting_document.release_requested": "Parked accounting document released",
   "failed_job.discarded": "Failed job discarded",
   "failed_job.restored": "Failed job restored",
 

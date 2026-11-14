@@ -9,6 +9,7 @@ import {
   API_ACCOUNTING_COPY_READ_TABLES,
   API_ACCOUNTING_HISTORY_TABLES,
   API_ACCOUNTING_READ_TABLES,
+  API_ACCOUNTING_RELEASE_COLUMNS,
   API_ACCOUNTING_REQUEUE_COLUMNS,
   API_ACCOUNTING_REQUEUE_TABLES,
   API_ACCOUNTING_SETTING_TABLES,
@@ -896,6 +897,13 @@ describe("migrate-roles invariants", () => {
     for (const column of API_ACCOUNTING_REQUEUE_COLUMNS) {
       expect(WORKER_ACCOUNTING_DOCUMENT_UPDATE_COLUMNS).toContain(column);
     }
+    // A release may replace a parked delivery invoice's draft: the document and its totals only.
+    expect([...API_ACCOUNTING_RELEASE_COLUMNS].sort()).toEqual([
+      "gross_pence",
+      "net_pence",
+      "payload",
+      "vat_pence",
+    ]);
     expect([...API_ACCOUNTING_READ_TABLES].sort()).toEqual([
       "accounting_document",
       "accounting_document_event",

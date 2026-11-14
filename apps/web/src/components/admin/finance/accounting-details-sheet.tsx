@@ -17,11 +17,13 @@ export function AccountingDetailsSheet({
   canAct,
   onClose,
   onTryAgain,
+  onRelease,
 }: {
   row: AccountingStaffRow | null;
   canAct: boolean;
   onClose: () => void;
   onTryAgain: (row: AccountingStaffRow) => void;
+  onRelease: (row: AccountingStaffRow) => void;
 }) {
   const problem =
     row && row.books.kind !== "none" && row.state.label === "In Books"
@@ -36,25 +38,33 @@ export function AccountingDetailsSheet({
       title={row?.reference ?? ""}
       description={row?.kind}
       status={row ? <StatusBadge tone={row.state.tone}>{row.state.label}</StatusBadge> : null}
-      {...(row && canAct && row.canTryAgain
+      {...(row && canAct && row.canRelease
         ? {
             footer: (
-              <StaffButton variant="primary" onClick={() => onTryAgain(row)}>
-                Try again
+              <StaffButton variant="primary" onClick={() => onRelease(row)}>
+                Release
               </StaffButton>
             ),
           }
-        : row?.books.kind === "link"
+        : row && canAct && row.canTryAgain
           ? {
               footer: (
-                <StaffButton asChild variant="primary">
-                  <a href={row.books.href} target="_blank" rel="noreferrer">
-                    Open in Books
-                  </a>
+                <StaffButton variant="primary" onClick={() => onTryAgain(row)}>
+                  Try again
                 </StaffButton>
               ),
             }
-          : {})}
+          : row?.books.kind === "link"
+            ? {
+                footer: (
+                  <StaffButton asChild variant="primary">
+                    <a href={row.books.href} target="_blank" rel="noreferrer">
+                      Open in Books
+                    </a>
+                  </StaffButton>
+                ),
+              }
+            : {})}
     >
       {row ? (
         <div className="flex flex-col gap-4">

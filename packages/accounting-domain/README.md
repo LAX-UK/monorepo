@@ -61,11 +61,19 @@ charge), nothing is split or rounded, and together they must equal the payment t
 reason `vat_on_delivery` or `invoice_cancelled`). The runtime stores them straight into
 `needs_review` (`parkedRecord`, reason `accounting_parked_<reason>`), never `pending` first, so no
 sender can take one. `requeue` refuses a parked document (`parked`), so it cannot be tried again by
-hand; it can be cancelled.
+hand. Once its reason is settled a person releases it (`release`, parked to `pending`, attempts
+kept): the caller first projects its stored rows again with the policy that parked it, as they
+stand now, and `resolveParked` allows the release only if that projection makes the same reference
+and no longer parks it. A delivery invoice's draft is then replaced by the rebuilt invoice (same
+reference, same gross); anything else must come out exactly as stored. It can also be cancelled.
+A queued payment whose invoice was cancelled is parked by the sender (`park`, `invoice_cancelled`)
+instead of waiting for ever.
 
-**Ordering.** `documentsAwaited(document)`: a payment waits for each invoice it is applied to. The
-work queue claims a payment only once all of them are `issued` for the same target, so a payment
-never reaches Books before its invoice and never holds up the documents behind it.
+**Ordering.** `documentsAwaited(document)`: a payment waits for each invoice it is applied to, and
+an invoice or credit note waits for its contact. The work queue claims a document only once all of
+them are `issued` for the same target, so nothing reaches Books before what it refers to, whatever
+order the documents were stored in or however many senders run, and a waiting document never holds
+up the documents behind it.
 
 **Refunds.** `planRefund` checks goods and delivery separately against paid minus already refunded.
 `splitRefundTotal` takes one amount, goods first, then delivery. Neither can exceed what was paid, and

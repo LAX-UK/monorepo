@@ -122,8 +122,19 @@ function setUp(
       },
     },
     transitions: queue,
-    audit: { retryRequested: async (input) => void audits.push(input) },
+    audit: {
+      retryRequested: async (input) => void audits.push(input),
+      releaseRequested: async (input) => void audits.push(input),
+    },
     booksLink: () => null,
+    facts: {
+      invoiceRaised: async () => ({ status: "skip", reason: "unused" }),
+      paymentCaptured: async () => ({ status: "skip", reason: "unused" }),
+      paymentRefunded: async () => ({ status: "skip", reason: "unused" }),
+      paymentGroupSettled: async () => ({ status: "skip", reason: "unused" }),
+      deliveryGroupOf: async () => null,
+    },
+    lookup: { findByReference: async () => ok(null) },
   });
   return { queue, audits, service, partFundedCalls };
 }
