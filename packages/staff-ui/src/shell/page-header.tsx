@@ -83,9 +83,13 @@ export function PageHeader({
 /** One fact in a PageHeader `meta` line: "Total £100.00". */
 export function MetaItem({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <span className="inline-flex items-baseline gap-1.5">
+    <span className="inline-flex max-w-full items-baseline gap-1.5">
       <span className="shrink-0 whitespace-nowrap text-staff-subtle">{label}</span>
-      <span className="whitespace-nowrap text-staff-fg tabular-nums">{children}</span>
+      {/* The item sits whole on one line (the meta row wraps between items); only a value wider
+          than the row itself breaks, so a long email or reference cannot scroll a phone sideways. */}
+      <span className="min-w-0 max-w-full text-staff-fg tabular-nums [overflow-wrap:anywhere]">
+        {children}
+      </span>
     </span>
   );
 }
