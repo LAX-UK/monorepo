@@ -5,11 +5,13 @@ import {
   useManualReviewActions,
 } from "@/components/admin/payments/manual-review-actions";
 import { useStaffListNavigation } from "@/components/admin/staff/use-staff-list-navigation";
+import { useStaffQueue } from "@/components/admin/staff/use-staff-queue";
 import {
   MANUAL_REVIEW_REASON_FILTERS,
   type ManualReviewStaffRow,
   type PaymentsListSearch,
   manualReviewMetrics,
+  paymentPanelHref,
   paymentsAttention,
   paymentsListHref,
   paymentsViews,
@@ -32,11 +34,13 @@ import {
   StatusBadge,
 } from "@auction/staff-ui";
 import Link from "next/link";
-import { type ReactNode, useMemo, useState } from "react";
+import { type ReactNode, useCallback, useMemo } from "react";
 
 export type ManualReviewStaffListProps = {
   search: PaymentsListSearch;
   rows: ManualReviewStaffRow[];
+  /** The hold in the URL (`?payment=`) when the reason filter leaves it out of the rows. */
+  selected?: ManualReviewStaffRow | null;
   queueSize: number;
   reasonFilter: string;
   summary: { total: number; financeHolds: number; complianceHolds: number };
@@ -66,13 +70,12 @@ function complianceHref(row: ManualReviewStaffRow): string {
 /**
  * The manual review queue as a view of Payments: winning payments held before checkout, by hold
  * reason. Release and refund sit in each row's `…` menu and in the record panel, each through a
- * confirm dialog with the amount and the winner; a refund needs a reason.
+ * confirm dialog with the amount and the winner; a refund needs a reason. The panel is a work
+ * queue: its address is `?payment=`, it shows "3 of 12" and J and K step to the next hold.
  */
 export function ManualReviewStaffList(props: ManualReviewStaffListProps) {
   const { search, rows, canOpenLot, canOpenClient } = props;
   const { pending, navigate, Link: ListLink } = useStaffListNavigation();
-  const [openId, setOpenId] = useState<string | null>(null);
-  const openRow = rows.find((row) => row.id === openId) ?? null;
   const money = useManualReviewActions({ canResolve: props.canResolveManualReview });
   const reasonLabel = MANUAL_REVIEW_REASON_FILTERS.find(
     (option) => option.value === props.reasonFilter,
@@ -86,7 +89,8 @@ export function ManualReviewStaffList(props: ManualReviewStaffListProps) {
         mobile: "title",
         cell: (row) => (
           <PrimaryCell
-            {...(canOpenLot ? { href: `/admin/lots/${row.lotId}`, Link } : {})}
+            href={paymentPanelHref(search, row.id)}
+            Link={Link}
             secondary={row.lotNumber != null ? `Lot ${row.lotNumber}` : null}
           >
             {row.lotTitle}
@@ -149,8 +153,21 @@ export function ManualReviewStaffList(props: ManualReviewStaffListProps) {
         cell: (row) => <StaffDate value={row.source.createdAt} />,
       },
     ],
-    [canOpenLot, canOpenClient],
+    [search, canOpenClient],
   );
+
+  const hrefFor = useCallback((id: string | null) => paymentPanelHref(search, id), [search]);
+  const queue = useStaffQueue({
+    param: "payment",
+    rows,
+    getId: holdId,
+    initialId: typeof search.payment === "string" ? search.payment : null,
+    hrefFor,
+    localSort: { columns, defaultSort: { columnId: "amount", direction: "desc" } },
+    selected: props.selected ?? null,
+    noun: "hold",
+  });
+  const openRow = queue.record;
 
   const linkActions = (row: ManualReviewStaffRow): OverflowAction[] => [
     ...(canOpenLot ? [{ id: "lot", label: "Open lot", href: `/admin/lots/${row.lotId}` }] : []),
@@ -168,7 +185,7 @@ export function ManualReviewStaffList(props: ManualReviewStaffListProps) {
       : []),
   ];
   const rowActions = (row: ManualReviewStaffRow): OverflowAction[] => [
-    { id: "open", label: "Review hold", onSelect: () => setOpenId(row.id) },
+    { id: "open", label: "Review hold", onSelect: () => queue.open(row.id) },
     ...linkActions(row),
     ...money.actionsFor(row),
   ];
@@ -244,13 +261,10 @@ export function ManualReviewStaffList(props: ManualReviewStaffListProps) {
         noResults={{ noun: "held payments" }}
         table={{
           columns,
-          data: rows,
-          getRowId: (row) => row.id,
-          defaultSort: { columnId: "amount", direction: "desc" },
+          ...queue.table,
+          getRowId: holdId,
           // The lot cell carries a second line (lot number and sale), which needs 44px rows.
           defaultDensity: "comfortable",
-          onRowOpen: (row) => setOpenId(row.id),
-          activeRowId: openId,
           rowActions: {
             label: (row) => `Actions for held payment ${row.lotTitle}`,
             actions: rowActions,
@@ -258,10 +272,7 @@ export function ManualReviewStaffList(props: ManualReviewStaffListProps) {
         }}
       />
       <DetailPanel
-        open={openRow !== null}
-        onOpenChange={(open) => {
-          if (!open) setOpenId(null);
-        }}
+        {...queue.panelProps}
         title={openRow?.lotTitle ?? "Held payment"}
         {...(openRow?.lotNumber != null ? { description: `Lot ${openRow.lotNumber}` } : {})}
         status={
@@ -315,6 +326,10 @@ export function ManualReviewStaffList(props: ManualReviewStaffListProps) {
       {money.dialogs}
     </>
   );
+}
+
+function holdId(row: ManualReviewStaffRow): string {
+  return row.id;
 }
 
 /** What has to happen before the payment can move. */

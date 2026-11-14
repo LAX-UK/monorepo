@@ -112,6 +112,9 @@ only what is staff: `requires` on buttons and menu items, read-only views, and e
     entry, so Back closes it) and `queue` for `DetailPanel` ("3 of 12", ↑ ↓ and J/K without
     closing). Keep `rowHref` on the table so a new tab opens the record's page; give the panel
     `fullPage` for "Open full page".
+    A queue sorted on the page passes its ids in the order shown: `useSortedRows({ data,
+    columns, defaultSort })` gives the rows in the table's own order (`sortRows`) with `sort`
+    and `onSortChange` for the table.
 
     ```tsx
     const panel = useQueuePanel({ param: "hold", ids: rows.map((row) => row.id), noun: "hold" });

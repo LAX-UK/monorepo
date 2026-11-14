@@ -7,6 +7,7 @@ import {
   DetailPanel,
   EmptyState,
   KeyValueList,
+  type PanelQueue,
   StaffButton,
   StatusBadge,
   Timeline,
@@ -18,6 +19,8 @@ type TableProps = {
   showingAll: boolean;
   onShowAll: () => void;
   onOpen: (id: string) => void;
+  /** The send shown in the panel, marked so focus returns to it. */
+  activeId?: string | null;
   personName: string;
   skippedCount: number;
 };
@@ -74,6 +77,7 @@ export function EmailSendsTable({
   showingAll,
   onShowAll,
   onOpen,
+  activeId = null,
   personName,
   skippedCount,
 }: TableProps) {
@@ -94,6 +98,7 @@ export function EmailSendsTable({
         stickyHeader={false}
         stickyToolbar={false}
         onRowOpen={(send) => onOpen(send.id)}
+        activeRowId={activeId}
         empty={
           <EmptyState
             size="compact"
@@ -127,17 +132,19 @@ export function EmailSendsTable({
 /** What the provider reported about one email, in order. */
 export function EmailSendDetail({
   send,
-  onClose,
+  onOpenChange,
+  queue,
 }: {
   send: EmailSendRowVm | null;
-  onClose: () => void;
+  onOpenChange: (open: boolean) => void;
+  /** Its place among the sends shown, and J/K stepping. */
+  queue?: PanelQueue;
 }) {
   return (
     <DetailPanel
       open={send !== null}
-      onOpenChange={(next) => {
-        if (!next) onClose();
-      }}
+      onOpenChange={onOpenChange}
+      {...(queue ? { queue } : {})}
       title={send?.label ?? "Email"}
       {...(send ? { description: `${send.product} · ${send.at}` } : {})}
       status={send ? <StatusBadge tone={send.status.tone}>{send.status.label}</StatusBadge> : null}
