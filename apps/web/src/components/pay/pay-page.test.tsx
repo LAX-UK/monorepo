@@ -1,7 +1,7 @@
 import { buildPayPageVm } from "@/lib/pay/pay-page.vm";
 import { LOT_A, LOT_B, NOW, payable, planOf } from "@/lib/pay/pay-plan-fixtures.test-util";
 import type { PayPlan } from "@auction/types";
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const refresh = vi.fn();
@@ -385,7 +385,13 @@ describe("the Pay page, back from the payment page without paying", () => {
   });
 
   it("names the phone bar's button by the amount, except while it is opening the payment", async () => {
-    payAction.mockReturnValue(new Promise(() => {}));
+    // Held, then settled at the end: a transition left pending would hold back the next test's.
+    let settle: (result: unknown) => void = () => {};
+    payAction.mockReturnValue(
+      new Promise((resolve) => {
+        settle = resolve;
+      }),
+    );
     const { container } = draw(ready());
     const bar = container.querySelector("[data-pay-phone-bar]") as HTMLElement;
     const button = within(bar).getByRole("button", { name: "Pay £2,375.00" });
@@ -396,6 +402,12 @@ describe("the Pay page, back from the payment page without paying", () => {
       ).toBeInTheDocument(),
     );
     expect(within(bar).getByRole("button")).not.toHaveAttribute("aria-label");
+    await act(async () => {
+      settle({ kind: "failed", message: "Paying is paused.", refresh: false });
+    });
+    await waitFor(() =>
+      expect(within(bar).getByRole("button", { name: "Pay £2,375.00" })).toBeInTheDocument(),
+    );
   });
 
   it("keeps Try again on the card action while the note is on screen, after the address is cleaned", () => {
