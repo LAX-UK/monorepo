@@ -180,4 +180,24 @@ describe("unappliedMoneyWorkItemWording", () => {
       }),
     ).toEqual({ title: "Money received that could not be applied", hint: null });
   });
+
+  it("tells finance to check the unresolved LAX payment first on a Books payment reported after its hold", () => {
+    const books = {
+      reason: "books_payment_recorded_by_hand" as const,
+      paymentId: null,
+      paymentGroupId: null,
+    };
+    expect(unappliedMoneyWorkItemWording({ ...books, booksPossiblyLaxOwn: true }).hint).toMatch(
+      /^Possibly LAX's own payment.*Check that unresolved LAX payment/,
+    );
+    expect(unappliedMoneyWorkItemWording(books).hint).toBeNull();
+    expect(
+      unappliedMoneyWorkItemWording({
+        reason: "customer_balance_unapplied",
+        paymentId: null,
+        paymentGroupId: null,
+        booksPossiblyLaxOwn: true,
+      }).hint,
+    ).toBeNull();
+  });
 });

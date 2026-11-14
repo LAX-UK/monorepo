@@ -75,6 +75,16 @@ describe("QUEUE_REGISTRY", () => {
     expect(listWorkerHeartbeatKeys(enabled)).not.toContain("worker:heartbeat:accounting-reconcile");
   });
 
+  it("runs the Books status check nightly only when Books is configured, with no heartbeat", () => {
+    const base = { appEnv: "production" as const, marketingEventsEnabled: false };
+    expect(listEnabledQueues(base).map((q) => q.name)).not.toContain("accounting-books-status");
+    const enabled = { ...base, accountingBooksEnabled: true };
+    expect(listEnabledQueues(enabled).map((q) => q.name)).toContain("accounting-books-status");
+    expect(listWorkerHeartbeatKeys(enabled)).not.toContain(
+      "worker:heartbeat:accounting-books-status",
+    );
+  });
+
   it("dedupes ATG jobs per target", () => {
     const ids = [
       atgSyncJobId({ name: "atg.push-sale", data: { saleId: "s1" } }),

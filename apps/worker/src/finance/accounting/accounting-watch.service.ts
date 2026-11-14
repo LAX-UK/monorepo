@@ -36,6 +36,12 @@ export const PAYMENT_WAITING_AFTER_MS = 6 * 60 * 60_000;
  */
 export const REMAINDER_UNSETTLED_AFTER_MS = 6 * 60 * 60_000;
 
+/**
+ * How long the nightly Books status check may go without finishing a run before someone is told:
+ * a night and a couple of hours' grace for a run retried once.
+ */
+export const STATUS_CHECK_MISSED_AFTER_MS = 26 * 60 * 60_000;
+
 export interface AccountingWatchDeps {
   readonly attention: IAccountingAttentionReader;
   readonly settings: IAccountingSourceSettingReader;
@@ -44,6 +50,17 @@ export interface AccountingWatchDeps {
   readonly alerts: AccountingAlertSink;
   readonly now: () => Date;
   readonly calendar?: WorkingCalendar;
+  /**
+   * The nightly status check's runs. With no run ever finished, the window starts at the first
+   * run ever started, a stored time no restart moves. Only when no run has ever started does it
+   * fall back to `expectedSince` (the worker's start), so a check whose cron never fires is told
+   * by its Sentry cron monitor, not by this alert, while the worker restarts within a night.
+   */
+  readonly statusRuns?: {
+    readonly lastFinishedRunAt: () => Promise<Date | null>;
+    readonly firstStartedRunAt: () => Promise<Date | null>;
+    readonly expectedSince: Date;
+  };
 }
 
 export interface WatchResult {
@@ -52,6 +69,7 @@ export interface WatchResult {
   readonly bidInvoiceDelayed: boolean;
   readonly paymentWaiting: boolean;
   readonly remainderDelayed: boolean;
+  readonly statusCheckMissed: boolean;
   readonly creditNoteRefundDelayed: boolean;
 }
 
@@ -139,6 +157,7 @@ export class AccountingWatch {
         page: "/admin/finance/accounting",
       });
     }
+    const statusCheckMissed = await this.statusCheckMissed(modes, now);
     // A refund's credit note issued hours ago whose money is still not refunded in Books.
     const unrefunded = await this.deps.attention.unrefundedCreditNotes(
       modes,
@@ -160,8 +179,25 @@ export class AccountingWatch {
       bidInvoiceDelayed,
       paymentWaiting,
       remainderDelayed,
+      statusCheckMissed,
       creditNoteRefundDelayed,
     };
+  }
+
+  /** Raised while Books is aimed at and no nightly status check has finished for too long. */
+  private async statusCheckMissed(modes: readonly TargetMode[], now: Date): Promise<boolean> {
+    const runs = this.deps.statusRuns;
+    if (!runs || modes.length === 0) return false;
+    const last = await runs.lastFinishedRunAt();
+    const since = last ?? (await runs.firstStartedRunAt()) ?? runs.expectedSince;
+    const missed = now.getTime() - since.getTime() > STATUS_CHECK_MISSED_AFTER_MS;
+    if (missed) {
+      this.deps.alerts.raise(ACCOUNTING_ALERTS.statusCheckMissed, {
+        lastFinishedAt: last?.toISOString() ?? null,
+        modes,
+      });
+    }
+    return missed;
   }
 
   /**
