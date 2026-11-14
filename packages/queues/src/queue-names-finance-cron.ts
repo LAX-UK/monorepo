@@ -8,6 +8,11 @@ export const ENSURE_LOT_INVOICES_QUEUE_NAME = "ensure-lot-invoices" as const;
 export const CLEANUP_DISPLAY_PAIRINGS_QUEUE_NAME = "cleanup-display-pairings" as const;
 /** Watches the Zoho Books document queue: work waiting too long for a person or the sender. */
 export const ACCOUNTING_WATCH_QUEUE_NAME = "accounting-watch" as const;
+/**
+ * The nightly Zoho Books status check: reads issued documents back from Books and records what
+ * staff changed there by hand. Never marks anything paid.
+ */
+export const ACCOUNTING_RECONCILE_QUEUE_NAME = "accounting-reconcile" as const;
 
 /** @deprecated Import from `@auction/queues` platform cron names; kept for worker/API importers. */
 export { LOT_LIFECYCLE_TICK_QUEUE_NAME } from "./queue-names-platform-cron.js";

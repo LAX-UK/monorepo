@@ -195,3 +195,53 @@ export const accountingSourceSetting = pgTable("accounting_source_setting", {
   updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true }).defaultNow().notNull(),
   updatedBy: text("updated_by"),
 });
+
+/**
+ * The nightly Books status check (migration 0385): the last state read from the provider for each
+ * issued document, and when a Books notice asked for it to be read again. Books is never trusted to
+ * move money in LAX; this records what it said. Worker only.
+ */
+export const accountingBooksStatus = pgTable("accounting_books_status", {
+  documentId: uuid("document_id")
+    .primaryKey()
+    .references(() => accountingDocument.id, { onDelete: "restrict" }),
+  /** Null until first read (a notice may ask for a read before the check ever looked). */
+  booksState: text("books_state"),
+  balancePence: bigint("balance_pence", { mode: "number" }),
+  /** Every Books payment id seen against the document, sorted. */
+  paymentIds: jsonb("payment_ids").$type<string[]>().notNull().default([]),
+  checkedAt: timestamp("checked_at", { mode: "date", withTimezone: true }),
+  changedAt: timestamp("changed_at", { mode: "date", withTimezone: true }),
+  recheckRequestedAt: timestamp("recheck_requested_at", { mode: "date", withTimezone: true }),
+});
+
+/** What the status check saw change in Books, append-only (a trigger refuses any change). */
+export const accountingBooksStatusChange = pgTable(
+  "accounting_books_status_change",
+  {
+    id: bigint("id", { mode: "number" }).primaryKey().generatedAlwaysAsIdentity(),
+    documentId: uuid("document_id")
+      .notNull()
+      .references(() => accountingDocument.id, { onDelete: "restrict" }),
+    change: text("change").$type<"state_changed" | "payment_recorded_in_books">().notNull(),
+    fromState: text("from_state"),
+    toState: text("to_state"),
+    booksPaymentId: text("books_payment_id"),
+    amountPence: bigint("amount_pence", { mode: "number" }),
+    observedAt: timestamp("observed_at", { mode: "date", withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [index("accounting_books_status_change_document_idx").on(table.documentId)],
+);
+
+/** One row per nightly status check run, so a missed run can be told. */
+export const accountingBooksStatusRun = pgTable("accounting_books_status_run", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  startedAt: timestamp("started_at", { mode: "date", withTimezone: true }).notNull(),
+  finishedAt: timestamp("finished_at", { mode: "date", withTimezone: true }),
+  outcome: text("outcome").$type<"completed" | "budget_spent" | "rehearsal" | "failed">(),
+  checked: integer("checked").notNull().default(0),
+  changed: integer("changed").notNull().default(0),
+  tasks: integer("tasks").notNull().default(0),
+});

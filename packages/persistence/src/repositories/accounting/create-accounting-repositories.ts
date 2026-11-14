@@ -2,6 +2,7 @@ import type { Database } from "@auction/db";
 import type {
   AccountingClock,
   IAccountingAttentionReader,
+  IAccountingBooksStatusStore,
   IAccountingDocumentBrowser,
   IAccountingDocumentCopies,
   IAccountingDocumentDueWork,
@@ -18,6 +19,7 @@ import type {
   IPartFundedTransfersReader,
 } from "../../interfaces/accounting.js";
 import { DrizzleAccountingAttentionReader } from "./drizzle-accounting-attention.reader.js";
+import { DrizzleAccountingBooksStatusStore } from "./drizzle-accounting-books-status.js";
 import { DrizzleAccountingDocumentCopies } from "./drizzle-accounting-document-copies.js";
 import { DrizzleAccountingDocumentBrowser } from "./drizzle-accounting-document.browser.js";
 import { DrizzleAccountingDocumentDueWork } from "./drizzle-accounting-document.due-work.js";
@@ -56,6 +58,8 @@ export interface AccountingRepositories {
   readonly partFunded: IPartFundedTransfersReader;
   /** The rows a release of a parked document is decided on (the Bid API). */
   readonly releaseBasis: IAccountingReleaseBasisReader;
+  /** The nightly Books status check's record (the worker). */
+  readonly booksStatus: IAccountingBooksStatusStore;
 }
 
 /** The one place the accounting repositories are assembled (container registration). */
@@ -79,5 +83,6 @@ export function createAccountingRepositories(
     bidInvoiceBooks: new DrizzleBidInvoiceBooksReader(db, clock),
     partFunded: new DrizzlePartFundedTransfersReader(db),
     releaseBasis: new DrizzleAccountingReleaseBasisReader(db),
+    booksStatus: new DrizzleAccountingBooksStatusStore(db, clock),
   };
 }

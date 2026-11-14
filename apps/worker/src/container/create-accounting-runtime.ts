@@ -2,10 +2,12 @@ import { randomUUID } from "node:crypto";
 import type { TargetMode } from "@auction/accounting-domain";
 import type { createDb } from "@auction/db";
 import type { IEmailService } from "@auction/email";
-import { createBooksAccountingAdapters } from "@auction/finance-runtime";
+import { UnappliedMoneyRecorder, createBooksAccountingAdapters } from "@auction/finance-runtime";
 import {
   DrizzleBidAccountingFactsReader,
   DrizzleShopAccountingFactsReader,
+  DrizzleTransactionRunner,
+  DrizzleUnappliedMoneyReader,
   createAccountingRepositories,
 } from "@auction/persistence/repositories";
 import type { Logger } from "pino";
@@ -17,8 +19,10 @@ import { AccountingProjection } from "../finance/accounting/accounting-projectio
 import { AccountingRemainder } from "../finance/accounting/accounting-remainder.service.js";
 import type { AccountingRuntime } from "../finance/accounting/accounting-runtime.js";
 import { AccountingSender } from "../finance/accounting/accounting-sender.service.js";
+import { AccountingStatusCheck } from "../finance/accounting/accounting-status-check.service.js";
 import { AccountingWatch } from "../finance/accounting/accounting-watch.service.js";
 import { shopStorefrontBase } from "../finance/accounting/shop-invoice-email.js";
+import type { IWorkerDomainEventSink } from "../interfaces/worker-domain-event-sink.js";
 import { throttledCronMonitor } from "../lib/sentry-cron.js";
 import { DrizzleProjectorCursorStart } from "../repositories/drizzle-projector-cursor-start.js";
 
@@ -40,6 +44,8 @@ export function createAccountingRuntime(deps: {
   storage: { putObject(key: string, body: Buffer, contentType: string): Promise<unknown> };
   /** The email outbox; only an invoice Books issued for real is ever emailed. */
   email: Pick<IEmailService, "enqueue">;
+  /** Where the status check's finance tasks are written (domain events, with their alert). */
+  domainEventSink: IWorkerDomainEventSink;
 }): AccountingRuntime | undefined {
   const adapters = createBooksAccountingAdapters(deps.env);
   if (!adapters) return undefined;
@@ -57,7 +63,24 @@ export function createAccountingRuntime(deps: {
       "accounting_shop_storefront_url_unusable",
     );
   }
+  // A payment recorded in Books by hand becomes a finance task; nothing here can apply money.
+  const financeTasks = new UnappliedMoneyRecorder(
+    new DrizzleUnappliedMoneyReader(deps.db),
+    deps.domainEventSink,
+  );
+  const statusCheck = new AccountingStatusCheck({
+    store: repos.booksStatus,
+    statusesByMode: Object.fromEntries(
+      Object.entries(adapters.byMode).map(([mode, ports]) => [mode, ports.statuses]),
+    ),
+    organisationIds: adapters.organisationIds,
+    tasks: { open: (tx, money) => financeTasks.record(tx, money, null) },
+    transactions: new DrizzleTransactionRunner(deps.db),
+    log: deps.log,
+    now: () => new Date(),
+  });
   return {
+    statusCheck,
     projection: new AccountingProjection({
       facts: new DrizzleBidAccountingFactsReader(deps.db),
       shopFacts,
@@ -106,6 +129,10 @@ export function createAccountingRuntime(deps: {
       senderModes: Object.keys(adapters.byMode) as TargetMode[],
       alerts,
       now: () => new Date(),
+      statusRuns: {
+        lastFinishedRunAt: () => repos.booksStatus.lastFinishedRunAt(),
+        expectedSince: new Date(),
+      },
     }),
     senderCheckIn: throttledCronMonitor(
       ACCOUNTING_CRON_MONITORS.sender,

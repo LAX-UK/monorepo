@@ -11,6 +11,8 @@ import {
   type DocumentKind,
   type DocumentLookupPort,
   type DocumentPdfPort,
+  type DocumentStatusPort,
+  type DocumentStatusReaders,
   type Invoice,
   type InvoicePort,
   type IssueOutcome,
@@ -26,6 +28,8 @@ import {
   type ProviderDocument,
   type RemainderApplication,
   type RemainderOutcome,
+  type StatusCheckAllowance,
+  type StatusReadOutcome,
   type WriteFence,
   expectedTotals,
   legalEntityFor,
@@ -60,6 +64,11 @@ export interface InMemoryAccountingOptions {
    * real answer is still open), matching `testOrgConfigs()`.
    */
   readonly orgs?: Readonly<Partial<Record<LegalEntity, { readonly vatRegistered: boolean }>>>;
+  /**
+   * Where the fake's Books ids start. Default 7000000000001. A test sharing a database with other
+   * suites passes its own, so its documents' Books ids are not also held by theirs.
+   */
+  readonly firstProviderId?: number;
 }
 
 interface Held {
@@ -96,8 +105,10 @@ export class InMemoryAccounting implements AccountingPorts {
   /** Remainders applied after the fact, by payment key: invoice key -> pence. */
   private readonly remainderApplied = new Map<string, Map<string, number>>();
   private readonly orgs: Readonly<Partial<Record<LegalEntity, { vatRegistered: boolean }>>>;
+  private readonly firstProviderId: number;
 
   constructor(options: InMemoryAccountingOptions = {}) {
+    this.firstProviderId = options.firstProviderId ?? 7_000_000_000_001;
     this.orgs = options.orgs ?? {
       london_art_exchange: { vatRegistered: false },
       london_auction_xchange: { vatRegistered: true },
@@ -233,6 +244,42 @@ export class InMemoryAccounting implements AccountingPorts {
    * The PDF Books would render for an invoice or credit note it holds, asked for by the identity
    * it gave. Anything else (not held, another kind, another id) is `unavailable`, as Books would be.
    */
+  /** What a status read answers for a Books id, set by a test (`setStatus`). */
+  private readonly statusScript = new Map<string, StatusReadOutcome>();
+  /** Every status read asked of the fake, by Books id, for assertions (e.g. the budget). */
+  readonly statusReads: string[] = [];
+
+  /** Script what Books says about a document now (voided, paid by hand, deleted...). */
+  setStatus(providerId: string, outcome: StatusReadOutcome): void {
+    this.statusScript.set(providerId, outcome);
+  }
+
+  /** Every share a status reader was asked for, in order, for assertions. */
+  readonly statusShares: StatusCheckAllowance[] = [];
+
+  readonly statuses: DocumentStatusReaders = {
+    withinShare: (allowance) => {
+      this.statusShares.push(allowance);
+      return this.statusReader;
+    },
+  };
+
+  /** The fake's one status reader; its shares are recorded, not enforced (`statusShares`). */
+  readonly statusReader: DocumentStatusPort = {
+    readStatus: async (document, issued): Promise<StatusReadOutcome> => {
+      this.statusReads.push(issued.providerId);
+      // As the adapter, a read is believed only for the document this fake issued under that id
+      // and reference: ids from another fake (another test) are not found here.
+      const entity = legalEntityFor(document.product);
+      const held = this.held.get(this.key(entity, document.kind, document.reference, "customer"));
+      if (!held || held.doc.providerId !== issued.providerId) return { status: "not_found" };
+      const scripted = this.statusScript.get(issued.providerId);
+      if (scripted) return scripted;
+      const state = document.kind === "payment" ? "recorded" : "open";
+      return { status: "read", reading: { state, balancePence: null, payments: [] } };
+    },
+  };
+
   readonly pdfs: DocumentPdfPort = {
     fetchPdf: async (document, issued): Promise<PdfOutcome> => {
       const entity = legalEntityFor(document.product);
@@ -349,7 +396,7 @@ export class InMemoryAccounting implements AccountingPorts {
         laxNumber !== undefined && !renumbered
           ? laxNumber
           : `${PREFIX[doc.kind]}-${String(seq).padStart(6, "0")}`,
-      providerId: String(7_000_000_000_000 + this.held.size + 1),
+      providerId: String(this.firstProviderId + this.held.size),
       pdfRef:
         doc.kind === "invoice" || doc.kind === "credit_note"
           ? `/${doc.kind === "invoice" ? "invoices" : "creditnotes"}/${7_000_000_000_000 + this.held.size + 1}`

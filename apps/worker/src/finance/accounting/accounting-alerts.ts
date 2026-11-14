@@ -40,10 +40,16 @@ export const ACCOUNTING_ALERTS = {
    */
   circuitOpen: { message: "zoho_books.circuit_open", level: "error" },
   /**
-   * A Books notice (webhook) arrived with a signature that does not verify. There is no Books
-   * notice route yet; the route logs this event when it refuses one.
+   * A Books notice (webhook) arrived with a signature that is missing or does not verify. The
+   * Bid API's notice route raises it (logged and sent to Sentry under this message) when it
+   * refuses one; it is listed here so the alert rules have one home.
    */
   noticeSignatureFailed: { message: "zoho_books.notice_signature_failed", level: "error" },
+  /**
+   * The nightly Books status check has not finished a run for more than 26 hours while Books is
+   * aimed at (the accounting watch raises it; its cron monitor `accounting-reconcile` also misses).
+   */
+  statusCheckMissed: { message: "accounting_status_check_missed", level: "error" },
 } as const satisfies Record<string, { message: string; level: "warning" | "error" }>;
 
 export type AccountingAlert = (typeof ACCOUNTING_ALERTS)[keyof typeof ACCOUNTING_ALERTS];
@@ -57,7 +63,7 @@ export const ACCOUNTING_CRON_MONITORS = {
   watch: "accounting-watch",
   /** The sender, which runs with the projectors; it checks in at most every 5 minutes. */
   sender: "accounting-sender",
-  /** The nightly Books reconciliation, when it is added; its job checks in under this key. */
+  /** The nightly Books status check; its job checks in under this key. */
   reconcile: "accounting-reconcile",
 } as const;
 

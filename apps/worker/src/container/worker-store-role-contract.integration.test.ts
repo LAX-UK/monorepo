@@ -43,6 +43,7 @@ import {
   DrizzleSellerConsentRepository,
   DrizzleShopAccountingFactsReader,
   DrizzleSoldAttentionStore,
+  DrizzleUnappliedMoneyReader,
   DrizzleUnsoldChoiceDeadlineStore,
   DrizzleUnsoldLotFollowUpRepository,
   DrizzleWebhookEventRepository,
@@ -124,6 +125,7 @@ const STORES: Record<string, Store> = {
   DrizzleExportLegalEntityReader,
   DrizzleBidAccountingFactsReader,
   DrizzleShopAccountingFactsReader,
+  DrizzleUnappliedMoneyReader,
   DrizzleProjectorCursorStart,
   DrizzleFailedJobReviewRepository,
   DrizzleIntegrationDeadLetterRepository,
@@ -139,6 +141,8 @@ const COVERED_ELSEWHERE: Record<string, string> = {
   DrizzleDomainEventDeliveryRepository:
     "worker-role-contract.integration.test.ts (domainEventDeliveryRepo)",
   DrizzleRepositoryFactory: "its repositories are listed in BUILT_BY_FACTORY",
+  DrizzleTransactionRunner:
+    "opens a transaction for its caller; it reads and writes no table itself",
 };
 
 /**

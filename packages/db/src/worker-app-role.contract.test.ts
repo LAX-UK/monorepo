@@ -9,6 +9,11 @@ import {
   SELLER_TERMS_INSERT_SELECT_TABLES,
   SELLER_TERMS_RECOMPUTE_UPDATE_COLUMNS,
   WORKER_ACCOUNTING_APPEND_ONLY_TABLES,
+  WORKER_ACCOUNTING_BOOKS_STATUS_APPEND_ONLY_TABLES,
+  WORKER_ACCOUNTING_BOOKS_STATUS_RUN_TABLES,
+  WORKER_ACCOUNTING_BOOKS_STATUS_RUN_UPDATE_COLUMNS,
+  WORKER_ACCOUNTING_BOOKS_STATUS_TABLES,
+  WORKER_ACCOUNTING_BOOKS_STATUS_UPDATE_COLUMNS,
   WORKER_ACCOUNTING_DOCUMENT_TABLES,
   WORKER_ACCOUNTING_DOCUMENT_UPDATE_COLUMNS,
   WORKER_ACCOUNTING_HISTORY_READ_COLUMNS,
@@ -167,6 +172,47 @@ describe.skipIf(!WORKER_URL)("worker_app role contract", { timeout: 60_000 }, ()
       // While Books is switched off the cursor is moved to the newest event every tick, so the
       // events of that time are never projected when it is switched on again.
       expect(await can("projector_state", "UPDATE")).toBe(true);
+    });
+  });
+
+  it("records the nightly Books status check: state by column, changes append-only, runs; never deletes", async () => {
+    await withWorkerClient(async (client) => {
+      const privileges = ["SELECT", "INSERT", "UPDATE", "DELETE", "TRUNCATE"];
+      const updatableOf = async (table: string) => {
+        const columns = await client.query<{ column_name: string; allowed: boolean }>(
+          `select column_name::text,
+                  has_column_privilege(current_user, 'public.' || $1, column_name, 'UPDATE') as allowed
+             from information_schema.columns
+            where table_schema = 'public' and table_name = $1`,
+          [table],
+        );
+        return columns.rows
+          .filter((row) => row.allowed)
+          .map((row) => row.column_name)
+          .sort();
+      };
+      for (const [tables, columns] of [
+        [WORKER_ACCOUNTING_BOOKS_STATUS_TABLES, WORKER_ACCOUNTING_BOOKS_STATUS_UPDATE_COLUMNS],
+        [
+          WORKER_ACCOUNTING_BOOKS_STATUS_RUN_TABLES,
+          WORKER_ACCOUNTING_BOOKS_STATUS_RUN_UPDATE_COLUMNS,
+        ],
+      ] as const) {
+        const rows = await readTablePrivileges(client, tables, privileges);
+        // UPDATE is by column only, so the table-level check sees INSERT and SELECT.
+        expectTablePrivileges(rows, (row) => ["SELECT", "INSERT"].includes(row.privilege));
+        for (const table of tables) {
+          expect(await updatableOf(table)).toEqual([...columns].sort());
+        }
+      }
+      expect(await updatableOf("accounting_books_status")).not.toContain("document_id");
+      const changes = await readTablePrivileges(
+        client,
+        WORKER_ACCOUNTING_BOOKS_STATUS_APPEND_ONLY_TABLES,
+        privileges,
+      );
+      expectTablePrivileges(changes, (row) => ["SELECT", "INSERT"].includes(row.privilege));
+      expect(await updatableOf("accounting_books_status_change")).toEqual([]);
     });
   });
 

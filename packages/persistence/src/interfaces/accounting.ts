@@ -4,10 +4,13 @@ import type {
   BidPaymentFacts,
   BidPaymentGroupFacts,
   BidRefundsFacts,
+  BooksStatusDecision,
+  BooksStatusSnapshot,
   DocumentKind,
   DocumentRecord,
   DocumentTarget,
   IssueOutcome,
+  LaxPaymentsInBooks,
   LegalEntity,
   LifecycleCode,
   LookupOutcome,
@@ -19,11 +22,13 @@ import type {
   ShopDeliveryFacts,
   ShopOrderPaidFacts,
   Source,
+  StatusCheckedKind,
   SwitchCode,
   SwitchConfig,
   TargetMode,
   Totals,
 } from "@auction/accounting-domain";
+import type { Database } from "@auction/db";
 
 /** The clock the accounting repositories read. Injected so tests and callers choose the time. */
 export interface AccountingClock {
@@ -627,4 +632,98 @@ export interface BidInvoiceBooksState {
 /** Reads one Bid invoice's Books documents and their stored copies (the Bid API, read only). */
 export interface IBidInvoiceBooksReader {
   read(invoiceId: string): Promise<Result<BidInvoiceBooksState | null, StoredDocumentCode>>;
+}
+
+/** An issued document due a status read, with what was last recorded of it. */
+export interface BooksStatusDue {
+  readonly stored: StoredAccountingDocument;
+  /** Null until the first read. */
+  readonly previous: BooksStatusSnapshot | null;
+  /** When it was last read from the provider; null until the first read. */
+  readonly checkedAt: Date | null;
+}
+
+export interface BooksStatusDueList {
+  readonly documents: readonly BooksStatusDue[];
+  /** Rows the domain would not read back; logged and skipped. */
+  readonly unreadable: readonly string[];
+}
+
+export type BooksStatusRunOutcome = "completed" | "budget_spent" | "rehearsal" | "failed";
+
+export interface BooksStatusRunCounts {
+  readonly checked: number;
+  readonly changed: number;
+  readonly tasks: number;
+}
+
+/**
+ * The nightly Books status check's record (migration 0385), the worker's only. It reads which
+ * issued documents are due, records what Books said and what changed, and keeps one row per run.
+ * Nothing here writes to a document, an invoice, a payment or a lot.
+ */
+export interface IAccountingBooksStatusStore {
+  /**
+   * Issued Books documents of the checked kinds in these modes: those a notice asked about first,
+   * then never read, then read longest ago, skipping those read since `readSince`.
+   */
+  listDue(
+    modes: readonly TargetMode[],
+    readSince: Date,
+    limit: number,
+  ): Promise<BooksStatusDueList>;
+  /** One document, when it is an issued Books document of a checked kind. */
+  findDue(documentId: string): Promise<BooksStatusDue | null>;
+  /**
+   * LAX's own payments in the invoice's books: which of these provider payment ids belong to a LAX
+   * payment document (in any state), and the LAX payment documents applied to the invoice (their
+   * references while they hold no provider id, and whether any is not settled yet).
+   */
+  laxPaymentsFor(
+    invoice: {
+      readonly legalEntity: LegalEntity;
+      readonly target: DocumentTarget;
+      readonly reference: string;
+    },
+    providerIds: readonly string[],
+  ): Promise<LaxPaymentsInBooks>;
+  /**
+   * In the caller's transaction, waits for any other record of this document to finish and returns
+   * what is recorded of it now: the check decides from this, inside the same transaction.
+   */
+  lockForRecord(tx: Database, documentId: string): Promise<BooksStatusSnapshot | null>;
+  /**
+   * Records a read in the caller's transaction (after `lockForRecord`): the snapshot, and each
+   * change (a payment recorded by hand is held once per document and Books id). A recheck asked
+   * for before `readFrom` (when the read began) is cleared; one asked for later stays.
+   */
+  record(
+    tx: Database,
+    documentId: string,
+    decision: BooksStatusDecision,
+    observedAt: Date,
+    readFrom: Date,
+  ): Promise<void>;
+  /**
+   * A Books notice named this Books id: mark the issued Books documents (in these modes) of that
+   * kind holding it in those books to be read first (one, as Books ids are unique in an organisation; at most `limit`).
+   * Returns their ids; none when LAX holds no such document.
+   */
+  requestRecheck(
+    modes: readonly TargetMode[],
+    legalEntity: LegalEntity,
+    kind: StatusCheckedKind,
+    providerId: string,
+    at: Date,
+    limit: number,
+  ): Promise<readonly string[]>;
+  startRun(at: Date): Promise<string>;
+  finishRun(
+    runId: string,
+    outcome: BooksStatusRunOutcome,
+    counts: BooksStatusRunCounts,
+    at: Date,
+  ): Promise<void>;
+  /** When the last run finished (any outcome but failed), or null if none ever did. */
+  lastFinishedRunAt(): Promise<Date | null>;
 }

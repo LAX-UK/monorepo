@@ -1,6 +1,7 @@
 import { createZohoBooksAdapter } from "../adapter/index.js";
 import type { ZohoOrgConfigs } from "../adapter/org-config.js";
 import type { ZohoWriteMode } from "../adapter/write-gate.js";
+import { InMemoryCallBudget } from "../call-budget.js";
 import { ZohoBooksClient } from "../client.js";
 import type { AccountingSubject, SubjectOptions } from "./adapter-contract.js";
 import { InMemoryAccounting } from "./fake-accounting.js";
@@ -15,6 +16,8 @@ export interface AdapterHarness extends AccountingSubject {
   readonly clock: FakeClock;
   readonly orgs: ZohoOrgConfigs;
   readonly client: ZohoBooksClient;
+  /** The day's budget the client counts every call against (and status shares draw on). */
+  readonly budget: InMemoryCallBudget;
 }
 
 export interface AdapterHarnessOptions extends SubjectOptions, OrgFixtureOptions {
@@ -35,11 +38,14 @@ export async function createAdapterHarness(
   const orgs = testOrgConfigs(options);
   const books = new SimulatedBooks(orgs);
   const clock = new FakeClock();
+  const config = testConfig();
+  const budget = new InMemoryCallBudget(clock, config.dailyCallBudget);
   const client = new ZohoBooksClient({
-    config: testConfig(),
+    config,
     transport: books,
     tokenStore: new InMemoryTokenStore(),
     clock,
+    budget,
     logger: new RecordingLogger(),
     random: () => 0.5,
   });
@@ -49,13 +55,14 @@ export async function createAdapterHarness(
   }
   const writes = options.writes ?? { mode: "test_org", organizationIds };
   return {
-    ports: createZohoBooksAdapter({ api: client, orgs, writes }),
+    ports: createZohoBooksAdapter({ api: client, orgs, budget, writes }),
     faults: books.faults,
     settle: (call) => clock.settle(call),
     books,
     clock,
     orgs,
     client,
+    budget,
   };
 }
 

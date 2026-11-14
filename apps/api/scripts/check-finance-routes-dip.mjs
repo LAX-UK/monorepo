@@ -16,6 +16,7 @@ const files = [
   "src/routes/private-sale-deals.ts",
   "src/routes/stripe-connect.ts",
   "src/routes/xero-webhook.ts",
+  "src/routes/zoho-books-webhook.ts",
   "src/routes/webhooks/stripe.ts",
   "src/routes/internal-cron.ts",
 ];

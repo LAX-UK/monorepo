@@ -51,6 +51,17 @@ export interface ZohoCall {
    * any retry wait). A refusal ends the call `fenced` (rejected: nothing was sent).
    */
   readonly fence?: WriteFence;
+  /**
+   * The budget this call counts against instead of the client's own: a share of it
+   * (`CallBudgetShare` around the same budget), for work that must stay within its share.
+   */
+  readonly budget?: CallBudget;
+}
+
+/** Options for a single read. */
+export interface ZohoReadOptions {
+  /** Counted against this instead of the client's budget (see `ZohoCall.budget`). */
+  readonly budget?: CallBudget;
 }
 
 /** Options for a single write. */
@@ -130,8 +141,19 @@ export class ZohoBooksClient {
     return this.tokens.registerRefreshToken(organizationId, refreshToken);
   }
 
-  get(organizationId: string, path: string, query?: ZohoQuery): Promise<ZohoResult<ZohoResponse>> {
-    return this.request({ organizationId, method: "GET", path, ...(query ? { query } : {}) });
+  get(
+    organizationId: string,
+    path: string,
+    query?: ZohoQuery,
+    options?: ZohoReadOptions,
+  ): Promise<ZohoResult<ZohoResponse>> {
+    return this.request({
+      organizationId,
+      method: "GET",
+      path,
+      ...(query ? { query } : {}),
+      ...(options?.budget ? { budget: options.budget } : {}),
+    });
   }
 
   post(
@@ -264,7 +286,7 @@ export class ZohoBooksClient {
     let status: number | undefined;
     try {
       release = await this.gate.acquire(call.organizationId);
-      await this.takeBudget(call.organizationId);
+      await this.takeBudget(call.organizationId, call.budget ?? this.budget);
       token = await this.accessToken(call.organizationId, rejectedToken);
       const request: TransportRequest = {
         method: call.method,
@@ -343,10 +365,10 @@ export class ZohoBooksClient {
     }
   }
 
-  private async takeBudget(organizationId: string): Promise<void> {
+  private async takeBudget(organizationId: string, budget: CallBudget): Promise<void> {
     let decision: Awaited<ReturnType<CallBudget["consume"]>>;
     try {
-      decision = await this.budget.consume(organizationId);
+      decision = await budget.consume(organizationId);
     } catch {
       // If we cannot count, we do not send.
       throw new ZohoBudgetExhaustedError({ code: "budget_unavailable" });

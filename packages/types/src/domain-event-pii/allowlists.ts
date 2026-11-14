@@ -209,6 +209,12 @@ export const EXCEPTION_PATHS: Record<string, Set<string>> = {
     "transferReference",
     "possibleGroup.id",
     "possibleGroup.status",
+    // A payment recorded in Zoho Books by hand: its key, the LAX invoice reference it was
+    // recorded against, and Books' payment mode (a picklist value) and date.
+    "booksPaymentKey",
+    "accountingReference",
+    "booksPaymentMode",
+    "booksPaymentDate",
   ]),
   /** How it was closed; a staff note is kept, as a refund's staff reason is. */
   "payment.unapplied_money_resolved": new Set(["dedupeKey", "stripeChargeId", "via", "note"]),
