@@ -276,3 +276,7 @@ After merging main, these were re-run and passed: domain 287, worker accounting 
 **Open for the owner.**
 - The accountant's answer becomes `SHOP_OUTSIDE_UK_DELIVERY_BOOKING`.
 - Books' "apply credits" request shape should be confirmed in the test organisation before the Shop goes live.
+
+## Recheck
+
+in progress
