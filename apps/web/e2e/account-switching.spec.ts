@@ -82,6 +82,19 @@ async function pageState(page: Page) {
         const header = document.querySelector("header[data-chrome-variant]");
         return header ? Object.keys(header).some((key) => key.startsWith("__react")) : null;
       })(),
+      // A part the server left to the browser (`next/dynamic` with `ssr: false`) keeps React's
+      // "render on the client" marker until the browser has drawn it.
+      clientOnlyPending: (() => {
+        const header = document.querySelector("header[data-chrome-variant]");
+        if (!header) return null;
+        const walker = document.createTreeWalker(header, NodeFilter.SHOW_COMMENT);
+        let markers = 0;
+        while (walker.nextNode()) if (walker.currentNode.nodeValue === "$!") markers += 1;
+        const templates = [...header.querySelectorAll("template[data-dgst]")].map((el) =>
+          el.getAttribute("data-dgst"),
+        );
+        return { markers, templates };
+      })(),
       headerButtons: [...document.querySelectorAll("header button, header a[aria-label]")]
         .map((el) => el.getAttribute("aria-label") ?? el.textContent?.trim() ?? "")
         .slice(0, 20),
