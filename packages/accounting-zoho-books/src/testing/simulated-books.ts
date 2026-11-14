@@ -55,6 +55,10 @@ export class SimulatedBooks implements ZohoTransport {
   readonly requests: TransportRequest[] = [];
   private readonly docs = new Map<string, Stored[]>();
   private counter = 5_000_000_000_000;
+  /** Payments Books shows against each invoice: LAX's, and any recorded by hand (`recordPaymentByHand`). */
+  private readonly invoicePayments = new Map<string, Json[]>();
+  /** States staff set by hand in Books (`setStateByHand`), by Books id. */
+  private readonly handStates = new Map<string, string>();
   private readonly numbers = new Map<string, number>();
 
   constructor(private readonly orgs: ZohoOrgConfigs) {}
@@ -100,6 +104,39 @@ export class SimulatedBooks implements ZohoTransport {
       .map((d) => d.record);
   }
 
+  /** Staff void (or otherwise change) a document in Books by hand. */
+  setStateByHand(id: string, state: string): void {
+    this.handStates.set(id, state);
+  }
+
+  /** Staff delete a document in Books by hand: it no longer exists. */
+  deleteByHand(entity: LegalEntity, id: string): void {
+    const org = this.orgs[entity];
+    const all = this.docs.get(org?.organizationId ?? "") ?? [];
+    const at = all.findIndex((d) => d.id === id);
+    if (at >= 0) all.splice(at, 1);
+  }
+
+  /**
+   * Staff record a payment against an invoice in Books by hand (a gallery sale, a cheque): it has
+   * no LAX reference and LAX never sent it. Returns its Books id.
+   */
+  recordPaymentByHand(
+    invoiceId: string,
+    payment: { amountPence: number; date: string; mode: string },
+  ): string {
+    const id = String(++this.counter);
+    const rows = this.invoicePayments.get(invoiceId) ?? [];
+    rows.push({
+      payment_id: id,
+      amount: pounds(payment.amountPence),
+      date: payment.date,
+      payment_mode: payment.mode,
+    });
+    this.invoicePayments.set(invoiceId, rows);
+    return id;
+  }
+
   private orgByOrganizationId(id: string | null): ZohoOrgConfig | undefined {
     return Object.values(this.orgs).find((o) => o?.organizationId === id);
   }
@@ -131,7 +168,24 @@ export class SimulatedBooks implements ZohoTransport {
   private detail(org: ZohoOrgConfig, kind: DocumentKind, id: string): TransportResponse {
     const found = this.held(org, kind).find((d) => d.id === id);
     if (!found) return failure(404, 1002, "does not exist");
-    return reply(200, { code: 0, message: "success", [KIND_SPECS[kind].itemKey]: found.record });
+    return reply(200, {
+      code: 0,
+      message: "success",
+      [KIND_SPECS[kind].itemKey]: this.withState(kind, found),
+    });
+  }
+
+  /** An invoice or credit note as Books shows it: its state, and an invoice's payments and balance. */
+  private withState(kind: DocumentKind, found: Stored): Json {
+    const hand = this.handStates.get(found.id);
+    if (kind === "credit_note") return { ...found.record, status: hand ?? "open" };
+    if (kind !== "invoice") return found.record;
+    const payments = this.invoicePayments.get(found.id) ?? [];
+    const paid = payments.reduce((sum, p) => sum + pence(p.amount as number), 0);
+    const total = pence(found.record.total as number);
+    const balance = Math.max(0, total - paid);
+    const state = hand ?? (balance === 0 ? "paid" : paid > 0 ? "partially_paid" : "sent");
+    return { ...found.record, status: state, balance: pounds(balance), payments };
   }
 
   private update(
@@ -203,6 +257,18 @@ export class SimulatedBooks implements ZohoTransport {
     const all = this.docs.get(org.organizationId) ?? [];
     all.push({ id, kind, reference, record });
     this.docs.set(org.organizationId, all);
+    if (kind === "payment") {
+      for (const row of (record.invoices ?? []) as Json[]) {
+        const rows = this.invoicePayments.get(row.invoice_id as string) ?? [];
+        rows.push({
+          payment_id: id,
+          amount: row.amount_applied,
+          date: record.date,
+          payment_mode: "Stripe",
+        });
+        this.invoicePayments.set(row.invoice_id as string, rows);
+      }
+    }
     if (fault === "timeout_after_commit") throw new Error("ECONNRESET");
     return reply(201, { code: 0, message: "created", [spec.itemKey]: record });
   }

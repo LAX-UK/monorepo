@@ -1,0 +1,178 @@
+import type { AccountingDocument, DocumentKind } from "./document.js";
+import type { IssuedDocument } from "./ports.js";
+
+/**
+ * The nightly status check: LAX reads back, from the provider, the documents it issued there and
+ * records what staff changed by hand in the books since (a document voided, a payment recorded
+ * there for a gallery sale or a cheque). The provider is never trusted to move money in LAX:
+ * nothing here can mark an invoice or a lot paid. A payment recorded only in the books becomes a
+ * finance task, and a person decides.
+ */
+
+/** Kinds whose state the check reads back: what a buyer owes, is owed, or paid. */
+export const STATUS_CHECKED_KINDS = [
+  "invoice",
+  "credit_note",
+  "payment",
+] as const satisfies readonly DocumentKind[];
+export type StatusCheckedKind = (typeof STATUS_CHECKED_KINDS)[number];
+
+export function isStatusCheckedKind(kind: DocumentKind): kind is StatusCheckedKind {
+  return (STATUS_CHECKED_KINDS as readonly string[]).includes(kind);
+}
+
+/**
+ * What the provider says a document is now, in LAX's words. `other` is any state the adapter does
+ * not know: it is recorded as read, never guessed at.
+ */
+export const BOOKS_STATES = [
+  "draft",
+  "open",
+  "overdue",
+  "partially_paid",
+  "paid",
+  /** A credit note fully used (applied or refunded). */
+  "closed",
+  /** A payment the provider still holds; payments have no other state. */
+  "recorded",
+  "void",
+  "other",
+] as const;
+export type BooksState = (typeof BOOKS_STATES)[number];
+
+export function isBooksState(value: unknown): value is BooksState {
+  return typeof value === "string" && (BOOKS_STATES as readonly string[]).includes(value);
+}
+
+/** A payment the provider shows against an invoice, as it shows it. Never applied to anything in LAX. */
+export interface BooksPaymentSeen {
+  /** The provider's own payment id. */
+  readonly providerPaymentId: string;
+  readonly amountPence: number;
+  /** The payment date as the provider holds it (YYYY-MM-DD), when it gives one. */
+  readonly date: string | null;
+  /** How it was paid, as the provider words it (e.g. "Cheque"); free text, shown to finance only. */
+  readonly mode: string | null;
+}
+
+/** One read of a document's state from the provider. */
+export interface BooksStatusReading {
+  readonly state: BooksState;
+  /** What is still owed, for an invoice; null for other kinds or when the provider gives none. */
+  readonly balancePence: number | null;
+  /** Payments the provider shows against an invoice; empty for other kinds. */
+  readonly payments: readonly BooksPaymentSeen[];
+}
+
+/**
+ * What a status read can end in. `rehearsal` is the dry run's answer: nothing was asked and
+ * nothing is known, so nothing is recorded. `budget_spent` means the day's share of calls for the
+ * check is used up: the check stops and the rest waits for the next night.
+ */
+export type StatusReadOutcome =
+  | { readonly status: "read"; readonly reading: BooksStatusReading }
+  | { readonly status: "not_found" }
+  | { readonly status: "unavailable"; readonly reason: string }
+  | { readonly status: "budget_spent" }
+  | { readonly status: "rehearsal" };
+
+/** Reads one issued document's state from the provider. Read only: it never writes anything. */
+export interface DocumentStatusPort {
+  readStatus(document: AccountingDocument, issued: IssuedDocument): Promise<StatusReadOutcome>;
+}
+
+/** What LAX last recorded of a document's state in the provider. */
+export interface BooksStatusSnapshot {
+  readonly state: BooksState | "missing";
+  readonly balancePence: number | null;
+  /** Every provider payment id seen against it so far, sorted. */
+  readonly paymentIds: readonly string[];
+}
+
+/** One thing that changed in the provider since the last read. */
+export type BooksStatusChange =
+  | {
+      readonly kind: "state_changed";
+      readonly from: BooksStatusSnapshot["state"] | null;
+      readonly to: BooksStatusSnapshot["state"];
+    }
+  /** A payment the provider shows that LAX did not send: someone recorded it in the books. */
+  | { readonly kind: "payment_recorded_in_books"; readonly payment: BooksPaymentSeen };
+
+/**
+ * What the check does with one read: the snapshot to keep, the changes to record, and the payments
+ * that need a finance task. Deliberately nothing else: there is no way to say "mark paid".
+ */
+export interface BooksStatusDecision {
+  readonly snapshot: BooksStatusSnapshot;
+  readonly changes: readonly BooksStatusChange[];
+  /** Payments recorded in the books by hand, each to become one finance task (never applied). */
+  readonly financeTasks: readonly BooksPaymentSeen[];
+}
+
+/**
+ * Compares a read with what LAX last recorded. A payment is LAX's own when its provider id is one
+ * LAX recorded when it sent it (`laxPaymentIds`); any other is a payment recorded in the books by a
+ * person, reported once, the first time it is seen. The very first read of a document records its
+ * state as a change from nothing, so the history says when the check first looked.
+ */
+export function decideBooksStatus(input: {
+  readonly previous: BooksStatusSnapshot | null;
+  readonly read:
+    | { readonly status: "read"; readonly reading: BooksStatusReading }
+    | { readonly status: "not_found" };
+  readonly laxPaymentIds: ReadonlySet<string>;
+}): BooksStatusDecision {
+  const { previous, read, laxPaymentIds } = input;
+  const state: BooksStatusSnapshot["state"] =
+    read.status === "read" ? read.reading.state : "missing";
+  const payments = read.status === "read" ? read.reading.payments : [];
+  const seen = new Set(previous?.paymentIds ?? []);
+
+  const changes: BooksStatusChange[] = [];
+  if (!previous || previous.state !== state) {
+    changes.push({ kind: "state_changed", from: previous?.state ?? null, to: state });
+  }
+  const financeTasks: BooksPaymentSeen[] = [];
+  for (const payment of payments) {
+    if (laxPaymentIds.has(payment.providerPaymentId) || seen.has(payment.providerPaymentId)) {
+      continue;
+    }
+    changes.push({ kind: "payment_recorded_in_books", payment });
+    financeTasks.push(payment);
+  }
+
+  const paymentIds = [...new Set([...seen, ...payments.map((p) => p.providerPaymentId)])].sort();
+  return {
+    snapshot: {
+      state,
+      balancePence: read.status === "read" ? read.reading.balancePence : null,
+      paymentIds,
+    },
+    changes,
+    financeTasks,
+  };
+}
+
+/**
+ * The share of the provider's daily call budget the nightly check may use, so sending documents
+ * is never starved by it: it stops after `maxCalls` of its own, and before the day's count leaves
+ * fewer than `keepFree` calls for everything else.
+ */
+export interface StatusCheckAllowance {
+  readonly maxCalls: number;
+  readonly keepFree: number;
+}
+
+export const DEFAULT_STATUS_CHECK_ALLOWANCE: StatusCheckAllowance = {
+  maxCalls: 300,
+  keepFree: 400,
+};
+
+/** The finance task's key for a payment recorded in the books: one task per provider payment. */
+export function booksPaymentTaskReference(
+  organisationId: string,
+  providerPaymentId: string,
+): string {
+  return `books:${organisationId}:${providerPaymentId}`;
+}

@@ -11,6 +11,7 @@ import {
   type DocumentKind,
   type DocumentLookupPort,
   type DocumentPdfPort,
+  type DocumentStatusPort,
   type Invoice,
   type InvoicePort,
   type IssueOutcome,
@@ -26,6 +27,7 @@ import {
   type ProviderDocument,
   type RemainderApplication,
   type RemainderOutcome,
+  type StatusReadOutcome,
   type WriteFence,
   expectedTotals,
   legalEntityFor,
@@ -233,6 +235,29 @@ export class InMemoryAccounting implements AccountingPorts {
    * The PDF Books would render for an invoice or credit note it holds, asked for by the identity
    * it gave. Anything else (not held, another kind, another id) is `unavailable`, as Books would be.
    */
+  /** What a status read answers for a Books id, set by a test (`setStatus`). */
+  private readonly statusScript = new Map<string, StatusReadOutcome>();
+  /** Every status read asked of the fake, by Books id, for assertions (e.g. the budget). */
+  readonly statusReads: string[] = [];
+
+  /** Script what Books says about a document now (voided, paid by hand, deleted...). */
+  setStatus(providerId: string, outcome: StatusReadOutcome): void {
+    this.statusScript.set(providerId, outcome);
+  }
+
+  readonly statuses: DocumentStatusPort = {
+    readStatus: async (document, issued): Promise<StatusReadOutcome> => {
+      this.statusReads.push(issued.providerId);
+      const scripted = this.statusScript.get(issued.providerId);
+      if (scripted) return scripted;
+      const entity = legalEntityFor(document.product);
+      const held = this.held.get(this.key(entity, document.kind, document.reference, "customer"));
+      if (!held || held.doc.providerId !== issued.providerId) return { status: "not_found" };
+      const state = document.kind === "payment" ? "recorded" : "open";
+      return { status: "read", reading: { state, balancePence: null, payments: [] } };
+    },
+  };
+
   readonly pdfs: DocumentPdfPort = {
     fetchPdf: async (document, issued): Promise<PdfOutcome> => {
       const entity = legalEntityFor(document.product);

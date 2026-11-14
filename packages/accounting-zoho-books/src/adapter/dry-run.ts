@@ -11,6 +11,7 @@ import {
   type RemainderApplication,
   type RemainderOutcome,
   type Result,
+  type StatusReadOutcome,
   expectedTotals,
 } from "@auction/accounting-domain";
 import type { AccountingPorts } from "./accounting-ports.js";
@@ -120,6 +121,10 @@ export function createZohoBooksDryRunAdapter(deps: {
     pdfs: {
       fetchPdf: (doc, issued): Promise<PdfOutcome> =>
         Promise.resolve(rehearsalPdfFor(doc, issued.providerId)),
+    },
+    // Nothing was written, so there is nothing to read back: the status check records nothing.
+    statuses: {
+      readStatus: (): Promise<StatusReadOutcome> => Promise.resolve({ status: "rehearsal" }),
     },
     // It holds no client: whatever the settings name, it reaches no organisation.
     destination: { destinationFor: () => ({ kind: "none" }) },
