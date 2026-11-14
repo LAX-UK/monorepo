@@ -104,10 +104,12 @@ test.describe("public site accessibility @a11y @public-a11y", () => {
 
     await page.setViewportSize({ width: 1440, height: 900 });
     await open(page, { name: "home", path: "/" });
-    await expect(page.getByRole("region", { name: "Cookies" })).toBeVisible();
+    const banner = page.getByRole("region", { name: "Cookies" });
+    await expect(banner).toBeVisible();
     await scan(page, "cookie-banner", "1440 light");
     routesChecked.add("cookie-banner");
-    const settings = page.getByRole("button", { name: "Cookie settings", exact: true });
+    // The footer has a "Cookie settings" button too; open the settings from the banner.
+    const settings = banner.getByRole("button", { name: "Cookie settings", exact: true });
     if (await settings.isVisible()) {
       await settings.click();
       await expect(page.getByRole("dialog")).toBeVisible();
