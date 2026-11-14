@@ -72,6 +72,14 @@ export const disputesList = defineWorkList({
   searchMaxLength: ADMIN_WORK_LIST_SEARCH_MAX_LENGTH,
 });
 
+/**
+ * Where a dispute is worked on: it has no page of its own, so the order it was raised on, at its
+ * payment (the charge the dispute is against).
+ */
+export function disputeOrderHref(dispute: { orderId: string }): string {
+  return `/orders/${encodeURIComponent(dispute.orderId)}#payment`;
+}
+
 export const payoutsList = defineWorkList({
   path: "/payouts",
   views: [ALL, ...byStatus("payout", ["due", "pending_refund_period", "paid", "cancelled"])],

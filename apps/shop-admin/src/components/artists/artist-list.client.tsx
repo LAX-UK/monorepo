@@ -5,38 +5,28 @@ import {
   type ArtistArchiveTarget,
 } from "@/components/artists/artist-archive-dialog.client";
 import { ArtistCreateDialog } from "@/components/artists/artist-create-dialog.client";
-import { knownFacts, useWorkList } from "@/components/use-work-list.client";
+import { useWorkList } from "@/components/use-work-list.client";
 import {
   type ArtistListState,
   artistArtworksHref,
   artistHref,
   artistList,
-  artworkCountLabel,
 } from "@/server/domain/artist-list.vm";
 import { presentStatus } from "@/server/domain/staff-status";
 import type { AdminArtistList, AdminArtistListItem } from "@auction/shop-contracts";
 import {
   type DataColumn,
-  DetailPanel,
   ListPage,
   MappedStatusBadge,
   type OverflowAction,
   PrimaryCell,
   StaffButton,
   StaffDate,
-  formatStaffDateTime,
 } from "@auction/staff-ui";
-import {
-  Archive,
-  ArchiveRestore,
-  ExternalLink,
-  Images,
-  PanelRight,
-  Plus,
-} from "@auction/staff-ui/icons";
+import { Archive, ArchiveRestore, ExternalLink, Images, Plus } from "@auction/staff-ui/icons";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 const presentArtistStatus = presentStatus("artist");
 
@@ -44,9 +34,8 @@ const statusOf = (row: AdminArtistListItem) => (row.archived ? "archived" : "act
 
 /**
  * Artists on lax.art and LAX Shop on the staff list template: active by default, archived and all
- * a view away with counts, search by name or web address, A to Z on the server, and a
- * record panel linked from the URL (`?artist=`). The artist's page holds their sign-in, search
- * listing, works, editions and sales.
+ * a view away with counts, search by name or web address, A to Z on the server. A row opens the
+ * artist's page, which holds their sign-in, search listing, works, editions and sales.
  */
 export function ArtistList({
   state,
@@ -69,7 +58,10 @@ export function ArtistList({
   });
   const [creating, setCreating] = useState(false);
   const [archiving, setArchiving] = useState<ArtistArchiveTarget | null>(null);
-  const opened = page.items.find((row) => row.artistId === list.panel.openId) ?? null;
+  const rowHref = useCallback(
+    (row: AdminArtistListItem) => artistList.recordHref(state, artistHref(row.artistId)),
+    [state],
+  );
 
   const columns = useMemo<DataColumn<AdminArtistListItem>[]>(
     () => [
@@ -80,11 +72,7 @@ export function ArtistList({
         defaultSortDirection: "asc",
         mobile: "title",
         cell: (row) => (
-          <PrimaryCell
-            href={list.panelHref(row.artistId)}
-            Link={list.panel.PanelLink}
-            secondary={`/${row.slug}`}
-          >
+          <PrimaryCell href={rowHref(row)} Link={Link} secondary={`/${row.slug}`}>
             {row.displayName}
           </PrimaryCell>
         ),
@@ -123,21 +111,15 @@ export function ArtistList({
         cell: (row) => <StaffDate value={row.createdAt} withTime />,
       },
     ],
-    [list.panelHref, list.panel.PanelLink],
+    [rowHref],
   );
 
   const rowActions = (row: AdminArtistListItem): OverflowAction[] => [
     {
-      id: "open",
-      label: "Open details",
-      icon: PanelRight,
-      onSelect: () => list.panel.show(row.artistId),
-    },
-    {
       id: "page",
       label: "Open artist page",
       icon: ExternalLink,
-      onSelect: () => router.push(artistHref(row.artistId)),
+      href: rowHref(row),
     },
     ...((row.artworkCount ?? 0) > 0
       ? [
@@ -219,8 +201,7 @@ export function ArtistList({
           data: page.items,
           getRowId: (row) => row.artistId,
           ...list.sort,
-          onRowOpen: (row) => list.panel.show(row.artistId),
-          activeRowId: list.panel.openId,
+          rowHref,
           rowActions: {
             label: (row) => `Actions for ${row.displayName}`,
             actions: rowActions,
@@ -229,55 +210,6 @@ export function ArtistList({
         pageSize={list.pageSize}
         pagination={list.pagination}
       />
-
-      <DetailPanel
-        open={opened !== null}
-        onOpenChange={(open) => {
-          if (!open) list.panel.show(null);
-        }}
-        title={opened?.displayName ?? "Artist"}
-        status={
-          opened ? (
-            <MappedStatusBadge status={statusOf(opened)} present={presentArtistStatus} />
-          ) : null
-        }
-        meta={
-          opened
-            ? knownFacts([
-                { label: "Discipline", value: opened.discipline ?? null },
-                { label: "Works", value: artworkCountLabel(opened.artworkCount ?? 0) },
-              ])
-            : []
-        }
-        summary={
-          opened
-            ? [
-                { label: "Web address", value: `/${opened.slug}` },
-                {
-                  label: "Added",
-                  value: formatStaffDateTime(opened.createdAt),
-                },
-                { label: "Artist ID", value: opened.artistId, copyValue: opened.artistId },
-              ]
-            : []
-        }
-        footer={
-          opened ? (
-            <>
-              {(opened.artworkCount ?? 0) > 0 ? (
-                <StaffButton asChild variant="secondary">
-                  <Link href={artistArtworksHref(opened.artistId)}>Show their artworks</Link>
-                </StaffButton>
-              ) : null}
-              <StaffButton asChild variant="primary">
-                <Link href={artistHref(opened.artistId)}>Open artist page</Link>
-              </StaffButton>
-            </>
-          ) : null
-        }
-      >
-        {null}
-      </DetailPanel>
 
       {canWrite ? <ArtistCreateDialog open={creating} onOpenChange={setCreating} /> : null}
       <ArtistArchiveDialog target={archiving} onClose={() => setArchiving(null)} />
