@@ -1,9 +1,11 @@
 // @vitest-environment jsdom
 import { pinClock } from "@/test/pin-clock";
+import { expectBackCloses, expectQueuePanel } from "@/test/queue-panel";
 import type { AdminAuditFacets, AdminAuditList } from "@auction/shop-contracts";
+import { StaffTooltipProvider } from "@auction/staff-ui";
 import { render, screen, within } from "@testing-library/react";
 import type * as React from "react";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn(), replace: vi.fn(), refresh: vi.fn() }),
@@ -67,8 +69,16 @@ const facets: AdminAuditFacets = {
 };
 
 function renderLog(query: Record<string, string> = {}) {
-  render(<AuditLogList state={auditList.parse(query)} page={page} facets={facets} />);
+  render(
+    <StaffTooltipProvider>
+      <AuditLogList state={auditList.parse(query)} page={page} facets={facets} />
+    </StaffTooltipProvider>,
+  );
 }
+
+beforeEach(() => {
+  window.history.replaceState(null, "", "/audit");
+});
 
 const rowOf = (text: string) =>
   within(screen.getByRole("grid")).getByText(text).closest("tr") as HTMLElement;
@@ -116,5 +126,42 @@ describe("the audit log", () => {
     const panel = await screen.findByRole("dialog", { name: /Payout marked paid/ });
     expect(within(panel).getByText("Due → Paid")).toBeInTheDocument();
     expect(within(panel).getByText("FPS-1")).toBeInTheDocument();
+  });
+});
+
+describe("the audit log's event panel", () => {
+  const paid = {
+    link: "Payout marked paid",
+    panel: /Payout marked paid/,
+    id: "11111111-1111-4111-8111-111111111111",
+  };
+  const expired = {
+    link: "Stock hold expired",
+    panel: /Stock hold expired/,
+    id: "33333333-3333-4333-8333-333333333333",
+  };
+
+  it("opens an event in the URL, steps with J and K, and Esc returns to the row", async () => {
+    renderLog();
+    await expectQueuePanel({
+      grid: "Audit log",
+      path: "/audit",
+      param: "event",
+      first: paid,
+      second: expired,
+      total: 2,
+    });
+  });
+
+  it("closes the panel on Back", async () => {
+    renderLog();
+    await expectBackCloses({ grid: "Audit log", path: "/audit", record: expired });
+  });
+
+  it("is the record itself: no full page, only the way to the record it changed", async () => {
+    renderLog({ event: paid.id });
+    const panel = await screen.findByRole("dialog", { name: paid.panel });
+    expect(within(panel).queryByRole("link", { name: "Open full page" })).toBeNull();
+    expect(within(panel).getByRole("link", { name: /^Open / })).toBeInTheDocument();
   });
 });

@@ -1,6 +1,7 @@
 "use client";
 
-import { filterChip, useWorkList } from "@/components/use-work-list.client";
+import { filterChip } from "@/components/use-work-list.client";
+import { useWorkQueue } from "@/components/use-work-queue.client";
 import {
   auditActionLabel,
   auditActor,
@@ -20,6 +21,7 @@ import {
   KeyValueList,
   ListPage,
   type OverflowAction,
+  type PanelQueue,
   PanelSection,
   PersonCell,
   PrimaryCell,
@@ -58,7 +60,7 @@ function actorOptions(facets: AdminAuditFacets): EntityOption[] {
  * The LAX Admin audit log on the staff list template: who did what to which record and when,
  * newest first (switchable on the server), a filter sheet for person, record, action and dates
  * held in the URL with a chip for each, and the full event in a panel linked from the URL
- * (`?event=`). Actions, records and people read as words; the platform's own work shows as
+ * (`?event=`), stepped through with J and K; Back closes it. Actions, records and people read as words; the platform's own work shows as
  * such, never as a person.
  */
 export function AuditLogList({
@@ -72,12 +74,14 @@ export function AuditLogList({
   facets: AdminAuditFacets;
   loadFailed?: boolean;
 }) {
-  const list = useWorkList({
+  const list = useWorkQueue({
     list: auditList,
     state,
     page,
     noun: { one: "event", other: "events" },
     search: { label: "Search the audit log", placeholder: "Search by action, person or record ID" },
+    ids: page.items.map((row) => row.auditId),
+    queueNoun: "event",
   });
   const actors = useMemo(() => actorOptions(facets), [facets]);
   const actions = useMemo<EntityOption[]>(
@@ -198,7 +202,7 @@ export function AuditLogList({
         id: "open",
         label: "Open event",
         icon: PanelRight,
-        onSelect: () => list.panel.show(row.auditId),
+        onSelect: () => list.panel.open(row.auditId),
       },
       ...(href
         ? [
@@ -318,7 +322,8 @@ export function AuditLogList({
           // The person's email is a second line.
           defaultDensity: "comfortable",
           ...list.sort,
-          onRowOpen: (row) => list.panel.show(row.auditId),
+          onRowOpen: (row) => list.panel.open(row.auditId),
+          rowHref: (row) => list.panelHref(row.auditId),
           activeRowId: list.panel.openId,
           rowActions: {
             label: (row) => `Actions for ${auditActionLabel(row.action)}`,
@@ -328,22 +333,34 @@ export function AuditLogList({
         pageSize={list.pageSize}
         pagination={list.pagination}
       />
-      <AuditEventPanel row={opened} onClose={() => list.panel.show(null)} />
+      <AuditEventPanel
+        row={opened}
+        queueProps={list.panel.queueProps}
+        onOpenChange={list.panel.onOpenChange}
+      />
     </>
   );
 }
 
 /** One event in full: who, on which record, what changed and what else it recorded. */
-function AuditEventPanel({ row, onClose }: { row: AuditRow | null; onClose: () => void }) {
+function AuditEventPanel({
+  row,
+  queueProps,
+  onOpenChange,
+}: {
+  row: AuditRow | null;
+  /** Its place in the events shown, to step through them with J and K. */
+  queueProps: { queue?: PanelQueue };
+  onOpenChange: (open: boolean) => void;
+}) {
   const detail = row ? auditDetail(row) : { changes: [], facts: [] };
   const who = row ? auditActor(row) : null;
   const href = row ? auditRecordHref(row.targetType, row.targetId) : null;
   return (
     <DetailPanel
       open={row !== null}
-      onOpenChange={(open) => {
-        if (!open) onClose();
-      }}
+      onOpenChange={onOpenChange}
+      {...queueProps}
       size="lg"
       title={row ? auditActionLabel(row.action) : "Event"}
       description={row ? formatStaffDateTime(row.createdAt) : undefined}
