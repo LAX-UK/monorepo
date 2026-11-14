@@ -89,15 +89,14 @@ class InMemoryStatusStore implements IAccountingBooksStatusStore {
     if (decision.changes.length > 0) this.changes.push({ documentId, decision });
   }
   async requestRecheck(_e: unknown, kind: string, providerId: string) {
-    const doc = this.issued().find(
+    const docs = this.issued().filter(
       (d) =>
         d.kind === kind &&
         d.record.status === "issued" &&
         d.record.issued.providerId === providerId,
     );
-    if (!doc) return null;
-    this.rechecks.add(doc.id);
-    return doc.id;
+    for (const doc of docs) this.rechecks.add(doc.id);
+    return docs.map((doc) => doc.id);
   }
   async startRun() {
     const id = `run-${this.runs.length + 1}`;

@@ -172,8 +172,9 @@ export class DrizzleAccountingBooksStatusStore implements IAccountingBooksStatus
     kind: StatusCheckedKind,
     providerId: string,
     at: Date,
-  ): Promise<string | null> {
-    const [row] = await this.db
+    limit: number,
+  ): Promise<readonly string[]> {
+    const rows = await this.db
       .select({ id: d.id })
       .from(d)
       .where(
@@ -184,14 +185,15 @@ export class DrizzleAccountingBooksStatusStore implements IAccountingBooksStatus
           eq(d.providerId, providerId),
         ),
       )
-      .orderBy(desc(d.createdAt))
-      .limit(1);
-    if (!row) return null;
-    await this.db
-      .insert(s)
-      .values({ documentId: row.id, recheckRequestedAt: at })
-      .onConflictDoUpdate({ target: s.documentId, set: { recheckRequestedAt: at } });
-    return row.id;
+      .orderBy(desc(d.createdAt), asc(d.id))
+      .limit(limit);
+    for (const row of rows) {
+      await this.db
+        .insert(s)
+        .values({ documentId: row.id, recheckRequestedAt: at })
+        .onConflictDoUpdate({ target: s.documentId, set: { recheckRequestedAt: at } });
+    }
+    return rows.map((row) => row.id);
   }
 
   async startRun(at: Date): Promise<string> {

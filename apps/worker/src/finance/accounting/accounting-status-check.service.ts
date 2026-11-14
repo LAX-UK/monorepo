@@ -21,6 +21,9 @@ import type { ZohoBooksNoticeModule } from "@auction/queues";
 /** How long after a read a document is due again: a little under a day, so each night reads it. */
 export const STATUS_READ_AGAIN_AFTER_MS = 20 * 60 * 60_000;
 
+/** Books ids are unique in an organisation: a notice names one document, a few at the very most. */
+const NOTICE_READS_AT_MOST = 3;
+
 /** Which document kind each Books module a notice names is. */
 const KIND_OF_MODULE: Readonly<Record<ZohoBooksNoticeModule, StatusCheckedKind>> = {
   invoice: "invoice",
@@ -151,18 +154,25 @@ export class AccountingStatusCheck {
     )?.[0];
     const kind = KIND_OF_MODULE[notice.module];
     if (!entity || !kind) return "not_ours";
-    const documentId = await this.deps.store.requestRecheck(
+    const documentIds = await this.deps.store.requestRecheck(
       entity,
       kind,
       notice.entityId,
       this.deps.now(),
+      NOTICE_READS_AT_MOST,
     );
-    if (!documentId) return "not_ours";
-    const due = await this.deps.store.findDue(documentId);
-    if (!due) return "not_ours";
-    // Not read now (no budget, Books unclear, a rehearsal): the mark stays, and tonight's run
-    // reads it first.
-    return (await this.check(due)).kind === "recorded" ? "read" : "not_read";
+    let read = false;
+    let held = false;
+    for (const documentId of documentIds) {
+      const due = await this.deps.store.findDue(documentId);
+      if (!due) continue;
+      held = true;
+      // Not read now (no budget, Books unclear, a rehearsal): the mark stays, and tonight's run
+      // reads it first.
+      if ((await this.check(due)).kind === "recorded") read = true;
+    }
+    if (!held) return "not_ours";
+    return read ? "read" : "not_read";
   }
 
   private async check(item: BooksStatusDue): Promise<CheckOutcome> {

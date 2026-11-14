@@ -3,10 +3,10 @@ import type { TargetMode } from "@auction/accounting-domain";
 import type { createDb } from "@auction/db";
 import type { IEmailService } from "@auction/email";
 import { UnappliedMoneyRecorder, createBooksAccountingAdapters } from "@auction/finance-runtime";
-import { DrizzleTransactionRunner } from "@auction/persistence";
 import {
   DrizzleBidAccountingFactsReader,
   DrizzleShopAccountingFactsReader,
+  DrizzleTransactionRunner,
   DrizzleUnappliedMoneyReader,
   createAccountingRepositories,
 } from "@auction/persistence/repositories";

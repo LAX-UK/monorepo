@@ -688,15 +688,17 @@ export interface IAccountingBooksStatusStore {
     observedAt: Date,
   ): Promise<void>;
   /**
-   * A Books notice named this document: mark it to be read first. Returns the document id, or
-   * null when no issued Books document of that kind holds that Books id in those books.
+   * A Books notice named this Books id: mark the issued Books documents of that kind holding it in
+   * those books to be read first (one, as Books ids are unique in an organisation; at most `limit`).
+   * Returns their ids; none when LAX holds no such document.
    */
   requestRecheck(
     legalEntity: LegalEntity,
     kind: StatusCheckedKind,
     providerId: string,
     at: Date,
-  ): Promise<string | null>;
+    limit: number,
+  ): Promise<readonly string[]>;
   startRun(at: Date): Promise<string>;
   finishRun(
     runId: string,
