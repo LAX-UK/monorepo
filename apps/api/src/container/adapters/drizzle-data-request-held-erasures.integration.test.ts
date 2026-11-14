@@ -1,6 +1,6 @@
 import { type Database, closeDb, createDb } from "@auction/db";
 import { dataRequestErasureHold } from "@auction/db/schema";
-import { like } from "drizzle-orm";
+import { like, sql } from "drizzle-orm";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import {
   deleteIdentityUserFixtures,
@@ -95,6 +95,29 @@ describe.skipIf(!HAS_DB)("DrizzleHeldErasures (integration)", () => {
     expect(mine(await holds.claimDue(now, 100, 60_000))).toEqual([]);
     const later = new Date(now.getTime() + 60_000);
     expect(mine(await holds.claimDue(later, 100, 60_000)).sort()).toEqual(taken);
+  });
+
+  it("passes over a request another run is claiming, without waiting for it", async () => {
+    const due = new Date("2031-03-01T00:00:00Z");
+    const now = new Date("2031-03-02T00:00:00Z");
+    for (const n of ["31", "32"]) {
+      await holds.held({
+        reference: `${PREFIX}${n}`,
+        requestedByUserId: STAFF,
+        plan: waiting(due),
+      });
+    }
+    const mine = (rows: { reference: string }[]) =>
+      rows.map((row) => row.reference).filter((ref) => ref.startsWith(PREFIX));
+    // Another run is mid-claim: it has the first row locked and has not committed.
+    const taken = await db.transaction(async (tx) => {
+      await tx.execute(
+        sql`SELECT 1 FROM "data_request_erasure_hold" WHERE "reference" = ${`${PREFIX}31`} FOR UPDATE`,
+      );
+      const timedOut = new Promise<"blocked">((done) => setTimeout(() => done("blocked"), 2_000));
+      return Promise.race([holds.claimDue(now, 100, 60_000), timedOut]);
+    });
+    expect(taken === "blocked" ? taken : mine(taken)).toEqual([`${PREFIX}32`]);
   });
 
   it("stops re-running a request handed to staff, and shows it in the queue", async () => {
