@@ -54,14 +54,16 @@ export type StripeBalanceOutcome =
   /** Something to book, but Books is not aimed at the product: recorded, never booked later. */
   | { readonly outcome: "not_aimed"; readonly product: Product };
 
-export type StripeRecordResult = "recorded" | "already_recorded";
+/** `parked_instead`: the outcome could not be recorded, so it was recorded parked `unrecognised`. */
+export type StripeRecordResult = "recorded" | "already_recorded" | "parked_instead";
 
 /**
  * The daily Stripe job's store. `record` is the duplicate guard: the balance transaction's row is
  * inserted and its documents registered in one database transaction, by whichever run inserts the
  * row first; every other run (a re-run, a concurrent one) finds the row and does nothing. A
- * document the registry refuses (a reference already holding a different document) rolls the row
- * back too, and the error is thrown: the transaction is read again next run, and a person looks.
+ * document the registry refuses (a reference already holding a different document), or a value
+ * the row's CHECKs refuse, rolls that back and the transaction is recorded parked `unrecognised`
+ * instead, with no documents, for a person to look at. Any other error is thrown.
  */
 export interface IStripeBooksLedger {
   accounts(): Promise<readonly StripeAccountState[]>;

@@ -26,6 +26,7 @@ import type {
   StripeRecordResult,
 } from "../../interfaces/accounting-stripe.js";
 import type { AccountingClock } from "../../interfaces/accounting.js";
+import { isPgCheckViolation } from "../../lib/pg-unique-violation.js";
 import { DrizzleAccountingDocumentRegistry } from "./drizzle-accounting-document.registry.js";
 
 /** A document the registry refused while a balance transaction was recorded; nothing was kept. */
@@ -118,6 +119,22 @@ export class DrizzleStripeBooksLedger implements IStripeBooksLedger {
   }
 
   async record(row: StripeBalanceRow, outcome: StripeBalanceOutcome): Promise<StripeRecordResult> {
+    try {
+      return await this.recordOnce(row, outcome);
+    } catch (error) {
+      // A value the row's CHECKs or the registry refuse: parked for a person, in a transaction of
+      // its own and with no documents, so one odd transaction never holds the account's cursor.
+      if (!(error instanceof StripeLedgerRefusedError) && !isPgCheckViolation(error)) throw error;
+      const parked = { outcome: "parked", product: null, reason: "unrecognised" } as const;
+      const result = await this.recordOnce({ ...row, payoutId: null }, parked);
+      return result === "recorded" ? "parked_instead" : result;
+    }
+  }
+
+  private async recordOnce(
+    row: StripeBalanceRow,
+    outcome: StripeBalanceOutcome,
+  ): Promise<StripeRecordResult> {
     const at = this.clock.now();
     return this.db.transaction(async (tx) => {
       const [inserted] = await tx

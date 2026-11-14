@@ -50,6 +50,8 @@ describe("migration 0385 Stripe fees and payouts to Books", () => {
   it("makes the balance transaction rows append-only and keyed on the Stripe ids", () => {
     expect(migration).toMatch(/PRIMARY KEY \("stripe_account_id", "balance_transaction_id"\)/);
     expect(migration).toMatch(/BEFORE UPDATE OR DELETE ON "accounting_stripe_balance_txn"/);
+    // Any Stripe id as the source: a narrower rule would stall the account on one odd value.
+    expect(migration).toContain(`"source_id" IS NULL OR "source_id" ~ '^[A-Za-z0-9_]{1,255}$'`);
   });
 
   it("keeps every new table from api_app", () => {

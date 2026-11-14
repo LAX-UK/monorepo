@@ -148,7 +148,7 @@ describe.skipIf(!HAS_DB)(
       // 230 card charges on DAY: three pages of 100.
       for (let n = 1; n <= 230; n += 1) stripe.add(charge(n, 100 + n));
       stripe.failAfterPages(2);
-      await expect(sync(stripe).run()).rejects.toThrow(/connection_reset/);
+      expect(await sync(stripe).run()).toMatchObject({ failedAccounts: 1, read: 0 });
       // Nothing of the failed window was decided: the cursor did not pass it.
       expect(await ledgerRows(SHOP_ACCOUNT)).toHaveLength(0);
 
@@ -171,6 +171,42 @@ describe.skipIf(!HAS_DB)(
       for (const call of stripe.calls.slice(before)) {
         expect(call.createdGte).toBeGreaterThanOrEqual((RUN_AT.getTime() - 10 * 60_000) / 1000 - 1);
       }
+    });
+
+    it("parks a transaction the ledger refuses as unrecognised, and books the rest of its page", async () => {
+      const SHOP_ACCOUNT = await account("shop");
+      const stripe = new FakeStripeBalance(SHOP_ACCOUNT);
+      // A payout whose source is not a payout id: its row breaks the ledger's CHECK.
+      const poison = stripeTxn({
+        id: id("txn", 2),
+        type: "payout",
+        amount: -5_000,
+        fee: 0,
+        created: NOON + 2,
+        source: { id: id("tr", 2), chargeId: null, paymentIntentId: null },
+      });
+      stripe.add(charge(1, 101), poison, charge(3, 103));
+      const summary = await sync(stripe, repos, 2).run();
+      expect(summary).toMatchObject({
+        read: 3,
+        recorded: 3,
+        booked: 2,
+        parked: 1,
+        failedAccounts: 0,
+      });
+      const rows = await ledgerRows(SHOP_ACCOUNT);
+      expect(rows.map((r) => [r.outcome, r.parkReason, r.payoutId])).toEqual([
+        ["booked", null, null],
+        ["parked", "unrecognised", null],
+        ["booked", null, null],
+      ]);
+      expect(await documentsFor(`LAX-SHOP-TRF-tr_${RUN.toLowerCase()}`)).toHaveLength(0);
+      expect(log.warn).toHaveBeenCalledWith(
+        expect.objectContaining({ id: id("txn", 2) }),
+        "accounting_stripe_transaction_unrecognised",
+      );
+      // The cursor moved past it: the next run reads nothing again.
+      expect(await sync(stripe).run()).toMatchObject({ read: 0 });
     });
 
     it("books nothing twice when two workers run at the same time, in real concurrent transactions", async () => {

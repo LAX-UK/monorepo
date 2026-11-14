@@ -2,6 +2,7 @@ import {
   type Product,
   type StripeAttribution,
   type StripeBalanceTransactionFacts,
+  type SwitchConfig,
   booksTargetMode,
   decideStripeBalanceTransaction,
   legalEntityFor,
@@ -45,7 +46,7 @@ export interface StripeBooksSyncDeps {
   /** One reader per Stripe key the worker holds (Bid's account, the Shop's). */
   readonly readers: readonly StripeBalanceReader[];
   readonly now: () => Date;
-  readonly log: Pick<Logger, "info" | "warn">;
+  readonly log: Pick<Logger, "info" | "warn" | "error">;
   /** Balance transactions per page (Stripe allows 1-100). */
   readonly pageSize?: number;
   /** The widest window read before the cursor moves on. */
@@ -66,6 +67,8 @@ export interface StripeBooksSyncSummary {
   readonly booked: number;
   readonly parked: number;
   readonly notAimed: number;
+  /** Accounts whose read failed this run: their cursor stays, and the report says so. */
+  readonly failedAccounts: number;
 }
 
 const DAY_MS = 24 * 60 * 60_000;
@@ -108,35 +111,51 @@ export class StripeBooksSync {
       booked: 0,
       parked: 0,
       notAimed: 0,
+      failedAccounts: 0,
     };
     for (const reader of this.deps.readers) {
-      const accountId = await reader.accountId();
-      const account = accounts.get(accountId);
-      if (!account) {
-        // Never guessed: a Stripe account no LAX row names is not read at all.
-        this.deps.log.warn(
-          { stripeAccountId: accountId },
-          "accounting_stripe_account_not_registered",
-        );
-        continue;
+      try {
+        await this.readKey(reader, accounts, config.value, totals);
+      } catch (error) {
+        // One account's failure never stops the others, nor the report that follows.
+        totals.failedAccounts += 1;
+        this.deps.log.error({ err: error }, "accounting_stripe_account_read_failed");
       }
-      const start =
-        account.readThrough ?? (account.opening ? startOfLondonDay(account.opening.on) : null);
-      if (!start) {
-        this.deps.log.warn({ stripeAccountId: accountId }, "accounting_stripe_account_no_opening");
-        continue;
-      }
-      totals.accounts += 1;
-      await this.readAccount(
-        reader,
-        account,
-        start,
-        (product) => booksTargetMode(config.value[product]) !== null,
-        totals,
-      );
     }
     this.deps.log.info(totals, "accounting_stripe_sync_done");
     return totals;
+  }
+
+  private async readKey(
+    reader: StripeBalanceReader,
+    accounts: ReadonlyMap<string, StripeAccountState>,
+    config: SwitchConfig,
+    totals: { -readonly [K in keyof StripeBooksSyncSummary]: number },
+  ): Promise<void> {
+    const accountId = await reader.accountId();
+    const account = accounts.get(accountId);
+    if (!account) {
+      // Never guessed: a Stripe account no LAX row names is not read at all.
+      this.deps.log.warn(
+        { stripeAccountId: accountId },
+        "accounting_stripe_account_not_registered",
+      );
+      return;
+    }
+    const start =
+      account.readThrough ?? (account.opening ? startOfLondonDay(account.opening.on) : null);
+    if (!start) {
+      this.deps.log.warn({ stripeAccountId: accountId }, "accounting_stripe_account_no_opening");
+      return;
+    }
+    totals.accounts += 1;
+    await this.readAccount(
+      reader,
+      account,
+      start,
+      (product) => booksTargetMode(config[product]) !== null,
+      totals,
+    );
   }
 
   private async readAccount(
@@ -163,6 +182,14 @@ export class StripeBooksSync {
           continue;
         }
         totals.recorded += 1;
+        if (result === "parked_instead") {
+          totals.parked += 1;
+          this.deps.log.warn(
+            { stripeAccountId: account.stripeAccountId, id: item.id, type: item.type },
+            "accounting_stripe_transaction_unrecognised",
+          );
+          continue;
+        }
         if (outcome.outcome === "booked") totals.booked += 1;
         if (outcome.outcome === "parked") totals.parked += 1;
         if (outcome.outcome === "not_aimed") totals.notAimed += 1;

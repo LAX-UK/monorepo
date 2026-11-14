@@ -55,6 +55,8 @@ export const STRIPE_PARK_REASONS = [
   "payout_reversed",
   /** Stripe reported amounts that cannot be (not whole pence, a payout into the balance). */
   "bad_amounts",
+  /** Stripe reported a value the ledger or the Books queue refuses (an id of an unknown shape). */
+  "unrecognised",
 ] as const;
 export type StripeParkReason = (typeof STRIPE_PARK_REASONS)[number];
 

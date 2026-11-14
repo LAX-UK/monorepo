@@ -54,7 +54,7 @@ export function registerAccountingWorkers(
     `${ACCOUNTING_WATCH_QUEUE_NAME} repeat registered (every ${ACCOUNTING_WATCH_EVERY_MS}ms)`,
   );
   // Daily: read Stripe's fees and payouts into the Books queue, then reconcile yesterday. One job,
-  // so the report always follows a finished read. Its cron monitor is the missed-run alert; a
+  // so the report always follows the read, even when one account's read failed. Its cron monitor is the missed-run alert; a
   // failure is reported like every worker job and retried by the queue's own attempts.
   const reconcileQueue = new Queue(
     ACCOUNTING_RECONCILE_QUEUE_NAME,
@@ -67,8 +67,12 @@ export function registerAccountingWorkers(
         ACCOUNTING_CRON_MONITORS.reconcile,
         sentryMonitorSlugs,
         async () => {
-          await accounting.stripeSync.run();
+          const read = await accounting.stripeSync.run();
           await accounting.reconciliation.run();
+          // The report goes out (and alerts) first; then the failed read fails the job too.
+          if (read.failedAccounts > 0) {
+            throw new Error(`accounting_stripe_accounts_failed:${read.failedAccounts}`);
+          }
         },
       );
     },

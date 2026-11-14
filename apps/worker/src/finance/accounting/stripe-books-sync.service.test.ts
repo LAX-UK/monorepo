@@ -64,7 +64,7 @@ function setUp(
     charges,
   );
   const stripe = new FakeStripeBalance("acct_1Test");
-  const log = { info: vi.fn(), warn: vi.fn() };
+  const log = { info: vi.fn(), warn: vi.fn(), error: vi.fn() };
   const sync = new StripeBooksSync({
     ledger,
     settings: { read: async () => ok(config) } as never,
@@ -236,9 +236,24 @@ describe("StripeBooksSync paging and cursor", () => {
     const { ledger, stripe, sync } = setUp("shop", new Map([["pi", ["shop"]]]));
     for (let n = 1; n <= 5; n += 1) stripe.add(chargeWith(`txn_${n}`, "pi", n));
     stripe.failAfterPages(1);
-    await expect(sync.run()).rejects.toThrow();
+    expect(await sync.run()).toMatchObject({ failedAccounts: 1, read: 0 });
     expect(ledger.cursor).toBeNull();
     expect(ledger.recorded.size).toBe(0);
+  });
+
+  it("reads the next key when one key's read fails", async () => {
+    const { ledger, stripe, log } = setUp("shop", new Map([["pi", ["shop"]]]));
+    stripe.add(chargeWith("txn_1", "pi"));
+    const revoked = new FakeStripeBalance("acct_1Test");
+    revoked.accountId = async () => Promise.reject(new Error("api_key_expired"));
+    const sync = new StripeBooksSync({
+      ledger,
+      settings: { read: async () => ok(aimed) } as never,
+      readers: [revoked, stripe],
+      now: () => NOW,
+      log,
+    });
+    expect(await sync.run()).toMatchObject({ failedAccounts: 1, accounts: 1, booked: 1 });
   });
 });
 

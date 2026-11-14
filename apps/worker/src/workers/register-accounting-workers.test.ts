@@ -84,7 +84,12 @@ describe("accounting watch cron", () => {
     const order: string[] = [];
     const runtime = {
       watch: { check: vi.fn() },
-      stripeSync: { run: vi.fn(async () => void order.push("sync")) },
+      stripeSync: {
+        run: vi.fn(async () => {
+          order.push("sync");
+          return { failedAccounts: 0 };
+        }),
+      },
       reconciliation: { run: vi.fn(async () => void order.push("report")) },
     } as unknown as AccountingRuntime;
     registerAccountingWorkers(deps(), runtime);
@@ -97,13 +102,28 @@ describe("accounting watch cron", () => {
     expect(ACCOUNTING_RECONCILE_TIME_ZONE).toBe("Europe/London");
     withMonitor.mockClear();
     await captured.processors.get("accounting-reconcile")?.();
-    // A missed or failed run is the monitor's alert; the report always follows a finished read.
+    // A missed or failed run is the monitor's alert; the report always follows the read.
     expect(withMonitor.mock.calls.map(([slug]) => slug)).toEqual(["accounting-reconcile-cron"]);
     expect(order).toEqual(["sync", "report"]);
     vi.unstubAllEnvs();
   });
 
-  it("does not report when the read fails, so a half-read day is never reconciled", async () => {
+  it("still reports when one account's read failed, then fails the job", async () => {
+    vi.stubEnv("SENTRY_DSN_WORKER", "https://key@o0.ingest.sentry.io/1");
+    const report = vi.fn();
+    registerAccountingWorkers(deps(), {
+      watch: { check: vi.fn() },
+      stripeSync: { run: vi.fn(async () => ({ failedAccounts: 1 })) },
+      reconciliation: { run: report },
+    } as unknown as AccountingRuntime);
+    await expect(captured.processors.get("accounting-reconcile")?.()).rejects.toThrow(
+      "accounting_stripe_accounts_failed:1",
+    );
+    expect(report).toHaveBeenCalledOnce();
+    vi.unstubAllEnvs();
+  });
+
+  it("does not report when the run itself fails (the switch or the ledger unreadable)", async () => {
     vi.stubEnv("SENTRY_DSN_WORKER", "https://key@o0.ingest.sentry.io/1");
     const report = vi.fn();
     registerAccountingWorkers(deps(), {

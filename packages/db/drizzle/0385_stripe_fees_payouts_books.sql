@@ -98,8 +98,9 @@ CREATE TABLE IF NOT EXISTS "accounting_stripe_balance_txn" (
     CHECK ("balance_transaction_id" ~ '^txn_[A-Za-z0-9]{1,48}$'),
   CONSTRAINT "accounting_stripe_balance_txn_type_ck" CHECK ("type" ~ '^[a-z_]{1,64}$'),
   CONSTRAINT "accounting_stripe_balance_txn_currency_ck" CHECK ("currency" ~ '^[a-z]{3}$'),
+  -- Any Stripe id shape: only `payout_id` is used, and a narrower rule would stall the account.
   CONSTRAINT "accounting_stripe_balance_txn_source_ck"
-    CHECK ("source_id" IS NULL OR "source_id" ~ '^[a-z]{1,8}_[A-Za-z0-9]{1,48}$'),
+    CHECK ("source_id" IS NULL OR "source_id" ~ '^[A-Za-z0-9_]{1,255}$'),
   CONSTRAINT "accounting_stripe_balance_txn_payout_ck"
     CHECK ("payout_id" IS NULL OR "payout_id" ~ '^po_[A-Za-z0-9]{1,48}$'),
   CONSTRAINT "accounting_stripe_balance_txn_product_ck"
