@@ -39,6 +39,7 @@ function mockDbWithPayment(paymentRow: {
   sellerLegalEntityId: string;
   status: string;
   amount: string;
+  stripeChargeId?: string;
 }): Database {
   const db = {
     select: vi.fn().mockReturnValue({
@@ -58,6 +59,13 @@ function mockDbWithPayment(paymentRow: {
   vi.mocked(db.transaction).mockImplementation((async (fn) =>
     fn(db as never)) as typeof db.transaction);
   return db;
+}
+
+/** The charge id of the latest lookup by charge, which the fixture invoice is taken to own. */
+function lastChargeLookedUp(): string | null {
+  const calls = vi.mocked(eq).mock.calls.filter(([column]) => column === payment.stripeChargeId);
+  const value = calls.at(-1)?.[1];
+  return typeof value === "string" ? value : null;
 }
 
 function createWebhookService(deps: {
@@ -140,6 +148,7 @@ function createWebhookService(deps: {
           sellerLegalEntityId: payment.sellerLegalEntityId,
           status: payment.status,
           amount: payment.amount,
+          stripeChargeId: payment.stripeChargeId,
         })
         .from(payment)
         .where(eq(payment.id, "pay_1"))
@@ -150,6 +159,10 @@ function createWebhookService(deps: {
         sellerLegalEntityId: row.sellerLegalEntityId,
         status: row.status,
         amount: String(row.amount),
+        // The fixture invoice was paid by the charge it is looked up by: its money, once captured.
+        everCaptured: true,
+        stripeChargeId: row.stripeChargeId ?? lastChargeLookedUp(),
+        stripePaymentIntentId: null,
       };
     }),
   };
@@ -270,6 +283,7 @@ describe("StripePaymentWebhookService.handleChargeRefundUpdated", () => {
         sellerLegalEntityId: "le_s",
         status: "captured",
         amount: "100.00",
+        stripeChargeId: "ch_single",
       }),
       stripeRefunds,
     });
@@ -298,6 +312,45 @@ describe("StripePaymentWebhookService.handleChargeRefunded — charge fixtures",
   beforeEach(() => {
     vi.mocked(tryClaimProcessedStripeEvent).mockReset();
     vi.mocked(tryClaimProcessedStripeEvent).mockResolvedValue({ claimed: true });
+  });
+
+  it.each([
+    [
+      "recorded as captured, with no charge or intent (marked paid by staff)",
+      { everCaptured: true },
+    ],
+    ["read without everCaptured", {}],
+  ])("does not treat a charge as the money of an invoice %s", async (_label, extra) => {
+    const stripeRefunds = new FakeChargeRefunds();
+    stripeRefunds.show("ch_other", 10_000);
+    const { svc, payoutAdjustments, paymentRefunds } = createWebhookService({
+      paymentWebhookLookup: {
+        findPaymentRow: async () =>
+          ({
+            id: "pay_1",
+            sellerLegalEntityId: "00000000-0000-4000-8000-000000000001",
+            status: "captured",
+            amount: "100.00",
+            stripeChargeId: null,
+            stripePaymentIntentId: null,
+            ...extra,
+          }) as never,
+      },
+      stripeRefunds,
+    });
+    const result = await svc.handleChargeRefunded(
+      { id: "evt_not_invoice_money", type: "charge.refunded" } as Stripe.Event,
+      {
+        id: "ch_other",
+        amount: 10_000,
+        amount_refunded: 10_000,
+        currency: "gbp",
+        payment_intent: "pi_other",
+      } as Stripe.Charge,
+    );
+    expect(result).toMatchObject({ reason: "refund_of_money_not_applied" });
+    expect(payoutAdjustments.addPaymentLineToOpenPayoutOrCreateClawback).not.toHaveBeenCalled();
+    expect(paymentRefunds.entries).toEqual([]);
   });
 
   it("uses the charge object id from a refund fixture instead of payment_intent", async () => {
@@ -594,7 +647,12 @@ describe("StripePaymentWebhookService.handleChargeRefunded — the buyer's refun
         runInTransaction: async (fn: (tx: never) => Promise<unknown>) => fn({} as never),
       } as never,
       {
-        findPaymentRow: async () => ({ ...row, sellerLegalEntityId: row.sellerLegalEntityId }),
+        findPaymentRow: async () => ({
+          ...row,
+          sellerLegalEntityId: row.sellerLegalEntityId,
+          everCaptured: true,
+          stripeChargeId: "ch_rec",
+        }),
       } as never,
       {} as never,
       {} as never,

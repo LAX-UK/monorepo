@@ -136,4 +136,40 @@ describe.skipIf(!HAS_DB)("unapplied money reader (integration)", () => {
       expect(eur.map((m) => m.currency)).toEqual(["EUR"]);
     });
   });
+
+  it("knows a charge was unapplied by its payment intent when the task has no charge id", async () => {
+    const payload = unappliedMoneyPayload({
+      reason: "invoice_already_paid",
+      paymentId: null,
+      paymentGroupId: null,
+      stripePaymentIntentId: pi("intent-only"),
+      stripeChargeId: null,
+      stripeCustomerId: null,
+      amountCents: 50_000,
+      currency: "gbp",
+    });
+    await db.insert(domainEvent).values({
+      aggregateType: "payment",
+      aggregateId: `grp-${run}-intent-only`,
+      eventType: UNAPPLIED_MONEY_EVENT,
+      payload,
+      producer: "integration-test",
+    });
+    const charge = `ch_unapplied_${run}_intent-only`;
+    expect(
+      await reader.wasEverUnapplied({ chargeId: charge, paymentIntentId: pi("intent-only") }),
+    ).toBe(true);
+    expect(await reader.wasEverUnapplied({ chargeId: charge, paymentIntentId: null })).toBe(false);
+    expect(await reader.wasEverUnapplied({ chargeId: charge, paymentIntentId: pi("other") })).toBe(
+      false,
+    );
+    // By charge id, as before.
+    await db.insert(domainEvent).values(received("by-charge", null));
+    expect(
+      await reader.wasEverUnapplied({
+        chargeId: `ch_unapplied_${run}_by-charge`,
+        paymentIntentId: null,
+      }),
+    ).toBe(true);
+  });
 });

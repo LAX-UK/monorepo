@@ -54,7 +54,8 @@ export type PaymentRowLookup = {
   amount: string;
   stripeChargeId?: string | null;
   stripePaymentIntentId?: string | null;
-  everCaptured?: boolean;
+  /** Whether the invoice was ever captured; required so a refund is never matched by default. */
+  everCaptured: boolean;
 };
 
 export async function findPaymentRow(

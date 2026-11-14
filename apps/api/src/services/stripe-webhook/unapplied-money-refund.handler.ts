@@ -35,7 +35,13 @@ export class UnappliedMoneyRefundHandler {
     if (await this.deps.reader.isChargeOfPaidInvoice(charge.id)) return null;
     // Any other charge ever reported as unapplied money, open or closed, is never an invoice's
     // own money: its refund never touches an invoice or a seller's payout.
-    if (!(await this.deps.reader.wasEverUnapplied(charge.id))) return null;
+    const paymentIntentId =
+      typeof charge.payment_intent === "string"
+        ? charge.payment_intent
+        : (charge.payment_intent?.id ?? null);
+    if (!(await this.deps.reader.wasEverUnapplied({ chargeId: charge.id, paymentIntentId }))) {
+      return null;
+    }
     // A pending refund can still fail: the finance task is closed only once the money went back.
     const { countedPence } = chargeRefundTotals(
       await this.deps.chargeRefunds.listChargeRefunds(charge.id),

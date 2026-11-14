@@ -362,4 +362,21 @@ describe("UnappliedMoneyRefundHandler", () => {
     });
     expect(resolveRefundedCharge).not.toHaveBeenCalled();
   });
+
+  it("asks whether the charge was ever unapplied by its charge id and its payment intent", async () => {
+    const wasEverUnapplied = vi.fn().mockResolvedValue(true);
+    const handler = new UnappliedMoneyRefundHandler({
+      transactionRunner: runner,
+      reader: {
+        listOpenByChargeId: vi.fn().mockResolvedValue([]),
+        isChargeOfPaidInvoice: vi.fn().mockResolvedValue(false),
+        wasEverUnapplied,
+      },
+      recorder: { resolveRefundedCharge: vi.fn() },
+      chargeRefunds: succeededRefunds(125000),
+    });
+    const withIntent = { ...charge(125000), payment_intent: "pi_2" } as Stripe.Charge;
+    await handler.handle(event, withIntent);
+    expect(wasEverUnapplied).toHaveBeenCalledWith({ chargeId: "ch_2", paymentIntentId: "pi_2" });
+  });
 });

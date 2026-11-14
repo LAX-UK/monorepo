@@ -28,14 +28,14 @@ function isInvoiceMoney(
   row: {
     stripeChargeId?: string | null;
     stripePaymentIntentId?: string | null;
-    everCaptured?: boolean;
+    everCaptured: boolean;
   },
   charge: { id: string; paymentIntentId: string | null },
 ): boolean {
-  if (row.everCaptured === false) return false;
+  if (!row.everCaptured) return false;
   if (row.stripeChargeId) return row.stripeChargeId === charge.id;
   if (row.stripePaymentIntentId) return row.stripePaymentIntentId === charge.paymentIntentId;
-  return row.everCaptured === undefined;
+  return false;
 }
 
 /**

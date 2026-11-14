@@ -72,14 +72,22 @@ export class DrizzleUnappliedMoneyReader implements IUnappliedMoneyReader {
     return open ?? null;
   }
 
-  async wasEverUnapplied(chargeId: string): Promise<boolean> {
+  async wasEverUnapplied(charge: {
+    chargeId: string;
+    paymentIntentId: string | null;
+  }): Promise<boolean> {
     const [row] = await this.db
       .select({ id: domainEvent.id })
       .from(domainEvent)
       .where(
         and(
           eq(domainEvent.eventType, UNAPPLIED_MONEY_EVENT),
-          sql`${field("stripeChargeId")} = ${chargeId}`,
+          or(
+            sql`${field("stripeChargeId")} = ${charge.chargeId}`,
+            charge.paymentIntentId
+              ? sql`${field("stripePaymentIntentId")} = ${charge.paymentIntentId}`
+              : undefined,
+          ),
         ),
       )
       .limit(1);
