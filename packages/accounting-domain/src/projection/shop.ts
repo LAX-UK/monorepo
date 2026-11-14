@@ -144,7 +144,7 @@ function goodsLines(facts: ShopOrderPaidFacts): Result<InclusiveLineInput[], Pro
   return ok(out);
 }
 
-interface ShopDocuments {
+export interface ShopDocuments {
   readonly contact: Contact;
   readonly invoice: Invoice;
   /** The outside-UK delivery, invoiced on its own; null for a UK order. */
@@ -265,6 +265,16 @@ export function rebuildShopOutsideUkDelivery(
       ? [{ reference: built.value.reference, reason: "vat_on_outside_uk_delivery" }]
       : [];
   return ok({ documents: [built.value], parked });
+}
+
+/**
+ * The order's contact and its own invoice, built exactly as the paid flow builds them, and the
+ * order's delivery outside the UK invoiced on its own (null when it has none), as the paid flow
+ * registered it (parked while its booking waits for the accountant). A refund's credit notes are
+ * built against this invoice, so they always credit what the buyer was invoiced.
+ */
+export function shopOrderInvoice(facts: ShopOrderPaidFacts): Result<ShopDocuments, ProjectionCode> {
+  return shopDocuments(facts, SHOP_OUTSIDE_UK_DELIVERY_BOOKING);
 }
 
 function shopDocuments(

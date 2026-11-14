@@ -17,8 +17,9 @@ import {
   accountingSourceSetting,
   paymentGroupDelivery,
   paymentRefund,
+  shopRefund,
 } from "@auction/db/schema";
-import { and, eq, ne, sql } from "drizzle-orm";
+import { and, eq, isNull, ne, sql } from "drizzle-orm";
 import type {
   AccountingClock,
   CreditBasis,
@@ -261,6 +262,25 @@ async function basisHolds(
         .from(paymentRefund)
         .where(eq(paymentRefund.paymentId, basis.paymentId));
       return (row?.rows ?? 0) === basis.refundRows ? ok(true) : changed("the payment's refunds");
+    }
+    case "shop_refunds": {
+      // A refund that went through (or was reversed) since the facts were read: built again.
+      const [row] = await tx
+        .select({ rows: sql<number>`count(*)`.mapWith(Number) })
+        .from(shopRefund)
+        .where(
+          and(
+            eq(shopRefund.orderId, basis.orderId),
+            eq(shopRefund.status, "succeeded"),
+            isNull(shopRefund.reversedAt),
+          ),
+        );
+      if ((row?.rows ?? 0) !== basis.succeededRefunds) return changed("the order's refunds");
+      // A new note fits on the lines only after exactly the credit it was built after (a replay of
+      // a stored note is not new, and is checked by its payload).
+      const built = basis.builtAfter.find((b) => b.reference === note.reference);
+      if (built && already !== built.priorCreditPence) return changed("the invoice's credit");
+      return ok(true);
     }
     case "delivery_refund": {
       if (already !== basis.priorCreditPence) return changed("the delivery invoice's credit");

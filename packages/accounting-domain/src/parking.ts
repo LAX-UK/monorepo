@@ -18,6 +18,11 @@ export const PARK_REASONS = [
   "buyer_default_treatment",
   /** A credit note for an invoice that was cancelled in the books: it can never be sent. */
   "credited_invoice_cancelled",
+  /**
+   * A Shop refund staff marked as settled outside Stripe: credited, but the account the money went
+   * back from is not named in LAX yet, so no refund is recorded and it is never sent.
+   */
+  "refund_outside_stripe",
 ] as const;
 export type ParkReason = (typeof PARK_REASONS)[number];
 
