@@ -15,6 +15,7 @@ import { closeDb, createDb } from "@auction/db";
 import { sql } from "drizzle-orm";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import type { AccountingProvider } from "../../interfaces/accounting.js";
+import { holdAccountingTablesLock } from "../../testing/accounting-tables-lock.js";
 import { createAccountingRepositories } from "./create-accounting-repositories.js";
 
 const OWNER_URL = process.env.DATABASE_URL;
@@ -91,6 +92,8 @@ async function rejectedCode(work: Promise<unknown>): Promise<string | undefined>
   }
   return undefined;
 }
+
+holdAccountingTablesLock({ beforeAll, afterAll });
 
 describe.skipIf(!HAS_DB)("accounting persistence (integration)", { timeout: 60_000 }, () => {
   // biome-ignore lint/style/noNonNullAssertion: gated by HAS_DB
