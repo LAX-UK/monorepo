@@ -6,21 +6,25 @@ import type {
   SettlementRow,
 } from "@/lib/admin/seller-proceeds/settlement-preview.vm";
 import {
-  EARLIER_AGREEMENT_VERSION,
   StaffButton,
+  SupersededAgreement,
   TextLink,
+  agreementLabel,
   cn,
   formatStaffExportDate,
 } from "@auction/staff-ui";
 import Link from "next/link";
 
-/** Where a row's rate comes from, in a cell: the agreement and when it was signed. */
+/**
+ * Where a row's rate comes from, in a cell: the agreement version and when it was signed, marked
+ * superseded when a later version has replaced it.
+ */
 export function RateSourceCell({ source }: { source: RowRateSource }) {
   if (!source) return <span className="text-staff-muted">—</span>;
   return (
-    <span className="flex flex-col">
+    <span className="flex flex-col items-start">
       <TextLink href={source.href} Link={Link}>
-        Agreement {source.reference}
+        {agreementLabel(source.reference, source.version ?? undefined)}
       </TextLink>
       <span className="text-staff-xs text-staff-muted">
         {source.kind === "recorded_by_staff"
@@ -29,9 +33,7 @@ export function RateSourceCell({ source }: { source: RowRateSource }) {
             ? `Signed ${formatStaffExportDate(source.signedAt)}`
             : null}
       </span>
-      {source.earlierVersion ? (
-        <span className="text-staff-xs text-staff-warning-fg">{EARLIER_AGREEMENT_VERSION}</span>
-      ) : null}
+      {source.earlierVersion ? <SupersededAgreement className="mt-1 text-staff-xs" /> : null}
     </span>
   );
 }

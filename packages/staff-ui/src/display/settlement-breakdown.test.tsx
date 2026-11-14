@@ -4,6 +4,7 @@ import { formatBpsAsPercent } from "../lib/percent.js";
 import {
   SettlementBreakdown,
   type SettlementBreakdownProps,
+  agreementLabel,
   sellerReceivesLabel,
   settlementStatusLabel,
 } from "./settlement-breakdown.js";
@@ -199,7 +200,7 @@ describe("SettlementBreakdown accessibility", () => {
 });
 
 describe("SettlementBreakdown agreement version", () => {
-  it("says the sale was priced on an earlier version next to the reference", () => {
+  it("names the version it was priced on and marks it superseded next to the reference", () => {
     render(
       <SettlementBreakdown
         {...ready}
@@ -208,16 +209,22 @@ describe("SettlementBreakdown agreement version", () => {
           reference: "C-1042",
           signedAt: "2026-10-03T10:00:00Z",
           href: "/admin/inbox/sub-1",
+          version: 1,
           earlierVersion: true,
         }}
       />,
     );
+    expect(screen.getByRole("link", { name: "Agreement C-1042 v1" })).toBeInTheDocument();
     expect(screen.getByText(/Agreement C-1042/).closest("p")).toHaveTextContent(
-      "Agreement C-1042 · signed 3 Oct 2026 · Priced on an earlier version of this agreement",
+      "Agreement C-1042 v1 · signed 3 Oct 2026 Superseded Priced on an earlier version of this agreement",
+    );
+    expect(screen.getByText("Superseded").closest("[data-tone]")).toHaveAttribute(
+      "data-tone",
+      "warning",
     );
   });
 
-  it("names a recorded agreement by its reference when it has one", () => {
+  it("names a recorded agreement by its reference and version when it has them", () => {
     render(
       <SettlementBreakdown
         {...ready}
@@ -225,18 +232,44 @@ describe("SettlementBreakdown agreement version", () => {
           kind: "recorded_by_staff",
           reference: "C-1042",
           href: "/admin/inbox/sub-1",
+          version: 2,
           earlierVersion: true,
         }}
       />,
     );
-    expect(screen.getByRole("link", { name: "Agreement C-1042" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Agreement C-1042 v2" })).toBeInTheDocument();
     expect(screen.getByText(/recorded by staff/)).toHaveTextContent(
-      "· recorded by staff · Priced on an earlier version of this agreement",
+      "Agreement C-1042 v2 · recorded by staff Superseded Priced on an earlier version of this agreement",
     );
+  });
+
+  it("names the current version without marking it superseded", () => {
+    render(
+      <SettlementBreakdown
+        {...ready}
+        rateSource={{
+          kind: "agreement",
+          reference: "C-1042",
+          signedAt: "2026-10-03T10:00:00Z",
+          href: "/admin/inbox/sub-1",
+          version: 2,
+        }}
+      />,
+    );
+    expect(screen.getByRole("link", { name: "Agreement C-1042 v2" })).toBeInTheDocument();
+    expect(screen.queryByText("Superseded")).not.toBeInTheDocument();
+    expect(screen.queryByText(/earlier version/)).not.toBeInTheDocument();
   });
 
   it("says nothing extra while the agreement is the one the sale was priced on", () => {
     render(<SettlementBreakdown {...ready} />);
     expect(screen.queryByText(/earlier version/)).not.toBeInTheDocument();
+  });
+});
+
+describe("agreementLabel", () => {
+  it("adds the version when it is known", () => {
+    expect(agreementLabel("C-1042", 3)).toBe("Agreement C-1042 v3");
+    expect(agreementLabel("C-1042")).toBe("Agreement C-1042");
   });
 });

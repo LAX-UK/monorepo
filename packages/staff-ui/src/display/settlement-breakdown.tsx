@@ -27,7 +27,9 @@ export type SettlementRateSource =
       readonly reference: string;
       readonly signedAt: Date | string;
       readonly href: string;
-      /** The sale was priced on this agreement before it was corrected. */
+      /** The agreement's version the sale was priced on: 1, then one up per edit once signed. */
+      readonly version?: number;
+      /** That version has since been superseded by a later one. */
       readonly earlierVersion?: boolean;
     }
   | {
@@ -35,11 +37,30 @@ export type SettlementRateSource =
       /** The consignment's reference and where it opens, when known. */
       readonly reference?: string;
       readonly href?: string;
+      readonly version?: number;
       readonly earlierVersion?: boolean;
     };
 
-/** Said beside the reference when the sale was priced on the agreement before a correction. */
+/** Said beside the reference when the sale was priced on a version since superseded. */
 export const EARLIER_AGREEMENT_VERSION = "Priced on an earlier version of this agreement";
+
+/** The badge on an agreement version a later version has superseded. */
+export const SUPERSEDED_AGREEMENT = "Superseded";
+
+/** "Agreement C-1042 v2": the reference, with its version when it is known. */
+export function agreementLabel(reference: string, version?: number): string {
+  return version ? `Agreement ${reference} v${version}` : `Agreement ${reference}`;
+}
+
+/** A superseded version's state: the badge, then why the sale still reads its figures. */
+export function SupersededAgreement({ className }: { className?: string }) {
+  return (
+    <span className={cn("inline-flex flex-wrap items-center gap-x-1.5 gap-y-1", className)}>
+      <StatusBadge tone="warning">{SUPERSEDED_AGREEMENT}</StatusBadge>{" "}
+      <span className="text-staff-warning-fg">{EARLIER_AGREEMENT_VERSION}</span>
+    </span>
+  );
+}
 
 /** VAT on the commission: charged at a rate, or not charged because the company is not registered. */
 export type SettlementVat =
@@ -156,14 +177,17 @@ function deduction(pence: number | null | undefined, currency: string): React.Re
 
 function RateSourceLine({ source, Link }: { source: SettlementRateSource; Link?: LinkComponent }) {
   const earlier = source.earlierVersion ? (
-    <span className="text-staff-warning-fg"> · {EARLIER_AGREEMENT_VERSION}</span>
+    <>
+      {" "}
+      <SupersededAgreement className="align-middle" />
+    </>
   ) : null;
   if (source.kind === "recorded_by_staff") {
     if (!source.reference || !source.href) return <span>Recorded by staff{earlier}</span>;
     return (
       <span>
         <TextLink href={source.href} {...(Link ? { Link } : {})}>
-          Agreement {source.reference}
+          {agreementLabel(source.reference, source.version)}
         </TextLink>{" "}
         · recorded by staff{earlier}
       </span>
@@ -172,7 +196,7 @@ function RateSourceLine({ source, Link }: { source: SettlementRateSource; Link?:
   return (
     <span>
       <TextLink href={source.href} {...(Link ? { Link } : {})}>
-        Agreement {source.reference}
+        {agreementLabel(source.reference, source.version)}
       </TextLink>{" "}
       · signed {formatStaffExportDate(source.signedAt)}
       {earlier}

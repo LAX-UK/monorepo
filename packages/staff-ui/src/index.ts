@@ -63,7 +63,10 @@ export type { StatusPresentation } from "@auction/ui/lax";
 export { KeyValueList } from "./display/key-value-list.js";
 export {
   EARLIER_AGREEMENT_VERSION,
+  SUPERSEDED_AGREEMENT,
   SettlementBreakdown,
+  SupersededAgreement,
+  agreementLabel,
   sellerReceivesLabel,
   settlementStatusLabel,
 } from "./display/settlement-breakdown.js";

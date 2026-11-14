@@ -82,15 +82,22 @@ export function premiumRateLabel(ratePercent: string | null, premiumPence: numbe
 }
 
 /**
- * Where the snapshot's rate comes from: the agreement it was priced on, said to be an earlier
- * version when that agreement has been corrected since (the figures stay the snapshot's).
+ * Where the snapshot's rate comes from: the agreement version it was priced on, marked superseded
+ * when a later version has replaced it (the figures stay the snapshot's).
  */
 function rateSourceFor(agreement: SellerAgreementRef | null): SettlementRateSource | null {
   if (!agreement) return null;
   const href = agreementHref(agreement.submissionId);
   const earlierVersion = agreement.pricedOnEarlierVersion ?? false;
+  const version = agreement.version !== undefined ? { version: agreement.version } : {};
   if (agreement.source === "recorded") {
-    return { kind: "recorded_by_staff", reference: agreement.reference, href, earlierVersion };
+    return {
+      kind: "recorded_by_staff",
+      reference: agreement.reference,
+      href,
+      ...version,
+      earlierVersion,
+    };
   }
   if (!agreement.signedAt) return null;
   return {
@@ -98,6 +105,7 @@ function rateSourceFor(agreement: SellerAgreementRef | null): SettlementRateSour
     reference: agreement.reference,
     signedAt: agreement.signedAt,
     href,
+    ...version,
     earlierVersion,
   };
 }
