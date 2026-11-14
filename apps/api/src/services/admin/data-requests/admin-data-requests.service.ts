@@ -172,13 +172,14 @@ export class AdminDataRequestsService {
   ): Promise<DataRequestOutcome<EnquiryErasureCounts>> {
     const found = await this.deps.identity.record(reference, actorUserId);
     if (!found.ok) return found;
-    return this.eraseFor(found.value, body, actorUserId);
+    return this.eraseFor(found.value, body, actorUserId, false);
   }
 
   /**
    * Runs a held erasure again for the staff member who asked for it, once its hold should have
    * ended. The same rules apply as for staff: the request must still be in progress and the
-   * address is Identity's, typed for them as the confirmation.
+   * address is Identity's, typed for them as the confirmation. Its audit rows are marked
+   * `automated`: the schedule did it, on their earlier request.
    */
   async rerunHeldErasure(
     reference: string,
@@ -191,6 +192,7 @@ export class AdminDataRequestsService {
       found.value,
       { confirmation, reason: HELD_ERASURE_RERUN_REASON },
       actorUserId,
+      true,
     );
   }
 
@@ -198,6 +200,7 @@ export class AdminDataRequestsService {
     record: DataRequestRecord,
     body: { confirmation: string; reason: string },
     actorUserId: string,
+    automated: boolean,
   ): Promise<DataRequestOutcome<EnquiryErasureCounts>> {
     const { request, person, ownRequest } = record;
     if (ownRequest) return { ok: false, status: 403, error: "own_request" };
@@ -210,7 +213,7 @@ export class AdminDataRequestsService {
       reason: body.reason,
     });
     if (!checked.ok) return { ok: false, status: 422, error: checked.error };
-    await this.audit("enquiry_erasure_requested", request.reference, actorUserId);
+    await this.audit("enquiry_erasure_requested", request.reference, actorUserId, automated);
     const outcome = await this.deps.enquiryErasure.eraseByEmail({
       email: person.email,
       confirmation: body.confirmation,
@@ -219,7 +222,7 @@ export class AdminDataRequestsService {
       requestReference: request.reference,
     });
     if (!outcome.ok) return { ok: false, status: 422, error: outcome.error };
-    await this.audit("enquiries_erased", request.reference, actorUserId);
+    await this.audit("enquiries_erased", request.reference, actorUserId, automated);
     const { ok: _ok, ...counts } = outcome;
     await this.keepHold(request.reference, counts, actorUserId);
     return { ok: true, value: counts };
@@ -239,8 +242,18 @@ export class AdminDataRequestsService {
     });
   }
 
-  private audit(action: DataRequestAuditAction, reference: string, actorUserId: string) {
-    return this.deps.audit.record({ action, reference, actorUserId });
+  private audit(
+    action: DataRequestAuditAction,
+    reference: string,
+    actorUserId: string,
+    automated = false,
+  ) {
+    return this.deps.audit.record({
+      action,
+      reference,
+      actorUserId,
+      ...(automated ? { automated: true } : {}),
+    });
   }
 }
 

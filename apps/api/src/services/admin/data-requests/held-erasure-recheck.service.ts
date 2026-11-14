@@ -14,6 +14,11 @@ export interface IHeldErasureRerun {
   ): Promise<DataRequestOutcome<EnquiryErasureCounts>>;
 }
 
+/** Whether a staff member may still erase for a data request, as the Data requests routes require. */
+export interface IHeldErasureActors {
+  canManageDataRequests(userId: string): Promise<boolean>;
+}
+
 export type HeldErasureRecheckResult = { released: number; waiting: number; needsStaff: number };
 
 /**
@@ -30,6 +35,7 @@ export class HeldErasureRecheckService {
     private readonly deps: {
       queue: IHeldErasureRecheckQueue;
       erasures: IHeldErasureRerun;
+      actors: IHeldErasureActors;
       /** Told once for each request handed to staff; carries the reference and why, nothing else. */
       onNeedsStaff: (reference: string, reason: "still_held" | "cannot_run") => void;
       now?: () => Date;
@@ -45,9 +51,12 @@ export class HeldErasureRecheckService {
     );
     const result: HeldErasureRecheckResult = { released: 0, waiting: 0, needsStaff: 0 };
     for (const held of due) {
-      const outcome = held.requestedByUserId
-        ? await this.deps.erasures.rerunHeldErasure(held.reference, held.requestedByUserId)
-        : null;
+      // The re-run acts as the staff member who asked, so they must still be allowed to.
+      const outcome =
+        held.requestedByUserId &&
+        (await this.deps.actors.canManageDataRequests(held.requestedByUserId))
+          ? await this.deps.erasures.rerunHeldErasure(held.reference, held.requestedByUserId)
+          : null;
       if (outcome?.ok && outcome.value.held === 0) {
         result.released += 1;
       } else if (outcome?.ok && held.reason === "open_deal") {

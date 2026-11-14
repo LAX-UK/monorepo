@@ -20,9 +20,16 @@ function setup(due: DueHeldErasure[]) {
     needsStaff: vi.fn(async (_reference: string, _reason: "still_held" | "cannot_run") => {}),
   };
   const erasures = { rerunHeldErasure: vi.fn(async (_ref: string, _actor: string) => counts(0)) };
+  const actors = { canManageDataRequests: vi.fn(async (_userId: string) => true) };
   const onNeedsStaff = vi.fn();
-  const service = new HeldErasureRecheckService({ queue, erasures, onNeedsStaff, now: () => NOW });
-  return { service, queue, erasures, onNeedsStaff };
+  const service = new HeldErasureRecheckService({
+    queue,
+    erasures,
+    actors,
+    onNeedsStaff,
+    now: () => NOW,
+  });
+  return { service, queue, erasures, actors, onNeedsStaff };
 }
 
 const held = (over: Partial<DueHeldErasure> = {}): DueHeldErasure => ({
@@ -79,6 +86,16 @@ describe("HeldErasureRecheckService", () => {
     await service.run();
     expect(erasures.rerunHeldErasure).not.toHaveBeenCalled();
     expect(queue.needsStaff).toHaveBeenCalledWith("DR-0007", "cannot_run");
+  });
+
+  it("hands staff a request whose staff member no longer holds the capability, without re-running it", async () => {
+    const { service, queue, erasures, actors, onNeedsStaff } = setup([held()]);
+    actors.canManageDataRequests.mockResolvedValueOnce(false);
+    expect(await service.run()).toEqual({ released: 0, waiting: 0, needsStaff: 1 });
+    expect(actors.canManageDataRequests).toHaveBeenCalledWith("staff-1");
+    expect(erasures.rerunHeldErasure).not.toHaveBeenCalled();
+    expect(queue.needsStaff).toHaveBeenCalledWith("DR-0007", "cannot_run");
+    expect(onNeedsStaff).toHaveBeenCalledWith("DR-0007", "cannot_run");
   });
 
   it("leaves the claim to run out when Identity cannot be reached, so the next run tries again", async () => {

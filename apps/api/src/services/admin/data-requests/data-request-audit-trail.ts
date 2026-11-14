@@ -5,7 +5,8 @@ export const DATA_REQUEST_AGGREGATE = "data_request";
 /**
  * What staff did: opened a record, or logged, edited, extended, closed or continued a request, or
  * erased a person's enquiries from it. An erasure leaves two rows: `enquiry_erasure_requested`
- * before it runs and `enquiries_erased` once it has.
+ * before it runs and `enquiries_erased` once it has. An erasure the schedule runs again after a
+ * hold ended leaves the same two rows, marked `automated`, under the staff member who first ran it.
  */
 export const DATA_REQUEST_AUDIT_ACTIONS = [
   "viewed",
@@ -25,12 +26,14 @@ export interface IDataRequestAuditTrail {
     action: DataRequestAuditAction;
     reference: string;
     actorUserId: string;
+    /** Done by the schedule on the actor's earlier request, not by the actor at this moment. */
+    automated?: boolean;
   }): Promise<void>;
 }
 
 /**
  * Writes one domain event per view and action: who, which request and what they did. The payload
- * is the reference only, never the person's contact details or the notes; the event type is the
+ * is the reference only (and whether the schedule did it), never the person's contact details or the notes; the event type is the
  * action and the actor is the event's actor.
  */
 export class DomainEventDataRequestAuditTrail implements IDataRequestAuditTrail {
@@ -40,12 +43,15 @@ export class DomainEventDataRequestAuditTrail implements IDataRequestAuditTrail 
     action: DataRequestAuditAction;
     reference: string;
     actorUserId: string;
+    automated?: boolean;
   }): Promise<void> {
     await this.sink.publish({
       aggregateType: DATA_REQUEST_AGGREGATE,
       aggregateId: input.reference,
       eventType: `data_request.${input.action}`,
-      payload: { reference: input.reference },
+      payload: input.automated
+        ? { reference: input.reference, automated: true }
+        : { reference: input.reference },
       producer: "apps/api",
       actorUserId: input.actorUserId,
     });

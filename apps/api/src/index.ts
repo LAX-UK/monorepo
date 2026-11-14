@@ -1,6 +1,7 @@
 import { assertRuntimeOwnership } from "@auction/background-runtime";
 import { closeDb } from "@auction/db";
 import { captureBackgroundError, initNodeSentry } from "@auction/observability";
+import { DrizzleStaffRoleAssignmentReader } from "@auction/persistence/repositories";
 import {
   DEAD_LETTER_QUEUE_NAME,
   LOT_LIFECYCLE_QUEUE_NAME,
@@ -12,9 +13,11 @@ import { serve } from "@hono/node-server";
 import { Queue } from "bullmq";
 import { createApp } from "./app.js";
 import { createContainer } from "./container.js";
+import { BidUserHeldErasureActors } from "./container/adapters/bid-user-held-erasure-actors.js";
 import { DrizzleHeldErasures } from "./container/adapters/drizzle-data-request-held-erasures.js";
 import { loadEnv } from "./env.js";
 import { startBidSsfRetentionSchedule } from "./infrastructure/bid-ssf-retention.schedule.js";
+import { DrizzleBidUserContextLoader } from "./infrastructure/drizzle-bid-user-context.loader.js";
 import { startHeldErasureRecheckSchedule } from "./infrastructure/held-erasure-recheck.schedule.js";
 import type { LotJobScheduler } from "./jobs/lot-job-scheduler.js";
 import { closeBullBoardQueues } from "./lib/bull-board.js";
@@ -50,6 +53,12 @@ const heldErasureRecheckSchedule = startHeldErasureRecheckSchedule({
   recheck: new HeldErasureRecheckService({
     queue: new DrizzleHeldErasures(container.db),
     erasures: container.admin.dataRequests,
+    actors: new BidUserHeldErasureActors(
+      new DrizzleBidUserContextLoader(
+        container.db,
+        new DrizzleStaffRoleAssignmentReader(container.db),
+      ),
+    ),
     onNeedsStaff: (reference, reason) =>
       console.warn("[held-erasure-recheck] request needs staff", { reference, reason }),
   }),

@@ -322,6 +322,30 @@ describe("AdminDataRequestsService.eraseEnquiries", () => {
     expect(heldErasures.cleared).toHaveBeenCalledWith("DR-0007");
   });
 
+  it("marks the audit rows of a re-run as automated, and those of a staff erasure not", async () => {
+    const { service, identity, audit } = setup();
+    (identity.record as ReturnType<typeof vi.fn>).mockResolvedValue(record());
+    await service.eraseEnquiries("DR-0007", body, "staff-1");
+    expect(audit.record).toHaveBeenCalledTimes(2);
+    for (const [row] of (audit.record as ReturnType<typeof vi.fn>).mock.calls) {
+      expect(row).not.toHaveProperty("automated");
+    }
+    (audit.record as ReturnType<typeof vi.fn>).mockClear();
+    await service.rerunHeldErasure("DR-0007", "staff-1");
+    expect(audit.record).toHaveBeenCalledWith({
+      action: "enquiry_erasure_requested",
+      reference: "DR-0007",
+      actorUserId: "staff-1",
+      automated: true,
+    });
+    expect(audit.record).toHaveBeenCalledWith({
+      action: "enquiries_erased",
+      reference: "DR-0007",
+      actorUserId: "staff-1",
+      automated: true,
+    });
+  });
+
   it("does not re-run a held erasure once the request is no longer in progress", async () => {
     const { service, identity, enquiryErasure } = setup();
     const closed = { request: { reference: "DR-0007", kind: "manual", status: "closed" } };
@@ -499,6 +523,20 @@ describe("DomainEventDataRequestAuditTrail", () => {
       producer: "apps/api",
       actorUserId: "staff-1",
     });
+  });
+
+  it("says in the event payload when the schedule did it", async () => {
+    const publish = vi.fn(async () => undefined);
+    const trail = new DomainEventDataRequestAuditTrail({ publish, withTx: vi.fn() });
+    await trail.record({
+      action: "enquiries_erased",
+      reference: "DR-0007",
+      actorUserId: "staff-1",
+      automated: true,
+    });
+    expect(publish).toHaveBeenCalledWith(
+      expect.objectContaining({ payload: { reference: "DR-0007", automated: true } }),
+    );
   });
 
   describe("dealHolds", () => {
