@@ -84,7 +84,7 @@ export function PageHeader({
 export function MetaItem({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <span className="inline-flex items-baseline gap-1.5">
-      <span className="text-staff-subtle">{label}</span>
+      <span className="shrink-0 whitespace-nowrap text-staff-subtle">{label}</span>
       <span className="text-staff-fg tabular-nums">{children}</span>
     </span>
   );

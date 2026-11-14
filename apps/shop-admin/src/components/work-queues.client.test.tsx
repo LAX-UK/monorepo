@@ -152,12 +152,12 @@ describe("the fulfilment queue", () => {
     await expectBackCloses({ grid: "Fulfilment", path: "/fulfilment", record: third });
   });
 
-  it('shows its place, "2 of 3", with the next step and the way to the order', async () => {
+  it('shows its place, "2 of 3", with the next step and the way to the full page', async () => {
     renderFulfilment({ fulfilment: second.id });
     const panel = await screen.findByRole("dialog", { name: second.panel });
     expect(panel.querySelector("[data-staff-queue-position]")).toHaveTextContent("2 of 3");
     expect(within(panel).getByRole("heading", { name: "Next step" })).toBeInTheDocument();
-    expect(within(panel).getByRole("link", { name: "Open order" })).toHaveAttribute(
+    expect(within(panel).getByRole("link", { name: "Open full page" })).toHaveAttribute(
       "href",
       `/orders/${uuid("b")}#fulfilment`,
     );
