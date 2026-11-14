@@ -3,6 +3,7 @@
 import { clearAccountNotice } from "@/lib/navigation/account-notice-cookie.client";
 import { Button } from "@auction/ui/components/button";
 import { ArrowLeftRight, X } from "lucide-react";
+import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 
 type Props = {
@@ -11,13 +12,23 @@ type Props = {
 
 /**
  * A one-time line saying Bid changed the account for the person ("Switched to Northbank Gallery
- * to show this."). It is a polite live region and clears its cookie as soon as it is shown, so it
- * never repeats.
+ * to show this."). It is a polite live region. It clears its cookie once the path has stayed put
+ * for a moment, so it never repeats but also survives a redirect that arrives after the layout
+ * has streamed (such as /home moving a personal account on to My bids): the page the person lands
+ * on still finds the cookie and shows the notice.
  */
+const SETTLE_MS = 1500;
+
 export function AccountNotice({ message }: Props) {
   const [open, setOpen] = useState(true);
 
-  useEffect(() => clearAccountNotice(), []);
+  const pathname = usePathname();
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: a new path restarts the settle timer
+  useEffect(() => {
+    const timer = setTimeout(clearAccountNotice, SETTLE_MS);
+    return () => clearTimeout(timer);
+  }, [pathname]);
 
   if (!open) return null;
   return (
