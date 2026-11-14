@@ -109,6 +109,7 @@ export function AdminUserSofPanel({ cases }: { cases: AdminSourceOfFundsRow[] })
       columns={columns}
       data={rows.slice(0, CASES_SHOWN)}
       getRowId={(row) => row.id}
+      rowHref={(row) => buildSofCaseDetailHref(row.id, normalizeSofListStatus(row.status))}
       defaultSort={{ columnId: "opened", direction: "desc" }}
       empty={{
         title: "No source of funds cases",

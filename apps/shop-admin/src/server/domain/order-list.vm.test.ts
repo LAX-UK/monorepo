@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   ADMIN_ORDER_STATUSES,
+  ORDER_DEFAULT_SORT,
   ORDER_STATUS_LABELS,
   dailyAveragePence,
   hasActiveOrderFilters,
@@ -10,12 +11,16 @@ import {
   orderListApiQuery,
   orderListHref,
   orderListPageHref,
+  orderListSortHref,
   orderMetrics,
   orderMetricsPeriod,
   orderNumber,
+  orderRecordHref,
+  orderSortState,
   orderStatusTone,
   orderTeamViews,
   parseOrderListQuery,
+  sortOrderRows,
 } from "./order-list.vm";
 
 describe("orderMetrics", () => {
@@ -228,5 +233,53 @@ describe("order labels", () => {
     ).toBe("Guest");
     expect(orderBuyerAccountLabel({ buyerIsGuest: true })).toBe("Guest checkout, no LAX account");
     expect(orderBuyerAccountLabel({})).toBe("LAX Account");
+  });
+});
+
+describe("order list sort and record links", () => {
+  it("keeps the sort in the URL, leaving the default out", () => {
+    expect(parseOrderListQuery({ sort: "total" })).toEqual({ sort: "total" });
+    expect(parseOrderListQuery({ sort: "-created" })).toEqual({});
+    expect(parseOrderListQuery({ sort: "-buyer" })).toEqual({});
+    expect(orderSortState({})).toEqual({ columnId: "created", direction: "desc" });
+    expect(orderSortState({ sort: "-total" })).toEqual({ columnId: "total", direction: "desc" });
+  });
+
+  it("re-sorts the page it is on, and filters keep the sort", () => {
+    const query = { status: "paid" as const, cursor: "c2" };
+    expect(orderListSortHref(query, { columnId: "total", direction: "asc" })).toBe(
+      "/orders?status=paid&cursor=c2&sort=total",
+    );
+    expect(orderListSortHref({ ...query, sort: "total" }, ORDER_DEFAULT_SORT)).toBe(
+      "/orders?status=paid&cursor=c2",
+    );
+    expect(orderListHref({ sort: "total" }, { q: "Ada" })).toBe("/orders?sort=total&q=Ada");
+  });
+
+  it("orders the rows by total or by creation", () => {
+    const rows = [
+      { id: "a", totalPence: 500, createdAt: "2026-11-02T10:00:00Z" },
+      { id: "b", totalPence: 900, createdAt: "2026-11-01T10:00:00Z" },
+      { id: "c", totalPence: 100, createdAt: "2026-11-03T10:00:00Z" },
+    ];
+    const ids = (sorted: typeof rows) => sorted.map((row) => row.id);
+    expect(ids(sortOrderRows(rows, ORDER_DEFAULT_SORT))).toEqual(["c", "a", "b"]);
+    expect(ids(sortOrderRows(rows, { columnId: "total", direction: "asc" }))).toEqual([
+      "c",
+      "a",
+      "b",
+    ]);
+    expect(ids(sortOrderRows(rows, { columnId: "total", direction: "desc" }))).toEqual([
+      "b",
+      "a",
+      "c",
+    ]);
+  });
+
+  it("links an order with the list it was opened from, without the page", () => {
+    expect(orderRecordHref({ status: "paid", sort: "total", cursor: "c2" }, "o-1")).toBe(
+      "/orders/o-1?list=status%3Dpaid%26sort%3Dtotal",
+    );
+    expect(orderRecordHref({}, "o-1")).toBe("/orders/o-1");
   });
 });

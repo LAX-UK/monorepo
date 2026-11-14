@@ -527,6 +527,7 @@ export function SaleAtgTab({ saleId, status, view, timeZone, canManage }: Props)
         columns={columns}
         data={view.lots}
         getRowId={(lot) => lot.lotId}
+        rowHref={(lot) => `/admin/lots/${encodeURIComponent(lot.lotId)}`}
         defaultSort={{ columnId: "lot", direction: "asc" }}
         empty={{
           title: "No lots in this sale",

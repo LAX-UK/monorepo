@@ -85,7 +85,7 @@ const rows = [
 ];
 
 function list() {
-  const state = parseEditorialList("exhibitions", { item: ID });
+  const state = parseEditorialList("exhibitions", {});
   return (
     <EditorialList
       kind="exhibitions"
@@ -93,7 +93,6 @@ function list() {
       state={state}
       page={editorialListPage("exhibitions", rows, state)}
       totalRows={rows.length}
-      initialOpened={rows[0] ?? null}
       artPublicUrl="https://lax.test"
     />
   );
@@ -125,15 +124,20 @@ const detail: ExhibitionDetail = {
 
 afterEach(cleanup);
 
+const rowOf = (text: string) =>
+  within(screen.getByRole("grid")).getByText(text).closest("tr") as HTMLElement;
+
 describe("editorial lists for Read-only", () => {
   it("shows the list with the View only marker and no way to create, publish or edit", async () => {
     as("read_only", list());
-    const panel = await screen.findByRole("dialog", { name: /Summer Show/ });
+    const row = within(rowOf("Summer Show"));
     expect(screen.getByText(/View only/)).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: /New exhibition/i, hidden: true })).toBeNull();
-    expect(within(panel).queryByRole("button", { name: "Unpublish" })).toBeNull();
-    expect(within(panel).queryByRole("link", { name: /^Edit/ })).toBeNull();
-    expect(within(panel).getByRole("link", { name: "View exhibition" })).toHaveAttribute(
+    expect(row.queryByRole("menuitem", { name: /Unpublish/ })).toBeNull();
+    expect(row.queryByRole("menuitem", { name: "Edit" })).toBeNull();
+    // The row opens the exhibition's page, where a Read-only person views it.
+    expect(row.getByRole("menuitem", { name: "View" })).toBeInTheDocument();
+    expect(row.getByRole("link", { name: "Summer Show" })).toHaveAttribute(
       "href",
       `/editorial/exhibitions/${ID}`,
     );
@@ -141,11 +145,11 @@ describe("editorial lists for Read-only", () => {
 
   it("keeps the create, publish and edit controls for an Editor", async () => {
     as("editor", list());
-    const panel = await screen.findByRole("dialog", { name: /Summer Show/ });
+    const row = within(rowOf("Summer Show"));
     expect(screen.queryByText(/View only/)).toBeNull();
     expect(screen.getByRole("link", { name: /New exhibition/i, hidden: true })).toBeInTheDocument();
-    expect(within(panel).getByRole("button", { name: "Unpublish" })).toBeInTheDocument();
-    expect(within(panel).getByRole("link", { name: "Edit exhibition" })).toBeInTheDocument();
+    expect(row.getByRole("menuitem", { name: /Unpublish/ })).toBeInTheDocument();
+    expect(row.getByRole("menuitem", { name: "Edit" })).toBeInTheDocument();
   });
 });
 

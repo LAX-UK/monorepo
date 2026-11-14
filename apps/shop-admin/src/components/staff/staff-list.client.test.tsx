@@ -3,7 +3,7 @@ import { pinClock } from "@/test/pin-clock";
 import type { AdminStaffMemberList } from "@auction/shop-contracts";
 import { capabilitiesForRoles } from "@auction/shop-domain";
 import { StaffAccessProvider } from "@auction/staff-ui";
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import type * as React from "react";
 import { describe, expect, it, vi } from "vitest";
 
@@ -106,7 +106,10 @@ function renderList(
 }
 
 const rowOf = (text: string) =>
-  within(screen.getByRole("grid")).getByText(text).closest("tr") as HTMLElement;
+  // Rows open nothing, so the table is a plain table rather than a grid.
+  within(screen.getByRole("table"))
+    .getAllByRole("row")
+    .find((row) => row.textContent?.includes(text)) as HTMLElement;
 
 pinClock();
 
@@ -139,26 +142,30 @@ describe("the staff list", () => {
     expect(screen.queryByRole("link", { name: "Manage in Bid admin" })).toBeNull();
   });
 
-  it("shows a person's roles read-only, each with its period, and what they allow together", async () => {
-    renderList({ staff: "22222222-2222-4222-8222-222222222222" });
-    const panel = await screen.findByRole("dialog", { name: /Eleanor Pereira/ });
-    const roles = within(panel).getByRole("list", { name: "Eleanor Pereira's roles" });
-    expect(within(roles).getByText("Catalogue editor")).toBeInTheDocument();
-    expect(within(roles).getByText(/Until Mon 30 Nov/)).toBeInTheDocument();
-    expect(within(roles).queryByRole("button")).toBeNull();
-    expect(
-      within(panel).getByText(/Editor: Stories, exhibitions, pages and help/),
-    ).toBeInTheDocument();
-    expect(within(panel).getByRole("link", { name: "Manage in Bid admin" })).toHaveAttribute(
-      "href",
-      "https://lax.bid/admin/staff/subject-me",
-    );
+  it("shows a person's roles in the row, with the ones that end, and no panel", () => {
+    renderList();
+    const row = rowOf("Eleanor Pereira");
+    expect(within(row).getByText("Catalogue editor, Editor")).toBeInTheDocument();
+    expect(within(row).getByText("Editor until Mon 30 Nov")).toBeInTheDocument();
+    expect(within(row).queryByRole("button", { name: /role/i })).toBeNull();
+    expect(row).not.toHaveClass("cursor-pointer");
+    fireEvent.click(within(row).getByText("Catalogue editor, Editor"));
+    expect(screen.queryByRole("dialog")).toBeNull();
   });
 
-  it("says when someone holds no role any more", async () => {
-    renderList({ staff: "33333333-3333-4333-8333-333333333333" });
-    const panel = await screen.findByRole("dialog", { name: /Theo Marsh/ });
-    expect(within(panel).getByText("No LAX Admin roles in force.")).toBeInTheDocument();
-    expect(within(panel).queryByRole("button", { name: "Give access again" })).toBeNull();
+  it("links the name to the person's page in Bid admin, in a new tab, and says so", () => {
+    renderList();
+    const link = within(rowOf("Eleanor Pereira")).getByRole("link", {
+      name: "Eleanor Pereira (opens Bid admin)",
+    });
+    expect(link).toHaveAttribute("href", "https://lax.bid/admin/staff/subject-me");
+    expect(link).toHaveAttribute("target", "_blank");
+    expect(link).toHaveAttribute("title", "Opens Bid admin in a new tab");
+  });
+
+  it("shows the name without a link to people who may not manage staff", () => {
+    renderList({}, ["read_only"]);
+    expect(within(rowOf("Sam Lee")).queryByRole("link", { name: /Sam Lee/ })).toBeNull();
+    expect(within(rowOf("Sam Lee")).getByText("Sam Lee")).toBeInTheDocument();
   });
 });

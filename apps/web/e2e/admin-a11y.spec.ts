@@ -2,7 +2,6 @@ import { type Page, expect, test } from "@playwright/test";
 import {
   e2eEnabled,
   e2eSkipReason,
-  expectNoSeriousAxeViolationsInDialog,
   expectNoSeriousAxeViolationsInMain,
   hasStaffCredentials,
   seededStaffRoutes,
@@ -194,13 +193,9 @@ test.describe("admin a11y smoke @a11y", () => {
     await assertMainContentA11y(page, "/admin/payments");
   });
 
-  test("clients preview drawer at mobile has no serious axe violations", async ({ page }) => {
+  test("client page at mobile has no serious axe violations in main", async ({ page }) => {
     await page.setViewportSize(mobileViewport);
-    await page.goto(`/admin/clients?client=${seededStaffRoutes.clientDetail}`);
-    await expect(
-      page.getByRole("dialog").filter({ hasText: /Robert Thorne|Overview/i }),
-    ).toBeVisible({ timeout: 15_000 });
-    await expectNoSeriousAxeViolationsInDialog(page);
+    await assertMainContentA11y(page, `/admin/clients/${seededStaffRoutes.clientDetail}`);
   });
 
   test("legal entity page from an old panel link passes serious axe checks", async ({ page }) => {

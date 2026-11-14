@@ -47,7 +47,7 @@ export function AdminClientArtistProfilesPanel({
       cell: (artist) => (
         <PrimaryCell
           Link={NextLink}
-          href={`/admin/artists/${encodeURIComponent(artist.id)}/edit`}
+          href={`/admin/artists/${encodeURIComponent(artist.id)}`}
           secondary={`/${artist.slug}`}
         >
           {artist.displayName}
@@ -107,6 +107,7 @@ export function AdminClientArtistProfilesPanel({
         columns={columns}
         data={linkedArtists}
         getRowId={(artist) => artist.id}
+        rowHref={(artist) => `/admin/artists/${encodeURIComponent(artist.id)}`}
         defaultSort={{ columnId: "name", direction: "asc" }}
         empty={{
           title: "No linked artist profiles",

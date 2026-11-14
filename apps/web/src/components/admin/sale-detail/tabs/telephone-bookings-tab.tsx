@@ -179,6 +179,7 @@ export function SaleTelephoneBookingsTab({ saleId, sale, liveish, rows, fetchErr
           columns={columns}
           data={filtered}
           getRowId={(row) => row.id}
+          rowHref={(row) => `/admin/clients/${encodeURIComponent(row.userId)}`}
           defaultSort={{ columnId: "requested", direction: "desc" }}
           toolbar={
             <DataTableToolbar

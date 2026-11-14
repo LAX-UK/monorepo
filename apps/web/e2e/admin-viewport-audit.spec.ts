@@ -60,10 +60,6 @@ test.describe("admin viewport audit @a11y", () => {
   test("mobile preview drawers do not overflow horizontally", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
 
-    await page.goto(`/admin/clients?client=${seededStaffRoutes.clientDetail}`);
-    await expect(page.getByRole("dialog")).toBeVisible();
-    await assertNoHorizontalOverflow(page);
-
     await page.goto(`/admin/payouts?payout=${seededStaffRoutes.payoutDrawer}`);
     await expect(page.getByRole("dialog")).toBeVisible();
     await assertNoHorizontalOverflow(page);

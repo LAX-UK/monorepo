@@ -11,7 +11,7 @@ export const visualVariants = {
 
 export type VisualVariantId = keyof typeof visualVariants;
 export type VisualCapture = "page" | "main" | "dialog";
-export type VisualSetup = "route" | "client-drawer" | "lot-filters";
+export type VisualSetup = "route" | "lot-filters";
 
 type AdminVisualCase = {
   path: string;
@@ -44,13 +44,6 @@ export const adminVisualCases: readonly AdminVisualCase[] = [
     slug: "admin-lot-detail",
     variants: ["desktop-light"],
     capture: "main",
-  },
-  {
-    path: `/admin/clients?client=${seededStaffRoutes.clientDetail}`,
-    slug: "admin-clients-drawer",
-    variants: ["desktop-light", "mobile-dark"],
-    capture: "page",
-    setup: "client-drawer",
   },
   {
     path: "/admin/lots",

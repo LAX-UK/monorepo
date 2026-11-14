@@ -4,7 +4,6 @@ import { linkedListingLabel } from "@/server/domain/edition-run.vm";
 import type { AdminEditionRunDetail } from "@auction/shop-contracts";
 import { CellLink, type DataColumn, RelatedRecordsSection } from "@auction/staff-ui";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 
 type Listing = AdminEditionRunDetail["linkedListings"][number];
 
@@ -34,7 +33,6 @@ const COLUMNS: readonly DataColumn<Listing>[] = [
 export function LinkedListingsCard({
   listings,
 }: { listings: AdminEditionRunDetail["linkedListings"] }) {
-  const router = useRouter();
   return (
     <RelatedRecordsSection<Listing>
       id="linked-listings"
@@ -44,7 +42,7 @@ export function LinkedListingsCard({
       data={listings}
       getRowId={(row) => row.artworkId}
       defaultSort={{ columnId: "title", direction: "asc" }}
-      onRowOpen={(row) => router.push(`/artworks/${row.artworkId}`)}
+      rowHref={(row) => `/artworks/${row.artworkId}`}
       empty={{
         title: "No linked listings",
         description:

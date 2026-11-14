@@ -17,6 +17,11 @@ export type RelatedRecordsSectionProps<T> = {
   getRowId: (row: T) => string;
   /** The order the rows arrive in, shown on the header; give every related table one. */
   defaultSort: SortState;
+  /**
+   * Each row is a link to its record's page (DataTable `rowHref`): render the title cell as a
+   * link to the same href. The way related rows open, as in every list.
+   */
+  rowHref?: (row: T) => string;
   onRowOpen?: (row: T) => void;
   /** What the section will show and how it gets there, when it has no rows yet. */
   empty: { title: string; description?: React.ReactNode; action?: React.ReactNode };
@@ -49,6 +54,7 @@ export function RelatedRecordsSection<T>({
   data,
   getRowId,
   defaultSort,
+  rowHref,
   onRowOpen,
   empty,
   viewAll,
@@ -91,6 +97,7 @@ export function RelatedRecordsSection<T>({
         defaultSort={defaultSort}
         stickyHeader={false}
         stickyToolbar={false}
+        {...(rowHref ? { rowHref } : {})}
         {...(onRowOpen ? { onRowOpen } : {})}
         empty={
           <EmptyState
