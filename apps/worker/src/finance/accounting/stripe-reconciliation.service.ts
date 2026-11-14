@@ -43,8 +43,8 @@ export interface ReconciliationClearing {
   /** Registered for Books and not issued yet: in flight, so not counted as a difference. */
   readonly inFlightPence: number;
   /**
-   * Movements in the Stripe balance since the opening that no Books flow books yet (seller
-   * transfers, refunds, dispute amounts), by type: known, so not counted as a difference.
+   * Movements in the Stripe balance since the opening that the clearing figure does not take from
+   * Books (seller transfers, refunds, dispute amounts), by type: known, so not a difference.
    */
   readonly knownUnbooked: readonly UnbookedMovement[];
   readonly knownUnbookedPence: number;

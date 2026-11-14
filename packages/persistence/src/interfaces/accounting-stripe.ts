@@ -112,7 +112,7 @@ export interface ClearingMovements {
   readonly notIssuedPence: number;
 }
 
-/** Money that moved in a Stripe balance and that no Books flow books yet, by balance transaction type. */
+/** Money that moved in a Stripe balance outside the clearing figure, by balance transaction type. */
 export interface UnbookedMovement {
   readonly type: string;
   /** Signed as Stripe signs it: negative when it left the balance (a seller transfer, a refund). */
@@ -143,8 +143,8 @@ export interface IStripeReconciliationStore {
   ): Promise<ClearingMovements>;
   /**
    * For the company's accounts, since each one's opening day: what the ledger's recorded
-   * transactions moved in the balance that no Books flow books (seller transfers, refunds, dispute
-   * amounts), by type, leaving out what this job booked and the charges the payments flow books.
+   * transactions moved in the balance that the clearing figure does not take from Books (seller
+   * transfers, refunds, dispute amounts), by type, leaving out what this job booked and the charges the payments flow books.
    * Parked and not-aimed rows are left out: they are differences.
    */
   knownUnbooked(entity: LegalEntity): Promise<readonly UnbookedMovement[]>;

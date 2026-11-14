@@ -1,5 +1,5 @@
 -- Stripe fees and payouts to Zoho Books, and the daily reconciliation (plan v2, PR 13, flow 25).
--- Applies after 0384. Books stays in dry run: nothing here sends anything.
+-- Applies after 0385. Books stays in dry run: nothing here sends anything.
 --
 -- 1. Two document kinds. `expense` (Stripe's fees, paid from the Stripe clearing account,
 --    `LAX-<P>-EXP-<balance transaction>`) and `transfer` (a Stripe payout, clearing to the bank,

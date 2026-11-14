@@ -1,5 +1,6 @@
 import type { AccountingPorts } from "./accounting-ports.js";
 import { type ZohoApi, booksDestination } from "./api.js";
+import { ZohoCreditNoteRefundGateway } from "./credit-note-refund.js";
 import {
   ZohoBillGateway,
   ZohoContactGateway,
@@ -56,6 +57,7 @@ export function createZohoBooksAdapter(deps: {
     payments: new ZohoPaymentGateway(gateway),
     remainders: new ZohoPaymentRemainderGateway(gateway, api),
     creditNotes: new ZohoCreditNoteGateway(gateway),
+    creditNoteRefunds: new ZohoCreditNoteRefundGateway(gateway, api),
     bills: new ZohoBillGateway(gateway),
     expenses: new ZohoExpenseGateway(gateway),
     transfers: new ZohoTransferGateway(gateway),

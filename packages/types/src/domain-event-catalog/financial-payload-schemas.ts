@@ -38,6 +38,20 @@ export const paymentGroupSettledPayloadSchemaV1 = z.object({
   settledAt: isoDateTime,
 });
 
+/**
+ * A refund of a courier quote paid in a "Pay several" charge raised its refunded running total
+ * (`payment_group_delivery.refunded_pence`), written in the same transaction. The books read the
+ * total and the charge from the stored rows, never from here.
+ */
+export const paymentGroupDeliveryRefundedPayloadSchemaV1 = z.object({
+  paymentGroupId: z.string().uuid(),
+  deliveryQuoteId: z.string().uuid(),
+  stripeChargeId: z.string(),
+  cumulativeRefundedCents: z.number().int().nonnegative(),
+  chargedCents: z.number().int().nonnegative(),
+  currency: z.string(),
+});
+
 export const paymentCapturedPayloadSchemaV1 = z.object({
   paymentId: z.string().uuid(),
   lotId: z.string().uuid(),

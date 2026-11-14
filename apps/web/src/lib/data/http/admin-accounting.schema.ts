@@ -75,7 +75,18 @@ export const accountingQueuePageSchema: z.ZodType<AccountingQueuePage> = z.objec
       since: z.string().nullable(),
     }),
   ),
-});
+  // Absent from an API that predates refunds: read as none waiting.
+  unattributedRefunds: z
+    .array(
+      z.object({
+        paymentGroupId: z.string(),
+        amountPence: z.number().int(),
+        buyerName: z.string(),
+        settledAt: z.string().nullable(),
+      }),
+    )
+    .default([]),
+}) as z.ZodType<AccountingQueuePage, z.ZodTypeDef, unknown> as z.ZodType<AccountingQueuePage>;
 
 export const accountingTryAgainResultSchema: z.ZodType<AccountingTryAgainResult> = z.object({
   id: z.string(),

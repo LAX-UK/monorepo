@@ -308,7 +308,8 @@ organisation's invoice) out of the outbox are the worker's due-list query (`targ
   ONE payment, `LAX-BID-PAY-grp-<group>`, applied to each invoice by its own payment row's amount.
   The allocations must equal the group's stored total to the penny, or the event goes to the failed
   deliveries (`allocation_mismatch`).
-- **Order.** An invoice or credit note is sent only once its contact is issued in the same books,
+- **Order.** An invoice or credit note is sent only once its contact is issued in the same books
+  (a credit note also waits for its invoice: see the refunds section below),
   and a payment only once every invoice it pays is. Until then it waits in **Waiting** without using
   an attempt; a refused invoice keeps its payment waiting with it, and trying the invoice again lets
   the payment follow.
@@ -340,6 +341,106 @@ organisation's invoice) out of the outbox are the worker's due-list query (`targ
   Books for them until the whole amount has arrived; the payment then arrives through
   `payment.captured` (or the group's `payment_group.settled`). Money that could not be applied stays
   a finance task (unapplied money) and makes no Books document.
+
+### Bid refunds and buyer defaults to Books (credit notes)
+
+Books stays dry run; nothing here reaches a real Books organisation or a buyer until Bid is live on
+Books.
+
+- **A refund that went through** (staff, card webhook, blocked capture, or one lot of a Pay several
+  charge; `payment.refunded`): one credit note per `payment_refund` row, `LAX-BID-CN-<refund row>`,
+  for exactly that refund, on the invoice's lines (hammer first, then premium), never more than the
+  payment took for the invoice. A refund that is still pending has no row, so nothing is made; one
+  counted and then taken back (Stripe reported it failed) is left out with its compensating row.
+  A refund's credit note already registered is kept exactly as stored, and later refunds are
+  credited after it. A credit note an earlier release stored for the same refund (dry run or test
+  organisation only, no `refund` on it) is recognised as that refund's; it carries no refund from
+  clearing, so in the test organisation refund it by hand in Books if it matters.
+  A taken-back refund that cannot be matched to its refund goes to the failed deliveries
+  (`refund_reversal_unmatched`): look at the payment's refunds and decide by hand.
+- **Order.** A credit note is sent only once its contact **and the invoice it credits** are issued
+  in the same books. If that invoice is cancelled in Accounting, the credit note is parked
+  ("The invoice this credits was cancelled…"): cancel it, or ask engineering.
+- **Never more credit than the invoice charged, or than was refunded.** Registering a credit note is
+  checked, under a lock per invoice, against every other credit note for the invoice in the same
+  books (any state but cancelled). Under the same lock it is also checked against the facts it was
+  built from: the other credit, the payment's refund rows, and for a courier refund the quote's
+  refunded total read again (the notes never credit more than it). If any changed, the event is
+  tried again with the facts read afresh (`credit_prior_changed`), so two projections that
+  interleave never both credit the same money.
+- **Money back from clearing.** Once a refund's credit note is issued, the worker refunds its whole
+  gross from the Stripe clearing account in Books, once (history `refund_credit_note`). It reads
+  the credit note's refunds first, so a lost answer is recognised, never refunded twice.
+  `accounting_credit_note_refund_delayed` (warning) is raised when one issued more than six hours
+  ago is still not refunded.
+- **`accounting_credit_note_refund_refused`** (error). Books refused to refund an issued credit note
+  from clearing (it already holds another refund, say). The credit note is held in **Needs a
+  person** ("Books refused to refund this credit note…"); nothing retries it. Refund it by hand in
+  Books from Stripe clearing, matching the credit note's number and amount, then ask engineering to
+  record it.
+- **`accounting_refund_reversed_after_credit`** (error). A refund was taken back (Stripe reported it
+  failed, or the Pay several refund repair took it back) after its credit note was **issued** in
+  Books. The buyer never got the money, but Books shows the credit (and maybe a refund from
+  clearing). The plan defines no reversing document yet, so nothing is reversed automatically: the
+  credit note is held in **Needs a person** and is never refunded from clearing from then on. Check
+  its history for `refund_credit_note` (already refunded from clearing or not), and ask the
+  accountant how to reverse it in Books. If the credit note was **never sent**, it is simply
+  cancelled (`payment.refund_reversed`), and nothing needs a person.
+  - If the credit note was **being sent** (or its outcome unknown) when the refund was taken back,
+    the event waits for it to settle without using up delivery attempts. Whatever happened to the
+    event, the clearing-refund step reads the refund itself again before refunding (a
+    `refund_reversal` row for that refund, or a courier total now below the credit note), and holds
+    the credit note with this alert instead of refunding it.
+  - If the credit note was **already held** for another reason (Books refused its refund from
+    clearing, its totals differ), it is held again with this reason and the alert. **Do not refund
+    it by hand**: the buyer never got the money. Its history keeps the earlier reason
+    (`heldBefore`).
+  - A credit note held with this reason no longer counts against the invoice when a later refund is
+    credited, so a refund that did go through is credited and refunded from clearing as usual. If a
+    later `payment.refunded` delivery was dead-lettered while the credit note counted
+    (`credit_exceeds_invoice`), redrive it from the failed deliveries once the credit note is held
+    with this reason.
+- **Courier refund inside Pay several** (`payment_group.delivery_refunded`): the delivery invoice
+  `LAX-BID-INV-dlv-<quote>` is credited up to the quote's stored refunded total
+  (`payment_group_delivery.refunded_pence`), never above its charge, one credit note per rise
+  (`LAX-BID-CN-dlv-<quote>-r<total>`). If the refund repair lowers the total
+  (`payment_group.refund_reversed`), the newest credit notes never sent are cancelled until the
+  credit fits and the rest is credited again; one already issued is held for a person with
+  `accounting_refund_reversed_after_credit`. A cancelled step's reference stays taken, so raising
+  the total back to that exact figure with a different amount goes to the failed deliveries
+  (`reference_in_use`): decide by hand. While VAT on delivery waits for the accountant these credit
+  notes are parked with the delivery invoice; Release says so. Once `DELIVERY_BOOKING` is set,
+  engineering decides how the parked credit notes are rebuilt before they are released.
+- **Refunds not matched to an invoice** (`payment_group.refund_unattributed`) make no document.
+  They are listed on the Accounting page under "Assign refund". Once a person assigns one to the
+  invoice or courier quote it was for, that record moves and its credit note follows as above.
+- **Buyer default** (`payment.cancelled` with `reason: buyer_default`): if the invoice was never
+  sent to Books, its document is cancelled there and nothing is made. If it is being sent, the event
+  is tried again once that settles. If it was issued, a **full** credit note
+  (`LAX-BID-CN-dft-<invoice>`, no money back) is built and **parked** ("Waiting for the accountant")
+  until `BID_DEFAULT_ACCOUNTING_TREATMENT` (accounting domain) is set. Unset means it is never sent.
+  When the accountant answers "credit note", an engineer sets it to `credit_note` and deploys; then
+  press Release on each parked default credit note. If the answer is "void", voiding in Books is not
+  built: the credit notes stay parked and Release says so. Until Bid is live on Books, finance keeps
+  crediting voided invoices by hand ([buyer default runbook](./buyer-default-and-reoffer.md)).
+- **Buyer's card** (Bid live only, same rule as the invoice): "Refunded −£[amount] · Download credit
+  note [number] (PDF)" per refund, and "Cancelled after a default" with its credit note once issued.
+  A card payment's refund adds "to your card"; a bank transfer's names no destination (LAX does not
+  choose where Stripe returns it). A credit note held only because Books refused its refund from
+  clearing stays on the card (the buyer was refunded); one held because its refund was taken back
+  does not. LAX keeps its own copy of each credit note's PDF; no credit note is emailed.
+- **Database pin.** The database refuses api_app moving a parked buyer default credit note, a credit
+  note whose invoice was cancelled, or a courier refund's credit note, even unchanged (0385). The
+  migration that ships the accountant's answer lifts the matching line; until then Release cannot
+  move them even if the application were changed.
+- **Rolling back** `0385_rollback.sql` restores 0383's history actions (NOT VALID, so
+  `refund_credit_note` and `hold` rows stay) and 0383's api_app rule with the 0385 refusal kept, so
+  those credit notes stay parked. Roll the release back first: the earlier release does not run the
+  refund step. **Order:** roll back 0385 before 0383, and stop there if you can. Rolling back
+  **0383** after 0385 restores the function as it was before 0383, without the 0385 refusal, so
+  the database no longer stops api_app moving those parked credit notes. If 0383 must go too, ask
+  engineering to apply 0385 again (or its refusal alone) straight after, and do not press Release
+  on a parked credit note until it is back.
 
 ## Shop invoices to Books (London Art Exchange)
 
@@ -479,7 +580,7 @@ volumes before the test organisation step.
 | `not_in_pounds` | Not GBP. | Books are kept in GBP only: ask the accountant. |
 | `bad_amounts` | Stripe reported amounts that cannot be (a payout into the balance). | Ask engineering. |
 | `unrecognised` | The ledger or the Books queue refused a value Stripe reported (an id of an unknown shape, a reference already holding another document). The log line `accounting_stripe_transaction_parked_instead` names it. | Ask engineering; book it by hand once understood. |
-| `was_cancelled` | Its document was cancelled by a rollback of migration 0385 and the migration was applied again: that document is never sent. | Book it by hand in Books (the cancelled document shows what it was). |
+| `was_cancelled` | Its document was cancelled by a rollback of migration 0386 and the migration was applied again: that document is never sent. | Book it by hand in Books (the cancelled document shows what it was). |
 
 A parked transaction is never decided again by the job. Each one appears in that day's report.
 `outcome = 'not_aimed'` means Books was not aimed at the product when it was read: it is recorded
@@ -502,19 +603,20 @@ stored invoice copies, never the repository). Ids and amounts only, no names or 
   reads an account no `accounting_stripe_account` row names (shown in every company's report);
 - **clearing**: the opening balance plus payments, less fees and payouts, as Books holds them,
   against Stripe's balance (available and pending, GBP) now; documents still on their way are
-  shown as in flight, not as a difference. Movements since the opening that no Books flow books yet
-  (Bid's seller transfers, refunds, dispute amounts) are shown by type as `knownUnbooked`, from the
-  recorded balance transactions, and are not a difference either. Not compared until every Stripe
+  shown as in flight, not as a difference. Movements since the opening that the clearing figure
+  does not take from Books (Bid's seller transfers, refunds, dispute amounts) are shown by type as
+  `knownUnbooked`, from the recorded balance transactions, and are not a difference either. Not compared until every Stripe
   account of the company has its opening balance stated;
 - **held transfer funds**: Bid seller payouts scheduled or blocked, still in the Stripe balance.
   Not tracked for London Art Exchange yet.
 
 **Alert.** Any mismatch (a type whose totals or counts differ, a parked transaction, an account not
-read, clearing that does not agree) raises `accounting_reconciliation_mismatch` (error) with the company, the day, the
-count and the report's storage key. Open that report first. A clearing difference is what remains
-after the known unbooked movements, so it is a real one (a missed payout, a wrong fee). When a flow
-starts booking one of those types (refunds are PR 9), take it out of the known unbooked list in the
-same change, or it is counted twice.
+read, clearing that does not agree) raises `accounting_reconciliation_mismatch` (error) with the
+company, the day, the count and the report's storage key. Open that report first. A clearing
+difference is what remains after the known unbooked movements, so it is a real one (a missed
+payout, a wrong fee). Bid refunds are refunded from clearing in Books by the credit note refund
+step, but the clearing figure here does not count them yet, so they stay in the known list; when
+it does, take `refund` out of the known list in the same change, or it is counted twice.
 
 **Missed run.** The job checks in to the Sentry cron monitor under `accounting-reconcile`. A failed
 read of one account (Stripe down, a revoked key) does not stop the other accounts or the report:
@@ -541,12 +643,19 @@ not move, so nothing of it is lost.
    Europe/London, about 60 minutes margin). Add a Sentry issue alert on the worker project for the
    message `accounting_reconciliation_mismatch`, routed to finance on-call.
 
-**Rollback.** `0385_rollback.sql` cancels every queued or failed expense and transfer (each with a
+**Renumbered before merge.** This migration was 0385 on its branch and is 0386 on main (0385 is
+the Bid refunds migration). A database that ran the branch before the renumber (the rehearsal test
+database, say) holds this migration's tables under 0385's ledger row, and cannot migrate to main
+as it is. Before deploying main there, run `0386_rollback.sql`, then, as the owner,
+`DELETE FROM drizzle.__drizzle_migrations WHERE created_at = 1811419200000;` (on that database the
+row is this migration's, not the refunds one), then migrate: 0385 and 0386 both apply.
+
+**Rollback.** `0386_rollback.sql` cancels every queued or failed expense and transfer (each with a
 `cancel` history row) before it drops the new tables and function; the kind, reference and totals
 CHECKs come back `NOT VALID`, so rows already written stay. Stored reports stay in storage. If the
 migration is applied again later, the job reads Stripe again from each opening day; a transaction
 whose document the rollback cancelled is parked `was_cancelled` (it is never sent) and must be
-booked by hand.
+booked by hand. Roll back 0386 before 0385.
 
 ## Related
 

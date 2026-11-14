@@ -2,6 +2,7 @@ import type {
   BillPort,
   ContactPort,
   CreditNotePort,
+  CreditNoteRefundPort,
   DestinationPort,
   DocumentLookupPort,
   DocumentPdfPort,
@@ -20,6 +21,8 @@ export interface AccountingPorts {
   /** Applies a payment's unapplied rest to an invoice issued after it (a released delivery). */
   readonly remainders: PaymentRemainderPort;
   readonly creditNotes: CreditNotePort;
+  /** Refunds an issued credit note's money from Stripe clearing, once (a refund that went through). */
+  readonly creditNoteRefunds: CreditNoteRefundPort;
   readonly bills: BillPort;
   /** Stripe's fees, paid from the Stripe clearing account. */
   readonly expenses: ExpensePort;

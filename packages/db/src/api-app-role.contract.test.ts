@@ -78,6 +78,9 @@ async function withOwnerDocuments<T>(
     parked: string;
     parkedCancelled: string;
     parkedShop: string;
+    parkedDefaultNote: string;
+    parkedCancelledInvoiceNote: string;
+    parkedDeliveryNote: string;
   }) => Promise<T>,
 ): Promise<T> {
   const owner = new Client(buildPgConnectionConfig(OWNER_URL ?? ""));
@@ -90,6 +93,7 @@ async function withOwnerDocuments<T>(
     providerId: string | null,
     reviewReason: string | null = null,
     product: "bid" | "shop" = "bid",
+    kind: "invoice" | "credit_note" = "invoice",
   ) => {
     // A draft as the projection stores it: header, one line of 100 + 20 VAT, and its totals.
     const result = await owner.query<{ id: string }>(
@@ -98,8 +102,8 @@ async function withOwnerDocuments<T>(
          target_mode, attempts, state, last_error_class, provider_id, provider_number,
          review_lookup, needs_review_reason)
        values ($6, case $6 when 'bid' then 'london_auction_xchange' else 'london_art_exchange' end,
-         'invoice', $1, 'evt',
-         jsonb_build_object('kind', 'invoice', 'reference', $1::text, 'product', $6::text,
+         $7, $1, 'evt',
+         jsonb_build_object('kind', $7::text, 'reference', $1::text, 'product', $6::text,
            'entity', case $6 when 'bid' then 'london_auction_xchange' else 'london_art_exchange' end,
            'contactReference', case $6 when 'bid' then 'LAX-BID-CON-contract' else 'LAX-SHOP-CON-contract' end,
            'currency', 'GBP', 'issuedOn', '2031-11-14', 'dueOn', '2031-11-14',
@@ -112,7 +116,7 @@ async function withOwnerDocuments<T>(
          'books', 'books', 'dry_run', 1, $2, $3, $4::text, case when $4::text is null then null else 'INV-1' end,
          case when $5::text is null then null else 'clear' end, $5::text)
        returning id`,
-      [reference, state, lastErrorClass, providerId, reviewReason, product],
+      [reference, state, lastErrorClass, providerId, reviewReason, product, kind],
     );
     const id = result.rows[0]?.id as string;
     ids.push(id);
@@ -163,7 +167,36 @@ async function withOwnerDocuments<T>(
       "accounting_parked_vat_on_outside_uk_delivery",
       "shop",
     );
-    return await fn({ failed, issued, withheld, differs, parked, parkedCancelled, parkedShop });
+    // Credit notes parked until the accountant answers (0385): a buyer default's full credit, one
+    // whose invoice was cancelled in the books, and a courier refund's with its delivery invoice.
+    const parkedNote = (tag: string, reason: string) =>
+      insert(
+        `LAX-BID-CN-${tag}-${suffix}`,
+        "needs_review",
+        null,
+        null,
+        reason,
+        "bid",
+        "credit_note",
+      );
+    const parkedDefaultNote = await parkedNote("dft", "accounting_parked_buyer_default_treatment");
+    const parkedCancelledInvoiceNote = await parkedNote(
+      "cic",
+      "accounting_parked_credited_invoice_cancelled",
+    );
+    const parkedDeliveryNote = await parkedNote("dlv", "accounting_parked_vat_on_delivery");
+    return await fn({
+      failed,
+      issued,
+      withheld,
+      differs,
+      parked,
+      parkedCancelled,
+      parkedShop,
+      parkedDefaultNote,
+      parkedCancelledInvoiceNote,
+      parkedDeliveryNote,
+    });
   } finally {
     if (ids.length > 0) {
       await owner.query("delete from accounting_document where id = any($1::uuid[])", [ids]);
@@ -507,6 +540,43 @@ describe.skipIf(!API_URL)("api_app role contract", { timeout: 60_000 }, () => {
               "a release from anything but a review",
             ).toBe("42501");
             expect(await releaseRow(parked, "needs_review", released)).toBeUndefined();
+          } finally {
+            await client.query("ROLLBACK");
+          }
+        });
+      });
+    },
+  );
+
+  it.skipIf(!OWNER_URL)(
+    "never moves a credit note parked until the accountant answers (buyer default, cancelled invoice, courier refund), not even unchanged",
+    async () => {
+      await withOwnerDocuments(async (docs) => {
+        await withApiClient(async (client) => {
+          await client.query("BEGIN");
+          try {
+            const release = `update accounting_document set state = 'pending',
+                lease_token = null, lease_expires_at = null, settles_at = null, review_lookup = null,
+                needs_review_reason = null, provider_id = null, provider_number = null, pdf_ref = null,
+                mismatch_field = null, mismatch_difference_pence = null, updated_at = now()
+              where id = $1`;
+            for (const [what, id] of [
+              ["a buyer default's credit note", docs.parkedDefaultNote],
+              ["a credit note whose invoice was cancelled", docs.parkedCancelledInvoiceNote],
+              ["a courier refund's credit note", docs.parkedDeliveryNote],
+            ] as const) {
+              expect(await probe(client, release, [id]), what).toBe("42501");
+              expect(
+                await probe(
+                  client,
+                  "update accounting_document set updated_at = now() where id = $1",
+                  [id],
+                ),
+                `${what}: any other move`,
+              ).toBe("42501");
+            }
+            // The delivery invoice beside it is still released as before (0383's clause).
+            expect(await probe(client, release, [docs.parked])).toBeUndefined();
           } finally {
             await client.query("ROLLBACK");
           }

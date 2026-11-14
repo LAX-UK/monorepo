@@ -12,6 +12,7 @@ import {
   type AccountingPartFundedRow,
   type AccountingSearch,
   type AccountingStaffRow,
+  type AccountingUnattributedRow,
   ORGANISATION_SEGMENTS,
   accountingHref,
   accountingTabs,
@@ -53,6 +54,7 @@ import {
   ProblemCell,
   RowAction,
   type RowActionKind,
+  UnattributedRefundsNotice,
   rowMenuActions,
 } from "./accounting-queue-cells";
 
@@ -83,6 +85,8 @@ export type AccountingQueueListProps = {
   unreadable: number;
   /** Bank transfers part received (Bid): listed for reconciliation, never sent to Books. */
   partFunded?: AccountingPartFundedRow[];
+  /** "Pay several" refunds waiting to be assigned (Bid): no Books document until they are. */
+  unattributed?: AccountingUnattributedRow[];
 };
 
 /**
@@ -273,12 +277,14 @@ export function AccountingQueueList(props: AccountingQueueListProps) {
   const lockedConfirm = !releasing && Boolean(dialogRow?.lockedPeriod);
   const locked = rows.filter((row) => row.lockedPeriod).length;
   const partFunded = props.partFunded ?? [];
+  const unattributed = props.unattributed ?? [];
   const hasNotice =
     locked > 0 ||
     props.rehearsal ||
     props.unreadable > 0 ||
     props.referenceError !== null ||
-    partFunded.length > 0;
+    partFunded.length > 0 ||
+    unattributed.length > 0;
   const notices = (
     <>
       {props.referenceError ? (
@@ -297,6 +303,7 @@ export function AccountingQueueList(props: AccountingQueueListProps) {
         </Notice>
       ) : null}
       {partFunded.length > 0 ? <PartFundedNotice transfers={partFunded} /> : null}
+      {unattributed.length > 0 ? <UnattributedRefundsNotice refunds={unattributed} /> : null}
       {props.unreadable > 0 ? (
         <Notice tone="warning" title="Some documents could not be read">
           {props.unreadable === 1

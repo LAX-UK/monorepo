@@ -32,11 +32,30 @@ export const ACCOUNTING_ALERTS = {
   shopRemainderDelayed: { message: "accounting_shop_remainder_delayed", level: "warning" },
   /**
    * The daily reconciliation found a mismatch for a company: LAX and Books totals differ for a
-   * document type on the day, a Stripe balance transaction waits for a person, or the Stripe
-   * clearing account in Books does not agree with Stripe's balance. The fields name the company,
+   * document type on the day, a Stripe balance transaction waits for a person, a Stripe account
+   * was not read, or the Stripe clearing account in Books does not agree with Stripe's balance. The fields name the company,
    * the day and the stored report's key.
    */
   reconciliationMismatch: { message: "accounting_reconciliation_mismatch", level: "error" },
+  /**
+   * Delayed accounting, Bid refunds: a refund's credit note was issued more than six hours ago and
+   * its money is still not refunded from Stripe clearing in Books (no `refund_credit_note`).
+   */
+  creditNoteRefundDelayed: { message: "accounting_credit_note_refund_delayed", level: "warning" },
+  /**
+   * Bid refunds: a refund was taken back (it failed after it was counted) after its credit note was
+   * issued in Books. The credit note is held for a person ("Needs a person"); nothing is reversed
+   * in Books automatically, since the plan defines no reversing document: the accountant says how.
+   */
+  refundReversedAfterCredit: {
+    message: "accounting_refund_reversed_after_credit",
+    level: "error",
+  },
+  /**
+   * Bid refunds: Books refused to refund an issued credit note from Stripe clearing. The credit note
+   * is held for a person ("Needs a person"); refund it by hand in Books (see the runbook).
+   */
+  creditNoteRefundRefused: { message: "accounting_credit_note_refund_refused", level: "error" },
   /** Documents are queued for Books but the sender has not claimed any for too long. */
   senderMissed: { message: "accounting_sender_missed", level: "error" },
   /** The day's Books calls passed 80% of the budget (`BUDGET_WARNING_EVENT` in the Books client). */

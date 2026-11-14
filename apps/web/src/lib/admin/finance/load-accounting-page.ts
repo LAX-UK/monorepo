@@ -5,6 +5,7 @@ import {
   type AccountingPartFundedRow,
   type AccountingSearch,
   type AccountingStaffRow,
+  type AccountingUnattributedRow,
   accountingHref,
   accountingRangeSummary,
   activeAccountingTab,
@@ -12,6 +13,7 @@ import {
   activeReference,
   toAccountingStaffRows,
   toPartFundedRows,
+  toUnattributedRows,
 } from "@/lib/admin/finance/accounting-queue.vm";
 import { getAccountingQueuePage } from "@/lib/data/http/admin-accounting.reader";
 import { parseStaffPageSize } from "@auction/staff-ui";
@@ -56,6 +58,8 @@ export type AdminAccountingPage = {
   unreadable: number;
   /** Bank transfers part received: no Books document until all of it arrives. */
   partFunded: AccountingPartFundedRow[];
+  /** "Pay several" refunds no invoice or quote took: no Books document until a person assigns them. */
+  unattributed: AccountingUnattributedRow[];
   loadError: string | null;
   pagination: { summary: string; prevHref: string | null; nextHref: string | null } | null;
 };
@@ -96,6 +100,7 @@ export async function loadAdminAccountingPage(sp: AccountingSearch): Promise<Adm
       rehearsal: false,
       unreadable: 0,
       partFunded: [],
+      unattributed: [],
       loadError: null,
       pagination: null,
     };
@@ -122,6 +127,7 @@ export async function loadAdminAccountingPage(sp: AccountingSearch): Promise<Adm
       rehearsal: rows.some((row) => row.rehearsal),
       unreadable: page.unreadable,
       partFunded: toPartFundedRows(page.partFundedTransfers),
+      unattributed: toUnattributedRows(page.unattributedRefunds ?? []),
       loadError: null,
       pagination:
         rows.length > 0
@@ -147,6 +153,7 @@ export async function loadAdminAccountingPage(sp: AccountingSearch): Promise<Adm
       rehearsal: false,
       unreadable: 0,
       partFunded: [],
+      unattributed: [],
       loadError: forbidden ? ACCOUNTING_FORBIDDEN : ACCOUNTING_LOAD_ERROR,
       pagination: null,
     };

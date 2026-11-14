@@ -12,9 +12,11 @@ import {
   completeSending,
   escalate,
   expireLease,
+  hold,
   isLeaseExpired,
   newRecord,
   parseRecord,
+  release,
   requeue,
   startSending,
   withhold,
@@ -736,5 +738,67 @@ describe("malformed provider totals", () => {
       totals,
     );
     expect(r.ok && parseRecord(JSON.parse(JSON.stringify(r.value)), NOW)).toEqual(r);
+  });
+});
+
+describe("hold", () => {
+  const issued: DocumentRecord = {
+    kind: "credit_note",
+    reference: "LAX-BID-CN-0b6a7c1e-4444-4a5b-8c9d-000000000001",
+    attempts: 1,
+    status: "issued",
+    issued: { number: "CN-1", providerId: "p1", pdfRef: null },
+  };
+
+  it("holds an issued document for a person, the provider's document kept", () => {
+    const held = hold(issued, "accounting_refund_reversed_after_credit");
+    expect(held).toEqual({
+      ok: true,
+      value: {
+        kind: "credit_note",
+        reference: issued.reference,
+        attempts: 1,
+        status: "needs_review",
+        lookup: "clear",
+        issued: issued.issued,
+        mismatch: null,
+        reason: "accounting_refund_reversed_after_credit",
+      },
+    });
+    if (!held.ok) return;
+    // From there nothing automatic moves it: not requeued, released or cancelled.
+    expect(requeue(held.value)).toMatchObject({ ok: false });
+    expect(release(held.value)).toMatchObject({ ok: false });
+    expect(cancel(held.value)).toMatchObject({ ok: false });
+  });
+
+  it("only holds an issued document, and only with a reason", () => {
+    expect(hold({ ...issued, status: "pending" } as DocumentRecord, "x")).toMatchObject({
+      ok: false,
+      refusal: { code: "bad_state" },
+    });
+    expect(hold(issued, "")).toMatchObject({ ok: false, refusal: { code: "bad_outcome" } });
+  });
+
+  it("holds a held document again for a new reason (review N2), the provider's document kept; never one parked or owing a lookup", () => {
+    const refused = must(hold(issued, "accounting_credit_note_refund_refused"));
+    const again = must(hold(refused, "accounting_refund_reversed_after_credit"));
+    expect(again).toEqual({ ...refused, reason: "accounting_refund_reversed_after_credit" });
+    expect(hold(again, "accounting_refund_reversed_after_credit")).toMatchObject({
+      ok: false,
+      refusal: { code: "bad_state" },
+    });
+    const parked = { ...refused, issued: null } as DocumentRecord;
+    expect(hold(parked, "accounting_refund_reversed_after_credit")).toMatchObject({ ok: false });
+    const owed = {
+      kind: "credit_note",
+      reference: issued.reference,
+      attempts: 1,
+      status: "needs_review",
+      lookup: "owed",
+      settlesAtMs: 0,
+      reason: "unknown_outcome",
+    } as DocumentRecord;
+    expect(hold(owed, "accounting_refund_reversed_after_credit")).toMatchObject({ ok: false });
   });
 });

@@ -176,7 +176,7 @@ export const API_DENY_TABLES = [
   /** Sealed Zoho Books OAuth tokens: only the worker, the process that calls Books, may touch them. */
   "zoho_books_connection",
   /**
-   * Stripe fees and payouts to Books and the daily reconciliation (migration 0385): only the
+   * Stripe fees and payouts to Books and the daily reconciliation (migration 0386): only the
    * worker, which reads Stripe and books them, touches these (see `WORKER_STRIPE_*`).
    */
   "accounting_stripe_account",
@@ -312,8 +312,9 @@ export const WORKER_ACCOUNTING_APPEND_ONLY_TABLES = ["accounting_document_event"
  * The worker reads which documents' history already holds an action, and when a document moved
  * to which state, column by column: the follow-up step that applies a Shop order payment's
  * unapplied rest to its outside-UK delivery invoice (migration 0383) is settled once, by an
- * `apply_remainder` row, and the watch alerts when one issued hours ago is still not settled.
- * Nothing else of history (no detail, nobody who asked).
+ * `apply_remainder` row, and the watch alerts when one issued hours ago is still not settled. A
+ * credit note for a refund is refunded from Stripe clearing once, settled by a `refund_credit_note`
+ * row (migration 0385), read the same way. Nothing else of history (no detail, nobody who asked).
  */
 export const WORKER_ACCOUNTING_HISTORY_READ_COLUMNS = [
   ["accounting_document_event", ["document_id", "action", "to_state", "occurred_at"]],
@@ -346,7 +347,7 @@ export const API_ACCOUNTING_COPY_READ_TABLES = ["accounting_document_copy"] as c
 export const WORKER_ACCOUNTING_READ_TABLES = ["accounting_source_setting"] as const;
 
 /**
- * Stripe fees and payouts to Books, and the daily reconciliation (migration 0385). The worker
+ * Stripe fees and payouts to Books, and the daily reconciliation (migration 0386). The worker
  * reads which product each Stripe account's own movements belong to (an engineer writes those
  * rows; no application role may); reads, adds and moves forward its read cursor; reads and adds
  * one row per balance transaction (append-only, no UPDATE or DELETE); and reads, adds and replaces
@@ -365,7 +366,7 @@ export const WORKER_RECONCILIATION_REPORT_UPDATE_COLUMNS = [
 /**
  * Which company a Stripe charge, refund or dispute belongs to is read from the row LAX stored when
  * it took the money: these Bid id columns and no others (no amount, no buyer). A Shop order's
- * PaymentIntent stays unreadable to the worker; migration 0385's definer function
+ * PaymentIntent stays unreadable to the worker; migration 0386's definer function
  * `accounting_stripe_shop_order(text)` answers only which order, if any, holds a given one.
  */
 export const WORKER_STRIPE_ATTRIBUTION_READ_COLUMNS = [

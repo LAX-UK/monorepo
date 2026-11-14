@@ -50,6 +50,7 @@ function ctxWith(options: {
         replayed: 0,
         kept: 0,
         parked: 0,
+        cancelled: 0,
       })),
   );
   const accounting = {
@@ -198,7 +199,7 @@ function eventLogWorld() {
       project: async (event: typeof EVENT): Promise<ProjectionOutcome> => {
         if (!active) return { outcome: "skipped", reason: "books_not_selected" };
         projected.push(event.id);
-        return { outcome: "projected", created: 2, replayed: 0, kept: 0, parked: 0 };
+        return { outcome: "projected", created: 2, replayed: 0, kept: 0, parked: 0, cancelled: 0 };
       },
     },
     sender: { tick: vi.fn() },

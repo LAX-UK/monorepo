@@ -13,7 +13,7 @@ import {
 
 /**
  * Which LAX product (and so which company and Books organisation) a Stripe account's own movements
- * belong to: its payouts and Stripe's own fees (migration 0385). One row per Stripe account LAX
+ * belong to: its payouts and Stripe's own fees (migration 0386). One row per Stripe account LAX
  * reads; written by an engineer from the runbook, never by an application role. A balance
  * transaction of an account with no row here is never booked.
  */

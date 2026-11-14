@@ -216,7 +216,7 @@ describe.skipIf(!HAS_DB)(
       expect(
         await sync(new FakeStripeBalance(before).add(charge(8_601, 111, NOON + 8_601))).run(),
       ).toMatchObject({ booked: 1 });
-      // What 0385_rollback.sql leaves: the document cancelled, the ledger gone (here, a new
+      // What 0386_rollback.sql leaves: the document cancelled, the ledger gone (here, a new
       // account row with no ledger rows reads the same transaction again).
       const reference = `LAX-SHOP-EXP-${id("txn", 8_601).toLowerCase()}`;
       await owner.execute(sql`

@@ -6,13 +6,13 @@ import { API_DENY_TABLES } from "./migrate-roles.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const read = (name: string) => readFileSync(join(__dirname, "../drizzle", name), "utf8");
-const migrationFile = read("0385_stripe_fees_payouts_books.sql");
+const migrationFile = read("0386_stripe_fees_payouts_books.sql");
 const migration = migrationFile.replace(/^--.*$/gm, "");
-const rollback = read("0385_rollback.sql");
+const rollback = read("0386_rollback.sql");
 const journal = JSON.parse(read("meta/_journal.json")) as {
   entries: { idx: number; tag: string; when: number }[];
 };
-const TAG = "0385_stripe_fees_payouts_books";
+const TAG = "0386_stripe_fees_payouts_books";
 const TABLES = [
   "accounting_stripe_account",
   "accounting_stripe_cursor",
@@ -20,10 +20,10 @@ const TABLES = [
   "accounting_reconciliation_report",
 ];
 
-describe("migration 0385 Stripe fees and payouts to Books", () => {
-  it("is journalled last, after 0384, in a journal that stays ordered", () => {
+describe("migration 0386 Stripe fees and payouts to Books", () => {
+  it("is journalled last, after 0385, in a journal that stays ordered", () => {
     const entry = journal.entries.find((e) => e.tag === TAG);
-    const previous = journal.entries.find((e) => e.tag === "0384_unapplied_money_dedupe_key_uid");
+    const previous = journal.entries.find((e) => e.tag === "0385_accounting_credit_note_refunds");
     expect(entry?.idx).toBe((previous?.idx ?? Number.NaN) + 1);
     expect(entry?.when).toBeGreaterThan(previous?.when ?? Number.POSITIVE_INFINITY);
     expect(journal.entries.at(-1)?.tag).toBe(TAG);

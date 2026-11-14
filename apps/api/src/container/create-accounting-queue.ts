@@ -43,6 +43,8 @@ export function createAccountingQueue(input: {
       lookup: repos.lookup,
       releaseBasis: repos.releaseBasis,
       shopDelivery: new DrizzleShopDeliveryReader(input.db),
+      unattributedRefunds: repos.unattributedRefunds,
+      creditNotes: repos.creditNotes,
     }),
     accountingBrowser: repos.browser,
   };

@@ -1,5 +1,8 @@
 import { isDeepStrictEqual } from "node:util";
 import {
+  type CreditNote,
+  type DocumentTarget,
+  type Product,
   type Result,
   documentTarget,
   legalEntityFor,
@@ -12,15 +15,19 @@ import {
   accountingDocument,
   accountingDocumentEvent,
   accountingSourceSetting,
+  paymentGroupDelivery,
+  paymentRefund,
 } from "@auction/db/schema";
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, ne, sql } from "drizzle-orm";
 import type {
   AccountingClock,
+  CreditBasis,
   IAccountingDocumentRegistry,
   RegisterCode,
   RegisterInput,
   RegisterOutcome,
 } from "../../interfaces/accounting.js";
+import { REFUND_REVERSED_AFTER_CREDIT } from "../../lib/accounting-credit-note-refund-due.js";
 import { readDocumentPayload } from "../../lib/accounting-document-payload.js";
 import { documentTotals } from "../../lib/accounting-document-payload.js";
 import { rowToStored } from "../../lib/accounting-document-row.js";
@@ -32,7 +39,7 @@ export class DrizzleAccountingDocumentRegistry implements IAccountingDocumentReg
   ) {}
 
   async register(input: RegisterInput): Promise<Result<RegisterOutcome, RegisterCode>> {
-    const { document, sourceEventRef, park } = input;
+    const { document, sourceEventRef, park, creditBasis } = input;
     const checked = readDocumentPayload(document, {
       product: document.product,
       kind: document.kind,
@@ -69,6 +76,10 @@ export class DrizzleAccountingDocumentRegistry implements IAccountingDocumentReg
       const target = setting
         ? documentTarget({ xero: setting.xeroMode, books: setting.booksMode })
         : null;
+      if (document.kind === "credit_note") {
+        const fits = await creditFitsInvoice(tx, document, target, creditBasis);
+        if (!fits.ok) return fits;
+      }
       const [inserted] = await tx
         .insert(accountingDocument)
         .values({
@@ -133,5 +144,149 @@ export class DrizzleAccountingDocumentRegistry implements IAccountingDocumentReg
         ? ok({ created: false, stored: stored.value })
         : refuse("bad_document", stored.refusal.message);
     });
+  }
+
+  async awaitCreditRegistrations(
+    product: Product,
+    invoiceReference: string,
+    target: DocumentTarget | null,
+  ): Promise<void> {
+    await this.db.transaction(async (tx) => {
+      await tx.execute(
+        sql`select pg_advisory_xact_lock(hashtextextended(${creditLockKey(product, invoiceReference, target)}, 0))`,
+      );
+    });
+  }
+}
+
+/** The transaction lock every credit note of one invoice in one books is registered under. */
+function creditLockKey(
+  product: Product,
+  invoiceReference: string,
+  target: DocumentTarget | null,
+): string {
+  return `accounting_credit:${product}:${legalEntityFor(product)}:${invoiceReference}:${target?.provider ?? "-"}:${target?.mode ?? "-"}`;
+}
+
+type Tx = Parameters<Parameters<Database["transaction"]>[0]>[0];
+
+/**
+ * Never more credit than the invoice charged, whoever registers at the same time. The invoice's
+ * credit notes in the same books are serialised by a transaction lock on (invoice, target), so
+ * two registrations can never both read the old total; the new credit note must fit in the
+ * invoice's gross less every other credit note registered for it there (any state but cancelled:
+ * a failed one may still be tried again), except one held because its refund was taken back
+ * (`accounting_refund_reversed_after_credit`): that money never reached the buyer, so a later
+ * refund that did is credited. The basis below still reads every one of them, as the flows do. The invoice must be registered there, and not only
+ * cancelled. A replay of this credit note is not counted against itself.
+ *
+ * With a basis, the note must also have been built from what holds now, under the same lock: the
+ * same other credit, the same refund rows of the payment, or the same refunded total of the
+ * courier quote (and a courier refund's notes never credit more than that total). Otherwise it is
+ * refused (`credit_prior_changed`) and projected again from fresh facts.
+ */
+async function creditFitsInvoice(
+  tx: Tx,
+  note: CreditNote,
+  target: DocumentTarget | null,
+  basis: CreditBasis | undefined,
+): Promise<Result<true, RegisterCode>> {
+  const entity = legalEntityFor(note.product);
+  const sameBooks = and(
+    eq(accountingDocument.product, note.product),
+    eq(accountingDocument.legalEntity, entity),
+    sql`${accountingDocument.targetProvider} is not distinct from ${target?.provider ?? null}`,
+    sql`${accountingDocument.targetMode} is not distinct from ${target?.mode ?? null}`,
+  );
+  const lockKey = creditLockKey(note.product, note.invoiceReference, target);
+  await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${lockKey}, 0))`);
+  const [invoice] = await tx
+    .select({ grossPence: accountingDocument.grossPence })
+    .from(accountingDocument)
+    .where(
+      and(
+        sameBooks,
+        eq(accountingDocument.kind, "invoice"),
+        eq(accountingDocument.laxReference, note.invoiceReference),
+        ne(accountingDocument.state, "cancelled"),
+      ),
+    );
+  if (!invoice) {
+    return refuse("credit_without_invoice", "the invoice it credits is not in these books");
+  }
+  const [credited] = await tx
+    .select({
+      pence: sql<string>`coalesce(sum(${accountingDocument.grossPence}), 0)::bigint`,
+      // Held as taken back: the buyer never had that money, and the note waits for the accountant
+      // to reverse it in Books. It does not stand in the way of a later refund that went through.
+      reversedPence: sql<string>`coalesce(sum(${accountingDocument.grossPence}) filter (where ${accountingDocument.state} = 'needs_review' and ${accountingDocument.needsReviewReason} = ${REFUND_REVERSED_AFTER_CREDIT}), 0)::bigint`,
+    })
+    .from(accountingDocument)
+    .where(
+      and(
+        sameBooks,
+        eq(accountingDocument.kind, "credit_note"),
+        sql`${accountingDocument.payload} ->> 'invoiceReference' = ${note.invoiceReference}`,
+        ne(accountingDocument.laxReference, note.reference),
+        ne(accountingDocument.state, "cancelled"),
+      ),
+    );
+  const already = Number(credited?.pence ?? 0);
+  const standing = already - Number(credited?.reversedPence ?? 0);
+  if (standing + note.totals.grossPence > invoice.grossPence) {
+    return refuse(
+      "credit_exceeds_invoice",
+      `${standing}p already credited; ${note.totals.grossPence}p more exceeds the invoice's ${invoice.grossPence}p`,
+    );
+  }
+  return basis ? basisHolds(tx, note, basis, already) : ok(true);
+}
+
+const changed = (what: string) =>
+  refuse("credit_prior_changed" as const, `${what} changed since the facts were read`);
+
+/** The basis the note was built from, read again under the invoice's credit lock. */
+async function basisHolds(
+  tx: Tx,
+  note: CreditNote,
+  basis: CreditBasis,
+  already: number,
+): Promise<Result<true, RegisterCode>> {
+  switch (basis.kind) {
+    case "invoice_credit":
+      return already === basis.priorCreditPence ? ok(true) : changed("the invoice's credit");
+    case "payment_refunds": {
+      const [row] = await tx
+        .select({ rows: sql<number>`count(*)`.mapWith(Number) })
+        .from(paymentRefund)
+        .where(eq(paymentRefund.paymentId, basis.paymentId));
+      return (row?.rows ?? 0) === basis.refundRows ? ok(true) : changed("the payment's refunds");
+    }
+    case "delivery_refund": {
+      if (already !== basis.priorCreditPence) return changed("the delivery invoice's credit");
+      const [delivery] = await tx
+        .select({
+          refundedPence: paymentGroupDelivery.refundedPence,
+          chargedPence: sql<string>`(${paymentGroupDelivery.amount} * 100)::bigint`,
+        })
+        .from(paymentGroupDelivery)
+        .where(
+          and(
+            eq(paymentGroupDelivery.paymentGroupId, basis.groupId),
+            eq(paymentGroupDelivery.deliveryQuoteId, basis.quoteId),
+          ),
+        );
+      if (!delivery || delivery.refundedPence !== basis.refundedPence) {
+        return changed("the courier quote's refunded total");
+      }
+      const ceiling = Math.min(delivery.refundedPence, Number(delivery.chargedPence));
+      if (already + note.totals.grossPence > ceiling) {
+        return refuse(
+          "credit_exceeds_refunded",
+          `${already}p already credited; ${note.totals.grossPence}p more exceeds the ${ceiling}p refunded`,
+        );
+      }
+      return ok(true);
+    }
   }
 }

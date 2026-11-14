@@ -1,7 +1,7 @@
 import { type TargetMode, parseLaxReference } from "@auction/accounting-domain";
 import type { Database } from "@auction/db";
 import { accountingDocument, accountingDocumentCopy } from "@auction/db/schema";
-import { and, asc, desc, eq, inArray, isNull, notExists, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNull, notExists, or, sql } from "drizzle-orm";
 import type {
   AccountingClock,
   AccountingDocumentCopy,
@@ -26,6 +26,15 @@ const INVOICE = and(
   eq(d.kind, "invoice"),
   eq(d.targetProvider, "books"),
 );
+/**
+ * Bid credit notes get a stored copy too (the buyer downloads it from the invoice card), but no
+ * email: `listEmailDue` lists invoices only.
+ */
+const BID_CREDIT_NOTE = and(
+  eq(d.product, "bid"),
+  eq(d.kind, "credit_note"),
+  eq(d.targetProvider, "books"),
+);
 
 export class DrizzleAccountingDocumentCopies implements IAccountingDocumentCopies {
   constructor(
@@ -40,7 +49,7 @@ export class DrizzleAccountingDocumentCopies implements IAccountingDocumentCopie
       .from(d)
       .where(
         and(
-          INVOICE,
+          or(INVOICE, BID_CREDIT_NOTE),
           eq(d.state, "issued"),
           inArray(d.targetMode, [...modes]),
           notExists(this.db.select({ one: sql`1` }).from(c).where(eq(c.documentId, d.id))),

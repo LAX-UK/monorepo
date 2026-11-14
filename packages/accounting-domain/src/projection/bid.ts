@@ -1,22 +1,7 @@
-import {
-  type Contact,
-  type CreditNote,
-  type Invoice,
-  buildContact,
-  buildCreditNoteFor,
-  buildInvoice,
-} from "../document.js";
-import {
-  type LineInput,
-  type LineRole,
-  type Pence,
-  type VatTreatment,
-  isPence,
-  lineGrossPence,
-} from "../money.js";
-import { splitRefundTotal } from "../refund.js";
+import { type Contact, type Invoice, buildContact, buildInvoice } from "../document.js";
+import type { LineInput, LineRole, Pence, VatTreatment } from "../money.js";
 import { type Result, ok, refuse } from "../result.js";
-import type { Projection, ProjectionCode, ProjectionPolicy } from "./projection.js";
+import type { ProjectionCode, ProjectionPolicy } from "./projection.js";
 
 /** The buyer account an invoice is raised to. */
 export interface BidBuyerFacts {
@@ -42,20 +27,6 @@ export interface BidInvoiceFacts {
   readonly raisedOn: string;
   readonly dueOn: string;
   readonly lines: readonly BidInvoiceLineFacts[];
-}
-
-/** One refund given back on a payment (a `payment_refund` row: it exists only once it went through). */
-export interface BidRefundFacts {
-  readonly refundId: string;
-  readonly amountPence: Pence;
-  readonly refundedOn: string;
-}
-
-/** Every refund on one payment, oldest first, with what the payment took. */
-export interface BidRefundsFacts {
-  readonly invoice: BidInvoiceFacts;
-  readonly paidPence: Pence;
-  readonly refunds: readonly BidRefundFacts[];
 }
 
 export interface LineBooking {
@@ -161,45 +132,4 @@ export const projectBidInvoiceRaised: ProjectionPolicy<BidInvoiceFacts> = (facts
   const built = bidInvoice(facts);
   if (!built.ok) return built;
   return ok({ documents: [built.value.contact, built.value.invoice] });
-};
-
-/**
- * Bid payment refunded: the contact and invoice, then one credit note per refund for exactly its
- * amount, oldest first. Every refund of the payment is replayed in order, so each credit note is
- * the same document however often this runs, and the credit notes can never total more than was
- * paid (goods first, then delivery, as `splitRefundTotal` decides).
- */
-export const projectBidPaymentRefunded: ProjectionPolicy<BidRefundsFacts> = (facts) => {
-  const built = bidInvoice(facts.invoice);
-  if (!built.ok) return built;
-  const { contact, invoice } = built.value;
-  if (!isPence(facts.paidPence) || facts.paidPence <= 0) {
-    return refuse("bad_amount", "what was paid must be positive whole pence");
-  }
-  const goodsGross = invoice.lines
-    .filter((l) => l.role === "goods")
-    .reduce((sum, l) => sum + lineGrossPence(l), 0);
-  const paidGoodsPence = Math.min(facts.paidPence, goodsGross);
-  const paid = { paidGoodsPence, paidDeliveryPence: facts.paidPence - paidGoodsPence };
-  const credits: CreditNote[] = [];
-  let refundedGoodsPence = 0;
-  let refundedDeliveryPence = 0;
-  for (const refund of facts.refunds) {
-    const buckets = { ...paid, refundedGoodsPence, refundedDeliveryPence };
-    const split = splitRefundTotal(buckets, refund.amountPence);
-    if (!split.ok) return refuse("refund_refused", split.refusal.message);
-    const credit = buildCreditNoteFor(invoice, {
-      sourceId: refund.refundId,
-      issuedOn: refund.refundedOn,
-      buckets,
-      request: split.value,
-      priorCredits: credits,
-    });
-    if (!credit.ok) return credit;
-    credits.push(credit.value);
-    refundedGoodsPence += split.value.goodsPence;
-    refundedDeliveryPence += split.value.deliveryPence;
-  }
-  const documents: Projection["documents"] = [contact, invoice, ...credits];
-  return ok({ documents });
 };

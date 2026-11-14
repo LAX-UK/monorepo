@@ -413,6 +413,42 @@ export function escalate(
 }
 
 /**
+ * issued -> needs_review (or a held document held again, for a new reason), held for a person with
+ * the provider's document kept: something that
+ * happened after it was issued means it can no longer simply stand (the refund it credits was taken
+ * back, say, or Books refused to refund it from clearing). Nothing is undone in the provider and
+ * nothing is guessed: it is never requeued, released or cancelled (the provider holds it), and
+ * nothing more is done with it automatically. A person settles it in the books.
+ */
+export function hold(
+  record: DocumentRecord,
+  reason: string,
+): Result<DocumentRecord, LifecycleCode> {
+  if (typeof reason !== "string" || reason === "") {
+    return refuse("bad_outcome", "a held document needs a reason");
+  }
+  if (record.status === "issued") {
+    return ok({
+      ...core(record),
+      status: "needs_review",
+      lookup: "clear",
+      issued: record.issued,
+      mismatch: null,
+      reason,
+    });
+  }
+  // Already held for a person (the provider's document kept): held again for a new reason, so the
+  // person reads what happened last (its history keeps the earlier reason). Same reason: nothing.
+  if (record.status === "needs_review" && record.lookup === "clear" && record.issued !== null) {
+    if (record.reason === reason) {
+      return refuse("bad_state", "already held for that reason");
+    }
+    return ok({ ...record, reason });
+  }
+  return wrongState("hold", record.status);
+}
+
+/**
  * failed -> pending (the provider refused it outright, so nothing exists to duplicate).
  * needs_review -> pending only when no lookup is owed, the provider holds no document for it and
  * it is not parked (a parked document waits for the accountant or a person; it is released once

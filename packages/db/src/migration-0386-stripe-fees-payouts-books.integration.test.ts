@@ -9,15 +9,15 @@ const url = process.env.MIGRATION_TEST_DATABASE_URL;
 const { Client } = pg;
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const read = (name: string) => readFileSync(join(__dirname, "../drizzle", name), "utf8");
-const migration = read("0385_stripe_fees_payouts_books.sql").replace(
+const migration = read("0386_stripe_fees_payouts_books.sql").replace(
   /^--> statement-breakpoint$/gm,
   "",
 );
-const rollbackBody = read("0385_rollback.sql").replace(/^BEGIN;$|^COMMIT;$/gm, "");
+const rollbackBody = read("0386_rollback.sql").replace(/^BEGIN;$|^COMMIT;$/gm, "");
 
 /** Everything runs inside one transaction that is rolled back at the end. */
 describe.skipIf(!url)(
-  "migration 0385 Stripe fees and payouts (database)",
+  "migration 0386 Stripe fees and payouts (database)",
   { timeout: 60_000 },
   () => {
     let client: pg.Client;
@@ -47,7 +47,7 @@ describe.skipIf(!url)(
          (stripe_account_id, balance_transaction_id, type, currency, amount_pence, fee_pence,
           created_at_stripe, created_on, product, outcome, park_reason, booked_fee_pence,
           booked_payout_pence, read_at)
-       values ('acct_M0385', $1, $2, 'gbp', 10000, 165, now(), current_date, $3, $4, $5, $6, $7, now())`,
+       values ('acct_M0386', $1, $2, 'gbp', 10000, 165, now(), current_date, $3, $4, $5, $6, $7, now())`,
         [
           id,
           row.type,
@@ -68,7 +68,7 @@ describe.skipIf(!url)(
       await client.query(rollbackBody);
       await client.query(migration);
       await client.query(
-        "insert into accounting_stripe_account (stripe_account_id, product) values ('acct_M0385', 'shop')",
+        "insert into accounting_stripe_account (stripe_account_id, product) values ('acct_M0386', 'shop')",
       );
     });
 
@@ -78,27 +78,27 @@ describe.skipIf(!url)(
     });
 
     it("holds one row per balance transaction, and refuses to change or remove one", async () => {
-      expect(await txn("txn_M0385a")).toBeNull();
-      expect(await txn("txn_M0385a")).toBe("23505");
+      expect(await txn("txn_M0386a")).toBeNull();
+      expect(await txn("txn_M0386a")).toBe("23505");
       expect(await attempt("update accounting_stripe_balance_txn set fee_pence = 1")).toBe("42501");
       expect(await attempt("delete from accounting_stripe_balance_txn")).toBe("42501");
     });
 
     it("allows a parked row only with a reason, and a booked row only when it books something", async () => {
       expect(
-        await txn("txn_M0385b", { outcome: "parked", product: null, booked_fee_pence: 0 }),
+        await txn("txn_M0386b", { outcome: "parked", product: null, booked_fee_pence: 0 }),
       ).toBe("23514");
       expect(
-        await txn("txn_M0385c", {
+        await txn("txn_M0386c", {
           outcome: "parked",
           product: null,
           park_reason: "unattributable",
           booked_fee_pence: 0,
         }),
       ).toBeNull();
-      expect(await txn("txn_M0385d", { booked_fee_pence: 0 })).toBe("23514");
-      expect(await txn("txn_M0385e", { product: null })).toBe("23514");
-      expect(await txn("bad_M0385")).toBe("23514");
+      expect(await txn("txn_M0386d", { booked_fee_pence: 0 })).toBe("23514");
+      expect(await txn("txn_M0386e", { product: null })).toBe("23514");
+      expect(await txn("bad_M0386")).toBe("23514");
     });
 
     it("stores an expense and a transfer without VAT, under references of their own kind", async () => {
@@ -129,16 +129,16 @@ describe.skipIf(!url)(
         `insert into shop_order (identity_subject_id, fulfilment, merchandise_subtotal_pence,
                                  fulfilment_surcharge_pence, total_pence, idempotency_key,
                                  stripe_payment_intent_id)
-         values ('m0385', 'uk_insured_delivery', 100, 0, 100, 'm0385', 'pi_M0385') returning id`,
+         values ('m0386', 'uk_insured_delivery', 100, 0, 100, 'm0386', 'pi_M0386') returning id`,
       );
       const found = await client.query<{ id: string | null }>(
         "select accounting_stripe_shop_order($1) as id",
-        ["pi_M0385"],
+        ["pi_M0386"],
       );
       expect(found.rows[0]?.id).toBe(order.rows[0]?.id);
       const missing = await client.query<{ id: string | null }>(
         "select accounting_stripe_shop_order($1) as id",
-        ["pi_M0385_none"],
+        ["pi_M0386_none"],
       );
       expect(missing.rows[0]?.id).toBeNull();
     });

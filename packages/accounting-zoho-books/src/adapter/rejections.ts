@@ -42,6 +42,11 @@ export const ZOHO_BOOKS_REJECTIONS = {
   remainderDiffers: "zoho_books_remainder_differs",
   /** The payment no longer holds enough unapplied to pay the invoice (applied elsewhere by hand). */
   remainderUnavailable: "zoho_books_remainder_unavailable",
+  /**
+   * A credit note Books holds with a refund other than ours (made by hand, another amount or
+   * reference): it is never topped up, a person decides.
+   */
+  creditNoteRefundDiffers: "zoho_books_credit_note_refund_differs",
   /** A payment Books holds under our reference differs from ours (invoice, amount, currency, date). */
   paymentMismatch: "zoho_books_payment_mismatch",
   /**

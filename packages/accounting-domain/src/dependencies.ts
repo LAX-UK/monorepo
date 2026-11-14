@@ -2,8 +2,10 @@ import type { AccountingDocument } from "./document.js";
 
 /**
  * The documents that must be in the books before this one may be sent, by LAX reference:
- * - an invoice or credit note waits for its contact (Books refuses one whose contact it does not
- *   hold, and the refusal would need a person);
+ * - an invoice waits for its contact (Books refuses one whose contact it does not hold, and the
+ *   refusal would need a person);
+ * - a credit note waits for its contact and for the invoice it credits (Books would refuse it, or
+ *   hold a credit against nothing);
  * - a payment waits for its contact and for every invoice it is applied to (it would be refused,
  *   or land as unapplied credit). The contact is named on its own, so a payment that applies
  *   nothing yet (or whose invoices are elsewhere) still follows it.
@@ -16,8 +18,9 @@ export function documentsAwaited(document: AccountingDocument): readonly string[
   switch (document.kind) {
     case "payment":
       return [document.contactReference, ...document.allocations.map((a) => a.invoiceReference)];
-    case "invoice":
     case "credit_note":
+      return [document.contactReference, document.invoiceReference];
+    case "invoice":
       return [document.contactReference];
     default:
       return [];

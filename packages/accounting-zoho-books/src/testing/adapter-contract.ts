@@ -16,6 +16,7 @@ import {
   expectedTotals,
   isLockedPeriodReason,
   legalEntityFor,
+  planCreditNoteRefund,
 } from "@auction/accounting-domain";
 import type { AccountingPorts } from "../adapter/index.js";
 import { ZOHO_BOOKS_REJECTIONS as R } from "../adapter/rejections.js";
@@ -778,6 +779,16 @@ export function runAccountingContract(
         if (found.status === "found") expect(resent.providerId).toBe(found.providerId);
       });
 
+      it("a refused credit note leaves nothing in Books (never a part of one)", async () => {
+        const s = await withContact(BID);
+        const inv = invoice(BID, "cn-limited", [GOODS, DELIVERY]);
+        issuedOf(await s.settle(s.ports.invoices.issueInvoice(inv)));
+        const note = credited(inv, "cn-limited");
+        s.faults.inject("rate_limited");
+        expect((await s.settle(s.ports.creditNotes.issueCreditNote(note))).status).toBe("rejected");
+        await notIssued(s, note);
+      });
+
       it("refuses a credit note for an invoice that was never issued", async () => {
         const s = await withContact(BID);
         const note = credited(invoice(BID, "cn-missing", [GOODS, DELIVERY]));
@@ -785,6 +796,81 @@ export function runAccountingContract(
           status: "rejected",
           reason: "zoho_books_invoice_missing",
         });
+      });
+    });
+
+    describe("a refund's credit note refunded from Stripe clearing", () => {
+      async function issuedRefund(sourceId: string) {
+        const s = await withContact(BID);
+        const inv = invoice(BID, `${sourceId}-inv`, [GOODS, DELIVERY]);
+        issuedOf(await s.settle(s.ports.invoices.issueInvoice(inv)));
+        const note = must(
+          buildCreditNoteFor(inv, {
+            sourceId,
+            issuedOn: "2026-11-13",
+            buckets: {
+              paidGoodsPence: 12_000,
+              paidDeliveryPence: 1_800,
+              refundedGoodsPence: 0,
+              refundedDeliveryPence: 0,
+            },
+            request: { goodsPence: 6_000, deliveryPence: 0 },
+            priorCredits: [],
+            refund: { account: "stripe_clearing", refundedOn: "2026-11-13" },
+          }),
+        );
+        issuedOf(await s.settle(s.ports.creditNotes.issueCreditNote(note)));
+        const refund = must(planCreditNoteRefund(note));
+        return { s, inv, note, refund };
+      }
+
+      it("refunds its whole gross once; a second run is already refunded, nothing sent again", async () => {
+        const { s, refund } = await issuedRefund("cnr-once");
+        expect(refund.amountPence).toBe(6_000);
+        expect(await s.settle(s.ports.creditNoteRefunds.refundCreditNote(refund))).toEqual({
+          status: "refunded",
+          rehearsal: false,
+        });
+        expect(await s.settle(s.ports.creditNoteRefunds.refundCreditNote(refund))).toEqual({
+          status: "already_refunded",
+          rehearsal: false,
+        });
+      });
+
+      it("never tops up a credit note already refunded for another amount", async () => {
+        const { s, refund } = await issuedRefund("cnr-other");
+        await s.settle(s.ports.creditNoteRefunds.refundCreditNote({ ...refund, amountPence: 100 }));
+        expect(await s.settle(s.ports.creditNoteRefunds.refundCreditNote(refund))).toEqual({
+          status: "rejected",
+          reason: R.creditNoteRefundDiffers,
+        });
+      });
+
+      it("refuses a credit note not in the books, and a reference of another product", async () => {
+        const { s, refund } = await issuedRefund("cnr-missing");
+        expect(
+          await s.settle(
+            s.ports.creditNoteRefunds.refundCreditNote({
+              ...refund,
+              creditNoteReference: "LAX-BID-CN-never-sent",
+            }),
+          ),
+        ).toEqual({ status: "rejected", reason: "zoho_books_credit_note_missing" });
+        expect(
+          await s.settle(
+            s.ports.creditNoteRefunds.refundCreditNote({
+              ...refund,
+              creditNoteReference: "LAX-SHOP-CN-cnr-missing",
+            }),
+          ),
+        ).toEqual({ status: "rejected", reason: R.entityMismatch });
+      });
+
+      it("refuses a refund from anything but Stripe clearing, or of nothing", async () => {
+        const { s, refund } = await issuedRefund("cnr-account");
+        expect(
+          await s.settle(s.ports.creditNoteRefunds.refundCreditNote({ ...refund, amountPence: 0 })),
+        ).toEqual({ status: "rejected", reason: R.creditNoteRefundDiffers });
       });
     });
 

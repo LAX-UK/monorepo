@@ -76,7 +76,7 @@ const ACCOUNT_COLUMNS = {
 };
 
 /**
- * The daily Stripe job's store (migration 0385). See `IStripeBooksLedger`: the balance
+ * The daily Stripe job's store (migration 0386). See `IStripeBooksLedger`: the balance
  * transaction's row and its documents are written in one transaction, and the row's primary key
  * decides which run books it.
  */
