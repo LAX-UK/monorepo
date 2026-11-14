@@ -130,6 +130,44 @@ describe("loadAdminPayoutsListPage", () => {
     expect(getEntity).not.toHaveBeenCalled();
   });
 
+  it("puts the page in the URL's sort order", async () => {
+    getPage.mockResolvedValue({
+      rows: [
+        { ...payout, id: "p_small", netAmount: "100" },
+        { ...payout, id: "p_large", netAmount: "900" },
+      ],
+      total: 2,
+      offset: 0,
+      limit: 50,
+      summary,
+    });
+
+    const byNet = await loadAdminPayoutsListPage({ sort: "-net" });
+    expect(byNet.sort).toEqual({ columnId: "net", direction: "desc" });
+    expect(byNet.rows.map((row) => row.id)).toEqual(["p_large", "p_small"]);
+    const defaultSort = await loadAdminPayoutsListPage({});
+    expect(defaultSort.sort).toEqual({ columnId: "period", direction: "desc" });
+  });
+
+  it("finds a linked payout that is not on the page, by its id, for the panel", async () => {
+    getPage.mockImplementation(async (params: { search?: string }) => ({
+      rows: params.search === "payout_9" ? [{ ...payout, id: "payout_9" }] : [payout],
+      total: 1,
+      offset: 0,
+      limit: 50,
+      summary,
+    }));
+
+    const result = await loadAdminPayoutsListPage({ status: "paid", payout: "payout_9" });
+    expect(getPage).toHaveBeenLastCalledWith({ limit: 50, offset: 0, search: "payout_9" });
+    expect(result.openOffPage).toMatchObject({ id: "payout_9" });
+
+    getPage.mockClear();
+    const onPage = await loadAdminPayoutsListPage({ payout: "payout_1" });
+    expect(getPage).toHaveBeenCalledTimes(1);
+    expect(onPage.openOffPage).toBeNull();
+  });
+
   it("contains list failures in plain language, without the raw error", async () => {
     getSession.mockResolvedValue(null);
     getPage.mockRejectedValue(new Error("connect ECONNREFUSED 10.0.0.1:443"));

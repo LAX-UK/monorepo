@@ -6,8 +6,11 @@ import { formatPayoutReference, payoutTakesLines } from "@auction/domain";
 import {
   type AttentionStripItem,
   type Metric,
+  type SortState,
   type DataView as StaffDataView,
   type StatusPresentation,
+  decodeSort,
+  encodeSort,
   formatStaffDate,
   formatStaffMoney,
   parsePoundsToPence,
@@ -158,6 +161,54 @@ export function payoutPanelHref(search: PayoutsListSearch, payoutId: string | nu
   const base: PayoutsListSearch = { ...search };
   for (const key of ["error", "success", "period", "settlement"]) delete base[key];
   return buildListHref(PAYOUTS_LIST_PATH, base, { payout: payoutId });
+}
+
+/** Newest period first, unless the URL says otherwise; the default stays out of the URL. */
+export const PAYOUTS_DEFAULT_SORT: SortState = { columnId: "period", direction: "desc" };
+
+const PAYOUTS_SORTABLE = ["period", "net", "paid"] as const;
+
+/** The sort in the URL (`?sort=-net`), or the default for a missing or unknown one. */
+export function payoutsSortState(sort: string | string[] | undefined): SortState {
+  const decoded = decodeSort(typeof sort === "string" ? sort : sort?.[0]);
+  return decoded && (PAYOUTS_SORTABLE as readonly string[]).includes(decoded.columnId)
+    ? decoded
+    : PAYOUTS_DEFAULT_SORT;
+}
+
+/** The list sorted by a column, back on its first page. */
+export function payoutsSortHref(search: PayoutsListSearch, sort: SortState): string {
+  const isDefault =
+    sort.columnId === PAYOUTS_DEFAULT_SORT.columnId &&
+    sort.direction === PAYOUTS_DEFAULT_SORT.direction;
+  return payoutsListHref(search, { sort: isDefault ? null : encodeSort(sort) });
+}
+
+/** The value a column sorts by; null (not paid yet, no net) always sorts last. */
+function payoutSortValue(row: PayoutsStaffRow, columnId: string): string | number | null {
+  if (columnId === "net") return row.netPence;
+  if (columnId === "paid") return row.paidAt;
+  return row.periodStart;
+}
+
+/**
+ * The page of payouts in the URL's order, so the queue panel steps (J and K) in the order the
+ * rows are shown. The API does not sort, so the server sorts the rows it loaded, as the browser
+ * did before; ties keep the API's order.
+ */
+export function sortPayoutsStaffRows(
+  rows: readonly PayoutsStaffRow[],
+  sort: SortState,
+): PayoutsStaffRow[] {
+  const sign = sort.direction === "desc" ? -1 : 1;
+  return [...rows].sort((a, b) => {
+    const x = payoutSortValue(a, sort.columnId);
+    const y = payoutSortValue(b, sort.columnId);
+    if (x === y) return 0;
+    if (x === null) return 1;
+    if (y === null) return -1;
+    return sign * (x < y ? -1 : 1);
+  });
 }
 
 /** Views that list something other than payouts: held sales, and sales paid under the old rule. */
