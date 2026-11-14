@@ -2,6 +2,7 @@ import "server-only";
 
 import { isSessionLookupTransientError } from "@/lib/auth/session-lookup-error";
 import { viewerCanSeeNonPublicCatalog } from "@/lib/catalog/public-catalog-visibility";
+import { getServerDataContainer } from "@/lib/data/container.server";
 import { getServerLotById } from "@/lib/data/http/lots.server";
 import { getServerSaleLotsPage, getServerSaleShell } from "@/lib/data/http/sales.server";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
@@ -35,4 +36,17 @@ export async function staffPreviewSaleReads(): Promise<SaleroomReads | null> {
 export async function staffPreviewLot(lotId: string) {
   if (!(await staffMayPreview())) return null;
   return getServerLotById(lotId);
+}
+
+/**
+ * The lot page's reads with the staff member's session, for a lot the public cannot see; null
+ * when the viewer is not staff or the lot does not exist. The same reads the page used before it
+ * became session-free.
+ */
+export async function staffPreviewLotPage(lotId: string) {
+  if (!(await staffMayPreview())) return null;
+  const container = await getServerDataContainer();
+  const shell = await container.lotPage.loadShell(lotId);
+  if (!shell) return null;
+  return { shell, secondary: await container.lotPage.loadSecondary(shell) };
 }

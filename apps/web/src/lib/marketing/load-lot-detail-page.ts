@@ -1,46 +1,41 @@
 import "server-only";
 
-import {
-  isPublicCatalogLot,
-  viewerCanSeeNonPublicCatalog,
-} from "@/lib/catalog/public-catalog-visibility";
-import { getServerDataContainer } from "@/lib/data/container.server";
-import { getServerLotById } from "@/lib/data/http/lots.server";
+import { isPublicCatalogLot } from "@/lib/catalog/public-catalog-visibility";
+import { getPublicLotById } from "@/lib/data/http/public-catalogue.server";
+import { ensureCanonicalLotSlug } from "@/lib/marketing/lot-canonical-slug";
 import { buildLotPageViewModel } from "@/lib/marketing/lot-page-vm";
-import { lotPath, slugify } from "@/lib/seo/url";
-import { appendMarketingParamsToPath } from "@auction/validators";
-import { notFound, permanentRedirect } from "next/navigation";
+import { loadPublicLotSecondary, loadPublicLotShell } from "@/lib/marketing/public-lot-page-data";
+import { staffPreviewLotPage } from "@/lib/marketing/staff-catalogue-preview.server";
+import { notFound } from "next/navigation";
 
-export function ensureCanonicalLotSlug(
-  slug: string,
-  lot: { id: string; title: string },
-  searchParams: Record<string, string | string[] | undefined> = {},
-) {
-  if (slug !== slugify(lot.title)) {
-    permanentRedirect(appendMarketingParamsToPath(lotPath(lot), searchParams));
-  }
-}
+export { ensureCanonicalLotSlug } from "@/lib/marketing/lot-canonical-slug";
 
+/**
+ * The lot page as everyone sees it (CO-7): built from session-free, tagged reads with the
+ * signed-out viewer. What is personal comes from `/api/lots/:id/me` in the browser, and the live
+ * bid state from the socket. A lot the public cannot see falls back to the staff preview, the only
+ * path that reads the session, and only after the public read found nothing.
+ */
 export async function loadLotDetailPage(input: {
   id: string;
   slug: string;
   searchParams: Record<string, string | string[] | undefined>;
   serverNow: number;
 }) {
-  const container = await getServerDataContainer();
-  const shell = await container.lotPage.loadShell(input.id);
-  if (!shell) notFound();
+  const shell = await loadPublicLotShell(input.id);
+  if (!shell || !isPublicCatalogLot(shell.auction, shell.saleBundle?.sale ?? null)) {
+    const preview = await staffPreviewLotPage(input.id);
+    if (!preview) notFound();
+    ensureCanonicalLotSlug(input.slug, preview.shell.auction, input.searchParams);
+    return buildLotPageViewModel({
+      ...preview,
+      searchParams: input.searchParams,
+      serverNow: input.serverNow,
+    });
+  }
   ensureCanonicalLotSlug(input.slug, shell.auction, input.searchParams);
 
-  const canPreviewCatalog = viewerCanSeeNonPublicCatalog(
-    shell.session?.role,
-    shell.session?.staffRoles,
-  );
-  if (!canPreviewCatalog && !isPublicCatalogLot(shell.auction, shell.saleBundle?.sale ?? null)) {
-    notFound();
-  }
-
-  const secondary = await container.lotPage.loadSecondary(shell);
+  const secondary = await loadPublicLotSecondary(shell);
   return buildLotPageViewModel({
     shell,
     secondary,
@@ -49,6 +44,7 @@ export async function loadLotDetailPage(input: {
   });
 }
 
+/** The public lot for the page's metadata; a lot only staff may see has none (noindex anyway). */
 export async function loadLotDetailMetadata(id: string) {
-  return getServerLotById(id);
+  return getPublicLotById(id);
 }

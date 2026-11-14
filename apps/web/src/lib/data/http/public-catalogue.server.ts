@@ -1,9 +1,19 @@
 import "server-only";
 
+import { atgDisplayListLot } from "@/lib/catalog/atg-catalog-display";
 import { CATALOGUE_SALES_TAG, publicLotTag, publicSaleTag } from "@/lib/data/cache-tags";
+import type { ListLotsParams } from "@/lib/data/contracts";
+import { CATALOGUE_FETCH_POLICIES } from "@/lib/data/http/catalogue-fetch";
 import { categoryRowSchema } from "@/lib/data/http/categories.schema";
 import { readDataEnvelope, readJsonBody, readListEnvelope } from "@/lib/data/http/envelope";
-import { publicLotViewEnvelopeSchema } from "@/lib/data/http/lots.schema";
+import { buildLotListQuery } from "@/lib/data/http/lot-list-query";
+import {
+  bidEnvelopeSchema,
+  lotDocumentPublicRowSchema,
+  lotEnvelopeSchema,
+  publicLotViewEnvelopeSchema,
+  watchCountSchema,
+} from "@/lib/data/http/lots.schema";
 import { isWithdrawnLotRow } from "@/lib/data/http/object-guards";
 import {
   type GetRelatedSalesParams,
@@ -14,10 +24,25 @@ import {
   bidderCountSchema,
   saleLotsPageDataSchema,
   saleShellDataSchema,
+  saleWithLotsDataSchema,
 } from "@/lib/data/http/sales.schema";
-import type { GetSaleLotsPageParams, SaleLotsPage, SaleShell } from "@/lib/data/http/sales.types";
+import type {
+  GetSaleLotsPageParams,
+  SaleLotsPage,
+  SaleShell,
+  SaleWithLots,
+} from "@/lib/data/http/sales.types";
 import { getServerApiBase } from "@/lib/data/http/server-api-base";
-import type { Category, Lot, PublicLotView } from "@auction/types";
+import { mergeFetchInitWithPolicy } from "@/lib/data/http/server-fetch-policy";
+import type { LotDocumentPublicRow } from "@/lib/data/lot-documents-public";
+import {
+  EMPTY_LOT_BIDDING_VIEW,
+  type LotBiddingView,
+  parseLotBiddingView,
+} from "@/lib/lot-page/lot-bidding-view";
+import { LOT_HISTORY_LIMIT, parsePublicBidHistory } from "@/lib/lot-page/public-bid-history-parse";
+import type { PublicBidHistory } from "@auction/domain";
+import type { Bid, Category, Lot, PublicLotView } from "@auction/types";
 import { cache } from "react";
 
 /*
@@ -135,3 +160,108 @@ export async function getPublicSaleBidderCount(saleId: string): Promise<number |
   const total = parsed.total;
   return typeof total === "number" && Number.isFinite(total) ? total : null;
 }
+
+/** The public sale with every lot (lot navigation, the room's queue), as a signed-out visitor sees it. */
+export const getPublicSaleWithLots = cache(async function getPublicSaleWithLots(
+  id: string,
+): Promise<SaleWithLots | null> {
+  const res = await publicFetch(`/sales/${encodeURIComponent(id)}`, [
+    publicSaleTag(id),
+    CATALOGUE_SALES_TAG,
+  ]);
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error(`Failed to load sale: ${res.status}`);
+  const body = await readJsonBody(res);
+  const bundle = readDataEnvelope(body, saleWithLotsDataSchema, `GET /sales/${id}`);
+  const { viewer: _viewer, ...rest } = bundle;
+  return rest;
+});
+
+/** The lot's bids as the public sees them (a first paint: the panel reads them again live). */
+export const getPublicLotBids = cache(async function getPublicLotBids(
+  lotId: string,
+  limit = 30,
+): Promise<Bid[]> {
+  const res = await publicFetch(`/lots/${encodeURIComponent(lotId)}/bids?limit=${limit}`, [
+    publicLotTag(lotId),
+  ]);
+  if (!res.ok) throw new Error(`Failed to load bids: ${res.status}`);
+  const body = await readJsonBody(res);
+  return readListEnvelope(body, bidEnvelopeSchema, `GET /lots/${lotId}/bids`).rows;
+});
+
+/** Number of people watching the lot; 0 on any failure. */
+export const getPublicLotWatchCount = cache(async function getPublicLotWatchCount(
+  lotId: string,
+): Promise<number> {
+  try {
+    const res = await publicFetch(`/lots/${encodeURIComponent(lotId)}/watch-count`, [
+      publicLotTag(lotId),
+    ]);
+    if (!res.ok) return 0;
+    const body = await readJsonBody(res);
+    const parsed = readDataEnvelope(body, watchCountSchema, `GET /lots/${lotId}/watch-count`);
+    return typeof parsed.count === "number" ? parsed.count : 0;
+  } catch {
+    return 0;
+  }
+});
+
+/** Public lot attachments; empty on error. */
+export async function getPublicLotDocuments(lotId: string): Promise<LotDocumentPublicRow[]> {
+  const res = await publicFetch(`/lots/${encodeURIComponent(lotId)}/documents`, [
+    publicLotTag(lotId),
+  ]);
+  if (!res.ok) return [];
+  const body = await readJsonBody(res);
+  return readListEnvelope(body, lotDocumentPublicRowSchema, `GET /lots/${lotId}/documents`).rows;
+}
+
+/** A public lot list (more from the same seller), as the catalogue reads it. */
+export async function getPublicLotList(params: ListLotsParams): Promise<Lot[]> {
+  const qs = new URLSearchParams(buildLotListQuery(params));
+  const res = await fetch(
+    `${getServerApiBase()}/lots?${qs.toString()}`,
+    mergeFetchInitWithPolicy(CATALOGUE_FETCH_POLICIES.lots),
+  );
+  if (!res.ok) throw new Error(`Failed to load lots: ${res.status}`);
+  const body = await readJsonBody(res);
+  const { rows } = readListEnvelope(body, lotEnvelopeSchema, "GET /lots");
+  return rows.map((lot) => atgDisplayListLot(lot));
+}
+
+/**
+ * The bidding fields of the public lot (next bid, sold prices). The server clock reading is left
+ * out: from a cached page it would be old, and the page's clock would start behind. The browser
+ * measures the API's clock itself.
+ */
+export const getPublicLotBiddingView = cache(async function getPublicLotBiddingView(
+  lotId: string,
+): Promise<LotBiddingView> {
+  try {
+    const res = await publicFetch(`/lots/${encodeURIComponent(lotId)}`, [publicLotTag(lotId)]);
+    if (!res.ok) return EMPTY_LOT_BIDDING_VIEW;
+    const body = await readJsonBody(res);
+    const view = parseLotBiddingView((body as { data?: unknown } | null)?.data);
+    return { ...view, serverNow: null };
+  } catch {
+    return EMPTY_LOT_BIDDING_VIEW;
+  }
+});
+
+/** The anonymised bid history; "you" is marked by the browser's own read. `null` on failure. */
+export const getPublicBidHistory = cache(async function getPublicBidHistory(
+  lotId: string,
+): Promise<PublicBidHistory | null> {
+  try {
+    const res = await publicFetch(
+      `/lots/${encodeURIComponent(lotId)}/bid-history?limit=${LOT_HISTORY_LIMIT}`,
+      [publicLotTag(lotId)],
+    );
+    if (!res.ok) return null;
+    const body = await readJsonBody(res);
+    return parsePublicBidHistory((body as { data?: unknown } | null)?.data);
+  } catch {
+    return null;
+  }
+});

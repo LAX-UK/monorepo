@@ -73,11 +73,22 @@ function walk(entries: string[]) {
   return { seen, offenders };
 }
 
-const SALE_ROUTE = "app/(marketing)/sales/[slug]/[id]";
+const ROUTES = [
+  {
+    name: "sale",
+    dir: "app/(marketing)/sales/[slug]/[id]",
+    loader: "lib/marketing/load-saleroom-detail-page.ts",
+  },
+  {
+    name: "lot",
+    dir: "app/(marketing)/lot/[slug]/[id]",
+    loader: "lib/marketing/load-lot-detail-page.ts",
+  },
+] as const;
 
-describe("public sale page render (CO-7)", () => {
+describe.each(ROUTES)("public $name page render (CO-7)", ({ dir, loader }) => {
   const entries = ["page.tsx", "layout.tsx", "loading.tsx", "opengraph-image.tsx"]
-    .map((f) => `${SALE_ROUTE}/${f}`)
+    .map((f) => `${dir}/${f}`)
     .filter((f) => existsSync(join(SRC, f)));
 
   it("reads neither the session nor the cookies", () => {
@@ -85,16 +96,15 @@ describe("public sale page render (CO-7)", () => {
     expect(offenders).toEqual([]);
   });
 
-  it("reaches the session only through the staff preview of a sale the public cannot see", () => {
-    const { seen } = walk(entries);
-    const rel = [...seen].map((f) => relative(SRC, f));
+  it("reaches the session only through the staff preview of an item the public cannot see", () => {
+    const rel = [...walk(entries).seen].map((f) => relative(SRC, f));
     expect(rel).not.toContain("lib/data/http/session.server.ts");
     expect(rel).toContain("lib/marketing/staff-catalogue-preview.server.ts");
   });
 
   it("is checked for real: the walk sees the page's loader and the public reads", () => {
     const rel = [...walk(entries).seen].map((f) => relative(SRC, f));
-    expect(rel).toContain("lib/marketing/load-saleroom-detail-page.ts");
+    expect(rel).toContain(loader);
     expect(rel).toContain("lib/data/http/public-catalogue.server.ts");
   });
 });

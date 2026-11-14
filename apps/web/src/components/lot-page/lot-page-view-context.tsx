@@ -1,6 +1,7 @@
 "use client";
 
 import type { LotPageView } from "@/lib/lot-page/build-lot-page-view";
+import { useLotPageViewerOptional } from "@/lib/lot-page/lot-page-viewer-context";
 import { NO_LOT_VIEWER } from "@/lib/lot-page/lot-viewer";
 import {
   type LotPageLive,
@@ -25,7 +26,14 @@ export function LotPageViewProvider({
   source: LotPageViewSource;
   children: ReactNode;
 }) {
-  const live = useLotPageView(source);
+  // The cached page is drawn signed out; once `/api/lots/:id/me` says who is looking, the
+  // viewer's standing on the lot is read (`useLotViewer`) as it always was for a signed-in page.
+  const viewer = useLotPageViewerOptional();
+  const live = useLotPageView(
+    viewer && viewer.isAuthenticated !== source.signedIn
+      ? { ...source, signedIn: viewer.isAuthenticated }
+      : source,
+  );
   return <LotPageViewContext.Provider value={live}>{children}</LotPageViewContext.Provider>;
 }
 

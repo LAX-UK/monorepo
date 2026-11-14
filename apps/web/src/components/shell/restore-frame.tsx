@@ -15,7 +15,10 @@ type Pending = { step: "hop" | "stalled"; href: string };
  * restore that has only just run and not taken is `stalled`: the caller shows the retry state
  * (and reports it) instead of hopping again, so the browser can never loop.
  */
-async function pendingRestore(needsRestore: boolean, returnTo: string): Promise<Pending | null> {
+export async function pendingRestore(
+  needsRestore: boolean,
+  returnTo: string,
+): Promise<Pending | null> {
   const markerPresent = (await cookies()).has(RESTORE_MARKER_COOKIE);
   const step = nextRestoreStep({ needsRestore, markerPresent });
   if (step === "none") return null;

@@ -2,7 +2,7 @@ import "server-only";
 
 import type { PublicUser, PublicUserReader } from "@/lib/data/contracts";
 import { readDataEnvelope, readJsonBody } from "@/lib/data/http/envelope";
-import { getServerApiBase } from "@/lib/data/http/hc-server";
+import { getServerApiBase } from "@/lib/data/http/server-api-base";
 import { publicUserSchema } from "@/lib/data/http/users-public.schema";
 
 export async function getServerPublicUserReader(): Promise<PublicUserReader> {
