@@ -1,5 +1,6 @@
 import { buildListHref } from "@/lib/admin/admin-list-params";
 import { defineListSort } from "@/lib/admin/define-list-sort";
+import { panelParamRedirect } from "@/lib/admin/list-record";
 import { staffStatus } from "@/lib/admin/staff-kit-status";
 import {
   STAFF_DEFAULT_PAGE_SIZE,
@@ -54,9 +55,17 @@ export function eventRsvpsListHref(
   return buildListHref(EVENT_RSVPS_LIST_PATH, current, { offset: 0, event: null, ...patch });
 }
 
-/** The list with this event's panel open (`?event=`), or closed for null. */
-export function eventRsvpPanelHref(current: EventRsvpsListSearch, slug: string | null): string {
-  return buildListHref(EVENT_RSVPS_LIST_PATH, current, { event: slug });
+/** An event's page: its guest list. */
+export function eventRsvpHref(slug: string): string {
+  return `${EVENT_RSVPS_LIST_PATH}/${encodeURIComponent(slug)}`;
+}
+
+/**
+ * An old panel link (`/admin/event-rsvps?event=SLUG`) opens the event's guest list now, still in
+ * the list it named; null when there is no `?event=`.
+ */
+export function eventRsvpPanelRedirect(current: EventRsvpsListSearch): string | null {
+  return panelParamRedirect(current, "event", eventRsvpHref);
 }
 
 function toRow(event: OnsiteEventListItem): EventRsvpStaffRow {
@@ -69,7 +78,7 @@ function toRow(event: OnsiteEventListItem): EventRsvpStaffRow {
     rsvpCloseAt: event.rsvpCloseAt,
     rsvpCount: event.rsvpCount,
     saleId: event.saleId,
-    href: `${EVENT_RSVPS_LIST_PATH}/${slug}`,
+    href: eventRsvpHref(event.slug),
     checkInHref: `${EVENT_RSVPS_LIST_PATH}/${slug}/check-in`,
     editHref: `${EVENT_RSVPS_LIST_PATH}/${slug}/edit`,
     saleCheckInHref: event.saleId

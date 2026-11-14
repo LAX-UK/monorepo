@@ -1,33 +1,30 @@
 "use client";
 
-import { useListPanel } from "@/components/admin/staff/use-list-panel";
 import { useStaffListNavigation } from "@/components/admin/staff/use-staff-list-navigation";
 import {
   EVENT_STATUS_VIEWS,
   type EventRsvpStaffRow,
   type EventRsvpsListSearch,
-  eventRsvpPanelHref,
   eventRsvpsListHref,
   eventRsvpsSort,
 } from "@/lib/admin/events/event-rsvps-staff-list.vm";
+import { listQueryOf } from "@/lib/admin/list-record";
 import {
   type DataColumn,
   DataViews,
-  DetailPanel,
   ListPage,
   type Metric,
   type OverflowAction,
-  OverflowMenu,
   PrimaryCell,
   StaffButton,
   StaffDate,
   StatusBadge,
   TableSearch,
-  formatStaffDateTime,
   formatStaffNumber,
+  recordHrefInList,
   searchChipLabel,
 } from "@auction/staff-ui";
-import { ArrowUpRight, Plus, ScanLine } from "lucide-react";
+import { Plus } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useMemo } from "react";
 
@@ -45,10 +42,11 @@ export type EventRsvpsStaffListProps = {
 
 const str = (value: string | string[] | undefined) => (typeof value === "string" ? value : "");
 
-function rowActions(row: EventRsvpStaffRow): OverflowAction[] {
+/** The event's own pages; `pageHref` is its guest list, still in this list. */
+function rowActions(row: EventRsvpStaffRow, pageHref: string): OverflowAction[] {
   return [
-    { id: "page", label: "Open guest list", href: row.href },
-    { id: "check-in", label: "Open check-in", href: row.checkInHref },
+    { id: "page", label: "Open guest list", href: pageHref },
+    { id: "check-in", label: "Check in", href: row.checkInHref },
     { id: "edit", label: "Edit event", href: row.editHref },
     ...(row.saleCheckInHref
       ? [{ id: "sale", label: "Open sale check-in", href: row.saleCheckInHref }]
@@ -58,21 +56,18 @@ function rowActions(row: EventRsvpStaffRow): OverflowAction[] {
 
 /**
  * Invitation-only onsite events on the staff list template: views by status with counts, search
- * by title, latest start first (sortable by title and RSVPs), and a record panel deep-linked with
- * `?event=` that leads to the guest list and the door check-in.
+ * by title, and latest start first (sortable by title and RSVPs). A row opens the event's guest
+ * list, which keeps this list's query for Previous and Next; Back returns to the list as it was.
+ * Every row's `…` menu leads to the guest list, the door check-in and the editor.
  */
 export function EventRsvpsStaffList(props: EventRsvpsStaffListProps) {
   const { rows, search, filtered } = props;
   const { pending, navigate, Link: ListLink } = useStaffListNavigation();
-  const panelHref = useCallback(
-    (slug: string | null) => eventRsvpPanelHref(search, slug),
-    [search],
+  const listQuery = useMemo(() => listQueryOf(search, ["event"]), [search]);
+  const recordHref = useCallback(
+    (row: EventRsvpStaffRow) => recordHrefInList(row.href, listQuery),
+    [listQuery],
   );
-  const panel = useListPanel({
-    param: "event",
-    initialId: str(search.event) || null,
-    hrefFor: panelHref,
-  });
   const status = str(search.status);
   const q = str(search.q);
 
@@ -85,7 +80,7 @@ export function EventRsvpsStaffList(props: EventRsvpsStaffListProps) {
         sortable: true,
         defaultSortDirection: "asc",
         cell: (row) => (
-          <PrimaryCell href={panelHref(row.slug)} Link={panel.PanelLink}>
+          <PrimaryCell href={recordHref(row)} Link={Link}>
             {row.title}
           </PrimaryCell>
         ),
@@ -128,7 +123,7 @@ export function EventRsvpsStaffList(props: EventRsvpsStaffListProps) {
         cell: (row) => (row.rsvpCloseAt ? <StaffDate value={row.rsvpCloseAt} withTime /> : null),
       },
     ],
-    [panelHref, panel.PanelLink],
+    [recordHref],
   );
 
   const views = [{ id: "all", label: "All" }, ...EVENT_STATUS_VIEWS].map((view) => ({
@@ -137,163 +132,94 @@ export function EventRsvpsStaffList(props: EventRsvpsStaffListProps) {
     href: eventRsvpsListHref(search, { status: view.id === "all" ? null : view.id }),
     count: props.counts[view.id] ?? 0,
   }));
-  const open = rows.find((row) => row.slug === panel.openId) ?? null;
 
   return (
-    <>
-      <ListPage<EventRsvpStaffRow>
-        title="Event RSVPs"
-        description="Guest lists, passes and door check-in for invitation-only events. Live bidding runs in Saleroom."
-        Link={ListLink}
-        listKey="bid-admin.event-rsvps"
-        primaryAction={
-          <StaffButton asChild variant="primary" size="sm" icon={<Plus aria-hidden />}>
-            <Link href="/admin/event-rsvps/new">New event</Link>
-          </StaffButton>
-        }
-        secondaryActions={
-          <StaffButton asChild variant="secondary" size="sm">
-            <Link href="/admin/saleroom">Saleroom</Link>
-          </StaffButton>
-        }
-        metrics={{ label: "Events summary", period: "All events", items: props.metrics }}
-        views={<DataViews views={views} activeId={status || "all"} Link={ListLink} />}
-        search={
-          <TableSearch
-            key={q}
-            fullWidth
-            label="Search events"
-            placeholder="Search by event title"
-            value={q}
-            onSearch={(next) => navigate(eventRsvpsListHref(search, { q: next || null }))}
-          />
-        }
-        activeFilters={
-          q
-            ? [
-                {
-                  id: "q",
-                  label: searchChipLabel(q),
-                  onRemove: () => navigate(eventRsvpsListHref(search, { q: null })),
-                },
-              ]
-            : []
-        }
-        onClearFilters={() => navigate(eventRsvpsListHref(search, { q: null }))}
-        loading={pending}
-        filtered={filtered}
-        error={
-          props.loadError
-            ? {
-                title: "Events did not load",
-                description: props.loadError,
-                onRetry: () => navigate(eventRsvpsListHref(search, {})),
-              }
-            : null
-        }
-        empty={{
-          title: status ? "No events in this view" : "Create your first event",
-          description: status
-            ? "Events move here as their status changes."
-            : "Set up an invitation-only event, share its RSVP page, then check guests in at the door.",
-          ...(status
-            ? {}
-            : {
-                action: (
-                  <StaffButton asChild size="sm" variant="primary">
-                    <Link href="/admin/event-rsvps/new">New event</Link>
-                  </StaffButton>
-                ),
-              }),
-        }}
-        noResults={{ noun: "events" }}
-        table={{
-          columns,
-          data: rows,
-          getRowId: (row) => row.slug,
-          defaultHiddenColumns: ["closes"],
-          defaultSort: eventRsvpsSort.defaultSort,
-          sort: props.sort,
-          onSortChange: (sort) =>
-            navigate(eventRsvpsListHref(search, { sort: eventRsvpsSort.param(sort) })),
-          onRowOpen: (row) => panel.show(row.slug),
-          activeRowId: panel.openId,
-          rowActions: {
-            label: (row) => `Actions for ${row.title}`,
-            actions: (row) => [
-              { id: "open", label: "Open details", onSelect: () => panel.show(row.slug) },
-              ...rowActions(row),
-            ],
-          },
-        }}
-        pageSize={{
-          value: props.pageSize,
-          onChange: (size) => navigate(eventRsvpsListHref(search, { limit: size })),
-        }}
-        pagination={props.pagination}
-      />
-      <EventRsvpQuickView row={open} onClose={() => panel.show(null)} />
-    </>
-  );
-}
-
-/** One event beside the list: when it is, how many are coming, and the way to its guest list. */
-export function EventRsvpQuickView({
-  row,
-  onClose,
-}: {
-  row: EventRsvpStaffRow | null;
-  onClose: () => void;
-}) {
-  return (
-    <DetailPanel
-      open={row !== null}
-      onOpenChange={(open) => {
-        if (!open) onClose();
-      }}
-      title={row?.title ?? "Event"}
-      status={row ? <StatusBadge tone={row.status.tone}>{row.status.label}</StatusBadge> : null}
-      meta={row ? [{ label: "RSVPs", value: formatStaffNumber(row.rsvpCount) }] : []}
-      overflow={
-        row ? (
-          <OverflowMenu
-            label={`More actions for ${row.title}`}
-            actions={rowActions(row).filter((action) => action.id !== "page")}
-          />
-        ) : null
+    <ListPage<EventRsvpStaffRow>
+      title="Event RSVPs"
+      description="Guest lists, passes and door check-in for invitation-only events. Live bidding runs in Saleroom."
+      Link={ListLink}
+      listKey="bid-admin.event-rsvps"
+      primaryAction={
+        <StaffButton asChild variant="primary" size="sm" icon={<Plus aria-hidden />}>
+          <Link href="/admin/event-rsvps/new">New event</Link>
+        </StaffButton>
       }
-      headerActions={
-        row ? (
-          <StaffButton asChild variant="ghost" size="sm" icon={<ScanLine aria-hidden />}>
-            <Link href={row.checkInHref}>Check-in</Link>
-          </StaffButton>
-        ) : null
+      secondaryActions={
+        <StaffButton asChild variant="secondary" size="sm">
+          <Link href="/admin/saleroom">Saleroom</Link>
+        </StaffButton>
       }
-      summary={
-        row
+      metrics={{ label: "Events summary", period: "All events", items: props.metrics }}
+      views={<DataViews views={views} activeId={status || "all"} Link={ListLink} />}
+      search={
+        <TableSearch
+          key={q}
+          fullWidth
+          label="Search events"
+          placeholder="Search by event title"
+          value={q}
+          onSearch={(next) => navigate(eventRsvpsListHref(search, { q: next || null }))}
+        />
+      }
+      activeFilters={
+        q
           ? [
               {
-                label: "Starts",
-                value: row.startsAt ? formatStaffDateTime(row.startsAt) : "Not set",
+                id: "q",
+                label: searchChipLabel(q),
+                onRemove: () => navigate(eventRsvpsListHref(search, { q: null })),
               },
-              {
-                label: "RSVPs close",
-                value: row.rsvpCloseAt ? formatStaffDateTime(row.rsvpCloseAt) : "Not set",
-              },
-              { label: "Linked sale", value: row.saleId ? "Yes, with sale check-in" : "None" },
-              { label: "Event address", value: row.slug, copyValue: row.slug },
             ]
           : []
       }
-      footer={
-        row ? (
-          <StaffButton asChild variant="primary" icon={<ArrowUpRight aria-hidden />}>
-            <Link href={row.href}>Open guest list</Link>
-          </StaffButton>
-        ) : null
+      onClearFilters={() => navigate(eventRsvpsListHref(search, { q: null }))}
+      loading={pending}
+      filtered={filtered}
+      error={
+        props.loadError
+          ? {
+              title: "Events did not load",
+              description: props.loadError,
+              onRetry: () => navigate(eventRsvpsListHref(search, {})),
+            }
+          : null
       }
-    >
-      {null}
-    </DetailPanel>
+      empty={{
+        title: status ? "No events in this view" : "Create your first event",
+        description: status
+          ? "Events move here as their status changes."
+          : "Set up an invitation-only event, share its RSVP page, then check guests in at the door.",
+        ...(status
+          ? {}
+          : {
+              action: (
+                <StaffButton asChild size="sm" variant="primary">
+                  <Link href="/admin/event-rsvps/new">New event</Link>
+                </StaffButton>
+              ),
+            }),
+      }}
+      noResults={{ noun: "events" }}
+      table={{
+        columns,
+        data: rows,
+        getRowId: (row) => row.slug,
+        defaultHiddenColumns: ["closes"],
+        defaultSort: eventRsvpsSort.defaultSort,
+        sort: props.sort,
+        onSortChange: (sort) =>
+          navigate(eventRsvpsListHref(search, { sort: eventRsvpsSort.param(sort) })),
+        rowHref: recordHref,
+        rowActions: {
+          label: (row) => `Actions for ${row.title}`,
+          actions: (row) => rowActions(row, recordHref(row)),
+        },
+      }}
+      pageSize={{
+        value: props.pageSize,
+        onChange: (size) => navigate(eventRsvpsListHref(search, { limit: size })),
+      }}
+      pagination={props.pagination}
+    />
   );
 }

@@ -1,6 +1,7 @@
 import { EventRsvpsStaffList } from "@/components/admin/event-rsvps/event-rsvps-staff-list";
 import {
   EVENT_RSVPS_LIST_PATH,
+  eventRsvpPanelRedirect,
   queryEventRsvps,
 } from "@/lib/admin/events/event-rsvps-staff-list.vm";
 import { loadAdminEventRsvpsHubPage } from "@/lib/admin/events/load-event-rsvps-hub-page";
@@ -8,6 +9,7 @@ import { peopleRangeSummary } from "@/lib/admin/people/clients-staff-list.vm";
 import { metadataForPrivate } from "@/lib/seo/metadata-factory";
 import { formatStaffNumber } from "@auction/staff-ui";
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 
 export const metadata: Metadata = metadataForPrivate(
   "Event RSVPs",
@@ -20,6 +22,9 @@ export default async function AdminEventRsvpsPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const sp = await searchParams;
+  // The event panel is gone: an old shared `?event=` link opens the event's guest list.
+  const panelRedirect = eventRsvpPanelRedirect(sp);
+  if (panelRedirect) redirect(panelRedirect);
   const { events, publishedCount, loadError } = await loadAdminEventRsvpsHubPage();
   const result = queryEventRsvps(events, sp);
   const now = Date.now();
