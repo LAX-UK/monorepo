@@ -984,6 +984,22 @@ async function applyShopPayment(
       },
     });
 
+    // For the books: references only, in this transaction, so a paid order is never missed and
+    // one that rolls back is never booked. The database gave the order its invoice number when
+    // paid_at was set above; the projection reads it, and every amount, from the stored rows.
+    await events.insertInTransaction(tx, {
+      aggregateType: "shop_order",
+      aggregateId: order.id,
+      eventType: "shop.accounting.order_paid",
+      producer: "shop-api",
+      payload: {
+        schemaVersion: 1,
+        orderId: order.id,
+        lineIds: lines.map((line) => line.id).sort(),
+        paidAt: input.paidAt.toISOString(),
+      },
+    });
+
     if (order.guestCustomerId) {
       await recordGuestOrderPaid(
         tx as Database,

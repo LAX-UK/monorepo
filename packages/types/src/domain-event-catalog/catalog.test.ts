@@ -211,4 +211,36 @@ describe("DOMAIN_EVENT_REGISTRY", () => {
       true,
     );
   });
+
+  it("routes a paid Shop order to the accounting consumer; references only", () => {
+    const entry = DOMAIN_EVENT_REGISTRY["shop.accounting.order_paid"];
+    expect(entry.consumers).toEqual(["accounting"]);
+    expect(entry.producers).toEqual(["shop-api"]);
+    expect(entry.piiClassification).toBe("none");
+    const payload = {
+      schemaVersion: 1,
+      orderId: "11111111-1111-4111-8111-111111111111",
+      lineIds: ["22222222-2222-4222-8222-222222222222"],
+      paidAt: "2026-11-14T10:00:00.000Z",
+    };
+    expect(parseDomainEventPayload("shop.accounting.order_paid", 1, payload)).toEqual({
+      ok: true,
+      data: payload,
+    });
+    expect(
+      parseDomainEventPayload("shop.accounting.order_paid", 1, { ...payload, lineIds: [] }).ok,
+    ).toBe(false);
+    // No amounts, names or emails survive the contract: the books read them from the stored rows.
+    const parsed = parseDomainEventPayload("shop.accounting.order_paid", 1, {
+      ...payload,
+      totalPence: 100,
+      email: "ada@example.test",
+    }) as { data: object };
+    expect(Object.keys(parsed.data).sort()).toEqual([
+      "lineIds",
+      "orderId",
+      "paidAt",
+      "schemaVersion",
+    ]);
+  });
 });
