@@ -1,8 +1,8 @@
 "use client";
 
 import { useLotFulfilmentActions } from "@/components/admin/lot-fulfilment/use-lot-fulfilment-actions";
-import { useListPanel } from "@/components/admin/staff/use-list-panel";
 import { useStaffListNavigation } from "@/components/admin/staff/use-staff-list-navigation";
+import { useStaffQueue } from "@/components/admin/staff/use-staff-queue";
 import {
   FULFILMENT_VIEWS,
   type LotFulfilmentListSearch,
@@ -16,6 +16,7 @@ import {
   type DataColumn,
   DataViews,
   DetailPanel,
+  type DetailPanelProps,
   ListPage,
   Notice,
   type OverflowAction,
@@ -59,7 +60,8 @@ const STEP_HINT: Record<string, string> = {
  * The fulfilment queue for sold lots on the staff list template: a view per step with counts,
  * search by lot, most recently changed first (sortable on the server), and a record panel
  * deep-linked with `?lot=`. Each row's `…` menu holds the lot's next step; steps that need
- * details open a short form.
+ * details open a short form. The panel is a work queue: its place in the list, and J and K to the
+ * next lot.
  */
 export function LotFulfilmentStaffList(props: LotFulfilmentStaffListProps) {
   const { rows, search, filtered } = props;
@@ -68,10 +70,13 @@ export function LotFulfilmentStaffList(props: LotFulfilmentStaffListProps) {
     (id: string | null) => lotFulfilmentPanelHref(search, id),
     [search],
   );
-  const panel = useListPanel({
+  const panel = useStaffQueue({
     param: "lot",
+    rows,
+    getId: fulfilmentId,
     initialId: str(search.lot) || null,
     hrefFor: panelHref,
+    noun: "lot",
   });
   const fulfilment = useLotFulfilmentActions();
   const status = str(search.status);
@@ -86,7 +91,7 @@ export function LotFulfilmentStaffList(props: LotFulfilmentStaffListProps) {
         sortable: true,
         defaultSortDirection: "asc",
         cell: (row) => (
-          <PrimaryCell href={panelHref(row.id)} Link={panel.PanelLink} secondary={row.context}>
+          <PrimaryCell href={panelHref(row.id)} Link={ListLink} secondary={row.context}>
             {row.title}
           </PrimaryCell>
         ),
@@ -126,7 +131,7 @@ export function LotFulfilmentStaffList(props: LotFulfilmentStaffListProps) {
         cell: (row) => <StaffDate value={row.updatedAt} withTime />,
       },
     ],
-    [panelHref, panel.PanelLink],
+    [panelHref, ListLink],
   );
 
   const views = [{ id: "all", label: "All" }, ...FULFILMENT_VIEWS].map((view) => ({
@@ -135,7 +140,7 @@ export function LotFulfilmentStaffList(props: LotFulfilmentStaffListProps) {
     href: lotFulfilmentListHref(search, { status: view.id === "all" ? null : view.id }),
     count: props.counts[view.id] ?? 0,
   }));
-  const open = rows.find((row) => row.id === panel.openId) ?? null;
+  const open = panel.record;
   const activeView = FULFILMENT_VIEWS.find((view) => view.id === status);
 
   return (
@@ -190,20 +195,18 @@ export function LotFulfilmentStaffList(props: LotFulfilmentStaffListProps) {
         noResults={{ noun: "lots" }}
         table={{
           columns,
-          data: rows,
-          getRowId: (row) => row.id,
+          ...panel.table,
+          getRowId: fulfilmentId,
           defaultDensity: "comfortable",
           defaultHiddenColumns: ["shipping"],
           defaultSort: lotFulfilmentSort.defaultSort,
           sort: lotFulfilmentSort.state(str(search.sort)),
           onSortChange: (sort) =>
             navigate(lotFulfilmentListHref(search, { sort: lotFulfilmentSort.param(sort) })),
-          onRowOpen: (row) => panel.show(row.id),
-          activeRowId: panel.openId,
           rowActions: {
             label: (row) => `Actions for ${row.title}`,
             actions: (row) => [
-              { id: "open", label: "Open details", onSelect: () => panel.show(row.id) },
+              { id: "open", label: "Open details", onSelect: () => panel.open(row.id) },
               ...fulfilment.actionsFor(row),
               { id: "lot", label: "Open lot page", href: row.lotHref },
               ...(row.saleHref ? [{ id: "sale", label: "Open sale", href: row.saleHref }] : []),
@@ -220,7 +223,7 @@ export function LotFulfilmentStaffList(props: LotFulfilmentStaffListProps) {
         row={open}
         actions={open ? fulfilment.actionsFor(open) : []}
         next={open ? fulfilment.nextStep(open) : null}
-        onClose={() => panel.show(null)}
+        panelProps={panel.panelProps}
       />
       {fulfilment.dialogs}
     </>
@@ -232,20 +235,18 @@ export function LotFulfilmentQuickView({
   row,
   actions,
   next,
-  onClose,
+  panelProps,
 }: {
   row: LotFulfilmentStaffRow | null;
   actions: OverflowAction[];
   next: { label: string; run: () => void } | null;
-  onClose: () => void;
+  /** The queue panel's open state, place in the list and stepping (`useStaffQueue`). */
+  panelProps: Pick<DetailPanelProps, "open" | "onOpenChange" | "queue">;
 }) {
   const others = next ? actions.filter((action) => action.label !== next.label) : actions;
   return (
     <DetailPanel
-      open={row !== null}
-      onOpenChange={(open) => {
-        if (!open) onClose();
-      }}
+      {...panelProps}
       title={row?.title ?? "Lot fulfilment"}
       description={row?.context ?? undefined}
       status={row ? <StatusBadge tone={row.status.tone}>{row.status.label}</StatusBadge> : null}
@@ -302,4 +303,8 @@ export function LotFulfilmentQuickView({
       {null}
     </DetailPanel>
   );
+}
+
+function fulfilmentId(row: LotFulfilmentStaffRow): string {
+  return row.id;
 }
