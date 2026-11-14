@@ -2,7 +2,10 @@ import { describe, expect, it } from "vitest";
 import { framing, printLine } from "./order-facts.fixture.js";
 import {
   dispatchStatusOf,
+  editionAssigned,
   frameCodeOf,
+  framingSpec,
+  framingStatusOf,
   paperCodeOf,
   planWrite,
   printSkuOf,
@@ -99,6 +102,47 @@ describe("printSkuOf", () => {
   });
 });
 
+describe("editionAssigned", () => {
+  it("labels a numbered print with its number over the run", () => {
+    expect(editionAssigned(printLine())).toBe("ED 07/25");
+  });
+
+  it("falls back to the label at payment for open editions, proofs and runs past 99", () => {
+    expect(editionAssigned(printLine({ editionType: "Open", printLabel: "OE-0021" }))).toBe(
+      "OE-0021",
+    );
+    expect(editionAssigned(printLine({ editionNumber: null, printLabel: "AP 2/3" }))).toBe(
+      "AP 2/3",
+    );
+    expect(editionAssigned(printLine({ runSize: 150, printLabel: "7/150" }))).toBe("7/150");
+    expect(editionAssigned(printLine({ editionNumber: null, printLabel: " " }))).toBeNull();
+  });
+});
+
+describe("framing", () => {
+  it("describes the option, its parts, the lead time and the due date in one line", () => {
+    expect(framingSpec(framing({ dueAt: new Date("2026-12-01T12:00:00Z") }))).toBe(
+      "Gallery black: black wood frame, conservation window mount, UV acrylic glazing, D-rings and cord; lead time 10-15 working days; due 2026-12-01",
+    );
+    expect(framingSpec(framing({ leadTimeMinDays: 5, leadTimeMaxDays: 5, mount: "new" }))).toBe(
+      "Gallery black: black wood frame, new, UV acrylic glazing, D-rings and cord; lead time 5 working days",
+    );
+  });
+
+  it("maps the framing task to Zoho's status; a refunded frame is no longer required", () => {
+    expect(framingStatusOf(framing(), false)).toBe("Queued");
+    expect(framingStatusOf(framing({ taskStatus: "queued" }), false)).toBe("Queued");
+    expect(framingStatusOf(framing({ taskStatus: "framing" }), false)).toBe("In Progress");
+    expect(framingStatusOf(framing({ taskStatus: "framed" }), false)).toBe("Framed");
+    expect(framingStatusOf(framing({ taskStatus: "completed" }), false)).toBe("Complete");
+    expect(framingStatusOf(framing({ taskStatus: "cancelled" }), false)).toBe("Not Required");
+    expect(framingStatusOf(framing({ taskStatus: "framed", released: true }), false)).toBe(
+      "Not Required",
+    );
+    expect(framingStatusOf(framing({ taskStatus: "framed" }), true)).toBe("Not Required");
+  });
+});
+
 describe("dispatchStatusOf", () => {
   const at = (status: string, packed = false) =>
     dispatchStatusOf({ status, carrier: null, trackingNumber: null }, packed);
@@ -137,6 +181,31 @@ describe("planWrite", () => {
       L: { id: "pp-2" },
     });
     expect(planWrite({ A: "x" }, record({}))).toEqual({ A: "x" });
+  });
+
+  it("moves a framing status forward and never back", () => {
+    const rank = { field: "Status", rank: "framing" as const };
+    expect(planWrite({ Status: "Framed" }, record({ Status: "Queued" }), rank)).toEqual({
+      Status: "Framed",
+    });
+    // Staff moved the job on in Zoho; a late LAX step does not pull it back.
+    expect(planWrite({ Status: "Framed" }, record({ Status: "QC Passed" }), rank)).toBeNull();
+    expect(planWrite({ Status: "In Progress" }, record({ Status: "Framed" }), rank)).toBeNull();
+    expect(planWrite({ Status: "Framed" }, record({ Status: "Framed" }), rank)).toBeNull();
+    // Staff waiting on materials in Zoho is as far along as LAX's "in progress".
+    expect(
+      planWrite({ Status: "In Progress" }, record({ Status: "Awaiting Materials" }), rank),
+    ).toBeNull();
+    expect(planWrite({ Status: "Complete" }, record({ Status: "QC Passed" }), rank)).toEqual({
+      Status: "Complete",
+    });
+    expect(planWrite({ Status: "Not Required" }, record({ Status: "Complete" }), rank)).toEqual({
+      Status: "Not Required",
+    });
+    // A status Zoho holds that LAX does not know is overwritten.
+    expect(planWrite({ Status: "Queued" }, record({ Status: "-None-" }), rank)).toEqual({
+      Status: "Queued",
+    });
   });
 
   it("moves a dispatch status forward and still updates the courier and tracking", () => {

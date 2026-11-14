@@ -12,6 +12,10 @@ import {
   type ZohoFields,
   type ZohoRecordState,
   dispatchStatusOf,
+  editionAssigned,
+  framingJobRef,
+  framingSpec,
+  framingStatusOf,
   ledgerCounts,
   planWrite,
   printSkuOf,
@@ -21,12 +25,15 @@ import { ledgerMirrorKey } from "./plan-print-group.js";
 import type { OrderModule, ZohoOrderRecords } from "./zoho-order-modules.js";
 
 /**
- * The Zoho fields LAX writes its own references into. Dispatch_Fulfilments has no field that names
- * the LAX order, so the owners add one (unique, text) and its API name is set here.
+ * The Zoho fields LAX writes its own references into. Framing_Jobs and Dispatch_Fulfilments have
+ * no field that names the LAX order, so the owners add one (unique, text) and its API name is set
+ * here; the framing details have no field either and go into one text field.
  */
 export type OrderMirrorFields = {
-  /** Holds the order reference on the records LAX creates. */
+  /** Holds the order reference, or the order and framing line, on the records LAX creates. */
   orderRef: string;
+  /** Holds the framing option, its parts, the lead time and the due date. */
+  framingSpec: string;
 };
 
 export type OrderMirrorDeps = {
@@ -61,8 +68,8 @@ function notYetInZoho(what: string): CrmGatewayError {
 
 /**
  * Mirrors one order's print fulfilment to Zoho CRM, one way: each print's Print_SKUs record (one
- * per SKU, shared by every order of it), the group ledger's sold counts, and the order's
- * Dispatch_Fulfilments record. Staff do the work in LAX Admin; this
+ * per SKU, shared by every order of it), the group ledger's sold counts, a Framing_Jobs record per
+ * frame sold, and the order's Dispatch_Fulfilments record. Staff do the work in LAX Admin; this
  * only keeps Zoho complete for reporting.
  *
  * Every event for the order runs the same pass over LAX and Zoho as they are now and writes only
@@ -118,6 +125,23 @@ class OrderPass {
   /** Mirrors one print line; answers why it cannot be, or null. */
   async mirrorLine(line: PrintLineFacts, ledgersDone: Set<string>): Promise<string | null> {
     const { zoho } = this.deps;
+    const framingJob = line.framing
+      ? await zoho.find("Framing_Jobs", this.deps.fields.orderRef, this.framingRef(line), [
+          this.deps.fields.orderRef,
+          "Status",
+          "Edition_Assigned",
+          "Linked_Print_SKU",
+          this.deps.fields.framingSpec,
+        ])
+      : null;
+    const frameRefunded = line.released || line.framing?.released === true;
+    if (line.framing && frameRefunded) {
+      // A frame already in Zoho for a refunded print or frame is no longer required; none is made.
+      if (framingJob) {
+        const status = framingStatusOf(line.framing, line.released);
+        await this.apply("Framing_Jobs", framingJob, { Status: status }, "framing");
+      }
+    }
     // A refunded print is not mirrored: its SKU record stays for the other orders of it.
     if (line.released) return null;
 
@@ -134,13 +158,31 @@ class OrderPass {
     const group = await zoho.find("Print_Products", "Print_Group_ID", code, []);
     if (!group && this.deps.mode === "live") throw notYetInZoho("print_group");
     const printSku = await zoho.find("Print_SKUs", "SKU", sku.value.sku, SKU_COLUMNS);
-    await this.apply("Print_SKUs", printSku, wantedPrintSku(sku.value, line, group?.id ?? null));
+    const skuId = await this.apply(
+      "Print_SKUs",
+      printSku,
+      wantedPrintSku(sku.value, line, group?.id ?? null),
+    );
 
     if (line.isMainRun && !ledgersDone.has(code)) {
       ledgersDone.add(code);
       await this.mirrorLedger(code, line.printsArtworkId);
     }
 
+    if (line.framing && !frameRefunded) {
+      await this.apply(
+        "Framing_Jobs",
+        framingJob,
+        {
+          [this.deps.fields.orderRef]: this.framingRef(line),
+          Linked_Print_SKU: skuId ? { id: skuId } : null,
+          Edition_Assigned: editionAssigned(line),
+          Status: framingStatusOf(line.framing, false),
+          [this.deps.fields.framingSpec]: framingSpec(line.framing),
+        },
+        "framing",
+      );
+    }
     return null;
   }
 
@@ -200,12 +242,19 @@ class OrderPass {
     }
   }
 
+  private framingRef(line: PrintLineFacts): string {
+    return framingJobRef(
+      this.facts.reference,
+      line.framing as NonNullable<PrintLineFacts["framing"]>,
+    );
+  }
+
   /** Writes what differs, or in `dry_run` logs it; answers the record's id, null if not made. */
   private async apply(
     module: OrderModule,
     current: ZohoRecordState | null,
     wanted: ZohoFields,
-    rank?: "dispatch",
+    rank?: "framing" | "dispatch",
   ): Promise<string | null> {
     const write = planWrite(wanted, current, rank ? { field: "Status", rank } : undefined);
     if (!write) return current?.id ?? null;

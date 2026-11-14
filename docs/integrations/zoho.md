@@ -238,7 +238,7 @@ Picklist values, in order: Not offered, Draft on lax.art, On lax.art, Draft lot 
 | Variable | App | Purpose |
 |----------|-----|---------|
 | `ZOHO_ARTWORK_LISTING_MODE` | worker | `off` (default) \| `dry_run` \| `live`. `dry_run` reads LAX, lax.art and Zoho, logs each update it would send (`zoho_listing_dry_run`) and the nightly pass reports it in Last check; `live` writes. Independent of `ZOHO_ARTWORK_WRITEBACK_MODE`. |
-| `ZOHO_FULFILMENT_MIRROR_MODE` | worker | `off` (default) \| `dry_run` \| `live`. Mirrors each print group made from an original to Zoho CRM (`Print_Products`, one `Edition_Ledgers` counter) and adds its `LAX-PRT` row to the artwork register. `dry_run` logs what it would write and writes nothing, in Zoho or the register; `live` writes and must pass the org check. Also mirrors each paid order's prints and dispatch (see [Print orders to Zoho](#print-orders-to-zoho-outbound)). |
+| `ZOHO_FULFILMENT_MIRROR_MODE` | worker | `off` (default) \| `dry_run` \| `live`. Mirrors each print group made from an original to Zoho CRM (`Print_Products`, one `Edition_Ledgers` counter) and adds its `LAX-PRT` row to the artwork register. `dry_run` logs what it would write and writes nothing, in Zoho or the register; `live` writes and must pass the org check. Also mirrors each paid order's prints, framing and dispatch (see [Print orders to Zoho](#print-orders-to-zoho-outbound)). |
 | `SHOP_API_INVENTORY_BASE_URL` | worker | LAX Shop's API, for the lax.art lookup. |
 | `INVENTORY_MACHINE_CLIENT_ID`, `INVENTORY_MACHINE_CLIENT_SECRET` | worker | The inventory machine pair LAX Shop holds. |
 | `LAX_ART_PUBLIC_URL`, `LAX_ADMIN_PUBLIC_URL` | worker | For the link. LAX Bid's comes from `WEB_ORIGIN`. |
@@ -247,7 +247,7 @@ Everything is required once the mode is not `off`; `live` also turns on the wron
 
 ## Print orders to Zoho (outbound)
 
-Staff fulfil print orders in LAX Admin (pick, confirm, allocate the edition number, dispatch). Each step is mirrored to Zoho CRM, one way, so Zoho is complete for reporting. Zoho stays master for Print Product Groups and Print SKUs; LAX Shop uses the same SKU, `LAX-PRT-{group}-{SIZE}-{PAPER}-{FRAME}-{ALLOC}` (`buildPrintSku` in `@auction/artwork-register-contracts`). It runs in the `zoho_fulfilment` consumer with the print group mirror and under the same `ZOHO_FULFILMENT_MIRROR_MODE`.
+Staff fulfil print orders in LAX Admin (pick, confirm, allocate the edition number, frame, dispatch). Each step is mirrored to Zoho CRM, one way, so Zoho is complete for reporting. Zoho stays master for Print Product Groups and Print SKUs; LAX Shop uses the same SKU, `LAX-PRT-{group}-{SIZE}-{PAPER}-{FRAME}-{ALLOC}` (`buildPrintSku` in `@auction/artwork-register-contracts`). It runs in the `zoho_fulfilment` consumer with the print group mirror and under the same `ZOHO_FULFILMENT_MIRROR_MODE`.
 
 **When it runs.** On `shop.order.paid`, `shop.edition.sold`, `shop.edition.released`, `shop.print.pack_confirmed`, `shop.print.swapped`, `shop.fulfilment.status_changed` and `shop.fulfilment.dispatched`. The order is taken from the payload's `orderId` (these events are raised on the order, a line or the fulfilment). Each event runs the same pass over the order as LAX and Zoho hold it then, and writes only what differs: a repeated, late or out-of-order event writes nothing stale, and a status is only ever moved forward, so a step staff took in Zoho (for example QC) is never pulled back. Unpaid orders and prints of an original outside the register are skipped.
 
@@ -255,29 +255,33 @@ Staff fulfil print orders in LAX Admin (pick, confirm, allocate the edition numb
 |-------------|---------|------------|------------|
 | `Print_SKUs` | SKU | `SKU` | `SKU`, `Linked_Print_Product_Group` (the group's `Print_Products` record), `Size`, `Paper`, `Frame`, `Allocation_Bucket`, `Edition_Type`. Shared by every order of that SKU; never deleted on a refund. |
 | `Edition_Ledgers` | print group | `LAX_Mirror_Key` (`group:{code}`, made by the group mirror) | `Assigned_To_Client`, `Assigned_To_Artist`, `Assigned_To_LAX`: the main run's prints sold on paid orders and not released, by holder. Proofs are not counted. |
+| `Framing_Jobs` | frame sold | the order-reference field, `{order reference}/{framing line id}` | `Linked_Print_SKU`, `Edition_Assigned` (`ED 07/25` for a numbered print, else the label at payment, such as `AP 2/3`), `Status`, and the framing details (option, frame, mount, glazing, hanging, lead time, due date) in the framing-spec field. |
 | `Dispatch_Fulfilments` | order | the order-reference field, the order reference (`LAX-S-10482`) | `Status`, `Courier`, `Tracking_Number`. |
 
 The SKU's parts come from the prints listing: the size when the sheet text starts with `A1`–`A4`; the paper as its code or as one paper name (cotton, baryta, Hahnemühle, Munken); the frame from the frame sold with the print (black wood `FRB`, white wood `FRW`, natural oak `FRN`), else the listing's frame code, else `UNF`; the holder from the edition (`COL`, `ART`, `LAX`). Nothing is guessed: a part that does not map (or an edition the artist framed, described in words) fails the order with the line and the reason, after the order's other lines are written, and the delivery dead-letters for staff to correct the listing and replay.
 
-Statuses. Fulfilment: a print picked while in production → Pack Prep, awaiting dispatch or ready for collection → Ready, in transit → Dispatched, delivered or collected → Delivered; nothing is made before a print is picked, nor for LAX storage or a cancelled fulfilment. In Transit is left to staff in Zoho; LAX only moves past it (Delivered). Framing jobs (`Framing_Jobs`, with the edition assigned and the framing details) follow in their own change. The return path (Zoho QC Passed → LAX ready to pack) is a separate phase.
+Statuses. Framing task: queued → Queued, framing → In Progress, framed → Framed, completed → Complete, cancelled (or the print or frame refunded) → Not Required; a job is never created only to say Not Required. Fulfilment: a print picked while in production → Pack Prep, awaiting dispatch or ready for collection → Ready, in transit → Dispatched, delivered or collected → Delivered; nothing is made before a print is picked, nor for LAX storage or a cancelled fulfilment. Zoho's QC statuses and In Transit are left to staff in Zoho; LAX only moves past them (Complete, Delivered). The return path (Zoho QC Passed → LAX ready to pack) is a separate phase.
 
 **Retries.** The group's `Print_Products` record and its ledger come from the print group mirror; while they are missing in `live` the delivery retries with backoff, then dead-letters as "Zoho fulfilment" in Failed jobs: the same delivery runner, backoff, dead-letter ledger and metrics as the print group mirror. Zoho refusing a record for its data is not retried. Rate limit, circuit breaker and token handling are the shared CRM gateway's. In `dry_run` nothing is written; each create or update it would make is logged (`order mirror would create, nothing written` / `order mirror would update, nothing written`) with the module, record id and exact fields.
 
-**What is read.** Only the columns in `WORKER_SHOP_ORDER_FULFILMENT_READ_COLUMNS` (`packages/db/src/migrate-roles.ts`): the order's reference and paid date, its print lines and the frame sold with each, the edition, the listing's run and sheet, and the fulfilment's status, courier and tracking number. No buyer name, address, contact or price is read or sent.
+**What is read.** Only the columns in `WORKER_SHOP_ORDER_FULFILMENT_READ_COLUMNS` (`packages/db/src/migrate-roles.ts`): the order's reference and paid date, its print and framing lines, the edition, the listing's run and sheet, the framing task and the fulfilment's status, courier and tracking number. No buyer name, address, contact or price is read or sent.
 
-**Before `live`: fields the owners add.** `Dispatch_Fulfilments` has no field that names the LAX order. In each org (sandbox first), an admin adds:
+**Before `live`: fields the owners add.** `Framing_Jobs` and `Dispatch_Fulfilments` have no field that names the LAX order, and `Framing_Jobs` has none for the framing details. In each org (sandbox first), an admin adds:
 
 | Module | Field label | Type | API name (default) | Set by |
 |--------|-------------|------|--------------------|--------|
+| `Framing_Jobs` | LAX Order Ref | Single line, **unique**, read-only except for the integration user | `LAX_Order_Ref` | `ZOHO_FULFILMENT_ORDER_REF_FIELD` |
 | `Dispatch_Fulfilments` | LAX Order Ref | Single line, **unique**, read-only except for the integration user | `LAX_Order_Ref` | `ZOHO_FULFILMENT_ORDER_REF_FIELD` |
+| `Framing_Jobs` | LAX Framing Spec | Single line (255) or multi-line | `LAX_Framing_Spec` | `ZOHO_FULFILMENT_FRAMING_SPEC_FIELD` |
 
-Also mark `Print_SKUs.SKU` unique (the mirror finds SKUs by it), and check `Edition_Ledgers.LAX_Mirror_Key` exists (the print group mirror needs it too). If Zoho gives the field another API name, set the variable to it (letters, digits and `_` only; it is used in COQL). Until the field exists, `dry_run` fails the order's reads with Zoho's invalid-field error, which is the check that they are missing. LAX never creates Zoho fields.
+Also mark `Print_SKUs.SKU` unique (the mirror finds SKUs by it), and check `Edition_Ledgers.LAX_Mirror_Key` exists (the print group mirror needs it too). If Zoho gives a field another API name, set the variable to it (letters, digits and `_` only; it is used in COQL). Until the fields exist, `dry_run` fails the order's reads with Zoho's invalid-field error, which is the check that they are missing. LAX never creates Zoho fields.
 
 | Variable | App | Purpose |
 |----------|-----|---------|
 | `ZOHO_FULFILMENT_ORDER_REF_FIELD` | worker | API name of the order-reference field above. Default `LAX_Order_Ref`. |
+| `ZOHO_FULFILMENT_FRAMING_SPEC_FIELD` | worker | API name of the framing-details field above. Default `LAX_Framing_Spec`. |
 
-Roll out: add the field in the sandbox; sandbox `dry_run` and read the logged writes for a few orders; sandbox `live` (the org check refuses anything but `ZOHO_CRM_EXPECTED_ORG_TYPE`); production fields, `dry_run`, then `live` with the owner's go.
+Roll out: add the fields in the sandbox; sandbox `dry_run` and read the logged writes for a few orders; sandbox `live` (the org check refuses anything but `ZOHO_CRM_EXPECTED_ORG_TYPE`); production fields, `dry_run`, then `live` with the owner's go.
 
 ## Sync health (LAX Admin)
 

@@ -1,9 +1,17 @@
 import type { FramingFacts, OrderFulfilmentFacts, PrintLineFacts } from "./order-facts.js";
 
-/** A frame sold with a print. */
+/** A frame sold with a print, queued and not yet started. */
 export const framing = (over: Partial<FramingFacts> = {}): FramingFacts => ({
   lineId: "fl-1",
+  name: "Gallery black",
   frame: "black_wood",
+  mount: "window_conservation",
+  glazing: "uv_acrylic",
+  hanging: "d_rings_cord",
+  leadTimeMinDays: 10,
+  leadTimeMaxDays: 15,
+  taskStatus: null,
+  dueAt: null,
   released: false,
   ...over,
 });

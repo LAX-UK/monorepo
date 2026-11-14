@@ -1091,9 +1091,9 @@ export const WORKER_SHOP_PRINT_GROUP_READ_COLUMNS = [
 ] as const;
 
 /**
- * The Zoho fulfilment mirror mirrors a paid order's prints and dispatch from these columns and no
- * others: the order's reference and when it was paid, its print and framing lines (for the frame
- * in the SKU), the edition and listing each print is of, and the fulfilment. No buyer, address or
+ * The Zoho fulfilment mirror mirrors a paid order's prints, framing and dispatch from these columns
+ * and no others: the order's reference and when it was paid, its print and framing lines, the
+ * edition and listing each print is of, the framing task and the fulfilment. No buyer, address or
  * price column is read. The tables stay denied to the worker as a whole; only a column-level
  * SELECT is granted.
  */
@@ -1131,6 +1131,7 @@ export const WORKER_SHOP_ORDER_FULFILMENT_READ_COLUMNS = [
     ],
   ],
   ["shop_edition_framing", ["artwork_id", "mode"]],
+  ["shop_framing_task", ["order_line_id", "status", "due_at"]],
   ["shop_fulfilment", ["order_id", "status", "carrier", "tracking_number"]],
 ] as const;
 

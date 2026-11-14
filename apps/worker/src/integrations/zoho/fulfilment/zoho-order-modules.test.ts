@@ -24,10 +24,10 @@ describe("findQuery", () => {
   });
 
   it("refuses a field name that is not a Zoho API name", () => {
-    expect(() => findQuery("Dispatch_Fulfilments", "Ref = '' or 1", "x", [])).toThrow(
+    expect(() => findQuery("Framing_Jobs", "Ref = '' or 1", "x", [])).toThrow(
       "zoho_field_name_invalid",
     );
-    expect(() => findQuery("Dispatch_Fulfilments", "Ref", "x", ["Status, Owner"])).toThrow(
+    expect(() => findQuery("Framing_Jobs", "Ref", "x", ["Status, Owner"])).toThrow(
       "zoho_field_name_invalid",
     );
   });
@@ -36,18 +36,15 @@ describe("findQuery", () => {
 describe("CrmZohoOrderRecords", () => {
   it("reads a record with lookups as their id and text trimmed", async () => {
     const g = gateway([
-      { id: "df-1", Status: "Ready ", Linked_Print_Product_Group: { id: "pp-1", name: "x" }, N: 3 },
+      { id: "fj-1", Status: "Queued ", Linked_Print_SKU: { id: "sku-1", name: "x" }, N: 3 },
     ]);
     expect(
-      await g.records.find("Dispatch_Fulfilments", "LAX_Order_Ref", "r", [
+      await g.records.find("Framing_Jobs", "LAX_Order_Ref", "r", [
         "Status",
-        "Linked_Print_Product_Group",
+        "Linked_Print_SKU",
         "N",
       ]),
-    ).toEqual({
-      id: "df-1",
-      fields: { Status: "Ready", Linked_Print_Product_Group: "pp-1", N: 3 },
-    });
+    ).toEqual({ id: "fj-1", fields: { Status: "Queued", Linked_Print_SKU: "sku-1", N: 3 } });
     expect(await gateway([]).records.find("Print_SKUs", "SKU", "s", ["SKU"])).toBeNull();
   });
 
@@ -55,13 +52,11 @@ describe("CrmZohoOrderRecords", () => {
     const g = gateway();
     expect(await g.records.save("Print_SKUs", null, { SKU: "s" })).toBe("new-1");
     expect(g.createRecord).toHaveBeenCalledWith({ module: "Print_SKUs", fields: { SKU: "s" } });
-    expect(await g.records.save("Dispatch_Fulfilments", "rec-1", { Status: "Ready" })).toBe(
-      "rec-1",
-    );
+    expect(await g.records.save("Framing_Jobs", "rec-1", { Status: "Framed" })).toBe("rec-1");
     expect(g.updateById).toHaveBeenCalledWith({
-      module: "Dispatch_Fulfilments",
+      module: "Framing_Jobs",
       recordId: "rec-1",
-      fields: { Status: "Ready" },
+      fields: { Status: "Framed" },
     });
   });
 

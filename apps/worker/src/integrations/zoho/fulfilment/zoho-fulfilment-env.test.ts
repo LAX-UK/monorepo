@@ -38,15 +38,22 @@ describe("ZOHO_FULFILMENT_MIRROR_MODE", () => {
     expect(() => loadWorkerEnv()).toThrow("Invalid worker environment variables");
   });
 
-  it("names the order mirror's reference field LAX_Order_Ref unless set", () => {
+  it("names the order mirror's own Zoho fields LAX_Order_Ref and LAX_Framing_Spec unless set", () => {
     stubEnv({ ...SETTINGS, ZOHO_FULFILMENT_MIRROR_MODE: "dry_run" });
-    expect(loadWorkerEnv().ZOHO_FULFILMENT_ORDER_REF_FIELD).toBe("LAX_Order_Ref");
+    expect(loadWorkerEnv()).toMatchObject({
+      ZOHO_FULFILMENT_ORDER_REF_FIELD: "LAX_Order_Ref",
+      ZOHO_FULFILMENT_FRAMING_SPEC_FIELD: "LAX_Framing_Spec",
+    });
     vi.unstubAllEnvs();
-    stubEnv({ ...SETTINGS, ZOHO_FULFILMENT_ORDER_REF_FIELD: "Order_Ref_LAX" });
-    expect(loadWorkerEnv().ZOHO_FULFILMENT_ORDER_REF_FIELD).toBe("Order_Ref_LAX");
-    vi.unstubAllEnvs();
-    stubEnv({ ...SETTINGS, ZOHO_FULFILMENT_ORDER_REF_FIELD: "" });
-    expect(loadWorkerEnv().ZOHO_FULFILMENT_ORDER_REF_FIELD).toBe("LAX_Order_Ref");
+    stubEnv({
+      ...SETTINGS,
+      ZOHO_FULFILMENT_ORDER_REF_FIELD: "Order_Ref_LAX",
+      ZOHO_FULFILMENT_FRAMING_SPEC_FIELD: "",
+    });
+    expect(loadWorkerEnv()).toMatchObject({
+      ZOHO_FULFILMENT_ORDER_REF_FIELD: "Order_Ref_LAX",
+      ZOHO_FULFILMENT_FRAMING_SPEC_FIELD: "LAX_Framing_Spec",
+    });
   });
 
   it("refuses a field name that is not a Zoho API name, since it goes into COQL", () => {

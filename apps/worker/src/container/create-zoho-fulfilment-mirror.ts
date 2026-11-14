@@ -39,7 +39,10 @@ export function createZohoFulfilmentMirror(deps: {
       facts: createDrizzleOrderFulfilmentFactsReader(db),
       register,
       zoho: new CrmZohoOrderRecords(gateway),
-      fields: { orderRef: env.ZOHO_FULFILMENT_ORDER_REF_FIELD },
+      fields: {
+        orderRef: env.ZOHO_FULFILMENT_ORDER_REF_FIELD,
+        framingSpec: env.ZOHO_FULFILMENT_FRAMING_SPEC_FIELD,
+      },
       mode,
       log,
     }),

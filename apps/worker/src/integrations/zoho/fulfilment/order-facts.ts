@@ -1,9 +1,17 @@
-/** The frame sold with one print, as the buyer bought it. */
+/** The frame sold with one print, as the buyer bought it, and where the framing work stands. */
 export type FramingFacts = {
   /** The framing order line. */
   lineId: string;
-  /** The catalogue frame (`shop_framing_option.frame`), such as `black_wood`. */
+  name: string;
   frame: string;
+  mount: string;
+  glazing: string;
+  hanging: string;
+  leadTimeMinDays: number;
+  leadTimeMaxDays: number;
+  /** The framing task's status; null until the task is made. */
+  taskStatus: "queued" | "framing" | "framed" | "completed" | "cancelled" | null;
+  dueAt: Date | null;
   /** True once the framing line was refunded and released. */
   released: boolean;
 };

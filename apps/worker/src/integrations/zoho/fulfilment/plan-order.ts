@@ -4,12 +4,13 @@ import {
   type PrintPaperCode,
   type PrintSizeCode,
   buildPrintSku,
+  formatEditionLabel,
   isPrintFrameCode,
   isPrintPaperCode,
   isPrintSizeCode,
 } from "@auction/artwork-register-contracts";
 import type { CrmFieldValue } from "../../crm/crm-gateway.js";
-import type { DispatchFacts, PrintLineFacts, RunSales } from "./order-facts.js";
+import type { DispatchFacts, FramingFacts, PrintLineFacts, RunSales } from "./order-facts.js";
 
 /** Fields to write, keyed by Zoho API name. A lookup is `{ id }`. */
 export type ZohoFields = Record<string, CrmFieldValue>;
@@ -88,6 +89,15 @@ export function printSkuOf(line: PrintLineFacts, groupCode: string): SkuResult {
   return { ok: true, value: { sku, size, paper, frame, allocation } };
 }
 
+/** The edition label on the print, "ED 07/25" for a numbered print, else its label at payment. */
+export function editionAssigned(line: PrintLineFacts): string | null {
+  if (line.editionType === "Numbered" && line.editionNumber !== null && line.runSize !== null) {
+    const label = formatEditionLabel(line.editionNumber, line.runSize);
+    if (label) return label;
+  }
+  return line.printLabel?.trim() || null;
+}
+
 export function wantedPrintSku(
   sku: PrintSku,
   line: PrintLineFacts,
@@ -103,6 +113,61 @@ export function wantedPrintSku(
     Allocation_Bucket: sku.allocation,
     Edition_Type: line.editionType,
   };
+}
+
+/** The framing job's reference: the order, then the framing line it is the work for. */
+export function framingJobRef(orderReference: string, framing: FramingFacts): string {
+  return `${orderReference}/${framing.lineId}`;
+}
+
+const LABELS: Record<string, string> = {
+  black_wood: "black wood frame",
+  white_wood: "white wood frame",
+  natural_oak: "natural oak frame",
+  window_conservation: "conservation window mount",
+  float_conservation: "conservation float mount",
+  uv_acrylic: "UV acrylic glazing",
+  d_rings_cord: "D-rings and cord",
+};
+
+/** What the framer needs, in one line: the option, its parts, the lead time and the due date. */
+export function framingSpec(framing: FramingFacts): string {
+  const parts = [framing.frame, framing.mount, framing.glazing, framing.hanging].map(
+    (part) => LABELS[part] ?? part,
+  );
+  const lead =
+    framing.leadTimeMinDays === framing.leadTimeMaxDays
+      ? `${framing.leadTimeMinDays}`
+      : `${framing.leadTimeMinDays}-${framing.leadTimeMaxDays}`;
+  const due = framing.dueAt ? `; due ${framing.dueAt.toISOString().slice(0, 10)}` : "";
+  return `${framing.name}: ${parts.join(", ")}; lead time ${lead} working days${due}`;
+}
+
+/** Zoho's framing statuses in the order the work moves through them. */
+const FRAMING_RANK: Record<string, number> = {
+  Queued: 1,
+  "Awaiting Materials": 2,
+  "In Progress": 2,
+  Framed: 3,
+  "QC Pending": 4,
+  "Rework Required": 4,
+  "QC Passed": 5,
+  Complete: 6,
+  "Not Required": 7,
+};
+
+const FRAMING_STATUS: Record<NonNullable<FramingFacts["taskStatus"]>, string> = {
+  queued: "Queued",
+  framing: "In Progress",
+  framed: "Framed",
+  completed: "Complete",
+  cancelled: "Not Required",
+};
+
+/** The framing job's status in Zoho; a frame refunded or cancelled is no longer required. */
+export function framingStatusOf(framing: FramingFacts, printReleased: boolean): string {
+  if (framing.released || printReleased) return "Not Required";
+  return FRAMING_STATUS[framing.taskStatus ?? "queued"];
 }
 
 /** Zoho's dispatch statuses in the order a parcel moves through them. */
@@ -157,12 +222,12 @@ const sameValue = (wanted: CrmFieldValue, current: unknown): boolean => {
 /**
  * The fields to write so Zoho holds what LAX wants, or null when it already does. A field LAX has
  * no value for is left alone. A status is only ever moved forward: when Zoho's status is as far
- * along as LAX's or further (staff may move it on in Zoho), it is not written back.
+ * along as LAX's or further (staff may move a job on in Zoho), it is not written back.
  */
 export function planWrite(
   wanted: ZohoFields,
   current: ZohoRecordState | null,
-  status?: { field: string; rank: "dispatch" },
+  status?: { field: string; rank: "framing" | "dispatch" },
 ): ZohoFields | null {
   const changed: ZohoFields = {};
   for (const [key, value] of Object.entries(wanted)) {
@@ -170,8 +235,9 @@ export function planWrite(
     if (!current || !sameValue(value, current.fields[key])) changed[key] = value;
   }
   if (status && current && status.field in changed) {
-    const held = DISPATCH_RANK[String(current.fields[status.field])] ?? 0;
-    if (held >= (DISPATCH_RANK[String(changed[status.field])] ?? 0)) delete changed[status.field];
+    const ranks = status.rank === "framing" ? FRAMING_RANK : DISPATCH_RANK;
+    const held = ranks[String(current.fields[status.field])] ?? 0;
+    if (held >= (ranks[String(changed[status.field])] ?? 0)) delete changed[status.field];
   }
   return Object.keys(changed).length > 0 ? changed : null;
 }
