@@ -19,6 +19,10 @@ describe("migration 0387 Books status check tables (files)", () => {
     const entry = journal.entries.find((e) => e.tag === TAG);
     const previous = journal.entries.find((e) => e.tag === "0386_stripe_fees_payouts_books");
     expect(entry?.idx).toBe((previous?.idx ?? Number.NaN) + 1);
+    // Later migrations (0388, Shop refunds to Books) follow it; it stays right after 0386.
+    expect(journal.entries.findIndex((e) => e.tag === TAG)).toBe(
+      journal.entries.findIndex((e) => e.tag === "0386_stripe_fees_payouts_books") + 1,
+    );
     const times = journal.entries.map((e) => e.when);
     for (let i = 1; i < times.length; i++) {
       expect(times[i]).toBeGreaterThan(times[i - 1] ?? Number.POSITIVE_INFINITY);

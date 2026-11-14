@@ -5,18 +5,18 @@ import { describe, expect, it } from "vitest";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const read = (name: string) => readFileSync(join(__dirname, "../drizzle", name), "utf8");
-const migration = read("0388_data_request_erasure_hold.sql").replace(/^--.*$/gm, "");
-const rollback = read("0388_rollback.sql");
+const migration = read("0390_data_request_erasure_hold.sql").replace(/^--.*$/gm, "");
+const rollback = read("0390_rollback.sql");
 const journal = JSON.parse(read("meta/_journal.json")) as {
   entries: { idx: number; tag: string; when: number }[];
 };
-const TAG = "0388_data_request_erasure_hold";
+const TAG = "0390_data_request_erasure_hold";
 
-describe("migration 0388 data request erasure holds", () => {
-  it("is journalled last, right after 0387, in a journal that stays ordered", () => {
+describe("migration 0390 data request erasure holds", () => {
+  it("is journalled last, after 0388, in a journal that stays ordered", () => {
     const entry = journal.entries.find((e) => e.tag === TAG);
-    const previous = journal.entries.find((e) => e.tag === "0387_accounting_books_status");
-    expect(entry?.idx).toBe((previous?.idx ?? Number.NaN) + 1);
+    const previous = journal.entries.find((e) => e.tag === "0388_accounting_shop_refunds");
+    expect(entry?.idx).toBeGreaterThan(previous?.idx ?? Number.POSITIVE_INFINITY);
     expect(entry?.when).toBeGreaterThan(previous?.when ?? Number.POSITIVE_INFINITY);
     expect(journal.entries.at(-1)?.tag).toBe(TAG);
   });
