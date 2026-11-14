@@ -182,7 +182,12 @@ export interface IPaymentGroupRepository {
     groupId: string,
     from: readonly PaymentGroupStatus[],
     to: PaymentGroupStatus,
-    opts?: { stripeChargeId?: string | null; stripePaymentIntentId?: string | null },
+    opts?: {
+      stripeChargeId?: string | null;
+      stripePaymentIntentId?: string | null;
+      /** When it happened (the caller's clock); now when absent. A settled group's `settled_at`. */
+      at?: Date;
+    },
   ): Promise<boolean>;
   /**
    * Hands everything a released group held back: each payment still open (`pending` or

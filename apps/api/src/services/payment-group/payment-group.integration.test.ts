@@ -492,8 +492,10 @@ describe.skipIf(!HAS_DB)("pay several: one payment for several invoices (integra
 
   describe("the books' event, in the settlement transaction (the real event table)", () => {
     /** The same settlement, writing its events to the real table under strict contract checks. */
+    const SETTLED_AT = new Date("2031-11-14T10:00:00.123Z");
     const outboxSettlement = (capturer = capture) =>
       new PaymentGroupSettlementService({
+        now: () => SETTLED_AT,
         transactionRunner: runner,
         groups,
         payments,
@@ -544,6 +546,10 @@ describe.skipIf(!HAS_DB)("pay several: one payment for several invoices (integra
       expect([...(payload.paymentIds as string[])].sort()).toEqual([...memberIds].sort());
       expect(payload.deliveryQuoteIds).toEqual([]);
       expect(JSON.stringify(payload)).not.toMatch(/amount|total|name|email/i);
+      // The event's time is the group's own settled_at, from the one injected clock.
+      const settled = await groups.findById(groupId);
+      expect(payload.settledAt).toBe(SETTLED_AT.toISOString());
+      expect(settled?.settledAt?.toISOString()).toBe(payload.settledAt);
     });
 
     it("leaves no event when the settlement rolls back half way", async () => {

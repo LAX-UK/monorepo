@@ -614,7 +614,7 @@ describe.skipIf(!HAS_DB)(
       });
     });
 
-    it("F4: a payment whose invoice was cancelled in Accounting is parked for a person, not left waiting", async () => {
+    it("R8: a payment whose invoice was cancelled in Accounting is parked for a person, not left waiting", async () => {
       await aimBooks("test_org");
       const buyer = await seedBuyer(owner);
       const a = await wonAndRaised(owner, buyer, 10_000, 2_500);
@@ -645,6 +645,30 @@ describe.skipIf(!HAS_DB)(
         refusal: "unresolved",
         message: expect.stringMatching(/cancelled in Accounting/),
       });
+    });
+
+    it("R7: a member's stored payment above its invoice is refused (payment_exceeds_invoice), even with a total that adds up", async () => {
+      await aimBooks("dry_run");
+      const buyer = await seedBuyer(owner);
+      const a = await wonAndRaised(owner, buyer, 10_000, 2_500);
+      const b = await wonAndRaised(owner, buyer, 8_000, 2_000);
+      const { groupId, event } = await settleGroup(buyer, [a, b]);
+      // One member's row 1p above its invoice, and the group total moved with it: the allocations
+      // still equal the total, so only the invoice's own limit can refuse it.
+      await owner.execute(
+        sql`update payment set amount = amount + 0.01 where id = ${a.payment.id}`,
+      );
+      await owner.execute(
+        sql`update payment_group set total_amount = total_amount + 0.01 where id = ${groupId}`,
+      );
+      await expect(projection().project(event)).rejects.toThrow(
+        /payment_exceeds_invoice|more than the invoice/,
+      );
+      const rows = await owner
+        .select()
+        .from(accountingDocument)
+        .where(eq(accountingDocument.laxReference, ref("payment", `grp-${groupId}`)));
+      expect(rows).toEqual([]);
     });
   },
 );

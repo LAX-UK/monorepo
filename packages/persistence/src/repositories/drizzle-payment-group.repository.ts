@@ -414,9 +414,9 @@ export class DrizzlePaymentGroupRepository implements IPaymentGroupRepository {
     groupId: string,
     from: readonly PaymentGroupStatus[],
     to: PaymentGroupStatus,
-    opts: { stripeChargeId?: string | null; stripePaymentIntentId?: string | null } = {},
+    opts: { stripeChargeId?: string | null; stripePaymentIntentId?: string | null; at?: Date } = {},
   ): Promise<boolean> {
-    const now = new Date();
+    const now = opts.at ?? new Date();
     const rows = await tx
       .update(paymentGroup)
       .set({
