@@ -296,4 +296,158 @@ Typecheck is clean for worker and shop-api. The mutation results above still hol
 
 ## Recheck
 
-in progress. Checked at `f0f531a4`; the head is now `f01c169a`, a merge of main that changes none of this PR's files. So far: R1/R2/R3 green; mutations of the release guard and the buyer-route ownership killed; the remainder re-check under the lock survives the PR's tests (guard works, shown by a new case). Found so far: refused Shop emails (storefront URL unset) stall Bid invoice emails (PR 7 F1 again); the 0383 release clause does not pin contact or number (#1359 N2); the 0383 rollback abandons parked Shop rows (#1359 N3). Batches running.
+Independent recheck of the fixes on `bk10-shop-invoices` at `f0f531a4`. The head is now `f01c169a`, a merge of main (`f1ffc6e4`) that changes none of this PR's files: it brings only staff-panel UI and adds no migration. Each claimed fix was checked against the code, not the table above.
+
+### How it was checked
+
+- `corepack enable && pnpm install --frozen-lockfile && pnpm -r --filter './packages/**' build`: ok.
+- Throwaway Postgres 16.15 (initdb under `/var/tmp`, port 55432). `db:migrate` (375 migrations, last stamp `1811246400000`) and `db:roles` on a fresh database. Tests ran with the owner, `api_app`, `shop_app` and `worker_app` URLs set.
+- Tests in small batches, `--maxWorkers=2`:
+
+  | Area | Result |
+  |---|---|
+  | accounting-domain | 287 passed |
+  | accounting-zoho-books | 308 passed |
+  | finance-runtime | 231 passed |
+  | email / types / shop-contracts | 239 / 328 / 106 passed |
+  | persistence (accounting) | 69 passed |
+  | db (api_app, shop_app, worker_app role contracts; main-upgrade) | 98 passed |
+  | worker (accounting, projectors, container; with the recheck file) | 810 passed; 1 failed, my RC-B (N1) |
+  | shop (account libs, components, routes) | 68 passed |
+  | shop-identity (commerce routes) | 67 passed |
+  | shop-api (application, routes, invoice reader, order-paid and ownership integration) | 34 passed (the 5 test files this PR adds or changes). The whole app did not finish here within 20 minutes; it hung outside these files |
+
+  `apps/shop-api` `framing.integration.test.ts` fails 3 tests on this database because of a `Data step option` with no prices, left behind by main's own `framing-data-step.integration.test.ts`. That file is not part of this PR, so this is not from this change.
+- **R1/R2/R3, my own versions** from the first review (`tests/review1366.integration.test.ts`, strict): 3 runs, all green. The PR's strict R1 (6 senders × 4 rounds × 5 runs), R2 and R3 are green too (`shop-invoice-books.integration`, 21/21).
+- **Recheck cases** on real transactions, in a scratch copy of the PR's Shop integration suite (not pushed):
+  - **RC-A:** worker B lists the delivery invoice as due, worker A then settles it, and B goes on to settle from its stale list. B's locked select finds it settled and does nothing: one `apply_remainder` row, one Books call. **Passes.**
+  - **RC-B:** three live Shop invoice copies stored before one Bid copy, with `SHOP_STOREFRONT_URL` unset and the batch at 3. After 5 ticks the Bid copy has not been emailed or skipped. With the URL set, it is. See N1.
+- **0383 clause as `api_app`** (each update in a rolled-back transaction, on a parked Shop delivery invoice):
+  - refused: a moved gross, a changed `payload.reference`, and net + VAT not equal to gross (the table CHECK);
+  - allowed: the row unchanged, a swapped `payload.contactReference`, a changed `payload.number`, the lines dropped, the net/VAT split moved, payload totals that disagree with the columns, and `payload.entity` set to the Bid company.
+  - The sender's payload reader turns away empty lines and a wrong entity, so those never reach Books, and the Bid organisation cannot be reached this way. A swapped contact or number passes the reader. See N2.
+- **Rollback 0383** then forward with the real runner, twice, on a copy of the tested database holding 4 parked Shop delivery invoices and 1 parked Bid delivery invoice. Both cycles ran cleanly:
+  - every Shop row went to `cancelled`, each with one `cancel` history row (`{"rollback":"0383","parked":"vat_on_outside_uk_delivery"}`);
+  - the Bid row stayed parked;
+  - 0382's function came back word for word, and forward re-applied 0383;
+  - afterwards `api_app` cannot queue a cancelled row.
+
+  See N3 for what does not come back.
+- **Mutation tests.** Each was applied, rebuilt where the tests read the build, run, and restored. `git status` was clean after each.
+
+  | # | Mutation | Result |
+  |---|---|---|
+  | MR1 | Release guard: `rebuildShopOutsideUkDelivery` never parks (as if a booking were set) | **killed**: 1 domain, 1 release service ("refused while the accountant has not answered"), 2 integration |
+  | MR2 | Remainder: the "not yet settled" check removed from the locked select in `settleExclusively` | **survived** every PR test, including the four-workers case. Killed by RC-A (a second `apply_remainder` row). See N5 |
+  | MR3 | Buyer routes: `getOrder` without the `identity_subject_id` filter | **killed**: `order-invoice-ownership.integration` |
+  | MR4 | F5: `invoiceNumberCheck` always null | **killed**: contract "holds for a person an invoice Books renumbered, on the send and on lookup" |
+
+### The fixes, as found
+
+- **F1: holds.**
+  - There is one claim for both products: `AWAITED_ISSUED` in `accounting-awaited.ts`, used in the claim statement under `FOR UPDATE SKIP LOCKED`.
+  - An invoice or credit note waits for its contact. A payment waits for its contact and for every allocated invoice, in the same product, entity, provider and mode.
+  - The Shop payment is allocated to the goods invoice only, so a parked delivery never holds it.
+  - R1, R2 and R3 pass under real concurrency, both the PR's versions and mine.
+- **F2: holds, with N2, N4 and N5.**
+  - Release of `vat_on_outside_uk_delivery` rebuilds the draft from the order's stored delivery with `SHOP_OUTSIDE_UK_DELIVERY_BOOKING`. That is still `null`, so the rebuild stays parked and Release is refused (MR1). No VAT treatment is chosen.
+  - The rebuild keeps the draft's contact, dates and number, and refuses a changed scope or gross.
+  - Release is gated server-side by #1359's route, and writes a `release` history row and an audit event.
+  - The remainder step only takes an `issued` delivery invoice whose payment is `issued` in the same books. It holds the row with `FOR UPDATE SKIP LOCKED`, re-checks under the lock that it is still unsettled, and writes `apply_remainder` in the same transaction (RC-A, four-workers test).
+  - Nothing can over-apply. `planRemainder` refuses an amount above the payment's stored unapplied rest, or an invoice the payment was already applied to. The adapter refuses when Books shows less unused than the amount, or a different amount already applied, and answers `already_applied` when the same amount is there.
+- **F3: holds.**
+  - 0383 is idx 375 and stamped after 0382.
+  - It redefines only `accounting_document_api_requeue_only`. Compared with 0382's version, the one change is the reason list, which adds the Shop reason.
+  - 0382's history function (`accounting_document_event_api_requeue_only`) is left alone.
+- **F4: holds as described, but see N3.**
+- **F5: holds** (MR4).
+  - An invoice carrying LAX's number must read back under it on the send, on lookup and on resend, or it is `differs` with `zoho_books_number_differs`.
+- **F6: holds, with N1.**
+  - A refunded order keeps the issued card and both downloads (shot `refunded-375-light`), and is still emailed.
+  - The email total is the attached invoice's gross.
+  - `SHOP_STOREFRONT_URL` has no default. Unset, non-https and local addresses are refused, and the worker logs an error on each tick and warns at start-up.
+  - But a refused Shop copy is "left due" at the head of the shared email list, and that is N1.
+- **F7: holds.**
+  - The recipient guard cases (erased guest; disabled, deletion-requested and merged accounts) are in the integration suite and pass.
+  - Ownership goes through the real `shop_app` repository: another shopper gets the same 404 with no Books or storage read (MR3).
+  - `onSend` sets `private, no-store` on the shop-api routes, including errors (tested). The web document route returns one uncached 404 for anything but a PDF.
+  - The Bid organisation is never reachable. The payload reader requires `legalEntityFor(product)`, and the destination gate is unchanged.
+- **F8:** the round 2 shots are clean: no horizontal scroll, and dark mode follows the tokens. Two copy points are in N6.
+- **Dry run.** `SHOP_OUTSIDE_UK_DELIVERY_BOOKING` and `DELIVERY_BOOKING` are both `null`. No deploy or environment file changed, and every send in these tests went to the in-memory Books.
+
+### #1359 recheck lessons, applied here
+
+- **Is the release decision atomic with the rows it decided on? No, as in #1359 N1.** The API reads the order, decides, and moves the document in a separate transaction. For the Shop, the deciding columns (`fulfilment`, `fulfilment_surcharge_pence`, `fulfilment_vat_pence`) are frozen once the order is paid, and the booking is a code constant. So the window decides nothing that could change. Info (N4).
+- **Does the trigger clause pin contact, lines and net + VAT? No** (N2).
+- **Does the rollback abandon parked rows? Yes** (N3).
+
+### Findings
+
+#### N1 — Medium — With `SHOP_STOREFRONT_URL` unusable, refused Shop invoice emails hold Bid invoice emails back indefinitely (PR 7 F1 again)
+
+`listEmailDue` takes the oldest due copies of every product (`ORDER BY stored_at`, batch 10). While the storefront URL is unset, not https or local, each Shop copy in that batch is skipped "left due" and never settled. Once ten live Shop invoices are waiting, they fill every batch, and no Bid invoice stored after them is emailed or skipped again. Shown by RC-B: Bid not reached after 5 ticks; reached with the URL set.
+
+- **When it happens:** only with the Shop live in Books and the URL forgotten, which is exactly the case the F6 fix guards against. That fix turns a broken link into a stall of the other product's emails.
+- **Why Medium:** today Books is dry run, so nothing is affected. Once live, Bid buyers silently stop getting invoices. The only signal is the error log.
+
+**Fix:**
+- When `shopBase()` is null, exclude the Shop from that tick's due list: pass the products to `listEmailDue` (`product in (...)`), or list each product on its own.
+- Add RC-B as a regression test: the Bid copy is emailed while Shop copies wait.
+- Optionally, page on `accounting_shop_invoice_email_refused` rather than only logging it.
+
+#### N2 — Low — The 0383 release clause still pins only the reference, kind and gross (#1359 N2, now for the Shop too)
+
+As `api_app`, releasing a parked Shop delivery invoice may also, in the same update:
+
+- swap `payload.contactReference`;
+- change `payload.number`;
+- drop the lines;
+- move the net/VAT split;
+- leave the payload totals disagreeing with the columns.
+
+The reader stops empty lines and a wrong entity. A swapped contact (another buyer's issued contact) or another number would be sent. The application path cannot do this, because the rebuild keeps the draft's header. But the trigger is the database's guard against a faulty API, and for this reason the rebuilt invoice will legitimately differ only in its lines and VAT.
+
+**Fix:** in the release branch of the clause, for the redraft case, also require:
+
+- `NEW.payload - 'lines' - 'totals' = OLD.payload - 'lines' - 'totals'`;
+- `jsonb_array_length(NEW.payload -> 'lines') > 0`;
+- `(NEW.payload -> 'totals' ->> 'grossPence')::bigint = NEW.gross_pence`, and the same for net and VAT against the columns.
+
+Add these probes to `api-app-role.contract.test.ts`. They suit Bid's delivery invoice equally, so fix it once for both.
+
+#### N3 — Low — Rolling back 0383 leaves every parked Shop delivery invoice cancelled for good, and its buyer's credit never applied (#1359 N3)
+
+After rollback and forward, the cancelled rows stay `cancelled`. Release only takes a parked row, a cancelled row keeps its LAX reference, and no re-projection tool exists. So the header's "projected anew only by a person" names a step that does not exist.
+
+For the Shop it is worse than for Bid. The order's payment keeps the delivery amount as unapplied credit in Books, and the remainder step only looks at issued delivery invoices, so that credit has no LAX path any more.
+
+**Fix:** in the rollback, restore 0382's function with one extra condition on its release branch: refuse when `OLD.needs_review_reason = 'accounting_parked_vat_on_outside_uk_delivery'`. Leave the parked rows parked; re-applying 0383 brings Release back. Or keep the cancel, but say in the header and the runbook that this rollback must not run once the Shop has left dry run, and list the references it cancelled.
+
+#### N4 — Info — Release reads the order outside the move's transaction
+
+This is as in #1359 N1, which main has not fixed. For the Shop, the columns it decides on are frozen after payment, so no harmful interleaving was found. If the #1359 N1 fix lands (re-read under lock in the release transaction), include `shop_order` (`FOR SHARE`) in it.
+
+#### N5 — Low — The remainder step's re-check under the lock is untested, and its batch can be starved
+
+- **Untested guard.** MR2 survives the PR's tests: the four-workers case only exercises `SKIP LOCKED`, never a worker that listed before the holder committed. The guard itself works (RC-A).
+  - **Fix:** adopt RC-A.
+- **Starvation.** `listDue` takes 10 issued delivery invoices by `updated_at` before it checks that the payment is issued. A row whose payment never becomes issued, or whose answer stays `unknown`, keeps its place at the head on every tick, and nothing alerts on it. Ten such rows stop every later remainder.
+  - **Fix:** filter on the issued payment in the SQL (`exists`), and order an `unknown` row behind fresh ones, or record its last attempt.
+  - **Fix:** raise the delayed-accounting alert for a delivery invoice issued more than 6 hours ago with no `apply_remainder`.
+
+#### N6 — Info — Copy in the round 2 shots (owner questions)
+
+- **Outside-UK order:** Summary says £655, but the card shows only `LAX-INV-000124` at £570. Nothing tells the buyer the £85 delivery is invoiced separately later. Consider a line such as "Delivery outside the UK is invoiced separately."
+- **Refunded order:** two buttons both say "Download invoice (PDF)" (Books' copy in the card, LAX's own under Help), and they open different documents. Name the second, for example "Order receipt (PDF)".
+
+### Recheck verdict: FIX FIRST
+
+F1 to F8 are fixed as claimed, and the owner's hard rules hold:
+
+- Books stays in dry run;
+- no VAT treatment is chosen for outside-UK delivery;
+- the Shop is booked only to London Art Exchange;
+- the invoice keeps LAX's number;
+- nothing can be applied twice or beyond the remainder.
+
+N1 decides the verdict. It brings back the queue stall that PR 7 F1 closed, and across products. The fix is a small query change plus RC-B. N2, N3 and N5 are Low and can follow, but N2 is best fixed together with #1359 N2.
