@@ -151,6 +151,53 @@ describe("CheckoutSessionLifecycle", () => {
     expect(stripe.sessions.get(unfunded)?.status).toBe("expired");
   });
 
+  it("after a parameter change, paying by bank closes the card session opened at the old amount", async () => {
+    const { stripe, pay } = setup();
+    const oldCard = readyId(await pay("card", ["lot"]));
+    const bank = readyId(await pay("bank", ["lot", "courier"]));
+    expect(stripe.sessions.get(oldCard)?.status).toBe("expired");
+    expect(stripe.open()).toEqual([bank]);
+  });
+
+  it("paying by bank for unchanged parameters leaves the card session open", async () => {
+    const { stripe, pay } = setup();
+    const card = readyId(await pay("card", ["lot"]));
+    const bank = readyId(await pay("bank", ["lot"]));
+    expect(stripe.open("card")).toEqual([card]);
+    expect(stripe.open("bank")).toEqual([bank]);
+  });
+
+  it("after a parameter change, a bank transfer with instructions is kept whatever rail is picked", async () => {
+    const { stripe, pay } = setup();
+    const funded = readyId(await pay("bank", ["lot"]));
+    stripe.giveTransferInstructions(funded);
+    const oldCard = readyId(await pay("card", ["lot"]));
+    await pay("bank", ["lot", "courier"]);
+    expect(stripe.sessions.get(funded)?.status).toBe("complete");
+    expect(stripe.cancelledIntents).toEqual([]);
+    expect(stripe.sessions.get(oldCard)?.status).toBe("expired");
+  });
+
+  it("after a parameter change, an open bank session that already has an intent is never closed", async () => {
+    const { stripe, pay } = setup();
+    const started = readyId(await pay("bank", ["lot"]));
+    // The buyer reached the instructions step; Stripe attached an intent before completing it.
+    const session = stripe.sessions.get(started);
+    if (session) session.paymentIntent = `pi_${started}`;
+    await pay("bank", ["lot", "courier"]);
+    await pay("card", ["lot", "courier", "framing"]);
+    expect(stripe.sessions.get(started)?.status).toBe("open");
+  });
+
+  it("paying by bank closes a card session recorded before fingerprints were stored", async () => {
+    const { stripe, ledger, pay } = setup();
+    const legacyCard = await stripe.createCardCheckoutSession({ idempotencyKey: "old" } as never);
+    await ledger.record("pay-1", legacyCard.sessionId);
+    const bank = readyId(await pay("bank", ["lot"]));
+    expect(stripe.sessions.get(legacyCard.sessionId)?.status).toBe("expired");
+    expect(stripe.open()).toEqual([bank]);
+  });
+
   it("two Pays at once get one session", async () => {
     const { stripe, pay } = setup();
     const [a, b] = await Promise.all([pay("card", ["lot"]), pay("card", ["lot"])]);

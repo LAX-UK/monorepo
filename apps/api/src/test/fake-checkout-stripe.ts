@@ -240,7 +240,11 @@ export function payOn(
   rail: CheckoutSessionRail,
   lines: string[],
 ) {
-  const parameters = { paymentId: "pay-1", lines };
+  // As the real rails do: bank transfer also names the Stripe customer, card does not.
+  const parameters =
+    rail === "bank"
+      ? { paymentId: "pay-1", lines, stripeCustomerId: "cus_fixture" }
+      : { paymentId: "pay-1", lines };
   return lifecycle.openOrRenew(rail, "pay-1", parameters, (idempotencyKey) =>
     rail === "card"
       ? stripe.createCardCheckoutSession({ ...parameters, idempotencyKey } as never)
