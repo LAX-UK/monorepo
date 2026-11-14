@@ -1,6 +1,7 @@
 import { SalesStaffList } from "@/components/admin/sales/sales-staff-list";
 import { loadAdminSalesListPage } from "@/lib/admin/sales/load-sales-list-page";
 import {
+  salePanelRedirect,
   salesAttention,
   salesFilterChips,
   salesListHref,
@@ -15,6 +16,7 @@ import { SALES_ACCESS, SALE_CATALOG_READ_ACCESS } from "@/lib/navigation/staff-n
 import { metadataForPrivate } from "@/lib/seo/metadata-factory";
 import { type UserRole, userHasAccessTo } from "@auction/types";
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 
 export const metadata: Metadata = metadataForPrivate(
   "Sales",
@@ -31,6 +33,9 @@ export default async function AdminSalesPage({
   const user = await requireAdminCapability(SALE_CATALOG_READ_ACCESS, "/admin/sales");
   const canManageSales = userHasAccessTo(user.role as UserRole, user.staffRoles, SALES_ACCESS);
   const sp = await searchParams;
+  // The sale panel is gone: an old shared `?sale=` link opens the sale's page.
+  const panelRedirect = salePanelRedirect(sp);
+  if (panelRedirect) redirect(panelRedirect);
   const page = await loadAdminSalesListPage(sp);
   const { model, salesSummary, err, boardRows, lensesItems, listPaginationTotal } = page;
   const { query } = model;
