@@ -23,6 +23,10 @@ import { SellerPayoutHttpApplicationService } from "../services/finance/seller-p
 import { StripeConnectHttpApplicationService } from "../services/finance/stripe-connect-http-application.service.js";
 import { StripeWebhookIngressApplicationService } from "../services/finance/stripe-webhook-ingress-application.service.js";
 import { XeroWebhookIngressApplicationService } from "../services/finance/xero-webhook-ingress-application.service.js";
+import {
+  type ZohoBooksNoticeAlerts,
+  ZohoBooksNoticeIngressApplicationService,
+} from "../services/finance/zoho-books-notice-ingress-application.service.js";
 import type { IBuyerComplianceHttpApplicationService } from "../services/interfaces/compliance-routes/compliance-buyer-http.js";
 import type { FinanceRouteServices } from "../services/interfaces/finance-routes/index.js";
 import type { IInvoiceAccountingProvider } from "../services/interfaces/invoice-accounting.js";
@@ -62,7 +66,15 @@ export type CreateFinanceRouteServicesInput = {
   stripeConnectService: IStripeConnectService;
   stripePaymentWebhookService: StripePaymentWebhookService | null;
   payoutSellerService: IPayoutSellerService;
-  env: Pick<Env, "XERO_WEBHOOK_KEY" | "XERO_WEBHOOK_INBOX_MODE" | "XERO_API_WRITES_DISABLED">;
+  env: Pick<
+    Env,
+    | "XERO_WEBHOOK_KEY"
+    | "XERO_WEBHOOK_INBOX_MODE"
+    | "XERO_API_WRITES_DISABLED"
+    | "ZOHO_BOOKS_NOTICE_SECRET"
+  >;
+  /** Where a refused Books notice signature is raised (logged and sent to Sentry). */
+  zohoBooksNoticeAlerts: ZohoBooksNoticeAlerts;
   xeroWebhookEventRepository: IXeroWebhookEventRepository;
   accountingProvider: IInvoiceAccountingProvider;
   webhookEventRepository?: IWebhookEventRepository;
@@ -114,6 +126,12 @@ export function createFinanceRouteServices(
       input.accountingProvider,
       input.webhookEventRepository ?? null,
       input.env.XERO_WEBHOOK_INBOX_MODE === "inbox" ? (input.webhookEventsProducer ?? null) : null,
+    ),
+    zohoBooksNotices: new ZohoBooksNoticeIngressApplicationService(
+      input.env.ZOHO_BOOKS_NOTICE_SECRET,
+      input.webhookEventRepository ?? null,
+      input.webhookEventsProducer ?? null,
+      input.zohoBooksNoticeAlerts,
     ),
   };
 }

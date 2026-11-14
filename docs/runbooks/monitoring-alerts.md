@@ -527,6 +527,135 @@ back, and each stays due. While any waits, every run raises `accounting_shop_inv
 (an error alert sent to Sentry, routed to finance on-call like the other accounting alerts). Set
 the address and the waiting emails go on the next run.
 
+## Books notices and the nightly status check (Zoho Books, rehearsal)
+
+Books is still in rehearsal (dry run, or the test organisation only). Nothing below changes
+production, and no Books credentials live in the repository.
+
+### Books notices (`POST /webhooks/zoho-books/notices`, Bid API)
+
+**What happens.** A Zoho Books workflow webhook tells LAX that a document changed. Books signs each
+request with the webhook's secret token in `X-Zoho-Webhook-Signature`. The Bid API checks the
+signature in constant time against `ZOHO_BOOKS_NOTICE_SECRET` and stores a good notice once, in
+`webhook_event` (source `zoho_books`), keyed on Books' ids. It keeps only Books' ids and the change
+time. A notice is never trusted for money: the worker reads that document's state from Books again
+and records what Books says (below). Every answer has no body and `Cache-Control: no-store`.
+
+- **Not configured.** Without `ZOHO_BOOKS_NOTICE_SECRET` the route refuses every notice (503) and
+  stores nothing. Set it, 32 characters or more, to the same value as the secret token on the Books
+  workflow webhook. Use the test organisation only while Books is in rehearsal.
+- **Body.** The workflow sends JSON with `organization_id`, `module` (`invoice`, `creditnote` or
+  `customerpayment`), `entity_id` and `event_time` (required: it is inside the signed body, so it is
+  the one time a copied notice cannot change). A notice without it, with an `event_time` more than
+  24 hours old, or more than 5 minutes ahead of our clock, is refused with a bare 400 and nothing is
+  stored. A body over 16 KiB is refused with 413 before it is read. A notice for another
+  organisation, or for a document LAX did not issue, changes nothing.
+
+### Notice signature refused (`zoho_books.notice_signature_failed`)
+
+**What it means.** A request reached the Books notice route with no signature, or one that does
+not match the configured secret. It was refused with a bare 401 and nothing was stored. The alert
+gives only `reason` (`missing` or `invalid`), never anything from the request. The route is public
+and rate limited per client address, like the Xero and Postmark webhooks.
+
+- `missing`: logged at warn only, never sent to Sentry. This is what ordinary internet scanning of
+  a public route looks like.
+- `invalid`: logged at error and sent to Sentry as a warning, every one grouped into one issue. The
+  Sentry alert rule should page on a rate of these (for example more than 10 in an hour), not on
+  each event. Until that rule exists (see the PR's known gaps), watch the issue's event count.
+
+**What to do.** A burst of `invalid` right after the secret token changes in Books means the two
+copies no longer match: set the same value in Books and in `ZOHO_BOOKS_NOTICE_SECRET`. Rotate it in
+Books first, then in the API. Until both match, notices are refused, and the nightly check still
+reads every document. A sustained rate of `invalid` with no change on our side goes to security
+on-call. Routed to finance on-call with the other accounting alerts.
+
+### The nightly status check (cron `accounting-books-status`, 02:15 London)
+
+**What happens.** The worker reads back from Books each issued Books invoice, credit note and
+payment that is due. That is one read per document. Each run reads within a share of the day's
+Books budget built for that run alone: at most 300 reads, and none once the day's count would leave
+fewer than 400 calls for sending. It stops as soon as its share or the day's budget is spent, and
+the rest is read the next night. A document a notice named is read first.
+
+Reads a notice asks for during the day draw on a separate share: at most 50 a day, with the same 400
+calls kept free, so notices can never spend the night's share or the sender's calls. A notice for a
+document read in the last 10 minutes does not read it again: the mark stays and the night's run
+reads it first. In the dry run no share is spent, because nothing is read. For each one the worker records the state Books shows (`accounting_books_status`) and
+each change (`accounting_books_status_change`, append-only), such as an invoice voided or a document
+deleted in Books. Each run is a row in `accounting_books_status_run`. In the dry run nothing is
+read and each run says `rehearsal`.
+
+**A payment recorded in Books by hand.** When Books shows a payment against one of LAX's invoices
+that LAX did not send (a gallery sale or a cheque entered in Books), the check opens a **finance
+task**: "Money received that could not be applied", reason `books_payment_recorded_by_hand`. The task
+names the LAX invoice reference, the amount Books applied to that invoice, and Books' payment mode
+and date. It is opened once per Books payment and LAX invoice: one cheque split across two invoices
+is two tasks, one for each part. **Nothing in LAX is marked paid**, and the check cannot mark a lot, invoice or payment
+paid.
+
+A Books payment is LAX's own, and never a task, when its Books id belongs to any LAX payment
+document, whatever state that document is in, or when it carries the reference of a LAX payment
+whose Books id LAX never learnt. While any LAX payment applied to the invoice is not settled
+(pending, sending, unknown, needs review or failed), the check opens no task for that invoice's
+other Books payments and does not remember them: it logs `accounting_status_payments_held_back` (a
+warning) and looks again on the next read. The hold lasts at most **3 days** from when the payment
+was first held (kept per Books payment in `accounting_books_status.held_since`). After that the check
+opens the finance task anyway, marked **"Possibly LAX's own payment"**, and raises the warning
+`accounting_books_payment_held_back_too_long` once for that payment. A LAX payment stuck in needs
+review or failed therefore delays a hand payment's task by 3 days at most, never for good.
+
+**A task marked "Possibly LAX's own payment".** A LAX payment on that invoice has been unresolved
+for more than 3 days, so this Books payment may be LAX's own. Check that unresolved LAX payment on
+the accounting attention list first: if the Books payment is it, resolve LAX's payment document and
+close the task without recording anything. Otherwise handle the task as below.
+
+**What to do with the task.** First check that it is not a LAX card payment whose Books document is
+still unresolved: look up the invoice reference on the accounting attention list and in Books, and
+compare the payment's reference, amount and date with LAX's own payments for that invoice. If it is
+LAX's own payment, resolve LAX's payment document and close the task; do not record it again. Only
+then, for a real payment entered in Books, check that the money arrived and record the payment in
+LAX the usual way, or correct Books if the payment was entered by mistake.
+
+### Status check missed (`accounting_status_check_missed`)
+
+**What it means.** While Books is aimed at for some product, no nightly status check has finished
+for more than 26 hours. The check's Sentry cron monitor (`accounting-books-status`) also shows the miss.
+
+The 26 hours count from the last run that finished. If none ever finished, they count from the
+first run that ever started (`accounting_books_status_run`), a stored time that worker restarts do
+not move. If no run has ever started, the alert can only count from the worker's start, so with
+deploys inside a day it stays silent: **a cron that never fires is caught by the Sentry cron
+monitor `accounting-books-status`, not by this alert.** That monitor's slug must be configured for
+this case to reach anyone: add `accounting-books-status` to `SENTRY_MONITOR_SLUGS` and create the
+cron monitor (daily, 02:15 Europe/London, about 60 minutes margin). The check runs on its own
+queue (`accounting-books-status`), apart from the daily Stripe reconciliation, and has no
+heartbeat: a nightly job would fail a freshness check most of the day.
+
+**What to do.** Look at the worker logs for `accounting_status_check_finished`, or for the job's
+failure on Failed jobs. A run that keeps failing is recorded with outcome `failed`. A run stopped
+by the budget (`budget_spent`) still counts as run: the rest is read the next night. Books being
+unavailable for a while is not an error, and those documents are read again next time. Nothing
+waits on this check: sending, invoices and payments go on without it.
+
+### The status check's migration (0387)
+
+`0387_accounting_books_status.sql` adds the three tables above. **Rollback:** stop the worker's
+`accounting-books-status` job, then run `0387_rollback.sql`. It drops the three tables (what Books
+said is lost; the finance tasks already opened stay) and deletes only this migration's ledger row
+(`created_at = 1811592000000`), so a later deploy applies it again. It does not depend on 0385 or
+0386, and rolling it back leaves them in place.
+
+**Renumbered before merge.** This migration was 0385 on its branch and is 0387 on main (0385 is
+the Bid refunds migration, 0386 the Stripe fees one). A database that ran the branch before the
+renumber (the rehearsal test database, say) holds these tables under 0385's ledger row, and cannot
+migrate to main as it is: its ledger row has the same time as main's 0385, so main's 0385 would
+be skipped. Before deploying main there, run the branch's old rollback (the branch's
+`0385_rollback.sql`, not main's: it drops these three tables), then, as the owner, make sure that
+ledger row is gone: `DELETE FROM drizzle.__drizzle_migrations WHERE created_at = 1811419200000;`
+(on that database the row is this migration's, not the refunds one). Then migrate: 0385, 0386 and
+0387 all apply.
+
 ## Stripe fees, payouts and the daily reconciliation (`accounting_reconciliation_mismatch`)
 
 Plan v2, flow 25. Rehearsal only: Books stays in dry run, and the job only ever **reads** Stripe.

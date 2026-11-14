@@ -12,7 +12,8 @@ import type {
   ShopDeletionEligibilityReader,
   ShopDeletionOpenItems,
 } from "../application/ports/deletion-eligibility.reader.js";
-import { resolvePortalPartyIds } from "./portal-party-ids.js";
+import { portalPartyRows, resolvePortalPartyScope } from "./portal-party-scope.js";
+import { portalPayoutRows } from "./portal-payout-scope.js";
 
 /** A fulfilment that has reached the buyer, or can no longer: nothing is owed on the order. */
 const FINISHED_FULFILMENT = ["delivered", "collected", "in_storage", "cancelled"] as const;
@@ -27,7 +28,7 @@ export function createDrizzleDeletionEligibilityRepository(
 ): ShopDeletionEligibilityReader {
   return {
     async readOpenItems(identitySubjectId): Promise<ShopDeletionOpenItems> {
-      const partyIds = await resolvePortalPartyIds(db, identitySubjectId);
+      const scope = await resolvePortalPartyScope(db, identitySubjectId);
       const now = new Date();
 
       const openOrders = count(
@@ -76,8 +77,19 @@ export function createDrizzleDeletionEligibilityRepository(
           ),
       );
 
-      // Party-linked records can only exist when the person has a party.
-      if (partyIds.length === 0) {
+      // Party-linked records, read under the same party rule as the portal.
+      const payoutRows = portalPayoutRows(scope);
+      const originalRows = portalPartyRows(
+        scope,
+        shopOriginalSale.buyerPartyId,
+        shopOriginalSale.artworkId,
+      );
+      const holdRows = portalPartyRows(
+        scope,
+        shopStockHold.clientPartyId,
+        sql`(select e.artwork_id from shop_edition e where e.id = ${shopStockHold.editionId})`,
+      );
+      if (!payoutRows || !originalRows || !holdRows) {
         return {
           openOrders: await openOrders,
           openDisputes: await openDisputes,
@@ -92,33 +104,21 @@ export function createDrizzleDeletionEligibilityRepository(
           .select({ n: sql<number>`count(*)::int` })
           .from(shopPayoutLedger)
           .where(
-            and(
-              inArray(shopPayoutLedger.ownerPartyId, partyIds),
-              inArray(shopPayoutLedger.status, ["pending_refund_period", "due"]),
-            ),
+            and(payoutRows, inArray(shopPayoutLedger.status, ["pending_refund_period", "due"])),
           ),
       );
       const openOriginalSales = count(
         db
           .select({ n: sql<number>`count(*)::int` })
           .from(shopOriginalSale)
-          .where(
-            and(
-              inArray(shopOriginalSale.buyerPartyId, partyIds),
-              notInArray(shopOriginalSale.status, ["assigned", "cancelled"]),
-            ),
-          ),
+          .where(and(originalRows, notInArray(shopOriginalSale.status, ["assigned", "cancelled"]))),
       );
       const activeHolds = count(
         db
           .select({ n: sql<number>`count(*)::int` })
           .from(shopStockHold)
           .where(
-            and(
-              inArray(shopStockHold.clientPartyId, partyIds),
-              eq(shopStockHold.status, "active"),
-              gt(shopStockHold.expiresAt, now),
-            ),
+            and(holdRows, eq(shopStockHold.status, "active"), gt(shopStockHold.expiresAt, now)),
           ),
       );
 

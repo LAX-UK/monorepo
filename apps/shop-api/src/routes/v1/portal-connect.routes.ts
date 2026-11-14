@@ -67,6 +67,7 @@ export async function registerPortalConnectRoutes(
           200: ConnectStatusSchema,
           401: ShopApiErrorBodySchema,
           404: ShopApiErrorBodySchema,
+          409: ShopApiErrorBodySchema,
         },
       },
     },

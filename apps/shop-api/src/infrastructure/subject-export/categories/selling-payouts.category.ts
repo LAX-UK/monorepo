@@ -11,8 +11,8 @@ import {
   type ExportSource,
   SourcedExportCategory,
 } from "@auction/identity-contracts/subject-export-readers";
-import { and, asc, eq, inArray, sql } from "drizzle-orm";
-import { resolvePortalPartyIds } from "../../portal-party-ids.js";
+import { and, asc, eq, sql } from "drizzle-orm";
+import { resolvePortalPayoutScope } from "../../portal-payout-scope.js";
 import type { SubjectExportDeps } from "../subject-export-deps.js";
 import { iso, isoRequired, pence, workRef } from "../subject-export-values.js";
 import { afterKey, countWhere } from "./keyset.js";
@@ -72,9 +72,9 @@ export function mapPayoutLedgerRow(row: PayoutLedgerRow, origins: Origins) {
 }
 
 /**
- * Payouts and the sales behind them, for the parties the person sells as: their own party and the
- * party of their artist profile (the same rule as the seller portal's sales list). A person who
- * never sold has none, and the category is then empty.
+ * Payouts and the sales behind them that the person may see: those owed to their own party, and
+ * their artist profile's own payouts (the same rule as the seller portal, see
+ * resolvePortalPayoutScope). A person who never sold has none, and the category is then empty.
  */
 export class SellingPayoutsCategory extends SourcedExportCategory {
   readonly id = "selling-payouts";
@@ -85,14 +85,12 @@ export class SellingPayoutsCategory extends SourcedExportCategory {
     this.sources = [
       {
         count: async (s) => {
-          const partyIds = await resolvePortalPartyIds(db, s);
-          return partyIds.length === 0
-            ? 0
-            : countWhere(db, shopPayoutLedger, inArray(shopPayoutLedger.ownerPartyId, partyIds));
+          const scope = await resolvePortalPayoutScope(db, s);
+          return scope ? countWhere(db, shopPayoutLedger, scope) : 0;
         },
         page: async (s, after, limit) => {
-          const partyIds = await resolvePortalPartyIds(db, s);
-          if (partyIds.length === 0) return [];
+          const scope = await resolvePortalPayoutScope(db, s);
+          if (!scope) return [];
           const rows = await db
             .select({
               id: shopPayoutLedger.id,
@@ -130,12 +128,7 @@ export class SellingPayoutsCategory extends SourcedExportCategory {
                 sql`coalesce(${shopOrderLine.artworkId}, ${shopEdition.artworkId}, ${shopOriginalSale.artworkId})`,
               ),
             )
-            .where(
-              and(
-                inArray(shopPayoutLedger.ownerPartyId, partyIds),
-                afterKey(shopPayoutLedger.id, after),
-              ),
-            )
+            .where(and(scope, afterKey(shopPayoutLedger.id, after)))
             .orderBy(asc(shopPayoutLedger.id))
             .limit(limit);
           return rows.map((row) => ({

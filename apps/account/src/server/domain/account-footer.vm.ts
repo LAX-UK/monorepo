@@ -1,6 +1,10 @@
 import type { SupportLinksVm } from "@/server/domain/account-links";
 import type { LaxFamilyLinkVm } from "@auction/lax-ecosystem";
-import { FOOTER_LEGAL, type MarketingFooterColumn } from "@auction/marketing-ui";
+import {
+  COOKIE_SETTINGS_HASH,
+  FOOTER_LEGAL,
+  type MarketingFooterColumn,
+} from "@auction/marketing-ui";
 
 /**
  * The columns of LAX Account's footer, in the order every LAX footer uses: the other products,
@@ -36,6 +40,8 @@ export function buildAccountFooterColumns(
         links: [
           { label: FOOTER_LEGAL.terms, href: support.terms },
           { label: FOOTER_LEGAL.privacy, href: support.privacyPolicy },
+          // Account sets no optional cookies; the link opens the shared dialog that says so.
+          { label: FOOTER_LEGAL.cookiePreferences, href: COOKIE_SETTINGS_HASH },
         ],
       },
     );

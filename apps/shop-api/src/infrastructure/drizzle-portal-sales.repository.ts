@@ -11,19 +11,19 @@ import {
 import { desc, eq, inArray } from "drizzle-orm";
 import type { PortalSalesReader } from "../application/ports/portal-ownership.reader.js";
 import { PORTAL_ME_LIST_LIMIT } from "../domain/portal-me-list-limit.js";
-import { resolvePortalPartyIds } from "./portal-party-ids.js";
+import { resolvePortalPayoutScope } from "./portal-payout-scope.js";
 
 export function createDrizzlePortalSalesRepository(db: Database): PortalSalesReader {
   return {
     async listSales(identitySubjectId: string) {
-      const partyIds = await resolvePortalPartyIds(db, identitySubjectId);
-      if (partyIds.length === 0) {
+      const scope = await resolvePortalPayoutScope(db, identitySubjectId);
+      if (!scope) {
         return [];
       }
       const ledgerRows = await db
         .select()
         .from(shopPayoutLedger)
-        .where(inArray(shopPayoutLedger.ownerPartyId, partyIds))
+        .where(scope)
         .orderBy(desc(shopPayoutLedger.createdAt))
         .limit(PORTAL_ME_LIST_LIMIT);
 

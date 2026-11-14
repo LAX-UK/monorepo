@@ -11,7 +11,7 @@ import {
   SourcedExportCategory,
 } from "@auction/identity-contracts/subject-export-readers";
 import { and, asc, eq, inArray } from "drizzle-orm";
-import { resolvePortalPartyIds } from "../../portal-party-ids.js";
+import { portalPartyRows, resolvePortalPartyScope } from "../../portal-party-scope.js";
 import type { SubjectExportDeps } from "../subject-export-deps.js";
 import { iso, isoRequired, workRef } from "../subject-export-values.js";
 import { afterKey, countWhere } from "./keyset.js";
@@ -127,6 +127,12 @@ export class SellingCategory extends SourcedExportCategory {
 
   constructor({ db, files, origins }: SubjectExportDeps) {
     super();
+    const requests = async (s: string) =>
+      portalPartyRows(
+        await resolvePortalPartyScope(db, s),
+        shopSaleAuthorityRequest.ownerPartyId,
+        shopSaleAuthorityRequest.artworkId,
+      );
     this.sources = [
       {
         count: (s) =>
@@ -212,18 +218,12 @@ export class SellingCategory extends SourcedExportCategory {
       },
       {
         count: async (s) => {
-          const partyIds = await resolvePortalPartyIds(db, s);
-          return partyIds.length === 0
-            ? 0
-            : countWhere(
-                db,
-                shopSaleAuthorityRequest,
-                inArray(shopSaleAuthorityRequest.ownerPartyId, partyIds),
-              );
+          const where = await requests(s);
+          return where ? countWhere(db, shopSaleAuthorityRequest, where) : 0;
         },
         page: async (s, after, limit) => {
-          const partyIds = await resolvePortalPartyIds(db, s);
-          if (partyIds.length === 0) return [];
+          const where = await requests(s);
+          if (!where) return [];
           const rows = await db
             .select({
               id: shopSaleAuthorityRequest.id,
@@ -240,12 +240,7 @@ export class SellingCategory extends SourcedExportCategory {
             })
             .from(shopSaleAuthorityRequest)
             .innerJoin(shopArtwork, eq(shopArtwork.id, shopSaleAuthorityRequest.artworkId))
-            .where(
-              and(
-                inArray(shopSaleAuthorityRequest.ownerPartyId, partyIds),
-                afterKey(shopSaleAuthorityRequest.id, after),
-              ),
-            )
+            .where(and(where, afterKey(shopSaleAuthorityRequest.id, after)))
             .orderBy(asc(shopSaleAuthorityRequest.id))
             .limit(limit);
           return rows.map((row) => ({
