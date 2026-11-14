@@ -17,6 +17,13 @@ export interface Projection {
    * when every document is queued.
    */
   readonly parked?: readonly ParkedDocument[];
+  /**
+   * LAX references of documents already registered in the same books that this event makes owed
+   * no more (an invoice cancelled after a buyer default before Books issued it). The runtime
+   * cancels each one that was never sent; one being sent, or one whose outcome is unknown, is
+   * looked at again later, and one issued meanwhile is credited instead. Absent when none.
+   */
+  readonly cancel?: readonly string[];
 }
 
 /** One of a projection's documents that is stored parked, and why. */
@@ -47,7 +54,14 @@ export type ProjectionCode =
   /** A combined payment naming an invoice raised to another buyer account. */
   | "buyer_mismatch"
   /** The facts handed in do not describe a possible state (an id that is not a source id, say). */
-  | "bad_facts";
+  | "bad_facts"
+  /**
+   * The invoice a buyer default cancels is being sent to the books, or its outcome is not known
+   * yet: whether it is cancelled or credited is decided once it settles (the event is tried again).
+   */
+  | "invoice_in_flight"
+  /** The invoice is in the books but held for a person (a totals difference): a person decides. */
+  | "invoice_held_for_review";
 
 /** A pure projection policy: one per flow, facts in, documents out. No I/O, no clock. */
 export type ProjectionPolicy<F> = (facts: F) => Result<Projection, ProjectionCode>;
