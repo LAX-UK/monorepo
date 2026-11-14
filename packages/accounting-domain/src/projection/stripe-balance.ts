@@ -57,6 +57,8 @@ export const STRIPE_PARK_REASONS = [
   "bad_amounts",
   /** Stripe reported a value the ledger or the Books queue refuses (an id of an unknown shape). */
   "unrecognised",
+  /** Its document was cancelled before (a migration rolled back), so it is never sent again. */
+  "was_cancelled",
 ] as const;
 export type StripeParkReason = (typeof STRIPE_PARK_REASONS)[number];
 

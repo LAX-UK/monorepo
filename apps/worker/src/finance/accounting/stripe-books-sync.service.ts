@@ -186,7 +186,7 @@ export class StripeBooksSync {
           totals.parked += 1;
           this.deps.log.warn(
             { stripeAccountId: account.stripeAccountId, id: item.id, type: item.type },
-            "accounting_stripe_transaction_unrecognised",
+            "accounting_stripe_transaction_parked_instead",
           );
           continue;
         }

@@ -178,14 +178,14 @@ describe.skipIf(!HAS_DB)(
       const stripe = new FakeStripeBalance(SHOP_ACCOUNT);
       // A payout whose source is not a payout id: its row breaks the ledger's CHECK.
       const poison = stripeTxn({
-        id: id("txn", 2),
+        id: id("txn", 8_502),
         type: "payout",
         amount: -5_000,
         fee: 0,
         created: NOON + 2,
         source: { id: id("tr", 2), chargeId: null, paymentIntentId: null },
       });
-      stripe.add(charge(1, 101), poison, charge(3, 103));
+      stripe.add(charge(8_501, 101), poison, charge(8_503, 103));
       const summary = await sync(stripe, repos, 2).run();
       expect(summary).toMatchObject({
         read: 3,
@@ -202,11 +202,32 @@ describe.skipIf(!HAS_DB)(
       ]);
       expect(await documentsFor(`LAX-SHOP-TRF-tr_${RUN.toLowerCase()}`)).toHaveLength(0);
       expect(log.warn).toHaveBeenCalledWith(
-        expect.objectContaining({ id: id("txn", 2) }),
-        "accounting_stripe_transaction_unrecognised",
+        expect.objectContaining({ id: id("txn", 8_502) }),
+        "accounting_stripe_transaction_parked_instead",
       );
       // The cursor moved past it: the next run reads nothing again.
       expect(await sync(stripe).run()).toMatchObject({ read: 0 });
+    });
+
+    it("parks, never reports booked, a fee whose document a rollback cancelled", async () => {
+      const before = await account("shop");
+      expect(
+        await sync(new FakeStripeBalance(before).add(charge(8_601, 111, NOON + 8_601))).run(),
+      ).toMatchObject({ booked: 1 });
+      // What 0385_rollback.sql leaves: the document cancelled, the ledger gone (here, a new
+      // account row with no ledger rows reads the same transaction again).
+      const reference = `LAX-SHOP-EXP-${id("txn", 8_601).toLowerCase()}`;
+      await owner.execute(sql`
+      update accounting_document set state = 'cancelled' where lax_reference = ${reference}`);
+      const after = await account("shop");
+      const summary = await sync(
+        new FakeStripeBalance(after).add(charge(8_601, 111, NOON + 8_601)),
+      ).run();
+      expect(summary).toMatchObject({ booked: 0, parked: 1 });
+      expect((await ledgerRows(after)).map((r) => [r.outcome, r.parkReason])).toEqual([
+        ["parked", "was_cancelled"],
+      ]);
+      expect((await documentsFor(reference)).map((d) => d.state)).toEqual(["cancelled"]);
     });
 
     it("books nothing twice when two workers run at the same time, in real concurrent transactions", async () => {

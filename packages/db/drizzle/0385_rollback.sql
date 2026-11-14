@@ -6,7 +6,9 @@
 -- new of either kind can be written). Reports already stored in object storage under
 -- `accounting/reconciliation/` stay there (delete them there if they are not wanted); only the
 -- record of them goes. The Stripe read cursor and the balance transaction rows go: a later deploy
--- reads Stripe again from the start, and the LAX references stop any second document.
+-- reads Stripe again from the start, and the LAX references stop any second document. A
+-- transaction whose document was cancelled here is then parked `was_cancelled` (a cancelled
+-- document is never sent): book those by hand.
 -- Also removes this migration's ledger row so a later deploy reapplies it.
 BEGIN;
 

@@ -41,6 +41,9 @@ export class StripeLedgerRefusedError extends Error {
   }
 }
 
+/** The documents' reference is held by a cancelled document: booking again would send nothing. */
+class CancelledReplay extends Error {}
+
 function productsOf(entity: LegalEntity): Product[] {
   return PRODUCTS.filter((p) => legalEntityFor(p) === entity);
 }
@@ -122,6 +125,15 @@ export class DrizzleStripeBooksLedger implements IStripeBooksLedger {
     try {
       return await this.recordOnce(row, outcome);
     } catch (error) {
+      if (error instanceof CancelledReplay) {
+        const parked = {
+          outcome: "parked",
+          product: outcome.product,
+          reason: "was_cancelled",
+        } as const;
+        const result = await this.recordOnce(row, parked);
+        return result === "recorded" ? "parked_instead" : result;
+      }
       // A value the row's CHECKs or the registry refuse: parked for a person, in a transaction of
       // its own and with no documents, so one odd transaction never holds the account's cursor.
       if (!(error instanceof StripeLedgerRefusedError) && !isPgCheckViolation(error)) throw error;
@@ -168,6 +180,11 @@ export class DrizzleStripeBooksLedger implements IStripeBooksLedger {
         const registered = await registry.register({ document, sourceEventRef });
         if (!registered.ok) {
           throw new StripeLedgerRefusedError(registered.refusal.code, document.reference);
+        }
+        // A replay of a cancelled document (the migration was rolled back and applied again): it
+        // is never sent, so the row must not say booked. Rolled back and parked for a person.
+        if (!registered.value.created && registered.value.stored.record.status === "cancelled") {
+          throw new CancelledReplay(document.reference);
         }
       }
       return "recorded";

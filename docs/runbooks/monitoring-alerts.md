@@ -468,6 +468,8 @@ books it; the other finds the row and does nothing.
 | `payout_reversed` | A payout failed or was cancelled and its money came back. | Reverse the payout's transfer in Books by hand, if it was booked. |
 | `not_in_pounds` | Not GBP. | Books are kept in GBP only: ask the accountant. |
 | `bad_amounts` | Stripe reported amounts that cannot be (a payout into the balance). | Ask engineering. |
+| `unrecognised` | The ledger or the Books queue refused a value Stripe reported (an id of an unknown shape, a reference already holding another document). The log line `accounting_stripe_transaction_parked_instead` names it. | Ask engineering; book it by hand once understood. |
+| `was_cancelled` | Its document was cancelled by a rollback of migration 0385 and the migration was applied again: that document is never sent. | Book it by hand in Books (the cancelled document shows what it was). |
 
 A parked transaction is never decided again by the job. Each one appears in that day's report.
 `outcome = 'not_aimed'` means Books was not aimed at the product when it was read: it is recorded
@@ -495,9 +497,10 @@ count and the report's storage key. Open that report first. During the rehearsal
 differ for known reasons this flow does not book (refunds and dispute amounts: refunds are PR 9).
 
 **Missed run.** The job checks in to the Sentry cron monitor under `accounting-reconcile`. A failed
-read (Stripe down, say) fails the job before any report is made, so a half-read day is never
-reconciled; the queue tries it again (three attempts, five minutes apart) and the failure is
-reported like every worker job.
+read of one account (Stripe down, a revoked key) does not stop the other accounts or the report:
+the report is made and the job then fails, so the queue tries it again (three attempts, five
+minutes apart) and the failure is reported like every worker job. The failed account's cursor does
+not move, so nothing of it is lost.
 
 **Set-up** (before the rehearsal; nothing here is set in production by this change):
 
@@ -520,7 +523,10 @@ reported like every worker job.
 
 **Rollback.** `0385_rollback.sql` cancels every queued or failed expense and transfer (each with a
 `cancel` history row) before it drops the new tables and function; the kind, reference and totals
-CHECKs come back `NOT VALID`, so rows already written stay. Stored reports stay in storage.
+CHECKs come back `NOT VALID`, so rows already written stay. Stored reports stay in storage. If the
+migration is applied again later, the job reads Stripe again from each opening day; a transaction
+whose document the rollback cancelled is parked `was_cancelled` (it is never sent) and must be
+booked by hand.
 
 ## Related
 

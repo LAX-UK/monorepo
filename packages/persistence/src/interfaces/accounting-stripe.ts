@@ -54,7 +54,7 @@ export type StripeBalanceOutcome =
   /** Something to book, but Books is not aimed at the product: recorded, never booked later. */
   | { readonly outcome: "not_aimed"; readonly product: Product };
 
-/** `parked_instead`: the outcome could not be recorded, so it was recorded parked `unrecognised`. */
+/** `parked_instead`: the outcome could not be recorded as given, so it was recorded parked. */
 export type StripeRecordResult = "recorded" | "already_recorded" | "parked_instead";
 
 /**
@@ -63,7 +63,9 @@ export type StripeRecordResult = "recorded" | "already_recorded" | "parked_inste
  * row first; every other run (a re-run, a concurrent one) finds the row and does nothing. A
  * document the registry refuses (a reference already holding a different document), or a value
  * the row's CHECKs refuse, rolls that back and the transaction is recorded parked `unrecognised`
- * instead, with no documents, for a person to look at. Any other error is thrown.
+ * instead, with no documents, for a person to look at. A document that replays a cancelled one
+ * (a rollback cancelled it) is never sent, so that transaction is parked `was_cancelled`. Any other
+ * error is thrown.
  */
 export interface IStripeBooksLedger {
   accounts(): Promise<readonly StripeAccountState[]>;
