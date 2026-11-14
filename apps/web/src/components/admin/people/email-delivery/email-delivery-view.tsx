@@ -9,9 +9,20 @@ import {
   SENDS_COLLAPSED,
   buildEmailDeliveryPanelVm,
 } from "@/lib/admin/email-delivery/email-delivery.vm";
-import { KeyValueList, Notice, Section, StaffButton, StatusBadge } from "@auction/staff-ui";
+import {
+  KeyValueList,
+  Notice,
+  Section,
+  StaffButton,
+  StatusBadge,
+  useQueuePanel,
+} from "@auction/staff-ui";
 import type { EmailBlockView, PersonEmailDeliveryView } from "@auction/types";
+import { useSearchParams } from "next/navigation";
 import { type ComponentProps, useId, useMemo, useState } from "react";
+
+/** The search param that holds the open email, on the person's page. */
+export const EMAIL_SEND_PARAM = "emailSend";
 
 type Props = {
   userId: string;
@@ -25,7 +36,9 @@ type Props = {
 /**
  * Whether email reaches this person: the block in plain words with the one action that lifts
  * it, the address facts and the latest sends. The lift action is shown, disabled with its reason,
- * or left out, as the server decided for the signed-in viewer.
+ * or left out, as the server decided for the signed-in viewer. An open email is in the page's
+ * address (`?emailSend=`): it can be linked and reloaded, Back closes it, and J and K step through
+ * the sends shown, newest first.
  */
 export function EmailDeliveryView({ userId, personName, email, view, viewerCanLift, lift }: Props) {
   const vm = useMemo(
@@ -35,12 +48,19 @@ export function EmailDeliveryView({ userId, personName, email, view, viewerCanLi
   // The dialog keeps the block it was opened for: the panel refreshes behind it after a lift.
   const [liftBlock, setLiftBlock] = useState<EmailBlockView | null>(null);
   const [showAll, setShowAll] = useState(false);
-  const [openSendId, setOpenSendId] = useState<string | null>(null);
   const whyId = useId();
+  const searchParams = useSearchParams();
 
   const block = vm.block;
   const rows = showAll ? vm.sends : vm.sends.slice(0, SENDS_COLLAPSED);
-  const openSend = vm.sends.find((send) => send.id === openSendId) ?? null;
+  const ids = useMemo(() => rows.map((send) => send.id), [rows]);
+  const panel = useQueuePanel({
+    param: EMAIL_SEND_PARAM,
+    ids,
+    initialId: searchParams?.get(EMAIL_SEND_PARAM) ?? null,
+    noun: "email",
+  });
+  const openSend = vm.sends.find((send) => send.id === panel.openId) ?? null;
 
   const liftAction =
     block?.lift.kind === "enabled" ? (
@@ -101,11 +121,16 @@ export function EmailDeliveryView({ userId, personName, email, view, viewerCanLi
         total={vm.sends.length}
         showingAll={showAll}
         onShowAll={() => setShowAll(true)}
-        onOpen={(id) => setOpenSendId(id)}
+        onOpen={panel.open}
+        activeId={openSend ? openSend.id : null}
         personName={personName}
         skippedCount={vm.skippedCount}
       />
-      <EmailSendDetail send={openSend} onClose={() => setOpenSendId(null)} />
+      <EmailSendDetail
+        send={openSend}
+        onOpenChange={panel.onOpenChange}
+        {...(openSend && panel.queue ? { queue: panel.queue } : {})}
+      />
       {liftBlock ? (
         <LiftEmailBlockDialog
           open

@@ -1,10 +1,15 @@
+import { queuePanel } from "@/test/queue-panel";
 import type { PersonEmailDeliveryView } from "@auction/types";
 import { TooltipProvider } from "@auction/ui/lax/tooltip";
-import { fireEvent, render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { EmailDeliveryView } from "./email-delivery-view";
 
-vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
+const searchParams = vi.hoisted(() => ({ current: new URLSearchParams() }));
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ refresh: vi.fn() }),
+  useSearchParams: () => searchParams.current,
+}));
 vi.mock("@/lib/actions/admin/email-delivery", () => ({ liftEmailBlockAction: vi.fn() }));
 
 const send = (n: number) => ({
@@ -88,5 +93,55 @@ describe("EmailDeliveryView", () => {
   it("says so when nothing has been sent", () => {
     show(view({ block: null, addressStatus: "ok", sends: [] }));
     expect(screen.getByText("No emails sent yet")).toBeTruthy();
+  });
+});
+
+describe("EmailDeliveryView email panel address", () => {
+  beforeEach(() => {
+    window.history.replaceState(null, "", "/admin/staff/user-1");
+    searchParams.current = new URLSearchParams();
+  });
+  afterEach(() => {
+    window.history.replaceState(null, "", "/");
+  });
+
+  const order = () =>
+    screen
+      .getAllByRole("row")
+      .slice(1)
+      .map((row) => row.textContent?.match(/Email \d/)?.[0]);
+
+  it("puts the open email in the address and steps through the sends shown with J and K", () => {
+    show(view({ block: null, addressStatus: "ok" }));
+    const [first, second, third] = order();
+    fireEvent.click(screen.getAllByText(second as string)[0] as HTMLElement);
+    const secondId = `s${(second as string).slice(-1)}`;
+    expect(window.location.search).toBe(`?emailSend=${secondId}`);
+    expect(queuePanel.position()).toBe("2 of 5");
+    fireEvent.keyDown(queuePanel.get() as HTMLElement, { key: "j" });
+    expect(queuePanel.title(third as string)).toBeVisible();
+    fireEvent.keyDown(queuePanel.get() as HTMLElement, { key: "k" });
+    fireEvent.keyDown(queuePanel.get() as HTMLElement, { key: "k" });
+    expect(queuePanel.title(first as string)).toBeVisible();
+  });
+
+  it("reopens the email from the address", () => {
+    searchParams.current = new URLSearchParams("emailSend=s3");
+    show(view({ block: null, addressStatus: "ok" }));
+    expect(queuePanel.title("Email 3")).toBeVisible();
+  });
+
+  it("closes on Back and returns focus to the email's row on Escape", async () => {
+    show(view({ block: null, addressStatus: "ok" }));
+    const [first] = order();
+    fireEvent.click(screen.getAllByText(first as string)[0] as HTMLElement);
+    act(() => window.history.back());
+    await waitFor(() => expect(queuePanel.get()).not.toBeInTheDocument());
+    expect(window.location.search).toBe("");
+
+    fireEvent.click(screen.getAllByText(first as string)[0] as HTMLElement);
+    fireEvent.keyDown(queuePanel.get() as HTMLElement, { key: "Escape" });
+    await waitFor(() => expect(queuePanel.get()).not.toBeInTheDocument());
+    await waitFor(() => expect(queuePanel.focusedRowText()).toContain(first as string));
   });
 });

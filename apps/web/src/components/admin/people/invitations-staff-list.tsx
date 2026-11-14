@@ -3,9 +3,9 @@
 import { InvitationAccessBadges } from "@/components/admin/invitation-access-badges";
 import { InvitePeopleDialog } from "@/components/admin/invite-people-dialog";
 import { StaffBulkOperations } from "@/components/admin/staff/staff-bulk-operations";
-import { useListPanel } from "@/components/admin/staff/use-list-panel";
 import { useStaffConfirm } from "@/components/admin/staff/use-staff-confirm";
 import { useStaffListNavigation } from "@/components/admin/staff/use-staff-list-navigation";
+import { useStaffQueue } from "@/components/admin/staff/use-staff-queue";
 import {
   adminResendInvitationResultAction,
   adminRevokeInvitationResultAction,
@@ -22,6 +22,7 @@ import {
   type DataColumn,
   DataViews,
   DetailPanel,
+  type DetailPanelProps,
   ListPage,
   Notice,
   type OverflowAction,
@@ -153,7 +154,8 @@ const VIEW_EMPTY: Record<string, { title: string; description: string }> = {
  * Invitations on the staff list template: views by status with counts, search by email, server
  * sorting (most recently sent first by default), bulk resend and revoke, and a record panel
  * deep-linked with `?invitation=`. Actions an invitation's state blocks stay in the menu,
- * disabled with the reason.
+ * disabled with the reason. An invitation has no page: the panel is the record and its address
+ * is the link to share; it shows its place in the list and J and K step to the next invitation.
  */
 export function InvitationsStaffList(props: InvitationsStaffListProps) {
   const { rows, search, filtered } = props;
@@ -162,10 +164,16 @@ export function InvitationsStaffList(props: InvitationsStaffListProps) {
   const inviteParam = str(search.invite);
   const [inviteOpen, setInviteOpen] = useState(inviteParam !== "");
   const panelHref = useCallback((id: string | null) => invitationPanelHref(search, id), [search]);
-  const panel = useListPanel({
+  const panel = useStaffQueue({
     param: "invitation",
+    rows,
+    getId: invitationId,
     initialId: str(search.invitation) || null,
     hrefFor: panelHref,
+    selected: props.offPage ?? null,
+    noun: "invitation",
+    // A stale link says so in the "Invitation not found" panel.
+    keepMissing: true,
   });
   const actions = useInvitationActions();
   const operations = useMemo(() => getInvitationBulkOperations(), []);
@@ -188,7 +196,7 @@ export function InvitationsStaffList(props: InvitationsStaffListProps) {
         cell: (row) => (
           <PrimaryCell
             href={panelHref(row.id)}
-            Link={panel.PanelLink}
+            Link={ListLink}
             secondary={row.invitedBy ? `Invited by ${row.invitedBy}` : null}
           >
             {row.email}
@@ -241,12 +249,10 @@ export function InvitationsStaffList(props: InvitationsStaffListProps) {
           row.status.label === "Accepted" ? null : <StaffDate value={row.expiresAt} />,
       },
     ],
-    [panelHref, panel.PanelLink],
+    [panelHref, ListLink],
   );
 
-  const open =
-    rows.find((row) => row.id === panel.openId) ??
-    (props.offPage && props.offPage.id === panel.openId ? props.offPage : null);
+  const open = panel.record;
 
   return (
     <>
@@ -323,15 +329,13 @@ export function InvitationsStaffList(props: InvitationsStaffListProps) {
         noResults={{ noun: "invitations" }}
         table={{
           columns,
-          data: rows,
-          getRowId: (row) => row.id,
+          ...panel.table,
+          getRowId: invitationId,
           defaultDensity: "comfortable",
           defaultSort: invitationsSort.defaultSort,
           sort: invitationsSort.state(str(search.sort)),
           onSortChange: (sort) =>
             navigate(invitationsListHref(search, { sort: invitationsSort.param(sort) })),
-          onRowOpen: (row) => panel.show(row.id),
-          activeRowId: panel.openId,
           selectedIds: selected,
           onSelectedIdsChange: setSelected,
           bulkNoun: { one: "invitation", other: "invitations" },
@@ -346,7 +350,7 @@ export function InvitationsStaffList(props: InvitationsStaffListProps) {
           rowActions: {
             label: (row) => `Actions for the invitation to ${row.email}`,
             actions: (row) => [
-              { id: "open", label: "Open details", onSelect: () => panel.show(row.id) },
+              { id: "open", label: "Open details", onSelect: () => panel.open(row.id) },
               ...actions.actionsFor(row),
             ],
           },
@@ -359,9 +363,7 @@ export function InvitationsStaffList(props: InvitationsStaffListProps) {
       />
       <DetailPanel
         open={panel.openId !== null && open === null && !pending}
-        onOpenChange={(next) => {
-          if (!next) panel.show(null);
-        }}
+        onOpenChange={panel.onOpenChange}
         title="Invitation not found"
       >
         <Notice tone="warning" title="This invitation is not in the list">
@@ -372,7 +374,7 @@ export function InvitationsStaffList(props: InvitationsStaffListProps) {
         row={open}
         actions={open ? actions.actionsFor(open) : []}
         onResend={open ? () => actions.resend(open) : undefined}
-        onClose={() => panel.show(null)}
+        panelProps={panel.panelProps}
       />
       <InvitePeopleDialog
         open={inviteOpen}
@@ -389,20 +391,18 @@ export function InvitationQuickView({
   row,
   actions,
   onResend,
-  onClose,
+  panelProps,
 }: {
   row: InvitationStaffRow | null;
   actions: OverflowAction[];
   onResend: (() => void) | undefined;
-  onClose: () => void;
+  /** The queue panel's open state, place in the list and stepping (`useStaffQueue`). */
+  panelProps: Pick<DetailPanelProps, "open" | "onOpenChange" | "queue">;
 }) {
   const accepted = row?.status.label === "Accepted";
   return (
     <DetailPanel
-      open={row !== null}
-      onOpenChange={(next) => {
-        if (!next) onClose();
-      }}
+      {...panelProps}
       title={row?.email ?? "Invitation"}
       status={row ? <StatusBadge tone={row.status.tone}>{row.status.label}</StatusBadge> : null}
       meta={row ? [{ label: "Sent", value: formatStaffDateTime(row.sentAt) }] : []}
@@ -464,4 +464,8 @@ export function InvitationQuickView({
       {null}
     </DetailPanel>
   );
+}
+
+function invitationId(row: InvitationStaffRow): string {
+  return row.id;
 }

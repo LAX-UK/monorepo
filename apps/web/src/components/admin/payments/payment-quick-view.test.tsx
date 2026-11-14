@@ -1,6 +1,7 @@
 import type { PaymentsStaffRow } from "@/lib/admin/finance/payments-staff-list.vm";
+import { queuePanel } from "@/test/queue-panel";
 import { StaffTooltipProvider } from "@auction/staff-ui";
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { PaymentQuickView } from "./payment-quick-view";
 
@@ -26,19 +27,13 @@ const row: PaymentsStaffRow = {
   canRefund: true,
 };
 
-function openMenu() {
-  const trigger = screen.getByRole("button", { name: /^More actions for payment/ });
-  fireEvent.keyDown(trigger, { key: "Enter" });
-  return within(screen.getByRole("menu"));
-}
-
 function renderPanel(access: { canOpenLot: boolean; canOpenClient: boolean }) {
   return render(
     <StaffTooltipProvider>
       <PaymentQuickView
         row={row}
         canWritePayments
-        onClose={vi.fn()}
+        panelProps={{ open: true, onOpenChange: vi.fn() }}
         onCapture={vi.fn()}
         onRefund={vi.fn()}
         {...access}
@@ -52,7 +47,7 @@ describe("PaymentQuickView links", () => {
     renderPanel({ canOpenLot: true, canOpenClient: true });
     expect(screen.queryByRole("link", { name: /Open lot/ })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Open full page" })).not.toBeInTheDocument();
-    const menu = openMenu();
+    const menu = queuePanel.openMenu();
     expect(menu.getByRole("menuitem", { name: "Open lot" })).toHaveAttribute(
       "href",
       "/admin/lots/lot_1",
