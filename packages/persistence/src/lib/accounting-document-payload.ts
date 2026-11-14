@@ -10,6 +10,7 @@ import {
   buildInclusiveLine,
   buildLine,
   expectedTotals,
+  isInvoiceNumber,
   isPence,
   isValidIsoDate,
   legalEntityFor,
@@ -129,7 +130,20 @@ export function readDocumentPayload(
   if (kind === "credit_note" && value.amountsAre !== "tax_inclusive") {
     return bad("a credit note's amounts are tax-inclusive");
   }
-  const lines = readLines(value.lines, kind === "credit_note");
+  // A credit note is always VAT-inclusive; an invoice is when LAX numbered it at inclusive prices
+  // (Shop), and then it must carry LAX's number. Nothing else may claim either.
+  const inclusiveInvoice = kind === "invoice" && value.amountsAre === "tax_inclusive";
+  if (kind === "invoice" && value.amountsAre !== undefined && !inclusiveInvoice) {
+    return bad("an invoice's amounts are tax-exclusive or tax-inclusive");
+  }
+  if (kind === "invoice" && (value.number !== undefined) !== inclusiveInvoice) {
+    return bad("an invoice LAX numbers is VAT-inclusive, and only that one carries a number");
+  }
+  if (inclusiveInvoice && !isInvoiceNumber(value.number)) return bad("bad invoice number");
+  if (kind === "bill" && (value.amountsAre !== undefined || value.number !== undefined)) {
+    return bad("a bill is tax-exclusive and numbered by the provider");
+  }
+  const lines = readLines(value.lines, kind === "credit_note" || inclusiveInvoice);
   if (!lines.ok) return lines;
   const document = { ...value, lines: lines.value } as unknown as AccountingDocument;
   if (!sameTotals(value.totals, totalsOf(lines.value)))

@@ -241,6 +241,8 @@ export interface ShopInvoiceEmailFacts {
   readonly paidAt: Date;
   /** The order was cancelled or refunded in full before its invoice email went. */
   readonly cancelled: boolean;
+  /** The order is still a guest's (no account owns it): its link is requested, not opened. */
+  readonly guest: boolean;
   /**
    * The order's owner as it stands now (a guest, or the LAX account that claimed the order),
    * or null when they cannot be reached: an erased guest, or an account that is disabled, being

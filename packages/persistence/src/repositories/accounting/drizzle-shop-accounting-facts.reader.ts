@@ -147,6 +147,7 @@ export class DrizzleShopAccountingFactsReader
       totalPence: order.totalPence,
       paidAt: order.paidAt,
       cancelled: order.status === "cancelled" || order.status === "refunded",
+      guest: isGuestSubject(order.identitySubjectId),
       recipient: await this.buyer(order),
     };
   }
