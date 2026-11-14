@@ -356,7 +356,12 @@ describe.skipIf(!hasShopIntegrationDb)("quoting and paying a delivery quote", ()
       exportPaymentEnabled: true,
     });
     await expect(
-      stranger.acceptAndPay({ subject: "someone-else", orderId, successUrl: "x", cancelUrl: "y" }),
+      stranger.acceptAndPay({
+        subject: "someone-else",
+        orderId,
+        successUrl: "http://localhost:3020/checkout/confirmation",
+        cancelUrl: "http://localhost:3020/basket",
+      }),
     ).rejects.toMatchObject({ statusCode: 404 });
     expect((await orderOf(orderId)).totalPence).toBe(8_000);
   });
