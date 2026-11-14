@@ -248,11 +248,13 @@ export class InMemoryAccounting implements AccountingPorts {
   readonly statuses: DocumentStatusPort = {
     readStatus: async (document, issued): Promise<StatusReadOutcome> => {
       this.statusReads.push(issued.providerId);
-      const scripted = this.statusScript.get(issued.providerId);
-      if (scripted) return scripted;
+      // As the adapter, a read is believed only for the document this fake issued under that id
+      // and reference: ids from another fake (another test) are not found here.
       const entity = legalEntityFor(document.product);
       const held = this.held.get(this.key(entity, document.kind, document.reference, "customer"));
       if (!held || held.doc.providerId !== issued.providerId) return { status: "not_found" };
+      const scripted = this.statusScript.get(issued.providerId);
+      if (scripted) return scripted;
       const state = document.kind === "payment" ? "recorded" : "open";
       return { status: "read", reading: { state, balancePence: null, payments: [] } };
     },

@@ -1,4 +1,4 @@
-import type { DestinationBinding, TargetMode } from "@auction/accounting-domain";
+import type { DestinationBinding, LegalEntity, TargetMode } from "@auction/accounting-domain";
 import {
   type AccountingPorts,
   BOOKS_ORGANISATIONS,
@@ -24,6 +24,8 @@ export interface BooksAccountingAdapters {
   /** Where each writing mode may send each product's documents; the sender checks every call. */
   readonly destinations: DestinationBinding;
   readonly transientErrorPrefixes: readonly string[];
+  /** The Books organisation of each legal entity, from the settings (finance task keys, notices). */
+  readonly organisationIds: Readonly<Partial<Record<LegalEntity, string>>>;
 }
 
 /**
@@ -50,6 +52,9 @@ export function createBooksAccountingAdapters(
     // the organisation settings here; tests pass their own.
     destinations: parseBooksDestinationBinding(organisations, orgs),
     transientErrorPrefixes: TRANSIENT_REJECTION_PREFIXES,
+    organisationIds: Object.fromEntries(
+      Object.entries(orgs).flatMap(([entity, org]) => (org ? [[entity, org.organizationId]] : [])),
+    ),
   };
 }
 

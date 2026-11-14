@@ -4,6 +4,8 @@ import type {
   BidPaymentFacts,
   BidPaymentGroupFacts,
   BidRefundsFacts,
+  BooksStatusDecision,
+  BooksStatusSnapshot,
   DocumentKind,
   DocumentRecord,
   DocumentTarget,
@@ -19,11 +21,13 @@ import type {
   ShopDeliveryFacts,
   ShopOrderPaidFacts,
   Source,
+  StatusCheckedKind,
   SwitchCode,
   SwitchConfig,
   TargetMode,
   Totals,
 } from "@auction/accounting-domain";
+import type { Database } from "@auction/db";
 
 /** The clock the accounting repositories read. Injected so tests and callers choose the time. */
 export interface AccountingClock {
@@ -627,4 +631,79 @@ export interface BidInvoiceBooksState {
 /** Reads one Bid invoice's Books documents and their stored copies (the Bid API, read only). */
 export interface IBidInvoiceBooksReader {
   read(invoiceId: string): Promise<Result<BidInvoiceBooksState | null, StoredDocumentCode>>;
+}
+
+/** An issued document due a status read, with what was last recorded of it. */
+export interface BooksStatusDue {
+  readonly stored: StoredAccountingDocument;
+  /** Null until the first read. */
+  readonly previous: BooksStatusSnapshot | null;
+}
+
+export interface BooksStatusDueList {
+  readonly documents: readonly BooksStatusDue[];
+  /** Rows the domain would not read back; logged and skipped. */
+  readonly unreadable: readonly string[];
+}
+
+export type BooksStatusRunOutcome = "completed" | "budget_spent" | "rehearsal" | "failed";
+
+export interface BooksStatusRunCounts {
+  readonly checked: number;
+  readonly changed: number;
+  readonly tasks: number;
+}
+
+/**
+ * The nightly Books status check's record (migration 0385), the worker's only. It reads which
+ * issued documents are due, records what Books said and what changed, and keeps one row per run.
+ * Nothing here writes to a document, an invoice, a payment or a lot.
+ */
+export interface IAccountingBooksStatusStore {
+  /**
+   * Issued Books documents of the checked kinds in these modes: those a notice asked about first,
+   * then never read, then read longest ago, skipping those read since `readSince`.
+   */
+  listDue(
+    modes: readonly TargetMode[],
+    readSince: Date,
+    limit: number,
+  ): Promise<BooksStatusDueList>;
+  /** One document, when it is an issued Books document of a checked kind. */
+  findDue(documentId: string): Promise<BooksStatusDue | null>;
+  /** Which of these provider payment ids are payments LAX itself issued in the same books. */
+  knownPaymentIds(
+    legalEntity: LegalEntity,
+    target: DocumentTarget,
+    providerIds: readonly string[],
+  ): Promise<ReadonlySet<string>>;
+  /**
+   * Records a read in the caller's transaction: the snapshot (clearing any recheck asked for), and
+   * each change (a payment recorded by hand is held once per document and Books id).
+   */
+  record(
+    tx: Database,
+    documentId: string,
+    decision: BooksStatusDecision,
+    observedAt: Date,
+  ): Promise<void>;
+  /**
+   * A Books notice named this document: mark it to be read first. Returns the document id, or
+   * null when no issued Books document of that kind holds that Books id in those books.
+   */
+  requestRecheck(
+    legalEntity: LegalEntity,
+    kind: StatusCheckedKind,
+    providerId: string,
+    at: Date,
+  ): Promise<string | null>;
+  startRun(at: Date): Promise<string>;
+  finishRun(
+    runId: string,
+    outcome: BooksStatusRunOutcome,
+    counts: BooksStatusRunCounts,
+    at: Date,
+  ): Promise<void>;
+  /** When the last run finished (any outcome but failed), or null if none ever did. */
+  lastFinishedRunAt(): Promise<Date | null>;
 }

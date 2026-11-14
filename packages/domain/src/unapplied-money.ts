@@ -72,6 +72,12 @@ export const UNAPPLIED_MONEY_REASONS = [
    * to another open payment of the same buyer. Nothing is lost; finance checks both invoices.
    */
   "transfer_applied_to_other_invoice",
+  /**
+   * Zoho Books shows a payment against one of LAX's invoices that LAX never sent: staff recorded
+   * it in Books by hand (a gallery sale, a cheque). The nightly status check found it. Nothing in
+   * LAX was marked paid: finance checks the money arrived and records it in LAX, or corrects Books.
+   */
+  "books_payment_recorded_by_hand",
 ] as const;
 
 export type UnappliedMoneyReason = (typeof UNAPPLIED_MONEY_REASONS)[number];
@@ -119,6 +125,14 @@ export type UnappliedMoney = {
   /** The payment (or combined payment) that reference was issued for, when it is known. */
   intendedPaymentId?: string | null;
   intendedPaymentGroupId?: string | null;
+  /**
+   * A payment recorded in Books by hand: its key (`books:<organisation>:<Books payment id>`), the
+   * LAX reference of the invoice Books shows it against, and how Books says it was paid.
+   */
+  booksPaymentKey?: string | null;
+  accountingReference?: string | null;
+  booksPaymentMode?: string | null;
+  booksPaymentDate?: string | null;
   amountCents: number;
   currency: string;
 };
@@ -145,6 +159,7 @@ export function possibleSourceText(
  */
 export function unappliedMoneyDedupeKey(money: UnappliedMoney): string {
   const reference =
+    money.booksPaymentKey ??
     money.cashBalanceTransactionId ??
     money.stripePaymentIntentId ??
     money.stripeChargeId ??

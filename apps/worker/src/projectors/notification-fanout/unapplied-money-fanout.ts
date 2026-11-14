@@ -45,6 +45,8 @@ const SITUATION: Record<UnappliedMoneyReason, string> = {
     "Stripe shows a Shop buyer's checkout as paid, but the payment could not be read or confirmed, so it was not applied. The order was closed and its prints released. The amount shown is the order's total, not necessarily what Stripe took. Open the order in LAX Admin, check the payment in Stripe, then refund the buyer or reinstate the order.",
   transfer_applied_to_other_invoice:
     "A bank transfer sent with one invoice's payment reference was applied to a different invoice of the same buyer.",
+  books_payment_recorded_by_hand:
+    "Zoho Books shows a payment against one of LAX's invoices that LAX did not send: someone recorded it in Books by hand (a gallery sale, a cheque). Nothing in LAX was marked paid. Check the money arrived, then record the payment in LAX, or correct Books if it was recorded by mistake.",
   private_sale_refund_after_payout:
     "Money went back to a private sale buyer after the seller's payout included the deal. The seller's payout may need adjusting.",
 };
@@ -80,6 +82,7 @@ export function alertFromUnappliedMoney(payload: UnappliedMoneyPayload): Unappli
     reference:
       payload.privateSaleDealReference ??
       payload.shopOrderReference ??
+      payload.accountingReference ??
       payload.stripePaymentIntentId ??
       payload.stripeChargeId ??
       payload.stripeCustomerId ??
