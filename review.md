@@ -155,3 +155,29 @@ A captured invoice with no such event (for example a legacy import) has its refu
 F1 is a small change to one SQL condition plus a test. It is the only finding where this PR makes money handling worse than main. F2 is a configuration trap rather than a live fault, and the fix is one line in the worker wiring.
 
 ### Verdict: FIX FIRST
+
+## Fixes after review
+
+Fixed on `fix/payment-hardening`, which is still based on `main` `f1ffc6e4`. Main has not moved past 0382, so the migration stays 0383. I made no Stripe API calls and changed nothing in production or infrastructure. Tests ran with `--maxWorkers=2` against a throwaway PG 16.15.
+
+| # | Fix | Commit | Test | Mutation result |
+|---|---|---|---|---|
+| F1 | `isChargeOfPaidInvoice({ chargeId, paymentIntentId })`: `status in ('captured','refunded') AND (stripe_charge_id = ch OR (stripe_charge_id IS NULL AND stripe_payment_intent_id = pi))`. The pre-deploy count query is in the 0383 header and the PR body. | `cde1b6d1` | PG 16 `unapplied-money-refunds.integration.test.ts`: the reviewer's case, a captured invoice with an intent and no charge id plus an earlier task with that intent. The refund is `refund_received`, the invoice is refunded and the seller side counts it. A handler unit test is added. | Intent branch off: 1 fail. `IS NULL` dropped: 1 fail. Handler passes null intent: 2 fail. |
+| F2 | The worker reads `DrizzleBidActorEligibilityReader` whenever payments are live or Veriff is set (`workerPaymentIdentityReader`). The sweep counts `closed`/`groupsClosed` only on a confirmed close; anything else counts as `notClosed`. No infrastructure change. | `6dfa72f4` | `create-worker-stale-payment-expiry.test.ts`: prod env with no Veriff (verified payer is payable, unverified is held). `held-invoice-checkouts.test.ts`: with no Stripe client, closed is 0 and notClosed is 2. | Veriff-only wiring: 2 fail. Closed counted always: 4 fail (invoice) and 4 fail (group). `unknown` treated as closed: 1 fail. |
+| F3 | `expireCheckoutSession` returns the final status. `markClosed` runs only on `expired`, both in the superseded close and after capture. | `357c2d33` | Lifecycle unit tests: a session completed during the close, on another rail, on the same rail, and after capture. Gateway unit test. PG 16 lifecycle test against the real ledger. | Any status treated as expired: 3 fail. Superseded close ignores the status: 2 fail plus 1 PG. After-capture close ignores it: 1 fail. Gateway says expired: 1 fail. |
+| F4 | The stale-card rule compares a money fingerprint (paymentId, amountCents, currency, line amounts). The full fingerprint still keys the idempotency key and reuse. Both are stored as `<parameters>.<money>` in the existing column; a legacy row counts as stale. | `6798cd1e` | Same amount with a changed image URL or title keeps the card session. Changed line amounts at the same total, a changed total, or a changed currency each close it. PG 16 test with the real ledger. | Full fingerprint used: 4 fail plus 1 PG. Lines dropped: 1 fail. Parameters part compared: 4 fail. Whole value compared on reuse: 2 fail. Amount dropped: 1 fail and currency dropped: 1 fail (both survived at first; tests added). |
+| F5 | Tests added. | `bc035494` | Unit tests: matching charge and matching intent with `everCaptured: false`. PG 16: refunded and cancelled invoice with the charge and intent recorded and no `payment.captured`, giving `refund_of_money_not_applied` with no lines. | b2 guard removed: 4 fail (was 0). |
+| F6 | Tests added. | `bc035494` | `create-payments-services.webhook.test.ts` builds the real container per env: production build, production deploy and live key make the check required; a local run does not. PG 16: captured and cancelled members are left out of `members`. | h2 wires `false`: 3 fail. Wires `true`: 1 fail (was 0). h6 filter dropped: 1 fail (was 0). |
+| F7 | The recorder inserts in a savepoint and absorbs a 23505 on `domain_events_unapplied_money_dedupe_key_uid` as already recorded. Other errors are still raised. | `ca7588c6` | PG 16 test with two real concurrent transactions. It waits for the lock wait in `pg_stat_activity`. When the other writer commits, there is one row and the recorder's transaction and its claim commit. When the other writer rolls back, the recorder's row is kept. Unit tests: other index and other errors are rethrown. | Not absorbed: 1 fail. No savepoint: 1 fail. Any 23505 absorbed: 1 fail. |
+| F8 | Each sweep candidate is try/reported (`failed`, `held_checkout_sweep_failed`), so one error does not stop the run. The stricter member rule is documented on purpose: it only closes a checkout. | `6dfa72f4` | One invoice and one group whose eligibility read throws, with the rest still closed. A close that throws. | Invoice error stops the sweep: 2 fail. Group error stops it: 1 fail. |
+| F9 | Note only. The check query is in the PR body's pre-deploy checks. | — | — | — |
+| F10 | Note only. Lock-timeout scope and insert blocking are noted in the PR body. | — | — | — |
+
+Full suites after the fixes, all green:
+- packages/db: 196 files, 1065 tests.
+- persistence: 158 files, 937 tests.
+- finance-runtime: 35 files, 246 tests.
+- worker: 230 files, 1653 tests.
+- api: 738 files, 7419 tests.
+
+`biome`, the lint scripts and `tsc --noEmit` (db, persistence, finance-runtime, worker, api, shop-api) are clean.
