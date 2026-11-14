@@ -24,7 +24,6 @@ function renderList(categories: { id: string; title: string }[]) {
       rows={[]}
       counts={{ published: 0, draft: 0 }}
       categories={categories}
-      artPublicUrl={null}
     />,
   );
 }

@@ -5,7 +5,7 @@ import {
   type EnquiryTarget,
   useEnquiryActions,
 } from "@/components/enquiries/use-enquiry-actions.client";
-import { filterChip, knownFacts, useWorkList } from "@/components/use-work-list.client";
+import { filterChip, useWorkList } from "@/components/use-work-list.client";
 import {
   ENQUIRY_ASSIGNEE_LABELS,
   ENQUIRY_KIND_LABELS,
@@ -17,7 +17,6 @@ import {
   enquirySenderName,
   enquirySenderSecondary,
   enquiryStaffName,
-  parseEnquiryRef,
 } from "@/server/domain/enquiry-inbox.vm";
 import { presentStatus } from "@/server/domain/staff-status";
 import {
@@ -30,29 +29,22 @@ import {
 import {
   CellThumbnail,
   type DataColumn,
-  DetailPanel,
   FilterSheet,
   ListPage,
   MappedStatusBadge,
   type OverflowAction,
-  OverflowMenu,
   PersonCell,
   StaffButton,
   StaffDate,
   StaffDialog,
-  formatStaffDateTime,
 } from "@auction/staff-ui";
 import { MessageSquareText } from "@auction/staff-ui/icons";
 import Link from "next/link";
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 
 const presentEnquiryStatus = presentStatus("enquiry");
 
 const noun = { one: "enquiry", other: "enquiries" };
-
-function aboutLabel(item: Pick<AdminEnquiryListItem, "artwork" | "topic">): string {
-  return item.artwork?.title ?? ENQUIRY_TOPIC_LABELS[item.topic];
-}
 
 function assigneeLabel(item: Pick<AdminEnquiryListItem, "assignee">): string {
   return item.assignee ? enquiryStaffName(item.assignee) : "Unassigned";
@@ -71,10 +63,10 @@ function toTarget(item: AdminEnquiryListItem): EnquiryTarget {
 
 /**
  * The enquiries inbox on the staff list template: Waiting first by default, a view per status
- * with counts, search by sender or message, kind, topic and assignee filters, and a record panel
- * linked from the URL (`?enquiry=kind:id`). The server orders waiting enquiries first and then by
- * when they were received. The row menu opens the conversation, takes or hands back an enquiry
- * (with Undo), and closes or reopens it.
+ * with counts, search by sender or message, and kind, topic and assignee filters. A row opens the
+ * conversation, where replies happen. The server orders waiting enquiries first and then by when
+ * they were received. The row menu takes or hands back an enquiry (with Undo), and closes or
+ * reopens it.
  */
 export function EnquiriesList({
   state,
@@ -101,10 +93,10 @@ export function EnquiriesList({
   });
   const actions = useEnquiryActions({ currentSubject });
   const resolveImage = useStaffCatalogueImage();
-  const openRef = parseEnquiryRef(list.panel.openId);
-  const opened = openRef
-    ? (page.items.find((item) => item.kind === openRef.kind && item.id === openRef.id) ?? null)
-    : null;
+  const rowHref = useCallback(
+    (row: AdminEnquiryListItem) => enquiriesList.recordHref(state, enquiryPath(row)),
+    [state],
+  );
 
   const columns = useMemo<DataColumn<AdminEnquiryListItem>[]>(
     () => [
@@ -117,8 +109,8 @@ export function EnquiriesList({
           <PersonCell
             name={enquirySenderName(row.sender)}
             secondary={enquirySenderSecondary(row.sender)}
-            href={list.panelHref(enquiryRef(row))}
-            Link={list.panel.PanelLink}
+            href={rowHref(row)}
+            Link={Link}
           />
         ),
       },
@@ -165,7 +157,7 @@ export function EnquiriesList({
         cell: (row) => <StaffDate value={row.createdAt} withTime />,
       },
     ],
-    [list.panelHref, list.panel.PanelLink, resolveImage],
+    [rowHref, resolveImage],
   );
 
   const kindChip = filterChip(
@@ -195,7 +187,7 @@ export function EnquiriesList({
       id: "open",
       label: "Open conversation",
       icon: MessageSquareText,
-      href: enquiryPath(row),
+      href: rowHref(row),
     },
     ...(canWrite ? actions.actionsFor(toTarget(row)) : []),
   ];
@@ -302,8 +294,7 @@ export function EnquiriesList({
           getRowId: enquiryRef,
           defaultDensity: "comfortable",
           ...list.sort,
-          onRowOpen: (row) => list.panel.show(enquiryRef(row)),
-          activeRowId: list.panel.openId,
+          rowHref,
           rowActions: {
             label: (row) => `Actions for the enquiry from ${enquirySenderName(row.sender)}`,
             actions: rowMenu,
@@ -312,63 +303,6 @@ export function EnquiriesList({
         pageSize={list.pageSize}
         pagination={list.pagination}
       />
-
-      <DetailPanel
-        open={opened !== null}
-        onOpenChange={(open) => {
-          if (!open) list.panel.show(null);
-        }}
-        title={opened ? enquirySenderName(opened.sender) : "Enquiry"}
-        status={
-          opened ? (
-            <MappedStatusBadge status={opened.status} present={presentEnquiryStatus} />
-          ) : null
-        }
-        meta={
-          opened
-            ? [
-                { label: "About", value: aboutLabel(opened) },
-                { label: "Assigned to", value: assigneeLabel(opened) },
-              ]
-            : []
-        }
-        summary={
-          opened
-            ? knownFacts([
-                { label: "Message", value: opened.excerpt },
-                ...(opened.sender.email
-                  ? [{ label: "Email", value: opened.sender.email, copyValue: opened.sender.email }]
-                  : []),
-                {
-                  label: "Account",
-                  value: opened.sender.type === "member" ? "LAX Account member" : "Guest",
-                },
-                {
-                  label: "Received",
-                  value: formatStaffDateTime(opened.createdAt),
-                },
-                { label: "Enquiry ID", value: opened.id, copyValue: opened.id },
-              ])
-            : []
-        }
-        overflow={
-          opened && canWrite ? (
-            <OverflowMenu
-              label={`More actions for the enquiry from ${enquirySenderName(opened.sender)}`}
-              actions={actions.actionsFor(toTarget(opened))}
-            />
-          ) : null
-        }
-        footer={
-          opened ? (
-            <StaffButton asChild variant="primary" icon={<MessageSquareText aria-hidden />}>
-              <Link href={enquiryPath(opened)}>Open conversation</Link>
-            </StaffButton>
-          ) : null
-        }
-      >
-        {null}
-      </DetailPanel>
 
       {actions.dialogs}
       <StaffDialog

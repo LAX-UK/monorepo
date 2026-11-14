@@ -131,6 +131,7 @@ export function LotBidsTabBoard({ rows, capped = false, standings = {} }: Props)
       columns={columns}
       data={rows}
       getRowId={(row) => row.id}
+      rowHref={(row) => (row.bidderId ? `/admin/clients/${row.bidderId}` : null)}
       defaultSort={{ columnId: "placed", direction: "desc" }}
       density="comfortable"
       empty={{

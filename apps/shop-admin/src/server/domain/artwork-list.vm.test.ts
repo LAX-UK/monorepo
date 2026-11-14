@@ -4,8 +4,8 @@ import {
   artworkListApiQuery,
   artworkListHref,
   artworkListPageHref,
-  artworkPanelHref,
   artworkPriceLabel,
+  artworkRecordHref,
   artworkSortParam,
   artworkSortState,
   bulkVisibilityActions,
@@ -74,9 +74,10 @@ describe("artwork list URL state", () => {
     expect(artworkSortState(query)).toEqual({ columnId: "updated", direction: "asc" });
     expect(artworkSortState({})).toEqual({ columnId: "updated", direction: "desc" });
     expect(artworkSortParam({ columnId: "updated", direction: "desc" })).toBeNull();
-    expect(artworkPanelHref({ state: "live" }, ARTIST)).toBe(
-      `/artworks?state=live&artwork=${ARTIST}`,
+    expect(artworkRecordHref({ state: "live", cursor: "c2", artwork: ARTIST }, ARTIST)).toBe(
+      `/artworks/${ARTIST}?list=state%3Dlive`,
     );
+    expect(artworkRecordHref({}, ARTIST)).toBe(`/artworks/${ARTIST}`);
     expect(artworkListHref(query, { q: "dusk" })).toBe(
       "/artworks?sort=updated_asc&limit=100&q=dusk",
     );

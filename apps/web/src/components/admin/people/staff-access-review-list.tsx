@@ -292,6 +292,9 @@ export function StaffAccessReviewList({ model, search }: Props) {
         sort: accessReviewSort.state(typeof search.sort === "string" ? search.sort : null),
         onSortChange: (sort) =>
           navigate(accessReviewHref(search, { sort: accessReviewSort.param(sort) })),
+        // The row opens the staff member's page, as their name does; viewers who may not open
+        // staff records get rows that open nothing.
+        ...(rows.some((row) => row.href) ? { rowHref: (row) => row.href ?? "" } : {}),
         rowActions: {
           label: (row) => `Actions for ${row.name}`,
           actions: (row) =>

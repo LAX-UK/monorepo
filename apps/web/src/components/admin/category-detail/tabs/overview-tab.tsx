@@ -109,6 +109,7 @@ function LinkedRecords({
       columns={columns}
       data={rows}
       getRowId={(row) => row.id}
+      rowHref={(row) => row.href}
       defaultSort={{ columnId: "title", direction: "asc" }}
       empty={{ title: `No ${title.toLowerCase()} yet`, description: "Nothing uses this category." }}
     />

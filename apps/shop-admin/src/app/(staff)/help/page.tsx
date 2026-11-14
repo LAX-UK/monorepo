@@ -1,9 +1,9 @@
 import { AdminFailedPage } from "@/components/admin-fetch-state";
 import { HelpArticlesList } from "@/components/help/help-articles-list.client";
 import { fetchAdminJson } from "@/server/application/load-admin-data";
-import { getShopAdminContainer } from "@/server/container";
 import {
   helpArticlesApiPath,
+  helpArticlesList,
   inView,
   parseHelpArticlesState,
   statusCounts,
@@ -21,6 +21,10 @@ export default async function HelpCentrePage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const state = parseHelpArticlesState(await searchParams);
+  // A link to the question panel that used to be here now opens the question's editor.
+  if (state.open) {
+    redirect(helpArticlesList.recordHref(state, `/help/${encodeURIComponent(state.open)}`));
+  }
   const [articles, categories] = await Promise.all([
     fetchAdminJson<{ items: HelpAdminArticleRow[] }>(helpArticlesApiPath(state)),
     fetchAdminJson<{ items: HelpAdminCategoryRow[] }>("help/categories"),
@@ -45,7 +49,6 @@ export default async function HelpCentrePage({
           ? categories.data.items.map((category) => ({ id: category.id, title: category.title }))
           : []
       }
-      artPublicUrl={getShopAdminContainer().config.artPublicUrl ?? null}
       loadFailed={articles.status !== "ok" || categories.status !== "ok"}
     />
   );

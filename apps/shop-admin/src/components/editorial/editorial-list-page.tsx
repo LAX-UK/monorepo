@@ -7,6 +7,7 @@ import { getShopAdminContainer } from "@/server/container";
 import {
   type EditorialListApiRow,
   type EditorialListState,
+  editorialList,
   editorialListPage,
   toEditorialListRow,
 } from "@/server/domain/editorial-list.vm";
@@ -25,6 +26,12 @@ export async function EditorialListPage({
   state: EditorialListState;
 }) {
   const entity = EDITORIAL_ENTITIES[kind];
+  // A link to the panel that used to be here (`?item=`) now opens the item's page.
+  if (state.open) {
+    redirect(
+      editorialList(kind).recordHref(state, `/editorial/${kind}/${encodeURIComponent(state.open)}`),
+    );
+  }
   const result = await fetchAdminJson<{ items: EditorialListApiRow[] }>(`editorial/${kind}`);
   if (result.status === "unauthorized") redirect("/login");
   if (result.status === "forbidden" || result.status === "not_found") {
@@ -42,7 +49,6 @@ export async function EditorialListPage({
       state={state}
       page={page}
       totalRows={rows.length}
-      initialOpened={rows.find((row) => row.id === state.open) ?? null}
       artPublicUrl={getShopAdminContainer().config.artPublicUrl ?? null}
       loadFailed={result.status === "failed"}
     />

@@ -2,10 +2,12 @@ import { pinClock } from "@/test/pin-clock";
 import { describe, expect, it } from "vitest";
 import {
   STAFF_ROLE_OPTIONS,
+  bidStaffMemberHref,
   staffMemberName,
   staffRoleAllows,
   staffRoleChips,
   staffRoleNames,
+  staffRolePeriods,
   staffRolesAllow,
 } from "./staff-directory.vm";
 
@@ -40,6 +42,39 @@ describe("LAX Admin roles", () => {
     );
     expect(staffRolesAllow(["finance"])).toBe(staffRoleAllows("finance"));
     expect(staffRolesAllow([])).toBeNull();
+  });
+
+  it("note in the row only the roles that end or have not started", () => {
+    const now = new Date("2026-10-29T12:00:00Z");
+    expect(
+      staffRolePeriods(
+        {
+          roles: [
+            { role: "catalogue_editor", startsAt: "2026-10-03T09:00:00.000Z", endsAt: null },
+            {
+              role: "editor",
+              startsAt: "2026-10-03T09:00:00.000Z",
+              endsAt: "2026-12-01T00:00:00.000Z",
+            },
+            { role: "finance", startsAt: "2026-11-03T09:00:00.000Z", endsAt: null },
+          ],
+        },
+        now,
+      ),
+    ).toBe("Editor until Mon 30 Nov · Finance from Tue 3 Nov");
+    expect(
+      staffRolePeriods(
+        { roles: [{ role: "operations", startsAt: "2026-01-10T09:00:00.000Z", endsAt: null }] },
+        now,
+      ),
+    ).toBeNull();
+  });
+
+  it("link to the person's page in Bid admin, where roles are managed", () => {
+    expect(bidStaffMemberHref("https://bid.test/admin/staff", { identitySubjectId: "a b" })).toBe(
+      "https://bid.test/admin/staff/a%20b",
+    );
+    expect(bidStaffMemberHref(undefined, { identitySubjectId: "a" })).toBeNull();
   });
 
   it("show each held role as a chip with its period, the last day being the day before the end", () => {

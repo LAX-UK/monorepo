@@ -1,7 +1,7 @@
 "use client";
 
 import { useAdminAction } from "@/components/use-admin-action.client";
-import { knownFacts, useWorkList } from "@/components/use-work-list.client";
+import { useWorkList } from "@/components/use-work-list.client";
 import { setMerchandiseProductArchived } from "@/server/application/admin-merchandise-actions.server";
 import {
   type MerchandiseListRow,
@@ -14,7 +14,6 @@ import type { WorkListState } from "@/server/domain/work-list.vm";
 import {
   ConfirmActionDialog,
   type DataColumn,
-  DetailPanel,
   EmptyValue,
   ListPage,
   MappedStatusBadge,
@@ -22,8 +21,9 @@ import {
   PrimaryCell,
   StaffButton,
 } from "@auction/staff-ui";
-import { Archive, ArchiveRestore, PanelRight, Pencil, Plus } from "@auction/staff-ui/icons";
-import { useMemo, useState } from "react";
+import { Archive, ArchiveRestore, Pencil, Plus } from "@auction/staff-ui/icons";
+import Link from "next/link";
+import { useCallback, useMemo, useState } from "react";
 
 const presentMerchandiseStatus = presentStatus("merchandise");
 
@@ -81,8 +81,8 @@ type PageData = {
 
 /**
  * Products on the staff list template: a view for all, on sale and archived products with
- * counts, search by title, slug or SKU, 50 a page, a record panel linked from the URL
- * (`?product=`) and Archive or Restore on every row. The server lists newest first, so the list
+ * counts, search by title, slug or SKU, 50 a page, a row that opens the product's editor and
+ * Archive or Restore on every row. The server lists newest first, so the list
  * shows no sort.
  */
 export function MerchandiseList({
@@ -104,8 +104,11 @@ export function MerchandiseList({
     search: { label: "Search products", placeholder: "Search by title, slug or SKU" },
   });
   const [archiving, setArchiving] = useState<MerchandiseListRow | null>(null);
-  const opened = page.items.find((row) => row.id === list.panel.openId) ?? null;
-  const editHref = (row: MerchandiseListRow) => `/merchandise/${row.id}`;
+  const editHref = useCallback(
+    (row: MerchandiseListRow) =>
+      merchandiseList.recordHref(state, `/merchandise/${encodeURIComponent(row.id)}`),
+    [state],
+  );
 
   const columns = useMemo<DataColumn<MerchandiseListRow>[]>(
     () => [
@@ -114,11 +117,7 @@ export function MerchandiseList({
         header: "Product",
         mobile: "title",
         cell: (row) => (
-          <PrimaryCell
-            href={list.panelHref(row.id)}
-            Link={list.panel.PanelLink}
-            secondary={`/${row.slug}`}
-          >
+          <PrimaryCell href={editHref(row)} Link={Link} secondary={`/${row.slug}`}>
             {row.title}
           </PrimaryCell>
         ),
@@ -158,7 +157,7 @@ export function MerchandiseList({
         cell: (row) => <span className="tabular-nums">{row.totalOnHand}</span>,
       },
     ],
-    [list.panelHref, list.panel.PanelLink],
+    [editHref],
   );
 
   const archiveAction = (row: MerchandiseListRow): OverflowAction | null =>
@@ -221,18 +220,11 @@ export function MerchandiseList({
           data: page.items,
           getRowId: (row) => row.id,
           defaultDensity: "comfortable",
-          onRowOpen: (row) => list.panel.show(row.id),
-          activeRowId: list.panel.openId,
+          rowHref: editHref,
           rowActions: {
             label: (row) => `Actions for ${row.title}`,
             actions: (row) =>
               [
-                {
-                  id: "open",
-                  label: "Open details",
-                  icon: PanelRight,
-                  onSelect: () => list.panel.show(row.id),
-                },
                 { id: "edit", label: "Edit", icon: Pencil, href: editHref(row) },
                 archiveAction(row),
               ].filter((action): action is OverflowAction => action !== null),
@@ -241,65 +233,6 @@ export function MerchandiseList({
         pageSize={list.pageSize}
         pagination={list.pagination}
       />
-
-      <DetailPanel
-        open={opened !== null}
-        onOpenChange={(open) => {
-          if (!open) list.panel.show(null);
-        }}
-        title={opened?.title ?? "Product"}
-        status={
-          opened ? (
-            <MappedStatusBadge status={opened.status} present={presentMerchandiseStatus} />
-          ) : null
-        }
-        meta={
-          opened
-            ? [
-                { label: "Variants", value: variantsLabel(opened.variantCount) },
-                { label: "In stock", value: String(opened.totalOnHand) },
-              ]
-            : []
-        }
-        summary={
-          opened
-            ? knownFacts([
-                {
-                  label: "Price",
-                  value: priceRangeLabel(opened.fromPricePence, opened.toPricePence),
-                },
-                { label: "Slug", value: `/${opened.slug}`, copyValue: opened.slug },
-                { label: "Product ID", value: opened.id, copyValue: opened.id },
-              ])
-            : []
-        }
-        footer={
-          opened ? (
-            <>
-              {archiveAction(opened) ? (
-                <StaffButton
-                  variant="secondary"
-                  icon={
-                    opened.status === "active" ? (
-                      <Archive aria-hidden />
-                    ) : (
-                      <ArchiveRestore aria-hidden />
-                    )
-                  }
-                  onClick={() => setArchiving(opened)}
-                >
-                  {opened.status === "active" ? "Archive" : "Restore"}
-                </StaffButton>
-              ) : null}
-              <StaffButton asChild variant="primary" icon={<Pencil aria-hidden />}>
-                <list.Link href={editHref(opened)}>Edit</list.Link>
-              </StaffButton>
-            </>
-          ) : null
-        }
-      >
-        {null}
-      </DetailPanel>
 
       {archiving ? (
         <ArchiveProductDialog product={archiving} onClose={() => setArchiving(null)} />

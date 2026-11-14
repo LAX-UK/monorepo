@@ -18,6 +18,7 @@ import {
   StaffDate,
   TabNav,
   type TabNavItem,
+  recordHrefInList,
 } from "@auction/staff-ui";
 import Link from "next/link";
 import { useState } from "react";
@@ -33,7 +34,8 @@ const EMPTY_COPY: Record<AdminDeliveryQuoteView, string> = {
 /**
  * Delivery quotes: the requests buyers sent for delivery outside the UK. Everyone who can open
  * orders reads them; sending a price or turning a request down needs `order.write`, so without it
- * there are no action buttons. The tabs are real links, so each view has its own address.
+ * there are no action buttons. The tabs are real links, so each view has its own address. A row
+ * opens its order; Quote and Can't deliver stay on the row.
  */
 export function DeliveryQuotesView({
   view,
@@ -62,6 +64,10 @@ export function DeliveryQuotesView({
       : {}),
   }));
 
+  const listQuery = view === "waiting" ? "" : `view=${view}`;
+  const rowHref = (row: AdminDeliveryQuote) =>
+    recordHrefInList(`/orders/${encodeURIComponent(row.orderId)}`, listQuery);
+
   const columns: DataColumn<AdminDeliveryQuote>[] = [
     {
       id: "order",
@@ -71,7 +77,7 @@ export function DeliveryQuotesView({
       cell: (row) => (
         <span className="flex flex-col">
           <Link
-            href={`/orders/${row.orderId}`}
+            href={rowHref(row)}
             className="font-medium text-staff-fg underline-offset-2 hover:underline"
           >
             {row.orderReference}
@@ -197,6 +203,7 @@ export function DeliveryQuotesView({
           data: data.items,
           getRowId: (row) => row.id,
           defaultDensity: "comfortable",
+          rowHref,
         }}
       />
       {quoting ? (
