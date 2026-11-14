@@ -1,3 +1,4 @@
+import { SIGNED_OUT_SALE_VIEWER } from "@/lib/marketing/sale-viewer";
 import { render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { SaleViewerProvider, useSaleViewer } from "./sale-viewer-provider";
@@ -21,7 +22,7 @@ describe("SaleViewerProvider", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     render(
-      <SaleViewerProvider saleId="sale-1">
+      <SaleViewerProvider saleId="sale-1" signedOut={SIGNED_OUT_SALE_VIEWER}>
         <Probe />
       </SaleViewerProvider>,
     );
@@ -40,7 +41,7 @@ describe("SaleViewerProvider", () => {
     const fetchMock = vi.fn(async () => new Response(null, { status: 404 }));
     vi.stubGlobal("fetch", fetchMock);
     render(
-      <SaleViewerProvider saleId="hidden">
+      <SaleViewerProvider saleId="hidden" signedOut={SIGNED_OUT_SALE_VIEWER}>
         <Probe />
       </SaleViewerProvider>,
     );

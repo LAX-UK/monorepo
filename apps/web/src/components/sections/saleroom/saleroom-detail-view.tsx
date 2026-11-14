@@ -37,7 +37,7 @@ type SaleroomDetailViewProps = SaleroomDetailPageData;
  */
 export function SaleroomDetailView({ vm, jsonLdText, explainerContext }: SaleroomDetailViewProps) {
   return (
-    <SaleViewerProvider saleId={vm.sale.id}>
+    <SaleViewerProvider saleId={vm.sale.id} signedOut={vm.viewer}>
       <SaleLayoutPreference routeKey="sales-lot" />
       <SaleroomCatalogLiveShell
         saleId={vm.isSaleroomSale ? vm.sale.id : null}
