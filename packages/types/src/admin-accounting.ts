@@ -178,6 +178,8 @@ const CODE_TEXT: Readonly<Record<string, string>> = {
   zoho_books_validation_invalid_request: "Books refused the document as it was sent.",
   zoho_books_validation_rejected_by_zoho: "Books refused the document as it was sent.",
   accounting_no_adapter_for_mode: "Nothing is set up to send documents for this mode.",
+  accounting_parked_vat_on_outside_uk_delivery:
+    "Waiting for the accountant: VAT on outside-UK delivery. This stays out of Books until they confirm how it is booked.",
 };
 
 /** The short "Last problem" line for a locked period, approved copy for the row. */
