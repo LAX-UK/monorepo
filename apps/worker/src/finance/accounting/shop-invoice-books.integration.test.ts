@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import type { DestinationBinding } from "@auction/accounting-domain";
+import type { DestinationBinding, LineBooking } from "@auction/accounting-domain";
 import { createZohoBooksDryRunAdapter } from "@auction/accounting-zoho-books";
 import {
   BID_ORG_ID,
@@ -11,11 +11,15 @@ import { type Database, closeDb, createDb } from "@auction/db";
 import {
   accountingDocument,
   accountingDocumentCopy,
+  accountingDocumentEvent,
   domainEvent,
   emailOutbox,
 } from "@auction/db/schema";
+import { AccountingQueueService } from "@auction/finance-runtime";
 import {
+  DrizzleBidAccountingFactsReader,
   DrizzleShopAccountingFactsReader,
+  DrizzleShopDeliveryReader,
   createAccountingRepositories,
 } from "@auction/persistence/repositories";
 import { and, asc, eq, like, or, sql } from "drizzle-orm";
@@ -24,6 +28,7 @@ import { holdAccountingTablesLock } from "../../testing/accounting-tables-lock.j
 import type { SenderPorts } from "./accounting-dispatch.js";
 import { AccountingInvoiceCopy } from "./accounting-invoice-copy.service.js";
 import { AccountingProjection } from "./accounting-projection.service.js";
+import { AccountingRemainder } from "./accounting-remainder.service.js";
 import { AccountingSender } from "./accounting-sender.service.js";
 
 const OWNER_URL = process.env.DATABASE_URL;
@@ -33,7 +38,7 @@ const HAS_DB = Boolean(OWNER_URL);
 
 type BooksMode = "dry_run" | "test_org" | "live";
 const PAID_AT = new Date("2031-11-12T14:05:00Z");
-const log = { info: vi.fn(), warn: vi.fn() };
+const log = { info: vi.fn(), warn: vi.fn(), error: vi.fn() };
 /** The Shop's documents go to London Art Exchange's organisation, and only there. */
 const bound = (mode: BooksMode, organisationId = SHOP_ORG_ID): DestinationBinding =>
   mode === "dry_run" ? {} : { [mode]: { shop: organisationId } };
@@ -46,10 +51,39 @@ const FRAME_PENCE = 12_000;
  * price frozen on its line, delivery as charged, the invoice number from the database's counter
  * (set as paid_at is), and the references-only event. Fixture data only.
  */
-async function seedPaidOrder(
-  db: Database,
-  options: { scope?: "uk" | "outside_uk"; deliveryPence?: number; guest?: boolean } = {},
-) {
+/**
+ * The one framing option every seeded order's frame names. Found or made once under a fixed code,
+ * with a price for every size band as a real option has (the framing catalogue lists every
+ * option and needs them), so the shared test database gains a single draft option however often
+ * this file runs: a framing line as sold is never deleted, so per-run options could never go.
+ */
+const FRAMING_FIXTURE_CODE = "books-integration-fixture";
+const FRAMING_BANDS = ["up_to_40x50", "up_to_60x80", "up_to_80x100"] as const;
+async function framingOption(db: Database): Promise<string> {
+  await db.execute(
+    sql`insert into shop_framing_option
+          (code, name, frame, mount, glazing, hanging, lead_time_min_days, lead_time_max_days, status, sort_order)
+        values (${FRAMING_FIXTURE_CODE}, 'Natural oak frame', 'natural_oak', 'window_conservation', 'uv_acrylic', 'd_rings_cord', 10, 15, 'draft', 990)
+        on conflict (code) do nothing`,
+  );
+  const found = await db.execute<{ id: string }>(
+    sql`select id from shop_framing_option where code = ${FRAMING_FIXTURE_CODE}`,
+  );
+  const id = found.rows[0]?.id as string;
+  for (const band of FRAMING_BANDS) {
+    await db.execute(
+      sql`insert into shop_framing_option_price (option_id, band, price_pence, is_placeholder)
+          values (${id}, ${band}, ${FRAME_PENCE}, false)
+          on conflict (option_id, band) do nothing`,
+    );
+  }
+  return id;
+}
+
+type SeedOptions = { scope?: "uk" | "outside_uk"; deliveryPence?: number; guest?: boolean };
+
+/** An order as the Shop leaves it before payment: no number, no event. */
+async function seedOrder(db: Database, options: SeedOptions = {}) {
   const tag = randomUUID().slice(0, 8);
   const subject = options.guest ? null : `shop-books-${tag}`;
   const deliveryPence = options.deliveryPence ?? 2_500;
@@ -64,12 +98,7 @@ async function seedPaidOrder(
     sql`insert into shop_product_variant (product_id, sku, price_pence)
         values (${product.rows[0]?.id}, ${`SKU-${tag}`}, ${PRINT_PENCE}) returning id`,
   );
-  const option = await db.execute<{ id: string }>(
-    sql`insert into shop_framing_option
-          (code, name, frame, mount, glazing, hanging, lead_time_min_days, lead_time_max_days, status, sort_order)
-        values (${`books-${tag}`}, 'Natural oak frame', 'natural_oak', 'window_conservation', 'uv_acrylic', 'd_rings_cord', 10, 15, 'draft', 990)
-        returning id`,
-  );
+  const optionId = await framingOption(db);
   let guestId: string | null = null;
   if (options.guest) {
     const guest = await db.execute<{ id: string }>(
@@ -104,14 +133,20 @@ async function seedPaidOrder(
   const frame = await db.execute<{ id: string }>(
     sql`insert into shop_order_line
           (order_id, kind, framing_for_line_id, framing_option_id, framing_snapshot, unit_price_pence)
-        values (${orderId}, 'framing', ${printId}, ${option.rows[0]?.id},
+        values (${orderId}, 'framing', ${printId}, ${optionId},
                 ${JSON.stringify({ name: "Natural oak frame", pricePence: FRAME_PENCE })}::jsonb, ${FRAME_PENCE})
         returning id`,
   );
+  const lineIds = [printId, frame.rows[0]?.id as string].sort();
+  return { tag, orderId, partyId, total, lineIds, subject, guestId };
+}
+
+/** The order paid, as the Shop pays it: the number from the counter and the references-only event. */
+async function seedPaidOrder(db: Database, options: SeedOptions = {}) {
+  const { tag, orderId, partyId, total, lineIds, subject, guestId } = await seedOrder(db, options);
   await db.execute(
     sql`update shop_order set status = 'paid', paid_at = ${PAID_AT.toISOString()}::timestamptz where id = ${orderId}`,
   );
-  const lineIds = [printId, frame.rows[0]?.id as string].sort();
   await db.insert(domainEvent).values({
     aggregateType: "shop_order",
     aggregateId: orderId,
@@ -137,6 +172,8 @@ async function seedPaidOrder(
     orderId,
     partyId,
     total,
+    subject,
+    guestId,
     event: event as NonNullable<typeof event>,
     invoiceNumber: numbered.rows[0]?.invoice_number as string,
   };
@@ -227,6 +264,36 @@ describe.skipIf(!HAS_DB)("Shop invoices to Books (integration)", { timeout: 60_0
       batch: 1_000,
     });
     return { service, enqueue, putObject };
+  }
+
+  /** Finance › Accounting as the Bid API runs it (api_app): Try again and Release. */
+  function releaser(shopOutsideUkBooking?: LineBooking | null) {
+    const apiRepos = createAccountingRepositories(api, { now: () => new Date() });
+    const audits: unknown[] = [];
+    const service = new AccountingQueueService({
+      browser: apiRepos.browser,
+      partFunded: apiRepos.partFunded,
+      transitions: apiRepos.transitions,
+      audit: {
+        retryRequested: async (input) => void audits.push(input),
+        releaseRequested: async (input) => void audits.push(input),
+      },
+      booksLink: () => null,
+      facts: new DrizzleBidAccountingFactsReader(api),
+      lookup: apiRepos.lookup,
+      shopDelivery: new DrizzleShopDeliveryReader(api),
+      ...(shopOutsideUkBooking === undefined ? {} : { shopOutsideUkBooking }),
+    });
+    return { service, audits };
+  }
+
+  function remainder(mode: BooksMode, ports: InMemoryAccounting["remainders"]) {
+    return new AccountingRemainder({
+      remainders: repos.remainders,
+      settings: repos.settingReader,
+      portsByMode: { [mode]: ports },
+      log,
+    });
   }
 
   /** The order's documents (and its buyer's contact), oldest first. */
@@ -343,10 +410,28 @@ describe.skipIf(!HAS_DB)("Shop invoices to Books (integration)", { timeout: 60_0
         .map((d) => d.kind)
         .sort(),
     ).toEqual(["contact", "invoice", "payment"]);
+    // Staff cannot try it again, and Release is refused while the accountant has not answered:
+    // the stored order still parks it. Nothing changes and nothing is recorded.
+    const { service, audits } = releaser();
+    expect(
+      await service.tryAgain({ documentId: parked?.id as string, actorUserId: "staff-1" }),
+    ).toMatchObject({ ok: false, refusal: "not_allowed" });
+    expect(
+      await service.release({ documentId: parked?.id as string, actorUserId: "staff-1" }),
+    ).toMatchObject({ ok: false, refusal: "unresolved" });
+    expect(audits).toEqual([]);
+    const [still] = await owner
+      .select()
+      .from(accountingDocument)
+      .where(eq(accountingDocument.id, parked?.id as string));
+    expect(still).toMatchObject({ state: "needs_review", payload: parked?.payload });
     if (API_URL) {
+      // The table holds the shape whatever the application does: api_app may not queue it with
+      // another amount, nor rebuild anything but a delivery invoice under its own reference.
       const refused = await api
         .execute(sql`update accounting_document set state = 'pending', review_lookup = null,
-                          needs_review_reason = null where id = ${parked?.id}`)
+                          needs_review_reason = null, gross_pence = gross_pence + 1
+                      where id = ${parked?.id}`)
         .then(() => null)
         .catch((e: { cause?: { code?: string } }) => e.cause?.code ?? "thrown");
       expect(refused).toBe("42501");
@@ -468,5 +553,302 @@ describe.skipIf(!HAS_DB)("Shop invoices to Books (integration)", { timeout: 60_0
     const docs = await documentsFor(seeded);
     expect(docs.some((d) => d.state === "issued")).toBe(false);
     expect(docs.every((d) => d.provider === null || d.state !== "issued")).toBe(true);
+  });
+
+  describe("ordering: an invoice after its contact, a payment after its contact and invoice", () => {
+    const books = () =>
+      new InMemoryAccounting({ orgs: { london_art_exchange: { vatRegistered: false } } });
+
+    it("R1: six concurrent senders over four rounds issue all three, every run", async () => {
+      await aimShop("live");
+      for (let run = 0; run < 5; run += 1) {
+        const seeded = await seedPaidOrder(owner);
+        await projection().project(seeded.event);
+        const held = books();
+        const senders = Array.from({ length: 6 }, () => sender("live", held));
+        for (let round = 0; round < 4; round += 1) {
+          await Promise.all(senders.map((s) => s.tick()));
+        }
+        const docs = await documentsFor(seeded);
+        expect(docs.map((d) => [d.kind, d.state, d.needsReviewReason ?? null])).toEqual([
+          ["contact", "issued", null],
+          ["invoice", "issued", null],
+          ["payment", "issued", null],
+        ]);
+        expect(docs.every((d) => d.attempts === 1)).toBe(true);
+      }
+    });
+
+    it("R2: one sender, the three registered in the same millisecond, issues all three, every run", async () => {
+      await aimShop("live");
+      for (let run = 0; run < 5; run += 1) {
+        const seeded = await seedPaidOrder(owner);
+        await projection().project(seeded.event);
+        const docs = await documentsFor(seeded);
+        // One projection, one clock tick: only the uuid would order them.
+        await owner.execute(sql`update accounting_document set created_at = ${new Date().toISOString()}::timestamptz
+                                 where id in (${sql.join(
+                                   docs.map((d) => sql`${d.id}`),
+                                   sql`, `,
+                                 )})`);
+        const one = sender("live", books());
+        for (let i = 0; i < 4; i += 1) await one.tick();
+        const after = await documentsFor(seeded);
+        expect(after.map((d) => [d.kind, d.state]).sort()).toEqual([
+          ["contact", "issued"],
+          ["invoice", "issued"],
+          ["payment", "issued"],
+        ]);
+        expect(after.every((d) => d.attempts === 1)).toBe(true);
+      }
+    });
+
+    it("R3: eight orders paid in concurrent transactions get distinct LAX-INV- numbers, no gaps", async () => {
+      const unpaid = await Promise.all(Array.from({ length: 8 }, () => seedOrder(owner)));
+      const paid = await Promise.all(
+        unpaid.map(({ orderId }) =>
+          owner
+            .execute<{ invoice_number: string }>(
+              sql`update shop_order set status = 'paid', paid_at = now()
+                   where id = ${orderId} returning invoice_number`,
+            )
+            .then((r) => r.rows[0]?.invoice_number as string),
+        ),
+      );
+      const numbers = paid
+        .map((n) => Number(/^LAX-INV-(\d{6,})$/.exec(n)?.[1]))
+        .sort((a, b) => a - b);
+      expect(new Set(numbers).size).toBe(8);
+      expect(numbers.every((n, i) => i === 0 || n === (numbers[i - 1] as number) + 1)).toBe(true);
+    });
+  });
+
+  describe("recovery of a parked outside-UK delivery once the accountant answers", () => {
+    /** An answer the accountant might give that keeps what was charged (the test stands in for it). */
+    const ZERO: LineBooking = { role: "delivery", treatment: "zero" };
+
+    it("Release, send, then the payment's rest applied to the delivery invoice once (end to end)", async () => {
+      await aimShop("live");
+      const seeded = await seedPaidOrder(owner, { scope: "outside_uk", deliveryPence: 8_500 });
+      expect(await projection().project(seeded.event)).toMatchObject({ created: 4, parked: 1 });
+      const held = new InMemoryAccounting({
+        orgs: { london_art_exchange: { vatRegistered: false } },
+      });
+      await drain(sender("live", held));
+      const reference = `LAX-SHOP-INV-${seeded.orderId}-delivery`;
+      const paymentReference = `LAX-SHOP-PAY-${seeded.orderId}`;
+      const parked = (await documentsFor(seeded)).find((d) => d.laxReference === reference);
+      const ask = { documentId: parked?.id as string, actorUserId: "staff-1" };
+
+      // 1. Before the answer: refused, with the booking in force (none is set).
+      expect(await releaser().service.release(ask)).toMatchObject({
+        ok: false,
+        refusal: "unresolved",
+      });
+      // Nothing to apply yet: the delivery invoice is not issued.
+      expect(await remainder("live", held.remainders).tick()).toEqual({ applied: 0, refused: 0 });
+
+      // 2. The answer is deployed (here, given to the service): Release rebuilds and queues it.
+      const { service, audits } = releaser(ZERO);
+      expect(await service.release(ask)).toEqual({
+        ok: true,
+        value: { id: parked?.id, reference, outcome: "released", rebuilt: true },
+      });
+      expect(audits).toEqual([
+        expect.objectContaining({
+          actorUserId: "staff-1",
+          payload: expect.objectContaining({ parked: "vat_on_outside_uk_delivery", rebuilt: true }),
+        }),
+      ]);
+      const history = await owner
+        .select()
+        .from(accountingDocumentEvent)
+        .where(eq(accountingDocumentEvent.documentId, parked?.id as string))
+        .orderBy(asc(accountingDocumentEvent.id));
+      expect(history.map((e) => [e.action, e.fromState, e.toState])).toContainEqual([
+        "release",
+        "needs_review",
+        "pending",
+      ]);
+      // A second Release changes nothing more.
+      expect(await service.release(ask)).toMatchObject({
+        ok: true,
+        value: { outcome: "already_queued" },
+      });
+
+      // 3. The sender issues it, rebuilt with the booking, under the same reference and gross.
+      await drain(sender("live", held));
+      const issued = (await documentsFor(seeded)).find((d) => d.laxReference === reference);
+      expect(issued).toMatchObject({ state: "issued", grossPence: 8_500, vatPence: 0 });
+      expect((issued?.payload as { lines: { treatment: string }[] }).lines[0]?.treatment).toBe(
+        "zero",
+      );
+
+      // 4. The follow-up: the payment's unapplied rest is applied to it, once.
+      const step = remainder("live", held.remainders);
+      expect(await step.tick()).toEqual({ applied: 1, refused: 0 });
+      expect([...held.remainderAppliedOf("shop", paymentReference).values()]).toEqual([8_500]);
+      expect(await step.tick()).toEqual({ applied: 0, refused: 0 });
+      const settled = await owner
+        .select()
+        .from(accountingDocumentEvent)
+        .where(
+          and(
+            eq(accountingDocumentEvent.documentId, issued?.id as string),
+            eq(accountingDocumentEvent.action, "apply_remainder"),
+          ),
+        );
+      expect(settled).toHaveLength(1);
+      expect(settled[0]).toMatchObject({
+        fromState: "issued",
+        toState: "issued",
+        detail: { outcome: "applied", paymentReference, amountPence: 8_500, rehearsal: false },
+      });
+
+      // A run whose record was lost asks Books again and is told it is already applied.
+      expect(
+        await held.remainders.applyRemainder({
+          product: "shop",
+          entity: "london_art_exchange",
+          paymentReference,
+          invoiceReference: reference,
+          contactReference: `LAX-SHOP-CON-${seeded.partyId}`,
+          amountPence: 8_500,
+        }),
+      ).toEqual({ status: "already_applied", rehearsal: false });
+
+      // The delivery invoice is not emailed as the order's; the order's own invoice is.
+      const { service: copy, enqueue } = copier("live", held.pdfs);
+      await copy.tick();
+      const [deliveryCopy] = await owner
+        .select()
+        .from(accountingDocumentCopy)
+        .where(eq(accountingDocumentCopy.documentId, issued?.id as string));
+      expect(deliveryCopy?.emailSkipReason).toBe("not_order_invoice");
+      expect(enqueue).toHaveBeenCalledTimes(1);
+      expect(enqueue).toHaveBeenCalledWith(
+        expect.objectContaining({
+          // The order's invoice total, not the order's (the delivery is invoiced on its own).
+          vars: expect.objectContaining({ total: "£570.00" }),
+        }),
+      );
+    });
+
+    it("two workers at once apply the rest once", async () => {
+      await aimShop("live");
+      const seeded = await seedPaidOrder(owner, { scope: "outside_uk", deliveryPence: 3_000 });
+      await projection().project(seeded.event);
+      const held = new InMemoryAccounting({
+        orgs: { london_art_exchange: { vatRegistered: false } },
+      });
+      await drain(sender("live", held));
+      const parked = (await documentsFor(seeded)).find((d) => d.laxReference.endsWith("-delivery"));
+      await releaser(ZERO).service.release({ documentId: parked?.id as string, actorUserId: "s" });
+      await drain(sender("live", held));
+      const ticks = await Promise.all(
+        Array.from({ length: 4 }, () => remainder("live", held.remainders).tick()),
+      );
+      expect(ticks.reduce((n, t) => n + t.applied, 0)).toBe(1);
+      expect([
+        ...held.remainderAppliedOf("shop", `LAX-SHOP-PAY-${seeded.orderId}`).values(),
+      ]).toEqual([3_000]);
+    });
+  });
+
+  describe("who the invoice email goes to (the order's owner now, while reachable)", () => {
+    async function issuedLive(options: { guest?: boolean } = {}) {
+      await aimShop("live");
+      const seeded = await seedPaidOrder(owner, options);
+      await projection().project(seeded.event);
+      const held = new InMemoryAccounting({
+        orgs: { london_art_exchange: { vatRegistered: false } },
+      });
+      await drain(sender("live", held));
+      const invoice = (await documentsFor(seeded)).find(
+        (d) => d.laxReference === `LAX-SHOP-INV-${seeded.orderId}`,
+      );
+      return { seeded, held, invoice };
+    }
+
+    async function skipReasonOf(documentId: string) {
+      const [copy] = await owner
+        .select()
+        .from(accountingDocumentCopy)
+        .where(eq(accountingDocumentCopy.documentId, documentId));
+      return copy;
+    }
+
+    const closedAccount: readonly [string, (subject: string) => ReturnType<typeof sql>][] = [
+      [
+        "disabled",
+        (subject) =>
+          sql`update shop_user_profile set disabled_at = now() where identity_subject_id = ${subject}`,
+      ],
+      [
+        "deletion requested",
+        (subject) =>
+          sql`update shop_user_profile set deletion_requested_at = now() where identity_subject_id = ${subject}`,
+      ],
+      // Nothing in LAX follows a merge to the surviving account yet, so a merged one gets nothing.
+      [
+        "merged",
+        (subject) =>
+          sql`update shop_user_profile set merged_into_subject_id = ${`${subject}-survivor`} where identity_subject_id = ${subject}`,
+      ],
+    ];
+
+    for (const [label, close] of closedAccount) {
+      it(`a ${label} account gets nothing: no_recipient, nothing queued`, async () => {
+        const { seeded, held, invoice } = await issuedLive();
+        await owner.execute(close(seeded.subject as string));
+        const { service, enqueue } = copier("live", held.pdfs);
+        await service.tick();
+        expect(enqueue).not.toHaveBeenCalled();
+        expect(await skipReasonOf(invoice?.id as string)).toMatchObject({
+          emailSkipReason: "no_recipient",
+          emailQueuedAt: null,
+        });
+        const queued = await owner
+          .select()
+          .from(emailOutbox)
+          .where(eq(emailOutbox.idempotencyKey, `shop-invoice-issued:${invoice?.id}`));
+        expect(queued).toEqual([]);
+      });
+    }
+
+    it("an erased guest gets nothing: no_recipient, nothing queued", async () => {
+      const { seeded, held, invoice } = await issuedLive({ guest: true });
+      await owner.execute(
+        sql`update shop_guest_customer set erased_at = now(), erased_by_subject_id = 'staff-erasure' where id = ${seeded.guestId}`,
+      );
+      const { service, enqueue } = copier("live", held.pdfs);
+      await service.tick();
+      expect(enqueue).not.toHaveBeenCalled();
+      expect(await skipReasonOf(invoice?.id as string)).toMatchObject({
+        emailSkipReason: "no_recipient",
+      });
+    });
+
+    it("a guest who can be reached is sent the link that mails them a fresh one", async () => {
+      const { seeded, held } = await issuedLive({ guest: true });
+      const { service, enqueue } = copier("live", held.pdfs);
+      await service.tick();
+      expect(enqueue).toHaveBeenCalledWith(
+        expect.objectContaining({
+          to: `guest-${seeded.tag}@integration.test`,
+          vars: expect.objectContaining({ orderUrl: "https://shop.example.test/orders/guest" }),
+        }),
+      );
+    });
+
+    it("a refunded order's invoice is still emailed: a refund does not cancel the invoice", async () => {
+      const { seeded, held } = await issuedLive();
+      await owner.execute(
+        sql`update shop_order set status = 'refunded' where id = ${seeded.orderId}`,
+      );
+      const { service, enqueue } = copier("live", held.pdfs);
+      await service.tick();
+      expect(enqueue).toHaveBeenCalledTimes(1);
+    });
   });
 });

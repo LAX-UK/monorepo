@@ -209,10 +209,11 @@ export const envSchema = z
     /** lax.art and LAX Admin public addresses, for the link on the Zoho Product. */
     LAX_ART_PUBLIC_URL: z.preprocess(emptyToUndefined, z.string().url().optional()),
     /**
-     * The Shop storefront's address, for the link in a Shop invoice email (the same value as the
-     * Shop API's SHOP_STOREFRONT_URL). Only read when Books issues Shop invoices live.
+     * The Shop storefront's public https address, for the link in a Shop invoice email (the same
+     * value as the Shop API's SHOP_STOREFRONT_URL). No default: while it is unset or local, Shop
+     * invoices issued live are not emailed (the worker logs `accounting_shop_invoice_email_refused`).
      */
-    SHOP_STOREFRONT_URL: z.string().url().default("http://localhost:3020"),
+    SHOP_STOREFRONT_URL: z.preprocess(emptyToUndefined, z.string().url().optional()),
     LAX_ADMIN_PUBLIC_URL: z.preprocess(emptyToUndefined, z.string().url().optional()),
     /**
      * LAX Bid email alerts. `off` does nothing; `dry_run` records matches and logs each digest

@@ -22,13 +22,14 @@ const ORDER_ID = "5b6a7c1e-1111-4a5b-8c9d-000000000001";
 const NOW = new Date("2026-11-12T15:00:00Z");
 const PDF = new TextEncoder().encode("%PDF-1.4\n%%EOF\n");
 
-function shopInvoice(): Invoice {
+/** The order's invoice; abroad, its delivery (£40) is invoiced on its own and the order is £610. */
+function shopInvoice(abroad = false, which: "order" | "delivery" = "order"): Invoice {
   const projected = projectShopOrderPaid({
     orderId: ORDER_ID,
     invoiceNumber: "LAX-INV-000124",
     buyer: { partyId: "5b6a7c1e-2222-4a5b-8c9d-000000000002", name: "Ada", email: null },
     paidOn: "2026-11-12",
-    totalPence: 59_500,
+    totalPence: abroad ? 61_000 : 59_500,
     lines: [
       {
         id: "a",
@@ -39,14 +40,20 @@ function shopInvoice(): Invoice {
         vatPence: null,
       },
     ],
-    delivery: { scope: "uk", label: "UK insured delivery", grossPence: 2_500, vatPence: null },
+    delivery: abroad
+      ? { scope: "outside_uk", label: "Delivery outside the UK", grossPence: 4_000, vatPence: null }
+      : { scope: "uk", label: "UK insured delivery", grossPence: 2_500, vatPence: null },
   });
   if (!projected.ok) throw new Error(projected.refusal.code);
-  return projected.value.documents[1] as Invoice;
+  const invoices = projected.value.documents.filter((d) => d.kind === "invoice") as Invoice[];
+  return (which === "order" ? invoices[0] : invoices[1]) as Invoice;
 }
 
-function issued(mode: TargetMode, id: string): StoredAccountingDocument {
-  const document = shopInvoice();
+function issued(
+  mode: TargetMode,
+  id: string,
+  document: Invoice = shopInvoice(),
+): StoredAccountingDocument {
   const record: DocumentRecord = {
     kind: "invoice",
     reference: document.reference,
@@ -112,8 +119,9 @@ class Copies implements IAccountingDocumentCopies {
       .map((d) => ({
         documentId: d.id,
         product: "shop" as const,
-        invoiceId: `order-${d.id}`,
+        invoiceId: d.reference.endsWith("-delivery") ? `order-${d.id}-delivery` : `order-${d.id}`,
         number: "LAX-INV-000124",
+        grossPence: d.totals.grossPence,
         storageKey: this.copies.get(d.id)?.storageKey ?? "",
       }));
     return { due, unreadable: [] };
@@ -149,6 +157,7 @@ function setUp(
   factsFor: (orderId: string) => ShopInvoiceEmailFacts | null = () => facts(),
   batch?: number,
   listsEveryMode = false,
+  storefront: { readonly url: string | undefined } = { url: "https://shop.example.test/" },
 ) {
   const copies = new Copies(documents, listsEveryMode);
   let n = 0;
@@ -162,6 +171,7 @@ function setUp(
     })),
   };
   const bidFacts = vi.fn(async () => null);
+  const log = { info: vi.fn(), warn: vi.fn(), error: vi.fn() };
   const service = new AccountingInvoiceCopy({
     copies,
     settings: {
@@ -178,12 +188,12 @@ function setUp(
     shopEmailFacts: { forOrder: async (orderId) => factsFor(orderId) },
     email: { enqueue },
     webBaseUrl: "https://lax.bid",
-    shopStorefrontUrl: "https://shop.example.test/",
+    shopStorefrontUrl: storefront.url,
     now: () => NOW,
-    log: { info: vi.fn(), warn: vi.fn() },
+    log,
     ...(batch ? { batch } : {}),
   });
-  return { service, copies, enqueue, bidFacts };
+  return { service, copies, enqueue, bidFacts, log };
 }
 
 describe("Shop invoice copies and email", () => {
@@ -263,11 +273,61 @@ describe("Shop invoice copies and email", () => {
   });
 });
 
+describe("Shop invoice email: what it says, and when it is refused", () => {
+  it("states the attached invoice's own total, not the order's, when delivery is outside the UK", async () => {
+    const { service, enqueue } = setUp("live", [issued("live", "doc-1", shopInvoice(true))], () =>
+      facts({ totalPence: 61_000 }),
+    );
+    expect(await service.tick()).toEqual({ stored: 1, emailed: 1 });
+    expect(enqueue).toHaveBeenCalledWith(
+      expect.objectContaining({ vars: expect.objectContaining({ total: "£570.00" }) }),
+    );
+  });
+
+  it("does not email a released outside-UK delivery invoice as if it were the order's", async () => {
+    const delivery = issued("live", "doc-d", shopInvoice(true, "delivery"));
+    const { service, copies, enqueue } = setUp("live", [delivery]);
+    await service.tick();
+    expect(copies.copies.get("doc-d")?.skipped).toBe("not_order_invoice");
+    expect(enqueue).not.toHaveBeenCalled();
+  });
+
+  it("sends no Shop email while SHOP_STOREFRONT_URL is unset or local; each stays due", async () => {
+    for (const url of [
+      undefined,
+      "",
+      "http://localhost:3020",
+      "https://localhost",
+      "https://127.0.0.1:3020",
+      "https://shop.local",
+      "http://shop.example.test",
+    ]) {
+      const { service, copies, enqueue, log } = setUp(
+        "live",
+        [issued("live", "doc-1")],
+        () => facts(),
+        undefined,
+        false,
+        { url },
+      );
+      expect(await service.tick()).toEqual({ stored: 1, emailed: 0 });
+      expect(enqueue).not.toHaveBeenCalled();
+      // Not settled: it goes once the address is set.
+      expect(copies.copies.get("doc-1")?.skipped).toBeUndefined();
+      expect(log.error).toHaveBeenCalledWith(
+        { reason: expect.stringMatching(/^SHOP_STOREFRONT_URL /) },
+        "accounting_shop_invoice_email_refused",
+      );
+    }
+  });
+});
+
 describe("composeShopInvoiceEmail", () => {
-  it("formats the stored total and the paid moment, and attaches LAX's stored copy", () => {
+  it("formats the invoice's stored total and the paid moment, and attaches LAX's stored copy", () => {
     const vars = composeShopInvoiceEmail({
       number: "LAX-INV-000124",
       facts: facts(),
+      invoiceGrossPence: 59_500,
       storageKey: "accounting/london_art_exchange/doc-1.pdf",
       storefrontUrl: "https://shop.example.test",
       now: NOW,

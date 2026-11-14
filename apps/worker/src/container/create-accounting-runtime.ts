@@ -14,9 +14,11 @@ import { createAccountingAlertSink } from "../finance/accounting/accounting-aler
 import { ACCOUNTING_CRON_MONITORS } from "../finance/accounting/accounting-alerts.js";
 import { AccountingInvoiceCopy } from "../finance/accounting/accounting-invoice-copy.service.js";
 import { AccountingProjection } from "../finance/accounting/accounting-projection.service.js";
+import { AccountingRemainder } from "../finance/accounting/accounting-remainder.service.js";
 import type { AccountingRuntime } from "../finance/accounting/accounting-runtime.js";
 import { AccountingSender } from "../finance/accounting/accounting-sender.service.js";
 import { AccountingWatch } from "../finance/accounting/accounting-watch.service.js";
+import { shopStorefrontBase } from "../finance/accounting/shop-invoice-email.js";
 import { throttledCronMonitor } from "../lib/sentry-cron.js";
 import { DrizzleProjectorCursorStart } from "../repositories/drizzle-projector-cursor-start.js";
 
@@ -44,6 +46,15 @@ export function createAccountingRuntime(deps: {
   const repos = createAccountingRepositories(deps.db, { now: () => new Date() });
   deps.log.info({ modes: Object.keys(adapters.byMode) }, "accounting_runtime_built");
   const shopFacts = new DrizzleShopAccountingFactsReader(deps.db);
+  try {
+    shopStorefrontBase(deps.env.SHOP_STOREFRONT_URL);
+  } catch (error) {
+    // Said at start-up too: the Shop may not be live yet, but its emails will wait until this is set.
+    deps.log.warn(
+      { reason: error instanceof Error ? error.message : "unknown" },
+      "accounting_shop_storefront_url_unusable",
+    );
+  }
   return {
     projection: new AccountingProjection({
       facts: new DrizzleBidAccountingFactsReader(deps.db),
@@ -75,6 +86,14 @@ export function createAccountingRuntime(deps: {
       webBaseUrl: deps.env.WEB_ORIGIN,
       shopStorefrontUrl: deps.env.SHOP_STOREFRONT_URL,
       now: () => new Date(),
+      log: deps.log,
+    }),
+    remainder: new AccountingRemainder({
+      remainders: repos.remainders,
+      settings: repos.settingReader,
+      portsByMode: Object.fromEntries(
+        Object.entries(adapters.byMode).map(([mode, ports]) => [mode, ports.remainders]),
+      ),
       log: deps.log,
     }),
     cursorStart: new DrizzleProjectorCursorStart(deps.db),

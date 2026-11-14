@@ -54,7 +54,7 @@ type BooksMode = "dry_run" | "test_org" | "live";
 /** The in-memory Books answers as one organisation; each case binds it for the mode it uses. */
 const bound = (mode: BooksMode): DestinationBinding =>
   mode === "dry_run" ? {} : { [mode]: { bid: BID_ORG_ID } };
-const log = { info: vi.fn(), warn: vi.fn() };
+const log = { info: vi.fn(), warn: vi.fn(), error: vi.fn() };
 
 /**
  * A buyer organisation (with a billing email) that has won one lot; the buyer is its owner, so

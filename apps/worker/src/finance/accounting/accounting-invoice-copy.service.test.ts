@@ -121,6 +121,7 @@ class Copies implements IAccountingDocumentCopies {
         product: "bid",
         invoiceId: `invoice-${d.id}`,
         number,
+        grossPence: d.totals.grossPence,
         storageKey: this.copies.get(d.id)?.storageKey ?? "",
       });
     }
@@ -171,7 +172,7 @@ function setUp(
     if (opts.enqueueFails) throw new Error("outbox down");
     return { outboxId: `outbox-${++n}` };
   });
-  const log = { info: vi.fn(), warn: vi.fn() };
+  const log = { info: vi.fn(), warn: vi.fn(), error: vi.fn() };
   const fetched = (rehearsal: boolean): DocumentPdfPort => ({
     fetchPdf: vi.fn(async () => ({
       status: "fetched" as const,

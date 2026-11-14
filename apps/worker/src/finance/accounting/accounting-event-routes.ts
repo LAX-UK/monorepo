@@ -143,7 +143,7 @@ export const ACCOUNTING_EVENT_ROUTES: Readonly<Record<string, AccountingEventRou
   "payment_group.settled": route("bid", "bid_payment_group_settled", async (facts, event) => {
     const payload = paymentGroupSettledPayloadSchemaV1.safeParse(event.payload);
     if (!payload.success) throw new AccountingEventPayloadError(event.eventType);
-    const read = await facts.paymentGroupSettled(payload.data.paymentGroupId);
+    const read = await facts.bid.paymentGroupSettled(payload.data.paymentGroupId);
     if (
       read.status === "ready" &&
       (!sameIds(
