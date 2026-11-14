@@ -1,4 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
+import type { DataRequestOutcome } from "../../interfaces/identity-data-requests-client.js";
+import type { EnquiryErasureCounts } from "./admin-data-requests.service.js";
 import type { DueHeldErasure } from "./data-request-held-erasures.js";
 import {
   HELD_ERASURE_RECHECK_BATCH,
@@ -7,9 +9,9 @@ import {
 } from "./held-erasure-recheck.service.js";
 
 const NOW = new Date("2031-03-02T00:00:00Z");
-const counts = (held: number) => ({
-  ok: true as const,
-  value: { enquiries: held === 0 ? 1 : 0, notes: 0, attachments: 0, held },
+const counts = (held: number): DataRequestOutcome<EnquiryErasureCounts> => ({
+  ok: true,
+  value: { enquiries: held === 0 ? 1 : 0, notes: 0, attachments: 0, held } as EnquiryErasureCounts,
 });
 
 function setup(due: DueHeldErasure[]) {
@@ -67,7 +69,7 @@ describe("HeldErasureRecheckService", () => {
       ok: false,
       status: 409,
       error: "erasure_not_allowed",
-    } as never);
+    });
     await service.run();
     expect(queue.needsStaff).toHaveBeenCalledWith("DR-0007", "cannot_run");
   });
