@@ -6,17 +6,28 @@ import type { Lot, PublicLotView } from "@auction/types";
 
 export function lotProductJsonLd(
   auction: Lot | PublicLotView,
-  opts: { artistName?: string; sellerName?: string } = {},
+  opts: {
+    artistName?: string;
+    sellerName?: string;
+    /**
+     * The public lot page (CO-7): its HTML is built from cached reads and carries no live bid
+     * state, so the offer quotes the opening price and says nothing about availability or the
+     * close.
+     */
+    catalogueOnly?: boolean;
+  } = {},
 ): Record<string, unknown> {
   const base = getSiteUrl();
   const url = `${base}${lotPath(auction)}`;
-  const availability =
-    auction.status === "ended"
+  const catalogueOnly = opts.catalogueOnly === true;
+  const availability = catalogueOnly
+    ? null
+    : auction.status === "ended"
       ? "https://schema.org/SoldOut"
       : auction.status === "active"
         ? "https://schema.org/InStock"
         : "https://schema.org/PreOrder";
-  const priceValidUntil = coerceToIsoString(auction.endTime);
+  const priceValidUntil = catalogueOnly ? null : coerceToIsoString(auction.endTime);
   return {
     "@context": "https://schema.org",
     "@type": "Product",
@@ -28,8 +39,8 @@ export function lotProductJsonLd(
       "@type": "Offer",
       url,
       priceCurrency: lotChargeCurrency(auction),
-      price: auction.currentPrice,
-      availability,
+      price: catalogueOnly ? auction.startingPrice : auction.currentPrice,
+      ...(availability ? { availability } : {}),
       ...(priceValidUntil ? { priceValidUntil } : {}),
       ...(opts.sellerName ? { seller: { "@type": "Organization", name: opts.sellerName } } : {}),
     },

@@ -1,3 +1,4 @@
+import { LotMoreFromRailIsland } from "@/components/lot-page/lot-page-viewer-islands";
 import { ShareButton } from "@/components/marketing/share-button";
 import type {
   AccordionBlock,
@@ -18,7 +19,6 @@ import {
   LotDetailsSection,
   LotMarketingAccordion,
 } from "@/components/sections/artwork/redesign/lot-marketing-accordion";
-import { LotMoreFromRail } from "@/components/sections/artwork/redesign/lot-more-from-rail";
 import type { SaleOverviewVM } from "@/components/sections/saleroom/view-models";
 import { ParticipationWarningCallout } from "@/components/ui/participation-warning-callout";
 import { MARKETING_PAGE_SHELL } from "@/lib/marketing/chrome";
@@ -37,9 +37,6 @@ type Props = {
   summarySeed: LotSummarySeedVM;
   marketingAccordionBlocks: AccordionBlock[];
   rail: LotRelatedRailVM;
-  isAuthenticated: boolean;
-  watchedLotIds: readonly string[];
-  currentUserId: string | null;
   shareUrl: string;
   followSlot: ReactNode;
   showPreviewRibbon?: boolean;
@@ -66,9 +63,6 @@ export function LotOnsiteMarketingLayout({
   summarySeed,
   marketingAccordionBlocks,
   rail,
-  isAuthenticated,
-  watchedLotIds,
-  currentUserId,
   shareUrl,
   followSlot,
   showPreviewRibbon = false,
@@ -194,13 +188,7 @@ export function LotOnsiteMarketingLayout({
           </div>
         </div>
 
-        <LotMoreFromRail
-          rail={rail}
-          currentUserId={currentUserId}
-          isAuthenticated={isAuthenticated}
-          watchedLotIds={watchedLotIds}
-          density="compact"
-        />
+        <LotMoreFromRailIsland rail={rail} density="compact" />
       </div>
     </section>
   );

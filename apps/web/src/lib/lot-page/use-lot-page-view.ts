@@ -8,7 +8,6 @@ import {
   type LotPageViewInput,
   buildLotPageView,
 } from "@/lib/lot-page/build-lot-page-view";
-import type { LotBiddingView } from "@/lib/lot-page/lot-bidding-view";
 import type { LotViewerView } from "@/lib/lot-page/lot-viewer";
 import { useLotPageNow } from "@/lib/lot-page/use-lot-page-now";
 import { useLotPublicHistory, useLotViewer } from "@/lib/lot-page/use-lot-reads";
@@ -21,42 +20,32 @@ type SalePick =
   | (Pick<Sale, "status" | "deliveryMode"> & Partial<Pick<Sale, "allowOnlineBidsBeforeGoLive">>)
   | null;
 
-/** The lot as the server loaded it: what the page needs to decide, nothing it can't serialise. */
+/**
+ * The lot as the server loaded it: its catalogue facts only. The page is built from cached reads
+ * (CO-7), so nothing that bidding moves is here (price, status, close, winner, result, reserve
+ * met): those come from the live read and the socket (`useLotBidHistory`).
+ */
 export type LotPageLot = Pick<
   Lot,
-  | "id"
-  | "status"
-  | "auctionType"
-  | "startingPrice"
-  | "currentPrice"
-  | "minBidIncrement"
-  | "winnerId"
-  | "marketingDetails"
+  "id" | "auctionType" | "startingPrice" | "minBidIncrement" | "marketingDetails"
 > & {
-  hasWinner?: boolean | undefined;
-  /** Ended, with the result not final yet: no buyer and no price are shown. */
-  resultPending?: boolean | undefined;
   startTime: string;
-  endTime: string;
-  /** From the public view: whether a reserve is set, and whether the bidding has met it. */
+  /** From the public view: whether a reserve is set. Whether bidding met it is live. */
   hasReserve?: boolean | undefined;
-  reserveMet?: boolean | null | undefined;
   /** The zone of the lot's sale, which its times are quoted in. */
   timeZone?: string | undefined;
 };
 
 export type LotPageViewSource = {
   lot: LotPageLot;
-  bidding: LotBiddingView;
   sale: SalePick;
   signedIn: boolean;
   initialViewer: LotViewerView | null;
-  initialHistory: PublicBidHistory | null;
 };
 
-function reserveOf(lot: LotPageLot): LotPageViewInput["reserve"] {
+function reserveOf(lot: LotPageLot, reserveMet: boolean | undefined): LotPageViewInput["reserve"] {
   if (!lot.hasReserve) return "none";
-  return lot.reserveMet === true ? "met" : "below";
+  return reserveMet === true ? "met" : "below";
 }
 
 /** The ISO time of an instant given in ms, or `null` when it isn't a real one. */
@@ -70,6 +59,12 @@ function isoOf(ms: number | null): string | null {
  * components draw it and decide nothing.
  */
 export type LotPageLive = {
+  /**
+   * False until the first live read lands. Until then `view` is built from a placeholder and must
+   * not be drawn: the parts that show bid state draw placeholders, no clock runs and bidding is
+   * shut.
+   */
+  live: boolean;
   view: LotPageView;
   history: PublicBidHistory | null;
   nowMs: number;
@@ -82,17 +77,19 @@ export type LotPageLive = {
 };
 
 export function useLotPageView(source: LotPageViewSource): LotPageLive {
-  const { lot, bidding, sale, signedIn } = source;
+  const { lot, sale, signedIn } = source;
   const online = useOnlineLotLifecycle();
   const saleroom = useSaleroomLive();
-  const { currentPrice, entries } = useLotBidHistory();
-  const status = online?.liveLotStatus ?? lot.status;
-  const winnerId = online?.liveWinnerId ?? lot.winnerId;
-  const endMs = online?.liveEndTimeMs ?? Date.parse(lot.endTime);
+  const { live, snapshot, currentPrice, entries, latestSnapshotReserveMet } = useLotBidHistory();
+  const status = online?.liveLotStatus ?? snapshot.status;
+  const winnerId = online?.liveWinnerId ?? snapshot.winnerId;
+  const endMs = online?.liveEndTimeMs ?? new Date(snapshot.endTime).getTime();
   const startMs = Date.parse(lot.startTime);
   const extendedByMs = online?.extendedByMs ?? null;
   const onBlock = saleroom?.isLotOnBlock(lot.id) ?? false;
-  const nowMs = useLotPageNow(bidding.serverNow, [startMs, endMs]);
+  const nowMs = useLotPageNow(snapshot.serverNow ?? null, [startMs, endMs]);
+  const hasWinner = snapshot.hasWinner;
+  const resultPending = snapshot.resultPending;
 
   const lifecycle = useMemo(
     () =>
@@ -104,8 +101,8 @@ export function useLotPageView(source: LotPageViewSource): LotPageLive {
           endTime: new Date(endMs),
           winnerId,
           currentPrice,
-          hasWinner: lot.hasWinner,
-          resultPending: lot.resultPending,
+          hasWinner,
+          resultPending,
         },
         sale,
         nowMs,
@@ -119,8 +116,8 @@ export function useLotPageView(source: LotPageViewSource): LotPageLive {
       ),
     [
       lot.id,
-      lot.hasWinner,
-      lot.resultPending,
+      hasWinner,
+      resultPending,
       status,
       startMs,
       endMs,
@@ -145,19 +142,20 @@ export function useLotPageView(source: LotPageViewSource): LotPageLive {
   });
   const history = useLotPublicHistory({
     lotId: lot.id,
-    enabled: lotLifecycleCopy(lifecycle.kind).biddingOpen || lifecycle.kind.startsWith("ended"),
+    enabled:
+      live && (lotLifecycleCopy(lifecycle.kind).biddingOpen || lifecycle.kind.startsWith("ended")),
     revision,
-    initial: source.initialHistory,
   });
 
-  const nextBid = lotLifecycleCopy(lifecycle.kind).biddingOpen
-    ? nextBidAmount({
-        auctionType: lot.auctionType,
-        currentPrice,
-        startingPrice: lot.startingPrice,
-        minBidIncrement: lot.minBidIncrement,
-      })
-    : null;
+  const nextBid =
+    live && lotLifecycleCopy(lifecycle.kind).biddingOpen
+      ? nextBidAmount({
+          auctionType: lot.auctionType,
+          currentPrice,
+          startingPrice: lot.startingPrice,
+          minBidIncrement: lot.minBidIncrement,
+        })
+      : null;
   const estimate = lot.marketingDetails.estimate;
 
   const view = useMemo(
@@ -172,12 +170,12 @@ export function useLotPageView(source: LotPageViewSource): LotPageLive {
         amounts: {
           starting: lot.startingPrice,
           current: currentPrice,
-          hammer: bidding.hammerPrice,
-          soldForWithPremium: bidding.soldForWithPremium,
+          hammer: snapshot.hammerPrice ?? null,
+          soldForWithPremium: snapshot.soldForWithPremium ?? null,
         },
         estimate: estimate ? { low: estimate.low, high: estimate.high } : null,
         bidCount: history?.total ?? entries.length,
-        reserve: reserveOf(lot),
+        reserve: reserveOf(lot, latestSnapshotReserveMet),
         nextBid,
         extendedByMs,
         extensions: online?.extensionCount ?? 0,
@@ -192,8 +190,9 @@ export function useLotPageView(source: LotPageViewSource): LotPageLive {
       endMs,
       lot,
       currentPrice,
-      bidding.hammerPrice,
-      bidding.soldForWithPremium,
+      snapshot.hammerPrice,
+      snapshot.soldForWithPremium,
+      latestSnapshotReserveMet,
       estimate,
       history?.total,
       entries.length,
@@ -205,5 +204,5 @@ export function useLotPageView(source: LotPageViewSource): LotPageLive {
       viewer,
     ],
   );
-  return { view, history, nowMs, currentPrice, nextBid, viewer };
+  return { live, view, history: live ? history : null, nowMs, currentPrice, nextBid, viewer };
 }

@@ -1,3 +1,5 @@
+import { webPublicCacheInvalidatorFromEnv } from "@auction/background-runtime";
+import { PublicPageCacheNotificationSender } from "@auction/bidding-runtime";
 import type { Database } from "@auction/db";
 import {
   laxAccountPageUrl,
@@ -16,6 +18,7 @@ import { RedisNotificationSender } from "../infrastructure/redis-notification.se
 import { RedisUserNotificationPublisher } from "../infrastructure/redis-user-notification.publisher.js";
 import { WebPushSender } from "../infrastructure/web-push.sender.js";
 import { WhatsappNotificationChannel } from "../infrastructure/whatsapp-notification.channel.js";
+import { createAppLogger } from "../lib/logger.js";
 import type { IPushSender } from "../services/interfaces/push.js";
 import { NotificationOutboxProcessor } from "../services/notification-outbox.processor.js";
 import { NotificationOutboxService } from "../services/notification-outbox.service.js";
@@ -56,7 +59,12 @@ export function createPlatformNotificationServices(
     notificationAccountMuteRepository,
   } = repos;
 
-  const notifier = new RedisNotificationSender(redis);
+  const publicPageLog = createAppLogger(env);
+  const notifier = new PublicPageCacheNotificationSender(
+    new RedisNotificationSender(redis),
+    webPublicCacheInvalidatorFromEnv(env),
+    (err, lotId) => publicPageLog.warn({ err, lotId }, "web_public_cache_invalidate_failed"),
+  );
   const userNotificationPublisher = new RedisUserNotificationPublisher(redis);
   const notificationService = new NotificationService(notifier, notifier);
 

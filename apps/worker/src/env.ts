@@ -120,6 +120,13 @@ export const envSchema = z
     API_PUBLIC_URL: z.string().url().default("http://127.0.0.1:3001"),
     /** Must match API `CRON_INTERNAL_SECRET` when bulk payout settlement is enabled. */
     CRON_INTERNAL_SECRET: z.preprocess(emptyToUndefined, z.string().min(24).optional()),
+    /**
+     * The web app's cache purge route (`https://…/api/revalidate`, an internal address where one
+     * exists) and its shared secret. Both set: lot and sale changes drop the cached public pages
+     * that show them. Either missing: nothing is sent and those pages expire on their own window.
+     */
+    WEB_REVALIDATE_URL: z.preprocess(emptyToUndefined, z.string().url().optional()),
+    WEB_REVALIDATE_SECRET: z.preprocess(emptyToUndefined, z.string().min(32).optional()),
     /** Web app origin for constructing admin dashboard URLs in emails. */
     WEB_ORIGIN: z.string().url().default("http://localhost:3000"),
     /** Where LAX Account lives; the "manage your alerts" link in alert emails goes there. */

@@ -8,7 +8,6 @@ import { getServerBidAuthority } from "@/lib/data/http/buyer-agent-authorisation
 import { getServerConditionReportForLot } from "@/lib/data/http/condition-report.server";
 import { getServerKycStatusSummary } from "@/lib/data/http/kyc.server";
 import {
-  getServerLotBids,
   getServerLotById,
   getServerLotDocuments,
   getServerLotReader,
@@ -23,7 +22,7 @@ import { isKycStatusUnavailableError } from "@/lib/kyc/kyc-status-unavailable-er
 import { requireActingContext } from "@/lib/legal-entity/acting-context.server";
 import { resolveOrgModuleEnabledFromRequest } from "@/lib/legal-entity/org-module-host.server";
 import { saleAllowsWebBidding } from "@/lib/sale-mode";
-import type { Bid, Lot } from "@auction/types";
+import type { Lot } from "@auction/types";
 
 const EMPTY_ACTING_CTX = {
   acting: null,
@@ -35,7 +34,6 @@ const EMPTY_ACTING_CTX = {
 export type LotPageShellData = {
   auction: NonNullable<Awaited<ReturnType<typeof getServerLotById>>>;
   session: SessionUser | null;
-  initialBids: Bid[];
   seller: PublicUser | null;
   catalogArtist: Awaited<ReturnType<typeof fetchRegistryArtistById>> | null;
   relatedRaw: Lot[];
@@ -87,7 +85,6 @@ export class LotPageDataService {
 
     const sellerLookupId = auction.sellerId ?? auction.sellerLegalEntityId ?? "";
     const [
-      initialBids,
       seller,
       catalogArtist,
       relatedRaw,
@@ -97,7 +94,6 @@ export class LotPageDataService {
       lotDocuments,
       watcherCount,
     ] = await Promise.all([
-      getServerLotBids(lotId, 30).catch(() => []),
       sellerLookupId
         ? publicReader.getById(sellerLookupId).catch(() => null)
         : Promise.resolve(null),
@@ -124,7 +120,6 @@ export class LotPageDataService {
     return {
       auction,
       session,
-      initialBids,
       seller,
       catalogArtist,
       relatedRaw,
