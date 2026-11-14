@@ -5,7 +5,7 @@ import {
   useArtistApplicationActions,
 } from "@/components/artist-applications/use-artist-application-actions.client";
 import { useStaffCatalogueImage } from "@/components/artworks/staff-catalogue-image-provider.client";
-import { filterChip, knownFacts, useWorkList } from "@/components/use-work-list.client";
+import { filterChip, useWorkList } from "@/components/use-work-list.client";
 import {
   type ArtistApplicationsListState,
   applicationTitle,
@@ -21,21 +21,18 @@ import type {
 } from "@auction/shop-contracts";
 import {
   type DataColumn,
-  DetailPanel,
   FilterSheet,
   ListPage,
   MappedStatusBadge,
   type OverflowAction,
-  OverflowMenu,
   PrimaryCell,
   StaffButton,
   StaffDate,
   StaffDialog,
-  formatStaffDateTime,
 } from "@auction/staff-ui";
 import { FileText, UserMinus, UserPlus } from "@auction/staff-ui/icons";
 import Link from "next/link";
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 
 const presentApplicationStatus = presentStatus("artistApplication");
 const noun = { one: "application", other: "applications" };
@@ -55,8 +52,9 @@ const OPEN = new Set(["submitted", "in_review", "more_info_needed"]);
 /**
  * Artists' applications to join the gallery, on the staff list template: New first by default,
  * a view per stage with counts (the saved views staff asked for: new, in review, waiting on the
- * artist), search by name, place, reference or email, a reviewer filter, and a triage panel
- * linked from the URL. Decisions are taken on the application itself, with its works in view.
+ * artist), search by name, place, reference or email, and a reviewer filter. A row opens the
+ * application, where decisions are taken with its works in view; assigning a reviewer is in the
+ * row's menu.
  */
 export function ArtistApplicationsList({
   state,
@@ -80,9 +78,11 @@ export function ArtistApplicationsList({
   });
   const actions = useArtistApplicationActions({ currentSubject });
   const resolveImage = useStaffCatalogueImage();
-  const opened = list.panel.openId
-    ? (page.items.find((item) => item.id === list.panel.openId) ?? null)
-    : null;
+  const rowHref = useCallback(
+    (row: AdminArtistApplicationListItem) =>
+      artistApplicationsList.recordHref(state, artistApplicationPath(row.id)),
+    [state],
+  );
 
   const columns = useMemo<DataColumn<AdminArtistApplicationListItem>[]>(
     () => [
@@ -93,8 +93,8 @@ export function ArtistApplicationsList({
         truncate: false,
         cell: (row) => (
           <PrimaryCell
-            href={list.panelHref(row.id)}
-            Link={list.panel.PanelLink}
+            href={rowHref(row)}
+            Link={Link}
             secondary={row.location ?? undefined}
             thumbnail={{ src: resolveImage(row.coverImageUrl), missingLabel: "No works yet" }}
           >
@@ -147,7 +147,7 @@ export function ArtistApplicationsList({
         cell: (row) => <StaffDate value={row.submittedAt} withTime />,
       },
     ],
-    [list.panelHref, list.panel.PanelLink, resolveImage],
+    [rowHref, resolveImage],
   );
 
   const colleagues = reviewers.filter((person) => person.subject !== currentSubject);
@@ -172,7 +172,7 @@ export function ArtistApplicationsList({
         id: "open",
         label: "Open application",
         icon: FileText,
-        href: artistApplicationPath(row.id),
+        href: rowHref(row),
       },
       ...(OPEN.has(row.status)
         ? mine
@@ -273,8 +273,7 @@ export function ArtistApplicationsList({
           getRowId: (row) => row.id,
           defaultDensity: "comfortable",
           ...list.sort,
-          onRowOpen: (row) => list.panel.show(row.id),
-          activeRowId: list.panel.openId,
+          rowHref,
           rowActions: {
             label: (row) => `Actions for ${applicationTitle(row)}`,
             actions: rowMenu,
@@ -283,68 +282,6 @@ export function ArtistApplicationsList({
         pageSize={list.pageSize}
         pagination={list.pagination}
       />
-
-      <DetailPanel
-        open={opened !== null}
-        onOpenChange={(open) => {
-          if (!open) list.panel.show(null);
-        }}
-        title={opened ? applicationTitle(opened) : "Application"}
-        status={
-          opened ? (
-            <MappedStatusBadge status={opened.status} present={presentApplicationStatus} />
-          ) : null
-        }
-        meta={
-          opened
-            ? [
-                { label: "Reference", value: opened.reference },
-                { label: "Reviewer", value: reviewerName(opened.assignee) },
-              ]
-            : []
-        }
-        summary={
-          opened
-            ? knownFacts([
-                { label: "Based in", value: opened.location ?? "" },
-                {
-                  label: "Works",
-                  value: `${opened.workCount} ${opened.workCount === 1 ? "work" : "works"}`,
-                },
-                ...(opened.applicant.email
-                  ? [
-                      {
-                        label: "Email",
-                        value: opened.applicant.email,
-                        copyValue: opened.applicant.email,
-                      },
-                    ]
-                  : []),
-                {
-                  label: "Sent",
-                  value: formatStaffDateTime(opened.submittedAt),
-                },
-              ])
-            : []
-        }
-        overflow={
-          opened && OPEN.has(opened.status) ? (
-            <OverflowMenu
-              label={`More actions for ${applicationTitle(opened)}`}
-              actions={rowMenu(opened).filter((action) => action.id !== "open")}
-            />
-          ) : null
-        }
-        footer={
-          opened ? (
-            <StaffButton asChild variant="primary" icon={<FileText aria-hidden />}>
-              <Link href={artistApplicationPath(opened.id)}>Open application</Link>
-            </StaffButton>
-          ) : null
-        }
-      >
-        {null}
-      </DetailPanel>
 
       {actions.dialogs}
       <StaffDialog
