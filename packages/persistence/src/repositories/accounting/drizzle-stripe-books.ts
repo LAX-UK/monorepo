@@ -235,6 +235,7 @@ export class DrizzleStripeReconciliationStore implements IStripeReconciliationSt
         issuedPence: sql<string>`coalesce(sum(${d.grossPence}) filter (where ${d.state} = 'issued'), 0)`,
         issuedCount: sql<string>`count(*) filter (where ${d.state} = 'issued')`,
         notIssuedCount: sql<string>`count(*) filter (where ${d.state} not in ('issued', 'cancelled'))`,
+        notIssuedPence: sql<string>`coalesce(sum(${d.grossPence}) filter (where ${d.state} not in ('issued', 'cancelled')), 0)`,
       })
       .from(d)
       .where(
@@ -268,6 +269,7 @@ export class DrizzleStripeReconciliationStore implements IStripeReconciliationSt
       booksPence: Number(of(kind)?.issuedPence ?? 0),
       booksCount: Number(of(kind)?.issuedCount ?? 0),
       notIssuedCount: Number(of(kind)?.notIssuedCount ?? 0),
+      notIssuedPence: Number(of(kind)?.notIssuedPence ?? 0),
     });
     return [
       {

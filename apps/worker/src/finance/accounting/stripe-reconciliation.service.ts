@@ -73,7 +73,11 @@ export interface ReconciliationReport {
   /** False when an account was not read (`accountsNotRead`): the figures miss its movements. */
   readonly complete: boolean;
   readonly accountsNotRead: readonly AccountNotRead[];
-  /** LAX totals against Books totals, by document type, for the day. */
+  /**
+   * LAX totals against Books totals, by document type, for the day. Documents still on their way
+   * (`notIssued...`) are shown, not counted as a difference: `differencePence` is LAX less Books
+   * less what is on its way.
+   */
   readonly byType: readonly (DayKindTotals & { readonly differencePence: number })[];
   /** Balance transactions of the day that wait for a person, and why. */
   readonly parked: readonly ParkedBalanceTransaction[];
@@ -183,12 +187,17 @@ export class StripeReconciliation {
   ): Promise<ReconciliationReport> {
     const at = this.deps.now();
     const totals = await this.deps.store.dayTotals(entity, day, target);
-    const byType = totals.map((t) => ({ ...t, differencePence: t.laxPence - t.booksPence }));
+    const byType = totals.map((t) => ({
+      ...t,
+      differencePence: t.laxPence - t.booksPence - t.notIssuedPence,
+    }));
     const parked = await this.deps.store.parkedOn(entity, day);
     const clearing = await this.clearing(entity, target, balances, accounts);
     const heldTransferPence = await this.deps.store.heldTransferPence(entity);
     const mismatches =
-      byType.filter((t) => t.differencePence !== 0 || t.laxCount !== t.booksCount).length +
+      byType.filter(
+        (t) => t.differencePence !== 0 || t.laxCount !== t.booksCount + t.notIssuedCount,
+      ).length +
       parked.length +
       accountsNotRead.length +
       (clearing.unexplainedPence !== null && clearing.unexplainedPence !== 0 ? 1 : 0);

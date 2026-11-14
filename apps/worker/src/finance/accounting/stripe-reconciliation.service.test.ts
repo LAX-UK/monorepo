@@ -34,6 +34,7 @@ const agreeing: DayKindTotals[] = [
     booksPence: 10_000,
     booksCount: 1,
     notIssuedCount: 0,
+    notIssuedPence: 0,
   },
   {
     kind: "expense",
@@ -42,8 +43,17 @@ const agreeing: DayKindTotals[] = [
     booksPence: 165,
     booksCount: 1,
     notIssuedCount: 0,
+    notIssuedPence: 0,
   },
-  { kind: "transfer", laxPence: 0, laxCount: 0, booksPence: 0, booksCount: 0, notIssuedCount: 0 },
+  {
+    kind: "transfer",
+    laxPence: 0,
+    laxCount: 0,
+    booksPence: 0,
+    booksCount: 0,
+    notIssuedCount: 0,
+    notIssuedPence: 0,
+  },
 ];
 
 function store(
@@ -152,6 +162,25 @@ describe("StripeReconciliation", () => {
       knownUnbookedPence: -8_000,
       unexplainedPence: 0,
     });
+    expect(raised).toEqual([]);
+  });
+
+  it("shows a document still on its way to Books by type, without counting it as a mismatch", async () => {
+    const { s } = store({
+      totals: agreeing.map((t) =>
+        t.kind === "payment"
+          ? { ...t, booksPence: 0, booksCount: 0, notIssuedPence: 10_000, notIssuedCount: 1 }
+          : t,
+      ),
+    });
+    const { service, raised } = run(s, 10_835);
+    const [report] = await service.run();
+    expect(report?.byType.find((t) => t.kind === "payment")).toMatchObject({
+      notIssuedCount: 1,
+      notIssuedPence: 10_000,
+      differencePence: 0,
+    });
+    expect(report?.mismatches).toBe(0);
     expect(raised).toEqual([]);
   });
 

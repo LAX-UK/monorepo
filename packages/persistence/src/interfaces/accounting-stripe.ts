@@ -90,6 +90,7 @@ export interface DayKindTotals {
   readonly booksCount: number;
   /** Documents registered but not issued yet (queued, sending, waiting for a person). */
   readonly notIssuedCount: number;
+  readonly notIssuedPence: number;
 }
 
 /** A balance transaction parked for a person, ids only. */

@@ -482,7 +482,8 @@ stored invoice copies, never the repository). Ids and amounts only, no names or 
 
 - **by type** (payments, Stripe fees, payouts) for the day: what LAX says (fees and payouts from the
   transaction rows, payments from the documents LAX registered) against what Books holds (issued
-  documents for the target), with counts and those still on their way;
+  documents for the target), with counts. Documents still on their way (`notIssuedCount`,
+  `notIssuedPence`) are shown and are not a difference;
 - **parked**: the day's parked transactions;
 - **accounts not read** (`accountsNotRead`, and `complete: false`): a Stripe account whose figures
   the report cannot rely on. `no_opening`: its row has no opening, so it is never read.
