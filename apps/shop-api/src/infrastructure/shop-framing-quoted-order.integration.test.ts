@@ -37,6 +37,7 @@ import { completeShopCheckoutSession } from "./drizzle-payment-event.processor.j
 import { createDrizzleShopNotificationPublisher } from "./drizzle-shop-notification.publisher.js";
 import { createDrizzleShopUnitOfWork } from "./drizzle-shop-transaction-effects.js";
 import { createDrizzleEditionFramingUnitOfWork } from "./framing/drizzle-edition-framing.unit-of-work.js";
+import { storefrontReturnUrlCheck } from "./shop-basket.persistence.js";
 import { buildStripeLineItems } from "./stripe-shop-checkout.gateway.js";
 
 const PRINT_PENCE = 18_000;
@@ -167,6 +168,7 @@ describe.skipIf(!hasShopIntegrationDb)("a framed order quoted for delivery outsi
       clock: { now: () => new Date() },
     });
     const acceptance = createDeliveryQuoteAcceptanceService({
+      assertReturnUrls: storefrontReturnUrlCheck("http://localhost:3020"),
       store: createDrizzleDeliveryQuoteAcceptanceStore(db, { vatPolicy: { standardRateBp: 2000 } }),
       checkout: repo,
       exportPaymentEnabled: true,

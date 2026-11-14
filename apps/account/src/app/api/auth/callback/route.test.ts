@@ -71,6 +71,30 @@ describe("GET /api/auth/callback pending-login cookie", () => {
     expect(completeAccountLogin).not.toHaveBeenCalled();
   });
 
+  const clearedWithSameAttributes = () =>
+    expect(cookieSet).toHaveBeenCalledWith(NAME, "", {
+      httpOnly: true,
+      secure: true,
+      sameSite: "lax",
+      path: "/",
+      maxAge: 0,
+    });
+
+  it("clears the pending cookie with the attributes it was set with after a sign-in", async () => {
+    cookieValues.set(NAME, sealPendingLogin(pending, KEY));
+    await callback();
+    clearedWithSameAttributes();
+    expect(cookieDelete).not.toHaveBeenCalledWith(NAME);
+  });
+
+  it("clears the pending cookie with the attributes it was set with after a failed exchange", async () => {
+    cookieValues.set(NAME, sealPendingLogin(pending, KEY));
+    completeAccountLogin.mockRejectedValueOnce(new Error("exchange_failed"));
+    const response = await callback();
+    expect(response.headers.get("location")).toContain("error=auth_failed");
+    clearedWithSameAttributes();
+  });
+
   it("ignores a value under the old unprefixed name", async () => {
     cookieValues.set("lax-account-login-pending", pending);
     expect(restarted(await callback())).toBe(true);

@@ -108,6 +108,12 @@ export function createDrizzleCheckoutRepository(
     );
   }
 
+  /** Both return URLs stay on the storefront; checked first, before anything is read or held. */
+  function assertCheckoutReturnUrls(input: { successUrl: string; cancelUrl: string }): void {
+    assertStorefrontRedirectUrl(input.successUrl, options.storefrontUrl);
+    assertStorefrontRedirectUrl(input.cancelUrl, options.storefrontUrl);
+  }
+
   /** The payment session for a pending order: the open one, or a new one when it needs one. */
   async function openPaymentSession(
     input: { subject: string; successUrl: string; cancelUrl: string },
@@ -152,6 +158,7 @@ export function createDrizzleCheckoutRepository(
 
   return {
     async createCheckoutOrder(input) {
+      assertCheckoutReturnUrls(input);
       let deliveryAddress = input.deliveryAddress;
       // Outside the UK is payable here only at a region's fixed rate, which the caller has
       // already assessed; a quoted destination goes through the delivery quote request instead.
@@ -207,8 +214,6 @@ export function createDrizzleCheckoutRepository(
           postcode: normalizeUkPostcode(address.postcode),
         };
       }
-      assertStorefrontRedirectUrl(input.successUrl, options.storefrontUrl);
-      assertStorefrontRedirectUrl(input.cancelUrl, options.storefrontUrl);
 
       const details = checkoutDeliveryDetails({
         fulfilment: input.fulfilment,
@@ -364,6 +369,7 @@ export function createDrizzleCheckoutRepository(
       );
     },
     async resumeCheckoutOrder(input) {
+      assertCheckoutReturnUrls(input);
       const [order] = await db
         .select()
         .from(shopOrder)
@@ -430,8 +436,6 @@ export function createDrizzleCheckoutRepository(
           );
         }
       }
-      assertStorefrontRedirectUrl(input.successUrl, options.storefrontUrl);
-      assertStorefrontRedirectUrl(input.cancelUrl, options.storefrontUrl);
 
       const [stripeLines, customerEmail] = await Promise.all([
         loadCheckoutStripePresentation(db, order.id),
