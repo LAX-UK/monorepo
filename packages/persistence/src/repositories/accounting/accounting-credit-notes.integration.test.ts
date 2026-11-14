@@ -11,6 +11,7 @@ import {
 import { closeDb, createDb } from "@auction/db";
 import { sql } from "drizzle-orm";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { holdAccountingTablesLock } from "../../testing/accounting-tables-lock.js";
 import { createAccountingRepositories } from "./create-accounting-repositories.js";
 
 const OWNER_URL = process.env.DATABASE_URL;
@@ -79,6 +80,8 @@ function credit(
     }),
   );
 }
+
+holdAccountingTablesLock({ beforeAll, afterAll });
 
 describe.skipIf(!HAS_DB)("accounting credit notes (integration)", { timeout: 60_000 }, () => {
   // biome-ignore lint/style/noNonNullAssertion: gated by HAS_DB
