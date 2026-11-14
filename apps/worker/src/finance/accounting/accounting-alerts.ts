@@ -19,6 +19,11 @@ export const ACCOUNTING_ALERTS = {
    * waited more than six hours for their invoice to reach Books.
    */
   bidInvoiceDelayed: { message: "accounting_bid_invoice_delayed", level: "warning" },
+  /**
+   * Shop invoices issued live are waiting for their "Your invoice" email and none can be sent:
+   * SHOP_STOREFRONT_URL is unset, not https, or local. Raised every tick while any waits.
+   */
+  shopInvoiceEmailRefused: { message: "accounting_shop_invoice_email_refused", level: "error" },
   /** Documents are queued for Books but the sender has not claimed any for too long. */
   senderMissed: { message: "accounting_sender_missed", level: "error" },
   /** The day's Books calls passed 80% of the budget (`BUDGET_WARNING_EVENT` in the Books client). */

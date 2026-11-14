@@ -403,7 +403,10 @@ invoice is not emailed (`not_order_invoice`).
 Before Shop goes live, set the worker's `SHOP_STOREFRONT_URL` to the Shop's public https address
 (there is no default) and give the Shop API read access to the document storage's
 `accounting/london_art_exchange/` keys. While the address is unset or local, no Shop invoice email
-is sent: each stays due, and every run logs `accounting_shop_invoice_email_refused`.
+is sent: the Shop's copies are left out of each run's list, so they never hold Bid invoice emails
+back, and each stays due. While any waits, every run raises `accounting_shop_invoice_email_refused`
+(an error alert sent to Sentry, routed to finance on-call like the other accounting alerts). Set
+the address and the waiting emails go on the next run.
 
 ## Related
 

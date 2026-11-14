@@ -44,6 +44,8 @@ export function createAccountingRuntime(deps: {
   const adapters = createBooksAccountingAdapters(deps.env);
   if (!adapters) return undefined;
   const repos = createAccountingRepositories(deps.db, { now: () => new Date() });
+  // One sink for every accounting alert: logged, and sent to Sentry where the alert rules page.
+  const alerts = createAccountingAlertSink(deps.log);
   deps.log.info({ modes: Object.keys(adapters.byMode) }, "accounting_runtime_built");
   const shopFacts = new DrizzleShopAccountingFactsReader(deps.db);
   try {
@@ -87,6 +89,7 @@ export function createAccountingRuntime(deps: {
       shopStorefrontUrl: deps.env.SHOP_STOREFRONT_URL,
       now: () => new Date(),
       log: deps.log,
+      alerts,
     }),
     remainder: new AccountingRemainder({
       remainders: repos.remainders,
@@ -101,7 +104,7 @@ export function createAccountingRuntime(deps: {
       attention: repos.attention,
       settings: repos.settingReader,
       senderModes: Object.keys(adapters.byMode) as TargetMode[],
-      alerts: createAccountingAlertSink(deps.log),
+      alerts,
       now: () => new Date(),
     }),
     senderCheckIn: throttledCronMonitor(

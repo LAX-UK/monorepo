@@ -246,7 +246,11 @@ describe.skipIf(!HAS_DB)("Shop invoices to Books (integration)", { timeout: 60_0
     for (let i = 0; i < 6; i += 1) await s.tick();
   }
 
-  function copier(mode: BooksMode, pdfs: InMemoryAccounting["pdfs"]) {
+  function copier(
+    mode: BooksMode,
+    pdfs: InMemoryAccounting["pdfs"],
+    options: { readonly url?: string | undefined; readonly batch?: number } = {},
+  ) {
     const enqueue = vi.fn(async () => ({ outboxId: randomUUID() }));
     const putObject = vi.fn(async () => ({}));
     const service = new AccountingInvoiceCopy({
@@ -256,12 +260,12 @@ describe.skipIf(!HAS_DB)("Shop invoices to Books (integration)", { timeout: 60_0
       storage: { putObject },
       emailFacts: repos.invoiceEmailFacts,
       shopEmailFacts: shopFacts,
-      shopStorefrontUrl: "https://shop.example.test",
+      shopStorefrontUrl: "url" in options ? options.url : "https://shop.example.test",
       email: { enqueue },
       webBaseUrl: "https://lax.bid",
       now: () => new Date(),
       log,
-      batch: 1_000,
+      batch: options.batch ?? 1_000,
     });
     return { service, enqueue, putObject };
   }
@@ -540,6 +544,79 @@ describe.skipIf(!HAS_DB)("Shop invoices to Books (integration)", { timeout: 60_0
     const due = await repos.copies.listEmailDue(1_000);
     const invoice = (await documentsFor(seeded)).find((d) => d.kind === "invoice");
     expect(due.due.map((d) => d.documentId)).not.toContain(invoice?.id);
+  });
+
+  it("RC-B: with SHOP_STOREFRONT_URL unset, waiting Shop invoice emails never hold a Bid invoice email back", async () => {
+    await aimShop("live");
+    const books = new InMemoryAccounting({
+      orgs: { london_art_exchange: { vatRegistered: false } },
+    });
+    const shopInvoices: string[] = [];
+    for (let i = 0; i < 3; i += 1) {
+      const seeded = await seedPaidOrder(owner);
+      await projection().project(seeded.event);
+      await drain(sender("live", books));
+      const invoice = (await documentsFor(seeded)).find((d) => d.kind === "invoice");
+      shopInvoices.push(invoice?.id as string);
+    }
+    const refused = copier("live", books.pdfs, { url: undefined, batch: 3 });
+    // Three live Shop copies stored first, each left due (no address to link to).
+    await refused.service.tick();
+    // Then one Bid invoice copy, stored after them (fixture row: no Bid invoice behind it).
+    const bidId = randomUUID();
+    const [bid] = await owner
+      .insert(accountingDocument)
+      .values({
+        product: "bid",
+        legalEntity: "london_auction_xchange",
+        kind: "invoice",
+        laxReference: `LAX-BID-INV-${bidId}`,
+        sourceEventRef: `rc-b-${bidId}`,
+        payload: {},
+        netPence: 100,
+        vatPence: 0,
+        grossPence: 100,
+        state: "issued",
+        provider: "books",
+        targetProvider: "books",
+        targetMode: "live",
+        providerId: `rc-b-${bidId}`,
+        providerNumber: `RC-B-${bidId.slice(0, 8)}`,
+      })
+      .returning({ id: accountingDocument.id });
+    await owner.insert(accountingDocumentCopy).values({
+      documentId: bid?.id as string,
+      storageKey: `accounting/london_auction_xchange/${bid?.id}.pdf`,
+      byteSize: 1,
+      sha256: "0".repeat(64),
+      rehearsal: false,
+      storedAt: new Date(Date.now() + 60_000),
+    });
+    for (let i = 0; i < 5; i += 1) await refused.service.tick();
+
+    const copies = await owner
+      .select()
+      .from(accountingDocumentCopy)
+      .where(
+        or(
+          ...[...shopInvoices, bid?.id as string].map((id) =>
+            eq(accountingDocumentCopy.documentId, id),
+          ),
+        ),
+      );
+    const bidCopy = copies.find((c) => c.documentId === bid?.id);
+    // The Bid copy was reached (here skipped: no Bid invoice behind the fixture row).
+    expect(bidCopy?.emailSkippedAt ?? bidCopy?.emailQueuedAt).not.toBeNull();
+    // Every Shop copy is still due: never settled, never emailed.
+    for (const id of shopInvoices) {
+      const shopCopy = copies.find((c) => c.documentId === id);
+      expect(shopCopy).toMatchObject({ emailQueuedAt: null, emailSkippedAt: null });
+    }
+    expect(refused.enqueue).not.toHaveBeenCalled();
+    expect(log.error).toHaveBeenCalledWith(
+      expect.objectContaining({ product: "shop" }),
+      "accounting_shop_invoice_email_refused",
+    );
   });
 
   it("never sends a Shop document to the Bid organisation (entity binding)", async () => {

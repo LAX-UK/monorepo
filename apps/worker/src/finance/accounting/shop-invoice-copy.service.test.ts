@@ -103,7 +103,11 @@ class Copies implements IAccountingDocumentCopies {
     this.copies.set(copy.documentId, copy);
     return true;
   }
-  async listEmailDue(limit: number): Promise<InvoiceEmailDueList> {
+  async listEmailDue(
+    limit: number,
+    products: readonly string[] = ["bid", "shop"],
+  ): Promise<InvoiceEmailDueList> {
+    if (!products.includes("shop")) return { due: [], unreadable: [] };
     const due = this.documents
       .filter((d) => {
         const c = this.copies.get(d.id);
@@ -315,10 +319,43 @@ describe("Shop invoice email: what it says, and when it is refused", () => {
       // Not settled: it goes once the address is set.
       expect(copies.copies.get("doc-1")?.skipped).toBeUndefined();
       expect(log.error).toHaveBeenCalledWith(
-        { reason: expect.stringMatching(/^SHOP_STOREFRONT_URL /) },
+        { reason: expect.stringMatching(/^SHOP_STOREFRONT_URL /), product: "shop" },
         "accounting_shop_invoice_email_refused",
       );
     }
+  });
+});
+
+describe("Shop invoice email refused (no storefront address)", () => {
+  it("pages through the alert sink while a Shop invoice waits, and lists only Bid for the tick", async () => {
+    const { service, copies } = setUp(
+      "live",
+      [issued("live", "doc-1")],
+      () => facts(),
+      undefined,
+      false,
+      {
+        url: undefined,
+      },
+    );
+    const listed = vi.spyOn(copies, "listEmailDue");
+    const raise = vi.fn();
+    (service as unknown as { deps: { alerts: unknown } }).deps.alerts = { raise };
+    await service.tick();
+    expect(listed.mock.calls[0]).toEqual([10, ["bid"]]);
+    expect(raise).toHaveBeenCalledWith(
+      { message: "accounting_shop_invoice_email_refused", level: "error" },
+      { reason: expect.stringMatching(/^SHOP_STOREFRONT_URL /), product: "shop" },
+    );
+  });
+
+  it("raises nothing when no Shop invoice is waiting", async () => {
+    const { service, log } = setUp("live", [], () => facts(), undefined, false, { url: undefined });
+    const raise = vi.fn();
+    (service as unknown as { deps: { alerts: unknown } }).deps.alerts = { raise };
+    await service.tick();
+    expect(raise).not.toHaveBeenCalled();
+    expect(log.error).not.toHaveBeenCalled();
   });
 });
 

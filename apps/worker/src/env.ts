@@ -211,7 +211,8 @@ export const envSchema = z
     /**
      * The Shop storefront's public https address, for the link in a Shop invoice email (the same
      * value as the Shop API's SHOP_STOREFRONT_URL). No default: while it is unset or local, Shop
-     * invoices issued live are not emailed (the worker logs `accounting_shop_invoice_email_refused`).
+     * invoices issued live are not emailed (they wait; the worker raises the
+     * `accounting_shop_invoice_email_refused` alert). Bid invoice emails are never held back by it.
      */
     SHOP_STOREFRONT_URL: z.preprocess(emptyToUndefined, z.string().url().optional()),
     LAX_ADMIN_PUBLIC_URL: z.preprocess(emptyToUndefined, z.string().url().optional()),

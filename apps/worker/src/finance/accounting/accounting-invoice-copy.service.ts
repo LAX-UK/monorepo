@@ -12,9 +12,11 @@ import type {
   IBidInvoiceEmailFactsReader,
   IShopInvoiceEmailFactsReader,
   InvoiceEmailDue,
+  InvoiceEmailProduct,
   InvoiceEmailSkipReason,
   StoredAccountingDocument,
 } from "@auction/persistence/interfaces";
+import { ACCOUNTING_ALERTS, type AccountingAlertSink } from "./accounting-alerts.js";
 import { composeBidInvoiceEmail } from "./bid-invoice-email.js";
 import { composeShopInvoiceEmail, shopStorefrontBase } from "./shop-invoice-email.js";
 
@@ -56,6 +58,11 @@ export interface AccountingInvoiceCopyDeps {
   readonly shopStorefrontUrl: string | undefined;
   readonly now: () => Date;
   readonly log: AccountingInvoiceCopyLog;
+  /**
+   * Where `accounting_shop_invoice_email_refused` is raised (Sentry, which pages): Shop invoices
+   * issued live are waiting and no buyer can be emailed. Without it the refusal is only logged.
+   */
+  readonly alerts?: AccountingAlertSink;
   readonly batch?: number;
 }
 
@@ -166,13 +173,15 @@ export class AccountingInvoiceCopy {
   }
 
   private async sendEmails(): Promise<number> {
-    const { due, unreadable } = await this.deps.copies.listEmailDue(this.batch);
+    // The Shop's emails are built only with a storefront address a buyer can open. Without one
+    // the Shop is left out of this tick's list: its copies stay due (never settled), and they can
+    // never fill the batch ahead of Bid's.
+    const shopBase = this.shopBase();
+    const products: InvoiceEmailProduct[] = shopBase === null ? ["bid"] : ["bid", "shop"];
+    const { due, unreadable } = await this.deps.copies.listEmailDue(this.batch, products);
     for (const documentId of unreadable) {
       await this.skip(documentId, "unreadable_document");
     }
-    // The Shop's emails are built only with a storefront address a buyer can open: otherwise
-    // they are refused (left due, never settled) and the reason is logged as an error.
-    const shopBase = due.some((copy) => copy.product === "shop") ? this.shopBase() : null;
     let emailed = 0;
     for (const copy of due) {
       try {
@@ -189,7 +198,23 @@ export class AccountingInvoiceCopy {
         );
       }
     }
+    if (shopBase === null) await this.refuseShopEmails();
     return emailed;
+  }
+
+  /**
+   * No storefront address: if Shop invoices are waiting for their email, say so as an alert
+   * (`accounting_shop_invoice_email_refused`, an error that pages), every tick until it is fixed.
+   */
+  private async refuseShopEmails(): Promise<void> {
+    const waiting = await this.deps.copies.listEmailDue(1, ["shop"]);
+    if (waiting.due.length === 0 && waiting.unreadable.length === 0) return;
+    const details = { reason: this.shopBaseRefusal() ?? "unknown", product: "shop" };
+    if (this.deps.alerts) {
+      this.deps.alerts.raise(ACCOUNTING_ALERTS.shopInvoiceEmailRefused, details);
+    } else {
+      this.deps.log.error(details, ACCOUNTING_ALERTS.shopInvoiceEmailRefused.message);
+    }
   }
 
   /** Settles a copy's email as never to be sent, so it leaves the due list; says why. */
@@ -205,16 +230,22 @@ export class AccountingInvoiceCopy {
     }
   }
 
-  /** The storefront address for this tick's Shop emails, or null (refused, with the reason logged). */
+  /** The storefront address for this tick's Shop emails, or null when it is unusable. */
   private shopBase(): string | null {
     try {
       return shopStorefrontBase(this.deps.shopStorefrontUrl);
-    } catch (error) {
-      this.deps.log.error(
-        { reason: error instanceof Error ? error.message : "unknown" },
-        "accounting_shop_invoice_email_refused",
-      );
+    } catch {
       return null;
+    }
+  }
+
+  /** Why the storefront address is unusable, or null when it is usable. */
+  private shopBaseRefusal(): string | null {
+    try {
+      shopStorefrontBase(this.deps.shopStorefrontUrl);
+      return null;
+    } catch (error) {
+      return error instanceof Error ? error.message : "unknown";
     }
   }
 

@@ -420,11 +420,14 @@ export interface UncopiedDocuments {
   readonly unreadable: readonly string[];
 }
 
+/** The products whose invoices are emailed with LAX's stored copy. */
+export type InvoiceEmailProduct = "bid" | "shop";
+
 /** An issued Bid or Shop invoice whose stored copy is ready to email (never a rehearsal). */
 export interface InvoiceEmailDue {
   readonly documentId: string;
   /** Which product's invoice: each has its own facts, email and recipient rule. */
-  readonly product: "bid" | "shop";
+  readonly product: InvoiceEmailProduct;
   /**
    * What the document was made from (its LAX reference's source id): the Bid invoice, or the Shop
    * order.
@@ -470,9 +473,13 @@ export interface IAccountingDocumentCopies {
   record(copy: AccountingDocumentCopy): Promise<boolean>;
   /**
    * Copies of Bid and Shop invoices Books issued live whose email is not settled yet, oldest first; never
-   * a rehearsal, never a test organisation's invoice.
+   * a rehearsal, never a test organisation's invoice. Only `products`' invoices are listed (all of
+   * them when omitted), so a product the caller cannot email now never fills another's batch.
    */
-  listEmailDue(limit: number): Promise<InvoiceEmailDueList>;
+  listEmailDue(
+    limit: number,
+    products?: readonly InvoiceEmailProduct[],
+  ): Promise<InvoiceEmailDueList>;
   /** Notes the email as queued; false when it was already settled (the note is made once). */
   markEmailQueued(documentId: string, outboxId: string, at: Date): Promise<boolean>;
   /**

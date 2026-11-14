@@ -8,6 +8,7 @@ import type {
   IAccountingDocumentCopies,
   InvoiceEmailDue,
   InvoiceEmailDueList,
+  InvoiceEmailProduct,
   InvoiceEmailSkipReason,
   StoredAccountingDocument,
   UncopiedDocuments,
@@ -19,6 +20,7 @@ const c = accountingDocumentCopy;
 
 /** Bid and Shop invoices get a stored copy and an email; lax.art's and other kinds do not yet. */
 const COPIED_PRODUCTS = ["bid", "shop"] as const;
+const INVOICE_EMAIL_PRODUCTS: readonly InvoiceEmailProduct[] = COPIED_PRODUCTS;
 const INVOICE = and(
   inArray(d.product, [...COPIED_PRODUCTS]),
   eq(d.kind, "invoice"),
@@ -75,7 +77,11 @@ export class DrizzleAccountingDocumentCopies implements IAccountingDocumentCopie
     return inserted.length > 0;
   }
 
-  async listEmailDue(limit: number): Promise<InvoiceEmailDueList> {
+  async listEmailDue(
+    limit: number,
+    products: readonly InvoiceEmailProduct[] = INVOICE_EMAIL_PRODUCTS,
+  ): Promise<InvoiceEmailDueList> {
+    if (products.length === 0) return { due: [], unreadable: [] };
     const rows = await this.db
       .select({
         documentId: c.documentId,
@@ -90,6 +96,9 @@ export class DrizzleAccountingDocumentCopies implements IAccountingDocumentCopie
       .where(
         and(
           INVOICE,
+          // Only the products the caller can email now: a product it cannot (the Shop with no
+          // storefront address) never holds a place at the head of another product's list.
+          inArray(d.product, [...products]),
           eq(d.state, "issued"),
           // A rehearsal is never emailed, and neither is a test organisation's invoice: only an
           // invoice Books issued live reaches a buyer.
