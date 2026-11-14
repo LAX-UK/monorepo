@@ -238,3 +238,41 @@ The owner's hard rules hold:
 F1 decides the verdict. It is the #1359 F2 defect on a flow where every order hits it, and here the payment fails too. F3 must be settled before either PR merges.
 
 ### Verdict: FIX FIRST
+
+## Fixes after review
+
+Fixed on `bk10-shop-invoices`. The branch is built on #1359, which is now merged to main, and main is merged in. Tests ran on a throwaway Postgres 16.15 (port 55432) after `db:migrate` and `db:roles`, with `--maxWorkers=2` in small batches; the integration suites ran as `worker_app`, `api_app` and `shop_app`.
+
+**Mutation testing.** Each guard was reverted, the listed tests were run, and the file was restored. Packages were rebuilt where the worker reads the build. `git status` was clean after each run.
+
+| # | Fix | Commit | Test evidence | Mutation result |
+|---|---|---|---|---|
+| F1 | One claim for Bid and Shop: #1359's AWAITED SQL. An invoice waits for its contact; a payment waits for its own contact (new, in the domain `documentsAwaited` and the SQL) and every invoice it pays. R1 and R2 are adopted strict (all three issued, attempts 1, every run). R3 is adopted. | `4cad5205`, `3f5c493d`, `39d6f8f8` | `shop-invoice-books.integration`: R1 (6 senders × 4 rounds × 5 runs), R2 (shared `created_at`, 5 runs), R3 (8 concurrent payments, distinct and gap-free). Persistence: a payment is not claimed before its own contact. Bid suites unchanged (34 passed). | AWAITED removed from the claim: R1 and R2 fail. Payment's contact removed from the SQL: the persistence case fails. **Killed.** |
+| F2 | #1359's Release, extended to `vat_on_outside_uk_delivery`. It rebuilds the parked invoice from the order's stored delivery (`rebuildShopOutsideUkDelivery`, the same builder as the projection) with `SHOP_OUTSIDE_UK_DELIVERY_BOOKING`, which is **not set**, so Release is refused. It writes a history row, an audit entry and a trigger clause (0383), and is permission-gated (#1359's route). A remainder step applies the payment's unapplied rest once the invoice is issued. It reads the payment first (`already_applied`), runs under a row lock, and records `apply_remainder`. Runbook post-answer steps are written. | `f8ccddf7`, `4cad5205`, `82db780a`, `3f5c493d`, `39d6f8f8`, `c4aa4cc9`, `b7871d64` | End-to-end recovery test: parked → refused → booking given (test) → released, rebuilt → issued → remainder applied once, `apply_remainder` history, a repeat `already_applied`. Four workers on their own pools apply it once. Domain, Release service and contract cases. | Shop reason dropped from the redraft set: fails. Rebuild that does not park without a booking: fails. `already_applied` check removed: contract fails. Row lock removed: 3/3 fail. `planRemainder` bound removed: fails. **Killed.** |
+| F3 | Merged #1359 first. 0383 is idx 375, stamped `1811246400000` after 0382's `1811160000000`. It no longer restates 0382 (as written it overwrote 0382's release function). "Merge after #1359" is in the PR body. | `27254cec`, `f8ccddf7`, `f0f531a4` | `db:migrate` on a fresh database. Journal and main-upgrade tests (23 passed). | n/a |
+| F4 | The 0383 rollback moves parked outside-UK deliveries to `cancelled`, with a `cancel` history row (`{"rollback":"0383"}`) each, before restoring 0382's rule. The header says so. | `f8ccddf7` | Rollback → forward twice on a copy holding parked Shop and Bid rows: Shop rows cancelled with history, Bid rows untouched, 0382's function restored, forward re-applies. | Rollback without the cancel step: api_app could queue the parked draft (`UPDATE 1`). With it: none is left, and api_app is refused. **Killed** (by hand on a database copy). |
+| F5 | An invoice that carries LAX's number must read back under it, on the send and on lookup, or it is `differs` (`zoho_books_number_differs`). | `82db780a` | Contract case "renumbered": the fake and the simulated Books renumber; held on the send, on lookup and on resend. | Number check returns null: the contract fails. **Killed.** |
+| F6 | A refund does not cancel the invoice. A refunded order keeps the issued card and both downloads (Books copy, and LAX's own under Help), with "A refund was made on [day]." Its email still goes. The email total is the attached invoice's gross. `SHOP_STOREFRONT_URL` has no default: unset, not https or local means no Shop email (left due, error logged, start-up warns). | `3f5c493d`, `39d6f8f8`, `c3809081` | Card service, view-model and component tests. Copy-service tests (outside-UK total £570; unset/local/http URLs). Integration: a refunded order is emailed. Shots in `shots/round2/`. | Refund treated as cancel (card): 3 fail. Refund treated as cancel (email facts): fails. Local check removed: fails. Unset default restored: 2 fail. Order total in email: fails. **Killed.** |
+| F7 | Recipient guard tests: an erased guest, a disabled account, a deletion-requested account and a merged account are each `no_recipient` with nothing enqueued. Merged is skipped, because nothing in LAX follows a merge to the surviving account (the Shop identity projection only marks the retired profile). A `shop_app` ownership integration test goes through the real order repository. The framing fixture is one option with a price per band; the per-run `books-…` options had no prices and broke `framing.integration.test.ts`. | `39d6f8f8`, `c3809081` | `shop-invoice-books.integration`: 4 guard cases plus guest. `order-invoice-ownership.integration`: another shopper gets the same 404 on the card and the download, with no Books or storage read. `framing.integration` 10 passed. | M7 (`getOrder` owner filter): fails. M12 (merged), M13 (erased) and M14 (disabled) each fail. A released delivery invoice emailed as the order's: fails. **Killed** (all previously surviving). |
+| F8 | Fixture quirk fixed: lines carry shop-api's `editionSummary` ("No. 7 of 24…" while held, "Limited edition of 24…" once refunded). Shot: outside-UK order, refunded order, email 1440 dark, guest email, each light/dark/375. | (screenshots) `924ba3c3` on `review-notes-pr1366` | `shots/round2/index.md`. No horizontal scroll in any shot. | n/a |
+
+Batch totals after the fixes:
+
+| Area | Result |
+|---|---|
+| accounting-domain | 287 passed |
+| accounting-zoho-books | 308 passed |
+| finance-runtime | 231 passed |
+| email / types / shop-contracts | 239 / 328 / 106 passed |
+| persistence accounting | 69 passed |
+| db roles and journal / main-upgrade | 137 / 23 passed |
+| worker accounting, projectors, container | 785 passed |
+| shop-api | 281 passed |
+| shop | 68 passed |
+| api accounting / web finance | 30 / 188 passed |
+
+After merging main, these were re-run and passed: domain 287, worker accounting 142, db 85.
+
+**Open for the owner.**
+- The accountant's answer becomes `SHOP_OUTSIDE_UK_DELIVERY_BOOKING`.
+- Books' "apply credits" request shape should be confirmed in the test organisation before the Shop goes live.
