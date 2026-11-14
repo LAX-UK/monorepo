@@ -58,6 +58,16 @@ export const shopRefundCompletedPayloadSchemaV1 = z.object({
   status: z.enum(["succeeded", "failed"]),
 });
 
+/**
+ * Stripe reported a Shop refund failed after it had succeeded (the money came back to the Stripe
+ * balance): written with `shop_refund.reversed_at` in one transaction. Ids only.
+ */
+export const shopRefundReversedPayloadSchemaV1 = z.object({
+  schemaVersion: z.literal(1),
+  refundId: z.string().uuid(),
+  orderId: z.string().uuid(),
+});
+
 export const shopCancellationRequestedPayloadSchemaV1 = z.object({
   schemaVersion: z.literal(1),
   returnId: z.string().uuid(),

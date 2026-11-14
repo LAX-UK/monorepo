@@ -97,7 +97,7 @@ function CookieBanner() {
             className="md:min-w-32 max-md:px-2"
             onClick={openPreferences}
           >
-            Settings
+            Cookie settings
           </Button>
         </div>
       </div>

@@ -82,7 +82,7 @@ describe("buildAccountNav", () => {
 });
 
 describe("buildProductBar", () => {
-  it("lists lax.art, lax.shop and lax.bid, then Account as the current member", () => {
+  it("lists lax.art, LAX Shop and lax.bid, then Account as the current member", () => {
     const bar = buildProductBar({
       bidPublicUrl: "https://lax.bid",
       laxArtPublicUrl: "https://lax.art",
@@ -90,7 +90,7 @@ describe("buildProductBar", () => {
     });
     expect(bar.map((item) => item.label)).toEqual([
       "lax.art",
-      "lax.shop",
+      "LAX Shop",
       "lax.bid",
       "LAX Account",
     ]);

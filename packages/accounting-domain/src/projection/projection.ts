@@ -91,7 +91,12 @@ export type ProjectionCode =
    * A credit note this event cancels or holds is being sent to the books, or its outcome is not
    * known yet: decided once it settles (the event is tried again).
    */
-  | "credit_in_flight";
+  | "credit_in_flight"
+  /**
+   * A Shop refund whose credit cannot be placed on the invoice's lines with certainty (a part of
+   * an order with several lines, naming none): it waits for staff, never guessed.
+   */
+  | "refund_unattributed";
 
 /** A pure projection policy: one per flow, facts in, documents out. No I/O, no clock. */
 export type ProjectionPolicy<F> = (facts: F) => Result<Projection, ProjectionCode>;

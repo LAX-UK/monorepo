@@ -42,7 +42,7 @@ function openPreferencesFromBanner() {
       <ConsentPreferencesDialog />
     </>,
   );
-  fireEvent.click(screen.getByRole("button", { name: /^settings$/i }));
+  fireEvent.click(screen.getByRole("button", { name: /^cookie settings$/i }));
 }
 
 describe("ConsentPreferencesDialog", () => {
