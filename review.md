@@ -279,4 +279,4 @@ After merging main, these were re-run and passed: domain 287, worker accounting 
 
 ## Recheck
 
-in progress
+in progress. Branch head `f0f531a4`. Build ok; fresh Postgres 16.15, 375 migrations, roles applied. PR's `shop-invoice-books.integration` 21/21; the review's own R1/R2/R3 (strict) 3/3 runs green. Mutation tests and concurrency probes next.
