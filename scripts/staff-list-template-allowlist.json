@@ -94,10 +94,6 @@
       "reason": "Queue panel (pull request 4, Bid admin queues)"
     },
     {
-      "page": "bid-admin:(finance)/payouts/page.tsx",
-      "reason": "Queue panel (pull request 7, after #1349)"
-    },
-    {
       "page": "bid-admin:(platform)/compliance/aml/page.tsx",
       "reason": "Queue panel (pull request 4, Bid admin queues)"
     },
@@ -124,10 +120,6 @@
     {
       "page": "bid-admin:(platform)/invitations/page.tsx",
       "reason": "Queue panel (pull request 4, Bid admin queues)"
-    },
-    {
-      "page": "bid-admin:(platform)/legal-entities/page.tsx",
-      "reason": "Rows open the page (pull request 7, after #1349)"
     },
     {
       "page": "bid-admin:(platform)/lot-fulfilment/page.tsx",

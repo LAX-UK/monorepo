@@ -57,7 +57,9 @@ export default async function AdminPayoutsPage({
     <PayoutsStaffList
       search={page.search}
       view={page.view}
+      sort={page.sort}
       rows={page.rows}
+      openOffPage={page.openOffPage}
       summary={page.summary}
       disputesOpen={page.disputesOpen}
       capabilities={page.capabilities}

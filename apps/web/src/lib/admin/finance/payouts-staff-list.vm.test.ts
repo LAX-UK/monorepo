@@ -13,8 +13,11 @@ import {
   payoutsListHref,
   payoutsMetrics,
   payoutsRangeSummary,
+  payoutsSortHref,
+  payoutsSortState,
   payoutsViews,
   poundsToPence,
+  sortPayoutsStaffRows,
   toPayoutsStaffRows,
 } from "./payouts-staff-list.vm";
 
@@ -269,5 +272,30 @@ describe("payoutPeriod", () => {
     expect(payoutPeriod("1970-01-01T00:00:00.000Z", "2026-06-22T00:00:00.000Z")).toBe(
       "Up to Mon 22 Jun",
     );
+  });
+
+  it("keeps the sort in the URL and sorts the page by it, unpaid last", () => {
+    expect(payoutsSortState(undefined)).toEqual({ columnId: "period", direction: "desc" });
+    expect(payoutsSortState("-paid")).toEqual({ columnId: "paid", direction: "desc" });
+    expect(payoutsSortState("seller")).toEqual({ columnId: "period", direction: "desc" });
+    expect(
+      payoutsSortHref(
+        { status: "paid", offset: "50", payout: "p1" },
+        { columnId: "net", direction: "asc" },
+      ),
+    ).toBe("/admin/payouts?status=paid&sort=net");
+    expect(payoutsSortHref({ sort: "net" }, { columnId: "period", direction: "desc" })).toBe(
+      "/admin/payouts",
+    );
+    const [a, b, c] = toPayoutsStaffRows([
+      { ...row, id: "a", processedAt: "2026-11-02T00:00:00.000Z", status: "paid" },
+      { ...row, id: "b" },
+      { ...row, id: "c", processedAt: "2026-11-05T00:00:00.000Z", status: "paid" },
+    ]);
+    const rows = [a, b, c].filter((item) => item !== undefined);
+    const ids = (direction: "asc" | "desc") =>
+      sortPayoutsStaffRows(rows, { columnId: "paid", direction }).map((item) => item.id);
+    expect(ids("desc")).toEqual(["c", "a", "b"]);
+    expect(ids("asc")).toEqual(["a", "c", "b"]);
   });
 });
