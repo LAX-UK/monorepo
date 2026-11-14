@@ -11,6 +11,12 @@ COPY apps/shop-admin/package.json ./apps/shop-admin/
 RUN pnpm install --frozen-lockfile
 
 FROM deps AS builder
+ARG SENTRY_RELEASE=unknown
+ARG SENTRY_PROJECT=
+ARG NEXT_PUBLIC_SENTRY_DSN_ADMIN=
+ENV NEXT_PUBLIC_SENTRY_DSN_ADMIN=$NEXT_PUBLIC_SENTRY_DSN_ADMIN
+ENV SENTRY_PROJECT=$SENTRY_PROJECT
+ENV SENTRY_RELEASE=$SENTRY_RELEASE
 ENV NEXT_TELEMETRY_DISABLED=1
 COPY apps/shop-admin ./apps/shop-admin
 RUN pnpm turbo run build --filter=@auction/shop-admin

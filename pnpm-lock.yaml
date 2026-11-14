@@ -94,12 +94,18 @@ importers:
       '@auction/marketing-ui':
         specifier: workspace:*
         version: link:../../packages/marketing-ui
+      '@auction/observability':
+        specifier: workspace:*
+        version: link:../../packages/observability
       '@auction/shop-contracts':
         specifier: workspace:*
         version: link:../../packages/shop-contracts
       '@auction/ui':
         specifier: workspace:*
         version: link:../../packages/ui
+      '@sentry/nextjs':
+        specifier: 10.51.0
+        version: 10.51.0(@opentelemetry/core@2.11.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.11.0(@opentelemetry/api@1.9.1))(next@15.5.9(@opentelemetry/api@1.9.1)(@playwright/test@1.55.1)(react-dom@19.2.5(react@19.2.5))(react@19.2.5))(react@19.2.5)(webpack@5.110.3(lightningcss@1.32.0)(postcss@8.5.18))
       '@stripe/connect-js':
         specifier: ^3.3.31
         version: 3.4.5
@@ -646,6 +652,9 @@ importers:
       '@auction/identity-rp':
         specifier: workspace:*
         version: link:../../packages/identity-rp
+      '@auction/observability':
+        specifier: workspace:*
+        version: link:../../packages/observability
       '@auction/shop-contracts':
         specifier: workspace:*
         version: link:../../packages/shop-contracts
@@ -658,6 +667,9 @@ importers:
       '@auction/ui':
         specifier: workspace:*
         version: link:../../packages/ui
+      '@sentry/nextjs':
+        specifier: 10.51.0
+        version: 10.51.0(@opentelemetry/core@2.11.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.11.0(@opentelemetry/api@1.9.1))(next@15.5.9(@opentelemetry/api@1.9.1)(@playwright/test@1.55.1)(react-dom@19.2.5(react@19.2.5))(react@19.2.5))(react@19.2.5)(webpack@5.110.3(lightningcss@1.32.0)(postcss@8.5.18))
       '@sinclair/typebox':
         specifier: ^0.34.41
         version: 0.34.52
@@ -8260,10 +8272,6 @@ packages:
   minimalistic-assert@1.0.1:
     resolution: {integrity: sha512-UtJcAD4yEaGtjPezWuO9wC4nwUnVH/8/Im3yEHQP4b67cXlD/Qr9hdITCU1xDbSEXg2XKNaP8jsReV7vQd00/A==}
 
-  minimatch@10.2.5:
-    resolution: {integrity: sha512-MULkVLfKGYDFYejP07QOurDLLQpcjk7Fw+7jXS2R2czRQzR56yHRveU5NDJEOviH+hETZKSkIk5c+T23GjFUMg==}
-    engines: {node: 18 || 20 || >=22}
-
   minimatch@10.2.6:
     resolution: {integrity: sha512-vpLQEs+VLCr1nU0BXS07maYoFwlDAH0gngQuuttxIwutDFEMHq2blX+8vpgxDdK3J1PwjCJiep77OitTZ4Ll1A==}
     engines: {node: 18 || 20 || >=22}
@@ -13895,7 +13903,7 @@ snapshots:
       '@typescript-eslint/types': 8.62.1
       '@typescript-eslint/visitor-keys': 8.62.1
       debug: 4.4.3
-      minimatch: 10.2.5
+      minimatch: 10.2.6
       semver: 7.8.5
       tinyglobby: 0.2.17
       ts-api-utils: 2.5.0(typescript@5.9.3)
@@ -16151,10 +16159,6 @@ snapshots:
   min-indent@1.0.1: {}
 
   minimalistic-assert@1.0.1: {}
-
-  minimatch@10.2.5:
-    dependencies:
-      brace-expansion: 5.0.11
 
   minimatch@10.2.6:
     dependencies:
