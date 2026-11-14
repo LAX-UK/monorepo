@@ -254,6 +254,8 @@ describe.skipIf(!HAS_DB)("Bid invoices to Books (integration)", { timeout: 60_00
       pdfsByMode: { [mode]: ports.pdfs },
       storage: { putObject },
       emailFacts: repos.invoiceEmailFacts,
+      shopEmailFacts: { forOrder: async () => null },
+      shopStorefrontUrl: "http://localhost:3020",
       email: { enqueue },
       webBaseUrl: "https://lax.bid",
       now: () => new Date(),
@@ -274,6 +276,8 @@ describe.skipIf(!HAS_DB)("Bid invoices to Books (integration)", { timeout: 60_00
       pdfsByMode: { live: books.pdfs },
       storage: { putObject: vi.fn(async () => ({})) },
       emailFacts: repos.invoiceEmailFacts,
+      shopEmailFacts: { forOrder: async () => null },
+      shopStorefrontUrl: "http://localhost:3020",
       email: new PostmarkEmailService(worker, { add } as never),
       webBaseUrl: "https://lax.bid",
       now: () => new Date(),
@@ -306,6 +310,8 @@ describe.skipIf(!HAS_DB)("Bid invoices to Books (integration)", { timeout: 60_00
       pdfsByMode: { live: books.pdfs },
       storage: { putObject: vi.fn(async () => ({})) },
       emailFacts: repos.invoiceEmailFacts,
+      shopEmailFacts: { forOrder: async () => null },
+      shopStorefrontUrl: "http://localhost:3020",
       email: {
         enqueue: vi.fn(async () => {
           throw new Error("store step only");
@@ -768,6 +774,8 @@ describe.skipIf(!HAS_DB)(
         pdfsByMode: { live: books.pdfs },
         storage: { putObject: vi.fn(async () => ({})) },
         emailFacts: repos.invoiceEmailFacts,
+        shopEmailFacts: { forOrder: async () => null },
+        shopStorefrontUrl: "http://localhost:3020",
         email,
         webBaseUrl: "https://lax.bid",
         now: () => new Date(),

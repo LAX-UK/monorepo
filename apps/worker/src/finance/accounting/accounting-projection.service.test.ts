@@ -112,6 +112,7 @@ describe("accounting projection", () => {
       created: 2,
       replayed: 0,
       kept: 0,
+      parked: 0,
     });
     expect(store.documents().map((d) => [d.kind, d.target, d.sourceEventRef])).toEqual([
       ["contact", { provider: "books", mode: "dry_run" }, "domain_event:10"],

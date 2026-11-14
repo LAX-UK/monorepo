@@ -5,6 +5,7 @@ import type { IEmailService } from "@auction/email";
 import { createBooksAccountingAdapters } from "@auction/finance-runtime";
 import {
   DrizzleBidAccountingFactsReader,
+  DrizzleShopAccountingFactsReader,
   createAccountingRepositories,
 } from "@auction/persistence/repositories";
 import type { Logger } from "pino";
@@ -29,7 +30,7 @@ const SENDER_CHECK_IN_EVERY_MS = 5 * 60_000;
  * adapters come from `createBooksAccountingAdapters`, which builds the dry run alone.
  */
 export function createAccountingRuntime(deps: {
-  env: Pick<WorkerEnv, "ZOHO_BOOKS_ORG_CONFIG" | "WEB_ORIGIN">;
+  env: Pick<WorkerEnv, "ZOHO_BOOKS_ORG_CONFIG" | "WEB_ORIGIN" | "SHOP_STOREFRONT_URL">;
   db: ReturnType<typeof createDb>;
   log: Logger;
   sentryMonitorSlugs?: Record<string, string>;
@@ -42,9 +43,11 @@ export function createAccountingRuntime(deps: {
   if (!adapters) return undefined;
   const repos = createAccountingRepositories(deps.db, { now: () => new Date() });
   deps.log.info({ modes: Object.keys(adapters.byMode) }, "accounting_runtime_built");
+  const shopFacts = new DrizzleShopAccountingFactsReader(deps.db);
   return {
     projection: new AccountingProjection({
       facts: new DrizzleBidAccountingFactsReader(deps.db),
+      shopFacts,
       settings: repos.settingReader,
       registry: repos.registry,
     }),
@@ -67,8 +70,10 @@ export function createAccountingRuntime(deps: {
       ),
       storage: deps.storage,
       emailFacts: repos.invoiceEmailFacts,
+      shopEmailFacts: shopFacts,
       email: deps.email,
       webBaseUrl: deps.env.WEB_ORIGIN,
+      shopStorefrontUrl: deps.env.SHOP_STOREFRONT_URL,
       now: () => new Date(),
       log: deps.log,
     }),

@@ -10,11 +10,13 @@ import type {
   IAccountingDocumentCopies,
   IAccountingSourceSettingReader,
   IBidInvoiceEmailFactsReader,
+  IShopInvoiceEmailFactsReader,
   InvoiceEmailDue,
   InvoiceEmailSkipReason,
   StoredAccountingDocument,
 } from "@auction/persistence/interfaces";
 import { composeBidInvoiceEmail } from "./bid-invoice-email.js";
+import { composeShopInvoiceEmail } from "./shop-invoice-email.js";
 
 const DEFAULT_BATCH = 10;
 
@@ -37,10 +39,14 @@ export interface AccountingInvoiceCopyDeps {
     putObject(key: string, body: Buffer, contentType: string): Promise<unknown>;
   };
   readonly emailFacts: IBidInvoiceEmailFactsReader;
+  /** The Shop order behind a Shop invoice, and who owns it now. */
+  readonly shopEmailFacts: IShopInvoiceEmailFactsReader;
   /** The email outbox (Postmark); only ever given an invoice Books issued for real. */
   readonly email: Pick<IEmailService, "enqueue">;
   /** The Bid site's address, for the link to the purchase. */
   readonly webBaseUrl: string;
+  /** The Shop storefront's address, for the link to the order. */
+  readonly shopStorefrontUrl: string;
   readonly now: () => Date;
   readonly log: AccountingInvoiceCopyLog;
   readonly batch?: number;
@@ -52,8 +58,8 @@ export interface CopyTick {
 }
 
 /**
- * After the sender: keeps LAX's own copy of each issued Bid invoice's PDF, then emails the buyer
- * their invoice with that copy attached, once.
+ * After the sender: keeps LAX's own copy of each issued Bid and Shop invoice's PDF, then emails
+ * the buyer their invoice with that copy attached, once.
  *
  * - The PDF is fetched through the same adapter the document was sent with (in dry run, a page
  *   that says it is a rehearsal), stored in document storage, and recorded. A fetch that fails is
@@ -65,8 +71,10 @@ export interface CopyTick {
  * - Every listed copy is settled, so none holds a place at the head of the list: it is queued, or
  *   skipped for good (cancelled, nobody to send it to, unreadable) with a warning. Only an error
  *   leaves it due, to try again next tick.
- * - It goes to the payer while they may still pay (an organisation's current member with a payer
- *   role) and to the account's billing inbox; a former member gets nothing.
+ * - Bid: it goes to the payer while they may still pay (an organisation's current member with a
+ *   payer role) and to the account's billing inbox; a former member gets nothing.
+ * - Shop: it goes to the order's owner now (the guest, or the account that claimed the order),
+ *   while they can be reached; an erased guest or a closed account gets nothing.
  */
 export class AccountingInvoiceCopy {
   private readonly batch: number;
@@ -180,6 +188,47 @@ export class AccountingInvoiceCopy {
   }
 
   private async sendEmail(copy: InvoiceEmailDue): Promise<boolean> {
+    return copy.product === "shop" ? this.sendShopEmail(copy) : this.sendBidEmail(copy);
+  }
+
+  private async sendShopEmail(copy: InvoiceEmailDue): Promise<boolean> {
+    const facts = await this.deps.shopEmailFacts.forOrder(copy.invoiceId);
+    if (!facts) {
+      await this.skip(copy.documentId, "invoice_missing");
+      return false;
+    }
+    if (facts.cancelled) {
+      await this.skip(copy.documentId, "invoice_cancelled");
+      return false;
+    }
+    if (!facts.recipient) {
+      await this.skip(copy.documentId, "no_recipient");
+      return false;
+    }
+    const now = this.deps.now();
+    const queued = await this.deps.email.enqueue({
+      template: "shop-invoice-issued",
+      to: facts.recipient.email,
+      recipientResolution: "snapshot",
+      category: "transactional",
+      idempotencyKey: `shop-invoice-issued:${copy.documentId}`,
+      vars: composeShopInvoiceEmail({
+        number: copy.number,
+        facts,
+        storageKey: copy.storageKey,
+        storefrontUrl: this.deps.shopStorefrontUrl,
+        now,
+      }),
+    });
+    await this.deps.copies.markEmailQueued(copy.documentId, queued.outboxId, now);
+    this.deps.log.info(
+      { documentId: copy.documentId, product: "shop" },
+      "accounting_invoice_email_queued",
+    );
+    return true;
+  }
+
+  private async sendBidEmail(copy: InvoiceEmailDue): Promise<boolean> {
     const facts = await this.deps.emailFacts.forInvoice(copy.invoiceId);
     if (!facts) {
       await this.skip(copy.documentId, "invoice_missing");

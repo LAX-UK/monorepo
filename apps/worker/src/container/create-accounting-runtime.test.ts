@@ -7,6 +7,7 @@ import { createAccountingRuntime } from "./create-accounting-runtime.js";
 const db = {} as ReturnType<typeof createDb>;
 const log = { info: vi.fn() } as unknown as Logger;
 const WEB_ORIGIN = "http://localhost:3000";
+const SHOP_STOREFRONT_URL = "http://localhost:3020";
 const io = {
   storage: { putObject: vi.fn() },
   email: { enqueue: vi.fn() },
@@ -14,12 +15,18 @@ const io = {
 
 describe("createAccountingRuntime", () => {
   it("builds nothing without Books organisation settings", () => {
-    expect(createAccountingRuntime({ env: { WEB_ORIGIN }, db, log, ...io })).toBeUndefined();
+    expect(
+      createAccountingRuntime({ env: { WEB_ORIGIN, SHOP_STOREFRONT_URL }, db, log, ...io }),
+    ).toBeUndefined();
   });
 
   it("builds the projector and a rehearsal-only sender from the settings", () => {
     const runtime = createAccountingRuntime({
-      env: { ZOHO_BOOKS_ORG_CONFIG: JSON.stringify(rawOrgSettings()), WEB_ORIGIN },
+      env: {
+        ZOHO_BOOKS_ORG_CONFIG: JSON.stringify(rawOrgSettings()),
+        WEB_ORIGIN,
+        SHOP_STOREFRONT_URL,
+      },
       db,
       log,
       ...io,
@@ -34,7 +41,12 @@ describe("createAccountingRuntime", () => {
 
   it("refuses broken settings when the worker starts", () => {
     expect(() =>
-      createAccountingRuntime({ env: { ZOHO_BOOKS_ORG_CONFIG: "{}", WEB_ORIGIN }, db, log, ...io }),
+      createAccountingRuntime({
+        env: { ZOHO_BOOKS_ORG_CONFIG: "{}", WEB_ORIGIN, SHOP_STOREFRONT_URL },
+        db,
+        log,
+        ...io,
+      }),
     ).toThrow();
   });
 });

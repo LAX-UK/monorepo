@@ -118,6 +118,7 @@ class Copies implements IAccountingDocumentCopies {
       }
       due.push({
         documentId: d.id,
+        product: "bid",
         invoiceId: `invoice-${d.id}`,
         number,
         storageKey: this.copies.get(d.id)?.storageKey ?? "",
@@ -192,8 +193,10 @@ function setUp(
     pdfsByMode: { [mode]: fetched(mode === "dry_run"), ...pdf },
     storage: { putObject },
     emailFacts: { forInvoice: async (invoiceId) => (opts.factsFor ?? (() => facts))(invoiceId) },
+    shopEmailFacts: { forOrder: async () => null },
     email: { enqueue },
     webBaseUrl: "https://lax.bid/",
+    shopStorefrontUrl: "https://shop.example.test",
     now: () => NOW,
     log,
     ...(opts.batch ? { batch: opts.batch } : {}),
