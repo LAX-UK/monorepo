@@ -1,7 +1,7 @@
 "use client";
 
 import { Button } from "@/components/account-button";
-import { RESUME_QUERY, STEP_UP_COPY, withoutResume } from "@/lib/step-up";
+import { RESUME_QUERY, withoutResume } from "@/lib/step-up";
 import {
   signOutDeviceAction,
   signOutOtherDevicesAction,
@@ -22,12 +22,12 @@ import {
   splitOtherDevices,
 } from "@/server/domain/account-sessions.vm";
 import { cn } from "@auction/ui";
-import { ConfirmDialog } from "@auction/ui/components/confirm-dialog";
 import { useRouter } from "next/navigation";
 import { type Ref, useEffect, useRef, useState } from "react";
 import { ListCard, TAG } from "./account-ui";
 import { DeviceKindIcon } from "./device-kind-icon";
 import { ProductText } from "./product-name";
+import { StepUpDialog } from "./step-up-dialog.client";
 import { useStepUp } from "./use-step-up.client";
 
 type Target = { kind: "device"; row: SessionRowVm } | { kind: "others" };
@@ -103,16 +103,7 @@ export function SignedInDevicesList({ sessions, returnTo }: SignedInDevicesListP
   const [expanded, setExpanded] = useState(false);
   const firstRevealed = useRef<HTMLLIElement>(null);
   const { shown, hidden } = splitOtherDevices(sessions.others);
-  // The action waiting on "Confirm it's you", so the window's answer can run it again.
-  const pending = useRef<Target | null>(null);
-  const stepUp = useStepUp({
-    reason: "sign_out_devices",
-    returnTo,
-    onConfirmed: () => {
-      if (pending.current) void run(pending.current);
-    },
-  });
-  const confirming = stepUp.state.phase !== "idle";
+  const stepUp = useStepUp({ returnTo });
 
   // Back from a full-page "Confirm it's you": reopen the same dialog (one more click, never an
   // automatic sign-out), then drop `resume` so Back and refresh are ordinary.
@@ -143,7 +134,6 @@ export function SignedInDevicesList({ sessions, returnTo }: SignedInDevicesListP
   function close() {
     if (busy) return;
     stepUp.cancel();
-    pending.current = null;
     setTarget(null);
     setError(null);
   }
@@ -162,11 +152,21 @@ export function SignedInDevicesList({ sessions, returnTo }: SignedInDevicesListP
     }
     if (result.status === "reauth_required") {
       setBusy(false);
-      pending.current = current;
-      stepUp.require();
+      stepUp.require(
+        current.kind === "device"
+          ? {
+              reason: "sign_out_devices",
+              resume: signOutDeviceResume(current.row),
+              retry: () => void run(current),
+            }
+          : {
+              reason: "sign_out_other_devices",
+              resume: SIGN_OUT_OTHERS_RESUME,
+              retry: () => void run(current),
+            },
+      );
       return;
     }
-    pending.current = null;
     setBusy(false);
     if (result.status === "error") {
       setError(result.message);
@@ -226,54 +226,36 @@ export function SignedInDevicesList({ sessions, returnTo }: SignedInDevicesListP
       <output aria-live="polite" className="block px-4 text-sm text-success empty:hidden">
         {notice}
       </output>
-      {confirm && target ? (
-        <ConfirmDialog
-          open
-          onOpenChange={(open) => {
-            if (!open) close();
-          }}
-          title={confirming ? STEP_UP_COPY.title : confirm.title}
-          body={
-            <>
-              <p>
-                {confirming ? (
-                  target.kind === "device" ? (
-                    STEP_UP_COPY.why.sign_out_devices
-                  ) : (
-                    STEP_UP_COPY.signOutOthers
-                  )
-                ) : (
-                  <ProductText text={confirm.body} />
-                )}
-              </p>
-              {stepUp.state.phase === "waiting" ? (
-                <p className="mt-3">{STEP_UP_COPY.waiting}</p>
-              ) : null}
-              {stepUp.state.phase === "confirm" && stepUp.state.notConfirmed ? (
-                <output className="mt-3 block">{STEP_UP_COPY.notConfirmed}</output>
-              ) : null}
-              {error ? (
-                <p role="alert" className="mt-3 text-error">
-                  {error}
-                </p>
-              ) : null}
-            </>
-          }
-          confirmLabel={confirming ? STEP_UP_COPY.continueLabel : confirm.confirmLabel}
-          loadingLabel={confirm.loadingLabel}
-          loading={busy}
-          {...(confirming ? { tone: "warning" as const } : {})}
-          onConfirm={() =>
-            confirming
-              ? stepUp.continue(
-                  target.kind === "device"
-                    ? signOutDeviceResume(target.row)
-                    : SIGN_OUT_OTHERS_RESUME,
-                )
-              : run(target)
-          }
-        />
-      ) : null}
+      <StepUpDialog
+        stepUp={stepUp}
+        action={
+          confirm && target
+            ? {
+                open: true,
+                onOpenChange: (open) => {
+                  if (!open) close();
+                },
+                title: confirm.title,
+                body: (
+                  <>
+                    <p>
+                      <ProductText text={confirm.body} />
+                    </p>
+                    {error ? (
+                      <p role="alert" className="mt-3 text-error">
+                        {error}
+                      </p>
+                    ) : null}
+                  </>
+                ),
+                confirmLabel: confirm.confirmLabel,
+                loadingLabel: confirm.loadingLabel,
+                loading: busy,
+                onConfirm: () => run(target),
+              }
+            : null
+        }
+      />
     </div>
   );
 }

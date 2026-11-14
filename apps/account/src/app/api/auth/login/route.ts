@@ -1,5 +1,6 @@
 import { sealPendingLogin } from "@/lib/pending-login-cookie";
 import { safeReturnTo } from "@/lib/safe-return-to";
+import { STEP_UP_SIGNED_OUT_PATH } from "@/lib/step-up-complete";
 import { getLaxAccountContainer } from "@/server/container";
 import {
   REAUTH_DISPLAY_POPUP,
@@ -36,6 +37,13 @@ export async function GET(request: Request): Promise<Response> {
   const reauthSubject = reauth
     ? await signedInSubject(container, cookieStore.get(container.cookies.sessionCookie)?.value)
     : null;
+  if (popup && !reauthSubject) {
+    // Nobody is signed in to Account any more, so there is nobody for the window to confirm. An
+    // ordinary sign-in here could be anyone's, and the page behind would run its action again
+    // under their session against the first person's data. So no sign-in starts in the window:
+    // it tells the page, which signs in on a full page and reloads with whoever signs in.
+    return NextResponse.redirect(new URL(STEP_UP_SIGNED_OUT_PATH, container.config.publicOrigin));
+  }
   // Read against the fixed list: anything else is dropped, so no text from the address is ever shown.
   const reason = parseAccountStepUpReason(url.searchParams.get(REAUTH_REASON_QUERY));
   const { authorizeUrl, pending } = container.startAccountLogin({

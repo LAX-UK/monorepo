@@ -2,12 +2,13 @@
 
 import { Button, LoadingButton } from "@/components/account-button";
 import { FIELD } from "@/components/account-ui";
+import { StepUpDialog } from "@/components/step-up-dialog.client";
+import { useStepUp } from "@/components/use-step-up.client";
 import {
   cancelEmailChangeAction,
   startEmailChangeAction,
 } from "@/server/application/account-identity-actions.server";
 import type { AccountActionResult } from "@/server/domain/account-action-result";
-import { buildReauthHref } from "@/server/domain/account-reauth";
 import { Input } from "@auction/ui/components/input";
 import { Label } from "@auction/ui/components/label";
 import { useRouter } from "next/navigation";
@@ -41,12 +42,13 @@ export function EmailChangeEditor({
   const [email, setEmail] = useState("");
   const [notice, setNotice] = useState<Notice | null>(null);
   const [pending, startTransition] = useTransition();
+  const stepUp = useStepUp({ returnTo });
 
   function run(action: () => Promise<AccountActionResult>, after: () => void) {
     startTransition(async () => {
       const result = await action();
       if (result.status === "reauth_required") {
-        window.location.assign(buildReauthHref(returnTo));
+        stepUp.require({ reason: "change_email", retry: () => run(action, after) });
         return;
       }
       if (result.status === "error") {
@@ -188,6 +190,7 @@ export function EmailChangeEditor({
           {notice.message}
         </p>
       ) : null}
+      <StepUpDialog stepUp={stepUp} />
     </div>
   );
 }

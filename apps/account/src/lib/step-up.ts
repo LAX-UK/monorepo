@@ -1,13 +1,14 @@
 import { buildReauthHref } from "@/server/domain/account-reauth";
 import type { AccountStepUpReason } from "@auction/identity-contracts/account";
-import { STEP_UP_MESSAGE_TYPE } from "./step-up-complete";
+import { STEP_UP_MESSAGE_TYPE, type StepUpAnswer, parseStepUpAnswer } from "./step-up-complete";
 
 /**
  * "Confirm it's you" without leaving the page. When an action answers `reauth_required`, its own
  * dialog asks the person to confirm; Continue opens the issuer's confirm flow in a small window,
  * which reports back here once the person has signed in again, and the action runs again. If the
- * browser blocks the window, the page falls back to a full-page sign-in that comes back with the
- * pending action named in `resume`, so the same dialog opens again for one more click.
+ * browser blocks the window, or nobody is signed in to Account any more, the page falls back to a
+ * full-page sign-in; an action that can be named comes back in `resume`, so the same dialog opens
+ * again for one more click.
  */
 
 /** idle: nothing asked. confirm: the dialog says "Confirm it's you". waiting: the window is open. */
@@ -28,23 +29,37 @@ const CLOSED_POLL_MS = 500;
 
 export const RESUME_QUERY = "resume";
 
+/**
+ * Said in the action's own dialog, so it must hold for the window and for the full-page fallback
+ * alike: it never promises the person stays on the page.
+ */
 export const STEP_UP_COPY = {
   title: "Confirm it's you",
   continueLabel: "Continue",
   notConfirmed: "Not confirmed yet.",
   waiting: "Finish confirming in the window that opened.",
   why: {
-    add_sign_in_method:
-      "For your security, sign in again before you add a way to sign in. You'll stay on this page.",
-    remove_sign_in_method:
-      "For your security, sign in again before you remove a way to sign in. You'll stay on this page.",
-    change_password:
-      "For your security, sign in again before you change your password. You'll stay on this page.",
-    sign_out_devices:
-      "For your security, sign in again before you sign out another device. You'll stay on this page.",
+    add_sign_in_method: "For your security, sign in again before you add a way to sign in.",
+    remove_sign_in_method: "For your security, sign in again before you remove a way to sign in.",
+    rename_passkey: "For your security, sign in again before you rename a passkey.",
+    change_password: "For your security, sign in again before you change your password.",
+    create_backup_codes: "For your security, sign in again before you create new backup codes.",
+    sign_out_devices: "For your security, sign in again before you sign out another device.",
+    sign_out_other_devices:
+      "For your security, sign in again before you sign out your other devices.",
+    change_name: "For your security, sign in again before you change your name.",
+    change_email: "For your security, sign in again before you change your email address.",
+    change_phone: "For your security, sign in again before you change your phone number.",
+    change_time_zone: "For your security, sign in again before you change your time zone.",
+    change_addresses: "For your security, sign in again before you change your addresses.",
+    change_alerts: "For your security, sign in again before you change your alerts.",
+    request_data_copy: "For your security, sign in again before you ask for a copy of your data.",
+    download_data_copy: "For your security, sign in again before you download a copy of your data.",
+    delete_data_copy: "For your security, sign in again before you delete a copy of your data.",
+    request_sale: "For your security, sign in again before you send a sale request.",
+    withdraw_sale_request: "For your security, sign in again before you withdraw a sale request.",
+    delete_account: "For your security, sign in again before you delete your account.",
   } satisfies Record<AccountStepUpReason, string>,
-  signOutOthers:
-    "For your security, sign in again before you sign out your other devices. You'll stay on this page.",
 } as const;
 
 type ScreenBox = { screenX: number; screenY: number; outerWidth: number; outerHeight: number };
@@ -57,19 +72,22 @@ export function stepUpWindowFeatures(box: ScreenBox): string {
 }
 
 /**
- * Only the window this page opened, on this page's own origin, saying exactly "ok" counts.
- * Anything else (another frame, another site, another shape) is ignored.
+ * What the window this page opened said, on this page's own origin, in exactly the expected shape:
+ * `ok` once the person has signed in again, `signed_out` when nobody is signed in to Account any
+ * more, so there was nobody for the window to confirm. Anything else (another frame, another site,
+ * another shape) is null and ignored.
  */
-export function isStepUpComplete(
+export function readStepUpAnswer(
   event: { origin: string; source: unknown; data: unknown },
   expected: { origin: string; source: unknown },
-): boolean {
-  if (expected.source == null || event.source !== expected.source) return false;
-  if (event.origin !== expected.origin) return false;
+): StepUpAnswer | null {
+  if (expected.source == null || event.source !== expected.source) return null;
+  if (event.origin !== expected.origin) return null;
   const data = event.data;
-  if (!data || typeof data !== "object") return false;
+  if (!data || typeof data !== "object") return null;
   const message = data as { type?: unknown; status?: unknown };
-  return message.type === STEP_UP_MESSAGE_TYPE && message.status === "ok";
+  if (message.type !== STEP_UP_MESSAGE_TYPE) return null;
+  return parseStepUpAnswer(message.status);
 }
 
 const PLACEHOLDER_ORIGIN = "https://account.invalid";
@@ -101,15 +119,27 @@ export type StepUpEnvironment = {
   every(ms: number, tick: () => void): () => void;
 };
 
+/** What Continue needs to sign in again: why, where the full-page sign-in comes back to, and
+ * (optionally) the pending action for that page to reopen, named in `resume`. */
+export type StepUpRequest = { reason: AccountStepUpReason; returnTo: string; resume?: string };
+
 export type StepUpController = {
   /** The action answered `reauth_required`: show "Confirm it's you". */
   require(): void;
-  /** Continue: open the window from the click, or fall back to the full-page sign-in. */
-  continue(request: { reason: AccountStepUpReason; returnTo: string; resume: string }): void;
+  /**
+   * Continue: open the window from the click, or fall back to the full-page sign-in. While the
+   * window is still open it is only brought to the front, so nothing typed there is lost.
+   */
+  continue(request: StepUpRequest): void;
   /** Cancel: back to idle, nothing changed. */
   cancel(): void;
   dispose(): void;
 };
+
+/** The full-page sign-in, for when the window cannot open or cannot confirm anyone. */
+export function stepUpFullPageHref({ reason, returnTo, resume }: StepUpRequest): string {
+  return buildReauthHref(resume ? withResume(returnTo, resume) : returnTo, reason);
+}
 
 export function createStepUpController(options: {
   env: StepUpEnvironment;
@@ -120,6 +150,7 @@ export function createStepUpController(options: {
   const { env } = options;
   let state: StepUpState = STEP_UP_IDLE;
   let popup: StepUpWindow | null = null;
+  let request: StepUpRequest | null = null;
   // A confirmation came back; if the action still asks, it did not count.
   let confirmedOnce = false;
   let stopWatching: (() => void) | null = null;
@@ -135,9 +166,18 @@ export function createStepUpController(options: {
 
   const stopListening = env.onMessage((event) => {
     if (state.phase !== "waiting") return;
-    if (!isStepUpComplete(event, { origin: env.origin, source: popup })) return;
+    const answer = readStepUpAnswer(event, { origin: env.origin, source: popup });
+    if (!answer) return;
     stopWatch();
+    const opened = popup;
     popup = null;
+    if (answer === "signed_out") {
+      // Nobody is signed in to Account any more, so the window could not confirm this person and
+      // nothing may run again here: sign in on a full page, which reloads with that person's data.
+      if (opened && !opened.closed) opened.close();
+      if (request) env.assign(stepUpFullPageHref(request));
+      return;
+    }
     confirmedOnce = true;
     set(STEP_UP_IDLE);
     options.onConfirmed();
@@ -148,15 +188,20 @@ export function createStepUpController(options: {
       stopWatch();
       set({ phase: "confirm", notConfirmed: confirmedOnce });
     },
-    continue({ reason, returnTo, resume }) {
+    continue(next) {
+      request = next;
+      if (state.phase === "waiting" && popup && !popup.closed) {
+        popup.focus?.();
+        return;
+      }
       const opened = env.open(
-        buildReauthHref(returnTo, reason, { popup: true }),
+        buildReauthHref(next.returnTo, next.reason, { popup: true }),
         STEP_UP_WINDOW_NAME,
         env.features(),
       );
       if (!opened) {
         // Blocked, or no window to report back to: a full-page sign-in that names the action.
-        env.assign(buildReauthHref(withResume(returnTo, resume), reason));
+        env.assign(stepUpFullPageHref(next));
         return;
       }
       popup = opened;
@@ -174,6 +219,7 @@ export function createStepUpController(options: {
       stopWatch();
       if (popup && !popup.closed) popup.close();
       popup = null;
+      request = null;
       confirmedOnce = false;
       set(STEP_UP_IDLE);
     },

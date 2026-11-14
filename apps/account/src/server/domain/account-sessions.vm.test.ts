@@ -225,4 +225,10 @@ describe("parseDevicesResume", () => {
     }
     expect(parseDevicesResume("signout-others", [])).toBeNull();
   });
+
+  it("never reopens sign-out for a row marked as this device, even if it is among the others", () => {
+    const current = vm.current;
+    if (!current) throw new Error("expected a current row");
+    expect(parseDevicesResume(signOutDeviceResume(current), [...vm.others, current])).toBeNull();
+  });
 });

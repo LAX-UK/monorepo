@@ -1,4 +1,6 @@
+import { ACCOUNT_STEP_UP_REASONS } from "@auction/identity-contracts";
 import { describe, expect, it } from "vitest";
+import { PASSKEY_COPY } from "./hosted-auth/passkey-copy.js";
 import { EMPTY_HOSTED_AUTH_CAPABILITIES, hostedAuthViewFromSearch } from "./hosted-auth/view.js";
 import {
   buildHostedAddPasskeyHtml,
@@ -127,6 +129,20 @@ describe("Confirm it's you", () => {
     expect(lead("sign_out_devices")).toContain(
       "Before you sign out another device, we need you to sign in again.",
     );
+    expect(lead("sign_out_other_devices")).toContain(
+      "Before you sign out your other devices, we need you to sign in again.",
+    );
+    expect(lead("delete_account")).toContain(
+      "Before you delete your account, we need you to sign in again.",
+    );
+  });
+
+  it("has words for every reason Account can give", () => {
+    for (const reason of ACCOUNT_STEP_UP_REASONS) {
+      expect(PASSKEY_COPY.confirm.leadByReason[reason]).toMatch(
+        /^Before you .+, we need you to sign in again\.$/,
+      );
+    }
   });
 
   it("never words a reason that is not on the list, and ignores one on any other page", () => {
@@ -152,8 +168,17 @@ describe("Confirm it's you", () => {
     expect(password).toBeLessThan(google);
     expect(html).not.toContain("Continue with Apple");
     expect(textOf(html)).toContain("collector@lax.bid");
-    expect(html).toContain("Not you?");
     expect(html).toContain('data-email="collector@lax.bid"');
+  });
+
+  it("never offers to switch person: only Cancel, back to Account, and no other way out", () => {
+    const html = buildHostedConfirmHtml({ ...person, methods: all }, view(reauth));
+    expect(html).not.toContain("Not you?");
+    expect(html).not.toContain("confirm-not-you");
+    expect(html).not.toContain("product-back");
+    expect(html).toMatch(
+      /<button type="button" class="btn btn-link" id="confirm-cancel"[^>]*data-href="https:\/\/account.test\/account\/security"[^>]*>Cancel<\/button>/,
+    );
   });
 
   it("fixes the email: there is no email field to type another person's address into", () => {

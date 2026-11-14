@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const refresh = vi.fn();
@@ -33,6 +33,11 @@ describe("RequestDataExportButton", () => {
     render(<RequestDataExportButton />);
     fireEvent.click(screen.getByRole("button", { name: "Request your data" }));
     await settle();
+    const confirm = await screen.findByRole("dialog", { name: "Confirm it's you" });
+    expect(confirm.textContent).toContain("before you ask for a copy of your data");
+    // The browser blocks the window, so Continue falls back to the full-page sign-in.
+    vi.spyOn(window, "open").mockReturnValue(null);
+    fireEvent.click(within(confirm).getByRole("button", { name: "Continue" }));
     const href = String(assign.mock.calls[0]?.[0]);
     expect(href).toContain("/api/auth/login?");
     expect(decodeURIComponent(href)).toContain("returnTo=/account/privacy/download?resume=request");

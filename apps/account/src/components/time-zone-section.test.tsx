@@ -3,7 +3,7 @@
 process.env.TZ = "Europe/London";
 
 import { textOf } from "@/test/text-of";
-import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -217,14 +217,35 @@ describe("TimeZoneSection", () => {
       expect(toastSuccess).not.toHaveBeenCalled();
     });
 
-    it("sends a person whose sign-in has ended to sign in again", async () => {
+    it("asks a person whose sign-in has ended to confirm it's them, then signs in again", async () => {
       saveTimeZoneAction.mockResolvedValue({ status: "reauth_required" });
       await startEditing();
       await pickSydney();
       await act(async () => {
         fireEvent.click(screen.getByRole("button", { name: "Save" }));
       });
+      const confirm = await screen.findByRole("dialog", { name: "Confirm it's you" });
+      expect(confirm.textContent).toContain("before you change your time zone");
+      // The browser blocks the window, so Continue falls back to the full-page sign-in.
+      vi.spyOn(window, "open").mockReturnValue(null);
+      fireEvent.click(within(confirm).getByRole("button", { name: "Continue" }));
       expect(String(assign.mock.calls[0]?.[0])).toContain("/api/auth/login?");
+      expect(String(assign.mock.calls[0]?.[0])).toContain("reason=change_time_zone");
+    });
+
+    it("leaves the zone unsaved and says so when the person cancels Confirm it's you", async () => {
+      saveTimeZoneAction.mockResolvedValue({ status: "reauth_required" });
+      await startEditing();
+      await pickSydney();
+      await act(async () => {
+        fireEvent.click(screen.getByRole("button", { name: "Save" }));
+      });
+      const confirm = await screen.findByRole("dialog", { name: "Confirm it's you" });
+      await act(async () => {
+        fireEvent.click(within(confirm).getByRole("button", { name: "Cancel" }));
+      });
+      expect(await screen.findByText("We couldn’t save your time zone. Try again.")).toBeTruthy();
+      expect(assign).not.toHaveBeenCalled();
     });
 
     it("cancels without saving and shows the row as it was", async () => {

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import type { SessionRowVm } from "@/server/domain/account-sessions.vm";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
@@ -86,5 +86,72 @@ describe("SignedInDevicesList", () => {
     await waitFor(() =>
       expect(screen.getByRole("status").textContent).toBe("Your other device is signed out."),
     );
+  });
+});
+
+describe("SignedInDevicesList: Confirm it's you", () => {
+  const popup = { closed: false, close: vi.fn(), focus: vi.fn() };
+
+  function answer(status: string, source: unknown = popup) {
+    const event = new MessageEvent("message", {
+      origin: window.location.origin,
+      data: { type: "lax-step-up", status },
+    });
+    Object.defineProperty(event, "source", { value: source });
+    window.dispatchEvent(event);
+  }
+
+  async function askToSignOutOthers() {
+    actions.signOutOtherDevicesAction.mockReset();
+    actions.signOutOtherDevicesAction.mockResolvedValueOnce({ status: "reauth_required" });
+    renderList(2);
+    fireEvent.click(screen.getByRole("button", { name: "Sign out everywhere else" }));
+    const first = await screen.findByRole("dialog");
+    fireEvent.click(within(first).getByRole("button", { name: "Sign out everywhere else" }));
+    return screen.findByRole("dialog", { name: "Confirm it's you" });
+  }
+
+  it("asks in the same dialog, in words for signing out the other devices, and runs again once confirmed", async () => {
+    const open = vi.spyOn(window, "open").mockReturnValue(popup as unknown as Window);
+    const dialog = await askToSignOutOthers();
+    expect(dialog.textContent).toContain(
+      "For your security, sign in again before you sign out your other devices.",
+    );
+    expect(dialog.textContent).not.toContain("stay on this page");
+    expect(screen.getAllByRole("dialog")).toHaveLength(1);
+
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+    expect(String(open.mock.calls[0]?.[0])).toContain("reason=sign_out_other_devices");
+    expect(await screen.findByText("Finish confirming in the window that opened.")).toBeTruthy();
+
+    actions.signOutOtherDevicesAction.mockResolvedValueOnce({ status: "ok", message: "ignored" });
+    answer("ok");
+    await waitFor(() => expect(actions.signOutOtherDevicesAction).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    open.mockRestore();
+  });
+
+  it("never runs again when the window found nobody signed in: it signs in on a full page", async () => {
+    const assign = vi.fn();
+    vi.stubGlobal("location", { ...window.location, assign });
+    const open = vi.spyOn(window, "open").mockReturnValue(popup as unknown as Window);
+    await askToSignOutOthers();
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+    answer("signed_out");
+    expect(actions.signOutOtherDevicesAction).toHaveBeenCalledTimes(1);
+    const target = new URL(String(assign.mock.calls[0]?.[0]), "https://account.test");
+    expect(target.searchParams.has("display")).toBe(false);
+    expect(target.searchParams.get("returnTo")).toBe("/x?resume=signout-others");
+    open.mockRestore();
+    vi.unstubAllGlobals();
+  });
+
+  it("ignores an answer from any other window", async () => {
+    const open = vi.spyOn(window, "open").mockReturnValue(popup as unknown as Window);
+    await askToSignOutOthers();
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+    answer("ok", {});
+    expect(actions.signOutOtherDevicesAction).toHaveBeenCalledTimes(1);
+    open.mockRestore();
   });
 });

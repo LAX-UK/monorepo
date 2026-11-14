@@ -83,7 +83,7 @@ describe("GET /api/auth/login", () => {
   it("drops a reason that is not on the list instead of passing it on", async () => {
     cookieValues.set("lax_account_session", "sess-1");
     sessionGet.mockResolvedValue({ subject: "user-a" });
-    for (const reason of ["<script>alert(1)</script>", "delete_account", ""]) {
+    for (const reason of ["<script>alert(1)</script>", "delete_everything", ""]) {
       const response = await reauth(`&reason=${encodeURIComponent(reason)}`);
       expect(
         new URL(response.headers.get("location") ?? "").searchParams.has("reauth_reason"),
@@ -142,5 +142,27 @@ describe("GET /api/auth/login", () => {
       ),
     );
     expect(pendingSaved()).toMatchObject({ returnTo: "/account" });
+  });
+
+  it("never starts a sign-in in the window when nobody is signed in here: it says signed out", async () => {
+    for (const setup of [
+      () => undefined,
+      () => {
+        cookieValues.set("lax_account_session", "sess-gone");
+        sessionGet.mockResolvedValue(null);
+      },
+      () => {
+        cookieValues.set("lax_account_session", "sess-1");
+        sessionGet.mockRejectedValue(new Error("redis down"));
+      },
+    ]) {
+      cookieSet.mockReset();
+      setup();
+      const response = await reauth("&display=popup&reason=sign_out_other_devices");
+      expect(response.headers.get("location")).toBe(
+        "https://account.test/api/auth/step-up-complete?status=signed_out",
+      );
+      expect(cookieSet).not.toHaveBeenCalled();
+    }
   });
 });

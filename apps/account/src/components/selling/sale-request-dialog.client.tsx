@@ -2,8 +2,9 @@
 
 import { Button, LoadingButton } from "@/components/account-button";
 import { FIELD } from "@/components/account-ui";
+import { StepUpDialog } from "@/components/step-up-dialog.client";
+import { useStepUp } from "@/components/use-step-up.client";
 import { requestSaleChangeAction } from "@/server/application/selling-actions.server";
-import { buildReauthHref } from "@/server/domain/account-reauth";
 import {
   MIN_AVAILABLE_TO_SELL,
   SALE_REQUEST_NOTE_MAX,
@@ -79,6 +80,7 @@ export function SaleRequestDialog({
   const [note, setNote] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const stepUp = useStepUp({ returnTo: SELLING_ROUTES.editions });
   const draft = describeSaleRequestDraft(count, current, max);
 
   function reset(nextOpen: boolean) {
@@ -94,6 +96,10 @@ export function SaleRequestDialog({
   function submit(event: React.FormEvent) {
     event.preventDefault();
     if (!draft.canSubmit) return;
+    send();
+  }
+
+  function send() {
     setError(null);
     startTransition(async () => {
       const trimmed = note.trim();
@@ -103,7 +109,7 @@ export function SaleRequestDialog({
         ...(trimmed ? { note: trimmed } : {}),
       });
       if (result.status === "reauth_required") {
-        window.location.assign(buildReauthHref(SELLING_ROUTES.editions));
+        stepUp.require({ reason: "request_sale", retry: send });
         return;
       }
       if (result.status === "error") {
@@ -232,6 +238,7 @@ export function SaleRequestDialog({
             </LoadingButton>
           </DialogFooter>
         </form>
+        <StepUpDialog stepUp={stepUp} />
       </DialogContent>
     </Dialog>
   );

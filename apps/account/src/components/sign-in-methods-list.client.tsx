@@ -6,7 +6,6 @@ import {
   startSignInMethodAddAction,
 } from "@/server/application/account-identity-actions.server";
 import type { AccountActionResult, LinkActionResult } from "@/server/domain/account-action-result";
-import { buildReauthHref } from "@/server/domain/account-reauth";
 import type { SettingsRowVm } from "@/server/domain/account-settings.vm";
 import type {
   LinkRowVm,
@@ -15,13 +14,14 @@ import type {
 } from "@/server/domain/account-sign-in-methods.vm";
 import type { SignInMethodKind } from "@auction/identity-contracts/account";
 import { cn } from "@auction/ui";
-import { ConfirmDialog } from "@auction/ui/components/confirm-dialog";
 import { useRouter } from "next/navigation";
 import { type ReactNode, useEffect, useId, useState } from "react";
 import { ListCard, ListCardRow } from "./account-ui";
 import { PasskeysGroup } from "./passkey-rows.client";
 import { ProductText } from "./product-name";
 import { SIGN_IN_METHOD_ROW as ROW, SignInMethodRowText as RowText } from "./sign-in-method-row";
+import { StepUpDialog } from "./step-up-dialog.client";
+import { useStepUp } from "./use-step-up.client";
 
 type SignInMethodsListProps = {
   rows: SignInMethodRowVm[];
@@ -176,6 +176,7 @@ export function SignInMethodsList({
   const [addError, setAddError] = useState<{ kind: SignInMethodKind; message: string } | null>(
     null,
   );
+  const stepUp = useStepUp({ returnTo });
 
   // Coming back with the browser's Back button restores this page as it was left, mid-hand-off.
   useEffect(() => {
@@ -206,7 +207,8 @@ export function SignInMethodsList({
       return;
     }
     if (result.status === "reauth_required") {
-      window.location.assign(buildReauthHref(returnTo, "add_sign_in_method"));
+      setAdding(null);
+      stepUp.require({ reason: "add_sign_in_method", retry: () => void add(kind) });
       return;
     }
     setAdding(null);
@@ -230,7 +232,8 @@ export function SignInMethodsList({
       result = { status: "error", message: "We couldn't do that just now. Please try again." };
     }
     if (result.status === "reauth_required") {
-      window.location.assign(buildReauthHref(returnTo, "remove_sign_in_method"));
+      setBusy(false);
+      stepUp.require({ reason: "remove_sign_in_method", retry: () => void run(current) });
       return;
     }
     if (result.status === "error" && result.stale) {
@@ -322,31 +325,36 @@ export function SignInMethodsList({
       >
         {notice?.message}
       </output>
-      {target ? (
-        <ConfirmDialog
-          open
-          onOpenChange={(open) => {
-            if (!open) close();
-          }}
-          title={target.confirm.title}
-          body={
-            <>
-              <p>
-                <ProductText text={target.confirm.body} />
-              </p>
-              {error ? (
-                <p role="alert" className="mt-3 text-error">
-                  {error}
-                </p>
-              ) : null}
-            </>
-          }
-          confirmLabel={target.confirm.confirmLabel}
-          loading={busy}
-          loadingLabel="Removing…"
-          onConfirm={() => run(target)}
-        />
-      ) : null}
+      <StepUpDialog
+        stepUp={stepUp}
+        action={
+          target
+            ? {
+                open: true,
+                onOpenChange: (open) => {
+                  if (!open) close();
+                },
+                title: target.confirm.title,
+                body: (
+                  <>
+                    <p>
+                      <ProductText text={target.confirm.body} />
+                    </p>
+                    {error ? (
+                      <p role="alert" className="mt-3 text-error">
+                        {error}
+                      </p>
+                    ) : null}
+                  </>
+                ),
+                confirmLabel: target.confirm.confirmLabel,
+                loading: busy,
+                loadingLabel: "Removing…",
+                onConfirm: () => run(target),
+              }
+            : null
+        }
+      />
     </div>
   );
 }

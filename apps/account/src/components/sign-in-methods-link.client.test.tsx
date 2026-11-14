@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import type { SignInMethodRowVm } from "@/server/domain/account-sign-in-methods.vm";
-import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const refresh = vi.fn();
@@ -118,7 +118,14 @@ describe("Link rows", () => {
     start.mockResolvedValue({ status: "reauth_required" });
     renderList([password, linkRow("google")]);
     fireEvent.click(screen.getByRole("button", { name: "Link Google" }));
-    await waitFor(() => expect(assign).toHaveBeenCalled());
+    const confirm = await screen.findByRole("dialog", { name: "Confirm it's you" });
+    expect(confirm.textContent).toContain("before you add a way to sign in");
+    expect(
+      screen.getByRole("button", { name: "Link Google", hidden: true }).hasAttribute("disabled"),
+    ).toBe(false);
+    // The browser blocks the window, so Continue falls back to the full-page sign-in.
+    vi.spyOn(window, "open").mockReturnValue(null);
+    fireEvent.click(within(confirm).getByRole("button", { name: "Continue" }));
     expect(assign.mock.calls[0]?.[0]).toBe(
       "/api/auth/login?returnTo=%2Faccount%2Fsecurity&intent=reauth&reason=add_sign_in_method",
     );

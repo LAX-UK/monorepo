@@ -1,11 +1,13 @@
+import { ACCOUNT_STEP_UP_REASONS } from "@auction/identity-contracts/account";
 import { describe, expect, it, vi } from "vitest";
 import {
+  STEP_UP_COPY,
   STEP_UP_WINDOW_NAME,
   type StepUpEnvironment,
   type StepUpState,
   type StepUpWindow,
   createStepUpController,
-  isStepUpComplete,
+  readStepUpAnswer,
   stepUpWindowFeatures,
   withResume,
   withoutResume,
@@ -134,6 +136,53 @@ describe("the Confirm it's you step", () => {
     expect(target.searchParams.get("returnTo")).toBe("/account/security?resume=signout%3As2");
   });
 
+  it("falls back to a full page sign-in without the resume it was not given", () => {
+    const h = harness({ blocked: true });
+    h.controller.require();
+    h.controller.continue({ reason: "change_name", returnTo: "/account/personal" });
+    const target = new URL(vi.mocked(h.env.assign).mock.calls[0]?.[0] ?? "", ORIGIN);
+    expect(target.searchParams.get("returnTo")).toBe("/account/personal");
+    expect(target.searchParams.get("reason")).toBe("change_name");
+  });
+
+  it("never runs the action again when nobody was signed in to confirm: it signs in on a full page", () => {
+    const h = harness();
+    h.controller.require();
+    h.controller.continue(h.request);
+    h.send({ data: { type: "lax-step-up", status: "signed_out" } });
+    expect(h.onConfirmed).not.toHaveBeenCalled();
+    const target = new URL(vi.mocked(h.env.assign).mock.calls[0]?.[0] ?? "", ORIGIN);
+    expect(target.pathname).toBe("/api/auth/login");
+    expect(target.searchParams.has("display")).toBe(false);
+    expect(target.searchParams.get("returnTo")).toBe("/account/security?resume=signout%3As2");
+  });
+
+  it("only brings the open window to the front on a second Continue, never restarting it", () => {
+    const h = harness();
+    h.controller.require();
+    h.controller.continue(h.request);
+    vi.mocked(h.popup.focus as () => void).mockClear();
+    h.controller.continue(h.request);
+    expect(h.env.open).toHaveBeenCalledTimes(1);
+    expect(h.popup.focus).toHaveBeenCalledTimes(1);
+    expect(h.last()?.phase).toBe("waiting");
+    h.popup.closed = true;
+    h.tick();
+    h.controller.continue(h.request);
+    expect(h.env.open).toHaveBeenCalledTimes(2);
+  });
+
+  it("ignores the window's answer once it is no longer waiting for one", () => {
+    const h = harness();
+    h.controller.require();
+    h.controller.continue(h.request);
+    // The action asked again while the window was still open: the dialog is back on Continue.
+    h.controller.require();
+    h.send({});
+    expect(h.onConfirmed).not.toHaveBeenCalled();
+    expect(h.last()?.phase).toBe("confirm");
+  });
+
   it("cancels without changing anything, and closes the window it opened", () => {
     const h = harness();
     h.controller.require();
@@ -146,21 +195,33 @@ describe("the Confirm it's you step", () => {
   });
 });
 
-describe("isStepUpComplete", () => {
+describe("readStepUpAnswer", () => {
   const source = {};
-  it("accepts only the exact origin, the opened window and the ok status", () => {
-    expect(isStepUpComplete({ origin: ORIGIN, source, data: OK }, { origin: ORIGIN, source })).toBe(
-      true,
+  it("accepts only the exact origin, the opened window and a known status", () => {
+    expect(readStepUpAnswer({ origin: ORIGIN, source, data: OK }, { origin: ORIGIN, source })).toBe(
+      "ok",
     );
     expect(
-      isStepUpComplete({ origin: `${ORIGIN}:8443`, source, data: OK }, { origin: ORIGIN, source }),
-    ).toBe(false);
+      readStepUpAnswer(
+        { origin: ORIGIN, source, data: { type: "lax-step-up", status: "signed_out" } },
+        { origin: ORIGIN, source },
+      ),
+    ).toBe("signed_out");
     expect(
-      isStepUpComplete(
+      readStepUpAnswer({ origin: `${ORIGIN}:8443`, source, data: OK }, { origin: ORIGIN, source }),
+    ).toBeNull();
+    expect(
+      readStepUpAnswer(
         { origin: ORIGIN, source: null, data: OK },
         { origin: ORIGIN, source: null },
       ),
-    ).toBe(false);
+    ).toBeNull();
+    expect(
+      readStepUpAnswer(
+        { origin: ORIGIN, source, data: { type: "other", status: "ok" } },
+        { origin: ORIGIN, source },
+      ),
+    ).toBeNull();
   });
 });
 
@@ -181,5 +242,15 @@ describe("stepUpWindowFeatures", () => {
     expect(
       stepUpWindowFeatures({ screenX: 100, screenY: 50, outerWidth: 1280, outerHeight: 800 }),
     ).toBe("popup=yes,width=480,height=640,left=500,top=130");
+  });
+});
+
+describe("STEP_UP_COPY", () => {
+  it("words every reason, and never promises the window or the page, since either can happen", () => {
+    for (const reason of ACCOUNT_STEP_UP_REASONS) {
+      const why = STEP_UP_COPY.why[reason];
+      expect(why).toMatch(/^For your security, sign in again before you .+\.$/);
+      expect(why).not.toMatch(/stay on this page|window/i);
+    }
   });
 });
