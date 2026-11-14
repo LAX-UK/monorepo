@@ -59,7 +59,7 @@ const SUPERSEDES_PART_TRANSFER: readonly UnappliedMoney["reason"][] = [
   "customer_balance_unapplied",
 ];
 
-/** The unique index on the received event's dedupe key (migration 0383). */
+/** The unique index on the received event's dedupe key (migration 0384). */
 const DEDUPE_KEY_INDEX = "domain_events_unapplied_money_dedupe_key_uid";
 
 type PgError = { code?: unknown; constraint?: unknown; message?: unknown; cause?: unknown };
@@ -129,7 +129,7 @@ export class UnappliedMoneyRecorder implements IUnappliedMoneyRecorder {
     // The reference a payer quoted is left out of the log: it is typed by a person.
     const { transferReference: _quoted, ...loggable } = payload;
     console.error(JSON.stringify({ msg: "unapplied_money_received", ...loggable }));
-    // The database refuses a second event for the same key (index 0383). A writer outside this
+    // The database refuses a second event for the same key (index 0384). A writer outside this
     // lock that got there first is not an error: the money is already recorded. The insert runs
     // in a savepoint so that refusal leaves the caller's transaction (and its webhook claim)
     // usable, and the caller carries on as if this report had found the first one.

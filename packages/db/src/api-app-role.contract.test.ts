@@ -8,6 +8,7 @@ import {
   API_DENY_TABLES,
   API_PRODUCT_PROFILE_TABLES,
   API_READ_TABLES,
+  API_SHOP_DELIVERY_READ_COLUMNS,
   API_SSF_RECEIVER_TABLES,
   API_UNLINKED_ORIGINALS_READ_COLUMNS,
   FINANCE_SETTING_READ_TABLES,
@@ -76,6 +77,7 @@ async function withOwnerDocuments<T>(
     differs: string;
     parked: string;
     parkedCancelled: string;
+    parkedShop: string;
   }) => Promise<T>,
 ): Promise<T> {
   const owner = new Client(buildPgConnectionConfig(OWNER_URL ?? ""));
@@ -87,17 +89,30 @@ async function withOwnerDocuments<T>(
     lastErrorClass: string | null,
     providerId: string | null,
     reviewReason: string | null = null,
+    product: "bid" | "shop" = "bid",
   ) => {
+    // A draft as the projection stores it: header, one line of 100 + 20 VAT, and its totals.
     const result = await owner.query<{ id: string }>(
       `insert into accounting_document (product, legal_entity, kind, lax_reference,
          source_event_ref, payload, net_pence, vat_pence, gross_pence, provider, target_provider,
          target_mode, attempts, state, last_error_class, provider_id, provider_number,
          review_lookup, needs_review_reason)
-       values ('bid', 'london_auction_xchange', 'invoice', $1, 'evt', '{}', 100, 20, 120,
+       values ($6, case $6 when 'bid' then 'london_auction_xchange' else 'london_art_exchange' end,
+         'invoice', $1, 'evt',
+         jsonb_build_object('kind', 'invoice', 'reference', $1::text, 'product', $6::text,
+           'entity', case $6 when 'bid' then 'london_auction_xchange' else 'london_art_exchange' end,
+           'contactReference', case $6 when 'bid' then 'LAX-BID-CON-contract' else 'LAX-SHOP-CON-contract' end,
+           'currency', 'GBP', 'issuedOn', '2031-11-14', 'dueOn', '2031-11-14',
+           'number', 'LAX-INV-000001-D',
+           'lines', jsonb_build_array(jsonb_build_object('role', 'delivery', 'quantity', 1,
+             'unitNetPence', 100, 'vatPence', 20, 'treatment', 'outside_scope',
+             'description', 'Delivery')),
+           'totals', jsonb_build_object('netPence', 100, 'vatPence', 20, 'grossPence', 120)),
+         100, 20, 120,
          'books', 'books', 'dry_run', 1, $2, $3, $4::text, case when $4::text is null then null else 'INV-1' end,
          case when $5::text is null then null else 'clear' end, $5::text)
        returning id`,
-      [reference, state, lastErrorClass, providerId, reviewReason],
+      [reference, state, lastErrorClass, providerId, reviewReason, product],
     );
     const id = result.rows[0]?.id as string;
     ids.push(id);
@@ -139,7 +154,16 @@ async function withOwnerDocuments<T>(
       null,
       "accounting_parked_invoice_cancelled",
     );
-    return await fn({ failed, issued, withheld, differs, parked, parkedCancelled });
+    // A Shop delivery outside the UK, parked for the accountant.
+    const parkedShop = await insert(
+      `LAX-SHOP-INV-s-${suffix}`,
+      "needs_review",
+      null,
+      null,
+      "accounting_parked_vat_on_outside_uk_delivery",
+      "shop",
+    );
+    return await fn({ failed, issued, withheld, differs, parked, parkedCancelled, parkedShop });
   } finally {
     if (ids.length > 0) {
       await owner.query("delete from accounting_document where id = any($1::uuid[])", [ids]);
@@ -218,6 +242,49 @@ describe.skipIf(!API_URL)("api_app role contract", { timeout: 60_000 }, () => {
             and a.archived_at is null
           limit 1`,
       );
+    });
+  });
+
+  it("reads only a Shop order's status and delivery columns (Release), never the buyer or the address", async () => {
+    await withApiClient(async (client) => {
+      for (const [tableName, granted] of API_SHOP_DELIVERY_READ_COLUMNS) {
+        const table = await readTablePrivileges(
+          client,
+          [tableName],
+          ["SELECT", "INSERT", "UPDATE", "DELETE", "TRUNCATE", "REFERENCES", "TRIGGER"],
+        );
+        expectTablePrivileges(table, () => false);
+        const columns = await client.query<{
+          column_name: string;
+          can_select: boolean;
+          can_write: boolean;
+        }>(
+          `select column_name::text,
+                  has_column_privilege(current_user, format('public.%I', $1::text), column_name, 'SELECT') as can_select,
+                  has_column_privilege(current_user, format('public.%I', $1::text), column_name, 'INSERT')
+                    or has_column_privilege(current_user, format('public.%I', $1::text), column_name, 'UPDATE') as can_write
+             from information_schema.columns
+            where table_schema = 'public' and table_name = $1`,
+          [tableName],
+        );
+        const readable = columns.rows.filter((row) => row.can_select).map((row) => row.column_name);
+        expect(readable.sort(), tableName).toEqual([...granted].sort());
+        expect(columns.rows.filter((row) => row.can_write)).toEqual([]);
+        for (const personal of [
+          "identity_subject_id",
+          "guest_customer_id",
+          "delivery_line1",
+          "total_pence",
+        ]) {
+          expect(readable, personal).not.toContain(personal);
+        }
+      }
+      const lines = await readTablePrivileges(
+        client,
+        ["shop_order_line", "shop_guest_customer"],
+        ["SELECT"],
+      );
+      expectTablePrivileges(lines, () => false);
     });
   });
 
@@ -389,7 +456,7 @@ describe.skipIf(!API_URL)("api_app role contract", { timeout: 60_000 }, () => {
                 needs_review_reason = null, provider_id = null, provider_number = null, pdf_ref = null,
                 mismatch_field = null, mismatch_difference_pence = null, updated_at = now()${set}
               where id = $1`;
-            const rebuilt = `, payload = jsonb_build_object('kind', 'invoice', 'reference', lax_reference, 'rebuilt', true), net_pence = 120, vat_pence = 0`;
+            const rebuilt = `, payload = payload || jsonb_build_object('lines', jsonb_build_array(jsonb_build_object('role', 'delivery', 'quantity', 1, 'unitNetPence', 120, 'vatPence', 0, 'treatment', 'zero', 'description', 'Delivery')), 'totals', jsonb_build_object('netPence', 120, 'vatPence', 0, 'grossPence', 120)), net_pence = 120, vat_pence = 0`;
             expect(
               await probe(client, release(rebuilt), [parkedCancelled]),
               "rebuild a document parked for a cancelled invoice",
@@ -440,6 +507,141 @@ describe.skipIf(!API_URL)("api_app role contract", { timeout: 60_000 }, () => {
               "a release from anything but a review",
             ).toBe("42501");
             expect(await releaseRow(parked, "needs_review", released)).toBeUndefined();
+          } finally {
+            await client.query("ROLLBACK");
+          }
+        });
+      });
+    },
+  );
+
+  it.skipIf(!OWNER_URL)(
+    "releases a rebuilt delivery invoice (Bid and Shop) only with its header, a line total and totals that hold",
+    async () => {
+      await withOwnerDocuments(async ({ parked, parkedShop }) => {
+        await withApiClient(async (client) => {
+          await client.query("BEGIN");
+          try {
+            const release = (set: string) =>
+              `update accounting_document set state = 'pending',
+                lease_token = null, lease_expires_at = null, settles_at = null, review_lookup = null,
+                needs_review_reason = null, provider_id = null, provider_number = null, pdf_ref = null,
+                mismatch_field = null, mismatch_difference_pence = null, updated_at = now()${set}
+              where id = $1`;
+            const line = (net: number, vat: number) =>
+              `jsonb_build_object('role', 'delivery', 'quantity', 1, 'unitNetPence', ${net}, 'vatPence', ${vat}, 'treatment', 'zero', 'description', 'Delivery')`;
+            const totals = (net: number, vat: number) =>
+              `jsonb_build_object('netPence', ${net}, 'vatPence', ${vat}, 'grossPence', ${net + vat})`;
+            /** A rebuild: new lines and totals, the header as stored with `header` merged over it. */
+            const rebuild = (
+              options: {
+                header?: string;
+                lines?: string;
+                totals?: string;
+                net?: number;
+                vat?: number;
+                gross?: number;
+              } = {},
+            ) =>
+              release(
+                `, payload = payload || jsonb_build_object('lines', ${options.lines ?? `jsonb_build_array(${line(120, 0)})`}, 'totals', ${options.totals ?? totals(120, 0)})${options.header ? ` || ${options.header}` : ""}, net_pence = ${options.net ?? 120}, vat_pence = ${options.vat ?? 0}${options.gross === undefined ? "" : `, gross_pence = ${options.gross}`}`,
+              );
+            for (const [label, id, other, company] of [
+              ["Bid", parked, "LAX-BID-CON-other", "'london_art_exchange', 'product', 'shop'"],
+              [
+                "Shop",
+                parkedShop,
+                "LAX-SHOP-CON-other",
+                "'london_auction_xchange', 'product', 'bid'",
+              ],
+            ] as const) {
+              const refused: [string, string][] = [
+                [
+                  rebuild({ header: `jsonb_build_object('contactReference', '${other}')` }),
+                  "another contact",
+                ],
+                [rebuild({ header: "jsonb_build_object('currency', 'EUR')" }), "another currency"],
+                [
+                  rebuild({ header: "jsonb_build_object('issuedOn', '2031-11-15')" }),
+                  "another issue date",
+                ],
+                [
+                  rebuild({ header: "jsonb_build_object('dueOn', '2031-12-15')" }),
+                  "another due date",
+                ],
+                [
+                  rebuild({ header: "jsonb_build_object('number', 'LAX-INV-999999-D')" }),
+                  "another number",
+                ],
+                [
+                  rebuild({
+                    header: `jsonb_build_object('entity', ${company})`,
+                  }),
+                  "another company",
+                ],
+                [
+                  release(
+                    `, payload = (payload || jsonb_build_object('totals', ${totals(120, 0)})) - 'lines', net_pence = 120, vat_pence = 0`,
+                  ),
+                  "the lines dropped",
+                ],
+                [rebuild({ lines: "'[]'::jsonb" }), "no line"],
+                [
+                  rebuild({ lines: `jsonb_build_array(${line(100, 0)})` }),
+                  "lines that do not add up to the gross",
+                ],
+                [
+                  rebuild({
+                    lines: `jsonb_build_array(jsonb_build_object('quantity', 'one', 'unitNetPence', 120, 'vatPence', 0))`,
+                  }),
+                  "a line that is not numbers",
+                ],
+                [
+                  rebuild({
+                    lines: `jsonb_build_array(${line(120, 0)}, jsonb_build_object('role', 'delivery', 'unitNetPence', 5, 'vatPence', 0))`,
+                  }),
+                  "an extra line missing its quantity",
+                ],
+                [
+                  rebuild({ lines: `jsonb_build_array(${line(120, 0)}, '42'::jsonb)` }),
+                  "an extra line that is not an object",
+                ],
+                [
+                  release(
+                    `, payload = (payload || jsonb_build_object('lines', jsonb_build_array(${line(120, 0)}))) - 'totals', net_pence = 120, vat_pence = 0`,
+                  ),
+                  "the totals removed",
+                ],
+                [
+                  rebuild({
+                    totals: `jsonb_build_object('netPence', '120', 'vatPence', 0, 'grossPence', 120)`,
+                  }),
+                  "a total that is a string",
+                ],
+                [
+                  rebuild({ totals: totals(100, 20) }),
+                  "payload totals that disagree with the columns",
+                ],
+                [rebuild({ net: 100, vat: 0 }), "net + VAT not equal to the gross"],
+              ];
+              for (const [statement, what] of refused) {
+                expect(await probe(client, statement, [id]), `${label}: ${what}`).toBe("42501");
+              }
+              // The booking may move the split between net and VAT, consistently everywhere.
+              expect(
+                await probe(
+                  client,
+                  rebuild({
+                    lines: `jsonb_build_array(${line(100, 20)})`,
+                    totals: totals(100, 20),
+                    net: 100,
+                    vat: 20,
+                  }),
+                  [id],
+                ),
+                `${label}: a rebuild that holds`,
+              ).toBeUndefined();
+            }
           } finally {
             await client.query("ROLLBACK");
           }

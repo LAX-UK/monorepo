@@ -14,6 +14,7 @@ import {
   SavedDeliveryAddressListSchema,
   ShopApiErrorBodySchema,
   ShopFulfilmentOptionSchema,
+  ShopOrderInvoiceCardSchema,
 } from "@auction/shop-contracts";
 import { orderProblemWindow } from "@auction/shop-domain";
 import { Type } from "@sinclair/typebox";
@@ -130,6 +131,72 @@ export async function registerOrderRoutes(app: FastifyInstance, deps: CommerceRo
         .header("content-disposition", attachmentContentDisposition(model.fileName))
         .header("cache-control", "private, no-store")
         .send(pdf);
+    },
+  );
+
+  /**
+   * Never cached, whatever the answer: a refusal and a validation error included, so an
+   * intermediary never keeps one buyer's invoice (or the fact of it) for another.
+   */
+  const noStore = async (
+    _request: unknown,
+    reply: { header(k: string, v: string): unknown },
+    payload: unknown,
+  ) => {
+    reply.header("cache-control", "private, no-store");
+    return payload;
+  };
+
+  app.get(
+    "/v1/orders/:orderId/invoice-card",
+    {
+      onSend: noStore,
+      schema: {
+        tags: ["commerce"],
+        params: Type.Object({ orderId: Type.String({ format: "uuid" }) }),
+        response: { 200: ShopOrderInvoiceCardSchema, 404: ShopApiErrorBodySchema },
+      },
+    },
+    async (request) => {
+      requireShopScope(request, "shop.read");
+      const subject = requireShopSubject(request);
+      const { orderId } = request.params as { orderId: string };
+      // Only the shopper's own order: anyone else's is not found.
+      const order = await deps.getOrder(subject, orderId);
+      if (!order || !deps.orderInvoiceCard) throw notFound("Order");
+      return deps.orderInvoiceCard.card(order);
+    },
+  );
+
+  app.get(
+    "/v1/orders/:orderId/invoice-documents/:documentId",
+    {
+      onSend: noStore,
+      schema: {
+        tags: ["commerce"],
+        params: Type.Object({
+          orderId: Type.String({ format: "uuid" }),
+          documentId: Type.String({ format: "uuid" }),
+        }),
+        response: { 404: ShopApiErrorBodySchema },
+      },
+    },
+    async (request, reply) => {
+      requireShopScope(request, "shop.read");
+      const subject = requireShopSubject(request);
+      const { orderId, documentId } = request.params as { orderId: string; documentId: string };
+      const order = await deps.getOrder(subject, orderId);
+      // One answer for every reason: not the shopper's, not issued live, no copy, cancelled.
+      const copy =
+        order && deps.orderInvoiceCard
+          ? await deps.orderInvoiceCard.document(order, documentId)
+          : null;
+      if (!copy) throw notFound("Invoice");
+      return reply
+        .header("content-type", "application/pdf")
+        .header("content-disposition", attachmentContentDisposition(copy.filename))
+        .header("x-content-type-options", "nosniff")
+        .send(copy.pdf);
     },
   );
 

@@ -301,6 +301,27 @@ export const API_ACCOUNTING_RELEASE_COLUMNS = [
 ] as const;
 export const WORKER_ACCOUNTING_APPEND_ONLY_TABLES = ["accounting_document_event"] as const;
 /**
+ * The worker reads which documents' history already holds an action, and when a document moved
+ * to which state, column by column: the follow-up step that applies a Shop order payment's
+ * unapplied rest to its outside-UK delivery invoice (migration 0383) is settled once, by an
+ * `apply_remainder` row, and the watch alerts when one issued hours ago is still not settled.
+ * Nothing else of history (no detail, nobody who asked).
+ */
+export const WORKER_ACCOUNTING_HISTORY_READ_COLUMNS = [
+  ["accounting_document_event", ["document_id", "action", "to_state", "occurred_at"]],
+] as const;
+/**
+ * Release of a parked Shop outside-UK delivery invoice (staff, in the Bid API's Accounting page)
+ * rebuilds it from its order's stored delivery: these columns of the order and no others. No
+ * buyer, address, line or payment column; no write. Every other Shop table stays denied.
+ */
+export const API_SHOP_DELIVERY_READ_COLUMNS = [
+  [
+    "shop_order",
+    ["id", "status", "fulfilment", "fulfilment_surcharge_pence", "fulfilment_vat_pence"],
+  ],
+] as const;
+/**
  * LAX's stored copies of issued documents' PDFs (migration 0381). The worker records a copy once
  * and later settles its email once, as queued or skipped (those four columns only; a trigger makes
  * them write-once); the Bid API reads them to show and serve the buyer's invoice. Nobody deletes a
@@ -315,6 +336,81 @@ export const WORKER_ACCOUNTING_COPY_UPDATE_COLUMNS = [
 ] as const;
 export const API_ACCOUNTING_COPY_READ_TABLES = ["accounting_document_copy"] as const;
 export const WORKER_ACCOUNTING_READ_TABLES = ["accounting_source_setting"] as const;
+
+/**
+ * What the accounting projection reads to book a paid Shop order (plan v2, flows 18-20), column by
+ * column: the order's invoice number, totals and delivery charge as stored, its lines' prices and
+ * VAT as sold, the words the invoice prints (a work's title, a product's, a frame's name as sold),
+ * and the buyer's name and email for the Books contact and the invoice email. Nothing that writes.
+ * The order's address and phone, the basket and every other Shop table stay denied to the worker.
+ */
+export const WORKER_SHOP_INVOICE_READ_COLUMNS = [
+  [
+    "shop_order",
+    [
+      "id",
+      "reference",
+      "status",
+      "invoice_number",
+      "identity_subject_id",
+      "guest_customer_id",
+      "buyer_party_id",
+      "fulfilment",
+      "fulfilment_surcharge_pence",
+      "fulfilment_vat_pence",
+      "total_pence",
+      "paid_at",
+    ],
+  ],
+  [
+    "shop_order_line",
+    [
+      "id",
+      "order_id",
+      "kind",
+      "artwork_id",
+      "product_variant_id",
+      "print_label",
+      "edition_number",
+      "unit_price_pence",
+      "vat_treatment",
+      "vat_pence",
+      "framing_snapshot",
+      "created_at",
+    ],
+  ],
+  ["shop_artwork", ["id", "title"]],
+  ["shop_product", ["id", "title"]],
+  ["shop_product_variant", ["id", "product_id", "sku"]],
+  ["shop_guest_customer", ["id", "email", "name", "erased_at"]],
+] as const;
+
+/**
+ * What the Shop app reads to show a buyer their invoice card and serve LAX's stored copy of it
+ * (Shop invoices, plan v2): a document's state, number and target, its copy's key, and the moment
+ * it was issued. Column by column and read only: the document's payload (names, lines), its totals
+ * and every write stay denied to shop_app, and the Shop never changes a document.
+ */
+export const SHOP_ACCOUNTING_READ_COLUMNS = [
+  [
+    "accounting_document",
+    [
+      "id",
+      "product",
+      "legal_entity",
+      "kind",
+      "lax_reference",
+      "target_provider",
+      "target_mode",
+      "state",
+      "provider_number",
+      "created_at",
+    ],
+  ],
+  ["accounting_document_copy", ["document_id", "storage_key", "rehearsal", "stored_at"]],
+  ["accounting_document_event", ["document_id", "to_state", "occurred_at"]],
+  ["accounting_source_setting", ["product", "xero_mode", "books_mode"]],
+] as const;
 /**
  * What a seller is paid for each sale, fixed when the buyer's invoice is raised (migration 0372).
  * Both payment-raising processes (the API at checkout, the worker at lot end) write the row in the
@@ -644,6 +740,13 @@ export const LIFT_ZOHO_CAMPAIGNS_OPT_OUT_FUNCTION =
   "lift_zoho_campaigns_opt_out(text, timestamptz, boolean)";
 /** Roles that may call it: the Bid API (confirm link) and the worker (Shop event, sync, newsletter). */
 export const LIFT_ZOHO_CAMPAIGNS_OPT_OUT_ROLES = ["api_app", "worker_app"] as const;
+/**
+ * Migration 0383's definer function: a Shop order's stored delivery, read and held FOR SHARE in a
+ * release's move (api_app may read those columns but not lock a Shop row). Only the Bid API calls it.
+ */
+export const ACCOUNTING_RELEASE_SHOP_ORDER_BASIS_FUNCTION =
+  "accounting_release_shop_order_basis(uuid)";
+export const ACCOUNTING_RELEASE_SHOP_ORDER_BASIS_ROLES = ["api_app"] as const;
 /** Migration 0344's top-up of the buyer refund record from the payout ledger. */
 export const PAYMENT_REFUND_BACKFILL_FUNCTION = "payment_refund_backfill_from_payout_lines(uuid)";
 /** Roles that may call it: the API (refund webhooks, staff refunds) and the worker. Not shop_app. */
@@ -1498,8 +1601,20 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
         for (const tableName of WORKER_ACCOUNTING_APPEND_ONLY_TABLES) {
           await grantIfExists(client, "worker_app", tableName, "INSERT");
         }
+        for (const [tableName, columns] of WORKER_ACCOUNTING_HISTORY_READ_COLUMNS) {
+          await grantColumnSelectIfExists(client, "worker_app", tableName, columns);
+        }
+        for (const [tableName, columns] of API_SHOP_DELIVERY_READ_COLUMNS) {
+          await grantColumnSelectIfExists(client, "api_app", tableName, columns);
+        }
         for (const tableName of WORKER_ACCOUNTING_READ_TABLES) {
           await grantIfExists(client, "worker_app", tableName, "SELECT");
+        }
+        for (const [tableName, columns] of WORKER_SHOP_INVOICE_READ_COLUMNS) {
+          await grantColumnSelectIfExists(client, "worker_app", tableName, columns);
+        }
+        for (const [tableName, columns] of SHOP_ACCOUNTING_READ_COLUMNS) {
+          await grantColumnSelectIfExists(client, "shop_app", tableName, columns);
         }
         for (const tableName of WORKER_ACCOUNTING_COPY_TABLES) {
           await grantIfExists(client, "worker_app", tableName, "INSERT, SELECT");
@@ -1518,6 +1633,13 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
         }
         for (const role of LIFT_ZOHO_CAMPAIGNS_OPT_OUT_ROLES) {
           await grantExecuteIfFunctionExists(client, role, LIFT_ZOHO_CAMPAIGNS_OPT_OUT_FUNCTION);
+        }
+        for (const role of ACCOUNTING_RELEASE_SHOP_ORDER_BASIS_ROLES) {
+          await grantExecuteIfFunctionExists(
+            client,
+            role,
+            ACCOUNTING_RELEASE_SHOP_ORDER_BASIS_FUNCTION,
+          );
         }
         for (const role of PAYMENT_REFUND_BACKFILL_ROLES) {
           await grantExecuteIfFunctionExists(client, role, PAYMENT_REFUND_BACKFILL_FUNCTION);

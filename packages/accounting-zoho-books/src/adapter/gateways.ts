@@ -26,7 +26,7 @@ import {
   contactUpdateBody,
 } from "./mappers/contact.js";
 import { creditNoteBody } from "./mappers/credit-note.js";
-import { invoiceBody } from "./mappers/invoice.js";
+import { invoiceBody, invoiceQuery } from "./mappers/invoice.js";
 import { type PaymentBody, paymentBody } from "./mappers/payment.js";
 import { poundsToPence } from "./money-format.js";
 import type { ZohoOrgConfig, ZohoOrgConfigs } from "./org-config.js";
@@ -76,6 +76,15 @@ async function prepare(
   return "stop" in resolved ? resolved : { org, ids: resolved.ids };
 }
 
+/** `prepare`, for a step that is not a document of its own (applying a payment's remainder). */
+export function prepareFor(
+  deps: GatewayDeps,
+  doc: { readonly product: Product; readonly entity: Contact["entity"] },
+  dependencies: readonly Dependency[],
+): Promise<Prepared> {
+  return prepare(deps, doc, dependencies);
+}
+
 /** Refuse dependencies of another product, then find each one's Books id in `org`, in order. */
 async function resolveAll(
   lookup: ZohoDocumentLookup,
@@ -104,6 +113,16 @@ export type ReadBackCheck = (item: BooksRecord) => string | null;
  */
 export type ReadBack = { readonly check: ReadBackCheck | null } | { readonly stop: Stop };
 
+/**
+ * An invoice LAX numbered is ours only under that number: Books must not have renumbered it (an
+ * organisation setting can make it). Null (totals only) for an invoice Books numbers itself.
+ */
+export function invoiceNumberCheck(invoice: Invoice): ReadBackCheck | null {
+  const number = invoice.number;
+  if (!number) return null;
+  return (item) => (item.invoice_number === number ? null : ZOHO_BOOKS_REJECTIONS.numberDiffers);
+}
+
 export class ZohoInvoiceGateway implements InvoicePort {
   constructor(private readonly deps: GatewayDeps) {}
 
@@ -115,6 +134,8 @@ export class ZohoInvoiceGateway implements InvoicePort {
     const [customerId] = ready.ids as [string];
     const built = mapped(invoiceBody(invoice, customerId, ready.org));
     if ("stop" in built) return built.stop;
+    const query = invoiceQuery(invoice);
+    const verify = invoiceNumberCheck(invoice);
     return this.deps.writer.create({
       org: ready.org,
       product: invoice.product,
@@ -122,6 +143,8 @@ export class ZohoInvoiceGateway implements InvoicePort {
       reference: invoice.reference,
       ...(fence ? { fence } : {}),
       body: built.body,
+      ...(query ? { query } : {}),
+      ...(verify ? { verify } : {}),
     });
   }
 }

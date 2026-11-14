@@ -956,6 +956,8 @@ export {
   OrderRefundSchema,
   OrderStatusSchema,
   OrderSummarySchema,
+  ShopOrderInvoiceCardSchema,
+  ShopOrderInvoiceStateSchema,
   type OrderProblemReason,
   type OrderProblemReportRequest,
   type OrderProgress,
@@ -976,6 +978,8 @@ export {
   type OrderList,
   type OrderStatus,
   type OrderSummary,
+  type ShopOrderInvoiceCard,
+  type ShopOrderInvoiceState,
 } from "./commerce-public.js";
 export {
   ShopContractParseError,
@@ -985,6 +989,7 @@ export {
   parseCheckoutSession,
   parseOrderList,
   parseOrderSummary,
+  parseShopOrderInvoiceCard,
   parseRegisterArtworkInterestResponse,
   parseSavedDeliveryAddressList,
   parsePublicArtistDetail,

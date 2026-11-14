@@ -16,6 +16,8 @@ import type {
   Product,
   QueueTab,
   Result,
+  ShopDeliveryFacts,
+  ShopOrderPaidFacts,
   Source,
   SwitchCode,
   SwitchConfig,
@@ -53,7 +55,32 @@ export interface StoredAccountingDocument {
 
 export type StoredDocumentCode = "bad_stored_document";
 export type RegisterCode = "bad_document" | "reference_in_use";
-export type TransitionCode = LifecycleCode | "not_found" | StoredDocumentCode;
+export type TransitionCode =
+  | LifecycleCode
+  | "not_found"
+  | StoredDocumentCode
+  /** A release whose deciding rows changed after it decided (see `ReleaseBasis`). */
+  | "basis_changed";
+
+/**
+ * The stored rows a release of a parked document is decided on: a single Bid payment and its
+ * invoice, a "Pay several" group with its payments, invoices and delivery rows, or a Shop order's
+ * stored delivery.
+ */
+export type ReleaseBasis =
+  | { readonly kind: "bid_payment"; readonly paymentId: string }
+  | { readonly kind: "bid_payment_group"; readonly groupId: string }
+  | { readonly kind: "shop_order"; readonly orderId: string };
+
+/**
+ * Reads a release's deciding rows as one text, before the decision. The move reads them again in
+ * its own transaction, holding them `FOR SHARE` once the document is locked, and refuses when the
+ * text differs (`basis_changed`): the release is atomic with the rows it was decided on.
+ */
+export interface IAccountingReleaseBasisReader {
+  /** Null when a row it needs is missing. */
+  read(basis: ReleaseBasis): Promise<string | null>;
+}
 
 export interface RegisterInput {
   /** Built by the domain's constructors; checked again against the domain's rules before it is stored. */
@@ -117,6 +144,11 @@ export type DocumentTransition =
       readonly action: "release";
       readonly requestedBy: string;
       readonly document?: AccountingDocument;
+      /**
+       * The rows the release was decided on and how they read then. Re-read under lock in the
+       * move's transaction; any difference refuses the move (`basis_changed`).
+       */
+      readonly basis?: { readonly of: ReleaseBasis; readonly read: string };
     }
   /** A queued document that can never be sent as it stands, parked for a person. */
   | { readonly action: "park"; readonly reason: ParkReason }
@@ -248,6 +280,52 @@ export interface IBidAccountingFactsReader {
   deliveryGroupOf(quoteId: string): Promise<string | null>;
 }
 
+/**
+ * Reads what the Shop accounting flow needs from the stored order rows (the event carries ids
+ * only): the invoice number, every line's price and VAT as sold, the delivery as charged. Money
+ * comes back in whole pence, dates as London calendar days, ids lower case.
+ */
+export interface IShopAccountingFactsReader {
+  orderPaid(orderId: string): Promise<FactsRead<ShopOrderPaidFacts>>;
+}
+
+/** A paid Shop order's delivery as stored: what a parked delivery invoice is rebuilt from. */
+export interface IShopDeliveryReader {
+  delivery(orderId: string): Promise<FactsRead<ShopDeliveryFacts>>;
+}
+
+/** Who a Shop invoice email may go to: the order's owner now, while they can still be reached. */
+export interface ShopInvoiceRecipient {
+  readonly email: string;
+  readonly name: string | null;
+}
+
+/** What the Shop "Your invoice" email says, read from the order's own rows. */
+export interface ShopInvoiceEmailFacts {
+  readonly orderId: string;
+  /** "LAX-S-10482": what the buyer quotes for the order. */
+  readonly orderReference: string;
+  readonly totalPence: number;
+  readonly paidAt: Date;
+  /**
+   * The order was cancelled before its invoice email went. A refund does not cancel an invoice
+   * (it is credited later, by a credit note), so a refunded order's invoice is still emailed.
+   */
+  readonly cancelled: boolean;
+  /** The order is still a guest's (no account owns it): its link is requested, not opened. */
+  readonly guest: boolean;
+  /**
+   * The order's owner as it stands now (a guest, or the LAX account that claimed the order),
+   * or null when they cannot be reached: an erased guest, or an account that is disabled, being
+   * deleted or merged into another. Never someone the order belonged to before.
+   */
+  readonly recipient: ShopInvoiceRecipient | null;
+}
+
+export interface IShopInvoiceEmailFactsReader {
+  forOrder(orderId: string): Promise<ShopInvoiceEmailFacts | null>;
+}
+
 export interface AccountingQueueQuery {
   readonly tab: QueueTab;
   /** One company's books, or both when null. */
@@ -352,6 +430,12 @@ export interface IAccountingAttentionReader {
    * `oldestSince` is when the oldest was queued.
    */
   waitingPayments(modes: readonly TargetMode[], queuedBefore: Date): Promise<QueueAge>;
+  /**
+   * Shop outside-UK delivery invoices in one of `modes`, issued before `issuedBefore`, whose order
+   * payment's rest has not been applied to them yet (no `apply_remainder`): the buyer's credit is
+   * still unapplied in Books. `oldestSince` is when the oldest was issued.
+   */
+  unsettledRemainders(modes: readonly TargetMode[], issuedBefore: Date): Promise<QueueAge>;
 }
 
 /** LAX's stored copy of the PDF for an issued document. */
@@ -372,33 +456,45 @@ export interface UncopiedDocuments {
   readonly unreadable: readonly string[];
 }
 
-/** An issued Bid invoice whose stored copy is ready to email (never a rehearsal). */
+/** The products whose invoices are emailed with LAX's stored copy. */
+export type InvoiceEmailProduct = "bid" | "shop";
+
+/** An issued Bid or Shop invoice whose stored copy is ready to email (never a rehearsal). */
 export interface InvoiceEmailDue {
   readonly documentId: string;
-  /** The Bid invoice the document was made from (its LAX reference's source id). */
+  /** Which product's invoice: each has its own facts, email and recipient rule. */
+  readonly product: InvoiceEmailProduct;
+  /**
+   * What the document was made from (its LAX reference's source id): the Bid invoice, or the Shop
+   * order.
+   */
   readonly invoiceId: string;
   /** The provider's invoice number. */
   readonly number: string;
+  /** The invoice's gross as stored (what the attached PDF totals), in pence. */
+  readonly grossPence: number;
   readonly storageKey: string;
 }
 
 /**
  * Why an invoice's email was settled without sending it; each is final.
- * - `invoice_missing`: the Bid invoice the document names no longer exists.
+ * - `invoice_missing`: the Bid invoice or Shop order the document names no longer exists.
  * - `invoice_cancelled`: the invoice was cancelled before its email went.
  * - `no_recipient`: no current payer and no billing inbox to send it to.
- * - `unreadable_document`: the row does not read back as a numbered Bid invoice.
+ * - `unreadable_document`: the row does not read back as a numbered Bid or Shop invoice.
  */
 export type InvoiceEmailSkipReason =
   | "invoice_missing"
   | "invoice_cancelled"
   | "no_recipient"
-  | "unreadable_document";
+  | "unreadable_document"
+  /** A Shop invoice that is not an order's own (a released outside-UK delivery): not emailed here. */
+  | "not_order_invoice";
 
 /** The copies whose email is due, and the due rows that could not be read (settled as skipped). */
 export interface InvoiceEmailDueList {
   readonly due: readonly InvoiceEmailDue[];
-  /** Document ids listed as due whose row does not read back as a numbered Bid invoice. */
+  /** Document ids listed as due whose row does not read back as a numbered Bid or Shop invoice. */
   readonly unreadable: readonly string[];
 }
 
@@ -407,15 +503,19 @@ export interface InvoiceEmailDueList {
  * and the "Your invoice" email settled once per copy (queued, or skipped for good).
  */
 export interface IAccountingDocumentCopies {
-  /** Issued Bid invoices aimed at one of `modes` that have no stored copy yet, newest first. */
+  /** Issued Bid and Shop invoices aimed at one of `modes` that have no stored copy yet, newest first. */
   listUncopied(modes: readonly TargetMode[], limit: number): Promise<UncopiedDocuments>;
   /** Records a copy; false when the document already has one (another worker was first). */
   record(copy: AccountingDocumentCopy): Promise<boolean>;
   /**
-   * Copies of Bid invoices Books issued live whose email is not settled yet, oldest first; never
-   * a rehearsal, never a test organisation's invoice.
+   * Copies of Bid and Shop invoices Books issued live whose email is not settled yet, oldest first; never
+   * a rehearsal, never a test organisation's invoice. Only `products`' invoices are listed (all of
+   * them when omitted), so a product the caller cannot email now never fills another's batch.
    */
-  listEmailDue(limit: number): Promise<InvoiceEmailDueList>;
+  listEmailDue(
+    limit: number,
+    products?: readonly InvoiceEmailProduct[],
+  ): Promise<InvoiceEmailDueList>;
   /** Notes the email as queued; false when it was already settled (the note is made once). */
   markEmailQueued(documentId: string, outboxId: string, at: Date): Promise<boolean>;
   /**
@@ -423,6 +523,53 @@ export interface IAccountingDocumentCopies {
    * already settled.
    */
   markEmailSkipped(documentId: string, reason: InvoiceEmailSkipReason, at: Date): Promise<boolean>;
+}
+
+/** An issued invoice paid from an earlier payment's unapplied rest, and that payment. */
+export interface RemainderDue {
+  readonly invoice: StoredAccountingDocument;
+  readonly payment: StoredAccountingDocument;
+}
+
+export interface RemainderDueList {
+  readonly due: readonly RemainderDue[];
+  /** Ids of invoices whose pair could not be read; the others are still listed. */
+  readonly unreadable: readonly string[];
+}
+
+/** How applying a remainder ended, as recorded in the invoice's history (`apply_remainder`). */
+export interface RemainderRecord {
+  readonly outcome: "applied" | "already_applied" | "rejected";
+  readonly paymentReference: string;
+  readonly amountPence: number;
+  /** A dry run's rehearsal: nothing was applied in any books. */
+  readonly rehearsal: boolean;
+  /** Why it was refused (an adapter code); only for `rejected`. */
+  readonly reason?: string;
+}
+
+/**
+ * The follow-up step after a Shop outside-UK delivery invoice is issued: the order payment's
+ * unapplied rest is applied to it, once. Settled in the invoice's history (`apply_remainder`),
+ * which is append-only, so a settled invoice never comes back.
+ */
+export interface IAccountingRemainders {
+  /**
+   * Issued Shop outside-UK delivery invoices aimed at one of `modes` with no `apply_remainder` in
+   * their history, oldest first, each with the order's payment, issued in the same books. One
+   * whose payment is not issued there yet is not listed (it is applied once both are).
+   */
+  listDue(modes: readonly TargetMode[], limit: number): Promise<RemainderDueList>;
+  /**
+   * Runs `step` while holding the invoice (no other worker can run it for the same invoice), and
+   * records what it returns in the invoice's history in the same transaction. Nothing is recorded
+   * when `step` returns null (try again next run). False when another worker holds the invoice
+   * now, or it was settled already; the step is then not run.
+   */
+  settleExclusively(
+    invoiceDocumentId: string,
+    step: () => Promise<RemainderRecord | null>,
+  ): Promise<boolean>;
 }
 
 /** What the "Your invoice" email says, read from the invoice's own rows. */

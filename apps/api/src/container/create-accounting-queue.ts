@@ -7,6 +7,7 @@ import {
 import type { IAccountingDocumentBrowser } from "@auction/persistence/interfaces";
 import {
   DrizzleBidAccountingFactsReader,
+  DrizzleShopDeliveryReader,
   createAccountingRepositories,
 } from "@auction/persistence/repositories";
 import type { Env } from "../env.js";
@@ -21,7 +22,8 @@ export type ContainerAccountingQueue = {
 
 /**
  * Finance › Accounting: reads the accounting documents, requeues one when staff try it again and
- * releases a parked one once its reason is settled (rebuilt from the stored Bid rows). Nothing here
+ * releases a parked one once its reason is settled (rebuilt from the stored Bid rows, or a Shop
+ * order's stored delivery). Nothing here
  * sends to Books; the worker's sender does, in the mode each document was made for.
  */
 export function createAccountingQueue(input: {
@@ -39,6 +41,8 @@ export function createAccountingQueue(input: {
       booksLink: createBooksDocumentLinks(input.env),
       facts: new DrizzleBidAccountingFactsReader(input.db),
       lookup: repos.lookup,
+      releaseBasis: repos.releaseBasis,
+      shopDelivery: new DrizzleShopDeliveryReader(input.db),
     }),
     accountingBrowser: repos.browser,
   };

@@ -255,6 +255,98 @@ describe("orders routes", () => {
     await app.close();
   });
 
+  describe("the Books invoice card and LAX's stored copy", () => {
+    const DOCUMENT_ID = "550e8400-e29b-41d4-a716-846655440077";
+    function cardApp(order: ReturnType<typeof sampleOrderRecord> | null, pdf: Buffer | null) {
+      const base = createMinimalShopApiTestDeps();
+      const card = vi.fn(async () => ({
+        state: "issued" as const,
+        invoiceNumber: "LAX-INV-000124",
+        issuedAt: "2026-10-01T10:05:00.000Z",
+        invoiceDocumentId: DOCUMENT_ID,
+        cancelledAt: null,
+      }));
+      const document = vi.fn(async () =>
+        pdf ? { pdf, filename: "invoice-LAX-INV-000124.pdf" } : null,
+      );
+      const deps = createMinimalShopApiTestDeps({
+        commerce: {
+          ...base.commerce,
+          getOrder: vi.fn(async () => order),
+          orderInvoiceCard: { card, document },
+        },
+      });
+      return { app: createShopApiApp({ deps, logger: false }), card, document };
+    }
+
+    it("answers the card for the shopper's own order, never cached", async () => {
+      const { app } = cardApp(sampleOrderRecord(), null);
+      await app.ready();
+      const response = await app.inject({
+        method: "GET",
+        url: `/v1/orders/${ORDER_ID}/invoice-card`,
+        headers: { authorization: `Bearer ${USER_TOKEN}` },
+      });
+      expect(response.statusCode).toBe(200);
+      expect(response.json()).toMatchObject({ state: "issued", invoiceNumber: "LAX-INV-000124" });
+      expect(response.headers["cache-control"]).toBe("private, no-store");
+      await app.close();
+    });
+
+    it("answers someone else's order as not found, never cached, without reading Books", async () => {
+      const { app, card } = cardApp(null, null);
+      await app.ready();
+      for (const url of [
+        `/v1/orders/${ORDER_ID}/invoice-card`,
+        `/v1/orders/${ORDER_ID}/invoice-documents/${DOCUMENT_ID}`,
+      ]) {
+        const response = await app.inject({
+          method: "GET",
+          url,
+          headers: { authorization: `Bearer ${USER_TOKEN}` },
+        });
+        expect(response.statusCode, url).toBe(404);
+        expect(response.headers["cache-control"], url).toBe("private, no-store");
+      }
+      expect(card).not.toHaveBeenCalled();
+      await app.close();
+    });
+
+    it("sends LAX's stored copy as a PDF, and one uncached 404 when there is none to give", async () => {
+      const served = cardApp(sampleOrderRecord(), Buffer.from("%PDF-1.4 stored"));
+      await served.app.ready();
+      const ok = await served.app.inject({
+        method: "GET",
+        url: `/v1/orders/${ORDER_ID}/invoice-documents/${DOCUMENT_ID}`,
+        headers: { authorization: `Bearer ${USER_TOKEN}` },
+      });
+      expect(ok.statusCode).toBe(200);
+      expect(ok.headers["content-type"]).toBe("application/pdf");
+      expect(ok.headers["cache-control"]).toBe("private, no-store");
+      expect(ok.headers["x-content-type-options"]).toBe("nosniff");
+      expect(ok.headers["content-disposition"]).toContain("invoice-LAX-INV-000124.pdf");
+      await served.app.close();
+
+      const refused = cardApp(sampleOrderRecord(), null);
+      await refused.app.ready();
+      const none = await refused.app.inject({
+        method: "GET",
+        url: `/v1/orders/${ORDER_ID}/invoice-documents/${DOCUMENT_ID}`,
+        headers: { authorization: `Bearer ${USER_TOKEN}` },
+      });
+      expect(none.statusCode).toBe(404);
+      expect(none.headers["cache-control"]).toBe("private, no-store");
+      const badId = await refused.app.inject({
+        method: "GET",
+        url: `/v1/orders/${ORDER_ID}/invoice-documents/not-a-uuid`,
+        headers: { authorization: `Bearer ${USER_TOKEN}` },
+      });
+      expect(badId.statusCode).toBe(400);
+      expect(badId.headers["cache-control"]).toBe("private, no-store");
+      await refused.app.close();
+    });
+  });
+
   it("sends a problem report with the order reference while the window is open", async () => {
     vi.mocked(verifyBearerToken).mockResolvedValueOnce({
       subject: "subject-1",

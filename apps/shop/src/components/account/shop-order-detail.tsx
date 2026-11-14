@@ -1,17 +1,37 @@
 import { ShopDeliveryQuote } from "@/components/account/shop-delivery-quote.client";
 import { ShopFinishPaying } from "@/components/account/shop-finish-paying.client";
+import { ShopOrderInvoiceCard } from "@/components/account/shop-order-invoice-card";
 import { ShopOrderLines, ShopOrderTotals } from "@/components/account/shop-order-lines";
 import { ShopOrderTimeline } from "@/components/account/shop-order-timeline";
 import { shopButtonClassName } from "@/components/shop-commerce-button";
 import { SHOP_POLICY_PATHS } from "@/content/policies/shop-policy-status";
+import {
+  SHOP_INVOICE_CARD_COPY,
+  type ShopOrderInvoiceCardVm,
+} from "@/lib/account/shop-order-invoice-card.vm";
 import type { ShopOrderDetailVm } from "@/lib/account/shop-orders.vm";
 import { Button } from "@auction/ui/components/button";
 import { DotStatusPill } from "@auction/ui/components/dot-status-pill";
 import Link from "next/link";
 
-/** Help with an order: the invoice, and reporting a problem while the 14 days are open. */
-function OrderHelp({ order }: { order: ShopOrderDetailVm }) {
-  const { problem, invoiceHref } = order;
+/**
+ * Help with an order: LAX's own invoice (while Books does not issue it), and reporting a problem
+ * while the 14 days are open.
+ */
+function OrderHelp({
+  order,
+  booksInvoice,
+  invoiceLabel,
+}: {
+  order: ShopOrderDetailVm;
+  booksInvoice: boolean;
+  /** "Download invoice (PDF)", or "Order receipt (PDF)" beside Books' invoice after a refund. */
+  invoiceLabel: string;
+}) {
+  const { problem } = order;
+  // Once Books issues the invoice, the Invoice panel is where it is; LAX's own copy is not offered,
+  // except after a refund: LAX's own invoice states the refund, and the buyer keeps both.
+  const invoiceHref = booksInvoice ? null : order.invoiceHref;
   if (!invoiceHref && !problem) return null;
   return (
     <section className="shop-order-panel" aria-labelledby="order-help-heading">
@@ -28,7 +48,7 @@ function OrderHelp({ order }: { order: ShopOrderDetailVm }) {
               className={shopButtonClassName("outline", "standard", "shop-order-help__action")}
             >
               <a href={invoiceHref} download>
-                Download invoice (PDF)
+                {invoiceLabel}
               </a>
             </Button>
           </div>
@@ -70,7 +90,16 @@ function OrderHelp({ order }: { order: ShopOrderDetailVm }) {
  * The order page. Progress and items on the left; the total, delivery and help on the right from
  * 1024px. Panels sit side by side and never inside one another.
  */
-export function ShopOrderDetail({ order }: { order: ShopOrderDetailVm }) {
+export function ShopOrderDetail({
+  order,
+  invoiceCard = { kind: "lax" },
+}: {
+  order: ShopOrderDetailVm;
+  /** The Books invoice card; `lax` (the default) leaves the page exactly as it was. */
+  invoiceCard?: ShopOrderInvoiceCardVm;
+}) {
+  // After a refund the buyer keeps both: Books' invoice in the card, LAX's own receipt under Help.
+  const refundedWithBooksInvoice = invoiceCard.kind === "issued" && invoiceCard.refund !== null;
   return (
     <div className="shop-order-page">
       <div className="shop-order-page__meta">
@@ -133,7 +162,17 @@ export function ShopOrderDetail({ order }: { order: ShopOrderDetailVm }) {
             ) : null}
           </section>
 
-          <OrderHelp order={order} />
+          <ShopOrderInvoiceCard card={invoiceCard} />
+
+          <OrderHelp
+            order={order}
+            booksInvoice={invoiceCard.kind !== "lax" && !refundedWithBooksInvoice}
+            invoiceLabel={
+              refundedWithBooksInvoice
+                ? SHOP_INVOICE_CARD_COPY.orderReceipt
+                : SHOP_INVOICE_CARD_COPY.download
+            }
+          />
         </div>
       </div>
     </div>

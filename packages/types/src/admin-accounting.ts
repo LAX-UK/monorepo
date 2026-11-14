@@ -71,7 +71,11 @@ export type AccountingDocumentState =
 export type AccountingTargetMode = "dry_run" | "test_org" | "live";
 
 /** Why a document is parked: kept here and never sent until the accountant or a person decides. */
-export const ACCOUNTING_PARK_REASONS = ["vat_on_delivery", "invoice_cancelled"] as const;
+export const ACCOUNTING_PARK_REASONS = [
+  "vat_on_delivery",
+  "invoice_cancelled",
+  "vat_on_outside_uk_delivery",
+] as const;
 export type AccountingParkReason = (typeof ACCOUNTING_PARK_REASONS)[number];
 
 /** One invoice a payment is applied to, and how much of the payment it takes. */
@@ -196,6 +200,8 @@ export const ACCOUNTING_RELEASE_UNRESOLVED_TEXT: Readonly<Record<AccountingParkR
     "The accountant has not yet confirmed how delivery is booked, so this stays out of Books.",
   invoice_cancelled:
     "The invoice this pays is still cancelled. Reinstate it in Bid first, or refund the buyer.",
+  vat_on_outside_uk_delivery:
+    "The accountant has not yet confirmed how outside-UK delivery is booked, so this stays out of Books.",
 };
 
 /** A payment applied to an invoice that was cancelled in Accounting cannot be sent. */
@@ -210,6 +216,9 @@ const ACCOUNTING_PARKED_TEXT_VAT =
   "VAT on delivery. This stays out of Books until the accountant confirms how delivery is booked. Then press Release.";
 const ACCOUNTING_PARKED_TEXT_CANCELLED =
   "The invoice this pays was cancelled after it was paid, so this is not sent to Books. Refund the buyer, or reinstate the invoice in Bid and press Release.";
+
+const ACCOUNTING_PARKED_TEXT_OUTSIDE_UK =
+  "Waiting for the accountant: VAT on outside-UK delivery. This stays out of Books until they confirm how it is booked. Then press Release.";
 
 const KIND_NAME: Readonly<Record<string, string>> = {
   auth: "Books would not accept our sign-in",
@@ -259,18 +268,21 @@ const CODE_TEXT: Readonly<Record<string, string>> = {
   accounting_no_adapter_for_mode: "Nothing is set up to send documents for this mode.",
   accounting_parked_vat_on_delivery: ACCOUNTING_PARKED_TEXT_VAT,
   accounting_parked_invoice_cancelled: ACCOUNTING_PARKED_TEXT_CANCELLED,
+  accounting_parked_vat_on_outside_uk_delivery: ACCOUNTING_PARKED_TEXT_OUTSIDE_UK,
 };
 
 /** What a person is told about a parked document, by why it is parked. */
 export const ACCOUNTING_PARKED_TEXT: Readonly<Record<AccountingParkReason, string>> = {
   vat_on_delivery: ACCOUNTING_PARKED_TEXT_VAT,
   invoice_cancelled: ACCOUNTING_PARKED_TEXT_CANCELLED,
+  vat_on_outside_uk_delivery: ACCOUNTING_PARKED_TEXT_OUTSIDE_UK,
 };
 
 /** The status a parked document shows instead of "Needs a person". */
 export const ACCOUNTING_PARKED_STATUS: Readonly<Record<AccountingParkReason, string>> = {
   vat_on_delivery: "Waiting for the accountant",
   invoice_cancelled: "Needs a person",
+  vat_on_outside_uk_delivery: "Waiting for the accountant",
 };
 
 /** Said of every payment in the details: the order the sender keeps. */

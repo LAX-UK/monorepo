@@ -24,6 +24,15 @@ export const ZOHO_BOOKS_REJECTIONS = {
   /** The contact found for a reference is not of the type the document needs. */
   contactNotCustomer: "zoho_books_contact_not_customer",
   contactNotVendor: "zoho_books_contact_not_vendor",
+  /**
+   * An invoice LAX numbered (Shop `LAX-INV-…`) that Books holds under another number: the books
+   * and the buyer's copy would disagree on the invoice's number, so a person decides.
+   */
+  numberDiffers: "zoho_books_number_differs",
+  /** The payment already applies another amount to the invoice its remainder was meant for. */
+  remainderDiffers: "zoho_books_remainder_differs",
+  /** The payment no longer holds enough unapplied to pay the invoice (applied elsewhere by hand). */
+  remainderUnavailable: "zoho_books_remainder_unavailable",
   /** A payment Books holds under our reference differs from ours (invoice, amount, currency, date). */
   paymentMismatch: "zoho_books_payment_mismatch",
   /**

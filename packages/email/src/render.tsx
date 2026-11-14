@@ -282,6 +282,9 @@ import ShopEditionAvailableNotifyEmail, {
 import ShopGuestOrderLinkEmail, {
   subject as shopGuestOrderLinkSubject,
 } from "./templates/shop-guest-order-link.js";
+import ShopInvoiceIssuedEmail, {
+  subject as shopInvoiceIssuedSubject,
+} from "./templates/shop-invoice-issued.js";
 import ShopOrderReceiptEmail, {
   subject as shopOrderReceiptSubject,
 } from "./templates/shop-order-receipt.js";
@@ -814,6 +817,10 @@ const renderers: { [T in TemplateName]: TemplateRenderer<T> } = {
   "source-of-funds-rejected": {
     subject: sourceOfFundsRejectedSubject,
     component: (vars) => <SourceOfFundsRejectedEmail {...vars} />,
+  },
+  "shop-invoice-issued": {
+    subject: shopInvoiceIssuedSubject,
+    component: (vars) => <ShopInvoiceIssuedEmail {...vars} />,
   },
   "shop-order-receipt": {
     subject: shopOrderReceiptSubject,

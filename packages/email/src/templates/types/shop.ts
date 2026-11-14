@@ -1,7 +1,8 @@
-import type { TemplateDomainSlice } from "./shared.js";
+import type { StoredEmailAttachment, TemplateDomainSlice } from "./shared.js";
 
 const names = [
   "shop-order-receipt",
+  "shop-invoice-issued",
   "shop-guest-order-link",
   "shop-artwork-enquiry-alert",
   "shop-edition-available-notify",
@@ -29,6 +30,25 @@ const names = [
 type ShopTemplateName = (typeof names)[number];
 
 type ShopTemplateVars = {
+  /**
+   * "Your invoice": the invoice Books issued for a paid Shop order, with LAX's stored copy of its
+   * PDF attached. Sent once per issued invoice, only when Books issued it live; never for a
+   * rehearsal or the test organisation. Every figure is the order's own, formatted by the sender.
+   */
+  "shop-invoice-issued": {
+    userName?: string | null;
+    /** "LAX-INV-000124": the Shop's own number, which Books keeps. */
+    invoiceNumber: string;
+    /** "LAX-S-10482". */
+    orderReference: string;
+    /** "£595.00". */
+    total: string;
+    /** "Thu 12 Nov, 14:05 GMT". */
+    paidOn: string;
+    /** LAX's stored copy, read from document storage at send time; nothing is stored twice. */
+    storedAttachment: StoredEmailAttachment;
+    orderUrl: string;
+  };
   "shop-order-receipt": {
     orderId: string;
     /** "LAX-S-10482"; absent on receipts queued before orders had references. */
@@ -237,6 +257,7 @@ export const shopTemplates = {
     "shop-order-receipt": "snapshot",
     "shop-guest-order-link": "snapshot",
     "shop-artwork-enquiry-alert": "snapshot",
+    "shop-invoice-issued": "snapshot",
     "shop-edition-available-notify": "snapshot",
     "shop-release-alert-confirm": "snapshot",
     "shop-release-alert": "snapshot",

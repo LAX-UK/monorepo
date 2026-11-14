@@ -8,11 +8,16 @@ import {
   type ProjectionPolicy,
   type Result,
 } from "@auction/accounting-domain";
-import type { FactsRead, IBidAccountingFactsReader } from "@auction/persistence/interfaces";
+import type {
+  FactsRead,
+  IBidAccountingFactsReader,
+  IShopAccountingFactsReader,
+} from "@auction/persistence/interfaces";
 import {
   invoiceRaisedPayloadSchemaV1,
   paymentCapturedPayloadSchemaV1,
   paymentGroupSettledPayloadSchemaV1,
+  shopAccountingOrderPaidPayloadSchemaV1,
 } from "@auction/types";
 
 /** The part of a domain event the accounting projector reads. */
@@ -27,11 +32,17 @@ export type RouteOutcome =
   | { readonly status: "skip"; readonly reason: string }
   | { readonly status: "ready"; readonly projection: Result<Projection, ProjectionCode> };
 
+/** Where each product's facts are read from (the stored rows; events carry ids only). */
+export interface AccountingFactsReaders {
+  readonly bid: IBidAccountingFactsReader;
+  readonly shop: IShopAccountingFactsReader;
+}
+
 /** One event type's way into the books: which product, which flow, and how its facts are read. */
 export interface AccountingEventRoute {
   readonly product: Product;
   readonly flow: BuiltFlow;
-  project(facts: IBidAccountingFactsReader, event: AccountingEvent): Promise<RouteOutcome>;
+  project(facts: AccountingFactsReaders, event: AccountingEvent): Promise<RouteOutcome>;
 }
 
 /** Thrown when an event cannot be read as its contract says; the delivery is not retried. */
@@ -49,6 +60,7 @@ export class AccountingEventPayloadError extends Error {
 export class AccountingInvoiceLinesChangedError extends Error {
   readonly retryable = false;
   readonly code = "invoice_lines_changed";
+  /** `invoiceId`: the Bid invoice, or the Shop order whose lines are its invoice's. */
   constructor(invoiceId: string) {
     super(`accounting_invoice_lines_changed:${invoiceId}`);
     this.name = "AccountingInvoiceLinesChangedError";
@@ -87,10 +99,7 @@ function sameLines(raised: readonly string[], lines: readonly { readonly id?: st
 function route<F extends BuiltFlow>(
   product: Product,
   flow: F,
-  read: (
-    facts: IBidAccountingFactsReader,
-    event: AccountingEvent,
-  ) => Promise<FactsRead<FlowFacts[F]>>,
+  read: (facts: AccountingFactsReaders, event: AccountingEvent) => Promise<FactsRead<FlowFacts[F]>>,
 ): AccountingEventRoute {
   const policy = PROJECTION_POLICIES[flow] as ProjectionPolicy<FlowFacts[F]>;
   return {
@@ -117,7 +126,7 @@ export const ACCOUNTING_EVENT_ROUTES: Readonly<Record<string, AccountingEventRou
   "invoice.raised": route("bid", "bid_invoice_raised", async (facts, event) => {
     const payload = invoiceRaisedPayloadSchemaV1.safeParse(event.payload);
     if (!payload.success) throw new AccountingEventPayloadError(event.eventType);
-    const read = await facts.invoiceRaised(payload.data.invoiceId);
+    const read = await facts.bid.invoiceRaised(payload.data.invoiceId);
     const raised = payload.data.lineIds;
     if (read.status === "ready" && raised && !sameLines(raised, read.facts.lines)) {
       // The lines are frozen when the invoice is raised: different ones are a fault, never booked.
@@ -128,13 +137,13 @@ export const ACCOUNTING_EVENT_ROUTES: Readonly<Record<string, AccountingEventRou
   "payment.captured": route("bid", "bid_payment_captured", (facts, event) => {
     const payload = paymentCapturedPayloadSchemaV1.safeParse(event.payload);
     if (!payload.success) throw new AccountingEventPayloadError(event.eventType);
-    return facts.paymentCaptured(payload.data.paymentId, new Date(payload.data.capturedAt));
+    return facts.bid.paymentCaptured(payload.data.paymentId, new Date(payload.data.capturedAt));
   }),
   // "Pay several": one payment for every invoice (and courier quote) the group settled.
   "payment_group.settled": route("bid", "bid_payment_group_settled", async (facts, event) => {
     const payload = paymentGroupSettledPayloadSchemaV1.safeParse(event.payload);
     if (!payload.success) throw new AccountingEventPayloadError(event.eventType);
-    const read = await facts.paymentGroupSettled(payload.data.paymentGroupId);
+    const read = await facts.bid.paymentGroupSettled(payload.data.paymentGroupId);
     if (
       read.status === "ready" &&
       (!sameIds(
@@ -153,6 +162,17 @@ export const ACCOUNTING_EVENT_ROUTES: Readonly<Record<string, AccountingEventRou
   }),
   // Every refund of the payment is replayed in order; the aggregate is the payment.
   "payment.refunded": route("bid", "bid_payment_refunded", (facts, event) =>
-    facts.paymentRefunded(event.aggregateId),
+    facts.bid.paymentRefunded(event.aggregateId),
   ),
+  // A Shop order paid: its invoice (goods, framing, delivery) and the payment, from its own rows.
+  "shop.accounting.order_paid": route("shop", "shop_order_paid", async (facts, event) => {
+    const payload = shopAccountingOrderPaidPayloadSchemaV1.safeParse(event.payload);
+    if (!payload.success) throw new AccountingEventPayloadError(event.eventType);
+    const read = await facts.shop.orderPaid(payload.data.orderId);
+    if (read.status === "ready" && !sameLines(payload.data.lineIds, read.facts.lines)) {
+      // The lines are frozen when the order is paid: different ones are a fault, never booked.
+      throw new AccountingInvoiceLinesChangedError(payload.data.orderId);
+    }
+    return read;
+  }),
 };

@@ -26,6 +26,7 @@ import {
 } from "@auction/db/schema";
 import { SELLER_RULE_VERSION } from "@auction/domain";
 import { AccountingQueueService, InvoiceRaiser } from "@auction/finance-runtime";
+import type { IAccountingDocumentTransitions } from "@auction/persistence/interfaces";
 import {
   DrizzleBidAccountingFactsReader,
   DrizzleBidInvoiceRepository,
@@ -465,6 +466,7 @@ describe.skipIf(!HAS_DB)(
         booksLink: () => null,
         facts: new DrizzleBidAccountingFactsReader(api),
         lookup: apiRepos.lookup,
+        releaseBasis: apiRepos.releaseBasis,
         deliveryBooking,
       });
       return { service, audits };
@@ -612,6 +614,139 @@ describe.skipIf(!HAS_DB)(
         state: "issued",
         attempts: 1,
       });
+    });
+
+    /** A single payment parked `invoice_cancelled`, its Bid invoice then reinstated. */
+    async function parkedThenReinstated() {
+      await aimBooks("test_org");
+      const buyer = await seedBuyer(owner);
+      const raised = await wonAndRaised(owner, buyer, 20_000, 5_000);
+      const [raisedEvent] = await owner
+        .select()
+        .from(domainEvent)
+        .where(
+          and(
+            eq(domainEvent.eventType, "invoice.raised"),
+            eq(domainEvent.aggregateId, raised.invoice.id),
+          ),
+        );
+      if (!raisedEvent) throw new Error("no invoice.raised event");
+      await projection().project(raisedEvent);
+      await owner
+        .update(bidInvoice)
+        .set({ voidedAt: SETTLED_AT })
+        .where(eq(bidInvoice.id, raised.invoice.id));
+      const captured = await capturedEvent(raised.payment.id, raised.payment.lotId, 25_000);
+      expect(await projection().project(captured)).toMatchObject({ parked: 1 });
+      await owner
+        .update(bidInvoice)
+        .set({ voidedAt: null })
+        .where(eq(bidInvoice.id, raised.invoice.id));
+      const paymentRow = await rowOf(ref("payment", raised.payment.id), "test_org");
+      return { raised, paymentRow };
+    }
+
+    async function expectStillParked(paymentRowId: string, reference: string) {
+      expect(await rowOf(reference, "test_org")).toMatchObject({
+        state: "needs_review",
+        needsReviewReason: "accounting_parked_invoice_cancelled",
+      });
+      expect((await historyOf(paymentRowId)).map((e) => e.action)).not.toContain("release");
+    }
+
+    it("RC3: the Bid invoice voided again by a commit after Release decided and before it moved: refused, nothing moves", async () => {
+      const { raised, paymentRow } = await parkedThenReinstated();
+      const desk = staff(null);
+      const deps = (
+        desk.service as unknown as { deps: { transitions: IAccountingDocumentTransitions } }
+      ).deps;
+      const move = deps.transitions.apply.bind(deps.transitions);
+      // Between the decision and the move, staff void the invoice in Bid (its own transaction,
+      // committed on another connection).
+      deps.transitions.apply = async (
+        ...args: Parameters<IAccountingDocumentTransitions["apply"]>
+      ) => {
+        await owner
+          .update(bidInvoice)
+          .set({ voidedAt: new Date() })
+          .where(eq(bidInvoice.id, raised.invoice.id));
+        return move(...args);
+      };
+      expect(await release(desk.service, paymentRow.id)).toMatchObject({
+        ok: false,
+        refusal: "unresolved",
+      });
+      await expectStillParked(paymentRow.id, paymentRow.laxReference);
+      expect(desk.audits).toEqual([]);
+    });
+
+    it("RC3b: a void in flight when the move starts: the move waits for it, then is refused", async () => {
+      const { raised, paymentRow } = await parkedThenReinstated();
+      const desk = staff(null);
+      let releaseVoid!: () => void;
+      const voidMayCommit = new Promise<void>((resolve) => {
+        releaseVoid = resolve;
+      });
+      let voidHolds!: () => void;
+      const voidHolding = new Promise<void>((resolve) => {
+        voidHolds = resolve;
+      });
+      const voiding = owner.transaction(async (tx) => {
+        await tx
+          .update(bidInvoice)
+          .set({ voidedAt: new Date() })
+          .where(eq(bidInvoice.id, raised.invoice.id));
+        voidHolds();
+        await voidMayCommit;
+      });
+      await voidHolding;
+      let settled = false;
+      const asked = release(desk.service, paymentRow.id).finally(() => {
+        settled = true;
+      });
+      // The move holds the document and waits for the invoice row the void holds.
+      await new Promise((resolve) => setTimeout(resolve, 400));
+      expect(settled).toBe(false);
+      releaseVoid();
+      await voiding;
+      expect(await asked).toMatchObject({ ok: false, refusal: "unresolved" });
+      await expectStillParked(paymentRow.id, paymentRow.laxReference);
+      expect(desk.audits).toEqual([]);
+    });
+
+    it("RC3c: a delivery invoice's group changed by a commit after Release decided: refused, still parked", async () => {
+      await aimBooks("test_org");
+      const buyer = await seedBuyer(owner);
+      const a = await wonAndRaised(owner, buyer, 10_000, 2_500);
+      const { event, quoteIds, groupId } = await settleGroup(buyer, [a], [1_000]);
+      await projection().project(event);
+      const deliveryRef = ref("invoice", `dlv-${quoteIds[0]}`);
+      const parked = await rowOf(deliveryRef, "test_org");
+      const answered = staff({ role: "delivery", treatment: "zero" });
+      const deps = (
+        answered.service as unknown as { deps: { transitions: IAccountingDocumentTransitions } }
+      ).deps;
+      const move = deps.transitions.apply.bind(deps.transitions);
+      deps.transitions.apply = async (
+        ...args: Parameters<IAccountingDocumentTransitions["apply"]>
+      ) => {
+        // The group is cancelled in Bid, committed on another connection.
+        await owner
+          .update(paymentGroup)
+          .set({ status: "cancelled" })
+          .where(eq(paymentGroup.id, groupId));
+        return move(...args);
+      };
+      expect(await release(answered.service, parked.id)).toMatchObject({
+        ok: false,
+        refusal: "unresolved",
+      });
+      expect(await rowOf(deliveryRef, "test_org")).toMatchObject({
+        state: "needs_review",
+        needsReviewReason: "accounting_parked_vat_on_delivery",
+        grossPence: 1_000,
+      });
+      expect(answered.audits).toEqual([]);
     });
 
     it("R8: a payment whose invoice was cancelled in Accounting is parked for a person, not left waiting", async () => {

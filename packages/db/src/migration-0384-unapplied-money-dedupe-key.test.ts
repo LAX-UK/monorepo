@@ -7,21 +7,22 @@ import { domainEvent } from "./schema/domain-events.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const read = (name: string) => readFileSync(join(__dirname, "../drizzle", name), "utf8");
-const migrationFile = read("0383_unapplied_money_dedupe_key_uid.sql");
+const migrationFile = read("0384_unapplied_money_dedupe_key_uid.sql");
 /** The statements, without the explanatory comments. */
 const migration = migrationFile.replace(/^--.*$/gm, "");
-const rollback = read("0383_rollback.sql");
+const rollback = read("0384_rollback.sql");
 const journal = JSON.parse(read("meta/_journal.json")) as {
   entries: { idx: number; tag: string; when: number }[];
 };
-const TAG = "0383_unapplied_money_dedupe_key_uid";
+const TAG = "0384_unapplied_money_dedupe_key_uid";
 
-describe("migration 0383 unapplied money dedupe key unique index", () => {
-  it("is journalled last, after 0382, in a journal that stays ordered", () => {
+describe("migration 0384 unapplied money dedupe key unique index", () => {
+  it("is journalled last, after 0383, in a journal that stays ordered", () => {
     const entry = journal.entries.find((e) => e.tag === TAG);
-    const previous = journal.entries.find((e) => e.tag === "0382_accounting_parked_documents");
+    const previous = journal.entries.find((e) => e.tag === "0383_shop_invoices_books");
     expect(entry?.idx).toBe((previous?.idx ?? Number.NaN) + 1);
     expect(entry?.when).toBeGreaterThan(previous?.when ?? Number.POSITIVE_INFINITY);
+    expect(journal.entries.at(-1)?.tag).toBe(TAG);
     const times = journal.entries.map((e) => e.when);
     for (let i = 1; i < times.length; i++) {
       expect(times[i]).toBeGreaterThan(times[i - 1] ?? Number.POSITIVE_INFINITY);

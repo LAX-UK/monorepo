@@ -9,6 +9,8 @@ import type {
   IAccountingDocumentRegistry,
   IAccountingDocumentTransitions,
   IAccountingDocumentWorkQueue,
+  IAccountingReleaseBasisReader,
+  IAccountingRemainders,
   IAccountingSourceSettingReader,
   IAccountingSourceSettingWriter,
   IBidInvoiceBooksReader,
@@ -23,6 +25,8 @@ import { DrizzleAccountingDocumentReader } from "./drizzle-accounting-document.r
 import { DrizzleAccountingDocumentRegistry } from "./drizzle-accounting-document.registry.js";
 import { DrizzleAccountingDocumentTransitions } from "./drizzle-accounting-document.transitions.js";
 import { DrizzleAccountingDocumentWorkQueue } from "./drizzle-accounting-document.work-queue.js";
+import { DrizzleAccountingReleaseBasisReader } from "./drizzle-accounting-release-basis.reader.js";
+import { DrizzleAccountingRemainders } from "./drizzle-accounting-remainders.js";
 import { DrizzleAccountingSourceSettingReader } from "./drizzle-accounting-source-setting.reader.js";
 import { DrizzleAccountingSourceSettingWriter } from "./drizzle-accounting-source-setting.writer.js";
 import { DrizzleBidInvoiceBooksReader } from "./drizzle-bid-invoice-books.reader.js";
@@ -42,12 +46,16 @@ export interface AccountingRepositories {
   readonly attention: IAccountingAttentionReader;
   /** LAX's stored copies of issued documents, and the email queued from each (the worker). */
   readonly copies: IAccountingDocumentCopies;
+  /** A payment's unapplied rest applied to a delivery invoice issued after it (the worker). */
+  readonly remainders: IAccountingRemainders;
   /** What the "Your invoice" email says (the worker). */
   readonly invoiceEmailFacts: IBidInvoiceEmailFactsReader;
   /** One Bid invoice's Books documents and copies, for the buyer's card (the Bid API). */
   readonly bidInvoiceBooks: IBidInvoiceBooksReader;
   /** Bank transfers part received, for the Accounting page (the Bid API). */
   readonly partFunded: IPartFundedTransfersReader;
+  /** The rows a release of a parked document is decided on (the Bid API). */
+  readonly releaseBasis: IAccountingReleaseBasisReader;
 }
 
 /** The one place the accounting repositories are assembled (container registration). */
@@ -66,8 +74,10 @@ export function createAccountingRepositories(
     browser: new DrizzleAccountingDocumentBrowser(db, clock),
     attention: new DrizzleAccountingAttentionReader(db),
     copies: new DrizzleAccountingDocumentCopies(db, clock),
+    remainders: new DrizzleAccountingRemainders(db, clock),
     invoiceEmailFacts: new DrizzleBidInvoiceEmailFactsReader(db),
     bidInvoiceBooks: new DrizzleBidInvoiceBooksReader(db, clock),
     partFunded: new DrizzlePartFundedTransfersReader(db),
+    releaseBasis: new DrizzleAccountingReleaseBasisReader(db),
   };
 }

@@ -9,9 +9,9 @@ const url = process.env.MIGRATION_TEST_DATABASE_URL;
 const { Client } = pg;
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const read = (name: string) => readFileSync(join(__dirname, "../drizzle", name), "utf8");
-const migration = read("0383_unapplied_money_dedupe_key_uid.sql");
+const migration = read("0384_unapplied_money_dedupe_key_uid.sql");
 /** The rollback's statements without its own BEGIN/COMMIT, so the test's transaction holds them. */
-const rollbackBody = read("0383_rollback.sql").replace(/^BEGIN;$|^COMMIT;$/gm, "");
+const rollbackBody = read("0384_rollback.sql").replace(/^BEGIN;$|^COMMIT;$/gm, "");
 /** The pre-check from the migration header, as an operator would run it. */
 const preCheck = (() => {
   const lines = migration.split("\n");
@@ -27,11 +27,11 @@ const EVENT = "payment.unapplied_money_received";
 
 /** Everything runs inside one transaction that is rolled back at the end. */
 describe.skipIf(!url)(
-  "migration 0383 unapplied money dedupe key (database)",
+  "migration 0384 unapplied money dedupe key (database)",
   { timeout: 60_000 },
   () => {
     let client: pg.Client;
-    const run = `m0383-${Date.now()}`;
+    const run = `m0384-${Date.now()}`;
 
     const insert = (eventType: string, dedupeKey: string | null) =>
       client.query(
@@ -56,7 +56,7 @@ describe.skipIf(!url)(
       client = new Client(buildPgConnectionConfig(url as string));
       await client.connect();
       await client.query("begin");
-      // Start from before 0383, as an older database would be.
+      // Start from before 0384, as an older database would be.
       await client.query(rollbackBody);
     });
 

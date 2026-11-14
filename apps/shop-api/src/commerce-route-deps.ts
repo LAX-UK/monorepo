@@ -19,6 +19,7 @@ import type {
   createListSavedDeliveryAddressesHandler,
   createSaveDeliveryAddressHandler,
 } from "./application/handlers/delivery-address-book.handler.js";
+import type { OrderInvoiceCardService } from "./application/order-invoice-card.js";
 import type {
   CheckoutOrderResult,
   CheckoutWriter,
@@ -68,6 +69,8 @@ export type CommerceRoutesDeps = {
   getCustomerProfile: OrderReader["getCustomerProfile"];
   /** Who issues Shop invoices, and the VAT number printed on them when there is one. */
   invoiceIssuer: { supplier: LegalEntity; vatNumber: string | null };
+  /** The buyer's invoice card from Books, and LAX's stored copy behind it. */
+  orderInvoiceCard?: OrderInvoiceCardService;
   /** "Report a problem" on an order; the limiter is the one enquiries share. */
   orderProblems?: { writer: OrderProblemReportWriter; rateLimiter: EnquiryRateLimiter };
   /** Checkout without an account; absent where Identity's machine client is not configured. */

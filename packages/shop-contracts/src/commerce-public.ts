@@ -337,6 +337,41 @@ export const OrderSummarySchema = Type.Object(
   { additionalProperties: false },
 );
 
+/**
+ * The buyer's invoice card on a paid Shop order: where the invoice Books issues for London Art
+ * Exchange stands. The same states as the Bid card. While Books is off, only rehearsing (dry run)
+ * or at the test organisation, the state is `lax`: the order page is as it was, with LAX's own
+ * invoice. A Books number and a download are only ever given once Books issued the invoice live
+ * and LAX holds its copy.
+ */
+export const ShopOrderInvoiceStateSchema = Type.Union([
+  Type.Literal("lax"),
+  Type.Literal("preparing"),
+  Type.Literal("delayed"),
+  Type.Literal("issued"),
+  Type.Literal("cancelled"),
+]);
+
+export const ShopOrderInvoiceCardSchema = Type.Object(
+  {
+    state: ShopOrderInvoiceStateSchema,
+    /** The invoice number ("LAX-INV-000124"); only when `issued`. */
+    invoiceNumber: Type.Union([Type.String({ minLength: 1 }), Type.Null()]),
+    /** When Books issued it (the document's issue event); only when `issued`. */
+    issuedAt: NullableDateTime,
+    /** LAX's stored copy, for the download link; only when `issued`. */
+    invoiceDocumentId: Type.Union([Type.String({ format: "uuid" }), Type.Null()]),
+    /** When the order was cancelled; only when `cancelled`. A refund does not cancel an invoice. */
+    cancelledAt: NullableDateTime,
+    /**
+     * When money was last refunded on the order, while its invoice stands (a refund is credited
+     * later; it never cancels the invoice); only when `issued`. Absent from older answers.
+     */
+    refundedAt: Type.Optional(NullableDateTime),
+  },
+  { additionalProperties: false },
+);
+
 export const CheckoutSessionSchema = Type.Object(
   {
     orderId: Type.String({ format: "uuid" }),
@@ -360,6 +395,8 @@ export type BasketResponse = typeof BasketResponseSchema.static;
 export type BasketLine = typeof BasketLineSchema.static;
 export type OrderStatus = typeof OrderStatusSchema.static;
 export type OrderSummary = typeof OrderSummarySchema.static;
+export type ShopOrderInvoiceCard = typeof ShopOrderInvoiceCardSchema.static;
+export type ShopOrderInvoiceState = typeof ShopOrderInvoiceStateSchema.static;
 export type OrderDeliveryQuote = typeof OrderDeliveryQuoteSchema.static;
 export type OrderList = typeof OrderListSchema.static;
 export type CheckoutSession = typeof CheckoutSessionSchema.static;

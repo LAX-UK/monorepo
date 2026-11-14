@@ -12,6 +12,12 @@ import {
 } from "./admin-accounting.js";
 
 describe("accounting problems in plain English", () => {
+  it("says a parked outside-UK delivery waits for the accountant and is not sent", () => {
+    expect(accountingProblemText("accounting_parked_vat_on_outside_uk_delivery")).toBe(
+      "Waiting for the accountant: VAT on outside-UK delivery. This stays out of Books until they confirm how it is booked. Then press Release.",
+    );
+  });
+
   it("words the adapter's own refusals", () => {
     expect(accountingProblemText("zoho_books_mapping_no_tax_id")).toBe(
       "A line carries VAT, but Books has no VAT rate set up for it.",

@@ -69,6 +69,7 @@ export {
 export { assertDomainEventConsumerContract } from "./consumer-guard.js";
 export { listDomainEventTypesForConsumer } from "./consumer-routing.js";
 export {
+  shopAccountingOrderPaidPayloadSchemaV1,
   shopOrderPaidPayloadSchemaV1,
   userPersonalDataAnonymisedPayloadSchemaV1,
   type UserPersonalDataAnonymisedPayloadV1,

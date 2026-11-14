@@ -73,7 +73,7 @@ export class SimulatedBooks implements ZohoTransport {
     const org = this.orgByOrganizationId(url.searchParams.get("organization_id"));
     if (!org) return failure(400, 1002, "bad organisation");
     const path = url.pathname.replace(/^\/api\/v3/, "");
-    const [, collection, id] = path.split("/");
+    const [, collection, id, action] = path.split("/");
     const kind = PATH_KINDS.get(`/${collection}`);
     if (!kind) return failure(404, 1002);
     const body: Json | null = request.body ? (JSON.parse(request.body) as Json) : null;
@@ -81,7 +81,10 @@ export class SimulatedBooks implements ZohoTransport {
       case "GET":
         return id ? this.detail(org, kind, id) : this.list(org, kind, url.searchParams);
       case "POST":
-        return this.create(org, kind, body ?? {}, url.searchParams);
+        if (kind === "invoice" && id && action === "credits") {
+          return this.applyCredits(org, id, body ?? {});
+        }
+        return id ? failure(404, 1002) : this.create(org, kind, body ?? {}, url.searchParams);
       case "PUT":
         return id ? this.update(org, kind, id, body ?? {}) : failure(400, 1);
       default:
@@ -158,13 +161,32 @@ export class SimulatedBooks implements ZohoTransport {
     if (this.held(org, kind).some((d) => d.reference === reference)) {
       return failure(400, DUPLICATE_ZOHO_CODE, "duplicate value");
     }
+    // With automatic numbering off for this create, Books keeps the number sent, and refuses
+    // one it already holds (it never renumbers).
+    const own =
+      kind === "invoice" && query.get("ignore_auto_number_generation") === "true"
+        ? body.invoice_number
+        : undefined;
+    if (own !== undefined && typeof own !== "string") {
+      return failure(400, 1, "invoice number missing");
+    }
+    const spec = KIND_SPECS[kind];
+    if (
+      own &&
+      this.held(org, kind).some((d) => spec.numberField && d.record[spec.numberField] === own)
+    ) {
+      return failure(400, 1001, "invoice number already exists");
+    }
     const priced = this.price(org, kind, body, query);
     if ("error" in priced) return priced.error;
     const id = String(++this.counter);
-    const seq = (this.numbers.get(`${org.organizationId}:${kind}`) ?? 0) + 1;
-    this.numbers.set(`${org.organizationId}:${kind}`, seq);
-    const number = `${NUMBER_PREFIX[kind]}-${String(seq).padStart(6, "0")}`;
-    const spec = KIND_SPECS[kind];
+    // An organisation setting can make Books number it itself whatever we sent (`renumbered`).
+    let number = fault === "renumbered" ? undefined : own;
+    if (!number) {
+      const seq = (this.numbers.get(`${org.organizationId}:${kind}`) ?? 0) + 1;
+      this.numbers.set(`${org.organizationId}:${kind}`, seq);
+      number = `${NUMBER_PREFIX[kind]}-${String(seq).padStart(6, "0")}`;
+    }
     const drift = fault === "totals_drift" ? 1 : 0;
     const record: Json = {
       ...priced.fields,
@@ -183,6 +205,32 @@ export class SimulatedBooks implements ZohoTransport {
     this.docs.set(org.organizationId, all);
     if (fault === "timeout_after_commit") throw new Error("ECONNRESET");
     return reply(201, { code: 0, message: "created", [spec.itemKey]: record });
+  }
+
+  /**
+   * Books' "apply credits" on an invoice, from a payment's unapplied amount: the payment's
+   * `invoices` gain the row and its `unused_amount` falls. More than is unused is refused.
+   */
+  private applyCredits(org: ZohoOrgConfig, invoiceId: string, body: Json): TransportResponse {
+    const fault = this.faults.take();
+    if (fault === "rate_limited") return reply(429, { code: 45 });
+    if (!this.exists(org, "invoice", invoiceId)) return failure(404, 1002, "does not exist");
+    const rows = body.invoice_payments;
+    if (!Array.isArray(rows) || rows.length === 0) return failure(400, 1, "nothing to apply");
+    for (const raw of rows as Json[]) {
+      const payment = this.held(org, "payment").find((d) => d.id === raw.payment_id);
+      if (!payment) return failure(400, 1004, "no such payment");
+      const amount = pence(raw.amount_applied as number);
+      const unused = pence(payment.record.unused_amount as number);
+      if (!(amount > 0) || amount > unused) return failure(400, 1005, "more than is unused");
+      payment.record.unused_amount = pounds(unused - amount);
+      (payment.record.invoices as Json[]).push({
+        invoice_id: invoiceId,
+        amount_applied: raw.amount_applied,
+      });
+    }
+    if (fault === "timeout_after_commit") throw new Error("ECONNRESET");
+    return reply(201, { code: 0, message: "credits applied" });
   }
 
   private referenceOf(org: ZohoOrgConfig, body: Json): string | null {
@@ -279,6 +327,7 @@ export class SimulatedBooks implements ZohoTransport {
         date: body.date,
         currency_code: body.currency_code,
         invoices,
+        unused_amount: pounds(amount - applied),
       },
     };
   }

@@ -10,13 +10,20 @@ import type {
   IAccountingDocumentCopies,
   IAccountingSourceSettingReader,
   IBidInvoiceEmailFactsReader,
+  IShopInvoiceEmailFactsReader,
   InvoiceEmailDue,
+  InvoiceEmailProduct,
   InvoiceEmailSkipReason,
   StoredAccountingDocument,
 } from "@auction/persistence/interfaces";
+import { ACCOUNTING_ALERTS, type AccountingAlertSink } from "./accounting-alerts.js";
 import { composeBidInvoiceEmail } from "./bid-invoice-email.js";
+import { composeShopInvoiceEmail, shopStorefrontBase } from "./shop-invoice-email.js";
 
 const DEFAULT_BATCH = 10;
+
+/** The source id of a Shop outside-UK delivery invoice (`<order>-delivery`), not an order's. */
+const DELIVERY_SOURCE = /-delivery$/;
 
 /** Where LAX keeps its copy of a document's PDF: by company and document id, never by a name. */
 export function accountingCopyKey(document: Pick<StoredAccountingDocument, "id" | "legalEntity">) {
@@ -26,6 +33,7 @@ export function accountingCopyKey(document: Pick<StoredAccountingDocument, "id" 
 export interface AccountingInvoiceCopyLog {
   info(details: Record<string, unknown>, message: string): void;
   warn(details: Record<string, unknown>, message: string): void;
+  error(details: Record<string, unknown>, message: string): void;
 }
 
 export interface AccountingInvoiceCopyDeps {
@@ -37,12 +45,24 @@ export interface AccountingInvoiceCopyDeps {
     putObject(key: string, body: Buffer, contentType: string): Promise<unknown>;
   };
   readonly emailFacts: IBidInvoiceEmailFactsReader;
+  /** The Shop order behind a Shop invoice, and who owns it now. */
+  readonly shopEmailFacts: IShopInvoiceEmailFactsReader;
   /** The email outbox (Postmark); only ever given an invoice Books issued for real. */
   readonly email: Pick<IEmailService, "enqueue">;
   /** The Bid site's address, for the link to the purchase. */
   readonly webBaseUrl: string;
+  /**
+   * The Shop storefront's address, for the link to the order. No default: while it is unset or
+   * local, no Shop invoice email is sent (each stays due) and every tick says why.
+   */
+  readonly shopStorefrontUrl: string | undefined;
   readonly now: () => Date;
   readonly log: AccountingInvoiceCopyLog;
+  /**
+   * Where `accounting_shop_invoice_email_refused` is raised (Sentry, which pages): Shop invoices
+   * issued live are waiting and no buyer can be emailed. Without it the refusal is only logged.
+   */
+  readonly alerts?: AccountingAlertSink;
   readonly batch?: number;
 }
 
@@ -52,8 +72,8 @@ export interface CopyTick {
 }
 
 /**
- * After the sender: keeps LAX's own copy of each issued Bid invoice's PDF, then emails the buyer
- * their invoice with that copy attached, once.
+ * After the sender: keeps LAX's own copy of each issued Bid and Shop invoice's PDF, then emails
+ * the buyer their invoice with that copy attached, once.
  *
  * - The PDF is fetched through the same adapter the document was sent with (in dry run, a page
  *   that says it is a rehearsal), stored in document storage, and recorded. A fetch that fails is
@@ -65,8 +85,14 @@ export interface CopyTick {
  * - Every listed copy is settled, so none holds a place at the head of the list: it is queued, or
  *   skipped for good (cancelled, nobody to send it to, unreadable) with a warning. Only an error
  *   leaves it due, to try again next tick.
- * - It goes to the payer while they may still pay (an organisation's current member with a payer
- *   role) and to the account's billing inbox; a former member gets nothing.
+ * - Bid: it goes to the payer while they may still pay (an organisation's current member with a
+ *   payer role) and to the account's billing inbox; a former member gets nothing.
+ * - Shop: it goes to the order's owner now (the guest, or the account that claimed the order),
+ *   while they can be reached; an erased guest or a closed account gets nothing. A merged account
+ *   gets nothing either: nothing in LAX follows a merge to the surviving account yet. A refunded
+ *   order's invoice still goes (a refund is credited, it does not cancel the invoice). The email's
+ *   total is the attached invoice's. While SHOP_STOREFRONT_URL is unset or local, no Shop email
+ *   is sent at all.
  */
 export class AccountingInvoiceCopy {
   private readonly batch: number;
@@ -147,14 +173,23 @@ export class AccountingInvoiceCopy {
   }
 
   private async sendEmails(): Promise<number> {
-    const { due, unreadable } = await this.deps.copies.listEmailDue(this.batch);
+    // The Shop's emails are built only with a storefront address a buyer can open. Without one
+    // the Shop is left out of this tick's list: its copies stay due (never settled), and they can
+    // never fill the batch ahead of Bid's.
+    const shopBase = this.shopBase();
+    const products: InvoiceEmailProduct[] = shopBase === null ? ["bid"] : ["bid", "shop"];
+    const { due, unreadable } = await this.deps.copies.listEmailDue(this.batch, products);
     for (const documentId of unreadable) {
       await this.skip(documentId, "unreadable_document");
     }
     let emailed = 0;
     for (const copy of due) {
       try {
-        if (await this.sendEmail(copy)) emailed += 1;
+        if (copy.product === "shop") {
+          if (shopBase !== null && (await this.sendShopEmail(copy, shopBase))) emailed += 1;
+          continue;
+        }
+        if (await this.sendBidEmail(copy)) emailed += 1;
       } catch (error) {
         // Tried again next tick; the idempotency key keeps it to one message.
         this.deps.log.warn(
@@ -163,7 +198,23 @@ export class AccountingInvoiceCopy {
         );
       }
     }
+    if (shopBase === null) await this.refuseShopEmails();
     return emailed;
+  }
+
+  /**
+   * No storefront address: if Shop invoices are waiting for their email, say so as an alert
+   * (`accounting_shop_invoice_email_refused`, an error that pages), every tick until it is fixed.
+   */
+  private async refuseShopEmails(): Promise<void> {
+    const waiting = await this.deps.copies.listEmailDue(1, ["shop"]);
+    if (waiting.due.length === 0 && waiting.unreadable.length === 0) return;
+    const details = { reason: this.shopBaseRefusal() ?? "unknown", product: "shop" };
+    if (this.deps.alerts) {
+      this.deps.alerts.raise(ACCOUNTING_ALERTS.shopInvoiceEmailRefused, details);
+    } else {
+      this.deps.log.error(details, ACCOUNTING_ALERTS.shopInvoiceEmailRefused.message);
+    }
   }
 
   /** Settles a copy's email as never to be sent, so it leaves the due list; says why. */
@@ -179,7 +230,70 @@ export class AccountingInvoiceCopy {
     }
   }
 
-  private async sendEmail(copy: InvoiceEmailDue): Promise<boolean> {
+  /** The storefront address for this tick's Shop emails, or null when it is unusable. */
+  private shopBase(): string | null {
+    try {
+      return shopStorefrontBase(this.deps.shopStorefrontUrl);
+    } catch {
+      return null;
+    }
+  }
+
+  /** Why the storefront address is unusable, or null when it is usable. */
+  private shopBaseRefusal(): string | null {
+    try {
+      shopStorefrontBase(this.deps.shopStorefrontUrl);
+      return null;
+    } catch (error) {
+      return error instanceof Error ? error.message : "unknown";
+    }
+  }
+
+  private async sendShopEmail(copy: InvoiceEmailDue, storefrontUrl: string): Promise<boolean> {
+    // Only an order's own invoice is emailed here (its source id is the order id); a released
+    // outside-UK delivery invoice has no email of its own yet.
+    if (DELIVERY_SOURCE.test(copy.invoiceId)) {
+      await this.skip(copy.documentId, "not_order_invoice");
+      return false;
+    }
+    const facts = await this.deps.shopEmailFacts.forOrder(copy.invoiceId);
+    if (!facts) {
+      await this.skip(copy.documentId, "invoice_missing");
+      return false;
+    }
+    if (facts.cancelled) {
+      await this.skip(copy.documentId, "invoice_cancelled");
+      return false;
+    }
+    if (!facts.recipient) {
+      await this.skip(copy.documentId, "no_recipient");
+      return false;
+    }
+    const now = this.deps.now();
+    const queued = await this.deps.email.enqueue({
+      template: "shop-invoice-issued",
+      to: facts.recipient.email,
+      recipientResolution: "snapshot",
+      category: "transactional",
+      idempotencyKey: `shop-invoice-issued:${copy.documentId}`,
+      vars: composeShopInvoiceEmail({
+        number: copy.number,
+        facts,
+        invoiceGrossPence: copy.grossPence,
+        storageKey: copy.storageKey,
+        storefrontUrl,
+        now,
+      }),
+    });
+    await this.deps.copies.markEmailQueued(copy.documentId, queued.outboxId, now);
+    this.deps.log.info(
+      { documentId: copy.documentId, product: "shop" },
+      "accounting_invoice_email_queued",
+    );
+    return true;
+  }
+
+  private async sendBidEmail(copy: InvoiceEmailDue): Promise<boolean> {
     const facts = await this.deps.emailFacts.forInvoice(copy.invoiceId);
     if (!facts) {
       await this.skip(copy.documentId, "invoice_missing");

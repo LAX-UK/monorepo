@@ -113,7 +113,7 @@ UPDATE payment_checkout_session
  WHERE parameters_fingerprint LIKE '%.%';
 ```
 
-Rolling forward again needs nothing: rows with the parameters fingerprint only are read as "money unknown", and a card session among them is closed and replaced (the safe side). This is not part of `0383_rollback.sql`: migration 0383 only adds a unique index on `domain_events` and does not touch `payment_checkout_session`, and the column change is in the code, not the schema.
+Rolling forward again needs nothing: rows with the parameters fingerprint only are read as "money unknown", and a card session among them is closed and replaced (the safe side). This is not part of `0384_rollback.sql`: migration 0384 only adds a unique index on `domain_events` and does not touch `payment_checkout_session`, and the column change is in the code, not the schema.
 
 ## Related
 
