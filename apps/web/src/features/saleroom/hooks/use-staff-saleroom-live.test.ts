@@ -205,4 +205,27 @@ describe("useStaffSaleroomLive", () => {
       }),
     );
   });
+
+  it("follows the server's state after a control even when the realtime event never arrives", async () => {
+    const adapter = createMockSaleroomSocketAdapter();
+    fetchSaleroomStatus.mockResolvedValue({ status: "paused", currentLotId: "lot-1" });
+
+    const { result } = renderHook(() =>
+      useStaffSaleroomLive({
+        saleId: "sale-1",
+        initial: initialSession,
+        socketAdapter: adapter,
+      }),
+    );
+    expect(result.current.session.status).toBe("live");
+
+    // The clerk paused; the sidecar's "paused" event was sent before this console joined.
+    await act(async () => {
+      await expect(result.current.resyncFromServer()).resolves.toBe(true);
+    });
+
+    expect(fetchSaleroomStatus).toHaveBeenCalledWith("sale-1");
+    expect(result.current.session.status).toBe("paused");
+    expect(result.current.session.isSessionLive).toBe(false);
+  });
 });
