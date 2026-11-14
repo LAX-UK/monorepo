@@ -29,11 +29,12 @@ export function isPublicItemCacheTag(tag: string): boolean {
 }
 
 /**
- * A lot shows on its own page and on its sale's catalogue (card price, status, close time), and
- * in the public lot lists, so a change to it drops all three.
+ * A lot shows on its own page and on its sale's catalogue (card price, status, close time), so a
+ * change to it drops both. This is what a bid or an extension drops: the site-wide lot lists keep
+ * their short window rather than being emptied by every bid in a busy sale.
  */
 export function publicPageTagsForLot(lot: { id: string; saleId?: string | null }): string[] {
-  const tags = [publicLotCacheTag(lot.id), PUBLIC_CATALOGUE_LOTS_TAG];
+  const tags = [publicLotCacheTag(lot.id)];
   if (lot.saleId) tags.push(publicSaleCacheTag(lot.saleId));
   return tags;
 }
@@ -99,6 +100,8 @@ export function publicPageTagsForDomainEvent(
       id: event.aggregateId,
       saleId: stringField(event.payload, "saleId") ?? context.lotSaleId ?? null,
     });
+    // A status change (published, ended, withdrawn) also changes which lists show the lot.
+    tags.push(PUBLIC_CATALOGUE_LOTS_TAG);
     const from = stringField(event.payload, "fromSaleId");
     if (from) tags.push(publicSaleCacheTag(from));
     if (context.lotSaleId) tags.push(publicSaleCacheTag(context.lotSaleId));

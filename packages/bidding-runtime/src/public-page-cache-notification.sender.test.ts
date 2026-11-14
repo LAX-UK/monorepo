@@ -18,7 +18,7 @@ function setup() {
   return { inner, invalidator, onError, sender };
 }
 
-const LOT_TAGS = ["public-lot:lot-1", "catalogue-lots", "public-sale:sale-1"];
+const LOT_TAGS = ["public-lot:lot-1", "public-sale:sale-1"];
 
 describe("PublicPageCacheNotificationSender", () => {
   it("publishes the bid, then drops the lot and sale tags", async () => {

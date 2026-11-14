@@ -12,10 +12,11 @@ const SALE = "11111111-1111-4111-8111-111111111111";
 const OTHER_SALE = "22222222-2222-4222-8222-222222222222";
 
 describe("public page cache tags", () => {
-  it("drops the lot, its sale and the lot lists for a lot change", () => {
-    expect(publicPageTagsForLot({ id: LOT, saleId: SALE }).sort()).toEqual(
-      ["catalogue-lots", `public-lot:${LOT}`, `public-sale:${SALE}`].sort(),
-    );
+  it("drops the lot and its sale for a bid, not the site-wide lists", () => {
+    expect(publicPageTagsForLot({ id: LOT, saleId: SALE })).toEqual([
+      `public-lot:${LOT}`,
+      `public-sale:${SALE}`,
+    ]);
   });
 
   it.each([
@@ -33,6 +34,7 @@ describe("public page cache tags", () => {
     });
     expect(tags).toContain(`public-lot:${LOT}`);
     expect(tags).toContain(`public-sale:${SALE}`);
+    expect(tags).toContain("catalogue-lots");
   });
 
   it("uses the looked-up sale when a lot event names none (a withdrawal)", () => {
