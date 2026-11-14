@@ -51,6 +51,7 @@ function orgSettings(
     },
     payments: { depositAccountId: id(20), paymentMode: "Stripe" },
     bills: { accountId: id(30) },
+    stripe: { feesAccountId: id(60), bankAccountId: id(61) },
     templateIds: { invoice: id(40), creditNote: id(41) },
     numberSeriesIds: { invoice: id(50) },
   };

@@ -4,8 +4,10 @@ import {
   ZohoBillGateway,
   ZohoContactGateway,
   ZohoCreditNoteGateway,
+  ZohoExpenseGateway,
   ZohoInvoiceGateway,
   ZohoPaymentGateway,
+  ZohoTransferGateway,
   ZohoVendorGateway,
 } from "./gateways.js";
 import { ZohoDocumentLookup } from "./lookup.js";
@@ -55,6 +57,8 @@ export function createZohoBooksAdapter(deps: {
     remainders: new ZohoPaymentRemainderGateway(gateway, api),
     creditNotes: new ZohoCreditNoteGateway(gateway),
     bills: new ZohoBillGateway(gateway),
+    expenses: new ZohoExpenseGateway(gateway),
+    transfers: new ZohoTransferGateway(gateway),
     contacts: new ZohoContactGateway(gateway, api),
     vendors: new ZohoVendorGateway(gateway, api),
     lookup: new ZohoReadBackLookup(lookup, deps.orgs),

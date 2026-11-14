@@ -21,6 +21,13 @@ export const ZOHO_BOOKS_REJECTIONS = {
   mixedBasis: "zoho_books_mapping_mixed_basis",
   /** A payment allocation names an invoice whose Books id was not resolved. */
   unresolvedInvoice: "zoho_books_mapping_unresolved_invoice",
+  /**
+   * An expense or transfer for an organisation whose Stripe fees account or bank account is not
+   * configured: the accountant names them before any Stripe fee or payout is sent.
+   */
+  stripeAccountsMissing: "zoho_books_mapping_stripe_accounts_missing",
+  /** An expense or transfer Books holds under our reference differs from ours (account, amount, date). */
+  movementMismatch: "zoho_books_movement_mismatch",
   /** The contact found for a reference is not of the type the document needs. */
   contactNotCustomer: "zoho_books_contact_not_customer",
   contactNotVendor: "zoho_books_contact_not_vendor",
