@@ -14,10 +14,15 @@ import {
   StaffButton,
   StaffDate,
   StatusBadge,
+  useQueuePanel,
 } from "@auction/staff-ui";
 import { ExternalLink } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { useMemo } from "react";
+
+/** The search param that holds the open identity check, on the client's page. */
+export const IDENTITY_CHECK_PARAM = "identityCheck";
 
 const VERIFF_STATION_BASE =
   process.env.NEXT_PUBLIC_VERIFF_STATION_URL ?? "https://station.veriff.com";
@@ -115,6 +120,8 @@ function detailItems(
 /**
  * The identity checks (Veriff sessions) this client has been through, newest first. Selecting a
  * check opens what was verified, so personal details are not on the page until someone asks.
+ * The open check is in the page's address (`?identityCheck=`), so it can be linked and reloaded;
+ * Back closes it, and J and K step to the previous or next check, newest first.
  */
 export function AdminUserKycHistoryPanel({
   sessions,
@@ -125,8 +132,22 @@ export function AdminUserKycHistoryPanel({
   currentKycSessionId?: string | null;
   amlScreeningBySessionId?: Record<string, AdminAmlScreeningRow>;
 }) {
-  const [openId, setOpenId] = useState<string | null>(null);
-  const open = sessions.find((session) => session.id === openId) ?? null;
+  const searchParams = useSearchParams();
+  // The section's own order (newest first); the panel steps through the checks in it.
+  const ids = useMemo(
+    () =>
+      [...sessions]
+        .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))
+        .map((session) => session.id),
+    [sessions],
+  );
+  const panel = useQueuePanel({
+    param: IDENTITY_CHECK_PARAM,
+    ids,
+    initialId: searchParams?.get(IDENTITY_CHECK_PARAM) ?? null,
+    noun: "check",
+  });
+  const open = sessions.find((session) => session.id === panel.openId) ?? null;
   const isCurrent = (session: AdminKycSessionRow) =>
     currentKycSessionId === session.providerSessionId;
 
@@ -181,7 +202,7 @@ export function AdminUserKycHistoryPanel({
       mobile: "actions",
       cell: (session) => (
         <div className="flex justify-end">
-          <StaffButton size="sm" variant="ghost" onClick={() => setOpenId(session.id)}>
+          <StaffButton size="sm" variant="ghost" onClick={() => panel.open(session.id)}>
             Details
           </StaffButton>
         </div>
@@ -202,7 +223,7 @@ export function AdminUserKycHistoryPanel({
         data={sessions}
         getRowId={(session) => session.id}
         defaultSort={{ columnId: "started", direction: "desc" }}
-        onRowOpen={(session) => setOpenId(session.id)}
+        onRowOpen={(session) => panel.open(session.id)}
         empty={{
           title: "No identity checks yet",
           description: "Checks appear here once the client starts verifying their identity.",
@@ -210,9 +231,8 @@ export function AdminUserKycHistoryPanel({
       />
       <DetailPanel
         open={open !== null}
-        onOpenChange={(next) => {
-          if (!next) setOpenId(null);
-        }}
+        onOpenChange={panel.onOpenChange}
+        {...(open && panel.queue ? { queue: panel.queue } : {})}
         title="Identity check"
         {...(open ? { description: <StaffDate value={open.createdAt} withTime /> } : {})}
         status={
