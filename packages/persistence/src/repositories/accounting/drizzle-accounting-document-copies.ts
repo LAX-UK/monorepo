@@ -83,6 +83,7 @@ export class DrizzleAccountingDocumentCopies implements IAccountingDocumentCopie
         reference: d.laxReference,
         product: d.product,
         number: d.providerNumber,
+        grossPence: d.grossPence,
       })
       .from(c)
       .innerJoin(d, eq(d.id, c.documentId))
@@ -121,6 +122,7 @@ export class DrizzleAccountingDocumentCopies implements IAccountingDocumentCopie
         product,
         invoiceId: parsed.value.sourceId,
         number: row.number,
+        grossPence: row.grossPence,
         storageKey: row.storageKey,
       });
     }

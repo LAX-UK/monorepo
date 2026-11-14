@@ -3,6 +3,7 @@ import {
   type DocumentRecord,
   type LineBooking,
   type Projection,
+  SHOP_OUTSIDE_UK_DELIVERY_BOOKING,
   bidPaymentGroupSettledPolicy,
   canTryAgain,
   isLockedPeriodReason,
@@ -10,6 +11,7 @@ import {
   parkReasonOf,
   parseLaxReference,
   projectBidPaymentCaptured,
+  rebuildShopOutsideUkDelivery,
   resolveParked,
 } from "@auction/accounting-domain";
 import type {
@@ -19,6 +21,7 @@ import type {
   IAccountingDocumentTransitions,
   IBidAccountingFactsReader,
   IPartFundedTransfersReader,
+  IShopDeliveryReader,
   PartFundedTransfer,
   StoredAccountingDocument,
 } from "@auction/persistence/interfaces";
@@ -61,6 +64,13 @@ export type AccountingQueueDeps = {
   lookup: IAccountingDocumentLookup;
   /** How delivery is booked; `DELIVERY_BOOKING` unless a test says otherwise. */
   deliveryBooking?: LineBooking | null;
+  /**
+   * A paid Shop order's stored delivery, a parked outside-UK delivery invoice is rebuilt from.
+   * Without it a Shop document is never released (refused as not rebuilt).
+   */
+  shopDelivery?: IShopDeliveryReader;
+  /** How Shop delivery outside the UK is booked; `SHOP_OUTSIDE_UK_DELIVERY_BOOKING` unless a test says otherwise. */
+  shopOutsideUkBooking?: LineBooking | null;
 };
 
 /** The reason a person reads: why it is waiting for them, or what the provider refused. */
@@ -269,6 +279,7 @@ export class AccountingQueueService implements IAccountingQueueService {
    */
   private async rebuild(document: StoredAccountingDocument): Promise<Projection | null> {
     const ref = parseLaxReference(document.reference);
+    if (ref.ok && ref.value.product === "shop") return this.rebuildShop(document);
     if (!ref.ok || ref.value.product !== "bid") return null;
     const { kind, sourceId } = ref.value;
     const { facts } = this.deps;
@@ -290,6 +301,26 @@ export class AccountingQueueService implements IAccountingQueueService {
     const booking =
       this.deps.deliveryBooking === undefined ? DELIVERY_BOOKING : this.deps.deliveryBooking;
     const projected = bidPaymentGroupSettledPolicy(booking)(read.facts);
+    return projected.ok ? projected.value : null;
+  }
+
+  /**
+   * A Shop outside-UK delivery invoice, rebuilt from its order's stored delivery with the booking
+   * in force (`SHOP_OUTSIDE_UK_DELIVERY_BOOKING`): while that is not set it is still parked, and
+   * the release is refused. Nothing else of the Shop is ever parked, so nothing else is rebuilt.
+   */
+  private async rebuildShop(document: StoredAccountingDocument): Promise<Projection | null> {
+    const draft = document.document;
+    const reader = this.deps.shopDelivery;
+    const orderId = /^LAX-SHOP-INV-(.+)-delivery$/.exec(document.reference)?.[1];
+    if (!reader || draft.kind !== "invoice" || !orderId) return null;
+    const read = await reader.delivery(orderId);
+    if (read.status !== "ready") return null;
+    const booking =
+      this.deps.shopOutsideUkBooking === undefined
+        ? SHOP_OUTSIDE_UK_DELIVERY_BOOKING
+        : this.deps.shopOutsideUkBooking;
+    const projected = rebuildShopOutsideUkDelivery(draft, read.facts, booking);
     return projected.ok ? projected.value : null;
   }
 

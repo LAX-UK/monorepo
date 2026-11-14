@@ -3,9 +3,10 @@ import { sql } from "drizzle-orm";
 
 /**
  * The domain's `documentsAwaited`, in SQL, for the `accounting_document` row in scope: the kind and
- * LAX reference of each document it waits for. A payment waits for every invoice it is applied to
- * (`payload.allocations[].invoiceReference`); an invoice or credit note waits for its contact
- * (`payload.contactReference`); anything else waits for nothing.
+ * LAX reference of each document it waits for. A payment waits for its contact
+ * (`payload.contactReference`) and every invoice it is applied to
+ * (`payload.allocations[].invoiceReference`); an invoice or credit note waits for its contact;
+ * anything else waits for nothing. Shared by every product (Bid and Shop claim through it alike).
  */
 const AWAITED = sql`(
   select 'invoice'::text as kind, allocation ->> 'invoiceReference' as reference
@@ -16,7 +17,7 @@ const AWAITED = sql`(
     ) as allocation
   union all
   select 'contact'::text, ${accountingDocument.payload} ->> 'contactReference'
-   where ${accountingDocument.kind} in ('invoice', 'credit_note')
+   where ${accountingDocument.kind} in ('invoice', 'credit_note', 'payment')
 )`;
 
 /** An awaited document in the same books: product, legal entity, target provider and mode. */

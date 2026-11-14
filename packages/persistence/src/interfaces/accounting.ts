@@ -16,6 +16,7 @@ import type {
   Product,
   QueueTab,
   Result,
+  ShopDeliveryFacts,
   ShopOrderPaidFacts,
   Source,
   SwitchCode,
@@ -258,6 +259,11 @@ export interface IShopAccountingFactsReader {
   orderPaid(orderId: string): Promise<FactsRead<ShopOrderPaidFacts>>;
 }
 
+/** A paid Shop order's delivery as stored: what a parked delivery invoice is rebuilt from. */
+export interface IShopDeliveryReader {
+  delivery(orderId: string): Promise<FactsRead<ShopDeliveryFacts>>;
+}
+
 /** Who a Shop invoice email may go to: the order's owner now, while they can still be reached. */
 export interface ShopInvoiceRecipient {
   readonly email: string;
@@ -271,7 +277,10 @@ export interface ShopInvoiceEmailFacts {
   readonly orderReference: string;
   readonly totalPence: number;
   readonly paidAt: Date;
-  /** The order was cancelled or refunded in full before its invoice email went. */
+  /**
+   * The order was cancelled before its invoice email went. A refund does not cancel an invoice
+   * (it is credited later, by a credit note), so a refunded order's invoice is still emailed.
+   */
   readonly cancelled: boolean;
   /** The order is still a guest's (no account owns it): its link is requested, not opened. */
   readonly guest: boolean;
@@ -423,6 +432,8 @@ export interface InvoiceEmailDue {
   readonly invoiceId: string;
   /** The provider's invoice number. */
   readonly number: string;
+  /** The invoice's gross as stored (what the attached PDF totals), in pence. */
+  readonly grossPence: number;
   readonly storageKey: string;
 }
 
@@ -437,7 +448,9 @@ export type InvoiceEmailSkipReason =
   | "invoice_missing"
   | "invoice_cancelled"
   | "no_recipient"
-  | "unreadable_document";
+  | "unreadable_document"
+  /** A Shop invoice that is not an order's own (a released outside-UK delivery): not emailed here. */
+  | "not_order_invoice";
 
 /** The copies whose email is due, and the due rows that could not be read (settled as skipped). */
 export interface InvoiceEmailDueList {
@@ -467,6 +480,53 @@ export interface IAccountingDocumentCopies {
    * already settled.
    */
   markEmailSkipped(documentId: string, reason: InvoiceEmailSkipReason, at: Date): Promise<boolean>;
+}
+
+/** An issued invoice paid from an earlier payment's unapplied rest, and that payment. */
+export interface RemainderDue {
+  readonly invoice: StoredAccountingDocument;
+  readonly payment: StoredAccountingDocument;
+}
+
+export interface RemainderDueList {
+  readonly due: readonly RemainderDue[];
+  /** Ids of invoices whose pair could not be read; the others are still listed. */
+  readonly unreadable: readonly string[];
+}
+
+/** How applying a remainder ended, as recorded in the invoice's history (`apply_remainder`). */
+export interface RemainderRecord {
+  readonly outcome: "applied" | "already_applied" | "rejected";
+  readonly paymentReference: string;
+  readonly amountPence: number;
+  /** A dry run's rehearsal: nothing was applied in any books. */
+  readonly rehearsal: boolean;
+  /** Why it was refused (an adapter code); only for `rejected`. */
+  readonly reason?: string;
+}
+
+/**
+ * The follow-up step after a Shop outside-UK delivery invoice is issued: the order payment's
+ * unapplied rest is applied to it, once. Settled in the invoice's history (`apply_remainder`),
+ * which is append-only, so a settled invoice never comes back.
+ */
+export interface IAccountingRemainders {
+  /**
+   * Issued Shop outside-UK delivery invoices aimed at one of `modes` with no `apply_remainder` in
+   * their history, oldest first, each with the order's payment, issued in the same books. One
+   * whose payment is not issued there yet is not listed (it is applied once both are).
+   */
+  listDue(modes: readonly TargetMode[], limit: number): Promise<RemainderDueList>;
+  /**
+   * Runs `step` while holding the invoice (no other worker can run it for the same invoice), and
+   * records what it returns in the invoice's history in the same transaction. Nothing is recorded
+   * when `step` returns null (try again next run). False when another worker holds the invoice
+   * now, or it was settled already; the step is then not run.
+   */
+  settleExclusively(
+    invoiceDocumentId: string,
+    step: () => Promise<RemainderRecord | null>,
+  ): Promise<boolean>;
 }
 
 /** What the "Your invoice" email says, read from the invoice's own rows. */

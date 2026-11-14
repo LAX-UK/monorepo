@@ -4,9 +4,12 @@ import {
   type DocumentRecord,
   type LineBooking,
   type Result,
+  type ShopDeliveryFacts,
+  type ShopOrderPaidFacts,
   ok,
   parkedRecord,
   projectBidPaymentGroupSettled,
+  projectShopOrderPaid,
   refuse,
   release,
 } from "@auction/accounting-domain";
@@ -76,6 +79,7 @@ function stored(document: AccountingDocument, record: DocumentRecord): StoredAcc
 function setUp(
   rows: readonly StoredAccountingDocument[],
   deliveryBooking: LineBooking | null = null,
+  shop?: { booking: LineBooking | null; delivery: ShopDeliveryFacts | null },
 ) {
   const byId = new Map(rows.map((row) => [row.id, row]));
   const applied: DocumentTransition[] = [];
@@ -124,9 +128,55 @@ function setUp(
         ok([...byId.values()].find((row) => row.reference === reference) ?? null),
     },
     deliveryBooking,
+    ...(shop
+      ? {
+          shopOutsideUkBooking: shop.booking,
+          shopDelivery: {
+            delivery: async (orderId: string) =>
+              orderId === ORDER_ID && shop.delivery
+                ? { status: "ready" as const, facts: shop.delivery }
+                : { status: "skip" as const, reason: "order_not_found" },
+          },
+        }
+      : {}),
   });
   return { service, applied, audits };
 }
+
+const ORDER_ID = "5b6a7c1e-1111-4a5b-8c9d-000000000001";
+const shopOrder: ShopOrderPaidFacts = {
+  orderId: ORDER_ID,
+  invoiceNumber: "LAX-INV-000124",
+  buyer: { partyId: "5b6a7c1e-2222-4a5b-8c9d-000000000002", name: "Ada", email: null },
+  paidOn: "2026-11-12",
+  totalPence: 49_000,
+  lines: [
+    {
+      id: "5b6a7c1e-3333-4a5b-8c9d-000000000003",
+      kind: "goods",
+      label: "Harbour at dusk",
+      grossPence: 45_000,
+      vatTreatment: null,
+      vatPence: null,
+    },
+  ],
+  delivery: {
+    scope: "outside_uk",
+    label: "Delivery outside the UK",
+    grossPence: 4_000,
+    vatPence: null,
+  },
+};
+const shopProjected = projectShopOrderPaid(shopOrder);
+if (!shopProjected.ok) throw new Error(shopProjected.refusal.message);
+const shopDraft = shopProjected.value.documents.find((d) =>
+  d.reference.endsWith("-delivery"),
+) as AccountingDocument;
+const parkedShopDelivery: StoredAccountingDocument = {
+  ...stored(shopDraft, parkedRecord("invoice", shopDraft.reference, "vat_on_outside_uk_delivery")),
+  product: "shop",
+  legalEntity: "london_art_exchange",
+};
 
 const parkedDelivery = stored(
   delivery,
@@ -234,5 +284,80 @@ describe("AccountingQueueService.release", () => {
       refusal: "not_found",
     });
     expect(applied).toEqual([]);
+  });
+});
+
+describe("AccountingQueueService.release, a Shop delivery outside the UK", () => {
+  it("is refused while the accountant has not answered: LAX states no VAT treatment", async () => {
+    const { service, applied, audits } = setUp([parkedShopDelivery], null, {
+      booking: null,
+      delivery: shopOrder.delivery,
+    });
+    // The booking in force, not one a test gives: none is set.
+    const inForce = new AccountingQueueService({
+      ...(service as unknown as { deps: ConstructorParameters<typeof AccountingQueueService>[0] })
+        .deps,
+      shopOutsideUkBooking: undefined,
+    });
+    for (const asked of [service, inForce]) {
+      expect(await asked.release(ask(parkedShopDelivery))).toMatchObject({
+        ok: false,
+        refusal: "unresolved",
+        message: expect.stringMatching(/outside-UK delivery is booked/),
+      });
+    }
+    expect(applied).toEqual([]);
+    expect(audits).toEqual([]);
+  });
+
+  it("with the booking, is released rebuilt from the order's stored delivery, same reference and gross", async () => {
+    const { service, applied, audits } = setUp([parkedShopDelivery], null, {
+      booking: ZERO_RATED,
+      delivery: shopOrder.delivery,
+    });
+    expect(await service.release(ask(parkedShopDelivery))).toEqual({
+      ok: true,
+      value: {
+        id: parkedShopDelivery.id,
+        reference: shopDraft.reference,
+        outcome: "released",
+        rebuilt: true,
+      },
+    });
+    expect(applied[0]).toMatchObject({
+      action: "release",
+      requestedBy: "staff-1",
+      document: {
+        reference: shopDraft.reference,
+        number: "LAX-INV-000124-D",
+        totals: { grossPence: 4_000 },
+        lines: [{ treatment: "zero" }],
+      },
+    });
+    expect(audits).toEqual([
+      expect.objectContaining({
+        payload: expect.objectContaining({ parked: "vat_on_outside_uk_delivery", rebuilt: true }),
+      }),
+    ]);
+  });
+
+  it("is refused when the order is gone or now charges another delivery, and without a reader", async () => {
+    for (const delivery of [null, { ...shopOrder.delivery, grossPence: 4_100 }]) {
+      const { service, applied } = setUp([parkedShopDelivery], null, {
+        booking: ZERO_RATED,
+        delivery,
+      });
+      expect(await service.release(ask(parkedShopDelivery))).toMatchObject({
+        ok: false,
+        refusal: "unresolved",
+        message: expect.stringMatching(/no longer matches/),
+      });
+      expect(applied).toEqual([]);
+    }
+    const { service } = setUp([parkedShopDelivery]);
+    expect(await service.release(ask(parkedShopDelivery))).toMatchObject({
+      ok: false,
+      refusal: "unresolved",
+    });
   });
 });

@@ -12,5 +12,9 @@ export { DrizzleBidAccountingFactsReader } from "./drizzle-bid-accounting-facts.
 export { DrizzleAccountingDocumentCopies } from "./drizzle-accounting-document-copies.js";
 export { DrizzleBidInvoiceBooksReader } from "./drizzle-bid-invoice-books.reader.js";
 export { DrizzleBidInvoiceEmailFactsReader } from "./drizzle-bid-invoice-email-facts.reader.js";
-export { DrizzleShopAccountingFactsReader } from "./drizzle-shop-accounting-facts.reader.js";
+export {
+  DrizzleShopAccountingFactsReader,
+  DrizzleShopDeliveryReader,
+} from "./drizzle-shop-accounting-facts.reader.js";
 export { DrizzlePartFundedTransfersReader } from "./drizzle-part-funded-transfers.reader.js";
+export { DrizzleAccountingRemainders } from "./drizzle-accounting-remainders.js";
