@@ -1,9 +1,157 @@
-# Review of #1372 — in progress
+# Review of #1372 — Payments: close the small gaps from the re-review check
 
-Head reviewed: `61630cc5` (base `main` `f1ffc6e4`).
+Independent money and security review. Head reviewed: `61630cc5` (`fix/payment-hardening`), base `main` `f1ffc6e4`. I checked everything on the branch head and did not rely on the PR body. Nothing was pushed to the PR branch and nothing was posted on the PR. I made no Stripe API calls; Stripe was faked in tests. Infra was read only (`auction-infra` at `4516a63`).
 
-## Progress
-- Install + package build: OK. PG 16 throwaway (port 55432): `db:migrate` + `db:roles` OK, 0383 applied, ledger max = 1811246400000 (0383), journal idx 375 follows 0382 (idx 374) on main.
-- 0383 checks on PG 16: two raw writers -> second blocks then 23505; two recorder-style writers (advisory lock + exists) -> one row, second skips; first writer rolls back -> second inserts (no lost event); rollback file drops index and ledger row, re-migrate reapplies; duplicate pre-check refuses with its message; behind an open writer the build stops at 5.0 s (lock_timeout).
-- (i) prod infra (auction-infra, read-only): api and worker get NODE_ENV=production and APP_ENV=production.
-- Pending: (b) intent-match edge case, (h) group sweep, tests, mutation tests.
+## What was run
+- `corepack enable && pnpm install --frozen-lockfile && pnpm -r --filter './packages/**' build`: OK.
+- Throwaway PG 16.15 (initdb under `/var/tmp`, port 55432): `db:migrate` and `db:roles` OK. 0383 applied. The ledger's max `created_at` is 1811246400000 (0383). In the journal, idx 375 / `when` 1811246400000 comes straight after main's last entry, 0382 (idx 374, 1811160000000). No numbering clash with main.
+- Tests, `--maxWorkers=2`, against PG 16:
+  - db 0383/0316 (13 tests) and main-upgrade (23).
+  - persistence canceller and unapplied reader integration tests (12).
+  - finance-runtime, full (242).
+  - worker `src/finance` (111).
+  - api payment, stripe, stripe-webhook, payment-group, container and payments-route suites (316 + 715).
+  - All green. Note: the 0383 PG test needs `MIGRATION_TEST_DATABASE_URL` to point at an already-migrated database. Pointed at an empty one, it fails in `beforeAll` and its tests are reported as skipped.
+- Real concurrent transactions (two `pg` clients) on the 0383 index:
+  - Two raw writers with the same key: the second blocks until the first commits, then gets 23505.
+  - Two recorder-style writers (advisory lock plus exists check): one row is written and the second skips.
+  - First writer rolls back: the second inserts, so no event is lost.
+  - `payment.unapplied_money_resolved` rows can still share a key.
+- Migration operations on PG 16:
+  - The duplicate pre-check refuses with its message.
+  - Behind an open writer on `domain_events`, the build stops after 5.04 s on `lock_timeout`.
+  - `0383_rollback.sql` drops the index and the ledger row, and a re-run of `db:migrate` reapplies it.
+- Session close race on PG 16: a scratch integration test (deleted afterwards) used the real `DrizzlePaymentCheckoutSessionRepository`, a fake Stripe whose expire mirrors the real gateway, and concurrent tabs. 10 rounds of card(new) and bank(new) opened at the same time: each kept its session and the old-amount card session was expired. A buyer completing the old card session during the close: see F3.
+- Mutation tests. I reverted each guard myself, ran the tests, then restored it:
+
+| Mutation | Result |
+|---|---|
+| a1 missing-invoice guard off | 4 fail |
+| a2 guard applied to every reason | 1 fail ("still closes other reasons") |
+| b1 no-ids branch returns true | 1 fail |
+| **b2 `if (!row.everCaptured) return false` removed** | **0 fail in 782 refund/webhook/payment tests** (F5) |
+| b3 handler drops the payment intent | 1 fail |
+| d1 stale-card rule off | 3 fail |
+| d2 bank-with-intent exception off | 1 fail |
+| d3 no stop at the kept session | 1 fail |
+| d4 rail fingerprint instead of invoice fingerprint | 2 fail |
+| d5 closes complete sessions | 1 fail |
+| f1 pre-check removed | 4 fail |
+| f2 non-unique index | 3 fail |
+| f3 lock_timeout removed | 1 fail |
+| f4 wrong event in predicate | 3 fail |
+| h1 webhook captures with no gate | 1 fail |
+| **h2 container wires `paymentEligibilityRequired: false`** | **0 fail** (F6) |
+| h3 members ignored | 1 fail |
+| h4 unknown payer kept | 1 fail |
+| h5 `processing` groups listed | 1 fail (PG) |
+| **h6 member list not filtered to unpaid** | **0 fail** (F6) |
+| i1 APP_ENV ignored | 2 fail |
+| i2 live key ignored | 3 fail |
+| i3 `test` treated as live | 2 fail |
+
+## Item-by-item verification
+- **(a)** OK. `CLOSED_BY_SETTLEMENT` is exactly `paid_not_recorded` and `invoice_cancelled` (`packages/domain/src/unapplied-money.ts:80`). A missing id or an unreadable invoice now returns 409. Other reasons are unchanged (mutation a2 is caught).
+- **(b)** `isInvoiceMoney` is fail-safe. A staff-marked invoice with no ids owns no charge, and a never-captured invoice owns none either. The new intent match in `wasEverUnapplied` opens one routing regression (F1). Old rows: `everCaptured` is always computed by SQL from a `payment.captured` event, so production never saw `undefined` and nothing changes for old rows in this PR (see F9).
+- **(d)** OK as designed:
+  - Only sessions recorded before the settled one are touched. `listSessions` orders by `(created_at, stripe_session_id)`, so tabs agree on the order. Under a commit-order race, the failure is leaving a session open, never closing a live one.
+  - A bank session with instructions is never closed.
+  - A session that completes after Stripe's own read is refused by Stripe and reported, not closed.
+  - Residual: F3 (ledger) and F4 (fingerprint stability).
+- **(f)** OK. Partial unique index, duplicate DO-block, `SET LOCAL lock_timeout`, rollback in `BEGIN/COMMIT`, journal and stamp all checked. Grants unchanged. The recorder's lock key and the index key are the same `dedupeKey`, so recorders cannot collide (shown above). The shop-api writer locks `shop-session:<id>`, but its reasons are shop-only and the key is prefixed with the reason, so its keys cannot equal the recorder's. A 23505 from a writer outside the lock aborts the webhook transaction, including its processed-event claim. Stripe then retries once, and the retry finds the row and skips. That is not a retry storm and no event is lost (F7).
+- **(h)**
+  - The group sweep lists only `status = 'open'`, so `processing` is never listed (mutation h5 caught).
+  - Closing expires the session or cancels an unfunded intent. `GroupPaymentReleasedHandler` (session expired / intent cancelled) releases the group. A part-funded or processing intent is left alone.
+  - The webhook returns `finance_release_required` when no gate is wired and the flag is set.
+  - Residuals: F2, F6, F8.
+- **(i)** `paymentsAreLive` cannot be false in prod:
+  - `auction-infra/terraform/ephemeral/prod/main.tf:85-86` (`common_secret_env`, used by api) and `:411-412` (worker) set both `NODE_ENV=production` and `APP_ENV=production`. `docker-compose.prod.yml` sets them for api and worker too.
+  - Local and test runs (`NODE_ENV` development/test, `sk_test_`) stay not-live (i3 caught), so dev flows are unchanged.
+  - The ephemeral test stack (`NODE_ENV=production`, `APP_ENV=test`) counts as live, the same as on main.
+  - Prod worker env: see F2.
+
+## Findings
+
+### F1 — Medium — An invoice's own refund can be routed to the unapplied path (regression from the intent match)
+`UnappliedMoneyRefundHandler.handle` first asks `isChargeOfPaidInvoice(charge.id)`, which matches `payment.stripe_charge_id` only (`drizzle-unapplied-money.reader.ts:99-111`). It then asks `wasEverUnapplied({ chargeId, paymentIntentId })`, which now also matches on the intent.
+
+Failure case: a captured invoice row records the intent but no charge id, and an earlier `paid_not_recorded` / `invoice_cancelled` task carries that intent but no charge id. `PaymentCaptureService.resolveStripeChargeId` can return null when the Stripe lookups fail, because it swallows those errors.
+
+In that case a refund of the invoice's own charge is handled as unapplied money. The invoice is not marked refunded and the seller's payout is not clawed back. On main this case went to the invoice path, where `isInvoiceMoney` matches by intent and claws back correctly.
+
+Confirmed on PG 16 with the real reader: `isChargeOfPaidInvoice(ch)` returns false while `wasEverUnapplied({ch, pi})` returns true. The same call with `paymentIntentId: null` (main's behaviour) returns false.
+
+**Fix:** make `isChargeOfPaidInvoice` take `{ chargeId, paymentIntentId }` and match `status in ('captured','refunded') AND (stripe_charge_id = $ch OR (stripe_charge_id IS NULL AND stripe_payment_intent_id = $pi))`, the same rule as `isInvoiceMoney`. Add a PG test for this case. Before deploying, check that `SELECT count(*) FROM payment WHERE status IN ('captured','refunded') AND stripe_charge_id IS NULL AND stripe_payment_intent_id IS NOT NULL` is 0 or understood.
+
+### F2 — Medium (latent) — The prod worker has no identity provider, so its gate holds every personal buyer
+`apps/worker/src/finance/create-worker-stale-payment-expiry.ts` builds the identity reader only when `VERIFF_API_KEY` is set. The prod worker env (`auction-infra/terraform/ephemeral/prod/main.tf:405-455`) sets neither `VERIFF_API_KEY` nor `STRIPE_SECRET_KEY`. Only the api gets Veriff (`:270`).
+
+With `paymentsAreLive` true, the worker's gate marks every individual-account payer `unverified`, which counts as held. Today the closer has no Stripe client and does nothing (`stripe_not_configured`). But each expiry pass logs `held_invoice_checkouts_closed` counting every personal-account invoice and, with this PR, every personal-account Pay several group, as "closed".
+
+If a Stripe key is ever added to the worker, each pass would expire every personal buyer's single and group checkout. On main, the same trap already existed for single invoices. This PR widens it to groups and adds the `sk_live_` trigger.
+
+**Fix:** `DrizzleBidActorEligibilityReader` is a database read. Wire it in the worker whenever payments are live, not only when `VERIFF_API_KEY` is set, so the worker reads stored KYC status like the API does. Alternatively, do not run the held sweep in a process that cannot verify. Count `closed` only when the closer reports it actually closed something.
+
+### F3 — Low — A session the buyer pays during the close is marked closed in the ledger
+In `closeIfSuperseded`, the lifecycle reads the session as `open` and calls `gateway.expireCheckoutSession`. The real gateway (`stripe-payment-gateway.ts:293-301`) reads the session again and returns quietly if it is no longer open. The lifecycle then calls `markClosed`.
+
+Reproduced on PG 16: Stripe says `complete`, while the ledger has `closed_at` set. `anyPaid` and `closeAfterCapture` skip closed rows, so this paid session no longer counts as "already complete". Money stays safe: an old-amount payment goes to unapplied money, and a correct-amount payment is captured by the webhook. The ledger is wrong, though, and the buyer can be offered a new checkout.
+
+This existed on main for same-rail sessions. The PR extends it to card sessions closed for any rail.
+
+**Fix:** have `expireCheckoutSession` return the final status, or read the session again after expiring. Call `markClosed` only when the session is `expired`.
+
+### F4 — Low — The "stale card" check compares display parameters, not just the amount
+The fingerprint covers all checkout parameters, including the lot title and the hero `imageUrl`. With `STORAGE_READ_MODE=signed`, the catalogue resolver re-signs that URL every UTC midnight (`StableSigningPolicy`). So a card page opened before midnight is closed as "old amount" when the buyer opens bank transfer after midnight, or after a cosmetic lot edit, even though the amount has not changed. This is a UX and support issue, not money.
+
+**Fix:** compare a money fingerprint for the cross-rail rule: `paymentId`, `amountCents`, `currency` and the invoice line amounts. Keep the full fingerprint for the session idempotency key.
+
+### F5 — Low — The `everCaptured === false` guard has no test
+Removing `if (!row.everCaptured) return false;` (`checkout-refund-handlers.ts:35`) fails none of 782 refund, webhook and payment tests. That guard is what stops a refund of money on a never-captured (cancelled) invoice that recorded the same charge or intent from clawing back the seller.
+
+**Fix:** add a unit test and a PG test: the invoice row has a matching `stripeChargeId` (or intent), `everCaptured` is false, and the expected result is `refund_of_money_not_applied` with no payout lines.
+
+### F6 — Low — Two new rules are untested
+- The container wiring `{ paymentEligibilityRequired: paymentsAreLive(env) }` (`create-payments-services.ts:528-529`): setting it to `false` fails nothing.
+- `listOpenGroupsWithCheckout` limiting members to `pending`/`authorized`: dropping that filter fails nothing.
+
+**Fix:** add a container test that builds the webhook service with a live env and no gate, and expects manual review. Add a PG case where a captured (or cancelled) member is left out of `members`.
+
+### F7 — Info — The recorder does not handle 23505 itself
+This is safe today, as shown above. If a second writer outside the advisory-lock discipline is ever added, every collision costs one Stripe retry.
+
+**Optional:** insert the received event with `ON CONFLICT DO NOTHING` (on the partial index, `ON CONFLICT ((payload->>'dedupeKey')) WHERE event_type = 'payment.unapplied_money_received'`), or catch 23505 in `record` and treat it as "already recorded".
+
+### F8 — Info — The group sweep is stricter than settlement, and one error stops it
+- The sweep holds a group when any unpaid member's `buyerId` is held. Settlement (`payment-group-settlement.service.ts:227-236`) checks only the group's payer. So the sweep can close a group that settlement would accept. That is fail-safe, but the two rules differ.
+- An eligibility read that throws, for example a missing account, stops the whole sweep, including the group pass that runs after the invoice loop. This is the same pattern as main.
+
+**Fix:** document the stricter member rule, or align it with settlement. Wrap each candidate in try/report so one bad row cannot block the rest.
+
+### F9 — Info — `everCaptured` depends on a `payment.captured` event
+A captured invoice with no such event (for example a legacy import) has its refunds skipped as `refund_of_money_not_applied`. This PR does not change that, because production always computed the flag.
+
+**Check:** `SELECT count(*) FROM payment p WHERE p.status IN ('captured','refunded') AND NOT EXISTS (SELECT 1 FROM domain_events e WHERE e.aggregate_type='payment' AND e.aggregate_id=p.id::text AND e.event_type='payment.captured')` should be 0.
+
+### F10 — Info — 0383 operations
+- The drizzle runner applies pending migrations in one transaction, so `SET LOCAL lock_timeout = '5s'` also covers any later migration in the same run. This is the same as 0316 and harmless.
+- While it builds, the index blocks every `domain_events` insert, so all event writers wait, not only payments. Run the header's size and duplicate queries first, as the PR says.
+
+## Severity table
+
+| # | Severity | Area | Summary |
+|---|---|---|---|
+| F1 | Medium | (b) | Intent match can route a captured invoice's own refund to the unapplied path when the invoice row has no charge id |
+| F2 | Medium (latent) | (h)/(i) | Prod worker has no identity reader, so every personal buyer counts as held; harmless only because the worker has no Stripe key |
+| F3 | Low | (d) | A session paid during the close is marked closed in the ledger |
+| F4 | Low | (d) | Stale-card rule compares display parameters (daily re-signed image URL, titles), not just the amount |
+| F5 | Low | (b) tests | `everCaptured` guard untested (mutation survives) |
+| F6 | Low | (h) tests | Webhook flag wiring and unpaid-member filter untested |
+| F7 | Info | (f) | Recorder does not absorb 23505 (safe today) |
+| F8 | Info | (h) | Group sweep stricter than settlement; one error stops the sweep |
+| F9 | Info | (b) | `everCaptured` relies on a `payment.captured` event existing |
+| F10 | Info | (f) | Lock timeout scope and insert blocking during the build |
+
+F1 is a small change to one SQL condition plus a test. It is the only finding where this PR makes money handling worse than main. F2 is a configuration trap rather than a live fault, and the fix is one line in the worker wiring.
+
+### Verdict: FIX FIRST
