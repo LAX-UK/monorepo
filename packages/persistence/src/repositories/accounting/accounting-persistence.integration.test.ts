@@ -4,10 +4,12 @@ import {
   type Product,
   type Result,
   SETTLE_GRACE_MS,
+  buildContact,
   buildCreditNoteFor,
   buildInvoice,
   buildPayment,
   laxReference,
+  parseLaxReference,
 } from "@auction/accounting-domain";
 import { closeDb, createDb } from "@auction/db";
 import { sql } from "drizzle-orm";
@@ -118,7 +120,37 @@ describe.skipIf(!HAS_DB)("accounting persistence (integration)", { timeout: 60_0
   }
 
   async function register(document: AccountingDocument) {
+    await contactInBooks(document);
     return must(await repos.registry.register({ document, sourceEventRef: `evt-${newId()}` }));
+  }
+
+  /**
+   * An invoice or credit note waits for its contact (`documentsAwaited`). These cases are about
+   * the invoice itself, so its contact is put in the books for the target the switch names now,
+   * as the owner, before it is registered. Cases about the ordering itself register their own.
+   */
+  async function contactInBooks(document: AccountingDocument) {
+    if (document.kind !== "invoice" && document.kind !== "credit_note") return;
+    const contactRef = must(parseLaxReference(document.contactReference));
+    const contact = must(
+      buildContact({
+        product: document.product,
+        sourceId: contactRef.sourceId,
+        name: "Fixture contact",
+        email: null,
+      }),
+    );
+    const { stored } = must(
+      await repos.registry.register({ document: contact, sourceEventRef: `evt-${newId()}` }),
+    );
+    // With no target nothing is claimed, so there is nothing to wait for.
+    if (stored.record.status === "issued" || stored.target === null) return;
+    await owner.execute(sql`
+      update accounting_document
+         set state = 'issued', provider = coalesce(target_provider, 'books'), attempts = 1,
+             provider_id = ${`con-${newId()}`}, provider_number = 'CON-1',
+             created_at = created_at - interval '1 day', updated_at = updated_at - interval '1 day'
+       where id = ${stored.id}`);
   }
 
   type Mode = "off" | "dry_run" | "test_org" | "live";
@@ -789,6 +821,40 @@ describe.skipIf(!HAS_DB)("accounting persistence (integration)", { timeout: 60_0
       expect(await byId(payment.stored.id)).toMatchObject({ state: "pending", attempts: 0 });
       await issue(invoiceRow.stored.id, "inv");
       expect((await claim("pay"))?.id).toBe(payment.stored.id);
+    });
+
+    it("an invoice is not claimed before its contact is issued, even at the same instant and older", async () => {
+      const sourceId = newId();
+      const inv = invoice("bid", sourceId);
+      const contact = must(
+        buildContact({ product: "bid", sourceId, name: "Ada Collector", email: null }),
+      );
+      nowMs = T0;
+      // Stored in the wrong order, in one instant: the claim alone must put the contact first.
+      const invoiceRow = must(
+        await repos.registry.register({ document: inv, sourceEventRef: `evt-${newId()}` }),
+      );
+      const contactRow = must(
+        await repos.registry.register({ document: contact, sourceEventRef: `evt-${newId()}` }),
+      );
+      const first = await claim("con");
+      expect(first?.id).toBe(contactRow.stored.id);
+      expect(await claim("early")).toBeNull();
+      expect(await byId(invoiceRow.stored.id)).toMatchObject({ state: "pending", attempts: 0 });
+      must(
+        await repos.transitions.apply(contactRow.stored.id, {
+          action: "complete_sending",
+          leaseToken: "con",
+          outcome: {
+            status: "issued",
+            number: `CON-${newId()}`,
+            providerId: newId(),
+            pdfRef: null,
+            totals: contactRow.stored.totals,
+          },
+        }),
+      );
+      expect((await claim("inv"))?.id).toBe(invoiceRow.stored.id);
     });
 
     it("waits while its invoice failed, without holding up the documents behind it", async () => {

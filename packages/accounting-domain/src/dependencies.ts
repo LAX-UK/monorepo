@@ -1,12 +1,24 @@
 import type { AccountingDocument } from "./document.js";
 
 /**
- * The documents that must be in the books before this one may be sent, by LAX reference: a
- * payment waits for every invoice it is applied to. The work queue claims a payment only once each
- * of these is issued for the same target, so a payment never reaches Books before its invoice
- * (it would be refused, or land as unapplied credit) and never blocks the documents behind it.
- * The claim query (`DrizzleAccountingDocumentWorkQueue`) states the same rule in SQL.
+ * The documents that must be in the books before this one may be sent, by LAX reference:
+ * - an invoice or credit note waits for its contact (Books refuses one whose contact it does not
+ *   hold, and the refusal would need a person);
+ * - a payment waits for every invoice it is applied to (it would be refused, or land as
+ *   unapplied credit). Its invoices wait for the contact, so the payment does too.
+ * The work queue claims a document only once each of these is issued for the same target, so the
+ * order holds whatever order the documents were stored in and however many senders run, and a
+ * waiting document never blocks the documents behind it. The claim query
+ * (`DrizzleAccountingDocumentWorkQueue`) states the same rule in SQL.
  */
 export function documentsAwaited(document: AccountingDocument): readonly string[] {
-  return document.kind === "payment" ? document.allocations.map((a) => a.invoiceReference) : [];
+  switch (document.kind) {
+    case "payment":
+      return document.allocations.map((a) => a.invoiceReference);
+    case "invoice":
+    case "credit_note":
+      return [document.contactReference];
+    default:
+      return [];
+  }
 }

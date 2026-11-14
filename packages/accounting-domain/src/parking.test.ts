@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { canTryAgain, queueTabFor } from "./attention.js";
 import { documentsAwaited } from "./dependencies.js";
-import { buildContact, buildPayment } from "./document.js";
+import { buildContact, buildInvoice, buildPayment } from "./document.js";
 import { cancel, parkedRecord, parseRecord, requeue } from "./lifecycle.js";
 import { PARK_REASONS, isParkedReason, parkReasonOf, parkedReasonCode } from "./parking.js";
 
@@ -53,7 +53,7 @@ describe("parked documents", () => {
 });
 
 describe("documentsAwaited", () => {
-  it("a payment waits for each invoice it is applied to; nothing else waits", () => {
+  it("a payment waits for each invoice it is applied to; a contact waits for nothing", () => {
     const contact = buildContact({ product: "bid", sourceId: "b1", name: "Ada", email: null });
     if (!contact.ok) throw new Error(contact.refusal.message);
     const payment = buildPayment({
@@ -70,5 +70,28 @@ describe("documentsAwaited", () => {
     if (!payment.ok) throw new Error(payment.refusal.message);
     expect(documentsAwaited(payment.value)).toEqual(["LAX-BID-INV-a", "LAX-BID-INV-b"]);
     expect(documentsAwaited(contact.value)).toEqual([]);
+  });
+
+  it("an invoice waits for its contact, whatever order they were stored in", () => {
+    const contact = buildContact({ product: "bid", sourceId: "b1", name: "Ada", email: null });
+    if (!contact.ok) throw new Error(contact.refusal.message);
+    const invoice = buildInvoice({
+      product: "bid",
+      sourceId: "i1",
+      contactReference: contact.value.reference,
+      issuedOn: "2026-11-14",
+      dueOn: "2026-11-14",
+      lines: [
+        {
+          description: "Hammer price",
+          quantity: 1,
+          unitNetPence: 10_000,
+          treatment: "margin_scheme",
+          role: "goods",
+        },
+      ],
+    });
+    if (!invoice.ok) throw new Error(invoice.refusal.message);
+    expect(documentsAwaited(invoice.value)).toEqual([contact.value.reference]);
   });
 });

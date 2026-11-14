@@ -143,9 +143,10 @@ export interface ClaimRequest {
  * `target`), and only while that provider is still in that mode: a Books claim in `test_org` or
  * `dry_run` never takes a document aimed at Xero live, and a flip of the switch never re-aims an
  * existing document. A document with no target, or whose provider is now `off`, is not handed out. A document whose lease ran
- * out is not handed out again: it becomes unknown and goes through lookup first. A payment is not
- * handed out until every invoice it is applied to is issued for the same target
- * (`documentsAwaited`); it waits, and the documents behind it are handed out meanwhile.
+ * out is not handed out again: it becomes unknown and goes through lookup first. A document is not
+ * handed out until what it waits for is issued for the same target (`documentsAwaited`: a
+ * payment's invoices, an invoice's or credit note's contact); it waits, and the documents behind
+ * it are handed out meanwhile.
  */
 export interface IAccountingDocumentWorkQueue {
   claimNext(

@@ -9,38 +9,12 @@ import type {
   StoredAccountingDocument,
   TransitionCode,
 } from "../../interfaces/accounting.js";
+import { AWAITED_ISSUED } from "../../lib/accounting-awaited.js";
 import { applyLockedTransition, persistMove } from "../../lib/accounting-document-move.js";
 import { rowToRecord } from "../../lib/accounting-document-row.js";
 
 /** How many lapsed leases one call settles before it gives up looking for pending work. */
 const MAX_LAPSED_PER_CLAIM = 100;
-
-/**
- * The domain's `documentsAwaited`, in SQL: a payment is handed out only once every invoice it is
- * applied to (`payload.allocations[].invoiceReference`) is `issued` in the same books (product,
- * legal entity, target provider and mode). Until then it is simply not claimable: it waits without
- * an attempt being spent, and the documents behind it are claimed as usual. An invoice that is not
- * registered yet, is failing or waits for a person keeps its payment waiting with it.
- */
-const AWAITED_INVOICES_ISSUED = sql`not exists (
-  select 1
-    from jsonb_array_elements(
-      case when ${accountingDocument.kind} = 'payment'
-        then coalesce(${accountingDocument.payload} -> 'allocations', '[]'::jsonb)
-        else '[]'::jsonb end
-    ) as allocation
-   where not exists (
-     select 1
-       from accounting_document as awaited
-      where awaited.product = ${accountingDocument.product}
-        and awaited.legal_entity = ${accountingDocument.legalEntity}
-        and awaited.kind = 'invoice'
-        and awaited.lax_reference = allocation ->> 'invoiceReference'
-        and awaited.target_provider is not distinct from ${accountingDocument.targetProvider}
-        and awaited.target_mode is not distinct from ${accountingDocument.targetMode}
-        and awaited.state = 'issued'
-   )
-)`;
 
 type Step =
   | { kind: "empty" }
@@ -94,8 +68,9 @@ export class DrizzleAccountingDocumentWorkQueue implements IAccountingDocumentWo
    * target) and only while that provider is still in that mode for the product. So a Books worker
    * in `test_org` or `dry_run` can never take a document aimed at Xero live, and a flip of the
    * switch never re-aims one (`off` matches no target). Only the target modes the caller says it
-   * can serve are handed out (a rehearsal-only sender never gets a test or live document). A payment
-   * is handed out only once the invoices it is applied to are issued (`AWAITED_INVOICES_ISSUED`). The switch is read in the same statement
+   * can serve are handed out (a rehearsal-only sender never gets a test or live document). A
+   * document is handed out only once what it waits for is issued (`AWAITED_ISSUED`: a payment's
+   * invoices, an invoice's or credit note's contact). The switch is read in the same statement
    * as the claim (the worker may only SELECT it, so it cannot lock it). Settling a lapsed lease only
    * demotes a stuck `sending` row to `unknown` and calls no provider, so it ignores the switch.
    */
@@ -129,7 +104,7 @@ export class DrizzleAccountingDocumentWorkQueue implements IAccountingDocumentWo
                     ),
                   ),
               ),
-              AWAITED_INVOICES_ISSUED,
+              AWAITED_ISSUED,
             ),
             and(
               eq(accountingDocument.state, "sending"),
