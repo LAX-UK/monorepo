@@ -45,7 +45,13 @@ export class DrizzleConsignmentThreadFactsReader implements IConsignmentThreadFa
       .from(itemSubmission)
       .leftJoin(lot, eq(lot.id, itemSubmission.convertedLotId))
       .leftJoin(sale, eq(sale.id, lot.saleId))
-      .leftJoin(consignmentAgreement, eq(consignmentAgreement.submissionId, itemSubmission.id))
+      .leftJoin(
+        consignmentAgreement,
+        and(
+          eq(consignmentAgreement.submissionId, itemSubmission.id),
+          isNull(consignmentAgreement.supersededAt),
+        ),
+      )
       .leftJoin(
         bidIdentityDirectory,
         eq(bidIdentityDirectory.subjectId, itemSubmission.submittedByUserId),

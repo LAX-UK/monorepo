@@ -35,9 +35,11 @@ export type StaffAgreementFacts = {
   source: "online" | "recorded";
   /** The signed PDF staff recorded with it, when there is one. */
   signedDocumentId: string | null;
+  /** Which version of the consignment's agreement this is: 1, then one up per edit once signed. */
+  version: number;
   /**
-   * The sale was priced on this agreement and the row has changed since (corrected by an
-   * Administrator): the sale keeps its snapshot's figures, which are an earlier version's.
+   * The sale was priced on this version and a later version has superseded it (corrected by an
+   * Administrator): the sale keeps this version's figures.
    */
   pricedOnEarlierVersion: boolean;
 };
