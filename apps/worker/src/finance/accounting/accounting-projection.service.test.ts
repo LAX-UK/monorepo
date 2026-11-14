@@ -3,6 +3,7 @@ import type { FactsRead, IBidAccountingFactsReader } from "@auction/persistence/
 import { describe, expect, it, vi } from "vitest";
 import { classifyDeliveryError } from "../../lib/delivery-retry.js";
 import { InMemoryAccountingStore } from "../../testing/in-memory-accounting-store.js";
+import { AccountingInvoiceLinesChangedError } from "./accounting-event-routes.js";
 import {
   AccountingProjection,
   AccountingProjectionRefusedError,
@@ -201,6 +202,30 @@ describe("accounting projection", () => {
     expect(classifyDeliveryError(error)).toBe("fatal");
   });
 
+  it("projects the frozen lines the event named, and refuses lines that are not them", async () => {
+    const lineIds = [
+      "0b6a7c1e-6666-4a5b-8c9d-000000000006",
+      "0b6a7c1e-7777-4a5b-8c9d-000000000007",
+    ];
+    const withIds = {
+      ...invoice,
+      lines: invoice.lines.map((line, index) => ({ ...line, id: lineIds[index] ?? "" })),
+    };
+    const named = { ...raised, payload: { ...raised.payload, lineIds } };
+    const same = setUp(factsReader({ invoiceRaised: async () => ready(withIds) }));
+    expect(await same.projection.project(named)).toMatchObject({
+      outcome: "projected",
+      created: 2,
+    });
+
+    const swapped = { ...named, payload: { ...named.payload, lineIds: [...lineIds].reverse() } };
+    const changed = setUp(factsReader({ invoiceRaised: async () => ready(withIds) }));
+    const error = await changed.projection.project(swapped).catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(AccountingInvoiceLinesChangedError);
+    expect(classifyDeliveryError(error)).toBe("fatal");
+    expect(changed.store.documents()).toHaveLength(0);
+  });
+
   it("refuses an event its policy cannot book; the delivery is not retried", async () => {
     const { projection, store } = setUp(
       factsReader({
@@ -210,7 +235,7 @@ describe("accounting projection", () => {
     );
     const error = await projection.project(raised).catch((e: unknown) => e);
     expect(error).toBeInstanceOf(AccountingProjectionRefusedError);
-    expect((error as AccountingProjectionRefusedError).code).toBe("unmapped_line");
+    expect((error as AccountingProjectionRefusedError).code).toBe("line_awaiting_accountant");
     expect(classifyDeliveryError(error)).toBe("fatal");
     expect(store.documents()).toHaveLength(0);
   });

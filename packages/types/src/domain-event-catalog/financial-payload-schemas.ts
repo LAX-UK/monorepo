@@ -8,6 +8,10 @@ const isoDateTime = z.string().datetime();
  * positive because a Bid invoice is: the table refuses a total of 0p (`bid_invoice_total_check`),
  * and the event is written in the same transaction as the invoice, so a 0p event cannot exist.
  * If Bid ever allows a 0p invoice, relax both together and let the accounting policy refuse it.
+ *
+ * `lineIds` names the frozen invoice lines in their order (references only: no labels, no
+ * amounts), so a reader can check the lines it reads are the ones raised. Events written before
+ * it was added carry none.
  */
 export const invoiceRaisedPayloadSchemaV1 = z.object({
   invoiceId: z.string().uuid(),
@@ -15,6 +19,7 @@ export const invoiceRaisedPayloadSchemaV1 = z.object({
   buyerLegalEntityId: z.string().uuid(),
   totalPence: z.number().int().positive(),
   raisedAt: isoDateTime,
+  lineIds: z.array(z.string().uuid()).min(1).max(1000).optional(),
 });
 
 export const paymentCapturedPayloadSchemaV1 = z.object({

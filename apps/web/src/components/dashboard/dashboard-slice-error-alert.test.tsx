@@ -44,4 +44,27 @@ describe("DashboardSliceErrorAlert", () => {
     render(<DashboardSliceErrorAlert failure={failure} />);
     expect(screen.getByRole("button", { name: /personal account/i })).toBeInTheDocument();
   });
+
+  it("says what failed in plain words with Try again", () => {
+    render(
+      <DashboardSliceErrorAlert failure={buildDashboardSliceFailure("orgMembers", 500, null)} />,
+    );
+    expect(screen.getByRole("heading", { level: 2 })).toHaveTextContent(
+      "Members couldn't be loaded",
+    );
+    expect(screen.getByText("This is on our side. Try again in a moment.")).toBeVisible();
+  });
+
+  it("takes the surface's own title and heading level inside a section", () => {
+    render(
+      <DashboardSliceErrorAlert
+        failure={buildDashboardSliceFailure("submissions", 500, null)}
+        headingLevel="h3"
+        title="Your documents couldn't be loaded"
+      />,
+    );
+    expect(screen.getByRole("heading", { level: 3 })).toHaveTextContent(
+      "Your documents couldn't be loaded",
+    );
+  });
 });

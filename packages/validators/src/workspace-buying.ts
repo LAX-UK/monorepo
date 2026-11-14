@@ -37,6 +37,11 @@ export const accountPurchasesQuerySchema = z.object({
 export type AccountPurchasesQuery = z.infer<typeof accountPurchasesQuerySchema>;
 
 export const purchaseLotIdParamSchema = z.object({ lotId: z.string().uuid() });
+/** A stored Books document (invoice or credit note) of a purchase. */
+export const purchaseDocumentParamSchema = z.object({
+  lotId: z.string().uuid(),
+  documentId: z.string().uuid(),
+});
 
 /** The invoices picked for one payment; the domain rule decides which can be paid together. */
 export const paySeveralBodySchema = z

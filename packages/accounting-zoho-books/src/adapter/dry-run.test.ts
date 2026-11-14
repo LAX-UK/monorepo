@@ -120,3 +120,23 @@ describe("transient refusals", () => {
     expect(isTransientRejection(R.writesDisabled)).toBe(false);
   });
 });
+
+describe("dry-run stored copy", () => {
+  it("is a one-page PDF that says it is a rehearsal and carries no name", async () => {
+    const adapter = createZohoBooksDryRunAdapter({ orgs: testOrgConfigs() });
+    const doc = invoice("bid", "margin_scheme");
+    const issued = await adapter.invoices.issueInvoice(doc);
+    if (issued.status !== "issued") throw new Error(issued.status);
+    const pdf = await adapter.pdfs.fetchPdf(doc, issued);
+    if (pdf.status !== "fetched") throw new Error(pdf.reason);
+    const text = new TextDecoder().decode(pdf.bytes);
+    expect(pdf.rehearsal).toBe(true);
+    expect(text.startsWith("%PDF-1.4")).toBe(true);
+    expect(text.trimEnd().endsWith("%%EOF")).toBe(true);
+    expect(text).toContain("REHEARSAL - not a Zoho Books document");
+    expect(text).toContain(doc.reference);
+    expect(text).toContain(`Number ${DRY_RUN_NUMBER}`);
+    expect(text).toContain("Total GBP 1,234.56");
+    expect(text).not.toContain("Test Buyer");
+  });
+});

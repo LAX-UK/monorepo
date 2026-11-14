@@ -363,6 +363,24 @@ describe("createAccountBuyingReader", () => {
     expect(s.personal.amountsOwed).not.toHaveBeenCalled();
   });
 
+  it("reads a personal account by its id while support views it, never the staff member's own", async () => {
+    const s = sources();
+    const viewed: AccountScope = {
+      account: { kind: "personal", id: "client-personal", isImpersonation: true },
+      actor: { userId: "staff-1" },
+    };
+    const reader = createAccountBuyingReader({ current: async () => viewed }, s);
+    await reader.bids();
+    await reader.purchases();
+    await reader.amountsOwed();
+    expect(s.organisation.bids).toHaveBeenCalledWith("client-personal");
+    expect(s.organisation.purchases).toHaveBeenCalledWith("client-personal");
+    expect(s.organisation.amountsOwed).toHaveBeenCalledWith("client-personal");
+    expect(s.personal.bids).not.toHaveBeenCalled();
+    expect(s.personal.purchases).not.toHaveBeenCalled();
+    expect(s.personal.amountsOwed).not.toHaveBeenCalled();
+  });
+
   it("reads the person's own records in their own account, once per reader", async () => {
     const s = sources();
     const reader = createAccountBuyingReader({ current: async () => personal }, s);

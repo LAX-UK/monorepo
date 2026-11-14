@@ -5,6 +5,7 @@ import {
   emailAttachments,
   emailProductFor,
   renderEmail,
+  storedEmailAttachments,
 } from "@auction/email";
 import postmark from "postmark";
 import { fromForProduct } from "../alerts/sender-from.js";
@@ -17,13 +18,48 @@ type PostmarkEmailSenderOptions = {
   replyTo?: string | undefined;
   transactionalStream: string;
   broadcastStream: string;
+  /**
+   * LAX's document storage, read for attachments an email names by key (a stored invoice copy).
+   * Without it, an email that names one is not sent (it is retried, never sent without its file).
+   */
+  storedFiles?: StoredFileReader | undefined;
 };
+
+/** Reads one stored file's bytes, up to a size; null when there is no such file. */
+export type StoredFileReader = {
+  getObjectBytes(key: string, maxBytes: number): Promise<Buffer | null>;
+};
+
+/** Postmark's own limit for all attachments together is 10 MB; one stored copy stays well under. */
+const MAX_STORED_ATTACHMENT_BYTES = 10 * 1024 * 1024;
 
 export class PostmarkEmailSender implements IEmailSender {
   private readonly client: postmark.ServerClient;
 
   constructor(private readonly opts: PostmarkEmailSenderOptions) {
     this.client = new postmark.ServerClient(opts.serverToken);
+  }
+
+  /** The stored files the email names, read now; one that cannot be read stops the send. */
+  private async readStoredAttachments<T extends TemplateName>(
+    template: T,
+    vars: TemplateVarsByName[T],
+  ) {
+    const stored = storedEmailAttachments(template, vars);
+    if (stored.length === 0) return [];
+    const files = this.opts.storedFiles;
+    if (!files) throw new Error("stored_email_attachment_unreadable");
+    return Promise.all(
+      stored.map(async (file) => {
+        const bytes = await files.getObjectBytes(file.storageKey, MAX_STORED_ATTACHMENT_BYTES);
+        if (!bytes || bytes.length === 0) throw new Error("stored_email_attachment_missing");
+        return {
+          name: file.filename,
+          contentType: file.contentType,
+          contentBase64: bytes.toString("base64"),
+        };
+      }),
+    );
   }
 
   async send<T extends TemplateName>(payload: {
@@ -59,7 +95,10 @@ export class PostmarkEmailSender implements IEmailSender {
         ...(unsubscribeToken ? { unsubscribe_token: unsubscribeToken } : {}),
       },
     };
-    const attachments = emailAttachments(payload.template, payload.vars);
+    const attachments = [
+      ...emailAttachments(payload.template, payload.vars),
+      ...(await this.readStoredAttachments(payload.template, payload.vars)),
+    ];
     if (attachments.length > 0) {
       message.Attachments = attachments.map((file) => ({
         Name: file.name,

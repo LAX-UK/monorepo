@@ -1,10 +1,11 @@
 import type { BillToContext } from "@auction/types";
 import type { EmailMoment, ZoneNote } from "./moment.js";
-import type { TemplateDomainSlice } from "./shared.js";
+import type { StoredEmailAttachment, TemplateDomainSlice } from "./shared.js";
 
 const names = [
   "payment-receipt",
   "payment-invoice",
+  "bid-invoice-issued",
   "payment-refund-notice",
   "payment-manual-review-buyer-notice",
   "payment-failed-notice",
@@ -40,6 +41,23 @@ type PaymentTemplateVars = {
     invoiceUrl: string;
     billTo: BillToContext;
     dueDate?: string;
+  };
+  /**
+   * "Your invoice": the invoice Books issued for a Bid purchase, with LAX's stored copy of its PDF
+   * attached. Sent once per issued invoice, never for a rehearsal. Every figure is formatted by
+   * the sender from the invoice's frozen lines.
+   */
+  "bid-invoice-issued": {
+    userName?: string | null;
+    invoiceNumber: string;
+    lotTitle: string;
+    /** "£1,543.20". */
+    total: string;
+    /** Paid (with the moment, "Thu 12 Nov, 14:05 GMT") or still due (by the end of that day). */
+    settlement: { kind: "paid"; on: string } | { kind: "due"; by: string };
+    /** LAX's stored copy, read from document storage at send time; nothing is stored twice. */
+    storedAttachment: StoredEmailAttachment;
+    purchaseUrl: string;
   };
   /** notify seller entity members when a payment is refunded or dispute is lost. */
   "payment-refund-notice": {
@@ -149,6 +167,7 @@ export const paymentTemplates = {
   recipientResolution: {
     "payment-receipt": "live",
     "payment-invoice": "live",
+    "bid-invoice-issued": "live",
     "payment-refund-notice": "live",
     "payment-manual-review-buyer-notice": "live",
     "payment-failed-notice": "live",

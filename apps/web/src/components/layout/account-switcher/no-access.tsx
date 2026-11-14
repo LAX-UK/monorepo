@@ -15,20 +15,23 @@ type Props = {
 };
 
 /**
- * "You don't have access to …": a page the role cannot open, or a record of an account the
- * person is not using. It names the page, who can open it when the role is the reason, and offers
- * the way back to the account in use (Home inside an organisation), plus Switch account for
- * someone with more than one.
+ * "You don't have access to …": a page the role cannot open, or a page of one of the person's
+ * accounts other than the one in use. (Someone else's record never lands here: it is not found.)
+ * It names the page, who can open it when the role is the reason, and offers the way back: to the
+ * record's own list for a record, else to the account in use (Home inside an organisation), plus
+ * Switch account for someone with more than one.
  */
 export function NoAccess({ next, denied }: Props) {
   const hasOtherAccounts = useHasOtherAccounts();
-  const back = useAccountHomeLink();
+  const home = useAccountHomeLink();
+  // A record goes back to its own list (Consignments, Bids); any other page to the account's first.
+  const back = denied.back ?? home;
   const subject = denied.page ? "It" : "This page";
   const reason = denied.openedBy
     ? undefined
     : hasOtherAccounts
-      ? `${subject} belongs to an account you aren't using. Switch to the account it belongs to, or ask its owner to invite you.`
-      : `${subject} belongs to an organisation you aren't a member of. Ask its owner to invite you.`;
+      ? `${subject} isn't available in the account you're using. If it's in another of your accounts, switch to that one.`
+      : `${subject} isn't available in your account. If someone sent you the link, check it with them.`;
   // Switching is the way on when the page belongs to another account; otherwise it is the way back.
   const switchFirst = denied.openedBy === null && hasOtherAccounts;
   return (

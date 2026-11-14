@@ -1,4 +1,3 @@
-import { accountPurchaseScope } from "@auction/domain";
 import { type BidInvoiceDocument, InvoiceTotalMismatchError } from "@auction/exports/documents";
 import type {
   IBidInvoiceReader,
@@ -12,8 +11,9 @@ import type {
   PurchaseInvoicePdf,
 } from "../interfaces/organisation-buying-service.js";
 import type { OrganisationMemberActor } from "../interfaces/organisation-membership-service.js";
+import { findPayersInvoice } from "./payer-invoice.js";
 import type { PurchaseCandidateReader } from "./purchase-candidate.reader.js";
-import { buyingError, entityActorOf, memberIsPayer } from "./purchase-view.js";
+import { buyingError } from "./purchase-view.js";
 
 export type PurchaseInvoicePdfDeps = {
   candidates: Pick<PurchaseCandidateReader, "read">;
@@ -49,18 +49,11 @@ export class PurchaseInvoicePdfService implements IPurchaseInvoicePdfService {
   constructor(private readonly deps: PurchaseInvoicePdfDeps) {}
 
   async render(actor: OrganisationMemberActor, lotId: string): BuyingResult<PurchaseInvoicePdf> {
-    const scope = accountPurchaseScope(entityActorOf(actor));
-    if (!scope || !memberIsPayer(actor)) return err(buyingError("insufficient_entity_role"));
-
-    const {
-      entries: [entry],
-    } = await this.deps.candidates.read(actor, scope === "own", [lotId]);
-    const paymentId = entry?.row?.payment?.id;
-    if (!entry?.row || !entry.view || entry.view.paymentRole !== "payer" || !paymentId) {
-      return err(buyingError("invoice_not_ready"));
-    }
-    const invoice = (await this.deps.invoices.findByPaymentIds([paymentId])).get(paymentId);
-    if (!invoice || invoice.voidedAt !== null) return err(buyingError("invoice_not_ready"));
+    const found = await findPayersInvoice(this.deps, actor, lotId);
+    if (found.isErr()) return err(found.error);
+    const { invoice, entry } = found.value;
+    if (invoice.voidedAt !== null) return err(buyingError("invoice_not_ready"));
+    const paymentId = entry.row.payment?.id ?? "";
     const account = await this.deps.accounts.findById(actor.legalEntityId);
     if (!account) return err(buyingError("invoice_not_ready"));
 

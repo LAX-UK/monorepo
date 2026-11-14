@@ -22,6 +22,7 @@ import {
   DrizzlePaySeveralInvoiceFlagsReader,
   DrizzlePaymentGroupFactsReader,
   DrizzlePurchaseProblemRepository,
+  createAccountingRepositories,
 } from "@auction/persistence/repositories";
 import type { Env } from "../env.js";
 import type { AppLogger } from "../lib/logger.js";
@@ -44,6 +45,7 @@ import type {
   IPayProgressReadService,
   IPaySeveralService,
   IPayTransferService,
+  IPurchaseInvoiceBooksService,
   IPurchaseInvoicePdfService,
   IPurchaseProblemService,
   IStaffDeliveryQuoteService,
@@ -63,6 +65,7 @@ import { PayProgressResolver } from "../services/organisation-buying/pay-progres
 import { PaySeveralService } from "../services/organisation-buying/pay-several.service.js";
 import { PayTransferService } from "../services/organisation-buying/pay-transfer.service.js";
 import { PurchaseCandidateReader } from "../services/organisation-buying/purchase-candidate.reader.js";
+import { PurchaseInvoiceBooksService } from "../services/organisation-buying/purchase-invoice-books.service.js";
 import { PurchaseInvoicePdfService } from "../services/organisation-buying/purchase-invoice-pdf.service.js";
 import { PurchaseProblemService } from "../services/organisation-buying/purchase-problem.service.js";
 import { WonLotLookups } from "../services/organisation-buying/won-lot-lookups.js";
@@ -79,6 +82,7 @@ export type OrganisationBuyingServices = {
   paySeveral: IPaySeveralService;
   payTransfer: IPayTransferService;
   invoicePdf: IPurchaseInvoicePdfService;
+  invoiceBooks: IPurchaseInvoiceBooksService;
   payProgress: IPayProgressReadService;
   deliveryQuotes: IDeliveryQuoteService;
   collection: ICollectionBookingService;
@@ -100,6 +104,8 @@ export type CreateOrganisationBuyingInput = {
   >;
   lots: Pick<ILotRepository, "findById">;
   sales: Pick<ISaleRepository, "findById">;
+  /** LAX's document storage: the stored copies of the invoices Books issued. */
+  storage: { getObjectBytes(key: string, maxBytes: number): Promise<Buffer | null> };
   accounts: Pick<ILegalEntityRepository, "findById">;
   /** Whether a person has finished account setup; the pay plan reports it as a gate. */
   onboarding: { isComplete(userId: string): Promise<boolean> };
@@ -132,6 +138,8 @@ export function createOrganisationBuyingServices(input: CreateOrganisationBuying
   staffDeliveryQuotes: IStaffDeliveryQuoteService;
 } {
   const purchases = new DrizzleAccountPurchaseFactsReader(input.db);
+  // Read only: the buyer's invoice card reads the Books documents and their stored copies.
+  const accounting = createAccountingRepositories(input.db, { now: () => new Date() });
   const quotes = new DrizzleDeliveryQuoteRepository(input.db);
   const lookups = new WonLotLookups(input.lots, input.sales);
   const candidates = new PurchaseCandidateReader({
@@ -183,6 +191,14 @@ export function createOrganisationBuyingServices(input: CreateOrganisationBuying
         compliance: input.payments.compliance,
         checkout: input.payments.groupCheckout,
         metrics: { record: recordMoneyPathEvent },
+      }),
+      invoiceBooks: new PurchaseInvoiceBooksService({
+        candidates,
+        invoices: input.payments.invoices,
+        books: accounting.bidInvoiceBooks,
+        settings: accounting.settingReader,
+        storage: input.storage,
+        now: () => new Date(),
       }),
       payProgress: new PayProgressReadService({ candidates, progress }),
       invoicePdf: new PurchaseInvoicePdfService({

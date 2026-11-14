@@ -70,6 +70,29 @@ describe("resolveSellerWorkspaceContext", () => {
     expect(ctx.personalEntity?.id).toBe("me");
   });
 
+  it("sells as the viewed person, read-only, while support views their account", async () => {
+    const staffOwn = entity({ id: "staff-personal", displayName: "Staff Member" });
+    const viewed = entity({ id: "client-personal", isImpersonation: true });
+    acting(viewed, [staffOwn]);
+    const ctx = await resolveSellerWorkspaceContext("administrator", []);
+    expect(ctx).toMatchObject({
+      sellerEntityId: "client-personal",
+      sellingAsOrganisation: false,
+      actor: { role: "owner", isImpersonation: true },
+    });
+    expect(ctx.personalEntity?.id).toBe("client-personal");
+    expect(ctx.memberships.map((m) => m.id)).toEqual(["client-personal"]);
+    expect(sellerCan(ctx, "entity.consignments.read")).toBe(true);
+    expect(sellerCan(ctx, "entity.submissions.create")).toBe(false);
+  });
+
+  it("sells as the viewed organisation, not one of the staff member's own", async () => {
+    acting(gallery("owner", { isImpersonation: true }), [entity({ id: "staff-personal" })]);
+    const ctx = await resolveSellerWorkspaceContext("administrator", []);
+    expect(ctx.sellerEntityId).toBe("org-1");
+    expect(ctx.memberships.map((m) => m.id)).toEqual(["org-1"]);
+  });
+
   it("never falls back to the personal profile when the accounts could not be read", async () => {
     const outage = new AccountsUnavailableError("rate_limited");
     resolveActingContext.mockRejectedValue(outage);

@@ -4,6 +4,7 @@ import {
   ACCOUNTING_LOCKED_PERIOD_TEXT,
   accountingProblemCode,
   accountingProblemText,
+  accountingTotalsMismatchText,
   isAccountingOrganisation,
   isAccountingQueueTab,
 } from "./admin-accounting.js";
@@ -47,9 +48,21 @@ describe("accounting problems in plain English", () => {
     expect(ACCOUNTING_LOCKED_PERIOD_TEXT).toContain("reopen it");
   });
 
+  it("says what Books worked out when its totals differ", () => {
+    expect(accountingTotalsMismatchText("grossPence", 150_001)).toBe(
+      "Books worked out £1,500.01. The totals must match before it can be issued.",
+    );
+    expect(accountingTotalsMismatchText("vatPence", 1)).toBe(
+      "Books worked out £0.01 VAT. The totals must match before it can be issued.",
+    );
+    expect(accountingTotalsMismatchText("netPence", 149_999)).toBe(
+      "Books worked out £1,499.99 net. The totals must match before it can be issued.",
+    );
+  });
+
   it("words the life cycle's own reasons", () => {
     expect(accountingProblemText("provider total differs: grossPence by -2 pence")).toBe(
-      "Books worked out a gross total 2p different from ours. It is in Books; check it there.",
+      "Books worked out a gross total 2p different from ours. The totals must match before it can be issued.",
     );
     expect(
       accountingProblemText("no answer after 8 attempts; look it up before anything else"),

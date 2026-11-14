@@ -65,7 +65,7 @@ export function SubmissionWorkflowActions({ submissionId, canSubmit, canWithdraw
         <ConfirmActionButton
           type="button"
           disabled={pending}
-          variant="secondaryOutline"
+          variant="secondary"
           confirmTitle="Withdraw this work"
           confirmBody="We stop reviewing it. You can send it again later if you change your mind."
           confirmLabel="Withdraw"

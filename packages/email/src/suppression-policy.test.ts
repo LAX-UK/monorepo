@@ -9,6 +9,7 @@ import { templateNames } from "./types.js";
 
 const TRANSACTIONAL = [
   "payment-invoice",
+  "bid-invoice-issued",
   "payment-receipt",
   "payment-refund-notice",
   "shop-order-receipt",

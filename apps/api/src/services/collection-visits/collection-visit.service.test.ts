@@ -244,11 +244,9 @@ describe("who may book which lot", () => {
     const other = failed(
       await s.service.book(actor("buyer_agent"), body({ lotIds: [COLLECTION_LOTS.one] })),
     );
-    expect(other).toMatchObject({
-      code: "lot_not_yours_to_book",
-      status: 403,
-      lotId: COLLECTION_LOTS.one,
-    });
+    // A colleague's win is not in the agent's purchases, so it is not confirmed to exist.
+    expect(other).toMatchObject({ code: "lot_not_found", status: 404 });
+    expect(other).not.toHaveProperty("lotId");
     expect(s.bookings.bookings).toHaveLength(1);
   });
 
@@ -281,7 +279,7 @@ describe("who may book which lot", () => {
     const theirs = failed(
       await s.service.book(actor(), body({ lotIds: ["c0000000-0000-4000-8000-0000000000b2"] })),
     );
-    expect(theirs).toMatchObject({ code: "lot_not_yours_to_book" });
+    expect(theirs).toMatchObject({ code: "lot_not_found", status: 404 });
   });
 
   it("never confirms another account's lot exists, whoever asks", async () => {
@@ -664,7 +662,7 @@ describe("change", () => {
     const error = failed(
       await s.service.change(actor("buyer_agent"), visit.id, change(visit.version)),
     );
-    expect(error).toMatchObject({ code: "lot_not_yours_to_book", status: 403 });
+    expect(error).toMatchObject({ code: "lot_not_found", status: 404 });
   });
 
   it("refuses a lot that cannot be collected, and one from another place", async () => {
@@ -758,7 +756,7 @@ describe("cancel", () => {
     const s = setup();
     const visit = await booked(s);
     const error = failed(await s.service.cancel(actor("buyer_agent"), visit.id, { version: 0 }));
-    expect(error.code).toBe("lot_not_yours_to_book");
+    expect(error).toMatchObject({ code: "lot_not_found", status: 404 });
   });
 
   it("cannot be done twice", async () => {

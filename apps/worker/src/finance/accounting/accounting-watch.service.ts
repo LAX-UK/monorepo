@@ -1,4 +1,8 @@
-import { type TargetMode, booksTargetMode } from "@auction/accounting-domain";
+import {
+  INVOICE_DELAYED_AFTER_MS,
+  type TargetMode,
+  booksTargetMode,
+} from "@auction/accounting-domain";
 import {
   LONDON_WORKING_CALENDAR,
   type WorkingCalendar,
@@ -32,13 +36,15 @@ export interface AccountingWatchDeps {
 export interface WatchResult {
   readonly needsPersonOverdue: boolean;
   readonly senderMissed: boolean;
+  readonly bidInvoiceDelayed: boolean;
 }
 
 /**
  * Checks the Books document queue for what a person should know about: a document that has
- * waited for a person for more than one working day, and documents the sender should have taken
- * long ago (it has stopped, or is failing before it claims). Runs as a cron; each run raises at
- * most one alert of each kind, with the count and the oldest time.
+ * waited for a person for more than one working day, documents the sender should have taken
+ * long ago (it has stopped, or is failing before it claims), and buyers' Bid invoices still being
+ * prepared after 30 minutes. Runs as a cron; each run raises at most one alert of each kind, with
+ * the count and the oldest time.
  */
 export class AccountingWatch {
   constructor(private readonly deps: AccountingWatchDeps) {}
@@ -71,7 +77,21 @@ export class AccountingWatch {
         modes,
       });
     }
-    return { needsPersonOverdue, senderMissed };
+    // The buyer's card turns to "taking longer than usual" at the same point, and says we know.
+    const delayed = await this.deps.attention.delayedBidInvoices(
+      modes,
+      new Date(now.getTime() - INVOICE_DELAYED_AFTER_MS),
+    );
+    const bidInvoiceDelayed = delayed.count > 0 && delayed.oldestSince !== null;
+    if (bidInvoiceDelayed) {
+      this.deps.alerts.raise(ACCOUNTING_ALERTS.bidInvoiceDelayed, {
+        count: delayed.count,
+        oldestSince: delayed.oldestSince?.toISOString(),
+        modes,
+        page: "/admin/finance/accounting",
+      });
+    }
+    return { needsPersonOverdue, senderMissed, bidInvoiceDelayed };
   }
 
   /**

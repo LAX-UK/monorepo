@@ -31,7 +31,12 @@ export async function resolveSellerWorkspaceContext(
   userRole?: string | null,
   userStaffRoles?: StaffRoles,
 ): Promise<SellerWorkspaceContext> {
-  const { acting, memberships } = await resolveActingContext(userRole, userStaffRoles);
+  const resolved = await resolveActingContext(userRole, userStaffRoles);
+  const { acting } = resolved;
+  // Support viewing as the client sell as the viewed account only: the staff member's own
+  // memberships are not the client's, and the view is read-only.
+  const viewing = acting.isImpersonation === true;
+  const memberships = viewing ? [acting] : resolved.memberships;
   const personalEntity = memberships.find((m) => m.kind === "individual") ?? null;
   const sellingAsOrganisation = acting.kind === "organisation";
   const sellerEntity = sellingAsOrganisation ? acting : personalEntity;
@@ -39,9 +44,10 @@ export async function resolveSellerWorkspaceContext(
     personalEntity,
     sellingAsOrganisation,
     sellerEntityId: sellerEntity?.id ?? null,
-    actor: sellingAsOrganisation
-      ? { role: acting.role, isImpersonation: acting.isImpersonation }
-      : null,
+    actor:
+      sellingAsOrganisation || viewing
+        ? { role: acting.role, isImpersonation: acting.isImpersonation }
+        : null,
     memberships,
   };
 }

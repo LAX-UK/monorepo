@@ -21,7 +21,7 @@ describe("buildSubmissionsAccessFailure", () => {
 
   it("falls back for unknown codes", () => {
     const failure = buildSubmissionsAccessFailure(500, "unexpected");
-    expect(failure.title).toBe("Could not load submissions");
+    expect(failure.title).toBe("Your consignments couldn't be loaded");
     expect(failure.actions.length).toBeGreaterThan(0);
   });
 });

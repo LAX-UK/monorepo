@@ -92,3 +92,26 @@ export interface ContactPort {
 export interface DocumentLookupPort {
   findDocument(document: AccountingDocument): Promise<LookupOutcome>;
 }
+
+/**
+ * What fetching a document's rendered PDF ended in. `fetched` carries the bytes; `rehearsal` is
+ * true when they were made by a dry run (a stand-in that says so on the page), never by the
+ * provider. `unavailable` changes nothing: the copy is fetched again on a later tick.
+ */
+export type PdfOutcome =
+  | {
+      readonly status: "fetched";
+      readonly bytes: Uint8Array;
+      readonly contentType: "application/pdf";
+      readonly rehearsal: boolean;
+    }
+  | { readonly status: "unavailable"; readonly reason: string };
+
+/**
+ * The provider's PDF of a document it issued, so LAX can keep its own copy. Asked only for a
+ * document whose record is `issued`, with the identity the provider gave it; a reader never
+ * reaches the provider through this (buyers download the stored copy).
+ */
+export interface DocumentPdfPort {
+  fetchPdf(document: AccountingDocument, issued: IssuedDocument): Promise<PdfOutcome>;
+}

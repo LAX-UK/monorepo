@@ -8,13 +8,15 @@ import {
   shopParty,
   user,
 } from "@auction/db/schema";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 import { DrizzleBidPublishSettings } from "./drizzle-bid-publish-settings.js";
 import { DrizzleRegisterLotIntegrityReader } from "./drizzle-register-lot-integrity.reader.js";
 import { DrizzleUnlinkedOriginalsReader } from "./drizzle-unlinked-originals.reader.js";
 
 const url = process.env.DATABASE_URL;
+/** Set where `db:roles` has run; the API-role checks then run the readers as `api_app`. */
+const apiRoleUrl = process.env.DATABASE_URL_API;
 
 const userId = "register-integrity-user";
 const entityId = "bbbbbbbb-0000-4000-8000-000000000001";
@@ -226,6 +228,73 @@ describe.skipIf(!url)("register and lot integrity (Postgres)", { timeout: 30_000
       expect(after.items.filter((item) => mine.has(item.id))).toEqual([]);
     });
   });
+
+  it.skipIf(!apiRoleUrl)(
+    "runs the report and the publish switch read as api_app, which may read the artworks but not change them",
+    async () => {
+      await inRolledBackTransaction(async (db) => {
+        const [party] = await db
+          .insert(shopParty)
+          .values({ displayName: "Role Contract Artist", kind: "person" })
+          .returning();
+        const [artist] = await db
+          .insert(shopArtist)
+          .values({ partyId: party?.id ?? "", slug: "register-integrity-role-artist" })
+          .returning();
+        const [original] = await db
+          .insert(shopArtwork)
+          .values({
+            slug: "register-integrity-role-live",
+            title: "Original seen by the Bid API",
+            artistId: artist?.id ?? "",
+            eligibleForEditionAllocation: false,
+            importKey: "it:register-integrity:role-live",
+            salesChannel: "art",
+          })
+          .returning({ id: shopArtwork.id });
+        const unlinkedLot = await newLot(db, 21, { status: "active" });
+
+        // From here on every statement is checked against api_app's grants, as in production.
+        await db.execute(sql`set local role api_app`);
+        const report = await new DrizzleUnlinkedOriginalsReader(db).listLiveUnlinkedOriginals(5000);
+        const mine = report.items.filter((item) => [original?.id, unlinkedLot].includes(item.id));
+        expect(mine).toEqual(
+          expect.arrayContaining([
+            expect.objectContaining({ product: "bid", id: unlinkedLot, state: "Live" }),
+            expect.objectContaining({
+              product: "lax_art",
+              id: original?.id,
+              artistName: "Role Contract Artist",
+            }),
+          ]),
+        );
+        expect(mine).toHaveLength(2);
+        expect(await new DrizzleBidPublishSettings(db, () => at).blockUnlinkedPublish()).toBe(
+          false,
+        );
+
+        const refused = async (statement: ReturnType<typeof sql>) => {
+          try {
+            await db.transaction(async (savepoint) => {
+              await savepoint.execute(statement);
+            });
+            return undefined;
+          } catch (error) {
+            const cause = (error as { cause?: { code?: string } }).cause;
+            return cause?.code ?? (error as { code?: string }).code;
+          }
+        };
+        expect(
+          await refused(sql`update shop_artwork set title = title where id = ${original?.id}`),
+        ).toBe("42501");
+        expect(
+          await refused(sql`update shop_party set display_name = 'x' where id = ${party?.id}`),
+        ).toBe("42501");
+        expect(await refused(sql`select slug from shop_artwork limit 1`)).toBe("42501");
+        expect(await refused(sql`delete from shop_artist where id = ${artist?.id}`)).toBe("42501");
+      });
+    },
+  );
 
   it("keeps the Bid publish switch off until staff turn it on, and remembers who changed it", async () => {
     await inRolledBackTransaction(async (db) => {

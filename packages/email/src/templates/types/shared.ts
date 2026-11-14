@@ -23,3 +23,14 @@ export type TemplateDomainSlice<TNames extends string, TVars extends Record<TNam
   vars: TVars;
   recipientResolution: Record<TNames, RecipientResolution>;
 };
+
+/**
+ * A file kept in LAX's document storage that travels with an email: only its key and name are
+ * stored with the message, and the sender reads the bytes when it sends.
+ */
+export type StoredEmailAttachment = {
+  storageKey: string;
+  /** Letters, digits, dots and dashes only (it goes in a mail header). */
+  filename: string;
+  contentType: "application/pdf";
+};

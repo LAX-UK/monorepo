@@ -2,6 +2,7 @@ import { WorkspacePanel } from "@/components/dashboard/primitives/workspace-pane
 import { dashboardCheckoutLotUrl } from "@/lib/dashboard/dashboard-copy";
 import type { DeliveryPanelVm } from "@/lib/purchases/purchase-delivery.vm";
 import type { PurchaseHandoverVm } from "@/lib/purchases/purchase-handover";
+import type { PurchaseInvoiceCardVm } from "@/lib/purchases/purchase-invoice-card.vm";
 import type { PurchaseProblemPanelVm } from "@/lib/purchases/purchase-problem";
 import type { PurchaseCardVm } from "@/lib/purchases/purchases.vm";
 import { ButtonLink } from "@auction/ui/lax/button-link";
@@ -10,9 +11,9 @@ import { StatusBadge } from "@auction/ui/lax/status-badge";
 import { pageTitleClass } from "@auction/ui/lax/styles";
 import { cn } from "@auction/ui/lib/utils";
 import { OfficialTime } from "@auction/ui/time";
-import { Download, FileText } from "lucide-react";
 import Link from "next/link";
 import { DeliveryPanel } from "./delivery-panel";
+import { PurchaseInvoiceCard } from "./purchase-invoice-card";
 
 /** Where "Choose delivery" in the hand-over notice scrolls to. */
 export const DELIVERY_ANCHOR = "delivery";
@@ -84,6 +85,7 @@ export function PurchaseDetail({
   problem,
   handover,
   shipperEmail,
+  invoiceCard,
 }: {
   card: PurchaseCardVm;
   subtitle: string;
@@ -94,6 +96,8 @@ export function PurchaseDetail({
   /** "Paid. Thank you." and the next step, for a person sent here after paying; else `null`. */
   handover?: PurchaseHandoverVm | null;
   shipperEmail: string;
+  /** The invoice card: Books' invoice once it issues one, else LAX's own as before. */
+  invoiceCard: PurchaseInvoiceCardVm;
 }) {
   const action = card.payable
     ? { label: `Pay ${card.amount}`, href: dashboardCheckoutLotUrl(card.lotId) }
@@ -176,28 +180,7 @@ export function PurchaseDetail({
             </dl>
           </WorkspacePanel>
           <WorkspacePanel title="Documents">
-            {card.invoiceHref ? (
-              <a
-                href={card.invoiceHref}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="-mx-2 flex items-center gap-3 rounded-lax-control px-2 py-2 hover:bg-lax-hover lax-focus"
-              >
-                <span className="grid size-9 place-items-center rounded-lax-control border border-lax-line text-lax-muted">
-                  <FileText aria-hidden className="size-4" />
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block text-lax-14 font-medium text-lax-fg">Invoice</span>
-                  <span className="block text-lax-13 text-lax-muted">PDF</span>
-                </span>
-                <Download aria-hidden className="size-4 text-lax-muted" />
-                <span className="sr-only">Download the invoice</span>
-              </a>
-            ) : (
-              <p className="text-lax-14 text-lax-muted">
-                The invoice appears here once it is raised.
-              </p>
-            )}
+            <PurchaseInvoiceCard card={invoiceCard} />
           </WorkspacePanel>
           {problem ? (
             <WorkspacePanel title={problem.title}>

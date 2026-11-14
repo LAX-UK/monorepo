@@ -27,6 +27,40 @@ describe("buildDashboardSliceFailure", () => {
     });
   }
 
+  it("names what failed in plain words, the same way for every surface", () => {
+    const failure = buildDashboardSliceFailure("bids", 500, null);
+    expect(failure.title).toBe("Your bids couldn't be loaded");
+    expect(failure.message).toBe("This is on our side. Try again in a moment.");
+    expect(failure.actions).toEqual([{ kind: "retry", label: "Try again", href: "/bids" }]);
+  });
+
+  it.each([
+    ["watchlist", "The lots you follow couldn't be loaded"],
+    ["notifications", "Your notifications couldn't be loaded"],
+    ["submissions", "Your consignments couldn't be loaded"],
+    ["orgMembers", "Members couldn't be loaded"],
+    ["invitations", "Invitations couldn't be loaded"],
+  ] as const)("titles %s as %s", (slice, title) => {
+    expect(buildDashboardSliceFailure(slice, 500, null).title).toBe(title);
+  });
+
+  it("says why when the role doesn't include it, and asks to sign in after a lapsed session", () => {
+    expect(buildDashboardSliceFailure("bids", 403, null).message).toBe(
+      "Your role in this account doesn't include this.",
+    );
+    expect(buildDashboardSliceFailure("bids", 401, null).message).toBe(
+      "Your session ended. Sign in again to carry on.",
+    );
+  });
+
+  it("never shows a client an internal word", () => {
+    const slices = ["bids", "portfolio", "submissions", "orgMembers", "kyc", "settings"] as const;
+    for (const slice of slices) {
+      const { title, message } = buildDashboardSliceFailure(slice, 500, null);
+      expect(`${title} ${message}`).not.toMatch(/submission|something went wrong|could not/i);
+    }
+  });
+
   it("delegates legal-entity codes for submissions", () => {
     const failure = buildDashboardSliceFailure("submissions", 403, "not_a_member_of_legal_entity");
     expect(failure.title).toBe("Cannot sell as this organisation");

@@ -162,6 +162,35 @@ describe("AccountingQueueService.list", () => {
     });
   });
 
+  it("names Books' own total when it worked the invoice out differently", async () => {
+    const { service } = setUp(
+      stored(
+        {
+          status: "needs_review",
+          lookup: "clear",
+          reason: "provider total differs: grossPence by 1 pence",
+          issued: { number: "INV-000042", providerId: "42", pdfRef: null },
+          mismatch: { field: "grossPence", differencePence: 1 },
+        },
+        "test_org",
+      ),
+    );
+    const page = await service.list({
+      tab: "needs_person",
+      organisation: null,
+      reference: null,
+      limit: 50,
+      offset: 0,
+      canAct: true,
+    });
+    // Ours is £120.00 (£100 and its VAT); Books' is 1p more.
+    expect(page.rows[0]).toMatchObject({
+      state: "needs_review",
+      problem: "Books worked out £120.01. The totals must match before it can be issued.",
+      canTryAgain: false,
+    });
+  });
+
   it("offers no try again to someone who may only look", async () => {
     const { service } = setUp(stored(failed));
     const page = await service.list({
