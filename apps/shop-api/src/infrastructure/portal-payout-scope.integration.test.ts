@@ -22,9 +22,9 @@ const ORIGINS = { shop: "https://shop.example", art: "https://art.example" };
 
 /**
  * One gallery party represents three artists. Two of them have portal access; the third has none.
- * Each artist sees only payouts for their own works, through every reader that shows payouts
- * (payouts list, sales list, portfolio, data export). The gallery, signed in as itself, sees all
- * of them. Rolled back, so it leaves no rows behind.
+ * Each artist sees only payouts owed to them for their own works, through every reader that shows
+ * payouts (payouts list, sales list, portfolio, data export); a row owed to the gallery itself on an
+ * artist's work stays out. The gallery, signed in as itself, sees all of them. Rolled back, so it leaves no rows behind.
  */
 describe.skipIf(!ownerUrl)("portal payout scope (integration)", () => {
   it("scopes a shared gallery party's payouts to each artist", async () => {
@@ -49,7 +49,8 @@ describe.skipIf(!ownerUrl)("portal payout scope (integration)", () => {
       id(),
       id(),
     ];
-    const [payoutA, payoutB, payoutC] = [id(), id(), id()];
+    const [lineA2, editionA2] = [id(), id()];
+    const [payoutA, payoutB, payoutC, payoutGalleryA] = [id(), id(), id(), id()];
 
     try {
       await db.transaction(async (tx) => {
@@ -105,15 +106,31 @@ describe.skipIf(!ownerUrl)("portal payout scope (integration)", () => {
           ownerPartyId: buyer,
           listingStatus: "sold" as const,
         });
-        await tx.insert(shopEdition).values([sold(editionA, workA), sold(editionB, workB)]);
-        await tx.insert(shopOrderLine).values({
-          id: lineA,
-          orderId,
-          editionId: editionA,
-          artworkId: workA,
-          editionNumber: 1,
-          unitPricePence: 10_000,
-        });
+        await tx
+          .insert(shopEdition)
+          .values([
+            sold(editionA, workA),
+            sold(editionB, workB),
+            { ...sold(editionA2, workA), editionNumber: 2, stockRef: 2 },
+          ]);
+        await tx.insert(shopOrderLine).values([
+          {
+            id: lineA,
+            orderId,
+            editionId: editionA,
+            artworkId: workA,
+            editionNumber: 1,
+            unitPricePence: 10_000,
+          },
+          {
+            id: lineA2,
+            orderId,
+            editionId: editionA2,
+            artworkId: workA,
+            editionNumber: 2,
+            unitPricePence: 10_000,
+          },
+        ]);
         await tx.insert(shopThirdPartySale).values({
           id: resaleB,
           editionId: editionB,
@@ -145,13 +162,13 @@ describe.skipIf(!ownerUrl)("portal payout scope (integration)", () => {
           status: "due",
           ...link,
         });
-        await tx
-          .insert(shopPayoutLedger)
-          .values([
-            payout(payoutA, 10_000, { orderLineId: lineA }),
-            payout(payoutB, 20_000, { source: "third_party_sale", thirdPartySaleId: resaleB }),
-            payout(payoutC, 30_000, { source: "original_sale", originalSaleId: originalC }),
-          ]);
+        await tx.insert(shopPayoutLedger).values([
+          payout(payoutA, 10_000, { orderLineId: lineA }),
+          payout(payoutB, 20_000, { source: "third_party_sale", thirdPartySaleId: resaleB }),
+          payout(payoutC, 30_000, { source: "original_sale", originalSaleId: originalC }),
+          // Owed to the gallery itself on artist A's work, not to the artist.
+          payout(payoutGalleryA, 4_000, { orderLineId: lineA2, payeeKind: "gallery" }),
+        ]);
 
         const scopedDb = tx as never;
         const ownership = createDrizzlePortalOwnershipRepository(scopedDb);
@@ -187,7 +204,9 @@ describe.skipIf(!ownerUrl)("portal payout scope (integration)", () => {
         expect(await seen(subjects.a)).toEqual(only(payoutA));
         expect(await seen(subjects.b)).toEqual(only(payoutB));
         // The gallery, signed in as itself, represents all three artists.
-        expect(await seen(subjects.gallery)).toEqual(only(payoutA, payoutB, payoutC));
+        expect(await seen(subjects.gallery)).toEqual(
+          only(payoutA, payoutB, payoutC, payoutGalleryA),
+        );
         expect(await seen(`payout-nobody-${tag}`)).toEqual(only());
 
         throw rollback;

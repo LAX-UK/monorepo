@@ -132,9 +132,11 @@ describe("Shop subject export: what each reader may read", () => {
 
   it("scopes every person-owned table to the subject or to the person's own parties", () => {
     expect(text("orders.category.ts")).toContain("eq(shopOrder.identitySubjectId, s)");
-    expect(text("orders.category.ts")).toContain(
-      "inArray(shopOriginalSale.buyerPartyId, partyIds)",
-    );
+    // Party rows follow the portal's party rule, never every row of a party reached through an
+    // artist profile.
+    expect(text("orders.category.ts")).toContain("shopOriginalSale.buyerPartyId,");
+    expect(text("orders.category.ts")).toContain("resolvePortalPartyScope(db, s)");
+    expect(text("invoices.category.ts")).toContain("resolvePortalPartyScope(db, s)");
     expect(text("payments.category.ts")).toContain("eq(shopOrder.identitySubjectId, s)");
     expect(text("invoices.category.ts")).toContain("eq(shopOrder.identitySubjectId, s)");
     expect(text("basket.category.ts")).toContain("eq(shopBasket.identitySubjectId, s)");
@@ -147,9 +149,11 @@ describe("Shop subject export: what each reader may read", () => {
     expect(text("selling.category.ts")).toContain(
       "eq(shopArtistApplication.applicantSubjectId, s)",
     );
-    expect(text("selling.category.ts")).toContain(
-      "inArray(shopSaleAuthorityRequest.ownerPartyId, partyIds)",
-    );
+    expect(text("selling.category.ts")).toContain("shopSaleAuthorityRequest.ownerPartyId,");
+    expect(text("selling.category.ts")).toContain("resolvePortalPartyScope(db, s)");
+    for (const file of ["orders.category.ts", "invoices.category.ts", "selling.category.ts"]) {
+      expect(text(file)).not.toContain("resolvePortalPartyIds");
+    }
   });
 
   it("reaches guest orders only through the account that claimed them, never by email", () => {

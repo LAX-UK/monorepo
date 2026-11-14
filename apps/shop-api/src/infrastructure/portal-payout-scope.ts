@@ -1,6 +1,11 @@
 import type { Database } from "@auction/db";
-import { shopArtist, shopParty, shopPayoutLedger } from "@auction/db/schema";
-import { type SQL, and, eq, or, sql } from "drizzle-orm";
+import { shopPayoutLedger } from "@auction/db/schema";
+import { type SQL, eq, sql } from "drizzle-orm";
+import {
+  type PortalPartyScope,
+  portalPartyRows,
+  resolvePortalPartyScope,
+} from "./portal-party-scope.js";
 
 /**
  * The artwork a payout ledger row was earned on, whichever kind of sale it came from. Written as
@@ -15,13 +20,14 @@ const payoutArtworkId = sql`coalesce(
 )`;
 
 /**
- * Which payout ledger rows a person may see in the seller portal and in their data export.
+ * Which payout ledger rows a person may see in the seller portal and in their data export, under
+ * the rule in `portal-party-scope.ts`.
  *
- * - Their own party (the one their sign-in is linked to) sees every payout owed to it. A gallery
- *   signed in as itself therefore sees the payouts of every artist it represents.
- * - Their artist profile grants only that artist's payouts: rows owed to the profile's party for
- *   the artist's own works. One party may represent several artists, so the party alone never
- *   decides; another artist paid through the same gallery stays out.
+ * - A party they own: every payout owed to it. A gallery signed in as itself therefore sees the
+ *   payouts of every artist it represents.
+ * - An artist profile on a party they do not own: only that artist's payouts, meaning rows owed to
+ *   the artist (`payee_kind = 'artist'`) for the artist's own works. Another artist paid through
+ *   the same gallery, and the gallery's own earnings, stay out.
  *
  * Null when the person has neither, so the caller reads nothing.
  */
@@ -29,30 +35,15 @@ export async function resolvePortalPayoutScope(
   db: Database,
   identitySubjectId: string,
 ): Promise<SQL | null> {
-  const [[ownParty], [artist]] = await Promise.all([
-    db
-      .select({ id: shopParty.id })
-      .from(shopParty)
-      .where(eq(shopParty.identitySubjectId, identitySubjectId))
-      .limit(1),
-    db
-      .select({ id: shopArtist.id, partyId: shopArtist.partyId })
-      .from(shopArtist)
-      .where(eq(shopArtist.identitySubjectId, identitySubjectId))
-      .limit(1),
-  ]);
+  const scope = await resolvePortalPartyScope(db, identitySubjectId);
+  return portalPayoutRows(scope);
+}
 
-  const grants: SQL[] = [];
-  if (ownParty) {
-    grants.push(eq(shopPayoutLedger.ownerPartyId, ownParty.id));
-  }
-  if (artist && artist.partyId !== ownParty?.id) {
-    const artistRows = and(
-      eq(shopPayoutLedger.ownerPartyId, artist.partyId),
-      sql`exists (select 1 from shop_artwork a where a.id = ${payoutArtworkId} and a.artist_id = ${artist.id})`,
-    );
-    if (artistRows) grants.push(artistRows);
-  }
-  if (grants.length === 0) return null;
-  return grants.length === 1 ? (grants[0] as SQL) : (or(...grants) as SQL);
+export function portalPayoutRows(scope: PortalPartyScope): SQL | null {
+  return portalPartyRows(
+    scope,
+    shopPayoutLedger.ownerPartyId,
+    payoutArtworkId,
+    eq(shopPayoutLedger.payeeKind, "artist"),
+  );
 }
