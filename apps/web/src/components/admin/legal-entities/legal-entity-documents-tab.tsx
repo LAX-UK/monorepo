@@ -171,7 +171,7 @@ export function LegalEntityDocumentsTab({ legalEntityId, documents, error, succe
           {error ?? failure}
         </Notice>
       ) : null}
-      <StatGrid label="Documents summary" className="grid-cols-3 md:grid-cols-3" items={stats} />
+      <StatGrid label="Documents summary" items={stats} />
       <RelatedRecordsSection<AdminLegalEntityDocument>
         title="Documents"
         description="Uploaded onboarding and compliance files for this organisation."

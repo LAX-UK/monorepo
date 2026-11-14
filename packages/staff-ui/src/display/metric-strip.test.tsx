@@ -198,4 +198,16 @@ describe("AttentionStrip", () => {
     expect(grid?.className).toContain("grid-cols-1");
     expect(grid?.className).not.toContain("md:grid-cols-4");
   });
+  it("sizes to its item count when columns is not given, up to four", () => {
+    const items = (n: number) =>
+      Array.from({ length: n }, (_, i) => ({ id: `s${i}`, label: `S${i}`, value: `${i}` }));
+    const cls = (n: number) =>
+      render(<StatGrid label={`n${n}`} items={items(n)} />).container.querySelector(".grid")
+        ?.className ?? "";
+    expect(cls(2)).toContain("md:grid-cols-2");
+    expect(cls(3)).toContain("md:grid-cols-3");
+    expect(cls(3)).not.toContain("md:grid-cols-4");
+    expect(cls(4)).toContain("md:grid-cols-4");
+    expect(cls(6)).toContain("md:grid-cols-4");
+  });
 });
