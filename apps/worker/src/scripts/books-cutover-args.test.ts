@@ -27,10 +27,26 @@ describe("books cutover command options", () => {
     );
   });
 
+  it("fails on an invalid daily call budget, as the Books sender does, instead of guessing 1,000", () => {
+    for (const bad of ["abc", "0", "-5", "1.5", "1000001"]) {
+      expect(() =>
+        parseImportArgs(["--before", "2027-01-01"], { ZOHO_BOOKS_DAILY_CALL_BUDGET: bad }),
+      ).toThrow("zoho_books_config_zoho_books_daily_call_budget_invalid");
+    }
+    // Unset or blank is the sender's default too.
+    expect(parseImportArgs(["--before", "2027-01-01"], {}).maxDocuments).toBe(125);
+    expect(
+      parseImportArgs(["--before", "2027-01-01"], { ZOHO_BOOKS_DAILY_CALL_BUDGET: " " })
+        .maxDocuments,
+    ).toBe(125);
+  });
+
   it("reads a backfill window, product and resume point", () => {
     const input = parseBackfillArgs([
       "--product",
       "shop",
+      "--not-before",
+      "2027-01-01",
       "--from",
       "2027-01-01",
       "--to",
@@ -38,11 +54,33 @@ describe("books cutover command options", () => {
       "--after",
       "42",
     ]);
-    expect(input).toMatchObject({ product: "shop", afterId: 42, limit: 200, dryRun: false });
+    expect(input).toMatchObject({
+      product: "shop",
+      afterId: 42,
+      limit: 200,
+      maxUnsent: 125,
+      dryRun: false,
+    });
+    expect(input.notBefore.toISOString()).toBe("2027-01-01T00:00:00.000Z");
     expect(input.from.toISOString()).toBe("2027-01-01T00:00:00.000Z");
     expect(() => parseBackfillArgs(["--product", "xero", "--from", "a", "--to", "b"])).toThrow();
     expect(() =>
-      parseBackfillArgs(["--product", "shop", "--from", "2027-01-01", "--to", "soon"]),
+      parseBackfillArgs([
+        "--product",
+        "shop",
+        "--not-before",
+        "2027-01-01",
+        "--from",
+        "2027-01-01",
+        "--to",
+        "soon",
+      ]),
     ).toThrow("--to");
+  });
+
+  it("requires the cutover bound: there is no backfill without --not-before", () => {
+    expect(() =>
+      parseBackfillArgs(["--product", "shop", "--from", "2027-01-01", "--to", "2027-01-08"]),
+    ).toThrow("--not-before");
   });
 });

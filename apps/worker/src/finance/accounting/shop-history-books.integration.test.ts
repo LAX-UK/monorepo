@@ -30,7 +30,18 @@ function window() {
 }
 
 /** A paid Shop order, one print collected in London, paid at `paidAt`; the database numbers it. */
-async function seedPaidOrder(db: Database, paidAt: Date, partyId?: string) {
+async function seedPaidOrder(
+  db: Database,
+  paidAt: Date,
+  partyId?: string,
+  options: {
+    /** Delivery outside the UK: 50.00 on top of the print, its VAT not yet known. */
+    outsideUk?: boolean;
+    status?: "paid" | "partially_refunded" | "refunded";
+  } = {},
+) {
+  const fulfilment = options.outsideUk ? "international_quotation" : "collect_brunswick";
+  const surcharge = options.outsideUk ? 5000 : 0;
   const tag = randomUUID().slice(0, 8);
   const subject = `shop-history-${tag}`;
   const party =
@@ -55,7 +66,7 @@ async function seedPaidOrder(db: Database, paidAt: Date, partyId?: string) {
     sql`insert into shop_order
           (identity_subject_id, fulfilment, merchandise_subtotal_pence, framing_subtotal_pence,
            fulfilment_surcharge_pence, fulfilment_vat_pence, total_pence, idempotency_key, buyer_party_id)
-        values (${subject}, 'collect_brunswick', 30000, 0, 0, null, 30000, ${`hist-${tag}`}, ${party})
+        values (${subject}, ${fulfilment}, 30000, 0, ${surcharge}, null, ${30000 + surcharge}, ${`hist-${tag}`}, ${party})
         returning id`,
   );
   const orderId = order.rows[0]?.id as string;
@@ -66,6 +77,9 @@ async function seedPaidOrder(db: Database, paidAt: Date, partyId?: string) {
   await db.execute(
     sql`update shop_order set status = 'paid', paid_at = ${paidAt.toISOString()}::timestamptz where id = ${orderId}`,
   );
+  if (options.status && options.status !== "paid") {
+    await db.execute(sql`update shop_order set status = ${options.status} where id = ${orderId}`);
+  }
   const numbered = await db.execute<{ invoice_number: string }>(
     sql`select invoice_number from shop_order where id = ${orderId}`,
   );
@@ -231,16 +245,34 @@ describe.skipIf(!HAS_DB)(
         shopFacts: new DrizzleShopAccountingFactsReader(worker),
         settings: repos.settingReader,
         registry: repos.registry,
+        books: {
+          lookup: repos.lookup,
+          creditNotes: repos.creditNotes,
+          transitions: repos.transitions,
+        },
       });
       const backfill = new BooksBackfill({
         history: new DrizzleBooksHistoryReader(worker),
         projection,
         settings: repos.settingReader,
       });
-      const input = { product: "shop" as const, from: w.since, to: w.before, afterId: null };
+      const input = {
+        product: "shop" as const,
+        notBefore: w.since,
+        from: w.since,
+        to: w.before,
+        afterId: null,
+        maxUnsent: 100_000,
+      };
 
       const dry = await backfill.run({ ...input, dryRun: true });
-      expect(dry).toMatchObject({ events: 1, projected: 0, next: null });
+      expect(dry).toMatchObject({
+        events: 1,
+        projected: 1,
+        created: 0,
+        wouldCreate: 3,
+        next: null,
+      });
       const count = async () =>
         (
           await owner.execute(
@@ -255,10 +287,98 @@ describe.skipIf(!HAS_DB)(
       const second = await backfill.run({ ...input, dryRun: false });
       expect(second).toMatchObject({ projected: 1, created: 0, replayed: 3 });
       expect(await count()).toBe(3);
+      // Once queued, a dry run sees all three as held already, and never creates one.
+      expect(await backfill.run({ ...input, dryRun: true })).toMatchObject({
+        wouldCreate: 0,
+        replayed: 3,
+      });
+
+      // The cutover bound: a window that starts before it is refused, and nothing is read.
+      await expect(
+        backfill.run({ ...input, notBefore: new Date(w.since.getTime() + 1), dryRun: false }),
+      ).rejects.toThrow("before_cutover");
+
+      // A full queue (the target already holds unsent documents) stops the run before it adds more.
+      const full = await backfill.run({ ...input, maxUnsent: 1, dryRun: false });
+      expect(full.waiting).toEqual({ eventId: expect.any(Number), reason: "queue_full" });
 
       // A Bid backfill of the same window reads none of the Shop's events.
       await aim("dry_run", "dry_run");
       expect((await backfill.run({ ...input, product: "bid", dryRun: false })).events).toBe(0);
+    });
+
+    it("parks an outside-UK delivery's own invoice, and only that one, in the stored queue", async () => {
+      await aim("dry_run");
+      const w = window();
+      const abroad = await seedPaidOrder(owner, w.paidAt(3), undefined, { outsideUk: true });
+      const report = await importer().run({
+        since: w.since,
+        before: w.before,
+        dryRun: false,
+        maxDocuments: 50,
+      });
+      expect(report).toMatchObject({ orders: 1, deliveryInvoices: 1, parked: 1 });
+      expect(report.queued).toEqual({ contact: 1, invoice: 2 });
+      const rows = await owner.execute<{ number: string; state: string; reason: string | null }>(
+        sql`select payload->>'number' as number, state, needs_review_reason as reason
+              from accounting_document
+             where source_event_ref = ${`shop_history_import:${abroad.orderId}`} and kind = 'invoice'
+             order by 1`,
+      );
+      expect(rows.rows).toEqual([
+        { number: abroad.invoiceNumber, state: "pending", reason: null },
+        {
+          number: `${abroad.invoiceNumber}-D`,
+          state: "needs_review",
+          reason: "accounting_parked_vat_on_outside_uk_delivery",
+        },
+      ]);
+    });
+
+    it("reports refunded and partially refunded history orders apart from the rest", async () => {
+      await aim("dry_run");
+      const w = window();
+      await seedPaidOrder(owner, w.paidAt(3));
+      await seedPaidOrder(owner, w.paidAt(4), undefined, { status: "refunded" });
+      await seedPaidOrder(owner, w.paidAt(5), undefined, { status: "partially_refunded" });
+      const report = await importer().run({
+        since: w.since,
+        before: w.before,
+        dryRun: true,
+        maxDocuments: 50,
+      });
+      expect(report.orders).toBe(3);
+      expect(report.refunded).toEqual({
+        refunded: { orders: 1, invoiceGrossPence: 30_000 },
+        partiallyRefunded: { orders: 1, invoiceGrossPence: 30_000 },
+      });
+    });
+
+    it("the history reader resumes a backfill window after the cursor, one event at a time", async () => {
+      const w = window();
+      const ids: number[] = [];
+      for (const day of [3, 4]) {
+        const at = w.paidAt(day).toISOString();
+        const row = await owner.execute<{ id: string }>(sql`
+          insert into domain_events (aggregate_type, aggregate_id, event_type, payload, schema_version, producer, occurred_at)
+          values ('shop_order', ${randomUUID()}, 'shop.accounting.order_paid', '{}'::jsonb, 1, 'shop-api', ${at}::timestamptz)
+          returning id`);
+        ids.push(Number(row.rows[0]?.id));
+      }
+      const reader = new DrizzleBooksHistoryReader(worker);
+      const page = (afterId: number | null) =>
+        reader.eventsInWindow({
+          eventTypes: ["shop.accounting.order_paid"],
+          from: w.since,
+          to: w.before,
+          afterId,
+          limit: 1,
+        });
+      const first = await page(null);
+      expect(first.map((e) => e.id)).toEqual([ids[0]]);
+      const second = await page(first[0]?.id ?? null);
+      expect(second.map((e) => e.id)).toEqual([ids[1]]);
+      expect(await page(second[0]?.id ?? null)).toEqual([]);
     });
   },
 );

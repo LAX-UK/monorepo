@@ -42,26 +42,42 @@ const ORDERS = [order(1, PARTY_A), order(2, PARTY_A), order(3, PARTY_B)];
 
 type Mode = "off" | "dry_run" | "test_org" | "live";
 
-function harness(options: { shopBooks?: Mode; shopXero?: Mode } = {}) {
-  const stored = new Map<string, { document: AccountingDocument; source: string }>();
+function harness(
+  options: {
+    shopBooks?: Mode;
+    shopXero?: Mode;
+    orders?: ShopOrderPaidFacts[];
+    statuses?: Record<string, "paid" | "partially_refunded" | "refunded">;
+    /** Runs after each registration: another run at the same time adds to today's count. */
+    afterRegister?: (add: (n: number) => void) => void;
+  } = {},
+) {
+  const all = options.orders ?? ORDERS;
+  const stored = new Map<string, { document: AccountingDocument; source: string; park: unknown }>();
   let createdToday = 0;
   const registered: string[] = [];
   const history: IBooksHistoryReader = {
     paidShopOrders: async ({ afterInvoiceNumber, limit }) =>
-      ORDERS.filter((o) => afterInvoiceNumber === null || o.invoiceNumber > afterInvoiceNumber)
+      all
+        .filter((o) => afterInvoiceNumber === null || o.invoiceNumber > afterInvoiceNumber)
         .slice(0, limit)
-        .map((o) => ({ orderId: o.orderId, invoiceNumber: o.invoiceNumber })),
+        .map((o) => ({
+          orderId: o.orderId,
+          invoiceNumber: o.invoiceNumber,
+          status: options.statuses?.[o.orderId] ?? ("paid" as const),
+        })),
     documentsCreatedOn: async (prefix) => {
       expect(prefix).toBe(`${SHOP_HISTORY_SOURCE}:`);
       return createdToday;
     },
     eventsInWindow: async () => [],
+    unsentDocuments: async () => 0,
   };
   const deps = {
     history,
     shopFacts: {
       orderPaid: async (id: string) => {
-        const facts = ORDERS.find((o) => o.orderId === id);
+        const facts = all.find((o) => o.orderId === id);
         return facts
           ? ({ status: "ready", facts } as const)
           : ({ status: "skip", reason: "order_not_found" } as const);
@@ -76,15 +92,23 @@ function harness(options: { shopBooks?: Mode; shopXero?: Mode } = {}) {
         } as const),
     },
     registry: {
-      register: async (input: { document: AccountingDocument; sourceEventRef: string }) => {
+      register: async (input: {
+        document: AccountingDocument;
+        sourceEventRef: string;
+        park?: unknown;
+      }) => {
         registered.push(input.document.reference);
         const existing = stored.get(input.document.reference);
         if (existing) return ok({ created: false, stored: {} as never });
         stored.set(input.document.reference, {
           document: input.document,
           source: input.sourceEventRef,
+          park: input.park ?? null,
         });
         createdToday += 1;
+        options.afterRegister?.((n) => {
+          createdToday += n;
+        });
         return ok({ created: true, stored: {} as never });
       },
       awaitCreditRegistrations: async () => {},
@@ -154,6 +178,75 @@ describe("ShopHistoryImport", () => {
     expect(third.stoppedAtBudget).toBe(false);
     expect(third.queued).toEqual({ contact: 1, invoice: 1 });
     expect(h.stored.size).toBe(5);
+  });
+
+  it("counts today's documents again before each registration, so a concurrent run shares the allowance", async () => {
+    let injected = false;
+    const h = harness({
+      afterRegister: (add) => {
+        // A second run, started at the same time, queues 99 documents right after our first.
+        if (injected) return;
+        injected = true;
+        add(99);
+      },
+    });
+    const report = await run(h, { maxDocuments: 100 });
+    expect(report.stoppedAtBudget).toBe(true);
+    expect(h.stored.size).toBe(1);
+  });
+
+  it("reports refunded and partially refunded orders apart, still imported as full invoices", async () => {
+    const h = harness({
+      statuses: {
+        [ORDERS[1]?.orderId as string]: "refunded",
+        [ORDERS[2]?.orderId as string]: "partially_refunded",
+      },
+    });
+    const report = await run(h);
+    expect(report.refunded).toEqual({
+      refunded: { orders: 1, invoiceGrossPence: 20_000 },
+      partiallyRefunded: { orders: 1, invoiceGrossPence: 30_000 },
+    });
+    expect(report.queued.invoice).toBe(3);
+    expect(report.invoiceGrossPence).toBe(60_000);
+  });
+
+  it("stores an outside-UK delivery invoice parked, counts it, and leaves the order's invoice unparked", async () => {
+    const abroad: ShopOrderPaidFacts = {
+      ...order(4, PARTY_B),
+      totalPence: 45_000,
+      lines: [
+        {
+          id: "line-4",
+          kind: "goods",
+          label: "Print 4",
+          grossPence: 40_000,
+          vatTreatment: null,
+          vatPence: null,
+        },
+      ],
+      delivery: {
+        scope: "outside_uk",
+        label: "Delivery outside the UK",
+        grossPence: 5_000,
+        vatPence: null,
+      },
+    };
+    const h = harness({ orders: [abroad] });
+    const report = await run(h);
+    expect(report.deliveryInvoices).toBe(1);
+    expect(report.parked).toBe(1);
+    const invoices = [...h.stored.values()].flatMap((s) =>
+      s.document.kind === "invoice" ? [{ number: s.document.number, park: s.park }] : [],
+    );
+    const delivery = invoices.filter((s) => s.number === "LAX-INV-000004-D");
+    const main = invoices.filter((s) => s.number === "LAX-INV-000004");
+    expect(delivery).toHaveLength(1);
+    expect(delivery[0]?.park).toBe("vat_on_outside_uk_delivery");
+    expect(main).toHaveLength(1);
+    expect(main[0]?.park).toBeNull();
+    // Without any delivery outside the UK there is nothing to count.
+    expect((await run(harness())).deliveryInvoices).toBe(0);
   });
 
   it("the default share leaves three quarters of the Books budget to live work", () => {

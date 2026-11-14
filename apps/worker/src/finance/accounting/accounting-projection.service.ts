@@ -26,6 +26,7 @@ import {
   type AccountingEvent,
   type AccountingEventRoute,
   type BooksView,
+  type RouteOutcome,
 } from "./accounting-event-routes.js";
 
 export type ProjectionOutcome =
@@ -48,6 +49,13 @@ export type ProjectionOutcome =
        */
       readonly held?: number;
     };
+
+type ReadyRoute = Extract<RouteOutcome, { status: "ready" }>;
+
+/** What `plan` finds: the documents an event would add, and those the books already hold. */
+export type PlanOutcome =
+  | { readonly outcome: "skipped"; readonly reason: string }
+  | { readonly outcome: "planned"; readonly wouldCreate: number; readonly existing: number };
 
 /**
  * An event the books cannot take as it stands: a policy refused it, or a reference is already
@@ -206,36 +214,14 @@ export class AccountingProjection {
   }
 
   async project(event: AccountingEvent): Promise<ProjectionOutcome> {
-    const route = Object.hasOwn(this.routes, event.eventType)
-      ? this.routes[event.eventType]
-      : undefined;
-    if (!route) return { outcome: "skipped", reason: "not_an_accounting_event" };
-    const config = await this.deps.settings.read();
-    if (!config.ok) throw new AccountingSwitchUnreadableError(config.refusal.code);
-    if (!aimsAtBooks(config.value, route.product)) {
-      return { outcome: "skipped", reason: "books_not_selected" };
-    }
-    const target = documentTarget(config.value[route.product]);
-    const books = this.booksView(route.product, target);
-    const routed = await route.project(
-      {
-        bid: this.deps.facts,
-        shop: this.deps.shopFacts ?? NO_SHOP_FACTS,
-        ...(books ? { books } : {}),
-      },
-      event,
-    );
-    if (routed.status === "skip") return { outcome: "skipped", reason: routed.reason };
-    if (!routed.projection.ok) {
-      const { code, message } = routed.projection.refusal;
-      if (NOT_YET.has(code)) throw new AccountingProjectionNotYetError(code, message);
-      throw new AccountingProjectionRefusedError(code, message);
-    }
+    const resolved = await this.resolve(event);
+    if (resolved.outcome === "skipped") return resolved;
+    const { route, target, routed } = resolved;
     let created = 0;
     let replayed = 0;
     let kept = 0;
     let parked = 0;
-    const projection = routed.projection.value;
+    const projection = this.refuseOrWait(routed.projection);
     const { cancelled, creditPence } = await this.cancelNeverSent(
       route.product,
       target,
@@ -287,6 +273,70 @@ export class AccountingProjection {
       cancelled,
       ...(held > 0 ? { held } : {}),
     };
+  }
+
+  /**
+   * What one event would book, without registering anything: how many of its documents the books
+   * already hold for the current target and how many are new. For a dry run of a backfill.
+   */
+  async plan(event: AccountingEvent): Promise<PlanOutcome> {
+    const resolved = await this.resolve(event);
+    if (resolved.outcome === "skipped") return resolved;
+    const { route, target, routed } = resolved;
+    const books = this.deps.books;
+    if (!books) throw new AccountingProjectionNotYetError("books_view_missing", "plan");
+    const projection = this.refuseOrWait(routed.projection);
+    let wouldCreate = 0;
+    let existing = 0;
+    for (const document of projection.documents) {
+      const found = await books.lookup.findByReference(route.product, document.reference, target);
+      if (!found.ok)
+        throw new AccountingProjectionRefusedError(found.refusal.code, document.reference);
+      if (found.value === null) wouldCreate += 1;
+      else existing += 1;
+    }
+    return { outcome: "planned", wouldCreate, existing };
+  }
+
+  /** The projection's value, or the refusal as the error the projector raises (not yet / refused). */
+  private refuseOrWait(result: ReadyRoute["projection"]) {
+    if (result.ok) return result.value;
+    const { code, message } = result.refusal;
+    if (NOT_YET.has(code)) throw new AccountingProjectionNotYetError(code, message);
+    throw new AccountingProjectionRefusedError(code, message);
+  }
+
+  /** The route, current target and routed facts of an event; skipped when the books are not aimed at. */
+  private async resolve(event: AccountingEvent): Promise<
+    | { readonly outcome: "skipped"; readonly reason: string }
+    | {
+        readonly outcome: "resolved";
+        readonly route: AccountingEventRoute;
+        readonly target: DocumentTarget | null;
+        readonly routed: ReadyRoute;
+      }
+  > {
+    const route = Object.hasOwn(this.routes, event.eventType)
+      ? this.routes[event.eventType]
+      : undefined;
+    if (!route) return { outcome: "skipped", reason: "not_an_accounting_event" };
+    const config = await this.deps.settings.read();
+    if (!config.ok) throw new AccountingSwitchUnreadableError(config.refusal.code);
+    if (!aimsAtBooks(config.value, route.product)) {
+      return { outcome: "skipped", reason: "books_not_selected" };
+    }
+    const target = documentTarget(config.value[route.product]);
+    const books = this.booksView(route.product, target);
+    const routed = await route.project(
+      {
+        bid: this.deps.facts,
+        shop: this.deps.shopFacts ?? NO_SHOP_FACTS,
+        ...(books ? { books } : {}),
+      },
+      event,
+    );
+    if (routed.status === "skip") return { outcome: "skipped", reason: routed.reason };
+    return { outcome: "resolved", route, target, routed };
   }
 
   /** The books a product's documents go to now (its current target), for the routes to read. */

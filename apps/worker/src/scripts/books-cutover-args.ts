@@ -1,4 +1,5 @@
 import { PRODUCTS, type Product } from "@auction/accounting-domain";
+import { parseDailyCallBudget } from "@auction/accounting-zoho-books";
 import { LONDON_TIME_ZONE, startOfDay } from "@auction/datetime";
 import {
   BACKFILL_DEFAULT_LIMIT,
@@ -53,8 +54,8 @@ export function parseImportArgs(
   const { values, set } = options(argv, ["dry-run"], ["before", "since", "max-documents"]);
   const before = values.get("before");
   if (!before) throw new Error("--before <YYYY-MM-DD> (the cutover day) is required");
-  const budget = Number(env.ZOHO_BOOKS_DAILY_CALL_BUDGET?.trim() || 1_000);
-  const perDay = historyDocumentsPerDay(Number.isFinite(budget) && budget > 0 ? budget : 1_000);
+  // The sender's own parser: an invalid value stops the command, it is never guessed at.
+  const perDay = historyDocumentsPerDay(parseDailyCallBudget(env));
   const asked = values.get("max-documents");
   // Never more than the import's share of the budget, however much is asked.
   const maxDocuments = asked ? Math.min(wholeNumber(asked, "max-documents"), perDay) : perDay;
@@ -67,9 +68,19 @@ export function parseImportArgs(
   };
 }
 
-/** `books:backfill --product <p> --from <t> --to <t> [--after <id>] [--limit N] [--dry-run]` */
-export function parseBackfillArgs(argv: readonly string[]): BooksBackfillInput {
-  const { values, set } = options(argv, ["dry-run"], ["product", "from", "to", "after", "limit"]);
+/**
+ * `books:backfill --product <p> --not-before <t> --from <t> --to <t> [--after <id>] [--limit N]
+ * [--dry-run]`
+ */
+export function parseBackfillArgs(
+  argv: readonly string[],
+  env: Readonly<Record<string, string | undefined>> = {},
+): BooksBackfillInput {
+  const { values, set } = options(
+    argv,
+    ["dry-run"],
+    ["product", "not-before", "from", "to", "after", "limit"],
+  );
   const product = values.get("product");
   if (!product || !(PRODUCTS as readonly string[]).includes(product)) {
     throw new Error(`--product must be one of ${PRODUCTS.join(", ")}`);
@@ -77,14 +88,20 @@ export function parseBackfillArgs(argv: readonly string[]): BooksBackfillInput {
   const from = values.get("from");
   const to = values.get("to");
   if (!from || !to) throw new Error("--from and --to are required");
+  const notBefore = values.get("not-before");
+  if (!notBefore)
+    throw new Error("--not-before <cutover> (when the product went live) is required");
   const after = values.get("after");
   const limit = values.get("limit");
   return {
     product: product as Product,
+    notBefore: instant(notBefore, "not-before"),
     from: instant(from, "from"),
     to: instant(to, "to"),
     afterId: after ? wholeNumber(after, "after") : null,
     limit: limit ? wholeNumber(limit, "limit") : BACKFILL_DEFAULT_LIMIT,
+    // The import's daily share of the Books budget, here the unsent queue a backfill may add to.
+    maxUnsent: historyDocumentsPerDay(parseDailyCallBudget(env)),
     dryRun: set.has("dry-run"),
   };
 }

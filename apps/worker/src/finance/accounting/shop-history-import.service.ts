@@ -39,10 +39,23 @@ const HISTORY_KINDS: ReadonlySet<AccountingDocument["kind"]> = new Set(["contact
 type Counts = { contact: number; invoice: number };
 const zero = (): Counts => ({ contact: 0, invoice: 0 });
 
+/** Orders refunded after their sale, counted apart: Books gets the full invoice and no credit note. */
+export interface RefundedHistory {
+  readonly orders: number;
+  readonly invoiceGrossPence: number;
+}
+
 export interface ShopHistoryImportReport {
   readonly dryRun: boolean;
   readonly target: DocumentTarget;
   readonly orders: number;
+  /** Of the invoices read, the separate `<number>-D` delivery invoices (outside-UK deliveries). */
+  readonly deliveryInvoices: number;
+  /** Orders read that were later refunded in full / in part: in Xero they carry a credit note. */
+  readonly refunded: {
+    readonly refunded: RefundedHistory;
+    readonly partiallyRefunded: RefundedHistory;
+  };
   /** Queued by this run. */
   readonly queued: Counts;
   /** Dry run only: what a real run would queue. */
@@ -89,6 +102,11 @@ export interface ShopHistoryImportInput {
   readonly pageSize?: number;
 }
 
+const emptyRefunded = (): { orders: number; invoiceGrossPence: number } => ({
+  orders: 0,
+  invoiceGrossPence: 0,
+});
+
 const startOfUtcDay = (at: Date) =>
   new Date(Date.UTC(at.getUTCFullYear(), at.getUTCMonth(), at.getUTCDate()));
 
@@ -105,15 +123,14 @@ export class ShopHistoryImport {
   async run(input: ShopHistoryImportInput): Promise<ShopHistoryImportReport> {
     const target = await this.shopTarget();
     const source = `${SHOP_HISTORY_SOURCE}:`;
-    const usedToday = input.dryRun
-      ? 0
-      : await this.deps.history.documentsCreatedOn(source, startOfUtcDay(this.deps.now()));
-    let budget = Math.max(0, input.maxDocuments - usedToday);
+    const today = startOfUtcDay(this.deps.now());
     const queued = zero();
     const wouldQueue = zero();
     const alreadyQueued = zero();
     const refused: { orderId: string; reason: string }[] = [];
     let orders = 0;
+    let deliveryInvoices = 0;
+    const refunded = { refunded: emptyRefunded(), partiallyRefunded: emptyRefunded() };
     let parked = 0;
     let invoiceGrossPence = 0;
     let firstNumber: string | null = null;
@@ -150,8 +167,19 @@ export class ShopHistoryImport {
         orders += 1;
         firstNumber ??= order.invoiceNumber;
         lastNumber = order.invoiceNumber;
-        for (const d of documents)
-          if (d.kind === "invoice") invoiceGrossPence += d.totals.grossPence;
+        const bucket =
+          order.status === "refunded"
+            ? refunded.refunded
+            : order.status === "partially_refunded"
+              ? refunded.partiallyRefunded
+              : null;
+        if (bucket) bucket.orders += 1;
+        for (const d of documents) {
+          if (d.kind !== "invoice") continue;
+          invoiceGrossPence += d.totals.grossPence;
+          if (bucket) bucket.invoiceGrossPence += d.totals.grossPence;
+          if (d.number?.endsWith("-D")) deliveryInvoices += 1;
+        }
 
         for (const document of documents) {
           if (seen.has(document.reference)) continue;
@@ -167,7 +195,10 @@ export class ShopHistoryImport {
             wouldQueue[kind] += 1;
             continue;
           }
-          if (budget <= 0) {
+          // Counted again before every registration, not once at the start: a second run started
+          // at the same time (or a retried job) shares this day's allowance instead of doubling it.
+          const usedToday = await this.deps.history.documentsCreatedOn(source, today);
+          if (usedToday >= input.maxDocuments) {
             stoppedAtBudget = true;
             break pages;
           }
@@ -189,7 +220,6 @@ export class ShopHistoryImport {
             alreadyQueued[kind] += 1;
             continue;
           }
-          budget -= 1;
           queued[kind] += 1;
           if (park) parked += 1;
         }
@@ -201,6 +231,8 @@ export class ShopHistoryImport {
       dryRun: input.dryRun,
       target,
       orders,
+      deliveryInvoices,
+      refunded,
       queued,
       wouldQueue,
       alreadyQueued,

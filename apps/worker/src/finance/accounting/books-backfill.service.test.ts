@@ -9,6 +9,7 @@ import {
 import { BACKFILL_MAX_LIMIT, BooksBackfill } from "./books-backfill.service.js";
 
 const FROM = new Date("2027-01-01T00:00:00Z");
+const NOT_BEFORE = new Date("2027-01-01T00:00:00Z");
 const TO = new Date("2027-01-08T00:00:00Z");
 const ev = (id: number): AccountingEvent => ({
   id,
@@ -17,9 +18,10 @@ const ev = (id: number): AccountingEvent => ({
   payload: {},
 });
 
-function harness(events: AccountingEvent[], shopBooks = "dry_run") {
+function harness(events: AccountingEvent[], shopBooks = "dry_run", unsent = 0) {
   const asked: Parameters<IBooksHistoryReader["eventsInWindow"]>[0][] = [];
   const history = {
+    unsentDocuments: vi.fn(async () => unsent),
     eventsInWindow: vi.fn(async (input: Parameters<IBooksHistoryReader["eventsInWindow"]>[0]) => {
       asked.push(input);
       return events
@@ -35,6 +37,11 @@ function harness(events: AccountingEvent[], shopBooks = "dry_run") {
     parked: 0,
     cancelled: 0,
   }));
+  const plan = vi.fn(async (_e: AccountingEvent) => ({
+    outcome: "planned" as const,
+    wouldCreate: 2,
+    existing: 1,
+  }));
   const settings = {
     read: async () =>
       ok({
@@ -45,17 +52,19 @@ function harness(events: AccountingEvent[], shopBooks = "dry_run") {
   };
   const service = new BooksBackfill({
     history: history as never,
-    projection: { project } as never,
+    projection: { project, plan } as never,
     settings: settings as never,
   });
-  return { service, project, asked };
+  return { service, project, plan, history, asked };
 }
 
 const input = (over: object = {}) => ({
   product: "shop" as const,
+  notBefore: NOT_BEFORE,
   from: FROM,
   to: TO,
   afterId: null,
+  maxUnsent: 125,
   dryRun: false,
   ...over,
 });
@@ -86,11 +95,44 @@ describe("BooksBackfill", () => {
     expect(rest).toMatchObject({ events: 5, next: null });
   });
 
-  it("a dry run projects nothing", async () => {
-    const h = harness([ev(1)]);
+  it("a dry run registers nothing and reports what a real run would create", async () => {
+    const h = harness([ev(1), ev(2)]);
     const report = await h.service.run(input({ dryRun: true }));
     expect(h.project).not.toHaveBeenCalled();
-    expect(report).toMatchObject({ events: 1, projected: 0 });
+    expect(h.plan).toHaveBeenCalledTimes(2);
+    expect(report).toMatchObject({
+      events: 2,
+      projected: 2,
+      created: 0,
+      wouldCreate: 4,
+      replayed: 2,
+      next: null,
+    });
+  });
+
+  it("refuses a window that starts before the cutover, before reading or projecting anything", async () => {
+    const h = harness([ev(1)]);
+    const early = new Date("2026-12-31T23:59:59Z");
+    await expect(h.service.run(input({ from: early }))).rejects.toThrow("before_cutover");
+    expect(h.history.eventsInWindow).not.toHaveBeenCalled();
+    expect(h.project).not.toHaveBeenCalled();
+    // A window that starts exactly at the cutover is allowed.
+    await expect(h.service.run(input())).resolves.toMatchObject({ events: 1 });
+  });
+
+  it("stops while the target's unsent queue is full, so live documents are not left behind it", async () => {
+    const h = harness([ev(1), ev(2)], "dry_run", 125);
+    const report = await h.service.run(input());
+    expect(h.project).not.toHaveBeenCalled();
+    expect(report.waiting).toEqual({ eventId: 1, reason: "queue_full" });
+    expect(report.next).toBe(0);
+    const open = harness([ev(1)], "dry_run", 124);
+    expect((await open.service.run(input())).projected).toBe(1);
+    expect(open.history.unsentDocuments).toHaveBeenCalledWith({
+      product: "shop",
+      provider: "books",
+      mode: "dry_run",
+    });
   });
 
   it("stops at an event that must wait, so the next run starts there; a refused one is listed", async () => {

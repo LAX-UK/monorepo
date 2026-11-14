@@ -20,7 +20,7 @@ import { DrizzleBooksHistoryReader } from "../repositories/drizzle-books-history
 import { parseBackfillArgs } from "./books-cutover-args.js";
 
 async function main(): Promise<void> {
-  const input = parseBackfillArgs(process.argv.slice(2));
+  const input = parseBackfillArgs(process.argv.slice(2), process.env);
   const env = loadWorkerEnv();
   if (!createBooksAccountingAdapters(env)) throw new Error("books_not_configured");
   const db = createDb(env.DATABASE_URL_WORKER ?? env.DATABASE_URL);
