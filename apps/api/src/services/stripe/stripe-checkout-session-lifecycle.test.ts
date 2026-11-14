@@ -24,9 +24,20 @@ function setup(recordUnapplied?: (money: UnappliedMoney) => Promise<void>) {
     recordEvent,
     recordUnapplied ?? null,
   );
-  const pay = (rail: "card" | "bank", lines: string[]) => payOn(lifecycle, stripe, rail, lines);
+  const pay = (
+    rail: "card" | "bank",
+    lines: string[],
+    display?: { title?: string; imageUrl?: string },
+  ) => payOn(lifecycle, stripe, rail, lines, display);
   return { stripe, ledger, report, recordEvent, lifecycle, pay };
 }
+
+const MONEY = {
+  paymentId: "pay-1",
+  amountCents: 10_000,
+  currency: "gbp",
+  lineItems: [{ unitAmountCents: 10_000 }],
+};
 
 const readyId = (outcome: Awaited<ReturnType<typeof payOn>>) =>
   outcome.kind === "ready" ? outcome.session.sessionId : outcome.kind;
@@ -182,6 +193,81 @@ describe("CheckoutSessionLifecycle", () => {
     expect(rows.find((r) => r.stripeSessionId === old)?.closedAt).toBeNull();
   });
 
+  it("paying by bank keeps a card session whose amount is unchanged but whose display changed", async () => {
+    const { stripe, pay } = setup();
+    // Opened before midnight: the hero image URL is re-signed daily, and the title was edited.
+    const card = readyId(
+      await pay("card", ["lot", "courier"], {
+        title: "Old title",
+        imageUrl: "https://img/a?sig=1",
+      }),
+    );
+    const bank = readyId(
+      await pay("bank", ["lot", "courier"], {
+        title: "New title",
+        imageUrl: "https://img/a?sig=2",
+      }),
+    );
+    expect(stripe.open("card")).toEqual([card]);
+    expect(stripe.open("bank")).toEqual([bank]);
+  });
+
+  it("a display change still opens a new card session of its own (the parameters key changes)", async () => {
+    const { stripe, pay } = setup();
+    const first = readyId(await pay("card", ["lot"], { imageUrl: "https://img/a?sig=1" }));
+    const second = readyId(await pay("card", ["lot"], { imageUrl: "https://img/a?sig=2" }));
+    expect(second).not.toBe(first);
+    expect(new Set(stripe.keys).size).toBe(2);
+  });
+
+  it.each([
+    ["line amounts changed at the same total", [9_000, 1_000], 10_000, [8_000, 2_000], 10_000],
+    ["total changed with the same line amounts", [9_000, 1_000], 10_000, [9_000, 1_000], 12_000],
+  ])(
+    "paying by bank closes a card session whose %s",
+    async (_, cardLines, cardTotal, bankLines, bankTotal) => {
+      const { stripe, ledger, lifecycle } = setup();
+      const at = (lineAmounts: number[], amountCents: number) => ({
+        paymentId: "pay-1",
+        amountCents,
+        currency: "gbp",
+        lineItems: lineAmounts.map((unitAmountCents) => ({ unitAmountCents })),
+      });
+      const cardParameters = at(cardLines, cardTotal);
+      const card = await lifecycle.openOrRenew("card", "pay-1", cardParameters, (key) =>
+        stripe.createCardCheckoutSession({ ...cardParameters, idempotencyKey: key } as never),
+      );
+      const bankParameters = { ...at(bankLines, bankTotal), stripeCustomerId: "cus_fixture" };
+      await lifecycle.openOrRenew("bank", "pay-1", bankParameters, (key) =>
+        stripe.createBankTransferCheckoutSession({
+          ...bankParameters,
+          idempotencyKey: key,
+        } as never),
+      );
+      expect(stripe.sessions.get(readyId(card))?.status).toBe("expired");
+      const rows = await ledger.listSessions("pay-1");
+      expect(rows.find((r) => r.stripeSessionId === readyId(card))?.closedAt).toBeTruthy();
+    },
+  );
+
+  it("paying by bank closes a card session opened in another currency", async () => {
+    const { stripe, lifecycle } = setup();
+    const at = (currency: string) => ({
+      paymentId: "pay-1",
+      amountCents: 10_000,
+      currency,
+      lineItems: [{ unitAmountCents: 10_000 }],
+    });
+    const card = await lifecycle.openOrRenew("card", "pay-1", at("eur"), (key) =>
+      stripe.createCardCheckoutSession({ ...at("eur"), idempotencyKey: key } as never),
+    );
+    const bankParameters = { ...at("GBP"), stripeCustomerId: "cus_fixture" };
+    await lifecycle.openOrRenew("bank", "pay-1", bankParameters, (key) =>
+      stripe.createBankTransferCheckoutSession({ ...bankParameters, idempotencyKey: key } as never),
+    );
+    expect(stripe.sessions.get(readyId(card))?.status).toBe("expired");
+  });
+
   it("paying by bank for unchanged parameters leaves the card session open", async () => {
     const { stripe, pay } = setup();
     const card = readyId(await pay("card", ["lot"]));
@@ -247,7 +333,7 @@ describe("CheckoutSessionLifecycle", () => {
       .mockImplementation((key: string) =>
         stripe.createCardCheckoutSession({ paymentId: "pay-1", idempotencyKey: key } as never),
       );
-    const outcome = await lifecycle.openOrRenew("card", "pay-1", { v: 1 }, create);
+    const outcome = await lifecycle.openOrRenew("card", "pay-1", MONEY, create);
     expect(outcome.kind).toBe("ready");
     expect(create.mock.calls[1]?.[0]).toMatch(/:clash:/);
     expect(report).toHaveBeenCalledWith(
@@ -258,7 +344,7 @@ describe("CheckoutSessionLifecycle", () => {
   it("other Stripe errors are not hidden", async () => {
     const { lifecycle } = setup();
     const create = vi.fn().mockRejectedValue(new Error("card_declined"));
-    await expect(lifecycle.openOrRenew("card", "pay-1", {}, create)).rejects.toThrow(
+    await expect(lifecycle.openOrRenew("card", "pay-1", MONEY, create)).rejects.toThrow(
       "card_declined",
     );
   });
