@@ -1,41 +1,34 @@
--- Rollback for 0382_accounting_parked_documents. Roll back the release first, then this.
--- Parked documents first: the earlier release knows nothing of parking, and 0379's rule would let
--- api_app requeue a parked delivery draft (booked `outside_scope`, which must never be sent). So
--- every parked document (`needs_review` with a reason starting `accounting_parked_`) is moved to
--- `cancelled`, each with a `cancel` history row saying why (`{"rollback":"0382","parked":<reason>}`),
--- before the old rules are restored. They were never sent, so nothing reaches Books. After the
--- release is deployed again, their documents are projected anew only by a person: a cancelled row
--- keeps its reference.
--- It restores 0379's requeue rules for api_app (which do not know parked documents or releases),
--- 0368's `provider_sent_ck` and history actions, and takes back api_app's UPDATE on the document
--- and its totals (granted for the release alone; the earlier release's requeue rule does not
--- guard them). The CHECKs are added back NOT VALID, so rows and history already stored stay as
--- they are while nothing new of this kind can be written by the earlier release. Also removes this
--- migration's ledger row so a later deploy reapplies it.
+-- Rollback for 0382_accounting_parked_documents. Roll back 0383 first (if applied), then the
+-- release, then this.
+-- Parked documents (`needs_review` with a reason starting `accounting_parked_`) stay parked:
+-- nothing is cancelled, and nothing is lost. The earlier release knows nothing of parking, and
+-- 0379's rule would let api_app requeue a parked delivery draft (booked `outside_scope`, which must
+-- never be sent), so 0379's rule is restored with one extra refusal: api_app may not move a parked
+-- document at all. The earlier worker never claims a `needs_review` document. Once 0382 is applied
+-- again (and the release that knows it is deployed), Release works on them as before.
+-- It refuses to run while the history holds an action 0382's list does not know (`apply_remainder`,
+-- written once 0383 ran): 0382 could not be applied again over it. Roll back 0383 only, then.
+-- It restores 0379's requeue rules for api_app (plus the refusal above), 0368's
+-- `provider_sent_ck` and history actions, and takes back api_app's UPDATE on the document and its
+-- totals (granted for the release alone; the earlier release's requeue rule does not guard them).
+-- The CHECKs are added back NOT VALID, so rows and history already stored stay as they are (a
+-- parked row then cannot be updated by anyone until 0382 is back) while nothing new of this kind
+-- can be written by the earlier release. Also removes this migration's ledger row so a later
+-- deploy reapplies it.
 BEGIN;
 
 SET LOCAL lock_timeout = '5s';
-WITH parked AS (
-  SELECT "id", "attempts", "needs_review_reason"
-    FROM "accounting_document"
-   WHERE "state" = 'needs_review' AND starts_with("needs_review_reason", 'accounting_parked_')
-   FOR UPDATE
-), moved AS (
-  UPDATE "accounting_document" d
-     SET "state" = 'cancelled', "review_lookup" = NULL, "needs_review_reason" = NULL,
-         "mismatch_field" = NULL, "mismatch_difference_pence" = NULL, "updated_at" = now()
-    FROM parked p
-   WHERE d."id" = p."id"
-  RETURNING d."id"
-)
-INSERT INTO "accounting_document_event"
-  ("document_id", "action", "from_state", "to_state", "attempts", "detail", "occurred_at")
-SELECT p."id", 'cancel', 'needs_review', 'cancelled', p."attempts",
-       jsonb_build_object('rollback', '0382',
-         'parked', substr(p."needs_review_reason", length('accounting_parked_') + 1)),
-       now()
-  FROM parked p
-  JOIN moved m ON m."id" = p."id";
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM "accounting_document_event"
+     WHERE "action" NOT IN ('created', 'start_sending', 'expire_lease', 'complete_sending',
+       'apply_lookup', 'escalate', 'requeue', 'cancel', 'release', 'park')
+  ) THEN
+    RAISE EXCEPTION 'history holds actions 0382 does not know (from 0383): roll back 0383 only';
+  END IF;
+END
+$$;
 ALTER TABLE "accounting_document" DROP CONSTRAINT IF EXISTS "accounting_document_provider_sent_ck";
 ALTER TABLE "accounting_document" ADD CONSTRAINT "accounting_document_provider_sent_ck" CHECK (
   "provider" IS NOT NULL
@@ -51,6 +44,12 @@ LANGUAGE plpgsql AS $fn$
 BEGIN
   IF current_user <> 'api_app' THEN
     RETURN NEW;
+  END IF;
+  -- Kept parked: the earlier release knows nothing of parking, so api_app may not move a parked
+  -- document at all until 0382 is applied again.
+  IF starts_with(OLD."needs_review_reason", 'accounting_parked_') THEN
+    RAISE EXCEPTION 'api_app may not move a parked document before 0382 is applied again'
+      USING ERRCODE = 'insufficient_privilege';
   END IF;
   IF NOT COALESCE((
     (OLD."state" = 'failed'

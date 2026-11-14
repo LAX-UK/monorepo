@@ -315,9 +315,17 @@ organisation's invoice) out of the outbox are the worker's due-list query (`targ
 - **Parked, in Needs a person** (never sent, no Try again). The recovery is **Release** on the row
   (finance write permission, like Try again). Release checks the reason against what Bid holds now
   and, only if it is settled, queues the same document under the same LAX reference; otherwise it
-  says why and nothing changes. Each release is in the document's history (`release`, who asked) and
-  the staff audit log ("Parked accounting document released"). Do not cancel a parked document to
-  recover it: a cancelled document keeps its reference and is never sent.
+  says why and nothing changes. The decision and the move are one: if the rows it was decided on
+  change before the move commits (say the invoice is voided again in Bid), it is refused as "no
+  longer matches" and stays parked; press Release again once it is settled. Each release is in the
+  document's history (`release`, who asked) and the staff audit log ("Parked accounting document
+  released"). Do not cancel a parked document to recover it: a cancelled document keeps its
+  reference and is never sent.
+  - **Rolling back** `0382_rollback.sql` (after `0383_rollback.sql`, if 0383 is applied) keeps
+    every parked document parked: nothing is cancelled. While rolled back, no one can move a parked
+    document (the earlier release knows nothing of parking); apply 0382 again and Release works as
+    before. It refuses to run once 0383 has written `apply_remainder` history: then roll back 0383
+    only.
   - **Waiting for the accountant** (VAT on delivery): a courier quote paid with the lots makes a
     delivery invoice, `LAX-BID-INV-dlv-<quote>`; it and the Pay several payment that includes it are
     parked until the accountant says how delivery is booked (`DELIVERY_BOOKING` in the accounting
@@ -391,8 +399,10 @@ recover it: a cancelled document keeps its reference and is never sent.
    raises `accounting_shop_remainder_delayed` (delayed accounting, routed to finance on-call):
    check the order's payment in Books and the worker's `accounting_remainder_*` logs.
 
-Rolling back migration 0383 cancels every parked outside-UK delivery (a `cancel` history row each)
-before 0382's rules are restored; such an order's delivery is then projected anew only by a person.
+Rolling back migration 0383 (`0383_rollback.sql`) keeps every parked outside-UK delivery parked:
+nothing is cancelled. While rolled back, api_app may not move one at all (no requeue, no release),
+because the earlier release knows nothing of outside-UK delivery; apply 0383 again (with the release
+that knows it) and Release works on them as before.
 
 **The buyer's card and email.** On the Shop order page the buyer sees the same card as on a Bid
 purchase (being prepared, late after 30 minutes, issued with "Download invoice (PDF)" from LAX's
