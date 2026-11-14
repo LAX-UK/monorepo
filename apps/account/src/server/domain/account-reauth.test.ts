@@ -23,3 +23,20 @@ describe("buildReauthHref", () => {
     expect(ACCOUNT_STEP_UP_REASON_PARAM).toBe("reauth_reason");
   });
 });
+
+describe("buildReauthHref in the Confirm it's you window", () => {
+  it("marks the window and keeps the reason and the return path", () => {
+    const url = new URL(
+      buildReauthHref("/account/security", "sign_out_devices", { popup: true }),
+      "https://account.test",
+    );
+    expect(url.searchParams.get("display")).toBe("popup");
+    expect(url.searchParams.get("reason")).toBe("sign_out_devices");
+    expect(url.searchParams.get("returnTo")).toBe("/account/security");
+  });
+
+  it("leaves the mark off a full-page sign-in", () => {
+    const url = new URL(buildReauthHref("/account/security"), "https://account.test");
+    expect(url.searchParams.has("display")).toBe(false);
+  });
+});

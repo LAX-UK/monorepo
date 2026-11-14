@@ -124,4 +124,23 @@ describe("GET /api/auth/login", () => {
     expect(sessionGet).not.toHaveBeenCalled();
     expect(pendingSaved().reauth).toBeUndefined();
   });
+
+  it("ends a step-up in the Confirm it's you window on the fixed completion page", async () => {
+    cookieValues.set("lax_account_session", "sess-1");
+    sessionGet.mockResolvedValue({ subject: "user-a" });
+    await reauth("&display=popup&reason=sign_out_devices");
+    expect(pendingSaved()).toMatchObject({
+      returnTo: "/api/auth/step-up-complete",
+      reauthSubject: "user-a",
+    });
+  });
+
+  it("never lets the window mark choose another destination", async () => {
+    await GET(
+      new Request(
+        "https://account.test/api/auth/login?display=popup&returnTo=%2F%2Fevil.example%2Fx",
+      ),
+    );
+    expect(pendingSaved()).toMatchObject({ returnTo: "/account" });
+  });
 });
