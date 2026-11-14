@@ -1,6 +1,7 @@
 import { StaffDirectoryList } from "@/components/admin/people/staff-directory-list";
 import { peopleRangeSummary } from "@/lib/admin/people/clients-staff-list.vm";
 import { loadAdminStaffListPage } from "@/lib/admin/people/load-staff-list-page";
+import { peopleListQuery, peoplePanelRedirect } from "@/lib/admin/people/people-record-href";
 import { toStaffDirectoryRows } from "@/lib/admin/people/staff-directory-list.vm";
 import { requireAdminCapability } from "@/lib/auth/require-admin-capability";
 import {
@@ -12,6 +13,7 @@ import {
 import { metadataForPrivate } from "@/lib/seo/metadata-factory";
 import { type UserRole, userHasAccessTo } from "@auction/types";
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 
 export const metadata: Metadata = metadataForPrivate(
   "Staff",
@@ -27,12 +29,15 @@ export default async function AdminStaffPage({
   const role = user.role as UserRole;
   const staffRoles = user.staffRoles;
   const sp = await searchParams;
+  // Rows open the person's page now; an old link to the list's panel opens the page instead.
+  const panelRedirect = peoplePanelRedirect("/admin/staff", sp);
+  if (panelRedirect) redirect(panelRedirect);
   const { model, rows, access, summary, total, loadError, pagination } =
     await loadAdminStaffListPage(sp);
 
   return (
     <StaffDirectoryList
-      rows={toStaffDirectoryRows(rows, access, model.listReturnTarget)}
+      rows={toStaffDirectoryRows(rows, access, peopleListQuery("/admin/staff", sp))}
       search={sp}
       counts={{ total: summary.total, active: summary.active, suspended: summary.suspended }}
       roleCounts={summary.byStaffRole}

@@ -23,6 +23,11 @@ type Props<T> = {
   /** The order when nothing else is chosen; give every related table one. */
   defaultSort: SortState;
   onRowOpen?: (row: T) => void;
+  /**
+   * The related record's page, so the whole row opens it as in every list (staff design standard,
+   * TBL-8). The row's title cell must link to the same href. Null for a row with no page.
+   */
+  rowHref?: (row: T) => string | null;
   /** What the section shows once it has rows, and how one gets there. */
   empty: { title: string; description: ReactNode; action?: ReactNode };
   /** A line under the rows: "Showing the latest 50 bids". */
@@ -50,6 +55,7 @@ export function RelatedRecordsSection<T>({
   getRowId,
   defaultSort,
   onRowOpen,
+  rowHref,
   empty,
   footer,
   toolbar,
@@ -76,6 +82,7 @@ export function RelatedRecordsSection<T>({
         stickyHeader={false}
         stickyToolbar={false}
         {...(onRowOpen ? { onRowOpen } : {})}
+        {...(rowHref ? { rowHref: (row: T) => rowHref(row) ?? "" } : {})}
         {...(toolbar ? { toolbar } : {})}
         empty={
           <EmptyState

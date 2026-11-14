@@ -102,10 +102,6 @@
       "reason": "Rows open the page (pull request 2, Bid admin catalogue)"
     },
     {
-      "page": "bid-admin:(platform)/clients/page.tsx",
-      "reason": "Rows open the page (pull request 3, Bid admin people)"
-    },
-    {
       "page": "bid-admin:(platform)/compliance/data-requests/page.tsx",
       "reason": "Opens its page already through onRowOpen; moves to rowHref"
     },
@@ -140,14 +136,6 @@
     {
       "page": "bid-admin:(platform)/sales/page.tsx",
       "reason": "Rows open the page (pull request 2, Bid admin catalogue)"
-    },
-    {
-      "page": "bid-admin:(platform)/staff/access/page.tsx",
-      "reason": "Rows open the page (pull request 3, Bid admin people)"
-    },
-    {
-      "page": "bid-admin:(platform)/staff/page.tsx",
-      "reason": "Rows open the page (pull request 3, Bid admin people)"
     },
     {
       "page": "bid-admin:(platform)/submissions/page.tsx",
