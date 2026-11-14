@@ -17,23 +17,18 @@ export type ZohoBooksNoticeRouting = {
   module: ZohoBooksNoticeModule;
   /** The Books id of the document that changed. */
   entityId: string;
-  /** Books' time for the change, ISO 8601, when the workflow sent one. */
-  eventTime?: string;
+  /** Books' time for the change, ISO 8601, from the signed body (a notice without one is refused). */
+  eventTime: string;
 };
 
-const MINUTE_MS = 60_000;
-
 /**
- * The key a notice is stored (and queued) under, from Books' ids: the same organisation, document
- * and change time is the same notice, so a retried or replayed delivery is stored once. Without a
- * change time, notices for one document in the same minute count as one (the worker reads the
- * document as it is then).
+ * The key a notice is stored (and queued) under, from Books' ids and its signed change time: the
+ * same organisation, document and change time is the same notice, so a retried or replayed
+ * delivery is stored once.
  */
-export function zohoBooksNoticeEventKey(routing: ZohoBooksNoticeRouting, receivedAt: Date): string {
-  const when =
-    routing.eventTime ?? `received-${Math.floor(receivedAt.getTime() / MINUTE_MS) * MINUTE_MS}`;
+export function zohoBooksNoticeEventKey(routing: ZohoBooksNoticeRouting): string {
   const digest = createHash("sha256")
-    .update(`${routing.organizationId}|${routing.module}|${routing.entityId}|${when}`)
+    .update(`${routing.organizationId}|${routing.module}|${routing.entityId}|${routing.eventTime}`)
     .digest("hex");
   // Job ids cannot contain a colon, so the key is a hash.
   return `zoho-books-${digest.slice(0, 40)}`;

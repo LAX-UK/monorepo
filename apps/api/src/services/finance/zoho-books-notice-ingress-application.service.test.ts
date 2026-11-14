@@ -10,9 +10,12 @@ const crypto = await import("node:crypto");
 const { zohoBooksSignature, zohoBooksSignedText, verifyZohoBooksSignature } = await import(
   "../../lib/zoho-books-notice-signature.js"
 );
-const { ZOHO_BOOKS_NOTICE_MAX_BYTES, ZohoBooksNoticeIngressApplicationService } = await import(
-  "./zoho-books-notice-ingress-application.service.js"
-);
+const {
+  ZOHO_BOOKS_NOTICE_MAX_AGE_MS,
+  ZOHO_BOOKS_NOTICE_MAX_AHEAD_MS,
+  ZOHO_BOOKS_NOTICE_MAX_BYTES,
+  ZohoBooksNoticeIngressApplicationService,
+} = await import("./zoho-books-notice-ingress-application.service.js");
 
 /** A made-up test value; Books' real secret is set only in the environment. */
 const SECRET = "books-notice-test-secret-0123456789abcdef"; // gitleaks:allow
@@ -100,6 +103,12 @@ describe("the Books signature", () => {
     expect(verifyZohoBooksSignature(PARAMS, body, "not base64!", SECRET)).toBe(false);
     expect(verifyZohoBooksSignature(PARAMS, body, "AAAA", SECRET)).toBe(false);
     expect(verifyZohoBooksSignature(PARAMS, body, good, "")).toBe(false);
+  });
+
+  it("refuses an empty secret even with the signature that secret makes", () => {
+    const body = notice();
+    const madeWithEmpty = zohoBooksSignature(PARAMS, body, "");
+    expect(verifyZohoBooksSignature(PARAMS, body, madeWithEmpty, "")).toBe(false);
   });
 
   it("is bound to the body and to the parameters", () => {
@@ -202,6 +211,32 @@ describe("ZohoBooksNoticeIngressApplicationService", () => {
       expect(await service.handle(signed(raw))).toEqual({ status: 400, body: null });
     }
     expect(webhookEvents.tryClaimEvent).not.toHaveBeenCalled();
+  });
+
+  it("refuses a well-signed notice with no change time, stale, or ahead of our clock", async () => {
+    const { service, webhookEvents } = setup();
+    const at = (ms: number) => new Date(NOW.getTime() + ms).toISOString();
+    for (const raw of [
+      notice({ event_time: undefined }),
+      notice({ event_time: "yesterday" }),
+      notice({ event_time: 1_700_000_000 }),
+      notice({ event_time: NOW.getTime() }),
+      notice({ event_time: at(-ZOHO_BOOKS_NOTICE_MAX_AGE_MS - 1_000) }),
+      notice({ event_time: at(ZOHO_BOOKS_NOTICE_MAX_AHEAD_MS + 1_000) }),
+    ]) {
+      expect(await service.handle(signed(raw))).toEqual({ status: 400, body: null });
+    }
+    expect(webhookEvents.tryClaimEvent).not.toHaveBeenCalled();
+  });
+
+  it("accepts a notice up to a day old, and one a little ahead of our clock", async () => {
+    const { service, stored } = setup();
+    const at = (ms: number) => new Date(NOW.getTime() + ms).toISOString();
+    const accepted = async (ms: number) =>
+      (await service.handle(signed(notice({ event_time: at(ms) })))).status;
+    expect(await accepted(-ZOHO_BOOKS_NOTICE_MAX_AGE_MS + 1_000)).toBe(202);
+    expect(await accepted(ZOHO_BOOKS_NOTICE_MAX_AHEAD_MS - 1_000)).toBe(202);
+    expect(stored.size).toBe(2);
   });
 
   it("refuses an oversized body before checking its signature", async () => {

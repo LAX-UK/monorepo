@@ -444,8 +444,11 @@ and records what Books says (below). Every answer has no body and `Cache-Control
   stores nothing. Set it, 32 characters or more, to the same value as the secret token on the Books
   workflow webhook. Use the test organisation only while Books is in rehearsal.
 - **Body.** The workflow sends JSON with `organization_id`, `module` (`invoice`, `creditnote` or
-  `customerpayment`), `entity_id` and, optionally, `event_time`. A notice for another organisation,
-  or for a document LAX did not issue, changes nothing.
+  `customerpayment`), `entity_id` and `event_time` (required: it is inside the signed body, so it is
+  the one time a copied notice cannot change). A notice without it, with an `event_time` more than
+  24 hours old, or more than 5 minutes ahead of our clock, is refused with a bare 400 and nothing is
+  stored. A body over 16 KiB is refused with 413 before it is read. A notice for another
+  organisation, or for a document LAX did not issue, changes nothing.
 
 ### Notice signature refused (`zoho_books.notice_signature_failed`)
 

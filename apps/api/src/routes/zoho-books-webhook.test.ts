@@ -1,7 +1,10 @@
 import { Hono } from "hono";
 import { describe, expect, it, vi } from "vitest";
 import { zohoBooksSignature } from "../lib/zoho-books-notice-signature.js";
-import { ZohoBooksNoticeIngressApplicationService } from "../services/finance/zoho-books-notice-ingress-application.service.js";
+import {
+  ZOHO_BOOKS_NOTICE_MAX_BYTES,
+  ZohoBooksNoticeIngressApplicationService,
+} from "../services/finance/zoho-books-notice-ingress-application.service.js";
 import { createZohoBooksWebhookRoutes } from "./zoho-books-webhook.js";
 
 const SECRET = "books-notice-test-secret-0123456789abcdef"; // gitleaks:allow
@@ -9,6 +12,7 @@ const BODY = JSON.stringify({
   organization_id: "20091234567",
   module: "creditnote",
   entity_id: "5000000000777",
+  event_time: new Date().toISOString(),
 });
 
 function appWith(secret: string | undefined) {
@@ -33,14 +37,14 @@ function appWith(secret: string | undefined) {
   return { app, claims, alerts };
 }
 
-const post = (app: Hono, signature: string | null, query = "?source=books") =>
+const post = (app: Hono, signature: string | null, query = "?source=books", body = BODY) =>
   app.request(`/webhooks/zoho-books/notices${query}`, {
     method: "POST",
     headers: {
       "content-type": "application/json",
       ...(signature ? { "X-Zoho-Webhook-Signature": signature } : {}),
     },
-    body: BODY,
+    body,
   });
 
 describe("POST /webhooks/zoho-books/notices", () => {
@@ -73,5 +77,56 @@ describe("POST /webhooks/zoho-books/notices", () => {
       expect(await res.text()).toBe("");
       expect(res.headers.get("cache-control")).toBe("no-store");
     }
+  });
+
+  it("refuses a body over 16 KiB before reading it: the service is never asked", async () => {
+    const { app, claims, alerts } = appWith(SECRET);
+    const big = JSON.stringify({ pad: "x".repeat(ZOHO_BOOKS_NOTICE_MAX_BYTES) });
+    const handle = vi.spyOn(ZohoBooksNoticeIngressApplicationService.prototype, "handle");
+    try {
+      const res = await post(
+        app,
+        zohoBooksSignature([["source", "books"]], big, SECRET),
+        "?source=books",
+        big,
+      );
+      expect(res.status).toBe(413);
+      expect(await res.text()).toBe("");
+      expect(res.headers.get("cache-control")).toBe("no-store");
+      expect(handle).not.toHaveBeenCalled();
+    } finally {
+      handle.mockRestore();
+    }
+    expect(claims).toEqual([]);
+    expect(alerts.signatureFailed).not.toHaveBeenCalled();
+  });
+
+  it("refuses a body that streams past 16 KiB with no length declared", async () => {
+    const { app, claims } = appWith(SECRET);
+    const chunk = new TextEncoder().encode("x".repeat(4 * 1024));
+    let sent = 0;
+    const stream = new ReadableStream<Uint8Array>({
+      pull(controller) {
+        if (sent >= 8) return controller.close();
+        sent += 1;
+        controller.enqueue(chunk);
+      },
+    });
+    const handle = vi.spyOn(ZohoBooksNoticeIngressApplicationService.prototype, "handle");
+    try {
+      const res = await app.request("/webhooks/zoho-books/notices?source=books", {
+        method: "POST",
+        headers: { "content-type": "application/json", "X-Zoho-Webhook-Signature": "AAAA" },
+        body: stream,
+        duplex: "half",
+      } as RequestInit);
+      expect(res.status).toBe(413);
+      // Refused as it streamed in: never buffered whole and handed to the service.
+      expect(handle).not.toHaveBeenCalled();
+      expect(sent).toBeLessThan(8);
+    } finally {
+      handle.mockRestore();
+    }
+    expect(claims).toEqual([]);
   });
 });

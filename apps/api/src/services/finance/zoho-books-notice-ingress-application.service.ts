@@ -23,6 +23,14 @@ export interface ZohoBooksNoticeAlerts {
 /** A notice is a few ids; anything larger is not one, and is refused before it is hashed. */
 export const ZOHO_BOOKS_NOTICE_MAX_BYTES = 16 * 1024;
 
+/**
+ * How old a notice's signed `event_time` may be. The signature covers no time of its own, so a
+ * signed notice copied from somewhere is refused once this has passed, not accepted for ever.
+ */
+export const ZOHO_BOOKS_NOTICE_MAX_AGE_MS = 24 * 60 * 60_000;
+/** How far ahead of our clock a notice's `event_time` may be (Books' clock and ours differ a little). */
+export const ZOHO_BOOKS_NOTICE_MAX_AHEAD_MS = 5 * 60_000;
+
 const BOOKS_ID = /^[0-9]{1,32}$/;
 
 /** Every answer has no body: a refusal never says why, an acceptance says nothing about the document. */
@@ -49,23 +57,30 @@ function parseRouting(rawBody: string): ZohoBooksNoticeRouting | null {
   ) {
     return null;
   }
-  const routing: ZohoBooksNoticeRouting = {
+  // Inside the signed body: the one time a replay cannot change.
+  if (typeof record.event_time !== "string") return null;
+  const when = new Date(record.event_time);
+  if (Number.isNaN(when.getTime())) return null;
+  return {
     organizationId,
     module: module as ZohoBooksNoticeModule,
     entityId,
+    eventTime: when.toISOString(),
   };
-  if (typeof record.event_time === "string") {
-    const when = new Date(record.event_time);
-    if (!Number.isNaN(when.getTime())) routing.eventTime = when.toISOString();
-  }
-  return routing;
+}
+
+/** Whether a notice's change time is recent enough to act on, and not far in the future. */
+function isFresh(eventTime: string, now: Date): boolean {
+  const age = now.getTime() - new Date(eventTime).getTime();
+  return age <= ZOHO_BOOKS_NOTICE_MAX_AGE_MS && age >= -ZOHO_BOOKS_NOTICE_MAX_AHEAD_MS;
 }
 
 /**
  * Receives a Zoho Books workflow notice. It refuses everything while no secret is configured
  * (fail closed), checks the signature in constant time before reading the body, raises the
- * accounting alert for a signature that is missing or wrong, and stores a good notice once per
- * Books ids in webhook_event. What is stored is Books' ids only: the notice is a hint for the
+ * accounting alert for a signature that is missing or wrong, refuses a notice whose signed
+ * `event_time` is missing, older than a day or ahead of our clock, and stores a good notice once
+ * per Books ids and change time in webhook_event. What is stored is Books' ids only: the notice is a hint for the
  * worker to read that document from Books again, and its content is never trusted for money.
  */
 export class ZohoBooksNoticeIngressApplicationService
@@ -97,8 +112,10 @@ export class ZohoBooksNoticeIngressApplicationService
 
     const routing = parseRouting(request.rawBody);
     if (!routing) return noBody(400);
+    // A stale or future notice is refused like a malformed one; nothing is stored or read.
+    if (!isFresh(routing.eventTime, this.now())) return noBody(400);
 
-    const eventKey = zohoBooksNoticeEventKey(routing, this.now());
+    const eventKey = zohoBooksNoticeEventKey(routing);
     const { claimed } = await this.webhookEvents.tryClaimEvent({
       source: ZOHO_BOOKS_WEBHOOK_SOURCE,
       eventKey,
