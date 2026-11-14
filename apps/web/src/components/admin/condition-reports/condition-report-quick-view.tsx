@@ -5,6 +5,7 @@ import type { ConditionReportStaffRow } from "@/lib/admin/condition-reports/cond
 import {
   CellLink,
   DetailPanel,
+  type DetailPanelProps,
   type OverflowAction,
   OverflowMenu,
   PanelSection,
@@ -23,12 +24,13 @@ import { useState } from "react";
  */
 export function ConditionReportQuickView({
   row,
-  onClose,
+  panelProps,
   onFulfilled,
   actions,
 }: {
   row: ConditionReportStaffRow | null;
-  onClose: () => void;
+  /** The queue panel's open state, place in the list and stepping (`useStaffQueue`). */
+  panelProps: Pick<DetailPanelProps, "open" | "onOpenChange" | "queue">;
   /** Runs after the report is published; the list refreshes and the panel closes. */
   onFulfilled: () => void;
   actions: readonly OverflowAction[];
@@ -39,10 +41,7 @@ export function ConditionReportQuickView({
 
   return (
     <DetailPanel
-      open={row !== null}
-      onOpenChange={(open) => {
-        if (!open) onClose();
-      }}
+      {...panelProps}
       dirty={dirty}
       dirtyLabel="this request"
       size="lg"
