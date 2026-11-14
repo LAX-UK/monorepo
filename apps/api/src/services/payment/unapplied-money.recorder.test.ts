@@ -11,7 +11,10 @@ vi.mock("../../lib/stripe-processed-event.js", () => ({
   tryClaimProcessedStripeEvent: vi.fn().mockResolvedValue({ claimed: true }),
 }));
 
-const tx = {} as Database;
+// A savepoint runs in the same transaction: the stub hands the caller's back.
+const tx = {
+  transaction: async (fn: (t: Database) => Promise<unknown>) => fn(tx),
+} as unknown as Database;
 const money: UnappliedMoney = {
   reason: "invoice_already_paid",
   paymentId: "pay-1",
@@ -37,6 +40,33 @@ function reader(existing: string[] = []) {
 }
 
 describe("UnappliedMoneyRecorder", () => {
+  it.each([
+    ["as raised", { code: "23505", constraint: "domain_events_unapplied_money_dedupe_key_uid" }],
+    [
+      "wrapped as the query error's cause",
+      {
+        message: "Failed query",
+        cause: { code: "23505", constraint: "domain_events_unapplied_money_dedupe_key_uid" },
+      },
+    ],
+  ])(
+    "a unique violation on the dedupe key (%s) is 'already recorded', not an error",
+    async (_l, err) => {
+      const publish = vi.fn().mockRejectedValue(Object.assign(new Error("dup"), err));
+      const recorder = new UnappliedMoneyRecorder(reader(), mockDomainEventSink(publish));
+      await expect(recorder.record(tx, money, null)).resolves.toBeUndefined();
+    },
+  );
+
+  it.each([
+    ["another unique index", { code: "23505", constraint: "payment_lot_buyer_open_unique" }],
+    ["another error", { code: "40001" }],
+  ])("%s is still an error", async (_l, err) => {
+    const publish = vi.fn().mockRejectedValue(Object.assign(new Error("boom"), err));
+    const recorder = new UnappliedMoneyRecorder(reader(), mockDomainEventSink(publish));
+    await expect(recorder.record(tx, money, null)).rejects.toThrow("boom");
+  });
+
   it("publishes one event with the dedupe key, an upper-case currency and the payment", async () => {
     const publish = vi.fn().mockResolvedValue(undefined);
     const recorder = new UnappliedMoneyRecorder(reader(), mockDomainEventSink(publish));
