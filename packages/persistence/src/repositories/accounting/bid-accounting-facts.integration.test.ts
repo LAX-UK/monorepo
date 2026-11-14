@@ -324,6 +324,8 @@ describe.skipIf(!HAS_DB)("Bid accounting facts (integration)", { timeout: 60_000
         facts: {
           invoice: expected,
           paidPence: 154_320,
+          // Every refund row as read: what its credit notes are checked against when registered.
+          refundRows: 2,
           refunds: [
             { refundId: refundIds[0], amountPence: 1_001, refundedOn: "2031-11-20" },
             { refundId: refundIds[1], amountPence: 50_000, refundedOn: "2031-11-21" },

@@ -2,7 +2,8 @@
  * The buyer's invoice card on a Bid purchase: where the invoice Books issues stands, as the API
  * tells the Bid web app. Figures come from the invoice's frozen lines; a rehearsal (Books in dry
  * run) or a test organisation's document is never shown as a Books invoice, so its state is `lax`
- * (LAX's own invoice, as before). Credit notes are not part of the card yet.
+ * (LAX's own invoice, as before). Credit notes follow the same rule: one is listed only once Books
+ * issued it live and LAX holds its copy.
  */
 export const PURCHASE_INVOICE_STATES = [
   "lax",
@@ -25,4 +26,29 @@ export type PurchaseInvoiceCard = {
   cancelledAt: string | null;
   /** The invoice total from its frozen lines, in whole pence. */
   totalPence: number;
+  /**
+   * The invoice was cancelled after a buyer default (a default's credit note exists for it); only
+   * when `cancelled`.
+   */
+  cancelledAfterDefault: boolean;
+  /** Credit notes Books issued live for it with LAX's copy stored, oldest first. */
+  creditNotes: PurchaseCreditNote[];
+  /**
+   * How the invoice was paid, so a refund can say where it went: by card, or by bank transfer
+   * ("Pay several" by its checkout's rail). Null when it is not known.
+   */
+  paidWith: "card" | "bank_transfer" | null;
+};
+
+/** A credit note on a Bid invoice: a refund's, or the one that cancels it after a default. */
+export type PurchaseCreditNote = {
+  /** The stored copy's document id, for the download link. */
+  documentId: string;
+  /** Books' credit note number. */
+  number: string;
+  /** What it credits, VAT included, in whole pence. */
+  grossPence: number;
+  /** When Books issued it (ISO 8601, from its issue event). */
+  issuedAt: string | null;
+  kind: "refund" | "default";
 };

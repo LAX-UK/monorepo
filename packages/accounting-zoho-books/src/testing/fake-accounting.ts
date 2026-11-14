@@ -7,6 +7,9 @@ import {
   type ContactPort,
   type CreditNote,
   type CreditNotePort,
+  type CreditNoteRefund,
+  type CreditNoteRefundOutcome,
+  type CreditNoteRefundPort,
   type DestinationPort,
   type DocumentKind,
   type DocumentLookupPort,
@@ -156,6 +159,57 @@ export class InMemoryAccounting implements AccountingPorts {
       return { status: "applied", rehearsal: false };
     },
   };
+  /** Refunds recorded on credit notes, by credit note key: amount and reference. */
+  private readonly creditNoteRefunded = new Map<
+    string,
+    { amountPence: number; reference: string }
+  >();
+  /**
+   * As the adapter: the same checks as a document, then the credit note's refunds read first, so a
+   * second run is `already_refunded`; another refund already on it is refused, never topped up.
+   */
+  readonly creditNoteRefunds: CreditNoteRefundPort = {
+    refundCreditNote: async (
+      r: CreditNoteRefund,
+      fence?: WriteFence,
+    ): Promise<CreditNoteRefundOutcome> => {
+      const entity = legalEntityFor(r.product);
+      if (r.entity !== entity) return rejected(R.entityMismatch);
+      if (!this.orgs[entity]) return rejected(R.organisationNotConfigured);
+      if (r.account !== "stripe_clearing" || !(r.amountPence > 0)) {
+        return rejected(R.creditNoteRefundDiffers);
+      }
+      for (const need of [
+        ["contact", r.contactReference, "customer"],
+        ["credit_note", r.creditNoteReference],
+      ] as const satisfies readonly Need[]) {
+        const stop = this.dependency(r.product, entity, need);
+        if (stop) {
+          return stop.status === "rejected"
+            ? stop
+            : { status: "unknown", ...(stop.detail ? { detail: stop.detail } : {}) };
+        }
+      }
+      const key = this.key(entity, "credit_note", r.creditNoteReference);
+      const already = this.creditNoteRefunded.get(key);
+      if (already) {
+        return already.amountPence === r.amountPence && already.reference === r.creditNoteReference
+          ? { status: "already_refunded", rehearsal: false }
+          : rejected(R.creditNoteRefundDiffers);
+      }
+      if (fence && !(await fence.mayWrite())) return rejected(FENCED);
+      this.creditNoteRefunded.set(key, {
+        amountPence: r.amountPence,
+        reference: r.creditNoteReference,
+      });
+      return { status: "refunded", rehearsal: false };
+    },
+  };
+  /** The refund recorded on a credit note held under a reference, for assertions. */
+  creditNoteRefundOf(product: Product, creditNoteReference: string): number | null {
+    const key = this.key(legalEntityFor(product), "credit_note", creditNoteReference);
+    return this.creditNoteRefunded.get(key)?.amountPence ?? null;
+  }
   /** What a payment held under a reference has had applied after the fact, for assertions. */
   remainderAppliedOf(product: Product, paymentReference: string): ReadonlyMap<string, number> {
     const key = this.key(legalEntityFor(product), "payment", paymentReference);

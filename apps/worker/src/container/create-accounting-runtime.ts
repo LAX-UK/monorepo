@@ -12,6 +12,7 @@ import type { Logger } from "pino";
 import type { WorkerEnv } from "../env.js";
 import { createAccountingAlertSink } from "../finance/accounting/accounting-alerts.js";
 import { ACCOUNTING_CRON_MONITORS } from "../finance/accounting/accounting-alerts.js";
+import { AccountingCreditNoteRefund } from "../finance/accounting/accounting-credit-note-refund.service.js";
 import { AccountingInvoiceCopy } from "../finance/accounting/accounting-invoice-copy.service.js";
 import { AccountingProjection } from "../finance/accounting/accounting-projection.service.js";
 import { AccountingRemainder } from "../finance/accounting/accounting-remainder.service.js";
@@ -63,6 +64,12 @@ export function createAccountingRuntime(deps: {
       shopFacts,
       settings: repos.settingReader,
       registry: repos.registry,
+      books: {
+        lookup: repos.lookup,
+        creditNotes: repos.creditNotes,
+        transitions: repos.transitions,
+      },
+      alerts,
     }),
     sender: new AccountingSender({
       workQueue: repos.workQueue,
@@ -98,6 +105,15 @@ export function createAccountingRuntime(deps: {
         Object.entries(adapters.byMode).map(([mode, ports]) => [mode, ports.remainders]),
       ),
       log: deps.log,
+    }),
+    creditNoteRefund: new AccountingCreditNoteRefund({
+      refunds: repos.creditNoteRefunds,
+      settings: repos.settingReader,
+      portsByMode: Object.fromEntries(
+        Object.entries(adapters.byMode).map(([mode, ports]) => [mode, ports.creditNoteRefunds]),
+      ),
+      log: deps.log,
+      alerts,
     }),
     cursorStart: new DrizzleProjectorCursorStart(deps.db),
     watch: new AccountingWatch({

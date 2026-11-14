@@ -208,8 +208,8 @@ export const projectBidPaymentCaptured: ProjectionPolicy<BidPaymentFacts> = (fac
   return ok({ documents: [contact.value, paid.value.invoice as Invoice, payment.value] });
 };
 
-/** A delivery invoice for one courier quote paid with the lots: one delivery line, as charged. */
-function deliveryInvoice(
+/** A delivery invoice for one courier quote paid with the lots: one delivery line, as charged. Shared with its credit notes. */
+export function deliveryInvoice(
   delivery: BidGroupDeliveryFacts,
   contact: Contact,
   settledOn: string,

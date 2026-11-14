@@ -3,6 +3,8 @@ import {
   type Bill,
   type Contact,
   type CreditNote,
+  type CreditNoteRefund,
+  type CreditNoteRefundOutcome,
   type Invoice,
   type IssueOutcome,
   type LookupOutcome,
@@ -103,6 +105,11 @@ export function createZohoBooksDryRunAdapter(deps: {
       applyRemainder: (a: RemainderApplication): Promise<RemainderOutcome> =>
         Promise.resolve(rehearseRemainder(deps.orgs, a)),
     },
+    // Nothing is held, so nothing is refunded: the same checks, then a rehearsal answer.
+    creditNoteRefunds: {
+      refundCreditNote: (r: CreditNoteRefund): Promise<CreditNoteRefundOutcome> =>
+        Promise.resolve(rehearseCreditNoteRefund(deps.orgs, r)),
+    },
     bills: {
       issueBill: (d: Bill) =>
         rehearse(
@@ -144,6 +151,27 @@ function rehearseRemainder(orgs: ZohoOrgConfigs, a: RemainderApplication): Remai
       reason: foreign.status === "rejected" ? foreign.reason : "zoho_books_bad_reference",
     };
   return { status: "applied", rehearsal: true };
+}
+
+function rehearseCreditNoteRefund(
+  orgs: ZohoOrgConfigs,
+  r: CreditNoteRefund,
+): CreditNoteRefundOutcome {
+  const choice = orgFor(orgs, r);
+  if (!choice.ok) return { status: "rejected", reason: choice.reason };
+  if (r.account !== "stripe_clearing" || !(r.amountPence > 0)) {
+    return { status: "rejected", reason: ZOHO_BOOKS_REJECTIONS.creditNoteRefundDiffers };
+  }
+  const foreign = sameProduct(r.product, [
+    customer(r.contactReference),
+    { kind: "credit_note", reference: r.creditNoteReference },
+  ]);
+  if (foreign)
+    return {
+      status: "rejected",
+      reason: foreign.status === "rejected" ? foreign.reason : "zoho_books_bad_reference",
+    };
+  return { status: "refunded", rehearsal: true };
 }
 
 function rehearsal(

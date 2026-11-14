@@ -1,9 +1,11 @@
 import type {
   AccountingDocument,
+  BidDeliveryRefundFacts,
   BidInvoiceFacts,
   BidPaymentFacts,
   BidPaymentGroupFacts,
   BidRefundsFacts,
+  CreditNote,
   DocumentKind,
   DocumentRecord,
   DocumentTarget,
@@ -54,7 +56,27 @@ export interface StoredAccountingDocument {
 }
 
 export type StoredDocumentCode = "bad_stored_document";
-export type RegisterCode = "bad_document" | "reference_in_use";
+export type RegisterCode =
+  | "bad_document"
+  | "reference_in_use"
+  /**
+   * A credit note that, with the credit notes already registered for its invoice in the same books
+   * (any state but cancelled), would credit more than the invoice charged. Checked under a lock per
+   * invoice and target, so concurrent registrations cannot pass it together.
+   */
+  | "credit_exceeds_invoice"
+  /** A credit note whose invoice is not registered (or only cancelled) in the same books. */
+  | "credit_without_invoice"
+  /**
+   * The facts a credit note was built from (`CreditBasis`) are no longer what the books and the
+   * stored rows hold under the invoice's credit lock: another credit note was registered or
+   * cancelled meanwhile, a refund was added or taken back, or a courier quote's refunded total
+   * moved. Tried again with the facts read afresh, so the note is always built from the current
+   * total.
+   */
+  | "credit_prior_changed"
+  /** A courier refund's credit notes would credit more than the quote's refunded total. */
+  | "credit_exceeds_refunded";
 export type TransitionCode =
   | LifecycleCode
   | "not_found"
@@ -70,6 +92,8 @@ export type TransitionCode =
 export type ReleaseBasis =
   | { readonly kind: "bid_payment"; readonly paymentId: string }
   | { readonly kind: "bid_payment_group"; readonly groupId: string }
+  /** A Bid invoice and its frozen lines (a buyer default's credit note is decided on these). */
+  | { readonly kind: "bid_invoice"; readonly invoiceId: string }
   | { readonly kind: "shop_order"; readonly orderId: string };
 
 /**
@@ -92,7 +116,39 @@ export interface RegisterInput {
    * document is parked; a replay keeps the state it was first stored in.
    */
   readonly park?: ParkReason;
+  /**
+   * For a credit note: the facts it was built from, checked again under the invoice's credit lock
+   * in the registering transaction. Anything different refuses it (`credit_prior_changed`) and the
+   * event is projected again from fresh facts, so two projections that interleave never both
+   * credit the same money.
+   */
+  readonly creditBasis?: CreditBasis;
 }
+
+/**
+ * What a credit note was built from, as the projection read it. Every kind names the other credit
+ * already registered for the invoice in the same books (any state but cancelled, this note aside).
+ */
+export type CreditBasis =
+  /** A buyer default's full credit: what was already credited. */
+  | { readonly kind: "invoice_credit"; readonly priorCreditPence: number }
+  /**
+   * A refund of one Bid payment: the payment's `payment_refund` rows (refunds and the reversals
+   * that take them back) counted when the facts were read.
+   */
+  | { readonly kind: "payment_refunds"; readonly paymentId: string; readonly refundRows: number }
+  /**
+   * A courier quote's refund ("Pay several"): the quote's refunded running total as read, and what
+   * was already credited. Under the lock the total is read again and the notes may never credit
+   * more than it (capped at what the quote was charged).
+   */
+  | {
+      readonly kind: "delivery_refund";
+      readonly groupId: string;
+      readonly quoteId: string;
+      readonly refundedPence: number;
+      readonly priorCreditPence: number;
+    };
 
 export interface RegisterOutcome {
   /** False when the reference was already registered with the same document (a replay). */
@@ -103,6 +159,17 @@ export interface RegisterOutcome {
 /** Add a document to the queue. Idempotent per reference and target (the switch's current one). */
 export interface IAccountingDocumentRegistry {
   register(input: RegisterInput): Promise<Result<RegisterOutcome, RegisterCode>>;
+  /**
+   * Waits until no credit note for the invoice is being registered in that books (takes and
+   * releases the invoice's credit lock). A reversal reads the credit notes only after it, so a
+   * registration that read its facts before the reversal is either committed and seen, or checks
+   * its basis after the reversal and is refused (`credit_prior_changed`).
+   */
+  awaitCreditRegistrations(
+    product: Product,
+    invoiceReference: string,
+    target: DocumentTarget | null,
+  ): Promise<void>;
 }
 
 /**
@@ -116,6 +183,18 @@ export interface IAccountingDocumentLookup {
     reference: string,
     target?: DocumentTarget | null,
   ): Promise<Result<StoredAccountingDocument | null, StoredDocumentCode>>;
+}
+
+/**
+ * The credit notes registered for one invoice in one books (provider and mode; null for none),
+ * every state but cancelled, oldest first: what a new credit note for it must be built after.
+ */
+export interface IAccountingCreditNotes {
+  creditNotesFor(
+    product: Product,
+    invoiceReference: string,
+    target: DocumentTarget | null,
+  ): Promise<Result<readonly CreditNote[], StoredDocumentCode>>;
 }
 
 /**
@@ -152,6 +231,11 @@ export type DocumentTransition =
     }
   /** A queued document that can never be sent as it stands, parked for a person. */
   | { readonly action: "park"; readonly reason: ParkReason }
+  /**
+   * An issued document that can no longer simply stand, held for a person with the provider's
+   * document kept (`hold` in the domain): never requeued, released or cancelled from there.
+   */
+  | { readonly action: "hold"; readonly reason: string }
   | { readonly action: "cancel" };
 
 /**
@@ -189,7 +273,7 @@ export interface ClaimRequest {
  * existing document. A document with no target, or whose provider is now `off`, is not handed out. A document whose lease ran
  * out is not handed out again: it becomes unknown and goes through lookup first. A document is not
  * handed out until what it waits for is issued for the same target (`documentsAwaited`: a
- * payment's invoices, an invoice's or credit note's contact); it waits, and the documents behind
+ * payment's invoices, a credit note's invoice, an invoice's or credit note's contact); it waits, and the documents behind
  * it are handed out meanwhile.
  */
 export interface IAccountingDocumentWorkQueue {
@@ -270,10 +354,57 @@ export type FactsRead<T> =
  * Reads what a Bid accounting flow needs from the stored rows (the events carry ids only). Money
  * comes back in whole pence, dates as London calendar days, ids lower case.
  */
+/** A payment's refunds as the books read them, and the rows they were read from. */
+export type BidPaymentRefundsRead = BidRefundsFacts & {
+  /**
+   * Every `payment_refund` row of the payment (refunds and the reversals that take them back) when
+   * read: the basis its credit notes are checked against when registered. Absent: not checked.
+   */
+  readonly refundRows?: number;
+};
+
 export interface IBidAccountingFactsReader {
   invoiceRaised(invoiceId: string): Promise<FactsRead<BidInvoiceFacts>>;
   paymentCaptured(paymentId: string, capturedAt: Date): Promise<FactsRead<BidPaymentFacts>>;
-  paymentRefunded(paymentId: string): Promise<FactsRead<BidRefundsFacts>>;
+  /**
+   * Every refund that went through on one payment (its own invoice's, or one lot's of a "Pay
+   * several" charge), oldest first, with what that payment took. A refund counted and later taken
+   * back by a `refund_reversal` row is left out with it; a reversal that names no refund of the
+   * payment skips with `refund_reversal_unmatched`.
+   */
+  paymentRefunded(paymentId: string): Promise<FactsRead<BidPaymentRefundsRead>>;
+  /**
+   * The refunds of one payment that were taken back (each matched to its `refund_reversal` row as
+   * `paymentRefunded` matches them), with the invoice they were for. Skips when none was taken
+   * back; `refund_reversal_unmatched` when a reversal matches no refund. Absent where the reversal
+   * flow is not wired.
+   */
+  paymentRefundReversals?(
+    paymentId: string,
+  ): Promise<
+    FactsRead<{ readonly invoiceId: string; readonly reversedRefundIds: readonly string[] }>
+  >;
+  /**
+   * A courier quote of a settled "Pay several" group, with its refunded running total. The credit
+   * notes already made for it are not read here (`priorCredits` is empty): the caller adds them
+   * from the books it projects into.
+   */
+  deliveryRefunded(
+    groupId: string,
+    quoteId: string,
+    refundedAt: Date,
+  ): Promise<FactsRead<BidDeliveryRefundFacts>>;
+  /**
+   * The invoice a payment was for, once a buyer default voided it: its stored lines (kept when
+   * voided) and the London day it was voided. Skips when the invoice stands (not voided).
+   */
+  defaultedInvoice(
+    paymentId: string,
+  ): Promise<FactsRead<{ readonly invoice: BidInvoiceFacts; readonly defaultedOn: string }>>;
+  /** `defaultedInvoice`, by the invoice's own id (a parked default credit note is rebuilt from it). */
+  voidedInvoice(
+    invoiceId: string,
+  ): Promise<FactsRead<{ readonly invoice: BidInvoiceFacts; readonly defaultedOn: string }>>;
   /** A settled "Pay several" group: its stored total, members and courier quotes. */
   paymentGroupSettled(groupId: string): Promise<FactsRead<BidPaymentGroupFacts>>;
   /** The "Pay several" group a courier quote was charged in; null when it was not. */
@@ -371,6 +502,20 @@ export interface PartFundedTransfer {
 }
 
 /** Bank transfers part received, oldest first, for the Accounting page (read only). */
+/** A "Pay several" group's refunds that no invoice or courier quote could take. */
+export interface UnattributedRefund {
+  readonly paymentGroupId: string;
+  /** The group's unattributed running total, in pence. */
+  readonly amountPence: number;
+  readonly buyer: string;
+  readonly settledAt: Date | null;
+}
+
+/** Refunds waiting for a person to assign them, oldest group first (the Accounting page). */
+export interface IUnattributedRefundsReader {
+  list(limit: number): Promise<readonly UnattributedRefund[]>;
+}
+
 export interface IPartFundedTransfersReader {
   list(limit: number): Promise<readonly PartFundedTransfer[]>;
 }
@@ -436,6 +581,11 @@ export interface IAccountingAttentionReader {
    * still unapplied in Books. `oldestSince` is when the oldest was issued.
    */
   unsettledRemainders(modes: readonly TargetMode[], issuedBefore: Date): Promise<QueueAge>;
+  /**
+   * Credit notes for a refund issued before `issuedBefore` whose money is still not refunded in
+   * the books (no `refund_credit_note` in their history).
+   */
+  unrefundedCreditNotes(modes: readonly TargetMode[], issuedBefore: Date): Promise<QueueAge>;
 }
 
 /** LAX's stored copy of the PDF for an issued document. */
@@ -572,6 +722,61 @@ export interface IAccountingRemainders {
   ): Promise<boolean>;
 }
 
+/** An issued credit note that gives money back, still to be refunded in the books. */
+export interface CreditNoteRefundDue {
+  readonly creditNote: StoredAccountingDocument;
+}
+
+export interface CreditNoteRefundDueList {
+  readonly due: readonly CreditNoteRefundDue[];
+  /** Ids of credit notes that could not be read; the others are still listed. */
+  readonly unreadable: readonly string[];
+}
+
+/** How refunding a credit note ended, as recorded in its history (`refund_credit_note`). */
+export interface CreditNoteRefundRecord {
+  readonly outcome: "refunded" | "already_refunded" | "rejected";
+  readonly amountPence: number;
+  readonly account: "stripe_clearing";
+  /** A dry run's rehearsal: nothing was refunded in any books. */
+  readonly rehearsal: boolean;
+  /** Why it was refused (an adapter or domain code); only for `rejected`. */
+  readonly reason?: string;
+}
+
+/**
+ * How one clearing-refund step ended: `settled` (its outcome recorded), `skipped` (held by another
+ * worker, settled already, or no answer to record), or `refund_reversed` (the refund it credits was
+ * taken back: the credit note is held for a person, never refunded from clearing).
+ */
+export type CreditNoteRefundSettle = "settled" | "skipped" | "refund_reversed";
+
+/**
+ * The follow-up step after a credit note for a refund is issued: its gross is refunded from the
+ * Stripe clearing account, once. Settled in the credit note's history (`refund_credit_note`),
+ * which is append-only, so a settled credit note never comes back.
+ */
+export interface IAccountingCreditNoteRefunds {
+  /**
+   * Issued credit notes aimed at one of `modes` that give money back (`payload.refund`) with no
+   * `refund_credit_note` in their history, least recently touched first.
+   */
+  listDue(modes: readonly TargetMode[], limit: number): Promise<CreditNoteRefundDueList>;
+  /**
+   * Runs `step` while holding the credit note (no other worker can run it for the same one), and
+   * records what it returns in its history in the same transaction. Nothing is recorded when
+   * `step` returns null (try again next run). `skipped` when another worker holds it now, or it was
+   * settled already; the step is then not run. Before the step, the refund itself is read again
+   * under the lock: one taken back since (a `refund_reversal` of a payment refund, a courier total
+   * lowered below the note) holds the credit note (`accounting_refund_reversed_after_credit`) and
+   * answers `refund_reversed`; the step is then not run.
+   */
+  settleExclusively(
+    creditNoteDocumentId: string,
+    step: () => Promise<CreditNoteRefundRecord | null>,
+  ): Promise<CreditNoteRefundSettle>;
+}
+
 /** What the "Your invoice" email says, read from the invoice's own rows. */
 export interface BidInvoiceEmailFacts {
   readonly invoiceId: string;
@@ -601,12 +806,15 @@ export interface IBidInvoiceEmailFactsReader {
 /** One Books document for a Bid invoice, as the buyer's invoice card reads it. */
 export interface BidInvoiceBooksDocument {
   readonly documentId: string;
+  /** Its LAX reference (a credit note's says whether it is a refund's or a buyer default's). */
+  readonly reference: string;
   readonly targetMode: TargetMode;
   readonly record: DocumentRecord;
   readonly grossPence: number;
   /**
    * When the document was issued: the `occurred_at` of its transition to `issued` in the event
-   * log (never the row's `updated_at`, which later writes move). Null when not issued.
+   * log (never the row's `updated_at`, which later writes move). Null when not issued (a document
+   * held for a person with Books' document kept keeps it).
    */
   readonly issuedAt: Date | null;
   readonly copy: { readonly storageKey: string; readonly rehearsal: boolean } | null;
@@ -622,6 +830,13 @@ export interface BidInvoiceBooksState {
   };
   /** The invoice document per target mode (at most one each). */
   readonly invoices: readonly BidInvoiceBooksDocument[];
+  /** The credit notes for the invoice, every target mode, oldest first (not cancelled). */
+  readonly creditNotes: readonly BidInvoiceBooksDocument[];
+  /**
+   * How the invoice was paid: a "Pay several" charge by its checkout's rail, otherwise by the rail
+   * of its checkout sessions when they all name the same one. Null when not paid or not known.
+   */
+  readonly paidWith: "card" | "bank_transfer" | null;
 }
 
 /** Reads one Bid invoice's Books documents and their stored copies (the Bid API, read only). */

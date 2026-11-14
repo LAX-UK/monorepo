@@ -8,6 +8,10 @@ import type {
   QueueAge,
 } from "../../interfaces/accounting.js";
 import { AWAITED_ISSUED } from "../../lib/accounting-awaited.js";
+import {
+  MONEY_BACK_CREDIT_NOTE,
+  REFUND_UNSETTLED,
+} from "../../lib/accounting-credit-note-refund-due.js";
 import { QUEUE_TAB_WHERE } from "../../lib/accounting-queue-tab.js";
 import { DELIVERY_INVOICE, ISSUED_AT, UNSETTLED } from "../../lib/accounting-remainder-due.js";
 
@@ -90,6 +94,28 @@ export class DrizzleAccountingAttentionReader implements IAccountingAttentionRea
           eq(d.targetProvider, "books"),
           inArray(d.targetMode, [...modes]),
           UNSETTLED,
+          sql`${ISSUED_AT} < ${issuedBefore.toISOString()}::timestamptz`,
+        ),
+      );
+    const oldest = row?.oldest ?? null;
+    return { count: row?.count ?? 0, oldestSince: oldest === null ? null : new Date(oldest) };
+  }
+
+  async unrefundedCreditNotes(modes: readonly TargetMode[], issuedBefore: Date): Promise<QueueAge> {
+    if (modes.length === 0) return { count: 0, oldestSince: null };
+    const [row] = await this.db
+      .select({
+        count: sql<number>`count(*)`.mapWith(Number),
+        oldest: sql<string | null>`min(${ISSUED_AT})`,
+      })
+      .from(d)
+      .where(
+        and(
+          MONEY_BACK_CREDIT_NOTE,
+          eq(d.state, "issued"),
+          eq(d.targetProvider, "books"),
+          inArray(d.targetMode, [...modes]),
+          REFUND_UNSETTLED,
           sql`${ISSUED_AT} < ${issuedBefore.toISOString()}::timestamptz`,
         ),
       );

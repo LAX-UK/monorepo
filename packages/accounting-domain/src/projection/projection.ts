@@ -17,6 +17,38 @@ export interface Projection {
    * when every document is queued.
    */
   readonly parked?: readonly ParkedDocument[];
+  /**
+   * LAX references of documents already registered in the same books that this event makes owed
+   * no more (an invoice cancelled after a buyer default before Books issued it). The runtime
+   * cancels each one that was never sent; one being sent, or one whose outcome is unknown, is
+   * looked at again later, and one issued meanwhile is credited instead. Absent when none.
+   */
+  readonly cancel?: readonly string[];
+  /**
+   * LAX references of documents already issued in the same books that this event says can no
+   * longer simply stand (a credit note whose refund was taken back): each is held for a person
+   * with the provider's document kept (`hold`), and an alert is raised. Nothing is undone in the
+   * books automatically. Absent when none.
+   */
+  readonly hold?: readonly HeldDocument[];
+}
+
+/** Why an issued document is held for a person. */
+export const HOLD_REASONS = [
+  /** The refund the credit note was for was taken back (it failed) after the note was issued. */
+  "refund_reversed_after_credit",
+] as const;
+export type HoldReason = (typeof HOLD_REASONS)[number];
+
+/** The reason stored on a held document, e.g. `accounting_refund_reversed_after_credit`. */
+export function heldReasonCode(reason: HoldReason): string {
+  return `accounting_${reason}`;
+}
+
+/** One issued document a projection holds for a person, and why. */
+export interface HeldDocument {
+  readonly reference: string;
+  readonly reason: HoldReason;
 }
 
 /** One of a projection's documents that is stored parked, and why. */
@@ -47,7 +79,19 @@ export type ProjectionCode =
   /** A combined payment naming an invoice raised to another buyer account. */
   | "buyer_mismatch"
   /** The facts handed in do not describe a possible state (an id that is not a source id, say). */
-  | "bad_facts";
+  | "bad_facts"
+  /**
+   * The invoice a buyer default cancels is being sent to the books, or its outcome is not known
+   * yet: whether it is cancelled or credited is decided once it settles (the event is tried again).
+   */
+  | "invoice_in_flight"
+  /** The invoice is in the books but held for a person (a totals difference): a person decides. */
+  | "invoice_held_for_review"
+  /**
+   * A credit note this event cancels or holds is being sent to the books, or its outcome is not
+   * known yet: decided once it settles (the event is tried again).
+   */
+  | "credit_in_flight";
 
 /** A pure projection policy: one per flow, facts in, documents out. No I/O, no clock. */
 export type ProjectionPolicy<F> = (facts: F) => Result<Projection, ProjectionCode>;

@@ -17,7 +17,7 @@ import { CLIENT_ROUTES } from "@/lib/navigation/client-routes";
 import { loadDeliveryAddresses } from "@/lib/purchases/delivery-addresses.server";
 import { deliveryPanel } from "@/lib/purchases/purchase-delivery.vm";
 import { parsePaidLots, purchaseHandover } from "@/lib/purchases/purchase-handover";
-import { purchaseInvoiceCard } from "@/lib/purchases/purchase-invoice-card.vm";
+import { purchaseInvoiceCard, withBooksRefund } from "@/lib/purchases/purchase-invoice-card.vm";
 import { getServerPurchaseInvoiceCard } from "@/lib/purchases/purchase-invoice.server";
 import { purchaseProblemPanel } from "@/lib/purchases/purchase-problem";
 import { loadPurchaseSources } from "@/lib/purchases/purchase-sources.server";
@@ -83,7 +83,7 @@ export default async function PurchaseDetailPage({ params, searchParams }: PageP
     if (opened.kind === "hop") return <AccountRestoreHop href={opened.href} />;
     notFound();
   }
-  const card = purchaseCard(row, sources);
+  const listed = purchaseCard(row, sources);
   const facts = sources.factsByLot?.[lotId] ?? null;
   const organisation = scope.account.kind === "organisation" ? scope.account : null;
   const collection =
@@ -105,7 +105,9 @@ export default async function PurchaseDetailPage({ params, searchParams }: PageP
       })
     : null;
   // Only a member who may download the invoice asks where Books' invoice stands.
-  const books = card.invoiceHref ? await getServerPurchaseInvoiceCard(lotId) : null;
+  const books = listed.invoiceHref ? await getServerPurchaseInvoiceCard(lotId) : null;
+  // Refunded in full through Books' credit notes: the page says "Refunded", never "Paid".
+  const card = withBooksRefund(listed, books);
   const invoiceCard = purchaseInvoiceCard({
     lotId,
     card: books,

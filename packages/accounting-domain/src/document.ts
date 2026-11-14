@@ -158,6 +158,19 @@ export interface CreditNote extends Base<"credit_note"> {
   readonly issuedOn: string;
   readonly lines: readonly Line[];
   readonly totals: Totals;
+  /**
+   * Present when the credit is money given back to the buyer (a refund that went through): the
+   * credit note's whole gross is then refunded from this account, once, after the credit note is
+   * issued (`planCreditNoteRefund`). Absent for a credit that returns no money (an unpaid invoice
+   * cancelled after a buyer default), which stays on the invoice it credits.
+   */
+  readonly refund?: CreditNoteRefundSource;
+}
+
+/** Where the money a credit note gives back was paid from, and on which London day. */
+export interface CreditNoteRefundSource {
+  readonly account: "stripe_clearing";
+  readonly refundedOn: string;
 }
 
 /** A bill we owe to a seller or artist (a payout). */
@@ -552,6 +565,8 @@ export function buildCreditNoteFor(
     buckets: PaidBuckets;
     request: RefundSplit;
     priorCredits: readonly CreditNote[];
+    /** The money given back with it (a refund that went through), if any. */
+    refund?: CreditNoteRefundSource;
   },
 ): Result<CreditNote, DocumentCode> {
   const checked = checkInvoice(invoice);
@@ -562,6 +577,16 @@ export function buildCreditNoteFor(
   if (!dates.ok) return dates;
   if (input.issuedOn < invoice.issuedOn) {
     return refuse("bad_date", "credit note is dated before the invoice");
+  }
+  if (input.refund !== undefined) {
+    const refundDate = checkDates(input.refund.refundedOn);
+    if (!refundDate.ok) return refundDate;
+    if (input.refund.account !== "stripe_clearing" || input.refund.refundedOn < input.issuedOn) {
+      return refuse(
+        "bad_date",
+        "a credit note is refunded from Stripe clearing, on or after its date",
+      );
+    }
   }
   const plan = planRefund(input.buckets, input.request);
   if (!plan.ok) return refuse("refund_refused", plan.refusal.message);
@@ -609,6 +634,9 @@ export function buildCreditNoteFor(
     issuedOn: input.issuedOn,
     lines,
     totals: totalsOf(lines),
+    ...(input.refund
+      ? { refund: { account: input.refund.account, refundedOn: input.refund.refundedOn } }
+      : {}),
   });
 }
 

@@ -8,6 +8,7 @@ import {
 } from "@auction/staff-ui";
 import {
   ACCOUNTING_CONTACT_ORDER_TEXT,
+  ACCOUNTING_CREDIT_NOTE_ORDER_TEXT,
   ACCOUNTING_DOCUMENT_TYPE_LABELS,
   ACCOUNTING_LOCKED_PERIOD_TEXT,
   ACCOUNTING_PARKED_STATUS,
@@ -22,6 +23,7 @@ import {
   type AccountingQueueTab,
   type AccountingReleaseOutcome,
   type AccountingTryAgainOutcome,
+  type AccountingUnattributedRefund,
   isAccountingOrganisation,
   isAccountingQueueTab,
 } from "@auction/types";
@@ -201,7 +203,7 @@ export type AccountingStaffRow = {
 const ORDER_NOTE: Partial<Record<AccountingQueueRow["documentType"], string>> = {
   payment: ACCOUNTING_PAYMENT_ORDER_TEXT,
   invoice: ACCOUNTING_CONTACT_ORDER_TEXT,
-  credit_note: ACCOUNTING_CONTACT_ORDER_TEXT,
+  credit_note: ACCOUNTING_CREDIT_NOTE_ORDER_TEXT,
 };
 
 export function toAccountingStaffRows(rows: readonly AccountingQueueRow[]): AccountingStaffRow[] {
@@ -271,6 +273,24 @@ export function toPartFundedRows(
     buyer: t.buyer,
     received: `${formatStaffMoney(t.receivedPence, "GBP")} of ${formatStaffMoney(t.totalPence, "GBP")} received`,
     since: t.since,
+  }));
+}
+
+/** One "Pay several" group's refunds waiting to be assigned, as the panel lists it. */
+export type AccountingUnattributedRow = {
+  paymentGroupId: string;
+  buyer: string;
+  /** "£12.34 not matched". */
+  amount: string;
+};
+
+export function toUnattributedRows(
+  refunds: readonly AccountingUnattributedRefund[],
+): AccountingUnattributedRow[] {
+  return refunds.map((r) => ({
+    paymentGroupId: r.paymentGroupId,
+    buyer: r.buyerName,
+    amount: `${formatStaffMoney(r.amountPence, "GBP")} not matched`,
   }));
 }
 

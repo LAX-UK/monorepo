@@ -3,6 +3,7 @@
 import {
   type AccountingPartFundedRow,
   type AccountingStaffRow,
+  type AccountingUnattributedRow,
   rowMetaParts,
   waitingForLine,
 } from "@/lib/admin/finance/accounting-queue.vm";
@@ -12,6 +13,9 @@ import {
   ACCOUNTING_NO_REASON_TEXT,
   ACCOUNTING_PART_FUNDED_TEXT,
   ACCOUNTING_PART_FUNDED_TITLE,
+  ACCOUNTING_UNATTRIBUTED_REFUNDS_ACTION,
+  ACCOUNTING_UNATTRIBUTED_REFUNDS_TEXT,
+  ACCOUNTING_UNATTRIBUTED_REFUNDS_TITLE,
 } from "@auction/types";
 
 /** The Accounting list's row cells, row menu and the part-received panel. */
@@ -156,6 +160,31 @@ export function PartFundedNotice({ transfers }: { transfers: AccountingPartFunde
                   · last <RelativeTime value={t.since} />
                 </>
               ) : null}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </Notice>
+  );
+}
+
+/**
+ * "Pay several" refunds that named no invoice or courier quote (or the part above what one was
+ * charged). Nothing goes to Books for them until a person assigns each to what it was for; then
+ * its credit note follows like any other refund's. Listed under the "Assign refund" wording.
+ */
+export function UnattributedRefundsNotice({ refunds }: { refunds: AccountingUnattributedRow[] }) {
+  return (
+    <Notice tone="warning" title={`${ACCOUNTING_UNATTRIBUTED_REFUNDS_TITLE} (${refunds.length})`}>
+      <p>{ACCOUNTING_UNATTRIBUTED_REFUNDS_TEXT}</p>
+      <ul className="mt-2 flex flex-col gap-1.5" aria-label={ACCOUNTING_UNATTRIBUTED_REFUNDS_TITLE}>
+        {refunds.map((r) => (
+          <li key={r.paymentGroupId} className="flex flex-wrap gap-x-2 break-words">
+            <span className="font-medium text-staff-fg">
+              {ACCOUNTING_UNATTRIBUTED_REFUNDS_ACTION}
+            </span>
+            <span className="text-staff-muted [overflow-wrap:anywhere]">
+              Pay several · {r.buyer} · {r.amount}
             </span>
           </li>
         ))}
