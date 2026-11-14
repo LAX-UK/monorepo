@@ -9,7 +9,7 @@ import {
   StaffDate,
   StatusBadge,
 } from "@auction/staff-ui";
-import { ACCOUNTING_NO_REASON_TEXT } from "@auction/types";
+import { ACCOUNTING_NO_REASON_TEXT, ACCOUNTING_QUEUED_TITLE } from "@auction/types";
 
 /** Everything about one document, opened from a row: the full problem, dates and the action. */
 export function AccountingDetailsSheet({
@@ -25,10 +25,12 @@ export function AccountingDetailsSheet({
   onTryAgain: (row: AccountingStaffRow) => void;
   onRelease: (row: AccountingStaffRow) => void;
 }) {
+  // Nothing was asked of Books yet for a document queued and never tried: no "Last problem".
   const problem =
-    row && row.books.kind !== "none" && row.state.label === "In Books"
+    !row || row.untried || (row.books.kind !== "none" && row.state.label === "In Books")
       ? null
-      : (row?.problem ?? (row ? ACCOUNTING_NO_REASON_TEXT : null));
+      : (row.problem ?? ACCOUNTING_NO_REASON_TEXT);
+  const queuedNote = row?.untried && !row.problem ? row.note : null;
   return (
     <DetailPanel
       open={row !== null}
@@ -68,6 +70,11 @@ export function AccountingDetailsSheet({
     >
       {row ? (
         <div className="flex flex-col gap-4">
+          {queuedNote ? (
+            <Notice tone="info" title={ACCOUNTING_QUEUED_TITLE}>
+              {queuedNote}
+            </Notice>
+          ) : null}
           {problem ? (
             <Notice
               tone={row.state.tone === "danger" ? "danger" : row.parked ? "warning" : "info"}
@@ -114,7 +121,9 @@ export function AccountingDetailsSheet({
                   numeric: true,
                 }))}
               />
-              {row.note ? <p className="text-staff-sm text-staff-muted">{row.note}</p> : null}
+              {row.note && !queuedNote ? (
+                <p className="text-staff-sm text-staff-muted">{row.note}</p>
+              ) : null}
             </section>
           ) : null}
         </div>

@@ -383,7 +383,7 @@ describe("AccountingQueueService.list: payments", () => {
       parked: "vat_on_delivery",
       state: "needs_review",
       problem:
-        "Waiting for the accountant: VAT on delivery. This stays out of Books until they confirm how delivery is booked.",
+        "VAT on delivery. This stays out of Books until the accountant confirms how delivery is booked. Then press Release.",
       problemCode: "accounting_parked_vat_on_delivery",
       appliedTo: [
         { reference: "LAX-BID-INV-dlv-q1", amountPence: 4_501 },

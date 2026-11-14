@@ -207,9 +207,9 @@ export const ACCOUNTING_RELEASE_CHANGED_TEXT =
   "This no longer matches what Bid holds for it. Ask engineering to look at it before it is released.";
 
 const ACCOUNTING_PARKED_TEXT_VAT =
-  "Waiting for the accountant: VAT on delivery. This stays out of Books until they confirm how delivery is booked.";
+  "VAT on delivery. This stays out of Books until the accountant confirms how delivery is booked. Then press Release.";
 const ACCOUNTING_PARKED_TEXT_CANCELLED =
-  "The invoice this pays was cancelled after it was paid. Refund the buyer or reinstate the invoice; this is not sent to Books.";
+  "The invoice this pays was cancelled after it was paid, so this is not sent to Books. Refund the buyer, or reinstate the invoice in Bid and press Release.";
 
 const KIND_NAME: Readonly<Record<string, string>> = {
   auth: "Books would not accept our sign-in",
@@ -275,6 +275,12 @@ export const ACCOUNTING_PARKED_STATUS: Readonly<Record<AccountingParkReason, str
 
 /** Said of every payment in the details: the order the sender keeps. */
 export const ACCOUNTING_PAYMENT_ORDER_TEXT = "Sent once each invoice it pays is in Books.";
+
+/** Said of a queued invoice or credit note in the details: it follows its contact. */
+export const ACCOUNTING_CONTACT_ORDER_TEXT = "Sent once its contact is in Books.";
+
+/** The details' title over the order note for a document queued and not tried yet. */
+export const ACCOUNTING_QUEUED_TITLE = "Not sent yet";
 
 /** The part-funded bank transfers panel. */
 export const ACCOUNTING_PART_FUNDED_TITLE = "Bank transfers part received";

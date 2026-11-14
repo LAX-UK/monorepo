@@ -108,8 +108,13 @@ describe("Accounting page: payments", () => {
     expect(accountingProblemText("accounting_parked_vat_on_delivery")).toBe(
       ACCOUNTING_PARKED_TEXT.vat_on_delivery,
     );
-    expect(ACCOUNTING_PARKED_TEXT.vat_on_delivery).toMatch(
-      /^Waiting for the accountant: VAT on delivery\./,
+    // The status already says "Waiting for the accountant"; the text does not repeat it.
+    expect(ACCOUNTING_PARKED_TEXT.vat_on_delivery).toMatch(/^VAT on delivery\./);
+    expect(ACCOUNTING_PARKED_TEXT.vat_on_delivery).not.toMatch(/Waiting for the accountant/);
+    // Both name the recovery the page offers: Release.
+    expect(ACCOUNTING_PARKED_TEXT.vat_on_delivery).toMatch(/press Release\.$/);
+    expect(ACCOUNTING_PARKED_TEXT.invoice_cancelled).toMatch(
+      /Refund the buyer, or reinstate the invoice in Bid and press Release\.$/,
     );
     expect(accountingProblemText("accounting_parked_invoice_cancelled")).toBe(
       ACCOUNTING_PARKED_TEXT.invoice_cancelled,

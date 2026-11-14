@@ -7,6 +7,7 @@ import {
   formatStaffMoney,
 } from "@auction/staff-ui";
 import {
+  ACCOUNTING_CONTACT_ORDER_TEXT,
   ACCOUNTING_DOCUMENT_TYPE_LABELS,
   ACCOUNTING_LOCKED_PERIOD_TEXT,
   ACCOUNTING_PARKED_STATUS,
@@ -190,8 +191,17 @@ export type AccountingStaffRow = {
    * so a waiting payment names the invoice holding it; empty otherwise.
    */
   waitingFor: { reference: string; state: string }[];
-  /** For a payment: the order it is sent in. */
+  /** The order it is sent in: a payment after its invoices, an invoice after its contact. */
   note: string | null;
+  /** Queued and never tried: nothing has been asked of Books yet, so there is no problem to show. */
+  untried: boolean;
+};
+
+/** What each kind of document waits for before it is sent (`documentsAwaited` in the domain). */
+const ORDER_NOTE: Partial<Record<AccountingQueueRow["documentType"], string>> = {
+  payment: ACCOUNTING_PAYMENT_ORDER_TEXT,
+  invoice: ACCOUNTING_CONTACT_ORDER_TEXT,
+  credit_note: ACCOUNTING_CONTACT_ORDER_TEXT,
 };
 
 export function toAccountingStaffRows(rows: readonly AccountingQueueRow[]): AccountingStaffRow[] {
@@ -224,10 +234,8 @@ export function toAccountingStaffRows(rows: readonly AccountingQueueRow[]): Acco
         reference: awaited.reference,
         state: awaited.state === null ? NOT_QUEUED_LABEL : STATE_PRESENTATION[awaited.state].label,
       })),
-      note:
-        row.documentType === "payment" && row.parked === null
-          ? ACCOUNTING_PAYMENT_ORDER_TEXT
-          : null,
+      note: row.parked === null ? (ORDER_NOTE[row.documentType] ?? null) : null,
+      untried: row.state === "pending" && row.attempts === 0,
     };
   });
 }

@@ -227,7 +227,7 @@ describe("Accounting rows for payments", () => {
         parked: "vat_on_delivery",
         canTryAgain: false,
         problem:
-          "Waiting for the accountant: VAT on delivery. This stays out of Books until they confirm how delivery is booked.",
+          "VAT on delivery. This stays out of Books until the accountant confirms how delivery is booked. Then press Release.",
       }),
     ]);
     expect(row?.state).toEqual({ label: "Waiting for the accountant", tone: "warning" });

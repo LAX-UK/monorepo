@@ -355,7 +355,7 @@ describe("AccountingQueueList: payments", () => {
           parked: "vat_on_delivery",
           canTryAgain: false,
           problem:
-            "Waiting for the accountant: VAT on delivery. This stays out of Books until they confirm how delivery is booked.",
+            "VAT on delivery. This stays out of Books until the accountant confirms how delivery is booked. Then press Release.",
         }),
       ]),
     });
@@ -453,5 +453,55 @@ describe("AccountingQueueList: payments", () => {
     const waiting = within(sheet).getByRole("region", { name: "Waiting for" });
     expect(within(waiting).getByText("LAX-BID-INV-01hx3")).toBeTruthy();
     expect(within(waiting).getByText("Failed")).toBeTruthy();
+  });
+
+  it("does not say Books gave no reason for a payment never tried; it says when it will be sent", async () => {
+    renderList({
+      tab: "waiting",
+      rows: toAccountingStaffRows([
+        accountingRow({
+          id: "doc-q",
+          reference: "LAX-BID-PAY-grp-0b6a7c1e",
+          documentType: "payment",
+          state: "pending",
+          attempts: 0,
+          problem: null,
+          problemCode: null,
+          canTryAgain: false,
+          appliedTo: [{ reference: "LAX-BID-INV-01hx3", amountPence: 15_000 }],
+        }),
+      ]),
+    });
+    fireEvent.click(screen.getAllByText("LAX-BID-PAY-grp-0b6a7c1e")[0] as HTMLElement);
+    const sheet = await screen.findByRole("dialog");
+    expect(within(sheet).queryByText("Last problem")).toBeNull();
+    expect(within(sheet).queryByText("Books gave no reason.")).toBeNull();
+    expect(within(sheet).getByText("Not sent yet")).toBeTruthy();
+    expect(within(sheet).getAllByText("Sent once each invoice it pays is in Books.")).toHaveLength(
+      1,
+    );
+  });
+
+  it("titles a parked notice once: the body does not repeat 'Waiting for the accountant'", async () => {
+    renderList({
+      tab: "needs_person",
+      rows: toAccountingStaffRows([
+        accountingRow({
+          id: "doc-v",
+          reference: "LAX-BID-INV-dlv-0b6a7c1e",
+          state: "needs_review",
+          parked: "vat_on_delivery",
+          attempts: 0,
+          canTryAgain: false,
+          problem:
+            "VAT on delivery. This stays out of Books until the accountant confirms how delivery is booked. Then press Release.",
+        }),
+      ]),
+    });
+    fireEvent.click(screen.getAllByText("LAX-BID-INV-dlv-0b6a7c1e")[0] as HTMLElement);
+    const sheet = await screen.findByRole("dialog");
+    expect(within(sheet).getAllByText("Waiting for the accountant").length).toBeGreaterThan(0);
+    expect(within(sheet).getByText(/^VAT on delivery\. This stays out of Books/)).toBeTruthy();
+    expect(within(sheet).queryByText(/Waiting for the accountant: VAT/)).toBeNull();
   });
 });
