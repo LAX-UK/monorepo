@@ -1,9 +1,11 @@
 import type {
   AccountingDocument,
+  BidDeliveryRefundFacts,
   BidInvoiceFacts,
   BidPaymentFacts,
   BidPaymentGroupFacts,
   BidRefundsFacts,
+  CreditNote,
   DocumentKind,
   DocumentRecord,
   DocumentTarget,
@@ -54,7 +56,17 @@ export interface StoredAccountingDocument {
 }
 
 export type StoredDocumentCode = "bad_stored_document";
-export type RegisterCode = "bad_document" | "reference_in_use";
+export type RegisterCode =
+  | "bad_document"
+  | "reference_in_use"
+  /**
+   * A credit note that, with the credit notes already registered for its invoice in the same books
+   * (any state but cancelled), would credit more than the invoice charged. Checked under a lock per
+   * invoice and target, so concurrent registrations cannot pass it together.
+   */
+  | "credit_exceeds_invoice"
+  /** A credit note whose invoice is not registered (or only cancelled) in the same books. */
+  | "credit_without_invoice";
 export type TransitionCode =
   | LifecycleCode
   | "not_found"
@@ -70,6 +82,8 @@ export type TransitionCode =
 export type ReleaseBasis =
   | { readonly kind: "bid_payment"; readonly paymentId: string }
   | { readonly kind: "bid_payment_group"; readonly groupId: string }
+  /** A Bid invoice and its frozen lines (a buyer default's credit note is decided on these). */
+  | { readonly kind: "bid_invoice"; readonly invoiceId: string }
   | { readonly kind: "shop_order"; readonly orderId: string };
 
 /**
@@ -116,6 +130,18 @@ export interface IAccountingDocumentLookup {
     reference: string,
     target?: DocumentTarget | null,
   ): Promise<Result<StoredAccountingDocument | null, StoredDocumentCode>>;
+}
+
+/**
+ * The credit notes registered for one invoice in one books (provider and mode; null for none),
+ * every state but cancelled, oldest first: what a new credit note for it must be built after.
+ */
+export interface IAccountingCreditNotes {
+  creditNotesFor(
+    product: Product,
+    invoiceReference: string,
+    target: DocumentTarget | null,
+  ): Promise<Result<readonly CreditNote[], StoredDocumentCode>>;
 }
 
 /**
@@ -273,7 +299,34 @@ export type FactsRead<T> =
 export interface IBidAccountingFactsReader {
   invoiceRaised(invoiceId: string): Promise<FactsRead<BidInvoiceFacts>>;
   paymentCaptured(paymentId: string, capturedAt: Date): Promise<FactsRead<BidPaymentFacts>>;
+  /**
+   * Every refund that went through on one payment (its own invoice's, or one lot's of a "Pay
+   * several" charge), oldest first, with what that payment took. A refund counted and later taken
+   * back by a `refund_reversal` row is left out with it; a reversal that names no refund of the
+   * payment skips with `refund_reversal_unmatched`.
+   */
   paymentRefunded(paymentId: string): Promise<FactsRead<BidRefundsFacts>>;
+  /**
+   * A courier quote of a settled "Pay several" group, with its refunded running total. The credit
+   * notes already made for it are not read here (`priorCredits` is empty): the caller adds them
+   * from the books it projects into.
+   */
+  deliveryRefunded(
+    groupId: string,
+    quoteId: string,
+    refundedAt: Date,
+  ): Promise<FactsRead<BidDeliveryRefundFacts>>;
+  /**
+   * The invoice a payment was for, once a buyer default voided it: its stored lines (kept when
+   * voided) and the London day it was voided. Skips when the invoice stands (not voided).
+   */
+  defaultedInvoice(
+    paymentId: string,
+  ): Promise<FactsRead<{ readonly invoice: BidInvoiceFacts; readonly defaultedOn: string }>>;
+  /** `defaultedInvoice`, by the invoice's own id (a parked default credit note is rebuilt from it). */
+  voidedInvoice(
+    invoiceId: string,
+  ): Promise<FactsRead<{ readonly invoice: BidInvoiceFacts; readonly defaultedOn: string }>>;
   /** A settled "Pay several" group: its stored total, members and courier quotes. */
   paymentGroupSettled(groupId: string): Promise<FactsRead<BidPaymentGroupFacts>>;
   /** The "Pay several" group a courier quote was charged in; null when it was not. */
@@ -371,6 +424,20 @@ export interface PartFundedTransfer {
 }
 
 /** Bank transfers part received, oldest first, for the Accounting page (read only). */
+/** A "Pay several" group's refunds that no invoice or courier quote could take. */
+export interface UnattributedRefund {
+  readonly paymentGroupId: string;
+  /** The group's unattributed running total, in pence. */
+  readonly amountPence: number;
+  readonly buyer: string;
+  readonly settledAt: Date | null;
+}
+
+/** Refunds waiting for a person to assign them, oldest group first (the Accounting page). */
+export interface IUnattributedRefundsReader {
+  list(limit: number): Promise<readonly UnattributedRefund[]>;
+}
+
 export interface IPartFundedTransfersReader {
   list(limit: number): Promise<readonly PartFundedTransfer[]>;
 }
@@ -569,6 +636,51 @@ export interface IAccountingRemainders {
   settleExclusively(
     invoiceDocumentId: string,
     step: () => Promise<RemainderRecord | null>,
+  ): Promise<boolean>;
+}
+
+/** An issued credit note that gives money back, still to be refunded in the books. */
+export interface CreditNoteRefundDue {
+  readonly creditNote: StoredAccountingDocument;
+}
+
+export interface CreditNoteRefundDueList {
+  readonly due: readonly CreditNoteRefundDue[];
+  /** Ids of credit notes that could not be read; the others are still listed. */
+  readonly unreadable: readonly string[];
+}
+
+/** How refunding a credit note ended, as recorded in its history (`refund_credit_note`). */
+export interface CreditNoteRefundRecord {
+  readonly outcome: "refunded" | "already_refunded" | "rejected";
+  readonly amountPence: number;
+  readonly account: "stripe_clearing";
+  /** A dry run's rehearsal: nothing was refunded in any books. */
+  readonly rehearsal: boolean;
+  /** Why it was refused (an adapter or domain code); only for `rejected`. */
+  readonly reason?: string;
+}
+
+/**
+ * The follow-up step after a credit note for a refund is issued: its gross is refunded from the
+ * Stripe clearing account, once. Settled in the credit note's history (`refund_credit_note`),
+ * which is append-only, so a settled credit note never comes back.
+ */
+export interface IAccountingCreditNoteRefunds {
+  /**
+   * Issued credit notes aimed at one of `modes` that give money back (`payload.refund`) with no
+   * `refund_credit_note` in their history, least recently touched first.
+   */
+  listDue(modes: readonly TargetMode[], limit: number): Promise<CreditNoteRefundDueList>;
+  /**
+   * Runs `step` while holding the credit note (no other worker can run it for the same one), and
+   * records what it returns in its history in the same transaction. Nothing is recorded when
+   * `step` returns null (try again next run). False when another worker holds it now, or it was
+   * settled already; the step is then not run.
+   */
+  settleExclusively(
+    creditNoteDocumentId: string,
+    step: () => Promise<CreditNoteRefundRecord | null>,
   ): Promise<boolean>;
 }
 

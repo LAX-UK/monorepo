@@ -130,6 +130,22 @@ export function readDocumentPayload(
   if (kind === "credit_note" && value.amountsAre !== "tax_inclusive") {
     return bad("a credit note's amounts are tax-inclusive");
   }
+  // Money given back with a credit note comes from Stripe clearing, on or after its date.
+  if (kind === "credit_note" && value.refund !== undefined) {
+    const refund = value.refund;
+    if (
+      !isRecord(refund) ||
+      refund.account !== "stripe_clearing" ||
+      typeof refund.refundedOn !== "string" ||
+      !isValidIsoDate(refund.refundedOn) ||
+      refund.refundedOn < (value.issuedOn as string) ||
+      Object.keys(refund).length !== 2
+    ) {
+      return bad("a credit note's refund is from Stripe clearing, on or after its date");
+    }
+  }
+  if (kind !== "credit_note" && value.refund !== undefined)
+    return bad("only a credit note is refunded");
   // A credit note is always VAT-inclusive; an invoice is when LAX numbered it at inclusive prices
   // (Shop), and then it must carry LAX's number. Nothing else may claim either.
   const inclusiveInvoice = kind === "invoice" && value.amountsAre === "tax_inclusive";

@@ -8,6 +8,7 @@ import {
 import {
   invoiceRaisedPayloadSchemaV1,
   paymentCapturedPayloadSchemaV1,
+  paymentGroupDeliveryRefundedPayloadSchemaV1,
   paymentGroupSettledPayloadSchemaV1,
   paymentRefundedPayloadSchemaV1,
   payoutPaidPayloadSchemaV1,
@@ -453,7 +454,11 @@ const REGISTRY_OVERRIDES: Partial<Record<LiveDomainEventType, RegistryOverride>>
     consumers: ["notification_fanout"],
     piiClassification: "none",
   },
-  "payment.cancelled": { consumers: ["notification_fanout"] },
+  /**
+   * A payment cancelled (by the buyer, by expiry, or by a buyer default). The books read only a
+   * buyer default's (`reason: "buyer_default"`): the invoice it voids is cancelled or credited.
+   */
+  "payment.cancelled": { consumers: ["notification_fanout", "accounting"] },
   "legal_entity.bidding_limit_changed": {
     consumers: ["notification_fanout"],
     piiClassification: "none",
@@ -638,6 +643,16 @@ const REGISTRY_OVERRIDES: Partial<Record<LiveDomainEventType, RegistryOverride>>
    */
   "payment_group.settled": {
     schema: paymentGroupSettledPayloadSchemaV1,
+    producers: ["apps/api"],
+    consumers: ["accounting"],
+    piiClassification: "none",
+  },
+  /**
+   * A courier quote's refunded running total rose ("Pay several"); written under the group lock in
+   * the refund's transaction. The books credit the delivery invoice up to the stored total.
+   */
+  "payment_group.delivery_refunded": {
+    schema: paymentGroupDeliveryRefundedPayloadSchemaV1,
     producers: ["apps/api"],
     consumers: ["accounting"],
     piiClassification: "none",

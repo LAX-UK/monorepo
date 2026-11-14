@@ -1,4 +1,5 @@
 import type { IProjectorCursorStart } from "../../repositories/drizzle-projector-cursor-start.js";
+import type { AccountingCreditNoteRefund } from "./accounting-credit-note-refund.service.js";
 import type { AccountingInvoiceCopy } from "./accounting-invoice-copy.service.js";
 import type { AccountingProjection } from "./accounting-projection.service.js";
 import type { AccountingRemainder } from "./accounting-remainder.service.js";
@@ -13,6 +14,8 @@ export interface AccountingRuntime {
   readonly invoiceCopy: AccountingInvoiceCopy;
   /** Applies a Shop order payment's unapplied rest to its delivery invoice once that is issued. */
   readonly remainder: AccountingRemainder;
+  /** Refunds a refund's credit note from Stripe clearing once it is issued. */
+  readonly creditNoteRefund: AccountingCreditNoteRefund;
   readonly cursorStart: IProjectorCursorStart;
   /** Checks the queue for work waiting too long; run by the accounting-watch cron. */
   readonly watch: AccountingWatch;

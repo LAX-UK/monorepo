@@ -2626,6 +2626,13 @@
       "when": 1811246400000,
       "tag": "0383_shop_invoices_books",
       "breakpoints": true
+    },
+    {
+      "idx": 376,
+      "version": "7",
+      "when": 1811332800000,
+      "tag": "0384_accounting_credit_note_refunds",
+      "breakpoints": true
     }
   ]
 }

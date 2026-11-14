@@ -1,5 +1,7 @@
 import { isDeepStrictEqual } from "node:util";
 import {
+  type CreditNote,
+  type DocumentTarget,
   type Result,
   documentTarget,
   legalEntityFor,
@@ -13,7 +15,7 @@ import {
   accountingDocumentEvent,
   accountingSourceSetting,
 } from "@auction/db/schema";
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, ne, sql } from "drizzle-orm";
 import type {
   AccountingClock,
   IAccountingDocumentRegistry,
@@ -69,6 +71,10 @@ export class DrizzleAccountingDocumentRegistry implements IAccountingDocumentReg
       const target = setting
         ? documentTarget({ xero: setting.xeroMode, books: setting.booksMode })
         : null;
+      if (document.kind === "credit_note") {
+        const fits = await creditFitsInvoice(tx, document, target);
+        if (!fits.ok) return fits;
+      }
       const [inserted] = await tx
         .insert(accountingDocument)
         .values({
@@ -134,4 +140,66 @@ export class DrizzleAccountingDocumentRegistry implements IAccountingDocumentReg
         : refuse("bad_document", stored.refusal.message);
     });
   }
+}
+
+type Tx = Parameters<Parameters<Database["transaction"]>[0]>[0];
+
+/**
+ * Never more credit than the invoice charged, whoever registers at the same time. The invoice's
+ * credit notes in the same books are serialised by a transaction lock on (invoice, target), so
+ * two registrations can never both read the old total; the new credit note must fit in the
+ * invoice's gross less every other credit note registered for it there (any state but cancelled:
+ * a failed one may still be tried again). The invoice must be registered there, and not only
+ * cancelled. A replay of this credit note is not counted against itself.
+ */
+async function creditFitsInvoice(
+  tx: Tx,
+  note: CreditNote,
+  target: DocumentTarget | null,
+): Promise<Result<true, RegisterCode>> {
+  const entity = legalEntityFor(note.product);
+  const sameBooks = and(
+    eq(accountingDocument.product, note.product),
+    eq(accountingDocument.legalEntity, entity),
+    sql`${accountingDocument.targetProvider} is not distinct from ${target?.provider ?? null}`,
+    sql`${accountingDocument.targetMode} is not distinct from ${target?.mode ?? null}`,
+  );
+  const lockKey = `accounting_credit:${note.product}:${entity}:${note.invoiceReference}:${target?.provider ?? "-"}:${target?.mode ?? "-"}`;
+  await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${lockKey}, 0))`);
+  const [invoice] = await tx
+    .select({ grossPence: accountingDocument.grossPence })
+    .from(accountingDocument)
+    .where(
+      and(
+        sameBooks,
+        eq(accountingDocument.kind, "invoice"),
+        eq(accountingDocument.laxReference, note.invoiceReference),
+        ne(accountingDocument.state, "cancelled"),
+      ),
+    );
+  if (!invoice) {
+    return refuse("credit_without_invoice", "the invoice it credits is not in these books");
+  }
+  const [credited] = await tx
+    .select({
+      pence: sql<string>`coalesce(sum(${accountingDocument.grossPence}), 0)::bigint`,
+    })
+    .from(accountingDocument)
+    .where(
+      and(
+        sameBooks,
+        eq(accountingDocument.kind, "credit_note"),
+        sql`${accountingDocument.payload} ->> 'invoiceReference' = ${note.invoiceReference}`,
+        ne(accountingDocument.laxReference, note.reference),
+        ne(accountingDocument.state, "cancelled"),
+      ),
+    );
+  const already = Number(credited?.pence ?? 0);
+  if (already + note.totals.grossPence > invoice.grossPence) {
+    return refuse(
+      "credit_exceeds_invoice",
+      `${already}p already credited; ${note.totals.grossPence}p more exceeds the invoice's ${invoice.grossPence}p`,
+    );
+  }
+  return ok(true);
 }

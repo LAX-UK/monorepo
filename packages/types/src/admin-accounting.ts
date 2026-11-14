@@ -75,6 +75,8 @@ export const ACCOUNTING_PARK_REASONS = [
   "vat_on_delivery",
   "invoice_cancelled",
   "vat_on_outside_uk_delivery",
+  "buyer_default_treatment",
+  "credited_invoice_cancelled",
 ] as const;
 export type AccountingParkReason = (typeof ACCOUNTING_PARK_REASONS)[number];
 
@@ -168,6 +170,8 @@ export type AccountingQueuePage = {
   canAct: boolean;
   /** Bank transfers that have only partly arrived (Bid), oldest first; no Books document yet. */
   partFundedTransfers: AccountingPartFundedTransfer[];
+  /** "Pay several" refunds no invoice or courier quote could take (Bid): need a person to assign. */
+  unattributedRefunds: AccountingUnattributedRefund[];
 };
 
 export type AccountingTryAgainOutcome = "requeued" | "already_queued";
@@ -202,7 +206,18 @@ export const ACCOUNTING_RELEASE_UNRESOLVED_TEXT: Readonly<Record<AccountingParkR
     "The invoice this pays is still cancelled. Reinstate it in Bid first, or refund the buyer.",
   vat_on_outside_uk_delivery:
     "The accountant has not yet confirmed how outside-UK delivery is booked, so this stays out of Books.",
+  buyer_default_treatment:
+    "The accountant has not yet confirmed whether a defaulted invoice is credited or voided, so this stays out of Books.",
+  credited_invoice_cancelled:
+    "The invoice this credits was cancelled in Accounting, so it cannot be sent to Books.",
 };
+
+/**
+ * Said when the accountant chose to void a defaulted invoice: voiding in Books is not built, so
+ * the credit note stays parked.
+ */
+export const ACCOUNTING_RELEASE_DEFAULT_VOID_TEXT =
+  "The accountant chose to void defaulted invoices, and voiding in Books is not built yet. Ask engineering; this stays out of Books.";
 
 /** A payment applied to an invoice that was cancelled in Accounting cannot be sent. */
 export const ACCOUNTING_RELEASE_INVOICE_CANCELLED_TEXT =
@@ -219,6 +234,12 @@ const ACCOUNTING_PARKED_TEXT_CANCELLED =
 
 const ACCOUNTING_PARKED_TEXT_OUTSIDE_UK =
   "Waiting for the accountant: VAT on outside-UK delivery. This stays out of Books until they confirm how it is booked. Then press Release.";
+
+const ACCOUNTING_PARKED_TEXT_DEFAULT =
+  "Waiting for the accountant: an issued invoice cancelled after a buyer default. This full credit note stays out of Books until they confirm a credit note, not a void. Then press Release.";
+
+const ACCOUNTING_PARKED_TEXT_CREDITED_CANCELLED =
+  "The invoice this credits was cancelled in Accounting, so this is not sent to Books. Cancel it, or ask engineering.";
 
 const KIND_NAME: Readonly<Record<string, string>> = {
   auth: "Books would not accept our sign-in",
@@ -269,6 +290,8 @@ const CODE_TEXT: Readonly<Record<string, string>> = {
   accounting_parked_vat_on_delivery: ACCOUNTING_PARKED_TEXT_VAT,
   accounting_parked_invoice_cancelled: ACCOUNTING_PARKED_TEXT_CANCELLED,
   accounting_parked_vat_on_outside_uk_delivery: ACCOUNTING_PARKED_TEXT_OUTSIDE_UK,
+  accounting_parked_buyer_default_treatment: ACCOUNTING_PARKED_TEXT_DEFAULT,
+  accounting_parked_credited_invoice_cancelled: ACCOUNTING_PARKED_TEXT_CREDITED_CANCELLED,
 };
 
 /** What a person is told about a parked document, by why it is parked. */
@@ -276,6 +299,8 @@ export const ACCOUNTING_PARKED_TEXT: Readonly<Record<AccountingParkReason, strin
   vat_on_delivery: ACCOUNTING_PARKED_TEXT_VAT,
   invoice_cancelled: ACCOUNTING_PARKED_TEXT_CANCELLED,
   vat_on_outside_uk_delivery: ACCOUNTING_PARKED_TEXT_OUTSIDE_UK,
+  buyer_default_treatment: ACCOUNTING_PARKED_TEXT_DEFAULT,
+  credited_invoice_cancelled: ACCOUNTING_PARKED_TEXT_CREDITED_CANCELLED,
 };
 
 /** The status a parked document shows instead of "Needs a person". */
@@ -283,6 +308,8 @@ export const ACCOUNTING_PARKED_STATUS: Readonly<Record<AccountingParkReason, str
   vat_on_delivery: "Waiting for the accountant",
   invoice_cancelled: "Needs a person",
   vat_on_outside_uk_delivery: "Waiting for the accountant",
+  buyer_default_treatment: "Waiting for the accountant",
+  credited_invoice_cancelled: "Needs a person",
 };
 
 /** Said of every payment in the details: the order the sender keeps. */
@@ -290,6 +317,31 @@ export const ACCOUNTING_PAYMENT_ORDER_TEXT = "Sent once each invoice it pays is 
 
 /** Said of a queued invoice or credit note in the details: it follows its contact. */
 export const ACCOUNTING_CONTACT_ORDER_TEXT = "Sent once its contact is in Books.";
+
+/** Said of a queued credit note in the details: it follows its contact and the invoice it credits. */
+export const ACCOUNTING_CREDIT_NOTE_ORDER_TEXT =
+  "Sent once its contact and the invoice it credits are in Books.";
+
+/**
+ * Refunds on a "Pay several" charge that name no invoice or courier quote (or the part above what
+ * one was charged): nothing goes to Books until a person assigns them. Listed on the Accounting
+ * page under the existing "Assign refund" wording.
+ */
+export const ACCOUNTING_UNATTRIBUTED_REFUNDS_TITLE = "Refunds not matched to an invoice";
+export const ACCOUNTING_UNATTRIBUTED_REFUNDS_ACTION = "Assign refund";
+export const ACCOUNTING_UNATTRIBUTED_REFUNDS_TEXT =
+  "Nothing goes to Books until the refund is assigned to the invoice or courier quote it was for. Once it is, its credit note follows.";
+
+/** One "Pay several" group holding refunds no invoice or courier quote could take. */
+export type AccountingUnattributedRefund = {
+  paymentGroupId: string;
+  /** What the group holds unassigned, in pence (its running total). */
+  amountPence: number;
+  /** The buyer account, as staff know it. */
+  buyerName: string;
+  /** When the group was settled, ISO. */
+  settledAt: string | null;
+};
 
 /** The details' title over the order note for a document queued and not tried yet. */
 export const ACCOUNTING_QUEUED_TITLE = "Not sent yet";
@@ -314,6 +366,11 @@ export function accountingDocumentLabel(
   if (documentType === "invoice" && sourceId.startsWith("dlv-")) {
     return "Delivery · Pay several";
   }
+  if (documentType === "credit_note" && sourceId.startsWith("dlv-")) return "Refund · Pay several";
+  if (documentType === "credit_note" && sourceId.startsWith("dft-")) {
+    return "Credit note · Buyer default";
+  }
+  if (documentType === "credit_note" && product === "bid") return "Refund · Bid";
   return `${ACCOUNTING_DOCUMENT_TYPE_LABELS[documentType]} · ${ACCOUNTING_PRODUCT_LABELS[product]}`;
 }
 

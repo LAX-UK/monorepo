@@ -304,8 +304,9 @@ export const WORKER_ACCOUNTING_APPEND_ONLY_TABLES = ["accounting_document_event"
  * The worker reads which documents' history already holds an action, and when a document moved
  * to which state, column by column: the follow-up step that applies a Shop order payment's
  * unapplied rest to its outside-UK delivery invoice (migration 0383) is settled once, by an
- * `apply_remainder` row, and the watch alerts when one issued hours ago is still not settled.
- * Nothing else of history (no detail, nobody who asked).
+ * `apply_remainder` row, and the watch alerts when one issued hours ago is still not settled. A
+ * credit note for a refund is refunded from Stripe clearing once, settled by a `refund_credit_note`
+ * row (migration 0384), read the same way. Nothing else of history (no detail, nobody who asked).
  */
 export const WORKER_ACCOUNTING_HISTORY_READ_COLUMNS = [
   ["accounting_document_event", ["document_id", "action", "to_state", "occurred_at"]],

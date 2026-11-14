@@ -79,10 +79,16 @@ export class SimulatedBooks implements ZohoTransport {
     const body: Json | null = request.body ? (JSON.parse(request.body) as Json) : null;
     switch (request.method) {
       case "GET":
+        if (kind === "credit_note" && id && action === "refunds") {
+          return this.creditNoteRefunds(org, id);
+        }
         return id ? this.detail(org, kind, id) : this.list(org, kind, url.searchParams);
       case "POST":
         if (kind === "invoice" && id && action === "credits") {
           return this.applyCredits(org, id, body ?? {});
+        }
+        if (kind === "credit_note" && id && action === "refunds") {
+          return this.refundCreditNote(org, id, body ?? {});
         }
         return id ? failure(404, 1002) : this.create(org, kind, body ?? {}, url.searchParams);
       case "PUT":
@@ -231,6 +237,51 @@ export class SimulatedBooks implements ZohoTransport {
     }
     if (fault === "timeout_after_commit") throw new Error("ECONNRESET");
     return reply(201, { code: 0, message: "credits applied" });
+  }
+
+  /** The refunds recorded on a credit note (Books' `creditnote_refunds`). */
+  private creditNoteRefunds(org: ZohoOrgConfig, creditNoteId: string): TransportResponse {
+    const note = this.held(org, "credit_note").find((d) => d.id === creditNoteId);
+    if (!note) return failure(404, 1002, "does not exist");
+    return reply(200, {
+      code: 0,
+      message: "success",
+      creditnote_refunds: (note.record.refunds as Json[] | undefined) ?? [],
+    });
+  }
+
+  /**
+   * Books' refund of a credit note from an account: the credit note's balance falls by the amount;
+   * more than its balance is refused, and so is an account that is not a bank account.
+   */
+  private refundCreditNote(
+    org: ZohoOrgConfig,
+    creditNoteId: string,
+    body: Json,
+  ): TransportResponse {
+    const fault = this.faults.take();
+    if (fault === "rate_limited") return reply(429, { code: 45 });
+    const note = this.held(org, "credit_note").find((d) => d.id === creditNoteId);
+    if (!note) return failure(404, 1002, "does not exist");
+    if (body.from_account_id !== org.payments.depositAccountId) {
+      return failure(400, 1009, "account cannot be used for a refund");
+    }
+    const amount = pence(body.amount as number);
+    const refunds = (note.record.refunds as Json[] | undefined) ?? [];
+    const used = refunds.reduce((sum, r) => sum + pence(r.amount as number), 0);
+    if (!(amount > 0) || amount + used > pence(note.record.total as number)) {
+      return failure(400, 1005, "more than the credit note's balance");
+    }
+    refunds.push({
+      creditnote_refund_id: String(++this.counter),
+      amount: body.amount,
+      date: body.date,
+      reference_number: body.reference_number,
+      from_account_id: body.from_account_id,
+    });
+    note.record.refunds = refunds;
+    if (fault === "timeout_after_commit") throw new Error("ECONNRESET");
+    return reply(201, { code: 0, message: "refund recorded" });
   }
 
   private referenceOf(org: ZohoOrgConfig, body: Json): string | null {

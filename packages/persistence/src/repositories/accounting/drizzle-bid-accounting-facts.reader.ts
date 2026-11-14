@@ -1,5 +1,6 @@
 import type {
   BidBuyerFacts,
+  BidDeliveryRefundFacts,
   BidGroupDeliveryFacts,
   BidGroupMemberFacts,
   BidInvoiceFacts,
@@ -20,7 +21,7 @@ import {
   paymentGroupDelivery,
   paymentRefund,
 } from "@auction/db/schema";
-import { asc, eq, sql } from "drizzle-orm";
+import { and, asc, eq, sql } from "drizzle-orm";
 import type { AnyPgColumn } from "drizzle-orm/pg-core";
 import type { FactsRead, IBidAccountingFactsReader } from "../../interfaces/accounting.js";
 
@@ -72,7 +73,18 @@ export class DrizzleBidAccountingFactsReader implements IBidAccountingFactsReade
     if (row.voidedAt !== null) {
       return ready({ invoiceId: row.id.toLowerCase(), buyer, cancelled: true as const });
     }
-    const lines = await this.db
+    return ready({
+      invoiceId: row.id.toLowerCase(),
+      buyer,
+      raisedOn: londonDay(row.raisedAt),
+      dueOn: londonDay(row.dueAt),
+      lines: await this.linesOf(row.id),
+    });
+  }
+
+  /** An invoice's frozen lines, in their order. */
+  private linesOf(invoiceId: string) {
+    return this.db
       .select({
         id: bidInvoiceLine.id,
         kind: bidInvoiceLine.kind,
@@ -80,14 +92,95 @@ export class DrizzleBidAccountingFactsReader implements IBidAccountingFactsReade
         amountPence: bidInvoiceLine.amountPence,
       })
       .from(bidInvoiceLine)
-      .where(eq(bidInvoiceLine.invoiceId, row.id))
+      .where(eq(bidInvoiceLine.invoiceId, invoiceId))
       .orderBy(asc(bidInvoiceLine.position));
+  }
+
+  async defaultedInvoice(
+    paymentId: string,
+  ): Promise<FactsRead<{ readonly invoice: BidInvoiceFacts; readonly defaultedOn: string }>> {
+    const [paid] = await this.db
+      .select({ invoiceId: payment.invoiceId })
+      .from(payment)
+      .where(eq(payment.id, paymentId));
+    if (!paid) return skip("payment_not_found");
+    if (paid.invoiceId === null) return skip("payment_without_invoice");
+    return this.voidedInvoice(paid.invoiceId);
+  }
+
+  async voidedInvoice(
+    invoiceId: string,
+  ): Promise<FactsRead<{ readonly invoice: BidInvoiceFacts; readonly defaultedOn: string }>> {
+    const [row] = await this.db
+      .select({
+        id: bidInvoice.id,
+        raisedAt: bidInvoice.raisedAt,
+        dueAt: bidInvoice.dueAt,
+        voidedAt: bidInvoice.voidedAt,
+        buyerLegalEntityId: bidInvoice.buyerLegalEntityId,
+      })
+      .from(bidInvoice)
+      .where(eq(bidInvoice.id, invoiceId));
+    if (!row) return skip("invoice_not_found");
+    // Only a voided invoice is undone; one that stands (the default was reversed) is left alone.
+    if (row.voidedAt === null) return skip("invoice_not_voided");
+    const buyer = await this.buyer(row.buyerLegalEntityId);
+    if (!buyer) return skip("invoice_not_found");
     return ready({
-      invoiceId: row.id.toLowerCase(),
+      invoice: {
+        invoiceId: row.id.toLowerCase(),
+        buyer,
+        raisedOn: londonDay(row.raisedAt),
+        dueOn: londonDay(row.dueAt),
+        lines: await this.linesOf(row.id),
+      },
+      defaultedOn: londonDay(row.voidedAt),
+    });
+  }
+
+  async deliveryRefunded(
+    groupId: string,
+    quoteId: string,
+    refundedAt: Date,
+  ): Promise<FactsRead<BidDeliveryRefundFacts>> {
+    const [group] = await this.db
+      .select({
+        id: paymentGroup.id,
+        status: paymentGroup.status,
+        currency: paymentGroup.currency,
+        buyerLegalEntityId: paymentGroup.buyerLegalEntityId,
+        settledAt: paymentGroup.settledAt,
+      })
+      .from(paymentGroup)
+      .where(eq(paymentGroup.id, groupId));
+    if (!group) return skip("payment_group_not_found");
+    if (group.settledAt === null) return skip("payment_group_not_paid");
+    if (group.currency !== BID_PAYMENT_CURRENCY) return skip("refund_not_in_pounds");
+    const [delivery] = await this.db
+      .select({
+        quoteId: paymentGroupDelivery.deliveryQuoteId,
+        chargedPence: pence(paymentGroupDelivery.amount),
+        refundedPence: paymentGroupDelivery.refundedPence,
+      })
+      .from(paymentGroupDelivery)
+      .where(
+        and(
+          eq(paymentGroupDelivery.paymentGroupId, group.id),
+          eq(paymentGroupDelivery.deliveryQuoteId, quoteId),
+        ),
+      );
+    if (!delivery) return skip("delivery_not_in_group");
+    const buyer = await this.buyer(group.buyerLegalEntityId);
+    if (!buyer) return skip("payment_group_buyer_not_found");
+    return ready({
+      groupId: group.id.toLowerCase(),
       buyer,
-      raisedOn: londonDay(row.raisedAt),
-      dueOn: londonDay(row.dueAt),
-      lines,
+      quoteId: delivery.quoteId.toLowerCase(),
+      chargedPence: Number(delivery.chargedPence),
+      settledOn: londonDay(group.settledAt),
+      refundedPence: delivery.refundedPence,
+      refundedOn: londonDay(refundedAt),
+      priorCredits: [],
     });
   }
 
@@ -192,26 +285,40 @@ export class DrizzleBidAccountingFactsReader implements IBidAccountingFactsReade
   }
 
   async paymentRefunded(paymentId: string): Promise<FactsRead<BidRefundsFacts>> {
-    const found = await this.payment(paymentId);
-    if (found.status === "skip") return found;
-    const invoice = await this.invoiceRaised(found.facts.invoiceId);
+    const [row] = await this.db
+      .select({
+        id: payment.id,
+        invoiceId: payment.invoiceId,
+        amountPence: pence(payment.amount),
+      })
+      .from(payment)
+      .where(eq(payment.id, paymentId));
+    if (!row) return skip("payment_not_found");
+    if (row.invoiceId === null) return skip("payment_without_invoice");
+    // A "Pay several" member's own row holds what the charge took for its invoice, so a lot's
+    // refund is credited against exactly that, like a payment of its own.
+    const invoice = await this.invoiceRaised(row.invoiceId);
     if (invoice.status === "skip") return invoice;
-    const refunds = await this.db
+    const rows = await this.db
       .select({
         id: paymentRefund.id,
         amountPence: paymentRefund.amountPence,
         currency: paymentRefund.currency,
+        source: paymentRefund.source,
+        stripeRefundId: paymentRefund.stripeRefundId,
         createdAt: paymentRefund.createdAt,
       })
       .from(paymentRefund)
-      .where(eq(paymentRefund.paymentId, found.facts.id))
+      .where(eq(paymentRefund.paymentId, row.id))
       .orderBy(asc(paymentRefund.createdAt), asc(paymentRefund.id));
-    if (refunds.length === 0) return skip("no_refund_recorded");
-    if (refunds.some((r) => r.currency !== "GBP")) return skip("refund_not_in_pounds");
+    if (rows.some((r) => r.currency !== "GBP")) return skip("refund_not_in_pounds");
+    const kept = withoutReversed(rows);
+    if (kept === null) return skip("refund_reversal_unmatched");
+    if (kept.length === 0) return skip("no_refund_recorded");
     return ready({
       invoice: invoice.facts,
-      paidPence: found.facts.amountPence,
-      refunds: refunds.map((r) => ({
+      paidPence: Number(row.amountPence),
+      refunds: kept.map((r) => ({
         refundId: r.id.toLowerCase(),
         amountPence: r.amountPence,
         refundedOn: londonDay(r.createdAt),
@@ -241,4 +348,38 @@ export class DrizzleBidAccountingFactsReader implements IBidAccountingFactsReade
       amountPence: Number(row.amountPence),
     });
   }
+}
+
+interface RefundRow {
+  readonly id: string;
+  readonly amountPence: number;
+  readonly source: string;
+  readonly stripeRefundId: string | null;
+}
+
+/**
+ * The refunds that went through and stayed: each `refund_reversal` row takes back a refund of the
+ * same Stripe refund id, for exactly its amount (the latest such row first), and both are left
+ * out. A reversal that matches no refund of the payment exactly answers null: it cannot be told
+ * which credit it undoes, so a person decides.
+ */
+function withoutReversed<T extends RefundRow>(rows: readonly T[]): T[] | null {
+  const kept = rows.filter((r) => r.source !== "refund_reversal");
+  for (const reversal of rows.filter((r) => r.source === "refund_reversal")) {
+    let index = -1;
+    for (let i = kept.length - 1; i >= 0; i -= 1) {
+      const candidate = kept[i] as T;
+      if (
+        reversal.stripeRefundId !== null &&
+        candidate.stripeRefundId === reversal.stripeRefundId &&
+        candidate.amountPence === -reversal.amountPence
+      ) {
+        index = i;
+        break;
+      }
+    }
+    if (index < 0) return null;
+    kept.splice(index, 1);
+  }
+  return kept;
 }
