@@ -7,4 +7,6 @@ export type WebPublicCacheDeps = {
   lotSaleId(lotId: string): Promise<string | null>;
   /** The newest domain event id: a first run starts here instead of replaying history. */
   latestEventId(): Promise<number>;
+  /** The clock, for how old a failing batch is; `Date.now` when left out. */
+  now?(): number;
 };

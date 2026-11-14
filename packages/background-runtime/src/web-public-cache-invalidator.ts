@@ -9,6 +9,31 @@ export interface WebPublicCacheInvalidator {
 
 export const WEB_REVALIDATE_SECRET_HEADER = "x-revalidate-secret";
 
+/**
+ * The web app answered the purge with an error. `permanent` is true for an answer that sending
+ * the same request again cannot change (a 4xx other than 408 and 429: a tag the route does not
+ * accept, a wrong secret, a route that is not configured); a 5xx, a timeout or a rate limit is
+ * transient.
+ */
+export class WebRevalidateRejectedError extends Error {
+  readonly permanent: boolean;
+  constructor(readonly status: number) {
+    super(`web revalidation responded ${status}`);
+    this.name = "WebRevalidateRejectedError";
+    this.permanent = isPermanentRevalidateStatus(status);
+  }
+}
+
+/** True for a status that the same request will always get again. */
+export function isPermanentRevalidateStatus(status: number): boolean {
+  return status >= 400 && status < 500 && status !== 408 && status !== 429;
+}
+
+/** True when the error is a rejection that retrying cannot fix. */
+export function isPermanentRevalidateFailure(err: unknown): boolean {
+  return err instanceof WebRevalidateRejectedError && err.permanent;
+}
+
 const ATTEMPT_TIMEOUT_MS = 2_000;
 const RETRY_DELAY_MS = 300;
 const MAX_ATTEMPTS = 2;
@@ -39,7 +64,7 @@ export function createHttpWebPublicCacheInvalidator(
       signal: AbortSignal.timeout(ATTEMPT_TIMEOUT_MS),
     });
     if (!response.ok) {
-      throw new Error(`web revalidation responded ${response.status}`);
+      throw new WebRevalidateRejectedError(response.status);
     }
   }
 
@@ -51,6 +76,7 @@ export function createHttpWebPublicCacheInvalidator(
         return;
       } catch (error) {
         lastError = error;
+        if (isPermanentRevalidateFailure(error)) break;
         if (n < MAX_ATTEMPTS) await new Promise((r) => setTimeout(r, retryDelayMs));
       }
     }
