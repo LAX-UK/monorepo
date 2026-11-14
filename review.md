@@ -183,3 +183,11 @@ Full suites after the fixes, all green:
 `biome`, the lint scripts and `tsc --noEmit` (db, persistence, finance-runtime, worker, api, shop-api) are clean.
 
 ## Recheck — in progress
+
+Head rechecked: `ca7588c6` (`fix/payment-hardening`), base `f1ffc6e4`. Throwaway PG 16 (initdb under `/var/tmp`, port 55432). `pnpm install --frozen-lockfile`, package build, `db:migrate` and `db:roles` all OK.
+
+### Progress
+- F1: scratch PG test (deleted afterwards) through the real webhook service and reader. All pass:
+  - Invoice with no charge id plus a task carrying its intent: a 40.00 partial refund and then a full refund both take the invoice path. 100.00 is recorded and the seller side counts it.
+  - Staff marked paid (no ids) plus a duplicate card payment: a partial refund stays unapplied and keeps the task open; a full refund closes it. The invoice stays `captured`, with no payout lines. The same holds when the task has only the intent.
+  - Two invoices, same buyer: A is captured with no charge id; money paid on cancelled B is unapplied. B's refund takes the unapplied path and leaves A alone. A's refund takes A's invoice path. B has no lines.
