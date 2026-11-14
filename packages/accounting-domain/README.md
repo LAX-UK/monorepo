@@ -9,7 +9,7 @@ stores records and calls providers live elsewhere and depend on this package, ne
 | Area | File | Rule |
 | --- | --- | --- |
 | Money | `money.ts` | Integer pence, GBP only. Per-line VAT rounded half-up. Totals are the exact sum of lines. |
-| Documents | `document.ts` | invoice, payment, credit_note, bill, contact; deterministic LAX reference; legal entity per product. |
+| Documents | `document.ts` | invoice, payment, credit_note, bill, contact, expense, transfer; deterministic LAX reference; legal entity per product. |
 | Ports | `ports.ts` | One small interface per kind plus `DocumentLookupPort`. Provider-agnostic results. |
 | Life cycle | `lifecycle.ts` | Pure state machine with refusals; lease as data; lookup before retry. |
 | Payments | `allocation.ts` | One payment across invoices, oldest due first, never over-allocate; or stored allocations that equal the payment exactly. |
@@ -30,7 +30,7 @@ Time is always passed in (epoch ms for leases, `YYYY-MM-DD` for document dates);
 ## Rules
 
 **References.** `laxReference(product, kind, sourceId)` gives `LAX-<PRODUCT>-<KIND>-<id>`, e.g.
-`LAX-SHOP-INV-123`, `LAX-ART-INV-123`, `LAX-BID-BILL-123` (kinds `INV`, `PAY`, `CN`, `BILL`, `CON`; products
+`LAX-SHOP-INV-123`, `LAX-ART-INV-123`, `LAX-BID-BILL-123` (kinds `INV`, `PAY`, `CN`, `BILL`, `CON`, `EXP`, `TRF`; products
 `BID`, `SHOP`, `ART`). It is injective over `(product, kind, sourceId)`, so Shop order 123 and lax.art
 order 123 never collide inside one Books organisation. Source ids are lower case (`[a-z0-9_-]`, at most 64):
 providers may search references case-insensitively, so `abc` and `ABC` must not be two documents. Builders
@@ -178,6 +178,7 @@ same facts always give the same documents, so a redelivered event is a replay.
 | `bid_payment_group_settled` | contact, each invoice, a delivery invoice per courier quote, ONE payment | "Pay several": one payment (`LAX-BID-PAY-grp-<group>`) applied to each invoice by its payment row's amount and to each delivery invoice (`LAX-BID-INV-dlv-<quote>`) by the quote's charge; the allocations equal the group's total exactly. Delivery invoices and the payment are parked `vat_on_delivery` while `DELIVERY_BOOKING` is unset (the accountant's question); a cancelled invoice parks the payment `invoice_cancelled`. |
 | `bid_payment_refunded` | contact, invoice, one credit note per refund | Every refund of the payment replayed oldest first through `buildCreditNoteFor`, so each credit note is exactly its refund and they never total more than was paid. |
 | `shop_order_paid` | contact, invoice, (parked delivery invoice), payment | The order's invoice in London Art Exchange under the Shop's own number (`buildInclusiveInvoice`: lines VAT-inclusive with the VAT stored when sold, never worked out again; a line sold with no VAT recorded is booked with none). Goods, framing (the frame's price as sold) and UK delivery or collection are lines on it; the lines must add up to the order's total. Delivery outside the UK is never on it: it is its own invoice with no VAT stated, parked (`vat_on_outside_uk_delivery`, never sent). The payment books the whole order into clearing, applied to the invoice; the parked delivery's part is left unapplied. |
+| Stripe fees and payouts (flow 25, `decideStripeBalanceTransaction`; a daily job, not an event) | expense, transfer | One Stripe balance transaction at a time. Its fee (a charge's, a dispute's, an instant payout's, or one of Stripe's own fees) is an expense paid from Stripe clearing, `LAX-<P>-EXP-<balance transaction>`; a payout is a transfer from clearing to the bank, `LAX-<P>-TRF-<payout>`. Stripe ids keep their case through `stripeSourceId` (a capital is `-` and the letter; Stripe ids never hold `-`, so it is injective, and `stripeIdFromSourceId` reads it back). The company comes from the caller's `StripeAttribution`, made from stored LAX rows only: unattributable or conflicting, a fee given back, a reversed payout, or money not in pounds is parked for a person (`StripeParkReason`), never booked. The charge, refund or dispute amount itself is never booked here. |
 | others in `ACCOUNTING_FLOWS` | none yet | Placeholders that project nothing until their own change builds them. |
 
 `whenReferenceHeld(kind)`: a contact already registered with other details is kept (its details are

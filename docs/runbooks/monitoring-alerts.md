@@ -426,6 +426,102 @@ back, and each stays due. While any waits, every run raises `accounting_shop_inv
 (an error alert sent to Sentry, routed to finance on-call like the other accounting alerts). Set
 the address and the waiting emails go on the next run.
 
+## Stripe fees, payouts and the daily reconciliation (`accounting_reconciliation_mismatch`)
+
+Plan v2, flow 25. Rehearsal only: Books stays in dry run, and the job only ever **reads** Stripe.
+
+**What happens.** Every day at 05:30 Europe/London the worker's `accounting-reconcile` job:
+
+1. Reads each Stripe account's balance transactions created since its stored cursor
+   (`accounting_stripe_cursor`), a day's window and 100 a page at a time, up to ten minutes ago.
+   The cursor moves only once a window is fully recorded, so a dropped connection is read again
+   next run.
+2. Decides each transaction once (`accounting_stripe_balance_txn`, append-only, keyed on the
+   Stripe account and transaction id), in one database transaction with its documents:
+   - Stripe's fee (on a charge, a dispute, an instant payout, or one of Stripe's own fees) becomes
+     an **expense** paid from Stripe clearing, `LAX-<P>-EXP-<balance transaction>`;
+   - a payout becomes a **transfer** from Stripe clearing to the bank, `LAX-<P>-TRF-<payout>`.
+   Stripe ids keep their case in the reference (each capital is written `-` and the letter:
+   `txn_1AbC` is `txn_1-ab-c`). Amounts are whole pence, exactly as Stripe reported them. The
+   charge, refund or dispute amount itself is never booked here.
+3. Reports yesterday for each company aimed at Books (see below), stores the report and records it
+   (`accounting_reconciliation_report`).
+
+Two runs at once, or a run repeated, book nothing twice: whichever inserts a transaction's row
+books it; the other finds the row and does nothing.
+
+**Which company.** Only stored LAX rows decide, never a guess:
+
+- a payout, and Stripe's own fees: the Stripe account's row in `accounting_stripe_account`;
+- anything from a charge (a fee on a card payment, a refund, a dispute): the Bid payment or payment
+  group, or the Shop order, that LAX stored with that charge or PaymentIntent. (The worker cannot
+  read a Shop order's PaymentIntent; the definer function `accounting_stripe_shop_order` answers
+  only which order holds one.)
+
+**Parked for a person** (`outcome = 'parked'`, the reason in `park_reason`), never booked:
+
+| Reason | What it means | What to do |
+| --- | --- | --- |
+| `unattributable` | No stored row names the charge (a payment taken outside LAX, a private sale charge, a Stripe adjustment). | Find what it is in Stripe; book it by hand in the company's Books. |
+| `attribution_conflict` | Stored rows name two companies, or one company's charge is in the other company's Stripe account. | Check the account and the charge; book it by hand where it belongs. |
+| `fee_refund` | Stripe gave a fee back (a negative fee, or a credit of one of its own fees). | Book the credit by hand against the Stripe fees account. |
+| `payout_reversed` | A payout failed or was cancelled and its money came back. | Reverse the payout's transfer in Books by hand, if it was booked. |
+| `not_in_pounds` | Not GBP. | Books are kept in GBP only: ask the accountant. |
+| `bad_amounts` | Stripe reported amounts that cannot be (a payout into the balance). | Ask engineering. |
+
+A parked transaction is never decided again by the job. Each one appears in that day's report.
+`outcome = 'not_aimed'` means Books was not aimed at the product when it was read: it is recorded
+and is not booked later (the same rule as the projector: turning Books on books what happens from
+then on).
+
+**The report** is JSON in document storage under
+`accounting/reconciliation/<company>/<day>/<time>.json` (private: same storage and rules as the
+stored invoice copies, never the repository). Ids and amounts only, no names or emails:
+
+- **by type** (payments, Stripe fees, payouts) for the day: what LAX says (fees and payouts from the
+  transaction rows, payments from the documents LAX registered) against what Books holds (issued
+  documents for the target), with counts and those still on their way;
+- **parked**: the day's parked transactions;
+- **clearing**: the opening balance plus payments, less fees and payouts, as Books holds them,
+  against Stripe's balance (available and pending, GBP) now; documents still on their way are
+  shown as in flight, not as a difference. Not compared until every Stripe account of the company
+  has its opening balance stated;
+- **held transfer funds**: Bid seller payouts scheduled or blocked, still in the Stripe balance.
+  Not tracked for London Art Exchange yet.
+
+**Alert.** Any mismatch (a type whose totals or counts differ, a parked transaction, clearing that
+does not agree) raises `accounting_reconciliation_mismatch` (error) with the company, the day, the
+count and the report's storage key. Open that report first. During the rehearsal clearing can
+differ for known reasons this flow does not book (refunds and dispute amounts: refunds are PR 9).
+
+**Missed run.** The job checks in to the Sentry cron monitor under `accounting-reconcile`. A failed
+read (Stripe down, say) fails the job before any report is made, so a half-read day is never
+reconciled; the queue tries it again (three attempts, five minutes apart) and the failure is
+reported like every worker job.
+
+**Set-up** (before the rehearsal; nothing here is set in production by this change):
+
+1. For each Stripe account, create a **restricted key** with read access to Balance, Balance
+   transaction sources and Payouts only, and set the worker's `STRIPE_BOOKS_READ_KEYS` to them,
+   comma separated (`rk_…` only; a secret key is refused at start-up). Unset, the job reads no
+   account.
+2. As the database owner, add one row per account (an application role cannot):
+   `insert into accounting_stripe_account (stripe_account_id, product, opening_balance_pence, opening_on) values ('acct_…', 'bid', <Stripe GBP balance in pence at the start of that day>, '<YYYY-MM-DD>');`
+   The product names the company (`bid`: London Auction Xchange; `shop`: London Art Exchange). The
+   opening is the balance the Books clearing account opened with; the first run reads from the
+   start of that day.
+3. Ask the accountant for the Stripe fees expense account and the bank account Stripe pays into,
+   for each organisation, and add them to `ZOHO_BOOKS_ORG_CONFIG` as
+   `"stripe": { "feesAccountId": "…", "bankAccountId": "…" }`. Until then every fee and payout is
+   refused by the adapter (`zoho_books_mapping_stripe_accounts_missing`) and waits for a person.
+4. Add `accounting-reconcile` to `SENTRY_MONITOR_SLUGS` and create the cron monitor (daily, 05:30
+   Europe/London, about 60 minutes margin). Add a Sentry issue alert on the worker project for the
+   message `accounting_reconciliation_mismatch`, routed to finance on-call.
+
+**Rollback.** `0385_rollback.sql` cancels every queued or failed expense and transfer (each with a
+`cancel` history row) before it drops the new tables and function; the kind, reference and totals
+CHECKs come back `NOT VALID`, so rows already written stay. Stored reports stay in storage.
+
 ## Related
 
 - [Scale monitoring](./scale-monitoring.md)
