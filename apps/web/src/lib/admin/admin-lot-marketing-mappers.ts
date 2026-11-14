@@ -1,5 +1,9 @@
 import type { LotMarketingDetails } from "@auction/types";
-import type { UpdateLotMarketingDetailsInput } from "@auction/validators";
+import {
+  LOT_ESTIMATE_CURRENCY,
+  LOT_ESTIMATE_CURRENCY_MESSAGE,
+  type UpdateLotMarketingDetailsInput,
+} from "@auction/validators";
 import { z } from "zod";
 
 /** Wider than API schema: allows empty strings in the form before normalization.
@@ -66,6 +70,12 @@ export const adminLotMarketingFormValuesSchema = z
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           message: "Choose the estimate's currency",
+          path: ["estimate", "currency"],
+        });
+      } else if (currencyRaw !== LOT_ESTIMATE_CURRENCY) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: LOT_ESTIMATE_CURRENCY_MESSAGE,
           path: ["estimate", "currency"],
         });
       }
@@ -138,7 +148,7 @@ export function formValuesToApiPatch(
       ? {
           low: e.low.trim(),
           high: e.high.trim(),
-          currency: e.currency.trim(),
+          currency: LOT_ESTIMATE_CURRENCY, // the form schema rejects anything else
         }
       : null,
     conditionReport: condHas

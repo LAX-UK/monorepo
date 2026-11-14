@@ -46,11 +46,7 @@ export const LOT_MARKETING_FORM_ID = "lot-copy";
 
 const FIELD_ORDER = ["estimate", "conditionReport", "provenance", "exhibitions", "artistNote"];
 
-const CURRENCIES = [
-  { value: "GBP", label: "Pounds sterling (GBP)" },
-  { value: "EUR", label: "Euros (EUR)" },
-  { value: "USD", label: "US dollars (USD)" },
-] as const;
+const CURRENCIES = [{ value: "GBP", label: "Pounds sterling (GBP)" }] as const;
 
 type Props = {
   lotId: string;

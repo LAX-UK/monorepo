@@ -1,10 +1,20 @@
 import { z } from "zod";
 
+/** Every sale is held in pounds sterling, so a lot's estimate must be too. */
+export const LOT_ESTIMATE_CURRENCY = "GBP";
+
+export const LOT_ESTIMATE_CURRENCY_MESSAGE =
+  "The estimate must be in pounds sterling (GBP), the currency of the sale";
+
 /** Pre-sale estimate (subset of `LotMarketingDetails.estimate`). */
 export const lotEstimateSchema = z.object({
   low: z.string().min(1).max(32),
   high: z.string().min(1).max(32),
-  currency: z.string().min(1).max(8),
+  currency: z
+    .string()
+    .min(1)
+    .max(8)
+    .refine((c) => c === LOT_ESTIMATE_CURRENCY, { message: LOT_ESTIMATE_CURRENCY_MESSAGE }),
 });
 
 export type LotEstimateInput = z.infer<typeof lotEstimateSchema>;
