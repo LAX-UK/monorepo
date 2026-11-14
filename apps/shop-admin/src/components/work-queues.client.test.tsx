@@ -8,7 +8,7 @@ import type {
   AdminThirdPartySaleList,
 } from "@auction/shop-contracts";
 import { StaffTooltipProvider } from "@auction/staff-ui";
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import type * as React from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -24,6 +24,7 @@ const recordFulfilmentPossession = vi.fn();
 const releaseStockHold = vi.fn();
 const issueOriginalSaleInvoice = vi.fn();
 const approveSaleFee = vi.fn();
+const refresh = vi.fn();
 
 vi.mock("@/server/application/admin-operations-actions.server", () => ({
   updateFulfilment,
@@ -43,7 +44,7 @@ vi.mock("@/server/application/admin-lookup-actions.server", () => ({
   searchEditionOptions: vi.fn(),
 }));
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ push: vi.fn(), replace: vi.fn(), refresh: vi.fn() }),
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn(), refresh }),
   usePathname: () => "/",
 }));
 vi.mock("next/link", () => ({
@@ -391,5 +392,114 @@ describe("the third-party sales queue", () => {
     renderThirdPartySales({ sale: dusk.id }, false);
     const panel = await screen.findByRole("dialog", { name: dusk.panel });
     expect(within(panel).queryByRole("button", { name: /Approve/ })).toBeNull();
+  });
+});
+
+// After an action ------------------------------------------------------------------------------
+
+describe("a queue's list after an action in its panel", () => {
+  beforeEach(() => window.history.replaceState(null, "", "/holds"));
+
+  const holdsView = (page: AdminStockHoldList) => (
+    <StaffTooltipProvider>
+      <HoldsList state={holdsList.parse({})} page={page} canHold />
+    </StaffTooltipProvider>
+  );
+  /** The browser landing the step back over the panel's history entry. */
+  const backLands = () =>
+    act(() => {
+      window.history.replaceState(null, "", "/holds");
+      window.dispatchEvent(new PopStateEvent("popstate"));
+    });
+
+  it("is asked for again once the panel closes, so Back never shows it as it was", async () => {
+    const back = vi.spyOn(window.history, "back").mockImplementation(() => {});
+    const view = render(holdsView(holds));
+    fireEvent.click(
+      within(screen.getByRole("grid", { name: "Stock holds" })).getByRole("link", {
+        name: "Dusk, 4/25",
+      }),
+    );
+    const panel = await screen.findByRole("dialog", { name: /Dusk, 4\/25/ });
+    // The release came back from the server: the same hold, now released.
+    view.rerender(
+      holdsView({ ...holds, items: [hold({ status: "released" }), ...holds.items.slice(1)] }),
+    );
+    fireEvent.keyDown(panel, { key: "Escape" });
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(back).toHaveBeenCalledTimes(1);
+    expect(refresh).not.toHaveBeenCalled();
+    backLands();
+    expect(refresh).toHaveBeenCalledTimes(1);
+    back.mockRestore();
+  });
+
+  it("is not asked for again when nothing changed", async () => {
+    const back = vi.spyOn(window.history, "back").mockImplementation(() => {});
+    render(holdsView(holds));
+    fireEvent.click(
+      within(screen.getByRole("grid", { name: "Stock holds" })).getByRole("link", {
+        name: "Dusk, 4/25",
+      }),
+    );
+    fireEvent.keyDown(await screen.findByRole("dialog"), { key: "Escape" });
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    backLands();
+    expect(refresh).not.toHaveBeenCalled();
+    back.mockRestore();
+  });
+
+  it("closes the panel when the record leaves the rows shown", async () => {
+    const back = vi.spyOn(window.history, "back").mockImplementation(() => {});
+    const view = render(holdsView(holds));
+    fireEvent.click(
+      within(screen.getByRole("grid", { name: "Stock holds" })).getByRole("link", {
+        name: "Dusk, 4/25",
+      }),
+    );
+    await screen.findByRole("dialog", { name: /Dusk, 4\/25/ });
+    view.rerender(holdsView({ ...holds, items: holds.items.slice(1) }));
+    await waitFor(() => expect(back).toHaveBeenCalledTimes(1));
+    backLands();
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(refresh).toHaveBeenCalledTimes(1);
+    back.mockRestore();
+  });
+});
+
+describe("the fulfilment queue after a next step", () => {
+  beforeEach(() => window.history.replaceState(null, "", "/fulfilment"));
+
+  it("closes the panel and asks for the list again once Back has landed", async () => {
+    updateFulfilment.mockResolvedValue({ ok: true, data: { status: "in_transit" } });
+    const back = vi.spyOn(window.history, "back").mockImplementation(() => {});
+    renderFulfilment();
+    fireEvent.click(
+      within(screen.getByRole("grid", { name: "Fulfilment" })).getByRole("link", {
+        name: "LAX-S-10001",
+      }),
+    );
+    const panel = await screen.findByRole("dialog", { name: /Order LAX-S-10001/ });
+    fireEvent.click(
+      within(within(panel).getByRole("listbox")).getByRole("option", { name: "In transit" }),
+    );
+    fireEvent.change(within(panel).getByLabelText(/^Carrier/), { target: { value: "DHL" } });
+    fireEvent.change(within(panel).getByLabelText(/^Tracking number/), {
+      target: { value: "JD0001" },
+    });
+    fireEvent.submit(
+      within(panel)
+        .getByLabelText(/^Tracking number/)
+        .closest("form") as HTMLElement,
+    );
+    await waitFor(() => expect(updateFulfilment).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(back).toHaveBeenCalledTimes(1));
+    act(() => {
+      window.history.replaceState(null, "", "/fulfilment");
+      window.dispatchEvent(new PopStateEvent("popstate"));
+    });
+    // Once by the action itself, once more after the step back landed.
+    expect(refresh).toHaveBeenCalledTimes(2);
+    back.mockRestore();
   });
 });

@@ -346,7 +346,7 @@ export function FulfilmentList({
               cancelLabel={null}
               onDone={() => {
                 setDirty(false);
-                list.panel.close();
+                list.panel.closeAfterChange();
               }}
             />
           </PanelSection>
