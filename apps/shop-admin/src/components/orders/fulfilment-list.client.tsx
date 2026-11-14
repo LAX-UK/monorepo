@@ -1,7 +1,8 @@
 "use client";
 
 import { FulfilmentEditForm } from "@/components/orders/fulfilment-section.client";
-import { filterChip, knownFacts, useWorkList } from "@/components/use-work-list.client";
+import { filterChip, knownFacts } from "@/components/use-work-list.client";
+import { useWorkQueue } from "@/components/use-work-queue.client";
 import {
   type FulfilmentRow,
   fulfilmentOrderHref,
@@ -73,7 +74,7 @@ export function FulfilmentList({
   page: AdminFulfilmentList;
   loadFailed?: boolean;
 }) {
-  const list = useWorkList({
+  const list = useWorkQueue({
     list: fulfilmentList,
     state,
     page,
@@ -82,6 +83,8 @@ export function FulfilmentList({
       label: "Search fulfilment",
       placeholder: "Search by order number, tracking number or buyer",
     },
+    ids: page.items.map((row) => row.fulfilmentId),
+    queueNoun: "fulfilment",
   });
   const [dirty, setDirty] = useState(false);
   const opened = page.items.find((row) => row.fulfilmentId === list.panel.openId) ?? null;
@@ -172,7 +175,7 @@ export function FulfilmentList({
       id: "open",
       label: "Open details",
       icon: PanelRight,
-      onSelect: () => list.panel.show(row.fulfilmentId),
+      onSelect: () => list.panel.open(row.fulfilmentId),
     },
     ...(fulfilmentNextOptions(row.status).length > 0
       ? [
@@ -180,7 +183,7 @@ export function FulfilmentList({
             id: "move",
             label: "Move on…",
             icon: Truck,
-            onSelect: () => list.panel.show(row.fulfilmentId),
+            onSelect: () => list.panel.open(row.fulfilmentId),
           },
         ]
       : []),
@@ -255,7 +258,8 @@ export function FulfilmentList({
           defaultDensity: "comfortable",
           defaultHiddenColumns: ["tracking"],
           ...list.sort,
-          onRowOpen: (row) => list.panel.show(row.fulfilmentId),
+          onRowOpen: (row) => list.panel.open(row.fulfilmentId),
+          rowHref: (row) => list.panelHref(row.fulfilmentId),
           activeRowId: list.panel.openId,
           rowActions: {
             label: (row) => `Actions for order ${orderNumber(row.orderId, row.orderReference)}`,
@@ -268,10 +272,11 @@ export function FulfilmentList({
 
       <DetailPanel
         open={opened !== null}
+        {...list.panel.queueProps}
         onOpenChange={(open) => {
           if (!open) {
             setDirty(false);
-            list.panel.show(null);
+            list.panel.close();
           }
         }}
         dirty={dirty}
@@ -341,7 +346,7 @@ export function FulfilmentList({
               cancelLabel={null}
               onDone={() => {
                 setDirty(false);
-                list.panel.show(null);
+                list.panel.close();
               }}
             />
           </PanelSection>
