@@ -111,6 +111,10 @@ describe("DOMAIN_EVENT_REGISTRY", () => {
         "shop.fulfilment.status_changed",
         { schemaVersion: 1, fulfilmentId: id, orderId: id, status: "in_transit" },
       ],
+      [
+        "shop.framing.status_changed",
+        { schemaVersion: 1, taskId: id, orderLineId: id, orderId: id, status: "framed" },
+      ],
     ] as const;
     for (const [type, payload] of fresh) {
       const entry = DOMAIN_EVENT_REGISTRY[type];

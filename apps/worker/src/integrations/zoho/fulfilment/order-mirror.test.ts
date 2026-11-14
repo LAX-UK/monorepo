@@ -328,6 +328,26 @@ describe("OrderMirror", () => {
     expect(none.saves).toEqual([]);
   });
 
+  it("still queues the framing job, unlinked, for a print that has no SKU in Zoho", async () => {
+    const framed = orderFacts({ prints: [printLine({ framing: framing() })] });
+    // An original outside the register: the print is left alone, its frame is not.
+    const outside = build({ register: null, facts: framed });
+    expect(await outside.mirror.deliver("order-1")).toMatchObject({ outcome: "success" });
+    expect(byModule(outside.saves, "Print_SKUs")).toEqual([]);
+    const [job] = byModule(outside.saves, "Framing_Jobs");
+    expect(job?.fields).toMatchObject({ LAX_Order_Ref: "LAX-S-10482/fl-1", Status: "Queued" });
+    expect(job?.fields).not.toHaveProperty("Linked_Print_SKU");
+
+    // A part that does not map: the order fails for staff to fix, and the frame is still there.
+    const unmapped = build({
+      facts: orderFacts({
+        prints: [printLine({ printPaper: "Somerset", framing: framing() })],
+      }),
+    });
+    expect(await unmapped.mirror.deliver("order-1")).toMatchObject({ outcome: "fatal" });
+    expect(byModule(unmapped.saves, "Framing_Jobs")).toHaveLength(1);
+  });
+
   it("mirrors the lines it can and fails the order on a SKU it cannot work out", async () => {
     const m = build({
       facts: orderFacts({
@@ -385,6 +405,32 @@ describe("OrderMirror", () => {
       { code: GROUP },
       "edition ledger to be mirrored with its group",
     );
+  });
+
+  it("in dry_run says the job's link to a SKU it would create is pending, not missing", async () => {
+    const planned = async (rows: Row[], register: ArtworkRegisterEntry | null = ORIGINAL) => {
+      const m = build({
+        mode: "dry_run",
+        rows,
+        register,
+        facts: orderFacts({ prints: [printLine({ framing: framing() })] }),
+      });
+      await m.mirror.deliver("order-1");
+      return m.log.info.mock.calls
+        .map(([detail]) => detail)
+        .find((detail) => detail?.module === "Framing_Jobs");
+    };
+    expect(await planned(GROUP_ROWS)).toMatchObject({ pendingFields: ["Linked_Print_SKU"] });
+    const withSku: Row = {
+      id: "sku-1",
+      module: "Print_SKUs",
+      fields: { SKU: `${GROUP}-A3-HAH-FRB-COL` },
+    };
+    const linked = await planned([...GROUP_ROWS, withSku]);
+    expect(linked).not.toHaveProperty("pendingFields");
+    expect(linked.fields).toMatchObject({ Linked_Print_SKU: { id: "sku-1" } });
+    // No SKU is coming for an unregistered original, so nothing is pending.
+    expect(await planned(GROUP_ROWS, null)).not.toHaveProperty("pendingFields");
   });
 
   it("in dry_run logs an update with the record's id", async () => {

@@ -122,38 +122,33 @@ class OrderPass {
     private readonly facts: OrderFulfilmentFacts,
   ) {}
 
-  /** Mirrors one print line; answers why it cannot be, or null. */
+  /** Mirrors one print line and its frame; answers why the print cannot be, or null. */
   async mirrorLine(line: PrintLineFacts, ledgersDone: Set<string>): Promise<string | null> {
-    const { zoho } = this.deps;
-    const framingJob = line.framing
-      ? await zoho.find("Framing_Jobs", this.deps.fields.orderRef, this.framingRef(line), [
-          this.deps.fields.orderRef,
-          "Status",
-          "Edition_Assigned",
-          "Linked_Print_SKU",
-          this.deps.fields.framingSpec,
-        ])
-      : null;
-    const frameRefunded = line.released || line.framing?.released === true;
-    if (line.framing && frameRefunded) {
-      // A frame already in Zoho for a refunded print or frame is no longer required; none is made.
-      if (framingJob) {
-        const status = framingStatusOf(line.framing, line.released);
-        await this.apply("Framing_Jobs", framingJob, { Status: status }, "framing");
-      }
-    }
     // A refunded print is not mirrored: its SKU record stays for the other orders of it.
-    if (line.released) return null;
+    const print = line.released
+      ? { problem: null, skuId: null, linkPending: false }
+      : await this.mirrorPrint(line, ledgersDone);
+    // The frame is its own job: it is written even when the print could not be mirrored.
+    if (line.framing) await this.mirrorFraming(line, line.framing, print);
+    return print.problem;
+  }
 
+  /** The print's SKU and, for a main run print, its ledger. */
+  private async mirrorPrint(
+    line: PrintLineFacts,
+    ledgersDone: Set<string>,
+  ): Promise<{ problem: string | null; skuId: string | null; linkPending: boolean }> {
+    const { zoho } = this.deps;
+    const unmirrored = (problem: string | null) => ({ problem, skuId: null, linkPending: false });
     const code = await this.groupCodeOf(line);
     if (code === null) {
       // Prints of an original outside the register have no group in Zoho to hang from.
       this.deps.log.info({ orderLineId: line.lineId }, "print not of a registered original");
-      return null;
+      return unmirrored(null);
     }
-    if (typeof code !== "string") return code.problem;
+    if (typeof code !== "string") return unmirrored(code.problem);
     const sku = printSkuOf(line, code);
-    if (!sku.ok) return sku.reason;
+    if (!sku.ok) return unmirrored(sku.reason);
 
     const group = await zoho.find("Print_Products", "Print_Group_ID", code, []);
     if (!group && this.deps.mode === "live") throw notYetInZoho("print_group");
@@ -168,22 +163,49 @@ class OrderPass {
       ledgersDone.add(code);
       await this.mirrorLedger(code, line.printsArtworkId);
     }
+    // In dry_run a SKU that does not exist yet has no id, so the job's link is only pending.
+    return { problem: null, skuId, linkPending: skuId === null };
+  }
 
-    if (line.framing && !frameRefunded) {
-      await this.apply(
-        "Framing_Jobs",
-        framingJob,
-        {
-          [this.deps.fields.orderRef]: this.framingRef(line),
-          Linked_Print_SKU: skuId ? { id: skuId } : null,
-          Edition_Assigned: editionAssigned(line),
-          Status: framingStatusOf(line.framing, false),
-          [this.deps.fields.framingSpec]: framingSpec(line.framing),
-        },
-        "framing",
-      );
+  /**
+   * The frame's Framing_Jobs record. A job is linked to the print's SKU when there is one; a print
+   * whose SKU cannot be made (an original outside the register, a part that does not map) still
+   * gets its job, unlinked, so framing stays complete in Zoho.
+   */
+  private async mirrorFraming(
+    line: PrintLineFacts,
+    framing: NonNullable<PrintLineFacts["framing"]>,
+    print: { skuId: string | null; linkPending: boolean },
+  ): Promise<void> {
+    const ref = this.framingRef(line);
+    const job = await this.deps.zoho.find("Framing_Jobs", this.deps.fields.orderRef, ref, [
+      this.deps.fields.orderRef,
+      "Status",
+      "Edition_Assigned",
+      "Linked_Print_SKU",
+      this.deps.fields.framingSpec,
+    ]);
+    if (line.released || framing.released) {
+      // A job already in Zoho for a refunded print or frame is no longer required; none is made.
+      if (job) {
+        const status = framingStatusOf(framing, line.released);
+        await this.apply("Framing_Jobs", job, { Status: status }, "framing");
+      }
+      return;
     }
-    return null;
+    await this.apply(
+      "Framing_Jobs",
+      job,
+      {
+        [this.deps.fields.orderRef]: ref,
+        Linked_Print_SKU: print.skuId ? { id: print.skuId } : null,
+        Edition_Assigned: editionAssigned(line),
+        Status: framingStatusOf(framing, false),
+        [this.deps.fields.framingSpec]: framingSpec(framing),
+      },
+      "framing",
+      print.linkPending ? ["Linked_Print_SKU"] : undefined,
+    );
   }
 
   async mirrorDispatch(): Promise<void> {
@@ -255,12 +277,20 @@ class OrderPass {
     current: ZohoRecordState | null,
     wanted: ZohoFields,
     rank?: "framing" | "dispatch",
+    pendingFields?: string[],
   ): Promise<string | null> {
     const write = planWrite(wanted, current, rank ? { field: "Status", rank } : undefined);
     if (!write) return current?.id ?? null;
     if (this.deps.mode === "dry_run") {
       this.deps.log.info(
-        { order: this.facts.reference, module, recordId: current?.id ?? null, fields: write },
+        {
+          order: this.facts.reference,
+          module,
+          recordId: current?.id ?? null,
+          fields: write,
+          // Fields that need a record the pass would create first, so they have no value yet.
+          ...(pendingFields ? { pendingFields } : {}),
+        },
         current
           ? "order mirror would update, nothing written"
           : "order mirror would create, nothing written",

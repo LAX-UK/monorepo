@@ -3,6 +3,7 @@ import {
   shopCancellationRequestedPayloadSchemaV1,
   shopDisputeClosedPayloadSchemaV1,
   shopDisputeOpenedPayloadSchemaV1,
+  shopFramingStatusChangedPayloadSchemaV1,
   shopFulfilmentDispatchedPayloadSchemaV1,
   shopFulfilmentStatusChangedPayloadSchemaV1,
   shopOriginalSaleReservedPayloadSchemaV1,
@@ -53,6 +54,17 @@ const phaseEventSamples: Array<{
       status: "in_transit",
     },
     schema: shopFulfilmentStatusChangedPayloadSchemaV1,
+  },
+  {
+    eventType: "shop.framing.status_changed",
+    payload: {
+      schemaVersion: 1,
+      taskId: sampleUuid,
+      orderLineId: sampleUuid,
+      orderId: sampleUuid,
+      status: "framed",
+    },
+    schema: shopFramingStatusChangedPayloadSchemaV1,
   },
   {
     eventType: "shop.print.pack_confirmed",

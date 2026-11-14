@@ -101,6 +101,7 @@ export {
   shopDisputeClosedPayloadSchemaV1,
   shopDisputeOpenedPayloadSchemaV1,
   shopFulfilmentDispatchedPayloadSchemaV1,
+  shopFramingStatusChangedPayloadSchemaV1,
   shopFulfilmentStatusChangedPayloadSchemaV1,
   shopPrintPackConfirmedPayloadSchemaV1,
   shopPrintSwappedPayloadSchemaV1,

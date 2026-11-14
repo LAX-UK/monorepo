@@ -21,6 +21,7 @@ export const FULFILMENT_TRIGGER_KINDS: Readonly<Record<string, TriggerKind>> = {
   "shop.fulfilment.status_changed": "order",
   "shop.print.pack_confirmed": "order",
   "shop.print.swapped": "order",
+  "shop.framing.status_changed": "order",
 };
 
 export type FulfilmentEvent = { eventType: string; aggregateId?: string; payload?: unknown };
