@@ -14,7 +14,7 @@ import {
 } from "@auction/shop-domain";
 import { and, eq } from "drizzle-orm";
 import type pg from "pg";
-import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { createDeliveryQuoteRequestService } from "../application/delivery-quote-request/delivery-quote-request.service.js";
 import type { PaymentCheckoutGateway } from "../application/ports/commerce.ports.js";
 import {
@@ -30,6 +30,7 @@ import {
 } from "../test-support/shop-integration-setup.js";
 import { createDrizzleCommerceRepository } from "./drizzle-commerce.repository.js";
 import { createDrizzleDeliveryQuoteOrderStore } from "./drizzle-delivery-quote-order.store.js";
+import { expireShopCheckoutSession } from "./drizzle-payment-event.processor.js";
 import { createDrizzleShopNotificationPublisher } from "./drizzle-shop-notification.publisher.js";
 import { reapStaleShopCheckouts } from "./shop-checkout-reaper.js";
 
@@ -72,6 +73,23 @@ describe.skipIf(!hasShopIntegrationDb)("delivery quote requests", () => {
 
   beforeAll(async () => {
     ({ ownerPool, shopPool } = await setupShopIntegrationPools());
+  });
+
+  // Every order a test opens, so its hold is ended afterwards. A hold left pending would sit in the
+  // reaper's oldest-first batch and crowd out other test files' orders.
+  const openedOrders: Array<{ db: ReturnType<typeof createShopDb>; orderId: string }> = [];
+
+  afterEach(async () => {
+    const opened = openedOrders.splice(0);
+    const afterAnyHold = new Date(Date.now() + 30 * 24 * 3_600_000);
+    for (const { db, orderId } of opened) {
+      await expireShopCheckoutSession(db, {
+        eventId: `test-cleanup:order:${orderId}`,
+        orderId,
+        source: "test-cleanup",
+        holdMustHaveEndedBy: afterAnyHold,
+      });
+    }
   });
 
   afterAll(async () => {
@@ -134,34 +152,44 @@ describe.skipIf(!hasShopIntegrationDb)("delivery quote requests", () => {
         artworkSlug: imported.slug,
         quantity: 1,
       });
+    const track = async <T extends { kind: string }>(pending: Promise<T>): Promise<T> => {
+      const outcome = await pending;
+      const opened = (outcome as { request?: { orderId?: string } }).request?.orderId;
+      if (opened) openedOrders.push({ db, orderId: opened });
+      return outcome;
+    };
     const guestRequest = (
       basketId: string,
       guest: { id: string; token: string; ip: string },
       key = `delivery-quote:${basketId}`,
     ) =>
-      quotes.request({
-        subject: `guest:${guest.id}`,
-        guest: { guestCustomerId: guest.id, basketTokenHash: guest.token },
-        guestIpHash: guest.ip,
-        basketId,
-        idempotencyKey: key,
-        successUrl: "http://localhost:3020/checkout/confirmation?orderId={ORDER_ID}",
-        cancelUrl: "http://localhost:3020/checkout/cancel?orderId={ORDER_ID}",
-        deliveryAddress: address("DE"),
-        deliveryPhone: "+49 30 1234567",
-        fallbackEmail: `${suffix}@example.test`,
-      });
+      track(
+        quotes.request({
+          subject: `guest:${guest.id}`,
+          guest: { guestCustomerId: guest.id, basketTokenHash: guest.token },
+          guestIpHash: guest.ip,
+          basketId,
+          idempotencyKey: key,
+          successUrl: "http://localhost:3020/checkout/confirmation?orderId={ORDER_ID}",
+          cancelUrl: "http://localhost:3020/checkout/cancel?orderId={ORDER_ID}",
+          deliveryAddress: address("DE"),
+          deliveryPhone: "+49 30 1234567",
+          fallbackEmail: `${suffix}@example.test`,
+        }),
+      );
     const request = (basketId: string, country = "DE", key = `delivery-quote:${basketId}`) =>
-      quotes.request({
-        subject,
-        basketId,
-        idempotencyKey: key,
-        successUrl: "http://localhost:3020/checkout/confirmation?orderId={ORDER_ID}",
-        cancelUrl: "http://localhost:3020/checkout/cancel?orderId={ORDER_ID}",
-        deliveryAddress: address(country),
-        deliveryPhone: "+49 30 1234567",
-        fallbackEmail: `${suffix}@example.test`,
-      });
+      track(
+        quotes.request({
+          subject,
+          basketId,
+          idempotencyKey: key,
+          successUrl: "http://localhost:3020/checkout/confirmation?orderId={ORDER_ID}",
+          cancelUrl: "http://localhost:3020/checkout/cancel?orderId={ORDER_ID}",
+          deliveryAddress: address(country),
+          deliveryPhone: "+49 30 1234567",
+          fallbackEmail: `${suffix}@example.test`,
+        }),
+      );
     const quoteFor = async (orderId: string) =>
       requireDefined(
         (
