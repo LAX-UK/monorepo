@@ -1,7 +1,9 @@
 "use client";
 
 import { OnsiteEventGuestList } from "@/components/admin/event-rsvps/onsite-event-guest-list";
+import { ListRecordPager } from "@/components/admin/staff/list-record-pager";
 import { StaffBreadcrumbs } from "@/components/admin/staff/staff-breadcrumbs";
+import type { ListRecordPagerModel } from "@/lib/admin/list-record";
 import { staffStatus } from "@/lib/admin/staff-kit-status";
 import { browserApiBase, browserFetch } from "@/lib/data/http/hc-browser";
 import {
@@ -39,6 +41,8 @@ type Props = {
   linkedSaleTitle?: string | null;
   /** Why the guest list could not load, or a failure carried back from another page. */
   loadError?: string | null;
+  /** Previous and Next through the list the event was opened from. */
+  pager?: ListRecordPagerModel | null;
 };
 
 const LINK_CLASS =
@@ -97,6 +101,7 @@ export function OnsiteEventDetail({
   venueDayCounts = null,
   linkedSaleTitle = null,
   loadError = null,
+  pager = null,
 }: Props) {
   const exportCsv = useGuestListExport(event.slug);
   const status = staffStatus("onsiteEvent", event.status);
@@ -225,6 +230,7 @@ export function OnsiteEventDetail({
 
   return (
     <DetailPage
+      {...(pager ? { pager: <ListRecordPager pager={pager} noun="event" /> } : {})}
       breadcrumbs={
         <StaffBreadcrumbs
           items={[{ label: "Event RSVPs", href: "/admin/event-rsvps" }, { label: event.title }]}

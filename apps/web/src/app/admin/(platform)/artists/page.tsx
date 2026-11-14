@@ -2,6 +2,7 @@ import { ArtistBackfillReviewSection } from "@/components/admin/artist-backfill-
 import { ArtistDuplicateReviewSection } from "@/components/admin/artist-duplicate-review-section";
 import { ArtistsStaffList } from "@/components/admin/artists/artists-staff-list";
 import {
+  artistPanelRedirect,
   artistsActiveLens,
   artistsAttention,
   artistsFilterChips,
@@ -18,6 +19,7 @@ import { metadataForPrivate } from "@/lib/seo/metadata-factory";
 import { PageHeader, StaffBreadcrumbs, type StaffLinkComponent } from "@auction/staff-ui";
 import type { Metadata } from "next";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 
 export const metadata: Metadata = metadataForPrivate(
   "Artists",
@@ -45,6 +47,9 @@ export default async function AdminArtistsPage({
   searchParams: Promise<SearchParams>;
 }) {
   const sp = await searchParams;
+  // The artist panel is gone: an old shared `?artist=` link opens the artist's page.
+  const panelRedirect = artistPanelRedirect(sp);
+  if (panelRedirect) redirect(panelRedirect);
   const page = await loadAdminArtistsListPage(sp);
 
   if (page.queue) {

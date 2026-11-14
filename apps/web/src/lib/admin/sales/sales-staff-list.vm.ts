@@ -2,6 +2,7 @@ import { buildListHref } from "@/lib/admin/admin-list-params";
 import { adminSaleEditHref, adminSaleHref } from "@/lib/admin/catalog-route-helpers";
 import type { AdminSaleBoardRow } from "@/lib/admin/catalog/sale-table-row";
 import type { CatalogActiveFilterChip, CatalogSegmentItem } from "@/lib/admin/catalog/types";
+import { panelParamRedirect } from "@/lib/admin/list-record";
 import { staffStatus } from "@/lib/admin/staff-kit-status";
 import type { AdminSalesListSummary } from "@/lib/data/http/admin-sales-summary.server";
 import { deliveryModeShortLabel } from "@/lib/presenters/delivery-mode/delivery-mode-registry";
@@ -99,11 +100,12 @@ export function salesListHref(
   return buildListHref(SALES_LIST_PATH, base, { offset: null, ...patch });
 }
 
-/** The list with a sale's panel open (`?sale=`), or closed for null; keeps the page. */
-export function salePanelHref(current: SalesListSearch, saleId: string | null): string {
-  const base: SalesListSearch = { ...current };
-  for (const key of ["error", "success", "period"]) delete base[key];
-  return buildListHref(SALES_LIST_PATH, base, { sale: saleId });
+/**
+ * An old panel link (`/admin/sales?sale=ID`) opens the sale's page now, still in the list it
+ * named; null when there is no `?sale=`.
+ */
+export function salePanelRedirect(current: SalesListSearch): string | null {
+  return panelParamRedirect(current, "sale", adminSaleHref);
 }
 
 /** The lifecycle lenses as view tabs, each with its count. */

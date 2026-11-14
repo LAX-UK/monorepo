@@ -1,5 +1,6 @@
 "use client";
 
+import { ListRecordPager } from "@/components/admin/staff/list-record-pager";
 import { StaffDetailTabs } from "@/components/admin/staff/staff-detail-tabs";
 import { usePinPageAction } from "@/components/admin/staff/use-pin-page-action";
 import {
@@ -7,6 +8,7 @@ import {
   venueEditHref,
 } from "@/components/admin/venue-detail/venue-detail-types";
 import { useVenueActions } from "@/components/admin/venues/use-venue-actions";
+import type { ListRecordPagerModel } from "@/lib/admin/list-record";
 import { staffStatus } from "@/lib/admin/staff-kit-status";
 import { useViewerCapabilities } from "@/lib/auth/capabilities/viewer-capabilities-context";
 import { VENUES_ACCESS } from "@/lib/navigation/staff-nav-access";
@@ -32,6 +34,8 @@ const NextLink: StaffLinkComponent = Link;
 type Props = {
   venueId: string;
   detail: VenueDetail;
+  /** Previous and Next through the list the venue was opened from. */
+  pager?: ListRecordPagerModel | null;
   children: ReactNode;
 };
 
@@ -40,7 +44,7 @@ type Props = {
  * where it is, Edit as the one primary action (an archived venue cannot be edited), archive in
  * the overflow menu, and its sections as tabs.
  */
-export function VenueDetailShell({ venueId, detail, children }: Props) {
+export function VenueDetailShell({ venueId, detail, pager = null, children }: Props) {
   const { venue, salesUsingCount, legalEntityDisplayName = null } = detail;
   const archived = venue.status === "archived";
   const status = staffStatus("venue", venue.status);
@@ -66,6 +70,7 @@ export function VenueDetailShell({ venueId, detail, children }: Props) {
   return (
     <>
       <DetailPage
+        {...(pager ? { pager: <ListRecordPager pager={pager} noun="venue" /> } : {})}
         breadcrumbs={
           <StaffBreadcrumbs
             Link={NextLink}

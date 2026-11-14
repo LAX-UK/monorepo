@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { e2eEnabled, e2eSkipReason } from "./helpers/auth";
-import { LOT_PAGE, SALE_PAGE, openRecordPageFromPanel } from "./helpers/staff-records";
+import { LOT_PAGE, SALE_PAGE, openRecordPage } from "./helpers/staff-records";
 
 test.describe("staff catalog lifecycle @journey", () => {
   test.skip(!e2eEnabled, e2eSkipReason);
@@ -11,7 +11,7 @@ test.describe("staff catalog lifecycle @journey", () => {
     if (!(await scheduledRow.isVisible({ timeout: 5_000 }).catch(() => false))) {
       test.skip(true, "No scheduled sales in seed data");
     }
-    await openRecordPageFromPanel(page, scheduledRow.getByRole("link").first(), SALE_PAGE);
+    await openRecordPage(page, scheduledRow.getByRole("link").first(), SALE_PAGE);
 
     await page.goto(`${page.url()}/lots`);
     const draftLot = page
@@ -34,7 +34,7 @@ test.describe("staff catalog lifecycle @journey", () => {
     if (!(await firstLot.isVisible({ timeout: 5_000 }).catch(() => false))) {
       test.skip(true, "No draft lots in seed data");
     }
-    await openRecordPageFromPanel(page, firstLot, LOT_PAGE);
+    await openRecordPage(page, firstLot, LOT_PAGE);
 
     const directDelete = page.getByRole("button", { name: /^delete lot$/i });
     if (await directDelete.isVisible({ timeout: 2_000 }).catch(() => false)) {

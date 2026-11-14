@@ -1,8 +1,15 @@
 import { buildListHref } from "@/lib/admin/admin-list-params";
 import { isoDate } from "@/lib/admin/iso-date";
+import { panelParamRedirect } from "@/lib/admin/list-record";
 import { staffStatus } from "@/lib/admin/staff-kit-status";
 import type { AdminVenueListRow } from "@/lib/services/interfaces/admin-venue-service";
-import type { DataView as StaffDataView, StatusPresentation } from "@auction/staff-ui";
+import {
+  type SortState,
+  type DataView as StaffDataView,
+  type StatusPresentation,
+  decodeSort,
+  encodeSort,
+} from "@auction/staff-ui";
 
 export const VENUES_LIST_PATH = "/admin/venues";
 
@@ -34,6 +41,11 @@ export type VenuesStaffRow = {
 
 const count = new Intl.NumberFormat("en-GB");
 
+/** A venue's page. */
+export function venueHref(id: string): string {
+  return `${VENUES_LIST_PATH}/${id}`;
+}
+
 export function venueAddress(
   venue: Pick<AdminVenueListRow, "addressLine1" | "addressLine2" | "city" | "postcode">,
 ): string {
@@ -60,7 +72,7 @@ export function toVenuesStaffRows(venues: readonly AdminVenueListRow[]): VenuesS
     website: venue.website,
     createdAt: isoDate(venue.createdAt),
     updatedAt: isoDate(venue.updatedAt),
-    href: `${VENUES_LIST_PATH}/${venue.id}`,
+    href: venueHref(venue.id),
     editHref: `${VENUES_LIST_PATH}/${venue.id}/edit`,
   }));
 }
@@ -75,11 +87,54 @@ export function venuesListHref(
   return buildListHref(VENUES_LIST_PATH, base, { offset: null, ...patch });
 }
 
-/** The list with a venue's panel open (`?venue=`), or closed for null; keeps the page. */
-export function venuePanelHref(current: VenuesListSearch, id: string | null): string {
-  const base: VenuesListSearch = { ...current };
-  for (const key of ["error", "success", "new"]) delete base[key];
-  return buildListHref(VENUES_LIST_PATH, base, { venue: id });
+/**
+ * An old panel link (`/admin/venues?venue=ID`) opens the venue's page now, still in the list it
+ * named; null when there is no `?venue=`.
+ */
+export function venuePanelRedirect(current: VenuesListSearch): string | null {
+  return panelParamRedirect(current, "venue", venueHref);
+}
+
+/** By name, A to Z, unless the URL says otherwise; the default is left out of the URL. */
+export const VENUES_DEFAULT_SORT: SortState = { columnId: "venue", direction: "asc" };
+
+const VENUES_SORTABLE = ["venue", "organisation", "updated"] as const;
+
+/** The sort in the URL (`?sort=-updated`), or the default for a missing or unknown one. */
+export function venuesSortState(sort: string | string[] | undefined): SortState {
+  const decoded = decodeSort(typeof sort === "string" ? sort : sort?.[0]);
+  return decoded && (VENUES_SORTABLE as readonly string[]).includes(decoded.columnId)
+    ? decoded
+    : VENUES_DEFAULT_SORT;
+}
+
+/** The list sorted by a column, back on its first page. */
+export function venuesSortHref(current: VenuesListSearch, sort: SortState): string {
+  const isDefault =
+    sort.columnId === VENUES_DEFAULT_SORT.columnId &&
+    sort.direction === VENUES_DEFAULT_SORT.direction;
+  return venuesListHref(current, { sort: isDefault ? null : encodeSort(sort) });
+}
+
+function compareVenues(a: VenuesStaffRow, b: VenuesStaffRow, columnId: string): number {
+  if (columnId === "updated") {
+    return a.updatedAt < b.updatedAt ? -1 : a.updatedAt > b.updatedAt ? 1 : 0;
+  }
+  const key = (row: VenuesStaffRow) =>
+    (columnId === "organisation" ? row.organisation : row.name).toLocaleLowerCase("en-GB");
+  return key(a).localeCompare(key(b), "en-GB");
+}
+
+/**
+ * The page of venues in the URL's order. The venues API does not sort, so the server sorts the
+ * rows it loaded; ties keep the API's order.
+ */
+export function sortVenuesStaffRows(
+  rows: readonly VenuesStaffRow[],
+  sort: SortState,
+): VenuesStaffRow[] {
+  const sign = sort.direction === "desc" ? -1 : 1;
+  return [...rows].sort((a, b) => sign * compareVenues(a, b, sort.columnId));
 }
 
 /** Active venues, or every venue with the archived ones. */

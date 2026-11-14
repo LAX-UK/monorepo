@@ -90,14 +90,6 @@
       "reason": "Queue panel (pull request 4, Bid admin queues)"
     },
     {
-      "page": "bid-admin:(platform)/artists/page.tsx",
-      "reason": "Rows open the page (pull request 2, Bid admin catalogue)"
-    },
-    {
-      "page": "bid-admin:(platform)/categories/page.tsx",
-      "reason": "Rows open the page (pull request 2, Bid admin catalogue)"
-    },
-    {
       "page": "bid-admin:(platform)/compliance/data-requests/page.tsx",
       "reason": "Opens its page already through onRowOpen; moves to rowHref"
     },
@@ -110,32 +102,12 @@
       "reason": "Opens its page already through onRowOpen; moves to rowHref"
     },
     {
-      "page": "bid-admin:(platform)/event-rsvps/page.tsx",
-      "reason": "Rows open the page (pull request 2, Bid admin catalogue)"
-    },
-    {
       "page": "bid-admin:(platform)/inbox/page.tsx",
       "reason": "Opens its page already through onRowOpen; moves to rowHref"
     },
     {
-      "page": "bid-admin:(platform)/lots/page.tsx",
-      "reason": "Rows open the page (pull request 2, Bid admin catalogue)"
-    },
-    {
       "page": "bid-admin:(platform)/purchase-problems/page.tsx",
       "reason": "Opens its page already through onRowOpen; moves to rowHref"
-    },
-    {
-      "page": "bid-admin:(platform)/sales/page.tsx",
-      "reason": "Rows open the page (pull request 2, Bid admin catalogue)"
-    },
-    {
-      "page": "bid-admin:(platform)/submissions/page.tsx",
-      "reason": "Rows open the page (pull request 2, Bid admin catalogue)"
-    },
-    {
-      "page": "bid-admin:(platform)/venues/page.tsx",
-      "reason": "Rows open the page (pull request 2, Bid admin catalogue)"
     },
     {
       "page": "bid-admin:(shared)/failed-jobs/page.tsx",

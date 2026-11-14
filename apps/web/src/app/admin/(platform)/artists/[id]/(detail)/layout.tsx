@@ -1,5 +1,8 @@
 import { ArtistDetailShell } from "@/components/admin/artist-detail/artist-detail-shell";
+import { adminArtistHref } from "@/lib/admin/artists/artists-staff-list.vm";
 import { loadAdminArtistDetailContext } from "@/lib/admin/artists/load-artist-detail-context";
+import { loadArtistsListIds } from "@/lib/admin/catalog/load-artists-list-page";
+import { loadListRecordPager, requestListQuery } from "@/lib/admin/list-record-pager.server";
 import { getAdminArtistDeleteEligibility } from "@/lib/data/http/admin.server";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
 import {
@@ -30,9 +33,18 @@ export default async function AdminArtistDetailLayout({ params, children }: Prop
     user != null && userHasAccessTo(user.role as UserRole, user.staffRoles, ARTIST_DELETE_ACCESS);
   const canReview =
     user != null && userHasAccessTo(user.role as UserRole, user.staffRoles, ARTIST_REVIEW_ACCESS);
-  const deleteEligibility = canManageDelete
-    ? await getAdminArtistDeleteEligibility(id).catch(() => null)
-    : null;
+  const [deleteEligibility, pager] = await Promise.all([
+    canManageDelete ? getAdminArtistDeleteEligibility(id).catch(() => null) : null,
+    // Opened from the artists list: Previous and Next through that list.
+    requestListQuery().then((listQuery) =>
+      loadListRecordPager({
+        listQuery,
+        currentId: id,
+        recordHref: adminArtistHref,
+        loadIds: loadArtistsListIds,
+      }),
+    ),
+  ]);
 
   const publicHref = artistPath({ id: artist.id, name: artist.displayName });
 
@@ -47,6 +59,7 @@ export default async function AdminArtistDetailLayout({ params, children }: Prop
       canManageDelete={canManageDelete}
       canEdit={canEdit}
       canReview={canReview}
+      pager={pager}
     >
       {children}
     </ArtistDetailShell>

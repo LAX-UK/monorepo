@@ -5,8 +5,10 @@ import {
   categoryEditHref,
 } from "@/components/admin/category-detail/category-detail-types";
 import { useCategoryActions } from "@/components/admin/category-detail/use-category-actions";
+import { ListRecordPager } from "@/components/admin/staff/list-record-pager";
 import { StaffDetailTabs } from "@/components/admin/staff/staff-detail-tabs";
 import { usePinPageAction } from "@/components/admin/staff/use-pin-page-action";
+import type { ListRecordPagerModel } from "@/lib/admin/list-record";
 import { staffStatus } from "@/lib/admin/staff-kit-status";
 import { useViewerCapabilities } from "@/lib/auth/capabilities/viewer-capabilities-context";
 import { CATEGORIES_ACCESS } from "@/lib/navigation/staff-nav-access";
@@ -37,6 +39,8 @@ type Props = {
   lotCount?: number | null;
   saleCount?: number | null;
   parentName?: string | null;
+  /** Previous and Next through the list the category was opened from. */
+  pager?: ListRecordPagerModel | null;
 };
 
 /**
@@ -53,6 +57,7 @@ export function CategoryDetailShell({
   lotCount = null,
   saleCount = null,
   parentName = null,
+  pager = null,
 }: Props) {
   const status = staffStatus("category", category.archived ? "archived" : "active");
   const pin = usePinPageAction(category.name);
@@ -80,6 +85,7 @@ export function CategoryDetailShell({
   return (
     <>
       <DetailPage
+        {...(pager ? { pager: <ListRecordPager pager={pager} noun="category" /> } : {})}
         breadcrumbs={
           <StaffBreadcrumbs
             Link={NextLink}
