@@ -64,6 +64,11 @@ const page = (c: PurchaseCardVm) => (
     panel={null}
     problem={null}
     shipperEmail="hello@lax.bid"
+    invoiceCard={{
+      kind: "lax",
+      download: null,
+      empty: "The invoice appears here once it is raised.",
+    }}
   />
 );
 

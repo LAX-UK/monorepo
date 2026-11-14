@@ -71,12 +71,15 @@ describe.skipIf(!HAS_DB)("settled deals whose artwork is not marked sold (integr
     } = {},
   ): Promise<string> {
     const key = randomUUID().slice(0, 8);
+    // The code's middle segment takes up to six letters or digits: use the row's own key there, so
+    // two rows never share a code (a random four-digit suffix alone collided within one test).
+    const segment = key.slice(0, 6).toUpperCase();
     const digits = String(Math.floor(Math.random() * 10_000)).padStart(4, "0");
     const [row] = await db
       .insert(artworkRegister)
       .values({
         zohoProductId: `psf-${key}`,
-        stockCode: `LAX-${place.kind === "print" ? "PRT" : "ORI"}-PS-GA-26-${digits}`,
+        stockCode: `LAX-${place.kind === "print" ? "PRT" : "ORI"}-${segment}-GA-26-${digits}`,
         kind: place.kind ?? "original",
         title: "Evening Tide",
         artistName: "Hannah Cole",

@@ -107,8 +107,6 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
   const hasSession = Boolean(user) || authCookiePresent;
   const silentFedcmProps = resolveSilentFedcmBootstrapProps(cookieStore, hasSession);
   const consentSnapshot = readConsentFromCookies(cookieStore);
-  const consentProviderKey =
-    consentSnapshot === null ? "consent:none" : JSON.stringify(consentSnapshot);
   const viewerZone = await loadViewerZone(cookieStore, accountTimeZoneFor(user?.timeZone));
   const isDark = isSsrDarkClass(themePref, hdrs.get("sec-ch-prefers-color-scheme"));
 
@@ -124,7 +122,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
         {isAnalyticsEnabled() ? <ConsentInit snapshot={consentSnapshot} nonce={nonce} /> : null}
       </head>
       <body>
-        <ConsentProvider key={consentProviderKey} initialSnapshot={consentSnapshot}>
+        <ConsentProvider initialSnapshot={consentSnapshot}>
           <GtmNoscript analyticsGranted={consentSnapshot?.analytics === true} />
           <BottomChromeSync />
           <SessionThemeSync

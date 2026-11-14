@@ -36,7 +36,8 @@ export type AccountBuyingSources = {
 
 /**
  * Picks the source from the account scope, so the person's own records are never read while
- * they act for an organisation. Each list is read at most once per reader.
+ * they act for an organisation, or while support views another person's account. Each list is
+ * read at most once per reader.
  */
 export function createAccountBuyingReader(
   accountScope: IAccountScope,
@@ -50,7 +51,10 @@ export function createAccountBuyingReader(
     organisation: (accountId: string) => Promise<T>,
   ): Promise<T> => {
     const { account } = await accountScope.current();
-    return account.kind === "organisation" ? organisation(account.id) : personal();
+    if (account.kind === "organisation") return organisation(account.id);
+    // A personal account viewed by support is read by its id: `/users/me` is the staff member.
+    if (account.isImpersonation && account.id) return organisation(account.id);
+    return personal();
   };
   return {
     scope: () => accountScope.current(),

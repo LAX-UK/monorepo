@@ -15,12 +15,10 @@ export class LotFulfilmentBuyerService implements ILotFulfilmentBuyerService {
     lotId: string,
   ): Promise<Result<LotFulfilmentRow | null, LotFulfilmentServiceError>> {
     const lotRow = await this.ctx.lotRepo.findById(lotId);
-    if (!lotRow) return err({ message: "Lot not found", status: 404 });
-    if (!(await this.mayFollow(userId, lotRow))) {
-      return err({
-        message: "Only the winner or the account's payers can view fulfilment for this lot",
-        status: 403,
-      });
+    // A lot the person does not follow reads exactly like a missing one, so someone else's
+    // purchase is never confirmed.
+    if (!lotRow || !(await this.mayFollow(userId, lotRow))) {
+      return err({ message: "Lot not found", status: 404 });
     }
     const row = await this.ctx.fulfilmentRepo.findByLotId(lotId);
     return ok(row ?? null);

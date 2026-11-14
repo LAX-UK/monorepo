@@ -1,7 +1,7 @@
 import type { PaymentRecord } from "@auction/persistence/interfaces";
 import type { PaymentStatus } from "@auction/types";
 import { type Result, err, ok } from "neverthrow";
-import { AuthzError, LotError } from "../../lib/errors.js";
+import { type AuthzError, LotError } from "../../lib/errors.js";
 import { type MyPaymentRowDTO, presentMyPayments } from "../payment-me-presenter.js";
 import { revokeOpenStripeCheckoutForPayment } from "./checkout-orchestrator.js";
 import type { PaymentServiceDeps } from "./payment-service-types.js";
@@ -103,10 +103,8 @@ export async function cancelPendingAsBuyer(
   paymentId: string,
 ): Promise<Result<void, AuthzError | LotError>> {
   const p = await deps.payments.findById(paymentId);
-  if (!p) return err(new LotError("Payment not found", 404));
-  if (p.paidByUserId !== buyerId) {
-    return err(new AuthzError("Only the buyer can cancel this payment", 403));
-  }
+  // Someone else's payment reads exactly like a missing one, so its existence is not confirmed.
+  if (!p || p.paidByUserId !== buyerId) return err(new LotError("Payment not found", 404));
   if (p.status !== "pending") {
     return err(new LotError("Only pending payments can be cancelled", 409));
   }

@@ -150,19 +150,19 @@ async function handleExistingOpenPayment(
   });
 }
 
+const PURCHASE_NOT_FOUND = {
+  message: "Purchase not found",
+  status: 404,
+  code: "purchase_not_found",
+} as const;
+
 /** What the payer is told when they may not pay, by the authority's reason. */
 const PAYMENT_REFUSAL: Record<PaymentRefusal, { message: string; status: number; code: string }> = {
   lot_not_won: { message: "This lot has no winner to pay for", status: 400, code: "lot_not_won" },
-  not_winner: {
-    message: "Only the winning bidder can pay for this lot",
-    status: 403,
-    code: "not_winner",
-  },
-  not_member: {
-    message: "You are no longer a member of the account this lot was won for",
-    status: 403,
-    code: "not_a_member_of_buyer_account",
-  },
+  // Someone else's purchase (a person's, or an account the payer does not belong to) is answered
+  // as not found, so its existence is never confirmed. Only a member is told why they may not pay.
+  not_winner: PURCHASE_NOT_FOUND,
+  not_member: PURCHASE_NOT_FOUND,
   not_payer: {
     message: "The organisation's owners, admins and finance team pay for its purchases",
     status: 403,

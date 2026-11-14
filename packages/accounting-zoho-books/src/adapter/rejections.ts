@@ -32,6 +32,13 @@ export const ZOHO_BOOKS_REJECTIONS = {
    * cannot be confirmed as ours: a person decides. Followed by the reason it could not be.
    */
   readBackUnconfirmed: "zoho_books_read_back_unconfirmed",
+  /** Asked for the PDF of a document that is not an issued invoice or credit note. */
+  pdfNotAvailable: "zoho_books_pdf_not_available",
+  /**
+   * The Books PDF endpoint answers with bytes, and the Books client reads JSON only. Built with
+   * the test-organisation step (a binary read in the transport); until then no PDF is fetched.
+   */
+  pdfNotBuilt: "zoho_books_pdf_not_built",
 } as const;
 
 export type ZohoBooksRejection = (typeof ZOHO_BOOKS_REJECTIONS)[keyof typeof ZOHO_BOOKS_REJECTIONS];

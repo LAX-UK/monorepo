@@ -17,6 +17,8 @@ stores records and calls providers live elsewhere and depend on this package, ne
 | Source switch | `source-switch.ts` | One live source per product; refuses two. |
 | Projection | `projection/` | One pure policy per money flow: facts in, documents out, idempotent by LAX reference. |
 | Retries | `retry.ts` | Wait between attempts (30 s doubling to 30 min); 8 attempts, then a person. |
+| Buyer's invoice | `standing.ts` | Where a buyer's invoice stands for their card: LAX's own (Books off, rehearsing, or at the test organisation), being prepared, late after 30 minutes, issued (only with LAX's stored copy), cancelled. |
+| Stored copy | `ports.ts` `DocumentPdfPort` | The provider's PDF of an issued document, fetched once so LAX keeps its own copy; a dry run answers with a page marked as a rehearsal. |
 
 Every function that can say no returns `Result<T, Code>` (`ok` / `refusal`) instead of throwing; none of the
 exported functions throws.
@@ -147,7 +149,7 @@ same facts always give the same documents, so a redelivered event is a replay.
 
 | Flow | Documents | Rule |
 | --- | --- | --- |
-| `bid_invoice_raised` | contact, invoice | Lines from the stored invoice; `BID_LINE_BOOKINGS` says how each line kind is booked (hammer and premium as margin-scheme goods until the accountant confirms). An unmapped line kind is refused, never guessed. A line of 0p is left out. |
+| `bid_invoice_raised` | contact, invoice | Lines from the stored invoice (the `invoice.raised` event names them by id; other lines are refused); `BID_LINE_BOOKINGS` says how each line kind is booked (hammer and premium as margin-scheme goods until the accountant confirms; the premium keeps the label it was raised with). VAT on the premium and the artist's resale right wait for the accountant: a kind in `BID_LINES_AWAITING_ACCOUNTANT` is refused (`line_awaiting_accountant`), an unknown kind too (`unmapped_line`), never guessed. A line of 0p is left out. |
 | `bid_payment_captured` | contact, invoice, payment | All of the payment applied to its invoice; a payment for more than the invoice is refused (a remainder is never spread). |
 | `bid_payment_refunded` | contact, invoice, one credit note per refund | Every refund of the payment replayed oldest first through `buildCreditNoteFor`, so each credit note is exactly its refund and they never total more than was paid. |
 | others in `ACCOUNTING_FLOWS` | none yet | Placeholders that project nothing until their own change builds them. |

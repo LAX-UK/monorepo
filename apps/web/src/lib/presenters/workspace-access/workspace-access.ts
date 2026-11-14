@@ -1,4 +1,5 @@
 import { workspaceMenuEntryAt } from "@/lib/navigation/client-nav-model";
+import { CLIENT_ROUTES } from "@/lib/navigation/client-routes";
 import { organisationTabAt } from "@/lib/navigation/organisation-tabs";
 import { tabCapabilities } from "@/lib/navigation/section-tabs";
 import { organisationRoleGroupsSentence } from "@/lib/presenters/organisation-role/organisation-role-presentation";
@@ -20,13 +21,34 @@ export type WorkspacePage = {
   record: boolean;
 };
 
+/** The list a record belongs to: the access page goes back to it. */
+type RecordList = "consignments" | "bids" | "payouts";
+
 /** Records with an address of their own; who may open one depends on whose it is. */
-const RECORD_PAGES: readonly { pattern: RegExp; label: string }[] = [
-  { pattern: /^\/selling\/consignments\/[^/]+$/, label: "this consignment" },
-  { pattern: /^\/bids\/telephone\/[^/]+$/, label: "this telephone bid" },
-  { pattern: /^\/bids\/offers\/[^/]+$/, label: "this offer" },
-  { pattern: /^\/selling\/payouts\/offers\/[^/]+$/, label: "this request" },
+const RECORD_PAGES: readonly { pattern: RegExp; label: string; list: RecordList }[] = [
+  { pattern: /^\/selling\/consignments\/[^/]+$/, label: "this consignment", list: "consignments" },
+  { pattern: /^\/bids\/telephone\/[^/]+$/, label: "this telephone bid", list: "bids" },
+  { pattern: /^\/bids\/offers\/[^/]+$/, label: "this offer", list: "bids" },
+  { pattern: /^\/selling\/payouts\/offers\/[^/]+$/, label: "this request", list: "payouts" },
 ];
+
+/** A link back to a list, named the way the menu names it. */
+export type AccessBackLink = { href: string; label: string };
+
+/**
+ * The way back from a record to its own list. Bids are "My bids" in a personal account and "Bids"
+ * in an organisation, as in the menu.
+ */
+function recordListLink(list: RecordList, actor: EntityActor | null): AccessBackLink {
+  switch (list) {
+    case "consignments":
+      return { href: CLIENT_ROUTES.consignments, label: "Back to Consignments" };
+    case "payouts":
+      return { href: CLIENT_ROUTES.payouts, label: "Back to Sold & payouts" };
+    case "bids":
+      return { href: CLIENT_ROUTES.bids, label: actor ? "Back to Bids" : "Back to My bids" };
+  }
+}
 
 function pathOf(href: string): string {
   const path = href.split(/[?#]/)[0] ?? "";
@@ -78,8 +100,15 @@ export function workspacePageRefusal(
   return { label: page.label, openedBy: workspacePageOpenedBy(page.anyCapability) };
 }
 
-/** What the access page says: the page's name, and who can open it when the role is why. */
-export type WorkspaceAccessDenied = { page: string | null; openedBy: string | null };
+/**
+ * What the access page says: the page's name, who can open it when the role is why, and for a
+ * record the way back to its own list (`null`: back to the account's first page).
+ */
+export type WorkspaceAccessDenied = {
+  page: string | null;
+  openedBy: string | null;
+  back: AccessBackLink | null;
+};
 
 /**
  * The access page's words for `href`, for a member acting as `actor` (`null` for a personal
@@ -91,6 +120,10 @@ export function workspaceAccessDenied(
   actor: EntityActor | null,
 ): WorkspaceAccessDenied {
   const refusal = workspacePageRefusal(href, actor);
-  if (refusal) return { page: refusal.label, openedBy: refusal.openedBy };
-  return { page: workspacePageAt(href)?.label ?? null, openedBy: null };
+  if (refusal) return { page: refusal.label, openedBy: refusal.openedBy, back: null };
+  const record = RECORD_PAGES.find((page) => page.pattern.test(pathOf(href)));
+  if (record) {
+    return { page: record.label, openedBy: null, back: recordListLink(record.list, actor) };
+  }
+  return { page: workspacePageAt(href)?.label ?? null, openedBy: null, back: null };
 }

@@ -10,6 +10,7 @@ import {
 } from "./gateways.js";
 import { ZohoDocumentLookup } from "./lookup.js";
 import type { ZohoOrgConfigs } from "./org-config.js";
+import { ZohoDocumentPdfGateway } from "./pdf.js";
 import { ZohoReadBackLookup } from "./read-back.js";
 import { DRY_RUN, WriteGate, type ZohoWriteMode } from "./write-gate.js";
 import { DocumentWriter } from "./writer.js";
@@ -17,6 +18,7 @@ import { DocumentWriter } from "./writer.js";
 export * from "./org-config.js";
 export type { AccountingPorts } from "./accounting-ports.js";
 export { DRY_RUN_NUMBER, createZohoBooksDryRunAdapter, dryRunProviderId } from "./dry-run.js";
+export { rehearsalPdf } from "./rehearsal-pdf.js";
 export * from "./rejections.js";
 export { penceToPounds, poundsToPence } from "./money-format.js";
 export { booksLineVat } from "./mappers/common.js";
@@ -54,6 +56,7 @@ export function createZohoBooksAdapter(deps: {
     contacts: new ZohoContactGateway(gateway, api),
     vendors: new ZohoVendorGateway(gateway, api),
     lookup: new ZohoReadBackLookup(lookup, deps.orgs),
+    pdfs: new ZohoDocumentPdfGateway(),
     destination: booksDestination(deps.orgs),
   };
 }

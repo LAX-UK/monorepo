@@ -2605,6 +2605,13 @@
       "when": 1810987200000,
       "tag": "0380_lot_premium_uses_sale",
       "breakpoints": true
+    },
+    {
+      "idx": 373,
+      "version": "7",
+      "when": 1811073600000,
+      "tag": "0381_accounting_document_copy",
+      "breakpoints": true
     }
   ]
 }

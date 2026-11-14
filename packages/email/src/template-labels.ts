@@ -67,6 +67,7 @@ export const EMAIL_TEMPLATE_LABELS: Readonly<Record<TemplateName, string>> = {
   "bidding-limit-changed-notice": "Bidding limit changed",
   "payment-receipt": "Payment receipt",
   "payment-invoice": "Invoice",
+  "bid-invoice-issued": "Your invoice (Books)",
   "payment-refund-notice": "Refund",
   "payment-manual-review-buyer-notice": "Payment under review",
   "payment-failed-notice": "Payment failed",

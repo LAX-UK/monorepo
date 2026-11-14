@@ -119,6 +119,8 @@ test.describe("account switching on the production build @roles", () => {
     await buyerLogin(page);
     const { personal, organisation } = await accountsOf(page);
     await useAccountInThisBrowser(context, origin, personal.id);
+    // Sign-in may still be settling onto its landing page; wait for it before asking for this one.
+    await page.waitForLoadState("networkidle");
     await page.goto("/bids");
     await expect(workspaceSwitcher(page)).toHaveCount(0);
     await expect(accountMenuButton(page)).toBeVisible({ timeout: 30_000 });
@@ -204,6 +206,8 @@ test.describe("account switching on the production build @roles", () => {
     await buyerLogin(page);
     const { personal, organisation } = await accountsOf(page);
     await useAccountInThisBrowser(context, origin, personal.id);
+    // Sign-in may still be settling onto its landing page; wait for it before asking for this one.
+    await page.waitForLoadState("networkidle");
     await page.setViewportSize({ width: 1440, height: 900 });
 
     // A public page, in Personal: the person's avatar, their name and the word Personal.
@@ -270,6 +274,8 @@ test.describe("account switching on the production build @roles", () => {
     await buyerLogin(page);
     const { personal, organisation } = await accountsOf(page);
     await useAccountInThisBrowser(context, origin, personal.id);
+    // Sign-in may still be settling onto its landing page; wait for it before asking for this one.
+    await page.waitForLoadState("networkidle");
     await page.setViewportSize({ width: 375, height: 800 });
     await page.goto("/bids");
     await dismissCookieConsentIfVisible(page);

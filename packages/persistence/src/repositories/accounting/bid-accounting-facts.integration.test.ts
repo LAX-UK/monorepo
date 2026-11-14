@@ -8,6 +8,7 @@ import {
 import { type Database, closeDb, createDb } from "@auction/db";
 import {
   bidInvoice,
+  bidInvoiceLine,
   bidUserProfile,
   domainEvent,
   legalEntity,
@@ -173,12 +174,22 @@ describe.skipIf(!HAS_DB)("Bid accounting facts (integration)", { timeout: 60_000
           ),
         );
       expect(events).toHaveLength(1);
+      const lineIds = (
+        await tx
+          .select({ id: bidInvoiceLine.id })
+          .from(bidInvoiceLine)
+          .where(eq(bidInvoiceLine.invoiceId, raised.invoice.id))
+          .orderBy(bidInvoiceLine.position)
+      ).map((line) => line.id);
+      expect(lineIds).toHaveLength(2);
       expect(events[0]?.payload).toEqual({
         invoiceId: raised.invoice.id,
         lotId: seeded.lotId,
         buyerLegalEntityId: seeded.buyerEntityId,
         totalPence: 154_320,
         raisedAt: RAISED_AT.toISOString(),
+        // The frozen lines, by reference only.
+        lineIds,
       });
       // A retry after the payment expired joins the invoice and says nothing new.
       await tx
@@ -249,9 +260,15 @@ describe.skipIf(!HAS_DB)("Bid accounting facts (integration)", { timeout: 60_000
         },
         raisedOn: "2031-11-12",
         dueOn: "2031-11-26",
+        // Each line carries its stored id, so the projector can check the event's lineIds.
         lines: [
-          { kind: "hammer", label: "Hammer price", amountPence: 123_456 },
-          { kind: "buyers_premium", label: "Buyer's premium (25%)", amountPence: 30_864 },
+          { id: expect.any(String), kind: "hammer", label: "Hammer price", amountPence: 123_456 },
+          {
+            id: expect.any(String),
+            kind: "buyers_premium",
+            label: "Buyer's premium (25%)",
+            amountPence: 30_864,
+          },
         ],
       };
       expect(invoice).toEqual({ status: "ready", facts: expected });

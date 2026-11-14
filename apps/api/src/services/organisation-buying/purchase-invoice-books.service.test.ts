@@ -1,0 +1,242 @@
+import {
+  type DocumentRecord,
+  INVOICE_DELAYED_AFTER_MS,
+  type Mode,
+  ok,
+  refuse,
+} from "@auction/accounting-domain";
+import type { BidInvoiceBooksDocument, BidInvoiceRecord } from "@auction/persistence/interfaces";
+import { describe, expect, it, vi } from "vitest";
+import type { OrganisationMemberActor } from "../interfaces/organisation-membership-service.js";
+import { PurchaseInvoiceBooksService } from "./purchase-invoice-books.service.js";
+
+const LOT = "aaaaaaaa-0000-4000-8000-000000000002";
+const PAYMENT = "pay-2";
+const RAISED = new Date("2026-11-12T14:05:00Z");
+const INVOICE_DOC = "dddddddd-0000-4000-8000-000000000001";
+/** A document of another account's invoice: never this lot's to serve. */
+const FOREIGN_DOC = "dddddddd-0000-4000-8000-0000000000f0";
+
+const payer: OrganisationMemberActor = {
+  userId: "finance-1",
+  legalEntityId: "account-1",
+  role: "finance",
+};
+
+const INVOICE = {
+  id: "inv-2",
+  totalPence: 150_000,
+  raisedAt: RAISED,
+  voidedAt: null,
+} as BidInvoiceRecord;
+
+const issued = (number: string): DocumentRecord => ({
+  kind: "invoice",
+  reference: "LAX-BID-INV-inv-2",
+  attempts: 1,
+  status: "issued",
+  issued: { number, providerId: number, pdfRef: null },
+});
+
+function doc(over: Partial<BidInvoiceBooksDocument> = {}): BidInvoiceBooksDocument {
+  return {
+    documentId: INVOICE_DOC,
+    targetMode: "live",
+    record: issued("INV-000123"),
+    grossPence: 150_000,
+    issuedAt: new Date("2026-11-12T14:20:00Z"),
+    copy: { storageKey: "accounting/london_auction_xchange/doc.pdf", rehearsal: false },
+    ...over,
+  };
+}
+
+function setUp(opts: {
+  mode?: Mode;
+  invoices?: BidInvoiceBooksDocument[];
+  voidedAt?: Date | null;
+  minutesAfterRaise?: number;
+  unreadable?: boolean;
+}) {
+  const getObjectBytes = vi.fn(async () => Buffer.from("%PDF-1.4 stored"));
+  const service = new PurchaseInvoiceBooksService({
+    candidates: {
+      read: (async () => ({
+        entries: [
+          {
+            lotId: LOT,
+            row: { lotId: LOT, payment: { id: PAYMENT, status: "captured" } },
+            view: { paymentRole: "payer" },
+            flags: {},
+          },
+        ],
+        winners: new Map(),
+      })) as never,
+    },
+    invoices: {
+      findByPaymentIds: async () =>
+        new Map([[PAYMENT, { ...INVOICE, voidedAt: opts.voidedAt ?? null }]]),
+    },
+    settings: {
+      read: async () =>
+        ok({
+          bid: { xero: "off", books: opts.mode ?? "live" },
+          shop: { xero: "off", books: "off" },
+          lax_art: { xero: "off", books: "off" },
+        }),
+    },
+    books: {
+      read: async (invoiceId: string) => {
+        if (opts.unreadable) return refuse("bad_stored_document", "broken");
+        // Another account's invoice holds its own issued, stored document.
+        const foreign = invoiceId !== INVOICE.id;
+        return ok({
+          invoice: { id: invoiceId, raisedAt: RAISED, voidedAt: null, totalPence: 150_000 },
+          invoices: foreign
+            ? [
+                doc({
+                  documentId: FOREIGN_DOC,
+                  copy: { storageKey: "accounting/x/f.pdf", rehearsal: false },
+                }),
+              ]
+            : (opts.invoices ?? []),
+        });
+      },
+    },
+    storage: { getObjectBytes },
+    now: () => new Date(RAISED.getTime() + (opts.minutesAfterRaise ?? 5) * 60_000),
+  });
+  return { service, getObjectBytes };
+}
+
+const card = async (opts: Parameters<typeof setUp>[0]) =>
+  (await setUp(opts).service.card(payer, LOT))._unsafeUnwrap();
+
+describe("PurchaseInvoiceBooksService.card", () => {
+  it("keeps LAX's own invoice while Books is off, only rehearsing, or at the test organisation", async () => {
+    expect((await card({ mode: "off" })).state).toBe("lax");
+    const rehearsed = await card({
+      mode: "dry_run",
+      invoices: [
+        doc({
+          targetMode: "dry_run",
+          record: issued("DRY-RUN"),
+          copy: { storageKey: "k", rehearsal: true },
+        }),
+      ],
+      minutesAfterRaise: 120,
+    });
+    expect(rehearsed).toMatchObject({ state: "lax", invoiceNumber: null, invoiceDocumentId: null });
+    // The test organisation's documents are not tax invoices: never shown, never "late".
+    const atTestOrg = await card({
+      mode: "test_org",
+      invoices: [doc({ targetMode: "test_org" })],
+      minutesAfterRaise: 120,
+    });
+    expect(atTestOrg).toMatchObject({ state: "lax", invoiceNumber: null, issuedAt: null });
+    const waitingAtTestOrg = await card({
+      mode: "test_org",
+      invoices: [doc({ targetMode: "test_org", copy: null })],
+      minutesAfterRaise: 120,
+    });
+    expect(waitingAtTestOrg.state).toBe("lax");
+  });
+
+  it("is being prepared, then late after 30 minutes, until the copy is stored", async () => {
+    const pending = doc({
+      record: { ...issued("x"), status: "pending" } as DocumentRecord,
+      copy: null,
+    });
+    expect((await card({ invoices: [pending] })).state).toBe("preparing");
+    expect((await card({ invoices: [pending], minutesAfterRaise: 31 })).state).toBe("delayed");
+    expect(INVOICE_DELAYED_AFTER_MS).toBe(30 * 60_000);
+    // Issued, but LAX holds no copy yet: no number, nothing to download.
+    expect(await card({ invoices: [doc({ copy: null })] })).toMatchObject({
+      state: "preparing",
+      invoiceNumber: null,
+    });
+  });
+
+  it("gives the Books number, when it was issued (the issue event, not the row) and the stored copy", async () => {
+    expect(await card({ invoices: [doc()] })).toEqual({
+      state: "issued",
+      invoiceNumber: "INV-000123",
+      issuedAt: "2026-11-12T14:20:00.000Z",
+      invoiceDocumentId: INVOICE_DOC,
+      cancelledAt: null,
+      totalPence: 150_000,
+    });
+  });
+
+  it("says cancelled, with when", async () => {
+    const voidedAt = new Date("2026-11-13T09:00:00Z");
+    expect(await card({ invoices: [doc()], voidedAt })).toMatchObject({
+      state: "cancelled",
+      cancelledAt: voidedAt.toISOString(),
+      invoiceNumber: null,
+    });
+  });
+
+  it("falls back to LAX's own invoice when the Books records cannot be read", async () => {
+    expect((await card({ unreadable: true })).state).toBe("lax");
+  });
+});
+
+describe("PurchaseInvoiceBooksService.document", () => {
+  it("serves the stored copy of the invoice Books issued live", async () => {
+    const { service, getObjectBytes } = setUp({ invoices: [doc()] });
+    const invoice = (await service.document(payer, LOT, INVOICE_DOC))._unsafeUnwrap();
+    expect(invoice.filename).toBe("invoice-INV-000123.pdf");
+    expect(getObjectBytes).toHaveBeenCalledWith(
+      "accounting/london_auction_xchange/doc.pdf",
+      10 * 1024 * 1024,
+    );
+  });
+
+  it("never serves a rehearsal copy, even of a live document", async () => {
+    // Each guard on its own: here the mode is live and only the copy is a rehearsal.
+    const { service, getObjectBytes } = setUp({
+      invoices: [doc({ copy: { storageKey: "accounting/x/r.pdf", rehearsal: true } })],
+    });
+    expect((await service.document(payer, LOT, INVOICE_DOC))._unsafeUnwrapErr().code).toBe(
+      "invoice_not_ready",
+    );
+    expect(getObjectBytes).not.toHaveBeenCalled();
+  });
+
+  it("never serves a dry run's or the test organisation's document, even with a real copy", async () => {
+    // Each guard on its own: here the copy is not a rehearsal and only the mode refuses it.
+    for (const mode of ["dry_run", "test_org"] as const) {
+      const { service, getObjectBytes } = setUp({ mode, invoices: [doc({ targetMode: mode })] });
+      expect((await service.document(payer, LOT, INVOICE_DOC))._unsafeUnwrapErr().code).toBe(
+        "invoice_not_ready",
+      );
+      expect(getObjectBytes).not.toHaveBeenCalled();
+    }
+  });
+
+  it("refuses the document of a cancelled invoice", async () => {
+    const { service, getObjectBytes } = setUp({
+      invoices: [doc()],
+      voidedAt: new Date("2026-11-13T09:00:00Z"),
+    });
+    const refused = (await service.document(payer, LOT, INVOICE_DOC))._unsafeUnwrapErr();
+    expect(refused.code).toBe("invoice_not_ready");
+    expect(refused.status).toBe(404);
+    expect(getObjectBytes).not.toHaveBeenCalled();
+  });
+
+  it("refuses a document of another account's invoice with the same 404, reading nothing", async () => {
+    const { service, getObjectBytes } = setUp({ invoices: [doc()] });
+    const refused = (await service.document(payer, LOT, FOREIGN_DOC))._unsafeUnwrapErr();
+    expect(refused).toMatchObject({ code: "invoice_not_ready", status: 404 });
+    expect(getObjectBytes).not.toHaveBeenCalled();
+  });
+
+  it("refuses a member who does not pay the invoice", async () => {
+    const { service } = setUp({ invoices: [doc()] });
+    const agent: OrganisationMemberActor = { ...payer, role: "buyer_agent" };
+    expect((await service.document(agent, LOT, INVOICE_DOC))._unsafeUnwrapErr().code).toBe(
+      "insufficient_entity_role",
+    );
+  });
+});

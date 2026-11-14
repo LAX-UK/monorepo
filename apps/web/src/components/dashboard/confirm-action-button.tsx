@@ -1,7 +1,7 @@
 "use client";
 
-import { Button, type ButtonProps } from "@auction/ui/components/button";
 import { ConfirmDialog } from "@auction/ui/components/confirm-dialog";
+import { Button, type ButtonProps } from "@auction/ui/lax/button";
 import { useState, useTransition } from "react";
 
 type ConfirmActionButtonProps = Omit<ButtonProps, "onClick"> & {
@@ -12,7 +12,7 @@ type ConfirmActionButtonProps = Omit<ButtonProps, "onClick"> & {
   onConfirmed: () => void | Promise<void>;
 };
 
-/** Button that opens `ConfirmDialog` before running `onConfirmed`. */
+/** A system button (primary is the ink fill) that opens `ConfirmDialog` before running `onConfirmed`. */
 export function ConfirmActionButton({
   confirmTitle,
   confirmBody,

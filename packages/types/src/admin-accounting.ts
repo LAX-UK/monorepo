@@ -226,7 +226,7 @@ export function accountingProblemText(reason: string): string {
   );
   if (total?.[1] && total[2]) {
     const field = { netPence: "net", vatPence: "VAT", grossPence: "gross" }[total[1]];
-    return `Books worked out a ${field} total ${Math.abs(Number(total[2]))}p different from ours. It is in Books; check it there.`;
+    return `Books worked out a ${field} total ${Math.abs(Number(total[2]))}p different from ours. ${TOTALS_MUST_MATCH}`;
   }
   const differs = /^provider document differs from ours: (.+)$/.exec(reason);
   if (differs?.[1]) {
@@ -235,6 +235,26 @@ export function accountingProblemText(reason: string): string {
   const many = /^(\d+) documents carry this reference$/.exec(reason);
   if (many) return `${many[1]} documents in Books carry this reference. Keep one, then look again.`;
   return codeText(reason);
+}
+
+/** What a person is told about a document whose totals Books worked out differently. */
+const TOTALS_MUST_MATCH = "The totals must match before it can be issued.";
+
+const POUNDS = new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP" });
+
+/**
+ * A totals difference, with Books' own figure: "Books worked out £1,500.01. The totals must match
+ * before it can be issued." `booksPence` is Books' figure for the field that differs (ours plus
+ * the difference); a net or VAT figure says which it is.
+ */
+export function accountingTotalsMismatchText(
+  field: "netPence" | "vatPence" | "grossPence",
+  booksPence: number,
+): string {
+  const amount = POUNDS.format(booksPence / 100);
+  const figure =
+    field === "grossPence" ? amount : `${amount} ${field === "netPence" ? "net" : "VAT"}`;
+  return `Books worked out ${figure}. ${TOTALS_MUST_MATCH}`;
 }
 
 /** The provider code inside a stored reason, if there is one (for support). */

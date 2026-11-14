@@ -32,7 +32,12 @@ export {
   type ReofferStaffOutcome,
 } from "./reoffer-copy.js";
 export { renderEmail } from "./render.js";
-export { emailAttachments, type EmailAttachment } from "./attachments.js";
+export {
+  emailAttachments,
+  storedEmailAttachments,
+  type EmailAttachment,
+  type StoredEmailAttachment,
+} from "./attachments.js";
 export {
   MARKETING_OPT_OUT_EMAIL_TEMPLATES,
   OPTIONAL_EMAIL_TEMPLATES,

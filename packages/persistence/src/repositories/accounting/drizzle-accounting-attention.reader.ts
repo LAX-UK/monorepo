@@ -1,7 +1,7 @@
 import type { TargetMode } from "@auction/accounting-domain";
 import type { Database } from "@auction/db";
-import { accountingDocument } from "@auction/db/schema";
-import { and, eq, inArray, min, sql } from "drizzle-orm";
+import { accountingDocument, accountingDocumentCopy } from "@auction/db/schema";
+import { and, eq, inArray, lt, min, ne, notExists, or, sql } from "drizzle-orm";
 import type {
   AccountingAttention,
   IAccountingAttentionReader,
@@ -28,6 +28,29 @@ export class DrizzleAccountingAttentionReader implements IAccountingAttentionRea
           ),
     ]);
     return { needsPerson, pending };
+  }
+
+  async delayedBidInvoices(modes: readonly TargetMode[], queuedBefore: Date): Promise<QueueAge> {
+    if (modes.length === 0) return { count: 0, oldestSince: null };
+    const copied = this.db
+      .select({ one: sql`1` })
+      .from(accountingDocumentCopy)
+      .where(eq(accountingDocumentCopy.documentId, d.id));
+    const [row] = await this.db
+      .select({ count: sql<number>`count(*)`.mapWith(Number), oldest: min(d.createdAt) })
+      .from(d)
+      .where(
+        and(
+          eq(d.product, "bid"),
+          eq(d.kind, "invoice"),
+          eq(d.targetProvider, "books"),
+          inArray(d.targetMode, [...modes]),
+          ne(d.state, "cancelled"),
+          lt(d.createdAt, queuedBefore),
+          or(ne(d.state, "issued"), notExists(copied)),
+        ),
+      );
+    return { count: row?.count ?? 0, oldestSince: row?.oldest ?? null };
   }
 
   private async age(where: ReturnType<typeof and>): Promise<QueueAge> {
