@@ -22,6 +22,22 @@ export const invoiceRaisedPayloadSchemaV1 = z.object({
   lineIds: z.array(z.string().uuid()).min(1).max(1000).optional(),
 });
 
+/**
+ * A "Pay several" payment settled: the one charge arrived and every invoice in it was marked paid,
+ * in the same transaction as this event. References only (no amounts, no names): the accounting
+ * projection reads every amount from the stored group, payment and courier-quote rows, and checks
+ * they are the ones named here.
+ */
+export const paymentGroupSettledPayloadSchemaV1 = z.object({
+  paymentGroupId: z.string().uuid(),
+  buyerLegalEntityId: z.string().uuid(),
+  /** Each invoice's payment row in the group. */
+  paymentIds: z.array(z.string().uuid()).min(1).max(1000),
+  /** Each courier quote charged with the lots (its `payment_group_delivery` row holds the charge). */
+  deliveryQuoteIds: z.array(z.string().uuid()).max(1000),
+  settledAt: isoDateTime,
+});
+
 export const paymentCapturedPayloadSchemaV1 = z.object({
   paymentId: z.string().uuid(),
   lotId: z.string().uuid(),

@@ -1,11 +1,10 @@
 import { describe, expect, it } from "vitest";
-import type { CreditNote, Invoice, Payment } from "../document.js";
+import type { CreditNote, Invoice } from "../document.js";
 import { forAll, int } from "../testing/generate.js";
 import {
   type BidInvoiceFacts,
   type BidRefundFacts,
   projectBidInvoiceRaised,
-  projectBidPaymentCaptured,
   projectBidPaymentRefunded,
 } from "./bid.js";
 import { ACCOUNTING_FLOWS, BUILT_FLOWS, PROJECTION_POLICIES } from "./flows.js";
@@ -13,7 +12,6 @@ import { whenReferenceHeld } from "./projection.js";
 
 const INVOICE_ID = "0b6a7c1e-1111-4a5b-8c9d-000000000001";
 const BUYER_ID = "0b6a7c1e-2222-4a5b-8c9d-000000000002";
-const PAYMENT_ID = "0b6a7c1e-3333-4a5b-8c9d-000000000003";
 
 const invoiceFacts = (over: Partial<BidInvoiceFacts> = {}): BidInvoiceFacts => ({
   invoiceId: INVOICE_ID,
@@ -130,53 +128,6 @@ describe("Bid invoice raised", () => {
       ok: false,
       refusal: { code: "bad_source_id" },
     });
-  });
-});
-
-describe("Bid payment captured", () => {
-  const captured = (amountPence: number) => ({
-    paymentId: PAYMENT_ID,
-    invoice: invoiceFacts(),
-    amountPence,
-    capturedOn: "2026-11-13",
-  });
-
-  it("projects contact, invoice and the payment applied to that invoice", () => {
-    const { documents } = must(projectBidPaymentCaptured(captured(154_320)));
-    expect(documents.map((d) => d.kind)).toEqual(["contact", "invoice", "payment"]);
-    expect(documents[2] as Payment).toMatchObject({
-      reference: `LAX-BID-PAY-${PAYMENT_ID}`,
-      receivedOn: "2026-11-13",
-      amountPence: 154_320,
-      allocations: [{ invoiceReference: `LAX-BID-INV-${INVOICE_ID}`, amountPence: 154_320 }],
-      unallocatedPence: 0,
-    });
-  });
-
-  it("gives the same contact and invoice as the invoice flow, so registering them is a replay", () => {
-    const raised = must(projectBidInvoiceRaised(invoiceFacts())).documents;
-    const paid = must(projectBidPaymentCaptured(captured(154_320))).documents;
-    expect(paid.slice(0, 2)).toEqual(raised);
-  });
-
-  it("applies a part payment in full to the invoice", () => {
-    const payment = must(projectBidPaymentCaptured(captured(100_000))).documents[2] as Payment;
-    expect(payment.allocations).toEqual([
-      { invoiceReference: `LAX-BID-INV-${INVOICE_ID}`, amountPence: 100_000 },
-    ]);
-  });
-
-  it("refuses a payment for more than the invoice; a remainder is never spread", () => {
-    expect(projectBidPaymentCaptured(captured(154_321))).toMatchObject({
-      ok: false,
-      refusal: { code: "payment_exceeds_invoice" },
-    });
-  });
-
-  it("refuses a payment of nothing or of part of a penny", () => {
-    for (const amount of [0, -1, 10.5]) {
-      expect(projectBidPaymentCaptured(captured(amount)).ok).toBe(false);
-    }
   });
 });
 

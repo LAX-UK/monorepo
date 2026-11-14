@@ -1,5 +1,6 @@
 import { type DocumentKind, parseLaxReference } from "./document.js";
 import { type Totals, compareWithProviderTotals, isTotals } from "./money.js";
+import { type ParkReason, isParkedReason, parkReasonOf, parkedReasonCode } from "./parking.js";
 import type { IssueOutcome, IssuedDocument, LookupOutcome, ProviderDocument } from "./ports.js";
 import { type Result, ok, refuse } from "./result.js";
 
@@ -95,10 +96,37 @@ export type LifecycleCode =
   | "bad_time"
   | "bad_lookup_state"
   | "bad_outcome"
-  | "bad_record";
+  | "bad_record"
+  /** Parked for a person or the accountant: never requeued; released or cancelled. */
+  | "parked"
+  /** Only a parked document can be released. */
+  | "not_parked";
 
 export function newRecord(kind: DocumentKind, reference: string): DocumentRecord {
   return { kind, reference, attempts: 0, status: "pending" };
+}
+
+/**
+ * A new record that starts parked: needs_review with nothing owed and nothing in the provider,
+ * so it is never claimed. It is created this way in one step (never pending first), so no sender
+ * can take it in between. It is never requeued (see `requeue`): it is released once its reason is
+ * settled (`release`), or cancelled.
+ */
+export function parkedRecord(
+  kind: DocumentKind,
+  reference: string,
+  reason: ParkReason,
+): DocumentRecord {
+  return {
+    kind,
+    reference,
+    attempts: 0,
+    status: "needs_review",
+    lookup: "clear",
+    issued: null,
+    mismatch: null,
+    reason: parkedReasonCode(reason),
+  };
 }
 
 function wrongState(action: string, status: Status) {
@@ -386,7 +414,9 @@ export function escalate(
 
 /**
  * failed -> pending (the provider refused it outright, so nothing exists to duplicate).
- * needs_review -> pending only when no lookup is owed and the provider holds no document for it.
+ * needs_review -> pending only when no lookup is owed, the provider holds no document for it and
+ * it is not parked (a parked document waits for the accountant or a person; it is released once
+ * that is settled, or cancelled).
  * unknown goes through applyLookup.
  */
 export function requeue(record: DocumentRecord): Result<DocumentRecord, LifecycleCode> {
@@ -394,6 +424,51 @@ export function requeue(record: DocumentRecord): Result<DocumentRecord, Lifecycl
   if (record.status !== "needs_review") return wrongState("requeue", record.status);
   if (record.lookup === "owed") {
     return refuse("lookup_required", "look the document up by its LAX reference before requeueing");
+  }
+  if (record.issued !== null) {
+    return refuse(
+      "bad_state",
+      "the provider already holds this document; a person must resolve it",
+    );
+  }
+  if (isParkedReason(record.reason)) {
+    return refuse("parked", "parked until its reason is settled; release it then, or cancel it");
+  }
+  return ok({ ...core(record), status: "pending" });
+}
+
+/**
+ * pending -> needs_review, parked. For a document that can never be sent as it stands (a payment
+ * whose invoice was cancelled in Accounting): it goes to a person instead of waiting for ever.
+ * Only a queued document is parked this way; one that is being sent or was sent is not.
+ */
+export function park(
+  record: DocumentRecord,
+  reason: ParkReason,
+): Result<DocumentRecord, LifecycleCode> {
+  if (record.status !== "pending") return wrongState("park", record.status);
+  return ok({
+    ...core(record),
+    status: "needs_review",
+    lookup: "clear",
+    issued: null,
+    mismatch: null,
+    reason: parkedReasonCode(reason),
+  });
+}
+
+/**
+ * needs_review, parked -> pending: the reason it was parked is settled and a person releases it.
+ * Nothing was ever sent (no lookup owed, no provider document), so it is queued under the same
+ * LAX reference, attempts kept. Whether the reason is settled is not the life cycle's to know: the
+ * caller checks it against the stored rows first (`resolveParked`) and releases only then.
+ */
+export function release(record: DocumentRecord): Result<DocumentRecord, LifecycleCode> {
+  if (record.status !== "needs_review" || parkReasonOf(record.reason) === null) {
+    return refuse("not_parked", "only a parked document is released");
+  }
+  if (record.lookup === "owed") {
+    return refuse("lookup_required", "look the document up by its LAX reference first");
   }
   if (record.issued !== null) {
     return refuse(

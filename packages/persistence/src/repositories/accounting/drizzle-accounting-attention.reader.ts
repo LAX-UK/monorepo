@@ -1,12 +1,13 @@
 import type { TargetMode } from "@auction/accounting-domain";
 import type { Database } from "@auction/db";
 import { accountingDocument, accountingDocumentCopy } from "@auction/db/schema";
-import { and, eq, inArray, lt, min, ne, notExists, or, sql } from "drizzle-orm";
+import { and, eq, inArray, lt, min, ne, not, notExists, or, sql } from "drizzle-orm";
 import type {
   AccountingAttention,
   IAccountingAttentionReader,
   QueueAge,
 } from "../../interfaces/accounting.js";
+import { AWAITED_ISSUED } from "../../lib/accounting-awaited.js";
 import { QUEUE_TAB_WHERE } from "../../lib/accounting-queue-tab.js";
 
 const d = accountingDocument;
@@ -24,6 +25,8 @@ export class DrizzleAccountingAttentionReader implements IAccountingAttentionRea
               eq(d.state, "pending"),
               eq(d.targetProvider, "books"),
               inArray(d.targetMode, [...pendingModes]),
+              // Waiting for another document is not the sender missing it.
+              AWAITED_ISSUED,
             ),
           ),
     ]);
@@ -48,6 +51,24 @@ export class DrizzleAccountingAttentionReader implements IAccountingAttentionRea
           ne(d.state, "cancelled"),
           lt(d.createdAt, queuedBefore),
           or(ne(d.state, "issued"), notExists(copied)),
+        ),
+      );
+    return { count: row?.count ?? 0, oldestSince: row?.oldest ?? null };
+  }
+
+  async waitingPayments(modes: readonly TargetMode[], queuedBefore: Date): Promise<QueueAge> {
+    if (modes.length === 0) return { count: 0, oldestSince: null };
+    const [row] = await this.db
+      .select({ count: sql<number>`count(*)`.mapWith(Number), oldest: min(d.createdAt) })
+      .from(d)
+      .where(
+        and(
+          eq(d.kind, "payment"),
+          eq(d.state, "pending"),
+          eq(d.targetProvider, "books"),
+          inArray(d.targetMode, [...modes]),
+          lt(d.createdAt, queuedBefore),
+          not(AWAITED_ISSUED),
         ),
       );
     return { count: row?.count ?? 0, oldestSince: row?.oldest ?? null };

@@ -5,8 +5,9 @@ import { fireEvent, render, screen, waitFor, within } from "@testing-library/rea
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AccountingQueueList, type AccountingQueueListProps } from "./accounting-queue-list";
 
-const { tryAgain, refresh, navigate } = vi.hoisted(() => ({
+const { tryAgain, release, refresh, navigate } = vi.hoisted(() => ({
   tryAgain: vi.fn(),
+  release: vi.fn(),
   refresh: vi.fn(),
   navigate: vi.fn(),
 }));
@@ -18,6 +19,7 @@ vi.mock("next/navigation", () => ({
 }));
 vi.mock("@/lib/actions/admin/admin-accounting", () => ({
   tryAgainAccountingDocumentAction: tryAgain,
+  releaseAccountingDocumentAction: release,
 }));
 vi.mock("@/components/admin/staff/use-staff-list-navigation", () => ({
   useStaffListNavigation: () => ({
@@ -314,5 +316,192 @@ describe("AccountingQueueList", () => {
     });
     expect(screen.getByText("Accounting documents couldn't be loaded")).toBeInTheDocument();
     expect(screen.getByText("We could not reach the accounting service.")).toBeInTheDocument();
+  });
+});
+
+describe("AccountingQueueList: payments", () => {
+  it("lists bank transfers part received above the documents, with nothing to try", () => {
+    renderList({
+      partFunded: [
+        {
+          reference: "LAX-BID-PAY-grp-0b6a7c1e",
+          kind: "Pay several",
+          buyer: "Collector Ltd",
+          received: "£1,000.01 of £2,500.00 received",
+          since: null,
+        },
+      ],
+    });
+    const list = screen.getByRole("list", { name: "Bank transfers part received" });
+    expect(within(list).getByText("LAX-BID-PAY-grp-0b6a7c1e")).toBeTruthy();
+    expect(
+      within(list).getByText(/Pay several · Collector Ltd · £1,000.01 of £2,500.00 received/),
+    ).toBeTruthy();
+    expect(
+      screen.getByText(
+        "Nothing goes to Books until the whole amount has arrived and been applied.",
+      ),
+    ).toBeTruthy();
+  });
+
+  it("shows a parked delivery invoice as waiting for the accountant, without Try again", () => {
+    renderList({
+      tab: "needs_person",
+      rows: toAccountingStaffRows([
+        accountingRow({
+          reference: "LAX-BID-INV-dlv-0b6a7c1e",
+          label: "Delivery · Pay several",
+          state: "needs_review",
+          parked: "vat_on_delivery",
+          canTryAgain: false,
+          problem:
+            "VAT on delivery. This stays out of Books until the accountant confirms how delivery is booked. Then press Release.",
+        }),
+      ]),
+    });
+    expect(screen.getAllByText("Waiting for the accountant").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Delivery · Pay several").length).toBeGreaterThan(0);
+    expect(screen.queryByRole("button", { name: "Try again" })).toBeNull();
+  });
+
+  it("offers Release on a parked row to someone who may act, confirms, and sends it", async () => {
+    release.mockResolvedValue({
+      ok: true,
+      data: {
+        id: "doc-p",
+        reference: "LAX-BID-INV-dlv-0b6a7c1e",
+        outcome: "released",
+        rebuilt: true,
+      },
+    });
+    renderList({
+      tab: "needs_person",
+      rows: toAccountingStaffRows([
+        accountingRow({
+          id: "doc-p",
+          reference: "LAX-BID-INV-dlv-0b6a7c1e",
+          state: "needs_review",
+          parked: "vat_on_delivery",
+          canTryAgain: false,
+          canRelease: true,
+        }),
+      ]),
+    });
+    expect(screen.queryByRole("button", { name: "Try again" })).toBeNull();
+    fireEvent.click(screen.getAllByRole("button", { name: "Release" })[0] as HTMLElement);
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByText("Release LAX-BID-INV-dlv-0b6a7c1e?")).toBeTruthy();
+    expect(
+      within(dialog).getByText(/If the reason is not settled, nothing changes\./),
+    ).toBeTruthy();
+    fireEvent.click(within(dialog).getByRole("button", { name: "Release" }));
+    await waitFor(() => expect(release).toHaveBeenCalledTimes(1));
+    expect(release.mock.calls[0]?.[0]).toMatchObject({ documentId: "doc-p" });
+    expect(tryAgain).not.toHaveBeenCalled();
+  });
+
+  it("shows the API's reason when a release is refused, and offers no Release to someone who may only look", async () => {
+    release.mockResolvedValue({
+      ok: false,
+      error:
+        "The accountant has not yet confirmed how delivery is booked, so this stays out of Books.",
+    });
+    const parked = toAccountingStaffRows([
+      accountingRow({
+        id: "doc-p",
+        reference: "LAX-BID-INV-dlv-0b6a7c1e",
+        state: "needs_review",
+        parked: "vat_on_delivery",
+        canTryAgain: false,
+        canRelease: true,
+      }),
+    ]);
+    const { unmount } = renderList({ tab: "needs_person", rows: parked });
+    fireEvent.click(screen.getAllByRole("button", { name: "Release" })[0] as HTMLElement);
+    const dialog = await screen.findByRole("dialog");
+    fireEvent.click(within(dialog).getByRole("button", { name: "Release" }));
+    expect(await within(dialog).findByText("The document was not released")).toBeTruthy();
+    expect(
+      within(dialog).getByText(/accountant has not yet confirmed how delivery is booked/),
+    ).toBeTruthy();
+    unmount();
+    renderList({ tab: "needs_person", rows: parked, canAct: false });
+    expect(screen.queryByRole("button", { name: "Release" })).toBeNull();
+  });
+
+  it("names the invoice a waiting payment waits for and where it is, in the row and the details", async () => {
+    renderList({
+      tab: "waiting",
+      rows: toAccountingStaffRows([
+        accountingRow({
+          id: "doc-w",
+          reference: "LAX-BID-PAY-grp-0b6a7c1e",
+          documentType: "payment",
+          state: "pending",
+          attempts: 0,
+          problem: null,
+          problemCode: null,
+          canTryAgain: false,
+          appliedTo: [{ reference: "LAX-BID-INV-01hx3", amountPence: 15_000 }],
+          waitingFor: [{ reference: "LAX-BID-INV-01hx3", state: "failed" }],
+        }),
+      ]),
+    });
+    expect(screen.getAllByText("Waiting for LAX-BID-INV-01hx3 · Failed").length).toBeGreaterThan(0);
+    fireEvent.click(screen.getAllByText("LAX-BID-PAY-grp-0b6a7c1e")[0] as HTMLElement);
+    const sheet = await screen.findByRole("dialog");
+    const waiting = within(sheet).getByRole("region", { name: "Waiting for" });
+    expect(within(waiting).getByText("LAX-BID-INV-01hx3")).toBeTruthy();
+    expect(within(waiting).getByText("Failed")).toBeTruthy();
+  });
+
+  it("does not say Books gave no reason for a payment never tried; it says when it will be sent", async () => {
+    renderList({
+      tab: "waiting",
+      rows: toAccountingStaffRows([
+        accountingRow({
+          id: "doc-q",
+          reference: "LAX-BID-PAY-grp-0b6a7c1e",
+          documentType: "payment",
+          state: "pending",
+          attempts: 0,
+          problem: null,
+          problemCode: null,
+          canTryAgain: false,
+          appliedTo: [{ reference: "LAX-BID-INV-01hx3", amountPence: 15_000 }],
+        }),
+      ]),
+    });
+    fireEvent.click(screen.getAllByText("LAX-BID-PAY-grp-0b6a7c1e")[0] as HTMLElement);
+    const sheet = await screen.findByRole("dialog");
+    expect(within(sheet).queryByText("Last problem")).toBeNull();
+    expect(within(sheet).queryByText("Books gave no reason.")).toBeNull();
+    expect(within(sheet).getByText("Not sent yet")).toBeTruthy();
+    expect(within(sheet).getAllByText("Sent once each invoice it pays is in Books.")).toHaveLength(
+      1,
+    );
+  });
+
+  it("titles a parked notice once: the body does not repeat 'Waiting for the accountant'", async () => {
+    renderList({
+      tab: "needs_person",
+      rows: toAccountingStaffRows([
+        accountingRow({
+          id: "doc-v",
+          reference: "LAX-BID-INV-dlv-0b6a7c1e",
+          state: "needs_review",
+          parked: "vat_on_delivery",
+          attempts: 0,
+          canTryAgain: false,
+          problem:
+            "VAT on delivery. This stays out of Books until the accountant confirms how delivery is booked. Then press Release.",
+        }),
+      ]),
+    });
+    fireEvent.click(screen.getAllByText("LAX-BID-INV-dlv-0b6a7c1e")[0] as HTMLElement);
+    const sheet = await screen.findByRole("dialog");
+    expect(within(sheet).getAllByText("Waiting for the accountant").length).toBeGreaterThan(0);
+    expect(within(sheet).getByText(/^VAT on delivery\. This stays out of Books/)).toBeTruthy();
+    expect(within(sheet).queryByText(/Waiting for the accountant: VAT/)).toBeNull();
   });
 });

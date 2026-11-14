@@ -124,6 +124,7 @@ export { alertSubscriptionConfirmedPayloadSchemaV1 } from "./alert-payload-schem
 export {
   invoiceRaisedPayloadSchemaV1,
   paymentCapturedPayloadSchemaV1,
+  paymentGroupSettledPayloadSchemaV1,
   paymentRefundedPayloadSchemaV1,
   payoutPaidPayloadSchemaV1,
   payoutSettlementCreatedPayloadSchemaV1,

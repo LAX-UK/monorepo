@@ -191,3 +191,58 @@ describe("Empty and long lists", () => {
     expect(accountingRangeSummary(0, 1, 1)).toBe("1–1 of 1 document");
   });
 });
+
+describe("Accounting rows for payments", () => {
+  it("names a Pay several payment, lists what it applies to and the order it is sent in", () => {
+    const [row] = toAccountingStaffRows([
+      accountingRow({
+        reference: "LAX-BID-PAY-grp-0b6a7c1e",
+        documentType: "payment",
+        label: "Payment · Pay several",
+        state: "pending",
+        problem: null,
+        appliedTo: [
+          { reference: "LAX-BID-INV-a", amountPence: 3_333 },
+          { reference: "LAX-BID-INV-b", amountPence: 6_667 },
+        ],
+      }),
+    ]);
+    expect(row).toMatchObject({
+      kind: "Payment · Pay several",
+      parked: null,
+      appliedTo: [
+        { reference: "LAX-BID-INV-a", amount: "£33.33" },
+        { reference: "LAX-BID-INV-b", amount: "£66.67" },
+      ],
+      note: "Sent once each invoice it pays is in Books.",
+    });
+  });
+
+  it("shows a parked delivery invoice as waiting for the accountant, with no try again", () => {
+    const [row] = toAccountingStaffRows([
+      accountingRow({
+        reference: "LAX-BID-INV-dlv-0b6a7c1e",
+        label: "Delivery · Pay several",
+        state: "needs_review",
+        parked: "vat_on_delivery",
+        canTryAgain: false,
+        problem:
+          "VAT on delivery. This stays out of Books until the accountant confirms how delivery is booked. Then press Release.",
+      }),
+    ]);
+    expect(row?.state).toEqual({ label: "Waiting for the accountant", tone: "warning" });
+    expect(row).toMatchObject({
+      kind: "Delivery · Pay several",
+      canTryAgain: false,
+      note: null,
+    });
+    expect(
+      accountingStatePresentation({
+        state: "needs_review",
+        lockedPeriod: false,
+        targetMode: "dry_run",
+        parked: "invoice_cancelled",
+      }),
+    ).toEqual({ label: "Needs a person", tone: "warning" });
+  });
+});

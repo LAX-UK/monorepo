@@ -9,6 +9,7 @@ import {
   API_ACCOUNTING_COPY_READ_TABLES,
   API_ACCOUNTING_HISTORY_TABLES,
   API_ACCOUNTING_READ_TABLES,
+  API_ACCOUNTING_RELEASE_COLUMNS,
   API_ACCOUNTING_REQUEUE_COLUMNS,
   API_ACCOUNTING_REQUEUE_TABLES,
   API_ACCOUNTING_SETTING_TABLES,
@@ -435,6 +436,14 @@ describe("migrate-roles invariants", () => {
     expect([...AUTH_FULL_TABLES]).toContain("passkey");
     expect([...API_DENY_TABLES]).toContain("passkey");
     expect([...WORKER_DENY_TABLES]).toContain("passkey");
+  });
+
+  it("lets the worker read a settled Pay several payment for the books, and nothing more", () => {
+    for (const table of ["payment_group", "payment_group_delivery"]) {
+      expect([...WORKER_READ_TABLES]).toContain(table);
+      expect([...WORKER_FULL_TABLES]).not.toContain(table);
+      expect([...WORKER_DENY_TABLES]).not.toContain(table);
+    }
   });
 
   it("WORKER_READ_TABLES includes identity_lifecycle_outbox (outbox relay job)", () => {
@@ -888,6 +897,13 @@ describe("migrate-roles invariants", () => {
     for (const column of API_ACCOUNTING_REQUEUE_COLUMNS) {
       expect(WORKER_ACCOUNTING_DOCUMENT_UPDATE_COLUMNS).toContain(column);
     }
+    // A release may replace a parked delivery invoice's draft: the document and its totals only.
+    expect([...API_ACCOUNTING_RELEASE_COLUMNS].sort()).toEqual([
+      "gross_pence",
+      "net_pence",
+      "payload",
+      "vat_pence",
+    ]);
     expect([...API_ACCOUNTING_READ_TABLES].sort()).toEqual([
       "accounting_document",
       "accounting_document_event",

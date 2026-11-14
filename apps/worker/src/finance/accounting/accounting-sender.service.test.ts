@@ -36,6 +36,7 @@ const PAYMENT_ID = "0b6a7c1e-3333-4a5b-8c9d-000000000003";
 const paid: BidPaymentFacts = {
   paymentId: PAYMENT_ID,
   amountPence: 154_320,
+  currency: "GBP",
   capturedOn: "2031-03-02",
   invoice: {
     invoiceId: INVOICE_ID,
@@ -281,8 +282,9 @@ describe("accounting sender", () => {
 
   it("holds a document whose provider totals differ by a penny", async () => {
     const { store, sender, queue, fake } = setUp();
-    // The contact is already in Books; only the invoice is sent.
-    await fake.contacts.upsertContact(bidDocuments()[0] as never);
+    // The contact goes first (the invoice waits for it); only the invoice drifts.
+    await queue(bidDocuments().slice(0, 1));
+    await sender.tick();
     await queue(bidDocuments().slice(1, 2));
     fake.faults.inject("totals_drift");
     await sender.tick();

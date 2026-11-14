@@ -2,6 +2,8 @@ import type {
   AccountingOrganisation,
   AccountingQueuePage,
   AccountingQueueTab,
+  AccountingReleaseRefusal,
+  AccountingReleaseResult,
   AccountingTryAgainRefusal,
   AccountingTryAgainResult,
 } from "@auction/types";
@@ -26,18 +28,31 @@ export type AccountingTryAgainResponse =
   | { ok: true; value: AccountingTryAgainResult }
   | { ok: false; refusal: AccountingTryAgainRefusal; message: string };
 
+export type AccountingReleaseRequest = AccountingTryAgainRequest;
+
+export type AccountingReleaseResponse =
+  | { ok: true; value: AccountingReleaseResult }
+  | { ok: false; refusal: AccountingReleaseRefusal; message: string };
+
 /**
- * Finance › Accounting: the documents LAX sends to the books, and trying a refused one again. A try
- * again requeues the same document under the same LAX reference; asking twice changes nothing more.
+ * Finance › Accounting: the documents LAX sends to the books, trying a refused one again, and
+ * releasing a parked one once its reason is settled. Both queue the same document under the same
+ * LAX reference; asking twice changes nothing more.
  */
 export interface IAccountingQueueService {
   list(request: AccountingQueueRequest): Promise<AccountingQueuePage>;
   tryAgain(request: AccountingTryAgainRequest): Promise<AccountingTryAgainResponse>;
+  release(request: AccountingReleaseRequest): Promise<AccountingReleaseResponse>;
 }
 
-/** Records who asked for a try again, in the staff audit log. */
+/** Records who asked for a try again or a release, in the staff audit log. */
 export interface IAccountingAuditTrail {
   retryRequested(input: {
+    documentId: string;
+    actorUserId: string;
+    payload: Record<string, unknown>;
+  }): Promise<void>;
+  releaseRequested(input: {
     documentId: string;
     actorUserId: string;
     payload: Record<string, unknown>;

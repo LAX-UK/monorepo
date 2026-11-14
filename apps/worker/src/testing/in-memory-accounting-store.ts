@@ -10,12 +10,16 @@ import {
   cancel,
   completeSending,
   documentTarget,
+  documentsAwaited,
   escalate,
   expectedTotals,
   expireLease,
   newRecord,
   ok,
+  park,
+  parkedRecord,
   refuse,
+  release,
   requeue,
   retryDelayMs,
   startSending,
@@ -34,6 +38,7 @@ import type {
   RegisterInput,
   RegisterOutcome,
   StoredAccountingDocument,
+  StrandedRequest,
   TransitionCode,
 } from "@auction/persistence/interfaces";
 
@@ -132,7 +137,9 @@ export class InMemoryAccountingStore
       totals: expectedTotals(document),
       provider: null,
       target,
-      record: newRecord(document.kind, document.reference),
+      record: input.park
+        ? parkedRecord(document.kind, document.reference, input.park)
+        : newRecord(document.kind, document.reference),
       lastErrorClass: null,
       createdAt: new Date(this.nowMs + this.seq),
       updatedAt: new Date(this.nowMs),
@@ -160,7 +167,11 @@ export class InMemoryAccountingStore
           target !== null &&
           target.provider === request.provider &&
           request.targetModes.includes(target.mode) &&
-          this.config[row.stored.product][request.provider] === target.mode
+          this.config[row.stored.product][request.provider] === target.mode &&
+          // As the work queue: a payment waits until its invoices are issued for its target.
+          documentsAwaited(row.stored.document).every(
+            (reference) => this.byReference(reference, target)?.record.status === "issued",
+          )
         );
       })
       .sort((a, b) => a.stored.createdAt.getTime() - b.stored.createdAt.getTime());
@@ -172,6 +183,28 @@ export class InMemoryAccountingStore
     row.stored = { ...row.stored, provider: request.provider };
     this.move(row, "start_sending", next.value, {});
     return ok(row.stored);
+  }
+
+  async parkStranded(request: StrandedRequest): Promise<number> {
+    let parked = 0;
+    for (const row of this.rows.values()) {
+      const { target, record, document } = row.stored;
+      if (parked >= request.limit || record.status !== "pending" || document.kind !== "payment") {
+        continue;
+      }
+      if (target === null || target.provider !== request.provider) continue;
+      if (!request.targetModes.includes(target.mode)) continue;
+      // As the work queue: an invoice it pays is cancelled for its target, and none of it is live.
+      const cancelled = document.allocations.some(
+        (a) => this.byReference(a.invoiceReference, target)?.record.status === "cancelled",
+      );
+      if (!cancelled) continue;
+      const next = park(record, "invoice_cancelled");
+      if (!next.ok) continue;
+      this.move(row, "park", next.value, { parked: "invoice_cancelled" });
+      parked += 1;
+    }
+    return parked;
   }
 
   async holdsLease(documentId: string, leaseToken: string, minRemainingMs: number) {
@@ -246,6 +279,10 @@ export class InMemoryAccountingStore
         return withhold(record, transition.leaseToken, transition.reason);
       case "requeue":
         return requeue(record);
+      case "release":
+        return release(record);
+      case "park":
+        return park(record, transition.reason);
       case "cancel":
         return cancel(record);
     }

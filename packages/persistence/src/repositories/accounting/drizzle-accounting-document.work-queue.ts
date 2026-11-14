@@ -7,8 +7,10 @@ import type {
   ClaimRequest,
   IAccountingDocumentWorkQueue,
   StoredAccountingDocument,
+  StrandedRequest,
   TransitionCode,
 } from "../../interfaces/accounting.js";
+import { AWAITED_INVOICE_CANCELLED, AWAITED_ISSUED } from "../../lib/accounting-awaited.js";
 import { applyLockedTransition, persistMove } from "../../lib/accounting-document-move.js";
 import { rowToRecord } from "../../lib/accounting-document-row.js";
 
@@ -58,6 +60,39 @@ export class DrizzleAccountingDocumentWorkQueue implements IAccountingDocumentWo
     return row !== undefined;
   }
 
+  async parkStranded(request: StrandedRequest): Promise<number> {
+    if (request.targetModes.length === 0 || request.limit <= 0) return 0;
+    const now = this.clock.now();
+    return this.db.transaction(async (tx) => {
+      const rows = await tx
+        .select()
+        .from(accountingDocument)
+        .where(
+          and(
+            eq(accountingDocument.state, "pending"),
+            eq(accountingDocument.kind, "payment"),
+            eq(accountingDocument.targetProvider, request.provider),
+            inArray(accountingDocument.targetMode, [...request.targetModes]),
+            AWAITED_INVOICE_CANCELLED,
+          ),
+        )
+        .orderBy(asc(accountingDocument.createdAt), asc(accountingDocument.id))
+        .limit(request.limit)
+        .for("update", { skipLocked: true });
+      let parked = 0;
+      for (const row of rows) {
+        const moved = await applyLockedTransition(
+          tx,
+          row,
+          { action: "park", reason: "invoice_cancelled" },
+          now,
+        );
+        if (moved.ok) parked += 1;
+      }
+      return parked;
+    });
+  }
+
   /**
    * One short transaction: lock the oldest document nobody else holds (SKIP LOCKED) that is pending
    * or whose lease has run out. A lapsed one becomes unknown (the sender may or may not have
@@ -67,7 +102,9 @@ export class DrizzleAccountingDocumentWorkQueue implements IAccountingDocumentWo
    * target) and only while that provider is still in that mode for the product. So a Books worker
    * in `test_org` or `dry_run` can never take a document aimed at Xero live, and a flip of the
    * switch never re-aims one (`off` matches no target). Only the target modes the caller says it
-   * can serve are handed out (a rehearsal-only sender never gets a test or live document). The switch is read in the same statement
+   * can serve are handed out (a rehearsal-only sender never gets a test or live document). A
+   * document is handed out only once what it waits for is issued (`AWAITED_ISSUED`: a payment's
+   * invoices, an invoice's or credit note's contact). The switch is read in the same statement
    * as the claim (the worker may only SELECT it, so it cannot lock it). Settling a lapsed lease only
    * demotes a stuck `sending` row to `unknown` and calls no provider, so it ignores the switch.
    */
@@ -101,6 +138,7 @@ export class DrizzleAccountingDocumentWorkQueue implements IAccountingDocumentWo
                     ),
                   ),
               ),
+              AWAITED_ISSUED,
             ),
             and(
               eq(accountingDocument.state, "sending"),

@@ -2,6 +2,7 @@ import pg from "pg";
 import { describe, expect, it } from "vitest";
 import { readUserReadCutoverFromEnv } from "./applied-user-read-cutover.js";
 import {
+  API_ACCOUNTING_RELEASE_COLUMNS,
   API_ACCOUNTING_REQUEUE_COLUMNS,
   API_ACCOUNTING_SETTING_TABLES,
   API_DENY_TABLES,
@@ -68,7 +69,14 @@ async function probe(
  * documents), hand their ids to `fn`, and remove them afterwards. `fn` must leave no history.
  */
 async function withOwnerDocuments<T>(
-  fn: (ids: { failed: string; issued: string; withheld: string; differs: string }) => Promise<T>,
+  fn: (ids: {
+    failed: string;
+    issued: string;
+    withheld: string;
+    differs: string;
+    parked: string;
+    parkedCancelled: string;
+  }) => Promise<T>,
 ): Promise<T> {
   const owner = new Client(buildPgConnectionConfig(OWNER_URL ?? ""));
   await owner.connect();
@@ -115,7 +123,23 @@ async function withOwnerDocuments<T>(
       "2",
       "provider document differs from ours: reference",
     );
-    return await fn({ failed, issued, withheld, differs });
+    // Parked for the accountant (a delivery invoice waiting on VAT): never sent, never tried again.
+    const parked = await insert(
+      `LAX-BID-INV-p-${suffix}`,
+      "needs_review",
+      null,
+      null,
+      "accounting_parked_vat_on_delivery",
+    );
+    // Parked because the invoice it pays was cancelled: released unchanged, never rebuilt.
+    const parkedCancelled = await insert(
+      `LAX-BID-INV-c-${suffix}`,
+      "needs_review",
+      null,
+      null,
+      "accounting_parked_invoice_cancelled",
+    );
+    return await fn({ failed, issued, withheld, differs, parked, parkedCancelled });
   } finally {
     if (ids.length > 0) {
       await owner.query("delete from accounting_document where id = any($1::uuid[])", [ids]);
@@ -213,7 +237,7 @@ describe.skipIf(!API_URL)("api_app role contract", { timeout: 60_000 }, () => {
     });
   });
 
-  it("reads accounting documents, requeues one by its state columns, adds to its history, and only reads the switch", async () => {
+  it("reads accounting documents, requeues one by its state columns or releases a parked one, adds to its history, and only reads the switch", async () => {
     await withApiClient(async (client) => {
       const privileges = ["SELECT", "INSERT", "UPDATE", "DELETE"];
       const documents = await readTablePrivileges(client, ["accounting_document"], privileges);
@@ -226,8 +250,10 @@ describe.skipIf(!API_URL)("api_app role contract", { timeout: 60_000 }, () => {
           where table_schema = 'public' and table_name = 'accounting_document'`,
       );
       const updatable = columns.rows.filter((row) => row.allowed).map((row) => row.column_name);
-      expect(updatable.sort()).toEqual([...API_ACCOUNTING_REQUEUE_COLUMNS].sort());
-      for (const fixed of ["payload", "net_pence", "gross_pence", "lax_reference", "provider"]) {
+      expect(updatable.sort()).toEqual(
+        [...API_ACCOUNTING_REQUEUE_COLUMNS, ...API_ACCOUNTING_RELEASE_COLUMNS].sort(),
+      );
+      for (const fixed of ["kind", "lax_reference", "product", "provider", "target_mode"]) {
         expect(updatable, fixed).not.toContain(fixed);
       }
       const history = await readTablePrivileges(client, ["accounting_document_event"], privileges);
@@ -242,9 +268,10 @@ describe.skipIf(!API_URL)("api_app role contract", { timeout: 60_000 }, () => {
   });
 
   it.skipIf(!OWNER_URL)(
-    "can only requeue a document and record who asked: never forge an outcome, a Books id or history",
+    "can only requeue or release a document and record who asked: never forge an outcome, a Books id or history",
     async () => {
-      await withOwnerDocuments(async ({ failed, issued, withheld, differs }) => {
+      await withOwnerDocuments(async (docs) => {
+        const { failed, issued, withheld, differs, parked, parkedCancelled } = docs;
         await withApiClient(async (client) => {
           await client.query("BEGIN");
           try {
@@ -288,6 +315,17 @@ describe.skipIf(!API_URL)("api_app role contract", { timeout: 60_000 }, () => {
                    provider_number = null, pdf_ref = null, review_lookup = null,
                    needs_review_reason = null where id = $1`,
                 [differs],
+              ],
+              [
+                "change the document while requeueing",
+                `update accounting_document set state = 'pending', payload = '{"changed":true}'
+                   where id = $1`,
+                [failed],
+              ],
+              [
+                "change the totals while requeueing",
+                `update accounting_document set state = 'pending', gross_pence = 1 where id = $1`,
+                [failed],
               ],
               [
                 "add a history row of another kind",
@@ -339,6 +377,69 @@ describe.skipIf(!API_URL)("api_app role contract", { timeout: 60_000 }, () => {
                 mismatch_field = null, mismatch_difference_pence = null, updated_at = now()
               where id = $1`;
             expect(await probe(client, requeueWithheld, [withheld])).toBeUndefined();
+
+            // A parked document (waiting for the accountant, or for a person to decide) moves only
+            // by the release clause: whether its reason is settled is the application's to decide
+            // from the stored rows (the domain refuses to requeue it), the shape is the table's.
+            // Release, its own clause: a parked document to pending. Only a parked delivery
+            // invoice's draft may be replaced, under its own reference and for the same gross.
+            const release = (set: string) =>
+              `update accounting_document set state = 'pending',
+                lease_token = null, lease_expires_at = null, settles_at = null, review_lookup = null,
+                needs_review_reason = null, provider_id = null, provider_number = null, pdf_ref = null,
+                mismatch_field = null, mismatch_difference_pence = null, updated_at = now()${set}
+              where id = $1`;
+            const rebuilt = `, payload = jsonb_build_object('kind', 'invoice', 'reference', lax_reference, 'rebuilt', true), net_pence = 120, vat_pence = 0`;
+            expect(
+              await probe(client, release(rebuilt), [parkedCancelled]),
+              "rebuild a document parked for a cancelled invoice",
+            ).toBe("42501");
+            expect(
+              await probe(
+                client,
+                release(
+                  ", payload = jsonb_build_object('kind', 'invoice', 'reference', 'LAX-BID-INV-other')",
+                ),
+                [parked],
+              ),
+              "rebuild under another reference",
+            ).toBe("42501");
+            expect(
+              await probe(client, release(`${rebuilt}, gross_pence = 121`), [parked]),
+              "change what was charged",
+            ).toBe("42501");
+            expect(
+              await probe(client, release(rebuilt), [failed]),
+              "release what is not parked (a requeue may not change the document)",
+            ).toBe("42501");
+            expect(await probe(client, release(rebuilt), [parked])).toBeUndefined();
+            expect(await probe(client, release(""), [parkedCancelled])).toBeUndefined();
+            const releaseRow = (id: string, from: string, detail: string) =>
+              probe(
+                client,
+                `insert into accounting_document_event
+                   (document_id, action, from_state, to_state, attempts, detail, occurred_at)
+                 values ($1, 'release', $2, 'pending', 1, $3::jsonb, now())`,
+                [id, from, detail],
+              );
+            const released = '{"requestedBy":"staff-1","parked":"vat_on_delivery","rebuilt":true}';
+            expect(
+              await releaseRow(parked, "needs_review", '{"requestedBy":"staff-1"}'),
+              "a release row without what was parked",
+            ).toBe("42501");
+            expect(
+              await releaseRow(
+                parked,
+                "needs_review",
+                '{"requestedBy":"staff-1","parked":"vat_on_delivery","rebuilt":true,"x":1}',
+              ),
+              "a release row with anything else",
+            ).toBe("42501");
+            expect(
+              await releaseRow(parked, "failed", released),
+              "a release from anything but a review",
+            ).toBe("42501");
+            expect(await releaseRow(parked, "needs_review", released)).toBeUndefined();
           } finally {
             await client.query("ROLLBACK");
           }

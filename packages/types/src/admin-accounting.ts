@@ -70,12 +70,33 @@ export type AccountingDocumentState =
 /** How the document was sent: a rehearsal that reaches no books, the test books or the real ones. */
 export type AccountingTargetMode = "dry_run" | "test_org" | "live";
 
+/** Why a document is parked: kept here and never sent until the accountant or a person decides. */
+export const ACCOUNTING_PARK_REASONS = ["vat_on_delivery", "invoice_cancelled"] as const;
+export type AccountingParkReason = (typeof ACCOUNTING_PARK_REASONS)[number];
+
+/** One invoice a payment is applied to, and how much of the payment it takes. */
+export type AccountingAppliedTo = { reference: string; amountPence: number };
+
+/**
+ * A document a queued one waits for (a payment's invoice, an invoice's contact) and its state in
+ * the same books; null when nothing is registered under that reference there yet.
+ */
+export type AccountingWaitingFor = { reference: string; state: AccountingDocumentState | null };
+
 /** One document on the page. */
 export type AccountingQueueRow = {
   id: string;
   /** The LAX reference, e.g. LAX-BID-INV-01h…; the same for every try. */
   reference: string;
   documentType: AccountingDocumentType;
+  /** What it is, in a few words: "Payment · Pay several", "Delivery · Pay several". */
+  label: string;
+  /** Kept here and never sent until this is settled; null when it goes to Books as usual. */
+  parked: AccountingParkReason | null;
+  /** A payment's invoices and what it applies to each, to the penny; empty for other documents. */
+  appliedTo: AccountingAppliedTo[];
+  /** For a queued document: what it still waits for before it can be sent; empty otherwise. */
+  waitingFor: AccountingWaitingFor[];
   product: AccountingProduct;
   organisation: AccountingOrganisation;
   state: AccountingDocumentState;
@@ -95,6 +116,28 @@ export type AccountingQueueRow = {
   books: { number: string; id: string; url: string | null } | null;
   /** The person may try this document again now. */
   canTryAgain: boolean;
+  /**
+   * The person may ask to release this parked document (they hold the finance write permission).
+   * Whether its reason is settled is checked when they ask, against the stored rows.
+   */
+  canRelease: boolean;
+};
+
+/**
+ * A bank transfer that has partly arrived. It makes no Books document: the payment reaches Books
+ * once the whole amount has arrived and been applied. Listed here so finance can reconcile it.
+ */
+export type AccountingPartFundedTransfer = {
+  /** The LAX reference its payment will carry once it is booked. */
+  reference: string;
+  /** One transfer for several invoices ("Pay several"). */
+  paySeveral: boolean;
+  /** The paying account's name. */
+  buyer: string;
+  receivedPence: number;
+  totalPence: number;
+  /** When the provider last reported money arriving. */
+  since: string | null;
 };
 
 /** The last document that reached Books (or, in a rehearsal, was rehearsed), for the header. */
@@ -119,6 +162,8 @@ export type AccountingQueuePage = {
   unreadable: number;
   /** The person may try documents again (they hold the finance write permission). */
   canAct: boolean;
+  /** Bank transfers that have only partly arrived (Bid), oldest first; no Books document yet. */
+  partFundedTransfers: AccountingPartFundedTransfer[];
 };
 
 export type AccountingTryAgainOutcome = "requeued" | "already_queued";
@@ -131,6 +176,40 @@ export type AccountingTryAgainResult = {
 
 /** Why a try again was refused; the route words each one for staff. */
 export type AccountingTryAgainRefusal = "not_found" | "not_allowed" | "unreadable";
+
+export type AccountingReleaseOutcome = "released" | "already_queued";
+
+export type AccountingReleaseResult = {
+  id: string;
+  reference: string;
+  outcome: AccountingReleaseOutcome;
+  /** The parked draft was replaced by the document rebuilt from the stored rows. */
+  rebuilt: boolean;
+};
+
+/** Why a release was refused. `unresolved`: the reason it is parked is not settled yet. */
+export type AccountingReleaseRefusal = "not_found" | "not_allowed" | "unreadable" | "unresolved";
+
+/** What staff are told when a parked document cannot be released yet, by why it is parked. */
+export const ACCOUNTING_RELEASE_UNRESOLVED_TEXT: Readonly<Record<AccountingParkReason, string>> = {
+  vat_on_delivery:
+    "The accountant has not yet confirmed how delivery is booked, so this stays out of Books.",
+  invoice_cancelled:
+    "The invoice this pays is still cancelled. Reinstate it in Bid first, or refund the buyer.",
+};
+
+/** A payment applied to an invoice that was cancelled in Accounting cannot be sent. */
+export const ACCOUNTING_RELEASE_INVOICE_CANCELLED_TEXT =
+  "An invoice this pays was cancelled in Accounting, so it cannot be sent to Books. Refund the buyer.";
+
+/** Rebuilt from what Bid holds now, the document is not the one that was parked. */
+export const ACCOUNTING_RELEASE_CHANGED_TEXT =
+  "This no longer matches what Bid holds for it. Ask engineering to look at it before it is released.";
+
+const ACCOUNTING_PARKED_TEXT_VAT =
+  "VAT on delivery. This stays out of Books until the accountant confirms how delivery is booked. Then press Release.";
+const ACCOUNTING_PARKED_TEXT_CANCELLED =
+  "The invoice this pays was cancelled after it was paid, so this is not sent to Books. Refund the buyer, or reinstate the invoice in Bid and press Release.";
 
 const KIND_NAME: Readonly<Record<string, string>> = {
   auth: "Books would not accept our sign-in",
@@ -178,7 +257,53 @@ const CODE_TEXT: Readonly<Record<string, string>> = {
   zoho_books_validation_invalid_request: "Books refused the document as it was sent.",
   zoho_books_validation_rejected_by_zoho: "Books refused the document as it was sent.",
   accounting_no_adapter_for_mode: "Nothing is set up to send documents for this mode.",
+  accounting_parked_vat_on_delivery: ACCOUNTING_PARKED_TEXT_VAT,
+  accounting_parked_invoice_cancelled: ACCOUNTING_PARKED_TEXT_CANCELLED,
 };
+
+/** What a person is told about a parked document, by why it is parked. */
+export const ACCOUNTING_PARKED_TEXT: Readonly<Record<AccountingParkReason, string>> = {
+  vat_on_delivery: ACCOUNTING_PARKED_TEXT_VAT,
+  invoice_cancelled: ACCOUNTING_PARKED_TEXT_CANCELLED,
+};
+
+/** The status a parked document shows instead of "Needs a person". */
+export const ACCOUNTING_PARKED_STATUS: Readonly<Record<AccountingParkReason, string>> = {
+  vat_on_delivery: "Waiting for the accountant",
+  invoice_cancelled: "Needs a person",
+};
+
+/** Said of every payment in the details: the order the sender keeps. */
+export const ACCOUNTING_PAYMENT_ORDER_TEXT = "Sent once each invoice it pays is in Books.";
+
+/** Said of a queued invoice or credit note in the details: it follows its contact. */
+export const ACCOUNTING_CONTACT_ORDER_TEXT = "Sent once its contact is in Books.";
+
+/** The details' title over the order note for a document queued and not tried yet. */
+export const ACCOUNTING_QUEUED_TITLE = "Not sent yet";
+
+/** The part-funded bank transfers panel. */
+export const ACCOUNTING_PART_FUNDED_TITLE = "Bank transfers part received";
+export const ACCOUNTING_PART_FUNDED_TEXT =
+  "Nothing goes to Books until the whole amount has arrived and been applied.";
+
+/**
+ * A row's few words: "Payment · Pay several" for one payment of several invoices, "Delivery
+ * · Pay several" (a delivery invoice) for a courier quote paid with them, otherwise "Invoice · Bid". Read from
+ * the LAX reference, which says where the document comes from.
+ */
+export function accountingDocumentLabel(
+  documentType: AccountingDocumentType,
+  product: AccountingProduct,
+  reference: string,
+): string {
+  const sourceId = /^LAX-[A-Z]+-[A-Z]+-(.+)$/.exec(reference)?.[1] ?? "";
+  if (documentType === "payment" && sourceId.startsWith("grp-")) return "Payment · Pay several";
+  if (documentType === "invoice" && sourceId.startsWith("dlv-")) {
+    return "Delivery · Pay several";
+  }
+  return `${ACCOUNTING_DOCUMENT_TYPE_LABELS[documentType]} · ${ACCOUNTING_PRODUCT_LABELS[product]}`;
+}
 
 /** The short "Last problem" line for a locked period, approved copy for the row. */
 export const ACCOUNTING_LOCKED_PERIOD_PROBLEM =
