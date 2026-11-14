@@ -24,18 +24,25 @@ by an operator with the admin database role; the `accounting_source_setting_one_
 constraint refuses a row with Xero and Books both `live`, and the projector and sender read it
 afresh every tick.
 
-| Position | `xero_mode` | `books_mode` | What happens |
+| Position | `xero_mode` | `books_mode` | Where new documents are aimed |
 | --- | --- | --- | --- |
-| 1. Xero | `live` | `off` | Xero books everything; the accounting projector moves its cursor past every event. |
-| 2. Dry run | `live` | `dry_run` | Xero still books; LAX builds every Books document and logs it, sends nothing. |
-| 3. Test organisation | `live` | `test_org` | Xero still books; documents go to the Books test organisation. |
+| 1. Xero | `live` (Bid) / `off` (Shop) | `off` | Nowhere in Books: the accounting projector moves its cursor past every event. |
+| 2. Dry run | `off` | `dry_run` | Books dry run: LAX builds every Books document and logs it, sends nothing. |
+| 3. Test organisation | `off` | `test_org` | The Books test organisation. |
 | 4. Books | `off` | `live` | Books is the books; Xero is the read-only archive. |
+
+A document is aimed at the live source if there is one, otherwise at the only provider that is not
+`off` (`documentTarget`). So Books receives nothing while `xero_mode` is `live`, and nothing while
+both columns are a rehearsal. `xero_mode` does not stop LAX's existing Xero path: that path keeps
+writing to Xero until `XERO_API_WRITES_DISABLED=true` is set for the API and the worker, which is
+part of position 4 (F20: Xero becomes read-only). Positions 2 and 3 therefore run alongside Xero
+unchanged.
 
 ```sql
 -- Example: Shop to position 2 (dry run). One product per statement, inside a transaction.
 BEGIN;
 UPDATE accounting_source_setting
-   SET xero_mode = 'live', books_mode = 'dry_run', updated_at = now(), updated_by = '<operator>'
+   SET xero_mode = 'off', books_mode = 'dry_run', updated_at = now(), updated_by = '<operator>'
  WHERE product = 'shop';
 SELECT product, xero_mode, books_mode, live_source FROM accounting_source_setting;
 COMMIT;
@@ -153,10 +160,11 @@ Before position 4, and again a day after it:
 
 Move the product's switch back one position (4 → 3, 3 → 2, 2 → 1) with the statement above.
 
-- **From 4 (Books live) to 3**: set `xero_mode = 'live'` and `books_mode = 'test_org'` in one
-  statement (never two live sources). Documents already issued in Books stay there; anything Books
-  holds for the window must be raised in Xero by hand, as the accountant directs, and the window
-  noted for a later backfill.
+- **From 4 (Books live) back to Xero**: unset `XERO_API_WRITES_DISABLED` (API and worker), then
+  set `xero_mode = 'live'`, `books_mode = 'off'` for the product in one statement (never two live
+  sources). Documents already issued in Books stay there; the accountant decides how the window
+  is shown in Xero. Going to 3 instead (`off`, `test_org`) stops new live Books documents but
+  leaves Xero read-only, so it is only for a pause of hours.
 - **From 3 or 2 to 1**: documents queued for the old target stay in the queue under that target and
   are never sent to a new one; the projector moves past the events while the product is on Xero.
 - The history import needs no rollback in rehearsal (it only queued documents for the dry run or
