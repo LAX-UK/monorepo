@@ -713,6 +713,8 @@ export interface IBidInvoiceEmailFactsReader {
 /** One Books document for a Bid invoice, as the buyer's invoice card reads it. */
 export interface BidInvoiceBooksDocument {
   readonly documentId: string;
+  /** Its LAX reference (a credit note's says whether it is a refund's or a buyer default's). */
+  readonly reference: string;
   readonly targetMode: TargetMode;
   readonly record: DocumentRecord;
   readonly grossPence: number;
@@ -734,6 +736,8 @@ export interface BidInvoiceBooksState {
   };
   /** The invoice document per target mode (at most one each). */
   readonly invoices: readonly BidInvoiceBooksDocument[];
+  /** The credit notes for the invoice, every target mode, oldest first (not cancelled). */
+  readonly creditNotes: readonly BidInvoiceBooksDocument[];
 }
 
 /** Reads one Bid invoice's Books documents and their stored copies (the Bid API, read only). */

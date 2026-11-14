@@ -14,6 +14,8 @@ const base: PurchaseInvoiceCard = {
   invoiceDocumentId: null,
   cancelledAt: null,
   totalPence: 150_000,
+  cancelledAfterDefault: false,
+  creditNotes: [],
 };
 
 const vm = (card: Partial<PurchaseInvoiceCard> | null) =>
@@ -59,6 +61,7 @@ describe("purchaseInvoiceCard", () => {
       title: "Invoice INV-000123",
       meta: "Issued Thu 12 Nov, 14:05 GMT",
       download: { label: "Download invoice (PDF)", href: `/purchases/${LOT}/documents/${DOC}` },
+      credits: [],
     });
   });
 
@@ -67,6 +70,7 @@ describe("purchaseInvoiceCard", () => {
       kind: "cancelled",
       title: "Invoice cancelled",
       detail: "This invoice was cancelled on Mon 16 Nov. You owe nothing on it.",
+      credits: [],
     });
     // The day is London's: 23:30 GMT on the 15th in summer time is already the 16th.
     const lateInSummer = vm({ state: "cancelled", cancelledAt: "2026-07-15T23:30:00.000Z" });
@@ -100,5 +104,62 @@ describe("purchaseInvoiceCard", () => {
       invoiceDocumentId: DOC,
     });
     expect(card.kind === "issued" && card.meta).toBe("Issued Thu 2 Jul, 14:05 BST");
+  });
+});
+
+describe("purchaseInvoiceCard: credit notes", () => {
+  const CN = "c0c0c0c0-0000-4000-8000-000000000001";
+  const issued = {
+    state: "issued" as const,
+    invoiceNumber: "INV-000123",
+    issuedAt: "2026-11-12T14:05:00.000Z",
+    invoiceDocumentId: DOC,
+  };
+
+  it("lists each refund: 'Refunded −£[amount]' and 'Download credit note [number] (PDF)'", () => {
+    const out = vm({
+      ...issued,
+      creditNotes: [
+        { documentId: CN, number: "CN-00001", grossPence: 12_345, issuedAt: null, kind: "refund" },
+      ],
+    });
+    expect(out).toMatchObject({
+      kind: "issued",
+      credits: [
+        {
+          text: "Refunded \u2212£123.45",
+          download: {
+            label: "Download credit note CN-00001 (PDF)",
+            href: `/purchases/${LOT}/documents/${CN}`,
+          },
+        },
+      ],
+    });
+  });
+
+  it("says 'Cancelled after a default' with its credit note once issued", () => {
+    const out = vm({
+      state: "cancelled",
+      cancelledAt: "2026-11-30T10:00:00.000Z",
+      cancelledAfterDefault: true,
+      creditNotes: [
+        {
+          documentId: CN,
+          number: "CN-00009",
+          grossPence: 150_000,
+          issuedAt: null,
+          kind: "default",
+        },
+      ],
+    });
+    expect(out).toMatchObject({
+      kind: "cancelled",
+      title: "Cancelled after a default",
+      credits: [{ download: { label: "Download credit note CN-00009 (PDF)" } }],
+    });
+    expect(vm({ state: "cancelled", cancelledAt: null })).toMatchObject({
+      title: "Invoice cancelled",
+      credits: [],
+    });
   });
 });

@@ -5,6 +5,9 @@ import type { PurchaseInvoiceCard } from "@auction/types";
 /** A download on the card: LAX's stored copy of the Books invoice, or LAX's own invoice. */
 export type InvoiceCardLink = { label: string; href: string };
 
+/** A credit note line: "Refunded −£123.45" and its download. */
+export type InvoiceCardCredit = { text: string; download: InvoiceCardLink };
+
 /**
  * The invoice card on a Bid purchase, ready to draw. Each state's words are fixed here and
  * nowhere else; figures and dates are the API's (the invoice's frozen lines, Books' own dates).
@@ -24,12 +27,16 @@ export type PurchaseInvoiceCardVm =
       /** "Issued Thu 12 Nov, 14:05 GMT". */
       meta: string;
       download: InvoiceCardLink;
+      /** Each refund's credit note, oldest first; empty when nothing was refunded. */
+      credits: InvoiceCardCredit[];
     }
   | {
       kind: "cancelled";
       title: string;
       /** "This invoice was cancelled on Mon 16 Nov. You owe nothing on it." */
       detail: string;
+      /** The credit note that cancels it after a default, once issued. */
+      credits: InvoiceCardCredit[];
     }
   | {
       /** Books does not issue this invoice (yet): LAX's own invoice, as before. */
@@ -46,8 +53,28 @@ export const INVOICE_CARD_COPY = {
     "This is taking longer than usual. Our team has been told. Your payment is not affected.",
   download: "Download invoice (PDF)",
   cancelledTitle: "Invoice cancelled",
+  defaultedTitle: "Cancelled after a default",
   laxEmpty: "The invoice appears here once it is raised.",
 } as const;
+
+const POUNDS = new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP" });
+
+/** "Refunded −£123.45", and its download "Download credit note CN-00001 (PDF)". */
+function creditLine(
+  lotId: string,
+  credit: PurchaseInvoiceCard["creditNotes"][number],
+): InvoiceCardCredit {
+  return {
+    text:
+      credit.kind === "refund"
+        ? `Refunded \u2212${POUNDS.format(credit.grossPence / 100)}`
+        : `Credit note ${credit.number}`,
+    download: {
+      label: `Download credit note ${credit.number} (PDF)`,
+      href: purchaseDocumentHref(lotId, credit.documentId),
+    },
+  };
+}
 
 /** Where a stored Books document downloads from, through the app (the member's session goes too). */
 export function purchaseDocumentHref(lotId: string, documentId: string): string {
@@ -108,15 +135,21 @@ export function purchaseInvoiceCard(input: {
           label: INVOICE_CARD_COPY.download,
           href: purchaseDocumentHref(lotId, card.invoiceDocumentId),
         },
+        credits: (card.creditNotes ?? [])
+          .filter((c) => c.kind === "refund")
+          .map((c) => creditLine(lotId, c)),
       };
     }
     case "cancelled":
       return {
         kind: "cancelled",
-        title: INVOICE_CARD_COPY.cancelledTitle,
+        title: card.cancelledAfterDefault
+          ? INVOICE_CARD_COPY.defaultedTitle
+          : INVOICE_CARD_COPY.cancelledTitle,
         detail: card.cancelledAt
           ? `This invoice was cancelled on ${day(card.cancelledAt, now)}. You owe nothing on it.`
           : "This invoice was cancelled. You owe nothing on it.",
+        credits: (card.creditNotes ?? []).map((c) => creditLine(lotId, c)),
       };
     case "lax":
       return lax;

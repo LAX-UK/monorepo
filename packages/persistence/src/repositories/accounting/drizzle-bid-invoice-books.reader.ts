@@ -6,7 +6,7 @@ import {
   accountingDocumentEvent,
   bidInvoice,
 } from "@auction/db/schema";
-import { and, asc, eq, sql } from "drizzle-orm";
+import { and, asc, eq, ne, sql } from "drizzle-orm";
 import type {
   AccountingClock,
   BidInvoiceBooksDocument,
@@ -78,6 +78,7 @@ export class DrizzleBidInvoiceBooksReader implements IBidInvoiceBooksReader {
       if (mode === undefined) return ok(null);
       return ok({
         documentId: stored.value.id,
+        reference: stored.value.reference,
         targetMode: mode as TargetMode,
         record: stored.value.record,
         grossPence: stored.value.totals.grossPence,
@@ -88,12 +89,34 @@ export class DrizzleBidInvoiceBooksReader implements IBidInvoiceBooksReader {
             : { storageKey: row.copyKey, rehearsal: row.copyRehearsal === true },
       });
     };
-    const out: BidInvoiceBooksDocument[] = [];
-    for (const row of invoices) {
-      const one = toDocument(row);
-      if (!one.ok) return one;
-      if (one.value) out.push(one.value);
-    }
-    return ok({ invoice, invoices: out });
+    // Its credit notes (refunds, a buyer default's), in the order they were made.
+    const credits = await this.db
+      .select({ document: d, copyKey: c.storageKey, copyRehearsal: c.rehearsal, issuedAt })
+      .from(d)
+      .leftJoin(c, eq(c.documentId, d.id))
+      .where(
+        and(
+          eq(d.product, "bid"),
+          eq(d.targetProvider, "books"),
+          eq(d.kind, "credit_note"),
+          sql`${d.payload} ->> 'invoiceReference' = ${reference.value}`,
+          ne(d.state, "cancelled"),
+        ),
+      )
+      .orderBy(asc(d.createdAt), asc(d.id));
+    const collect = (rows: typeof invoices) => {
+      const out: BidInvoiceBooksDocument[] = [];
+      for (const row of rows) {
+        const one = toDocument(row);
+        if (!one.ok) return one;
+        if (one.value) out.push(one.value);
+      }
+      return ok(out);
+    };
+    const invoiceDocuments = collect(invoices);
+    if (!invoiceDocuments.ok) return invoiceDocuments;
+    const creditNotes = collect(credits);
+    if (!creditNotes.ok) return creditNotes;
+    return ok({ invoice, invoices: invoiceDocuments.value, creditNotes: creditNotes.value });
   }
 }

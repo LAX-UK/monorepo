@@ -9,7 +9,7 @@ export function fetchPurchaseInvoicePdf(lotId: string): Promise<Response> {
   return purchasesApiFetch(`/${encodeURIComponent(lotId)}/invoice.pdf`);
 }
 
-/** LAX's stored copy of a Books invoice, passed through as it comes. */
+/** LAX's stored copy of a Books invoice or credit note, passed through as it comes. */
 export function fetchPurchaseDocumentPdf(lotId: string, documentId: string): Promise<Response> {
   return purchasesApiFetch(
     `/${encodeURIComponent(lotId)}/documents/${encodeURIComponent(documentId)}`,
@@ -25,6 +25,20 @@ const invoiceCardSchema = z.object({
   invoiceDocumentId: z.string().uuid().nullable(),
   cancelledAt: isoInstant.nullable(),
   totalPence: z.number().int().nonnegative(),
+  // Absent from an API that predates credit notes: read as none.
+  cancelledAfterDefault: z.boolean().default(false),
+  creditNotes: z
+    .array(
+      z.object({
+        documentId: z.string().uuid(),
+        number: z.string().min(1),
+        grossPence: z.number().int().positive(),
+        issuedAt: isoInstant.nullable(),
+        kind: z.enum(["refund", "default"]),
+      }),
+    )
+    .max(100)
+    .default([]),
 }) satisfies z.ZodType<PurchaseInvoiceCard, z.ZodTypeDef, unknown>;
 
 /**

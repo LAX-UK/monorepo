@@ -4,7 +4,7 @@ import type {
   IAccountingSourceSettingReader,
   IBidInvoiceBooksReader,
 } from "@auction/persistence/interfaces";
-import type { PurchaseInvoiceCard } from "@auction/types";
+import type { PurchaseCreditNote, PurchaseInvoiceCard } from "@auction/types";
 import { err, ok } from "neverthrow";
 import type {
   BuyingResult,
@@ -40,6 +40,11 @@ function servable(document: BidInvoiceBooksDocument, mode: TargetMode | null): b
   );
 }
 
+/** A buyer default's credit note: `LAX-BID-CN-dft-<invoice>`. */
+function isDefaultCredit(document: BidInvoiceBooksDocument): boolean {
+  return /^LAX-BID-CN-dft-/.test(document.reference);
+}
+
 function numberOf(document: BidInvoiceBooksDocument): string {
   return document.record.status === "issued" ? document.record.issued.number : "";
 }
@@ -50,7 +55,8 @@ function numberOf(document: BidInvoiceBooksDocument): string {
  * Books mode the switch aims Bid at now: not aimed, only rehearsing, or the test organisation, and
  * it is LAX's own invoice as before; a Books number and a download are only ever shown once Books
  * issued the invoice live and LAX holds its copy. The buyer downloads that copy, never Books' own
- * link. Credit notes are not shown or served here yet.
+ * link. Its credit notes (a refund's, a buyer default's) follow the same rule: listed and served
+ * only once issued live with LAX's copy stored, never a rehearsal or the test organisation's.
  */
 export class PurchaseInvoiceBooksService implements IPurchaseInvoiceBooksService {
   constructor(private readonly deps: PurchaseInvoiceBooksDeps) {}
@@ -79,6 +85,21 @@ export class PurchaseInvoiceBooksService implements IPurchaseInvoiceBooksService
       this.deps.now().getTime(),
     );
     const issued = standing.kind === "issued" && document !== null;
+    // Credit notes only beside a Books card (never beside LAX's own invoice), and only servable ones.
+    const credits =
+      standing.kind === "issued" || standing.kind === "cancelled"
+        ? (held?.creditNotes ?? []).filter((d) => servable(d, mode))
+        : [];
+    const creditNotes: PurchaseCreditNote[] = credits.map((d) => ({
+      documentId: d.documentId,
+      number: numberOf(d),
+      grossPence: d.grossPence,
+      issuedAt: d.issuedAt?.toISOString() ?? null,
+      kind: isDefaultCredit(d) ? "default" : "refund",
+    }));
+    const defaulted =
+      standing.kind === "cancelled" &&
+      (held?.creditNotes ?? []).some((d) => d.targetMode === mode && isDefaultCredit(d));
     return ok({
       state: standing.kind,
       invoiceNumber: standing.kind === "issued" ? standing.number : null,
@@ -88,6 +109,8 @@ export class PurchaseInvoiceBooksService implements IPurchaseInvoiceBooksService
       cancelledAt:
         standing.kind === "cancelled" ? new Date(standing.cancelledAtMs).toISOString() : null,
       totalPence: invoice.totalPence,
+      cancelledAfterDefault: defaulted,
+      creditNotes,
     });
   }
 
@@ -100,19 +123,24 @@ export class PurchaseInvoiceBooksService implements IPurchaseInvoiceBooksService
     const found = await findPayersInvoice(this.deps, actor, lotId);
     if (found.isErr()) return err(found.error);
     const { invoice } = found.value;
-    if (invoice.voidedAt !== null) return err(buyingError("invoice_not_ready"));
     const mode = await this.booksMode();
     const books = await this.deps.books.read(invoice.id);
     if (!books.ok || !books.value) return err(buyingError("invoice_not_ready"));
-    // Only this invoice's own document: an id of anything else is the same "not ready".
-    const match = books.value.invoices.find(
+    // Only this invoice's own documents: an id of anything else is the same "not ready". A
+    // cancelled invoice is not served, but its credit notes are (the one that cancels it too).
+    const invoiceCopy =
+      invoice.voidedAt === null
+        ? books.value.invoices.find((d) => d.documentId === documentId && servable(d, mode))
+        : undefined;
+    const creditCopy = books.value.creditNotes.find(
       (d) => d.documentId === documentId && servable(d, mode),
     );
+    const match = invoiceCopy ?? creditCopy;
     if (!match?.copy) return err(buyingError("invoice_not_ready"));
     const pdf = await this.deps.storage.getObjectBytes(match.copy.storageKey, MAX_COPY_BYTES);
     if (!pdf || pdf.length === 0) return err(buyingError("invoice_not_ready"));
     const safe = numberOf(match).replace(/[^A-Za-z0-9-]+/g, "-") || "document";
-    return ok({ pdf, filename: `invoice-${safe}.pdf` });
+    return ok({ pdf, filename: `${invoiceCopy ? "invoice" : "credit-note"}-${safe}.pdf` });
   }
 
   /** The mode the switch aims Bid at in Books now, or null (not aimed, or unreadable). */

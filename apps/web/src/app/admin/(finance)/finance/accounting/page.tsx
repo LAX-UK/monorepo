@@ -34,6 +34,7 @@ export default async function AdminAccountingPage({
       rehearsal={page.rehearsal}
       unreadable={page.unreadable}
       partFunded={page.partFunded}
+      unattributed={page.unattributed}
     />
   );
 }
