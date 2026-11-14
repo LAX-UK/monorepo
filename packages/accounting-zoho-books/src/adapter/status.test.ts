@@ -97,6 +97,7 @@ describe("reading an issued document's state back from Books", () => {
             amountPence: 10_000,
             date: "2026-11-12",
             mode: "Stripe",
+            reference: payment.reference,
           },
         ],
       },
@@ -119,7 +120,13 @@ describe("reading an issued document's state back from Books", () => {
         state: "partially_paid",
         balancePence: 6_000,
         payments: [
-          { providerPaymentId: cheque, amountPence: 4_000, date: "2026-11-13", mode: "Cheque" },
+          {
+            providerPaymentId: cheque,
+            amountPence: 4_000,
+            date: "2026-11-13",
+            mode: "Cheque",
+            reference: null,
+          },
         ],
       },
     });

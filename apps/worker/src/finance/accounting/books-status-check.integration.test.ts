@@ -302,6 +302,9 @@ describe.skipIf(!HAS_DB)("Books nightly status check (integration)", { timeout: 
     return { invoice: inv, payment: pay, lot: won };
   }
 
+  const taskKey = (booksPaymentId: string, _invoiceReference: string) =>
+    `books_payment_recorded_by_hand:books:${BID_ORG_ID}:${booksPaymentId}`;
+
   const tasksFor = (dedupeKey: string) =>
     owner
       .select()
@@ -331,8 +334,15 @@ describe.skipIf(!HAS_DB)("Books nightly status check (integration)", { timeout: 
             amountPence: 150_000,
             date: "2031-11-14",
             mode: "Stripe",
+            reference: null,
           },
-          { providerPaymentId: cheque, amountPence: 150_000, date: "2031-11-15", mode: "Cheque" },
+          {
+            providerPaymentId: cheque,
+            amountPence: 150_000,
+            date: "2031-11-15",
+            mode: "Cheque",
+            reference: null,
+          },
         ],
       },
     });
@@ -382,6 +392,155 @@ describe.skipIf(!HAS_DB)("Books nightly status check (integration)", { timeout: 
       .from(accountingDocument)
       .where(eq(accountingDocument.id, invoice.id));
     expect(doc?.state).toBe("issued");
+  });
+
+  const noticeFor = (invoice: { providerId: string | null }) => ({
+    organizationId: BID_ORG_ID,
+    module: "invoice" as const,
+    entityId: invoice.providerId as string,
+  });
+
+  const snapshotOf = async (documentId: string) => {
+    const [row] = await owner
+      .select()
+      .from(accountingBooksStatus)
+      .where(eq(accountingBooksStatus.documentId, documentId));
+    return row;
+  };
+
+  const NO_BOOKS_ID = { providerId: null, providerNumber: null } as const;
+  const SETTLES = new Date(Date.now() + 60_000);
+
+  // Every state LAX's payment document can be in, as the table allows it (a Books id is held only
+  // when issued or in review). Books shows LAX's payment with the reference LAX sent: it is never a
+  // task, by its Books id or by that reference. While LAX's document is not settled, another Books
+  // payment on the invoice is held back, not reported.
+  it.each([
+    { name: "pending", settled: false, patch: { state: "pending", ...NO_BOOKS_ID } },
+    {
+      name: "sending",
+      settled: false,
+      patch: {
+        state: "sending",
+        ...NO_BOOKS_ID,
+        leaseToken: "lease-held",
+        leaseExpiresAt: SETTLES,
+      },
+    },
+    {
+      name: "unknown",
+      settled: false,
+      patch: { state: "unknown", ...NO_BOOKS_ID, settlesAt: SETTLES },
+    },
+    {
+      name: "needs_review with its Books id",
+      settled: false,
+      patch: { state: "needs_review", reviewLookup: "clear", needsReviewReason: "test" },
+    },
+    {
+      name: "needs_review with a lookup owed",
+      settled: false,
+      patch: {
+        state: "needs_review",
+        ...NO_BOOKS_ID,
+        reviewLookup: "owed",
+        needsReviewReason: "test",
+        settlesAt: SETTLES,
+      },
+    },
+    {
+      name: "failed",
+      settled: false,
+      patch: { state: "failed", ...NO_BOOKS_ID, lastErrorClass: "zoho_books_test" },
+    },
+    { name: "issued", settled: true, patch: { state: "issued" } },
+    { name: "cancelled", settled: true, patch: { state: "cancelled", ...NO_BOOKS_ID } },
+  ] as const)(
+    "LAX's payment $name: it is never a task, and another payment waits until it is settled",
+    async ({ settled, patch }) => {
+      const { books, invoice, laxPayment } = await issued();
+      const laxBooksId = laxPayment.providerId as string;
+      await owner
+        .update(accountingDocument)
+        .set({ leaseToken: null, leaseExpiresAt: null, settlesAt: null, ...patch })
+        .where(eq(accountingDocument.id, laxPayment.id));
+      const stray = String(7_100_000_000_000 + Math.floor(Math.random() * 1e9));
+      books.setStatus(invoice.providerId as string, {
+        status: "read",
+        reading: {
+          state: "paid",
+          balancePence: 0,
+          payments: [
+            {
+              providerPaymentId: laxBooksId,
+              amountPence: 150_000,
+              date: "2031-11-14",
+              mode: "Stripe",
+              reference: laxPayment.laxReference,
+            },
+            {
+              providerPaymentId: stray,
+              amountPence: 1_000,
+              date: null,
+              mode: null,
+              reference: null,
+            },
+          ],
+        },
+      });
+      const check = statusCheck(books);
+      expect(await check.recheckFromNotice(noticeFor(invoice))).toBe("read");
+
+      expect(await tasksFor(taskKey(laxBooksId, invoice.laxReference))).toEqual([]);
+      const strayTasks = () => tasksFor(taskKey(stray, invoice.laxReference));
+      expect(await strayTasks()).toHaveLength(settled ? 1 : 0);
+      expect((await snapshotOf(invoice.id))?.paymentIds).toEqual(
+        settled ? [laxBooksId, stray].sort() : [laxBooksId],
+      );
+      if (settled) return;
+
+      // Once LAX's payment is issued, the next read reports the other payment, once.
+      await owner
+        .update(accountingDocument)
+        .set({
+          state: "issued",
+          providerId: laxBooksId,
+          providerNumber: laxPayment.providerNumber,
+          leaseToken: null,
+          leaseExpiresAt: null,
+          settlesAt: null,
+          reviewLookup: null,
+          needsReviewReason: null,
+          lastErrorClass: null,
+        })
+        .where(eq(accountingDocument.id, laxPayment.id));
+      expect(await check.recheckFromNotice(noticeFor(invoice))).toBe("read");
+      expect(await strayTasks()).toHaveLength(1);
+      expect(await tasksFor(taskKey(laxBooksId, invoice.laxReference))).toEqual([]);
+    },
+  );
+
+  it("a second Books payment carrying the reference of LAX's issued payment is reported: LAX knows its own Books id", async () => {
+    const { books, invoice, laxPayment } = await issued();
+    const copy = String(7_200_000_000_000 + Math.floor(Math.random() * 1e9));
+    books.setStatus(invoice.providerId as string, {
+      status: "read",
+      reading: {
+        state: "paid",
+        balancePence: 0,
+        payments: [
+          {
+            providerPaymentId: copy,
+            amountPence: 150_000,
+            date: "2031-11-14",
+            mode: "Stripe",
+            reference: laxPayment.laxReference,
+          },
+        ],
+      },
+    });
+    expect(await statusCheck(books).recheckFromNotice(noticeFor(invoice))).toBe("read");
+    expect(await tasksFor(taskKey(copy, invoice.laxReference))).toHaveLength(1);
   });
 
   it("a void made in Books is recorded as a change, the run is recorded, and a notice reads it first", async () => {

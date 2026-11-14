@@ -474,8 +474,22 @@ that LAX did not send (a gallery sale or a cheque entered in Books), the check o
 task**: "Money received that could not be applied", reason `books_payment_recorded_by_hand`. The task
 names the LAX invoice reference, the amount, and Books' payment mode and date. It is opened once per
 Books payment. **Nothing in LAX is marked paid**, and the check cannot mark a lot, invoice or payment
-paid. Finance checks that the money arrived, then records the payment in LAX the usual way, or
-corrects Books if the payment was entered by mistake.
+paid.
+
+A Books payment is LAX's own, and never a task, when its Books id belongs to any LAX payment
+document, whatever state that document is in, or when it carries the reference of a LAX payment
+whose Books id LAX never learnt. While any LAX payment applied to the invoice is not settled
+(pending, sending, unknown, needs review or failed), the check opens no task for that invoice's
+other Books payments and does not remember them: it logs `accounting_status_payments_held_back` and
+looks again on the next read. A LAX payment stuck in needs review or failed therefore holds these
+back until finance resolves it on the accounting attention list.
+
+**What to do with the task.** First check that it is not a LAX card payment whose Books document is
+still unresolved: look up the invoice reference on the accounting attention list and in Books, and
+compare the payment's reference, amount and date with LAX's own payments for that invoice. If it is
+LAX's own payment, resolve LAX's payment document and close the task; do not record it again. Only
+then, for a real payment entered in Books, check that the money arrived and record the payment in
+LAX the usual way, or correct Books if the payment was entered by mistake.
 
 ### Status check missed (`accounting_status_check_missed`)
 

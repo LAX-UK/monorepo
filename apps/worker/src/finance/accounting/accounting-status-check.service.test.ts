@@ -4,6 +4,7 @@ import {
   type BooksStatusDecision,
   type BooksStatusSnapshot,
   type DocumentStatusPort,
+  NO_LAX_PAYMENTS,
   type StatusReadOutcome,
   projectBidPaymentCaptured,
 } from "@auction/accounting-domain";
@@ -75,13 +76,19 @@ class InMemoryStatusStore implements IAccountingBooksStatusStore {
     const stored = this.issued().find((d) => d.id === id);
     return stored ? this.due(stored) : null;
   }
-  async knownPaymentIds(_e: unknown, _t: unknown, ids: readonly string[]) {
+  /** Set by a test: a LAX payment on the invoice is not settled yet. */
+  laxPaymentUnresolved = false;
+  async laxPaymentsFor(_invoice: unknown, ids: readonly string[]) {
     const lax = new Set(
       this.issued()
         .filter((d) => d.kind === "payment" && d.record.status === "issued")
         .map((d) => (d.record.status === "issued" ? d.record.issued.providerId : "")),
     );
-    return new Set(ids.filter((id) => lax.has(id)));
+    return {
+      ...NO_LAX_PAYMENTS,
+      providerIds: new Set(ids.filter((id) => lax.has(id))),
+      unresolved: this.laxPaymentUnresolved,
+    };
   }
   async record(_tx: unknown, documentId: string, decision: BooksStatusDecision) {
     this.snapshots.set(documentId, decision.snapshot);
@@ -195,6 +202,7 @@ describe("the nightly Books status check, against the Books fake", () => {
             amountPence: 154_320,
             date: "2031-03-02",
             mode: "Stripe",
+            reference: payment.stored.reference,
           },
         ],
       }),
@@ -228,6 +236,7 @@ describe("the nightly Books status check, against the Books fake", () => {
       amountPence: 40_000,
       date: "2031-03-09",
       mode: "Cheque",
+      reference: null,
     };
     fake.setStatus(
       invoice.providerId,
@@ -257,6 +266,33 @@ describe("the nightly Books status check, against the Books fake", () => {
     expect(opened).toHaveLength(1);
     // No document moved: the check never marks an invoice or payment anything.
     expect(JSON.stringify(documents.documents().map((d) => [d.id, d.record]))).toBe(before);
+  });
+
+  it("while a LAX payment on the invoice is unsettled, an unknown Books payment opens no task and is looked at again", async () => {
+    const { check, store, opened, fake, invoice } = await setUp();
+    const unknown = {
+      providerPaymentId: "5000000000998",
+      amountPence: 154_320,
+      date: "2031-03-02",
+      mode: "Stripe",
+      reference: null,
+    };
+    fake.setStatus(
+      invoice.providerId,
+      read({ state: "paid", balancePence: 0, payments: [unknown] }),
+    );
+    store.laxPaymentUnresolved = true;
+    expect((await check.runNightly()).tasks).toBe(0);
+    expect(opened).toEqual([]);
+    expect(store.snapshots.get(invoice.stored.id)?.paymentIds).toEqual([]);
+    expect(log.info).toHaveBeenCalledWith(
+      {
+        documentId: invoice.stored.id,
+        reference: invoice.stored.reference,
+        booksPaymentIds: ["5000000000998"],
+      },
+      "accounting_status_payments_held_back",
+    );
   });
 
   it("stops at its share of the budget and records the run as budget_spent", async () => {

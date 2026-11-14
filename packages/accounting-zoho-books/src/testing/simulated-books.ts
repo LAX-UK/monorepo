@@ -119,11 +119,11 @@ export class SimulatedBooks implements ZohoTransport {
 
   /**
    * Staff record a payment against an invoice in Books by hand (a gallery sale, a cheque): it has
-   * no LAX reference and LAX never sent it. Returns its Books id.
+   * no LAX reference (unless staff type one in) and LAX never sent it. Returns its Books id.
    */
   recordPaymentByHand(
     invoiceId: string,
-    payment: { amountPence: number; date: string; mode: string },
+    payment: { amountPence: number; date: string; mode: string; reference?: string },
   ): string {
     const id = String(++this.counter);
     const rows = this.invoicePayments.get(invoiceId) ?? [];
@@ -132,6 +132,7 @@ export class SimulatedBooks implements ZohoTransport {
       amount: pounds(payment.amountPence),
       date: payment.date,
       payment_mode: payment.mode,
+      ...(payment.reference ? { reference_number: payment.reference } : {}),
     });
     this.invoicePayments.set(invoiceId, rows);
     return id;
@@ -265,6 +266,7 @@ export class SimulatedBooks implements ZohoTransport {
           amount: row.amount_applied,
           date: record.date,
           payment_mode: "Stripe",
+          reference_number: reference,
         });
         this.invoicePayments.set(row.invoice_id as string, rows);
       }

@@ -53,6 +53,8 @@ export interface BooksPaymentSeen {
   readonly date: string | null;
   /** How it was paid, as the provider words it (e.g. "Cheque"); free text, shown to finance only. */
   readonly mode: string | null;
+  /** The reference the payment carries in the provider (LAX sends its own), when it has one. */
+  readonly reference: string | null;
 }
 
 /** One read of a document's state from the provider. */
@@ -108,22 +110,57 @@ export interface BooksStatusDecision {
   readonly changes: readonly BooksStatusChange[];
   /** Payments recorded in the books by hand, each to become one finance task (never applied). */
   readonly financeTasks: readonly BooksPaymentSeen[];
+  /**
+   * Payments not told apart yet, because a LAX payment on the invoice is not settled: no task, and
+   * left out of the snapshot, so the next read looks at them again.
+   */
+  readonly heldBack: readonly BooksPaymentSeen[];
+}
+
+/** What LAX holds of its own payments in the books a document is in. */
+export interface LaxPaymentsInBooks {
+  /** Provider ids of LAX's payment documents in these books, whatever state the document is in. */
+  readonly providerIds: ReadonlySet<string>;
+  /**
+   * LAX references of its payment documents applied to the invoice that hold no provider id yet
+   * (the send's outcome is not known): a provider payment carrying one of them is LAX's own.
+   */
+  readonly referencesWithoutProviderId: ReadonlySet<string>;
+  /**
+   * True while any LAX payment document applied to the invoice is not settled (neither issued nor
+   * cancelled): LAX may have sent it without knowing its provider id.
+   */
+  readonly unresolved: boolean;
+}
+
+export const NO_LAX_PAYMENTS: LaxPaymentsInBooks = {
+  providerIds: new Set(),
+  referencesWithoutProviderId: new Set(),
+  unresolved: false,
+};
+
+function isLaxPayment(payment: BooksPaymentSeen, lax: LaxPaymentsInBooks): boolean {
+  if (lax.providerIds.has(payment.providerPaymentId)) return true;
+  return payment.reference !== null && lax.referencesWithoutProviderId.has(payment.reference);
 }
 
 /**
- * Compares a read with what LAX last recorded. A payment is LAX's own when its provider id is one
- * LAX recorded when it sent it (`laxPaymentIds`); any other is a payment recorded in the books by a
- * person, reported once, the first time it is seen. The very first read of a document records its
- * state as a change from nothing, so the history says when the check first looked.
+ * Compares a read with what LAX last recorded. A payment is LAX's own when its provider id belongs
+ * to a LAX payment document in any state, or it carries the reference of a LAX payment whose
+ * provider id LAX never learnt. Any other is a payment recorded in the books by a person, reported
+ * once, the first time it is seen, but only while every LAX payment on the invoice is settled:
+ * until then it may be LAX's own, so it is held back and read again. The very first read of a
+ * document records its state as a change from nothing, so the history says when the check first
+ * looked.
  */
 export function decideBooksStatus(input: {
   readonly previous: BooksStatusSnapshot | null;
   readonly read:
     | { readonly status: "read"; readonly reading: BooksStatusReading }
     | { readonly status: "not_found" };
-  readonly laxPaymentIds: ReadonlySet<string>;
+  readonly laxPayments: LaxPaymentsInBooks;
 }): BooksStatusDecision {
-  const { previous, read, laxPaymentIds } = input;
+  const { previous, read, laxPayments } = input;
   const state: BooksStatusSnapshot["state"] =
     read.status === "read" ? read.reading.state : "missing";
   const payments = read.status === "read" ? read.reading.payments : [];
@@ -134,23 +171,32 @@ export function decideBooksStatus(input: {
     changes.push({ kind: "state_changed", from: previous?.state ?? null, to: state });
   }
   const financeTasks: BooksPaymentSeen[] = [];
+  const heldBack: BooksPaymentSeen[] = [];
+  const kept = new Set(seen);
   for (const payment of payments) {
-    if (laxPaymentIds.has(payment.providerPaymentId) || seen.has(payment.providerPaymentId)) {
+    if (seen.has(payment.providerPaymentId)) continue;
+    if (isLaxPayment(payment, laxPayments)) {
+      kept.add(payment.providerPaymentId);
       continue;
     }
+    if (laxPayments.unresolved) {
+      heldBack.push(payment);
+      continue;
+    }
+    kept.add(payment.providerPaymentId);
     changes.push({ kind: "payment_recorded_in_books", payment });
     financeTasks.push(payment);
   }
 
-  const paymentIds = [...new Set([...seen, ...payments.map((p) => p.providerPaymentId)])].sort();
   return {
     snapshot: {
       state,
       balancePence: read.status === "read" ? read.reading.balancePence : null,
-      paymentIds,
+      paymentIds: [...kept].sort(),
     },
     changes,
     financeTasks,
+    heldBack,
   };
 }
 

@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   type BooksStatusReading,
+  type LaxPaymentsInBooks,
+  NO_LAX_PAYMENTS,
   booksPaymentTaskReference,
   decideBooksStatus,
   isStatusCheckedKind,
@@ -10,12 +12,28 @@ const read = (reading: Partial<BooksStatusReading> = {}) => ({
   status: "read" as const,
   reading: { state: "open" as const, balancePence: 10_000, payments: [], ...reading },
 });
-const cheque = { providerPaymentId: "900", amountPence: 4_000, date: "2026-11-13", mode: "Cheque" };
-const stripe = { providerPaymentId: "800", amountPence: 6_000, date: "2026-11-12", mode: "Stripe" };
+const cheque = {
+  providerPaymentId: "900",
+  amountPence: 4_000,
+  date: "2026-11-13",
+  mode: "Cheque",
+  reference: null,
+};
+const stripe = {
+  providerPaymentId: "800",
+  amountPence: 6_000,
+  date: "2026-11-12",
+  mode: "Stripe",
+  reference: "LAX-BID-PAY-1",
+};
+const lax = (over: Partial<LaxPaymentsInBooks> = {}): LaxPaymentsInBooks => ({
+  ...NO_LAX_PAYMENTS,
+  ...over,
+});
 
 describe("deciding what a Books status read means", () => {
   it("records the first read as a change from nothing", () => {
-    const d = decideBooksStatus({ previous: null, read: read(), laxPaymentIds: new Set() });
+    const d = decideBooksStatus({ previous: null, read: read(), laxPayments: NO_LAX_PAYMENTS });
     expect(d.changes).toEqual([{ kind: "state_changed", from: null, to: "open" }]);
     expect(d.financeTasks).toEqual([]);
     expect(d.snapshot).toEqual({ state: "open", balancePence: 10_000, paymentIds: [] });
@@ -23,9 +41,9 @@ describe("deciding what a Books status read means", () => {
 
   it("records nothing when nothing changed", () => {
     const previous = { state: "open" as const, balancePence: 10_000, paymentIds: [] };
-    expect(decideBooksStatus({ previous, read: read(), laxPaymentIds: new Set() }).changes).toEqual(
-      [],
-    );
+    expect(
+      decideBooksStatus({ previous, read: read(), laxPayments: NO_LAX_PAYMENTS }).changes,
+    ).toEqual([]);
   });
 
   it("records a void", () => {
@@ -33,7 +51,7 @@ describe("deciding what a Books status read means", () => {
     const d = decideBooksStatus({
       previous,
       read: read({ state: "void" }),
-      laxPaymentIds: new Set(),
+      laxPayments: NO_LAX_PAYMENTS,
     });
     expect(d.changes).toEqual([{ kind: "state_changed", from: "open", to: "void" }]);
   });
@@ -43,7 +61,7 @@ describe("deciding what a Books status read means", () => {
     const d = decideBooksStatus({
       previous,
       read: { status: "not_found" },
-      laxPaymentIds: new Set(),
+      laxPayments: NO_LAX_PAYMENTS,
     });
     expect(d.changes).toEqual([{ kind: "state_changed", from: "open", to: "missing" }]);
     expect(d.snapshot.state).toBe("missing");
@@ -53,7 +71,7 @@ describe("deciding what a Books status read means", () => {
     const d = decideBooksStatus({
       previous: null,
       read: read({ state: "paid", balancePence: 0, payments: [stripe] }),
-      laxPaymentIds: new Set(["800"]),
+      laxPayments: lax({ providerIds: new Set(["800"]) }),
     });
     expect(d.financeTasks).toEqual([]);
     expect(d.changes).toEqual([{ kind: "state_changed", from: null, to: "paid" }]);
@@ -63,7 +81,7 @@ describe("deciding what a Books status read means", () => {
     const first = decideBooksStatus({
       previous: { state: "open", balancePence: 10_000, paymentIds: [] },
       read: read({ state: "partially_paid", balancePence: 6_000, payments: [cheque] }),
-      laxPaymentIds: new Set(),
+      laxPayments: NO_LAX_PAYMENTS,
     });
     expect(first.financeTasks).toEqual([cheque]);
     expect(first.changes).toContainEqual({ kind: "payment_recorded_in_books", payment: cheque });
@@ -72,7 +90,7 @@ describe("deciding what a Books status read means", () => {
     const again = decideBooksStatus({
       previous: first.snapshot,
       read: read({ state: "partially_paid", balancePence: 6_000, payments: [cheque] }),
-      laxPaymentIds: new Set(),
+      laxPayments: NO_LAX_PAYMENTS,
     });
     expect(again.financeTasks).toEqual([]);
     expect(again.changes).toEqual([]);
@@ -82,10 +100,54 @@ describe("deciding what a Books status read means", () => {
     const d = decideBooksStatus({
       previous: null,
       read: read({ state: "paid", balancePence: 0, payments: [cheque, stripe] }),
-      laxPaymentIds: new Set(["800"]),
+      laxPayments: lax({ providerIds: new Set(["800"]) }),
     });
-    expect(Object.keys(d).sort()).toEqual(["changes", "financeTasks", "snapshot"]);
+    expect(Object.keys(d).sort()).toEqual(["changes", "financeTasks", "heldBack", "snapshot"]);
     expect(d.financeTasks).toEqual([cheque]);
+  });
+
+  it("a payment LAX sent but holds no Books id for is LAX's own by its reference", () => {
+    const d = decideBooksStatus({
+      previous: null,
+      read: read({ state: "paid", balancePence: 0, payments: [stripe] }),
+      laxPayments: lax({
+        referencesWithoutProviderId: new Set(["LAX-BID-PAY-1"]),
+        unresolved: true,
+      }),
+    });
+    expect(d.financeTasks).toEqual([]);
+    expect(d.heldBack).toEqual([]);
+    expect(d.snapshot.paymentIds).toEqual(["800"]);
+  });
+
+  it("a LAX reference on a payment is not enough once LAX holds that payment's Books id", () => {
+    const d = decideBooksStatus({
+      previous: null,
+      read: read({ state: "paid", balancePence: 0, payments: [stripe] }),
+      laxPayments: lax({ providerIds: new Set(["801"]) }),
+    });
+    expect(d.financeTasks).toEqual([stripe]);
+  });
+
+  it("while a LAX payment on the invoice is unsettled, an unknown payment is held back, not reported", () => {
+    const d = decideBooksStatus({
+      previous: { state: "open", balancePence: 10_000, paymentIds: [] },
+      read: read({ state: "partially_paid", balancePence: 6_000, payments: [cheque] }),
+      laxPayments: lax({ unresolved: true }),
+    });
+    expect(d.financeTasks).toEqual([]);
+    expect(d.heldBack).toEqual([cheque]);
+    expect(d.changes).toEqual([{ kind: "state_changed", from: "open", to: "partially_paid" }]);
+    // Not remembered: once LAX's payment is settled, the next read looks at it again.
+    expect(d.snapshot.paymentIds).toEqual([]);
+
+    const settled = decideBooksStatus({
+      previous: d.snapshot,
+      read: read({ state: "partially_paid", balancePence: 6_000, payments: [cheque] }),
+      laxPayments: NO_LAX_PAYMENTS,
+    });
+    expect(settled.financeTasks).toEqual([cheque]);
+    expect(settled.heldBack).toEqual([]);
   });
 
   it("checks invoices, credit notes and payments only", () => {

@@ -3,6 +3,7 @@ import {
   DEFAULT_STATUS_CHECK_ALLOWANCE,
   type DocumentStatusPort,
   type LegalEntity,
+  NO_LAX_PAYMENTS,
   type StatusCheckAllowance,
   type StatusCheckedKind,
   type TargetMode,
@@ -191,12 +192,15 @@ export class AccountingStatusCheck {
     }
     const seen =
       read.status === "read" ? read.reading.payments.map((p) => p.providerPaymentId) : [];
-    const laxPaymentIds = await this.deps.store.knownPaymentIds(
-      stored.legalEntity,
-      stored.target,
-      seen,
-    );
-    const decision = decideBooksStatus({ previous, read, laxPaymentIds });
+    // Only an invoice shows payments; with none to tell apart there is nothing to look up.
+    const laxPayments =
+      seen.length > 0
+        ? await this.deps.store.laxPaymentsFor(
+            { legalEntity: stored.legalEntity, target: stored.target, reference: stored.reference },
+            seen,
+          )
+        : NO_LAX_PAYMENTS;
+    const decision = decideBooksStatus({ previous, read, laxPayments });
     const observedAt = this.deps.now();
     await this.deps.transactions.runInTransaction(async (tx) => {
       await this.deps.store.record(tx, stored.id, decision, observedAt);
@@ -204,6 +208,17 @@ export class AccountingStatusCheck {
         await this.deps.tasks.open(tx, this.taskFor(stored.legalEntity, stored.reference, payment));
       }
     });
+    if (decision.heldBack.length > 0) {
+      // A LAX payment on this invoice is not settled yet: these may be LAX's own. Read again later.
+      this.deps.log.info(
+        {
+          documentId: stored.id,
+          reference: stored.reference,
+          booksPaymentIds: decision.heldBack.map((p) => p.providerPaymentId),
+        },
+        "accounting_status_payments_held_back",
+      );
+    }
     for (const change of decision.changes) {
       this.deps.log.info(
         {

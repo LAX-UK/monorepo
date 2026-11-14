@@ -2,6 +2,7 @@ import {
   type BooksStatusDecision,
   type BooksStatusSnapshot,
   type DocumentTarget,
+  type LaxPaymentsInBooks,
   type LegalEntity,
   STATUS_CHECKED_KINDS,
   type StatusCheckedKind,
@@ -35,6 +36,12 @@ const ISSUED_BOOKS = and(
 );
 
 type StatusRow = typeof accountingBooksStatus.$inferSelect;
+
+/**
+ * A LAX payment document in any other state (pending, sending, unknown, needs review, failed) may
+ * be in Books already without LAX knowing its Books id.
+ */
+const SETTLED_PAYMENT_STATES: ReadonlySet<string> = new Set(["issued", "cancelled"]);
 
 function snapshotOf(row: StatusRow | null): BooksStatusSnapshot | null {
   if (!row || row.booksState === null) return null;
@@ -91,26 +98,51 @@ export class DrizzleAccountingBooksStatusStore implements IAccountingBooksStatus
     return this.toDue(rows).documents[0] ?? null;
   }
 
-  async knownPaymentIds(
-    legalEntity: LegalEntity,
-    target: DocumentTarget,
+  async laxPaymentsFor(
+    invoice: {
+      readonly legalEntity: LegalEntity;
+      readonly target: DocumentTarget;
+      readonly reference: string;
+    },
     providerIds: readonly string[],
-  ): Promise<ReadonlySet<string>> {
-    if (providerIds.length === 0) return new Set();
+  ): Promise<LaxPaymentsInBooks> {
+    // Applied to this invoice: the payment's allocations name its LAX reference.
+    const appliedToInvoice = sql`${d.payload} -> 'allocations' @> ${JSON.stringify([
+      { invoiceReference: invoice.reference },
+    ])}::jsonb`;
     const rows = await this.db
-      .select({ providerId: d.providerId })
+      .select({
+        providerId: d.providerId,
+        reference: d.laxReference,
+        state: d.state,
+        applied: sql<boolean>`${appliedToInvoice}`,
+      })
       .from(d)
       .where(
         and(
           eq(d.kind, "payment"),
-          eq(d.state, "issued"),
-          eq(d.legalEntity, legalEntity),
-          eq(d.targetProvider, target.provider),
-          eq(d.targetMode, target.mode),
-          inArray(d.providerId, [...providerIds]),
+          eq(d.legalEntity, invoice.legalEntity),
+          eq(d.targetProvider, invoice.target.provider),
+          eq(d.targetMode, invoice.target.mode),
+          providerIds.length > 0
+            ? or(inArray(d.providerId, [...providerIds]), appliedToInvoice)
+            : appliedToInvoice,
         ),
       );
-    return new Set(rows.map((r) => r.providerId).filter((id): id is string => id !== null));
+    const wanted = new Set(providerIds);
+    const applied = rows.filter((r) => r.applied);
+    return {
+      // Whatever state LAX's document is in, a Books id LAX holds for it is LAX's payment.
+      providerIds: new Set(
+        rows.flatMap((r) =>
+          r.providerId !== null && wanted.has(r.providerId) ? [r.providerId] : [],
+        ),
+      ),
+      referencesWithoutProviderId: new Set(
+        applied.flatMap((r) => (r.providerId === null ? [r.reference] : [])),
+      ),
+      unresolved: applied.some((r) => !SETTLED_PAYMENT_STATES.has(r.state)),
+    };
   }
 
   async record(

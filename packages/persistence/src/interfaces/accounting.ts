@@ -10,6 +10,7 @@ import type {
   DocumentRecord,
   DocumentTarget,
   IssueOutcome,
+  LaxPaymentsInBooks,
   LegalEntity,
   LifecycleCode,
   LookupOutcome,
@@ -671,12 +672,19 @@ export interface IAccountingBooksStatusStore {
   ): Promise<BooksStatusDueList>;
   /** One document, when it is an issued Books document of a checked kind. */
   findDue(documentId: string): Promise<BooksStatusDue | null>;
-  /** Which of these provider payment ids are payments LAX itself issued in the same books. */
-  knownPaymentIds(
-    legalEntity: LegalEntity,
-    target: DocumentTarget,
+  /**
+   * LAX's own payments in the invoice's books: which of these provider payment ids belong to a LAX
+   * payment document (in any state), and the LAX payment documents applied to the invoice (their
+   * references while they hold no provider id, and whether any is not settled yet).
+   */
+  laxPaymentsFor(
+    invoice: {
+      readonly legalEntity: LegalEntity;
+      readonly target: DocumentTarget;
+      readonly reference: string;
+    },
     providerIds: readonly string[],
-  ): Promise<ReadonlySet<string>>;
+  ): Promise<LaxPaymentsInBooks>;
   /**
    * Records a read in the caller's transaction: the snapshot (clearing any recheck asked for), and
    * each change (a payment recorded by hand is held once per document and Books id).

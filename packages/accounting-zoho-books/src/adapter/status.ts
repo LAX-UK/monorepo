@@ -47,6 +47,10 @@ function readPayments(item: Readonly<Record<string, unknown>>): BooksPaymentSeen
       amountPence: amount,
       date: typeof row?.date === "string" ? row.date : null,
       mode: typeof row?.payment_mode === "string" ? row.payment_mode.slice(0, 60) : null,
+      reference:
+        typeof row?.reference_number === "string" && row.reference_number !== ""
+          ? row.reference_number.slice(0, 100)
+          : null,
     });
   }
   return payments;
