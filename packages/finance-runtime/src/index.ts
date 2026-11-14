@@ -252,4 +252,7 @@ export {
   type IPaymentEligibilityGate,
   PaymentEligibilityGate,
   type PaymentEligibilityGateOptions,
+  type PaymentsLiveEnv,
+  createPaymentEligibilityGate,
+  paymentsAreLive,
 } from "./payment-eligibility.gate.js";

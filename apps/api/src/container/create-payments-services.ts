@@ -52,7 +52,7 @@ import { LegalEntityBuyerPaymentAuthority } from "../services/payment/legal-enti
 import { PaymentCaptureService } from "../services/payment/payment-capture.service.js";
 import {
   type IPaymentEligibilityGate,
-  PaymentEligibilityGate,
+  createPaymentEligibilityGate,
 } from "../services/payment/payment-eligibility.gate.js";
 import {
   PaymentTierPolicy,
@@ -335,13 +335,16 @@ export function createPaymentsServices(
   });
   // The payment-due notice and reminders go to the winner and the account's payers.
   const invoiceRecipients = new InvoiceRecipients(legalEntityNotificationRecipients);
-  // Personal buyers must be verified to pay. In production a missing identity provider holds
-  // them (nobody can be verified) rather than letting them pay unchecked.
-  const paymentEligibility = new PaymentEligibilityGate(
-    legalEntityRepository,
-    complianceMedia.kycService.isConfigured() ? new DrizzleBidActorEligibilityReader(db) : null,
-    { identityRequired: env.NODE_ENV === "production" },
-  );
+  // Personal buyers must be verified to pay. Wherever payments are live (production build or
+  // deployment, or a live Stripe key) a missing identity provider holds them (nobody can be
+  // verified) rather than letting them pay unchecked.
+  const paymentEligibility = createPaymentEligibilityGate({
+    accounts: legalEntityRepository,
+    identity: complianceMedia.kycService.isConfigured()
+      ? new DrizzleBidActorEligibilityReader(db)
+      : null,
+    env,
+  });
   // A held invoice keeps no open checkout: closed when the hold is seen, and swept with expiry.
   const staleCanceller = new DrizzleStalePaymentCanceller(db);
   const heldCheckouts = new HeldInvoiceCheckouts({
