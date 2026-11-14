@@ -745,9 +745,36 @@ describe.skipIf(!HAS_DB)("Shop invoices to Books (integration)", { timeout: 60_0
       const parked = (await documentsFor(seeded)).find((d) => d.laxReference.endsWith("-delivery"));
       await releaser(ZERO).service.release({ documentId: parked?.id as string, actorUserId: "s" });
       await drain(sender("live", held));
+      // Four workers, each on its own connection pool, at the same moment; Books answers slowly,
+      // so all four are inside the step together unless the invoice is held by one of them.
+      const slow: InMemoryAccounting["remainders"] = {
+        applyRemainder: async (application) => {
+          await new Promise((resolve) => setTimeout(resolve, 300));
+          return held.remainders.applyRemainder(application);
+        },
+      };
+      const pools = Array.from({ length: 4 }, () => createDb(WORKER_URL || (OWNER_URL as string)));
       const ticks = await Promise.all(
-        Array.from({ length: 4 }, () => remainder("live", held.remainders).tick()),
+        pools.map((db) =>
+          new AccountingRemainder({
+            remainders: createAccountingRepositories(db, { now: () => new Date() }).remainders,
+            settings: repos.settingReader,
+            portsByMode: { live: slow },
+            log,
+          }).tick(),
+        ),
       );
+      await Promise.all(pools.map((db) => closeDb(db)));
+      const settled = await owner
+        .select()
+        .from(accountingDocumentEvent)
+        .where(
+          and(
+            eq(accountingDocumentEvent.documentId, parked?.id as string),
+            eq(accountingDocumentEvent.action, "apply_remainder"),
+          ),
+        );
+      expect(settled).toHaveLength(1);
       expect(ticks.reduce((n, t) => n + t.applied, 0)).toBe(1);
       expect([
         ...held.remainderAppliedOf("shop", `LAX-SHOP-PAY-${seeded.orderId}`).values(),
