@@ -1286,10 +1286,14 @@ const REGISTRY_OVERRIDES: Partial<Record<LiveDomainEventType, RegistryOverride>>
     idempotencyPolicy: "aggregate_event_unique",
     piiClassification: "contains_pii",
   },
+  /**
+   * A Shop refund went through (Stripe, or staff settled it outside Stripe), written with the refund
+   * in one transaction; ids only. The books credit the order's invoice from the stored rows.
+   */
   "shop.refund.completed": {
     schema: shopRefundCompletedPayloadSchemaV1,
     producers: ["shop-api"],
-    consumers: [],
+    consumers: ["accounting"],
     idempotencyPolicy: "aggregate_event_unique",
     piiClassification: "contains_pii",
   },

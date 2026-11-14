@@ -77,6 +77,7 @@ export const ACCOUNTING_PARK_REASONS = [
   "vat_on_outside_uk_delivery",
   "buyer_default_treatment",
   "credited_invoice_cancelled",
+  "refund_outside_stripe",
 ] as const;
 export type AccountingParkReason = (typeof ACCOUNTING_PARK_REASONS)[number];
 
@@ -198,6 +199,13 @@ export type AccountingReleaseResult = {
 /** Why a release was refused. `unresolved`: the reason it is parked is not settled yet. */
 export type AccountingReleaseRefusal = "not_found" | "not_allowed" | "unreadable" | "unresolved";
 
+/**
+ * A Shop refund staff settled outside Stripe: credited, but the account the money went back from is
+ * not held in LAX, so no refund is recorded in Books and the credit note is not sent.
+ */
+const ACCOUNTING_PARKED_TEXT_OUTSIDE_STRIPE =
+  "This refund was settled outside Stripe, and LAX does not hold the account it was paid from, so this credit note is not sent to Books. Do not cancel it (it keeps the invoice from being credited twice); ask engineering (see the runbook).";
+
 /** What staff are told when a parked document cannot be released yet, by why it is parked. */
 export const ACCOUNTING_RELEASE_UNRESOLVED_TEXT: Readonly<Record<AccountingParkReason, string>> = {
   vat_on_delivery:
@@ -210,6 +218,7 @@ export const ACCOUNTING_RELEASE_UNRESOLVED_TEXT: Readonly<Record<AccountingParkR
     "The accountant has not yet confirmed whether a defaulted invoice is credited or voided, so this stays out of Books.",
   credited_invoice_cancelled:
     "The invoice this credits was cancelled in Accounting, so it cannot be sent to Books.",
+  refund_outside_stripe: ACCOUNTING_PARKED_TEXT_OUTSIDE_STRIPE,
 };
 
 /**
@@ -292,6 +301,7 @@ const CODE_TEXT: Readonly<Record<string, string>> = {
   accounting_parked_vat_on_outside_uk_delivery: ACCOUNTING_PARKED_TEXT_OUTSIDE_UK,
   accounting_parked_buyer_default_treatment: ACCOUNTING_PARKED_TEXT_DEFAULT,
   accounting_parked_credited_invoice_cancelled: ACCOUNTING_PARKED_TEXT_CREDITED_CANCELLED,
+  accounting_parked_refund_outside_stripe: ACCOUNTING_PARKED_TEXT_OUTSIDE_STRIPE,
   accounting_refund_reversed_after_credit:
     "The refund this credit note is for failed after the credit note was issued in Books, so the buyer did not get the money. Nothing is reversed automatically: ask the accountant how to reverse it in Books, and check whether it was already refunded from Stripe clearing.",
   accounting_credit_note_refund_refused:
@@ -305,6 +315,7 @@ export const ACCOUNTING_PARKED_TEXT: Readonly<Record<AccountingParkReason, strin
   vat_on_outside_uk_delivery: ACCOUNTING_PARKED_TEXT_OUTSIDE_UK,
   buyer_default_treatment: ACCOUNTING_PARKED_TEXT_DEFAULT,
   credited_invoice_cancelled: ACCOUNTING_PARKED_TEXT_CREDITED_CANCELLED,
+  refund_outside_stripe: ACCOUNTING_PARKED_TEXT_OUTSIDE_STRIPE,
 };
 
 /** The status a parked document shows instead of "Needs a person". */
@@ -314,6 +325,7 @@ export const ACCOUNTING_PARKED_STATUS: Readonly<Record<AccountingParkReason, str
   vat_on_outside_uk_delivery: "Waiting for the accountant",
   buyer_default_treatment: "Waiting for the accountant",
   credited_invoice_cancelled: "Needs a person",
+  refund_outside_stripe: "Needs a person",
 };
 
 /** Said of every payment in the details: the order the sender keeps. */

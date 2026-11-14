@@ -267,6 +267,20 @@ export function rebuildShopOutsideUkDelivery(
   return ok({ documents: [built.value], parked });
 }
 
+/**
+ * The order's contact and its own invoice, built exactly as the paid flow builds them, and whether
+ * the order also has a delivery outside the UK invoiced on its own. A refund's credit notes are
+ * built against this invoice, so they always credit what the buyer was invoiced.
+ */
+export function shopOrderInvoice(
+  facts: ShopOrderPaidFacts,
+): Result<{ contact: Contact; invoice: Invoice; outsideUkDelivery: boolean }, ProjectionCode> {
+  const built = shopDocuments(facts, SHOP_OUTSIDE_UK_DELIVERY_BOOKING);
+  if (!built.ok) return built;
+  const { contact, invoice, outsideUkDelivery } = built.value;
+  return ok({ contact, invoice, outsideUkDelivery: outsideUkDelivery !== null });
+}
+
 function shopDocuments(
   facts: ShopOrderPaidFacts,
   booking: LineBooking | null,
