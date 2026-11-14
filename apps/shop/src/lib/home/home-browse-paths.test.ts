@@ -47,6 +47,17 @@ describe("collections", () => {
     expect(chooseCollectionCategories(null, 3)).toEqual([]);
   });
 
+  it("leaves out the original works category, which redirects to lax.art", () => {
+    const withOriginals = [
+      { slug: "originals", label: "Original works", count: 12 },
+      ...categories,
+    ];
+    expect(chooseCollectionCategories(facets(withOriginals), 3).map((c) => c.slug)).toEqual([
+      "portraits",
+      "prints",
+    ]);
+  });
+
   it("puts the price band first, links each tile to a filtered catalogue and counts it", () => {
     const tiles = buildHomeCollections({
       priceBand: band(150, 5),

@@ -3,6 +3,7 @@ import {
   SHOP_HEADER_NAV_CATEGORY_LIMIT,
   type ShopHeaderNavData,
 } from "@/components/header/header-nav.config";
+import { isOriginalWorksCategory } from "@/lib/original-works-redirect";
 import { fetchPublicArtists, fetchPublicCategories } from "@/lib/shop-api.server";
 import type { PublicArtistList, PublicCategoryList } from "@auction/shop-contracts";
 import { cache } from "react";
@@ -47,7 +48,7 @@ async function loadHeaderNav(sources: HeaderNavSources): Promise<ShopHeaderNavDa
         imageUrl: artist.portraitUrl,
       })),
     categories: categories.items
-      .filter((category) => category.artworkCount > 0)
+      .filter((category) => category.artworkCount > 0 && !isOriginalWorksCategory(category))
       .map((category) => ({ label: category.label, href: `/categories/${category.slug}` })),
   };
 }
