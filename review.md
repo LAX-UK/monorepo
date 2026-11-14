@@ -436,3 +436,45 @@ F1–F8 are fixed as described, with the exceptions in N1–N5, and the fixes ad
 - **N2–N5** are Low. They can land with N1 or be tracked, but N2 and N3 should not ship as they are, because each tells a person or a buyer the wrong thing about money.
 
 Books stays dry run and test organisation only, and the owner's hard rules still hold.
+
+## Fixes after recheck
+
+Fixed on `bk9-bid-refunds`, head `aea57b45` (base `3c911293`; main had not moved, so no merge was needed). The branch had one new commit, `f95b9285` (the refunds suite runs its api_app checks as api_app in CI). The two fix commits were placed on top of it. Re-checked on a throwaway Postgres 16 (initdb under `/var/tmp`, port 55432) with `db:migrate` and `db:roles`. Integration suites ran as `worker_app` and `api_app`. The refunds suite was also run with neither role URL set, as CI runs it (29 passed). Each mutation reverted one guard, rebuilt the package the worker reads, ran the tests and restored the guard. `git status` was clean afterwards.
+
+Migration 0385 is unchanged: no CHECK or function had to change, because the history CHECK already allows `hold` and the api_app function does not look at held rows. So `FINAL_FOLDER_MILLIS` stays `1811419200000`.
+
+| # | Fix | Commit | Test | Mutation |
+|---|---|---|---|---|
+| N1 | The clearing-refund step (`settleExclusively`) reads the refund again under the credit note's `FOR UPDATE` lock, before the Books call. **Payment refund note:** the payment's `payment_refund` rows are matched as the facts reader matches them (`withoutReversed`), and the note's refund must still be kept. **Courier note** (`dlv-<quote>-r<total>`): `<total>` must be within the quote's `refunded_pence`. A source it cannot tell is treated as not standing. Otherwise the note is held as `accounting_refund_reversed_after_credit` in the same transaction, the step answers `refund_reversed`, the service raises `accounting_refund_reversed_after_credit`, and nothing is refunded or recorded as `refund_credit_note`. **Delivery attempts:** `credit_in_flight` is now a *waiting* not-yet. It is retried every 5 minutes, the attempt increment is undone, and it is never dead-lettered for waiting. Other not-yets still use up attempts. | `d0ba81c1` | Integration: the note is `unknown` when the reversal arrives (refused `credit_in_flight`, `waiting`), the delivery is treated as dead-lettered, and the lookup then issues the note. The step holds it, raises the alert once, refunds nothing and writes no `refund_credit_note`; a later refund that stayed is still refunded. Courier: two issued notes, total lowered 3,000 → 1,500 with no event, so the 1,000 note is refunded and the 2,000 note is held with the alert. Persistence: a reversed refund and an unknown source each answer `refund_reversed`, the step is never run, and they are not listed again. Runner unit: a waiting error at the attempt cap is retried at least 5 minutes later with the increment undone; `credit_exceeds_invoice` at the cap is dead-lettered. | Payment re-check removed: killed (N1 integration). Courier comparison removed: killed (courier case). Waiting flag removed from the runner: killed (runner unit). |
+| N2 | `projectBidRefundReversed` and the courier lowering hold a `held_for_review` note as `refund_reversed_after_credit` too. The domain `hold` move now also goes from a held note (`needs_review`, lookup clear, Books document kept) to a new reason. The same reason is refused. A parked note or one owing a lookup is never held. `holdIssued` re-holds such a note and raises the alert with `heldBefore`. The history row (`needs_review` → `needs_review`) keeps `heldBefore`. | `d0ba81c1` | Integration: refused, then reversed. The reason becomes `accounting_refund_reversed_after_credit`, the alert is raised once with `heldBefore: accounting_credit_note_refund_refused`, and both `hold` rows are in history. A replay does nothing. Domain: both policies, and `hold` from held (new reason ok; same reason, parked, or owed refused). | Projection back to `break`: killed (N2 integration and domain). `holdIssued` re-hold guard removed: killed (N2 integration). |
+| N3 | The API lists and serves a refund's credit note held as `accounting_credit_note_refund_refused` when it holds a Books document and LAX's stored live copy (not a rehearsal). It keeps its number and issue date. The buyer-card reader keeps `issuedAt` for a held note with a Books document. A note held for any other reason (reversed, totals) is still never shown. | `d0ba81c1` (reader), `aea57b45` (API) | API: refused is listed and served (`credit-note-CN-00007.pdf`). Reversed and totals mismatch are not listed and give a 404. No copy means not listed. vm: a full refund through that note still reads "Refunded". Integration (F5): the reader returns the held note with `issuedAt`. | — |
+| N4 | `bank_transfer` reads "Refunded −£x" with no destination; card keeps "to your card". | `aea57b45` | vm: card, bank transfer and unknown, pinned. | — |
+| N5 | The registry's gross cap (`credit_exceeds_invoice`) leaves out notes held as `accounting_refund_reversed_after_credit`. The basis checks still read every non-cancelled note, as the flows do. Runbook: redrive a dead-lettered `payment.refunded` delivery once the blocking note is held with that reason. | `d0ba81c1` | Integration: paid P (12,500), P×0.6 reversed after issue (held), then P refunded for real. The P note is created, sent, and refunded from clearing in full; the held note is never refunded. | Exclusion removed: killed (refused `credit_exceeds_invoice`). |
+| N6 | Runbook rollback order: roll back 0385 before 0383, and stop there if possible. Rolling back 0383 after 0385 restores the function without the 0385 refusal: re-apply 0385 straight after, and do not press Release on a parked credit note until it is back. | `d0ba81c1` | — | — |
+
+**Runs on the head:**
+
+| Area | Result |
+|---|---|
+| accounting-domain | 318 passed |
+| accounting-zoho-books | 318 passed |
+| persistence accounting and lib | 206 passed (the credit-note suite's fixture now has a real `payment_refund` row behind its credit note) |
+| db: `api-app-role.contract`, `migration-0385`, `migration-main-upgrade` (with `MIGRATION_TEST_DATABASE_URL`) | 51 passed |
+| worker `src/finance` and `src/projectors` (unit and integration) | 374 passed. `bid-refunds-books` alone: 29 passed, both with role URLs and as CI runs it. |
+| worker unit (all, integration files excluded) | 1,583 passed, 2 failed: `drizzle-email-outbox.repository.test.ts` needs the identity database's `email_outbox` table, which this throwaway setup does not create. The fixes do not touch it. |
+| api organisation buying and its routes | 293 passed |
+| web purchases | 79 passed |
+
+**Migration.** `db:migrate` gave 377 rows, last `1811419200000`. `0385_rollback.sql` then forward (`db:migrate`, `db:roles`) **twice**:
+
+- The ledger went 377 → 376 → 377 each time.
+- The CHECK came back `NOT VALID` after rollback and validated after forward.
+- The function md5 was the same at every step.
+- The data was unchanged: 128 `hold` or `refund_credit_note` history rows, of which 7 re-hold a held note (`needs_review` → `needs_review`); 42 notes held as reversed; 11 held as refused; the parked rows.
+
+**Still open:**
+
+- A cancelled courier step's reference stays taken, as before.
+- No in-app action settles a held credit note. A person settles it in Books as the runbook says. A note held as reversed no longer blocks later refunds, but one held for another reason still counts against the invoice.
+- A bank-transfer refund's destination is not confirmed in Stripe test mode, so the card names none.
+- Accountant questions: defaults, VAT on delivery, reversing an issued credit note, and the bank-transfer refund mode.
