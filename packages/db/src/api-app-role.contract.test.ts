@@ -82,6 +82,7 @@ async function withOwnerDocuments<T>(
     parkedCancelledInvoiceNote: string;
     parkedDeliveryNote: string;
     parkedOutsideStripeNote: string;
+    parkedOutsideUkDeliveryNote: string;
   }) => Promise<T>,
 ): Promise<T> {
   const owner = new Client(buildPgConnectionConfig(OWNER_URL ?? ""));
@@ -196,6 +197,16 @@ async function withOwnerDocuments<T>(
       "shop",
       "credit_note",
     );
+    // A Shop whole-order refund's credit note on its outside-UK delivery invoice, parked with it (0388).
+    const parkedOutsideUkDeliveryNote = await insert(
+      `LAX-SHOP-CN-oud-${suffix}`,
+      "needs_review",
+      null,
+      null,
+      "accounting_parked_vat_on_outside_uk_delivery",
+      "shop",
+      "credit_note",
+    );
     return await fn({
       failed,
       issued,
@@ -208,6 +219,7 @@ async function withOwnerDocuments<T>(
       parkedCancelledInvoiceNote,
       parkedDeliveryNote,
       parkedOutsideStripeNote,
+      parkedOutsideUkDeliveryNote,
     });
   } finally {
     if (ids.length > 0) {
@@ -577,6 +589,10 @@ describe.skipIf(!API_URL)("api_app role contract", { timeout: 60_000 }, () => {
               ["a credit note whose invoice was cancelled", docs.parkedCancelledInvoiceNote],
               ["a courier refund's credit note", docs.parkedDeliveryNote],
               ["a Shop refund's credit note settled outside Stripe", docs.parkedOutsideStripeNote],
+              [
+                "a Shop credit note parked with its outside-UK delivery invoice",
+                docs.parkedOutsideUkDeliveryNote,
+              ],
             ] as const) {
               expect(await probe(client, release, [id]), what).toBe("42501");
               expect(
@@ -588,8 +604,9 @@ describe.skipIf(!API_URL)("api_app role contract", { timeout: 60_000 }, () => {
                 `${what}: any other move`,
               ).toBe("42501");
             }
-            // The delivery invoice beside it is still released as before (0383's clause).
+            // The delivery invoices beside them are still released as before (0383's clause).
             expect(await probe(client, release, [docs.parked])).toBeUndefined();
+            expect(await probe(client, release, [docs.parkedShop])).toBeUndefined();
           } finally {
             await client.query("ROLLBACK");
           }

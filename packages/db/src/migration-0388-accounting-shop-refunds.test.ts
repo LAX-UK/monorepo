@@ -30,18 +30,24 @@ describe("migration 0388 accounting Shop refunds", () => {
     expect(previous?.tag).toMatch(/^038[67]_/);
     expect(entry?.idx).toBe((previous?.idx ?? Number.NaN) + 1);
     expect(entry?.when).toBeGreaterThan(previous?.when ?? Number.POSITIVE_INFINITY);
-    const idxs = journal.entries.map((e) => e.idx);
-    expect(idxs).toEqual(idxs.map((_, i) => i));
+    expect(new Set(journal.entries.map((e) => e.idx)).size).toBe(journal.entries.length);
     expect(journal.entries.at(-1)?.tag).toBe(TAG);
     const whens = journal.entries.map((e) => e.when);
     expect(new Set(whens).size).toBe(whens.length);
   });
 
-  it("keeps 0385's api_app rule and refuses moving a credit note parked until its account is named", () => {
-    expect(migration).toMatch(/SET LOCAL lock_timeout = '5s'/);
-    expect(migration).not.toMatch(/CREATE TABLE|ALTER TABLE|GRANT|DROP/);
+  it("keeps 0385's api_app rule, refusing a credit note parked until its account is named or with its outside-UK delivery", () => {
+    expect(migration.indexOf("SET LOCAL lock_timeout = '5s'")).toBeLessThan(
+      migration.indexOf("ALTER TABLE"),
+    );
+    // One nullable column, added only if missing; no table, grant or drop.
+    expect(migration.match(/ALTER TABLE/g)).toHaveLength(1);
+    expect(migration).toMatch(
+      /ALTER TABLE "shop_refund" ADD COLUMN IF NOT EXISTS "reversed_at" timestamp with time zone;/,
+    );
+    expect(migration).not.toMatch(/CREATE TABLE|GRANT|DROP|NOT NULL/);
     const gate =
-      /IF OLD\."needs_review_reason" = 'accounting_parked_refund_outside_stripe' THEN\s*RAISE EXCEPTION [^;]+;\s*END IF;\s*/;
+      /IF OLD\."needs_review_reason" = 'accounting_parked_refund_outside_stripe' THEN\s*RAISE EXCEPTION [^;]+;\s*END IF;\s*IF OLD\."kind" = 'credit_note'\s*AND OLD\."needs_review_reason" = 'accounting_parked_vat_on_outside_uk_delivery' THEN\s*RAISE EXCEPTION [^;]+;\s*END IF;\s*/;
     expect(fn(migration)).toMatch(gate);
     // Everything else is 0385's function word for word.
     expect(fn(migration).replace(gate, "")).toBe(

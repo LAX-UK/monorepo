@@ -1,14 +1,22 @@
--- Shop refunds as credit notes (Zoho Books plan v2, flow 21). Applies after 0385 (and 0386, 0387, which leave this function alone).
+-- Shop refunds as credit notes (Zoho Books plan v2, flow 21). Applies after 0385 (and 0386, 0387,
+-- which leave this function alone).
 --
 -- A Shop refund staff settled outside Stripe is credited, but the account the money went back from
 -- is not held in LAX, so its credit note is stored parked (`accounting_parked_refund_outside_stripe`)
--- and never sent. api_app's rule (0385's function) gains one refusal, before anything else: such a
+-- and never sent. api_app's rule (0385's function) gains two refusals, before anything else: such a
 -- credit note cannot be moved by api_app at all, not even released unchanged, as 0385 did for the
--- notes waiting for the accountant. Everything else in 0385's function is unchanged.
+-- notes waiting for the accountant; nor can a credit note parked with an outside-UK delivery
+-- invoice (`accounting_parked_vat_on_outside_uk_delivery`), which waits for the accountant's answer
+-- on that delivery, as a courier refund's credit note does. Everything else in 0385's function is
+-- unchanged.
 --
--- No table, column or grant is added: the worker's read of `shop_refund` (eight columns, never the
--- Stripe ids or what staff wrote) is granted by db:roles.
+-- `shop_refund.reversed_at`: when Stripe reported a refund failed after it had succeeded (the money
+-- came back to LAX's Stripe balance). Written by the Shop with `shop.refund.reversed`; the refund's
+-- status stays as it was. The worker's read of `shop_refund` (nine columns, never the Stripe ids or
+-- what staff wrote) is granted by db:roles.
 SET LOCAL lock_timeout = '5s';
+--> statement-breakpoint
+ALTER TABLE "shop_refund" ADD COLUMN IF NOT EXISTS "reversed_at" timestamp with time zone;
 --> statement-breakpoint
 CREATE OR REPLACE FUNCTION "accounting_document_api_requeue_only"() RETURNS trigger
 LANGUAGE plpgsql AS $fn$
@@ -27,6 +35,13 @@ BEGIN
   -- name the account lifts this line.
   IF OLD."needs_review_reason" = 'accounting_parked_refund_outside_stripe' THEN
     RAISE EXCEPTION 'api_app may not move a credit note parked until its refund''s account is named'
+      USING ERRCODE = 'insufficient_privilege';
+  END IF;
+  -- Kept parked with its delivery invoice (0388): a Shop credit note on an outside-UK delivery
+  -- invoice waits for the accountant's answer on that delivery. The change that ships it lifts this.
+  IF OLD."kind" = 'credit_note'
+     AND OLD."needs_review_reason" = 'accounting_parked_vat_on_outside_uk_delivery' THEN
+    RAISE EXCEPTION 'api_app may not move this parked credit note until the accountant''s answer is set'
       USING ERRCODE = 'insufficient_privilege';
   END IF;
   -- Kept parked while the accountant's answer is not set (0385): api_app may not move a credit
