@@ -60,6 +60,36 @@ async function accountsOf(
   return { personal, organisation };
 }
 
+/**
+ * What the page is when an expected control is missing, for the run's log: where it is, which
+ * frame drew it, and what the account facts answer now. Cookie values are left out.
+ */
+async function pageState(page: Page) {
+  const facts = await page.request.get("/api/me/menu-context").catch(() => null);
+  const dom = await page
+    .evaluate(() => ({
+      title: document.title,
+      h1: document.querySelector("h1")?.textContent?.trim() ?? null,
+      workspaceShell: document.querySelector("[data-workspace-shell]") !== null,
+      siteHeader: document.querySelector("header[data-chrome-variant]") !== null,
+      testIds: [...document.querySelectorAll("[data-testid]")]
+        .map((el) => el.getAttribute("data-testid"))
+        .filter((id, i, all) => all.indexOf(id) === i)
+        .slice(0, 60),
+      text: document.body.innerText.slice(0, 600),
+    }))
+    .catch((error: unknown) => ({ error: String(error) }));
+  return {
+    url: page.url(),
+    viewport: page.viewportSize(),
+    cookies: (await page.context().cookies()).map((c) => c.name),
+    menuContext: facts
+      ? { status: facts.status(), body: (await facts.text()).slice(0, 600) }
+      : null,
+    dom,
+  };
+}
+
 /** The hop a record link takes to open `next` in an account (the app's own link, as written). */
 const switchHrefFor = (accountId: string, next = "/bids", reason?: "record") =>
   `/switch-account?${new URLSearchParams({ to: accountId, next, ...(reason ? { reason } : {}) }).toString()}`;
@@ -277,12 +307,32 @@ test.describe("account switching on the production build @roles", () => {
     // Sign-in may still be settling onto its landing page; wait for it before asking for this one.
     await page.waitForLoadState("networkidle");
     await page.setViewportSize({ width: 375, height: 800 });
+    const seen: string[] = [];
+    page.on("response", (response) => {
+      const path = new URL(response.url()).pathname;
+      if (path === "/api/me/menu-context" || response.request().resourceType() === "document") {
+        seen.push(`${response.status()} ${path}`);
+      }
+    });
+    page.on("console", (message) => {
+      if (message.type() === "error") seen.push(`console: ${message.text().slice(0, 200)}`);
+    });
+    page.on("pageerror", (error) => seen.push(`pageerror: ${error.message.slice(0, 200)}`));
     await page.goto("/bids");
     await dismissCookieConsentIfVisible(page);
 
     // Personal: a round avatar and the word Personal, and a sheet with every account.
     const accountButton = page.getByTestId("phone-account-button");
-    await expect(accountButton).toBeVisible({ timeout: 30_000 });
+    await expect(accountButton)
+      .toBeVisible({ timeout: 30_000 })
+      .catch(async (error: unknown) => {
+        const state = {
+          ...(await pageState(page).catch((e: unknown) => ({ error: String(e) }))),
+          seen,
+        };
+        console.log(`[phone-account-button missing] ${JSON.stringify(state)}`);
+        throw error;
+      });
     await expect(accountButton).toHaveAccessibleName(/^Your accounts, .+, Personal$/);
     await accountButton.click();
     const sheet = page.getByRole("dialog", { name: "Switch account" });
