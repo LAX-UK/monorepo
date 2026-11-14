@@ -371,4 +371,54 @@ describe("PurchaseInvoiceBooksService: credit notes", () => {
     expect(foreign._unsafeUnwrapErr()).toEqual(missing._unsafeUnwrapErr());
     expect(getObjectBytes).not.toHaveBeenCalled();
   });
+
+  /** The credit note held for a person, Books' document kept, for `reason`. */
+  const heldFor = (reason: string): BidInvoiceBooksDocument => {
+    const issuedNote = credit({ number: "CN-00007", gross: 150_000 });
+    const record = issuedNote.record;
+    if (record.status !== "issued") throw new Error("fixture");
+    return {
+      ...issuedNote,
+      record: {
+        kind: "credit_note",
+        reference: issuedNote.reference,
+        attempts: 1,
+        status: "needs_review",
+        lookup: "clear",
+        issued: record.issued,
+        mismatch: null,
+        reason,
+      },
+    };
+  };
+
+  it("keeps listing and serving a refund's credit note when only its refund from clearing was refused (review N3); never one whose refund was taken back", async () => {
+    const refused = heldFor("accounting_credit_note_refund_refused");
+    const { service } = setUp({ invoices: [doc()], creditNotes: [refused] });
+    expect((await service.card(payer, LOT))._unsafeUnwrap().creditNotes).toEqual([
+      {
+        documentId: refused.documentId,
+        number: "CN-00007",
+        grossPence: 150_000,
+        issuedAt: "2026-11-20T09:30:00.000Z",
+        kind: "refund",
+      },
+    ]);
+    const served = await service.document(payer, LOT, refused.documentId);
+    expect(served._unsafeUnwrap().filename).toBe("credit-note-CN-00007.pdf");
+    for (const reason of [
+      "accounting_refund_reversed_after_credit",
+      "accounting_totals_mismatch",
+    ]) {
+      const held = heldFor(reason);
+      const other = setUp({ invoices: [doc()], creditNotes: [held] });
+      expect((await other.service.card(payer, LOT))._unsafeUnwrap().creditNotes).toEqual([]);
+      expect(
+        (await other.service.document(payer, LOT, held.documentId))._unsafeUnwrapErr().status,
+      ).toBe(404);
+    }
+    // Without its stored live copy it is not listed either.
+    const uncopied = { ...refused, copy: null };
+    expect((await card({ invoices: [doc()], creditNotes: [uncopied] })).creditNotes).toEqual([]);
+  });
 });

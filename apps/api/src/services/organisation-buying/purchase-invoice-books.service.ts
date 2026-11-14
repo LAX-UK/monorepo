@@ -27,14 +27,45 @@ export type PurchaseInvoiceBooksDeps = PayerInvoiceDeps & {
 };
 
 /**
- * A document LAX may hand a buyer: issued live in the mode Books is aimed at now, with a stored
- * copy that is not a rehearsal. Never a dry run's or the test organisation's.
+ * Why a credit note is held when Books refused to refund it from Stripe clearing (the worker's
+ * `accounting_credit_note_refund_refused`). That refusal is between LAX and Books: the buyer was
+ * refunded by Stripe, so the credit note still stands for them.
  */
-function servable(document: BidInvoiceBooksDocument, mode: TargetMode | null): boolean {
+const CREDIT_NOTE_REFUND_REFUSED = "accounting_credit_note_refund_refused";
+
+/**
+ * What Books issued for a document the buyer may still be shown: an issued one, or a credit note
+ * held for a person only because Books refused its refund from clearing (the Books document kept).
+ * Never one held for anything else (a refund taken back: the buyer never got that money).
+ */
+function issuedInBooks(document: BidInvoiceBooksDocument, creditNote: boolean) {
+  const record = document.record;
+  if (record.status === "issued") return record.issued;
+  if (
+    creditNote &&
+    record.status === "needs_review" &&
+    record.lookup === "clear" &&
+    record.reason === CREDIT_NOTE_REFUND_REFUSED
+  ) {
+    return record.issued;
+  }
+  return null;
+}
+
+/**
+ * A document LAX may hand a buyer: issued live in the mode Books is aimed at now (a credit note
+ * also when only its refund from clearing was refused), with a stored copy that is not a
+ * rehearsal. Never a dry run's or the test organisation's.
+ */
+function servable(
+  document: BidInvoiceBooksDocument,
+  mode: TargetMode | null,
+  creditNote = false,
+): boolean {
   return (
     document.targetMode === mode &&
     document.targetMode === "live" &&
-    document.record.status === "issued" &&
+    issuedInBooks(document, creditNote) !== null &&
     document.copy !== null &&
     !document.copy.rehearsal
   );
@@ -45,8 +76,8 @@ function isDefaultCredit(document: BidInvoiceBooksDocument): boolean {
   return /^LAX-BID-CN-dft-/.test(document.reference);
 }
 
-function numberOf(document: BidInvoiceBooksDocument): string {
-  return document.record.status === "issued" ? document.record.issued.number : "";
+function numberOf(document: BidInvoiceBooksDocument, creditNote = false): string {
+  return issuedInBooks(document, creditNote)?.number ?? "";
 }
 
 /**
@@ -88,11 +119,11 @@ export class PurchaseInvoiceBooksService implements IPurchaseInvoiceBooksService
     // Credit notes only beside a Books card (never beside LAX's own invoice), and only servable ones.
     const credits =
       standing.kind === "issued" || standing.kind === "cancelled"
-        ? (held?.creditNotes ?? []).filter((d) => servable(d, mode))
+        ? (held?.creditNotes ?? []).filter((d) => servable(d, mode, true))
         : [];
     const creditNotes: PurchaseCreditNote[] = credits.map((d) => ({
       documentId: d.documentId,
-      number: numberOf(d),
+      number: numberOf(d, true),
       grossPence: d.grossPence,
       issuedAt: d.issuedAt?.toISOString() ?? null,
       kind: isDefaultCredit(d) ? "default" : "refund",
@@ -134,13 +165,14 @@ export class PurchaseInvoiceBooksService implements IPurchaseInvoiceBooksService
         ? books.value.invoices.find((d) => d.documentId === documentId && servable(d, mode))
         : undefined;
     const creditCopy = books.value.creditNotes.find(
-      (d) => d.documentId === documentId && servable(d, mode),
+      (d) => d.documentId === documentId && servable(d, mode, true),
     );
     const match = invoiceCopy ?? creditCopy;
     if (!match?.copy) return err(buyingError("invoice_not_ready"));
     const pdf = await this.deps.storage.getObjectBytes(match.copy.storageKey, MAX_COPY_BYTES);
     if (!pdf || pdf.length === 0) return err(buyingError("invoice_not_ready"));
-    const safe = numberOf(match).replace(/[^A-Za-z0-9-]+/g, "-") || "document";
+    const safe =
+      numberOf(match, match === creditCopy).replace(/[^A-Za-z0-9-]+/g, "-") || "document";
     return ok({ pdf, filename: `${invoiceCopy ? "invoice" : "credit-note"}-${safe}.pdf` });
   }
 

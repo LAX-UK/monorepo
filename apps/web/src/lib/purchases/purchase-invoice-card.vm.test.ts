@@ -166,7 +166,7 @@ describe("purchaseInvoiceCard: credit notes", () => {
     });
   });
 
-  it("says where a refund went, by how the invoice was paid", () => {
+  it("says where a refund went only for a card; a bank transfer's refund names no destination (review N4)", () => {
     const refund = {
       documentId: CN,
       number: "CN-00001",
@@ -179,7 +179,7 @@ describe("purchaseInvoiceCard: credit notes", () => {
       return out.kind === "issued" ? out.credits[0]?.text : null;
     };
     expect(text("card")).toBe("Refunded \u2212£123.45 to your card");
-    expect(text("bank_transfer")).toBe("Refunded \u2212£123.45 to your bank account");
+    expect(text("bank_transfer")).toBe("Refunded \u2212£123.45");
     expect(text(null)).toBe("Refunded \u2212£123.45");
   });
 });
@@ -216,6 +216,28 @@ describe("refunded in full (Books' credit notes)", () => {
       amountLabel: "refunded",
       amount: "£1,500.00",
     });
+  });
+
+  it("still reads 'Refunded' when Books refused only the refund from clearing: the API keeps listing that credit note (review N3)", () => {
+    // The API lists a refund's credit note held for `accounting_credit_note_refund_refused` as it
+    // was issued; the card reads it like any other refund, with no destination for a bank transfer.
+    const books = {
+      ...base,
+      ...issued,
+      paidWith: "bank_transfer" as const,
+      creditNotes: [refund(150_000, 7)],
+    };
+    expect(refundedInFull(books)).toBe(true);
+    expect(withBooksRefund(paid, books)).toMatchObject({ statusLabel: "Refunded" });
+    const card = purchaseInvoiceCard({
+      card: books,
+      lotId: LOT,
+      laxInvoiceHref: LAX_PDF,
+      now: NOW,
+    });
+    expect(card.kind === "issued" ? card.credits.map((c) => c.text) : null).toEqual([
+      "Refunded \u2212£1,500.00",
+    ]);
   });
 
   it("a part refund, a default's credit note or no Books card leave the purchase as it is", () => {

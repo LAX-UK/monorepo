@@ -6,7 +6,7 @@ import type { PurchaseCardVm } from "./purchases.vm";
 /** A download on the card: LAX's stored copy of the Books invoice, or LAX's own invoice. */
 export type InvoiceCardLink = { label: string; href: string };
 
-/** A credit note line: "Refunded −£123.45 to your card" and its download. */
+/** A credit note line: "Refunded −£123.45 to your card" (card only) and its download. */
 export type InvoiceCardCredit = { text: string; download: InvoiceCardLink };
 
 /**
@@ -62,10 +62,15 @@ export const INVOICE_CARD_COPY = {
   refundedNote: "Your payment has been refunded",
 } as const;
 
-/** Where a refund went, by how the invoice was paid; nothing is said when that is not known. */
+/**
+ * Where a refund went, by how the invoice was paid; nothing is said when that is not known. A card
+ * payment is refunded to the card. A bank transfer is a Stripe balance payment, and LAX does not
+ * choose where its refund goes (it is not confirmed that it reaches the buyer's bank account), so
+ * no destination is named for it.
+ */
 const REFUNDED_TO: Readonly<Record<NonNullable<PurchaseInvoiceCard["paidWith"]>, string>> = {
   card: " to your card",
-  bank_transfer: " to your bank account",
+  bank_transfer: "",
 };
 
 const POUNDS = new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP" });
