@@ -470,3 +470,127 @@ Add to "To confirm in the test organisation":
 >   bank transactions (77 characters must fit).
 > - The expected Books calls per day for fees and payouts against `ZOHO_BOOKS_DAILY_CALL_BUDGET`,
 >   and the per-run cap of 200.
+
+## Final recheck
+
+Branch `bk13-stripe-fees-reconciliation` at `7ad341da`, with `origin/main` at `e5c65039` (#1375
+merged) as an ancestor. The PR branch was not changed. Throwaway Postgres 16 on port 55432
+(`db:migrate` to 378, `db:roles`), integration suites as `worker_app` and `api_app`,
+`--maxWorkers=2` (1 for database suites). No `next build`.
+
+### Verdict: FIX FIRST
+
+Every finding in scope is fixed correctly, with no regression in the touched code, and every
+listed guard is pinned by a test that fails without it. One Medium remains, and it blocks: the two
+persistence accounting integration files share state and fail whenever they run at the same time
+(M1 below). It is a test-isolation fault, not a product fault, and the fix is a few lines. Once it
+lands this is SHIP. Everything else is a follow-up.
+
+### Suites
+
+| Suite | Result |
+|---|---|
+| accounting-domain | 334 pass |
+| accounting-zoho-books | 329 pass |
+| worker `src/finance/accounting` and `register-accounting-workers` (database) | 224 pass |
+| db: 0384, 0385, 0386 migration tests, worker, api and shop role contracts, `migration-main-upgrade` (`WORKER_ROLE_CONTRACT_REQUIRED=1`) | 123 pass |
+| persistence `repositories/accounting` and `lib`, `--no-file-parallelism` | 207 pass |
+| the same, files in parallel (2 or 4 workers), 4 runs | **6 to 8 fail every run** (M1) |
+
+On GitHub, CI for this head (`test` job, run 43599845621) is green, and both files passed there.
+
+### Per finding
+
+| Finding | Correct | Regression | Mutations re-run |
+|---|---|---|---|
+| F1 | Yes. Journal idx 378, `when` 1811505600000: no duplicate idx or `when`, and `when` is strictly increasing. The idx gaps are older than this PR. `0386_rollback.sql` deletes only `created_at = 1811505600000`; after a rollback the ledger has 377 rows ending at 0385's stamp. #1375's `0385_*.sql` and `0385_rollback.sql` are byte for byte as on main; only its journal test was relaxed from "last" to "right after 0384". | None. A schema dump after the rollback matches a database migrated at main, except that the three `accounting_document` CHECKs come back `NOT VALID`, as the rollback header says. Rollback then forward, twice, with `db:migrate` and `db:roles`: each forward dump and each rollback dump is identical to the first one. | Journal `when` set to 0385's: killed (5 tests, including main-upgrade). Rollback deleting 0385's row: killed. |
+| F2 | Yes. Each `accountsNotRead` entry adds to `mismatches`, `complete` is false, and the alert fires. | None. | Not counted: killed (2). |
+| F3 | Yes. A CHECK violation or registry refusal rolls back, and the row is recorded parked `unrecognised` in its own transaction with no documents. Other errors still throw. The cursor moves past the item. A failing key is caught per key, so other keys still run. The job writes the report, then throws `accounting_stripe_accounts_failed:<n>`. | None. | Ledger rethrows: killed (integration, with `@auction/persistence` rebuilt, because the worker resolves it from its build). Per-key catch removed: killed (2). Job does not fail: killed. |
+| F4 | Yes. `knownUnbooked` adds back exactly what this job booked and what the payments flow books. A booked charge, fee or payout nets to zero. A seller transfer is shown and not alerted. | None. See the negative case below. | Not subtracted: killed. Charges not left out: killed. Booked payout not added back: killed (both integration, rebuilt). |
+| F5 | Yes. A replay that returns a cancelled document rolls back and is recorded parked `was_cancelled`, and the document stays cancelled. | None. | Check disabled: killed (rebuilt). |
+| F6 | Yes. The claim orders `kind in ('expense','transfer')` last, then by age. The sync stops reading new windows once 200 are booked. | None in the touched code. See L3 and L4. | Priority removed: killed. Cap removed: killed. |
+| F8 | Yes. A reference over 100 characters is refused, never cut, and 77 characters fit. | None. | Limit 76: killed. Guard removed: killed. |
+| F9 | Yes. `prosecdef`, exact `proconfig`, the `uuid` return type and the returned value are pinned. The `worker_app` contract pins that PUBLIC cannot execute it. | None. | Not definer (M21): killed. No `search_path` (M16): killed. `EXECUTE` granted to PUBLIC on the live database: contract killed. Passes again once revoked. |
+| F12 | Yes. `differencePence` and the count are both net of documents not yet issued. | None. See L2. | Pence not netted: killed. Count not netted: killed. |
+
+**F4 negative case (checked with scratch tests that are not on any branch):**
+
+- A seller transfer of −80.00 known, plus a booked payout of 40.00 whose transfer never reached
+  Books, gives `unexplainedPence` −4,000 and the alert.
+- A seller transfer known, plus Books holding a fee 5p short, gives −5 and the alert.
+- Against the real store, a booked payout and a booked charge fee leave `knownUnbooked` unchanged,
+  even after the payout's transfer document is cancelled. So a missed payout stays a clearing
+  difference, and it is also a `byType` transfer difference.
+- The PR's own tests cover the parts: the penny test, and the integration test that a charge and a
+  payout are not counted. No single test combines a known transfer with a missed payout. Adding
+  the first scratch test above to `stripe-reconciliation.service.test.ts` is a follow-up (L1).
+- One gap: a ledger row whose `booked_fee_pence` differs from Stripe's `fee_pence` (only possible
+  through a bug in the policy) is absorbed. It shows as a `charge` residue in `knownUnbooked` and
+  does not raise the alert (L1).
+
+### M1 (Medium, blocks): the persistence accounting integration files fail when they run in parallel
+
+**What happens.** `accounting-credit-notes.integration.test.ts` (from #1375, on main) and
+`accounting-persistence.integration.test.ts` (which this PR extends) both:
+
+- rewrite the shared `accounting_source_setting` modes, and
+- cancel or claim from the shared `accounting_document` queue.
+
+Run at the same time, they undo each other. Both D4b cases fail, along with the dry-run-to-test_org
+reference case and three to four credit-note cases. This happened in 4 of 4 runs with 2 or 4 workers
+over `repositories/accounting` and `lib`.
+
+**Does CI run them in parallel?** Yes.
+
+- The `test` job runs `turbo run test --affected --concurrency=1`. That serialises packages, not
+  files.
+- `@auction/persistence` runs plain `vitest run`.
+- `packages/persistence/vitest.config.ts` sets no `fileParallelism`, `pool`, `poolOptions` or
+  `sequence` option.
+- `DATABASE_URL` is set, so both files run (only the `worker_app` and `api_app` cases skip).
+
+So the files run in parallel workers. They passed in CI for #1375 (`aea57b45`) and for this head
+only because, among 159 files on a runner's few workers, they did not overlap. Any change to
+timing or file order can make them overlap, and then they fail every time. That makes CI flaky for
+every PR that touches persistence. This is on main already, but this PR extends one of the two
+files and depends on a green persistence run.
+
+**Fix (verified locally).** Give both files the same advisory lock the worker's accounting
+integration files use: `holdAccountingTablesLock`, which runs `pg_advisory_lock(hashtext(...))` on
+a dedicated connection for the whole file.
+
+- Copy `apps/worker/src/testing/accounting-tables-lock.ts` into persistence, or move it to a shared
+  testing module.
+- Call `holdAccountingTablesLock({ beforeAll, afterAll })` at the top of both files.
+- Use the same lock name as the worker's files. Turbo serialises packages today, so this is
+  defence in depth.
+
+With that change, the parallel run passed 207 of 207 three times in a row.
+
+An alternative is to put the two files in one non-parallel group in `packages/persistence/vitest.config.ts`.
+
+### Follow-ups (not blocking)
+
+- **L1 (F4).** Add a test that combines a known seller transfer with a payout missing from Books,
+  and asserts the alert. Restrict `knownUnbooked` to the types it documents (transfer, refund,
+  dispute and adjustment types), or leave out `charge`, `payment`, `payout` and the fee types.
+  Then a residue on a type this job or the payments flow books stays unexplained, and a policy bug
+  cannot hide inside "known". Today the CHECK only requires `booked_fee_pence` to be ≥ 0, not equal
+  to the fee.
+- **L2 (F12).** "Not issued" includes `needs_review` and `failed`, so a fee or payout document Books
+  refuses for good is shown as on its way, both by type and in clearing, and never counted as a
+  reconciliation mismatch. `accounting_needs_person_overdue` still covers it. Consider netting only
+  `pending`, `sending` and `unknown`.
+- **L3 (F6).** The cap is shared across keys in one run. If the first key books 200, the second key
+  is not read that run. It is then reported `not_read_through` (an alert, and caught up next run),
+  but sustained volume on one account would starve the other. Consider a cap per account. The cap is
+  also checked only at a window's edge, so one busy day can go past 200.
+- **L4 (F6).** The claim now sorts on an expression ahead of `created_at`, so the partial index on
+  `(created_at, id) WHERE state IN ('pending','sending')` no longer gives the order directly. This
+  is fine at today's queue sizes. Check `EXPLAIN` if the queue grows.
+- **L5 (F3).** The fallback row reuses Stripe's `id`, `type` and `currency`. If one of those is what
+  breaks a CHECK (the id, type and currency patterns), the parked insert fails too and that key
+  stalls. The job then fails visibly and the account is reported not read, so nothing is silent,
+  but the cursor does not move on. Stripe's current shapes fit.
+- The earlier follow-ups (F7, F10, F11, the second half of F12, the F5 real-cycle test, the F6
+  volumes, and refunds in the clearing figure after #1375) stand as written above.
