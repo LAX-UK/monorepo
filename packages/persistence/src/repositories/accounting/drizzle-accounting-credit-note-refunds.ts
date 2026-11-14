@@ -5,8 +5,9 @@ import {
   accountingDocumentEvent,
   paymentGroupDelivery,
   paymentRefund,
+  shopRefund,
 } from "@auction/db/schema";
-import { and, asc, eq, inArray, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, isNull, sql } from "drizzle-orm";
 import type {
   AccountingClock,
   CreditNoteRefundDue,
@@ -45,7 +46,9 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
  * - a payment refund's note (`<refund id>`): no `refund_reversal` row of the payment takes that
  *   refund back (matched as the facts reader matches them);
  * - a courier refund's note (`dlv-<quote>-r<total>`): the quote's refunded total still reaches the
- *   total the note brings its credit to.
+ *   total the note brings its credit to;
+ * - a Shop refund's note (`LAX-SHOP-CN-<refund id>`): the `shop_refund` row went through by
+ *   Stripe (succeeded, not settled outside it, whose money never passed through clearing).
  * Anything it cannot tell (an unknown source, a reversal that matches no refund) does not stand:
  * the money is never refunded from clearing on a guess.
  */
@@ -63,6 +66,20 @@ async function refundStillStands(tx: Tx, laxReference: string): Promise<boolean>
     return refunded !== null && refunded !== undefined && Number(courier[2]) <= Number(refunded);
   }
   if (!UUID.test(sourceId)) return false;
+  if (parsed.value.product === "shop") {
+    const [refund] = await tx
+      .select({ id: shopRefund.id })
+      .from(shopRefund)
+      .where(
+        and(
+          eq(shopRefund.id, sourceId),
+          eq(shopRefund.status, "succeeded"),
+          isNull(shopRefund.settledOutsideAt),
+        ),
+      );
+    return refund !== undefined;
+  }
+  if (parsed.value.product !== "bid") return false;
   const [own] = await tx
     .select({ paymentId: paymentRefund.paymentId })
     .from(paymentRefund)
@@ -144,6 +161,15 @@ export class DrizzleAccountingCreditNoteRefunds implements IAccountingCreditNote
         )
         .for("update", { skipLocked: true });
       if (!held) return "skipped";
+      // Read the history again in a statement of its own: the lock above may have been taken just
+      // after another worker settled and committed, which its snapshot did not yet show. Without
+      // this, two refunders could both refund the note.
+      const [settled] = await tx
+        .select({ yes: sql<boolean>`true` })
+        .from(e)
+        .where(and(eq(e.documentId, held.id), eq(e.action, REFUND_CREDIT_NOTE)))
+        .limit(1);
+      if (settled) return "skipped";
       // The refund itself, read again under this lock: one taken back is never refunded from
       // clearing, whatever the reversal managed to do (it may have met the note being sent, and
       // run out of tries). The note is held for a person instead, as the reversal would have.
