@@ -277,6 +277,23 @@ After merging main, these were re-run and passed: domain 287, worker accounting 
 - The accountant's answer becomes `SHOP_OUTSIDE_UK_DELIVERY_BOOKING`.
 - Books' "apply credits" request shape should be confirmed in the test organisation before the Shop goes live.
 
+**After main moved again (`f1ffc6e4`: #1361, #1369, #1370, #1371).** Main was merged into `bk10-shop-invoices` as `f01c169a`. The merge was clean: main touched no file of this PR and added no migration, so 0383 stays idx 375, stamped after 0382. On a fresh database (`db:migrate`, `db:roles`), these passed again:
+
+| Area | Result |
+|---|---|
+| accounting-domain | 287 |
+| accounting-zoho-books | 308 |
+| finance-runtime | 231 |
+| persistence accounting | 69 |
+| db role contracts and main-upgrade | 98 |
+| email | 239 |
+| worker accounting and container | 606 |
+| shop-invoice and bid-invoice integration, copy and projection | 49 (R1, R2 and R3 included) |
+| shop-api, whole app | 920 |
+| shop account | 63 |
+
+Typecheck is clean for worker and shop-api. The mutation results above still hold, because the merge changed no file they cover.
+
 ## Recheck
 
 in progress. Branch head `f0f531a4`. Build ok; fresh Postgres 16.15, 375 migrations, roles applied. PR's `shop-invoice-books.integration` 21/21; the review's own R1/R2/R3 (strict) 3/3 runs green. Mutation tests and concurrency probes next.
