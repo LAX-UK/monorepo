@@ -2,7 +2,12 @@ import type {
   IWebhookEventRepository,
   WebhookEventDrainRow,
 } from "@auction/persistence/interfaces";
-import { ZOHO_ARTWORK_WEBHOOK_SOURCE } from "@auction/queues";
+import {
+  ZOHO_ARTWORK_WEBHOOK_SOURCE,
+  ZOHO_BOOKS_NOTICE_MODULES,
+  ZOHO_BOOKS_WEBHOOK_SOURCE,
+  type ZohoBooksNoticeModule,
+} from "@auction/queues";
 import type { Logger } from "pino";
 import type { WorkerEnv } from "../env.js";
 import type { WebhookEventStoredPayload } from "./webhook-event-payload.js";
@@ -18,6 +23,16 @@ export type ProcessInboundWebhookDeps = {
   }) => Promise<void>;
   /** Reads the Zoho Product a notice names and brings it into the artwork register. */
   processZohoArtworkNotice?: (input: { productId: string; eventKey: string }) => Promise<void>;
+  /**
+   * Reads again from Books the document a signed Books notice named (a hint only). Absent while
+   * Books is not configured: such a notice is then marked processed with nothing read.
+   */
+  processZohoBooksNotice?: (input: {
+    organizationId: string;
+    module: ZohoBooksNoticeModule;
+    entityId: string;
+    eventKey: string;
+  }) => Promise<void>;
 };
 
 function parseStoredPayload(payload: unknown): WebhookEventStoredPayload | null {
@@ -72,6 +87,33 @@ async function dispatchZohoArtworkNotice(
   await deps.processZohoArtworkNotice({ productId, eventKey: row.eventKey });
 }
 
+async function dispatchZohoBooksNotice(
+  deps: ProcessInboundWebhookDeps,
+  row: WebhookEventDrainRow,
+  stored: WebhookEventStoredPayload,
+): Promise<void> {
+  // Only Books' ids are read from the stored notice; the worker reads the document itself.
+  const { organizationId, module, entityId } = stored.routing as Record<string, unknown>;
+  if (
+    typeof organizationId !== "string" ||
+    typeof entityId !== "string" ||
+    typeof module !== "string" ||
+    !(ZOHO_BOOKS_NOTICE_MODULES as readonly string[]).includes(module)
+  ) {
+    throw new Error("zoho books notice missing routing");
+  }
+  if (!deps.processZohoBooksNotice) {
+    deps.log.info({ eventKey: row.eventKey }, "zoho books notice ignored: Books not configured");
+    return;
+  }
+  await deps.processZohoBooksNotice({
+    organizationId,
+    module: module as ZohoBooksNoticeModule,
+    entityId,
+    eventKey: row.eventKey,
+  });
+}
+
 type WebhookSourceHandler = (
   deps: ProcessInboundWebhookDeps,
   row: WebhookEventDrainRow,
@@ -82,6 +124,7 @@ type WebhookSourceHandler = (
 const SOURCE_HANDLERS: Readonly<Record<string, WebhookSourceHandler>> = {
   xero: dispatchXeroInvoiceWebhook,
   [ZOHO_ARTWORK_WEBHOOK_SOURCE]: dispatchZohoArtworkNotice,
+  [ZOHO_BOOKS_WEBHOOK_SOURCE]: dispatchZohoBooksNotice,
 };
 
 async function dispatchWebhookRow(

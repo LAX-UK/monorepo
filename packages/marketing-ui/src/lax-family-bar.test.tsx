@@ -5,7 +5,7 @@ import { LaxFamilyMenuLinks } from "./lax-family-menu-links.js";
 
 const LINKS = [
   { id: "art", label: "lax.art", href: "https://lax.art", current: false },
-  { id: "shop", label: "lax.shop", href: "https://shop.lax.art", current: true },
+  { id: "shop", label: "LAX Shop", href: "https://shop.lax.art", current: true },
   { id: "bid", label: "lax.bid", href: "https://lax.bid", current: false },
   { id: "account", label: "LAX Account", href: "https://account.lax.bid/account", current: false },
 ];
@@ -44,7 +44,7 @@ describe("LaxFamilyBar", () => {
     const links = within(nav).getAllByRole("link");
     expect(links.map((link) => link.textContent)).toEqual([
       "lax.art",
-      "lax.shop",
+      "LAX Shop",
       "lax.bid",
       "LAX Account",
     ]);
@@ -53,7 +53,7 @@ describe("LaxFamilyBar", () => {
 
   it("marks the current product for assistive technology and visually", () => {
     render(<LaxFamilyBar links={LINKS} />);
-    const current = screen.getByRole("link", { name: "lax.shop" });
+    const current = screen.getByRole("link", { name: "LAX Shop" });
     expect(current).toHaveAttribute("aria-current", "true");
     expect(current.className).toContain("font-semibold");
     expect(current.className).toContain("text-on-surface");
@@ -75,7 +75,7 @@ describe("LaxFamilyBar", () => {
 
   it("underlines the current product in its accent without moving the layout", () => {
     render(<LaxFamilyBar links={LINKS} />);
-    const current = screen.getByRole("link", { name: "lax.shop" });
+    const current = screen.getByRole("link", { name: "LAX Shop" });
     expect(current.className).toContain("before:bg-[var(--family-accent,currentColor)]");
     expect(current.style.getPropertyValue("--family-accent")).toBe("#5a2a5c");
     expect(current.style.getPropertyValue("--family-accent-on-dark")).toBe("#d6a8d4");
@@ -99,7 +99,7 @@ describe("LaxFamilyBar", () => {
 
   it("keeps the current product a link home", () => {
     render(<LaxFamilyBar links={LINKS} />);
-    expect(screen.getByRole("link", { name: "lax.shop" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "LAX Shop" })).toHaveAttribute(
       "href",
       "https://shop.lax.art",
     );
@@ -137,7 +137,7 @@ describe("LaxFamilyBar", () => {
 
   it("uses the light-on-photograph colours over a hero", () => {
     render(<LaxFamilyBar links={LINKS} tone="on-dark" />);
-    const current = screen.getByRole("link", { name: "lax.shop" });
+    const current = screen.getByRole("link", { name: "LAX Shop" });
     expect(current.className).toContain("text-hero-foreground");
     expect(current.className).toContain("before:bg-current");
     expect(current.style.getPropertyValue("--family-accent")).toBe("");
@@ -162,7 +162,7 @@ describe("LaxFamilyMenuLinks", () => {
 
   it("says in words which product the person is on", () => {
     render(<LaxFamilyMenuLinks links={LINKS} />);
-    const current = screen.getByRole("link", { name: /lax\.shop/ });
+    const current = screen.getByRole("link", { name: /LAX Shop/ });
     expect(current).toHaveAttribute("aria-current", "true");
     expect(current).toHaveTextContent("You're here");
     expect(screen.getAllByText("You're here")).toHaveLength(1);
@@ -212,7 +212,7 @@ describe("LaxFamilyMenuLinks", () => {
 
   it("follows the header's tone from its data attribute instead of a prop", () => {
     render(<LaxFamilyBar links={LINKS} tone="follow-header" />);
-    const current = screen.getByRole("link", { name: "lax.shop" });
+    const current = screen.getByRole("link", { name: "LAX Shop" });
     expect(current.className).toContain("font-semibold");
     expect(current.className).toContain(
       "group-data-[header-tone=on-dark]/header:text-hero-foreground",
@@ -232,7 +232,7 @@ describe("LaxFamilyMenuLinks", () => {
       return tokens;
     };
     const GROUP = "group-data-[header-tone=on-dark]/header:";
-    for (const name of ["lax.art", "lax.shop"]) {
+    for (const name of ["lax.art", "LAX Shop"]) {
       const follow = new Set(classesOf("follow-header", name));
       for (const token of classesOf("on-light", name).filter((t) => /text-|border-/.test(t))) {
         expect(follow.has(token), `on-light ${token}`).toBe(true);

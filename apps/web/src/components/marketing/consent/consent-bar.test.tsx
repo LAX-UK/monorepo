@@ -51,7 +51,7 @@ describe("ConsentBar", () => {
 
   it("offers three equal choices in one row", () => {
     tree(<ConsentBar />);
-    const names = ["Accept all", "Reject all", "Settings"];
+    const names = ["Accept all", "Reject all", "Cookie settings"];
     const buttons = names.map((name) => screen.getByRole("button", { name }));
     const classes = buttons.map((button) => button.className);
     expect(new Set(classes).size).toBe(1);
@@ -101,7 +101,7 @@ describe("ConsentBar", () => {
         <ConsentPreferencesDialog />
       </>,
     );
-    fireEvent.click(screen.getByRole("button", { name: "Settings" }));
+    fireEvent.click(screen.getByRole("button", { name: "Cookie settings" }));
     expect(await screen.findByRole("heading", { name: "Cookie settings" })).toBeInTheDocument();
   });
 

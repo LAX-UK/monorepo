@@ -91,7 +91,8 @@
           "budgetKb": 375,
           "match": []
         }
-      }
+      },
+      "requireSentry": true
     }
   }
 }

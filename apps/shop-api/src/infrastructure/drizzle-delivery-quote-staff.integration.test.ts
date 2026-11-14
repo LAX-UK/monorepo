@@ -34,6 +34,7 @@ import { createDrizzleDeliveryQuoteAcceptanceStore } from "./drizzle-delivery-qu
 import { createDrizzleDeliveryQuoteOrderStore } from "./drizzle-delivery-quote-order.store.js";
 import { createDrizzleShopNotificationPublisher } from "./drizzle-shop-notification.publisher.js";
 import { createDrizzleShopUnitOfWork } from "./drizzle-shop-transaction-effects.js";
+import { storefrontReturnUrlCheck } from "./shop-basket.persistence.js";
 import { reapStaleShopCheckouts } from "./shop-checkout-reaper.js";
 
 function recordingGateway() {
@@ -115,6 +116,7 @@ describe.skipIf(!hasShopIntegrationDb)("quoting and paying a delivery quote", ()
       clock: { now: () => new Date() },
     });
     const acceptance = createDeliveryQuoteAcceptanceService({
+      assertReturnUrls: storefrontReturnUrlCheck("http://localhost:3020"),
       store: createDrizzleDeliveryQuoteAcceptanceStore(db),
       checkout: repo,
       exportPaymentEnabled,
@@ -344,6 +346,7 @@ describe.skipIf(!hasShopIntegrationDb)("quoting and paying a delivery quote", ()
     await send(quoteId);
     const db = createShopDb(shopPool);
     const stranger = createDeliveryQuoteAcceptanceService({
+      assertReturnUrls: storefrontReturnUrlCheck("http://localhost:3020"),
       store: createDrizzleDeliveryQuoteAcceptanceStore(db),
       checkout: {
         resumeCheckoutOrder: async () => {
@@ -353,7 +356,12 @@ describe.skipIf(!hasShopIntegrationDb)("quoting and paying a delivery quote", ()
       exportPaymentEnabled: true,
     });
     await expect(
-      stranger.acceptAndPay({ subject: "someone-else", orderId, successUrl: "x", cancelUrl: "y" }),
+      stranger.acceptAndPay({
+        subject: "someone-else",
+        orderId,
+        successUrl: "http://localhost:3020/checkout/confirmation",
+        cancelUrl: "http://localhost:3020/basket",
+      }),
     ).rejects.toMatchObject({ statusCode: 404 });
     expect((await orderOf(orderId)).totalPence).toBe(8_000);
   });

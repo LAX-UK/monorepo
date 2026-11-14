@@ -396,6 +396,7 @@ export function createWorkerContainer(): WorkerContainer {
     storage: uploadStorage,
     // The outbox is built with the email workers below; the sender only queues mail after start-up.
     email: { enqueue: (input) => emailWorkers.emailOutboxService.enqueue(input) },
+    domainEventSink: repositories.domainEventSink,
   });
   const zohoCampaignsSuppression = createZohoCampaignsSuppressionRuntime({ env, db, log });
   const webhookProcessorDeps: ProcessInboundWebhookDeps = {
@@ -403,6 +404,14 @@ export function createWorkerContainer(): WorkerContainer {
     log,
     webhookEvents: new DrizzleWebhookEventRepository(db),
     processZohoArtworkNotice: zohoArtworkSync.jobs.processNotice,
+    ...(accounting
+      ? {
+          processZohoBooksNotice: async (notice) => {
+            const outcome = await accounting.statusCheck.recheckFromNotice(notice);
+            log.info({ eventKey: notice.eventKey, outcome }, "zoho_books_notice_processed");
+          },
+        }
+      : {}),
     ...(internalCronSecret && workerFinanceServices
       ? {
           syncXeroInvoiceWebhook: async (input) =>

@@ -21,7 +21,7 @@ describe("loadArtFamilyLinks", () => {
     const links = loadArtFamilyLinks();
     expect(links.map((link) => link.label)).toEqual([
       "lax.art",
-      "lax.shop",
+      "LAX Shop",
       "lax.bid",
       "LAX Account",
     ]);

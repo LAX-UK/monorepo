@@ -22,7 +22,7 @@ export type LaxFamilyLinksInput = {
   hrefs: Readonly<Partial<Record<LaxFamilyMemberId, string | undefined>>>;
 };
 
-/** The top bar's links, named as the family writes them ("lax.art", "lax.shop", ...). */
+/** The top bar's links, named as the family writes them ("lax.art", "LAX Shop", ...). */
 export function buildLaxFamilyLinks(input: LaxFamilyLinksInput): LaxFamilyLinkVm[] {
   return LAX_FAMILY_IDS.flatMap((id) => {
     const href = input.hrefs[id]?.trim();
