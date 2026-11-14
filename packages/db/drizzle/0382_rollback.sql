@@ -1,4 +1,11 @@
 -- Rollback for 0382_accounting_parked_documents. Roll back the release first, then this.
+-- Parked documents first: the earlier release knows nothing of parking, and 0379's rule would let
+-- api_app requeue a parked delivery draft (booked `outside_scope`, which must never be sent). So
+-- every parked document (`needs_review` with a reason starting `accounting_parked_`) is moved to
+-- `cancelled`, each with a `cancel` history row saying why (`{"rollback":"0382","parked":<reason>}`),
+-- before the old rules are restored. They were never sent, so nothing reaches Books. After the
+-- release is deployed again, their documents are projected anew only by a person: a cancelled row
+-- keeps its reference.
 -- It restores 0379's requeue rules for api_app (which do not know parked documents or releases),
 -- 0368's `provider_sent_ck` and history actions, and takes back api_app's UPDATE on the document
 -- and its totals (granted for the release alone; the earlier release's requeue rule does not
@@ -8,6 +15,27 @@
 BEGIN;
 
 SET LOCAL lock_timeout = '5s';
+WITH parked AS (
+  SELECT "id", "attempts", "needs_review_reason"
+    FROM "accounting_document"
+   WHERE "state" = 'needs_review' AND starts_with("needs_review_reason", 'accounting_parked_')
+   FOR UPDATE
+), moved AS (
+  UPDATE "accounting_document" d
+     SET "state" = 'cancelled', "review_lookup" = NULL, "needs_review_reason" = NULL,
+         "mismatch_field" = NULL, "mismatch_difference_pence" = NULL, "updated_at" = now()
+    FROM parked p
+   WHERE d."id" = p."id"
+  RETURNING d."id"
+)
+INSERT INTO "accounting_document_event"
+  ("document_id", "action", "from_state", "to_state", "attempts", "detail", "occurred_at")
+SELECT p."id", 'cancel', 'needs_review', 'cancelled', p."attempts",
+       jsonb_build_object('rollback', '0382',
+         'parked', substr(p."needs_review_reason", length('accounting_parked_') + 1)),
+       now()
+  FROM parked p
+  JOIN moved m ON m."id" = p."id";
 ALTER TABLE "accounting_document" DROP CONSTRAINT IF EXISTS "accounting_document_provider_sent_ck";
 ALTER TABLE "accounting_document" ADD CONSTRAINT "accounting_document_provider_sent_ck" CHECK (
   "provider" IS NOT NULL
