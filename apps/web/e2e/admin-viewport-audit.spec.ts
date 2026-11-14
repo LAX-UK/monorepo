@@ -104,8 +104,11 @@ test.describe("admin viewport audit @a11y", () => {
       await page.goto(queue.path);
       await page.locator("#main-content").waitFor({ state: "visible" });
       await assertNoHorizontalOverflow(page);
-      const link = page.locator(`a[href*="${queue.param}="]`).first();
-      test.skip((await link.count()) === 0, `The seeded ${queue.name} queue is empty`);
+      // The list may also hold a desktop-only copy of the link; a phone user taps the visible one.
+      const links = page.locator(`a[href*="${queue.param}="]`);
+      test.skip((await links.count()) === 0, `The seeded ${queue.name} queue is empty`);
+      const link = links.locator("visible=true").first();
+      await expect(link, `${queue.name} has a link a phone user can tap`).toBeVisible();
       await link.click();
       const dialog = page.getByRole("dialog");
       await expect(dialog).toBeVisible();
