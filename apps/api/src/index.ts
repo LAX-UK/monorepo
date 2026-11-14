@@ -1,7 +1,6 @@
 import { assertRuntimeOwnership } from "@auction/background-runtime";
 import { closeDb } from "@auction/db";
 import { captureBackgroundError, initNodeSentry } from "@auction/observability";
-import { DrizzleStaffRoleAssignmentReader } from "@auction/persistence/repositories";
 import {
   DEAD_LETTER_QUEUE_NAME,
   LOT_LIFECYCLE_QUEUE_NAME,
@@ -13,17 +12,13 @@ import { serve } from "@hono/node-server";
 import { Queue } from "bullmq";
 import { createApp } from "./app.js";
 import { createContainer } from "./container.js";
-import { BidUserHeldErasureActors } from "./container/adapters/bid-user-held-erasure-actors.js";
-import { DrizzleHeldErasures } from "./container/adapters/drizzle-data-request-held-erasures.js";
+import { createHeldErasureRecheck } from "./container/create-held-erasure-recheck.js";
 import { loadEnv } from "./env.js";
 import { startBidSsfRetentionSchedule } from "./infrastructure/bid-ssf-retention.schedule.js";
-import { DrizzleBidUserContextLoader } from "./infrastructure/drizzle-bid-user-context.loader.js";
-import { reportHeldErasureNeedsStaff } from "./infrastructure/held-erasure-alert.js";
 import { startHeldErasureRecheckSchedule } from "./infrastructure/held-erasure-recheck.schedule.js";
 import type { LotJobScheduler } from "./jobs/lot-job-scheduler.js";
 import { closeBullBoardQueues } from "./lib/bull-board.js";
 import { runtimeOwnershipConfigFromApiEnv } from "./lib/runtime-ownership-config.js";
-import { HeldErasureRecheckService } from "./services/admin/data-requests/held-erasure-recheck.service.js";
 import { logRefundEventSubscription } from "./services/stripe/stripe-refund-event-subscription-check.js";
 
 const env = loadEnv();
@@ -51,17 +46,7 @@ const bidSsfRetentionSchedule = startBidSsfRetentionSchedule({
 
 // Data request erasures a private sale deal held are run again once the hold ends (PS-5F2).
 const heldErasureRecheckSchedule = startHeldErasureRecheckSchedule({
-  recheck: new HeldErasureRecheckService({
-    queue: new DrizzleHeldErasures(container.db),
-    erasures: container.admin.dataRequests,
-    actors: new BidUserHeldErasureActors(
-      new DrizzleBidUserContextLoader(
-        container.db,
-        new DrizzleStaffRoleAssignmentReader(container.db),
-      ),
-    ),
-    onNeedsStaff: reportHeldErasureNeedsStaff,
-  }),
+  recheck: createHeldErasureRecheck(container),
   onError: (err) => reportBackground("held-erasure-recheck", err),
 });
 
