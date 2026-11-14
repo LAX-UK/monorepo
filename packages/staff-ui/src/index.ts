@@ -207,6 +207,7 @@ export type { WizardStep } from "./forms/wizard.js";
 // Data
 export { DataTable } from "./data/data-table.js";
 export type { DataTableProps } from "./data/data-table.js";
+export { sortRows, useSortedRows } from "./data/sort-rows.js";
 export { BulkActionBar } from "./data/bulk-action-bar.js";
 export { DateRangeFilter } from "./data/date-range-filter.js";
 export { daysBefore, londonToday, shiftDay } from "./data/date-ranges.js";
