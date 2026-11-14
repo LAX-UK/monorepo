@@ -18,8 +18,13 @@ const group = (id: string, payer: string | null, memberPayers: string[]): Group 
   })),
 });
 
-function build(eligibility: Record<string, "held" | "payable" | "refused">, groups: Group[] = []) {
-  const closeAndRead = vi.fn().mockResolvedValue({ kind: "no_money" });
+function build(
+  eligibility: Record<string, "held" | "payable" | "refused" | "throws">,
+  groups: Group[] = [],
+  closed: { kind: string; error?: string } = { kind: "no_money" },
+) {
+  const closeAndRead = vi.fn().mockResolvedValue(closed);
+  const onFailure = vi.fn();
   const svc = new HeldInvoiceCheckouts({
     payments: {
       findForExpiry: vi.fn(async (id: string) => ({
@@ -35,6 +40,7 @@ function build(eligibility: Record<string, "held" | "payable" | "refused">, grou
     eligibility: {
       check: vi.fn(async ({ payerUserId }: { payerUserId: string }) => {
         const kind = eligibility[payerUserId] ?? "payable";
+        if (kind === "throws") throw new Error("payment_buyer_account_not_found");
         return kind === "held"
           ? { kind: "held" as const, reason: "identity_verification_required" as const }
           : kind === "refused"
@@ -47,8 +53,9 @@ function build(eligibility: Record<string, "held" | "payable" | "refused">, grou
       { id: "pay-ok", payerUserId: "verified", buyerLegalEntityId: "le-2" },
     ]),
     listOpenGroupsWithCheckout: vi.fn(async () => groups),
+    onFailure,
   });
-  return { svc, closeAndRead };
+  return { svc, closeAndRead, onFailure };
 }
 
 describe("HeldInvoiceCheckouts", () => {
@@ -64,7 +71,14 @@ describe("HeldInvoiceCheckouts", () => {
 
   it("the sweep closes only held invoices' checkouts, and can run again safely", async () => {
     const { svc, closeAndRead } = build({ unverified: "held", verified: "payable" });
-    expect(await svc.sweep()).toEqual({ checked: 2, closed: 1, groupsChecked: 0, groupsClosed: 0 });
+    expect(await svc.sweep()).toEqual({
+      checked: 2,
+      closed: 1,
+      groupsChecked: 0,
+      groupsClosed: 0,
+      notClosed: 0,
+      failed: 0,
+    });
     expect(closeAndRead).toHaveBeenCalledTimes(1);
     expect(closeAndRead).toHaveBeenCalledWith(expect.objectContaining({ paymentId: "pay-held" }));
     await svc.sweep();
@@ -97,5 +111,59 @@ describe("HeldInvoiceCheckouts", () => {
     expect(closeAndRead).toHaveBeenCalledWith(
       expect.objectContaining({ paymentId: "grp-no-payer" }),
     );
+  });
+
+  it("counts nothing as closed when the provider could not close it (no Stripe client)", async () => {
+    const { svc, closeAndRead } = build(
+      { unverified: "held", verified: "payable" },
+      [group("grp-held", "unverified", ["unverified"])],
+      { kind: "unknown", error: "stripe_not_configured" },
+    );
+    expect(await svc.sweep()).toEqual({
+      checked: 2,
+      closed: 0,
+      groupsChecked: 1,
+      groupsClosed: 0,
+      notClosed: 2,
+      failed: 0,
+    });
+    expect(closeAndRead).toHaveBeenCalledTimes(2);
+  });
+
+  it("counts a checkout the provider found already complete as closed (nothing left open)", async () => {
+    const { svc } = build({ unverified: "held", verified: "payable" }, [], {
+      kind: "paid",
+    });
+    expect(await svc.sweep()).toMatchObject({ closed: 1, notClosed: 0 });
+  });
+
+  it("one invoice or group that fails is reported and skipped; the rest of the sweep runs", async () => {
+    const { svc, closeAndRead, onFailure } = build(
+      { verified: "throws", unverified: "held", gone: "throws" },
+      [group("grp-broken", "gone", ["gone"]), group("grp-held", "unverified", ["unverified"])],
+    );
+    expect(await svc.sweep()).toEqual({
+      checked: 2,
+      closed: 1,
+      groupsChecked: 2,
+      groupsClosed: 1,
+      notClosed: 0,
+      failed: 2,
+    });
+    expect(closeAndRead).toHaveBeenCalledWith(expect.objectContaining({ paymentId: "pay-held" }));
+    expect(closeAndRead).toHaveBeenCalledWith(expect.objectContaining({ paymentId: "grp-held" }));
+    expect(onFailure).toHaveBeenCalledWith(
+      expect.objectContaining({ kind: "invoice", id: "pay-ok" }),
+    );
+    expect(onFailure).toHaveBeenCalledWith(
+      expect.objectContaining({ kind: "group", id: "grp-broken" }),
+    );
+  });
+
+  it("a close that throws is reported and the next candidate is still closed", async () => {
+    const { svc, closeAndRead, onFailure } = build({ unverified: "held", verified: "held" });
+    closeAndRead.mockRejectedValueOnce(new Error("stripe down"));
+    expect(await svc.sweep()).toMatchObject({ checked: 2, closed: 1, failed: 1 });
+    expect(onFailure).toHaveBeenCalledTimes(1);
   });
 });

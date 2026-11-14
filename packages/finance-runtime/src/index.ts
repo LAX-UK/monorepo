@@ -245,6 +245,8 @@ export {
 export {
   HeldInvoiceCheckouts,
   type HeldInvoiceCheckoutsDeps,
+  type HeldSweepFailure,
+  type HeldSweepReport,
   type IHeldEligibility,
   type IHeldInvoiceCheckouts,
 } from "./payment-expiry/held-invoice-checkouts.js";

@@ -1,6 +1,6 @@
 import type { PaymentEligibility } from "@auction/domain";
 import type { OpenGroupCheckout } from "@auction/persistence/interfaces";
-import type { IPaymentProviderCloser } from "./provider-money-state.js";
+import type { IPaymentProviderCloser, ProviderMoneyState } from "./provider-money-state.js";
 import type { IStalePaymentStore } from "./stale-payment-expiry.js";
 
 /** The account rule both ways of paying use (closed, held or payable). */
@@ -15,13 +15,24 @@ export interface IHeldInvoiceCheckouts {
 }
 
 export type HeldSweepReport = {
-  /** Single invoices looked at, and whose checkouts were closed. */
+  /**
+   * Single invoices looked at, and how many held ones the provider confirmed have no open
+   * checkout left. A held invoice the provider could not confirm (no Stripe client, Stripe
+   * unreachable, a session still open) is counted in `notClosed`, never in `closed`.
+   */
   checked: number;
   closed: number;
-  /** "Pay several" payments looked at, and whose checkout was closed for a held member. */
+  /** "Pay several" payments looked at, and whose checkout was confirmed closed for a hold. */
   groupsChecked: number;
   groupsClosed: number;
+  /** Held invoices and groups whose checkout could not be confirmed closed; tried again next run. */
+  notClosed: number;
+  /** Invoices and groups whose check or close threw: reported and skipped, the sweep goes on. */
+  failed: number;
 };
+
+/** Where a sweep reports one invoice or group it could not handle (the rest still run). */
+export type HeldSweepFailure = { kind: "invoice" | "group"; id: string; error: unknown };
 
 export type HeldInvoiceCheckoutsDeps = {
   payments: Pick<IStalePaymentStore, "findForExpiry" | "checkoutSessionIds">;
@@ -32,7 +43,25 @@ export type HeldInvoiceCheckoutsDeps = {
   ) => Promise<{ id: string; payerUserId: string; buyerLegalEntityId: string }[]>;
   /** Open "Pay several" payments with a checkout, with their payer and unpaid members. */
   listOpenGroupsWithCheckout: (limit: number) => Promise<OpenGroupCheckout[]>;
+  /** Reports a candidate the sweep had to skip. Defaults to a structured log line. */
+  onFailure?: (failure: HeldSweepFailure) => void;
 };
+
+/** True when the provider confirmed the checkout is no longer open (whatever money it holds). */
+function confirmedClosed(state: ProviderMoneyState | null): boolean {
+  return state !== null && state.kind !== "unknown";
+}
+
+function logFailure(failure: HeldSweepFailure): void {
+  console.error(
+    JSON.stringify({
+      msg: "held_checkout_sweep_failed",
+      kind: failure.kind,
+      id: failure.id,
+      error: failure.error instanceof Error ? failure.error.message : String(failure.error),
+    }),
+  );
+}
 
 /**
  * A held invoice (its account cannot pay yet) must not stay payable through a checkout opened
@@ -45,13 +74,7 @@ export class HeldInvoiceCheckouts implements IHeldInvoiceCheckouts {
 
   /** Closes what Stripe holds open for one invoice. */
   async close(paymentId: string): Promise<void> {
-    const current = await this.deps.payments.findForExpiry(paymentId);
-    if (!current) return;
-    await this.deps.provider.closeAndRead({
-      paymentId,
-      paymentIntentId: current.stripePaymentIntentId,
-      checkoutSessionIds: await this.deps.payments.checkoutSessionIds(paymentId),
-    });
+    await this.closeInvoice(paymentId);
   }
 
   /**
@@ -59,24 +82,54 @@ export class HeldInvoiceCheckouts implements IHeldInvoiceCheckouts {
    * "Pay several" payment with a held member (or a held or unknown payer). Safe to run at any
    * time and as often as needed (closing a closed session does nothing); run at deploy and with
    * expiry. A group's checkout that closes is released by its expiry event, which hands its
-   * invoices back to being due on their own.
+   * invoices back to being due on their own. Each invoice and group is handled on its own: one
+   * that fails is reported and skipped, and the rest of the sweep still runs.
    */
   async sweep(limit = 500): Promise<HeldSweepReport> {
+    const report: HeldSweepReport = {
+      checked: 0,
+      closed: 0,
+      groupsChecked: 0,
+      groupsClosed: 0,
+      notClosed: 0,
+      failed: 0,
+    };
+    const onFailure = this.deps.onFailure ?? logFailure;
     const candidates = await this.deps.listUnpaidWithCheckout(limit);
-    let closed = 0;
+    report.checked = candidates.length;
     for (const invoice of candidates) {
-      if (!(await this.isHeld(invoice.payerUserId, invoice.buyerLegalEntityId))) continue;
-      await this.close(invoice.id);
-      closed += 1;
+      try {
+        if (!(await this.isHeld(invoice.payerUserId, invoice.buyerLegalEntityId))) continue;
+        if (confirmedClosed(await this.closeInvoice(invoice.id))) report.closed += 1;
+        else report.notClosed += 1;
+      } catch (error) {
+        report.failed += 1;
+        onFailure({ kind: "invoice", id: invoice.id, error });
+      }
     }
     const groups = await this.deps.listOpenGroupsWithCheckout(limit);
-    let groupsClosed = 0;
+    report.groupsChecked = groups.length;
     for (const group of groups) {
-      if (!(await this.groupHasHold(group))) continue;
-      await this.closeGroup(group);
-      groupsClosed += 1;
+      try {
+        if (!(await this.groupHasHold(group))) continue;
+        if (confirmedClosed(await this.closeGroup(group))) report.groupsClosed += 1;
+        else report.notClosed += 1;
+      } catch (error) {
+        report.failed += 1;
+        onFailure({ kind: "group", id: group.id, error });
+      }
     }
-    return { checked: candidates.length, closed, groupsChecked: groups.length, groupsClosed };
+    return report;
+  }
+
+  private async closeInvoice(paymentId: string): Promise<ProviderMoneyState | null> {
+    const current = await this.deps.payments.findForExpiry(paymentId);
+    if (!current) return null;
+    return this.deps.provider.closeAndRead({
+      paymentId,
+      paymentIntentId: current.stripePaymentIntentId,
+      checkoutSessionIds: await this.deps.payments.checkoutSessionIds(paymentId),
+    });
   }
 
   private async isHeld(payerUserId: string, buyerLegalEntityId: string): Promise<boolean> {
@@ -85,8 +138,11 @@ export class HeldInvoiceCheckouts implements IHeldInvoiceCheckouts {
   }
 
   /**
-   * Whether the group's checkout must close: its payer or any member invoice is held. A group
-   * with no recorded payer can never settle (settlement refuses it), so it is closed too.
+   * Whether the group's checkout must close: its payer or any unpaid member invoice is held. A
+   * group with no recorded payer can never settle (settlement refuses it), so it is closed too.
+   * Deliberately stricter than settlement, which checks only the group's payer: a member whose
+   * own invoice is held must not be paid through a group either. The stricter side only ever
+   * closes a checkout (the buyer can open a new one once the hold is lifted), never takes money.
    */
   private async groupHasHold(group: OpenGroupCheckout): Promise<boolean> {
     if (!group.payerUserId) return true;
@@ -98,8 +154,8 @@ export class HeldInvoiceCheckouts implements IHeldInvoiceCheckouts {
   }
 
   /** Closes the group's one checkout, and its intent while nothing was paid into it. */
-  private async closeGroup(group: OpenGroupCheckout): Promise<void> {
-    await this.deps.provider.closeAndRead({
+  private async closeGroup(group: OpenGroupCheckout): Promise<ProviderMoneyState> {
+    return this.deps.provider.closeAndRead({
       paymentId: group.id,
       paymentIntentId: group.stripePaymentIntentId,
       checkoutSessionIds: group.stripeCheckoutSessionId ? [group.stripeCheckoutSessionId] : [],
