@@ -145,11 +145,20 @@ export class DrizzleAccountingBooksStatusStore implements IAccountingBooksStatus
     };
   }
 
+  async lockForRecord(tx: Database, documentId: string): Promise<BooksStatusSnapshot | null> {
+    // Two reads of one document (the night's run and a notice) record one after the other, and
+    // the second decides from what the first recorded, never from what it read before.
+    await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${`books_status:${documentId}`}))`);
+    const [row] = await tx.select().from(s).where(eq(s.documentId, documentId)).limit(1);
+    return snapshotOf(row ?? null);
+  }
+
   async record(
     tx: Database,
     documentId: string,
     decision: BooksStatusDecision,
     observedAt: Date,
+    readFrom: Date,
   ): Promise<void> {
     const changed = decision.changes.length > 0;
     await tx
@@ -171,7 +180,8 @@ export class DrizzleAccountingBooksStatusStore implements IAccountingBooksStatus
           paymentIds: [...decision.snapshot.paymentIds],
           checkedAt: observedAt,
           ...(changed ? { changedAt: observedAt } : {}),
-          recheckRequestedAt: null,
+          // A notice that arrived after this read began still wants a read: its mark stays.
+          recheckRequestedAt: sql`case when ${s.recheckRequestedAt} > ${readFrom} then ${s.recheckRequestedAt} end`,
         },
       });
     for (const change of decision.changes) {

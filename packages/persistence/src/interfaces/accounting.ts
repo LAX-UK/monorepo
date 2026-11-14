@@ -686,14 +686,21 @@ export interface IAccountingBooksStatusStore {
     providerIds: readonly string[],
   ): Promise<LaxPaymentsInBooks>;
   /**
-   * Records a read in the caller's transaction: the snapshot (clearing any recheck asked for), and
-   * each change (a payment recorded by hand is held once per document and Books id).
+   * In the caller's transaction, waits for any other record of this document to finish and returns
+   * what is recorded of it now: the check decides from this, inside the same transaction.
+   */
+  lockForRecord(tx: Database, documentId: string): Promise<BooksStatusSnapshot | null>;
+  /**
+   * Records a read in the caller's transaction (after `lockForRecord`): the snapshot, and each
+   * change (a payment recorded by hand is held once per document and Books id). A recheck asked
+   * for before `readFrom` (when the read began) is cleared; one asked for later stays.
    */
   record(
     tx: Database,
     documentId: string,
     decision: BooksStatusDecision,
     observedAt: Date,
+    readFrom: Date,
   ): Promise<void>;
   /**
    * A Books notice named this Books id: mark the issued Books documents (in these modes) of that

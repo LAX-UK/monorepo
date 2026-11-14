@@ -1,5 +1,9 @@
 import { randomUUID } from "node:crypto";
-import { laxReference } from "@auction/accounting-domain";
+import {
+  type BooksStatusDecision,
+  type DocumentStatusPort,
+  laxReference,
+} from "@auction/accounting-domain";
 import { BID_ORG_ID, InMemoryAccounting } from "@auction/accounting-zoho-books/testing";
 import { type Database, closeDb, createDb } from "@auction/db";
 import {
@@ -271,18 +275,23 @@ describe.skipIf(!HAS_DB)("Books nightly status check (integration)", { timeout: 
     return { raised, books, invoice, laxPayment };
   }
 
-  function statusCheck(books: InMemoryAccounting) {
+  /** A status check on `db` (the shared worker pool unless a test brings its own). */
+  function statusCheck(
+    books: InMemoryAccounting,
+    options: { db?: Database; statuses?: DocumentStatusPort } = {},
+  ) {
+    const db = options.db ?? worker;
     const sink = new WorkerDomainEventSink(
       new WorkerDomainEventPublisher({ publishValidateMode: "enforce" }),
-      worker,
+      db,
     );
-    const recorder = new UnappliedMoneyRecorder(new DrizzleUnappliedMoneyReader(worker), sink);
+    const recorder = new UnappliedMoneyRecorder(new DrizzleUnappliedMoneyReader(db), sink);
     return new AccountingStatusCheck({
-      store: repos.booksStatus,
-      statusesByMode: { test_org: books.statuses },
+      store: createAccountingRepositories(db, { now: () => new Date() }).booksStatus,
+      statusesByMode: { test_org: options.statuses ?? books.statuses },
       organisationIds: { london_auction_xchange: BID_ORG_ID },
       tasks: { open: (tx, money) => recorder.record(tx, money, null) },
-      transactions: new DrizzleTransactionRunner(worker),
+      transactions: new DrizzleTransactionRunner(db),
       log,
       now: () => new Date(),
       // Every issued document in the shared database is due; the share is not what is tested here.
@@ -580,6 +589,120 @@ describe.skipIf(!HAS_DB)("Books nightly status check (integration)", { timeout: 
       accountingReference: second.invoice.laxReference,
       amountCents: 60_000,
     });
+  });
+
+  it("two reads of one document at once, on separate worker pools, record one history and one task", async () => {
+    const { books, invoice } = await issued();
+    const cheque = String(7_400_000_000_000 + Math.floor(Math.random() * 1e9));
+    books.setStatus(invoice.providerId as string, {
+      status: "read",
+      reading: {
+        state: "paid",
+        balancePence: 0,
+        payments: [
+          {
+            providerPaymentId: cheque,
+            amountPence: 150_000,
+            date: null,
+            mode: "Cheque",
+            reference: null,
+          },
+        ],
+      },
+    });
+    // Both reads have answered before either records: the race the lock is for.
+    let arrived = 0;
+    let release: () => void = () => {};
+    const bothRead = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const statuses: DocumentStatusPort = {
+      readStatus: async (document, identity) => {
+        const read = await books.statuses.readStatus(document, identity);
+        arrived += 1;
+        if (arrived === 2) release();
+        await bothRead;
+        return read;
+      },
+    };
+    // biome-ignore lint/style/noNonNullAssertion: gated by HAS_DB
+    const pools = [createDb(WORKER_URL || OWNER_URL!), createDb(WORKER_URL || OWNER_URL!)];
+    try {
+      const results = await Promise.all(
+        pools.map((db) =>
+          statusCheck(books, { db, statuses }).recheckFromNotice(noticeFor(invoice)),
+        ),
+      );
+      expect(results).toEqual(["read", "read"]);
+    } finally {
+      await Promise.all(pools.map((db) => closeDb(db)));
+    }
+
+    expect(await tasksFor(taskKey(cheque, invoice.laxReference))).toHaveLength(1);
+    const changes = await owner
+      .select()
+      .from(accountingBooksStatusChange)
+      .where(eq(accountingBooksStatusChange.documentId, invoice.id));
+    expect(changes.map((c) => [c.change, c.fromState, c.toState ?? c.booksPaymentId])).toEqual([
+      ["state_changed", null, "paid"],
+      ["payment_recorded_in_books", null, cheque],
+    ]);
+  });
+
+  it("a hand payment recorded twice for one document is held once, and the second record does not fail", async () => {
+    const { invoice } = await issued();
+    const cheque = String(7_500_000_000_000 + Math.floor(Math.random() * 1e9));
+    const payment = {
+      providerPaymentId: cheque,
+      amountPence: 1_000,
+      date: null,
+      mode: null,
+      reference: null,
+    };
+    const decision: BooksStatusDecision = {
+      snapshot: { state: "paid", balancePence: 0, paymentIds: [cheque] },
+      changes: [{ kind: "payment_recorded_in_books", payment }],
+      financeTasks: [payment],
+      heldBack: [],
+    };
+    const tx = new DrizzleTransactionRunner(worker);
+    for (let i = 0; i < 2; i++) {
+      await tx.runInTransaction((t) =>
+        repos.booksStatus.record(t, invoice.id, decision, new Date(), new Date()),
+      );
+    }
+    const held = await owner
+      .select()
+      .from(accountingBooksStatusChange)
+      .where(eq(accountingBooksStatusChange.documentId, invoice.id));
+    expect(held.filter((c) => c.booksPaymentId === cheque)).toHaveLength(1);
+  });
+
+  it("a notice that arrives while a read is under way keeps its mark for the next read", async () => {
+    const { books, invoice } = await issued();
+    let noticeDuringRead: Promise<unknown> = Promise.resolve();
+    const statuses: DocumentStatusPort = {
+      readStatus: async (document, identity) => {
+        await new Promise((r) => setTimeout(r, 5));
+        noticeDuringRead = repos.booksStatus.requestRecheck(
+          ["test_org"],
+          "london_auction_xchange",
+          "invoice",
+          invoice.providerId as string,
+          new Date(),
+          1,
+        );
+        await noticeDuringRead;
+        await new Promise((r) => setTimeout(r, 5));
+        return books.statuses.readStatus(document, identity);
+      },
+    };
+    // The read began before the second notice came: it records, and the second mark stays.
+    expect(await statusCheck(books, { statuses }).recheckFromNotice(noticeFor(invoice))).toBe(
+      "read",
+    );
+    await noticeDuringRead;
+    expect((await snapshotOf(invoice.id))?.recheckRequestedAt).toBeInstanceOf(Date);
   });
 
   it("a void made in Books is recorded as a change, the run is recorded, and a notice reads it first", async () => {

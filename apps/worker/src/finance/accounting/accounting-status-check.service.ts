@@ -178,9 +178,10 @@ export class AccountingStatusCheck {
   }
 
   private async check(item: BooksStatusDue): Promise<CheckOutcome> {
-    const { stored, previous } = item;
+    const { stored } = item;
     const port = stored.target ? this.deps.statusesByMode[stored.target.mode] : undefined;
     if (!port || !stored.target || stored.record.status !== "issued") return { kind: "skipped" };
+    const readFrom = this.deps.now();
     const read = await port.readStatus(stored.document, stored.record.issued);
     if (read.status === "rehearsal" || read.status === "budget_spent") return { kind: read.status };
     if (read.status === "unavailable") {
@@ -200,13 +201,17 @@ export class AccountingStatusCheck {
             seen,
           )
         : NO_LAX_PAYMENTS;
-    const decision = decideBooksStatus({ previous, read, laxPayments });
     const observedAt = this.deps.now();
-    await this.deps.transactions.runInTransaction(async (tx) => {
-      await this.deps.store.record(tx, stored.id, decision, observedAt);
-      for (const payment of decision.financeTasks) {
+    const decision = await this.deps.transactions.runInTransaction(async (tx) => {
+      // Decided from what is recorded now, under the document's lock: another read of the same
+      // document that finished meanwhile is not recorded twice.
+      const previous = await this.deps.store.lockForRecord(tx, stored.id);
+      const decided = decideBooksStatus({ previous, read, laxPayments });
+      await this.deps.store.record(tx, stored.id, decided, observedAt, readFrom);
+      for (const payment of decided.financeTasks) {
         await this.deps.tasks.open(tx, this.taskFor(stored.legalEntity, stored.reference, payment));
       }
+      return decided;
     });
     if (decision.heldBack.length > 0) {
       // A LAX payment on this invoice is not settled yet: these may be LAX's own. Read again later.

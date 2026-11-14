@@ -90,6 +90,9 @@ class InMemoryStatusStore implements IAccountingBooksStatusStore {
       unresolved: this.laxPaymentUnresolved,
     };
   }
+  async lockForRecord(_tx: unknown, documentId: string) {
+    return this.snapshots.get(documentId) ?? null;
+  }
   async record(_tx: unknown, documentId: string, decision: BooksStatusDecision) {
     this.snapshots.set(documentId, decision.snapshot);
     this.rechecks.delete(documentId);
