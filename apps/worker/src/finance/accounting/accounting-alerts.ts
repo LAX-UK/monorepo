@@ -51,6 +51,15 @@ export const ACCOUNTING_ALERTS = {
    * aimed at (the accounting watch raises it; its cron monitor `accounting-reconcile` also misses).
    */
   statusCheckMissed: { message: "accounting_status_check_missed", level: "error" },
+  /**
+   * A payment recorded in Books was held back for more than 3 days because a LAX payment on the
+   * same invoice stayed unresolved, and its finance task was opened anyway, marked as possibly
+   * LAX's own. Raised once per Books payment and invoice, when the task is opened.
+   */
+  booksPaymentHeldBackTooLong: {
+    message: "accounting_books_payment_held_back_too_long",
+    level: "warning",
+  },
 } as const satisfies Record<string, { message: string; level: "warning" | "error" }>;
 
 export type AccountingAlert = (typeof ACCOUNTING_ALERTS)[keyof typeof ACCOUNTING_ALERTS];

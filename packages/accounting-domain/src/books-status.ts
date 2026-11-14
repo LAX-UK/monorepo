@@ -98,7 +98,19 @@ export interface BooksStatusSnapshot {
   readonly balancePence: number | null;
   /** Every provider payment id seen against it so far, sorted. */
   readonly paymentIds: readonly string[];
+  /**
+   * Payments held back on the last read (see `decideBooksStatus`): each provider payment id and
+   * when it was first held (epoch milliseconds). Kept so the hold can end.
+   */
+  readonly heldSince: Readonly<Record<string, number>>;
 }
+
+/**
+ * How long a payment is held back while a LAX payment on its invoice is unresolved. After this
+ * the hold ends: the finance task is opened anyway, marked that the payment may be LAX's own, so a
+ * real payment is never left unreported because a LAX payment is stuck.
+ */
+export const BOOKS_PAYMENT_HOLD_BACK_LIMIT_MS = 3 * 24 * 60 * 60_000;
 
 /** One thing that changed in the provider since the last read. */
 export type BooksStatusChange =
@@ -120,8 +132,19 @@ export interface BooksStatusDecision {
   /** Payments recorded in the books by hand, each to become one finance task (never applied). */
   readonly financeTasks: readonly BooksPaymentSeen[];
   /**
+   * Of `financeTasks`, those held back for longer than `BOOKS_PAYMENT_HOLD_BACK_LIMIT_MS` while a
+   * LAX payment on the invoice stayed unresolved, with when they were first held: each may be
+   * LAX's own payment, so its task says to check the unresolved LAX payment first.
+   */
+  readonly releasedFromHold: readonly {
+    readonly payment: BooksPaymentSeen;
+    /** When it was first held (epoch milliseconds). */
+    readonly heldSince: number;
+  }[];
+  /**
    * Payments not told apart yet, because a LAX payment on the invoice is not settled: no task, and
-   * left out of the snapshot, so the next read looks at them again.
+   * left out of the snapshot's payment ids (only when each was first held is kept), so the next
+   * read looks at them again.
    */
   readonly heldBack: readonly BooksPaymentSeen[];
 }
@@ -158,7 +181,9 @@ function isLaxPayment(payment: BooksPaymentSeen, lax: LaxPaymentsInBooks): boole
  * to a LAX payment document in any state, or it carries the reference of a LAX payment whose
  * provider id LAX never learnt. Any other is a payment recorded in the books by a person, reported
  * once, the first time it is seen, but only while every LAX payment on the invoice is settled:
- * until then it may be LAX's own, so it is held back and read again. The very first read of a
+ * until then it may be LAX's own, so it is held back and read again. A hold lasts at most
+ * `BOOKS_PAYMENT_HOLD_BACK_LIMIT_MS` from when the payment was first held: after that it is
+ * reported anyway, marked as possibly LAX's own (`releasedFromHold`). The very first read of a
  * document records its state as a change from nothing, so the history says when the check first
  * looked.
  */
@@ -168,8 +193,10 @@ export function decideBooksStatus(input: {
     | { readonly status: "read"; readonly reading: BooksStatusReading }
     | { readonly status: "not_found" };
   readonly laxPayments: LaxPaymentsInBooks;
+  /** When this read is recorded: a payment held back now is held since then, if not earlier. */
+  readonly now: Date;
 }): BooksStatusDecision {
-  const { previous, read, laxPayments } = input;
+  const { previous, read, laxPayments, now } = input;
   const state: BooksStatusSnapshot["state"] =
     read.status === "read" ? read.reading.state : "missing";
   const payments = read.status === "read" ? read.reading.payments : [];
@@ -181,6 +208,8 @@ export function decideBooksStatus(input: {
   }
   const financeTasks: BooksPaymentSeen[] = [];
   const heldBack: BooksPaymentSeen[] = [];
+  const heldSince: Record<string, number> = {};
+  const releasedFromHold: { payment: BooksPaymentSeen; heldSince: number }[] = [];
   const kept = new Set(seen);
   for (const payment of payments) {
     if (seen.has(payment.providerPaymentId)) continue;
@@ -189,8 +218,13 @@ export function decideBooksStatus(input: {
       continue;
     }
     if (laxPayments.unresolved) {
-      heldBack.push(payment);
-      continue;
+      const since = previous?.heldSince[payment.providerPaymentId] ?? now.getTime();
+      if (now.getTime() - since <= BOOKS_PAYMENT_HOLD_BACK_LIMIT_MS) {
+        heldBack.push(payment);
+        heldSince[payment.providerPaymentId] = since;
+        continue;
+      }
+      releasedFromHold.push({ payment, heldSince: since });
     }
     kept.add(payment.providerPaymentId);
     changes.push({ kind: "payment_recorded_in_books", payment });
@@ -202,9 +236,11 @@ export function decideBooksStatus(input: {
       state,
       balancePence: read.status === "read" ? read.reading.balancePence : null,
       paymentIds: [...kept].sort(),
+      heldSince,
     },
     changes,
     financeTasks,
+    releasedFromHold,
     heldBack,
   };
 }

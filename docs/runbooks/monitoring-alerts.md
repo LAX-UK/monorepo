@@ -497,9 +497,17 @@ A Books payment is LAX's own, and never a task, when its Books id belongs to any
 document, whatever state that document is in, or when it carries the reference of a LAX payment
 whose Books id LAX never learnt. While any LAX payment applied to the invoice is not settled
 (pending, sending, unknown, needs review or failed), the check opens no task for that invoice's
-other Books payments and does not remember them: it logs `accounting_status_payments_held_back` and
-looks again on the next read. A LAX payment stuck in needs review or failed therefore holds these
-back until finance resolves it on the accounting attention list.
+other Books payments and does not remember them: it logs `accounting_status_payments_held_back` (a
+warning) and looks again on the next read. The hold lasts at most **3 days** from when the payment
+was first held (kept per Books payment in `accounting_books_status.held_since`). After that the check
+opens the finance task anyway, marked **"Possibly LAX's own payment"**, and raises the warning
+`accounting_books_payment_held_back_too_long` once for that payment. A LAX payment stuck in needs
+review or failed therefore delays a hand payment's task by 3 days at most, never for good.
+
+**A task marked "Possibly LAX's own payment".** A LAX payment on that invoice has been unresolved
+for more than 3 days, so this Books payment may be LAX's own. Check that unresolved LAX payment on
+the accounting attention list first: if the Books payment is it, resolve LAX's payment document and
+close the task without recording anything. Otherwise handle the task as below.
 
 **What to do with the task.** First check that it is not a LAX card payment whose Books document is
 still unresolved: look up the invoice reference on the accounting attention list and in Books, and

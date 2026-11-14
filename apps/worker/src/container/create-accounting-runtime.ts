@@ -75,6 +75,7 @@ export function createAccountingRuntime(deps: {
     ),
     organisationIds: adapters.organisationIds,
     tasks: { open: (tx, money) => financeTasks.record(tx, money, null) },
+    alerts,
     transactions: new DrizzleTransactionRunner(deps.db),
     log: deps.log,
     now: () => new Date(),

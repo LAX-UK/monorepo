@@ -134,6 +134,11 @@ export type UnappliedMoney = {
   accountingReference?: string | null;
   booksPaymentMode?: string | null;
   booksPaymentDate?: string | null;
+  /**
+   * The Books payment was held back for days while a LAX payment on the same invoice stayed
+   * unresolved, then reported anyway: it may be LAX's own payment whose LAX record is unresolved.
+   */
+  booksPossiblyLaxOwn?: boolean | null;
   amountCents: number;
   currency: string;
 };
@@ -226,6 +231,20 @@ export function misappliedTransferText(
   return `A bank transfer sent with ${intended}'s payment reference${quoted} was applied to ${received}. The money is not lost, but it is recorded against the wrong invoice. Check both invoices and move the payment if needed.`;
 }
 
+/**
+ * The hedge on a Books payment reported only after a long hold: finance checks the unresolved LAX
+ * payment first, so LAX's own payment is not recorded twice. Null for any other task. "3 days"
+ * is the status check's hold-back limit (`BOOKS_PAYMENT_HOLD_BACK_LIMIT_MS` in accounting-domain).
+ */
+export function booksPossiblyLaxOwnText(
+  money: Pick<UnappliedMoney, "reason" | "booksPossiblyLaxOwn">,
+): string | null {
+  if (money.reason !== "books_payment_recorded_by_hand" || money.booksPossiblyLaxOwn !== true) {
+    return null;
+  }
+  return "Possibly LAX's own payment: a LAX payment on this invoice has been unresolved for more than 3 days. Check that unresolved LAX payment on the accounting attention list first; if this is it, resolve it there and close this task.";
+}
+
 /** What the work inbox shows for an open task: its title and the line that says what to check. */
 export function unappliedMoneyWorkItemWording(
   money: Pick<
@@ -237,6 +256,7 @@ export function unappliedMoneyWorkItemWording(
     | "intendedPaymentId"
     | "intendedPaymentGroupId"
     | "transferReference"
+    | "booksPossiblyLaxOwn"
   >,
 ): { title: string; hint: string | null } {
   if (money.reason === "transfer_applied_to_other_invoice") {
@@ -247,6 +267,6 @@ export function unappliedMoneyWorkItemWording(
   }
   return {
     title: "Money received that could not be applied",
-    hint: possibleSourceText(money.possibleGroup ?? null),
+    hint: possibleSourceText(money.possibleGroup ?? null) ?? booksPossiblyLaxOwnText(money),
   };
 }

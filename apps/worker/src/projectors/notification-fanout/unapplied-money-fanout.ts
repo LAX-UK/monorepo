@@ -1,6 +1,7 @@
 import {
   type UnappliedMoneyPayload,
   type UnappliedMoneyReason,
+  booksPossiblyLaxOwnText,
   misappliedTransferText,
   possibleSourceText,
 } from "@auction/domain";
@@ -71,7 +72,8 @@ export type UnappliedMoneyAlert = {
 export function alertFromUnappliedMoney(payload: UnappliedMoneyPayload): UnappliedMoneyAlert {
   return {
     situation: payload.reason,
-    possibleSource: possibleSourceText(payload.possibleGroup ?? null),
+    possibleSource:
+      possibleSourceText(payload.possibleGroup ?? null) ?? booksPossiblyLaxOwnText(payload),
     paymentId: payload.paymentId,
     dealReference: payload.privateSaleDealReference ?? null,
     shopOrderId: payload.shopOrderId ?? null,

@@ -20,6 +20,7 @@ import type {
   IAccountingBooksStatusStore,
 } from "@auction/persistence/interfaces";
 import type { ZohoBooksNoticeModule } from "@auction/queues";
+import { ACCOUNTING_ALERTS, type AccountingAlertSink } from "./accounting-alerts.js";
 
 /** How long after a read a document is due again: a little under a day, so each night reads it. */
 export const STATUS_READ_AGAIN_AFTER_MS = 20 * 60 * 60_000;
@@ -66,6 +67,8 @@ export interface AccountingStatusCheckDeps {
   /** The Books organisation of each legal entity, for the finance task's key. */
   readonly organisationIds: Readonly<Partial<Record<LegalEntity, string>>>;
   readonly tasks: FinanceTaskOpener;
+  /** Raises the warning for a payment whose hold-back ran out (its task is opened anyway). */
+  readonly alerts: AccountingAlertSink;
   readonly transactions: { runInTransaction<T>(fn: (tx: Database) => Promise<T>): Promise<T> };
   readonly log: StatusCheckLog;
   readonly now: () => Date;
@@ -249,16 +252,36 @@ export class AccountingStatusCheck {
       // Decided from what is recorded now, under the document's lock: another read of the same
       // document that finished meanwhile is not recorded twice.
       const previous = await this.deps.store.lockForRecord(tx, stored.id);
-      const decided = decideBooksStatus({ previous, read, laxPayments });
+      const decided = decideBooksStatus({ previous, read, laxPayments, now: observedAt });
       await this.deps.store.record(tx, stored.id, decided, observedAt, readFrom);
+      const released = new Set(decided.releasedFromHold.map((r) => r.payment.providerPaymentId));
       for (const payment of decided.financeTasks) {
-        await this.deps.tasks.open(tx, this.taskFor(stored.legalEntity, stored.reference, payment));
+        await this.deps.tasks.open(
+          tx,
+          this.taskFor(
+            stored.legalEntity,
+            stored.reference,
+            payment,
+            released.has(payment.providerPaymentId),
+          ),
+        );
       }
       return decided;
     });
+    for (const { payment, heldSince } of decision.releasedFromHold) {
+      // Once per payment: its task is open now and its id is in the snapshot, so it is not held
+      // or released again.
+      this.deps.alerts.raise(ACCOUNTING_ALERTS.booksPaymentHeldBackTooLong, {
+        documentId: stored.id,
+        reference: stored.reference,
+        booksPaymentId: payment.providerPaymentId,
+        heldSince: new Date(heldSince).toISOString(),
+      });
+    }
     if (decision.heldBack.length > 0) {
-      // A LAX payment on this invoice is not settled yet: these may be LAX's own. Read again later.
-      this.deps.log.info(
+      // A LAX payment on this invoice is not settled yet: these may be LAX's own. Read again later;
+      // after a few days the hold ends and each is reported anyway (`releasedFromHold`).
+      this.deps.log.warn(
         {
           documentId: stored.id,
           reference: stored.reference,
@@ -291,6 +314,7 @@ export class AccountingStatusCheck {
     entity: LegalEntity,
     reference: string,
     payment: BooksPaymentSeen,
+    possiblyLaxOwn: boolean,
   ): UnappliedMoney {
     const organisation = this.deps.organisationIds[entity] ?? entity;
     return {
@@ -308,6 +332,7 @@ export class AccountingStatusCheck {
       accountingReference: reference,
       booksPaymentMode: payment.mode,
       booksPaymentDate: payment.date,
+      ...(possiblyLaxOwn ? { booksPossiblyLaxOwn: true } : {}),
       amountCents: payment.amountPence,
       currency: "GBP",
     };

@@ -223,6 +223,7 @@ async function setUp(
         opened.push(money);
       },
     },
+    alerts: { raise: vi.fn() },
     transactions: { runInTransaction: async (fn) => fn(tx as never) },
     log,
     now: options.now ?? (() => new Date("2031-03-10T02:15:00Z")),
@@ -340,7 +341,7 @@ describe("the nightly Books status check, against the Books fake", () => {
     expect((await check.runNightly()).tasks).toBe(0);
     expect(opened).toEqual([]);
     expect(store.snapshots.get(invoice.stored.id)?.paymentIds).toEqual([]);
-    expect(log.info).toHaveBeenCalledWith(
+    expect(log.warn).toHaveBeenCalledWith(
       {
         documentId: invoice.stored.id,
         reference: invoice.stored.reference,

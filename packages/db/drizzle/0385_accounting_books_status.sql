@@ -6,6 +6,8 @@
 --
 -- accounting_books_status: the last state read for each issued document (one row per document),
 -- and when a Books notice asked for it to be read again. The worker inserts and updates it.
+-- held_since maps each Books payment held back on the last read (a LAX payment on the invoice was
+-- unresolved) to when it was first held (epoch milliseconds), so the hold ends after a few days.
 -- accounting_books_status_change: what changed, append-only (a trigger refuses UPDATE, DELETE and
 -- TRUNCATE for every role); a payment recorded by hand is held once per document and Books id.
 -- accounting_books_status_run: one row per nightly run, so the watch can tell a missed run.
@@ -20,13 +22,15 @@ CREATE TABLE IF NOT EXISTS "accounting_books_status" (
   "checked_at" timestamp with time zone,
   "changed_at" timestamp with time zone,
   "recheck_requested_at" timestamp with time zone,
+  "held_since" jsonb DEFAULT '{}'::jsonb NOT NULL,
   CONSTRAINT "accounting_books_status_document_fkey"
     FOREIGN KEY ("document_id") REFERENCES "accounting_document"("id") ON DELETE RESTRICT,
   CONSTRAINT "accounting_books_status_state_ck" CHECK ("books_state" IS NULL OR "books_state" IN
     ('draft', 'open', 'overdue', 'partially_paid', 'paid', 'closed', 'recorded', 'void', 'other', 'missing')),
   CONSTRAINT "accounting_books_status_read_pair_ck"
     CHECK (("books_state" IS NULL) = ("checked_at" IS NULL)),
-  CONSTRAINT "accounting_books_status_payment_ids_ck" CHECK (jsonb_typeof("payment_ids") = 'array')
+  CONSTRAINT "accounting_books_status_payment_ids_ck" CHECK (jsonb_typeof("payment_ids") = 'array'),
+  CONSTRAINT "accounting_books_status_held_since_ck" CHECK (jsonb_typeof("held_since") = 'object')
 );
 --> statement-breakpoint
 CREATE INDEX IF NOT EXISTS "accounting_books_status_recheck_idx"

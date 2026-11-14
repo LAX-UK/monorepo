@@ -43,6 +43,17 @@ type StatusRow = typeof accountingBooksStatus.$inferSelect;
  */
 const SETTLED_PAYMENT_STATES: ReadonlySet<string> = new Set(["issued", "cancelled"]);
 
+/** The held-back payments' first-held times; anything unreadable is dropped (held afresh). */
+function heldSinceOf(value: unknown): Record<string, number> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+  return Object.fromEntries(
+    Object.entries(value).filter(
+      (entry): entry is [string, number] =>
+        typeof entry[1] === "number" && Number.isFinite(entry[1]),
+    ),
+  );
+}
+
 function snapshotOf(row: StatusRow | null): BooksStatusSnapshot | null {
   if (!row || row.booksState === null) return null;
   const state = row.booksState === "missing" ? "missing" : row.booksState;
@@ -53,6 +64,7 @@ function snapshotOf(row: StatusRow | null): BooksStatusSnapshot | null {
     paymentIds: Array.isArray(row.paymentIds)
       ? row.paymentIds.filter((p) => typeof p === "string")
       : [],
+    heldSince: heldSinceOf(row.heldSince),
   };
 }
 
@@ -168,6 +180,7 @@ export class DrizzleAccountingBooksStatusStore implements IAccountingBooksStatus
         booksState: decision.snapshot.state,
         balancePence: decision.snapshot.balancePence,
         paymentIds: [...decision.snapshot.paymentIds],
+        heldSince: { ...decision.snapshot.heldSince },
         checkedAt: observedAt,
         changedAt: changed ? observedAt : null,
         recheckRequestedAt: null,
@@ -178,6 +191,7 @@ export class DrizzleAccountingBooksStatusStore implements IAccountingBooksStatus
           booksState: decision.snapshot.state,
           balancePence: decision.snapshot.balancePence,
           paymentIds: [...decision.snapshot.paymentIds],
+          heldSince: { ...decision.snapshot.heldSince },
           checkedAt: observedAt,
           ...(changed ? { changedAt: observedAt } : {}),
           // A notice that arrived after this read began still wants a read: its mark stays.

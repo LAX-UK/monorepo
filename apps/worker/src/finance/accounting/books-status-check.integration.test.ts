@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import {
+  BOOKS_PAYMENT_HOLD_BACK_LIMIT_MS,
   type BooksStatusDecision,
   type DocumentStatusPort,
   laxReference,
@@ -37,6 +38,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vites
 import { WorkerDomainEventPublisher } from "../../lib/domain-event-publisher.js";
 import { WorkerDomainEventSink } from "../../lib/worker-domain-event-sink.js";
 import { holdAccountingTablesLock } from "../../testing/accounting-tables-lock.js";
+import type { AccountingAlertSink } from "./accounting-alerts.js";
 import { AccountingProjection } from "./accounting-projection.service.js";
 import { AccountingSender } from "./accounting-sender.service.js";
 import { AccountingStatusCheck } from "./accounting-status-check.service.js";
@@ -278,7 +280,12 @@ describe.skipIf(!HAS_DB)("Books nightly status check (integration)", { timeout: 
   /** A status check on `db` (the shared worker pool unless a test brings its own). */
   function statusCheck(
     books: InMemoryAccounting,
-    options: { db?: Database; statuses?: DocumentStatusPort; now?: () => Date } = {},
+    options: {
+      db?: Database;
+      statuses?: DocumentStatusPort;
+      now?: () => Date;
+      alerts?: AccountingAlertSink;
+    } = {},
   ) {
     const db = options.db ?? worker;
     const sink = new WorkerDomainEventSink(
@@ -295,6 +302,7 @@ describe.skipIf(!HAS_DB)("Books nightly status check (integration)", { timeout: 
       },
       organisationIds: { london_auction_xchange: BID_ORG_ID },
       tasks: { open: (tx, money) => recorder.record(tx, money, null) },
+      alerts: options.alerts ?? { raise: vi.fn() },
       transactions: new DrizzleTransactionRunner(db),
       log,
       now: options.now ?? (() => new Date()),
@@ -538,6 +546,100 @@ describe.skipIf(!HAS_DB)("Books nightly status check (integration)", { timeout: 
     },
   );
 
+  it("a cheque held back behind LAX's payment stuck in needs review is reported after 3 days, once, marked as possibly LAX's own", async () => {
+    const { books, invoice, laxPayment } = await issued();
+    const laxBooksId = laxPayment.providerId as string;
+    // Books holds LAX's payment, but it is in review with nothing owed: no action settles it.
+    await owner
+      .update(accountingDocument)
+      .set({ state: "needs_review", reviewLookup: "clear", needsReviewReason: "totals differ" })
+      .where(eq(accountingDocument.id, laxPayment.id));
+    const cheque = String(7_300_000_000_000 + Math.floor(Math.random() * 1e9));
+    books.setStatus(invoice.providerId as string, {
+      status: "read",
+      reading: {
+        state: "paid",
+        balancePence: 0,
+        payments: [
+          {
+            providerPaymentId: laxBooksId,
+            amountPence: 150_000,
+            date: "2031-11-14",
+            mode: "Stripe",
+            reference: laxPayment.laxReference,
+          },
+          {
+            providerPaymentId: cheque,
+            amountPence: 2_500,
+            date: "2031-11-15",
+            mode: "Cheque",
+            reference: null,
+          },
+        ],
+      },
+    });
+    const raised: { message: string; details: Readonly<Record<string, unknown>> }[] = [];
+    const alerts: AccountingAlertSink = {
+      raise: (alert, details) => raised.push({ message: alert.message, details }),
+    };
+    const start = Date.now();
+    let at = start;
+    const check = statusCheck(books, { now: () => new Date(at), alerts });
+    const chequeTasks = () => tasksFor(taskKey(cheque, invoice.laxReference));
+    const DAY = 24 * 60 * 60_000;
+
+    // One notice-driven read a day, up to the limit itself: held, no task, no alert.
+    for (const day of [0, 1, 2, 3]) {
+      at = start + Math.min(day * DAY, BOOKS_PAYMENT_HOLD_BACK_LIMIT_MS);
+      expect(await check.recheckFromNotice(noticeFor(invoice))).toBe("read");
+      expect(await chequeTasks()).toEqual([]);
+      const row = await snapshotOf(invoice.id);
+      expect(row?.paymentIds).toEqual([laxBooksId]);
+      expect(Object.keys(row?.heldSince ?? {})).toEqual([cheque]);
+    }
+    expect(raised).toEqual([]);
+
+    // Past the limit (and past the minutes in which a notice does not read again): one task,
+    // marked, and one warning.
+    at = start + BOOKS_PAYMENT_HOLD_BACK_LIMIT_MS + 11 * 60_000;
+    expect(await check.recheckFromNotice(noticeFor(invoice))).toBe("read");
+    const tasks = await chequeTasks();
+    expect(tasks).toHaveLength(1);
+    expect(tasks[0]?.payload).toMatchObject({
+      reason: "books_payment_recorded_by_hand",
+      accountingReference: invoice.laxReference,
+      amountCents: 2_500,
+      booksPossiblyLaxOwn: true,
+    });
+    expect(raised).toEqual([
+      {
+        message: "accounting_books_payment_held_back_too_long",
+        details: expect.objectContaining({
+          reference: invoice.laxReference,
+          booksPaymentId: cheque,
+          heldSince: new Date(start).toISOString(),
+        }),
+      },
+    ]);
+    const row = await snapshotOf(invoice.id);
+    expect(row?.paymentIds).toEqual([laxBooksId, cheque].sort());
+    expect(row?.heldSince).toEqual({});
+    // LAX's own payment is still never a task.
+    expect(await tasksFor(taskKey(laxBooksId, invoice.laxReference))).toEqual([]);
+
+    // Replayed: a notice and a night later, nothing more.
+    at += DAY;
+    expect(await check.recheckFromNotice(noticeFor(invoice))).toBe("read");
+    await check.runNightly();
+    expect(await chequeTasks()).toHaveLength(1);
+    expect(raised).toHaveLength(1);
+    const held = await owner
+      .select()
+      .from(accountingBooksStatusChange)
+      .where(eq(accountingBooksStatusChange.documentId, invoice.id));
+    expect(held.filter((c) => c.booksPaymentId === cheque)).toHaveLength(1);
+  });
+
   it("a second Books payment carrying the reference of LAX's issued payment is reported: LAX knows its own Books id", async () => {
     const { books, invoice, laxPayment } = await issued();
     const copy = String(7_200_000_000_000 + Math.floor(Math.random() * 1e9));
@@ -669,9 +771,10 @@ describe.skipIf(!HAS_DB)("Books nightly status check (integration)", { timeout: 
       reference: null,
     };
     const decision: BooksStatusDecision = {
-      snapshot: { state: "paid", balancePence: 0, paymentIds: [cheque] },
+      snapshot: { state: "paid", balancePence: 0, paymentIds: [cheque], heldSince: {} },
       changes: [{ kind: "payment_recorded_in_books", payment }],
       financeTasks: [payment],
+      releasedFromHold: [],
       heldBack: [],
     };
     const tx = new DrizzleTransactionRunner(worker);

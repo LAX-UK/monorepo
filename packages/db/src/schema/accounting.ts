@@ -213,6 +213,8 @@ export const accountingBooksStatus = pgTable("accounting_books_status", {
   checkedAt: timestamp("checked_at", { mode: "date", withTimezone: true }),
   changedAt: timestamp("changed_at", { mode: "date", withTimezone: true }),
   recheckRequestedAt: timestamp("recheck_requested_at", { mode: "date", withTimezone: true }),
+  /** Books payment ids held back on the last read, each with when it was first held (epoch ms). */
+  heldSince: jsonb("held_since").$type<Record<string, number>>().notNull().default({}),
 });
 
 /** What the status check saw change in Books, append-only (a trigger refuses any change). */

@@ -358,6 +358,7 @@ export const WORKER_ACCOUNTING_BOOKS_STATUS_UPDATE_COLUMNS = [
   "checked_at",
   "changed_at",
   "recheck_requested_at",
+  "held_since",
 ] as const;
 export const WORKER_ACCOUNTING_BOOKS_STATUS_APPEND_ONLY_TABLES = [
   "accounting_books_status_change",

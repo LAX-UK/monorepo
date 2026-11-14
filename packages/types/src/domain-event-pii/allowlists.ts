@@ -215,6 +215,8 @@ export const EXCEPTION_PATHS: Record<string, Set<string>> = {
     "accountingReference",
     "booksPaymentMode",
     "booksPaymentDate",
+    // Set when the payment was reported after a long hold: it may be LAX's own.
+    "booksPossiblyLaxOwn",
   ]),
   /** How it was closed; a staff note is kept, as a refund's staff reason is. */
   "payment.unapplied_money_resolved": new Set(["dedupeKey", "stripeChargeId", "via", "note"]),
