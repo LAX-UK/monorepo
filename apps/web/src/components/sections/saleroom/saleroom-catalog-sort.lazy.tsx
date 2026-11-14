@@ -21,8 +21,10 @@ const STAND_IN_CLASS =
  * scripts. Until then (as before hydration) the current choice is shown as a button of the same
  * size, which keyboard users can reach. Once fetched, it is drawn at once on later visits within
  * the session. If the fetch failed, pointing at, focusing or pressing the button (click, Enter or
- * Space) fetches it again; if the button had focus, the select takes focus when it arrives. Pressing the button (click, Enter or Space) before the
- * select has arrived is not lost: the select opens its list as soon as it replaces the button.
+ * Space) fetches it again; if the button had focus, the select takes focus when it arrives.
+ * Pressing the button (click, Enter or Space) before the select has arrived is not lost: the
+ * select opens its list as soon as it replaces the button. The press is not forgotten if the
+ * fetch fails, so the list opens whenever a retry finally succeeds.
  */
 export function LazySaleroomCatalogSort({ sortLabel }: { sortLabel: string }) {
   const loaded = useDeferredModule(loadSort, true);

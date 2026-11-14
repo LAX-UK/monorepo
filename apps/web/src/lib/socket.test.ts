@@ -16,7 +16,7 @@ describe("getSocket", () => {
     vi.resetModules();
     io.mockReset();
     resolveSocketHandshakeAuth.mockReset();
-    io.mockReturnValue({ id: "mock-socket", on: vi.fn() });
+    io.mockReturnValue({ id: "mock-socket", on: vi.fn(), emit: vi.fn(), timeout: vi.fn() });
   });
 
   afterEach(() => {
