@@ -76,6 +76,9 @@ describe("useLotBidHydrateQuery — cache updates", () => {
     const queryKey = lotBidKeys.hydrate(LOT_ID);
     const initial = initialHydrate();
     const patched = patchedHydrate();
+    // The panel reads the live snapshot on mount (CO-7); here it says what the seed says.
+    mockFetchLotBidSnapshot.mockResolvedValue(initial.snapshot);
+    mockFetchLotBidHistory.mockResolvedValue([]);
 
     const { result } = renderHook(() => useLotBidHydrateQuery(LOT_ID, { initialData: initial }), {
       wrapper: ({ children }: { children: ReactNode }) => (
