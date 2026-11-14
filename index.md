@@ -35,3 +35,7 @@ Subject: **Your invoice LAX-INV-000124 from LAX Shop**. It is rendered by the re
 ## For the owner
 
 The Bid card's "being prepared" line is "You can pay now. We'll email your invoice as soon as it's ready." A Shop order is already paid, so the Shop card shows only the second sentence. Please confirm this.
+
+## Round 3
+
+After the recheck fixes: the outside-UK note on the invoice card and "Order receipt (PDF)" on a refunded order. See [shots/round3/index.md](shots/round3/index.md).
