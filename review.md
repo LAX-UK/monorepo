@@ -269,3 +269,7 @@ Fixed on `bk9-bid-refunds`, head `d268da93`. Commits: `99b3b441` (F3), `a631e23f
 - A cancelled courier step's reference stays taken. Raising a lowered total back to exactly that figure with a different amount goes to a person as `reference_in_use`.
 - A held credit note still counts against the invoice, so a later refund of the same money waits until a person settles it.
 - Accountant questions: defaults, VAT on delivery, reversing an issued credit note, and the bank-transfer refund mode.
+
+## Recheck
+
+Recheck in progress (independent re-review of head `d268da93`).
