@@ -18,21 +18,28 @@ function setup() {
   return { inner, invalidator, onError, sender };
 }
 
-const LOT_TAGS = ["public-lot:lot-1", "public-sale:sale-1"];
-
 describe("PublicPageCacheNotificationSender", () => {
-  it("publishes the bid, then drops the lot and sale tags", async () => {
+  it("publishes the bid, then drops the lot alone, never the whole sale", async () => {
     const t = setup();
     await t.sender.notifyBidPlaced(lot, bid);
     expect(t.inner.notifyBidPlaced).toHaveBeenCalledWith(lot, bid, undefined);
-    expect(t.invalidator.invalidate).toHaveBeenCalledWith(LOT_TAGS);
+    expect(t.invalidator.invalidate).toHaveBeenCalledTimes(1);
+    expect(t.invalidator.invalidate).toHaveBeenCalledWith(["public-lot:lot-1"]);
   });
 
-  it("drops the tags when a close time moves and when a lot ends", async () => {
+  it("drops the lot alone when a close time moves", async () => {
     const t = setup();
     await t.sender.notifyLotExtended(lot, new Date());
+    expect(t.invalidator.invalidate).toHaveBeenCalledWith(["public-lot:lot-1"]);
+  });
+
+  it("drops the lot and its sale when the lot ends (the catalogue lists it by result)", async () => {
+    const t = setup();
     await t.sender.notifyLotEnded(lot, null);
-    expect(t.invalidator.invalidate).toHaveBeenCalledTimes(2);
+    expect(t.invalidator.invalidate).toHaveBeenCalledWith([
+      "public-lot:lot-1",
+      "public-sale:sale-1",
+    ]);
   });
 
   it("never fails bidding when the web app cannot be reached", async () => {
