@@ -295,3 +295,67 @@ Renumber after #1375 (0385, already on main) and #1376 (0386). The renumber touc
 - **`atg-public-catalog` isolation:** make the test independent of leftover rows (see above).
 - **F11:** the Terraform Sentry rules, including the rate rule for `invalid`, and the `accounting-reconcile` monitor slug are still missing.
 - **PR body:** apply the edits listed under "PR body changes still needed", and add the F12 fix once it is made.
+
+## F12 fix
+
+Commit `ea92a601` on `bk14-books-notices`, on top of `8ce4f1af`. Author and committer: mahmoudamrspace. Pushed without force.
+
+### What changed
+
+The smaller of the two suggested fixes: the hold now has an end. The set of LAX payment states that count as unresolved is unchanged.
+
+- **Domain** (`packages/accounting-domain/src/books-status.ts`):
+  - The snapshot keeps `heldSince`: each held-back Books payment id and when it was first held (epoch ms).
+  - `decideBooksStatus` takes `now`. A held payment stays held while `now - heldSince <= BOOKS_PAYMENT_HOLD_BACK_LIMIT_MS` (3 days, a named constant). After that it goes through the normal path: one change, one finance task, its id kept in the snapshot. It is also listed in the new `releasedFromHold`.
+  - If the LAX payment settles first, the payment is reported the normal way, with no marker. A payment that turns out to be LAX's own is never released.
+- **Migration**: `held_since jsonb NOT NULL DEFAULT '{}'`, with a check that it is an object. It is inside this PR's own `0385_accounting_books_status.sql`, and the number is unchanged. The rollback drops the table, so it needs no change. `worker_app` may update the column (`migrate-roles.ts`).
+- **Store**: `held_since` is written on insert and on update, and read back into the snapshot. Unreadable entries are dropped, so that payment is held afresh.
+- **Worker** (`accounting-status-check.service.ts`):
+  - A released payment's task carries `booksPossiblyLaxOwn: true`.
+  - The warning `accounting_books_payment_held_back_too_long` is raised once per payment, after the transaction commits. Its details are the document, the invoice reference, the Books payment id and the first-held time. It is "once" because the id is then in the snapshot.
+  - `accounting_status_payments_held_back` is now logged at warn.
+- **Task text**: the work inbox hint and the finance email both say: "Possibly LAX's own payment: a LAX payment on this invoice has been unresolved for more than 3 days. Check that unresolved LAX payment on the accounting attention list first; if this is it, resolve it there and close this task." The text comes from `booksPossiblyLaxOwnText` in `packages/domain`. The flag is on the PII allowlist.
+- **Runbook**: the hold lasts 3 days at most. The section explains the marked task and names the new warning.
+
+### Tests
+
+Run on a throwaway Postgres 16 cluster on port 55432, with `db:migrate` and `db:roles` applied. Integration tests ran as `worker_app` with `--maxWorkers=2`. No `next build`.
+
+- **Domain unit tests:**
+  - A payment held less than 3 days, and held exactly 3 days, gets no task and keeps its first-held time.
+  - A payment held more than 3 days gets one task, listed in `releasedFromHold`. It is not released again on the next read.
+  - If the LAX payment settles within the hold, the payment takes the normal path, unmarked.
+  - LAX's own payment is never released.
+- **Worker integration**, as `worker_app`: the reviewer's scenario. LAX's payment is in `needs_review` with `lookup = clear` and its Books id known, and a separate cheque is on the invoice. Notice-driven reads run on days 0 to 3: no task, no alert, and `held_since` keeps the first time. Just past 3 days there is one task with `booksPossiblyLaxOwn: true` and one warning. A replayed notice and a nightly run a day later add no second task, no second alert and no second change.
+- **Domain wording**: the hint appears only for a Books task that carries the flag.
+- **Runs**:
+  - `packages/accounting-domain`: 302 passed.
+  - `packages/domain`: 3753 passed, 1 skipped.
+  - `apps/worker`: 1843 passed, 477 skipped. The Books status-check integration suite has 16 tests.
+  - `packages/db`: 864 passed, 284 skipped. These include the 0385 migration test and the `worker_app` role contract.
+  - `packages/types`: 328 passed.
+  - `packages/persistence` accounting repositories: 67 passed, 2 skipped.
+  - Typecheck and biome are clean. `check-layers` is clean: the domain stays free of `Date`, which is why `heldSince` is stored as epoch ms.
+
+### Mutations
+
+Each guard was reverted, a test was seen to fail, and the code was restored. All 11 were caught.
+
+| Mutation | Caught by |
+|---|---|
+| No limit (hold forever) | domain "more than 3 days"; integration |
+| First-held time not carried from the previous read | domain "held up to 3 days" and "more than 3 days"; integration |
+| Hold removed (released at once) | the existing F2 domain test and the new hold tests; integration |
+| Released payment not listed as released | domain; integration |
+| Store does not write `held_since` | integration |
+| Store does not read `held_since` | integration |
+| Task not marked | integration |
+| Warning not raised | integration |
+| Hold-back logged at info | worker unit |
+| Marker hint removed from the wording | domain wording |
+| `held_since` not granted to `worker_app` | integration (permission denied) |
+
+### Not changed
+
+- The wider-than-needed unresolved set from F12 (`failed`, parked or withheld `needs_review`, `pending`) still holds payments back, now for 3 days at most. Narrowing it is a possible follow-up.
+- The PR body still needs the F12 fix added.
