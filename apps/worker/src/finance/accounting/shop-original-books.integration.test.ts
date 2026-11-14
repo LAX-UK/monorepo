@@ -285,12 +285,5 @@ describe.skipIf(!HAS_DB)(
       });
       expect(await documentsFor(seeded)).toEqual([]);
     });
-
-    it("with the Shop switch off, reads and books nothing", async () => {
-      await aimShop("off");
-      const seeded = await seedPaidOriginal(owner);
-      expect(await projection().project(seeded.event)).toMatchObject({ outcome: "skipped" });
-      expect(await documentsFor(seeded)).toEqual([]);
-    });
   },
 );

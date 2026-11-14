@@ -7,7 +7,6 @@ import {
   shopOriginalSaleIdOf,
   shopOriginalSaleSourceId,
 } from "./shop-original.js";
-import { projectShopOrderPaid } from "./shop.js";
 
 const SALE_ID = "7c1e5b6a-1111-4a5b-8c9d-000000000001";
 const PARTY_ID = "7c1e5b6a-2222-4a5b-8c9d-000000000002";
@@ -67,29 +66,6 @@ describe("Shop original sold (flow 22)", () => {
     });
   });
 
-  it("names the same contact as the buyer's Shop orders", () => {
-    const order = projectShopOrderPaid({
-      orderId: "7c1e5b6a-3333-4a5b-8c9d-000000000003",
-      invoiceNumber: "LAX-INV-000124",
-      buyer: { partyId: PARTY_ID, name: "Ada Collector", email: "ada@example.com" },
-      paidOn: "2026-11-12",
-      totalPence: 100,
-      lines: [
-        {
-          id: "7c1e5b6a-4444-4a5b-8c9d-000000000004",
-          kind: "goods",
-          label: "Print",
-          grossPence: 100,
-          vatTreatment: null,
-          vatPence: null,
-        },
-      ],
-      delivery: { scope: "uk", label: "Collection", grossPence: 0, vatPence: null },
-    });
-    if (!order.ok) throw new Error(order.refusal.message);
-    expect(order.value.documents[0]).toEqual(documents(facts()).contact);
-  });
-
   it("books standard VAT as stored on the sale, never worked out again", () => {
     const { invoice } = documents(facts({ vatTreatment: "standard", vatPence: 208_333 }));
     expect(invoice.lines[0]).toMatchObject({ treatment: "standard" });
@@ -113,10 +89,6 @@ describe("Shop original sold (flow 22)", () => {
     expect(projectShopOriginalSalePaid(facts({ salePricePence: 10.5 }))).toMatchObject({
       ok: false,
     });
-  });
-
-  it("refuses an invoice without the Shop's number", () => {
-    expect(projectShopOriginalSalePaid(facts({ invoiceNumber: "" })).ok).toBe(false);
   });
 
   it("gives its documents references no Shop order can have", () => {

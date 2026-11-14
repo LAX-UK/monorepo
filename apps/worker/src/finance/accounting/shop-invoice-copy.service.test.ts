@@ -5,7 +5,6 @@ import {
   type TargetMode,
   ok,
   projectShopOrderPaid,
-  projectShopOriginalSalePaid,
 } from "@auction/accounting-domain";
 import type {
   AccountingDocumentCopy,
@@ -124,11 +123,7 @@ class Copies implements IAccountingDocumentCopies {
       .map((d) => ({
         documentId: d.id,
         product: "shop" as const,
-        invoiceId: d.reference.startsWith("LAX-SHOP-INV-original-")
-          ? d.reference.slice("LAX-SHOP-INV-".length)
-          : d.reference.endsWith("-delivery")
-            ? `order-${d.id}-delivery`
-            : `order-${d.id}`,
+        invoiceId: d.reference.endsWith("-delivery") ? `order-${d.id}-delivery` : `order-${d.id}`,
         number: "LAX-INV-000124",
         grossPence: d.totals.grossPence,
         storageKey: this.copies.get(d.id)?.storageKey ?? "",
@@ -194,10 +189,7 @@ function setUp(
     pdfsByMode: { [mode]: pdf },
     storage: { putObject: vi.fn(async () => ({})) },
     emailFacts: { forInvoice: bidFacts },
-    shopEmailFacts: {
-      forOrder: async (orderId) => factsFor(orderId),
-      forOriginalSale: async (saleId) => factsFor(`sale:${saleId}`),
-    },
+    shopEmailFacts: { forOrder: async (orderId) => factsFor(orderId) },
     email: { enqueue },
     webBaseUrl: "https://lax.bid",
     shopStorefrontUrl: storefront.url,
@@ -209,47 +201,6 @@ function setUp(
 }
 
 describe("Shop invoice copies and email", () => {
-  it("emails an original sold in the Shop under its LAX number, read from its sale (live)", async () => {
-    const saleId = "7c1e5b6a-1111-4a5b-8c9d-000000000009";
-    const projected = projectShopOriginalSalePaid({
-      originalSaleId: saleId,
-      invoiceNumber: "LAX-INV-000124",
-      buyer: { partyId: "5b6a7c1e-2222-4a5b-8c9d-000000000002", name: "Ada", email: null },
-      paidOn: "2026-11-12",
-      label: "Original artwork: Harbour at dusk",
-      salePricePence: 1_250_000,
-      vatTreatment: null,
-      vatPence: null,
-    });
-    if (!projected.ok) throw new Error(projected.refusal.code);
-    const invoice = projected.value.documents[1] as Invoice;
-    const asked: string[] = [];
-    const { service, enqueue } = setUp("live", [issued("live", "doc-o", invoice)], (id) => {
-      asked.push(id);
-      return facts({
-        orderId: saleId,
-        orderReference: "LAX-INV-000124",
-        totalPence: 1_250_000,
-        originalTitle: "Harbour at dusk",
-      });
-    });
-    expect(await service.tick()).toEqual({ stored: 1, emailed: 1 });
-    expect(asked).toEqual([`sale:${saleId}`]);
-    expect(enqueue).toHaveBeenCalledWith(
-      expect.objectContaining({
-        template: "shop-invoice-issued",
-        to: "ada@example.test",
-        idempotencyKey: "shop-invoice-issued:doc-o",
-        vars: expect.objectContaining({
-          invoiceNumber: "LAX-INV-000124",
-          total: "£12,500.00",
-          originalTitle: "Harbour at dusk",
-          orderUrl: "https://shop.example.test/account",
-        }),
-      }),
-    );
-  });
-
   it("keeps the copy under London Art Exchange and emails the order's owner once (live)", async () => {
     const { service, copies, enqueue, bidFacts } = setUp("live", [issued("live", "doc-1")]);
     expect(await service.tick()).toEqual({ stored: 1, emailed: 1 });

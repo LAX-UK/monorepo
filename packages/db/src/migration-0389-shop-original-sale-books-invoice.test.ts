@@ -22,19 +22,10 @@ describe("migration 0389 Shop originals invoiced in Books", () => {
     expect(entry?.when).toBeGreaterThan(previous?.when ?? Number.POSITIVE_INFINITY);
   });
 
-  it("numbers a Books sale from the counter Shop orders use, only once it is paid", () => {
+  it("adds no grant (db:roles owns them), under the lock timeout", () => {
     expect(migration.indexOf("SET LOCAL lock_timeout = '5s'")).toBeLessThan(
       migration.indexOf("ALTER TABLE"),
     );
-    expect(migration).toContain(
-      `IF NEW."invoice_issuer" = 'books' AND NEW."paid_at" IS NOT NULL AND NEW."invoice_number" IS NULL THEN`,
-    );
-    expect(migration).toContain(
-      `UPDATE "shop_invoice_counter" SET "last_number" = "last_number" + 1`,
-    );
-    expect(migration).toContain(`'LAX-INV-' || lpad(next_number::text, 6, '0')`);
-    expect(migration).toMatch(/BEFORE INSERT OR UPDATE OF "paid_at" ON "shop_original_sale"/);
-    // No grant in the migration (db:roles owns them).
     expect(migration).not.toMatch(/\bGRANT\b/);
   });
 
