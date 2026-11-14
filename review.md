@@ -365,3 +365,108 @@ invoice copies. Please confirm it once for both.
    clearing difference.
 
 F5 and F6 should be settled before the test-organisation step. F7 to F12 can follow.
+
+## Fixes after review
+
+All fixes are on `bk13-stripe-fees-reconciliation`, on top of `689772db`, now at `7ad341da`. Each was
+pushed once its tests passed. "Mutation" means the guard was reverted, a named test failed, and the
+guard was put back.
+
+| Finding | Fix | Commit | Test | Mutation |
+|---|---|---|---|---|
+| F1 | #1375 merged (`0385_accounting_credit_note_refunds` is on main), so origin/main was merged in and this migration is now `0386_stripe_fees_payouts_books`. It has its own journal entry (idx 378, `when` 1811505600000). `0386_rollback.sql` deletes that ledger row. The test files, the "migration 0385" comments and `FINAL_FOLDER_MILLIS` were updated to match. #1375's 0385 test no longer expects to be last. The runbook explains how to bring a database that ran the branch's old 0385 onto main, and says to roll back 0386 before 0385. #1377 also uses 0385 and must renumber to 0387. | `7ad341da` | `migration-0386-*.test.ts` (static and database), `migration-main-upgrade.integration` (23 pass) | Rollback deleting the old `created_at`: killed. Journal `when` set back to 0385's: killed (2 tests). |
+| F2 | The report now has `accountsNotRead` (`no_opening`, `balance_not_read`, `not_read_through` against the end of the reported day, and `not_registered` for a key whose account has no row, shown in every report) and `complete`. Each entry counts as a mismatch and raises the alert. A key whose balance read fails is left out, so its account is reported, and the report still runs. | `4dcbb5c6` | `stripe-reconciliation.service.test.ts`: no key, a key for another account, a stopped read, a failed key, no opening | Not counted, read-through check removed, balance check removed, unregistered keys dropped, catch removed, `no_opening` removed: all killed. |
+| F3 | `record` catches a refusal from the registry or a CHECK violation (23514), rolls back, and records the row parked `unrecognised` in its own transaction with no documents. Any other error is still thrown. The source CHECK now accepts any Stripe id shape (`^[A-Za-z0-9_]{1,255}$`). One key failing no longer stops the other keys. The job writes the report first, then fails (`accounting_stripe_accounts_failed:<n>`), so the queue retries it. Only a failure of the whole run (switch or ledger unreadable) skips the report. | `738bd136` | Integration: a poison payout in the middle of a page is parked and the rest are booked, and the cursor moves on. Unit: the next key is read. Worker: still reports, then fails. Static: the source CHECK. | Ledger rethrows: killed. Per-key catch removed: killed (2). Job does not fail: killed. Old source CHECK: killed. |
+| F4 | New `knownUnbooked(entity)` reads the ledger from each account's opening day: amount minus fee, plus what this job booked, minus a charge's amount (the payments flow books that), for `booked` and `nothing` rows, grouped by type. Parked and not-aimed rows are left out because they are differences. Clearing shows `knownUnbooked` and `knownUnbookedPence` and alerts on `stripe − books − inFlight − knownUnbooked` only. | `c3d687ea` | Unit: one seller transfer gives no clearing mismatch. Integration against the store: a transfer of −80.00 is counted, and a charge with a fee and a payout are not. | Not subtracted, charges not left out, booked payout not added back, `nothing` rows left out: all killed. |
+| F5 | Of the two options, the simpler one: the rollback is unchanged, and `record` detects a replay of a *cancelled* document (`created: false`, status `cancelled`), rolls back, and records the transaction parked `was_cancelled`. The rollback header, the runbook table and the rollback paragraph state the consequence: book those by hand. | `9385a064` | Integration: a fee is booked, its document is cancelled as the rollback would, and the same transaction is read again with no ledger row. It is parked `was_cancelled` and the document stays cancelled. | Cancelled-replay check disabled: killed. |
+| F6 | The sender's claim now hands out `expense` and `transfer` after every other waiting document. The sync reads no further window once a run has booked 200 transactions (`maxBookedPerRun`), and the next run continues. The runbook states the expected calls per day against the 1,000 budget. | `ea23f469` | Persistence integration: an older fee is claimed after a newer invoice. Unit: the cap stops at a window edge and the next run finishes. | Priority removed: killed. Cap removed: killed. |
+| F8 | `BOOKS_REFERENCE_MAX_LENGTH = 100` in the movement mapper. A longer reference is refused as `zoho_books_mapping_reference_too_long`, never cut short. The test pins that the longest reference LAX makes (77 characters) fits. The README's "to confirm" list now includes both fields' limits. | `86673ebb` | `movement.test.ts` | Limit set to 76: killed. Guard removed: killed. |
+| F9 | The migration's database test checks `prosecdef`, the exact `proconfig` (`search_path=pg_catalog, public`), the return type `uuid`, that the function returns the order's id, and null when there is none. The `worker_app` contract checks that the answer is a uuid, that PUBLIC cannot execute the function, and that `shop_order.stripe_payment_intent_id` stays unreadable. | `cf30f824` | `migration-0386-*.integration.test.ts`, `worker-app-role.contract.test.ts` | M16 (no `SET search_path`): killed. M20 (`RETURNS text` with the PaymentIntent): killed. M20b (uuid made from the PaymentIntent): killed. M21 (not definer): killed. Execute granted to PUBLIC on the live database: contract killed. |
+| F12 | `DayKindTotals` gains `notIssuedPence`. `differencePence` is LAX − Books − on its way, and a count mismatch is `laxCount ≠ booksCount + notIssuedCount`. The pending part is shown per type. | `917920c5` | Unit: a payment not yet issued shows as pending, with no mismatch and no alert | Pence not netted: killed. Count not netted: killed. |
+
+**Re-run after all fixes** (throwaway Postgres 16, port 55432, as `worker_app`, `--maxWorkers=2`):
+
+- accounting-domain: 334 pass
+- accounting-zoho-books: 329 pass
+- worker `src/finance/accounting` and `register-accounting-workers`: 222 pass, including
+  `stripe-books.integration` (10) against the database
+- persistence accounting and lib: 207 pass with `--no-file-parallelism`
+- db: the 0384, 0385 and 0386 migration tests and the worker, api and shop contracts pass (100),
+  and `migration-main-upgrade.integration` passes (23), with `WORKER_ROLE_CONTRACT_REQUIRED=1`
+
+On the database that had run the branch's old 0385, the runbook's renumber procedure worked:
+`0386_rollback.sql`, then delete the old ledger row, then `db:migrate`, which applied 0385 and 0386.
+Then rollback and forward twice, with `db:migrate` and `db:roles`. Each step was clean, and #1375's
+0385 was untouched.
+
+Notes:
+
+- With two files in parallel, `accounting-credit-notes.integration` (from #1375, on main) fails 6–8
+  cases, because it and `accounting-persistence.integration` both switch the shared source-setting
+  modes. Each file passes alone, and all 207 pass in one process. Neither file is changed by this
+  PR's logic (only a new claim-order case was added to the second). This was not re-checked on
+  main itself.
+- `WORKER_ROLE_CONTRACT_REQUIRED=true` (not `1`) also makes "cannot delete bid rows" demand a
+  `bid` row, which an empty test database does not have. That is fixture only.
+
+### Follow-ups not built
+
+- **F7:** add to the runbook's set-up and switch checklist: restate `opening_balance_pence` and
+  `opening_on` at each mode switch, and add an account row only once its product is aimed.
+  Optionally show the target mode on each ledger row and in the report.
+- **F10:** pass a narrow read interface instead of casting the SDK client, refuse `rk_test_` in
+  production, confirm `/v1/account` works with the runbook's three permissions (or configure the
+  account id), and expand `data.source` only for the types that need it.
+- **F11:** index `payment.stripe_payment_intent_id` and `shop_order.stripe_payment_intent_id`,
+  or split the attribution query into equality lookups.
+- **F12, second half:** report every day since the last stored report, so a failed run's day is not
+  skipped. Only the by-type netting was built.
+- **F5:** a real rollback, forward and sync test. The integration test simulates it (cancelled
+  document, no ledger row). The real cycle was only run by hand.
+- **F6:** the alternative of one expense per payout or per day was not built. Check the cap (200)
+  and the budget figures against real volumes before the test organisation step.
+- **After #1375:** Bid refunds are now refunded from clearing in Books (`refund_credit_note`), but
+  the clearing figure counts only payments, expenses and transfers, so `refund` stays in
+  `knownUnbooked`. The arithmetic is consistent, but a refund missing from Books is not caught by
+  clearing. Count issued credit-note refunds in the clearing figure and take `refund` out of the
+  known list in the same change.
+- **Persistence tests:** the two accounting integration files above should take the accounting
+  tables lock (as the worker's integration tests do), or run in one file group.
+
+### PR body changes
+
+Replace the migration lines with:
+
+> Migration `0386_stripe_fees_payouts_books` (rollback `0386_rollback.sql`), after #1375's 0385.
+> A database that ran this branch before the renumber must run `0386_rollback.sql` and
+> `DELETE FROM drizzle.__drizzle_migrations WHERE created_at = 1811419200000;` before it migrates to
+> main (see the runbook). Roll back 0386 before 0385.
+
+Replace the residual-risk list with:
+
+> - Clearing leaves out, as known and shown by type, the Stripe movements its figure does not take
+>   from Books: Bid seller transfers, refunds (Bid refunds are refunded from clearing by #1375 but
+>   not yet counted in this figure), and dispute amounts. A difference that remains is real.
+> - Fees and payouts read in dry run are never booked again for the test organisation or live:
+>   restate the opening at each mode switch (F7, follow-up).
+> - A transaction whose document a rollback of 0386 cancelled is parked `was_cancelled` when the
+>   migration is applied again, and is booked by hand.
+> - Books' limits on `reference_number` and the unique field (references up to 77 characters;
+>   anything over 100 is refused) are to be confirmed in the test organisation.
+
+Replace the alert behaviour with:
+
+> `accounting_reconciliation_mismatch` fires when a type's totals or counts differ (documents on
+> their way are shown, not counted), a transaction is parked (including `unrecognised` and
+> `was_cancelled`), an account was not read (`accountsNotRead`: no opening, no balance read, not
+> read through the day, or a key with no account row; the report says `complete: false`), or
+> clearing differs after in-flight documents and known unbooked movements. A transaction the
+> ledger refuses is parked, never stalls its account. If one account's read fails, the report is
+> still made and the job then fails, so the queue retries it and Sentry reports it.
+
+Add to "To confirm in the test organisation":
+
+> - The length limits of `reference_number` and the unique LAX reference field on expenses and
+>   bank transactions (77 characters must fit).
+> - The expected Books calls per day for fees and payouts against `ZOHO_BOOKS_DAILY_CALL_BUDGET`,
+>   and the per-run cap of 200.
