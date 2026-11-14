@@ -402,6 +402,21 @@ describe("split frame", () => {
       HOSTED_AUTH_STYLES.lastIndexOf("signin-gallery.webp"),
     );
   });
+
+  it("fills a viewport-high sticky column with the painting, so the form never re-crops it", () => {
+    const wide = HOSTED_AUTH_STYLES.slice(HOSTED_AUTH_STYLES.indexOf("@media (min-width: 64rem)"));
+    const column = wide.match(/\.auth-art \{([^}]*)\}/)?.[1] ?? "";
+    expect(column).toContain("position: sticky;");
+    expect(column).toContain("top: 0;");
+    expect(column).toContain("align-self: flex-start;");
+    expect(column).toContain("height: 100vh;");
+    expect(column).toContain("height: 100dvh;");
+    expect(column).toContain("/ cover no-repeat;");
+    expect(column).toContain("58% 40%");
+    expect(column).not.toContain("min-height");
+    expect(HOSTED_AUTH_STYLES).not.toContain("art-wall");
+    expect(HOSTED_AUTH_STYLES).not.toContain("art-shadow");
+  });
 });
 
 describe("hosted fields", () => {

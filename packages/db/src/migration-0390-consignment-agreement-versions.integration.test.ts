@@ -64,7 +64,7 @@ async function supersede(db: Queryable, previous: string, version: number, commi
 
 /** Every probe runs in a savepoint inside one transaction that is rolled back at the end. */
 describe.skipIf(!url)(
-  "migration 0389 consignment agreement versions (database)",
+  "migration 0390 consignment agreement versions (database)",
   { timeout: 60_000 },
   () => {
     let client: pg.Client;
@@ -220,9 +220,9 @@ describe.skipIf(!url)(
 );
 
 const rollbackSql = () =>
-  readFile(resolve(import.meta.dirname, "../drizzle/0389_rollback.sql"), "utf8");
+  readFile(resolve(import.meta.dirname, "../drizzle/0390_rollback.sql"), "utf8");
 
-describe.skipIf(!url)("migration 0389 rollback", { timeout: 120_000 }, () => {
+describe.skipIf(!url)("migration 0390 rollback", { timeout: 120_000 }, () => {
   it("stops while a version is superseded, then rolls back and applies again", async () => {
     await withTemporaryDatabase(async (pool) => {
       await runMigrationsPerTransaction(pool);

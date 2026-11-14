@@ -650,6 +650,7 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
       db: writerDb,
       uow: shopUow,
       invoiceGateway,
+      payments: invoiceGateway,
       domainEventMode: env.DOMAIN_EVENT_PUBLISH_VALIDATE,
       offers: originalOffers,
     });

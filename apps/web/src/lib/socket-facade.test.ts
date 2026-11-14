@@ -114,6 +114,38 @@ describe("createLazySocket", () => {
     expect(socket.connected).toBe(false);
   });
 
+  describe("room joins and leaves", () => {
+    it("are not dropped by the cap on buffered messages, and replay in order", async () => {
+      const loader = deferredLoader();
+      const socket = createLazySocket(loader.load);
+      socket.emit("joinUser", {});
+      socket.emit("joinSaleroom", { saleId: "s1" });
+      for (let i = 0; i < MAX_PENDING_EMITS * 2; i += 1) socket.emit("ping", i);
+      socket.emit("leaveSaleroom", { saleId: "s1" });
+      const fake = buildFakeSocket();
+      loader.arrive(fake);
+      await flush();
+      const emitted = fake.calls.filter((c) => c[0] === "emit").map((c) => c[1]);
+      expect(emitted.filter((e) => e === "ping")).toHaveLength(MAX_PENDING_EMITS);
+      expect(emitted.filter((e) => e !== "ping")).toEqual([
+        "joinUser",
+        "joinSaleroom",
+        "leaveSaleroom",
+      ]);
+      expect(emitted.indexOf("joinUser")).toBeLessThan(emitted.indexOf("leaveSaleroom"));
+    });
+
+    it("keep the cap for other messages whose names start with join", async () => {
+      const loader = deferredLoader();
+      const socket = createLazySocket(loader.load);
+      for (let i = 0; i < MAX_PENDING_EMITS + 5; i += 1) socket.emit("joinLot", i);
+      const fake = buildFakeSocket();
+      loader.arrive(fake);
+      await flush();
+      expect(fake.calls.filter((c) => c[0] === "emit")).toHaveLength(MAX_PENDING_EMITS);
+    });
+  });
+
   it("replays listeners and emits on the real socket in the order they were made", async () => {
     const loader = deferredLoader();
     const socket = createLazySocket(loader.load);

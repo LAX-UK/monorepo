@@ -17,9 +17,10 @@ export function useAdminAction() {
   const [leaving, setLeaving] = useState(false);
 
   const run = useCallback(
-    async (
-      action: () => Promise<AdminMutationResult<unknown>>,
-      successMessage: string,
+    async <T = unknown>(
+      action: () => Promise<AdminMutationResult<T>>,
+      /** A message, or one made from what the server answered (who sent the invoice). */
+      successMessage: string | ((data: T) => string),
       /** What needs a fresh sign-in, as a verb phrase: "mark £85.00 paid". */
       stepUpAction?: string,
     ) => {

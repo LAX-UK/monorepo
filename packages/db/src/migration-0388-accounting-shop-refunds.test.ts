@@ -31,7 +31,7 @@ describe("migration 0388 accounting Shop refunds", () => {
     expect(entry?.idx).toBe((previous?.idx ?? Number.NaN) + 1);
     expect(entry?.when).toBeGreaterThan(previous?.when ?? Number.POSITIVE_INFINITY);
     expect(new Set(journal.entries.map((e) => e.idx)).size).toBe(journal.entries.length);
-    // Later migrations (0389, agreement versions) follow it.
+    // Later migrations (0389, Shop originals invoiced in Books) follow it.
     const whens = journal.entries.map((e) => e.when);
     expect(new Set(whens).size).toBe(whens.length);
   });

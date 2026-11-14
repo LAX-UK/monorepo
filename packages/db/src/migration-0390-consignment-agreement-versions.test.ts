@@ -6,18 +6,18 @@ import { consignmentAgreement } from "./schema/consignment-agreements.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const read = (name: string) => readFileSync(join(__dirname, "../drizzle", name), "utf8");
-const TAG = "0389_consignment_agreement_versions";
+const TAG = "0390_consignment_agreement_versions";
 const migration = read(`${TAG}.sql`);
-const rollback = read("0389_rollback.sql");
+const rollback = read("0390_rollback.sql");
 const journal = JSON.parse(read("meta/_journal.json")) as {
   entries: { idx: number; tag: string; when: number }[];
 };
 
-describe("migration 0389 consignment agreement versions (files)", () => {
-  it("is journalled right after 0388, in a journal that stays ordered", () => {
+describe("migration 0390 consignment agreement versions (files)", () => {
+  it("is journalled right after 0389, in a journal that stays ordered", () => {
     const at = journal.entries.findIndex((e) => e.tag === TAG);
     const previous = journal.entries[at - 1];
-    expect(previous?.tag).toBe("0388_accounting_shop_refunds");
+    expect(previous?.tag).toBe("0389_shop_original_sale_books_invoice");
     expect(journal.entries[at]?.idx).toBe((previous?.idx ?? Number.NaN) + 1);
     const times = journal.entries.map((e) => e.when);
     for (let i = 1; i < times.length; i++) {
