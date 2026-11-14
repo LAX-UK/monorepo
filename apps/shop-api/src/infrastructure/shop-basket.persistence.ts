@@ -23,16 +23,34 @@ import { sellableCountsByVariantIds } from "./shop-variant-availability.js";
 
 export const BASKET_TTL_MS = 14 * 24 * 60 * 60 * 1000;
 
-export function assertStorefrontRedirectUrl(url: string, storefrontUrl: string): void {
-  const allowedOrigin = storefrontUrl.replace(/\/+$/, "");
-  let parsed: URL;
+function parseUrl(url: string): URL | null {
   try {
-    parsed = new URL(url);
+    return new URL(url);
   } catch {
+    return null;
+  }
+}
+
+/**
+ * A checkout success or cancel URL must stay on the storefront: the same origin (scheme, host and
+ * port), over http(s) and without credentials. Anything else is refused with a 400 before a
+ * payment session is opened. A storefront URL that does not parse allows nothing.
+ */
+export function assertStorefrontRedirectUrl(url: string, storefrontUrl: string): void {
+  const parsed = parseUrl(url);
+  if (!parsed) {
     throw new ShopApiError(SHOP_API_ERROR_CODES.VALIDATION, "Invalid redirect URL", 400);
   }
-  const origin = `${parsed.protocol}//${parsed.host}`;
-  if (origin !== allowedOrigin) {
+  const storefront = parseUrl(storefrontUrl.trim());
+  // Only an http(s) storefront has an origin to match; any other scheme's origin is opaque.
+  const allowedOrigin =
+    storefront && /^https?:$/.test(storefront.protocol) ? storefront.origin : null;
+  if (
+    !allowedOrigin ||
+    parsed.username !== "" ||
+    parsed.password !== "" ||
+    parsed.origin !== allowedOrigin
+  ) {
     throw new ShopApiError(
       SHOP_API_ERROR_CODES.VALIDATION,
       "Redirect URL must stay on the storefront",
