@@ -24,6 +24,7 @@ import {
   paymentGroupDeliveryRefundedPayloadSchemaV1,
   paymentGroupSettledPayloadSchemaV1,
   shopAccountingOrderPaidPayloadSchemaV1,
+  shopAccountingOriginalSalePaidPayloadSchemaV1,
 } from "@auction/types";
 import { z } from "zod";
 
@@ -399,4 +400,14 @@ export const ACCOUNTING_EVENT_ROUTES: Readonly<Record<string, AccountingEventRou
     }
     return read;
   }),
+  // An original sold directly in the Shop, paid: its Books invoice and the payment (flow 22).
+  "shop.accounting.original_sale_paid": route(
+    "shop",
+    "shop_original_sale_paid",
+    async (facts, event) => {
+      const payload = shopAccountingOriginalSalePaidPayloadSchemaV1.safeParse(event.payload);
+      if (!payload.success) throw new AccountingEventPayloadError(event.eventType);
+      return facts.shop.originalSalePaid(payload.data.originalSaleId);
+    },
+  ),
 };

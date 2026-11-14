@@ -29,6 +29,24 @@ describe("shop-invoice-issued", () => {
     expect(html).toContain(vars.orderUrl);
   });
 
+  it("names an original sold in the Shop, under the same number style, and links to the account", async () => {
+    const original = {
+      ...vars,
+      invoiceNumber: "LAX-INV-000125",
+      orderReference: "LAX-INV-000125",
+      total: "£12,500.00",
+      originalTitle: "Harbour at dusk",
+      orderUrl: "https://shop.lax.example/account",
+    };
+    const { subject, text, html } = await renderEmail("shop-invoice-issued", original);
+    expect(subject).toBe("Your invoice LAX-INV-000125 from LAX Shop");
+    expect(text).toContain(
+      "Your invoice for the original Harbour at dusk is attached. Total £12,500.00. Paid on Thu 12 Nov, 14:05 GMT.",
+    );
+    expect(text).toContain("View your account");
+    expect(html).toContain("https://shop.lax.example/account");
+  });
+
   it("greets a buyer with no name plainly", async () => {
     const { text } = await renderEmail("shop-invoice-issued", { ...vars, userName: null });
     expect(text).toContain("Hi there,");
