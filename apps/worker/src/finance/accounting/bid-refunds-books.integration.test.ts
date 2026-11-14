@@ -730,12 +730,21 @@ describe.skipIf(!HAS_DB)(
           expect(out).toMatchObject({ ok: false, refusal: "unresolved" });
           expect(await rowOf(noteRef, "test_org")).toMatchObject({ state: "needs_review" });
         }
-        // Decided (a test stands in for the accountant's answer): released as api_app, then sent.
-        const out = await staff("credit_note").release({
-          documentId: note.id,
-          actorUserId: "staff-1",
-        });
-        expect(out).toMatchObject({ ok: true, value: { outcome: "released", rebuilt: false } });
+        // Decided in the application (a test stands in for the accountant's answer): the database
+        // still refuses api_app (0385) until the migration that ships the answer lifts its line.
+        const refused = await staff("credit_note")
+          .release({ documentId: note.id, actorUserId: "staff-1" })
+          .then(
+            () => "moved",
+            (error: { cause?: { code?: string } }) => error.cause?.code,
+          );
+        expect(refused).toBe("42501");
+        expect(await rowOf(noteRef, "test_org")).toMatchObject({ state: "needs_review" });
+        // Once lifted, the release moves it on (the owner stands in for that release), then sent.
+        await owner.execute(sql`
+          update accounting_document set state = 'pending', review_lookup = null,
+                 needs_review_reason = null
+           where id = ${note.id}`);
         await sendAll("test_org", books);
         expect(await rowOf(noteRef, "test_org")).toMatchObject({ state: "issued" });
         // No money went back: nothing to refund from clearing.
