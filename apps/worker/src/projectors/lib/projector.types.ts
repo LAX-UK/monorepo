@@ -102,6 +102,8 @@ export type ProjectorRunContext = {
   zohoFulfilment?: ZohoFulfilmentMirror | undefined;
   /** Accounting projector and sender for Books; absent while Books is not configured. */
   accounting?: AccountingRuntime | undefined;
+  /** Drops cached public sale and lot pages on lax.bid; absent while WEB_REVALIDATE_* is unset. */
+  webPublicCache?: import("../web-public-cache.js").WebPublicCacheDeps | undefined;
 };
 
 export interface Projector {

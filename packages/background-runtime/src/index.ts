@@ -47,3 +47,4 @@ export {
   runWithRenewableLease,
   type RenewableLeaseRunOutcome,
 } from "./run-with-renewable-lease.js";
+export * from "./web-public-cache-invalidator.js";
