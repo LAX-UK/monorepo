@@ -6,9 +6,15 @@ import {
 } from "../../refund-settlement.js";
 import { completeRefundFromWebhook } from "./complete-refund.handler.js";
 
+const publishedEvents = vi.hoisted(() => [] as Array<{ eventType: string; payload: unknown }>);
+
 vi.mock("../../shop-domain-event-publisher.js", () => ({
   createShopDomainEventPublisher: () => ({
-    insertInTransaction: vi.fn(async () => {}),
+    insertInTransaction: vi.fn(
+      async (_tx: unknown, event: { eventType: string; payload: unknown }) => {
+        publishedEvents.push({ eventType: event.eventType, payload: event.payload });
+      },
+    ),
   }),
 }));
 
@@ -237,5 +243,80 @@ describe("completeRefundFromWebhook", () => {
     );
 
     expect(refundInserts.length).toBeGreaterThan(0);
+  });
+});
+
+describe("completeRefundFromWebhook, a refund Stripe reports failed after it succeeded (#1380 F2)", () => {
+  const refundId = "11111111-1111-4111-8111-111111111111";
+  const orderId = "22222222-2222-4222-8222-222222222222";
+
+  async function failedAfter(row: Record<string, unknown>) {
+    publishedEvents.length = 0;
+    const sets: Array<Record<string, unknown>> = [];
+    const tx = {
+      select: createSelectMock([[{ id: refundId, stripeRefundId: "re_1", ...row }]]),
+      insert: vi.fn(() => ({
+        values: vi.fn(() => ({
+          onConflictDoNothing: vi.fn(() => ({
+            returning: vi.fn(async () => [{ eventId: "evt_claim" }]),
+          })),
+        })),
+      })),
+      update: vi.fn(() => ({
+        set: vi.fn((data: Record<string, unknown>) => ({
+          where: vi.fn(async () => {
+            sets.push(data);
+          }),
+        })),
+      })),
+    };
+    const db = {
+      select: createSelectMock([
+        [{ id: orderId, totalPence: 5000, reference: "LAX-1", identitySubjectId: "s" }],
+      ]),
+      transaction: vi.fn(async (fn: (inner: typeof tx) => Promise<unknown>) => fn(tx)),
+    } as unknown as Database;
+    const outcome = await completeRefundFromWebhook(
+      db,
+      {
+        eventId: "evt_failed_later",
+        stripeRefundId: "re_1",
+        paymentIntentId: "pi_shop",
+        amountPence: 500,
+        status: "failed",
+        source: "refund.failed",
+      },
+      "enforce",
+    );
+    return { outcome, sets };
+  }
+
+  it("records the reversal once, keeps the status, and writes shop.refund.reversed", async () => {
+    const { outcome, sets } = await failedAfter({
+      status: "succeeded",
+      settledOutsideAt: null,
+      reversedAt: null,
+    });
+    expect(outcome).toBe("processed");
+    expect(sets).toHaveLength(1);
+    expect(Object.keys(sets[0] ?? {})).toEqual(["reversedAt"]);
+    expect(publishedEvents).toEqual([
+      {
+        eventType: "shop.refund.reversed",
+        payload: { schemaVersion: 1, refundId, orderId },
+      },
+    ]);
+  });
+
+  it.each([
+    ["already reversed", { status: "succeeded", settledOutsideAt: null, reversedAt: new Date() }],
+    [
+      "settled outside Stripe",
+      { status: "succeeded", settledOutsideAt: new Date(), reversedAt: null },
+    ],
+  ])("writes no reversal for a refund %s", async (_, row) => {
+    const { sets } = await failedAfter(row);
+    expect(sets.some((data) => "reversedAt" in data)).toBe(false);
+    expect(publishedEvents.map((e) => e.eventType)).not.toContain("shop.refund.reversed");
   });
 });

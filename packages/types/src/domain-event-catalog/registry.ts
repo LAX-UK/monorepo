@@ -82,6 +82,7 @@ import {
   shopProductionStartedPayloadSchemaV1,
   shopRefundCompletedPayloadSchemaV1,
   shopRefundRequestedPayloadSchemaV1,
+  shopRefundReversedPayloadSchemaV1,
   shopSaleFeeApprovedPayloadSchemaV1,
   shopStockHoldCreatedPayloadSchemaV1,
   shopStockHoldExpiredPayloadSchemaV1,
@@ -321,6 +322,7 @@ export const ALL_LIVE_DOMAIN_EVENT_TYPES = [
   "shop.possession.recorded",
   "shop.refund.requested",
   "shop.refund.completed",
+  "shop.refund.reversed",
   "shop.cancellation.requested",
   "shop.dispute.opened",
   "shop.dispute.closed",
@@ -1292,6 +1294,17 @@ const REGISTRY_OVERRIDES: Partial<Record<LiveDomainEventType, RegistryOverride>>
    */
   "shop.refund.completed": {
     schema: shopRefundCompletedPayloadSchemaV1,
+    producers: ["shop-api"],
+    consumers: ["accounting"],
+    idempotencyPolicy: "aggregate_event_unique",
+    piiClassification: "contains_pii",
+  },
+  /**
+   * Stripe reported a Shop refund failed after it had succeeded, written with the refund's
+   * `reversed_at` in one transaction; ids only. The books take the refund's credit back.
+   */
+  "shop.refund.reversed": {
+    schema: shopRefundReversedPayloadSchemaV1,
     producers: ["shop-api"],
     consumers: ["accounting"],
     idempotencyPolicy: "aggregate_event_unique",

@@ -267,6 +267,19 @@ describe("DOMAIN_EVENT_REGISTRY", () => {
     ]);
   });
 
+  it("routes a Shop refund reversed after it succeeded to the accounting consumer; ids only", () => {
+    const entry = DOMAIN_EVENT_REGISTRY["shop.refund.reversed"];
+    expect(entry.consumers).toEqual(["accounting"]);
+    expect(entry.producers).toEqual(["shop-api"]);
+    const parsed = parseDomainEventPayload("shop.refund.reversed", 1, {
+      schemaVersion: 1,
+      refundId: "11111111-1111-4111-8111-111111111111",
+      orderId: "22222222-2222-4222-8222-222222222222",
+      amountPence: 100,
+    }) as { data: object };
+    expect(Object.keys(parsed.data).sort()).toEqual(["orderId", "refundId", "schemaVersion"]);
+  });
+
   it("routes a paid Shop order to the accounting consumer; references only", () => {
     const entry = DOMAIN_EVENT_REGISTRY["shop.accounting.order_paid"];
     expect(entry.consumers).toEqual(["accounting"]);

@@ -109,6 +109,7 @@ export {
   shopPossessionRecordedPayloadSchemaV1,
   shopProductionStartedPayloadSchemaV1,
   shopRefundCompletedPayloadSchemaV1,
+  shopRefundReversedPayloadSchemaV1,
   shopRefundRequestedPayloadSchemaV1,
   shopSaleFeeApprovedPayloadSchemaV1,
   shopStockHoldCreatedPayloadSchemaV1,
