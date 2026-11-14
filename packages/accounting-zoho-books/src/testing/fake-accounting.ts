@@ -100,7 +100,7 @@ export class InMemoryAccounting implements AccountingPorts {
       this.issue(
         d,
         [["contact", d.contactReference, "customer"]],
-        "tax_exclusive",
+        d.amountsAre === "tax_inclusive" ? "tax_inclusive" : "tax_exclusive",
         undefined,
         fence,
       ),
@@ -271,12 +271,19 @@ export class InMemoryAccounting implements AccountingPorts {
       return { status: "issued", ...existing.doc };
     }
 
+    // An invoice LAX numbered keeps that number (automatic numbering is off for it), and Books
+    // refuses a number it already holds rather than renumbering.
+    const laxNumber = doc.kind === "invoice" ? doc.number : undefined;
+    const sameOrgInvoices = [...this.held].filter(([k]) => k.startsWith(`${entity}:invoice:`));
+    if (laxNumber && sameOrgInvoices.some(([, h]) => h.doc.number === laxNumber)) {
+      return rejected("zoho_books_validation_duplicate_invoice_number");
+    }
     const seq = (this.counters.get(`${entity}:${doc.kind}`) ?? 0) + 1;
     this.counters.set(`${entity}:${doc.kind}`, seq);
     const mine = expectedTotals(doc);
     const drift = fault === "totals_drift" && doc.kind !== "contact" ? 1 : 0;
     const provider: ProviderDocument = {
-      number: `${PREFIX[doc.kind]}-${String(seq).padStart(6, "0")}`,
+      number: laxNumber ?? `${PREFIX[doc.kind]}-${String(seq).padStart(6, "0")}`,
       providerId: String(7_000_000_000_000 + this.held.size + 1),
       pdfRef:
         doc.kind === "invoice" || doc.kind === "credit_note"

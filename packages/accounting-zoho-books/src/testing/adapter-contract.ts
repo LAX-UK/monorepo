@@ -8,6 +8,7 @@ import {
   buildBill,
   buildContact,
   buildCreditNoteFor,
+  buildInclusiveInvoice,
   buildInvoice,
   buildPayment,
   compareWithProviderTotals,
@@ -362,6 +363,64 @@ export function runAccountingContract(
           kind: "unconfigured",
           reason: R.organisationNotConfigured,
         });
+      });
+    });
+
+    describe("Shop invoices LAX numbered", () => {
+      const shopInvoice = (orderId: string, number: string) =>
+        must(
+          buildInclusiveInvoice({
+            product: SHOP,
+            sourceId: orderId,
+            contactReference: contact(SHOP).reference,
+            issuedOn: "2026-11-12",
+            dueOn: "2026-11-12",
+            number,
+            lines: [
+              {
+                description: "Print, edition 1/50",
+                grossPence: 45_000,
+                vatPence: 0,
+                treatment: "outside_scope",
+                role: "goods",
+              },
+              {
+                description: "Framing: Natural oak",
+                grossPence: 12_000,
+                vatPence: 0,
+                treatment: "outside_scope",
+                role: "goods",
+              },
+              {
+                description: "UK insured delivery",
+                grossPence: 2_500,
+                vatPence: 0,
+                treatment: "outside_scope",
+                role: "delivery",
+              },
+            ],
+          }),
+        );
+
+      it("keeps the Shop's own number, so Books continues the LAX-INV- series", async () => {
+        const s = await withContact(SHOP);
+        const issued = issuedOf(
+          await s.settle(s.ports.invoices.issueInvoice(shopInvoice("order-1", "LAX-INV-000124"))),
+        );
+        expect(issued.number).toBe("LAX-INV-000124");
+        expect(issued.totals).toEqual({ netPence: 59_500, vatPence: 0, grossPence: 59_500 });
+      });
+
+      it("refuses a number Books already holds rather than renumbering it", async () => {
+        const s = await withContact(SHOP);
+        issuedOf(
+          await s.settle(s.ports.invoices.issueInvoice(shopInvoice("order-1", "LAX-INV-000124"))),
+        );
+        const again = await s.settle(
+          s.ports.invoices.issueInvoice(shopInvoice("order-2", "LAX-INV-000124")),
+        );
+        expect(again.status).toBe("rejected");
+        await notIssued(s, shopInvoice("order-2", "LAX-INV-000124"));
       });
     });
 

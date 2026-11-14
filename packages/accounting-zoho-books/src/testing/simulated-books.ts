@@ -158,13 +158,31 @@ export class SimulatedBooks implements ZohoTransport {
     if (this.held(org, kind).some((d) => d.reference === reference)) {
       return failure(400, DUPLICATE_ZOHO_CODE, "duplicate value");
     }
+    // With automatic numbering off for this create, Books keeps the number sent, and refuses
+    // one it already holds (it never renumbers).
+    const own =
+      kind === "invoice" && query.get("ignore_auto_number_generation") === "true"
+        ? body.invoice_number
+        : undefined;
+    if (own !== undefined && typeof own !== "string") {
+      return failure(400, 1, "invoice number missing");
+    }
+    const spec = KIND_SPECS[kind];
+    if (
+      own &&
+      this.held(org, kind).some((d) => spec.numberField && d.record[spec.numberField] === own)
+    ) {
+      return failure(400, 1001, "invoice number already exists");
+    }
     const priced = this.price(org, kind, body, query);
     if ("error" in priced) return priced.error;
     const id = String(++this.counter);
-    const seq = (this.numbers.get(`${org.organizationId}:${kind}`) ?? 0) + 1;
-    this.numbers.set(`${org.organizationId}:${kind}`, seq);
-    const number = `${NUMBER_PREFIX[kind]}-${String(seq).padStart(6, "0")}`;
-    const spec = KIND_SPECS[kind];
+    let number = own;
+    if (!number) {
+      const seq = (this.numbers.get(`${org.organizationId}:${kind}`) ?? 0) + 1;
+      this.numbers.set(`${org.organizationId}:${kind}`, seq);
+      number = `${NUMBER_PREFIX[kind]}-${String(seq).padStart(6, "0")}`;
+    }
     const drift = fault === "totals_drift" ? 1 : 0;
     const record: Json = {
       ...priced.fields,

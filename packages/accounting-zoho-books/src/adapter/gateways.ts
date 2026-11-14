@@ -26,7 +26,7 @@ import {
   contactUpdateBody,
 } from "./mappers/contact.js";
 import { creditNoteBody } from "./mappers/credit-note.js";
-import { invoiceBody } from "./mappers/invoice.js";
+import { invoiceBody, invoiceQuery } from "./mappers/invoice.js";
 import { type PaymentBody, paymentBody } from "./mappers/payment.js";
 import { poundsToPence } from "./money-format.js";
 import type { ZohoOrgConfig, ZohoOrgConfigs } from "./org-config.js";
@@ -115,6 +115,7 @@ export class ZohoInvoiceGateway implements InvoicePort {
     const [customerId] = ready.ids as [string];
     const built = mapped(invoiceBody(invoice, customerId, ready.org));
     if ("stop" in built) return built.stop;
+    const query = invoiceQuery(invoice);
     return this.deps.writer.create({
       org: ready.org,
       product: invoice.product,
@@ -122,6 +123,7 @@ export class ZohoInvoiceGateway implements InvoicePort {
       reference: invoice.reference,
       ...(fence ? { fence } : {}),
       body: built.body,
+      ...(query ? { query } : {}),
     });
   }
 }
