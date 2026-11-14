@@ -211,6 +211,13 @@ describe("Shop refund settled (flow 21)", () => {
     expect(result.ok ? null : result.refusal.code).toBe("refund_unattributed");
   });
 
+  it("never spills a line's refund larger than the line onto the next line", () => {
+    const result = projectShopRefundSettled(
+      facts({ refunds: [refund(R1, { amountPence: 50_000 })] }),
+    );
+    expect(result.ok ? null : result.refusal.code).toBe("refund_unattributed");
+  });
+
   it("parks a refund settled outside Stripe, with no money back from clearing", () => {
     const { documents, parked } = must(
       projectShopRefundSettled(facts({ refunds: [refund(R1, { settledOutside: true })] })),

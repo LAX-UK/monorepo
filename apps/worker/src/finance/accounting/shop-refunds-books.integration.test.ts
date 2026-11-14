@@ -312,18 +312,16 @@ describe.skipIf(!HAS_DB)("Shop refunds to Books (integration)", { timeout: 60_00
       creditBasis: basis,
     });
     expect(stale.ok ? null : stale.refusal.code).toBe("credit_prior_changed");
-    // The other credit on the invoice moved after the facts were read.
+    // The other credit on the invoice moved after the facts were read (the second refund's note).
     await projection().project(second.event);
     const moved = await repos.registry.register({
       document: note,
       sourceEventRef: "test",
       creditBasis: { ...basis, succeededRefunds: 2 },
     });
-    // Its own event registered it already (a replay, same document) or it is refused: never twice.
+    expect(moved.ok ? null : moved.refusal.code).toBe("credit_prior_changed");
     const notes = await creditNotesOf(orderId);
     expect(notes.reduce((sum, n) => sum + n.grossPence, 0)).toBe(PRINT_PENCE + SECOND_PENCE);
-    if (!moved.ok) expect(moved.refusal.code).toBe("credit_prior_changed");
-    else expect(moved.value.created).toBe(false);
   });
 
   it("refuses for staff a part refund that names no line on an order of several lines", async () => {
