@@ -30,6 +30,7 @@ import {
 } from "@auction/persistence/repositories";
 import { PartyDealRetentionHolds } from "./container/adapters/drizzle-data-request-deal-holds.js";
 import { DrizzleDataRequestErasureHistory } from "./container/adapters/drizzle-data-request-erasure-history.js";
+import { DrizzleHeldErasures } from "./container/adapters/drizzle-data-request-held-erasures.js";
 import type { Container, ContainerComposedSlices } from "./container/container-slices.js";
 import { createAdminServices } from "./container/create-admin-services.js";
 import { createContainerAuthenticator } from "./container/create-auth.js";
@@ -76,6 +77,7 @@ import { createUserRouteServices } from "./container/create-user-route-services.
 import type { Env } from "./env.js";
 import { DrizzlePendingDeletionReader } from "./infrastructure/drizzle-pending-deletion.reader.js";
 import { DrizzleSubjectUsageReader } from "./infrastructure/drizzle-subject-usage.reader.js";
+import { reportHeldErasureNeedsStaff } from "./infrastructure/held-erasure-alert.js";
 import { HttpIdentityDataRequestsClient } from "./infrastructure/http-identity-data-requests.client.js";
 import { HttpIdentityIssuerClient } from "./infrastructure/http-identity-issuer.client.js";
 import { IdentityAddressBookRepository } from "./infrastructure/identity-address-book.repository.js";
@@ -873,6 +875,8 @@ export function createContainer(env: Env): Container {
         audit: new DomainEventDataRequestAuditTrail(platform.domainEventSink),
         enquiryErasure: marketingEnquiries.erasure,
         erasureHistory: new DrizzleDataRequestErasureHistory(db),
+        heldErasures: new DrizzleHeldErasures(db),
+        onNeedsStaff: reportHeldErasureNeedsStaff,
         dealHolds: new PartyDealRetentionHolds(
           new DrizzlePartyDealRecordReader(db),
           env.PRIVATE_SALE_RECORD_RETENTION_YEARS,

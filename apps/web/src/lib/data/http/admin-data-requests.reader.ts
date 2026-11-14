@@ -23,6 +23,15 @@ export const dealHoldSchema = z.object({
 export type DealHold = z.infer<typeof dealHoldSchema>;
 const dealHoldsSchema = z.object({ holds: z.array(dealHoldSchema) });
 
+/** A request whose erasure a deal held with nothing to release it by itself. */
+export const erasureHoldFlagSchema = z.object({
+  reference: z.string(),
+  reason: z.enum(["running", "open_deal", "end_unknown", "still_held", "cannot_run"]),
+  heldUntil: z.string().nullable(),
+});
+export type ErasureHoldFlag = z.infer<typeof erasureHoldFlagSchema>;
+const erasureHoldFlagsSchema = z.object({ holds: z.array(erasureHoldFlagSchema) });
+
 /** One page of the merged list, emails masked; throws `forbidden` when the person may not look. */
 export async function getAdminDataRequests(query: URLSearchParams): Promise<DataRequestList> {
   const res = await authedServerFetch(`${PATH}?${query.toString()}`);
@@ -80,5 +89,23 @@ export async function getAdminDataRequestHolds(reference: string): Promise<DealH
     return read?.holds ?? [];
   } catch {
     return [];
+  }
+}
+
+/**
+ * Held erasures staff must settle by hand, or `null` when they cannot be read, so "nothing is
+ * held" and "could not check" differ and the list still opens.
+ */
+export async function getAdminDataRequestErasureHolds(): Promise<ErasureHoldFlag[] | null> {
+  const res = await authedServerFetch(`${PATH}/erasure-holds`).catch(() => null);
+  if (!res) return null;
+  try {
+    const read = await safeReadData(res, erasureHoldFlagsSchema, {
+      context: "GET /admin/data-requests/erasure-holds",
+      nullStatuses: [],
+    });
+    return read?.holds ?? null;
+  } catch {
+    return null;
   }
 }

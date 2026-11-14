@@ -800,6 +800,50 @@ describe("commerce enquiry routes", () => {
     );
   });
 
+  describe("a guest's delivery quote request", () => {
+    const quoteBody = {
+      basketId: "1f0a1c2e-3b4d-4e5f-8a6b-7c8d9e0f1a2b",
+      idempotencyKey: "delivery-quote:basket",
+      successUrl: "http://localhost:3020/checkout/confirmation",
+      cancelUrl: "http://localhost:3020/checkout/cancel",
+      deliveryAddress: {
+        recipientName: "Anna Weber",
+        line1: "Friedrichstrasse 12",
+        city: "Berlin",
+        postcode: "10117",
+        country: "DE",
+      },
+      deliveryPhone: "+49 30 1234567",
+      ...GUEST,
+    };
+
+    async function clientIpSent(forwardedFor: string | undefined) {
+      const shopApiFetch = vi.fn(async (_deps: unknown, _input: unknown) =>
+        Response.json({ code: "x" }, { status: 400 }),
+      );
+      const app = createGuestCommerceApp(shopApiFetch);
+      const headers = await csrfHeaders(app, {
+        cookie: `${SHOP_BASKET_COOKIE_NAME}=basket-token-1`,
+        ...(forwardedFor ? { "x-forwarded-for": forwardedFor } : {}),
+      });
+      await app.request(
+        "/commerce/guest-checkout/delivery-quote-requests",
+        { method: "POST", headers, body: JSON.stringify(quoteBody) },
+        loopbackPeer,
+      );
+      return (shopApiFetch.mock.calls[0]?.[1] as { clientIp?: string } | undefined)?.clientIp;
+    }
+
+    it("sends the visitor's address when it can be read", async () => {
+      expect(await clientIpSent("203.0.113.9")).toBe("203.0.113.9");
+    });
+
+    it("sends unknown, never the proxy's own address, when it cannot", async () => {
+      expect(await clientIpSent("garbage")).toBe("unknown");
+      expect(await clientIpSent(undefined)).toBe("unknown");
+    });
+  });
+
   it("sends a guest edition alert with only an email address", async () => {
     const shopApiFetch = vi.fn(async () => Response.json({ status: "registered" }));
     const app = createGuestCommerceApp(shopApiFetch);
