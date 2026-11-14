@@ -487,8 +487,115 @@ Biome is clean on the changed files, `lint:layers` passes, and typecheck is clea
 
 **Open for the owner.** The two new lines of copy; the accountant's answer (`SHOP_OUTSIDE_UK_DELIVERY_BOOKING`); confirming Books' "apply credits" shape in the test organisation.
 
-## Final recheck — in progress
+## Final recheck
 
-Started 2026-11-14. Scope: commits 32e36cbc, bf94e6d2, fb03b9b7, c0a8d1b1, fb2de5dd, 34b933fc on bk10-shop-invoices.
+Scope: the six commits under "Fixes after recheck" (`32e36cbc`, `bf94e6d2`, `fb03b9b7`, `c0a8d1b1`, `fb2de5dd`, `34b933fc`), head `34b933fc`. I checked each claim against the code and the database, not against the table.
 
-Progress: fresh Postgres 16.15, `db:migrate` (375 rows) and `db:roles` done. Passing so far: role contracts api/worker/shop 76; worker accounting 153; finance-runtime 232; accounting-domain 287; accounting-zoho-books 308; persistence accounting 69; api accounting 25; shop-api Books 4; shop account UI 64. Next: own races and mutations.
+**Setup.** Fresh Postgres 16.15 under `/var/tmp`, port 55432. `corepack enable`, `pnpm install --frozen-lockfile`, package build, `db:migrate` (375 ledger rows) and `db:roles`. Suites ran in small batches with `--maxWorkers=2`, as `api_app`, `worker_app` and `shop_app`:
+
+| Area | Result |
+|---|---|
+| role contracts (api, worker, shop) | 76 passed |
+| worker accounting (incl. Shop and Bid integration, RC-A, RC-B, RC3, RC3b) | 153 passed |
+| finance-runtime | 232 passed |
+| accounting-domain | 287 passed |
+| accounting-zoho-books | 308 passed |
+| persistence accounting | 69 passed |
+| api accounting | 25 passed |
+| shop-api Books (as shop_app) | 4 passed |
+| shop account UI (card, detail, VM) | 64 passed |
+
+### Claims checked
+
+- **N1: holds.** `listEmailDue(limit, products)` filters on `product in (...)` in SQL. With the storefront URL unusable, the tick lists `["bid"]` only, so Shop copies cannot take Bid's batch places. The alert path is real: one sink is shared with the watch, and `refuseShopEmails` raises `accounting_shop_invoice_email_refused` (error level) only while a Shop copy waits. RC-B passes. `apps/worker/src/env.ts` changed only in a doc comment.
+- **N5: holds, with one untested clause (M3).** The remainder list has an SQL `exists` on the order payment being issued in the same books. An unknown answer bumps `updated_at` inside the locked transaction, and the list is ordered `updated_at, id`. The watch raises `accounting_shop_remainder_delayed` for a delivery invoice first issued more than 6 h ago with no `apply_remainder`. The worker gained only `to_state` and `occurred_at` on history; the role contract checks this.
+- **N4: holds for Bid and Shop.** The service reads the basis first. `apply()` locks the document, re-reads the basis `FOR SHARE` in the same transaction and refuses with `basis_changed`. My own races used the built persistence code on separate connections, against leftover fixture rows:
+  - **Shop:** a delivery change committed between the decision and the move is refused (still parked, 0 release rows). A change in flight makes the move wait (still blocked at 500 ms), and it is then refused. While an `api_app` transaction holds the basis, a writer to that order times out (blocked). With the basis unchanged, the release goes through.
+  - **Bid (RC3/RC3b), single payment:** the same three results for a re-void of its invoice.
+
+  The definer function `accounting_release_shop_order_basis(uuid)`:
+  - is `SECURITY DEFINER` with `search_path=pg_catalog, public`, and its table is schema-qualified;
+  - has `EXECUTE` only for its owner and `api_app` (PUBLIC revoked; `worker_app`, `shop_app` and `auth_app` cannot call it);
+  - takes one uuid and returns one row's `id, status, fulfilment, fulfilment_surcharge_pence, fulfilment_vat_pence`, which are exactly the `shop_order` columns `api_app` may already read. It grants no new read.
+
+  The only new power it gives is `FOR SHARE` on one order per call, held for the caller's transaction (M5, Info).
+- **N2: holds.** I diffed the function bodies of 0382 and 0383. The only changes are:
+  - the `lines_gross` computation;
+  - the extra reason in the `IN` list;
+  - the added pins on the rebuild branch.
+
+  The requeue branch, the common prefix and the unchanged-payload release branch are identical, so Bid behaviour is unchanged apart from the pins. The line-total pin has a NULL gap (M1), and one pin is unprobed (M2).
+- **N3: holds.** The function body in `0383_rollback.sql` is 0382's word for word, plus the outside-UK refusal. The body in `0382_rollback.sql` is 0379's word for word, plus the parked refusal. Neither rollback cancels anything.
+
+  On a copy of the tested database (22 parked, 138 cancelled, 14 `apply_remainder` rows):
+  - rollback 0383 left the counts unchanged;
+  - rollback 0382 was then refused with its documented message, and nothing changed;
+  - forward migrate and roles again left the counts unchanged and restored `EXECUTE` for `api_app`.
+
+  The refusal and its reason are written in the 0382 rollback header and the runbook.
+- **N6: holds.** "Delivery outside the UK is invoiced separately." appears on an outside-UK card. "Order receipt (PDF)" appears under Help only when the card shows Books' issued invoice with a refund. The component tests pass.
+- **Migration number.** `origin/main` (`f1ffc6e4`) ends at 0382, so 0383 is still the next free number. Open PR #1372 adds `0383_unapplied_money_dedupe_key_uid.sql`, its own `0383_rollback.sql` and a journal entry, so the two collide (M6).
+- **Hard rules.**
+  - Books stays dry run: none of the six commits touches modes, settings or bindings.
+  - The Shop is still bound to `london_art_exchange`: the entity-binding integration test passes.
+  - No deploy, CI or `.env*` file changed: across the PR diff the only env-named file is `apps/worker/src/env.ts`, and these commits changed only a comment there.
+
+**Mutation testing (my choice, not the table's):**
+1. I dropped the same-books match (`target_provider` / `target_mode`) from `PAYMENT_ISSUED` in the built persistence code, then ran the Shop and Bid worker integration suites. 44 of 44 passed, so the mutant **survived** (M3).
+2. I changed the payload-totals check in the live trigger from `ELSE false` to `ELSE true`, then ran the `api_app` contract. 23 of 23 passed, so the mutant **survived**. By hand: a release that removes `totals` is refused by the original trigger and accepted by the mutant (M2).
+
+Both mutants were restored afterwards, and the restored trigger refuses the same probe again.
+
+### Findings
+
+#### M1 — Low — The 0383 line-total pin skips lines with a missing field, and lines that are not objects
+
+`bool_and(...)` and `sum(...)` ignore NULLs. A line with no `quantity` (or no `unitNetPence` or `vatPence`) gives NULL, and so does a scalar element. Such a line is neither refused nor counted. Shown as `api_app` on a parked Bid delivery invoice: a valid rebuild plus an extra line with no quantity, or plus a scalar `42`, was accepted. A present but non-numeric field is refused, as claimed.
+
+The impact stays inside LAX. The worker reads every row through the domain's payload reader, so such a row is refused as `bad_stored_document` and never sent. The document would be stuck, not wrong in Books. The application path cannot write it.
+
+**Fix:**
+- Make the check total: `bool_and(COALESCE(jsonb_typeof(l) = 'object' AND jsonb_typeof(l -> 'quantity') = 'number' AND ..., false))`.
+- Add two probes to `api-app-role.contract.test.ts`: a line missing `quantity`, and a non-object line.
+
+#### M2 — Low (test coverage) — The payload-totals check is not tested for missing totals
+
+The `ELSE false` branch (payload totals missing or not numbers) has no probe; the mutant survives the contract.
+
+**Fix:** add a probe that releases a rebuild with `totals` removed, and one with a string total.
+
+#### M3 — Low (test coverage) — The same-books part of N5's payment filter is untested
+
+If `PAYMENT_ISSUED` stops matching the payment's target, a delivery invoice whose payment is issued only in another mode is listed. `listDue` then skips it with `continue` and never touches it, so it keeps its place at the head on every tick. That is N5's starvation in a corner case: after a mode switch between the payment and the release.
+
+**Fix:** add an integration case like the held-payment test, with the payment issued under another `target_mode`. With batch 1, the next invoice must be listed.
+
+#### M4 — Info — The Bid release basis leaves out the buyer's `legal_entity` row
+
+The rebuild reads the buyer's `legal_entity` row, but the basis does not include it. This decides nothing:
+- a payment is released only if it is the same document as stored;
+- a rebuilt invoice's contact is pinned by the trigger.
+
+No fix.
+
+#### M5 — Info — The definer function lets `api_app` hold `FOR SHARE` on any order it names
+
+It holds the lock for `api_app`'s own transaction, and `api_app` can already read the order ids. The real caller holds it only for the short move transaction. No fix. If the API ever holds a transaction open around it, add a `lock_timeout` there.
+
+#### M6 — Info — Migration number clash with #1372
+
+Both PRs add `0383_*.sql` and a `0383_rollback.sql`. Whichever merges second must renumber to 0384 and restamp its journal `when` after the other's.
+
+If #1372 merges first, #1366 renumbers. That means changing:
+- the two 0383 files;
+- the rollback's `DELETE ... created_at = 1811246400000`;
+- "Roll back 0383 first" in `0382_rollback.sql`;
+- the mentions of 0383 in `migrate-roles.ts` and the runbook.
+
+If #1366 merges first, #1372 renumbers its migration, rollback and journal entry.
+
+### Final verdict: SHIP
+
+All six fixes do what the table claims, and I checked each one in code and on a live database. The atomic release holds for Bid and Shop on real concurrent connections. The definer function is narrow. The rollbacks keep parked rows parked. Books stays dry run, and the Shop never reaches the Bid organisation.
+
+M1 to M3 are Low: defence in depth and missing tests, with no path to a wrong document in Books. They are worth a small follow-up commit, ideally before merge. M6 only matters for merge order.
