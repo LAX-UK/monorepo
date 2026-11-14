@@ -28,6 +28,7 @@ export const PASSKEY_COPY = {
       add_sign_in_method: "Before you add a way to sign in, we need you to sign in again.",
       remove_sign_in_method: "Before you remove a way to sign in, we need you to sign in again.",
       change_password: "Before you change your password, we need you to sign in again.",
+      sign_out_devices: "Before you sign out another device, we need you to sign in again.",
     } satisfies Record<AccountStepUpReason, string>,
     usePasskey: "Use your passkey",
     notYou: "Not you?",

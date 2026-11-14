@@ -296,15 +296,34 @@ describe("hosted Confirm it's you page (LAX Account asked for a fresh sign-in)",
     expect(await response.text()).not.toContain("confirm-root");
   });
 
-  it("uses today's sign-in page, and reads nothing, while passkeys are switched off", async () => {
+  it("fixes the email and says why, with no passkey offered, while passkeys are switched off", async () => {
     const { app, readConfirmMethods } = appFor({
       capabilities: { ...capabilities, passkeysEnabled: false },
     });
-    const html = await (await app.request(`/login?${reauthQuery}`)).text();
-    expect(html).not.toContain("confirm-root");
+    const response = await app.request(`/login?${reauthQuery}&reauth_reason=sign_out_devices`);
+    const html = await response.text();
+    expect(response.headers.get("cache-control")).toBe("no-store");
+    expect(html).toContain("confirm-root");
+    expect(html).toContain('data-email="collector@lax.bid"');
+    expect(html).toContain("<h1>Confirm it&#39;s you</h1>");
+    expect(html).toContain("Before you sign out another device, we need you to sign in again.");
+    expect(html).not.toContain("Use your passkey");
+    expect(html).not.toContain("Sign up");
+    expect(readConfirmMethods).toHaveBeenCalledWith("u1");
+  });
+
+  it("titles the ordinary form as a re-check, with the reason and no sign-up, without a session", async () => {
+    const { app } = appFor({
+      session: null,
+      capabilities: { ...capabilities, passkeysEnabled: false },
+    });
+    const html = await (
+      await app.request(`/login?${reauthQuery}&reauth_reason=sign_out_devices`)
+    ).text();
     expect(html).toContain('id="login-root"');
-    expect(readConfirmMethods).not.toHaveBeenCalled();
-    const unset = appFor({ capabilities });
-    expect(await (await unset.app.request(`/login?${reauthQuery}`)).text()).toBe(html);
+    expect(html).toContain("<h1>Confirm it&#39;s you</h1>");
+    expect(html).toContain("Before you sign out another device, we need you to sign in again.");
+    expect(html).not.toContain("Sign up");
+    expect(html).not.toContain("Sign in to LAX Account</h1>");
   });
 });

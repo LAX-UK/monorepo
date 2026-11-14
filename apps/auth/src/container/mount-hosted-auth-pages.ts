@@ -111,20 +111,16 @@ async function accountChooserIfSignedIn(
  * still holds the person's issuer session, so the page can fix the email to that person and offer
  * only the ways their account has: that is what makes a passkey, which names no email of its own,
  * able to confirm them and nobody else. Without a session, or with no usable method, the ordinary
- * sign-in page is shown.
+ * sign-in page is shown, still titled "Confirm it's you" with the reason and without sign-up.
  */
 async function confirmItsYou(
   c: Context,
   capabilities: HostedAuthPageMountOptions,
 ): Promise<Response | null> {
   const view = viewFromRequest(c.req.url, capabilities);
-  // With passkeys off, every step-up uses the ordinary sign-in page, exactly as before.
-  if (
-    !capabilities.passkeysEnabled ||
-    !view.flow.reauth ||
-    !capabilities.getSession ||
-    !capabilities.readConfirmMethods
-  ) {
+  // Passkeys on or off, a re-check fixes the email to the signed-in person; with passkeys off the
+  // page simply offers no passkey.
+  if (!view.flow.reauth || !capabilities.getSession || !capabilities.readConfirmMethods) {
     return null;
   }
   try {

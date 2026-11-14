@@ -23,6 +23,7 @@ export const ACCOUNT_STEP_UP_REASONS = [
   "add_sign_in_method",
   "remove_sign_in_method",
   "change_password",
+  "sign_out_devices",
 ] as const;
 export type AccountStepUpReason = (typeof ACCOUNT_STEP_UP_REASONS)[number];
 

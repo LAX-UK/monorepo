@@ -124,6 +124,9 @@ describe("Confirm it's you", () => {
     expect(lead("change_password")).toContain(
       "Before you change your password, we need you to sign in again.",
     );
+    expect(lead("sign_out_devices")).toContain(
+      "Before you sign out another device, we need you to sign in again.",
+    );
   });
 
   it("never words a reason that is not on the list, and ignores one on any other page", () => {
