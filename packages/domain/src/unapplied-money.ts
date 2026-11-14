@@ -126,7 +126,8 @@ export type UnappliedMoney = {
   intendedPaymentId?: string | null;
   intendedPaymentGroupId?: string | null;
   /**
-   * A payment recorded in Books by hand: its key (`books:<organisation>:<Books payment id>`), the
+   * A payment recorded in Books by hand: its key
+   * (`books:<organisation>:<Books payment id>:<LAX invoice reference>`), the
    * LAX reference of the invoice Books shows it against, and how Books says it was paid.
    */
   booksPaymentKey?: string | null;

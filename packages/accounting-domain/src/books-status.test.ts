@@ -156,6 +156,8 @@ describe("deciding what a Books status read means", () => {
         isStatusCheckedKind(k as never),
       ),
     ).toEqual([true, true, true, false, false]);
-    expect(booksPaymentTaskReference("9000000000001", "900")).toBe("books:9000000000001:900");
+    expect(booksPaymentTaskReference("9000000000001", "900", "LAX-BID-INV-1")).toBe(
+      "books:9000000000001:900:LAX-BID-INV-1",
+    );
   });
 });

@@ -472,8 +472,9 @@ read and each run says `rehearsal`.
 **A payment recorded in Books by hand.** When Books shows a payment against one of LAX's invoices
 that LAX did not send (a gallery sale or a cheque entered in Books), the check opens a **finance
 task**: "Money received that could not be applied", reason `books_payment_recorded_by_hand`. The task
-names the LAX invoice reference, the amount, and Books' payment mode and date. It is opened once per
-Books payment. **Nothing in LAX is marked paid**, and the check cannot mark a lot, invoice or payment
+names the LAX invoice reference, the amount Books applied to that invoice, and Books' payment mode
+and date. It is opened once per Books payment and LAX invoice: one cheque split across two invoices
+is two tasks, one for each part. **Nothing in LAX is marked paid**, and the check cannot mark a lot, invoice or payment
 paid.
 
 A Books payment is LAX's own, and never a task, when its Books id belongs to any LAX payment

@@ -215,10 +215,15 @@ export const DEFAULT_STATUS_CHECK_ALLOWANCE: StatusCheckAllowance = {
   keepFree: 400,
 };
 
-/** The finance task's key for a payment recorded in the books: one task per provider payment. */
+/**
+ * The finance task's key for a payment recorded in the books: one task per provider payment and
+ * LAX invoice it is applied to. One cheque split across two invoices is two tasks, each for the
+ * part Books applied to that invoice, so finance sees every part.
+ */
 export function booksPaymentTaskReference(
   organisationId: string,
   providerPaymentId: string,
+  invoiceReference: string,
 ): string {
-  return `books:${organisationId}:${providerPaymentId}`;
+  return `books:${organisationId}:${providerPaymentId}:${invoiceReference}`;
 }

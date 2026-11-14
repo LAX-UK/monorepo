@@ -252,7 +252,7 @@ describe("the nightly Books status check, against the Books fake", () => {
         stripePaymentIntentId: null,
         stripeChargeId: null,
         stripeCustomerId: null,
-        booksPaymentKey: `books:${BID_ORG_ID}:5000000000999`,
+        booksPaymentKey: `books:${BID_ORG_ID}:5000000000999:${invoice.stored.reference}`,
         accountingReference: invoice.stored.reference,
         booksPaymentMode: "Cheque",
         booksPaymentDate: "2031-03-09",

@@ -252,7 +252,11 @@ export class AccountingStatusCheck {
       stripePaymentIntentId: null,
       stripeChargeId: null,
       stripeCustomerId: null,
-      booksPaymentKey: booksPaymentTaskReference(organisation, payment.providerPaymentId),
+      booksPaymentKey: booksPaymentTaskReference(
+        organisation,
+        payment.providerPaymentId,
+        reference,
+      ),
       accountingReference: reference,
       booksPaymentMode: payment.mode,
       booksPaymentDate: payment.date,

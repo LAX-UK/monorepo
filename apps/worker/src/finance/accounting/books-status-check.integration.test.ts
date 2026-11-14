@@ -302,8 +302,8 @@ describe.skipIf(!HAS_DB)("Books nightly status check (integration)", { timeout: 
     return { invoice: inv, payment: pay, lot: won };
   }
 
-  const taskKey = (booksPaymentId: string, _invoiceReference: string) =>
-    `books_payment_recorded_by_hand:books:${BID_ORG_ID}:${booksPaymentId}`;
+  const taskKey = (booksPaymentId: string, invoiceReference: string) =>
+    `books_payment_recorded_by_hand:books:${BID_ORG_ID}:${booksPaymentId}:${invoiceReference}`;
 
   const tasksFor = (dedupeKey: string) =>
     owner
@@ -351,7 +351,7 @@ describe.skipIf(!HAS_DB)("Books nightly status check (integration)", { timeout: 
     const first = await check.runNightly();
     expect(first.outcome).toBe("completed");
 
-    const key = `books_payment_recorded_by_hand:books:${BID_ORG_ID}:${cheque}`;
+    const key = taskKey(cheque, invoice.laxReference);
     const tasks = await tasksFor(key);
     expect(tasks).toHaveLength(1);
     expect(tasks[0]?.payload).toMatchObject({
@@ -541,6 +541,45 @@ describe.skipIf(!HAS_DB)("Books nightly status check (integration)", { timeout: 
     });
     expect(await statusCheck(books).recheckFromNotice(noticeFor(invoice))).toBe("read");
     expect(await tasksFor(taskKey(copy, invoice.laxReference))).toHaveLength(1);
+  });
+
+  it("one cheque recorded in Books against two LAX invoices is a task for each part", async () => {
+    const first = await issued();
+    const second = await issued();
+    const cheque = String(7_300_000_000_000 + Math.floor(Math.random() * 1e9));
+    const part = (amountPence: number) => ({
+      status: "read" as const,
+      reading: {
+        state: "partially_paid" as const,
+        balancePence: 150_000 - amountPence,
+        payments: [
+          {
+            providerPaymentId: cheque,
+            amountPence,
+            date: "2031-11-15",
+            mode: "Cheque",
+            reference: null,
+          },
+        ],
+      },
+    });
+    first.books.setStatus(first.invoice.providerId as string, part(40_000));
+    second.books.setStatus(second.invoice.providerId as string, part(60_000));
+    expect(await statusCheck(first.books).recheckFromNotice(noticeFor(first.invoice))).toBe("read");
+    expect(await statusCheck(second.books).recheckFromNotice(noticeFor(second.invoice))).toBe(
+      "read",
+    );
+
+    const [one] = await tasksFor(taskKey(cheque, first.invoice.laxReference));
+    const [two] = await tasksFor(taskKey(cheque, second.invoice.laxReference));
+    expect(one?.payload).toMatchObject({
+      accountingReference: first.invoice.laxReference,
+      amountCents: 40_000,
+    });
+    expect(two?.payload).toMatchObject({
+      accountingReference: second.invoice.laxReference,
+      amountCents: 60_000,
+    });
   });
 
   it("a void made in Books is recorded as a change, the run is recorded, and a notice reads it first", async () => {
