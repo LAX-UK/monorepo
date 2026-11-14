@@ -6,6 +6,7 @@ import {
   type Invoice,
   buildCreditNoteFor,
   laxReference,
+  projectBidDeliveryRefunded,
 } from "@auction/accounting-domain";
 import { BID_ORG_ID, InMemoryAccounting } from "@auction/accounting-zoho-books/testing";
 import { type Database, closeDb, createDb } from "@auction/db";
@@ -36,6 +37,7 @@ import {
 } from "@auction/persistence/repositories";
 import type { Lot } from "@auction/types";
 import { and, eq, inArray, sql } from "drizzle-orm";
+import { Client } from "pg";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { holdAccountingTablesLock } from "../../testing/accounting-tables-lock.js";
 import { AccountingCreditNoteRefund } from "./accounting-credit-note-refund.service.js";
@@ -900,6 +902,83 @@ describe.skipIf(!HAS_DB)(
         expect(notes.reduce((sum, n) => sum + n.grossPence, 0)).toBe(4_500);
       });
 
+      it("RV1: a total raised while a projection was slow: the note is built from the total as it stands when registered", async () => {
+        const { raise, live } = await courierQuote();
+        const first = await raise(1_500);
+        const { slow, atRegister, release } = slowRegistry();
+        const p1 = slow.project(first).then(
+          () => "registered",
+          (error: { code?: string }) => error,
+        );
+        await atRegister;
+        // The total rises before P1 registers; its own event is not projected yet.
+        await raise(3_000);
+        release();
+        expect(await p1).toMatchObject({ code: "credit_prior_changed" });
+        expect(await projectSettled(first)).toMatchObject({ created: 1 });
+        expect((await live()).map((n) => n.grossPence)).toEqual([3_000]);
+      });
+
+      it("RV1: a credit note cancelled while a projection was slow: the next note is built after what stands now", async () => {
+        const { raise, live } = await courierQuote();
+        await projection().project(await raise(1_500));
+        const [earlier] = await live();
+        const second = await raise(3_000);
+        const { slow, atRegister, release } = slowRegistry();
+        const p1 = slow.project(second).then(
+          () => "registered",
+          (error: { code?: string }) => error,
+        );
+        await atRegister;
+        // A person cancels the earlier credit note meanwhile (it was never sent).
+        expect(
+          await repos.transitions.apply(earlier?.id as string, { action: "cancel" }),
+        ).toMatchObject({
+          ok: true,
+        });
+        release();
+        expect(await p1).toMatchObject({ code: "credit_prior_changed" });
+        await projectSettled(second);
+        expect((await live()).map((n) => n.grossPence)).toEqual([3_000]);
+      });
+
+      it("RV1: the registry never lets a courier refund's credit notes pass its refunded total, whatever basis it is given", async () => {
+        const { quoteId, raise, live } = await courierQuote();
+        await raise(1_500);
+        const [delivery] = await owner
+          .select()
+          .from(paymentGroupDelivery)
+          .where(eq(paymentGroupDelivery.deliveryQuoteId, quoteId));
+        // A note for 3,000 against a stored total of 1,500, with a basis that matches the rows.
+        const facts = await new DrizzleBidAccountingFactsReader(worker).deliveryRefunded(
+          delivery?.paymentGroupId as string,
+          quoteId,
+          REFUNDED_AT,
+        );
+        if (facts.status !== "ready") throw new Error("no facts");
+        const built = projectBidDeliveryRefunded({ ...facts.facts, refundedPence: 3_000 });
+        if (!built.ok) throw new Error(built.refusal.message);
+        for (const document of built.value.documents.filter((d) => d.kind !== "credit_note")) {
+          await repos.registry.register({ document, sourceEventRef: "test:ceiling" });
+        }
+        const note = built.value.documents.find((d) => d.kind === "credit_note");
+        if (!note) throw new Error("no note");
+        const out = await repos.registry.register({
+          document: note,
+          sourceEventRef: "test:ceiling",
+          park: "vat_on_delivery",
+          creditBasis: {
+            kind: "delivery_refund",
+            groupId: delivery?.paymentGroupId as string,
+            quoteId,
+            refundedPence: 1_500,
+            priorCreditPence: 0,
+          },
+        });
+        expect(out).toMatchObject({ ok: false, refusal: { code: "credit_exceeds_refunded" } });
+        expect(await live()).toEqual([]);
+      });
+
       it("RV2: a refund credit note stored by the earlier refund flow (no `refund`) is that refund's; the next refund is credited after it", async () => {
         const books = new InMemoryAccounting();
         const { raised } = await paidAndSent(books);
@@ -1078,6 +1157,40 @@ describe.skipIf(!HAS_DB)(
           reason: "no_refund_recorded",
         });
         expect(await creditNotesOf(ref("invoice", raised.invoice.id), "test_org")).toEqual([]);
+      });
+
+      it("F2: a reversal while a credit note's registration is mid-transaction waits for it, then cancels the note", async () => {
+        const books = new InMemoryAccounting();
+        const { raised } = await paidAndSent(books);
+        const a = await refunded(raised.payment.id, 2_000);
+        // Hold the history table so the registration stops inside its transaction, after its
+        // checks and with the invoice's credit lock held (another worker, mid-commit).
+        const blocker = new Client({ connectionString: OWNER_URL });
+        await blocker.connect();
+        try {
+          await blocker.query("begin");
+          await blocker.query("lock table accounting_document_event in exclusive mode");
+          const p1 = projection().project(await refundedEvent(raised.payment.id));
+          for (let i = 0; i < 100; i += 1) {
+            const waiting = await blocker.query(
+              `select 1 from pg_stat_activity
+                where wait_event_type = 'Lock' and query ilike 'insert into "accounting_document_event"%'`,
+            );
+            if (waiting.rowCount) break;
+            await new Promise((r) => setTimeout(r, 50));
+          }
+          const reversed = await reversalOf(raised.payment.id, a);
+          const h = projection().project(reversed);
+          await new Promise((r) => setTimeout(r, 300));
+          await blocker.query("commit");
+          await p1;
+          expect(await h).toMatchObject({ cancelled: 1 });
+        } finally {
+          await blocker.end();
+        }
+        expect(await rowOf(ref("credit_note", a.id), "test_org")).toMatchObject({
+          state: "cancelled",
+        });
       });
 
       it("F2: a courier refund lowered after its credit note was made: the note never sent is cancelled and the credit rebuilt to the new total", async () => {

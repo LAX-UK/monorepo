@@ -286,4 +286,35 @@ describe.skipIf(!HAS_DB)("accounting credit notes (integration)", { timeout: 60_
       ).rejects.toThrow();
     }
   });
+
+  it("a Bid credit note with a live copy is never listed for the invoice email (MI)", async () => {
+    const { contact, invoice } = invoiceWithContact();
+    await issue((await register(contact)).stored.id);
+    const invoiceRow = (await register(invoice)).stored;
+    await issue(invoiceRow.id);
+    const noteRow = (await register(credit(invoice, 2_500))).stored;
+    await issue(noteRow.id);
+    const ids = [invoiceRow.id, noteRow.id];
+    // Both issued live with a copy that is not a rehearsal: what the email is sent for.
+    await owner.execute(sql`
+      update accounting_document set target_mode = 'live', provider_number = 'LIVE-1'
+       where id in (${invoiceRow.id}, ${noteRow.id})`);
+    for (const id of ids) {
+      await owner.execute(sql`
+        insert into accounting_document_copy (document_id, storage_key, byte_size, sha256, rehearsal)
+        values (${id}, ${`fixture/${id}.pdf`}, 100, ${"a".repeat(64)}, false)`);
+    }
+    try {
+      const listed = await repos.copies.listEmailDue(1_000, ["bid"]);
+      // The invoice beside it is listed, so the credit note is left out by kind, not by setup.
+      expect(listed.due.map((d) => d.documentId)).toContain(invoiceRow.id);
+      expect(listed.due.map((d) => d.documentId)).not.toContain(noteRow.id);
+      expect(listed.unreadable).not.toContain(noteRow.id);
+    } finally {
+      await owner.execute(sql`
+        update accounting_document_copy
+           set email_skipped_at = now(), email_skip_reason = 'fixture'
+         where document_id in (${invoiceRow.id}, ${noteRow.id})`);
+    }
+  });
 });
