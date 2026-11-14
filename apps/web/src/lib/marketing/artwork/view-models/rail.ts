@@ -1,9 +1,7 @@
 import { formatEstimateRange } from "@/lib/format-currency";
 import type { CatalogLinkParams } from "@/lib/marketing/catalog-links";
 import { salePath } from "@/lib/seo/url";
-import { lotHeadlineLabel, lotPriceHasBids } from "@auction/domain";
 import type { Lot, PublicLotView, Sale } from "@auction/types";
-import { normalizeAuctionTime } from "@auction/validators";
 import { resolveLotHref, sortSaleLotsForNav } from "./shared";
 
 export type LotRailCardVM = {
@@ -15,13 +13,12 @@ export type LotRailCardVM = {
   /** The lot's artist, or `null` when it is not known. The consignor is never shown here. */
   artistName: string | null;
   estimateLine: string | null;
-  currentPrice: string;
-  /** "Starting bid" until the first bid, then "Current bid". */
-  priceLabel: string;
-  endTime: string | null;
-  status: Lot["status"];
-  /** Ended, with the result not final yet: the card says so instead of showing a price. */
-  resultPending?: boolean;
+  /**
+   * The lot's sale, so the browser can read its live state (CO-7). The card carries no bid state
+   * (price, label, status, close, result): the rail is built from cached reads, and the browser
+   * fills these from a no-store read of the same sale catalogue (`useLotRailLive`).
+   */
+  saleId: string | null;
   sellerId: string;
   deliveryMode?: Sale["deliveryMode"] | null;
 };
@@ -31,6 +28,8 @@ export type LotRelatedRailVM = {
   heading: string;
   viewAuctionHref: string | null;
   cards: LotRailCardVM[];
+  /** The sale's premium, so a sold lot reads the buyer's price in the live fill. */
+  premiumSale: Pick<Sale, "buyerPremiumRate" | "buyerPremiumTiers"> | null;
 };
 
 function lotToRailCard(
@@ -48,11 +47,7 @@ function lotToRailCard(
     title: lot.title,
     artistName,
     estimateLine: est ? formatEstimateRange(est) : null,
-    currentPrice: lot.currentPrice,
-    priceLabel: lotHeadlineLabel("live", lotPriceHasBids(lot)),
-    endTime: normalizeAuctionTime(lot.endTime),
-    status: lot.status,
-    resultPending: lot.resultPending === true,
+    saleId: lot.saleId ?? null,
     sellerId: lot.sellerId ?? lot.sellerLegalEntityId ?? "",
     deliveryMode: deliveryMode ?? null,
   };
@@ -65,7 +60,13 @@ const MIN_SALE_SIBLINGS = 1;
  */
 export function mapSiblingsToRailVM(
   lot: Lot | PublicLotView,
-  parentSale: { id: string; title: string; deliveryMode?: Sale["deliveryMode"] | null } | null,
+  parentSale: {
+    id: string;
+    title: string;
+    deliveryMode?: Sale["deliveryMode"] | null;
+    buyerPremiumRate?: Sale["buyerPremiumRate"];
+    buyerPremiumTiers?: Sale["buyerPremiumTiers"];
+  } | null,
   saleLots: Lot[] | null,
   sellerRelated: Lot[],
   resolveArtistName: (l: Lot) => string | null,
@@ -80,13 +81,26 @@ export function mapSiblingsToRailVM(
     : sellerRelated.filter((l) => l.id !== lot.id).slice(0, 4);
 
   if (source.length === 0) {
-    return { mode: useSale ? "sale" : "seller", heading: "", viewAuctionHref: null, cards: [] };
+    return {
+      mode: useSale ? "sale" : "seller",
+      heading: "",
+      viewAuctionHref: null,
+      cards: [],
+      premiumSale: null,
+    };
   }
 
   return {
     mode: useSale ? "sale" : "seller",
     heading: useSale && parentSale ? `More from ${parentSale.title}` : "More from this seller",
     viewAuctionHref: useSale && parentSale ? salePath(parentSale) : null,
+    premiumSale:
+      useSale && parentSale?.buyerPremiumRate !== undefined
+        ? {
+            buyerPremiumRate: parentSale.buyerPremiumRate,
+            buyerPremiumTiers: parentSale.buyerPremiumTiers ?? null,
+          }
+        : null,
     cards: source.map((l) =>
       lotToRailCard(
         l,

@@ -13,6 +13,8 @@ import type { Lot, Sale } from "@auction/types";
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
+vi.mock("@/lib/marketing/artwork/lot-rail-live.client", () => ({ useLotRailLive: () => null }));
+
 vi.mock("@/lib/time/use-clock", () => ({
   useClockNow: () => Date.parse("2026-06-01T12:00:00.000Z"),
   useCountdownTick: () => Date.parse("2026-06-01T12:00:00.000Z"),
@@ -96,7 +98,13 @@ const summarySeed: LotSummarySeedVM = {
   sellerImageUrl: null,
 };
 
-const rail: LotRelatedRailVM = { mode: "sale", heading: "", viewAuctionHref: null, cards: [] };
+const rail: LotRelatedRailVM = {
+  mode: "sale",
+  heading: "",
+  viewAuctionHref: null,
+  cards: [],
+  premiumSale: null,
+};
 const blocks: AccordionBlock[] = [
   {
     id: "lot-details",

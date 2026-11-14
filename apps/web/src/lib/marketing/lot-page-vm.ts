@@ -183,7 +183,13 @@ export function buildLotPageViewModel(input: {
   });
   const rail = mapSiblingsToRailVM(
     auction,
-    parentSale,
+    parentSale && saleBundle
+      ? {
+          ...parentSale,
+          buyerPremiumRate: saleBundle.sale.buyerPremiumRate,
+          buyerPremiumTiers: saleBundle.sale.buyerPremiumTiers,
+        }
+      : null,
     saleLots,
     relatedRaw,
     (l) => (catalogArtist && l.artistId === catalogArtist.id ? catalogArtist.displayName : null),

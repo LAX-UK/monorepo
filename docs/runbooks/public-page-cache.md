@@ -25,6 +25,11 @@ something old.
   close and the bid action. On mount the browser repeats the same catalogue page reads
   (`/sales/:id/lots?limit&offset&sort`) no-store, fills the cards, and reads them again every
   minute while the page is visible. A bid therefore no longer needs to drop the sale's cached reads.
+- **The lot page's "More from" rail** works the same way: its cards (estimate, title, image) come
+  from the cache, but the price, its label and the close are placeholders at their final size. On
+  mount the browser reads each card's sale catalogue (the first page, no-store, the read the sale
+  cards use) and fills them. The rail's data carries no bid state. A card the read does not return
+  (a lot beyond the first page of its sale) keeps its placeholder.
 - **What is personal** (watching, your bids, registration, telephone booking) comes from
   `/api/sales/:id/me` and `/api/lots/:id/me` in the browser (`private, no-store`).
 

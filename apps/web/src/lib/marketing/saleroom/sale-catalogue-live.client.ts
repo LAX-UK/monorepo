@@ -16,7 +16,7 @@ export type SaleCatalogueLiveInput = {
   saleId: string;
   reads: SaleCatalogueLiveRead[];
   /** The sale's premium, so a sold lot reads the buyer's price, as the server would draw it. */
-  premiumSale: Pick<Sale, "buyerPremiumRate" | "buyerPremiumTiers">;
+  premiumSale?: Pick<Sale, "buyerPremiumRate" | "buyerPremiumTiers"> | null;
 };
 
 /**
@@ -55,7 +55,7 @@ export async function fetchSaleCatalogueLive(
         const card = mapLotToCardVM(lot, {
           viewerUserId: null,
           now,
-          premiumSale: input.premiumSale,
+          ...(input.premiumSale ? { premiumSale: input.premiumSale } : {}),
         });
         live.set(lot.id, liveCardFields(card));
       }
