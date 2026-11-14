@@ -73,6 +73,7 @@ export function AdminArtistDuplicatesTable({ rows }: { rows: AdminArtistDuplicat
       columns={columns}
       data={rows}
       getRowId={(row) => row.id}
+      rowHref={(row) => `/admin/artists/${row.id}`}
       density="compact"
       defaultSort={{ columnId: "name", direction: "asc" }}
       stickyHeader={false}

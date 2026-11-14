@@ -99,6 +99,7 @@ export function ArtistBackfillTable({ rows }: { rows: ArtistBackfillRow[] }) {
       columns={columns}
       data={rows}
       getRowId={(row) => row.id}
+      rowHref={(row) => (row.lotId ? `/admin/lots/${row.lotId}` : "")}
       density="comfortable"
       defaultSort={{ columnId: "raised", direction: "desc" }}
       stickyToolbar={false}
