@@ -22,6 +22,7 @@
   },
   "dependencies": {
     "@auction/accounting-domain": "workspace:*",
+    "@auction/accounting-zoho-books": "workspace:*",
     "@auction/alerts": "workspace:*",
     "@auction/artwork-register-contracts": "workspace:*",
     "@auction/background-runtime": "workspace:*",
@@ -36,11 +37,11 @@
     "@auction/finance-runtime": "workspace:*",
     "@auction/identity-contracts": "workspace:*",
     "@auction/identity-db": "workspace:*",
+    "@auction/image-processing": "workspace:*",
     "@auction/lax-ecosystem": "workspace:*",
     "@auction/lot-lifecycle-app": "workspace:*",
     "@auction/marketing-events": "workspace:*",
     "@auction/observability": "workspace:*",
-    "@auction/image-processing": "workspace:*",
     "@auction/persistence": "workspace:*",
     "@auction/queues": "workspace:*",
     "@auction/types": "workspace:*",
@@ -63,7 +64,6 @@
     "zod": "^3.24.1"
   },
   "devDependencies": {
-    "@auction/accounting-zoho-books": "workspace:*",
     "@auction/config-ts": "workspace:*",
     "@types/node": "^22.10.5",
     "@types/pdfkit": "^0.13.9",
