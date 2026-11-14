@@ -176,7 +176,7 @@ export const API_DENY_TABLES = [
   /** Sealed Zoho Books OAuth tokens: only the worker, the process that calls Books, may touch them. */
   "zoho_books_connection",
   /**
-   * The nightly Books status check's record (migration 0385): written and read by the worker only.
+   * The nightly Books status check's record (migration 0387): written and read by the worker only.
    * The API's Books notice route stores a notice in webhook_event and nothing here.
    */
   "accounting_books_status",
@@ -354,7 +354,7 @@ export const API_ACCOUNTING_COPY_READ_TABLES = ["accounting_document_copy"] as c
 export const WORKER_ACCOUNTING_READ_TABLES = ["accounting_source_setting"] as const;
 
 /**
- * The nightly Books status check (migration 0385), worker only. It keeps the last state read for
+ * The nightly Books status check (migration 0387), worker only. It keeps the last state read for
  * each issued document (insert, read, and these columns updated: never the document id), adds to
  * the append-only change list (insert and read only; a trigger refuses any change for every
  * role), and records each run (insert, read, and the columns that finish it). Nobody deletes.

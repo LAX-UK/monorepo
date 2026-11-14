@@ -638,6 +638,24 @@ by the budget (`budget_spent`) still counts as run: the rest is read the next ni
 unavailable for a while is not an error, and those documents are read again next time. Nothing
 waits on this check: sending, invoices and payments go on without it.
 
+### The status check's migration (0387)
+
+`0387_accounting_books_status.sql` adds the three tables above. **Rollback:** stop the worker's
+`accounting-books-status` job, then run `0387_rollback.sql`. It drops the three tables (what Books
+said is lost; the finance tasks already opened stay) and deletes only this migration's ledger row
+(`created_at = 1811592000000`), so a later deploy applies it again. It does not depend on 0385 or
+0386, and rolling it back leaves them in place.
+
+**Renumbered before merge.** This migration was 0385 on its branch and is 0387 on main (0385 is
+the Bid refunds migration, 0386 the Stripe fees one). A database that ran the branch before the
+renumber (the rehearsal test database, say) holds these tables under 0385's ledger row, and cannot
+migrate to main as it is: its ledger row has the same time as main's 0385, so main's 0385 would
+be skipped. Before deploying main there, run the branch's old rollback (the branch's
+`0385_rollback.sql`, not main's: it drops these three tables), then, as the owner, make sure that
+ledger row is gone: `DELETE FROM drizzle.__drizzle_migrations WHERE created_at = 1811419200000;`
+(on that database the row is this migration's, not the refunds one). Then migrate: 0385, 0386 and
+0387 all apply.
+
 ## Stripe fees, payouts and the daily reconciliation (`accounting_reconciliation_mismatch`)
 
 Plan v2, flow 25. Rehearsal only: Books stays in dry run, and the job only ever **reads** Stripe.

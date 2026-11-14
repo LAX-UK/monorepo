@@ -217,7 +217,7 @@ export class DrizzleAccountingBooksStatusStore implements IAccountingBooksStatus
             amountPence: change.payment.amountPence,
             observedAt,
           })
-          // Held once per document and Books id (index 0385): a second sight changes nothing.
+          // Held once per document and Books id (index 0387): a second sight changes nothing.
           .onConflictDoNothing();
       }
     }

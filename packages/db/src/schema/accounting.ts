@@ -197,7 +197,7 @@ export const accountingSourceSetting = pgTable("accounting_source_setting", {
 });
 
 /**
- * The nightly Books status check (migration 0385): the last state read from the provider for each
+ * The nightly Books status check (migration 0387): the last state read from the provider for each
  * issued document, and when a Books notice asked for it to be read again. Books is never trusted to
  * move money in LAX; this records what it said. Worker only.
  */

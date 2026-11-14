@@ -873,7 +873,7 @@ export interface BooksStatusRunCounts {
 }
 
 /**
- * The nightly Books status check's record (migration 0385), the worker's only. It reads which
+ * The nightly Books status check's record (migration 0387), the worker's only. It reads which
  * issued documents are due, records what Books said and what changed, and keeps one row per run.
  * Nothing here writes to a document, an invoice, a payment or a lot.
  */

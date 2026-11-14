@@ -8,16 +8,16 @@ import { buildPgConnectionConfig } from "./ssl.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const read = (name: string) => readFileSync(join(__dirname, "../drizzle", name), "utf8");
-const rollback = read("0385_rollback.sql");
+const rollback = read("0387_rollback.sql");
 const journal = JSON.parse(read("meta/_journal.json")) as {
   entries: { idx: number; tag: string; when: number }[];
 };
-const TAG = "0385_accounting_books_status";
+const TAG = "0387_accounting_books_status";
 
-describe("migration 0385 Books status check tables (files)", () => {
-  it("is journalled last, after 0384, in a journal that stays ordered", () => {
+describe("migration 0387 Books status check tables (files)", () => {
+  it("is journalled last, after 0386, in a journal that stays ordered", () => {
     const entry = journal.entries.find((e) => e.tag === TAG);
-    const previous = journal.entries.find((e) => e.tag === "0384_unapplied_money_dedupe_key_uid");
+    const previous = journal.entries.find((e) => e.tag === "0386_stripe_fees_payouts_books");
     expect(entry?.idx).toBe((previous?.idx ?? Number.NaN) + 1);
     expect(journal.entries.at(-1)?.tag).toBe(TAG);
     const times = journal.entries.map((e) => e.when);
@@ -51,7 +51,7 @@ async function withOwner<T>(fn: (client: pg.Client) => Promise<T>): Promise<T> {
 }
 
 /** Needs a migrated database (DATABASE_URL_OWNER); every case runs in a transaction rolled back. */
-describe.skipIf(!OWNER_URL)("migration 0385 Books status check tables (database)", () => {
+describe.skipIf(!OWNER_URL)("migration 0387 Books status check tables (database)", () => {
   async function seedDocument(client: pg.Client): Promise<string> {
     const id = randomUUID();
     const reference = `LAX-BID-INV-${id.slice(0, 8)}`;
