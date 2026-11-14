@@ -1035,6 +1035,29 @@ describe.skipIf(!HAS_DB)("Shop invoices to Books (integration)", { timeout: 60_0
       await remainder("live", held.remainders).tick();
     });
 
+    it("does not list a delivery invoice whose order payment is issued only under another mode, so it never holds the head of the list", async () => {
+      const held = books();
+      const blocked = await issuedDelivery(held, 1_400);
+      const next = await issuedDelivery(held, 1_450);
+      const payment = `LAX-SHOP-PAY-${blocked.seeded.orderId}`;
+      // The older invoice's payment is issued, but in other books (a mode switch in between).
+      await owner.execute(sql`
+        update accounting_document set target_mode = 'test_org'
+         where lax_reference = ${payment} and target_mode = 'live'`);
+      try {
+        // With a batch of one, the next invoice is listed: the other-books payment takes no place.
+        const head = await repos.remainders.listDue(["live"], 1);
+        expect(head.due.map((pair) => pair.invoice.id)).toEqual([next.invoiceId]);
+        const all = (await repos.remainders.listDue(["live"], 1_000)).due.map((p) => p.invoice.id);
+        expect(all).not.toContain(blocked.invoiceId);
+      } finally {
+        await owner.execute(sql`
+          update accounting_document set target_mode = 'live'
+           where lax_reference = ${payment} and target_mode = 'test_org'`);
+      }
+      await remainder("live", held.remainders).tick();
+    });
+
     it("puts an invoice whose answer was unknown behind one not tried yet, and the watch counts both until settled", async () => {
       const held = books();
       const first = await issuedDelivery(held, 1_500);

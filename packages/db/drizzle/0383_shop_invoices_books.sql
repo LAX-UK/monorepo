@@ -41,7 +41,7 @@ LANGUAGE plpgsql AS $fn$
 DECLARE
   parked boolean := starts_with(OLD."needs_review_reason", 'accounting_parked_');
   -- The rebuilt payload's line total (quantity x unit net + VAT, each line), or null when its
-  -- lines are missing, empty or not numbers.
+  -- lines are missing or empty, or any line is not an object with numeric fields.
   lines_gross numeric;
 BEGIN
   IF current_user <> 'api_app' THEN
@@ -49,10 +49,16 @@ BEGIN
   END IF;
   IF jsonb_typeof(NEW."payload" -> 'lines') = 'array'
      AND jsonb_array_length(NEW."payload" -> 'lines') > 0 THEN
-    SELECT CASE WHEN bool_and(jsonb_typeof(l -> 'quantity') = 'number'
-                              AND jsonb_typeof(l -> 'unitNetPence') = 'number'
-                              AND jsonb_typeof(l -> 'vatPence') = 'number')
-             THEN sum(CASE WHEN jsonb_typeof(l -> 'quantity') = 'number'
+    -- Total over every element: a line that is not an object, or lacks a numeric field, makes
+    -- the whole check false (never NULL, which bool_and and sum would skip).
+    SELECT CASE WHEN bool_and(COALESCE(jsonb_typeof(l) = 'object'
+                                       AND jsonb_typeof(l -> 'quantity') = 'number'
+                                       AND jsonb_typeof(l -> 'unitNetPence') = 'number'
+                                       AND jsonb_typeof(l -> 'vatPence') = 'number', false))
+             -- The aggregate runs even when the CASE is false, so its casts are guarded too; it
+             -- only counts when every line passed above, so no line is skipped.
+             THEN sum(CASE WHEN jsonb_typeof(l) = 'object'
+                                AND jsonb_typeof(l -> 'quantity') = 'number'
                                 AND jsonb_typeof(l -> 'unitNetPence') = 'number'
                                 AND jsonb_typeof(l -> 'vatPence') = 'number'
                            THEN (l ->> 'quantity')::numeric * (l ->> 'unitNetPence')::numeric

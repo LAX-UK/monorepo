@@ -597,6 +597,28 @@ describe.skipIf(!API_URL)("api_app role contract", { timeout: 60_000 }, () => {
                   "a line that is not numbers",
                 ],
                 [
+                  rebuild({
+                    lines: `jsonb_build_array(${line(120, 0)}, jsonb_build_object('role', 'delivery', 'unitNetPence', 5, 'vatPence', 0))`,
+                  }),
+                  "an extra line missing its quantity",
+                ],
+                [
+                  rebuild({ lines: `jsonb_build_array(${line(120, 0)}, '42'::jsonb)` }),
+                  "an extra line that is not an object",
+                ],
+                [
+                  release(
+                    `, payload = (payload || jsonb_build_object('lines', jsonb_build_array(${line(120, 0)}))) - 'totals', net_pence = 120, vat_pence = 0`,
+                  ),
+                  "the totals removed",
+                ],
+                [
+                  rebuild({
+                    totals: `jsonb_build_object('netPence', '120', 'vatPence', 0, 'grossPence', 120)`,
+                  }),
+                  "a total that is a string",
+                ],
+                [
                   rebuild({ totals: totals(100, 20) }),
                   "payload totals that disagree with the columns",
                 ],
