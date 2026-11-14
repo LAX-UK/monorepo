@@ -36,6 +36,7 @@ import {
   DataViews,
   FilterSheet,
   ListPage,
+  Notice,
   type OverflowAction,
   PrimaryCell,
   SortMenu,
@@ -55,6 +56,8 @@ export type DataRequestsListProps = {
   summary: DataRequestSummary | null;
   /** Held erasures staff must settle by hand. */
   erasureHolds?: readonly ErasureHoldFlag[];
+  /** The held erasures could not be loaded, so staff are told rather than shown nothing. */
+  erasureHoldsUnreadable?: boolean;
   search: DataRequestsSearch;
   filters: DataRequestsFilters;
   chips: DataRequestsFilterChip[];
@@ -245,6 +248,13 @@ export function DataRequestsList(props: DataRequestsListProps) {
           >
             Log a manual request
           </StaffButton>
+        }
+        notice={
+          props.erasureHoldsUnreadable ? (
+            <Notice tone="warning" title="Held erasures could not be loaded">
+              Erasures held by a private sale are not shown. Reload the page to check again.
+            </Notice>
+          ) : null
         }
         attention={attention}
         {...(summary

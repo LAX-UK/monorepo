@@ -64,6 +64,8 @@ export type DataRequestsPageModel = {
   summary: DataRequestSummary | null;
   /** Held erasures staff must settle; empty when none or unreadable. */
   erasureHolds: ErasureHoldFlag[];
+  /** The held erasures could not be read, so an empty list does not mean none are held. */
+  erasureHoldsUnreadable: boolean;
   pagination: DataRequestsPagination | null;
   loadError: string | null;
 };
@@ -79,7 +81,9 @@ export async function loadAdminDataRequestsPage(
     getAdminDataRequestSummary(),
     getAdminDataRequestErasureHolds(),
   ]);
-  const erasureHolds = holds.status === "fulfilled" ? holds.value : [];
+  const heldRead = holds.status === "fulfilled" ? holds.value : null;
+  const erasureHolds = heldRead ?? [];
+  const erasureHoldsUnreadable = heldRead === null;
   const summaryValue = summary.status === "fulfilled" ? summary.value : null;
   if (list.status === "rejected") {
     const message = list.reason instanceof Error ? list.reason.message : "";
@@ -89,6 +93,7 @@ export async function loadAdminDataRequestsPage(
       list: null,
       summary: summaryValue,
       erasureHolds,
+      erasureHoldsUnreadable,
       pagination: null,
       loadError:
         message === "forbidden"
@@ -102,6 +107,7 @@ export async function loadAdminDataRequestsPage(
     list: list.value,
     summary: summaryValue,
     erasureHolds,
+    erasureHoldsUnreadable,
     pagination: paginationFor(sp, filters, list.value),
     loadError: null,
   };

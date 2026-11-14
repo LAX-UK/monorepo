@@ -136,6 +136,14 @@ describe("DataRequestsList: header and strips", () => {
     expect(line).toHaveAttribute("href", "/admin/compliance/data-requests/DR-0004");
   });
 
+  it("says when held erasures could not be loaded, and not otherwise", () => {
+    const { unmount } = renderList({ erasureHoldsUnreadable: true });
+    expect(screen.getByText("Held erasures could not be loaded")).toBeInTheDocument();
+    unmount();
+    renderList({ erasureHolds: [] });
+    expect(screen.queryByText("Held erasures could not be loaded")).not.toBeInTheDocument();
+  });
+
   it("counts the views that need action", () => {
     renderList();
     const tabs = screen.getByRole("navigation", { name: /views/i });

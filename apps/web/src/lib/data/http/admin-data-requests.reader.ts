@@ -92,17 +92,20 @@ export async function getAdminDataRequestHolds(reference: string): Promise<DealH
   }
 }
 
-/** Held erasures staff must settle by hand, or none when they cannot be read: the list still opens. */
-export async function getAdminDataRequestErasureHolds(): Promise<ErasureHoldFlag[]> {
+/**
+ * Held erasures staff must settle by hand, or `null` when they cannot be read, so "nothing is
+ * held" and "could not check" differ and the list still opens.
+ */
+export async function getAdminDataRequestErasureHolds(): Promise<ErasureHoldFlag[] | null> {
   const res = await authedServerFetch(`${PATH}/erasure-holds`).catch(() => null);
-  if (!res) return [];
+  if (!res) return null;
   try {
     const read = await safeReadData(res, erasureHoldFlagsSchema, {
       context: "GET /admin/data-requests/erasure-holds",
       nullStatuses: [],
     });
-    return read?.holds ?? [];
+    return read?.holds ?? null;
   } catch {
-    return [];
+    return null;
   }
 }
