@@ -21,19 +21,25 @@ const STAND_IN_CLASS =
  * scripts. Until then (as before hydration) the current choice is shown as a button of the same
  * size, which keyboard users can reach. Once fetched, it is drawn at once on later visits within
  * the session. If the fetch failed, pointing at, focusing or pressing the button (click, Enter or
- * Space) fetches it again; if the button had focus, the select takes focus when it arrives.
+ * Space) fetches it again; if the button had focus, the select takes focus when it arrives. Pressing the button (click, Enter or Space) before the
+ * select has arrived is not lost: the select opens its list as soon as it replaces the button.
  */
 export function LazySaleroomCatalogSort({ sortLabel }: { sortLabel: string }) {
   const loaded = useDeferredModule(loadSort, true);
   const [focused, setFocused] = useState(false);
-  if (loaded.status === "ready") return <loaded.value autoFocus={focused} />;
+  const [pressed, setPressed] = useState(false);
+  if (loaded.status === "ready") return <loaded.value autoFocus={focused} autoOpen={pressed} />;
   const retryIfFailed = () => {
     if (loaded.status === "failed") loaded.retry();
+  };
+  const press = () => {
+    setPressed(true);
+    retryIfFailed();
   };
   const onKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
     if (event.key !== "Enter" && event.key !== " ") return;
     event.preventDefault();
-    retryIfFailed();
+    press();
   };
   return (
     <Button
@@ -44,7 +50,7 @@ export function LazySaleroomCatalogSort({ sortLabel }: { sortLabel: string }) {
       aria-label={`Sort: ${sortLabel}`}
       onPointerEnter={retryIfFailed}
       onPointerDown={retryIfFailed}
-      onClick={retryIfFailed}
+      onClick={press}
       onKeyDown={onKeyDown}
       onFocus={() => {
         setFocused(true);

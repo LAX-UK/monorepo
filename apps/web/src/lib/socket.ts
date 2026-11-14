@@ -59,6 +59,25 @@ type PendingOp =
       timer?: ReturnType<typeof setTimeout>;
     };
 
+/** Room joins and the leave that undoes each. These are never buffered: see `wantedJoins`. */
+const LEAVE_OF_JOIN: Record<string, string> = {
+  joinUser: "leaveUser",
+  joinSaleroom: "leaveSaleroom",
+};
+const JOIN_OF_LEAVE: Record<string, string> = Object.fromEntries(
+  Object.entries(LEAVE_OF_JOIN).map(([join, leave]) => [leave, join]),
+);
+
+type WantedJoin = {
+  // biome-ignore lint/suspicious/noExplicitAny: emit arguments are passed through as given.
+  args: any[];
+  /** Whether this join has gone out since the last `connect` (the next `connect` sends it again). */
+  sent: boolean;
+  /** Acks of every `emit` that asked for it before it was sent, called with the one reply. */
+  // biome-ignore lint/suspicious/noExplicitAny: ack arguments are the server's.
+  acks: Array<(...args: any[]) => void>;
+};
+
 export type SocketConnectionModule = { createSocketConnection: () => Socket };
 
 const RECONNECT_DELAY_MS = 1000;
@@ -110,6 +129,56 @@ export function createLazySocket(
    * the listeners currently wanted plus `MAX_PENDING_EMITS` messages.
    */
   const pending: PendingOp[] = [];
+  /**
+   * Rooms the page wants to be in, keyed by join event and payload. Joins are not buffered like
+   * other messages: this set is sent on every `connect` (first and after each reconnect), so a
+   * join can be neither dropped by the cap in `record` nor sent twice for one connection, however
+   * many times a page asks for it before and after the connection opens.
+   */
+  const wantedJoins = new Map<string, WantedJoin>();
+
+  function sendJoin(socket: Socket, join: WantedJoin, event: string) {
+    join.sent = true;
+    const acks = join.acks.splice(0);
+    socket.emit(event, ...join.args, (...reply: unknown[]) => {
+      for (const ack of acks) ack(...reply);
+    });
+  }
+
+  function sendWantedJoins(socket: Socket) {
+    for (const [key, join] of wantedJoins) {
+      sendJoin(socket, join, key.slice(0, key.indexOf(":")));
+    }
+  }
+
+  /** `joinX`: remembers the room and sends it now if connected, else on `connect`. */
+  // biome-ignore lint/suspicious/noExplicitAny: emit arguments are passed through as given.
+  function wantJoin(event: string, args: any[]) {
+    const ack = typeof args[args.length - 1] === "function" ? args[args.length - 1] : undefined;
+    const payload = ack ? args.slice(0, -1) : args;
+    const key = `${event}:${JSON.stringify(payload)}`;
+    let join = wantedJoins.get(key);
+    if (!join) {
+      join = { args: payload, sent: false, acks: [] };
+      wantedJoins.set(key, join);
+    }
+    if (join.sent) return;
+    if (ack) join.acks.push(ack);
+    if (real?.connected) sendJoin(real, join, event);
+  }
+
+  /** `leaveX`: forgets the room, and tells the server if connected (else it never joined or will not rejoin). */
+  // biome-ignore lint/suspicious/noExplicitAny: emit arguments are passed through as given.
+  function wantLeave(event: string, args: any[]) {
+    const joinEvent = JOIN_OF_LEAVE[event] as string;
+    const ack = typeof args[args.length - 1] === "function" ? args[args.length - 1] : undefined;
+    const payload = ack ? args.slice(0, -1) : args;
+    const key = `${joinEvent}:${JSON.stringify(payload)}`;
+    const join = wantedJoins.get(key);
+    if (!join) return;
+    wantedJoins.delete(key);
+    if (real?.connected) real.emit(event, ...args);
+  }
 
   /** Calls the listeners registered so far, as the client would (load failures only). */
   function notify(kind: "on" | "ioOn", event: string, ...args: unknown[]) {
@@ -180,6 +249,7 @@ export function createLazySocket(
       (mod) => {
         loading = false;
         const socket = mod.createSocketConnection();
+        socket.on("connect", () => sendWantedJoins(socket));
         replay(socket);
         if (isRetry) reportReconnectOnOpen(socket, attempt);
         real = socket;
@@ -303,7 +373,9 @@ export function createLazySocket(
       return facade;
     },
     emit(event, ...args) {
-      if (real) real.emit(event, ...args);
+      if (event in LEAVE_OF_JOIN) wantJoin(event, args);
+      else if (event in JOIN_OF_LEAVE) wantLeave(event, args);
+      else if (real) real.emit(event, ...args);
       else record({ kind: "emit", event, args });
       return facade;
     },

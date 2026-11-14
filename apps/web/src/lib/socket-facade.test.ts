@@ -15,6 +15,8 @@ type Call = [string, string, ...unknown[]];
 /** A stand-in for the Socket.IO client: records every call and lets the test play the server. */
 function buildFakeSocket() {
   const calls: Call[] = [];
+  const ownHandlersSeen = new Set<string>();
+  let ownRegistrations = 0;
   const listeners = new Map<string, Listener[]>();
   const managerListeners = new Map<string, Listener[]>();
   const add = (map: Map<string, Listener[]>, event: string, fn: Listener) => {
@@ -32,7 +34,13 @@ function buildFakeSocket() {
     connected: false,
     calls,
     on(event: string, fn: Listener) {
-      calls.push(["on", event]);
+      // The facade's own `connect` and `disconnect` handlers come first, before anything replayed;
+      // they are not calls the page made, so they are kept out of `calls`.
+      const own = !ownHandlersSeen.has(event) && calls.length === 0 && ownRegistrations < 2;
+      if (own) {
+        ownRegistrations += 1;
+        ownHandlersSeen.add(event);
+      } else calls.push(["on", event]);
       add(listeners, event, fn);
       return fake;
     },
@@ -120,7 +128,6 @@ describe("createLazySocket", () => {
     const ack = () => {};
     const onBid = () => {};
     const onConnect = () => {};
-    socket.emit("joinSaleroom", { saleId: "s1" }, ack);
     socket.on("saleroomEvent", onBid);
     socket.on("connect", onConnect);
     socket.emit("joinLot", { lotId: "l1" }, ack);
@@ -132,7 +139,6 @@ describe("createLazySocket", () => {
     await flush();
 
     expect(fake.calls).toEqual([
-      ["emit", "joinSaleroom", { saleId: "s1" }, ack],
       ["on", "saleroomEvent"],
       ["on", "connect"],
       ["emit", "joinLot", { lotId: "l1" }, ack],
@@ -140,7 +146,7 @@ describe("createLazySocket", () => {
       // The ack timer started at the call, so only what is left of the 2 s is passed on.
       ["timeoutEmit", "latencyProbe", expect.any(Number), { clientNow: 1 }, ack],
     ]);
-    const left = fake.calls[5]?.[2] as number;
+    const left = fake.calls[4]?.[2] as number;
     expect(left).toBeGreaterThan(1500);
     expect(left).toBeLessThanOrEqual(2000);
   });
@@ -194,10 +200,11 @@ describe("createLazySocket", () => {
 
     const onEvent = vi.fn();
     socket.on("lotEvent", onEvent);
+    fake.serverEmit("connect");
     socket.emit("joinUser", {});
     expect(fake.calls).toEqual([
       ["on", "lotEvent"],
-      ["emit", "joinUser", {}],
+      ["emit", "joinUser", {}, expect.any(Function)],
     ]);
     fake.serverEmit("lotEvent", 1);
     socket.off("lotEvent", onEvent);
@@ -451,7 +458,6 @@ describe("createLazySocket", () => {
       expect(onReconnectAttempt).toHaveBeenCalledWith(1);
       expect(load).toHaveBeenCalledTimes(2);
 
-      socket.emit("joinSaleroom", { saleId: "s1" });
       const fake = buildFakeSocket();
       loads[1]?.arrive(fake);
       await vi.advanceTimersByTimeAsync(0);
@@ -462,7 +468,6 @@ describe("createLazySocket", () => {
         "io.on:reconnect_attempt",
         "on:bidUpdate",
         "emit:joinLot",
-        "emit:joinSaleroom",
         // Watches for the first open, to report it as Socket.IO's `reconnect`.
         "io.on:open",
         "io.on:reconnect_attempt",
@@ -629,6 +634,111 @@ describe("createLazySocket", () => {
       await vi.advanceTimersByTimeAsync(0);
       expect(onConnectError.mock.calls[0]?.[0]).toBeInstanceOf(Error);
       expect((onConnectError.mock.calls[0]?.[0] as Error).message).toBe("offline");
+    });
+  });
+
+  describe("room joins", () => {
+    /** A facade whose client has arrived; `connect()` plays the server accepting the handshake. */
+    async function connectedFacade(arrive = true) {
+      const loader = deferredLoader();
+      const socket = createLazySocket(loader.load);
+      const fake = buildFakeSocket();
+      if (arrive) {
+        loader.arrive(fake);
+        await flush();
+      }
+      return { loader, socket, fake };
+    }
+    const joins = (fake: FakeSocket) =>
+      fake.calls.filter((c) => c[0] === "emit" && String(c[1]).startsWith("join")).map((c) => c[1]);
+
+    it("sends a join asked for before the client arrived once, when it connects", async () => {
+      const { loader, socket, fake } = await connectedFacade(false);
+      const ack = vi.fn();
+      socket.emit("joinSaleroom", { saleId: "s1" }, ack);
+      loader.arrive(fake);
+      await flush();
+      expect(joins(fake)).toEqual([]);
+
+      fake.serverEmit("connect");
+      expect(fake.calls).toContainEqual([
+        "emit",
+        "joinSaleroom",
+        { saleId: "s1" },
+        expect.any(Function),
+      ]);
+      expect(ack).not.toHaveBeenCalled();
+      const send = fake.calls.find((c) => c[1] === "joinSaleroom")?.[3] as Listener;
+      send({ ok: true });
+      expect(ack).toHaveBeenCalledWith({ ok: true });
+    });
+
+    it("does not send the same join twice on one connection, even when the page asks again on connect", async () => {
+      const { loader, socket, fake } = await connectedFacade(false);
+      socket.emit("joinSaleroom", { saleId: "s1" }, () => {});
+      socket.on("connect", () => socket.emit("joinSaleroom", { saleId: "s1" }, () => {}));
+      loader.arrive(fake);
+      await flush();
+
+      fake.serverEmit("connect");
+      expect(joins(fake)).toEqual(["joinSaleroom"]);
+    });
+
+    it("keeps different rooms apart", async () => {
+      const { socket, fake } = await connectedFacade();
+      fake.serverEmit("connect");
+      socket.emit("joinSaleroom", { saleId: "s1" });
+      socket.emit("joinSaleroom", { saleId: "s2" });
+      socket.emit("joinUser", {});
+      expect(fake.calls.filter((c) => c[0] === "emit").map((c) => [c[1], c[2]])).toEqual([
+        ["joinSaleroom", { saleId: "s1" }],
+        ["joinSaleroom", { saleId: "s2" }],
+        ["joinUser", {}],
+      ]);
+    });
+
+    it("is not dropped by the cap on buffered messages", async () => {
+      const { loader, socket, fake } = await connectedFacade(false);
+      socket.emit("joinUser", {}, () => {});
+      for (let i = 0; i < MAX_PENDING_EMITS * 2; i += 1) socket.emit("ping", i);
+      loader.arrive(fake);
+      await flush();
+      fake.serverEmit("connect");
+      expect(joins(fake)).toEqual(["joinUser"]);
+    });
+
+    it("sends every wanted join again after a reconnect, and none that were left", async () => {
+      const { socket, fake } = await connectedFacade();
+      fake.serverEmit("connect");
+      socket.emit("joinSaleroom", { saleId: "s1" });
+      socket.emit("joinSaleroom", { saleId: "s2" });
+      socket.emit("joinUser", {});
+      socket.emit("leaveSaleroom", { saleId: "s2" });
+      fake.calls.length = 0;
+
+      fake.serverEmit("disconnect");
+      fake.serverEmit("connect");
+      expect(fake.calls.map((c) => [c[1], c[2]])).toEqual([
+        ["joinSaleroom", { saleId: "s1" }],
+        ["joinUser", {}],
+      ]);
+    });
+
+    it("sends no leave for a join that was never sent", async () => {
+      const { loader, socket, fake } = await connectedFacade(false);
+      socket.emit("joinSaleroom", { saleId: "s1" });
+      socket.emit("leaveSaleroom", { saleId: "s1" });
+      loader.arrive(fake);
+      await flush();
+      fake.serverEmit("connect");
+      expect(fake.calls.filter((c) => c[0] === "emit")).toEqual([]);
+
+      socket.emit("joinSaleroom", { saleId: "s1" });
+      socket.emit("leaveSaleroom", { saleId: "s1" }, () => {});
+      expect(fake.calls.filter((c) => c[0] === "emit").map((c) => c[1])).toEqual([
+        "joinSaleroom",
+        "leaveSaleroom",
+      ]);
     });
   });
 });
