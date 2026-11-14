@@ -59,6 +59,7 @@ export function createWorkerStalePaymentExpiry(input: {
       env,
     }),
     listUnpaidWithCheckout: (limit) => canceller.listUnpaidWithCheckout(limit),
+    listOpenGroupsWithCheckout: (limit) => canceller.listOpenGroupsWithCheckout(limit),
   });
   const deps = {
     payments,

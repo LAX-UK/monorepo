@@ -143,6 +143,44 @@ describe.skipIf(!HAS_DB)("stale payment cancel statement (integration)", () => {
     expect(paid.some((r) => r.id === paymentId)).toBe(false);
   });
 
+  it("lists an open Pay several payment with a checkout, with its payer and unpaid members", async () => {
+    const [group] = await db
+      .insert(paymentGroup)
+      .values({
+        buyerLegalEntityId: entityId,
+        createdByUserId: buyerId,
+        currency: "GBP",
+        totalAmount: "100.00",
+        checkoutRail: "card",
+        status: "open",
+        stripeCheckoutSessionId: `cs_spc_${run}_group`,
+      })
+      .returning({ id: paymentGroup.id });
+    const groupId = group?.id as string;
+    await db.update(payment).set({ paymentGroupId: groupId }).where(eq(payment.id, paymentId));
+
+    const listed = (await canceller.listOpenGroupsWithCheckout(500)).find((g) => g.id === groupId);
+    expect(listed).toEqual({
+      id: groupId,
+      payerUserId: buyerId,
+      buyerLegalEntityId: entityId,
+      stripeCheckoutSessionId: `cs_spc_${run}_group`,
+      stripePaymentIntentId: null,
+      members: [{ paymentId, payerUserId: buyerId, buyerLegalEntityId: entityId }],
+    });
+    // A member is never listed as a single invoice: its checkout is the group's.
+    expect((await canceller.listUnpaidWithCheckout(500)).some((r) => r.id === paymentId)).toBe(
+      false,
+    );
+
+    // Money on its way (processing) is never closed, so such a group is not listed.
+    await db.update(paymentGroup).set({ status: "processing" }).where(eq(paymentGroup.id, groupId));
+    expect((await canceller.listOpenGroupsWithCheckout(500)).some((g) => g.id === groupId)).toBe(
+      false,
+    );
+    await db.update(payment).set({ paymentGroupId: null }).where(eq(payment.id, paymentId));
+  });
+
   it("removes the checkout sessions with their payment", async () => {
     await sessions.record(paymentId, `cs_spc_${run}_gone`);
     await db.delete(payment).where(eq(payment.id, paymentId));

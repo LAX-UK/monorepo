@@ -89,6 +89,8 @@ function createWebhookService(deps: {
   disputes?: IDisputeWebhookRecorder;
   unappliedMoney?: IUnappliedMoneyRecorder;
   paymentEligibility?: IPaymentEligibilityGate;
+  /** As where payments are live: money is not captured without the account check. */
+  paymentEligibilityRequired?: boolean;
   paymentRefunds?: InMemoryPaymentRefunds;
   /** Pence of refund lines the seller's ledger already holds for the payment. */
   sellerRefundedCents?: number;
@@ -184,6 +186,7 @@ function createWebhookService(deps: {
     undefined,
     null,
     stripeRefunds,
+    { paymentEligibilityRequired: deps.paymentEligibilityRequired === true },
   );
   if (!deps.stripeRefunds) {
     const handle = svc.handleChargeRefunded.bind(svc);
@@ -751,6 +754,54 @@ describe("StripePaymentWebhookService.handlePaymentIntentSucceeded", () => {
       expect(result).toEqual({ processed: true, action: "payment_intent_succeeded_held", reason });
     },
   );
+
+  it.each([
+    ["holds the money for finance where payments are live", true],
+    ["captures it where payments are not live (local, test)", false],
+  ])("with no eligibility gate wired, %s", async (_label, required) => {
+    const capture = vi.fn().mockResolvedValue({ captured: true });
+    const applyHeldMoneyInTransaction = vi.fn().mockResolvedValue(true);
+    const { svc } = createWebhookService({
+      paymentCapture: { capture },
+      paymentEligibilityRequired: required,
+      payments: {
+        applyHeldMoneyInTransaction,
+        findById: vi.fn().mockResolvedValue({
+          id: "pay_1",
+          lotId: "lot_1",
+          amount: "100.00",
+          status: "pending",
+          buyerId: "user_1",
+          buyerLegalEntityId: "le_1",
+          sellerLegalEntityId: "le_s",
+        }),
+      },
+    });
+    const pi = {
+      id: "pi_1",
+      amount: 10000,
+      metadata: { paymentId: "pay_1" },
+      latest_charge: "ch_pi",
+    } as unknown as Stripe.PaymentIntent;
+
+    const result = await svc.handlePaymentIntentSucceeded(
+      { id: "evt_pi_ungated", type: "payment_intent.succeeded" } as Stripe.Event,
+      pi,
+    );
+
+    if (required) {
+      expect(capture).not.toHaveBeenCalled();
+      expect(applyHeldMoneyInTransaction).toHaveBeenCalled();
+      expect(result).toEqual({
+        processed: true,
+        action: "payment_intent_succeeded_held",
+        reason: "finance_release_required",
+      });
+    } else {
+      expect(capture).toHaveBeenCalled();
+      expect(result).toEqual({ processed: true, action: "payment_intent_succeeded" });
+    }
+  });
 
   it("money for an account that can pay is captured as usual", async () => {
     const capture = vi.fn().mockResolvedValue({ captured: true });

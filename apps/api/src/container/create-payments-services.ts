@@ -53,6 +53,7 @@ import { PaymentCaptureService } from "../services/payment/payment-capture.servi
 import {
   type IPaymentEligibilityGate,
   createPaymentEligibilityGate,
+  paymentsAreLive,
 } from "../services/payment/payment-eligibility.gate.js";
 import {
   PaymentTierPolicy,
@@ -359,6 +360,7 @@ export function createPaymentsServices(
     }),
     eligibility: paymentEligibility,
     listUnpaidWithCheckout: (limit: number) => staleCanceller.listUnpaidWithCheckout(limit),
+    listOpenGroupsWithCheckout: (limit: number) => staleCanceller.listOpenGroupsWithCheckout(limit),
   });
   const bidInvoiceRepo = repos.bidInvoiceRepository;
   // Refunds Stripe has not finished are watched until final; every refund path reads the charge's
@@ -523,6 +525,8 @@ export function createPaymentsServices(
             deals: new DrizzlePrivateSaleDealRepository(db),
           },
           chargeRefunds,
+          // Wherever payments are live, money is never captured without the account check.
+          { paymentEligibilityRequired: paymentsAreLive(env) },
         )
       : null;
 

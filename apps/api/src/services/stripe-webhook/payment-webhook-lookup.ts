@@ -38,6 +38,11 @@ export type StripePaymentWebhookDeps = {
    * goes to manual review instead of being captured. Null only where it is not wired (tests).
    */
   paymentEligibility: IPaymentEligibilityGate | null;
+  /**
+   * True wherever payments are live: there a missing eligibility gate holds the money for finance
+   * (manual review) instead of capturing it unchecked.
+   */
+  paymentEligibilityRequired?: boolean;
   /** Where a capture's failed follow-up steps are reported; they never fail the webhook. */
   errorReporter?: IErrorReporter;
   /**

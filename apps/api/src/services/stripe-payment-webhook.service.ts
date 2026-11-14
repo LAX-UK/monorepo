@@ -79,6 +79,7 @@ export class StripePaymentWebhookService {
     errorReporter?: IErrorReporter,
     private readonly transferChecks: TransferCheckDeps | null = null,
     chargeRefunds: IChargeRefundsReader | null = null,
+    options: { paymentEligibilityRequired?: boolean } = {},
   ) {
     this.deps = {
       transactionRunner,
@@ -91,6 +92,7 @@ export class StripePaymentWebhookService {
       domainEventSink,
       unappliedMoney: unappliedMoney ?? NO_UNAPPLIED_MONEY_RECORDER,
       paymentEligibility,
+      paymentEligibilityRequired: options.paymentEligibilityRequired === true,
       ...(errorReporter ? { errorReporter } : {}),
       ...(chargeRefunds ? { chargeRefunds } : {}),
     };

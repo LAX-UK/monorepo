@@ -1,7 +1,24 @@
 import { describe, expect, it, vi } from "vitest";
 import { HeldInvoiceCheckouts } from "./held-invoice-checkouts.js";
 
-function build(eligibility: Record<string, "held" | "payable" | "refused">) {
+type Group = Awaited<
+  ReturnType<ConstructorParameters<typeof HeldInvoiceCheckouts>[0]["listOpenGroupsWithCheckout"]>
+>[number];
+
+const group = (id: string, payer: string | null, memberPayers: string[]): Group => ({
+  id,
+  payerUserId: payer,
+  buyerLegalEntityId: "le-g",
+  stripeCheckoutSessionId: `cs_${id}`,
+  stripePaymentIntentId: null,
+  members: memberPayers.map((p, i) => ({
+    paymentId: `${id}-m${i}`,
+    payerUserId: p,
+    buyerLegalEntityId: "le-g",
+  })),
+});
+
+function build(eligibility: Record<string, "held" | "payable" | "refused">, groups: Group[] = []) {
   const closeAndRead = vi.fn().mockResolvedValue({ kind: "no_money" });
   const svc = new HeldInvoiceCheckouts({
     payments: {
@@ -29,6 +46,7 @@ function build(eligibility: Record<string, "held" | "payable" | "refused">) {
       { id: "pay-held", payerUserId: "unverified", buyerLegalEntityId: "le-1" },
       { id: "pay-ok", payerUserId: "verified", buyerLegalEntityId: "le-2" },
     ]),
+    listOpenGroupsWithCheckout: vi.fn(async () => groups),
   });
   return { svc, closeAndRead };
 }
@@ -46,10 +64,38 @@ describe("HeldInvoiceCheckouts", () => {
 
   it("the sweep closes only held invoices' checkouts, and can run again safely", async () => {
     const { svc, closeAndRead } = build({ unverified: "held", verified: "payable" });
-    expect(await svc.sweep()).toEqual({ checked: 2, closed: 1 });
+    expect(await svc.sweep()).toEqual({ checked: 2, closed: 1, groupsChecked: 0, groupsClosed: 0 });
     expect(closeAndRead).toHaveBeenCalledTimes(1);
     expect(closeAndRead).toHaveBeenCalledWith(expect.objectContaining({ paymentId: "pay-held" }));
     await svc.sweep();
     expect(closeAndRead).toHaveBeenCalledTimes(2);
+  });
+
+  it("closes a Pay several checkout when any member invoice is held, and leaves payable groups", async () => {
+    const { svc, closeAndRead } = build({ unverified: "held", verified: "payable" }, [
+      group("grp-held-member", "verified", ["verified", "unverified"]),
+      group("grp-ok", "verified", ["verified", "verified"]),
+    ]);
+    expect(await svc.sweep()).toMatchObject({ groupsChecked: 2, groupsClosed: 1 });
+    expect(closeAndRead).toHaveBeenCalledWith({
+      paymentId: "grp-held-member",
+      paymentIntentId: null,
+      checkoutSessionIds: ["cs_grp-held-member"],
+    });
+    expect(closeAndRead).not.toHaveBeenCalledWith(expect.objectContaining({ paymentId: "grp-ok" }));
+  });
+
+  it("closes a Pay several checkout whose payer is held, or no longer known", async () => {
+    const { svc, closeAndRead } = build({ unverified: "held", verified: "payable" }, [
+      group("grp-held-payer", "unverified", ["verified"]),
+      group("grp-no-payer", null, ["verified"]),
+    ]);
+    expect(await svc.sweep()).toMatchObject({ groupsChecked: 2, groupsClosed: 2 });
+    expect(closeAndRead).toHaveBeenCalledWith(
+      expect.objectContaining({ paymentId: "grp-held-payer" }),
+    );
+    expect(closeAndRead).toHaveBeenCalledWith(
+      expect.objectContaining({ paymentId: "grp-no-payer" }),
+    );
   });
 });
