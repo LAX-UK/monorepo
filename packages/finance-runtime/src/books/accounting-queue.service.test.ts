@@ -2,8 +2,10 @@ import {
   type DocumentRecord,
   type Result,
   buildInvoice,
+  buildPayment,
   laxReference,
   ok,
+  parkedRecord,
   refuse,
   requeue,
 } from "@auction/accounting-domain";
@@ -12,6 +14,7 @@ import type {
   DocumentTransition,
   IAccountingDocumentBrowser,
   IAccountingDocumentTransitions,
+  PartFundedTransfer,
   StoredAccountingDocument,
   TransitionCode,
 } from "@auction/persistence/interfaces";
@@ -86,8 +89,14 @@ class FakeQueue implements IAccountingDocumentBrowser, IAccountingDocumentTransi
     };
   }
 
+  awaited = new Map<string, { reference: string; state: DocumentRecord["status"] | null }[]>();
+
   async findById(id: string) {
     return ok(this.document?.id === id ? this.document : null);
+  }
+
+  async awaitedOf() {
+    return this.awaited;
   }
 
   async apply(
@@ -103,16 +112,37 @@ class FakeQueue implements IAccountingDocumentBrowser, IAccountingDocumentTransi
   }
 }
 
-function setUp(document: StoredAccountingDocument | null) {
+function setUp(
+  document: StoredAccountingDocument | null,
+  transfers: readonly PartFundedTransfer[] = [],
+) {
   const queue = new FakeQueue(document);
   const audits: unknown[] = [];
+  const partFundedCalls: number[] = [];
   const service = new AccountingQueueService({
     browser: queue,
+    partFunded: {
+      list: async (limit) => {
+        partFundedCalls.push(limit);
+        return transfers;
+      },
+    },
     transitions: queue,
-    audit: { retryRequested: async (input) => void audits.push(input) },
+    audit: {
+      retryRequested: async (input) => void audits.push(input),
+      releaseRequested: async (input) => void audits.push(input),
+    },
     booksLink: () => null,
+    facts: {
+      invoiceRaised: async () => ({ status: "skip", reason: "unused" }),
+      paymentCaptured: async () => ({ status: "skip", reason: "unused" }),
+      paymentRefunded: async () => ({ status: "skip", reason: "unused" }),
+      paymentGroupSettled: async () => ({ status: "skip", reason: "unused" }),
+      deliveryGroupOf: async () => null,
+    },
+    lookup: { findByReference: async () => ok(null) },
   });
-  return { queue, audits, service };
+  return { queue, audits, service, partFundedCalls };
 }
 
 const failed = { status: "failed", reason: "zoho_books_mapping_no_tax_id" } as const;
@@ -309,5 +339,136 @@ describe("AccountingQueueService.tryAgain", () => {
         actorUserId: "s",
       }),
     ).toMatchObject({ ok: false, refusal: "not_found" });
+  });
+});
+
+describe("AccountingQueueService.list: payments", () => {
+  const GROUP = "0b6a7c1e-5555-4a5b-8c9d-000000000005";
+  const paySeveral = must(
+    buildPayment({
+      product: "bid",
+      sourceId: `grp-${GROUP}`,
+      contactReference: must(laxReference("bid", "contact", "c1")),
+      receivedOn: "2026-11-14",
+      amountPence: 12_000 + 4_501,
+      allocations: [
+        { invoiceReference: invoice.reference, amountPence: 12_000 },
+        { invoiceReference: must(laxReference("bid", "invoice", "dlv-q1")), amountPence: 4_501 },
+      ],
+    }),
+  );
+  const parkedPayment: StoredAccountingDocument = {
+    ...stored({ status: "pending" }),
+    kind: "payment",
+    reference: paySeveral.reference,
+    document: paySeveral,
+    totals: { netPence: 16_501, vatPence: 0, grossPence: 16_501 },
+    provider: null,
+    record: parkedRecord("payment", paySeveral.reference, "vat_on_delivery"),
+  };
+  const request = {
+    tab: "needs_person" as const,
+    organisation: null,
+    reference: null,
+    limit: 50,
+    offset: 0,
+    canAct: true,
+  };
+
+  it("says what a parked Pay several payment is, why it waits, what it applies to; no try again", async () => {
+    const { service } = setUp(parkedPayment);
+    const page = await service.list(request);
+    expect(page.rows[0]).toMatchObject({
+      label: "Payment · Pay several",
+      parked: "vat_on_delivery",
+      state: "needs_review",
+      problem:
+        "VAT on delivery. This stays out of Books until the accountant confirms how delivery is booked. Then press Release.",
+      problemCode: "accounting_parked_vat_on_delivery",
+      appliedTo: [
+        { reference: "LAX-BID-INV-dlv-q1", amountPence: 4_501 },
+        { reference: invoice.reference, amountPence: 12_000 },
+      ],
+      canTryAgain: false,
+      canRelease: true,
+      waitingFor: [],
+    });
+  });
+
+  it("says which invoice a waiting payment waits for, and that invoice's state", async () => {
+    const waiting = { ...parkedPayment, record: { ...parkedPayment.record, status: "pending" } };
+    const { service, queue } = setUp(waiting as StoredAccountingDocument);
+    queue.awaited.set(waiting.id, [
+      { reference: invoice.reference, state: "failed" },
+      { reference: "LAX-BID-INV-dlv-q1", state: null },
+    ]);
+    const page = await service.list({ ...request, tab: "waiting" });
+    expect(page.rows[0]).toMatchObject({
+      state: "pending",
+      parked: null,
+      canRelease: false,
+      waitingFor: [
+        { reference: invoice.reference, state: "failed" },
+        { reference: "LAX-BID-INV-dlv-q1", state: null },
+      ],
+    });
+  });
+
+  it("refuses a try again for a parked document even if asked directly", async () => {
+    const { service, queue } = setUp(parkedPayment);
+    const answer = await service.tryAgain({ documentId: parkedPayment.id, actorUserId: "staff-1" });
+    expect(answer).toMatchObject({ ok: false, refusal: "not_allowed" });
+    expect(queue.applied).toEqual([]);
+  });
+
+  it("an invoice row is not parked and applies to nothing", async () => {
+    const { service } = setUp(stored(failed));
+    const page = await service.list(request);
+    expect(page.rows[0]).toMatchObject({ label: "Invoice · Bid", parked: null, appliedTo: [] });
+  });
+
+  it("lists bank transfers part received for Bid's books, with the reference their payment will carry", async () => {
+    const transfers: PartFundedTransfer[] = [
+      {
+        source: "payment",
+        id: "0b6a7c1e-3333-4a5b-8c9d-000000000003",
+        buyer: "Collector Ltd",
+        receivedPence: 40_000,
+        totalPence: 154_320,
+        since: null,
+      },
+      {
+        source: "payment_group",
+        id: GROUP,
+        buyer: "Collector Ltd",
+        receivedPence: 100_001,
+        totalPence: 250_000,
+        since: new Date("2026-11-13T09:00:00Z"),
+      },
+    ];
+    const both = setUp(null, transfers);
+    expect((await both.service.list(request)).partFundedTransfers).toEqual([
+      {
+        reference: "LAX-BID-PAY-0b6a7c1e-3333-4a5b-8c9d-000000000003",
+        paySeveral: false,
+        buyer: "Collector Ltd",
+        receivedPence: 40_000,
+        totalPence: 154_320,
+        since: null,
+      },
+      {
+        reference: `LAX-BID-PAY-grp-${GROUP}`,
+        paySeveral: true,
+        buyer: "Collector Ltd",
+        receivedPence: 100_001,
+        totalPence: 250_000,
+        since: "2026-11-13T09:00:00.000Z",
+      },
+    ]);
+    // London Art Exchange takes no bank transfers for Bid: nothing is read for it.
+    const art = setUp(null, transfers);
+    const page = await art.service.list({ ...request, organisation: "london_art_exchange" });
+    expect(page.partFundedTransfers).toEqual([]);
+    expect(art.partFundedCalls).toEqual([]);
   });
 });

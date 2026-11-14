@@ -12,7 +12,9 @@ stores records and calls providers live elsewhere and depend on this package, ne
 | Documents | `document.ts` | invoice, payment, credit_note, bill, contact; deterministic LAX reference; legal entity per product. |
 | Ports | `ports.ts` | One small interface per kind plus `DocumentLookupPort`. Provider-agnostic results. |
 | Life cycle | `lifecycle.ts` | Pure state machine with refusals; lease as data; lookup before retry. |
-| Payments | `allocation.ts` | One payment across invoices, oldest due first, never over-allocate. |
+| Payments | `allocation.ts` | One payment across invoices, oldest due first, never over-allocate; or stored allocations that equal the payment exactly. |
+| Parking | `parking.ts` | A document built and kept in "Needs a person", never sent, until the accountant or a person decides. |
+| Ordering | `dependencies.ts` | A payment waits until every invoice it is applied to is in the books. |
 | Refunds | `refund.ts` | Goods/delivery split; never more than paid. |
 | Source switch | `source-switch.ts` | One live source per product; refuses two. |
 | Projection | `projection/` | One pure policy per money flow: facts in, documents out, idempotent by LAX reference. |
@@ -50,7 +52,28 @@ goes to `needs_review` with the provider's identity kept, never absorbed in an a
 
 **Payments.** `allocatePayment` fills invoices oldest due first (ties by reference), never gives an
 invoice more than it owes, and reports the unallocated remainder. `buildPayment` refuses allocations
-that exceed the payment. A payment of zero is refused.
+that exceed the payment. A payment of zero is refused. `checkExactAllocations` is the rule every Bid
+payment flow uses: each allocation is a stored amount (the invoice's payment row, a courier quote's
+charge), nothing is split or rounded, and together they must equal the payment to the penny
+(`allocation_mismatch` otherwise, a penny out either way).
+
+**Parked documents.** A projection may name some of its documents as parked (`Projection.parked`,
+reason `vat_on_delivery` or `invoice_cancelled`). The runtime stores them straight into
+`needs_review` (`parkedRecord`, reason `accounting_parked_<reason>`), never `pending` first, so no
+sender can take one. `requeue` refuses a parked document (`parked`), so it cannot be tried again by
+hand. Once its reason is settled a person releases it (`release`, parked to `pending`, attempts
+kept): the caller first projects its stored rows again with the policy that parked it, as they
+stand now, and `resolveParked` allows the release only if that projection makes the same reference
+and no longer parks it. A delivery invoice's draft is then replaced by the rebuilt invoice (same
+reference, same gross); anything else must come out exactly as stored. It can also be cancelled.
+A queued payment whose invoice was cancelled is parked by the sender (`park`, `invoice_cancelled`)
+instead of waiting for ever.
+
+**Ordering.** `documentsAwaited(document)`: a payment waits for each invoice it is applied to, and
+an invoice or credit note waits for its contact. The work queue claims a document only once all of
+them are `issued` for the same target, so nothing reaches Books before what it refers to, whatever
+order the documents were stored in or however many senders run, and a waiting document never holds
+up the documents behind it.
 
 **Refunds.** `planRefund` checks goods and delivery separately against paid minus already refunded.
 `splitRefundTotal` takes one amount, goods first, then delivery. Neither can exceed what was paid, and
@@ -150,7 +173,8 @@ same facts always give the same documents, so a redelivered event is a replay.
 | Flow | Documents | Rule |
 | --- | --- | --- |
 | `bid_invoice_raised` | contact, invoice | Lines from the stored invoice (the `invoice.raised` event names them by id; other lines are refused); `BID_LINE_BOOKINGS` says how each line kind is booked (hammer and premium as margin-scheme goods until the accountant confirms; the premium keeps the label it was raised with). VAT on the premium and the artist's resale right wait for the accountant: a kind in `BID_LINES_AWAITING_ACCOUNTANT` is refused (`line_awaiting_accountant`), an unknown kind too (`unmapped_line`), never guessed. A line of 0p is left out. |
-| `bid_payment_captured` | contact, invoice, payment | All of the payment applied to its invoice; a payment for more than the invoice is refused (a remainder is never spread). |
+| `bid_payment_captured` | contact, invoice, payment | Card, or a bank transfer once all of it arrived: all of the payment (the stored row's amount, GBP only) applied to its invoice; a payment for more than the invoice is refused (a remainder is never spread). For an invoice cancelled since: contact and the payment, parked `invoice_cancelled`. |
+| `bid_payment_group_settled` | contact, each invoice, a delivery invoice per courier quote, ONE payment | "Pay several": one payment (`LAX-BID-PAY-grp-<group>`) applied to each invoice by its payment row's amount and to each delivery invoice (`LAX-BID-INV-dlv-<quote>`) by the quote's charge; the allocations equal the group's total exactly. Delivery invoices and the payment are parked `vat_on_delivery` while `DELIVERY_BOOKING` is unset (the accountant's question); a cancelled invoice parks the payment `invoice_cancelled`. |
 | `bid_payment_refunded` | contact, invoice, one credit note per refund | Every refund of the payment replayed oldest first through `buildCreditNoteFor`, so each credit note is exactly its refund and they never total more than was paid. |
 | others in `ACCOUNTING_FLOWS` | none yet | Placeholders that project nothing until their own change builds them. |
 

@@ -378,9 +378,9 @@ describe.skipIf(!HAS_DB)("Bid invoices to Books (integration)", { timeout: 60_00
     const raised = await raise(owner, seeded);
     const event = await raisedEvent(raised.invoice.id);
     const first = await projection().project(event);
-    expect(first).toEqual({ outcome: "projected", created: 2, replayed: 0, kept: 0 });
+    expect(first).toEqual({ outcome: "projected", created: 2, replayed: 0, kept: 0, parked: 0 });
     const again = await projection().project(event);
-    expect(again).toEqual({ outcome: "projected", created: 0, replayed: 2, kept: 0 });
+    expect(again).toEqual({ outcome: "projected", created: 0, replayed: 2, kept: 0, parked: 0 });
 
     const reference = laxReference("bid", "invoice", raised.invoice.id);
     if (!reference.ok) throw new Error("reference");

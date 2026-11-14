@@ -1,21 +1,20 @@
 "use client";
 
 import { useLegalEntityActions } from "@/components/admin/legal-entities/legal-entity-actions";
-import { LegalEntityQuickView } from "@/components/admin/legal-entities/legal-entity-quick-view";
 import { useStaffListNavigation } from "@/components/admin/staff/use-staff-list-navigation";
 import {
+  LEGAL_ENTITIES_DEFAULT_SORT,
   LEGAL_ENTITY_KIND_FILTERS,
   LEGAL_ENTITY_STATUS_FILTERS,
   type LegalEntitiesListSearch,
   type LegalEntitiesStaffRow,
   type LegalEntitiesViewId,
-  type LegalEntityPreview,
   legalEntitiesAttention,
   legalEntitiesFilterChips,
   legalEntitiesListHref,
   legalEntitiesMetrics,
+  legalEntitiesSortHref,
   legalEntitiesViews,
-  legalEntityPanelHref,
   legalEntityRecordHref,
 } from "@/lib/admin/people/legal-entities-staff-list.vm";
 import type { AdminLegalEntityListSummary } from "@/lib/data/http/admin-legal-entities.shared";
@@ -25,21 +24,21 @@ import {
   FilterSheet,
   ListPage,
   PrimaryCell,
+  type SortState,
   StaffDate,
-  type StaffLinkComponent,
   StatusBadge,
   TableSearch,
 } from "@auction/staff-ui";
-import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import Link from "next/link";
+import { useCallback, useMemo } from "react";
 
 export type LegalEntitiesStaffListProps = {
   search: LegalEntitiesListSearch;
   view: LegalEntitiesViewId;
+  /** The sort in the URL; the server has already put the rows in this order. */
+  sort: SortState;
   rows: LegalEntitiesStaffRow[];
   summary: AdminLegalEntityListSummary;
-  preview: LegalEntityPreview | null;
-  selectedEntityId: string | null;
   pageSize: number;
   pagination: { summary: string; prevHref: string | null; nextHref: string | null } | null;
   loadError: string | null;
@@ -47,54 +46,21 @@ export type LegalEntitiesStaffListProps = {
 
 /**
  * Bid's legal entities on the staff list template: the Stripe requirements view, search, status
- * and kind filters, the directory's summary, and a record panel with the entity's readiness.
- * Impersonation sits in each row's `…` menu and the panel, behind a confirm dialog. The panel
- * opens with `?entity=`, and the full record page is one click away.
+ * and kind filters, sort in the URL and the directory's summary. A row opens the entity's page,
+ * which keeps this list's query for Previous and Next; Back returns to the list as it was.
+ * Impersonation sits in each row's `…` menu, behind a confirm dialog.
  */
 export function LegalEntitiesStaffList(props: LegalEntitiesStaffListProps) {
   const { search, rows } = props;
-  const router = useRouter();
   const { pending, navigate, Link: ListLink } = useStaffListNavigation();
-  const [openId, setOpenId] = useState<string | null>(props.selectedEntityId);
   const actions = useLegalEntityActions();
   const q = typeof search.q === "string" ? search.q : "";
   const status = typeof search.status === "string" ? search.status : "";
   const kind = typeof search.kind === "string" ? search.kind : "";
   const filtered = Boolean(q || status || kind || props.view !== "all");
-
-  // Opening asks the server for the entity's details; closing is local, and the URL follows.
-  const openPanel = (id: string) => {
-    setOpenId(id);
-    router.push(legalEntityPanelHref(search, id), { scroll: false });
-  };
-  const closePanel = () => {
-    setOpenId(null);
-    window.history.replaceState(null, "", legalEntityPanelHref(search, null));
-  };
-
-  const PanelLink = useMemo<StaffLinkComponent>(
-    () =>
-      function PanelLink({ href, onClick, children, prefetch: _prefetch, ...rest }) {
-        return (
-          <a
-            href={href}
-            {...rest}
-            onClick={(event) => {
-              onClick?.(event);
-              const modified = event.metaKey || event.ctrlKey || event.shiftKey || event.altKey;
-              if (event.defaultPrevented || event.button !== 0 || modified) return;
-              const id = new URL(href, "http://staff.local").searchParams.get("entity");
-              if (!id) return;
-              event.preventDefault();
-              setOpenId(id);
-              router.push(href, { scroll: false });
-            }}
-          >
-            {children}
-          </a>
-        );
-      },
-    [router],
+  const recordHref = useCallback(
+    (row: LegalEntitiesStaffRow) => legalEntityRecordHref(search, row.id),
+    [search],
   );
 
   const columns = useMemo<DataColumn<LegalEntitiesStaffRow>[]>(
@@ -104,9 +70,8 @@ export function LegalEntitiesStaffList(props: LegalEntitiesStaffListProps) {
         header: "Name",
         mobile: "title",
         sortable: true,
-        sortValue: (row) => row.name.toLowerCase(),
         cell: (row) => (
-          <PrimaryCell href={legalEntityPanelHref(search, row.id)} Link={PanelLink}>
+          <PrimaryCell href={recordHref(row)} Link={Link}>
             {row.name}
           </PrimaryCell>
         ),
@@ -141,7 +106,6 @@ export function LegalEntitiesStaffList(props: LegalEntitiesStaffListProps) {
         hideBelow: "lg",
         mobile: "hidden",
         sortable: true,
-        sortValue: (row) => row.stripeDueCount,
         defaultSortDirection: "desc",
         cell: (row) => row.stripe,
       },
@@ -150,7 +114,6 @@ export function LegalEntitiesStaffList(props: LegalEntitiesStaffListProps) {
         header: "Updated",
         width: "120px",
         sortable: true,
-        sortValue: (row) => row.updatedAt,
         defaultSortDirection: "desc",
         hideBelow: "md",
         mobile: "meta",
@@ -158,7 +121,7 @@ export function LegalEntitiesStaffList(props: LegalEntitiesStaffListProps) {
         cell: (row) => <StaffDate value={row.updatedAt} />,
       },
     ],
-    [search, PanelLink],
+    [recordHref],
   );
 
   const activeFilters = legalEntitiesFilterChips(search).map((chip) => ({
@@ -168,9 +131,6 @@ export function LegalEntitiesStaffList(props: LegalEntitiesStaffListProps) {
   }));
   // Clearing filters keeps the view: the tab is where the Stripe requirements view is chosen.
   const clearHref = legalEntitiesListHref(search, { q: null, status: null, kind: null });
-  const openRow =
-    rows.find((row) => row.id === openId) ??
-    (props.preview && props.preview.row.id === openId ? props.preview.row : null);
 
   return (
     <>
@@ -257,18 +217,14 @@ export function LegalEntitiesStaffList(props: LegalEntitiesStaffListProps) {
           columns,
           data: rows,
           getRowId: (row) => row.id,
-          defaultSort: { columnId: "updated", direction: "desc" },
-          onRowOpen: (row) => openPanel(row.id),
-          activeRowId: openId,
+          defaultSort: LEGAL_ENTITIES_DEFAULT_SORT,
+          sort: props.sort,
+          onSortChange: (sort) => navigate(legalEntitiesSortHref(search, sort)),
+          rowHref: recordHref,
           rowActions: {
             label: (row) => `Actions for legal entity ${row.name}`,
             actions: (row) => [
-              { id: "open", label: "Open details", onSelect: () => openPanel(row.id) },
-              {
-                id: "record",
-                label: "Open full record",
-                href: legalEntityRecordHref(search, row.id),
-              },
+              { id: "record", label: "Open legal entity page", href: recordHref(row) },
               ...(row.stripeDueCount > 0
                 ? [
                     {
@@ -287,14 +243,6 @@ export function LegalEntitiesStaffList(props: LegalEntitiesStaffListProps) {
           onChange: (size) => navigate(legalEntitiesListHref(search, { limit: size })),
         }}
         pagination={props.pagination}
-      />
-      <LegalEntityQuickView
-        row={openRow}
-        preview={props.preview}
-        search={search}
-        onClose={closePanel}
-        onImpersonate={actions.impersonate}
-        extraActions={openRow ? actions.actionsFor(openRow) : []}
       />
       {actions.dialogs}
     </>

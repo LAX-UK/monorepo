@@ -1,11 +1,18 @@
-import { QUEUE_TABS, type QueueTab, type Result, ok } from "@auction/accounting-domain";
+import {
+  QUEUE_TABS,
+  type QueueTab,
+  type Result,
+  documentsAwaited,
+  ok,
+} from "@auction/accounting-domain";
 import type { Database } from "@auction/db";
 import { accountingDocument } from "@auction/db/schema";
-import { and, asc, desc, eq, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 import type {
   AccountingClock,
   AccountingQueuePage,
   AccountingQueueQuery,
+  AwaitedDocument,
   IAccountingDocumentBrowser,
   StoredAccountingDocument,
   StoredDocumentCode,
@@ -93,6 +100,45 @@ export class DrizzleAccountingDocumentBrowser implements IAccountingDocumentBrow
       issuedToday: Number(counted?.issuedToday ?? 0),
       lastSent,
     };
+  }
+
+  async awaitedOf(
+    documents: readonly StoredAccountingDocument[],
+  ): Promise<ReadonlyMap<string, readonly AwaitedDocument[]>> {
+    const waiting = documents
+      .filter((document) => document.record.status === "pending")
+      .map((document) => ({ document, awaited: documentsAwaited(document.document) }))
+      .filter(({ awaited }) => awaited.length > 0);
+    const references = [...new Set(waiting.flatMap(({ awaited }) => awaited))];
+    if (references.length === 0) return new Map();
+    const rows = await this.db
+      .select({
+        product: d.product,
+        reference: d.laxReference,
+        state: d.state,
+        provider: d.targetProvider,
+        mode: d.targetMode,
+      })
+      .from(d)
+      .where(inArray(d.laxReference, references));
+    const found = new Map<string, AwaitedDocument[]>();
+    for (const { document, awaited } of waiting) {
+      const target = document.target;
+      const open = awaited
+        .map((reference): AwaitedDocument => {
+          const row = rows.find(
+            (r) =>
+              r.reference === reference &&
+              r.product === document.product &&
+              r.provider === (target?.provider ?? null) &&
+              r.mode === (target?.mode ?? null),
+          );
+          return { reference, state: row ? row.state : null };
+        })
+        .filter((a) => a.state !== "issued");
+      if (open.length > 0) found.set(document.id, open);
+    }
+    return found;
   }
 
   async findById(id: string): Promise<Result<StoredAccountingDocument | null, StoredDocumentCode>> {

@@ -1,7 +1,4 @@
 import { buildListHref } from "@/lib/admin/admin-list-params";
-import { buildAdminListReturnTarget } from "@/lib/admin/admin-list-return-context";
-import { isoDate } from "@/lib/admin/iso-date";
-import type { LegalEntityHealthVM } from "@/lib/admin/legal-entity-health";
 import {
   formatLegalEntityKindSubkind,
   kindLabel,
@@ -10,21 +7,24 @@ import {
   statusLabel,
   stripeSummaryLabel,
 } from "@/lib/admin/legal-entity-list-presenter";
-import { buildPeopleDetailHref } from "@/lib/admin/people/people-detail-href";
+import { listQueryOf, panelParamRedirect } from "@/lib/admin/list-record";
 import { staffStatus } from "@/lib/admin/staff-kit-status";
-import { stripeRequirementsAttentionCountForEntity } from "@/lib/admin/stripe-connect-staff-presenter";
 import type {
   AdminLegalEntityListRow,
   AdminLegalEntityListSummary,
 } from "@/lib/data/http/admin-legal-entities.shared";
-import { searchChipLabel } from "@auction/staff-ui";
-import type {
-  AttentionStripItem,
-  Metric,
-  DataView as StaffDataView,
-  StatusPresentation,
+import {
+  type AttentionStripItem,
+  type Metric,
+  type SortState,
+  type DataView as StaffDataView,
+  type StatusPresentation,
+  decodeSort,
+  encodeSort,
+  recordHrefInList,
+  searchChipLabel,
 } from "@auction/staff-ui";
-import type { LegalEntity, LegalEntityStatus } from "@auction/types";
+import type { LegalEntityStatus } from "@auction/types";
 
 export const LEGAL_ENTITIES_LIST_PATH = "/admin/legal-entities";
 
@@ -71,66 +71,6 @@ export function toLegalEntitiesStaffRows(
   return rows.map(toLegalEntityStaffRow);
 }
 
-/** What the record panel adds beyond the list row, for the one entity that is open. */
-export type LegalEntityPreview = {
-  row: LegalEntitiesStaffRow;
-  stripeConnect: string;
-  requirementsDue: number;
-  laxManaged: boolean;
-  /** "2.50%"; null when the entity pays the standard fee. */
-  platformFee: string | null;
-  health: Pick<LegalEntityHealthVM, "stageLabel" | "canPublish" | "canReceivePayouts" | "blockers">;
-  creator: { id: string; name: string; email: string } | null;
-  /** Null when the viewer may not see documents. */
-  documents: { total: number; pending: number } | null;
-};
-
-export function toLegalEntityPreview(bundle: {
-  entity: LegalEntity;
-  creator: { id: string; name: string; email: string } | null;
-  documents: ReadonlyArray<{ reviewStatus: string }>;
-  health: LegalEntityHealthVM;
-  canViewOwner: boolean;
-  canViewDocuments: boolean;
-}): LegalEntityPreview {
-  const { entity } = bundle;
-  const due = stripeRequirementsAttentionCountForEntity(entity);
-  return {
-    row: toLegalEntityStaffRow({
-      id: entity.id,
-      displayName: entity.displayName,
-      status: entity.status,
-      kind: entity.kind,
-      subkind: entity.subkind,
-      updatedAt:
-        entity.updatedAt instanceof Date ? isoDate(entity.updatedAt) : String(entity.updatedAt),
-      stripeDueCount: due,
-    }),
-    stripeConnect: entity.stripeConnectAccountId
-      ? entity.stripeConnectPayoutsEnabled
-        ? "Payouts enabled"
-        : "Setup in progress"
-      : "Not connected",
-    requirementsDue: due,
-    laxManaged: entity.isLaxManaged,
-    platformFee:
-      entity.platformFeeBps != null ? `${(entity.platformFeeBps / 100).toFixed(2)}%` : null,
-    health: {
-      stageLabel: bundle.health.stageLabel,
-      canPublish: bundle.health.canPublish,
-      canReceivePayouts: bundle.health.canReceivePayouts,
-      blockers: bundle.health.blockers,
-    },
-    creator: bundle.canViewOwner ? bundle.creator : null,
-    documents: bundle.canViewDocuments
-      ? {
-          total: bundle.documents.length,
-          pending: bundle.documents.filter((doc) => doc.reviewStatus === "pending").length,
-        }
-      : null,
-  };
-}
-
 /** A link to the legal entities list with some of its URL state changed; paging restarts. */
 export function legalEntitiesListHref(
   search: LegalEntitiesListSearch,
@@ -144,26 +84,75 @@ export function legalEntitiesListHref(
   });
 }
 
-/** The list with an entity's panel open (`?entity=`), or closed when `entityId` is null. */
-export function legalEntityPanelHref(
-  search: LegalEntitiesListSearch,
-  entityId: string | null,
-): string {
-  const base: LegalEntitiesListSearch = { ...search };
-  for (const key of ["error", "success"]) delete base[key];
-  return buildListHref(LEGAL_ENTITIES_LIST_PATH, base, { entity: entityId });
+/** A legal entity's page. */
+export function legalEntityHref(entityId: string): string {
+  return `${LEGAL_ENTITIES_LIST_PATH}/${encodeURIComponent(entityId)}`;
 }
 
-/** The entity's record page, remembering this list so "Back" returns to it. */
+/**
+ * The entity's page (or one of its tabs), remembering this list (`?list=`) so the page can step
+ * through the same rows and lead back to the list as it was.
+ */
 export function legalEntityRecordHref(
   search: LegalEntitiesListSearch,
   entityId: string,
   tab?: "stripe",
 ): string {
-  const returnTo = buildAdminListReturnTarget(LEGAL_ENTITIES_LIST_PATH, search);
-  const href = buildPeopleDetailHref(`${LEGAL_ENTITIES_LIST_PATH}/${entityId}`, returnTo);
-  if (!tab) return href;
-  return `${href}${href.includes("?") ? "&" : "?"}tab=${tab}`;
+  const href = legalEntityHref(entityId);
+  return recordHrefInList(tab ? `${href}/${tab}` : href, listQueryOf(search, ["entity"]));
+}
+
+/**
+ * An old panel link (`/admin/legal-entities?entity=ID`) opens the entity's page now, still in the
+ * list it named; null when there is no `?entity=`.
+ */
+export function legalEntityPanelRedirect(search: LegalEntitiesListSearch): string | null {
+  return panelParamRedirect(search, "entity", legalEntityHref);
+}
+
+/** Most recently updated first, unless the URL says otherwise; the default stays out of the URL. */
+export const LEGAL_ENTITIES_DEFAULT_SORT: SortState = { columnId: "updated", direction: "desc" };
+
+const LEGAL_ENTITIES_SORTABLE = ["name", "stripe", "updated"] as const;
+
+/** The sort in the URL (`?sort=name`), or the default for a missing or unknown one. */
+export function legalEntitiesSortState(sort: string | string[] | undefined): SortState {
+  const decoded = decodeSort(typeof sort === "string" ? sort : sort?.[0]);
+  return decoded && (LEGAL_ENTITIES_SORTABLE as readonly string[]).includes(decoded.columnId)
+    ? decoded
+    : LEGAL_ENTITIES_DEFAULT_SORT;
+}
+
+/** The list sorted by a column, back on its first page. */
+export function legalEntitiesSortHref(search: LegalEntitiesListSearch, sort: SortState): string {
+  const isDefault =
+    sort.columnId === LEGAL_ENTITIES_DEFAULT_SORT.columnId &&
+    sort.direction === LEGAL_ENTITIES_DEFAULT_SORT.direction;
+  return legalEntitiesListHref(search, { sort: isDefault ? null : encodeSort(sort) });
+}
+
+function compareLegalEntities(
+  a: LegalEntitiesStaffRow,
+  b: LegalEntitiesStaffRow,
+  columnId: string,
+): number {
+  if (columnId === "stripe") return a.stripeDueCount - b.stripeDueCount;
+  if (columnId === "name") {
+    return a.name.toLocaleLowerCase("en-GB").localeCompare(b.name.toLocaleLowerCase("en-GB"));
+  }
+  return a.updatedAt < b.updatedAt ? -1 : a.updatedAt > b.updatedAt ? 1 : 0;
+}
+
+/**
+ * The page of legal entities in the URL's order. The API does not sort, so the server sorts the
+ * rows it loaded, as the list did in the browser before; ties keep the API's order.
+ */
+export function sortLegalEntitiesStaffRows(
+  rows: readonly LegalEntitiesStaffRow[],
+  sort: SortState,
+): LegalEntitiesStaffRow[] {
+  const sign = sort.direction === "desc" ? -1 : 1;
+  return [...rows].sort((a, b) => sign * compareLegalEntities(a, b, sort.columnId));
 }
 
 export type LegalEntitiesViewId = "all" | "stripe";

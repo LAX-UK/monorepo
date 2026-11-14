@@ -1,9 +1,18 @@
-import type { BidInvoiceFacts, BidPaymentFacts, BidRefundsFacts } from "@auction/accounting-domain";
+import type {
+  BidInvoiceFacts,
+  BidPaymentFacts,
+  BidPaymentGroupFacts,
+  BidRefundsFacts,
+} from "@auction/accounting-domain";
 import type { FactsRead, IBidAccountingFactsReader } from "@auction/persistence/interfaces";
 import { describe, expect, it, vi } from "vitest";
 import { classifyDeliveryError } from "../../lib/delivery-retry.js";
 import { InMemoryAccountingStore } from "../../testing/in-memory-accounting-store.js";
-import { AccountingInvoiceLinesChangedError } from "./accounting-event-routes.js";
+import {
+  ACCOUNTING_EVENT_ROUTES,
+  AccountingGroupRowsChangedError,
+  AccountingInvoiceLinesChangedError,
+} from "./accounting-event-routes.js";
 import {
   AccountingProjection,
   AccountingProjectionRefusedError,
@@ -14,6 +23,10 @@ const INVOICE_ID = "0b6a7c1e-1111-4a5b-8c9d-000000000001";
 const BUYER_ID = "0b6a7c1e-2222-4a5b-8c9d-000000000002";
 const PAYMENT_ID = "0b6a7c1e-3333-4a5b-8c9d-000000000003";
 const REFUND_ID = "0b6a7c1e-4444-4a5b-8c9d-000000000004";
+const GROUP_ID = "0b6a7c1e-6666-4a5b-8c9d-000000000006";
+const SECOND_INVOICE_ID = "0b6a7c1e-1111-4a5b-8c9d-000000000007";
+const SECOND_PAYMENT_ID = "0b6a7c1e-3333-4a5b-8c9d-000000000008";
+const QUOTE_ID = "0b6a7c1e-9999-4a5b-8c9d-000000000009";
 
 const invoice: BidInvoiceFacts = {
   invoiceId: INVOICE_ID,
@@ -28,6 +41,30 @@ const invoice: BidInvoiceFacts = {
 
 const ready = <T>(facts: T): FactsRead<T> => ({ status: "ready", facts });
 
+/** Two invoices of one buyer paid together; with a courier quote when `delivery` is given. */
+function groupFacts(delivery?: number): BidPaymentGroupFacts {
+  return {
+    groupId: GROUP_ID,
+    buyer: invoice.buyer,
+    currency: "GBP",
+    totalPence: 154_320 + 1_000 + (delivery ?? 0),
+    settledOn: "2031-03-05",
+    members: [
+      { paymentId: PAYMENT_ID, amountPence: 154_320, invoice },
+      {
+        paymentId: SECOND_PAYMENT_ID,
+        amountPence: 1_000,
+        invoice: {
+          ...invoice,
+          invoiceId: SECOND_INVOICE_ID,
+          lines: [{ kind: "hammer", label: "Hammer price", amountPence: 1_000 }],
+        },
+      },
+    ],
+    deliveries: delivery ? [{ quoteId: QUOTE_ID, amountPence: delivery }] : [],
+  };
+}
+
 function factsReader(over: Partial<IBidAccountingFactsReader> = {}): IBidAccountingFactsReader {
   return {
     invoiceRaised: vi.fn(async () => ready(invoice)),
@@ -36,6 +73,7 @@ function factsReader(over: Partial<IBidAccountingFactsReader> = {}): IBidAccount
         paymentId: PAYMENT_ID,
         invoice,
         amountPence: 154_320,
+        currency: "GBP",
         capturedOn: capturedAt.toISOString().slice(0, 10),
       }),
     ),
@@ -46,6 +84,8 @@ function factsReader(over: Partial<IBidAccountingFactsReader> = {}): IBidAccount
         refunds: [{ refundId: REFUND_ID, amountPence: 1_001, refundedOn: "2031-03-04" }],
       }),
     ),
+    paymentGroupSettled: vi.fn(async () => ready(groupFacts())),
+    deliveryGroupOf: vi.fn(async () => GROUP_ID),
     ...over,
   };
 }
@@ -76,6 +116,18 @@ const captured = {
   },
 };
 const refunded = { id: 12, eventType: "payment.refunded", aggregateId: PAYMENT_ID, payload: {} };
+const settled = (deliveryQuoteIds: string[] = []) => ({
+  id: 13,
+  eventType: "payment_group.settled",
+  aggregateId: GROUP_ID,
+  payload: {
+    paymentGroupId: GROUP_ID,
+    buyerLegalEntityId: BUYER_ID,
+    paymentIds: [SECOND_PAYMENT_ID, PAYMENT_ID],
+    deliveryQuoteIds,
+    settledAt: "2031-03-05T10:00:00.000Z",
+  },
+});
 
 function setUp(facts = factsReader()) {
   const store = new InMemoryAccountingStore();
@@ -112,6 +164,7 @@ describe("accounting projection", () => {
       created: 2,
       replayed: 0,
       kept: 0,
+      parked: 0,
     });
     expect(store.documents().map((d) => [d.kind, d.target, d.sourceEventRef])).toEqual([
       ["contact", { provider: "books", mode: "dry_run" }, "domain_event:10"],
@@ -287,5 +340,124 @@ describe("accounting projection", () => {
     expect([...projection.eventTypes()].sort()).toEqual(
       [...listDomainEventTypesForConsumer("accounting")].sort(),
     );
+  });
+});
+
+describe("accounting projection: payments", () => {
+  it("Pay several: one payment applied to each invoice, after a replay of the invoices", async () => {
+    const { store, projection, facts } = setUp();
+    await projection.project(raised);
+    expect(await projection.project(settled())).toEqual({
+      outcome: "projected",
+      created: 2,
+      replayed: 2,
+      kept: 0,
+      parked: 0,
+    });
+    expect(facts.paymentGroupSettled).toHaveBeenCalledWith(GROUP_ID);
+    const payment = store.documents().find((d) => d.kind === "payment");
+    expect(payment?.reference).toBe(`LAX-BID-PAY-grp-${GROUP_ID}`);
+    expect(payment?.record.status).toBe("pending");
+    expect(payment?.document).toMatchObject({
+      amountPence: 155_320,
+      allocations: [
+        { invoiceReference: `LAX-BID-INV-${INVOICE_ID}`, amountPence: 154_320 },
+        { invoiceReference: `LAX-BID-INV-${SECOND_INVOICE_ID}`, amountPence: 1_000 },
+      ],
+    });
+    // Again: a replay, nothing new.
+    expect(await projection.project(settled())).toMatchObject({ created: 0, replayed: 4 });
+  });
+
+  it("Pay several with a courier quote: the delivery invoice and the payment are parked, the lots are not", async () => {
+    const facts = factsReader({ paymentGroupSettled: vi.fn(async () => ready(groupFacts(4_500))) });
+    const { store, projection } = setUp(facts);
+    expect(await projection.project(settled([QUOTE_ID]))).toMatchObject({
+      created: 5,
+      parked: 2,
+    });
+    const byRef = (reference: string) => store.documents().find((d) => d.reference === reference);
+    for (const reference of [`LAX-BID-INV-dlv-${QUOTE_ID}`, `LAX-BID-PAY-grp-${GROUP_ID}`]) {
+      expect(byRef(reference)?.record).toMatchObject({
+        status: "needs_review",
+        reason: "accounting_parked_vat_on_delivery",
+      });
+    }
+    for (const reference of [`LAX-BID-INV-${INVOICE_ID}`, `LAX-BID-INV-${SECOND_INVOICE_ID}`]) {
+      expect(byRef(reference)?.record.status).toBe("pending");
+    }
+    // Redelivered: still parked, nothing new.
+    expect(await projection.project(settled([QUOTE_ID]))).toMatchObject({
+      created: 0,
+      parked: 0,
+    });
+    expect(byRef(`LAX-BID-PAY-grp-${GROUP_ID}`)?.record.status).toBe("needs_review");
+  });
+
+  it("refuses, without retrying, a group whose stored rows are not the ones the event named", async () => {
+    const { store, projection } = setUp();
+    const other = settled();
+    other.payload.paymentIds = [PAYMENT_ID];
+    const error = await projection.project(other).catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(AccountingGroupRowsChangedError);
+    expect(classifyDeliveryError(error)).toBe("fatal");
+    const withQuote = await projection.project(settled([QUOTE_ID])).catch((e: unknown) => e);
+    expect(withQuote).toBeInstanceOf(AccountingGroupRowsChangedError);
+    expect(store.documents()).toHaveLength(0);
+  });
+
+  it("refuses a group whose allocations do not equal its total, to the penny", async () => {
+    const facts = factsReader({
+      paymentGroupSettled: vi.fn(async () => ready({ ...groupFacts(), totalPence: 155_321 })),
+    });
+    const { store, projection } = setUp(facts);
+    const error = await projection.project(settled()).catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(AccountingProjectionRefusedError);
+    expect((error as AccountingProjectionRefusedError).code).toBe("allocation_mismatch");
+    expect(store.documents()).toHaveLength(0);
+  });
+
+  it("parks a payment taken for an invoice cancelled since, and does not queue the invoice", async () => {
+    const facts = factsReader({
+      paymentCaptured: vi.fn(async () =>
+        ready<BidPaymentFacts>({
+          paymentId: PAYMENT_ID,
+          invoice: { invoiceId: INVOICE_ID, buyer: invoice.buyer, cancelled: true },
+          amountPence: 154_320,
+          currency: "GBP",
+          capturedOn: "2031-03-02",
+        }),
+      ),
+    });
+    const { store, projection } = setUp(facts);
+    expect(await projection.project(captured)).toMatchObject({ created: 2, parked: 1 });
+    expect(store.documents().map((d) => [d.kind, d.record.status])).toEqual([
+      ["contact", "pending"],
+      ["payment", "needs_review"],
+    ]);
+  });
+
+  it("makes no Books document for money that has only partly arrived, or could not be applied", () => {
+    for (const eventType of [
+      "payment.bank_transfer_partially_funded",
+      "payment_group.bank_transfer_partially_funded",
+      "payment.unapplied_money_received",
+      "payment_group.paid",
+    ]) {
+      expect(Object.hasOwn(ACCOUNTING_EVENT_ROUTES, eventType), eventType).toBe(false);
+    }
+  });
+
+  it("skips an event for a part-funded bank transfer: it is not an accounting event", async () => {
+    const { store, projection } = setUp();
+    expect(
+      await projection.project({
+        id: 20,
+        eventType: "payment.bank_transfer_partially_funded",
+        aggregateId: PAYMENT_ID,
+        payload: { paymentId: PAYMENT_ID },
+      }),
+    ).toEqual({ outcome: "skipped", reason: "not_an_accounting_event" });
+    expect(store.documents()).toHaveLength(0);
   });
 });

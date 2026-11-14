@@ -33,6 +33,7 @@ export default async function AdminAccountingPage({
       canAct={page.canAct}
       rehearsal={page.rehearsal}
       unreadable={page.unreadable}
+      partFunded={page.partFunded}
     />
   );
 }

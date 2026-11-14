@@ -61,6 +61,8 @@ export type PaymentGroupSettlementDeps = {
   eligibility: IPaymentEligibilityGate;
   /** Where a capture's failed follow-up steps are reported; they never fail the webhook. */
   errorReporter?: IErrorReporter;
+  /** The clock: a settled group's `settled_at` and its event's `settledAt` are this one instant. */
+  now?: () => Date;
 };
 
 const LIVE: PaymentGroupStatus[] = ["open", "processing"];
@@ -157,9 +159,11 @@ export class PaymentGroupSettlementService {
         }
         afterCommit.push(captured.afterCommit);
       }
+      const settledAt = (this.deps.now ?? (() => new Date()))();
       await this.deps.groups.transitionInTransaction(tx, group.id, LIVE, "paid", {
         stripeChargeId: input.chargeId,
         stripePaymentIntentId: input.paymentIntentId,
+        at: settledAt,
       });
       await this.deps.events.withTx(tx).publish({
         aggregateType: "payment_group",
@@ -177,6 +181,22 @@ export class PaymentGroupSettlementService {
             lotId: m.lotId,
             amount: m.amount,
           })),
+        },
+        actorUserId: null,
+        actingLegalEntityId: group.buyerLegalEntityId,
+      });
+      // For the books: references only, in this same transaction, so a settled group always has
+      // its event and a rolled-back one never does. Every amount is read from the stored rows.
+      await this.deps.events.withTx(tx).publish({
+        aggregateType: "payment_group",
+        aggregateId: group.id,
+        eventType: "payment_group.settled",
+        payload: {
+          paymentGroupId: group.id,
+          buyerLegalEntityId: group.buyerLegalEntityId,
+          paymentIds: members.map((m) => m.paymentId),
+          deliveryQuoteIds: deliveries.map((d) => d.quoteId),
+          settledAt: settledAt.toISOString(),
         },
         actorUserId: null,
         actingLegalEntityId: group.buyerLegalEntityId,

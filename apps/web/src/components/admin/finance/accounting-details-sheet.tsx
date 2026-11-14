@@ -9,7 +9,7 @@ import {
   StaffDate,
   StatusBadge,
 } from "@auction/staff-ui";
-import { ACCOUNTING_NO_REASON_TEXT } from "@auction/types";
+import { ACCOUNTING_NO_REASON_TEXT, ACCOUNTING_QUEUED_TITLE } from "@auction/types";
 
 /** Everything about one document, opened from a row: the full problem, dates and the action. */
 export function AccountingDetailsSheet({
@@ -17,16 +17,20 @@ export function AccountingDetailsSheet({
   canAct,
   onClose,
   onTryAgain,
+  onRelease,
 }: {
   row: AccountingStaffRow | null;
   canAct: boolean;
   onClose: () => void;
   onTryAgain: (row: AccountingStaffRow) => void;
+  onRelease: (row: AccountingStaffRow) => void;
 }) {
+  // Nothing was asked of Books yet for a document queued and never tried: no "Last problem".
   const problem =
-    row && row.books.kind !== "none" && row.state.label === "In Books"
+    !row || row.untried || (row.books.kind !== "none" && row.state.label === "In Books")
       ? null
-      : (row?.problem ?? (row ? ACCOUNTING_NO_REASON_TEXT : null));
+      : (row.problem ?? ACCOUNTING_NO_REASON_TEXT);
+  const queuedNote = row?.untried && !row.problem ? row.note : null;
   return (
     <DetailPanel
       open={row !== null}
@@ -36,30 +40,46 @@ export function AccountingDetailsSheet({
       title={row?.reference ?? ""}
       description={row?.kind}
       status={row ? <StatusBadge tone={row.state.tone}>{row.state.label}</StatusBadge> : null}
-      {...(row && canAct && row.canTryAgain
+      {...(row && canAct && row.canRelease
         ? {
             footer: (
-              <StaffButton variant="primary" onClick={() => onTryAgain(row)}>
-                Try again
+              <StaffButton variant="primary" onClick={() => onRelease(row)}>
+                Release
               </StaffButton>
             ),
           }
-        : row?.books.kind === "link"
+        : row && canAct && row.canTryAgain
           ? {
               footer: (
-                <StaffButton asChild variant="primary">
-                  <a href={row.books.href} target="_blank" rel="noreferrer">
-                    Open in Books
-                  </a>
+                <StaffButton variant="primary" onClick={() => onTryAgain(row)}>
+                  Try again
                 </StaffButton>
               ),
             }
-          : {})}
+          : row?.books.kind === "link"
+            ? {
+                footer: (
+                  <StaffButton asChild variant="primary">
+                    <a href={row.books.href} target="_blank" rel="noreferrer">
+                      Open in Books
+                    </a>
+                  </StaffButton>
+                ),
+              }
+            : {})}
     >
       {row ? (
         <div className="flex flex-col gap-4">
+          {queuedNote ? (
+            <Notice tone="info" title={ACCOUNTING_QUEUED_TITLE}>
+              {queuedNote}
+            </Notice>
+          ) : null}
           {problem ? (
-            <Notice tone={row.state.tone === "danger" ? "danger" : "info"} title="Last problem">
+            <Notice
+              tone={row.state.tone === "danger" ? "danger" : row.parked ? "warning" : "info"}
+              title={row.parked ? row.state.label : "Last problem"}
+            >
               {problem}
             </Notice>
           ) : null}
@@ -80,6 +100,32 @@ export function AccountingDetailsSheet({
               { label: "Updated", value: <StaffDate value={row.updatedAt} withTime /> },
             ]}
           />
+          {row.waitingFor.length > 0 ? (
+            <section aria-label="Waiting for" className="flex flex-col gap-2">
+              <h3 className="text-staff-sm font-medium text-staff-fg">Waiting for</h3>
+              <KeyValueList
+                items={row.waitingFor.map((awaited) => ({
+                  label: awaited.reference,
+                  value: awaited.state,
+                }))}
+              />
+            </section>
+          ) : null}
+          {row.appliedTo.length > 0 ? (
+            <section aria-label="Applied to" className="flex flex-col gap-2">
+              <h3 className="text-staff-sm font-medium text-staff-fg">Applied to</h3>
+              <KeyValueList
+                items={row.appliedTo.map((applied) => ({
+                  label: applied.reference,
+                  value: applied.amount,
+                  numeric: true,
+                }))}
+              />
+              {row.note && !queuedNote ? (
+                <p className="text-staff-sm text-staff-muted">{row.note}</p>
+              ) : null}
+            </section>
+          ) : null}
         </div>
       ) : null}
     </DetailPanel>

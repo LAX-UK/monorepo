@@ -300,6 +300,39 @@ send: the worker enqueues the email before it notes it, so the guards that keep 
 organisation's invoice) out of the outbox are the worker's due-list query (`target_mode = 'live'`,
 `rehearsal = false`) and the service, which only sends while Bid is aimed at Books live.
 
+### Bid payments to Books (Finance › Accounting)
+
+- **Card, or a bank transfer once all of it is applied** (`payment.captured`): one customer payment
+  into the Stripe clearing account, `LAX-BID-PAY-<payment>`, applied in full to its invoice.
+- **Pay several** (`payment_group.settled`, written in the settlement transaction, references only):
+  ONE payment, `LAX-BID-PAY-grp-<group>`, applied to each invoice by its own payment row's amount.
+  The allocations must equal the group's stored total to the penny, or the event goes to the failed
+  deliveries (`allocation_mismatch`).
+- **Order.** An invoice or credit note is sent only once its contact is issued in the same books,
+  and a payment only once every invoice it pays is. Until then it waits in **Waiting** without using
+  an attempt; a refused invoice keeps its payment waiting with it, and trying the invoice again lets
+  the payment follow.
+- **Parked, in Needs a person** (never sent, no Try again). The recovery is **Release** on the row
+  (finance write permission, like Try again). Release checks the reason against what Bid holds now
+  and, only if it is settled, queues the same document under the same LAX reference; otherwise it
+  says why and nothing changes. Each release is in the document's history (`release`, who asked) and
+  the staff audit log ("Parked accounting document released"). Do not cancel a parked document to
+  recover it: a cancelled document keeps its reference and is never sent.
+  - **Waiting for the accountant** (VAT on delivery): a courier quote paid with the lots makes a
+    delivery invoice, `LAX-BID-INV-dlv-<quote>`; it and the Pay several payment that includes it are
+    parked until the accountant says how delivery is booked (`DELIVERY_BOOKING` in the accounting
+    domain). The lots' invoices go as usual. When the answer is in: an engineer sets
+    `DELIVERY_BOOKING` and deploys; then press Release on each delivery invoice (it is rebuilt from
+    the stored rows with the booking; what was charged must not change), then on the payment. The
+    payment is sent once its invoices are in Books.
+  - **The invoice this pays was cancelled after it was paid**: refund the buyer (then cancel the
+    parked payment), or reinstate the invoice in Bid and press Release on the payment. A payment
+    whose invoice was cancelled in Accounting cannot be released: refund the buyer.
+- **Bank transfers part received** are listed above the documents on the page. Nothing goes to
+  Books for them until the whole amount has arrived; the payment then arrives through
+  `payment.captured` (or the group's `payment_group.settled`). Money that could not be applied stays
+  a finance task (unapplied money) and makes no Books document.
+
 ## Related
 
 - [Scale monitoring](./scale-monitoring.md)

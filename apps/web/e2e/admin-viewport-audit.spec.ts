@@ -60,8 +60,15 @@ test.describe("admin viewport audit @a11y", () => {
   test("mobile preview drawers do not overflow horizontally", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
 
-    await page.goto(`/admin/legal-entities?entity=${seededStaffRoutes.legalEntityDrawer}`);
+    await page.goto(`/admin/payouts?payout=${seededStaffRoutes.payoutDrawer}`);
     await expect(page.getByRole("dialog")).toBeVisible();
+    await assertNoHorizontalOverflow(page);
+  });
+
+  test("mobile legal entity page from an old panel link does not overflow", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto(`/admin/legal-entities?entity=${seededStaffRoutes.legalEntityDrawer}`);
+    await expect(page.getByRole("heading", { name: "Organisation readiness" })).toBeVisible();
     await assertNoHorizontalOverflow(page);
   });
 

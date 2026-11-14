@@ -2,7 +2,8 @@
 
 import { IssueInvoiceDialog } from "@/components/sales/issue-invoice-dialog.client";
 import { NewOriginalSaleDialog } from "@/components/sales/new-original-sale-dialog.client";
-import { knownFacts, useWorkList } from "@/components/use-work-list.client";
+import { knownFacts } from "@/components/use-work-list.client";
+import { useWorkQueue } from "@/components/use-work-queue.client";
 import { originalSalesList } from "@/server/domain/sales-lists.vm";
 import {
   type OriginalSaleRow,
@@ -44,12 +45,14 @@ export function OriginalSalesList({
   canSell: boolean;
   loadFailed?: boolean;
 }) {
-  const list = useWorkList({
+  const list = useWorkQueue({
     list: originalSalesList,
     state,
     page,
     noun: { one: "sale", other: "sales" },
     search: { label: "Search original sales", placeholder: "Search by artwork, buyer or email" },
+    ids: page.items.map((row) => row.saleId),
+    queueNoun: "sale",
   });
   const [creating, setCreating] = useState(false);
   const [invoicingId, setInvoicingId] = useState<string | null>(null);
@@ -185,7 +188,8 @@ export function OriginalSalesList({
           getRowId: (row) => row.saleId,
           defaultDensity: "comfortable",
           ...list.sort,
-          onRowOpen: (row) => list.panel.show(row.saleId),
+          onRowOpen: (row) => list.panel.open(row.saleId),
+          rowHref: (row) => list.panelHref(row.saleId),
           activeRowId: list.panel.openId,
           rowActions: {
             label: (row) => `Actions for the sale of ${row.artworkTitle}`,
@@ -195,7 +199,7 @@ export function OriginalSalesList({
                   id: "open",
                   label: "Open details",
                   icon: PanelRight,
-                  onSelect: () => list.panel.show(row.saleId),
+                  onSelect: () => list.panel.open(row.saleId),
                 },
                 invoiceAction(row),
               ].filter((action): action is OverflowAction => action !== null),
@@ -207,9 +211,8 @@ export function OriginalSalesList({
 
       <DetailPanel
         open={opened !== null}
-        onOpenChange={(open) => {
-          if (!open) list.panel.show(null);
-        }}
+        {...list.panel.queueProps}
+        onOpenChange={list.panel.onOpenChange}
         title={opened?.artworkTitle ?? "Original sale"}
         status={
           opened ? (

@@ -2,7 +2,6 @@ import { type Page, expect, test } from "@playwright/test";
 import {
   e2eEnabled,
   e2eSkipReason,
-  expectNoSeriousAxeViolationsInDialog,
   expectNoSeriousAxeViolationsInMain,
   hasStaffCredentials,
   seededStaffRoutes,
@@ -199,10 +198,14 @@ test.describe("admin a11y smoke @a11y", () => {
     await assertMainContentA11y(page, `/admin/clients/${seededStaffRoutes.clientDetail}`);
   });
 
-  test("legal entities preview drawer passes serious axe checks", async ({ page }) => {
+  test("legal entity page from an old panel link passes serious axe checks", async ({ page }) => {
+    // The list's panel is gone: an old `?entity=` link opens the entity's page.
     await page.goto(`/admin/legal-entities?entity=${seededStaffRoutes.legalEntityDrawer}`);
-    await expect(page.getByRole("dialog")).toBeVisible();
-    await expectNoSeriousAxeViolationsInDialog(page);
+    await expect(page).toHaveURL(
+      new RegExp(`/admin/legal-entities/${seededStaffRoutes.legalEntityDrawer}$`),
+    );
+    await expect(page.getByRole("heading", { name: "Organisation readiness" })).toBeVisible();
+    await expectNoSeriousAxeViolationsInMain(page);
   });
 
   test("source of funds detail evidence review passes serious axe checks", async ({ page }) => {

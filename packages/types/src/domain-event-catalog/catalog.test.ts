@@ -211,4 +211,35 @@ describe("DOMAIN_EVENT_REGISTRY", () => {
       true,
     );
   });
+
+  it("routes a settled Pay several payment to the accounting consumer; references only", () => {
+    const entry = DOMAIN_EVENT_REGISTRY["payment_group.settled"];
+    expect(entry.consumers).toEqual(["accounting"]);
+    expect(entry.producers).toEqual(["apps/api"]);
+    expect(entry.piiClassification).toBe("none");
+    const payload = {
+      paymentGroupId: "11111111-1111-4111-8111-111111111111",
+      buyerLegalEntityId: "22222222-2222-4222-8222-222222222222",
+      paymentIds: ["33333333-3333-4333-8333-333333333333"],
+      deliveryQuoteIds: [],
+      settledAt: "2026-11-14T10:00:00.000Z",
+    };
+    expect(parseDomainEventPayload("payment_group.settled", 1, payload)).toEqual({
+      ok: true,
+      data: payload,
+    });
+    // No amounts and no names: the books read them from the stored rows.
+    expect(
+      parseDomainEventPayload("payment_group.settled", 1, { ...payload, paymentIds: [] }).ok,
+    ).toBe(false);
+    expect(
+      Object.keys(
+        (
+          parseDomainEventPayload("payment_group.settled", 1, { ...payload, total: "10.00" }) as {
+            data: object;
+          }
+        ).data,
+      ),
+    ).not.toContain("total");
+  });
 });

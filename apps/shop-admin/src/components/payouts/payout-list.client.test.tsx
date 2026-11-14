@@ -1,6 +1,8 @@
 // @vitest-environment jsdom
 import { pinClock } from "@/test/pin-clock";
+import { expectBackCloses, expectQueuePanel } from "@/test/queue-panel";
 import type { AdminPayoutList } from "@auction/shop-contracts";
+import { StaffTooltipProvider } from "@auction/staff-ui";
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import type * as React from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -80,7 +82,9 @@ const page: AdminPayoutList = {
 
 function renderList(canMarkPaid = true, query: Record<string, string> = {}) {
   return render(
-    <PayoutList state={payoutsList.parse(query)} page={page} canMarkPaid={canMarkPaid} />,
+    <StaffTooltipProvider>
+      <PayoutList state={payoutsList.parse(query)} page={page} canMarkPaid={canMarkPaid} />
+    </StaffTooltipProvider>,
   );
 }
 
@@ -90,6 +94,7 @@ const menuItem = (payee: string, name: RegExp) =>
   within(tableRow(payee)).queryByRole("menuitem", { name });
 
 beforeEach(() => {
+  window.history.replaceState(null, "", "/payouts");
   markPayoutPaid.mockReset();
   refresh.mockReset();
   push.mockReset();
@@ -261,5 +266,59 @@ describe("the payout panel", () => {
       "aria-disabled",
       "true",
     );
+  });
+});
+
+describe("the payouts queue", () => {
+  const theo = {
+    link: "Theo Marsh",
+    panel: /Payout to Theo Marsh/,
+    id: "0f8b2c4e-1111-4222-8333-444455556666",
+  };
+  const cavendish = {
+    link: "Cavendish Gallery",
+    panel: /Payout to Cavendish Gallery/,
+    id: "1a000000-1111-4222-8333-444455556666",
+  };
+
+  it("opens a payout in the URL, steps with J and K, and Esc returns to the row", async () => {
+    renderList();
+    await expectQueuePanel({
+      grid: "Payouts",
+      path: "/payouts",
+      param: "payout",
+      first: theo,
+      second: cavendish,
+      total: 4,
+    });
+  });
+
+  it("closes the panel on Back, leaving the list where it was", async () => {
+    renderList();
+    await expectBackCloses({ grid: "Payouts", path: "/payouts", record: theo });
+  });
+
+  it("keeps the payout's own address for a new tab", () => {
+    renderList();
+    expect(within(grid()).getByRole("link", { name: "Theo Marsh" })).toHaveAttribute(
+      "href",
+      `/payouts?payout=${theo.id}`,
+    );
+  });
+
+  it("asks before marking paid from the panel, and sends nothing until confirmed", async () => {
+    renderList(true, { payout: theo.id });
+    const panel = await screen.findByRole("dialog", { name: theo.panel });
+    fireEvent.click(within(panel).getByRole("button", { name: "Mark £85.00 paid" }));
+    expect(
+      await screen.findByRole("dialog", { name: "Mark the payout to Theo Marsh as paid?" }),
+    ).toBeInTheDocument();
+    expect(markPayoutPaid).not.toHaveBeenCalled();
+  });
+
+  it("offers no Mark paid in the panel to a role that cannot pay", async () => {
+    renderList(false, { payout: theo.id });
+    const panel = await screen.findByRole("dialog", { name: theo.panel });
+    expect(within(panel).queryByRole("button", { name: /Mark .* paid/ })).toBeNull();
   });
 });

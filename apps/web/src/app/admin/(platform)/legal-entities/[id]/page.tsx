@@ -8,7 +8,7 @@ import { redirect } from "next/navigation";
 
 type Props = {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ tab?: string; returnTo?: string; notice?: string }>;
+  searchParams: Promise<{ tab?: string; returnTo?: string; notice?: string; list?: string }>;
 };
 
 export default async function AdminLegalEntityOverviewPage({ params, searchParams }: Props) {
@@ -20,6 +20,7 @@ export default async function AdminLegalEntityOverviewPage({ params, searchParam
     const qs = new URLSearchParams();
     if (sp.returnTo) qs.set("returnTo", sp.returnTo);
     if (sp.notice) qs.set("notice", sp.notice);
+    if (sp.list) qs.set("list", sp.list);
     const suffix = qs.toString();
     redirect(suffix ? `${target}?${suffix}` : target);
   }
@@ -32,6 +33,7 @@ export default async function AdminLegalEntityOverviewPage({ params, searchParam
       creator={page.creator}
       health={page.health}
       pendingDocCount={pendingDocCount}
+      documentCount={page.canViewDocuments ? page.documents.length : null}
       activityEvents={page.activityEvents}
       canViewActivity={page.canViewActivity}
     />

@@ -2,6 +2,7 @@ import {
   type Product,
   type SwitchConfig,
   booksTargetMode,
+  parkReasonFor,
   whenReferenceHeld,
 } from "@auction/accounting-domain";
 import type {
@@ -25,6 +26,8 @@ export type ProjectionOutcome =
       readonly replayed: number;
       /** Contacts already queued with other details; the queued one stands. */
       readonly kept: number;
+      /** New documents stored parked (in "Needs a person"), never sent until that is settled. */
+      readonly parked: number;
     };
 
 /**
@@ -69,7 +72,8 @@ function aimsAtBooks(config: SwitchConfig, product: Product): boolean {
 /**
  * Turns one business event into accounting documents and queues them: reads the facts the event
  * names, runs the flow's pure policy, and registers each document in order (contact, invoice, then
- * what refers to them). Idempotent by LAX reference, so a redelivered event changes nothing.
+ * what refers to them). A document the policy parks is stored parked, never queued. Idempotent by
+ * LAX reference, so a redelivered event changes nothing.
  * Products whose switch does not aim at Books are skipped: with the switch on Xero, nothing new
  * is written.
  */
@@ -122,14 +126,19 @@ export class AccountingProjection {
     let created = 0;
     let replayed = 0;
     let kept = 0;
-    for (const document of routed.projection.value.documents) {
+    let parked = 0;
+    const projection = routed.projection.value;
+    for (const document of projection.documents) {
+      const park = parkReasonFor(projection, document.reference);
       const registered = await this.deps.registry.register({
         document,
         sourceEventRef: `domain_event:${event.id}`,
+        ...(park ? { park } : {}),
       });
       if (registered.ok) {
         if (registered.value.created) created += 1;
         else replayed += 1;
+        if (registered.value.created && park) parked += 1;
         continue;
       }
       const held =
@@ -143,6 +152,6 @@ export class AccountingProjection {
       }
       kept += 1;
     }
-    return { outcome: "projected", created, replayed, kept };
+    return { outcome: "projected", created, replayed, kept, parked };
   }
 }

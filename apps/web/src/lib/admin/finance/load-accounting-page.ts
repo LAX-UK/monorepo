@@ -2,6 +2,7 @@ import "server-only";
 
 import { firstString, parseListSearchParams } from "@/lib/admin/admin-list-params";
 import {
+  type AccountingPartFundedRow,
   type AccountingSearch,
   type AccountingStaffRow,
   accountingHref,
@@ -10,6 +11,7 @@ import {
   activeOrganisation,
   activeReference,
   toAccountingStaffRows,
+  toPartFundedRows,
 } from "@/lib/admin/finance/accounting-queue.vm";
 import { getAccountingQueuePage } from "@/lib/data/http/admin-accounting.reader";
 import { parseStaffPageSize } from "@auction/staff-ui";
@@ -52,6 +54,8 @@ export type AdminAccountingPage = {
   canAct: boolean;
   rehearsal: boolean;
   unreadable: number;
+  /** Bank transfers part received: no Books document until all of it arrives. */
+  partFunded: AccountingPartFundedRow[];
   loadError: string | null;
   pagination: { summary: string; prevHref: string | null; nextHref: string | null } | null;
 };
@@ -91,6 +95,7 @@ export async function loadAdminAccountingPage(sp: AccountingSearch): Promise<Adm
       canAct: false,
       rehearsal: false,
       unreadable: 0,
+      partFunded: [],
       loadError: null,
       pagination: null,
     };
@@ -116,6 +121,7 @@ export async function loadAdminAccountingPage(sp: AccountingSearch): Promise<Adm
       canAct: page.canAct,
       rehearsal: rows.some((row) => row.rehearsal),
       unreadable: page.unreadable,
+      partFunded: toPartFundedRows(page.partFundedTransfers),
       loadError: null,
       pagination:
         rows.length > 0
@@ -140,6 +146,7 @@ export async function loadAdminAccountingPage(sp: AccountingSearch): Promise<Adm
       canAct: false,
       rehearsal: false,
       unreadable: 0,
+      partFunded: [],
       loadError: forbidden ? ACCOUNTING_FORBIDDEN : ACCOUNTING_LOAD_ERROR,
       pagination: null,
     };

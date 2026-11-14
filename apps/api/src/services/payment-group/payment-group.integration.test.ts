@@ -5,6 +5,7 @@ import {
   bidInvoiceLine,
   disputeAllocation,
   disputeCase,
+  domainEvent,
   legalEntity,
   lot,
   payment,
@@ -46,6 +47,8 @@ import {
 import { DisputeAllocationService } from "../disputes/dispute-allocation.service.js";
 import { DisputeCaseRecorder } from "../disputes/dispute-case-recorder.js";
 import { DisputeLineEffects } from "../disputes/dispute-line-effects.js";
+import { DomainEventSink } from "../domain-event-sink.js";
+import { DomainEventPublisher } from "../domain-event.publisher.js";
 import { PaymentCaptureService } from "../payment/payment-capture.service.js";
 import { UnappliedMoneyRecorder } from "../payment/unapplied-money.recorder.js";
 import { PayoutAdjustmentService } from "../payout/payout-adjustment.service.js";
@@ -331,6 +334,7 @@ describe.skipIf(!HAS_DB)("pay several: one payment for several invoices (integra
       .where(like(stripeRefundReversal.stripeRefundId, `re_ps_${run}_%`));
     await db.delete(payment).where(inArray(payment.lotId, lotIds));
     await db.delete(bidInvoice).where(inArray(bidInvoice.lotId, lotIds));
+    await db.delete(domainEvent).where(eq(domainEvent.actingLegalEntityId, orgId));
     await db.delete(paymentGroup).where(eq(paymentGroup.buyerLegalEntityId, orgId));
     const invoices = await db
       .insert(bidInvoice)
@@ -484,6 +488,86 @@ describe.skipIf(!HAS_DB)("pay several: one payment for several invoices (integra
     } finally {
       await db.update(legalEntity).set({ status: "approved" }).where(eq(legalEntity.id, orgId));
     }
+  });
+
+  describe("the books' event, in the settlement transaction (the real event table)", () => {
+    /** The same settlement, writing its events to the real table under strict contract checks. */
+    const SETTLED_AT = new Date("2031-11-14T10:00:00.123Z");
+    const outboxSettlement = (capturer = capture) =>
+      new PaymentGroupSettlementService({
+        now: () => SETTLED_AT,
+        transactionRunner: runner,
+        groups,
+        payments,
+        capture: capturer,
+        events: new DomainEventSink(
+          new DomainEventPublisher({ publishValidateMode: "enforce" }),
+          db,
+        ),
+        claims,
+        receipt,
+        unappliedMoney: new UnappliedMoneyRecorder(new DrizzleUnappliedMoneyReader(db), events),
+        eligibility: new PaymentEligibilityGate(createDrizzleLegalEntityRepository(db), null),
+      });
+    const settledEvents = (groupId: string) =>
+      db
+        .select({ payload: domainEvent.payload, aggregateType: domainEvent.aggregateType })
+        .from(domainEvent)
+        .where(
+          and(
+            eq(domainEvent.aggregateId, groupId),
+            eq(domainEvent.eventType, "payment_group.settled"),
+          ),
+        );
+    const settleInput = async (groupId: string) => {
+      const group = await groups.findById(groupId);
+      return {
+        eventId: `evt_ps_${run}_${randomUUID()}`,
+        groupId,
+        paymentIntentId: `pi_${groupId}`,
+        chargeId: `ch_${groupId}`,
+        amountPence: Math.round(Number(group?.totalAmount) * 100),
+        currency: "gbp",
+      };
+    };
+
+    it("commits payment_group.settled with the group, naming its rows and no amounts", async () => {
+      const groupId = await startOk([ids.a, ids.b]);
+      await outboxSettlement().settle(await settleInput(groupId));
+      expect((await groups.findById(groupId))?.status).toBe("paid");
+      const rows = await settledEvents(groupId);
+      expect(rows).toHaveLength(1);
+      const payload = rows[0]?.payload as Record<string, unknown>;
+      expect(rows[0]?.aggregateType).toBe("payment_group");
+      expect(payload).toMatchObject({ paymentGroupId: groupId, buyerLegalEntityId: orgId });
+      const memberIds = (
+        await db.select({ id: payment.id }).from(payment).where(eq(payment.paymentGroupId, groupId))
+      ).map((r) => r.id);
+      expect([...(payload.paymentIds as string[])].sort()).toEqual([...memberIds].sort());
+      expect(payload.deliveryQuoteIds).toEqual([]);
+      expect(JSON.stringify(payload)).not.toMatch(/amount|total|name|email/i);
+      // The event's time is the group's own settled_at, from the one injected clock.
+      const settled = await groups.findById(groupId);
+      expect(payload.settledAt).toBe(SETTLED_AT.toISOString());
+      expect(settled?.settledAt?.toISOString()).toBe(payload.settledAt);
+    });
+
+    it("leaves no event when the settlement rolls back half way", async () => {
+      const groupId = await startOk([ids.a, ids.b]);
+      let calls = 0;
+      const failing = {
+        captureInTransaction: async (input: Parameters<typeof capture.captureInTransaction>[0]) => {
+          calls += 1;
+          if (calls === 2) throw new Error("capture failed half way");
+          return capture.captureInTransaction(input);
+        },
+      } as unknown as typeof capture;
+      await expect(outboxSettlement(failing).settle(await settleInput(groupId))).rejects.toThrow(
+        "capture failed half way",
+      );
+      expect((await groups.findById(groupId))?.status).not.toBe("paid");
+      expect(await settledEvents(groupId)).toEqual([]);
+    });
   });
 
   it("applies nothing and raises an alert when the amount does not match", async () => {
