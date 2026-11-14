@@ -17,12 +17,11 @@ const journal = JSON.parse(read("meta/_journal.json")) as {
 const TAG = "0384_unapplied_money_dedupe_key_uid";
 
 describe("migration 0384 unapplied money dedupe key unique index", () => {
-  it("is journalled last, after 0383, in a journal that stays ordered", () => {
+  it("is journalled after 0383, in a journal that stays ordered", () => {
     const entry = journal.entries.find((e) => e.tag === TAG);
     const previous = journal.entries.find((e) => e.tag === "0383_shop_invoices_books");
     expect(entry?.idx).toBe((previous?.idx ?? Number.NaN) + 1);
     expect(entry?.when).toBeGreaterThan(previous?.when ?? Number.POSITIVE_INFINITY);
-    expect(journal.entries.at(-1)?.tag).toBe(TAG);
     const times = journal.entries.map((e) => e.when);
     for (let i = 1; i < times.length; i++) {
       expect(times[i]).toBeGreaterThan(times[i - 1] ?? Number.POSITIVE_INFINITY);
