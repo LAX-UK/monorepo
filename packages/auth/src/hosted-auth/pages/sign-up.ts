@@ -13,7 +13,7 @@ import {
   viewChrome,
 } from "../html.js";
 import { hostedLegalProduct } from "../legal-links.js";
-import { HOSTED_AUTH_POLICY } from "../policy.js";
+import { HOSTED_AUTH_ASSET_VERSION, HOSTED_AUTH_POLICY } from "../policy.js";
 import { socialActions } from "../social-actions.js";
 import {
   type HostedAuthView,
@@ -48,7 +48,7 @@ export function buildHostedSignUpHtml(view: HostedAuthView = hostedAuthViewFromS
       ${statusRegions()}
     </form>
     <div class="links links--stacked"><p class="links-secondary">Already have an account? ${continuationAnchor("Sign in", "/login", view.flow)}</p></div>
-    ${oneAccountSection()}</div>`,
+    ${oneAccountSection(`?v=${HOSTED_AUTH_ASSET_VERSION}`)}</div>`,
     scriptSrc: "/hosted-sign-up.js",
     ...(productBack ? { productBack } : {}),
   });

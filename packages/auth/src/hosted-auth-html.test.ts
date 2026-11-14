@@ -345,31 +345,10 @@ describe("one-account message", () => {
         "Sign in once to manage your details, security and works across LAX Bid, LAX Shop and lax.art.",
       );
       expect(html).toContain('<ul class="product-marks" aria-hidden="true">');
-      for (const product of ["bid", "shop", "art"]) {
-        expect(html).toContain(`<span class="product-mark product-mark--${product}"></span>`);
+      for (const file of ["lax-bid-compact", "lax-shop", "lax-art"]) {
+        expect(html).toContain(`/hosted-auth/lockups/${file}.svg`);
+        expect(html).toContain(`/hosted-auth/lockups/${file}-dark.svg`);
       }
-      expect(html).not.toMatch(/<img[^>]*class="product-mark/);
-    }
-  });
-
-  it("sets the marks small and quiet: 18px, one muted ink, hairlines between", () => {
-    expect(HOSTED_AUTH_STYLES).toMatch(
-      /\.product-mark \{[^}]*height: 18px;[^}]*background-color: var\(--color-on-surface-variant\);/,
-    );
-    expect(HOSTED_AUTH_STYLES).toMatch(
-      /\.product-marks li \+ li::before \{[^}]*width: 1px;[^}]*height: 0\.875rem;[^}]*background: var\(--color-outline-variant\);/,
-    );
-    expect(HOSTED_AUTH_STYLES).toMatch(/\.product-marks \{[^}]*flex-wrap: nowrap;/);
-    for (const [product, file, width] of [
-      ["bid", "lax-bid-compact", 49],
-      ["shop", "lax-shop", 54],
-      ["art", "lax-art", 50],
-    ] as const) {
-      expect(HOSTED_AUTH_STYLES).toMatch(
-        new RegExp(
-          `\\.product-mark--${product} \\{[^}]*width: ${width}px;[^}]*mask-image: url\\("/hosted-auth/lockups/${file}\\.svg\\?v=`,
-        ),
-      );
     }
   });
 
@@ -424,7 +403,7 @@ describe("split frame", () => {
     );
   });
 
-  it("hangs the whole painting in a viewport-high column, so the form never re-crops it", () => {
+  it("fills a viewport-high sticky column with the painting, so the form never re-crops it", () => {
     const wide = HOSTED_AUTH_STYLES.slice(HOSTED_AUTH_STYLES.indexOf("@media (min-width: 64rem)"));
     const column = wide.match(/\.auth-art \{([^}]*)\}/)?.[1] ?? "";
     expect(column).toContain("position: sticky;");
@@ -432,16 +411,11 @@ describe("split frame", () => {
     expect(column).toContain("align-self: flex-start;");
     expect(column).toContain("height: 100vh;");
     expect(column).toContain("height: 100dvh;");
-    expect(column).toContain("background: var(--color-art-wall);");
+    expect(column).toContain("/ cover no-repeat;");
+    expect(column).toContain("58% 40%");
     expect(column).not.toContain("min-height");
-    const painting = wide.match(/\.auth-art::before \{([^}]*)\}/)?.[1] ?? "";
-    expect(painting).toContain("center / contain no-repeat");
-    expect(painting).toContain("width: min(82%, 82vh);");
-    expect(painting).toContain("width: min(82%, 82dvh);");
-    expect(painting).toContain("box-shadow: var(--art-shadow);");
-    expect(HOSTED_AUTH_STYLES).not.toMatch(/\bcover\b/);
-    expect(HOSTED_AUTH_STYLES).toContain("--color-art-wall: #dfe4e5");
-    expect(HOSTED_AUTH_STYLES).toContain("--color-art-wall: #343f3f");
+    expect(HOSTED_AUTH_STYLES).not.toContain("art-wall");
+    expect(HOSTED_AUTH_STYLES).not.toContain("art-shadow");
   });
 });
 

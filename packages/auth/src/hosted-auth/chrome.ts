@@ -3,7 +3,12 @@ import { HOSTED_COPY } from "./copy.js";
 import { escapeHostedHtml } from "./escape.js";
 import type { HostedContext } from "./flow-context.js";
 import type { HostedFooterLinks } from "./legal-links.js";
-import { HOSTED_PRODUCT_LOCKUPS, hostedLockupPath, hostedLockupWidth } from "./lockups.js";
+import {
+  HOSTED_LOCKUP_BASE_PATH,
+  HOSTED_PRODUCT_LOCKUPS,
+  hostedLockupPath,
+  hostedLockupWidth,
+} from "./lockups.js";
 
 /**
  * The frame every hosted page shares with LAX Account's signed-out page (`SignInSplit` in
@@ -14,6 +19,7 @@ import { HOSTED_PRODUCT_LOCKUPS, hostedLockupPath, hostedLockupWidth } from "./l
 
 const ACCOUNT_LOCKUP_HEIGHT = 40;
 const ACCOUNT_LOCKUP_WIDTH = hostedLockupWidth(ACCOUNT_LOCKUP_HEIGHT);
+const PRODUCT_MARK_HEIGHT = 28;
 
 /** Lucide's moon and sun at 20px, the icons LAX Account's header toggle draws. */
 const MOON_ICON = `<svg class="theme-icon theme-icon--moon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401"/></svg>`;
@@ -90,11 +96,21 @@ export function destinationLine(chip: HostedProductChip | null): string {
  * The one-account promise LAX Account's landing used to make: one sign-in for Bid, Shop and
  * lax.art, with their marks. The sentence names the products, so the marks are decoration.
  */
-export function oneAccountSection(): string {
+export function oneAccountSection(assetSuffix: string): string {
   const { bid, shop, art } = HOSTED_COPY.oneAccountProducts;
-  // Each mark's shape comes from the stylesheet (one muted ink in either theme).
   const marks = (Object.keys(HOSTED_PRODUCT_LOCKUPS) as HostedNamedProduct[])
-    .map((product) => `<li><span class="product-mark product-mark--${product}"></span></li>`)
+    .map((product) => {
+      const lockup = HOSTED_PRODUCT_LOCKUPS[product];
+      const base = `${HOSTED_LOCKUP_BASE_PATH}/`;
+      return `<li>${themedImage({
+        light: `${base}${lockup.light}${assetSuffix}`,
+        dark: `${base}${lockup.dark}${assetSuffix}`,
+        alt: "",
+        width: Math.round(PRODUCT_MARK_HEIGHT * lockup.aspect),
+        height: PRODUCT_MARK_HEIGHT,
+        className: "product-mark",
+      })}</li>`;
+    })
     .join("");
   return `<section class="one-account" aria-labelledby="one-account-title">
       <h2 id="one-account-title">${escapeHostedHtml(HOSTED_COPY.oneAccountTitle)}</h2>

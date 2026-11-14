@@ -16,9 +16,9 @@ const galleryStyle = { "--sign-in-gallery": `url("${galleryUrl}")` } as CSSPrope
  * on screen and the keyboard never pushes it below a picture; the painting is a background set
  * only from `lg`, so they never download it.
  *
- * The painting hangs whole (never cropped) on a wall taken from its own colours, in a column as
- * tall as the viewport that stays put while a long page scrolls, so its size follows the window
- * alone and never the content beside it.
+ * The painting fills its whole column, edge to edge (`cover`). The column is as tall as the
+ * viewport and stays put while a long page scrolls, and its width is the layout's, so its size
+ * follows the window alone and never the content beside it: no zoom or shift between pages.
  *
  * The issuer's pages cannot use React, so `packages/auth` draws the same frame in HTML from the
  * same tokens (`hosted-auth/html.ts`); keep the two in step.
@@ -52,14 +52,10 @@ export function SignInSplit({
       {/* The painting is decoration: the panel says everything the page means. */}
       <div
         aria-hidden="true"
-        className="sticky top-0 hidden h-screen flex-1 items-center justify-center self-start bg-art-wall supports-[height:100dvh]:h-dvh lg:flex"
-      >
-        <div
-          data-testid="sign-in-painting"
-          style={galleryStyle}
-          className="aspect-square w-[min(82%,82vh)] bg-contain bg-center bg-no-repeat [box-shadow:var(--art-shadow)] supports-[height:100dvh]:w-[min(82%,82dvh)] lg:bg-(image:--sign-in-gallery)"
-        />
-      </div>
+        data-testid="sign-in-painting"
+        style={galleryStyle}
+        className="sticky top-0 hidden h-screen flex-1 self-start bg-surface-container bg-cover bg-no-repeat [background-position:58%_40%] supports-[height:100dvh]:h-dvh lg:block lg:bg-(image:--sign-in-gallery)"
+      />
     </div>
   );
 }
