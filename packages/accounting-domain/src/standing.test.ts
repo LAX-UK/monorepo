@@ -4,6 +4,7 @@ import {
   INVOICE_DELAYED_AFTER_MS,
   type InvoiceStandingInput,
   invoiceStanding,
+  invoiceStandingOf,
 } from "./standing.js";
 
 const RAISED = Date.parse("2026-11-12T14:05:00Z");
@@ -105,5 +106,44 @@ describe("invoiceStanding", () => {
     expect(invoiceStanding({ ...cancelled, booksMode: "test_org" }, RAISED)).toEqual({
       kind: "lax",
     });
+  });
+});
+
+describe("invoiceStandingOf (what the Shop reads)", () => {
+  const base = { raisedAtMs: 0, cancelledAtMs: null, booksMode: "live" as const };
+  it("is LAX's own invoice unless Books issues live, whatever the document says", () => {
+    for (const booksMode of [null, "dry_run", "test_org"] as const) {
+      expect(
+        invoiceStandingOf(
+          { ...base, booksMode, document: { issuedNumber: "LAX-INV-000124", copyStored: true } },
+          0,
+        ),
+      ).toEqual({ kind: "lax" });
+    }
+  });
+  it("shows a number only with LAX's stored copy behind it", () => {
+    expect(
+      invoiceStandingOf(
+        { ...base, document: { issuedNumber: "LAX-INV-000124", copyStored: false } },
+        1,
+      ),
+    ).toEqual({ kind: "preparing" });
+    expect(
+      invoiceStandingOf(
+        { ...base, document: { issuedNumber: "LAX-INV-000124", copyStored: true } },
+        1,
+      ),
+    ).toEqual({ kind: "issued", number: "LAX-INV-000124" });
+  });
+  it("is late after 30 minutes, and cancelled whatever Books holds", () => {
+    expect(invoiceStandingOf({ ...base, document: null }, 30 * 60_000 + 1)).toEqual({
+      kind: "delayed",
+    });
+    expect(
+      invoiceStandingOf(
+        { ...base, cancelledAtMs: 5, document: { issuedNumber: "X", copyStored: true } },
+        1,
+      ),
+    ).toEqual({ kind: "cancelled", cancelledAtMs: 5 });
   });
 });

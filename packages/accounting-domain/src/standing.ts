@@ -46,16 +46,44 @@ export type InvoiceStanding =
  * never from a dry run (its number is `DRY-RUN`) or the test organisation.
  */
 export function invoiceStanding(input: InvoiceStandingInput, nowMs: number): InvoiceStanding {
+  const record = input.document?.record;
+  return invoiceStandingOf(
+    {
+      raisedAtMs: input.raisedAtMs,
+      cancelledAtMs: input.cancelledAtMs,
+      booksMode: input.booksMode,
+      document: input.document
+        ? {
+            issuedNumber: record?.status === "issued" ? record.issued.number : null,
+            copyStored: input.document.copyStored,
+          }
+        : null,
+    },
+    nowMs,
+  );
+}
+
+/**
+ * The same rule for a reader that holds only what the buyer may see of the document: whether it
+ * is issued and under which number, and whether LAX holds its copy (the Shop reads no more than
+ * that). `issuedNumber` is the provider's number once the document is issued, else null.
+ */
+export interface InvoiceStandingFacts {
+  readonly raisedAtMs: number;
+  readonly cancelledAtMs: number | null;
+  readonly booksMode: TargetMode | null;
+  readonly document: { readonly issuedNumber: string | null; readonly copyStored: boolean } | null;
+}
+
+export function invoiceStandingOf(input: InvoiceStandingFacts, nowMs: number): InvoiceStanding {
   // Books off, only rehearsing, or aimed at the test organisation: the buyer's page is exactly
   // as it was before Books.
   if (input.booksMode !== "live") return { kind: "lax" };
   if (input.cancelledAtMs !== null) {
     return { kind: "cancelled", cancelledAtMs: input.cancelledAtMs };
   }
-  const record = input.document?.record;
-  if (record?.status === "issued" && input.document?.copyStored) {
-    return { kind: "issued", number: record.issued.number };
-  }
+  const number = input.document?.issuedNumber;
+  if (number && input.document?.copyStored) return { kind: "issued", number };
   return nowMs - input.raisedAtMs > INVOICE_DELAYED_AFTER_MS
     ? { kind: "delayed" }
     : { kind: "preparing" };
