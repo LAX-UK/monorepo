@@ -2,6 +2,7 @@ import type { SubmissionDecisionQueue } from "@/lib/admin/admin-list-controllers
 import { buildListHref } from "@/lib/admin/admin-list-params";
 import type { AdminSubmissionTableRow } from "@/lib/admin/catalog/submission-table-row";
 import type { CatalogActiveFilterChip } from "@/lib/admin/catalog/types";
+import { panelParamRedirect } from "@/lib/admin/list-record";
 import { staffStatus } from "@/lib/admin/staff-kit-status";
 import { submissionSellerWait } from "@/lib/admin/submissions/submission-seller-wait";
 import type { AdminSubmissionsListSummary } from "@/lib/data/http/admin-submissions-summary.server";
@@ -85,7 +86,7 @@ export function toSubmissionsStaffRows(
     assignee: row.isUnassigned ? null : row.assigneeLabel,
     assignedToMe: row.isAssignedToCurrentUser,
     submittedAt: row.createdAtIso,
-    href: `${SUBMISSIONS_LIST_PATH}/${row.id}`,
+    href: submissionHref(row.id),
     decisionHref: `${SUBMISSIONS_LIST_PATH}/${row.id}/decision`,
   }));
 }
@@ -100,14 +101,26 @@ export function submissionsListHref(
   return buildListHref(SUBMISSIONS_LIST_PATH, base, { offset: null, ...patch });
 }
 
-/** The list with a submission's panel open (`?submission=`), or closed for null. */
-export function submissionPanelHref(current: SubmissionsListSearch, id: string | null): string {
-  const base: SubmissionsListSearch = { ...current };
-  for (const key of ["error", "success", "preview"]) delete base[key];
-  return buildListHref(SUBMISSIONS_LIST_PATH, base, { submission: id });
+/** A submission's page: its review. */
+export function submissionHref(id: string): string {
+  return `${SUBMISSIONS_LIST_PATH}/${id}`;
 }
 
-/** The panel to open on load: `?submission=`, or the older `?preview=` links. */
+/**
+ * An old panel link (`/admin/submissions?submission=ID`, or the older `?preview=ID`) opens the
+ * submission's review page now, still in the list it named; null when there is neither.
+ */
+export function submissionPanelRedirect(current: SubmissionsListSearch): string | null {
+  const id = submissionPanelId(current);
+  if (!id) return null;
+  return panelParamRedirect(
+    { ...current, preview: undefined, submission: id },
+    "submission",
+    submissionHref,
+  );
+}
+
+/** The record an old panel link names: `?submission=`, or the older `?preview=`. */
 export function submissionPanelId(search: SubmissionsListSearch): string | null {
   for (const key of ["submission", "preview"]) {
     const value = search[key];
