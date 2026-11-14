@@ -490,3 +490,5 @@ Biome is clean on the changed files, `lint:layers` passes, and typecheck is clea
 ## Final recheck — in progress
 
 Started 2026-11-14. Scope: commits 32e36cbc, bf94e6d2, fb03b9b7, c0a8d1b1, fb2de5dd, 34b933fc on bk10-shop-invoices.
+
+Progress: fresh Postgres 16.15, `db:migrate` (375 rows) and `db:roles` done. Passing so far: role contracts api/worker/shop 76; worker accounting 153; finance-runtime 232; accounting-domain 287; accounting-zoho-books 308; persistence accounting 69; api accounting 25; shop-api Books 4; shop account UI 64. Next: own races and mutations.
