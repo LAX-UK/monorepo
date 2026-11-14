@@ -326,6 +326,29 @@ describe.skipIf(!HAS_DB)("refunds of unapplied money (integration)", () => {
     expect(await refundLines()).toEqual([]);
   });
 
+  it.each(["refunded", "cancelled"] as const)(
+    "a never-captured (%s) invoice that recorded the refunded charge and intent is not clawed back",
+    async (status) => {
+      await reset("cancelled");
+      const { pi, ch } = money();
+      // The closed invoice recorded the money's ids, but it was never captured (no
+      // payment.captured event): the money never reached the seller.
+      await db
+        .update(payment)
+        .set({ status, stripeChargeId: ch, stripePaymentIntentId: pi })
+        .where(eq(payment.id, paymentId));
+      stripeRefunds.show(ch, 10_000);
+      const result = await webhooks.handleChargeRefunded(
+        eventOf("charge.refunded", refunded(pi, ch)),
+        refunded(pi, ch),
+      );
+      expect(result).toMatchObject({ processed: true, reason: "refund_of_money_not_applied" });
+      expect(await refundLines()).toEqual([]);
+      expect(await payouts.sumRefundLineCentsForPayment(paymentId)).toBe(0);
+      expect((await refundRecords.sumRefundedPence(paymentId)).pence).toBe(0);
+    },
+  );
+
   it("a duplicate payment on an invoice marked paid by staff, handled then refunded, claws back nobody", async () => {
     // Staff recorded the invoice as paid (no Stripe charge on it); the buyer also paid by card.
     await db.update(payment).set({ status: "captured" }).where(eq(payment.id, paymentId));

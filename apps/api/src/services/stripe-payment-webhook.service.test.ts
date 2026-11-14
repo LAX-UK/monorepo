@@ -356,6 +356,41 @@ describe("StripePaymentWebhookService.handleChargeRefunded — charge fixtures",
     expect(paymentRefunds.entries).toEqual([]);
   });
 
+  it.each([
+    ["its recorded charge", { stripeChargeId: "ch_same", stripePaymentIntentId: null }],
+    ["its recorded intent", { stripeChargeId: null, stripePaymentIntentId: "pi_same" }],
+  ])("a never-captured invoice's refund of %s claws back nobody", async (_label, ids) => {
+    const stripeRefunds = new FakeChargeRefunds();
+    stripeRefunds.show("ch_same", 10_000);
+    const { svc, payoutAdjustments, paymentRefunds } = createWebhookService({
+      paymentWebhookLookup: {
+        findPaymentRow: async () =>
+          ({
+            id: "pay_1",
+            sellerLegalEntityId: "00000000-0000-4000-8000-000000000001",
+            status: "refunded",
+            amount: "100.00",
+            ...ids,
+            everCaptured: false,
+          }) as never,
+      },
+      stripeRefunds,
+    });
+    const result = await svc.handleChargeRefunded(
+      { id: "evt_never_captured", type: "charge.refunded" } as Stripe.Event,
+      {
+        id: "ch_same",
+        amount: 10_000,
+        amount_refunded: 10_000,
+        currency: "gbp",
+        payment_intent: "pi_same",
+      } as Stripe.Charge,
+    );
+    expect(result).toMatchObject({ reason: "refund_of_money_not_applied" });
+    expect(payoutAdjustments.addPaymentLineToOpenPayoutOrCreateClawback).not.toHaveBeenCalled();
+    expect(paymentRefunds.entries).toEqual([]);
+  });
+
   it("uses the charge object id from a refund fixture instead of payment_intent", async () => {
     vi.mocked(eq).mockClear();
     const db = mockDbWithPayment({
