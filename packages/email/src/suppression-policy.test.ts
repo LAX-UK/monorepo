@@ -13,6 +13,7 @@ const TRANSACTIONAL = [
   "payment-receipt",
   "payment-refund-notice",
   "shop-order-receipt",
+  "shop-invoice-issued",
   "shop-refund-issued",
   "kyc-resubmission-required",
   "kyc-approved",

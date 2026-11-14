@@ -41,13 +41,16 @@ const SAFE_KEY = /^[A-Za-z0-9][A-Za-z0-9/._-]{0,255}$/;
 const SAFE_NAME = /^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$/;
 
 /** The only templates that may carry a stored file, and where in storage that file must be. */
-const STORED_ATTACHMENT_TEMPLATES: ReadonlySet<TemplateName> = new Set(["bid-invoice-issued"]);
+const STORED_ATTACHMENT_TEMPLATES: ReadonlySet<TemplateName> = new Set([
+  "bid-invoice-issued",
+  "shop-invoice-issued",
+]);
 const STORED_ATTACHMENT_PREFIX = "accounting/";
 const STORED_ATTACHMENT_SUFFIX = ".pdf";
 
 /**
  * Files in LAX's document storage an email carries (the stored copy of a Books invoice). The
- * sender reads each by its key when it sends. Only the "Your invoice" email may carry one (any
+ * sender reads each by its key when it sends. Only the "Your invoice" emails (Bid, Shop) may carry one (any
  * other template's is never read), and only a PDF under `accounting/`; a key or name that is not
  * plainly safe is refused here rather than read or put in a header.
  */
