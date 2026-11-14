@@ -25,6 +25,7 @@ export default async function AdminPaymentsPage({
       <ManualReviewStaffList
         search={page.search}
         rows={page.rows}
+        selected={page.selected}
         queueSize={page.queueSize}
         reasonFilter={page.reasonFilter}
         summary={page.summary}

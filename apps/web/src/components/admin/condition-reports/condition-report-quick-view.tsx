@@ -5,6 +5,7 @@ import type { ConditionReportStaffRow } from "@/lib/admin/condition-reports/cond
 import {
   CellLink,
   DetailPanel,
+  type DetailPanelProps,
   type OverflowAction,
   OverflowMenu,
   PanelSection,
@@ -12,7 +13,6 @@ import {
   StaffDate,
   StatusBadge,
 } from "@auction/staff-ui";
-import { ArrowUpRight } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 
@@ -23,12 +23,13 @@ import { useState } from "react";
  */
 export function ConditionReportQuickView({
   row,
-  onClose,
+  panelProps,
   onFulfilled,
   actions,
 }: {
   row: ConditionReportStaffRow | null;
-  onClose: () => void;
+  /** The queue panel's open state, place in the list and stepping (`useStaffQueue`). */
+  panelProps: Pick<DetailPanelProps, "open" | "onOpenChange" | "queue">;
   /** Runs after the report is published; the list refreshes and the panel closes. */
   onFulfilled: () => void;
   actions: readonly OverflowAction[];
@@ -39,10 +40,7 @@ export function ConditionReportQuickView({
 
   return (
     <DetailPanel
-      open={row !== null}
-      onOpenChange={(open) => {
-        if (!open) onClose();
-      }}
+      {...panelProps}
       dirty={dirty}
       dirtyLabel="this request"
       size="lg"
@@ -67,16 +65,13 @@ export function ConditionReportQuickView({
             ]
           : []
       }
-      headerActions={
-        row ? (
-          <StaffButton asChild variant="ghost" size="sm" icon={<ArrowUpRight aria-hidden />}>
-            <Link href={row.lotHref}>Open lot</Link>
-          </StaffButton>
-        ) : null
-      }
       overflow={
-        others.length > 0 ? (
-          <OverflowMenu label="Request actions" actions={others} Link={Link} />
+        row ? (
+          <OverflowMenu
+            label="Request actions"
+            actions={[{ id: "lot", label: "Open lot", href: row.lotHref }, ...others]}
+            Link={Link}
+          />
         ) : null
       }
       summary={

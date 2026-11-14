@@ -82,12 +82,18 @@ export async function loadAdminPaymentsListPage(sp: PaymentsListSearchParams) {
       getServerSessionUser(),
       navCountsPromise,
     ]);
+    // A hold linked by `?payment=` opens even when the reason filter leaves it out of the rows.
+    const selectedId = typeof search.payment === "string" ? search.payment : null;
+    const selectedHold = selectedId
+      ? manualResult.allRows.find((row) => row.paymentId === selectedId)
+      : undefined;
     return {
       mode: "manual-review" as const,
       search,
       view,
       reasonFilter: model.manualReviewReasonFilter,
       rows: toManualReviewStaffRows(manualResult.rows),
+      selected: selectedHold ? (toManualReviewStaffRows([selectedHold])[0] ?? null) : null,
       queueSize: manualResult.allRows.length,
       summary: manualResult.summary,
       loadError: manualResult.error,

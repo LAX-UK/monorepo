@@ -2,8 +2,8 @@
 
 import { usePaymentMoneyActions } from "@/components/admin/payments/payment-money-actions";
 import { PaymentQuickView } from "@/components/admin/payments/payment-quick-view";
-import { useListPanel } from "@/components/admin/staff/use-list-panel";
 import { useStaffListNavigation } from "@/components/admin/staff/use-staff-list-navigation";
+import { useStaffQueue } from "@/components/admin/staff/use-staff-queue";
 import { ExportButton } from "@/components/exports/export-button";
 import {
   PAYMENTS_LIST_PATH,
@@ -74,12 +74,6 @@ export function PaymentsStaffList(props: PaymentsStaffListProps) {
   const { search, rows, canOpenLot, canOpenClient } = props;
   const { pending, navigate, Link: ListLink } = useStaffListNavigation();
   const panelHref = useCallback((id: string | null) => paymentPanelHref(search, id), [search]);
-  const panel = useListPanel({
-    param: "payment",
-    initialId: typeof search.payment === "string" ? search.payment : null,
-    hrefFor: panelHref,
-  });
-  const openId = panel.openId;
   const port = useMemo(() => createSavedViewsPort("bid-admin.payments"), []);
   const saved = useSavedViews("bid-admin.payments", port);
   const teamViews = useMemo(() => paymentsTeamViews(), []);
@@ -99,10 +93,7 @@ export function PaymentsStaffList(props: PaymentsStaffListProps) {
         header: "Lot",
         mobile: "title",
         cell: (row) => (
-          <PrimaryCell
-            {...(canOpenLot ? { href: `/admin/lots/${row.lotId}`, Link } : {})}
-            secondary={row.lotContext}
-          >
+          <PrimaryCell href={panelHref(row.id)} Link={Link} secondary={row.lotContext}>
             {row.lotTitle}
           </PrimaryCell>
         ),
@@ -184,8 +175,18 @@ export function PaymentsStaffList(props: PaymentsStaffListProps) {
         cell: (row) => <StaffDate value={row.createdAt} />,
       },
     ],
-    [canOpenLot, canOpenClient],
+    [panelHref, canOpenClient],
   );
+  // A work queue (PRD-7): the panel's address is `?payment=`, and J and K step in the order shown.
+  const panel = useStaffQueue({
+    param: "payment",
+    rows,
+    getId: paymentId,
+    initialId: typeof search.payment === "string" ? search.payment : null,
+    hrefFor: panelHref,
+    localSort: { columns, defaultSort: { columnId: "created", direction: "desc" } },
+    noun: "payment",
+  });
 
   const activeFilters = paymentsFilterChips(search).map((chip) => ({
     id: chip.id,
@@ -194,7 +195,7 @@ export function PaymentsStaffList(props: PaymentsStaffListProps) {
   }));
   // Clearing filters keeps the status view: the tab is where status is chosen.
   const clearHref = paymentsListHref(search, { q: null, fulfilment: null, xero: null });
-  const openRow = rows.find((row) => row.id === openId) ?? null;
+  const openRow = panel.record;
 
   return (
     <>
@@ -292,18 +293,15 @@ export function PaymentsStaffList(props: PaymentsStaffListProps) {
         noResults={{ noun: "payments" }}
         table={{
           columns,
-          data: rows,
-          getRowId: (row) => row.id,
-          defaultSort: { columnId: "created", direction: "desc" },
+          ...panel.table,
+          getRowId: paymentId,
           // The lot cell carries a second line (lot number and sale), which needs 44px rows.
           defaultDensity: "comfortable",
           defaultHiddenColumns: ["xero"],
-          onRowOpen: (row) => panel.show(row.id),
-          activeRowId: openId,
           rowActions: {
             label: (row) => `Actions for payment ${row.lotTitle}`,
             actions: (row) => [
-              { id: "open", label: "Open details", onSelect: () => panel.show(row.id) },
+              { id: "open", label: "Open details", onSelect: () => panel.open(row.id) },
               ...(canOpenLot
                 ? [{ id: "lot", label: "Open lot", href: `/admin/lots/${row.lotId}` }]
                 : []),
@@ -322,7 +320,7 @@ export function PaymentsStaffList(props: PaymentsStaffListProps) {
         canWritePayments={props.canWritePayments}
         canOpenLot={canOpenLot}
         canOpenClient={canOpenClient}
-        onClose={() => panel.show(null)}
+        panelProps={panel.panelProps}
         onCapture={money.capture}
         onRefund={money.refund}
         moneyActions={openRow ? money.actionsFor(openRow) : []}
@@ -330,4 +328,8 @@ export function PaymentsStaffList(props: PaymentsStaffListProps) {
       {money.dialogs}
     </>
   );
+}
+
+function paymentId(row: PaymentsStaffRow): string {
+  return row.id;
 }

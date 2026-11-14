@@ -4,6 +4,7 @@ import type { AuditDetailValue } from "@/lib/admin/audit/audit-event-detail";
 import type { AuditLogRowModel } from "@/lib/admin/audit/audit-log.vm";
 import {
   DetailPanel,
+  type DetailPanelProps,
   KeyValueList,
   PanelSection,
   StaffButton,
@@ -27,17 +28,15 @@ function Value({ value }: { value: AuditDetailValue }) {
 /** One audit event in full: who, what, on which record, what changed and what else it carries. */
 export function AuditEventPanel({
   row,
-  onClose,
+  panelProps,
 }: {
   row: AuditLogRowModel | null;
-  onClose: () => void;
+  /** The queue panel's open state, place in the list and stepping (`useStaffQueue`). */
+  panelProps: Pick<DetailPanelProps, "open" | "onOpenChange" | "queue">;
 }) {
   return (
     <DetailPanel
-      open={row !== null}
-      onOpenChange={(open) => {
-        if (!open) onClose();
-      }}
+      {...panelProps}
       size="lg"
       title={row?.action ?? "Event"}
       description={row ? formatStaffDateTime(row.at) : undefined}

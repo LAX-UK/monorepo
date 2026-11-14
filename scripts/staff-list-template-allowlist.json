@@ -90,24 +90,12 @@
       "reason": "Queue panel (pull request 4, Bid admin queues)"
     },
     {
-      "page": "bid-admin:(finance)/payments/page.tsx",
-      "reason": "Queue panel (pull request 4, Bid admin queues)"
-    },
-    {
-      "page": "bid-admin:(platform)/compliance/aml/page.tsx",
-      "reason": "Queue panel (pull request 4, Bid admin queues)"
-    },
-    {
       "page": "bid-admin:(platform)/compliance/data-requests/page.tsx",
       "reason": "Opens its page already through onRowOpen; moves to rowHref"
     },
     {
       "page": "bid-admin:(platform)/compliance/source-of-funds/page.tsx",
       "reason": "Opens its page already through onRowOpen; moves to rowHref"
-    },
-    {
-      "page": "bid-admin:(platform)/condition-reports/page.tsx",
-      "reason": "Queue panel (pull request 4, Bid admin queues)"
     },
     {
       "page": "bid-admin:(platform)/enquiries/page.tsx",
@@ -118,24 +106,8 @@
       "reason": "Opens its page already through onRowOpen; moves to rowHref"
     },
     {
-      "page": "bid-admin:(platform)/invitations/page.tsx",
-      "reason": "Queue panel (pull request 4, Bid admin queues)"
-    },
-    {
-      "page": "bid-admin:(platform)/lot-fulfilment/page.tsx",
-      "reason": "Queue panel (pull request 4, Bid admin queues)"
-    },
-    {
-      "page": "bid-admin:(platform)/onboarding-issues/page.tsx",
-      "reason": "Queue panel (pull request 4, Bid admin queues)"
-    },
-    {
       "page": "bid-admin:(platform)/purchase-problems/page.tsx",
       "reason": "Opens its page already through onRowOpen; moves to rowHref"
-    },
-    {
-      "page": "bid-admin:(shared)/audit/page.tsx",
-      "reason": "Queue panel (pull request 4, Bid admin queues)"
     },
     {
       "page": "bid-admin:(shared)/failed-jobs/page.tsx",

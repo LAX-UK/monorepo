@@ -1,4 +1,5 @@
 import type { PaymentsStaffRow } from "@/lib/admin/finance/payments-staff-list.vm";
+import { queuePanel } from "@/test/queue-panel";
 import { StaffTooltipProvider } from "@auction/staff-ui";
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
@@ -32,7 +33,7 @@ function renderPanel(access: { canOpenLot: boolean; canOpenClient: boolean }) {
       <PaymentQuickView
         row={row}
         canWritePayments
-        onClose={vi.fn()}
+        panelProps={{ open: true, onOpenChange: vi.fn() }}
         onCapture={vi.fn()}
         onRefund={vi.fn()}
         {...access}
@@ -44,7 +45,8 @@ function renderPanel(access: { canOpenLot: boolean; canOpenClient: boolean }) {
 describe("PaymentQuickView links", () => {
   it("links the lot and the seller for someone who can open those pages", () => {
     renderPanel({ canOpenLot: true, canOpenClient: true });
-    expect(screen.getByRole("link", { name: /Open lot/ })).toHaveAttribute(
+    expect(screen.queryByRole("link", { name: /Open lot/ })).not.toBeInTheDocument();
+    expect(queuePanel.openMenu().getByRole("menuitem", { name: "Open lot" })).toHaveAttribute(
       "href",
       "/admin/lots/lot_1",
     );
@@ -58,6 +60,7 @@ describe("PaymentQuickView links", () => {
     renderPanel({ canOpenLot: false, canOpenClient: false });
     expect(screen.getAllByText("Ada Lovelace").length).toBeGreaterThan(0);
     expect(screen.queryByRole("link", { name: /Open lot/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^More actions/ })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Ada Lovelace" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Seller profile" })).not.toBeInTheDocument();
   });

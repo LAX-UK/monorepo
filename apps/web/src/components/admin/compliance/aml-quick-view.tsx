@@ -14,6 +14,7 @@ import {
 import {
   CellLink,
   DetailPanel,
+  type DetailPanelProps,
   KeyValueList,
   Notice,
   type OverflowAction,
@@ -24,7 +25,6 @@ import {
   StatusBadge,
   Timeline,
 } from "@auction/staff-ui";
-import { ArrowUpRight } from "lucide-react";
 import Link from "next/link";
 
 function HitDetail({ hit }: { hit: AmlHitView }) {
@@ -74,21 +74,22 @@ function reviewBlocker(
 
 /**
  * A watchlist screening beside the list, in the record header pattern: the client and both
- * statuses, a meta line (screened, hits), "Open client" and the same `…` menu as the row.
+ * statuses, a meta line (screened, hits), the same `…` menu as the row.
  * The two stages of the maker-checker sit under Review, the next step in the footer; every
  * decision opens the row's confirm dialog.
  */
 export function AmlQuickView({
   row,
   capabilities,
-  onClose,
+  panelProps,
   onTriage,
   onDecide,
   decisionActions = [],
 }: {
   row: AmlStaffRow | null;
   capabilities: AmlCapabilities;
-  onClose: () => void;
+  /** The queue panel's open state, place in the list and stepping (`useStaffQueue`). */
+  panelProps: Pick<DetailPanelProps, "open" | "onOpenChange" | "queue">;
   onTriage: (row: AmlStaffRow, choice: AmlRecommendation) => void;
   onDecide: (row: AmlStaffRow, choice: AmlRecommendation) => void;
   /** The row menu's decision actions, for the panel's `…`. */
@@ -99,10 +100,7 @@ export function AmlQuickView({
   const clientHref = row ? `/admin/clients/${encodeURIComponent(row.userId)}` : "";
   return (
     <DetailPanel
-      open={row !== null}
-      onOpenChange={(open) => {
-        if (!open) onClose();
-      }}
+      {...panelProps}
       title={row?.client ?? "Screening"}
       description="Watchlist screening"
       headerFacts={["Client", "Match", "Policy outcome", "Watchlist hits"]}
@@ -149,20 +147,13 @@ export function AmlQuickView({
           </>
         ) : null
       }
-      headerActions={
-        row ? (
-          <StaffButton asChild variant="ghost" size="sm" icon={<ArrowUpRight aria-hidden />}>
-            <Link href={clientHref}>Open client</Link>
-          </StaffButton>
-        ) : null
-      }
       overflow={
-        row && decisionActions.length > 0 ? (
+        row ? (
           <OverflowMenu
             size="icon-sm"
             label={`More actions for screening ${row.client}`}
             Link={Link}
-            actions={decisionActions}
+            actions={[{ id: "client", label: "Open client", href: clientHref }, ...decisionActions]}
           />
         ) : null
       }

@@ -13,6 +13,7 @@ import { BulkActionBar, TableSelectionProvider } from "./bulk-action-bar.js";
 import { EmptyValue, isEmptyCellValue } from "./cells.js";
 import { rememberListReturn, takeListReturn } from "./list-return.js";
 import { findRowLink, isRowLink, openInNewTab, selectingTextIn, wantsNewTab } from "./row-link.js";
+import { sortRows } from "./sort-rows.js";
 import type {
   BulkSelectionScope,
   DataColumn,
@@ -114,13 +115,6 @@ const hideBelowClass = {
   lg: "hidden lg:table-cell",
   xl: "hidden xl:table-cell",
 };
-
-function compareValues(a: string | number | null, b: string | number | null): number {
-  if (a === b) return 0;
-  if (a === null) return 1;
-  if (b === null) return -1;
-  return a < b ? -1 : 1;
-}
 
 function ariaSort(column: { id: string }, sort: SortState | null) {
   if (!sort || sort.columnId !== column.id) return "none" as const;
@@ -257,20 +251,11 @@ export function DataTable<T>({
   }, [toolbarHeight]);
   const firstColumnSticks = stickyFirstColumn && overflowing;
 
-  const rows = React.useMemo(() => {
-    if (onSortChange || !sort) return data;
-    const column = columns.find((c) => c.id === sort.columnId);
-    if (!column?.sortValue) return data;
-    const value = column.sortValue;
-    // Ties keep the server's order in both directions; empty values always sort last.
-    const sign = sort.direction === "desc" ? -1 : 1;
-    return [...data].sort((a, b) => {
-      const x = value(a);
-      const y = value(b);
-      if (x === null || y === null) return compareValues(x, y);
-      return sign * compareValues(x, y);
-    });
-  }, [data, columns, sort, onSortChange]);
+  // Controlled sort: the app (or the server) has already put the rows in order.
+  const rows = React.useMemo(
+    () => (onSortChange ? data : sortRows(data, columns, sort)),
+    [data, columns, sort, onSortChange],
+  );
 
   const ids = React.useMemo(() => rows.map(getRowId), [rows, getRowId]);
   const rowSelectable = React.useCallback(
