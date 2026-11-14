@@ -438,6 +438,25 @@ describe.skipIf(!HAS_DB)("Shop invoices to Books (integration)", { timeout: 60_0
     expect(enqueue).not.toHaveBeenCalled();
   });
 
+  it("lists no test organisation copy as due even while another product is live", async () => {
+    // Bid live keeps the email step running; the Shop's test_org copy must still never be due.
+    await owner.execute(sql`
+      update accounting_source_setting
+         set xero_mode = 'off',
+             books_mode = case product when 'shop' then 'test_org' when 'bid' then 'live' else 'off' end`);
+    const seeded = await seedPaidOrder(owner);
+    await projection().project(seeded.event);
+    const books = new InMemoryAccounting({
+      orgs: { london_art_exchange: { vatRegistered: false } },
+    });
+    await drain(sender("test_org", books));
+    const { service } = copier("test_org", books.pdfs);
+    await service.tick();
+    const due = await repos.copies.listEmailDue(1_000);
+    const invoice = (await documentsFor(seeded)).find((d) => d.kind === "invoice");
+    expect(due.due.map((d) => d.documentId)).not.toContain(invoice?.id);
+  });
+
   it("never sends a Shop document to the Bid organisation (entity binding)", async () => {
     await aimShop("live");
     const seeded = await seedPaidOrder(owner);

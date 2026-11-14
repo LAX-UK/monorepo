@@ -78,7 +78,11 @@ class Copies implements IAccountingDocumentCopies {
     string,
     AccountingDocumentCopy & { outbox?: string; skipped?: InvoiceEmailSkipReason }
   >();
-  constructor(private readonly documents: StoredAccountingDocument[]) {}
+  constructor(
+    private readonly documents: StoredAccountingDocument[],
+    /** A store that (wrongly) lists every mode as due, to test the service's own guard. */
+    private readonly listsEveryMode = false,
+  ) {}
   async listUncopied(modes: readonly TargetMode[]) {
     return {
       documents: this.documents.filter(
@@ -96,7 +100,13 @@ class Copies implements IAccountingDocumentCopies {
     const due = this.documents
       .filter((d) => {
         const c = this.copies.get(d.id);
-        return c && !c.rehearsal && !c.outbox && !c.skipped && d.target?.mode === "live";
+        return (
+          c &&
+          !c.rehearsal &&
+          !c.outbox &&
+          !c.skipped &&
+          (this.listsEveryMode || d.target?.mode === "live")
+        );
       })
       .slice(0, limit)
       .map((d) => ({
@@ -138,8 +148,9 @@ function setUp(
   documents: StoredAccountingDocument[],
   factsFor: (orderId: string) => ShopInvoiceEmailFacts | null = () => facts(),
   batch?: number,
+  listsEveryMode = false,
 ) {
-  const copies = new Copies(documents);
+  const copies = new Copies(documents, listsEveryMode);
   let n = 0;
   const enqueue = vi.fn(async () => ({ outboxId: `outbox-${++n}` }));
   const pdf: DocumentPdfPort = {
@@ -209,6 +220,19 @@ describe("Shop invoice copies and email", () => {
       expect(await service.tick()).toEqual({ stored: 1, emailed: 0 });
       expect(enqueue).not.toHaveBeenCalled();
     }
+  });
+
+  it("emails no one at the test organisation even when the store wrongly lists it as due", async () => {
+    const { service, enqueue } = setUp(
+      "test_org",
+      [issued("test_org", "doc-t")],
+      () => facts(),
+      undefined,
+      true,
+    );
+    await service.tick();
+    await service.tick();
+    expect(enqueue).not.toHaveBeenCalled();
   });
 
   it("settles an order it will never email, so the one behind it is emailed (batch of 1)", async () => {
