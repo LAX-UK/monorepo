@@ -409,7 +409,7 @@ export const WORKER_STRIPE_ATTRIBUTION_READ_COLUMNS = [
 ] as const;
 export const ACCOUNTING_STRIPE_SHOP_ORDER_FUNCTION = "accounting_stripe_shop_order(text)";
 export const ACCOUNTING_STRIPE_SHOP_ORDER_ROLES = ["worker_app"] as const;
-/** The same question for an original sold directly in the Shop (migration 0388). */
+/** The same question for an original sold directly in the Shop (migration 0389). */
 export const ACCOUNTING_STRIPE_SHOP_ORIGINAL_SALE_FUNCTION =
   "accounting_stripe_shop_original_sale(text)";
 
@@ -459,7 +459,26 @@ export const WORKER_SHOP_INVOICE_READ_COLUMNS = [
   ["shop_product", ["id", "title"]],
   ["shop_product_variant", ["id", "product_id", "sku"]],
   ["shop_guest_customer", ["id", "email", "name", "erased_at"]],
-  /** An original sold directly in the Shop and invoiced by Books (migration 0388). */
+  /**
+   * A refund that went through, for its credit note (flow 21) and the clearing-refund step's check,
+   * and whether Stripe reversed it after it succeeded: never its Stripe ids, nor what staff wrote
+   * when they settled it outside Stripe.
+   */
+  [
+    "shop_refund",
+    [
+      "id",
+      "order_id",
+      "order_line_id",
+      "amount_pence",
+      "status",
+      "settled_outside_at",
+      "reversed_at",
+      "created_at",
+      "updated_at",
+    ],
+  ],
+  /** An original sold directly in the Shop and invoiced by Books (migration 0389). */
   [
     "shop_original_sale",
     [

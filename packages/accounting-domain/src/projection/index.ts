@@ -4,5 +4,6 @@ export * from "./bid.js";
 export * from "./flows.js";
 export * from "./projection.js";
 export * from "./shop-original.js";
+export * from "./shop-refunds.js";
 export * from "./shop.js";
 export * from "./stripe-balance.js";

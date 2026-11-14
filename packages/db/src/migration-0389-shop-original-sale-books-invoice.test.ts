@@ -10,15 +10,15 @@ import {
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const read = (name: string) => readFileSync(join(__dirname, "../drizzle", name), "utf8");
 const statements = (sql: string) => sql.replace(/^--.*$/gm, "");
-const migration = statements(read("0388_shop_original_sale_books_invoice.sql"));
-const rollback = statements(read("0388_rollback.sql"));
+const migration = statements(read("0389_shop_original_sale_books_invoice.sql"));
+const rollback = statements(read("0389_rollback.sql"));
 const journal = JSON.parse(read("meta/_journal.json")) as {
   entries: { idx: number; tag: string; when: number }[];
 };
-const TAG = "0388_shop_original_sale_books_invoice";
-const PREVIOUS_TAG = "0387_accounting_books_status";
+const TAG = "0389_shop_original_sale_books_invoice";
+const PREVIOUS_TAG = "0388_accounting_shop_refunds";
 
-describe("migration 0388 Shop originals invoiced in Books", () => {
+describe("migration 0389 Shop originals invoiced in Books", () => {
   it("is journalled right after the migration before it, in a journal that stays ordered", () => {
     const at = journal.entries.findIndex((e) => e.tag === TAG);
     const entry = journal.entries[at];

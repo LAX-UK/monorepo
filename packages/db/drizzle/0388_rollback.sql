@@ -1,20 +1,15 @@
--- Rollback for 0388_shop_original_sale_books_invoice. Roll the release back first: the earlier
--- shop-api only issues Stripe Invoices and never sets `paid_at`.
---
--- Only the behaviour is removed: the numbering trigger and its function, and the Stripe
--- attribution function. The columns, their CHECKs and unique indexes stay, with their data: which
--- sales Books invoices, their Payment Links, their `LAX-INV-` numbers, the payments that paid them
--- and the invoice recipients. A later forward run finds them as they were, so a Payment Link paid
--- after it still completes its sale, and no number is lost or issued twice. Numbers already taken
--- stay taken in `shop_invoice_counter` (it is never wound back).
--- Also removes this migration's ledger row so a later deploy reapplies it.
+-- Rollback for 0388_accounting_shop_refunds. Roll the release back first, then this.
+-- api_app's rule is left as 0388 made it, with the refusal kept (as 0385's rollback kept its own):
+-- a Shop refund's credit note parked until its account is named stays parked and is never moved
+-- by api_app while the earlier release, which knows nothing of it, runs. Restoring 0385's
+-- function, if ever needed, is that function from 0385_accounting_credit_note_refunds.sql, and
+-- then such notes could be released unchanged by api_app: do not, while any is parked.
+-- The same holds for a credit note parked with an outside-UK delivery invoice. `shop_refund.reversed_at`
+-- is kept (the earlier release never reads it; dropping it would lose which refunds Stripe took
+-- back). Credit notes are not touched. Removes only this migration's own ledger row so a later
+-- deploy reapplies it (the column is added only if missing, the function replaced with the same body).
 BEGIN;
 
-SET LOCAL lock_timeout = '5s';
-DROP TRIGGER IF EXISTS "shop_original_sale_invoice_number_trg" ON "shop_original_sale";
-DROP FUNCTION IF EXISTS "shop_original_sale_assign_invoice_number"();
-DROP FUNCTION IF EXISTS "accounting_stripe_shop_original_sale"(text);
-
-DELETE FROM drizzle.__drizzle_migrations WHERE created_at = 1811764800000;
+DELETE FROM drizzle.__drizzle_migrations WHERE created_at = 1811678400000;
 
 COMMIT;

@@ -24,6 +24,7 @@ import type {
   ShopDeliveryFacts,
   ShopOrderPaidFacts,
   ShopOriginalSalePaidFacts,
+  ShopRefundFacts,
   Source,
   StatusCheckedKind,
   SwitchCode,
@@ -148,6 +149,20 @@ export type CreditBasis =
    * was already credited. Under the lock the total is read again and the notes may never credit
    * more than it (capped at what the quote was charged).
    */
+  /**
+   * The refunds of one Shop order (flow 21): how many had gone through when the facts were read,
+   * and the credit already on the invoice when each new credit note was built. Under the lock the
+   * count is read again, and a new note's other credit must be exactly what it was built after.
+   */
+  | {
+      readonly kind: "shop_refunds";
+      readonly orderId: string;
+      readonly succeededRefunds: number;
+      readonly builtAfter: readonly {
+        readonly reference: string;
+        readonly priorCreditPence: number;
+      }[];
+    }
   | {
       readonly kind: "delivery_refund";
       readonly groupId: string;
@@ -426,6 +441,27 @@ export interface IShopAccountingFactsReader {
   orderPaid(orderId: string): Promise<FactsRead<ShopOrderPaidFacts>>;
   /** An original sold directly in the Shop, paid, whose invoice Books issues (flow 22). */
   originalSalePaid(originalSaleId: string): Promise<FactsRead<ShopOriginalSalePaidFacts>>;
+  /**
+   * A Shop refund that went through, with its paid order and every refund of the order that went
+   * through, oldest first (flow 21). Absent where the refund flow is not wired (it then skips).
+   */
+  refundSettled?(refundId: string): Promise<FactsRead<ShopRefundSettledRead>>;
+  /**
+   * A Shop refund Stripe reported failed after it succeeded (`reversed_at` set), with its order.
+   * Absent where the reversal is not wired (it then skips).
+   */
+  refundReversed?(
+    refundId: string,
+  ): Promise<
+    FactsRead<{ readonly orderId: string; readonly reversedRefundIds: readonly string[] }>
+  >;
+}
+
+/** What flow 21 reads for one Shop refund; the books' credit notes are added by the projector. */
+export interface ShopRefundSettledRead {
+  readonly order: ShopOrderPaidFacts;
+  readonly refunds: readonly ShopRefundFacts[];
+  readonly refundId: string;
 }
 
 /** A paid Shop order's delivery as stored: what a parked delivery invoice is rebuilt from. */

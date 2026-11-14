@@ -1577,6 +1577,12 @@ export const shopRefund = pgTable(
     settledOutsideReference: text("settled_outside_reference"),
     settledOutsideReason: text("settled_outside_reason"),
     settledOutsideBySubjectId: text("settled_outside_by_subject_id"),
+    /**
+     * Set when Stripe reported this refund failed after it had succeeded (the issuer could not
+     * return it, and the money came back to the Stripe balance). The status stays as it was; the
+     * books take the refund's credit back (`shop.refund.reversed`). Migration 0388.
+     */
+    reversedAt: timestamp("reversed_at", { mode: "date", withTimezone: true }),
     createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true }).defaultNow().notNull(),
   },
@@ -1781,7 +1787,7 @@ export const shopOriginalSale = pgTable(
     reservationExpiresAt: timestamp("reservation_expires_at", { mode: "date", withTimezone: true }),
     stripeInvoiceId: text("stripe_invoice_id"),
     /**
-     * Who issues the sale's invoice, fixed when staff issue it (migration 0388): `stripe` (a Stripe
+     * Who issues the sale's invoice, fixed when staff issue it (migration 0389): `stripe` (a Stripe
      * Invoice) or `books` (Zoho Books, under a `LAX-INV-` number; Stripe takes the payment through
      * a single-use Payment Link).
      */

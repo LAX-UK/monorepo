@@ -536,7 +536,7 @@ describe.skipIf(!WORKER_URL)("worker_app role contract", { timeout: 60_000 }, ()
       );
       // It answers with an order id (uuid), never the PaymentIntent; PUBLIC cannot call it.
       expect(answer.rows[0]).toEqual({ type: "uuid", publicAllowed: false, column: false });
-      // The same for an original sold directly in the Shop (migration 0388): the sale id only.
+      // The same for an original sold directly in the Shop (migration 0389): the sale id only.
       const original = await client.query<{
         type: string;
         publicAllowed: boolean;

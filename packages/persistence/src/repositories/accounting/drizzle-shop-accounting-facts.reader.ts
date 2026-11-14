@@ -3,6 +3,7 @@ import type {
   ShopOrderLineFacts,
   ShopOrderPaidFacts,
   ShopOriginalSalePaidFacts,
+  ShopRefundFacts,
 } from "@auction/accounting-domain";
 import { LONDON_TIME_ZONE, dayKey } from "@auction/datetime";
 import type { Database } from "@auction/db";
@@ -15,9 +16,10 @@ import {
   shopParty,
   shopProduct,
   shopProductVariant,
+  shopRefund,
   shopUserProfile,
 } from "@auction/db/schema";
-import { asc, eq } from "drizzle-orm";
+import { and, asc, eq, isNull, sql } from "drizzle-orm";
 import type {
   FactsRead,
   IShopAccountingFactsReader,
@@ -25,6 +27,7 @@ import type {
   IShopInvoiceEmailFactsReader,
   ShopInvoiceEmailFacts,
   ShopInvoiceRecipient,
+  ShopRefundSettledRead,
 } from "../../interfaces/accounting.js";
 
 const skip = (reason: string) => ({ status: "skip", reason }) as const;
@@ -135,6 +138,72 @@ export class DrizzleShopAccountingFactsReader
         vatPence: order.surchargeVatPence,
       },
     });
+  }
+
+  async refundSettled(refundId: string): Promise<FactsRead<ShopRefundSettledRead>> {
+    const [own] = await this.db
+      .select({
+        orderId: shopRefund.orderId,
+        status: shopRefund.status,
+        reversedAt: shopRefund.reversedAt,
+      })
+      .from(shopRefund)
+      .where(eq(shopRefund.id, refundId));
+    if (!own) return skip("refund_not_found");
+    // Only a refund that went through says anything to the books. One Stripe reported failed after
+    // it succeeded (`reversed_at`) went back to LAX: its own event takes its credit back.
+    if (own.status !== "succeeded") return skip("refund_not_succeeded");
+    if (own.reversedAt !== null) return skip("refund_reversed");
+    const order = await this.orderPaid(own.orderId);
+    if (order.status === "skip") return order;
+    const rows = await this.db
+      .select({
+        id: shopRefund.id,
+        amountPence: shopRefund.amountPence,
+        orderLineId: shopRefund.orderLineId,
+        settledOutsideAt: shopRefund.settledOutsideAt,
+        updatedAt: shopRefund.updatedAt,
+      })
+      .from(shopRefund)
+      .where(
+        and(
+          eq(shopRefund.orderId, own.orderId),
+          eq(shopRefund.status, "succeeded"),
+          isNull(shopRefund.reversedAt),
+        ),
+      )
+      // In the order they went through (the row is last written then, or when marked settled
+      // outside): the policy places them once each in this order, and one it cannot place holds
+      // every later one, so a refund that went through later never changes how an earlier one
+      // was placed.
+      .orderBy(
+        asc(sql`coalesce(${shopRefund.settledOutsideAt}, ${shopRefund.updatedAt})`),
+        asc(shopRefund.createdAt),
+        asc(shopRefund.id),
+      );
+    const refunds: ShopRefundFacts[] = rows.map((row) => ({
+      refundId: row.id.toLowerCase(),
+      amountPence: row.amountPence,
+      // The row is last written when the refund goes through (or is marked settled outside).
+      refundedOn: londonDay(row.settledOutsideAt ?? row.updatedAt),
+      orderLineId: row.orderLineId?.toLowerCase() ?? null,
+      settledOutside: row.settledOutsideAt !== null,
+    }));
+    return ready({ order: order.facts, refunds, refundId: refundId.toLowerCase() });
+  }
+
+  async refundReversed(
+    refundId: string,
+  ): Promise<
+    FactsRead<{ readonly orderId: string; readonly reversedRefundIds: readonly string[] }>
+  > {
+    const [own] = await this.db
+      .select({ orderId: shopRefund.orderId, reversedAt: shopRefund.reversedAt })
+      .from(shopRefund)
+      .where(eq(shopRefund.id, refundId));
+    if (!own) return skip("refund_not_found");
+    if (own.reversedAt === null) return skip("refund_not_reversed");
+    return ready({ orderId: own.orderId, reversedRefundIds: [refundId.toLowerCase()] });
   }
 
   async forOrder(orderId: string): Promise<ShopInvoiceEmailFacts | null> {
