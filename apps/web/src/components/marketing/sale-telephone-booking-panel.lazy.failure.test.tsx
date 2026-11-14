@@ -1,21 +1,53 @@
-import { LazySaleTelephoneBookingPanelForm } from "@/components/marketing/sale-telephone-booking-panel.lazy";
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
-/** The form's chunk: refused while `fail` is set. */
-const chunk = vi.hoisted(() => ({ fail: true, loads: 0 }));
+/**
+ * The form's chunk. Each fetch is held until the test settles it, so what the card shows while a
+ * fetch is pending is observable, and nothing depends on how fast a promise settles.
+ */
+const chunk = vi.hoisted(() => ({
+  loads: 0,
+  pending: [] as Array<{ resolve: () => void; reject: () => void }>,
+}));
 
 vi.mock("@/components/marketing/sale-telephone-booking-panel", async () => {
   const actual = await vi.importActual<
     typeof import("@/components/marketing/sale-telephone-booking-panel")
   >("@/components/marketing/sale-telephone-booking-panel");
   return {
+    // Read once per fetch; the loader resolves to whatever this returns, promise included.
     get SaleTelephoneBookingPanelForm() {
       chunk.loads += 1;
-      if (chunk.fail) throw new Error("chunk failed");
-      return actual.SaleTelephoneBookingPanelForm;
+      return new Promise((resolve, reject) => {
+        chunk.pending.push({
+          resolve: () => resolve(actual.SaleTelephoneBookingPanelForm),
+          reject: () => reject(new Error("chunk failed")),
+        });
+      });
     },
   };
+});
+
+/** Settles the oldest held fetch once it has started. */
+const settle = async (outcome: "resolve" | "reject") => {
+  await waitFor(() => expect(chunk.pending.length).toBeGreaterThan(0));
+  await act(async () => {
+    chunk.pending.shift()?.[outcome]();
+  });
+};
+
+/** A fresh copy of the component, so a form that arrived in one test is not remembered by the next. */
+const freshLazyForm = async () => {
+  vi.resetModules();
+  const { LazySaleTelephoneBookingPanelForm } = await import(
+    "@/components/marketing/sale-telephone-booking-panel.lazy"
+  );
+  return LazySaleTelephoneBookingPanelForm;
+};
+
+beforeEach(() => {
+  chunk.loads = 0;
+  chunk.pending.length = 0;
 });
 
 const props = {
@@ -27,15 +59,16 @@ const props = {
   onBooked: vi.fn(),
 };
 
-// The tests run in order and share the module cache: two failures, then the form arrives.
 describe("LazySaleTelephoneBookingPanelForm when the form cannot be fetched", () => {
   it("lays the message over the placeholder, so the card keeps its height, and announces it", async () => {
-    render(<LazySaleTelephoneBookingPanelForm {...props} />);
+    const LazyForm = await freshLazyForm();
+    render(<LazyForm {...props} />);
     const box = screen.getByTestId("telephone-form-box");
     const placeholder = box.firstElementChild as HTMLElement;
     expect(placeholder).not.toHaveClass("invisible");
     const placeholderMarkup = placeholder.innerHTML;
 
+    await settle("reject");
     const alert = await screen.findByRole("alert");
     expect(alert).toHaveTextContent(/did not load/i);
 
@@ -52,36 +85,43 @@ describe("LazySaleTelephoneBookingPanelForm when the form cannot be fetched", ()
   });
 
   it("keeps focus in the card on retry and returns it to Try again when it fails again", async () => {
-    render(<LazySaleTelephoneBookingPanelForm {...props} />);
+    const LazyForm = await freshLazyForm();
+    render(<LazyForm {...props} />);
+    await settle("reject");
     const retry = await screen.findByRole("button", { name: "Try again" });
     expect(retry).toHaveAccessibleDescription(/did not load/i);
     const region = screen.getByRole("group", { name: "Telephone line request" });
 
     retry.focus();
     fireEvent.click(retry);
-    expect(document.activeElement).toBe(region);
+    // The retry's fetch is held, so this is the state while it is pending.
+    await waitFor(() => expect(document.activeElement).toBe(region));
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
 
+    await settle("reject");
     const again = await screen.findByRole("button", { name: "Try again" });
     await waitFor(() => expect(document.activeElement).toBe(again));
   });
 
   it("shows the form after Try again once the chunk can be fetched", async () => {
-    render(<LazySaleTelephoneBookingPanelForm {...props} />);
+    const LazyForm = await freshLazyForm();
+    render(<LazyForm {...props} />);
+    await settle("reject");
     const retry = await screen.findByRole("button", { name: "Try again" });
     const loadsBefore = chunk.loads;
-    chunk.fail = false;
 
-    await act(async () => {
-      fireEvent.click(retry);
-    });
+    fireEvent.click(retry);
+    await settle("resolve");
 
     expect(
       await screen.findByRole("button", { name: "Request telephone line" }),
     ).toBeInTheDocument();
     expect(chunk.loads).toBe(loadsBefore + 1);
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
-    expect(document.activeElement).toBe(
-      screen.getByRole("group", { name: "Telephone line request" }),
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        screen.getByRole("group", { name: "Telephone line request" }),
+      ),
     );
   });
 });

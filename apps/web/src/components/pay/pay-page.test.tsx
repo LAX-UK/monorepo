@@ -116,8 +116,11 @@ describe("the Pay page, ready to pay", () => {
     fireEvent.click(screen.getAllByRole("button", { name: /Pay/ })[0] as HTMLElement);
     expect(await screen.findByRole("alert")).toHaveTextContent(/Nothing was charged/);
     expect(refresh).not.toHaveBeenCalled();
-    // The button is usable again.
-    expect(screen.getAllByRole("button", { name: /Pay £2,375.00/ }).length).toBeGreaterThan(0);
+    // The button is usable again. The alert is shown by the answer's own update; the transition
+    // that wraps the action settles a render later, so the name is awaited, not read at once.
+    expect(
+      (await screen.findAllByRole("button", { name: /Pay £2,375.00/ })).length,
+    ).toBeGreaterThan(0);
   });
 
   it("offers the phone bar the same action with the total beside it", () => {
