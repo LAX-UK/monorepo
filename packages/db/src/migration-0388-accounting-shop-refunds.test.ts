@@ -23,11 +23,10 @@ const fn = (sql: string) => {
 };
 
 describe("migration 0388 accounting Shop refunds", () => {
-  it("is journalled last, after 0386 (and 0387 once it lands), in a journal that stays ordered", () => {
+  it("is journalled last, right after 0387, in a journal that stays ordered", () => {
     const entry = journal.entries.find((e) => e.tag === TAG);
-    // 0387 (#1377) is not on main yet. If it lands first, this entry moves to follow it.
     const previous = journal.entries.at(-2);
-    expect(previous?.tag).toMatch(/^038[67]_/);
+    expect(previous?.tag).toBe("0387_accounting_books_status");
     expect(entry?.idx).toBe((previous?.idx ?? Number.NaN) + 1);
     expect(entry?.when).toBeGreaterThan(previous?.when ?? Number.POSITIVE_INFINITY);
     expect(new Set(journal.entries.map((e) => e.idx)).size).toBe(journal.entries.length);
