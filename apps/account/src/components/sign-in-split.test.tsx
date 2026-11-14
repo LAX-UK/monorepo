@@ -26,9 +26,28 @@ describe("SignInSplit", () => {
     expect(html).toContain('href="https://lax.bid/faq"');
   });
 
-  it("shows the painting from lg only, as decoration", () => {
-    expect(html).toMatch(
-      /<div class="[^"]*hidden[^"]*lg:block[^"]*"><img src="[^"]*signin-gallery[^"]*" alt=""/,
+  it("fills the right-hand column with the painting from lg only, as decoration", () => {
+    expect(html).not.toContain("<img");
+    const classes = html.match(
+      /<div aria-hidden="true" data-testid="sign-in-painting" style="([^"]*)" class="([^"]*)"/,
     );
+    expect(classes?.[1]).toMatch(/--sign-in-gallery:url\(&quot;[^&]*signin-gallery[^&]*&quot;\)/);
+    const list = classes?.[2]?.split(" ") ?? [];
+    expect(list).toEqual(
+      expect.arrayContaining([
+        "hidden",
+        "lg:block",
+        "sticky",
+        "top-0",
+        "self-start",
+        "h-screen",
+        "supports-[height:100dvh]:h-dvh",
+        "bg-cover",
+        "[background-position:58%_40%]",
+        "lg:bg-(image:--sign-in-gallery)",
+      ]),
+    );
+    expect(list.some((c) => c.includes("min-h"))).toBe(false);
+    expect(list).not.toContain("bg-(image:--sign-in-gallery)");
   });
 });
