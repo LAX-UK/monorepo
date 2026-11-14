@@ -2,6 +2,7 @@
 
 import { OnboardingIssueQuickView } from "@/components/admin/onboarding/onboarding-issue-quick-view";
 import { useStaffListNavigation } from "@/components/admin/staff/use-staff-list-navigation";
+import { useStaffQueue } from "@/components/admin/staff/use-staff-queue";
 import {
   ONBOARDING_TAB_LABELS,
   type OnboardingListSearch,
@@ -27,7 +28,7 @@ import {
   StatusBadge,
 } from "@auction/staff-ui";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo } from "react";
 
 export type OnboardingIssuesStaffListProps = {
   search: OnboardingListSearch;
@@ -74,13 +75,21 @@ function WaitingCell({ row }: { row: OnboardingStaffRow }) {
 /**
  * Bid's onboarding issues on the staff list template: the five queues of items waiting on staff
  * (entities, artists, KYC sessions, lead organisations and documents) as tabs with counts. A row
- * opens a panel with the item and the record page that settles it; the decisions themselves are
- * made on those pages.
+ * opens a panel with what holds the item up, who it waits on and the next step, and the record
+ * page that settles it; the decisions themselves are made on those pages. The panel is a work
+ * queue: its address is `?item=`, it shows its place in the queue and J and K step through it.
  */
 export function OnboardingIssuesStaffList(props: OnboardingIssuesStaffListProps) {
   const { search, rows, tab } = props;
   const { pending, navigate, Link: ListLink } = useStaffListNavigation();
-  const [openId, setOpenId] = useState<string | null>(props.selectedId);
+  const hrefFor = useCallback(
+    (id: string | null) =>
+      onboardingListHref(search, {
+        item: id,
+        offset: typeof search.offset === "string" ? search.offset : null,
+      }),
+    [search],
+  );
 
   const columns = useMemo<DataColumn<OnboardingStaffRow>[]>(
     () => [
@@ -133,12 +142,19 @@ export function OnboardingIssuesStaffList(props: OnboardingIssuesStaffListProps)
     [tab],
   );
 
-  const openRow =
-    rows.find((row) => row.id === openId) ??
-    (props.selected && props.selected.id === openId ? props.selected : null);
-  const openIndex = openRow ? rows.findIndex((row) => row.id === openRow.id) : -1;
-  const previous = openIndex > 0 ? rows[openIndex - 1] : undefined;
-  const next = openIndex >= 0 ? rows[openIndex + 1] : undefined;
+  const queue = useStaffQueue({
+    param: "item",
+    rows,
+    getId: itemId,
+    initialId: props.selectedId,
+    hrefFor,
+    pageHref: (row) => row.href,
+    localSort: { columns, defaultSort: { columnId: "waiting", direction: "asc" } },
+    selected: props.selected,
+    total: props.total,
+    offset: props.offset,
+    noun: "item",
+  });
   const metrics = onboardingMetrics(props.lensSummary);
   const empty = onboardingEmptyCopy(tab, props.queueSummary.queueTotal);
   const linkClass = "underline underline-offset-2 hover:text-staff-fg";
@@ -218,17 +234,14 @@ export function OnboardingIssuesStaffList(props: OnboardingIssuesStaffListProps)
         empty={empty}
         table={{
           columns,
-          data: rows,
-          getRowId: (row) => row.id,
+          ...queue.table,
+          getRowId: itemId,
           // The first cell carries a second line, which needs 44px rows.
           defaultDensity: "comfortable",
-          defaultSort: { columnId: "waiting", direction: "asc" },
-          onRowOpen: (row) => setOpenId(row.id),
-          activeRowId: openId,
           rowActions: {
             label: (row) => `Actions for ${row.title}`,
             actions: (row) => [
-              { id: "open", label: "Open details", onSelect: () => setOpenId(row.id) },
+              { id: "open", label: "Open details", onSelect: () => queue.open(row.id) },
               { id: "full-page", label: row.hrefLabel, href: row.href },
             ],
           },
@@ -239,15 +252,11 @@ export function OnboardingIssuesStaffList(props: OnboardingIssuesStaffListProps)
         }}
         pagination={props.pagination}
       />
-      <OnboardingIssueQuickView
-        row={openRow}
-        position={
-          openIndex >= 0 ? { index: props.offset + openIndex + 1, total: props.total } : null
-        }
-        onClose={() => setOpenId(null)}
-        onPrevious={previous ? () => setOpenId(previous.id) : null}
-        onNext={next ? () => setOpenId(next.id) : null}
-      />
+      <OnboardingIssueQuickView row={queue.record} panelProps={queue.panelProps} />
     </>
   );
+}
+
+function itemId(row: OnboardingStaffRow): string {
+  return row.id;
 }

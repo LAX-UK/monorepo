@@ -33,6 +33,8 @@ export type StaffQueueOptions<T> = {
   selected?: T | null;
   /** How many records the whole queue holds, when more than the rows shown. */
   total?: number;
+  /** How many records come before the rows shown (a later page), so "51 of 120" is in the queue. */
+  offset?: number;
   /** What the queue holds, singular, for "Next hold". */
   noun?: string;
   /**
@@ -66,6 +68,7 @@ export type StaffQueue<T> = QueuePanelState & {
  */
 export function useStaffQueue<T>(options: StaffQueueOptions<T>): StaffQueue<T> {
   const { param, rows, getId, initialId, hrefFor, localSort, selected, total, noun } = options;
+  const offset = options.offset ?? 0;
   const sorted = useSortedRows({
     data: rows,
     columns: localSort?.columns ?? [],
@@ -100,7 +103,9 @@ export function useStaffQueue<T>(options: StaffQueueOptions<T>): StaffQueue<T> {
     panelProps: {
       open: record !== null,
       onOpenChange: panel.onOpenChange,
-      ...(panel.queue ? { queue: panel.queue } : {}),
+      ...(panel.queue
+        ? { queue: { ...panel.queue, position: panel.queue.position + offset } }
+        : {}),
     },
     table: {
       data: ordered,

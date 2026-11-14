@@ -3,6 +3,7 @@ import {
   onboardingEmptyCopy,
   onboardingListHref,
   onboardingMetrics,
+  onboardingNextStep,
   onboardingRangeSummary,
   onboardingViews,
   toOnboardingStaffRow,
@@ -137,5 +138,24 @@ describe("onboarding issues staff list view model", () => {
     expect(onboardingEmptyCopy("kyc", 0).title).toBe("All onboarding issues resolved");
     expect(onboardingEmptyCopy("kyc", 3).title).toBe("No KYC sessions waiting");
     expect(onboardingRangeSummary(50, 50, 312)).toBe("51–100 of 312 items");
+  });
+
+  it("says what holds each item up, who it waits on and the next step", () => {
+    expect(toOnboardingStaffRow("kyc", kyc, undefined, NOW)?.nextStep).toMatchObject({
+      waitingOn: "The client",
+      blocker: "The provider needs more from the client",
+    });
+    expect(toOnboardingStaffRow("documents", document, undefined, NOW)?.nextStep).toMatchObject({
+      waitingOn: "Staff",
+      action: "Approve or reject it on the entity's Documents tab.",
+    });
+    expect(onboardingNextStep("entities", "docs_received").action).toMatch(/^Start the review/);
+    expect(onboardingNextStep("entities", "under_review").action).toMatch(
+      /^Approve and move to Connect/,
+    );
+    expect(onboardingNextStep("kyc", "processing").waitingOn).toBe("The provider");
+    expect(onboardingNextStep("kyc", "created").blocker).toBe("Identity check not finished");
+    expect(onboardingNextStep("artists", "pending").action).toMatch(/approve or reject/);
+    expect(onboardingNextStep("orgs", null).waitingOn).toBe("The organisation");
   });
 });
