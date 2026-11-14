@@ -90,10 +90,6 @@
       "reason": "Queue panel (pull request 4, Bid admin queues)"
     },
     {
-      "page": "bid-admin:(finance)/payments/page.tsx",
-      "reason": "Queue panel (pull request 4, Bid admin queues)"
-    },
-    {
       "page": "bid-admin:(finance)/payouts/page.tsx",
       "reason": "Queue panel (pull request 7, after #1349)"
     },
@@ -110,20 +106,12 @@
       "reason": "Rows open the page (pull request 3, Bid admin people)"
     },
     {
-      "page": "bid-admin:(platform)/compliance/aml/page.tsx",
-      "reason": "Queue panel (pull request 4, Bid admin queues)"
-    },
-    {
       "page": "bid-admin:(platform)/compliance/data-requests/page.tsx",
       "reason": "Opens its page already through onRowOpen; moves to rowHref"
     },
     {
       "page": "bid-admin:(platform)/compliance/source-of-funds/page.tsx",
       "reason": "Opens its page already through onRowOpen; moves to rowHref"
-    },
-    {
-      "page": "bid-admin:(platform)/condition-reports/page.tsx",
-      "reason": "Queue panel (pull request 4, Bid admin queues)"
     },
     {
       "page": "bid-admin:(platform)/enquiries/page.tsx",
@@ -138,24 +126,12 @@
       "reason": "Opens its page already through onRowOpen; moves to rowHref"
     },
     {
-      "page": "bid-admin:(platform)/invitations/page.tsx",
-      "reason": "Queue panel (pull request 4, Bid admin queues)"
-    },
-    {
       "page": "bid-admin:(platform)/legal-entities/page.tsx",
       "reason": "Rows open the page (pull request 7, after #1349)"
     },
     {
-      "page": "bid-admin:(platform)/lot-fulfilment/page.tsx",
-      "reason": "Queue panel (pull request 4, Bid admin queues)"
-    },
-    {
       "page": "bid-admin:(platform)/lots/page.tsx",
       "reason": "Rows open the page (pull request 2, Bid admin catalogue)"
-    },
-    {
-      "page": "bid-admin:(platform)/onboarding-issues/page.tsx",
-      "reason": "Queue panel (pull request 4, Bid admin queues)"
     },
     {
       "page": "bid-admin:(platform)/purchase-problems/page.tsx",
@@ -180,10 +156,6 @@
     {
       "page": "bid-admin:(platform)/venues/page.tsx",
       "reason": "Rows open the page (pull request 2, Bid admin catalogue)"
-    },
-    {
-      "page": "bid-admin:(shared)/audit/page.tsx",
-      "reason": "Queue panel (pull request 4, Bid admin queues)"
     },
     {
       "page": "bid-admin:(shared)/failed-jobs/page.tsx",
