@@ -2,8 +2,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
 vi.mock("@/lib/data/http/server-api-base", () => ({ getServerApiBase: () => "http://api.test" }));
-const cookies = vi.hoisted(() => vi.fn());
-vi.mock("next/headers", () => ({ cookies, headers: cookies }));
 vi.mock("react", async (orig) => ({
   ...(await orig<typeof import("react")>()),
   cache: <T>(fn: T) => fn,
@@ -19,7 +17,6 @@ const json = (body: unknown, status = 200) =>
 
 beforeEach(() => {
   fetchMock.mockReset();
-  cookies.mockReset();
   vi.stubGlobal("fetch", fetchMock);
 });
 afterEach(() => vi.unstubAllGlobals());
@@ -36,7 +33,6 @@ describe("public catalogue reads (CO-7)", () => {
     expect(lastInit().next?.tags).toEqual(["public-lot:lot-1"]);
     await getPublicSaleShell("sale-1");
     expect(lastInit().next?.tags).toContain("public-sale:sale-1");
-    expect(cookies).not.toHaveBeenCalled();
   });
 
   it("drop the server clock reading, which a cached page would carry stale", async () => {

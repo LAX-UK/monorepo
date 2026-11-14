@@ -1,20 +1,10 @@
 "use client";
 
+import { fetchSaleViewer } from "@/lib/marketing/fetch-sale-viewer.client";
 import { SIGNED_OUT_SALE_VIEWER, type SaleViewerVM } from "@/lib/marketing/sale-viewer";
 import { type ReactNode, createContext, useContext, useEffect, useState } from "react";
 
 const SaleViewerContext = createContext<SaleViewerVM>(SIGNED_OUT_SALE_VIEWER);
-
-/** Reads the caller's part of the sale page; null when it cannot be read (the page stays signed out). */
-export async function fetchSaleViewer(saleId: string): Promise<SaleViewerVM | null> {
-  const res = await fetch(`/api/sales/${encodeURIComponent(saleId)}/me`, {
-    credentials: "same-origin",
-    cache: "no-store",
-  });
-  if (!res.ok) return null;
-  const body = (await res.json()) as { data?: SaleViewerVM };
-  return body.data ?? null;
-}
 
 /**
  * The person looking at a sale page (CO-7). The page is rendered once, signed out, for everyone;

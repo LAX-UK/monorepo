@@ -1,23 +1,16 @@
-import type { WebPublicCacheInvalidator } from "@auction/background-runtime";
 import {
   PUBLIC_PAGE_EVENT_TYPES,
   publicPageLotEventNeedsSaleLookup,
   publicPageTagsForDomainEvent,
 } from "@auction/domain";
 import type { ProjectorRunContext } from "./lib/projector.types.js";
+import type { WebPublicCacheDeps } from "./web-public-cache.types.js";
 
 export const WEB_PUBLIC_CACHE_PROJECTOR = "web_public_cache";
 
 const BATCH_SIZE = 200;
 
-/** What the projector needs besides the shared cursor and event reader. */
-export type WebPublicCacheDeps = {
-  invalidator: WebPublicCacheInvalidator;
-  /** The lot's current sale, for lot events whose payload names none (a cancellation). */
-  lotSaleId(lotId: string): Promise<string | null>;
-  /** The newest domain event id: a first run starts here instead of replaying history. */
-  latestEventId(): Promise<number>;
-};
+export type { WebPublicCacheDeps } from "./web-public-cache.types.js";
 
 /**
  * After a committed change to a lot or a sale, asks the web app to drop the cached public reads
