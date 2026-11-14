@@ -5,6 +5,7 @@ import type {
   IStripeReconciliationStore,
   ParkedBalanceTransaction,
   StripeAccountState,
+  UnbookedMovement,
 } from "@auction/persistence/interfaces";
 import { describe, expect, it, vi } from "vitest";
 import { FakeStripeBalance } from "../../testing/fake-stripe-balance.js";
@@ -51,6 +52,7 @@ function store(
     parked: ParkedBalanceTransaction[];
     accounts: StripeAccountState[];
     clearing: ClearingMovements;
+    unbooked: UnbookedMovement[];
     held: number | null;
   }> = {},
 ) {
@@ -76,6 +78,7 @@ function store(
           notIssuedPence: 0,
         },
     ),
+    knownUnbooked: async () => over.unbooked ?? [],
     heldTransferPence: async () => (over.held === undefined ? null : over.held),
     saveReport: async (input) => void saved.push(input),
   };
@@ -136,6 +139,19 @@ describe("StripeReconciliation", () => {
     const { service, raised } = run(s, 1_000 + 10_000 - 165);
     const [report] = await service.run();
     expect(report?.clearing).toMatchObject({ inFlightPence: -165, unexplainedPence: 0 });
+    expect(raised).toEqual([]);
+  });
+
+  it("takes a seller transfer no Books flow books out of clearing, and still shows it", async () => {
+    const { s } = store({ unbooked: [{ type: "transfer", pence: -8_000 }] });
+    // A seller was paid 80.00 from the balance by a Connect transfer.
+    const { service, raised } = run(s, 1_000 + 10_000 - 165 - 8_000);
+    const [report] = await service.run();
+    expect(report?.clearing).toMatchObject({
+      knownUnbooked: [{ type: "transfer", pence: -8_000 }],
+      knownUnbookedPence: -8_000,
+      unexplainedPence: 0,
+    });
     expect(raised).toEqual([]);
   });
 

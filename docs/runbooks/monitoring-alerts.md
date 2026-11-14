@@ -491,15 +491,19 @@ stored invoice copies, never the repository). Ids and amounts only, no names or 
   reads an account no `accounting_stripe_account` row names (shown in every company's report);
 - **clearing**: the opening balance plus payments, less fees and payouts, as Books holds them,
   against Stripe's balance (available and pending, GBP) now; documents still on their way are
-  shown as in flight, not as a difference. Not compared until every Stripe account of the company
-  has its opening balance stated;
+  shown as in flight, not as a difference. Movements since the opening that no Books flow books yet
+  (Bid's seller transfers, refunds, dispute amounts) are shown by type as `knownUnbooked`, from the
+  recorded balance transactions, and are not a difference either. Not compared until every Stripe
+  account of the company has its opening balance stated;
 - **held transfer funds**: Bid seller payouts scheduled or blocked, still in the Stripe balance.
   Not tracked for London Art Exchange yet.
 
 **Alert.** Any mismatch (a type whose totals or counts differ, a parked transaction, an account not
 read, clearing that does not agree) raises `accounting_reconciliation_mismatch` (error) with the company, the day, the
-count and the report's storage key. Open that report first. During the rehearsal clearing can
-differ for known reasons this flow does not book (refunds and dispute amounts: refunds are PR 9).
+count and the report's storage key. Open that report first. A clearing difference is what remains
+after the known unbooked movements, so it is a real one (a missed payout, a wrong fee). When a flow
+starts booking one of those types (refunds are PR 9), take it out of the known unbooked list in the
+same change, or it is counted twice.
 
 **Missed run.** The job checks in to the Sentry cron monitor under `accounting-reconcile`. A failed
 read of one account (Stripe down, a revoked key) does not stop the other accounts or the report:

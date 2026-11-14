@@ -24,6 +24,7 @@ import type {
   StripeBalanceRow,
   StripeChargeRefs,
   StripeRecordResult,
+  UnbookedMovement,
 } from "../../interfaces/accounting-stripe.js";
 import type { AccountingClock } from "../../interfaces/accounting.js";
 import { isPgCheckViolation } from "../../lib/pg-unique-violation.js";
@@ -213,6 +214,9 @@ const DATE_FIELD = {
   transfer: "transferredOn",
 } as const;
 
+/** Balance transaction types whose amount the payments flow books into clearing. */
+const BOOKED_AS_PAYMENTS = ["charge", "payment"];
+
 /** Reads behind the daily reconciliation report (see `IStripeReconciliationStore`). */
 export class DrizzleStripeReconciliationStore implements IStripeReconciliationStore {
   constructor(private readonly db: Database) {}
@@ -361,6 +365,31 @@ export class DrizzleStripeReconciliationStore implements IStripeReconciliationSt
       transfersPence: Number(row?.transfers ?? 0),
       notIssuedPence: Number(row?.notIssued ?? 0),
     };
+  }
+
+  async knownUnbooked(entity: LegalEntity): Promise<readonly UnbookedMovement[]> {
+    const t = accountingStripeBalanceTxn;
+    const a = accountingStripeAccount;
+    // What the transaction moved (amount less fee), less what this job booked for it (a fee as an
+    // expense, a payout as a transfer: both took money out), less a charge's amount (a payment).
+    const pence = sql<string>`sum(${t.amountPence} - ${t.feePence} + ${t.bookedFeePence}
+      + ${t.bookedPayoutPence} - case when ${inArray(t.type, BOOKED_AS_PAYMENTS)}
+        then ${t.amountPence} else 0 end)`;
+    const rows = await this.db
+      .select({ type: t.type, pence })
+      .from(t)
+      .innerJoin(a, eq(a.stripeAccountId, t.stripeAccountId))
+      .where(
+        and(
+          inArray(a.product, productsOf(entity)),
+          inArray(t.outcome, ["booked", "nothing"]),
+          sql`${t.createdOn} >= ${a.openingOn}`,
+        ),
+      )
+      .groupBy(t.type)
+      .having(sql`${pence} <> 0`)
+      .orderBy(t.type);
+    return rows.map((r) => ({ type: r.type, pence: Number(r.pence) }));
   }
 
   async heldTransferPence(entity: LegalEntity): Promise<number | null> {

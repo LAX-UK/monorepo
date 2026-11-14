@@ -111,6 +111,13 @@ export interface ClearingMovements {
   readonly notIssuedPence: number;
 }
 
+/** Money that moved in a Stripe balance and that no Books flow books yet, by balance transaction type. */
+export interface UnbookedMovement {
+  readonly type: string;
+  /** Signed as Stripe signs it: negative when it left the balance (a seller transfer, a refund). */
+  readonly pence: number;
+}
+
 /** Reads behind the daily reconciliation report, and the record of each report stored. */
 export interface IStripeReconciliationStore {
   /**
@@ -133,6 +140,13 @@ export interface IStripeReconciliationStore {
     through: string,
     target: { readonly provider: "books"; readonly mode: string },
   ): Promise<ClearingMovements>;
+  /**
+   * For the company's accounts, since each one's opening day: what the ledger's recorded
+   * transactions moved in the balance that no Books flow books (seller transfers, refunds, dispute
+   * amounts), by type, leaving out what this job booked and the charges the payments flow books.
+   * Parked and not-aimed rows are left out: they are differences.
+   */
+  knownUnbooked(entity: LegalEntity): Promise<readonly UnbookedMovement[]>;
   /**
    * Seller payouts held in the Stripe balance and not yet transferred (Bid's `payout` rows that
    * are scheduled or blocked), in pence. Null for a company whose held funds LAX does not track.

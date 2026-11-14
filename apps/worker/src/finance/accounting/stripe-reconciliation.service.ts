@@ -12,6 +12,7 @@ import type {
   IStripeReconciliationStore,
   ParkedBalanceTransaction,
   StripeAccountState,
+  UnbookedMovement,
 } from "@auction/persistence/interfaces";
 import type { Logger } from "pino";
 import { ACCOUNTING_ALERTS, type AccountingAlertSink } from "./accounting-alerts.js";
@@ -41,7 +42,13 @@ export interface ReconciliationClearing {
   readonly stripeBalancePence: number | null;
   /** Registered for Books and not issued yet: in flight, so not counted as a difference. */
   readonly inFlightPence: number;
-  /** Stripe less Books less what is in flight. Zero when they agree. */
+  /**
+   * Movements in the Stripe balance since the opening that no Books flow books yet (seller
+   * transfers, refunds, dispute amounts), by type: known, so not counted as a difference.
+   */
+  readonly knownUnbooked: readonly UnbookedMovement[];
+  readonly knownUnbookedPence: number;
+  /** Stripe less Books less what is in flight less what is known unbooked. Zero when they agree. */
   readonly unexplainedPence: number | null;
 }
 
@@ -231,11 +238,13 @@ export class StripeReconciliation {
       ? // Stripe's balance is read now, so Books is read through today too.
         await this.deps.store.clearingSince(entity, since, londonDay(this.deps.now()), target)
       : { paymentsPence: 0, expensesPence: 0, transfersPence: 0, notIssuedPence: 0 };
+    const knownUnbooked = since ? await this.deps.store.knownUnbooked(entity) : [];
+    const knownUnbookedPence = knownUnbooked.reduce((sum, m) => sum + m.pence, 0);
     const booksClearingPence =
       openingPence + moves.paymentsPence - moves.expensesPence - moves.transfersPence;
     const unexplainedPence =
       reconcilable && stripeBalancePence !== null
-        ? stripeBalancePence - booksClearingPence - moves.notIssuedPence
+        ? stripeBalancePence - booksClearingPence - moves.notIssuedPence - knownUnbookedPence
         : null;
     return {
       reconcilable,
@@ -247,6 +256,8 @@ export class StripeReconciliation {
       booksClearingPence,
       stripeBalancePence,
       inFlightPence: moves.notIssuedPence,
+      knownUnbooked,
+      knownUnbookedPence,
       unexplainedPence,
     };
   }

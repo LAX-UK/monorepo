@@ -230,6 +230,42 @@ describe.skipIf(!HAS_DB)(
       expect((await documentsFor(reference)).map((d) => d.state)).toEqual(["cancelled"]);
     });
 
+    it("counts a seller transfer, and nothing this job or the payments flow books, as known unbooked", async () => {
+      const unbooked = async () =>
+        new Map(
+          (await repos.reconciliation.knownUnbooked("london_art_exchange")).map((m) => [
+            m.type,
+            m.pence,
+          ]),
+        );
+      const before = await unbooked();
+      const SHOP_ACCOUNT = await account("shop");
+      const stripe = new FakeStripeBalance(SHOP_ACCOUNT).add(
+        charge(8_701, 150, NOON + 8_701),
+        stripeTxn({
+          id: id("txn", 8_702),
+          type: "transfer",
+          amount: -8_000,
+          fee: 0,
+          created: NOON + 8_702,
+          source: { id: id("tr", 8_702), chargeId: null, paymentIntentId: null },
+        }),
+        stripeTxn({
+          id: id("txn", 8_703),
+          type: "payout",
+          amount: -4_000,
+          fee: 0,
+          created: NOON + 8_703,
+          source: { id: id("po", 8_703), chargeId: null, paymentIntentId: null },
+        }),
+      );
+      expect(await sync(stripe).run()).toMatchObject({ read: 3, booked: 2 });
+      const after = await unbooked();
+      expect((after.get("transfer") ?? 0) - (before.get("transfer") ?? 0)).toBe(-8_000);
+      expect(after.get("charge")).toBe(before.get("charge"));
+      expect(after.get("payout")).toBe(before.get("payout"));
+    });
+
     it("books nothing twice when two workers run at the same time, in real concurrent transactions", async () => {
       const BID_ACCOUNT = await account("bid");
       const stripe = new FakeStripeBalance(BID_ACCOUNT);
