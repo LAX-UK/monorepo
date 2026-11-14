@@ -1399,9 +1399,11 @@ const REGISTRY_OVERRIDES: Partial<Record<LiveDomainEventType, RegistryOverride>>
 /**
  * Events that change what the public sale and lot pages show. The worker's `web_public_cache`
  * projector asks the web app to drop the cached reads of the lot or sale each one names
- * (`publicPageTagsForDomainEvent` in `@auction/domain` keeps the same list).
+ * (`@auction/domain` reads this list, so the two cannot drift). A lot can be created straight into
+ * a live sale (an emergency add), and a premium reset changes the terms its lots show.
  */
 export const WEB_PUBLIC_CACHE_EVENT_TYPES = [
+  "lot.created",
   "lot.published",
   "lot.unpublished",
   "lot.activated",
@@ -1420,6 +1422,7 @@ export const WEB_PUBLIC_CACHE_EVENT_TYPES = [
   "sale.ended",
   "sale.soft_deleted",
   "sale.test_flag_changed",
+  "sale.lot_premiums_reset",
 ] as const satisfies readonly LiveDomainEventType[];
 
 const WEB_PUBLIC_CACHE_EVENTS = new Set<string>(WEB_PUBLIC_CACHE_EVENT_TYPES);

@@ -1,3 +1,5 @@
+import { WEB_PUBLIC_CACHE_EVENT_TYPES } from "@auction/types";
+
 /*
  * Cache tags for the public LAX Bid sale and lot pages.
  *
@@ -12,6 +14,11 @@ export const PUBLIC_CATALOGUE_LOTS_TAG = "catalogue-lots";
 export const PUBLIC_CATALOGUE_SALES_TAG = "catalogue-sales";
 
 const PUBLIC_ITEM_TAG = /^public-(lot|sale):[A-Za-z0-9_-]{1,64}$/;
+
+const BROAD_TAGS: ReadonlySet<string> = new Set([
+  PUBLIC_CATALOGUE_LOTS_TAG,
+  PUBLIC_CATALOGUE_SALES_TAG,
+]);
 
 /** The tag on every cached public read of one lot. */
 export function publicLotCacheTag(lotId: string): string {
@@ -28,15 +35,29 @@ export function isPublicItemCacheTag(tag: string): boolean {
   return PUBLIC_ITEM_TAG.test(tag);
 }
 
+/** True for any tag the web revalidate route accepts: a lot, a sale, or one of the two lists. */
+export function isPurgeablePublicCacheTag(tag: string): boolean {
+  return BROAD_TAGS.has(tag) || PUBLIC_ITEM_TAG.test(tag);
+}
+
 /**
- * A lot shows on its own page and on its sale's catalogue (card price, status, close time), so a
- * change to it drops both. This is what a bid or an extension drops: the site-wide lot lists keep
- * their short window rather than being emptied by every bid in a busy sale.
+ * A lot's catalogue content shows on its own page and on its sale's catalogue (card title, image,
+ * estimate, schedule, lot navigation), so a change to it drops both. Staff edits, lot events and a
+ * lot's end drop this.
  */
 export function publicPageTagsForLot(lot: { id: string; saleId?: string | null }): string[] {
   const tags = [publicLotCacheTag(lot.id)];
   if (lot.saleId) tags.push(publicSaleCacheTag(lot.saleId));
   return tags;
+}
+
+/**
+ * What an accepted bid or an extension drops: the lot alone. The price, the close time and the
+ * history never come from the cached render (the page and the catalogue cards read them live), so
+ * nothing sale-level changes, and a busy sale's catalogue is not emptied by every bid.
+ */
+export function publicPageTagsForBid(lot: { id: string }): string[] {
+  return [publicLotCacheTag(lot.id)];
 }
 
 /** A sale's page lists its lots, so a sale change also drops the lot lists that show its dates. */
@@ -46,36 +67,19 @@ export function publicPageTagsForSale(saleId: string): string[] {
 
 /**
  * The domain events that change what a public sale or lot page shows. Events about money,
- * consent, settlement or re-offers after the sale are private and change nothing public.
+ * consent, settlement or re-offers after the sale are private and change nothing public. The list
+ * is the catalog's own (`WEB_PUBLIC_CACHE_EVENT_TYPES`, which routes them to the worker's
+ * `web_public_cache` projector), split by aggregate, so the two cannot drift.
  */
-export const PUBLIC_PAGE_LOT_EVENT_TYPES = [
-  "lot.published",
-  "lot.unpublished",
-  "lot.activated",
-  "lot.ended",
-  "lot.cancelled",
-  "lot.voided",
-  "lot.attached_to_sale",
-  "lot.detached_from_sale",
-  "lot.soft_deleted",
-  "lot.returned_to_inventory",
-  "lot.reawarded",
-] as const;
+export const PUBLIC_PAGE_EVENT_TYPES: readonly string[] = WEB_PUBLIC_CACHE_EVENT_TYPES;
 
-export const PUBLIC_PAGE_SALE_EVENT_TYPES = [
-  "sale.published",
-  "sale.unpublished",
-  "sale.cancelled",
-  "sale.rescheduled",
-  "sale.ended",
-  "sale.soft_deleted",
-  "sale.test_flag_changed",
-] as const;
+export const PUBLIC_PAGE_LOT_EVENT_TYPES: readonly string[] = PUBLIC_PAGE_EVENT_TYPES.filter((t) =>
+  t.startsWith("lot."),
+);
 
-export const PUBLIC_PAGE_EVENT_TYPES: readonly string[] = [
-  ...PUBLIC_PAGE_LOT_EVENT_TYPES,
-  ...PUBLIC_PAGE_SALE_EVENT_TYPES,
-];
+export const PUBLIC_PAGE_SALE_EVENT_TYPES: readonly string[] = PUBLIC_PAGE_EVENT_TYPES.filter((t) =>
+  t.startsWith("sale."),
+);
 
 const LOT_EVENTS = new Set<string>(PUBLIC_PAGE_LOT_EVENT_TYPES);
 const SALE_EVENTS = new Set<string>(PUBLIC_PAGE_SALE_EVENT_TYPES);
@@ -84,6 +88,14 @@ function stringField(payload: unknown, key: string): string | null {
   if (!payload || typeof payload !== "object") return null;
   const value = (payload as Record<string, unknown>)[key];
   return typeof value === "string" && value.length > 0 ? value : null;
+}
+
+function stringListField(payload: unknown, key: string): string[] {
+  if (!payload || typeof payload !== "object") return [];
+  const value = (payload as Record<string, unknown>)[key];
+  return Array.isArray(value)
+    ? value.filter((v): v is string => typeof v === "string" && v.length > 0)
+    : [];
 }
 
 /**
@@ -108,7 +120,12 @@ export function publicPageTagsForDomainEvent(
     return [...new Set(tags)];
   }
   if (SALE_EVENTS.has(event.eventType)) {
-    return publicPageTagsForSale(stringField(event.payload, "saleId") ?? event.aggregateId);
+    const tags = publicPageTagsForSale(stringField(event.payload, "saleId") ?? event.aggregateId);
+    // Lots put back on the sale's premium show new terms on their own pages.
+    for (const lotId of stringListField(event.payload, "lot_ids")) {
+      tags.push(publicLotCacheTag(lotId));
+    }
+    return [...new Set(tags)];
   }
   return [];
 }

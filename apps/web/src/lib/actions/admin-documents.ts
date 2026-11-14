@@ -2,13 +2,14 @@
 
 import { readApiActionErrorMeta } from "@/lib/actions/_utils";
 import { denyUnlessAdminCapability } from "@/lib/auth/assert-admin-action-capability";
+import { publicLotTag, publicSaleTag } from "@/lib/data/cache-tags";
 import { getWriteContainer } from "@/lib/data/write-container.server";
 import { type ActionResult, actionFailure, actionSuccess } from "@/lib/forms/form-result";
 import { LOTS_ACCESS, SALES_ACCESS, SUBMISSIONS_ACCESS } from "@/lib/navigation/staff-nav-access";
 import { instrumentServerAction } from "@/lib/observability/instrument-server-action";
 import type { EntityDocument } from "@auction/types";
 import { normalizeApiErrorMessage } from "@auction/validators";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 
 type AttachPayload = {
   uploadObjectId: string;
@@ -56,6 +57,13 @@ function serviceRemoveFailure(
   );
 }
 
+/** The sale page lists its public documents, so an attach or a removal drops it. */
+function revalidateAdminSaleDocuments(saleId: string) {
+  revalidateTag(publicSaleTag(saleId));
+  revalidatePath(`/admin/sales/${saleId}/edit`);
+  revalidatePath(`/admin/sales/${saleId}`);
+}
+
 export async function adminAttachSaleDocumentResultAction(
   saleId: string,
   input: AttachPayload,
@@ -67,8 +75,7 @@ export async function adminAttachSaleDocumentResultAction(
     if (!res.ok) {
       return serviceAttachFailure(res.body, res.message, res.status, res.code);
     }
-    revalidatePath(`/admin/sales/${saleId}/edit`);
-    revalidatePath(`/admin/sales/${saleId}`);
+    revalidateAdminSaleDocuments(saleId);
     return actionSuccess(res.data);
   });
 }
@@ -84,13 +91,14 @@ export async function adminRemoveSaleDocumentResultAction(
     if (!res.ok) {
       return serviceRemoveFailure(res.body, res.message, res.status, res.code);
     }
-    revalidatePath(`/admin/sales/${saleId}/edit`);
-    revalidatePath(`/admin/sales/${saleId}`);
+    revalidateAdminSaleDocuments(saleId);
     return actionSuccess(undefined);
   });
 }
 
+/** The lot page lists its public documents, so an attach or a removal drops it. */
 function revalidateAdminLotEdit(lotId: string) {
+  revalidateTag(publicLotTag(lotId));
   revalidatePath(`/admin/lots/${lotId}/edit`);
   revalidatePath(`/admin/lots/${lotId}/edit/catalog`);
   revalidatePath(`/admin/lots/${lotId}/edit/documents`);

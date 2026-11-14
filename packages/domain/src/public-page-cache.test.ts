@@ -1,8 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
   PUBLIC_PAGE_EVENT_TYPES,
+  PUBLIC_PAGE_LOT_EVENT_TYPES,
+  PUBLIC_PAGE_SALE_EVENT_TYPES,
   isPublicItemCacheTag,
+  isPurgeablePublicCacheTag,
   publicPageLotEventNeedsSaleLookup,
+  publicPageTagsForBid,
   publicPageTagsForDomainEvent,
   publicPageTagsForLot,
 } from "./public-page-cache.js";
@@ -12,11 +16,43 @@ const SALE = "11111111-1111-4111-8111-111111111111";
 const OTHER_SALE = "22222222-2222-4222-8222-222222222222";
 
 describe("public page cache tags", () => {
-  it("drops the lot and its sale for a bid, not the site-wide lists", () => {
+  it("drops the lot and its sale for a catalogue change, not the site-wide lists", () => {
     expect(publicPageTagsForLot({ id: LOT, saleId: SALE })).toEqual([
       `public-lot:${LOT}`,
       `public-sale:${SALE}`,
     ]);
+  });
+
+  it("drops only the lot for an accepted bid or an extension, never its sale", () => {
+    expect(publicPageTagsForBid({ id: LOT })).toEqual([`public-lot:${LOT}`]);
+  });
+
+  it("drops the lot and its sale when a lot is created into a sale (an emergency add)", () => {
+    const tags = publicPageTagsForDomainEvent({
+      eventType: "lot.created",
+      aggregateId: LOT,
+      payload: { saleId: SALE, source: "emergency_add" },
+    });
+    expect(tags).toEqual(expect.arrayContaining([`public-lot:${LOT}`, `public-sale:${SALE}`]));
+  });
+
+  it("drops the sale and each lot put back on the sale's premium", () => {
+    const tags = publicPageTagsForDomainEvent({
+      eventType: "sale.lot_premiums_reset",
+      aggregateId: SALE,
+      payload: { lot_ids: [LOT, "lot-2"], previous_rates: {}, differed_from_sale: 1 },
+    });
+    expect(tags).toEqual(
+      expect.arrayContaining([`public-sale:${SALE}`, `public-lot:${LOT}`, "public-lot:lot-2"]),
+    );
+  });
+
+  it("splits the catalog's list by aggregate, losing none", () => {
+    expect(PUBLIC_PAGE_LOT_EVENT_TYPES).toContain("lot.created");
+    expect(PUBLIC_PAGE_SALE_EVENT_TYPES).toContain("sale.lot_premiums_reset");
+    expect(PUBLIC_PAGE_LOT_EVENT_TYPES.length + PUBLIC_PAGE_SALE_EVENT_TYPES.length).toBe(
+      PUBLIC_PAGE_EVENT_TYPES.length,
+    );
   });
 
   it.each([
@@ -84,6 +120,9 @@ describe("public page cache tags", () => {
   it("produces only tags the web revalidate route accepts", () => {
     expect(isPublicItemCacheTag(`public-lot:${LOT}`)).toBe(true);
     expect(isPublicItemCacheTag("public-lot:../../x")).toBe(false);
+    expect(isPurgeablePublicCacheTag("catalogue-lots")).toBe(true);
+    expect(isPurgeablePublicCacheTag("catalogue-home")).toBe(false);
+    expect(isPurgeablePublicCacheTag("public-sale:not a uuid")).toBe(false);
   });
 });
 

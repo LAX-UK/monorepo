@@ -1,7 +1,10 @@
 "use server";
 
 import { readApiActionErrorMeta } from "@/lib/actions/_utils";
-import { revalidateAdminLotDetail } from "@/lib/actions/admin/_shared/revalidate-paths";
+import {
+  publicTagsForAdminLotEdit,
+  revalidateAdminLotDetail,
+} from "@/lib/actions/admin/_shared/revalidate-paths";
 import {
   getIdempotentLotCreate,
   getIdempotentLotPublish,
@@ -44,7 +47,7 @@ import {
   updateLotMarketingDetailsSchema,
   updateLotSchema,
 } from "@auction/validators";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import type { z } from "zod";
 
 export async function adminCreateLotResultAction(
@@ -95,6 +98,9 @@ export async function adminUpdateLotMarketingDetailsResultAction(
     if (!r.ok) {
       return actionFailure(r.message, undefined, r.status);
     }
+    // The estimate, description and condition report show on the lot page and its sale's cards.
+    const lot = await getAdminLotById(id).catch(() => null);
+    for (const tag of publicTagsForAdminLotEdit(id, [lot?.saleId])) revalidateTag(tag);
     revalidatePath("/admin/lots");
     revalidatePath(`/admin/lots/${id}`);
     revalidatePath("/", "layout");
@@ -152,7 +158,7 @@ export async function adminUpdateLotResultAction(
     }
     const newSaleId =
       parsed.data.saleId !== undefined ? (parsed.data.saleId ?? null) : previousSaleId;
-    revalidateAdminLotDetail(id);
+    revalidateAdminLotDetail(id, [previousSaleId, newSaleId]);
     revalidatePath("/admin/sales");
     if (previousSaleId) {
       revalidatePath(`/admin/sales/${previousSaleId}`);
