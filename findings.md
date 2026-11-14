@@ -1,6 +1,6 @@
 # Verification of 11-05 re-review findings (PRs #1037, #1038, #1041, #1042)
 
-Read-only check against `origin/main` @ f1ffc6e4 (2026-11-14). No code changed.
+Read-only check against `origin/main` @ f1ffc6e4 (2026-11-14). No code changed. History deepened to 2026-11-04 for attribution. Summary: all 17 items FIXED (d reworked by #1250; l, m by #1068/#1264); only low-severity residuals remain.
 
 | Item | Status | Evidence |
 |---|---|---|
@@ -17,7 +17,24 @@ Read-only check against `origin/main` @ f1ffc6e4 (2026-11-14). No code changed.
 | k | FIXED (EXPLAIN run) | `apps/shop-api/src/infrastructure/drizzle-admin-read.repository.ts:156-186` pages on raw `(created_at, id)` with a microsecond cursor (`admin-created-at-keyset.ts:71-96`, `keysetAfterRaw` row comparison); index `shop_order_created_id_idx` (`packages/db/drizzle/0316_shop_order_created_id_idx.sql`) plus existing `shop_order_status_created_idx` (0250). EXPLAIN ANALYZE, PG 16, 200k synthetic rows: no filter and cursor page -> Index Scan Backward on `shop_order_created_id_idx` with `ROW(created_at,id) < ROW(...)` as Index Cond (0.4 ms); status filter, uniform 7 statuses -> same index + status Filter (~300 rows removed, 0.5 ms); status filter, skewed (588 of 200k rare status) -> Index Scan Backward on `shop_order_status_created_idx` with `status = .. AND created_at <= ..` Index Cond + Incremental Sort (0.6 ms). A `(status, created_at, id)` index would make the status page a pure index range (0.4 ms) - optional. Test: `admin-created-at-keyset.test.ts`. Landed in #1041 itself. |
 | l | FIXED | `0316_shop_order_created_id_idx.sql` `SET LOCAL lock_timeout = '5s'` (inside the transactional runner); `0316_rollback.sql` now wraps `SET LOCAL` in `BEGIN; ... COMMIT;` so it takes effect (fix PR #1068). Test: `packages/db/src/migration-0316-shop-order-created-id-idx.test.ts:30-33` asserts the lock timeout in both files, but not the `BEGIN` (see Still open). |
 | m | FIXED | `apps/web/src/lib/private-sales/enquiry-values.ts:64` now delegates to the shared `parsePoundsToPence` (#1068, then #1264 shared parser everywhere). Test: `enquiry-values.test.ts:99` lists `"1,2,0,0"` as not an amount; same case covered in buyer-agents, payouts and art catalogue parsers. |
-| n | checking | |
-| o | checking | |
-| p | checking | |
-| q | checking | |
+| n | FIXED | `.github/workflows/terraform-drift-check.yml:96-135`: prod reads the release SHA from readiness and passes it as `--input-app-image-tag`; `scripts/ci/resolve-live-app-image-tags.mjs:12,19-24,99-133` blanks only `web/api/ws/worker/migrate` per-component tags (inherit `app_image_tag`) and resolves shop, shop-api, shop-admin, shop-identity, account, art from the live spec (no `TF_VAR_*_image_tag` set in the drift job, so nothing overrides them). Test: `resolve-live-app-image-tags.test.mjs:112` (five components pinned). |
+| o | FIXED | `.github/workflows/terraform-plan-prod.yml:25-27` own group `terraform-plan-prod-ephemeral` (apply uses `terraform-prod-<layer>`), `cancel-in-progress: false`; `:245` `terraform plan -lock-timeout=5m`, no `-lock=false`. |
+| p | FIXED | `terraform-plan-prod.yml` "Validate inputs" step: inputs passed via `env:` (`INPUT_*`), SHA checked against `^[0-9a-f]{40}$`, refs against a git-ref character class with leading `-` and `..` rejected. No `${{ inputs.* }}` inside any `run:` block (checked by grep); inputs appear only in `env:` and `with:`. Drift check has no dispatch inputs. |
+| q | FIXED | `terraform-plan-prod.yml:228-234` runs `scripts/ci/verify-prebuilt-web-for-deploy.mjs --environment prod --sha` when `APP_DEPLOY_SOURCE_PROD == 'image'`, same condition as apply (`terraform-apply-prod.yml:246`). |
+
+## Still open
+
+None of a-q is open. Residual gaps found while verifying (all hardening, none blocks the original finding):
+
+| Ref | Severity | Gap | Concrete fix |
+|---|---|---|---|
+| a | Low | The "mark handled" refusal is skipped when the task carries no invoice id or the invoice row cannot be read, so it fails open in those cases. | For `paid_not_recorded` / `invoice_cancelled`, refuse (409) when `paymentId` is missing or the invoice lookup returns nothing; add a test for each. |
+| b | Low | `isInvoiceMoney` treats an invoice with neither charge nor intent as owning the charge when `everCaptured` is absent. Production always sets it, but only test fakes stop the fallback being reached. `wasEverUnapplied` matches on charge id only, so a task recorded with an intent but no charge id is not recognised. | Make `everCaptured` required in `PaymentRowLookup` and return `false` in the no-ids branch. Also match `wasEverUnapplied` by the charge's payment intent. |
+| d | Low | After a parameter change, superseded sessions are closed only on the same rail. An earlier open card session stays payable at the old amount until Stripe expires it (bank sessions with instructions are kept on purpose). A wrong-amount payment goes to unapplied money and is not captured, so money is safe, but finance gets extra work. | In `closeSuperseded`, also close open card sessions whose fingerprint differs, whatever rail the buyer picked. Keep the bank-with-instructions exception. |
+| f | Low | Deduplication relies only on a transaction advisory lock plus an existence check. A writer that skips the recorder could still duplicate. | Add a partial unique index on `domain_event ((payload->>'dedupeKey')) WHERE event_type = 'payment.unapplied_money_received'`, built in its own migration with a lock timeout. |
+| h | Low | The held-invoice sweep lists only invoices with no "Pay several" group. A held invoice inside a group keeps the group's checkout until settlement, and settlement then sends the money to manual review. The webhook hold check is skipped when no eligibility gate is wired; it is wired today. | Include group members in the sweep (close the group's sessions when any member is held). In production, fail closed if no gate is wired. |
+| i | Low | "Production" means `NODE_ENV === "production"`. A live deploy with a different NODE_ENV would pay unverified personal buyers. | Hold whenever payments are live (Stripe live key or a deploy-environment flag) and no identity provider is set, or refuse to start in that case. |
+| k | Info | A status-filtered page uses `(status, created_at)` plus an incremental sort. It is fast in testing, but many rows sharing one timestamp within a status would sort more. | Optional: add `(status, created_at, id)` to make the status page a pure index range. |
+| l | Low | The 0316 test checks `SET LOCAL lock_timeout` in the rollback but not the `BEGIN`/`COMMIT` that makes it take effect. | Assert the rollback wraps `SET LOCAL` in `BEGIN; ... COMMIT;` (or that the pair runner runs it inside a transaction). |
+| n | Low | No test checks that shop, shop-api, shop-admin, shop-identity, account and art keep their live SHAs when `app_image_tag` is pinned. If readiness is down, the prod drift check is skipped with only a warning. | Extend `resolve-live-app-image-tags.test.mjs:112` to assert those six tags equal the live spec. Alert when the drift check has been skipped on several runs in a row. |
+| q | Info | The plan checks the prebuilt image for web only. | Optional: check that each pinned component's image exists before planning. |
