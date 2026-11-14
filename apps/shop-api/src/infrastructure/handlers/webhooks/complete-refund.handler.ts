@@ -1,6 +1,6 @@
 import type { Database } from "@auction/db";
 import { shopOrder, shopProcessedPaymentEvent, shopRefund } from "@auction/db/schema";
-import { and, eq, or } from "drizzle-orm";
+import { and, eq, isNull, or } from "drizzle-orm";
 import type { ShopNotificationPublisher } from "../../../application/ports/shop-notification.publisher.js";
 import type { StripeMoneyWebhookOutcome } from "../../../application/ports/stripe-money-webhook.types.js";
 import { ShopPaymentWebhookError } from "../../../errors/shop-payment-webhook.error.js";
@@ -88,6 +88,8 @@ export async function completeRefundFromWebhook(
         id: shopRefund.id,
         status: shopRefund.status,
         stripeRefundId: shopRefund.stripeRefundId,
+        settledOutsideAt: shopRefund.settledOutsideAt,
+        reversedAt: shopRefund.reversedAt,
       })
       .from(shopRefund)
       .where(eq(shopRefund.stripeRefundId, input.stripeRefundId))
@@ -99,6 +101,8 @@ export async function completeRefundFromWebhook(
           id: shopRefund.id,
           status: shopRefund.status,
           stripeRefundId: shopRefund.stripeRefundId,
+          settledOutsideAt: shopRefund.settledOutsideAt,
+          reversedAt: shopRefund.reversedAt,
         })
         .from(shopRefund)
         .where(and(eq(shopRefund.id, input.shopRefundId), eq(shopRefund.orderId, order.orderId)))
@@ -123,6 +127,8 @@ export async function completeRefundFromWebhook(
           id: shopRefund.id,
           status: shopRefund.status,
           stripeRefundId: shopRefund.stripeRefundId,
+          settledOutsideAt: shopRefund.settledOutsideAt,
+          reversedAt: shopRefund.reversedAt,
         });
       refund = inserted[0];
       if (!refund) {
@@ -131,6 +137,8 @@ export async function completeRefundFromWebhook(
             id: shopRefund.id,
             status: shopRefund.status,
             stripeRefundId: shopRefund.stripeRefundId,
+            settledOutsideAt: shopRefund.settledOutsideAt,
+            reversedAt: shopRefund.reversedAt,
           })
           .from(shopRefund)
           .where(
@@ -145,6 +153,31 @@ export async function completeRefundFromWebhook(
 
     if (!refund) {
       throw new ShopPaymentWebhookError("refund_persist_failed", { retryable: true });
+    }
+
+    // Stripe can report a refund failed after it succeeded (the card issuer could not return it):
+    // the money is back in LAX's Stripe balance. The status stays `succeeded` (what the order shows
+    // as refunded is the Shop owner's call), but the reversal is recorded once, with an event, so
+    // the books take back the refund's credit note instead of refunding it from clearing. A refund
+    // staff settled outside Stripe went back another way and is left as it is.
+    if (
+      refund.status === "succeeded" &&
+      input.status === "failed" &&
+      refund.settledOutsideAt == null &&
+      refund.reversedAt == null
+    ) {
+      await tx
+        .update(shopRefund)
+        .set({ reversedAt: new Date() })
+        .where(and(eq(shopRefund.id, refund.id), isNull(shopRefund.reversedAt)));
+      await events.insertInTransaction(tx as Database, {
+        aggregateType: "shop_refund",
+        aggregateId: refund.id,
+        eventType: "shop.refund.reversed",
+        producer: "shop-api",
+        payload: { schemaVersion: 1, refundId: refund.id, orderId: order.orderId },
+      });
+      return "processed";
     }
 
     const nextStatus = mergeRefundStatus(refund.status as RefundStatus, input.status);

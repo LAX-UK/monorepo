@@ -528,9 +528,59 @@ function record(entry: LineLedger, credit: Line): void {
   entry.creditedVat += credit.vatPence;
 }
 
+/** Two credit lines are the same document line: what the books are sent. */
+function sameCreditLine(a: Line, b: Line): boolean {
+  return (
+    a.description === b.description &&
+    a.treatment === b.treatment &&
+    a.unitNetPence === b.unitNetPence &&
+    a.vatPence === b.vatPence
+  );
+}
+
+/**
+ * The invoice line a credit line credits: the first of its role, in invoice order, with room for
+ * it, that rebuilds to exactly that credit line. A credit made line by line in order (filling) is
+ * always on the first with room; one made for a named line (`line`) is on that line unless an
+ * earlier line with room would rebuild to the very same credit line, and then it is recorded on
+ * that earlier one, since the two cannot be told apart in the books. The builder and the replay
+ * use this one rule, so a credit is always replayed onto the line it was recorded on.
+ */
+function creditedEntry(entries: readonly LineLedger[], line: Line): LineLedger | null {
+  const take = lineGrossPence(line);
+  if (take < 1) return null;
+  for (const entry of entries) {
+    if (take > entry.gross - entry.creditedGross) continue;
+    const rebuilt = nextCredit(entry, take);
+    if (rebuilt.ok && sameCreditLine(rebuilt.value, line)) return entry;
+  }
+  return null;
+}
+
+/**
+ * What is already credited on each line of the invoice, in invoice order, replaying `priorCredits`
+ * exactly as `buildCreditNoteFor` does (refused when one does not reproduce).
+ */
+export function creditedOnInvoiceLines(
+  invoice: Invoice,
+  priorCredits: readonly CreditNote[],
+): Result<Pence[], DocumentCode> {
+  const checked = checkInvoice(invoice);
+  if (!checked.ok) return checked;
+  const replayed = replayPriorCredits(invoice, priorCredits);
+  if (!replayed.ok) return replayed;
+  const next: Record<LineRole, number> = { goods: 0, delivery: 0 };
+  return ok(
+    invoice.lines.map((line) => {
+      const entry = replayed.value[line.role][next[line.role]++] as LineLedger;
+      return entry.creditedGross;
+    }),
+  );
+}
+
 /**
  * Replay the prior credit notes onto the invoice's lines, in order, rebuilding each credit line
- * exactly as `buildCreditNoteFor` would have made it. A prior credit that differs in any line or
+ * exactly as `buildCreditNoteFor` would have made it (on the line `creditedEntry` names). A prior credit that differs in any line or
  * total, or that uses more than a line holds, is refused; nothing a caller states about an
  * earlier credit is trusted beyond what the rebuild reproduces.
  */
@@ -540,7 +590,6 @@ function replayPriorCredits(
 ): Result<Record<LineRole, LineLedger[]>, DocumentCode> {
   const bad = (why: string) => refuse("bad_invoice", why);
   const ledger = ledgerFor(invoice);
-  const cursor: Record<LineRole, number> = { goods: 0, delivery: 0 };
   for (const prior of priorCredits) {
     const priorRef = checkRef(prior.reference, "credit_note", invoice.product);
     if (!priorRef.ok || prior.invoiceReference !== invoice.reference) {
@@ -552,30 +601,12 @@ function replayPriorCredits(
     for (const line of prior.lines as readonly Line[]) {
       const entries = ledger[line.role];
       if (!entries) return bad("a prior credit line has no role");
-      while (
-        cursor[line.role] < entries.length &&
-        (entries[cursor[line.role]] as LineLedger).creditedGross >=
-          (entries[cursor[line.role]] as LineLedger).gross
-      ) {
-        cursor[line.role] += 1;
-      }
-      const entry = entries[cursor[line.role]];
-      if (!entry || line.basis !== "tax_inclusive" || line.quantity !== 1) {
+      if (line.basis !== "tax_inclusive" || line.quantity !== 1) {
         return bad("a prior credit note does not match the invoice");
       }
-      const take = lineGrossPence(line);
-      const rebuilt =
-        take >= 1 && take <= entry.gross - entry.creditedGross ? nextCredit(entry, take) : null;
-      if (
-        !rebuilt?.ok ||
-        rebuilt.value.description !== line.description ||
-        rebuilt.value.treatment !== line.treatment ||
-        rebuilt.value.unitNetPence !== line.unitNetPence ||
-        rebuilt.value.vatPence !== line.vatPence
-      ) {
-        return bad("a prior credit note does not match the invoice");
-      }
-      record(entry, rebuilt.value);
+      const entry = creditedEntry(entries, line);
+      if (!entry) return bad("a prior credit note does not match the invoice");
+      record(entry, line);
     }
     if (!sameTotals(totalsOf(prior.lines), prior.totals)) {
       return bad("a prior credit note does not add up");
@@ -617,6 +648,12 @@ export function buildCreditNoteFor(
     priorCredits: readonly CreditNote[];
     /** The money given back with it (a refund that went through), if any. */
     refund?: CreditNoteRefundSource;
+    /**
+     * The invoice lines (indexes in `invoice.lines`, all of one role) the whole credit is for,
+     * filled in that order. Absent: the credit fills the lines of each role in invoice order.
+     * Given: the request must be all of their role and fit in what is left on them.
+     */
+    lines?: readonly number[];
   },
 ): Result<CreditNote, DocumentCode> {
   const checked = checkInvoice(invoice);
@@ -657,7 +694,42 @@ export function buildCreditNoteFor(
     }
   }
   const lines: Line[] = [];
-  for (const role of LINE_ROLES) {
+  if (input.lines !== undefined) {
+    const first = invoice.lines[input.lines[0] ?? -1];
+    const entryOf = (index: number): LineLedger | null => {
+      const line = invoice.lines[index];
+      if (!Number.isInteger(index) || !line || !first || line.role !== first.role) return null;
+      const position = invoice.lines.slice(0, index).filter((l) => l.role === line.role).length;
+      return ledger[line.role][position] ?? null;
+    };
+    const entries = input.lines.map(entryOf);
+    if (
+      !first ||
+      entries.some((entry) => entry === null) ||
+      new Set(input.lines).size !== input.lines.length
+    ) {
+      return refuse("bad_line", "the credited lines are not lines of one role on the invoice");
+    }
+    const amount = plan.value[first.role === "goods" ? "goodsPence" : "deliveryPence"];
+    const other = plan.value[first.role === "goods" ? "deliveryPence" : "goodsPence"];
+    const room = (entries as LineLedger[]).reduce((sum, e) => sum + e.gross - e.creditedGross, 0);
+    if (other !== 0 || amount > room) {
+      return refuse("exceeds_invoice", "the credit exceeds what is left on its lines");
+    }
+    let remaining = amount;
+    while (remaining > 0) {
+      const entry = (entries as LineLedger[]).find((e) => e.creditedGross < e.gross);
+      if (!entry) return refuse("exceeds_invoice", "the credit exceeds what is left on its lines");
+      const take = Math.min(remaining, entry.gross - entry.creditedGross);
+      const credit = nextCredit(entry, take);
+      if (!credit.ok) return credit;
+      lines.push(credit.value);
+      // Recorded where the replay will find it (this line, or one it cannot be told from).
+      record(creditedEntry(ledger[first.role], credit.value) ?? entry, credit.value);
+      remaining -= take;
+    }
+  }
+  for (const role of input.lines === undefined ? LINE_ROLES : []) {
     const amount = plan.value[role === "goods" ? "goodsPence" : "deliveryPence"];
     const left = ledger[role].reduce((sum, e) => sum + e.gross - e.creditedGross, 0);
     if (amount > left) {

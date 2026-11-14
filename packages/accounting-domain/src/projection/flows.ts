@@ -17,10 +17,16 @@ import {
 } from "./bid-refunds.js";
 import { type BidInvoiceFacts, projectBidInvoiceRaised } from "./bid.js";
 import { EMPTY_PROJECTION, type ProjectionPolicy } from "./projection.js";
+import {
+  type ShopRefundReversedFacts,
+  type ShopRefundsFacts,
+  projectShopRefundReversed,
+  projectShopRefundSettled,
+} from "./shop-refunds.js";
 import { type ShopOrderPaidFacts, projectShopOrderPaid } from "./shop.js";
 
 /**
- * Every money flow the books will follow, one projection policy each. Eight are built;
+ * Every money flow the books will follow, one projection policy each. Ten are built;
  * the others are listed so the set is visible in one place, and project nothing until their own
  * change builds them (each is waiting on code or on an accountant's answer).
  */
@@ -35,6 +41,7 @@ export const ACCOUNTING_FLOWS = [
   "bid_payout_settled",
   "shop_order_paid",
   "shop_refund_settled",
+  "shop_refund_reversed",
 ] as const;
 export type AccountingFlow = (typeof ACCOUNTING_FLOWS)[number];
 
@@ -54,7 +61,8 @@ export interface FlowFacts {
   readonly bid_buyer_default: BidBuyerDefaultFacts;
   readonly bid_payout_settled: NotBuiltYet;
   readonly shop_order_paid: ShopOrderPaidFacts;
-  readonly shop_refund_settled: NotBuiltYet;
+  readonly shop_refund_settled: ShopRefundsFacts;
+  readonly shop_refund_reversed: ShopRefundReversedFacts;
 }
 
 /** NOT BUILT: a placeholder policy that projects nothing. */
@@ -72,7 +80,8 @@ export const PROJECTION_POLICIES: {
   bid_buyer_default: projectBidBuyerDefault,
   bid_payout_settled: notBuiltYet,
   shop_order_paid: projectShopOrderPaid,
-  shop_refund_settled: notBuiltYet,
+  shop_refund_settled: projectShopRefundSettled,
+  shop_refund_reversed: projectShopRefundReversed,
 };
 
 /** The flows whose policy is built; only these are wired to events. */
@@ -85,5 +94,7 @@ export const BUILT_FLOWS = [
   "bid_delivery_refunded",
   "bid_buyer_default",
   "shop_order_paid",
+  "shop_refund_settled",
+  "shop_refund_reversed",
 ] as const satisfies readonly AccountingFlow[];
 export type BuiltFlow = (typeof BUILT_FLOWS)[number];
