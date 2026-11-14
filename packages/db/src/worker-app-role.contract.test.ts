@@ -151,6 +151,14 @@ describe.skipIf(!WORKER_URL)("worker_app role contract", { timeout: 60_000 }, ()
       ]) {
         expect(await can(table, "SELECT"), table).toBe(true);
       }
+      // A settled "Pay several" payment: its total and the courier quotes charged with it. Read
+      // only: the API settles groups, the books never change them.
+      for (const table of ["payment_group", "payment_group_delivery"]) {
+        expect(await can(table, "SELECT"), table).toBe(true);
+        for (const privilege of ["INSERT", "UPDATE", "DELETE", "TRUNCATE"]) {
+          expect(await can(table, privilege), `${table} ${privilege}`).toBe(false);
+        }
+      }
       // The worker raises invoices, and invoice.raised is written in the same transaction.
       expect(await can("domain_events", "INSERT")).toBe(true);
       // The accounting projector's cursor starts at the newest event the first time it runs.

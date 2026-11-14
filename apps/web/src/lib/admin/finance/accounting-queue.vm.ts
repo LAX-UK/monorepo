@@ -7,15 +7,20 @@ import {
   formatStaffMoney,
 } from "@auction/staff-ui";
 import {
+  ACCOUNTING_CONTACT_ORDER_TEXT,
   ACCOUNTING_DOCUMENT_TYPE_LABELS,
   ACCOUNTING_LOCKED_PERIOD_TEXT,
-  ACCOUNTING_PRODUCT_LABELS,
+  ACCOUNTING_PARKED_STATUS,
+  ACCOUNTING_PAYMENT_ORDER_TEXT,
   ACCOUNTING_QUEUE_TABS,
   ACCOUNTING_QUEUE_TAB_LABELS,
   type AccountingDocumentState,
   type AccountingOrganisation,
+  type AccountingParkReason,
+  type AccountingPartFundedTransfer,
   type AccountingQueueRow,
   type AccountingQueueTab,
+  type AccountingReleaseOutcome,
   type AccountingTryAgainOutcome,
   isAccountingOrganisation,
   isAccountingQueueTab,
@@ -126,9 +131,14 @@ const STATE_PRESENTATION: Readonly<Record<AccountingDocumentState, StatusPresent
 };
 
 export function accountingStatePresentation(
-  row: Pick<AccountingQueueRow, "state" | "lockedPeriod" | "targetMode">,
+  row: Pick<AccountingQueueRow, "state" | "lockedPeriod" | "targetMode"> & {
+    parked?: AccountingParkReason | null;
+  },
 ): StatusPresentation {
   if (row.lockedPeriod) return { label: "Locked period", tone: "warning" };
+  if (row.state === "needs_review" && row.parked) {
+    return { label: ACCOUNTING_PARKED_STATUS[row.parked], tone: "warning" };
+  }
   if (row.state === "issued" && row.targetMode === "dry_run") {
     return { label: "Rehearsed", tone: "neutral" };
   }
@@ -170,6 +180,28 @@ export type AccountingStaffRow = {
   lockedPeriod: boolean;
   rehearsal: boolean;
   canTryAgain: boolean;
+  /** The person may ask to release this parked document; the API checks its reason is settled. */
+  canRelease: boolean;
+  /** Kept out of Books until the accountant or a person decides; released, never tried again. */
+  parked: AccountingParkReason | null;
+  /** A payment's invoices, each with what it takes ("£120.00"); empty for other documents. */
+  appliedTo: { reference: string; amount: string }[];
+  /**
+   * What a queued document still waits for, each with where it is ("Failed", "Not queued yet"),
+   * so a waiting payment names the invoice holding it; empty otherwise.
+   */
+  waitingFor: { reference: string; state: string }[];
+  /** The order it is sent in: a payment after its invoices, an invoice after its contact. */
+  note: string | null;
+  /** Queued and never tried: nothing has been asked of Books yet, so there is no problem to show. */
+  untried: boolean;
+};
+
+/** What each kind of document waits for before it is sent (`documentsAwaited` in the domain). */
+const ORDER_NOTE: Partial<Record<AccountingQueueRow["documentType"], string>> = {
+  payment: ACCOUNTING_PAYMENT_ORDER_TEXT,
+  invoice: ACCOUNTING_CONTACT_ORDER_TEXT,
+  credit_note: ACCOUNTING_CONTACT_ORDER_TEXT,
 };
 
 export function toAccountingStaffRows(rows: readonly AccountingQueueRow[]): AccountingStaffRow[] {
@@ -178,7 +210,7 @@ export function toAccountingStaffRows(rows: readonly AccountingQueueRow[]): Acco
     return {
       id: row.id,
       reference: row.reference,
-      kind: `${documentType} · ${ACCOUNTING_PRODUCT_LABELS[row.product]}`,
+      kind: row.label,
       documentType,
       company: legalNameForOrganisation(row.organisation),
       amount: formatStaffMoney(row.grossPence, "GBP"),
@@ -192,8 +224,54 @@ export function toAccountingStaffRows(rows: readonly AccountingQueueRow[]): Acco
       lockedPeriod: row.lockedPeriod,
       rehearsal: row.targetMode === "dry_run",
       canTryAgain: row.canTryAgain,
+      canRelease: row.canRelease,
+      parked: row.parked,
+      appliedTo: row.appliedTo.map((applied) => ({
+        reference: applied.reference,
+        amount: formatStaffMoney(applied.amountPence, "GBP"),
+      })),
+      waitingFor: row.waitingFor.map((awaited) => ({
+        reference: awaited.reference,
+        state: awaited.state === null ? NOT_QUEUED_LABEL : STATE_PRESENTATION[awaited.state].label,
+      })),
+      note: row.parked === null ? (ORDER_NOTE[row.documentType] ?? null) : null,
+      untried: row.state === "pending" && row.attempts === 0,
     };
   });
+}
+
+/** Said of a document another waits for when nothing is registered under its reference yet. */
+export const NOT_QUEUED_LABEL = "Not queued yet";
+
+/** The row's one line about what holds a waiting document: "Waiting for LAX-BID-INV-1 · Failed". */
+export function waitingForLine(row: Pick<AccountingStaffRow, "waitingFor">): string | null {
+  const [first, ...rest] = row.waitingFor;
+  if (!first) return null;
+  const more = rest.length === 0 ? "" : ` and ${rest.length} more`;
+  return `Waiting for ${first.reference} · ${first.state}${more}`;
+}
+
+/** One bank transfer part received, as the panel lists it. */
+export type AccountingPartFundedRow = {
+  reference: string;
+  /** "Pay several" or "Bank transfer". */
+  kind: string;
+  buyer: string;
+  /** "£1,000.01 of £2,500.00 received". */
+  received: string;
+  since: string | null;
+};
+
+export function toPartFundedRows(
+  transfers: readonly AccountingPartFundedTransfer[],
+): AccountingPartFundedRow[] {
+  return transfers.map((t) => ({
+    reference: t.reference,
+    kind: t.paySeveral ? "Pay several" : "Bank transfer",
+    buyer: t.buyer,
+    received: `${formatStaffMoney(t.receivedPence, "GBP")} of ${formatStaffMoney(t.totalPence, "GBP")} received`,
+    since: t.since,
+  }));
 }
 
 /** The confirm dialog for trying a document again: the same document, the same reference. */
@@ -208,6 +286,29 @@ export function tryAgainCopy(row: Pick<AccountingStaffRow, "reference" | "locked
     description: row.lockedPeriod ? `${ACCOUNTING_LOCKED_PERIOD_TEXT} ${same}` : same,
     confirmLabel: "Try again",
   };
+}
+
+/**
+ * The confirm dialog for releasing a parked document: it is checked against what Bid holds now and
+ * queued under the same reference, or refused with the reason if that is not settled yet.
+ */
+export function releaseCopy(row: Pick<AccountingStaffRow, "reference">): {
+  title: string;
+  description: string;
+  confirmLabel: string;
+} {
+  return {
+    title: `Release ${row.reference}?`,
+    description: `Release it once the reason it is parked is settled. It is checked against what Bid holds now and queued for Books under the same LAX reference ${row.reference}. If the reason is not settled, nothing changes.`,
+    confirmLabel: "Release",
+  };
+}
+
+/** What the person is told once a release is in. */
+export function releaseToast(outcome: AccountingReleaseOutcome, reference: string): string {
+  return outcome === "released"
+    ? `${reference} is released and queued for Books`
+    : `${reference} was already queued`;
 }
 
 /** The two halves of the phone-only row meta: "Tried 3 times" and "last Wed 11 Nov, 09:30 GMT". */

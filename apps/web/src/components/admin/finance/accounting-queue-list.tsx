@@ -1,11 +1,15 @@
 "use client";
 
 import { useStaffListNavigation } from "@/components/admin/staff/use-staff-list-navigation";
-import { tryAgainAccountingDocumentAction } from "@/lib/actions/admin/admin-accounting";
+import {
+  releaseAccountingDocumentAction,
+  tryAgainAccountingDocumentAction,
+} from "@/lib/actions/admin/admin-accounting";
 import {
   ACCOUNTING_DESCRIPTION,
   ACCOUNTING_EMPTY_COPY,
   ACCOUNTING_REHEARSAL_NOTICE,
+  type AccountingPartFundedRow,
   type AccountingSearch,
   type AccountingStaffRow,
   ORGANISATION_SEGMENTS,
@@ -13,7 +17,8 @@ import {
   accountingTabs,
   legalNamesForFilter,
   lockedPeriodTitle,
-  rowMetaParts,
+  releaseCopy,
+  releaseToast,
   tryAgainCopy,
   tryAgainToast,
 } from "@/lib/admin/finance/accounting-queue.vm";
@@ -27,17 +32,14 @@ import {
   PrimaryCell,
   RelativeTime,
   SegmentedControl,
-  StaffButton,
   StaffCheckbox,
   StaffDate,
   StatusBadge,
   TableSearch,
-  TextLink,
 } from "@auction/staff-ui";
 import {
   ACCOUNTING_LOCKED_PERIOD_ACKNOWLEDGEMENT,
   ACCOUNTING_LOCKED_PERIOD_TEXT,
-  ACCOUNTING_NO_REASON_TEXT,
   type AccountingLastSent,
   type AccountingOrganisation,
   type AccountingQueueTab,
@@ -45,6 +47,14 @@ import {
 import { useRouter } from "next/navigation";
 import { useCallback, useId, useMemo, useState, useTransition } from "react";
 import { AccountingDetailsSheet } from "./accounting-details-sheet";
+import {
+  MetaLine,
+  PartFundedNotice,
+  ProblemCell,
+  RowAction,
+  type RowActionKind,
+  rowMenuActions,
+} from "./accounting-queue-cells";
 
 export type AccountingQueueListProps = {
   search: AccountingSearch;
@@ -71,13 +81,16 @@ export type AccountingQueueListProps = {
   rehearsal: boolean;
   /** Stored documents that could not be read back; counted, not listed. */
   unreadable: number;
+  /** Bank transfers part received (Bid): listed for reconciliation, never sent to Books. */
+  partFunded?: AccountingPartFundedRow[];
 };
 
 /**
  * Finance › Accounting on the staff list template: what LAX sends to Zoho Books for both
  * companies, one tab per stage (needs a person, failed, waiting, in Books). "Try again" sends the
- * same document under the same LAX reference, after a confirm; it is offered only to people with
- * the finance write permission and only where the document's state allows it. The header names the
+ * same document under the same LAX reference, after a confirm; "Release" queues a parked one once
+ * its reason is settled (the API checks that against the stored rows). Both are offered only to
+ * people with the finance write permission and only where the document's state allows it. The header names the
  * source and when it last reached Books; a row opens a details sheet, and each row's main action
  * is a visible button as well as an entry in its … menu.
  */
@@ -85,9 +98,12 @@ export function AccountingQueueList(props: AccountingQueueListProps) {
   const { search, rows, tab, canAct, organisation } = props;
   const router = useRouter();
   const { pending, navigate, Link: ListLink } = useStaffListNavigation();
-  const [confirming, setConfirming] = useState<{ row: AccountingStaffRow; key: string } | null>(
-    null,
-  );
+  const [confirming, setConfirming] = useState<{
+    row: AccountingStaffRow;
+    key: string;
+    /** Try a refused document again, or release a parked one. */
+    action: RowActionKind;
+  } | null>(null);
   const [acknowledged, setAcknowledged] = useState(false);
   const [details, setDetails] = useState<AccountingStaffRow | null>(null);
   const [failure, setFailure] = useState<string | null>(null);
@@ -97,7 +113,12 @@ export function AccountingQueueList(props: AccountingQueueListProps) {
   const askTryAgain = useCallback((row: AccountingStaffRow) => {
     setFailure(null);
     setAcknowledged(false);
-    setConfirming({ row, key: crypto.randomUUID() });
+    setConfirming({ row, key: crypto.randomUUID(), action: "try_again" });
+  }, []);
+  const askRelease = useCallback((row: AccountingStaffRow) => {
+    setFailure(null);
+    setAcknowledged(false);
+    setConfirming({ row, key: crypto.randomUUID(), action: "release" });
   }, []);
 
   const columns = useMemo<DataColumn<AccountingStaffRow>[]>(
@@ -117,15 +138,21 @@ export function AccountingQueueList(props: AccountingQueueListProps) {
       {
         id: "state",
         header: "Status",
-        width: "136px",
+        // Wide enough for "Waiting for the accountant" on one line, with room before the next
+        // column so the badge never sits against "Last problem".
+        width: "188px",
         mobile: "meta",
         truncate: false,
-        cell: (row) => <StatusBadge tone={row.state.tone}>{row.state.label}</StatusBadge>,
+        cell: (row) => (
+          <span className="inline-block pr-3">
+            <StatusBadge tone={row.state.tone}>{row.state.label}</StatusBadge>
+          </span>
+        ),
       },
       {
         id: "problem",
         header: tab === "issued" ? "In Books" : "Last problem",
-        minWidth: "220px", // matters most after Document, so it takes the spare room
+        minWidth: "180px", // matters most after Document, so it takes the spare room
         truncate: false,
         mobile: "detail",
         cell: (row) => <ProblemCell row={row} issued={tab === "issued"} />,
@@ -201,26 +228,34 @@ export function AccountingQueueList(props: AccountingQueueListProps) {
         width: "104px",
         truncate: false,
         mobile: "actions",
-        cell: (row) => <RowAction row={row} canAct={canAct} onTryAgain={askTryAgain} />,
+        cell: (row) => (
+          <RowAction row={row} canAct={canAct} onTryAgain={askTryAgain} onRelease={askRelease} />
+        ),
       },
     ],
-    [tab, canAct, askTryAgain],
+    [tab, canAct, askTryAgain, askRelease],
   );
 
   const copy = ACCOUNTING_EMPTY_COPY[tab];
 
   const submit = () => {
     if (!confirming) return;
-    const { row, key } = confirming;
+    const { row, key, action } = confirming;
     setFailure(null);
     startTransition(async () => {
-      const result = await tryAgainAccountingDocumentAction({
-        documentId: row.id,
-        idempotencyKey: key,
-      });
+      const input = { documentId: row.id, idempotencyKey: key };
+      const result =
+        action === "release"
+          ? await releaseAccountingDocumentAction(input)
+          : await tryAgainAccountingDocumentAction(input);
       if (result.ok) {
         setConfirming(null);
-        notify.success(tryAgainToast(result.data?.outcome ?? "requeued", row.reference));
+        const outcome = result.data?.outcome;
+        notify.success(
+          action === "release"
+            ? releaseToast(outcome === "already_queued" ? outcome : "released", row.reference)
+            : tryAgainToast(outcome === "already_queued" ? outcome : "requeued", row.reference),
+        );
         router.refresh();
         return;
       }
@@ -229,11 +264,21 @@ export function AccountingQueueList(props: AccountingQueueListProps) {
   };
 
   const dialogRow = confirming?.row ?? null;
-  const dialogCopy = dialogRow ? tryAgainCopy(dialogRow) : null;
-  const lockedConfirm = Boolean(dialogRow?.lockedPeriod);
+  const releasing = confirming?.action === "release";
+  const dialogCopy = dialogRow
+    ? releasing
+      ? releaseCopy(dialogRow)
+      : tryAgainCopy(dialogRow)
+    : null;
+  const lockedConfirm = !releasing && Boolean(dialogRow?.lockedPeriod);
   const locked = rows.filter((row) => row.lockedPeriod).length;
+  const partFunded = props.partFunded ?? [];
   const hasNotice =
-    locked > 0 || props.rehearsal || props.unreadable > 0 || props.referenceError !== null;
+    locked > 0 ||
+    props.rehearsal ||
+    props.unreadable > 0 ||
+    props.referenceError !== null ||
+    partFunded.length > 0;
   const notices = (
     <>
       {props.referenceError ? (
@@ -251,6 +296,7 @@ export function AccountingQueueList(props: AccountingQueueListProps) {
           {ACCOUNTING_REHEARSAL_NOTICE}
         </Notice>
       ) : null}
+      {partFunded.length > 0 ? <PartFundedNotice transfers={partFunded} /> : null}
       {props.unreadable > 0 ? (
         <Notice tone="warning" title="Some documents could not be read">
           {props.unreadable === 1
@@ -322,7 +368,8 @@ export function AccountingQueueList(props: AccountingQueueListProps) {
           defaultHiddenColumns: ["created"],
           rowActions: {
             label: (row) => `Actions for ${row.documentType.toLowerCase()} ${row.reference}`,
-            actions: (row) => rowMenuActions(row, { canAct, onTryAgain: askTryAgain }),
+            actions: (row) =>
+              rowMenuActions(row, { canAct, onTryAgain: askTryAgain, onRelease: askRelease }),
           },
         }}
         pageSize={{
@@ -338,6 +385,10 @@ export function AccountingQueueList(props: AccountingQueueListProps) {
         onTryAgain={(row) => {
           setDetails(null);
           askTryAgain(row);
+        }}
+        onRelease={(row) => {
+          setDetails(null);
+          askRelease(row);
         }}
       />
       <ConfirmActionDialog
@@ -363,7 +414,11 @@ export function AccountingQueueList(props: AccountingQueueListProps) {
           </div>
         ) : null}
         {failure ? (
-          <Notice tone="danger" alert title="The document was not sent again">
+          <Notice
+            tone="danger"
+            alert
+            title={releasing ? "The document was not released" : "The document was not sent again"}
+          >
             {failure}
           </Notice>
         ) : null}
@@ -396,92 +451,4 @@ function SourceLine({
       <RelativeTime value={lastSent.at} />
     </>
   );
-}
-
-/** The row's main action as a button: try a failed one again, or open an issued one in Books. */
-function RowAction({
-  row,
-  canAct,
-  onTryAgain,
-}: {
-  row: AccountingStaffRow;
-  canAct: boolean;
-  onTryAgain: (row: AccountingStaffRow) => void;
-}) {
-  if (canAct && row.canTryAgain) {
-    return (
-      <StaffButton size="sm" variant="secondary" onClick={() => onTryAgain(row)}>
-        Try again
-      </StaffButton>
-    );
-  }
-  if (row.books.kind === "link") {
-    return (
-      <StaffButton asChild size="sm" variant="secondary">
-        <a href={row.books.href} target="_blank" rel="noreferrer">
-          Open
-        </a>
-      </StaffButton>
-    );
-  }
-  return null;
-}
-
-type RowMenuDeps = { canAct: boolean; onTryAgain: (row: AccountingStaffRow) => void };
-
-function rowMenuActions(row: AccountingStaffRow, { canAct, onTryAgain }: RowMenuDeps) {
-  return [
-    ...(canAct && row.canTryAgain
-      ? [{ id: "try-again", label: "Try again", onSelect: () => onTryAgain(row) }]
-      : []),
-    ...(row.books.kind === "link"
-      ? [{ id: "books", label: "Open in Books", href: row.books.href }]
-      : []),
-    {
-      id: "copy",
-      label: "Copy LAX reference",
-      onSelect: () => {
-        void navigator.clipboard
-          ?.writeText(row.reference)
-          .then(() => notify.success("LAX reference copied"))
-          .catch(() => notify.error("Could not copy the LAX reference"));
-      },
-    },
-  ];
-}
-
-/**
- * The phone's "Tried 2 times · last Thu 12 Nov, 09:30 GMT". Where the row's Try again button
- * narrows the column it wraps, first at the dot, rather than cutting the time off.
- */
-function MetaLine({ row }: { row: AccountingStaffRow }) {
-  const [tries, last] = rowMetaParts(row);
-  return (
-    <span data-meta-line className="whitespace-normal break-words">
-      <span className="inline-block max-w-full">{tries} ·</span>{" "}
-      <span className="inline-block max-w-full">{last}</span>
-    </span>
-  );
-}
-
-function ProblemCell({ row, issued }: { row: AccountingStaffRow; issued: boolean }) {
-  if (issued) {
-    if (row.books.kind === "link") {
-      return (
-        <TextLink href={row.books.href} external>
-          {row.books.label}
-        </TextLink>
-      );
-    }
-    if (row.books.kind === "text")
-      return <span className="text-staff-muted">{row.books.label}</span>;
-    return <span className="text-staff-muted">Not in Books</span>;
-  }
-  // A failed document with no stored reason still reads as an answer from Books, not a blank.
-  if (!row.problem) {
-    const text = row.state.tone === "danger" ? ACCOUNTING_NO_REASON_TEXT : "None";
-    return <span className="text-staff-muted">{text}</span>;
-  }
-  // Up to two lines, then an ellipsis; the whole reason is in the details sheet.
-  return <span className="line-clamp-2 whitespace-normal">{row.problem}</span>;
 }

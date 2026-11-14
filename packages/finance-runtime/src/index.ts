@@ -13,6 +13,8 @@ export type {
   AccountingQueueRequest,
   AccountingTryAgainRequest,
   AccountingTryAgainResponse,
+  AccountingReleaseRequest,
+  AccountingReleaseResponse,
   BooksDocumentLink,
   IAccountingAuditTrail,
   IAccountingQueueService,

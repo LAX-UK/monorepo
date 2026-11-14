@@ -254,6 +254,9 @@ export const API_REFUND_REVERSAL_TABLES = ["stripe_refund_reversal"] as const;
  * other role has access. Column grants cannot limit the values written, so triggers (migration
  * 0379) hold the API to the requeue itself: a document only from `failed` or a cleared review to
  * `pending`, with no provider document, and a history row only of that requeue, naming who asked.
+ * Migration 0382 adds the release of a parked document, in a clause of its own: parked to
+ * `pending`, the document unchanged except a parked delivery invoice's rebuilt draft (same LAX
+ * reference, same gross), and a `release` history row naming who asked.
  */
 export const API_ACCOUNTING_READ_TABLES = [
   "accounting_document",
@@ -285,6 +288,17 @@ export const WORKER_ACCOUNTING_DOCUMENT_UPDATE_COLUMNS = [
 export const API_ACCOUNTING_REQUEUE_COLUMNS = WORKER_ACCOUNTING_DOCUMENT_UPDATE_COLUMNS.filter(
   (column) => column !== "provider",
 );
+/**
+ * What a staff release of a parked delivery invoice may also write: the draft rebuilt from the
+ * stored rows once the accountant's booking is set (migration 0382). The trigger refuses any
+ * change to them on every other update by api_app, a requeue included.
+ */
+export const API_ACCOUNTING_RELEASE_COLUMNS = [
+  "payload",
+  "net_pence",
+  "vat_pence",
+  "gross_pence",
+] as const;
 export const WORKER_ACCOUNTING_APPEND_ONLY_TABLES = ["accounting_document_event"] as const;
 /**
  * LAX's stored copies of issued documents' PDFs (migration 0381). The worker records a copy once
@@ -546,6 +560,12 @@ export const WORKER_READ_TABLES = [
   "collection_exception",
   "collection_booking",
   "collection_booking_lot",
+  /**
+   * The books (Zoho Books) read a settled "Pay several" payment: its stored total, currency and
+   * day, and the courier quotes charged with the lots. Read only; the API settles groups.
+   */
+  "payment_group",
+  "payment_group_delivery",
   /** The storage reminder sweep reads each lot's eligibility to collect: a courier quote accepted, a dispute open. */
   "delivery_quote",
   "dispute_case",
@@ -1314,12 +1334,10 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
           if ((API_ACCOUNTING_READ_TABLES as readonly string[]).includes(tableName)) {
             await grantIfExists(client, "api_app", tableName, "SELECT");
             if ((API_ACCOUNTING_REQUEUE_TABLES as readonly string[]).includes(tableName)) {
-              await grantColumnUpdateIfExists(
-                client,
-                "api_app",
-                tableName,
-                API_ACCOUNTING_REQUEUE_COLUMNS,
-              );
+              await grantColumnUpdateIfExists(client, "api_app", tableName, [
+                ...API_ACCOUNTING_REQUEUE_COLUMNS,
+                ...API_ACCOUNTING_RELEASE_COLUMNS,
+              ]);
             }
             if ((API_ACCOUNTING_HISTORY_TABLES as readonly string[]).includes(tableName)) {
               await grantIfExists(client, "api_app", tableName, "INSERT");

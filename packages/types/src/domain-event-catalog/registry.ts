@@ -8,6 +8,7 @@ import {
 import {
   invoiceRaisedPayloadSchemaV1,
   paymentCapturedPayloadSchemaV1,
+  paymentGroupSettledPayloadSchemaV1,
   paymentRefundedPayloadSchemaV1,
   payoutPaidPayloadSchemaV1,
   payoutSettlementCreatedPayloadSchemaV1,
@@ -140,6 +141,7 @@ export const ALL_LIVE_DOMAIN_EVENT_TYPES = [
   "failed_job.restored",
   "failed_job.retried",
   "accounting_document.retry_requested",
+  "accounting_document.release_requested",
   "data_request.viewed",
   "data_request.logged",
   "data_request.updated",
@@ -270,6 +272,7 @@ export const ALL_LIVE_DOMAIN_EVENT_TYPES = [
   "payment_group.refund_reversed",
   "payment_group.refund_unattributed",
   "payment_group.released",
+  "payment_group.settled",
   "payment_group.settlement_refused",
   "payout.clawback_required",
   "payout.paid",
@@ -629,6 +632,16 @@ const REGISTRY_OVERRIDES: Partial<Record<LiveDomainEventType, RegistryOverride>>
     consumers: ["accounting", "artwork_offer_lock", "xero", "zoho"],
     piiClassification: "contains_pii",
   },
+  /**
+   * A "Pay several" payment settled; references only, written in the settlement transaction. The
+   * books read every amount from the stored rows.
+   */
+  "payment_group.settled": {
+    schema: paymentGroupSettledPayloadSchemaV1,
+    producers: ["apps/api"],
+    consumers: ["accounting"],
+    piiClassification: "none",
+  },
   "payment.dispute_closed": { consumers: ["notification_fanout"] },
   "payment.dispute_opened": { consumers: ["notification_fanout"] },
   "payment.refunded": {
@@ -874,6 +887,12 @@ const REGISTRY_OVERRIDES: Partial<Record<LiveDomainEventType, RegistryOverride>>
     piiClassification: "operational",
   },
   "accounting_document.retry_requested": {
+    producers: ["apps/api"],
+    consumers: [],
+    idempotencyPolicy: "none",
+    piiClassification: "operational",
+  },
+  "accounting_document.release_requested": {
     producers: ["apps/api"],
     consumers: [],
     idempotencyPolicy: "none",

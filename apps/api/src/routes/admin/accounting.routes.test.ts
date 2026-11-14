@@ -5,7 +5,7 @@ import { requireFinanceAccess } from "../../middleware/require-capability.js";
 import type { IAccountingQueueService } from "../../services/interfaces/accounting-queue.js";
 import { createTestStaffGuards } from "../../testing/staff-mutation-guards.js";
 import type { AdminHono } from "./_shared.js";
-import { attachAdminAccountingRoutes } from "./accounting.routes.js";
+import { attachAdminAccountingNoStore, attachAdminAccountingRoutes } from "./accounting.routes.js";
 
 type Body = {
   data: {
@@ -55,6 +55,15 @@ function build(
       ok: true as const,
       value: { id: DOC_ID, reference: "LAX-BID-INV-a1", outcome: "requeued" as const },
     })),
+    release: vi.fn(async () => ({
+      ok: true as const,
+      value: {
+        id: DOC_ID,
+        reference: "LAX-BID-INV-dlv-a1",
+        outcome: "released" as const,
+        rebuilt: true,
+      },
+    })),
     ...queue,
   };
   const app: AdminHono = new Hono();
@@ -65,6 +74,8 @@ function build(
     c.set("userStaffRoles", staffRoles);
     await next();
   });
+  // As the admin router mounts them: no-store first, then the finance gate, then the routes.
+  attachAdminAccountingNoStore(app);
   app.use("/finance/*", financeGate);
   attachAdminAccountingRoutes(
     app,
@@ -205,5 +216,87 @@ describe("POST /finance/accounting/:id/try-again", () => {
       expect(res.status).toBe(status);
       expect(await read(res)).toEqual({ error: "Plain words.", code: refusal });
     }
+  });
+});
+
+function releaseDocument(app: AdminHono, key = "key-0101-release", id = DOC_ID) {
+  return app.request(`/finance/accounting/${id}/release`, {
+    method: "POST",
+    headers: { "Idempotency-Key": key },
+  });
+}
+
+describe("POST /finance/accounting/:id/release", () => {
+  it("releases the parked document as the person asking", async () => {
+    const { app, service } = build(["finance"]);
+    const res = await releaseDocument(app);
+    expect(res.status).toBe(200);
+    expect(service.release).toHaveBeenCalledWith({ documentId: DOC_ID, actorUserId: "staff-1" });
+    expect((await read(res)).data).toEqual({
+      id: DOC_ID,
+      reference: "LAX-BID-INV-dlv-a1",
+      outcome: "released",
+      rebuilt: true,
+    });
+  });
+
+  it("needs an Idempotency-Key, and answers a repeated key without releasing again", async () => {
+    const { app, service } = build(["finance"]);
+    const missing = await app.request(`/finance/accounting/${DOC_ID}/release`, { method: "POST" });
+    expect(missing.status).toBe(400);
+    await releaseDocument(app, "key-0102-same");
+    expect((await releaseDocument(app, "key-0102-same")).status).toBe(200);
+    expect(service.release).toHaveBeenCalledTimes(1);
+  });
+
+  it("is gated like a try again: the finance write permission, behind the finance read", async () => {
+    for (const role of ["read_only", "sales_manager"] as const) {
+      const { app, service } = build([role], {}, passReadGate);
+      expect((await releaseDocument(app)).status, role).toBe(403);
+      expect(service.release).not.toHaveBeenCalled();
+    }
+  });
+
+  it("says why it cannot be released yet, with its own status for each refusal", async () => {
+    for (const [refusal, status] of [
+      ["not_found", 404],
+      ["not_allowed", 409],
+      ["unresolved", 409],
+      ["unreadable", 422],
+    ] as const) {
+      const { app } = build(["finance"], {
+        release: vi.fn(async () => ({ ok: false as const, refusal, message: `why ${refusal}` })),
+      });
+      const res = await releaseDocument(app, `key-0103-${refusal}`);
+      expect(res.status, refusal).toBe(status);
+      expect(await res.json()).toEqual({ error: `why ${refusal}`, code: refusal });
+    }
+  });
+});
+
+describe("Cache-Control: no-store on every Accounting response", () => {
+  const noStore = (res: Response) => res.headers.get("Cache-Control");
+
+  it("on the page: 200, 400 for a bad query, and 403 from the finance gate", async () => {
+    expect(noStore(await build(["finance"]).app.request("/finance/accounting"))).toBe("no-store");
+    const bad = await build(["finance"]).app.request("/finance/accounting?tab=cancelled");
+    expect(bad.status).toBe(400);
+    expect(noStore(bad)).toBe("no-store");
+    const refused = await build(["sales_manager"]).app.request("/finance/accounting");
+    expect(refused.status).toBe(403);
+    expect(noStore(refused)).toBe("no-store");
+  });
+
+  it("on a try again and a release: 200, 400 for a bad id, and 403 without the write", async () => {
+    const { app } = build(["finance"]);
+    expect(noStore(await tryAgain(app))).toBe("no-store");
+    expect(noStore(await releaseDocument(app))).toBe("no-store");
+    const bad = await releaseDocument(app, "key-0201-bad", "not-a-uuid");
+    expect(bad.status).toBe(400);
+    expect(noStore(bad)).toBe("no-store");
+    const readOnly = build(["read_only"], {}, passReadGate).app;
+    const refused = await releaseDocument(readOnly, "key-0202-ro");
+    expect(refused.status).toBe(403);
+    expect(noStore(refused)).toBe("no-store");
   });
 });

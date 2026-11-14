@@ -16,6 +16,7 @@ import type {
 import {
   invoiceRaisedPayloadSchemaV1,
   paymentCapturedPayloadSchemaV1,
+  paymentGroupSettledPayloadSchemaV1,
   shopAccountingOrderPaidPayloadSchemaV1,
 } from "@auction/types";
 
@@ -66,6 +67,27 @@ export class AccountingInvoiceLinesChangedError extends Error {
   }
 }
 
+/**
+ * The settled group's stored payment and courier-quote rows are not the ones its
+ * `payment_group.settled` event named. Not retried: a person looks at the group (they are fixed
+ * by the settlement transaction, so this should never happen).
+ */
+export class AccountingGroupRowsChangedError extends Error {
+  readonly retryable = false;
+  readonly code = "payment_group_rows_changed";
+  constructor(groupId: string) {
+    super(`accounting_payment_group_rows_changed:${groupId}`);
+    this.name = "AccountingGroupRowsChangedError";
+  }
+}
+
+/** The same ids, in any order (case aside). */
+function sameIds(named: readonly string[], stored: readonly string[]): boolean {
+  const a = named.map((id) => id.toLowerCase()).sort();
+  const b = stored.map((id) => id.toLowerCase()).sort();
+  return a.length === b.length && a.every((id, index) => id === b[index]);
+}
+
 /** The lines read are exactly the raised ones, in the same order. */
 function sameLines(raised: readonly string[], lines: readonly { readonly id?: string }[]): boolean {
   return (
@@ -92,7 +114,11 @@ function route<F extends BuiltFlow>(
 }
 
 /**
- * Which events reach the books, and through which flow. A new flow adds a row here (and its policy
+ * Which events reach the books, and through which flow. Bank-transfer money that has only partly
+ * arrived (`payment.bank_transfer_partially_funded`, `payment_group.bank_transfer_partially_funded`)
+ * and money that could not be applied (`payment.unapplied_money_received`) are deliberately absent:
+ * they make no Books document (the first is listed on the Accounting page, the second is a finance
+ * task). The payment reaches the books once all of it is applied, through `payment.captured`. A new flow adds a row here (and its policy
  * in the accounting domain); nothing else changes. The event types listed must be the ones the
  * catalogue routes to the `accounting` consumer.
  */
@@ -112,6 +138,27 @@ export const ACCOUNTING_EVENT_ROUTES: Readonly<Record<string, AccountingEventRou
     const payload = paymentCapturedPayloadSchemaV1.safeParse(event.payload);
     if (!payload.success) throw new AccountingEventPayloadError(event.eventType);
     return facts.bid.paymentCaptured(payload.data.paymentId, new Date(payload.data.capturedAt));
+  }),
+  // "Pay several": one payment for every invoice (and courier quote) the group settled.
+  "payment_group.settled": route("bid", "bid_payment_group_settled", async (facts, event) => {
+    const payload = paymentGroupSettledPayloadSchemaV1.safeParse(event.payload);
+    if (!payload.success) throw new AccountingEventPayloadError(event.eventType);
+    const read = await facts.paymentGroupSettled(payload.data.paymentGroupId);
+    if (
+      read.status === "ready" &&
+      (!sameIds(
+        payload.data.paymentIds,
+        read.facts.members.map((m) => m.paymentId),
+      ) ||
+        !sameIds(
+          payload.data.deliveryQuoteIds,
+          read.facts.deliveries.map((d) => d.quoteId),
+        ))
+    ) {
+      // Settled in one transaction with the event: different rows are a fault, never booked.
+      throw new AccountingGroupRowsChangedError(payload.data.paymentGroupId);
+    }
+    return read;
   }),
   // Every refund of the payment is replayed in order; the aggregate is the payment.
   "payment.refunded": route("bid", "bid_payment_refunded", (facts, event) =>

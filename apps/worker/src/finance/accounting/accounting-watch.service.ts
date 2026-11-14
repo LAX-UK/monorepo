@@ -23,6 +23,12 @@ export const WORKING_DAY_MINUTES = 9 * 60;
  */
 export const SENDER_MISSED_AFTER_MS = 15 * 60_000;
 
+/**
+ * How long a payment may wait for its invoice before someone is told. It waits without using an
+ * attempt, so a refused or held invoice would otherwise hold it silently.
+ */
+export const PAYMENT_WAITING_AFTER_MS = 6 * 60 * 60_000;
+
 export interface AccountingWatchDeps {
   readonly attention: IAccountingAttentionReader;
   readonly settings: IAccountingSourceSettingReader;
@@ -37,13 +43,14 @@ export interface WatchResult {
   readonly needsPersonOverdue: boolean;
   readonly senderMissed: boolean;
   readonly bidInvoiceDelayed: boolean;
+  readonly paymentWaiting: boolean;
 }
 
 /**
  * Checks the Books document queue for what a person should know about: a document that has
  * waited for a person for more than one working day, documents the sender should have taken
- * long ago (it has stopped, or is failing before it claims), and buyers' Bid invoices still being
- * prepared after 30 minutes. Runs as a cron; each run raises at most one alert of each kind, with
+ * long ago (it has stopped, or is failing before it claims), buyers' Bid invoices still being
+ * prepared after 30 minutes, and payments still waiting for their invoice after six hours. Runs as a cron; each run raises at most one alert of each kind, with
  * the count and the oldest time.
  */
 export class AccountingWatch {
@@ -91,7 +98,22 @@ export class AccountingWatch {
         page: "/admin/finance/accounting",
       });
     }
-    return { needsPersonOverdue, senderMissed, bidInvoiceDelayed };
+    // A payment held by its invoice for hours: the same delayed-accounting alert, for payments.
+    const waiting = await this.deps.attention.waitingPayments(
+      modes,
+      new Date(now.getTime() - PAYMENT_WAITING_AFTER_MS),
+    );
+    const paymentWaiting = waiting.count > 0 && waiting.oldestSince !== null;
+    if (paymentWaiting) {
+      this.deps.alerts.raise(ACCOUNTING_ALERTS.bidInvoiceDelayed, {
+        documentType: "payment",
+        count: waiting.count,
+        oldestSince: waiting.oldestSince?.toISOString(),
+        modes,
+        page: "/admin/finance/accounting?tab=waiting",
+      });
+    }
+    return { needsPersonOverdue, senderMissed, bidInvoiceDelayed, paymentWaiting };
   }
 
   /**

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { type OpenInvoice, allocatePayment } from "./allocation.js";
+import { type OpenInvoice, allocatePayment, checkExactAllocations } from "./allocation.js";
 import { forAll, int } from "./testing/generate.js";
 
 const inv = (reference: string, dueOn: string, outstandingPence: number): OpenInvoice => ({
@@ -119,6 +119,45 @@ describe("allocatePayment", () => {
           .map((o) => o.reference)
           .filter((r) => p.allocations.some((a) => a.invoiceReference === r)),
       );
+    });
+  });
+});
+
+describe("checkExactAllocations", () => {
+  const a = (invoiceReference: string, amountPence: number) => ({ invoiceReference, amountPence });
+
+  it("accepts allocations that add up to the payment exactly", () => {
+    const allocations = [a("A", 3_333), a("B", 3_333), a("C", 3_334)];
+    expect(checkExactAllocations(10_000, allocations)).toEqual({ ok: true, value: allocations });
+  });
+
+  it("refuses a 1p remainder either way", () => {
+    for (const payment of [9_999, 10_001]) {
+      expect(checkExactAllocations(payment, [a("A", 5_000), a("B", 5_000)])).toMatchObject({
+        ok: false,
+        refusal: { code: "allocation_mismatch" },
+      });
+    }
+  });
+
+  it("refuses nothing to allocate, a part penny, zero, a negative and a repeat", () => {
+    expect(checkExactAllocations(100, []).ok).toBe(false);
+    expect(checkExactAllocations(100, [a("A", 99.5), a("B", 0.5)]).ok).toBe(false);
+    expect(checkExactAllocations(100, [a("A", 100), a("B", 0)]).ok).toBe(false);
+    expect(checkExactAllocations(100, [a("A", 101), a("B", -1)]).ok).toBe(false);
+    expect(checkExactAllocations(100, [a("A", 50), a("A", 50)]).ok).toBe(false);
+    expect(checkExactAllocations(0, [a("A", 0)]).ok).toBe(false);
+  });
+
+  it("is exact for any number of whole-pence allocations", () => {
+    forAll(300, (rng) => {
+      const allocations = Array.from({ length: int(rng, 1, 60) }, (_, i) =>
+        a(`R${i}`, int(rng, 1, 10_000_000)),
+      );
+      const total = allocations.reduce((sum, x) => sum + x.amountPence, 0);
+      expect(checkExactAllocations(total, allocations).ok).toBe(true);
+      expect(checkExactAllocations(total + 1, allocations).ok).toBe(false);
+      expect(checkExactAllocations(total - 1, allocations).ok).toBe(false);
     });
   });
 });

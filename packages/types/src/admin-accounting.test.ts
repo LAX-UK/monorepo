@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   ACCOUNTING_LOCKED_PERIOD_PROBLEM,
   ACCOUNTING_LOCKED_PERIOD_TEXT,
+  ACCOUNTING_PARKED_TEXT,
+  accountingDocumentLabel,
   accountingProblemCode,
   accountingProblemText,
   accountingTotalsMismatchText,
@@ -12,7 +14,7 @@ import {
 describe("accounting problems in plain English", () => {
   it("says a parked outside-UK delivery waits for the accountant and is not sent", () => {
     expect(accountingProblemText("accounting_parked_vat_on_outside_uk_delivery")).toBe(
-      "Waiting for the accountant: VAT on outside-UK delivery. This stays out of Books until they confirm how it is booked.",
+      "Waiting for the accountant: VAT on outside-UK delivery. This stays out of Books until they confirm how it is booked. Then press Release.",
     );
   });
 
@@ -91,5 +93,40 @@ describe("accounting problems in plain English", () => {
     expect(isAccountingQueueTab("cancelled")).toBe(false);
     expect(isAccountingOrganisation("london_art_exchange")).toBe(true);
     expect(isAccountingOrganisation("bid")).toBe(false);
+  });
+});
+
+describe("Accounting page: payments", () => {
+  it("names a Pay several payment and a delivery invoice from their reference", () => {
+    expect(accountingDocumentLabel("payment", "bid", "LAX-BID-PAY-grp-0b6a7c1e-5555")).toBe(
+      "Payment · Pay several",
+    );
+    expect(accountingDocumentLabel("invoice", "bid", "LAX-BID-INV-dlv-0b6a7c1e-6666")).toBe(
+      "Delivery · Pay several",
+    );
+    expect(accountingDocumentLabel("payment", "bid", "LAX-BID-PAY-0b6a7c1e-3333")).toBe(
+      "Payment · Bid",
+    );
+    expect(accountingDocumentLabel("invoice", "shop", "LAX-SHOP-INV-123")).toBe("Invoice · Shop");
+  });
+
+  it("says why a parked document is kept out of Books, never the raw code", () => {
+    expect(accountingProblemText("accounting_parked_vat_on_delivery")).toBe(
+      ACCOUNTING_PARKED_TEXT.vat_on_delivery,
+    );
+    // The status already says "Waiting for the accountant"; the text does not repeat it.
+    expect(ACCOUNTING_PARKED_TEXT.vat_on_delivery).toMatch(/^VAT on delivery\./);
+    expect(ACCOUNTING_PARKED_TEXT.vat_on_delivery).not.toMatch(/Waiting for the accountant/);
+    // Both name the recovery the page offers: Release.
+    expect(ACCOUNTING_PARKED_TEXT.vat_on_delivery).toMatch(/press Release\.$/);
+    expect(ACCOUNTING_PARKED_TEXT.invoice_cancelled).toMatch(
+      /Refund the buyer, or reinstate the invoice in Bid and press Release\.$/,
+    );
+    expect(accountingProblemText("accounting_parked_invoice_cancelled")).toBe(
+      ACCOUNTING_PARKED_TEXT.invoice_cancelled,
+    );
+    expect(accountingProblemCode("accounting_parked_vat_on_delivery")).toBe(
+      "accounting_parked_vat_on_delivery",
+    );
   });
 });

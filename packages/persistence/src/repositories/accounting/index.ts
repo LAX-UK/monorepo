@@ -13,3 +13,4 @@ export { DrizzleAccountingDocumentCopies } from "./drizzle-accounting-document-c
 export { DrizzleBidInvoiceBooksReader } from "./drizzle-bid-invoice-books.reader.js";
 export { DrizzleBidInvoiceEmailFactsReader } from "./drizzle-bid-invoice-email-facts.reader.js";
 export { DrizzleShopAccountingFactsReader } from "./drizzle-shop-accounting-facts.reader.js";
+export { DrizzlePartFundedTransfersReader } from "./drizzle-part-funded-transfers.reader.js";

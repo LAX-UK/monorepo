@@ -62,3 +62,40 @@ export function allocatePayment(
   }
   return ok({ allocations, unallocatedPence: remaining });
 }
+
+export type ExactAllocationCode = "bad_amount" | "bad_allocation" | "allocation_mismatch";
+
+/**
+ * Allocations that must account for every penny of a payment: each one is a stored amount (an
+ * invoice's payment row, a courier quote's charge), given whole, and together they equal the
+ * payment exactly. Nothing is split, rounded or spread here, so there is no remainder to place: a
+ * sum that is a penny out either way is refused (`allocation_mismatch`), never absorbed.
+ */
+export function checkExactAllocations(
+  paymentPence: Pence,
+  allocations: readonly Allocation[],
+): Result<readonly Allocation[], ExactAllocationCode> {
+  if (!isPence(paymentPence) || paymentPence <= 0) {
+    return refuse("bad_amount", "payment must be positive whole pence");
+  }
+  if (allocations.length === 0) return refuse("bad_allocation", "a payment needs an allocation");
+  const seen = new Set<string>();
+  let allocated = 0;
+  for (const allocation of allocations) {
+    if (!isPence(allocation.amountPence) || allocation.amountPence <= 0) {
+      return refuse("bad_allocation", "each allocation must be positive whole pence");
+    }
+    if (seen.has(allocation.invoiceReference)) {
+      return refuse("bad_allocation", `${allocation.invoiceReference} is allocated twice`);
+    }
+    seen.add(allocation.invoiceReference);
+    allocated += allocation.amountPence;
+  }
+  if (allocated !== paymentPence) {
+    return refuse(
+      "allocation_mismatch",
+      `allocations total ${allocated} pence, the payment is ${paymentPence} pence`,
+    );
+  }
+  return ok(allocations);
+}

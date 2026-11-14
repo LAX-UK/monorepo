@@ -2,6 +2,7 @@ import type {
   AccountingDocument,
   BidInvoiceFacts,
   BidPaymentFacts,
+  BidPaymentGroupFacts,
   BidRefundsFacts,
   DocumentKind,
   DocumentRecord,
@@ -108,6 +109,18 @@ export type DocumentTransition =
   | { readonly action: "withhold"; readonly leaseToken: string; readonly reason: string }
   /** `requestedBy` is the staff user who asked, kept in the history row; absent for the sender's own retries. */
   | { readonly action: "requeue"; readonly requestedBy?: string }
+  /**
+   * A parked document whose reason is settled, queued again by the staff user who asked. The
+   * caller has checked the stored rows (`resolveParked`); `document` replaces the parked draft
+   * (same kind and LAX reference) when it was rebuilt, and is absent when it is unchanged.
+   */
+  | {
+      readonly action: "release";
+      readonly requestedBy: string;
+      readonly document?: AccountingDocument;
+    }
+  /** A queued document that can never be sent as it stands, parked for a person. */
+  | { readonly action: "park"; readonly reason: ParkReason }
   | { readonly action: "cancel" };
 
 /**
@@ -143,7 +156,10 @@ export interface ClaimRequest {
  * `target`), and only while that provider is still in that mode: a Books claim in `test_org` or
  * `dry_run` never takes a document aimed at Xero live, and a flip of the switch never re-aims an
  * existing document. A document with no target, or whose provider is now `off`, is not handed out. A document whose lease ran
- * out is not handed out again: it becomes unknown and goes through lookup first.
+ * out is not handed out again: it becomes unknown and goes through lookup first. A document is not
+ * handed out until what it waits for is issued for the same target (`documentsAwaited`: a
+ * payment's invoices, an invoice's or credit note's contact); it waits, and the documents behind
+ * it are handed out meanwhile.
  */
 export interface IAccountingDocumentWorkQueue {
   claimNext(
@@ -155,6 +171,18 @@ export interface IAccountingDocumentWorkQueue {
    * unknown), handed to someone else, or is about to run out.
    */
   holdsLease(documentId: string, leaseToken: string, minRemainingMs: number): Promise<boolean>;
+  /**
+   * Park, for a person, queued payments (aimed at `provider` in one of `targetModes`) applied to
+   * an invoice that was cancelled in the same books: they could never be sent, so they go to
+   * Needs a person (`invoice_cancelled`) instead of waiting for ever. Returns how many it parked.
+   */
+  parkStranded(request: StrandedRequest): Promise<number>;
+}
+
+export interface StrandedRequest {
+  readonly provider: AccountingProvider;
+  readonly targetModes: readonly TargetMode[];
+  readonly limit: number;
 }
 
 export interface DueWorkRequest {
@@ -215,6 +243,10 @@ export interface IBidAccountingFactsReader {
   invoiceRaised(invoiceId: string): Promise<FactsRead<BidInvoiceFacts>>;
   paymentCaptured(paymentId: string, capturedAt: Date): Promise<FactsRead<BidPaymentFacts>>;
   paymentRefunded(paymentId: string): Promise<FactsRead<BidRefundsFacts>>;
+  /** A settled "Pay several" group: its stored total, members and courier quotes. */
+  paymentGroupSettled(groupId: string): Promise<FactsRead<BidPaymentGroupFacts>>;
+  /** The "Pay several" group a courier quote was charged in; null when it was not. */
+  deliveryGroupOf(quoteId: string): Promise<string | null>;
 }
 
 /**
@@ -286,6 +318,24 @@ export interface AccountingQueuePage {
   readonly lastSent: AccountingLastSent | null;
 }
 
+/** A bank transfer that has partly arrived; no Books document is made for it. */
+export interface PartFundedTransfer {
+  /** An invoice's own payment, or a "Pay several" group. */
+  readonly source: "payment" | "payment_group";
+  readonly id: string;
+  /** The paying account's name. */
+  readonly buyer: string;
+  readonly receivedPence: number;
+  readonly totalPence: number;
+  /** When the provider last reported money arriving, where it is stored. */
+  readonly since: Date | null;
+}
+
+/** Bank transfers part received, oldest first, for the Accounting page (read only). */
+export interface IPartFundedTransfersReader {
+  list(limit: number): Promise<readonly PartFundedTransfer[]>;
+}
+
 /**
  * What staff see of the queue (Finance › Accounting): one tab at a time, per company or both.
  * The tabs follow `queueTabFor` in the domain; cancelled documents are in none.
@@ -293,6 +343,21 @@ export interface AccountingQueuePage {
 export interface IAccountingDocumentBrowser {
   list(query: AccountingQueueQuery): Promise<AccountingQueuePage>;
   findById(id: string): Promise<Result<StoredAccountingDocument | null, StoredDocumentCode>>;
+  /**
+   * For each queued (`pending`) document, what it still waits for (`documentsAwaited`) that is not
+   * issued for its target, by document id: the LAX reference and that document's state, or null
+   * when nothing is registered under it there. Documents waiting for nothing are left out.
+   */
+  awaitedOf(
+    documents: readonly StoredAccountingDocument[],
+  ): Promise<ReadonlyMap<string, readonly AwaitedDocument[]>>;
+}
+
+/** A document another one waits for, and where it is. */
+export interface AwaitedDocument {
+  readonly reference: string;
+  /** Its state for the waiting document's target; null when it is not registered there. */
+  readonly state: DocumentRecord["status"] | null;
 }
 
 export interface QueueAge {
@@ -304,7 +369,10 @@ export interface QueueAge {
 export interface AccountingAttention {
   /** Documents a person must look at (the Needs a person tab). */
   readonly needsPerson: QueueAge;
-  /** Documents queued for Books and not yet claimed (`pending`), by target mode the sender serves. */
+  /**
+   * Documents queued for Books, claimable and not yet claimed (`pending`, nothing awaited), by
+   * target mode the sender serves. One waiting for another document is not the sender's to take.
+   */
   readonly pending: QueueAge;
 }
 
@@ -317,6 +385,12 @@ export interface IAccountingAttentionReader {
    * `oldestSince` is when the oldest was queued.
    */
   delayedBidInvoices(modes: readonly TargetMode[], queuedBefore: Date): Promise<QueueAge>;
+  /**
+   * Payments queued for Books in one of `modes` since before `queuedBefore` that still wait for
+   * an invoice (`documentsAwaited`): nobody sends them until that invoice is in Books.
+   * `oldestSince` is when the oldest was queued.
+   */
+  waitingPayments(modes: readonly TargetMode[], queuedBefore: Date): Promise<QueueAge>;
 }
 
 /** LAX's stored copy of the PDF for an issued document. */

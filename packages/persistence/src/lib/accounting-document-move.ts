@@ -1,4 +1,5 @@
 import {
+  type AccountingDocument,
   type DocumentRecord,
   type LifecycleCode,
   type Result,
@@ -8,7 +9,11 @@ import {
   completeSending,
   escalate,
   expireLease,
+  ok,
+  park,
+  parkReasonOf,
   refuse,
+  release,
   requeue,
   withhold,
 } from "@auction/accounting-domain";
@@ -21,6 +26,7 @@ import type {
   StoredAccountingDocument,
   TransitionCode,
 } from "../interfaces/accounting.js";
+import { documentTotals, readDocumentPayload } from "./accounting-document-payload.js";
 import {
   type AccountingDocumentRow,
   lifecycleColumns,
@@ -64,6 +70,10 @@ export function decide(
       return withhold(record, transition.leaseToken, transition.reason);
     case "requeue":
       return requeue(record);
+    case "release":
+      return release(record);
+    case "park":
+      return park(record, transition.reason);
     case "cancel":
       return cancel(record);
   }
@@ -94,6 +104,10 @@ export function transitionDetail(
       return { reason: transition.reason };
     case "requeue":
       return transition.requestedBy === undefined ? {} : { requestedBy: transition.requestedBy };
+    case "release":
+      return { requestedBy: transition.requestedBy, rebuilt: transition.document !== undefined };
+    case "park":
+      return { parked: transition.reason };
     case "withhold":
       return { reason: transition.reason, unsent: true };
     default:
@@ -106,6 +120,8 @@ export interface Move {
   readonly next: DocumentRecord;
   readonly detail: Record<string, unknown>;
   readonly provider?: AccountingProvider;
+  /** A release that replaces the parked draft: the rebuilt document's payload and totals. */
+  readonly replace?: { readonly payload: Record<string, unknown>; readonly totals: Totals };
   readonly at: Date;
 }
 
@@ -127,6 +143,7 @@ export async function persistMove(
       // A requeue keeps the last failure; only a failure sets it.
       ...(move.next.status === "failed" ? {} : { lastErrorClass: row.lastErrorClass }),
       ...(move.provider ? { provider: move.provider } : {}),
+      ...(move.replace ? { payload: move.replace.payload, ...move.replace.totals } : {}),
       updatedAt: move.at,
     })
     .where(eq(accountingDocument.id, row.id))
@@ -156,10 +173,39 @@ export async function applyLockedTransition(
   const expected = rowTotals(row);
   const next = decide(record.value, transition, at.getTime(), expected);
   if (!next.ok) return next;
+  const replace = transition.action === "release" ? replacement(row, transition.document) : null;
+  if (replace && !replace.ok) return replace;
+  const detail = transitionDetail(transition, expected);
   return persistMove(tx, row, record.value, {
     action: historyAction(transition),
     next: next.value,
-    detail: transitionDetail(transition, expected),
+    detail:
+      transition.action === "release"
+        ? { ...detail, parked: parkReasonOf(row.needsReviewReason) }
+        : detail,
+    ...(replace?.ok && replace.value ? { replace: replace.value } : {}),
     at,
+  });
+}
+
+/**
+ * The rebuilt document a release stores in place of the parked draft: read back through the
+ * domain's rules, and only for the same product, kind and LAX reference. Null when nothing is
+ * replaced.
+ */
+function replacement(
+  row: AccountingDocumentRow,
+  document: AccountingDocument | undefined,
+): Result<Move["replace"] | null, TransitionCode> {
+  if (document === undefined) return ok(null);
+  const checked = readDocumentPayload(document, {
+    product: row.product,
+    kind: row.kind,
+    reference: row.laxReference,
+  });
+  if (!checked.ok) return refuse("bad_stored_document", checked.refusal.message);
+  return ok({
+    payload: JSON.parse(JSON.stringify(checked.value)) as Record<string, unknown>,
+    totals: documentTotals(checked.value),
   });
 }

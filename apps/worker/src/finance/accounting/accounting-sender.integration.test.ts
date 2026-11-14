@@ -33,6 +33,7 @@ function bidDocuments(): readonly AccountingDocument[] {
   const facts: BidPaymentFacts = {
     paymentId: id(),
     amountPence: 12_000,
+    currency: "GBP",
     capturedOn: "2031-03-02",
     invoice: {
       invoiceId: id(),
@@ -141,7 +142,12 @@ describe.skipIf(!HAS_DB)("accounting sender (integration)", { timeout: 60_000 },
       };
     });
     const sender = senderFor({ dry_run: rehearsing(fake, { payments: { recordPayment } }) });
-    await queue(documents);
+    // One at a time, at distinct times, as `differingPaymentWhoseAnswerIsLost` does. The claim
+    // also orders them (each waits for what it needs), so this only keeps the history readable.
+    for (const document of documents) {
+      await queue([document]);
+      nowMs += 1;
+    }
     await sender.tick();
     const held = {
       status: "needs_review",
