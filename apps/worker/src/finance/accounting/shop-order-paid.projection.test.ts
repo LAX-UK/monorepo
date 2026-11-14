@@ -64,7 +64,7 @@ function setUp(
   const orderPaid = vi.fn(async () => read);
   const projection = new AccountingProjection({
     facts: bid,
-    ...(wired ? { shopFacts: { orderPaid } } : {}),
+    ...(wired ? { shopFacts: { orderPaid, originalSalePaid: vi.fn() } } : {}),
     settings: store,
     registry: store,
   });

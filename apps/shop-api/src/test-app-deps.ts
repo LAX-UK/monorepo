@@ -746,6 +746,7 @@ export function createMinimalShopApiTestDeps(
         issueInvoice: async () => ({
           originalSaleId: "00000000-0000-4000-8000-000000000015",
           status: "invoiced" as const,
+          invoiceIssuer: "stripe" as const,
           stripeInvoiceId: "in_test",
           hostedInvoiceUrl: null,
         }),

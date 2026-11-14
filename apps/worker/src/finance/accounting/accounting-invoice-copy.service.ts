@@ -4,6 +4,7 @@ import {
   type PdfOutcome,
   type TargetMode,
   booksTargetMode,
+  shopOriginalSaleIdOf,
 } from "@auction/accounting-domain";
 import type { IEmailService } from "@auction/email";
 import type {
@@ -256,7 +257,12 @@ export class AccountingInvoiceCopy {
       await this.skip(copy.documentId, "not_order_invoice");
       return false;
     }
-    const facts = await this.deps.shopEmailFacts.forOrder(copy.invoiceId);
+    // An original sold directly in the Shop (`original-<sale>`) is read from its sale.
+    const originalSaleId = shopOriginalSaleIdOf(copy.invoiceId);
+    const facts =
+      originalSaleId === null
+        ? await this.deps.shopEmailFacts.forOrder(copy.invoiceId)
+        : ((await this.deps.shopEmailFacts.forOriginalSale?.(originalSaleId)) ?? null);
     if (!facts) {
       await this.skip(copy.documentId, "invoice_missing");
       return false;
@@ -266,6 +272,13 @@ export class AccountingInvoiceCopy {
       return false;
     }
     if (!facts.recipient) {
+      // An original's buyer has no order page to find their invoice on: a person must send it.
+      if (originalSaleId !== null) {
+        this.deps.log.error(
+          { documentId: copy.documentId, originalSaleId, product: "shop" },
+          "accounting_original_invoice_unsent",
+        );
+      }
       await this.skip(copy.documentId, "no_recipient");
       return false;
     }

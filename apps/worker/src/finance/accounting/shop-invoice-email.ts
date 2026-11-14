@@ -41,6 +41,8 @@ export function shopStorefrontBase(value: string | undefined): string {
  */
 export function shopOrderUrl(storefrontUrl: string, facts: ShopInvoiceEmailFacts): string {
   const base = storefrontUrl.replace(/\/$/, "");
+  // An original sold directly in the Shop has no order page: its buyer opens their account.
+  if (facts.originalTitle !== undefined) return `${base}/account`;
   return facts.guest
     ? `${base}/orders/guest`
     : `${base}/account/orders/${encodeURIComponent(facts.orderId)}`;
@@ -77,5 +79,6 @@ export function composeShopInvoiceEmail(input: {
       contentType: "application/pdf",
     },
     orderUrl: shopOrderUrl(input.storefrontUrl, facts),
+    ...(facts.originalTitle !== undefined ? { originalTitle: facts.originalTitle } : {}),
   };
 }

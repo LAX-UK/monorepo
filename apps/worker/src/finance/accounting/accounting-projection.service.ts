@@ -168,6 +168,7 @@ function standingOf(record: DocumentRecord | null): DefaultedInvoiceInBooks {
 /** No Shop facts reader: every Shop event is skipped, so nothing is booked from a guess. */
 const NO_SHOP_FACTS: IShopAccountingFactsReader = {
   orderPaid: async () => ({ status: "skip", reason: "shop_facts_not_wired" }),
+  originalSalePaid: async () => ({ status: "skip", reason: "shop_facts_not_wired" }),
 };
 
 /** Does the switch aim this product's new documents at Books (in any mode)? Same rule as the sender. */

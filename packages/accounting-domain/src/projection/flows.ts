@@ -17,6 +17,7 @@ import {
 } from "./bid-refunds.js";
 import { type BidInvoiceFacts, projectBidInvoiceRaised } from "./bid.js";
 import { EMPTY_PROJECTION, type ProjectionPolicy } from "./projection.js";
+import { type ShopOriginalSalePaidFacts, projectShopOriginalSalePaid } from "./shop-original.js";
 import {
   type ShopRefundReversedFacts,
   type ShopRefundsFacts,
@@ -42,6 +43,7 @@ export const ACCOUNTING_FLOWS = [
   "shop_order_paid",
   "shop_refund_settled",
   "shop_refund_reversed",
+  "shop_original_sale_paid",
 ] as const;
 export type AccountingFlow = (typeof ACCOUNTING_FLOWS)[number];
 
@@ -63,6 +65,7 @@ export interface FlowFacts {
   readonly shop_order_paid: ShopOrderPaidFacts;
   readonly shop_refund_settled: ShopRefundsFacts;
   readonly shop_refund_reversed: ShopRefundReversedFacts;
+  readonly shop_original_sale_paid: ShopOriginalSalePaidFacts;
 }
 
 /** NOT BUILT: a placeholder policy that projects nothing. */
@@ -82,6 +85,7 @@ export const PROJECTION_POLICIES: {
   shop_order_paid: projectShopOrderPaid,
   shop_refund_settled: projectShopRefundSettled,
   shop_refund_reversed: projectShopRefundReversed,
+  shop_original_sale_paid: projectShopOriginalSalePaid,
 };
 
 /** The flows whose policy is built; only these are wired to events. */
@@ -96,5 +100,6 @@ export const BUILT_FLOWS = [
   "shop_order_paid",
   "shop_refund_settled",
   "shop_refund_reversed",
+  "shop_original_sale_paid",
 ] as const satisfies readonly AccountingFlow[];
 export type BuiltFlow = (typeof BUILT_FLOWS)[number];

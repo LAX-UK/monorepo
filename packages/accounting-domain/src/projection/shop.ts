@@ -96,7 +96,8 @@ export function shopDeliveryPaymentReference(invoiceReference: string): string |
   return reference.ok ? reference.value : null;
 }
 
-function shopContact(buyer: ShopBuyerFacts): Result<Contact, ProjectionCode> {
+/** The buyer's Books contact; every Shop flow (orders and originals) names the same one. */
+export function shopContact(buyer: ShopBuyerFacts): Result<Contact, ProjectionCode> {
   const email = typeof buyer.email === "string" && EMAIL.test(buyer.email) ? buyer.email : null;
   return buildContact({ product: "shop", sourceId: buyer.partyId, name: buyer.name, email });
 }
@@ -110,7 +111,7 @@ function shopContact(buyer: ShopBuyerFacts): Result<Contact, ProjectionCode> {
  * Whether the organisation may take VAT at all is the adapter's rule: a VAT line sent to an
  * organisation that is not VAT registered is refused there and waits for a person.
  */
-function shopLine(
+export function shopLine(
   label: string,
   role: "goods" | "delivery",
   grossPence: Pence,
