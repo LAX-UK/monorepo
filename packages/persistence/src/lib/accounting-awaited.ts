@@ -5,8 +5,9 @@ import { sql } from "drizzle-orm";
  * The domain's `documentsAwaited`, in SQL, for the `accounting_document` row in scope: the kind and
  * LAX reference of each document it waits for. A payment waits for its contact
  * (`payload.contactReference`) and every invoice it is applied to
- * (`payload.allocations[].invoiceReference`); an invoice or credit note waits for its contact;
- * anything else waits for nothing. Shared by every product (Bid and Shop claim through it alike).
+ * (`payload.allocations[].invoiceReference`); a credit note waits for its contact and the invoice
+ * it credits (`payload.invoiceReference`); an invoice waits for its contact; anything else waits
+ * for nothing. Shared by every product (Bid and Shop claim through it alike).
  */
 const AWAITED = sql`(
   select 'invoice'::text as kind, allocation ->> 'invoiceReference' as reference
@@ -15,6 +16,9 @@ const AWAITED = sql`(
         then coalesce(${accountingDocument.payload} -> 'allocations', '[]'::jsonb)
         else '[]'::jsonb end
     ) as allocation
+  union all
+  select 'invoice'::text, ${accountingDocument.payload} ->> 'invoiceReference'
+   where ${accountingDocument.kind} = 'credit_note'
   union all
   select 'contact'::text, ${accountingDocument.payload} ->> 'contactReference'
    where ${accountingDocument.kind} in ('invoice', 'credit_note', 'payment')
@@ -46,9 +50,9 @@ export const AWAITED_ISSUED = sql`not exists (
 )`;
 
 /**
- * True when the row is a payment applied to an invoice that was cancelled in the same books (and
- * none of that reference is issued there). It can never be sent: it is parked for a person
- * (`invoice_cancelled`) instead of waiting for ever.
+ * True when the row is a payment applied to, or a credit note for, an invoice that was cancelled in
+ * the same books (and none of that reference is issued there). It can never be sent: it is parked
+ * for a person (`invoice_cancelled`, `credited_invoice_cancelled`) instead of waiting for ever.
  */
 export const AWAITED_INVOICE_CANCELLED = sql`exists (
   select 1

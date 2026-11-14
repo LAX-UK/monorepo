@@ -11,6 +11,13 @@ export const PARK_REASONS = [
   "invoice_cancelled",
   /** Delivery outside the UK (a Shop delivery quote): its VAT waits for the accountant. */
   "vat_on_outside_uk_delivery",
+  /**
+   * The full credit note of an issued Bid invoice cancelled after a buyer default: whether the
+   * books take a credit note or a void waits for the accountant (`BID_DEFAULT_ACCOUNTING_TREATMENT`).
+   */
+  "buyer_default_treatment",
+  /** A credit note for an invoice that was cancelled in the books: it can never be sent. */
+  "credited_invoice_cancelled",
 ] as const;
 export type ParkReason = (typeof PARK_REASONS)[number];
 

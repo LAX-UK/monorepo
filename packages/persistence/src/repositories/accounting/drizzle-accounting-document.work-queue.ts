@@ -70,7 +70,7 @@ export class DrizzleAccountingDocumentWorkQueue implements IAccountingDocumentWo
         .where(
           and(
             eq(accountingDocument.state, "pending"),
-            eq(accountingDocument.kind, "payment"),
+            inArray(accountingDocument.kind, ["payment", "credit_note"]),
             eq(accountingDocument.targetProvider, request.provider),
             inArray(accountingDocument.targetMode, [...request.targetModes]),
             AWAITED_INVOICE_CANCELLED,
@@ -84,7 +84,10 @@ export class DrizzleAccountingDocumentWorkQueue implements IAccountingDocumentWo
         const moved = await applyLockedTransition(
           tx,
           row,
-          { action: "park", reason: "invoice_cancelled" },
+          {
+            action: "park",
+            reason: row.kind === "credit_note" ? "credited_invoice_cancelled" : "invoice_cancelled",
+          },
           now,
         );
         if (moved.ok) parked += 1;
@@ -95,7 +98,7 @@ export class DrizzleAccountingDocumentWorkQueue implements IAccountingDocumentWo
 
   /**
    * One short transaction: lock the oldest document nobody else holds (SKIP LOCKED) that is pending
-   * or whose lease has run out. A lapsed one becomes unknown (the sender may or may not have
+   * or whose lease has run out (Stripe fees and payouts after all others). A lapsed one becomes unknown (the sender may or may not have
    * reached the provider), a pending one is leased to the caller.
    *
    * A pending document is handed only to the provider and mode it was created for (its recorded
@@ -104,7 +107,7 @@ export class DrizzleAccountingDocumentWorkQueue implements IAccountingDocumentWo
    * switch never re-aims one (`off` matches no target). Only the target modes the caller says it
    * can serve are handed out (a rehearsal-only sender never gets a test or live document). A
    * document is handed out only once what it waits for is issued (`AWAITED_ISSUED`: a payment's
-   * invoices, an invoice's or credit note's contact). The switch is read in the same statement
+   * invoices, a credit note's invoice, an invoice's or credit note's contact). The switch is read in the same statement
    * as the claim (the worker may only SELECT it, so it cannot lock it). Settling a lapsed lease only
    * demotes a stuck `sending` row to `unknown` and calls no provider, so it ignores the switch.
    */
@@ -146,7 +149,13 @@ export class DrizzleAccountingDocumentWorkQueue implements IAccountingDocumentWo
             ),
           ),
         )
-        .orderBy(asc(accountingDocument.createdAt), asc(accountingDocument.id))
+        // Stripe fees and payouts go after every other document waiting, so a day of them
+        // registered at once never spends the daily call budget before buyer-facing documents.
+        .orderBy(
+          asc(sql`${accountingDocument.kind} in ('expense', 'transfer')`),
+          asc(accountingDocument.createdAt),
+          asc(accountingDocument.id),
+        )
         .limit(1)
         .for("update", { skipLocked: true });
       if (!row) return { kind: "empty" };

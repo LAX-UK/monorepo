@@ -41,6 +41,7 @@ const issued = (number: string): DocumentRecord => ({
 function doc(over: Partial<BidInvoiceBooksDocument> = {}): BidInvoiceBooksDocument {
   return {
     documentId: INVOICE_DOC,
+    reference: "LAX-BID-INV-inv-2",
     targetMode: "live",
     record: issued("INV-000123"),
     grossPence: 150_000,
@@ -56,6 +57,8 @@ function setUp(opts: {
   voidedAt?: Date | null;
   minutesAfterRaise?: number;
   unreadable?: boolean;
+  paidWith?: "card" | "bank_transfer" | null;
+  creditNotes?: BidInvoiceBooksDocument[];
 }) {
   const getObjectBytes = vi.fn(async () => Buffer.from("%PDF-1.4 stored"));
   const service = new PurchaseInvoiceBooksService({
@@ -99,6 +102,10 @@ function setUp(opts: {
                 }),
               ]
             : (opts.invoices ?? []),
+          creditNotes: foreign
+            ? [credit({ documentId: FOREIGN_CREDIT, number: "CN-FOREIGN" })]
+            : (opts.creditNotes ?? []),
+          paidWith: opts.paidWith ?? null,
         });
       },
     },
@@ -106,6 +113,35 @@ function setUp(opts: {
     now: () => new Date(RAISED.getTime() + (opts.minutesAfterRaise ?? 5) * 60_000),
   });
   return { service, getObjectBytes };
+}
+
+const FOREIGN_CREDIT = "c0c0c0c0-0000-4000-8000-0000000000f1";
+
+/** A credit note Books issued live for the invoice, with LAX's copy stored. */
+function credit(
+  over: { documentId?: string; number?: string; gross?: number; reference?: string } & Partial<
+    Pick<BidInvoiceBooksDocument, "targetMode" | "copy">
+  > = {},
+): BidInvoiceBooksDocument {
+  const reference = over.reference ?? "LAX-BID-CN-refund-1";
+  return {
+    documentId: over.documentId ?? "c0c0c0c0-0000-4000-8000-000000000001",
+    reference,
+    targetMode: over.targetMode ?? "live",
+    record: {
+      kind: "credit_note",
+      reference,
+      attempts: 1,
+      status: "issued",
+      issued: { number: over.number ?? "CN-00001", providerId: "cn-1", pdfRef: null },
+    },
+    grossPence: over.gross ?? 12_345,
+    issuedAt: new Date("2026-11-20T09:30:00Z"),
+    copy:
+      over.copy === undefined
+        ? { storageKey: "accounting/london_auction_xchange/cn.pdf", rehearsal: false }
+        : over.copy,
+  };
 }
 
 const card = async (opts: Parameters<typeof setUp>[0]) =>
@@ -164,6 +200,15 @@ describe("PurchaseInvoiceBooksService.card", () => {
       invoiceDocumentId: INVOICE_DOC,
       cancelledAt: null,
       totalPence: 150_000,
+      cancelledAfterDefault: false,
+      creditNotes: [],
+      paidWith: null,
+    });
+  });
+
+  it("says how the invoice was paid, so a refund can say where it went", async () => {
+    expect(await card({ invoices: [doc()], paidWith: "bank_transfer" })).toMatchObject({
+      paidWith: "bank_transfer",
     });
   });
 
@@ -238,5 +283,142 @@ describe("PurchaseInvoiceBooksService.document", () => {
     expect((await service.document(agent, LOT, INVOICE_DOC))._unsafeUnwrapErr().code).toBe(
       "insufficient_entity_role",
     );
+  });
+});
+
+describe("PurchaseInvoiceBooksService: credit notes", () => {
+  it("lists a refund's credit note issued live with its copy, beside the issued invoice", async () => {
+    const out = await card({ invoices: [doc()], creditNotes: [credit()] });
+    expect(out).toMatchObject({
+      state: "issued",
+      cancelledAfterDefault: false,
+      creditNotes: [
+        {
+          documentId: "c0c0c0c0-0000-4000-8000-000000000001",
+          number: "CN-00001",
+          grossPence: 12_345,
+          kind: "refund",
+        },
+      ],
+    });
+  });
+
+  it("never lists a credit note before its copy is stored, or from a rehearsal or the test organisation", async () => {
+    expect(
+      (await card({ invoices: [doc()], creditNotes: [credit({ copy: null })] })).creditNotes,
+    ).toEqual([]);
+    expect(
+      (
+        await card({
+          invoices: [doc()],
+          creditNotes: [credit({ copy: { storageKey: "k", rehearsal: true } })],
+        })
+      ).creditNotes,
+    ).toEqual([]);
+    const atTestOrg = await card({
+      mode: "test_org",
+      invoices: [doc({ targetMode: "test_org" })],
+      creditNotes: [credit({ targetMode: "test_org" })],
+    });
+    expect(atTestOrg).toMatchObject({ state: "lax", creditNotes: [] });
+  });
+
+  it("says cancelled after a default, with its credit note once issued", async () => {
+    const waiting = await card({
+      voidedAt: new Date("2026-11-30T10:00:00Z"),
+      invoices: [doc()],
+      creditNotes: [credit({ reference: "LAX-BID-CN-dft-inv-2", copy: null })],
+    });
+    expect(waiting).toMatchObject({
+      state: "cancelled",
+      cancelledAfterDefault: true,
+      creditNotes: [],
+    });
+    const issuedCredit = await card({
+      voidedAt: new Date("2026-11-30T10:00:00Z"),
+      invoices: [doc()],
+      creditNotes: [
+        credit({ reference: "LAX-BID-CN-dft-inv-2", number: "CN-00009", gross: 150_000 }),
+      ],
+    });
+    expect(issuedCredit).toMatchObject({
+      state: "cancelled",
+      cancelledAfterDefault: true,
+      creditNotes: [{ number: "CN-00009", grossPence: 150_000, kind: "default" }],
+    });
+    // A plain cancel (no default's credit note) is not called a default.
+    expect(
+      await card({ voidedAt: new Date("2026-11-30T10:00:00Z"), invoices: [doc()] }),
+    ).toMatchObject({
+      state: "cancelled",
+      cancelledAfterDefault: false,
+    });
+  });
+
+  it("serves a credit note's stored copy, also for a cancelled invoice; never another invoice's (same 404)", async () => {
+    const { service, getObjectBytes } = setUp({
+      voidedAt: new Date("2026-11-30T10:00:00Z"),
+      invoices: [doc()],
+      creditNotes: [credit({ reference: "LAX-BID-CN-dft-inv-2", number: "CN-00009" })],
+    });
+    const served = await service.document(payer, LOT, "c0c0c0c0-0000-4000-8000-000000000001");
+    expect(served._unsafeUnwrap().filename).toBe("credit-note-CN-00009.pdf");
+    // The cancelled invoice itself is still not served.
+    expect((await service.document(payer, LOT, INVOICE_DOC))._unsafeUnwrapErr().status).toBe(404);
+    getObjectBytes.mockClear();
+    const foreign = await service.document(payer, LOT, FOREIGN_CREDIT);
+    const missing = await service.document(payer, LOT, "c0c0c0c0-0000-4000-8000-00000000dead");
+    expect(foreign._unsafeUnwrapErr()).toEqual(missing._unsafeUnwrapErr());
+    expect(getObjectBytes).not.toHaveBeenCalled();
+  });
+
+  /** The credit note held for a person, Books' document kept, for `reason`. */
+  const heldFor = (reason: string): BidInvoiceBooksDocument => {
+    const issuedNote = credit({ number: "CN-00007", gross: 150_000 });
+    const record = issuedNote.record;
+    if (record.status !== "issued") throw new Error("fixture");
+    return {
+      ...issuedNote,
+      record: {
+        kind: "credit_note",
+        reference: issuedNote.reference,
+        attempts: 1,
+        status: "needs_review",
+        lookup: "clear",
+        issued: record.issued,
+        mismatch: null,
+        reason,
+      },
+    };
+  };
+
+  it("keeps listing and serving a refund's credit note when only its refund from clearing was refused (review N3); never one whose refund was taken back", async () => {
+    const refused = heldFor("accounting_credit_note_refund_refused");
+    const { service } = setUp({ invoices: [doc()], creditNotes: [refused] });
+    expect((await service.card(payer, LOT))._unsafeUnwrap().creditNotes).toEqual([
+      {
+        documentId: refused.documentId,
+        number: "CN-00007",
+        grossPence: 150_000,
+        issuedAt: "2026-11-20T09:30:00.000Z",
+        kind: "refund",
+      },
+    ]);
+    const served = await service.document(payer, LOT, refused.documentId);
+    expect(served._unsafeUnwrap().filename).toBe("credit-note-CN-00007.pdf");
+    for (const reason of [
+      "accounting_refund_reversed_after_credit",
+      "accounting_totals_mismatch",
+    ]) {
+      const held = heldFor(reason);
+      const other = setUp({ invoices: [doc()], creditNotes: [held] });
+      expect((await other.service.card(payer, LOT))._unsafeUnwrap().creditNotes).toEqual([]);
+      expect(
+        (await other.service.document(payer, LOT, held.documentId))._unsafeUnwrapErr().status,
+      ).toBe(404);
+    }
+    // Without its stored live copy it is not listed either.
+    const uncopied = { ...refused, copy: null };
+    expect((await card({ invoices: [doc()], creditNotes: [uncopied] })).creditNotes).toEqual([]);
   });
 });

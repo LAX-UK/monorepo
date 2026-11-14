@@ -130,3 +130,14 @@ describe("Accounting page: payments", () => {
     );
   });
 });
+
+describe("held credit notes (review #1375)", () => {
+  it("tells a person what happened and what to do, never the raw code", () => {
+    const reversed = accountingProblemText("accounting_refund_reversed_after_credit");
+    expect(reversed).toMatch(/failed after the credit note was issued/);
+    expect(reversed).toMatch(/accountant/);
+    const refused = accountingProblemText("accounting_credit_note_refund_refused");
+    expect(refused).toMatch(/Refund it by hand in Books/);
+    for (const text of [reversed, refused]) expect(text).not.toMatch(/accounting_/);
+  });
+});

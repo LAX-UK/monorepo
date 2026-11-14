@@ -1,4 +1,5 @@
 import type {
+  InvoiceCardCredit,
   InvoiceCardLink,
   PurchaseInvoiceCardVm,
 } from "@/lib/purchases/purchase-invoice-card.vm";
@@ -33,6 +34,20 @@ function DownloadRow({
       <Download aria-hidden className="size-4 shrink-0 text-lax-muted" />
       {srLabel ? <span className="sr-only">{srLabel}</span> : null}
     </a>
+  );
+}
+
+/** The invoice's credit notes: "Refunded −£123.45 · Download credit note CN-00001 (PDF)". */
+function CreditRows({ credits }: { credits: InvoiceCardCredit[] }) {
+  if (credits.length === 0) return null;
+  return (
+    <ul className="mt-2 flex flex-col gap-1 border-t border-lax-line pt-2" data-invoice-credits="">
+      {credits.map((credit) => (
+        <li key={credit.download.href}>
+          <DownloadRow link={credit.download} title={credit.text} meta={credit.download.label} />
+        </li>
+      ))}
+    </ul>
   );
 }
 
@@ -85,18 +100,22 @@ export function PurchaseInvoiceCard({ card }: { card: PurchaseInvoiceCardVm }) {
             <p className="text-lax-13 text-lax-muted">{card.meta}</p>
           </div>
           <DownloadRow link={card.download} title={card.download.label} />
+          <CreditRows credits={card.credits} />
         </div>
       );
     case "cancelled":
       return (
-        <div className="flex items-start gap-3" data-invoice-state="cancelled">
-          <span className={ICON_BOX}>
-            <FileX aria-hidden className="size-4" />
-          </span>
-          <div className="min-w-0">
-            <p className="text-lax-14 font-medium text-lax-fg">{card.title}</p>
-            <p className="text-lax-13 text-lax-muted">{card.detail}</p>
+        <div className="flex flex-col gap-1" data-invoice-state="cancelled">
+          <div className="flex items-start gap-3">
+            <span className={ICON_BOX}>
+              <FileX aria-hidden className="size-4" />
+            </span>
+            <div className="min-w-0">
+              <p className="text-lax-14 font-medium text-lax-fg">{card.title}</p>
+              <p className="text-lax-13 text-lax-muted">{card.detail}</p>
+            </div>
           </div>
+          <CreditRows credits={card.credits} />
         </div>
       );
   }

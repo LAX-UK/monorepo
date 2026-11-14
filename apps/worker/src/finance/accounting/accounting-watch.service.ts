@@ -52,6 +52,7 @@ export interface WatchResult {
   readonly bidInvoiceDelayed: boolean;
   readonly paymentWaiting: boolean;
   readonly remainderDelayed: boolean;
+  readonly creditNoteRefundDelayed: boolean;
 }
 
 /**
@@ -59,7 +60,8 @@ export interface WatchResult {
  * waited for a person for more than one working day, documents the sender should have taken
  * long ago (it has stopped, or is failing before it claims), buyers' Bid invoices still being
  * prepared after 30 minutes, payments still waiting for their invoice after six hours, and Shop
- * delivery invoices issued six hours ago whose payment's rest is not applied yet. Runs as a cron; each run raises at most one alert of each kind, with
+ * delivery invoices issued six hours ago whose payment's rest is not applied yet, and refunds'
+ * credit notes issued six hours ago whose money is not refunded in Books yet. Runs as a cron; each run raises at most one alert of each kind, with
  * the count and the oldest time.
  */
 export class AccountingWatch {
@@ -137,12 +139,28 @@ export class AccountingWatch {
         page: "/admin/finance/accounting",
       });
     }
+    // A refund's credit note issued hours ago whose money is still not refunded in Books.
+    const unrefunded = await this.deps.attention.unrefundedCreditNotes(
+      modes,
+      new Date(now.getTime() - REMAINDER_UNSETTLED_AFTER_MS),
+    );
+    const creditNoteRefundDelayed = unrefunded.count > 0 && unrefunded.oldestSince !== null;
+    if (creditNoteRefundDelayed) {
+      this.deps.alerts.raise(ACCOUNTING_ALERTS.creditNoteRefundDelayed, {
+        documentType: "credit_note",
+        count: unrefunded.count,
+        oldestSince: unrefunded.oldestSince?.toISOString(),
+        modes,
+        page: "/admin/finance/accounting?tab=issued",
+      });
+    }
     return {
       needsPersonOverdue,
       senderMissed,
       bidInvoiceDelayed,
       paymentWaiting,
       remainderDelayed,
+      creditNoteRefundDelayed,
     };
   }
 

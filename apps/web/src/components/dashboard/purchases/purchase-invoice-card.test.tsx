@@ -44,6 +44,7 @@ describe("PurchaseInvoiceCard", () => {
           title: "Invoice INV-000123",
           meta: "Issued Thu 12 Nov, 14:05 GMT",
           download: { label: "Download invoice (PDF)", href: "/purchases/l/documents/d" },
+          credits: [],
         }}
       />,
     );
@@ -69,5 +70,32 @@ describe("PurchaseInvoiceCard", () => {
       "href",
       "/purchases/l/invoice",
     );
+  });
+
+  it("lists each refund's credit note under the invoice, each its own download", () => {
+    render(
+      <PurchaseInvoiceCard
+        card={{
+          kind: "issued",
+          title: "Invoice INV-000123",
+          meta: "Issued Thu 12 Nov, 14:05 GMT",
+          download: { label: "Download invoice (PDF)", href: "/purchases/l/documents/d" },
+          credits: [
+            {
+              text: "Refunded \u2212£123.45",
+              download: {
+                label: "Download credit note CN-00001 (PDF)",
+                href: "/purchases/l/documents/c1",
+              },
+            },
+          ],
+        }}
+      />,
+    );
+    expect(screen.getByText("Refunded \u2212£123.45")).toBeInTheDocument();
+    expect(screen.getAllByRole("link")).toHaveLength(2);
+    expect(
+      screen.getByRole("link", { name: /Download credit note CN-00001 \(PDF\)/ }),
+    ).toHaveAttribute("href", "/purchases/l/documents/c1");
   });
 });

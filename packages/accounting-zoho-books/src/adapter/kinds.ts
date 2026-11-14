@@ -48,6 +48,14 @@ function paymentTotals(item: Readonly<Record<string, unknown>>): Totals | null {
   return amount === null ? null : { netPence: amount, vatPence: 0, grossPence: amount };
 }
 
+/** An expense or a bank transfer: one amount, no tax. Books calls it `total` on an expense. */
+function movementTotals(field: "total" | "amount") {
+  return (item: Readonly<Record<string, unknown>>): Totals | null => {
+    const amount = poundsToPence(item[field]);
+    return amount === null ? null : { netPence: amount, vatPence: 0, grossPence: amount };
+  };
+}
+
 export const KIND_SPECS: Readonly<Record<DocumentKind, KindSpec>> = {
   invoice: {
     path: "/invoices",
@@ -83,6 +91,24 @@ export const KIND_SPECS: Readonly<Record<DocumentKind, KindSpec>> = {
     idField: "bill_id",
     numberField: "bill_number",
     readTotals: exclusiveTotals,
+    hasPdf: false,
+  },
+  expense: {
+    path: "/expenses",
+    listKey: "expenses",
+    itemKey: "expense",
+    idField: "expense_id",
+    numberField: null,
+    readTotals: movementTotals("total"),
+    hasPdf: false,
+  },
+  transfer: {
+    path: "/banktransactions",
+    listKey: "banktransactions",
+    itemKey: "banktransaction",
+    idField: "transaction_id",
+    numberField: null,
+    readTotals: movementTotals("amount"),
     hasPdf: false,
   },
   contact: {

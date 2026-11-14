@@ -1,6 +1,7 @@
 import type { PurchaseInvoiceCard } from "@auction/types";
 import { describe, expect, it } from "vitest";
-import { purchaseInvoiceCard } from "./purchase-invoice-card.vm";
+import { purchaseInvoiceCard, refundedInFull, withBooksRefund } from "./purchase-invoice-card.vm";
+import type { PurchaseCardVm } from "./purchases.vm";
 
 const LOT = "5c1d2e3f-4a5b-4c6d-8e7f-9a0b1c2d3e4f";
 const DOC = "dddddddd-0000-4000-8000-000000000001";
@@ -14,6 +15,9 @@ const base: PurchaseInvoiceCard = {
   invoiceDocumentId: null,
   cancelledAt: null,
   totalPence: 150_000,
+  cancelledAfterDefault: false,
+  creditNotes: [],
+  paidWith: null,
 };
 
 const vm = (card: Partial<PurchaseInvoiceCard> | null) =>
@@ -59,6 +63,7 @@ describe("purchaseInvoiceCard", () => {
       title: "Invoice INV-000123",
       meta: "Issued Thu 12 Nov, 14:05 GMT",
       download: { label: "Download invoice (PDF)", href: `/purchases/${LOT}/documents/${DOC}` },
+      credits: [],
     });
   });
 
@@ -67,6 +72,7 @@ describe("purchaseInvoiceCard", () => {
       kind: "cancelled",
       title: "Invoice cancelled",
       detail: "This invoice was cancelled on Mon 16 Nov. You owe nothing on it.",
+      credits: [],
     });
     // The day is London's: 23:30 GMT on the 15th in summer time is already the 16th.
     const lateInSummer = vm({ state: "cancelled", cancelledAt: "2026-07-15T23:30:00.000Z" });
@@ -100,5 +106,149 @@ describe("purchaseInvoiceCard", () => {
       invoiceDocumentId: DOC,
     });
     expect(card.kind === "issued" && card.meta).toBe("Issued Thu 2 Jul, 14:05 BST");
+  });
+});
+
+describe("purchaseInvoiceCard: credit notes", () => {
+  const CN = "c0c0c0c0-0000-4000-8000-000000000001";
+  const issued = {
+    state: "issued" as const,
+    invoiceNumber: "INV-000123",
+    issuedAt: "2026-11-12T14:05:00.000Z",
+    invoiceDocumentId: DOC,
+  };
+
+  it("lists each refund: 'Refunded −£[amount]' and 'Download credit note [number] (PDF)'", () => {
+    const out = vm({
+      ...issued,
+      creditNotes: [
+        { documentId: CN, number: "CN-00001", grossPence: 12_345, issuedAt: null, kind: "refund" },
+      ],
+    });
+    expect(out).toMatchObject({
+      kind: "issued",
+      credits: [
+        {
+          text: "Refunded \u2212£123.45",
+          download: {
+            label: "Download credit note CN-00001 (PDF)",
+            href: `/purchases/${LOT}/documents/${CN}`,
+          },
+        },
+      ],
+    });
+  });
+
+  it("says 'Cancelled after a default' with its credit note once issued", () => {
+    const out = vm({
+      state: "cancelled",
+      cancelledAt: "2026-11-30T10:00:00.000Z",
+      cancelledAfterDefault: true,
+      creditNotes: [
+        {
+          documentId: CN,
+          number: "CN-00009",
+          grossPence: 150_000,
+          issuedAt: null,
+          kind: "default",
+        },
+      ],
+    });
+    expect(out).toMatchObject({
+      kind: "cancelled",
+      title: "Cancelled after a default",
+      // The number is the title; the link only says what it does.
+      credits: [{ text: "Credit note CN-00009", download: { label: "Download (PDF)" } }],
+    });
+    expect(vm({ state: "cancelled", cancelledAt: null })).toMatchObject({
+      title: "Invoice cancelled",
+      credits: [],
+    });
+  });
+
+  it("says where a refund went only for a card; a bank transfer's refund names no destination (review N4)", () => {
+    const refund = {
+      documentId: CN,
+      number: "CN-00001",
+      grossPence: 12_345,
+      issuedAt: null,
+      kind: "refund" as const,
+    };
+    const text = (paidWith: PurchaseInvoiceCard["paidWith"]) => {
+      const out = vm({ ...issued, paidWith, creditNotes: [refund] });
+      return out.kind === "issued" ? out.credits[0]?.text : null;
+    };
+    expect(text("card")).toBe("Refunded \u2212£123.45 to your card");
+    expect(text("bank_transfer")).toBe("Refunded \u2212£123.45");
+    expect(text(null)).toBe("Refunded \u2212£123.45");
+  });
+});
+
+describe("refunded in full (Books' credit notes)", () => {
+  const refund = (grossPence: number, n: number) => ({
+    documentId: `dddddddd-0000-4000-8000-00000000010${n}`,
+    number: `CN-0000${n}`,
+    grossPence,
+    issuedAt: null,
+    kind: "refund" as const,
+  });
+  const issued = {
+    state: "issued" as const,
+    invoiceNumber: "INV-000123",
+    issuedAt: "2026-11-12T14:05:00.000Z",
+    invoiceDocumentId: DOC,
+  };
+  const paid = {
+    state: "delivered",
+    badge: { label: "Delivered", tone: "success", shape: "dot" },
+    statusLabel: "Delivered",
+    statusNote: "Delivered by insured courier",
+    amountLabel: "total paid",
+    amount: "£1,500.00",
+  } as unknown as PurchaseCardVm;
+
+  it("reads 'Refunded', never 'Paid / Total paid', once the refunds credit the whole invoice", () => {
+    const books = { ...base, ...issued, creditNotes: [refund(100_000, 1), refund(50_000, 2)] };
+    expect(refundedInFull(books)).toBe(true);
+    expect(withBooksRefund(paid, books)).toMatchObject({
+      badge: { label: "Refunded", tone: "neutral", shape: "ring" },
+      statusLabel: "Refunded",
+      amountLabel: "refunded",
+      amount: "£1,500.00",
+    });
+  });
+
+  it("still reads 'Refunded' when Books refused only the refund from clearing: the API keeps listing that credit note (review N3)", () => {
+    // The API lists a refund's credit note held for `accounting_credit_note_refund_refused` as it
+    // was issued; the card reads it like any other refund, with no destination for a bank transfer.
+    const books = {
+      ...base,
+      ...issued,
+      paidWith: "bank_transfer" as const,
+      creditNotes: [refund(150_000, 7)],
+    };
+    expect(refundedInFull(books)).toBe(true);
+    expect(withBooksRefund(paid, books)).toMatchObject({ statusLabel: "Refunded" });
+    const card = purchaseInvoiceCard({
+      card: books,
+      lotId: LOT,
+      laxInvoiceHref: LAX_PDF,
+      now: NOW,
+    });
+    expect(card.kind === "issued" ? card.credits.map((c) => c.text) : null).toEqual([
+      "Refunded \u2212£1,500.00",
+    ]);
+  });
+
+  it("a part refund, a default's credit note or no Books card leave the purchase as it is", () => {
+    const part = { ...base, ...issued, creditNotes: [refund(100_000, 1)] };
+    expect(withBooksRefund(paid, part)).toBe(paid);
+    const defaulted = {
+      ...base,
+      ...issued,
+      creditNotes: [{ ...refund(150_000, 1), kind: "default" as const }],
+    };
+    expect(withBooksRefund(paid, defaulted)).toBe(paid);
+    expect(withBooksRefund(paid, null)).toBe(paid);
   });
 });

@@ -1,11 +1,14 @@
 import type { AccountingPorts } from "./accounting-ports.js";
 import { type ZohoApi, booksDestination } from "./api.js";
+import { ZohoCreditNoteRefundGateway } from "./credit-note-refund.js";
 import {
   ZohoBillGateway,
   ZohoContactGateway,
   ZohoCreditNoteGateway,
+  ZohoExpenseGateway,
   ZohoInvoiceGateway,
   ZohoPaymentGateway,
+  ZohoTransferGateway,
   ZohoVendorGateway,
 } from "./gateways.js";
 import { ZohoDocumentLookup } from "./lookup.js";
@@ -54,7 +57,10 @@ export function createZohoBooksAdapter(deps: {
     payments: new ZohoPaymentGateway(gateway),
     remainders: new ZohoPaymentRemainderGateway(gateway, api),
     creditNotes: new ZohoCreditNoteGateway(gateway),
+    creditNoteRefunds: new ZohoCreditNoteRefundGateway(gateway, api),
     bills: new ZohoBillGateway(gateway),
+    expenses: new ZohoExpenseGateway(gateway),
+    transfers: new ZohoTransferGateway(gateway),
     contacts: new ZohoContactGateway(gateway, api),
     vendors: new ZohoVendorGateway(gateway, api),
     lookup: new ZohoReadBackLookup(lookup, deps.orgs),

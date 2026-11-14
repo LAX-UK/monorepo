@@ -30,6 +30,32 @@ export const ACCOUNTING_ALERTS = {
    * in its history): the buyer's credit sits unapplied in Books.
    */
   shopRemainderDelayed: { message: "accounting_shop_remainder_delayed", level: "warning" },
+  /**
+   * The daily reconciliation found a mismatch for a company: LAX and Books totals differ for a
+   * document type on the day, a Stripe balance transaction waits for a person, a Stripe account
+   * was not read, or the Stripe clearing account in Books does not agree with Stripe's balance. The fields name the company,
+   * the day and the stored report's key.
+   */
+  reconciliationMismatch: { message: "accounting_reconciliation_mismatch", level: "error" },
+  /**
+   * Delayed accounting, Bid refunds: a refund's credit note was issued more than six hours ago and
+   * its money is still not refunded from Stripe clearing in Books (no `refund_credit_note`).
+   */
+  creditNoteRefundDelayed: { message: "accounting_credit_note_refund_delayed", level: "warning" },
+  /**
+   * Bid refunds: a refund was taken back (it failed after it was counted) after its credit note was
+   * issued in Books. The credit note is held for a person ("Needs a person"); nothing is reversed
+   * in Books automatically, since the plan defines no reversing document: the accountant says how.
+   */
+  refundReversedAfterCredit: {
+    message: "accounting_refund_reversed_after_credit",
+    level: "error",
+  },
+  /**
+   * Bid refunds: Books refused to refund an issued credit note from Stripe clearing. The credit note
+   * is held for a person ("Needs a person"); refund it by hand in Books (see the runbook).
+   */
+  creditNoteRefundRefused: { message: "accounting_credit_note_refund_refused", level: "error" },
   /** Documents are queued for Books but the sender has not claimed any for too long. */
   senderMissed: { message: "accounting_sender_missed", level: "error" },
   /** The day's Books calls passed 80% of the budget (`BUDGET_WARNING_EVENT` in the Books client). */
@@ -57,7 +83,10 @@ export const ACCOUNTING_CRON_MONITORS = {
   watch: "accounting-watch",
   /** The sender, which runs with the projectors; it checks in at most every 5 minutes. */
   sender: "accounting-sender",
-  /** The nightly Books reconciliation, when it is added; its job checks in under this key. */
+  /**
+   * The daily Stripe fees and payouts job and reconciliation report (05:30 Europe/London); a
+   * missed check-in means the books were not reconciled that day.
+   */
   reconcile: "accounting-reconcile",
 } as const;
 

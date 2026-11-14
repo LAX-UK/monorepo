@@ -1,14 +1,18 @@
+import { isDeepStrictEqual } from "node:util";
 import {
   type AccountingDocument,
   DOCUMENT_KINDS,
   type DocumentKind,
+  type Expense,
   type Line,
   type LineInput,
   PRODUCTS,
   type Product,
   type Result,
+  buildExpense,
   buildInclusiveLine,
   buildLine,
+  buildTransfer,
   expectedTotals,
   isInvoiceNumber,
   isPence,
@@ -98,6 +102,7 @@ export function readDocumentPayload(
     return bad("not the reference for this product and kind");
   }
   if (value.entity !== legalEntityFor(product)) return bad("wrong legal entity for the product");
+  if (kind === "expense" || kind === "transfer") return readMovement(value, kind);
   if (!text(value.contactReference) && kind !== "contact") return bad("missing contact");
 
   if (kind === "contact") {
@@ -130,6 +135,22 @@ export function readDocumentPayload(
   if (kind === "credit_note" && value.amountsAre !== "tax_inclusive") {
     return bad("a credit note's amounts are tax-inclusive");
   }
+  // Money given back with a credit note comes from Stripe clearing, on or after its date.
+  if (kind === "credit_note" && value.refund !== undefined) {
+    const refund = value.refund;
+    if (
+      !isRecord(refund) ||
+      refund.account !== "stripe_clearing" ||
+      typeof refund.refundedOn !== "string" ||
+      !isValidIsoDate(refund.refundedOn) ||
+      refund.refundedOn < (value.issuedOn as string) ||
+      Object.keys(refund).length !== 2
+    ) {
+      return bad("a credit note's refund is from Stripe clearing, on or after its date");
+    }
+  }
+  if (kind !== "credit_note" && value.refund !== undefined)
+    return bad("only a credit note is refunded");
   // A credit note is always VAT-inclusive; an invoice is when LAX numbered it at inclusive prices
   // (Shop), and then it must carry LAX's number. Nothing else may claim either.
   const inclusiveInvoice = kind === "invoice" && value.amountsAre === "tax_inclusive";
@@ -149,6 +170,39 @@ export function readDocumentPayload(
   if (!sameTotals(value.totals, totalsOf(lines.value)))
     return bad("totals are not the sum of the lines");
   return ok(document);
+}
+
+/**
+ * An expense (Stripe's fees) or a transfer (a Stripe payout): rebuilt through the domain's own
+ * builder from what is stored, and refused unless the rebuild is exactly the stored document. No
+ * contact, no lines, no VAT.
+ */
+function readMovement(
+  value: Record<string, unknown>,
+  kind: "expense" | "transfer",
+): Result<AccountingDocument, "bad_document"> {
+  const parts = parseLaxReference(value.reference as string);
+  if (!parts.ok) return bad("not a LAX reference");
+  const common = { product: value.product as Product, sourceId: parts.value.sourceId };
+  const rebuilt =
+    kind === "expense"
+      ? buildExpense({
+          ...common,
+          category: value.category as Expense["category"],
+          spentOn: value.spentOn as string,
+          amountPence: value.amountPence as number,
+          description: value.description as string,
+        })
+      : buildTransfer({
+          ...common,
+          transferredOn: value.transferredOn as string,
+          amountPence: value.amountPence as number,
+          description: value.description as string,
+        });
+  if (!rebuilt.ok) return bad(rebuilt.refusal.message);
+  return isDeepStrictEqual(JSON.parse(JSON.stringify(rebuilt.value)), value)
+    ? ok(rebuilt.value)
+    : bad("an expense or transfer must be exactly what its builder makes");
 }
 
 /** The totals columns for a document: what the provider must report back. */

@@ -1530,6 +1530,7 @@ export type {
 export type { IPartyDealRecordReader } from "./party-deal-record.reader.js";
 
 export type * from "./accounting.js";
+export type * from "./accounting-stripe.js";
 
 export type {
   BidderReofferRow,

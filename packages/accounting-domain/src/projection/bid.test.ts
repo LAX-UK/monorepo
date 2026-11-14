@@ -1,12 +1,6 @@
 import { describe, expect, it } from "vitest";
-import type { CreditNote, Invoice } from "../document.js";
-import { forAll, int } from "../testing/generate.js";
-import {
-  type BidInvoiceFacts,
-  type BidRefundFacts,
-  projectBidInvoiceRaised,
-  projectBidPaymentRefunded,
-} from "./bid.js";
+import type { Invoice } from "../document.js";
+import { type BidInvoiceFacts, projectBidInvoiceRaised } from "./bid.js";
 import { ACCOUNTING_FLOWS, BUILT_FLOWS, PROJECTION_POLICIES } from "./flows.js";
 import { whenReferenceHeld } from "./projection.js";
 
@@ -127,91 +121,6 @@ describe("Bid invoice raised", () => {
     expect(projectBidInvoiceRaised(invoiceFacts({ invoiceId: "ABC" }))).toMatchObject({
       ok: false,
       refusal: { code: "bad_source_id" },
-    });
-  });
-});
-
-describe("Bid payment refunded", () => {
-  const refund = (n: number, amountPence: number, refundedOn = "2026-11-20"): BidRefundFacts => ({
-    refundId: `0b6a7c1e-4444-4a5b-8c9d-00000000000${n}`,
-    amountPence,
-    refundedOn,
-  });
-  const refunded = (refunds: BidRefundFacts[], paidPence = 154_320) => ({
-    invoice: invoiceFacts(),
-    paidPence,
-    refunds,
-  });
-
-  it("gives one credit note per refund for exactly its amount, oldest first", () => {
-    const { documents } = must(
-      projectBidPaymentRefunded(refunded([refund(1, 1_001), refund(2, 50_000)])),
-    );
-    expect(documents.map((d) => d.kind)).toEqual([
-      "contact",
-      "invoice",
-      "credit_note",
-      "credit_note",
-    ]);
-    const [first, second] = documents.slice(2) as CreditNote[];
-    expect(first?.totals.grossPence).toBe(1_001);
-    expect(second?.totals.grossPence).toBe(50_000);
-    expect(first?.invoiceReference).toBe(`LAX-BID-INV-${INVOICE_ID}`);
-    expect(first?.reference).toBe("LAX-BID-CN-0b6a7c1e-4444-4a5b-8c9d-000000000001");
-  });
-
-  it("projects earlier credit notes again exactly, so a later refund never changes them", () => {
-    const once = must(projectBidPaymentRefunded(refunded([refund(1, 1_001)]))).documents;
-    const twice = must(
-      projectBidPaymentRefunded(refunded([refund(1, 1_001), refund(2, 7)])),
-    ).documents;
-    expect(twice.slice(0, 3)).toEqual(once);
-  });
-
-  it("credits a full refund to the penny", () => {
-    const note = must(projectBidPaymentRefunded(refunded([refund(1, 154_320)]))).documents[2];
-    expect((note as CreditNote).totals).toEqual({
-      netPence: 154_320,
-      vatPence: 0,
-      grossPence: 154_320,
-    });
-  });
-
-  it("refuses refunds that add up to more than was paid", () => {
-    expect(
-      projectBidPaymentRefunded(refunded([refund(1, 100_000), refund(2, 54_321)])),
-    ).toMatchObject({ ok: false, refusal: { code: "refund_refused" } });
-  });
-
-  it("never credits more than a part payment took", () => {
-    expect(projectBidPaymentRefunded(refunded([refund(1, 100_001)], 100_000))).toMatchObject({
-      ok: false,
-    });
-  });
-
-  it("refuses a credit note dated before its invoice", () => {
-    expect(projectBidPaymentRefunded(refunded([refund(1, 10, "2026-11-11")]))).toMatchObject({
-      ok: false,
-      refusal: { code: "bad_date" },
-    });
-  });
-
-  it("property: credit notes always total exactly the refunds, never more than was paid", () => {
-    forAll(200, (rng) => {
-      const paid = int(rng, 1, 154_320);
-      const refunds: BidRefundFacts[] = [];
-      let left = paid;
-      for (let i = 1; i <= int(rng, 1, 5) && left > 0; i++) {
-        const amount = int(rng, 1, left);
-        refunds.push(refund(i, amount));
-        left -= amount;
-      }
-      const notes = must(projectBidPaymentRefunded(refunded(refunds, paid))).documents.slice(2);
-      const credited = (notes as CreditNote[]).reduce((s, n) => s + n.totals.grossPence, 0);
-      expect(credited).toBe(paid - left);
-      expect(notes.map((n) => (n as CreditNote).totals.grossPence)).toEqual(
-        refunds.map((r) => r.amountPence),
-      );
     });
   });
 });

@@ -3,6 +3,9 @@ import {
   type Bill,
   type Contact,
   type CreditNote,
+  type CreditNoteRefund,
+  type CreditNoteRefundOutcome,
+  type Expense,
   type Invoice,
   type IssueOutcome,
   type LookupOutcome,
@@ -11,6 +14,7 @@ import {
   type RemainderApplication,
   type RemainderOutcome,
   type Result,
+  type Transfer,
   expectedTotals,
 } from "@auction/accounting-domain";
 import type { AccountingPorts } from "./accounting-ports.js";
@@ -20,6 +24,7 @@ import { billBody } from "./mappers/bill.js";
 import { type ContactType, contactCreateBody } from "./mappers/contact.js";
 import { creditNoteBody } from "./mappers/credit-note.js";
 import { invoiceBody } from "./mappers/invoice.js";
+import { expenseBody, transferBody } from "./mappers/movement.js";
 import { paymentBody } from "./mappers/payment.js";
 import { penceToPounds } from "./money-format.js";
 import type { ZohoOrgConfig, ZohoOrgConfigs } from "./org-config.js";
@@ -103,6 +108,11 @@ export function createZohoBooksDryRunAdapter(deps: {
       applyRemainder: (a: RemainderApplication): Promise<RemainderOutcome> =>
         Promise.resolve(rehearseRemainder(deps.orgs, a)),
     },
+    // Nothing is held, so nothing is refunded: the same checks, then a rehearsal answer.
+    creditNoteRefunds: {
+      refundCreditNote: (r: CreditNoteRefund): Promise<CreditNoteRefundOutcome> =>
+        Promise.resolve(rehearseCreditNoteRefund(deps.orgs, r)),
+    },
     bills: {
       issueBill: (d: Bill) =>
         rehearse(
@@ -110,6 +120,12 @@ export function createZohoBooksDryRunAdapter(deps: {
           [{ kind: "contact", reference: d.contactReference, contactType: "vendor" }],
           (org) => billBody(d, PLACEHOLDER_ID, org),
         ),
+    },
+    expenses: {
+      recordExpense: (d: Expense) => rehearse(d, [], (org) => expenseBody(d, org)),
+    },
+    transfers: {
+      recordTransfer: (d: Transfer) => rehearse(d, [], (org) => transferBody(d, org)),
     },
     contacts: { upsertContact: contact("customer") },
     vendors,
@@ -144,6 +160,27 @@ function rehearseRemainder(orgs: ZohoOrgConfigs, a: RemainderApplication): Remai
       reason: foreign.status === "rejected" ? foreign.reason : "zoho_books_bad_reference",
     };
   return { status: "applied", rehearsal: true };
+}
+
+function rehearseCreditNoteRefund(
+  orgs: ZohoOrgConfigs,
+  r: CreditNoteRefund,
+): CreditNoteRefundOutcome {
+  const choice = orgFor(orgs, r);
+  if (!choice.ok) return { status: "rejected", reason: choice.reason };
+  if (r.account !== "stripe_clearing" || !(r.amountPence > 0)) {
+    return { status: "rejected", reason: ZOHO_BOOKS_REJECTIONS.creditNoteRefundDiffers };
+  }
+  const foreign = sameProduct(r.product, [
+    customer(r.contactReference),
+    { kind: "credit_note", reference: r.creditNoteReference },
+  ]);
+  if (foreign)
+    return {
+      status: "rejected",
+      reason: foreign.status === "rejected" ? foreign.reason : "zoho_books_bad_reference",
+    };
+  return { status: "refunded", rehearsal: true };
 }
 
 function rehearsal(
