@@ -28,7 +28,7 @@ export function nextLinkMock() {
     replace: _replace,
     scroll: _scroll,
     ...rest
-  }: React.AnchorHTMLAttributes<HTMLAnchorElement> & {
+  }: Omit<React.AnchorHTMLAttributes<HTMLAnchorElement>, "href"> & {
     href: string | { pathname?: string };
     prefetch?: unknown;
     replace?: unknown;
