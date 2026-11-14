@@ -9,6 +9,9 @@
  * - `read_back_differs`: a payment is made, but what the provider holds and answers with leaves out
  *   a field we sent (its currency), so it reads back different from ours. Payments are the kind
  *   read back field by field; other kinds are made as usual.
+ * - `renumbered`: an invoice LAX numbered (automatic numbering off) is made, but Books gives it its
+ *   own number (an organisation setting overriding ours), so it reads back under another number.
+ *   Other kinds, and invoices Books numbers anyway, are made as usual.
  * - `lookup_unavailable`: the search answers with something unreadable.
  * - `lookup_ambiguous`: the search finds two documents with the reference.
  */
@@ -18,6 +21,7 @@ export const WRITE_FAULTS = [
   "locked_period",
   "totals_drift",
   "read_back_differs",
+  "renumbered",
 ] as const;
 export const LOOKUP_FAULTS = ["lookup_unavailable", "lookup_ambiguous"] as const;
 export const FAULTS = [...WRITE_FAULTS, ...LOOKUP_FAULTS] as const;

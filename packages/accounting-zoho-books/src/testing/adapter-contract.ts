@@ -4,6 +4,7 @@ import {
   type IssueOutcome,
   type LineInput,
   type Product,
+  type RemainderApplication,
   type Result,
   buildBill,
   buildContact,
@@ -422,6 +423,28 @@ export function runAccountingContract(
         expect(again.status).toBe("rejected");
         await notIssued(s, shopInvoice("order-2", "LAX-INV-000124"));
       });
+
+      it("holds for a person an invoice Books renumbered, on the send and on lookup", async () => {
+        const s = await withContact(SHOP);
+        const doc = shopInvoice("order-3", "LAX-INV-000125");
+        s.faults.inject("renumbered");
+        const out = await s.settle(s.ports.invoices.issueInvoice(doc));
+        expect(out.status).toBe("differs");
+        if (out.status !== "differs") throw new Error("expected differs");
+        expect(out.reason).toBe("zoho_books_number_differs");
+        expect(out.number === "LAX-INV-000125").toBe(false);
+        // Looked up again (a lost answer, a retry), it is the same document, still held.
+        const found = await s.settle(s.ports.lookup.findDocument(doc));
+        expect(found.status).toBe("differs");
+        if (found.status !== "differs") throw new Error("expected differs");
+        expect(found.reason).toBe("zoho_books_number_differs");
+        expect(found.providerId).toBe(out.providerId);
+        // A resend is never a second invoice: the same one, still held.
+        const again = await s.settle(s.ports.invoices.issueInvoice(doc));
+        expect(again.status).toBe("differs");
+        if (again.status !== "differs") throw new Error("expected differs");
+        expect(again.providerId).toBe(out.providerId);
+      });
     });
 
     describe("VAT registration", () => {
@@ -454,6 +477,78 @@ export function runAccountingContract(
           reason: R.vatOnUnregisteredEntity,
         });
         await notIssued(s, doc);
+      });
+    });
+
+    describe("a payment's remainder applied to an invoice issued after it", () => {
+      /** A payment of £150 applied to invoice A only; invoice B (£115) comes later. */
+      async function paidWithRest() {
+        const s = await withContact();
+        const a = invoice(SHOP, "rest-a", [NO_VAT_GOODS]);
+        const b = invoice(SHOP, "rest-b", [NO_VAT_GOODS, NO_VAT_DELIVERY]);
+        issuedOf(await s.settle(s.ports.invoices.issueInvoice(a)));
+        const payment = must(
+          buildPayment({
+            product: SHOP,
+            sourceId: "rest-pay",
+            contactReference: a.contactReference,
+            receivedOn: "2026-11-12",
+            amountPence: a.totals.grossPence + b.totals.grossPence,
+            allocations: [{ invoiceReference: a.reference, amountPence: a.totals.grossPence }],
+          }),
+        );
+        issuedOf(await s.settle(s.ports.payments.recordPayment(payment)));
+        issuedOf(await s.settle(s.ports.invoices.issueInvoice(b)));
+        const application: RemainderApplication = {
+          product: SHOP,
+          entity: legalEntityFor(SHOP),
+          paymentReference: payment.reference,
+          invoiceReference: b.reference,
+          contactReference: a.contactReference,
+          amountPence: b.totals.grossPence,
+        };
+        return { s, a, b, payment, application };
+      }
+
+      it("applies it once; a second run is already applied, nothing sent again", async () => {
+        const { s, application } = await paidWithRest();
+        expect(await s.settle(s.ports.remainders.applyRemainder(application))).toEqual({
+          status: "applied",
+          rehearsal: false,
+        });
+        expect(await s.settle(s.ports.remainders.applyRemainder(application))).toEqual({
+          status: "already_applied",
+          rehearsal: false,
+        });
+      });
+
+      it("refuses more than the payment left unapplied", async () => {
+        const { s, application } = await paidWithRest();
+        const out = await s.settle(
+          s.ports.remainders.applyRemainder({
+            ...application,
+            amountPence: application.amountPence + 1,
+          }),
+        );
+        expect(out).toEqual({ status: "rejected", reason: R.remainderUnavailable });
+      });
+
+      it("refuses an invoice not in the books, and a reference of another product", async () => {
+        const { s, application } = await paidWithRest();
+        const missing = await s.settle(
+          s.ports.remainders.applyRemainder({
+            ...application,
+            invoiceReference: invoice(SHOP, "rest-never", [NO_VAT_GOODS]).reference,
+          }),
+        );
+        expect(missing).toEqual({ status: "rejected", reason: "zoho_books_invoice_missing" });
+        const foreign = await s.settle(
+          s.ports.remainders.applyRemainder({
+            ...application,
+            invoiceReference: invoice(BID, "rest-b", [GOODS]).reference,
+          }),
+        );
+        expect(foreign).toEqual({ status: "rejected", reason: R.entityMismatch });
       });
     });
 
