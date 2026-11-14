@@ -422,6 +422,23 @@ export const WORKER_SHOP_INVOICE_READ_COLUMNS = [
   ["shop_product", ["id", "title"]],
   ["shop_product_variant", ["id", "product_id", "sku"]],
   ["shop_guest_customer", ["id", "email", "name", "erased_at"]],
+  /** An original sold directly in the Shop and invoiced by Books (migration 0389). */
+  [
+    "shop_original_sale",
+    [
+      "id",
+      "status",
+      "artwork_id",
+      "buyer_party_id",
+      "sale_price_pence",
+      "vat_treatment",
+      "vat_pence",
+      "invoice_issuer",
+      "invoice_number",
+      "paid_at",
+    ],
+  ],
+  ["shop_party", ["id", "display_name", "identity_subject_id"]],
 ] as const;
 
 /**

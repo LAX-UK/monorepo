@@ -1780,6 +1780,21 @@ export const shopOriginalSale = pgTable(
     vatPence: integer("vat_pence"),
     reservationExpiresAt: timestamp("reservation_expires_at", { mode: "date", withTimezone: true }),
     stripeInvoiceId: text("stripe_invoice_id"),
+    /**
+     * Who issues the sale's invoice, fixed when staff issue it (migration 0389): `stripe` (a Stripe
+     * Invoice) or `books` (Zoho Books, under a `LAX-INV-` number; Stripe takes the payment through
+     * a single-use Payment Link).
+     */
+    invoiceIssuer: text("invoice_issuer").$type<"stripe" | "books">().default("stripe").notNull(),
+    /** When Stripe took the payment. */
+    paidAt: timestamp("paid_at", { mode: "date", withTimezone: true }),
+    /**
+     * The `LAX-INV-` number of a `books` sale, set by `shop_original_sale_invoice_number_trg` from
+     * `shop_invoice_counter` (the counter Shop orders use) in the transaction that sets `paid_at`.
+     */
+    invoiceNumber: text("invoice_number"),
+    /** The Payment Link a `books` sale is paid through; the paid webhook must name it. */
+    stripePaymentLinkId: text("stripe_payment_link_id"),
     salesChannel: shopSalesChannelEnum("sales_channel").default("art").notNull(),
     recordedBySubjectId: text("recorded_by_subject_id").notNull(),
     version: integer("version").default(1).notNull(),
@@ -1792,7 +1807,13 @@ export const shopOriginalSale = pgTable(
       .where(sql`${table.status} NOT IN ('assigned', 'cancelled')`),
     index("shop_original_sale_artwork_idx").on(table.artworkId),
     index("shop_original_sale_buyer_idx").on(table.buyerPartyId),
+    uniqueIndex("shop_original_sale_invoice_number_uid").on(table.invoiceNumber),
+    uniqueIndex("shop_original_sale_payment_link_uid").on(table.stripePaymentLinkId),
     check("shop_original_sale_price_nonnegative", sql`${table.salePricePence} >= 0`),
+    check(
+      "shop_original_sale_invoice_issuer_chk",
+      sql`${table.invoiceIssuer} IN ('stripe', 'books')`,
+    ),
   ],
 );
 
