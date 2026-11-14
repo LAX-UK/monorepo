@@ -696,7 +696,10 @@ describe.skipIf(!HAS_DB)(
         update accounting_document set state = 'sending', provider = 'books', lease_token = 'held-elsewhere',
                lease_expires_at = now() + interval '5 minutes', attempts = 1
          where id = ${invoiceRow.id}`);
-        await expect(projection().project(event)).rejects.toMatchObject({ retryable: true });
+        await expect(projection().project(event)).rejects.toMatchObject({
+          retryable: true,
+          code: "invoice_in_flight",
+        });
         expect(await creditNotesOf(invoiceRef, "test_org")).toEqual([]);
       });
 

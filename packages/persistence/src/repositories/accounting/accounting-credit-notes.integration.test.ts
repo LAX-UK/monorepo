@@ -245,6 +245,19 @@ describe.skipIf(!HAS_DB)("accounting credit notes (integration)", { timeout: 60_
     );
     expect(settled.filter(Boolean)).toHaveLength(1);
     expect(steps).toBe(1);
+    // Settled: a later worker that reaches it does not run the step again.
+    expect(
+      await repos.creditNoteRefunds.settleExclusively(money.id, async () => {
+        steps += 1;
+        return {
+          outcome: "refunded",
+          amountPence: 3_000,
+          account: "stripe_clearing",
+          rehearsal: true,
+        };
+      }),
+    ).toBe(false);
+    expect(steps).toBe(1);
     const history = await owner.execute<{ n: number }>(sql`
       select count(*)::int as n from accounting_document_event
        where document_id = ${money.id} and action = 'refund_credit_note'`);
