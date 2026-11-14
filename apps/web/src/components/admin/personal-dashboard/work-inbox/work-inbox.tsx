@@ -1,7 +1,7 @@
 "use client";
 
 import { StaffBulkOperations } from "@/components/admin/staff/staff-bulk-operations";
-import { useListPanel } from "@/components/admin/staff/use-list-panel";
+import { useStaffQueue } from "@/components/admin/staff/use-staff-queue";
 import type { BulkOperation } from "@/lib/admin/bulk-ops/types";
 import { toSequentialBulkResult } from "@/lib/admin/catalog-bulk-result-handler";
 import {
@@ -39,10 +39,9 @@ import {
   StatusBadge,
   rowActionsColumn,
 } from "@auction/staff-ui";
-import { ExternalLink } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { runWorkItemAction, useWorkItemActions } from "./use-work-item-actions";
 
 /** Area tabs filter the loaded items in place, so they keep the scroll position. */
@@ -90,12 +89,12 @@ export function WorkInbox({
   const router = useRouter();
   const base = useMemo(() => ({ area, assignment, period }), [area, assignment, period]);
   const panelHref = useCallback((id: string | null) => workInboxHref(base, { item: id }), [base]);
-  const panel = useListPanel({ param: "item", initialId: openItemId, hrefFor: panelHref });
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const actions = useWorkItemActions({ onDone: () => panel.show(null) });
+  // The queue needs the columns, which need the actions: done work closes the panel through this.
+  const closePanel = useRef<() => void>(() => {});
+  const actions = useWorkItemActions({ onDone: () => closePanel.current() });
 
   const rows = useMemo(() => filterWorkByArea(items, area), [items, area]);
-  const open = rows.find((item) => item.id === panel.openId) ?? null;
   const filtered = area !== "all" || assignment !== "all";
 
   const columns = useMemo<DataColumn<AdminWorkItem>[]>(
@@ -105,11 +104,7 @@ export function WorkInbox({
         header: "Item",
         mobile: "title",
         cell: (item) => (
-          <PrimaryCell
-            href={panelHref(item.id)}
-            Link={panel.PanelLink}
-            secondary={item.subtitle ?? undefined}
-          >
+          <PrimaryCell href={item.href} Link={Link} secondary={item.subtitle ?? undefined}>
             {item.title}
           </PrimaryCell>
         ),
@@ -158,8 +153,25 @@ export function WorkInbox({
         Link,
       }),
     ],
-    [actions, actorUserId, panel.PanelLink, panelHref],
+    [actions, actorUserId],
   );
+
+  // A personal work queue (PRD-7): `?item=` in the URL, its place, J and K in the order shown, and
+  // the row's link is the item's own page.
+  const queue = useStaffQueue({
+    param: "item",
+    rows,
+    getId: workItemId,
+    initialId: openItemId,
+    hrefFor: panelHref,
+    pageHref: (item) => item.href,
+    localSort: { columns, defaultSort: { columnId: "due", direction: "asc" } },
+    noun: "item",
+  });
+  useEffect(() => {
+    closePanel.current = queue.close;
+  }, [queue.close]);
+  const open = queue.record;
 
   const bulkOperations = (chosen: AdminWorkItem[]): BulkOperation[] => {
     const action = sharedWorkAction(chosen);
@@ -227,11 +239,8 @@ export function WorkInbox({
         embedded
         label="Your work"
         columns={columns}
-        data={rows}
-        getRowId={(item) => item.id}
-        defaultSort={{ columnId: "due", direction: "asc" }}
-        onRowOpen={(item) => panel.show(item.id)}
-        activeRowId={panel.openId}
+        {...queue.table}
+        getRowId={workItemId}
         {...(counts.total > 0 || filtered
           ? {
               toolbar: (
@@ -285,82 +294,86 @@ export function WorkInbox({
         }
       />
 
-      {open ? (
-        <DetailPanel
+      {/* Mounted while closed too, so Esc can return focus to the row. */}
+      <DetailPanel
+        {...queue.panelProps}
+        title={open?.title ?? "Work item"}
+        {...(open?.subtitle ? { description: open.subtitle } : {})}
+        {...(priority
+          ? { status: <StatusBadge tone={priority.tone}>{priority.label}</StatusBadge> }
+          : {})}
+        {...(open ? { fullPage: { href: open.href, Link } } : {})}
+        meta={
           open
-          onOpenChange={(next) => {
-            if (!next) panel.show(null);
-          }}
-          title={open.title}
-          {...(open.subtitle ? { description: open.subtitle } : {})}
-          {...(priority
-            ? { status: <StatusBadge tone={priority.tone}>{priority.label}</StatusBadge> }
-            : {})}
-          meta={[
-            { label: "Area", value: WORK_AREA_LABELS[open.domain] },
-            ...(owner ? [{ label: "Owner", value: owner }] : []),
-            { label: "Due", value: <StaffDate value={open.dueAt ?? open.createdAt} withTime /> },
-          ]}
-          summary={[
-            ...(open.hint ? [{ label: "Possible payment", value: open.hint }] : []),
-            {
-              label: "Waiting since",
-              value: <StaffDate value={open.createdAt} withTime />,
-            },
-            {
-              label: "Last change",
-              value: <StaffDate value={open.sourceUpdatedAt} withTime />,
-            },
-            {
-              label: "What to do",
-              value: workItemGuidance(open),
-            },
-          ]}
-          headerActions={
-            <StaffButton asChild size="sm" variant="ghost" icon={<ExternalLink aria-hidden />}>
-              <Link href={open.href}>Open full page</Link>
-            </StaffButton>
-          }
-          {...(dangerActions.length > 0 || otherActions.length > 1
-            ? {
-                overflow: (
-                  <OverflowMenu
-                    actions={[...otherActions.slice(1), ...dangerActions]}
-                    label={`More actions for ${open.title}`}
-                  />
-                ),
-              }
-            : {})}
-          footer={
-            primaryAction ? (
-              <>
-                {otherActions[0] ? (
-                  <StaffButton
-                    disabled={actions.running}
-                    onClick={() => otherActions[0]?.onSelect?.()}
-                  >
-                    {otherActions[0].label}
-                  </StaffButton>
-                ) : null}
+            ? [
+                { label: "Area", value: WORK_AREA_LABELS[open.domain] },
+                ...(owner ? [{ label: "Owner", value: owner }] : []),
+                {
+                  label: "Due",
+                  value: <StaffDate value={open.dueAt ?? open.createdAt} withTime />,
+                },
+              ]
+            : []
+        }
+        summary={
+          open
+            ? [
+                ...(open.hint ? [{ label: "Possible payment", value: open.hint }] : []),
+                {
+                  label: "Waiting since",
+                  value: <StaffDate value={open.createdAt} withTime />,
+                },
+                {
+                  label: "Last change",
+                  value: <StaffDate value={open.sourceUpdatedAt} withTime />,
+                },
+                { label: "What to do", value: workItemGuidance(open) },
+              ]
+            : []
+        }
+        {...(open && (dangerActions.length > 0 || otherActions.length > 1)
+          ? {
+              overflow: (
+                <OverflowMenu
+                  actions={[...otherActions.slice(1), ...dangerActions]}
+                  label={`More actions for ${open.title}`}
+                />
+              ),
+            }
+          : {})}
+        footer={
+          !open ? null : primaryAction ? (
+            <>
+              {otherActions[0] ? (
                 <StaffButton
-                  variant="primary"
-                  loading={actions.running}
-                  onClick={() => primaryAction.onSelect?.()}
+                  disabled={actions.running}
+                  onClick={() => otherActions[0]?.onSelect?.()}
                 >
-                  {primaryAction.label}
+                  {otherActions[0].label}
                 </StaffButton>
-              </>
-            ) : (
-              <StaffButton asChild variant="primary">
-                <Link href={open.href}>Open record</Link>
+              ) : null}
+              <StaffButton
+                variant="primary"
+                loading={actions.running}
+                onClick={() => primaryAction.onSelect?.()}
+              >
+                {primaryAction.label}
               </StaffButton>
-            )
-          }
-        >
-          {null}
-        </DetailPanel>
-      ) : null}
+            </>
+          ) : (
+            <StaffButton asChild variant="primary">
+              <Link href={open.href}>Open record</Link>
+            </StaffButton>
+          )
+        }
+      >
+        {null}
+      </DetailPanel>
       {actions.dialog}
     </Section>
   );
+}
+
+function workItemId(item: AdminWorkItem): string {
+  return item.id;
 }
