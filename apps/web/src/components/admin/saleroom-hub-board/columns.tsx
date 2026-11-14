@@ -20,13 +20,18 @@ import Link from "next/link";
 
 type Row = AdminSaleListRow;
 
+/** The sale's clerk console: where its row and its title go. */
+export function saleroomHubRowHref(row: Row): string {
+  return `/admin/saleroom/${row.sale.id}`;
+}
+
 function rowActions(row: Row): OverflowAction[] {
   return [
     {
       id: "console",
       label: "Open clerk console",
       icon: DoorOpen,
-      href: `/admin/saleroom/${row.sale.id}`,
+      href: saleroomHubRowHref(row),
     },
     {
       id: "check-in",
@@ -45,7 +50,7 @@ export function saleroomHubColumns(): DataColumn<Row>[] {
       mobile: "title",
       cell: (row) => (
         <PrimaryCell
-          href={`/admin/saleroom/${row.sale.id}`}
+          href={saleroomHubRowHref(row)}
           Link={Link}
           secondary={deliveryModeShortLabel(row.sale.deliveryMode as SaleDeliveryMode)}
         >
