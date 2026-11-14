@@ -18,6 +18,7 @@ import { DrizzleHeldErasures } from "./container/adapters/drizzle-data-request-h
 import { loadEnv } from "./env.js";
 import { startBidSsfRetentionSchedule } from "./infrastructure/bid-ssf-retention.schedule.js";
 import { DrizzleBidUserContextLoader } from "./infrastructure/drizzle-bid-user-context.loader.js";
+import { reportHeldErasureNeedsStaff } from "./infrastructure/held-erasure-alert.js";
 import { startHeldErasureRecheckSchedule } from "./infrastructure/held-erasure-recheck.schedule.js";
 import type { LotJobScheduler } from "./jobs/lot-job-scheduler.js";
 import { closeBullBoardQueues } from "./lib/bull-board.js";
@@ -59,8 +60,7 @@ const heldErasureRecheckSchedule = startHeldErasureRecheckSchedule({
         new DrizzleStaffRoleAssignmentReader(container.db),
       ),
     ),
-    onNeedsStaff: (reference, reason) =>
-      console.warn("[held-erasure-recheck] request needs staff", { reference, reason }),
+    onNeedsStaff: reportHeldErasureNeedsStaff,
   }),
   onError: (err) => reportBackground("held-erasure-recheck", err),
 });

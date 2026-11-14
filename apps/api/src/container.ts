@@ -77,6 +77,7 @@ import { createUserRouteServices } from "./container/create-user-route-services.
 import type { Env } from "./env.js";
 import { DrizzlePendingDeletionReader } from "./infrastructure/drizzle-pending-deletion.reader.js";
 import { DrizzleSubjectUsageReader } from "./infrastructure/drizzle-subject-usage.reader.js";
+import { reportHeldErasureNeedsStaff } from "./infrastructure/held-erasure-alert.js";
 import { HttpIdentityDataRequestsClient } from "./infrastructure/http-identity-data-requests.client.js";
 import { HttpIdentityIssuerClient } from "./infrastructure/http-identity-issuer.client.js";
 import { IdentityAddressBookRepository } from "./infrastructure/identity-address-book.repository.js";
@@ -873,6 +874,7 @@ export function createContainer(env: Env): Container {
         enquiryErasure: marketingEnquiries.erasure,
         erasureHistory: new DrizzleDataRequestErasureHistory(db),
         heldErasures: new DrizzleHeldErasures(db),
+        onNeedsStaff: reportHeldErasureNeedsStaff,
         dealHolds: new PartyDealRetentionHolds(
           new DrizzlePartyDealRecordReader(db),
           env.PRIVATE_SALE_RECORD_RETENTION_YEARS,

@@ -9,7 +9,7 @@ import { DomainEventDataRequestAuditTrail } from "./data-request-audit-trail.js"
 const RECORD = { request: { reference: "DR-0007" } } as never;
 const NOW = new Date("2027-01-01T00:00:00Z");
 
-function setup() {
+function setup(extra: { onNeedsStaff?: (reference: string, reason: "end_unknown") => void } = {}) {
   const calls: string[] = [];
   const identity = {
     list: vi.fn(async () => ({ items: [], nextCursor: null })),
@@ -94,6 +94,7 @@ function setup() {
       erasureHistory,
       dealHolds,
       heldErasures,
+      ...extra,
       now: () => NOW,
     }),
     erasureHistory,
@@ -297,6 +298,26 @@ describe("AdminDataRequestsService.eraseEnquiries", () => {
     expect(heldErasures.held).toHaveBeenCalledWith(
       expect.objectContaining({ plan: expect.objectContaining({ state: "needs_staff" }) }),
     );
+  });
+
+  it("tells staff at once when an erasure is held with no end date, but not for one that will be re-run", async () => {
+    const onNeedsStaff = vi.fn();
+    const { service, identity, enquiryErasure } = setup({ onNeedsStaff });
+    (identity.record as ReturnType<typeof vi.fn>).mockResolvedValue(record());
+    const held = (hold: unknown) =>
+      ({ ok: true, enquiries: 0, notes: 0, attachments: 0, held: 1, hold }) as never;
+    enquiryErasure.eraseByEmail.mockResolvedValueOnce(
+      held({ until: new Date("2031-03-01T00:00:00Z"), withoutEnd: false }),
+    );
+    await service.eraseEnquiries("DR-0007", body, "staff-1");
+    expect(onNeedsStaff).not.toHaveBeenCalled();
+    enquiryErasure.eraseByEmail.mockResolvedValueOnce(held({ until: null, withoutEnd: true }));
+    await service.eraseEnquiries("DR-0007", body, "staff-1");
+    expect(onNeedsStaff).toHaveBeenCalledWith("DR-0007", "end_unknown");
+    onNeedsStaff.mockClear();
+    enquiryErasure.eraseByEmail.mockResolvedValueOnce(held({ until: null, withoutEnd: true }));
+    await service.rerunHeldErasure("DR-0007", "staff-1");
+    expect(onNeedsStaff).not.toHaveBeenCalled();
   });
 
   it("re-runs a held erasure with Identity's address as the confirmation, for the staff member", async () => {

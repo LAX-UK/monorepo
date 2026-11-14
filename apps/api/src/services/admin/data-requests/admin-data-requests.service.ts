@@ -41,6 +41,8 @@ export type AdminDataRequestsDeps = {
   dealHolds: IDataRequestDealHolds;
   /** Erasures a deal held, kept to be re-run or shown to staff. */
   heldErasures: IHeldErasureLog;
+  /** Told when an erasure is held with nothing to release it, so a person is asked at once. */
+  onNeedsStaff?: (reference: string, reason: "end_unknown") => void;
   now?: () => Date;
 };
 
@@ -224,7 +226,7 @@ export class AdminDataRequestsService {
     if (!outcome.ok) return { ok: false, status: 422, error: outcome.error };
     await this.audit("enquiries_erased", request.reference, actorUserId, automated);
     const { ok: _ok, ...counts } = outcome;
-    await this.keepHold(request.reference, counts, actorUserId);
+    await this.keepHold(request.reference, counts, actorUserId, automated);
     return { ok: true, value: counts };
   }
 
@@ -232,14 +234,19 @@ export class AdminDataRequestsService {
    * Keeps what a deal held, so the request is re-run when the hold ends or, with no end date,
    * shown to staff instead of waiting quietly. An erasure that held nothing clears the record.
    */
-  private keepHold(reference: string, counts: EnquiryErasureCounts, actorUserId: string) {
+  private async keepHold(
+    reference: string,
+    counts: EnquiryErasureCounts,
+    actorUserId: string,
+    automated: boolean,
+  ) {
     if (counts.held === 0) return this.deps.heldErasures.cleared(reference);
     const now = this.deps.now?.() ?? new Date();
-    return this.deps.heldErasures.held({
-      reference,
-      requestedByUserId: actorUserId,
-      plan: planHeldErasure(counts.hold, now),
-    });
+    const plan = planHeldErasure(counts.hold, now);
+    await this.deps.heldErasures.held({ reference, requestedByUserId: actorUserId, plan });
+    // A scheduled re-run is reported by the schedule, once, with the reason it ended on.
+    if (plan.state === "needs_staff" && !automated)
+      this.deps.onNeedsStaff?.(reference, plan.reason);
   }
 
   private audit(
