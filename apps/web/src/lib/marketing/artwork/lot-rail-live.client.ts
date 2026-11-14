@@ -5,7 +5,6 @@ import type {
   LiveCardFields,
   SaleCatalogueLiveRead,
 } from "@/lib/marketing/saleroom/card-live-state";
-import { fetchSaleCatalogueLive } from "@/lib/marketing/saleroom/sale-catalogue-live.client";
 import { useQuery } from "@tanstack/react-query";
 
 /** The catalogue page the rail's lots are read from: lots in running order, first page. */
@@ -27,6 +26,11 @@ export function useLotRailLive(rail: LotRelatedRailVM): ReadonlyMap<string, Live
   const query = useQuery({
     queryKey: ["lot-rail-live", saleIds],
     queryFn: async () => {
+      // Loaded with the read, not with the page: the rail is below the fold and its live state
+      // only lands after mount anyway (the lot page's start-up JavaScript stays as it was).
+      const { fetchSaleCatalogueLive } = await import(
+        "@/lib/marketing/saleroom/sale-catalogue-live.client"
+      );
       const reads = await Promise.all(
         saleIds.map((saleId) =>
           fetchSaleCatalogueLive({

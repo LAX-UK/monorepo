@@ -3,27 +3,8 @@ import { AccountsUnavailable } from "@/components/layout/account-switcher/accoun
 import { ReportRestoreStalled } from "@/components/layout/account-switcher/report-restore-stalled";
 import { AccountRestoreFrame } from "@/components/shell/account-restore-frame";
 import { AccountsUnavailableFrame } from "@/components/shell/accounts-unavailable-frame";
-import { RESTORE_MARKER_COOKIE, nextRestoreStep } from "@/lib/legal-entity/restore-loop";
-import { restoreAccountHref } from "@/lib/navigation/account-link";
+import { pendingRestore } from "@/lib/legal-entity/pending-restore.server";
 import { resolveClientRequestPath } from "@/lib/navigation/client-request-path.server";
-import { cookies } from "next/headers";
-
-type Pending = { step: "hop" | "stalled"; href: string };
-
-/**
- * Whether this request must first put the browser in its account, and through which hop. A
- * restore that has only just run and not taken is `stalled`: the caller shows the retry state
- * (and reports it) instead of hopping again, so the browser can never loop.
- */
-export async function pendingRestore(
-  needsRestore: boolean,
-  returnTo: string,
-): Promise<Pending | null> {
-  const markerPresent = (await cookies()).has(RESTORE_MARKER_COOKIE);
-  const step = nextRestoreStep({ needsRestore, markerPresent });
-  if (step === "none") return null;
-  return { step, href: restoreAccountHref(returnTo) };
-}
 
 /**
  * What the client area draws while this browser has no usable account, or `null` when it has

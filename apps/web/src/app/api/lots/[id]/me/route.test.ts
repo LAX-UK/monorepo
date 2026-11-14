@@ -25,7 +25,7 @@ vi.mock("@/lib/data/container.server", () => ({
 vi.mock("@/lib/lot-page/load-withdrawn-lot.server", () => ({
   withdrawnLotPageExists: m.withdrawn,
 }));
-vi.mock("@/components/shell/restore-frame", () => ({ pendingRestore: m.restore }));
+vi.mock("@/lib/legal-entity/pending-restore.server", () => ({ pendingRestore: m.restore }));
 vi.mock("@/lib/catalog/public-catalog-visibility", () => ({
   isPublicCatalogLot: (lot: { hidden?: boolean }) => !lot.hidden,
   viewerCanSeeNonPublicCatalog: (role?: string | null) => role === "staff",

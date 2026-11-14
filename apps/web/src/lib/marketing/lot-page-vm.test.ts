@@ -1,3 +1,4 @@
+import { buildArtworkPageAccordionBlocks } from "@/lib/marketing/artwork/build-artwork-accordion-blocks";
 import type { LotPageSecondaryData, LotPageShellData } from "@/lib/marketing/lot-page-data.service";
 import { buildLotPageViewModel } from "@/lib/marketing/lot-page-vm";
 import type { Lot, Sale } from "@auction/types";
@@ -104,6 +105,7 @@ describe("buildLotPageViewModel", () => {
       secondary,
       searchParams: {},
       serverNow: Date.parse("2026-01-15T12:00:00Z"),
+      marketingBlocksFor: buildArtworkPageAccordionBlocks,
     });
 
     expect(vm.auction.id).toBe("lot-1");
@@ -134,6 +136,7 @@ describe("buildLotPageViewModel", () => {
       searchParams: {},
       // Well past the catalog end time — clerk session still running.
       serverNow: Date.parse("2026-06-02T12:00:00Z"),
+      marketingBlocksFor: buildArtworkPageAccordionBlocks,
     });
 
     expect(vm.lotTimerState.kind).toBe("closed");

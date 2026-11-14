@@ -137,7 +137,11 @@ const nextConfig: NextConfig = {
     ],
   },
   webpack(config, { isServer, dev }) {
-    if (!isServer && !dev) addShellRoutesChunk(config);
+    if (!isServer && !dev) {
+      addShellRoutesChunk(config);
+      addToShellRoutesChunk(config, "shellSession", SHELL_SESSION_MODULES);
+      addToShellRoutesChunk(config, "routeError", ROUTE_ERROR_MODULES);
+    }
     return config;
   },
   async redirects() {
@@ -166,6 +170,65 @@ function addShellRoutesChunk(config: { optimization?: { splitChunks?: unknown } 
   groups.shellRoutes = {
     test: (module: { nameForCondition?: () => string | null }) =>
       SHELL_ROUTES_MODULE.test(module.nameForCondition?.() ?? ""),
+    name: "shell-routes",
+    chunks: "all",
+    priority: 20,
+    enforce: true,
+  };
+}
+
+/**
+ * The session, consent, theme and bottom-bar modules the root layout and every group layout share
+ * (auth session provider, consent context, theme cookie, the bottom tab bar and its button). They
+ * sat in one shared chunk only while some page also used all of them: just over webpack's 20 KB
+ * split threshold. When the lot page stopped reading the session in the browser (CO-7: the page is
+ * cached, the viewer comes from `/api/lots/:id/me`), that chunk fell apart and the modules were
+ * copied into the root layout and again into the group layouts' chunk, about 6 KB more on every
+ * public page. The forced shell chunk ships them once, whatever the pages use.
+ */
+const SHELL_SESSION_MODULES = [
+  /[\\/]apps[\\/]web[\\/]src[\\/]lib[\\/]auth[\\/](?:auth-broadcast|auth-session-provider|use-app-session)\.tsx?$/,
+  /[\\/]apps[\\/]web[\\/]src[\\/]lib[\\/]data[\\/]http[\\/]auth-session\.client\.ts$/,
+  /[\\/]apps[\\/]web[\\/]src[\\/]lib[\\/]analytics[\\/](?:consent[\\/](?:categories|context)|registry|is-enabled|providers[\\/]gtm)\.tsx?$/,
+  /[\\/]apps[\\/]web[\\/]src[\\/]lib[\\/]preferences[\\/](?:apply-theme-dom|resolve-theme|theme-cookie)\.ts$/,
+  /[\\/]apps[\\/]web[\\/]src[\\/]lib[\\/](?:layout[\\/]bottom-chrome|ui[\\/]idle-preload|ui[\\/]run-when-idle)\.ts$/,
+  /[\\/]apps[\\/]web[\\/]src[\\/]components[\\/]layout[\\/]signed-in-only\.tsx$/,
+  /[\\/]packages[\\/]marketing-ui[\\/]dist[\\/](?:marketing-bottom-tab-bar|account-display-name|bottom-bar[\\/](?:bottom-slot|bottom-tab-config|use-bottom-bar-visibility))\.js$/,
+  /[\\/]packages[\\/]ui[\\/]dist[\\/]components[\\/]ui[\\/](?:button|button-disabled-reason)\.js$/,
+];
+
+/**
+ * What the root error boundary renders (the route error page: copy, illustration, typography and
+ * its error report), which every page loads with its frame. The group error boundaries render the
+ * same page; they shared one chunk only while the button sat in it too, and with the button in
+ * the shell chunk it fell under the split threshold and was copied into each boundary. The forced
+ * shell chunk ships it once.
+ */
+const ROUTE_ERROR_MODULES = [
+  /[\\/]apps[\\/]web[\\/]src[\\/]components[\\/]app[\\/]app-route-error\.tsx$/,
+  /[\\/]apps[\\/]web[\\/]src[\\/]components[\\/](?:illustrations[\\/]empty-state-illustrations|ui[\\/]typography|marketing[\\/]marketing-section-subheading)\.tsx$/,
+  /[\\/]apps[\\/]web[\\/]src[\\/]lib[\\/](?:auth[\\/]session-lookup-error|observability[\\/]use-report-route-error|ui[\\/]empty-state-copy)\.ts$/,
+  /[\\/]packages[\\/]ui[\\/]dist[\\/]components[\\/](?:typography|ui[\\/]lax-illustration)\.js$/,
+];
+
+/**
+ * Puts the modules `patterns` match in the forced `shell-routes` chunk too. One chunk, not one per
+ * group: every page loads it with the root layout anyway, and each extra start-up chunk counts
+ * against webpack's initial request limit, which (when a page reaches it) makes webpack copy
+ * shared modules into the page's own chunk instead.
+ */
+function addToShellRoutesChunk(
+  config: { optimization?: { splitChunks?: unknown } },
+  key: string,
+  patterns: RegExp[],
+) {
+  const splitChunks = config.optimization?.splitChunks;
+  if (!splitChunks || typeof splitChunks !== "object") return;
+  const groups = (splitChunks as { cacheGroups?: Record<string, unknown> }).cacheGroups;
+  if (!groups) return;
+  groups[key] = {
+    test: (module: { nameForCondition?: () => string | null }) =>
+      patterns.some((pattern) => pattern.test(module.nameForCondition?.() ?? "")),
     name: "shell-routes",
     chunks: "all",
     priority: 20,

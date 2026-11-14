@@ -1,6 +1,5 @@
 import "server-only";
 
-import { pendingRestore } from "@/components/shell/restore-frame";
 import { usesBidAsClient } from "@/lib/auth/client-audience";
 import { isSessionLookupTransientError } from "@/lib/auth/session-lookup-error";
 import {
@@ -10,11 +9,18 @@ import {
 import { getServerDataContainer } from "@/lib/data/container.server";
 import type { SessionUser } from "@/lib/data/contracts";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
+import { pendingRestore } from "@/lib/legal-entity/pending-restore.server";
 import { withdrawnLotPageExists } from "@/lib/lot-page/load-withdrawn-lot.server";
 import { type LotPageViewer, lotPageViewerFrom } from "@/lib/lot-page/lot-page-viewer";
 import { buildLotPageViewModel } from "@/lib/marketing/lot-page-vm";
 import { loadPublicLotSecondary, loadPublicLotShell } from "@/lib/marketing/public-lot-page-data";
 import { lotPath } from "@/lib/seo/url";
+
+/**
+ * The viewer reads only the personal fields of the view model, never the artwork accordion, and
+ * the accordion's client components must stay out of this route handler's graph.
+ */
+const noMarketingBlocks = () => [];
 
 export type LotViewerLookup = { kind: "not_found" } | { kind: "viewer"; viewer: LotPageViewer };
 
@@ -45,6 +51,7 @@ export async function loadLotViewer(lotId: string): Promise<LotViewerLookup> {
         secondary: await loadPublicLotSecondary(publicShell),
         searchParams: {},
         serverNow: Date.now(),
+        marketingBlocksFor: noMarketingBlocks,
       });
       return { kind: "viewer", viewer: lotPageViewerFrom(vm) };
     }
@@ -68,6 +75,7 @@ export async function loadLotViewer(lotId: string): Promise<LotViewerLookup> {
               secondary: await loadPublicLotSecondary(publicShell),
               searchParams: {},
               serverNow: Date.now(),
+              marketingBlocksFor: noMarketingBlocks,
             }),
           ),
         }
@@ -78,6 +86,7 @@ export async function loadLotViewer(lotId: string): Promise<LotViewerLookup> {
     secondary: await container.lotPage.loadSecondary(shell),
     searchParams: {},
     serverNow: Date.now(),
+    marketingBlocksFor: noMarketingBlocks,
   });
   // A signed-in person on a new device bids as the account they used last: put this browser in
   // it first (the page used to do this on the server).

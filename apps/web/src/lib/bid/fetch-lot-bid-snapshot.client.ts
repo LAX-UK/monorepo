@@ -1,5 +1,4 @@
 import { getBrowserHcLive } from "@/lib/data/http/hc-browser";
-import { parseLotBiddingView } from "@/lib/lot-page/lot-bidding-view";
 import type { Lot, PublicLotView } from "@auction/types";
 
 export type LotBidSnapshot = Pick<Lot, "currentPrice" | "endTime" | "status" | "winnerId"> & {
@@ -25,6 +24,11 @@ export async function fetchLotBidSnapshot(lotId: string): Promise<LotBidSnapshot
   lotSchema.catch(() => {
     // Reported through the await below.
   });
+  // Fetched alongside the request too: only this live read needs it.
+  const biddingView = import("@/lib/lot-page/lot-bidding-view");
+  biddingView.catch(() => {
+    // Reported through the await below.
+  });
   try {
     // No-store: the live read is never answered from a cache (CO-7); it is what corrects the page.
     const res = await getBrowserHcLive().lots[":id"].$get({ param: { id: lotId } });
@@ -43,6 +47,7 @@ export async function fetchLotBidSnapshot(lotId: string): Promise<LotBidSnapshot
     }
     if (typeof lot.hasWinner === "boolean") base.hasWinner = lot.hasWinner;
     if (lot.resultPending) base.resultPending = true;
+    const { parseLotBiddingView } = await biddingView;
     const bidding = parseLotBiddingView(body.data);
     base.hammerPrice = bidding.hammerPrice;
     base.soldForWithPremium = bidding.soldForWithPremium;

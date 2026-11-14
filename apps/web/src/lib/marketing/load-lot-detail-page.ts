@@ -2,6 +2,7 @@ import "server-only";
 
 import { isPublicCatalogLot } from "@/lib/catalog/public-catalog-visibility";
 import { getPublicLotById } from "@/lib/data/http/public-catalogue.server";
+import { buildArtworkPageAccordionBlocks } from "@/lib/marketing/artwork/build-artwork-accordion-blocks";
 import { ensureCanonicalLotSlug } from "@/lib/marketing/lot-canonical-slug";
 import { buildLotPageViewModel } from "@/lib/marketing/lot-page-vm";
 import { loadPublicLotSecondary, loadPublicLotShell } from "@/lib/marketing/public-lot-page-data";
@@ -31,6 +32,7 @@ export async function loadLotDetailPage(input: {
       ...preview,
       searchParams: input.searchParams,
       serverNow: input.serverNow,
+      marketingBlocksFor: buildArtworkPageAccordionBlocks,
     });
   }
   ensureCanonicalLotSlug(input.slug, shell.auction, input.searchParams);
@@ -41,6 +43,7 @@ export async function loadLotDetailPage(input: {
     secondary,
     searchParams: input.searchParams,
     serverNow: input.serverNow,
+    marketingBlocksFor: buildArtworkPageAccordionBlocks,
   });
 }
 

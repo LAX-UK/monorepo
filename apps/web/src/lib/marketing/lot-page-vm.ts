@@ -17,7 +17,7 @@ import {
   mapSaleLotsToQueueVMs,
   mapSiblingsToRailVM,
 } from "@/lib/marketing/artwork/artwork-view-models";
-import { buildArtworkPageAccordionBlocks } from "@/lib/marketing/artwork/build-artwork-accordion-blocks";
+import type { buildArtworkPageAccordionBlocks } from "@/lib/marketing/artwork/build-artwork-accordion-blocks";
 import {
   catalogLotLinkParamsFromSearchParams,
   lotCatalogBackHref,
@@ -117,8 +117,15 @@ export function buildLotPageViewModel(input: {
   secondary: LotPageSecondaryData;
   searchParams: Record<string, string | string[] | undefined>;
   serverNow: number;
+  /**
+   * Builds the artwork accordion (`buildArtworkPageAccordionBlocks`). Passed in rather than
+   * imported: the blocks render client components, and `GET /api/lots/:id/me`, which builds this
+   * view model only for its personal fields, must not import them (a route handler that does gets
+   * a client entry of its own, which reshapes the shared chunks every public page loads).
+   */
+  marketingBlocksFor: typeof buildArtworkPageAccordionBlocks;
 }): LotPageViewModel {
-  const { shell, secondary, searchParams: sp, serverNow } = input;
+  const { shell, secondary, searchParams: sp, serverNow, marketingBlocksFor } = input;
   const {
     auction,
     session,
@@ -175,7 +182,7 @@ export function buildLotPageViewModel(input: {
     ? artistPath({ id: catalogArtist.id, name: catalogArtist.displayName })
     : "";
   const summarySeed = mapLotToSummarySeed(auction, sellerName, sellerHref, seller?.image ?? null);
-  const marketingBlocks = buildArtworkPageAccordionBlocks({
+  const marketingBlocks = marketingBlocksFor({
     lot: auction,
     artist: artistForAccordion,
     documents: lotDocuments,
