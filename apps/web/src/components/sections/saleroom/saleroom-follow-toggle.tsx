@@ -5,7 +5,7 @@ import { toggleSaleFollow } from "@/lib/data/http/sale-follow.client";
 import { Button } from "@auction/ui/lax/button";
 import { ButtonLink } from "@auction/ui/lax/button-link";
 import { Bell, BellRing } from "lucide-react";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 type Props = {
   saleId: string;
@@ -26,6 +26,10 @@ export function SaleroomFollowToggle({
   label = "Follow sale",
 }: Props) {
   const [following, setFollowing] = useState(initialFollowing);
+  // The page is rendered signed out and learns who is looking afterwards (`/api/sales/:id/me`).
+  useEffect(() => {
+    setFollowing(initialFollowing);
+  }, [initialFollowing]);
   const [busy, setBusy] = useState(false);
 
   const toggle = useCallback(async () => {

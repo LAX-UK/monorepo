@@ -1,9 +1,9 @@
 import "server-only";
 
 import { registryArtistPageExists } from "@/lib/data/http/artist.server";
-import { getServerLotById } from "@/lib/data/http/lots.server";
-import { getServerSaleShell } from "@/lib/data/http/sales.server";
+import { getPublicLotById } from "@/lib/data/http/public-catalogue.server";
 import { withdrawnLotPageExists } from "@/lib/lot-page/load-withdrawn-lot.server";
+import { staffPreviewLot } from "@/lib/marketing/staff-catalogue-preview.server";
 import { notFound } from "next/navigation";
 
 /*
@@ -19,19 +19,19 @@ import { notFound } from "next/navigation";
  * outage never makes a real, indexed page look gone.
  */
 
-/** A lot page exists for a lot the viewer may see, and for a withdrawn lot, which keeps its page. */
+/**
+ * A lot page exists for a lot the public may see, and for a withdrawn lot, which keeps its page.
+ * Both are read without the session; a lot only staff may see is checked with it afterwards.
+ */
 export async function requireLotPage(lotId: string): Promise<void> {
   // Throws on a failed read; null means 404 or withdrawn.
-  if (await getServerLotById(lotId)) return;
+  if (await getPublicLotById(lotId)) return;
   if ((await withdrawnLotPageExists(lotId)) === "exists") return;
+  if (await staffPreviewLot(lotId)) return;
   notFound();
 }
 
-/** A sale page exists for a sale the viewer may see; a cancelled sale keeps its address. */
-export async function requireSalePage(saleId: string): Promise<void> {
-  // `getServerSaleShell` returns null only for a 404 and throws on any other failure.
-  if (!(await getServerSaleShell(saleId))) notFound();
-}
+export { requireSalePage } from "@/lib/marketing/sale-page-existence";
 
 /** An artist page exists for a registry artist, and only while the artist pages are on. */
 export async function requireArtistPage(artistId: string): Promise<void> {

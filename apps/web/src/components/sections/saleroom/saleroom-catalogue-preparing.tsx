@@ -8,7 +8,7 @@ import { ButtonLink } from "@auction/ui/lax/button-link";
 import { EmptyState } from "@auction/ui/lax/empty-state";
 import { Bell, BellRing } from "lucide-react";
 import Link from "next/link";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 type Props = {
   copy: CataloguePreparingVM;
@@ -26,6 +26,10 @@ function NotifyAction({
   initialFollowing,
 }: Omit<Props, "copy">) {
   const [following, setFollowing] = useState(initialFollowing);
+  // The page is rendered signed out and learns who is looking afterwards (`/api/sales/:id/me`).
+  useEffect(() => {
+    setFollowing(initialFollowing);
+  }, [initialFollowing]);
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
 

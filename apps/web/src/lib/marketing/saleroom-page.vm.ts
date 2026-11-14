@@ -1,16 +1,15 @@
-import { splitBuyerMembershipsByState } from "@/lib/bid/buyer-entity-state";
-import { resolveKycSurfaceFeedback } from "@/lib/bid/resolve-kyc-bid-gate";
 import { atgCatalogState, atgDisplaySale } from "@/lib/catalog/atg-catalog-display";
-import type { SessionUser } from "@/lib/data/contracts";
 import type { KycUserFeedbackDto } from "@/lib/data/dto/dashboard-dtos";
-import type {
-  SaleLotsPage,
-  SaleRegistrationMineRow,
-  SaleShell,
-} from "@/lib/data/http/sales.server";
+import type { SaleLotsPage, SaleShell } from "@/lib/data/http/sales.server";
 import { type SaleHangVM, buildSaleHang } from "@/lib/hang/sale-hang";
 import { saleroomLotLinkParams } from "@/lib/marketing/catalog-links";
-import type { SaleroomSecondaryData } from "@/lib/marketing/saleroom-page-data.service";
+import type {
+  SaleViewerVM,
+  SaleroomBuyerEntity,
+  SaleroomMyRegistration,
+  SaleroomRegistrationPaused,
+} from "@/lib/marketing/sale-viewer";
+import type { SaleroomPublicSecondaryData } from "@/lib/marketing/saleroom-page-data.service";
 import { SALE_CATALOG_LOAD_ALL_CAP } from "@/lib/marketing/saleroom-page-data.service";
 import {
   SALEROOM_CATALOG_PAGE_SIZE,
@@ -48,33 +47,23 @@ import type {
   SaleLotCardVM,
   SaleOverviewVM,
 } from "@/lib/marketing/saleroom/view-models";
-import { organisationBidReasonCopy } from "@/lib/presenters/organisation-state/organisation-state-copy";
-import { resolveViewerParticipation } from "@/lib/presenters/viewer-participation";
 import { saleAllowsWebBidding } from "@/lib/sale-mode";
 import type { PublicSaleroomSessionStatus } from "@/lib/saleroom/public-session-status";
 import { salePath } from "@/lib/seo/url";
 import { getSiteUrl } from "@/lib/site-url";
-import { type LotMediaTreatmentIndex, roleBidsThroughAuthorisation } from "@auction/domain";
-import type { LegalEntityMemberRole, LegalEntityStatus, Lot, Sale } from "@auction/types";
+import type { LotMediaTreatmentIndex } from "@auction/domain";
+import type { Lot, Sale } from "@auction/types";
 import {
   formatPostalAddressLines,
   isSaleroomDeliveryMode,
   resolveOnsiteMapUrl,
 } from "@auction/validators";
 
-export type SaleroomBuyerEntity = {
-  id: string;
-  displayName: string;
-  memberRole: LegalEntityMemberRole;
-};
-
-/** An organisation whose state closes registration, with the words for why. */
-export type SaleroomRegistrationPaused = { id: string; title: string; line: string };
-
-export type SaleroomMyRegistration = Pick<
-  SaleRegistrationMineRow,
-  "buyerLegalEntityId" | "status" | "bidLimit" | "paddleNumber" | "checkedInAt"
->;
+export type {
+  SaleroomBuyerEntity,
+  SaleroomMyRegistration,
+  SaleroomRegistrationPaused,
+} from "@/lib/marketing/sale-viewer";
 
 export type SaleroomDetailPageVM = {
   sale: Sale;
@@ -137,8 +126,13 @@ export type SaleroomDetailPageVM = {
   coverBlurDataURL: string | null;
   saleStartsSoon: boolean;
   showOnlineBiddingGatedBadge: boolean;
-  viewer: ReturnType<typeof resolveViewerParticipation>;
+  /** Who is looking: signed out in the cached render, replaced in the browser from `/me`. */
+  viewer: SaleViewerVM;
   isAuthenticated: boolean;
+  /** The sale takes telephone bids now (saleroom sale, scheduled or live); the person aside. */
+  telephoneSale: boolean;
+  /** The sale takes web registrations now; the person aside. */
+  registerToBidSale: boolean;
   showTelephoneBooking: boolean;
   buyerEntities: SaleroomBuyerEntity[];
   /** Organisations the person registers for as a buyer agent whose state closes bidding, and why. */
@@ -148,8 +142,8 @@ export type SaleroomDetailPageVM = {
   kycApproved: boolean;
   kycFeedback: KycUserFeedbackDto | null;
   orgModuleEnabled: boolean;
-  relatedSales: SaleroomSecondaryData["relatedSales"];
-  telephoneBooking: SaleroomSecondaryData["telephoneBooking"];
+  relatedSales: SaleroomPublicSecondaryData["relatedSales"];
+  telephoneBooking: SaleViewerVM["telephoneBooking"];
   initialFollowing: boolean;
   breadcrumbItems: Array<{ label: string; href?: string; current?: boolean }>;
 };
@@ -158,18 +152,11 @@ export type BuildSaleroomPageVMInput = {
   shell: SaleShell;
   lotsPage: SaleLotsPage;
   filteredLots: Lot[];
-  secondary: SaleroomSecondaryData;
+  secondary: SaleroomPublicSecondaryData;
   query: SaleroomPageQuery;
   layoutView: "grid" | "list";
-  session: SessionUser | null;
-  actingMemberships: ReadonlyArray<{
-    id: string;
-    displayName: string;
-    role: LegalEntityMemberRole;
-    status: LegalEntityStatus;
-  }> | null;
-  orgModuleEnabled: boolean;
-  mySaleRegs: SaleRegistrationMineRow[];
+  /** `SIGNED_OUT_SALE_VIEWER` for the cached render. */
+  viewer: SaleViewerVM;
   registeredBidderCount: number | null;
   initialSaleroomStatus: PublicSaleroomSessionStatus;
   categoryLabel: string | null;
@@ -190,10 +177,7 @@ export function buildSaleroomPageVM(input: BuildSaleroomPageVMInput): SaleroomDe
     secondary,
     query,
     layoutView,
-    session,
-    actingMemberships,
-    orgModuleEnabled,
-    mySaleRegs,
+    viewer,
     registeredBidderCount,
     initialSaleroomStatus,
     categoryLabel,
@@ -207,7 +191,6 @@ export function buildSaleroomPageVM(input: BuildSaleroomPageVMInput): SaleroomDe
   /** Badges, timers and filters only; bidding and registration gates keep `bundle.sale`. */
   const displaySale = atgDisplaySale(bundle.sale, now);
   const base = getSiteUrl();
-  const viewerUserId = session?.id ?? null;
   const basePath = salePath(bundle.sale);
   const shareUrl = `${base}${basePath}`;
 
@@ -256,9 +239,9 @@ export function buildSaleroomPageVM(input: BuildSaleroomPageVMInput): SaleroomDe
   const lotLinkParams = saleroomLotLinkParams(layoutView, query.statusFilter);
   const lotVMs = filteredLots.map((lot) =>
     mapLotToCardVM(lot, {
-      viewerUserId,
+      viewerUserId: null,
       now,
-      initialWatching: secondary.watchedLotIds.has(lot.id),
+      initialWatching: viewer.watchedLotIds.includes(lot.id),
       catalogLinkParams: lotLinkParams,
       premiumSale: bundle.sale,
       ...(treatments ? { treatments } : {}),
@@ -288,48 +271,16 @@ export function buildSaleroomPageVM(input: BuildSaleroomPageVMInput): SaleroomDe
       : null;
   const resultsBand = buildResultsBand(shell.resultsSummary, lotsPage.items);
 
-  const viewer = resolveViewerParticipation(session);
   const isAuthenticated = viewer.isAuthenticated;
-  const showTelephoneBooking =
-    viewer.canParticipateAsBuyer &&
+  const telephoneSale =
     isSaleroomDeliveryMode(bundle.sale.deliveryMode) &&
     (bundle.sale.status === "scheduled" || bundle.sale.status === "active");
+  const showTelephoneBooking = viewer.canParticipateAsBuyer && telephoneSale;
 
-  // The same state table as the server: an organisation whose state closes bidding is not
-  // offered for registration, and a buyer agent of one is told why instead.
-  const byState = splitBuyerMembershipsByState(actingMemberships ?? []);
-  const buyerEntities = byState.open.map((m) => ({
-    id: m.id,
-    displayName: m.displayName,
-    memberRole: m.role,
-  }));
-  const registrationPaused = byState.paused
-    .filter((m) => roleBidsThroughAuthorisation(m.role))
-    .map((m) => {
-      const copy = organisationBidReasonCopy(m.reason, { organisationName: m.displayName });
-      return { id: m.id, title: copy.title, line: copy.line };
-    });
-
-  const registerToBidShow =
+  const registerToBidSale =
     saleAllowsWebBidding(bundle.sale.deliveryMode) &&
-    (bundle.sale.status === "scheduled" || bundle.sale.status === "active") &&
-    viewer.canParticipateAsBuyer;
-
-  const myRegistrations = mySaleRegs.map((r) => ({
-    buyerLegalEntityId: r.buyerLegalEntityId,
-    status: r.status,
-    bidLimit: r.bidLimit,
-    paddleNumber: r.paddleNumber,
-    checkedInAt: r.checkedInAt,
-  }));
-
-  const kycApproved = session?.kycStatus === "approved";
-  const kycFeedback = kycApproved
-    ? null
-    : resolveKycSurfaceFeedback({
-        summary: secondary.kycSummary,
-        unavailable: secondary.kycUnavailable,
-      });
+    (bundle.sale.status === "scheduled" || bundle.sale.status === "active");
+  const registerToBidShow = registerToBidSale && viewer.canParticipateAsBuyer;
 
   const hasCatalogNarrowing = query.statusFilter != null || query.catalogSearch !== "";
   const catalogSearchFilterCapped =
@@ -441,17 +392,19 @@ export function buildSaleroomPageVM(input: BuildSaleroomPageVMInput): SaleroomDe
       bundle.sale.deliveryMode === "hybrid" && !bundle.sale.allowOnlineBidsBeforeGoLive,
     viewer,
     isAuthenticated,
+    telephoneSale,
+    registerToBidSale,
     showTelephoneBooking,
-    buyerEntities,
-    registrationPaused,
+    buyerEntities: viewer.buyerEntities,
+    registrationPaused: viewer.registrationPaused,
     registerToBidShow,
-    myRegistrations,
-    kycApproved,
-    kycFeedback,
-    orgModuleEnabled,
+    myRegistrations: viewer.myRegistrations,
+    kycApproved: viewer.kycApproved,
+    kycFeedback: viewer.kycFeedback,
+    orgModuleEnabled: viewer.orgModuleEnabled,
     relatedSales: secondary.relatedSales,
-    telephoneBooking: secondary.telephoneBooking,
-    initialFollowing: bundle.viewer?.isFollowing ?? secondary.follow.isFollowing ?? false,
+    telephoneBooking: viewer.telephoneBooking,
+    initialFollowing: viewer.isFollowing,
     breadcrumbItems: [
       { label: "Home", href: "/" },
       { label: "Calendar", href: "/sales" },
