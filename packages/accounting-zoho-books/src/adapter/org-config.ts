@@ -63,6 +63,17 @@ export interface ZohoOrgConfig {
     /** The expense account seller payouts are billed to. */
     readonly accountId: string;
   };
+  /**
+   * Where Stripe's fees and payouts are booked (flow 25): the expense account Stripe's fees are
+   * charged to, and the bank account Stripe pays out into. Both come from the accountant. Absent
+   * until they are named: every Stripe fee or payout for the organisation is then refused
+   * (`zoho_books_mapping_stripe_accounts_missing`) and waits for a person. The clearing account
+   * they are paid from is `payments.depositAccountId`.
+   */
+  readonly stripe?: {
+    readonly feesAccountId: string;
+    readonly bankAccountId: string;
+  };
   /** Optional PDF templates. */
   readonly templateIds: {
     readonly invoice?: string;
@@ -152,6 +163,17 @@ function parseCodes(value: unknown, path: string): readonly number[] {
   return [...(value as number[])];
 }
 
+function parseStripe(value: unknown, p: string): Pick<ZohoOrgConfig, "stripe"> {
+  if (value === undefined) return {};
+  const raw = record(value, `${p}_stripe`);
+  return {
+    stripe: {
+      feesAccountId: id(raw.feesAccountId, `${p}_stripe_fees_account`),
+      bankAccountId: id(raw.bankAccountId, `${p}_stripe_bank_account`),
+    },
+  };
+}
+
 function parseOrg(value: unknown, entity: LegalEntity): ZohoOrgConfig {
   const p = entity;
   const raw = record(value, p);
@@ -187,6 +209,7 @@ function parseOrg(value: unknown, entity: LegalEntity): ZohoOrgConfig {
       paymentMode: mode,
     },
     bills: { accountId: id(record(raw.bills, `${p}_bills`).accountId, `${p}_bill_account`) },
+    ...parseStripe(raw.stripe, p),
     templateIds: {
       ...optional(templates, "invoice", "template"),
       ...optional(templates, "creditNote", "template"),

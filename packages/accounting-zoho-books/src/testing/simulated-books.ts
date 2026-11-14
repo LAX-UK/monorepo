@@ -23,6 +23,8 @@ const NUMBER_PREFIX: Record<DocumentKind, string> = {
   payment: "PMT",
   bill: "BILL",
   contact: "CON",
+  expense: "EXP",
+  transfer: "TRF",
 };
 
 const reply = (status: number, body: unknown): TransportResponse => ({
@@ -317,6 +319,7 @@ export class SimulatedBooks implements ZohoTransport {
       if (type !== "customer" && type !== "vendor") return { error: failure(400, 1, "bad type") };
       return { fields: { contact_name: body.contact_name, contact_type: type } };
     }
+    if (kind === "expense" || kind === "transfer") return this.priceMovement(kind, body);
     const party = kind === "bill" ? body.vendor_id : body.customer_id;
     if (!this.exists(org, "contact", party))
       return { error: failure(400, 1003, "no such contact") };
@@ -352,6 +355,39 @@ export class SimulatedBooks implements ZohoTransport {
         sub_total: pounds(inclusive ? gross : net),
         tax_total: pounds(vat),
         total: pounds(gross),
+      },
+    };
+  }
+
+  /**
+   * An expense (Stripe's fee, paid through the clearing account) or a bank transfer (a payout,
+   * clearing to the bank): one amount, no contact, no tax. Books keeps the accounts, day and
+   * currency it was sent, and reads an expense's amount back as its `total`.
+   */
+  private priceMovement(
+    kind: "expense" | "transfer",
+    body: Json,
+  ): { fields: Json } | { error: TransportResponse } {
+    if (body.currency_code !== "GBP") return { error: failure(400, 1007, "currency required") };
+    const amount = pence(body.amount as number);
+    if (!(amount > 0)) return { error: failure(400, 1, "amount must be positive") };
+    const accounts =
+      kind === "expense"
+        ? ["account_id", "paid_through_account_id"]
+        : ["from_account_id", "to_account_id"];
+    if (!accounts.every((a) => typeof body[a] === "string")) {
+      return { error: failure(400, 1, "account missing") };
+    }
+    if (kind === "transfer" && body.transaction_type !== "transfer_fund") {
+      return { error: failure(400, 1, "not a transfer") };
+    }
+    const kept = Object.fromEntries(accounts.map((a) => [a, body[a]]));
+    return {
+      fields: {
+        ...kept,
+        ...(kind === "expense" ? { total: pounds(amount) } : { amount: pounds(amount) }),
+        date: body.date,
+        currency_code: body.currency_code,
       },
     };
   }
