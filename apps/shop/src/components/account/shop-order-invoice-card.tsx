@@ -58,6 +58,7 @@ export function ShopOrderInvoiceCard({ card }: { card: ShopOrderInvoiceCardVm })
           <div className="shop-invoice-card__body">
             <p className="shop-invoice-card__title">{card.title}</p>
             <p className="shop-invoice-card__text">{card.meta}</p>
+            {card.refund ? <p className="shop-invoice-card__text">{card.refund}</p> : null}
           </div>
           <a
             href={card.download.href}

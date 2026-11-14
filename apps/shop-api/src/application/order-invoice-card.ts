@@ -17,16 +17,28 @@ type CardOrder = Pick<OrderRecord, "orderId" | "status" | "paidAt" | "refunds">;
 
 export type OrderInvoicePdf = { pdf: Buffer; filename: string };
 
-/**
- * When the order stopped owing its invoice: cancelled, or refunded in full (the latest refund
- * that went through). Null while it stands.
- */
-export function orderCancelledAt(order: CardOrder): Date | null {
-  if (order.status !== "cancelled" && order.status !== "refunded") return null;
+/** The latest refund that went through on the order, or null. */
+function latestRefundAt(order: CardOrder): Date | null {
   const refunded = order.refunds
     .filter((r) => r.status === "succeeded" && r.refundedAt)
     .map((r) => (r.refundedAt as Date).getTime());
-  return refunded.length > 0 ? new Date(Math.max(...refunded)) : (order.paidAt ?? new Date(0));
+  return refunded.length > 0 ? new Date(Math.max(...refunded)) : null;
+}
+
+/**
+ * When the order stopped owing its invoice: cancelled (when its cancellation refund went through,
+ * else when it was paid). Null while it stands. A refund alone, in part or in full, does not
+ * cancel an invoice: the books credit it later (a credit note), and the buyer keeps the invoice.
+ */
+export function orderCancelledAt(order: CardOrder): Date | null {
+  if (order.status !== "cancelled") return null;
+  return latestRefundAt(order) ?? order.paidAt ?? new Date(0);
+}
+
+/** When money was last refunded on an order whose invoice stands; null when none was. */
+export function orderRefundedAt(order: CardOrder): Date | null {
+  if (order.status !== "refunded" && order.status !== "partially_refunded") return null;
+  return latestRefundAt(order);
 }
 
 /**
@@ -70,6 +82,7 @@ export function createOrderInvoiceCardService(deps: {
         issuedAt: null,
         invoiceDocumentId: null,
         cancelledAt: null,
+        refundedAt: null,
       };
       // An unpaid order has no invoice to speak of: the page is as it was.
       if (!order.paidAt) return lax;
@@ -101,6 +114,7 @@ export function createOrderInvoiceCardService(deps: {
         invoiceDocumentId: issued ? document.documentId : null,
         cancelledAt:
           standing.kind === "cancelled" ? new Date(standing.cancelledAtMs).toISOString() : null,
+        refundedAt: issued ? (orderRefundedAt(order)?.toISOString() ?? null) : null,
       };
     },
 

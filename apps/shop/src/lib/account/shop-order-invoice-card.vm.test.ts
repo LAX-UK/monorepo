@@ -69,11 +69,33 @@ describe("shopOrderInvoiceCard", () => {
       kind: "issued",
       title: "Invoice LAX-INV-000124",
       meta: "Issued Thu 12 Nov, 14:05 GMT",
+      refund: null,
       download: {
         label: "Download invoice (PDF)",
         href: `/account/orders/${ORDER_ID}/documents/${DOCUMENT_ID}`,
       },
     });
+  });
+
+  it("refunded: still the issued invoice and its download, with a neutral line about the refund", () => {
+    const vm = shopOrderInvoiceCard({
+      orderId: ORDER_ID,
+      card: card({
+        state: "issued",
+        invoiceNumber: "LAX-INV-000124",
+        issuedAt: "2026-11-12T14:05:00.000Z",
+        invoiceDocumentId: DOCUMENT_ID,
+        refundedAt: "2026-11-16T10:00:00.000Z",
+      }),
+      now: NOW,
+    });
+    expect(vm).toMatchObject({
+      kind: "issued",
+      title: "Invoice LAX-INV-000124",
+      refund: "A refund was made on Mon 16 Nov.",
+      download: { href: `/account/orders/${ORDER_ID}/documents/${DOCUMENT_ID}` },
+    });
+    expect(JSON.stringify(vm)).not.toMatch(/cancel/i);
   });
 
   it("never shows a number without its stored copy", () => {

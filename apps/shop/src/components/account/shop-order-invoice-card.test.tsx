@@ -35,6 +35,7 @@ describe("ShopOrderInvoiceCard", () => {
           kind: "issued",
           title: "Invoice LAX-INV-000124",
           meta: "Issued Thu 12 Nov, 14:05 GMT",
+          refund: null,
           download: { label: "Download invoice (PDF)", href: "/account/orders/o/documents/d" },
         }}
       />,
@@ -43,6 +44,23 @@ describe("ShopOrderInvoiceCard", () => {
     const link = screen.getByRole("link", { name: "Download invoice (PDF)" });
     expect(link.getAttribute("href")).toBe("/account/orders/o/documents/d");
     expect(screen.getByText("Invoice LAX-INV-000124")).toBeTruthy();
+  });
+
+  it("after a refund keeps the issued invoice and its link, and says the refund was made", () => {
+    render(
+      <ShopOrderInvoiceCard
+        card={{
+          kind: "issued",
+          title: "Invoice LAX-INV-000124",
+          meta: "Issued Thu 12 Nov, 14:05 GMT",
+          refund: "A refund was made on Mon 16 Nov.",
+          download: { label: "Download invoice (PDF)", href: "/account/orders/o/documents/d" },
+        }}
+      />,
+    );
+    expect(screen.getByText("A refund was made on Mon 16 Nov.")).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Download invoice (PDF)" })).toBeTruthy();
+    expect(screen.queryByText(/cancelled/i)).toBeNull();
   });
 
   it("says when it was cancelled, with no link", () => {

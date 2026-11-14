@@ -17,7 +17,8 @@ import Link from "next/link";
  */
 function OrderHelp({ order, booksInvoice }: { order: ShopOrderDetailVm; booksInvoice: boolean }) {
   const { problem } = order;
-  // Once Books issues the invoice, the Invoice panel is where it is; LAX's own copy is not offered.
+  // Once Books issues the invoice, the Invoice panel is where it is; LAX's own copy is not offered,
+  // except after a refund: LAX's own invoice states the refund, and the buyer keeps both.
   const invoiceHref = booksInvoice ? null : order.invoiceHref;
   if (!invoiceHref && !problem) return null;
   return (
@@ -149,7 +150,12 @@ export function ShopOrderDetail({
 
           <ShopOrderInvoiceCard card={invoiceCard} />
 
-          <OrderHelp order={order} booksInvoice={invoiceCard.kind !== "lax"} />
+          <OrderHelp
+            order={order}
+            booksInvoice={
+              invoiceCard.kind !== "lax" && !(invoiceCard.kind === "issued" && invoiceCard.refund)
+            }
+          />
         </div>
       </div>
     </div>

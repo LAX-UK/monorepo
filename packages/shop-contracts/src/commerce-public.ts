@@ -361,8 +361,13 @@ export const ShopOrderInvoiceCardSchema = Type.Object(
     issuedAt: NullableDateTime,
     /** LAX's stored copy, for the download link; only when `issued`. */
     invoiceDocumentId: Type.Union([Type.String({ format: "uuid" }), Type.Null()]),
-    /** When the order was cancelled or refunded in full; only when `cancelled`. */
+    /** When the order was cancelled; only when `cancelled`. A refund does not cancel an invoice. */
     cancelledAt: NullableDateTime,
+    /**
+     * When money was last refunded on the order, while its invoice stands (a refund is credited
+     * later; it never cancels the invoice); only when `issued`. Absent from older answers.
+     */
+    refundedAt: Type.Optional(NullableDateTime),
   },
   { additionalProperties: false },
 );

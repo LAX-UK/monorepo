@@ -22,6 +22,11 @@ export type ShopOrderInvoiceCardVm =
       title: string;
       /** "Issued Thu 12 Nov, 14:05 GMT". */
       meta: string;
+      /**
+       * "A refund was made on Mon 16 Nov." when money was refunded: said, never read as the
+       * invoice being cancelled (a refund is credited later; the invoice stands).
+       */
+      refund: string | null;
       download: { label: string; href: string };
     }
   | {
@@ -87,6 +92,7 @@ export function shopOrderInvoiceCard(input: {
         kind: "issued",
         title: `Invoice ${card.invoiceNumber}`,
         meta: `Issued ${moment(card.issuedAt, now)}`,
+        refund: card.refundedAt ? `A refund was made on ${day(card.refundedAt, now)}.` : null,
         download: {
           label: SHOP_INVOICE_CARD_COPY.download,
           href: shopOrderDocumentHref(input.orderId, card.invoiceDocumentId),

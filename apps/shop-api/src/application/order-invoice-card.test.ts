@@ -54,6 +54,7 @@ describe("Shop order invoice card", () => {
       issuedAt: ISSUED_AT.toISOString(),
       invoiceDocumentId: DOC_ID,
       cancelledAt: null,
+      refundedAt: null,
     });
   });
 
@@ -88,6 +89,7 @@ describe("Shop order invoice card", () => {
         issuedAt: null,
         invoiceDocumentId: null,
         cancelledAt: null,
+        refundedAt: null,
       });
     }
     expect((await setUp(new Error("db down")).service.card(order())).state).toBe("lax");
@@ -97,26 +99,40 @@ describe("Shop order invoice card", () => {
     ).toBe("lax");
   });
 
-  it("cancelled: a refunded order gives the day its refund went through", async () => {
-    const refundedAt = new Date("2026-11-16T10:00:00Z");
+  const refundedAt = new Date("2026-11-16T10:00:00Z");
+  const refund = {
+    amountPence: 1,
+    source: "admin" as const,
+    status: "succeeded" as const,
+    requestedAt: refundedAt,
+    refundedAt,
+  };
+
+  it("a refunded order keeps its issued invoice, and says when the refund was made", async () => {
+    for (const status of ["refunded", "partially_refunded"] as const) {
+      const card = await setUp({ booksMode: "live", documents: [doc()] }).service.card(
+        order({ status, refunds: [refund] }),
+      );
+      expect(card).toEqual({
+        state: "issued",
+        invoiceNumber: "LAX-INV-000124",
+        issuedAt: ISSUED_AT.toISOString(),
+        invoiceDocumentId: DOC_ID,
+        cancelledAt: null,
+        refundedAt: refundedAt.toISOString(),
+      });
+    }
+  });
+
+  it("cancelled: a cancelled order gives the day its cancellation refund went through", async () => {
     const card = await setUp({ booksMode: "live", documents: [doc()] }).service.card(
-      order({
-        status: "refunded",
-        refunds: [
-          {
-            amountPence: 1,
-            source: "admin",
-            status: "succeeded",
-            requestedAt: refundedAt,
-            refundedAt,
-          },
-        ],
-      }),
+      order({ status: "cancelled", refunds: [refund] }),
     );
     expect(card).toMatchObject({
       state: "cancelled",
       cancelledAt: refundedAt.toISOString(),
       invoiceNumber: null,
+      refundedAt: null,
     });
   });
 });
@@ -183,6 +199,28 @@ describe("Shop order invoice document (LAX's stored copy)", () => {
     expect(getObjectBytes).not.toHaveBeenCalled();
   });
 
+  it("serves a refunded order's invoice: a refund does not cancel it", async () => {
+    const { service, getObjectBytes } = setUp({ booksMode: "live", documents: [doc()] });
+    const refundedAt = new Date("2026-11-16T10:00:00Z");
+    const pdf = await service.document(
+      order({
+        status: "refunded",
+        refunds: [
+          {
+            amountPence: 1,
+            source: "admin",
+            status: "succeeded",
+            requestedAt: refundedAt,
+            refundedAt,
+          },
+        ],
+      }),
+      DOC_ID,
+    );
+    expect(pdf?.filename).toBe("invoice-LAX-INV-000124.pdf");
+    expect(getObjectBytes).toHaveBeenCalledTimes(1);
+  });
+
   it("refuses a cancelled order's invoice, reading nothing", async () => {
     const { service, getObjectBytes } = setUp({ booksMode: "live", documents: [doc()] });
     expect(await service.document(order({ status: "cancelled" }), DOC_ID)).toBeNull();
@@ -191,7 +229,9 @@ describe("Shop order invoice document (LAX's stored copy)", () => {
 });
 
 describe("orderCancelledAt", () => {
-  it("is null while the order stands, partly refunded included", () => {
+  it("is null while the order stands, refunded in part or in full included", () => {
     expect(orderCancelledAt(order({ status: "partially_refunded" }))).toBeNull();
+    expect(orderCancelledAt(order({ status: "refunded" }))).toBeNull();
+    expect(orderCancelledAt(order({ status: "cancelled" }))).toEqual(PAID_AT);
   });
 });
