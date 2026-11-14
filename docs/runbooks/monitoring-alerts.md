@@ -308,7 +308,8 @@ organisation's invoice) out of the outbox are the worker's due-list query (`targ
   ONE payment, `LAX-BID-PAY-grp-<group>`, applied to each invoice by its own payment row's amount.
   The allocations must equal the group's stored total to the penny, or the event goes to the failed
   deliveries (`allocation_mismatch`).
-- **Order.** An invoice or credit note is sent only once its contact is issued in the same books,
+- **Order.** An invoice or credit note is sent only once its contact is issued in the same books
+  (a credit note also waits for its invoice: see the refunds section below),
   and a payment only once every invoice it pays is. Until then it waits in **Waiting** without using
   an attempt; a refused invoice keeps its payment waiting with it, and trying the invoice again lets
   the payment follow.
@@ -340,6 +341,56 @@ organisation's invoice) out of the outbox are the worker's due-list query (`targ
   Books for them until the whole amount has arrived; the payment then arrives through
   `payment.captured` (or the group's `payment_group.settled`). Money that could not be applied stays
   a finance task (unapplied money) and makes no Books document.
+
+### Bid refunds and buyer defaults to Books (credit notes)
+
+Books stays dry run; nothing here reaches a real Books organisation or a buyer until Bid is live on
+Books.
+
+- **A refund that went through** (staff, card webhook, blocked capture, or one lot of a Pay several
+  charge; `payment.refunded`): one credit note per `payment_refund` row, `LAX-BID-CN-<refund row>`,
+  for exactly that refund, on the invoice's lines (hammer first, then premium), never more than the
+  payment took for the invoice. A refund that is still pending has no row, so nothing is made; one
+  counted and then taken back (Stripe reported it failed) is left out with its compensating row.
+  A taken-back refund that cannot be matched to its refund goes to the failed deliveries
+  (`refund_reversal_unmatched`): look at the payment's refunds and decide by hand.
+- **Order.** A credit note is sent only once its contact **and the invoice it credits** are issued
+  in the same books. If that invoice is cancelled in Accounting, the credit note is parked
+  ("The invoice this credits was cancelled…"): cancel it, or ask engineering.
+- **Never more credit than the invoice charged.** Registering a credit note is checked, under a lock
+  per invoice, against every other credit note for the invoice in the same books (any state but
+  cancelled). Two at once cannot pass together; the later one is tried again with the facts read
+  afresh.
+- **Money back from clearing.** Once a refund's credit note is issued, the worker refunds its whole
+  gross from the Stripe clearing account in Books, once (history `refund_credit_note`). It reads
+  the credit note's refunds first, so a lost answer is recognised, never refunded twice; a credit
+  note that already holds another refund in Books is refused for a person (refund it by hand in
+  Books). `accounting_credit_note_refund_delayed` (warning) is raised when one issued more than six
+  hours ago is still not refunded.
+- **Courier refund inside Pay several** (`payment_group.delivery_refunded`): the delivery invoice
+  `LAX-BID-INV-dlv-<quote>` is credited up to the quote's stored refunded total
+  (`payment_group_delivery.refunded_pence`), never above its charge, one credit note per rise
+  (`LAX-BID-CN-dlv-<quote>-r<total>`). While VAT on delivery waits for the accountant these credit
+  notes are parked with the delivery invoice; Release says so. Once `DELIVERY_BOOKING` is set,
+  engineering decides how the parked credit notes are rebuilt before they are released.
+- **Refunds not matched to an invoice** (`payment_group.refund_unattributed`) make no document.
+  They are listed on the Accounting page under "Assign refund". Once a person assigns one to the
+  invoice or courier quote it was for, that record moves and its credit note follows as above.
+- **Buyer default** (`payment.cancelled` with `reason: buyer_default`): if the invoice was never
+  sent to Books, its document is cancelled there and nothing is made. If it is being sent, the event
+  is tried again once that settles. If it was issued, a **full** credit note
+  (`LAX-BID-CN-dft-<invoice>`, no money back) is built and **parked** ("Waiting for the accountant")
+  until `BID_DEFAULT_ACCOUNTING_TREATMENT` (accounting domain) is set. Unset means it is never sent.
+  When the accountant answers "credit note", an engineer sets it to `credit_note` and deploys; then
+  press Release on each parked default credit note. If the answer is "void", voiding in Books is not
+  built: the credit notes stay parked and Release says so. Until Bid is live on Books, finance keeps
+  crediting voided invoices by hand ([buyer default runbook](./buyer-default-and-reoffer.md)).
+- **Buyer's card** (Bid live only, same rule as the invoice): "Refunded −£[amount] · Download credit
+  note [number] (PDF)" per refund, and "Cancelled after a default" with its credit note once issued.
+  LAX keeps its own copy of each credit note's PDF; no credit note is emailed.
+- **Rolling back** `0384_rollback.sql` restores 0383's history actions (NOT VALID, so
+  `refund_credit_note` rows stay). Roll the release back first: the earlier release does not run
+  the refund step.
 
 ## Shop invoices to Books (London Art Exchange)
 

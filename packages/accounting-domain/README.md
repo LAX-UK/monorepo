@@ -16,6 +16,7 @@ stores records and calls providers live elsewhere and depend on this package, ne
 | Parking | `parking.ts` | A document built and kept in "Needs a person", never sent, until the accountant or a person decides. |
 | Ordering | `dependencies.ts` | A payment waits until every invoice it is applied to is in the books. |
 | Refunds | `refund.ts` | Goods/delivery split; never more than paid. |
+| Credit note refund | `credit-note-refund.ts` | A credit note that gives money back is refunded from Stripe clearing, once, for its whole gross. |
 | Source switch | `source-switch.ts` | One live source per product; refuses two. |
 | Projection | `projection/` | One pure policy per money flow: facts in, documents out, idempotent by LAX reference. |
 | Retries | `retry.ts` | Wait between attempts (30 s doubling to 30 min); 8 attempts, then a person. |
@@ -70,8 +71,8 @@ reference, same gross); anything else must come out exactly as stored. It can al
 A queued payment whose invoice was cancelled is parked by the sender (`park`, `invoice_cancelled`)
 instead of waiting for ever.
 
-**Ordering.** `documentsAwaited(document)`: a payment waits for each invoice it is applied to, and
-an invoice or credit note waits for its contact. The work queue claims a document only once all of
+**Ordering.** `documentsAwaited(document)`: a payment waits for each invoice it is applied to, a
+credit note waits for the invoice it credits, and an invoice or credit note waits for its contact. The work queue claims a document only once all of
 them are `issued` for the same target, so nothing reaches Books before what it refers to, whatever
 order the documents were stored in or however many senders run, and a waiting document never holds
 up the documents behind it.
@@ -176,7 +177,9 @@ same facts always give the same documents, so a redelivered event is a replay.
 | `bid_invoice_raised` | contact, invoice | Lines from the stored invoice (the `invoice.raised` event names them by id; other lines are refused); `BID_LINE_BOOKINGS` says how each line kind is booked (hammer and premium as margin-scheme goods until the accountant confirms; the premium keeps the label it was raised with). VAT on the premium and the artist's resale right wait for the accountant: a kind in `BID_LINES_AWAITING_ACCOUNTANT` is refused (`line_awaiting_accountant`), an unknown kind too (`unmapped_line`), never guessed. A line of 0p is left out. |
 | `bid_payment_captured` | contact, invoice, payment | Card, or a bank transfer once all of it arrived: all of the payment (the stored row's amount, GBP only) applied to its invoice; a payment for more than the invoice is refused (a remainder is never spread). For an invoice cancelled since: contact and the payment, parked `invoice_cancelled`. |
 | `bid_payment_group_settled` | contact, each invoice, a delivery invoice per courier quote, ONE payment | "Pay several": one payment (`LAX-BID-PAY-grp-<group>`) applied to each invoice by its payment row's amount and to each delivery invoice (`LAX-BID-INV-dlv-<quote>`) by the quote's charge; the allocations equal the group's total exactly. Delivery invoices and the payment are parked `vat_on_delivery` while `DELIVERY_BOOKING` is unset (the accountant's question); a cancelled invoice parks the payment `invoice_cancelled`. |
-| `bid_payment_refunded` | contact, invoice, one credit note per refund | Every refund of the payment replayed oldest first through `buildCreditNoteFor`, so each credit note is exactly its refund and they never total more than was paid. |
+| `bid_payment_refunded` | contact, invoice, one credit note per refund | Every refund that went through on the payment (its own, or one lot's of a "Pay several" charge) replayed oldest first through `buildCreditNoteFor`, `LAX-BID-CN-<refund row>`, each refunded from Stripe clearing (`refund`). Each is its refund up to what the payment still has to give back on the invoice: never more than it took (a lot's excess is not this invoice's). |
+| `bid_delivery_refunded` | contact, delivery invoice, a credit note per rise | A courier quote's refunded running total: credited after the credit notes already made for it (`priorCredits`, read from the books), never above the charge, `LAX-BID-CN-dlv-<quote>-r<total>`. Parked with the delivery draft (`vat_on_delivery`) while `DELIVERY_BOOKING` is unset. |
+| `bid_buyer_default` | nothing and a cancel, or contact, invoice, full credit note | The invoice never sent: `cancel` it in the books. Issued: a full credit note (`LAX-BID-CN-dft-<invoice>`, no money back), parked (`buyer_default_treatment`) while `BID_DEFAULT_ACCOUNTING_TREATMENT` is unset (the accountant's "credit note or void"); `void` keeps it parked (voiding is not built). In flight: refused, tried again. |
 | `shop_order_paid` | contact, invoice, (parked delivery invoice), payment | The order's invoice in London Art Exchange under the Shop's own number (`buildInclusiveInvoice`: lines VAT-inclusive with the VAT stored when sold, never worked out again; a line sold with no VAT recorded is booked with none). Goods, framing (the frame's price as sold) and UK delivery or collection are lines on it; the lines must add up to the order's total. Delivery outside the UK is never on it: it is its own invoice with no VAT stated, parked (`vat_on_outside_uk_delivery`, never sent). The payment books the whole order into clearing, applied to the invoice; the parked delivery's part is left unapplied. |
 | others in `ACCOUNTING_FLOWS` | none yet | Placeholders that project nothing until their own change builds them. |
 
