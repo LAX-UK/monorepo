@@ -8,6 +8,7 @@ import {
   computeDeliveryBackoffMs,
   formatDeliveryError,
   isCircuitOpenDeliveryError,
+  isWaitingDeliveryError,
   readRetryAfterMs,
 } from "../../lib/delivery-retry.js";
 
@@ -85,7 +86,9 @@ export async function runDomainEventDelivery(
     const classification = classifyDeliveryError(err);
     const attemptsAfterClaim = delivery.attempts;
 
-    if (classification === "fatal" || attemptsAfterClaim >= maxAttempts) {
+    // Waiting on something to settle elsewhere is not a failed attempt: never dead-lettered for it.
+    const waiting = isWaitingDeliveryError(err);
+    if (classification === "fatal" || (!waiting && attemptsAfterClaim >= maxAttempts)) {
       await repo.deadLetter({
         deliveryId: delivery.id,
         lastError: message,
@@ -114,7 +117,7 @@ export async function runDomainEventDelivery(
       deliveryId: delivery.id,
       nextRetryAt,
       lastError: message,
-      undoAttemptIncrement: isCircuitOpenDeliveryError(err),
+      undoAttemptIncrement: isCircuitOpenDeliveryError(err) || waiting,
       ...withOptionalNow(options.now),
     });
     if (options.metricsConsumer) {

@@ -745,6 +745,13 @@ export interface CreditNoteRefundRecord {
 }
 
 /**
+ * How one clearing-refund step ended: `settled` (its outcome recorded), `skipped` (held by another
+ * worker, settled already, or no answer to record), or `refund_reversed` (the refund it credits was
+ * taken back: the credit note is held for a person, never refunded from clearing).
+ */
+export type CreditNoteRefundSettle = "settled" | "skipped" | "refund_reversed";
+
+/**
  * The follow-up step after a credit note for a refund is issued: its gross is refunded from the
  * Stripe clearing account, once. Settled in the credit note's history (`refund_credit_note`),
  * which is append-only, so a settled credit note never comes back.
@@ -758,13 +765,16 @@ export interface IAccountingCreditNoteRefunds {
   /**
    * Runs `step` while holding the credit note (no other worker can run it for the same one), and
    * records what it returns in its history in the same transaction. Nothing is recorded when
-   * `step` returns null (try again next run). False when another worker holds it now, or it was
-   * settled already; the step is then not run.
+   * `step` returns null (try again next run). `skipped` when another worker holds it now, or it was
+   * settled already; the step is then not run. Before the step, the refund itself is read again
+   * under the lock: one taken back since (a `refund_reversal` of a payment refund, a courier total
+   * lowered below the note) holds the credit note (`accounting_refund_reversed_after_credit`) and
+   * answers `refund_reversed`; the step is then not run.
    */
   settleExclusively(
     creditNoteDocumentId: string,
     step: () => Promise<CreditNoteRefundRecord | null>,
-  ): Promise<boolean>;
+  ): Promise<CreditNoteRefundSettle>;
 }
 
 /** What the "Your invoice" email says, read from the invoice's own rows. */
@@ -803,7 +813,8 @@ export interface BidInvoiceBooksDocument {
   readonly grossPence: number;
   /**
    * When the document was issued: the `occurred_at` of its transition to `issued` in the event
-   * log (never the row's `updated_at`, which later writes move). Null when not issued.
+   * log (never the row's `updated_at`, which later writes move). Null when not issued (a document
+   * held for a person with Books' document kept keeps it).
    */
   readonly issuedAt: Date | null;
   readonly copy: { readonly storageKey: string; readonly rehearsal: boolean } | null;

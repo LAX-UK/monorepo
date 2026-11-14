@@ -37,6 +37,8 @@ export interface AccountingCreditNoteRefundDeps {
 export interface CreditNoteRefundTick {
   readonly refunded: number;
   readonly refused: number;
+  /** Credit notes whose refund was found taken back: held for a person, never refunded. */
+  readonly held: number;
 }
 
 /**
@@ -51,6 +53,9 @@ export interface CreditNoteRefundTick {
  *   `already_refunded` the next time, never a second refund. An answer it cannot read records
  *   nothing: the next run looks again, after the credit notes not tried yet.
  * - In dry run it is rehearsed (nothing is held, nothing refunded), and recorded as a rehearsal.
+ * - Before the step, the refund itself is read again under the credit note's lock: one taken back
+ *   since (a reversal that met the note while it was being sent, say, and ran out of tries) is
+ *   held for a person (`accounting_refund_reversed_after_credit`) with an alert, never refunded.
  * - A refund Books refuses is not settled for anyone: the credit note is held for a person in the
  *   same transaction ("Needs a person", `accounting_credit_note_refund_refused`) and an alert is
  *   raised. A person refunds it by hand in Books (see the runbook).
@@ -64,19 +69,21 @@ export class AccountingCreditNoteRefund {
 
   async tick(): Promise<CreditNoteRefundTick> {
     const modes = await this.activeModes();
-    if (modes.length === 0) return { refunded: 0, refused: 0 };
+    if (modes.length === 0) return { refunded: 0, refused: 0, held: 0 };
     const { due, unreadable } = await this.deps.refunds.listDue(modes, this.batch);
     for (const id of unreadable) {
       this.deps.log.warn({ documentId: id }, "accounting_credit_note_refund_unreadable");
     }
     let refunded = 0;
     let refused = 0;
+    let held = 0;
     for (const item of due) {
       const outcome = await this.settle(item);
       if (outcome === "refunded") refunded += 1;
       if (outcome === "rejected") refused += 1;
+      if (outcome === "held") held += 1;
     }
-    return { refunded, refused };
+    return { refunded, refused, held };
   }
 
   /** The modes the products that refund are aimed at now, that this worker has adapters for. */
@@ -93,7 +100,7 @@ export class AccountingCreditNoteRefund {
 
   private async settle(
     item: CreditNoteRefundDue,
-  ): Promise<CreditNoteRefundRecord["outcome"] | null> {
+  ): Promise<CreditNoteRefundRecord["outcome"] | "held" | null> {
     const { creditNote } = item;
     const mode = creditNote.target?.mode;
     const port = mode ? this.deps.portsByMode[mode] : undefined;
@@ -128,7 +135,23 @@ export class AccountingCreditNoteRefund {
       };
       return settled;
     });
-    if (!ran || settled === null) return null;
+    if (ran === "refund_reversed") {
+      const details = {
+        documentId: creditNote.id,
+        reference: creditNote.reference,
+        mode,
+        providerNumber:
+          creditNote.record.status === "issued" ? creditNote.record.issued.number : null,
+        sourceEvent: "credit_note_refund_recheck",
+      };
+      if (this.deps.alerts) {
+        this.deps.alerts.raise(ACCOUNTING_ALERTS.refundReversedAfterCredit, details);
+      } else {
+        this.deps.log.warn(details, "accounting_refund_reversed_after_credit");
+      }
+      return "held";
+    }
+    if (ran !== "settled" || settled === null) return null;
     const record: CreditNoteRefundRecord = settled;
     if (record.outcome === "rejected") {
       // Held for a person in the same transaction: refund it by hand in Books (see the runbook).

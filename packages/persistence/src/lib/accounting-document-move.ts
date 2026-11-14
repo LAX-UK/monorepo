@@ -187,7 +187,10 @@ export async function applyLockedTransition(
     detail:
       transition.action === "release"
         ? { ...detail, parked: parkReasonOf(row.needsReviewReason) }
-        : detail,
+        : transition.action === "hold" && record.value.status === "needs_review"
+          ? // Held again for a new reason: the reason it was held for until now stays on record.
+            { ...detail, heldBefore: record.value.reason }
+          : detail,
     ...(replace?.ok && replace.value ? { replace: replace.value } : {}),
     at,
   });

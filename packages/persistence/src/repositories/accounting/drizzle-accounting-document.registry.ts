@@ -27,6 +27,7 @@ import type {
   RegisterInput,
   RegisterOutcome,
 } from "../../interfaces/accounting.js";
+import { REFUND_REVERSED_AFTER_CREDIT } from "../../lib/accounting-credit-note-refund-due.js";
 import { readDocumentPayload } from "../../lib/accounting-document-payload.js";
 import { documentTotals } from "../../lib/accounting-document-payload.js";
 import { rowToStored } from "../../lib/accounting-document-row.js";
@@ -174,7 +175,9 @@ type Tx = Parameters<Parameters<Database["transaction"]>[0]>[0];
  * credit notes in the same books are serialised by a transaction lock on (invoice, target), so
  * two registrations can never both read the old total; the new credit note must fit in the
  * invoice's gross less every other credit note registered for it there (any state but cancelled:
- * a failed one may still be tried again). The invoice must be registered there, and not only
+ * a failed one may still be tried again), except one held because its refund was taken back
+ * (`accounting_refund_reversed_after_credit`): that money never reached the buyer, so a later
+ * refund that did is credited. The basis below still reads every one of them, as the flows do. The invoice must be registered there, and not only
  * cancelled. A replay of this credit note is not counted against itself.
  *
  * With a basis, the note must also have been built from what holds now, under the same lock: the
@@ -214,6 +217,9 @@ async function creditFitsInvoice(
   const [credited] = await tx
     .select({
       pence: sql<string>`coalesce(sum(${accountingDocument.grossPence}), 0)::bigint`,
+      // Held as taken back: the buyer never had that money, and the note waits for the accountant
+      // to reverse it in Books. It does not stand in the way of a later refund that went through.
+      reversedPence: sql<string>`coalesce(sum(${accountingDocument.grossPence}) filter (where ${accountingDocument.state} = 'needs_review' and ${accountingDocument.needsReviewReason} = ${REFUND_REVERSED_AFTER_CREDIT}), 0)::bigint`,
     })
     .from(accountingDocument)
     .where(
@@ -226,10 +232,11 @@ async function creditFitsInvoice(
       ),
     );
   const already = Number(credited?.pence ?? 0);
-  if (already + note.totals.grossPence > invoice.grossPence) {
+  const standing = already - Number(credited?.reversedPence ?? 0);
+  if (standing + note.totals.grossPence > invoice.grossPence) {
     return refuse(
       "credit_exceeds_invoice",
-      `${already}p already credited; ${note.totals.grossPence}p more exceeds the invoice's ${invoice.grossPence}p`,
+      `${standing}p already credited; ${note.totals.grossPence}p more exceeds the invoice's ${invoice.grossPence}p`,
     );
   }
   return basis ? basisHolds(tx, note, basis, already) : ok(true);

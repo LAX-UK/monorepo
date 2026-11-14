@@ -58,11 +58,12 @@ function credit(
   pence: number,
   prior: readonly CreditNote[] = [],
   refund = true,
+  sourceId: string = newId(),
 ): CreditNote {
   const credited = prior.reduce((sum, c) => sum + c.totals.grossPence, 0);
   return must(
     buildCreditNoteFor(invoice, {
-      sourceId: newId(),
+      sourceId,
       issuedOn: "2031-03-05",
       buckets: {
         paidGoodsPence: invoice.totals.grossPence,
@@ -94,6 +95,42 @@ describe.skipIf(!HAS_DB)("accounting credit notes (integration)", { timeout: 60_
       on conflict (product) do update
         set xero_mode = excluded.xero_mode, books_mode = excluded.books_mode`);
   });
+  const run = randomUUID().slice(0, 8);
+  const buyer = `cn-buyer-${run}`;
+  const entity = randomUUID();
+
+  /** A captured payment of £100 with one refund row of `pence`: the refund id (a credit note's source). */
+  async function refundRow(pence: number): Promise<{ paymentId: string; refundId: string }> {
+    const lotId = randomUUID();
+    const paymentId = randomUUID();
+    const refundId = randomUUID();
+    await owner.execute(sql`
+      insert into lot (id, seller_legal_entity_id, title, auction_type, starting_price,
+         current_price, start_time, end_time, status, winner_id, buyer_legal_entity_id)
+      values (${lotId}, ${entity}, ${`Credit lot ${lotId.slice(0, 6)}`}, 'english', 100, 100,
+         now() - interval '40 days', now() - interval '20 days', 'ended', ${buyer}, ${entity})`);
+    await owner.execute(sql`
+      insert into payment (id, lot_id, buyer_id, buyer_legal_entity_id, seller_legal_entity_id,
+         amount, platform_fee, status)
+      values (${paymentId}, ${lotId}, ${buyer}, ${entity}, ${entity}, 100.00, 0, 'captured'::payment_status)`);
+    await owner.execute(sql`
+      insert into payment_refund (id, payment_id, idempotency_key, amount_pence, currency, source,
+         stripe_refund_id)
+      values (${refundId}, ${paymentId}, ${`cn-${refundId}`}, ${pence}, 'GBP', 'staff',
+         ${`re_cn_${refundId}`})`);
+    return { paymentId, refundId };
+  }
+
+  beforeAll(async () => {
+    const now = new Date();
+    await owner.execute(sql`
+      insert into "user" (id, name, email, email_verified, created_at, updated_at)
+      values (${buyer}, 'B', ${`${buyer}@integration.test`}, true, ${now}, ${now})`);
+    await owner.execute(sql`
+      insert into legal_entity (id, display_name, kind, subkind, created_by_user_id, status)
+      values (${entity}, 'Credit entity', 'individual', 'private_collector', ${buyer}, 'approved')`);
+  });
+
   beforeEach(async () => {
     await owner.execute(sql`
       update accounting_document
@@ -215,7 +252,8 @@ describe.skipIf(!HAS_DB)("accounting credit notes (integration)", { timeout: 60_
     const { contact, invoice } = invoiceWithContact();
     await issue((await register(contact)).stored.id);
     await issue((await register(invoice)).stored.id);
-    const money = (await register(credit(invoice, 3_000))).stored;
+    const { refundId } = await refundRow(3_000);
+    const money = (await register(credit(invoice, 3_000, [], true, refundId))).stored;
     const cancellation = (await register(credit(invoice, 1_000, [], false))).stored;
     expect(
       (await repos.creditNoteRefunds.listDue(["dry_run"], 500)).due.map((d) => d.creditNote.id),
@@ -243,7 +281,7 @@ describe.skipIf(!HAS_DB)("accounting credit notes (integration)", { timeout: 60_
         }),
       ),
     );
-    expect(settled.filter(Boolean)).toHaveLength(1);
+    expect(settled.filter((r) => r === "settled")).toHaveLength(1);
     expect(steps).toBe(1);
     // Settled: a later worker that reaches it does not run the step again.
     expect(
@@ -256,7 +294,7 @@ describe.skipIf(!HAS_DB)("accounting credit notes (integration)", { timeout: 60_
           rehearsal: true,
         };
       }),
-    ).toBe(false);
+    ).toBe("skipped");
     expect(steps).toBe(1);
     const history = await owner.execute<{ n: number }>(sql`
       select count(*)::int as n from accounting_document_event
@@ -265,6 +303,55 @@ describe.skipIf(!HAS_DB)("accounting credit notes (integration)", { timeout: 60_
     expect(
       (await repos.creditNoteRefunds.listDue(["dry_run"], 500)).due.map((d) => d.creditNote.id),
     ).not.toContain(money.id);
+  });
+
+  it("the refund step reads the refund itself again under the lock (review N1): one taken back, or one it cannot find, is held and never run", async () => {
+    const { contact, invoice } = invoiceWithContact();
+    await issue((await register(contact)).stored.id);
+    await issue((await register(invoice)).stored.id);
+    const { paymentId, refundId } = await refundRow(2_000);
+    const reversed = (await register(credit(invoice, 2_000, [], true, refundId))).stored;
+    const stranger = (await register(credit(invoice, 1_000))).stored;
+    await issue(reversed.id);
+    await issue(stranger.id);
+    await owner.execute(sql`
+      insert into payment_refund (payment_id, idempotency_key, amount_pence, currency, source,
+         stripe_refund_id)
+      values (${paymentId}, ${`cn-rv-${refundId}`}, -2000, 'GBP', 'refund_reversal',
+         ${`re_cn_${refundId}`})`);
+    let steps = 0;
+    const step = async () => {
+      steps += 1;
+      return {
+        outcome: "refunded" as const,
+        amountPence: 2_000,
+        account: "stripe_clearing" as const,
+        rehearsal: true,
+      };
+    };
+    expect(await repos.creditNoteRefunds.settleExclusively(reversed.id, step)).toBe(
+      "refund_reversed",
+    );
+    expect(await repos.creditNoteRefunds.settleExclusively(stranger.id, step)).toBe(
+      "refund_reversed",
+    );
+    expect(steps).toBe(0);
+    const rows = await owner.execute<{ state: string; reason: string | null; refunds: number }>(sql`
+      select d.state, d.needs_review_reason as reason,
+             (select count(*)::int from accounting_document_event e
+               where e.document_id = d.id and e.action = 'refund_credit_note') as refunds
+        from accounting_document d where d.id in (${reversed.id}, ${stranger.id})`);
+    expect(rows.rows).toEqual([
+      { state: "needs_review", reason: "accounting_refund_reversed_after_credit", refunds: 0 },
+      { state: "needs_review", reason: "accounting_refund_reversed_after_credit", refunds: 0 },
+    ]);
+    // Held: not listed again, and the step is never run for them.
+    const listed = (await repos.creditNoteRefunds.listDue(["dry_run"], 500)).due.map(
+      (d) => d.creditNote.id,
+    );
+    expect(listed).not.toContain(reversed.id);
+    expect(await repos.creditNoteRefunds.settleExclusively(reversed.id, step)).toBe("skipped");
+    expect(steps).toBe(0);
   });
 
   it("api_app cannot write refund history; the worker cannot rewrite it", async () => {

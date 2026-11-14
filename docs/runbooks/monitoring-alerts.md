@@ -386,6 +386,20 @@ Books.
   its history for `refund_credit_note` (already refunded from clearing or not), and ask the
   accountant how to reverse it in Books. If the credit note was **never sent**, it is simply
   cancelled (`payment.refund_reversed`), and nothing needs a person.
+  - If the credit note was **being sent** (or its outcome unknown) when the refund was taken back,
+    the event waits for it to settle without using up delivery attempts. Whatever happened to the
+    event, the clearing-refund step reads the refund itself again before refunding (a
+    `refund_reversal` row for that refund, or a courier total now below the credit note), and holds
+    the credit note with this alert instead of refunding it.
+  - If the credit note was **already held** for another reason (Books refused its refund from
+    clearing, its totals differ), it is held again with this reason and the alert. **Do not refund
+    it by hand**: the buyer never got the money. Its history keeps the earlier reason
+    (`heldBefore`).
+  - A credit note held with this reason no longer counts against the invoice when a later refund is
+    credited, so a refund that did go through is credited and refunded from clearing as usual. If a
+    later `payment.refunded` delivery was dead-lettered while the credit note counted
+    (`credit_exceeds_invoice`), redrive it from the failed deliveries once the credit note is held
+    with this reason.
 - **Courier refund inside Pay several** (`payment_group.delivery_refunded`): the delivery invoice
   `LAX-BID-INV-dlv-<quote>` is credited up to the quote's stored refunded total
   (`payment_group_delivery.refunded_pence`), never above its charge, one credit note per rise
@@ -411,7 +425,10 @@ Books.
   crediting voided invoices by hand ([buyer default runbook](./buyer-default-and-reoffer.md)).
 - **Buyer's card** (Bid live only, same rule as the invoice): "Refunded −£[amount] · Download credit
   note [number] (PDF)" per refund, and "Cancelled after a default" with its credit note once issued.
-  LAX keeps its own copy of each credit note's PDF; no credit note is emailed.
+  A card payment's refund adds "to your card"; a bank transfer's names no destination (LAX does not
+  choose where Stripe returns it). A credit note held only because Books refused its refund from
+  clearing stays on the card (the buyer was refunded); one held because its refund was taken back
+  does not. LAX keeps its own copy of each credit note's PDF; no credit note is emailed.
 - **Database pin.** The database refuses api_app moving a parked buyer default credit note, a credit
   note whose invoice was cancelled, or a courier refund's credit note, even unchanged (0385). The
   migration that ships the accountant's answer lifts the matching line; until then Release cannot
@@ -419,7 +436,11 @@ Books.
 - **Rolling back** `0385_rollback.sql` restores 0383's history actions (NOT VALID, so
   `refund_credit_note` and `hold` rows stay) and 0383's api_app rule with the 0385 refusal kept, so
   those credit notes stay parked. Roll the release back first: the earlier release does not run the
-  refund step.
+  refund step. **Order:** roll back 0385 before 0383, and stop there if you can. Rolling back
+  **0383** after 0385 restores the function as it was before 0383, without the 0385 refusal, so
+  the database no longer stops api_app moving those parked credit notes. If 0383 must go too, ask
+  engineering to apply 0385 again (or its refusal alone) straight after, and do not press Release
+  on a parked credit note until it is back.
 
 ## Shop invoices to Books (London Art Exchange)
 

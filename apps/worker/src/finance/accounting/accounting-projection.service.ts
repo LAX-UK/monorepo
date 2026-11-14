@@ -72,14 +72,28 @@ export class AccountingProjectionRefusedError extends Error {
  */
 export class AccountingProjectionNotYetError extends Error {
   readonly retryable = true;
+  /**
+   * A credit note the event must decide on is still being sent, or its outcome is not known yet
+   * (`credit_in_flight`): the event waits for it to settle without using up delivery attempts
+   * (tried again every `retryAfterMs`), so a reversal is never dead-lettered while it waits.
+   */
+  readonly waiting: boolean;
+  readonly retryAfterMs?: number;
   constructor(
     readonly code: string,
     detail: string,
   ) {
     super(`accounting_projection_not_yet:${code}:${detail}`);
     this.name = "AccountingProjectionNotYetError";
+    this.waiting = WAITS_FOR_SETTLING.has(code);
+    if (this.waiting) this.retryAfterMs = SETTLING_RETRY_MS;
   }
 }
+
+/** Refusals that wait for a document to settle in the books, without using up delivery attempts. */
+const WAITS_FOR_SETTLING: ReadonlySet<string> = new Set(["credit_in_flight"]);
+/** How often an event waiting for a credit note to settle is tried again. */
+const SETTLING_RETRY_MS = 5 * 60_000;
 
 /** Refusals that a later attempt, reading the facts again, can get past. */
 const NOT_YET: ReadonlySet<string> = new Set([
@@ -305,8 +319,10 @@ export class AccountingProjection {
 
   /**
    * Holds each named issued document for a person (the Books document kept, nothing undone there)
-   * and raises an alert, in the books the product goes to now. One already held is left as it is
-   * (a replay raises nothing again). One that moved meanwhile is decided again later.
+   * and raises an alert, in the books the product goes to now. One already held for this reason is
+   * left as it is (a replay raises nothing again); one held for another reason is held again for
+   * this one (its history keeps both), with the alert. One that moved meanwhile is decided again
+   * later.
    */
   private async holdIssued(
     product: Product,
@@ -323,8 +339,15 @@ export class AccountingProjection {
       if (!found.ok) throw new AccountingProjectionRefusedError(found.refusal.code, reference);
       const document = found.value;
       const code = heldReasonCode(reason);
-      if (document?.record.status === "needs_review" && document.record.reason === code) continue;
-      if (!document || document.record.status !== "issued") {
+      if (!document) throw new AccountingProjectionNotYetError("credit_missing", reference);
+      const record = document.record;
+      if (record.status === "needs_review" && record.reason === code) continue;
+      // Issued, or already held for a person for another reason (Books refused its refund from
+      // clearing, its totals differ): held again for this reason, so the person is told the refund
+      // was taken back and is not to be refunded by hand.
+      const heldAlready =
+        record.status === "needs_review" && record.lookup === "clear" && record.issued !== null;
+      if (record.status !== "issued" && !heldAlready) {
         throw new AccountingProjectionNotYetError("credit_in_flight", reference);
       }
       const moved = await books.transitions.apply(document.id, { action: "hold", reason: code });
@@ -334,7 +357,8 @@ export class AccountingProjection {
         documentId: document.id,
         reference,
         mode: target?.mode ?? null,
-        providerNumber: document.record.issued.number,
+        providerNumber: record.issued?.number ?? null,
+        ...(heldAlready ? { heldBefore: record.reason } : {}),
         sourceEvent: `domain_event:${event.id}`,
       });
     }

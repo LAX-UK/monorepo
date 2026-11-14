@@ -82,7 +82,14 @@ export class DrizzleBidInvoiceBooksReader implements IBidInvoiceBooksReader {
         targetMode: mode as TargetMode,
         record: stored.value.record,
         grossPence: stored.value.totals.grossPence,
-        issuedAt: stored.value.record.status === "issued" ? row.issuedAt : null,
+        // Issued, or held for a person with Books' document kept: Books issued it then.
+        issuedAt:
+          stored.value.record.status === "issued" ||
+          (stored.value.record.status === "needs_review" &&
+            stored.value.record.lookup === "clear" &&
+            stored.value.record.issued !== null)
+            ? row.issuedAt
+            : null,
         copy:
           row.copyKey === null
             ? null

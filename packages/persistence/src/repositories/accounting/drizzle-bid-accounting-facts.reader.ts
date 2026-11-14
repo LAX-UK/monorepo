@@ -385,7 +385,7 @@ export class DrizzleBidAccountingFactsReader implements IBidAccountingFactsReade
   }
 }
 
-interface RefundRow {
+export interface RefundRow {
   readonly id: string;
   readonly amountPence: number;
   readonly source: string;
@@ -398,7 +398,7 @@ interface RefundRow {
  * out. A reversal that matches no refund of the payment exactly answers null: it cannot be told
  * which credit it undoes, so a person decides.
  */
-function withoutReversed<T extends RefundRow>(rows: readonly T[]): T[] | null {
+export function withoutReversed<T extends RefundRow>(rows: readonly T[]): T[] | null {
   const kept = rows.filter((r) => r.source !== "refund_reversal");
   for (const reversal of rows.filter((r) => r.source === "refund_reversal")) {
     let index = -1;

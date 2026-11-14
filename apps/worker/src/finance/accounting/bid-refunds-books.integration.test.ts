@@ -1248,6 +1248,244 @@ describe.skipIf(!HAS_DB)(
         expect(await paidWith(lot.invoice.id)).toBe("card");
       });
 
+      /** The projection with an alert sink, as the runtime wires it. */
+      function alerting(sink: { raise: ReturnType<typeof vi.fn> }) {
+        return new AccountingProjection({
+          facts: new DrizzleBidAccountingFactsReader(worker),
+          settings: repos.settingReader,
+          registry: repos.registry,
+          books: {
+            lookup: repos.lookup,
+            creditNotes: repos.creditNotes,
+            transitions: repos.transitions,
+          },
+          alerts: sink as never,
+        });
+      }
+
+      function refunderWith(
+        books: InMemoryAccounting,
+        sink: { raise: ReturnType<typeof vi.fn> },
+        port?: Parameters<typeof refunder>[1]["creditNoteRefunds"],
+      ) {
+        return new AccountingCreditNoteRefund({
+          refunds: repos.creditNoteRefunds,
+          settings: repos.settingReader,
+          portsByMode: { test_org: port ?? books.creditNoteRefunds },
+          log,
+          alerts: sink as never,
+        });
+      }
+
+      async function historyOf(reference: string, action: string) {
+        const document = await rowOf(reference, "test_org");
+        return owner
+          .select()
+          .from(accountingDocumentEvent)
+          .where(
+            and(
+              eq(accountingDocumentEvent.documentId, document.id),
+              eq(accountingDocumentEvent.action, action),
+            ),
+          );
+      }
+
+      it("N1: a reversal that met its credit note unknown, and was dead-lettered, still never refunds it once Books says it was issued: held, with the alert", async () => {
+        const books = new InMemoryAccounting();
+        const { raised } = await paidAndSent(books);
+        const a = await refunded(raised.payment.id, 2_000);
+        await projection().project(await refundedEvent(raised.payment.id));
+        const noteRef = ref("credit_note", a.id);
+        // Books made the credit note, but the answer was lost: its outcome is unknown.
+        books.faults.inject("timeout_after_commit");
+        await sender("test_org", books).tick();
+        expect(await rowOf(noteRef, "test_org")).toMatchObject({ state: "unknown" });
+        // The refund is taken back now: the reversal waits for the note (without using up the
+        // delivery's attempts). Say it was dead-lettered anyway: it is never projected again.
+        const reversed = await reversalOf(raised.payment.id, a);
+        await expect(projection().project(reversed)).rejects.toMatchObject({
+          code: "credit_in_flight",
+          retryable: true,
+          waiting: true,
+        });
+        // Later the lookup finds it in Books: issued.
+        await owner
+          .update(accountingDocument)
+          .set({ settlesAt: new Date(Date.now() - 86_400_000) })
+          .where(eq(accountingDocument.laxReference, noteRef));
+        await sendAll("test_org", books);
+        const issued = await rowOf(noteRef, "test_org");
+        expect(issued).toMatchObject({ state: "issued" });
+        // The clearing-refund step reads the refund itself again: taken back, so held, never refunded.
+        const sink = alerts();
+        const step = refunderWith(books, sink);
+        expect(await step.tick()).toEqual({ refunded: 0, refused: 0, held: 1 });
+        expect(await rowOf(noteRef, "test_org")).toMatchObject({
+          state: "needs_review",
+          reviewLookup: "clear",
+          needsReviewReason: "accounting_refund_reversed_after_credit",
+          providerId: issued.providerId,
+        });
+        expect(books.creditNoteRefundOf("bid", noteRef)).toBeNull();
+        expect(await historyOf(noteRef, "refund_credit_note")).toEqual([]);
+        expect(sink.raise).toHaveBeenCalledTimes(1);
+        expect(sink.raise).toHaveBeenCalledWith(
+          expect.objectContaining({ message: "accounting_refund_reversed_after_credit" }),
+          expect.objectContaining({ reference: noteRef }),
+        );
+        // Not listed again, and a refund that stayed is still refunded as before.
+        expect(await step.tick()).toEqual({ refunded: 0, refused: 0, held: 0 });
+        const b = await refunded(raised.payment.id, 500);
+        await projection().project(await refundedEvent(raised.payment.id));
+        await sendAll("test_org", books);
+        expect(await step.tick()).toMatchObject({ refunded: 1, held: 0 });
+        expect(books.creditNoteRefundOf("bid", ref("credit_note", b.id))).toBe(500);
+        expect(sink.raise).toHaveBeenCalledTimes(1);
+      });
+
+      it("N1: a courier total lowered below an issued credit note (its event dead-lettered) is held by the refund step; a note within the total is refunded", async () => {
+        const { quoteId, raise, live } = await courierQuote();
+        await projection().project(await raise(1_000));
+        await projection().project(await raise(3_000));
+        const notes = (await live()).sort((x, y) => x.grossPence - y.grossPence);
+        expect(notes.map((n) => n.grossPence)).toEqual([1_000, 2_000]);
+        // Say both were issued (the accountant answered VAT on delivery and they were sent).
+        for (const [i, note] of notes.entries()) {
+          await owner
+            .update(accountingDocument)
+            .set({
+              state: "issued",
+              reviewLookup: null,
+              needsReviewReason: null,
+              providerId: `cn-fixture-${i}-${note.id}`,
+              providerNumber: `CN-F-${i}`,
+              provider: "books",
+              attempts: 1,
+            })
+            .where(eq(accountingDocument.id, note.id));
+        }
+        // The total is lowered to 1,500, and the lowering never reached the projection.
+        await owner
+          .update(paymentGroupDelivery)
+          .set({ refundedPence: 1_500 })
+          .where(eq(paymentGroupDelivery.deliveryQuoteId, quoteId));
+        const sink = alerts();
+        const refunds: string[] = [];
+        const step = new AccountingCreditNoteRefund({
+          refunds: repos.creditNoteRefunds,
+          settings: repos.settingReader,
+          portsByMode: {
+            dry_run: {
+              refundCreditNote: async (plan) => {
+                refunds.push(plan.creditNoteReference);
+                return { status: "refunded", rehearsal: true };
+              },
+            },
+          },
+          log,
+          alerts: sink as never,
+        });
+        expect(await step.tick()).toMatchObject({ refunded: 1, held: 1 });
+        const [within, above] = [notes[0], notes[1]] as [
+          (typeof notes)[number],
+          (typeof notes)[number],
+        ];
+        expect(refunds).toEqual([within.laxReference]);
+        expect(await rowOf(above.laxReference, "dry_run")).toMatchObject({
+          state: "needs_review",
+          needsReviewReason: "accounting_refund_reversed_after_credit",
+        });
+        expect(sink.raise).toHaveBeenCalledWith(
+          expect.objectContaining({ message: "accounting_refund_reversed_after_credit" }),
+          expect.objectContaining({ reference: above.laxReference }),
+        );
+      });
+
+      it("N2: a refund Books refused to clear, then taken back, is held again as taken back with the alert, so nobody refunds it by hand", async () => {
+        const books = new InMemoryAccounting();
+        const { raised } = await paidAndSent(books);
+        const a = await refunded(raised.payment.id, 2_000);
+        await projection().project(await refundedEvent(raised.payment.id));
+        await sendAll("test_org", books);
+        const noteRef = ref("credit_note", a.id);
+        const refusedSink = alerts();
+        const refusing = refunderWith(books, refusedSink, {
+          refundCreditNote: async () => ({
+            status: "rejected",
+            reason: "zoho_books_credit_note_refund_differs",
+          }),
+        });
+        expect(await refusing.tick()).toMatchObject({ refused: 1 });
+        const held = await rowOf(noteRef, "test_org");
+        expect(held).toMatchObject({ needsReviewReason: "accounting_credit_note_refund_refused" });
+        const sink = alerts();
+        const reversed = await reversalOf(raised.payment.id, a);
+        expect(await alerting(sink).project(reversed)).toMatchObject({ held: 1, cancelled: 0 });
+        expect(await rowOf(noteRef, "test_org")).toMatchObject({
+          state: "needs_review",
+          reviewLookup: "clear",
+          needsReviewReason: "accounting_refund_reversed_after_credit",
+          providerId: held.providerId,
+        });
+        expect(sink.raise).toHaveBeenCalledTimes(1);
+        expect(sink.raise).toHaveBeenCalledWith(
+          expect.objectContaining({ message: "accounting_refund_reversed_after_credit" }),
+          expect.objectContaining({
+            reference: noteRef,
+            heldBefore: "accounting_credit_note_refund_refused",
+          }),
+        );
+        // History keeps both reasons.
+        const holds = await historyOf(noteRef, "hold");
+        expect(holds.map((h) => [h.fromState, h.toState, h.detail])).toEqual([
+          [
+            "issued",
+            "needs_review",
+            expect.objectContaining({ reason: "accounting_credit_note_refund_refused" }),
+          ],
+          [
+            "needs_review",
+            "needs_review",
+            expect.objectContaining({
+              reason: "accounting_refund_reversed_after_credit",
+              heldBefore: "accounting_credit_note_refund_refused",
+            }),
+          ],
+        ]);
+        // Again: nothing more, no second alert.
+        expect(await alerting(sink).project(reversed)).not.toHaveProperty("held");
+        expect(sink.raise).toHaveBeenCalledTimes(1);
+        expect(books.creditNoteRefundOf("bid", noteRef)).toBeNull();
+      });
+
+      it("N5: a refund taken back after its note was issued does not block a later refund that went through (paid P, P*0.6 reversed, then P refunded)", async () => {
+        const books = new InMemoryAccounting();
+        const { raised } = await paidAndSent(books);
+        const paid = (await rowOf(ref("invoice", raised.invoice.id), "test_org")).grossPence;
+        const a = await refunded(raised.payment.id, Math.round(paid * 0.6));
+        await projection().project(await refundedEvent(raised.payment.id));
+        await sendAll("test_org", books);
+        await alerting(alerts()).project(await reversalOf(raised.payment.id, a));
+        expect(await rowOf(ref("credit_note", a.id), "test_org")).toMatchObject({
+          needsReviewReason: "accounting_refund_reversed_after_credit",
+        });
+        // The whole payment is refunded for real now: credited in full, not refused.
+        const b = await refunded(raised.payment.id, paid);
+        expect(await projection().project(await refundedEvent(raised.payment.id))).toMatchObject({
+          outcome: "projected",
+          created: 1,
+        });
+        expect(await rowOf(ref("credit_note", b.id), "test_org")).toMatchObject({
+          state: "pending",
+          grossPence: paid,
+        });
+        // Sent, then refunded from clearing in full.
+        await sendAll("test_org", books);
+        expect(await refunder("test_org", books).tick()).toMatchObject({ refunded: 1 });
+        expect(books.creditNoteRefundOf("bid", ref("credit_note", b.id))).toBe(paid);
+        expect(books.creditNoteRefundOf("bid", ref("credit_note", a.id))).toBeNull();
+      });
+
       it("F5: a credit note Books refuses to refund from clearing is held for a person and alerts, never counted as settled", async () => {
         const books = new InMemoryAccounting();
         const { raised } = await paidAndSent(books);
@@ -1283,6 +1521,15 @@ describe.skipIf(!HAS_DB)(
         expect(await refusing.tick()).toMatchObject({ refused: 0, refunded: 0 });
         const apiRepos = createAccountingRepositories(api, { now: () => new Date() });
         expect((await apiRepos.attention.read([])).needsPerson.count).toBeGreaterThan(0);
+        // The buyer's card still reads it as issued then (review N3): Books' document is kept.
+        const read = await apiRepos.bidInvoiceBooks.read(raised.invoice.id);
+        if (!read.ok || !read.value) throw new Error("unreadable");
+        const held = read.value.creditNotes.find((n) => n.reference === noteRef);
+        expect(held?.record).toMatchObject({
+          status: "needs_review",
+          reason: "accounting_credit_note_refund_refused",
+        });
+        expect(held?.issuedAt).toBeInstanceOf(Date);
       });
     });
   },

@@ -3,6 +3,7 @@ import type {
   IDomainEventDeliveryRepository,
 } from "@auction/persistence/interfaces";
 import { describe, expect, it, vi } from "vitest";
+import { AccountingProjectionNotYetError } from "../../finance/accounting/accounting-projection.service.js";
 import {
   claimAndRunDomainEventDeliveriesWithBudget,
   runDomainEventDelivery,
@@ -157,6 +158,46 @@ describe("runDomainEventDelivery", () => {
       expect.objectContaining({ undoAttemptIncrement: true }),
     );
     expect(repo.deadLetter).not.toHaveBeenCalled();
+  });
+});
+
+describe("runDomainEventDelivery: waiting for an accounting document to settle (review N1)", () => {
+  const waitingError = () =>
+    new AccountingProjectionNotYetError("credit_in_flight", "LAX-BID-CN-x");
+
+  it("a reversal waiting for its credit note uses up no attempt and is never dead-lettered", async () => {
+    const repo = mockRepo();
+    const now = new Date("2026-01-01T00:00:00Z");
+    await runDomainEventDelivery({
+      delivery: deliveryRow({ attempts: 12 }),
+      repo,
+      leaseMs: 30_000,
+      maxAttempts: 12,
+      deliver: async () => {
+        throw waitingError();
+      },
+      now,
+    });
+    expect(repo.deadLetter).not.toHaveBeenCalled();
+    const call = vi.mocked(repo.scheduleRetry).mock.calls[0]?.[0];
+    expect(call).toMatchObject({ undoAttemptIncrement: true });
+    expect((call?.nextRetryAt.getTime() ?? 0) - now.getTime()).toBeGreaterThanOrEqual(5 * 60_000);
+  });
+
+  it("any other not-yet still uses up attempts and is dead-lettered at the cap", async () => {
+    const repo = mockRepo();
+    await runDomainEventDelivery({
+      delivery: deliveryRow({ attempts: 12 }),
+      repo,
+      leaseMs: 30_000,
+      maxAttempts: 12,
+      deliver: async () => {
+        throw new AccountingProjectionNotYetError("credit_exceeds_invoice", "x");
+      },
+      now: new Date("2026-01-01T00:00:00Z"),
+    });
+    expect(repo.deadLetter).toHaveBeenCalled();
+    expect(repo.scheduleRetry).not.toHaveBeenCalled();
   });
 });
 

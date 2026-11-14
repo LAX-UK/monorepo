@@ -284,10 +284,9 @@ function lowerDeliveryCredit(
       case "in_flight":
         return refuse("credit_in_flight", "a credit note above the refunded total is being sent");
       case "issued":
-        hold.push({ reference: note.reference, reason: "refund_reversed_after_credit" });
-        return ok({ priorCredits, cancel, hold });
       case "held_for_review":
-        // Already with a person: nothing more is decided here.
+        // Issued, or already with a person for another reason: held (again) as taken back.
+        hold.push({ reference: note.reference, reason: "refund_reversed_after_credit" });
         return ok({ priorCredits, cancel, hold });
       default:
         return refuse("bad_facts", "the credit is above the refunded total, standing unknown");
@@ -313,8 +312,10 @@ export interface BidRefundReversedFacts {
  * - issued: no reversing document is defined in the plan yet, so nothing is guessed. It is held for
  *   a person (`refund_reversed_after_credit`, the Books document kept, never refunded from clearing
  *   from then on) and an alert is raised; the accountant says how it is reversed in Books;
- * - being sent, or its outcome unknown: tried again once it settles;
- * - already with a person: left there.
+ * - being sent, or its outcome unknown: tried again once it settles (and the clearing-refund step
+ *   re-checks the refund itself, so a note that settles to issued later is still never refunded);
+ * - already with a person for another reason (its refund from clearing refused, say): held again
+ *   as `refund_reversed_after_credit`, with the alert, so nobody refunds it by hand.
  */
 export const projectBidRefundReversed: ProjectionPolicy<BidRefundReversedFacts> = (facts) => {
   const cancel: string[] = [];
@@ -322,12 +323,14 @@ export const projectBidRefundReversed: ProjectionPolicy<BidRefundReversedFacts> 
   for (const { reference, standing } of facts.reversed) {
     switch (standing) {
       case "absent":
-      case "held_for_review":
         break;
       case "waiting":
         cancel.push(reference);
         break;
       case "issued":
+      case "held_for_review":
+        // Held already for another reason (Books refused its refund from clearing, say): held
+        // again for this one, so nobody refunds by hand a refund that was taken back.
         hold.push({ reference, reason: "refund_reversed_after_credit" });
         break;
       case "in_flight":

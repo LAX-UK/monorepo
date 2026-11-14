@@ -328,14 +328,16 @@ describe("courier refund total lowered (a refund taken back by the group's repai
     ).toMatchObject({ ok: false, refusal: { code: "bad_facts" } });
   });
 
-  it("leaves one already with a person there", () => {
+  it("holds again, as taken back, one already with a person for another reason (review N2)", () => {
     const made = credited([3_000]);
     const projection = must(
       projectBidDeliveryRefunded(
         facts({ refundedPence: 0, priorCredits: made, priorStandings: ["held_for_review"] }),
       ),
     );
-    expect(projection.hold ?? []).toEqual([]);
+    expect(projection.hold).toEqual([
+      { reference: made[0]?.reference, reason: "refund_reversed_after_credit" },
+    ]);
     expect(projection.cancel ?? []).toEqual([]);
     expect(notes(projection.documents)).toEqual([]);
   });
@@ -367,7 +369,7 @@ describe("courier refund total lowered (a refund taken back by the group's repai
 describe("refund taken back after its credit note was made (payment.refund_reversed)", () => {
   const reference = (n: number) => `LAX-BID-CN-0b6a7c1e-4444-4a5b-8c9d-00000000000${n}`;
 
-  it("cancels one never sent, holds one issued for a person, leaves one with a person or absent", () => {
+  it("cancels one never sent, holds one issued (or already with a person, review N2) for a person, leaves one absent", () => {
     const projection = must(
       projectBidRefundReversed({
         reversed: [
@@ -381,7 +383,10 @@ describe("refund taken back after its credit note was made (payment.refund_rever
     expect(projection).toEqual({
       documents: [],
       cancel: [reference(1)],
-      hold: [{ reference: reference(2), reason: "refund_reversed_after_credit" }],
+      hold: [
+        { reference: reference(2), reason: "refund_reversed_after_credit" },
+        { reference: reference(3), reason: "refund_reversed_after_credit" },
+      ],
     });
   });
 
