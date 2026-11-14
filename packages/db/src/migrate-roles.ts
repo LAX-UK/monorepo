@@ -409,6 +409,9 @@ export const WORKER_STRIPE_ATTRIBUTION_READ_COLUMNS = [
 ] as const;
 export const ACCOUNTING_STRIPE_SHOP_ORDER_FUNCTION = "accounting_stripe_shop_order(text)";
 export const ACCOUNTING_STRIPE_SHOP_ORDER_ROLES = ["worker_app"] as const;
+/** The same question for an original sold directly in the Shop (migration 0389). */
+export const ACCOUNTING_STRIPE_SHOP_ORIGINAL_SALE_FUNCTION =
+  "accounting_stripe_shop_original_sale(text)";
 
 /**
  * What the accounting projection reads to book a paid Shop order (plan v2, flows 18-20), column by
@@ -456,6 +459,44 @@ export const WORKER_SHOP_INVOICE_READ_COLUMNS = [
   ["shop_product", ["id", "title"]],
   ["shop_product_variant", ["id", "product_id", "sku"]],
   ["shop_guest_customer", ["id", "email", "name", "erased_at"]],
+  /**
+   * A refund that went through, for its credit note (flow 21) and the clearing-refund step's check,
+   * and whether Stripe reversed it after it succeeded: never its Stripe ids, nor what staff wrote
+   * when they settled it outside Stripe.
+   */
+  [
+    "shop_refund",
+    [
+      "id",
+      "order_id",
+      "order_line_id",
+      "amount_pence",
+      "status",
+      "settled_outside_at",
+      "reversed_at",
+      "created_at",
+      "updated_at",
+    ],
+  ],
+  /** An original sold directly in the Shop and invoiced by Books (migration 0389). */
+  [
+    "shop_original_sale",
+    [
+      "id",
+      "status",
+      "artwork_id",
+      "buyer_party_id",
+      "sale_price_pence",
+      "vat_treatment",
+      "vat_pence",
+      "invoice_issuer",
+      "invoice_number",
+      "paid_at",
+      "invoice_recipient_email",
+      "invoice_recipient_name",
+    ],
+  ],
+  ["shop_party", ["id", "display_name", "identity_subject_id"]],
 ] as const;
 
 /**
@@ -1757,6 +1798,11 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
         }
         for (const role of ACCOUNTING_STRIPE_SHOP_ORDER_ROLES) {
           await grantExecuteIfFunctionExists(client, role, ACCOUNTING_STRIPE_SHOP_ORDER_FUNCTION);
+          await grantExecuteIfFunctionExists(
+            client,
+            role,
+            ACCOUNTING_STRIPE_SHOP_ORIGINAL_SALE_FUNCTION,
+          );
         }
         for (const role of ACCOUNTING_RELEASE_SHOP_ORDER_BASIS_ROLES) {
           await grantExecuteIfFunctionExists(

@@ -10,6 +10,7 @@ import {
   parkedRecord,
   projectBidPaymentGroupSettled,
   projectShopOrderPaid,
+  projectShopRefundSettled,
   refuse,
   release,
 } from "@auction/accounting-domain";
@@ -387,5 +388,89 @@ describe("AccountingQueueService.release, a Shop delivery outside the UK", () =>
       ok: false,
       refusal: "unresolved",
     });
+  });
+});
+
+describe("AccountingQueueService.release, a Shop refund's credit note settled outside Stripe", () => {
+  it("is never released: the account the money went back from is not held in LAX", async () => {
+    const refundId = "5b6a7c1e-7777-4a5b-8c9d-000000000007";
+    const credited = projectShopRefundSettled({
+      order: shopOrder,
+      refunds: [
+        {
+          refundId,
+          amountPence: 45_000,
+          refundedOn: "2026-11-13",
+          orderLineId: shopOrder.lines[0]?.id ?? null,
+          settledOutside: true,
+        },
+      ],
+      refundId,
+      registered: [],
+    });
+    if (!credited.ok) throw new Error(credited.refusal.message);
+    const note = credited.value.documents.find(
+      (d) => d.kind === "credit_note",
+    ) as AccountingDocument;
+    const parked: StoredAccountingDocument = {
+      ...stored(note, parkedRecord("credit_note", note.reference, "refund_outside_stripe")),
+      product: "shop",
+      legalEntity: "london_art_exchange",
+    };
+    const { service, applied, audits } = setUp([parked]);
+    expect(await service.release(ask(parked))).toMatchObject({
+      ok: false,
+      refusal: "unresolved",
+      message: expect.stringMatching(/settled outside Stripe/),
+    });
+    expect(applied).toEqual([]);
+    expect(audits).toEqual([]);
+  });
+});
+
+describe("AccountingQueueService.release, a Shop credit note parked with its outside-UK delivery invoice", () => {
+  it("is never released: it waits for the accountant's answer on that delivery", async () => {
+    const refundId = "5b6a7c1e-7777-4a5b-8c9d-000000000008";
+    const outside = {
+      ...shopOrder,
+      totalPence: shopOrder.totalPence - shopOrder.delivery.grossPence + 6_000,
+      delivery: {
+        scope: "outside_uk" as const,
+        label: "Delivery outside the UK",
+        grossPence: 6_000,
+        vatPence: null,
+      },
+    };
+    const credited = projectShopRefundSettled({
+      order: outside,
+      refunds: [
+        {
+          refundId,
+          amountPence: outside.totalPence,
+          refundedOn: "2026-11-13",
+          orderLineId: null,
+          settledOutside: false,
+        },
+      ],
+      refundId,
+      registered: [],
+    });
+    if (!credited.ok) throw new Error(credited.refusal.message);
+    const note = credited.value.documents.find(
+      (d) => d.kind === "credit_note" && d.reference.endsWith("-delivery"),
+    ) as AccountingDocument;
+    const parked: StoredAccountingDocument = {
+      ...stored(note, parkedRecord("credit_note", note.reference, "vat_on_outside_uk_delivery")),
+      product: "shop",
+      legalEntity: "london_art_exchange",
+    };
+    const { service, applied, audits } = setUp([parked]);
+    expect(await service.release(ask(parked))).toMatchObject({
+      ok: false,
+      refusal: "unresolved",
+      message: expect.stringMatching(/outside-UK delivery/),
+    });
+    expect(applied).toEqual([]);
+    expect(audits).toEqual([]);
   });
 });

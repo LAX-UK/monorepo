@@ -70,6 +70,7 @@ export { assertDomainEventConsumerContract } from "./consumer-guard.js";
 export { listDomainEventTypesForConsumer } from "./consumer-routing.js";
 export {
   shopAccountingOrderPaidPayloadSchemaV1,
+  shopAccountingOriginalSalePaidPayloadSchemaV1,
   shopOrderPaidPayloadSchemaV1,
   userPersonalDataAnonymisedPayloadSchemaV1,
   type UserPersonalDataAnonymisedPayloadV1,
@@ -109,6 +110,7 @@ export {
   shopPossessionRecordedPayloadSchemaV1,
   shopProductionStartedPayloadSchemaV1,
   shopRefundCompletedPayloadSchemaV1,
+  shopRefundReversedPayloadSchemaV1,
   shopRefundRequestedPayloadSchemaV1,
   shopSaleFeeApprovedPayloadSchemaV1,
   shopStockHoldCreatedPayloadSchemaV1,

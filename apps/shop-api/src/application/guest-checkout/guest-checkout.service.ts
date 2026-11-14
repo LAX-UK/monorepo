@@ -63,6 +63,8 @@ export type GuestQuoteRequestInput = Omit<
   marketingConsent: boolean;
   basketTokenHash: string;
   clientIp: string | null;
+  /** The visitor's own address for capping holds; null when it is not known. */
+  visitorIp: string | null;
 };
 
 export type GuestQuoteRequestResult =
@@ -202,7 +204,8 @@ export function createGuestCheckoutService(deps: GuestCheckoutDeps) {
         name,
         marketingConsent,
         basketTokenHash,
-        clientIp,
+        clientIp: _clientIp,
+        visitorIp,
         ...request
       } = input;
       const { guestCustomerId } = await deps.guests.record(
@@ -219,7 +222,7 @@ export function createGuestCheckoutService(deps: GuestCheckoutDeps) {
         subject: guestOrderSubject(guestCustomerId),
         guest: { guestCustomerId, basketTokenHash },
         fallbackEmail: admission.email,
-        guestIpHash: clientIp && deps.hashClientIp ? deps.hashClientIp(clientIp) : null,
+        guestIpHash: visitorIp && deps.hashClientIp ? deps.hashClientIp(visitorIp) : null,
       });
       const orderId =
         outcome.kind === "quote_requested"

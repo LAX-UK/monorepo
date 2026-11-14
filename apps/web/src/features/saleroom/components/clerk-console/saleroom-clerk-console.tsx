@@ -62,6 +62,7 @@ function ClerkConsoleInner({
   session,
   activityLog,
   liveFeed,
+  resyncFromServer,
 }: Omit<Props, "initial"> & {
   session: ReturnType<
     typeof import("@/features/saleroom/hooks/use-staff-saleroom-live").useStaffSaleroomLive
@@ -72,6 +73,9 @@ function ClerkConsoleInner({
   liveFeed: ReturnType<
     typeof import("@/features/saleroom/hooks/use-staff-saleroom-live").useStaffSaleroomLive
   >["liveFeed"];
+  resyncFromServer: ReturnType<
+    typeof import("@/features/saleroom/hooks/use-staff-saleroom-live").useStaffSaleroomLive
+  >["resyncFromServer"];
   initialDisplayOverlay?: SaleroomDisplayOverlay | null;
 }) {
   const router = useRouter();
@@ -152,6 +156,7 @@ function ClerkConsoleInner({
             livePhase={model.session.livePhase}
             sessionStatus={model.action.sessionStatus}
             sticky={model.phaseLayout.stickySessionToolbar}
+            confirmFromServer={resyncFromServer}
           />
         ),
         runway: (
@@ -247,13 +252,14 @@ export function SaleroomClerkConsole(props: Props) {
       dbEvents={props.initial.events}
       trackLiveFeed
     >
-      {({ session, activityLog, liveFeed }) => (
+      {({ session, activityLog, liveFeed, resyncFromServer }) => (
         <ClerkConsoleInner
           {...props}
           initialDisplayOverlay={initialDisplayOverlay}
           session={session}
           activityLog={activityLog}
           liveFeed={liveFeed}
+          resyncFromServer={resyncFromServer}
         />
       )}
     </SaleroomLiveShell>

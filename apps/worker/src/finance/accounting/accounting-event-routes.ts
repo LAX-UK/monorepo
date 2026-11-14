@@ -11,6 +11,9 @@ import {
   type ProjectionPolicy,
   type Result,
   laxReference,
+  shopCreditBuiltAfter,
+  shopDeliveryCreditSourceId,
+  shopOutsideUkDeliverySourceId,
 } from "@auction/accounting-domain";
 import type {
   CreditBasis,
@@ -24,6 +27,9 @@ import {
   paymentGroupDeliveryRefundedPayloadSchemaV1,
   paymentGroupSettledPayloadSchemaV1,
   shopAccountingOrderPaidPayloadSchemaV1,
+  shopAccountingOriginalSalePaidPayloadSchemaV1,
+  shopRefundCompletedPayloadSchemaV1,
+  shopRefundReversedPayloadSchemaV1,
 } from "@auction/types";
 import { z } from "zod";
 
@@ -163,6 +169,7 @@ function route<F extends BuiltFlow>(
   product: Product,
   flow: F,
   read: (facts: AccountingFactsReaders, event: AccountingEvent) => Promise<RouteRead<FlowFacts[F]>>,
+  basisOf?: (facts: FlowFacts[F], projection: Projection) => CreditBasis,
 ): AccountingEventRoute {
   const policy = PROJECTION_POLICIES[flow] as ProjectionPolicy<FlowFacts[F]>;
   return {
@@ -171,8 +178,15 @@ function route<F extends BuiltFlow>(
     async project(facts, event) {
       const read_ = await read(facts, event);
       if (read_.status === "skip") return read_;
-      const basis = "basis" in read_ ? read_.basis : undefined;
-      return { status: "ready", projection: policy(read_.facts), ...(basis ? { basis } : {}) };
+      const projection = policy(read_.facts);
+      // A basis that depends on what was built (each new credit note's place) is stated after it.
+      const basis =
+        basisOf && projection.ok
+          ? basisOf(read_.facts, projection.value)
+          : "basis" in read_
+            ? read_.basis
+            : undefined;
+      return { status: "ready", projection, ...(basis ? { basis } : {}) };
     },
   };
 }
@@ -399,4 +413,89 @@ export const ACCOUNTING_EVENT_ROUTES: Readonly<Record<string, AccountingEventRou
     }
     return read;
   }),
+  // A Shop refund went through (Stripe, or settled outside it by staff): every refund of the order
+  // that went through is replayed against the order's invoice, after its credit notes already
+  // registered; each new one is checked when registered against the refunds and credit it was
+  // built after.
+  "shop.refund.completed": route(
+    "shop",
+    "shop_refund_settled",
+    async (facts, event) => {
+      const payload = shopRefundCompletedPayloadSchemaV1.safeParse(event.payload);
+      if (!payload.success) throw new AccountingEventPayloadError(event.eventType);
+      if (payload.data.status !== "succeeded") return { status: "skip", reason: "not_succeeded" };
+      if (!facts.shop.refundSettled) return { status: "skip", reason: "shop_facts_not_wired" };
+      if (!facts.books) throw new AccountingBooksViewMissingError(event.eventType);
+      const read = await facts.shop.refundSettled(payload.data.refundId);
+      if (read.status === "skip") return read;
+      const invoice = laxReference("shop", "invoice", read.facts.order.orderId);
+      const deliveryInvoice = laxReference(
+        "shop",
+        "invoice",
+        shopOutsideUkDeliverySourceId(read.facts.order.orderId),
+      );
+      if (!invoice.ok || !deliveryInvoice.ok) {
+        throw new AccountingEventPayloadError(event.eventType);
+      }
+      const registered = await facts.books.creditNotesFor(invoice.value);
+      // The outside-UK delivery invoice's own credit notes (a whole-order refund's delivery part).
+      const registeredDelivery =
+        read.facts.order.delivery.scope === "outside_uk"
+          ? await facts.books.creditNotesFor(deliveryInvoice.value)
+          : [];
+      return { status: "ready", facts: { ...read.facts, registered, registeredDelivery } };
+    },
+    (facts, projection) => ({
+      kind: "shop_refunds",
+      orderId: facts.order.orderId,
+      succeededRefunds: facts.refunds.length,
+      builtAfter: shopCreditBuiltAfter(projection.documents, [
+        ...facts.registered,
+        ...(facts.registeredDelivery ?? []),
+      ]),
+    }),
+  ),
+  // A Shop refund Stripe reported failed after it succeeded: the money came back to LAX's Stripe
+  // balance. Its credit notes are cancelled if never sent, or held for a person if issued (never
+  // guessed, never refunded from clearing), exactly as for a Bid refund taken back.
+  "shop.refund.reversed": route("shop", "shop_refund_reversed", async (facts, event) => {
+    const payload = shopRefundReversedPayloadSchemaV1.safeParse(event.payload);
+    if (!payload.success) throw new AccountingEventPayloadError(event.eventType);
+    if (!facts.shop.refundReversed) return { status: "skip", reason: "shop_facts_not_wired" };
+    if (!facts.books) throw new AccountingBooksViewMissingError(event.eventType);
+    const head = await facts.shop.refundReversed(payload.data.refundId);
+    if (head.status === "skip") return head;
+    const invoice = laxReference("shop", "invoice", head.facts.orderId);
+    const deliveryInvoice = laxReference(
+      "shop",
+      "invoice",
+      shopOutsideUkDeliverySourceId(head.facts.orderId),
+    );
+    if (!invoice.ok || !deliveryInvoice.ok) throw new AccountingEventPayloadError(event.eventType);
+    // Any registration that read its facts before the reversal has committed, or will be refused.
+    await facts.books.awaitCreditRegistrations(invoice.value);
+    await facts.books.awaitCreditRegistrations(deliveryInvoice.value);
+    const reversed: { reference: string; standing: CreditStanding }[] = [];
+    for (const refundId of head.facts.reversedRefundIds) {
+      for (const sourceId of [refundId, shopDeliveryCreditSourceId(refundId)]) {
+        const reference = laxReference("shop", "credit_note", sourceId);
+        if (!reference.ok) throw new AccountingEventPayloadError(event.eventType);
+        reversed.push({
+          reference: reference.value,
+          standing: await facts.books.creditStanding(reference.value),
+        });
+      }
+    }
+    return { status: "ready", facts: { reversed } };
+  }),
+  // An original sold directly in the Shop, paid: its Books invoice and the payment (flow 22).
+  "shop.accounting.original_sale_paid": route(
+    "shop",
+    "shop_original_sale_paid",
+    async (facts, event) => {
+      const payload = shopAccountingOriginalSalePaidPayloadSchemaV1.safeParse(event.payload);
+      if (!payload.success) throw new AccountingEventPayloadError(event.eventType);
+      return facts.shop.originalSalePaid(payload.data.originalSaleId);
+    },
+  ),
 };

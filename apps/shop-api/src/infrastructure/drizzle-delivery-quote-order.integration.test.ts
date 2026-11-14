@@ -12,9 +12,9 @@ import {
   MAX_OPEN_QUOTE_REQUESTS_PER_BUYER,
   MAX_OPEN_QUOTE_REQUESTS_PER_GUEST_IP,
 } from "@auction/shop-domain";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import type pg from "pg";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { createDeliveryQuoteRequestService } from "../application/delivery-quote-request/delivery-quote-request.service.js";
 import type { PaymentCheckoutGateway } from "../application/ports/commerce.ports.js";
 import {
@@ -30,6 +30,7 @@ import {
 } from "../test-support/shop-integration-setup.js";
 import { createDrizzleCommerceRepository } from "./drizzle-commerce.repository.js";
 import { createDrizzleDeliveryQuoteOrderStore } from "./drizzle-delivery-quote-order.store.js";
+import { expireShopCheckoutSession } from "./drizzle-payment-event.processor.js";
 import { createDrizzleShopNotificationPublisher } from "./drizzle-shop-notification.publisher.js";
 import { reapStaleShopCheckouts } from "./shop-checkout-reaper.js";
 
@@ -64,12 +65,31 @@ const address = (country: string) => ({
   country,
 });
 
+const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+
 describe.skipIf(!hasShopIntegrationDb)("delivery quote requests", () => {
   let ownerPool!: pg.Pool;
   let shopPool!: pg.Pool;
 
   beforeAll(async () => {
     ({ ownerPool, shopPool } = await setupShopIntegrationPools());
+  });
+
+  // Every order a test opens, so its hold is ended afterwards. A hold left pending would sit in the
+  // reaper's oldest-first batch and crowd out other test files' orders.
+  const openedOrders: Array<{ db: ReturnType<typeof createShopDb>; orderId: string }> = [];
+
+  afterEach(async () => {
+    const opened = openedOrders.splice(0);
+    const afterAnyHold = new Date(Date.now() + 30 * 24 * 3_600_000);
+    for (const { db, orderId } of opened) {
+      await expireShopCheckoutSession(db, {
+        eventId: `test-cleanup:order:${orderId}`,
+        orderId,
+        source: "test-cleanup",
+        holdMustHaveEndedBy: afterAnyHold,
+      });
+    }
   });
 
   afterAll(async () => {
@@ -81,6 +101,10 @@ describe.skipIf(!hasShopIntegrationDb)("delivery quote requests", () => {
     regions = DEFAULT_DELIVERY_REGIONS.map((r) => ({ ...r })),
     authorised = 1,
     exportPaymentEnabled = true,
+    guestHoldAlert?: {
+      threshold: number;
+      alert: (alert: { artworkId: string; orderReference: string }) => void;
+    },
   ) {
     const db = createShopDb(shopPool);
     const suffix = integrationSuffix(label);
@@ -104,6 +128,12 @@ describe.skipIf(!hasShopIntegrationDb)("delivery quote requests", () => {
       orders: createDrizzleDeliveryQuoteOrderStore(db, {
         domainEventMode: "off",
         notifications: createDrizzleShopNotificationPublisher(),
+        ...(guestHoldAlert
+          ? {
+              guestHoldAlertThreshold: guestHoldAlert.threshold,
+              alertGuestHoldsCrowded: guestHoldAlert.alert,
+            }
+          : {}),
       }),
       checkout: repo,
       exportPaymentEnabled,
@@ -122,34 +152,44 @@ describe.skipIf(!hasShopIntegrationDb)("delivery quote requests", () => {
         artworkSlug: imported.slug,
         quantity: 1,
       });
+    const track = async <T extends { kind: string }>(pending: Promise<T>): Promise<T> => {
+      const outcome = await pending;
+      const opened = (outcome as { request?: { orderId?: string } }).request?.orderId;
+      if (opened) openedOrders.push({ db, orderId: opened });
+      return outcome;
+    };
     const guestRequest = (
       basketId: string,
       guest: { id: string; token: string; ip: string },
       key = `delivery-quote:${basketId}`,
     ) =>
-      quotes.request({
-        subject: `guest:${guest.id}`,
-        guest: { guestCustomerId: guest.id, basketTokenHash: guest.token },
-        guestIpHash: guest.ip,
-        basketId,
-        idempotencyKey: key,
-        successUrl: "http://localhost:3020/checkout/confirmation?orderId={ORDER_ID}",
-        cancelUrl: "http://localhost:3020/checkout/cancel?orderId={ORDER_ID}",
-        deliveryAddress: address("DE"),
-        deliveryPhone: "+49 30 1234567",
-        fallbackEmail: `${suffix}@example.test`,
-      });
+      track(
+        quotes.request({
+          subject: `guest:${guest.id}`,
+          guest: { guestCustomerId: guest.id, basketTokenHash: guest.token },
+          guestIpHash: guest.ip,
+          basketId,
+          idempotencyKey: key,
+          successUrl: "http://localhost:3020/checkout/confirmation?orderId={ORDER_ID}",
+          cancelUrl: "http://localhost:3020/checkout/cancel?orderId={ORDER_ID}",
+          deliveryAddress: address("DE"),
+          deliveryPhone: "+49 30 1234567",
+          fallbackEmail: `${suffix}@example.test`,
+        }),
+      );
     const request = (basketId: string, country = "DE", key = `delivery-quote:${basketId}`) =>
-      quotes.request({
-        subject,
-        basketId,
-        idempotencyKey: key,
-        successUrl: "http://localhost:3020/checkout/confirmation?orderId={ORDER_ID}",
-        cancelUrl: "http://localhost:3020/checkout/cancel?orderId={ORDER_ID}",
-        deliveryAddress: address(country),
-        deliveryPhone: "+49 30 1234567",
-        fallbackEmail: `${suffix}@example.test`,
-      });
+      track(
+        quotes.request({
+          subject,
+          basketId,
+          idempotencyKey: key,
+          successUrl: "http://localhost:3020/checkout/confirmation?orderId={ORDER_ID}",
+          cancelUrl: "http://localhost:3020/checkout/cancel?orderId={ORDER_ID}",
+          deliveryAddress: address(country),
+          deliveryPhone: "+49 30 1234567",
+          fallbackEmail: `${suffix}@example.test`,
+        }),
+      );
     const quoteFor = async (orderId: string) =>
       requireDefined(
         (
@@ -360,7 +400,11 @@ describe.skipIf(!hasShopIntegrationDb)("delivery quote requests", () => {
   });
 
   it("holds a guest's print for one working day, and records who asked only as hashes", async () => {
-    const { guestRequest, newGuest, guestBasket, quoteFor } = await setup("guest-hold");
+    const { guestRequest, newGuest, guestBasket, quoteFor } = await setup(
+      "guest-hold",
+      DEFAULT_DELIVERY_REGIONS.map((r) => ({ ...r })),
+      2,
+    );
     const guest = await newGuest("token-a", "ip-hash-a");
     const basket = await guestBasket(guest.token);
     const outcome = await guestRequest(basket.basketId, guest);
@@ -394,7 +438,8 @@ describe.skipIf(!hasShopIntegrationDb)("delivery quote requests", () => {
   });
 
   it("caps open holds per network, whatever browser or email", async () => {
-    // A run holds at most 4 prints, so the network's holds are spread over two works.
+    // A run holds at most 4 prints and a guest never holds the last, so the network's holds are
+    // spread over two works.
     const first = await setup(
       "guest-ip-cap-a",
       DEFAULT_DELIVERY_REGIONS.map((r) => ({ ...r })),
@@ -406,7 +451,7 @@ describe.skipIf(!hasShopIntegrationDb)("delivery quote requests", () => {
       3,
     );
     const network = `shared-ip-${first.suffix}`;
-    const holds = [first, first, first, second];
+    const holds = [first, first, second, second];
     expect(holds).toHaveLength(MAX_OPEN_QUOTE_REQUESTS_PER_GUEST_IP);
     for (const [i, shop] of holds.entries()) {
       const guest = await shop.newGuest(`token-${first.suffix}-${i}`, network);
@@ -418,5 +463,138 @@ describe.skipIf(!hasShopIntegrationDb)("delivery quote requests", () => {
     await expect(second.guestRequest(basket.basketId, another)).rejects.toMatchObject({
       statusCode: 409,
     });
+  });
+
+  it("keeps the last print of a run from a guest's hold, holding nothing", async () => {
+    const { db, imported, guestRequest, newGuest, guestBasket } = await setup("guest-last-print");
+    const guest = await newGuest(`token-last-${integrationSuffix("t")}`, "ip-last");
+    const basket = await guestBasket(guest.token);
+    await expect(guestRequest(basket.basketId, guest)).rejects.toMatchObject({ statusCode: 409 });
+    const editions = await db
+      .select({ status: shopEdition.listingStatus })
+      .from(shopEdition)
+      .where(eq(shopEdition.artworkId, imported.artworkId));
+    expect(editions.map((e) => e.status)).not.toContain("reserved");
+  });
+
+  it("queues every path that reserves a print behind the artwork's reservation lock", async () => {
+    const shop = await setup("reservation-lock", undefined, 4);
+    const other = (name: string) => ({
+      kind: "subject" as const,
+      identitySubjectId: `${name}-${shop.suffix}`,
+    });
+    const ownBasket = await shop.addBasket();
+    const guest = await shop.newGuest(`token-lock-${shop.suffix}`, `ip-lock-${shop.suffix}`);
+    const guestBasket = await shop.guestBasket(guest.token);
+    const payBasket = await shop.repo.addOrUpdateLine({
+      owner: other("payer"),
+      artworkSlug: shop.imported.slug,
+      quantity: 1,
+    });
+
+    const lock = await ownerPool.connect();
+    const started: Promise<unknown>[] = [];
+    try {
+      await lock.query("begin");
+      await lock.query("select pg_advisory_xact_lock(hashtext($1))", [
+        `shop-edition-reservation:${shop.imported.artworkId}`,
+      ]);
+      const waiting = (work: Promise<unknown>) => {
+        started.push(work.catch(() => undefined));
+        return Promise.race([work.then(() => "done"), sleep(400).then(() => "waiting")]);
+      };
+      expect(await waiting(shop.request(ownBasket.basketId))).toBe("waiting");
+      expect(await waiting(shop.guestRequest(guestBasket.basketId, guest))).toBe("waiting");
+      expect(
+        await waiting(
+          shop.repo.createCheckoutOrder({
+            subject: `payer-${shop.suffix}`,
+            basketId: payBasket.basketId,
+            fulfilment: "uk_insured_delivery",
+            idempotencyKey: `checkout:${payBasket.basketId}:order`,
+            successUrl: "http://localhost:3020/checkout/confirmation?orderId={ORDER_ID}",
+            cancelUrl: "http://localhost:3020/checkout/cancel?orderId={ORDER_ID}",
+            deliveryAddress: {
+              recipientName: "Ada Lovelace",
+              line1: "1 High Street",
+              city: "London",
+              postcode: "SW1A 1AA",
+              country: "GB",
+            },
+            deliveryPhone: "07700 900123",
+          }),
+        ),
+      ).toBe("waiting");
+    } finally {
+      await lock.query("commit");
+      lock.release();
+    }
+    await Promise.all(started);
+    const reserved = await shop.db
+      .select({ id: shopEdition.id })
+      .from(shopEdition)
+      .where(
+        and(
+          eq(shopEdition.artworkId, shop.imported.artworkId),
+          eq(shopEdition.listingStatus, "reserved"),
+        ),
+      );
+    expect(reserved).toHaveLength(3);
+  });
+
+  it("holds a network to its cap when its requests arrive at once", async () => {
+    const works = await Promise.all(
+      ["a", "b", "c"].map((w) =>
+        setup(
+          `guest-ip-race-${w}`,
+          DEFAULT_DELIVERY_REGIONS.map((r) => ({ ...r })),
+          3,
+        ),
+      ),
+    );
+    const network = `race-ip-${requireDefined(works[0], "work").suffix}`;
+    const shops = [works[0], works[0], works[1], works[1], works[2]].map((w) =>
+      requireDefined(w, "work"),
+    );
+    expect(shops.length).toBe(MAX_OPEN_QUOTE_REQUESTS_PER_GUEST_IP + 1);
+    const ready = await Promise.all(
+      shops.map(async (shop, i) => {
+        const guest = await shop.newGuest(`token-race-${network}-${i}`, network);
+        return { shop, guest, basket: await shop.guestBasket(guest.token) };
+      }),
+    );
+    const outcomes = await Promise.allSettled(
+      ready.map(({ shop, guest, basket }) => shop.guestRequest(basket.basketId, guest)),
+    );
+    expect(outcomes.filter((o) => o.status === "fulfilled")).toHaveLength(
+      MAX_OPEN_QUOTE_REQUESTS_PER_GUEST_IP,
+    );
+    const refused = outcomes.filter((o) => o.status === "rejected");
+    expect(refused).toHaveLength(1);
+    expect((refused[0] as PromiseRejectedResult).reason).toMatchObject({ statusCode: 409 });
+  });
+
+  it("alerts once open guest holds on one artwork pass the threshold, not before", async () => {
+    const alert = vi.fn();
+    const shop = await setup(
+      "guest-hold-alert",
+      DEFAULT_DELIVERY_REGIONS.map((r) => ({ ...r })),
+      3,
+      true,
+      { threshold: 1, alert },
+    );
+    for (const [i, expected] of [0, 1].entries()) {
+      const guest = await shop.newGuest(`token-alert-${shop.suffix}-${i}`, `ip-alert-${i}`);
+      const basket = await shop.guestBasket(guest.token);
+      const outcome = await shop.guestRequest(basket.basketId, guest);
+      if (outcome.kind !== "quote_requested") throw new Error("expected a request");
+      expect(alert).toHaveBeenCalledTimes(expected);
+      if (expected > 0) {
+        expect(alert).toHaveBeenLastCalledWith({
+          artworkId: shop.imported.artworkId,
+          orderReference: outcome.request.orderReference,
+        });
+      }
+    }
   });
 });

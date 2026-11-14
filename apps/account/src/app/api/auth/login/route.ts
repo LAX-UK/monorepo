@@ -1,4 +1,4 @@
-import { sealPendingLogin } from "@/lib/pending-login-cookie";
+import { PENDING_LOGIN_MAX_AGE_SECONDS, sealPendingLogin } from "@/lib/pending-login-cookie";
 import { safeReturnTo } from "@/lib/safe-return-to";
 import { STEP_UP_SIGNED_OUT_PATH } from "@/lib/step-up-complete";
 import { getLaxAccountContainer } from "@/server/container";
@@ -59,7 +59,7 @@ export async function GET(request: Request): Promise<Response> {
       secure: container.cookies.secure,
       sameSite: "lax",
       path: "/",
-      maxAge: 600,
+      maxAge: PENDING_LOGIN_MAX_AGE_SECONDS,
     },
   );
   return NextResponse.redirect(authorizeUrl);

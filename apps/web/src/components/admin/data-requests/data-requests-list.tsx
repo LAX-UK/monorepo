@@ -18,11 +18,13 @@ import {
   dataRequestsAttention,
   dataRequestsMetrics,
   dataRequestsViewTabs,
+  erasureHoldsAttention,
   formatDay,
   kindParts,
   personLabelParts,
   requestStatus,
 } from "@/lib/admin/data-requests/data-requests.vm";
+import type { ErasureHoldFlag } from "@/lib/data/http/admin-data-requests.reader";
 import { copyToClipboard } from "@/lib/ui/copy-to-clipboard";
 import type {
   DataRequestList,
@@ -34,6 +36,7 @@ import {
   DataViews,
   FilterSheet,
   ListPage,
+  Notice,
   type OverflowAction,
   PrimaryCell,
   SortMenu,
@@ -51,6 +54,10 @@ import { LogDataRequestDialog } from "./log-data-request-dialog";
 export type DataRequestsListProps = {
   list: DataRequestList | null;
   summary: DataRequestSummary | null;
+  /** Held erasures staff must settle by hand. */
+  erasureHolds?: readonly ErasureHoldFlag[];
+  /** The held erasures could not be loaded, so staff are told rather than shown nothing. */
+  erasureHoldsUnreadable?: boolean;
   search: DataRequestsSearch;
   filters: DataRequestsFilters;
   chips: DataRequestsFilterChip[];
@@ -213,10 +220,15 @@ export function DataRequestsList(props: DataRequestsListProps) {
     [recordHref],
   );
 
-  const attention = dataRequestsAttention(summary, {
-    overdue: dataRequestsHref(search, { view: "overdue" }),
-    dueSoon: dataRequestsHref(search, { view: "open", sort: "due" }),
-  });
+  const attention = [
+    ...dataRequestsAttention(summary, {
+      overdue: dataRequestsHref(search, { view: "overdue" }),
+      dueSoon: dataRequestsHref(search, { view: "open", sort: "due" }),
+    }),
+    ...erasureHoldsAttention(props.erasureHolds ?? [], (reference) =>
+      dataRequestHref(reference, null),
+    ),
+  ];
   const tabs = dataRequestsViewTabs(summary);
   const empty = DATA_REQUESTS_EMPTY[filters.view];
 
@@ -236,6 +248,13 @@ export function DataRequestsList(props: DataRequestsListProps) {
           >
             Log a manual request
           </StaffButton>
+        }
+        notice={
+          props.erasureHoldsUnreadable ? (
+            <Notice tone="warning" title="Held erasures could not be loaded">
+              Erasures held by a private sale are not shown. Reload the page to check again.
+            </Notice>
+          ) : null
         }
         attention={attention}
         {...(summary

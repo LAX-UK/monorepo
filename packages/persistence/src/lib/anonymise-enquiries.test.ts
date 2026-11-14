@@ -67,7 +67,7 @@ function fakeTx(input: {
     (input.deals ?? []).map((d) => ({ id: "d1", ...d })),
     input.parties ?? [],
     input.named ?? [],
-    input.settled ?? [],
+    (input.settled ?? []).map((row) => ({ toStage: "settled", ...row })),
     input.screenings ?? [],
     input.funds ?? [],
     input.holds ?? [],
@@ -119,7 +119,13 @@ describe("anonymiseEnquiries", () => {
   it("holds a converted enquiry: nothing is changed and it is counted", async () => {
     const { tx, update, del } = fakeTx({ matched: [{ id: "e1", status: "converted" }] });
     const counts = await anonymiseEnquiries(tx, { kind: "accounts", userIds: ["user_1"] });
-    expect(counts).toEqual({ enquiries: 0, notes: 0, attachments: 0, held: 1 });
+    expect(counts).toEqual({
+      enquiries: 0,
+      notes: 0,
+      attachments: 0,
+      held: 1,
+      hold: { until: null, withoutEnd: true },
+    });
     expect(update).not.toHaveBeenCalled();
     expect(del).not.toHaveBeenCalled();
   });
@@ -181,7 +187,13 @@ describe("anonymiseEnquiries", () => {
           matched: converted,
           deals: [{ enquiryId: "e1", stage, createdAt: created }],
         });
-        expect(counts).toEqual({ enquiries: 0, notes: 0, attachments: 0, held: 1 });
+        expect(counts).toEqual({
+          enquiries: 0,
+          notes: 0,
+          attachments: 0,
+          held: 1,
+          hold: { until: null, withoutEnd: false },
+        });
         expect(update).not.toHaveBeenCalled();
       },
     );
@@ -193,6 +205,7 @@ describe("anonymiseEnquiries", () => {
         settled: [{ dealId: "d1", at: new Date("2026-03-01T00:00:00Z") }],
       });
       expect(counts.held).toBe(1);
+      expect(counts.hold).toEqual({ until: new Date("2031-03-01T00:00:00Z"), withoutEnd: false });
       expect(update).not.toHaveBeenCalled();
     });
 
@@ -216,9 +229,18 @@ describe("anonymiseEnquiries", () => {
       expect((await run(input, 3)).counts.held).toBe(0);
     });
 
-    it("is held when the deal settled but its end date is not recorded", async () => {
+    it("ends a settled deal with no settle row on its own last write, not never", async () => {
+      const lastWrite = (at: string) => ({ ...settledDeal, updatedAt: new Date(at) });
+      const recent = await run({ matched: converted, deals: [lastWrite("2026-03-01T00:00:00Z")] });
+      expect(recent.counts.held).toBe(1);
+      const old = await run({ matched: converted, deals: [lastWrite("2021-03-01T00:00:00Z")] });
+      expect(old.counts).toMatchObject({ enquiries: 1, held: 0 });
+    });
+
+    it("is held, and said to have no end, when a settled deal carries no date at all", async () => {
       const { counts } = await run({ matched: converted, deals: [settledDeal] });
       expect(counts.held).toBe(1);
+      expect(counts.hold).toEqual({ until: null, withoutEnd: true });
     });
 
     const cancelled = (agreedAt: Date | null) => ({

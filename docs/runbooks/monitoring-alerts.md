@@ -527,6 +527,102 @@ back, and each stays due. While any waits, every run raises `accounting_shop_inv
 (an error alert sent to Sentry, routed to finance on-call like the other accounting alerts). Set
 the address and the waiting emails go on the next run.
 
+### Shop refunds, cancellations and returns to Books (credit notes, flow 21)
+
+**What happens.** When a Shop refund goes through (Stripe confirms it, or staff mark a failed one
+"refunded outside LAX"), the Shop writes `shop.refund.completed` with the refund (ids only). With
+the Shop aimed at Books, the worker replays every refund of the order that went through, in the
+order they went through, and books, in London Art Exchange's organisation only, one credit note
+per refund (`LAX-SHOP-CN-<refund>`) against the order's invoice, after the credit notes already
+there (kept as stored). Once the credit note is issued, its money is refunded in Books from Stripe
+clearing, once (`refund_credit_note` in its history), exactly as for Bid.
+
+- **Never more than charged.** A credit note only takes what is left on the invoice's lines; the
+  registry also refuses, under the invoice's credit lock, a note built from refunds or credit that
+  changed meanwhile (`credit_prior_changed`, tried again with fresh facts).
+- **Only where certain.** A refund naming a line is credited on that line (a return of one print,
+  or of a frame while the print is kept). Lines the books cannot tell apart (the same name, VAT
+  treatment and VAT rate, two identical frames say) are treated as one: the refund is credited on
+  them together, never above what they charged. A refund naming no line is credited when it takes
+  everything left on the order (a cancellation), or when only one line has credit left and it fits
+  there. Anything else is refused on its own event as `refund_unattributed` (failed deliveries,
+  for a person). Nothing is guessed.
+- **Waiting for a person.** Once a refund of an order is refused as `refund_unattributed`, every
+  refund of that order that goes through after it is refused too ("waits behind refund …"), and
+  none of them is ever credited automatically later. To book them: credit each by hand in Books
+  against the order's invoice, in the order they went through, and note them on the order. Do not
+  redrive their deliveries: they are refused again. Before booking by hand, check the order has no
+  other refund still pending in the Shop; one that went through at the same moment as the refused
+  one is the only case the order is not certain (ask engineering).
+- **Delivery outside the UK.** The delivery is its own invoice, parked
+  (`vat_on_outside_uk_delivery`) until the accountant answers. A refund naming no line is credited
+  only when it is everything left on both invoices (a whole-order refund or cancellation): the
+  order's part on the order's invoice, and the delivery's part as `LAX-SHOP-CN-<refund>-delivery`,
+  parked with the delivery invoice. Release refuses that credit note, and api_app may not move it
+  (migration 0388); it is released with the delivery invoice when the accountant's answer ships.
+  Any other refund naming no line on such an order is `refund_unattributed`, as above.
+- **Settled outside Stripe.** The money did not go back through clearing, and LAX does not hold the
+  account it went back from. The credit note is stored parked in **Needs a person** ("This refund
+  was settled outside Stripe…"), with no refund from clearing, and is never sent. Release refuses it,
+  and api_app may not move it at all (migration 0388). Do not cancel it: it keeps the invoice from
+  being credited twice. Naming the account is a later change; until then ask engineering.
+- **Refund reversed after it succeeded** (`accounting_refund_reversed_after_credit`). Stripe can
+  report a refund failed days after it succeeded (the card issuer could not return it); the money
+  is back in the Stripe balance. The Shop keeps the refund `succeeded` (what the order shows as
+  refunded is the Shop owner's call), records `reversed_at` and writes `shop.refund.reversed`. The
+  worker then cancels the refund's credit notes never sent, and holds an issued one for a person
+  with the alert, never refunded from clearing, exactly as for a Bid refund taken back: ask the
+  accountant how to reverse it in Books. The refund is left out of the order's other refunds from
+  then on.
+- **Backstop.** Before refunding a Shop credit note from clearing, the step reads the refund again
+  under the note's row lock: only a refund that went through by Stripe (succeeded, not settled
+  outside, not reversed) is refunded; otherwise the note is held as
+  `accounting_refund_reversed_after_credit` with the alert. This covers a reversal recorded while
+  the note was being sent.
+
+Rolling back migration 0388 (`0388_rollback.sql`, after the release) removes only its own ledger
+row: `shop_refund.reversed_at` stays (the earlier release does not read it, so a reversal Stripe
+reports while it runs is not recorded: check Stripe's failed refunds by hand until 0388 is back), and
+api_app's rule keeps both refusals, so a note parked as settled outside Stripe or with an outside-UK
+delivery invoice stays parked under the earlier release. Roll back 0388 before 0386 and 0385;
+restoring 0385's function by hand would let api_app release such a note unchanged, so do not while
+any is parked.
+
+**Renumbered before merge.** This migration was 0386 on its branch (ledger row `1811505600000`,
+which is now 0386 Stripe fees and payouts on main) and is 0388 on main. A database that ran the
+branch before the renumber holds this migration under 0386's ledger row, and would then skip main's
+0386. Before deploying main there, as the owner run
+`DELETE FROM drizzle.__drizzle_migrations WHERE created_at = 1811505600000;` (on that database the
+row is this migration's), then migrate: 0386 and 0388 both apply (0388 replaces the function with
+the same body). The buyer's Shop order page does not
+show credit notes yet.
+
+## Shop originals invoiced in Books (flow 22)
+
+**What happens.** Staff issue an original's invoice in Shop Admin › Sales. Only while the Shop is
+aimed at Books **live** does Books invoice it: no Stripe Invoice is made; Stripe makes a single-use
+Payment Link for the stored price, and Shop Admin shows it ("Nothing was emailed. Send … this
+payment link …"). Send the buyer that link. Once they pay, the sale takes the next `LAX-INV-` number
+from the Shop's counter, and the worker books the contact, the invoice and the payment, and emails
+the invoice to the address staff confirmed in the dialog (not to the buyer's LAX account, which
+they may not have). In dry run, in the test organisation and with Books off, the buyer gets the
+Stripe Invoice, emailed by Stripe, exactly as before: a rehearsal never changes what a buyer gets.
+
+- **A second payment** for an original already paid (another Checkout Session of its link) is
+  never applied: finance gets an unapplied-money task and alert (`shop_original_paid_twice`).
+  Refund the second payment in Stripe.
+- **`accounting_original_invoice_unsent`** (worker error log). An original's Books invoice had
+  nobody to go to (a sale issued before the recipient was stored, whose buyer has no reachable
+  account). Download the invoice from Finance › Accounting and send it to the buyer by hand.
+- **`shop_original_money_returned`** (Shop API log, and an ops alert email "Shop original refunded
+  or disputed (not credited in Books)"). A refund, failed refund or dispute of an original paid
+  through its link. Refunds of originals are not built yet: Books keeps the invoice and the payment,
+  and nothing credits them. Make the credit note (and its refund from Stripe clearing) by hand in
+  Books, against the original's invoice, and note it on the sale.
+- **Rollback** of the migration keeps every column and its data (issuer, link, number, payment,
+  recipient) and removes only the numbering trigger and the attribution function. Roll the release
+  back first; apply the migration again with the release that knows it.
+
 ## Books notices and the nightly status check (Zoho Books, rehearsal)
 
 Books is still in rehearsal (dry run, or the test organisation only). Nothing below changes

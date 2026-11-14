@@ -7,7 +7,7 @@ vi.mock("@hono/node-server/conninfo", () => ({
   }),
 }));
 
-const { commerceClientIp } = await import("./commerce-client-ip.js");
+const { commerceClientIp, commerceVisitorIp } = await import("./commerce-client-ip.js");
 
 async function resolve(headers: Record<string, string>): Promise<string> {
   const app = new Hono();
@@ -45,5 +45,25 @@ describe("commerceClientIp", () => {
         "x-forwarded-for": "1.1.1.1",
       }),
     ).toBe("203.0.113.9");
+  });
+});
+
+describe("commerceVisitorIp", () => {
+  async function visitor(headers: Record<string, string>): Promise<string> {
+    const app = new Hono();
+    app.get("/", (c) => c.text(commerceVisitorIp(c)));
+    return (await app.request("/", { headers })).text();
+  }
+
+  it("keeps an address that is there", async () => {
+    expect(await visitor({ "x-test-peer": "10.0.0.2", "x-forwarded-for": "203.0.113.9" })).toBe(
+      "203.0.113.9",
+    );
+  });
+
+  it("is unknown, not the proxy, when the chain cannot be read", async () => {
+    const peer = { "x-test-peer": "10.0.0.2" };
+    expect(await visitor({ ...peer, "x-forwarded-for": "garbage" })).toBe("unknown");
+    expect(await visitor(peer)).toBe("unknown");
   });
 });

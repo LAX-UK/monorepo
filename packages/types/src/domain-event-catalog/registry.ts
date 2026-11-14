@@ -54,6 +54,7 @@ import {
 import { SaleEventSchemas } from "./sale-payload-schemas.js";
 import {
   shopAccountingOrderPaidPayloadSchemaV1,
+  shopAccountingOriginalSalePaidPayloadSchemaV1,
   shopArtworkCreatedPayloadSchemaV1,
   shopArtworkInterestRegisteredPayloadSchemaV1,
   shopArtworkUpdatedPayloadSchemaV1,
@@ -82,6 +83,7 @@ import {
   shopProductionStartedPayloadSchemaV1,
   shopRefundCompletedPayloadSchemaV1,
   shopRefundRequestedPayloadSchemaV1,
+  shopRefundReversedPayloadSchemaV1,
   shopSaleFeeApprovedPayloadSchemaV1,
   shopStockHoldCreatedPayloadSchemaV1,
   shopStockHoldExpiredPayloadSchemaV1,
@@ -308,6 +310,7 @@ export const ALL_LIVE_DOMAIN_EVENT_TYPES = [
   "shop.editions.allocated",
   "shop.order.paid",
   "shop.accounting.order_paid",
+  "shop.accounting.original_sale_paid",
   "shop.guest_lead.recorded",
   "shop.guest_lead.claimed",
   "shop.guest_lead.erased",
@@ -321,6 +324,7 @@ export const ALL_LIVE_DOMAIN_EVENT_TYPES = [
   "shop.possession.recorded",
   "shop.refund.requested",
   "shop.refund.completed",
+  "shop.refund.reversed",
   "shop.cancellation.requested",
   "shop.dispute.opened",
   "shop.dispute.closed",
@@ -1146,6 +1150,14 @@ const REGISTRY_OVERRIDES: Partial<Record<LiveDomainEventType, RegistryOverride>>
     idempotencyPolicy: "aggregate_event_unique",
     piiClassification: "none",
   },
+  /** An original sold directly in the Shop, paid, for the books; references only. */
+  "shop.accounting.original_sale_paid": {
+    schema: shopAccountingOriginalSalePaidPayloadSchemaV1,
+    producers: ["shop-api"],
+    consumers: ["accounting"],
+    idempotencyPolicy: "aggregate_event_unique",
+    piiClassification: "none",
+  },
   "shop.order.paid": {
     schema: shopOrderPaidPayloadSchemaV1,
     producers: ["shop-api"],
@@ -1286,10 +1298,25 @@ const REGISTRY_OVERRIDES: Partial<Record<LiveDomainEventType, RegistryOverride>>
     idempotencyPolicy: "aggregate_event_unique",
     piiClassification: "contains_pii",
   },
+  /**
+   * A Shop refund went through (Stripe, or staff settled it outside Stripe), written with the refund
+   * in one transaction; ids only. The books credit the order's invoice from the stored rows.
+   */
   "shop.refund.completed": {
     schema: shopRefundCompletedPayloadSchemaV1,
     producers: ["shop-api"],
-    consumers: [],
+    consumers: ["accounting"],
+    idempotencyPolicy: "aggregate_event_unique",
+    piiClassification: "contains_pii",
+  },
+  /**
+   * Stripe reported a Shop refund failed after it had succeeded, written with the refund's
+   * `reversed_at` in one transaction; ids only. The books take the refund's credit back.
+   */
+  "shop.refund.reversed": {
+    schema: shopRefundReversedPayloadSchemaV1,
+    producers: ["shop-api"],
+    consumers: ["accounting"],
     idempotencyPolicy: "aggregate_event_unique",
     piiClassification: "contains_pii",
   },

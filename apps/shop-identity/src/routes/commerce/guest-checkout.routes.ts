@@ -11,7 +11,7 @@ import {
   orderProblemReportBodySchema,
   storefrontRedirectsBodySchema,
 } from "../../commerce-bodies.js";
-import { commerceClientIp } from "../../commerce-client-ip.js";
+import { commerceClientIp, commerceVisitorIp } from "../../commerce-client-ip.js";
 import { assertCommerceCsrf } from "../../commerce-csrf.js";
 import { resolveGuestCommerceContext } from "../../commerce-session.js";
 import { readGuestOrderToken, writeGuestOrderToken } from "../../guest-order-cookie.js";
@@ -39,6 +39,8 @@ export function registerCommerceGuestCheckoutRoutes(
       scopes: "shop.read" | "shop.write";
       body: unknown;
       basketToken?: string;
+      /** Resolves the address sent on; the default may fall back to a proxy's own address. */
+      clientIp?: (c: Context) => string;
     },
   ) {
     const guest = await resolveGuestCommerceContext(c, deps);
@@ -49,7 +51,7 @@ export function registerCommerceGuestCheckoutRoutes(
       path: input.path,
       method: "POST",
       body: input.body,
-      clientIp: commerceClientIp(c),
+      clientIp: (input.clientIp ?? commerceClientIp)(c),
       ...(input.basketToken ? { basketToken: input.basketToken } : {}),
     });
   }
@@ -123,6 +125,8 @@ export function registerCommerceGuestCheckoutRoutes(
       scopes: "shop.write",
       body: parsed.data,
       basketToken,
+      // Holds are capped per visitor: an unreadable address stays unknown, never a proxy's own.
+      clientIp: commerceVisitorIp,
     });
     if (!response.ok) return proxyJson(c, response);
     const answer = guestDeliveryQuoteResponseSchema.safeParse(

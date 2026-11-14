@@ -53,7 +53,7 @@ installLayoutStubs();
 const { NewOriginalSaleDialog } = await import("./new-original-sale-dialog.client");
 const { RecordThirdPartySaleDialog } = await import("./record-third-party-sale-dialog.client");
 const { NewHoldDialog } = await import("./new-hold-dialog.client");
-const { IssueInvoiceDialog } = await import("./issue-invoice-dialog.client");
+const { IssueInvoiceDialog, issuedMessage } = await import("./issue-invoice-dialog.client");
 const { OriginalSalesList } = await import("./original-sales-list.client");
 const { ThirdPartySalesList } = await import("./third-party-sales-list.client");
 const { HoldsList } = await import("./holds-list.client");
@@ -252,6 +252,22 @@ describe("issuing an invoice", () => {
       buyerName: "Ada Lovelace",
       idempotencyKey: expect.stringMatching(/^[0-9a-f-]{36}$/),
     });
+  });
+
+  it("says what was sent from the server's answer: Stripe's email, or a link to send by hand", () => {
+    expect(
+      issuedMessage("Vessel Study", "ada@example.com", {
+        invoiceIssuer: "stripe",
+        hostedInvoiceUrl: "https://invoice.stripe.com/i/1",
+      }),
+    ).toBe("Stripe emailed the invoice for Vessel Study to ada@example.com");
+    const books = issuedMessage("Vessel Study", "ada@example.com", {
+      invoiceIssuer: "books",
+      hostedInvoiceUrl: "https://buy.stripe.com/plink_1",
+    });
+    expect(books).toContain("Nothing was emailed");
+    expect(books).toContain("https://buy.stripe.com/plink_1");
+    expect(books).not.toMatch(/sent to|emailed the invoice/);
   });
 
   it("asks for a usable email", async () => {

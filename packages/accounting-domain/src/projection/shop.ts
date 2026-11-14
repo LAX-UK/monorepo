@@ -96,7 +96,8 @@ export function shopDeliveryPaymentReference(invoiceReference: string): string |
   return reference.ok ? reference.value : null;
 }
 
-function shopContact(buyer: ShopBuyerFacts): Result<Contact, ProjectionCode> {
+/** The buyer's Books contact; every Shop flow (orders and originals) names the same one. */
+export function shopContact(buyer: ShopBuyerFacts): Result<Contact, ProjectionCode> {
   const email = typeof buyer.email === "string" && EMAIL.test(buyer.email) ? buyer.email : null;
   return buildContact({ product: "shop", sourceId: buyer.partyId, name: buyer.name, email });
 }
@@ -110,7 +111,7 @@ function shopContact(buyer: ShopBuyerFacts): Result<Contact, ProjectionCode> {
  * Whether the organisation may take VAT at all is the adapter's rule: a VAT line sent to an
  * organisation that is not VAT registered is refused there and waits for a person.
  */
-function shopLine(
+export function shopLine(
   label: string,
   role: "goods" | "delivery",
   grossPence: Pence,
@@ -144,7 +145,7 @@ function goodsLines(facts: ShopOrderPaidFacts): Result<InclusiveLineInput[], Pro
   return ok(out);
 }
 
-interface ShopDocuments {
+export interface ShopDocuments {
   readonly contact: Contact;
   readonly invoice: Invoice;
   /** The outside-UK delivery, invoiced on its own; null for a UK order. */
@@ -265,6 +266,16 @@ export function rebuildShopOutsideUkDelivery(
       ? [{ reference: built.value.reference, reason: "vat_on_outside_uk_delivery" }]
       : [];
   return ok({ documents: [built.value], parked });
+}
+
+/**
+ * The order's contact and its own invoice, built exactly as the paid flow builds them, and the
+ * order's delivery outside the UK invoiced on its own (null when it has none), as the paid flow
+ * registered it (parked while its booking waits for the accountant). A refund's credit notes are
+ * built against this invoice, so they always credit what the buyer was invoiced.
+ */
+export function shopOrderInvoice(facts: ShopOrderPaidFacts): Result<ShopDocuments, ProjectionCode> {
+  return shopDocuments(facts, SHOP_OUTSIDE_UK_DELIVERY_BOOKING);
 }
 
 function shopDocuments(

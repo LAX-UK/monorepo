@@ -13,8 +13,11 @@ import type { createShopDomainEventPublisher } from "./shop-domain-event-publish
 /** What the Shop needs of the finance task store: serialise one piece of money, and see if it is known. */
 export type UnappliedMoneyLookup = Pick<IUnappliedMoneyReader, "lockKey" | "existsForShopPayment">;
 
-/** Why a Shop payment could not be applied to its order. */
-export type ShopUnappliedReason = Extract<UnappliedMoneyReason, `shop_order_${string}`>;
+/** Why a Shop payment could not be applied to its order, or to an original sold directly. */
+export type ShopUnappliedReason = Extract<
+  UnappliedMoneyReason,
+  `shop_order_${string}` | `shop_original_${string}`
+>;
 
 /**
  * The failures of applying a payment that Stripe cannot cure by sending it again, each with the
@@ -75,6 +78,8 @@ export async function recordUnappliedShopPayment(
     reason: ShopUnappliedReason;
     /** The order the money was paid for; null when no such order exists here. */
     order: { id: string; reference: string | null; status: string } | null;
+    /** The original sold directly in the Shop the money was paid for, when it is one's. */
+    originalSaleId?: string;
     sessionId: string;
     paymentIntentId: string | null;
     /** What was actually paid, which is what finance must return or apply. */
@@ -93,6 +98,7 @@ export async function recordUnappliedShopPayment(
     stripeEventId: input.eventId,
     shopOrderId: input.order?.id ?? null,
     shopOrderReference: input.order?.reference ?? null,
+    ...(input.originalSaleId ? { shopOriginalSaleId: input.originalSaleId } : {}),
     shopCheckoutSessionId: input.sessionId,
     amountCents: input.amountPence,
     currency: "GBP",
@@ -118,6 +124,7 @@ export async function recordUnappliedShopPayment(
       reason: input.reason,
       orderId: input.order?.id ?? null,
       orderStatus: input.order?.status ?? null,
+      ...(input.originalSaleId ? { originalSaleId: input.originalSaleId } : {}),
       sessionId: input.sessionId,
       paymentIntentId: input.paymentIntentId,
       amountPence: input.amountPence,

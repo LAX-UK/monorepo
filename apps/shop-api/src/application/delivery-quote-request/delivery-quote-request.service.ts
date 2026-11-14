@@ -117,6 +117,17 @@ export function createDeliveryQuoteRequestService(deps: DeliveryQuoteRequestDeps
         return { kind: "pay_now", session };
       }
 
+      // A guest's holds are capped per client IP. With no IP known the cap cannot be applied, and
+      // one shared bucket for every such guest would let one of them use up everyone's place, so
+      // the hold is refused instead; signing in, or paying where a fixed rate applies, still works.
+      if (input.guest && !input.guestIpHash) {
+        throw new ShopApiError(
+          SHOP_API_ERROR_CODES.FORBIDDEN,
+          "We could not check this request. Sign in to ask for a delivery quote.",
+          403,
+        );
+      }
+
       // A request to the gallery is the buyer's first step on a quote that does not exist yet.
       const step = deliveryQuoteTransition(null, "request", "buyer");
       if (!step.allowed) {
