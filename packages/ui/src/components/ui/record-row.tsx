@@ -84,6 +84,12 @@ export type RecordRowProps = {
   /** At most one inline action. Anything else goes in `menu`. */
   action?: React.ReactNode;
   /**
+   * Keep `action` on the title's line, right-aligned, in a narrow list too (a download beside the
+   * document it saves), instead of dropping it to the line under the facts. The status and
+   * figures still follow under the facts when narrow.
+   */
+  actionBeside?: boolean;
+  /**
    * The record waits on the reader and `action` is the step that clears it (outbid, to pay,
    * needs changes, choose what happens next). A narrow list shows that one action full width
    * under the row's facts instead of leaving it in the "…" menu; a wide list keeps it in its
@@ -281,6 +287,7 @@ export function RecordRow({
   figuresNarrow = "lead",
   aligned = false,
   action,
+  actionBeside = false,
   needsYou = false,
   menu,
   detail,
@@ -288,6 +295,7 @@ export function RecordRow({
   ...aria
 }: RecordRowProps) {
   const stacksAction = needsYou && isShown(action);
+  const besideAction = actionBeside && !stacksAction && isShown(action);
   const hasFoot =
     aligned || isShown(status) || isShown(value) || isShown(action) || figures.length > 0;
   return (
@@ -308,7 +316,11 @@ export function RecordRow({
         <div className="flex min-w-0 flex-1 flex-col gap-2">
           <div
             className={cn(
-              "flex min-w-0 flex-col gap-2",
+              besideAction
+                ? // The title and facts in the first column, the action beside them, and the rest
+                  // (the foot's other items) in the column under the facts.
+                  "grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-2 @2xl:flex @2xl:gap-4"
+                : "flex min-w-0 flex-col gap-2",
               "@2xl:flex-row @2xl:items-center @2xl:gap-4",
             )}
           >
@@ -334,7 +346,11 @@ export function RecordRow({
               <div
                 data-record-foot
                 className={cn(
-                  "flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2",
+                  besideAction
+                    ? // Narrow, the foot's items join the grid: status and figures under the
+                      // facts, the action beside them.
+                      "contents @2xl:flex @2xl:min-w-0 @2xl:items-center @2xl:gap-x-3 @2xl:gap-y-2"
+                    : "flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2",
                   "@2xl:shrink-0 @2xl:flex-nowrap @2xl:justify-end",
                 )}
               >
@@ -346,6 +362,7 @@ export function RecordRow({
                     data-record-status
                     className={cn(
                       "shrink-0",
+                      besideAction && "col-start-1 justify-self-start @2xl:col-auto",
                       // Narrow, the status leads the line and the figure follows it; with every
                       // figure shown, the figures take their own line and the status follows.
                       figures.length > 0 && figuresNarrow === "lead" && "-order-1 @2xl:order-none",
@@ -357,7 +374,12 @@ export function RecordRow({
                   </span>
                 ) : null}
                 {isShown(value) ? (
-                  <span className="shrink-0 font-body text-sm leading-5.5 font-medium tabular-nums text-on-surface">
+                  <span
+                    className={cn(
+                      "shrink-0 font-body text-sm leading-5.5 font-medium tabular-nums text-on-surface",
+                      besideAction && "col-start-1 justify-self-start @2xl:col-auto",
+                    )}
+                  >
                     {value}
                   </span>
                 ) : null}
@@ -371,7 +393,9 @@ export function RecordRow({
                         ? // Narrow: its own full-width line under the facts. Wide: the aligned column.
                           "order-last basis-full [&>*]:w-full @2xl:order-none @2xl:flex @2xl:w-40 @2xl:basis-auto"
                         : cn(
-                            "ml-auto shrink-0 @2xl:ml-0",
+                            besideAction
+                              ? "col-start-2 row-start-1 shrink-0 @2xl:col-auto @2xl:row-auto"
+                              : "ml-auto shrink-0 @2xl:ml-0",
                             // The button fills the column, so every row's action has one width.
                             aligned && "hidden @2xl:flex @2xl:w-40 @2xl:[&>*]:w-full",
                           ),

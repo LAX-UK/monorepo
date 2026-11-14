@@ -11,12 +11,13 @@ import { listServerConsignmentAgreements } from "@/lib/data/http/consignment-agr
 import { getServerStatements } from "@/lib/data/http/organisation-profile.server";
 import { requireActiveOrganisationActor } from "@/lib/legal-entity/active-organisation.server";
 import { createPerOrgGateway } from "@/lib/legal-entity/per-org.gateway.server";
-import { organisationHref } from "@/lib/navigation/client-routes";
+import { CLIENT_ROUTES, organisationHref } from "@/lib/navigation/client-routes";
 import { requireOrganisationTab } from "@/lib/navigation/organisation-tabs";
 import { agreementDocumentRows } from "@/lib/organisation-team/agreement-documents.vm";
 import { statementDocumentRows } from "@/lib/organisation-team/statement-documents.vm";
 import { loadOrganisationDocuments } from "@/lib/organisations/organisation-documents.server";
 import { buildOrganisationDocumentsView } from "@/lib/organisations/organisation-documents.vm";
+import { workspacePageRefusal } from "@/lib/presenters/workspace-access/workspace-access";
 import { entityActorCan } from "@auction/domain";
 import type { ConsignmentAgreement } from "@auction/types";
 import { ButtonLink } from "@auction/ui/lax/button-link";
@@ -57,8 +58,16 @@ export default async function OrganisationDocumentsPage() {
   const agreementRows = agreementDocumentRows(
     agreements,
     new Map(submissions.map((s) => [s.id, s.title])),
+    // A row opens its record only for a member the record's own page would let in.
+    workspacePageRefusal(CLIENT_ROUTES.consignments, actor) === null,
   );
-  const statementRows = statements ? statementDocumentRows(member.id, statements) : null;
+  const statementRows = statements
+    ? statementDocumentRows(
+        member.id,
+        statements,
+        workspacePageRefusal(CLIENT_ROUTES.payouts, actor) === null,
+      )
+    : null;
   if (loaded && !loaded.ok) {
     return (
       <div className="space-y-6">

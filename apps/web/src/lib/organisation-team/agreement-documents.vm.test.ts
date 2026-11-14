@@ -43,3 +43,12 @@ describe("agreementDocumentRows", () => {
     expect(rows[0]?.href).toBe("/organisation/documents/agreements/s2");
   });
 });
+
+describe("agreement page link", () => {
+  it("opens the consignment page for a member who can, and nothing for one who cannot", () => {
+    expect(agreementDocumentRows([agreement({})], new Map(), true)[0]?.pageHref).toBe(
+      "/selling/consignments/s1",
+    );
+    expect(agreementDocumentRows([agreement({})], new Map())[0]?.pageHref).toBeNull();
+  });
+});

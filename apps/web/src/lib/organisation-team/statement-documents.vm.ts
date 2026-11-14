@@ -1,5 +1,6 @@
 import type { StatementView } from "@/lib/data/http/organisation-profile.types";
 import { formatMoney } from "@/lib/format-currency";
+import { CLIENT_ROUTES } from "@/lib/navigation/client-routes";
 import { formatPeriod } from "@/lib/ui/format";
 
 /** One statement in the Documents library. */
@@ -15,6 +16,8 @@ export type StatementDocumentRow = {
   unavailable: boolean;
   /** Where the PDF downloads (made on the first request, then kept). */
   href: string;
+  /** The payout page it belongs to; `null` when the member cannot open payouts. */
+  pageHref: string | null;
 };
 
 /** The statement PDF, through the Bid app (the API needs the signed-in session). */
@@ -26,6 +29,7 @@ export function statementPdfHref(legalEntityId: string, payoutId: string): strin
 export function statementDocumentRows(
   legalEntityId: string,
   statements: readonly StatementView[],
+  canOpenPayouts = false,
 ): StatementDocumentRow[] {
   return statements.map((statement) => ({
     payoutId: statement.payoutId,
@@ -34,5 +38,8 @@ export function statementDocumentRows(
     detail: formatMoney(statement.netAmount, statement.currency),
     unavailable: statement.availability === "unavailable",
     href: statementPdfHref(legalEntityId, statement.payoutId),
+    pageHref: canOpenPayouts
+      ? `${CLIENT_ROUTES.payouts}/${encodeURIComponent(statement.payoutId)}`
+      : null,
   }));
 }

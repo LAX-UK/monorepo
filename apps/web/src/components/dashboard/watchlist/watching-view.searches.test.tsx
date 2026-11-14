@@ -7,7 +7,11 @@ const switchEmail = vi.fn();
 const success = vi.fn();
 const error = vi.fn();
 
-vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh }) }));
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ refresh }),
+  usePathname: () => "/watching",
+  useSearchParams: () => new URLSearchParams(window.location.search),
+}));
 vi.mock("@/lib/ui/notify", () => ({
   notify: { success: (m: string) => success(m), error: (...a: unknown[]) => error(...a) },
 }));
@@ -37,7 +41,6 @@ const reach = (emailOn: boolean) => ({
 function show(over: Partial<React.ComponentProps<typeof WatchingView>> = {}) {
   render(
     <WatchingView
-      view="searches"
       lots={[]}
       artists={[]}
       searches={SEARCHES}
@@ -49,7 +52,10 @@ function show(over: Partial<React.ComponentProps<typeof WatchingView>> = {}) {
   );
 }
 
-beforeEach(() => vi.clearAllMocks());
+beforeEach(() => {
+  vi.clearAllMocks();
+  window.history.replaceState(null, "", "/watching?tab=searches");
+});
 
 describe("Watching: a saved search's email control", () => {
   it("is a held switch with the reason and a way to put it right once alerts are stopped", () => {
