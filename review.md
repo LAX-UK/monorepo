@@ -478,3 +478,70 @@ Migration 0385 is unchanged: no CHECK or function had to change, because the his
 - No in-app action settles a held credit note. A person settles it in Books as the runbook says. A note held as reversed no longer blocks later refunds, but one held for another reason still counts against the invoice.
 - A bank-transfer refund's destination is not confirmed in Stripe test mode, so the card names none.
 - Accountant questions: defaults, VAT on delivery, reversing an issued credit note, and the bank-transfer refund mode.
+
+## Final recheck
+
+Last round for this rehearsal PR, on head `aea57b45` (base `3c911293`). Scope: the fixes for N1, N2 and N5 only. I did not change `bk9-bid-refunds`.
+
+### How it was checked
+
+- **Setup.** `corepack enable`, `pnpm install --frozen-lockfile`, `pnpm -r --filter './packages/**' build`: ok. Throwaway Postgres 16 (initdb under `/var/tmp`, port 55432). `db:migrate` gave 377 rows, last `1811419200000`, then `db:roles`.
+- **Runs** (`--maxWorkers=2`, or 1 for database suites; integration suites as `worker_app` and `api_app`):
+
+  | Area | Result |
+  |---|---|
+  | accounting-domain | 318 passed |
+  | persistence accounting and lib | 206 passed |
+  | worker `src/finance` and `src/projectors` | 374 passed on rerun. One run had 1 failure, see Follow-ups 1. |
+  | `bid-refunds-books.integration`, with role URLs | 29 passed (3 of 4 full runs; the other is Follow-ups 1) |
+  | `bid-refunds-books.integration`, no role URLs (as CI runs it) | 29 passed |
+  | runner unit and projection service unit | 34 passed |
+
+- **Mutations.** Each one reverted one guard, rebuilt the package the worker reads where needed, ran the tests, then restored the guard. `git status` was clean afterwards.
+
+  | Guard removed | Result |
+  |---|---|
+  | N1: payment refund re-check in `refundStillStands` | killed (N1 integration) |
+  | N1: courier `r<total>` ≤ `refunded_pence` comparison | killed (N1 courier case) |
+  | N1: runner's waiting flag | killed (runner unit) |
+  | N1: `credit_in_flight` marked waiting on the not-yet error | killed (N1 integration) |
+  | N1: a refund id with no `payment_refund` row counted as standing | **survived**, see Follow-ups 2 |
+  | N2: projection `held_for_review` back to `break` | killed (N2 integration and domain) |
+  | N2: `holdIssued` re-hold of a held note | killed (N2 integration) |
+  | N2: lifecycle refuses the same reason | killed (lifecycle) |
+  | N2: lifecycle needs lookup clear and a Books document | killed (lifecycle) |
+  | N5: gross cap leaves out notes held as reversed | killed (N5 integration) |
+
+### Fixes
+
+- **N1: holds.**
+  - `settleExclusively` re-reads the refund under the credit note's `FOR UPDATE` lock, before the Books call.
+  - A payment refund note stands only when its refund is kept after reversals are matched the same way the facts reader matches them (`withoutReversed`). A courier note stands only when its `r<total>` is within the quote's `refunded_pence`.
+  - An unknown source does not stand. Only two sources plan a clearing refund (refund id, and `dlv-<quote>-r<total>`). The default credit note has no `refund`, so no legitimate note is caught by the unknown-source rule.
+  - When the refund does not stand, the note is held as `accounting_refund_reversed_after_credit` in the same transaction. The step is not run, nothing is recorded as `refund_credit_note`, and the service raises the alert.
+  - `credit_in_flight` sets `waiting`, so it is retried every 5 minutes, the attempt increment is undone, and it is never dead-lettered. The error reaches the runner unwrapped (`accounting-projector.ts`). Other not-yets still use up attempts.
+- **N2: holds.**
+  - The projection and the courier lowering hold a `held_for_review` note. That standing means `needs_review`, lookup clear and a Books document, which is the same condition `holdIssued` and the lifecycle use.
+  - A parked note reads as `waiting`, and a note with a lookup owed reads as `in_flight`. So neither is re-held, and a reversal never waits forever on a parked note.
+  - A note already held for the same reason is skipped, so a replay does nothing. History keeps `heldBefore`.
+- **N5: holds.**
+  - Only the gross cap leaves out notes in `needs_review` with the reversed reason. The basis check still reads every non-cancelled note.
+  - The N5 case credits the later full refund and refunds it from clearing. The held note is never refunded.
+
+No new regression found in the touched code.
+
+### Follow-ups (not blocking)
+
+1. **Low, existed before these fixes: two concurrent refunders can both write a `refund_credit_note` history row for one note.**
+   - Seen once in about 17 runs: the F8 "six refunders at once" case found 2 history rows. Books' own already-refunded answer kept the money at one refund in that test.
+   - Cause: the "not settled yet" check is evaluated against the locking statement's snapshot. A worker can take the lock just after another worker commits its settle, which does not update the row, and still see no history.
+   - The select is unchanged since `f95b9285`. Fix: re-check the history in a new statement after taking the lock, or update the row when settling.
+2. **Low: no test covers a refund id whose `payment_refund` row is missing** (that mutation survived). The code treats it as not standing, which is correct.
+3. **Low: a waiting reversal has no signal of its own.** A credit note stuck in `unknown` keeps its reversal retrying every 5 minutes with no end. Only the oldest-pending-age metric shows it. Consider an alert after some hours.
+4. **Low: `holdIssued` throws a new `credit_missing` when the document is absent.** It is a not-yet that is not waiting, so it dead-letters after 12 tries; it used to be `credit_in_flight`. This is an edge case only.
+5. **Low: one reversal that matches no refund holds all of that payment's refund notes at the clearing step,** including notes whose refund stands. This is conservative, and consistent with the facts reader.
+6. **Info: after N5, Books can show credit above the invoice** until the accountant reverses the held note. This is already among the accountant questions.
+
+### Verdict: SHIP
+
+N1, N2 and N5 are fixed correctly. Every guard but one has a test that fails without it, and that one is covered as described in Follow-ups 2. There are no High or Medium findings. Books stays dry run and test organisation only.
