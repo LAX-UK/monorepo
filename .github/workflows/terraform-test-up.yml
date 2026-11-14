@@ -90,6 +90,8 @@ jobs:
       TF_VAR_zoho_client_id: ${{ secrets.ZOHO_CLIENT_ID }}
       TF_VAR_zoho_client_secret: ${{ secrets.ZOHO_CLIENT_SECRET }}
       TF_VAR_zoho_refresh_token: ${{ secrets.ZOHO_REFRESH_TOKEN }}
+      TF_VAR_zoho_books_org_config: ${{ secrets.ZOHO_BOOKS_ORG_CONFIG_TEST }}
+      TF_VAR_zoho_books_notice_secret: ${{ secrets.ZOHO_BOOKS_NOTICE_SECRET_TEST }}
       TF_VAR_zoho_crm_sync_mode: ${{ vars.ZOHO_CRM_SYNC_MODE || 'dry_run' }}
       TF_VAR_zoho_crm_enabled_event_types: ${{ vars.ZOHO_CRM_ENABLED_EVENT_TYPES || 'user.registered' }}
       TF_VAR_zoho_crm_auction_pipeline: ${{ vars.ZOHO_CRM_AUCTION_PIPELINE || '' }}
