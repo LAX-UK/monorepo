@@ -1,7 +1,9 @@
 import {
   type BooksPaymentSeen,
+  DEFAULT_NOTICE_READ_ALLOWANCE,
   DEFAULT_STATUS_CHECK_ALLOWANCE,
   type DocumentStatusPort,
+  type DocumentStatusReaders,
   type LegalEntity,
   NO_LAX_PAYMENTS,
   type StatusCheckAllowance,
@@ -25,6 +27,15 @@ export const STATUS_READ_AGAIN_AFTER_MS = 20 * 60 * 60_000;
 /** Books ids are unique in an organisation: a notice names one document, a few at the very most. */
 const NOTICE_READS_AT_MOST = 3;
 
+/**
+ * A notice for a document read this recently is not read again now: its mark stays for the night's
+ * run. Books sends several notices for one change (a payment updates the invoice too), and a
+ * replayed notice must not cost a read each time.
+ */
+export const NOTICE_READ_AGAIN_AFTER_MS = 10 * 60_000;
+
+type ReadersByMode = Readonly<Partial<Record<TargetMode, DocumentStatusPort>>>;
+
 /** Which document kind each Books module a notice names is. */
 const KIND_OF_MODULE: Readonly<Record<ZohoBooksNoticeModule, StatusCheckedKind>> = {
   invoice: "invoice",
@@ -47,16 +58,21 @@ export interface StatusCheckLog {
 
 export interface AccountingStatusCheckDeps {
   readonly store: IAccountingBooksStatusStore;
-  /** The status reader of each mode the sender serves; the dry run's reads nothing. */
-  readonly statusesByMode: Readonly<Partial<Record<TargetMode, DocumentStatusPort>>>;
+  /**
+   * Where the status readers of each mode the sender serves come from; the dry run's read nothing.
+   * Each run, and each day of notice reads, gets readers within a fresh share of the day's calls.
+   */
+  readonly statusesByMode: Readonly<Partial<Record<TargetMode, DocumentStatusReaders>>>;
   /** The Books organisation of each legal entity, for the finance task's key. */
   readonly organisationIds: Readonly<Partial<Record<LegalEntity, string>>>;
   readonly tasks: FinanceTaskOpener;
   readonly transactions: { runInTransaction<T>(fn: (tx: Database) => Promise<T>): Promise<T> };
   readonly log: StatusCheckLog;
   readonly now: () => Date;
-  /** The check's share of the day's Books calls (the live client counts against it too). */
+  /** Each nightly run's share of the day's Books calls. */
   readonly allowance?: StatusCheckAllowance;
+  /** The day's share for reads Books notices ask for, apart from the night's. */
+  readonly noticeAllowance?: StatusCheckAllowance;
 }
 
 type CheckOutcome =
@@ -72,16 +88,37 @@ export interface StatusCheckResult {
 
 /**
  * The nightly Books status check. For each issued Books document due a read it asks Books what
- * the document is now (one read, within the check's share of the day's budget), records what
+ * the document is now (one read, within the run's own share of the day's budget), records what
  * changed, and opens a finance task for each payment Books shows that LAX did not send. It never
  * marks an invoice, a payment or a lot paid, and holds nothing that could: Books is not trusted to
  * move money in LAX. A Books notice only moves a document to the front (`recheckFromNotice`).
  */
 export class AccountingStatusCheck {
   private readonly allowance: StatusCheckAllowance;
+  private readonly noticeAllowance: StatusCheckAllowance;
+  /** Today's notice readers (UTC day), built on the first notice of the day. */
+  private noticeReaders: { readonly day: string; readonly byMode: ReadersByMode } | null = null;
 
   constructor(private readonly deps: AccountingStatusCheckDeps) {
     this.allowance = deps.allowance ?? DEFAULT_STATUS_CHECK_ALLOWANCE;
+    this.noticeAllowance = deps.noticeAllowance ?? DEFAULT_NOTICE_READ_ALLOWANCE;
+  }
+
+  /** Readers for each mode, all within fresh shares of `allowance`. */
+  private readersWithin(allowance: StatusCheckAllowance): ReadersByMode {
+    return Object.fromEntries(
+      Object.entries(this.deps.statusesByMode).flatMap(([mode, readers]) =>
+        readers ? [[mode, readers.withinShare(allowance)]] : [],
+      ),
+    );
+  }
+
+  private noticeReadersToday(): ReadersByMode {
+    const day = this.deps.now().toISOString().slice(0, 10);
+    if (this.noticeReaders?.day !== day) {
+      this.noticeReaders = { day, byMode: this.readersWithin(this.noticeAllowance) };
+    }
+    return this.noticeReaders.byMode;
   }
 
   /** One nightly run, recorded as a run so a missed night can be told. */
@@ -93,6 +130,8 @@ export class AccountingStatusCheck {
     let tasks = 0;
     let rehearsed = 0;
     let outcome: BooksStatusRunOutcome = "completed";
+    // This run's own share: it ends with the run, so the next night starts afresh.
+    const readers = this.readersWithin(this.allowance);
     try {
       const modes = Object.keys(this.deps.statusesByMode) as TargetMode[];
       const due = await this.deps.store.listDue(
@@ -111,7 +150,7 @@ export class AccountingStatusCheck {
           outcome = "budget_spent";
           break;
         }
-        const result = await this.check(item);
+        const result = await this.check(item, readers);
         if (result.kind === "skipped") continue;
         reads += 1;
         if (result.kind === "budget_spent") {
@@ -165,21 +204,25 @@ export class AccountingStatusCheck {
     );
     let read = false;
     let held = false;
+    const readers = this.noticeReadersToday();
+    const recently = this.deps.now().getTime() - NOTICE_READ_AGAIN_AFTER_MS;
     for (const documentId of documentIds) {
       const due = await this.deps.store.findDue(documentId);
       if (!due) continue;
       held = true;
-      // Not read now (no budget, Books unclear, a rehearsal): the mark stays, and tonight's run
-      // reads it first.
-      if ((await this.check(due)).kind === "recorded") read = true;
+      // Read moments ago: the mark stays, and tonight's run reads it first.
+      if (due.checkedAt && due.checkedAt.getTime() > recently) continue;
+      // Not read now (the notices' share spent, Books unclear, a rehearsal): the mark stays, and
+      // tonight's run reads it first.
+      if ((await this.check(due, readers)).kind === "recorded") read = true;
     }
     if (!held) return "not_ours";
     return read ? "read" : "not_read";
   }
 
-  private async check(item: BooksStatusDue): Promise<CheckOutcome> {
+  private async check(item: BooksStatusDue, readers: ReadersByMode): Promise<CheckOutcome> {
     const { stored } = item;
-    const port = stored.target ? this.deps.statusesByMode[stored.target.mode] : undefined;
+    const port = stored.target ? readers[stored.target.mode] : undefined;
     if (!port || !stored.target || stored.record.status !== "issued") return { kind: "skipped" };
     const readFrom = this.deps.now();
     const read = await port.readStatus(stored.document, stored.record.issued);

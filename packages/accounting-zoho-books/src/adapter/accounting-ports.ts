@@ -5,7 +5,7 @@ import type {
   DestinationPort,
   DocumentLookupPort,
   DocumentPdfPort,
-  DocumentStatusPort,
+  DocumentStatusReaders,
   InvoicePort,
   PaymentPort,
   PaymentRemainderPort,
@@ -27,8 +27,11 @@ export interface AccountingPorts {
   readonly lookup: DocumentLookupPort;
   /** The PDF of an issued invoice or credit note, for LAX's own stored copy. */
   readonly pdfs: DocumentPdfPort;
-  /** Reads an issued document's state back (the nightly status check). Read only. */
-  readonly statuses: DocumentStatusPort;
+  /**
+   * Readers of an issued document's state (the nightly status check), each within its own share
+   * of the day's calls. Read only.
+   */
+  readonly statuses: DocumentStatusReaders;
   /** Which organisation each product's documents would go to, asked before anything is sent. */
   readonly destination: DestinationPort;
 }

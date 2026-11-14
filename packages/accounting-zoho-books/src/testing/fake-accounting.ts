@@ -12,6 +12,7 @@ import {
   type DocumentLookupPort,
   type DocumentPdfPort,
   type DocumentStatusPort,
+  type DocumentStatusReaders,
   type Invoice,
   type InvoicePort,
   type IssueOutcome,
@@ -27,6 +28,7 @@ import {
   type ProviderDocument,
   type RemainderApplication,
   type RemainderOutcome,
+  type StatusCheckAllowance,
   type StatusReadOutcome,
   type WriteFence,
   expectedTotals,
@@ -252,7 +254,18 @@ export class InMemoryAccounting implements AccountingPorts {
     this.statusScript.set(providerId, outcome);
   }
 
-  readonly statuses: DocumentStatusPort = {
+  /** Every share a status reader was asked for, in order, for assertions. */
+  readonly statusShares: StatusCheckAllowance[] = [];
+
+  readonly statuses: DocumentStatusReaders = {
+    withinShare: (allowance) => {
+      this.statusShares.push(allowance);
+      return this.statusReader;
+    },
+  };
+
+  /** The fake's one status reader; its shares are recorded, not enforced (`statusShares`). */
+  readonly statusReader: DocumentStatusPort = {
     readStatus: async (document, issued): Promise<StatusReadOutcome> => {
       this.statusReads.push(issued.providerId);
       // As the adapter, a read is believed only for the document this fake issued under that id

@@ -83,6 +83,15 @@ export interface DocumentStatusPort {
   readStatus(document: AccountingDocument, issued: IssuedDocument): Promise<StatusReadOutcome>;
 }
 
+/**
+ * Where status readers come from: each one spends at most its own share of the provider's daily
+ * calls, counted for as long as it lives, and answers `budget_spent` once the share is used. Build
+ * one for each run (or each day of notice reads), never one for the life of the process.
+ */
+export interface DocumentStatusReaders {
+  withinShare(allowance: StatusCheckAllowance): DocumentStatusPort;
+}
+
 /** What LAX last recorded of a document's state in the provider. */
 export interface BooksStatusSnapshot {
   readonly state: BooksState | "missing";
@@ -201,8 +210,8 @@ export function decideBooksStatus(input: {
 }
 
 /**
- * The share of the provider's daily call budget the nightly check may use, so sending documents
- * is never starved by it: it stops after `maxCalls` of its own, and before the day's count leaves
+ * A share of the provider's daily call budget, so sending documents is never starved by the status
+ * check: a reader within it stops after `maxCalls` of its own, and before the day's count leaves
  * fewer than `keepFree` calls for everything else.
  */
 export interface StatusCheckAllowance {
@@ -210,8 +219,18 @@ export interface StatusCheckAllowance {
   readonly keepFree: number;
 }
 
+/** The nightly run's share, built afresh for each run. */
 export const DEFAULT_STATUS_CHECK_ALLOWANCE: StatusCheckAllowance = {
   maxCalls: 300,
+  keepFree: 400,
+};
+
+/**
+ * The share for reads a Books notice asks for, built afresh each UTC day and separate from the
+ * night's: notices can never spend more than this in a day, however many arrive.
+ */
+export const DEFAULT_NOTICE_READ_ALLOWANCE: StatusCheckAllowance = {
+  maxCalls: 50,
   keepFree: 400,
 };
 

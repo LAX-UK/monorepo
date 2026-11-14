@@ -124,7 +124,9 @@ export function createZohoBooksDryRunAdapter(deps: {
     },
     // Nothing was written, so there is nothing to read back: the status check records nothing.
     statuses: {
-      readStatus: (): Promise<StatusReadOutcome> => Promise.resolve({ status: "rehearsal" }),
+      withinShare: () => ({
+        readStatus: (): Promise<StatusReadOutcome> => Promise.resolve({ status: "rehearsal" }),
+      }),
     },
     // It holds no client: whatever the settings name, it reaches no organisation.
     destination: { destinationFor: () => ({ kind: "none" }) },

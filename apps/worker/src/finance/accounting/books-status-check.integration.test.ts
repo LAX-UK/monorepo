@@ -278,7 +278,7 @@ describe.skipIf(!HAS_DB)("Books nightly status check (integration)", { timeout: 
   /** A status check on `db` (the shared worker pool unless a test brings its own). */
   function statusCheck(
     books: InMemoryAccounting,
-    options: { db?: Database; statuses?: DocumentStatusPort } = {},
+    options: { db?: Database; statuses?: DocumentStatusPort; now?: () => Date } = {},
   ) {
     const db = options.db ?? worker;
     const sink = new WorkerDomainEventSink(
@@ -288,12 +288,16 @@ describe.skipIf(!HAS_DB)("Books nightly status check (integration)", { timeout: 
     const recorder = new UnappliedMoneyRecorder(new DrizzleUnappliedMoneyReader(db), sink);
     return new AccountingStatusCheck({
       store: createAccountingRepositories(db, { now: () => new Date() }).booksStatus,
-      statusesByMode: { test_org: options.statuses ?? books.statuses },
+      statusesByMode: {
+        test_org: options.statuses
+          ? { withinShare: () => options.statuses as DocumentStatusPort }
+          : books.statuses,
+      },
       organisationIds: { london_auction_xchange: BID_ORG_ID },
       tasks: { open: (tx, money) => recorder.record(tx, money, null) },
       transactions: new DrizzleTransactionRunner(db),
       log,
-      now: () => new Date(),
+      now: options.now ?? (() => new Date()),
       // Every issued document in the shared database is due; the share is not what is tested here.
       allowance: { maxCalls: 10_000, keepFree: 0 },
     });
@@ -402,6 +406,9 @@ describe.skipIf(!HAS_DB)("Books nightly status check (integration)", { timeout: 
       .where(eq(accountingDocument.id, invoice.id));
     expect(doc?.state).toBe("issued");
   });
+
+  /** Past the few minutes in which a notice does not read a document again. */
+  const later = () => new Date(Date.now() + 11 * 60_000);
 
   const noticeFor = (invoice: { providerId: string | null }) => ({
     organizationId: BID_ORG_ID,
@@ -523,7 +530,9 @@ describe.skipIf(!HAS_DB)("Books nightly status check (integration)", { timeout: 
           lastErrorClass: null,
         })
         .where(eq(accountingDocument.id, laxPayment.id));
-      expect(await check.recheckFromNotice(noticeFor(invoice))).toBe("read");
+      expect(await statusCheck(books, { now: later }).recheckFromNotice(noticeFor(invoice))).toBe(
+        "read",
+      );
       expect(await strayTasks()).toHaveLength(1);
       expect(await tasksFor(taskKey(laxBooksId, invoice.laxReference))).toEqual([]);
     },
@@ -618,7 +627,7 @@ describe.skipIf(!HAS_DB)("Books nightly status check (integration)", { timeout: 
     });
     const statuses: DocumentStatusPort = {
       readStatus: async (document, identity) => {
-        const read = await books.statuses.readStatus(document, identity);
+        const read = await books.statusReader.readStatus(document, identity);
         arrived += 1;
         if (arrived === 2) release();
         await bothRead;
@@ -694,7 +703,7 @@ describe.skipIf(!HAS_DB)("Books nightly status check (integration)", { timeout: 
         );
         await noticeDuringRead;
         await new Promise((r) => setTimeout(r, 5));
-        return books.statuses.readStatus(document, identity);
+        return books.statusReader.readStatus(document, identity);
       },
     };
     // The read began before the second notice came: it records, and the second mark stays.
@@ -713,13 +722,12 @@ describe.skipIf(!HAS_DB)("Books nightly status check (integration)", { timeout: 
       status: "read",
       reading: { state: "void", balancePence: null, payments: [] },
     });
-    expect(
-      await check.recheckFromNotice({
-        organizationId: BID_ORG_ID,
-        module: "invoice",
-        entityId: invoice.providerId as string,
-      }),
-    ).toBe("read");
+    // The night's run read it moments ago: the notice leaves its mark and does not read it now.
+    expect(await check.recheckFromNotice(noticeFor(invoice))).toBe("not_read");
+    expect((await snapshotOf(invoice.id))?.recheckRequestedAt).toBeInstanceOf(Date);
+    expect(await statusCheck(books, { now: later }).recheckFromNotice(noticeFor(invoice))).toBe(
+      "read",
+    );
     const [status] = await owner
       .select()
       .from(accountingBooksStatus)

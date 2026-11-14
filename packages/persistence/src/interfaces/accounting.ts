@@ -639,6 +639,8 @@ export interface BooksStatusDue {
   readonly stored: StoredAccountingDocument;
   /** Null until the first read. */
   readonly previous: BooksStatusSnapshot | null;
+  /** When it was last read from the provider; null until the first read. */
+  readonly checkedAt: Date | null;
 }
 
 export interface BooksStatusDueList {

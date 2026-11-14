@@ -20,6 +20,9 @@ import {
 } from "../testing/index.js";
 import { ZohoDocumentStatusReader } from "./status.js";
 
+/** A share far larger than any test reads: the share is not what those tests are about. */
+const ROOMY = { maxCalls: 100, keepFree: 0 };
+
 const unwrap = <T>(r: { ok: true; value: T } | { ok: false; refusal: { code: string } }): T => {
   if (!r.ok) throw new Error(r.refusal.code);
   return r.value;
@@ -67,7 +70,7 @@ describe("reading an issued document's state back from Books", () => {
     const h = await createAdapterHarness();
     const { invoice, identity } = await issued(h);
 
-    const first = await h.settle(h.ports.statuses.readStatus(invoice, identity));
+    const first = await h.settle(h.ports.statuses.withinShare(ROOMY).readStatus(invoice, identity));
     expect(first).toEqual({
       status: "read",
       reading: { state: "open", balancePence: 10_000, payments: [] },
@@ -85,7 +88,9 @@ describe("reading an issued document's state back from Books", () => {
     );
     const paid = await h.settle(h.ports.payments.recordPayment(payment));
     if (paid.status !== "issued") throw new Error(paid.status);
-    const second = await h.settle(h.ports.statuses.readStatus(invoice, identity));
+    const second = await h.settle(
+      h.ports.statuses.withinShare(ROOMY).readStatus(invoice, identity),
+    );
     expect(second).toEqual({
       status: "read",
       reading: {
@@ -113,7 +118,7 @@ describe("reading an issued document's state back from Books", () => {
       mode: "Cheque",
     });
     const before = h.books.requests.length;
-    const read = await h.settle(h.ports.statuses.readStatus(invoice, identity));
+    const read = await h.settle(h.ports.statuses.withinShare(ROOMY).readStatus(invoice, identity));
     expect(read).toEqual({
       status: "read",
       reading: {
@@ -131,7 +136,9 @@ describe("reading an issued document's state back from Books", () => {
       },
     });
     h.books.setStateByHand(identity.providerId, "void");
-    const voided = await h.settle(h.ports.statuses.readStatus(invoice, identity));
+    const voided = await h.settle(
+      h.ports.statuses.withinShare(ROOMY).readStatus(invoice, identity),
+    );
     expect(voided.status === "read" && voided.reading.state).toBe("void");
     const sent = h.books.requests.slice(before);
     expect(sent.map((r) => r.method)).toEqual(["GET", "GET"]);
@@ -141,7 +148,9 @@ describe("reading an issued document's state back from Books", () => {
     const h = await createAdapterHarness();
     const { invoice, identity } = await issued(h);
     h.books.deleteByHand("london_art_exchange", identity.providerId);
-    expect(await h.settle(h.ports.statuses.readStatus(invoice, identity))).toEqual({
+    expect(
+      await h.settle(h.ports.statuses.withinShare(ROOMY).readStatus(invoice, identity)),
+    ).toEqual({
       status: "not_found",
     });
   });
@@ -150,16 +159,18 @@ describe("reading an issued document's state back from Books", () => {
     const h = await createAdapterHarness();
     const { identity } = await issued(h, "inv-1");
     const other = invoiceFor("inv-2");
-    expect(await h.settle(h.ports.statuses.readStatus(other, identity))).toEqual({
-      status: "unavailable",
-      reason: "zoho_books_reference_not_confirmed",
-    });
+    expect(await h.settle(h.ports.statuses.withinShare(ROOMY).readStatus(other, identity))).toEqual(
+      {
+        status: "unavailable",
+        reason: "zoho_books_reference_not_confirmed",
+      },
+    );
   });
 
   it("sends nothing for an id that is not a Books id (a rehearsal id)", async () => {
     const h = await createAdapterHarness();
     const before = h.books.requests.length;
-    const out = await h.ports.statuses.readStatus(invoiceFor("inv-1"), {
+    const out = await h.ports.statuses.withinShare(ROOMY).readStatus(invoiceFor("inv-1"), {
       number: "DRY-RUN",
       providerId: "dry-run:x",
       pdfRef: null,
@@ -173,7 +184,7 @@ describe("reading an issued document's state back from Books", () => {
     const { createZohoBooksDryRunAdapter } = await import("./dry-run.js");
     const dry = createZohoBooksDryRunAdapter({ orgs: h.orgs });
     expect(
-      await dry.statuses.readStatus(invoiceFor("inv-1"), {
+      await dry.statuses.withinShare(ROOMY).readStatus(invoiceFor("inv-1"), {
         number: "DRY-RUN",
         providerId: "dry-run:x",
         pdfRef: null,
@@ -221,7 +232,9 @@ describe("the status check's share of the daily Books budget", () => {
     const orgs = testOrgConfigs();
     const books = new SimulatedBooks(orgs);
     const clock = new FakeClock();
-    const share = new CallBudgetShare(new CountingBudget(1_000), { maxCalls: 0, keepFree: 0 });
+    const shared = new CountingBudget(1_000);
+    const share = new CallBudgetShare(shared, { maxCalls: 0, keepFree: 0 });
+    // The client counts against the day's budget; the reader's reads count against its share.
     const client = new ZohoBooksClient({
       config: testConfig(),
       transport: books,
@@ -229,17 +242,50 @@ describe("the status check's share of the daily Books budget", () => {
       clock,
       logger: new RecordingLogger(),
       random: () => 0.5,
-      budget: share,
+      budget: shared,
     });
     await client.registerRefreshToken(
       orgs.london_art_exchange?.organizationId as string,
       TEST_REFRESH_TOKEN,
     );
-    const reader = new ZohoDocumentStatusReader(client, orgs);
+    const reader = new ZohoDocumentStatusReader(client, orgs, share);
     const out = await clock.settle(
       reader.readStatus(invoiceFor("inv-1"), { number: "INV-1", providerId: "123", pdfRef: null }),
     );
     expect(out).toEqual({ status: "budget_spent" });
     expect(books.requests).toEqual([]);
+    expect(shared.used).toBe(0);
+  });
+
+  it("a reader stops after its own share; each read is counted once in the day's budget; a new share reads again", async () => {
+    const h = await createAdapterHarness();
+    const { invoice, identity } = await issued(h);
+    const org = h.orgs.london_art_exchange?.organizationId as string;
+    const reader = h.ports.statuses.withinShare({ maxCalls: 1, keepFree: 0 });
+
+    const usedBefore = (await h.budget.consume(org)).used;
+    expect((await h.settle(reader.readStatus(invoice, identity))).status).toBe("read");
+    // One read and this probe: the share draws on the client's budget once per call, not twice.
+    expect((await h.budget.consume(org)).used).toBe(usedBefore + 2);
+
+    const sent = h.books.requests.length;
+    expect(await h.settle(reader.readStatus(invoice, identity))).toEqual({
+      status: "budget_spent",
+    });
+    expect(h.books.requests.length).toBe(sent);
+
+    const tomorrow = h.ports.statuses.withinShare({ maxCalls: 1, keepFree: 0 });
+    expect((await h.settle(tomorrow.readStatus(invoice, identity))).status).toBe("read");
+  });
+
+  it("a reader sends nothing once the day's count would leave too little for sending", async () => {
+    const h = await createAdapterHarness();
+    const { invoice, identity } = await issued(h);
+    const sent = h.books.requests.length;
+    const reader = h.ports.statuses.withinShare({ maxCalls: 100, keepFree: 1_000 });
+    expect(await h.settle(reader.readStatus(invoice, identity))).toEqual({
+      status: "budget_spent",
+    });
+    expect(h.books.requests.length).toBe(sent);
   });
 });

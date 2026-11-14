@@ -3,10 +3,14 @@ import {
   type BooksPaymentSeen,
   type BooksState,
   type DocumentStatusPort,
+  type DocumentStatusReaders,
   type IssuedDocument,
+  type StatusCheckAllowance,
   type StatusReadOutcome,
   isStatusCheckedKind,
 } from "@auction/accounting-domain";
+import { CallBudgetShare } from "../call-budget.js";
+import type { CallBudget } from "../ports.js";
 import { type ZohoApi, orgFor } from "./api.js";
 import { KIND_SPECS, asRecord, storedReference } from "./kinds.js";
 import { poundsToPence } from "./money-format.js";
@@ -63,9 +67,14 @@ function readPayments(item: Readonly<Record<string, unknown>>): BooksPaymentSeen
  * check stops for the night); anything unclear is `unavailable`, and nothing is recorded for it.
  */
 export class ZohoDocumentStatusReader implements DocumentStatusPort {
+  /**
+   * `budget` is required, and every read counts against it rather than the client's own budget:
+   * a `CallBudgetShare` around the client's budget, built for one run (`statusReaders`).
+   */
   constructor(
     private readonly api: Pick<ZohoApi, "get">,
     private readonly orgs: ZohoOrgConfigs,
+    private readonly budget: CallBudget,
   ) {}
 
   async readStatus(
@@ -84,6 +93,8 @@ export class ZohoDocumentStatusReader implements DocumentStatusPort {
     const detail = await this.api.get(
       choice.org.organizationId,
       `${spec.path}/${issued.providerId}`,
+      undefined,
+      { budget: this.budget },
     );
     if (!detail.ok) {
       if (detail.error.kind === "budget_exhausted") return { status: "budget_spent" };
@@ -112,4 +123,20 @@ export class ZohoDocumentStatusReader implements DocumentStatusPort {
       reading: { state, balancePence: poundsToPence(item.balance), payments },
     };
   }
+}
+
+/**
+ * Status readers on `api`, each within a fresh share of `budget`, the daily budget `api` counts
+ * every call against (the one the client was built with): a read is counted once, against the
+ * share and through it the day's budget, and a reader stops when its share is used.
+ */
+export function zohoStatusReaders(
+  api: Pick<ZohoApi, "get">,
+  orgs: ZohoOrgConfigs,
+  budget: CallBudget,
+): DocumentStatusReaders {
+  return {
+    withinShare: (allowance: StatusCheckAllowance) =>
+      new ZohoDocumentStatusReader(api, orgs, new CallBudgetShare(budget, allowance)),
+  };
 }

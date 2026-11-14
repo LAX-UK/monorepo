@@ -288,7 +288,11 @@ export class DrizzleAccountingBooksStatusStore implements IAccountingBooksStatus
     for (const row of rows) {
       const stored = rowToStored(row.document, nowMs);
       if (stored.ok && stored.value.record.status === "issued") {
-        documents.push({ stored: stored.value, previous: snapshotOf(row.status) });
+        documents.push({
+          stored: stored.value,
+          previous: snapshotOf(row.status),
+          checkedAt: row.status?.checkedAt ?? null,
+        });
       } else {
         unreadable.push(row.document.id);
       }

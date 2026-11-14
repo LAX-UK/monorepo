@@ -3,7 +3,10 @@ import {
   type BidPaymentFacts,
   type BooksStatusDecision,
   type BooksStatusSnapshot,
+  DEFAULT_NOTICE_READ_ALLOWANCE,
+  DEFAULT_STATUS_CHECK_ALLOWANCE,
   type DocumentStatusPort,
+  type DocumentStatusReaders,
   NO_LAX_PAYMENTS,
   type StatusReadOutcome,
   projectBidPaymentCaptured,
@@ -61,8 +64,14 @@ class InMemoryStatusStore implements IAccountingBooksStatusStore {
 
   constructor(private readonly issued: () => StoredAccountingDocument[]) {}
 
+  readonly checkedAt = new Map<string, Date>();
+
   private due(stored: StoredAccountingDocument): BooksStatusDue {
-    return { stored, previous: this.snapshots.get(stored.id) ?? null };
+    return {
+      stored,
+      previous: this.snapshots.get(stored.id) ?? null,
+      checkedAt: this.checkedAt.get(stored.id) ?? null,
+    };
   }
   async listDue(_modes: unknown, _since: Date, limit: number): Promise<BooksStatusDueList> {
     const all = this.issued().filter((d) => d.kind !== "contact" && d.record.status === "issued");
@@ -93,8 +102,9 @@ class InMemoryStatusStore implements IAccountingBooksStatusStore {
   async lockForRecord(_tx: unknown, documentId: string) {
     return this.snapshots.get(documentId) ?? null;
   }
-  async record(_tx: unknown, documentId: string, decision: BooksStatusDecision) {
+  async record(_tx: unknown, documentId: string, decision: BooksStatusDecision, observedAt: Date) {
     this.snapshots.set(documentId, decision.snapshot);
+    this.checkedAt.set(documentId, observedAt);
     this.rechecks.delete(documentId);
     if (decision.changes.length > 0) this.changes.push({ documentId, decision });
   }
@@ -158,7 +168,37 @@ async function issuedBooks() {
   return { documents, fake, invoice: byKind("invoice"), payment: byKind("payment") };
 }
 
-async function setUp(options: { statuses?: DocumentStatusPort; maxCalls?: number } = {}) {
+/** One reader for every share: for tests where the share is not the point. */
+const readersOf = (port: DocumentStatusPort): DocumentStatusReaders => ({
+  withinShare: () => port,
+});
+
+/** Readers that keep to their share's `maxCalls`, each share counted on its own. */
+function countedReaders(readers: DocumentStatusReaders): DocumentStatusReaders {
+  return {
+    withinShare: (allowance) => {
+      const port = readers.withinShare(allowance);
+      let used = 0;
+      return {
+        readStatus: async (document, issued) => {
+          if (used >= allowance.maxCalls) return { status: "budget_spent" };
+          used += 1;
+          return port.readStatus(document, issued);
+        },
+      };
+    },
+  };
+}
+
+async function setUp(
+  options: {
+    statuses?: DocumentStatusPort;
+    readers?: (fake: InMemoryAccounting) => DocumentStatusReaders;
+    maxCalls?: number;
+    noticeMaxCalls?: number;
+    now?: () => Date;
+  } = {},
+) {
   const books = await issuedBooks();
   const store = new InMemoryStatusStore(() => books.documents.documents());
   const opened: UnappliedMoney[] = [];
@@ -166,7 +206,13 @@ async function setUp(options: { statuses?: DocumentStatusPort; maxCalls?: number
   const txSeen: unknown[] = [];
   const check = new AccountingStatusCheck({
     store,
-    statusesByMode: { dry_run: options.statuses ?? books.fake.statuses },
+    statusesByMode: {
+      dry_run: options.readers
+        ? options.readers(books.fake)
+        : options.statuses
+          ? readersOf(options.statuses)
+          : books.fake.statuses,
+    },
     organisationIds: { london_auction_xchange: BID_ORG_ID },
     tasks: {
       open: async (t, money) => {
@@ -176,9 +222,12 @@ async function setUp(options: { statuses?: DocumentStatusPort; maxCalls?: number
     },
     transactions: { runInTransaction: async (fn) => fn(tx as never) },
     log,
-    now: () => new Date("2031-03-10T02:15:00Z"),
+    now: options.now ?? (() => new Date("2031-03-10T02:15:00Z")),
     ...(options.maxCalls !== undefined
       ? { allowance: { maxCalls: options.maxCalls, keepFree: 0 } }
+      : {}),
+    ...(options.noticeMaxCalls !== undefined
+      ? { noticeAllowance: { maxCalls: options.noticeMaxCalls, keepFree: 0 } }
       : {}),
   });
   return { ...books, store, check, opened, txSeen, tx };
@@ -305,6 +354,27 @@ describe("the nightly Books status check, against the Books fake", () => {
     expect(store.runs[0]?.outcome).toBe("budget_spent");
   });
 
+  it("each run reads within a fresh share of its own, never one that lasts the process", async () => {
+    const { check, fake } = await setUp({
+      maxCalls: 1,
+      readers: (f) => countedReaders(f.statuses),
+    });
+    expect(await check.runNightly()).toMatchObject({ outcome: "budget_spent", checked: 1 });
+    // The next night's share is new: it reads again instead of stopping for good.
+    expect(await check.runNightly()).toMatchObject({ checked: 1 });
+    expect(fake.statusReads).toHaveLength(2);
+    expect(fake.statusShares).toEqual([
+      { maxCalls: 1, keepFree: 0 },
+      { maxCalls: 1, keepFree: 0 },
+    ]);
+  });
+
+  it("asks for the default share, keeping calls free for sending, when none is given", async () => {
+    const { check, fake } = await setUp();
+    await check.runNightly();
+    expect(fake.statusShares).toEqual([DEFAULT_STATUS_CHECK_ALLOWANCE]);
+  });
+
   it("stops as soon as Books says the day's budget is spent, reading nothing more", async () => {
     const reads: string[] = [];
     const statuses: DocumentStatusPort = {
@@ -407,5 +477,50 @@ describe("a Books notice is only a hint to read again", () => {
       }),
     ).toBe("not_read");
     expect(store.rechecks.has(invoice.stored.id)).toBe(true);
+  });
+
+  const notice = (entityId: string) => ({
+    organizationId: BID_ORG_ID,
+    module: "invoice" as const,
+    entityId,
+  });
+
+  it("notices read within one small share a day, apart from the night's, and the next day has a new one", async () => {
+    let now = new Date("2031-03-10T09:00:00Z");
+    const { check, fake, invoice } = await setUp({
+      noticeMaxCalls: 1,
+      readers: (f) => countedReaders(f.statuses),
+      now: () => now,
+    });
+    expect(await check.recheckFromNotice(notice(invoice.providerId))).toBe("read");
+    now = new Date("2031-03-10T10:00:00Z");
+    // The day's notice share is used: the mark stays for tonight, and Books is not asked.
+    expect(await check.recheckFromNotice(notice(invoice.providerId))).toBe("not_read");
+    expect(fake.statusReads).toHaveLength(1);
+    // The night's run has its own share: the notices did not spend it.
+    expect((await check.runNightly()).checked).toBeGreaterThan(0);
+    now = new Date("2031-03-11T09:00:00Z");
+    expect(await check.recheckFromNotice(notice(invoice.providerId))).toBe("read");
+    expect(fake.statusShares.filter((a) => a.maxCalls === 1)).toHaveLength(2);
+  });
+
+  it("uses the default notice share when none is given", async () => {
+    const { check, fake, invoice } = await setUp();
+    await check.recheckFromNotice(notice(invoice.providerId));
+    await check.recheckFromNotice(notice(invoice.providerId));
+    expect(fake.statusShares).toEqual([DEFAULT_NOTICE_READ_ALLOWANCE]);
+  });
+
+  it("does not read again a document read in the last few minutes; its mark stays for tonight", async () => {
+    let now = new Date("2031-03-10T09:00:00Z");
+    const { check, store, fake, invoice } = await setUp({ now: () => now });
+    expect(await check.recheckFromNotice(notice(invoice.providerId))).toBe("read");
+    now = new Date("2031-03-10T09:05:00Z");
+    expect(await check.recheckFromNotice(notice(invoice.providerId))).toBe("not_read");
+    expect(fake.statusReads).toEqual([invoice.providerId]);
+    expect(store.rechecks.has(invoice.stored.id)).toBe(true);
+    now = new Date("2031-03-10T09:11:00Z");
+    expect(await check.recheckFromNotice(notice(invoice.providerId))).toBe("read");
+    expect(fake.statusReads).toEqual([invoice.providerId, invoice.providerId]);
   });
 });

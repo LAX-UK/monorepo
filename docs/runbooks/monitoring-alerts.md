@@ -462,9 +462,15 @@ routed to finance on-call with the other accounting alerts.
 ### The nightly status check (cron `accounting-reconcile`, 02:15 London)
 
 **What happens.** The worker reads back from Books each issued Books invoice, credit note and
-payment that is due. That is one read per document, never more than the check's share of the day's
-Books budget, and it stops as soon as Books says the budget is spent. A document a notice named is
-read first. For each one the worker records the state Books shows (`accounting_books_status`) and
+payment that is due. That is one read per document. Each run reads within a share of the day's
+Books budget built for that run alone: at most 300 reads, and none once the day's count would leave
+fewer than 400 calls for sending. It stops as soon as its share or the day's budget is spent, and
+the rest is read the next night. A document a notice named is read first.
+
+Reads a notice asks for during the day draw on a separate share: at most 50 a day, with the same 400
+calls kept free, so notices can never spend the night's share or the sender's calls. A notice for a
+document read in the last 10 minutes does not read it again: the mark stays and the night's run
+reads it first. In the dry run no share is spent, because nothing is read. For each one the worker records the state Books shows (`accounting_books_status`) and
 each change (`accounting_books_status_change`, append-only), such as an invoice voided or a document
 deleted in Books. Each run is a row in `accounting_books_status_run`. In the dry run nothing is
 read and each run says `rehearsal`.
