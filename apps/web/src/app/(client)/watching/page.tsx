@@ -11,7 +11,8 @@ import { getLotMediaTreatments } from "@/lib/departments/lot-media-treatments.se
 import { alertAccessOf, engineAlertStateOf } from "@/lib/notifications/engine-alert-state";
 import { artistPath } from "@/lib/seo/url";
 import { watchingAlertReach } from "@/lib/watching/alert-reach";
-import { buildWatchedLots, parseWatchingView, withReminders } from "@/lib/watching/watching.vm";
+import { parseWatchingListQuery } from "@/lib/watching/watching-list-query";
+import { buildWatchedLots, withReminders } from "@/lib/watching/watching.vm";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = { title: "Watching" };
@@ -93,8 +94,7 @@ export default async function WatchingPage({ searchParams }: PageProps) {
     >
       <SetMobileShellTitle title="Watching" />
       <WatchingView
-        // `section=artists` is the old address of the artists list.
-        view={parseWatchingView(sp.tab ?? (sp.section === "artists" ? "artists" : undefined))}
+        query={parseWatchingListQuery(sp)}
         lots={lots}
         artists={artists}
         searches={searches}

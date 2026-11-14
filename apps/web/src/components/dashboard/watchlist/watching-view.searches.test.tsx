@@ -7,7 +7,10 @@ const switchEmail = vi.fn();
 const success = vi.fn();
 const error = vi.fn();
 
-vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh }) }));
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ refresh }),
+  usePathname: () => "/watching",
+}));
 vi.mock("@/lib/ui/notify", () => ({
   notify: { success: (m: string) => success(m), error: (...a: unknown[]) => error(...a) },
 }));
@@ -37,7 +40,7 @@ const reach = (emailOn: boolean) => ({
 function show(over: Partial<React.ComponentProps<typeof WatchingView>> = {}) {
   render(
     <WatchingView
-      view="searches"
+      query={{ view: "searches", q: "", sort: "closing" }}
       lots={[]}
       artists={[]}
       searches={SEARCHES}

@@ -2,6 +2,7 @@
 
 import { MediaImage } from "@/components/ui/media-image";
 import { ListEmpty, ListLoadError, ListNoResults } from "@/components/workspace/list-states";
+import { useListQuery } from "@/components/workspace/use-list-query";
 import { defaultArtistWatchlistClient } from "@/lib/data/http/artist-watchlist.client";
 import type { SavedSearchRow } from "@/lib/data/http/saved-searches.client";
 import { deleteSavedSearch } from "@/lib/data/http/saved-searches.client";
@@ -18,6 +19,7 @@ import {
   turnedOnMessage,
 } from "@/lib/watching/search-email";
 import { reminderRowLabel } from "@/lib/watching/watched-lot-reminder.vm";
+import { type WatchingListQuery, watchingListSearch } from "@/lib/watching/watching-list-query";
 import {
   WATCHED_LOT_SORTS,
   WATCHED_LOT_SORT_LABEL,
@@ -58,7 +60,8 @@ export type WatchedArtistVm = {
 };
 
 export type WatchingViewProps = {
-  view: WatchingViewId;
+  /** The view, search and order, as the address holds them. */
+  query: WatchingListQuery;
   /** Each list is `null` when it could not be read. */
   lots: WatchedLotRowVm[] | null;
   artists: WatchedArtistVm[] | null;
@@ -82,7 +85,7 @@ function tabHref(view: WatchingViewId): string {
  * alert on an artist is edited here; how alerts reach the person stays in Bid settings.
  */
 export function WatchingView({
-  view,
+  query: initialQuery,
   lots,
   artists,
   searches,
@@ -91,8 +94,17 @@ export function WatchingView({
   organisation,
 }: WatchingViewProps) {
   const router = useRouter();
-  const [query, setQuery] = useState("");
-  const [sort, setSort] = useState<WatchedLotSort>("closing");
+  const view = initialQuery.view;
+  // Search and order live in the address: Back from a lot returns to the same filtered list.
+  const {
+    query: listQuery,
+    setQuery: setListQuery,
+    search,
+    setSearch,
+  } = useListQuery(initialQuery, watchingListSearch);
+  const query = listQuery.q;
+  const sort = listQuery.sort;
+  const setSort = (next: WatchedLotSort) => setListQuery({ ...listQuery, sort: next });
   const [editing, setEditing] = useState<WatchedArtistVm | null>(null);
   const [reminding, setReminding] = useState<WatchedLotRowVm | null>(null);
   const [confirming, setConfirming] = useState<SavedSearchRow | null>(null);
@@ -178,7 +190,7 @@ export function WatchingView({
       <ListToolbar
         tabs={{ items: tabs, activeId: view, label: "Watching", Link }}
         {...(counts[view]
-          ? { search: { value: query, onValueChange: setQuery, placeholder: placeholder[view] } }
+          ? { search: { value: search, onValueChange: setSearch, placeholder: placeholder[view] } }
           : {})}
         {...(view === "lots" && counts.lots
           ? {
@@ -213,7 +225,7 @@ export function WatchingView({
           lots={lots}
           query={query}
           sort={sort}
-          onClear={() => setQuery("")}
+          onClear={() => setListQuery({ ...listQuery, q: "" })}
           onStop={stopWatching}
           onRemind={setReminding}
         />
@@ -223,7 +235,7 @@ export function WatchingView({
           artists={artists}
           reach={reach?.artists ?? null}
           query={query}
-          onClear={() => setQuery("")}
+          onClear={() => setListQuery({ ...listQuery, q: "" })}
           onEdit={setEditing}
           onUnfollow={unfollow}
         />
@@ -233,7 +245,7 @@ export function WatchingView({
           searches={searches}
           reach={reach?.searches ?? null}
           query={query}
-          onClear={() => setQuery("")}
+          onClear={() => setListQuery({ ...listQuery, q: "" })}
           onRemove={removeSearch}
           onEmail={setSearchEmail}
           access={emailAccess}
