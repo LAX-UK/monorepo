@@ -1,5 +1,6 @@
 "use client";
 
+import { PayoutFailureReason } from "@/components/admin/payouts/payout-failure-reason";
 import { PayoutSalesPanel } from "@/components/admin/seller-proceeds/payout-sales-panel";
 import type { PayoutsStaffRow } from "@/lib/admin/finance/payouts-staff-list.vm";
 import type { PayoutSalesDto } from "@/lib/data/http/admin-seller-proceeds.shared";
@@ -192,7 +193,7 @@ export function PayoutQuickView({
               }
               className="mb-4"
             >
-              {row.failureReason}
+              <PayoutFailureReason reason={row.failureReason} />
             </Notice>
           ) : null}
           {row.status === "transfer_blocked" ? (
