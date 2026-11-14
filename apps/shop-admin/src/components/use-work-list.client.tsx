@@ -18,32 +18,43 @@ type Page = {
   counts?: Record<string, number>;
 };
 
+export type WorkListOptions<F extends string> = {
+  list: WorkList<F>;
+  state: WorkListState<F>;
+  page: Page;
+  noun: { one: string; other: string };
+  search: { label: string; placeholder: string };
+};
+
 /**
  * Everything a sales or operations list shares, from its URL state: the view tabs with counts,
  * the search, the server sort, 50 rows a page with the size in Display, pagination, the search
  * chip and clearing, and the record panel linked from the URL. Moves run in a transition, so the
  * table dims its rows while the next page loads.
  */
-export function useWorkList<F extends string>({
+export function useWorkList<F extends string>(options: WorkListOptions<F>) {
+  const base = useWorkListBase(options);
+  const panel = useListPanel({
+    param: options.list.config.panelParam,
+    initialId: options.state.open,
+    hrefFor: base.panelHref,
+  });
+  return { ...base, panel };
+}
+
+/**
+ * A work list without its panel: the views, search, sort, page size and pagination that
+ * `useWorkList` and `useWorkQueue` share.
+ */
+export function useWorkListBase<F extends string>({
   list,
   state,
   page,
   noun,
   search,
-}: {
-  list: WorkList<F>;
-  state: WorkListState<F>;
-  page: Page;
-  noun: { one: string; other: string };
-  search: { label: string; placeholder: string };
-}) {
+}: WorkListOptions<F>) {
   const { pending, navigate, Link } = useListNavigation();
   const panelHref = useCallback((id: string | null) => list.panelHref(state, id), [list, state]);
-  const panel = useListPanel({
-    param: list.config.panelParam,
-    initialId: state.open,
-    hrefFor: panelHref,
-  });
 
   const clearFilters = useCallback(() => {
     const cleared = Object.fromEntries(
@@ -84,7 +95,6 @@ export function useWorkList<F extends string>({
     pending,
     navigate,
     Link,
-    panel,
     panelHref,
     views,
     search: searchField,

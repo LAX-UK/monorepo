@@ -10,9 +10,12 @@ import {
   legalEntitiesListHref,
   legalEntitiesMetrics,
   legalEntitiesRangeSummary,
+  legalEntitiesSortHref,
+  legalEntitiesSortState,
   legalEntitiesViews,
-  legalEntityPanelHref,
+  legalEntityPanelRedirect,
   legalEntityRecordHref,
+  sortLegalEntitiesStaffRows,
   toLegalEntitiesStaffRows,
 } from "./legal-entities-staff-list.vm";
 
@@ -63,22 +66,72 @@ describe("legal entities staff list view model", () => {
     expect(legalEntitiesListHref(search, { offset: 100 })).toBe(
       "/admin/legal-entities?q=gallery&offset=100&stripe=1",
     );
-    expect(legalEntityPanelHref(search, "le_2")).toBe(
-      "/admin/legal-entities?q=gallery&offset=50&entity=le_2&stripe=1",
+  });
+
+  it("links to the entity's page and remembers the list it came from", () => {
+    expect(legalEntityRecordHref({ q: "gallery", sort: "name" }, "le_1")).toBe(
+      "/admin/legal-entities/le_1?list=q%3Dgallery%26sort%3Dname",
     );
-    expect(legalEntityPanelHref(search, null)).toBe(
-      "/admin/legal-entities?q=gallery&offset=50&stripe=1",
+    expect(legalEntityRecordHref({}, "le_1")).toBe("/admin/legal-entities/le_1");
+    expect(legalEntityRecordHref({ stripe: "1" }, "le_1", "stripe")).toBe(
+      "/admin/legal-entities/le_1/stripe?list=stripe%3D1",
+    );
+    // An old panel param and one-off notices are not part of the list.
+    expect(legalEntityRecordHref({ entity: "le_9", success: "Saved" }, "le_1")).toBe(
+      "/admin/legal-entities/le_1",
     );
   });
 
-  it("links to the record page and remembers the list it came from", () => {
-    const href = legalEntityRecordHref({ q: "gallery" }, "le_1");
-    expect(href).toBe(
-      "/admin/legal-entities/le_1?returnTo=%2Fadmin%2Flegal-entities%3Fq%3Dgallery",
+  it("sends an old panel link to the entity's page, still in its list", () => {
+    expect(legalEntityPanelRedirect({ stripe: "1", q: "gallery", entity: "le_2" })).toBe(
+      "/admin/legal-entities/le_2?list=stripe%3D1%26q%3Dgallery",
     );
-    expect(legalEntityRecordHref({}, "le_1", "stripe")).toBe(
-      "/admin/legal-entities/le_1?returnTo=%2Fadmin%2Flegal-entities&tab=stripe",
-    );
+    expect(legalEntityPanelRedirect({ entity: "le_2" })).toBe("/admin/legal-entities/le_2");
+    expect(legalEntityPanelRedirect({ entity: " " })).toBeNull();
+    expect(legalEntityPanelRedirect({ q: "gallery" })).toBeNull();
+  });
+
+  it("keeps the sort in the URL, leaving the default out", () => {
+    expect(legalEntitiesSortState(undefined)).toEqual({ columnId: "updated", direction: "desc" });
+    expect(legalEntitiesSortState("name")).toEqual({ columnId: "name", direction: "asc" });
+    expect(legalEntitiesSortState("-kind")).toEqual({ columnId: "updated", direction: "desc" });
+    expect(
+      legalEntitiesSortHref({ q: "a", offset: "50" }, { columnId: "stripe", direction: "desc" }),
+    ).toBe("/admin/legal-entities?q=a&sort=-stripe");
+    expect(
+      legalEntitiesSortHref({ sort: "name" }, { columnId: "updated", direction: "desc" }),
+    ).toBe("/admin/legal-entities");
+  });
+
+  it("puts the page of rows in the URL's order", () => {
+    const rows = toLegalEntitiesStaffRows([
+      {
+        ...row,
+        id: "a",
+        displayName: "beta",
+        stripeDueCount: 0,
+        updatedAt: "2026-10-01T00:00:00Z",
+      },
+      {
+        ...row,
+        id: "b",
+        displayName: "Alpha",
+        stripeDueCount: 3,
+        updatedAt: "2026-10-03T00:00:00Z",
+      },
+      {
+        ...row,
+        id: "c",
+        displayName: "gamma",
+        stripeDueCount: 1,
+        updatedAt: "2026-10-02T00:00:00Z",
+      },
+    ]);
+    const ids = (columnId: string, direction: "asc" | "desc") =>
+      sortLegalEntitiesStaffRows(rows, { columnId, direction }).map((r) => r.id);
+    expect(ids("updated", "desc")).toEqual(["b", "c", "a"]);
+    expect(ids("name", "asc")).toEqual(["b", "a", "c"]);
+    expect(ids("stripe", "desc")).toEqual(["b", "c", "a"]);
   });
 
   it("offers All and the Stripe requirements view, with a count only on the work waiting", () => {

@@ -2,10 +2,12 @@
 
 import { useLegalEntityActions } from "@/components/admin/legal-entities/legal-entity-actions";
 import { LegalEntityDetailAlerts } from "@/components/admin/legal-entities/legal-entity-detail-alerts";
+import { ListRecordPager } from "@/components/admin/staff/list-record-pager";
 import { StaffDetailTabs } from "@/components/admin/staff/staff-detail-tabs";
 import { usePinPageAction } from "@/components/admin/staff/use-pin-page-action";
 import { buildLegalEntityDetailTabSpecs } from "@/lib/admin/catalog/detail-tab-compat";
 import { formatLegalEntityKindSubkind } from "@/lib/admin/legal-entity-list-presenter";
+import type { ListRecordPagerModel } from "@/lib/admin/list-record";
 import type { AdminLegalEntityDetailBundle } from "@/lib/admin/load-admin-legal-entity-detail";
 import { staffStatus } from "@/lib/admin/staff-kit-status";
 import { stripeRequirementsAttentionCountForEntity } from "@/lib/admin/stripe-connect-staff-presenter";
@@ -30,6 +32,8 @@ type Props = {
   bundle: AdminLegalEntityDetailBundle;
   backHref: string;
   saleCount?: number;
+  /** Previous and Next through the list the entity was opened from. */
+  pager?: ListRecordPagerModel | null;
   children: ReactNode;
 };
 
@@ -39,7 +43,13 @@ type Props = {
  * action, a notice when Stripe still needs something, and its sections as tabs. Messages from an
  * action that redirected back here show above the section.
  */
-export function LegalEntityDetailShell({ bundle, backHref, saleCount = 0, children }: Props) {
+export function LegalEntityDetailShell({
+  bundle,
+  backHref,
+  saleCount = 0,
+  pager = null,
+  children,
+}: Props) {
   const { entity, documents } = bundle;
   const pendingDocCount = documents.filter((d) => d.reviewStatus === "pending").length;
   const stripeDueCount = stripeRequirementsAttentionCountForEntity(entity);
@@ -85,6 +95,7 @@ export function LegalEntityDetailShell({ bundle, backHref, saleCount = 0, childr
   return (
     <>
       <DetailPage
+        {...(pager ? { pager: <ListRecordPager pager={pager} noun="legal entity" /> } : {})}
         breadcrumbs={
           <StaffBreadcrumbs
             Link={NextLink}

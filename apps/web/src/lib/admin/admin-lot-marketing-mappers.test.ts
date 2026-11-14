@@ -1,6 +1,10 @@
 import type { LotMarketingDetails } from "@auction/types";
 import { describe, expect, it } from "vitest";
-import { formValuesToApiPatch, marketingDetailsToFormValues } from "./admin-lot-marketing-mappers";
+import {
+  adminLotMarketingFormValuesSchema,
+  formValuesToApiPatch,
+  marketingDetailsToFormValues,
+} from "./admin-lot-marketing-mappers";
 
 describe("admin lot marketing mappers", () => {
   it("maps marketingDetails to form defaults (artist FK is no longer in this form)", () => {
@@ -65,5 +69,26 @@ describe("admin lot marketing mappers", () => {
       artistNote: "",
     });
     expect(patch.estimate).toEqual({ low: "1000.00", high: "2000.00", currency: "GBP" });
+  });
+
+  it("rejects an estimate that is not in the sale's currency", () => {
+    const values = {
+      estimate: { low: "45000", high: "65000", currency: "USD" },
+      conditionReport: { summary: "", details: "", downloadUrl: "" },
+      provenance: [],
+      exhibitions: [],
+      artistNote: "",
+    };
+    const bad = adminLotMarketingFormValuesSchema.safeParse(values);
+    expect(bad.success).toBe(false);
+    expect(bad.error?.issues[0]?.message).toBe(
+      "The estimate must be in pounds sterling (GBP), the currency of the sale",
+    );
+    expect(
+      adminLotMarketingFormValuesSchema.safeParse({
+        ...values,
+        estimate: { ...values.estimate, currency: "GBP" },
+      }).success,
+    ).toBe(true);
   });
 });

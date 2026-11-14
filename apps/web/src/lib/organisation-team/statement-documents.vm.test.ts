@@ -34,3 +34,12 @@ describe("statementPdfHref", () => {
     expect(statementPdfHref("a/b", "c d")).toBe("/legal-entities/a%2Fb/payouts/c%20d/statement");
   });
 });
+
+describe("statement page link", () => {
+  it("opens the payout page for a member who can, and nothing for one who cannot", () => {
+    expect(statementDocumentRows("org-1", [statement], true)[0]?.pageHref).toBe(
+      "/selling/payouts/p1",
+    );
+    expect(statementDocumentRows("org-1", [statement])[0]?.pageHref).toBeNull();
+  });
+});

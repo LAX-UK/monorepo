@@ -9,6 +9,7 @@ import {
   Notice,
   type OverflowAction,
   OverflowMenu,
+  type PanelQueue,
   StaffButton,
   StaffDate,
   StatusBadge,
@@ -17,15 +18,17 @@ import { ArrowUpRight } from "lucide-react";
 import Link from "next/link";
 
 /**
- * A payout beside the list: period and status, a meta line (seller, net amount, paid on), "Open
- * seller" and the same `…` menu as the row, then the money breakdown and anything Stripe or the
+ * A payout beside the list, as a work queue: period and status, its place in the list ("3 of 12")
+ * with J and K to step, a meta line (seller, net amount, paid on), "Open seller" and the same `…`
+ * menu as the row, then the money breakdown and anything Stripe or the
  * statement reported. The next money step sits in the footer; each opens the row's confirm dialog.
  */
 export function PayoutQuickView({
   row,
   canProcess,
   canReverse,
-  onClose,
+  onOpenChange,
+  queue,
   onMarkPaid,
   onAdjust,
   onRetryTransfer,
@@ -39,7 +42,10 @@ export function PayoutQuickView({
   row: PayoutsStaffRow | null;
   canProcess: boolean;
   canReverse: boolean;
-  onClose: () => void;
+  /** Closing the panel (Esc, the close button, a click outside); Back closes it too. */
+  onOpenChange: (open: boolean) => void;
+  /** Its place in the list ("3 of 12") and J/K stepping; none when the payout is not listed. */
+  queue?: PanelQueue | undefined;
   onMarkPaid: (row: PayoutsStaffRow) => void;
   onAdjust: (row: PayoutsStaffRow) => void;
   onRetryTransfer: (row: PayoutsStaffRow) => void;
@@ -63,9 +69,9 @@ export function PayoutQuickView({
   return (
     <DetailPanel
       open={row !== null}
-      onOpenChange={(open) => {
-        if (!open) onClose();
-      }}
+      onOpenChange={onOpenChange}
+      // A payout has no page of its own yet; when it has, `fullPage` gives "Open full page".
+      {...(queue ? { queue } : {})}
       title={row ? `Payout for ${row.period}` : "Payout"}
       status={
         row ? (

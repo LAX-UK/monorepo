@@ -1,3 +1,4 @@
+import { consignmentHref } from "@/lib/seller/consignment-records";
 import { formatDateInline } from "@/lib/ui/format";
 import type { ConsignmentAgreement } from "@auction/types";
 
@@ -11,6 +12,8 @@ export type AgreementDocumentRow = {
   accepted: boolean;
   /** Where its PDF downloads. */
   href: string;
+  /** The consignment page it belongs to; `null` when the member cannot open consignments. */
+  pageHref: string | null;
 };
 
 /** The PDF of one agreement, through the Bid app (the API needs the signed-in session). */
@@ -25,6 +28,7 @@ export function agreementPdfHref(submissionId: string): string {
 export function agreementDocumentRows(
   agreements: readonly ConsignmentAgreement[],
   titleBySubmission: ReadonlyMap<string, string>,
+  canOpenConsignments = false,
 ): AgreementDocumentRow[] {
   return [...agreements]
     .sort(
@@ -43,6 +47,7 @@ export function agreementDocumentRows(
           : `Proposed ${formatDateInline(a.proposedAt)}, waiting to be accepted`,
         accepted,
         href: agreementPdfHref(a.submissionId),
+        pageHref: canOpenConsignments ? consignmentHref(a.submissionId) : null,
       };
     });
 }

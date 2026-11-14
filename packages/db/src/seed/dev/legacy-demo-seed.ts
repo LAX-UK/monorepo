@@ -1,12 +1,3 @@
-/** Comprehensive demo seed: covers staff roles + client, legal-entity subkind,
- * entity status, entity-member role, KYC state, email state, invitation status,
- * user-address variant, and KYB document. Wipes auth + app tables, then loads
- * all demo data.
- *
- * Run: DATABASE_URL=... pnpm --filter @auction/db db:seed:dev
- * Same password for every seeded account (email/password sign-in).
- * Admin login: admin@lax.bid / Password123!
- */
 import { randomUUID } from "node:crypto";
 import { standardBuyerPremiumBands } from "@auction/validators";
 import { hashPassword } from "@better-auth/utils/password";
@@ -26,6 +17,16 @@ import { SEED_BUYER_PREMIUM_TERMS } from "../shared/terms.js";
 import { seedCollectionJourneys } from "./collection-journeys-seed.js";
 import { DEMO_SEED_NOW } from "./demo-seed-clock.js";
 import { seedOrganisationJourneys } from "./organisation-journeys-seed.js";
+/** Comprehensive demo seed: covers staff roles + client, legal-entity subkind,
+ * entity status, entity-member role, KYC state, email state, invitation status,
+ * user-address variant, and KYB document. Wipes auth + app tables, then loads
+ * all demo data.
+ *
+ * Run: DATABASE_URL=... pnpm --filter @auction/db db:seed:dev
+ * Same password for every seeded account (email/password sign-in).
+ * Admin login: admin@lax.bid / Password123!
+ */
+import { seedLotEstimate } from "./seed-lot-estimate.js";
 
 const { Pool } = pg;
 
@@ -3136,7 +3137,7 @@ export async function runLegacyDemoSeed() {
     imageAlts: string[],
     extra: Record<string, unknown> = {},
   ) => ({
-    estimate: { low, high, currency: "USD" },
+    estimate: seedLotEstimate(low, high),
     imageAlts,
     ...extra,
   });
@@ -3407,7 +3408,7 @@ export async function runLegacyDemoSeed() {
       dutchDecrementIntervalMs: 60_000,
       dutchLastDecrementAt: null,
       marketingDetails: {
-        estimate: { low: "140000.00", high: "190000.00", currency: "USD" },
+        estimate: seedLotEstimate("140000.00", "190000.00"),
         conditionReport: {
           summary:
             "Excellent overall condition; stable paint layer with minor craquelure in lower quadrant (documented).",

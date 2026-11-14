@@ -1,7 +1,8 @@
 "use client";
 
 import { MarkPayoutPaidDialog } from "@/components/payouts/mark-payout-paid-dialog.client";
-import { filterChip, knownFacts, useWorkList } from "@/components/use-work-list.client";
+import { filterChip, knownFacts } from "@/components/use-work-list.client";
+import { useWorkQueue } from "@/components/use-work-queue.client";
 import {
   type PayoutRow,
   markPaidAvailability,
@@ -74,12 +75,14 @@ export function PayoutList({
   canMarkPaid: boolean;
   loadFailed?: boolean;
 }) {
-  const list = useWorkList({
+  const list = useWorkQueue({
     list: payoutsList,
     state,
     page,
     noun: { one: "payout", other: "payouts" },
     search: { label: "Search payouts", placeholder: "Search by payee or payout reference" },
+    ids: page.items.map((row) => row.payoutId),
+    queueNoun: "payout",
   });
   const [payingId, setPayingId] = useState<string | null>(null);
   const opened = page.items.find((item) => item.payoutId === list.panel.openId) ?? null;
@@ -227,7 +230,8 @@ export function PayoutList({
           defaultDensity: "comfortable",
           defaultHiddenColumns: ["created"],
           ...list.sort,
-          onRowOpen: (row) => list.panel.show(row.payoutId),
+          onRowOpen: (row) => list.panel.open(row.payoutId),
+          rowHref: (row) => list.panelHref(row.payoutId),
           activeRowId: list.panel.openId,
           rowActions: {
             label: (row) => `Actions for the payout to ${row.ownerDisplayName}`,
@@ -237,7 +241,7 @@ export function PayoutList({
                   id: "open",
                   label: "Open details",
                   icon: PanelRight,
-                  onSelect: () => list.panel.show(row.payoutId),
+                  onSelect: () => list.panel.open(row.payoutId),
                 },
                 markPaidAction(row, canMarkPaid, () => setPayingId(row.payoutId)),
                 {
@@ -255,9 +259,8 @@ export function PayoutList({
 
       <DetailPanel
         open={opened !== null}
-        onOpenChange={(open) => {
-          if (!open) list.panel.show(null);
-        }}
+        {...list.panel.queueProps}
+        onOpenChange={list.panel.onOpenChange}
         title={opened ? `Payout to ${opened.ownerDisplayName}` : "Payout"}
         status={
           opened ? <MappedStatusBadge status={opened.status} present={presentPayoutStatus} /> : null

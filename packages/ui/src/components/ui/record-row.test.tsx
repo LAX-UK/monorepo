@@ -150,6 +150,28 @@ describe("RecordRow", () => {
     });
   });
 
+  describe("actionBeside", () => {
+    const action = <a href="/file.pdf">Download</a>;
+
+    it("keeps the action on the title's line when narrow, in its own column", () => {
+      const li = row(<RecordRow title="Statement" status="Ready" actionBeside action={action} />);
+      const slot = li.querySelector("[data-record-action]") as HTMLElement;
+      expect(slot.className).toContain("col-start-2");
+      expect(slot.className).toContain("row-start-1");
+      expect(slot.className).not.toContain("ml-auto");
+      // The status follows under the facts; the foot joins the grid on a narrow list.
+      expect(li.querySelector("[data-record-foot]")?.className).toMatch(/(^|\s)contents(\s|$)/);
+      expect(li.querySelector("[data-record-status]")?.className).toContain("col-start-1");
+    });
+
+    it("leaves other rows as they were", () => {
+      const li = row(<RecordRow title="Statement" action={action} />);
+      const slot = li.querySelector("[data-record-action]") as HTMLElement;
+      expect(slot.className).toContain("ml-auto");
+      expect(slot.className).not.toContain("col-start-2");
+    });
+  });
+
   describe("needsYou", () => {
     const action = <button type="button">Bid £3,200.00</button>;
 

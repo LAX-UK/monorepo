@@ -2,7 +2,8 @@
 
 import { RecordThirdPartySaleDialog } from "@/components/sales/record-third-party-sale-dialog.client";
 import { useAdminAction } from "@/components/use-admin-action.client";
-import { filterChip, knownFacts, useWorkList } from "@/components/use-work-list.client";
+import { filterChip, knownFacts } from "@/components/use-work-list.client";
+import { useWorkQueue } from "@/components/use-work-queue.client";
 import { approveSaleFee } from "@/server/application/admin-sales-actions.server";
 import { editionLabel } from "@/server/domain/lookup-options.vm";
 import { thirdPartySalesList } from "@/server/domain/sales-lists.vm";
@@ -103,7 +104,7 @@ export function ThirdPartySalesList({
   canApproveFees: boolean;
   loadFailed?: boolean;
 }) {
-  const list = useWorkList({
+  const list = useWorkQueue({
     list: thirdPartySalesList,
     state,
     page,
@@ -112,6 +113,8 @@ export function ThirdPartySalesList({
       label: "Search third-party sales",
       placeholder: "Search by artwork, seller or buyer",
     },
+    ids: page.items.map((row) => row.saleId),
+    queueNoun: "sale",
   });
   const [recording, setRecording] = useState(false);
   const [approvingId, setApprovingId] = useState<string | null>(null);
@@ -297,7 +300,8 @@ export function ThirdPartySalesList({
           getRowId: (row) => row.saleId,
           defaultDensity: "comfortable",
           ...list.sort,
-          onRowOpen: (row) => list.panel.show(row.saleId),
+          onRowOpen: (row) => list.panel.open(row.saleId),
+          rowHref: (row) => list.panelHref(row.saleId),
           activeRowId: list.panel.openId,
           rowActions: {
             label: (row) => `Actions for the sale of ${editionLabel(row)}`,
@@ -307,7 +311,7 @@ export function ThirdPartySalesList({
                   id: "open",
                   label: "Open details",
                   icon: PanelRight,
-                  onSelect: () => list.panel.show(row.saleId),
+                  onSelect: () => list.panel.open(row.saleId),
                 },
                 approveAction(row),
               ].filter((action): action is OverflowAction => action !== null),
@@ -319,9 +323,8 @@ export function ThirdPartySalesList({
 
       <DetailPanel
         open={opened !== null}
-        onOpenChange={(open) => {
-          if (!open) list.panel.show(null);
-        }}
+        {...list.panel.queueProps}
+        onOpenChange={list.panel.onOpenChange}
         title={opened ? editionLabel(opened) : "Third-party sale"}
         status={
           opened ? (
