@@ -30,7 +30,7 @@ describe("buildLegalEntityAccessFailure", () => {
 
   it("builds members context failure", () => {
     const failure = buildLegalEntityAccessFailure("members", 403, "not_a_member_of_legal_entity");
-    expect(failure.title).toBe("Could not load members");
+    expect(failure.title).toBe("Members couldn't be loaded");
   });
 });
 

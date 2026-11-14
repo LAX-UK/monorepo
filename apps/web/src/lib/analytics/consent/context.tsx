@@ -39,6 +39,11 @@ function syncProvidersConsent(snapshot: ConsentSnapshot | null): void {
   }
 }
 
+/** One string per distinct choice, so a choice read again from the cookie is not a change. */
+export function consentSnapshotKey(snapshot: ConsentSnapshot | null): string {
+  return snapshot === null ? "consent:none" : JSON.stringify(snapshot);
+}
+
 type ConsentProviderProps = {
   children: ReactNode;
   initialSnapshot: ConsentSnapshot | null;
@@ -49,6 +54,17 @@ export function ConsentProvider({ children, initialSnapshot }: ConsentProviderPr
   const [snapshot, setSnapshot] = useState<ConsentSnapshot | null>(initialSnapshot);
   const [showBanner, setShowBanner] = useState(initialSnapshot === null);
   const [preferencesOpen, setPreferencesOpen] = useState(false);
+  // A new choice read from the cookie on the server (after a refresh, or a change made in another
+  // tab) replaces the one held here. It is adopted in place: remounting the provider would remount
+  // the whole app under it and lose what is open on the page, such as a menu or a sheet.
+  const initialKey = consentSnapshotKey(initialSnapshot);
+  const [adoptedKey, setAdoptedKey] = useState(initialKey);
+  if (adoptedKey !== initialKey) {
+    setAdoptedKey(initialKey);
+    setSnapshot(initialSnapshot);
+    setShowBanner(initialSnapshot === null);
+    setPreferencesOpen(false);
+  }
 
   // Consent Mode default + SSR cookie restore run synchronously in <head> via ConsentInit.
   useEffect(() => {

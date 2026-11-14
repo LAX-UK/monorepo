@@ -1,4 +1,5 @@
 import type { IProjectorCursorStart } from "../../repositories/drizzle-projector-cursor-start.js";
+import type { AccountingInvoiceCopy } from "./accounting-invoice-copy.service.js";
 import type { AccountingProjection } from "./accounting-projection.service.js";
 import type { AccountingSender } from "./accounting-sender.service.js";
 import type { AccountingWatch } from "./accounting-watch.service.js";
@@ -7,6 +8,8 @@ import type { AccountingWatch } from "./accounting-watch.service.js";
 export interface AccountingRuntime {
   readonly projection: AccountingProjection;
   readonly sender: AccountingSender;
+  /** Keeps LAX's copy of each issued invoice's PDF and emails it to the buyer once (not in dry run). */
+  readonly invoiceCopy: AccountingInvoiceCopy;
   readonly cursorStart: IProjectorCursorStart;
   /** Checks the queue for work waiting too long; run by the accounting-watch cron. */
   readonly watch: AccountingWatch;

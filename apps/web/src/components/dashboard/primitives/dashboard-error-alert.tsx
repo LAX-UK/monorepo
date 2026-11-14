@@ -7,8 +7,12 @@ import {
 import type { ReactNode } from "react";
 
 export type DashboardErrorAlertProps = {
-  title?: string;
-  /** The title's heading level where the alert sits: h2 under the page title (the default), h3 inside a section. */
+  /** What failed, in the surface's own words: "Your documents couldn't be loaded". */
+  title: string;
+  /**
+   * The title's heading level where the alert sits: h2 directly under the page title (the
+   * default), h3 inside a section that has its own h2. Never skip a level.
+   */
   headingLevel?: AlertTitleLevel;
   message: string;
   /** Optional retry control (e.g. `<form action={...}>` or client button). */
@@ -17,9 +21,13 @@ export type DashboardErrorAlertProps = {
   "aria-live"?: "polite" | "assertive" | "off";
 };
 
-/** Inline recoverable error for dashboard slices (SSR + client). */
+/**
+ * Inline recoverable error for dashboard slices (SSR + client), on the danger tokens the notices
+ * use: a tinted card with a visible edge, the title in the danger text colour (AA on the tint in
+ * both themes) and the explanation in body text.
+ */
 export function DashboardErrorAlert({
-  title = "We couldn't load this",
+  title,
   headingLevel = "h2",
   message,
   children,
@@ -29,12 +37,14 @@ export function DashboardErrorAlert({
   return (
     <Alert
       variant="destructive"
-      className="border-destructive/40 bg-destructive/5"
+      className="border-lax-danger/30 bg-lax-danger-bg text-lax-danger-fg"
       {...(role ? { role } : {})}
       {...(ariaLive ? { "aria-live": ariaLive } : {})}
     >
-      <AlertTitle as={headingLevel}>{title}</AlertTitle>
-      <AlertDescription className="flex flex-col gap-3 text-on-surface">
+      <AlertTitle as={headingLevel} className="font-semibold">
+        {title}
+      </AlertTitle>
+      <AlertDescription className="flex flex-col gap-3 text-lax-fg">
         <span>{message}</span>
         {children}
       </AlertDescription>

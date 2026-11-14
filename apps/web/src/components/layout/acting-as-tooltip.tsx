@@ -4,8 +4,8 @@ import { useIsLg } from "@/hooks/use-is-lg";
 import { useConsent } from "@/lib/analytics/consent/context";
 import { dismissActingContextTooltip } from "@/lib/legal-entity/acting-context.actions";
 import { useSignInNoticeActive } from "@/lib/ui/first-visit-overlays";
-import { Button } from "@auction/ui/components/button";
 import { Popover, PopoverAnchor, PopoverContent } from "@auction/ui/components/popover";
+import { Button } from "@auction/ui/lax/button";
 import { type ReactNode, useId, useState, useTransition } from "react";
 
 type Props = {
@@ -66,7 +66,7 @@ export function ActingAsTooltip({ initiallyVisible, children }: Props) {
           consign or manage payouts.
         </p>
         <div className="mt-3 flex justify-end">
-          <Button type="button" onClick={handleDismiss} disabled={pending}>
+          <Button type="button" variant="primary" onClick={handleDismiss} disabled={pending}>
             Got it
           </Button>
         </div>

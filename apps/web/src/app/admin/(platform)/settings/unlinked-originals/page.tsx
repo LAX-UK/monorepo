@@ -15,7 +15,7 @@ export const metadata: Metadata = metadataForPrivate(
 
 export default async function AdminUnlinkedOriginalsPage() {
   const user = await requireAdminCapability(LOTS_READ_ACCESS, "/admin/settings/unlinked-originals");
-  const { view } = await loadUnlinkedOriginalsPage();
+  const { view, loadError } = await loadUnlinkedOriginalsPage();
   const canEdit = userHasAccessTo(user.role, user.staffRoles, PLATFORM_ADMIN_ACCESS);
 
   return (
@@ -34,7 +34,7 @@ export default async function AdminUnlinkedOriginalsPage() {
         </>
       ) : (
         <Notice tone="warning" title="The report could not load">
-          LAX Bid did not answer. Try again in a moment.
+          {loadError}
         </Notice>
       )}
     </FormPage>

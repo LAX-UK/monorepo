@@ -30,6 +30,8 @@ export interface BidBuyerFacts {
 
 /** One stored invoice line, as LAX raised it (whole pence, no VAT added). */
 export interface BidInvoiceLineFacts {
+  /** The stored line's id, so a reader can check these are the lines the event named. */
+  readonly id?: string;
   readonly kind: string;
   readonly label: string;
   readonly amountPence: Pence;
@@ -74,14 +76,31 @@ interface LineBooking {
 /**
  * How each stored Bid invoice line is booked. LAX Bid charges no VAT on hammer or premium today,
  * so both go as margin-scheme goods (no VAT shown, nothing for the provider to work out) until the
- * accountant confirms the treatments; this table is the one place that changes. A line kind not
- * listed (VAT on hammer, import VAT, resale right, delivery) is refused, never guessed.
+ * accountant confirms the treatments; this table is the one place that changes. The premium line
+ * is booked with the label it was raised with (its rate or bands), never worked out again.
+ *
+ * Extension points, waiting for the accountant (nothing here adds them):
+ * - VAT on the buyer's premium: change `buyers_premium` to its confirmed treatment here. The line
+ *   amount stays the stored net; the domain adds VAT per line, and Books' total is checked against it.
+ * - Artist's resale right (ARR) and the other kinds in `BID_LINES_AWAITING_ACCOUNTANT`: add a
+ *   row here with the confirmed role and treatment, and take the kind out of that list.
  */
 export const BID_LINE_BOOKINGS: Readonly<Record<string, LineBooking>> = {
   hammer: { role: "goods", treatment: "margin_scheme" },
   buyers_premium: { role: "goods", treatment: "margin_scheme" },
   legacy_total: { role: "goods", treatment: "margin_scheme" },
 };
+
+/**
+ * Line kinds a Bid invoice can store whose booking the accountant has not confirmed. An invoice
+ * carrying one is refused (`line_awaiting_accountant`) and waits for a person, never guessed.
+ */
+export const BID_LINES_AWAITING_ACCOUNTANT: readonly string[] = [
+  "vat_on_hammer",
+  "import_vat",
+  "artists_resale_right",
+  "delivery",
+];
 
 const EMAIL = /^[^\s@]+@[^\s@.]+(\.[^\s@.]+)+$/;
 
@@ -103,6 +122,12 @@ function bidLines(lines: readonly BidInvoiceLineFacts[]): Result<LineInput[], Pr
     const booking = Object.hasOwn(BID_LINE_BOOKINGS, line.kind)
       ? BID_LINE_BOOKINGS[line.kind]
       : undefined;
+    if (!booking && BID_LINES_AWAITING_ACCOUNTANT.includes(line.kind)) {
+      return refuse(
+        "line_awaiting_accountant",
+        `invoice line kind ${line.kind} waits for the accountant's booking`,
+      );
+    }
     if (!booking) return refuse("unmapped_line", `no booking for invoice line kind ${line.kind}`);
     // A line of nothing (a premium of 0%) says nothing in the books.
     if (line.amountPence === 0) continue;

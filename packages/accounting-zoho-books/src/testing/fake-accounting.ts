@@ -10,6 +10,7 @@ import {
   type DestinationPort,
   type DocumentKind,
   type DocumentLookupPort,
+  type DocumentPdfPort,
   type Invoice,
   type InvoicePort,
   type IssueOutcome,
@@ -19,6 +20,7 @@ import {
   type LookupOutcome,
   type Payment,
   type PaymentPort,
+  type PdfOutcome,
   type Product,
   type ProviderDocument,
   type WriteFence,
@@ -171,6 +173,28 @@ export class InMemoryAccounting implements AccountingPorts {
     },
   };
 
+  /**
+   * The PDF Books would render for an invoice or credit note it holds, asked for by the identity
+   * it gave. Anything else (not held, another kind, another id) is `unavailable`, as Books would be.
+   */
+  readonly pdfs: DocumentPdfPort = {
+    fetchPdf: async (document, issued): Promise<PdfOutcome> => {
+      const entity = legalEntityFor(document.product);
+      const held = this.held.get(this.key(entity, document.kind, document.reference, "customer"));
+      const printable = document.kind === "invoice" || document.kind === "credit_note";
+      if (!printable || !held || held.doc.providerId !== issued.providerId) {
+        return { status: "unavailable", reason: R.pdfNotAvailable };
+      }
+      const page = `%PDF-1.4\n% fake Books ${held.doc.number} ${document.reference}\n%%EOF\n`;
+      return {
+        status: "fetched",
+        contentType: "application/pdf",
+        rehearsal: false,
+        bytes: new TextEncoder().encode(page),
+      };
+    },
+  };
+
   /** Held under the reference, but not the document we would send (a payment's allocations). */
   private differs(held: Held, document: AccountingDocument): boolean {
     const fingerprint = document.kind === "payment" ? paymentFingerprint(document) : "";
@@ -254,7 +278,10 @@ export class InMemoryAccounting implements AccountingPorts {
     const provider: ProviderDocument = {
       number: `${PREFIX[doc.kind]}-${String(seq).padStart(6, "0")}`,
       providerId: String(7_000_000_000_000 + this.held.size + 1),
-      pdfRef: null,
+      pdfRef:
+        doc.kind === "invoice" || doc.kind === "credit_note"
+          ? `/${doc.kind === "invoice" ? "invoices" : "creditnotes"}/${7_000_000_000_000 + this.held.size + 1}`
+          : null,
       totals: {
         netPence: mine.netPence,
         vatPence: mine.vatPence + drift,

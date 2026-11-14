@@ -3,17 +3,30 @@
 import { DashboardErrorAlert } from "@/components/dashboard/primitives/dashboard-error-alert";
 import type { DashboardSliceFailure } from "@/lib/dashboard/dashboard-fetch-errors";
 import { usePersonalProfileForSubmissions } from "@/lib/legal-entity/submissions-access-actions";
+import type { AlertTitleLevel } from "@auction/ui/components/alert";
 import { Button } from "@auction/ui/lax/button";
 import Link from "next/link";
 
 type DashboardSliceErrorAlertProps = {
   failure: DashboardSliceFailure;
+  /** h2 under the page title (the default); h3 inside a section with its own h2. */
+  headingLevel?: AlertTitleLevel;
+  /** The surface's own words for what failed, when the slice's are too broad for it. */
+  title?: string;
 };
 
 /** Actionable inline error for dashboard slice load failures (SSR + client). */
-export function DashboardSliceErrorAlert({ failure }: DashboardSliceErrorAlertProps) {
+export function DashboardSliceErrorAlert({
+  failure,
+  headingLevel = "h2",
+  title,
+}: DashboardSliceErrorAlertProps) {
   return (
-    <DashboardErrorAlert title={failure.title} message={failure.message}>
+    <DashboardErrorAlert
+      title={title ?? failure.title}
+      headingLevel={headingLevel}
+      message={failure.message}
+    >
       <div className="flex flex-wrap gap-3">
         {failure.actions.map((action) => {
           if (action.kind === "use_personal_profile") {

@@ -244,6 +244,8 @@ export class DrizzleBidInvoiceRepository
             buyerLegalEntityId: inserted.buyerLegalEntityId,
             totalPence: inserted.totalPence,
             raisedAt: inserted.raisedAt.toISOString(),
+            // The frozen lines, by reference only, in their order.
+            lineIds: [...lineRows].sort((a, b) => a.position - b.position).map((line) => line.id),
           },
           schemaVersion: 1,
         });

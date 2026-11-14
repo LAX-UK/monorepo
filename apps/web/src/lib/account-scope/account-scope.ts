@@ -10,6 +10,11 @@ export type ScopedAccount =
       kind: "personal";
       /** The person's own account, when it is known. */
       id: string | null;
+      /**
+       * Support staff viewing this person's account as the client. Its records are read by the
+       * account's id (the `/users/me` reads would be the staff member's own).
+       */
+      isImpersonation?: boolean;
     }
   | {
       kind: "organisation";

@@ -17,9 +17,12 @@ import type { IMarketingEventService } from "../interfaces/marketing-event-servi
 import type { IPaymentBuyerService } from "../interfaces/payment-service.js";
 import type { SourceOfFundsDocumentCollectionService } from "../source-of-funds/source-of-funds-document-collection.service.js";
 
+const SOF_NOT_FOUND = { status: 404, error: "source_of_funds_not_found" } as const;
+
 function mapSofAttachError(message: string): { status: number; error: string } | null {
-  if (message === "source_of_funds_not_found") return { status: 404, error: message };
-  if (message === "source_of_funds_forbidden") return { status: 403, error: message };
+  if (message === "source_of_funds_not_found") return SOF_NOT_FOUND;
+  // Someone else's case reads exactly like a missing one, so its existence is not confirmed.
+  if (message === "source_of_funds_forbidden") return SOF_NOT_FOUND;
   if (
     message === "source_of_funds_documents_not_requested" ||
     message === "source_of_funds_documents_already_submitted" ||
@@ -38,8 +41,9 @@ function mapSofAttachError(message: string): { status: number; error: string } |
 }
 
 function mapSofSubmitError(message: string): { status: number; error: string } | null {
-  if (message === "source_of_funds_not_found") return { status: 404, error: message };
-  if (message === "source_of_funds_forbidden") return { status: 403, error: message };
+  if (message === "source_of_funds_not_found") return SOF_NOT_FOUND;
+  // Someone else's case reads exactly like a missing one, so its existence is not confirmed.
+  if (message === "source_of_funds_forbidden") return SOF_NOT_FOUND;
   if (
     message === "source_of_funds_documents_not_requested" ||
     message === "source_of_funds_documents_already_submitted" ||

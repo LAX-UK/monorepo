@@ -1,7 +1,8 @@
-import { ok, refuse } from "@auction/accounting-domain";
+import { INVOICE_DELAYED_AFTER_MS, ok, refuse } from "@auction/accounting-domain";
 import type {
   AccountingAttention,
   IAccountingSourceSettingReader,
+  QueueAge,
 } from "@auction/persistence/interfaces";
 import { describe, expect, it, vi } from "vitest";
 import { ACCOUNTING_ALERTS, type AccountingAlertSink } from "./accounting-alerts.js";
@@ -21,26 +22,32 @@ function setUp(
   attention: Partial<AccountingAttention>,
   now: string,
   mode: "off" | "dry_run" = "dry_run",
+  delayed: QueueAge = none,
 ) {
   const raised: [string, Record<string, unknown>][] = [];
   const alerts: AccountingAlertSink = {
     raise: (alert, details) => void raised.push([alert.message, details]),
   };
   const read = vi.fn(async () => ({ needsPerson: none, pending: none, ...attention }));
+  const delayedBidInvoices = vi.fn(async () => delayed);
   const watch = new AccountingWatch({
-    attention: { read },
+    attention: { read, delayedBidInvoices },
     settings: switchWith(mode),
     senderModes: ["dry_run"],
     alerts,
     now: () => new Date(now),
   });
-  return { watch, raised, read };
+  return { watch, raised, read, delayedBidInvoices };
 }
 
 describe("AccountingWatch", () => {
   it("raises nothing when the queue is quiet", async () => {
     const { watch, raised } = setUp({}, "2026-11-13T12:00:00Z");
-    expect(await watch.check()).toEqual({ needsPersonOverdue: false, senderMissed: false });
+    expect(await watch.check()).toEqual({
+      needsPersonOverdue: false,
+      senderMissed: false,
+      bidInvoiceDelayed: false,
+    });
     expect(raised).toEqual([]);
   });
 
@@ -89,7 +96,7 @@ describe("AccountingWatch", () => {
 
     const read = vi.fn(async () => ({ needsPerson: none, pending: none }));
     const unreadable = new AccountingWatch({
-      attention: { read },
+      attention: { read, delayedBidInvoices: vi.fn(async () => none) },
       settings: { read: async () => refuse("bad_mode", "broken") },
       senderModes: ["dry_run"],
       alerts: { raise: vi.fn() },
@@ -97,5 +104,31 @@ describe("AccountingWatch", () => {
     });
     await unreadable.check();
     expect(read).toHaveBeenCalledWith([]);
+  });
+
+  it("raises a buyer's invoice still being prepared after 30 minutes, as the card says", async () => {
+    const now = new Date("2026-11-13T12:00:00Z");
+    const oldest = new Date(now.getTime() - INVOICE_DELAYED_AFTER_MS - 60_000);
+    const { watch, raised, delayedBidInvoices } = setUp({}, now.toISOString(), "dry_run", {
+      count: 2,
+      oldestSince: oldest,
+    });
+    expect((await watch.check()).bidInvoiceDelayed).toBe(true);
+    // Asked about invoices queued more than 30 minutes ago, in the modes Books is aimed at.
+    expect(delayedBidInvoices).toHaveBeenCalledWith(
+      ["dry_run"],
+      new Date(now.getTime() - INVOICE_DELAYED_AFTER_MS),
+    );
+    expect(raised).toEqual([
+      [
+        ACCOUNTING_ALERTS.bidInvoiceDelayed.message,
+        {
+          count: 2,
+          oldestSince: oldest.toISOString(),
+          modes: ["dry_run"],
+          page: "/admin/finance/accounting",
+        },
+      ],
+    ]);
   });
 });

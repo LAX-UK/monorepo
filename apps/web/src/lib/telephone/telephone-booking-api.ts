@@ -77,19 +77,30 @@ export async function fetchMyTelephoneBookings(): Promise<TelephoneBookingListIt
     .filter((r): r is TelephoneBookingListItem => r != null);
 }
 
+/**
+ * One telephone booking. Someone else's booking reads exactly like a missing one ("not_found"), so
+ * neither is confirmed; only a failed request is "unavailable", where trying again can help.
+ */
+export type TelephoneBookingDetailResult =
+  | { kind: "found"; booking: TelephoneBookingDetail }
+  | { kind: "not_found" }
+  | { kind: "unavailable" };
+
 export async function fetchTelephoneBookingDetail(
   bookingId: string,
-): Promise<TelephoneBookingDetail | null> {
+): Promise<TelephoneBookingDetailResult> {
   const res = await browserFetch(
     `${apiBase()}/telephone-bookings/${encodeURIComponent(bookingId)}`,
     {
       cache: "no-store",
     },
-  );
-  if (res.status === 401 || res.status === 403 || res.status === 404) return null;
-  if (!res.ok) return null;
-  const body = (await res.json()) as { data?: unknown };
-  return parseTelephoneBookingDetail(body.data ?? null);
+  ).catch(() => null);
+  if (!res) return { kind: "unavailable" };
+  if (res.status === 403 || res.status === 404) return { kind: "not_found" };
+  if (!res.ok) return { kind: "unavailable" };
+  const body = (await res.json().catch(() => null)) as { data?: unknown } | null;
+  const booking = parseTelephoneBookingDetail(body?.data ?? null);
+  return booking ? { kind: "found", booking } : { kind: "unavailable" };
 }
 
 export async function requestTelephoneBookingLimitIncrease(

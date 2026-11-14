@@ -7,6 +7,7 @@ import {
   fetchTelephoneBookingDetail,
   requestTelephoneBookingLimitIncrease,
 } from "@/lib/telephone/telephone-booking-api";
+import { telephoneBookingLoadFailure } from "@/lib/telephone/telephone-booking-load-failure";
 import type { TelephoneBookingDetail } from "@/lib/telephone/telephone-booking-types";
 import { telephoneBookingStatusLabel } from "@/lib/telephone/telephone-booking-types";
 import { formatDateTime, formatMoney } from "@/lib/ui/format";
@@ -33,21 +34,21 @@ function shouldPollBooking(status: TelephoneBookingDetail["status"]): boolean {
 export function TelephoneBidDetailContent({ bookingId }: Props) {
   const router = useRouter();
   const [booking, setBooking] = useState<TelephoneBookingDetail | null>(null);
-  const [loadError, setLoadError] = useState<string | null>(null);
+  const [loadFailure, setLoadFailure] = useState<"not_found" | "unavailable" | null>(null);
   const [limitAmount, setLimitAmount] = useState("");
   const [pending, startTransition] = useTransition();
 
   const loadDetail = useCallback(
     async (cancelled?: () => boolean) => {
-      const detail = await fetchTelephoneBookingDetail(bookingId);
+      const result = await fetchTelephoneBookingDetail(bookingId);
       if (cancelled?.()) return null;
-      if (!detail) {
-        setLoadError("Booking not found or you do not have access.");
+      if (result.kind !== "found") {
+        setLoadFailure(result.kind);
         return null;
       }
-      setLoadError(null);
-      setBooking(detail);
-      return detail;
+      setLoadFailure(null);
+      setBooking(result.booking);
+      return result.booking;
     },
     [bookingId],
   );
@@ -68,18 +69,9 @@ export function TelephoneBidDetailContent({ bookingId }: Props) {
     return () => window.clearInterval(id);
   }, [booking, loadDetail]);
 
-  if (loadError) {
+  if (loadFailure) {
     return (
-      <DashboardSliceErrorAlert
-        failure={{
-          slice: "telephoneBids",
-          code: null,
-          status: 404,
-          title: "Could not load booking",
-          message: loadError,
-          actions: [{ kind: "navigate", label: "Back to list", href: "/bids#telephone-bids" }],
-        }}
-      />
+      <DashboardSliceErrorAlert failure={telephoneBookingLoadFailure(loadFailure, bookingId)} />
     );
   }
 

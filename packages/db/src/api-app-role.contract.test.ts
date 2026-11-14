@@ -8,6 +8,7 @@ import {
   API_PRODUCT_PROFILE_TABLES,
   API_READ_TABLES,
   API_SSF_RECEIVER_TABLES,
+  API_UNLINKED_ORIGINALS_READ_COLUMNS,
   FINANCE_SETTING_READ_TABLES,
   SELLER_TERMS_INSERT_SELECT_TABLES,
   SELLER_TERMS_RECOMPUTE_UPDATE_COLUMNS,
@@ -148,6 +149,51 @@ describe.skipIf(!API_URL)("api_app role contract", { timeout: 60_000 }, () => {
         ["INSERT"],
       );
       expectTablePrivileges(rows, () => true);
+    });
+  });
+
+  it("reads only the artwork, artist and party columns the unlinked originals report needs", async () => {
+    await withApiClient(async (client) => {
+      for (const [tableName, granted] of API_UNLINKED_ORIGINALS_READ_COLUMNS) {
+        // No table-level privilege: the shop tables stay denied as a whole.
+        const table = await readTablePrivileges(
+          client,
+          [tableName],
+          ["SELECT", "INSERT", "UPDATE", "DELETE", "TRUNCATE", "REFERENCES", "TRIGGER"],
+        );
+        expectTablePrivileges(table, () => false);
+        const columns = await client.query<{
+          column_name: string;
+          can_select: boolean;
+          can_write: boolean;
+        }>(
+          `select column_name::text,
+                  has_column_privilege(current_user, format('public.%I', $1::text), column_name, 'SELECT') as can_select,
+                  has_column_privilege(current_user, format('public.%I', $1::text), column_name, 'INSERT')
+                    or has_column_privilege(current_user, format('public.%I', $1::text), column_name, 'UPDATE')
+                    or has_column_privilege(current_user, format('public.%I', $1::text), column_name, 'REFERENCES') as can_write
+             from information_schema.columns
+            where table_schema = 'public' and table_name = $1`,
+          [tableName],
+        );
+        const readable = columns.rows.filter((row) => row.can_select).map((row) => row.column_name);
+        expect(readable.sort(), tableName).toEqual([...granted].sort());
+        expect(
+          columns.rows.filter((row) => row.can_write).map((row) => row.column_name),
+          tableName,
+        ).toEqual([]);
+      }
+      // The report's own shape: the live originals with their artist's name, and the count.
+      await client.query(
+        `select a.id, a.title, p.display_name
+           from shop_artwork a
+           join shop_artist ar on a.artist_id = ar.id
+           join shop_party p on ar.party_id = p.id
+          where a.zoho_product_id is null and a.sales_channel = 'art' and a.run_kind is null
+            and a.eligible_for_edition_allocation = false and a.published_at is not null
+            and a.archived_at is null
+          limit 1`,
+      );
     });
   });
 

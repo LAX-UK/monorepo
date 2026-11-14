@@ -17,6 +17,8 @@ import { CLIENT_ROUTES } from "@/lib/navigation/client-routes";
 import { loadDeliveryAddresses } from "@/lib/purchases/delivery-addresses.server";
 import { deliveryPanel } from "@/lib/purchases/purchase-delivery.vm";
 import { parsePaidLots, purchaseHandover } from "@/lib/purchases/purchase-handover";
+import { purchaseInvoiceCard } from "@/lib/purchases/purchase-invoice-card.vm";
+import { getServerPurchaseInvoiceCard } from "@/lib/purchases/purchase-invoice.server";
 import { purchaseProblemPanel } from "@/lib/purchases/purchase-problem";
 import { loadPurchaseSources } from "@/lib/purchases/purchase-sources.server";
 import { purchaseSubtitle } from "@/lib/purchases/purchase-subtitle";
@@ -102,6 +104,14 @@ export default async function PurchaseDetailPage({ params, searchParams }: PageP
         payerTeam: organisation ? `${organisation.name}'s finance team` : "The account's payer",
       })
     : null;
+  // Only a member who may download the invoice asks where Books' invoice stands.
+  const books = card.invoiceHref ? await getServerPurchaseInvoiceCard(lotId) : null;
+  const invoiceCard = purchaseInvoiceCard({
+    lotId,
+    card: books,
+    laxInvoiceHref: card.invoiceHref,
+    now: new Date(),
+  });
   const accountId = scope.account.id;
   const reported =
     accountId && card.problemHref
@@ -128,6 +138,7 @@ export default async function PurchaseDetailPage({ params, searchParams }: PageP
           deliveryAnchor: DELIVERY_ANCHOR,
         })}
         shipperEmail={collection?.kind === "email" ? collection.email : SITE_CONTACT_EMAIL}
+        invoiceCard={invoiceCard}
       />
     </DashboardPage>
   );

@@ -5,6 +5,8 @@ import { describe, expect, it, vi } from "vitest";
 import type { ContainerPaymentHttpRoutesSlice } from "../container.js";
 import { X_LEGAL_ENTITY_ID_HEADER } from "../middleware/require-legal-entity-context.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
+import { LotFulfilmentBuyerService } from "../services/lot-fulfilment/lot-fulfilment-buyer.service.js";
+import type { LotFulfilmentContext } from "../services/lot-fulfilment/lot-fulfilment-context.js";
 import type { MyPaymentRowDTO } from "../services/payment-me-presenter.js";
 import { passThroughAccountOnboarding } from "../testing/pass-through-account-onboarding.middleware.js";
 import { stubStepUpGuard } from "../testing/staff-mutation-guards.js";
@@ -483,6 +485,33 @@ describe("GET /payments/me/lot/:lotId/fulfilment", () => {
     const body = (await res.json()) as { data: { status: string } };
     expect(body.data.status).toBe("awaiting_payment");
   });
+
+  it("answers someone else's lot with 404, the same as a lot that does not exist", async () => {
+    // The real buyer service: alice did not win this lot and does not pay for it.
+    const buyer = new LotFulfilmentBuyerService({
+      lotRepo: {
+        findById: vi.fn(async (id: string) =>
+          id === lotUuid ? { id, winnerId: "bob", buyerAccountKind: "individual" } : null,
+        ),
+      },
+      fulfilmentRepo: { findByLotId: vi.fn(async () => null) },
+    } as unknown as LotFulfilmentContext);
+    const getWinnerLotFulfilment = vi.fn(async (userId: string, lotId: string) =>
+      (await buyer.getForWinner(userId, lotId)).match(
+        (data) => ({ kind: "ok" as const, data }),
+        (error) => ({ kind: "err" as const, error }),
+      ),
+    );
+    const { app } = mount("client", { sessionUserId: "alice", getWinnerLotFulfilment });
+
+    const theirs = await app.request(`/payments/me/lot/${lotUuid}/fulfilment`);
+    const missing = await app.request(
+      "/payments/me/lot/99999999-9999-4999-8999-999999999999/fulfilment",
+    );
+    expect(theirs.status).toBe(404);
+    expect(missing.status).toBe(404);
+    expect(await theirs.json()).toEqual(await missing.json());
+  });
 });
 
 describe("POST /payments/me/:id/cancel-pending", () => {
@@ -529,13 +558,13 @@ describe("POST /payments/me/:id/cancel-pending", () => {
     expect(body.error).toContain("pending");
   });
 
-  it("maps authorization errors from the service", async () => {
+  it("answers someone else's payment as not found", async () => {
     const cancelPendingPayment = vi.fn(async () => ({
       kind: "err" as const,
-      error: { message: "Only the buyer can cancel this payment", status: 403 },
+      error: { message: "Payment not found", status: 404 },
     }));
     const { app } = mount("client", { sessionUserId: "alice", cancelPendingPayment });
     const res = await app.request(`/payments/me/${paymentId}/cancel-pending`, { method: "POST" });
-    expect(res.status).toBe(403);
+    expect(res.status).toBe(404);
   });
 });

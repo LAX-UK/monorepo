@@ -74,6 +74,7 @@ describe("workspaceAccessDenied", () => {
     expect(workspaceAccessDenied("/organisation/payouts", as("viewer"))).toEqual({
       page: "Payouts",
       openedBy: "Owners, admins and finance",
+      back: null,
     });
   });
 
@@ -82,12 +83,13 @@ describe("workspaceAccessDenied", () => {
     expect(workspaceAccessDenied("/organisation/payouts?account=o2", as("owner"))).toEqual({
       page: "Payouts",
       openedBy: null,
+      back: null,
     });
-    expect(workspaceAccessDenied("/selling/consignments/s1", as("viewer"))).toEqual({
+    expect(workspaceAccessDenied("/selling/consignments/s1", as("viewer"))).toMatchObject({
       page: "this consignment",
       openedBy: null,
     });
-    expect(workspaceAccessDenied("/selling/consignments/s1", null)).toEqual({
+    expect(workspaceAccessDenied("/selling/consignments/s1", null)).toMatchObject({
       page: "this consignment",
       openedBy: null,
     });
@@ -97,6 +99,35 @@ describe("workspaceAccessDenied", () => {
     expect(workspaceAccessDenied("/somewhere", as("viewer"))).toEqual({
       page: null,
       openedBy: null,
+      back: null,
     });
+  });
+
+  it("goes back from a record to its own list, never to another one", () => {
+    const consignments = { href: "/selling/consignments", label: "Back to Consignments" };
+    expect(workspaceAccessDenied("/selling/consignments/s1", null).back).toEqual(consignments);
+    expect(workspaceAccessDenied("/selling/consignments/s1", as("viewer")).back).toEqual(
+      consignments,
+    );
+    expect(workspaceAccessDenied("/bids/telephone/b1", null).back).toEqual({
+      href: "/bids",
+      label: "Back to My bids",
+    });
+    expect(workspaceAccessDenied("/bids/offers/r1", null).back).toEqual({
+      href: "/bids",
+      label: "Back to My bids",
+    });
+    expect(workspaceAccessDenied("/bids/telephone/b1", as("viewer")).back).toEqual({
+      href: "/bids",
+      label: "Back to Bids",
+    });
+    expect(workspaceAccessDenied("/selling/payouts/offers/o1", null).back).toEqual({
+      href: "/selling/payouts",
+      label: "Back to Sold & payouts",
+    });
+  });
+
+  it("goes back to the account's first page from a page that is not a record", () => {
+    expect(workspaceAccessDenied("/organisation/payouts", as("viewer")).back).toBeNull();
   });
 });

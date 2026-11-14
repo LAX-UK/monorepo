@@ -2,9 +2,13 @@ import { Hono } from "hono";
 import { describe, expect, it, vi } from "vitest";
 import type { ContainerLegalEntityRoutesSlice } from "../container.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
+import { RecordAccountService } from "../services/legal-entity/record-account.service.js";
 import { createLegalEntityRoutes } from "./legal-entities.js";
 
 const GALLERY = "00000000-0000-4000-8000-000000000002";
+const STRANGERS_ACCOUNT = "00000000-0000-4000-8000-000000000009";
+const STRANGERS_RECORD = "00000000-0000-4000-8000-0000000000a1";
+const MISSING_RECORD = "00000000-0000-4000-8000-0000000000a2";
 
 function mount(
   rememberedAccount: {
@@ -102,7 +106,7 @@ describe("record account route", () => {
     expect(accountFor).toHaveBeenCalledWith("user-1", "consignment", GALLERY);
   });
 
-  it("answers 403 for a non-member and 404 for a missing record", async () => {
+  it("answers 403 for the person's own account they cannot use, and 404 for a missing record", async () => {
     const accountFor = vi
       .fn()
       .mockResolvedValueOnce({ kind: "no_access" })
@@ -112,6 +116,28 @@ describe("record account route", () => {
     expect((await app.request(path)).status).toBe(403);
     expect((await app.request(path)).status).toBe(404);
   });
+
+  it.each(["purchase", "consignment", "reoffer"] as const)(
+    "answers someone else's %s with 404, exactly like one that does not exist",
+    async (kind) => {
+      const owners: Record<string, string> = { [STRANGERS_RECORD]: STRANGERS_ACCOUNT };
+      const service = new RecordAccountService({
+        accounts: { listActiveMembershipsForUser: async () => [] },
+        records: { findOwningAccount: async (_kind, id) => owners[id] ?? null },
+        organisationsEnabled: () => true,
+      });
+      const app = mount(unused, { accountFor: vi.fn(service.accountFor.bind(service)) });
+      const theirs = await app.request(
+        `/legal-entities/me/record-account/${kind}/${STRANGERS_RECORD}`,
+      );
+      const missing = await app.request(
+        `/legal-entities/me/record-account/${kind}/${MISSING_RECORD}`,
+      );
+      expect(theirs.status).toBe(404);
+      expect(missing.status).toBe(404);
+      expect(await theirs.json()).toEqual(await missing.json());
+    },
+  );
 
   it("rejects an unknown record kind", async () => {
     const accountFor = vi.fn();

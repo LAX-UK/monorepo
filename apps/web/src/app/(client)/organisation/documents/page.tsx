@@ -63,8 +63,8 @@ export default async function OrganisationDocumentsPage() {
     return (
       <div className="space-y-6">
         <DashboardErrorAlert
-          title="We couldn't load the documents"
-          message="Something went wrong on our side. Try again in a moment."
+          title="Documents couldn't be loaded"
+          message="This is on our side. Try again in a moment."
         >
           <div>
             <ButtonLink
@@ -147,8 +147,9 @@ export default async function OrganisationDocumentsPage() {
           </h2>
           {statementRows === null ? (
             <DashboardErrorAlert
-              title="We couldn't load the statements"
-              message="Something went wrong on our side. Try again in a moment."
+              title="Payout statements couldn't be loaded"
+              headingLevel="h3"
+              message="This is on our side. Try again in a moment."
             />
           ) : statementRows.length > 0 ? (
             <StatementDocuments rows={statementRows} />
