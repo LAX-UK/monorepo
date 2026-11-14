@@ -31,7 +31,7 @@ import {
   presentDeliveryQuoteOutcome,
   presentOrder,
 } from "../../presenters/commerce.presenter.js";
-import { admissionClientIp } from "./enquiry-admission.js";
+import { admissionClientIp, visitorClientIp } from "./enquiry-admission.js";
 
 const BASKET_TOKEN_HEADER = "x-shop-basket-token";
 
@@ -170,6 +170,7 @@ export async function registerGuestCheckoutRoutes(
         marketingConsent: body.marketingConsent === true,
         basketTokenHash: basketTokenHash(request),
         clientIp: admissionClientIp(request),
+        visitorIp: visitorClientIp(request),
       });
       request.log.info(
         { emailKey: emailLogKey(body.email), outcome: result.kind },
