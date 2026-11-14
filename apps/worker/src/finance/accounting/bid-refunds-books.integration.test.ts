@@ -49,6 +49,13 @@ import { AccountingSender } from "./accounting-sender.service.js";
 const OWNER_URL = process.env.DATABASE_URL;
 const WORKER_URL = process.env.DATABASE_URL_WORKER;
 const API_URL = process.env.DATABASE_URL_API;
+
+/** The owner's connection string, its sessions opened as `role` (a superuser may set any role). */
+function asRole(url: string, role: string): string {
+  const parsed = new URL(url);
+  parsed.searchParams.set("options", `-c role=${role}`);
+  return parsed.toString();
+}
 const HAS_DB = Boolean(OWNER_URL);
 
 const RAISED_AT = new Date("2031-11-12T14:05:00Z");
@@ -185,7 +192,9 @@ describe.skipIf(!HAS_DB)(
     // biome-ignore lint/style/noNonNullAssertion: gated by HAS_DB
     const owner = createDb(OWNER_URL!);
     const worker = createDb(WORKER_URL || (OWNER_URL as string));
-    const api = createDb(API_URL || (OWNER_URL as string));
+    // As api_app, so its 0385 trigger is exercised: its own URL when configured, otherwise the
+    // owner's sessions opened as api_app (the CI test job sets no api_app password).
+    const api = createDb(API_URL || asRole(OWNER_URL as string, "api_app"));
     const repos = createAccountingRepositories(worker, { now: () => new Date() });
 
     afterAll(async () => {
