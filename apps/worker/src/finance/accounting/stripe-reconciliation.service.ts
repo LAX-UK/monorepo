@@ -5,6 +5,7 @@ import {
   booksTargetMode,
   legalEntityFor,
 } from "@auction/accounting-domain";
+import { addCalendarKeyDays } from "@auction/datetime";
 import type {
   DayKindTotals,
   IAccountingSourceSettingReader,
@@ -75,14 +76,7 @@ export interface StripeReconciliationDeps {
 
 /** The previous London calendar day, `YYYY-MM-DD`. */
 export function previousLondonDay(now: Date): string {
-  const today = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Europe/London",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(now);
-  const [y, m, d] = today.split("-").map(Number) as [number, number, number];
-  return new Date(Date.UTC(y, m - 1, d - 1)).toISOString().slice(0, 10);
+  return addCalendarKeyDays(londonDay(now), -1);
 }
 
 /**

@@ -6,6 +6,7 @@ import {
   decideStripeBalanceTransaction,
   legalEntityFor,
 } from "@auction/accounting-domain";
+import { LONDON_TIME_ZONE, dayKey, startOfDay } from "@auction/datetime";
 import type {
   IAccountingSourceSettingReader,
   IStripeBooksLedger,
@@ -18,27 +19,13 @@ import type { StripeBalanceItem, StripeBalanceReader } from "./stripe-balance-re
 
 /** The London calendar day of an instant, `YYYY-MM-DD`. */
 export function londonDay(at: Date): string {
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Europe/London",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(at);
+  return dayKey(at, LONDON_TIME_ZONE);
 }
 
 /** The instant a London calendar day starts. */
 export function startOfLondonDay(day: string): Date {
-  const [y, m, d] = day.split("-").map(Number) as [number, number, number];
-  // Midnight UTC of that date is 00:00 or 01:00 in London; step back to London's midnight.
-  const utcMidnight = Date.UTC(y, m - 1, d);
-  const hour = Number(
-    new Intl.DateTimeFormat("en-GB", {
-      timeZone: "Europe/London",
-      hour: "2-digit",
-      hourCycle: "h23",
-    }).format(new Date(utcMidnight)),
-  );
-  return new Date(utcMidnight - hour * 3_600_000);
+  // Noon UTC of that date is always on that London day, whatever the clocks do.
+  return startOfDay(new Date(`${day}T12:00:00Z`), LONDON_TIME_ZONE);
 }
 
 /** Stripe's own fee types and the payout types: their company is the account's own row. */
