@@ -232,6 +232,28 @@ describe("StripeBooksSync paging and cursor", () => {
     expect(ledger.cursor?.getTime()).toBe(NOW.getTime() - 10 * 60_000);
   });
 
+  it("reads no further window once a run has booked its cap, and the next run carries on", async () => {
+    const { ledger, stripe } = setUp("shop", new Map([["pi", ["shop"]]]));
+    for (let n = 0; n < 3; n += 1) {
+      stripe.add({ ...chargeWith(`txn_${n + 1}`, "pi"), created: NOON + n * 3_600 });
+    }
+    const capped = () =>
+      new StripeBooksSync({
+        ledger,
+        settings: { read: async () => ok(aimed) } as never,
+        readers: [stripe],
+        now: () => NOW,
+        log: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
+        windowMs: 3_600_000,
+        maxBookedPerRun: 2,
+      });
+    expect(await capped().run()).toMatchObject({ booked: 2 });
+    // The cursor stops at the end of the hour that reached the cap.
+    expect(ledger.cursor?.getTime()).toBe((NOON + 3_600) * 1000 + 3_600_000);
+    expect(await capped().run()).toMatchObject({ booked: 1 });
+    expect(ledger.cursor?.getTime()).toBe(NOW.getTime() - 10 * 60_000);
+  });
+
   it("keeps the cursor before a window it could not finish", async () => {
     const { ledger, stripe, sync } = setUp("shop", new Map([["pi", ["shop"]]]));
     for (let n = 1; n <= 5; n += 1) stripe.add(chargeWith(`txn_${n}`, "pi", n));

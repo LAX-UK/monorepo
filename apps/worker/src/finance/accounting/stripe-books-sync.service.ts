@@ -56,6 +56,11 @@ export interface StripeBooksSyncDeps {
    * yet, so the cursor never passes them.
    */
   readonly settleMs?: number;
+  /**
+   * After this many transactions are booked in a run, no further window is read (the rest waits
+   * for the next run), so a catch-up never queues weeks of documents against Books' daily budget.
+   */
+  readonly maxBookedPerRun?: number;
 }
 
 export interface StripeBooksSyncSummary {
@@ -89,11 +94,13 @@ export class StripeBooksSync {
   private readonly pageSize: number;
   private readonly windowMs: number;
   private readonly settleMs: number;
+  private readonly maxBookedPerRun: number;
 
   constructor(private readonly deps: StripeBooksSyncDeps) {
     this.pageSize = deps.pageSize ?? 100;
     this.windowMs = deps.windowMs ?? DAY_MS;
     this.settleMs = deps.settleMs ?? 10 * 60_000;
+    this.maxBookedPerRun = deps.maxBookedPerRun ?? 200;
   }
 
   async run(): Promise<StripeBooksSyncSummary> {
@@ -167,7 +174,7 @@ export class StripeBooksSync {
   ): Promise<void> {
     const upper = new Date(Math.floor((this.deps.now().getTime() - this.settleMs) / 1000) * 1000);
     let from = new Date(Math.floor(start.getTime() / 1000) * 1000);
-    while (from < upper) {
+    while (from < upper && totals.booked < this.maxBookedPerRun) {
       const to = new Date(Math.min(from.getTime() + this.windowMs, upper.getTime()));
       const items = await this.readWindow(reader, from, to, totals);
       // Oldest first, so the documents of a day are registered in the order Stripe made them.

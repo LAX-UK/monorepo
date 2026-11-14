@@ -108,6 +108,8 @@ describe.skipIf(!HAS_DB)(
         now: () => RUN_AT,
         log,
         pageSize,
+        // Above the 230 the paging case books in one run (the cap has its own unit test).
+        maxBookedPerRun: 1_000,
       });
     }
 

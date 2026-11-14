@@ -6,6 +6,7 @@ import {
   SETTLE_GRACE_MS,
   buildContact,
   buildCreditNoteFor,
+  buildExpense,
   buildInvoice,
   buildPayment,
   laxReference,
@@ -646,6 +647,32 @@ describe.skipIf(!HAS_DB)("accounting persistence (integration)", { timeout: 60_0
           "start_sending:pending>sending",
         ]);
       }
+    });
+
+    it("hands out a Stripe fee or payout only after the other documents waiting", async () => {
+      nowMs = T0;
+      const fee = must(
+        buildExpense({
+          product: "bid",
+          sourceId: `txn_${newId()}`,
+          category: "stripe_fees",
+          spentOn: "2031-11-13",
+          amountPence: 150,
+          description: "Stripe fees",
+        }),
+      );
+      const older = await register(fee);
+      nowMs = T0 + 1_000;
+      const newer = await register(invoice("bid", newId()));
+      const next = (leaseToken: string) =>
+        repos.workQueue.claimNext({
+          provider: PROVIDER,
+          leaseToken,
+          leaseMs: LEASE_MS,
+          targetModes: ALL_MODES,
+        });
+      expect(must(await next("a"))?.id).toBe(newer.stored.id);
+      expect(must(await next("b"))?.id).toBe(older.stored.id);
     });
 
     it("claims the oldest first and leaves nothing when the queue is empty", async () => {

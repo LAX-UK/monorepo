@@ -450,6 +450,16 @@ Plan v2, flow 25. Rehearsal only: Books stays in dry run, and the job only ever 
 Two runs at once, or a run repeated, book nothing twice: whichever inserts a transaction's row
 books it; the other finds the row and does nothing.
 
+**Books call budget.** Each expense or transfer costs one to two Books calls (the create, and a
+lookup when the sender needs one). A day brings one expense per card payment (Bid and Shop), one
+transfer per payout (usually one a day per account), and Stripe's own fees (a few a month): 150
+card payments a day is about 150 to 300 calls of the default `ZOHO_BOOKS_DAILY_CALL_BUDGET` of
+1,000. Two limits keep this from crowding out buyer-facing documents: the sender hands out
+expenses and transfers only after every other document waiting, and one run books at most 200
+transactions (a catch-up from an old opening day goes on over the next runs, and until it is
+through, the report shows the account `not_read_through`). Check these figures against real
+volumes before the test organisation step.
+
 **Which company.** Only stored LAX rows decide, never a guess:
 
 - a payout, and Stripe's own fees: the Stripe account's row in `accounting_stripe_account`;
