@@ -232,3 +232,40 @@ The owner's hard rules hold on the head:
 F1 and F2 are money-correctness gaps in exactly the guarantees this PR claims ("for exactly that refund", "only on success"). F3's pin breaks a database suite on the head. F1 and F3 are small fixes, and F2 needs a routed event plus a person-facing signal.
 
 ### Verdict: FIX FIRST
+
+## Fixes after review
+
+Fixed on `bk9-bid-refunds`, head `d268da93`. Commits: `99b3b441` (F3), `a631e23f` (F6), `3915bbce` (F1, F2, F4, F5), `307fc1cf` (F1 and F2 tests, F7), `d268da93` (F8). Re-checked on a throwaway Postgres 16.15 (port 55432) with `db:migrate` and `db:roles`. Integration suites ran as `worker_app` and `api_app`, on real concurrent transactions. Each mutation reverted one guard, rebuilt the package the worker reads, ran the tests and restored the guard; `git status` was clean afterwards.
+
+| # | Fix | Commit | Test | Mutation |
+|---|---|---|---|---|
+| F1 | A credit note carries the basis it was built from (`CreditBasis`). Under the invoice's credit lock, in the registering transaction, the registry re-reads the other credit and, for a courier refund, `payment_group_delivery.refunded_pence`. Anything different refuses the note as `credit_prior_changed` (in `NOT_YET`, re-projected from fresh facts). A courier refund's notes may never total more than the refunded total (`credit_exceeds_refunded`). `worker_app` has no UPDATE on `payment_group_delivery` and grants were not widened, so the serialisation is the existing per-(invoice, target) document-group lock. | `3915bbce`, `307fc1cf` | RV1 adopted strict: P1 is refused, then makes nothing, and 3,000 is credited. A stress test (4 totals × 3 projections each, at once, retried) credits exactly 4,500. Also: a total raised while slow; a note cancelled while slow; the registry ceiling with a matching basis. | N1 (other credit not re-checked), N2 (total not re-read), N3 (ceiling): each killed. N1 and N2 first **survived** on RV1 alone, because each backs up the other; they are now killed by their own tests. |
+| F2 | `payment.refund_reversed` and `payment_group.refund_reversed` are routed to `accounting` (catalogue and routes). New flow `bid_payment_refund_reversed`. A never-sent credit note of a taken-back refund is cancelled. An issued one is **held** (new life-cycle move `hold`: issued → needs_review, the Books document kept, never requeued, released or cancelled; history action `hold` in 0385) as `accounting_refund_reversed_after_credit`, with an error alert and a Needs a person row. The plan defines no reversing document, so nothing is reversed in Books. A lowered courier total cancels the newest never-sent notes until the credit fits and credits the rest again; an issued one is held. A reversal waits for registrations in progress (`awaitCreditRegistrations`), and flow 8's basis is the payment's refund rows. A stored refund note is reused as is, so a reversal never reshapes the other notes. The "only grows" comment is corrected. | `3915bbce`, `307fc1cf` | Never sent → cancelled, the others unchanged, and only the stayed refunds refunded from clearing. Issued → held, alert once, never refunded from clearing, page count. A projection that read the refund before the reversal is refused. A reversal while a registration is mid-transaction (history table held by a blocker) waits, then cancels. Courier lowered 3,000 → 1,500 → raised to 2,500 credits 2,500. Domain cases for both policies and `hold`. | N4 (refund rows), N5 (no wait), N6 (no cancel), N7 (no hold), N8 (lowering no cancel), N9 (no alert): all killed. |
+| F3 | Migration stays 0385 after main's 0384. `FINAL_FOLDER_MILLIS = 1811419200000`. | `99b3b441` | main-upgrade: 23 passed with `MIGRATION_TEST_DATABASE_URL` set. `db:migrate` on a fresh database: 377 rows. On a database first migrated with main's own folder: 376 → 377, then `db:roles`. `0385_rollback.sql` then forward, twice: 377 → 376 (CHECK `NOT VALID`, the new refusal kept) → 377 (validated). | Old stamp: 3 cases fail. |
+| F4 | Flow 8 gets the credit notes already registered for the invoice (`registered`). A refund whose note is stored keeps it exactly as stored (a replay), so a note stored by main's flow without `refund` is recognised, and the next refund is credited after it. Runbook: such notes carry no refund from clearing (dry run and test organisation only). | `3915bbce` | RV2 adopted: `projected`, the new note is 1,000, and the old note is untouched. Domain: a stored note is reused, and a taken-back refund leaves the others as stored. | N10: killed (domain 2, worker 1). |
+| F5 | A refused refund from clearing writes `refund_credit_note` (rejected) **and** holds the credit note (`accounting_credit_note_refund_refused`) in the same transaction. Error alert `accounting_credit_note_refund_refused`. The Accounting page text tells the person to refund it by hand in Books. The runbook covers it. | `3915bbce` | A refusing port: held, alert raised, not tried again, counted in Needs a person. | N11 (no hold), N12 (no alert): killed. |
+| F6 | 0385 redefines `accounting_document_api_requeue_only` as 0383's function plus one refusal: api_app may not move a credit note parked as `buyer_default_treatment`, `credited_invoice_cancelled`, or `credit_note` + `vat_on_delivery`, not even unchanged. **Deviation from the F6 text:** the rollback restores 0383's function **with this refusal kept** (as 0383's own rollback kept outside-UK delivery parked), so those notes stay parked under the earlier release. The PR's default Release integration case now expects 42501 from the database. | `a631e23f` | api_app contract probes for all three (release and any other move: 42501), with the delivery invoice beside them still releasable. A static test checks that the function is 0383's word for word plus the refusal, in both the migration and the rollback. RV3 adopted. | Function swapped back to 0383's: the contract case fails; restored: 24 passed. |
+| F7 | — | `307fc1cf` | A live Bid credit note copy is neither in `due` nor in `unreadable` from `listEmailDue`, while the invoice beside it is listed. | MI (`INVOICE` clause removed): killed. |
+| F8 | A purchase whose Books refund credit notes credit the whole invoice reads **Refunded** (badge, status, Payment total label), never "Paid / Total paid". A refund reads "Refunded −£x to your card" or "… to your bank account" from `paidWith`: a Pay several charge by its `checkout_rail`; one payment only when its checkout sessions all name one rail; otherwise nothing is said. A default's credit note row is "Credit note CN-…" with "Download (PDF)". Books' `refund_mode` is unchanged ("Stripe", from Stripe clearing). The bank-transfer case stays the accountant's question, and no answer is invented. | `d268da93` | web view-model cases (full, part, default, none; per rail); api pass-through; integration `paidWith` (none, bank, two rails → null, group → card). Shots: `review-notes-bk9`, `shots/round2` with `index.md`, 12 shots, no horizontal scroll at 375. | N13 (still reads Paid): killed (web). N14 (two rails read as one): killed (worker). |
+
+**Runs on the head:**
+
+| Area | Result |
+|---|---|
+| accounting-domain | 317 passed |
+| accounting-zoho-books | 318 passed |
+| types | 329 passed |
+| finance-runtime | 253 passed |
+| persistence accounting and lib | 204 passed |
+| db contracts, migrate-roles, 0385 | 127 passed |
+| main-upgrade | 23 passed |
+| worker accounting integration | 84 passed, then `bid-refunds-books` 25 passed |
+| worker unit | 375 passed |
+| api organisation buying | 285 passed |
+| web purchases | 361 passed |
+
+**Still open:**
+
+- A cancelled courier step's reference stays taken. Raising a lowered total back to exactly that figure with a different amount goes to a person as `reference_in_use`.
+- A held credit note still counts against the invoice, so a later refund of the same money waits until a person settles it.
+- Accountant questions: defaults, VAT on delivery, reversing an issued credit note, and the bank-transfer refund mode.
