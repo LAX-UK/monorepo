@@ -73,26 +73,7 @@ export async function fetchPublicArtistBrowse(
   }
 }
 
-/** Full registry artist (richer shape than the marketing `ArtistProfile`).
- * Used by the public profile page so it can render the registry kind, dates,
- * and merged status correctly. Returns `null` for any non-OK response so
- * callers can fall through to the seller-fallback codepath. */
-export async function fetchRegistryArtistById(
-  artistId: string,
-): Promise<import("@auction/types").ArtistProfile | null> {
-  if (process.env.NEXT_PUBLIC_ENABLE_ARTISTS === "false") return null;
-  try {
-    const res = await catalogueFetch(
-      `${getServerApiBase()}/artists/${encodeURIComponent(artistId)}`,
-      CATALOGUE_FETCH_POLICIES.artists,
-    );
-    if (!res.ok) return null;
-    const body = await readJsonBody(res);
-    return readDataEnvelope(body, registryArtistProfileSchema, `GET /artists/${artistId}`);
-  } catch {
-    return null;
-  }
-}
+export { fetchRegistryArtistById } from "@/lib/data/http/artist-profile-public";
 
 /** Whether a registry artist page exists, told apart from a failed read. `fetchRegistryArtistById`
  * folds every failure into `null`; this answers "missing" only for a definite 404 (or while the

@@ -1,22 +1,15 @@
 import "server-only";
 
-import type { SessionUser } from "@/lib/data/contracts";
-import { getServerCategoryReader } from "@/lib/data/http/categories.server";
-import { getServerKycStatusSummary } from "@/lib/data/http/kyc.server";
-import { getServerRelatedSales, getServerSaleFollowState } from "@/lib/data/http/saleroom.server";
 import {
-  type SaleLotsPage,
-  type SaleShell,
-  getServerSaleLotsPage,
-  getServerSaleShell,
-} from "@/lib/data/http/sales.server";
-import { getServerTelephoneBookingForSale } from "@/lib/data/http/telephone-booking.server";
-import { getServerWatchedLotIdSet } from "@/lib/data/http/watchlist.server";
-import { isKycStatusUnavailableError } from "@/lib/kyc/kyc-status-unavailable-error";
+  getPublicCategories,
+  getPublicRelatedSales,
+  getPublicSaleLotsPage,
+  getPublicSaleShell,
+} from "@/lib/data/http/public-catalogue.server";
+import type { GetSaleLotsPageParams, SaleLotsPage, SaleShell } from "@/lib/data/http/sales.types";
 import type { SaleroomCatalogSort } from "@/lib/marketing/saleroom-catalog-sort";
 import type { SaleroomCatalogStatusFilter } from "@/lib/marketing/saleroom-page.query";
 import type { Category, Lot, Sale } from "@auction/types";
-import { isSaleroomDeliveryMode } from "@auction/validators";
 
 const CATALOG_LOAD_ALL_BATCH = 48;
 export const SALE_CATALOG_LOAD_ALL_CAP = 200;
@@ -42,17 +35,33 @@ export type SaleroomShellData = {
   categoryLabels: string[];
 };
 
-export type SaleroomSecondaryData = {
-  follow: { isFollowing: boolean };
-  relatedSales: Awaited<ReturnType<typeof getServerRelatedSales>>;
-  kycSummary: Awaited<ReturnType<typeof getServerKycStatusSummary>> | null;
-  kycUnavailable: boolean;
-  watchedLotIds: ReadonlySet<string>;
-  telephoneBooking: Awaited<ReturnType<typeof getServerTelephoneBookingForSale>> | null;
+/** What the sale page shows besides the sale and its lots; the same for everyone. */
+export type SaleroomPublicSecondaryData = {
+  relatedSales: Awaited<ReturnType<typeof getPublicRelatedSales>>;
 };
 
-async function loadAllCatalogPages(id: string, sort: SaleroomCatalogSort): Promise<SaleLotsPage> {
-  const first = await getServerSaleLotsPage({
+/**
+ * Where the page reads the sale and its catalogue. `public` is the session-free, tagged read
+ * every visitor gets. `staffPreview` is only used for a sale the public cannot see (the API
+ * answered 404 to a signed-out read) and a staff member may preview: those reads carry the
+ * person's session and are never cached.
+ */
+export type SaleroomReads = {
+  shell(saleId: string): Promise<SaleShell | null>;
+  lotsPage(params: GetSaleLotsPageParams): Promise<SaleLotsPage | null>;
+};
+
+export const PUBLIC_SALEROOM_READS: SaleroomReads = {
+  shell: getPublicSaleShell,
+  lotsPage: getPublicSaleLotsPage,
+};
+
+async function loadAllCatalogPages(
+  reads: SaleroomReads,
+  id: string,
+  sort: SaleroomCatalogSort,
+): Promise<SaleLotsPage> {
+  const first = await reads.lotsPage({
     id,
     page: 1,
     pageSize: CATALOG_LOAD_ALL_BATCH,
@@ -66,7 +75,7 @@ async function loadAllCatalogPages(id: string, sort: SaleroomCatalogSort): Promi
     totalPages > 1
       ? await Promise.all(
           Array.from({ length: totalPages - 1 }, (_, i) =>
-            getServerSaleLotsPage({
+            reads.lotsPage({
               id,
               page: i + 2,
               pageSize: CATALOG_LOAD_ALL_BATCH,
@@ -93,6 +102,13 @@ function emptyLotsPage(sort: SaleroomCatalogSort): SaleLotsPage {
 const HANG_TOP_LOTS_PAGE_SIZE = 48;
 
 export class SaleroomPageDataService {
+  constructor(private readonly reads: SaleroomReads = PUBLIC_SALEROOM_READS) {}
+
+  /** The same service over other reads (the staff preview of a sale the public cannot see). */
+  withReads(reads: SaleroomReads): SaleroomPageDataService {
+    return new SaleroomPageDataService(reads);
+  }
+
   /**
    * The lots the hang chooses from. The catalogue page may hold only part of the sale, so the rest
    * is read here: every lot when staff featured some (they can be anywhere), else the top lots by
@@ -102,9 +118,9 @@ export class SaleroomPageDataService {
     if (lotsPage.items.length >= lotsPage.total) return lotsPage.items;
     try {
       if ((sale.featuredLotIds?.length ?? 0) >= 2) {
-        return (await loadAllCatalogPages(saleId, "lot")).items;
+        return (await loadAllCatalogPages(this.reads, saleId, "lot")).items;
       }
-      const top = await getServerSaleLotsPage({
+      const top = await this.reads.lotsPage({
         id: saleId,
         page: 1,
         pageSize: HANG_TOP_LOTS_PAGE_SIZE,
@@ -124,10 +140,8 @@ export class SaleroomPageDataService {
     pageSize: number;
   }): Promise<SaleroomShellData | null> {
     const [shell, categories] = await Promise.all([
-      getServerSaleShell(input.saleId),
-      getServerCategoryReader()
-        .then((r) => r.list())
-        .catch((): Category[] => []),
+      this.reads.shell(input.saleId),
+      getPublicCategories(),
     ]);
     if (!shell) return null;
 
@@ -136,8 +150,8 @@ export class SaleroomPageDataService {
       shell.sale.status === "cancelled"
         ? emptyLotsPage(input.sort)
         : input.loadAll
-          ? await loadAllCatalogPages(input.saleId, input.sort)
-          : await getServerSaleLotsPage({
+          ? await loadAllCatalogPages(this.reads, input.saleId, input.sort)
+          : await this.reads.lotsPage({
               id: input.saleId,
               page: input.page,
               pageSize: input.pageSize,
@@ -151,41 +165,14 @@ export class SaleroomPageDataService {
     return { shell, lotsPage, categories, categoryLabel, categoryLabels };
   }
 
-  async loadSecondary(
-    saleId: string,
-    sale: Sale,
-    session: SessionUser | null,
-  ): Promise<SaleroomSecondaryData> {
-    const categoryId = sale.categoryId ?? null;
-    const [follow, relatedSales, kycLookup, watchedLotIds, telephoneBooking] = await Promise.all([
-      session
-        ? getServerSaleFollowState(saleId).catch(() => ({ isFollowing: false }))
-        : Promise.resolve({ isFollowing: false }),
-      getServerRelatedSales({ id: saleId, categoryId, limit: 4 }).catch(() => []),
-      session
-        ? getServerKycStatusSummary()
-            .then((summary) => ({ summary, unavailable: false }))
-            .catch((error) => {
-              if (isKycStatusUnavailableError(error)) {
-                return { summary: null, unavailable: true };
-              }
-              throw error;
-            })
-        : Promise.resolve({ summary: null, unavailable: false }),
-      session ? getServerWatchedLotIdSet() : Promise.resolve(new Set<string>()),
-      session && isSaleroomDeliveryMode(sale.deliveryMode)
-        ? getServerTelephoneBookingForSale(saleId).catch(() => null)
-        : Promise.resolve(null),
-    ]);
-
-    return {
-      follow,
-      relatedSales,
-      kycSummary: kycLookup.summary,
-      kycUnavailable: kycLookup.unavailable,
-      watchedLotIds,
-      telephoneBooking,
-    };
+  /** Related sales: public, cached, and a failure only leaves the rail out. */
+  async loadSecondary(saleId: string, sale: Sale): Promise<SaleroomPublicSecondaryData> {
+    const relatedSales = await getPublicRelatedSales({
+      id: saleId,
+      categoryId: sale.categoryId ?? null,
+      limit: 4,
+    }).catch(() => []);
+    return { relatedSales };
   }
 
   filterCatalogLots(

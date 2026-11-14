@@ -56,6 +56,7 @@ import ts from "typescript";
 import { describe, expect, it } from "vitest";
 import { DrizzleAtgSyncStore } from "../integrations/atg/drizzle-atg-sync-store.js";
 import { DrizzleProjectorCursorStart } from "../repositories/drizzle-projector-cursor-start.js";
+import { DrizzleWebPublicCacheReader } from "../repositories/drizzle-web-public-cache.reader.js";
 import { DrizzleZohoCampaignsSuppressionRepository } from "../repositories/drizzle-zoho-campaigns-suppression.repository.js";
 import { ShopIdentityProjectionService } from "../services/shop-identity-projection.service.js";
 import type { WorkerDb } from "../workers/types.js";
@@ -127,6 +128,7 @@ const STORES: Record<string, Store> = {
   DrizzleProjectorCursorStart,
   DrizzleFailedJobReviewRepository,
   DrizzleIntegrationDeadLetterRepository,
+  DrizzleWebPublicCacheReader,
 } as Record<string, Store>;
 
 /** Built by `DrizzleRepositoryFactory`, which a container file builds, not by a container file itself. */

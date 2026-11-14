@@ -1,5 +1,6 @@
 import { revalidateCatalogueCache } from "@/lib/actions/revalidate-catalogue";
-import { revalidatePath } from "next/cache";
+import { publicLotTag } from "@/lib/data/cache-tags";
+import { revalidatePath, revalidateTag } from "next/cache";
 
 export function revalidateAdminUserListPaths(): void {
   revalidatePath("/admin/clients");
@@ -14,6 +15,8 @@ export function revalidateAdminUserDetailPaths(userId: string): void {
 
 export function revalidateAdminLotDetail(lotId: string): void {
   revalidateCatalogueCache();
+  // A staff edit (title, images, estimate, close time) has no domain event: drop the public page.
+  revalidateTag(publicLotTag(lotId));
   revalidatePath("/admin/lots");
   revalidatePath(`/admin/lots/${lotId}`);
   revalidatePath(`/admin/lots/${lotId}/images`);

@@ -1,6 +1,6 @@
 import { SITE_NAME } from "@/lib/brand";
 import { OG_BRAND } from "@/lib/brand/og-colors";
-import { getServerSaleWithLots } from "@/lib/data/http/sales.server";
+import { getPublicSaleLotsPage, getPublicSaleShell } from "@/lib/data/http/public-catalogue.server";
 import { formatOgDateTime } from "@/lib/seo/og-date-format";
 import { renderOgJpeg } from "@/lib/seo/og-image-response";
 
@@ -16,8 +16,8 @@ export async function generateImageMetadata({ params }: Props) {
   const { id } = await params;
   let alt = "Sale catalogue";
   try {
-    const bundle = await getServerSaleWithLots(id);
-    if (bundle?.sale.title) alt = bundle.sale.title;
+    const shell = await getPublicSaleShell(id);
+    if (shell?.sale.title) alt = shell.sale.title;
   } catch {
     /* fall through */
   }
@@ -30,11 +30,16 @@ export default async function Image({ params }: Props) {
   let dateLabel = "";
   let lots = "";
   try {
-    const bundle = await getServerSaleWithLots(id);
-    if (bundle) {
-      title = bundle.sale.title;
-      dateLabel = formatOgDateTime(bundle.sale.endTime);
-      lots = `${bundle.lots.length} lot${bundle.lots.length === 1 ? "" : "s"}`;
+    // Session-free, like the page (CO-7): the image is the same for everyone and can be cached.
+    const [shell, firstPage] = await Promise.all([
+      getPublicSaleShell(id),
+      getPublicSaleLotsPage({ id, pageSize: 1 }),
+    ]);
+    if (shell) {
+      title = shell.sale.title;
+      dateLabel = formatOgDateTime(shell.sale.endTime);
+      const count = firstPage?.total ?? 0;
+      lots = `${count} lot${count === 1 ? "" : "s"}`;
     }
   } catch {
     /* fall through to defaults */

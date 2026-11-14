@@ -1,5 +1,9 @@
 import { ArtworkOfferLock } from "@auction/artwork-register-contracts";
-import { assertRuntimeOwnership } from "@auction/background-runtime";
+import {
+  assertRuntimeOwnership,
+  noopWebPublicCacheInvalidator,
+  webPublicCacheInvalidatorFromEnv,
+} from "@auction/background-runtime";
 import { closeDb, createDb } from "@auction/db";
 import { SharpCoverImageAnalyser } from "@auction/image-processing";
 import { captureBackgroundError, initNodeSentry } from "@auction/observability";
@@ -70,6 +74,7 @@ import { BidOfferLockRecorder } from "../projectors/artwork-offer-lock.js";
 import { createProjectorRunner } from "../projectors/runner.js";
 import { UnsoldChoiceDeadlineRecorder } from "../projectors/unsold-choice-deadline.js";
 import { UnsoldFollowUpOpener } from "../projectors/unsold-follow-up.js";
+import { DrizzleWebPublicCacheReader } from "../repositories/drizzle-web-public-cache.reader.js";
 import { RetentionHoldAlerts } from "../retention/kyc-retention-hold-alert.js";
 import { ShopIdentityProjectionService } from "../services/shop-identity-projection.service.js";
 import { registerAccountingWorkers } from "../workers/register-accounting-workers.js";
@@ -609,6 +614,16 @@ export function createWorkerContainer(): WorkerContainer {
   const adminPayoutsUrl = `${env.WEB_ORIGIN.replace(/\/$/, "")}/admin/payouts`;
   const adminEmailAddress = env.ADMIN_EMAIL_ADDRESS ?? "admin@lax.bid";
   const shopIdentityProjection = new ShopIdentityProjectionService(db);
+  const webPublicCacheInvalidator = webPublicCacheInvalidatorFromEnv(env);
+  const webPublicCacheReader = new DrizzleWebPublicCacheReader(db);
+  const webPublicCache =
+    webPublicCacheInvalidator === noopWebPublicCacheInvalidator
+      ? undefined
+      : {
+          invalidator: webPublicCacheInvalidator,
+          lotSaleId: (lotId: string) => webPublicCacheReader.lotSaleId(lotId),
+          latestEventId: () => webPublicCacheReader.latestEventId(),
+        };
   const projectorRunner = createProjectorRunner({
     transactionRunner: repositories.transactionRunner,
     notificationWriteRepo: repositories.notificationWriteRepo,
@@ -670,6 +685,7 @@ export function createWorkerContainer(): WorkerContainer {
       adminPayoutsUrl,
       adminEmailAddress,
       webOrigin: env.WEB_ORIGIN,
+      ...(webPublicCache ? { webPublicCache } : {}),
       laxAdminUrl: env.LAX_ADMIN_PUBLIC_URL,
       staffOpsRecipientReader: repositories.staffOpsRecipientReader,
       complianceRecipientReader: repositories.complianceRecipientReader,

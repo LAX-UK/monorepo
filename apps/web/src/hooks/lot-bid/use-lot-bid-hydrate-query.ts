@@ -8,11 +8,19 @@ type Options = {
   initialData: LotBidHydrateData;
 };
 
-/** Presentation hook: lot bid hydrate with periodic resync (replaces manual interval/visibility logic). */
+/**
+ * Presentation hook: lot bid hydrate with periodic resync (replaces manual interval/visibility logic).
+ *
+ * The server's snapshot is a first paint only. The lot page can be served from a cache (CO-7), so
+ * the live price, status and close time are read again as soon as the panel mounts
+ * (`refetchOnMount: "always"`, whatever the infinite stale time says), and the socket keeps them
+ * current from there.
+ */
 export function useLotBidHydrateQuery(lotId: string, { initialData }: Options) {
   return useQuery({
     ...lotBidHydrateQueryOptions(lotId),
     initialData,
+    refetchOnMount: "always",
     staleTime: LIVE_QUERY_STALE_TIME_MS,
     refetchInterval: (query) =>
       query.state.data?.snapshot.status === "ended" ? false : LIVE_RESYNC_INTERVAL_MS,

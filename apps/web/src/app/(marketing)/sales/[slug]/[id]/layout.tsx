@@ -1,4 +1,4 @@
-import { requireSalePage } from "@/lib/marketing/detail-page-existence";
+import { requireSalePage } from "@/lib/marketing/sale-page-existence";
 import type { ReactNode } from "react";
 
 /** Answers 404 for a sale that does not exist before the loading shell below streams. */

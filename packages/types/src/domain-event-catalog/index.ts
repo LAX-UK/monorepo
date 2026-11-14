@@ -34,6 +34,7 @@ export {
 export {
   ALL_LIVE_DOMAIN_EVENT_TYPES,
   DOMAIN_EVENT_REGISTRY,
+  WEB_PUBLIC_CACHE_EVENT_TYPES,
   type DomainEventCatalogType,
   type LiveDomainEventType,
 } from "./registry.js";

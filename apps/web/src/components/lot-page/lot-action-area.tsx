@@ -5,6 +5,7 @@ import { LotPhoneBar } from "@/components/lot-page/lot-phone-bar";
 import { dashboardCheckoutLotUrl } from "@/lib/dashboard/dashboard-copy";
 import type { LotPageView } from "@/lib/lot-page/build-lot-page-view";
 import type { LotActionSurface } from "@/lib/lot-page/lot-action-surface";
+import { useLotPageViewerOptional } from "@/lib/lot-page/lot-page-viewer-context";
 import { buildPhoneBarSummary } from "@/lib/lot-page/phone-bar";
 import { ButtonLink } from "@auction/ui/lax/button-link";
 import { ArrowLeft, Mail, Receipt } from "lucide-react";
@@ -133,7 +134,10 @@ export function LotActionArea({
   view: LotPageView;
 }) {
   const target = useRef<HTMLDivElement | null>(null);
-  const content = SURFACES[surface](context, view, target);
+  // The cached page is drawn signed out; the person looking comes from `/api/lots/:id/me`.
+  const viewer = useLotPageViewerOptional();
+  const ctx = viewer ? { ...context, signedIn: viewer.isAuthenticated } : context;
+  const content = SURFACES[surface](ctx, view, target);
   if (content === null) return null;
   return (
     <div ref={target} className="mt-4">

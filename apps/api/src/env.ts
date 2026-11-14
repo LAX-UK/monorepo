@@ -418,6 +418,13 @@ const envSchema = z
      * Optional until bulk jobs are enabled in deploy.
      */
     CRON_INTERNAL_SECRET: z.preprocess(emptyToUndefined, z.string().min(24).optional()),
+    /**
+     * The web app's cache purge route (`…/api/revalidate`) and its shared secret. Both set: an
+     * accepted bid, a moved close time or an ended lot drops the cached public lot and sale reads
+     * that show it. Either missing: nothing is sent.
+     */
+    WEB_REVALIDATE_URL: z.preprocess(emptyToUndefined, z.string().url().optional()),
+    WEB_REVALIDATE_SECRET: z.preprocess(emptyToUndefined, z.string().min(32).optional()),
     /** When true, synchronous API/cron Xero accounting writes are disabled (projector owns outbound). */
     XERO_API_WRITES_DISABLED: z
       .preprocess((v) => v === "true" || v === true, z.boolean())

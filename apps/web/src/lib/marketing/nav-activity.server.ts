@@ -2,7 +2,7 @@ import "server-only";
 
 import { CATALOGUE_FETCH_POLICIES, catalogueFetch } from "@/lib/data/http/catalogue-fetch";
 import { readJsonBody } from "@/lib/data/http/envelope";
-import { getServerApiBase } from "@/lib/data/http/hc-server";
+import { getServerApiBase } from "@/lib/data/http/server-api-base";
 import { NO_NAV_ACTIVITY, type NavActivity } from "@/lib/marketing/nav-activity";
 import { cache } from "react";
 import { z } from "zod";
