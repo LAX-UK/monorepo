@@ -527,6 +527,44 @@ back, and each stays due. While any waits, every run raises `accounting_shop_inv
 (an error alert sent to Sentry, routed to finance on-call like the other accounting alerts). Set
 the address and the waiting emails go on the next run.
 
+### Shop refunds, cancellations and returns to Books (credit notes, flow 21)
+
+**What happens.** When a Shop refund goes through (Stripe confirms it, or staff mark a failed one
+"refunded outside LAX"), the Shop writes `shop.refund.completed` with the refund (ids only). With
+the Shop aimed at Books, the worker replays every refund of the order that went through and books,
+in London Art Exchange's organisation only, one credit note per refund (`LAX-SHOP-CN-<refund>`)
+against the order's invoice, after the credit notes already there (kept as stored). Once the credit
+note is issued, its money is refunded in Books from Stripe clearing, once (`refund_credit_note` in
+its history), exactly as for Bid.
+
+- **Never more than charged.** A credit note only takes what is left on the invoice's lines; the
+  registry also refuses, under the invoice's credit lock, a note built from refunds or credit that
+  changed meanwhile (`credit_prior_changed`, tried again with fresh facts).
+- **Only where certain.** Credit notes fill an invoice's lines in order. A refund is credited when
+  its lines are certain: it names a line that is the next one with credit left, takes everything
+  left on the invoice (a cancellation), or names none while only one line has credit left. A part
+  refund naming no line on an order of several lines, or any refund naming no line on an order
+  delivered outside the UK (it may be for the delivery, invoiced on its own), is refused on its own
+  event as `refund_unattributed` (failed deliveries, for a person). Nothing is guessed. Later
+  refunds of the order leave it out, and credit it once it becomes certain. To book it, credit it by
+  hand in Books against the order's invoice and note the refund on the order; do not redrive the
+  delivery unless the order's other refunds have since made it certain.
+- **Settled outside Stripe.** The money did not go back through clearing, and LAX does not hold the
+  account it went back from. The credit note is stored parked in **Needs a person** ("This refund
+  was settled outside Stripe…"), with no refund from clearing, and is never sent. Release refuses it,
+  and api_app may not move it at all (migration 0386). Do not cancel it: it keeps the invoice from
+  being credited twice. Naming the account is a later change; until then ask engineering.
+- **Backstop.** Before refunding a Shop credit note from clearing, the step reads the refund again
+  under the note's row lock: only a refund that went through by Stripe (succeeded, not settled
+  outside) is refunded; otherwise the note is held as `accounting_refund_reversed_after_credit`
+  with the alert, as for Bid. The Shop never moves a succeeded refund back, so this should not fire.
+
+Rolling back migration 0386 (`0386_rollback.sql`, after the release) removes only its ledger row:
+api_app's rule keeps the refusal, so a note parked as settled outside Stripe stays parked under the
+earlier release. Roll back 0386 before 0385; restoring 0385's function by hand would let api_app
+release such a note unchanged, so do not while any is parked. The buyer's Shop order page does not
+show credit notes yet.
+
 ## Related
 
 - [Scale monitoring](./scale-monitoring.md)
