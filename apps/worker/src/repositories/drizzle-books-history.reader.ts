@@ -24,8 +24,8 @@ export interface IBooksHistoryReader {
     readonly afterInvoiceNumber: string | null;
     readonly limit: number;
   }): Promise<readonly ShopHistoryOrder[]>;
-  /** Accounting documents created at or after `since` whose source starts with `sourcePrefix`. */
-  documentsCreatedSince(sourcePrefix: string, since: Date): Promise<number>;
+  /** Accounting documents created in the UTC day starting `dayStart` whose source starts with `sourcePrefix`. */
+  documentsCreatedOn(sourcePrefix: string, dayStart: Date): Promise<number>;
   /** Domain events of these types in [from, to), by id, after `afterId`, at most `limit`. */
   eventsInWindow(input: {
     readonly eventTypes: readonly string[];
@@ -67,14 +67,15 @@ export class DrizzleBooksHistoryReader implements IBooksHistoryReader {
     return rows.map((r) => ({ orderId: r.orderId, invoiceNumber: r.invoiceNumber as string }));
   }
 
-  async documentsCreatedSince(sourcePrefix: string, since: Date): Promise<number> {
+  async documentsCreatedOn(sourcePrefix: string, dayStart: Date): Promise<number> {
     const [row] = await this.db
       .select({ n: count() })
       .from(accountingDocument)
       .where(
         and(
           like(accountingDocument.sourceEventRef, likePrefix(sourcePrefix)),
-          gte(accountingDocument.createdAt, since),
+          gte(accountingDocument.createdAt, dayStart),
+          lt(accountingDocument.createdAt, new Date(dayStart.getTime() + 86_400_000)),
         ),
       );
     return Number(row?.n ?? 0);

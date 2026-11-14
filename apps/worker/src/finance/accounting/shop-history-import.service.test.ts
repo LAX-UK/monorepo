@@ -51,7 +51,7 @@ function harness(options: { shopBooks?: Mode; shopXero?: Mode } = {}) {
       ORDERS.filter((o) => afterInvoiceNumber === null || o.invoiceNumber > afterInvoiceNumber)
         .slice(0, limit)
         .map((o) => ({ orderId: o.orderId, invoiceNumber: o.invoiceNumber })),
-    documentsCreatedSince: async (prefix) => {
+    documentsCreatedOn: async (prefix) => {
       expect(prefix).toBe(`${SHOP_HISTORY_SOURCE}:`);
       return createdToday;
     },

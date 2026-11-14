@@ -107,7 +107,7 @@ export class ShopHistoryImport {
     const source = `${SHOP_HISTORY_SOURCE}:`;
     const usedToday = input.dryRun
       ? 0
-      : await this.deps.history.documentsCreatedSince(source, startOfUtcDay(this.deps.now()));
+      : await this.deps.history.documentsCreatedOn(source, startOfUtcDay(this.deps.now()));
     let budget = Math.max(0, input.maxDocuments - usedToday);
     const queued = zero();
     const wouldQueue = zero();
