@@ -66,9 +66,19 @@ export class UnappliedMoneyHandlingService implements IUnappliedMoneyHandling {
     if (!open) return err(new AuthzError("This has already been dealt with", 409));
     // Money for the invoice itself closes only when the invoice is settled: marking it handled
     // while the invoice is unpaid would leave the buyer's money taken and the seller unpaid.
-    if (CLOSED_BY_SETTLEMENT.has(open.reason) && open.paymentId) {
-      const invoice = await this.deps.payments.findById(open.paymentId);
-      if (invoice && !SETTLED.has(invoice.status)) {
+    // Fail closed: with no invoice to check (no id on the task, or the row cannot be read) the
+    // money cannot be shown to be settled, so it is not closed by hand either.
+    if (CLOSED_BY_SETTLEMENT.has(open.reason)) {
+      const invoice = open.paymentId ? await this.deps.payments.findById(open.paymentId) : null;
+      if (!invoice) {
+        return err(
+          new AuthzError(
+            "The invoice for this payment cannot be found, so it cannot be marked handled. Ask engineering to check the payment record.",
+            409,
+          ),
+        );
+      }
+      if (!SETTLED.has(invoice.status)) {
         return err(
           new AuthzError(
             "This is the buyer's payment for the invoice, which is still unpaid. Capture or reinstate the payment, or refund it, instead.",
