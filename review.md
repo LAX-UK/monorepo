@@ -181,3 +181,5 @@ Full suites after the fixes, all green:
 - api: 738 files, 7419 tests.
 
 `biome`, the lint scripts and `tsc --noEmit` (db, persistence, finance-runtime, worker, api, shop-api) are clean.
+
+## Recheck — in progress
