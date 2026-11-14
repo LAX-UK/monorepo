@@ -12,7 +12,7 @@ import {
   MAX_OPEN_QUOTE_REQUESTS_PER_BUYER,
   MAX_OPEN_QUOTE_REQUESTS_PER_GUEST_IP,
 } from "@auction/shop-domain";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import type pg from "pg";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { createDeliveryQuoteRequestService } from "../application/delivery-quote-request/delivery-quote-request.service.js";
@@ -63,6 +63,8 @@ const address = (country: string) => ({
   postcode: "10117",
   country,
 });
+
+const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
 describe.skipIf(!hasShopIntegrationDb)("delivery quote requests", () => {
   let ownerPool!: pg.Pool;
@@ -445,6 +447,71 @@ describe.skipIf(!hasShopIntegrationDb)("delivery quote requests", () => {
       .from(shopEdition)
       .where(eq(shopEdition.artworkId, imported.artworkId));
     expect(editions.map((e) => e.status)).not.toContain("reserved");
+  });
+
+  it("queues every path that reserves a print behind the artwork's reservation lock", async () => {
+    const shop = await setup("reservation-lock", undefined, 4);
+    const other = (name: string) => ({
+      kind: "subject" as const,
+      identitySubjectId: `${name}-${shop.suffix}`,
+    });
+    const ownBasket = await shop.addBasket();
+    const guest = await shop.newGuest(`token-lock-${shop.suffix}`, `ip-lock-${shop.suffix}`);
+    const guestBasket = await shop.guestBasket(guest.token);
+    const payBasket = await shop.repo.addOrUpdateLine({
+      owner: other("payer"),
+      artworkSlug: shop.imported.slug,
+      quantity: 1,
+    });
+
+    const lock = await ownerPool.connect();
+    const started: Promise<unknown>[] = [];
+    try {
+      await lock.query("begin");
+      await lock.query("select pg_advisory_xact_lock(hashtext($1))", [
+        `shop-edition-reservation:${shop.imported.artworkId}`,
+      ]);
+      const waiting = (work: Promise<unknown>) => {
+        started.push(work.catch(() => undefined));
+        return Promise.race([work.then(() => "done"), sleep(400).then(() => "waiting")]);
+      };
+      expect(await waiting(shop.request(ownBasket.basketId))).toBe("waiting");
+      expect(await waiting(shop.guestRequest(guestBasket.basketId, guest))).toBe("waiting");
+      expect(
+        await waiting(
+          shop.repo.createCheckoutOrder({
+            subject: `payer-${shop.suffix}`,
+            basketId: payBasket.basketId,
+            fulfilment: "uk_insured_delivery",
+            idempotencyKey: `checkout:${payBasket.basketId}:order`,
+            successUrl: "http://localhost:3020/checkout/confirmation?orderId={ORDER_ID}",
+            cancelUrl: "http://localhost:3020/checkout/cancel?orderId={ORDER_ID}",
+            deliveryAddress: {
+              recipientName: "Ada Lovelace",
+              line1: "1 High Street",
+              city: "London",
+              postcode: "SW1A 1AA",
+              country: "GB",
+            },
+            deliveryPhone: "07700 900123",
+          }),
+        ),
+      ).toBe("waiting");
+    } finally {
+      await lock.query("commit");
+      lock.release();
+    }
+    await Promise.all(started);
+    const reserved = await shop.db
+      .select({ id: shopEdition.id })
+      .from(shopEdition)
+      .where(
+        and(
+          eq(shopEdition.artworkId, shop.imported.artworkId),
+          eq(shopEdition.listingStatus, "reserved"),
+        ),
+      );
+    expect(reserved).toHaveLength(3);
   });
 
   it("holds a network to its cap when its requests arrive at once", async () => {

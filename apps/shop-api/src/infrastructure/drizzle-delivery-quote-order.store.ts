@@ -33,6 +33,7 @@ import { expandBasketLines, loadCheckoutBasket } from "./shop-checkout-basket.js
 import { deliveryColumns } from "./shop-checkout-replay.js";
 import { checkoutDeliveryDetails } from "./shop-checkout-replay.js";
 import {
+  lockArtworksForReservation,
   reserveEditionsForCheckoutOrder,
   reserveProductVariantsForCheckoutOrder,
 } from "./shop-checkout-reservation.js";
@@ -137,17 +138,10 @@ export function createDrizzleDeliveryQuoteOrderStore(
   }
 
   /**
-   * Takes a lock per artwork for guest holds, so two guests cannot each take one of the last two
-   * prints and leave none, then refuses a hold that would leave no print of an artwork on sale.
+   * Refuses a guest hold that would leave no print of an artwork on sale. The count is taken under
+   * the artwork's reservation lock, which every path that reserves a print takes, so it never
+   * misses a print another checkout has just reserved.
    */
-  async function lockGuestArtworks(tx: Database, artworkIds: readonly string[]): Promise<void> {
-    for (const artworkId of [...artworkIds].sort()) {
-      await tx.execute(
-        sql`select pg_advisory_xact_lock(hashtext(${`shop-quote-guest-artwork:${artworkId}`}))`,
-      );
-    }
-  }
-
   async function assertGuestLeavesAPrint(
     tx: Database,
     artworkIds: readonly string[],
@@ -235,8 +229,8 @@ export function createDrizzleDeliveryQuoteOrderStore(
               input.guest.basketTokenHash,
               input.guestIpHash,
             );
-            await lockGuestArtworks(tx as Database, artworkIds);
           }
+          await lockArtworksForReservation(tx as Database, artworkIds);
           const [order] = await tx
             .insert(shopOrder)
             .values({

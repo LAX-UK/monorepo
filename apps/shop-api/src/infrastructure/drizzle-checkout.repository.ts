@@ -42,6 +42,7 @@ import {
   replayCheckoutOrder,
 } from "./shop-checkout-replay.js";
 import {
+  lockArtworksForReservation,
   reserveEditionsForCheckoutOrder,
   reserveProductVariantsForCheckoutOrder,
 } from "./shop-checkout-reservation.js";
@@ -302,6 +303,10 @@ export function createDrizzleCheckoutRepository(
           const { editionLines: expandedEditionLines, variantLines: expandedVariantLines } =
             expandBasketLines(basketLines);
 
+          await lockArtworksForReservation(
+            tx as Database,
+            expandedEditionLines.map((line) => line.artworkId),
+          );
           await reserveProductVariantsForCheckoutOrder(tx as Database, {
             orderId: order.id,
             expandedLines: expandedVariantLines,
