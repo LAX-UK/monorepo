@@ -1,6 +1,6 @@
 -- Rollback for 0385_accounting_credit_note_refunds. Roll the release back first, then this.
 -- Restores 0383's history actions. The CHECK is added back NOT VALID, so `refund_credit_note` and
--- `hold_reversed` rows already written stay (history is append-only) while the earlier release can
+-- `hold` rows already written stay (history is append-only) while the earlier release can
 -- write no new one. Parked documents stay parked: 0383's api_app rule is restored word for word
 -- with 0385's one refusal kept (as 0383's own rollback kept outside-UK delivery parked), so the
 -- buyer default, cancelled-invoice and courier refund credit notes are never moved by api_app

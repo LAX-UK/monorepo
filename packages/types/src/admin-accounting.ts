@@ -292,6 +292,10 @@ const CODE_TEXT: Readonly<Record<string, string>> = {
   accounting_parked_vat_on_outside_uk_delivery: ACCOUNTING_PARKED_TEXT_OUTSIDE_UK,
   accounting_parked_buyer_default_treatment: ACCOUNTING_PARKED_TEXT_DEFAULT,
   accounting_parked_credited_invoice_cancelled: ACCOUNTING_PARKED_TEXT_CREDITED_CANCELLED,
+  accounting_refund_reversed_after_credit:
+    "The refund this credit note is for failed after the credit note was issued in Books, so the buyer did not get the money. Nothing is reversed automatically: ask the accountant how to reverse it in Books, and check whether it was already refunded from Stripe clearing.",
+  accounting_credit_note_refund_refused:
+    "Books refused to refund this credit note from Stripe clearing. Refund it by hand in Books from Stripe clearing (see the runbook).",
 };
 
 /** What a person is told about a parked document, by why it is parked. */

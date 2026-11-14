@@ -7,7 +7,6 @@ import type {
   BidPaidInvoiceFacts,
   BidPaymentFacts,
   BidPaymentGroupFacts,
-  BidRefundsFacts,
 } from "@auction/accounting-domain";
 import { LONDON_TIME_ZONE, dayKey } from "@auction/datetime";
 import type { Database } from "@auction/db";
@@ -23,7 +22,11 @@ import {
 } from "@auction/db/schema";
 import { and, asc, eq, sql } from "drizzle-orm";
 import type { AnyPgColumn } from "drizzle-orm/pg-core";
-import type { FactsRead, IBidAccountingFactsReader } from "../../interfaces/accounting.js";
+import type {
+  BidPaymentRefundsRead,
+  FactsRead,
+  IBidAccountingFactsReader,
+} from "../../interfaces/accounting.js";
 
 const skip = (reason: string) => ({ status: "skip", reason }) as const;
 const ready = <T>(facts: T) => ({ status: "ready", facts }) as const;
@@ -284,7 +287,7 @@ export class DrizzleBidAccountingFactsReader implements IBidAccountingFactsReade
     return row ? row.groupId.toLowerCase() : null;
   }
 
-  async paymentRefunded(paymentId: string): Promise<FactsRead<BidRefundsFacts>> {
+  async paymentRefunded(paymentId: string): Promise<FactsRead<BidPaymentRefundsRead>> {
     const [row] = await this.db
       .select({
         id: payment.id,
@@ -317,6 +320,7 @@ export class DrizzleBidAccountingFactsReader implements IBidAccountingFactsReade
     if (kept.length === 0) return skip("no_refund_recorded");
     return ready({
       invoice: invoice.facts,
+      refundRows: rows.length,
       paidPence: Number(row.amountPence),
       refunds: kept.map((r) => ({
         refundId: r.id.toLowerCase(),
@@ -324,6 +328,37 @@ export class DrizzleBidAccountingFactsReader implements IBidAccountingFactsReade
         refundedOn: londonDay(r.createdAt),
       })),
     });
+  }
+
+  async paymentRefundReversals(
+    paymentId: string,
+  ): Promise<
+    FactsRead<{ readonly invoiceId: string; readonly reversedRefundIds: readonly string[] }>
+  > {
+    const [row] = await this.db
+      .select({ id: payment.id, invoiceId: payment.invoiceId })
+      .from(payment)
+      .where(eq(payment.id, paymentId));
+    if (!row) return skip("payment_not_found");
+    if (row.invoiceId === null) return skip("payment_without_invoice");
+    const rows = await this.db
+      .select({
+        id: paymentRefund.id,
+        amountPence: paymentRefund.amountPence,
+        source: paymentRefund.source,
+        stripeRefundId: paymentRefund.stripeRefundId,
+      })
+      .from(paymentRefund)
+      .where(eq(paymentRefund.paymentId, row.id))
+      .orderBy(asc(paymentRefund.createdAt), asc(paymentRefund.id));
+    const kept = withoutReversed(rows);
+    if (kept === null) return skip("refund_reversal_unmatched");
+    const keptIds = new Set(kept.map((r) => r.id));
+    const reversedRefundIds = rows
+      .filter((r) => r.source !== "refund_reversal" && !keptIds.has(r.id))
+      .map((r) => r.id.toLowerCase());
+    if (reversedRefundIds.length === 0) return skip("no_refund_reversed");
+    return ready({ invoiceId: row.invoiceId.toLowerCase(), reversedRefundIds });
   }
 
   /** One payment of one invoice. A "Pay several" member is booked by the group's own flow. */

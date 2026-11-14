@@ -4,8 +4,9 @@
 -- A credit note for a refund that went through is refunded in the books from the Stripe clearing
 -- account once it is issued, and the worker records that once on the credit note's history as
 -- `refund_credit_note` (issued to issued), as 0383 did for `apply_remainder`. The action list gains
--- it. A credit note whose refund was taken back after it was issued is held for a person
--- (`hold_reversed`, issued to needs_review, the Books document kept): the list gains that too.
+-- it. A credit note whose refund was taken back after it was issued, or whose refund from clearing
+-- Books refused, is held for a person (`hold`, issued to needs_review, the Books document kept):
+-- the list gains `hold` too.
 --
 -- api_app's rule (0383's function) gains one refusal, before anything else: a credit note parked
 -- for a buyer default's treatment (`accounting_parked_buyer_default_treatment`), one whose invoice
@@ -23,7 +24,7 @@ ALTER TABLE "accounting_document_event" DROP CONSTRAINT IF EXISTS "accounting_do
 --> statement-breakpoint
 ALTER TABLE "accounting_document_event" ADD CONSTRAINT "accounting_document_event_action_ck" CHECK (
   "action" IN ('created', 'start_sending', 'expire_lease', 'complete_sending', 'apply_lookup',
-    'escalate', 'requeue', 'cancel', 'release', 'park', 'apply_remainder', 'refund_credit_note', 'hold_reversed')
+    'escalate', 'requeue', 'cancel', 'release', 'park', 'apply_remainder', 'refund_credit_note', 'hold')
 );
 --> statement-breakpoint
 CREATE OR REPLACE FUNCTION "accounting_document_api_requeue_only"() RETURNS trigger

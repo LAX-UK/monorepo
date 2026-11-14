@@ -8,17 +8,19 @@ import {
 import {
   type BidBuyerDefaultFacts,
   type BidDeliveryRefundFacts,
+  type BidRefundReversedFacts,
   type BidRefundsFacts,
   projectBidBuyerDefault,
   projectBidDeliveryRefunded,
   projectBidPaymentRefunded,
+  projectBidRefundReversed,
 } from "./bid-refunds.js";
 import { type BidInvoiceFacts, projectBidInvoiceRaised } from "./bid.js";
 import { EMPTY_PROJECTION, type ProjectionPolicy } from "./projection.js";
 import { type ShopOrderPaidFacts, projectShopOrderPaid } from "./shop.js";
 
 /**
- * Every money flow the books will follow, one projection policy each. Seven are built;
+ * Every money flow the books will follow, one projection policy each. Eight are built;
  * the others are listed so the set is visible in one place, and project nothing until their own
  * change builds them (each is waiting on code or on an accountant's answer).
  */
@@ -26,6 +28,7 @@ export const ACCOUNTING_FLOWS = [
   "bid_invoice_raised",
   "bid_payment_captured",
   "bid_payment_refunded",
+  "bid_payment_refund_reversed",
   "bid_payment_group_settled",
   "bid_delivery_refunded",
   "bid_buyer_default",
@@ -45,6 +48,7 @@ export interface FlowFacts {
   readonly bid_invoice_raised: BidInvoiceFacts;
   readonly bid_payment_captured: BidPaymentFacts;
   readonly bid_payment_refunded: BidRefundsFacts;
+  readonly bid_payment_refund_reversed: BidRefundReversedFacts;
   readonly bid_payment_group_settled: BidPaymentGroupFacts;
   readonly bid_delivery_refunded: BidDeliveryRefundFacts;
   readonly bid_buyer_default: BidBuyerDefaultFacts;
@@ -62,6 +66,7 @@ export const PROJECTION_POLICIES: {
   bid_invoice_raised: projectBidInvoiceRaised,
   bid_payment_captured: projectBidPaymentCaptured,
   bid_payment_refunded: projectBidPaymentRefunded,
+  bid_payment_refund_reversed: projectBidRefundReversed,
   bid_payment_group_settled: projectBidPaymentGroupSettled,
   bid_delivery_refunded: projectBidDeliveryRefunded,
   bid_buyer_default: projectBidBuyerDefault,
@@ -75,6 +80,7 @@ export const BUILT_FLOWS = [
   "bid_invoice_raised",
   "bid_payment_captured",
   "bid_payment_refunded",
+  "bid_payment_refund_reversed",
   "bid_payment_group_settled",
   "bid_delivery_refunded",
   "bid_buyer_default",

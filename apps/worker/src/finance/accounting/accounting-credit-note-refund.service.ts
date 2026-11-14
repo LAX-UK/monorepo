@@ -11,6 +11,7 @@ import type {
   IAccountingCreditNoteRefunds,
   IAccountingSourceSettingReader,
 } from "@auction/persistence/interfaces";
+import { ACCOUNTING_ALERTS, type AccountingAlertSink } from "./accounting-alerts.js";
 
 const DEFAULT_BATCH = 10;
 
@@ -28,6 +29,8 @@ export interface AccountingCreditNoteRefundDeps {
   /** The refund port of each mode the sender serves (the same adapters it sends through). */
   readonly portsByMode: Readonly<Partial<Record<TargetMode, CreditNoteRefundPort>>>;
   readonly log: AccountingCreditNoteRefundLog;
+  /** Where a refused refund is reported (`accounting_credit_note_refund_refused`). */
+  readonly alerts?: AccountingAlertSink;
   readonly batch?: number;
 }
 
@@ -48,6 +51,9 @@ export interface CreditNoteRefundTick {
  *   `already_refunded` the next time, never a second refund. An answer it cannot read records
  *   nothing: the next run looks again, after the credit notes not tried yet.
  * - In dry run it is rehearsed (nothing is held, nothing refunded), and recorded as a rehearsal.
+ * - A refund Books refuses is not settled for anyone: the credit note is held for a person in the
+ *   same transaction ("Needs a person", `accounting_credit_note_refund_refused`) and an alert is
+ *   raised. A person refunds it by hand in Books (see the runbook).
  */
 export class AccountingCreditNoteRefund {
   private readonly batch: number;
@@ -125,11 +131,18 @@ export class AccountingCreditNoteRefund {
     if (!ran || settled === null) return null;
     const record: CreditNoteRefundRecord = settled;
     if (record.outcome === "rejected") {
-      // Left for a person: refund it by hand in Books (see the runbook); the history says why.
-      this.deps.log.warn(
-        { documentId: creditNote.id, mode, reason: record.reason ?? null },
-        "accounting_credit_note_refund_refused",
-      );
+      // Held for a person in the same transaction: refund it by hand in Books (see the runbook).
+      const details = {
+        documentId: creditNote.id,
+        reference: creditNote.reference,
+        mode,
+        reason: record.reason ?? null,
+      };
+      if (this.deps.alerts) {
+        this.deps.alerts.raise(ACCOUNTING_ALERTS.creditNoteRefundRefused, details);
+      } else {
+        this.deps.log.warn(details, "accounting_credit_note_refund_refused");
+      }
     } else {
       this.deps.log.info(
         { documentId: creditNote.id, mode, outcome: record.outcome, rehearsal: record.rehearsal },

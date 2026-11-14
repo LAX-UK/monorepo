@@ -10,16 +10,18 @@ import type {
   IAccountingCreditNoteRefunds,
 } from "../../interfaces/accounting.js";
 import {
+  CREDIT_NOTE_REFUND_REFUSED,
   MONEY_BACK_CREDIT_NOTE,
   REFUND_CREDIT_NOTE,
   REFUND_UNSETTLED,
 } from "../../lib/accounting-credit-note-refund-due.js";
+import { applyLockedTransition } from "../../lib/accounting-document-move.js";
 import { rowToStored } from "../../lib/accounting-document-row.js";
 
 const d = accountingDocument;
 const e = accountingDocumentEvent;
 
-export { REFUND_CREDIT_NOTE };
+export { CREDIT_NOTE_REFUND_REFUSED, REFUND_CREDIT_NOTE };
 
 /**
  * Issued credit notes whose money went back to the buyer, refunded in the books from Stripe
@@ -71,7 +73,7 @@ export class DrizzleAccountingCreditNoteRefunds implements IAccountingCreditNote
       // Held for the step only; a worker that finds it held leaves it to the holder. Checked
       // again under the lock: a credit note settled meanwhile is not refunded twice.
       const [held] = await tx
-        .select({ id: d.id, attempts: d.attempts })
+        .select()
         .from(d)
         .where(
           and(
@@ -104,6 +106,19 @@ export class DrizzleAccountingCreditNoteRefunds implements IAccountingCreditNote
         },
         occurredAt: this.clock.now(),
       });
+      if (record.outcome === "rejected") {
+        // Not settled for anyone: the buyer holds an open credit in Books and Stripe clearing does
+        // not reconcile. The credit note is held for a person (the Books document kept), so it
+        // shows in "Needs a person" until they refund it by hand in Books (see the runbook).
+        const moved = await applyLockedTransition(
+          tx,
+          held,
+          { action: "hold", reason: CREDIT_NOTE_REFUND_REFUSED },
+          this.clock.now(),
+        );
+        if (!moved.ok)
+          throw new Error(`credit note ${held.id} could not be held: ${moved.refusal.code}`);
+      }
       return true;
     });
   }

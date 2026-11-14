@@ -352,25 +352,49 @@ Books.
   for exactly that refund, on the invoice's lines (hammer first, then premium), never more than the
   payment took for the invoice. A refund that is still pending has no row, so nothing is made; one
   counted and then taken back (Stripe reported it failed) is left out with its compensating row.
+  A refund's credit note already registered is kept exactly as stored, and later refunds are
+  credited after it. A credit note an earlier release stored for the same refund (dry run or test
+  organisation only, no `refund` on it) is recognised as that refund's; it carries no refund from
+  clearing, so in the test organisation refund it by hand in Books if it matters.
   A taken-back refund that cannot be matched to its refund goes to the failed deliveries
   (`refund_reversal_unmatched`): look at the payment's refunds and decide by hand.
 - **Order.** A credit note is sent only once its contact **and the invoice it credits** are issued
   in the same books. If that invoice is cancelled in Accounting, the credit note is parked
   ("The invoice this credits was cancelled…"): cancel it, or ask engineering.
-- **Never more credit than the invoice charged.** Registering a credit note is checked, under a lock
-  per invoice, against every other credit note for the invoice in the same books (any state but
-  cancelled). Two at once cannot pass together; the later one is tried again with the facts read
-  afresh.
+- **Never more credit than the invoice charged, or than was refunded.** Registering a credit note is
+  checked, under a lock per invoice, against every other credit note for the invoice in the same
+  books (any state but cancelled). Under the same lock it is also checked against the facts it was
+  built from: the other credit, the payment's refund rows, and for a courier refund the quote's
+  refunded total read again (the notes never credit more than it). If any changed, the event is
+  tried again with the facts read afresh (`credit_prior_changed`), so two projections that
+  interleave never both credit the same money.
 - **Money back from clearing.** Once a refund's credit note is issued, the worker refunds its whole
   gross from the Stripe clearing account in Books, once (history `refund_credit_note`). It reads
-  the credit note's refunds first, so a lost answer is recognised, never refunded twice; a credit
-  note that already holds another refund in Books is refused for a person (refund it by hand in
-  Books). `accounting_credit_note_refund_delayed` (warning) is raised when one issued more than six
-  hours ago is still not refunded.
+  the credit note's refunds first, so a lost answer is recognised, never refunded twice.
+  `accounting_credit_note_refund_delayed` (warning) is raised when one issued more than six hours
+  ago is still not refunded.
+- **`accounting_credit_note_refund_refused`** (error). Books refused to refund an issued credit note
+  from clearing (it already holds another refund, say). The credit note is held in **Needs a
+  person** ("Books refused to refund this credit note…"); nothing retries it. Refund it by hand in
+  Books from Stripe clearing, matching the credit note's number and amount, then ask engineering to
+  record it.
+- **`accounting_refund_reversed_after_credit`** (error). A refund was taken back (Stripe reported it
+  failed, or the Pay several refund repair took it back) after its credit note was **issued** in
+  Books. The buyer never got the money, but Books shows the credit (and maybe a refund from
+  clearing). The plan defines no reversing document yet, so nothing is reversed automatically: the
+  credit note is held in **Needs a person** and is never refunded from clearing from then on. Check
+  its history for `refund_credit_note` (already refunded from clearing or not), and ask the
+  accountant how to reverse it in Books. If the credit note was **never sent**, it is simply
+  cancelled (`payment.refund_reversed`), and nothing needs a person.
 - **Courier refund inside Pay several** (`payment_group.delivery_refunded`): the delivery invoice
   `LAX-BID-INV-dlv-<quote>` is credited up to the quote's stored refunded total
   (`payment_group_delivery.refunded_pence`), never above its charge, one credit note per rise
-  (`LAX-BID-CN-dlv-<quote>-r<total>`). While VAT on delivery waits for the accountant these credit
+  (`LAX-BID-CN-dlv-<quote>-r<total>`). If the refund repair lowers the total
+  (`payment_group.refund_reversed`), the newest credit notes never sent are cancelled until the
+  credit fits and the rest is credited again; one already issued is held for a person with
+  `accounting_refund_reversed_after_credit`. A cancelled step's reference stays taken, so raising
+  the total back to that exact figure with a different amount goes to the failed deliveries
+  (`reference_in_use`): decide by hand. While VAT on delivery waits for the accountant these credit
   notes are parked with the delivery invoice; Release says so. Once `DELIVERY_BOOKING` is set,
   engineering decides how the parked credit notes are rebuilt before they are released.
 - **Refunds not matched to an invoice** (`payment_group.refund_unattributed`) make no document.
@@ -388,9 +412,14 @@ Books.
 - **Buyer's card** (Bid live only, same rule as the invoice): "Refunded −£[amount] · Download credit
   note [number] (PDF)" per refund, and "Cancelled after a default" with its credit note once issued.
   LAX keeps its own copy of each credit note's PDF; no credit note is emailed.
+- **Database pin.** The database refuses api_app moving a parked buyer default credit note, a credit
+  note whose invoice was cancelled, or a courier refund's credit note, even unchanged (0385). The
+  migration that ships the accountant's answer lifts the matching line; until then Release cannot
+  move them even if the application were changed.
 - **Rolling back** `0385_rollback.sql` restores 0383's history actions (NOT VALID, so
-  `refund_credit_note` rows stay). Roll the release back first: the earlier release does not run
-  the refund step.
+  `refund_credit_note` and `hold` rows stay) and 0383's api_app rule with the 0385 refusal kept, so
+  those credit notes stay parked. Roll the release back first: the earlier release does not run the
+  refund step.
 
 ## Shop invoices to Books (London Art Exchange)
 

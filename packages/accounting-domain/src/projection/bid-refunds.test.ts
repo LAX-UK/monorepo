@@ -15,6 +15,7 @@ import {
   projectBidBuyerDefault,
   projectBidDeliveryRefunded,
   projectBidPaymentRefunded,
+  projectBidRefundReversed,
 } from "./bid-refunds.js";
 import type { BidInvoiceFacts } from "./bid.js";
 
@@ -99,6 +100,29 @@ describe("Bid payment refunded (flow 8, and each lot of a Pay several refund)", 
       projectBidPaymentRefunded(refunded([refund(1, 1_001), refund(2, 7)])),
     ).documents;
     expect(twice.slice(0, 3)).toEqual(once);
+  });
+
+  it("keeps a refund's credit note already registered exactly as stored, and credits later refunds after it", () => {
+    const [stored] = notes(must(projectBidPaymentRefunded(refunded([refund(1, 1_001)]))).documents);
+    // As the earlier refund flow stored it: no `refund` on it.
+    const { refund: _, ...earlier } = stored as CreditNote;
+    const facts = { ...refunded([refund(1, 1_001), refund(2, 154_320)]), registered: [earlier] };
+    const made = notes(must(projectBidPaymentRefunded(facts)).documents);
+    expect(made[0]).toEqual(earlier);
+    // Never more than was paid: the second takes only what is left after the stored one.
+    expect(made[1]?.totals.grossPence).toBe(154_320 - 1_001);
+  });
+
+  it("a refund taken back (left out by the reader) never reshapes the credit notes of the refunds that stayed", () => {
+    const both = notes(
+      must(projectBidPaymentRefunded(refunded([refund(1, 123_456), refund(2, 1_000)]))).documents,
+    );
+    const second = both[1] as CreditNote;
+    const after = notes(
+      must(projectBidPaymentRefunded({ ...refunded([refund(2, 1_000)]), registered: both }))
+        .documents,
+    );
+    expect(after).toEqual([second]);
   });
 
   it("credits a full refund to the penny", () => {
@@ -236,6 +260,136 @@ describe("courier delivery refunded inside Pay several (flow 9)", () => {
     expect(
       resolveParked({ document: note as CreditNote, reason: "vat_on_delivery" }, projection),
     ).toMatchObject({ ok: false, refusal: { code: "unresolved" } });
+  });
+});
+
+describe("courier refund total lowered (a refund taken back by the group's repair)", () => {
+  const facts = (over: Partial<BidDeliveryRefundFacts> = {}): BidDeliveryRefundFacts => ({
+    groupId: GROUP_ID,
+    buyer: BUYER,
+    quoteId: QUOTE_ID,
+    chargedPence: 4_500,
+    settledOn: "2026-11-13",
+    refundedPence: 1_500,
+    refundedOn: "2026-11-20",
+    priorCredits: [],
+    ...over,
+  });
+  const credited = (totals: number[]) => {
+    const made: CreditNote[] = [];
+    for (const total of totals) {
+      made.push(
+        ...notes(
+          must(projectBidDeliveryRefunded(facts({ refundedPence: total, priorCredits: made })))
+            .documents,
+        ),
+      );
+    }
+    return made;
+  };
+
+  it("cancels the newest credit notes never sent until the credit fits, then credits the rest again", () => {
+    const made = credited([1_000, 3_000]);
+    const projection = must(
+      projectBidDeliveryRefunded(
+        facts({ refundedPence: 2_000, priorCredits: made, priorStandings: ["issued", "waiting"] }),
+      ),
+    );
+    expect(projection.cancel).toEqual([made[1]?.reference]);
+    expect(notes(projection.documents).map((n) => n.totals.grossPence)).toEqual([1_000]);
+    expect(notes(projection.documents)[0]?.reference).toBe(
+      `LAX-BID-CN-${deliveryCreditSourceId(QUOTE_ID, 2_000)}`,
+    );
+  });
+
+  it("holds an issued credit note above the total for a person, and makes nothing more", () => {
+    const made = credited([3_000]);
+    const projection = must(
+      projectBidDeliveryRefunded(
+        facts({ refundedPence: 1_500, priorCredits: made, priorStandings: ["issued"] }),
+      ),
+    );
+    expect(projection.hold).toEqual([
+      { reference: made[0]?.reference, reason: "refund_reversed_after_credit" },
+    ]);
+    expect(notes(projection.documents)).toEqual([]);
+    expect(projection.cancel ?? []).toEqual([]);
+  });
+
+  it("waits while one is being sent, and refuses a credit above the total with no standings", () => {
+    const made = credited([3_000]);
+    expect(
+      projectBidDeliveryRefunded(
+        facts({ refundedPence: 1_500, priorCredits: made, priorStandings: ["in_flight"] }),
+      ),
+    ).toMatchObject({ ok: false, refusal: { code: "credit_in_flight" } });
+    expect(
+      projectBidDeliveryRefunded(facts({ refundedPence: 1_500, priorCredits: made })),
+    ).toMatchObject({ ok: false, refusal: { code: "bad_facts" } });
+  });
+
+  it("leaves one already with a person there", () => {
+    const made = credited([3_000]);
+    const projection = must(
+      projectBidDeliveryRefunded(
+        facts({ refundedPence: 0, priorCredits: made, priorStandings: ["held_for_review"] }),
+      ),
+    );
+    expect(projection.hold ?? []).toEqual([]);
+    expect(projection.cancel ?? []).toEqual([]);
+    expect(notes(projection.documents)).toEqual([]);
+  });
+
+  it("property: after a lowering, what stays credited (never sent) is exactly the new total", () => {
+    forAll(200, (rng) => {
+      const totals = [int(rng, 1, 1_500), int(rng, 1_501, 3_000), int(rng, 3_001, 4_500)];
+      const made = credited(totals);
+      const lowered = int(rng, 0, 4_500);
+      const projection = must(
+        projectBidDeliveryRefunded(
+          facts({
+            refundedPence: lowered,
+            priorCredits: made,
+            priorStandings: made.map(() => "waiting" as const),
+          }),
+        ),
+      );
+      const kept = made.filter((n) => !(projection.cancel ?? []).includes(n.reference));
+      const total = [...kept, ...notes(projection.documents)].reduce(
+        (sum, n) => sum + n.totals.grossPence,
+        0,
+      );
+      expect(total).toBe(Math.min(lowered, 4_500));
+    });
+  });
+});
+
+describe("refund taken back after its credit note was made (payment.refund_reversed)", () => {
+  const reference = (n: number) => `LAX-BID-CN-0b6a7c1e-4444-4a5b-8c9d-00000000000${n}`;
+
+  it("cancels one never sent, holds one issued for a person, leaves one with a person or absent", () => {
+    const projection = must(
+      projectBidRefundReversed({
+        reversed: [
+          { reference: reference(1), standing: "waiting" },
+          { reference: reference(2), standing: "issued" },
+          { reference: reference(3), standing: "held_for_review" },
+          { reference: reference(4), standing: "absent" },
+        ],
+      }),
+    );
+    expect(projection).toEqual({
+      documents: [],
+      cancel: [reference(1)],
+      hold: [{ reference: reference(2), reason: "refund_reversed_after_credit" }],
+    });
+  });
+
+  it("waits while one is being sent (tried again), and makes nothing when none was made", () => {
+    expect(
+      projectBidRefundReversed({ reversed: [{ reference: reference(1), standing: "in_flight" }] }),
+    ).toMatchObject({ ok: false, refusal: { code: "credit_in_flight" } });
+    expect(must(projectBidRefundReversed({ reversed: [] }))).toEqual({ documents: [] });
   });
 });
 

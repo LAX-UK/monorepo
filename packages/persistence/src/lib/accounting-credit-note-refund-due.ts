@@ -7,6 +7,12 @@ const e = accountingDocumentEvent;
 /** The history action that settles a credit note's refund (migration 0385). */
 export const REFUND_CREDIT_NOTE = "refund_credit_note";
 
+/**
+ * The reason a credit note is held for a person when Books refused to refund it from Stripe
+ * clearing (a `refund_credit_note` with outcome `rejected`): it is refunded by hand in Books.
+ */
+export const CREDIT_NOTE_REFUND_REFUSED = "accounting_credit_note_refund_refused";
+
 /** Credit notes that give money back: the domain put `refund` on them (`planCreditNoteRefund`). */
 export const MONEY_BACK_CREDIT_NOTE = and(
   eq(d.kind, "credit_note"),

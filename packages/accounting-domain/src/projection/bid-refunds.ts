@@ -16,7 +16,13 @@ import {
   bidContact,
   bidInvoice,
 } from "./bid.js";
-import type { ParkedDocument, Projection, ProjectionCode, ProjectionPolicy } from "./projection.js";
+import type {
+  HeldDocument,
+  ParkedDocument,
+  Projection,
+  ProjectionCode,
+  ProjectionPolicy,
+} from "./projection.js";
 
 /**
  * One refund that went through on a payment: a `payment_refund` row. Such a row is written only
@@ -39,6 +45,15 @@ export interface BidRefundsFacts {
   readonly invoice: BidInvoiceFacts;
   readonly paidPence: Pence;
   readonly refunds: readonly BidRefundFacts[];
+  /**
+   * Credit notes already registered (not cancelled) in the books the switch aims at now for these
+   * refunds, by reference. A refund whose credit note is already there keeps it exactly as stored
+   * (it is a replay), and the later refunds are credited after it. So a refund taken back (left out
+   * of `refunds`) never reshapes the credit notes of the refunds that stayed, and a credit note an
+   * earlier release stored for the same refund (with no `refund` on it) is recognised as that
+   * refund's, never refused as a different document.
+   */
+  readonly registered?: readonly CreditNote[];
 }
 
 /** The credit note given for a refund: exactly the refund (less any part above what was charged). */
@@ -89,6 +104,13 @@ export const projectBidPaymentRefunded: ProjectionPolicy<BidRefundsFacts> = (fac
     if (!isPence(refund.amountPence) || refund.amountPence <= 0) {
       return refuse("bad_amount", "a refund must be positive whole pence");
     }
+    const reference = laxReference("bid", "credit_note", refund.refundId);
+    if (!reference.ok) return refuse("bad_source_id", reference.refusal.message);
+    const stored = facts.registered?.find((note) => note.reference === reference.value);
+    if (stored) {
+      credits.push(stored);
+      continue;
+    }
     const buckets = goodsBuckets(invoice, facts.paidPence, credits);
     const left =
       buckets.paidGoodsPence -
@@ -131,15 +153,31 @@ export interface BidDeliveryRefundFacts {
   readonly refundedOn: string;
   /** Credit notes already registered for the delivery invoice (not cancelled), oldest first. */
   readonly priorCredits: readonly CreditNote[];
+  /**
+   * Where each of `priorCredits` stands in the books (same order). Read when the refunded total
+   * was lowered below what is credited (a refund that failed after it was counted): the newest
+   * credit notes never sent are cancelled until the credit fits; one already issued is held for a
+   * person instead. Without it, a total below the credit is refused.
+   */
+  readonly priorStandings?: readonly CreditStanding[];
 }
+
+/**
+ * Where a credit note already registered stands in the books the switch aims at now, as a
+ * reversal reads it: the same reading a buyer default makes of its invoice.
+ */
+export type CreditStanding = DefaultedInvoiceInBooks;
 
 /** Source ids of the documents a delivery refund makes, kept apart from row ids by a prefix. */
 const DELIVERY_CREDIT_PREFIX = "dlv-";
 
 /**
  * The credit note's source id for the step that brings a quote's credit up to `totalPence`:
- * `dlv-<quote>-r<total>`. The running total only grows, so each step has its own reference, and
- * the same total always gives the same one (two projections of the same state make one document).
+ * `dlv-<quote>-r<total>`. The same total always gives the same one (two projections of the same
+ * state make one document). The running total usually only grows, but a refund that failed after
+ * it was counted lowers it (the group's refund repair): the credit notes above it that were never
+ * sent are then cancelled, and a cancelled step's reference stays taken, so raising the total to
+ * that same figure again with a different amount is refused for a person (`reference_in_use`).
  */
 export function deliveryCreditSourceId(quoteId: string, totalPence: Pence): string {
   return `${DELIVERY_CREDIT_PREFIX}${quoteId}-r${totalPence}`;
@@ -184,8 +222,15 @@ function projectDeliveryRefund(
   if (deliveryBooking === null) {
     parked.push({ reference: invoice.value.reference, reason: "vat_on_delivery" });
   }
-  const credited = facts.priorCredits.reduce((sum, c) => sum + c.totals.grossPence, 0);
   const target = Math.min(facts.refundedPence, facts.chargedPence);
+  const lowered = lowerDeliveryCredit(facts, target);
+  if (!lowered.ok) return lowered;
+  const { priorCredits, cancel, hold } = lowered.value;
+  const credited = priorCredits.reduce((sum, c) => sum + c.totals.grossPence, 0);
+  if (hold.length > 0) {
+    // An issued credit note is above the refunded total: a person decides; nothing more is made.
+    return ok({ documents, parked, cancel, hold });
+  }
   if (target > credited) {
     const credit = buildCreditNoteFor(invoice.value, {
       sourceId: deliveryCreditSourceId(facts.quoteId, target),
@@ -197,7 +242,7 @@ function projectDeliveryRefund(
         refundedDeliveryPence: credited,
       },
       request: { goodsPence: 0, deliveryPence: target - credited },
-      priorCredits: facts.priorCredits,
+      priorCredits,
       refund: {
         account: "stripe_clearing",
         refundedOn: facts.refundedOn < facts.settledOn ? facts.settledOn : facts.refundedOn,
@@ -209,8 +254,94 @@ function projectDeliveryRefund(
       parked.push({ reference: credit.value.reference, reason: "vat_on_delivery" });
     }
   }
-  return ok({ documents, parked });
+  return ok({ documents, parked, ...(cancel.length > 0 ? { cancel } : {}) });
 }
+
+/**
+ * The quote's credit notes brought down to the refunded total when it was lowered: newest first,
+ * one never sent is cancelled while the credit is above the total; one being sent waits (tried
+ * again); one issued (or already with a person) stops it, and an issued one is held for a person.
+ * What is left is what a new credit note is built after.
+ */
+function lowerDeliveryCredit(
+  facts: BidDeliveryRefundFacts,
+  target: number,
+): Result<{ priorCredits: CreditNote[]; cancel: string[]; hold: HeldDocument[] }, ProjectionCode> {
+  const priorCredits = [...facts.priorCredits];
+  const cancel: string[] = [];
+  const hold: HeldDocument[] = [];
+  let credited = priorCredits.reduce((sum, c) => sum + c.totals.grossPence, 0);
+  for (let i = priorCredits.length - 1; i >= 0 && credited > target; i -= 1) {
+    const note = priorCredits[i] as CreditNote;
+    const standing = facts.priorStandings?.[i];
+    switch (standing) {
+      case "absent":
+      case "waiting":
+        cancel.push(note.reference);
+        credited -= note.totals.grossPence;
+        priorCredits.splice(i, 1);
+        break;
+      case "in_flight":
+        return refuse("credit_in_flight", "a credit note above the refunded total is being sent");
+      case "issued":
+        hold.push({ reference: note.reference, reason: "refund_reversed_after_credit" });
+        return ok({ priorCredits, cancel, hold });
+      case "held_for_review":
+        // Already with a person: nothing more is decided here.
+        return ok({ priorCredits, cancel, hold });
+      default:
+        return refuse("bad_facts", "the credit is above the refunded total, standing unknown");
+    }
+  }
+  return ok({ priorCredits, cancel, hold });
+}
+
+/**
+ * The credit notes registered for refunds of one payment that were taken back (a refund Stripe
+ * reported failed after it was counted: a `refund_reversal` row), with where each stands in the
+ * books the switch aims at now.
+ */
+export interface BidRefundReversedFacts {
+  readonly reversed: readonly { readonly reference: string; readonly standing: CreditStanding }[];
+}
+
+/**
+ * A refund taken back after its credit note was made (`payment.refund_reversed`): the buyer never
+ * got the money, so the credit must not stand as if they had.
+ * - never sent (queued, failed, or parked): cancelled, so it is never sent and never refunded from
+ *   clearing; the refunds that stayed keep their credit notes as stored;
+ * - issued: no reversing document is defined in the plan yet, so nothing is guessed. It is held for
+ *   a person (`refund_reversed_after_credit`, the Books document kept, never refunded from clearing
+ *   from then on) and an alert is raised; the accountant says how it is reversed in Books;
+ * - being sent, or its outcome unknown: tried again once it settles;
+ * - already with a person: left there.
+ */
+export const projectBidRefundReversed: ProjectionPolicy<BidRefundReversedFacts> = (facts) => {
+  const cancel: string[] = [];
+  const hold: HeldDocument[] = [];
+  for (const { reference, standing } of facts.reversed) {
+    switch (standing) {
+      case "absent":
+      case "held_for_review":
+        break;
+      case "waiting":
+        cancel.push(reference);
+        break;
+      case "issued":
+        hold.push({ reference, reason: "refund_reversed_after_credit" });
+        break;
+      case "in_flight":
+        return refuse("credit_in_flight", "the credit note of a refund taken back is being sent");
+      default:
+        return refuse("bad_facts", "unknown credit note standing");
+    }
+  }
+  return ok({
+    documents: [],
+    ...(cancel.length > 0 ? { cancel } : {}),
+    ...(hold.length > 0 ? { hold } : {}),
+  });
+};
 
 /**
  * How the books take an issued Bid invoice cancelled after a buyer default. NOT SET: the

@@ -69,6 +69,7 @@ export function createAccountingRuntime(deps: {
         creditNotes: repos.creditNotes,
         transitions: repos.transitions,
       },
+      alerts,
     }),
     sender: new AccountingSender({
       workQueue: repos.workQueue,
@@ -112,6 +113,7 @@ export function createAccountingRuntime(deps: {
         Object.entries(adapters.byMode).map(([mode, ports]) => [mode, ports.creditNoteRefunds]),
       ),
       log: deps.log,
+      alerts,
     }),
     cursorStart: new DrizzleProjectorCursorStart(deps.db),
     watch: new AccountingWatch({

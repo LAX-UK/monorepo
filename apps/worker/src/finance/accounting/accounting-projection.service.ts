@@ -2,10 +2,12 @@ import {
   type DefaultedInvoiceInBooks,
   type DocumentRecord,
   type DocumentTarget,
+  type HeldDocument,
   type Product,
   type SwitchConfig,
   booksTargetMode,
   documentTarget,
+  heldReasonCode,
   parkReasonFor,
   whenReferenceHeld,
 } from "@auction/accounting-domain";
@@ -18,6 +20,7 @@ import type {
   IBidAccountingFactsReader,
   IShopAccountingFactsReader,
 } from "@auction/persistence/interfaces";
+import { ACCOUNTING_ALERTS, type AccountingAlertSink } from "./accounting-alerts.js";
 import {
   ACCOUNTING_EVENT_ROUTES,
   type AccountingEvent,
@@ -39,6 +42,11 @@ export type ProjectionOutcome =
       readonly parked: number;
       /** Documents never sent that this event cancelled (an invoice voided by a buyer default). */
       readonly cancelled: number;
+      /**
+       * Issued documents this event held for a person (a credit note whose refund was taken back);
+       * present only when one was.
+       */
+      readonly held?: number;
     };
 
 /**
@@ -74,7 +82,12 @@ export class AccountingProjectionNotYetError extends Error {
 }
 
 /** Refusals that a later attempt, reading the facts again, can get past. */
-const NOT_YET: ReadonlySet<string> = new Set(["invoice_in_flight", "credit_exceeds_invoice"]);
+const NOT_YET: ReadonlySet<string> = new Set([
+  "invoice_in_flight",
+  "credit_in_flight",
+  "credit_exceeds_invoice",
+  "credit_prior_changed",
+]);
 
 /** The switch could not be read; try the event again later. */
 export class AccountingSwitchUnreadableError extends Error {
@@ -104,6 +117,8 @@ export interface AccountingProjectionDeps {
     readonly transitions: IAccountingDocumentTransitions;
   };
   readonly routes?: Readonly<Record<string, AccountingEventRoute>>;
+  /** Where an issued document held for a person is reported (`refund_reversed_after_credit`). */
+  readonly alerts?: AccountingAlertSink;
 }
 
 /** Where an invoice stands in the books, as a buyer default reads it. */
@@ -207,13 +222,24 @@ export class AccountingProjection {
     let kept = 0;
     let parked = 0;
     const projection = routed.projection.value;
-    const cancelled = await this.cancelNeverSent(route.product, target, projection.cancel ?? []);
+    const { cancelled, creditPence } = await this.cancelNeverSent(
+      route.product,
+      target,
+      projection.cancel ?? [],
+    );
+    const held = await this.holdIssued(route.product, target, projection.hold ?? [], event);
+    // The credit notes cancelled just now no longer count in what the new ones were built after.
+    const basis =
+      routed.basis && "priorCreditPence" in routed.basis
+        ? { ...routed.basis, priorCreditPence: routed.basis.priorCreditPence - creditPence }
+        : routed.basis;
     for (const document of projection.documents) {
       const park = parkReasonFor(projection, document.reference);
       const registered = await this.deps.registry.register({
         document,
         sourceEventRef: `domain_event:${event.id}`,
         ...(park ? { park } : {}),
+        ...(basis && document.kind === "credit_note" ? { creditBasis: basis } : {}),
       });
       if (registered.ok) {
         if (registered.value.created) created += 1;
@@ -238,7 +264,15 @@ export class AccountingProjection {
       }
       kept += 1;
     }
-    return { outcome: "projected", created, replayed, kept, parked, cancelled };
+    return {
+      outcome: "projected",
+      created,
+      replayed,
+      kept,
+      parked,
+      cancelled,
+      ...(held > 0 ? { held } : {}),
+    };
   }
 
   /** The books a product's documents go to now (its current target), for the routes to read. */
@@ -258,23 +292,70 @@ export class AccountingProjection {
           throw new AccountingProjectionRefusedError(found.refusal.code, invoiceReference);
         return standingOf(found.value?.record ?? null);
       },
+      creditStanding: async (creditNoteReference) => {
+        const found = await books.lookup.findByReference(product, creditNoteReference, target);
+        if (!found.ok)
+          throw new AccountingProjectionRefusedError(found.refusal.code, creditNoteReference);
+        return standingOf(found.value?.record ?? null);
+      },
+      awaitCreditRegistrations: (invoiceReference) =>
+        this.deps.registry.awaitCreditRegistrations(product, invoiceReference, target),
     };
   }
 
   /**
-   * Cancels each named document that was never sent, in the books the product goes to now. One
-   * already cancelled is left as it is. One that moved on meanwhile (claimed by a sender, issued)
+   * Holds each named issued document for a person (the Books document kept, nothing undone there)
+   * and raises an alert, in the books the product goes to now. One already held is left as it is
+   * (a replay raises nothing again). One that moved meanwhile is decided again later.
+   */
+  private async holdIssued(
+    product: Product,
+    target: DocumentTarget | null,
+    held: readonly HeldDocument[],
+    event: AccountingEvent,
+  ): Promise<number> {
+    if (held.length === 0) return 0;
+    const books = this.deps.books;
+    if (!books) throw new AccountingProjectionNotYetError("books_view_missing", "hold");
+    let count = 0;
+    for (const { reference, reason } of held) {
+      const found = await books.lookup.findByReference(product, reference, target);
+      if (!found.ok) throw new AccountingProjectionRefusedError(found.refusal.code, reference);
+      const document = found.value;
+      const code = heldReasonCode(reason);
+      if (document?.record.status === "needs_review" && document.record.reason === code) continue;
+      if (!document || document.record.status !== "issued") {
+        throw new AccountingProjectionNotYetError("credit_in_flight", reference);
+      }
+      const moved = await books.transitions.apply(document.id, { action: "hold", reason: code });
+      if (!moved.ok) throw new AccountingProjectionNotYetError(moved.refusal.code, reference);
+      count += 1;
+      this.deps.alerts?.raise(ACCOUNTING_ALERTS.refundReversedAfterCredit, {
+        documentId: document.id,
+        reference,
+        mode: target?.mode ?? null,
+        providerNumber: document.record.issued.number,
+        sourceEvent: `domain_event:${event.id}`,
+      });
+    }
+    return count;
+  }
+
+  /**
+   * Cancels each named document that was never sent, in the books the product goes to now, and
+   * says how much credit the cancelled credit notes held. One already cancelled is left as it is. One that moved on meanwhile (claimed by a sender, issued)
    * is not cancelled: the event is tried again and decided afresh (credited once it is issued).
    */
   private async cancelNeverSent(
     product: Product,
     target: DocumentTarget | null,
     references: readonly string[],
-  ): Promise<number> {
-    if (references.length === 0) return 0;
+  ): Promise<{ cancelled: number; creditPence: number }> {
+    if (references.length === 0) return { cancelled: 0, creditPence: 0 };
     const books = this.deps.books;
     if (!books) throw new AccountingProjectionNotYetError("books_view_missing", "cancel");
     let cancelled = 0;
+    let creditPence = 0;
     for (const reference of references) {
       const found = await books.lookup.findByReference(product, reference, target);
       if (!found.ok) throw new AccountingProjectionRefusedError(found.refusal.code, reference);
@@ -285,7 +366,8 @@ export class AccountingProjection {
         throw new AccountingProjectionNotYetError(moved.refusal.code, reference);
       }
       cancelled += 1;
+      if (document.kind === "credit_note") creditPence += document.totals.grossPence;
     }
-    return cancelled;
+    return { cancelled, creditPence };
   }
 }

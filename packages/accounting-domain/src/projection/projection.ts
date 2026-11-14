@@ -24,6 +24,31 @@ export interface Projection {
    * looked at again later, and one issued meanwhile is credited instead. Absent when none.
    */
   readonly cancel?: readonly string[];
+  /**
+   * LAX references of documents already issued in the same books that this event says can no
+   * longer simply stand (a credit note whose refund was taken back): each is held for a person
+   * with the provider's document kept (`hold`), and an alert is raised. Nothing is undone in the
+   * books automatically. Absent when none.
+   */
+  readonly hold?: readonly HeldDocument[];
+}
+
+/** Why an issued document is held for a person. */
+export const HOLD_REASONS = [
+  /** The refund the credit note was for was taken back (it failed) after the note was issued. */
+  "refund_reversed_after_credit",
+] as const;
+export type HoldReason = (typeof HOLD_REASONS)[number];
+
+/** The reason stored on a held document, e.g. `accounting_refund_reversed_after_credit`. */
+export function heldReasonCode(reason: HoldReason): string {
+  return `accounting_${reason}`;
+}
+
+/** One issued document a projection holds for a person, and why. */
+export interface HeldDocument {
+  readonly reference: string;
+  readonly reason: HoldReason;
 }
 
 /** One of a projection's documents that is stored parked, and why. */
@@ -61,7 +86,12 @@ export type ProjectionCode =
    */
   | "invoice_in_flight"
   /** The invoice is in the books but held for a person (a totals difference): a person decides. */
-  | "invoice_held_for_review";
+  | "invoice_held_for_review"
+  /**
+   * A credit note this event cancels or holds is being sent to the books, or its outcome is not
+   * known yet: decided once it settles (the event is tried again).
+   */
+  | "credit_in_flight";
 
 /** A pure projection policy: one per flow, facts in, documents out. No I/O, no clock. */
 export type ProjectionPolicy<F> = (facts: F) => Result<Projection, ProjectionCode>;

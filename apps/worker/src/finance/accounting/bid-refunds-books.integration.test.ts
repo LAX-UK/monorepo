@@ -777,5 +777,363 @@ describe.skipIf(!HAS_DB)(
         reason: "not_an_accounting_event",
       });
     });
+
+    describe("after review #1375", () => {
+      const alerts = () => ({ raise: vi.fn() });
+
+      /** Projects the event, trying again (as the projector does) while it is refused for now. */
+      async function projectSettled(event: Parameters<AccountingProjection["project"]>[0]) {
+        for (let attempt = 0; ; attempt += 1) {
+          try {
+            return await projection().project(event);
+          } catch (error) {
+            if ((error as { retryable?: boolean }).retryable !== true || attempt >= 20) throw error;
+          }
+        }
+      }
+
+      /** A registry that stops each credit note's registration until `release` (another worker is slow). */
+      function slowRegistry() {
+        let release!: () => void;
+        const gate = new Promise<void>((r) => {
+          release = r;
+        });
+        let reached!: () => void;
+        const atRegister = new Promise<void>((r) => {
+          reached = r;
+        });
+        const registry: typeof repos.registry = {
+          register: async (input) => {
+            if (input.document.kind === "credit_note") {
+              reached();
+              await gate;
+            }
+            return repos.registry.register(input);
+          },
+          awaitCreditRegistrations: (...args) => repos.registry.awaitCreditRegistrations(...args),
+        };
+        const slow = new AccountingProjection({
+          facts: new DrizzleBidAccountingFactsReader(worker),
+          settings: repos.settingReader,
+          registry,
+          books: {
+            lookup: repos.lookup,
+            creditNotes: repos.creditNotes,
+            transitions: repos.transitions,
+          },
+        });
+        return { slow, atRegister, release: () => release() };
+      }
+
+      async function courierQuote() {
+        await aimBooks("dry_run");
+        const buyer = await seedBuyer(owner);
+        const a = await wonAndRaised(owner, buyer, 10_000, 2_500);
+        const { groupId, event, quoteIds } = await settleGroup(buyer, [a], [4_500]);
+        await projection().project(event);
+        const quoteId = quoteIds[0] as string;
+        const setTotal = (total: number) =>
+          owner
+            .update(paymentGroupDelivery)
+            .set({ refundedPence: total })
+            .where(eq(paymentGroupDelivery.deliveryQuoteId, quoteId));
+        const raise = async (total: number) => {
+          await setTotal(total);
+          return publish("payment_group.delivery_refunded", groupId, {
+            paymentGroupId: groupId,
+            deliveryQuoteId: quoteId,
+            stripeChargeId: "ch_fixture",
+            cumulativeRefundedCents: total,
+            chargedCents: 4_500,
+            currency: "gbp",
+          });
+        };
+        const lower = async (from: number, to: number) => {
+          await setTotal(to);
+          return publish("payment_group.refund_reversed", groupId, {
+            paymentGroupId: groupId,
+            stripeChargeId: "ch_fixture",
+            deliveryQuoteId: quoteId,
+            amountCents: from - to,
+            previousCents: from,
+            correctedCents: to,
+            currency: "GBP",
+            via: "refund_repair",
+          });
+        };
+        const live = async () =>
+          (await creditNotesOf(ref("invoice", `dlv-${quoteId}`), "dry_run")).filter(
+            (n) => n.state !== "cancelled",
+          );
+        return { quoteId, raise, lower, live };
+      }
+
+      it("RV1: two courier-refund projections that interleave credit exactly what was refunded", async () => {
+        const { raise, live } = await courierQuote();
+        const first = await raise(1_500);
+        // P1 reads its facts (total 1,500, no credit yet), then is slow to register.
+        const { slow, atRegister, release } = slowRegistry();
+        const p1 = slow.project(first).then(
+          () => "registered",
+          (error: { code?: string; retryable?: boolean }) => error,
+        );
+        await atRegister;
+        // The second refund lands and is projected in full meanwhile (another worker).
+        const second = await raise(3_000);
+        await projection().project(second);
+        release();
+        // P1's note was built on a credit that has changed: refused for now, never registered.
+        expect(await p1).toMatchObject({ code: "credit_prior_changed", retryable: true });
+        // Tried again from fresh facts: nothing more to credit.
+        expect(await projectSettled(first)).toMatchObject({ created: 0 });
+        const notes = await live();
+        expect(notes.map((n) => n.grossPence)).toEqual([3_000]);
+      });
+
+      it("RV1: many courier-refund projections on separate connections never credit more than the refunded total", async () => {
+        const { raise, live } = await courierQuote();
+        const events = [];
+        for (const total of [1_000, 2_000, 3_500, 4_500]) events.push(await raise(total));
+        // Every event three times, all at once, each retried as the projector would.
+        await Promise.all(events.flatMap((event) => [1, 2, 3].map(() => projectSettled(event))));
+        const notes = await live();
+        expect(notes.reduce((sum, n) => sum + n.grossPence, 0)).toBe(4_500);
+      });
+
+      it("RV2: a refund credit note stored by the earlier refund flow (no `refund`) is that refund's; the next refund is credited after it", async () => {
+        const books = new InMemoryAccounting();
+        const { raised } = await paidAndSent(books);
+        const first = await refunded(raised.payment.id, 2_000);
+        await projection().project(await refundedEvent(raised.payment.id));
+        // The stored note as the earlier flow stored it: the same reference, no `refund`.
+        const noteRef = ref("credit_note", first.id);
+        await owner.execute(sql`
+          update accounting_document set payload = payload - 'refund'
+           where lax_reference = ${noteRef} and target_mode = 'test_org'`);
+        const second = await refunded(raised.payment.id, 1_000);
+        expect(await projection().project(await refundedEvent(raised.payment.id))).toMatchObject({
+          outcome: "projected",
+          created: 1,
+        });
+        expect(await rowOf(ref("credit_note", second.id), "test_org")).toMatchObject({
+          grossPence: 1_000,
+        });
+        expect((await rowOf(noteRef, "test_org")).payload).not.toHaveProperty("refund");
+      });
+
+      it("RV3: api_app cannot move a parked buyer-default credit note to pending (the treatment is unset)", async () => {
+        const books = new InMemoryAccounting();
+        await aimBooks("test_org");
+        const buyer = await seedBuyer(owner);
+        const raised = await wonAndRaised(owner, buyer, 20_000, 5_000);
+        await projection().project(
+          await publish(
+            "invoice.raised",
+            raised.invoice.id,
+            {
+              invoiceId: raised.invoice.id,
+              lotId: raised.payment.lotId,
+              buyerLegalEntityId: buyer.buyerEntityId,
+              totalPence: 25_000,
+              raisedAt: RAISED_AT.toISOString(),
+            },
+            RAISED_AT,
+          ),
+        );
+        await sendAll("test_org", books);
+        await owner
+          .update(bidInvoice)
+          .set({ voidedAt: new Date("2031-11-30T10:00:00Z") })
+          .where(eq(bidInvoice.id, raised.invoice.id));
+        await projection().project(
+          await publish("payment.cancelled", raised.payment.id, {
+            lotId: raised.payment.lotId,
+            buyerUserId: buyer.buyerId,
+            reason: "buyer_default",
+          }),
+        );
+        const note = await rowOf(ref("credit_note", `dft-${raised.invoice.id}`), "test_org");
+        expect(note.needsReviewReason).toBe("accounting_parked_buyer_default_treatment");
+        const moved = await api
+          .execute(sql`
+            update accounting_document
+               set state = 'pending', review_lookup = null, needs_review_reason = null
+             where id = ${note.id}`)
+          .then(
+            () => "moved",
+            (error: { cause?: { code?: string } }) => error.cause?.code,
+          );
+        expect(moved).toBe("42501");
+        expect(await rowOf(note.laxReference, "test_org")).toMatchObject({ state: "needs_review" });
+      });
+
+      const reversalOf = async (paymentId: string, counted: typeof paymentRefund.$inferSelect) => {
+        await refunded(paymentId, -counted.amountPence, {
+          source: "refund_reversal",
+          stripeRefundId: counted.stripeRefundId,
+        });
+        return publish("payment.refund_reversed", paymentId, {
+          stripeChargeId: "ch_fixture",
+          amountCents: counted.amountPence,
+          sellerAmountCents: 0,
+          cumulativeRefundedCents: 0,
+          currency: "gbp",
+          sellerLegalEntityId: null,
+          via: "stripe_webhook",
+        });
+      };
+
+      it("F2: a refund taken back before its credit note was sent cancels that note; the refunds that stayed keep theirs", async () => {
+        const books = new InMemoryAccounting();
+        const { raised } = await paidAndSent(books);
+        const a = await refunded(raised.payment.id, 2_000);
+        const b = await refunded(raised.payment.id, 1_000);
+        await projection().project(await refundedEvent(raised.payment.id));
+        const before = await rowOf(ref("credit_note", b.id), "test_org");
+        const reversed = await reversalOf(raised.payment.id, a);
+        expect(await projection().project(reversed)).toMatchObject({ cancelled: 1 });
+        expect(await rowOf(ref("credit_note", a.id), "test_org")).toMatchObject({
+          state: "cancelled",
+        });
+        // Again: nothing more.
+        expect(await projection().project(reversed)).toMatchObject({ cancelled: 0 });
+        // A later refund: the one that stayed is a replay, exactly as stored.
+        const c = await refunded(raised.payment.id, 500);
+        expect(await projection().project(await refundedEvent(raised.payment.id))).toMatchObject({
+          created: 1,
+        });
+        expect((await rowOf(ref("credit_note", b.id), "test_org")).payload).toEqual(before.payload);
+        await sendAll("test_org", books);
+        await refunder("test_org", books).tick();
+        expect(books.creditNoteRefundOf("bid", ref("credit_note", a.id))).toBeNull();
+        expect(books.creditNoteRefundOf("bid", ref("credit_note", b.id))).toBe(1_000);
+        expect(books.creditNoteRefundOf("bid", ref("credit_note", c.id))).toBe(500);
+      });
+
+      it("F2: a refund taken back after its credit note was issued holds the note for a person and alerts; it is never refunded from clearing", async () => {
+        const books = new InMemoryAccounting();
+        const { raised } = await paidAndSent(books);
+        const a = await refunded(raised.payment.id, 2_000);
+        await projection().project(await refundedEvent(raised.payment.id));
+        await sendAll("test_org", books);
+        const noteRef = ref("credit_note", a.id);
+        const issued = await rowOf(noteRef, "test_org");
+        expect(issued).toMatchObject({ state: "issued" });
+        const sink = alerts();
+        const withAlerts = new AccountingProjection({
+          facts: new DrizzleBidAccountingFactsReader(worker),
+          settings: repos.settingReader,
+          registry: repos.registry,
+          books: {
+            lookup: repos.lookup,
+            creditNotes: repos.creditNotes,
+            transitions: repos.transitions,
+          },
+          alerts: sink as never,
+        });
+        const reversed = await reversalOf(raised.payment.id, a);
+        expect(await withAlerts.project(reversed)).toMatchObject({ held: 1, cancelled: 0 });
+        expect(await rowOf(noteRef, "test_org")).toMatchObject({
+          state: "needs_review",
+          reviewLookup: "clear",
+          needsReviewReason: "accounting_refund_reversed_after_credit",
+          providerId: issued.providerId,
+        });
+        expect(sink.raise).toHaveBeenCalledTimes(1);
+        expect(sink.raise.mock.calls[0]?.[0]).toMatchObject({
+          message: "accounting_refund_reversed_after_credit",
+          level: "error",
+        });
+        expect(sink.raise.mock.calls[0]?.[1]).toMatchObject({ reference: noteRef });
+        // Never refunded from clearing from now on.
+        expect((await refunder("test_org", books).tick()).refunded).toBe(0);
+        expect(books.creditNoteRefundOf("bid", noteRef)).toBeNull();
+        // Again: already with a person, nothing more and no second alert.
+        expect(await withAlerts.project(reversed)).not.toHaveProperty("held");
+        expect(sink.raise).toHaveBeenCalledTimes(1);
+        // On the Accounting page: Needs a person.
+        const apiRepos = createAccountingRepositories(api, { now: () => new Date() });
+        const attention = await apiRepos.attention.read([]);
+        expect(attention.needsPerson.count).toBeGreaterThan(0);
+      });
+
+      it("F2: a projection that read a refund before it was taken back never registers its credit note", async () => {
+        const books = new InMemoryAccounting();
+        const { raised } = await paidAndSent(books);
+        const a = await refunded(raised.payment.id, 2_000);
+        const event = await refundedEvent(raised.payment.id);
+        const { slow, atRegister, release } = slowRegistry();
+        const p1 = slow.project(event).then(
+          () => "registered",
+          (error: { code?: string }) => error,
+        );
+        await atRegister;
+        const reversed = await reversalOf(raised.payment.id, a);
+        // The reversal waits for no registration that has not started its check yet.
+        expect(await projection().project(reversed)).toMatchObject({ cancelled: 0 });
+        release();
+        expect(await p1).toMatchObject({ code: "credit_prior_changed" });
+        expect(await projection().project(event)).toEqual({
+          outcome: "skipped",
+          reason: "no_refund_recorded",
+        });
+        expect(await creditNotesOf(ref("invoice", raised.invoice.id), "test_org")).toEqual([]);
+      });
+
+      it("F2: a courier refund lowered after its credit note was made: the note never sent is cancelled and the credit rebuilt to the new total", async () => {
+        const { raise, lower, live } = await courierQuote();
+        await projection().project(await raise(3_000));
+        expect((await live()).map((n) => n.grossPence)).toEqual([3_000]);
+        expect(await projection().project(await lower(3_000, 1_500))).toMatchObject({
+          cancelled: 1,
+          created: 1,
+        });
+        expect((await live()).map((n) => n.grossPence)).toEqual([1_500]);
+        // A later rise is credited after what stands now: 2,500 refunded, 2,500 credited.
+        await projection().project(await raise(2_500));
+        const notes = await live();
+        expect(notes.map((n) => n.grossPence).sort((x, y) => x - y)).toEqual([1_000, 1_500]);
+        expect(
+          notes.every((n) => n.needsReviewReason === "accounting_parked_vat_on_delivery"),
+        ).toBe(true);
+      });
+
+      it("F5: a credit note Books refuses to refund from clearing is held for a person and alerts, never counted as settled", async () => {
+        const books = new InMemoryAccounting();
+        const { raised } = await paidAndSent(books);
+        const a = await refunded(raised.payment.id, 2_000);
+        await projection().project(await refundedEvent(raised.payment.id));
+        await sendAll("test_org", books);
+        const noteRef = ref("credit_note", a.id);
+        const sink = alerts();
+        const refusing = new AccountingCreditNoteRefund({
+          refunds: repos.creditNoteRefunds,
+          settings: repos.settingReader,
+          portsByMode: {
+            test_org: {
+              refundCreditNote: async () => ({
+                status: "rejected",
+                reason: "zoho_books_credit_note_refund_differs",
+              }),
+            },
+          },
+          log,
+          alerts: sink as never,
+        });
+        expect(await refusing.tick()).toMatchObject({ refused: 1 });
+        expect(await rowOf(noteRef, "test_org")).toMatchObject({
+          state: "needs_review",
+          needsReviewReason: "accounting_credit_note_refund_refused",
+        });
+        expect(sink.raise).toHaveBeenCalledWith(
+          expect.objectContaining({ message: "accounting_credit_note_refund_refused" }),
+          expect.objectContaining({ reference: noteRef }),
+        );
+        // Not tried again by itself, and listed for a person.
+        expect(await refusing.tick()).toMatchObject({ refused: 0, refunded: 0 });
+        const apiRepos = createAccountingRepositories(api, { now: () => new Date() });
+        expect((await apiRepos.attention.read([])).needsPerson.count).toBeGreaterThan(0);
+      });
+    });
   },
 );

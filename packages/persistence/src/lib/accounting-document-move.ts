@@ -9,6 +9,7 @@ import {
   completeSending,
   escalate,
   expireLease,
+  hold,
   ok,
   park,
   parkReasonOf,
@@ -76,6 +77,8 @@ export function decide(
       return park(record, transition.reason);
     case "cancel":
       return cancel(record);
+    case "hold":
+      return hold(record, transition.reason);
   }
 }
 
@@ -108,6 +111,8 @@ export function transitionDetail(
       return { requestedBy: transition.requestedBy, rebuilt: transition.document !== undefined };
     case "park":
       return { parked: transition.reason };
+    case "hold":
+      return { reason: transition.reason, held: true };
     case "withhold":
       return { reason: transition.reason, unsent: true };
     default:

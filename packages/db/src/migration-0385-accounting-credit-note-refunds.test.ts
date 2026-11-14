@@ -22,9 +22,9 @@ describe("migration 0385 accounting credit note refunds", () => {
     expect(journal.entries.at(-1)?.tag).toBe(TAG);
   });
 
-  it("adds refund_credit_note and hold_reversed to the history actions, under the lock timeout", () => {
+  it("adds refund_credit_note and hold to the history actions, under the lock timeout", () => {
     expect(migration).toMatch(/SET LOCAL lock_timeout = '5s'/);
-    expect(migration).toMatch(/'apply_remainder', 'refund_credit_note', 'hold_reversed'\)/);
+    expect(migration).toMatch(/'apply_remainder', 'refund_credit_note', 'hold'\)/);
     expect(migration).not.toMatch(/CREATE TABLE|ALTER TABLE "accounting_document" |GRANT/);
   });
 
@@ -51,7 +51,7 @@ describe("migration 0385 accounting credit note refunds", () => {
 
   it("rolls back to 0383's actions NOT VALID (rows kept) and removes its own ledger row", () => {
     expect(rollback).toMatch(/'park', 'apply_remainder'\)\s*\) NOT VALID;/);
-    expect(rollback).not.toMatch(/'refund_credit_note'|'hold_reversed'/);
+    expect(rollback).not.toMatch(/'refund_credit_note'|'hold'/);
     const when = journal.entries.find((e) => e.tag === TAG)?.when;
     expect(rollback).toContain(`created_at = ${when}`);
   });

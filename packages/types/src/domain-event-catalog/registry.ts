@@ -459,6 +459,17 @@ const REGISTRY_OVERRIDES: Partial<Record<LiveDomainEventType, RegistryOverride>>
    * buyer default's (`reason: "buyer_default"`): the invoice it voids is cancelled or credited.
    */
   "payment.cancelled": { consumers: ["notification_fanout", "accounting"] },
+  /**
+   * A refund counted on a payment was taken back (Stripe reported it failed, or the group's refund
+   * repair took it back); written with its `refund_reversal` rows. The books cancel the refund's
+   * credit note if it was never sent, or hold it for a person if it was issued.
+   */
+  "payment.refund_reversed": { consumers: ["accounting"] },
+  /**
+   * A failed refund taken back from a "Pay several" charge's courier quote (or its unassigned
+   * refunds), lowering the stored figure. The books bring the quote's credit notes down to it.
+   */
+  "payment_group.refund_reversed": { consumers: ["accounting"] },
   "legal_entity.bidding_limit_changed": {
     consumers: ["notification_fanout"],
     piiClassification: "none",
