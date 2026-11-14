@@ -32,7 +32,7 @@ const user = (over: Partial<AdminUserRow> = {}): AdminUserRow => ({
 
 describe("people list rows", () => {
   it("reads identity and standing as words, never raw values", () => {
-    const [row] = toClientsStaffRows([user({ suspendedAt: "2026-10-02T09:00:00.000Z" })], "/x");
+    const [row] = toClientsStaffRows([user({ suspendedAt: "2026-10-02T09:00:00.000Z" })], "");
     expect(row?.identity.label).toBe("Not verified");
     expect(row?.account).toEqual({ label: "Suspended", tone: "danger" });
     expect(row?.persona).toBe("Not set");
@@ -48,11 +48,20 @@ describe("people list rows", () => {
           lastSignInAt: "2026-10-24T08:00:00.000Z",
         },
       },
-      "/admin/staff",
+      "",
     );
     expect(row?.staffRoleLabel).not.toMatch(/_/);
     expect(row?.access.length).toBe(1);
     expect(row?.twoFactor).toBe(true);
+  });
+
+  it("links each row to the person's page, remembering the list it is on", () => {
+    const [client] = toClientsStaffRows([user()], "status=active&q=ada");
+    expect(client?.href).toBe("/admin/clients/user_1?list=status%3Dactive%26q%3Dada");
+    const [plain] = toClientsStaffRows([user()], "");
+    expect(plain?.href).toBe("/admin/clients/user_1");
+    const [staff] = toStaffDirectoryRows([user({ role: "staff" })], {}, "sort=name_asc");
+    expect(staff?.href).toBe("/admin/staff/user_1?list=sort%3Dname_asc");
   });
 
   it("explains why an accepted invitation cannot be revoked", () => {

@@ -66,6 +66,30 @@ export function staffRoleChips(row: Pick<StaffMemberRow, "roles">, now: Date): S
   });
 }
 
+/**
+ * The roles that do not simply run on, for the line under a person's roles in the list: one that
+ * ends ("Editor until Mon 30 Nov") or has not started yet ("Finance from Tue 1 Dec"). Null when
+ * every role is open-ended, so the row stays one line.
+ */
+export function staffRolePeriods(row: Pick<StaffMemberRow, "roles">, now: Date): string | null {
+  const periods = row.roles.flatMap((held) => {
+    const label = staffRoleLabel(held.role);
+    const upcoming = new Date(held.startsAt).getTime() > now.getTime();
+    const from = upcoming ? `from ${formatStaffDate(held.startsAt, now)}` : null;
+    const until = held.endsAt ? `until ${lastDay(held.endsAt, now)}` : null;
+    return from || until ? [`${label} ${[from, until].filter(Boolean).join(" ")}`] : [];
+  });
+  return periods.length > 0 ? periods.join(" · ") : null;
+}
+
+/** A person's page in Bid admin, where their roles are managed; null when Bid admin is not set. */
+export function bidStaffMemberHref(
+  bidStaffUrl: string | undefined,
+  row: Pick<StaffMemberRow, "identitySubjectId">,
+): string | null {
+  return bidStaffUrl ? `${bidStaffUrl}/${encodeURIComponent(row.identitySubjectId)}` : null;
+}
+
 /** The roles shown for a person: every role held, else the one on their record. */
 export function staffRoleNames(row: Pick<StaffMemberRow, "roles" | "role">): string[] {
   return row.roles.length > 0 ? row.roles.map((held) => held.role) : [row.role];

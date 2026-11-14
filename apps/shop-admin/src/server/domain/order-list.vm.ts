@@ -7,11 +7,15 @@ import {
 import {
   type Metric,
   STAFF_DEFAULT_PAGE_SIZE,
+  type SortState,
   type TeamView,
+  decodeSort,
+  encodeSort,
   formatGbp,
   formatStaffCalendarDay,
   metricChange,
   parseStaffPageSize,
+  recordHrefInList,
 } from "@auction/staff-ui";
 import {
   type RawSearchParams,
@@ -34,10 +38,23 @@ export type OrderListQuery = {
   /** Inclusive first and last day (UK time) an order was created on. */
   from?: string;
   to?: string;
+  /** The page's order, e.g. `total` or `-total`; absent for the default, newest first. */
+  sort?: string;
   cursor?: string;
   /** Rows per page when not the default 50 (25 or 100). */
   limit?: string;
 };
+
+/** The columns a page of orders can be put in order by, and the default: newest first. */
+const ORDER_SORT_COLUMNS = ["total", "created"] as const;
+export const ORDER_DEFAULT_SORT: SortState = { columnId: "created", direction: "desc" };
+
+function orderSortParam(value: string | undefined): string | undefined {
+  const sort = decodeSort(value);
+  if (!sort || !(ORDER_SORT_COLUMNS as readonly string[]).includes(sort.columnId)) return undefined;
+  const encoded = encodeSort(sort);
+  return encoded === encodeSort(ORDER_DEFAULT_SORT) ? undefined : encoded;
+}
 
 export const ORDER_STATUS_LABELS: Record<AdminOrderStatus, string> = {
   pending_payment: "Awaiting payment",
@@ -74,6 +91,7 @@ export function parseOrderListQuery(params: RawSearchParams): OrderListQuery {
   const refund = singleParam(params.refund) === "failed" ? ("failed" as const) : undefined;
   const from = calendarDayParam(singleParam(params.from));
   const to = calendarDayParam(singleParam(params.to));
+  const sort = orderSortParam(singleParam(params.sort));
   const cursor = singleParam(params.cursor);
   const limit = parseStaffPageSize(singleParam(params.limit));
   return {
@@ -82,6 +100,7 @@ export function parseOrderListQuery(params: RawSearchParams): OrderListQuery {
     ...(refund ? { refund } : {}),
     ...(from ? { from } : {}),
     ...(to ? { to } : {}),
+    ...(sort ? { sort } : {}),
     ...(cursor ? { cursor } : {}),
     ...(limit !== STAFF_DEFAULT_PAGE_SIZE ? { limit: String(limit) } : {}),
   };
@@ -108,6 +127,45 @@ export function orderListHref(
 /** The same URL but one page further on. */
 export function orderListPageHref(query: OrderListQuery, cursor: string): string {
   return listHref(ORDER_LIST_PATH, { ...query, cursor });
+}
+
+/** How the page of orders is put in order. */
+export function orderSortState(query: OrderListQuery): SortState {
+  return decodeSort(query.sort) ?? ORDER_DEFAULT_SORT;
+}
+
+/**
+ * The same page in a new order. The sort orders the rows already loaded, so it keeps the page;
+ * the default leaves the URL bare.
+ */
+export function orderListSortHref(query: OrderListQuery, sort: SortState | null): string {
+  return listHref(ORDER_LIST_PATH, {
+    ...query,
+    sort: sort ? orderSortParam(encodeSort(sort)) : undefined,
+  });
+}
+
+/** The page's rows in the order asked for: by total or by when they were created. */
+export function sortOrderRows<T extends { totalPence: number; createdAt: string }>(
+  rows: readonly T[],
+  sort: SortState,
+): T[] {
+  const value = (row: T) => (sort.columnId === "total" ? row.totalPence : row.createdAt);
+  const factor = sort.direction === "asc" ? 1 : -1;
+  return [...rows].sort((a, b) => {
+    const left = value(a);
+    const right = value(b);
+    return left < right ? -factor : left > right ? factor : 0;
+  });
+}
+
+/**
+ * An order's page that remembers this list (filters and sort, not the page) as `?list=`, so its
+ * pager and its way back keep the same list.
+ */
+export function orderRecordHref(query: OrderListQuery, orderId: string): string {
+  const listQuery = orderListHref(query).split("?")[1] ?? "";
+  return recordHrefInList(`${ORDER_LIST_PATH}/${encodeURIComponent(orderId)}`, listQuery);
 }
 
 /**

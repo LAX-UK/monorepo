@@ -5,14 +5,12 @@ import {
   usePersonActions,
 } from "@/components/admin/people/use-person-actions";
 import { StaffBulkOperations } from "@/components/admin/staff/staff-bulk-operations";
-import { useListPanel } from "@/components/admin/staff/use-list-panel";
 import { useStaffListNavigation } from "@/components/admin/staff/use-staff-list-navigation";
 import { getUserBulkOperations } from "@/lib/admin/bulk-ops/users";
 import {
   type StaffDirectoryRow,
   type StaffListSearch,
   staffListHref,
-  staffPanelHref,
   staffRoleFilterChoices,
   staffSort,
 } from "@/lib/admin/people/staff-directory-list.vm";
@@ -20,21 +18,17 @@ import { STAFF_ACCESS_REVIEW_ACCESS } from "@/lib/navigation/staff-nav-access";
 import {
   type DataColumn,
   DataViews,
-  DetailPanel,
   FilterSheet,
   ListPage,
-  type OverflowAction,
-  OverflowMenu,
   PersonCell,
   StaffButton,
   StaffDate,
   StatusBadge,
   TableSearch,
-  formatStaffDateTime,
 } from "@auction/staff-ui";
-import { ArrowUpRight, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
 import Link from "next/link";
-import { useCallback, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 export type StaffDirectoryListProps = {
   rows: StaffDirectoryRow[];
@@ -65,19 +59,6 @@ export function staffActionTarget(row: StaffDirectoryRow): PersonActionTarget {
   };
 }
 
-function AccessBadges({ access }: { access: readonly string[] }) {
-  if (access.length === 0) return null;
-  return (
-    <span className="flex min-w-0 flex-wrap gap-1">
-      {access.map((label) => (
-        <StatusBadge key={label} tone="neutral">
-          {label}
-        </StatusBadge>
-      ))}
-    </span>
-  );
-}
-
 function twoFactorLabel(value: boolean | null): string {
   if (value === null) return "Not known";
   return value ? "On" : "Off";
@@ -101,19 +82,14 @@ const VIEW_EMPTY: Record<string, { title: string; description: string }> = {
 /**
  * The staff directory on the staff list template: views by account standing with counts,
  * search, a filter for staff role, server sorting (newest first by default), bulk suspend for
- * roles that may moderate, and a record panel deep-linked with `?staff=`. Every row's `…` menu
- * holds the account actions, each confirmed first.
+ * roles that may moderate. A row opens the staff member's page, remembering this list
+ * (`?list=`) for its breadcrumb and record pager; Cmd-click, middle-click and Cmd+Enter open it in
+ * a new tab. Every row's `…` menu holds the account actions, each confirmed first.
  */
 export function StaffDirectoryList(props: StaffDirectoryListProps) {
   const { rows, search, filtered } = props;
   const { pending, navigate, Link: ListLink } = useStaffListNavigation();
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const panelHref = useCallback((id: string | null) => staffPanelHref(search, id), [search]);
-  const panel = useListPanel({
-    param: "staff",
-    initialId: str(search.staff) || null,
-    hrefFor: panelHref,
-  });
   const person = usePersonActions({
     canModerate: props.canModerate,
     canManageRoles: props.canManageRoles,
@@ -134,12 +110,7 @@ export function StaffDirectoryList(props: StaffDirectoryListProps) {
         sortable: true,
         defaultSortDirection: "asc",
         cell: (row) => (
-          <PersonCell
-            name={row.name}
-            secondary={row.email}
-            href={panelHref(row.id)}
-            Link={panel.PanelLink}
-          />
+          <PersonCell name={row.name} secondary={row.email} href={row.href} Link={ListLink} />
         ),
       },
       {
@@ -163,7 +134,7 @@ export function StaffDirectoryList(props: StaffDirectoryListProps) {
         width: "152px",
         hideBelow: "lg",
         mobile: "hidden",
-        // One line per row: the tools by name here, each tool's role in the panel.
+        // One line per row: the tools by name here, each tool's role on the staff page.
         cell: (row) =>
           row.access.length > 0
             ? row.access.map((label) => label.split(" · ")[0]).join(", ")
@@ -198,7 +169,7 @@ export function StaffDirectoryList(props: StaffDirectoryListProps) {
         cell: (row) => <StaffDate value={row.joinedAt} />,
       },
     ],
-    [panelHref, panel.PanelLink],
+    [ListLink],
   );
 
   const views = [
@@ -212,7 +183,6 @@ export function StaffDirectoryList(props: StaffDirectoryListProps) {
     count: view.count,
   }));
   const activeView = status || "all";
-  const open = rows.find((row) => row.id === panel.openId) ?? null;
 
   return (
     <>
@@ -290,8 +260,7 @@ export function StaffDirectoryList(props: StaffDirectoryListProps) {
           defaultSort: staffSort.defaultSort,
           sort: staffSort.state(str(search.sort)),
           onSortChange: (sort) => navigate(staffListHref(search, { sort: staffSort.param(sort) })),
-          onRowOpen: (row) => panel.show(row.id),
-          activeRowId: panel.openId,
+          rowHref: (row) => row.href,
           ...(operations.length > 0
             ? {
                 selectedIds: selected,
@@ -309,11 +278,7 @@ export function StaffDirectoryList(props: StaffDirectoryListProps) {
             : {}),
           rowActions: {
             label: (row) => `Actions for ${row.name}`,
-            actions: (row) => [
-              { id: "open", label: "Open details", onSelect: () => panel.show(row.id) },
-              { id: "page", label: "Open staff page", href: row.href },
-              ...person.actionsFor(staffActionTarget(row)),
-            ],
+            actions: (row) => person.actionsFor(staffActionTarget(row)),
           },
         }}
         pageSize={{
@@ -322,79 +287,7 @@ export function StaffDirectoryList(props: StaffDirectoryListProps) {
         }}
         pagination={props.pagination}
       />
-      <StaffQuickView
-        row={open}
-        actions={open ? person.actionsFor(staffActionTarget(open)) : []}
-        onClose={() => panel.show(null)}
-      />
       {person.dialogs}
     </>
-  );
-}
-
-/** A staff member's key facts beside the list, with their account actions. */
-export function StaffQuickView({
-  row,
-  actions,
-  onClose,
-}: {
-  row: StaffDirectoryRow | null;
-  actions: OverflowAction[];
-  onClose: () => void;
-}) {
-  return (
-    <DetailPanel
-      open={row !== null}
-      onOpenChange={(next) => {
-        if (!next) onClose();
-      }}
-      title={row?.name ?? "Staff member"}
-      status={
-        row ? (
-          <>
-            <StatusBadge tone={row.account.tone}>{row.account.label}</StatusBadge>
-            <StatusBadge tone="neutral">{row.staffRoleLabel}</StatusBadge>
-          </>
-        ) : null
-      }
-      meta={
-        row
-          ? [
-              {
-                label: "Last sign-in",
-                value: row.lastSignInAt ? formatStaffDateTime(row.lastSignInAt) : "Not yet",
-              },
-            ]
-          : []
-      }
-      overflow={
-        row && actions.length > 0 ? (
-          <OverflowMenu label={`Account actions for ${row.name}`} actions={actions} Link={Link} />
-        ) : null
-      }
-      summary={
-        row
-          ? [
-              { label: "Email", value: row.email, copyValue: row.email },
-              {
-                label: "LAX access",
-                value: row.access.length > 0 ? <AccessBadges access={row.access} /> : "None",
-              },
-              { label: "Two-step", value: twoFactorLabel(row.twoFactor) },
-              { label: "Joined", value: formatStaffDateTime(row.joinedAt) },
-              { label: "User ID", value: row.id, copyValue: row.id },
-            ]
-          : []
-      }
-      footer={
-        row ? (
-          <StaffButton asChild variant="primary" icon={<ArrowUpRight aria-hidden />}>
-            <Link href={row.href}>Open staff page</Link>
-          </StaffButton>
-        ) : null
-      }
-    >
-      {null}
-    </DetailPanel>
   );
 }

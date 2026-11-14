@@ -1,12 +1,12 @@
 "use client";
 
-import { OrderQuickView } from "@/components/orders/order-quick-view.client";
 import { useListNavigation } from "@/components/use-list-navigation.client";
 import { createSavedViewsPort } from "@/lib/saved-views-port.client";
 import { presentOrderStatus } from "@/server/domain/order-detail.vm";
 import {
   ADMIN_ORDER_STATUSES,
   CREATED_PRESETS,
+  ORDER_DEFAULT_SORT,
   ORDER_LIST_PATH,
   ORDER_STATUS_LABELS,
   type OrderListQuery,
@@ -16,10 +16,14 @@ import {
   orderBuyerSecondary,
   orderListHref,
   orderListPageHref,
+  orderListSortHref,
   orderMetrics,
   orderMetricsPeriod,
   orderNumber,
+  orderRecordHref,
+  orderSortState,
   orderTeamViews,
+  sortOrderRows,
 } from "@/server/domain/order-list.vm";
 import {
   ADMIN_ORDER_SEARCH_MAX_LENGTH,
@@ -49,7 +53,7 @@ import {
 } from "@auction/staff-ui";
 import { Banknote, Copy, Download, Receipt, ShoppingBag } from "@auction/staff-ui/icons";
 import Link from "next/link";
-import { type ReactNode, useMemo, useState } from "react";
+import { type ReactNode, useCallback, useMemo, useState } from "react";
 
 const ORDER_METRIC_ICONS: Record<string, ReactNode> = {
   paid: <Banknote />,
@@ -100,8 +104,9 @@ function download(filename: string, text: string) {
 
 /**
  * The orders list on the staff list template: status views (with counts) and saved views, search,
- * a status filter, the created date as the period, bulk export and copy, a `…` menu on each row,
- * and a quick view on Enter or click. Every filter is in the URL, so a view can be shared.
+ * a status filter, the created date as the period, bulk export and copy, and a `…` menu on each
+ * row. A row opens the order's page; every filter and the sort are in the URL, so a view can be
+ * shared and Back finds the list as it was.
  */
 export function OrderList({
   query,
@@ -118,7 +123,6 @@ export function OrderList({
 }) {
   const { pending, navigate, Link: ListLink } = useListNavigation();
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [openOrderId, setOpenOrderId] = useState<string | null>(null);
   const port = useMemo(() => createSavedViewsPort(ORDERS_LIST_KEY), []);
   const saved = useSavedViews(ORDERS_LIST_KEY, port, { legacyStorageKey: "staff.views.orders" });
   const filtered = hasActiveOrderFilters(query);
@@ -127,6 +131,9 @@ export function OrderList({
   const teamViews = useMemo(() => orderTeamViews(serverNow), [serverNow]);
   const total = Object.values(page.counts).reduce((sum, count) => sum + count, 0);
   const currentQuery = orderListHref(query).split("?")[1] ?? "";
+  const sort = orderSortState(query);
+  const rows = useMemo(() => sortOrderRows(page.items, orderSortState(query)), [page.items, query]);
+  const rowHref = useCallback((row: OrderRow) => orderRecordHref(query, row.orderId), [query]);
 
   const views = [
     { id: "all", label: "All", href: orderListHref(query, { status: null }), count: total },
@@ -153,7 +160,7 @@ export function OrderList({
         truncate: false,
         cell: (row) => (
           <span className="tabular-nums">
-            <PrimaryCell href={`/orders/${row.orderId}`} Link={Link}>
+            <PrimaryCell href={rowHref(row)} Link={Link}>
               {orderNumber(row.orderId, row.reference)}
             </PrimaryCell>
           </span>
@@ -183,7 +190,6 @@ export function OrderList({
         width: "112px",
         numeric: true,
         sortable: true,
-        sortValue: (row) => row.totalPence,
         defaultSortDirection: "desc",
         mobile: "meta",
         cell: (row) => formatGbp(row.totalPence),
@@ -193,7 +199,6 @@ export function OrderList({
         header: "Created",
         width: "176px",
         sortable: true,
-        sortValue: (row) => row.createdAt,
         defaultSortDirection: "desc",
         hideBelow: "lg",
         mobile: "meta",
@@ -201,7 +206,7 @@ export function OrderList({
         cell: (row) => <StaffDate value={row.createdAt} withTime />,
       },
     ],
-    [],
+    [rowHref],
   );
 
   const createdLabel = createdRangeLabel(query);
@@ -350,13 +355,15 @@ export function OrderList({
         noResults={{ noun: "orders" }}
         table={{
           columns,
-          data: page.items,
+          data: rows,
           getRowId: (row) => row.orderId,
           // The first cell carries a second line, which needs 44px rows.
           defaultDensity: "comfortable",
-          defaultSort: { columnId: "created", direction: "desc" },
-          onRowOpen: (row) => setOpenOrderId(row.orderId),
-          activeRowId: openOrderId,
+          defaultSort: ORDER_DEFAULT_SORT,
+          // The sort orders the page already loaded; it is in the URL so Back keeps it.
+          sort,
+          onSortChange: (next) => navigate(orderListSortHref(query, next)),
+          rowHref,
           selectedIds: selected,
           onSelectedIdsChange: setSelected,
           bulkNoun: { one: "order", other: "orders" },
@@ -389,8 +396,7 @@ export function OrderList({
           rowActions: {
             label: (row) => `Actions for order ${orderNumber(row.orderId, row.reference)}`,
             actions: (row) => [
-              { id: "preview", label: "Quick view", onSelect: () => setOpenOrderId(row.orderId) },
-              { id: "open", label: "Open order", href: `/orders/${row.orderId}` },
+              { id: "open", label: "Open order", href: rowHref(row) },
               {
                 id: "copy",
                 label: "Copy order number",
@@ -423,7 +429,6 @@ export function OrderList({
             : null
         }
       />
-      <OrderQuickView orderId={openOrderId} onClose={() => setOpenOrderId(null)} />
     </>
   );
 }

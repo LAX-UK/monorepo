@@ -34,7 +34,6 @@ import {
 } from "@auction/staff-ui";
 import { Copy, ExternalLink, Mail, ShieldCheck } from "@auction/staff-ui/icons";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 
 const NextLink: StaffLinkComponent = Link;
@@ -76,7 +75,6 @@ export function ClientRecordPage({
   canGrant: boolean;
   bidPublicUrl: string | undefined;
 }) {
-  const router = useRouter();
   const [granting, setGranting] = useState(false);
   const { party } = detail;
   const email = party.email ?? null;
@@ -103,6 +101,12 @@ export function ClientRecordPage({
       : []),
   ];
 
+  // Every related row opens its record: the row is a link to the same page as its title.
+  const orderHref = (row: Order) => `/orders/${row.orderId}`;
+  const artworkHref = (row: { artworkId: string }) => `/artworks/${row.artworkId}`;
+  const requestHref = (row: Request) => `/requests?view=all&request=${row.requestId}`;
+  const payoutHref = (row: Payout) => `/payouts?payout=${row.payoutId}`;
+
   const orderColumns: DataColumn<Order>[] = [
     {
       id: "order",
@@ -110,7 +114,7 @@ export function ClientRecordPage({
       mobile: "title",
       cell: (row) => (
         <PrimaryCell
-          href={`/orders/${row.orderId}`}
+          href={orderHref(row)}
           Link={NextLink}
           secondary={row.lineCount === 1 ? "1 item" : `${row.lineCount} items`}
         >
@@ -150,7 +154,7 @@ export function ClientRecordPage({
       header: "Artwork",
       mobile: "title",
       cell: (row) => (
-        <PrimaryCell href={`/artworks/${row.artworkId}`} Link={NextLink} secondary={row.printLabel}>
+        <PrimaryCell href={artworkHref(row)} Link={NextLink} secondary={row.printLabel}>
           {row.artworkTitle}
         </PrimaryCell>
       ),
@@ -179,7 +183,7 @@ export function ClientRecordPage({
       header: "Artwork",
       mobile: "title",
       cell: (row) => (
-        <PrimaryCell href={`/artworks/${row.artworkId}`} Link={NextLink}>
+        <PrimaryCell href={artworkHref(row)} Link={NextLink}>
           {row.artworkTitle}
         </PrimaryCell>
       ),
@@ -217,7 +221,7 @@ export function ClientRecordPage({
       mobile: "title",
       cell: (row) => (
         <PrimaryCell
-          href={`/requests?view=all&request=${row.requestId}`}
+          href={requestHref(row)}
           Link={NextLink}
           secondary={requestedEditionsLabel(row.requestedCount)}
         >
@@ -282,7 +286,7 @@ export function ClientRecordPage({
       header: "For",
       mobile: "title",
       cell: (row) => (
-        <PrimaryCell href={`/payouts?payout=${row.payoutId}`} Link={NextLink}>
+        <PrimaryCell href={payoutHref(row)} Link={NextLink}>
           {payoutSourceLabel(row.source)}
         </PrimaryCell>
       ),
@@ -373,7 +377,7 @@ export function ClientRecordPage({
             getRowId={(row) => row.orderId}
             defaultSort={{ columnId: "placed", direction: "desc" }}
             density="comfortable"
-            onRowOpen={(row) => router.push(`/orders/${row.orderId}`)}
+            rowHref={orderHref}
             viewAll={
               ordersAll && detail.orderCount !== undefined
                 ? { href: ordersAll, total: detail.orderCount, Link: NextLink }
@@ -392,7 +396,7 @@ export function ClientRecordPage({
             getRowId={(row) => row.editionId}
             defaultSort={{ columnId: "artwork", direction: "asc" }}
             density="comfortable"
-            onRowOpen={(row) => router.push(`/artworks/${row.artworkId}`)}
+            rowHref={artworkHref}
             empty={{
               title: "No editions owned",
               description: "Editions they buy or are given are listed here.",
@@ -406,6 +410,7 @@ export function ClientRecordPage({
             data={detail.saleAuthority}
             getRowId={(row) => row.artworkId}
             defaultSort={{ columnId: "artwork", direction: "asc" }}
+            rowHref={artworkHref}
             empty={{
               title: "No sale limits",
               description: canGrant
@@ -421,7 +426,7 @@ export function ClientRecordPage({
             getRowId={(row) => row.requestId}
             defaultSort={{ columnId: "sent", direction: "desc" }}
             density="comfortable"
-            onRowOpen={(row) => router.push(`/requests?view=all&request=${row.requestId}`)}
+            rowHref={requestHref}
             empty={{
               title: "No requests",
               description: "Requests they send from LAX Account to sell more editions appear here.",
@@ -435,7 +440,7 @@ export function ClientRecordPage({
             getRowId={(row) => `${row.kind}:${row.enquiryId}`}
             defaultSort={{ columnId: "sent", direction: "desc" }}
             density="comfortable"
-            onRowOpen={(row) => router.push(enquiryHref(row))}
+            rowHref={enquiryHref}
             empty={{
               title: "No enquiries",
               description: "Enquiries they send from the Shop or lax.art appear here.",
@@ -448,7 +453,7 @@ export function ClientRecordPage({
             data={detail.payouts}
             getRowId={(row) => row.payoutId}
             defaultSort={{ columnId: "due", direction: "desc" }}
-            onRowOpen={(row) => router.push(`/payouts?payout=${row.payoutId}`)}
+            rowHref={payoutHref}
             empty={{
               title: "No payouts",
               description: "Money owed to them after one of their editions sells appears here.",

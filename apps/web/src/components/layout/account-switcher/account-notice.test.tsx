@@ -1,5 +1,7 @@
 import { fireEvent, render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+vi.mock("next/navigation", () => ({ usePathname: () => "/bids" }));
 
 const clearAccountNotice = vi.fn();
 vi.mock("@/lib/navigation/account-notice-cookie.client", () => ({
@@ -8,14 +10,21 @@ vi.mock("@/lib/navigation/account-notice-cookie.client", () => ({
 
 import { AccountNotice } from "./account-notice";
 
-afterEach(() => vi.clearAllMocks());
+beforeEach(() => vi.useFakeTimers());
+afterEach(() => {
+  vi.useRealTimers();
+  vi.clearAllMocks();
+});
 
 describe("AccountNotice", () => {
-  it("is a polite live region that says what changed, and clears its cookie once shown", () => {
+  it("is a polite live region that says what changed, and clears its cookie once the page has settled, not on first paint", () => {
     render(<AccountNotice message="Switched to Northbank Gallery to show this." />);
     const notice = screen.getByTestId("account-notice");
     expect(notice).toHaveAttribute("aria-live", "polite");
     expect(notice).toHaveTextContent("Switched to Northbank Gallery to show this.");
+    // A redirect right after first paint must still find the cookie for the page it lands on.
+    expect(clearAccountNotice).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(2000);
     expect(clearAccountNotice).toHaveBeenCalledTimes(1);
   });
 

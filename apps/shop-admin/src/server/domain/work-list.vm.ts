@@ -1,4 +1,4 @@
-import { STAFF_DEFAULT_PAGE_SIZE, parseStaffPageSize } from "@auction/staff-ui";
+import { STAFF_DEFAULT_PAGE_SIZE, parseStaffPageSize, recordHrefInList } from "@auction/staff-ui";
 import {
   type RawSearchParams,
   calendarDayParam,
@@ -166,6 +166,13 @@ export function defineWorkList<F extends string>(config: WorkListConfig<F>) {
     /** The same list and page with this record's panel open, or closed for null. */
     panelHref(state: WorkListState<F>, id: string | null): string {
       return listHref(config.path, { ...params(state), [config.panelParam]: id ?? undefined });
+    },
+    /**
+     * A record's page that remembers this list (view, search, filters and sort, not the page),
+     * as `?list=`, so the record's pager and its way back keep the same list.
+     */
+    recordHref(state: WorkListState<F>, recordHref: string): string {
+      return recordHrefInList(recordHref, href(state).split("?")[1] ?? "");
     },
     /** What the list API is asked for. */
     apiQuery(state: WorkListState<F>): Record<string, string> {

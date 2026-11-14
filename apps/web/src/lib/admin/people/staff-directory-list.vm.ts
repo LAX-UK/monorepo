@@ -2,6 +2,7 @@ import { buildListHref } from "@/lib/admin/admin-list-params";
 import { defineListSort } from "@/lib/admin/define-list-sort";
 import { STAFF_LIST_PATH } from "@/lib/admin/people/build-staff-list-page-model";
 import { accountStanding } from "@/lib/admin/people/clients-staff-list.vm";
+import { peopleRecordHref } from "@/lib/admin/people/people-record-href";
 import { staffPlatformBadges } from "@/lib/admin/people/staff-access-presenter";
 import { staffRoleFilterOptions, staffRolesLabel } from "@/lib/admin/staff-role-presenter";
 import type { AdminUserRow } from "@/lib/data/http/admin-users.types";
@@ -30,6 +31,7 @@ export type StaffDirectoryRow = {
   lastSignInAt: string | null;
   joinedAt: string;
   suspended: boolean;
+  /** The staff member's page, remembering this list (`?list=`). */
   href: string;
 };
 
@@ -42,7 +44,7 @@ type AccessSummary = {
 export function toStaffDirectoryRows(
   rows: readonly AdminUserRow[],
   access: Record<string, AccessSummary>,
-  returnTo: string,
+  listQuery: string,
 ): StaffDirectoryRow[] {
   return rows.map((row) => {
     const summary = access[row.id];
@@ -59,7 +61,7 @@ export function toStaffDirectoryRows(
       lastSignInAt: summary?.lastSignInAt ?? null,
       joinedAt: row.createdAt,
       suspended: row.suspendedAt !== null,
-      href: `${STAFF_LIST_PATH}/${row.id}?returnTo=${encodeURIComponent(returnTo)}`,
+      href: peopleRecordHref(STAFF_LIST_PATH, row.id, listQuery),
     };
   });
 }
@@ -74,11 +76,6 @@ export function staffListHref(
     suspended: null,
     ...patch,
   });
-}
-
-/** The list with this person's panel open (`?staff=`), or closed for null. */
-export function staffPanelHref(current: StaffListSearch, id: string | null): string {
-  return buildListHref(STAFF_LIST_PATH, current, { staff: id });
 }
 
 export const STAFF_ROLE_FILTERS = staffRoleFilterOptions;

@@ -17,6 +17,9 @@ export default async function StaffPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const state = staffList.parse(await searchParams);
+  // The staff panel is gone (roles are in the row, managed in Bid admin): an old link to it
+  // (`?staff=`) shows the list as it was.
+  if (state.open) redirect(staffList.href(state));
   const [result, session] = await Promise.all([
     fetchAdminJson<AdminStaffMemberList>(
       adminListPath("staff", { cursor: state.cursor, query: staffList.apiQuery(state) }),

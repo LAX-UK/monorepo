@@ -370,7 +370,8 @@ export function OrderDetailView({
             />
             {erased ? <p className="m-0 text-staff-xs text-staff-muted">{erased}</p> : null}
           </Section>
-          <Section title="Payment">
+          {/* The anchor a dispute's row opens the order at (`#payment`). */}
+          <Section id="payment" title="Payment">
             <KeyValueList
               items={[
                 { label: "Total", value: formatGbp(detail.totalPence), numeric: true },

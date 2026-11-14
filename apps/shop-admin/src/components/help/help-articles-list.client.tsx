@@ -7,7 +7,7 @@ import {
   type HelpSubject,
   useHelpReorder,
 } from "@/components/help/help-confirm-dialogs.client";
-import { filterChip, knownFacts, useWorkList } from "@/components/use-work-list.client";
+import { filterChip, useWorkList } from "@/components/use-work-list.client";
 import {
   type HelpArticleListRow,
   type HelpArticlesState,
@@ -16,7 +16,6 @@ import {
 import { presentStatus } from "@/server/domain/staff-status";
 import {
   type DataColumn,
-  DetailPanel,
   FilterSheet,
   ListPage,
   MappedStatusBadge,
@@ -24,20 +23,11 @@ import {
   PrimaryCell,
   StaffButton,
   StaffDate,
-  formatStaffDateTime,
   useStaffCan,
 } from "@auction/staff-ui";
-import {
-  ArrowDown,
-  ArrowUp,
-  Eye,
-  EyeOff,
-  PanelRight,
-  Pencil,
-  Plus,
-  Trash2,
-} from "@auction/staff-ui/icons";
-import { useMemo, useState } from "react";
+import { ArrowDown, ArrowUp, Eye, EyeOff, Pencil, Plus, Trash2 } from "@auction/staff-ui/icons";
+import Link from "next/link";
+import { useCallback, useMemo, useState } from "react";
 
 const presentHelpStatus = presentStatus("help");
 
@@ -57,7 +47,7 @@ const subjectOf = (row: HelpArticleListRow): HelpSubject => ({
 /**
  * Help centre questions on the staff list template: a view for all, published and draft
  * questions with counts, a search of questions and answers, a category filter by name and a
- * record panel linked from the URL (`?article=`). The order is the one lax.art shows, so there
+ * row that opens the question's editor. The order is the one lax.art shows, so there
  * is no sort; Move up and Move down appear when the list is one whole category. The list is
  * unpaged: the API returns every question up to a fixed limit.
  */
@@ -66,7 +56,6 @@ export function HelpArticlesList({
   rows,
   counts,
   categories,
-  artPublicUrl,
   loadFailed = false,
 }: {
   state: HelpArticlesState;
@@ -75,7 +64,6 @@ export function HelpArticlesList({
   /** Questions per status under the search and category, for the view tabs. */
   counts: Record<string, number>;
   categories: HelpCategoryOption[];
-  artPublicUrl: string | null;
   loadFailed?: boolean;
 }) {
   const list = useWorkList({
@@ -87,17 +75,18 @@ export function HelpArticlesList({
   });
   const canWrite = useStaffCan("editorial.write");
   const [dialog, setDialog] = useState<Dialog | null>(null);
-  const opened = rows.find((row) => row.id === list.panel.openId) ?? null;
   const category = state.filters.category;
   const categoryTitle = (id: string) =>
     categories.find((item) => item.id === id)?.title ?? "Category";
   // Order only means something on one whole category: no search, no status view.
   const reorderable = Boolean(category) && !state.q && state.view === "all";
   const reorder = useHelpReorder({ ids: rows.map((row) => row.id), categoryId: category ?? null });
-  const addressOf = (row: HelpArticleListRow) =>
-    `${artPublicUrl ? artPublicUrl.replace(/\/$/, "") : ""}/help/${row.slug}`;
   const newHref = category ? `/help/new?category=${category}` : "/help/new";
-  const editHref = (row: HelpArticleListRow) => `/help/${row.id}`;
+  const editHref = useCallback(
+    (row: HelpArticleListRow) =>
+      helpArticlesList.recordHref(state, `/help/${encodeURIComponent(row.id)}`),
+    [state],
+  );
 
   const columns = useMemo<DataColumn<HelpArticleListRow>[]>(
     () => [
@@ -106,11 +95,7 @@ export function HelpArticlesList({
         header: "Question",
         mobile: "title",
         cell: (row) => (
-          <PrimaryCell
-            href={list.panelHref(row.id)}
-            Link={list.panel.PanelLink}
-            secondary={`/${row.slug}`}
-          >
+          <PrimaryCell href={editHref(row)} Link={Link} secondary={`/${row.slug}`}>
             {row.question}
           </PrimaryCell>
         ),
@@ -139,7 +124,7 @@ export function HelpArticlesList({
         cell: (row) => <StaffDate value={row.updatedAt} withTime />,
       },
     ],
-    [list.panelHref, list.panel.PanelLink],
+    [editHref],
   );
 
   const publishAction = (row: HelpArticleListRow): OverflowAction => {
@@ -156,12 +141,6 @@ export function HelpArticlesList({
   const rowActions = (row: HelpArticleListRow): OverflowAction[] => {
     const index = rows.findIndex((item) => item.id === row.id);
     return [
-      {
-        id: "open",
-        label: "Open details",
-        icon: PanelRight,
-        onSelect: () => list.panel.show(row.id),
-      },
       {
         id: "edit",
         label: canWrite ? "Edit" : "View",
@@ -302,79 +281,13 @@ export function HelpArticlesList({
           data: rows,
           getRowId: (row) => row.id,
           defaultDensity: "comfortable",
-          onRowOpen: (row) => list.panel.show(row.id),
-          activeRowId: list.panel.openId,
+          rowHref: editHref,
           rowActions: {
             label: (row) => `Actions for ${row.question}`,
             actions: rowActions,
           },
         }}
       />
-
-      <DetailPanel
-        open={opened !== null}
-        onOpenChange={(open) => {
-          if (!open) list.panel.show(null);
-        }}
-        title={opened?.question ?? "Question"}
-        status={
-          opened ? <MappedStatusBadge status={opened.status} present={presentHelpStatus} /> : null
-        }
-        meta={
-          opened
-            ? [
-                { label: "Category", value: opened.categoryTitle },
-                {
-                  label: "Updated",
-                  value: formatStaffDateTime(opened.updatedAt),
-                },
-              ]
-            : []
-        }
-        summary={
-          opened
-            ? knownFacts([
-                { label: "Last changed by", value: opened.updatedByName },
-                {
-                  label:
-                    opened.status === "published" ? "Public address" : "Address once published",
-                  value: addressOf(opened),
-                  copyValue: addressOf(opened),
-                },
-                { label: "Question ID", value: opened.id, copyValue: opened.id },
-              ])
-            : []
-        }
-        footer={
-          opened ? (
-            <>
-              <StaffButton
-                variant="secondary"
-                requires="editorial.publish"
-                icon={opened.status === "published" ? <EyeOff aria-hidden /> : <Eye aria-hidden />}
-                onClick={() =>
-                  setDialog({
-                    kind: "publish",
-                    row: opened,
-                    publish: opened.status !== "published",
-                  })
-                }
-              >
-                {opened.status === "published" ? "Unpublish" : "Publish"}
-              </StaffButton>
-              <StaffButton
-                asChild
-                variant="primary"
-                icon={canWrite ? <Pencil aria-hidden /> : <Eye aria-hidden />}
-              >
-                <list.Link href={editHref(opened)}>{canWrite ? "Edit" : "View"}</list.Link>
-              </StaffButton>
-            </>
-          ) : null
-        }
-      >
-        {null}
-      </DetailPanel>
 
       {dialog?.kind === "publish" ? (
         <HelpPublicationDialog
@@ -384,13 +297,7 @@ export function HelpArticlesList({
         />
       ) : null}
       {dialog?.kind === "delete" ? (
-        <HelpDeleteDialog
-          subject={subjectOf(dialog.row)}
-          onClose={() => setDialog(null)}
-          onDeleted={() => {
-            if (list.panel.openId === dialog.row.id) list.panel.show(null);
-          }}
-        />
+        <HelpDeleteDialog subject={subjectOf(dialog.row)} onClose={() => setDialog(null)} />
       ) : null}
       {dialog?.kind === "category" ? (
         <HelpCategoryDialog category={null} onClose={() => setDialog(null)} />
