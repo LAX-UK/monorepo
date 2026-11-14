@@ -5,13 +5,16 @@ import {
   type DeliveryRegion,
 } from "./delivery-regions.js";
 import {
+  GUEST_QUOTE_HOLDS_PER_ARTWORK_ALERT,
   GUEST_QUOTE_HOLD_WORKING_DAYS_DEFAULT,
   MAX_OPEN_QUOTE_REQUESTS_PER_BASKET_TOKEN,
   MAX_OPEN_QUOTE_REQUESTS_PER_BUYER,
   MAX_OPEN_QUOTE_REQUESTS_PER_GUEST_IP,
   QUOTE_HOLD_WORKING_DAYS,
   addWorkingDays,
+  artworksOverGuestHoldAlert,
   assessOutsideUkDelivery,
+  guestHoldLeavesAPrint,
   outsideUkAddressIssues,
   quoteHoldUntil,
 } from "./outside-uk-delivery.js";
@@ -90,6 +93,21 @@ describe("the quote hold", () => {
       MAX_OPEN_QUOTE_REQUESTS_PER_BUYER,
     );
     expect(MAX_OPEN_QUOTE_REQUESTS_PER_BUYER).toBeLessThan(MAX_OPEN_QUOTE_REQUESTS_PER_GUEST_IP);
+  });
+
+  it("lets a guest hold a print only while another stays on sale", () => {
+    expect(guestHoldLeavesAPrint(1)).toBe(true);
+    expect(guestHoldLeavesAPrint(0)).toBe(false);
+  });
+
+  it("alerts on an artwork only once its open guest holds pass the threshold", () => {
+    const at = GUEST_QUOTE_HOLDS_PER_ARTWORK_ALERT;
+    expect(
+      artworksOverGuestHoldAlert([
+        { artworkId: "a1", open: at },
+        { artworkId: "a2", open: at + 1 },
+      ]),
+    ).toEqual(["a2"]);
   });
 
   it("does not move the date it is given", () => {
