@@ -103,13 +103,22 @@ export class DrizzleUnappliedMoneyReader implements IUnappliedMoneyReader {
     paymentIntentId: string | null;
   }): Promise<boolean> {
     // The same rule as the refund handler's invoice match: the invoice's recorded charge, or,
-    // when it recorded no charge, its recorded payment intent.
+    // when it recorded no charge, its recorded payment intent. Only an invoice that was ever
+    // captured counts (the rule the invoice path's money check uses): a cancelled invoice that a
+    // blocked capture moved to `refunded` never held this money, so its refund must take the
+    // unapplied path and close the finance task.
     const [row] = await this.db
       .select({ id: payment.id })
       .from(payment)
       .where(
         and(
           inArray(payment.status, ["captured", "refunded"]),
+          sql`exists (
+            select 1 from ${domainEvent} e
+            where e.aggregate_type = 'payment'
+              and e.aggregate_id = ${payment.id}::text
+              and e.event_type = 'payment.captured'
+          )`,
           or(
             eq(payment.stripeChargeId, charge.chargeId),
             charge.paymentIntentId

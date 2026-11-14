@@ -311,6 +311,41 @@ describe.skipIf(!HAS_DB)("refunds of unapplied money (integration)", () => {
     expect(await refundLines()).toEqual([]);
   });
 
+  it("money paid on a cancelled invoice that recorded its intent, then refunded, closes the task", async () => {
+    await reset("cancelled");
+    const { pi, ch } = money();
+    // The invoice recorded its payment intent at checkout but never a charge, then was cancelled.
+    await db.update(payment).set({ stripePaymentIntentId: pi }).where(eq(payment.id, paymentId));
+    // The buyer pays anyway: the money is unapplied (an invoice_cancelled task).
+    await webhooks.handlePaymentIntentSucceeded(
+      eventOf("payment_intent.succeeded", succeeded(pi, ch)),
+      succeeded(pi, ch),
+    );
+    const open = await reader.listOpen({ paymentIntentId: pi, limit: 5 });
+    expect(open).toHaveLength(1);
+    expect(open[0]?.reason).toBe("invoice_cancelled");
+    // Finance refunds it from the closed-payment item (refundBlockedCapture marks it refunded).
+    await runner.runInTransaction((tx) =>
+      payments.applyRefundedFromCancelledInTransaction(tx, paymentId, `re_um_${run}`),
+    );
+    const closed = await payments.findById(paymentId);
+    expect(closed?.status).toBe("refunded");
+    expect(closed?.stripeChargeId ?? null).toBeNull();
+    expect(closed?.stripePaymentIntentId).toBe(pi);
+    // Never captured, so the charge is not this invoice's money, whatever its status.
+    expect(await reader.isChargeOfPaidInvoice({ chargeId: ch, paymentIntentId: pi })).toBe(false);
+
+    stripeRefunds.show(ch, 10_000);
+    const result = await webhooks.handleChargeRefunded(
+      eventOf("charge.refunded", refunded(pi, ch)),
+      refunded(pi, ch),
+    );
+    expect(result).toMatchObject({ processed: true, action: "unapplied_money_refunded" });
+    // The money went back, so finance's task is closed and the seller is not touched.
+    expect(await reader.listOpen({ paymentIntentId: pi, limit: 5 })).toEqual([]);
+    expect(await refundLines()).toEqual([]);
+  });
+
   it("a refunded closed invoice with no task (raised before this change) is not clawed back either", async () => {
     await reset("cancelled");
     const { pi, ch } = money();
