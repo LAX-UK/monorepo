@@ -6,10 +6,10 @@ import { staffList, staffTeamViews } from "@/server/domain/people-lists.vm";
 import {
   STAFF_ROLE_OPTIONS,
   type StaffMemberRow,
+  bidStaffMemberHref,
   staffMemberName,
-  staffRoleChips,
   staffRoleNames,
-  staffRolesAllow,
+  staffRolePeriods,
 } from "@/server/domain/staff-directory.vm";
 import { staffRoleLabel, staffRolesLabel } from "@/server/domain/staff-role-label.vm";
 import { staffStatus } from "@/server/domain/staff-status";
@@ -18,19 +18,18 @@ import type { AdminStaffMemberList } from "@auction/shop-contracts";
 import {
   type DataColumn,
   DataViews,
-  DetailPanel,
   FilterSheet,
   ListPage,
-  PanelSection,
   PersonCell,
+  StackedCell,
   StaffButton,
-  StaffChip,
   StaffDate,
+  type StaffLinkComponent,
   StatusBadge,
-  formatStaffDateTime,
   useSavedViews,
+  useStaffCan,
 } from "@auction/staff-ui";
-import { ExternalLink, PanelRight } from "@auction/staff-ui/icons";
+import { ExternalLink } from "@auction/staff-ui/icons";
 import { useMemo } from "react";
 
 const STAFF_LIST_KEY = "lax-admin.staff";
@@ -93,10 +92,29 @@ function ManageInBidAdmin({ href, size }: { href: string | undefined; size?: "sm
 }
 
 /**
+ * A staff member's name as a link to their page in Bid admin, where their roles are managed. It
+ * opens in a new tab and says so: an arrow after the name and "opens Bid admin" to screen readers.
+ */
+const BidAdminLink: StaffLinkComponent = ({ href, children, className }) => (
+  <a
+    href={href}
+    target="_blank"
+    rel="noreferrer"
+    title="Opens Bid admin in a new tab"
+    className={className}
+  >
+    {children}
+    <ExternalLink aria-hidden className="ml-1 inline size-3 align-[-1px] text-staff-muted" />
+    <span className="sr-only"> (opens Bid admin)</span>
+  </a>
+);
+
+/**
  * Who can sign in to LAX Admin, on the staff list template: views by access with counts, search
- * by name or email, a role filter (and team views by role), A to Z on the server, 50 a page, and
- * a record panel linked from the URL (`?staff=`) with each role and its period. Roles are given
- * and removed in Bid admin, so this list only reads them.
+ * by name or email, a role filter (and team views by role), A to Z on the server and 50 a page.
+ * Roles are given and removed in Bid admin, so this list only reads them: each row shows a
+ * person's roles and any that end or have not started, and there is no panel. For those who
+ * manage staff, the name links to the person's page in Bid admin.
  */
 export function StaffList({
   state,
@@ -121,7 +139,8 @@ export function StaffList({
   const port = useMemo(() => createSavedViewsPort(STAFF_LIST_KEY), []);
   const saved = useSavedViews(STAFF_LIST_KEY, port);
   const team = useMemo(() => staffTeamViews(), []);
-  const opened = page.items.find((row) => row.staffMemberId === list.panel.openId) ?? null;
+  const canManage = useStaffCan(MANAGE_STAFF);
+  const now = useMemo(() => new Date(), []);
 
   const columns = useMemo<DataColumn<StaffMemberRow>[]>(
     () => [
@@ -141,8 +160,8 @@ export function StaffList({
                   ? row.email
                   : null
             }
-            href={list.panelHref(row.staffMemberId)}
-            Link={list.panel.PanelLink}
+            {...(canManage ? { href: bidStaffMemberHref(bidStaffUrl, row) } : {})}
+            Link={BidAdminLink}
           />
         ),
       },
@@ -156,10 +175,15 @@ export function StaffList({
       },
       {
         id: "role",
-        header: "Role",
-        width: "176px",
+        header: "Roles",
+        width: "240px",
         mobile: "meta",
-        cell: (row) => staffRolesLabel(staffRoleNames(row)),
+        truncate: false,
+        cell: (row) => (
+          <StackedCell secondary={staffRolePeriods(row, now)}>
+            <span className="whitespace-normal">{staffRolesLabel(staffRoleNames(row))}</span>
+          </StackedCell>
+        ),
       },
       {
         id: "lastActive",
@@ -182,13 +206,12 @@ export function StaffList({
         cell: (row) => <StaffDate value={row.createdAt} />,
       },
     ],
-    [currentSubject, list.panelHref, list.panel.PanelLink],
+    [currentSubject, canManage, bidStaffUrl, now],
   );
 
   const roleChip = filterChip(staffList, state, list.navigate, "role", rolesLabel);
   const empty =
     VIEW_EMPTY[state.view] ?? (VIEW_EMPTY.all as { title: string; description: string });
-  const now = new Date();
 
   return (
     <>
@@ -252,105 +275,10 @@ export function StaffList({
           getRowId: (row) => row.staffMemberId,
           defaultDensity: "comfortable",
           ...list.sort,
-          onRowOpen: (row) => list.panel.show(row.staffMemberId),
-          activeRowId: list.panel.openId,
-          rowActions: {
-            label: (row) => `Actions for ${staffMemberName(row)}`,
-            actions: (row) => [
-              {
-                id: "open",
-                label: "Open details",
-                icon: PanelRight,
-                onSelect: () => list.panel.show(row.staffMemberId),
-              },
-            ],
-          },
         }}
         pageSize={list.pageSize}
         pagination={list.pagination}
       />
-
-      <DetailPanel
-        open={opened !== null}
-        onOpenChange={(open) => {
-          if (!open) list.panel.show(null);
-        }}
-        title={opened ? staffMemberName(opened) : "Staff member"}
-        status={
-          opened ? (
-            <>
-              <StatusBadge tone={accessOf(opened).tone}>{accessOf(opened).label}</StatusBadge>
-            </>
-          ) : null
-        }
-        meta={
-          opened
-            ? [
-                {
-                  label: "Last active",
-                  value: opened.lastActiveAt
-                    ? formatStaffDateTime(opened.lastActiveAt)
-                    : "No activity yet",
-                },
-              ]
-            : []
-        }
-        summary={
-          opened
-            ? [
-                ...(opened.email
-                  ? [{ label: "Email", value: opened.email, copyValue: opened.email }]
-                  : []),
-                ...(staffRolesAllow(staffRoleNames(opened))
-                  ? [{ label: "Can see and do", value: staffRolesAllow(staffRoleNames(opened)) }]
-                  : []),
-                {
-                  label: "Added",
-                  value: formatStaffDateTime(opened.createdAt),
-                },
-                ...(opened.disabledAt
-                  ? [
-                      {
-                        label: "Access removed",
-                        value: formatStaffDateTime(opened.disabledAt),
-                      },
-                    ]
-                  : []),
-                {
-                  label: "LAX account ID",
-                  value: opened.identitySubjectId,
-                  copyValue: opened.identitySubjectId,
-                },
-              ]
-            : []
-        }
-        footer={
-          opened && bidStaffUrl ? (
-            <ManageInBidAdmin
-              href={`${bidStaffUrl}/${encodeURIComponent(opened.identitySubjectId)}`}
-            />
-          ) : null
-        }
-      >
-        {opened ? (
-          <PanelSection title="Roles">
-            {opened.roles.length === 0 ? (
-              <p className="text-staff-sm text-staff-muted">No LAX Admin roles in force.</p>
-            ) : (
-              <ul
-                aria-label={`${staffMemberName(opened)}'s roles`}
-                className="m-0 flex list-none flex-wrap gap-2 p-0"
-              >
-                {staffRoleChips(opened, now).map((chip) => (
-                  <li key={chip.key} className="max-w-full">
-                    <StaffChip label={chip.label} meta={chip.meta} />
-                  </li>
-                ))}
-              </ul>
-            )}
-          </PanelSection>
-        ) : null}
-      </DetailPanel>
     </>
   );
 }

@@ -3,6 +3,7 @@ import { ClientsList } from "@/components/clients/clients-list.client";
 import { adminListPath } from "@/server/application/admin-list-path";
 import { fetchAdminJson, loadAdminSession } from "@/server/application/load-admin-data";
 import { getShopAdminContainer } from "@/server/container";
+import { clientPageHref } from "@/server/domain/client-record.vm";
 import { clientsList } from "@/server/domain/people-lists.vm";
 import type { AdminPartyList } from "@auction/shop-contracts";
 import { clientListScope } from "@auction/shop-domain";
@@ -18,6 +19,8 @@ export default async function ClientsPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const state = clientsList.parse(await searchParams);
+  // A link to the client panel that used to be here now opens the client's page.
+  if (state.open) redirect(clientsList.recordHref(state, clientPageHref(state.open)));
   const [result, session] = await Promise.all([
     fetchAdminJson<AdminPartyList>(
       adminListPath("clients", { cursor: state.cursor, query: clientsList.apiQuery(state) }),

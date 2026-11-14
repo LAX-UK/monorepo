@@ -40,6 +40,9 @@ vi.mock("@auction/ui/components/tooltip", async () =>
 const { installLayoutStubs } = await import("@/test/radix-stubs");
 installLayoutStubs();
 const { ClientRecordPage } = await import("./client-record-page.client");
+const { expectRowOpens, tableRowOf } = await import("@/test/row-link");
+// Coming back to a page restores its scroll; jsdom has no scrolling.
+window.scrollTo = vi.fn() as typeof window.scrollTo;
 const { ClientsList } = await import("./clients-list.client");
 const { clientsList } = await import("@/server/domain/people-lists.vm");
 
@@ -127,6 +130,15 @@ describe("a client's page", () => {
   });
 });
 
+describe("a client's related records", () => {
+  it("open each record's page from the whole row", () => {
+    render(<ClientRecordPage detail={detail} canGrant={false} bidPublicUrl={undefined} />);
+    expectRowOpens(tableRowOf("2 items"), "/orders/55555555-5555-4555-8555-555555555555");
+    expectRowOpens(tableRowOf("4/24"), "/artworks/33333333-3333-4333-8333-333333333333");
+    expectRowOpens(tableRowOf("£425.00"), "/payouts?payout=44444444-4444-4444-8444-444444444444");
+  });
+});
+
 describe("the clients list", () => {
   const page: AdminPartyList = {
     items: [
@@ -157,8 +169,9 @@ describe("the clients list", () => {
     expect(screen.getByRole("link", { name: /Galleries\s*2/ })).toBeInTheDocument();
     const row = within(screen.getByRole("grid")).getByText("Ada Lovelace").closest("tr");
     expect(within(row as HTMLElement).getByText("Person")).toBeInTheDocument();
-    expect(
-      within(row as HTMLElement).getByRole("link", { name: "Open client page" }),
-    ).toHaveAttribute("href", `/clients/${PARTY}`);
+    expect(within(row as HTMLElement).getByRole("link", { name: "Ada Lovelace" })).toHaveAttribute(
+      "href",
+      `/clients/${PARTY}`,
+    );
   });
 });

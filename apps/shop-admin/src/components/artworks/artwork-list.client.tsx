@@ -1,10 +1,8 @@
 "use client";
 
-import { ArtworkQuickView } from "@/components/artworks/artwork-quick-view.client";
 import { ArtworkThumbnail } from "@/components/artworks/artwork-thumbnail";
 import { SetFactsDialog } from "@/components/artworks/edition-runs/set-facts-dialog.client";
 import { useListNavigation } from "@/components/use-list-navigation.client";
-import { useListPanel } from "@/components/use-list-panel.client";
 import { adminMutationErrorMessage } from "@/lib/admin-mutation-message";
 import {
   bulkArtworkVisibility,
@@ -22,8 +20,8 @@ import {
   artworkListHref,
   artworkListPageHref,
   artworkPageSize,
-  artworkPanelHref,
   artworkPriceLabel,
+  artworkRecordHref,
   artworkSortParam,
   artworkSortState,
   bulkVisibilityActions,
@@ -73,7 +71,6 @@ import {
   Eye,
   EyeOff,
   FileInput,
-  PanelRight,
   PenLine,
   Plus,
 } from "@auction/staff-ui/icons";
@@ -105,7 +102,7 @@ type PendingChange = {
 /**
  * The artwork list on the staff list template: views by state with counts, search by title or
  * artist, a filter sheet for artist, sale state and channel, last changed first on the server,
- * and a record panel linked from the URL (`?artwork=`). Publishing, unpublishing, archiving and
+ * and a row that opens the artwork's page. Publishing, unpublishing, archiving and
  * restoring, one row or a selection, ask first and say what the storefront shows afterwards.
  */
 export function ArtworkList({
@@ -124,8 +121,10 @@ export function ArtworkList({
 }) {
   const router = useRouter();
   const { pending, navigate, Link: ListLink } = useListNavigation();
-  const hrefFor = useCallback((id: string | null) => artworkPanelHref(query, id), [query]);
-  const panel = useListPanel({ param: "artwork", initialId: query.artwork, hrefFor });
+  const rowHref = useCallback(
+    (row: AdminArtworkListItem) => artworkRecordHref(query, row.artworkId),
+    [query],
+  );
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [change, setChange] = useState<PendingChange | null>(null);
   const [running, setRunning] = useState(false);
@@ -201,11 +200,7 @@ export function ArtworkList({
         header: "Title",
         mobile: "title",
         cell: (row) => (
-          <PrimaryCell
-            href={artworkPanelHref(query, row.artworkId)}
-            Link={panel.PanelLink}
-            secondary={row.artistName}
-          >
+          <PrimaryCell href={rowHref(row)} Link={NextLink} secondary={row.artistName}>
             {row.title}
           </PrimaryCell>
         ),
@@ -271,7 +266,7 @@ export function ArtworkList({
         cell: (row) => <StaffDate value={row.updatedAt} withTime />,
       },
     ],
-    [query, panel.PanelLink],
+    [rowHref],
   );
 
   const visibilityActions = (row: AdminArtworkListItem): OverflowAction[] =>
@@ -478,22 +473,15 @@ export function ArtworkList({
           sort: artworkSortState(query),
           onSortChange: (sort) =>
             navigate(artworkListHref(query, { sort: artworkSortParam(sort) })),
-          onRowOpen: (row) => panel.show(row.artworkId),
-          activeRowId: panel.openId,
+          rowHref,
           rowActions: {
             label: (row) => `Actions for ${row.title}`,
             actions: (row) => [
               {
-                id: "open",
-                label: "Open details",
-                icon: PanelRight,
-                onSelect: () => panel.show(row.artworkId),
-              },
-              {
                 id: "edit",
                 label: permissions.write ? "Edit artwork" : "Open artwork",
                 icon: PenLine,
-                onSelect: () => router.push(`/artworks/${row.artworkId}`),
+                href: rowHref(row),
               },
               ...visibilityActions(row),
             ],
@@ -566,28 +554,6 @@ export function ArtworkList({
           }}
         />
       ) : null}
-      <ArtworkQuickView
-        artworkId={panel.openId}
-        reloadKey={(() => {
-          const row = page.items.find((item) => item.artworkId === panel.openId);
-          return row ? `${row.state}:${row.updatedAt}` : "";
-        })()}
-        canWrite={permissions.write}
-        onClose={() => panel.show(null)}
-        onVisibility={(action, detail) =>
-          setChange({
-            action,
-            rows: [
-              {
-                artworkId: detail.artworkId,
-                title: detail.title,
-                salesChannel: detail.salesChannel,
-                run: detail.run,
-              },
-            ],
-          })
-        }
-      />
       <ConfirmActionDialog
         open={change !== null}
         onOpenChange={(open) => {
