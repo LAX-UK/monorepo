@@ -156,7 +156,8 @@ describe("ZohoBooksNoticeIngressApplicationService", () => {
     expect(res).toEqual({ status: 202, body: null });
     expect(alerts.signatureFailed).not.toHaveBeenCalled();
     expect(producer.enqueue).toHaveBeenCalledTimes(1);
-    const [[key, row]] = [...stored.entries()];
+    expect(stored.size).toBe(1);
+    const [key, row] = [...stored.entries()][0] ?? [];
     expect(key).toMatch(/^zoho-books-[0-9a-f]{40}$/);
     // The notice's amounts, status and names are never kept: it is only a hint to read again.
     const routing = {
