@@ -39,6 +39,7 @@ import { createDrizzleShopNotificationPublisher } from "./infrastructure/drizzle
 import { createDrizzleStripeMoneyWebhookProcessor } from "./infrastructure/drizzle-stripe-money-webhook.processor.js";
 import { createHttpIdentityAddressBook } from "./infrastructure/http-identity-address-book.js";
 import { createIdentityMachineClient } from "./infrastructure/identity-machine-client.js";
+import { storefrontReturnUrlCheck } from "./infrastructure/shop-basket.persistence.js";
 import type { UnappliedMoneyLookup } from "./infrastructure/shop-unapplied-payment.js";
 import { loadShopVatPolicy } from "./infrastructure/shop-vat-policy.js";
 import { createStripePaymentIntentMetadataFetcher } from "./infrastructure/stripe-refund-metadata.js";
@@ -119,6 +120,7 @@ export function createCommerceServices(
   const quoteAcceptance = createDeliveryQuoteAcceptanceService({
     store: createDrizzleDeliveryQuoteAcceptanceStore(db, { vatPolicy: loadShopVatPolicy(env) }),
     checkout: repository,
+    assertReturnUrls: storefrontReturnUrlCheck(env.SHOP_STOREFRONT_URL),
     exportPaymentEnabled: env.SHOP_EXPORT_PAYMENT_ENABLED,
   });
   const guestCheckout = identityConfig

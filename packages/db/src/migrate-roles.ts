@@ -176,6 +176,13 @@ export const API_DENY_TABLES = [
   /** Sealed Zoho Books OAuth tokens: only the worker, the process that calls Books, may touch them. */
   "zoho_books_connection",
   /**
+   * The nightly Books status check's record (migration 0387): written and read by the worker only.
+   * The API's Books notice route stores a notice in webhook_event and nothing here.
+   */
+  "accounting_books_status",
+  "accounting_books_status_change",
+  "accounting_books_status_run",
+  /**
    * Stripe fees and payouts to Books and the daily reconciliation (migration 0386): only the
    * worker, which reads Stripe and books them, touches these (see `WORKER_STRIPE_*`).
    */
@@ -346,6 +353,33 @@ export const WORKER_ACCOUNTING_COPY_UPDATE_COLUMNS = [
 export const API_ACCOUNTING_COPY_READ_TABLES = ["accounting_document_copy"] as const;
 export const WORKER_ACCOUNTING_READ_TABLES = ["accounting_source_setting"] as const;
 
+/**
+ * The nightly Books status check (migration 0387), worker only. It keeps the last state read for
+ * each issued document (insert, read, and these columns updated: never the document id), adds to
+ * the append-only change list (insert and read only; a trigger refuses any change for every
+ * role), and records each run (insert, read, and the columns that finish it). Nobody deletes.
+ */
+export const WORKER_ACCOUNTING_BOOKS_STATUS_TABLES = ["accounting_books_status"] as const;
+export const WORKER_ACCOUNTING_BOOKS_STATUS_UPDATE_COLUMNS = [
+  "books_state",
+  "balance_pence",
+  "payment_ids",
+  "checked_at",
+  "changed_at",
+  "recheck_requested_at",
+  "held_since",
+] as const;
+export const WORKER_ACCOUNTING_BOOKS_STATUS_APPEND_ONLY_TABLES = [
+  "accounting_books_status_change",
+] as const;
+export const WORKER_ACCOUNTING_BOOKS_STATUS_RUN_TABLES = ["accounting_books_status_run"] as const;
+export const WORKER_ACCOUNTING_BOOKS_STATUS_RUN_UPDATE_COLUMNS = [
+  "finished_at",
+  "outcome",
+  "checked",
+  "changed",
+  "tasks",
+] as const;
 /**
  * Stripe fees and payouts to Books, and the daily reconciliation (migration 0386). The worker
  * reads which product each Stripe account's own movements belong to (an engineer writes those
@@ -1698,6 +1732,27 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
         }
         for (const [tableName, columns] of WORKER_STRIPE_ATTRIBUTION_READ_COLUMNS) {
           await grantColumnSelectIfExists(client, "worker_app", tableName, columns);
+        }
+        for (const tableName of WORKER_ACCOUNTING_BOOKS_STATUS_TABLES) {
+          await grantIfExists(client, "worker_app", tableName, "INSERT, SELECT");
+          await grantColumnUpdateIfExists(
+            client,
+            "worker_app",
+            tableName,
+            WORKER_ACCOUNTING_BOOKS_STATUS_UPDATE_COLUMNS,
+          );
+        }
+        for (const tableName of WORKER_ACCOUNTING_BOOKS_STATUS_APPEND_ONLY_TABLES) {
+          await grantIfExists(client, "worker_app", tableName, "INSERT, SELECT");
+        }
+        for (const tableName of WORKER_ACCOUNTING_BOOKS_STATUS_RUN_TABLES) {
+          await grantIfExists(client, "worker_app", tableName, "INSERT, SELECT");
+          await grantColumnUpdateIfExists(
+            client,
+            "worker_app",
+            tableName,
+            WORKER_ACCOUNTING_BOOKS_STATUS_RUN_UPDATE_COLUMNS,
+          );
         }
         for (const tableName of WORKER_ACCOUNTING_COPY_TABLES) {
           await grantIfExists(client, "worker_app", tableName, "INSERT, SELECT");

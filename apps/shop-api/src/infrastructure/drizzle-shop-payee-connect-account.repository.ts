@@ -2,13 +2,15 @@ import type { Database } from "@auction/db";
 import { shopArtist, shopParty, shopPayeeConnectAccount } from "@auction/db/schema";
 import { and, eq, inArray } from "drizzle-orm";
 import type { ShopConnectAccountFlags } from "../application/ports/shop-connect.gateway.js";
-import { resolvePortalPartyIds } from "./portal-party-ids.js";
+import { type PortalPartyScope, resolvePortalPartyScope } from "./portal-party-scope.js";
 
 export type ShopPayeeConnectAccountRow = typeof shopPayeeConnectAccount.$inferSelect;
 
 /**
- * One connected account per person per Stripe platform. A person may own several parties
- * (collector party plus linked artist party); all of them pay out to the same account.
+ * One connected account per person per Stripe platform. A person may own several parties (their
+ * own party plus the artist party they own); all of them pay out to the same account. Which
+ * parties a person owns follows `portal-party-scope.ts`: a party reached only through an artist
+ * profile on someone else's party, or on a party several artists share, is never theirs here.
  */
 export function createDrizzleShopPayeeConnectAccountRepository(db: Database, platformKey: string) {
   async function findForPartyIds(partyIds: string[]): Promise<ShopPayeeConnectAccountRow | null> {
@@ -29,6 +31,7 @@ export function createDrizzleShopPayeeConnectAccountRepository(db: Database, pla
     return null;
   }
 
+  /** The person whose payout account a party pays into: its own sign-in, or its only artist. */
   async function subjectForParty(partyId: string): Promise<string | null> {
     const [party] = await db
       .select({ identitySubjectId: shopParty.identitySubjectId })
@@ -36,24 +39,24 @@ export function createDrizzleShopPayeeConnectAccountRepository(db: Database, pla
       .where(eq(shopParty.id, partyId))
       .limit(1);
     if (party?.identitySubjectId) return party.identitySubjectId;
-    const [artist] = await db
+    const artists = await db
       .select({ identitySubjectId: shopArtist.identitySubjectId })
       .from(shopArtist)
       .where(eq(shopArtist.partyId, partyId))
-      .limit(1);
-    return artist?.identitySubjectId ?? null;
+      .limit(2);
+    return artists.length === 1 ? (artists[0]?.identitySubjectId ?? null) : null;
   }
 
   return {
-    payeePartyIdsForSubject: (identitySubjectId: string) =>
-      resolvePortalPartyIds(db, identitySubjectId),
+    payeeScopeForSubject: (identitySubjectId: string): Promise<PortalPartyScope> =>
+      resolvePortalPartyScope(db, identitySubjectId),
 
     findForPartyIds,
 
     async findForParty(partyId: string): Promise<ShopPayeeConnectAccountRow | null> {
       const subject = await subjectForParty(partyId);
-      const partyIds = subject ? await resolvePortalPartyIds(db, subject) : [partyId];
-      return findForPartyIds(partyIds.includes(partyId) ? partyIds : [partyId, ...partyIds]);
+      const owned = subject ? (await resolvePortalPartyScope(db, subject)).ownedPartyIds : [];
+      return findForPartyIds(owned.includes(partyId) ? owned : [partyId]);
     },
 
     async insertIfAbsent(partyId: string, stripeConnectAccountId: string): Promise<void> {

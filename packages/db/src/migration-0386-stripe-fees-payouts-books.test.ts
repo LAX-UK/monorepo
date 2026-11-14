@@ -26,7 +26,10 @@ describe("migration 0386 Stripe fees and payouts to Books", () => {
     const previous = journal.entries.find((e) => e.tag === "0385_accounting_credit_note_refunds");
     expect(entry?.idx).toBe((previous?.idx ?? Number.NaN) + 1);
     expect(entry?.when).toBeGreaterThan(previous?.when ?? Number.POSITIVE_INFINITY);
-    // Later migrations (0389, Shop originals invoiced in Books) follow it.
+    // Later migrations (0387, the Books status check) follow it; it stays right after 0385.
+    expect(journal.entries.findIndex((e) => e.tag === TAG)).toBe(
+      journal.entries.findIndex((e) => e.tag === "0385_accounting_credit_note_refunds") + 1,
+    );
   });
 
   it("adds the two kinds to the kind, reference and totals checks, under the lock timeout", () => {

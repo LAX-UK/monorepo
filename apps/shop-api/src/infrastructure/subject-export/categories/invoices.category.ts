@@ -4,8 +4,8 @@ import {
   type ExportSource,
   SourcedExportCategory,
 } from "@auction/identity-contracts/subject-export-readers";
-import { and, asc, eq, inArray, isNotNull } from "drizzle-orm";
-import { resolvePortalPartyIds } from "../../portal-party-ids.js";
+import { and, asc, eq, isNotNull } from "drizzle-orm";
+import { portalPartyRows, resolvePortalPartyScope } from "../../portal-party-scope.js";
 import type { SubjectExportDeps } from "../subject-export-deps.js";
 import { isoRequired, pence } from "../subject-export-values.js";
 import { afterKey, countWhere } from "./keyset.js";
@@ -72,12 +72,21 @@ export class InvoicesCategory extends SourcedExportCategory {
     super();
     const ownOrder = (s: string) =>
       and(eq(shopOrder.identitySubjectId, s), isNotNull(shopOrder.invoiceNumber));
-    const documents = (partyIds: string[]) =>
-      and(
-        inArray(shopDocument.partyId, partyIds),
-        eq(shopDocument.kind, "purchase_invoice"),
-        eq(shopDocument.visibility, "client"),
+    // Documents carry no artwork, so only parties the person owns are read.
+    const documents = async (s: string) => {
+      const owned = portalPartyRows(
+        await resolvePortalPartyScope(db, s),
+        shopDocument.partyId,
+        null,
       );
+      return owned
+        ? and(
+            owned,
+            eq(shopDocument.kind, "purchase_invoice"),
+            eq(shopDocument.visibility, "client"),
+          )
+        : null;
+    };
 
     this.sources = [
       {
@@ -114,12 +123,12 @@ export class InvoicesCategory extends SourcedExportCategory {
       },
       {
         count: async (s) => {
-          const partyIds = await resolvePortalPartyIds(db, s);
-          return partyIds.length === 0 ? 0 : countWhere(db, shopDocument, documents(partyIds));
+          const where = await documents(s);
+          return where ? countWhere(db, shopDocument, where) : 0;
         },
         page: async (s, after, limit) => {
-          const partyIds = await resolvePortalPartyIds(db, s);
-          if (partyIds.length === 0) return [];
+          const where = await documents(s);
+          if (!where) return [];
           const rows = await db
             .select({
               id: shopDocument.id,
@@ -127,7 +136,7 @@ export class InvoicesCategory extends SourcedExportCategory {
               createdAt: shopDocument.createdAt,
             })
             .from(shopDocument)
-            .where(and(documents(partyIds), afterKey(shopDocument.id, after)))
+            .where(and(where, afterKey(shopDocument.id, after)))
             .orderBy(asc(shopDocument.id))
             .limit(limit);
           return Promise.all(

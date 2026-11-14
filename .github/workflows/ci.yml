@@ -957,6 +957,7 @@ jobs:
           NEXT_PUBLIC_SENTRY_DSN_WEB: https://budget@sentry.invalid/1
           NEXT_PUBLIC_SENTRY_DSN_SHOP: https://budget@sentry.invalid/2
           NEXT_PUBLIC_SENTRY_DSN_ART: https://budget@sentry.invalid/3
+          NEXT_PUBLIC_SENTRY_DSN_ACCOUNT: https://budget@sentry.invalid/4
 
       # Reads the .next output the Build step just produced; it never rebuilds. Apps the affected
       # build skipped are reported and left out. Groups with `enforce: true` fail the job when a

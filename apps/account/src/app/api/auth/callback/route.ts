@@ -21,7 +21,14 @@ export async function GET(request: Request): Promise<Response> {
   const url = new URL(request.url);
   const cookieStore = await cookies();
   const clearLoginCookies = () => {
-    cookieStore.delete(loginCookie);
+    // `__Host-` cookies are only cleared by a Set-Cookie that repeats Secure and Path=/.
+    cookieStore.set(loginCookie, "", {
+      httpOnly: true,
+      secure,
+      sameSite: "lax",
+      path: "/",
+      maxAge: 0,
+    });
     cookieStore.delete(LAX_ACCOUNT_LOGIN_COOKIE);
     cookieStore.delete(LAX_ACCOUNT_LOGIN_RETRY_COOKIE);
   };
