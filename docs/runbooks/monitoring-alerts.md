@@ -426,6 +426,68 @@ back, and each stays due. While any waits, every run raises `accounting_shop_inv
 (an error alert sent to Sentry, routed to finance on-call like the other accounting alerts). Set
 the address and the waiting emails go on the next run.
 
+## Books notices and the nightly status check (Zoho Books, rehearsal)
+
+Books is still in rehearsal (dry run, or the test organisation only). Nothing below changes
+production, and no Books credentials live in the repository.
+
+### Books notices (`POST /webhooks/zoho-books/notices`, Bid API)
+
+**What happens.** A Zoho Books workflow webhook tells LAX that a document changed. Books signs each
+request with the webhook's secret token in `X-Zoho-Webhook-Signature`. The Bid API checks the
+signature in constant time against `ZOHO_BOOKS_NOTICE_SECRET` and stores a good notice once, in
+`webhook_event` (source `zoho_books`), keyed on Books' ids. It keeps only Books' ids and the change
+time. A notice is never trusted for money: the worker reads that document's state from Books again
+and records what Books says (below). Every answer has no body and `Cache-Control: no-store`.
+
+- **Not configured.** Without `ZOHO_BOOKS_NOTICE_SECRET` the route refuses every notice (503) and
+  stores nothing. Set it, 32 characters or more, to the same value as the secret token on the Books
+  workflow webhook. Use the test organisation only while Books is in rehearsal.
+- **Body.** The workflow sends JSON with `organization_id`, `module` (`invoice`, `creditnote` or
+  `customerpayment`), `entity_id` and, optionally, `event_time`. A notice for another organisation,
+  or for a document LAX did not issue, changes nothing.
+
+### Notice signature refused (`zoho_books.notice_signature_failed`)
+
+**What it means.** A request reached the Books notice route with no signature, or one that does
+not match the configured secret. It was refused with a bare 401 and nothing was stored. The alert
+gives only `reason` (`missing` or `invalid`), never anything from the request.
+
+**What to do.** A few of these after the secret token changes in Books mean the two copies no longer
+match: set the same value in Books and in `ZOHO_BOOKS_NOTICE_SECRET`. Rotate it in Books first, then
+in the API. Until both match, notices are refused, and the nightly check still reads every document.
+Sustained refusals with no change on our side go to security on-call. Error level, sent to Sentry,
+routed to finance on-call with the other accounting alerts.
+
+### The nightly status check (cron `accounting-reconcile`, 02:15 London)
+
+**What happens.** The worker reads back from Books each issued Books invoice, credit note and
+payment that is due. That is one read per document, never more than the check's share of the day's
+Books budget, and it stops as soon as Books says the budget is spent. A document a notice named is
+read first. For each one the worker records the state Books shows (`accounting_books_status`) and
+each change (`accounting_books_status_change`, append-only), such as an invoice voided or a document
+deleted in Books. Each run is a row in `accounting_books_status_run`. In the dry run nothing is
+read and each run says `rehearsal`.
+
+**A payment recorded in Books by hand.** When Books shows a payment against one of LAX's invoices
+that LAX did not send (a gallery sale or a cheque entered in Books), the check opens a **finance
+task**: "Money received that could not be applied", reason `books_payment_recorded_by_hand`. The task
+names the LAX invoice reference, the amount, and Books' payment mode and date. It is opened once per
+Books payment. **Nothing in LAX is marked paid**, and the check cannot mark a lot, invoice or payment
+paid. Finance checks that the money arrived, then records the payment in LAX the usual way, or
+corrects Books if the payment was entered by mistake.
+
+### Status check missed (`accounting_status_check_missed`)
+
+**What it means.** While Books is aimed at for some product, no nightly status check has finished
+for more than 26 hours. The check's Sentry cron monitor (`accounting-reconcile`) also shows the miss.
+
+**What to do.** Look at the worker logs for `accounting_status_check_finished`, or for the job's
+failure on Failed jobs. A run that keeps failing is recorded with outcome `failed`. A run stopped
+by the budget (`budget_spent`) still counts as run: the rest is read the next night. Books being
+unavailable for a while is not an error, and those documents are read again next time. Nothing
+waits on this check: sending, invoices and payments go on without it.
+
 ## Related
 
 - [Scale monitoring](./scale-monitoring.md)
