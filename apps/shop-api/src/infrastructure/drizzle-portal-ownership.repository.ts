@@ -5,7 +5,6 @@ import {
   shopDocument,
   shopEdition,
   shopOriginalSale,
-  shopParty,
   shopPayoutLedger,
   shopSaleAuthorityGrant,
   shopSaleAuthorityRequest,
@@ -32,20 +31,21 @@ import { PORTAL_ME_LIST_LIMIT } from "../domain/portal-me-list-limit.js";
 import { ShopApiError, notFound } from "../errors/shop-api-error.js";
 import { isPgUniqueViolation } from "../lib/pg-errors.js";
 import { printLabelOf, printLabelSelection } from "./edition-runs/print-label.js";
-import { resolvePortalPartyIds } from "./portal-party-ids.js";
+import {
+  type PortalPartyScope,
+  portalPartyRows,
+  resolvePortalPartyScope,
+} from "./portal-party-scope.js";
+import { resolvePortalPayoutScope } from "./portal-payout-scope.js";
 import { createShopDocumentDownloadUrl } from "./shop-document-download-url.js";
 import type { ShopDocumentStorageConfig } from "./shop-document-download-url.js";
 
-async function tryResolveOwnerPartyId(
-  db: Database,
-  identitySubjectId: string,
-): Promise<string | null> {
-  const [party] = await db
-    .select({ id: shopParty.id })
-    .from(shopParty)
-    .where(eq(shopParty.identitySubjectId, identitySubjectId))
-    .limit(1);
-  return party?.id ?? null;
+function saleAuthorityRequestRows(scope: PortalPartyScope) {
+  return portalPartyRows(
+    scope,
+    shopSaleAuthorityRequest.ownerPartyId,
+    shopSaleAuthorityRequest.artworkId,
+  );
 }
 
 export function createDrizzlePortalOwnershipRepository(
@@ -55,8 +55,9 @@ export function createDrizzlePortalOwnershipRepository(
   const documentStorage = options?.documentStorage ?? null;
   return {
     async listOwnedEditions(identitySubjectId: string): Promise<PortalOwnedEditionRow[]> {
-      const partyIds = await resolvePortalPartyIds(db, identitySubjectId);
-      if (partyIds.length === 0) {
+      const scope = await resolvePortalPartyScope(db, identitySubjectId);
+      const owned = portalPartyRows(scope, shopEdition.ownerPartyId, shopEdition.artworkId);
+      if (!owned) {
         return [];
       }
       const rows = await db
@@ -72,15 +73,21 @@ export function createDrizzlePortalOwnershipRepository(
         })
         .from(shopEdition)
         .innerJoin(shopArtwork, eq(shopEdition.artworkId, shopArtwork.id))
-        .where(inArray(shopEdition.ownerPartyId, partyIds))
+        .where(owned)
         .orderBy(shopArtwork.title, shopEdition.editionNumber)
         .limit(PORTAL_ME_LIST_LIMIT);
       return rows.map(({ print, ...row }) => ({ ...row, printLabel: printLabelOf(print) }));
     },
 
     async listSaleAuthority(identitySubjectId: string): Promise<PortalSaleAuthorityRow[]> {
-      const partyIds = await resolvePortalPartyIds(db, identitySubjectId);
-      if (partyIds.length === 0) {
+      const scope = await resolvePortalPartyScope(db, identitySubjectId);
+      const owned = portalPartyRows(scope, shopEdition.ownerPartyId, shopEdition.artworkId);
+      const grants = portalPartyRows(
+        scope,
+        shopSaleAuthorityGrant.ownerPartyId,
+        shopSaleAuthorityGrant.artworkId,
+      );
+      if (!owned || !grants) {
         return [];
       }
       const ownedPairs = await db
@@ -89,7 +96,7 @@ export function createDrizzlePortalOwnershipRepository(
           ownerPartyId: shopEdition.ownerPartyId,
         })
         .from(shopEdition)
-        .where(inArray(shopEdition.ownerPartyId, partyIds));
+        .where(owned);
       if (ownedPairs.length === 0) {
         return [];
       }
@@ -113,12 +120,7 @@ export function createDrizzlePortalOwnershipRepository(
           ownedCount: sql<number>`count(*) filter (where ${shopEdition.listingStatus} <> 'withdrawn')`,
         })
         .from(shopEdition)
-        .where(
-          and(
-            inArray(shopEdition.ownerPartyId, partyIds),
-            inArray(shopEdition.artworkId, artworkIds),
-          ),
-        )
+        .where(and(owned, inArray(shopEdition.artworkId, artworkIds)))
         .groupBy(shopEdition.artworkId, shopEdition.ownerPartyId);
 
       const latestGrants = await db
@@ -130,12 +132,7 @@ export function createDrizzlePortalOwnershipRepository(
           ownerPartyId: shopSaleAuthorityGrant.ownerPartyId,
         })
         .from(shopSaleAuthorityGrant)
-        .where(
-          and(
-            inArray(shopSaleAuthorityGrant.ownerPartyId, partyIds),
-            inArray(shopSaleAuthorityGrant.artworkId, artworkIds),
-          ),
-        )
+        .where(and(grants, inArray(shopSaleAuthorityGrant.artworkId, artworkIds)))
         .orderBy(desc(shopSaleAuthorityGrant.revision), desc(shopSaleAuthorityGrant.id));
 
       const grantByArtworkOwner = new Map<string, { createdAt: Date }>();
@@ -198,8 +195,9 @@ export function createDrizzlePortalOwnershipRepository(
           400,
         );
       }
-      const partyIds = await resolvePortalPartyIds(db, command.identitySubjectId);
-      if (partyIds.length === 0) {
+      const scope = await resolvePortalPartyScope(db, command.identitySubjectId);
+      const owned = portalPartyRows(scope, shopEdition.ownerPartyId, shopEdition.artworkId);
+      if (!owned) {
         throw new ShopApiError(
           SHOP_API_ERROR_CODES.FORBIDDEN,
           "You do not own editions on this artwork",
@@ -217,12 +215,7 @@ export function createDrizzlePortalOwnershipRepository(
       const owningParties = await db
         .selectDistinct({ ownerPartyId: shopEdition.ownerPartyId })
         .from(shopEdition)
-        .where(
-          and(
-            eq(shopEdition.artworkId, command.artworkId),
-            inArray(shopEdition.ownerPartyId, partyIds),
-          ),
-        );
+        .where(and(eq(shopEdition.artworkId, command.artworkId), owned));
       if (owningParties.length === 0) {
         throw new ShopApiError(
           SHOP_API_ERROR_CODES.FORBIDDEN,
@@ -230,7 +223,7 @@ export function createDrizzlePortalOwnershipRepository(
           403,
         );
       }
-      const identityPartyId = await tryResolveOwnerPartyId(db, command.identitySubjectId);
+      const identityPartyId = scope.ownPartyId;
       const matchedOwner =
         identityPartyId != null
           ? owningParties.find((row) => row.ownerPartyId === identityPartyId)
@@ -319,8 +312,8 @@ export function createDrizzlePortalOwnershipRepository(
     },
 
     async listPayouts(identitySubjectId: string) {
-      const partyIds = await resolvePortalPartyIds(db, identitySubjectId);
-      if (partyIds.length === 0) {
+      const scope = await resolvePortalPayoutScope(db, identitySubjectId);
+      if (!scope) {
         return [];
       }
       const rows = await db
@@ -334,7 +327,7 @@ export function createDrizzlePortalOwnershipRepository(
           paidAt: shopPayoutLedger.paidAt,
         })
         .from(shopPayoutLedger)
-        .where(inArray(shopPayoutLedger.ownerPartyId, partyIds))
+        .where(scope)
         .orderBy(desc(shopPayoutLedger.createdAt))
         .limit(PORTAL_ME_LIST_LIMIT);
       return rows.map((row) => ({
@@ -349,8 +342,10 @@ export function createDrizzlePortalOwnershipRepository(
     },
 
     async listSaleAuthorityRequests(identitySubjectId: string) {
-      const partyIds = await resolvePortalPartyIds(db, identitySubjectId);
-      if (partyIds.length === 0) {
+      const requests = saleAuthorityRequestRows(
+        await resolvePortalPartyScope(db, identitySubjectId),
+      );
+      if (!requests) {
         return [];
       }
       const rows = await db
@@ -368,7 +363,7 @@ export function createDrizzlePortalOwnershipRepository(
         })
         .from(shopSaleAuthorityRequest)
         .innerJoin(shopArtwork, eq(shopSaleAuthorityRequest.artworkId, shopArtwork.id))
-        .where(inArray(shopSaleAuthorityRequest.ownerPartyId, partyIds))
+        .where(requests)
         .orderBy(desc(shopSaleAuthorityRequest.createdAt))
         .limit(PORTAL_ME_LIST_LIMIT);
       return rows.map((row) => ({
@@ -389,8 +384,10 @@ export function createDrizzlePortalOwnershipRepository(
       identitySubjectId: string,
       requestId: string,
     ): Promise<WithdrawSaleAuthorityRequestResult> {
-      const partyIds = await resolvePortalPartyIds(db, identitySubjectId);
-      if (partyIds.length === 0) {
+      const requests = saleAuthorityRequestRows(
+        await resolvePortalPartyScope(db, identitySubjectId),
+      );
+      if (!requests) {
         throw notFound("Sale authority request");
       }
       // One conditional update, so a staff decision landing at the same moment wins or loses cleanly.
@@ -400,7 +397,7 @@ export function createDrizzlePortalOwnershipRepository(
         .where(
           and(
             eq(shopSaleAuthorityRequest.id, requestId),
-            inArray(shopSaleAuthorityRequest.ownerPartyId, partyIds),
+            requests,
             eq(shopSaleAuthorityRequest.status, "pending"),
           ),
         )
@@ -411,12 +408,7 @@ export function createDrizzlePortalOwnershipRepository(
       const [existing] = await db
         .select({ id: shopSaleAuthorityRequest.id })
         .from(shopSaleAuthorityRequest)
-        .where(
-          and(
-            eq(shopSaleAuthorityRequest.id, requestId),
-            inArray(shopSaleAuthorityRequest.ownerPartyId, partyIds),
-          ),
-        )
+        .where(and(eq(shopSaleAuthorityRequest.id, requestId), requests))
         .limit(1);
       if (!existing) {
         throw notFound("Sale authority request");
@@ -429,8 +421,14 @@ export function createDrizzlePortalOwnershipRepository(
     },
 
     async listCollection(identitySubjectId: string): Promise<PortalCollectionItem[]> {
-      const partyIds = await resolvePortalPartyIds(db, identitySubjectId);
-      if (partyIds.length === 0) {
+      const scope = await resolvePortalPartyScope(db, identitySubjectId);
+      const owned = portalPartyRows(scope, shopEdition.ownerPartyId, shopEdition.artworkId);
+      const bought = portalPartyRows(
+        scope,
+        shopOriginalSale.buyerPartyId,
+        shopOriginalSale.artworkId,
+      );
+      if (!owned || !bought) {
         return [];
       }
       const editions = await db
@@ -446,7 +444,7 @@ export function createDrizzlePortalOwnershipRepository(
         })
         .from(shopEdition)
         .innerJoin(shopArtwork, eq(shopEdition.artworkId, shopArtwork.id))
-        .where(inArray(shopEdition.ownerPartyId, partyIds))
+        .where(owned)
         .orderBy(shopArtwork.title, shopEdition.editionNumber)
         .limit(PORTAL_ME_LIST_LIMIT);
 
@@ -462,12 +460,7 @@ export function createDrizzlePortalOwnershipRepository(
         })
         .from(shopOriginalSale)
         .innerJoin(shopArtwork, eq(shopOriginalSale.artworkId, shopArtwork.id))
-        .where(
-          and(
-            inArray(shopOriginalSale.buyerPartyId, partyIds),
-            eq(shopOriginalSale.status, "assigned"),
-          ),
-        )
+        .where(and(bought, eq(shopOriginalSale.status, "assigned")))
         .orderBy(desc(shopOriginalSale.updatedAt))
         .limit(PORTAL_ME_LIST_LIMIT);
 
@@ -536,8 +529,13 @@ export function createDrizzlePortalOwnershipRepository(
     },
 
     async listDocuments(identitySubjectId: string) {
-      const partyIds = await resolvePortalPartyIds(db, identitySubjectId);
-      if (partyIds.length === 0) {
+      // Documents carry no artwork, so only parties the person owns are read.
+      const documents = portalPartyRows(
+        await resolvePortalPartyScope(db, identitySubjectId),
+        shopDocument.partyId,
+        null,
+      );
+      if (!documents) {
         return [];
       }
       const rows = await db
@@ -549,7 +547,7 @@ export function createDrizzlePortalOwnershipRepository(
           visibility: shopDocument.visibility,
         })
         .from(shopDocument)
-        .where(and(inArray(shopDocument.partyId, partyIds), eq(shopDocument.visibility, "client")))
+        .where(and(documents, eq(shopDocument.visibility, "client")))
         .orderBy(desc(shopDocument.createdAt))
         .limit(PORTAL_ME_LIST_LIMIT);
       return Promise.all(

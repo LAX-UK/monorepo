@@ -2,7 +2,7 @@ import type { Database } from "@auction/db";
 import { shopParty, shopUserProfile } from "@auction/db/schema";
 import { SHOP_API_ERROR_CODES } from "@auction/shop-contracts";
 import { isPayeeConnectReady } from "@auction/shop-domain";
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import type {
   ShopConnectAccountPrefill,
   ShopConnectGateway,
@@ -20,7 +20,9 @@ import type {
   ShopPayeeConnectAccountRepository,
   ShopPayeeConnectAccountRow,
 } from "./drizzle-shop-payee-connect-account.repository.js";
+import type { PortalPartyScope } from "./portal-party-scope.js";
 import { resolveShopUserEmail } from "./resolve-shop-user-email.js";
+import { findOrCreateBuyerParty } from "./shop-party.js";
 
 const NO_ACCOUNT_STATUS: ShopPayeeConnectStatus = {
   accountLinked: false,
@@ -76,17 +78,43 @@ export function createDrizzleShopPayeeConnectService(options: {
     return options.gateway;
   }
 
-  async function requirePayeePartyIds(identitySubjectId: string): Promise<[string, ...string[]]> {
-    const partyIds = await accounts.payeePartyIdsForSubject(identitySubjectId);
-    const [first, ...rest] = partyIds;
-    if (!first) {
+  /**
+   * The parties whose payout account this person may read or manage: only parties they own. An
+   * artist profile on a party they do not own is refused outright, so its payout account is
+   * reached only by that party's own sign-in.
+   */
+  async function requirePayeeScope(identitySubjectId: string): Promise<PortalPartyScope> {
+    const scope = await accounts.payeeScopeForSubject(identitySubjectId);
+    if (scope.artistOnSharedParty) {
+      throw new ShopApiError(
+        SHOP_API_ERROR_CODES.CONFLICT,
+        "Your payout account is managed by your gallery",
+        409,
+      );
+    }
+    if (scope.ownedPartyIds.length === 0) {
       throw new ShopApiError(
         SHOP_API_ERROR_CODES.NOT_FOUND,
         "No shop party linked to this account",
         404,
       );
     }
-    return [first, ...rest];
+    return scope;
+  }
+
+  async function ownPartyDisplayName(identitySubjectId: string, partyIds: string[]) {
+    const [profile] = await options.db
+      .select({ name: shopUserProfile.name })
+      .from(shopUserProfile)
+      .where(eq(shopUserProfile.identitySubjectId, identitySubjectId))
+      .limit(1);
+    if (profile?.name?.trim()) return profile.name.trim();
+    const [party] = await options.db
+      .select({ displayName: shopParty.displayName })
+      .from(shopParty)
+      .where(inArray(shopParty.id, partyIds))
+      .limit(1);
+    return party?.displayName ?? "Payee";
   }
 
   async function loadPrefill(
@@ -112,15 +140,22 @@ export function createDrizzleShopPayeeConnectService(options: {
 
   async function ensureAccount(identitySubjectId: string): Promise<ShopPayeeConnectAccountRow> {
     const gateway = requireGateway();
-    const partyIds = await requirePayeePartyIds(identitySubjectId);
-    const existing = await accounts.findForPartyIds(partyIds);
+    const scope = await requirePayeeScope(identitySubjectId);
+    const existing = await accounts.findForPartyIds(scope.ownedPartyIds);
     if (existing) return existing;
-    const payeePartyId = partyIds[0];
+    // A new account is only ever opened on the person's own party.
+    const payeePartyId =
+      scope.ownPartyId ??
+      (await findOrCreateBuyerParty(
+        options.db,
+        identitySubjectId,
+        await ownPartyDisplayName(identitySubjectId, scope.ownedPartyIds),
+      ));
     const { stripeAccountId } = await gateway.createAccount(
       await loadPrefill(identitySubjectId, payeePartyId),
     );
     await accounts.insertIfAbsent(payeePartyId, stripeAccountId);
-    const row = await accounts.findForPartyIds(partyIds);
+    const row = await accounts.findForPartyIds([payeePartyId, ...scope.ownedPartyIds]);
     if (!row) {
       throw new ShopApiError(
         SHOP_API_ERROR_CODES.INTERNAL,
@@ -150,8 +185,8 @@ export function createDrizzleShopPayeeConnectService(options: {
     },
 
     async getStatusForSubject(identitySubjectId) {
-      const partyIds = await requirePayeePartyIds(identitySubjectId);
-      const row = await accounts.findForPartyIds(partyIds);
+      const scope = await requirePayeeScope(identitySubjectId);
+      const row = await accounts.findForPartyIds(scope.ownedPartyIds);
       return row ? statusFromRow(row) : NO_ACCOUNT_STATUS;
     },
 
@@ -176,7 +211,9 @@ export function createDrizzleShopPayeeConnectService(options: {
       const row =
         surface === "onboarding"
           ? await ensureAccount(identitySubjectId)
-          : await accounts.findForPartyIds(await requirePayeePartyIds(identitySubjectId));
+          : await accounts.findForPartyIds(
+              (await requirePayeeScope(identitySubjectId)).ownedPartyIds,
+            );
       if (!row) {
         throw new ShopApiError(
           SHOP_API_ERROR_CODES.CONFLICT,

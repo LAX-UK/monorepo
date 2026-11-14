@@ -2651,8 +2651,15 @@
     {
       "idx": 379,
       "version": "7",
+      "when": 1811592000000,
+      "tag": "0387_accounting_books_status",
+      "breakpoints": true
+    },
+    {
+      "idx": 380,
+      "version": "7",
       "when": 1811851200000,
-      "tag": "0390_data_request_erasure_hold",
+      "tag": "0388_data_request_erasure_hold",
       "breakpoints": true
     }
   ]

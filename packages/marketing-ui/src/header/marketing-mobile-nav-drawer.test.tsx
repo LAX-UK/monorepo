@@ -41,7 +41,7 @@ describe("MarketingMobileNavDrawer", () => {
         isSectionActive={() => false}
         familyLinks={[
           { id: "art", label: "lax.art", href: "https://lax.art", current: false },
-          { id: "shop", label: "lax.shop", href: "https://shop.lax.art", current: false },
+          { id: "shop", label: "LAX Shop", href: "https://shop.lax.art", current: false },
           { id: "bid", label: "lax.bid", href: "https://lax.bid", current: true },
           { id: "account", label: "LAX Account", href: "https://account.lax.bid", current: false },
         ]}
@@ -50,7 +50,7 @@ describe("MarketingMobileNavDrawer", () => {
     const nav = screen.getByRole("navigation", { name: "LAX family menu" });
     expect(Array.from(nav.querySelectorAll("a")).map((link) => link.textContent)).toEqual([
       "lax.art",
-      "lax.shop",
+      "LAX Shop",
       "lax.bidYou're here",
       "LAX Account",
     ]);

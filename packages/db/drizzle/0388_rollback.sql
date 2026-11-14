@@ -1,4 +1,4 @@
--- Rollback for 0390_data_request_erasure_hold. Roll the release back first: nothing may still
+-- Rollback for 0388_data_request_erasure_hold. Roll the release back first: nothing may still
 -- read or write the table. Held erasures waiting for a re-run are no longer re-run; staff see the
 -- holds on each request's record page as before and erase again by hand.
 -- Also removes this migration's ledger row so a later deploy reapplies it.

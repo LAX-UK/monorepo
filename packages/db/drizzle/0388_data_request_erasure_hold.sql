@@ -1,5 +1,5 @@
 -- Data requests whose enquiry erasure was held by a private sale deal (PS-5F1, PS-5F2).
--- Numbered 0390 after 0387-0389 taken by open PRs; a later merger renumbers.
+-- Numbered 0388 after 0387; if another migration takes 0388 first, the later merger renumbers.
 --
 -- `data_request_erasure_hold`: one row per request reference. `waiting` rows are re-run by the
 -- API's schedule once `recheck_at` passes; `needs_staff` rows (a hold with no end date, or a re-run

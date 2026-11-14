@@ -1,5 +1,6 @@
 import { QUOTE_PAYMENT_WINDOW_MS } from "@auction/shop-domain";
 import { describe, expect, it, vi } from "vitest";
+import { storefrontReturnUrlCheck } from "../../infrastructure/shop-basket.persistence.js";
 import { createDeliveryQuoteAcceptanceService } from "./delivery-quote-acceptance.service.js";
 
 const NOW = new Date("2026-11-12T10:00:00Z");
@@ -16,6 +17,7 @@ function build(exportPaymentEnabled = true) {
   const service = createDeliveryQuoteAcceptanceService({
     store: { accept },
     checkout: { resumeCheckoutOrder },
+    assertReturnUrls: storefrontReturnUrlCheck("https://shop.test"),
     exportPaymentEnabled,
     now: () => NOW,
   });
@@ -46,6 +48,18 @@ describe("accepting a delivery quote and paying", () => {
   it("accepts nothing and opens nothing while payment outside the UK is closed", async () => {
     const { service, accept, resumeCheckoutOrder } = build(false);
     await expect(service.acceptAndPay(input)).rejects.toMatchObject({ statusCode: 409 });
+    expect(accept).not.toHaveBeenCalled();
+    expect(resumeCheckoutOrder).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["success", { successUrl: "https://elsewhere.test/ok" }],
+    ["cancel", { cancelUrl: "https://shop.test.elsewhere.test/cancel" }],
+  ])("leaves the quote unaccepted when the %s URL leaves the storefront", async (_, urls) => {
+    const { service, accept, resumeCheckoutOrder } = build();
+    await expect(service.acceptAndPay({ ...input, ...urls })).rejects.toMatchObject({
+      statusCode: 400,
+    });
     expect(accept).not.toHaveBeenCalled();
     expect(resumeCheckoutOrder).not.toHaveBeenCalled();
   });
