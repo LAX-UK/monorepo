@@ -296,4 +296,4 @@ Typecheck is clean for worker and shop-api. The mutation results above still hol
 
 ## Recheck
 
-in progress. Branch head `f0f531a4`. So far: R1/R2/R3 green; mutations of the release guard and the buyer-route ownership killed; the remainder re-check under the lock survives the PR's tests (guard works, shown by a new case). Found so far: refused Shop emails (storefront URL unset) stall Bid invoice emails (PR 7 F1 again); the 0383 release clause does not pin contact or number (#1359 N2); the 0383 rollback abandons parked Shop rows (#1359 N3). Batches running.
+in progress. Checked at `f0f531a4`; the head is now `f01c169a`, a merge of main that changes none of this PR's files. So far: R1/R2/R3 green; mutations of the release guard and the buyer-route ownership killed; the remainder re-check under the lock survives the PR's tests (guard works, shown by a new case). Found so far: refused Shop emails (storefront URL unset) stall Bid invoice emails (PR 7 F1 again); the 0383 release clause does not pin contact or number (#1359 N2); the 0383 rollback abandons parked Shop rows (#1359 N3). Batches running.
