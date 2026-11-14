@@ -5,6 +5,7 @@ import { RecordList, RecordRow } from "@auction/ui/components/record-row";
 import { Button } from "@auction/ui/lax/button";
 import { StatusBadge } from "@auction/ui/lax/status-badge";
 import { Download, Wallet } from "lucide-react";
+import Link from "next/link";
 
 /** The organisation's payout statements, each with its PDF. */
 export function StatementDocuments({ rows }: { rows: readonly StatementDocumentRow[] }) {
@@ -13,6 +14,7 @@ export function StatementDocuments({ rows }: { rows: readonly StatementDocumentR
       {rows.map((row) => (
         <RecordRow
           key={row.payoutId}
+          {...(row.pageHref ? { href: row.pageHref, linkAs: Link } : {})}
           leading={
             <span
               aria-hidden

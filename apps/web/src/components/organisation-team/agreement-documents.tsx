@@ -5,6 +5,7 @@ import { RecordList, RecordRow } from "@auction/ui/components/record-row";
 import { Button } from "@auction/ui/lax/button";
 import { StatusBadge } from "@auction/ui/lax/status-badge";
 import { Download, FileText } from "lucide-react";
+import Link from "next/link";
 
 /** The organisation's consignment agreements, each with its PDF; one still to accept says so. */
 export function AgreementDocuments({ rows }: { rows: readonly AgreementDocumentRow[] }) {
@@ -13,6 +14,7 @@ export function AgreementDocuments({ rows }: { rows: readonly AgreementDocumentR
       {rows.map((row) => (
         <RecordRow
           key={row.submissionId}
+          {...(row.pageHref ? { href: row.pageHref, linkAs: Link } : {})}
           leading={
             <span
               aria-hidden
