@@ -314,6 +314,7 @@ describe("completeRefundFromWebhook, a refund Stripe reports failed after it suc
       "settled outside Stripe",
       { status: "succeeded", settledOutsideAt: new Date(), reversedAt: null },
     ],
+    ["that never succeeded", { status: "pending", settledOutsideAt: null, reversedAt: null }],
   ])("writes no reversal for a refund %s", async (_, row) => {
     const { sets } = await failedAfter(row);
     expect(sets.some((data) => "reversedAt" in data)).toBe(false);

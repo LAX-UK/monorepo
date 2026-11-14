@@ -596,6 +596,12 @@ describe.skipIf(!HAS_DB)("Shop refunds to Books (integration)", { timeout: 60_00
         outcome: "skipped",
         reason: "refund_reversed",
       });
+      // A later refund of the order is credited alone; the reversed one is never credited again.
+      const other = await refunded(orderId, lines[1]?.pence ?? 0, lines[1]?.id ?? null);
+      expect(await projection().project(other.event)).toMatchObject({ created: 1 });
+      expect((await creditedOn(orderId)).map((n) => n.laxReference)).toEqual([
+        `LAX-SHOP-CN-${other.refundId}`,
+      ]);
     });
 
     it("F2: a refund reversed after its note was issued: held for a person, never refunded from clearing; a later refund is credited once", async () => {

@@ -453,6 +453,31 @@ describe("Shop refund settled (flow 21)", () => {
     });
   });
 
+  it("never treats a same-named line with another VAT proportion as the named line", () => {
+    const o = order({
+      totalPence: 45_000 + 12_000 + 6_000 + 2_500,
+      lines: [
+        ...order().lines,
+        {
+          id: SECOND_FRAME_LINE,
+          kind: "framing",
+          label: "Framing: Natural oak",
+          grossPence: 6_000,
+          vatTreatment: "standard",
+          vatPence: 500,
+        },
+      ],
+    });
+    // Larger than its own line: refused, never spilled onto the other frame.
+    const result = projectShopRefundSettled(
+      facts({
+        order: o,
+        refunds: [refund(R1, { amountPence: 7_000, orderLineId: SECOND_FRAME_LINE })],
+      }),
+    );
+    expect(result.ok ? null : result.refusal.code).toBe("refund_unattributed");
+  });
+
   describe("delivery outside the UK (review F4)", () => {
     it("credits a whole-order refund on both invoices, the delivery's part parked with its invoice", () => {
       const { documents, parked } = must(
@@ -517,6 +542,21 @@ describe("Shop refund settled (flow 21)", () => {
         );
         expect(result.ok ? null : result.refusal.code).toBe("refund_unattributed");
       }
+    });
+
+    it("refuses a part refund naming no line even when one order line is left: it may be the delivery's", () => {
+      const print = notesOf(
+        must(projectShopRefundSettled(facts({ order: outsideUk() }))).documents,
+      );
+      const result = projectShopRefundSettled(
+        facts({
+          order: outsideUk(),
+          refunds: [refund(R1), refund(R2, { amountPence: 5_000, orderLineId: null })],
+          refundId: R2,
+          registered: print,
+        }),
+      );
+      expect(result.ok ? null : result.refusal.code).toBe("refund_unattributed");
     });
 
     it("parks both credit notes of a whole-order refund settled outside Stripe, with no money back", () => {
