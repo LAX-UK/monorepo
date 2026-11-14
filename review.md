@@ -182,7 +182,7 @@ Full suites after the fixes, all green:
 
 `biome`, the lint scripts and `tsc --noEmit` (db, persistence, finance-runtime, worker, api, shop-api) are clean.
 
-## Recheck — in progress
+## Recheck
 
 Head rechecked: `ca7588c6` (`fix/payment-hardening`), base `f1ffc6e4`. Throwaway PG 16 (initdb under `/var/tmp`, port 55432). `pnpm install --frozen-lockfile`, package build, `db:migrate` and `db:roles` all OK.
 
@@ -196,3 +196,80 @@ Head rechecked: `ca7588c6` (`fix/payment-hardening`), base `f1ffc6e4`. Throwaway
 - F7: scratch PG tests with real concurrent connections, each run 3 times, all green:
   - A raw writer holds the same key and commits first. The recorder absorbs the refusal, and a later statement in the same transaction still runs and commits.
   - Ten recorders on ten pools plus a raw writer at once: one event, and every recorder transaction commits.
+- F8: per-candidate try/report confirmed in `held-invoice-checkouts.ts`. The PR's tests (an invoice and a group whose read throws, and a close that throws) pass.
+- Suites, `--maxWorkers=2`, PG 16, run in batches:
+  - persistence: 158 files, 937 passed, 11 skipped.
+  - finance-runtime: 35 files, 246 passed.
+  - db 0383/0316/main-upgrade: 4 files, 36 passed.
+  - worker, full: 232 files, 1655 passed.
+  - worker `src/finance` plus the role-gated DB tests as `worker_app`: 25 of 26 files pass. The one failure is `crm-deal-naming-reader.integration.test.ts`, a fixture insert refused by `shop_order_line_target_xor`. That is CRM and shop code, which this PR does not touch.
+  - api payment, stripe, stripe-webhook, refund, unapplied, checkout, payout, container and finance tests: 127 files, 1143 passed.
+- Mutation tests. I applied each one by hand, ran the tests, then restored the file and rebuilt:
+
+| Mutation | Result |
+|---|---|
+| M1: the `status in ('captured','refunded')` filter removed from `isChargeOfPaidInvoice` | **0 fail** (5 reader PG tests, 164 refund/webhook tests). It led to N3. |
+| M2: a legacy session row (no money fingerprint) treated as unchanged money | 2 fail (lifecycle unit and PG) |
+| M3: `isUnappliedMoneyDedupeViolation` stops walking `cause` | 3 fail (the PR's PG race, its unit test, and my PG race), so the real driver wraps the 23505 |
+
+- Migration number: `origin/main` is now `7b55f49d`. #1373 and #1374 added no migration, so this branch still applies cleanly on main as 0383. But open PR #1366 (in the merge queue) adds `0383_shop_invoices_books` with the same journal `idx` 375 and `when` 1811246400000, edits `0382_rollback.sql` and moves the main-upgrade stamp. Whichever merges second must renumber. If #1366 lands first, this PR needs:
+  - `0383_unapplied_money_dedupe_key_uid.sql` and `0383_rollback.sql` renamed to `0384_*`.
+  - Journal `idx` 376 with a `when` above 1811246400000 (for example 1811332800000).
+  - `migration-0383-*` tests renamed, with their `TAG` and file reads updated.
+  - `FINAL_FOLDER_MILLIS` in `migration-main-upgrade.integration.test.ts` updated.
+  - The "(0383)" comments in `schema/domain-events.ts` and `unapplied-money.recorder.ts` updated.
+  - A rollback-order note: roll back 0384 before #1366's 0383.
+- Stripe, infrastructure and grants:
+  - No Stripe API calls; Stripe was faked throughout. The only `sk_live_` strings in the diff are `sk_live_fixture` in tests.
+  - No infrastructure change. The one non-app file is a CI test (`scripts/ci/resolve-live-app-image-tags.test.mjs`).
+  - Grants unchanged: `migrate-roles.ts` is not in the diff, 0383 has no GRANT, and `worker_app` and `api_app` SELECT on the tables used was checked on PG.
+
+### Recheck findings
+
+#### N3 — Medium — Regression from the F1 fix: the refund of money paid on a cancelled invoice that recorded its intent leaves the finance task open
+`isChargeOfPaidInvoice` gates on `status in ('captured','refunded')`. A `refunded` row is not always a captured one: `refundBlockedCapture` moves a **cancelled** invoice to `refunded` (`applyRefundedFromCancelledInTransaction`).
+
+Reproduced on PG 16 through the real webhook service: an invoice recorded its intent (charge id null), was cancelled, then paid. That gives an `invoice_cancelled` task. Finance then refunds it from the closed-payment item, and `charge.refunded` arrives.
+- The new intent branch matches the row, so the handler hands the refund to the invoice path.
+- There `isInvoiceMoney` sees `everCaptured = false` and returns `skipped / refund_of_money_not_applied`.
+- The unapplied-money task stays **open** although the money went back.
+
+Money is safe (no clawback). But finance's queue shows returned money as still held, which invites a second refund attempt. On main (charge-only match) and before `cde1b6d1`, this refund took the unapplied path and closed the task. Mutation M1 (filter removed) also fails no test, so the status condition is not pinned.
+
+**Fix:** match the invoice only if it was ever captured, the same rule `isInvoiceMoney` uses. Add `exists (select 1 from domain_events e where e.aggregate_type='payment' and e.aggregate_id=payment.id::text and e.event_type='payment.captured')` to `isChargeOfPaidInvoice`, keeping the status filter. Add a PG test for this case. I tried that change locally: this case then takes the unapplied path and closes the task. My F1 edge cases and all 169 refund/webhook tests stay green. Not pushed.
+
+#### N1 — Low — The held sweep's `closed` count still includes checkouts it did not close
+`confirmedClosed` counts every provider state except `unknown`. So `closed`/`groupsClosed` also counts:
+- `paid`: money arrived, nothing closed.
+- `in_flight` / `transfer_part_funded`: the intent is deliberately left open and can take the rest of the transfer.
+- held invoices closed on an earlier pass. `listUnpaidWithCheckout` keeps listing them, so they are counted again on every pass.
+
+Shown with the real `HeldInvoiceCheckouts`: `no_money`, `paid`, `in_flight` and `unknown` give `closed: 3, notClosed: 1`. This only affects logs (no money or Stripe effect), but the log still over-reports closes.
+
+**Fix:** count `closed` only on `no_money`. Report `paid` and `in_flight` as their own counters (or as `notClosed`), and say in the type doc that `closed` is "confirmed nothing open", not "closed this pass".
+
+#### N2 — Low — After a code rollback, the previous release cannot read the new `<parameters>.<money>` fingerprint rows
+Main compares `parameters_fingerprint === fingerprint`. Rows written by this release hold `<parameters>.<money>`, so main finds no matching sessions and starts again at idempotency key `...:n0`. Within Stripe's 24 h key window, that key returns the first session.
+
+Reproduced with main's lifecycle on the same fake Stripe and ledger. The new release opened `cs_1`, Stripe expired it, and the new release opened `cs_2`. Main then returned `unavailable` four times on the `n0` key while `cs_2` was still open. A buyer whose earlier session at the same parameters closed cannot open that rail for up to 24 h after a rollback. No money effect.
+
+**Fix:** either store the money fingerprint in its own nullable column, or (simplest) add the code-rollback step to the PR body and `0383_rollback.sql`: `UPDATE payment_checkout_session SET parameters_fingerprint = split_part(parameters_fingerprint, '.', 1) WHERE parameters_fingerprint LIKE '%.%'`.
+
+#### N4 — Info — Migration number clash with #1366
+Both PRs use 0383 / idx 375 / `when` 1811246400000. Renumber this PR to 0384 as listed above if #1366 merges first, which is likely since it is in the merge queue. Re-run `db:migrate` on a database with #1366's 0383 already applied.
+
+#### N5 — Info — An invoice with no charge id shares its intent with any other charge on that intent
+With `stripe_charge_id IS NULL`, a second charge on the same intent (if Stripe ever creates one) would be treated as the invoice's own money. That is the same rule `isInvoiceMoney` has on main, and it needs a charge-id lookup failure at capture. The pre-deploy count in the 0383 header covers it. Fix: none needed. Optionally backfill missing charge ids from Stripe as an ops task.
+
+### Claimed fixes, checked
+- **F1**: holds for the captured cases. Tested: intent-only invoice, two partial refunds, staff marked paid (with and without a charge id on the task), and two invoices for one buyer. But the status gate opens N3.
+- **F2**: holds. Stored KYC status is read as `worker_app`, verified buyers are payable, and failures are isolated per candidate. Count wording: N1.
+- **F3**: holds. In the PG race and the PR's PG test, a session completed during the close is never marked closed.
+- **F4**: holds. Display-only changes keep the card session and money changes close it. Legacy rows are closed on the safe side (M2 caught). Rollback caveat: N2.
+- **F5/F6**: tests present and green. The original reviewer's b2/h2/h6 mutation results were not repeated.
+- **F7**: holds. No lost event and no 500. The transaction stays usable after the refusal, 10 concurrent recorders give one row, and other errors are rethrown (M3 caught; the PR's unit tests cover the other-index and non-23505 cases).
+- **F8**: holds.
+
+### Recheck verdict: FIX FIRST
+
+N3 is a new regression in the refund routing F1 changed. Fix it before merge: one SQL condition plus a PG test. N1 and N2 are small and can go in the same push or follow up. Renumber the migration to 0384 if #1366 merges first.
