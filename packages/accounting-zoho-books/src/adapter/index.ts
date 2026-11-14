@@ -1,3 +1,4 @@
+import type { CallBudget } from "../ports.js";
 import type { AccountingPorts } from "./accounting-ports.js";
 import { type ZohoApi, booksDestination } from "./api.js";
 import { ZohoCreditNoteRefundGateway } from "./credit-note-refund.js";
@@ -5,8 +6,10 @@ import {
   ZohoBillGateway,
   ZohoContactGateway,
   ZohoCreditNoteGateway,
+  ZohoExpenseGateway,
   ZohoInvoiceGateway,
   ZohoPaymentGateway,
+  ZohoTransferGateway,
   ZohoVendorGateway,
 } from "./gateways.js";
 import { ZohoDocumentLookup } from "./lookup.js";
@@ -14,6 +17,7 @@ import type { ZohoOrgConfigs } from "./org-config.js";
 import { ZohoDocumentPdfGateway } from "./pdf.js";
 import { ZohoReadBackLookup } from "./read-back.js";
 import { ZohoPaymentRemainderGateway } from "./remainder.js";
+import { zohoStatusReaders } from "./status.js";
 import { DRY_RUN, WriteGate, type ZohoWriteMode } from "./write-gate.js";
 import { DocumentWriter } from "./writer.js";
 
@@ -21,6 +25,7 @@ export * from "./org-config.js";
 export type { AccountingPorts } from "./accounting-ports.js";
 export { DRY_RUN_NUMBER, createZohoBooksDryRunAdapter, dryRunProviderId } from "./dry-run.js";
 export { rehearsalPdf } from "./rehearsal-pdf.js";
+export { ZohoDocumentStatusReader, zohoStatusReaders } from "./status.js";
 export * from "./rejections.js";
 export { penceToPounds, poundsToPence } from "./money-format.js";
 export { booksLineVat } from "./mappers/common.js";
@@ -36,6 +41,8 @@ export { BOOKS_ORGANISATIONS } from "./organisations.js";
  * organisation settings, nothing per document, so any number of workers can use their own.
  * `orgs` must come from `parseOrgConfigs`, which checks it at start-up.
  *
+ * The status check's readers each spend only a share of `budget` (`zohoStatusReaders`).
+ *
  * `writes` defaults to dry-run: every create and update is refused with
  * `zoho_books_writes_disabled` before any request is sent. Writing needs an explicit `test_org` or
  * `live` mode and the Books organisation ids it may write to.
@@ -43,6 +50,11 @@ export { BOOKS_ORGANISATIONS } from "./organisations.js";
 export function createZohoBooksAdapter(deps: {
   readonly api: ZohoApi;
   readonly orgs: ZohoOrgConfigs;
+  /**
+   * The daily call budget `api` counts every call against: the same `CallBudget` the client was
+   * built with. Required, so the status check's reads are always within a share of it.
+   */
+  readonly budget: CallBudget;
   readonly writes?: ZohoWriteMode;
 }): AccountingPorts {
   const gate = new WriteGate(deps.writes ?? DRY_RUN, deps.orgs);
@@ -57,10 +69,13 @@ export function createZohoBooksAdapter(deps: {
     creditNotes: new ZohoCreditNoteGateway(gateway),
     creditNoteRefunds: new ZohoCreditNoteRefundGateway(gateway, api),
     bills: new ZohoBillGateway(gateway),
+    expenses: new ZohoExpenseGateway(gateway),
+    transfers: new ZohoTransferGateway(gateway),
     contacts: new ZohoContactGateway(gateway, api),
     vendors: new ZohoVendorGateway(gateway, api),
     lookup: new ZohoReadBackLookup(lookup, deps.orgs),
     pdfs: new ZohoDocumentPdfGateway(),
+    statuses: zohoStatusReaders(api, deps.orgs, deps.budget),
     destination: booksDestination(deps.orgs),
   };
 }

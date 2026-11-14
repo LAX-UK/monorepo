@@ -527,6 +527,265 @@ back, and each stays due. While any waits, every run raises `accounting_shop_inv
 (an error alert sent to Sentry, routed to finance on-call like the other accounting alerts). Set
 the address and the waiting emails go on the next run.
 
+## Books notices and the nightly status check (Zoho Books, rehearsal)
+
+Books is still in rehearsal (dry run, or the test organisation only). Nothing below changes
+production, and no Books credentials live in the repository.
+
+### Books notices (`POST /webhooks/zoho-books/notices`, Bid API)
+
+**What happens.** A Zoho Books workflow webhook tells LAX that a document changed. Books signs each
+request with the webhook's secret token in `X-Zoho-Webhook-Signature`. The Bid API checks the
+signature in constant time against `ZOHO_BOOKS_NOTICE_SECRET` and stores a good notice once, in
+`webhook_event` (source `zoho_books`), keyed on Books' ids. It keeps only Books' ids and the change
+time. A notice is never trusted for money: the worker reads that document's state from Books again
+and records what Books says (below). Every answer has no body and `Cache-Control: no-store`.
+
+- **Not configured.** Without `ZOHO_BOOKS_NOTICE_SECRET` the route refuses every notice (503) and
+  stores nothing. Set it, 32 characters or more, to the same value as the secret token on the Books
+  workflow webhook. Use the test organisation only while Books is in rehearsal.
+- **Body.** The workflow sends JSON with `organization_id`, `module` (`invoice`, `creditnote` or
+  `customerpayment`), `entity_id` and `event_time` (required: it is inside the signed body, so it is
+  the one time a copied notice cannot change). A notice without it, with an `event_time` more than
+  24 hours old, or more than 5 minutes ahead of our clock, is refused with a bare 400 and nothing is
+  stored. A body over 16 KiB is refused with 413 before it is read. A notice for another
+  organisation, or for a document LAX did not issue, changes nothing.
+
+### Notice signature refused (`zoho_books.notice_signature_failed`)
+
+**What it means.** A request reached the Books notice route with no signature, or one that does
+not match the configured secret. It was refused with a bare 401 and nothing was stored. The alert
+gives only `reason` (`missing` or `invalid`), never anything from the request. The route is public
+and rate limited per client address, like the Xero and Postmark webhooks.
+
+- `missing`: logged at warn only, never sent to Sentry. This is what ordinary internet scanning of
+  a public route looks like.
+- `invalid`: logged at error and sent to Sentry as a warning, every one grouped into one issue. The
+  Sentry alert rule should page on a rate of these (for example more than 10 in an hour), not on
+  each event. Until that rule exists (see the PR's known gaps), watch the issue's event count.
+
+**What to do.** A burst of `invalid` right after the secret token changes in Books means the two
+copies no longer match: set the same value in Books and in `ZOHO_BOOKS_NOTICE_SECRET`. Rotate it in
+Books first, then in the API. Until both match, notices are refused, and the nightly check still
+reads every document. A sustained rate of `invalid` with no change on our side goes to security
+on-call. Routed to finance on-call with the other accounting alerts.
+
+### The nightly status check (cron `accounting-books-status`, 02:15 London)
+
+**What happens.** The worker reads back from Books each issued Books invoice, credit note and
+payment that is due. That is one read per document. Each run reads within a share of the day's
+Books budget built for that run alone: at most 300 reads, and none once the day's count would leave
+fewer than 400 calls for sending. It stops as soon as its share or the day's budget is spent, and
+the rest is read the next night. A document a notice named is read first.
+
+Reads a notice asks for during the day draw on a separate share: at most 50 a day, with the same 400
+calls kept free, so notices can never spend the night's share or the sender's calls. A notice for a
+document read in the last 10 minutes does not read it again: the mark stays and the night's run
+reads it first. In the dry run no share is spent, because nothing is read. For each one the worker records the state Books shows (`accounting_books_status`) and
+each change (`accounting_books_status_change`, append-only), such as an invoice voided or a document
+deleted in Books. Each run is a row in `accounting_books_status_run`. In the dry run nothing is
+read and each run says `rehearsal`.
+
+**A payment recorded in Books by hand.** When Books shows a payment against one of LAX's invoices
+that LAX did not send (a gallery sale or a cheque entered in Books), the check opens a **finance
+task**: "Money received that could not be applied", reason `books_payment_recorded_by_hand`. The task
+names the LAX invoice reference, the amount Books applied to that invoice, and Books' payment mode
+and date. It is opened once per Books payment and LAX invoice: one cheque split across two invoices
+is two tasks, one for each part. **Nothing in LAX is marked paid**, and the check cannot mark a lot, invoice or payment
+paid.
+
+A Books payment is LAX's own, and never a task, when its Books id belongs to any LAX payment
+document, whatever state that document is in, or when it carries the reference of a LAX payment
+whose Books id LAX never learnt. While any LAX payment applied to the invoice is not settled
+(pending, sending, unknown, needs review or failed), the check opens no task for that invoice's
+other Books payments and does not remember them: it logs `accounting_status_payments_held_back` (a
+warning) and looks again on the next read. The hold lasts at most **3 days** from when the payment
+was first held (kept per Books payment in `accounting_books_status.held_since`). After that the check
+opens the finance task anyway, marked **"Possibly LAX's own payment"**, and raises the warning
+`accounting_books_payment_held_back_too_long` once for that payment. A LAX payment stuck in needs
+review or failed therefore delays a hand payment's task by 3 days at most, never for good.
+
+**A task marked "Possibly LAX's own payment".** A LAX payment on that invoice has been unresolved
+for more than 3 days, so this Books payment may be LAX's own. Check that unresolved LAX payment on
+the accounting attention list first: if the Books payment is it, resolve LAX's payment document and
+close the task without recording anything. Otherwise handle the task as below.
+
+**What to do with the task.** First check that it is not a LAX card payment whose Books document is
+still unresolved: look up the invoice reference on the accounting attention list and in Books, and
+compare the payment's reference, amount and date with LAX's own payments for that invoice. If it is
+LAX's own payment, resolve LAX's payment document and close the task; do not record it again. Only
+then, for a real payment entered in Books, check that the money arrived and record the payment in
+LAX the usual way, or correct Books if the payment was entered by mistake.
+
+### Status check missed (`accounting_status_check_missed`)
+
+**What it means.** While Books is aimed at for some product, no nightly status check has finished
+for more than 26 hours. The check's Sentry cron monitor (`accounting-books-status`) also shows the miss.
+
+The 26 hours count from the last run that finished. If none ever finished, they count from the
+first run that ever started (`accounting_books_status_run`), a stored time that worker restarts do
+not move. If no run has ever started, the alert can only count from the worker's start, so with
+deploys inside a day it stays silent: **a cron that never fires is caught by the Sentry cron
+monitor `accounting-books-status`, not by this alert.** That monitor's slug must be configured for
+this case to reach anyone: add `accounting-books-status` to `SENTRY_MONITOR_SLUGS` and create the
+cron monitor (daily, 02:15 Europe/London, about 60 minutes margin). The check runs on its own
+queue (`accounting-books-status`), apart from the daily Stripe reconciliation, and has no
+heartbeat: a nightly job would fail a freshness check most of the day.
+
+**What to do.** Look at the worker logs for `accounting_status_check_finished`, or for the job's
+failure on Failed jobs. A run that keeps failing is recorded with outcome `failed`. A run stopped
+by the budget (`budget_spent`) still counts as run: the rest is read the next night. Books being
+unavailable for a while is not an error, and those documents are read again next time. Nothing
+waits on this check: sending, invoices and payments go on without it.
+
+### The status check's migration (0387)
+
+`0387_accounting_books_status.sql` adds the three tables above. **Rollback:** stop the worker's
+`accounting-books-status` job, then run `0387_rollback.sql`. It drops the three tables (what Books
+said is lost; the finance tasks already opened stay) and deletes only this migration's ledger row
+(`created_at = 1811592000000`), so a later deploy applies it again. It does not depend on 0385 or
+0386, and rolling it back leaves them in place.
+
+**Renumbered before merge.** This migration was 0385 on its branch and is 0387 on main (0385 is
+the Bid refunds migration, 0386 the Stripe fees one). A database that ran the branch before the
+renumber (the rehearsal test database, say) holds these tables under 0385's ledger row, and cannot
+migrate to main as it is: its ledger row has the same time as main's 0385, so main's 0385 would
+be skipped. Before deploying main there, run the branch's old rollback (the branch's
+`0385_rollback.sql`, not main's: it drops these three tables), then, as the owner, make sure that
+ledger row is gone: `DELETE FROM drizzle.__drizzle_migrations WHERE created_at = 1811419200000;`
+(on that database the row is this migration's, not the refunds one). Then migrate: 0385, 0386 and
+0387 all apply.
+
+## Stripe fees, payouts and the daily reconciliation (`accounting_reconciliation_mismatch`)
+
+Plan v2, flow 25. Rehearsal only: Books stays in dry run, and the job only ever **reads** Stripe.
+
+**What happens.** Every day at 05:30 Europe/London the worker's `accounting-reconcile` job:
+
+1. Reads each Stripe account's balance transactions created since its stored cursor
+   (`accounting_stripe_cursor`), a day's window and 100 a page at a time, up to ten minutes ago.
+   The cursor moves only once a window is fully recorded, so a dropped connection is read again
+   next run.
+2. Decides each transaction once (`accounting_stripe_balance_txn`, append-only, keyed on the
+   Stripe account and transaction id), in one database transaction with its documents:
+   - Stripe's fee (on a charge, a dispute, an instant payout, or one of Stripe's own fees) becomes
+     an **expense** paid from Stripe clearing, `LAX-<P>-EXP-<balance transaction>`;
+   - a payout becomes a **transfer** from Stripe clearing to the bank, `LAX-<P>-TRF-<payout>`.
+   Stripe ids keep their case in the reference (each capital is written `-` and the letter:
+   `txn_1AbC` is `txn_1-ab-c`). Amounts are whole pence, exactly as Stripe reported them. The
+   charge, refund or dispute amount itself is never booked here.
+3. Reports yesterday for each company aimed at Books (see below), stores the report and records it
+   (`accounting_reconciliation_report`).
+
+Two runs at once, or a run repeated, book nothing twice: whichever inserts a transaction's row
+books it; the other finds the row and does nothing.
+
+**Books call budget.** Each expense or transfer costs one to two Books calls (the create, and a
+lookup when the sender needs one). A day brings one expense per card payment (Bid and Shop), one
+transfer per payout (usually one a day per account), and Stripe's own fees (a few a month): 150
+card payments a day is about 150 to 300 calls of the default `ZOHO_BOOKS_DAILY_CALL_BUDGET` of
+1,000. Two limits keep this from crowding out buyer-facing documents: the sender hands out
+expenses and transfers only after every other document waiting, and one run books at most 200
+transactions (a catch-up from an old opening day goes on over the next runs, and until it is
+through, the report shows the account `not_read_through`). Check these figures against real
+volumes before the test organisation step.
+
+**Which company.** Only stored LAX rows decide, never a guess:
+
+- a payout, and Stripe's own fees: the Stripe account's row in `accounting_stripe_account`;
+- anything from a charge (a fee on a card payment, a refund, a dispute): the Bid payment or payment
+  group, or the Shop order, that LAX stored with that charge or PaymentIntent. (The worker cannot
+  read a Shop order's PaymentIntent; the definer function `accounting_stripe_shop_order` answers
+  only which order holds one.)
+
+**Parked for a person** (`outcome = 'parked'`, the reason in `park_reason`), never booked:
+
+| Reason | What it means | What to do |
+| --- | --- | --- |
+| `unattributable` | No stored row names the charge (a payment taken outside LAX, a private sale charge, a Stripe adjustment). | Find what it is in Stripe; book it by hand in the company's Books. |
+| `attribution_conflict` | Stored rows name two companies, or one company's charge is in the other company's Stripe account. | Check the account and the charge; book it by hand where it belongs. |
+| `fee_refund` | Stripe gave a fee back (a negative fee, or a credit of one of its own fees). | Book the credit by hand against the Stripe fees account. |
+| `payout_reversed` | A payout failed or was cancelled and its money came back. | Reverse the payout's transfer in Books by hand, if it was booked. |
+| `not_in_pounds` | Not GBP. | Books are kept in GBP only: ask the accountant. |
+| `bad_amounts` | Stripe reported amounts that cannot be (a payout into the balance). | Ask engineering. |
+| `unrecognised` | The ledger or the Books queue refused a value Stripe reported (an id of an unknown shape, a reference already holding another document). The log line `accounting_stripe_transaction_parked_instead` names it. | Ask engineering; book it by hand once understood. |
+| `was_cancelled` | Its document was cancelled by a rollback of migration 0386 and the migration was applied again: that document is never sent. | Book it by hand in Books (the cancelled document shows what it was). |
+
+A parked transaction is never decided again by the job. Each one appears in that day's report.
+`outcome = 'not_aimed'` means Books was not aimed at the product when it was read: it is recorded
+and is not booked later (the same rule as the projector: turning Books on books what happens from
+then on).
+
+**The report** is JSON in document storage under
+`accounting/reconciliation/<company>/<day>/<time>.json` (private: same storage and rules as the
+stored invoice copies, never the repository). Ids and amounts only, no names or emails:
+
+- **by type** (payments, Stripe fees, payouts) for the day: what LAX says (fees and payouts from the
+  transaction rows, payments from the documents LAX registered) against what Books holds (issued
+  documents for the target), with counts. Documents still on their way (`notIssuedCount`,
+  `notIssuedPence`) are shown and are not a difference;
+- **parked**: the day's parked transactions;
+- **accounts not read** (`accountsNotRead`, and `complete: false`): a Stripe account whose figures
+  the report cannot rely on. `no_opening`: its row has no opening, so it is never read.
+  `balance_not_read`: no key in `STRIPE_BOOKS_READ_KEYS` reads it, or the balance read failed.
+  `not_read_through`: its read failed or stopped before the end of the day. `not_registered`: a key
+  reads an account no `accounting_stripe_account` row names (shown in every company's report);
+- **clearing**: the opening balance plus payments, less fees and payouts, as Books holds them,
+  against Stripe's balance (available and pending, GBP) now; documents still on their way are
+  shown as in flight, not as a difference. Movements since the opening that the clearing figure
+  does not take from Books (Bid's seller transfers, refunds, dispute amounts) are shown by type as
+  `knownUnbooked`, from the recorded balance transactions, and are not a difference either. Not compared until every Stripe
+  account of the company has its opening balance stated;
+- **held transfer funds**: Bid seller payouts scheduled or blocked, still in the Stripe balance.
+  Not tracked for London Art Exchange yet.
+
+**Alert.** Any mismatch (a type whose totals or counts differ, a parked transaction, an account not
+read, clearing that does not agree) raises `accounting_reconciliation_mismatch` (error) with the
+company, the day, the count and the report's storage key. Open that report first. A clearing
+difference is what remains after the known unbooked movements, so it is a real one (a missed
+payout, a wrong fee). Bid refunds are refunded from clearing in Books by the credit note refund
+step, but the clearing figure here does not count them yet, so they stay in the known list; when
+it does, take `refund` out of the known list in the same change, or it is counted twice.
+
+**Missed run.** The job checks in to the Sentry cron monitor under `accounting-reconcile`. A failed
+read of one account (Stripe down, a revoked key) does not stop the other accounts or the report:
+the report is made and the job then fails, so the queue tries it again (three attempts, five
+minutes apart) and the failure is reported like every worker job. The failed account's cursor does
+not move, so nothing of it is lost.
+
+**Set-up** (before the rehearsal; nothing here is set in production by this change):
+
+1. For each Stripe account, create a **restricted key** with read access to Balance, Balance
+   transaction sources and Payouts only, and set the worker's `STRIPE_BOOKS_READ_KEYS` to them,
+   comma separated (`rk_…` only; a secret key is refused at start-up). Unset, the job reads no
+   account.
+2. As the database owner, add one row per account (an application role cannot):
+   `insert into accounting_stripe_account (stripe_account_id, product, opening_balance_pence, opening_on) values ('acct_…', 'bid', <Stripe GBP balance in pence at the start of that day>, '<YYYY-MM-DD>');`
+   The product names the company (`bid`: London Auction Xchange; `shop`: London Art Exchange). The
+   opening is the balance the Books clearing account opened with; the first run reads from the
+   start of that day.
+3. Ask the accountant for the Stripe fees expense account and the bank account Stripe pays into,
+   for each organisation, and add them to `ZOHO_BOOKS_ORG_CONFIG` as
+   `"stripe": { "feesAccountId": "…", "bankAccountId": "…" }`. Until then every fee and payout is
+   refused by the adapter (`zoho_books_mapping_stripe_accounts_missing`) and waits for a person.
+4. Add `accounting-reconcile` to `SENTRY_MONITOR_SLUGS` and create the cron monitor (daily, 05:30
+   Europe/London, about 60 minutes margin). Add a Sentry issue alert on the worker project for the
+   message `accounting_reconciliation_mismatch`, routed to finance on-call.
+
+**Renumbered before merge.** This migration was 0385 on its branch and is 0386 on main (0385 is
+the Bid refunds migration). A database that ran the branch before the renumber (the rehearsal test
+database, say) holds this migration's tables under 0385's ledger row, and cannot migrate to main
+as it is. Before deploying main there, run `0386_rollback.sql`, then, as the owner,
+`DELETE FROM drizzle.__drizzle_migrations WHERE created_at = 1811419200000;` (on that database the
+row is this migration's, not the refunds one), then migrate: 0385 and 0386 both apply.
+
+**Rollback.** `0386_rollback.sql` cancels every queued or failed expense and transfer (each with a
+`cancel` history row) before it drops the new tables and function; the kind, reference and totals
+CHECKs come back `NOT VALID`, so rows already written stay. Stored reports stay in storage. If the
+migration is applied again later, the job reads Stripe again from each opening day; a transaction
+whose document the rollback cancelled is parked `was_cancelled` (it is never sent) and must be
+booked by hand. Roll back 0386 before 0385.
+
 ## Related
 
 - [Scale monitoring](./scale-monitoring.md)

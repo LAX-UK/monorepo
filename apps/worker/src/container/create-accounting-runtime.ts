@@ -2,10 +2,16 @@ import { randomUUID } from "node:crypto";
 import type { TargetMode } from "@auction/accounting-domain";
 import type { createDb } from "@auction/db";
 import type { IEmailService } from "@auction/email";
-import { createBooksAccountingAdapters } from "@auction/finance-runtime";
+import {
+  StripeClientFactory,
+  UnappliedMoneyRecorder,
+  createBooksAccountingAdapters,
+} from "@auction/finance-runtime";
 import {
   DrizzleBidAccountingFactsReader,
   DrizzleShopAccountingFactsReader,
+  DrizzleTransactionRunner,
+  DrizzleUnappliedMoneyReader,
   createAccountingRepositories,
 } from "@auction/persistence/repositories";
 import type { Logger } from "pino";
@@ -18,8 +24,17 @@ import { AccountingProjection } from "../finance/accounting/accounting-projectio
 import { AccountingRemainder } from "../finance/accounting/accounting-remainder.service.js";
 import type { AccountingRuntime } from "../finance/accounting/accounting-runtime.js";
 import { AccountingSender } from "../finance/accounting/accounting-sender.service.js";
+import { AccountingStatusCheck } from "../finance/accounting/accounting-status-check.service.js";
 import { AccountingWatch } from "../finance/accounting/accounting-watch.service.js";
 import { shopStorefrontBase } from "../finance/accounting/shop-invoice-email.js";
+import {
+  type StripeBalanceReader,
+  type StripeReadClient,
+  StripeSdkBalanceReader,
+} from "../finance/accounting/stripe-balance-reader.js";
+import { StripeBooksSync } from "../finance/accounting/stripe-books-sync.service.js";
+import { StripeReconciliation } from "../finance/accounting/stripe-reconciliation.service.js";
+import type { IWorkerDomainEventSink } from "../interfaces/worker-domain-event-sink.js";
 import { throttledCronMonitor } from "../lib/sentry-cron.js";
 import { DrizzleProjectorCursorStart } from "../repositories/drizzle-projector-cursor-start.js";
 
@@ -33,7 +48,10 @@ const SENDER_CHECK_IN_EVERY_MS = 5 * 60_000;
  * adapters come from `createBooksAccountingAdapters`, which builds the dry run alone.
  */
 export function createAccountingRuntime(deps: {
-  env: Pick<WorkerEnv, "ZOHO_BOOKS_ORG_CONFIG" | "WEB_ORIGIN" | "SHOP_STOREFRONT_URL">;
+  env: Pick<
+    WorkerEnv,
+    "ZOHO_BOOKS_ORG_CONFIG" | "WEB_ORIGIN" | "SHOP_STOREFRONT_URL" | "STRIPE_BOOKS_READ_KEYS"
+  >;
   db: ReturnType<typeof createDb>;
   log: Logger;
   sentryMonitorSlugs?: Record<string, string>;
@@ -41,6 +59,8 @@ export function createAccountingRuntime(deps: {
   storage: { putObject(key: string, body: Buffer, contentType: string): Promise<unknown> };
   /** The email outbox; only an invoice Books issued for real is ever emailed. */
   email: Pick<IEmailService, "enqueue">;
+  /** Where the status check's finance tasks are written (domain events, with their alert). */
+  domainEventSink: IWorkerDomainEventSink;
 }): AccountingRuntime | undefined {
   const adapters = createBooksAccountingAdapters(deps.env);
   if (!adapters) return undefined;
@@ -58,7 +78,42 @@ export function createAccountingRuntime(deps: {
       "accounting_shop_storefront_url_unusable",
     );
   }
+  // A payment recorded in Books by hand becomes a finance task; nothing here can apply money.
+  const financeTasks = new UnappliedMoneyRecorder(
+    new DrizzleUnappliedMoneyReader(deps.db),
+    deps.domainEventSink,
+  );
+  const statusCheck = new AccountingStatusCheck({
+    store: repos.booksStatus,
+    statusesByMode: Object.fromEntries(
+      Object.entries(adapters.byMode).map(([mode, ports]) => [mode, ports.statuses]),
+    ),
+    organisationIds: adapters.organisationIds,
+    tasks: { open: (tx, money) => financeTasks.record(tx, money, null) },
+    alerts,
+    transactions: new DrizzleTransactionRunner(deps.db),
+    log: deps.log,
+    now: () => new Date(),
+  });
+  const stripeReaders = stripeBooksReaders(deps.env.STRIPE_BOOKS_READ_KEYS);
   return {
+    statusCheck,
+    stripeSync: new StripeBooksSync({
+      ledger: repos.stripeLedger,
+      settings: repos.settingReader,
+      readers: stripeReaders,
+      now: () => new Date(),
+      log: deps.log,
+    }),
+    reconciliation: new StripeReconciliation({
+      store: repos.reconciliation,
+      settings: repos.settingReader,
+      readers: stripeReaders,
+      storage: deps.storage,
+      alerts,
+      now: () => new Date(),
+      log: deps.log,
+    }),
     projection: new AccountingProjection({
       facts: new DrizzleBidAccountingFactsReader(deps.db),
       shopFacts,
@@ -122,6 +177,11 @@ export function createAccountingRuntime(deps: {
       senderModes: Object.keys(adapters.byMode) as TargetMode[],
       alerts,
       now: () => new Date(),
+      statusRuns: {
+        lastFinishedRunAt: () => repos.booksStatus.lastFinishedRunAt(),
+        firstStartedRunAt: () => repos.booksStatus.firstStartedRunAt(),
+        expectedSince: new Date(),
+      },
     }),
     senderCheckIn: throttledCronMonitor(
       ACCOUNTING_CRON_MONITORS.sender,
@@ -129,4 +189,16 @@ export function createAccountingRuntime(deps: {
       SENDER_CHECK_IN_EVERY_MS,
     ),
   };
+}
+
+/**
+ * One read-only reader per restricted key. The keys can only read (Balance, Balance transaction
+ * sources, Payouts), and the readers only list and retrieve: nothing writes to Stripe.
+ */
+function stripeBooksReaders(keys: string | undefined): StripeBalanceReader[] {
+  if (!keys) return [];
+  return keys.split(",").flatMap((key) => {
+    const client = new StripeClientFactory(key).get();
+    return client ? [new StripeSdkBalanceReader(client as unknown as StripeReadClient)] : [];
+  });
 }

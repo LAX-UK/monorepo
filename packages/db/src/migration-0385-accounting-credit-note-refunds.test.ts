@@ -14,12 +14,15 @@ const journal = JSON.parse(read("meta/_journal.json")) as {
 const TAG = "0385_accounting_credit_note_refunds";
 
 describe("migration 0385 accounting credit note refunds", () => {
-  it("is journalled last, right after 0384, in a journal that stays ordered", () => {
+  it("is journalled right after 0384, in a journal that stays ordered", () => {
     const entry = journal.entries.find((e) => e.tag === TAG);
     const previous = journal.entries.find((e) => e.tag === "0384_unapplied_money_dedupe_key_uid");
     expect(entry?.idx).toBe((previous?.idx ?? Number.NaN) + 1);
     expect(entry?.when).toBeGreaterThan(previous?.when ?? Number.POSITIVE_INFINITY);
-    expect(journal.entries.at(-1)?.tag).toBe(TAG);
+    // Later migrations (0386, Stripe fees and payouts) follow it; it stays right after 0384.
+    expect(journal.entries.findIndex((e) => e.tag === TAG)).toBe(
+      journal.entries.findIndex((e) => e.tag === "0384_unapplied_money_dedupe_key_uid") + 1,
+    );
   });
 
   it("adds refund_credit_note and hold to the history actions, under the lock timeout", () => {

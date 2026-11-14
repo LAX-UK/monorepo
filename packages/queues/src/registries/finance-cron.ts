@@ -1,4 +1,6 @@
 import {
+  ACCOUNTING_BOOKS_STATUS_QUEUE_NAME,
+  ACCOUNTING_RECONCILE_QUEUE_NAME,
   ACCOUNTING_WATCH_QUEUE_NAME,
   CLEANUP_DISPLAY_PAIRINGS_QUEUE_NAME,
   ENSURE_LOT_INVOICES_QUEUE_NAME,
@@ -32,6 +34,49 @@ export const FINANCE_CRON_QUEUE_REGISTRY = {
       removeOnFail: 50,
     },
     description: "Zoho Books queue watch: documents waiting for a person, a sender that stopped",
+    enabledWhen: accountingBooksEnabled,
+  },
+  [ACCOUNTING_RECONCILE_QUEUE_NAME]: {
+    producers: ["worker"],
+    consumer: "worker",
+    criticality: "normal",
+    pauseOrder: null,
+    // Daily: a freshness heartbeat would be stale 23 hours a day. Its Sentry cron monitor is the
+    // missed-run alert.
+    heartbeatKey: null,
+    dlq: false,
+    showInUi: false,
+    allowUiRetries: false,
+    repeatable: true,
+    defaultJobOptions: {
+      attempts: 3,
+      backoff: { type: "exponential", delay: 5 * 60_000 },
+      removeOnComplete: 30,
+      removeOnFail: 50,
+    },
+    description: "Stripe fees and payouts to Zoho Books, then the daily reconciliation report",
+    enabledWhen: accountingBooksEnabled,
+  },
+  [ACCOUNTING_BOOKS_STATUS_QUEUE_NAME]: {
+    producers: ["worker"],
+    consumer: "worker",
+    criticality: "normal",
+    pauseOrder: null,
+    // Nightly: a freshness heartbeat would be stale most of the day. Its Sentry cron monitor and
+    // the accounting watch (`accounting_status_check_missed`) are the missed-run alerts.
+    heartbeatKey: null,
+    dlq: false,
+    showInUi: false,
+    allowUiRetries: false,
+    repeatable: true,
+    defaultJobOptions: {
+      // One run a night; a failed run is tried once more an hour later, then the watch alerts.
+      attempts: 2,
+      backoff: { type: "exponential", delay: 60 * 60_000 },
+      removeOnComplete: 30,
+      removeOnFail: 30,
+    },
+    description: "Zoho Books nightly status check: what staff changed in Books by hand",
     enabledWhen: accountingBooksEnabled,
   },
   [EXPIRE_STALE_PAYMENTS_QUEUE_NAME]: {

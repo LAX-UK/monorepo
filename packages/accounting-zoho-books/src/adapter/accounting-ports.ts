@@ -6,9 +6,12 @@ import type {
   DestinationPort,
   DocumentLookupPort,
   DocumentPdfPort,
+  DocumentStatusReaders,
+  ExpensePort,
   InvoicePort,
   PaymentPort,
   PaymentRemainderPort,
+  TransferPort,
 } from "@auction/accounting-domain";
 import type { VendorPort } from "./gateways.js";
 
@@ -22,6 +25,10 @@ export interface AccountingPorts {
   /** Refunds an issued credit note's money from Stripe clearing, once (a refund that went through). */
   readonly creditNoteRefunds: CreditNoteRefundPort;
   readonly bills: BillPort;
+  /** Stripe's fees, paid from the Stripe clearing account. */
+  readonly expenses: ExpensePort;
+  /** Stripe payouts, from the Stripe clearing account to the bank. */
+  readonly transfers: TransferPort;
   /** Customers. */
   readonly contacts: ContactPort;
   /** Vendors (payout recipients); a bill is only ever sent to one of these. */
@@ -29,6 +36,11 @@ export interface AccountingPorts {
   readonly lookup: DocumentLookupPort;
   /** The PDF of an issued invoice or credit note, for LAX's own stored copy. */
   readonly pdfs: DocumentPdfPort;
+  /**
+   * Readers of an issued document's state (the nightly status check), each within its own share
+   * of the day's calls. Read only.
+   */
+  readonly statuses: DocumentStatusReaders;
   /** Which organisation each product's documents would go to, asked before anything is sent. */
   readonly destination: DestinationPort;
 }

@@ -1,4 +1,5 @@
 export { DrizzleAccountingAttentionReader } from "./drizzle-accounting-attention.reader.js";
+export { DrizzleAccountingBooksStatusStore } from "./drizzle-accounting-books-status.js";
 export { DrizzleAccountingDocumentBrowser } from "./drizzle-accounting-document.browser.js";
 export { DrizzleAccountingDocumentDueWork } from "./drizzle-accounting-document.due-work.js";
 export { DrizzleAccountingDocumentReader } from "./drizzle-accounting-document.reader.js";
@@ -21,3 +22,8 @@ export { DrizzleAccountingRemainders } from "./drizzle-accounting-remainders.js"
 export { DrizzleAccountingReleaseBasisReader } from "./drizzle-accounting-release-basis.reader.js";
 export { DrizzleAccountingCreditNoteRefunds } from "./drizzle-accounting-credit-note-refunds.js";
 export { DrizzleUnattributedRefundsReader } from "./drizzle-unattributed-refunds.reader.js";
+export {
+  DrizzleStripeBooksLedger,
+  DrizzleStripeReconciliationStore,
+  StripeLedgerRefusedError,
+} from "./drizzle-stripe-books.js";

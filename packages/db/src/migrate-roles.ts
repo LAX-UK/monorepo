@@ -175,6 +175,21 @@ export const SHOP_COMMERCE_APPEND_ONLY_TABLES = [
 export const API_DENY_TABLES = [
   /** Sealed Zoho Books OAuth tokens: only the worker, the process that calls Books, may touch them. */
   "zoho_books_connection",
+  /**
+   * The nightly Books status check's record (migration 0387): written and read by the worker only.
+   * The API's Books notice route stores a notice in webhook_event and nothing here.
+   */
+  "accounting_books_status",
+  "accounting_books_status_change",
+  "accounting_books_status_run",
+  /**
+   * Stripe fees and payouts to Books and the daily reconciliation (migration 0386): only the
+   * worker, which reads Stripe and books them, touches these (see `WORKER_STRIPE_*`).
+   */
+  "accounting_stripe_account",
+  "accounting_stripe_cursor",
+  "accounting_stripe_balance_txn",
+  "accounting_reconciliation_report",
   "user",
   "session",
   "session_lineage",
@@ -337,6 +352,63 @@ export const WORKER_ACCOUNTING_COPY_UPDATE_COLUMNS = [
 ] as const;
 export const API_ACCOUNTING_COPY_READ_TABLES = ["accounting_document_copy"] as const;
 export const WORKER_ACCOUNTING_READ_TABLES = ["accounting_source_setting"] as const;
+
+/**
+ * The nightly Books status check (migration 0387), worker only. It keeps the last state read for
+ * each issued document (insert, read, and these columns updated: never the document id), adds to
+ * the append-only change list (insert and read only; a trigger refuses any change for every
+ * role), and records each run (insert, read, and the columns that finish it). Nobody deletes.
+ */
+export const WORKER_ACCOUNTING_BOOKS_STATUS_TABLES = ["accounting_books_status"] as const;
+export const WORKER_ACCOUNTING_BOOKS_STATUS_UPDATE_COLUMNS = [
+  "books_state",
+  "balance_pence",
+  "payment_ids",
+  "checked_at",
+  "changed_at",
+  "recheck_requested_at",
+  "held_since",
+] as const;
+export const WORKER_ACCOUNTING_BOOKS_STATUS_APPEND_ONLY_TABLES = [
+  "accounting_books_status_change",
+] as const;
+export const WORKER_ACCOUNTING_BOOKS_STATUS_RUN_TABLES = ["accounting_books_status_run"] as const;
+export const WORKER_ACCOUNTING_BOOKS_STATUS_RUN_UPDATE_COLUMNS = [
+  "finished_at",
+  "outcome",
+  "checked",
+  "changed",
+  "tasks",
+] as const;
+/**
+ * Stripe fees and payouts to Books, and the daily reconciliation (migration 0386). The worker
+ * reads which product each Stripe account's own movements belong to (an engineer writes those
+ * rows; no application role may); reads, adds and moves forward its read cursor; reads and adds
+ * one row per balance transaction (append-only, no UPDATE or DELETE); and reads, adds and replaces
+ * a day's report record. No other role has access.
+ */
+export const WORKER_STRIPE_ACCOUNT_READ_TABLES = ["accounting_stripe_account"] as const;
+export const WORKER_STRIPE_CURSOR_TABLES = ["accounting_stripe_cursor"] as const;
+export const WORKER_STRIPE_CURSOR_UPDATE_COLUMNS = ["read_through", "updated_at"] as const;
+export const WORKER_STRIPE_BALANCE_TXN_TABLES = ["accounting_stripe_balance_txn"] as const;
+export const WORKER_RECONCILIATION_REPORT_TABLES = ["accounting_reconciliation_report"] as const;
+export const WORKER_RECONCILIATION_REPORT_UPDATE_COLUMNS = [
+  "storage_key",
+  "mismatches",
+  "generated_at",
+] as const;
+/**
+ * Which company a Stripe charge, refund or dispute belongs to is read from the row LAX stored when
+ * it took the money: these Bid id columns and no others (no amount, no buyer). A Shop order's
+ * PaymentIntent stays unreadable to the worker; migration 0386's definer function
+ * `accounting_stripe_shop_order(text)` answers only which order, if any, holds a given one.
+ */
+export const WORKER_STRIPE_ATTRIBUTION_READ_COLUMNS = [
+  ["payment", ["id", "stripe_payment_intent_id", "stripe_charge_id"]],
+  ["payment_group", ["id", "stripe_payment_intent_id", "stripe_charge_id"]],
+] as const;
+export const ACCOUNTING_STRIPE_SHOP_ORDER_FUNCTION = "accounting_stripe_shop_order(text)";
+export const ACCOUNTING_STRIPE_SHOP_ORDER_ROLES = ["worker_app"] as const;
 
 /**
  * What the accounting projection reads to book a paid Shop order (plan v2, flows 18-20), column by
@@ -1617,6 +1689,54 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
         for (const [tableName, columns] of SHOP_ACCOUNTING_READ_COLUMNS) {
           await grantColumnSelectIfExists(client, "shop_app", tableName, columns);
         }
+        for (const tableName of WORKER_STRIPE_ACCOUNT_READ_TABLES) {
+          await grantIfExists(client, "worker_app", tableName, "SELECT");
+        }
+        for (const tableName of WORKER_STRIPE_CURSOR_TABLES) {
+          await grantIfExists(client, "worker_app", tableName, "INSERT, SELECT");
+          await grantColumnUpdateIfExists(
+            client,
+            "worker_app",
+            tableName,
+            WORKER_STRIPE_CURSOR_UPDATE_COLUMNS,
+          );
+        }
+        for (const tableName of WORKER_STRIPE_BALANCE_TXN_TABLES) {
+          await grantIfExists(client, "worker_app", tableName, "INSERT, SELECT");
+        }
+        for (const tableName of WORKER_RECONCILIATION_REPORT_TABLES) {
+          await grantIfExists(client, "worker_app", tableName, "INSERT, SELECT");
+          await grantColumnUpdateIfExists(
+            client,
+            "worker_app",
+            tableName,
+            WORKER_RECONCILIATION_REPORT_UPDATE_COLUMNS,
+          );
+        }
+        for (const [tableName, columns] of WORKER_STRIPE_ATTRIBUTION_READ_COLUMNS) {
+          await grantColumnSelectIfExists(client, "worker_app", tableName, columns);
+        }
+        for (const tableName of WORKER_ACCOUNTING_BOOKS_STATUS_TABLES) {
+          await grantIfExists(client, "worker_app", tableName, "INSERT, SELECT");
+          await grantColumnUpdateIfExists(
+            client,
+            "worker_app",
+            tableName,
+            WORKER_ACCOUNTING_BOOKS_STATUS_UPDATE_COLUMNS,
+          );
+        }
+        for (const tableName of WORKER_ACCOUNTING_BOOKS_STATUS_APPEND_ONLY_TABLES) {
+          await grantIfExists(client, "worker_app", tableName, "INSERT, SELECT");
+        }
+        for (const tableName of WORKER_ACCOUNTING_BOOKS_STATUS_RUN_TABLES) {
+          await grantIfExists(client, "worker_app", tableName, "INSERT, SELECT");
+          await grantColumnUpdateIfExists(
+            client,
+            "worker_app",
+            tableName,
+            WORKER_ACCOUNTING_BOOKS_STATUS_RUN_UPDATE_COLUMNS,
+          );
+        }
         for (const tableName of WORKER_ACCOUNTING_COPY_TABLES) {
           await grantIfExists(client, "worker_app", tableName, "INSERT, SELECT");
           await grantColumnUpdateIfExists(
@@ -1634,6 +1754,9 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
         }
         for (const role of LIFT_ZOHO_CAMPAIGNS_OPT_OUT_ROLES) {
           await grantExecuteIfFunctionExists(client, role, LIFT_ZOHO_CAMPAIGNS_OPT_OUT_FUNCTION);
+        }
+        for (const role of ACCOUNTING_STRIPE_SHOP_ORDER_ROLES) {
+          await grantExecuteIfFunctionExists(client, role, ACCOUNTING_STRIPE_SHOP_ORDER_FUNCTION);
         }
         for (const role of ACCOUNTING_RELEASE_SHOP_ORDER_BASIS_ROLES) {
           await grantExecuteIfFunctionExists(

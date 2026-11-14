@@ -31,6 +31,13 @@ export const ACCOUNTING_ALERTS = {
    */
   shopRemainderDelayed: { message: "accounting_shop_remainder_delayed", level: "warning" },
   /**
+   * The daily reconciliation found a mismatch for a company: LAX and Books totals differ for a
+   * document type on the day, a Stripe balance transaction waits for a person, a Stripe account
+   * was not read, or the Stripe clearing account in Books does not agree with Stripe's balance. The fields name the company,
+   * the day and the stored report's key.
+   */
+  reconciliationMismatch: { message: "accounting_reconciliation_mismatch", level: "error" },
+  /**
    * Delayed accounting, Bid refunds: a refund's credit note was issued more than six hours ago and
    * its money is still not refunded from Stripe clearing in Books (no `refund_credit_note`).
    */
@@ -59,10 +66,26 @@ export const ACCOUNTING_ALERTS = {
    */
   circuitOpen: { message: "zoho_books.circuit_open", level: "error" },
   /**
-   * A Books notice (webhook) arrived with a signature that does not verify. There is no Books
-   * notice route yet; the route logs this event when it refuses one.
+   * A Books notice (webhook) arrived with a signature that does not verify. The Bid API's notice
+   * route sends it to Sentry under this message, as a warning grouped into one issue, when it
+   * refuses one (a missing signature is only logged); the alert rule pages on a rate of them, not
+   * on each. It is listed here so the alert rules have one home.
    */
-  noticeSignatureFailed: { message: "zoho_books.notice_signature_failed", level: "error" },
+  noticeSignatureFailed: { message: "zoho_books.notice_signature_failed", level: "warning" },
+  /**
+   * The nightly Books status check has not finished a run for more than 26 hours while Books is
+   * aimed at (the accounting watch raises it; its cron monitor `accounting-books-status` also misses).
+   */
+  statusCheckMissed: { message: "accounting_status_check_missed", level: "error" },
+  /**
+   * A payment recorded in Books was held back for more than 3 days because a LAX payment on the
+   * same invoice stayed unresolved, and its finance task was opened anyway, marked as possibly
+   * LAX's own. Raised once per Books payment and invoice, when the task is opened.
+   */
+  booksPaymentHeldBackTooLong: {
+    message: "accounting_books_payment_held_back_too_long",
+    level: "warning",
+  },
 } as const satisfies Record<string, { message: string; level: "warning" | "error" }>;
 
 export type AccountingAlert = (typeof ACCOUNTING_ALERTS)[keyof typeof ACCOUNTING_ALERTS];
@@ -76,8 +99,13 @@ export const ACCOUNTING_CRON_MONITORS = {
   watch: "accounting-watch",
   /** The sender, which runs with the projectors; it checks in at most every 5 minutes. */
   sender: "accounting-sender",
-  /** The nightly Books reconciliation, when it is added; its job checks in under this key. */
+  /**
+   * The daily Stripe fees and payouts job and reconciliation report (05:30 Europe/London); a
+   * missed check-in means the books were not reconciled that day.
+   */
   reconcile: "accounting-reconcile",
+  /** The nightly Books status check (02:15 Europe/London); its job checks in under this key. */
+  booksStatus: "accounting-books-status",
 } as const;
 
 /** Where an alert goes. */

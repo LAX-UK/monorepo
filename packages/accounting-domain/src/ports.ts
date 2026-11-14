@@ -3,8 +3,10 @@ import type {
   Bill,
   Contact,
   CreditNote,
+  Expense,
   Invoice,
   Payment,
+  Transfer,
 } from "./document.js";
 import type { Totals } from "./money.js";
 
@@ -74,6 +76,16 @@ export interface CreditNotePort {
 
 export interface BillPort {
   issueBill(bill: Bill, fence?: WriteFence): Promise<IssueOutcome>;
+}
+
+/** Stripe's fees, booked as an expense paid from the Stripe clearing account. */
+export interface ExpensePort {
+  recordExpense(expense: Expense, fence?: WriteFence): Promise<IssueOutcome>;
+}
+
+/** A Stripe payout, booked as a transfer from the Stripe clearing account to the bank. */
+export interface TransferPort {
+  recordTransfer(transfer: Transfer, fence?: WriteFence): Promise<IssueOutcome>;
 }
 
 export interface ContactPort {

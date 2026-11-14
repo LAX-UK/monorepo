@@ -23,6 +23,8 @@ const NUMBER_PREFIX: Record<DocumentKind, string> = {
   payment: "PMT",
   bill: "BILL",
   contact: "CON",
+  expense: "EXP",
+  transfer: "TRF",
 };
 
 const reply = (status: number, body: unknown): TransportResponse => ({
@@ -55,6 +57,10 @@ export class SimulatedBooks implements ZohoTransport {
   readonly requests: TransportRequest[] = [];
   private readonly docs = new Map<string, Stored[]>();
   private counter = 5_000_000_000_000;
+  /** Payments Books shows against each invoice: LAX's, and any recorded by hand (`recordPaymentByHand`). */
+  private readonly invoicePayments = new Map<string, Json[]>();
+  /** States staff set by hand in Books (`setStateByHand`), by Books id. */
+  private readonly handStates = new Map<string, string>();
   private readonly numbers = new Map<string, number>();
 
   constructor(private readonly orgs: ZohoOrgConfigs) {}
@@ -106,6 +112,40 @@ export class SimulatedBooks implements ZohoTransport {
       .map((d) => d.record);
   }
 
+  /** Staff void (or otherwise change) a document in Books by hand. */
+  setStateByHand(id: string, state: string): void {
+    this.handStates.set(id, state);
+  }
+
+  /** Staff delete a document in Books by hand: it no longer exists. */
+  deleteByHand(entity: LegalEntity, id: string): void {
+    const org = this.orgs[entity];
+    const all = this.docs.get(org?.organizationId ?? "") ?? [];
+    const at = all.findIndex((d) => d.id === id);
+    if (at >= 0) all.splice(at, 1);
+  }
+
+  /**
+   * Staff record a payment against an invoice in Books by hand (a gallery sale, a cheque): it has
+   * no LAX reference (unless staff type one in) and LAX never sent it. Returns its Books id.
+   */
+  recordPaymentByHand(
+    invoiceId: string,
+    payment: { amountPence: number; date: string; mode: string; reference?: string },
+  ): string {
+    const id = String(++this.counter);
+    const rows = this.invoicePayments.get(invoiceId) ?? [];
+    rows.push({
+      payment_id: id,
+      amount: pounds(payment.amountPence),
+      date: payment.date,
+      payment_mode: payment.mode,
+      ...(payment.reference ? { reference_number: payment.reference } : {}),
+    });
+    this.invoicePayments.set(invoiceId, rows);
+    return id;
+  }
+
   private orgByOrganizationId(id: string | null): ZohoOrgConfig | undefined {
     return Object.values(this.orgs).find((o) => o?.organizationId === id);
   }
@@ -137,7 +177,24 @@ export class SimulatedBooks implements ZohoTransport {
   private detail(org: ZohoOrgConfig, kind: DocumentKind, id: string): TransportResponse {
     const found = this.held(org, kind).find((d) => d.id === id);
     if (!found) return failure(404, 1002, "does not exist");
-    return reply(200, { code: 0, message: "success", [KIND_SPECS[kind].itemKey]: found.record });
+    return reply(200, {
+      code: 0,
+      message: "success",
+      [KIND_SPECS[kind].itemKey]: this.withState(kind, found),
+    });
+  }
+
+  /** An invoice or credit note as Books shows it: its state, and an invoice's payments and balance. */
+  private withState(kind: DocumentKind, found: Stored): Json {
+    const hand = this.handStates.get(found.id);
+    if (kind === "credit_note") return { ...found.record, status: hand ?? "open" };
+    if (kind !== "invoice") return found.record;
+    const payments = this.invoicePayments.get(found.id) ?? [];
+    const paid = payments.reduce((sum, p) => sum + pence(p.amount as number), 0);
+    const total = pence(found.record.total as number);
+    const balance = Math.max(0, total - paid);
+    const state = hand ?? (balance === 0 ? "paid" : paid > 0 ? "partially_paid" : "sent");
+    return { ...found.record, status: state, balance: pounds(balance), payments };
   }
 
   private update(
@@ -209,6 +266,19 @@ export class SimulatedBooks implements ZohoTransport {
     const all = this.docs.get(org.organizationId) ?? [];
     all.push({ id, kind, reference, record });
     this.docs.set(org.organizationId, all);
+    if (kind === "payment") {
+      for (const row of (record.invoices ?? []) as Json[]) {
+        const rows = this.invoicePayments.get(row.invoice_id as string) ?? [];
+        rows.push({
+          payment_id: id,
+          amount: row.amount_applied,
+          date: record.date,
+          payment_mode: "Stripe",
+          reference_number: reference,
+        });
+        this.invoicePayments.set(row.invoice_id as string, rows);
+      }
+    }
     if (fault === "timeout_after_commit") throw new Error("ECONNRESET");
     return reply(201, { code: 0, message: "created", [spec.itemKey]: record });
   }
@@ -317,6 +387,7 @@ export class SimulatedBooks implements ZohoTransport {
       if (type !== "customer" && type !== "vendor") return { error: failure(400, 1, "bad type") };
       return { fields: { contact_name: body.contact_name, contact_type: type } };
     }
+    if (kind === "expense" || kind === "transfer") return this.priceMovement(kind, body);
     const party = kind === "bill" ? body.vendor_id : body.customer_id;
     if (!this.exists(org, "contact", party))
       return { error: failure(400, 1003, "no such contact") };
@@ -352,6 +423,39 @@ export class SimulatedBooks implements ZohoTransport {
         sub_total: pounds(inclusive ? gross : net),
         tax_total: pounds(vat),
         total: pounds(gross),
+      },
+    };
+  }
+
+  /**
+   * An expense (Stripe's fee, paid through the clearing account) or a bank transfer (a payout,
+   * clearing to the bank): one amount, no contact, no tax. Books keeps the accounts, day and
+   * currency it was sent, and reads an expense's amount back as its `total`.
+   */
+  private priceMovement(
+    kind: "expense" | "transfer",
+    body: Json,
+  ): { fields: Json } | { error: TransportResponse } {
+    if (body.currency_code !== "GBP") return { error: failure(400, 1007, "currency required") };
+    const amount = pence(body.amount as number);
+    if (!(amount > 0)) return { error: failure(400, 1, "amount must be positive") };
+    const accounts =
+      kind === "expense"
+        ? ["account_id", "paid_through_account_id"]
+        : ["from_account_id", "to_account_id"];
+    if (!accounts.every((a) => typeof body[a] === "string")) {
+      return { error: failure(400, 1, "account missing") };
+    }
+    if (kind === "transfer" && body.transaction_type !== "transfer_fund") {
+      return { error: failure(400, 1, "not a transfer") };
+    }
+    const kept = Object.fromEntries(accounts.map((a) => [a, body[a]]));
+    return {
+      fields: {
+        ...kept,
+        ...(kind === "expense" ? { total: pounds(amount) } : { amount: pounds(amount) }),
+        date: body.date,
+        currency_code: body.currency_code,
       },
     };
   }
