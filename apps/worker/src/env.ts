@@ -23,6 +23,13 @@ function emptyToUndefined(val: unknown): unknown {
   return val === "" || val === null ? undefined : val;
 }
 
+/** A Zoho field API name set in config; it goes into COQL, so nothing else is accepted. */
+const zohoApiName = (fallback: string) =>
+  z.preprocess(
+    (val) => emptyToUndefined(val) ?? fallback,
+    z.string().regex(/^[A-Za-z][A-Za-z0-9_]{0,99}$/, "must be a Zoho field API name"),
+  );
+
 export const envSchema = z
   .object({
     NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
@@ -182,11 +189,16 @@ export const envSchema = z
      */
     ZOHO_ARTWORK_LISTING_MODE: z.enum(["off", "dry_run", "live"]).default("off"),
     /**
-     * Mirrors print groups (and later print orders) from LAX to Zoho CRM, one way. `off` does
+     * Mirrors print groups and print orders from LAX to Zoho CRM, one way. `off` does
      * nothing and never calls Zoho; `dry_run` reads LAX and Zoho and logs what it would write;
      * `live` writes, and only to the org the org check allows. Never `live` unless set on purpose.
      */
     ZOHO_FULFILMENT_MIRROR_MODE: z.enum(["off", "dry_run", "live"]).default("off"),
+    /**
+     * API name of the text field (unique) the owners add to Dispatch_Fulfilments for the LAX order
+     * reference; the order mirror finds its records by it.
+     */
+    ZOHO_FULFILMENT_ORDER_REF_FIELD: zohoApiName("LAX_Order_Ref"),
     /**
      * Unsubscribes and hard bounces from Zoho Campaigns into LAX's own suppression list. `off`
      * does nothing and never calls Zoho; `dry_run` reads Zoho and logs what it would record;

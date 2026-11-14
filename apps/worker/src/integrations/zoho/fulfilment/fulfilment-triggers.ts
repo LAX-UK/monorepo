@@ -2,7 +2,7 @@
 export type FulfilmentTrigger =
   /** A prints listing: its print group, ledger and register row. The id is the listing's artwork. */
   | { kind: "group"; artworkId: string }
-  /** An order's print lines. Not built yet; the mirror answers that it was skipped. */
+  /** An order's print lines, framing and dispatch. The id is the order's, from the payload. */
   | { kind: "order"; orderId: string };
 
 type TriggerKind = FulfilmentTrigger["kind"];
@@ -23,12 +23,23 @@ export const FULFILMENT_TRIGGER_KINDS: Readonly<Record<string, TriggerKind>> = {
   "shop.print.swapped": "order",
 };
 
-export type FulfilmentEvent = { eventType: string; aggregateId?: string };
+export type FulfilmentEvent = { eventType: string; aggregateId?: string; payload?: unknown };
+
+/**
+ * The order an event is about. Order events are raised on the order, its lines and its fulfilment,
+ * so the aggregate is not always the order; every one of them carries `orderId` in its payload.
+ */
+function orderIdOf(payload: unknown): string | undefined {
+  if (typeof payload !== "object" || payload === null) return undefined;
+  const id = (payload as { orderId?: unknown }).orderId;
+  return typeof id === "string" ? id.trim() : undefined;
+}
 
 /** The work an event is about, or null when the mirror does not handle the event or lacks an id. */
 export function fulfilmentTriggerOf(event: FulfilmentEvent): FulfilmentTrigger | null {
   const kind = FULFILMENT_TRIGGER_KINDS[event.eventType];
-  const id = event.aggregateId?.trim();
-  if (!kind || !id) return null;
+  if (!kind) return null;
+  const id = kind === "group" ? event.aggregateId?.trim() : orderIdOf(event.payload);
+  if (!id) return null;
   return kind === "group" ? { kind, artworkId: id } : { kind, orderId: id };
 }

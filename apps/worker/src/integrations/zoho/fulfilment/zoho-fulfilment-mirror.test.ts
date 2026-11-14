@@ -2,9 +2,10 @@ import { describe, expect, it, vi } from "vitest";
 import { CrmGatewayError } from "../../crm/crm-gateway-error.js";
 import { ZohoFulfilmentMirror } from "./zoho-fulfilment-mirror.js";
 
-const mirror = (deliver = vi.fn()) => ({
+const mirror = (deliver = vi.fn(), orders = vi.fn()) => ({
   deliver,
-  mirror: new ZohoFulfilmentMirror({ groups: { deliver } }),
+  orders,
+  mirror: new ZohoFulfilmentMirror({ groups: { deliver }, orders: { deliver: orders } }),
 });
 
 describe("ZohoFulfilmentMirror", () => {
@@ -14,14 +15,22 @@ describe("ZohoFulfilmentMirror", () => {
       await m.mirror.deliver({ eventType: "shop.editions.allocated", aggregateId: "art-1" }),
     ).toEqual({ outcome: "success", providerReference: "r" });
     expect(m.deliver).toHaveBeenCalledWith("art-1");
+    expect(m.orders).not.toHaveBeenCalled();
   });
 
-  it("answers that the order mirror is not built, and calls nothing", async () => {
-    const m = mirror();
-    expect(await m.mirror.deliver({ eventType: "shop.order.paid", aggregateId: "o1" })).toEqual({
-      outcome: "skipped",
-      reason: "order_mirror_not_built",
-    });
+  it("hands an order event to the order mirror, with the order named in the payload", async () => {
+    const m = mirror(
+      vi.fn(),
+      vi.fn().mockResolvedValue({ outcome: "success", providerReference: "Order:LAX-S-1" }),
+    );
+    expect(
+      await m.mirror.deliver({
+        eventType: "shop.fulfilment.dispatched",
+        aggregateId: "ful-1",
+        payload: { orderId: "o1" },
+      }),
+    ).toEqual({ outcome: "success", providerReference: "Order:LAX-S-1" });
+    expect(m.orders).toHaveBeenCalledWith("o1");
     expect(m.deliver).not.toHaveBeenCalled();
   });
 
@@ -52,5 +61,9 @@ describe("ZohoFulfilmentMirror", () => {
     expect(await mirror(vi.fn().mockRejectedValue(wrong)).mirror.deliver(event)).toMatchObject({
       outcome: "fatal",
     });
+    const order = { eventType: "shop.order.paid", payload: { orderId: "o1" } };
+    expect(
+      await mirror(vi.fn(), vi.fn().mockRejectedValue(transient)).mirror.deliver(order),
+    ).toMatchObject({ outcome: "retry" });
   });
 });
