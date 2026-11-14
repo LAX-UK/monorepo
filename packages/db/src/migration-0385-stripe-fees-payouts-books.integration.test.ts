@@ -116,6 +116,33 @@ describe.skipIf(!url)(
       expect(await insert("expense", "LAX-SHOP-TRF-po_2", 0)).toBe("23514");
     });
 
+    it("answers which Shop order holds a PaymentIntent, as its owner, with the order id only", async () => {
+      const fn = await client.query<{ prosecdef: boolean; proconfig: string[]; returns: string }>(
+        `select prosecdef, proconfig, prorettype::regtype::text as returns
+           from pg_proc where oid = 'public.accounting_stripe_shop_order(text)'::regprocedure`,
+      );
+      // A definer function with its search path fixed, so no caller's schema can stand in.
+      expect(fn.rows).toEqual([
+        { prosecdef: true, proconfig: ["search_path=pg_catalog, public"], returns: "uuid" },
+      ]);
+      const order = await client.query<{ id: string }>(
+        `insert into shop_order (identity_subject_id, fulfilment, merchandise_subtotal_pence,
+                                 fulfilment_surcharge_pence, total_pence, idempotency_key,
+                                 stripe_payment_intent_id)
+         values ('m0385', 'uk_insured_delivery', 100, 0, 100, 'm0385', 'pi_M0385') returning id`,
+      );
+      const found = await client.query<{ id: string | null }>(
+        "select accounting_stripe_shop_order($1) as id",
+        ["pi_M0385"],
+      );
+      expect(found.rows[0]?.id).toBe(order.rows[0]?.id);
+      const missing = await client.query<{ id: string | null }>(
+        "select accounting_stripe_shop_order($1) as id",
+        ["pi_M0385_none"],
+      );
+      expect(missing.rows[0]?.id).toBeNull();
+    });
+
     it("stores reports under the private reconciliation prefix only", async () => {
       const report = (key: string) =>
         attempt(
