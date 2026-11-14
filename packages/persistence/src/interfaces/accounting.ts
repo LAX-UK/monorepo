@@ -55,7 +55,32 @@ export interface StoredAccountingDocument {
 
 export type StoredDocumentCode = "bad_stored_document";
 export type RegisterCode = "bad_document" | "reference_in_use";
-export type TransitionCode = LifecycleCode | "not_found" | StoredDocumentCode;
+export type TransitionCode =
+  | LifecycleCode
+  | "not_found"
+  | StoredDocumentCode
+  /** A release whose deciding rows changed after it decided (see `ReleaseBasis`). */
+  | "basis_changed";
+
+/**
+ * The stored rows a release of a parked document is decided on: a single Bid payment and its
+ * invoice, a "Pay several" group with its payments, invoices and delivery rows, or a Shop order's
+ * stored delivery.
+ */
+export type ReleaseBasis =
+  | { readonly kind: "bid_payment"; readonly paymentId: string }
+  | { readonly kind: "bid_payment_group"; readonly groupId: string }
+  | { readonly kind: "shop_order"; readonly orderId: string };
+
+/**
+ * Reads a release's deciding rows as one text, before the decision. The move reads them again in
+ * its own transaction, holding them `FOR SHARE` once the document is locked, and refuses when the
+ * text differs (`basis_changed`): the release is atomic with the rows it was decided on.
+ */
+export interface IAccountingReleaseBasisReader {
+  /** Null when a row it needs is missing. */
+  read(basis: ReleaseBasis): Promise<string | null>;
+}
 
 export interface RegisterInput {
   /** Built by the domain's constructors; checked again against the domain's rules before it is stored. */
@@ -119,6 +144,11 @@ export type DocumentTransition =
       readonly action: "release";
       readonly requestedBy: string;
       readonly document?: AccountingDocument;
+      /**
+       * The rows the release was decided on and how they read then. Re-read under lock in the
+       * move's transaction; any difference refuses the move (`basis_changed`).
+       */
+      readonly basis?: { readonly of: ReleaseBasis; readonly read: string };
     }
   /** A queued document that can never be sent as it stands, parked for a person. */
   | { readonly action: "park"; readonly reason: ParkReason }

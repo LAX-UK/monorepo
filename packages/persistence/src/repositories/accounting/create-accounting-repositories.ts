@@ -9,6 +9,7 @@ import type {
   IAccountingDocumentRegistry,
   IAccountingDocumentTransitions,
   IAccountingDocumentWorkQueue,
+  IAccountingReleaseBasisReader,
   IAccountingRemainders,
   IAccountingSourceSettingReader,
   IAccountingSourceSettingWriter,
@@ -24,6 +25,7 @@ import { DrizzleAccountingDocumentReader } from "./drizzle-accounting-document.r
 import { DrizzleAccountingDocumentRegistry } from "./drizzle-accounting-document.registry.js";
 import { DrizzleAccountingDocumentTransitions } from "./drizzle-accounting-document.transitions.js";
 import { DrizzleAccountingDocumentWorkQueue } from "./drizzle-accounting-document.work-queue.js";
+import { DrizzleAccountingReleaseBasisReader } from "./drizzle-accounting-release-basis.reader.js";
 import { DrizzleAccountingRemainders } from "./drizzle-accounting-remainders.js";
 import { DrizzleAccountingSourceSettingReader } from "./drizzle-accounting-source-setting.reader.js";
 import { DrizzleAccountingSourceSettingWriter } from "./drizzle-accounting-source-setting.writer.js";
@@ -52,6 +54,8 @@ export interface AccountingRepositories {
   readonly bidInvoiceBooks: IBidInvoiceBooksReader;
   /** Bank transfers part received, for the Accounting page (the Bid API). */
   readonly partFunded: IPartFundedTransfersReader;
+  /** The rows a release of a parked document is decided on (the Bid API). */
+  readonly releaseBasis: IAccountingReleaseBasisReader;
 }
 
 /** The one place the accounting repositories are assembled (container registration). */
@@ -74,5 +78,6 @@ export function createAccountingRepositories(
     invoiceEmailFacts: new DrizzleBidInvoiceEmailFactsReader(db),
     bidInvoiceBooks: new DrizzleBidInvoiceBooksReader(db, clock),
     partFunded: new DrizzlePartFundedTransfersReader(db),
+    releaseBasis: new DrizzleAccountingReleaseBasisReader(db),
   };
 }

@@ -16,6 +16,7 @@ import {
   emailOutbox,
 } from "@auction/db/schema";
 import { AccountingQueueService } from "@auction/finance-runtime";
+import type { IAccountingDocumentTransitions } from "@auction/persistence/interfaces";
 import {
   DrizzleBidAccountingFactsReader,
   DrizzleShopAccountingFactsReader,
@@ -285,6 +286,7 @@ describe.skipIf(!HAS_DB)("Shop invoices to Books (integration)", { timeout: 60_0
       booksLink: () => null,
       facts: new DrizzleBidAccountingFactsReader(api),
       lookup: apiRepos.lookup,
+      releaseBasis: apiRepos.releaseBasis,
       shopDelivery: new DrizzleShopDeliveryReader(api),
       ...(shopOutsideUkBooking === undefined ? {} : { shopOutsideUkBooking }),
     });
@@ -809,6 +811,97 @@ describe.skipIf(!HAS_DB)("Shop invoices to Books (integration)", { timeout: 60_0
           vars: expect.objectContaining({ total: "£570.00" }),
         }),
       );
+    });
+
+    it("N4: the order's stored delivery changed after Release decided: the move is refused (commit between, and in flight)", async () => {
+      await aimShop("live");
+      const seeded = await seedPaidOrder(owner, { scope: "outside_uk", deliveryPence: 4_000 });
+      await projection().project(seeded.event);
+      const parked = (await documentsFor(seeded)).find((d) => d.laxReference.endsWith("-delivery"));
+      const ask = { documentId: parked?.id as string, actorUserId: "staff-1" };
+
+      // 1. A commit on another connection between the decision and the move.
+      const between = releaser(ZERO);
+      const deps = (
+        between.service as unknown as { deps: { transitions: IAccountingDocumentTransitions } }
+      ).deps;
+      const move = deps.transitions.apply.bind(deps.transitions);
+      deps.transitions.apply = async (
+        ...args: Parameters<IAccountingDocumentTransitions["apply"]>
+      ) => {
+        await owner.execute(
+          sql`update shop_order set fulfilment_vat_pence = 1 where id = ${seeded.orderId}`,
+        );
+        return move(...args);
+      };
+      expect(await between.service.release(ask)).toMatchObject({
+        ok: false,
+        refusal: "unresolved",
+      });
+      expect(between.audits).toEqual([]);
+      await owner.execute(
+        sql`update shop_order set fulfilment_vat_pence = null where id = ${seeded.orderId}`,
+      );
+
+      // 2. A change in flight when the move starts (begun after the decision, on another
+      // connection): the move waits for it, then is refused.
+      const inFlight = releaser(ZERO);
+      const inFlightDeps = (
+        inFlight.service as unknown as { deps: { transitions: IAccountingDocumentTransitions } }
+      ).deps;
+      const inFlightMove = inFlightDeps.transitions.apply.bind(inFlightDeps.transitions);
+      let changing: Promise<void> = Promise.resolve();
+      let movedWhileHeld = true;
+      inFlightDeps.transitions.apply = async (
+        ...args: Parameters<IAccountingDocumentTransitions["apply"]>
+      ) => {
+        let mayCommit!: () => void;
+        const gate = new Promise<void>((resolve) => {
+          mayCommit = resolve;
+        });
+        let holds!: () => void;
+        const holding = new Promise<void>((resolve) => {
+          holds = resolve;
+        });
+        changing = owner.transaction(async (tx) => {
+          await tx.execute(
+            sql`update shop_order set fulfilment_vat_pence = 2 where id = ${seeded.orderId}`,
+          );
+          holds();
+          await gate;
+        });
+        await holding;
+        let settled = false;
+        const moving = inFlightMove(...args).finally(() => {
+          settled = true;
+        });
+        await new Promise((resolve) => setTimeout(resolve, 400));
+        movedWhileHeld = settled;
+        mayCommit();
+        return moving;
+      };
+      expect(await inFlight.service.release(ask)).toMatchObject({
+        ok: false,
+        refusal: "unresolved",
+      });
+      await changing;
+      // The move waited for the change: it did not finish while the row was held.
+      expect(movedWhileHeld).toBe(false);
+      expect(inFlight.audits).toEqual([]);
+      await owner.execute(
+        sql`update shop_order set fulfilment_vat_pence = null where id = ${seeded.orderId}`,
+      );
+
+      const still = (await documentsFor(seeded)).find((d) => d.id === parked?.id);
+      expect(still).toMatchObject({
+        state: "needs_review",
+        needsReviewReason: "accounting_parked_vat_on_outside_uk_delivery",
+      });
+      // Unchanged again, it is released.
+      expect(await releaser(ZERO).service.release(ask)).toMatchObject({
+        ok: true,
+        value: { outcome: "released" },
+      });
     });
 
     it("two workers at once apply the rest once", async () => {

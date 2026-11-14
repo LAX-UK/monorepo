@@ -80,6 +80,7 @@ function setUp(
   rows: readonly StoredAccountingDocument[],
   deliveryBooking: LineBooking | null = null,
   shop?: { booking: LineBooking | null; delivery: ShopDeliveryFacts | null },
+  basisMoves?: { readonly changesBeforeMove: boolean },
 ) {
   const byId = new Map(rows.map((row) => [row.id, row]));
   const applied: DocumentTransition[] = [];
@@ -101,6 +102,10 @@ function setUp(
         applied.push(transition);
         const row = byId.get(id);
         if (!row) return refuse("not_found", "no such document");
+        // The move re-reads the deciding rows under lock: changed since the decision, refused.
+        if (transition.action === "release" && basisMoves?.changesBeforeMove) {
+          return refuse("basis_changed", "the rows the release was decided on have changed");
+        }
         const next = release(row.record);
         if (!next.ok) return next;
         const moved = { ...row, record: next.value };
@@ -127,6 +132,7 @@ function setUp(
       findByReference: async (_product, reference) =>
         ok([...byId.values()].find((row) => row.reference === reference) ?? null),
     },
+    releaseBasis: { read: async (basis) => JSON.stringify(basis) },
     deliveryBooking,
     ...(shop
       ? {
@@ -217,12 +223,21 @@ describe("AccountingQueueService.release", () => {
       action: "release",
       requestedBy: "staff-1",
       document: { reference: delivery.reference, lines: [{ treatment: "zero" }] },
+      // Decided on the group's rows; the move re-reads them under lock.
+      basis: { of: { kind: "bid_payment_group", groupId: GROUP_ID } },
     });
     expect(await service.release(ask(parkedPayment))).toMatchObject({
       ok: true,
       value: { outcome: "released", rebuilt: false },
     });
-    expect(applied[1]).toEqual({ action: "release", requestedBy: "staff-1" });
+    expect(applied[1]).toEqual({
+      action: "release",
+      requestedBy: "staff-1",
+      basis: {
+        of: { kind: "bid_payment_group", groupId: GROUP_ID },
+        read: JSON.stringify({ kind: "bid_payment_group", groupId: GROUP_ID }),
+      },
+    });
     expect(audits).toEqual([
       expect.objectContaining({
         actorUserId: "staff-1",
@@ -238,6 +253,19 @@ describe("AccountingQueueService.release", () => {
       value: { outcome: "already_queued" },
     });
     expect(applied).toHaveLength(2);
+  });
+
+  it("is refused, with nothing audited, when the deciding rows changed before the move", async () => {
+    const { service, applied, audits } = setUp([parkedDelivery], ZERO_RATED, undefined, {
+      changesBeforeMove: true,
+    });
+    expect(await service.release(ask(parkedDelivery))).toMatchObject({
+      ok: false,
+      refusal: "unresolved",
+      message: expect.stringMatching(/no longer matches/),
+    });
+    expect(applied).toHaveLength(1);
+    expect(audits).toEqual([]);
   });
 
   it("does not release a payment whose invoice was cancelled in Accounting", async () => {

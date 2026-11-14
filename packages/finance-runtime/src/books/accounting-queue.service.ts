@@ -19,10 +19,12 @@ import type {
   IAccountingDocumentBrowser,
   IAccountingDocumentLookup,
   IAccountingDocumentTransitions,
+  IAccountingReleaseBasisReader,
   IBidAccountingFactsReader,
   IPartFundedTransfersReader,
   IShopDeliveryReader,
   PartFundedTransfer,
+  ReleaseBasis,
   StoredAccountingDocument,
 } from "@auction/persistence/interfaces";
 import {
@@ -62,6 +64,11 @@ export type AccountingQueueDeps = {
   facts: IBidAccountingFactsReader;
   /** Reads the invoices a released payment is applied to. */
   lookup: IAccountingDocumentLookup;
+  /**
+   * The rows a release is decided on, read before deciding; the move re-reads them under lock and
+   * refuses if they changed, so a release is atomic with what it was decided on.
+   */
+  releaseBasis: IAccountingReleaseBasisReader;
   /** How delivery is booked; `DELIVERY_BOOKING` unless a test says otherwise. */
   deliveryBooking?: LineBooking | null;
   /**
@@ -231,6 +238,11 @@ export class AccountingQueueService implements IAccountingQueueService {
     const reason = record.status === "needs_review" ? parkReasonOf(record.reason) : null;
     if (reason === null) return notParked();
 
+    // What the decision rests on, read first: the move refuses if it reads differently later.
+    const basisOf = await this.basisOf(document);
+    const basisRead = basisOf === null ? null : await this.deps.releaseBasis.read(basisOf);
+    if (basisOf === null || basisRead === null) return unresolved(ACCOUNTING_RELEASE_CHANGED_TEXT);
+
     const rebuilt = await this.rebuild(document);
     if (rebuilt === null) return unresolved(ACCOUNTING_RELEASE_CHANGED_TEXT);
     const resolved = resolveParked({ document: document.document, reason }, rebuilt);
@@ -249,8 +261,12 @@ export class AccountingQueueService implements IAccountingQueueService {
       action: "release",
       requestedBy: request.actorUserId,
       ...(resolved.value.rebuilt ? { document: resolved.value.document } : {}),
+      basis: { of: basisOf, read: basisRead },
     });
     if (!moved.ok) {
+      // The rows changed between the decision and the move (say the invoice was voided again).
+      if (moved.refusal.code === "basis_changed")
+        return unresolved(ACCOUNTING_RELEASE_CHANGED_TEXT);
       const now = await this.deps.browser.findById(document.id);
       if (now.ok && now.value && ALREADY_QUEUED.has(now.value.record.status)) {
         return { ok: true, value: released(now.value, "already_queued", false) };
@@ -270,6 +286,31 @@ export class AccountingQueueService implements IAccountingQueueService {
       },
     });
     return { ok: true, value: released(moved.value, "released", resolved.value.rebuilt) };
+  }
+
+  /**
+   * The stored rows a parked document's release is decided on: a Shop order's delivery, a "Pay
+   * several" group (its payment or delivery invoice), or a single payment and its invoice. Null
+   * when its reference names none of these (it is never released).
+   */
+  private async basisOf(document: StoredAccountingDocument): Promise<ReleaseBasis | null> {
+    const ref = parseLaxReference(document.reference);
+    if (!ref.ok) return null;
+    const { product, kind, sourceId } = ref.value;
+    if (product === "shop") {
+      const orderId = /^(.+)-delivery$/.exec(sourceId)?.[1];
+      return kind === "invoice" && orderId ? { kind: "shop_order", orderId } : null;
+    }
+    if (product !== "bid") return null;
+    if (kind === "invoice" && sourceId.startsWith(DELIVERY_PREFIX)) {
+      const groupId = await this.deps.facts.deliveryGroupOf(sourceId.slice(DELIVERY_PREFIX.length));
+      return groupId === null ? null : { kind: "bid_payment_group", groupId };
+    }
+    if (kind === "payment" && sourceId.startsWith(GROUP_PREFIX)) {
+      return { kind: "bid_payment_group", groupId: sourceId.slice(GROUP_PREFIX.length) };
+    }
+    if (kind === "payment") return { kind: "bid_payment", paymentId: sourceId };
+    return null;
   }
 
   /**

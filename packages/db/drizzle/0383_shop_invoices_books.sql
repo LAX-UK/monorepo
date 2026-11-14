@@ -5,7 +5,7 @@
 -- invoice is stored parked: `needs_review` with the reason
 -- `accounting_parked_vat_on_outside_uk_delivery`, nothing tried, nothing owed, no provider. 0382's
 -- `provider_sent_ck` already allows a parked review, and 0382's api_app rule already refuses to
--- requeue one. This migration changes two things:
+-- requeue one. This migration changes three things:
 --
 -- 1. Release. Once the accountant has said how outside-UK delivery is booked, staff press Release
 --    and api_app queues the parked invoice, rebuilt from the stored order with the booking, under
@@ -16,6 +16,10 @@
 -- 2. History. The worker applies the order payment's unapplied rest to that delivery invoice once
 --    the invoice is issued, and records it on the invoice's history as `apply_remainder` (issued to
 --    issued). The action list gains it; nothing else about history changes.
+-- 3. Release is atomic with the rows it was decided on. The move re-reads them in its own
+--    transaction once the document is locked, held FOR SHARE, and refuses if they changed: Bid's
+--    rows directly (api_app may lock them), a Shop order's stored delivery through the definer
+--    function `accounting_release_shop_order_basis`, which reads and holds those columns only.
 --
 -- A refusal is `insufficient_privilege` (42501), as before. No table or column is added. The Shop
 -- app's and the worker's reads for the Shop invoice (the buyer's invoice card, the projection's
@@ -78,3 +82,23 @@ BEGIN
   RETURN NEW;
 END;
 $fn$;
+--> statement-breakpoint
+-- What a release of a parked Shop delivery invoice is decided on: the order's stored delivery. The
+-- release's move reads it again in its own transaction and holds the row FOR SHARE until it
+-- commits, so the release is atomic with the row it was decided on. api_app may read these columns
+-- but not lock a Shop row, so this definer function does it, for these columns only (granted to
+-- api_app by db:roles).
+CREATE OR REPLACE FUNCTION "accounting_release_shop_order_basis"(p_order_id uuid) RETURNS text
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = pg_catalog, public
+AS $fn$
+  SELECT jsonb_build_object(
+           'id', o."id", 'status', o."status", 'fulfilment', o."fulfilment",
+           'surcharge', o."fulfilment_surcharge_pence", 'vat', o."fulfilment_vat_pence")::text
+    FROM public."shop_order" o
+   WHERE o."id" = p_order_id
+     FOR SHARE;
+$fn$;
+--> statement-breakpoint
+REVOKE ALL ON FUNCTION public."accounting_release_shop_order_basis"(uuid) FROM PUBLIC;

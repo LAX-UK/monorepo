@@ -41,6 +41,7 @@ export function createAccountingQueue(input: {
       booksLink: createBooksDocumentLinks(input.env),
       facts: new DrizzleBidAccountingFactsReader(input.db),
       lookup: repos.lookup,
+      releaseBasis: repos.releaseBasis,
       shopDelivery: new DrizzleShopDeliveryReader(input.db),
     }),
     accountingBrowser: repos.browser,
