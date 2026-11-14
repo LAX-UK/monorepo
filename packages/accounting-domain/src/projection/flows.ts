@@ -12,9 +12,10 @@ import {
   projectBidPaymentRefunded,
 } from "./bid.js";
 import { EMPTY_PROJECTION, type ProjectionPolicy } from "./projection.js";
+import { type ShopOrderPaidFacts, projectShopOrderPaid } from "./shop.js";
 
 /**
- * Every money flow the books will follow, one projection policy each. The first four are built;
+ * Every money flow the books will follow, one projection policy each. Five are built;
  * the others are listed so the set is visible in one place, and project nothing until their own
  * change builds them (each is waiting on code or on an accountant's answer).
  */
@@ -43,7 +44,7 @@ export interface FlowFacts {
   readonly bid_payment_group_settled: BidPaymentGroupFacts;
   readonly bid_buyer_default: NotBuiltYet;
   readonly bid_payout_settled: NotBuiltYet;
-  readonly shop_order_paid: NotBuiltYet;
+  readonly shop_order_paid: ShopOrderPaidFacts;
   readonly shop_refund_settled: NotBuiltYet;
 }
 
@@ -59,7 +60,7 @@ export const PROJECTION_POLICIES: {
   bid_payment_group_settled: projectBidPaymentGroupSettled,
   bid_buyer_default: notBuiltYet,
   bid_payout_settled: notBuiltYet,
-  shop_order_paid: notBuiltYet,
+  shop_order_paid: projectShopOrderPaid,
   shop_refund_settled: notBuiltYet,
 };
 
@@ -69,5 +70,6 @@ export const BUILT_FLOWS = [
   "bid_payment_captured",
   "bid_payment_refunded",
   "bid_payment_group_settled",
+  "shop_order_paid",
 ] as const satisfies readonly AccountingFlow[];
 export type BuiltFlow = (typeof BUILT_FLOWS)[number];

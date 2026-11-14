@@ -141,6 +141,7 @@ function setUp(
       deliveryGroupOf: async () => null,
     },
     lookup: { findByReference: async () => ok(null) },
+    releaseBasis: { read: async () => null },
   });
   return { queue, audits, service, partFundedCalls };
 }

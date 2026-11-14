@@ -29,6 +29,10 @@ export interface ReleasedDocument {
  *   out exactly as stored.
  * - `invoice_cancelled`, a payment: settled once the invoice is no longer voided. It must come out
  *   exactly as stored.
+ * - `vat_on_outside_uk_delivery`, a Shop delivery invoice: settled once
+ *   `SHOP_OUTSIDE_UK_DELIVERY_BOOKING` is set. Like a Bid delivery invoice, the draft is replaced by
+ *   the invoice rebuilt with the booking, for the same gross: the order's payment leaves exactly
+ *   that much unapplied, and it is applied to this invoice once it is issued.
  * Anything else is refused, and nothing changes.
  */
 export function resolveParked(
@@ -46,7 +50,7 @@ export function resolveParked(
   }
   if (sameDocument(fresh, document)) return ok({ document, rebuilt: false });
   const redraftable =
-    reason === "vat_on_delivery" &&
+    REDRAFTED_ON_RELEASE.has(reason) &&
     document.kind === "invoice" &&
     fresh.kind === "invoice" &&
     fresh.totals.grossPence === document.totals.grossPence;
@@ -58,6 +62,12 @@ export function resolveParked(
   }
   return ok({ document: fresh, rebuilt: true });
 }
+
+/** Reasons whose parked draft is replaced on release by the invoice rebuilt with the booking. */
+const REDRAFTED_ON_RELEASE: ReadonlySet<ParkReason> = new Set([
+  "vat_on_delivery",
+  "vat_on_outside_uk_delivery",
+]);
 
 /** Two documents say the same thing: equal plain data, whatever the order of their keys. */
 export function sameDocument(a: unknown, b: unknown): boolean {

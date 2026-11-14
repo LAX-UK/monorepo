@@ -1,13 +1,16 @@
 /**
  * Why a document is parked: built and stored, but kept from the books until a person (or an
  * answer from the accountant) says how it goes. A parked document sits in "Needs a person" and is
- * never claimed, retried or tried again by hand; it can only be cancelled.
+ * never claimed, retried or tried again by hand. Once its reason is settled a person releases it
+ * (`release`, checked against the stored rows by `resolveParked`); otherwise it can be cancelled.
  */
 export const PARK_REASONS = [
   /** The courier delivery's VAT treatment waits for the accountant. */
   "vat_on_delivery",
   /** The invoice the payment is for was cancelled after it was paid. */
   "invoice_cancelled",
+  /** Delivery outside the UK (a Shop delivery quote): its VAT waits for the accountant. */
+  "vat_on_outside_uk_delivery",
 ] as const;
 export type ParkReason = (typeof PARK_REASONS)[number];
 

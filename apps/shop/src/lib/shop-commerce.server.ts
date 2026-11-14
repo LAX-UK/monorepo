@@ -4,10 +4,12 @@ import {
   type BasketView,
   type OrderSummary,
   type SavedDeliveryAddress,
+  type ShopOrderInvoiceCard,
   parseBasketResponse,
   parseOrderList,
   parseOrderSummary,
   parseSavedDeliveryAddressList,
+  parseShopOrderInvoiceCard,
 } from "@auction/shop-contracts";
 import { cache } from "react";
 
@@ -51,6 +53,26 @@ export async function fetchShopOrder(orderId: string): Promise<ShopFetchResult<O
     return { status: "ok", data: parseOrderSummary(await response.json()) };
   } catch {
     return { status: "failed" };
+  }
+}
+
+/**
+ * The Books invoice card of the shopper's order. Anything but a readable card is null: the page
+ * then shows LAX's own invoice exactly as before, so nothing is lost when Books is off, only
+ * rehearsing, or cannot be read.
+ */
+export async function fetchShopOrderInvoiceCard(
+  orderId: string,
+): Promise<ShopOrderInvoiceCard | null> {
+  try {
+    const response = await shopCommerceRequest(
+      `/commerce/orders/${encodeURIComponent(orderId)}/invoice-card`,
+      { headers: { accept: "application/json" } },
+    );
+    if (!response.ok) return null;
+    return parseShopOrderInvoiceCard(await response.json());
+  } catch {
+    return null;
   }
 }
 

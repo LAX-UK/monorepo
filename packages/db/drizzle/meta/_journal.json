@@ -2619,6 +2619,13 @@
       "when": 1811160000000,
       "tag": "0382_accounting_parked_documents",
       "breakpoints": true
+    },
+    {
+      "idx": 375,
+      "version": "7",
+      "when": 1811246400000,
+      "tag": "0383_shop_invoices_books",
+      "breakpoints": true
     }
   ]
 }

@@ -5,6 +5,7 @@ import type { IEmailService } from "@auction/email";
 import { createBooksAccountingAdapters } from "@auction/finance-runtime";
 import {
   DrizzleBidAccountingFactsReader,
+  DrizzleShopAccountingFactsReader,
   createAccountingRepositories,
 } from "@auction/persistence/repositories";
 import type { Logger } from "pino";
@@ -13,9 +14,11 @@ import { createAccountingAlertSink } from "../finance/accounting/accounting-aler
 import { ACCOUNTING_CRON_MONITORS } from "../finance/accounting/accounting-alerts.js";
 import { AccountingInvoiceCopy } from "../finance/accounting/accounting-invoice-copy.service.js";
 import { AccountingProjection } from "../finance/accounting/accounting-projection.service.js";
+import { AccountingRemainder } from "../finance/accounting/accounting-remainder.service.js";
 import type { AccountingRuntime } from "../finance/accounting/accounting-runtime.js";
 import { AccountingSender } from "../finance/accounting/accounting-sender.service.js";
 import { AccountingWatch } from "../finance/accounting/accounting-watch.service.js";
+import { shopStorefrontBase } from "../finance/accounting/shop-invoice-email.js";
 import { throttledCronMonitor } from "../lib/sentry-cron.js";
 import { DrizzleProjectorCursorStart } from "../repositories/drizzle-projector-cursor-start.js";
 
@@ -29,7 +32,7 @@ const SENDER_CHECK_IN_EVERY_MS = 5 * 60_000;
  * adapters come from `createBooksAccountingAdapters`, which builds the dry run alone.
  */
 export function createAccountingRuntime(deps: {
-  env: Pick<WorkerEnv, "ZOHO_BOOKS_ORG_CONFIG" | "WEB_ORIGIN">;
+  env: Pick<WorkerEnv, "ZOHO_BOOKS_ORG_CONFIG" | "WEB_ORIGIN" | "SHOP_STOREFRONT_URL">;
   db: ReturnType<typeof createDb>;
   log: Logger;
   sentryMonitorSlugs?: Record<string, string>;
@@ -41,10 +44,23 @@ export function createAccountingRuntime(deps: {
   const adapters = createBooksAccountingAdapters(deps.env);
   if (!adapters) return undefined;
   const repos = createAccountingRepositories(deps.db, { now: () => new Date() });
+  // One sink for every accounting alert: logged, and sent to Sentry where the alert rules page.
+  const alerts = createAccountingAlertSink(deps.log);
   deps.log.info({ modes: Object.keys(adapters.byMode) }, "accounting_runtime_built");
+  const shopFacts = new DrizzleShopAccountingFactsReader(deps.db);
+  try {
+    shopStorefrontBase(deps.env.SHOP_STOREFRONT_URL);
+  } catch (error) {
+    // Said at start-up too: the Shop may not be live yet, but its emails will wait until this is set.
+    deps.log.warn(
+      { reason: error instanceof Error ? error.message : "unknown" },
+      "accounting_shop_storefront_url_unusable",
+    );
+  }
   return {
     projection: new AccountingProjection({
       facts: new DrizzleBidAccountingFactsReader(deps.db),
+      shopFacts,
       settings: repos.settingReader,
       registry: repos.registry,
     }),
@@ -67,9 +83,20 @@ export function createAccountingRuntime(deps: {
       ),
       storage: deps.storage,
       emailFacts: repos.invoiceEmailFacts,
+      shopEmailFacts: shopFacts,
       email: deps.email,
       webBaseUrl: deps.env.WEB_ORIGIN,
+      shopStorefrontUrl: deps.env.SHOP_STOREFRONT_URL,
       now: () => new Date(),
+      log: deps.log,
+      alerts,
+    }),
+    remainder: new AccountingRemainder({
+      remainders: repos.remainders,
+      settings: repos.settingReader,
+      portsByMode: Object.fromEntries(
+        Object.entries(adapters.byMode).map(([mode, ports]) => [mode, ports.remainders]),
+      ),
       log: deps.log,
     }),
     cursorStart: new DrizzleProjectorCursorStart(deps.db),
@@ -77,7 +104,7 @@ export function createAccountingRuntime(deps: {
       attention: repos.attention,
       settings: repos.settingReader,
       senderModes: Object.keys(adapters.byMode) as TargetMode[],
-      alerts: createAccountingAlertSink(deps.log),
+      alerts,
       now: () => new Date(),
     }),
     senderCheckIn: throttledCronMonitor(

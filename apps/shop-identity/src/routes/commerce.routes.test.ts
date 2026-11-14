@@ -1051,6 +1051,57 @@ describe("commerce order routes", () => {
     expect(await response.json()).toMatchObject({ code: "shop.not_found" });
   });
 
+  it("reads the Books invoice card for the signed-in shopper", async () => {
+    const card = {
+      state: "lax",
+      invoiceNumber: null,
+      issuedAt: null,
+      invoiceDocumentId: null,
+      cancelledAt: null,
+    };
+    const shopApiFetch = vi.fn(async () => Response.json(card));
+    const { app } = createCommerceApp(shopApiFetch);
+    const response = await app.request(`/commerce/orders/${ORDER_ID}/invoice-card`, {
+      headers: { cookie: AUTH_COOKIE },
+    });
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual(card);
+    expect(shopApiFetch).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ path: `/v1/orders/${ORDER_ID}/invoice-card`, scopes: "shop.read" }),
+    );
+  });
+
+  it("passes LAX's stored copy of a Books invoice through as a PDF, never cached", async () => {
+    const DOCUMENT_ID = "550e8400-e29b-41d4-a716-846655440077";
+    const pdf = new Uint8Array([0x25, 0x50, 0x44, 0x46, 0x2d]);
+    const shopApiFetch = vi.fn(
+      async () =>
+        new Response(pdf, {
+          status: 200,
+          headers: {
+            "content-type": "application/pdf",
+            "content-disposition": 'attachment; filename="invoice-LAX-INV-000124.pdf"',
+          },
+        }),
+    );
+    const { app } = createCommerceApp(shopApiFetch);
+    const response = await app.request(
+      `/commerce/orders/${ORDER_ID}/invoice-documents/${DOCUMENT_ID}`,
+      { headers: { cookie: AUTH_COOKIE } },
+    );
+    expect(response.status).toBe(200);
+    expect(response.headers.get("cache-control")).toBe("private, no-store");
+    expect(new Uint8Array(await response.arrayBuffer())).toEqual(pdf);
+    expect(shopApiFetch).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        path: `/v1/orders/${ORDER_ID}/invoice-documents/${DOCUMENT_ID}`,
+        scopes: "shop.read",
+      }),
+    );
+  });
+
   it("checks a problem report before sending it on", async () => {
     const shopApiFetch = vi.fn(async () =>
       Response.json({ reportId: "550e8400-e29b-41d4-a716-846655440099" }, { status: 201 }),

@@ -105,6 +105,7 @@ export const EMAIL_TEMPLATE_LABELS: Readonly<Record<TemplateName, string>> = {
   "source-of-funds-rejected": "Source of funds not accepted",
   "bid-enquiry-received": "Enquiry received",
   "shop-order-receipt": "Shop order receipt",
+  "shop-invoice-issued": "Your invoice (Books, Shop)",
   "shop-guest-order-link": "Shop order link",
   "shop-artwork-enquiry-alert": "Artwork enquiry alert (staff)",
   "shop-edition-available-notify": "Edition available",

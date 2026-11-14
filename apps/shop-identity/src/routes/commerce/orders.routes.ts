@@ -31,6 +31,28 @@ export function registerCommerceOrdersRoutes(app: Hono, deps: CommerceRoutesDeps
     });
   });
 
+  /** The buyer's invoice card from Books (LAX's own invoice while Books does not issue it). */
+  app.get("/commerce/orders/:orderId/invoice-card", (c) => {
+    const orderId = c.req.param("orderId");
+    return proxyAuthenticatedCommerce(c, deps, {
+      method: "GET",
+      path: `/v1/orders/${encodeURIComponent(orderId)}/invoice-card`,
+      scopes: "shop.read",
+    });
+  });
+
+  /** LAX's stored copy of the invoice Books issued, passed through as the PDF it is. */
+  app.get("/commerce/orders/:orderId/invoice-documents/:documentId", (c) => {
+    const orderId = c.req.param("orderId");
+    const documentId = c.req.param("documentId");
+    return proxyAuthenticatedCommerce(c, deps, {
+      method: "GET",
+      path: `/v1/orders/${encodeURIComponent(orderId)}/invoice-documents/${encodeURIComponent(documentId)}`,
+      scopes: "shop.read",
+      file: true,
+    });
+  });
+
   app.post("/commerce/orders/:orderId/problem-reports", async (c) => {
     const orderId = c.req.param("orderId");
     const parsed = orderProblemReportBodySchema.safeParse(await c.req.json().catch(() => ({})));

@@ -9,6 +9,7 @@ import type {
   IAccountingDocumentRegistry,
   IAccountingSourceSettingReader,
   IBidAccountingFactsReader,
+  IShopAccountingFactsReader,
 } from "@auction/persistence/interfaces";
 import {
   ACCOUNTING_EVENT_ROUTES,
@@ -59,10 +60,17 @@ export type ProjectorActivity = "active" | "inactive" | "unreadable";
 
 export interface AccountingProjectionDeps {
   readonly facts: IBidAccountingFactsReader;
+  /** The Shop's order facts; absent where the Shop flow is not wired (it then skips, never guesses). */
+  readonly shopFacts?: IShopAccountingFactsReader;
   readonly settings: IAccountingSourceSettingReader;
   readonly registry: IAccountingDocumentRegistry;
   readonly routes?: Readonly<Record<string, AccountingEventRoute>>;
 }
+
+/** No Shop facts reader: every Shop event is skipped, so nothing is booked from a guess. */
+const NO_SHOP_FACTS: IShopAccountingFactsReader = {
+  orderPaid: async () => ({ status: "skip", reason: "shop_facts_not_wired" }),
+};
 
 /** Does the switch aim this product's new documents at Books (in any mode)? Same rule as the sender. */
 function aimsAtBooks(config: SwitchConfig, product: Product): boolean {
@@ -117,7 +125,10 @@ export class AccountingProjection {
     if (!aimsAtBooks(config.value, route.product)) {
       return { outcome: "skipped", reason: "books_not_selected" };
     }
-    const routed = await route.project(this.deps.facts, event);
+    const routed = await route.project(
+      { bid: this.deps.facts, shop: this.deps.shopFacts ?? NO_SHOP_FACTS },
+      event,
+    );
     if (routed.status === "skip") return { outcome: "skipped", reason: routed.reason };
     if (!routed.projection.ok) {
       const { code, message } = routed.projection.refusal;

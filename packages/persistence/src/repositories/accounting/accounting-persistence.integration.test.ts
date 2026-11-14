@@ -125,12 +125,18 @@ describe.skipIf(!HAS_DB)("accounting persistence (integration)", { timeout: 60_0
   }
 
   /**
-   * An invoice or credit note waits for its contact (`documentsAwaited`). These cases are about
-   * the invoice itself, so its contact is put in the books for the target the switch names now,
-   * as the owner, before it is registered. Cases about the ordering itself register their own.
+   * An invoice, credit note or payment waits for its contact (`documentsAwaited`). These cases are
+   * about the document itself, so its contact is put in the books for the target the switch names
+   * now, as the owner, before it is registered. Cases about the ordering itself register their own.
    */
   async function contactInBooks(document: AccountingDocument) {
-    if (document.kind !== "invoice" && document.kind !== "credit_note") return;
+    if (
+      document.kind !== "invoice" &&
+      document.kind !== "credit_note" &&
+      document.kind !== "payment"
+    ) {
+      return;
+    }
     const contactRef = must(parseLaxReference(document.contactReference));
     const contact = must(
       buildContact({
@@ -820,6 +826,45 @@ describe.skipIf(!HAS_DB)("accounting persistence (integration)", { timeout: 60_0
       expect(await claim("early")).toBeNull();
       expect(await byId(payment.stored.id)).toMatchObject({ state: "pending", attempts: 0 });
       await issue(invoiceRow.stored.id, "inv");
+      expect((await claim("pay"))?.id).toBe(payment.stored.id);
+    });
+
+    it("a payment is not claimed before its own contact is issued, even with its invoice issued", async () => {
+      const inv = invoice("bid", newId());
+      const invoiceRow = await register(inv);
+      const sourceId = newId();
+      nowMs = T0;
+      // Registered without its contact in the books (the shared helper would put it there).
+      const payment = must(
+        await repos.registry.register({
+          document: paymentFor([inv], sourceId),
+          sourceEventRef: `evt-${newId()}`,
+        }),
+      );
+      expect((await claim("inv"))?.id).toBe(invoiceRow.stored.id);
+      await issue(invoiceRow.stored.id, "inv");
+      expect(await claim("early")).toBeNull();
+      expect(await byId(payment.stored.id)).toMatchObject({ state: "pending", attempts: 0 });
+      const contact = must(
+        buildContact({ product: "bid", sourceId, name: "Ada Collector", email: null }),
+      );
+      const contactRow = must(
+        await repos.registry.register({ document: contact, sourceEventRef: `evt-${newId()}` }),
+      );
+      expect((await claim("con"))?.id).toBe(contactRow.stored.id);
+      must(
+        await repos.transitions.apply(contactRow.stored.id, {
+          action: "complete_sending",
+          leaseToken: "con",
+          outcome: {
+            status: "issued",
+            number: `CON-${newId()}`,
+            providerId: newId(),
+            pdfRef: null,
+            totals: contactRow.stored.totals,
+          },
+        }),
+      );
       expect((await claim("pay"))?.id).toBe(payment.stored.id);
     });
 

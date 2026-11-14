@@ -348,6 +348,8 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
     originalOffers,
     unappliedMoney,
     moneyPause: soldAttentionStore,
+    // The same bucket the worker keeps LAX's copies of Books invoices in (under accounting/).
+    invoiceCopies: shopMediaStorage?.storage ?? null,
   });
   const readiness = createDrizzleShopReadinessAdapter(db);
   const storefrontOrigins = resolveStorefrontOrigins({

@@ -5,7 +5,12 @@ import type {
   LookupOutcome,
 } from "@auction/accounting-domain";
 import { orgFor } from "./api.js";
-import { type ReadBack, contactTypeCheck, paymentReadBack } from "./gateways.js";
+import {
+  type ReadBack,
+  contactTypeCheck,
+  invoiceNumberCheck,
+  paymentReadBack,
+} from "./gateways.js";
 import type { ZohoDocumentLookup } from "./lookup.js";
 import { contactReferenceValue } from "./mappers/contact.js";
 import type { ZohoOrgConfig, ZohoOrgConfigs } from "./org-config.js";
@@ -24,7 +29,11 @@ const TOTALS_ONLY: ReadBackFor = () => Promise.resolve({ check: null });
  * the sender sends are customers (a vendor contact arrives with the payouts flow).
  */
 const READ_BACKS: Readonly<Record<DocumentKind, ReadBackFor>> = {
-  invoice: TOTALS_ONLY,
+  // An invoice LAX numbered must still carry that number; one Books numbers is read by totals.
+  invoice: (_lookup, document) =>
+    Promise.resolve({
+      check: document.kind === "invoice" ? invoiceNumberCheck(document) : null,
+    }),
   credit_note: TOTALS_ONLY,
   bill: TOTALS_ONLY,
   payment: (lookup, document, org) =>

@@ -20,9 +20,12 @@ import {
   type LookupOutcome,
   type Payment,
   type PaymentPort,
+  type PaymentRemainderPort,
   type PdfOutcome,
   type Product,
   type ProviderDocument,
+  type RemainderApplication,
+  type RemainderOutcome,
   type WriteFence,
   expectedTotals,
   legalEntityFor,
@@ -64,8 +67,12 @@ interface Held {
   /** What makes a resend the same document, beyond its reference (a payment's allocations). */
   readonly fingerprint: string;
   readonly contactType?: ContactType;
-  /** Held, but reads back different from what was sent (`read_back_differs`). */
+  /** Held, but reads back different from what was sent (`read_back_differs`, `renumbered`). */
   readonly readBackDiffers?: boolean;
+  /** Why it reads back different: a payment's fields, or an invoice Books numbered itself. */
+  readonly differsReason?: string;
+  /** A payment's amount not applied to any invoice when it was made. */
+  readonly unappliedPence?: number;
 }
 
 type Stop = Extract<IssueOutcome, { status: "rejected" | "unknown" }>;
@@ -86,6 +93,8 @@ export class InMemoryAccounting implements AccountingPorts {
   readonly faults = new FaultQueue();
   private readonly held = new Map<string, Held>();
   private readonly counters = new Map<string, number>();
+  /** Remainders applied after the fact, by payment key: invoice key -> pence. */
+  private readonly remainderApplied = new Map<string, Map<string, number>>();
   private readonly orgs: Readonly<Partial<Record<LegalEntity, { vatRegistered: boolean }>>>;
 
   constructor(options: InMemoryAccountingOptions = {}) {
@@ -100,11 +109,58 @@ export class InMemoryAccounting implements AccountingPorts {
       this.issue(
         d,
         [["contact", d.contactReference, "customer"]],
-        "tax_exclusive",
+        d.amountsAre === "tax_inclusive" ? "tax_inclusive" : "tax_exclusive",
         undefined,
         fence,
       ),
   };
+  /**
+   * As the adapter: the same checks as a document, then the payment read first, so a second run
+   * is `already_applied`; a payment with too little left, or another amount already applied to
+   * the invoice, is refused.
+   */
+  readonly remainders: PaymentRemainderPort = {
+    applyRemainder: async (
+      a: RemainderApplication,
+      fence?: WriteFence,
+    ): Promise<RemainderOutcome> => {
+      const entity = legalEntityFor(a.product);
+      if (a.entity !== entity) return rejected(R.entityMismatch);
+      if (!this.orgs[entity]) return rejected(R.organisationNotConfigured);
+      for (const need of [
+        ["contact", a.contactReference, "customer"],
+        ["payment", a.paymentReference],
+        ["invoice", a.invoiceReference],
+      ] as const satisfies readonly Need[]) {
+        const stop = this.dependency(a.product, entity, need);
+        if (stop) {
+          return stop.status === "rejected"
+            ? stop
+            : { status: "unknown", ...(stop.detail ? { detail: stop.detail } : {}) };
+        }
+      }
+      const paymentKey = this.key(entity, "payment", a.paymentReference);
+      const payment = this.held.get(paymentKey);
+      const applied = this.remainderApplied.get(paymentKey) ?? new Map<string, number>();
+      const invoiceKey = this.key(entity, "invoice", a.invoiceReference);
+      const already = applied.get(invoiceKey) ?? 0;
+      if (already === a.amountPence) return { status: "already_applied", rehearsal: false };
+      if (already !== 0) return rejected(R.remainderDiffers);
+      const used = [...applied.values()].reduce((sum, p) => sum + p, 0);
+      if ((payment?.unappliedPence ?? 0) - used < a.amountPence) {
+        return rejected(R.remainderUnavailable);
+      }
+      if (fence && !(await fence.mayWrite())) return rejected(FENCED);
+      applied.set(invoiceKey, a.amountPence);
+      this.remainderApplied.set(paymentKey, applied);
+      return { status: "applied", rehearsal: false };
+    },
+  };
+  /** What a payment held under a reference has had applied after the fact, for assertions. */
+  remainderAppliedOf(product: Product, paymentReference: string): ReadonlyMap<string, number> {
+    const key = this.key(legalEntityFor(product), "payment", paymentReference);
+    return this.remainderApplied.get(key) ?? new Map();
+  }
   readonly creditNotes: CreditNotePort = {
     issueCreditNote: (d: CreditNote, fence?: WriteFence) =>
       this.issue(
@@ -168,7 +224,7 @@ export class InMemoryAccounting implements AccountingPorts {
       const found = this.held.get(this.key(entity, kind, reference, "customer"));
       if (!found) return { status: "not_found" };
       return this.differs(found, document)
-        ? { status: "differs", reason: R.paymentMismatch, ...found.doc }
+        ? { status: "differs", reason: found.differsReason ?? R.paymentMismatch, ...found.doc }
         : { status: "found", ...found.doc };
     },
   };
@@ -266,17 +322,33 @@ export class InMemoryAccounting implements AccountingPorts {
     const existing = this.held.get(key);
     if (existing) {
       if (this.differs(existing, doc)) {
-        return { status: "differs", reason: R.paymentMismatch, ...existing.doc };
+        return {
+          status: "differs",
+          reason: existing.differsReason ?? R.paymentMismatch,
+          ...existing.doc,
+        };
       }
       return { status: "issued", ...existing.doc };
     }
 
+    // An invoice LAX numbered keeps that number (automatic numbering is off for it), and Books
+    // refuses a number it already holds rather than renumbering.
+    const laxNumber = doc.kind === "invoice" ? doc.number : undefined;
+    const sameOrgInvoices = [...this.held].filter(([k]) => k.startsWith(`${entity}:invoice:`));
+    if (laxNumber && sameOrgInvoices.some(([, h]) => h.doc.number === laxNumber)) {
+      return rejected("zoho_books_validation_duplicate_invoice_number");
+    }
     const seq = (this.counters.get(`${entity}:${doc.kind}`) ?? 0) + 1;
     this.counters.set(`${entity}:${doc.kind}`, seq);
     const mine = expectedTotals(doc);
     const drift = fault === "totals_drift" && doc.kind !== "contact" ? 1 : 0;
+    // Books renumbering an invoice LAX numbered (an organisation setting): made, but not ours.
+    const renumbered = fault === "renumbered" && laxNumber !== undefined;
     const provider: ProviderDocument = {
-      number: `${PREFIX[doc.kind]}-${String(seq).padStart(6, "0")}`,
+      number:
+        laxNumber !== undefined && !renumbered
+          ? laxNumber
+          : `${PREFIX[doc.kind]}-${String(seq).padStart(6, "0")}`,
       providerId: String(7_000_000_000_000 + this.held.size + 1),
       pdfRef:
         doc.kind === "invoice" || doc.kind === "credit_note"
@@ -288,15 +360,18 @@ export class InMemoryAccounting implements AccountingPorts {
         grossPence: mine.grossPence + drift,
       },
     };
-    const readBackDiffers = fault === "read_back_differs" && doc.kind === "payment";
+    const paymentDiffers = fault === "read_back_differs" && doc.kind === "payment";
+    const readBackDiffers = paymentDiffers || renumbered;
+    const differsReason = renumbered ? R.numberDiffers : R.paymentMismatch;
     this.held.set(key, {
       doc: provider,
       fingerprint,
+      ...(doc.kind === "payment" ? { unappliedPence: doc.unallocatedPence } : {}),
       ...(contactType ? { contactType } : {}),
-      ...(readBackDiffers ? { readBackDiffers } : {}),
+      ...(readBackDiffers ? { readBackDiffers, differsReason } : {}),
     });
     if (fault === "timeout_after_commit") return { status: "unknown", detail: "fake_timeout" };
-    if (readBackDiffers) return { status: "differs", reason: R.paymentMismatch, ...provider };
+    if (readBackDiffers) return { status: "differs", reason: differsReason, ...provider };
     return { status: "issued", ...provider };
   }
 }

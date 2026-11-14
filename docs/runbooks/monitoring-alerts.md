@@ -315,9 +315,17 @@ organisation's invoice) out of the outbox are the worker's due-list query (`targ
 - **Parked, in Needs a person** (never sent, no Try again). The recovery is **Release** on the row
   (finance write permission, like Try again). Release checks the reason against what Bid holds now
   and, only if it is settled, queues the same document under the same LAX reference; otherwise it
-  says why and nothing changes. Each release is in the document's history (`release`, who asked) and
-  the staff audit log ("Parked accounting document released"). Do not cancel a parked document to
-  recover it: a cancelled document keeps its reference and is never sent.
+  says why and nothing changes. The decision and the move are one: if the rows it was decided on
+  change before the move commits (say the invoice is voided again in Bid), it is refused as "no
+  longer matches" and stays parked; press Release again once it is settled. Each release is in the
+  document's history (`release`, who asked) and the staff audit log ("Parked accounting document
+  released"). Do not cancel a parked document to recover it: a cancelled document keeps its
+  reference and is never sent.
+  - **Rolling back** `0382_rollback.sql` (after `0383_rollback.sql`, if 0383 is applied) keeps
+    every parked document parked: nothing is cancelled. While rolled back, no one can move a parked
+    document (the earlier release knows nothing of parking); apply 0382 again and Release works as
+    before. It refuses to run once 0383 has written `apply_remainder` history: then roll back 0383
+    only.
   - **Waiting for the accountant** (VAT on delivery): a courier quote paid with the lots makes a
     delivery invoice, `LAX-BID-INV-dlv-<quote>`; it and the Pay several payment that includes it are
     parked until the accountant says how delivery is booked (`DELIVERY_BOOKING` in the accounting
@@ -332,6 +340,91 @@ organisation's invoice) out of the outbox are the worker's due-list query (`targ
   Books for them until the whole amount has arrived; the payment then arrives through
   `payment.captured` (or the group's `payment_group.settled`). Money that could not be applied stays
   a finance task (unapplied money) and makes no Books document.
+
+## Shop invoices to Books (London Art Exchange)
+
+**What happens.** When a Shop order is paid, the Shop writes `shop.accounting.order_paid` in the
+same transaction (references only: the order and its line ids). With the Shop aimed at Books, the
+worker books, in London Art Exchange's organisation only:
+
+- the buyer's contact;
+- the order's invoice under the Shop's own number (`LAX-INV-…`, Books' automatic numbering off for
+  it), its lines exactly as stored on the order: each print or product, each frame at the price it
+  was sold for, and UK delivery (or the collection charge), VAT-inclusive with the VAT stored;
+- the customer payment of the whole order into the Stripe clearing account, applied to that invoice.
+
+Books' totals are checked against LAX's; a difference holds the invoice in **Needs a person** with
+Books' figure, as for Bid. So does an invoice Books holds under another number than LAX's
+(`zoho_books_number_differs`, an organisation setting that renumbers): check the organisation's
+numbering, never edit the number by hand. Lines that are not the ones the event named, or that do
+not add up to the order's total, are refused for a person, never booked.
+
+**Order.** The Shop uses the same claim as Bid: an invoice is sent only once its contact is issued
+in the same books, and a payment only once its contact and every invoice it pays are. Until then a
+document waits in **Waiting** without using an attempt, whatever order it was stored in and however
+many senders run.
+
+**Delivery outside the UK.** A delivery quote's VAT waits for the accountant. It is never put on
+the order's invoice and never sent as it stands: it is stored as its own invoice
+(`LAX-SHOP-INV-<order>-delivery`, number `LAX-INV-…-D`), parked in **Needs a person** as "Waiting
+for the accountant: VAT on outside-UK delivery", with no VAT stated, and it cannot be tried again.
+The payment still books every penny the buyer paid, applied to the order's invoice; the quote's
+part stays unapplied on the buyer's account in Books until the delivery invoice is issued.
+
+**After the accountant answers** (outside-UK delivery). Do not cancel the parked invoice to
+recover it: a cancelled document keeps its reference and is never sent.
+
+1. The accountant states, in writing, how a Shop delivery outside the UK is booked (its VAT
+   treatment). LAX does not choose one.
+2. An engineer sets `SHOP_OUTSIDE_UK_DELIVERY_BOOKING` in the accounting domain to that answer
+   (a treatment that takes VAT needs the VAT stored on the order; without it the release is refused,
+   never worked out), and deploys. Until this is deployed, Release says "The accountant has not yet
+   confirmed how outside-UK delivery is booked" and nothing changes.
+3. In Finance › Accounting, press **Release** on each parked delivery invoice (finance write
+   permission). Release rebuilds it from the order's stored delivery with the booking, under the
+   same LAX reference and for the same amount, and queues it; it is in the document's history
+   (`release`, who asked) and the staff audit log. If the order no longer charges that delivery,
+   Release refuses ("no longer matches"): ask engineering.
+4. The worker sends it once its contact is in Books. Then, by itself, it applies the order
+   payment's unapplied rest to it (Books "apply credits", from `LAX-SHOP-PAY-<order>`), once: the
+   step reads the payment first, so a repeat is "already applied", and it is recorded in the
+   invoice's history as `apply_remainder`.
+5. If the worker logs `accounting_remainder_refused` (the payment no longer holds enough
+   unapplied, say it was applied elsewhere by hand), the history says why: apply the remainder by
+   hand in Books, from that payment to that invoice, and note it on the order.
+6. The step only looks at a delivery invoice once the order's payment is issued in the same
+   books. If Books' answer cannot be read (`accounting_remainder_unknown`), nothing is recorded,
+   the attempt is noted, and the invoice goes behind the others to be asked again next run. If a
+   delivery invoice has been issued for more than six hours with no `apply_remainder`, the watch
+   raises `accounting_shop_remainder_delayed` (delayed accounting, routed to finance on-call):
+   check the order's payment in Books and the worker's `accounting_remainder_*` logs.
+
+Rolling back migration 0383 (`0383_rollback.sql`) keeps every parked outside-UK delivery parked:
+nothing is cancelled. While rolled back, api_app may not move one at all (no requeue, no release),
+because the earlier release knows nothing of outside-UK delivery; apply 0383 again (with the release
+that knows it) and Release works on them as before.
+
+**The buyer's card and email.** On the Shop order page the buyer sees the same card as on a Bid
+purchase (being prepared, late after 30 minutes, issued with "Download invoice (PDF)" from LAX's
+stored copy, cancelled), only while the Shop is aimed at Books **live**. A refund does not cancel the
+invoice (it is credited later): a refunded order keeps the issued card and its download, with "A
+refund was made on [day].", and LAX's own document under "Help with this order" as "Order receipt
+(PDF)". On an order delivered outside the UK the card also says "Delivery outside the UK is
+invoiced separately." (the delivery invoice is issued on its own once released). In dry run or the
+test organisation the page is unchanged and nobody is emailed. With Books live the worker emails
+"Your invoice [number] from LAX Shop" once, with the stored copy attached and that invoice's own
+total, to the order's owner now (the guest, or the account that claimed the order; an erased guest,
+or an account that is disabled, being deleted or merged gets nothing, as nothing in LAX follows a
+merge yet), settling every copy as queued or skipped exactly as for Bid. A released delivery
+invoice is not emailed (`not_order_invoice`).
+
+Before Shop goes live, set the worker's `SHOP_STOREFRONT_URL` to the Shop's public https address
+(there is no default) and give the Shop API read access to the document storage's
+`accounting/london_art_exchange/` keys. While the address is unset or local, no Shop invoice email
+is sent: the Shop's copies are left out of each run's list, so they never hold Bid invoice emails
+back, and each stays due. While any waits, every run raises `accounting_shop_invoice_email_refused`
+(an error alert sent to Sentry, routed to finance on-call like the other accounting alerts). Set
+the address and the waiting emails go on the next run.
 
 ## Related
 

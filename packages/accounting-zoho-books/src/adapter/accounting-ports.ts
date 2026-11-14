@@ -7,6 +7,7 @@ import type {
   DocumentPdfPort,
   InvoicePort,
   PaymentPort,
+  PaymentRemainderPort,
 } from "@auction/accounting-domain";
 import type { VendorPort } from "./gateways.js";
 
@@ -14,6 +15,8 @@ import type { VendorPort } from "./gateways.js";
 export interface AccountingPorts {
   readonly invoices: InvoicePort;
   readonly payments: PaymentPort;
+  /** Applies a payment's unapplied rest to an invoice issued after it (a released delivery). */
+  readonly remainders: PaymentRemainderPort;
   readonly creditNotes: CreditNotePort;
   readonly bills: BillPort;
   /** Customers. */

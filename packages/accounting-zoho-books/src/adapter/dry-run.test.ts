@@ -45,6 +45,27 @@ const invoice = (product: "bid" | "shop", treatment: "standard" | "margin_scheme
 describe("Books dry run", () => {
   const ports = createZohoBooksDryRunAdapter({ orgs: testOrgConfigs() });
 
+  it("rehearses applying a payment's remainder, and refuses one naming another product", async () => {
+    const application = {
+      product: "shop" as const,
+      entity: "london_art_exchange" as const,
+      paymentReference: "LAX-SHOP-PAY-order-1",
+      invoiceReference: "LAX-SHOP-INV-order-1-delivery",
+      contactReference: contact("shop").reference,
+      amountPence: 4_000,
+    };
+    expect(await ports.remainders.applyRemainder(application)).toEqual({
+      status: "applied",
+      rehearsal: true,
+    });
+    expect(
+      await ports.remainders.applyRemainder({
+        ...application,
+        invoiceReference: "LAX-BID-INV-order-1",
+      }),
+    ).toEqual({ status: "rejected", reason: R.entityMismatch });
+  });
+
   it("answers a document it could send with a rehearsal identity and our own totals", async () => {
     const doc = invoice("bid", "margin_scheme");
     expect(await ports.invoices.issueInvoice(doc)).toEqual({

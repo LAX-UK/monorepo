@@ -41,6 +41,8 @@ import {
   OrderSummarySchema,
   type SavedDeliveryAddressList,
   SavedDeliveryAddressListSchema,
+  type ShopOrderInvoiceCard,
+  ShopOrderInvoiceCardSchema,
 } from "./commerce-public.js";
 import { type PublicDeliveryRegions, PublicDeliveryRegionsSchema } from "./delivery-regions.js";
 import {
@@ -217,6 +219,13 @@ export function parseOrderList(value: unknown): OrderList {
 export function parseOrderSummary(value: unknown): OrderSummary {
   if (!Value.Check(OrderSummarySchema, value)) {
     throw new ShopContractParseError("Invalid order payload");
+  }
+  return value;
+}
+
+export function parseShopOrderInvoiceCard(value: unknown): ShopOrderInvoiceCard {
+  if (!Value.Check(ShopOrderInvoiceCardSchema, value)) {
+    throw new ShopContractParseError("Invalid order invoice card payload");
   }
   return value;
 }

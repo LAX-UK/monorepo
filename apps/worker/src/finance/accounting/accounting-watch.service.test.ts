@@ -9,6 +9,7 @@ import { ACCOUNTING_ALERTS, type AccountingAlertSink } from "./accounting-alerts
 import {
   AccountingWatch,
   PAYMENT_WAITING_AFTER_MS,
+  REMAINDER_UNSETTLED_AFTER_MS,
   SENDER_MISSED_AFTER_MS,
 } from "./accounting-watch.service.js";
 
@@ -28,6 +29,7 @@ function setUp(
   mode: "off" | "dry_run" = "dry_run",
   delayed: QueueAge = none,
   waiting: QueueAge = none,
+  unsettled: QueueAge = none,
 ) {
   const raised: [string, Record<string, unknown>][] = [];
   const alerts: AccountingAlertSink = {
@@ -36,14 +38,15 @@ function setUp(
   const read = vi.fn(async () => ({ needsPerson: none, pending: none, ...attention }));
   const delayedBidInvoices = vi.fn(async () => delayed);
   const waitingPayments = vi.fn(async () => waiting);
+  const unsettledRemainders = vi.fn(async () => unsettled);
   const watch = new AccountingWatch({
-    attention: { read, delayedBidInvoices, waitingPayments },
+    attention: { read, delayedBidInvoices, waitingPayments, unsettledRemainders },
     settings: switchWith(mode),
     senderModes: ["dry_run"],
     alerts,
     now: () => new Date(now),
   });
-  return { watch, raised, read, delayedBidInvoices, waitingPayments };
+  return { watch, raised, read, delayedBidInvoices, waitingPayments, unsettledRemainders };
 }
 
 describe("AccountingWatch", () => {
@@ -54,6 +57,7 @@ describe("AccountingWatch", () => {
       senderMissed: false,
       bidInvoiceDelayed: false,
       paymentWaiting: false,
+      remainderDelayed: false,
     });
     expect(raised).toEqual([]);
   });
@@ -107,6 +111,7 @@ describe("AccountingWatch", () => {
         read,
         delayedBidInvoices: vi.fn(async () => none),
         waitingPayments: vi.fn(async () => none),
+        unsettledRemainders: vi.fn(async () => none),
       },
       settings: { read: async () => refuse("bad_mode", "broken") },
       senderModes: ["dry_run"],
@@ -164,6 +169,36 @@ describe("AccountingWatch", () => {
           oldestSince: oldest.toISOString(),
           modes: ["dry_run"],
           page: "/admin/finance/accounting?tab=waiting",
+        },
+      ],
+    ]);
+  });
+
+  it("raises delayed accounting for a Shop delivery invoice issued six hours ago whose payment's rest is not applied", async () => {
+    const now = new Date("2026-11-13T18:00:00Z");
+    const oldest = new Date(now.getTime() - REMAINDER_UNSETTLED_AFTER_MS - 60_000);
+    const { watch, raised, unsettledRemainders } = setUp(
+      {},
+      now.toISOString(),
+      "dry_run",
+      none,
+      none,
+      { count: 1, oldestSince: oldest },
+    );
+    expect((await watch.check()).remainderDelayed).toBe(true);
+    expect(unsettledRemainders).toHaveBeenCalledWith(
+      ["dry_run"],
+      new Date(now.getTime() - REMAINDER_UNSETTLED_AFTER_MS),
+    );
+    expect(raised).toEqual([
+      [
+        ACCOUNTING_ALERTS.shopRemainderDelayed.message,
+        {
+          documentType: "invoice",
+          count: 1,
+          oldestSince: oldest.toISOString(),
+          modes: ["dry_run"],
+          page: "/admin/finance/accounting",
         },
       ],
     ]);

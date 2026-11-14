@@ -12,6 +12,7 @@ import { ZohoDocumentLookup } from "./lookup.js";
 import type { ZohoOrgConfigs } from "./org-config.js";
 import { ZohoDocumentPdfGateway } from "./pdf.js";
 import { ZohoReadBackLookup } from "./read-back.js";
+import { ZohoPaymentRemainderGateway } from "./remainder.js";
 import { DRY_RUN, WriteGate, type ZohoWriteMode } from "./write-gate.js";
 import { DocumentWriter } from "./writer.js";
 
@@ -51,6 +52,7 @@ export function createZohoBooksAdapter(deps: {
   return {
     invoices: new ZohoInvoiceGateway(gateway),
     payments: new ZohoPaymentGateway(gateway),
+    remainders: new ZohoPaymentRemainderGateway(gateway, api),
     creditNotes: new ZohoCreditNoteGateway(gateway),
     bills: new ZohoBillGateway(gateway),
     contacts: new ZohoContactGateway(gateway, api),

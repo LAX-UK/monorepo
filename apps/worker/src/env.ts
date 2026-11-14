@@ -208,6 +208,13 @@ export const envSchema = z
     INVENTORY_MACHINE_CLIENT_SECRET: z.preprocess(emptyToUndefined, z.string().min(32).optional()),
     /** lax.art and LAX Admin public addresses, for the link on the Zoho Product. */
     LAX_ART_PUBLIC_URL: z.preprocess(emptyToUndefined, z.string().url().optional()),
+    /**
+     * The Shop storefront's public https address, for the link in a Shop invoice email (the same
+     * value as the Shop API's SHOP_STOREFRONT_URL). No default: while it is unset or local, Shop
+     * invoices issued live are not emailed (they wait; the worker raises the
+     * `accounting_shop_invoice_email_refused` alert). Bid invoice emails are never held back by it.
+     */
+    SHOP_STOREFRONT_URL: z.preprocess(emptyToUndefined, z.string().url().optional()),
     LAX_ADMIN_PUBLIC_URL: z.preprocess(emptyToUndefined, z.string().url().optional()),
     /**
      * LAX Bid email alerts. `off` does nothing; `dry_run` records matches and logs each digest

@@ -14,6 +14,21 @@ export const shopOrderPaidPayloadSchemaV1 = z.object({
   framingLineCount: z.number().int().nonnegative().optional(),
 });
 
+/**
+ * A Shop order was paid, for the books. Written in the same transaction that marks the order paid
+ * (and in which the database gives it its `LAX-INV-` invoice number), so the books never miss a
+ * paid order and never see one that rolled back. References only: no names, no addresses, no
+ * amounts. The accounting projection reads every amount from the stored order lines and checks
+ * they are exactly the lines named here.
+ */
+export const shopAccountingOrderPaidPayloadSchemaV1 = z.object({
+  schemaVersion: z.literal(1),
+  orderId: z.string().uuid(),
+  /** Every stored line of the order (goods and framing), in a stable order. */
+  lineIds: z.array(z.string().uuid()).min(1).max(1000),
+  paidAt: rfc3339Timestamp,
+});
+
 export const shopArtworkCreatedPayloadSchemaV1 = z.object({
   schemaVersion: z.literal(1),
   importKey: z.string(),

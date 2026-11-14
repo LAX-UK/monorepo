@@ -8,6 +8,8 @@ import {
   type LookupOutcome,
   type Payment,
   type PdfOutcome,
+  type RemainderApplication,
+  type RemainderOutcome,
   type Result,
   expectedTotals,
 } from "@auction/accounting-domain";
@@ -96,6 +98,11 @@ export function createZohoBooksDryRunAdapter(deps: {
             ),
         ),
     },
+    // Nothing is held, so nothing is applied: the same checks, then a rehearsal answer.
+    remainders: {
+      applyRemainder: (a: RemainderApplication): Promise<RemainderOutcome> =>
+        Promise.resolve(rehearseRemainder(deps.orgs, a)),
+    },
     bills: {
       issueBill: (d: Bill) =>
         rehearse(
@@ -121,6 +128,22 @@ export function createZohoBooksDryRunAdapter(deps: {
 
 function customer(reference: string): Dependency {
   return { kind: "contact", reference, contactType: "customer" };
+}
+
+function rehearseRemainder(orgs: ZohoOrgConfigs, a: RemainderApplication): RemainderOutcome {
+  const choice = orgFor(orgs, a);
+  if (!choice.ok) return { status: "rejected", reason: choice.reason };
+  const foreign = sameProduct(a.product, [
+    customer(a.contactReference),
+    { kind: "payment", reference: a.paymentReference },
+    { kind: "invoice", reference: a.invoiceReference },
+  ]);
+  if (foreign)
+    return {
+      status: "rejected",
+      reason: foreign.status === "rejected" ? foreign.reason : "zoho_books_bad_reference",
+    };
+  return { status: "applied", rehearsal: true };
 }
 
 function rehearsal(

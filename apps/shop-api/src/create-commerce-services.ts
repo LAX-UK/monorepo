@@ -20,7 +20,9 @@ import {
   createListSavedDeliveryAddressesHandler,
   createSaveDeliveryAddressHandler,
 } from "./application/handlers/delivery-address-book.handler.js";
+import { createOrderInvoiceCardService } from "./application/order-invoice-card.js";
 import type { FixedWindowCounter } from "./application/ports/fixed-window-counter.js";
+import type { InvoiceCopyStorage } from "./application/ports/order-invoice-books.port.js";
 import type { PaymentEventProcessor } from "./application/ports/payment-event.processor.js";
 import type { CommerceRoutesDeps, StripeWebhookDeps } from "./commerce-route-deps.js";
 import { createGuestCheckoutDeps } from "./create-guest-checkout-deps.js";
@@ -30,6 +32,7 @@ import { createDrizzleCheckoutMoneyPause } from "./infrastructure/drizzle-checko
 import { createDrizzleCommerceRepository } from "./infrastructure/drizzle-commerce.repository.js";
 import { createDrizzleDeliveryQuoteAcceptanceStore } from "./infrastructure/drizzle-delivery-quote-acceptance.store.js";
 import { createDrizzleDeliveryQuoteOrderStore } from "./infrastructure/drizzle-delivery-quote-order.store.js";
+import { createDrizzleOrderInvoiceBooksReader } from "./infrastructure/drizzle-order-invoice-books.reader.js";
 import { createDrizzlePaymentEventProcessor } from "./infrastructure/drizzle-payment-event.processor.js";
 import { createDrizzlePendingDeletionReader } from "./infrastructure/drizzle-pending-deletion.reader.js";
 import { createDrizzleShopNotificationPublisher } from "./infrastructure/drizzle-shop-notification.publisher.js";
@@ -61,6 +64,8 @@ export function createCommerceServices(
     unappliedMoney: UnappliedMoneyLookup;
     /** Whether new money for an artwork is paused while Zoho says it is sold. */
     moneyPause: MoneyPauseReader;
+    /** LAX's document storage (stored copies of Books invoices); null where not configured. */
+    invoiceCopies?: InvoiceCopyStorage | null;
   },
 ): { commerce: CommerceRoutesDeps; stripeWebhook: StripeWebhookDeps } {
   const paymentGateway = createStripeShopCheckoutGateway({
@@ -183,6 +188,11 @@ export function createCommerceServices(
       getOrder: createGetOrderHandler(repository),
       getCustomerProfile: (subject) => repository.getCustomerProfile(subject),
       invoiceIssuer,
+      orderInvoiceCard: createOrderInvoiceCardService({
+        books: createDrizzleOrderInvoiceBooksReader(db),
+        storage: options.invoiceCopies ?? null,
+        now: () => new Date(),
+      }),
       ...(guestCheckout ? { guestCheckout } : {}),
       savedAddresses: {
         list: createListSavedDeliveryAddressesHandler(addressBook),

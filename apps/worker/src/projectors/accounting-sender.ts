@@ -8,7 +8,7 @@ export const ACCOUNTING_SENDER = "accounting_sender";
  */
 export async function processAccountingSender(ctx: ProjectorRunContext): Promise<void> {
   if (!ctx.accounting) return;
-  const { sender, senderCheckIn, invoiceCopy } = ctx.accounting;
+  const { sender, senderCheckIn, invoiceCopy, remainder } = ctx.accounting;
   try {
     await senderCheckIn(async () => {
       const tick = await sender.tick();
@@ -18,6 +18,15 @@ export async function processAccountingSender(ctx: ProjectorRunContext): Promise
     });
   } catch (err) {
     ctx.log.error({ err }, "accounting_sender_tick_failed");
+  }
+  // After the sender: a Shop delivery invoice issued this tick is paid from the order's payment.
+  try {
+    const applied = await remainder.tick();
+    if (applied.applied + applied.refused > 0) {
+      ctx.log.info({ ...applied }, "accounting_remainder_tick");
+    }
+  } catch (err) {
+    ctx.log.error({ err }, "accounting_remainder_tick_failed");
   }
   // After the sender, so a document issued this tick gets its copy (and email) straight away.
   try {

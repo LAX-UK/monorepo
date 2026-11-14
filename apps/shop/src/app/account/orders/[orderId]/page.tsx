@@ -4,8 +4,9 @@ import { ShopCatalogueStateRetryButton } from "@/components/home/shop-catalogue-
 import { shopPageWayfinding } from "@/components/shop-page-header";
 import { ShopStatusState, ShopStatusStateLink } from "@/components/shop-status-state";
 import { SHOP_ORDERS_HREF, shopOrderHref } from "@/lib/account/shop-account-routes";
+import { shopOrderInvoiceCard } from "@/lib/account/shop-order-invoice-card.vm";
 import { buildShopOrderDetailVm } from "@/lib/account/shop-orders.vm";
-import { fetchShopOrder } from "@/lib/shop-commerce.server";
+import { fetchShopOrder, fetchShopOrderInvoiceCard } from "@/lib/shop-commerce.server";
 import { shopPrivatePageMetadata } from "@/lib/shop-private-page-metadata";
 import { gateShopAuthenticatedRoute, shopStorefrontLoginHref } from "@/lib/shop-viewer-state";
 import { loadShopViewerState } from "@/lib/shop-viewer-state.server";
@@ -73,7 +74,15 @@ export default async function AccountOrderDetailPage({ params }: OrderDetailPage
     );
   }
 
-  const order = buildShopOrderDetailVm(orderResult.data, new Date());
+  const now = new Date();
+  const order = buildShopOrderDetailVm(orderResult.data, now);
+  // Only a paid order has an invoice; an unreadable card leaves LAX's own invoice in place.
+  const invoiceCard = shopOrderInvoiceCard({
+    orderId,
+    card: orderResult.data.paidAt ? await fetchShopOrderInvoiceCard(orderId) : null,
+    outsideUk: orderResult.data.fulfilment === "international_quotation",
+    now,
+  });
   const wayfinding = shopPageWayfinding.orderDetail(order.title);
 
   return (
@@ -82,7 +91,7 @@ export default async function AccountOrderDetailPage({ params }: OrderDetailPage
       breadcrumbs={wayfinding.breadcrumbs}
       showAccountSettings={false}
     >
-      <ShopOrderDetail order={order} />
+      <ShopOrderDetail order={order} invoiceCard={invoiceCard} />
     </ShopAccountShell>
   );
 }

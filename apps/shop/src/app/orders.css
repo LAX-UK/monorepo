@@ -728,3 +728,86 @@ a.shop-order-lines__title:hover {
     width: 100%;
   }
 }
+
+/* Invoice: the invoice Books issues for the order (being prepared, late, issued, cancelled). */
+.shop-invoice-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--shop-space-3);
+}
+
+.shop-invoice-card__row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--shop-space-3);
+}
+
+.shop-invoice-card__icon {
+  display: inline-grid;
+  width: 2.25rem;
+  height: 2.25rem;
+  flex-shrink: 0;
+  place-items: center;
+  border: 1px solid var(--color-border-hairline);
+  border-radius: var(--radius-control, 0.5rem);
+  color: var(--color-on-surface-variant);
+}
+
+.shop-invoice-card__glyph {
+  width: 1.125rem;
+  height: 1.125rem;
+}
+
+.shop-invoice-card__body {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: var(--shop-space-1);
+}
+
+.shop-invoice-card__title {
+  margin: 0;
+  color: var(--color-on-surface);
+  font-size: var(--shop-text-md);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.shop-invoice-card__text {
+  margin: 0;
+  color: var(--color-on-surface-variant);
+  font-size: var(--shop-text-sm);
+  line-height: 1.5;
+}
+
+.shop-invoice-card__warning {
+  display: block;
+  padding: var(--shop-space-2) var(--shop-space-3);
+  border-radius: var(--radius-control, 0.5rem);
+  background: var(--color-warning-container);
+  color: var(--color-warning-on-surface);
+  font-size: var(--shop-text-sm);
+  line-height: 1.5;
+}
+
+.shop-invoice-card__download {
+  display: flex;
+  align-items: center;
+  gap: var(--shop-space-3);
+  margin-inline: calc(var(--shop-space-2) * -1);
+  padding: var(--shop-space-2);
+  border-radius: var(--radius-control, 0.5rem);
+  color: var(--color-on-surface);
+  text-decoration: none;
+}
+
+.shop-invoice-card__download:hover {
+  background: var(--color-surface-container, var(--color-surface));
+}
+
+.shop-invoice-card__download-label {
+  font-size: var(--shop-text-md);
+  font-weight: 500;
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
