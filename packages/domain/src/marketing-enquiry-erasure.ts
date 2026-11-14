@@ -45,6 +45,29 @@ export function addYears(from: Date, years: number): Date {
   return to;
 }
 
+/** The dates a deal's end can be read from. */
+export type DealEndSources = {
+  stage: PrivateSaleDealStage;
+  /** The latest stage-history row into the deal's closing stage; `null` when none was written. */
+  closedInHistoryAt: Date | null;
+  /** The deal's own cancellation date. */
+  cancelledAt: Date | null;
+  /** The deal's last write, which for a closed deal is when it was written as closed. */
+  updatedAt: Date | null;
+};
+
+/**
+ * When a closed deal ended, or `null` for one still open. A cancelled deal ended on its own
+ * cancellation date; a settled deal on its stage-history settle row. A closed deal whose history
+ * row is missing falls back to the deal's own dates, so it is never held for want of the row. Only
+ * a closed deal with no date at all has no end, and that is shown to staff rather than held quietly.
+ */
+export function closedDealEndedAt(deal: DealEndSources): Date | null {
+  if (!isDealClosed(deal.stage)) return null;
+  const own = deal.stage === "cancelled" ? deal.cancelledAt : null;
+  return own ?? deal.closedInHistoryAt ?? deal.updatedAt ?? null;
+}
+
 /** Whether a deal's record must still be kept. A deal with no known end date is kept. */
 export function isDealRecordRetained(
   deal: EnquiryDealRecord,

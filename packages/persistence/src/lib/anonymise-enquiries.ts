@@ -19,6 +19,7 @@ import {
   DEFAULT_PRIVATE_SALE_RECORD_RETENTION_YEARS,
   ERASED_ENQUIRY,
   type EnquiryDealRecord,
+  closedDealEndedAt,
   isEnquiryHeldFromErasure,
 } from "@auction/domain";
 import type { PrivateSaleDealStage } from "@auction/types";
@@ -140,6 +141,7 @@ async function dealRecordsOf(
       stage: privateSaleDeal.stage,
       agreedAt: privateSaleDeal.agreedAt,
       cancelledAt: privateSaleDeal.cancelledAt,
+      updatedAt: privateSaleDeal.updatedAt,
     })
     .from(privateSaleDeal)
     .where(
@@ -151,7 +153,7 @@ async function dealRecordsOf(
   if (deals.length === 0) return records;
 
   const dealIds = deals.map((deal) => deal.id);
-  const [parties, named, settled] = await Promise.all([
+  const [parties, named, closings] = await Promise.all([
     tx
       .select({ dealId: privateSaleDealParty.dealId, userId: privateSaleDealParty.actingUserId })
       .from(privateSaleDealParty)
@@ -167,13 +169,14 @@ async function dealRecordsOf(
     tx
       .select({
         dealId: privateSaleDealStageHistory.dealId,
+        toStage: privateSaleDealStageHistory.toStage,
         at: privateSaleDealStageHistory.createdAt,
       })
       .from(privateSaleDealStageHistory)
       .where(
         and(
           inArray(privateSaleDealStageHistory.dealId, dealIds),
-          eq(privateSaleDealStageHistory.toStage, "settled"),
+          inArray(privateSaleDealStageHistory.toStage, ["settled", "cancelled"]),
         ),
       ),
   ]);
@@ -189,15 +192,20 @@ async function dealRecordsOf(
   for (const deal of deals) {
     const since = deal.enquiryId ? enquiryStart.get(deal.enquiryId) : undefined;
     if (!deal.enquiryId || !since) continue;
-    const settledAt = settled
-      .filter((h) => h.dealId === deal.id)
+    const closedInHistoryAt = closings
+      .filter((h) => h.dealId === deal.id && h.toStage === deal.stage)
       .map((h) => h.at)
       .sort((a, b) => b.getTime() - a.getTime())[0];
     const list = records.get(deal.enquiryId) ?? [];
     list.push({
       stage: deal.stage as PrivateSaleDealStage,
       agreedAt: deal.agreedAt,
-      endedAt: deal.stage === "cancelled" ? deal.cancelledAt : (settledAt ?? null),
+      endedAt: closedDealEndedAt({
+        stage: deal.stage as PrivateSaleDealStage,
+        closedInHistoryAt: closedInHistoryAt ?? null,
+        cancelledAt: deal.cancelledAt,
+        updatedAt: deal.updatedAt,
+      }),
       hasComplianceCase: [...(usersOf.get(deal.id) ?? [])].some((userId) =>
         (checks.get(userId) ?? []).some((at) => at >= since),
       ),

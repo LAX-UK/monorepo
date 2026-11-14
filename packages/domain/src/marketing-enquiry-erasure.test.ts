@@ -4,6 +4,7 @@ import {
   ENQUIRY_ERASURE_HOLD_STATUSES,
   ERASED_ENQUIRY,
   type EnquiryDealRecord,
+  closedDealEndedAt,
   isEnquiryHeldFromErasure,
 } from "./marketing-enquiry-erasure.js";
 import { ENQUIRY_STATUSES } from "./marketing-enquiry-vocabulary.js";
@@ -100,5 +101,44 @@ describe("enquiry erasure policy", () => {
 
   it("replaces the email with an address that can never receive mail", () => {
     expect(ERASED_ENQUIRY.email.endsWith(".invalid")).toBe(true);
+  });
+});
+
+describe("closedDealEndedAt", () => {
+  const at = (iso: string) => new Date(iso);
+  const sources = {
+    closedInHistoryAt: at("2026-03-01T00:00:00Z"),
+    cancelledAt: null,
+    updatedAt: at("2026-03-05T00:00:00Z"),
+  };
+
+  it("has no end for a deal still open, whatever dates it carries", () => {
+    expect(closedDealEndedAt({ ...sources, stage: "paid" })).toBeNull();
+  });
+
+  it("ends a settled deal on its stage-history settle row", () => {
+    expect(closedDealEndedAt({ ...sources, stage: "settled" })).toEqual(sources.closedInHistoryAt);
+  });
+
+  it("ends a settled deal with no history row on its own last write, not never", () => {
+    const deal = { ...sources, stage: "settled" as const, closedInHistoryAt: null };
+    expect(closedDealEndedAt(deal)).toEqual(sources.updatedAt);
+  });
+
+  it("ends a cancelled deal on its cancellation date, with or without a history row", () => {
+    const cancelledAt = at("2026-02-01T00:00:00Z");
+    expect(closedDealEndedAt({ ...sources, stage: "cancelled", cancelledAt })).toEqual(cancelledAt);
+    const noHistory = { ...sources, stage: "cancelled" as const, closedInHistoryAt: null };
+    expect(closedDealEndedAt({ ...noHistory, cancelledAt })).toEqual(cancelledAt);
+  });
+
+  it("has no end only when a closed deal carries no date at all", () => {
+    const none = {
+      stage: "settled" as const,
+      closedInHistoryAt: null,
+      cancelledAt: null,
+      updatedAt: null,
+    };
+    expect(closedDealEndedAt(none)).toBeNull();
   });
 });
