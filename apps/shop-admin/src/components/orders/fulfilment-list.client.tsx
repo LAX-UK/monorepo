@@ -27,12 +27,11 @@ import {
   PanelSection,
   PersonCell,
   PrimaryCell,
-  StaffButton,
   StaffDate,
   formatStaffDateTime,
   toast,
 } from "@auction/staff-ui";
-import { ArrowUpRight, Copy, PanelRight, ReceiptText, Truck } from "@auction/staff-ui/icons";
+import { Copy, PanelRight, ReceiptText, Truck } from "@auction/staff-ui/icons";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 
@@ -289,13 +288,7 @@ export function FulfilmentList({
             <MappedStatusBadge status={opened.status} present={presentFulfilmentStatus} />
           ) : null
         }
-        headerActions={
-          opened ? (
-            <StaffButton asChild variant="ghost" size="sm" icon={<ArrowUpRight aria-hidden />}>
-              <Link href={fulfilmentOrderHref(opened.orderId)}>Open order</Link>
-            </StaffButton>
-          ) : null
-        }
+        {...(opened ? { fullPage: { href: fulfilmentOrderHref(opened.orderId), Link } } : {})}
         meta={
           opened
             ? [
