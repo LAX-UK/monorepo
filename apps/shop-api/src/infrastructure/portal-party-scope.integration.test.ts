@@ -58,9 +58,10 @@ describe.skipIf(!ownerUrl)("portal party scope (integration)", () => {
       b: `scope-artist-b-${tag}`,
       solo: `scope-artist-solo-${tag}`,
       c: `scope-artist-c-${tag}`,
+      d: `scope-artist-d-${tag}`,
       gallery: `scope-gallery-${tag}`,
     };
-    const [gallery, soloParty, unclaimedShared, ownC] = [id(), id(), id(), id()];
+    const [gallery, soloParty, unclaimedShared, ownC, ownD] = [id(), id(), id(), id(), id()];
     const [artistA, artistB, artistSolo, artistC, artistD] = [id(), id(), id(), id(), id()];
     const [workA, workB, workSolo] = [id(), id(), id()];
     const [editionA, editionB] = [id(), id()];
@@ -80,6 +81,7 @@ describe.skipIf(!ownerUrl)("portal party scope (integration)", () => {
           { id: soloParty, displayName: "Solo Artist" },
           { id: unclaimedShared, displayName: "Unclaimed Studio" },
           { id: ownC, displayName: "Artist C", identitySubjectId: subjects.c },
+          { id: ownD, displayName: "Artist D", identitySubjectId: subjects.d },
         ]);
         await tx.insert(shopArtist).values([
           { id: artistA, partyId: gallery, slug: `a-${tag}`, identitySubjectId: subjects.a },
@@ -96,7 +98,12 @@ describe.skipIf(!ownerUrl)("portal party scope (integration)", () => {
             slug: `c-${tag}`,
             identitySubjectId: subjects.c,
           },
-          { id: artistD, partyId: unclaimedShared, slug: `d-${tag}` },
+          {
+            id: artistD,
+            partyId: unclaimedShared,
+            slug: `d-${tag}`,
+            identitySubjectId: subjects.d,
+          },
         ]);
         const work = (artworkId: string, artistId: string, name: string) => ({
           id: artworkId,
@@ -233,11 +240,18 @@ describe.skipIf(!ownerUrl)("portal party scope (integration)", () => {
         await expect(connect.getStatusForSubject(subjects.c)).rejects.toMatchObject(
           managedByGallery,
         );
-        await tx.insert(shopPayeeConnectAccount).values({
-          partyId: ownC,
-          stripePlatformKey: PLATFORM,
-          stripeConnectAccountId: `acct_scope_c_${tag}`,
-        });
+        await tx.insert(shopPayeeConnectAccount).values([
+          {
+            partyId: ownC,
+            stripePlatformKey: PLATFORM,
+            stripeConnectAccountId: `acct_scope_c_${tag}`,
+          },
+          {
+            partyId: ownD,
+            stripePlatformKey: PLATFORM,
+            stripeConnectAccountId: `acct_scope_d_${tag}`,
+          },
+        ]);
         expect(await accounts.findForParty(unclaimedShared)).toBeNull();
 
         const accountParties = await tx
@@ -245,7 +259,7 @@ describe.skipIf(!ownerUrl)("portal party scope (integration)", () => {
           .from(shopPayeeConnectAccount)
           .where(eq(shopPayeeConnectAccount.stripePlatformKey, PLATFORM));
         expect(accountParties.map((row) => row.partyId).sort()).toEqual(
-          [gallery, soloOwnParty?.id, ownC].sort(),
+          [gallery, soloOwnParty?.id, ownC, ownD].sort(),
         );
 
         // --- Portal readers and the data export ---
