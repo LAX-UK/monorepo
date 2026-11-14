@@ -84,6 +84,7 @@ export * from "./domain-events.js";
 export * from "./domain-event-delivery.js";
 export * from "./crm-record-link.js";
 export * from "./accounting.js";
+export * from "./accounting-stripe.js";
 export * from "./bid-finance-setting.js";
 export * from "./sale-seller-terms.js";
 export * from "./artwork-register.js";
