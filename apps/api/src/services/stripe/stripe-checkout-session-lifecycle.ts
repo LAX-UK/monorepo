@@ -249,9 +249,27 @@ export class CheckoutSessionLifecycle implements ICheckoutCleanupAfterCapture {
       }
       // Expiring the session makes Stripe cancel its intent; Stripe refuses a direct cancel of a
       // Checkout-managed intent.
-      await this.gateway.expireCheckoutSession(recorded.stripeSessionId);
+      if (!(await this.expired(recorded.stripeSessionId))) return;
     }
     await this.ledger.markClosed(recorded.stripeSessionId);
+  }
+
+  /**
+   * Expires a session and says whether it is now closed. A session the buyer completed while it
+   * was being closed stays open in the ledger, so it still counts as paid (or as a transfer
+   * given instructions) and the buyer is not offered another checkout.
+   */
+  private async expired(stripeSessionId: string): Promise<boolean> {
+    const status = await this.gateway.expireCheckoutSession(stripeSessionId);
+    if (status === "expired") return true;
+    this.recordEvent("checkout_session_completed_during_close");
+    this.reporter.report({
+      message: `Checkout ${stripeSessionId} was not closed: Stripe reports it ${status ?? "unknown"}`,
+      status: 200,
+      code: "checkout_session_completed_during_close",
+      severity: "info",
+    });
+    return false;
   }
 
   /**
@@ -464,7 +482,7 @@ export class CheckoutSessionLifecycle implements ICheckoutCleanupAfterCapture {
     if (stripeSession.status === "open") {
       // A bank transfer with a payment intent has been given instructions: money may be on its way.
       if (sessionRail === "bank" && stripeSession.payment_intent) return;
-      await this.gateway.expireCheckoutSession(recorded.stripeSessionId);
+      if (!(await this.expired(recorded.stripeSessionId))) return;
     }
     await this.ledger.markClosed(recorded.stripeSessionId);
   }

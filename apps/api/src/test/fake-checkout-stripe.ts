@@ -30,6 +30,8 @@ export class FakeCheckoutStripe {
   >();
   readonly keys: string[] = [];
   failExpireFor = new Set<string>();
+  /** Sessions the buyer completes while they are being closed. */
+  readonly completeOnExpire = new Set<string>();
   readonly intents = new Map<
     string,
     { status: string; amount: number; received: number; remaining: number }
@@ -73,11 +75,19 @@ export class FakeCheckoutStripe {
   async expireCheckoutSession(id: string) {
     if (this.failExpireFor.has(id)) throw new Error("stripe unavailable");
     const s = this.sessions.get(id);
-    if (s?.status !== "open") return;
+    if (!s) return null;
+    // The buyer pays on the page between the caller's read and the expire: the gateway's own
+    // read sees it complete and leaves it.
+    if (this.completeOnExpire.has(id) && s.status === "open") {
+      s.status = "complete";
+      s.paymentStatus = "paid";
+    }
+    if (s.status !== "open") return s.status;
     s.status = "expired";
     // Stripe cancels the payment intent of the Checkout session it expires.
     const intent = s.paymentIntent ? this.intents.get(s.paymentIntent) : null;
     if (intent && intent.status !== "succeeded") intent.status = "canceled";
+    return s.status;
   }
 
   async retrieveCheckoutSession(id: string) {

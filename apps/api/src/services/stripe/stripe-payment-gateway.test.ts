@@ -213,6 +213,29 @@ describe("StripePaymentGateway", () => {
     );
   });
 
+  it("expireCheckoutSession reports the session's final status, and leaves a completed one", async () => {
+    const gateway = new StripePaymentGateway({ STRIPE_SECRET_KEY: "sk_test" }, noopStripeFactory());
+    const expire = vi.fn().mockResolvedValue({ id: "cs_open", status: "expired" });
+    const retrieve = vi.fn(async (id: string) => ({
+      id,
+      status: id === "cs_open" ? "open" : "complete",
+    }));
+    injectStripeClient(gateway, {
+      checkout: { sessions: { retrieve, expire } },
+    } as unknown as Stripe);
+
+    await expect(gateway.expireCheckoutSession("cs_open")).resolves.toBe("expired");
+    // Paid between the caller's read and this one: left as it is, and said so.
+    await expect(gateway.expireCheckoutSession("cs_paid")).resolves.toBe("complete");
+    expect(expire).toHaveBeenCalledTimes(1);
+    expect(expire).toHaveBeenCalledWith("cs_open");
+  });
+
+  it("expireCheckoutSession returns null when Stripe is not configured", async () => {
+    const gateway = new StripePaymentGateway({ STRIPE_SECRET_KEY: "sk_test" }, noopStripeFactory());
+    await expect(gateway.expireCheckoutSession("cs_1")).resolves.toBeNull();
+  });
+
   it("revokeOpenCheckoutForPayment expires open sessions and cancels the payment intent", async () => {
     const gateway = new StripePaymentGateway({ STRIPE_SECRET_KEY: "sk_test" }, noopStripeFactory());
     const sessionsExpire = vi.fn().mockResolvedValue({ id: "cs_1", status: "expired" });

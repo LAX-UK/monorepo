@@ -159,6 +159,29 @@ describe("CheckoutSessionLifecycle", () => {
     expect(stripe.open()).toEqual([bank]);
   });
 
+  it("a card session the buyer pays while it is being closed is not marked closed", async () => {
+    const { stripe, ledger, pay, recordEvent } = setup();
+    const oldCard = readyId(await pay("card", ["lot"]));
+    // The buyer completes the old card page between our read and Stripe's expire.
+    stripe.completeOnExpire.add(oldCard);
+    await pay("bank", ["lot", "courier"]);
+    expect(stripe.sessions.get(oldCard)?.status).toBe("complete");
+    const rows = await ledger.listSessions("pay-1");
+    expect(rows.find((r) => r.stripeSessionId === oldCard)?.closedAt).toBeNull();
+    expect(recordEvent).toHaveBeenCalledWith("checkout_session_completed_during_close");
+    // The paid session still counts: no other checkout is offered while it is confirmed.
+    expect(await pay("card", ["lot", "courier"])).toEqual({ kind: "already_complete" });
+  });
+
+  it("a same-rail session the buyer pays while it is being closed is not marked closed", async () => {
+    const { stripe, ledger, pay } = setup();
+    const old = readyId(await pay("card", ["lot"]));
+    stripe.completeOnExpire.add(old);
+    await pay("card", ["lot", "courier"]);
+    const rows = await ledger.listSessions("pay-1");
+    expect(rows.find((r) => r.stripeSessionId === old)?.closedAt).toBeNull();
+  });
+
   it("paying by bank for unchanged parameters leaves the card session open", async () => {
     const { stripe, pay } = setup();
     const card = readyId(await pay("card", ["lot"]));
@@ -382,6 +405,19 @@ describe("CheckoutSessionLifecycle", () => {
 
       expect(stripe.open()).toEqual([]);
       expect(stripe.cancelledIntents).toEqual([]);
+    });
+
+    it("after capture, a session completed while it is being closed is left open in the ledger", async () => {
+      const { stripe, ledger, lifecycle, pay } = setup();
+      const other = readyId(await pay("card", ["lot"]));
+      const paid = readyId(await pay("bank", ["lot"]));
+      const paidIntent = stripe.complete(paid);
+      stripe.completeOnExpire.add(other);
+
+      await lifecycle.closeAfterCapture("pay-1", paidIntent);
+
+      const rows = await ledger.listSessions("pay-1");
+      expect(rows.find((r) => r.stripeSessionId === other)?.closedAt).toBeNull();
     });
 
     it("leaves a partly funded bank session alone", async () => {

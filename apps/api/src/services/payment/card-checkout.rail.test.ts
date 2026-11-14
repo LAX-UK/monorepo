@@ -80,7 +80,7 @@ describe("CardCheckoutRail", () => {
         expires_at: Math.floor(Date.now() / 1000) + 3600,
       }),
       findChargeIdForPayment: vi.fn(),
-      expireCheckoutSession: vi.fn().mockResolvedValue(undefined),
+      expireCheckoutSession: vi.fn().mockResolvedValue("expired"),
       cancelPaymentIntent: vi.fn().mockResolvedValue(undefined),
       revokeOpenCheckoutForPayment: vi.fn().mockResolvedValue(undefined),
     };
@@ -130,7 +130,7 @@ describe("CardCheckoutRail", () => {
       retrievePaymentIntent: vi.fn(),
       retrieveCheckoutSession: vi.fn(),
       findChargeIdForPayment: vi.fn(),
-      expireCheckoutSession: vi.fn().mockResolvedValue(undefined),
+      expireCheckoutSession: vi.fn().mockResolvedValue("expired"),
       cancelPaymentIntent: vi.fn().mockResolvedValue(undefined),
       revokeOpenCheckoutForPayment: vi.fn().mockResolvedValue(undefined),
     };

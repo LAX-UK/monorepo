@@ -292,7 +292,7 @@ describe("PaymentService", () => {
       retrievePaymentIntent: vi.fn(),
       retrieveCheckoutSession: vi.fn(),
       findChargeIdForPayment: vi.fn(),
-      expireCheckoutSession: vi.fn().mockResolvedValue(undefined),
+      expireCheckoutSession: vi.fn().mockResolvedValue("expired"),
       cancelPaymentIntent: vi.fn().mockResolvedValue(undefined),
       revokeOpenCheckoutForPayment: vi.fn().mockResolvedValue(undefined),
     };
@@ -378,7 +378,7 @@ describe("PaymentService", () => {
       retrievePaymentIntent: vi.fn(),
       retrieveCheckoutSession: vi.fn(),
       findChargeIdForPayment: vi.fn(),
-      expireCheckoutSession: vi.fn().mockResolvedValue(undefined),
+      expireCheckoutSession: vi.fn().mockResolvedValue("expired"),
       cancelPaymentIntent: vi.fn().mockResolvedValue(undefined),
       revokeOpenCheckoutForPayment: vi.fn().mockResolvedValue(undefined),
     };
@@ -459,7 +459,7 @@ describe("PaymentService", () => {
       retrievePaymentIntent: vi.fn(),
       retrieveCheckoutSession: vi.fn(),
       findChargeIdForPayment: vi.fn(),
-      expireCheckoutSession: vi.fn().mockResolvedValue(undefined),
+      expireCheckoutSession: vi.fn().mockResolvedValue("expired"),
       cancelPaymentIntent: vi.fn().mockResolvedValue(undefined),
       revokeOpenCheckoutForPayment: vi.fn().mockResolvedValue(undefined),
     };
@@ -555,7 +555,7 @@ describe("PaymentService", () => {
       retrievePaymentIntent: vi.fn(),
       retrieveCheckoutSession: vi.fn(),
       findChargeIdForPayment: vi.fn(),
-      expireCheckoutSession: vi.fn().mockResolvedValue(undefined),
+      expireCheckoutSession: vi.fn().mockResolvedValue("expired"),
       cancelPaymentIntent: vi.fn().mockResolvedValue(undefined),
       revokeOpenCheckoutForPayment: vi.fn().mockResolvedValue(undefined),
     };
@@ -622,7 +622,7 @@ describe("PaymentService", () => {
       retrievePaymentIntent: vi.fn(),
       retrieveCheckoutSession: vi.fn(),
       findChargeIdForPayment: vi.fn(),
-      expireCheckoutSession: vi.fn().mockResolvedValue(undefined),
+      expireCheckoutSession: vi.fn().mockResolvedValue("expired"),
       cancelPaymentIntent: vi.fn().mockResolvedValue(undefined),
       revokeOpenCheckoutForPayment: vi.fn().mockResolvedValue(undefined),
     };
@@ -1926,7 +1926,7 @@ describe("PaymentService", () => {
       retrievePaymentIntent: vi.fn(),
       retrieveCheckoutSession: vi.fn(),
       findChargeIdForPayment: vi.fn(),
-      expireCheckoutSession: vi.fn().mockResolvedValue(undefined),
+      expireCheckoutSession: vi.fn().mockResolvedValue("expired"),
       cancelPaymentIntent: vi.fn().mockResolvedValue(undefined),
       revokeOpenCheckoutForPayment: vi.fn().mockResolvedValue(undefined),
     };
