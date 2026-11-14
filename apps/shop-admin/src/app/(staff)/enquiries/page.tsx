@@ -2,7 +2,12 @@ import { AdminFailedPage } from "@/components/admin-fetch-state";
 import { EnquiriesList } from "@/components/enquiries/enquiries-list.client";
 import { adminListPath } from "@/server/application/admin-list-path";
 import { fetchAdminJson, loadAdminSession } from "@/server/application/load-admin-data";
-import { enquiriesList, parseEnquiriesState } from "@/server/domain/enquiry-inbox.vm";
+import {
+  enquiriesList,
+  enquiryPath,
+  parseEnquiriesState,
+  parseEnquiryRef,
+} from "@/server/domain/enquiry-inbox.vm";
 import type {
   AdminEnquiryAssigneesResponse,
   AdminEnquiryListResponse,
@@ -23,6 +28,16 @@ export default async function EnquiriesPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const state = parseEnquiriesState(await searchParams);
+  // A link to the enquiry panel that used to be here (`?enquiry=kind:id`) opens the conversation.
+  const linked = parseEnquiryRef(state.open);
+  if (linked) {
+    redirect(
+      enquiriesList.recordHref(
+        state,
+        enquiryPath({ kind: linked.kind, id: encodeURIComponent(linked.id) }),
+      ),
+    );
+  }
   const [result, session, assignees] = await Promise.all([
     fetchAdminJson<AdminEnquiryListResponse>(
       adminListPath("enquiries", {

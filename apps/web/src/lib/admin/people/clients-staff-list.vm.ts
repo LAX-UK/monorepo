@@ -10,6 +10,7 @@ import {
 } from "@auction/staff-ui";
 import type { UserRole, UserStaffRole } from "@auction/types";
 import { CLIENTS_LIST_PATH } from "./build-clients-list-page-model";
+import { peopleRecordHref } from "./people-record-href";
 
 export type ClientsListSearch = Record<string, string | string[] | undefined>;
 
@@ -29,7 +30,7 @@ export type ClientsStaffRow = {
   role: UserRole;
   staffRole: UserStaffRole | null;
   suspended: boolean;
-  /** The client's page, returning to this list. */
+  /** The client's page, remembering this list (`?list=`). */
   href: string;
 };
 
@@ -50,7 +51,7 @@ export function accountStanding(row: {
 
 export function toClientsStaffRows(
   rows: readonly AdminUserRow[],
-  returnTo: string,
+  listQuery: string,
 ): ClientsStaffRow[] {
   return rows.map((row) => ({
     id: row.id,
@@ -67,7 +68,7 @@ export function toClientsStaffRows(
     role: row.role === "staff" ? "staff" : "client",
     staffRole: (row.staffRole as UserStaffRole | null) ?? null,
     suspended: row.suspendedAt !== null,
-    href: `${CLIENTS_LIST_PATH}/${row.id}?returnTo=${encodeURIComponent(returnTo)}`,
+    href: peopleRecordHref(CLIENTS_LIST_PATH, row.id, listQuery),
   }));
 }
 
@@ -76,11 +77,6 @@ export function clientsListHref(
   patch: Record<string, string | number | null | undefined>,
 ): string {
   return buildListHref(CLIENTS_LIST_PATH, current, { offset: 0, client: null, ...patch });
-}
-
-/** The list with this client's panel open (`?client=`), or closed for null. */
-export function clientPanelHref(current: ClientsListSearch, id: string | null): string {
-  return buildListHref(CLIENTS_LIST_PATH, current, { client: id });
 }
 
 /**

@@ -130,6 +130,7 @@ export function ExpectedGuestsPanel({
         columns={columns}
         data={filtered}
         getRowId={(guest) => guest.rsvpId}
+        rowHref={(guest) => `/admin/clients/${encodeURIComponent(guest.userId)}`}
         defaultSort={{ columnId: "guest", direction: "asc" }}
         density="comfortable"
         toolbar={

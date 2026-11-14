@@ -1,28 +1,24 @@
 "use client";
 
-import { knownFacts, useWorkList } from "@/components/use-work-list.client";
+import { useWorkList } from "@/components/use-work-list.client";
 import { orderNumber } from "@/server/domain/order-list.vm";
-import { disputesList } from "@/server/domain/sales-lists.vm";
+import { disputeOrderHref, disputesList } from "@/server/domain/sales-lists.vm";
 import { presentStatus } from "@/server/domain/staff-status";
 import type { WorkListState } from "@/server/domain/work-list.vm";
 import type { AdminDisputeList, AdminDisputeListItem } from "@auction/shop-contracts";
 import {
   type DataColumn,
-  DetailPanel,
   ListPage,
   MappedStatusBadge,
   PersonCell,
   PrimaryCell,
-  StaffButton,
   StaffDate,
   StaffMoney,
-  formatStaffDateTime,
-  formatStaffMoney,
   toast,
 } from "@auction/staff-ui";
-import { ArrowUpRight, Copy, PanelRight, ReceiptText } from "@auction/staff-ui/icons";
+import { Copy, ReceiptText } from "@auction/staff-ui/icons";
 import Link from "next/link";
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 
 const presentDisputeStatus = presentStatus("dispute");
 
@@ -32,12 +28,10 @@ function copyReference(dispute: AdminDisputeListItem) {
     .then(() => toast.success("Dispute reference copied"));
 }
 
-const orderHref = (dispute: AdminDisputeListItem) => `/orders/${dispute.orderId}`;
-
 /**
  * Card disputes on the staff list template: a view per status with counts, search by order
- * number, dispute reference or buyer, newest first on the server, and a record panel linked from
- * the URL (`?dispute=`) that leads to the order.
+ * number, dispute reference or buyer, newest first on the server. A dispute has no page of its
+ * own: a row opens the order it was raised on, at its payment, where staff act on it.
  */
 export function DisputesList({
   state,
@@ -58,7 +52,10 @@ export function DisputesList({
       placeholder: "Search by order number, dispute reference or buyer",
     },
   });
-  const opened = page.items.find((item) => item.disputeId === list.panel.openId) ?? null;
+  const rowHref = useCallback(
+    (row: AdminDisputeListItem) => disputesList.recordHref(state, disputeOrderHref(row)),
+    [state],
+  );
 
   const columns = useMemo<DataColumn<AdminDisputeListItem>[]>(
     () => [
@@ -70,7 +67,7 @@ export function DisputesList({
         truncate: false,
         cell: (row) => (
           <span className="tabular-nums">
-            <PrimaryCell href={list.panelHref(row.disputeId)} Link={list.panel.PanelLink}>
+            <PrimaryCell href={rowHref(row)} Link={Link}>
               {orderNumber(row.orderId, row.orderReference)}
             </PrimaryCell>
           </span>
@@ -125,127 +122,60 @@ export function DisputesList({
         cell: (row) => (row.closedAt ? <StaffDate value={row.closedAt} withTime /> : null),
       },
     ],
-    [list.panelHref, list.panel.PanelLink],
+    [rowHref],
   );
 
   return (
-    <>
-      <ListPage<AdminDisputeListItem>
-        title="Disputes"
-        description="Card disputes raised against an order, newest first. Open one to see the order it concerns."
-        Link={list.Link}
-        listKey="lax-admin.disputes"
-        views={list.views}
-        search={list.search}
-        activeFilters={list.searchChip}
-        onClearFilters={list.clearFilters}
-        loading={list.pending}
-        filtered={list.filtered}
-        error={
-          loadFailed
-            ? {
-                title: "Disputes did not load",
-                description: "Something went wrong on our side. Try again in a moment.",
-                onRetry: () => list.navigate(disputesList.href(state)),
-              }
-            : null
-        }
-        empty={{
-          illustration: "ledger",
-          title: state.view === "opened" ? "No open disputes" : "No disputes",
-          description: "Card disputes raised against an order will be listed here.",
-        }}
-        noResults={{ noun: "disputes" }}
-        table={{
-          columns,
-          data: page.items,
-          getRowId: (row) => row.disputeId,
-          defaultDensity: "comfortable",
-          defaultHiddenColumns: ["closed"],
-          ...list.sort,
-          onRowOpen: (row) => list.panel.show(row.disputeId),
-          activeRowId: list.panel.openId,
-          rowActions: {
-            label: (row) =>
-              `Actions for the dispute on order ${orderNumber(row.orderId, row.orderReference)}`,
-            actions: (row) => [
-              {
-                id: "open",
-                label: "Open details",
-                icon: PanelRight,
-                onSelect: () => list.panel.show(row.disputeId),
-              },
-              { id: "order", label: "Open order", icon: ReceiptText, href: orderHref(row) },
-              {
-                id: "copy",
-                label: "Copy dispute reference",
-                icon: Copy,
-                onSelect: () => copyReference(row),
-              },
-            ],
-          },
-        }}
-        pageSize={list.pageSize}
-        pagination={list.pagination}
-      />
-
-      <DetailPanel
-        open={opened !== null}
-        onOpenChange={(open) => {
-          if (!open) list.panel.show(null);
-        }}
-        title={
-          opened
-            ? `Dispute on order ${orderNumber(opened.orderId, opened.orderReference)}`
-            : "Dispute"
-        }
-        status={
-          opened ? (
-            <MappedStatusBadge status={opened.status} present={presentDisputeStatus} />
-          ) : null
-        }
-        headerActions={
-          opened ? (
-            <StaffButton asChild variant="ghost" size="sm" icon={<ArrowUpRight aria-hidden />}>
-              <Link href={orderHref(opened)}>Open order</Link>
-            </StaffButton>
-          ) : null
-        }
-        meta={
-          opened
-            ? [
-                { label: "Amount", value: formatStaffMoney(opened.amountPence) },
-                {
-                  label: "Opened",
-                  value: formatStaffDateTime(opened.openedAt),
-                },
-              ]
-            : []
-        }
-        summary={
-          opened
-            ? knownFacts([
-                { label: "Buyer", value: opened.buyerName ?? null },
-                {
-                  label: "Buyer email",
-                  value: opened.buyerEmail ?? null,
-                  ...(opened.buyerEmail ? { copyValue: opened.buyerEmail } : {}),
-                },
-                {
-                  label: "Closed",
-                  value: opened.closedAt ? formatStaffDateTime(opened.closedAt) : null,
-                },
-                {
-                  label: "Dispute reference",
-                  value: opened.stripeDisputeId,
-                  copyValue: opened.stripeDisputeId,
-                },
-              ])
-            : []
-        }
-      >
-        {null}
-      </DetailPanel>
-    </>
+    <ListPage<AdminDisputeListItem>
+      title="Disputes"
+      description="Card disputes raised against an order, newest first. Open one to see the order it was raised on."
+      Link={list.Link}
+      listKey="lax-admin.disputes"
+      views={list.views}
+      search={list.search}
+      activeFilters={list.searchChip}
+      onClearFilters={list.clearFilters}
+      loading={list.pending}
+      filtered={list.filtered}
+      error={
+        loadFailed
+          ? {
+              title: "Disputes did not load",
+              description: "Something went wrong on our side. Try again in a moment.",
+              onRetry: () => list.navigate(disputesList.href(state)),
+            }
+          : null
+      }
+      empty={{
+        illustration: "ledger",
+        title: state.view === "opened" ? "No open disputes" : "No disputes",
+        description: "Card disputes raised against an order will be listed here.",
+      }}
+      noResults={{ noun: "disputes" }}
+      table={{
+        columns,
+        data: page.items,
+        getRowId: (row) => row.disputeId,
+        defaultDensity: "comfortable",
+        defaultHiddenColumns: ["closed"],
+        ...list.sort,
+        rowHref,
+        rowActions: {
+          label: (row) =>
+            `Actions for the dispute on order ${orderNumber(row.orderId, row.orderReference)}`,
+          actions: (row) => [
+            { id: "order", label: "Open order", icon: ReceiptText, href: rowHref(row) },
+            {
+              id: "copy",
+              label: "Copy dispute reference",
+              icon: Copy,
+              onSelect: () => copyReference(row),
+            },
+          ],
+        },
+      }}
+      pageSize={list.pageSize}
+      pagination={list.pagination}
+    />
   );
 }

@@ -78,7 +78,6 @@ function renderList(query: Record<string, string> = {}, all = rows) {
       state={state}
       page={editorialListPage("exhibitions", all, state)}
       totalRows={all.length}
-      initialOpened={all.find((row) => row.id === state.open) ?? null}
       artPublicUrl="https://lax.test"
     />,
   );
@@ -143,10 +142,10 @@ describe("the exhibitions list", () => {
     expect(screen.getAllByRole("link", { name: "New exhibition" }).length).toBeGreaterThan(0);
   });
 
-  it("puts open, edit, preview and the publishing action in every row's menu", () => {
+  it("puts edit, preview and the publishing action in every row's menu", () => {
     renderList();
     const published = within(rowOf("Summer Show"));
-    expect(published.getByRole("menuitem", { name: "Open details" })).toBeInTheDocument();
+    expect(published.queryByRole("menuitem", { name: "Open details" })).toBeNull();
     expect(published.getByRole("menuitem", { name: "Edit" })).toBeInTheDocument();
     expect(published.getByRole("menuitem", { name: "Preview on lax.art" })).toBeInTheDocument();
     expect(published.getByRole("menuitem", { name: /Unpublish/ })).toBeInTheDocument();
@@ -178,25 +177,12 @@ describe("the exhibitions list", () => {
     expect(within(dialog).getByRole("button", { name: "Unpublish exhibition" })).toBeVisible();
   });
 
-  it("opens the record from ?item= with its facts once, and Edit and Publish in the footer", async () => {
-    renderList({ item: SUMMER });
-    const panel = await screen.findByRole("dialog", { name: /Summer Show/ });
-    expect(within(panel).getByText("Published")).toBeInTheDocument();
-    expect(within(panel).getByText("Exhibition")).toBeInTheDocument();
-    expect(within(panel).getByText("Mon 1 Jun – Tue 30 Jun")).toBeInTheDocument();
-    expect(within(panel).getByText("lax.test/exhibitions/summer-show")).toBeInTheDocument();
-    expect(within(panel).getByText(SUMMER)).toBeInTheDocument();
-    expect(within(panel).getByRole("link", { name: "Edit exhibition" })).toHaveAttribute(
-      "href",
-      `/editorial/exhibitions/${SUMMER}`,
-    );
-    expect(within(panel).getByRole("button", { name: "Unpublish" })).toBeInTheDocument();
-  });
-
-  it("shows a draft's panel with no public address yet", async () => {
-    renderList({ item: WINTER });
-    const panel = await screen.findByRole("dialog", { name: /Winter Film/ });
-    expect(within(panel).getByText("Not public yet")).toBeInTheDocument();
+  it("makes each row a link to the item's page, remembering the list", () => {
+    renderList({ view: "published", q: "Summer" });
+    const row = rowOf("Summer Show");
+    const href = `/editorial/exhibitions/${SUMMER}?list=${encodeURIComponent("view=published&q=Summer")}`;
+    expect(within(row).getByRole("link", { name: "Summer Show" })).toHaveAttribute("href", href);
+    expect(screen.queryByRole("dialog")).toBeNull();
   });
 });
 

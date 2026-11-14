@@ -98,10 +98,6 @@
       "reason": "Queue panel (pull request 7, after #1349)"
     },
     {
-      "page": "bid-admin:(platform)/clients/page.tsx",
-      "reason": "Rows open the page (pull request 3, Bid admin people)"
-    },
-    {
       "page": "bid-admin:(platform)/compliance/aml/page.tsx",
       "reason": "Queue panel (pull request 4, Bid admin queues)"
     },
@@ -146,14 +142,6 @@
       "reason": "Opens its page already through onRowOpen; moves to rowHref"
     },
     {
-      "page": "bid-admin:(platform)/staff/access/page.tsx",
-      "reason": "Rows open the page (pull request 3, Bid admin people)"
-    },
-    {
-      "page": "bid-admin:(platform)/staff/page.tsx",
-      "reason": "Rows open the page (pull request 3, Bid admin people)"
-    },
-    {
       "page": "bid-admin:(shared)/audit/page.tsx",
       "reason": "Queue panel (pull request 4, Bid admin queues)"
     },
@@ -166,44 +154,12 @@
       "reason": "Opens its page already through onRowOpen; moves to rowHref"
     },
     {
-      "page": "lax-admin:artist-applications/page.tsx",
-      "reason": "Rows open the page (pull request 5, LAX Admin records)"
-    },
-    {
-      "page": "lax-admin:artists/page.tsx",
-      "reason": "Rows open the page (pull request 5, LAX Admin records)"
-    },
-    {
-      "page": "lax-admin:artworks/page.tsx",
-      "reason": "Rows open the page (pull request 5, LAX Admin records)"
-    },
-    {
       "page": "lax-admin:audit/page.tsx",
       "reason": "Queue panel (pull request 6, LAX Admin queues)"
     },
     {
-      "page": "lax-admin:clients/page.tsx",
-      "reason": "Rows open the page (pull request 5, LAX Admin records)"
-    },
-    {
-      "page": "lax-admin:disputes/page.tsx",
-      "reason": "Rows open the page (pull request 5, LAX Admin records)"
-    },
-    {
-      "page": "lax-admin:editorial/[kind]/page.tsx",
-      "reason": "Rows open the page (pull request 5, LAX Admin records)"
-    },
-    {
-      "page": "lax-admin:enquiries/page.tsx",
-      "reason": "Rows open the page (pull request 5, LAX Admin records)"
-    },
-    {
       "page": "lax-admin:fulfilment/page.tsx",
       "reason": "Queue panel (pull request 6, LAX Admin queues)"
-    },
-    {
-      "page": "lax-admin:help/page.tsx",
-      "reason": "Rows open the page (pull request 5, LAX Admin records)"
     },
     {
       "page": "lax-admin:holds/page.tsx",
@@ -212,18 +168,6 @@
     {
       "page": "lax-admin:leads/page.tsx",
       "reason": "Opens its page already through onRowOpen; moves to rowHref"
-    },
-    {
-      "page": "lax-admin:merchandise/page.tsx",
-      "reason": "Rows open the page (pull request 5, LAX Admin records)"
-    },
-    {
-      "page": "lax-admin:orders/delivery-quotes/page.tsx",
-      "reason": "Rows open the page (pull request 5, LAX Admin records)"
-    },
-    {
-      "page": "lax-admin:orders/page.tsx",
-      "reason": "Rows open the page (pull request 5, LAX Admin records)"
     },
     {
       "page": "lax-admin:original-sales/page.tsx",
@@ -242,10 +186,6 @@
       "reason": "Queue panel (pull request 6, LAX Admin queues)"
     },
     {
-      "page": "lax-admin:staff/page.tsx",
-      "reason": "Rows open the page (pull request 5, LAX Admin records)"
-    },
-    {
       "page": "lax-admin:third-party-sales/page.tsx",
       "reason": "Queue panel (pull request 6, LAX Admin queues)"
     }
@@ -256,12 +196,16 @@
       "reason": "Small settings list: a row opens its edit dialog"
     },
     {
+      "page": "lax-admin:from-zoho/page.tsx",
+      "reason": "Tabs open a page, a dialog or nothing by tab; already follows the rule"
+    },
+    {
       "page": "lax-admin:help/categories/page.tsx",
       "reason": "No page: a row opens its edit dialog (pull request 5)"
     },
     {
-      "page": "lax-admin:from-zoho/page.tsx",
-      "reason": "Tabs open a page, a dialog or nothing by tab; already follows the rule"
+      "page": "lax-admin:staff/page.tsx",
+      "reason": "Read-only: roles are in the row and managed in Bid admin; the name links to the Bid admin staff page"
     }
   ]
 }

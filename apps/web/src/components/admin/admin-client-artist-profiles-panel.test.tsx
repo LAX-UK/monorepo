@@ -53,10 +53,11 @@ describe("AdminClientArtistProfilesPanel", () => {
   it("lists linked profiles with their type and status in words", () => {
     panel({ linkedArtists: [artist] });
 
-    const table = screen.getByRole("table", { name: "Linked artist profiles" });
+    // Each row opens the artist's page, so the table is a grid of rows that open.
+    const table = screen.getByRole("grid", { name: "Linked artist profiles" });
     expect(within(table).getByRole("link", { name: "Ada Lovelace Studio" })).toHaveAttribute(
       "href",
-      "/admin/artists/artist_1/edit",
+      "/admin/artists/artist_1",
     );
     expect(within(table).getByText("Pending review")).toBeInTheDocument();
     expect(within(table).queryByText(/pending$/)).toBeNull();

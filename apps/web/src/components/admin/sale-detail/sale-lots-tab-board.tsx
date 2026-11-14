@@ -466,6 +466,7 @@ export function SaleLotsTabBoard({
         columns={columns}
         data={rows}
         getRowId={(row) => row.id}
+        rowHref={(row) => `/admin/lots/${row.id}`}
         defaultSort={{ columnId: "number", direction: "asc" }}
         density="comfortable"
         empty={

@@ -3,6 +3,7 @@ import { ArtistApplicationsList } from "@/components/artist-applications/artist-
 import { adminListPath } from "@/server/application/admin-list-path";
 import { fetchAdminJson, loadAdminSession } from "@/server/application/load-admin-data";
 import {
+  artistApplicationPath,
   artistApplicationsList,
   parseArtistApplicationsState,
 } from "@/server/domain/artist-application.vm";
@@ -26,6 +27,15 @@ export default async function ArtistApplicationsPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const state = parseArtistApplicationsState(await searchParams);
+  // A link to the application panel that used to be here now opens the application.
+  if (state.open) {
+    redirect(
+      artistApplicationsList.recordHref(
+        state,
+        artistApplicationPath(encodeURIComponent(state.open)),
+      ),
+    );
+  }
   const [result, session, reviewers] = await Promise.all([
     fetchAdminJson<AdminArtistApplicationListResponse>(
       adminListPath("artist-applications", {

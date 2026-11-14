@@ -74,6 +74,30 @@ describe("RelatedRecordsSection", () => {
     expect(screen.getByRole("button", { name: "New category" })).toBeInTheDocument();
   });
 
+  it("makes each row a link to its record when given rowHref", () => {
+    const linked: DataColumn<Row>[] = [
+      {
+        id: "title",
+        header: "Order",
+        cell: (row) => <a href={`/orders/${row.id}`}>{row.title}</a>,
+      },
+    ];
+    renderSection({ columns: linked, rowHref: (row) => `/orders/${row.id}` });
+    // The table row; the phone card layout renders the same link again.
+    const link = screen
+      .getAllByRole("link", { name: "Order A" })
+      .find((anchor) => anchor.closest("tr")) as HTMLAnchorElement;
+    const row = link.closest("tr");
+    expect(row).toHaveClass("cursor-pointer");
+    let followed = "";
+    link.addEventListener("click", (event) => {
+      event.preventDefault();
+      followed = (event.currentTarget as HTMLAnchorElement).getAttribute("href") ?? "";
+    });
+    row?.querySelector("td")?.click();
+    expect(followed).toBe("/orders/a");
+  });
+
   it("uses the compact empty state so a short section stays short", () => {
     const { container } = renderSection({ data: [] });
     const state = container.querySelector("[data-staff-state]");

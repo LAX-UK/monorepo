@@ -2,13 +2,12 @@ import { buildStaffListPageModel } from "@/lib/admin/people/build-staff-list-pag
 import { describe, expect, it } from "vitest";
 
 describe("buildStaffListPageModel", () => {
-  it("fixes role=staff and preserves preview drawer param", () => {
+  it("fixes role=staff", () => {
     const model = buildStaffListPageModel({
       q: "bob",
       staffRole: "finance",
       offset: "0",
       limit: "25",
-      staff: "staff-123",
     });
 
     expect(model.listQueryParams).toMatchObject({
@@ -18,9 +17,6 @@ describe("buildStaffListPageModel", () => {
       q: "bob",
       staffRole: "finance",
     });
-    expect(model.selectedStaffId).toBe("staff-123");
-    expect(model.buildDrawerHref("staff-456")).toContain("staff=staff-456");
-    expect(model.buildDrawerHref(null)).not.toContain("staff=");
   });
 
   it("forwards a valid sort and does not treat it as a filter", () => {

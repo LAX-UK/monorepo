@@ -516,6 +516,7 @@ export function ArtistRecordPage({
             columns={artworkColumns}
             data={artworks}
             getRowId={(row) => row.artworkId}
+            rowHref={(row) => `/artworks/${row.artworkId}`}
             empty={
               <EmptyState
                 size="compact"
@@ -541,6 +542,7 @@ export function ArtistRecordPage({
             columns={editionColumns}
             data={editions}
             getRowId={(row) => row.editionId}
+            rowHref={(row) => `/artworks/${row.artworkId}`}
             empty={
               <EmptyState
                 size="compact"
