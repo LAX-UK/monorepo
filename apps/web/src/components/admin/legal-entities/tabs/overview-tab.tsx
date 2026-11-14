@@ -29,9 +29,17 @@ type Props = {
   creator: AdminLegalEntityDetailBundle["creator"];
   health: AdminLegalEntityDetailBundle["health"];
   pendingDocCount?: number;
+  /** Documents on file; null when the viewer may not see documents. */
+  documentCount?: number | null;
   activityEvents?: readonly AdminDomainEventRow[];
   canViewActivity?: boolean;
 };
+
+/** "3 on file · 1 pending review", or "None uploaded". */
+function documentsOnFile(total: number, pending: number): string {
+  if (total === 0) return "None uploaded";
+  return `${total} on file${pending > 0 ? ` · ${pending} pending review` : ""}`;
+}
 
 /**
  * The organisation at a glance: Stripe Connect, what Stripe still needs and documents waiting for
@@ -43,6 +51,7 @@ export function LegalEntityOverviewTab({
   creator,
   health,
   pendingDocCount = 0,
+  documentCount = null,
   activityEvents = [],
   canViewActivity = false,
 }: Props) {
@@ -128,6 +137,9 @@ export function LegalEntityOverviewTab({
               ) : null,
             },
             { label: "Managed by LAX", value: entity.isLaxManaged ? "Yes" : "No" },
+            ...(documentCount !== null
+              ? [{ label: "Documents", value: documentsOnFile(documentCount, pendingDocCount) }]
+              : []),
             {
               label: commission.label,
               value: (
