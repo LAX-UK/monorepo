@@ -141,9 +141,9 @@ describe("Shop subject export: what each reader may read", () => {
     expect(text("enquiries.category.ts")).toContain("eq(shopArtworkInterest.identitySubjectId, s)");
     expect(text("enquiries.category.ts")).toContain("eq(shopGeneralEnquiry.identitySubjectId, s)");
     expect(text("saved-works.category.ts")).toContain("eq(shopSavedArtwork.identitySubjectId, s)");
-    expect(text("selling-payouts.category.ts")).toContain(
-      "inArray(shopPayoutLedger.ownerPartyId, partyIds)",
-    );
+    // Payouts follow the portal's per-artist scope, never every row of a shared party.
+    expect(text("selling-payouts.category.ts")).toContain("resolvePortalPayoutScope(db, s)");
+    expect(text("selling-payouts.category.ts")).not.toContain("resolvePortalPartyIds");
     expect(text("selling.category.ts")).toContain(
       "eq(shopArtistApplication.applicantSubjectId, s)",
     );

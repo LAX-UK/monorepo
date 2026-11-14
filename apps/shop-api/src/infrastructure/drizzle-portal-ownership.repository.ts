@@ -33,6 +33,7 @@ import { ShopApiError, notFound } from "../errors/shop-api-error.js";
 import { isPgUniqueViolation } from "../lib/pg-errors.js";
 import { printLabelOf, printLabelSelection } from "./edition-runs/print-label.js";
 import { resolvePortalPartyIds } from "./portal-party-ids.js";
+import { resolvePortalPayoutScope } from "./portal-payout-scope.js";
 import { createShopDocumentDownloadUrl } from "./shop-document-download-url.js";
 import type { ShopDocumentStorageConfig } from "./shop-document-download-url.js";
 
@@ -319,8 +320,8 @@ export function createDrizzlePortalOwnershipRepository(
     },
 
     async listPayouts(identitySubjectId: string) {
-      const partyIds = await resolvePortalPartyIds(db, identitySubjectId);
-      if (partyIds.length === 0) {
+      const scope = await resolvePortalPayoutScope(db, identitySubjectId);
+      if (!scope) {
         return [];
       }
       const rows = await db
@@ -334,7 +335,7 @@ export function createDrizzlePortalOwnershipRepository(
           paidAt: shopPayoutLedger.paidAt,
         })
         .from(shopPayoutLedger)
-        .where(inArray(shopPayoutLedger.ownerPartyId, partyIds))
+        .where(scope)
         .orderBy(desc(shopPayoutLedger.createdAt))
         .limit(PORTAL_ME_LIST_LIMIT);
       return rows.map((row) => ({
