@@ -8,6 +8,7 @@ import {
   API_DENY_TABLES,
   API_PRODUCT_PROFILE_TABLES,
   API_READ_TABLES,
+  API_SHOP_DELIVERY_READ_COLUMNS,
   API_SSF_RECEIVER_TABLES,
   API_UNLINKED_ORIGINALS_READ_COLUMNS,
   FINANCE_SETTING_READ_TABLES,
@@ -218,6 +219,49 @@ describe.skipIf(!API_URL)("api_app role contract", { timeout: 60_000 }, () => {
             and a.archived_at is null
           limit 1`,
       );
+    });
+  });
+
+  it("reads only a Shop order's status and delivery columns (Release), never the buyer or the address", async () => {
+    await withApiClient(async (client) => {
+      for (const [tableName, granted] of API_SHOP_DELIVERY_READ_COLUMNS) {
+        const table = await readTablePrivileges(
+          client,
+          [tableName],
+          ["SELECT", "INSERT", "UPDATE", "DELETE", "TRUNCATE", "REFERENCES", "TRIGGER"],
+        );
+        expectTablePrivileges(table, () => false);
+        const columns = await client.query<{
+          column_name: string;
+          can_select: boolean;
+          can_write: boolean;
+        }>(
+          `select column_name::text,
+                  has_column_privilege(current_user, format('public.%I', $1::text), column_name, 'SELECT') as can_select,
+                  has_column_privilege(current_user, format('public.%I', $1::text), column_name, 'INSERT')
+                    or has_column_privilege(current_user, format('public.%I', $1::text), column_name, 'UPDATE') as can_write
+             from information_schema.columns
+            where table_schema = 'public' and table_name = $1`,
+          [tableName],
+        );
+        const readable = columns.rows.filter((row) => row.can_select).map((row) => row.column_name);
+        expect(readable.sort(), tableName).toEqual([...granted].sort());
+        expect(columns.rows.filter((row) => row.can_write)).toEqual([]);
+        for (const personal of [
+          "identity_subject_id",
+          "guest_customer_id",
+          "delivery_line1",
+          "total_pence",
+        ]) {
+          expect(readable, personal).not.toContain(personal);
+        }
+      }
+      const lines = await readTablePrivileges(
+        client,
+        ["shop_order_line", "shop_guest_customer"],
+        ["SELECT"],
+      );
+      expectTablePrivileges(lines, () => false);
     });
   });
 

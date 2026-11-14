@@ -11,6 +11,7 @@ import {
   WORKER_ACCOUNTING_APPEND_ONLY_TABLES,
   WORKER_ACCOUNTING_DOCUMENT_TABLES,
   WORKER_ACCOUNTING_DOCUMENT_UPDATE_COLUMNS,
+  WORKER_ACCOUNTING_HISTORY_READ_COLUMNS,
   WORKER_ACCOUNTING_READ_TABLES,
   WORKER_DENY_TABLES,
   WORKER_EMAIL_SUPPRESSION_UPDATE_COLUMNS,
@@ -489,6 +490,26 @@ describe.skipIf(!WORKER_URL)("worker_app role contract", { timeout: 60_000 }, ()
         "select has_column_privilege(current_user, 'public.shop_guest_customer', 'phone', 'SELECT') as allowed",
       );
       expect(phone.rows[0]?.allowed).toBe(false);
+    });
+  });
+
+  it("reads of the accounting history only which action a document holds; appends, never changes", async () => {
+    await withWorkerClient(async (client) => {
+      for (const [table, columns] of WORKER_ACCOUNTING_HISTORY_READ_COLUMNS) {
+        const all = await client.query<{ column_name: string; allowed: boolean }>(
+          `select column_name,
+                  has_column_privilege(current_user, 'public.' || $1, column_name, 'SELECT') as allowed
+             from information_schema.columns
+            where table_schema = 'public' and table_name = $1`,
+          [table],
+        );
+        const allowed = all.rows.filter((row) => row.allowed).map((row) => row.column_name);
+        expect(allowed.sort(), table).toEqual([...columns].sort());
+        const whole = await readTablePrivileges(client, [table], ["SELECT", "UPDATE", "DELETE"]);
+        expectUniformTablePrivileges(whole, false);
+        const insert = await readTablePrivileges(client, [table], ["INSERT"]);
+        expectUniformTablePrivileges(insert, true);
+      }
     });
   });
 

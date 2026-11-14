@@ -301,6 +301,25 @@ export const API_ACCOUNTING_RELEASE_COLUMNS = [
 ] as const;
 export const WORKER_ACCOUNTING_APPEND_ONLY_TABLES = ["accounting_document_event"] as const;
 /**
+ * The worker reads which documents' history already holds an action, column by column: the
+ * follow-up step that applies a Shop order payment's unapplied rest to its outside-UK delivery
+ * invoice (migration 0383) is settled once, by an `apply_remainder` row. Nothing else of history.
+ */
+export const WORKER_ACCOUNTING_HISTORY_READ_COLUMNS = [
+  ["accounting_document_event", ["document_id", "action"]],
+] as const;
+/**
+ * Release of a parked Shop outside-UK delivery invoice (staff, in the Bid API's Accounting page)
+ * rebuilds it from its order's stored delivery: these columns of the order and no others. No
+ * buyer, address, line or payment column; no write. Every other Shop table stays denied.
+ */
+export const API_SHOP_DELIVERY_READ_COLUMNS = [
+  [
+    "shop_order",
+    ["id", "status", "fulfilment", "fulfilment_surcharge_pence", "fulfilment_vat_pence"],
+  ],
+] as const;
+/**
  * LAX's stored copies of issued documents' PDFs (migration 0381). The worker records a copy once
  * and later settles its email once, as queued or skipped (those four columns only; a trigger makes
  * them write-once); the Bid API reads them to show and serve the buyer's invoice. Nobody deletes a
@@ -1572,6 +1591,12 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
         }
         for (const tableName of WORKER_ACCOUNTING_APPEND_ONLY_TABLES) {
           await grantIfExists(client, "worker_app", tableName, "INSERT");
+        }
+        for (const [tableName, columns] of WORKER_ACCOUNTING_HISTORY_READ_COLUMNS) {
+          await grantColumnSelectIfExists(client, "worker_app", tableName, columns);
+        }
+        for (const [tableName, columns] of API_SHOP_DELIVERY_READ_COLUMNS) {
+          await grantColumnSelectIfExists(client, "api_app", tableName, columns);
         }
         for (const tableName of WORKER_ACCOUNTING_READ_TABLES) {
           await grantIfExists(client, "worker_app", tableName, "SELECT");
