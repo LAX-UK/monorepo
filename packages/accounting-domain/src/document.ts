@@ -113,6 +113,7 @@ export type DocumentCode =
   | "exceeds_invoice"
   | "bad_invoice"
   | "bad_email"
+  | "bad_number"
   | "refund_refused";
 
 interface Base<K extends DocumentKind> {
@@ -128,6 +129,18 @@ export interface Contact extends Base<"contact"> {
 }
 
 export interface Invoice extends Base<"invoice"> {
+  /**
+   * Absent (tax-exclusive) for an invoice whose VAT the domain adds per line. `tax_inclusive` for
+   * one sold at VAT-inclusive prices (Shop): every line's gross and VAT are what LAX stored when
+   * it sold, never worked out again, and the adapter sends the gross with the stated VAT.
+   */
+  readonly amountsAre?: "tax_inclusive";
+  /**
+   * The number LAX already gave the invoice (Shop: `LAX-INV-000124`, gap-free from the Shop's own
+   * counter), so the books continue that series instead of numbering it again. Absent when the
+   * provider numbers it.
+   */
+  readonly number?: string;
   readonly contactReference: string;
   readonly currency: typeof CURRENCY;
   readonly issuedOn: string;
@@ -277,6 +290,69 @@ export function buildInvoice(input: Common & Priced): Result<Invoice, DocumentCo
   });
 }
 
+/** One line of a VAT-inclusive invoice: the gross the buyer paid and the VAT inside it, as stored. */
+export interface InclusiveLineInput {
+  readonly description: string;
+  readonly grossPence: Pence;
+  readonly vatPence: Pence;
+  readonly treatment: LineInput["treatment"];
+  readonly role: LineRole;
+}
+
+/** An invoice number LAX issued: upper-case letters, digits and '-', at most 32. */
+const INVOICE_NUMBER = /^[A-Z0-9][A-Z0-9-]{0,31}$/;
+
+export function isInvoiceNumber(value: unknown): value is string {
+  return typeof value === "string" && INVOICE_NUMBER.test(value);
+}
+
+/**
+ * An invoice sold at VAT-inclusive prices, numbered by LAX. Each line is built from its stored
+ * gross and VAT (`buildInclusiveLine`), so nothing is recomputed: the totals are the exact sum of
+ * what the buyer was charged.
+ */
+export function buildInclusiveInvoice(
+  input: Common & {
+    readonly contactReference: string;
+    readonly issuedOn: string;
+    readonly dueOn: string;
+    readonly number: string;
+    readonly lines: readonly InclusiveLineInput[];
+  },
+): Result<Invoice, DocumentCode> {
+  const b = base("invoice", input);
+  if (!b.ok) return b;
+  if (!isInvoiceNumber(input.number)) {
+    return refuse("bad_number", "an invoice number is 1-32 upper-case letters, digits or '-'");
+  }
+  const contact = checkRef(input.contactReference, "contact", input.product);
+  if (!contact.ok) return contact;
+  const dates = checkDates(input.issuedOn, input.dueOn);
+  if (!dates.ok) return dates;
+  if (input.dueOn < input.issuedOn) return refuse("bad_date", "due date is before issue date");
+  if (input.lines.length === 0) return refuse("no_lines", "a document needs at least one line");
+  if (input.lines.length > MAX_LINES) return refuse("too_many_lines", `at most ${MAX_LINES} lines`);
+  const lines: Line[] = [];
+  for (const line of input.lines) {
+    const built = buildInclusiveLine(line);
+    if (!built.ok) return refuse("bad_line", built.refusal.message);
+    lines.push(built.value);
+  }
+  const totals = totalsOf(lines);
+  if (totals.grossPence === 0) return refuse("zero_total", "a document cannot total zero");
+  return ok({
+    ...b.value,
+    amountsAre: "tax_inclusive",
+    number: input.number,
+    contactReference: contact.value,
+    currency: CURRENCY,
+    issuedOn: input.issuedOn,
+    dueOn: input.dueOn,
+    lines,
+    totals,
+  });
+}
+
 export function buildBill(input: Common & Priced): Result<Bill, DocumentCode> {
   const b = base("bill", input);
   if (!b.ok) return b;
@@ -310,20 +386,38 @@ function checkInvoice(invoice: Invoice): Result<null, DocumentCode> {
   if (!parsed.ok || parsed.value.kind !== "invoice" || parsed.value.product !== invoice.product) {
     return bad("reference is not this product's invoice");
   }
-  const rebuilt = buildInvoice({
+  const common = {
     product: invoice.product,
     sourceId: parsed.value.sourceId,
     contactReference: invoice.contactReference,
     issuedOn: invoice.issuedOn,
     dueOn: invoice.dueOn,
-    lines: invoice.lines.map((l) => ({
-      description: l.description,
-      quantity: l.quantity,
-      unitNetPence: l.unitNetPence,
-      treatment: l.treatment,
-      role: l.role,
-    })),
-  });
+  };
+  const rebuilt =
+    invoice.amountsAre === "tax_inclusive"
+      ? buildInclusiveInvoice({
+          ...common,
+          number: invoice.number as string,
+          lines: invoice.lines.map((l) => ({
+            description: l.description,
+            grossPence: lineGrossPence(l),
+            vatPence: l.vatPence,
+            treatment: l.treatment,
+            role: l.role,
+          })),
+        })
+      : invoice.number === undefined && invoice.amountsAre === undefined
+        ? buildInvoice({
+            ...common,
+            lines: invoice.lines.map((l) => ({
+              description: l.description,
+              quantity: l.quantity,
+              unitNetPence: l.unitNetPence,
+              treatment: l.treatment,
+              role: l.role,
+            })),
+          })
+        : refuse("bad_invoice", "an invoice LAX numbers is VAT-inclusive");
   if (!rebuilt.ok) return bad(rebuilt.refusal.message);
   const same = rebuilt.value.lines.every(
     (l, i) => l.vatPence === invoice.lines[i]?.vatPence && invoice.lines[i]?.basis === l.basis,

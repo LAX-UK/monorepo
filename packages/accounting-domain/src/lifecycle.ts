@@ -1,5 +1,6 @@
 import { type DocumentKind, parseLaxReference } from "./document.js";
 import { type Totals, compareWithProviderTotals, isTotals } from "./money.js";
+import { type ParkReason, isParkedReason, parkedReasonCode } from "./parking.js";
 import type { IssueOutcome, IssuedDocument, LookupOutcome, ProviderDocument } from "./ports.js";
 import { type Result, ok, refuse } from "./result.js";
 
@@ -95,10 +96,34 @@ export type LifecycleCode =
   | "bad_time"
   | "bad_lookup_state"
   | "bad_outcome"
-  | "bad_record";
+  | "bad_record"
+  /** Parked for a person or the accountant: never requeued, only cancelled. */
+  | "parked";
 
 export function newRecord(kind: DocumentKind, reference: string): DocumentRecord {
   return { kind, reference, attempts: 0, status: "pending" };
+}
+
+/**
+ * A new record that starts parked: needs_review with nothing owed and nothing in the provider,
+ * so it is never claimed. It is created this way in one step (never pending first), so no sender
+ * can take it in between. Only cancelling moves it on (see `requeue`).
+ */
+export function parkedRecord(
+  kind: DocumentKind,
+  reference: string,
+  reason: ParkReason,
+): DocumentRecord {
+  return {
+    kind,
+    reference,
+    attempts: 0,
+    status: "needs_review",
+    lookup: "clear",
+    issued: null,
+    mismatch: null,
+    reason: parkedReasonCode(reason),
+  };
 }
 
 function wrongState(action: string, status: Status) {
@@ -386,7 +411,8 @@ export function escalate(
 
 /**
  * failed -> pending (the provider refused it outright, so nothing exists to duplicate).
- * needs_review -> pending only when no lookup is owed and the provider holds no document for it.
+ * needs_review -> pending only when no lookup is owed, the provider holds no document for it and
+ * it is not parked (a parked document waits for the accountant or a person; it can be cancelled).
  * unknown goes through applyLookup.
  */
 export function requeue(record: DocumentRecord): Result<DocumentRecord, LifecycleCode> {
@@ -400,6 +426,9 @@ export function requeue(record: DocumentRecord): Result<DocumentRecord, Lifecycl
       "bad_state",
       "the provider already holds this document; a person must resolve it",
     );
+  }
+  if (isParkedReason(record.reason)) {
+    return refuse("parked", "parked until the accountant or a person decides; it is not sent");
   }
   return ok({ ...core(record), status: "pending" });
 }

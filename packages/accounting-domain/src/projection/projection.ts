@@ -1,4 +1,5 @@
 import type { AccountingDocument, DocumentCode, DocumentKind } from "../document.js";
+import type { ParkReason } from "../parking.js";
 import type { Result } from "../result.js";
 
 /**
@@ -10,9 +11,26 @@ import type { Result } from "../result.js";
  */
 export interface Projection {
   readonly documents: readonly AccountingDocument[];
+  /**
+   * Documents among `documents` that are stored parked, not queued: built and kept so a person
+   * sees them in "Needs a person", but never sent until the reason is settled. Absent or empty
+   * when every document is queued.
+   */
+  readonly parked?: readonly ParkedDocument[];
+}
+
+/** One of a projection's documents that is stored parked, and why. */
+export interface ParkedDocument {
+  readonly reference: string;
+  readonly reason: ParkReason;
 }
 
 export const EMPTY_PROJECTION: Projection = { documents: [] };
+
+/** Why this projection parks the document with `reference`, or null when it is queued. */
+export function parkReasonFor(projection: Projection, reference: string): ParkReason | null {
+  return projection.parked?.find((p) => p.reference === reference)?.reason ?? null;
+}
 
 export type ProjectionCode =
   | DocumentCode
@@ -22,6 +40,12 @@ export type ProjectionCode =
   | "line_awaiting_accountant"
   /** A payment larger than what its invoices still owe: a remainder is never spread. */
   | "payment_exceeds_invoice"
+  /** A payment whose allocations do not add up to exactly what was paid, to the penny. */
+  | "allocation_mismatch"
+  /** Money in a currency other than pounds: the books are kept in GBP only. */
+  | "not_in_pounds"
+  /** A combined payment naming an invoice raised to another buyer account. */
+  | "buyer_mismatch"
   /** The facts handed in do not describe a possible state (an id that is not a source id, say). */
   | "bad_facts";
 
