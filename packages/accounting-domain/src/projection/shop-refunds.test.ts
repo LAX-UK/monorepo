@@ -149,6 +149,21 @@ describe("Shop refund settled (flow 21)", () => {
     expect(notes[0]?.lines.map((l) => l.description)).toEqual(["Credit: Framing: Natural oak"]);
   });
 
+  it("credits the second line's refund recorded first once the first line's is credited", () => {
+    const { documents } = must(
+      projectShopRefundSettled(
+        facts({
+          refunds: [refund(R1, { amountPence: 12_000, orderLineId: FRAME_LINE }), refund(R2)],
+          refundId: R1,
+        }),
+      ),
+    );
+    expect(notesOf(documents).map((n) => [n.reference, n.lines[0]?.description])).toEqual([
+      [`LAX-SHOP-CN-${R2}`, "Credit: Harbour at dusk · Edition 7 of 24"],
+      [`LAX-SHOP-CN-${R1}`, "Credit: Framing: Natural oak"],
+    ]);
+  });
+
   it("places a refund naming no line on the one line with credit left", () => {
     // 57,000 is not everything (59,500): refused on its own event.
     const part = projectShopRefundSettled(

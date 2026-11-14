@@ -15,8 +15,8 @@ import { ACCOUNTING_ALERTS, type AccountingAlertSink } from "./accounting-alerts
 
 const DEFAULT_BATCH = 10;
 
-/** Only Bid gives money back through a credit note today (plan v2, flows 8 and 9). */
-const PRODUCTS: readonly Product[] = ["bid"];
+/** The products that give money back through a credit note (plan v2: Bid flows 8 and 9, Shop flow 21). */
+const PRODUCTS: readonly Product[] = ["bid", "shop"];
 
 export interface AccountingCreditNoteRefundLog {
   info(details: Record<string, unknown>, message: string): void;

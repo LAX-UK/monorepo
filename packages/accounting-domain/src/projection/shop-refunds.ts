@@ -100,8 +100,9 @@ function placeRefund(
  *
  * - The invoice is never credited more than it charged: a refund is credited only within what is
  *   left on its lines after the credit notes already registered (kept exactly as stored).
- * - Nothing is guessed: a refund whose lines are not certain (`placeRefund`) is not credited. It is
- *   refused for staff on its own event (`refund_unattributed`); later refunds' events leave it out.
+ * - Nothing is guessed: a refund whose lines are not certain (`placeRefund`), once every other
+ *   refund that can be is credited, is not credited. It is refused for staff on its own event
+ *   (`refund_unattributed`); the other refunds' events leave it out.
  * - A refund settled outside Stripe is credited, but LAX does not hold the account the money went
  *   back from: its credit note gives no money back and is parked (`refund_outside_stripe`), never
  *   sent, until staff name it.
@@ -124,52 +125,65 @@ export const projectShopRefundSettled: ProjectionPolicy<ShopRefundsFacts> = (fac
   const credits: CreditNote[] = [...facts.registered];
   const made: CreditNote[] = [];
   const parked: ParkedDocument[] = [];
+  let waiting: ShopRefundFacts[] = [];
   for (const refund of facts.refunds) {
     if (!isPence(refund.amountPence) || refund.amountPence < 0) {
       return refuse("bad_amount", "a refund must be whole pence, not below zero");
     }
     const reference = laxReference("shop", "credit_note", refund.refundId);
     if (!reference.ok) return refuse("bad_source_id", reference.refusal.message);
-    if (refund.amountPence === 0 || credits.some((note) => note.reference === reference.value)) {
-      continue;
+    if (refund.amountPence > 0 && !credits.some((note) => note.reference === reference.value)) {
+      waiting.push(refund);
     }
-    const credited = creditedPerLine(invoice, credits);
-    const request = placeRefund(invoice, lineIndexById, credited, refund, outsideUkDelivery);
-    if (request === null) {
-      if (refund.refundId === facts.refundId) {
-        return refuse(
-          "refund_unattributed",
-          `refund ${refund.refundId}: which lines of the invoice it credits is not certain`,
-        );
+  }
+  // In passes, oldest first, until none more can be placed: a refund of the second line recorded
+  // before the first line's is certain once the first is credited, whatever order they came in.
+  for (let placedOne = true; placedOne && waiting.length > 0; ) {
+    placedOne = false;
+    const left: ShopRefundFacts[] = [];
+    for (const refund of waiting) {
+      const credited = creditedPerLine(invoice, credits);
+      const request = placeRefund(invoice, lineIndexById, credited, refund, outsideUkDelivery);
+      if (request === null) {
+        left.push(refund);
+        continue;
       }
-      continue;
+      const creditedGoods = invoice.lines.reduce(
+        (sum, l, i) => (l.role === "goods" ? sum + (credited[i] ?? 0) : sum),
+        0,
+      );
+      const issuedOn = refund.refundedOn < invoice.issuedOn ? invoice.issuedOn : refund.refundedOn;
+      const credit = buildCreditNoteFor(invoice, {
+        sourceId: refund.refundId,
+        issuedOn,
+        buckets: {
+          paidGoodsPence: roles.goods,
+          paidDeliveryPence: roles.delivery,
+          refundedGoodsPence: creditedGoods,
+          refundedDeliveryPence: credited.reduce((sum, p) => sum + p, 0) - creditedGoods,
+        },
+        request,
+        priorCredits: credits,
+        ...(refund.settledOutside
+          ? {}
+          : { refund: { account: "stripe_clearing" as const, refundedOn: issuedOn } }),
+      });
+      if (!credit.ok) return credit;
+      credits.push(credit.value);
+      made.push(credit.value);
+      placedOne = true;
+      if (refund.settledOutside) {
+        parked.push({ reference: credit.value.reference, reason: "refund_outside_stripe" });
+      }
     }
-    const creditedGoods = invoice.lines.reduce(
-      (sum, l, i) => (l.role === "goods" ? sum + (credited[i] ?? 0) : sum),
-      0,
+    waiting = left;
+  }
+  // What is left waits for staff: refused on its own event, left out of the others'.
+  if (waiting.some((refund) => refund.refundId === facts.refundId)) {
+    return refuse(
+      "refund_unattributed",
+      `refund ${facts.refundId}: which lines of the invoice it credits is not certain`,
     );
-    const issuedOn = refund.refundedOn < invoice.issuedOn ? invoice.issuedOn : refund.refundedOn;
-    const credit = buildCreditNoteFor(invoice, {
-      sourceId: refund.refundId,
-      issuedOn,
-      buckets: {
-        paidGoodsPence: roles.goods,
-        paidDeliveryPence: roles.delivery,
-        refundedGoodsPence: creditedGoods,
-        refundedDeliveryPence: credited.reduce((sum, p) => sum + p, 0) - creditedGoods,
-      },
-      request,
-      priorCredits: credits,
-      ...(refund.settledOutside
-        ? {}
-        : { refund: { account: "stripe_clearing" as const, refundedOn: issuedOn } }),
-    });
-    if (!credit.ok) return credit;
-    credits.push(credit.value);
-    made.push(credit.value);
-    if (refund.settledOutside) {
-      parked.push({ reference: credit.value.reference, reason: "refund_outside_stripe" });
-    }
   }
   return ok({ documents: [contact, invoice, ...made], ...(parked.length > 0 ? { parked } : {}) });
 };
