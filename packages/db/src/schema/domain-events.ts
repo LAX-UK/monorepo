@@ -50,6 +50,10 @@ export const domainEvent = pgTable(
     uniqueIndex("domain_events_bid_outbid_uid")
       .on(table.aggregateType, table.aggregateId)
       .where(sql`${table.eventType} = 'bid.outbid'`),
+    // At most one "unapplied money received" event per piece of money (0383).
+    uniqueIndex("domain_events_unapplied_money_dedupe_key_uid")
+      .on(sql`(${table.payload}->>'dedupeKey')`)
+      .where(sql`${table.eventType} = 'payment.unapplied_money_received'`),
   ],
 );
 
