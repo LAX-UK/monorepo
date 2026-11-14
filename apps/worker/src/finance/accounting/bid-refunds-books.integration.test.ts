@@ -215,7 +215,7 @@ describe.skipIf(!HAS_DB)(
       eventType: string,
       aggregateId: string,
       payload: Record<string, unknown>,
-      createdAt = REFUNDED_AT,
+      occurredAt = REFUNDED_AT,
     ) {
       const [event] = await owner
         .insert(domainEvent)
@@ -225,7 +225,7 @@ describe.skipIf(!HAS_DB)(
           eventType,
           payload,
           producer: "apps/api",
-          createdAt,
+          occurredAt,
         })
         .returning();
       if (!event) throw new Error("no event");
@@ -619,6 +619,11 @@ describe.skipIf(!HAS_DB)(
       expect(notes.every((n) => n.needsReviewReason === "accounting_parked_vat_on_delivery")).toBe(
         true,
       );
+      // Dated the day of the refund (the event's time), refunded from Stripe clearing.
+      expect(notes.map((n) => (n.payload as unknown as CreditNote).refund)).toEqual([
+        { account: "stripe_clearing", refundedOn: "2031-11-20" },
+        { account: "stripe_clearing", refundedOn: "2031-11-20" },
+      ]);
       // Above the charge: only up to the charge.
       await projection().project(await deliveryEvent(9_999));
       const capped = await creditNotesOf(deliveryRef, "dry_run");

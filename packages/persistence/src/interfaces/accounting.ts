@@ -503,6 +503,11 @@ export interface IAccountingAttentionReader {
    * still unapplied in Books. `oldestSince` is when the oldest was issued.
    */
   unsettledRemainders(modes: readonly TargetMode[], issuedBefore: Date): Promise<QueueAge>;
+  /**
+   * Credit notes for a refund issued before `issuedBefore` whose money is still not refunded in
+   * the books (no `refund_credit_note` in their history).
+   */
+  unrefundedCreditNotes(modes: readonly TargetMode[], issuedBefore: Date): Promise<QueueAge>;
 }
 
 /** LAX's stored copy of the PDF for an issued document. */

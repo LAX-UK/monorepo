@@ -8,6 +8,7 @@ import {
 } from "@auction/staff-ui";
 import {
   ACCOUNTING_CONTACT_ORDER_TEXT,
+  ACCOUNTING_CREDIT_NOTE_ORDER_TEXT,
   ACCOUNTING_DOCUMENT_TYPE_LABELS,
   ACCOUNTING_LOCKED_PERIOD_TEXT,
   ACCOUNTING_PARKED_STATUS,
@@ -202,7 +203,7 @@ export type AccountingStaffRow = {
 const ORDER_NOTE: Partial<Record<AccountingQueueRow["documentType"], string>> = {
   payment: ACCOUNTING_PAYMENT_ORDER_TEXT,
   invoice: ACCOUNTING_CONTACT_ORDER_TEXT,
-  credit_note: ACCOUNTING_CONTACT_ORDER_TEXT,
+  credit_note: ACCOUNTING_CREDIT_NOTE_ORDER_TEXT,
 };
 
 export function toAccountingStaffRows(rows: readonly AccountingQueueRow[]): AccountingStaffRow[] {

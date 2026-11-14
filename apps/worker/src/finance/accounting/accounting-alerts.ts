@@ -30,6 +30,11 @@ export const ACCOUNTING_ALERTS = {
    * in its history): the buyer's credit sits unapplied in Books.
    */
   shopRemainderDelayed: { message: "accounting_shop_remainder_delayed", level: "warning" },
+  /**
+   * Delayed accounting, Bid refunds: a refund's credit note was issued more than six hours ago and
+   * its money is still not refunded from Stripe clearing in Books (no `refund_credit_note`).
+   */
+  creditNoteRefundDelayed: { message: "accounting_credit_note_refund_delayed", level: "warning" },
   /** Documents are queued for Books but the sender has not claimed any for too long. */
   senderMissed: { message: "accounting_sender_missed", level: "error" },
   /** The day's Books calls passed 80% of the budget (`BUDGET_WARNING_EVENT` in the Books client). */

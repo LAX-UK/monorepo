@@ -31,8 +31,8 @@ export interface AccountingEvent {
   readonly eventType: string;
   readonly aggregateId: string;
   readonly payload: unknown;
-  /** When the event was written (the outbox row's time); a refund's day when its rows hold none. */
-  readonly createdAt?: Date;
+  /** When the event happened (the outbox row's time); a refund's day when its rows hold none. */
+  readonly occurredAt?: Date;
 }
 
 export type RouteOutcome =
@@ -220,10 +220,12 @@ export const ACCOUNTING_EVENT_ROUTES: Readonly<Record<string, AccountingEventRou
     const payload = paymentGroupDeliveryRefundedPayloadSchemaV1.safeParse(event.payload);
     if (!payload.success) throw new AccountingEventPayloadError(event.eventType);
     if (!facts.books) throw new AccountingBooksViewMissingError(event.eventType);
+    // The raise is written with the event in one transaction: its time is the refund's day.
+    if (!event.occurredAt) throw new AccountingEventPayloadError(event.eventType);
     const read = await facts.bid.deliveryRefunded(
       payload.data.paymentGroupId,
       payload.data.deliveryQuoteId,
-      event.createdAt ?? new Date(),
+      event.occurredAt,
     );
     if (read.status === "skip") return read;
     const invoice = laxReference("bid", "invoice", `dlv-${read.facts.quoteId}`);

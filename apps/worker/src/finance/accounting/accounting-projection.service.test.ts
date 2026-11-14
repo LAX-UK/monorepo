@@ -88,6 +88,7 @@ function factsReader(over: Partial<IBidAccountingFactsReader> = {}): IBidAccount
     deliveryGroupOf: vi.fn(async () => GROUP_ID),
     deliveryRefunded: vi.fn(async () => ({ status: "skip", reason: "not_in_test" }) as const),
     defaultedInvoice: vi.fn(async () => ({ status: "skip", reason: "not_in_test" }) as const),
+    voidedInvoice: vi.fn(async () => ({ status: "skip", reason: "not_in_test" }) as const),
     ...over,
   };
 }
