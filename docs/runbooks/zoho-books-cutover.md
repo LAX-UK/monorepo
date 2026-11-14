@@ -5,6 +5,10 @@ Status: **rehearsal only**. The worker builds the Books dry run adapter alone
 Books `live`. Nothing in this runbook touches a live Books organisation until a later change wires
 the test and live organisations and lifts that refusal.
 
+Before that later change lifts the refusal, it must also keep imported history out of the "Your
+invoice" email: the email goes once for each Shop invoice Books issues live, and an imported
+invoice (source `shop_history_import:<order>`) is one. In rehearsal no email is ever sent.
+
 Decisions this follows:
 
 - **F18 History and cutover.** Xero becomes a read-only archive from the first day of a VAT
