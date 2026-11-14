@@ -57,6 +57,7 @@ export function LotPageViewStaticProvider({
   return (
     <LotPageViewContext.Provider
       value={{
+        live: true,
         view,
         history: null,
         nowMs: 0,

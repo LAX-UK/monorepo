@@ -71,7 +71,6 @@ const baseLot: Lot = {
 const shell: LotPageShellData = {
   auction: baseLot,
   session: null,
-  initialBids: [],
   seller: null,
   catalogArtist: null,
   relatedRaw: [],

@@ -2,7 +2,6 @@ import "server-only";
 
 import { fetchRegistryArtistById } from "@/lib/data/http/artist-profile-public";
 import {
-  getPublicLotBids,
   getPublicLotById,
   getPublicLotDocuments,
   getPublicLotList,
@@ -37,9 +36,9 @@ export async function loadPublicLotShell(
   if (!auction) return null;
 
   const sellerLookupId = auction.sellerId ?? auction.sellerLegalEntityId ?? "";
-  const [initialBids, seller, catalogArtist, relatedRaw, saleBundle, lotDocuments, watcherCount] =
+  // No bids are read here: the page carries no live bid state (CO-7); the browser reads it live.
+  const [seller, catalogArtist, relatedRaw, saleBundle, lotDocuments, watcherCount] =
     await Promise.all([
-      getPublicLotBids(lotId, 30).catch(() => []),
       sellerLookupId
         ? publicReader.getById(sellerLookupId).catch(() => null)
         : Promise.resolve(null),
@@ -62,7 +61,6 @@ export async function loadPublicLotShell(
   return {
     auction,
     session: null,
-    initialBids,
     seller,
     catalogArtist,
     relatedRaw,

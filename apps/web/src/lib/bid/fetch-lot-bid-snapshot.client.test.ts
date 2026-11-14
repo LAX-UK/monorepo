@@ -2,7 +2,7 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 const get = vi.fn();
 vi.mock("@/lib/data/http/hc-browser", () => ({
-  getBrowserHc: () => ({ lots: { ":id": { $get: get } } }),
+  getBrowserHcLive: () => ({ lots: { ":id": { $get: get } } }),
 }));
 
 import { fetchLotBidSnapshot } from "./fetch-lot-bid-snapshot.client";
@@ -40,8 +40,34 @@ describe("fetchLotBidSnapshot", () => {
       status: parsed.status,
       winnerId: parsed.winnerId,
       reserveMet: false,
+      hammerPrice: null,
+      soldForWithPremium: null,
+      serverNow: null,
     });
     expect(get).toHaveBeenCalledWith({ param: { id: "lot-1" } });
+  });
+
+  it("carries the result, the sold prices and the server clock, which the page no longer has", async () => {
+    get.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        data: {
+          ...lot,
+          status: "ended",
+          hasWinner: true,
+          hammerPrice: "5000.00",
+          soldForWithPremium: "6250.00",
+          serverNow: "2026-11-20T18:00:05.000Z",
+        },
+      }),
+    });
+    await expect(fetchLotBidSnapshot("lot-1")).resolves.toMatchObject({
+      status: "ended",
+      hasWinner: true,
+      hammerPrice: "5000.00",
+      soldForWithPremium: "6250.00",
+      serverNow: "2026-11-20T18:00:05.000Z",
+    });
   });
 
   it("returns null when the request fails", async () => {

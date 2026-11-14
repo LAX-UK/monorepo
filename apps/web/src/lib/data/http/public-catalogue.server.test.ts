@@ -7,9 +7,8 @@ vi.mock("react", async (orig) => ({
   cache: <T>(fn: T) => fn,
 }));
 
-const { getPublicLotBiddingView, getPublicSaleShell, getPublicLotById } = await import(
-  "./public-catalogue.server"
-);
+const publicCatalogue = await import("./public-catalogue.server");
+const { getPublicLotPremiumTerms, getPublicSaleShell, getPublicLotById } = publicCatalogue;
 
 const fetchMock = vi.fn();
 const json = (body: unknown, status = 200) =>
@@ -35,12 +34,34 @@ describe("public catalogue reads (CO-7)", () => {
     expect(lastInit().next?.tags).toContain("public-sale:sale-1");
   });
 
-  it("drop the server clock reading, which a cached page would carry stale", async () => {
+  it("read only the premium terms off the lot, none of its bid figures", async () => {
     fetchMock.mockResolvedValue(
-      json({ data: { serverNow: "2026-11-14T10:00:00.000Z", nextBidAmount: "120.00" } }),
+      json({
+        data: {
+          serverNow: "2026-11-14T10:00:00.000Z",
+          nextBidAmount: "120.00",
+          hammerPrice: "100.00",
+          buyersPremium: { kind: "flat", rate: "0.25" },
+        },
+      }),
     );
-    const view = await getPublicLotBiddingView("lot-1");
-    expect(view.serverNow).toBeNull();
+    await expect(getPublicLotPremiumTerms("lot-1")).resolves.toEqual({
+      kind: "flat",
+      rate: "0.25",
+    });
+    expect(lastInit().next?.tags).toEqual(["public-lot:lot-1"]);
+  });
+
+  it("offer no bid read for the page to render from", () => {
+    // The page carries no live bid state: bids, history and the bidding view are read live in the
+    // browser, never through these cached reads.
+    for (const name of ["getPublicLotBids", "getPublicLotBiddingView", "getPublicBidHistory"]) {
+      expect(name in publicCatalogue).toBe(false);
+    }
+    for (const fn of Object.values(publicCatalogue)) {
+      if (typeof fn !== "function") continue;
+      expect(String(fn)).not.toMatch(/\/bids|\/bid-history/);
+    }
   });
 
   it("keep nothing personal from a sale answer", async () => {

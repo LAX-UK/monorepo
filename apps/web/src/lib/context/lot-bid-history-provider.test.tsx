@@ -63,14 +63,7 @@ function wrapper({ children }: { children: ReactNode }) {
   const queryClient = createTestQueryClient();
   return (
     <QueryClientProvider client={queryClient}>
-      <LotBidHistoryProvider
-        lotId={LOT_ID}
-        initialHistory={[]}
-        initialSnapshot={{ ...snapshot, currentPrice: "100.00" }}
-        initialLeadingBidderId={null}
-      >
-        {children}
-      </LotBidHistoryProvider>
+      <LotBidHistoryProvider lotId={LOT_ID}>{children}</LotBidHistoryProvider>
     </QueryClientProvider>
   );
 }

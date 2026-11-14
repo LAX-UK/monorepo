@@ -33,6 +33,7 @@ import { OnlineLotLifecycleProvider } from "@/lib/context/online-lot-lifecycle";
 import { MaybeSaleroomLiveProvider } from "@/lib/context/saleroom-live-provider";
 import { getLotMediaTreatments } from "@/lib/departments/lot-media-treatments.server";
 import { isEnglishOnlyAuctionsLocked } from "@/lib/feature-flags/english-only-auctions";
+import { withoutLiveBidState } from "@/lib/lot-page/catalogue-lot";
 import {
   getServerWithdrawnLot,
   loadWithdrawnLotPage,
@@ -49,6 +50,7 @@ import {
 import { metadataForLot, metadataForNotFound } from "@/lib/seo/metadata-factory";
 import { lotPath, salePath } from "@/lib/seo/url";
 import { DEFAULT_LOT_MEDIA_TREATMENT, lotMediaTreatment } from "@auction/domain";
+import type { Lot, PublicLotView } from "@auction/types";
 import type { Metadata } from "next";
 
 type PageProps = {
@@ -68,6 +70,18 @@ export async function generateMetadata({ params, searchParams }: PageProps): Pro
   }
   ensureCanonicalLotSlug(slug, auction, sp);
   return metadataForLot(auction);
+}
+
+/** The lifecycle provider's lot, from the catalogue lot: its bid fields are neutral placeholders. */
+function catalogueLifecycleLot(lot: Lot | PublicLotView) {
+  return {
+    id: lot.id,
+    status: lot.status,
+    startTime: lot.startTime,
+    endTime: lot.endTime,
+    winnerId: lot.winnerId,
+    currentPrice: lot.currentPrice,
+  };
 }
 
 export default async function ArtworkPage({ params, searchParams }: PageProps) {
@@ -93,8 +107,6 @@ export default async function ArtworkPage({ params, searchParams }: PageProps) {
     auction,
     saleBundle,
     initialSaleroomStatus,
-    initialHistory,
-    initialLeadingBidderId,
     parentSale,
     catalogBackHref,
     catalogBackLabel,
@@ -112,7 +124,6 @@ export default async function ArtworkPage({ params, searchParams }: PageProps) {
     queueVMs,
     sessionHeaderVM,
     saleLifecyclePick,
-    lifecycleLotPick,
     showPreviewRibbon,
     isSaleQueueLoading,
     onsiteOverviewVM,
@@ -125,6 +136,9 @@ export default async function ArtworkPage({ params, searchParams }: PageProps) {
   } = vm;
   // What the page is drawn with for everyone; `/api/lots/:id/me` replaces it in the browser.
   const signedOutViewer = lotPageViewerFrom(vm);
+  // The page is built from cached reads, so the lot it hands the browser carries no bid state
+  // (CO-7): price, status, close and result come from the live read and the socket.
+  const catalogueAuction = withoutLiveBidState(auction);
 
   const atgReadOnlyCatalog = isAtgReadOnlyCatalogSale(saleBundle?.sale ?? null);
   const atgLotSold = saleLots?.find((l) => l.id === auction.id)?.atgSold;
@@ -143,9 +157,9 @@ export default async function ArtworkPage({ params, searchParams }: PageProps) {
       <AtgExternalBiddingPanel sale={saleBundle.sale} lot={{ sold: atgLotSold }} />
     ) : (
       <LotBidEntryIsland
-        auction={auction}
+        auction={catalogueAuction}
         artistName={artist?.name ?? null}
-        buyersPremium={templateReads?.bidding.buyersPremium ?? null}
+        buyersPremium={templateReads?.buyersPremium ?? null}
         gate={{
           loginNextPath: lotPath(auction),
           strictBidEligibilityEnabled: isStrictBidEligibilityEnabled(),
@@ -249,13 +263,11 @@ export default async function ArtworkPage({ params, searchParams }: PageProps) {
                       saleId={isHybridSale ? auction.saleId : null}
                       initial={initialSaleroomStatus}
                     >
-                      <OnlineLotLifecycleProvider lot={lifecycleLotPick} sale={saleLifecyclePick}>
-                        <LotBidHistoryProviderIsland
-                          lotId={auction.id}
-                          initialHistory={initialHistory}
-                          initialSnapshot={lifecycleLotPick}
-                          initialLeadingBidderId={initialLeadingBidderId}
-                        >
+                      <OnlineLotLifecycleProvider
+                        lot={catalogueLifecycleLot(catalogueAuction)}
+                        sale={saleLifecyclePick}
+                      >
+                        <LotBidHistoryProviderIsland lotId={auction.id}>
                           <LotTemplate
                             {...toLotTemplateData({
                               auction,
@@ -267,9 +279,8 @@ export default async function ArtworkPage({ params, searchParams }: PageProps) {
                               watching: false,
                               artist,
                               documents: lotDocuments,
-                              bidding: templateReads.bidding,
+                              buyersPremium: templateReads.buyersPremium,
                               viewer: null,
-                              history: templateReads.history,
                               media: mediaTreatment,
                             })}
                             bidEntry={bidEntry}

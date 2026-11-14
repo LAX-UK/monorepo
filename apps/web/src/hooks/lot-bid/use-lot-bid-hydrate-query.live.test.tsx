@@ -1,5 +1,5 @@
 import { useLotBidHydrateQuery } from "@/hooks/lot-bid/use-lot-bid-hydrate-query";
-import { buildLotBidInitialHydrate } from "@/lib/data/queries/lot-bid";
+import { isLiveLotBidHydrate, pendingLotBidHydrate } from "@/lib/data/queries/lot-bid";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { renderHook, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
@@ -16,21 +16,11 @@ vi.mock("@/lib/bid/fetch-lot-bid-history.client", () => ({
 }));
 
 /**
- * CO-7: the lot page HTML may come from a cache. Its bid snapshot is a first paint only; the live
- * price and status are read again as soon as the panel mounts, never trusted from the cache.
+ * CO-7: the lot page HTML is built from cached reads and carries no bid state. The panel starts
+ * from a placeholder and reads the live snapshot as soon as it mounts.
  */
-describe("useLotBidHydrateQuery with a cached page", () => {
-  it("reads the live snapshot on mount and replaces the cached price", async () => {
-    const cached = buildLotBidInitialHydrate({
-      initialSnapshot: {
-        currentPrice: "100.00",
-        endTime: new Date("2026-07-01T20:00:00Z"),
-        status: "active",
-        winnerId: null,
-      },
-      initialHistory: [],
-      initialLeadingBidderId: null,
-    });
+describe("useLotBidHydrateQuery from the placeholder", () => {
+  it("starts pending and becomes live once the live read lands", async () => {
     mockFetchLotBidSnapshot.mockResolvedValue({
       currentPrice: "750.00",
       endTime: new Date("2026-07-01T20:02:00Z"),
@@ -43,13 +33,23 @@ describe("useLotBidHydrateQuery with a cached page", () => {
     const wrapper = ({ children }: { children: ReactNode }) => (
       <QueryClientProvider client={client}>{children}</QueryClientProvider>
     );
-    const { result } = renderHook(() => useLotBidHydrateQuery("lot-1", { initialData: cached }), {
-      wrapper,
-    });
+    const { result } = renderHook(
+      () => useLotBidHydrateQuery("lot-1", { initialData: pendingLotBidHydrate() }),
+      { wrapper },
+    );
 
-    expect(result.current.data?.snapshot.currentPrice).toBe("100.00");
+    expect(result.current.data && isLiveLotBidHydrate(result.current.data)).toBe(false);
     await waitFor(() => expect(result.current.data?.snapshot.currentPrice).toBe("750.00"));
+    expect(result.current.data && isLiveLotBidHydrate(result.current.data)).toBe(true);
     expect(mockFetchLotBidSnapshot).toHaveBeenCalledWith("lot-1");
     client.clear();
+  });
+
+  it("the placeholder holds no bid state", () => {
+    const pending = pendingLotBidHydrate();
+    expect(pending.entries).toEqual([]);
+    expect(pending.leadingBidderId).toBeNull();
+    expect(pending.snapshot.winnerId).toBeNull();
+    expect(isLiveLotBidHydrate(pending)).toBe(false);
   });
 });

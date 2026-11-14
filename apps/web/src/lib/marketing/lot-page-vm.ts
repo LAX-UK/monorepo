@@ -1,14 +1,13 @@
 import { lotViewItemPriceMinor } from "@/lib/analytics/lot-view-item-price";
-import type { BidHistoryEntry } from "@/lib/bid/bid-history-entry";
 import { type BiddingAccount, resolveBiddingAccount } from "@/lib/bid/bidding-account";
 import { buildSaleRegistrationBidGate } from "@/lib/bid/build-sale-registration-bid-gate";
 import { splitBuyerMembershipsByState } from "@/lib/bid/buyer-entity-state";
 import { computeIsOwnLot } from "@/lib/bid/compute-is-own-lot";
-import { mapBidToHistoryEntry } from "@/lib/bid/map-bid-to-history-entry";
 import { resolveKycSurfaceFeedback } from "@/lib/bid/resolve-kyc-bid-gate";
 import { buildLotConditionReportViewModel } from "@/lib/condition-report/build-lot-condition-report-vm";
 import type { LotConditionReportViewModel } from "@/lib/condition-report/lot-condition-report-session-input";
 import { artistLifespan } from "@/lib/lot-page/artist-lifespan";
+import { withoutLiveBidState } from "@/lib/lot-page/catalogue-lot";
 import { classifyLotTimerState } from "@/lib/lot/classify-lot-timer-state";
 import { classifyLotLifecycle } from "@/lib/lot/lot-lifecycle";
 import {
@@ -46,11 +45,6 @@ type LifecycleLotPick = Pick<
   "id" | "status" | "startTime" | "endTime" | "winnerId" | "currentPrice"
 > & { hasWinner?: boolean | undefined; resultPending?: boolean | undefined };
 
-function deriveLeadingBidderId(bids: LotPageShellData["initialBids"]): string | null {
-  const winning = bids.find((b) => b.isWinning);
-  return winning?.bidderId ?? winning?.placedByUserId ?? null;
-}
-
 export type LotPageViewModel = {
   serverNow: number;
   auction: LotPageShellData["auction"];
@@ -62,8 +56,6 @@ export type LotPageViewModel = {
   actingCtx: LotPageSecondaryData["actingCtx"];
   orgModuleEnabled: boolean;
   initialSaleroomStatus: LotPageSecondaryData["initialSaleroomStatus"];
-  initialHistory: BidHistoryEntry[];
-  initialLeadingBidderId: string | null;
   watching: boolean;
   watchedLotIds: string[];
   parentSale: { id: string; title: string; deliveryMode: Sale["deliveryMode"] } | null;
@@ -130,7 +122,6 @@ export function buildLotPageViewModel(input: {
   const {
     auction,
     session,
-    initialBids,
     seller,
     catalogArtist,
     relatedRaw,
@@ -158,9 +149,6 @@ export function buildLotPageViewModel(input: {
         image: catalogArtist.portraitUrl ?? null,
       }
     : null;
-
-  const initialHistory = initialBids.map(mapBidToHistoryEntry);
-  const initialLeadingBidderId = deriveLeadingBidderId(initialBids);
 
   const watching = watchlist.some((w) => w.lotId === auction.id);
   const watchedLotIds = watchlist.map((w) => w.lotId);
@@ -217,6 +205,7 @@ export function buildLotPageViewModel(input: {
   );
   const jsonLdText = jsonLdScript(
     lotProductJsonLd(auction, {
+      catalogueOnly: true,
       ...(artistForAccordion?.name ? { artistName: artistForAccordion.name } : {}),
       ...(sellerName ? { sellerName } : {}),
     }),
@@ -371,7 +360,8 @@ export function buildLotPageViewModel(input: {
       })) ?? [];
 
   const viewItemCurrency = auction.marketingDetails?.estimate?.currency ?? "GBP";
-  const viewItemPriceMinor = lotViewItemPriceMinor(auction);
+  // The opening price or the estimate: the page carries no live price (CO-7).
+  const viewItemPriceMinor = lotViewItemPriceMinor(withoutLiveBidState(auction));
 
   const breadcrumbItems = parentSale
     ? [
@@ -411,8 +401,6 @@ export function buildLotPageViewModel(input: {
     actingCtx,
     orgModuleEnabled,
     initialSaleroomStatus,
-    initialHistory,
-    initialLeadingBidderId,
     watching,
     watchedLotIds,
     parentSale,

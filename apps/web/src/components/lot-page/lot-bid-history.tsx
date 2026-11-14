@@ -4,6 +4,7 @@ import { useLotPageViewContext } from "@/components/lot-page/lot-page-view-conte
 import { buildLotHistoryView } from "@/lib/lot-page/lot-history-rows";
 import { useClockNow } from "@/lib/time/use-clock";
 import { Button } from "@auction/ui/lax/button";
+import { Skeleton } from "@auction/ui/lax/skeleton";
 import { cn } from "@auction/ui/lib/utils";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { useId, useState } from "react";
@@ -14,13 +15,15 @@ import { useId, useState } from "react";
  * paddle is ever named.
  */
 export function LotBidHistory() {
-  const { view, history, nowMs: pageNowMs } = useLotPageViewContext();
+  const { live, view, history, nowMs: pageNowMs } = useLotPageViewContext();
   // "2 minutes ago" moves on its own clock, not the page's, so the list redraws only when it can change.
   const nowMs = useClockNow(30_000) ?? pageNowMs;
   const [open, setOpen] = useState(false);
   const [showAll, setShowAll] = useState(false);
   const listId = useId();
 
+  // Until the first live read there is no history in the page (CO-7): its place, closed.
+  if (!live) return <LotBidHistoryPending />;
   if (!view.sections.history) return null;
   const content = buildLotHistoryView(history, nowMs, showAll);
   const Chevron = open ? ChevronUp : ChevronDown;
@@ -76,6 +79,25 @@ export function LotBidHistory() {
           </div>
         ) : null}
       </div>
+    </section>
+  );
+}
+
+/** The closed disclosure at its final size, with the count still to come. */
+function LotBidHistoryPending() {
+  return (
+    <section
+      aria-label="Bid history"
+      aria-busy="true"
+      className="mt-6 border-t border-b border-lax-line"
+    >
+      <h2 className="m-0">
+        <span className="-mx-1 flex h-13 w-[calc(100%+0.5rem)] items-center gap-2 px-1 text-left font-normal">
+          <ChevronDown aria-hidden className="text-lax-muted" />
+          <span className="font-semibold text-lax-fg">Bid history</span>
+          <Skeleton className="h-5 w-16" />
+        </span>
+      </h2>
     </section>
   );
 }

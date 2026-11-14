@@ -6,7 +6,8 @@ import { parsePublicBidHistory } from "./public-bid-history-parse";
 
 async function readData(path: string): Promise<unknown | null> {
   try {
-    const res = await browserFetch(`${browserApiBase()}${path}`);
+    // Live reads: never answered from a cache (CO-7).
+    const res = await browserFetch(`${browserApiBase()}${path}`, { cache: "no-store" });
     if (!res.ok) return null;
     const body: unknown = await res.json();
     return isIndexableObject(body) ? (body.data ?? null) : null;

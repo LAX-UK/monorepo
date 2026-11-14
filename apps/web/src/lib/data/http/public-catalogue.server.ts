@@ -8,7 +8,6 @@ import { categoryRowSchema } from "@/lib/data/http/categories.schema";
 import { readDataEnvelope, readJsonBody, readListEnvelope } from "@/lib/data/http/envelope";
 import { buildLotListQuery } from "@/lib/data/http/lot-list-query";
 import {
-  bidEnvelopeSchema,
   lotDocumentPublicRowSchema,
   lotEnvelopeSchema,
   publicLotViewEnvelopeSchema,
@@ -35,14 +34,9 @@ import type {
 import { getServerApiBase } from "@/lib/data/http/server-api-base";
 import { mergeFetchInitWithPolicy } from "@/lib/data/http/server-fetch-policy";
 import type { LotDocumentPublicRow } from "@/lib/data/lot-documents-public";
-import {
-  EMPTY_LOT_BIDDING_VIEW,
-  type LotBiddingView,
-  parseLotBiddingView,
-} from "@/lib/lot-page/lot-bidding-view";
-import { LOT_HISTORY_LIMIT, parsePublicBidHistory } from "@/lib/lot-page/public-bid-history-parse";
-import type { PublicBidHistory } from "@auction/domain";
-import type { Bid, Category, Lot, PublicLotView } from "@auction/types";
+import { parseLotBiddingView } from "@/lib/lot-page/lot-bidding-view";
+import type { BuyersPremiumTerms } from "@auction/domain";
+import type { Category, Lot, PublicLotView } from "@auction/types";
 import { cache } from "react";
 
 /*
@@ -54,8 +48,10 @@ import { cache } from "react";
  * (`public-lot:<id>`, `public-sale:<id>`), which the API and the worker drop through
  * `POST /api/revalidate` when that lot or sale changes; the window below is only the fallback.
  * What is personal (watching, your bids, registration, telephone booking) comes from
- * `/api/sales/:id/me` and `/api/lots/:id/me` in the browser; the live bid state comes from the
- * socket and a no-store read, never from these.
+ * `/api/sales/:id/me` and `/api/lots/:id/me` in the browser. The live bid state (price, next bid,
+ * status, close, history, leader) comes only from a no-store read in the browser and the socket:
+ * there is no bid read here, and the bid fields of the lot and sale reads are not drawn into the
+ * page (`withoutLiveBidState`, the catalogue cards' live read).
  */
 
 /** Fallback window when a purge is missed. */
@@ -104,7 +100,7 @@ export const getPublicSaleLotsPage = cache(async function getPublicSaleLotsPage(
 
 /**
  * The public lot, or null for a 404 and for a withdrawn lot (which has its own page and read).
- * Its price and status are a first paint only: the bid panel replaces them from the socket.
+ * Its price, status and close are not drawn into the page: the bid panel reads them live.
  */
 export const getPublicLotById = cache(async function getPublicLotById(
   id: string,
@@ -177,19 +173,6 @@ export const getPublicSaleWithLots = cache(async function getPublicSaleWithLots(
   return rest;
 });
 
-/** The lot's bids as the public sees them (a first paint: the panel reads them again live). */
-export const getPublicLotBids = cache(async function getPublicLotBids(
-  lotId: string,
-  limit = 30,
-): Promise<Bid[]> {
-  const res = await publicFetch(`/lots/${encodeURIComponent(lotId)}/bids?limit=${limit}`, [
-    publicLotTag(lotId),
-  ]);
-  if (!res.ok) throw new Error(`Failed to load bids: ${res.status}`);
-  const body = await readJsonBody(res);
-  return readListEnvelope(body, bidEnvelopeSchema, `GET /lots/${lotId}/bids`).rows;
-});
-
 /** Number of people watching the lot; 0 on any failure. */
 export const getPublicLotWatchCount = cache(async function getPublicLotWatchCount(
   lotId: string,
@@ -231,36 +214,18 @@ export async function getPublicLotList(params: ListLotsParams): Promise<Lot[]> {
 }
 
 /**
- * The bidding fields of the public lot (next bid, sold prices). The server clock reading is left
- * out: from a cached page it would be old, and the page's clock would start behind. The browser
- * measures the API's clock itself.
+ * The premium terms the lot charges (rate or bands), off the public lot read. These are catalogue
+ * terms, not bid state: the bid figures on the same response (next bid, sold prices, the server
+ * clock) are not read here. The lot page carries no live bid state (CO-7); the browser reads it.
  */
-export const getPublicLotBiddingView = cache(async function getPublicLotBiddingView(
+export const getPublicLotPremiumTerms = cache(async function getPublicLotPremiumTerms(
   lotId: string,
-): Promise<LotBiddingView> {
+): Promise<BuyersPremiumTerms | null> {
   try {
     const res = await publicFetch(`/lots/${encodeURIComponent(lotId)}`, [publicLotTag(lotId)]);
-    if (!res.ok) return EMPTY_LOT_BIDDING_VIEW;
-    const body = await readJsonBody(res);
-    const view = parseLotBiddingView((body as { data?: unknown } | null)?.data);
-    return { ...view, serverNow: null };
-  } catch {
-    return EMPTY_LOT_BIDDING_VIEW;
-  }
-});
-
-/** The anonymised bid history; "you" is marked by the browser's own read. `null` on failure. */
-export const getPublicBidHistory = cache(async function getPublicBidHistory(
-  lotId: string,
-): Promise<PublicBidHistory | null> {
-  try {
-    const res = await publicFetch(
-      `/lots/${encodeURIComponent(lotId)}/bid-history?limit=${LOT_HISTORY_LIMIT}`,
-      [publicLotTag(lotId)],
-    );
     if (!res.ok) return null;
     const body = await readJsonBody(res);
-    return parsePublicBidHistory((body as { data?: unknown } | null)?.data);
+    return parseLotBiddingView((body as { data?: unknown } | null)?.data).buyersPremium;
   } catch {
     return null;
   }

@@ -4,7 +4,7 @@ const get = vi.fn();
 vi.mock("@/lib/data/http/hc-browser", () => ({
   browserApiBase: () => "https://api.test",
   browserFetch: vi.fn(),
-  getBrowserHc: () => ({ lots: { ":id": { bids: { $get: get } } } }),
+  getBrowserHcLive: () => ({ lots: { ":id": { bids: { $get: get } } } }),
 }));
 
 import { fetchLotBidHistory } from "./fetch-lot-bid-history.client";

@@ -8,6 +8,11 @@ export type LotBidHydrateData = {
   entries: BidHistoryEntry[];
   leadingBidderId: string | null;
   reserveMet: boolean | undefined;
+  /**
+   * Set only on the placeholder the page starts from: nothing in it is the lot's real state. It
+   * goes away with the first live read, which replaces the whole value; socket patches keep it.
+   */
+  pending?: true;
 };
 
 function deriveLeadingBidderId(entries: BidHistoryEntry[]): string | null {
@@ -43,21 +48,23 @@ export async function fetchLotBidHydrate(lotId: string): Promise<LotBidHydrateDa
 }
 
 /**
- * Seed the live bid cache from the server-rendered lot. The snapshot is the lot as the
- * server loaded it: its real status and closing time, never placeholders, because the
- * lifecycle (open, upcoming, closed) is classified from it before the first resync.
+ * What the lot page starts from (CO-7): no price, no status, no close, no history and no leader.
+ * The page HTML is built from cached reads, so it carries none of the live bid state; the panel
+ * draws placeholders and keeps bidding shut until the first no-store read replaces this.
  */
-export function buildLotBidInitialHydrate(input: {
-  initialSnapshot: LotBidSnapshot;
-  initialHistory: BidHistoryEntry[];
-  initialLeadingBidderId?: string | null;
-}): LotBidHydrateData {
+export function pendingLotBidHydrate(): LotBidHydrateData {
   return {
-    snapshot: input.initialSnapshot,
-    entries: input.initialHistory,
-    leadingBidderId: input.initialLeadingBidderId ?? null,
-    reserveMet: input.initialSnapshot.reserveMet,
+    snapshot: { currentPrice: "0", endTime: new Date(0), status: "scheduled", winnerId: null },
+    entries: [],
+    leadingBidderId: null,
+    reserveMet: undefined,
+    pending: true,
   };
+}
+
+/** Whether the value came from a live read (or the socket after one), not the placeholder. */
+export function isLiveLotBidHydrate(data: LotBidHydrateData): boolean {
+  return data.pending !== true;
 }
 
 export const lotBidKeys = {

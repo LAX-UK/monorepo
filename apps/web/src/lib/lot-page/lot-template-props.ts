@@ -1,13 +1,12 @@
-import type { LotBiddingView } from "@/lib/lot-page/lot-bidding-view";
 import { type LotDetailsView, buildLotDetails, lotFactsLine } from "@/lib/lot-page/lot-details";
 import type { LotViewerView } from "@/lib/lot-page/lot-viewer";
 import type { LotPageLot, LotPageViewSource } from "@/lib/lot-page/use-lot-page-view";
 import { lotBuyerPremiumCopy, termsBuyerPremiumCopy } from "@/lib/lot/buyer-premium-copy";
 import { salePath } from "@/lib/seo/url";
 import {
+  type BuyersPremiumTerms,
   DEFAULT_LOT_MEDIA_TREATMENT,
   type LotMediaTreatment,
-  type PublicBidHistory,
 } from "@auction/domain";
 import type { GalleryImage, Lot, PublicLotView, Sale, WithSaleZone } from "@auction/types";
 import { toGalleryImages } from "@auction/types";
@@ -48,9 +47,9 @@ export type LotTemplateInput = {
   watching: boolean;
   artist: LotTemplateData["artist"];
   documents: Array<{ label: string; href: string }>;
-  bidding: LotBiddingView;
+  /** The premium terms the lot charges (catalogue terms, not bid state). */
+  buyersPremium: BuyersPremiumTerms | null;
   viewer: LotViewerView | null;
-  history: PublicBidHistory | null;
   /** Left out, the lot is shown as a wall work. */
   media?: LotMediaTreatment;
 };
@@ -60,32 +59,27 @@ const NOT_FOR_SALE: ReadonlySet<Lot["status"]> = new Set(["voided", "cancelled"]
 /** The premium in words: the server's resolved terms when it sent them, else the lot's own. */
 function premiumTermsOf(
   auction: WithSaleZone<Lot | PublicLotView>,
-  bidding: LotBiddingView,
+  buyersPremium: BuyersPremiumTerms | null,
 ): string | null {
-  const copy = bidding.buyersPremium
-    ? termsBuyerPremiumCopy(bidding.buyersPremium)
-    : lotBuyerPremiumCopy(auction);
+  const copy = buyersPremium ? termsBuyerPremiumCopy(buyersPremium) : lotBuyerPremiumCopy(auction);
   return copy?.terms ?? null;
 }
 
+/**
+ * The lot's catalogue facts for the page. Nothing bidding moves is copied (price, status, close,
+ * winner, result, reserve met): the page is built from cached reads (CO-7), so those come only
+ * from the live read in the browser.
+ */
 function pageLotOf(auction: WithSaleZone<Lot | PublicLotView>): LotPageLot {
   return {
     id: auction.id,
-    status: auction.status,
     auctionType: auction.auctionType,
     startingPrice: auction.startingPrice,
-    currentPrice: auction.currentPrice,
     minBidIncrement: auction.minBidIncrement,
-    winnerId: auction.winnerId,
-    hasWinner: auction.hasWinner,
-    ...(auction.resultPending ? { resultPending: true } : {}),
     marketingDetails: auction.marketingDetails,
     startTime: new Date(auction.startTime).toISOString(),
-    endTime: new Date(auction.endTime).toISOString(),
     ...(auction.timeZone ? { timeZone: auction.timeZone } : {}),
-    ...("hasReserve" in auction
-      ? { hasReserve: auction.hasReserve, reserveMet: auction.reserveMet }
-      : {}),
+    ...("hasReserve" in auction ? { hasReserve: auction.hasReserve } : {}),
   };
 }
 
@@ -95,11 +89,9 @@ export function toLotTemplateData(input: LotTemplateInput): LotTemplateData {
   return {
     source: {
       lot: pageLotOf(auction),
-      bidding: input.bidding,
       sale: input.saleLifecycle,
       signedIn: input.signedIn,
       initialViewer: input.viewer,
-      initialHistory: input.history,
     },
     lot: {
       id: auction.id,
@@ -121,7 +113,9 @@ export function toLotTemplateData(input: LotTemplateInput): LotTemplateData {
       marketingDetails: auction.marketingDetails,
       documents: input.documents,
     }),
-    premiumTerms: NOT_FOR_SALE.has(auction.status) ? null : premiumTermsOf(auction, input.bidding),
+    premiumTerms: NOT_FOR_SALE.has(auction.status)
+      ? null
+      : premiumTermsOf(auction, input.buyersPremium),
     sale: input.parentSale
       ? { href: salePath(input.parentSale), label: "Back to the sale" }
       : { href: "/search", label: "Search lots" },
