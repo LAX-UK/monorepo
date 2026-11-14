@@ -209,3 +209,39 @@ One string conflicts with F1: "Refund the buyer or reinstate the invoice" offers
 All the owner's hard rules hold: dry run only, delivery parked and never sent, amounts from stored rows, exact allocations, idempotent, and no production change. F2 and F3 make the PR's own CI flaky and are a small fix. F1 leaves the documented recovery path broken. Fix both, or correct the runbook and copy for F1, before merge.
 
 ### Verdict: FIX FIRST
+
+## Fixes after review
+
+The fixes are on `bk8-books-payments`, merged with `origin/main` at `f5670a31` (merge `d479f62e`). Migration 0382 is still the next free number. Every check below was re-run on that head: Postgres 16.15, port 55432, `db:migrate` and `db:roles`, tests with `--maxWorkers=2`.
+
+| # | Fix | Commit | Test evidence | Mutation |
+|---|---|---|---|---|
+| F1 | **Release.** A parked `needs_review` document goes to `pending` (`release` in the life cycle). The API projects the stored Bid rows again with the policy that parked it (`resolveParked`) and releases the document only if they no longer park it: `DELIVERY_BOOKING` is set and the delivery draft is rebuilt under the same reference and gross, or the invoice is no longer voided. Otherwise it is refused with the reason. It has its own history action (`release`, who asked), audit event (`accounting_document.release_requested`) and 0382 trigger clause, and a permission-gated **Release** on the Accounting row, menu and details. The runbook, domain notes and copy describe exactly this recovery. | `512f3f4d` | `release.test.ts` (domain); `accounting-queue.release.test.ts` (runtime); api_app role contract (release clause probes); R6, inverted: the recovery end to end as api_app (refused while unresolved, then delivery rebuilt and payment released, both issued in order); R6b: a reinstated invoice's payment | **Killed** (`still parked` check removed): 2 domain, 1 runtime, 2 integration tests |
+| F2 | `documentsAwaited` and the claim SQL (`AWAITED_ISSUED`): an invoice or credit note also waits for its contact to be issued for the same target. R1 adopted as strict. | `af07585c` | Persistence: "an invoice is not claimed before its contact is issued, even at the same instant and older". Strict R1 (the payment is posted once, after every invoice, on its first attempt): 5/5 green. | **Killed** (contact branch removed): the persistence test every run; strict R1 in 4 of 5 runs |
+| F3 | The sender read-back test queues documents one at a time, at distinct times. F2 removes the cause. The same change, also on the remote branch (`fb0eb3ce`), was merged and the conflict resolved. | `6d492ca9` | 10/10 single-test runs green | n/a |
+| F4 | The row and details name each document a waiting payment waits for, and its state (or "Not queued yet"). The existing delayed-accounting alert (`accounting_bid_invoice_delayed`, `documentType: "payment"`) is raised after 6 hours of waiting. The sender-missed check no longer counts waiting documents. A cancelled awaited invoice parks the payment as `invoice_cancelled` (`parkStranded`, history action `park`). | `4c5055d8` | Persistence: `parkStranded`, `waitingPayments`, `awaitedOf`. Watch unit test (6 h). Web row and details. R8 (integration). | **Killed** (park condition made false): the persistence test and R8 |
+| F5 | No "Last problem" for a document with 0 attempts that is `pending`. The order note shows as an info notice, "Not sent yet". The parked notice keeps its title, and its body no longer repeats "Waiting for the accountant". | `5744678a` | Web tests: a never-tried payment; the parked notice title. Screenshots `waiting-queued-details`, `needs-person-delivery-details`. | n/a |
+| F6 | The `0382_rollback.sql` header says what it does. Parked rows move to `cancelled`, each with a `cancel` history row (`{"rollback":"0382","parked":…}`), before the old trigger is restored. The rollback also revokes the release columns. | `78132574` | Rollback, forward, rollback, forward on a copy with 38 parked rows: all 38 cancelled with history, 0 left parked | n/a |
+| F7 | `noStore` on `/finance/accounting` and `/finance/accounting/*`, mounted before the finance gate | `a354aa6a` | Route tests: 200, 400 and 403 (gate and write guard) all carry `no-store` | **Killed** (registration removed): 2 route tests |
+| F8 | The cancelled-invoice copy now reads "…Refund the buyer, or reinstate the invoice in Bid and press Release." Every new staff-facing string is listed under "New copy" in the PR body. | `5744678a` | `admin-accounting.test.ts` asserts both texts name Release | n/a |
+| F9 | R1–R6 adopted (`bid-payments-books-guards.integration.test.ts`): R1 strict, R6 inverted, R3 the 1p over/under at integration level. Added R7, a member's stored payment above its invoice (`payment_exceeds_invoice`). Settlement takes `settledAt` from an injected clock and writes the same instant to `settled_at`; the integration test asserts they agree. | `f974d9e3` (and `512f3f4d` for R1–R6) | guards file 9/9, 3 full runs; payment-group integration | n/a |
+| F10 | Padding after the status badge (column 188px). The muted text token for the part-received details. Screenshots of the empty panel state and of a failed invoice holding a payment. The list's cells moved to their own file to stay under the 550-line guardrail. | `725d8fac`, `112a3bf2` | `review-notes-pr1359` `shots/round2/` (30 shots, no horizontal scroll) | n/a |
+
+Other results on the merged head:
+
+- **Lint and typecheck.** `lint:layers`, `lint:deps`, `lint:seller-commission`, `lint:web-guardrails`, `lint:staff-list-template` and `lint:admin-capability-drift` pass. biome is clean on the 87 changed files. Typecheck is clean for types, accounting-domain, persistence, finance-runtime, db, api, worker and web. The web check is clean once the API is built.
+- **Tests:**
+
+  | Package | Result |
+  |---|---|
+  | accounting-domain | 255 passed |
+  | accounting-zoho-books | 290 passed |
+  | types | 326 passed |
+  | finance-runtime | 228 passed |
+  | persistence (accounting, payment group) | 93 passed |
+  | db (roles, contracts) | 118 passed |
+  | worker (accounting, projectors) | 284 passed |
+  | api (payment group, Stripe webhooks, accounting, failed jobs) | 487 passed |
+  | web (Accounting) | 507 passed |
+
+- **Residual.** The database holds a release to its shape: parked to pending, document unchanged except a delivery draft rebuilt with the same reference and gross. Whether the reason is settled is the application's decision from the stored rows, because at row level a requeue and a release of a parked row look the same.
