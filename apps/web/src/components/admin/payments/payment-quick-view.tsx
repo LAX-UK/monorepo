@@ -16,7 +16,7 @@ import {
   StaffDate,
   StatusBadge,
 } from "@auction/staff-ui";
-import { ArrowUpRight, RefreshCw } from "lucide-react";
+import { RefreshCw } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
@@ -118,13 +118,6 @@ export function PaymentQuickView({
           </StatusBadge>
         ) : null
       }
-      headerActions={
-        row && canOpenLot ? (
-          <StaffButton asChild variant="ghost" size="sm" icon={<ArrowUpRight aria-hidden />}>
-            <Link href={`/admin/lots/${row.lotId}`}>Open lot</Link>
-          </StaffButton>
-        ) : null
-      }
       overflow={
         row ? (
           <OverflowMenu
@@ -132,6 +125,9 @@ export function PaymentQuickView({
             label={`More actions for payment ${row.lotTitle}`}
             Link={Link}
             actions={[
+              ...(canOpenLot
+                ? [{ id: "lot", label: "Open lot", href: `/admin/lots/${row.lotId}` }]
+                : []),
               ...(canOpenClient
                 ? [
                     {

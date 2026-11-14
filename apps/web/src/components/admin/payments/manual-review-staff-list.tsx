@@ -31,7 +31,6 @@ import {
   StaffDate,
   StatusBadge,
 } from "@auction/staff-ui";
-import { ArrowUpRight } from "lucide-react";
 import Link from "next/link";
 import { type ReactNode, useMemo, useState } from "react";
 
@@ -283,13 +282,6 @@ export function ManualReviewStaffList(props: ManualReviewStaffListProps) {
                 { label: "Held since", value: <StaffDate value={openRow.source.createdAt} /> },
               ]
             : []
-        }
-        headerActions={
-          openRow && canOpenLot ? (
-            <StaffButton asChild variant="ghost" size="sm" icon={<ArrowUpRight aria-hidden />}>
-              <Link href={`/admin/lots/${openRow.lotId}`}>Open lot</Link>
-            </StaffButton>
-          ) : null
         }
         overflow={
           openRow ? (

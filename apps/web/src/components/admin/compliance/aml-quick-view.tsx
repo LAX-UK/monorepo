@@ -24,7 +24,6 @@ import {
   StatusBadge,
   Timeline,
 } from "@auction/staff-ui";
-import { ArrowUpRight } from "lucide-react";
 import Link from "next/link";
 
 function HitDetail({ hit }: { hit: AmlHitView }) {
@@ -149,20 +148,13 @@ export function AmlQuickView({
           </>
         ) : null
       }
-      headerActions={
-        row ? (
-          <StaffButton asChild variant="ghost" size="sm" icon={<ArrowUpRight aria-hidden />}>
-            <Link href={clientHref}>Open client</Link>
-          </StaffButton>
-        ) : null
-      }
       overflow={
-        row && decisionActions.length > 0 ? (
+        row ? (
           <OverflowMenu
             size="icon-sm"
             label={`More actions for screening ${row.client}`}
             Link={Link}
-            actions={decisionActions}
+            actions={[{ id: "client", label: "Open client", href: clientHref }, ...decisionActions]}
           />
         ) : null
       }

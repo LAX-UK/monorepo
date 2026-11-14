@@ -1,6 +1,6 @@
 import type { PaymentsStaffRow } from "@/lib/admin/finance/payments-staff-list.vm";
 import { StaffTooltipProvider } from "@auction/staff-ui";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { PaymentQuickView } from "./payment-quick-view";
 
@@ -26,6 +26,12 @@ const row: PaymentsStaffRow = {
   canRefund: true,
 };
 
+function openMenu() {
+  const trigger = screen.getByRole("button", { name: /^More actions for payment/ });
+  fireEvent.keyDown(trigger, { key: "Enter" });
+  return within(screen.getByRole("menu"));
+}
+
 function renderPanel(access: { canOpenLot: boolean; canOpenClient: boolean }) {
   return render(
     <StaffTooltipProvider>
@@ -42,11 +48,18 @@ function renderPanel(access: { canOpenLot: boolean; canOpenClient: boolean }) {
 }
 
 describe("PaymentQuickView links", () => {
-  it("links the lot and the seller for someone who can open those pages", () => {
+  it("keeps links to other records out of the header and in the menu and body", () => {
     renderPanel({ canOpenLot: true, canOpenClient: true });
-    expect(screen.getByRole("link", { name: /Open lot/ })).toHaveAttribute(
+    expect(screen.queryByRole("link", { name: /Open lot/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Open full page" })).not.toBeInTheDocument();
+    const menu = openMenu();
+    expect(menu.getByRole("menuitem", { name: "Open lot" })).toHaveAttribute(
       "href",
       "/admin/lots/lot_1",
+    );
+    expect(menu.getByRole("menuitem", { name: "Open buyer" })).toHaveAttribute(
+      "href",
+      "/admin/clients/user_1",
     );
     expect(screen.getByRole("link", { name: "Seller profile" })).toHaveAttribute(
       "href",
@@ -58,6 +71,7 @@ describe("PaymentQuickView links", () => {
     renderPanel({ canOpenLot: false, canOpenClient: false });
     expect(screen.getAllByText("Ada Lovelace").length).toBeGreaterThan(0);
     expect(screen.queryByRole("link", { name: /Open lot/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^More actions for payment/ })).toBeNull();
     expect(screen.queryByRole("link", { name: "Ada Lovelace" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Seller profile" })).not.toBeInTheDocument();
   });

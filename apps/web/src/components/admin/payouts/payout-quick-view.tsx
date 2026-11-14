@@ -15,13 +15,12 @@ import {
   StaffDate,
   StatusBadge,
 } from "@auction/staff-ui";
-import { ArrowUpRight } from "lucide-react";
 import Link from "next/link";
 
 /**
  * A payout beside the list, as a work queue: period and status, its place in the list ("3 of 12")
- * with J and K to step, a meta line (seller, net amount, paid on), "Open seller" and the same `…`
- * menu as the row, then the money breakdown and anything Stripe or the
+ * with J and K to step, a meta line (seller, paid on) and the same `…` menu as the row (with
+ * "Open seller", another record, which is also the link on the seller in the body), then the money breakdown and anything Stripe or the
  * statement reported. The next money step sits in the footer; each opens the row's confirm dialog.
  */
 export function PayoutQuickView({
@@ -127,20 +126,13 @@ export function PayoutQuickView({
             ]
           : []
       }
-      headerActions={
-        row ? (
-          <StaffButton asChild variant="ghost" size="sm" icon={<ArrowUpRight aria-hidden />}>
-            <Link href={sellerHref}>Open seller</Link>
-          </StaffButton>
-        ) : null
-      }
       overflow={
-        row && moneyActions.length > 0 ? (
+        row ? (
           <OverflowMenu
             size="icon-sm"
             label={`More actions for the payout to ${row.seller}`}
             Link={Link}
-            actions={moneyActions}
+            actions={[{ id: "seller", label: "Open seller", href: sellerHref }, ...moneyActions]}
           />
         ) : null
       }

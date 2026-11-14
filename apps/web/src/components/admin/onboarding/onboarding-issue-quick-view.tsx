@@ -2,7 +2,7 @@
 
 import type { OnboardingStaffRow } from "@/lib/admin/onboarding-issues-staff-list.vm";
 import { DetailPanel, OverflowMenu, StaffButton, StaffDate, StatusBadge } from "@auction/staff-ui";
-import { ArrowUpRight, ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import Link from "next/link";
 
 const URGENCY_BADGE = {
@@ -82,13 +82,6 @@ export function OnboardingIssueQuickView({
             ) : null}
             {urgency ? <StatusBadge tone={urgency.tone}>{urgency.label}</StatusBadge> : null}
           </>
-        ) : null
-      }
-      headerActions={
-        row ? (
-          <StaffButton asChild variant="ghost" size="sm" icon={<ArrowUpRight aria-hidden />}>
-            <Link href={row.href}>Open full page</Link>
-          </StaffButton>
         ) : null
       }
       overflow={
