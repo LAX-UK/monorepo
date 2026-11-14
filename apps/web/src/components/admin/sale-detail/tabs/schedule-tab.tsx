@@ -111,6 +111,7 @@ export function SaleScheduleTab({ saleId, sale, lots }: Props) {
         columns={lotColumns}
         data={ordered}
         getRowId={(lot) => lot.id}
+        rowHref={(lot) => `/admin/lots/${encodeURIComponent(lot.id)}`}
         defaultSort={{ columnId: "closes", direction: "asc" }}
         empty={{
           title: "No lots attached yet",

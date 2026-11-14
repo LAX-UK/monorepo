@@ -9,6 +9,7 @@ import { StaffEditableTitle } from "@/components/admin/staff/staff-editable-titl
 import { UserDetailContextRail } from "@/components/admin/user-detail-context-rail";
 import { adminUpdateClientDisplayNameFieldAction } from "@/lib/actions/admin/field-updates";
 import type { UserAttentionItem } from "@/lib/admin/admin-user-readiness.vm";
+import type { PeopleRecordPager } from "@/lib/admin/people/people-record-href";
 import { staffIdentityStatus, staffStatus } from "@/lib/admin/staff-kit-status";
 import { staffRolesLabel } from "@/lib/admin/staff-role-presenter";
 import type { AdminUserDetailPayload } from "@/lib/data/http/admin.server";
@@ -21,6 +22,7 @@ import {
   MetaItem,
   type OverflowAction,
   OverflowMenu,
+  RecordPager,
   StaffBreadcrumbs,
   StaffButton,
   StaffDate,
@@ -36,7 +38,7 @@ import {
 } from "@auction/types";
 import { Copy, Mail } from "lucide-react";
 import Link from "next/link";
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { ReactNode } from "react";
 
 const NextLink: StaffLinkComponent = Link;
@@ -52,9 +54,11 @@ export type PeopleDetailTab = {
 
 type Props = {
   user: AdminUserDetailPayload;
-  /** The list this person was opened from, with `returnTo` applied. */
+  /** The list this person was opened from (`?list=`, or an older `?returnTo=`). */
   listHref: string;
   listLabel: string;
+  /** Their place in the list they were opened from, to step to the previous or next person. */
+  pager?: PeopleRecordPager | null;
   access: PersonActionAccess;
   tabs: PeopleDetailTab[];
   attentionItems?: readonly UserAttentionItem[];
@@ -79,6 +83,7 @@ export function PeopleDetailShell({
   user,
   listHref,
   listLabel,
+  pager = null,
   access,
   tabs,
   attentionItems = [],
@@ -87,6 +92,7 @@ export function PeopleDetailShell({
 }: Props) {
   const pathname = usePathname() ?? "";
   const searchParams = useSearchParams();
+  const router = useRouter();
   const actions = usePersonActions(access);
   const isStaff = user.role === "staff";
   const canAct =
@@ -149,6 +155,22 @@ export function PeopleDetailShell({
     <>
       <DetailPage
         renderHeading
+        {...(pager
+          ? {
+              pager: (
+                <RecordPager
+                  position={pager.position}
+                  total={pager.total}
+                  previousHref={pager.previousHref}
+                  nextHref={pager.nextHref}
+                  listQuery={pager.listQuery}
+                  noun={isStaff ? "staff member" : "client"}
+                  Link={NextLink}
+                  navigate={(href) => router.push(href)}
+                />
+              ),
+            }
+          : {})}
         breadcrumbs={
           <StaffBreadcrumbs
             Link={NextLink}
