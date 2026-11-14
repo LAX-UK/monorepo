@@ -270,7 +270,7 @@ export class AccountingQueueService implements IAccountingQueueService {
     const reason = record.status === "needs_review" ? parkReasonOf(record.reason) : null;
     if (reason === null) return notParked();
     // Naming the account a refund settled outside Stripe went back from is not built: such a
-    // credit note is never released (the database refuses it too, 0386).
+    // credit note is never released (the database refuses it too, 0388).
     if (reason === "refund_outside_stripe") {
       return unresolved(ACCOUNTING_RELEASE_UNRESOLVED_TEXT[reason]);
     }

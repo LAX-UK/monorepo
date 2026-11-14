@@ -186,7 +186,7 @@ async function withOwnerDocuments<T>(
       "accounting_parked_credited_invoice_cancelled",
     );
     const parkedDeliveryNote = await parkedNote("dlv", "accounting_parked_vat_on_delivery");
-    // A Shop refund's credit note settled outside Stripe, parked until its account is named (0386).
+    // A Shop refund's credit note settled outside Stripe, parked until its account is named (0388).
     const parkedOutsideStripeNote = await insert(
       `LAX-SHOP-CN-out-${suffix}`,
       "needs_review",

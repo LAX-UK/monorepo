@@ -38,6 +38,8 @@ export const ACCOUNTING_DOCUMENT_TYPES = [
   "credit_note",
   "bill",
   "contact",
+  "expense",
+  "transfer",
 ] as const;
 export type AccountingDocumentType = (typeof ACCOUNTING_DOCUMENT_TYPES)[number];
 
@@ -47,6 +49,10 @@ export const ACCOUNTING_DOCUMENT_TYPE_LABELS: Readonly<Record<AccountingDocument
   credit_note: "Credit note",
   bill: "Bill",
   contact: "Contact",
+  /** Stripe's fees, booked as an expense paid from Stripe clearing (flow 25). */
+  expense: "Stripe fees",
+  /** A Stripe payout, booked as a transfer from Stripe clearing to the bank (flow 25). */
+  transfer: "Stripe payout",
 };
 
 export const ACCOUNTING_PRODUCTS = ["bid", "shop", "lax_art"] as const;

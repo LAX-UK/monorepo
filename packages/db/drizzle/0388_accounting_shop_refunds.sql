@@ -1,4 +1,4 @@
--- Shop refunds as credit notes (Zoho Books plan v2, flow 21). Applies after 0385.
+-- Shop refunds as credit notes (Zoho Books plan v2, flow 21). Applies after 0385 (and 0386, 0387, which leave this function alone).
 --
 -- A Shop refund staff settled outside Stripe is credited, but the account the money went back from
 -- is not held in LAX, so its credit note is stored parked (`accounting_parked_refund_outside_stripe`)
@@ -21,7 +21,7 @@ BEGIN
   IF current_user <> 'api_app' THEN
     RETURN NEW;
   END IF;
-  -- Kept parked until the account is named (0386): a Shop refund's credit note settled outside
+  -- Kept parked until the account is named (0388): a Shop refund's credit note settled outside
   -- Stripe gives no money back from clearing, and LAX does not hold the account it went back
   -- from. api_app may not move it at all, not even released unchanged. The change that lets staff
   -- name the account lifts this line.

@@ -9,6 +9,7 @@ import {
   type ReadBack,
   contactTypeCheck,
   invoiceNumberCheck,
+  movementReadBack,
   paymentReadBack,
 } from "./gateways.js";
 import type { ZohoDocumentLookup } from "./lookup.js";
@@ -41,7 +42,15 @@ const READ_BACKS: Readonly<Record<DocumentKind, ReadBackFor>> = {
       ? paymentReadBack(lookup, document, org)
       : Promise.resolve({ stop: { status: "rejected", reason: "zoho_books_bad_reference" } }),
   contact: () => Promise.resolve({ check: contactTypeCheck("customer") }),
+  expense: (_lookup, document, org) => Promise.resolve(movementOf(document, org)),
+  transfer: (_lookup, document, org) => Promise.resolve(movementOf(document, org)),
 };
+
+function movementOf(document: AccountingDocument, org: ZohoOrgConfig): ReadBack {
+  return document.kind === "expense" || document.kind === "transfer"
+    ? movementReadBack(document, org)
+    : { stop: { status: "rejected", reason: "zoho_books_bad_reference" } };
+}
 
 /**
  * The lookup the life cycle runs before any retry. It finds the document by its LAX reference in

@@ -6,12 +6,12 @@ import { describe, expect, it } from "vitest";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const read = (name: string) => readFileSync(join(__dirname, "../drizzle", name), "utf8");
 const statements = (sql: string) => sql.replace(/^--.*$/gm, "");
-const migration = statements(read("0386_accounting_shop_refunds.sql"));
-const rollback = statements(read("0386_rollback.sql"));
+const migration = statements(read("0388_accounting_shop_refunds.sql"));
+const rollback = statements(read("0388_rollback.sql"));
 const journal = JSON.parse(read("meta/_journal.json")) as {
   entries: { idx: number; tag: string; when: number }[];
 };
-const TAG = "0386_accounting_shop_refunds";
+const TAG = "0388_accounting_shop_refunds";
 
 /** api_app's rule as a migration defines it; comments and the blank lines they leave do not count. */
 const fn = (sql: string) => {
@@ -22,12 +22,16 @@ const fn = (sql: string) => {
     .replace(/\n\s*\n/g, "\n");
 };
 
-describe("migration 0386 accounting Shop refunds", () => {
-  it("is journalled last, right after 0385, in a journal that stays ordered", () => {
+describe("migration 0388 accounting Shop refunds", () => {
+  it("is journalled last, after 0386 (and 0387 once it lands), in a journal that stays ordered", () => {
     const entry = journal.entries.find((e) => e.tag === TAG);
-    const previous = journal.entries.find((e) => e.tag === "0385_accounting_credit_note_refunds");
+    // 0387 (#1377) is not on main yet. If it lands first, this entry moves to follow it.
+    const previous = journal.entries.at(-2);
+    expect(previous?.tag).toMatch(/^038[67]_/);
     expect(entry?.idx).toBe((previous?.idx ?? Number.NaN) + 1);
     expect(entry?.when).toBeGreaterThan(previous?.when ?? Number.POSITIVE_INFINITY);
+    const idxs = journal.entries.map((e) => e.idx);
+    expect(idxs).toEqual(idxs.map((_, i) => i));
     expect(journal.entries.at(-1)?.tag).toBe(TAG);
     const whens = journal.entries.map((e) => e.when);
     expect(new Set(whens).size).toBe(whens.length);
@@ -45,8 +49,9 @@ describe("migration 0386 accounting Shop refunds", () => {
     );
   });
 
-  it("rolls back its ledger row only, keeping the refusal (parked notes stay parked)", () => {
-    expect(rollback).not.toMatch(/CREATE|ALTER|DROP|UPDATE/);
+  it("rolls back its own ledger row only, keeping the refusal (parked notes stay parked)", () => {
+    expect(rollback).not.toMatch(/CREATE|ALTER|DROP|UPDATE|INSERT/);
+    expect(rollback.match(/DELETE FROM/g)).toHaveLength(1);
     const when = journal.entries.find((e) => e.tag === TAG)?.when;
     expect(rollback).toContain(`created_at = ${when}`);
   });

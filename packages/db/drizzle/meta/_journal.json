@@ -2645,7 +2645,14 @@
       "idx": 378,
       "version": "7",
       "when": 1811505600000,
-      "tag": "0386_accounting_shop_refunds",
+      "tag": "0386_stripe_fees_payouts_books",
+      "breakpoints": true
+    },
+    {
+      "idx": 379,
+      "version": "7",
+      "when": 1811678400000,
+      "tag": "0388_accounting_shop_refunds",
       "breakpoints": true
     }
   ]

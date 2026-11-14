@@ -19,7 +19,7 @@ describe("migration 0385 accounting credit note refunds", () => {
     const previous = journal.entries.find((e) => e.tag === "0384_unapplied_money_dedupe_key_uid");
     expect(entry?.idx).toBe((previous?.idx ?? Number.NaN) + 1);
     expect(entry?.when).toBeGreaterThan(previous?.when ?? Number.POSITIVE_INFINITY);
-    // Later migrations (0386, Shop refunds to Books) follow it; it stays right after 0384.
+    // Later migrations (0386 Stripe fees and payouts, 0388 Shop refunds) follow it; it stays right after 0384.
     expect(journal.entries.findIndex((e) => e.tag === TAG)).toBe(
       journal.entries.findIndex((e) => e.tag === "0384_unapplied_money_dedupe_key_uid") + 1,
     );

@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import type { TargetMode } from "@auction/accounting-domain";
 import type { createDb } from "@auction/db";
 import type { IEmailService } from "@auction/email";
-import { createBooksAccountingAdapters } from "@auction/finance-runtime";
+import { StripeClientFactory, createBooksAccountingAdapters } from "@auction/finance-runtime";
 import {
   DrizzleBidAccountingFactsReader,
   DrizzleShopAccountingFactsReader,
@@ -20,6 +20,13 @@ import type { AccountingRuntime } from "../finance/accounting/accounting-runtime
 import { AccountingSender } from "../finance/accounting/accounting-sender.service.js";
 import { AccountingWatch } from "../finance/accounting/accounting-watch.service.js";
 import { shopStorefrontBase } from "../finance/accounting/shop-invoice-email.js";
+import {
+  type StripeBalanceReader,
+  type StripeReadClient,
+  StripeSdkBalanceReader,
+} from "../finance/accounting/stripe-balance-reader.js";
+import { StripeBooksSync } from "../finance/accounting/stripe-books-sync.service.js";
+import { StripeReconciliation } from "../finance/accounting/stripe-reconciliation.service.js";
 import { throttledCronMonitor } from "../lib/sentry-cron.js";
 import { DrizzleProjectorCursorStart } from "../repositories/drizzle-projector-cursor-start.js";
 
@@ -33,7 +40,10 @@ const SENDER_CHECK_IN_EVERY_MS = 5 * 60_000;
  * adapters come from `createBooksAccountingAdapters`, which builds the dry run alone.
  */
 export function createAccountingRuntime(deps: {
-  env: Pick<WorkerEnv, "ZOHO_BOOKS_ORG_CONFIG" | "WEB_ORIGIN" | "SHOP_STOREFRONT_URL">;
+  env: Pick<
+    WorkerEnv,
+    "ZOHO_BOOKS_ORG_CONFIG" | "WEB_ORIGIN" | "SHOP_STOREFRONT_URL" | "STRIPE_BOOKS_READ_KEYS"
+  >;
   db: ReturnType<typeof createDb>;
   log: Logger;
   sentryMonitorSlugs?: Record<string, string>;
@@ -58,7 +68,24 @@ export function createAccountingRuntime(deps: {
       "accounting_shop_storefront_url_unusable",
     );
   }
+  const stripeReaders = stripeBooksReaders(deps.env.STRIPE_BOOKS_READ_KEYS);
   return {
+    stripeSync: new StripeBooksSync({
+      ledger: repos.stripeLedger,
+      settings: repos.settingReader,
+      readers: stripeReaders,
+      now: () => new Date(),
+      log: deps.log,
+    }),
+    reconciliation: new StripeReconciliation({
+      store: repos.reconciliation,
+      settings: repos.settingReader,
+      readers: stripeReaders,
+      storage: deps.storage,
+      alerts,
+      now: () => new Date(),
+      log: deps.log,
+    }),
     projection: new AccountingProjection({
       facts: new DrizzleBidAccountingFactsReader(deps.db),
       shopFacts,
@@ -129,4 +156,16 @@ export function createAccountingRuntime(deps: {
       SENDER_CHECK_IN_EVERY_MS,
     ),
   };
+}
+
+/**
+ * One read-only reader per restricted key. The keys can only read (Balance, Balance transaction
+ * sources, Payouts), and the readers only list and retrieve: nothing writes to Stripe.
+ */
+function stripeBooksReaders(keys: string | undefined): StripeBalanceReader[] {
+  if (!keys) return [];
+  return keys.split(",").flatMap((key) => {
+    const client = new StripeClientFactory(key).get();
+    return client ? [new StripeSdkBalanceReader(client as unknown as StripeReadClient)] : [];
+  });
 }
