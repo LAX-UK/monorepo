@@ -99,6 +99,7 @@ import { createWebhookRoutes } from "./routes/webhooks/index.js";
 import { createStripeWebhookRoutes } from "./routes/webhooks/stripe.js";
 import { createVeriffWebhookRoutes } from "./routes/webhooks/veriff.js";
 import { createXeroWebhookRoutes } from "./routes/xero-webhook.js";
+import { createZohoBooksWebhookRoutes } from "./routes/zoho-books-webhook.js";
 import type { IAuthenticator } from "./services/interfaces/authenticator.js";
 
 /** Browser CORS allowlist — sourced from `@auction/http-headers`. */
@@ -346,7 +347,8 @@ export function createApp(container: Container, env: Env, authenticator: IAuthen
     .route("/admin/staff/my-tools", createAdminMyStaffToolsRoutes(container, authenticator))
     .route("/admin", createAdminRoutes(container, authenticator))
     .route("/webhooks", createWebhookRoutes(container))
-    .route("/webhooks", createXeroWebhookRoutes(container));
+    .route("/webhooks", createXeroWebhookRoutes(container))
+    .route("/webhooks", createZohoBooksWebhookRoutes(container));
 
   assertBullBoardProductionSafety(env);
   mountBullBoard(app, connectionOptionsFromRedisUrl(env.REDIS_URL), env, {

@@ -83,6 +83,7 @@ import { RedisIdempotencyStore } from "./infrastructure/redis-idempotency.store.
 import { RedisOAuthAttributionStore } from "./infrastructure/redis-oauth-attribution.store.js";
 import { StaffAdministratorDirectory } from "./infrastructure/staff-administrators.js";
 import { StaffRoleChangeNotifier } from "./infrastructure/staff-role-change.notifier.js";
+import { createZohoBooksNoticeAlerts } from "./infrastructure/zoho-books-notice-alerts.js";
 import { createBaseLogger } from "./lib/logger.js";
 import { createAppLogger } from "./lib/logger.js";
 import { AdminSavedViewService } from "./services/admin/admin-saved-view.service.js";
@@ -279,6 +280,7 @@ export function createContainer(env: Env): Container {
     accountingProvider: payments.accountingProvider,
     webhookEventRepository: repos.webhookEventRepository,
     webhookEventsProducer: infra.webhookEventsProducer,
+    zohoBooksNoticeAlerts: createZohoBooksNoticeAlerts(createAppLogger(env)),
   });
   const laxAdminRoles = new DrizzleLaxAdminRolesRepository(db);
   const staffNoticeRecipients = new DrizzleStaffNoticeRecipientReader(db);
