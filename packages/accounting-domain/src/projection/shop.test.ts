@@ -1,12 +1,19 @@
 import { describe, expect, it } from "vitest";
 import { type Invoice, type Payment, buildInclusiveInvoice, buildInvoice } from "../document.js";
-import { cancel, parkedRecord, requeue } from "../lifecycle.js";
+import { cancel, parkedRecord, release, requeue } from "../lifecycle.js";
 import { isParkedReason, parkReasonOf, parkedReasonCode } from "../parking.js";
+import { resolveParked } from "../release.js";
+import { planRemainder } from "../remainder.js";
+import type { LineBooking } from "./bid.js";
 import { BUILT_FLOWS, PROJECTION_POLICIES } from "./flows.js";
 import { parkReasonFor } from "./projection.js";
 import {
+  SHOP_OUTSIDE_UK_DELIVERY_BOOKING,
   type ShopOrderPaidFacts,
   projectShopOrderPaid,
+  rebuildShopOutsideUkDelivery,
+  shopDeliveryPaymentReference,
+  shopOrderPaidPolicy,
   shopOutsideUkDeliverySourceId,
 } from "./shop.js";
 
@@ -294,7 +301,7 @@ describe("Parking", () => {
     expect(isParkedReason("zoho_books_validation_invalid_request")).toBe(false);
   });
 
-  it("a parked record is never requeued, only cancelled", () => {
+  it("a parked record is never requeued; it is released once settled, or cancelled", () => {
     const record = parkedRecord(
       "invoice",
       `LAX-SHOP-INV-${ORDER_ID}-delivery`,
@@ -305,5 +312,126 @@ describe("Parking", () => {
     expect(again.ok ? null : again.refusal.code).toBe("parked");
     const stopped = cancel(record);
     expect(stopped.ok && stopped.value.status).toBe("cancelled");
+    const released = release(record);
+    expect(released.ok && released.value.status).toBe("pending");
+  });
+});
+
+describe("Release of a parked outside-UK delivery", () => {
+  const abroad = facts({
+    totalPence: 61_000,
+    delivery: {
+      scope: "outside_uk",
+      label: "Delivery outside the UK",
+      grossPence: 4_000,
+      vatPence: null,
+    },
+  });
+  const reference = `LAX-SHOP-INV-${shopOutsideUkDeliverySourceId(ORDER_ID)}`;
+  const parkedNow = must(projectShopOrderPaid(abroad));
+  const draft = parkedNow.documents.find((d) => d.reference === reference) as Invoice;
+  /** A booking the accountant might give that keeps what was charged (no VAT added on top). */
+  const ZERO: LineBooking = { role: "delivery", treatment: "zero" };
+  const STANDARD: LineBooking = { role: "delivery", treatment: "standard" };
+
+  it("no booking is set: LAX states no VAT treatment of its own", () => {
+    expect(SHOP_OUTSIDE_UK_DELIVERY_BOOKING).toBeNull();
+  });
+
+  it("is refused while the accountant has not answered: the stored rows still park it", () => {
+    const resolved = resolveParked(
+      { document: draft, reason: "vat_on_outside_uk_delivery" },
+      parkedNow,
+    );
+    expect(resolved.ok ? null : resolved.refusal.code).toBe("unresolved");
+  });
+
+  it("with the booking, is the invoice rebuilt from the stored order, same reference and gross", () => {
+    const rebuilt = must(shopOrderPaidPolicy(ZERO)(abroad));
+    expect(parkReasonFor(rebuilt, reference)).toBeNull();
+    const released = must(
+      resolveParked({ document: draft, reason: "vat_on_outside_uk_delivery" }, rebuilt),
+    );
+    expect(released.rebuilt).toBe(true);
+    const invoice = released.document as Invoice;
+    expect(invoice.reference).toBe(reference);
+    expect(invoice.totals.grossPence).toBe(4_000);
+    expect(invoice.lines[0]?.treatment).toBe("zero");
+    // The payment is the one already booked: applied to the goods only, the rest unapplied.
+    expect(paymentOf(rebuilt.documents)).toEqual(paymentOf(parkedNow.documents));
+  });
+
+  it("Release rebuilds it from the order's stored delivery alone, as the projection would", () => {
+    const stored = abroad.delivery;
+    const now = must(rebuildShopOutsideUkDelivery(draft, stored, null));
+    const still = resolveParked({ document: draft, reason: "vat_on_outside_uk_delivery" }, now);
+    expect(still.ok ? null : still.refusal.code).toBe("unresolved");
+    const booked = must(rebuildShopOutsideUkDelivery(draft, stored, ZERO));
+    const fromOrder = must(shopOrderPaidPolicy(ZERO)(abroad)).documents.find(
+      (d) => d.reference === reference,
+    );
+    expect(booked.documents).toEqual([fromOrder]);
+    const released = must(
+      resolveParked({ document: draft, reason: "vat_on_outside_uk_delivery" }, booked),
+    );
+    expect(released).toEqual({ document: fromOrder, rebuilt: true });
+  });
+
+  it("Release refuses when the order no longer charges that delivery outside the UK", () => {
+    const moved = rebuildShopOutsideUkDelivery(
+      draft,
+      { ...abroad.delivery, grossPence: 4_100 },
+      ZERO,
+    );
+    expect(moved.ok ? null : moved.refusal.code).toBe("bad_facts");
+    const uk = rebuildShopOutsideUkDelivery(draft, { ...abroad.delivery, scope: "uk" }, ZERO);
+    expect(uk.ok ? null : uk.refusal.code).toBe("bad_facts");
+    const goods = rebuildShopOutsideUkDelivery(
+      invoiceOf(parkedNow.documents),
+      abroad.delivery,
+      ZERO,
+    );
+    expect(goods.ok ? null : goods.refusal.code).toBe("bad_facts");
+  });
+
+  it("a VAT-bearing booking with no VAT stored on the order is refused, never worked out", () => {
+    const r = shopOrderPaidPolicy(STANDARD)(abroad);
+    expect(r.ok ? null : r.refusal.code).toBe("line_awaiting_accountant");
+  });
+
+  it("the payment's unapplied rest is applied to the released invoice, exactly its gross", () => {
+    const rebuilt = must(shopOrderPaidPolicy(ZERO)(abroad));
+    const invoice = rebuilt.documents.find((d) => d.reference === reference) as Invoice;
+    const plan = must(planRemainder(paymentOf(rebuilt.documents), invoice));
+    expect(plan).toEqual({
+      product: "shop",
+      entity: "london_art_exchange",
+      paymentReference: `LAX-SHOP-PAY-${ORDER_ID}`,
+      invoiceReference: reference,
+      contactReference: `LAX-SHOP-CON-${PARTY_ID}`,
+      amountPence: 4_000,
+    });
+  });
+
+  it("names the order payment that pays the delivery invoice, and nothing for any other", () => {
+    expect(shopDeliveryPaymentReference(reference)).toBe(`LAX-SHOP-PAY-${ORDER_ID}`);
+    expect(shopDeliveryPaymentReference(`LAX-SHOP-INV-${ORDER_ID}`)).toBeNull();
+    expect(shopDeliveryPaymentReference(`LAX-BID-INV-${ORDER_ID}-delivery`)).toBeNull();
+    expect(shopDeliveryPaymentReference(`LAX-SHOP-PAY-${ORDER_ID}-delivery`)).toBeNull();
+  });
+
+  it("refuses to apply a remainder to the goods invoice, another buyer's, or more than is left", () => {
+    const payment = paymentOf(parkedNow.documents);
+    const goods = invoiceOf(parkedNow.documents);
+    const already = planRemainder(payment, goods);
+    expect(already.ok ? null : already.refusal.code).toBe("already_allocated");
+    const other = { ...draft, contactReference: "LAX-SHOP-CON-someone-else" };
+    const notPaired = planRemainder(payment, other);
+    expect(notPaired.ok ? null : notPaired.refusal.code).toBe("not_paired");
+    const bigger = { ...draft, totals: { ...draft.totals, grossPence: 4_001 } };
+    const exceeds = planRemainder(payment, bigger);
+    expect(exceeds.ok ? null : exceeds.refusal.code).toBe("exceeds_remainder");
+    const reversed = planRemainder(draft, payment);
+    expect(reversed.ok ? null : reversed.refusal.code).toBe("not_paired");
   });
 });

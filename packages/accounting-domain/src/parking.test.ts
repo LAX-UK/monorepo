@@ -53,7 +53,7 @@ describe("parked documents", () => {
 });
 
 describe("documentsAwaited", () => {
-  it("a payment waits for each invoice it is applied to; a contact waits for nothing", () => {
+  it("a payment waits for its contact and each invoice it is applied to; a contact for nothing", () => {
     const contact = buildContact({ product: "bid", sourceId: "b1", name: "Ada", email: null });
     if (!contact.ok) throw new Error(contact.refusal.message);
     const payment = buildPayment({
@@ -68,7 +68,11 @@ describe("documentsAwaited", () => {
       ],
     });
     if (!payment.ok) throw new Error(payment.refusal.message);
-    expect(documentsAwaited(payment.value)).toEqual(["LAX-BID-INV-a", "LAX-BID-INV-b"]);
+    expect(documentsAwaited(payment.value)).toEqual([
+      contact.value.reference,
+      "LAX-BID-INV-a",
+      "LAX-BID-INV-b",
+    ]);
     expect(documentsAwaited(contact.value)).toEqual([]);
   });
 

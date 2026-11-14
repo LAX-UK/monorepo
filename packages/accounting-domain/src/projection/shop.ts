@@ -5,9 +5,12 @@ import {
   buildContact,
   buildInclusiveInvoice,
   buildPayment,
+  laxReference,
+  parseLaxReference,
 } from "../document.js";
 import { type Pence, isPence } from "../money.js";
 import { type Result, ok, refuse } from "../result.js";
+import type { LineBooking } from "./bid.js";
 import type { ParkedDocument, Projection, ProjectionCode, ProjectionPolicy } from "./projection.js";
 
 /** The buyer a Shop order is invoiced to: one Books contact per Shop buyer party. */
@@ -59,6 +62,15 @@ export interface ShopOrderPaidFacts {
   readonly delivery: ShopDeliveryFacts;
 }
 
+/**
+ * How a Shop delivery outside the UK is booked, once the accountant has said. Null until then: the
+ * delivery invoice is stored parked (`vat_on_outside_uk_delivery`) and never sent. LAX does not
+ * guess a VAT treatment; setting this is an engineering change made on the accountant's written
+ * answer, and parked documents are then released by a person (see the runbook). A `standard`
+ * booking needs the VAT stored on the order: what the buyer paid is never split again here.
+ */
+export const SHOP_OUTSIDE_UK_DELIVERY_BOOKING: LineBooking | null = null;
+
 /** Shop orders are paid at checkout; the invoice is due the day it is issued. */
 const EMAIL = /^[^\s@]+@[^\s@.]+(\.[^\s@.]+)+$/;
 
@@ -68,6 +80,20 @@ const EMAIL = /^[^\s@]+@[^\s@.]+(\.[^\s@.]+)+$/;
  */
 export function shopOutsideUkDeliverySourceId(orderId: string): string {
   return `${orderId}-delivery`;
+}
+
+/**
+ * The Shop order payment whose unapplied rest pays an outside-UK delivery invoice, by the
+ * invoice's LAX reference (`LAX-SHOP-INV-<order>-delivery` -> `LAX-SHOP-PAY-<order>`). Null for
+ * any other reference: only those invoices are paid from a payment booked before them.
+ */
+export function shopDeliveryPaymentReference(invoiceReference: string): string | null {
+  const parsed = parseLaxReference(invoiceReference);
+  if (!parsed.ok || parsed.value.product !== "shop" || parsed.value.kind !== "invoice") return null;
+  const match = /^(.+)-delivery$/.exec(parsed.value.sourceId);
+  if (!match?.[1]) return null;
+  const reference = laxReference("shop", "payment", match[1]);
+  return reference.ok ? reference.value : null;
 }
 
 function shopContact(buyer: ShopBuyerFacts): Result<Contact, ProjectionCode> {
@@ -121,26 +147,136 @@ function goodsLines(facts: ShopOrderPaidFacts): Result<InclusiveLineInput[], Pro
 interface ShopDocuments {
   readonly contact: Contact;
   readonly invoice: Invoice;
-  /** The outside-UK delivery, invoiced on its own and parked; null for a UK order. */
-  readonly parkedDelivery: Invoice | null;
+  /** The outside-UK delivery, invoiced on its own; null for a UK order. */
+  readonly outsideUkDelivery: Invoice | null;
 }
 
-function shopDocuments(facts: ShopOrderPaidFacts): Result<ShopDocuments, ProjectionCode> {
+/**
+ * The outside-UK delivery line as booked. Without a booking it is the draft: the gross the buyer
+ * paid with no VAT stated (`outside_scope`), parked and never sent. With one, the accountant's
+ * treatment, over the same gross: a VAT-bearing treatment takes the VAT stored on the order and is
+ * refused when none was stored (it is never worked out again).
+ */
+function outsideUkLine(
+  line: InclusiveLineInput,
+  storedVatPence: Pence | null,
+  booking: LineBooking | null,
+): Result<InclusiveLineInput, ProjectionCode> {
+  if (booking === null) return ok({ ...line, vatPence: 0, treatment: "outside_scope" });
+  if (booking.treatment === "standard") {
+    if (storedVatPence === null) {
+      return refuse(
+        "line_awaiting_accountant",
+        `${line.description}: the booking takes VAT, but none was stored on the order`,
+      );
+    }
+    return ok({ ...line, vatPence: storedVatPence, treatment: "standard", role: booking.role });
+  }
+  return ok({ ...line, vatPence: 0, treatment: booking.treatment, role: booking.role });
+}
+
+/** The delivery's line as stored on the order; null when it charged nothing. */
+function shopDeliveryLine(
+  delivery: ShopDeliveryFacts,
+): Result<InclusiveLineInput, ProjectionCode> | null {
+  if (delivery.grossPence === 0) return null;
+  return shopLine(
+    delivery.label,
+    "delivery",
+    delivery.grossPence,
+    delivery.vatPence === null ? null : "standard",
+    delivery.vatPence,
+  );
+}
+
+/** What an outside-UK delivery invoice is issued as, beside the order's own invoice. */
+interface DeliveryInvoiceHeader {
+  readonly orderId: string;
+  readonly contactReference: string;
+  readonly issuedOn: string;
+  readonly dueOn: string;
+  readonly number: string;
+}
+
+/**
+ * The outside-UK delivery invoice (`LAX-SHOP-INV-<order>-delivery`). LAX states no VAT on
+ * delivery outside the UK: what it is, if anything, is the accountant's answer (`booking`); until
+ * then the line is the gross the buyer paid, with no VAT, and the invoice is parked, never sent.
+ * The projection and a release both build it here, so the two always agree.
+ */
+function outsideUkDeliveryInvoice(
+  header: DeliveryInvoiceHeader,
+  line: InclusiveLineInput,
+  storedVatPence: Pence | null,
+  booking: LineBooking | null,
+): Result<Invoice, ProjectionCode> {
+  const quote = outsideUkLine(line, storedVatPence, booking);
+  if (!quote.ok) return quote;
+  return buildInclusiveInvoice({
+    product: "shop",
+    sourceId: shopOutsideUkDeliverySourceId(header.orderId),
+    contactReference: header.contactReference,
+    issuedOn: header.issuedOn,
+    dueOn: header.dueOn,
+    number: header.number,
+    lines: [quote.value],
+  });
+}
+
+/**
+ * A parked outside-UK delivery invoice rebuilt for release from what the Shop stores now: the
+ * order's delivery (`ShopDeliveryFacts`, read from the order row), with `booking`. Its header (the
+ * buyer's contact, the days and its number) is the parked draft's own, which the projection took
+ * from the same order. The projection it returns holds that one invoice, parked while there is no
+ * booking, so `resolveParked` decides exactly as for any parked document. Refused when the order no
+ * longer charges an outside-UK delivery, or charges another amount than the draft.
+ */
+export function rebuildShopOutsideUkDelivery(
+  draft: Invoice,
+  delivery: ShopDeliveryFacts,
+  booking: LineBooking | null,
+): Result<Projection, ProjectionCode> {
+  const parsed = parseLaxReference(draft.reference);
+  const orderId = parsed.ok ? /^(.+)-delivery$/.exec(parsed.value.sourceId)?.[1] : undefined;
+  if (!orderId || draft.product !== "shop" || !draft.number) {
+    return refuse("bad_facts", "not a Shop outside-UK delivery invoice");
+  }
+  if (delivery.scope !== "outside_uk" || delivery.grossPence !== draft.totals.grossPence) {
+    return refuse("bad_facts", "the order no longer charges this delivery outside the UK");
+  }
+  const line = shopDeliveryLine(delivery);
+  if (!line) return refuse("bad_facts", "the order charges nothing for delivery");
+  if (!line.ok) return line;
+  const built = outsideUkDeliveryInvoice(
+    {
+      orderId,
+      contactReference: draft.contactReference,
+      issuedOn: draft.issuedOn,
+      dueOn: draft.dueOn,
+      number: draft.number,
+    },
+    line.value,
+    delivery.vatPence,
+    booking,
+  );
+  if (!built.ok) return built;
+  const parked: ParkedDocument[] =
+    booking === null
+      ? [{ reference: built.value.reference, reason: "vat_on_outside_uk_delivery" }]
+      : [];
+  return ok({ documents: [built.value], parked });
+}
+
+function shopDocuments(
+  facts: ShopOrderPaidFacts,
+  booking: LineBooking | null,
+): Result<ShopDocuments, ProjectionCode> {
   const contact = shopContact(facts.buyer);
   if (!contact.ok) return contact;
   const goods = goodsLines(facts);
   if (!goods.ok) return goods;
   const { delivery } = facts;
-  const deliveryLine =
-    delivery.grossPence === 0
-      ? null
-      : shopLine(
-          delivery.label,
-          "delivery",
-          delivery.grossPence,
-          delivery.vatPence === null ? null : "standard",
-          delivery.vatPence,
-        );
+  const deliveryLine = shopDeliveryLine(delivery);
   if (deliveryLine && !deliveryLine.ok) return deliveryLine;
 
   const charged = facts.lines.reduce((sum, line) => sum + line.grossPence, 0) + delivery.grossPence;
@@ -168,29 +304,31 @@ function shopDocuments(facts: ShopOrderPaidFacts): Result<ShopDocuments, Project
     lines: onInvoice,
   });
   if (!invoice.ok) return invoice;
-  let parkedDelivery: Invoice | null = null;
+  let outsideUkDelivery: Invoice | null = null;
   if (deliveryLine?.ok && delivery.scope === "outside_uk") {
-    // LAX states no VAT on delivery outside the UK: what it is, if anything, is the accountant's
-    // answer. The parked line is the gross the buyer paid, with no VAT, and it is never sent.
-    const quote: InclusiveLineInput = {
-      ...deliveryLine.value,
-      vatPence: 0,
-      treatment: "outside_scope",
-    };
-    const parked = buildInclusiveInvoice({
-      ...common,
-      sourceId: shopOutsideUkDeliverySourceId(facts.orderId),
-      // Never sent while parked. Its own number beside the order's, so the two can never clash.
-      number: `${facts.invoiceNumber}-D`,
-      lines: [quote],
-    });
-    if (!parked.ok) return parked;
-    parkedDelivery = parked.value;
+    const built = outsideUkDeliveryInvoice(
+      {
+        orderId: facts.orderId,
+        contactReference: contact.value.reference,
+        issuedOn: facts.paidOn,
+        dueOn: facts.paidOn,
+        // Its own number beside the order's, so the two can never clash.
+        number: `${facts.invoiceNumber}-D`,
+      },
+      deliveryLine.value,
+      delivery.vatPence,
+      booking,
+    );
+    if (!built.ok) return built;
+    outsideUkDelivery = built.value;
   }
-  return ok({ contact: contact.value, invoice: invoice.value, parkedDelivery });
+  return ok({ contact: contact.value, invoice: invoice.value, outsideUkDelivery });
 }
 
 /**
+ * The Shop order paid policy with outside-UK delivery booked as `booking` says (parked while it
+ * is null). Release rebuilds a parked delivery with the same policy, so both agree.
+ *
  * Shop order paid: the buyer's contact, the order's invoice under the Shop's own number (goods,
  * framing, and UK delivery, each from its stored line), then the customer payment of the whole
  * order into the Stripe clearing account, applied to that invoice.
@@ -200,10 +338,24 @@ function shopDocuments(facts: ShopOrderPaidFacts): Result<ShopDocuments, Project
  * sent. The payment still books every penny the buyer paid; what the parked delivery accounts for
  * is left unapplied (held as the buyer's credit), never spread over the goods.
  */
-export const projectShopOrderPaid: ProjectionPolicy<ShopOrderPaidFacts> = (facts) => {
-  const built = shopDocuments(facts);
+export function shopOrderPaidPolicy(
+  booking: LineBooking | null,
+): ProjectionPolicy<ShopOrderPaidFacts> {
+  return (facts) => projectOrder(facts, booking);
+}
+
+/** The policy in force: outside-UK delivery parked until `SHOP_OUTSIDE_UK_DELIVERY_BOOKING` is set. */
+export const projectShopOrderPaid: ProjectionPolicy<ShopOrderPaidFacts> = shopOrderPaidPolicy(
+  SHOP_OUTSIDE_UK_DELIVERY_BOOKING,
+);
+
+function projectOrder(
+  facts: ShopOrderPaidFacts,
+  booking: LineBooking | null,
+): Result<Projection, ProjectionCode> {
+  const built = shopDocuments(facts, booking);
   if (!built.ok) return built;
-  const { contact, invoice, parkedDelivery } = built.value;
+  const { contact, invoice, outsideUkDelivery } = built.value;
   const paid = invoice.totals.grossPence;
   const payment = buildPayment({
     product: "shop",
@@ -214,14 +366,18 @@ export const projectShopOrderPaid: ProjectionPolicy<ShopOrderPaidFacts> = (facts
     allocations: [{ invoiceReference: invoice.reference, amountPence: paid }],
   });
   if (!payment.ok) return payment;
-  if (payment.value.unallocatedPence !== (parkedDelivery?.totals.grossPence ?? 0)) {
-    return refuse("bad_facts", "the payment's unapplied rest is not the parked delivery");
+  if (payment.value.unallocatedPence !== (outsideUkDelivery?.totals.grossPence ?? 0)) {
+    return refuse("bad_facts", "the payment's unapplied rest is not the outside-UK delivery");
   }
-  const parked: ParkedDocument[] = parkedDelivery
-    ? [{ reference: parkedDelivery.reference, reason: "vat_on_outside_uk_delivery" }]
-    : [];
-  const documents: Projection["documents"] = parkedDelivery
-    ? [contact, invoice, parkedDelivery, payment.value]
+  // The payment is applied to the goods invoice only, whether or not the delivery is booked yet,
+  // so it is the same payment before and after the accountant's answer. Its rest is applied to
+  // the delivery invoice once that is issued (`shopDeliveryRemainder`).
+  const parked: ParkedDocument[] =
+    outsideUkDelivery && booking === null
+      ? [{ reference: outsideUkDelivery.reference, reason: "vat_on_outside_uk_delivery" }]
+      : [];
+  const documents: Projection["documents"] = outsideUkDelivery
+    ? [contact, invoice, outsideUkDelivery, payment.value]
     : [contact, invoice, payment.value];
   return ok({ documents, parked });
-};
+}
