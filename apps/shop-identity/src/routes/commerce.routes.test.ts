@@ -818,7 +818,9 @@ describe("commerce enquiry routes", () => {
     };
 
     async function clientIpSent(forwardedFor: string | undefined) {
-      const shopApiFetch = vi.fn(async () => Response.json({ code: "x" }, { status: 400 }));
+      const shopApiFetch = vi.fn(async (_deps: unknown, _input: unknown) =>
+        Response.json({ code: "x" }, { status: 400 }),
+      );
       const app = createGuestCommerceApp(shopApiFetch);
       const headers = await csrfHeaders(app, {
         cookie: `${SHOP_BASKET_COOKIE_NAME}=basket-token-1`,

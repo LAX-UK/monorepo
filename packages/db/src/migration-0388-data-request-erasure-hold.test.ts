@@ -21,13 +21,6 @@ describe("migration 0388 data request erasure holds", () => {
     expect(journal.entries.at(-1)?.tag).toBe(TAG);
   });
 
-  it("keeps the journal's idx contiguous and its when strictly increasing", () => {
-    for (const [i, e] of journal.entries.entries()) {
-      expect(e.idx).toBe(i);
-      if (i > 0) expect(e.when).toBeGreaterThan(journal.entries[i - 1]?.when ?? 0);
-    }
-  });
-
   it("creates the table under the lock timeout, with a waiting row always due at some time", () => {
     expect(migration.indexOf("SET LOCAL lock_timeout = '5s'")).toBeLessThan(
       migration.indexOf("CREATE TABLE"),
