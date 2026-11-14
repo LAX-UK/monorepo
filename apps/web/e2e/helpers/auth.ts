@@ -131,6 +131,7 @@ export const seededStaffRoutes = {
   eventRsvpSlug: "lax001",
   legalEntityDrawer: "10000000-0000-4000-8000-000000000003",
   invitationDrawer: "01100001-0000-4000-8000-000000000001",
+  payoutDrawer: "91000002-0000-4000-8000-000000000002",
 } as const;
 
 /** Closes the staff command palette when storage state auto-opens it on navigation. */
