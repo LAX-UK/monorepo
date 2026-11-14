@@ -15,16 +15,30 @@ export interface IHeldInvoiceCheckouts {
 }
 
 export type HeldSweepReport = {
-  /**
-   * Single invoices looked at, and how many held ones the provider confirmed have no open
-   * checkout left. A held invoice the provider could not confirm (no Stripe client, Stripe
-   * unreachable, a session still open) is counted in `notClosed`, never in `closed`.
-   */
+  /** Single invoices looked at (held or not). */
   checked: number;
+  /**
+   * Held single invoices whose open checkout this pass closed, and the provider then confirmed
+   * nothing is open and no money was paid or is on its way (`no_money`). Not "every held
+   * invoice": one with money (`paid`, `inFlight`), one already closed on an earlier pass
+   * (`alreadyClosed`) or one the provider could not confirm (`notClosed`) is counted there.
+   */
   closed: number;
-  /** "Pay several" payments looked at, and whose checkout was confirmed closed for a hold. */
+  /** "Pay several" payments looked at, and those closed this pass (the same rule as `closed`). */
   groupsChecked: number;
   groupsClosed: number;
+  /**
+   * Held invoices and groups with nothing left open to close (closed on an earlier pass or by
+   * Stripe) and no money: counted here, not as closed again on every pass.
+   */
+  alreadyClosed: number;
+  /** Held invoices and groups whose money arrived: nothing was closed; capture or review handles it. */
+  paid: number;
+  /**
+   * Held invoices and groups with money on its way (a processing payment, or a bank transfer
+   * received in part): the intent is deliberately left open so it can take the rest.
+   */
+  inFlight: number;
   /** Held invoices and groups whose checkout could not be confirmed closed; tried again next run. */
   notClosed: number;
   /** Invoices and groups whose check or close threw: reported and skipped, the sweep goes on. */
@@ -47,9 +61,25 @@ export type HeldInvoiceCheckoutsDeps = {
   onFailure?: (failure: HeldSweepFailure) => void;
 };
 
-/** True when the provider confirmed the checkout is no longer open (whatever money it holds). */
-function confirmedClosed(state: ProviderMoneyState | null): boolean {
-  return state !== null && state.kind !== "unknown";
+type Outcome = "closed" | "alreadyClosed" | "paid" | "inFlight" | "notClosed";
+
+/**
+ * What one close did. Only `no_money` from a close that shut something itself counts as closed:
+ * `paid` and `in_flight` leave money (and possibly the intent) in place, and `unknown` is not
+ * confirmed.
+ */
+function outcomeOf(state: ProviderMoneyState | null): Outcome {
+  if (!state) return "notClosed";
+  switch (state.kind) {
+    case "no_money":
+      return state.alreadyClosed ? "alreadyClosed" : "closed";
+    case "paid":
+      return "paid";
+    case "in_flight":
+      return "inFlight";
+    default:
+      return "notClosed";
+  }
 }
 
 function logFailure(failure: HeldSweepFailure): void {
@@ -91,6 +121,9 @@ export class HeldInvoiceCheckouts implements IHeldInvoiceCheckouts {
       closed: 0,
       groupsChecked: 0,
       groupsClosed: 0,
+      alreadyClosed: 0,
+      paid: 0,
+      inFlight: 0,
       notClosed: 0,
       failed: 0,
     };
@@ -100,8 +133,7 @@ export class HeldInvoiceCheckouts implements IHeldInvoiceCheckouts {
     for (const invoice of candidates) {
       try {
         if (!(await this.isHeld(invoice.payerUserId, invoice.buyerLegalEntityId))) continue;
-        if (confirmedClosed(await this.closeInvoice(invoice.id))) report.closed += 1;
-        else report.notClosed += 1;
+        report[outcomeOf(await this.closeInvoice(invoice.id))] += 1;
       } catch (error) {
         report.failed += 1;
         onFailure({ kind: "invoice", id: invoice.id, error });
@@ -112,8 +144,8 @@ export class HeldInvoiceCheckouts implements IHeldInvoiceCheckouts {
     for (const group of groups) {
       try {
         if (!(await this.groupHasHold(group))) continue;
-        if (confirmedClosed(await this.closeGroup(group))) report.groupsClosed += 1;
-        else report.notClosed += 1;
+        const outcome = outcomeOf(await this.closeGroup(group));
+        report[outcome === "closed" ? "groupsClosed" : outcome] += 1;
       } catch (error) {
         report.failed += 1;
         onFailure({ kind: "group", id: group.id, error });
