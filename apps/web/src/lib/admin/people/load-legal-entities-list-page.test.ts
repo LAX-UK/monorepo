@@ -1,17 +1,14 @@
 import { describe, expect, it, vi } from "vitest";
-import { loadAdminLegalEntitiesListPage } from "./load-legal-entities-list-page";
+import {
+  loadAdminLegalEntitiesListPage,
+  loadLegalEntitiesListIds,
+} from "./load-legal-entities-list-page";
 
-const { getPage, loadDetail } = vi.hoisted(() => ({
-  getPage: vi.fn(),
-  loadDetail: vi.fn(),
-}));
+const { getPage } = vi.hoisted(() => ({ getPage: vi.fn() }));
 
 vi.mock("server-only", () => ({}));
 vi.mock("@/lib/data/http/admin-legal-entities.reader", () => ({
   getAdminLegalEntitiesPage: getPage,
-}));
-vi.mock("@/lib/admin/load-admin-legal-entity-detail", () => ({
-  loadAdminLegalEntityDetail: loadDetail,
 }));
 
 const summary = {
@@ -42,7 +39,7 @@ const listRow = {
 };
 
 describe("loadAdminLegalEntitiesListPage", () => {
-  it("returns rows, the directory summary, paging and the open entity's details", async () => {
+  it("returns rows, the directory summary, the sort and paging", async () => {
     getPage.mockResolvedValue({
       rows: [listRow],
       total: 40,
@@ -51,57 +48,44 @@ describe("loadAdminLegalEntitiesListPage", () => {
       summary,
       hasNextPage: true,
     });
-    loadDetail.mockResolvedValue({
-      entity: {
-        id: "le-99",
-        displayName: "Off page",
-        status: "approved",
-        kind: "individual",
-        subkind: "artist",
-        updatedAt: new Date("2026-10-21T10:00:00.000Z"),
-        isLaxManaged: false,
-        platformFeeBps: 250,
-        stripeConnectAccountId: "acct_gallery",
-        stripeConnectPayoutsEnabled: true,
-        stripeConnectRequirementsCurrentlyDue: [],
-        stripeConnectRequirementsErrors: [],
-      },
-      creator: null,
-      documents: [{ reviewStatus: "pending" }, { reviewStatus: "approved" }],
-      health: {
-        stageLabel: "Ready",
-        canPublish: true,
-        canReceivePayouts: true,
-        blockers: [],
-        statusReason: null,
-      },
-      canViewOwner: true,
-      canViewDocuments: true,
-    });
 
     const result = await loadAdminLegalEntitiesListPage({
-      entity: "le-99",
       stripe: "1",
       offset: "25",
       limit: "25",
     });
 
     expect(getPage).toHaveBeenCalledWith({ limit: 25, offset: 25, stripeDue: true });
-    expect(loadDetail).toHaveBeenCalledWith("le-99");
     expect(result.loadError).toBeNull();
     expect(result.view).toBe("stripe");
+    expect(result.sort).toEqual({ columnId: "updated", direction: "desc" });
     expect(result.summary.stripeDueCount).toBe(3);
     expect(result.rows[0]).toMatchObject({ name: "Gallery", kind: "Organisation · Gallery" });
-    expect(result.preview).toMatchObject({
-      platformFee: "2.50%",
-      stripeConnect: "Payouts enabled",
-      documents: { total: 2, pending: 1 },
-    });
+    expect(result).not.toHaveProperty("preview");
     expect(result.pagination).toEqual({
       summary: "26–26 of 40 legal entities",
       prevHref: "/admin/legal-entities?stripe=1&offset=0&limit=25",
       nextHref: "/admin/legal-entities?stripe=1&offset=50&limit=25",
     });
+  });
+
+  it("sorts the page by the URL's sort, and gives the pager the same order", async () => {
+    getPage.mockResolvedValue({
+      rows: [
+        { ...listRow, id: "le-b", displayName: "Bravo" },
+        { ...listRow, id: "le-a", displayName: "alpha" },
+      ],
+      total: 2,
+      offset: 0,
+      limit: 50,
+      summary,
+      hasNextPage: false,
+    });
+
+    const result = await loadAdminLegalEntitiesListPage({ sort: "name" });
+    expect(result.rows.map((row) => row.id)).toEqual(["le-a", "le-b"]);
+    expect(await loadLegalEntitiesListIds({ sort: "name" })).toEqual(["le-a", "le-b"]);
+    expect(await loadLegalEntitiesListIds({ sort: "-name" })).toEqual(["le-b", "le-a"]);
   });
 
   it("passes search, status and kind to the API", async () => {
@@ -137,7 +121,6 @@ describe("loadAdminLegalEntitiesListPage", () => {
     expect(result.loadError).toBe("We could not load legal entities. Try again in a moment.");
     expect(result.rows).toEqual([]);
     expect(result.summary.total).toBe(0);
-    expect(result.preview).toBeNull();
   });
 
   it("says plainly when the viewer has no access", async () => {
