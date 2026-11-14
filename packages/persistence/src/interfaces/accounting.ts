@@ -215,7 +215,7 @@ export interface ClaimRequest {
  * existing document. A document with no target, or whose provider is now `off`, is not handed out. A document whose lease ran
  * out is not handed out again: it becomes unknown and goes through lookup first. A document is not
  * handed out until what it waits for is issued for the same target (`documentsAwaited`: a
- * payment's invoices, an invoice's or credit note's contact); it waits, and the documents behind
+ * payment's invoices, a credit note's invoice, an invoice's or credit note's contact); it waits, and the documents behind
  * it are handed out meanwhile.
  */
 export interface IAccountingDocumentWorkQueue {
