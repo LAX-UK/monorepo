@@ -11,6 +11,7 @@ import {
   PAYMENT_WAITING_AFTER_MS,
   REMAINDER_UNSETTLED_AFTER_MS,
   SENDER_MISSED_AFTER_MS,
+  STATUS_CHECK_MISSED_AFTER_MS,
 } from "./accounting-watch.service.js";
 
 const books = (mode: "off" | "dry_run" | "test_org" | "live") =>
@@ -74,6 +75,7 @@ describe("AccountingWatch", () => {
       bidInvoiceDelayed: false,
       paymentWaiting: false,
       remainderDelayed: false,
+      statusCheckMissed: false,
       creditNoteRefundDelayed: false,
     });
     expect(raised).toEqual([]);
@@ -220,6 +222,98 @@ describe("AccountingWatch", () => {
         },
       ],
     ]);
+  });
+
+  describe("the nightly Books status check", () => {
+    const NOW = new Date("2026-11-14T12:00:00Z");
+    const watchWith = (
+      last: Date | null,
+      expectedSince: Date,
+      mode: "off" | "dry_run" = "dry_run",
+      firstStarted: Date | null = null,
+    ) => {
+      const raised: [string, Record<string, unknown>][] = [];
+      const watch = new AccountingWatch({
+        attention: {
+          read: async () => ({ needsPerson: none, pending: none }),
+          delayedBidInvoices: async () => none,
+          waitingPayments: async () => none,
+          unsettledRemainders: async () => none,
+          unrefundedCreditNotes: async () => none,
+        },
+        settings: switchWith(mode),
+        senderModes: ["dry_run"],
+        alerts: { raise: (alert, details) => void raised.push([alert.message, details]) },
+        now: () => NOW,
+        statusRuns: {
+          lastFinishedRunAt: async () => last,
+          firstStartedRunAt: async () => firstStarted,
+          expectedSince,
+        },
+      });
+      return { watch, raised };
+    };
+    const ago = (ms: number) => new Date(NOW.getTime() - ms);
+
+    it("is quiet while a run finished within the last night", async () => {
+      const { watch, raised } = watchWith(ago(STATUS_CHECK_MISSED_AFTER_MS - 60_000), ago(9e9));
+      expect((await watch.check()).statusCheckMissed).toBe(false);
+      expect(raised).toEqual([]);
+    });
+
+    it("alerts once the last run finished too long ago", async () => {
+      const last = ago(STATUS_CHECK_MISSED_AFTER_MS + 60_000);
+      const { watch, raised } = watchWith(last, ago(9e9));
+      expect((await watch.check()).statusCheckMissed).toBe(true);
+      expect(raised).toEqual([
+        [
+          ACCOUNTING_ALERTS.statusCheckMissed.message,
+          { lastFinishedAt: last.toISOString(), modes: ["dry_run"] },
+        ],
+      ]);
+    });
+
+    it("a check whose runs started but never finished is told from its first run, whatever the restarts", async () => {
+      // The worker restarted a minute ago; the first run started more than a night ago.
+      const restarted = ago(60_000);
+      expect(
+        (
+          await watchWith(
+            null,
+            restarted,
+            "dry_run",
+            ago(STATUS_CHECK_MISSED_AFTER_MS + 60_000),
+          ).watch.check()
+        ).statusCheckMissed,
+      ).toBe(true);
+      expect(
+        (
+          await watchWith(
+            null,
+            restarted,
+            "dry_run",
+            ago(STATUS_CHECK_MISSED_AFTER_MS - 60_000),
+          ).watch.check()
+        ).statusCheckMissed,
+      ).toBe(false);
+    });
+
+    it("alerts for a check that never ran once its first night has passed, not before", async () => {
+      expect(
+        (await watchWith(null, ago(STATUS_CHECK_MISSED_AFTER_MS - 60_000)).watch.check())
+          .statusCheckMissed,
+      ).toBe(false);
+      expect(
+        (await watchWith(null, ago(STATUS_CHECK_MISSED_AFTER_MS + 60_000)).watch.check())
+          .statusCheckMissed,
+      ).toBe(true);
+    });
+
+    it("says nothing while Books is aimed at nothing", async () => {
+      const { watch, raised } = watchWith(null, ago(9e9), "off");
+      expect((await watch.check()).statusCheckMissed).toBe(false);
+      expect(raised).toEqual([]);
+    });
   });
 
   it("raises the refund alert for a refund's credit note issued six hours ago and not refunded in Books", async () => {

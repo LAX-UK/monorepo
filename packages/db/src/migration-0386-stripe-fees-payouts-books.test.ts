@@ -21,12 +21,15 @@ const TABLES = [
 ];
 
 describe("migration 0386 Stripe fees and payouts to Books", () => {
-  it("is journalled last, after 0385, in a journal that stays ordered", () => {
+  it("is journalled right after 0385, in a journal that stays ordered", () => {
     const entry = journal.entries.find((e) => e.tag === TAG);
     const previous = journal.entries.find((e) => e.tag === "0385_accounting_credit_note_refunds");
     expect(entry?.idx).toBe((previous?.idx ?? Number.NaN) + 1);
     expect(entry?.when).toBeGreaterThan(previous?.when ?? Number.POSITIVE_INFINITY);
-    expect(journal.entries.at(-1)?.tag).toBe(TAG);
+    // Later migrations (0387, the Books status check) follow it; it stays right after 0385.
+    expect(journal.entries.findIndex((e) => e.tag === TAG)).toBe(
+      journal.entries.findIndex((e) => e.tag === "0385_accounting_credit_note_refunds") + 1,
+    );
   });
 
   it("adds the two kinds to the kind, reference and totals checks, under the lock timeout", () => {

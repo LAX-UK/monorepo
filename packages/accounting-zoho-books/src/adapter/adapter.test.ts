@@ -436,7 +436,7 @@ describe("one organisation per document, before any request", () => {
 describe("write guard", () => {
   it("by default the adapter is dry-run: every write is refused and no request is sent", async () => {
     const h = await createAdapterHarness({ writes: { mode: "dry_run" } });
-    const ports = createZohoBooksAdapter({ api: h.client, orgs: h.orgs });
+    const ports = createZohoBooksAdapter({ api: h.client, orgs: h.orgs, budget: h.budget });
     expect(await h.settle(ports.contacts.upsertContact(buyer))).toEqual({
       status: "rejected",
       reason: R.writesDisabled,
@@ -576,6 +576,7 @@ const adapter = (api: ZohoApi) =>
   createZohoBooksAdapter({
     api,
     orgs: shopOnly(),
+    budget: { consume: async () => ({ allowed: true, used: 1, limit: 1_000 }) },
     writes: { mode: "test_org", organizationIds: [SHOP_ORG_ID] },
   });
 

@@ -118,4 +118,51 @@ describe("processInboundWebhookEvent", () => {
       expect(webhookEvents.markFailed).toHaveBeenCalled();
     });
   });
+
+  describe("Zoho Books notices", () => {
+    function booksEvents(routing: Record<string, unknown>) {
+      return {
+        recoverStaleClaims: vi.fn(),
+        tryClaimForProcessing: vi.fn().mockResolvedValue({
+          claimed: true,
+          row: { source: "zoho_books", eventKey: "zb-1", payload: { body: routing, routing } },
+        }),
+        markProcessed: vi.fn(),
+        markFailed: vi.fn(),
+      };
+    }
+    const base = {
+      env: { WEBHOOK_EVENTS_PROCESS: true } as never,
+      log: { debug: vi.fn(), info: vi.fn() } as never,
+    };
+    const routing = { organizationId: "20091234567", module: "invoice", entityId: "5000000000123" };
+
+    it("passes only Books' ids on, to read the document again, and marks the notice processed", async () => {
+      const processZohoBooksNotice = vi.fn().mockResolvedValue(undefined);
+      const webhookEvents = booksEvents({ ...routing, total: 1, status: "paid" });
+      await processInboundWebhookEvent(
+        { ...base, webhookEvents: webhookEvents as never, processZohoBooksNotice },
+        "zb-1",
+      );
+      expect(processZohoBooksNotice).toHaveBeenCalledWith({ ...routing, eventKey: "zb-1" });
+      expect(webhookEvents.markProcessed).toHaveBeenCalledWith("zb-1");
+    });
+
+    it("marks the notice processed with nothing read while Books is not configured", async () => {
+      const webhookEvents = booksEvents(routing);
+      await processInboundWebhookEvent({ ...base, webhookEvents: webhookEvents as never }, "zb-1");
+      expect(webhookEvents.markProcessed).toHaveBeenCalledWith("zb-1");
+    });
+
+    it("fails a notice whose routing is not Books' ids", async () => {
+      const webhookEvents = booksEvents({ ...routing, module: "contact" });
+      await expect(
+        processInboundWebhookEvent(
+          { ...base, webhookEvents: webhookEvents as never, processZohoBooksNotice: vi.fn() },
+          "zb-1",
+        ),
+      ).rejects.toThrow("zoho books notice missing routing");
+      expect(webhookEvents.markFailed).toHaveBeenCalled();
+    });
+  });
 });
