@@ -11,6 +11,12 @@ COPY apps/account/package.json ./apps/account/
 RUN pnpm install --frozen-lockfile
 
 FROM deps AS builder
+ARG SENTRY_RELEASE=unknown
+ARG SENTRY_PROJECT=
+ARG NEXT_PUBLIC_SENTRY_DSN_ACCOUNT=
+ENV NEXT_PUBLIC_SENTRY_DSN_ACCOUNT=$NEXT_PUBLIC_SENTRY_DSN_ACCOUNT
+ENV SENTRY_PROJECT=$SENTRY_PROJECT
+ENV SENTRY_RELEASE=$SENTRY_RELEASE
 ENV NEXT_TELEMETRY_DISABLED=1
 COPY apps/account ./apps/account
 RUN pnpm turbo run build --filter=@auction/account

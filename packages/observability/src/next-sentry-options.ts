@@ -31,3 +31,23 @@ export function createNextSentryOptions(dsn: string) {
     },
   };
 }
+
+/** Name of the browser performance tracing integration in the Sentry SDK. */
+export const BROWSER_TRACING_INTEGRATION = "BrowserTracing";
+
+type NamedIntegration = { name: string };
+
+/**
+ * Browser `Sentry.init` options that report errors only: the same scrubbing `beforeSend` as
+ * {@link createNextSentryOptions}, but no sample rates and no tracing integration, so no
+ * transactions are sent and the tracing code is not started.
+ */
+export function createNextBrowserErrorOptions(dsn: string) {
+  const { tracesSampleRate, profilesSampleRate, tracesSampler, beforeSendTransaction, ...rest } =
+    createNextSentryOptions(dsn);
+  return {
+    ...rest,
+    integrations: <T extends NamedIntegration>(defaults: T[]): T[] =>
+      defaults.filter((integration) => integration.name !== BROWSER_TRACING_INTEGRATION),
+  };
+}
