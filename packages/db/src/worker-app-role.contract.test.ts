@@ -538,6 +538,19 @@ describe.skipIf(!WORKER_URL)("worker_app role contract", { timeout: 60_000 }, ()
       );
       // It answers with an order id (uuid), never the PaymentIntent; PUBLIC cannot call it.
       expect(answer.rows[0]).toEqual({ type: "uuid", publicAllowed: false, column: false });
+      // The same for an original sold directly in the Shop (migration 0389): the sale id only.
+      const original = await client.query<{
+        type: string;
+        publicAllowed: boolean;
+        column: boolean;
+      }>(
+        `select pg_typeof(accounting_stripe_shop_original_sale('pi_contract_none'))::text as type,
+                has_function_privilege('public', 'public.accounting_stripe_shop_original_sale(text)',
+                                       'EXECUTE') as "publicAllowed",
+                has_column_privilege(current_user, 'public.shop_original_sale',
+                                     'stripe_payment_intent_id', 'SELECT') as column`,
+      );
+      expect(original.rows[0]).toEqual({ type: "uuid", publicAllowed: false, column: false });
       // Which company a charge belongs to: the stored ids only, never an amount or a buyer.
       for (const [table, columns] of WORKER_STRIPE_ATTRIBUTION_READ_COLUMNS) {
         for (const column of columns) {

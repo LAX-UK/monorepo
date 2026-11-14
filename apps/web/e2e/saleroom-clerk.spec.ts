@@ -9,6 +9,56 @@ const skipReason = `${e2eSkipReason} Hybrid sale id defaults to seeded S.hybridA
 const clerkConsole = (page: Page) => page.goto(`/admin/saleroom/${seededHybridSaleId}`);
 const lotOnBlockHeading = (page: Page) =>
   page.getByRole("heading", { name: /^lot on block$/i, level: 2 }).first();
+const sessionControls = (page: Page) => page.getByRole("region", { name: /session controls/i });
+
+type SessionStatus = "none" | "pending" | "live" | "paused" | "ended";
+
+/** The room's state as the API has it, read through the same-origin BFF the console uses. */
+async function serverSessionStatus(page: Page): Promise<SessionStatus | null> {
+  const res = await page.request.get(`/api/bff/sales/${seededHybridSaleId}/saleroom/status`);
+  if (!res.ok()) return null;
+  const body = (await res.json().catch(() => null)) as { data?: { status?: SessionStatus } } | null;
+  return body?.data?.status ?? null;
+}
+
+/**
+ * Presses `from` on the open console until the server reports `target`, then waits for the console
+ * to offer `to`. A click before the page has hydrated does nothing, so it is pressed again, but
+ * only while the server has not taken it yet: pressing Pause on a room the server already paused
+ * is refused ("Saleroom must be live to pause").
+ */
+async function pressUntilServer(
+  page: Page,
+  from: RegExp,
+  target: SessionStatus,
+  to: RegExp,
+): Promise<void> {
+  const controls = sessionControls(page);
+  await expect(async () => {
+    if ((await serverSessionStatus(page)) !== target) {
+      const button = controls.getByRole("button", { name: from });
+      if (await button.isEnabled().catch(() => false)) await button.click();
+    }
+    expect(await serverSessionStatus(page)).toBe(target);
+  }).toPass({ timeout: 20_000 });
+  // The console re-reads the session after each control: it follows the server, no reload.
+  await expect(controls.getByRole("button", { name: to })).toBeEnabled({ timeout: 15_000 });
+}
+
+/**
+ * Opens the console on a room the server confirms is live, resuming it first if an earlier test
+ * (or an earlier attempt of this one) left it paused. Each test starts from the seeded live room.
+ */
+async function openLiveConsole(page: Page): Promise<void> {
+  await clerkConsole(page);
+  await expect
+    .poll(() => serverSessionStatus(page), { timeout: 15_000 })
+    .toMatch(/^(live|paused)$/);
+  if ((await serverSessionStatus(page)) === "paused") {
+    await pressUntilServer(page, /^resume$/i, "live", /^pause$/i);
+  }
+  await expect(sessionControls(page).getByRole("button", { name: /^pause$/i })).toBeEnabled();
+}
 
 /**
  * The seed has Room A live with its third lot (Meridian Drift) on the block, so these tests start
@@ -20,7 +70,7 @@ test.describe("hybrid saleroom clerk @journey", () => {
   test.skip(!e2eEnabled, skipReason);
 
   test("staff can open the clerk console for a hybrid sale", async ({ page }) => {
-    await clerkConsole(page);
+    await openLiveConsole(page);
     await expect(
       page.getByRole("heading", { name: /hybrid day sale — room a/i, level: 1 }),
     ).toBeVisible();
@@ -32,20 +82,18 @@ test.describe("hybrid saleroom clerk @journey", () => {
   });
 
   test("staff can pause and resume a live session", async ({ page }) => {
-    await clerkConsole(page);
-    const controls = page.getByRole("region", { name: /session controls/i });
-    // A click before the page has hydrated does nothing, so press again until the state moves.
-    const press = async (from: RegExp, to: RegExp) => {
-      await expect(async () => {
-        if (await controls.getByRole("button", { name: from }).isVisible()) {
-          await controls.getByRole("button", { name: from }).click();
-        }
-        await expect(controls.getByRole("button", { name: to })).toBeVisible({ timeout: 3_000 });
-      }).toPass({ timeout: 20_000 });
-    };
-    // The console follows the session through the realtime sidecar: no reload in between.
-    await press(/^pause$/i, /^resume$/i);
-    await press(/^resume$/i, /^pause$/i);
+    // Pause is pressed only once the server confirms the room is live.
+    await openLiveConsole(page);
+    try {
+      await pressUntilServer(page, /^pause$/i, "paused", /^resume$/i);
+      await expect(sessionControls(page).getByRole("button", { name: /^pause$/i })).toHaveCount(0);
+      await pressUntilServer(page, /^resume$/i, "live", /^pause$/i);
+    } finally {
+      // Leave the room live for the tests that follow, whatever happened above.
+      if ((await serverSessionStatus(page)) === "paused") {
+        await pressUntilServer(page, /^resume$/i, "live", /^pause$/i);
+      }
+    }
   });
 
   test("a quick amount fills the paddle bid, and placing it needs a paddle number", async ({

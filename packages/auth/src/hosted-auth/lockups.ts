@@ -49,6 +49,12 @@ export const HOSTED_IMAGE_ASSET_DIR = "images";
 export const HOSTED_IMAGE_BASE_PATH = "/hosted-auth/images";
 /** The gallery painting beside the sign-in panel, the same one LAX Account shows. */
 export const HOSTED_GALLERY_IMAGE = "signin-gallery.webp";
+/**
+ * Where the square painting sits when the column crops it (background-position). Sideways crops
+ * are the common case on a wide window, so this keeps the woman with the orange bag and the
+ * framed pictures in view; the same value is in LAX Account's `SignInSplit`.
+ */
+export const HOSTED_GALLERY_POSITION = "58% 40%";
 
 /** Variable-weight Latin subsets of the two brand typefaces. */
 export const HOSTED_FONT_FILES = {

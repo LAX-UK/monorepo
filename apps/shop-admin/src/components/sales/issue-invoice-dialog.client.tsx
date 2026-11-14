@@ -15,9 +15,11 @@ import { useForm } from "react-hook-form";
 type InvoiceValues = { buyerEmail: string; buyerName: string };
 
 /**
- * Issue the Stripe invoice for a reserved original. The buyer's name and email come from their
- * record; change them only if the invoice should go elsewhere. The sale is assigned to the buyer
- * automatically once Stripe reports the invoice paid.
+ * Issue the invoice for a reserved original. The buyer's name and email come from their record;
+ * change them only if the invoice should go elsewhere. Stripe emails its invoice to that address,
+ * unless the Shop is invoiced by Zoho Books live: then nothing is emailed now, staff send the buyer
+ * the payment link, and Books emails its invoice there once they have paid. What was sent is said
+ * from the server's answer, never assumed. The sale is assigned to the buyer once they pay.
  */
 export function IssueInvoiceDialog({
   sale,
@@ -49,7 +51,7 @@ export function IssueInvoiceDialog({
           ...body,
           idempotencyKey: mutation.idempotencyKey,
         }),
-      `Invoice for ${sale.artworkTitle} sent to ${body.buyerEmail}`,
+      (issued) => issuedMessage(sale.artworkTitle, body.buyerEmail, issued),
     );
     if (ok) onOpenChange(false);
   });
@@ -60,7 +62,7 @@ export function IssueInvoiceDialog({
         open={open}
         onOpenChange={onOpenChange}
         title={`Invoice ${amount} for ${sale.artworkTitle}?`}
-        description="Stripe emails the invoice to the buyer. The original is assigned to them as soon as they pay."
+        description="The buyer is sent the invoice, or given a payment link to send them if the Shop is invoiced by Zoho Books. The original is assigned to them as soon as they pay."
         submitLabel={`Issue ${amount} invoice`}
         pending={mutation.pending}
         onSubmit={() => void submit()}
@@ -83,4 +85,17 @@ export function IssueInvoiceDialog({
       {mutation.stepUpDialog}
     </>
   );
+}
+
+/** What was sent, as the server says it issued the invoice. */
+export function issuedMessage(
+  artworkTitle: string,
+  buyerEmail: string,
+  issued: { invoiceIssuer: "stripe" | "books"; hostedInvoiceUrl: string | null },
+): string {
+  if (issued.invoiceIssuer === "stripe") {
+    return `Stripe emailed the invoice for ${artworkTitle} to ${buyerEmail}`;
+  }
+  const link = issued.hostedInvoiceUrl ?? "the payment link in Stripe";
+  return `Nothing was emailed. Send ${buyerEmail} this payment link for ${artworkTitle}: ${link}. Zoho Books emails the invoice to them once they have paid.`;
 }

@@ -1,6 +1,7 @@
 import {
   HOSTED_FONT_FILES,
   HOSTED_GALLERY_IMAGE,
+  HOSTED_GALLERY_POSITION,
   HOSTED_IMAGE_BASE_PATH,
   type HostedFontFile,
   hostedFontPath,
@@ -58,6 +59,7 @@ const SYSTEM_DARK_IMAGES = `
   html:not(.light) .theme-icon--moon { display: none; }
   html:not(.light) .theme-icon--sun { display: block; }`;
 
+const GALLERY_POSITION = HOSTED_GALLERY_POSITION;
 const GALLERY_URL = `${HOSTED_IMAGE_BASE_PATH}/${HOSTED_GALLERY_IMAGE}?v=${HOSTED_AUTH_ASSET_VERSION}`;
 
 /**
@@ -271,13 +273,20 @@ body {
     padding-top: 2.5rem;
   }
 
-  /* Decoration only, so it is a background: a phone never downloads it. It stretches with the
-     panel, so a long form never leaves an empty strip below the painting. */
+  /* The painting fills the whole column, edge to edge. The column is the viewport's height and
+     stays put while a long form scrolls past; its width is the layout's (flex: 1 beside the
+     fixed-width panel's content), so its size depends on the window alone and the painting never
+     zooms or shifts between sign-in, sign-up and the rest. Decoration only, so it is a
+     background: a phone never downloads it. */
   .auth-art {
     display: block;
     flex: 1;
-    min-height: 100vh;
-    background: var(--color-surface-container) url("${GALLERY_URL}") 50% 40% / cover no-repeat;
+    align-self: flex-start;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    height: 100dvh;
+    background: var(--color-surface-container) url("${GALLERY_URL}") ${GALLERY_POSITION} / cover no-repeat;
   }
 }
 

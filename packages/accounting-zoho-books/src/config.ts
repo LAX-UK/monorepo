@@ -86,6 +86,11 @@ function positiveInt(
   return value;
 }
 
+/** The Books daily call budget; the one parser the sender and the cutover commands share. */
+export function parseDailyCallBudget(env: Readonly<Record<string, string | undefined>>): number {
+  return positiveInt(env, "ZOHO_BOOKS_DAILY_CALL_BUDGET", 1_000, 1_000_000);
+}
+
 /**
  * Reads the Books settings from an environment record (the caller passes it; this package never
  * touches `process.env`). Fails closed: a missing client id, secret or token key is an error, and
@@ -117,7 +122,7 @@ export function parseZohoBooksConfig(
     ratePerMinute: positiveInt(env, "ZOHO_BOOKS_RATE_PER_MINUTE", 100, 100),
     maxConcurrent: positiveInt(env, "ZOHO_BOOKS_MAX_CONCURRENT", 5, 5),
     maxQueueWaitMs: positiveInt(env, "ZOHO_BOOKS_MAX_QUEUE_WAIT_MS", 30_000, 600_000),
-    dailyCallBudget: positiveInt(env, "ZOHO_BOOKS_DAILY_CALL_BUDGET", 1_000, 1_000_000),
+    dailyCallBudget: parseDailyCallBudget(env),
     maxResponseBytes: positiveInt(env, "ZOHO_BOOKS_MAX_RESPONSE_BYTES", 5_000_000, 50_000_000),
   };
 }

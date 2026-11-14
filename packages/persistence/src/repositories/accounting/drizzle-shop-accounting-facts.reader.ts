@@ -2,6 +2,7 @@ import type {
   ShopDeliveryFacts,
   ShopOrderLineFacts,
   ShopOrderPaidFacts,
+  ShopOriginalSalePaidFacts,
   ShopRefundFacts,
 } from "@auction/accounting-domain";
 import { LONDON_TIME_ZONE, dayKey } from "@auction/datetime";
@@ -11,6 +12,8 @@ import {
   shopGuestCustomer,
   shopOrder,
   shopOrderLine,
+  shopOriginalSale,
+  shopParty,
   shopProduct,
   shopProductVariant,
   shopRefund,
@@ -33,6 +36,8 @@ const londonDay = (instant: Date) => dayKey(instant, LONDON_TIME_ZONE);
 
 /** Statuses of an order that was paid (a refund later does not undo the sale's invoice). */
 const PAID_STATUSES = new Set(["paid", "partially_refunded", "refunded"]);
+/** Statuses of an original sale that was paid: paid, then assigned to the buyer. */
+const ORIGINAL_PAID_STATUSES = new Set(["paid", "assigned"]);
 
 /** How the order reached the buyer, as the Shop's own invoice words it. */
 export const FULFILMENT_LINE: Readonly<Record<string, string>> = {
@@ -225,6 +230,91 @@ export class DrizzleShopAccountingFactsReader
       guest: isGuestSubject(order.identitySubjectId),
       recipient: await this.buyer(order),
     };
+  }
+
+  async originalSalePaid(originalSaleId: string): Promise<FactsRead<ShopOriginalSalePaidFacts>> {
+    const sale = await this.originalSale(originalSaleId);
+    if (!sale) return skip("original_sale_not_found");
+    // A sale Stripe invoiced keeps its Stripe Invoice: Books never issues a second one.
+    if (sale.invoiceIssuer !== "books") return skip("original_sale_invoiced_by_stripe");
+    if (!ORIGINAL_PAID_STATUSES.has(sale.status) || !sale.paidAt) {
+      return skip("original_sale_not_paid");
+    }
+    // The number is set in the transaction that marks the sale paid.
+    if (!sale.invoiceNumber) return skip("original_sale_not_invoiced");
+    const buyer = await this.originalRecipient(sale);
+    return ready({
+      originalSaleId: sale.id.toLowerCase(),
+      invoiceNumber: sale.invoiceNumber,
+      buyer: {
+        partyId: sale.buyerPartyId.toLowerCase(),
+        name: buyer?.name?.trim() || sale.partyName.trim() || UNNAMED_BUYER,
+        email: buyer?.email ?? null,
+      },
+      paidOn: londonDay(sale.paidAt),
+      label: `Original artwork: ${sale.title}`,
+      salePricePence: sale.salePricePence,
+      vatTreatment: sale.vatTreatment,
+      vatPence: sale.vatPence,
+    });
+  }
+
+  async forOriginalSale(originalSaleId: string): Promise<ShopInvoiceEmailFacts | null> {
+    const sale = await this.originalSale(originalSaleId);
+    if (!sale?.paidAt || !sale.invoiceNumber) return null;
+    return {
+      orderId: sale.id.toLowerCase(),
+      orderReference: sale.invoiceNumber,
+      totalPence: sale.salePricePence,
+      paidAt: sale.paidAt,
+      cancelled: sale.status === "cancelled",
+      guest: false,
+      recipient: await this.originalRecipient(sale),
+      originalTitle: sale.title,
+    };
+  }
+
+  /**
+   * Who an original's invoice goes to: the address and name staff confirmed when they issued it
+   * (a buyer of an original often has no LAX account). A sale issued before that was stored falls
+   * back to the buyer's LAX account, while it can be reached.
+   */
+  private async originalRecipient(sale: {
+    readonly invoiceRecipientEmail: string | null;
+    readonly invoiceRecipientName: string | null;
+    readonly identitySubjectId: string | null;
+  }): Promise<ShopInvoiceRecipient | null> {
+    const email = sale.invoiceRecipientEmail?.trim();
+    if (email) return { email, name: sale.invoiceRecipientName?.trim() || null };
+    return sale.identitySubjectId
+      ? this.buyer({ identitySubjectId: sale.identitySubjectId, guestCustomerId: null })
+      : null;
+  }
+
+  /** The stored sale, its work's title and its buyer's party; only the granted columns. */
+  private async originalSale(originalSaleId: string) {
+    const [sale] = await this.db
+      .select({
+        id: shopOriginalSale.id,
+        status: shopOriginalSale.status,
+        buyerPartyId: shopOriginalSale.buyerPartyId,
+        salePricePence: shopOriginalSale.salePricePence,
+        vatTreatment: shopOriginalSale.vatTreatment,
+        vatPence: shopOriginalSale.vatPence,
+        invoiceIssuer: shopOriginalSale.invoiceIssuer,
+        invoiceNumber: shopOriginalSale.invoiceNumber,
+        paidAt: shopOriginalSale.paidAt,
+        invoiceRecipientEmail: shopOriginalSale.invoiceRecipientEmail,
+        invoiceRecipientName: shopOriginalSale.invoiceRecipientName,
+        title: shopArtwork.title,
+        partyName: shopParty.displayName,
+        identitySubjectId: shopParty.identitySubjectId,
+      })
+      .from(shopOriginalSale)
+      .innerJoin(shopArtwork, eq(shopArtwork.id, shopOriginalSale.artworkId))
+      .innerJoin(shopParty, eq(shopParty.id, shopOriginalSale.buyerPartyId))
+      .where(eq(shopOriginalSale.id, originalSaleId));
+    return sale ?? null;
   }
 
   /**

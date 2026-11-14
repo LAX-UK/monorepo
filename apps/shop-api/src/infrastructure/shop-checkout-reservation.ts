@@ -13,6 +13,23 @@ import { isPgDeadlockDetected } from "../lib/pg-errors.js";
 import type { createShopDomainEventPublisher } from "./shop-domain-event-publisher.js";
 import { sellableEditionCondition } from "./shop-edition-availability.js";
 
+/**
+ * Takes one lock per artwork, held to the end of the transaction, so reservations of an artwork's
+ * prints queue instead of racing: a guest hold that must leave a print counts the prints left
+ * only after any other checkout of that artwork has committed. Every path that reserves prints
+ * calls this first, before it touches a row, and in id order so two baskets cannot deadlock.
+ */
+export async function lockArtworksForReservation(
+  tx: Database,
+  artworkIds: readonly string[],
+): Promise<void> {
+  for (const artworkId of [...new Set(artworkIds)].sort()) {
+    await tx.execute(
+      sql`select pg_advisory_xact_lock(hashtext(${`shop-edition-reservation:${artworkId}`}))`,
+    );
+  }
+}
+
 export async function reserveEditionsForCheckoutOrder(
   tx: Database,
   input: {

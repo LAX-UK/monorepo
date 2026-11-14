@@ -12,8 +12,10 @@ import { serve } from "@hono/node-server";
 import { Queue } from "bullmq";
 import { createApp } from "./app.js";
 import { createContainer } from "./container.js";
+import { createHeldErasureRecheck } from "./container/create-held-erasure-recheck.js";
 import { loadEnv } from "./env.js";
 import { startBidSsfRetentionSchedule } from "./infrastructure/bid-ssf-retention.schedule.js";
+import { startHeldErasureRecheckSchedule } from "./infrastructure/held-erasure-recheck.schedule.js";
 import type { LotJobScheduler } from "./jobs/lot-job-scheduler.js";
 import { closeBullBoardQueues } from "./lib/bull-board.js";
 import { runtimeOwnershipConfigFromApiEnv } from "./lib/runtime-ownership-config.js";
@@ -40,6 +42,12 @@ function reportBackground(component: string, err: unknown, extra?: Record<string
 const bidSsfRetentionSchedule = startBidSsfRetentionSchedule({
   db: container.db,
   onError: (err) => reportBackground("bid-ssf-retention", err),
+});
+
+// Data request erasures a private sale deal held are run again once the hold ends (PS-5F2).
+const heldErasureRecheckSchedule = startHeldErasureRecheckSchedule({
+  recheck: createHeldErasureRecheck(container),
+  onError: (err) => reportBackground("held-erasure-recheck", err),
 });
 
 // BullMQ / ioredis emit `error`; without a listener Node exits the process.
@@ -124,7 +132,10 @@ let shuttingDown = false;
 function shutdown(signal: NodeJS.Signals) {
   if (shuttingDown) return;
   shuttingDown = true;
-  const bidSsfRetentionStopped = bidSsfRetentionSchedule.stop();
+  const bidSsfRetentionStopped = Promise.all([
+    bidSsfRetentionSchedule.stop(),
+    heldErasureRecheckSchedule.stop(),
+  ]);
   console.log(`[api] ${signal} received; draining HTTP server`);
   const timeout = setTimeout(() => {
     console.error("[api] graceful shutdown timed out");

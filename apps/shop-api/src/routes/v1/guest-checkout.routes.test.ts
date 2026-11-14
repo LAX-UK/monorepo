@@ -107,6 +107,57 @@ describe("guest checkout routes", () => {
     });
   });
 
+  describe("a guest's delivery quote request", () => {
+    const payload = {
+      basketId: "1f0a1c2e-3b4d-4e5f-8a6b-7c8d9e0f1a2b",
+      idempotencyKey: "delivery-quote:basket",
+      successUrl: "http://localhost:3020/checkout/confirmation",
+      cancelUrl: "http://localhost:3020/checkout/cancel",
+      deliveryAddress: {
+        recipientName: "Anna Weber",
+        line1: "Friedrichstrasse 12",
+        city: "Berlin",
+        postcode: "10117",
+        country: "DE",
+      },
+      deliveryPhone: "+49 30 1234567",
+      email: "anna@example.com",
+      name: "Anna Weber",
+    };
+
+    async function visitorIpSeen(headers: Record<string, string>) {
+      const deps = guestDeps();
+      const app = await buildApp(deps);
+      await app.inject({
+        method: "POST",
+        url: "/v1/guest-checkout/delivery-quote-requests",
+        headers: { ...headers, "x-shop-basket-token": "basket-token-1" },
+        payload,
+      });
+      const call = vi.mocked(deps.service.requestDeliveryQuote).mock.calls[0]?.[0];
+      return { visitorIp: call?.visitorIp, clientIp: call?.clientIp };
+    }
+
+    const bffToken = { authorization: bffHeaders.authorization };
+
+    it("caps holds on the address the storefront forwarded", async () => {
+      expect(await visitorIpSeen(bffHeaders)).toEqual({
+        visitorIp: "203.0.113.9",
+        clientIp: "203.0.113.9",
+      });
+    });
+
+    it("treats a storefront request with no client address as unknown, not as the storefront", async () => {
+      const seen = await visitorIpSeen(bffToken);
+      expect(seen.visitorIp).toBeNull();
+    });
+
+    it("treats an unreadable client address header as unknown", async () => {
+      const seen = await visitorIpSeen({ ...bffToken, "x-lax-client-ip": "not-an-address" });
+      expect(seen.visitorIp).toBeNull();
+    });
+  });
+
   it("stores nothing when the hidden field is filled", async () => {
     const deps = guestDeps();
     const app = await buildApp(deps);

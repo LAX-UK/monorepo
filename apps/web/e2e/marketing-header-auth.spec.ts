@@ -11,8 +11,10 @@ import {
 } from "./helpers/auth";
 import { expect, test } from "./helpers/test";
 
-// Signed in, the trigger is named "Account menu, <name>"; signed out it is "Account menu" alone.
-const accountMenu = (page: Page) => page.getByRole("button", { name: /^account menu, /i });
+// Signed in, the trigger is named "Account menu, <name>", or "Your accounts, …" for someone with an
+// organisation (the account in use); signed out it is "Account menu" alone.
+const accountMenu = (page: Page) =>
+  page.getByRole("button", { name: /^(?:account menu|your accounts), /i });
 const guestMenu = (page: Page) => page.getByRole("button", { name: "Account menu", exact: true });
 
 test.describe("marketing header auth @journey", () => {
