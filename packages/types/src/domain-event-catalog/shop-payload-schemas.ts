@@ -29,6 +29,18 @@ export const shopAccountingOrderPaidPayloadSchemaV1 = z.object({
   paidAt: rfc3339Timestamp,
 });
 
+/**
+ * An original artwork sold directly in LAX Shop was paid, for the books. Written in the same
+ * transaction that marks the sale paid (and in which the database gives it its `LAX-INV-` invoice
+ * number from the counter Shop orders use), only for a sale whose invoice Books issues. References
+ * only: the projection reads the price, the buyer and the title from the stored rows.
+ */
+export const shopAccountingOriginalSalePaidPayloadSchemaV1 = z.object({
+  schemaVersion: z.literal(1),
+  originalSaleId: z.string().uuid(),
+  paidAt: rfc3339Timestamp,
+});
+
 export const shopArtworkCreatedPayloadSchemaV1 = z.object({
   schemaVersion: z.literal(1),
   importKey: z.string(),

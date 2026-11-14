@@ -7,6 +7,7 @@ import {
   parseCheckoutSessionCompleted,
   parseCheckoutSessionExpired,
   parseDisputeEvent,
+  parseOriginalSalePaymentLinkPaid,
   parseStripeRefundEvent,
 } from "./stripe-webhook.dto.js";
 
@@ -270,5 +271,59 @@ describe("stripe webhook DTO", () => {
       },
     } as unknown as Stripe.Event;
     expect(parseCheckoutSessionCompleted(event)).toBeNull();
+  });
+
+  describe("an original's Payment Link session", () => {
+    const SALE = "22222222-2222-4222-8222-222222222222";
+    const linkEvent = (session: Record<string, unknown>, type = "checkout.session.completed") =>
+      ({
+        id: "evt_link",
+        type,
+        created: 1_700_000_000,
+        data: {
+          object: {
+            id: "cs_link",
+            metadata: { app: "shop_original", shop_original_sale_id: SALE },
+            payment_link: "plink_1",
+            payment_intent: "pi_link",
+            amount_total: 125000,
+            currency: "gbp",
+            payment_status: "paid",
+            ...session,
+          },
+        },
+      }) as unknown as Stripe.Event;
+
+    it("reads a paid session with what Stripe took and the payment that took it", () => {
+      expect(parseOriginalSalePaymentLinkPaid(linkEvent({}))).toEqual({
+        eventId: "evt_link",
+        originalSaleId: SALE,
+        paymentLinkId: "plink_1",
+        checkoutSessionId: "cs_link",
+        paymentIntentId: "pi_link",
+        amountPence: 125000,
+        currency: "gbp",
+        paidAt: new Date(1_700_000_000 * 1000),
+      });
+      expect(
+        parseOriginalSalePaymentLinkPaid(linkEvent({}, "checkout.session.async_payment_succeeded")),
+      ).toMatchObject({ checkoutSessionId: "cs_link" });
+    });
+
+    it("never reads an unpaid session (an async method still clearing) as paid", () => {
+      expect(parseOriginalSalePaymentLinkPaid(linkEvent({ payment_status: "unpaid" }))).toBeNull();
+    });
+
+    it("refuses a sale id that is not a UUID, a session with no link, and a Shop order's", () => {
+      expect(
+        parseOriginalSalePaymentLinkPaid(
+          linkEvent({ metadata: { app: "shop_original", shop_original_sale_id: "1 or 1=1" } }),
+        ),
+      ).toBeNull();
+      expect(parseOriginalSalePaymentLinkPaid(linkEvent({ payment_link: null }))).toBeNull();
+      expect(
+        parseOriginalSalePaymentLinkPaid(linkEvent({ metadata: { app: "shop", orderId: SALE } })),
+      ).toBeNull();
+    });
   });
 });

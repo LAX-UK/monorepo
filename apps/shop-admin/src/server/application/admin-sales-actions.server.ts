@@ -68,7 +68,8 @@ export async function issueOriginalSaleInvoice(input: {
   return forwardAdminJsonMutation<{
     originalSaleId: string;
     status: "invoiced";
-    stripeInvoiceId: string;
+    invoiceIssuer: "stripe" | "books";
+    stripeInvoiceId: string | null;
     hostedInvoiceUrl: string | null;
   }>({
     bffPath: `original-sales/${encodeURIComponent(input.originalSaleId)}/invoice`,

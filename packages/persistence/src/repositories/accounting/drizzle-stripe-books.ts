@@ -103,8 +103,8 @@ export class DrizzleStripeBooksLedger implements IStripeBooksLedger {
     const ch = refs.chargeId;
     if (pi === null && ch === null) return [];
     // Bid: a payment or a payment group LAX stored with this charge or PaymentIntent. Shop: an
-    // order holding the PaymentIntent, asked through the definer function (the worker cannot
-    // read the column itself).
+    // order, or an original sold directly in the Shop, holding the PaymentIntent, each asked
+    // through its definer function (the worker cannot read the columns itself).
     const result = await this.db.execute<{ product: Product }>(sql`
       select 'bid' as product where exists (
         select 1 from payment p
@@ -117,7 +117,10 @@ export class DrizzleStripeBooksLedger implements IStripeBooksLedger {
       )
       union all
       select 'shop' as product
-       where ${pi}::text is not null and accounting_stripe_shop_order(${pi}::text) is not null
+       where ${pi}::text is not null and (
+         accounting_stripe_shop_order(${pi}::text) is not null
+         or accounting_stripe_shop_original_sale(${pi}::text) is not null
+       )
     `);
     return result.rows.map((r) => r.product);
   }
