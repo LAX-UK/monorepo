@@ -4,10 +4,12 @@ import type {
   StripeCheckoutCompletedDto,
   StripeCheckoutExpiredDto,
 } from "../application/ports/stripe-webhook.types.js";
+import { ORIGINAL_SALE_PAYMENT_APP } from "./stripe-shop-invoice.gateway.js";
 
 export type { StripeCheckoutAsyncFailedDto, StripeCheckoutCompletedDto, StripeCheckoutExpiredDto };
 
 const SHOP_CHECKOUT_APP = "shop";
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const SHOP_CHECKOUT_CURRENCY = "gbp";
 
 const CHECKOUT_SESSION_EVENT_TYPES = new Set([
@@ -73,6 +75,41 @@ export function parseCheckoutSessionCompleted(
     customerEmail: customerEmailFromSession(session),
     paymentIntentId: paymentIntentIdFromSession(session),
     livemode: event.livemode === true,
+  };
+}
+
+/**
+ * A Checkout Session made by an original's Payment Link (`app` = `shop_original`), paid. Never a
+ * Shop order's session (those carry `orderId`, and are handled above). What Stripe says it took is
+ * returned as reported; the sale checks it against its own stored price and link.
+ */
+export function parseOriginalSalePaymentLinkPaid(event: Stripe.Event): {
+  originalSaleId: string;
+  paymentLinkId: string;
+  amountPence: number;
+  currency: string;
+  paidAt: Date;
+} | null {
+  if (
+    event.type !== "checkout.session.completed" &&
+    event.type !== "checkout.session.async_payment_succeeded"
+  ) {
+    return null;
+  }
+  const session = readCheckoutSessionObject(event);
+  if (!session || session.metadata?.app !== ORIGINAL_SALE_PAYMENT_APP) return null;
+  if (!isPaidCheckoutSession(session)) return null;
+  const originalSaleId = session.metadata?.shop_original_sale_id?.trim();
+  const link = session.payment_link;
+  const paymentLinkId = typeof link === "string" ? link : link?.id;
+  if (!originalSaleId || !UUID.test(originalSaleId) || !paymentLinkId) return null;
+  if (typeof session.amount_total !== "number") return null;
+  return {
+    originalSaleId,
+    paymentLinkId,
+    amountPence: session.amount_total,
+    currency: session.currency ?? "",
+    paidAt: new Date(event.created * 1000),
   };
 }
 

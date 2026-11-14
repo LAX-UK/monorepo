@@ -23,15 +23,25 @@ export type IssueOriginalSaleInvoiceCommand = {
 export type IssueOriginalSaleInvoiceResult = {
   originalSaleId: string;
   status: "invoiced";
-  stripeInvoiceId: string;
+  /**
+   * Who issues the invoice: `stripe` (a Stripe Invoice, emailed by Stripe) or `books` (Zoho Books,
+   * once Stripe has taken the payment through a Payment Link; no Stripe Invoice).
+   */
+  invoiceIssuer: "stripe" | "books";
+  /** Null when Books issues the invoice. */
+  stripeInvoiceId: string | null;
+  /** Where the buyer pays: Stripe's invoice page, or the Payment Link when Books issues it. */
   hostedInvoiceUrl: string | null;
 };
 
+/** What Stripe says it took, checked against the stored sale before anything moves. */
 export type CompleteOriginalSalePaidCommand = {
   originalSaleId: string;
-  stripeInvoiceId: string;
   paidAt: Date;
-};
+} & (
+  | { stripeInvoiceId: string }
+  | { paymentLinkId: string; amountPence: number; currency: string }
+);
 
 export type CompleteOriginalSalePaidResult = {
   originalSaleId: string;

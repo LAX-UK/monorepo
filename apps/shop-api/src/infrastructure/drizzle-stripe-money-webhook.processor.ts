@@ -7,11 +7,15 @@ import type { ShopNotificationPublisher } from "../application/ports/shop-notifi
 import type { StripeMoneyWebhookOutcome } from "../application/ports/stripe-money-webhook.types.js";
 import { completeRefundFromWebhook } from "./handlers/webhooks/complete-refund.handler.js";
 import { handleStripeDisputeWebhook } from "./handlers/webhooks/stripe-dispute.handler.js";
-import { completeOriginalSaleFromStripeInvoice } from "./phase/drizzle-original-sale.writer.js";
+import {
+  completeOriginalSaleFromPaymentLink,
+  completeOriginalSaleFromStripeInvoice,
+} from "./phase/drizzle-original-sale.writer.js";
 import type { ShopDomainEventPublisherMode } from "./shop-domain-event-publisher.js";
 import {
   isShopOwnedPaymentIntentMetadata,
   parseDisputeEvent,
+  parseOriginalSalePaymentLinkPaid,
   parseStripeRefundEvent,
 } from "./stripe-webhook.dto.js";
 
@@ -51,6 +55,17 @@ export function createDrizzleStripeMoneyWebhookProcessor(
           return "ignored";
         }
         return "processed";
+      }
+
+      // An original whose invoice Books issues, paid through its Payment Link.
+      const original = parseOriginalSalePaymentLinkPaid(event);
+      if (original) {
+        const outcome = await completeOriginalSaleFromPaymentLink(db, {
+          ...original,
+          domainEventMode: options.domainEventMode,
+          ...(options.offers ? { offers: options.offers } : {}),
+        });
+        return outcome === "ignored" ? "ignored" : "processed";
       }
 
       const refundDto = parseStripeRefundEvent(event);

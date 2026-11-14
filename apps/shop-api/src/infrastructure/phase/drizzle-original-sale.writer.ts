@@ -16,14 +16,21 @@ import {
 } from "@auction/shop-domain";
 import { and, asc, eq, inArray, isNull, or } from "drizzle-orm";
 import { withAdminIdempotency } from "../../application/admin/with-admin-idempotency.js";
-import type { InvoiceGateway } from "../../application/ports/invoice.gateway.js";
+import type {
+  InvoiceGateway,
+  OriginalSalePaymentGateway,
+} from "../../application/ports/invoice.gateway.js";
 import {
   type OriginalOfferRegister,
   noOriginalOfferRegister,
 } from "../../application/ports/original-offer-register.js";
-import type { OriginalSaleWriter } from "../../application/ports/original-sale.writer.js";
+import type {
+  CompleteOriginalSalePaidCommand,
+  OriginalSaleWriter,
+} from "../../application/ports/original-sale.writer.js";
 import type { ShopUnitOfWorkFactory } from "../../application/ports/shop-unit-of-work.js";
 import { ShopApiError, notFound } from "../../errors/shop-api-error.js";
+import { readShopBooksMode } from "../drizzle-order-invoice-books.reader.js";
 import {
   createDrizzleShopUnitOfWork,
   shopPhaseDbSession,
@@ -155,6 +162,8 @@ export function createDrizzleOriginalSaleWriter(deps: {
   db: Database;
   uow: ShopUnitOfWorkFactory;
   invoiceGateway: InvoiceGateway;
+  /** Stripe Payment Links, for an original whose invoice Books issues. */
+  payments?: OriginalSalePaymentGateway;
   domainEventMode: ShopDomainEventPublisherMode;
   /** One place at a time for originals; omitted where no register is wired. */
   offers?: OriginalOfferRegister;
@@ -229,11 +238,46 @@ export function createDrizzleOriginalSaleWriter(deps: {
               .where(eq(shopArtwork.id, sale.artworkId))
               .limit(1);
 
+            const description = `Original artwork: ${artwork?.title ?? sale.artworkId}`;
+            // Decision F17: while the Shop switch aims at Books, Books issues the invoice (under a
+            // LAX-INV- number, once paid) and Stripe only takes the payment. Never both.
+            if ((await readShopBooksMode(session)) !== null) {
+              if (!deps.payments) {
+                throw new ShopApiError(
+                  SHOP_API_ERROR_CODES.INTERNAL,
+                  "Stripe payments are not configured for originals invoiced in Books",
+                  501,
+                );
+              }
+              const link = await deps.payments.createOriginalSalePaymentLink({
+                originalSaleId: sale.id,
+                description,
+                amountPence: sale.salePricePence,
+                currency: "gbp",
+              });
+              await session
+                .update(shopOriginalSale)
+                .set({
+                  status: "invoiced",
+                  invoiceIssuer: "books",
+                  stripePaymentLinkId: link.paymentLinkId,
+                  updatedAt: new Date(),
+                })
+                .where(eq(shopOriginalSale.id, sale.id));
+              return {
+                originalSaleId: sale.id,
+                status: "invoiced" as const,
+                invoiceIssuer: "books" as const,
+                stripeInvoiceId: null,
+                hostedInvoiceUrl: link.url,
+              };
+            }
+
             const invoice = await invoiceGateway.createAndFinalizeOriginalSaleInvoice({
               originalSaleId: sale.id,
               buyerEmail: command.buyerEmail,
               buyerName: command.buyerName,
-              description: `Original artwork: ${artwork?.title ?? sale.artworkId}`,
+              description,
               amountPence: sale.salePricePence,
               currency: "gbp",
               metadata: {
@@ -254,6 +298,7 @@ export function createDrizzleOriginalSaleWriter(deps: {
             return {
               originalSaleId: sale.id,
               status: "invoiced" as const,
+              invoiceIssuer: "stripe" as const,
               stripeInvoiceId: invoice.stripeInvoiceId,
               hostedInvoiceUrl: invoice.hostedInvoiceUrl,
             };
@@ -270,9 +315,13 @@ export function createDrizzleOriginalSaleWriter(deps: {
             id: shopOriginalSale.id,
             status: shopOriginalSale.status,
             stripeInvoiceId: shopOriginalSale.stripeInvoiceId,
+            invoiceIssuer: shopOriginalSale.invoiceIssuer,
+            stripePaymentLinkId: shopOriginalSale.stripePaymentLinkId,
+            salePricePence: shopOriginalSale.salePricePence,
           })
           .from(shopOriginalSale)
           .where(eq(shopOriginalSale.id, command.originalSaleId))
+          .for("update")
           .limit(1);
         if (!sale) {
           return { originalSaleId: command.originalSaleId, status: "assigned" as const };
@@ -280,19 +329,29 @@ export function createDrizzleOriginalSaleWriter(deps: {
         if (sale.status === "assigned") {
           return { originalSaleId: sale.id, status: "assigned" as const };
         }
-        if (sale.stripeInvoiceId && sale.stripeInvoiceId !== command.stripeInvoiceId) {
-          throw new ShopApiError(
-            SHOP_API_ERROR_CODES.CONFLICT,
-            "Invoice id does not match original sale",
-            409,
-          );
-        }
+        assertPaidAsIssued(sale, command);
         assertOriginalSaleCanMarkPaid(sale.status);
 
+        // Setting paid_at gives a Books sale its LAX-INV- number (the database's trigger).
         await dbTx
           .update(shopOriginalSale)
-          .set({ status: "paid", updatedAt: command.paidAt })
+          .set({ status: "paid", paidAt: command.paidAt, updatedAt: command.paidAt })
           .where(eq(shopOriginalSale.id, sale.id));
+        if (sale.invoiceIssuer === "books") {
+          // For the books: references only, in this transaction, so a paid original is never
+          // missed and one that rolls back is never booked.
+          await createShopDomainEventPublisher(domainEventMode).insertInTransaction(dbTx, {
+            aggregateType: "shop_original_sale",
+            aggregateId: sale.id,
+            eventType: "shop.accounting.original_sale_paid",
+            producer: "shop-api",
+            payload: {
+              schemaVersion: 1,
+              originalSaleId: sale.id,
+              paidAt: command.paidAt.toISOString(),
+            },
+          });
+        }
 
         await assignOriginalSaleInTransaction(dbTx, {
           originalSaleId: sale.id,
@@ -305,6 +364,78 @@ export function createDrizzleOriginalSaleWriter(deps: {
     },
   };
 }
+
+/**
+ * The money guards: Stripe's payment must be the one the sale was issued with. A Stripe Invoice
+ * sale is paid by its own invoice; a Books sale only through its own Payment Link, for exactly
+ * the stored price in pounds. Anything else is refused (409) and nothing moves.
+ */
+function assertPaidAsIssued(
+  sale: {
+    invoiceIssuer: "stripe" | "books";
+    stripeInvoiceId: string | null;
+    stripePaymentLinkId: string | null;
+    salePricePence: number;
+  },
+  command: CompleteOriginalSalePaidCommand,
+): void {
+  const refuse = (message: string) => new ShopApiError(SHOP_API_ERROR_CODES.CONFLICT, message, 409);
+  if (sale.invoiceIssuer === "stripe") {
+    if (!("stripeInvoiceId" in command)) throw refuse("Original sale is invoiced by Stripe");
+    if (sale.stripeInvoiceId && sale.stripeInvoiceId !== command.stripeInvoiceId) {
+      throw refuse("Invoice id does not match original sale");
+    }
+    return;
+  }
+  if (!("paymentLinkId" in command) || command.paymentLinkId !== sale.stripePaymentLinkId) {
+    throw refuse("Payment link does not match original sale");
+  }
+  if (command.currency !== "gbp" || command.amountPence !== sale.salePricePence) {
+    throw refuse("Payment amount does not match original sale");
+  }
+}
+
+/** A Stripe Checkout Session from an original's Payment Link was paid (Books issues its invoice). */
+export async function completeOriginalSaleFromPaymentLink(
+  db: Database,
+  input: {
+    originalSaleId: string;
+    paymentLinkId: string;
+    amountPence: number;
+    currency: string;
+    paidAt: Date;
+    domainEventMode: ShopDomainEventPublisherMode;
+    offers?: OriginalOfferRegister;
+  },
+): Promise<"processed" | "ignored" | "duplicate"> {
+  const [sale] = await db
+    .select({ id: shopOriginalSale.id, status: shopOriginalSale.status })
+    .from(shopOriginalSale)
+    .where(eq(shopOriginalSale.id, input.originalSaleId))
+    .limit(1);
+  if (!sale) return "ignored";
+  if (sale.status === "assigned") return "duplicate";
+  await createDrizzleOriginalSaleWriter({
+    db,
+    uow: createDrizzleShopUnitOfWork(db, input.domainEventMode),
+    invoiceGateway: noInvoiceGateway,
+    domainEventMode: input.domainEventMode,
+    ...(input.offers ? { offers: input.offers } : {}),
+  }).completePaidAndAssign({
+    originalSaleId: sale.id,
+    paymentLinkId: input.paymentLinkId,
+    amountPence: input.amountPence,
+    currency: input.currency,
+    paidAt: input.paidAt,
+  });
+  return "processed";
+}
+
+const noInvoiceGateway: InvoiceGateway = {
+  createAndFinalizeOriginalSaleInvoice: async () => {
+    throw new Error("unexpected");
+  },
+};
 
 export async function completeOriginalSaleFromStripeInvoice(
   db: Database,
@@ -330,11 +461,7 @@ export async function completeOriginalSaleFromStripeInvoice(
   await createDrizzleOriginalSaleWriter({
     db,
     uow: createDrizzleShopUnitOfWork(db, input.domainEventMode),
-    invoiceGateway: {
-      createAndFinalizeOriginalSaleInvoice: async () => {
-        throw new Error("unexpected");
-      },
-    },
+    invoiceGateway: noInvoiceGateway,
     domainEventMode: input.domainEventMode,
     ...(input.offers ? { offers: input.offers } : {}),
   }).completePaidAndAssign({
