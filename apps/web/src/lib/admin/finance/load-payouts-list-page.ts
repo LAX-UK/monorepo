@@ -2,12 +2,18 @@ import "server-only";
 
 import {
   type PayoutsListSearch,
+  type PayoutsStaffRow,
   activePayoutsView,
   payoutsListHref,
   payoutsRangeSummary,
+  payoutsSortState,
+  sortPayoutsStaffRows,
   toPayoutsStaffRows,
 } from "@/lib/admin/finance/payouts-staff-list.vm";
-import { payoutsListController } from "@/lib/admin/list-controllers/payouts-list-controller";
+import {
+  type PayoutsListQuery,
+  payoutsListController,
+} from "@/lib/admin/list-controllers/payouts-list-controller";
 import { getAdminLegalEntityById } from "@/lib/data/http/admin-legal-entities.reader";
 import { getAdminNavCounts } from "@/lib/data/http/admin-nav-counts.server";
 import { EMPTY_ADMIN_NAV_COUNTS } from "@/lib/data/http/admin-nav-counts.types";
@@ -38,9 +44,27 @@ async function sellerFilterName(
   return entity?.displayName?.trim() || null;
 }
 
+/**
+ * The payout a shared `?payout=` link names when it is not on the page shown (another page, view
+ * or filter): found by its id through the list's own search, so the panel still opens on it.
+ */
+async function payoutOffPage(
+  payoutId: string | null,
+  rows: readonly PayoutsStaffRow[],
+  query: PayoutsListQuery,
+): Promise<PayoutsStaffRow | null> {
+  if (!payoutId || rows.some((row) => row.id === payoutId)) return null;
+  const found = await payoutsListController
+    .fetchPage({ ...query, q: payoutId, offset: 0, status: undefined, legalEntityId: undefined })
+    .catch(() => null);
+  return toPayoutsStaffRows(found?.rows ?? []).find((row) => row.id === payoutId) ?? null;
+}
+
 export async function loadAdminPayoutsListPage(sp: PayoutsListSearch) {
   const query = payoutsListController.parseQuery(sp);
   const search = plainSearch(sp);
+  const sort = payoutsSortState(search.sort);
+  const openPayoutId = search.payout?.trim() || null;
 
   const [sessionUser, navCounts] = await Promise.all([
     getServerSessionUser().catch(() => null),
@@ -51,6 +75,7 @@ export async function loadAdminPayoutsListPage(sp: PayoutsListSearch) {
   const base = {
     search,
     view: activePayoutsView(search),
+    sort,
     capabilities: {
       canProcess: userHasAccessTo(role, staffRoles, PAYOUT_PROCESS_ACCESS),
       canReverse: userHasAccessTo(role, staffRoles, PAYOUT_REVERSE_ACCESS),
@@ -64,11 +89,13 @@ export async function loadAdminPayoutsListPage(sp: PayoutsListSearch) {
     const page = await payoutsListController.fetchPage(query);
     // Seller names come with the rows; only a filtered seller with no row here is looked up.
     const filterName = await sellerFilterName(query.legalEntityId, page.rows);
-    const rows = toPayoutsStaffRows(page.rows);
+    const rows = sortPayoutsStaffRows(toPayoutsStaffRows(page.rows), sort);
+    const openOffPage = await payoutOffPage(openPayoutId, rows, query);
     const { offset, limit } = query;
     return {
       ...base,
       rows,
+      openOffPage,
       summary: page.summary,
       sellerFilterName: filterName,
       loadError: null as string | null,
@@ -91,6 +118,7 @@ export async function loadAdminPayoutsListPage(sp: PayoutsListSearch) {
     return {
       ...base,
       rows: [],
+      openOffPage: null,
       summary: EMPTY_ADMIN_PAYOUT_LIST_SUMMARY,
       sellerFilterName: null,
       loadError: PAYOUTS_LOAD_ERROR as string | null,

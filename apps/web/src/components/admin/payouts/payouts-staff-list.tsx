@@ -5,6 +5,7 @@ import { PayoutQuickView } from "@/components/admin/payouts/payout-quick-view";
 import { useStaffListNavigation } from "@/components/admin/staff/use-staff-list-navigation";
 import { ExportButton } from "@/components/exports/export-button";
 import {
+  PAYOUTS_DEFAULT_SORT,
   type PayoutsListSearch,
   type PayoutsStaffRow,
   type PayoutsViewId,
@@ -13,6 +14,7 @@ import {
   payoutsFilterChips,
   payoutsListHref,
   payoutsMetrics,
+  payoutsSortHref,
   payoutsViews,
 } from "@/lib/admin/finance/payouts-staff-list.vm";
 import type { AdminPayoutListSummary } from "@/lib/data/http/admin-payouts.shared";
@@ -23,20 +25,25 @@ import {
   DataViews,
   ListPage,
   PrimaryCell,
+  type SortState,
   StaffButton,
   StaffDate,
-  type StaffLinkComponent,
   StatusBadge,
   TableSearch,
   staffButtonVariants,
+  useQueuePanel,
 } from "@auction/staff-ui";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo } from "react";
 
 export type PayoutsStaffListProps = {
   search: PayoutsListSearch;
   view: PayoutsViewId;
+  /** The sort in the URL; the server has already put the rows in this order. */
+  sort: SortState;
   rows: PayoutsStaffRow[];
+  /** The payout a `?payout=` link names when it is not among `rows`, so its panel still opens. */
+  openOffPage?: PayoutsStaffRow | null;
   summary: AdminPayoutListSummary;
   disputesOpen: number;
   capabilities: { canProcess: boolean; canReverse: boolean };
@@ -55,48 +62,27 @@ export type PayoutsStaffListProps = {
  * Bid's seller payouts on the staff list template: status views, a summary of the matching
  * payouts, the work waiting on finance, and mark paid, adjustment and reversal from each row's
  * `…` menu or the record panel, always through a confirm dialog with the amount and the seller.
- * The panel is deep-linkable with `?payout=`.
+ *
+ * Finance works through payouts one after another, so a row opens a queue panel: the payout is in
+ * the URL (`?payout=`), the panel shows its place ("3 of 12") and J and K step through the rows as
+ * they are sorted, Back closes it and Esc returns to the row. A payout has no page of its own yet,
+ * so a new tab opens the list with that payout's panel.
  */
 export function PayoutsStaffList(props: PayoutsStaffListProps) {
   const { search, rows, capabilities } = props;
   const { pending, navigate, Link: ListLink } = useStaffListNavigation();
-  const [openId, setOpenId] = useState<string | null>(
-    typeof search.payout === "string" && search.payout ? search.payout : null,
-  );
+  const panelHref = useCallback((id: string | null) => payoutPanelHref(search, id), [search]);
+  const ids = useMemo(() => rows.map((row) => row.id), [rows]);
+  const panel = useQueuePanel({
+    param: "payout",
+    ids,
+    initialId: typeof search.payout === "string" && search.payout ? search.payout : null,
+    noun: "payout",
+    hrefFor: panelHref,
+  });
   const money = usePayoutMoneyActions(capabilities);
   const q = typeof search.q === "string" ? search.q : "";
   const filtered = Boolean(search.status || search.legalEntityId || q);
-
-  // The panel opens and closes without asking the server for the list again; the URL follows.
-  const showPanel = (id: string | null) => {
-    setOpenId(id);
-    window.history.replaceState(null, "", payoutPanelHref(search, id));
-  };
-
-  const PanelLink = useMemo<StaffLinkComponent>(
-    () =>
-      function PanelLink({ href, onClick, children, prefetch: _prefetch, ...rest }) {
-        return (
-          <a
-            href={href}
-            {...rest}
-            onClick={(event) => {
-              onClick?.(event);
-              const modified = event.metaKey || event.ctrlKey || event.shiftKey || event.altKey;
-              if (event.defaultPrevented || event.button !== 0 || modified) return;
-              const id = new URL(href, "http://staff.local").searchParams.get("payout");
-              if (!id) return;
-              event.preventDefault();
-              setOpenId(id);
-              window.history.replaceState(null, "", href);
-            }}
-          >
-            {children}
-          </a>
-        );
-      },
-    [],
-  );
 
   const columns = useMemo<DataColumn<PayoutsStaffRow>[]>(
     () => [
@@ -105,10 +91,9 @@ export function PayoutsStaffList(props: PayoutsStaffListProps) {
         header: "Period",
         mobile: "title",
         sortable: true,
-        sortValue: (row) => row.periodStart,
         defaultSortDirection: "desc",
         cell: (row) => (
-          <PrimaryCell href={payoutPanelHref(search, row.id)} Link={PanelLink}>
+          <PrimaryCell href={panelHref(row.id)} Link={Link}>
             {row.period}
           </PrimaryCell>
         ),
@@ -165,7 +150,6 @@ export function PayoutsStaffList(props: PayoutsStaffListProps) {
         width: "128px",
         numeric: true,
         sortable: true,
-        sortValue: (row) => row.netPence,
         defaultSortDirection: "desc",
         mobile: "meta",
         cell: (row) => row.net,
@@ -183,7 +167,6 @@ export function PayoutsStaffList(props: PayoutsStaffListProps) {
         header: "Paid",
         width: "120px",
         sortable: true,
-        sortValue: (row) => row.paidAt,
         defaultSortDirection: "desc",
         hideBelow: "md",
         mobile: "meta",
@@ -191,7 +174,7 @@ export function PayoutsStaffList(props: PayoutsStaffListProps) {
         cell: (row) => <StaffDate value={row.paidAt} />,
       },
     ],
-    [search, PanelLink],
+    [panelHref],
   );
 
   const activeFilters = payoutsFilterChips(search, props.sellerFilterName).map((chip) => ({
@@ -199,7 +182,9 @@ export function PayoutsStaffList(props: PayoutsStaffListProps) {
     label: chip.label,
     onRemove: () => navigate(chip.clearHref),
   }));
-  const openRow = rows.find((row) => row.id === openId) ?? null;
+  const openRow =
+    rows.find((row) => row.id === panel.openId) ??
+    (props.openOffPage && props.openOffPage.id === panel.openId ? props.openOffPage : null);
 
   return (
     <>
@@ -262,14 +247,19 @@ export function PayoutsStaffList(props: PayoutsStaffListProps) {
           columns,
           data: rows,
           getRowId: (row) => row.id,
-          defaultSort: { columnId: "period", direction: "desc" },
+          defaultSort: PAYOUTS_DEFAULT_SORT,
+          sort: props.sort,
+          onSortChange: (sort) => navigate(payoutsSortHref(search, sort)),
           defaultHiddenColumns: ["transfer"],
-          onRowOpen: (row) => showPanel(row.id),
-          activeRowId: openId,
+          // The table takes over a plain click, the title link and Enter to open the queue panel;
+          // a new tab (Cmd or Ctrl, the middle button) opens the list with that payout open.
+          onRowOpen: (row) => panel.open(row.id),
+          rowHref: (row) => panelHref(row.id),
+          activeRowId: panel.openId,
           rowActions: {
             label: (row) => `Actions for payout to ${row.seller}, ${row.period}`,
             actions: (row) => [
-              { id: "open", label: "Open details", onSelect: () => showPanel(row.id) },
+              { id: "open", label: "Open details", onSelect: () => panel.open(row.id) },
               {
                 id: "seller",
                 label: "Open seller",
@@ -289,7 +279,8 @@ export function PayoutsStaffList(props: PayoutsStaffListProps) {
         row={openRow}
         canProcess={capabilities.canProcess}
         canReverse={capabilities.canReverse}
-        onClose={() => showPanel(null)}
+        onOpenChange={panel.onOpenChange}
+        queue={panel.queue}
         onMarkPaid={money.markPaid}
         onAdjust={money.adjust}
         onRetryTransfer={money.retryTransfer}
