@@ -3,6 +3,7 @@
 import { useAmlDecisionActions } from "@/components/admin/compliance/aml-decision-actions";
 import { AmlQuickView } from "@/components/admin/compliance/aml-quick-view";
 import { useStaffListNavigation } from "@/components/admin/staff/use-staff-list-navigation";
+import { useStaffQueue } from "@/components/admin/staff/use-staff-queue";
 import {
   type AmlCapabilities,
   type AmlListSearch,
@@ -10,11 +11,12 @@ import {
   amlAttention,
   amlListHref,
   amlMetrics,
+  amlPanelHref,
 } from "@/lib/admin/compliance/aml-staff-list.vm";
 import type { AdminAmlListSummary } from "@/lib/data/http/compliance-aml.shared";
 import { type DataColumn, ListPage, PrimaryCell, StaffDate, StatusBadge } from "@auction/staff-ui";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo } from "react";
 
 const COUNT = new Intl.NumberFormat("en-GB");
 
@@ -40,12 +42,13 @@ export type AmlStaffListProps = {
  * Bid's AML screening queue on the staff list template: the pending watchlist matches, with the
  * two-stage maker-checker in each row's `…` menu and the record panel. An analyst records a
  * triage recommendation; a different MLRO then clears or blocks. Every decision opens a confirm
- * dialog naming the client.
+ * dialog naming the client. The panel is a work queue: its address is `?screening=`, kept in step
+ * as it opens and as J and K move to the next screening.
  */
 export function AmlStaffList(props: AmlStaffListProps) {
   const { search, rows, capabilities } = props;
   const { pending, navigate, Link: ListLink } = useStaffListNavigation();
-  const [openId, setOpenId] = useState<string | null>(props.selectedId);
+  const hrefFor = useCallback((id: string | null) => amlPanelHref(search, id), [search]);
   const aml = useAmlDecisionActions(capabilities);
 
   const columns = useMemo<DataColumn<AmlStaffRow>[]>(
@@ -55,11 +58,7 @@ export function AmlStaffList(props: AmlStaffListProps) {
         header: "Client",
         mobile: "title",
         cell: (row) => (
-          <PrimaryCell
-            href={`/admin/clients/${encodeURIComponent(row.userId)}`}
-            Link={Link}
-            secondary={row.categories}
-          >
+          <PrimaryCell href={hrefFor(row.id)} Link={Link} secondary={row.categories}>
             {row.client}
           </PrimaryCell>
         ),
@@ -112,12 +111,20 @@ export function AmlStaffList(props: AmlStaffListProps) {
         cell: (row) => <StaffDate value={row.screenedAt} />,
       },
     ],
-    [],
+    [hrefFor],
   );
 
-  const openRow =
-    rows.find((row) => row.id === openId) ??
-    (props.selected && props.selected.id === openId ? props.selected : null);
+  const queue = useStaffQueue({
+    param: "screening",
+    rows,
+    getId: screeningId,
+    initialId: props.selectedId,
+    hrefFor,
+    localSort: { columns, defaultSort: { columnId: "screened", direction: "asc" } },
+    selected: props.selected,
+    noun: "screening",
+  });
+  const openRow = queue.record;
 
   return (
     <>
@@ -150,17 +157,14 @@ export function AmlStaffList(props: AmlStaffListProps) {
         }}
         table={{
           columns,
-          data: rows,
-          getRowId: (row) => row.id,
+          ...queue.table,
+          getRowId: screeningId,
           // The first cell carries a second line, which needs 44px rows.
           defaultDensity: "comfortable",
-          defaultSort: { columnId: "screened", direction: "asc" },
-          onRowOpen: (row) => setOpenId(row.id),
-          activeRowId: openId,
           rowActions: {
             label: (row) => `Actions for screening ${row.client}`,
             actions: (row) => [
-              { id: "open", label: "Open details", onSelect: () => setOpenId(row.id) },
+              { id: "open", label: "Open details", onSelect: () => queue.open(row.id) },
               {
                 id: "client",
                 label: "Open client",
@@ -180,7 +184,7 @@ export function AmlStaffList(props: AmlStaffListProps) {
       <AmlQuickView
         row={openRow}
         capabilities={capabilities}
-        onClose={() => setOpenId(null)}
+        panelProps={queue.panelProps}
         onTriage={aml.triage}
         onDecide={aml.decide}
         decisionActions={openRow ? aml.actionsFor(openRow) : []}
@@ -188,4 +192,8 @@ export function AmlStaffList(props: AmlStaffListProps) {
       {aml.dialogs}
     </>
   );
+}
+
+function screeningId(row: AmlStaffRow): string {
+  return row.id;
 }

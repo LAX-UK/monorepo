@@ -1,13 +1,17 @@
 import type { AdminCategoriesListSummary, AdminCategory } from "@auction/types";
 import { describe, expect, it } from "vitest";
 import {
+  CATEGORIES_DEFAULT_SORT,
   assignmentsLabel,
   categoriesActiveView,
   categoriesListHref,
   categoriesMetrics,
   categoriesRangeSummary,
+  categoriesSortHref,
+  categoriesSortState,
   categoriesViews,
-  categoryPanelHref,
+  categoryPanelRedirect,
+  sortCategoriesRows,
   toCategoriesStaffRows,
 } from "./categories-staff-list.vm";
 
@@ -93,12 +97,51 @@ describe("categories staff list view model", () => {
     expect(categoriesMetrics({ ...summary, mostUsedCategory: null })).toHaveLength(3);
   });
 
-  it("builds list and panel URLs that return to the first page", () => {
+  it("builds list URLs that return to the first page, without an old panel param", () => {
     expect(categoriesListHref({ offset: "50", category: "c1" }, { q: "vase" })).toBe(
       "/admin/categories?q=vase",
     );
-    expect(categoryPanelHref({ q: "vase" }, "c1")).toBe("/admin/categories?q=vase&category=c1");
-    expect(categoryPanelHref({ q: "vase", category: "c1" }, null)).toBe("/admin/categories?q=vase");
+  });
+
+  it("sends an old panel link to the category's page, still in its list", () => {
+    expect(categoryPanelRedirect({ q: "vase", sort: "-lots", category: "c1" })).toBe(
+      "/admin/categories/c1?list=q%3Dvase%26sort%3D-lots",
+    );
+    expect(categoryPanelRedirect({ category: "c1", new: "1" })).toBe("/admin/categories/c1");
+    expect(categoryPanelRedirect({ q: "vase" })).toBeNull();
+  });
+
+  it("keeps the sort in the URL, leaving out the taxonomy order", () => {
+    expect(categoriesSortState(undefined)).toEqual(CATEGORIES_DEFAULT_SORT);
+    expect(categoriesSortState("-lots")).toEqual({ columnId: "lots", direction: "desc" });
+    expect(categoriesSortState("status")).toEqual(CATEGORIES_DEFAULT_SORT);
+    expect(
+      categoriesSortHref({ q: "vase", offset: "50" }, { columnId: "lots", direction: "desc" }),
+    ).toBe("/admin/categories?q=vase&sort=-lots");
+    expect(categoriesSortHref({ sort: "-lots" }, CATEGORIES_DEFAULT_SORT)).toBe(
+      "/admin/categories",
+    );
+  });
+
+  it("sorts the loaded rows by the URL's sort, ties in taxonomy order", () => {
+    const rows = toCategoriesStaffRows([
+      category({ id: "a", usage: { lots: 2, sales: 1, submissions: 0, interests: 0, total: 3 } }),
+      category({ id: "b", usage: { lots: 9, sales: 1, submissions: 0, interests: 0, total: 10 } }),
+      category({
+        id: "c",
+        updatedAt: new Date("2026-03-01T10:00:00.000Z"),
+        usage: { lots: 2, sales: 5, submissions: 0, interests: 0, total: 7 },
+      }),
+    ]);
+    const ids = (sort: string) =>
+      sortCategoriesRows(rows, categoriesSortState(sort)).map((row) => row.id);
+    expect(ids("")).toEqual(["a", "b", "c"]);
+    expect(ids("-category")).toEqual(["c", "b", "a"]);
+    expect(ids("-lots")).toEqual(["b", "a", "c"]);
+    expect(ids("lots")).toEqual(["a", "c", "b"]);
+    expect(ids("-sales")).toEqual(["c", "a", "b"]);
+    expect(ids("-updated")).toEqual(["c", "a", "b"]);
+    expect(rows.map((row) => row.id)).toEqual(["a", "b", "c"]);
   });
 
   it("summarises the range with the right plural", () => {

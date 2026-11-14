@@ -211,11 +211,18 @@ export function amlListHref(
   patch: Record<string, string | number | null | undefined>,
 ): string {
   const base: AmlListSearch = { ...search };
-  for (const key of ["error", "success"]) delete base[key];
+  for (const key of ["error", "success", "screening"]) delete base[key];
   return buildListHref(AML_STAFF_LIST_PATH, base, {
     ...("offset" in patch ? {} : { offset: null }),
     ...patch,
   });
+}
+
+/** The list with a screening's panel open (`?screening=`), or closed for null; keeps the page. */
+export function amlPanelHref(search: AmlListSearch, screeningId: string | null): string {
+  const base: AmlListSearch = { ...search };
+  for (const key of ["error", "success"]) delete base[key];
+  return buildListHref(AML_STAFF_LIST_PATH, base, { screening: screeningId });
 }
 
 /** The screening panel's activity, newest first. */

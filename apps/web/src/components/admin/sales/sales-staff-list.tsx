@@ -1,20 +1,18 @@
 "use client";
 
 import { AtgListMarker } from "@/components/admin/atg/selling-platform-badge";
-import { SaleQuickView } from "@/components/admin/sales/sale-quick-view";
 import { type SaleActionTarget, useSaleActions } from "@/components/admin/sales/use-sale-actions";
 import { StaffBulkOperations } from "@/components/admin/staff/staff-bulk-operations";
-import { useListPanel } from "@/components/admin/staff/use-list-panel";
 import { useStaffListNavigation } from "@/components/admin/staff/use-staff-list-navigation";
 import { ExportButton } from "@/components/exports/export-button";
 import { getSaleBulkOperations } from "@/lib/admin/bulk-ops/sales";
-import { adminSaleDetailTabHref } from "@/lib/admin/catalog-route-helpers";
+import { adminSaleDetailTabHref, adminSaleSetupHref } from "@/lib/admin/catalog-route-helpers";
+import { listQueryOf } from "@/lib/admin/list-record";
 import {
   SALES_DEFAULT_SORT,
   SALE_DELIVERY_FILTERS,
   type SalesListSearch,
   type SalesStaffRow,
-  salePanelHref,
   salesListHref,
   salesSortHref,
   salesSortState,
@@ -33,6 +31,7 @@ import {
   StaffDate,
   StatusBadge,
   TableSearch,
+  recordHrefInList,
   staffButtonVariants,
 } from "@auction/staff-ui";
 import { Plus } from "lucide-react";
@@ -68,20 +67,20 @@ export function saleActionTarget(row: SalesStaffRow): SaleActionTarget {
 
 /**
  * Bid's sales on the staff list template: lifecycle views with counts, search, a delivery
- * filter, server sorting by start or newest, bulk publish, cancel and delete for roles that may,
- * and a record panel deep-linked with `?sale=`. Every row's `…` menu holds the sale's actions,
- * each confirmed first.
+ * filter, server sorting by start or newest, and bulk publish, cancel and delete for roles that
+ * may. A row opens the sale's page, which keeps this list's query for Previous and Next; Back
+ * returns to the list as it was. Every row's `…` menu holds the sale's actions, each confirmed
+ * first.
  */
 export function SalesStaffList(props: SalesStaffListProps) {
   const { rows, search } = props;
   const { pending, navigate, Link: ListLink } = useStaffListNavigation();
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const panelHref = useCallback((id: string | null) => salePanelHref(search, id), [search]);
-  const panel = useListPanel({
-    param: "sale",
-    initialId: typeof search.sale === "string" ? search.sale : null,
-    hrefFor: panelHref,
-  });
+  const listQuery = useMemo(() => listQueryOf(search, ["sale"]), [search]);
+  const recordHref = useCallback(
+    (row: SalesStaffRow) => recordHrefInList(row.href, listQuery),
+    [listQuery],
+  );
   const saleActions = useSaleActions({ canManageSales: props.canManageSales });
   const operations = useMemo(
     () => getSaleBulkOperations(props.canManageSales),
@@ -98,8 +97,8 @@ export function SalesStaffList(props: SalesStaffListProps) {
         mobile: "title",
         cell: (row) => (
           <PrimaryCell
-            href={panelHref(row.id)}
-            Link={panel.PanelLink}
+            href={recordHref(row)}
+            Link={Link}
             thumbnail={{ src: row.coverImageUrl, missingLabel: "No cover image yet" }}
             secondary={row.context}
           >
@@ -163,7 +162,7 @@ export function SalesStaffList(props: SalesStaffListProps) {
         cell: (row) => <StaffDate value={row.addedAt} />,
       },
     ],
-    [panelHref, panel.PanelLink],
+    [recordHref],
   );
 
   const activeFilters = props.filterChips.map((chip) => ({
@@ -171,7 +170,6 @@ export function SalesStaffList(props: SalesStaffListProps) {
     label: chip.label,
     onRemove: () => navigate(chip.clearHref),
   }));
-  const openRow = rows.find((row) => row.id === panel.openId) ?? null;
 
   return (
     <>
@@ -259,8 +257,7 @@ export function SalesStaffList(props: SalesStaffListProps) {
           defaultSort: SALES_DEFAULT_SORT,
           sort: salesSortState(typeof search.sort === "string" ? search.sort : undefined),
           onSortChange: (sort) => navigate(salesSortHref(search, sort)),
-          onRowOpen: (row) => panel.show(row.id),
-          activeRowId: panel.openId,
+          rowHref: recordHref,
           ...(props.canManageSales
             ? {
                 selectedIds: selected,
@@ -279,11 +276,13 @@ export function SalesStaffList(props: SalesStaffListProps) {
           rowActions: {
             label: (row) => `Actions for sale ${row.title}`,
             actions: (row) => [
-              { id: "open", label: "Open details", onSelect: () => panel.show(row.id) },
-              { id: "page", label: "Open sale page", href: row.href },
+              { id: "page", label: "Open sale page", href: recordHref(row) },
               { id: "lots", label: "Open lots", href: adminSaleDetailTabHref(row.id, "lots") },
               ...(props.canManageSales && row.editHref
                 ? [{ id: "edit", label: "Edit sale", href: row.editHref }]
+                : []),
+              ...(props.canManageSales && row.statusCode === "draft"
+                ? [{ id: "setup", label: "Continue setup", href: adminSaleSetupHref(row.id) }]
                 : []),
               {
                 id: "site",
@@ -299,12 +298,6 @@ export function SalesStaffList(props: SalesStaffListProps) {
           onChange: (size) => navigate(salesListHref(search, { limit: size })),
         }}
         pagination={props.pagination}
-      />
-      <SaleQuickView
-        row={openRow}
-        canManageSales={props.canManageSales}
-        onClose={() => panel.show(null)}
-        actions={openRow ? saleActions.actionsFor(saleActionTarget(openRow)) : []}
       />
       {saleActions.dialogs}
     </>

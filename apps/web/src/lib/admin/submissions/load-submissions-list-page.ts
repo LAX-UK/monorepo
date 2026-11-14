@@ -131,3 +131,14 @@ export async function loadAdminSubmissionsListPage(input: {
     activeFilterChips,
   };
 }
+
+/**
+ * The ids of the submissions the list shows for this query, in its order: what a submission
+ * page opened from the list pages through (Previous and Next). The same query as the list,
+ * without its summary, names and agreements.
+ */
+export async function loadSubmissionsListIds(sp: SubmissionsListSearchParams): Promise<string[]> {
+  const { query } = buildSubmissionsListPageModel(sp);
+  const { rows } = await submissionsListController.fetch(query);
+  return rows.map((row) => row.id);
+}

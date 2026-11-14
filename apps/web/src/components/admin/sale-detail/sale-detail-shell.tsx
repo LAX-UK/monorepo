@@ -5,6 +5,7 @@ import { AdminQrCodeButton } from "@/components/admin/qr-code/admin-qr-code-butt
 import { SaleDetailReadinessProvider } from "@/components/admin/sale-detail/sale-detail-readiness-context";
 import { SaleDetailSectionNav } from "@/components/admin/sale-detail/sale-detail-section-nav";
 import { type SaleActionTarget, useSaleActions } from "@/components/admin/sales/use-sale-actions";
+import { ListRecordPager } from "@/components/admin/staff/list-record-pager";
 import { StaffEditableTitle } from "@/components/admin/staff/staff-editable-title";
 import {
   isPalettePinned,
@@ -23,6 +24,7 @@ import {
   saleDetailCanPublish,
 } from "@/lib/admin/compute-sale-detail-readiness";
 import type { ConnectRequiredByLotId } from "@/lib/admin/connect-readiness";
+import type { ListRecordPagerModel } from "@/lib/admin/list-record";
 import { saleSetupResumeHref } from "@/lib/admin/sale-setup";
 import { buildSaleDetailNav } from "@/lib/admin/sales/build-sale-detail-nav";
 import { isSaleLiveish, venueOneLiner } from "@/lib/admin/sales/sale-detail-helpers";
@@ -74,6 +76,8 @@ type Props = {
   selling?: AtgSaleSellingSummary | null;
   linkedEventSlug?: string | null;
   linkedEventTitle?: string | null;
+  /** Previous and Next through the list the sale was opened from. */
+  pager?: ListRecordPagerModel | null;
   children: ReactNode;
 };
 
@@ -97,6 +101,7 @@ export function SaleDetailShell({
   selling = null,
   linkedEventSlug = null,
   linkedEventTitle = null,
+  pager = null,
   children,
 }: Props) {
   const router = useRouter();
@@ -265,6 +270,7 @@ export function SaleDetailShell({
   return (
     <>
       <DetailPage
+        {...(pager ? { pager: <ListRecordPager pager={pager} noun="sale" /> } : {})}
         breadcrumbs={
           <StaffBreadcrumbs
             Link={NextLink}

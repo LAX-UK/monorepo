@@ -19,7 +19,7 @@ export function StatGrid({
   label,
   period,
   Link,
-  columns = 4,
+  columns,
   narrowColumns = 2,
   className,
 }: {
@@ -30,20 +30,21 @@ export function StatGrid({
   /** Needed when items carry an `href`. */
   Link?: LinkComponent;
   /**
-   * Cells per row from the medium breakpoint up. Match it to the number of items so the last row
-   * has no empty cell. Default 4.
+   * Cells per row from the medium breakpoint up. Defaults to the number of items (2 to 4), so a
+   * strip of 3 stats has 3 columns and no empty cell; 5 or more items wrap at 4.
    */
   columns?: keyof typeof WIDE_COLUMNS;
   /** Cells per row below the medium breakpoint; 1 gives long values (dates) the full width. Default 2. */
   narrowColumns?: keyof typeof NARROW_COLUMNS;
   className?: string;
 }) {
+  const wide = columns ?? (Math.min(Math.max(items.length, 2), 4) as keyof typeof WIDE_COLUMNS);
   const grid = (
     <div
       className={cn(
         "grid gap-px overflow-hidden rounded-staff-lg border border-staff-line bg-staff-line-subtle",
         NARROW_COLUMNS[narrowColumns],
-        WIDE_COLUMNS[columns],
+        WIDE_COLUMNS[wide],
       )}
     >
       {items.map((item) => (

@@ -4,7 +4,7 @@ import * as React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { PrimaryCell } from "./cells.js";
 import { DataTable, type DataTableProps } from "./data-table.js";
-import { LIST_RETURN_STATE_KEY } from "./list-return.js";
+import { LIST_RETURN_STATE_KEY, LIST_RETURN_STORAGE_KEY } from "./list-return.js";
 import type { DataColumn } from "./types.js";
 
 type Row = { id: string; name: string };
@@ -202,6 +202,8 @@ describe("DataTable rowHref with a queue panel", () => {
 });
 
 describe("Back to a list", () => {
+  beforeEach(() => window.sessionStorage.removeItem(LIST_RETURN_STORAGE_KEY));
+
   it("restores the scroll, focuses the row that was opened and marks it briefly", () => {
     vi.useFakeTimers();
     try {
@@ -246,6 +248,31 @@ describe("Back to a list", () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+
+  it("still focuses the row when the router rewrote the list's entry after Back", () => {
+    window.history.replaceState({ router: "kept" }, "", "/people?q=ada");
+    const scrollTo = vi.spyOn(window, "scrollTo").mockImplementation(() => {});
+    const first = setup();
+    fireEvent.click(first.noteCell(2));
+    first.grid.remove();
+
+    // Back to the list; the router fetches the page again and writes its own state, without
+    // the mark, before the list mounts.
+    window.history.pushState(null, "", "/people/c");
+    window.history.replaceState({ router: "fresh" }, "", "/people?q=ada");
+    window.dispatchEvent(new PopStateEvent("popstate", { state: { router: "fresh" } }));
+    const offsetParent = vi
+      .spyOn(HTMLElement.prototype, "offsetParent", "get")
+      .mockReturnValue(document.body);
+
+    const back = setup();
+    expect(back.bodyRows[2]).toHaveFocus();
+    expect(back.bodyRows[2]).toHaveAttribute("data-staff-returned");
+    // Used once.
+    expect(window.sessionStorage.getItem(LIST_RETURN_STORAGE_KEY)).toBeNull();
+    offsetParent.mockRestore();
+    scrollTo.mockRestore();
   });
 
   it("starts fresh when the list is reached another way than Back", () => {

@@ -4,6 +4,7 @@ import { adminLotListPath } from "@/lib/admin/catalog-routes";
 import type { AdminLotTableRow } from "@/lib/admin/catalog/lot-table-row";
 import { lotLensHref } from "@/lib/admin/catalog/lots-lenses";
 import type { CatalogActiveFilterChip, CatalogSegmentItem } from "@/lib/admin/catalog/types";
+import { panelParamRedirect } from "@/lib/admin/list-record";
 import { staffStatus } from "@/lib/admin/staff-kit-status";
 import type { AdminKpiTrendBundle } from "@/lib/data/http/admin-kpi-trends.server";
 import type { AdminLotsListSummary } from "@/lib/data/http/admin-lots-summary.server";
@@ -118,11 +119,12 @@ export function lotsListHref(
   return buildListHref(adminLotListPath(), base, { offset: null, ...patch });
 }
 
-/** The list with a lot's panel open (`?lot=`), or closed for null; keeps the page. */
-export function lotPanelHref(current: LotsListSearch, lotId: string | null): string {
-  const base: LotsListSearch = { ...current };
-  for (const key of ["error", "success", "period"]) delete base[key];
-  return buildListHref(adminLotListPath(), base, { lot: lotId });
+/**
+ * An old panel link (`/admin/lots?lot=ID`) opens the lot's page now, still in the list it named;
+ * null when there is no `?lot=`.
+ */
+export function lotPanelRedirect(current: LotsListSearch): string | null {
+  return panelParamRedirect(current, "lot", adminLotHref);
 }
 
 /** The lenses as view tabs, each with its count. */

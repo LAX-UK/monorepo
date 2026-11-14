@@ -1,15 +1,16 @@
 "use client";
 
-import { CategoryQuickView } from "@/components/admin/categories/category-quick-view";
 import { useCategoryActions } from "@/components/admin/categories/use-category-actions";
-import { useListPanel } from "@/components/admin/staff/use-list-panel";
 import { useStaffListNavigation } from "@/components/admin/staff/use-staff-list-navigation";
 import {
+  CATEGORIES_DEFAULT_SORT,
   type CategoriesListSearch,
   type CategoriesStaffRow,
   categoriesListHref,
-  categoryPanelHref,
+  categoriesSortHref,
+  categoriesSortState,
 } from "@/lib/admin/categories/categories-staff-list.vm";
+import { listQueryOf } from "@/lib/admin/list-record";
 import { useViewerCapabilities } from "@/lib/auth/capabilities/viewer-capabilities-context";
 import { CATEGORIES_ACCESS } from "@/lib/navigation/staff-nav-access";
 import {
@@ -23,6 +24,7 @@ import {
   StaffDate,
   StatusBadge,
   TableSearch,
+  recordHrefInList,
   searchChipLabel,
 } from "@auction/staff-ui";
 import { Plus } from "lucide-react";
@@ -45,18 +47,19 @@ const count = new Intl.NumberFormat("en-GB");
 
 /**
  * Bid's catalogue taxonomy on the staff list template: active or all categories with counts,
- * search, and a record panel deep-linked with `?category=`. Every row's `…` menu opens the
- * category, its page and editor, and archives or deletes it after a confirmation.
+ * search, and the sort in the URL (`?sort=`; the page sorts the rows it loaded, since the API
+ * returns taxonomy order only). A row opens the category's page, which keeps this list's query
+ * for Previous and Next; Back returns to the list as it was. Every row's `…` menu opens the
+ * category's page and editor, and archives or deletes it after a confirmation.
  */
 export function CategoriesStaffList(props: CategoriesStaffListProps) {
   const { rows, search } = props;
   const { pending, navigate, Link: ListLink } = useStaffListNavigation();
-  const panelHref = useCallback((id: string | null) => categoryPanelHref(search, id), [search]);
-  const panel = useListPanel({
-    param: "category",
-    initialId: typeof search.category === "string" ? search.category : null,
-    hrefFor: panelHref,
-  });
+  const listQuery = useMemo(() => listQueryOf(search, ["category", "new"]), [search]);
+  const recordHref = useCallback(
+    (row: CategoriesStaffRow) => recordHrefInList(row.href, listQuery),
+    [listQuery],
+  );
   const categoryActions = useCategoryActions();
   // Read-only staff see the list without creating, editing, archiving or deleting.
   const canManage = useViewerCapabilities().can(CATEGORIES_ACCESS);
@@ -70,9 +73,8 @@ export function CategoriesStaffList(props: CategoriesStaffListProps) {
         mobile: "title",
         // Taxonomy order: each parent, then its sub-categories, as the API returns them.
         sortable: true,
-        sortValue: (row) => rows.indexOf(row),
         cell: (row) => (
-          <PrimaryCell href={panelHref(row.id)} Link={panel.PanelLink} secondary={row.context}>
+          <PrimaryCell href={recordHref(row)} Link={Link} secondary={row.context}>
             {row.name}
           </PrimaryCell>
         ),
@@ -89,7 +91,6 @@ export function CategoriesStaffList(props: CategoriesStaffListProps) {
         id: "lots",
         header: "Lots",
         sortable: true,
-        sortValue: (row) => row.lots,
         defaultSortDirection: "desc",
         width: "88px",
         numeric: true,
@@ -100,7 +101,6 @@ export function CategoriesStaffList(props: CategoriesStaffListProps) {
         id: "sales",
         header: "Sales",
         sortable: true,
-        sortValue: (row) => row.sales,
         defaultSortDirection: "desc",
         width: "88px",
         numeric: true,
@@ -112,7 +112,6 @@ export function CategoriesStaffList(props: CategoriesStaffListProps) {
         id: "submissions",
         header: "Submissions",
         sortable: true,
-        sortValue: (row) => row.submissions,
         defaultSortDirection: "desc",
         width: "120px",
         numeric: true,
@@ -124,7 +123,6 @@ export function CategoriesStaffList(props: CategoriesStaffListProps) {
         id: "updated",
         header: "Updated",
         sortable: true,
-        sortValue: (row) => row.updatedAt,
         defaultSortDirection: "desc",
         width: "120px",
         hideBelow: "xl",
@@ -133,10 +131,8 @@ export function CategoriesStaffList(props: CategoriesStaffListProps) {
         cell: (row) => <StaffDate value={row.updatedAt} />,
       },
     ],
-    [panelHref, panel.PanelLink, rows],
+    [recordHref],
   );
-
-  const openRow = rows.find((row) => row.id === panel.openId) ?? null;
 
   return (
     <>
@@ -209,14 +205,15 @@ export function CategoriesStaffList(props: CategoriesStaffListProps) {
           getRowId: (row) => row.id,
           defaultDensity: "comfortable",
           defaultHiddenColumns: ["updated"],
-          defaultSort: { columnId: "category", direction: "asc" },
-          onRowOpen: (row) => panel.show(row.id),
-          activeRowId: panel.openId,
+          defaultSort: CATEGORIES_DEFAULT_SORT,
+          // Sorted on the server from the URL, so Back and a shared link keep the order.
+          sort: categoriesSortState(search.sort),
+          onSortChange: (sort) => navigate(categoriesSortHref(search, sort)),
+          rowHref: recordHref,
           rowActions: {
             label: (row) => `Actions for category ${row.name}`,
             actions: (row) => [
-              { id: "open", label: "Open details", onSelect: () => panel.show(row.id) },
-              { id: "page", label: "Open category page", href: row.href },
+              { id: "page", label: "Open category page", href: recordHref(row) },
               ...(canManage
                 ? [
                     { id: "edit", label: "Edit category", href: row.editHref },
@@ -231,11 +228,6 @@ export function CategoriesStaffList(props: CategoriesStaffListProps) {
           onChange: (size) => navigate(categoriesListHref(search, { limit: size })),
         }}
         pagination={props.pagination}
-      />
-      <CategoryQuickView
-        row={openRow}
-        onClose={() => panel.show(null)}
-        actions={openRow && canManage ? categoryActions.actionsFor(openRow) : []}
       />
       {categoryActions.dialogs}
     </>

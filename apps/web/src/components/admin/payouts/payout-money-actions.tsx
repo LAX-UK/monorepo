@@ -1,5 +1,6 @@
 "use client";
 
+import { PayoutFailureReason } from "@/components/admin/payouts/payout-failure-reason";
 import {
   adminAddPayoutAdjustmentResultAction,
   adminAdoptBlockedPayoutTransferResultAction,
@@ -324,7 +325,7 @@ export function usePayoutMoneyActions({
             <PayoutFacts payout={pending.payout} />
             {pending.payout.failureReason ? (
               <Notice tone="danger" title="Why it failed">
-                {pending.payout.failureReason}
+                <PayoutFailureReason reason={pending.payout.failureReason} />
               </Notice>
             ) : null}
           </>
@@ -373,7 +374,7 @@ export function usePayoutMoneyActions({
             <PayoutFacts payout={pending.payout} />
             {pending.payout.failureReason ? (
               <Notice tone="warning" title="Why it is blocked">
-                {pending.payout.failureReason}
+                <PayoutFailureReason reason={pending.payout.failureReason} />
               </Notice>
             ) : null}
             <Field label="Stripe transfer ID">
@@ -432,7 +433,7 @@ export function usePayoutMoneyActions({
             <PayoutFacts payout={pending.payout} />
             {pending.payout.failureReason ? (
               <Notice tone="warning" title="Why it is blocked">
-                {pending.payout.failureReason}
+                <PayoutFailureReason reason={pending.payout.failureReason} />
               </Notice>
             ) : null}
             <div className="flex items-start gap-2 text-staff-fg text-sm">

@@ -1,8 +1,16 @@
 import { buildListHref } from "@/lib/admin/admin-list-params";
 import { flattenCategoryTaxonomyRows } from "@/lib/admin/categories/category-taxonomy-rows";
 import { isoDate } from "@/lib/admin/iso-date";
+import { panelParamRedirect } from "@/lib/admin/list-record";
 import { staffStatus } from "@/lib/admin/staff-kit-status";
-import type { Metric, DataView as StaffDataView, StatusPresentation } from "@auction/staff-ui";
+import {
+  type Metric,
+  type SortState,
+  type DataView as StaffDataView,
+  type StatusPresentation,
+  decodeSort,
+  encodeSort,
+} from "@auction/staff-ui";
 import type { AdminCategoriesListSummary, AdminCategory } from "@auction/types";
 
 export const CATEGORIES_LIST_PATH = "/admin/categories";
@@ -64,7 +72,7 @@ export function toCategoriesStaffRows(categories: readonly AdminCategory[]): Cat
     hasHeroImage: Boolean(category.heroImageKey),
     updatedAt: isoDate(category.updatedAt),
     createdAt: isoDate(category.createdAt),
-    href: `${CATEGORIES_LIST_PATH}/${category.id}`,
+    href: adminCategoryHref(category.id),
     editHref: `${CATEGORIES_LIST_PATH}/${category.id}/edit`,
     canDelete: category.usage.total === 0,
   }));
@@ -80,11 +88,63 @@ export function categoriesListHref(
   return buildListHref(CATEGORIES_LIST_PATH, base, { offset: null, ...patch });
 }
 
-/** The list with a category's panel open (`?category=`), or closed for null; keeps the page. */
-export function categoryPanelHref(current: CategoriesListSearch, id: string | null): string {
-  const base: CategoriesListSearch = { ...current };
-  for (const key of ["error", "success", "new"]) delete base[key];
-  return buildListHref(CATEGORIES_LIST_PATH, base, { category: id });
+/** A category's page. */
+export function adminCategoryHref(categoryId: string): string {
+  return `${CATEGORIES_LIST_PATH}/${categoryId}`;
+}
+
+/**
+ * An old panel link (`/admin/categories?category=ID`) opens the category's page now, still in
+ * the list it named; null when there is no `?category=`.
+ */
+export function categoryPanelRedirect(current: CategoriesListSearch): string | null {
+  const { new: _new, ...rest } = current;
+  return panelParamRedirect(rest, "category", adminCategoryHref);
+}
+
+/** Taxonomy order: each parent, then its sub-categories, as the API returns them. */
+export const CATEGORIES_DEFAULT_SORT: SortState = { columnId: "category", direction: "asc" };
+
+/** What each sortable column sorts by; the category column keeps the taxonomy order. */
+const CATEGORY_SORT_VALUES: Record<string, ((row: CategoriesStaffRow) => number | string) | null> =
+  {
+    category: null,
+    lots: (row) => row.lots,
+    sales: (row) => row.sales,
+    submissions: (row) => row.submissions,
+    updated: (row) => row.updatedAt,
+  };
+
+/** The sort in the URL (`?sort=-lots`); the taxonomy order when it names no sortable column. */
+export function categoriesSortState(sort: string | string[] | undefined): SortState {
+  const decoded = decodeSort(typeof sort === "string" ? sort : sort?.[0]);
+  return decoded && decoded.columnId in CATEGORY_SORT_VALUES ? decoded : CATEGORIES_DEFAULT_SORT;
+}
+
+/** The list sorted by a column; the default order is left out of the URL. */
+export function categoriesSortHref(current: CategoriesListSearch, sort: SortState): string {
+  const isDefault =
+    sort.columnId === CATEGORIES_DEFAULT_SORT.columnId &&
+    sort.direction === CATEGORIES_DEFAULT_SORT.direction;
+  return categoriesListHref(current, { sort: isDefault ? null : encodeSort(sort) });
+}
+
+/**
+ * The page's rows in the URL's sort. The API returns categories in taxonomy order only, so the
+ * page sorts the rows it loaded; ties keep the taxonomy order in both directions.
+ */
+export function sortCategoriesRows(
+  rows: readonly CategoriesStaffRow[],
+  sort: SortState,
+): CategoriesStaffRow[] {
+  const value = CATEGORY_SORT_VALUES[sort.columnId];
+  if (!value) return sort.direction === "desc" ? [...rows].reverse() : [...rows];
+  const sign = sort.direction === "desc" ? -1 : 1;
+  return [...rows].sort((a, b) => {
+    const x = value(a);
+    const y = value(b);
+    return x < y ? -sign : x > y ? sign : 0;
+  });
 }
 
 /** Active categories, or every category with the archived ones; counts when the summary loaded. */

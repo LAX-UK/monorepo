@@ -223,10 +223,15 @@ describe("PayoutsStaffList queue panel", () => {
     expect(
       within(await screen.findByRole("dialog")).queryByRole("link", { name: "Open full page" }),
     ).toBeNull();
-    expect(within(dialog()).getByRole("link", { name: "Open seller" })).toHaveAttribute(
-      "href",
-      "/admin/legal-entities/entity_2",
+    // Another record's link is not in the header: it is in the `…` menu.
+    expect(within(dialog()).queryByRole("link", { name: "Open seller" })).toBeNull();
+    fireEvent.keyDown(
+      within(dialog()).getByRole("button", { name: /^More actions for the payout to/ }),
+      { key: "Enter" },
     );
+    expect(
+      within(screen.getByRole("menu")).getByRole("menuitem", { name: "Open seller" }),
+    ).toHaveAttribute("href", "/admin/legal-entities/entity_2");
   });
 
   it("sorts in the URL, so the queue steps in the order shown", () => {

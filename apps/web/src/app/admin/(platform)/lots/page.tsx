@@ -3,6 +3,7 @@ import { buildListHref } from "@/lib/admin/admin-list-params";
 import { categoryPickerOptions } from "@/lib/admin/catalog/category-picker-options";
 import { loadAdminLotsListPage } from "@/lib/admin/lots/load-lots-list-page";
 import {
+  lotPanelRedirect,
   lotsAttention,
   lotsFilterChips,
   lotsListHref,
@@ -38,6 +39,9 @@ export default async function AdminLotsPage({
   const role = user.role as UserRole;
   const staffRoles = user.staffRoles;
   const sp = await searchParams;
+  // The lot panel is gone: an old shared `?lot=` link opens the lot's page.
+  const panelRedirect = lotPanelRedirect(sp);
+  if (panelRedirect) redirect(panelRedirect);
   if (sp.view === "pipeline") {
     redirect(buildListHref("/admin/lots", sp, { view: "", offset: 0 }));
   }

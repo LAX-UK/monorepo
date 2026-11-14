@@ -48,6 +48,8 @@ export type OnboardingStaffRow = {
   title: string;
   /** Under the title: the KYC provider, or what the document is. */
   secondary: string | null;
+  /** The client's email, for the panel header; null when the item has none. */
+  email: string | null;
   status: StatusPresentation | null;
   /** When it started waiting: created, or uploaded for a document. */
   since: string;
@@ -58,7 +60,98 @@ export type OnboardingStaffRow = {
   href: string;
   /** "Open legal entity", "Review artist": what the record page is for. */
   hrefLabel: string;
+  /** What holds the item up and what staff do next, for the record panel. */
+  nextStep: OnboardingNextStep;
 };
+
+/** Why an item is in its queue, who it waits on, and the step that moves it on. */
+export type OnboardingNextStep = {
+  /** Who has to act: "Staff", "The client", "The provider", "The organisation". */
+  waitingOn: string;
+  /** What holds it up, in one line: the panel's notice title. */
+  blocker: string;
+  /** Why, in a sentence: what the queue knows about it. */
+  detail: string;
+  /** What to do next, on the record page the panel opens. */
+  action: string;
+};
+
+/**
+ * The blocker and next step for an item, from its queue and status. Each queue holds one kind of
+ * wait (the API's reader: entities with documents received or under review, artists pending
+ * approval, KYC sessions open over 48 hours, documents pending review, lead organisations over
+ * seven days old), so the queue and the status say what is needed.
+ */
+export function onboardingNextStep(
+  tab: OnboardingTabId,
+  status: string | null,
+): OnboardingNextStep {
+  switch (tab) {
+    case "entities":
+      return status === "under_review"
+        ? {
+            waitingOn: "Staff",
+            blocker: "A review decision is due",
+            detail: "The entity's documents have been checked and its review is open.",
+            action:
+              "Approve and move to Connect, or request more documents, on the entity's Compliance tab.",
+          }
+        : {
+            waitingOn: "Staff",
+            blocker: "Documents received, review not started",
+            detail: "The entity has sent its documents and is waiting for staff to review them.",
+            action: "Start the review, or request more documents, on the entity's Compliance tab.",
+          };
+    case "artists":
+      return {
+        waitingOn: "Staff",
+        blocker: "Waiting for approval",
+        detail: "The artist profile was submitted and is not live until staff approve it.",
+        action: "Check the profile, then approve or reject the artist on the artist's page.",
+      };
+    case "kyc":
+      if (status === "requires_input") {
+        return {
+          waitingOn: "The client",
+          blocker: "The provider needs more from the client",
+          detail: "The identity check was returned for more information over 48 hours ago.",
+          action: "Contact the client to resubmit; the client's page shows the check.",
+        };
+      }
+      if (status === "processing") {
+        return {
+          waitingOn: "The provider",
+          blocker: "No result from the provider",
+          detail: "The identity check has been processing for over 48 hours.",
+          action: "Check the session with the provider; the client's page shows the check.",
+        };
+      }
+      return {
+        waitingOn: "The client",
+        blocker: "Identity check not finished",
+        detail: "The client started an identity check over 48 hours ago and has not finished it.",
+        action: "Remind the client to finish the identity check; the client's page shows it.",
+      };
+    case "documents":
+      return {
+        waitingOn: "Staff",
+        blocker: "Document not reviewed",
+        detail: "An uploaded document is waiting for staff to accept or reject it.",
+        action: "Approve or reject it on the entity's Documents tab.",
+      };
+    case "orgs":
+      return {
+        waitingOn: "The organisation",
+        blocker: "Onboarding not started",
+        detail: "The organisation has been a lead for over seven days without starting onboarding.",
+        action: "Request documents from the organisation, or follow up, on its page.",
+      };
+    default: {
+      const exhaustive: never = tab;
+      return exhaustive;
+    }
+  }
+}
 
 export function onboardingKycLabel(row: {
   userName?: string | null;
@@ -80,15 +173,17 @@ export function toOnboardingStaffRow(
 ): OnboardingStaffRow | null {
   const base = (
     fields: Pick<OnboardingStaffRow, "title" | "since" | "href" | "hrefLabel"> &
-      Partial<Pick<OnboardingStaffRow, "secondary" | "status">>,
+      Partial<Pick<OnboardingStaffRow, "secondary" | "email" | "status">>,
   ): OnboardingStaffRow => ({
     id: row.id,
     tab,
     kind: ONBOARDING_KIND_LABELS[tab],
     secondary: null,
+    email: null,
     status: null,
     ageLabel: formatAdminRelativeTimeLabel(fields.since, now),
     urgency: adminIssueAgeUrgency(fields.since, now),
+    nextStep: onboardingNextStep(tab, "status" in row ? row.status : null),
     ...fields,
     href: buildPeopleDetailHref(fields.href, returnTarget),
   });
@@ -116,7 +211,8 @@ export function toOnboardingStaffRow(
     case "kyc":
       return "userId" in row && "provider" in row
         ? base({
-            title: onboardingKycLabel(row),
+            title: row.userName || row.userEmail || "Client",
+            email: row.userName ? (row.userEmail ?? null) : null,
             secondary: row.provider,
             status: staffStatus("kyc", row.status),
             since: row.createdAt,

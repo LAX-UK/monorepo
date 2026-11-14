@@ -103,7 +103,7 @@ export function LegalEntityOverviewTab({
 
   return (
     <DetailColumns rail={rail} railLabel="Legal entity activity">
-      <StatGrid label="Legal entity summary" className="grid-cols-3 md:grid-cols-3" items={stats} />
+      <StatGrid label="Legal entity summary" items={stats} />
       <LegalEntityHealthPanel health={health} />
       <Section title="Business summary" description="Core business information.">
         <KeyValueList

@@ -91,3 +91,13 @@ export async function loadAdminSalesListPage(sp: SalesListSearchParams) {
     listPaginationTotal,
   };
 }
+
+/**
+ * The ids of the sales the list shows for this query, in its order: what a sale page opened from
+ * the list pages through (Previous and Next). The same query as the list, without its summary.
+ */
+export async function loadSalesListIds(sp: SalesListSearchParams): Promise<string[]> {
+  const { query } = buildSalesListPageModel(sp);
+  const { rows } = await salesListController.fetch(query);
+  return rows.map((row) => toAdminSaleBoardRow(row).saleId);
+}

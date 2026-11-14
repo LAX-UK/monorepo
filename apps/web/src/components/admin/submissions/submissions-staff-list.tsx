@@ -1,15 +1,14 @@
 "use client";
 
 import { StaffBulkOperations } from "@/components/admin/staff/staff-bulk-operations";
-import { useListPanel } from "@/components/admin/staff/use-list-panel";
 import { useStaffListNavigation } from "@/components/admin/staff/use-staff-list-navigation";
-import { SubmissionQuickView } from "@/components/admin/submissions/submission-quick-view";
 import {
   type SubmissionActionTarget,
   useSubmissionActions,
 } from "@/components/admin/submissions/use-submission-actions";
 import { ExportButton } from "@/components/exports/export-button";
 import { getSubmissionBulkOperations } from "@/lib/admin/bulk-ops/submissions";
+import { listQueryOf } from "@/lib/admin/list-record";
 import { createSavedViewsPort } from "@/lib/admin/saved-views-port";
 import {
   SUBMISSIONS_DEFAULT_SORT,
@@ -18,7 +17,6 @@ import {
   type SubmissionsListSearch,
   type SubmissionsStaffRow,
   bulkSubmissionOperationIds,
-  submissionPanelHref,
   submissionsListHref,
   submissionsSortHref,
   submissionsSortState,
@@ -37,9 +35,11 @@ import {
   StaffDate,
   StatusBadge,
   TableSearch,
+  recordHrefInList,
   staffButtonVariants,
   useSavedViews,
 } from "@auction/staff-ui";
+import Link from "next/link";
 import { type ReactNode, useCallback, useMemo, useState } from "react";
 
 export type SubmissionsStaffListProps = {
@@ -90,21 +90,19 @@ const EMPTY_COPY: Record<string, { title: string; description: string }> = {
 /**
  * Seller submissions on the staff list template: the decision queues as views with counts,
  * search, a filter sheet for category and the desk's own flags, oldest-
- * waiting sorting, bulk accept and reject for submissions under review, and a record panel
- * deep-linked with `?submission=`. Every row's `…` menu holds the review actions.
+ * waiting sorting, and bulk accept and reject for submissions under review. A row opens the
+ * submission's review page, which keeps this list's query for Previous and Next; Back returns to
+ * the list as it was. Every row's `…` menu holds the review actions.
  */
 export function SubmissionsStaffList(props: SubmissionsStaffListProps) {
   const { rows, search, filtered } = props;
   const { pending, navigate, Link: ListLink } = useStaffListNavigation();
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const panelHref = useCallback((id: string | null) => submissionPanelHref(search, id), [search]);
-  const panel = useListPanel({
-    param: "submission",
-    initialId:
-      (typeof search.submission === "string" ? search.submission : null) ??
-      (typeof search.preview === "string" ? search.preview : null),
-    hrefFor: panelHref,
-  });
+  const listQuery = useMemo(() => listQueryOf(search, ["submission", "preview"]), [search]);
+  const recordHref = useCallback(
+    (row: SubmissionsStaffRow) => recordHrefInList(row.href, listQuery),
+    [listQuery],
+  );
   const actions = useSubmissionActions({ currentUserId: props.currentUserId });
   const port = useMemo(() => createSavedViewsPort("bid-admin.submissions"), []);
   const saved = useSavedViews("bid-admin.submissions", port);
@@ -126,8 +124,8 @@ export function SubmissionsStaffList(props: SubmissionsStaffListProps) {
         mobile: "title",
         cell: (row) => (
           <PrimaryCell
-            href={panelHref(row.id)}
-            Link={panel.PanelLink}
+            href={recordHref(row)}
+            Link={Link}
             thumbnail={{ src: row.thumbnailUrl, missingLabel: "No photos" }}
             secondary={row.category}
           >
@@ -201,7 +199,7 @@ export function SubmissionsStaffList(props: SubmissionsStaffListProps) {
         cell: (row) => <StaffDate value={row.submittedAt} />,
       },
     ],
-    [panelHref, panel.PanelLink],
+    [recordHref],
   );
 
   const activeFilters = props.filterChips.map((chip) => ({
@@ -216,7 +214,6 @@ export function SubmissionsStaffList(props: SubmissionsStaffListProps) {
     qualityGaps: null,
     sort: null,
   });
-  const openRow = rows.find((row) => row.id === panel.openId) ?? null;
   const empty = EMPTY_COPY[props.activeQueue] ?? EMPTY_COPY.awaiting;
 
   return (
@@ -315,8 +312,7 @@ export function SubmissionsStaffList(props: SubmissionsStaffListProps) {
           defaultSort: SUBMISSIONS_DEFAULT_SORT,
           sort: submissionsSortState(typeof search.sort === "string" ? search.sort : undefined),
           onSortChange: (sort) => navigate(submissionsSortHref(search, sort)),
-          onRowOpen: (row) => panel.show(row.id),
-          activeRowId: panel.openId,
+          rowHref: recordHref,
           selectedIds: selected,
           onSelectedIdsChange: setSelected,
           bulkNoun: { one: "submission", other: "submissions" },
@@ -336,8 +332,7 @@ export function SubmissionsStaffList(props: SubmissionsStaffListProps) {
           rowActions: {
             label: (row) => `Actions for submission ${row.title}`,
             actions: (row) => [
-              { id: "open", label: "Open details", onSelect: () => panel.show(row.id) },
-              { id: "review", label: "Open review", href: row.href },
+              { id: "review", label: "Open review", href: recordHref(row) },
               ...actions.actionsFor(submissionActionTarget(row)),
             ],
           },
@@ -347,11 +342,6 @@ export function SubmissionsStaffList(props: SubmissionsStaffListProps) {
           onChange: (size) => navigate(submissionsListHref(search, { limit: size })),
         }}
         pagination={props.pagination}
-      />
-      <SubmissionQuickView
-        row={openRow}
-        onClose={() => panel.show(null)}
-        actions={openRow ? actions.actionsFor(submissionActionTarget(openRow)) : []}
       />
       {actions.dialogs}
     </>

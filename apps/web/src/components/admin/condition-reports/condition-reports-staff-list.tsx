@@ -5,8 +5,8 @@ import {
   type ConditionReportActionTarget,
   useConditionReportActions,
 } from "@/components/admin/condition-reports/use-condition-report-actions";
-import { useListPanel } from "@/components/admin/staff/use-list-panel";
 import { useStaffListNavigation } from "@/components/admin/staff/use-staff-list-navigation";
+import { useStaffQueue } from "@/components/admin/staff/use-staff-queue";
 import {
   CONDITION_REPORTS_DEFAULT_SORT,
   type ConditionReportStaffRow,
@@ -53,7 +53,8 @@ export function conditionReportActionTarget(
  * record panel deep-linked with `?request=` that holds the fulfil form, and a `…` menu on every
  * row for marking a request in progress or declining it, each confirmed first. The API does not
  * search or filter beyond the status, so there is no search or filter sheet; the sort orders the
- * rows on the page.
+ * rows on the page. The panel is a work queue: it shows its place, and J and K step to the next
+ * request (not away from a half-filled form).
  */
 export function ConditionReportsStaffList(props: ConditionReportsStaffListProps) {
   const { rows, search } = props;
@@ -63,19 +64,6 @@ export function ConditionReportsStaffList(props: ConditionReportsStaffListProps)
     (id: string | null) => conditionReportPanelHref(search, id),
     [search],
   );
-  const panel = useListPanel({
-    param: "request",
-    initialId: typeof search.request === "string" ? search.request : null,
-    hrefFor: panelHref,
-  });
-  const { show } = panel;
-  const closePanel = useCallback(() => show(null), [show]);
-  const closeAndRefresh = useCallback(() => {
-    show(null);
-    router.refresh();
-  }, [show, router]);
-  const actions = useConditionReportActions({ openPanel: show, afterDecline: closeAndRefresh });
-
   const columns = useMemo<DataColumn<ConditionReportStaffRow>[]>(
     () => [
       {
@@ -85,7 +73,7 @@ export function ConditionReportsStaffList(props: ConditionReportsStaffListProps)
         sortable: true,
         sortValue: (row) => row.lotTitle.toLowerCase(),
         cell: (row) => (
-          <PrimaryCell href={panelHref(row.id)} Link={panel.PanelLink}>
+          <PrimaryCell href={panelHref(row.id)} Link={ListLink}>
             {row.lotTitle}
           </PrimaryCell>
         ),
@@ -123,10 +111,25 @@ export function ConditionReportsStaffList(props: ConditionReportsStaffListProps)
         cell: (row) => <StaffDate value={row.requestedAt} withTime />,
       },
     ],
-    [panelHref, panel.PanelLink, ListLink],
+    [panelHref, ListLink],
   );
 
-  const openRow = rows.find((row) => row.id === panel.openId) ?? null;
+  const panel = useStaffQueue({
+    param: "request",
+    rows,
+    getId: requestId,
+    initialId: typeof search.request === "string" ? search.request : null,
+    hrefFor: panelHref,
+    localSort: { columns, defaultSort: CONDITION_REPORTS_DEFAULT_SORT },
+    noun: "request",
+  });
+  const { open: openPanel, close: closePanel } = panel;
+  const closeAndRefresh = useCallback(() => {
+    closePanel();
+    router.refresh();
+  }, [closePanel, router]);
+  const actions = useConditionReportActions({ openPanel, afterDecline: closeAndRefresh });
+  const openRow = panel.record;
   const lens = props.activeLens;
 
   return (
@@ -156,16 +159,13 @@ export function ConditionReportsStaffList(props: ConditionReportsStaffListProps)
         table={{
           label: "Condition report requests",
           columns,
-          data: rows,
-          getRowId: (row) => row.id,
+          ...panel.table,
+          getRowId: requestId,
           defaultDensity: "compact",
-          defaultSort: CONDITION_REPORTS_DEFAULT_SORT,
-          onRowOpen: (row) => panel.show(row.id),
-          activeRowId: panel.openId,
           rowActions: {
             label: (row) => `Actions for the request for ${row.lotTitle}`,
             actions: (row) => [
-              { id: "open", label: "Open details", onSelect: () => panel.show(row.id) },
+              { id: "open", label: "Open details", onSelect: () => panel.open(row.id) },
               { id: "lot", label: "Open lot", href: row.lotHref },
               ...(row.requester
                 ? [{ id: "requester", label: "Open requester", href: row.requesterHref }]
@@ -182,11 +182,15 @@ export function ConditionReportsStaffList(props: ConditionReportsStaffListProps)
       />
       <ConditionReportQuickView
         row={openRow}
-        onClose={closePanel}
+        panelProps={panel.panelProps}
         onFulfilled={closeAndRefresh}
         actions={openRow ? actions.actionsFor(conditionReportActionTarget(openRow)) : []}
       />
       {actions.dialogs}
     </>
   );
+}
+
+function requestId(row: ConditionReportStaffRow): string {
+  return row.id;
 }

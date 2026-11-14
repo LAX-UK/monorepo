@@ -1,8 +1,8 @@
 "use client";
 
 import { AuditEventPanel } from "@/components/admin/audit/audit-event-panel";
-import { useListPanel } from "@/components/admin/staff/use-list-panel";
 import { useStaffListNavigation } from "@/components/admin/staff/use-staff-list-navigation";
+import { useStaffQueue } from "@/components/admin/staff/use-staff-queue";
 import { searchAuditActorsAction } from "@/lib/actions/admin-audit-actors";
 import { buildListHref } from "@/lib/admin/admin-list-params";
 import type { AuditActionOption } from "@/lib/admin/audit/audit-action-options";
@@ -87,10 +87,15 @@ export function AuditLogList(props: AuditLogListProps) {
     (id: string | null) => buildListHref(AUDIT_LOG_PATH, search, { event: id }),
     [search],
   );
-  const panel = useListPanel({
+  // An event has no page: the panel is the record and its address the link to share.
+  // Investigators step through many, so it is a queue: its place, and J and K.
+  const panel = useStaffQueue({
     param: "event",
+    rows,
+    getId: eventId,
     initialId: typeof search.event === "string" ? search.event : null,
     hrefFor: panelHref,
+    noun: "event",
   });
   const actionOptions = useMemo<EntityOption[]>(
     () =>
@@ -115,7 +120,7 @@ export function AuditLogList(props: AuditLogListProps) {
         header: "Action",
         mobile: "title",
         cell: (row) => (
-          <PrimaryCell href={panelHref(row.id)} Link={panel.PanelLink} secondary={row.summary}>
+          <PrimaryCell href={panelHref(row.id)} Link={ListLink} secondary={row.summary}>
             {row.action}
           </PrimaryCell>
         ),
@@ -160,10 +165,10 @@ export function AuditLogList(props: AuditLogListProps) {
         cell: (row) => <StaffDate value={row.at} withTime />,
       },
     ],
-    [panelHref, panel.PanelLink],
+    [panelHref, ListLink],
   );
 
-  const open = rows.find((row) => row.id === panel.openId) ?? null;
+  const open = panel.record;
   const view = filters.view ?? "all";
 
   return (
@@ -279,20 +284,18 @@ export function AuditLogList(props: AuditLogListProps) {
         noResults={{ noun: "events" }}
         table={{
           columns,
-          data: rows,
-          getRowId: (row) => row.id,
+          ...panel.table,
+          getRowId: eventId,
           // Each event carries its summary and the person's email as second lines.
           defaultDensity: "comfortable",
           defaultSort: { columnId: "when", direction: "desc" },
           sort: { columnId: "when", direction: filters.sort === "at_asc" ? "asc" : "desc" },
           onSortChange: (sort) =>
             navigate(auditLogSortHref(search, sort.direction === "asc" ? "at_asc" : "at_desc")),
-          onRowOpen: (row) => panel.show(row.id),
-          activeRowId: panel.openId,
           rowActions: {
             label: (row) => `Actions for ${row.action}`,
             actions: (row) => [
-              { id: "open", label: "Open event", onSelect: () => panel.show(row.id) },
+              { id: "open", label: "Open event", onSelect: () => panel.open(row.id) },
               ...(row.entity.href
                 ? [
                     {
@@ -324,7 +327,11 @@ export function AuditLogList(props: AuditLogListProps) {
         }}
         pagination={props.pagination}
       />
-      <AuditEventPanel row={open} onClose={() => panel.show(null)} />
+      <AuditEventPanel row={open} panelProps={panel.panelProps} />
     </>
   );
+}
+
+function eventId(row: AuditLogRowModel): string {
+  return row.id;
 }

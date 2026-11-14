@@ -1,8 +1,22 @@
 import type { AuditLogFilters } from "@/lib/admin/audit/audit-log-search";
 import type { AuditLogRowModel } from "@/lib/admin/audit/audit-log.vm";
-import { fireEvent, render, screen, within } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { queuePanel } from "@/test/queue-panel";
+import { StaffTooltipProvider } from "@auction/staff-ui";
+import {
+  act,
+  fireEvent,
+  render as renderInPage,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
+import type { ReactElement } from "react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AuditLogList, type AuditLogListProps } from "./audit-log-list";
+
+/** The staff shell gives every page a tooltip provider; the panel's step buttons need it. */
+const render = (ui: ReactElement) =>
+  renderInPage(<StaffTooltipProvider>{ui}</StaffTooltipProvider>);
 
 const push = vi.fn();
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push }) }));
@@ -144,5 +158,64 @@ describe("AuditLogList", () => {
     );
     fireEvent.click(screen.getByRole("button", { name: "Remove filter: Search: ada" }));
     expect(push).toHaveBeenCalledWith("/admin/audit", { scroll: false });
+  });
+});
+
+describe("AuditLogList event panel queue", () => {
+  const events = ["Lot published", "Lot withdrawn", "Sale opened"].map(
+    (action, index): AuditLogRowModel => ({ ...row, id: `ev_${index + 1}`, action }),
+  );
+  beforeEach(() => {
+    window.history.replaceState(null, "", "/admin/audit");
+  });
+  afterEach(() => {
+    window.history.replaceState(null, "", "/");
+  });
+
+  it("links each event to its own address: the panel is the record", () => {
+    render(<AuditLogList {...props({ rows: events })} />);
+    expect(screen.getAllByRole("link", { name: /Lot withdrawn/ })[0]).toHaveAttribute(
+      "href",
+      "/admin/audit?event=ev_2",
+    );
+  });
+
+  it("opens into the URL, shows its place and steps with J and K", () => {
+    render(<AuditLogList {...props({ rows: events })} />);
+    fireEvent.click(screen.getAllByText("Lot withdrawn")[0] as HTMLElement);
+    expect(window.location.search).toBe("?event=ev_2");
+    expect(queuePanel.position()).toBe("2 of 3");
+    fireEvent.keyDown(queuePanel.get() as HTMLElement, { key: "j" });
+    expect(queuePanel.title("Sale opened")).toBeVisible();
+    expect(window.location.search).toBe("?event=ev_3");
+    fireEvent.keyDown(queuePanel.get() as HTMLElement, { key: "k" });
+    fireEvent.keyDown(queuePanel.get() as HTMLElement, { key: "k" });
+    expect(queuePanel.title("Lot published")).toBeVisible();
+  });
+
+  it("reopens the event from its address", () => {
+    window.history.replaceState(null, "", "/admin/audit?event=ev_3");
+    render(<AuditLogList {...props({ rows: events, search: { event: "ev_3" } })} />);
+    expect(queuePanel.title("Sale opened")).toBeVisible();
+  });
+
+  it("closes on Back and returns focus to the event last shown on Escape", async () => {
+    render(<AuditLogList {...props({ rows: events })} />);
+    fireEvent.click(screen.getAllByText("Lot published")[0] as HTMLElement);
+    act(() => window.history.back());
+    await waitFor(() => expect(queuePanel.get()).not.toBeInTheDocument());
+    expect(window.location.search).toBe("");
+
+    fireEvent.click(screen.getAllByText("Lot published")[0] as HTMLElement);
+    fireEvent.keyDown(queuePanel.get() as HTMLElement, { key: "j" });
+    fireEvent.keyDown(queuePanel.get() as HTMLElement, { key: "Escape" });
+    await waitFor(() => expect(queuePanel.get()).not.toBeInTheDocument());
+    await waitFor(() => expect(queuePanel.focusedRowText()).toContain("Lot withdrawn"));
+  });
+
+  it("still hides what the viewer's role may not see", () => {
+    render(<AuditLogList {...props({ rows: events })} />);
+    fireEvent.click(screen.getAllByText("Lot published")[0] as HTMLElement);
+    expect(within(queuePanel.get() as HTMLElement).getByText("Hidden for your role")).toBeVisible();
   });
 });

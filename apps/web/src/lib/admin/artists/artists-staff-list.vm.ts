@@ -1,5 +1,6 @@
 import { buildListHref } from "@/lib/admin/admin-list-params";
 import { countryName } from "@/lib/admin/artists/country-options";
+import { panelParamRedirect } from "@/lib/admin/list-record";
 import { staffStatus } from "@/lib/admin/staff-kit-status";
 import { artistKindMeta } from "@/lib/artists/kind-presenter";
 import { formatArtistLifespan } from "@/lib/artists/lifespan-presenter";
@@ -85,7 +86,7 @@ export function toArtistsStaffRows(rows: readonly AdminArtistListRow[]): Artists
         ...(row.archived ? [{ label: "Archived", tone: "neutral" as const }] : []),
       ],
       updatedAt: isoOf(row.updatedAt),
-      href: `${ARTISTS_LIST_PATH}/${row.id}`,
+      href: adminArtistHref(row.id),
       editHref: `${ARTISTS_LIST_PATH}/${row.id}/edit`,
       duplicatesHref: `${ARTISTS_LIST_PATH}/${row.id}/duplicates`,
       publicHref:
@@ -106,11 +107,18 @@ export function artistsListHref(
   return buildListHref(ARTISTS_LIST_PATH, base, { offset: null, ...patch });
 }
 
-/** The list with an artist's panel open (`?artist=`), or closed for null; keeps the page. */
-export function artistPanelHref(current: ArtistsListSearch, artistId: string | null): string {
-  const base: ArtistsListSearch = { ...current };
-  for (const key of ["error", "success", "welcome"]) delete base[key];
-  return buildListHref(ARTISTS_LIST_PATH, base, { artist: artistId });
+/** An artist's page. */
+export function adminArtistHref(artistId: string): string {
+  return `${ARTISTS_LIST_PATH}/${artistId}`;
+}
+
+/**
+ * An old panel link (`/admin/artists?artist=ID`) opens the artist's page now, still in the list
+ * it named; null when there is no `?artist=`.
+ */
+export function artistPanelRedirect(current: ArtistsListSearch): string | null {
+  const { welcome: _welcome, ...rest } = current;
+  return panelParamRedirect(rest, "artist", adminArtistHref);
 }
 
 /** The two queues that are not lists of artists, each its own page. */

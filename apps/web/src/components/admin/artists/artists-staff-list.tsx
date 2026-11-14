@@ -1,8 +1,6 @@
 "use client";
 
-import { ArtistQuickView } from "@/components/admin/artists/artist-quick-view";
 import { useArtistActions } from "@/components/admin/artists/use-artist-actions";
-import { useListPanel } from "@/components/admin/staff/use-list-panel";
 import { useStaffListNavigation } from "@/components/admin/staff/use-staff-list-navigation";
 import {
   ARTISTS_DEFAULT_SORT,
@@ -12,12 +10,12 @@ import {
   ARTIST_STATUS_FILTERS,
   type ArtistsListSearch,
   type ArtistsStaffRow,
-  artistPanelHref,
   artistsListHref,
   artistsQueueHref,
   artistsSortHref,
   artistsSortState,
 } from "@/lib/admin/artists/artists-staff-list.vm";
+import { listQueryOf } from "@/lib/admin/list-record";
 import {
   type AttentionStripItem,
   type DataColumn,
@@ -32,6 +30,7 @@ import {
   StaffDate,
   StatusBadge,
   TableSearch,
+  recordHrefInList,
 } from "@auction/staff-ui";
 import { Plus } from "lucide-react";
 import Link from "next/link";
@@ -63,19 +62,19 @@ function text(search: ArtistsListSearch, key: string): string {
 
 /**
  * Bid's artist registry on the staff list template: lenses as views with counts, search, a filter
- * sheet for status, kind, owner account, category, country and flags, server sorting, the review
- * queues in the attention strip, and a record panel deep-linked with `?artist=`. Pending profiles
- * are approved or rejected from the row's `…` menu, each confirmed first.
+ * sheet for status, kind, owner account, category, country and flags, server sorting, and the
+ * review queues in the attention strip. A row opens the artist's page, which keeps this list's
+ * query for Previous and Next; Back returns to the list as it was. Pending profiles are approved
+ * or rejected from the row's `…` menu, each confirmed first.
  */
 export function ArtistsStaffList(props: ArtistsStaffListProps) {
   const { rows, search, permissions } = props;
   const { pending, navigate, Link: ListLink } = useStaffListNavigation();
-  const panelHref = useCallback((id: string | null) => artistPanelHref(search, id), [search]);
-  const panel = useListPanel({
-    param: "artist",
-    initialId: text(search, "artist") || null,
-    hrefFor: panelHref,
-  });
+  const listQuery = useMemo(() => listQueryOf(search, ["artist", "welcome"]), [search]);
+  const recordHref = useCallback(
+    (row: ArtistsStaffRow) => recordHrefInList(row.href, listQuery),
+    [listQuery],
+  );
   const artistActions = useArtistActions({ canReview: permissions.canReview });
   const q = text(search, "q");
   const flags = ARTIST_FLAG_FILTERS.map((flag) => flag.value).filter(
@@ -92,8 +91,8 @@ export function ArtistsStaffList(props: ArtistsStaffListProps) {
         defaultSortDirection: "asc",
         cell: (row) => (
           <PrimaryCell
-            href={panelHref(row.id)}
-            Link={panel.PanelLink}
+            href={recordHref(row)}
+            Link={Link}
             thumbnail={{ src: row.portraitUrl, missingLabel: "No portrait yet" }}
             secondary={row.context}
           >
@@ -140,7 +139,7 @@ export function ArtistsStaffList(props: ArtistsStaffListProps) {
         cell: (row) => <StaffDate value={row.updatedAt} />,
       },
     ],
-    [panelHref, panel.PanelLink],
+    [recordHref],
   );
 
   const activeFilters = props.filterChips.map((chip) => ({
@@ -159,7 +158,6 @@ export function ArtistsStaffList(props: ArtistsStaffListProps) {
     verified: null,
     includeArchived: null,
   });
-  const openRow = rows.find((row) => row.id === panel.openId) ?? null;
   const rowActions = (row: ArtistsStaffRow) => [
     ...(permissions.canMerge
       ? [{ id: "duplicates", label: "Review possible duplicates", href: row.duplicatesHref }]
@@ -317,13 +315,11 @@ export function ArtistsStaffList(props: ArtistsStaffListProps) {
           defaultSort: ARTISTS_DEFAULT_SORT,
           sort: artistsSortState(text(search, "sort") || undefined),
           onSortChange: (sort) => navigate(artistsSortHref(search, sort)),
-          onRowOpen: (row) => panel.show(row.id),
-          activeRowId: panel.openId,
+          rowHref: recordHref,
           rowActions: {
             label: (row) => `Actions for artist ${row.name}`,
             actions: (row) => [
-              { id: "open", label: "Open details", onSelect: () => panel.show(row.id) },
-              { id: "page", label: "Open artist page", href: row.href },
+              { id: "page", label: "Open artist page", href: recordHref(row) },
               ...(permissions.canWrite
                 ? [{ id: "edit", label: "Edit artist", href: row.editHref }]
                 : []),
@@ -336,12 +332,6 @@ export function ArtistsStaffList(props: ArtistsStaffListProps) {
           onChange: (size) => navigate(artistsListHref(search, { limit: size })),
         }}
         pagination={props.pagination}
-      />
-      <ArtistQuickView
-        row={openRow}
-        canWrite={permissions.canWrite}
-        onClose={() => panel.show(null)}
-        actions={openRow ? rowActions(openRow) : []}
       />
       {artistActions.dialogs}
     </>
