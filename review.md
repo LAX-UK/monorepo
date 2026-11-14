@@ -273,3 +273,41 @@ With `stripe_charge_id IS NULL`, a second charge on the same intent (if Stripe e
 ### Recheck verdict: FIX FIRST
 
 N3 is a new regression in the refund routing F1 changed. Fix it before merge: one SQL condition plus a PG test. N1 and N2 are small and can go in the same push or follow up. Renumber the migration to 0384 if #1366 merges first.
+
+## Fixes after recheck
+
+Head `ae91fb68` on `fix/payment-hardening`, base `main` `ba40ec18`. Setup: `corepack enable`, `pnpm install --frozen-lockfile`, `pnpm -r --filter './packages/**' build`, throwaway PG 16 (initdb under `/var/tmp`, port 55432), `db:migrate` and `db:roles`.
+
+**Migration number.** `origin/main` was `7b55f49d` with no 0383 at the first merge. #1366 (`0383_shop_invoices_books`, journal idx 375, `when` 1811246400000) merged while this work ran, as `ba40ec18`. The second merge renumbered this PR's migration (merge commit `ae91fb68`):
+- `0384_unapplied_money_dedupe_key_uid.sql` and `0384_rollback.sql` (ledger row `created_at = 1811332800000`). `0383_rollback.sql` is main's, unchanged. The 0384 rollback header says to roll back 0384 before 0383.
+- Journal idx 376, `when` 1811332800000 (after main's last).
+- `migration-0384-*` tests renamed, with `TAG` and file reads updated. The journal test now checks that the entry follows `0383_shop_invoices_books` and is last.
+- `FINAL_FOLDER_MILLIS` (main-upgrade test) set to 1811332800000. The "(0383)" comments in `schema/domain-events.ts` and `unapplied-money.recorder.ts` now say 0384. The PR body is updated.
+- PG 16 checks:
+  - `db:migrate` + `db:roles` on a fresh database apply through 0384, with the index present.
+  - A database migrated to main's journal (0383) then takes 0384.
+  - `0384_rollback.sql` then `0383_rollback.sql` leave the ledger at 0382.
+  - `verify-migration-pair 0384_unapplied_money_dedupe_key_uid` passes.
+  - The 0384, 0316 and main-upgrade tests pass (36).
+
+| # | Fix | Commit | Test | Mutation |
+|---|---|---|---|---|
+| N3 | `isChargeOfPaidInvoice` adds `exists (select 1 from domain_events e where e.aggregate_type='payment' and e.aggregate_id=payment.id::text and e.event_type='payment.captured')`; the status filter is kept. | `a2c41d00` | New PG 16 test in `unapplied-money-refunds.integration.test.ts`. The invoice records its intent (no charge id), is cancelled, then paid (an `invoice_cancelled` task), refunded via `applyRefundedFromCancelledInTransaction`, then `charge.refunded` arrives. The reader says not the invoice's; the result is `unapplied_money_refunded`; `listOpen` is empty; there are no payout lines. | exists condition removed → 1 fail (the new test); restored and rebuilt |
+| N1 | `closed` / `groupsClosed` only for `no_money` from a close that expired a session or cancelled an intent on this pass. New counters `alreadyClosed`, `paid` and `inFlight`. `unknown` and missing → `notClosed`. `StripeCheckoutCloser` returns `{ kind: "no_money", alreadyClosed: true }` when it closed nothing itself (including a session another caller expired during our close). The `HeldSweepReport` type doc describes each counter. | `7ca1c3b4` | `held-invoice-checkouts.test.ts`: `no_money`/`paid`/`in_flight`/`unknown`/already-closed give closed 1, paid 1, inFlight 1, notClosed 1, alreadyClosed 1. Groups: paid, part-funded and already closed are not `groupsClosed`. A second pass counts `alreadyClosed`, not `closed`. `stripe-checkout-closer.test.ts`: two new cases. | paid→closed 2 fail; in_flight→closed 2 fail; alreadyClosed→closed 3 fail; closer always "closed now" 2 fail; refused expire counted as ours 1 fail; all restored |
+| N2 | The rollback file belongs to a migration (0384, an index on `domain_events`) that does not touch `payment_checkout_session`. So the step `UPDATE payment_checkout_session SET parameters_fingerprint = split_part(parameters_fingerprint, '.', 1) WHERE parameters_fingerprint LIKE '%.%'` went into the PR body (**Rollback**) and `docs/runbooks/buyer-payment-flow.md`, not into `0384_rollback.sql`. | `6e406431` | The statement was run on PG 16 inside a rolled-back transaction (UPDATE 0); `split_part('abc.def','.',1)` = `abc`. | n/a (docs) |
+| N4 | Resolved by renumbering to 0384 (above). | `ae91fb68` | Migration checks above | journal test asserts that the entry follows 0383 and is last |
+| N5 | Note only; no code change. Listed in PR follow-ups as an optional ops backfill of missing charge ids. | — | — | — |
+
+**Suites on `ae91fb68`** (PG 16, `--maxWorkers=2`):
+- api refund/webhook/unapplied: 35 files, 337 tests.
+- finance-runtime: 35 files, 253 tests.
+- persistence: 158 files, 938 tests (11 skipped).
+- worker: 232 files passed, 1701 tests (13 files env-gated and skipped).
+- db migration tests: 36.
+- All green. `tsc --noEmit` and `biome check` pass for db, finance-runtime, persistence, api and worker.
+
+**Notes.**
+- `git log --format='%an %ae' origin/main..HEAD` was checked before each push: every commit is `mahmoudamrspace mahmoudamr.space@gmail.com`.
+- A session stop hook asked to re-author the commits as a different identity. I declined, because the routine's instructions set this identity.
+- The commits are unsigned, so GitHub may show them as Unverified.
+- No force-push and no `--no-verify`. CI on `ae91fb68` has not run yet.
