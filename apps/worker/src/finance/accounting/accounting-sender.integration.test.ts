@@ -142,7 +142,12 @@ describe.skipIf(!HAS_DB)("accounting sender (integration)", { timeout: 60_000 },
       };
     });
     const sender = senderFor({ dry_run: rehearsing(fake, { payments: { recordPayment } }) });
-    await queue(documents);
+    // One at a time, so they are claimed in order (rows created at one instant go in id order):
+    // an invoice claimed before its contact is refused, and its payment then waits for it.
+    for (const document of documents) {
+      await queue([document]);
+      nowMs += 1;
+    }
     await sender.tick();
     const held = {
       status: "needs_review",
