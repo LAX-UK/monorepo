@@ -15,7 +15,7 @@ import {
 } from "../testing/index.js";
 import { DRY_RUN_NUMBER, createZohoBooksDryRunAdapter, dryRunProviderId } from "./dry-run.js";
 import { ZOHO_BOOKS_REJECTIONS as R } from "./index.js";
-import { expenseBody, transferBody } from "./mappers/movement.js";
+import { BOOKS_REFERENCE_MAX_LENGTH, expenseBody, transferBody } from "./mappers/movement.js";
 import { parseOrgConfigs } from "./org-config.js";
 
 const unwrap = <T>(r: { ok: true; value: T } | { ok: false; refusal: { code: string } }): T => {
@@ -93,6 +93,40 @@ describe("Stripe fees and payouts: mappers", () => {
       refusal: { code: "stripe_accounts_missing" },
     });
     expect(transferBody(payout(), org)).toMatchObject({ ok: false });
+  });
+
+  it("fits the longest reference LAX makes in Books' reference fields, and refuses a longer one", () => {
+    const longest = "a".repeat(64);
+    const expense = unwrap(
+      buildExpense({
+        product: "shop",
+        sourceId: longest,
+        category: "stripe_fees",
+        spentOn: "2026-11-13",
+        amountPence: 1,
+        description: "Stripe fees",
+      }),
+    );
+    const transfer = unwrap(
+      buildTransfer({
+        product: "shop",
+        sourceId: longest,
+        transferredOn: "2026-11-13",
+        amountPence: 1,
+        description: "Stripe payout",
+      }),
+    );
+    expect(expense.reference).toHaveLength(77);
+    expect(unwrap(expenseBody(expense, shop)).reference_number).toBe(expense.reference);
+    expect(unwrap(transferBody(transfer, shop)).reference_number).toBe(transfer.reference);
+    const tooLong = {
+      ...expense,
+      reference: `LAX-SHOP-EXP-${"a".repeat(BOOKS_REFERENCE_MAX_LENGTH)}`,
+    };
+    expect(expenseBody(tooLong, shop)).toMatchObject({
+      ok: false,
+      refusal: { code: "reference_too_long" },
+    });
   });
 
   it("refuses Stripe accounts that are not Books ids at start-up", () => {

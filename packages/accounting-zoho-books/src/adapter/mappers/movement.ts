@@ -35,9 +35,21 @@ export interface TransferBody {
 
 export type MovementConfig = Pick<ZohoOrgConfig, "payments" | "stripe" | "laxReferenceField">;
 
+/**
+ * The longest reference Books' `reference_number` and the LAX reference custom field are taken to
+ * hold (to be confirmed in the Books test organisation). Each capital in a Stripe id doubles, so
+ * these references are the longest LAX makes: up to 77 characters (`LAX-SHOP-EXP-` and a
+ * 64-character source id). A longer one is refused here, never cut short in Books.
+ */
+export const BOOKS_REFERENCE_MAX_LENGTH = 100;
+
 function stripeAccounts(
   config: MovementConfig,
+  reference: string,
 ): Result<NonNullable<ZohoOrgConfig["stripe"]>, MapCode> {
+  if (reference.length > BOOKS_REFERENCE_MAX_LENGTH) {
+    return refuse("reference_too_long", "the reference is longer than Books takes");
+  }
   return config.stripe
     ? ok(config.stripe)
     : refuse("stripe_accounts_missing", "the Stripe fees and bank accounts are not configured");
@@ -52,7 +64,7 @@ export function expenseBody(
   expense: Expense,
   config: MovementConfig,
 ): Result<ExpenseBody, MapCode> {
-  const accounts = stripeAccounts(config);
+  const accounts = stripeAccounts(config, expense.reference);
   if (!accounts.ok) return accounts;
   return ok({
     account_id: accounts.value.feesAccountId,
@@ -72,7 +84,7 @@ export function transferBody(
   transfer: Transfer,
   config: MovementConfig,
 ): Result<TransferBody, MapCode> {
-  const accounts = stripeAccounts(config);
+  const accounts = stripeAccounts(config, transfer.reference);
   if (!accounts.ok) return accounts;
   return ok({
     transaction_type: "transfer_fund",

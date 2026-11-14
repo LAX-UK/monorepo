@@ -18,7 +18,8 @@ export type MapCode =
   | "vat_differs_from_books"
   | "mixed_basis"
   | "unresolved_invoice"
-  | "stripe_accounts_missing";
+  | "stripe_accounts_missing"
+  | "reference_too_long";
 
 export type TaxConfig = Pick<ZohoOrgConfig, "taxIds" | "vatRegistered">;
 

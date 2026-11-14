@@ -26,6 +26,8 @@ export const ZOHO_BOOKS_REJECTIONS = {
    * configured: the accountant names them before any Stripe fee or payout is sent.
    */
   stripeAccountsMissing: "zoho_books_mapping_stripe_accounts_missing",
+  /** An expense or transfer whose reference is longer than Books' reference fields take. */
+  referenceTooLong: "zoho_books_mapping_reference_too_long",
   /** An expense or transfer Books holds under our reference differs from ours (account, amount, date). */
   movementMismatch: "zoho_books_movement_mismatch",
   /** The contact found for a reference is not of the type the document needs. */
