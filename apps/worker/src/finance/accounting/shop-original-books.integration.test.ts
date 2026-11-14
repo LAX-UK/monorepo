@@ -37,15 +37,28 @@ const bound = (mode: BooksMode): DestinationBinding =>
  * sale with its issuer, paid_at set (the database numbers a Books sale from the Shop's counter) and
  * the references-only event. Fixture data only.
  */
-async function seedPaidOriginal(db: Database, issuer: "books" | "stripe" = "books") {
+async function seedPaidOriginal(
+  db: Database,
+  issuer: "books" | "stripe" = "books",
+  options: {
+    /** False: a buyer party created for the sale, with no LAX account. */
+    account?: boolean;
+    /** Whom staff confirmed the invoice goes to when they issued it. */
+    recipient?: { email: string; name: string | null };
+  } = {},
+) {
   const tag = randomUUID().slice(0, 8);
   const subject = `shop-original-${tag}`;
-  await db.execute(
-    sql`insert into shop_user_profile (identity_subject_id, email, name)
-        values (${subject}, ${`${subject}@integration.test`}, ${`Ada ${tag}`})`,
-  );
+  const account = options.account ?? true;
+  if (account) {
+    await db.execute(
+      sql`insert into shop_user_profile (identity_subject_id, email, name)
+          values (${subject}, ${`${subject}@integration.test`}, ${`Ada ${tag}`})`,
+    );
+  }
   const parties = await db.execute<{ id: string }>(
-    sql`insert into shop_party (display_name, identity_subject_id) values (${`Buyer ${tag}`}, ${subject})
+    sql`insert into shop_party (display_name, identity_subject_id)
+        values (${`Buyer ${tag}`}, ${account ? subject : null})
         returning id`,
   );
   const partyId = parties.rows[0]?.id as string;
@@ -68,6 +81,14 @@ async function seedPaidOriginal(db: Database, issuer: "books" | "stripe" = "book
         returning id`,
   );
   const saleId = sale.rows[0]?.id as string;
+  if (options.recipient) {
+    await db.execute(
+      sql`update shop_original_sale
+             set invoice_recipient_email = ${options.recipient.email},
+                 invoice_recipient_name = ${options.recipient.name}
+           where id = ${saleId}`,
+    );
+  }
   await db.execute(
     sql`update shop_original_sale set status = 'paid', paid_at = ${PAID_AT.toISOString()}::timestamptz
         where id = ${saleId}`,
@@ -284,6 +305,94 @@ describe.skipIf(!HAS_DB)(
         reason: "original_sale_invoiced_by_stripe",
       });
       expect(await documentsFor(seeded)).toEqual([]);
+    });
+
+    it("invoices and emails whom staff confirmed, even a buyer with no LAX account", async () => {
+      await aimShop("live");
+      const recipient = { email: "collector@example.test", name: "Grace Collector" };
+      const seeded = await seedPaidOriginal(owner, "books", { account: false, recipient });
+      const read = await shopFacts.originalSalePaid(seeded.saleId);
+      if (read.status !== "ready") throw new Error(read.reason);
+      expect(read.facts.buyer).toEqual({
+        partyId: seeded.partyId,
+        name: "Grace Collector",
+        email: "collector@example.test",
+      });
+      await projection().project(seeded.event);
+      const books = new InMemoryAccounting({
+        orgs: { london_art_exchange: { vatRegistered: false } },
+      });
+      await drain("live", books);
+      const { service, enqueue } = copier("live", books.pdfs);
+      expect(await service.tick()).toMatchObject({ emailed: 1 });
+      expect(enqueue).toHaveBeenCalledWith(
+        expect.objectContaining({ to: "collector@example.test" }),
+      );
+    });
+
+    it("raises an error for a person when an original's invoice has nobody to go to", async () => {
+      await aimShop("live");
+      const seeded = await seedPaidOriginal(owner, "books", { account: false });
+      await projection().project(seeded.event);
+      const books = new InMemoryAccounting({
+        orgs: { london_art_exchange: { vatRegistered: false } },
+      });
+      await drain("live", books);
+      log.error.mockClear();
+      const { service, enqueue } = copier("live", books.pdfs);
+      expect(await service.tick()).toMatchObject({ emailed: 0 });
+      expect(enqueue).not.toHaveBeenCalled();
+      expect(log.error).toHaveBeenCalledWith(
+        expect.objectContaining({ originalSaleId: seeded.saleId }),
+        "accounting_original_invoice_unsent",
+      );
+    });
+
+    it("prefers the address staff confirmed over the buyer's LAX account", async () => {
+      const seeded = await seedPaidOriginal(owner, "books", {
+        recipient: { email: "elsewhere@example.test", name: null },
+      });
+      const read = await shopFacts.originalSalePaid(seeded.saleId);
+      if (read.status !== "ready") throw new Error(read.reason);
+      // With no name confirmed, the contact takes the buyer party's own name.
+      expect(read.facts.buyer).toMatchObject({
+        email: "elsewhere@example.test",
+        name: `Buyer ${seeded.tag}`,
+      });
+      expect((await shopFacts.forOriginalSale(seeded.saleId))?.recipient).toEqual({
+        email: "elsewhere@example.test",
+        name: null,
+      });
+    });
+
+    it("attributes an original's Stripe charge to the Shop, by function, as the worker role", async () => {
+      const seeded = await seedPaidOriginal(owner);
+      const pi = `pi_original_${seeded.tag}`;
+      await owner.execute(
+        sql`update shop_original_sale set stripe_payment_intent_id = ${pi} where id = ${seeded.saleId}`,
+      );
+      expect(
+        await repos.stripeLedger.productsForCharge({ paymentIntentId: pi, chargeId: null }),
+      ).toEqual(["shop"]);
+      expect(
+        await repos.stripeLedger.productsForCharge({
+          paymentIntentId: `${pi}_none`,
+          chargeId: null,
+        }),
+      ).toEqual([]);
+    });
+
+    it("never sends a Books sale with no LAX number to the books, so Books never numbers it", async () => {
+      await aimShop("dry_run");
+      const seeded = await seedPaidOriginal(owner);
+      await owner.execute(
+        sql`update shop_original_sale set invoice_number = null where id = ${seeded.saleId}`,
+      );
+      expect(await projection().project(seeded.event)).toEqual({
+        outcome: "skipped",
+        reason: "original_sale_not_invoiced",
+      });
+      expect((await documentsFor(seeded)).filter((d) => d.kind !== "contact")).toEqual([]);
     });
   },
 );

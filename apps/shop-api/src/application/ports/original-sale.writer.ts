@@ -24,8 +24,9 @@ export type IssueOriginalSaleInvoiceResult = {
   originalSaleId: string;
   status: "invoiced";
   /**
-   * Who issues the invoice: `stripe` (a Stripe Invoice, emailed by Stripe) or `books` (Zoho Books,
-   * once Stripe has taken the payment through a Payment Link; no Stripe Invoice).
+   * Who issues the invoice: `stripe` (a Stripe Invoice, emailed by Stripe to the buyer) or `books`
+   * (only while the Shop is aimed at Books live: nothing is emailed now; the buyer pays through the
+   * Payment Link, and Books emails its invoice once they have paid).
    */
   invoiceIssuer: "stripe" | "books";
   /** Null when Books issues the invoice. */
@@ -40,7 +41,14 @@ export type CompleteOriginalSalePaidCommand = {
   paidAt: Date;
 } & (
   | { stripeInvoiceId: string }
-  | { paymentLinkId: string; amountPence: number; currency: string }
+  | {
+      paymentLinkId: string;
+      /** The Checkout Session and PaymentIntent that paid: stored, and the only replay allowed. */
+      checkoutSessionId: string;
+      paymentIntentId: string | null;
+      amountPence: number;
+      currency: string;
+    }
 );
 
 export type CompleteOriginalSalePaidResult = {

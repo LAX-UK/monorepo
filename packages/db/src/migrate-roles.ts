@@ -409,6 +409,9 @@ export const WORKER_STRIPE_ATTRIBUTION_READ_COLUMNS = [
 ] as const;
 export const ACCOUNTING_STRIPE_SHOP_ORDER_FUNCTION = "accounting_stripe_shop_order(text)";
 export const ACCOUNTING_STRIPE_SHOP_ORDER_ROLES = ["worker_app"] as const;
+/** The same question for an original sold directly in the Shop (migration 0388). */
+export const ACCOUNTING_STRIPE_SHOP_ORIGINAL_SALE_FUNCTION =
+  "accounting_stripe_shop_original_sale(text)";
 
 /**
  * What the accounting projection reads to book a paid Shop order (plan v2, flows 18-20), column by
@@ -456,7 +459,7 @@ export const WORKER_SHOP_INVOICE_READ_COLUMNS = [
   ["shop_product", ["id", "title"]],
   ["shop_product_variant", ["id", "product_id", "sku"]],
   ["shop_guest_customer", ["id", "email", "name", "erased_at"]],
-  /** An original sold directly in the Shop and invoiced by Books (migration 0389). */
+  /** An original sold directly in the Shop and invoiced by Books (migration 0388). */
   [
     "shop_original_sale",
     [
@@ -470,6 +473,8 @@ export const WORKER_SHOP_INVOICE_READ_COLUMNS = [
       "invoice_issuer",
       "invoice_number",
       "paid_at",
+      "invoice_recipient_email",
+      "invoice_recipient_name",
     ],
   ],
   ["shop_party", ["id", "display_name", "identity_subject_id"]],
@@ -1774,6 +1779,11 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
         }
         for (const role of ACCOUNTING_STRIPE_SHOP_ORDER_ROLES) {
           await grantExecuteIfFunctionExists(client, role, ACCOUNTING_STRIPE_SHOP_ORDER_FUNCTION);
+          await grantExecuteIfFunctionExists(
+            client,
+            role,
+            ACCOUNTING_STRIPE_SHOP_ORIGINAL_SALE_FUNCTION,
+          );
         }
         for (const role of ACCOUNTING_RELEASE_SHOP_ORDER_BASIS_ROLES) {
           await grantExecuteIfFunctionExists(

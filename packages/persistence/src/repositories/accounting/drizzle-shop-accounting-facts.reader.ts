@@ -173,9 +173,7 @@ export class DrizzleShopAccountingFactsReader
     }
     // The number is set in the transaction that marks the sale paid.
     if (!sale.invoiceNumber) return skip("original_sale_not_invoiced");
-    const buyer = sale.identitySubjectId
-      ? await this.buyer({ identitySubjectId: sale.identitySubjectId, guestCustomerId: null })
-      : null;
+    const buyer = await this.originalRecipient(sale);
     return ready({
       originalSaleId: sale.id.toLowerCase(),
       invoiceNumber: sale.invoiceNumber,
@@ -202,11 +200,26 @@ export class DrizzleShopAccountingFactsReader
       paidAt: sale.paidAt,
       cancelled: sale.status === "cancelled",
       guest: false,
-      recipient: sale.identitySubjectId
-        ? await this.buyer({ identitySubjectId: sale.identitySubjectId, guestCustomerId: null })
-        : null,
+      recipient: await this.originalRecipient(sale),
       originalTitle: sale.title,
     };
+  }
+
+  /**
+   * Who an original's invoice goes to: the address and name staff confirmed when they issued it
+   * (a buyer of an original often has no LAX account). A sale issued before that was stored falls
+   * back to the buyer's LAX account, while it can be reached.
+   */
+  private async originalRecipient(sale: {
+    readonly invoiceRecipientEmail: string | null;
+    readonly invoiceRecipientName: string | null;
+    readonly identitySubjectId: string | null;
+  }): Promise<ShopInvoiceRecipient | null> {
+    const email = sale.invoiceRecipientEmail?.trim();
+    if (email) return { email, name: sale.invoiceRecipientName?.trim() || null };
+    return sale.identitySubjectId
+      ? this.buyer({ identitySubjectId: sale.identitySubjectId, guestCustomerId: null })
+      : null;
   }
 
   /** The stored sale, its work's title and its buyer's party; only the granted columns. */
@@ -222,6 +235,8 @@ export class DrizzleShopAccountingFactsReader
         invoiceIssuer: shopOriginalSale.invoiceIssuer,
         invoiceNumber: shopOriginalSale.invoiceNumber,
         paidAt: shopOriginalSale.paidAt,
+        invoiceRecipientEmail: shopOriginalSale.invoiceRecipientEmail,
+        invoiceRecipientName: shopOriginalSale.invoiceRecipientName,
         title: shopArtwork.title,
         partyName: shopParty.displayName,
         identitySubjectId: shopParty.identitySubjectId,

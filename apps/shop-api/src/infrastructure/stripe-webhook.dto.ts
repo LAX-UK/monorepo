@@ -84,8 +84,11 @@ export function parseCheckoutSessionCompleted(
  * returned as reported; the sale checks it against its own stored price and link.
  */
 export function parseOriginalSalePaymentLinkPaid(event: Stripe.Event): {
+  eventId: string;
   originalSaleId: string;
   paymentLinkId: string;
+  checkoutSessionId: string;
+  paymentIntentId: string | null;
   amountPence: number;
   currency: string;
   paidAt: Date;
@@ -103,10 +106,13 @@ export function parseOriginalSalePaymentLinkPaid(event: Stripe.Event): {
   const link = session.payment_link;
   const paymentLinkId = typeof link === "string" ? link : link?.id;
   if (!originalSaleId || !UUID.test(originalSaleId) || !paymentLinkId) return null;
-  if (typeof session.amount_total !== "number") return null;
+  if (typeof session.amount_total !== "number" || !session.id) return null;
   return {
+    eventId: event.id,
     originalSaleId,
     paymentLinkId,
+    checkoutSessionId: session.id,
+    paymentIntentId: paymentIntentIdFromSession(session),
     amountPence: session.amount_total,
     currency: session.currency ?? "",
     paidAt: new Date(event.created * 1000),

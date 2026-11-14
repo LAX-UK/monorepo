@@ -1781,7 +1781,7 @@ export const shopOriginalSale = pgTable(
     reservationExpiresAt: timestamp("reservation_expires_at", { mode: "date", withTimezone: true }),
     stripeInvoiceId: text("stripe_invoice_id"),
     /**
-     * Who issues the sale's invoice, fixed when staff issue it (migration 0389): `stripe` (a Stripe
+     * Who issues the sale's invoice, fixed when staff issue it (migration 0388): `stripe` (a Stripe
      * Invoice) or `books` (Zoho Books, under a `LAX-INV-` number; Stripe takes the payment through
      * a single-use Payment Link).
      */
@@ -1795,6 +1795,12 @@ export const shopOriginalSale = pgTable(
     invoiceNumber: text("invoice_number"),
     /** The Payment Link a `books` sale is paid through; the paid webhook must name it. */
     stripePaymentLinkId: text("stripe_payment_link_id"),
+    /** The Checkout Session and PaymentIntent that paid a `books` sale; each pays one sale only. */
+    stripeCheckoutSessionId: text("stripe_checkout_session_id"),
+    stripePaymentIntentId: text("stripe_payment_intent_id"),
+    /** Who staff confirmed the invoice goes to when they issued it (Books' contact and email). */
+    invoiceRecipientEmail: text("invoice_recipient_email"),
+    invoiceRecipientName: text("invoice_recipient_name"),
     salesChannel: shopSalesChannelEnum("sales_channel").default("art").notNull(),
     recordedBySubjectId: text("recorded_by_subject_id").notNull(),
     version: integer("version").default(1).notNull(),
@@ -1809,6 +1815,8 @@ export const shopOriginalSale = pgTable(
     index("shop_original_sale_buyer_idx").on(table.buyerPartyId),
     uniqueIndex("shop_original_sale_invoice_number_uid").on(table.invoiceNumber),
     uniqueIndex("shop_original_sale_payment_link_uid").on(table.stripePaymentLinkId),
+    uniqueIndex("shop_original_sale_checkout_session_uid").on(table.stripeCheckoutSessionId),
+    uniqueIndex("shop_original_sale_payment_intent_uid").on(table.stripePaymentIntentId),
     check("shop_original_sale_price_nonnegative", sql`${table.salePricePence} >= 0`),
     check(
       "shop_original_sale_invoice_issuer_chk",

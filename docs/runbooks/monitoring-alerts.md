@@ -527,6 +527,32 @@ back, and each stays due. While any waits, every run raises `accounting_shop_inv
 (an error alert sent to Sentry, routed to finance on-call like the other accounting alerts). Set
 the address and the waiting emails go on the next run.
 
+## Shop originals invoiced in Books (flow 22)
+
+**What happens.** Staff issue an original's invoice in Shop Admin › Sales. Only while the Shop is
+aimed at Books **live** does Books invoice it: no Stripe Invoice is made; Stripe makes a single-use
+Payment Link for the stored price, and Shop Admin shows it ("Nothing was emailed. Send … this
+payment link …"). Send the buyer that link. Once they pay, the sale takes the next `LAX-INV-` number
+from the Shop's counter, and the worker books the contact, the invoice and the payment, and emails
+the invoice to the address staff confirmed in the dialog (not to the buyer's LAX account, which
+they may not have). In dry run, in the test organisation and with Books off, the buyer gets the
+Stripe Invoice, emailed by Stripe, exactly as before: a rehearsal never changes what a buyer gets.
+
+- **A second payment** for an original already paid (another Checkout Session of its link) is
+  never applied: finance gets an unapplied-money task and alert (`shop_original_paid_twice`).
+  Refund the second payment in Stripe.
+- **`accounting_original_invoice_unsent`** (worker error log). An original's Books invoice had
+  nobody to go to (a sale issued before the recipient was stored, whose buyer has no reachable
+  account). Download the invoice from Finance › Accounting and send it to the buyer by hand.
+- **`shop_original_money_returned`** (Shop API log, and an ops alert email "Shop original refunded
+  or disputed (not credited in Books)"). A refund, failed refund or dispute of an original paid
+  through its link. Refunds of originals are not built yet: Books keeps the invoice and the payment,
+  and nothing credits them. Make the credit note (and its refund from Stripe clearing) by hand in
+  Books, against the original's invoice, and note it on the sale.
+- **Rollback** of the migration keeps every column and its data (issuer, link, number, payment,
+  recipient) and removes only the numbering trigger and the attribution function. Roll the release
+  back first; apply the migration again with the release that knows it.
+
 ## Books notices and the nightly status check (Zoho Books, rehearsal)
 
 Books is still in rehearsal (dry run, or the test organisation only). Nothing below changes

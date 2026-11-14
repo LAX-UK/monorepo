@@ -39,6 +39,10 @@ import {
   type ShopDomainEventPublisherMode,
   createShopDomainEventPublisher,
 } from "../shop-domain-event-publisher.js";
+import {
+  type UnappliedMoneyLookup,
+  recordUnappliedShopPayment,
+} from "../shop-unapplied-payment.js";
 
 async function assignOriginalSaleInTransaction(
   tx: Database,
@@ -239,9 +243,11 @@ export function createDrizzleOriginalSaleWriter(deps: {
               .limit(1);
 
             const description = `Original artwork: ${artwork?.title ?? sale.artworkId}`;
-            // Decision F17: while the Shop switch aims at Books, Books issues the invoice (under a
-            // LAX-INV- number, once paid) and Stripe only takes the payment. Never both.
-            if ((await readShopBooksMode(session)) !== null) {
+            // Decision F17: once the Shop switch aims at Books live, Books issues the invoice (under
+            // a LAX-INV- number, once paid) and Stripe only takes the payment. Never both. In dry
+            // run and the test organisation Books emails no one, so the buyer keeps their Stripe
+            // Invoice exactly as with Books off: a rehearsal never changes what a buyer receives.
+            if ((await readShopBooksMode(session)) === "live") {
               if (!deps.payments) {
                 throw new ShopApiError(
                   SHOP_API_ERROR_CODES.INTERNAL,
@@ -261,6 +267,9 @@ export function createDrizzleOriginalSaleWriter(deps: {
                   status: "invoiced",
                   invoiceIssuer: "books",
                   stripePaymentLinkId: link.paymentLinkId,
+                  // Books' contact and invoice email go to whom staff confirmed, not the account.
+                  invoiceRecipientEmail: command.buyerEmail,
+                  invoiceRecipientName: command.buyerName?.trim() || null,
                   updatedAt: new Date(),
                 })
                 .where(eq(shopOriginalSale.id, sale.id));
@@ -317,6 +326,7 @@ export function createDrizzleOriginalSaleWriter(deps: {
             stripeInvoiceId: shopOriginalSale.stripeInvoiceId,
             invoiceIssuer: shopOriginalSale.invoiceIssuer,
             stripePaymentLinkId: shopOriginalSale.stripePaymentLinkId,
+            stripeCheckoutSessionId: shopOriginalSale.stripeCheckoutSessionId,
             salePricePence: shopOriginalSale.salePricePence,
           })
           .from(shopOriginalSale)
@@ -327,6 +337,15 @@ export function createDrizzleOriginalSaleWriter(deps: {
           return { originalSaleId: command.originalSaleId, status: "assigned" as const };
         }
         if (sale.status === "assigned") {
+          // A Books sale knows the payment that paid it: only that one is a replay. Any other
+          // paid session is a second payment, for finance (the caller records it).
+          if (
+            sale.invoiceIssuer === "books" &&
+            (!("checkoutSessionId" in command) ||
+              command.checkoutSessionId !== sale.stripeCheckoutSessionId)
+          ) {
+            throw new OriginalSaleAlreadyPaidError(sale.id);
+          }
           return { originalSaleId: sale.id, status: "assigned" as const };
         }
         assertPaidAsIssued(sale, command);
@@ -335,7 +354,17 @@ export function createDrizzleOriginalSaleWriter(deps: {
         // Setting paid_at gives a Books sale its LAX-INV- number (the database's trigger).
         await dbTx
           .update(shopOriginalSale)
-          .set({ status: "paid", paidAt: command.paidAt, updatedAt: command.paidAt })
+          .set({
+            status: "paid",
+            paidAt: command.paidAt,
+            ...("checkoutSessionId" in command
+              ? {
+                  stripeCheckoutSessionId: command.checkoutSessionId,
+                  stripePaymentIntentId: command.paymentIntentId,
+                }
+              : {}),
+            updatedAt: command.paidAt,
+          })
           .where(eq(shopOriginalSale.id, sale.id));
         if (sale.invoiceIssuer === "books") {
           // For the books: references only, in this transaction, so a paid original is never
@@ -395,40 +424,81 @@ function assertPaidAsIssued(
   }
 }
 
-/** A Stripe Checkout Session from an original's Payment Link was paid (Books issues its invoice). */
+/** A Books sale that was already paid by another Checkout Session was paid again. */
+export class OriginalSaleAlreadyPaidError extends Error {
+  constructor(readonly originalSaleId: string) {
+    super("Original sale was already paid by another payment");
+    this.name = "OriginalSaleAlreadyPaidError";
+  }
+}
+
+/**
+ * A Stripe Checkout Session from an original's Payment Link was paid (Books issues its invoice).
+ * The same session again is a replay. Another paid session for a sale already paid is money
+ * nothing can take: it is recorded for finance (unapplied money, with its alert), never applied.
+ */
 export async function completeOriginalSaleFromPaymentLink(
   db: Database,
   input: {
     originalSaleId: string;
     paymentLinkId: string;
+    checkoutSessionId: string;
+    paymentIntentId: string | null;
     amountPence: number;
     currency: string;
     paidAt: Date;
+    eventId: string;
     domainEventMode: ShopDomainEventPublisherMode;
     offers?: OriginalOfferRegister;
+    unappliedMoney?: UnappliedMoneyLookup;
   },
-): Promise<"processed" | "ignored" | "duplicate"> {
+): Promise<"processed" | "ignored" | "unapplied_recorded"> {
   const [sale] = await db
-    .select({ id: shopOriginalSale.id, status: shopOriginalSale.status })
+    .select({ id: shopOriginalSale.id })
     .from(shopOriginalSale)
     .where(eq(shopOriginalSale.id, input.originalSaleId))
     .limit(1);
   if (!sale) return "ignored";
-  if (sale.status === "assigned") return "duplicate";
-  await createDrizzleOriginalSaleWriter({
-    db,
-    uow: createDrizzleShopUnitOfWork(db, input.domainEventMode),
-    invoiceGateway: noInvoiceGateway,
-    domainEventMode: input.domainEventMode,
-    ...(input.offers ? { offers: input.offers } : {}),
-  }).completePaidAndAssign({
-    originalSaleId: sale.id,
-    paymentLinkId: input.paymentLinkId,
-    amountPence: input.amountPence,
-    currency: input.currency,
-    paidAt: input.paidAt,
-  });
-  return "processed";
+  try {
+    // Replays and concurrent deliveries are told apart under the sale's row lock.
+    await createDrizzleOriginalSaleWriter({
+      db,
+      uow: createDrizzleShopUnitOfWork(db, input.domainEventMode),
+      invoiceGateway: noInvoiceGateway,
+      domainEventMode: input.domainEventMode,
+      ...(input.offers ? { offers: input.offers } : {}),
+    }).completePaidAndAssign({
+      originalSaleId: sale.id,
+      paymentLinkId: input.paymentLinkId,
+      checkoutSessionId: input.checkoutSessionId,
+      paymentIntentId: input.paymentIntentId,
+      amountPence: input.amountPence,
+      currency: input.currency,
+      paidAt: input.paidAt,
+    });
+    return "processed";
+  } catch (error) {
+    if (!(error instanceof OriginalSaleAlreadyPaidError)) throw error;
+    const unappliedMoney = input.unappliedMoney;
+    if (!unappliedMoney) throw new Error("unapplied_money_reader_not_configured");
+    await db.transaction(async (tx) => {
+      await recordUnappliedShopPayment(
+        tx as Database,
+        createShopDomainEventPublisher(input.domainEventMode),
+        unappliedMoney,
+        {
+          reason: "shop_original_paid_twice",
+          order: null,
+          originalSaleId: sale.id,
+          sessionId: input.checkoutSessionId,
+          paymentIntentId: input.paymentIntentId,
+          amountPence: input.amountPence,
+          eventId: input.eventId,
+        },
+      );
+    });
+    return "unapplied_recorded";
+  }
 }
 
 const noInvoiceGateway: InvoiceGateway = {

@@ -272,6 +272,13 @@ export class AccountingInvoiceCopy {
       return false;
     }
     if (!facts.recipient) {
+      // An original's buyer has no order page to find their invoice on: a person must send it.
+      if (originalSaleId !== null) {
+        this.deps.log.error(
+          { documentId: copy.documentId, originalSaleId, product: "shop" },
+          "accounting_original_invoice_unsent",
+        );
+      }
       await this.skip(copy.documentId, "no_recipient");
       return false;
     }
