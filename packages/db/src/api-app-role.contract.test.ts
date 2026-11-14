@@ -81,6 +81,7 @@ async function withOwnerDocuments<T>(
     parkedDefaultNote: string;
     parkedCancelledInvoiceNote: string;
     parkedDeliveryNote: string;
+    parkedOutsideStripeNote: string;
   }) => Promise<T>,
 ): Promise<T> {
   const owner = new Client(buildPgConnectionConfig(OWNER_URL ?? ""));
@@ -185,6 +186,16 @@ async function withOwnerDocuments<T>(
       "accounting_parked_credited_invoice_cancelled",
     );
     const parkedDeliveryNote = await parkedNote("dlv", "accounting_parked_vat_on_delivery");
+    // A Shop refund's credit note settled outside Stripe, parked until its account is named (0386).
+    const parkedOutsideStripeNote = await insert(
+      `LAX-SHOP-CN-out-${suffix}`,
+      "needs_review",
+      null,
+      null,
+      "accounting_parked_refund_outside_stripe",
+      "shop",
+      "credit_note",
+    );
     return await fn({
       failed,
       issued,
@@ -196,6 +207,7 @@ async function withOwnerDocuments<T>(
       parkedDefaultNote,
       parkedCancelledInvoiceNote,
       parkedDeliveryNote,
+      parkedOutsideStripeNote,
     });
   } finally {
     if (ids.length > 0) {
@@ -564,6 +576,7 @@ describe.skipIf(!API_URL)("api_app role contract", { timeout: 60_000 }, () => {
               ["a buyer default's credit note", docs.parkedDefaultNote],
               ["a credit note whose invoice was cancelled", docs.parkedCancelledInvoiceNote],
               ["a courier refund's credit note", docs.parkedDeliveryNote],
+              ["a Shop refund's credit note settled outside Stripe", docs.parkedOutsideStripeNote],
             ] as const) {
               expect(await probe(client, release, [id]), what).toBe("42501");
               expect(

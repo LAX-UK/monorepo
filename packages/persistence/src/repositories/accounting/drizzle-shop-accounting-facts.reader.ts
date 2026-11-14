@@ -2,6 +2,7 @@ import type {
   ShopDeliveryFacts,
   ShopOrderLineFacts,
   ShopOrderPaidFacts,
+  ShopRefundFacts,
 } from "@auction/accounting-domain";
 import { LONDON_TIME_ZONE, dayKey } from "@auction/datetime";
 import type { Database } from "@auction/db";
@@ -12,9 +13,10 @@ import {
   shopOrderLine,
   shopProduct,
   shopProductVariant,
+  shopRefund,
   shopUserProfile,
 } from "@auction/db/schema";
-import { asc, eq } from "drizzle-orm";
+import { and, asc, eq } from "drizzle-orm";
 import type {
   FactsRead,
   IShopAccountingFactsReader,
@@ -22,6 +24,7 @@ import type {
   IShopInvoiceEmailFactsReader,
   ShopInvoiceEmailFacts,
   ShopInvoiceRecipient,
+  ShopRefundSettledRead,
 } from "../../interfaces/accounting.js";
 
 const skip = (reason: string) => ({ status: "skip", reason }) as const;
@@ -130,6 +133,38 @@ export class DrizzleShopAccountingFactsReader
         vatPence: order.surchargeVatPence,
       },
     });
+  }
+
+  async refundSettled(refundId: string): Promise<FactsRead<ShopRefundSettledRead>> {
+    const [own] = await this.db
+      .select({ orderId: shopRefund.orderId, status: shopRefund.status })
+      .from(shopRefund)
+      .where(eq(shopRefund.id, refundId));
+    if (!own) return skip("refund_not_found");
+    // Only a refund that went through says anything to the books; succeeded is final in the Shop.
+    if (own.status !== "succeeded") return skip("refund_not_succeeded");
+    const order = await this.orderPaid(own.orderId);
+    if (order.status === "skip") return order;
+    const rows = await this.db
+      .select({
+        id: shopRefund.id,
+        amountPence: shopRefund.amountPence,
+        orderLineId: shopRefund.orderLineId,
+        settledOutsideAt: shopRefund.settledOutsideAt,
+        updatedAt: shopRefund.updatedAt,
+      })
+      .from(shopRefund)
+      .where(and(eq(shopRefund.orderId, own.orderId), eq(shopRefund.status, "succeeded")))
+      .orderBy(asc(shopRefund.createdAt), asc(shopRefund.id));
+    const refunds: ShopRefundFacts[] = rows.map((row) => ({
+      refundId: row.id.toLowerCase(),
+      amountPence: row.amountPence,
+      // The row is last written when the refund goes through (or is marked settled outside).
+      refundedOn: londonDay(row.settledOutsideAt ?? row.updatedAt),
+      orderLineId: row.orderLineId?.toLowerCase() ?? null,
+      settledOutside: row.settledOutsideAt !== null,
+    }));
+    return ready({ order: order.facts, refunds, refundId: refundId.toLowerCase() });
   }
 
   async forOrder(orderId: string): Promise<ShopInvoiceEmailFacts | null> {

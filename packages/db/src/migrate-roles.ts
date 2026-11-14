@@ -384,6 +384,23 @@ export const WORKER_SHOP_INVOICE_READ_COLUMNS = [
   ["shop_product", ["id", "title"]],
   ["shop_product_variant", ["id", "product_id", "sku"]],
   ["shop_guest_customer", ["id", "email", "name", "erased_at"]],
+  /**
+   * A refund that went through, for its credit note (flow 21) and the clearing-refund step's check:
+   * never its Stripe ids, nor what staff wrote when they settled it outside Stripe.
+   */
+  [
+    "shop_refund",
+    [
+      "id",
+      "order_id",
+      "order_line_id",
+      "amount_pence",
+      "status",
+      "settled_outside_at",
+      "created_at",
+      "updated_at",
+    ],
+  ],
 ] as const;
 
 /**

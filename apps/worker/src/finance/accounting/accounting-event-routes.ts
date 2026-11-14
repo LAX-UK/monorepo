@@ -11,6 +11,7 @@ import {
   type ProjectionPolicy,
   type Result,
   laxReference,
+  shopCreditBuiltAfter,
 } from "@auction/accounting-domain";
 import type {
   CreditBasis,
@@ -24,6 +25,7 @@ import {
   paymentGroupDeliveryRefundedPayloadSchemaV1,
   paymentGroupSettledPayloadSchemaV1,
   shopAccountingOrderPaidPayloadSchemaV1,
+  shopRefundCompletedPayloadSchemaV1,
 } from "@auction/types";
 import { z } from "zod";
 
@@ -163,6 +165,7 @@ function route<F extends BuiltFlow>(
   product: Product,
   flow: F,
   read: (facts: AccountingFactsReaders, event: AccountingEvent) => Promise<RouteRead<FlowFacts[F]>>,
+  basisOf?: (facts: FlowFacts[F], projection: Projection) => CreditBasis,
 ): AccountingEventRoute {
   const policy = PROJECTION_POLICIES[flow] as ProjectionPolicy<FlowFacts[F]>;
   return {
@@ -171,8 +174,15 @@ function route<F extends BuiltFlow>(
     async project(facts, event) {
       const read_ = await read(facts, event);
       if (read_.status === "skip") return read_;
-      const basis = "basis" in read_ ? read_.basis : undefined;
-      return { status: "ready", projection: policy(read_.facts), ...(basis ? { basis } : {}) };
+      const projection = policy(read_.facts);
+      // A basis that depends on what was built (each new credit note's place) is stated after it.
+      const basis =
+        basisOf && projection.ok
+          ? basisOf(read_.facts, projection.value)
+          : "basis" in read_
+            ? read_.basis
+            : undefined;
+      return { status: "ready", projection, ...(basis ? { basis } : {}) };
     },
   };
 }
@@ -399,4 +409,31 @@ export const ACCOUNTING_EVENT_ROUTES: Readonly<Record<string, AccountingEventRou
     }
     return read;
   }),
+  // A Shop refund went through (Stripe, or settled outside it by staff): every refund of the order
+  // that went through is replayed against the order's invoice, after its credit notes already
+  // registered; each new one is checked when registered against the refunds and credit it was
+  // built after.
+  "shop.refund.completed": route(
+    "shop",
+    "shop_refund_settled",
+    async (facts, event) => {
+      const payload = shopRefundCompletedPayloadSchemaV1.safeParse(event.payload);
+      if (!payload.success) throw new AccountingEventPayloadError(event.eventType);
+      if (payload.data.status !== "succeeded") return { status: "skip", reason: "not_succeeded" };
+      if (!facts.shop.refundSettled) return { status: "skip", reason: "shop_facts_not_wired" };
+      if (!facts.books) throw new AccountingBooksViewMissingError(event.eventType);
+      const read = await facts.shop.refundSettled(payload.data.refundId);
+      if (read.status === "skip") return read;
+      const invoice = laxReference("shop", "invoice", read.facts.order.orderId);
+      if (!invoice.ok) throw new AccountingEventPayloadError(event.eventType);
+      const registered = await facts.books.creditNotesFor(invoice.value);
+      return { status: "ready", facts: { ...read.facts, registered } };
+    },
+    (facts, projection) => ({
+      kind: "shop_refunds",
+      orderId: facts.order.orderId,
+      succeededRefunds: facts.refunds.length,
+      builtAfter: shopCreditBuiltAfter(projection.documents, facts.registered),
+    }),
+  ),
 };
