@@ -5,6 +5,7 @@ import {
   DetailPanel,
   type DetailPanelProps,
   Notice,
+  OverflowMenu,
   PanelSection,
   StaffDate,
   StatusBadge,
@@ -18,8 +19,8 @@ const URGENCY_BADGE = {
 
 /**
  * An item waiting on staff, beside the queue: what holds it up and who it waits on, the next
- * step, how long it has waited, and the record page that settles it ("Open full page" in the
- * header, the only route). A work queue: its place ("3 of 120") and J and K to the next item without closing.
+ * step, how long it has waited, and the record page that settles it (in the "…" menu under its
+ * own name: an item has no page of its own, so the header has no "Open full page"). A work queue: its place ("3 of 120") and J and K to the next item without closing.
  */
 export function OnboardingIssueQuickView({
   row,
@@ -36,7 +37,16 @@ export function OnboardingIssueQuickView({
       title={row?.title ?? "Onboarding item"}
       description={row?.kind}
       headerFacts={["Name", "Client", "Status", "Type"]}
-      {...(row ? { fullPage: { href: row.href, Link } } : {})}
+      overflow={
+        row ? (
+          <OverflowMenu
+            size="icon-sm"
+            label={`More actions for ${row.title}`}
+            Link={Link}
+            actions={[{ id: "record", label: row.hrefLabel, href: row.href }]}
+          />
+        ) : null
+      }
       notice={
         row ? (
           <Notice tone={row.urgency === "stale" ? "warning" : "info"} title={row.nextStep.blocker}>

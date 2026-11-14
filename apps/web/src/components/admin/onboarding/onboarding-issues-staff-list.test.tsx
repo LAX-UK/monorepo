@@ -1,5 +1,6 @@
 import type { OnboardingStaffRow } from "@/lib/admin/onboarding-issues-staff-list.vm";
 import { onboardingNextStep } from "@/lib/admin/onboarding-issues-staff-list.vm";
+import { queuePanel } from "@/test/queue-panel";
 import { StaffTooltipProvider } from "@auction/staff-ui";
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -90,14 +91,15 @@ describe("OnboardingIssuesStaffList queue panel", () => {
     expect(within(dialog).getByText("The provider")).toBeVisible();
     expect(within(dialog).getByRole("heading", { name: "Next step" })).toBeVisible();
     expect(within(dialog).getByText(/Check the session with the provider/)).toBeVisible();
-    expect(within(dialog).getByRole("link", { name: "Open full page" })).toHaveAttribute(
+    // An item has no page of its own, so the header has no "Open full page" and the panel body
+    // and footer carry no route; the record that settles it is in the "…" menu under its name.
+    expect(within(dialog).queryByRole("link", { name: "Open full page" })).not.toBeInTheDocument();
+    expect(within(dialog).queryAllByRole("link", { name: /open/i })).toHaveLength(0);
+    expect(within(dialog).getByText("kyc_c@example.test")).toBeVisible();
+    expect(queuePanel.openMenu().getByRole("menuitem", { name: "Open client" })).toHaveAttribute(
       "href",
       "/admin/clients/user_kyc_c",
     );
-    // One route only: the footer has no second "Open client" button.
-    expect(within(dialog).queryByRole("link", { name: "Open client" })).not.toBeInTheDocument();
-    expect(within(dialog).getAllByRole("link", { name: /open/i })).toHaveLength(1);
-    expect(within(dialog).getByText("kyc_c@example.test")).toBeVisible();
   });
 
   it("keeps the item in the URL, its place in the whole queue, and steps with J and K", () => {
