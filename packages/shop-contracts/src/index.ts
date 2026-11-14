@@ -989,6 +989,7 @@ export {
   parseCheckoutSession,
   parseOrderList,
   parseOrderSummary,
+  parseShopOrderInvoiceCard,
   parseRegisterArtworkInterestResponse,
   parseSavedDeliveryAddressList,
   parsePublicArtistDetail,

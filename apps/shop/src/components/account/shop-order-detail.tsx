@@ -1,17 +1,24 @@
 import { ShopDeliveryQuote } from "@/components/account/shop-delivery-quote.client";
 import { ShopFinishPaying } from "@/components/account/shop-finish-paying.client";
+import { ShopOrderInvoiceCard } from "@/components/account/shop-order-invoice-card";
 import { ShopOrderLines, ShopOrderTotals } from "@/components/account/shop-order-lines";
 import { ShopOrderTimeline } from "@/components/account/shop-order-timeline";
 import { shopButtonClassName } from "@/components/shop-commerce-button";
 import { SHOP_POLICY_PATHS } from "@/content/policies/shop-policy-status";
+import type { ShopOrderInvoiceCardVm } from "@/lib/account/shop-order-invoice-card.vm";
 import type { ShopOrderDetailVm } from "@/lib/account/shop-orders.vm";
 import { Button } from "@auction/ui/components/button";
 import { DotStatusPill } from "@auction/ui/components/dot-status-pill";
 import Link from "next/link";
 
-/** Help with an order: the invoice, and reporting a problem while the 14 days are open. */
-function OrderHelp({ order }: { order: ShopOrderDetailVm }) {
-  const { problem, invoiceHref } = order;
+/**
+ * Help with an order: LAX's own invoice (while Books does not issue it), and reporting a problem
+ * while the 14 days are open.
+ */
+function OrderHelp({ order, booksInvoice }: { order: ShopOrderDetailVm; booksInvoice: boolean }) {
+  const { problem } = order;
+  // Once Books issues the invoice, the Invoice panel is where it is; LAX's own copy is not offered.
+  const invoiceHref = booksInvoice ? null : order.invoiceHref;
   if (!invoiceHref && !problem) return null;
   return (
     <section className="shop-order-panel" aria-labelledby="order-help-heading">
@@ -70,7 +77,14 @@ function OrderHelp({ order }: { order: ShopOrderDetailVm }) {
  * The order page. Progress and items on the left; the total, delivery and help on the right from
  * 1024px. Panels sit side by side and never inside one another.
  */
-export function ShopOrderDetail({ order }: { order: ShopOrderDetailVm }) {
+export function ShopOrderDetail({
+  order,
+  invoiceCard = { kind: "lax" },
+}: {
+  order: ShopOrderDetailVm;
+  /** The Books invoice card; `lax` (the default) leaves the page exactly as it was. */
+  invoiceCard?: ShopOrderInvoiceCardVm;
+}) {
   return (
     <div className="shop-order-page">
       <div className="shop-order-page__meta">
@@ -133,7 +147,9 @@ export function ShopOrderDetail({ order }: { order: ShopOrderDetailVm }) {
             ) : null}
           </section>
 
-          <OrderHelp order={order} />
+          <ShopOrderInvoiceCard card={invoiceCard} />
+
+          <OrderHelp order={order} booksInvoice={invoiceCard.kind !== "lax"} />
         </div>
       </div>
     </div>
