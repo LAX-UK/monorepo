@@ -59,6 +59,14 @@ export function assertStorefrontRedirectUrl(url: string, storefrontUrl: string):
   }
 }
 
+/** Checks a checkout's success and cancel URLs together, for callers that must check first. */
+export function storefrontReturnUrlCheck(storefrontUrl: string) {
+  return (urls: { successUrl: string; cancelUrl: string }): void => {
+    assertStorefrontRedirectUrl(urls.successUrl, storefrontUrl);
+    assertStorefrontRedirectUrl(urls.cancelUrl, storefrontUrl);
+  };
+}
+
 /**
  * Keeps the price the shopper was shown for each frame. A frame whose price has not been stamped
  * yet takes today's (it was just chosen, or the line predates stamping). A stamped frame whose

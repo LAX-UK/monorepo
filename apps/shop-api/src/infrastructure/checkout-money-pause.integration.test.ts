@@ -23,6 +23,7 @@ import {
 import { createDrizzleCheckoutMoneyPause } from "./drizzle-checkout-money-pause.js";
 import { createDrizzleCommerceRepository } from "./drizzle-commerce.repository.js";
 import { completeShopCheckoutSession } from "./drizzle-payment-event.processor.js";
+import { storefrontReturnUrlCheck } from "./shop-basket.persistence.js";
 import { expirePausedShopCheckouts } from "./shop-checkout-money-pause-sweep.js";
 
 function recordingGateway() {
@@ -193,6 +194,7 @@ describe.skipIf(!hasShopIntegrationDb)("checkout money pause, on every payment p
     const t = await setup("pause-quote");
     const order = await t.repo.createCheckoutOrder(t.request());
     const acceptance = createDeliveryQuoteAcceptanceService({
+      assertReturnUrls: storefrontReturnUrlCheck("http://localhost:3020"),
       store: { accept: async () => undefined },
       checkout: t.repo,
       exportPaymentEnabled: true,
