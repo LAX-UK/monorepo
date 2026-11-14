@@ -43,6 +43,8 @@ type Props = {
   usePendingNavigation?: () => PendingNavigation;
   /** Focus the select trigger when it mounts (e.g. it replaces a focused stand-in). */
   autoFocus?: boolean | undefined;
+  /** Open the list when it mounts (e.g. it replaces a stand-in that was pressed). */
+  autoOpen?: boolean | undefined;
 };
 
 function defaultPendingNavigation(): PendingNavigation {
@@ -71,6 +73,7 @@ export function FilterSelect({
   serializeValue,
   usePendingNavigation = defaultPendingNavigation,
   autoFocus,
+  autoOpen,
 }: Props) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -115,7 +118,12 @@ export function FilterSelect({
   }
 
   return (
-    <Select value={selectValue} onValueChange={onValueChange} disabled={pending}>
+    <Select
+      value={selectValue}
+      onValueChange={onValueChange}
+      disabled={pending}
+      defaultOpen={autoOpen ?? false}
+    >
       <SelectTrigger
         className={className}
         aria-busy={pending}
