@@ -38,6 +38,9 @@ type Tx = Parameters<Parameters<Database["transaction"]>[0]>[0];
 const COURIER_SOURCE =
   /^dlv-([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})-r(\d+)$/;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+/** A Shop refund's credit note: `<refund>`, or `<refund>-delivery` on the delivery invoice. */
+const SHOP_SOURCE =
+  /^([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})(?:-delivery)?$/;
 
 /**
  * Does the refund this credit note gives back still stand, read now, under the credit note's row
@@ -47,8 +50,10 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
  *   refund back (matched as the facts reader matches them);
  * - a courier refund's note (`dlv-<quote>-r<total>`): the quote's refunded total still reaches the
  *   total the note brings its credit to;
- * - a Shop refund's note (`LAX-SHOP-CN-<refund id>`): the `shop_refund` row went through by
- *   Stripe (succeeded, not settled outside it, whose money never passed through clearing).
+ * - a Shop refund's note (`LAX-SHOP-CN-<refund id>`, or `-delivery` after it on an outside-UK
+ *   delivery invoice): the `shop_refund` row went through by Stripe (succeeded, not settled
+ *   outside it, whose money never passed through clearing) and Stripe has not reported it failed
+ *   since (`reversed_at`).
  * Anything it cannot tell (an unknown source, a reversal that matches no refund) does not stand:
  * the money is never refunded from clearing on a guess.
  */
@@ -65,20 +70,24 @@ async function refundStillStands(tx: Tx, laxReference: string): Promise<boolean>
     const refunded = delivery?.refunded;
     return refunded !== null && refunded !== undefined && Number(courier[2]) <= Number(refunded);
   }
-  if (!UUID.test(sourceId)) return false;
   if (parsed.value.product === "shop") {
+    // `<refund>` on the order's invoice, `<refund>-delivery` on its outside-UK delivery invoice.
+    const refundId = SHOP_SOURCE.exec(sourceId)?.[1];
+    if (!refundId) return false;
     const [refund] = await tx
       .select({ id: shopRefund.id })
       .from(shopRefund)
       .where(
         and(
-          eq(shopRefund.id, sourceId),
+          eq(shopRefund.id, refundId),
           eq(shopRefund.status, "succeeded"),
           isNull(shopRefund.settledOutsideAt),
+          isNull(shopRefund.reversedAt),
         ),
       );
     return refund !== undefined;
   }
+  if (!UUID.test(sourceId)) return false;
   if (parsed.value.product !== "bid") return false;
   const [own] = await tx
     .select({ paymentId: paymentRefund.paymentId })

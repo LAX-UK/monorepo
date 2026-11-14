@@ -531,38 +531,62 @@ the address and the waiting emails go on the next run.
 
 **What happens.** When a Shop refund goes through (Stripe confirms it, or staff mark a failed one
 "refunded outside LAX"), the Shop writes `shop.refund.completed` with the refund (ids only). With
-the Shop aimed at Books, the worker replays every refund of the order that went through and books,
-in London Art Exchange's organisation only, one credit note per refund (`LAX-SHOP-CN-<refund>`)
-against the order's invoice, after the credit notes already there (kept as stored). Once the credit
-note is issued, its money is refunded in Books from Stripe clearing, once (`refund_credit_note` in
-its history), exactly as for Bid.
+the Shop aimed at Books, the worker replays every refund of the order that went through, in the
+order they went through, and books, in London Art Exchange's organisation only, one credit note
+per refund (`LAX-SHOP-CN-<refund>`) against the order's invoice, after the credit notes already
+there (kept as stored). Once the credit note is issued, its money is refunded in Books from Stripe
+clearing, once (`refund_credit_note` in its history), exactly as for Bid.
 
 - **Never more than charged.** A credit note only takes what is left on the invoice's lines; the
   registry also refuses, under the invoice's credit lock, a note built from refunds or credit that
   changed meanwhile (`credit_prior_changed`, tried again with fresh facts).
-- **Only where certain.** Credit notes fill an invoice's lines in order. A refund is credited when
-  its lines are certain: it names a line that is the next one with credit left, takes everything
-  left on the invoice (a cancellation), or names none while only one line has credit left. A part
-  refund naming no line on an order of several lines, or any refund naming no line on an order
-  delivered outside the UK (it may be for the delivery, invoiced on its own), is refused on its own
-  event as `refund_unattributed` (failed deliveries, for a person). Nothing is guessed. Later
-  refunds of the order leave it out, and credit it once it becomes certain. To book it, credit it by
-  hand in Books against the order's invoice and note the refund on the order; do not redrive the
-  delivery unless the order's other refunds have since made it certain.
+- **Only where certain.** A refund naming a line is credited on that line (a return of one print,
+  or of a frame while the print is kept). Lines the books cannot tell apart (the same name, VAT
+  treatment and VAT rate, two identical frames say) are treated as one: the refund is credited on
+  them together, never above what they charged. A refund naming no line is credited when it takes
+  everything left on the order (a cancellation), or when only one line has credit left and it fits
+  there. Anything else is refused on its own event as `refund_unattributed` (failed deliveries,
+  for a person). Nothing is guessed.
+- **Waiting for a person.** Once a refund of an order is refused as `refund_unattributed`, every
+  refund of that order that goes through after it is refused too ("waits behind refund …"), and
+  none of them is ever credited automatically later. To book them: credit each by hand in Books
+  against the order's invoice, in the order they went through, and note them on the order. Do not
+  redrive their deliveries: they are refused again. Before booking by hand, check the order has no
+  other refund still pending in the Shop; one that went through at the same moment as the refused
+  one is the only case the order is not certain (ask engineering).
+- **Delivery outside the UK.** The delivery is its own invoice, parked
+  (`vat_on_outside_uk_delivery`) until the accountant answers. A refund naming no line is credited
+  only when it is everything left on both invoices (a whole-order refund or cancellation): the
+  order's part on the order's invoice, and the delivery's part as `LAX-SHOP-CN-<refund>-delivery`,
+  parked with the delivery invoice. Release refuses that credit note, and api_app may not move it
+  (migration 0388); it is released with the delivery invoice when the accountant's answer ships.
+  Any other refund naming no line on such an order is `refund_unattributed`, as above.
 - **Settled outside Stripe.** The money did not go back through clearing, and LAX does not hold the
   account it went back from. The credit note is stored parked in **Needs a person** ("This refund
   was settled outside Stripe…"), with no refund from clearing, and is never sent. Release refuses it,
   and api_app may not move it at all (migration 0388). Do not cancel it: it keeps the invoice from
   being credited twice. Naming the account is a later change; until then ask engineering.
+- **Refund reversed after it succeeded** (`accounting_refund_reversed_after_credit`). Stripe can
+  report a refund failed days after it succeeded (the card issuer could not return it); the money
+  is back in the Stripe balance. The Shop keeps the refund `succeeded` (what the order shows as
+  refunded is the Shop owner's call), records `reversed_at` and writes `shop.refund.reversed`. The
+  worker then cancels the refund's credit notes never sent, and holds an issued one for a person
+  with the alert, never refunded from clearing, exactly as for a Bid refund taken back: ask the
+  accountant how to reverse it in Books. The refund is left out of the order's other refunds from
+  then on.
 - **Backstop.** Before refunding a Shop credit note from clearing, the step reads the refund again
   under the note's row lock: only a refund that went through by Stripe (succeeded, not settled
-  outside) is refunded; otherwise the note is held as `accounting_refund_reversed_after_credit`
-  with the alert, as for Bid. The Shop never moves a succeeded refund back, so this should not fire.
+  outside, not reversed) is refunded; otherwise the note is held as
+  `accounting_refund_reversed_after_credit` with the alert. This covers a reversal recorded while
+  the note was being sent.
 
 Rolling back migration 0388 (`0388_rollback.sql`, after the release) removes only its own ledger
-row: api_app's rule keeps the refusal, so a note parked as settled outside Stripe stays parked under
-the earlier release. Roll back 0388 before 0386 and 0385; restoring 0385's function by hand would let
-api_app release such a note unchanged, so do not while any is parked.
+row: `shop_refund.reversed_at` stays (the earlier release does not read it, so a reversal Stripe
+reports while it runs is not recorded: check Stripe's failed refunds by hand until 0388 is back), and
+api_app's rule keeps both refusals, so a note parked as settled outside Stripe or with an outside-UK
+delivery invoice stays parked under the earlier release. Roll back 0388 before 0386 and 0385;
+restoring 0385's function by hand would let api_app release such a note unchanged, so do not while
+any is parked.
 
 **Renumbered before merge.** This migration was 0386 on its branch (ledger row `1811505600000`,
 which is now 0386 Stripe fees and payouts on main) and is 0388 on main. A database that ran the

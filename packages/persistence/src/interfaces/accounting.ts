@@ -438,6 +438,15 @@ export interface IShopAccountingFactsReader {
    * through, oldest first (flow 21). Absent where the refund flow is not wired (it then skips).
    */
   refundSettled?(refundId: string): Promise<FactsRead<ShopRefundSettledRead>>;
+  /**
+   * A Shop refund Stripe reported failed after it succeeded (`reversed_at` set), with its order.
+   * Absent where the reversal is not wired (it then skips).
+   */
+  refundReversed?(
+    refundId: string,
+  ): Promise<
+    FactsRead<{ readonly orderId: string; readonly reversedRefundIds: readonly string[] }>
+  >;
 }
 
 /** What flow 21 reads for one Shop refund; the books' credit notes are added by the projector. */

@@ -36,7 +36,7 @@ const TOTAL = PRINT_PENCE + SECOND_PENCE + DELIVERY_PENCE;
  * A paid Shop order as the Shop leaves it: two prints and UK delivery, the invoice number from the
  * database's counter, and the references-only event. Fixture data only.
  */
-async function seedPaidOrder(db: Database) {
+async function seedPaidOrder(db: Database, options: { outsideUk?: boolean } = {}) {
   const tag = randomUUID().slice(0, 8);
   const subject = `shop-refund-${tag}`;
   const party = await db.execute<{ id: string }>(
@@ -65,8 +65,9 @@ async function seedPaidOrder(db: Database) {
     sql`insert into shop_order
           (identity_subject_id, fulfilment, merchandise_subtotal_pence, framing_subtotal_pence,
            fulfilment_surcharge_pence, fulfilment_vat_pence, total_pence, idempotency_key, buyer_party_id)
-        values (${subject}, 'uk_insured_delivery', ${PRINT_PENCE + SECOND_PENCE}, 0,
-                ${DELIVERY_PENCE}, null, ${TOTAL}, ${`refund-${tag}`}, ${partyId})
+        values (${subject}, ${options.outsideUk ? "international_quotation" : "uk_insured_delivery"},
+                ${PRINT_PENCE + SECOND_PENCE}, 0, ${DELIVERY_PENCE}, null, ${TOTAL},
+                ${`refund-${tag}`}, ${partyId})
         returning id`,
   );
   const orderId = order.rows[0]?.id as string;
@@ -168,15 +169,16 @@ describe.skipIf(!HAS_DB)("Shop refunds to Books (integration)", { timeout: 60_00
     orderId: string,
     amountPence: number,
     orderLineId: string | null,
-    options: { settledOutside?: boolean } = {},
+    options: { settledOutside?: boolean; status?: "succeeded" | "failed"; at?: Date } = {},
   ) {
+    const at = (options.at ?? REFUNDED_AT).toISOString();
     const row = await owner.execute<{ id: string }>(
       sql`insert into shop_refund
             (order_id, order_line_id, amount_pence, status, source, idempotency_key,
              requested_by_subject_id, updated_at, settled_outside_at, settled_outside_reference,
              settled_outside_reason, settled_outside_by_subject_id)
-          values (${orderId}, ${orderLineId}, ${amountPence}, 'succeeded', 'admin',
-                  ${`refund-${randomUUID()}`}, 'staff:integration', ${REFUNDED_AT.toISOString()}::timestamptz,
+          values (${orderId}, ${orderLineId}, ${amountPence}, ${options.status ?? "succeeded"}, 'admin',
+                  ${`refund-${randomUUID()}`}, 'staff:integration', ${at}::timestamptz,
                   ${options.settledOutside ? REFUNDED_AT.toISOString() : null}::timestamptz,
                   ${options.settledOutside ? "manual-ref" : null}, ${options.settledOutside ? "card expired" : null},
                   ${options.settledOutside ? "staff:integration" : null})
@@ -223,8 +225,8 @@ describe.skipIf(!HAS_DB)("Shop refunds to Books (integration)", { timeout: 60_00
       );
   }
 
-  async function paidAndSent(books: InMemoryAccounting) {
-    const seeded = await seedPaidOrder(owner);
+  async function paidAndSent(books: InMemoryAccounting, options: { outsideUk?: boolean } = {}) {
+    const seeded = await seedPaidOrder(owner, options);
     await projection().project(seeded.event);
     await sendAll(books);
     expect(await rowOf(`LAX-SHOP-INV-${seeded.orderId}`)).toMatchObject({ state: "issued" });
@@ -383,4 +385,291 @@ describe.skipIf(!HAS_DB)("Shop refunds to Books (integration)", { timeout: 60_00
       expect(books.creditNoteRefundOf("shop", `LAX-SHOP-CN-${refundId}`)).toBeNull();
     },
   );
+
+  /** What the Shop writes when Stripe reports a refund failed after it succeeded (#1380 F2). */
+  async function reversed(orderId: string, refundId: string) {
+    await owner.execute(sql`update shop_refund set reversed_at = now() where id = ${refundId}`);
+    const [event] = await owner
+      .insert(domainEvent)
+      .values({
+        aggregateType: "shop_refund",
+        aggregateId: refundId,
+        eventType: "shop.refund.reversed",
+        payload: { schemaVersion: 1, refundId, orderId },
+        schemaVersion: 1,
+        producer: "shop-api",
+      })
+      .returning();
+    return event as NonNullable<typeof event>;
+  }
+
+  /** Projects an event, trying again (with fresh facts) while it is refused as not yet. */
+  async function projectUntilSettled(
+    make: () => AccountingProjection,
+    event: Parameters<AccountingProjection["project"]>[0],
+  ) {
+    for (let tries = 0; tries < 12; tries++) {
+      try {
+        return await make().project(event);
+      } catch (error) {
+        if (!String(error).includes("accounting_projection_not_yet")) throw error;
+      }
+    }
+    throw new Error("never projected");
+  }
+
+  const creditedOn = async (orderId: string) =>
+    (await creditNotesOf(orderId)).filter((n) => n.state !== "cancelled");
+
+  describe("review #1380", () => {
+    it("F1: credits a return of the second invoice line alone, then the first, each on its own line", async () => {
+      const books = new InMemoryAccounting();
+      const { orderId, lines } = await paidAndSent(books);
+      const second = await refunded(orderId, lines[1]?.pence ?? 0, lines[1]?.id ?? null);
+      expect(await projection().project(second.event)).toMatchObject({ created: 1 });
+      const first = await refunded(orderId, 10_000, lines[0]?.id ?? null);
+      expect(await projection().project(first.event)).toMatchObject({ created: 1 });
+      const notes = await creditedOn(orderId);
+      expect(Object.fromEntries(notes.map((n) => [n.laxReference, n.grossPence]))).toEqual({
+        [`LAX-SHOP-CN-${second.refundId}`]: lines[1]?.pence,
+        [`LAX-SHOP-CN-${first.refundId}`]: 10_000,
+      });
+    });
+
+    it("F1: a refund after one waiting for staff waits with it, on every event, so a hand booking is never credited again", async () => {
+      const books = new InMemoryAccounting();
+      const { orderId, lines } = await paidAndSent(books);
+      const unclear = await refunded(orderId, 2_000, null, {
+        at: new Date("2031-11-13T09:00:00Z"),
+      });
+      const later = await refunded(orderId, lines[0]?.pence ?? 0, lines[0]?.id ?? null);
+      const last = await refunded(orderId, lines[1]?.pence ?? 0, lines[1]?.id ?? null);
+      await expect(projection().project(unclear.event)).rejects.toThrow(/refund_unattributed/);
+      for (const { event } of [later, last]) {
+        await expect(projection().project(event)).rejects.toThrow(
+          new RegExp(`refund_unattributed.*waits behind refund ${unclear.refundId}`),
+        );
+      }
+      // Only the delivery line would be left once both lines were credited, where the first refund
+      // would fit; it is never credited by another refund's event.
+      expect(await creditedOn(orderId)).toHaveLength(0);
+    });
+
+    it("RV1: a projection held before it registers, while another refund commits and is projected in full", async () => {
+      const books = new InMemoryAccounting();
+      const { orderId, lines } = await paidAndSent(books);
+      const first = await refunded(orderId, lines[0]?.pence ?? 0, lines[0]?.id ?? null);
+      let release: () => void = () => {};
+      const gate = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      let reached: () => void = () => {};
+      const atGate = new Promise<void>((resolve) => {
+        reached = resolve;
+      });
+      let gated = true;
+      const registry = new Proxy(repos.registry, {
+        get(target, prop) {
+          if (prop === "register") {
+            return async (input: Parameters<typeof repos.registry.register>[0]) => {
+              if (gated && input.document.kind === "credit_note") {
+                gated = false;
+                reached();
+                await gate;
+              }
+              return target.register(input);
+            };
+          }
+          const value = Reflect.get(target, prop);
+          return typeof value === "function" ? value.bind(target) : value;
+        },
+      });
+      const held = () =>
+        new AccountingProjection({
+          facts: {} as never,
+          shopFacts,
+          settings: repos.settingReader,
+          registry,
+          books: {
+            lookup: repos.lookup,
+            creditNotes: repos.creditNotes,
+            transitions: repos.transitions,
+          },
+        });
+      const p1 = projectUntilSettled(held, first.event);
+      await atGate;
+      const second = await refunded(orderId, lines[1]?.pence ?? 0, lines[1]?.id ?? null);
+      await projectUntilSettled(projection, second.event);
+      release();
+      await p1;
+      const notes = await creditedOn(orderId);
+      expect(notes.map((n) => n.grossPence).sort((a, b) => a - b)).toEqual(
+        [lines[1]?.pence, lines[0]?.pence].sort((a, b) => (a ?? 0) - (b ?? 0)),
+      );
+    });
+
+    it("RV2: three refunds committing one after another while three projections per event race", async () => {
+      const books = new InMemoryAccounting();
+      const { orderId, lines } = await paidAndSent(books);
+      const amounts: [string | null, number][] = [
+        [lines[0]?.id ?? null, 10_000],
+        [lines[1]?.id ?? null, lines[1]?.pence ?? 0],
+        [lines[0]?.id ?? null, (lines[0]?.pence ?? 0) - 10_000],
+      ];
+      const running: Promise<unknown>[] = [];
+      const made: string[] = [];
+      for (const [lineId, pence] of amounts) {
+        const { refundId, event } = await refunded(orderId, pence, lineId);
+        made.push(refundId);
+        for (let i = 0; i < 3; i++) running.push(projectUntilSettled(projection, event));
+      }
+      await Promise.all(running);
+      const notes = await creditedOn(orderId);
+      expect(Object.fromEntries(notes.map((n) => [n.laxReference, n.grossPence]))).toEqual(
+        Object.fromEntries(made.map((id, i) => [`LAX-SHOP-CN-${id}`, amounts[i]?.[1]])),
+      );
+    });
+
+    it("RV3: a refund row of the order that did not go through is never credited", async () => {
+      const books = new InMemoryAccounting();
+      const { orderId, lines } = await paidAndSent(books);
+      // Recorded first, and it would fit its line if it were read.
+      await refunded(orderId, lines[1]?.pence ?? 0, lines[1]?.id ?? null, {
+        status: "failed",
+        at: new Date("2031-11-13T09:00:00Z"),
+      });
+      const { refundId, event } = await refunded(
+        orderId,
+        lines[0]?.pence ?? 0,
+        lines[0]?.id ?? null,
+      );
+      expect(await projection().project(event)).toMatchObject({ created: 1 });
+      expect((await creditedOn(orderId)).map((n) => n.laxReference)).toEqual([
+        `LAX-SHOP-CN-${refundId}`,
+      ]);
+    });
+
+    it("P4: six refunders at once refund an issued note from clearing once, over twenty rounds", async () => {
+      for (let round = 0; round < 20; round++) {
+        const books = new InMemoryAccounting();
+        const { orderId, lines } = await paidAndSent(books);
+        const { refundId, event } = await refunded(
+          orderId,
+          lines[0]?.pence ?? 0,
+          lines[0]?.id ?? null,
+        );
+        await projection().project(event);
+        await sendAll(books);
+        const noteRef = `LAX-SHOP-CN-${refundId}`;
+        await Promise.all(Array.from({ length: 6 }, () => refunder(books).tick()));
+        const note = await rowOf(noteRef);
+        const history = await owner
+          .select()
+          .from(accountingDocumentEvent)
+          .where(
+            and(
+              eq(accountingDocumentEvent.documentId, note?.id as string),
+              eq(accountingDocumentEvent.action, "refund_credit_note"),
+            ),
+          );
+        expect(history, `round ${round}`).toHaveLength(1);
+        expect(books.creditNoteRefundOf("shop", noteRef)).toBe(lines[0]?.pence);
+      }
+    }, 180_000);
+
+    it("F2: a refund reversed before its note is sent: the note is cancelled, never sent or refunded", async () => {
+      const books = new InMemoryAccounting();
+      const { orderId, lines } = await paidAndSent(books);
+      const { refundId, event } = await refunded(
+        orderId,
+        lines[0]?.pence ?? 0,
+        lines[0]?.id ?? null,
+      );
+      await projection().project(event);
+      const reversal = await reversed(orderId, refundId);
+      expect(await projection().project(reversal)).toMatchObject({ cancelled: 1 });
+      await sendAll(books);
+      expect((await refunder(books).tick()).refunded).toBe(0);
+      expect(await rowOf(`LAX-SHOP-CN-${refundId}`)).toMatchObject({ state: "cancelled" });
+      // Its own completed event, delivered again, credits nothing.
+      expect(await projection().project(event)).toMatchObject({
+        outcome: "skipped",
+        reason: "refund_reversed",
+      });
+    });
+
+    it("F2: a refund reversed after its note was issued: held for a person, never refunded from clearing; a later refund is credited once", async () => {
+      const books = new InMemoryAccounting();
+      const { orderId, lines } = await paidAndSent(books);
+      const { refundId, event } = await refunded(
+        orderId,
+        lines[0]?.pence ?? 0,
+        lines[0]?.id ?? null,
+      );
+      await projection().project(event);
+      await sendAll(books);
+      const noteRef = `LAX-SHOP-CN-${refundId}`;
+      expect(await rowOf(noteRef)).toMatchObject({ state: "issued" });
+      const reversal = await reversed(orderId, refundId);
+      expect(await projection().project(reversal)).toMatchObject({ held: 1 });
+      expect((await refunder(books).tick()).refunded).toBe(0);
+      expect(await rowOf(noteRef)).toMatchObject({
+        state: "needs_review",
+        needsReviewReason: "accounting_refund_reversed_after_credit",
+      });
+      expect(books.creditNoteRefundOf("shop", noteRef)).toBeNull();
+      const other = await refunded(orderId, lines[1]?.pence ?? 0, lines[1]?.id ?? null);
+      expect(await projection().project(other.event)).toMatchObject({ created: 1 });
+      expect(await projection().project(other.event)).toMatchObject({ created: 0 });
+      expect(await rowOf(noteRef)).toMatchObject({
+        needsReviewReason: "accounting_refund_reversed_after_credit",
+      });
+    });
+
+    it("F2: the clearing step holds a note whose refund was reversed even before the reversal is projected", async () => {
+      const books = new InMemoryAccounting();
+      const { orderId, lines } = await paidAndSent(books);
+      const { refundId, event } = await refunded(
+        orderId,
+        lines[0]?.pence ?? 0,
+        lines[0]?.id ?? null,
+      );
+      await projection().project(event);
+      await sendAll(books);
+      await reversed(orderId, refundId);
+      expect((await refunder(books).tick()).refunded).toBe(0);
+      expect(await rowOf(`LAX-SHOP-CN-${refundId}`)).toMatchObject({
+        needsReviewReason: "accounting_refund_reversed_after_credit",
+      });
+    });
+
+    it("F4: a whole-order refund of an order delivered outside the UK credits both invoices; the delivery's is parked", async () => {
+      const books = new InMemoryAccounting();
+      const { orderId } = await paidAndSent(books, { outsideUk: true });
+      const deliveryRef = `LAX-SHOP-INV-${orderId}-delivery`;
+      expect(await rowOf(deliveryRef)).toMatchObject({
+        state: "needs_review",
+        needsReviewReason: "accounting_parked_vat_on_outside_uk_delivery",
+      });
+      const { refundId, event } = await refunded(orderId, TOTAL, null);
+      expect(await projection().project(event)).toMatchObject({ created: 2, parked: 1 });
+      expect(await projection().project(event)).toMatchObject({ created: 0 });
+      const orderNote = `LAX-SHOP-CN-${refundId}`;
+      const deliveryNote = `LAX-SHOP-CN-${refundId}-delivery`;
+      expect(await rowOf(orderNote)).toMatchObject({
+        state: "pending",
+        grossPence: TOTAL - DELIVERY_PENCE,
+      });
+      expect(await rowOf(deliveryNote)).toMatchObject({
+        state: "needs_review",
+        needsReviewReason: "accounting_parked_vat_on_outside_uk_delivery",
+        grossPence: DELIVERY_PENCE,
+      });
+      await sendAll(books);
+      await refunder(books).tick();
+      expect(books.creditNoteRefundOf("shop", orderNote)).toBe(TOTAL - DELIVERY_PENCE);
+      expect(books.creditNoteRefundOf("shop", deliveryNote)).toBeNull();
+      expect(await rowOf(deliveryNote)).toMatchObject({ state: "needs_review" });
+    });
+  });
 });

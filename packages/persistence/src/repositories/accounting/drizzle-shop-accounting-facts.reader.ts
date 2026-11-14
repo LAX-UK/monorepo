@@ -16,7 +16,7 @@ import {
   shopRefund,
   shopUserProfile,
 } from "@auction/db/schema";
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, isNull, sql } from "drizzle-orm";
 import type {
   FactsRead,
   IShopAccountingFactsReader,
@@ -137,12 +137,18 @@ export class DrizzleShopAccountingFactsReader
 
   async refundSettled(refundId: string): Promise<FactsRead<ShopRefundSettledRead>> {
     const [own] = await this.db
-      .select({ orderId: shopRefund.orderId, status: shopRefund.status })
+      .select({
+        orderId: shopRefund.orderId,
+        status: shopRefund.status,
+        reversedAt: shopRefund.reversedAt,
+      })
       .from(shopRefund)
       .where(eq(shopRefund.id, refundId));
     if (!own) return skip("refund_not_found");
-    // Only a refund that went through says anything to the books; succeeded is final in the Shop.
+    // Only a refund that went through says anything to the books. One Stripe reported failed after
+    // it succeeded (`reversed_at`) went back to LAX: its own event takes its credit back.
     if (own.status !== "succeeded") return skip("refund_not_succeeded");
+    if (own.reversedAt !== null) return skip("refund_reversed");
     const order = await this.orderPaid(own.orderId);
     if (order.status === "skip") return order;
     const rows = await this.db
@@ -154,8 +160,22 @@ export class DrizzleShopAccountingFactsReader
         updatedAt: shopRefund.updatedAt,
       })
       .from(shopRefund)
-      .where(and(eq(shopRefund.orderId, own.orderId), eq(shopRefund.status, "succeeded")))
-      .orderBy(asc(shopRefund.createdAt), asc(shopRefund.id));
+      .where(
+        and(
+          eq(shopRefund.orderId, own.orderId),
+          eq(shopRefund.status, "succeeded"),
+          isNull(shopRefund.reversedAt),
+        ),
+      )
+      // In the order they went through (the row is last written then, or when marked settled
+      // outside): the policy places them once each in this order, and one it cannot place holds
+      // every later one, so a refund that went through later never changes how an earlier one
+      // was placed.
+      .orderBy(
+        asc(sql`coalesce(${shopRefund.settledOutsideAt}, ${shopRefund.updatedAt})`),
+        asc(shopRefund.createdAt),
+        asc(shopRefund.id),
+      );
     const refunds: ShopRefundFacts[] = rows.map((row) => ({
       refundId: row.id.toLowerCase(),
       amountPence: row.amountPence,
@@ -165,6 +185,20 @@ export class DrizzleShopAccountingFactsReader
       settledOutside: row.settledOutsideAt !== null,
     }));
     return ready({ order: order.facts, refunds, refundId: refundId.toLowerCase() });
+  }
+
+  async refundReversed(
+    refundId: string,
+  ): Promise<
+    FactsRead<{ readonly orderId: string; readonly reversedRefundIds: readonly string[] }>
+  > {
+    const [own] = await this.db
+      .select({ orderId: shopRefund.orderId, reversedAt: shopRefund.reversedAt })
+      .from(shopRefund)
+      .where(eq(shopRefund.id, refundId));
+    if (!own) return skip("refund_not_found");
+    if (own.reversedAt === null) return skip("refund_not_reversed");
+    return ready({ orderId: own.orderId, reversedRefundIds: [refundId.toLowerCase()] });
   }
 
   async forOrder(orderId: string): Promise<ShopInvoiceEmailFacts | null> {

@@ -274,6 +274,11 @@ export class AccountingQueueService implements IAccountingQueueService {
     if (reason === "refund_outside_stripe") {
       return unresolved(ACCOUNTING_RELEASE_UNRESOLVED_TEXT[reason]);
     }
+    // A Shop credit note parked with its outside-UK delivery invoice waits for the accountant's
+    // answer on that delivery; releasing it is that answer's change (the database refuses it too).
+    if (reason === "vat_on_outside_uk_delivery" && document.kind === "credit_note") {
+      return unresolved(ACCOUNTING_RELEASE_UNRESOLVED_TEXT[reason]);
+    }
 
     // What the decision rests on, read first: the move refuses if it reads differently later.
     const basisOf = await this.basisOf(document);
