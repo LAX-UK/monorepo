@@ -137,6 +137,7 @@ export function CategoryChildrenTab({ categoryId, allCategories }: ChildrenProps
       columns={CHILD_COLUMNS}
       data={rows}
       getRowId={(row) => row.category.id}
+      rowHref={(row) => `/admin/categories/${row.category.id}`}
       defaultSort={{ columnId: "name", direction: "asc" }}
       empty={{
         title: "No subcategories yet",
@@ -207,6 +208,7 @@ export function CategoryLotsTab({ categoryId, lots, totalCount }: LotsProps) {
       columns={LOT_COLUMNS}
       data={lots}
       getRowId={(lot) => lot.id}
+      rowHref={(lot) => `/admin/lots/${lot.id}`}
       defaultSort={{ columnId: "title", direction: "asc" }}
       empty={{
         title: "No lots tagged with this category",
@@ -272,6 +274,7 @@ export function CategorySalesTab({ sales, totalCount }: SalesProps) {
       columns={SALE_COLUMNS}
       data={sales}
       getRowId={({ sale }) => sale.id}
+      rowHref={({ sale }) => `/admin/sales/${sale.id}`}
       defaultSort={{ columnId: "title", direction: "asc" }}
       empty={{
         title: "No sales linked to this category",

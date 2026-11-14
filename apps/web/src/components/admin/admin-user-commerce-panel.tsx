@@ -110,6 +110,7 @@ export function AdminUserPaymentsPanel({ payments }: { payments: AdminPaymentRow
         columns={paymentColumns}
         data={payments}
         getRowId={(payment) => payment.id}
+        rowHref={(payment) => `/admin/lots/${encodeURIComponent(payment.lotId)}`}
         defaultSort={{ columnId: "created", direction: "desc" }}
         empty={{
           title: "No payments yet",
@@ -211,6 +212,7 @@ export function AdminUserBidsPanel({
       columns={bidColumns}
       data={filtered}
       getRowId={(bid) => bid.id}
+      rowHref={(bid) => `/admin/lots/${encodeURIComponent(bid.lotId)}`}
       defaultSort={{ columnId: "time", direction: "desc" }}
       toolbar={
         <DataTableToolbar
@@ -311,6 +313,7 @@ export function AdminUserWonLotsPanel({ wonLots }: { wonLots: Lot[] }) {
       columns={wonLotColumns}
       data={wonLots}
       getRowId={(lot) => lot.id}
+      rowHref={(lot) => `/admin/lots/${encodeURIComponent(lot.id)}`}
       defaultSort={{ columnId: "ended", direction: "desc" }}
       empty={{
         title: "No won lots yet",
@@ -382,6 +385,7 @@ export function AdminUserLegalEntitiesPanel({ legalEntities }: { legalEntities: 
       columns={entityColumns}
       data={legalEntities}
       getRowId={(entity) => entity.id}
+      rowHref={(entity) => `/admin/legal-entities/${encodeURIComponent(entity.id)}`}
       defaultSort={{ columnId: "name", direction: "asc" }}
       empty={{
         title: "No legal entities",

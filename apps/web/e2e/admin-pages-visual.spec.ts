@@ -29,20 +29,6 @@ async function prepareCase(
   await assertAdminRouteReady(page);
   await dismissStaffPaletteIfOpen(page);
 
-  if (visualCase.setup === "client-drawer") {
-    await dismissStaffPaletteIfOpen(page);
-    const drawer = page
-      .getByRole("dialog")
-      .filter({ hasText: /Robert Thorne|Victoria Harrington|Overview/i });
-    if (!(await drawer.isVisible().catch(() => false))) {
-      const clientName = page.getByRole("button", { name: /^robert thorne$/i }).first();
-      if (await clientName.isVisible().catch(() => false)) {
-        await clientName.click();
-      }
-    }
-    await expect(drawer).toBeVisible({ timeout: visualTimeout });
-  }
-
   if (visualCase.setup === "lot-filters") {
     const filters = page.getByRole("button", { name: /^filter\b/i });
     await expect(filters).toBeVisible({ timeout: visualTimeout });

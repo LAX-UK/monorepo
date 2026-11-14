@@ -97,6 +97,7 @@ export function AdminArtistLotsPanel({ artistId, lots, title = "Lots", descripti
       columns={columns}
       data={lots}
       getRowId={(lot) => lot.id}
+      rowHref={(lot) => `/admin/lots/${lot.id}`}
       defaultSort={{ columnId: "lot", direction: "asc" }}
       density="comfortable"
       empty={{

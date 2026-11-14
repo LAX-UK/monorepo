@@ -224,6 +224,7 @@ export function SaleRegistrationsTab({
           columns={columns}
           data={filtered}
           getRowId={(row) => row.id}
+          rowHref={(row) => `/admin/clients/${encodeURIComponent(row.userId)}`}
           defaultSort={{ columnId: "requested", direction: "desc" }}
           toolbar={
             <DataTableToolbar
