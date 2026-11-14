@@ -142,7 +142,11 @@ export class PaymentIntentSucceededHandler implements IPaymentIntentWebhookHandl
    */
   private async holdReason(row: PaymentRecord): Promise<ManualReviewReason | null> {
     const payerUserId = row.paidByUserId ?? row.buyerId;
-    if (!this.deps.paymentEligibility || !row.buyerLegalEntityId || !payerUserId) return null;
+    if (!this.deps.paymentEligibility) {
+      // Fail closed where payments are live: with no gate nobody can say the account may pay.
+      return this.deps.paymentEligibilityRequired === true ? "finance_release_required" : null;
+    }
+    if (!row.buyerLegalEntityId || !payerUserId) return null;
     const eligibility = await this.deps.paymentEligibility.check({
       payerUserId,
       buyerLegalEntityId: row.buyerLegalEntityId,

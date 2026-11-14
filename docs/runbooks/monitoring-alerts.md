@@ -388,7 +388,7 @@ Books.
 - **Buyer's card** (Bid live only, same rule as the invoice): "Refunded −£[amount] · Download credit
   note [number] (PDF)" per refund, and "Cancelled after a default" with its credit note once issued.
   LAX keeps its own copy of each credit note's PDF; no credit note is emailed.
-- **Rolling back** `0384_rollback.sql` restores 0383's history actions (NOT VALID, so
+- **Rolling back** `0385_rollback.sql` restores 0383's history actions (NOT VALID, so
   `refund_credit_note` rows stay). Roll the release back first: the earlier release does not run
   the refund step.
 

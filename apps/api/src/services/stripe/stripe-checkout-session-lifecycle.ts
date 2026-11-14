@@ -26,6 +26,48 @@ export function checkoutParametersFingerprint(parameters: object): string {
   return createHash("sha256").update(JSON.stringify(parameters)).digest("hex").slice(0, 16);
 }
 
+/** What every checkout's parameters carry about the money asked for (both rails send these). */
+export type CheckoutMoneyParameters = {
+  paymentId: string;
+  amountCents: number;
+  currency: string;
+  lineItems: readonly { unitAmountCents: number }[];
+};
+
+/**
+ * The fingerprint of the money a checkout asks for, whatever the rail and however it is shown:
+ * the invoice, the amount, the currency and each line's amount. Display parameters (titles, the
+ * hero image URL, which is re-signed daily, the return URLs) and rail-only ones (the bank
+ * transfer's Stripe customer) are left out, so a card session is judged stale only when the
+ * amount it would take has changed.
+ */
+export function checkoutMoneyFingerprint(parameters: CheckoutMoneyParameters): string {
+  return checkoutParametersFingerprint({
+    paymentId: parameters.paymentId,
+    amountCents: parameters.amountCents,
+    currency: parameters.currency.toLowerCase(),
+    lineAmountsCents: parameters.lineItems.map((line) => line.unitAmountCents),
+  });
+}
+
+/**
+ * The ledger keeps both fingerprints in one column, "<parameters>.<money>". Sessions recorded
+ * before the money fingerprint was stored have the parameters one only: their money is unknown,
+ * so a card session among them is treated as stale (closing it is the safe side).
+ */
+function recordedFingerprintValue(parametersFingerprint: string, moneyFingerprint: string): string {
+  return `${parametersFingerprint}.${moneyFingerprint}`;
+}
+
+function recordedFingerprints(value: string | null): {
+  parameters: string | null;
+  money: string | null;
+} {
+  if (!value) return { parameters: null, money: null };
+  const [parameters = null, money = null] = value.split(".");
+  return { parameters, money };
+}
+
 /**
  * The key for the nth session opened for these parameters. Everyone who sees the same recorded
  * sessions derives the same key (two tabs, a double click get one session); once that session is
@@ -125,7 +167,7 @@ export class CheckoutSessionLifecycle implements ICheckoutCleanupAfterCapture {
   async openOrRenew(
     rail: CheckoutSessionRail,
     paymentId: string,
-    parameters: object,
+    parameters: CheckoutMoneyParameters,
     create: (idempotencyKey: string) => Promise<CreateCheckoutSessionResult>,
   ): Promise<RenewCheckoutSessionOutcome> {
     const fingerprint = checkoutParametersFingerprint(parameters);
@@ -133,10 +175,13 @@ export class CheckoutSessionLifecycle implements ICheckoutCleanupAfterCapture {
       const recorded = await this.ledger.listSessions(paymentId);
       if (await this.anyPaid(recorded)) return { kind: "already_complete" };
       const sameParameters = recorded.filter(
-        (s) => s.rail === rail && s.parametersFingerprint === fingerprint,
+        (s) =>
+          s.rail === rail &&
+          recordedFingerprints(s.parametersFingerprint).parameters === fingerprint,
       );
+      const moneyFingerprint = checkoutMoneyFingerprint(parameters);
       const reused = await this.findOpen(sameParameters);
-      if (reused) return this.settle(reused, rail, paymentId);
+      if (reused) return this.settle(reused, rail, paymentId, moneyFingerprint);
 
       const key = checkoutSessionIdempotencyKey(
         rail,
@@ -147,7 +192,7 @@ export class CheckoutSessionLifecycle implements ICheckoutCleanupAfterCapture {
       const created = await this.createWithKey(key, create);
       await this.ledger.record(paymentId, created.sessionId, {
         rail,
-        parametersFingerprint: fingerprint,
+        parametersFingerprint: recordedFingerprintValue(fingerprint, moneyFingerprint),
       });
       const status = await this.inspect(created.sessionId);
       if (status.kind === "dead") {
@@ -156,7 +201,7 @@ export class CheckoutSessionLifecycle implements ICheckoutCleanupAfterCapture {
       }
       // A session just opened cannot already be waiting on a transfer; if it is, leave it be.
       if (status.kind === "awaiting_transfer") continue;
-      return this.settle(status, rail, paymentId);
+      return this.settle(status, rail, paymentId, moneyFingerprint);
     }
     return { kind: "unavailable", error: "Stripe checkout session is not open" };
   }
@@ -230,9 +275,27 @@ export class CheckoutSessionLifecycle implements ICheckoutCleanupAfterCapture {
       }
       // Expiring the session makes Stripe cancel its intent; Stripe refuses a direct cancel of a
       // Checkout-managed intent.
-      await this.gateway.expireCheckoutSession(recorded.stripeSessionId);
+      if (!(await this.expired(recorded.stripeSessionId))) return;
     }
     await this.ledger.markClosed(recorded.stripeSessionId);
+  }
+
+  /**
+   * Expires a session and says whether it is now closed. A session the buyer completed while it
+   * was being closed stays open in the ledger, so it still counts as paid (or as a transfer
+   * given instructions) and the buyer is not offered another checkout.
+   */
+  private async expired(stripeSessionId: string): Promise<boolean> {
+    const status = await this.gateway.expireCheckoutSession(stripeSessionId);
+    if (status === "expired") return true;
+    this.recordEvent("checkout_session_completed_during_close");
+    this.reporter.report({
+      message: `Checkout ${stripeSessionId} was not closed: Stripe reports it ${status ?? "unknown"}`,
+      status: 200,
+      code: "checkout_session_completed_during_close",
+      severity: "info",
+    });
+    return false;
   }
 
   /**
@@ -391,26 +454,32 @@ export class CheckoutSessionLifecycle implements ICheckoutCleanupAfterCapture {
     status: LiveSession,
     rail: CheckoutSessionRail,
     paymentId: string,
+    moneyFingerprint: string,
   ): Promise<RenewCheckoutSessionOutcome> {
     if (status.kind === "complete") return { kind: "already_complete" };
-    await this.closeSuperseded(rail, paymentId, status.session.sessionId);
+    await this.closeSuperseded(rail, paymentId, status.session.sessionId, moneyFingerprint);
     return { kind: "ready", session: status.session };
   }
 
   /**
-   * Closes the rail's open sessions recorded before the one the buyer is settled on, so two tabs
-   * settling at once never close each other's. A failure is reported, never passed to the buyer.
+   * Closes the open sessions recorded before the one the buyer is settled on: every earlier
+   * session of the same rail, and every earlier card session opened for another amount whatever
+   * rail the buyer picked now (it would take the old amount). A card session that differs only in
+   * how the invoice is shown (a re-signed image URL, a title) asks for the same money and is kept. Only sessions recorded before it are
+   * touched, so two tabs settling at once never close each other's. A bank transfer that has been
+   * given instructions is never closed. A failure is reported, never passed to the buyer.
    */
   private async closeSuperseded(
     rail: CheckoutSessionRail,
     paymentId: string,
     keepSessionId: string,
+    moneyFingerprint: string,
   ): Promise<void> {
     for (const recorded of await this.ledger.listSessions(paymentId)) {
       if (recorded.stripeSessionId === keepSessionId) break;
       if (recorded.closedAt) continue;
       try {
-        await this.closeIfSameRail(recorded, rail);
+        await this.closeIfSuperseded(recorded, rail, moneyFingerprint);
       } catch (err) {
         this.reporter.report({
           message: "Could not close a superseded checkout session",
@@ -423,19 +492,25 @@ export class CheckoutSessionLifecycle implements ICheckoutCleanupAfterCapture {
     }
   }
 
-  private async closeIfSameRail(
+  private async closeIfSuperseded(
     recorded: RecordedCheckoutSession,
     rail: CheckoutSessionRail,
+    moneyFingerprint: string,
   ): Promise<void> {
     const stripeSession = await this.gateway.retrieveCheckoutSession(recorded.stripeSessionId);
-    if ((recorded.rail ?? railOf(stripeSession)) !== rail) return;
+    const sessionRail = recorded.rail ?? railOf(stripeSession);
+    // A card session with no recorded money fingerprint predates it: its amount is unknown.
+    const staleCard =
+      sessionRail === "card" &&
+      recordedFingerprints(recorded.parametersFingerprint).money !== moneyFingerprint;
+    if (sessionRail !== rail && !staleCard) return;
     // A complete session is never closed: it is paid, or a bank transfer that was given
     // instructions and may be funded.
     if (stripeSession.status === "complete") return;
     if (stripeSession.status === "open") {
       // A bank transfer with a payment intent has been given instructions: money may be on its way.
-      if (rail === "bank" && stripeSession.payment_intent) return;
-      await this.gateway.expireCheckoutSession(recorded.stripeSessionId);
+      if (sessionRail === "bank" && stripeSession.payment_intent) return;
+      if (!(await this.expired(recorded.stripeSessionId))) return;
     }
     await this.ledger.markClosed(recorded.stripeSessionId);
   }

@@ -15,4 +15,20 @@ export interface IStalePaymentCanceller {
   listUnpaidWithCheckout(
     limit: number,
   ): Promise<{ id: string; payerUserId: string; buyerLegalEntityId: string }[]>;
+  /**
+   * Open "Pay several" payments that have a Stripe checkout or intent, oldest first, with who
+   * pays them and who pays each of their unpaid invoices: a hold on any of them closes the
+   * group's checkout. Groups whose money is on its way (processing) are not listed.
+   */
+  listOpenGroupsWithCheckout(limit: number): Promise<OpenGroupCheckout[]>;
 }
+
+export type OpenGroupCheckout = {
+  id: string;
+  /** Who opened the group's checkout; null when that member's record is gone. */
+  payerUserId: string | null;
+  buyerLegalEntityId: string;
+  stripeCheckoutSessionId: string | null;
+  stripePaymentIntentId: string | null;
+  members: { paymentId: string; payerUserId: string; buyerLegalEntityId: string }[];
+};

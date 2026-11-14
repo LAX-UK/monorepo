@@ -143,6 +143,112 @@ describe.skipIf(!HAS_DB)("stale payment cancel statement (integration)", () => {
     expect(paid.some((r) => r.id === paymentId)).toBe(false);
   });
 
+  it("lists an open Pay several payment with a checkout, with its payer and unpaid members", async () => {
+    const [group] = await db
+      .insert(paymentGroup)
+      .values({
+        buyerLegalEntityId: entityId,
+        createdByUserId: buyerId,
+        currency: "GBP",
+        totalAmount: "100.00",
+        checkoutRail: "card",
+        status: "open",
+        stripeCheckoutSessionId: `cs_spc_${run}_group`,
+      })
+      .returning({ id: paymentGroup.id });
+    const groupId = group?.id as string;
+    await db.update(payment).set({ paymentGroupId: groupId }).where(eq(payment.id, paymentId));
+
+    const listed = (await canceller.listOpenGroupsWithCheckout(500)).find((g) => g.id === groupId);
+    expect(listed).toEqual({
+      id: groupId,
+      payerUserId: buyerId,
+      buyerLegalEntityId: entityId,
+      stripeCheckoutSessionId: `cs_spc_${run}_group`,
+      stripePaymentIntentId: null,
+      members: [{ paymentId, payerUserId: buyerId, buyerLegalEntityId: entityId }],
+    });
+    // A member is never listed as a single invoice: its checkout is the group's.
+    expect((await canceller.listUnpaidWithCheckout(500)).some((r) => r.id === paymentId)).toBe(
+      false,
+    );
+
+    // Money on its way (processing) is never closed, so such a group is not listed.
+    await db.update(paymentGroup).set({ status: "processing" }).where(eq(paymentGroup.id, groupId));
+    expect((await canceller.listOpenGroupsWithCheckout(500)).some((g) => g.id === groupId)).toBe(
+      false,
+    );
+    await db.update(payment).set({ paymentGroupId: null }).where(eq(payment.id, paymentId));
+  });
+
+  it("lists only a Pay several payment's unpaid members: a captured or cancelled one is left out", async () => {
+    const now = new Date();
+    const extraLots = [randomUUID(), randomUUID()];
+    await db.insert(lot).values(
+      extraLots.map((id) => ({
+        id,
+        title: "Work",
+        images: [],
+        auctionType: "english" as const,
+        startingPrice: "10.00",
+        currentPrice: "100.00",
+        minBidIncrement: "10.00",
+        startTime: new Date(now.getTime() - 3 * 86_400_000),
+        endTime: new Date(now.getTime() - 86_400_000),
+        status: "ended" as const,
+        sellerLegalEntityId: entityId,
+        winnerId: buyerId,
+        buyerLegalEntityId: entityId,
+      })),
+    );
+    try {
+      const [group] = await db
+        .insert(paymentGroup)
+        .values({
+          buyerLegalEntityId: entityId,
+          createdByUserId: buyerId,
+          currency: "GBP",
+          totalAmount: "400.00",
+          checkoutRail: "card",
+          status: "open",
+          stripeCheckoutSessionId: `cs_spc_${run}_members`,
+        })
+        .returning({ id: paymentGroup.id });
+      const groupId = group?.id as string;
+      const member = async (lotOf: string, status: "authorized" | "captured" | "cancelled") => {
+        const [row] = await db
+          .insert(payment)
+          .values({
+            lotId: lotOf,
+            buyerId,
+            buyerLegalEntityId: entityId,
+            sellerLegalEntityId: entityId,
+            amount: "100.00",
+            platformFee: "5.00",
+            status,
+            paymentGroupId: groupId,
+          })
+          .returning({ id: payment.id });
+        return row?.id as string;
+      };
+      await db.update(payment).set({ paymentGroupId: groupId }).where(eq(payment.id, paymentId));
+      const authorized = await member(extraLots[0] as string, "authorized");
+      await member(extraLots[1] as string, "captured");
+      await member(lotId, "cancelled");
+
+      const listed = (await canceller.listOpenGroupsWithCheckout(500)).find(
+        (g) => g.id === groupId,
+      );
+      expect(listed?.members.map((m) => m.paymentId).sort()).toEqual(
+        [paymentId, authorized].sort(),
+      );
+    } finally {
+      await db.delete(payment).where(inArray(payment.lotId, extraLots));
+      await db.update(payment).set({ paymentGroupId: null }).where(eq(payment.lotId, lotId));
+      await db.delete(lot).where(inArray(lot.id, extraLots));
+    }
+  });
+
   it("removes the checkout sessions with their payment", async () => {
     await sessions.record(paymentId, `cs_spc_${run}_gone`);
     await db.delete(payment).where(eq(payment.id, paymentId));

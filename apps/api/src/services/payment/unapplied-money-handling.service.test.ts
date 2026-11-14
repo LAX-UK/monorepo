@@ -17,11 +17,18 @@ const open = {
   receivedAt: new Date(),
 };
 
-function build(found: typeof open | null = open, invoiceStatus = "captured") {
+function build(
+  found: (Omit<typeof open, "paymentId"> & { paymentId: string | null }) | null = open,
+  invoiceStatus: string | null = "captured",
+) {
   const resolve = vi.fn().mockResolvedValue(undefined);
   const service = new UnappliedMoneyHandlingService({
     reader: { findOpen: vi.fn().mockResolvedValue(found) },
-    payments: { findById: vi.fn().mockResolvedValue({ id: "pay-1", status: invoiceStatus }) },
+    payments: {
+      findById: vi
+        .fn()
+        .mockResolvedValue(invoiceStatus === null ? null : { id: "pay-1", status: invoiceStatus }),
+    },
     recorder: { resolve },
     transactionRunner: {
       runInTransaction: async (fn: (tx: Database) => Promise<unknown>) => fn({} as Database),
@@ -80,5 +87,44 @@ describe("UnappliedMoneyHandlingService.markHandled", () => {
     expect(result._unsafeUnwrapErr().status).toBe(409);
     expect(result._unsafeUnwrapErr().message).toContain("Capture or reinstate");
     expect(resolve).not.toHaveBeenCalled();
+  });
+
+  it.each(["paid_not_recorded", "invoice_cancelled"] as const)(
+    "refuses to close %s money when the task has no invoice id",
+    async (reason) => {
+      const { service, resolve } = build({ ...open, reason, paymentId: null });
+      const result = await service.markHandled({
+        ...finance,
+        dedupeKey: `${reason}:pi_2`,
+        reason: "Applied to invoice PAY-1234 by agreement with the buyer.",
+      });
+      expect(result._unsafeUnwrapErr().status).toBe(409);
+      expect(resolve).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(["paid_not_recorded", "invoice_cancelled"] as const)(
+    "refuses to close %s money when its invoice cannot be read",
+    async (reason) => {
+      const { service, resolve } = build({ ...open, reason }, null);
+      const result = await service.markHandled({
+        ...finance,
+        dedupeKey: `${reason}:pi_2`,
+        reason: "Applied to invoice PAY-1234 by agreement with the buyer.",
+      });
+      expect(result._unsafeUnwrapErr().status).toBe(409);
+      expect(resolve).not.toHaveBeenCalled();
+    },
+  );
+
+  it("still closes other reasons that carry no invoice id", async () => {
+    const { service, resolve } = build({ ...open, paymentId: null }, null);
+    const result = await service.markHandled({
+      ...finance,
+      dedupeKey: open.dedupeKey,
+      reason: "Applied to invoice PAY-1234 by agreement with the buyer.",
+    });
+    expect(result.isOk()).toBe(true);
+    expect(resolve).toHaveBeenCalledTimes(1);
   });
 });

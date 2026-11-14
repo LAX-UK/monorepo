@@ -39,6 +39,7 @@ function mockDbWithPayment(paymentRow: {
   sellerLegalEntityId: string;
   status: string;
   amount: string;
+  stripeChargeId?: string;
 }): Database {
   const db = {
     select: vi.fn().mockReturnValue({
@@ -58,6 +59,13 @@ function mockDbWithPayment(paymentRow: {
   vi.mocked(db.transaction).mockImplementation((async (fn) =>
     fn(db as never)) as typeof db.transaction);
   return db;
+}
+
+/** The charge id of the latest lookup by charge, which the fixture invoice is taken to own. */
+function lastChargeLookedUp(): string | null {
+  const calls = vi.mocked(eq).mock.calls.filter(([column]) => column === payment.stripeChargeId);
+  const value = calls.at(-1)?.[1];
+  return typeof value === "string" ? value : null;
 }
 
 function createWebhookService(deps: {
@@ -81,6 +89,8 @@ function createWebhookService(deps: {
   disputes?: IDisputeWebhookRecorder;
   unappliedMoney?: IUnappliedMoneyRecorder;
   paymentEligibility?: IPaymentEligibilityGate;
+  /** As where payments are live: money is not captured without the account check. */
+  paymentEligibilityRequired?: boolean;
   paymentRefunds?: InMemoryPaymentRefunds;
   /** Pence of refund lines the seller's ledger already holds for the payment. */
   sellerRefundedCents?: number;
@@ -140,6 +150,7 @@ function createWebhookService(deps: {
           sellerLegalEntityId: payment.sellerLegalEntityId,
           status: payment.status,
           amount: payment.amount,
+          stripeChargeId: payment.stripeChargeId,
         })
         .from(payment)
         .where(eq(payment.id, "pay_1"))
@@ -150,6 +161,10 @@ function createWebhookService(deps: {
         sellerLegalEntityId: row.sellerLegalEntityId,
         status: row.status,
         amount: String(row.amount),
+        // The fixture invoice was paid by the charge it is looked up by: its money, once captured.
+        everCaptured: true,
+        stripeChargeId: row.stripeChargeId ?? lastChargeLookedUp(),
+        stripePaymentIntentId: null,
       };
     }),
   };
@@ -171,6 +186,7 @@ function createWebhookService(deps: {
     undefined,
     null,
     stripeRefunds,
+    { paymentEligibilityRequired: deps.paymentEligibilityRequired === true },
   );
   if (!deps.stripeRefunds) {
     const handle = svc.handleChargeRefunded.bind(svc);
@@ -270,6 +286,7 @@ describe("StripePaymentWebhookService.handleChargeRefundUpdated", () => {
         sellerLegalEntityId: "le_s",
         status: "captured",
         amount: "100.00",
+        stripeChargeId: "ch_single",
       }),
       stripeRefunds,
     });
@@ -298,6 +315,80 @@ describe("StripePaymentWebhookService.handleChargeRefunded — charge fixtures",
   beforeEach(() => {
     vi.mocked(tryClaimProcessedStripeEvent).mockReset();
     vi.mocked(tryClaimProcessedStripeEvent).mockResolvedValue({ claimed: true });
+  });
+
+  it.each([
+    [
+      "recorded as captured, with no charge or intent (marked paid by staff)",
+      { everCaptured: true },
+    ],
+    ["read without everCaptured", {}],
+  ])("does not treat a charge as the money of an invoice %s", async (_label, extra) => {
+    const stripeRefunds = new FakeChargeRefunds();
+    stripeRefunds.show("ch_other", 10_000);
+    const { svc, payoutAdjustments, paymentRefunds } = createWebhookService({
+      paymentWebhookLookup: {
+        findPaymentRow: async () =>
+          ({
+            id: "pay_1",
+            sellerLegalEntityId: "00000000-0000-4000-8000-000000000001",
+            status: "captured",
+            amount: "100.00",
+            stripeChargeId: null,
+            stripePaymentIntentId: null,
+            ...extra,
+          }) as never,
+      },
+      stripeRefunds,
+    });
+    const result = await svc.handleChargeRefunded(
+      { id: "evt_not_invoice_money", type: "charge.refunded" } as Stripe.Event,
+      {
+        id: "ch_other",
+        amount: 10_000,
+        amount_refunded: 10_000,
+        currency: "gbp",
+        payment_intent: "pi_other",
+      } as Stripe.Charge,
+    );
+    expect(result).toMatchObject({ reason: "refund_of_money_not_applied" });
+    expect(payoutAdjustments.addPaymentLineToOpenPayoutOrCreateClawback).not.toHaveBeenCalled();
+    expect(paymentRefunds.entries).toEqual([]);
+  });
+
+  it.each([
+    ["its recorded charge", { stripeChargeId: "ch_same", stripePaymentIntentId: null }],
+    ["its recorded intent", { stripeChargeId: null, stripePaymentIntentId: "pi_same" }],
+  ])("a never-captured invoice's refund of %s claws back nobody", async (_label, ids) => {
+    const stripeRefunds = new FakeChargeRefunds();
+    stripeRefunds.show("ch_same", 10_000);
+    const { svc, payoutAdjustments, paymentRefunds } = createWebhookService({
+      paymentWebhookLookup: {
+        findPaymentRow: async () =>
+          ({
+            id: "pay_1",
+            sellerLegalEntityId: "00000000-0000-4000-8000-000000000001",
+            status: "refunded",
+            amount: "100.00",
+            ...ids,
+            everCaptured: false,
+          }) as never,
+      },
+      stripeRefunds,
+    });
+    const result = await svc.handleChargeRefunded(
+      { id: "evt_never_captured", type: "charge.refunded" } as Stripe.Event,
+      {
+        id: "ch_same",
+        amount: 10_000,
+        amount_refunded: 10_000,
+        currency: "gbp",
+        payment_intent: "pi_same",
+      } as Stripe.Charge,
+    );
+    expect(result).toMatchObject({ reason: "refund_of_money_not_applied" });
+    expect(payoutAdjustments.addPaymentLineToOpenPayoutOrCreateClawback).not.toHaveBeenCalled();
+    expect(paymentRefunds.entries).toEqual([]);
   });
 
   it("uses the charge object id from a refund fixture instead of payment_intent", async () => {
@@ -594,7 +685,12 @@ describe("StripePaymentWebhookService.handleChargeRefunded — the buyer's refun
         runInTransaction: async (fn: (tx: never) => Promise<unknown>) => fn({} as never),
       } as never,
       {
-        findPaymentRow: async () => ({ ...row, sellerLegalEntityId: row.sellerLegalEntityId }),
+        findPaymentRow: async () => ({
+          ...row,
+          sellerLegalEntityId: row.sellerLegalEntityId,
+          everCaptured: true,
+          stripeChargeId: "ch_rec",
+        }),
       } as never,
       {} as never,
       {} as never,
@@ -693,6 +789,54 @@ describe("StripePaymentWebhookService.handlePaymentIntentSucceeded", () => {
       expect(result).toEqual({ processed: true, action: "payment_intent_succeeded_held", reason });
     },
   );
+
+  it.each([
+    ["holds the money for finance where payments are live", true],
+    ["captures it where payments are not live (local, test)", false],
+  ])("with no eligibility gate wired, %s", async (_label, required) => {
+    const capture = vi.fn().mockResolvedValue({ captured: true });
+    const applyHeldMoneyInTransaction = vi.fn().mockResolvedValue(true);
+    const { svc } = createWebhookService({
+      paymentCapture: { capture },
+      paymentEligibilityRequired: required,
+      payments: {
+        applyHeldMoneyInTransaction,
+        findById: vi.fn().mockResolvedValue({
+          id: "pay_1",
+          lotId: "lot_1",
+          amount: "100.00",
+          status: "pending",
+          buyerId: "user_1",
+          buyerLegalEntityId: "le_1",
+          sellerLegalEntityId: "le_s",
+        }),
+      },
+    });
+    const pi = {
+      id: "pi_1",
+      amount: 10000,
+      metadata: { paymentId: "pay_1" },
+      latest_charge: "ch_pi",
+    } as unknown as Stripe.PaymentIntent;
+
+    const result = await svc.handlePaymentIntentSucceeded(
+      { id: "evt_pi_ungated", type: "payment_intent.succeeded" } as Stripe.Event,
+      pi,
+    );
+
+    if (required) {
+      expect(capture).not.toHaveBeenCalled();
+      expect(applyHeldMoneyInTransaction).toHaveBeenCalled();
+      expect(result).toEqual({
+        processed: true,
+        action: "payment_intent_succeeded_held",
+        reason: "finance_release_required",
+      });
+    } else {
+      expect(capture).toHaveBeenCalled();
+      expect(result).toEqual({ processed: true, action: "payment_intent_succeeded" });
+    }
+  });
 
   it("money for an account that can pay is captured as usual", async () => {
     const capture = vi.fn().mockResolvedValue({ captured: true });

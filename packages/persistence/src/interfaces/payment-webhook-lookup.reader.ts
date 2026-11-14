@@ -9,7 +9,7 @@ export type PaymentWebhookRow = {
   stripeChargeId?: string | null;
   stripePaymentIntentId?: string | null;
   /** Whether the invoice was ever captured (paid and recorded), whatever its status now. */
-  everCaptured?: boolean;
+  everCaptured: boolean;
 };
 
 export interface IPaymentWebhookLookupReader {

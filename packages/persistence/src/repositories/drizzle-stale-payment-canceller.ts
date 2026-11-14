@@ -1,5 +1,5 @@
 import type { Database } from "@auction/db";
-import { payment, paymentCheckoutSession } from "@auction/db/schema";
+import { payment, paymentCheckoutSession, paymentGroup } from "@auction/db/schema";
 import {
   and,
   asc,
@@ -13,7 +13,10 @@ import {
   or,
   sql,
 } from "drizzle-orm";
-import type { IStalePaymentCanceller } from "../interfaces/stale-payment-canceller.js";
+import type {
+  IStalePaymentCanceller,
+  OpenGroupCheckout,
+} from "../interfaces/stale-payment-canceller.js";
 
 export class DrizzleStalePaymentCanceller implements IStalePaymentCanceller {
   constructor(private readonly db: Database) {}
@@ -52,6 +55,58 @@ export class DrizzleStalePaymentCanceller implements IStalePaymentCanceller {
       .orderBy(asc(payment.createdAt))
       .limit(limit);
     return rows;
+  }
+
+  async listOpenGroupsWithCheckout(limit: number): Promise<OpenGroupCheckout[]> {
+    const groups = await this.db
+      .select({
+        id: paymentGroup.id,
+        payerUserId: paymentGroup.createdByUserId,
+        buyerLegalEntityId: paymentGroup.buyerLegalEntityId,
+        stripeCheckoutSessionId: paymentGroup.stripeCheckoutSessionId,
+        stripePaymentIntentId: paymentGroup.stripePaymentIntentId,
+      })
+      .from(paymentGroup)
+      .where(
+        and(
+          eq(paymentGroup.status, "open"),
+          or(
+            isNotNull(paymentGroup.stripeCheckoutSessionId),
+            isNotNull(paymentGroup.stripePaymentIntentId),
+          ),
+        ),
+      )
+      .orderBy(asc(paymentGroup.createdAt))
+      .limit(limit);
+    if (groups.length === 0) return [];
+    const members = await this.db
+      .select({
+        groupId: payment.paymentGroupId,
+        paymentId: payment.id,
+        payerUserId: payment.buyerId,
+        buyerLegalEntityId: payment.buyerLegalEntityId,
+      })
+      .from(payment)
+      .where(
+        and(
+          inArray(
+            payment.paymentGroupId,
+            groups.map((g) => g.id),
+          ),
+          inArray(payment.status, ["pending", "authorized"]),
+        ),
+      )
+      .orderBy(asc(payment.createdAt));
+    return groups.map((group) => ({
+      ...group,
+      members: members
+        .filter((m) => m.groupId === group.id)
+        .map(({ paymentId, payerUserId, buyerLegalEntityId }) => ({
+          paymentId,
+          payerUserId,
+          buyerLegalEntityId,
+        })),
+    }));
   }
 
   async cancelIfUntouchedSince(paymentId: string, since: Date): Promise<boolean> {

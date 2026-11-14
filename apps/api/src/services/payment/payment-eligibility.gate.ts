@@ -2,6 +2,8 @@ export {
   type IPaymentEligibilityGate,
   PaymentEligibilityGate,
   type PaymentEligibilityGateOptions,
+  createPaymentEligibilityGate,
+  paymentsAreLive,
 } from "@auction/finance-runtime";
 
 /** What a refusal tells the payer; the same for both ways of paying. */

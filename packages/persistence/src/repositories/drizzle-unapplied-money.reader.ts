@@ -5,7 +5,7 @@ import {
   UNAPPLIED_MONEY_RESOLVED_EVENT,
   type UnappliedMoneyPayload,
 } from "@auction/domain";
-import { and, desc, eq, inArray, or, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull, or, sql } from "drizzle-orm";
 import type {
   IUnappliedMoneyReader,
   OpenUnappliedMoney,
@@ -72,14 +72,22 @@ export class DrizzleUnappliedMoneyReader implements IUnappliedMoneyReader {
     return open ?? null;
   }
 
-  async wasEverUnapplied(chargeId: string): Promise<boolean> {
+  async wasEverUnapplied(charge: {
+    chargeId: string;
+    paymentIntentId: string | null;
+  }): Promise<boolean> {
     const [row] = await this.db
       .select({ id: domainEvent.id })
       .from(domainEvent)
       .where(
         and(
           eq(domainEvent.eventType, UNAPPLIED_MONEY_EVENT),
-          sql`${field("stripeChargeId")} = ${chargeId}`,
+          or(
+            sql`${field("stripeChargeId")} = ${charge.chargeId}`,
+            charge.paymentIntentId
+              ? sql`${field("stripePaymentIntentId")} = ${charge.paymentIntentId}`
+              : undefined,
+          ),
         ),
       )
       .limit(1);
@@ -90,14 +98,36 @@ export class DrizzleUnappliedMoneyReader implements IUnappliedMoneyReader {
     await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${`unapplied:${dedupeKey}`}))`);
   }
 
-  async isChargeOfPaidInvoice(chargeId: string): Promise<boolean> {
+  async isChargeOfPaidInvoice(charge: {
+    chargeId: string;
+    paymentIntentId: string | null;
+  }): Promise<boolean> {
+    // The same rule as the refund handler's invoice match: the invoice's recorded charge, or,
+    // when it recorded no charge, its recorded payment intent. Only an invoice that was ever
+    // captured counts (the rule the invoice path's money check uses): a cancelled invoice that a
+    // blocked capture moved to `refunded` never held this money, so its refund must take the
+    // unapplied path and close the finance task.
     const [row] = await this.db
       .select({ id: payment.id })
       .from(payment)
       .where(
         and(
-          eq(payment.stripeChargeId, chargeId),
           inArray(payment.status, ["captured", "refunded"]),
+          sql`exists (
+            select 1 from ${domainEvent} e
+            where e.aggregate_type = 'payment'
+              and e.aggregate_id = ${payment.id}::text
+              and e.event_type = 'payment.captured'
+          )`,
+          or(
+            eq(payment.stripeChargeId, charge.chargeId),
+            charge.paymentIntentId
+              ? and(
+                  isNull(payment.stripeChargeId),
+                  eq(payment.stripePaymentIntentId, charge.paymentIntentId),
+                )
+              : undefined,
+          ),
         ),
       )
       .limit(1);

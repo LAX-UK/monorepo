@@ -4,7 +4,7 @@ import { and, eq, notExists, sql } from "drizzle-orm";
 const d = accountingDocument;
 const e = accountingDocumentEvent;
 
-/** The history action that settles a credit note's refund (migration 0384). */
+/** The history action that settles a credit note's refund (migration 0385). */
 export const REFUND_CREDIT_NOTE = "refund_credit_note";
 
 /** Credit notes that give money back: the domain put `refund` on them (`planCreditNoteRefund`). */

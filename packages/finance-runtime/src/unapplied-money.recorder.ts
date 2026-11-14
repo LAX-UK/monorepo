@@ -59,6 +59,28 @@ const SUPERSEDES_PART_TRANSFER: readonly UnappliedMoney["reason"][] = [
   "customer_balance_unapplied",
 ];
 
+/** The unique index on the received event's dedupe key (migration 0384). */
+const DEDUPE_KEY_INDEX = "domain_events_unapplied_money_dedupe_key_uid";
+
+type PgError = { code?: unknown; constraint?: unknown; message?: unknown; cause?: unknown };
+
+/**
+ * True for Postgres's unique violation on the dedupe-key index, as the driver raises it or
+ * wrapped as a query error's `cause`. Any other error is not "already recorded".
+ */
+export function isUnappliedMoneyDedupeViolation(err: unknown): boolean {
+  for (let e: unknown = err, depth = 0; e && typeof e === "object" && depth < 3; depth += 1) {
+    const pg = e as PgError;
+    if (pg.code === "23505") {
+      const constraint = typeof pg.constraint === "string" ? pg.constraint : "";
+      const message = typeof pg.message === "string" ? pg.message : "";
+      return constraint === DEDUPE_KEY_INDEX || message.includes(DEDUPE_KEY_INDEX);
+    }
+    e = pg.cause;
+  }
+  return false;
+}
+
 export class UnappliedMoneyRecorder implements IUnappliedMoneyRecorder {
   constructor(
     private readonly reader: IUnappliedMoneyReader,
@@ -107,13 +129,27 @@ export class UnappliedMoneyRecorder implements IUnappliedMoneyRecorder {
     // The reference a payer quoted is left out of the log: it is typed by a person.
     const { transferReference: _quoted, ...loggable } = payload;
     console.error(JSON.stringify({ msg: "unapplied_money_received", ...loggable }));
-    await this.events.withTx(tx).publish({
-      ...unappliedMoneyAggregate(money, payload.dedupeKey),
-      eventType: UNAPPLIED_MONEY_EVENT,
-      payload,
-      actorUserId: null,
-      actingLegalEntityId,
-    });
+    // The database refuses a second event for the same key (index 0384). A writer outside this
+    // lock that got there first is not an error: the money is already recorded. The insert runs
+    // in a savepoint so that refusal leaves the caller's transaction (and its webhook claim)
+    // usable, and the caller carries on as if this report had found the first one.
+    try {
+      await tx.transaction(async (savepoint) => {
+        await this.events.withTx(savepoint).publish({
+          ...unappliedMoneyAggregate(money, payload.dedupeKey),
+          eventType: UNAPPLIED_MONEY_EVENT,
+          payload,
+          actorUserId: null,
+          actingLegalEntityId,
+        });
+      });
+    } catch (err) {
+      if (!isUnappliedMoneyDedupeViolation(err)) throw err;
+      this.metrics.record("unapplied_money_already_recorded");
+      console.info(
+        JSON.stringify({ msg: "unapplied_money_already_recorded", dedupeKey: payload.dedupeKey }),
+      );
+    }
   }
 
   async resolveRefundedCharge(tx: Database, chargeId: string): Promise<void> {

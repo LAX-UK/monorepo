@@ -245,6 +245,8 @@ export {
 export {
   HeldInvoiceCheckouts,
   type HeldInvoiceCheckoutsDeps,
+  type HeldSweepFailure,
+  type HeldSweepReport,
   type IHeldEligibility,
   type IHeldInvoiceCheckouts,
 } from "./payment-expiry/held-invoice-checkouts.js";
@@ -252,4 +254,7 @@ export {
   type IPaymentEligibilityGate,
   PaymentEligibilityGate,
   type PaymentEligibilityGateOptions,
+  type PaymentsLiveEnv,
+  createPaymentEligibilityGate,
+  paymentsAreLive,
 } from "./payment-eligibility.gate.js";

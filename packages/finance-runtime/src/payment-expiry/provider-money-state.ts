@@ -3,8 +3,11 @@
  * The expiry job cancels an invoice only on `no_money`.
  */
 export type ProviderMoneyState =
-  /** Every checkout is closed and nothing was paid or is on its way. */
-  | { kind: "no_money" }
+  /**
+   * Every checkout is closed and nothing was paid or is on its way. `alreadyClosed` is set when
+   * nothing was open to close on this call (closed earlier, by a past run or by Stripe itself).
+   */
+  | { kind: "no_money"; alreadyClosed?: true }
   /** The money arrived. */
   | {
       kind: "paid";

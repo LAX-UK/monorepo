@@ -1,16 +1,11 @@
--- Rollback for 0384_accounting_credit_note_refunds. Roll the release back first, then this.
--- Restores 0383's history actions. The CHECK is added back NOT VALID, so `refund_credit_note` rows
--- already written stay (history is append-only) while the earlier release can write no new one.
--- Credit notes are not touched. Also removes this migration's ledger row so a later deploy
--- reapplies it.
+-- Rollback for 0384_unapplied_money_dedupe_key_uid. Deduplication falls back to the recorder's
+-- advisory lock and existence check, as before. Also removes this migration's ledger row so a
+-- later deploy reapplies it. Roll this back before 0383_rollback.sql (0383 is #1366's Shop
+-- invoices migration); it does not depend on 0383.
 BEGIN;
 
 SET LOCAL lock_timeout = '5s';
-ALTER TABLE "accounting_document_event" DROP CONSTRAINT IF EXISTS "accounting_document_event_action_ck";
-ALTER TABLE "accounting_document_event" ADD CONSTRAINT "accounting_document_event_action_ck" CHECK (
-  "action" IN ('created', 'start_sending', 'expire_lease', 'complete_sending', 'apply_lookup',
-    'escalate', 'requeue', 'cancel', 'release', 'park', 'apply_remainder')
-) NOT VALID;
+DROP INDEX IF EXISTS "domain_events_unapplied_money_dedupe_key_uid";
 
 DELETE FROM drizzle.__drizzle_migrations WHERE created_at = 1811332800000;
 
