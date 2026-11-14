@@ -82,7 +82,7 @@ test("fulfilment steps through its panel, and Back and Esc close it", async ({ p
   await queueRoundTrip(page, "/fulfilment?view=all", "Fulfilment", "fulfilment");
   await page.goto("/fulfilment?view=all");
   await plainCell(grid(page, "Fulfilment").locator("tbody tr").first()).click();
-  await expect(panel(page).getByRole("link", { name: "Open order" })).toHaveAttribute(
+  await expect(panel(page).getByRole("link", { name: "Open full page" })).toHaveAttribute(
     "href",
     /^\/orders\/[0-9a-f-]{36}#fulfilment$/,
   );

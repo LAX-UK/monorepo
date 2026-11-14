@@ -14,6 +14,10 @@ export default async function ShopAdminMerchandisePage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const state = merchandiseList.parse(await searchParams);
+  // A link to the product panel that used to be here now opens the product's editor.
+  if (state.open) {
+    redirect(merchandiseList.recordHref(state, `/merchandise/${encodeURIComponent(state.open)}`));
+  }
   const [result, session] = await Promise.all([
     fetchAdminJson<MerchandiseProductList>(
       adminListPath("merchandise/products", {

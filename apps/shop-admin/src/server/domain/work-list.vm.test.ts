@@ -49,6 +49,14 @@ describe("a work list's URL", () => {
     expect(payoutsList.panelHref({ ...state, open: "p9" }, null)).toBe("/payouts?view=due&q=Theo");
   });
 
+  it("links a record's page with the list it came from, without the page or the panel", () => {
+    const state = payoutsList.parse({ view: "due", q: "Theo", cursor: "c2", payout: "p1" });
+    expect(payoutsList.recordHref(state, "/orders/o1")).toBe(
+      `/orders/o1?list=${encodeURIComponent("view=due&q=Theo")}`,
+    );
+    expect(payoutsList.recordHref(payoutsList.parse({}), "/orders/o1")).toBe("/orders/o1");
+  });
+
   it("asks the API for the view's statuses, the search, the filters and the sort", () => {
     const state = fulfilmentList.parse({ q: "AB12", option: "lax_storage", sort: "updated_asc" });
     expect(fulfilmentList.apiQuery(state)).toEqual({
