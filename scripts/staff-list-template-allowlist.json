@@ -206,10 +206,6 @@
       "reason": "Rows open the page (pull request 5, LAX Admin records)"
     },
     {
-      "page": "lax-admin:audit/page.tsx",
-      "reason": "Queue panel (pull request 6, LAX Admin queues)"
-    },
-    {
       "page": "lax-admin:clients/page.tsx",
       "reason": "Rows open the page (pull request 5, LAX Admin records)"
     },
@@ -226,16 +222,8 @@
       "reason": "Rows open the page (pull request 5, LAX Admin records)"
     },
     {
-      "page": "lax-admin:fulfilment/page.tsx",
-      "reason": "Queue panel (pull request 6, LAX Admin queues)"
-    },
-    {
       "page": "lax-admin:help/page.tsx",
       "reason": "Rows open the page (pull request 5, LAX Admin records)"
-    },
-    {
-      "page": "lax-admin:holds/page.tsx",
-      "reason": "Queue panel (pull request 6, LAX Admin queues)"
     },
     {
       "page": "lax-admin:leads/page.tsx",
@@ -254,28 +242,8 @@
       "reason": "Rows open the page (pull request 5, LAX Admin records)"
     },
     {
-      "page": "lax-admin:original-sales/page.tsx",
-      "reason": "Queue panel (pull request 6, LAX Admin queues)"
-    },
-    {
-      "page": "lax-admin:payouts/page.tsx",
-      "reason": "Queue panel (pull request 6, LAX Admin queues)"
-    },
-    {
-      "page": "lax-admin:production/page.tsx",
-      "reason": "Queue panel (pull request 6, LAX Admin queues)"
-    },
-    {
-      "page": "lax-admin:requests/page.tsx",
-      "reason": "Queue panel (pull request 6, LAX Admin queues)"
-    },
-    {
       "page": "lax-admin:staff/page.tsx",
       "reason": "Rows open the page (pull request 5, LAX Admin records)"
-    },
-    {
-      "page": "lax-admin:third-party-sales/page.tsx",
-      "reason": "Queue panel (pull request 6, LAX Admin queues)"
     }
   ],
   "rowOpenNone": [
