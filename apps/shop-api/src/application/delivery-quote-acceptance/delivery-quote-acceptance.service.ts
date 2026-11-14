@@ -22,6 +22,8 @@ export interface DeliveryQuoteAcceptanceStore {
 export type DeliveryQuoteAcceptanceDeps = {
   store: DeliveryQuoteAcceptanceStore;
   checkout: Pick<CheckoutWriter, "resumeCheckoutOrder">;
+  /** Refuses return URLs that leave the storefront; called before the quote is touched. */
+  assertReturnUrls: (urls: { successUrl: string; cancelUrl: string }) => void;
   /** Whether delivery outside the UK may be paid for yet. Quoting does not depend on it. */
   exportPaymentEnabled: boolean;
   now?: () => Date;
@@ -30,8 +32,9 @@ export type DeliveryQuoteAcceptanceDeps = {
 /**
  * The buyer's "accept and pay" on a quote. Payment outside the UK waits for the accountant's
  * answer on VAT, so with it closed nothing is accepted either: the quote stays as it was, and the
- * buyer is told payment is not open. With it open, accepting prices the order and then opens
- * payment, which checks again that what is paid is the goods plus the delivery that was quoted.
+ * buyer is told payment is not open. With it open, the return URLs are checked before anything
+ * changes; then accepting prices the order and opens payment, which checks again that what is
+ * paid is the goods plus the delivery that was quoted.
  */
 export function createDeliveryQuoteAcceptanceService(deps: DeliveryQuoteAcceptanceDeps) {
   const now = deps.now ?? (() => new Date());
@@ -49,6 +52,7 @@ export function createDeliveryQuoteAcceptanceService(deps: DeliveryQuoteAcceptan
           409,
         );
       }
+      deps.assertReturnUrls({ successUrl: input.successUrl, cancelUrl: input.cancelUrl });
       const at = now();
       await deps.store.accept({
         subject: input.subject,

@@ -17,7 +17,7 @@ import { useEffect, useState } from "react";
 const ANALYTICS_ID = `consent-${CONSENT_CATEGORY_ANALYTICS}`;
 const MARKETING_ID = `consent-${CONSENT_CATEGORY_MARKETING}`;
 
-/** Cookie settings, opened from the banner's "Settings" and from "Cookie settings" in the footer. */
+/** Cookie settings, opened from the banner's "Cookie settings" and from "Cookie settings" in the footer. */
 export function ConsentPreferencesDialog() {
   const { preferencesOpen, closePreferences, snapshot, saveCustom, rejectAll, acceptAll } =
     useConsent();

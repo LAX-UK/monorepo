@@ -274,6 +274,7 @@ const LABELS: Record<string, string> = {
   "shop.possession.recorded": "Possession recorded",
   "shop.refund.requested": "Refund requested",
   "shop.refund.completed": "Refund completed",
+  "shop.refund.reversed": "Refund reversed after it succeeded",
   "shop.cancellation.requested": "Cancellation requested",
   "shop.dispute.opened": "Dispute opened",
   "shop.dispute.closed": "Dispute closed",
