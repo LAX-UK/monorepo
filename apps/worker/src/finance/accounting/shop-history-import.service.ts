@@ -1,6 +1,8 @@
 import {
   type AccountingDocument,
   type DocumentTarget,
+  type ProjectionPolicy,
+  type ShopOrderPaidFacts,
   booksTargetMode,
   documentTarget,
   parkReasonFor,
@@ -73,6 +75,8 @@ export interface ShopHistoryImportDeps {
   readonly registry: IAccountingDocumentRegistry;
   readonly lookup: IAccountingDocumentLookup;
   readonly now: () => Date;
+  /** The Shop order policy; the live flow's by default (tests pass their own). */
+  readonly policy?: ProjectionPolicy<ShopOrderPaidFacts>;
 }
 
 export interface ShopHistoryImportInput {
@@ -133,7 +137,7 @@ export class ShopHistoryImport {
           refused.push({ orderId: order.orderId, reason: facts.reason });
           continue;
         }
-        const projection = projectShopOrderPaid(facts.facts);
+        const projection = (this.deps.policy ?? projectShopOrderPaid)(facts.facts);
         if (!projection.ok) {
           refused.push({ orderId: order.orderId, reason: projection.refusal.code });
           continue;
