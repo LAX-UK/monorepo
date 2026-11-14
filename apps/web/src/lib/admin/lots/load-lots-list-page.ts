@@ -303,3 +303,19 @@ export async function loadAdminLotsListPage(
     ),
   };
 }
+
+/**
+ * The ids of the lots the list shows for this query, in its order: what a lot page opened from
+ * the list pages through (Previous and Next). The same query as the list, without its metrics.
+ */
+export async function loadLotsListIds(sp: LotsListSearchParams): Promise<string[]> {
+  const { query, withdrawalsLens } = buildLotsListPageModel(sp, { withdrawalsPending: 0 });
+  if (withdrawalsLens) {
+    const { tasks } = await withdrawalsListController.fetch();
+    return [
+      ...new Set(tasks.map((task) => task.targetLotId).filter((id): id is string => Boolean(id))),
+    ];
+  }
+  const { rows } = await lotsListController.fetch(query);
+  return rows.map((row) => row.id);
+}

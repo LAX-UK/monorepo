@@ -1,7 +1,10 @@
 import { LotDetailShell } from "@/components/admin/lot-detail/lot-detail-shell";
+import { adminLotHref } from "@/lib/admin/catalog-route-helpers";
 import { computeLotDetailReadiness } from "@/lib/admin/compute-lot-detail-readiness";
 import { loadLotConnectRequired } from "@/lib/admin/connect-readiness";
+import { loadListRecordPager, requestListQuery } from "@/lib/admin/list-record-pager.server";
 import { loadAdminLotDetail } from "@/lib/admin/load-lot-detail";
+import { loadLotsListIds } from "@/lib/admin/lots/load-lots-list-page";
 import { loadLotSellerProceeds } from "@/lib/admin/seller-proceeds/load-lot-seller-proceeds";
 import { withdrawalsListController } from "@/lib/admin/withdrawals-list-controller";
 import { requireAdminCapability } from "@/lib/auth/require-admin-capability";
@@ -42,6 +45,7 @@ export default async function AdminLotDetailLayout({ params, children }: Props) 
     laxArtReturn,
     reoffers,
     sellerProceeds,
+    pager,
   ] = await Promise.all([
     loadAdminLotDetail(id),
     getServerLotBids(id, 100).catch(() => []),
@@ -59,6 +63,15 @@ export default async function AdminLotDetailLayout({ params, children }: Props) 
     canManageAuction ? getServerLaxArtReturn(id) : Promise.resolve(null),
     getLotReofferBundle(id),
     loadLotSellerProceeds(id, user),
+    // Opened from the lots list: Previous and Next through that list.
+    requestListQuery().then((listQuery) =>
+      loadListRecordPager({
+        listQuery,
+        currentId: id,
+        recordHref: adminLotHref,
+        loadIds: loadLotsListIds,
+      }),
+    ),
   ]);
 
   const publishReadiness = computeLotDetailReadiness({
@@ -84,6 +97,7 @@ export default async function AdminLotDetailLayout({ params, children }: Props) 
       selling={selling}
       laxArtReturn={laxArtReturn}
       reoffers={reoffers}
+      pager={pager}
       heldPayout={
         sellerProceeds.notice
           ? { notice: sellerProceeds.notice, record: sellerProceeds.record }
