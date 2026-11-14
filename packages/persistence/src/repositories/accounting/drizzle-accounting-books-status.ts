@@ -279,6 +279,15 @@ export class DrizzleAccountingBooksStatusStore implements IAccountingBooksStatus
     return row?.at ?? null;
   }
 
+  async firstStartedRunAt(): Promise<Date | null> {
+    const [row] = await this.db
+      .select({ at: accountingBooksStatusRun.startedAt })
+      .from(accountingBooksStatusRun)
+      .orderBy(asc(accountingBooksStatusRun.startedAt))
+      .limit(1);
+    return row?.at ?? null;
+  }
+
   private toDue(
     rows: readonly { document: typeof d.$inferSelect; status: StatusRow | null }[],
   ): BooksStatusDueList {

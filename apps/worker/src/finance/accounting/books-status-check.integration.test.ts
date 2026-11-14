@@ -745,6 +745,12 @@ describe.skipIf(!HAS_DB)("Books nightly status check (integration)", { timeout: 
       toState: "void",
     });
     expect(await repos.booksStatus.lastFinishedRunAt()).toBeInstanceOf(Date);
+    const [earliest] = await owner
+      .select({ at: sql<Date>`min(${accountingBooksStatusRun.startedAt})` })
+      .from(accountingBooksStatusRun);
+    expect((await repos.booksStatus.firstStartedRunAt())?.getTime()).toBe(
+      new Date(earliest?.at as Date).getTime(),
+    );
     const runs = await owner
       .select()
       .from(accountingBooksStatusRun)

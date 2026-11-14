@@ -51,11 +51,14 @@ export interface AccountingWatchDeps {
   readonly now: () => Date;
   readonly calendar?: WorkingCalendar;
   /**
-   * The nightly status check's runs, and when the watch started expecting them (the worker's
-   * start), so a check that has never run is told too, once its first night has passed.
+   * The nightly status check's runs. With no run ever finished, the window starts at the first
+   * run ever started, a stored time no restart moves. Only when no run has ever started does it
+   * fall back to `expectedSince` (the worker's start), so a check whose cron never fires is told
+   * by its Sentry cron monitor, not by this alert, while the worker restarts within a night.
    */
   readonly statusRuns?: {
     readonly lastFinishedRunAt: () => Promise<Date | null>;
+    readonly firstStartedRunAt: () => Promise<Date | null>;
     readonly expectedSince: Date;
   };
 }
@@ -168,7 +171,7 @@ export class AccountingWatch {
     const runs = this.deps.statusRuns;
     if (!runs || modes.length === 0) return false;
     const last = await runs.lastFinishedRunAt();
-    const since = last ?? runs.expectedSince;
+    const since = last ?? (await runs.firstStartedRunAt()) ?? runs.expectedSince;
     const missed = now.getTime() - since.getTime() > STATUS_CHECK_MISSED_AFTER_MS;
     if (missed) {
       this.deps.alerts.raise(ACCOUNTING_ALERTS.statusCheckMissed, {

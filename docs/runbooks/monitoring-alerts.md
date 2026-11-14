@@ -513,6 +513,13 @@ LAX the usual way, or correct Books if the payment was entered by mistake.
 **What it means.** While Books is aimed at for some product, no nightly status check has finished
 for more than 26 hours. The check's Sentry cron monitor (`accounting-reconcile`) also shows the miss.
 
+The 26 hours count from the last run that finished. If none ever finished, they count from the
+first run that ever started (`accounting_books_status_run`), a stored time that worker restarts do
+not move. If no run has ever started, the alert can only count from the worker's start, so with
+deploys inside a day it stays silent: **a cron that never fires is caught by the Sentry cron
+monitor `accounting-reconcile`, not by this alert.** That monitor's slug must be configured for
+this case to reach anyone.
+
 **What to do.** Look at the worker logs for `accounting_status_check_finished`, or for the job's
 failure on Failed jobs. A run that keeps failing is recorded with outcome `failed`. A run stopped
 by the budget (`budget_spent`) still counts as run: the rest is read the next night. Books being

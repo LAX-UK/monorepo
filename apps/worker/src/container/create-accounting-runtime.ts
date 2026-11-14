@@ -131,6 +131,7 @@ export function createAccountingRuntime(deps: {
       now: () => new Date(),
       statusRuns: {
         lastFinishedRunAt: () => repos.booksStatus.lastFinishedRunAt(),
+        firstStartedRunAt: () => repos.booksStatus.firstStartedRunAt(),
         expectedSince: new Date(),
       },
     }),

@@ -212,6 +212,7 @@ describe("AccountingWatch", () => {
       last: Date | null,
       expectedSince: Date,
       mode: "off" | "dry_run" = "dry_run",
+      firstStarted: Date | null = null,
     ) => {
       const raised: [string, Record<string, unknown>][] = [];
       const watch = new AccountingWatch({
@@ -225,7 +226,11 @@ describe("AccountingWatch", () => {
         senderModes: ["dry_run"],
         alerts: { raise: (alert, details) => void raised.push([alert.message, details]) },
         now: () => NOW,
-        statusRuns: { lastFinishedRunAt: async () => last, expectedSince },
+        statusRuns: {
+          lastFinishedRunAt: async () => last,
+          firstStartedRunAt: async () => firstStarted,
+          expectedSince,
+        },
       });
       return { watch, raised };
     };
@@ -247,6 +252,31 @@ describe("AccountingWatch", () => {
           { lastFinishedAt: last.toISOString(), modes: ["dry_run"] },
         ],
       ]);
+    });
+
+    it("a check whose runs started but never finished is told from its first run, whatever the restarts", async () => {
+      // The worker restarted a minute ago; the first run started more than a night ago.
+      const restarted = ago(60_000);
+      expect(
+        (
+          await watchWith(
+            null,
+            restarted,
+            "dry_run",
+            ago(STATUS_CHECK_MISSED_AFTER_MS + 60_000),
+          ).watch.check()
+        ).statusCheckMissed,
+      ).toBe(true);
+      expect(
+        (
+          await watchWith(
+            null,
+            restarted,
+            "dry_run",
+            ago(STATUS_CHECK_MISSED_AFTER_MS - 60_000),
+          ).watch.check()
+        ).statusCheckMissed,
+      ).toBe(false);
     });
 
     it("alerts for a check that never ran once its first night has passed, not before", async () => {

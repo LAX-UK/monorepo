@@ -726,4 +726,6 @@ export interface IAccountingBooksStatusStore {
   ): Promise<void>;
   /** When the last run finished (any outcome but failed), or null if none ever did. */
   lastFinishedRunAt(): Promise<Date | null>;
+  /** When the first run ever started, or null if none ever did: a time no restart moves. */
+  firstStartedRunAt(): Promise<Date | null>;
 }

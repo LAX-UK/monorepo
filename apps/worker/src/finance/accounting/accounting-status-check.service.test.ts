@@ -130,6 +130,9 @@ class InMemoryStatusStore implements IAccountingBooksStatusStore {
   async lastFinishedRunAt() {
     return null;
   }
+  async firstStartedRunAt() {
+    return null;
+  }
 }
 
 /** Issues the Bid contact, invoice and payment through the sender against the fake. */
