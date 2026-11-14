@@ -11,13 +11,10 @@ import { getLotMediaTreatments } from "@/lib/departments/lot-media-treatments.se
 import { alertAccessOf, engineAlertStateOf } from "@/lib/notifications/engine-alert-state";
 import { artistPath } from "@/lib/seo/url";
 import { watchingAlertReach } from "@/lib/watching/alert-reach";
-import { parseWatchingListQuery } from "@/lib/watching/watching-list-query";
 import { buildWatchedLots, withReminders } from "@/lib/watching/watching.vm";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = { title: "Watching" };
-
-type PageProps = { searchParams: Promise<Record<string, string | string[] | undefined>> };
 
 async function settle<T>(read: () => Promise<T>): Promise<T | null> {
   try {
@@ -74,8 +71,7 @@ async function loadArtists(): Promise<WatchedArtistVm[] | null> {
  * Watching: lots, artists and saved searches on one page. The lists are the person's own, even
  * while they act for an organisation, and the page says so.
  */
-export default async function WatchingPage({ searchParams }: PageProps) {
-  const sp = await searchParams;
+export default async function WatchingPage() {
   const c = await getServerDataContainer();
   const [scope, lots, artists, searches, accountAlerts, prefs, user] = await Promise.all([
     c.buying.scope(),
@@ -94,7 +90,6 @@ export default async function WatchingPage({ searchParams }: PageProps) {
     >
       <SetMobileShellTitle title="Watching" />
       <WatchingView
-        query={parseWatchingListQuery(sp)}
         lots={lots}
         artists={artists}
         searches={searches}

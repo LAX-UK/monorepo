@@ -19,7 +19,7 @@ import {
   turnedOnMessage,
 } from "@/lib/watching/search-email";
 import { reminderRowLabel } from "@/lib/watching/watched-lot-reminder.vm";
-import { type WatchingListQuery, watchingListSearch } from "@/lib/watching/watching-list-query";
+import { parseWatchingListQuery, watchingListSearch } from "@/lib/watching/watching-list-query";
 import {
   WATCHED_LOT_SORTS,
   WATCHED_LOT_SORT_LABEL,
@@ -43,7 +43,7 @@ import type { TabNavItem } from "@auction/ui/lax/tabs";
 import { cn } from "@auction/ui/lib/utils";
 import { Lock, UserRound } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useState, useTransition } from "react";
 import { AlertReachNote } from "./alert-reach-note";
 import { ArtistAlertDialog } from "./artist-alert-dialog";
@@ -60,8 +60,6 @@ export type WatchedArtistVm = {
 };
 
 export type WatchingViewProps = {
-  /** The view, search and order, as the address holds them. */
-  query: WatchingListQuery;
   /** Each list is `null` when it could not be read. */
   lots: WatchedLotRowVm[] | null;
   artists: WatchedArtistVm[] | null;
@@ -85,7 +83,6 @@ function tabHref(view: WatchingViewId): string {
  * alert on an artist is edited here; how alerts reach the person stays in Bid settings.
  */
 export function WatchingView({
-  query: initialQuery,
   lots,
   artists,
   searches,
@@ -94,14 +91,19 @@ export function WatchingView({
   organisation,
 }: WatchingViewProps) {
   const router = useRouter();
-  const view = initialQuery.view;
   // Search and order live in the address: Back from a lot returns to the same filtered list.
+  // The address itself seeds the query (Back can hand the page the server props it was first
+  // built from, without the search); it is re-seeded only when the view changes.
+  const urlQuery = parseWatchingListQuery(Object.fromEntries(useSearchParams()));
+  const [seed, setSeed] = useState(urlQuery);
+  if (seed.view !== urlQuery.view) setSeed(urlQuery);
+  const view = seed.view;
   const {
     query: listQuery,
     setQuery: setListQuery,
     search,
     setSearch,
-  } = useListQuery(initialQuery, watchingListSearch);
+  } = useListQuery(seed, watchingListSearch);
   const query = listQuery.q;
   const sort = listQuery.sort;
   const setSort = (next: WatchedLotSort) => setListQuery({ ...listQuery, sort: next });

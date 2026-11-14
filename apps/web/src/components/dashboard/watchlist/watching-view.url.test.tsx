@@ -1,10 +1,11 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { WatchingView } from "./watching-view";
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ refresh: vi.fn() }),
   usePathname: () => "/watching",
+  useSearchParams: () => new URLSearchParams(window.location.search),
 }));
 
 const lot = (id: string, title: string) =>
@@ -23,10 +24,10 @@ const lot = (id: string, title: string) =>
     standing: { label: "Watching", tone: "neutral", shape: "ring" },
   }) as never;
 
-function show(query: { view: "lots"; q: string; sort: "closing" | "added" }) {
+function show(address: string) {
+  window.history.replaceState(null, "", `/watching${address}`);
   return render(
     <WatchingView
-      query={query}
       lots={[lot("1", "Harbour Light"), lot("2", "Red Door")]}
       artists={[]}
       searches={[]}
@@ -37,11 +38,9 @@ function show(query: { view: "lots"; q: string; sort: "closing" | "added" }) {
   );
 }
 
-beforeEach(() => window.history.replaceState(null, "", "/watching"));
-
 describe("Watching keeps its search and order in the address", () => {
   it("writes the search to ?q= and filters the list", async () => {
-    show({ view: "lots", q: "", sort: "closing" });
+    show("");
     fireEvent.change(screen.getByRole("searchbox"), { target: { value: "harbour" } });
     await waitFor(() => expect(window.location.search).toBe("?q=harbour"));
     expect(screen.queryByText("Red Door")).toBeNull();
@@ -49,7 +48,7 @@ describe("Watching keeps its search and order in the address", () => {
   });
 
   it("restores search from the address, as Back does", () => {
-    show({ view: "lots", q: "red", sort: "closing" });
+    show("?q=red");
     expect(screen.getByRole("searchbox")).toHaveValue("red");
     expect(screen.queryByText("Harbour Light")).toBeNull();
     expect(screen.getByText("Red Door")).toBeInTheDocument();
