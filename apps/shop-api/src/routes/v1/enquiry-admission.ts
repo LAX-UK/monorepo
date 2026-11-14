@@ -55,6 +55,22 @@ export function admissionClientIp(request: FastifyRequest): string | null {
 }
 
 /**
+ * The visitor's own address, or null when it is not known. Unlike {@link admissionClientIp} a
+ * storefront request without a valid client-IP header is unknown here, not the BFF's address:
+ * that address is infrastructure, and keying a per-visitor cap on it would put every such
+ * visitor in one bucket.
+ */
+export function visitorClientIp(request: FastifyRequest): string | null {
+  if (request.shopAuth?.kind === "user") return null;
+  if (request.shopAuth?.kind === "bff") {
+    const raw = request.headers[ENQUIRY_CLIENT_IP_HEADER];
+    const value = (Array.isArray(raw) ? raw[0] : raw)?.trim();
+    return value && isIP(value) !== 0 ? value : null;
+  }
+  return request.ip;
+}
+
+/**
  * Shared gate for artwork and general enquiries: scope, honeypot, sender and rate limits.
  * A honeypot hit is reported to the caller so the route can answer with a normal success
  * body and store nothing; bots learn nothing from the response.

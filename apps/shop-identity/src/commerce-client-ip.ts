@@ -32,3 +32,20 @@ export function commerceClientIp(c: Context): string {
   }
   return resolveClientIpFromHeaders((name) => c.req.header(name), policy, { remoteAddress });
 }
+
+/**
+ * Visitor address for limits that must not share a bucket: "unknown" when no visitor hop can be
+ * read, never the address of a proxy in front of this service.
+ */
+export function commerceVisitorIp(c: Context): string {
+  let remoteAddress: string | undefined;
+  try {
+    remoteAddress = getConnInfo(c).remote.address;
+  } catch {
+    remoteAddress = undefined;
+  }
+  return resolveClientIpFromHeaders((name) => c.req.header(name), policy, {
+    remoteAddress,
+    unknownWithoutClientHop: true,
+  });
+}

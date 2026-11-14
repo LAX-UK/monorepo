@@ -46,6 +46,28 @@ export const MAX_OPEN_QUOTE_REQUESTS_PER_GUEST_IP = 4;
 export const MAX_OPEN_QUOTE_REQUESTS_PER_BASKET_TOKEN = 2;
 
 /**
+ * Open guest quote holds on one artwork's prints above which staff are alerted: several guests
+ * holding the same run at once is worth a look, though each stays within its own caps.
+ */
+export const GUEST_QUOTE_HOLDS_PER_ARTWORK_ALERT = 3;
+
+/**
+ * A guest's quote may hold a print only while another stays on sale: the last print is kept for a
+ * buyer who can pay now or is signed in, since a guest's hold cannot be followed up the same way.
+ */
+export function guestHoldLeavesAPrint(printsLeftAfterHold: number): boolean {
+  return printsLeftAfterHold >= 1;
+}
+
+/** The artworks whose open guest quote holds are past the alert threshold. */
+export function artworksOverGuestHoldAlert(
+  openGuestHolds: ReadonlyArray<{ artworkId: string; open: number }>,
+  threshold: number = GUEST_QUOTE_HOLDS_PER_ARTWORK_ALERT,
+): string[] {
+  return openGuestHolds.filter((row) => row.open > threshold).map((row) => row.artworkId);
+}
+
+/**
  * When a print held for a quote asked for at `now` is released if the quote is not paid, after
  * `workingDays` (three for a signed-in buyer).
  */

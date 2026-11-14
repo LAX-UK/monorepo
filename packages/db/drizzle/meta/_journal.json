@@ -2668,6 +2668,13 @@
       "when": 1811764800000,
       "tag": "0389_shop_original_sale_books_invoice",
       "breakpoints": true
+    },
+    {
+      "idx": 382,
+      "version": "7",
+      "when": 1811851200000,
+      "tag": "0390_data_request_erasure_hold",
+      "breakpoints": true
     }
   ]
 }

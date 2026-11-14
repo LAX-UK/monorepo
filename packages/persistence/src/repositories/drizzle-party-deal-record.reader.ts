@@ -1,5 +1,5 @@
 import type { Database } from "@auction/db";
-import type { PartyDealRecord } from "@auction/domain";
+import { type PartyDealRecord, closedDealEndedAt } from "@auction/domain";
 import type { PrivateSaleDealStage } from "@auction/types";
 import { type SQL, sql } from "drizzle-orm";
 import type { IPartyDealRecordReader } from "../interfaces/party-deal-record.reader.js";
@@ -83,15 +83,14 @@ export class DrizzlePartyDealRecordReader implements IPartyDealRecordReader {
   }
 }
 
-/**
- * When a deal ended. A settled deal's end is the stage history's settle row; with no such row it is
- * the deal's last update, which is when it was written as settled, so a missing history row never
- * leaves a deal with no end.
- */
+/** When a deal ended, by the same rule the enquiry erasure uses. */
 function endedAtOf(row: DealRow): Date | null {
-  if (row.stage === "cancelled") return row.cancelled_at ? toDate(row.cancelled_at) : null;
-  if (row.stage === "settled") return toDate(row.settled_at ?? row.updated_at);
-  return null;
+  return closedDealEndedAt({
+    stage: row.stage as PrivateSaleDealStage,
+    closedInHistoryAt: row.settled_at ? toDate(row.settled_at) : null,
+    cancelledAt: row.cancelled_at ? toDate(row.cancelled_at) : null,
+    updatedAt: toDate(row.updated_at),
+  });
 }
 
 /**

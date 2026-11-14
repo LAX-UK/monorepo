@@ -13,7 +13,7 @@ const policy = createClientIpPolicy();
 function resolve(
   peer: string | undefined,
   headers: Record<string, string>,
-  options: { peerBehindTrustedProxy?: boolean } = {},
+  options: { peerBehindTrustedProxy?: boolean; unknownWithoutClientHop?: boolean } = {},
 ) {
   return resolveClientIpFromHeaders((name) => headers[name], policy, {
     remoteAddress: peer,
@@ -103,6 +103,27 @@ describe("resolveClientIp", () => {
     expect(() => createClientIpPolicy({ trustedProxyCidrs: ["10.0.0.0/99"] })).toThrow(
       "Invalid trusted proxy CIDRs prefix",
     );
+  });
+});
+
+describe("unknownWithoutClientHop", () => {
+  const strict = { unknownWithoutClientHop: true };
+
+  it("is unknown, not the proxy, when the chain cannot be parsed", () => {
+    expect(resolve("10.0.0.2", { "x-forwarded-for": "garbage, 203.0.113.9" })).toBe("10.0.0.2");
+    expect(resolve("10.0.0.2", { "x-forwarded-for": "garbage, 203.0.113.9" }, strict)).toBe(
+      "unknown",
+    );
+  });
+
+  it("is unknown when every hop is a proxy of ours, or no header says who the client is", () => {
+    expect(resolve("10.0.0.2", { "x-forwarded-for": "10.0.0.3" }, strict)).toBe("unknown");
+    expect(resolve("10.0.0.2", {}, strict)).toBe("unknown");
+  });
+
+  it("still reads a visitor hop that is there, and a peer that is itself the visitor", () => {
+    expect(resolve("10.0.0.2", { "x-forwarded-for": "203.0.113.9" }, strict)).toBe("203.0.113.9");
+    expect(resolve("198.51.100.7", {}, strict)).toBe("198.51.100.7");
   });
 });
 

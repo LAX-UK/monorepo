@@ -150,6 +150,11 @@ export type ClientIpInput = ClientIpPolicy & {
   peerBehindTrustedProxy?: boolean;
   /** See {@link DEFAULT_TRUSTED_PROXY_HOPS}. */
   trustedProxyHops?: number;
+  /**
+   * For callers that must not key on infrastructure: when the peer is a trusted proxy and no
+   * visitor hop can be read, the answer is "unknown" instead of the proxy's own address.
+   */
+  unknownWithoutClientHop?: boolean;
 };
 
 /**
@@ -164,7 +169,9 @@ export function resolveClientIp(input: ClientIpInput): string {
   const remoteAddress = normalizedIp(input.remoteAddress);
   if (!remoteAddress && !input.peerBehindTrustedProxy) return UNKNOWN_CLIENT_IP;
   if (remoteAddress && !input.isTrustedProxy(remoteAddress)) return remoteAddress;
-  const fallback = remoteAddress ?? UNKNOWN_CLIENT_IP;
+  const fallback = input.unknownWithoutClientHop
+    ? UNKNOWN_CLIENT_IP
+    : (remoteAddress ?? UNKNOWN_CLIENT_IP);
 
   const doConnectingIp = normalizedIp(input.doConnectingIp);
   if (doConnectingIp) {
@@ -199,13 +206,18 @@ type HeaderReader = (name: string) => string | null | undefined;
 export function resolveClientIpFromHeaders(
   readHeader: HeaderReader,
   policy: ClientIpPolicy,
-  options: { remoteAddress?: string | undefined; peerBehindTrustedProxy?: boolean } = {},
+  options: {
+    remoteAddress?: string | undefined;
+    peerBehindTrustedProxy?: boolean;
+    unknownWithoutClientHop?: boolean;
+  } = {},
 ): string {
   const read = (name: string) => readHeader(name) ?? undefined;
   return resolveClientIp({
     ...policy,
     remoteAddress: options.remoteAddress,
     ...(options.peerBehindTrustedProxy ? { peerBehindTrustedProxy: true } : {}),
+    ...(options.unknownWithoutClientHop ? { unknownWithoutClientHop: true } : {}),
     forwardedFor: read(CLIENT_IP_HEADER_NAMES.forwardedFor),
     realIp: read(CLIENT_IP_HEADER_NAMES.realIp),
     cfConnectingIp: read(CLIENT_IP_HEADER_NAMES.cloudflare),

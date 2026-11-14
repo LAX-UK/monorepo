@@ -1,6 +1,8 @@
 import "server-only";
 
 import {
+  type ErasureHoldFlag,
+  getAdminDataRequestErasureHolds,
   getAdminDataRequestSummary,
   getAdminDataRequests,
 } from "@/lib/data/http/admin-data-requests.reader";
@@ -60,6 +62,10 @@ export type DataRequestsPageModel = {
   filtered: boolean;
   list: DataRequestList | null;
   summary: DataRequestSummary | null;
+  /** Held erasures staff must settle; empty when none or unreadable. */
+  erasureHolds: ErasureHoldFlag[];
+  /** The held erasures could not be read, so an empty list does not mean none are held. */
+  erasureHoldsUnreadable: boolean;
   pagination: DataRequestsPagination | null;
   loadError: string | null;
 };
@@ -70,10 +76,14 @@ export async function loadAdminDataRequestsPage(
 ): Promise<DataRequestsPageModel> {
   const filters = parseDataRequestsSearch(sp);
   const filtered = hasDataRequestsFilters(filters);
-  const [list, summary] = await Promise.allSettled([
+  const [list, summary, holds] = await Promise.allSettled([
     getAdminDataRequests(dataRequestsApiQuery(filters)),
     getAdminDataRequestSummary(),
+    getAdminDataRequestErasureHolds(),
   ]);
+  const heldRead = holds.status === "fulfilled" ? holds.value : null;
+  const erasureHolds = heldRead ?? [];
+  const erasureHoldsUnreadable = heldRead === null;
   const summaryValue = summary.status === "fulfilled" ? summary.value : null;
   if (list.status === "rejected") {
     const message = list.reason instanceof Error ? list.reason.message : "";
@@ -82,6 +92,8 @@ export async function loadAdminDataRequestsPage(
       filtered,
       list: null,
       summary: summaryValue,
+      erasureHolds,
+      erasureHoldsUnreadable,
       pagination: null,
       loadError:
         message === "forbidden"
@@ -94,6 +106,8 @@ export async function loadAdminDataRequestsPage(
     filtered,
     list: list.value,
     summary: summaryValue,
+    erasureHolds,
+    erasureHoldsUnreadable,
     pagination: paginationFor(sp, filters, list.value),
     loadError: null,
   };
