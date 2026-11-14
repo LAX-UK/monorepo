@@ -621,6 +621,27 @@ and records what Books says (below). Every answer has no body and `Cache-Control
   stored. A body over 16 KiB is refused with 413 before it is read. A notice for another
   organisation, or for a document LAX did not issue, changes nothing.
 
+### Setting the Books values on the test environment
+
+Terraform passes both values to the test API and worker; production does not read them (its
+variables default to empty, so nothing changes there).
+
+| What | GitHub secret (test environment) | Terraform variable | App setting |
+| --- | --- | --- | --- |
+| Organisation settings (JSON) | `ZOHO_BOOKS_ORG_CONFIG_TEST` | `zoho_books_org_config` | `ZOHO_BOOKS_ORG_CONFIG` (api, worker) |
+| Notice secret (32+ characters) | `ZOHO_BOOKS_NOTICE_SECRET_TEST` | `zoho_books_notice_secret` | `ZOHO_BOOKS_NOTICE_SECRET` (api) |
+
+Both are sensitive and default to empty. Empty means accounting does not run and the notice route
+refuses every notice, so applying with the secrets unset changes nothing.
+
+1. **Validate the JSON before storing it.** An invalid value stops the worker at start-up, so run
+   `pnpm books:validate-org-config < candidate.json` (or `ZOHO_BOOKS_ORG_CONFIG='…' pnpm
+   books:validate-org-config`). It applies the same checks as the worker and prints only the
+   entities found. It needs the workspace built once (`pnpm turbo run build --filter=@auction/finance-runtime...`).
+2. Save the values as the secrets above on the `test` GitHub environment.
+3. Run a **terraform apply on test** (the apply-test workflow). The secrets only take effect on the
+   app after that apply; the plan and drift jobs read them for test only.
+
 ### Notice signature refused (`zoho_books.notice_signature_failed`)
 
 **What it means.** A request reached the Books notice route with no signature, or one that does
