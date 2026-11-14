@@ -1,5 +1,7 @@
 // @vitest-environment jsdom
+import { expectBackCloses, expectQueuePanel } from "@/test/queue-panel";
 import type { AdminProductionTaskList } from "@auction/shop-contracts";
+import { StaffTooltipProvider } from "@auction/staff-ui";
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import type * as React from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -60,14 +62,31 @@ const page: AdminProductionTaskList = {
   counts: { queued: 1 },
 };
 
-function renderQueue(query: Record<string, string> = {}) {
+const SECOND_TASK_ID = "44444444-4444-4444-8444-444444444444";
+const pageOfTwo: AdminProductionTaskList = {
+  ...page,
+  items: [
+    ...page.items,
+    {
+      ...(page.items[0] as AdminProductionTaskList["items"][number]),
+      taskId: SECOND_TASK_ID,
+      artworkTitle: "Harbour",
+      editionNumber: 2,
+      status: "printing",
+    },
+  ],
+};
+
+function renderQueue(query: Record<string, string> = {}, tasks = page) {
   render(
-    <ProductionQueue
-      state={productionList.parse(query)}
-      page={page}
-      assignees={[ME]}
-      currentSubject={ME.subject}
-    />,
+    <StaffTooltipProvider>
+      <ProductionQueue
+        state={productionList.parse(query)}
+        page={tasks}
+        assignees={[ME]}
+        currentSubject={ME.subject}
+      />
+    </StaffTooltipProvider>,
   );
 }
 
@@ -77,6 +96,7 @@ const rowMenuItem = (name: RegExp) => {
 };
 
 beforeEach(() => {
+  window.history.replaceState(null, "", "/production");
   updateProductionTask.mockReset();
   refresh.mockReset();
   updateProductionTask.mockResolvedValue({ ok: true, data: { version: 8, status: "printing" } });
@@ -139,5 +159,40 @@ describe("the production queue", () => {
       "href",
       `/production/${TASK_ID}`,
     );
+  });
+});
+
+describe("the production queue's panel", () => {
+  const dusk = { link: "Dusk (edition 4)", panel: /Dusk \(edition 4\)/, id: TASK_ID };
+  const harbour = {
+    link: "Harbour (edition 2)",
+    panel: /Harbour \(edition 2\)/,
+    id: SECOND_TASK_ID,
+  };
+
+  it("opens a task in the URL, steps with J and K, and Esc returns to the row", async () => {
+    renderQueue({}, pageOfTwo);
+    await expectQueuePanel({
+      grid: "Production",
+      path: "/production",
+      param: "task",
+      first: dusk,
+      second: harbour,
+      total: 2,
+    });
+  });
+
+  it("closes the panel on Back", async () => {
+    renderQueue({}, pageOfTwo);
+    await expectBackCloses({ grid: "Production", path: "/production", record: harbour });
+  });
+
+  it("links the row to the task's own page, which a new tab opens", () => {
+    renderQueue({}, pageOfTwo);
+    expect(
+      within(screen.getByRole("grid", { name: "Production" })).getByRole("link", {
+        name: "Harbour (edition 2)",
+      }),
+    ).toHaveAttribute("href", `/production/${SECOND_TASK_ID}`);
   });
 });
