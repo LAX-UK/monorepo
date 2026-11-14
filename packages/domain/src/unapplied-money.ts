@@ -60,6 +60,11 @@ export const UNAPPLIED_MONEY_REASONS = [
    * closed; finance refunds the buyer; if staff say it is not sold, the buyer is asked to buy it again.
    */
   "shop_order_paid_while_paused",
+  /**
+   * An original sold directly in LAX Shop that was already paid received a second payment, in
+   * another Checkout Session of its Payment Link. Nothing was applied to the sale.
+   */
+  "shop_original_paid_twice",
   /** A Shop buyer paid for an order that does not exist here (live mode only). */
   "shop_order_not_found",
   /**
@@ -116,6 +121,8 @@ export type UnappliedMoney = {
   /** The Shop order the money was paid for (its id and the reference the buyer quotes). */
   shopOrderId?: string | null;
   shopOrderReference?: string | null;
+  /** The original sold directly in the Shop the money was paid for, when it is one's. */
+  shopOriginalSaleId?: string | null;
   /** The Checkout Session the buyer paid in. */
   shopCheckoutSessionId?: string | null;
   /** The provider's ledger entry that applied the money: one task per entry. */

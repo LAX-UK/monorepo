@@ -30,7 +30,9 @@ const IssueOriginalSaleInvoiceBodySchema = Type.Object({
 const IssueOriginalSaleInvoiceResponseSchema = Type.Object({
   originalSaleId: Type.String({ format: "uuid" }),
   status: Type.Literal("invoiced"),
-  stripeInvoiceId: Type.String(),
+  /** `books`: Zoho Books issues the invoice once paid; the URL is the buyer's Stripe Payment Link. */
+  invoiceIssuer: Type.Union([Type.Literal("stripe"), Type.Literal("books")]),
+  stripeInvoiceId: Type.Union([Type.String(), Type.Null()]),
   hostedInvoiceUrl: Type.Union([Type.String(), Type.Null()]),
 });
 

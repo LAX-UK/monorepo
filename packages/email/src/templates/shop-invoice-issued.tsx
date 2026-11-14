@@ -9,9 +9,12 @@ export const subject = (vars: Vars) => `Your invoice ${vars.invoiceNumber} from 
 
 /** The one sentence the email is: what is attached, the total and when it was paid. */
 export function shopInvoiceSentence(
-  vars: Pick<Vars, "orderReference" | "total" | "paidOn">,
+  vars: Pick<Vars, "orderReference" | "total" | "paidOn" | "originalTitle">,
 ): string {
-  return `Your invoice for order ${vars.orderReference} is attached. Total ${vars.total}. Paid on ${vars.paidOn}.`;
+  const what = vars.originalTitle
+    ? `the original ${vars.originalTitle}`
+    : `order ${vars.orderReference}`;
+  return `Your invoice for ${what} is attached. Total ${vars.total}. Paid on ${vars.paidOn}.`;
 }
 
 /**
@@ -28,7 +31,9 @@ export default function ShopInvoiceIssuedEmail(vars: Vars) {
     >
       <TextBlock>Hi {vars.userName || "there"},</TextBlock>
       <TextBlock>{shopInvoiceSentence(vars)}</TextBlock>
-      <Button href={vars.orderUrl}>View your order</Button>
+      <Button href={vars.orderUrl}>
+        {vars.originalTitle ? "View your account" : "View your order"}
+      </Button>
     </Layout>
   );
 }

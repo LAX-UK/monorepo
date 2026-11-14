@@ -48,6 +48,11 @@ type ShopTemplateVars = {
     /** LAX's stored copy, read from document storage at send time; nothing is stored twice. */
     storedAttachment: StoredEmailAttachment;
     orderUrl: string;
+    /**
+     * An original sold directly in the Shop: the work's title. It has no order of its own, so the
+     * email names the original and links to the buyer's account.
+     */
+    originalTitle?: string;
   };
   "shop-order-receipt": {
     orderId: string;

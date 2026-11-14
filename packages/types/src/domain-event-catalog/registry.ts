@@ -54,6 +54,7 @@ import {
 import { SaleEventSchemas } from "./sale-payload-schemas.js";
 import {
   shopAccountingOrderPaidPayloadSchemaV1,
+  shopAccountingOriginalSalePaidPayloadSchemaV1,
   shopArtworkCreatedPayloadSchemaV1,
   shopArtworkInterestRegisteredPayloadSchemaV1,
   shopArtworkUpdatedPayloadSchemaV1,
@@ -309,6 +310,7 @@ export const ALL_LIVE_DOMAIN_EVENT_TYPES = [
   "shop.editions.allocated",
   "shop.order.paid",
   "shop.accounting.order_paid",
+  "shop.accounting.original_sale_paid",
   "shop.guest_lead.recorded",
   "shop.guest_lead.claimed",
   "shop.guest_lead.erased",
@@ -1143,6 +1145,14 @@ const REGISTRY_OVERRIDES: Partial<Record<LiveDomainEventType, RegistryOverride>>
   /** A Shop order paid, for the books; references only, written in the payment transaction. */
   "shop.accounting.order_paid": {
     schema: shopAccountingOrderPaidPayloadSchemaV1,
+    producers: ["shop-api"],
+    consumers: ["accounting"],
+    idempotencyPolicy: "aggregate_event_unique",
+    piiClassification: "none",
+  },
+  /** An original sold directly in the Shop, paid, for the books; references only. */
+  "shop.accounting.original_sale_paid": {
+    schema: shopAccountingOriginalSalePaidPayloadSchemaV1,
     producers: ["shop-api"],
     consumers: ["accounting"],
     idempotencyPolicy: "aggregate_event_unique",

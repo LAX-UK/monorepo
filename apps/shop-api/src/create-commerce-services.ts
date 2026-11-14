@@ -158,6 +158,7 @@ export function createCommerceServices(
     offers: options.originalOffers,
     notifications,
     opsAlertEmail,
+    unappliedMoney: options.unappliedMoney,
     ...(fetchPaymentIntentMetadata ? { fetchPaymentIntentMetadata } : {}),
   });
 

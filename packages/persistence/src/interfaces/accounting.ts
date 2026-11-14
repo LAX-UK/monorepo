@@ -23,6 +23,7 @@ import type {
   Result,
   ShopDeliveryFacts,
   ShopOrderPaidFacts,
+  ShopOriginalSalePaidFacts,
   ShopRefundFacts,
   Source,
   StatusCheckedKind,
@@ -438,6 +439,8 @@ export interface IBidAccountingFactsReader {
  */
 export interface IShopAccountingFactsReader {
   orderPaid(orderId: string): Promise<FactsRead<ShopOrderPaidFacts>>;
+  /** An original sold directly in the Shop, paid, whose invoice Books issues (flow 22). */
+  originalSalePaid(originalSaleId: string): Promise<FactsRead<ShopOriginalSalePaidFacts>>;
   /**
    * A Shop refund that went through, with its paid order and every refund of the order that went
    * through, oldest first (flow 21). Absent where the refund flow is not wired (it then skips).
@@ -492,10 +495,17 @@ export interface ShopInvoiceEmailFacts {
    * deleted or merged into another. Never someone the order belonged to before.
    */
   readonly recipient: ShopInvoiceRecipient | null;
+  /** Set for an original sold directly in the Shop (it has no order page): the work's title. */
+  readonly originalTitle?: string;
 }
 
 export interface IShopInvoiceEmailFactsReader {
   forOrder(orderId: string): Promise<ShopInvoiceEmailFacts | null>;
+  /**
+   * The same email's facts for an original sold directly in the Shop: `orderId` is the sale's,
+   * `orderReference` its invoice number, and `originalTitle` the work's. Absent where not wired.
+   */
+  forOriginalSale?(originalSaleId: string): Promise<ShopInvoiceEmailFacts | null>;
 }
 
 export interface AccountingQueueQuery {
