@@ -4,6 +4,7 @@ import { categoryPickerOptions } from "@/lib/admin/catalog/category-picker-optio
 import { loadAdminSubmissionsListPage } from "@/lib/admin/submissions/load-submissions-list-page";
 import {
   type SubmissionsListSearch,
+  submissionPanelRedirect,
   submissionsAttention,
   submissionsFilterChips,
   submissionsListHref,
@@ -16,6 +17,7 @@ import { requireAdminCapability } from "@/lib/auth/require-admin-capability";
 import { SUBMISSIONS_READ_ACCESS } from "@/lib/navigation/staff-nav-access";
 import { metadataForPrivate } from "@/lib/seo/metadata-factory";
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 
 export const metadata: Metadata = metadataForPrivate(
   "Submissions",
@@ -31,6 +33,10 @@ export default async function AdminSubmissionsPage({
 }: { searchParams: Promise<SubmissionsListSearch> }) {
   const user = await requireAdminCapability(SUBMISSIONS_READ_ACCESS, "/admin/submissions");
   const sp = await searchParams;
+  // The submission panel is gone: an old shared `?submission=` (or `?preview=`) link opens the
+  // submission's review page.
+  const panelRedirect = submissionPanelRedirect(sp);
+  if (panelRedirect) redirect(panelRedirect);
   const vm = await loadAdminSubmissionsListPage({
     sp: Object.fromEntries(Object.entries(sp).map(([key, value]) => [key, first(value)])),
     currentUserId: user.id,

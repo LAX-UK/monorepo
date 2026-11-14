@@ -1,11 +1,13 @@
 "use client";
 
+import { ListRecordPager } from "@/components/admin/staff/list-record-pager";
 import { StaffDetailTabs } from "@/components/admin/staff/staff-detail-tabs";
 import { usePinPageAction } from "@/components/admin/staff/use-pin-page-action";
 import { submissionDetailTabHref } from "@/components/admin/submission-detail/submission-detail-types";
 import { MoveConsignmentDialog } from "@/components/admin/submissions/move-consignment-dialog";
 import { SubmissionReassignDialog } from "@/components/admin/submissions/submission-reassign-dialog";
 import { useSubmissionActions } from "@/components/admin/submissions/use-submission-actions";
+import type { ListRecordPagerModel } from "@/lib/admin/list-record";
 import { staffStatus } from "@/lib/admin/staff-kit-status";
 import { buildSubmissionHeaderBadges } from "@/lib/admin/submissions/submission-header-badges";
 import { useViewerCapabilities } from "@/lib/auth/capabilities/viewer-capabilities-context";
@@ -42,6 +44,8 @@ type Props = {
   submitterDisplayName: string | null;
   assigneeDisplayName: string | null;
   currentUserId: string;
+  /** Previous and Next through the list the submission was opened from. */
+  pager?: ListRecordPagerModel | null;
   children: ReactNode;
 };
 
@@ -61,6 +65,7 @@ export function SubmissionDetailShell({
   submitterDisplayName,
   assigneeDisplayName,
   currentUserId,
+  pager = null,
   children,
 }: Props) {
   const pathname = usePathname() ?? "";
@@ -179,6 +184,7 @@ export function SubmissionDetailShell({
   return (
     <>
       <DetailPage
+        {...(pager ? { pager: <ListRecordPager pager={pager} noun="submission" /> } : {})}
         breadcrumbs={
           <StaffBreadcrumbs
             Link={NextLink}

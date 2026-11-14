@@ -1,13 +1,17 @@
 import type { AdminVenueListRow } from "@/lib/services/interfaces/admin-venue-service";
 import { describe, expect, it } from "vitest";
 import {
+  VENUES_DEFAULT_SORT,
   capacityLabel,
+  sortVenuesStaffRows,
   toVenuesStaffRows,
-  venuePanelHref,
+  venuePanelRedirect,
   venuesActiveView,
   venuesFilterChips,
   venuesListHref,
   venuesRangeSummary,
+  venuesSortHref,
+  venuesSortState,
   venuesViews,
 } from "./venues-staff-list.vm";
 
@@ -53,12 +57,48 @@ describe("venues staff list view model", () => {
     expect(row?.archived).toBe(true);
   });
 
-  it("builds list and panel URLs that return to the first page", () => {
+  it("builds list URLs that return to the first page, without an old panel param", () => {
     expect(
       venuesListHref({ offset: "50", venue: "v1", q: "barnes" }, { legalEntityId: "le1" }),
     ).toBe("/admin/venues?q=barnes&legalEntityId=le1");
-    expect(venuePanelHref({ q: "barnes" }, "v1")).toBe("/admin/venues?q=barnes&venue=v1");
-    expect(venuePanelHref({ q: "barnes", venue: "v1" }, null)).toBe("/admin/venues?q=barnes");
+  });
+
+  it("sends an old panel link to the venue's page, still in its list", () => {
+    expect(venuePanelRedirect({ q: "barnes", sort: "-updated", venue: "v1" })).toBe(
+      "/admin/venues/v1?list=q%3Dbarnes%26sort%3D-updated",
+    );
+    expect(venuePanelRedirect({ venue: "v1", success: "Saved" })).toBe("/admin/venues/v1");
+    expect(venuePanelRedirect({ q: "barnes" })).toBeNull();
+  });
+
+  it("keeps the sort in the URL, leaving the default out", () => {
+    expect(venuesSortState(undefined)).toEqual(VENUES_DEFAULT_SORT);
+    expect(venuesSortState("-updated")).toEqual({ columnId: "updated", direction: "desc" });
+    expect(venuesSortState("address")).toEqual(VENUES_DEFAULT_SORT);
+    expect(
+      venuesSortHref({ q: "barnes", offset: "50" }, { columnId: "organisation", direction: "asc" }),
+    ).toBe("/admin/venues?q=barnes&sort=organisation");
+    expect(venuesSortHref({ sort: "-updated" }, VENUES_DEFAULT_SORT)).toBe("/admin/venues");
+  });
+
+  it("sorts the loaded venues by the URL's sort, ties in the API's order", () => {
+    const rows = toVenuesStaffRows([
+      { ...venue, id: "a", name: "harbour", legalEntityDisplayName: "Zed" },
+      {
+        ...venue,
+        id: "b",
+        name: "Barnes",
+        legalEntityDisplayName: "alpha",
+        updatedAt: new Date("2026-03-01T10:00:00.000Z"),
+      },
+      { ...venue, id: "c", name: "Coast", legalEntityDisplayName: "Zed" },
+    ] as AdminVenueListRow[]);
+    const ids = (sort: Parameters<typeof sortVenuesStaffRows>[1]) =>
+      sortVenuesStaffRows(rows, sort).map((row) => row.id);
+    expect(ids(VENUES_DEFAULT_SORT)).toEqual(["b", "c", "a"]);
+    expect(ids({ columnId: "venue", direction: "desc" })).toEqual(["a", "c", "b"]);
+    expect(ids({ columnId: "organisation", direction: "asc" })).toEqual(["b", "a", "c"]);
+    expect(ids({ columnId: "updated", direction: "desc" })).toEqual(["b", "a", "c"]);
   });
 
   it("offers the archive lens as a tab", () => {

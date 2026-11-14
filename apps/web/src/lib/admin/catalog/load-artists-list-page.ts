@@ -80,3 +80,13 @@ export async function loadAdminArtistsListPage(sp: AdminArtistsListSearchParams)
     permissions,
   };
 }
+
+/**
+ * The ids of the artists the list shows for this query, in its order: what an artist page opened
+ * from the list pages through (Previous and Next). The same query as the list, without its stats.
+ */
+export async function loadArtistsListIds(sp: AdminArtistsListSearchParams): Promise<string[]> {
+  if (artistsQueue(sp)) return [];
+  const { rows } = await artistsListController.fetch(artistsListController.parseQuery(sp));
+  return rows.map((row) => row.id);
+}

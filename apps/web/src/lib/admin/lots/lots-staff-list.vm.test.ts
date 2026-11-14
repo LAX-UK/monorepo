@@ -5,7 +5,7 @@ import { type AtgLotSellingSummary, toAtgSaleSellingSummary } from "@auction/typ
 import { describe, expect, it } from "vitest";
 import {
   LOTS_DEFAULT_SORT,
-  lotPanelHref,
+  lotPanelRedirect,
   lotsAttention,
   lotsFilterChips,
   lotsMetrics,
@@ -143,8 +143,12 @@ describe("lots staff list view model", () => {
     expect(lotsSortHref({ sort: "hammerDesc" }, LOTS_DEFAULT_SORT)).toBe("/admin/lots");
   });
 
-  it("opens a lot's panel in the URL without losing the page", () => {
-    expect(lotPanelHref({ offset: "50" }, "lot_1")).toBe("/admin/lots?offset=50&lot=lot_1");
+  it("sends an old panel link to the lot's page, still in its list", () => {
+    expect(lotPanelRedirect({ offset: "50", status: "active", lot: "lot_1" })).toBe(
+      "/admin/lots/lot_1?list=offset%3D50%26status%3Dactive",
+    );
+    expect(lotPanelRedirect({ lot: "lot_1", success: "Saved" })).toBe("/admin/lots/lot_1");
+    expect(lotPanelRedirect({ status: "active" })).toBeNull();
   });
 
   it("counts the range with plural forms", () => {

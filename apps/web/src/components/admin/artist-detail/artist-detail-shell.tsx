@@ -2,10 +2,12 @@
 
 import { artistDetailTabHref } from "@/components/admin/artist-detail/artist-detail-types";
 import { useArtistActions } from "@/components/admin/artist-detail/use-artist-actions";
+import { ListRecordPager } from "@/components/admin/staff/list-record-pager";
 import { StaffDetailTabs } from "@/components/admin/staff/staff-detail-tabs";
 import { StaffEditableTitle } from "@/components/admin/staff/staff-editable-title";
 import { usePinPageAction } from "@/components/admin/staff/use-pin-page-action";
 import { adminUpdateArtistNameFieldAction } from "@/lib/actions/admin/field-updates";
+import type { ListRecordPagerModel } from "@/lib/admin/list-record";
 import { staffStatus } from "@/lib/admin/staff-kit-status";
 import { artistKindMeta } from "@/lib/artists/kind-presenter";
 import { formatArtistLifespan } from "@/lib/artists/lifespan-presenter";
@@ -37,6 +39,8 @@ type Props = {
   canManageDelete?: boolean;
   canEdit?: boolean;
   canReview?: boolean;
+  /** Previous and Next through the list the artist was opened from. */
+  pager?: ListRecordPagerModel | null;
   children: ReactNode;
 };
 
@@ -56,6 +60,7 @@ export function ArtistDetailShell({
   canManageDelete = false,
   canEdit = false,
   canReview = false,
+  pager = null,
   children,
 }: Props) {
   const registryStatus: ArtistStatus = artist.status ?? "pending";
@@ -128,6 +133,7 @@ export function ArtistDetailShell({
   return (
     <>
       <DetailPage
+        {...(pager ? { pager: <ListRecordPager pager={pager} noun="artist" /> } : {})}
         breadcrumbs={
           <StaffBreadcrumbs
             Link={NextLink}

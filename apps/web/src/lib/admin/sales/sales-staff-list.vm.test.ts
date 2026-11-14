@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 import {
   SALES_DEFAULT_SORT,
   lotCountLabel,
-  salePanelHref,
+  salePanelRedirect,
   salesAttention,
   salesFilterChips,
   salesMetrics,
@@ -109,7 +109,14 @@ describe("sales staff list view model", () => {
     expect(salesSortHref({}, { columnId: "starts", direction: "asc" })).toBe(
       "/admin/sales?sort=startAsc",
     );
-    expect(salePanelHref({}, "sale_1")).toBe("/admin/sales?sale=sale_1");
     expect(salesRangeSummary(0, 12, 12)).toBe("1–12 of 12 sales");
+  });
+
+  it("sends an old panel link to the sale's page, still in its list", () => {
+    expect(salePanelRedirect({ lens: "live", sort: "startAsc", sale: "sale_1" })).toBe(
+      "/admin/sales/sale_1?list=lens%3Dlive%26sort%3DstartAsc",
+    );
+    expect(salePanelRedirect({ sale: "sale_1", success: "Saved" })).toBe("/admin/sales/sale_1");
+    expect(salePanelRedirect({ lens: "live" })).toBeNull();
   });
 });

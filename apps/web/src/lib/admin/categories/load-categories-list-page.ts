@@ -1,6 +1,12 @@
 import "server-only";
 
 import { categoriesListController } from "@/lib/admin/admin-list-controllers";
+import {
+  type CategoriesListSearch,
+  categoriesSortState,
+  sortCategoriesRows,
+  toCategoriesStaffRows,
+} from "@/lib/admin/categories/categories-staff-list.vm";
 import { getAdminCategoriesListSummary } from "@/lib/data/http/admin.server";
 import type { AdminCategoriesListSummary, AdminCategory } from "@auction/types";
 
@@ -34,4 +40,16 @@ export async function loadAdminCategoriesListPage(
     summary,
     listError: listResult.error,
   };
+}
+
+/**
+ * The ids of the categories the list shows for this query, in its order (the URL's sort included):
+ * what a category page opened from the list pages through (Previous and Next). The same query as
+ * the list, without its summary.
+ */
+export async function loadCategoriesListIds(sp: CategoriesListSearch): Promise<string[]> {
+  const { rows } = await categoriesListController.fetch(categoriesListController.parseQuery(sp));
+  return sortCategoriesRows(toCategoriesStaffRows(rows), categoriesSortState(sp.sort)).map(
+    (row) => row.id,
+  );
 }

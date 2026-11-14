@@ -7,7 +7,7 @@ import {
   gotoAdminPath,
 } from "./helpers/auth";
 import { expect, test } from "./helpers/auth.fixture";
-import { LOT_PAGE, SALE_PAGE, openRecordPageFromPanel } from "./helpers/staff-records";
+import { LOT_PAGE, SALE_PAGE, openRecordPage } from "./helpers/staff-records";
 
 async function openCatalogueLotsDraft(page: Page): Promise<void> {
   await ensureCatalogueManagerSession(page);
@@ -29,7 +29,7 @@ test.describe("cataloguer catalog access @roles", () => {
     if (!(await firstLot.isVisible({ timeout: 5_000 }).catch(() => false))) {
       test.skip(true, "No draft lots in seed data");
     }
-    await openRecordPageFromPanel(page, firstLot, LOT_PAGE);
+    await openRecordPage(page, firstLot, LOT_PAGE);
     await expect(page.getByRole("button", { name: /^publish$/i })).toBeVisible();
   });
 
@@ -51,7 +51,7 @@ test.describe("cataloguer catalog access @roles", () => {
     if (!(await firstLot.isVisible({ timeout: 5_000 }).catch(() => false))) {
       test.skip(true, "No draft lots in seed data");
     }
-    await openRecordPageFromPanel(page, firstLot, LOT_PAGE);
+    await openRecordPage(page, firstLot, LOT_PAGE);
     await expect(page.getByRole("button", { name: /cancel auction/i })).toHaveCount(0);
   });
 
@@ -65,7 +65,7 @@ test.describe("cataloguer catalog access @roles", () => {
     if (!(await cancelledRow.isVisible({ timeout: 5_000 }).catch(() => false))) {
       test.skip(true, "No cancelled sales in seed data");
     }
-    await openRecordPageFromPanel(page, cancelledRow.getByRole("link").first(), SALE_PAGE);
+    await openRecordPage(page, cancelledRow.getByRole("link").first(), SALE_PAGE);
     await page.goto(`${page.url()}/lots`);
     await expect(page.getByText(/return lots to inventory/i)).toHaveCount(0);
   });
@@ -85,7 +85,7 @@ test.describe("cataloguer catalog access @roles", () => {
     await expect(page.getByRole("button", { name: /^publish$/i })).toHaveCount(0);
     await expect(page.getByRole("button", { name: /^cancel$/i })).toHaveCount(0);
 
-    await openRecordPageFromPanel(
+    await openRecordPage(
       page,
       page.locator("table tbody tr").first().getByRole("link").first(),
       SALE_PAGE,

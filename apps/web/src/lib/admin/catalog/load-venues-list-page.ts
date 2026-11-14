@@ -2,6 +2,11 @@ import "server-only";
 
 import { venuesListController } from "@/lib/admin/admin-list-controllers";
 import { enrichVenueListWithLegalEntityNames } from "@/lib/admin/enrich-venue-list-rows";
+import {
+  sortVenuesStaffRows,
+  toVenuesStaffRows,
+  venuesSortState,
+} from "@/lib/admin/venues/venues-staff-list.vm";
 import type { AdminVenueListRow } from "@/lib/services/interfaces/admin-venue-service";
 
 export type AdminVenuesListSearchParams = Record<string, string | string[] | undefined>;
@@ -47,4 +52,20 @@ export async function loadAdminVenuesListPage(sp: AdminVenuesListSearchParams) {
     legalEntityDisplayName,
     includeArchived: query.includeArchived ?? false,
   };
+}
+
+/**
+ * The ids of the venues the list shows for this query, in its order: what a venue page opened
+ * from the list pages through (Previous and Next). The same query and sort as the list, without
+ * the organisation filter's name.
+ */
+export async function loadVenuesListIds(sp: AdminVenuesListSearchParams): Promise<string[]> {
+  const sort = venuesSortState(sp.sort);
+  const { rows } = await venuesListController.fetch(venuesListController.parseQuery(sp));
+  // Organisation names are only needed to sort by them.
+  const venues =
+    sort.columnId === "organisation" && rows.length > 0
+      ? await enrichVenueListWithLegalEntityNames(rows)
+      : rows;
+  return sortVenuesStaffRows(toVenuesStaffRows(venues), sort).map((row) => row.id);
 }

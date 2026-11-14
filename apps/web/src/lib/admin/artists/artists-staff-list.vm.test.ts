@@ -2,6 +2,7 @@ import type { AdminArtistListRow, AdminArtistStats } from "@auction/types";
 import { describe, expect, it } from "vitest";
 import {
   ARTISTS_DEFAULT_SORT,
+  artistPanelRedirect,
   artistsActiveLens,
   artistsAttention,
   artistsFilterChips,
@@ -76,5 +77,13 @@ describe("artists staff list view model", () => {
       "/admin/artists?sort=popular",
     );
     expect(artistsRangeSummary(0, 1, 1)).toBe("1–1 of 1 artist");
+  });
+
+  it("sends an old panel link to the artist's page, still in its list", () => {
+    expect(artistPanelRedirect({ status: "pending", sort: "popular", artist: "art_1" })).toBe(
+      "/admin/artists/art_1?list=status%3Dpending%26sort%3Dpopular",
+    );
+    expect(artistPanelRedirect({ artist: "art_1", welcome: "1" })).toBe("/admin/artists/art_1");
+    expect(artistPanelRedirect({ status: "pending" })).toBeNull();
   });
 });

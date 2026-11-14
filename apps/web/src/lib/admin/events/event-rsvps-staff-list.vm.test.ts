@@ -1,6 +1,10 @@
 import type { OnsiteEventListItem } from "@auction/types";
 import { describe, expect, it } from "vitest";
-import { queryEventRsvps } from "./event-rsvps-staff-list.vm";
+import {
+  eventRsvpPanelRedirect,
+  eventRsvpsListHref,
+  queryEventRsvps,
+} from "./event-rsvps-staff-list.vm";
 
 const event = (over: Partial<OnsiteEventListItem>): OnsiteEventListItem => ({
   slug: "gala",
@@ -43,5 +47,15 @@ describe("queryEventRsvps", () => {
     expect(result.limit).toBe(25);
     expect(result.prevHref).toBeNull();
     expect(result.nextHref).toBeNull();
+  });
+
+  it("sends an old panel link to the event's guest list, still in its list", () => {
+    expect(
+      eventRsvpPanelRedirect({ status: "draft", sort: "title_asc", event: "gala night" }),
+    ).toBe("/admin/event-rsvps/gala%20night?list=status%3Ddraft%26sort%3Dtitle_asc");
+    expect(eventRsvpPanelRedirect({ event: "gala" })).toBe("/admin/event-rsvps/gala");
+    expect(eventRsvpPanelRedirect({ status: "draft" })).toBeNull();
+    // The list's own links never carry the old panel param.
+    expect(eventRsvpsListHref({ event: "gala", q: "book" }, {})).not.toContain("event=");
   });
 });

@@ -5,6 +5,7 @@ import { LotDetailReadinessProvider } from "@/components/admin/lot-detail/lot-de
 import { lotDetailTabHref } from "@/components/admin/lot-detail/lot-detail-types";
 import { type LotActionTarget, useLotActions } from "@/components/admin/lots/use-lot-actions";
 import { RecordAgreementDialog } from "@/components/admin/seller-proceeds/record-agreement-dialog";
+import { ListRecordPager } from "@/components/admin/staff/list-record-pager";
 import { StaffDetailTabs } from "@/components/admin/staff/staff-detail-tabs";
 import { StaffEditableTitle } from "@/components/admin/staff/staff-editable-title";
 import { adminUpdateLotTitleFieldAction } from "@/lib/actions/admin/field-updates";
@@ -14,6 +15,7 @@ import {
 } from "@/lib/admin/catalog-readiness";
 import { adminSaleDetailTabHref } from "@/lib/admin/catalog-route-helpers";
 import { computeLotDetailReadiness } from "@/lib/admin/compute-lot-detail-readiness";
+import type { ListRecordPagerModel } from "@/lib/admin/list-record";
 import type { AdminLotDetailBundle } from "@/lib/admin/load-lot-detail";
 import { type LaxArtReturnView, laxArtReturnTarget } from "@/lib/admin/lots/lax-art-return";
 import { lotDetailNotice, lotEditLink } from "@/lib/admin/lots/lot-detail-page.vm";
@@ -69,6 +71,8 @@ type Props = {
   laxArtReturn?: LaxArtReturnView | null;
   /** The lot's re-offer story, for the header after a buyer default and the ATG note. */
   reoffers?: LotReofferBundle | null;
+  /** Previous and Next through the list the lot was opened from. */
+  pager?: ListRecordPagerModel | null;
   children: ReactNode;
 };
 
@@ -93,6 +97,7 @@ export function LotDetailShell({
   selling = null,
   laxArtReturn = null,
   reoffers = null,
+  pager = null,
   children,
 }: Props) {
   const router = useRouter();
@@ -234,6 +239,7 @@ export function LotDetailShell({
   return (
     <>
       <DetailPage
+        {...(pager ? { pager: <ListRecordPager pager={pager} noun="lot" /> } : {})}
         breadcrumbs={
           <StaffBreadcrumbs
             Link={NextLink}

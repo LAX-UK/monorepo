@@ -5,7 +5,10 @@ import {
   categoriesListHref,
   categoriesMetrics,
   categoriesRangeSummary,
+  categoriesSortState,
   categoriesViews,
+  categoryPanelRedirect,
+  sortCategoriesRows,
   toCategoriesStaffRows,
 } from "@/lib/admin/categories/categories-staff-list.vm";
 import { loadAdminCategoriesListPage } from "@/lib/admin/categories/load-categories-list-page";
@@ -26,6 +29,9 @@ export default async function AdminCategoriesPage({
   searchParams: Promise<CategoriesSearch>;
 }) {
   const sp = await searchParams;
+  // The category panel is gone: an old shared `?category=` link opens the category's page.
+  const panelRedirect = categoryPanelRedirect(sp);
+  if (panelRedirect) redirect(panelRedirect);
   if ((sp.new ?? "").trim() === "1") {
     redirect("/admin/categories/new");
   }
@@ -34,7 +40,7 @@ export default async function AdminCategoriesPage({
 
   return (
     <CategoriesStaffList
-      rows={toCategoriesStaffRows(rows)}
+      rows={sortCategoriesRows(toCategoriesStaffRows(rows), categoriesSortState(sp.sort))}
       search={sp}
       views={categoriesViews(sp, summary)}
       activeView={categoriesActiveView(Boolean(query.includeArchived))}

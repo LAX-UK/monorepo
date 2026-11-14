@@ -3,8 +3,8 @@ import { EMPTY_ADMIN_SUBMISSIONS_LIST_SUMMARY } from "@/lib/data/http/admin-subm
 import { describe, expect, it } from "vitest";
 import {
   bulkSubmissionOperationIds,
-  submissionPanelHref,
   submissionPanelId,
+  submissionPanelRedirect,
   submissionsAttention,
   submissionsFilterChips,
   submissionsMetrics,
@@ -111,12 +111,19 @@ describe("submissions staff list view model", () => {
     ).toEqual([]);
   });
 
-  it("opens the panel from the URL, including the older preview links", () => {
+  it("sends an old panel link to the submission's review, still in its list", () => {
     expect(submissionPanelId({ submission: "sub_1" })).toBe("sub_1");
     expect(submissionPanelId({ preview: "sub_2" })).toBe("sub_2");
-    expect(submissionPanelHref({ queue: "accepted", preview: "x" }, "sub_1")).toBe(
-      "/admin/submissions?queue=accepted&submission=sub_1",
+    expect(submissionPanelRedirect({ queue: "accepted", sort: "sla", submission: "sub_1" })).toBe(
+      "/admin/submissions/sub_1?list=queue%3Daccepted%26sort%3Dsla",
     );
+    expect(submissionPanelRedirect({ queue: "accepted", preview: "sub_2" })).toBe(
+      "/admin/submissions/sub_2?list=queue%3Daccepted",
+    );
+    expect(submissionPanelRedirect({ submission: "sub_1", success: "Saved" })).toBe(
+      "/admin/submissions/sub_1",
+    );
+    expect(submissionPanelRedirect({ queue: "accepted" })).toBeNull();
   });
 
   it("maps the oldest-waiting order to the waiting column and back", () => {

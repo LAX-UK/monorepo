@@ -1,16 +1,19 @@
 import { isSaleLiveish } from "@/components/admin/sale-detail/sale-detail-helpers";
 import { SaleDetailShell } from "@/components/admin/sale-detail/sale-detail-shell";
+import { adminSaleHref } from "@/lib/admin/catalog-route-helpers";
 import { computeSaleDetailReadiness } from "@/lib/admin/compute-sale-detail-readiness";
 import {
   loadSaleConnectRequiredByLotId,
   loadSaleSellersWithoutPayouts,
 } from "@/lib/admin/connect-readiness";
 import { countSaleOverviewAttentionRows } from "@/lib/admin/detail-board/merge-sale-overview-attention";
+import { loadListRecordPager, requestListQuery } from "@/lib/admin/list-record-pager.server";
 import {
   loadAdminSaleDetail,
   loadAdminSalePendingRegistrationCount,
   loadAdminSaleRegistrationCount,
 } from "@/lib/admin/load-sale-detail";
+import { loadSalesListIds } from "@/lib/admin/sales/load-sales-list-page";
 import { requireAdminCapability } from "@/lib/auth/require-admin-capability";
 import { getAdminExpectedGuests } from "@/lib/data/http/admin-expected-guests.server";
 import { getAdminSaleAttention } from "@/lib/data/http/admin-sale-attention.server";
@@ -42,6 +45,7 @@ export default async function AdminSaleDetailLayout({ params, children }: Props)
     pendingTelephoneBookings,
     attention,
     selling,
+    pager,
   ] = await Promise.all([
     canManageSales ? loadAdminSaleRegistrationCount(id, bundle.sale) : Promise.resolve(null),
     canManageSales ? loadAdminSalePendingRegistrationCount(id, bundle.sale) : Promise.resolve(null),
@@ -52,6 +56,15 @@ export default async function AdminSaleDetailLayout({ params, children }: Props)
       : Promise.resolve([]),
     getAdminSaleAttention(id).catch(() => null),
     canManageSales ? getAtgSaleSellingSummary(bundle.sale) : Promise.resolve(null),
+    // Opened from the sales list: Previous and Next through that list.
+    requestListQuery().then((listQuery) =>
+      loadListRecordPager({
+        listQuery,
+        currentId: id,
+        recordHref: adminSaleHref,
+        loadIds: loadSalesListIds,
+      }),
+    ),
   ]);
   const sellersWithoutPayouts =
     bundle.sale.status === "draft"
@@ -101,6 +114,7 @@ export default async function AdminSaleDetailLayout({ params, children }: Props)
       draftSetupReadiness={draftSetupReadiness}
       overviewAttentionCount={overviewAttentionCount}
       selling={selling}
+      pager={pager}
       linkedEventSlug={linkedEvent?.eventSlug ?? null}
       linkedEventTitle={linkedEvent?.eventTitle ?? null}
     >

@@ -1,5 +1,9 @@
 import "server-only";
 
+import {
+  type EventRsvpsListSearch,
+  queryEventRsvps,
+} from "@/lib/admin/events/event-rsvps-staff-list.vm";
 import { getAdminOnsiteEvents } from "@/lib/data/http/onsite-event.server";
 
 export type EventRsvpsHubPageModel = {
@@ -29,4 +33,13 @@ export async function loadAdminEventRsvpsHubPage(): Promise<EventRsvpsHubPageMod
     publishedCount,
     loadError,
   };
+}
+
+/**
+ * The slugs of the events the list shows for this query, in its order: what an event page opened
+ * from the list pages through (Previous and Next). The same query as the list, without its counts.
+ */
+export async function loadEventRsvpsListIds(sp: EventRsvpsListSearch): Promise<string[]> {
+  const events = await getAdminOnsiteEvents();
+  return queryEventRsvps(events, sp).rows.map((row) => row.slug);
 }

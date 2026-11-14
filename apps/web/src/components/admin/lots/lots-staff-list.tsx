@@ -1,19 +1,17 @@
 "use client";
 
 import { AtgListMarker } from "@/components/admin/atg/selling-platform-badge";
-import { LotQuickView } from "@/components/admin/lots/lot-quick-view";
 import { type LotActionTarget, useLotActions } from "@/components/admin/lots/use-lot-actions";
 import { StaffBulkOperations } from "@/components/admin/staff/staff-bulk-operations";
-import { useListPanel } from "@/components/admin/staff/use-list-panel";
 import { useStaffListNavigation } from "@/components/admin/staff/use-staff-list-navigation";
 import { ExportButton } from "@/components/exports/export-button";
 import { getLotBulkOperations } from "@/lib/admin/bulk-ops/lots";
+import { listQueryOf } from "@/lib/admin/list-record";
 import {
   LOTS_DEFAULT_SORT,
   LOT_STATUS_FILTERS,
   type LotsListSearch,
   type LotsStaffRow,
-  lotPanelHref,
   lotsListHref,
   lotsSortHref,
   lotsSortState,
@@ -35,6 +33,7 @@ import {
   StaffDate,
   StatusBadge,
   TableSearch,
+  recordHrefInList,
   staffButtonVariants,
   useSavedViews,
 } from "@auction/staff-ui";
@@ -91,20 +90,19 @@ export function lotActionTarget(row: LotsStaffRow): LotActionTarget {
 /**
  * Bid's lots on the staff list template: lenses (and the seller withdrawal requests) as views
  * with counts, saved and team views, search, a filter sheet for status, sale, artist and
- * category, server sorting, bulk publish, withdraw and delete for roles that may, and a record
- * panel deep-linked with `?lot=`. Every row's `…` menu holds the lot's actions, each confirmed
- * first.
+ * category, server sorting, and bulk publish, withdraw and delete for roles that may. A row opens
+ * the lot's page, which keeps this list's query for Previous and Next; Back returns to the list as
+ * it was. Every row's `…` menu holds the lot's actions, each confirmed first.
  */
 export function LotsStaffList(props: LotsStaffListProps) {
   const { rows, search, filtered } = props;
   const { pending, navigate, Link: ListLink } = useStaffListNavigation();
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const panelHref = useCallback((id: string | null) => lotPanelHref(search, id), [search]);
-  const panel = useListPanel({
-    param: "lot",
-    initialId: typeof search.lot === "string" ? search.lot : null,
-    hrefFor: panelHref,
-  });
+  const listQuery = useMemo(() => listQueryOf(search, ["lot"]), [search]);
+  const recordHref = useCallback(
+    (row: LotsStaffRow) => recordHrefInList(row.href, listQuery),
+    [listQuery],
+  );
   const lotActions = useLotActions({
     canManageCatalog: props.canManageCatalog,
     canManageAuction: props.canManageAuction,
@@ -132,8 +130,8 @@ export function LotsStaffList(props: LotsStaffListProps) {
         mobile: "title",
         cell: (row) => (
           <PrimaryCell
-            href={panelHref(row.id)}
-            Link={panel.PanelLink}
+            href={recordHref(row)}
+            Link={Link}
             thumbnail={{ src: row.thumbnailUrl, missingLabel: "No photos yet" }}
             secondary={row.context}
           >
@@ -211,7 +209,7 @@ export function LotsStaffList(props: LotsStaffListProps) {
         cell: (row) => <StaffDate value={row.addedAt} />,
       },
     ],
-    [panelHref, panel.PanelLink],
+    [recordHref],
   );
 
   const activeFilters = props.filterChips.map((chip) => ({
@@ -227,7 +225,6 @@ export function LotsStaffList(props: LotsStaffListProps) {
     categoryId: null,
     sort: null,
   });
-  const openRow = rows.find((row) => row.id === panel.openId) ?? null;
   const access = props.canManageCatalog || props.canManageAuction ? "full" : "read-only";
 
   return (
@@ -373,8 +370,7 @@ export function LotsStaffList(props: LotsStaffListProps) {
           defaultSort: LOTS_DEFAULT_SORT,
           sort: lotsSortState(typeof search.sort === "string" ? search.sort : undefined),
           onSortChange: (sort) => navigate(lotsSortHref(search, sort)),
-          onRowOpen: (row) => panel.show(row.id),
-          activeRowId: panel.openId,
+          rowHref: recordHref,
           ...(operations.length > 0
             ? {
                 selectedIds: selected,
@@ -393,8 +389,7 @@ export function LotsStaffList(props: LotsStaffListProps) {
           rowActions: {
             label: (row) => `Actions for lot ${row.title}`,
             actions: (row) => [
-              { id: "open", label: "Open details", onSelect: () => panel.show(row.id) },
-              { id: "page", label: "Open lot page", href: row.href },
+              { id: "page", label: "Open lot page", href: recordHref(row) },
               ...(props.canManageCatalog
                 ? [{ id: "edit", label: "Edit lot", href: row.editHref }]
                 : []),
@@ -408,12 +403,6 @@ export function LotsStaffList(props: LotsStaffListProps) {
           onChange: (size) => navigate(lotsListHref(search, { limit: size })),
         }}
         pagination={props.pagination}
-      />
-      <LotQuickView
-        row={openRow}
-        canManageCatalog={props.canManageCatalog}
-        onClose={() => panel.show(null)}
-        actions={openRow ? lotActions.actionsFor(lotActionTarget(openRow)) : []}
       />
       {lotActions.dialogs}
     </>

@@ -1,20 +1,12 @@
 import { type Locator, type Page, expect } from "@playwright/test";
 
-export const LOT_PAGE = /\/admin\/lots\/[^/?]+$/;
-export const SALE_PAGE = /\/admin\/sales\/[^/?]+$/;
+/** A record page, opened on its own or from a list (`?list=` keeps the list's query). */
+export const LOT_PAGE = /\/admin\/lots\/[^/?]+(\?list=[^#]*)?$/;
+export const SALE_PAGE = /\/admin\/sales\/[^/?]+(\?list=[^#]*)?$/;
 
-/**
- * Staff lists open a record in a side panel from its title; the record's own page is the panel's
- * "Open full page" link.
- */
-export async function openRecordPageFromPanel(
-  page: Page,
-  rowLink: Locator,
-  url: RegExp,
-): Promise<void> {
+/** Catalogue lists open a record's page from its row: the title is a link to that page. */
+export async function openRecordPage(page: Page, rowLink: Locator, url: RegExp): Promise<void> {
+  await expect(rowLink).toBeVisible({ timeout: 10_000 });
   await rowLink.click();
-  const panel = page.getByRole("dialog");
-  await expect(panel).toBeVisible({ timeout: 10_000 });
-  await panel.getByRole("link", { name: /open full page/i }).click();
   await page.waitForURL(url);
 }
