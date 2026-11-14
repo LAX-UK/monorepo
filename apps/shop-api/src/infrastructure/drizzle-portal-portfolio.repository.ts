@@ -14,7 +14,7 @@ import {
   shopThirdPartySale,
 } from "@auction/db/schema";
 import { readEditionSnapshot } from "@auction/shop-domain";
-import { and, desc, eq, gt, inArray, isNull, or, sql } from "drizzle-orm";
+import { type SQL, and, desc, eq, gt, inArray, isNull, or, sql } from "drizzle-orm";
 import type {
   PortalPortfolioFacts,
   PortalPortfolioReader,
@@ -28,6 +28,7 @@ import type {
 import { PORTAL_ME_LIST_LIMIT } from "../domain/portal-me-list-limit.js";
 import { liveEditionSnapshots } from "./edition-snapshot-source.js";
 import { resolvePortalPartyIds } from "./portal-party-ids.js";
+import { resolvePortalPayoutScope } from "./portal-payout-scope.js";
 
 const ORIGINAL_SALE_STATUSES = ["deposit_due", "invoiced", "paid", "assigned"] as const;
 
@@ -174,7 +175,7 @@ export function createDrizzlePortalPortfolioRepository(db: Database): PortalPort
       .limit(PORTAL_ME_LIST_LIMIT);
   }
 
-  async function listSales(partyIds: string[]) {
+  async function listSales(scope: SQL) {
     return db
       .select({
         payoutId: shopPayoutLedger.id,
@@ -194,7 +195,7 @@ export function createDrizzlePortalPortfolioRepository(db: Database): PortalPort
       .leftJoin(shopThirdPartySale, eq(shopPayoutLedger.thirdPartySaleId, shopThirdPartySale.id))
       .leftJoin(shopEdition, eq(shopThirdPartySale.editionId, shopEdition.id))
       .leftJoin(shopOriginalSale, eq(shopPayoutLedger.originalSaleId, shopOriginalSale.id))
-      .where(inArray(shopPayoutLedger.ownerPartyId, partyIds))
+      .where(scope)
       .orderBy(desc(shopPayoutLedger.createdAt))
       .limit(PORTAL_ME_LIST_LIMIT);
   }
@@ -237,7 +238,10 @@ export function createDrizzlePortalPortfolioRepository(db: Database): PortalPort
 
   return {
     async loadFacts(identitySubjectId, options): Promise<PortalPortfolioFacts> {
-      const partyIds = await resolvePortalPartyIds(db, identitySubjectId);
+      const [partyIds, payoutScope] = await Promise.all([
+        resolvePortalPartyIds(db, identitySubjectId),
+        options.includeSales ? resolvePortalPayoutScope(db, identitySubjectId) : null,
+      ]);
       // Orders and refunds belong to the signed-in subject even if they have no party yet.
       const [editionRows, originalRows, pendingRows, settledRows, saleRows, orders, refunds] =
         await Promise.all([
@@ -245,7 +249,7 @@ export function createDrizzlePortalPortfolioRepository(db: Database): PortalPort
           partyIds.length > 0 ? listOriginals(partyIds) : [],
           listPendingOrderLines(identitySubjectId),
           listSettledOrderLines(identitySubjectId),
-          partyIds.length > 0 && options.includeSales ? listSales(partyIds) : [],
+          payoutScope ? listSales(payoutScope) : [],
           listOrders(identitySubjectId),
           listRefunds(identitySubjectId),
         ]);
