@@ -11,6 +11,7 @@ const SHOP_STOREFRONT_URL = "http://localhost:3020";
 const io = {
   storage: { putObject: vi.fn() },
   email: { enqueue: vi.fn() },
+  domainEventSink: { publish: vi.fn(), withTx: vi.fn() } as never,
 };
 
 describe("createAccountingRuntime", () => {
@@ -36,6 +37,7 @@ describe("createAccountingRuntime", () => {
     expect(runtime?.watch).toBeDefined();
     expect(runtime?.invoiceCopy).toBeDefined();
     expect(runtime?.remainder).toBeDefined();
+    expect(runtime?.statusCheck).toBeDefined();
     expect(runtime?.senderCheckIn).toEqual(expect.any(Function));
     expect(log.info).toHaveBeenCalledWith({ modes: ["dry_run"] }, "accounting_runtime_built");
     // A local storefront address is said at start-up: Shop invoices are not emailed live with it.

@@ -170,10 +170,12 @@ export async function fetchPublicArtworkBySlug(
   slug: string,
   salesChannel: "shop" | "art" = "shop",
 ): Promise<PublicArtworkDetail | null> {
-  const response = await shopApiFetch(
-    `/v1/artworks/${encodeURIComponent(slug)}?salesChannel=${salesChannel}`,
-    SLUG_LOOKUP,
-  );
+  const path = `/v1/artworks/${encodeURIComponent(slug)}?salesChannel=${salesChannel}`;
+  // A cold or restarting shop-api can time out, drop or fail the first request; ask once more
+  // before the page shows its error state. A second failure still throws, and a 404 is never retried.
+  const first = await shopApiFetch(path, SLUG_LOOKUP).catch(() => null);
+  const response =
+    first && !isTransientStatus(first.status) ? first : await shopApiFetch(path, SLUG_LOOKUP);
   if (response.status === 404) {
     return null;
   }
@@ -181,6 +183,11 @@ export async function fetchPublicArtworkBySlug(
     throw new ShopApiBffError("upstream", `Shop artwork request failed (${response.status})`);
   }
   return readValidatedJson(response, parsePublicArtworkDetail, "artwork detail");
+}
+
+/** A gateway or server answer that a second try may not repeat (never a 404 or other 4xx). */
+function isTransientStatus(status: number): boolean {
+  return status === 429 || status >= 500;
 }
 
 /**

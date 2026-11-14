@@ -1274,6 +1274,7 @@ export {
   UNAPPLIED_MONEY_HANDLED_ELSEWHERE,
   UNAPPLIED_MONEY_REASONS,
   UNAPPLIED_MONEY_RESOLVED_EVENT,
+  booksPossiblyLaxOwnText,
   misappliedTransferText,
   possibleSourceText,
   unappliedMoneyAggregate,
