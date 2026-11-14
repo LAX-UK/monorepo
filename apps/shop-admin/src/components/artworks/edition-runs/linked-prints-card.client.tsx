@@ -9,7 +9,6 @@ import {
   RelatedRecordsSection,
 } from "@auction/staff-ui";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import type * as React from "react";
 
 type Print = NonNullable<AdminArtworkDetail["linkedPrints"]>[number];
@@ -53,7 +52,6 @@ export function LinkedPrintsCard({
   action: React.ReactNode;
   emptyDescription: string;
 }) {
-  const router = useRouter();
   return (
     <RelatedRecordsSection<Print>
       id="linked-prints"
@@ -63,7 +61,7 @@ export function LinkedPrintsCard({
       data={prints}
       getRowId={(row) => row.artworkId}
       defaultSort={{ columnId: "title", direction: "asc" }}
-      onRowOpen={(row) => router.push(`/artworks/${row.artworkId}`)}
+      rowHref={(row) => `/artworks/${row.artworkId}`}
       action={action}
       empty={{
         title: "No prints yet",

@@ -16,6 +16,7 @@ import {
   defineStatusMap,
   formatGbp,
   parseStaffPageSize,
+  recordHrefInList,
 } from "@auction/staff-ui";
 import { runListLabel } from "./edition-run.vm";
 import { type RawSearchParams, listHref, oneOf, singleParam } from "./list-url-state";
@@ -38,7 +39,7 @@ export type ArtworkListQuery = {
   /** Rows per page, absent for the default of 50. */
   limit?: string;
   cursor?: string;
-  /** The artwork open in the record panel. */
+  /** An artwork from an old link to the list's record panel; the page sends it to the artwork. */
   artwork?: string;
 };
 
@@ -148,9 +149,13 @@ export function artworkListPageHref(query: ArtworkListQuery, cursor: string): st
   return listHref(ARTWORK_LIST_PATH, { ...query, cursor, artwork: undefined });
 }
 
-/** The same list and page with this artwork's panel open, or closed for null. */
-export function artworkPanelHref(query: ArtworkListQuery, artworkId: string | null): string {
-  return listHref(ARTWORK_LIST_PATH, { ...query, artwork: artworkId ?? undefined });
+/**
+ * An artwork's page that remembers this list (filters and sort, not the page) as `?list=`, so
+ * its pager and its way back keep the same list.
+ */
+export function artworkRecordHref(query: ArtworkListQuery, artworkId: string): string {
+  const listQuery = artworkListHref(query).split("?")[1] ?? "";
+  return recordHrefInList(`${ARTWORK_LIST_PATH}/${encodeURIComponent(artworkId)}`, listQuery);
 }
 
 /** The query parameters the artworks API expects for this URL state. */

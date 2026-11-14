@@ -255,13 +255,17 @@ describe.skipIf(!HAS_DB)("raising an invoice for a lot that moved (integration)"
       .finally(() => {
         settled = true;
       });
+    // Attach the assertion now: the raise rejects the moment the default commits, which can be
+    // before this test reaches its own await, and a rejection nobody is listening to is reported
+    // as unhandled and fails the whole run.
+    const refusal = expect(raising).rejects.toBeInstanceOf(BidInvoiceLotMovedError);
     // The raise is blocked on the lot row the default holds.
     await new Promise((resolve) => setTimeout(resolve, 300));
     expect(settled).toBe(false);
 
     releaseDefault();
     await defaulting;
-    await expect(raising).rejects.toBeInstanceOf(BidInvoiceLotMovedError);
+    await refusal;
 
     const { invoiceRows, paymentRows } = await stored(lotId);
     expect(invoiceRows).toHaveLength(0);
