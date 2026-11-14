@@ -2,6 +2,7 @@ import { ClientsStaffList } from "@/components/admin/people/clients-staff-list";
 import { AdminFlashNotice } from "@/components/admin/staff/admin-flash-notice";
 import { peopleRangeSummary, toClientsStaffRows } from "@/lib/admin/people/clients-staff-list.vm";
 import { loadAdminClientsListPage } from "@/lib/admin/people/load-clients-list-page";
+import { peopleListQuery, peoplePanelRedirect } from "@/lib/admin/people/people-record-href";
 import { requireAdminCapability } from "@/lib/auth/require-admin-capability";
 import {
   USERS_DIRECTORY_ACCESS,
@@ -11,6 +12,7 @@ import {
 import { metadataForPrivate } from "@/lib/seo/metadata-factory";
 import { type UserRole, userHasAccessTo } from "@auction/types";
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 
 export const metadata: Metadata = metadataForPrivate(
   "Clients",
@@ -26,11 +28,14 @@ export default async function AdminClientsPage({
   const role = user.role as UserRole;
   const staffRoles = user.staffRoles;
   const sp = await searchParams;
+  // Rows open the person's page now; an old link to the list's panel opens the page instead.
+  const panelRedirect = peoplePanelRedirect("/admin/clients", sp);
+  if (panelRedirect) redirect(panelRedirect);
   const { model, rows, summary, total, loadError, pagination } = await loadAdminClientsListPage(sp);
 
   return (
     <ClientsStaffList
-      rows={toClientsStaffRows(rows, model.listReturnTarget)}
+      rows={toClientsStaffRows(rows, peopleListQuery("/admin/clients", sp))}
       search={sp}
       counts={{ total: summary.total, active: summary.active, suspended: summary.suspended }}
       filterChips={model.activeFilterChips.map((chip) => ({
