@@ -131,6 +131,7 @@ export type AdminIntegrationRouteServices = {
     | "continueDownload"
     | "eraseEnquiries"
     | "dealHolds"
+    | "erasureHoldsNeedingStaff"
   >;
   /** Originals moving between LAX Bid and lax.art. */
   inventoryMoves: InventoryMoveServices;

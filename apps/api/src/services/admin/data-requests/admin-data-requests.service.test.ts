@@ -4,6 +4,7 @@ import { AdminDataRequestsService } from "./admin-data-requests.service.js";
 import { DomainEventDataRequestAuditTrail } from "./data-request-audit-trail.js";
 
 const RECORD = { request: { reference: "DR-0007" } } as never;
+const NOW = new Date("2027-01-01T00:00:00Z");
 
 function setup() {
   const calls: string[] = [];
@@ -74,8 +75,14 @@ function setup() {
       },
     ]),
   };
+  const heldErasures = {
+    held: vi.fn(async (_input: unknown) => {}),
+    cleared: vi.fn(async (_reference: string) => {}),
+    needingStaff: vi.fn(async () => []),
+  };
   return {
     dealHolds,
+    heldErasures,
     service: new AdminDataRequestsService({
       identity,
       audit,
@@ -83,6 +90,8 @@ function setup() {
       enquiryErasure: enquiryErasure as never,
       erasureHistory,
       dealHolds,
+      heldErasures,
+      now: () => NOW,
     }),
     erasureHistory,
     identity,
@@ -247,6 +256,59 @@ describe("AdminDataRequestsService.eraseEnquiries", () => {
       reference: "DR-0007",
       actorUserId: "staff-1",
     });
+  });
+
+  it("keeps a held erasure to be re-run when its hold ends", async () => {
+    const { service, identity, enquiryErasure, heldErasures } = setup();
+    (identity.record as ReturnType<typeof vi.fn>).mockResolvedValueOnce(record());
+    const until = new Date("2031-03-01T00:00:00Z");
+    enquiryErasure.eraseByEmail.mockResolvedValueOnce({
+      ok: true,
+      enquiries: 0,
+      notes: 0,
+      attachments: 0,
+      held: 1,
+      hold: { until, withoutEnd: false },
+    } as never);
+    await service.eraseEnquiries("DR-0007", body, "staff-1");
+    expect(heldErasures.held).toHaveBeenCalledWith({
+      reference: "DR-0007",
+      requestedByUserId: "staff-1",
+      plan: { state: "waiting", reason: "running", heldUntil: until, recheckAt: until },
+    });
+    expect(heldErasures.cleared).not.toHaveBeenCalled();
+  });
+
+  it("shows staff a held erasure with no end date instead of holding it quietly", async () => {
+    const { service, identity, enquiryErasure, heldErasures } = setup();
+    (identity.record as ReturnType<typeof vi.fn>).mockResolvedValueOnce(record());
+    enquiryErasure.eraseByEmail.mockResolvedValueOnce({
+      ok: true,
+      enquiries: 0,
+      notes: 0,
+      attachments: 0,
+      held: 1,
+      hold: { until: null, withoutEnd: true },
+    } as never);
+    await service.eraseEnquiries("DR-0007", body, "staff-1");
+    expect(heldErasures.held).toHaveBeenCalledWith(
+      expect.objectContaining({ plan: expect.objectContaining({ state: "needs_staff" }) }),
+    );
+  });
+
+  it("clears the held record once an erasure holds nothing", async () => {
+    const { service, identity, enquiryErasure, heldErasures } = setup();
+    (identity.record as ReturnType<typeof vi.fn>).mockResolvedValueOnce(record());
+    enquiryErasure.eraseByEmail.mockResolvedValueOnce({
+      ok: true,
+      enquiries: 1,
+      notes: 0,
+      attachments: 0,
+      held: 0,
+    } as never);
+    await service.eraseEnquiries("DR-0007", body, "staff-1");
+    expect(heldErasures.cleared).toHaveBeenCalledWith("DR-0007");
+    expect(heldErasures.held).not.toHaveBeenCalled();
   });
 
   it.each([

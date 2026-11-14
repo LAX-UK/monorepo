@@ -125,6 +125,17 @@ describe("DataRequestsList: header and strips", () => {
     expect(lines[1]).toHaveTextContent("1 request is due within 7 days");
   });
 
+  it("flags an erasure held with no end date in the queue, linking to its record", () => {
+    renderList({
+      erasureHolds: [{ reference: "DR-0004", reason: "end_unknown", heldUntil: null }],
+    });
+    const strip = screen.getByRole("region", { name: "Needs attention" });
+    const line = within(strip)
+      .getAllByRole("link")
+      .find((link) => link.textContent?.includes("held by a private sale"));
+    expect(line).toHaveAttribute("href", "/admin/compliance/data-requests/DR-0004");
+  });
+
   it("counts the views that need action", () => {
     renderList();
     const tabs = screen.getByRole("navigation", { name: /views/i });

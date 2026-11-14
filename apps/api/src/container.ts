@@ -30,6 +30,7 @@ import {
 } from "@auction/persistence/repositories";
 import { PartyDealRetentionHolds } from "./container/adapters/drizzle-data-request-deal-holds.js";
 import { DrizzleDataRequestErasureHistory } from "./container/adapters/drizzle-data-request-erasure-history.js";
+import { DrizzleHeldErasures } from "./container/adapters/drizzle-data-request-held-erasures.js";
 import type { Container, ContainerComposedSlices } from "./container/container-slices.js";
 import { createAdminServices } from "./container/create-admin-services.js";
 import { createContainerAuthenticator } from "./container/create-auth.js";
@@ -871,6 +872,7 @@ export function createContainer(env: Env): Container {
         audit: new DomainEventDataRequestAuditTrail(platform.domainEventSink),
         enquiryErasure: marketingEnquiries.erasure,
         erasureHistory: new DrizzleDataRequestErasureHistory(db),
+        heldErasures: new DrizzleHeldErasures(db),
         dealHolds: new PartyDealRetentionHolds(
           new DrizzlePartyDealRecordReader(db),
           env.PRIVATE_SALE_RECORD_RETENTION_YEARS,

@@ -20,6 +20,7 @@ import {
   ERASED_ENQUIRY,
   type EnquiryDealRecord,
   closedDealEndedAt,
+  enquiryHoldEnd,
   isEnquiryHeldFromErasure,
 } from "@auction/domain";
 import type { PrivateSaleDealStage } from "@auction/types";
@@ -70,9 +71,20 @@ export async function anonymiseEnquiries(
   );
   const isHeld = (row: { id: string; status: string }) =>
     isEnquiryHeldFromErasure(row.status, deals.get(row.id) ?? [], now, retentionYears);
-  const held = matched.filter(isHeld).length;
+  const heldRows = matched.filter(isHeld);
+  const held = heldRows.length;
+  const hold =
+    held > 0
+      ? {
+          hold: enquiryHoldEnd(
+            heldRows.map((row) => deals.get(row.id) ?? []),
+            now,
+            retentionYears,
+          ),
+        }
+      : {};
   const ids = matched.filter((row) => !isHeld(row)).map((row) => row.id);
-  if (ids.length === 0) return { ...NONE, held };
+  if (ids.length === 0) return { ...NONE, held, ...hold };
 
   const attachments = await detachFiles(tx, ids);
 
@@ -119,6 +131,7 @@ export async function anonymiseEnquiries(
     notes: notes.length,
     attachments,
     held,
+    ...hold,
   };
 }
 

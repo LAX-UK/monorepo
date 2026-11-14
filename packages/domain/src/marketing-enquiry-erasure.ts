@@ -100,3 +100,37 @@ export function isEnquiryHeldFromErasure(
   if (deals.length === 0) return true;
   return deals.some((deal) => isDealRecordRetained(deal, now, retentionYears));
 }
+
+/** When the enquiries an erasure had to keep can be erased, for the data request that asked. */
+export type EnquiryHoldEnd = {
+  /** When the last hold runs out; `null` while a deal is open or a hold has no end. */
+  until: Date | null;
+  /** A held enquiry has no date its hold can end on, so nothing will release it by itself. */
+  withoutEnd: boolean;
+};
+
+/**
+ * When the held enquiries, each given with the deals made from it, stop being held. A deal still
+ * retained and closed with no end, or a converted enquiry with no deal at all, has no end; staff
+ * settle those by hand, so the request is shown to them rather than left waiting.
+ */
+export function enquiryHoldEnd(
+  heldEnquiryDeals: ReadonlyArray<readonly EnquiryDealRecord[]>,
+  now: Date,
+  retentionYears: number,
+): EnquiryHoldEnd {
+  let open = false;
+  let withoutEnd = false;
+  const ends: number[] = [];
+  for (const deals of heldEnquiryDeals) {
+    if (deals.length === 0) withoutEnd = true;
+    for (const deal of deals) {
+      if (!isDealRecordRetained(deal, now, retentionYears)) continue;
+      if (!isDealClosed(deal.stage)) open = true;
+      else if (deal.endedAt === null) withoutEnd = true;
+      else ends.push(addYears(deal.endedAt, retentionYears).getTime());
+    }
+  }
+  const until = open || withoutEnd || ends.length === 0 ? null : new Date(Math.max(...ends));
+  return { until, withoutEnd };
+}

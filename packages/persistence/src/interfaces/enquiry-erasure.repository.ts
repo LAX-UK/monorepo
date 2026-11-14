@@ -1,4 +1,5 @@
 import type { Database } from "@auction/db";
+import type { EnquiryHoldEnd } from "@auction/domain";
 
 /** Whose enquiries to anonymise: signed-in accounts by id, or a sender by email address. */
 export type EnquiryErasureTarget =
@@ -15,6 +16,8 @@ export type EnquiryErasureCounts = {
   attachments: number;
   /** Enquiries left whole because they belong to a deal. */
   held: number;
+  /** When the held enquiries can be erased; present only when something was held. */
+  hold?: EnquiryHoldEnd;
 };
 
 /**

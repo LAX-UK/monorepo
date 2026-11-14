@@ -24,7 +24,7 @@ export default async function AdminDataRequestsPage({
 }) {
   await requireAdminCapability(DATA_REQUESTS_MANAGE_ACCESS, "/admin/compliance/data-requests");
   const sp = await searchParams;
-  const { list, summary, filters, filtered, pagination, loadError } =
+  const { list, summary, erasureHolds, filters, filtered, pagination, loadError } =
     await loadAdminDataRequestsPage(sp);
   const chips = buildDataRequestsChips(filters, sp, {
     status: (value) => STATUS_FILTER_LABELS[value] ?? value,
@@ -36,6 +36,7 @@ export default async function AdminDataRequestsPage({
     <DataRequestsList
       list={list}
       summary={summary}
+      erasureHolds={erasureHolds}
       search={sp}
       filters={filters}
       chips={chips}

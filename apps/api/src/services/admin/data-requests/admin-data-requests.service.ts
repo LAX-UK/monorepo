@@ -18,6 +18,7 @@ import {
 import type { DataRequestAuditAction, IDataRequestAuditTrail } from "./data-request-audit-trail.js";
 import type { DataRequestDealHold, IDataRequestDealHolds } from "./data-request-deal-holds.js";
 import type { IDataRequestErasureHistory } from "./data-request-erasure-history.js";
+import { type IHeldErasureLog, planHeldErasure } from "./data-request-held-erasures.js";
 
 type Body<T> = Omit<T, "actorSubjectId">;
 
@@ -38,6 +39,9 @@ export type AdminDataRequestsDeps = {
   erasureHistory: IDataRequestErasureHistory;
   /** The private sale deals that keep the person's records, for the record page. */
   dealHolds: IDataRequestDealHolds;
+  /** Erasures a deal held, kept to be re-run or shown to staff. */
+  heldErasures: IHeldErasureLog;
+  now?: () => Date;
 };
 
 /** What an erasure answers with: the counts the erasure service reports. */
@@ -62,6 +66,11 @@ export class AdminDataRequestsService {
 
   summary() {
     return this.deps.identity.summary();
+  }
+
+  /** Requests whose held erasure nothing will release by itself, for the queue. No contact details. */
+  erasureHoldsNeedingStaff() {
+    return this.deps.heldErasures.needingStaff();
   }
 
   /** Exact email only: never a partial match, so the dialog cannot be used to browse accounts. */
@@ -182,7 +191,22 @@ export class AdminDataRequestsService {
     if (!outcome.ok) return { ok: false, status: 422, error: outcome.error };
     await this.audit("enquiries_erased", request.reference, actorUserId);
     const { ok: _ok, ...counts } = outcome;
+    await this.keepHold(request.reference, counts, actorUserId);
     return { ok: true, value: counts };
+  }
+
+  /**
+   * Keeps what a deal held, so the request is re-run when the hold ends or, with no end date,
+   * shown to staff instead of waiting quietly. An erasure that held nothing clears the record.
+   */
+  private keepHold(reference: string, counts: EnquiryErasureCounts, actorUserId: string) {
+    if (counts.held === 0) return this.deps.heldErasures.cleared(reference);
+    const now = this.deps.now?.() ?? new Date();
+    return this.deps.heldErasures.held({
+      reference,
+      requestedByUserId: actorUserId,
+      plan: planHeldErasure(counts.hold, now),
+    });
   }
 
   private audit(action: DataRequestAuditAction, reference: string, actorUserId: string) {
