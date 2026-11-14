@@ -75,7 +75,15 @@ function shopContact(buyer: ShopBuyerFacts): Result<Contact, ProjectionCode> {
   return buildContact({ product: "shop", sourceId: buyer.partyId, name: buyer.name, email });
 }
 
-/** A stored line as booked: standard-rated with its stored VAT, or refused, never guessed. */
+/**
+ * A stored line as booked, with the VAT it was sold with and nothing worked out again:
+ * - `standard` with its stored VAT;
+ * - no VAT recorded (the Shop sold it with no VAT policy, so the buyer was charged none): booked
+ *   with no VAT (`outside_scope`), exactly what the buyer paid;
+ * - anything else (a treatment LAX has no booking for) is refused, never guessed.
+ * Whether the organisation may take VAT at all is the adapter's rule: a VAT line sent to an
+ * organisation that is not VAT registered is refused there and waits for a person.
+ */
 function shopLine(
   label: string,
   role: "goods" | "delivery",
@@ -86,8 +94,14 @@ function shopLine(
   if (!isPence(grossPence) || grossPence < 0) {
     return refuse("bad_amount", `${label}: the stored price is not whole pence`);
   }
+  if (vatTreatment === null && vatPence === null) {
+    return ok({ description: label, grossPence, vatPence: 0, treatment: "outside_scope", role });
+  }
   if (vatTreatment !== "standard" || vatPence === null) {
-    return refuse("unmapped_line", `${label}: no VAT was recorded when it was sold`);
+    return refuse(
+      "unmapped_line",
+      `${label}: no booking for VAT treatment ${String(vatTreatment)}`,
+    );
   }
   return ok({ description: label, grossPence, vatPence, treatment: "standard", role });
 }
@@ -120,7 +134,13 @@ function shopDocuments(facts: ShopOrderPaidFacts): Result<ShopDocuments, Project
   const deliveryLine =
     delivery.grossPence === 0
       ? null
-      : shopLine(delivery.label, "delivery", delivery.grossPence, "standard", delivery.vatPence);
+      : shopLine(
+          delivery.label,
+          "delivery",
+          delivery.grossPence,
+          delivery.vatPence === null ? null : "standard",
+          delivery.vatPence,
+        );
   if (deliveryLine && !deliveryLine.ok) return deliveryLine;
 
   const charged = facts.lines.reduce((sum, line) => sum + line.grossPence, 0) + delivery.grossPence;
@@ -150,12 +170,19 @@ function shopDocuments(facts: ShopOrderPaidFacts): Result<ShopDocuments, Project
   if (!invoice.ok) return invoice;
   let parkedDelivery: Invoice | null = null;
   if (deliveryLine?.ok && delivery.scope === "outside_uk") {
+    // LAX states no VAT on delivery outside the UK: what it is, if anything, is the accountant's
+    // answer. The parked line is the gross the buyer paid, with no VAT, and it is never sent.
+    const quote: InclusiveLineInput = {
+      ...deliveryLine.value,
+      vatPence: 0,
+      treatment: "outside_scope",
+    };
     const parked = buildInclusiveInvoice({
       ...common,
       sourceId: shopOutsideUkDeliverySourceId(facts.orderId),
       // Never sent while parked. Its own number beside the order's, so the two can never clash.
       number: `${facts.invoiceNumber}-D`,
-      lines: [deliveryLine.value],
+      lines: [quote],
     });
     if (!parked.ok) return parked;
     parkedDelivery = parked.value;

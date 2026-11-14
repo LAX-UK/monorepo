@@ -160,6 +160,9 @@ describe("Shop order paid", () => {
       expect(delivery.lines.map((l) => [l.role, l.unitNetPence + l.vatPence])).toEqual([
         ["delivery", 4_000],
       ]);
+      // No VAT on delivery outside the UK: LAX never states any, whatever was stored.
+      expect(delivery.totals.vatPence).toBe(0);
+      expect(delivery.lines[0]?.treatment).toBe("outside_scope");
       expect(delivery.number).toBe("LAX-INV-000124-D");
       expect(parkReasonFor(projection, reference)).toBe("vat_on_outside_uk_delivery");
       // Only the delivery is parked: the contact, the order's invoice and the payment are queued.
@@ -198,25 +201,29 @@ describe("Shop order paid", () => {
       expect(r.ok ? null : r.refusal.code).toBe("bad_facts");
     });
 
-    it("refuses a line sold with no VAT recorded", () => {
-      const lines = facts().lines.map((l, i) =>
-        i === 0 ? { ...l, vatTreatment: null, vatPence: null } : l,
-      );
+    it("books a line sold with no VAT recorded as charged: no VAT, never added", () => {
+      const none = facts({
+        lines: facts().lines.map((l) => ({ ...l, vatTreatment: null, vatPence: null })),
+        delivery: { scope: "uk", label: "UK insured delivery", grossPence: 2_500, vatPence: null },
+      });
+      const invoice = invoiceOf(must(projectShopOrderPaid(none)).documents);
+      expect(invoice.lines.map((l) => [l.treatment, l.vatPence])).toEqual([
+        ["outside_scope", 0],
+        ["outside_scope", 0],
+        ["outside_scope", 0],
+      ]);
+      expect(invoice.totals).toEqual({ netPence: 59_500, vatPence: 0, grossPence: 59_500 });
+    });
+
+    it("refuses a VAT treatment it has no booking for", () => {
+      const lines = facts().lines.map((l, i) => (i === 0 ? { ...l, vatTreatment: "reduced" } : l));
       const r = projectShopOrderPaid(facts({ lines }));
       expect(r.ok ? null : r.refusal.code).toBe("unmapped_line");
     });
 
-    it("refuses a delivery charge with no VAT recorded", () => {
-      const r = projectShopOrderPaid(
-        facts({
-          delivery: {
-            scope: "uk",
-            label: "UK insured delivery",
-            grossPence: 2_500,
-            vatPence: null,
-          },
-        }),
-      );
+    it("refuses a line that names a treatment but no VAT figure", () => {
+      const lines = facts().lines.map((l, i) => (i === 0 ? { ...l, vatPence: null } : l));
+      const r = projectShopOrderPaid(facts({ lines }));
       expect(r.ok ? null : r.refusal.code).toBe("unmapped_line");
     });
 
