@@ -7,6 +7,7 @@ import { notify } from "@/lib/ui/notify";
 import {
   CellLink,
   DetailPanel,
+  type DetailPanelProps,
   KeyValueList,
   Notice,
   type OverflowAction,
@@ -25,13 +26,14 @@ import { useTransition } from "react";
  * A payment beside the list, in the record header pattern: lot title and status, a meta line
  * (buyer, amount, created), "Open lot" and the same `…` menu as the row, then the summary and
  * Xero. The next money step sits in the footer; every money action opens the row's confirm dialog.
+ * A payment has no page of its own yet: the panel's address (`?payment=`) is its link.
  */
 export function PaymentQuickView({
   row,
   canWritePayments,
   canOpenLot,
   canOpenClient,
-  onClose,
+  panelProps,
   onCapture,
   onRefund,
   moneyActions = [],
@@ -40,7 +42,8 @@ export function PaymentQuickView({
   canWritePayments: boolean;
   canOpenLot: boolean;
   canOpenClient: boolean;
-  onClose: () => void;
+  /** The queue panel's open state, place in the list and stepping (`useStaffQueue`). */
+  panelProps: Pick<DetailPanelProps, "open" | "onOpenChange" | "queue">;
   onCapture: (row: PaymentsStaffRow) => void;
   onRefund: (row: PaymentsStaffRow) => void;
   /** The row menu's money actions, for the panel's `…`. */
@@ -50,10 +53,7 @@ export function PaymentQuickView({
   const [syncing, startSync] = useTransition();
   return (
     <DetailPanel
-      open={row !== null}
-      onOpenChange={(open) => {
-        if (!open) onClose();
-      }}
+      {...panelProps}
       title={row?.lotTitle ?? "Payment"}
       {...(row?.lotContext ? { description: row.lotContext } : {})}
       summary={

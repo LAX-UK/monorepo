@@ -32,7 +32,7 @@ function renderPanel(access: { canOpenLot: boolean; canOpenClient: boolean }) {
       <PaymentQuickView
         row={row}
         canWritePayments
-        onClose={vi.fn()}
+        panelProps={{ open: true, onOpenChange: vi.fn() }}
         onCapture={vi.fn()}
         onRefund={vi.fn()}
         {...access}
