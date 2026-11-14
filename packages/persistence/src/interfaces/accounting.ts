@@ -821,6 +821,11 @@ export interface BidInvoiceBooksState {
   readonly invoices: readonly BidInvoiceBooksDocument[];
   /** The credit notes for the invoice, every target mode, oldest first (not cancelled). */
   readonly creditNotes: readonly BidInvoiceBooksDocument[];
+  /**
+   * How the invoice was paid: a "Pay several" charge by its checkout's rail, otherwise by the rail
+   * of its checkout sessions when they all name the same one. Null when not paid or not known.
+   */
+  readonly paidWith: "card" | "bank_transfer" | null;
 }
 
 /** Reads one Bid invoice's Books documents and their stored copies (the Bid API, read only). */

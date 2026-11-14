@@ -39,6 +39,8 @@ const invoiceCardSchema = z.object({
     )
     .max(100)
     .default([]),
+  // Absent from an API that predates it: not known, so a refund says nothing of where it went.
+  paidWith: z.enum(["card", "bank_transfer"]).nullable().default(null),
 }) satisfies z.ZodType<PurchaseInvoiceCard, z.ZodTypeDef, unknown>;
 
 /**

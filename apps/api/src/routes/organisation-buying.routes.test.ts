@@ -225,6 +225,7 @@ function mount(
                 },
               ],
               creditNotes: [],
+              paidWith: "card",
             }),
         },
         storage: { getObjectBytes: async () => STORED_PDF },

@@ -1,11 +1,12 @@
 import { CLIENT_ROUTES } from "@/lib/navigation/client-routes";
 import { LONDON_TIME_ZONE, formatDayMonth, formatWeekday, formatWhen } from "@auction/datetime";
 import type { PurchaseInvoiceCard } from "@auction/types";
+import type { PurchaseCardVm } from "./purchases.vm";
 
 /** A download on the card: LAX's stored copy of the Books invoice, or LAX's own invoice. */
 export type InvoiceCardLink = { label: string; href: string };
 
-/** A credit note line: "Refunded −£123.45" and its download. */
+/** A credit note line: "Refunded −£123.45 to your card" and its download. */
 export type InvoiceCardCredit = { text: string; download: InvoiceCardLink };
 
 /**
@@ -55,24 +56,67 @@ export const INVOICE_CARD_COPY = {
   cancelledTitle: "Invoice cancelled",
   defaultedTitle: "Cancelled after a default",
   laxEmpty: "The invoice appears here once it is raised.",
+  /** A default's credit note row: its number is the title, so the link says only what it does. */
+  creditDownload: "Download (PDF)",
+  refundedBadge: "Refunded",
+  refundedNote: "Your payment has been refunded",
 } as const;
+
+/** Where a refund went, by how the invoice was paid; nothing is said when that is not known. */
+const REFUNDED_TO: Readonly<Record<NonNullable<PurchaseInvoiceCard["paidWith"]>, string>> = {
+  card: " to your card",
+  bank_transfer: " to your bank account",
+};
 
 const POUNDS = new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP" });
 
-/** "Refunded −£123.45", and its download "Download credit note CN-00001 (PDF)". */
+/**
+ * A refund: "Refunded −£123.45 to your card", and its download "Download credit note CN-00001
+ * (PDF)". A default's credit note: "Credit note CN-00001", and "Download (PDF)" (the number once).
+ */
 function creditLine(
   lotId: string,
   credit: PurchaseInvoiceCard["creditNotes"][number],
+  paidWith: PurchaseInvoiceCard["paidWith"],
 ): InvoiceCardCredit {
+  const href = purchaseDocumentHref(lotId, credit.documentId);
+  if (credit.kind === "refund") {
+    return {
+      text: `Refunded \u2212${POUNDS.format(credit.grossPence / 100)}${paidWith ? REFUNDED_TO[paidWith] : ""}`,
+      download: { label: `Download credit note ${credit.number} (PDF)`, href },
+    };
+  }
   return {
-    text:
-      credit.kind === "refund"
-        ? `Refunded \u2212${POUNDS.format(credit.grossPence / 100)}`
-        : `Credit note ${credit.number}`,
-    download: {
-      label: `Download credit note ${credit.number} (PDF)`,
-      href: purchaseDocumentHref(lotId, credit.documentId),
-    },
+    text: `Credit note ${credit.number}`,
+    download: { label: INVOICE_CARD_COPY.creditDownload, href },
+  };
+}
+
+/** The issued invoice's refund credit notes together credit all of it: the buyer was refunded in full. */
+export function refundedInFull(card: PurchaseInvoiceCard | null): boolean {
+  if (!card || card.state !== "issued" || card.totalPence <= 0) return false;
+  const refunded = (card.creditNotes ?? [])
+    .filter((c) => c.kind === "refund")
+    .reduce((sum, c) => sum + c.grossPence, 0);
+  return refunded >= card.totalPence;
+}
+
+/**
+ * The purchase as the buyer reads it once Books' credit notes refund the whole invoice: the badge
+ * and the Payment card say "Refunded", never "Paid" or "Total paid" beside the refunds. Anything
+ * else (a part refund, no Books card) leaves it as it is.
+ */
+export function withBooksRefund(
+  card: PurchaseCardVm,
+  books: PurchaseInvoiceCard | null,
+): PurchaseCardVm {
+  if (card.state === "refunded" || !refundedInFull(books)) return card;
+  return {
+    ...card,
+    badge: { label: INVOICE_CARD_COPY.refundedBadge, tone: "neutral", shape: "ring" },
+    statusLabel: INVOICE_CARD_COPY.refundedBadge,
+    statusNote: INVOICE_CARD_COPY.refundedNote,
+    amountLabel: "refunded",
   };
 }
 
@@ -137,7 +181,7 @@ export function purchaseInvoiceCard(input: {
         },
         credits: (card.creditNotes ?? [])
           .filter((c) => c.kind === "refund")
-          .map((c) => creditLine(lotId, c)),
+          .map((c) => creditLine(lotId, c, card.paidWith ?? null)),
       };
     }
     case "cancelled":
@@ -149,7 +193,7 @@ export function purchaseInvoiceCard(input: {
         detail: card.cancelledAt
           ? `This invoice was cancelled on ${day(card.cancelledAt, now)}. You owe nothing on it.`
           : "This invoice was cancelled. You owe nothing on it.",
-        credits: (card.creditNotes ?? []).map((c) => creditLine(lotId, c)),
+        credits: (card.creditNotes ?? []).map((c) => creditLine(lotId, c, card.paidWith ?? null)),
       };
     case "lax":
       return lax;

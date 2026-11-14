@@ -33,6 +33,11 @@ export type PurchaseInvoiceCard = {
   cancelledAfterDefault: boolean;
   /** Credit notes Books issued live for it with LAX's copy stored, oldest first. */
   creditNotes: PurchaseCreditNote[];
+  /**
+   * How the invoice was paid, so a refund can say where it went: by card, or by bank transfer
+   * ("Pay several" by its checkout's rail). Null when it is not known.
+   */
+  paidWith: "card" | "bank_transfer" | null;
 };
 
 /** A credit note on a Bid invoice: a refund's, or the one that cancels it after a default. */

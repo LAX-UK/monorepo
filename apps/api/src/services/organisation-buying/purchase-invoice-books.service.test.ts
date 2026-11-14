@@ -57,6 +57,7 @@ function setUp(opts: {
   voidedAt?: Date | null;
   minutesAfterRaise?: number;
   unreadable?: boolean;
+  paidWith?: "card" | "bank_transfer" | null;
   creditNotes?: BidInvoiceBooksDocument[];
 }) {
   const getObjectBytes = vi.fn(async () => Buffer.from("%PDF-1.4 stored"));
@@ -104,6 +105,7 @@ function setUp(opts: {
           creditNotes: foreign
             ? [credit({ documentId: FOREIGN_CREDIT, number: "CN-FOREIGN" })]
             : (opts.creditNotes ?? []),
+          paidWith: opts.paidWith ?? null,
         });
       },
     },
@@ -200,6 +202,13 @@ describe("PurchaseInvoiceBooksService.card", () => {
       totalPence: 150_000,
       cancelledAfterDefault: false,
       creditNotes: [],
+      paidWith: null,
+    });
+  });
+
+  it("says how the invoice was paid, so a refund can say where it went", async () => {
+    expect(await card({ invoices: [doc()], paidWith: "bank_transfer" })).toMatchObject({
+      paidWith: "bank_transfer",
     });
   });
 

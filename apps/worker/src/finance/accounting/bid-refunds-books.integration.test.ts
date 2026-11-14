@@ -23,6 +23,7 @@ import {
   legalEntityMember,
   lot,
   payment,
+  paymentCheckoutSession,
   paymentGroup,
   paymentGroupDelivery,
   paymentRefund,
@@ -1209,6 +1210,33 @@ describe.skipIf(!HAS_DB)(
         expect(
           notes.every((n) => n.needsReviewReason === "accounting_parked_vat_on_delivery"),
         ).toBe(true);
+      });
+
+      it("F8: the buyer card says how the invoice was paid (Pay several by its rail; one payment only when its sessions agree)", async () => {
+        const books = new InMemoryAccounting();
+        const { raised } = await paidAndSent(books);
+        const apiRepos = createAccountingRepositories(api, { now: () => new Date() });
+        const paidWith = async (invoiceId: string) => {
+          const read = await apiRepos.bidInvoiceBooks.read(invoiceId);
+          if (!read.ok || !read.value) throw new Error("unreadable");
+          return read.value.paidWith;
+        };
+        expect(await paidWith(raised.invoice.id)).toBeNull();
+        const session = (rail: string) =>
+          owner.insert(paymentCheckoutSession).values({
+            stripeSessionId: `cs_fixture_${randomUUID()}`,
+            paymentId: raised.payment.id,
+            rail,
+          });
+        await session("bank");
+        expect(await paidWith(raised.invoice.id)).toBe("bank_transfer");
+        await session("card");
+        // Two rails tried: not known for certain, so nothing is said.
+        expect(await paidWith(raised.invoice.id)).toBeNull();
+        const buyer = await seedBuyer(owner);
+        const lot = await wonAndRaised(owner, buyer, 10_000, 0);
+        await settleGroup(buyer, [lot], []);
+        expect(await paidWith(lot.invoice.id)).toBe("card");
       });
 
       it("F5: a credit note Books refuses to refund from clearing is held for a person and alerts, never counted as settled", async () => {

@@ -117,6 +117,32 @@ export class DrizzleBidInvoiceBooksReader implements IBidInvoiceBooksReader {
     if (!invoiceDocuments.ok) return invoiceDocuments;
     const creditNotes = collect(credits);
     if (!creditNotes.ok) return creditNotes;
-    return ok({ invoice, invoices: invoiceDocuments.value, creditNotes: creditNotes.value });
+    return ok({
+      invoice,
+      invoices: invoiceDocuments.value,
+      creditNotes: creditNotes.value,
+      paidWith: await this.paidWith(invoice.id),
+    });
+  }
+
+  /** How the invoice's paid payment was made; null when that is not known for certain. */
+  private async paidWith(invoiceId: string): Promise<"card" | "bank_transfer" | null> {
+    const rows = await this.db.execute<{ rail: string | null }>(sql`
+      select case
+               when p.payment_group_id is not null then (
+                 select g.checkout_rail from payment_group g where g.id = p.payment_group_id)
+               when (select count(distinct s.rail) from payment_checkout_session s
+                      where s.payment_id = p.id and s.rail is not null) = 1 then (
+                 select max(s.rail) from payment_checkout_session s
+                  where s.payment_id = p.id and s.rail is not null)
+             end as rail
+        from payment p
+       where p.invoice_id = ${invoiceId} and p.status in ('captured', 'refunded')
+       order by p.created_at desc
+       limit 1`);
+    const rail = rows.rows[0]?.rail ?? null;
+    if (rail === "card") return "card";
+    if (rail === "gb_bank_transfer" || rail === "bank") return "bank_transfer";
+    return null;
   }
 }

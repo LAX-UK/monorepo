@@ -111,6 +111,7 @@ export class PurchaseInvoiceBooksService implements IPurchaseInvoiceBooksService
       totalPence: invoice.totalPence,
       cancelledAfterDefault: defaulted,
       creditNotes,
+      paidWith: held?.paidWith ?? null,
     });
   }
 
