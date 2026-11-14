@@ -13,7 +13,7 @@ import {
   saleSellerTerms,
   user,
 } from "@auction/db/schema";
-import { eq, sql } from "drizzle-orm";
+import { and, eq, isNull, sql } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 import { supersedeAgreement } from "./agreement-version.js";
 import { DrizzleSellerTermsFactsReader } from "./drizzle-seller-terms-facts.reader.js";
@@ -62,7 +62,13 @@ describe.skipIf(!HAS_DB)("staff lot seller proceeds reader (integration)", () =>
           } as typeof legalEntity.$inferInsert);
         }
 
-        async function sale(input: { paidOut: boolean; held: boolean; fixedReference?: boolean }) {
+        async function sale(input: {
+          paidOut: boolean;
+          held: boolean;
+          fixedReference?: boolean;
+          /** Corrections made before the sale was priced: it is priced on version 1 + this. */
+          earlierCorrections?: number;
+        }) {
           const lotId = randomUUID();
           await tx.insert(lot).values({
             id: lotId,
@@ -101,6 +107,25 @@ describe.skipIf(!HAS_DB)("staff lot seller proceeds reader (integration)", () =>
                   })
                   .returning({ id: consignmentAgreement.id })
               )[0]?.id ?? null);
+          let pricedOn = agreementId;
+          for (let n = 0; n < (input.earlierCorrections ?? 0); n += 1) {
+            const [previous] = await tx
+              .select()
+              .from(consignmentAgreement)
+              .where(
+                and(
+                  eq(consignmentAgreement.submissionId, submissionId),
+                  isNull(consignmentAgreement.supersededAt),
+                ),
+              );
+            if (!previous) throw new Error("agreement not stored");
+            pricedOn = await supersedeAgreement(
+              tx,
+              previous,
+              { commissionPercent: "12.00" },
+              new Date(),
+            );
+          }
           const [invoice] = await tx
             .insert(bidInvoice)
             .values({
@@ -160,7 +185,7 @@ describe.skipIf(!HAS_DB)("staff lot seller proceeds reader (integration)", () =>
                 : {
                     ...base,
                     basis: "agreement",
-                    agreementId,
+                    agreementId: pricedOn,
                     commissionBps: 1200,
                     commissionPence: 74_400,
                     commissionVatTreatment: "standard",
@@ -332,6 +357,34 @@ describe.skipIf(!HAS_DB)("staff lot seller proceeds reader (integration)", () =>
           terms: null,
           oldRule: { paymentAmount: "7750.00", platformFee: "0.00" },
         });
+        // A sale priced on version 2 of three: both screens name version 2, not 1 and not current.
+        const multi = await sale({ paidOut: true, held: false, earlierCorrections: 1 });
+        const [multiCurrent] = await tx
+          .select()
+          .from(consignmentAgreement)
+          .where(
+            and(
+              eq(consignmentAgreement.submissionId, multi.submissionId),
+              isNull(consignmentAgreement.supersededAt),
+            ),
+          );
+        if (!multiCurrent) throw new Error("agreement not stored");
+        expect(multiCurrent.version).toBe(2);
+        await supersedeAgreement(tx, multiCurrent, { commissionPercent: "18.00" }, new Date());
+        const multiFacts = await reader.forLot(multi.lotId);
+        expect(multiFacts?.agreement).toMatchObject({
+          id: multiCurrent.id,
+          version: 2,
+          commissionPercent: "12.00",
+          pricedOnEarlierVersion: true,
+        });
+        const multiPayoutId = multiFacts?.sale?.payout?.id as string;
+        expect((await payouts.forPayout(multiPayoutId))?.sales[0]?.agreement).toMatchObject({
+          version: 2,
+          commissionPercent: "12.00",
+          pricedOnEarlierVersion: true,
+        });
+
         // A sale priced on no agreement names the lot's current version, never as superseded.
         const [oldSigned] = await tx
           .select()

@@ -10,7 +10,11 @@ import {
   type RecordedAgreement,
   SignedDocumentInUseError,
 } from "../interfaces/signed-agreement.writer.js";
-import { supersedeAgreement } from "./agreement-version.js";
+import {
+  AgreementSupersededError,
+  onCurrentAgreement,
+  supersedeAgreement,
+} from "./agreement-version.js";
 import { settlementLockSql } from "./drizzle-payout.repository.js";
 
 const AGREEMENT_PER_SUBMISSION = "consignment_agreement_submission_id_uidx";
@@ -60,17 +64,19 @@ export class DrizzleSignedAgreementWriter implements ISignedAgreementWriter {
   }
 
   async lockAgreement(submissionId: string): Promise<LockedAgreement | null> {
-    const [row] = await this.db
-      .select({
-        id: consignmentAgreement.id,
-        legalEntityId: consignmentAgreement.legalEntityId,
-        commissionPercent: consignmentAgreement.commissionPercent,
-        acceptedAt: consignmentAgreement.acceptedAt,
-      })
-      .from(consignmentAgreement)
-      .where(current(submissionId))
-      .for("update")
-      .limit(1);
+    const row = await onCurrentAgreement(this.db, submissionId, () =>
+      this.db
+        .select({
+          id: consignmentAgreement.id,
+          legalEntityId: consignmentAgreement.legalEntityId,
+          commissionPercent: consignmentAgreement.commissionPercent,
+          acceptedAt: consignmentAgreement.acceptedAt,
+        })
+        .from(consignmentAgreement)
+        .where(current(submissionId))
+        .for("update")
+        .limit(1),
+    );
     if (!row) return null;
     return {
       ...row,
@@ -101,18 +107,21 @@ export class DrizzleSignedAgreementWriter implements ISignedAgreementWriter {
     try {
       return await this.write(input);
     } catch (err) {
-      if (isSecondAgreement(err)) throw new AgreementAlreadyRecordedError();
+      if (isSecondAgreement(err) || err instanceof AgreementSupersededError)
+        throw new AgreementAlreadyRecordedError();
       throw err;
     }
   }
 
   private async write(input: RecordSignedAgreementInput): Promise<RecordedAgreement> {
-    const [previous] = await this.db
-      .select()
-      .from(consignmentAgreement)
-      .where(current(input.submissionId))
-      .for("update")
-      .limit(1);
+    const previous = await onCurrentAgreement(this.db, input.submissionId, () =>
+      this.db
+        .select()
+        .from(consignmentAgreement)
+        .where(current(input.submissionId))
+        .for("update")
+        .limit(1),
+    );
     const at = new Date();
     const values = {
       legalEntityId: input.legalEntityId,

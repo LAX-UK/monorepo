@@ -53,28 +53,43 @@ CREATE UNIQUE INDEX IF NOT EXISTS "consignment_agreement_submission_id_uidx"
 CREATE UNIQUE INDEX IF NOT EXISTS "consignment_agreement_submission_version_uidx"
   ON "consignment_agreement" ("submission_id", "version");
 --> statement-breakpoint
--- A superseded version keeps what was signed and priced, and its place in the history. Only what
--- is not part of the agreement may still change on it: a deleted user's reference cleared (ON
--- DELETE SET NULL), reminders and updated_at. A consignment deleted takes its whole history.
+-- A superseded version keeps what was signed and priced, who signed and recorded it, and its place
+-- in the history. Only what is not part of the agreement may still change on it: a user reference
+-- cleared (ON DELETE SET NULL, never re-pointed), reminders and updated_at. It is not deleted
+-- either, unless its consignment is: a consignment deleted takes its whole history.
 CREATE OR REPLACE FUNCTION "consignment_agreement_superseded_frozen"() RETURNS trigger
 LANGUAGE plpgsql AS $fn$
 BEGIN
+  IF TG_OP = 'DELETE' THEN
+    -- During the cascade from item_submission the parent row is already gone.
+    IF OLD."superseded_at" IS NULL
+      OR NOT EXISTS (SELECT 1 FROM "item_submission" WHERE "id" = OLD."submission_id") THEN
+      RETURN OLD;
+    END IF;
+    RAISE EXCEPTION 'consignment_agreement row % is superseded: a superseded version is never deleted', OLD."id"
+      USING ERRCODE = 'restrict_violation';
+  END IF;
   IF OLD."superseded_at" IS NULL THEN
     RETURN NEW;
   END IF;
   IF (
-    NEW."submission_id", NEW."legal_entity_id", NEW."terms_version", NEW."estimate_low",
-    NEW."estimate_high", NEW."reserve_price", NEW."commission_percent", NEW."relist_reserve_floor",
-    NEW."currency", NEW."proposed_at", NEW."accepted_at", NEW."source", NEW."signed_document_id",
-    NEW."record_reason", NEW."replaces_agreement_id", NEW."version", NEW."superseded_at",
-    NEW."superseded_by"
+    NEW."id", NEW."created_at", NEW."submission_id", NEW."legal_entity_id", NEW."terms_version",
+    NEW."estimate_low", NEW."estimate_high", NEW."reserve_price", NEW."commission_percent",
+    NEW."relist_reserve_floor", NEW."currency", NEW."proposed_at", NEW."accepted_at", NEW."source",
+    NEW."signed_document_id", NEW."record_reason", NEW."replaces_agreement_id", NEW."version",
+    NEW."superseded_at", NEW."superseded_by"
   ) IS NOT DISTINCT FROM (
-    OLD."submission_id", OLD."legal_entity_id", OLD."terms_version", OLD."estimate_low",
-    OLD."estimate_high", OLD."reserve_price", OLD."commission_percent", OLD."relist_reserve_floor",
-    OLD."currency", OLD."proposed_at", OLD."accepted_at", OLD."source", OLD."signed_document_id",
-    OLD."record_reason", OLD."replaces_agreement_id", OLD."version", OLD."superseded_at",
-    OLD."superseded_by"
-  ) THEN
+    OLD."id", OLD."created_at", OLD."submission_id", OLD."legal_entity_id", OLD."terms_version",
+    OLD."estimate_low", OLD."estimate_high", OLD."reserve_price", OLD."commission_percent",
+    OLD."relist_reserve_floor", OLD."currency", OLD."proposed_at", OLD."accepted_at", OLD."source",
+    OLD."signed_document_id", OLD."record_reason", OLD."replaces_agreement_id", OLD."version",
+    OLD."superseded_at", OLD."superseded_by"
+  )
+  -- A user reference may be cleared, never changed to someone else.
+  AND (NEW."proposed_by_user_id" IS NOT DISTINCT FROM OLD."proposed_by_user_id" OR NEW."proposed_by_user_id" IS NULL)
+  AND (NEW."accepted_by_user_id" IS NOT DISTINCT FROM OLD."accepted_by_user_id" OR NEW."accepted_by_user_id" IS NULL)
+  AND (NEW."recorded_by_user_id" IS NOT DISTINCT FROM OLD."recorded_by_user_id" OR NEW."recorded_by_user_id" IS NULL)
+  THEN
     RETURN NEW;
   END IF;
   RAISE EXCEPTION 'consignment_agreement row % is superseded: a superseded version never changes', OLD."id"
@@ -85,5 +100,5 @@ $fn$;
 DROP TRIGGER IF EXISTS "consignment_agreement_superseded_frozen" ON "consignment_agreement";
 --> statement-breakpoint
 CREATE TRIGGER "consignment_agreement_superseded_frozen"
-  BEFORE UPDATE ON "consignment_agreement"
+  BEFORE UPDATE OR DELETE ON "consignment_agreement"
   FOR EACH ROW EXECUTE FUNCTION "consignment_agreement_superseded_frozen"();

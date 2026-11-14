@@ -8,6 +8,7 @@ import type {
   ConsignmentAgreementProposalRow,
   IConsignmentAgreementRepository,
 } from "../interfaces/consignment-agreement.repository.js";
+import { onCurrentAgreement } from "./agreement-version.js";
 
 type AgreementRow = typeof consignmentAgreement.$inferSelect;
 
@@ -150,10 +151,13 @@ export class DrizzleConsignmentAgreementRepository implements IConsignmentAgreem
     floor: string | null,
     at: Date,
   ): Promise<ConsignmentAgreement | null> {
-    await this.db
-      .update(consignmentAgreement)
-      .set({ relistReserveFloor: floor, updatedAt: at })
-      .where(and(eq(consignmentAgreement.submissionId, submissionId), CURRENT));
+    await onCurrentAgreement(this.db, submissionId, () =>
+      this.db
+        .update(consignmentAgreement)
+        .set({ relistReserveFloor: floor, updatedAt: at })
+        .where(and(eq(consignmentAgreement.submissionId, submissionId), CURRENT))
+        .returning({ id: consignmentAgreement.id }),
+    );
     return this.findBySubmissionId(submissionId);
   }
 

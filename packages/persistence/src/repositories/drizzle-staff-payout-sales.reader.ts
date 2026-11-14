@@ -107,10 +107,12 @@ export class DrizzleStaffPayoutSalesReader implements IStaffPayoutSalesReader {
         oldRule: priced
           ? null
           : { paymentAmount: money(line.paymentAmount), platformFee: money(line.platformFee) },
-        // The version the sale was priced on, flagged when a later version superseded it.
+        // The version the sale was priced on, flagged when a later version superseded it. A priced
+        // line never falls back to the lot's current agreement: that would show a later version
+        // as the one the sale was priced on.
         agreement:
           priced && t?.agreementId
-            ? (snapshotAgreements.get(t.agreementId) ?? agreements.get(line.lotId) ?? null)
+            ? (snapshotAgreements.get(t.agreementId) ?? null)
             : (agreements.get(line.lotId) ?? null),
       };
     });

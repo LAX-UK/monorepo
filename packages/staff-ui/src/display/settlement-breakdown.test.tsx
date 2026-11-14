@@ -5,6 +5,7 @@ import {
   SettlementBreakdown,
   type SettlementBreakdownProps,
   agreementLabel,
+  agreementVersionTag,
   sellerReceivesLabel,
   settlementStatusLabel,
 } from "./settlement-breakdown.js";
@@ -214,7 +215,10 @@ describe("SettlementBreakdown agreement version", () => {
         }}
       />,
     );
-    expect(screen.getByRole("link", { name: "Agreement C-1042 v1" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Agreement C-1042" })).toHaveAttribute(
+      "href",
+      "/admin/inbox/sub-1",
+    );
     expect(screen.getByText(/Agreement C-1042/).closest("p")).toHaveTextContent(
       "Agreement C-1042 v1 · signed 3 Oct 2026 Superseded Priced on an earlier version of this agreement",
     );
@@ -237,7 +241,7 @@ describe("SettlementBreakdown agreement version", () => {
         }}
       />,
     );
-    expect(screen.getByRole("link", { name: "Agreement C-1042 v2" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Agreement C-1042" })).toBeInTheDocument();
     expect(screen.getByText(/recorded by staff/)).toHaveTextContent(
       "Agreement C-1042 v2 · recorded by staff Superseded Priced on an earlier version of this agreement",
     );
@@ -256,7 +260,7 @@ describe("SettlementBreakdown agreement version", () => {
         }}
       />,
     );
-    expect(screen.getByRole("link", { name: "Agreement C-1042 v2" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Agreement C-1042" })).toBeInTheDocument();
     expect(screen.queryByText("Superseded")).not.toBeInTheDocument();
     expect(screen.queryByText(/earlier version/)).not.toBeInTheDocument();
   });
@@ -268,8 +272,35 @@ describe("SettlementBreakdown agreement version", () => {
 });
 
 describe("agreementLabel", () => {
-  it("adds the version when it is known", () => {
-    expect(agreementLabel("C-1042", 3)).toBe("Agreement C-1042 v3");
+  it("is the agreement's reference, never a version the link would not open", () => {
     expect(agreementLabel("C-1042")).toBe("Agreement C-1042");
+  });
+});
+
+describe("agreementVersionTag", () => {
+  it("names a version above 1, or any superseded one, and nothing for an uncorrected agreement", () => {
+    expect(agreementVersionTag(1)).toBeNull();
+    expect(agreementVersionTag(1, true)).toBe("v1");
+    expect(agreementVersionTag(3)).toBe("v3");
+    expect(agreementVersionTag(undefined, true)).toBeNull();
+    expect(agreementVersionTag(null)).toBeNull();
+  });
+
+  it("keeps the version out of the link and shows no 'v1' on an uncorrected agreement", () => {
+    render(
+      <SettlementBreakdown
+        {...ready}
+        rateSource={{
+          kind: "agreement",
+          reference: "C-1042",
+          signedAt: "2026-10-03T10:00:00Z",
+          href: "/admin/inbox/sub-1",
+          version: 1,
+        }}
+      />,
+    );
+    expect(screen.getByRole("link", { name: "Agreement C-1042" }).parentElement).toHaveTextContent(
+      "Agreement C-1042 · signed 3 Oct 2026",
+    );
   });
 });

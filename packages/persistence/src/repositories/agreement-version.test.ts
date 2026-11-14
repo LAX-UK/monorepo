@@ -1,6 +1,11 @@
+import type { Database } from "@auction/db";
 import type { consignmentAgreement } from "@auction/db/schema";
 import { describe, expect, it } from "vitest";
-import { nextAgreementVersion } from "./agreement-version.js";
+import {
+  CurrentAgreementUnstableError,
+  nextAgreementVersion,
+  onCurrentAgreement,
+} from "./agreement-version.js";
 
 const at = new Date("2026-11-14T10:00:00Z");
 
@@ -73,5 +78,49 @@ describe("nextAgreementVersion", () => {
     const next = nextAgreementVersion(signed(), {}, { id: "agreement-v3", at });
     expect(next.reminderDay3SentAt).toBeUndefined();
     expect(next.reminderDay7SentAt).toBeUndefined();
+  });
+});
+
+/** A database whose "does this consignment have any agreement" lookup answers with `rows`. */
+function lookup(rows: { id: string }[]): Database {
+  const chain = { from: () => chain, where: () => chain, limit: async () => rows };
+  return { select: () => chain } as unknown as Database;
+}
+
+describe("onCurrentAgreement", () => {
+  it("returns the row of the first statement that matches", async () => {
+    let runs = 0;
+    const row = await onCurrentAgreement(lookup([]), "s1", async () => {
+      runs += 1;
+      return [{ id: "a" }];
+    });
+    expect(row).toEqual({ id: "a" });
+    expect(runs).toBe(1);
+  });
+
+  it("runs the statement again when it matched nothing but an agreement exists", async () => {
+    let runs = 0;
+    const row = await onCurrentAgreement(lookup([{ id: "v2" }]), "s1", async () => {
+      runs += 1;
+      return runs === 1 ? [] : [{ id: "v2" }];
+    });
+    expect(row).toEqual({ id: "v2" });
+    expect(runs).toBe(2);
+  });
+
+  it("trusts an empty result when the consignment has no agreement at all", async () => {
+    let runs = 0;
+    const row = await onCurrentAgreement(lookup([]), "s1", async () => {
+      runs += 1;
+      return [];
+    });
+    expect(row).toBeUndefined();
+    expect(runs).toBe(1);
+  });
+
+  it("fails loudly when an agreement exists but no statement ever finds the current one", async () => {
+    await expect(
+      onCurrentAgreement(lookup([{ id: "v2" }]), "s1", async () => []),
+    ).rejects.toBeInstanceOf(CurrentAgreementUnstableError);
   });
 });

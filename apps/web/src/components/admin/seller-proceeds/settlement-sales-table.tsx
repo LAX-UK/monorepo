@@ -10,6 +10,7 @@ import {
   SupersededAgreement,
   TextLink,
   agreementLabel,
+  agreementVersionTag,
   cn,
   formatStaffExportDate,
 } from "@auction/staff-ui";
@@ -21,11 +22,13 @@ import Link from "next/link";
  */
 export function RateSourceCell({ source }: { source: RowRateSource }) {
   if (!source) return <span className="text-staff-muted">—</span>;
+  const tag = agreementVersionTag(source.version, source.earlierVersion);
   return (
     <span className="flex flex-col items-start">
       <TextLink href={source.href} Link={Link}>
-        {agreementLabel(source.reference, source.version ?? undefined)}
+        {agreementLabel(source.reference)}
       </TextLink>
+      {tag ? <span className="text-staff-xs text-staff-muted">{tag}</span> : null}
       <span className="text-staff-xs text-staff-muted">
         {source.kind === "recorded_by_staff"
           ? "Recorded by staff"

@@ -67,6 +67,7 @@ export {
   SettlementBreakdown,
   SupersededAgreement,
   agreementLabel,
+  agreementVersionTag,
   sellerReceivesLabel,
   settlementStatusLabel,
 } from "./display/settlement-breakdown.js";

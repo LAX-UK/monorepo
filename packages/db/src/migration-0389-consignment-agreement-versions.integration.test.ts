@@ -155,6 +155,11 @@ describe.skipIf(!url)(
         "superseded_at = null, superseded_by = null",
         "replaces_agreement_id = id",
         "version = 7",
+        "id = gen_random_uuid()",
+        "created_at = created_at - interval '1 day'",
+        'accepted_by_user_id = (select id from "user" where id <> accepted_by_user_id limit 1)',
+        'proposed_by_user_id = (select id from "user" limit 1)',
+        'recorded_by_user_id = (select id from "user" limit 1)',
       ]) {
         const error = await refused(() =>
           client.query(
@@ -175,6 +180,15 @@ describe.skipIf(!url)(
           ),
         ),
       ).toBeNull();
+    });
+
+    it("refuses deleting a superseded version", async () => {
+      const { v1 } = await seedSigned(client);
+      const v2 = await supersede(client, v1, 2, 15);
+      expect(
+        await refused(() => client.query("delete from consignment_agreement where id = $1", [v1])),
+      ).toMatch(/never deleted/);
+      expect(v2).toBeTruthy();
     });
 
     it("deletes a consignment with its whole history", async () => {
