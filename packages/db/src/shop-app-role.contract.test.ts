@@ -4,6 +4,7 @@ import {
   API_ACCOUNTING_COPY_READ_TABLES,
   API_ACCOUNTING_READ_TABLES,
   API_ACCOUNTING_SETTING_TABLES,
+  SHOP_ACCOUNTING_READ_COLUMNS,
   SHOP_COMMERCE_TABLES,
   SHOP_CRM_READ_TABLES,
   SHOP_EMAIL_OUTBOX_TABLES,
@@ -246,8 +247,32 @@ describe.skipIf(!SHOP_URL)("shop_app role contract", { timeout: 60_000 }, () => 
     });
   });
 
-  it("has no access to accounting documents, their history or the source switch", async () => {
+  it("reads only the accounting columns a buyer's invoice card needs, and changes nothing", async () => {
     await withShopClient(async (client) => {
+      for (const [table, columns] of SHOP_ACCOUNTING_READ_COLUMNS) {
+        const all = await client.query<{ column_name: string; allowed: boolean }>(
+          `select column_name,
+                  has_column_privilege(current_user, 'public.' || $1, column_name, 'SELECT') as allowed
+             from information_schema.columns
+            where table_schema = 'public' and table_name = $1`,
+          [table],
+        );
+        const allowed = all.rows.filter((row) => row.allowed).map((row) => row.column_name);
+        expect(allowed.sort(), table).toEqual([...columns].sort());
+      }
+      // Never a document's payload (names, lines), its totals, or the email columns of a copy.
+      for (const [table, column] of [
+        ["accounting_document", "payload"],
+        ["accounting_document", "gross_pence"],
+        ["accounting_document", "needs_review_reason"],
+        ["accounting_document_copy", "email_outbox_id"],
+      ] as const) {
+        const result = await client.query<{ allowed: boolean }>(
+          "select has_column_privilege(current_user, 'public.' || $1, $2, 'SELECT') as allowed",
+          [table, column],
+        );
+        expect(result.rows[0]?.allowed, `${table}.${column}`).toBe(false);
+      }
       const rows = await readTablePrivileges(
         client,
         [

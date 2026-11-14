@@ -19,6 +19,7 @@ import {
   WORKER_REOFFER_UPDATE_COLUMNS,
   WORKER_SELLER_TERMS_READ_COLUMNS,
   WORKER_SHOP_ENQUIRY_READ_COLUMNS,
+  WORKER_SHOP_INVOICE_READ_COLUMNS,
   WORKER_SHOP_ORDER_READ_COLUMNS,
   WORKER_SHOP_PRINT_GROUP_READ_COLUMNS,
   WORKER_SOLD_ATTENTION_UPDATE_COLUMNS,
@@ -56,6 +57,26 @@ const SELLER_TERMS_PROBE_COLUMNS = [
   "premium_pence",
   "legacy_platform_fee_pence",
 ] as const;
+
+/**
+ * Every column of `table` the worker is granted by any of its Shop read grants: several grants may
+ * read the same table (the print group and the enquiry read shop_artwork; the Deal name and the
+ * Shop invoice read shop_order), and each test checks the table holds nothing beyond their union.
+ */
+function grantedShopColumns(table: string): string[] {
+  return [
+    ...new Set(
+      [
+        ...WORKER_SHOP_ENQUIRY_READ_COLUMNS,
+        ...WORKER_SHOP_PRINT_GROUP_READ_COLUMNS,
+        ...WORKER_SHOP_ORDER_READ_COLUMNS,
+        ...WORKER_SHOP_INVOICE_READ_COLUMNS,
+      ]
+        .filter(([name]) => name === table)
+        .flatMap(([, columns]) => [...columns]),
+    ),
+  ].sort();
+}
 
 const WORKER_URL = process.env.DATABASE_URL_WORKER ?? process.env.WORKER_APP_DATABASE_URL;
 const { Client } = pg;
@@ -322,10 +343,8 @@ describe.skipIf(!WORKER_URL)("worker_app role contract", { timeout: 60_000 }, ()
         );
         const allowed = all.rows.filter((row) => row.allowed).map((row) => row.column_name);
         // Another read grant may add columns of the same table (the print group reads shop_artwork).
-        const shared = WORKER_SHOP_PRINT_GROUP_READ_COLUMNS.filter(
-          ([name]) => name === table,
-        ).flatMap(([, more]) => [...more]);
-        expect(allowed.sort(), table).toEqual([...new Set([...columns, ...shared])].sort());
+        expect(allowed.sort(), table).toEqual(grantedShopColumns(table));
+        for (const column of columns) expect(allowed, `${table}.${column}`).toContain(column);
         const whole = await readTablePrivileges(client, [table], ["INSERT", "UPDATE", "DELETE"]);
         expectUniformTablePrivileges(whole, false);
       }
@@ -418,10 +437,50 @@ describe.skipIf(!WORKER_URL)("worker_app role contract", { timeout: 60_000 }, ()
           [table],
         );
         const allowed = all.rows.filter((row) => row.allowed).map((row) => row.column_name);
-        expect(allowed.sort(), table).toEqual([...columns].sort());
+        expect(allowed.sort(), table).toEqual(grantedShopColumns(table));
+        for (const column of columns) expect(allowed, `${table}.${column}`).toContain(column);
         const whole = await readTablePrivileges(client, [table], ["INSERT", "UPDATE", "DELETE"]);
         expectUniformTablePrivileges(whole, false);
       }
+    });
+  });
+
+  it("reads the Shop columns a paid order's invoice needs, never the address, and writes no Shop table", async () => {
+    await withWorkerClient(async (client) => {
+      for (const [table, columns] of WORKER_SHOP_INVOICE_READ_COLUMNS) {
+        const all = await client.query<{ column_name: string; allowed: boolean }>(
+          `select column_name,
+                  has_column_privilege(current_user, 'public.' || $1, column_name, 'SELECT') as allowed
+             from information_schema.columns
+            where table_schema = 'public' and table_name = $1`,
+          [table],
+        );
+        const allowed = all.rows.filter((row) => row.allowed).map((row) => row.column_name);
+        for (const column of columns) expect(allowed, `${table}.${column}`).toContain(column);
+        expect(allowed.sort(), table).toEqual(grantedShopColumns(table));
+        const whole = await readTablePrivileges(
+          client,
+          [table],
+          ["SELECT", "INSERT", "UPDATE", "DELETE"],
+        );
+        expectUniformTablePrivileges(whole, false);
+      }
+      for (const column of [
+        "delivery_line1",
+        "delivery_postcode",
+        "delivery_phone",
+        "stripe_payment_intent_id",
+      ]) {
+        const result = await client.query<{ allowed: boolean }>(
+          "select has_column_privilege(current_user, 'public.shop_order', $1, 'SELECT') as allowed",
+          [column],
+        );
+        expect(result.rows[0]?.allowed, `shop_order.${column}`).toBe(false);
+      }
+      const phone = await client.query<{ allowed: boolean }>(
+        "select has_column_privilege(current_user, 'public.shop_guest_customer', 'phone', 'SELECT') as allowed",
+      );
+      expect(phone.rows[0]?.allowed).toBe(false);
     });
   });
 

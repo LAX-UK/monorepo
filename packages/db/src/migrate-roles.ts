@@ -301,6 +301,80 @@ export const WORKER_ACCOUNTING_COPY_UPDATE_COLUMNS = [
 ] as const;
 export const API_ACCOUNTING_COPY_READ_TABLES = ["accounting_document_copy"] as const;
 export const WORKER_ACCOUNTING_READ_TABLES = ["accounting_source_setting"] as const;
+
+/**
+ * What the accounting projection reads to book a paid Shop order (plan v2, flows 18-20), column by
+ * column: the order's invoice number, totals and delivery charge as stored, its lines' prices and
+ * VAT as sold, the words the invoice prints (a work's title, a product's, a frame's name as sold),
+ * and the buyer's name and email for the Books contact and the invoice email. Nothing that writes.
+ * The order's address and phone, the basket and every other Shop table stay denied to the worker.
+ */
+export const WORKER_SHOP_INVOICE_READ_COLUMNS = [
+  [
+    "shop_order",
+    [
+      "id",
+      "status",
+      "invoice_number",
+      "identity_subject_id",
+      "guest_customer_id",
+      "buyer_party_id",
+      "fulfilment",
+      "fulfilment_surcharge_pence",
+      "fulfilment_vat_pence",
+      "total_pence",
+      "paid_at",
+    ],
+  ],
+  [
+    "shop_order_line",
+    [
+      "id",
+      "order_id",
+      "kind",
+      "artwork_id",
+      "product_variant_id",
+      "print_label",
+      "edition_number",
+      "unit_price_pence",
+      "vat_treatment",
+      "vat_pence",
+      "framing_snapshot",
+      "created_at",
+    ],
+  ],
+  ["shop_artwork", ["id", "title"]],
+  ["shop_product", ["id", "title"]],
+  ["shop_product_variant", ["id", "product_id", "sku"]],
+  ["shop_guest_customer", ["id", "email", "name", "erased_at"]],
+] as const;
+
+/**
+ * What the Shop app reads to show a buyer their invoice card and serve LAX's stored copy of it
+ * (Shop invoices, plan v2): a document's state, number and target, its copy's key, and the moment
+ * it was issued. Column by column and read only: the document's payload (names, lines), its totals
+ * and every write stay denied to shop_app, and the Shop never changes a document.
+ */
+export const SHOP_ACCOUNTING_READ_COLUMNS = [
+  [
+    "accounting_document",
+    [
+      "id",
+      "product",
+      "legal_entity",
+      "kind",
+      "lax_reference",
+      "target_provider",
+      "target_mode",
+      "state",
+      "provider_number",
+      "created_at",
+    ],
+  ],
+  ["accounting_document_copy", ["document_id", "storage_key", "rehearsal", "stored_at"]],
+  ["accounting_document_event", ["document_id", "to_state", "occurred_at"]],
+  ["accounting_source_setting", ["product", "xero_mode", "books_mode"]],
+] as const;
 /**
  * What a seller is paid for each sale, fixed when the buyer's invoice is raised (migration 0372).
  * Both payment-raising processes (the API at checkout, the worker at lot end) write the row in the
@@ -1482,6 +1556,12 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
         }
         for (const tableName of WORKER_ACCOUNTING_READ_TABLES) {
           await grantIfExists(client, "worker_app", tableName, "SELECT");
+        }
+        for (const [tableName, columns] of WORKER_SHOP_INVOICE_READ_COLUMNS) {
+          await grantColumnSelectIfExists(client, "worker_app", tableName, columns);
+        }
+        for (const [tableName, columns] of SHOP_ACCOUNTING_READ_COLUMNS) {
+          await grantColumnSelectIfExists(client, "shop_app", tableName, columns);
         }
         for (const tableName of WORKER_ACCOUNTING_COPY_TABLES) {
           await grantIfExists(client, "worker_app", tableName, "INSERT, SELECT");
