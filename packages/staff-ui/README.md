@@ -97,7 +97,29 @@ only what is staff: `requires` on buttons and menu items, read-only views, and e
   loading/empty/error; stacked list below 768px), `DataTableToolbar`, `DataViews` (built-in and
   saved views), `TableSearch`, `FilterMenu`, `ActiveFilterChips`, `DensityToggle`,
   `TablePagination`, `ListPageSkeleton`, `DateRangeFilter` (presets plus two date fields, whole
-  London days as `YYYY-MM-DD`).
+  London days as `YYYY-MM-DD`), and `parseListState` / `listStateHref` / `updateListState` (view,
+  search, filters, sort and page or cursor in the URL, defaults left out).
+- **What a row opens** (one rule for every list: [standard](../../docs/design/staff-design-standard.md)
+  TBL-8 and PRD-7). Opt-in per list:
+  - A record list gives its table `rowHref` and renders the title cell as a link to the same
+    href (`PrimaryCell` with `href`). The whole row follows it, Enter opens it, Cmd- or
+    Ctrl-click, middle-click and Cmd+Enter open a new tab, Shift-click selects a range, and Back
+    restores the scroll and focuses and briefly marks the row. Use `recordHrefInList(href,
+    listQuery)` for the href so the record page's `RecordPager` (`listQuery`) pages through the
+    same list.
+  - A work queue keeps a panel: `useQueuePanel({ param, ids })` gives the open record from the
+    URL (it opens from a link even when not on the page shown), `open` for `onRowOpen` (a history
+    entry, so Back closes it) and `queue` for `DetailPanel` ("3 of 12", ↑ ↓ and J/K without
+    closing). Keep `rowHref` on the table so a new tab opens the record's page; give the panel
+    `fullPage` for "Open full page".
+
+    ```tsx
+    const panel = useQueuePanel({ param: "hold", ids: rows.map((row) => row.id), noun: "hold" });
+    <DataTable rowHref={(row) => row.href} onRowOpen={(row) => panel.open(row.id)}
+      activeRowId={panel.openId} … />
+    <DetailPanel open={Boolean(panel.openId)} onOpenChange={panel.onOpenChange}
+      queue={panel.queue} fullPage={{ href: record.href, Link }} … />
+    ```
 - **Page templates**: every list page is a `ListPage`, every record page a `DetailPage`, so both
   tools read the same.
   - `ListPage`, in one fixed order: the page header (title, one line of purpose, actions with
@@ -162,7 +184,9 @@ only what is staff: `requires` on buttons and menu items, read-only views, and e
   see it yet, filled = they can, tick = sold). The words come from the artwork register contract;
   the kit only draws the chip and facts it is given. `SourcedField` and `SourceMark` show a value
   another system owns ("From Zoho"): read-only, full contrast, changed at its source.
-- **Panels**: `DetailPanel` (side sheet; asks before closing over unsaved changes), `StaffDialog`,
+- **Panels**: `DetailPanel` (side sheet, full screen below 640px with the footer in view; asks
+  before closing over unsaved changes; `queue` and `fullPage` for work queues), `useQueuePanel`,
+  `StaffDialog`,
   `ConfirmActionDialog` (Cancel focused first; optional audited `reason` and
   `typedConfirmation`), `StepUpDialog`, `StepUpNotice` and `useStaffStepUp` (the
   `step_up_required` contract), `StaffToaster`, `toastUndo`, `useOptimisticState`.

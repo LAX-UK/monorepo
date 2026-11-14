@@ -62,7 +62,7 @@ with the rest left to each page, counts as `MET`.
 | Hide, disable or explain | Carbon: disable when blocked by permission or prerequisite; read-only when content still matters. Nielsen: disabled items need a reason. | **Hide** what the role can never do. **Disable with a visible reason** what this record's state blocks. Use **read-only** for view-only access to editable data. | Staff need to know an action exists, but not see tools that will never be theirs. [carbon-disabled] [carbon-readonly] [uxtigers-inactive] |
 | Minimum font size | Atlassian: 12px is the smallest, for fine print only. The kit keeps 11px (`2xs`) for digits. | **12px minimum for words.** 11px only for digits in counters and `kbd` glyphs. | Outfit at 11px is too small for words over a long day. 11px digits in a 20px pill stay legible. [atl-type] |
 | Input border contrast | Stripe and Linear use faint borders. Carbon and GOV.UK use strong ones. WCAG 1.4.11 needs 3:1 when the border is the only boundary. | **Form control boundaries ≥ 3:1** against the surface. Card and table hairlines stay faint because they are decorative. | Our inputs, checkboxes, radios and switches sit on white with only a border, so the border is the control's only edge. The faint hairline (1.54:1) fails WCAG; the control border passes on every surface. [wcag-nontext] [carbon-input-style] |
-| Side panel or full page | Notion opens records in a side peek by default. Polaris uses full pages. | A **panel** for triage and quick edits on one record. A **full page** for anything with tabs, a timeline, more than one section to edit, or a money action. A panel always offers "Open full page", and both have URLs. | Panels keep list context during triage. Complex records need room and a shareable address. [notion-peek] [polaris-details] |
+| Side panel or full page | Notion opens records in a side peek by default. Polaris uses full pages. Linear keeps a peek for triage. | **A row opens the record's full page.** A **panel** stays only for a **work queue**: staff decide on many rows one after another and the decision fits in the panel (fulfilment, payout runs, holds, requests, AML, manual review), or for a small record with no page of its own (an audit event, an invitation). A queue panel shows its place ("3 of 12"), steps with J and K, and says "Open full page" when a page exists. Every row is a real link to the page, every panel has a URL, and Back closes a panel. The same in Bid admin, LAX Admin and the client workspace. | Most panels repeated the row and then sent people to the page: two clicks and a wait. In a queue, leaving the list costs context on every row. Decided 14 November 2026 ("Row click: page or panel", rules R1–R6). [notion-peek] [polaris-details] [linear-nav] |
 | Marking required fields | GOV.UK: never use asterisks; mark optional fields. | Mark **"Optional"**. Required is the default, with no asterisks (current kit). | Most staff fields are required, so marking the exceptions is quieter. [govuk-question] |
 
 ---
@@ -165,7 +165,9 @@ previous or next record in that list.**
   disabled, not silent.
 - **Kit:** `MET`. `RecordPager` shows "‹ 3 of 50 ›", binds J and K through the shortcut registry, and
   disables the button at either end. `recordPosition(ids, currentId)` works out the position.
-  Carrying the list's ordered ids into the record (URL or session) is `APP`.
+  `recordHrefInList` puts the list's query on the record's URL (`?list=`), `listQueryFromRecord`
+  reads it back, and `RecordPager` `listQuery` keeps it on the previous and next records. Loading
+  the list's ordered ids for that query is `APP`.
 - **Sources:** [intercom-cmdk] [linear-nav]
 
 **NAV-7. Back always does what people expect.**
@@ -181,8 +183,11 @@ previous or next record in that list.**
   - Filter a list, open a panel, then press Back: the panel closes and the filters stay.
   - Press Back again: you leave the list.
   - Reload: everything is restored.
-- **Kit:** `PARTIAL`. Views and pagination are URL-based (`DataViews`, `TablePagination` hrefs).
-  `DetailPanel` is controlled by the app, so tying it to the URL is `APP`.
+- **Kit:** `MET` for lists that adopt it. Views and pagination are URL-based (`DataViews`,
+  `TablePagination` hrefs); `parseListState`, `listStateQuery` and `updateListState` keep view,
+  search, filters, sort and page or cursor in the URL; `DataTable` `rowHref` restores the scroll
+  and the opened row on Back; `useQueuePanel` pushes the panel's URL so Back closes it. Moving
+  each list onto them is `APP`.
 - **Sources:** [polaris-index-filters-migrate] [notion-peek]
 
 **NAV-8. The product switcher and account menu sit in fixed places.**
@@ -368,8 +373,15 @@ saved per person.**
 **TBL-8. Row actions: the whole row opens the record, and a persistent `…` holds the rest.**
 
 - **Rule:**
-  - A click anywhere on the row outside a control opens the record (panel or page). Enter does
-    the same.
+  - A click anywhere on the row outside a control opens the record's **full page**. Enter does
+    the same. Only a work queue opens a panel instead (PRD-7).
+  - The title cell is a real link to the record's page, never to "the list with the panel
+    open". Cmd- or Ctrl-click, middle-click and Cmd+Enter on the row open the page in a new tab;
+    right-click on the title offers Copy link; Shift-click still selects a range. A queue's rows
+    link to the page too, so a new tab never shows the list again.
+  - Back to the list restores it as it was: view, search, filters, sort and page in the URL, the
+    scroll position, and the row that was opened focused and briefly marked (colour only, held
+    without a fade under reduced motion).
   - The last column is 56px wide and holds a 24px ghost `…` button.
   - Money and irreversible actions in the menu open a confirm dialog with the amount; no row
     carries an inline red button.
@@ -379,7 +391,8 @@ saved per person.**
 - **Why:** Primer says to group several actions in a menu and pull out at most one. Real links
   keep middle-click and new-tab working.
 - **Check:**
-  - Cmd-click a row title: it opens a new tab.
+  - Cmd-click a row title, or anywhere on the row: it opens the record's page in a new tab.
+  - Open a row, then press Back: the list is at the same scroll position with that row focused.
   - The `…` is visible without hover.
   - Delete or Refund is last in the menu and red.
 - **Cells:** the first cell is a `PrimaryCell`: a real link in medium weight, with an optional
@@ -391,7 +404,13 @@ saved per person.**
   click to open. Row open (click and Enter), `RowActions` and `rowActionsColumn` (the 56px last
   column, header for screen readers only, at the right of each row on a phone; `ListPage`
   adds it from `table.rowActions`), `OverflowMenu` (destructive last), and the selection cell
-  never opens the row (TBL-15). Making the title cell a link is `APP`.
+  never opens the row (TBL-15). `DataTable` `rowHref` makes the row a link: the row follows its
+  title link (`PrimaryCell` with the same `href`), opens new tabs on modified and middle clicks
+  and Cmd+Enter, keeps Shift-click for range selection, and on Back restores the scroll and
+  focuses and marks the row. `parseListState` and `listStateHref` keep a list's state in its URL;
+  `recordHrefInList` carries it to the record for `RecordPager`. Lists adopt `rowHref` one area at
+  a time; `scripts/check-staff-list-template.mjs` fails a list on `ListPage` that declares
+  neither `rowHref` nor `useQueuePanel` and is not yet listed as still to adopt.
 - **Sources:** [primer-dt] [carbon-dt] [retool-rows]
 
 **TBL-9. Inline edit only for one-value fields that change often, such as status, assignee or
@@ -628,16 +647,28 @@ independent and heavy.**
 - **Kit:** `APP`. Build it with `Section` and `DataTable` in compact density.
 - **Sources:** [polaris-details]
 
-**PRD-7. A side panel is for triage. A full page is for work.**
+**PRD-7. A side panel is for a work queue. A full page is for everything else.**
 
 - **Rule:**
-  - Panels are 480px, or 640px for forms with side-by-side fields.
-  - Panel header actions include "Open full page" (↗).
-  - The panel footer holds the actions, with the primary action last.
-  - J/K inside a panel moves to the next row in the list.
-- **Why:** this applies the panel-or-page decision above.
-- **Check:** a panel never holds tabs or a money action without confirmation. It has a URL, and
-  Esc returns focus to the row.
+  - A row opens the record's page (TBL-8). A panel is kept only where staff decide on many rows
+    one after another and the decision fits in the panel, or where the record is small and has
+    no page (an audit event, an invitation, a stock hold): then the panel is the record and its
+    URL is the link to share.
+  - Panels are 480px, or 640px for forms with side-by-side fields. Below 640px a panel fills the
+    screen, with its actions in a footer that stays in view.
+  - A queue panel shows its place ("3 of 12"), and J and K (or the ↑ and ↓ buttons) move to the
+    previous and next record without closing it.
+  - Panel header actions start with "Open full page" (↗) when the record has a page: always
+    those words, never "Open order", "Open review" or "Open full record".
+  - The panel footer holds the actions, with the primary action last; money actions confirm.
+  - A panel has a URL that reopens it, even when the record is not on the page of the list
+    shown. Opening it adds a history entry, so Back and the phone's back gesture close it. Esc
+    closes it and returns focus to the row of the record last shown.
+- **Why:** this applies the panel-or-page decision above. In a queue, leaving the list costs
+  context on every row; elsewhere a panel is a smaller page and an extra click.
+- **Check:** a panel never holds tabs or a money action without confirmation. Open a queue
+  panel, press J twice, then Back: the panel closes and the list is as it was. Reload a panel's
+  URL for a record on page 3: it opens.
 - **Header:** a panel uses the record page's header pattern: title, status badge, a meta line of
   2–4 facts, header actions ("Open full page"), then the `…` with the same actions as the row
   menu. Under it, a notice about the record, the key-value summary, sections, and activity last.
@@ -648,7 +679,11 @@ independent and heavy.**
     until the person presses Tab.
 - **Kit:** `MET` for the panel (`DetailPanel` widths, focus on the title and back to the row,
   `meta` as facts that `summary` never repeats, `headerActions`, `overflow`, `notice`,
-  `summary`, `activity`, footer). URL and J/K are `APP` (NAV-6, NAV-7).
+  `summary`, `activity`, footer). `MET` for queues: `useQueuePanel` keeps the open record in the
+  URL, adds the history entry and steps without adding more; `DetailPanel` `queue` shows the
+  position (said again to screen readers on each step), the ↑ ↓ buttons and J/K, and returns
+  focus to the record last shown; `fullPage` renders "Open full page" (`OPEN_FULL_PAGE_LABEL`).
+  Loading a record that is not in the list shown is `APP`.
 - **Sources:** [notion-peek]
 
 **PRD-8. Edit sections in place. Use a page-level edit mode only for long documents.**

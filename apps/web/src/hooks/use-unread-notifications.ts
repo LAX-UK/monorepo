@@ -2,7 +2,7 @@
 
 import { useUserNotifications } from "@/hooks/use-user-notifications";
 import { getBrowserHc } from "@/lib/data/http/hc-browser";
-import { parseUserNotification } from "@/lib/data/http/parse";
+import { parseUserNotification } from "@/lib/data/http/parse/notifications.parse";
 import { notify } from "@/lib/ui/notify";
 import type { UserNotification } from "@auction/types";
 import { useCallback, useEffect, useMemo, useState } from "react";
