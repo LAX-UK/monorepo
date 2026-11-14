@@ -5,7 +5,7 @@ import {
   UNAPPLIED_MONEY_RESOLVED_EVENT,
   type UnappliedMoneyPayload,
 } from "@auction/domain";
-import { and, desc, eq, inArray, or, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull, or, sql } from "drizzle-orm";
 import type {
   IUnappliedMoneyReader,
   OpenUnappliedMoney,
@@ -98,14 +98,27 @@ export class DrizzleUnappliedMoneyReader implements IUnappliedMoneyReader {
     await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${`unapplied:${dedupeKey}`}))`);
   }
 
-  async isChargeOfPaidInvoice(chargeId: string): Promise<boolean> {
+  async isChargeOfPaidInvoice(charge: {
+    chargeId: string;
+    paymentIntentId: string | null;
+  }): Promise<boolean> {
+    // The same rule as the refund handler's invoice match: the invoice's recorded charge, or,
+    // when it recorded no charge, its recorded payment intent.
     const [row] = await this.db
       .select({ id: payment.id })
       .from(payment)
       .where(
         and(
-          eq(payment.stripeChargeId, chargeId),
           inArray(payment.status, ["captured", "refunded"]),
+          or(
+            eq(payment.stripeChargeId, charge.chargeId),
+            charge.paymentIntentId
+              ? and(
+                  isNull(payment.stripeChargeId),
+                  eq(payment.stripePaymentIntentId, charge.paymentIntentId),
+                )
+              : undefined,
+          ),
         ),
       )
       .limit(1);

@@ -242,6 +242,55 @@ describe.skipIf(!HAS_DB)("refunds of unapplied money (integration)", () => {
     expect(await payouts.sumRefundLineCentsForPayment(paymentId)).toBe(10_000);
   });
 
+  it("a captured invoice that recorded only the intent keeps its own refund, even when a task carried that intent", async () => {
+    const { pi, ch } = money();
+    // A task raised before the payment was recorded, carrying the intent but no charge id.
+    await new FinanceTaskLatePaymentRecorder(recorder, runner).recordPaid({
+      paymentId,
+      amountPence: 10_000,
+      buyerLegalEntityId: buyerEntityId,
+      state: { kind: "paid", paymentIntentId: pi, chargeId: null, amountReceivedPence: 10_000 },
+    });
+    // Captured with no charge id (the charge lookup at capture found none).
+    const noCharge = { ...succeeded(pi, ch), latest_charge: null } as Stripe.PaymentIntent;
+    await webhooks.handlePaymentIntentSucceeded(
+      eventOf("payment_intent.succeeded", noCharge),
+      noCharge,
+    );
+    const captured = await payments.findById(paymentId);
+    expect(captured?.status).toBe("captured");
+    expect(captured?.stripeChargeId ?? null).toBeNull();
+    expect(captured?.stripePaymentIntentId).toBe(pi);
+    expect(await reader.wasEverUnapplied({ chargeId: ch, paymentIntentId: pi })).toBe(true);
+    expect(await reader.isChargeOfPaidInvoice({ chargeId: ch, paymentIntentId: pi })).toBe(true);
+    expect(await reader.isChargeOfPaidInvoice({ chargeId: ch, paymentIntentId: null })).toBe(false);
+    expect(
+      await reader.isChargeOfPaidInvoice({ chargeId: ch, paymentIntentId: `${pi}_other` }),
+    ).toBe(false);
+
+    stripeRefunds.show(ch, 10_000);
+    const result = await webhooks.handleChargeRefunded(
+      eventOf("charge.refunded", refunded(pi, ch)),
+      refunded(pi, ch),
+    );
+    // The invoice's refund handling: the invoice is refunded and the seller's side counts it.
+    expect(result).toMatchObject({ processed: true, action: "refund_received" });
+    expect((await payments.findById(paymentId))?.status).toBe("refunded");
+    expect(await payouts.sumRefundLineCentsForPayment(paymentId)).toBe(10_000);
+  });
+
+  it("an invoice that recorded a different charge is not matched by its intent", async () => {
+    const { pi, ch } = money();
+    await webhooks.handlePaymentIntentSucceeded(
+      eventOf("payment_intent.succeeded", succeeded(pi, ch)),
+      succeeded(pi, ch),
+    );
+    expect(await reader.isChargeOfPaidInvoice({ chargeId: ch, paymentIntentId: pi })).toBe(true);
+    expect(
+      await reader.isChargeOfPaidInvoice({ chargeId: `${ch}_other`, paymentIntentId: pi }),
+    ).toBe(false);
+  });
+
   it("money on a cancelled invoice that finance refunds never claws back the unpaid seller", async () => {
     await reset("cancelled");
     const { pi, ch } = money();

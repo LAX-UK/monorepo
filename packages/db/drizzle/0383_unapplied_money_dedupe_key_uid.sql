@@ -16,6 +16,13 @@
 -- any, rather than the bare unique-violation of the index build. Rows without a dedupeKey never
 -- clash (NULLs are distinct in a unique index); the recorder has always written the key.
 --
+-- Same deploy, refund routing (not checked by this migration): a refund is routed to a captured
+-- invoice by its charge id, or by its payment intent when the invoice recorded no charge. Check
+-- before deploying that such invoices are none, or are known (expected 0):
+--   SELECT count(*) FROM payment
+--    WHERE status IN ('captured','refunded')
+--      AND stripe_charge_id IS NULL AND stripe_payment_intent_id IS NOT NULL;
+--
 -- Table size. Plain CREATE UNIQUE INDEX: the migration runner is transactional, so CONCURRENTLY is
 -- not available. The build reads all of domain_events once (the predicate is applied per row) and
 -- holds a SHARE lock, blocking inserts into domain_events while it runs. Size check before

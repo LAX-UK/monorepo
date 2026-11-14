@@ -36,8 +36,15 @@ export interface IUnappliedMoneyReader {
   listOpenByChargeId(chargeId: string): Promise<OpenUnappliedMoney[]>;
   /** One open task, by its key (what staff close by hand). */
   findOpen(dedupeKey: string): Promise<OpenUnappliedMoney | null>;
-  /** Whether the charge pays a captured (or since refunded) invoice: it is that invoice's money. */
-  isChargeOfPaidInvoice(chargeId: string): Promise<boolean>;
+  /**
+   * Whether the charge pays a captured (or since refunded) invoice: it is that invoice's money.
+   * Matched by the invoice's recorded charge, or by its recorded payment intent when it recorded
+   * no charge (the charge id lookup can fail at capture): the same rule as the refund handler's.
+   */
+  isChargeOfPaidInvoice(charge: {
+    chargeId: string;
+    paymentIntentId: string | null;
+  }): Promise<boolean>;
   /**
    * Whether the charge was ever reported as unapplied money, open or closed, by its charge id or
    * by its payment intent (a task recorded before the charge id was known carries only the
