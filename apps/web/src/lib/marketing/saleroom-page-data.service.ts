@@ -11,7 +11,7 @@ import type { SaleroomCatalogSort } from "@/lib/marketing/saleroom-catalog-sort"
 import type { SaleroomCatalogStatusFilter } from "@/lib/marketing/saleroom-page.query";
 import type { Category, Lot, Sale } from "@auction/types";
 
-const CATALOG_LOAD_ALL_BATCH = 48;
+export const CATALOG_LOAD_ALL_BATCH = 48;
 export const SALE_CATALOG_LOAD_ALL_CAP = 200;
 
 function resolveSaleCategoryLabels(sale: Sale, categories: Category[]): string[] {

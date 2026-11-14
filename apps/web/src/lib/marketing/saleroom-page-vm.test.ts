@@ -349,3 +349,16 @@ describe("sale hero", () => {
     expect(onsite.dateLine).not.toContain("Cheltenham");
   });
 });
+
+describe("catalogue cards carry no bid state (CO-7)", () => {
+  it("draws every card pending and names the pages the browser reads live", () => {
+    const vm = build({ lots: manyLots(3) });
+    for (const card of vm.lotVMs) {
+      expect(card.pending).toBe(true);
+      expect(card.currentBidValue).toBe("");
+      expect(card.cardLine.value).toBeNull();
+      expect(card.endTime).toBeNull();
+    }
+    expect(vm.catalogueLiveReads).toEqual([{ limit: 40, offset: 0, sort: "lot" }]);
+  });
+});

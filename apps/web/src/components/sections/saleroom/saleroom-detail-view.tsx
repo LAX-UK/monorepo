@@ -165,6 +165,18 @@ export function SaleroomDetailView({ vm, jsonLdText, explainerContext }: Saleroo
                     allowOnlineBidsBeforeGoLive: vm.sale.allowOnlineBidsBeforeGoLive,
                   }}
                   atgReadOnly={vm.atgReadOnly}
+                  live={
+                    vm.catalogueLiveReads.length > 0
+                      ? {
+                          saleId: vm.sale.id,
+                          reads: vm.catalogueLiveReads,
+                          premiumSale: {
+                            buyerPremiumRate: vm.sale.buyerPremiumRate,
+                            buyerPremiumTiers: vm.sale.buyerPremiumTiers,
+                          },
+                        }
+                      : null
+                  }
                   emptyMessage={vm.catalogEmptyMessage}
                   clearFiltersHref={vm.catalogClearFiltersHref}
                 />

@@ -61,6 +61,11 @@ export type SaleHeroVM = {
 };
 
 export type SaleLotCardVM = {
+  /**
+   * Drawn from the cached page with no bid state (CO-7): the price line, status, close and result
+   * are placeholders until the browser's live read fills them.
+   */
+  pending?: true;
   id: string;
   href: string;
   lotNumber?: number | null;

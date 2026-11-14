@@ -9,9 +9,15 @@ import type { SaleLotCardVM } from "@/components/sections/saleroom/view-models";
 import { useSaleroomLive } from "@/lib/context/saleroom-live-provider";
 import { useUrlLayoutView } from "@/lib/hooks/use-url-layout-view";
 import { lotShowsBidAction } from "@/lib/lot/lot-bid-action";
+import { withLiveCardFields } from "@/lib/marketing/saleroom/card-live-state";
 import type { CatalogueRow } from "@/lib/marketing/saleroom/catalogue-rows";
+import {
+  type SaleCatalogueLiveInput,
+  useSaleCatalogueLive,
+} from "@/lib/marketing/saleroom/sale-catalogue-live.client";
 import type { CatalogLayoutView } from "@/lib/preferences/view-cookie";
 import { isSaleroomSessionActive } from "@/lib/saleroom/public-session-status";
+import { Skeleton } from "@auction/ui/lax/skeleton";
 import { cn } from "@auction/ui/lib/utils";
 
 type Props = {
@@ -24,19 +30,30 @@ type Props = {
   canParticipate?: boolean;
   emptyMessage?: string;
   clearFiltersHref?: string | null;
+  /**
+   * The no-store read that fills the cards' placeholders (CO-7: the page carries no bid state).
+   * Left out, the cards are drawn as they came.
+   */
+  live?: SaleCatalogueLiveInput | null;
 };
 
 export function SaleroomCatalogLotsLive({
-  rows,
+  rows: initialRows,
   saleForLifecycle,
   view: initialView,
   isAuthenticated,
   canParticipate = true,
   emptyMessage,
   clearFiltersHref,
+  live: liveRead = null,
 }: Props) {
   const view = useUrlLayoutView("grid", initialView) as CatalogLayoutView;
   const live = useSaleroomLive();
+  const liveCards = useSaleCatalogueLive(liveRead);
+  const rows = initialRows.map(
+    (row): CatalogueRow<SaleLotCardVM> =>
+      row.kind === "lot" ? { ...row, lot: withLiveCardFields(row.lot, liveCards) } : row,
+  );
   const currentLotId = live?.currentLotId ?? null;
   const nextLotId = live?.nextLotId ?? null;
 
@@ -101,7 +118,10 @@ export function SaleroomCatalogLotsLive({
           <SaleroomLotQuickLookCorner lot={lot} isAuthenticated={isAuthenticated} />
         )}
         renderActions={(lot) =>
-          canParticipate && lotShowsBidAction(lot.status) ? (
+          !canParticipate ? null : lot.pending ? (
+            // The bid action waits for the live state; its place is kept so nothing moves.
+            <Skeleton className="h-lax-control-md w-full rounded-lax-control" />
+          ) : lotShowsBidAction(lot.status) ? (
             <SaleroomLotActions lotHref={lot.href} />
           ) : null
         }

@@ -10,12 +10,20 @@ import type {
   SaleroomRegistrationPaused,
 } from "@/lib/marketing/sale-viewer";
 import type { SaleroomPublicSecondaryData } from "@/lib/marketing/saleroom-page-data.service";
-import { SALE_CATALOG_LOAD_ALL_CAP } from "@/lib/marketing/saleroom-page-data.service";
+import {
+  CATALOG_LOAD_ALL_BATCH,
+  SALE_CATALOG_LOAD_ALL_CAP,
+} from "@/lib/marketing/saleroom-page-data.service";
 import {
   SALEROOM_CATALOG_PAGE_SIZE,
   type SaleroomPageQuery,
 } from "@/lib/marketing/saleroom-page.query";
 import type { SaleroomStatusCounts } from "@/lib/marketing/saleroom-status-counts";
+import {
+  type SaleCatalogueLiveRead,
+  pendingCardVM,
+  saleCatalogueLiveReads,
+} from "@/lib/marketing/saleroom/card-live-state";
 import {
   type CatalogueControls,
   catalogueControls,
@@ -83,6 +91,8 @@ export type SaleroomDetailPageVM = {
   lotVMs: SaleLotCardVM[];
   /** The catalogue in the order it is shown: lots, with withdrawn lots at their place. */
   catalogueRows: CatalogueRow<SaleLotCardVM>[];
+  /** The catalogue pages behind the cards, read again no-store in the browser to fill them. */
+  catalogueLiveReads: SaleCatalogueLiveRead[];
   /** What the sale page is before its sections: the catalogue, or a promise of lots. */
   pageState: SalePageState;
   /** Which catalogue controls this sale's size earns. */
@@ -237,8 +247,12 @@ export function buildSaleroomPageVM(input: BuildSaleroomPageVMInput): SaleroomDe
   };
 
   const lotLinkParams = saleroomLotLinkParams(layoutView, query.statusFilter);
-  const lotVMs = filteredLots.map((lot) =>
-    mapLotToCardVM(lot, {
+  // The page is built from cached reads, so the cards carry no bid state (CO-7): price line,
+  // status, close and result are placeholders the browser fills from a no-store read of the same
+  // catalogue pages (`catalogueLiveReads`). An ATG sale's cards say where to bid or the ATG
+  // result, which is not LAX bid state, so they are drawn as they are.
+  const lotVMs = filteredLots.map((lot) => {
+    const card = mapLotToCardVM(lot, {
       viewerUserId: null,
       now,
       initialWatching: viewer.watchedLotIds.includes(lot.id),
@@ -246,8 +260,20 @@ export function buildSaleroomPageVM(input: BuildSaleroomPageVMInput): SaleroomDe
       premiumSale: bundle.sale,
       ...(treatments ? { treatments } : {}),
       ...(atgState ? { atgState } : {}),
-    }),
-  );
+    });
+    return atgState ? card : pendingCardVM(card);
+  });
+  const catalogueLiveReads = atgState
+    ? []
+    : saleCatalogueLiveReads({
+        loadAll: query.isCatalogLoadAll,
+        page: query.pageNum,
+        pageSize: SALEROOM_CATALOG_PAGE_SIZE,
+        sort: query.catalogSort,
+        total: lotsPage.total,
+        loadAllBatch: CATALOG_LOAD_ALL_BATCH,
+        loadAllCap: SALE_CATALOG_LOAD_ALL_CAP,
+      });
 
   const withdrawnRows = withdrawnRowsFor(lotsPage.withdrawn, {
     statusFilter: query.statusFilter,
@@ -358,6 +384,7 @@ export function buildSaleroomPageVM(input: BuildSaleroomPageVMInput): SaleroomDe
     overviewVM,
     lotVMs,
     catalogueRows,
+    catalogueLiveReads,
     pageState,
     controls: catalogueControls(lotsPage.total),
     statusCounts: input.statusCounts ?? null,
