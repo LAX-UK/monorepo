@@ -541,7 +541,16 @@ export const FINANCE_SETTING_READ_TABLES = ["bid_finance_setting"] as const;
 export const WORKER_SELLER_TERMS_READ_COLUMNS = [
   [
     "consignment_agreement",
-    ["id", "submission_id", "legal_entity_id", "accepted_at", "proposed_at", "commission_percent"],
+    [
+      "id",
+      "submission_id",
+      "legal_entity_id",
+      "accepted_at",
+      "proposed_at",
+      "commission_percent",
+      // The rule prices on the current version only.
+      "superseded_at",
+    ],
   ],
 ] as const;
 /** Shop Identity owns only its local Identity projection. */

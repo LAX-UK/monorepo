@@ -2661,6 +2661,13 @@
       "when": 1811678400000,
       "tag": "0388_accounting_shop_refunds",
       "breakpoints": true
+    },
+    {
+      "idx": 381,
+      "version": "7",
+      "when": 1812024000000,
+      "tag": "0389_consignment_agreement_versions",
+      "breakpoints": true
     }
   ]
 }

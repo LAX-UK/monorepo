@@ -963,6 +963,7 @@ describe("migrate-roles invariants", () => {
         "accepted_at",
         "proposed_at",
         "commission_percent",
+        "superseded_at",
       ],
     });
     for (const table of [...SELLER_TERMS_INSERT_SELECT_TABLES, ...FINANCE_SETTING_READ_TABLES]) {
