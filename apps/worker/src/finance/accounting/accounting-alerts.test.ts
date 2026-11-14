@@ -49,6 +49,7 @@ describe("accounting alerts", () => {
       watch: "accounting-watch",
       sender: "accounting-sender",
       reconcile: "accounting-reconcile",
+      booksStatus: "accounting-books-status",
     });
   });
 });

@@ -73,7 +73,7 @@ export class WriteGate {
     const refused = () =>
       Promise.resolve(zohoFail(new ZohoValidationError({ code: "writes_disabled" })));
     return {
-      get: (organizationId, path, query) => api.get(organizationId, path, query),
+      get: (organizationId, path, query, options) => api.get(organizationId, path, query, options),
       post: (organizationId, path, body, query, options) =>
         this.permits(organizationId)
           ? api.post(organizationId, path, body, query, options)

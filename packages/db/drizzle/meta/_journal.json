@@ -2647,6 +2647,13 @@
       "when": 1811505600000,
       "tag": "0386_stripe_fees_payouts_books",
       "breakpoints": true
+    },
+    {
+      "idx": 379,
+      "version": "7",
+      "when": 1811592000000,
+      "tag": "0387_accounting_books_status",
+      "breakpoints": true
     }
   ]
 }

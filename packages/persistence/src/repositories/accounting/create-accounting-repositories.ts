@@ -6,6 +6,7 @@ import type {
 import type {
   AccountingClock,
   IAccountingAttentionReader,
+  IAccountingBooksStatusStore,
   IAccountingCreditNoteRefunds,
   IAccountingCreditNotes,
   IAccountingDocumentBrowser,
@@ -25,6 +26,7 @@ import type {
   IUnattributedRefundsReader,
 } from "../../interfaces/accounting.js";
 import { DrizzleAccountingAttentionReader } from "./drizzle-accounting-attention.reader.js";
+import { DrizzleAccountingBooksStatusStore } from "./drizzle-accounting-books-status.js";
 import { DrizzleAccountingCreditNoteRefunds } from "./drizzle-accounting-credit-note-refunds.js";
 import { DrizzleAccountingDocumentCopies } from "./drizzle-accounting-document-copies.js";
 import { DrizzleAccountingDocumentBrowser } from "./drizzle-accounting-document.browser.js";
@@ -75,6 +77,8 @@ export interface AccountingRepositories {
   readonly unattributedRefunds: IUnattributedRefundsReader;
   /** The rows a release of a parked document is decided on (the Bid API). */
   readonly releaseBasis: IAccountingReleaseBasisReader;
+  /** The nightly Books status check's record (the worker). */
+  readonly booksStatus: IAccountingBooksStatusStore;
   /** Stripe fees and payouts, read daily and booked once each (the worker). */
   readonly stripeLedger: IStripeBooksLedger;
   /** What the daily reconciliation report reads, and where each report was stored (the worker). */
@@ -106,6 +110,7 @@ export function createAccountingRepositories(
     partFunded: new DrizzlePartFundedTransfersReader(db),
     unattributedRefunds: new DrizzleUnattributedRefundsReader(db),
     releaseBasis: new DrizzleAccountingReleaseBasisReader(db),
+    booksStatus: new DrizzleAccountingBooksStatusStore(db, clock),
     stripeLedger: new DrizzleStripeBooksLedger(db, clock),
     reconciliation: new DrizzleStripeReconciliationStore(db),
   };
