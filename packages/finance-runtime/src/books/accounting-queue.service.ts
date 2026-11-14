@@ -1,9 +1,14 @@
 import {
+  BID_DEFAULT_ACCOUNTING_TREATMENT,
+  type BidDefaultTreatment,
+  type CreditNote,
   DELIVERY_BOOKING,
   type DocumentRecord,
   type LineBooking,
   type Projection,
   SHOP_OUTSIDE_UK_DELIVERY_BOOKING,
+  bidBuyerDefaultPolicy,
+  bidDeliveryRefundedPolicy,
   bidPaymentGroupSettledPolicy,
   canTryAgain,
   isLockedPeriodReason,
@@ -16,6 +21,7 @@ import {
 } from "@auction/accounting-domain";
 import type {
   AwaitedDocument,
+  IAccountingCreditNotes,
   IAccountingDocumentBrowser,
   IAccountingDocumentLookup,
   IAccountingDocumentTransitions,
@@ -23,6 +29,7 @@ import type {
   IBidAccountingFactsReader,
   IPartFundedTransfersReader,
   IShopDeliveryReader,
+  IUnattributedRefundsReader,
   PartFundedTransfer,
   ReleaseBasis,
   StoredAccountingDocument,
@@ -30,6 +37,7 @@ import type {
 import {
   ACCOUNTING_ORGANISATIONS,
   ACCOUNTING_RELEASE_CHANGED_TEXT,
+  ACCOUNTING_RELEASE_DEFAULT_VOID_TEXT,
   ACCOUNTING_RELEASE_INVOICE_CANCELLED_TEXT,
   ACCOUNTING_RELEASE_UNRESOLVED_TEXT,
   type AccountingPartFundedTransfer,
@@ -37,6 +45,7 @@ import {
   type AccountingQueueRow,
   type AccountingReleaseResult,
   type AccountingTryAgainResult,
+  type AccountingUnattributedRefund,
   accountingDocumentLabel,
   accountingProblemCode,
   accountingProblemText,
@@ -78,6 +87,15 @@ export type AccountingQueueDeps = {
   shopDelivery?: IShopDeliveryReader;
   /** How Shop delivery outside the UK is booked; `SHOP_OUTSIDE_UK_DELIVERY_BOOKING` unless a test says otherwise. */
   shopOutsideUkBooking?: LineBooking | null;
+  /** "Pay several" refunds no invoice or courier quote could take, listed for a person to assign. */
+  unattributedRefunds?: IUnattributedRefundsReader;
+  /**
+   * The credit notes registered for an invoice in one books: a parked credit note is rebuilt after
+   * the ones made before it. Without it no credit note is released (refused as not rebuilt).
+   */
+  creditNotes?: IAccountingCreditNotes;
+  /** How a defaulted invoice is booked; `BID_DEFAULT_ACCOUNTING_TREATMENT` unless a test says otherwise. */
+  defaultTreatment?: BidDefaultTreatment | null;
 };
 
 /** The reason a person reads: why it is waiting for them, or what the provider refused. */
@@ -114,6 +132,8 @@ const ALREADY_QUEUED = new Set<DocumentRecord["status"]>(["pending", "sending"])
 
 /** How many part-funded transfers the page lists at most. */
 const PART_FUNDED_LIMIT = 50;
+/** How many groups with unassigned refunds the page lists at most. */
+const UNATTRIBUTED_LIMIT = 50;
 
 /** The LAX reference a part-funded transfer's payment will carry once it is booked. */
 function transferReference(transfer: PartFundedTransfer): string {
@@ -153,6 +173,10 @@ export class AccountingQueueService implements IAccountingQueueService {
     // Bid takes bank transfers; they belong to London Auction Xchange's books.
     const bid = request.organisation === null || request.organisation === "london_auction_xchange";
     const transfers = bid ? await this.deps.partFunded.list(PART_FUNDED_LIMIT) : [];
+    const unattributed =
+      bid && this.deps.unattributedRefunds
+        ? await this.deps.unattributedRefunds.list(UNATTRIBUTED_LIMIT)
+        : [];
     // What each queued document still waits for, so a waiting payment says which invoice it is.
     const awaited = await this.deps.browser.awaitedOf(page.documents);
     return {
@@ -173,6 +197,14 @@ export class AccountingQueueService implements IAccountingQueueService {
       unreadable: page.unreadable.length,
       canAct: request.canAct,
       partFundedTransfers: transfers.map(toTransfer),
+      unattributedRefunds: unattributed.map(
+        (u): AccountingUnattributedRefund => ({
+          paymentGroupId: u.paymentGroupId,
+          amountPence: u.amountPence,
+          buyerName: u.buyer,
+          settledAt: u.settledAt ? u.settledAt.toISOString() : null,
+        }),
+      ),
     };
   }
 
@@ -247,6 +279,13 @@ export class AccountingQueueService implements IAccountingQueueService {
     if (rebuilt === null) return unresolved(ACCOUNTING_RELEASE_CHANGED_TEXT);
     const resolved = resolveParked({ document: document.document, reason }, rebuilt);
     if (!resolved.ok) {
+      if (resolved.refusal.code === "unresolved" && reason === "buyer_default_treatment") {
+        return unresolved(
+          this.defaultTreatment() === "void"
+            ? ACCOUNTING_RELEASE_DEFAULT_VOID_TEXT
+            : ACCOUNTING_RELEASE_UNRESOLVED_TEXT[reason],
+        );
+      }
       return unresolved(
         resolved.refusal.code === "unresolved"
           ? ACCOUNTING_RELEASE_UNRESOLVED_TEXT[reason]
@@ -310,7 +349,77 @@ export class AccountingQueueService implements IAccountingQueueService {
       return { kind: "bid_payment_group", groupId: sourceId.slice(GROUP_PREFIX.length) };
     }
     if (kind === "payment") return { kind: "bid_payment", paymentId: sourceId };
+    if (kind === "credit_note" && sourceId.startsWith(DEFAULT_CREDIT_PREFIX)) {
+      return { kind: "bid_invoice", invoiceId: sourceId.slice(DEFAULT_CREDIT_PREFIX.length) };
+    }
+    const delivery = DELIVERY_CREDIT.exec(sourceId);
+    if (kind === "credit_note" && delivery?.[1]) {
+      const groupId = await this.deps.facts.deliveryGroupOf(delivery[1]);
+      return groupId === null ? null : { kind: "bid_payment_group", groupId };
+    }
     return null;
+  }
+
+  private defaultTreatment(): BidDefaultTreatment | null {
+    return this.deps.defaultTreatment === undefined
+      ? BID_DEFAULT_ACCOUNTING_TREATMENT
+      : this.deps.defaultTreatment;
+  }
+
+  /** The credit notes made for an invoice in the document's books before this one. */
+  private async creditedBefore(document: StoredAccountingDocument): Promise<CreditNote[] | null> {
+    if (!this.deps.creditNotes || document.document.kind !== "credit_note") return null;
+    const read = await this.deps.creditNotes.creditNotesFor(
+      document.product,
+      document.document.invoiceReference,
+      document.target,
+    );
+    if (!read.ok) return null;
+    const index = read.value.findIndex((n) => n.reference === document.reference);
+    return index < 0 ? null : read.value.slice(0, index);
+  }
+
+  /**
+   * A parked Bid credit note, projected again from the stored rows with the credit notes made
+   * before it: a buyer default's full credit note from its voided invoice (with the treatment in
+   * force), a courier refund's from its group's quote, up to the total its reference names (with
+   * the delivery booking in force). Null when it cannot be rebuilt.
+   */
+  private async rebuildCreditNote(document: StoredAccountingDocument): Promise<Projection | null> {
+    const ref = parseLaxReference(document.reference);
+    if (!ref.ok || document.document.kind !== "credit_note") return null;
+    const prior = await this.creditedBefore(document);
+    if (prior === null) return null;
+    const { sourceId } = ref.value;
+    if (sourceId.startsWith(DEFAULT_CREDIT_PREFIX)) {
+      const read = await this.deps.facts.voidedInvoice(
+        sourceId.slice(DEFAULT_CREDIT_PREFIX.length),
+      );
+      if (read.status !== "ready") return null;
+      const projected = bidBuyerDefaultPolicy(this.defaultTreatment())({
+        invoice: read.facts.invoice,
+        defaultedOn: read.facts.defaultedOn,
+        inBooks: "issued",
+        priorCredits: prior,
+      });
+      return projected.ok ? projected.value : null;
+    }
+    const delivery = DELIVERY_CREDIT.exec(sourceId);
+    if (!delivery?.[1] || !delivery[2]) return null;
+    const groupId = await this.deps.facts.deliveryGroupOf(delivery[1]);
+    if (groupId === null) return null;
+    const refundedOn = document.document.refund?.refundedOn ?? document.document.issuedOn;
+    const read = await this.deps.facts.deliveryRefunded(groupId, delivery[1], noonOf(refundedOn));
+    if (read.status !== "ready") return null;
+    const booking =
+      this.deps.deliveryBooking === undefined ? DELIVERY_BOOKING : this.deps.deliveryBooking;
+    // Rebuilt at the total this credit note brought the quote to, after the ones before it.
+    const projected = bidDeliveryRefundedPolicy(booking)({
+      ...read.facts,
+      refundedPence: Number(delivery[2]),
+      priorCredits: prior,
+    });
+    return projected.ok ? projected.value : null;
   }
 
   /**
@@ -323,6 +432,7 @@ export class AccountingQueueService implements IAccountingQueueService {
     if (ref.ok && ref.value.product === "shop") return this.rebuildShop(document);
     if (!ref.ok || ref.value.product !== "bid") return null;
     const { kind, sourceId } = ref.value;
+    if (kind === "credit_note") return this.rebuildCreditNote(document);
     const { facts } = this.deps;
     let groupId: string | null = null;
     if (kind === "invoice" && sourceId.startsWith(DELIVERY_PREFIX)) {
@@ -449,6 +559,9 @@ function result(
 /** Source ids of the documents a "Pay several" payment makes (see the Bid payments policy). */
 const GROUP_PREFIX = "grp-";
 const DELIVERY_PREFIX = "dlv-";
+/** Source ids of the credit notes the refund and default policies make (see the Bid refunds policy). */
+const DEFAULT_CREDIT_PREFIX = "dft-";
+const DELIVERY_CREDIT = /^dlv-(.+)-r(\d+)$/;
 
 /** Midday UTC of a London calendar day: the same day in London whatever the season. */
 function noonOf(day: string): Date {

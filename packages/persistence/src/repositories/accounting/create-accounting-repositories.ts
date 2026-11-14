@@ -1,8 +1,14 @@
 import type { Database } from "@auction/db";
 import type {
+  IStripeBooksLedger,
+  IStripeReconciliationStore,
+} from "../../interfaces/accounting-stripe.js";
+import type {
   AccountingClock,
   IAccountingAttentionReader,
   IAccountingBooksStatusStore,
+  IAccountingCreditNoteRefunds,
+  IAccountingCreditNotes,
   IAccountingDocumentBrowser,
   IAccountingDocumentCopies,
   IAccountingDocumentDueWork,
@@ -17,9 +23,11 @@ import type {
   IBidInvoiceBooksReader,
   IBidInvoiceEmailFactsReader,
   IPartFundedTransfersReader,
+  IUnattributedRefundsReader,
 } from "../../interfaces/accounting.js";
 import { DrizzleAccountingAttentionReader } from "./drizzle-accounting-attention.reader.js";
 import { DrizzleAccountingBooksStatusStore } from "./drizzle-accounting-books-status.js";
+import { DrizzleAccountingCreditNoteRefunds } from "./drizzle-accounting-credit-note-refunds.js";
 import { DrizzleAccountingDocumentCopies } from "./drizzle-accounting-document-copies.js";
 import { DrizzleAccountingDocumentBrowser } from "./drizzle-accounting-document.browser.js";
 import { DrizzleAccountingDocumentDueWork } from "./drizzle-accounting-document.due-work.js";
@@ -34,10 +42,19 @@ import { DrizzleAccountingSourceSettingWriter } from "./drizzle-accounting-sourc
 import { DrizzleBidInvoiceBooksReader } from "./drizzle-bid-invoice-books.reader.js";
 import { DrizzleBidInvoiceEmailFactsReader } from "./drizzle-bid-invoice-email-facts.reader.js";
 import { DrizzlePartFundedTransfersReader } from "./drizzle-part-funded-transfers.reader.js";
+import {
+  DrizzleStripeBooksLedger,
+  DrizzleStripeReconciliationStore,
+} from "./drizzle-stripe-books.js";
+import { DrizzleUnattributedRefundsReader } from "./drizzle-unattributed-refunds.reader.js";
 
 /** Each role's process takes the ports it is granted; the interfaces are what callers depend on. */
 export interface AccountingRepositories {
   readonly lookup: IAccountingDocumentLookup;
+  /** The credit notes registered for an invoice in one books (the worker's projection). */
+  readonly creditNotes: IAccountingCreditNotes;
+  /** A refund credit note's money refunded in the books from Stripe clearing (the worker). */
+  readonly creditNoteRefunds: IAccountingCreditNoteRefunds;
   readonly registry: IAccountingDocumentRegistry;
   readonly transitions: IAccountingDocumentTransitions;
   readonly workQueue: IAccountingDocumentWorkQueue;
@@ -56,10 +73,16 @@ export interface AccountingRepositories {
   readonly bidInvoiceBooks: IBidInvoiceBooksReader;
   /** Bank transfers part received, for the Accounting page (the Bid API). */
   readonly partFunded: IPartFundedTransfersReader;
+  /** "Pay several" refunds no invoice or quote could take, for the Accounting page (the Bid API). */
+  readonly unattributedRefunds: IUnattributedRefundsReader;
   /** The rows a release of a parked document is decided on (the Bid API). */
   readonly releaseBasis: IAccountingReleaseBasisReader;
   /** The nightly Books status check's record (the worker). */
   readonly booksStatus: IAccountingBooksStatusStore;
+  /** Stripe fees and payouts, read daily and booked once each (the worker). */
+  readonly stripeLedger: IStripeBooksLedger;
+  /** What the daily reconciliation report reads, and where each report was stored (the worker). */
+  readonly reconciliation: IStripeReconciliationStore;
 }
 
 /** The one place the accounting repositories are assembled (container registration). */
@@ -67,8 +90,11 @@ export function createAccountingRepositories(
   db: Database,
   clock: AccountingClock,
 ): AccountingRepositories {
+  const reader = new DrizzleAccountingDocumentReader(db, clock);
   return {
-    lookup: new DrizzleAccountingDocumentReader(db, clock),
+    lookup: reader,
+    creditNotes: reader,
+    creditNoteRefunds: new DrizzleAccountingCreditNoteRefunds(db, clock),
     registry: new DrizzleAccountingDocumentRegistry(db, clock),
     transitions: new DrizzleAccountingDocumentTransitions(db, clock),
     workQueue: new DrizzleAccountingDocumentWorkQueue(db, clock),
@@ -82,7 +108,10 @@ export function createAccountingRepositories(
     invoiceEmailFacts: new DrizzleBidInvoiceEmailFactsReader(db),
     bidInvoiceBooks: new DrizzleBidInvoiceBooksReader(db, clock),
     partFunded: new DrizzlePartFundedTransfersReader(db),
+    unattributedRefunds: new DrizzleUnattributedRefundsReader(db),
     releaseBasis: new DrizzleAccountingReleaseBasisReader(db),
     booksStatus: new DrizzleAccountingBooksStatusStore(db, clock),
+    stripeLedger: new DrizzleStripeBooksLedger(db, clock),
+    reconciliation: new DrizzleStripeReconciliationStore(db),
   };
 }

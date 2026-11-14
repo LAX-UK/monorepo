@@ -30,7 +30,7 @@ export const accountingDocument = pgTable(
       .$type<"london_auction_xchange" | "london_art_exchange">()
       .notNull(),
     kind: text("kind")
-      .$type<"invoice" | "payment" | "credit_note" | "bill" | "contact">()
+      .$type<"invoice" | "payment" | "credit_note" | "bill" | "contact" | "expense" | "transfer">()
       .notNull(),
     laxReference: text("lax_reference").notNull(),
     sourceEventRef: text("source_event_ref").notNull(),

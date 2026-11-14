@@ -62,7 +62,7 @@ export interface IAccountingAuditTrail {
 /** Where a person opens a document in Books; null when there is nowhere to go (a rehearsal). */
 export type BooksDocumentLink = (input: {
   organisation: AccountingOrganisation;
-  documentType: "invoice" | "payment" | "credit_note" | "bill" | "contact";
+  documentType: "invoice" | "payment" | "credit_note" | "bill" | "contact" | "expense" | "transfer";
   targetMode: "dry_run" | "test_org" | "live" | null;
   booksId: string;
 }) => string | null;

@@ -13,6 +13,8 @@ type Executor = Pick<Database, "execute">;
  *   `invoice_cancelled`).
  * - A "Pay several" group (its payment, or its delivery invoice): the group, its member payments,
  *   their Bid invoices, and its `payment_group_delivery` rows.
+ * - A Bid invoice voided by a buyer default (its full credit note): the invoice (`voided_at`) and
+ *   its frozen lines.
  * - A Shop order's outside-UK delivery: the order's stored delivery, read (and held) through
  *   migration 0383's definer function, as api_app may not lock a Shop row itself.
  *
@@ -32,6 +34,19 @@ export async function readReleaseBasis(
       sql`select accounting_release_shop_order_basis(${basis.orderId}::uuid) as row`,
     );
     return row ?? null;
+  }
+  if (basis.kind === "bid_invoice") {
+    const [invoice] = await rows(sql`
+      select jsonb_build_object('id', i.id, 'voided', i.voided_at, 'raised', i.raised_at,
+               'due', i.due_at, 'buyer', i.buyer_legal_entity_id)::text as row
+        from bid_invoice i where i.id = ${basis.invoiceId}::uuid${forShare}`);
+    if (!invoice) return null;
+    const lines = await rows(sql`
+      select jsonb_build_object('id', l.id, 'kind', l.kind, 'label', l.label,
+               'amount', l.amount_pence, 'position', l.position)::text as row
+        from bid_invoice_line l where l.invoice_id = ${basis.invoiceId}::uuid
+       order by l.position, l.id${forShare}`);
+    return JSON.stringify({ invoice, lines });
   }
   if (basis.kind === "bid_payment") {
     const [payment] = await rows(sql`

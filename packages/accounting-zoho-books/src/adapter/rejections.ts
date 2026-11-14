@@ -21,6 +21,15 @@ export const ZOHO_BOOKS_REJECTIONS = {
   mixedBasis: "zoho_books_mapping_mixed_basis",
   /** A payment allocation names an invoice whose Books id was not resolved. */
   unresolvedInvoice: "zoho_books_mapping_unresolved_invoice",
+  /**
+   * An expense or transfer for an organisation whose Stripe fees account or bank account is not
+   * configured: the accountant names them before any Stripe fee or payout is sent.
+   */
+  stripeAccountsMissing: "zoho_books_mapping_stripe_accounts_missing",
+  /** An expense or transfer whose reference is longer than Books' reference fields take. */
+  referenceTooLong: "zoho_books_mapping_reference_too_long",
+  /** An expense or transfer Books holds under our reference differs from ours (account, amount, date). */
+  movementMismatch: "zoho_books_movement_mismatch",
   /** The contact found for a reference is not of the type the document needs. */
   contactNotCustomer: "zoho_books_contact_not_customer",
   contactNotVendor: "zoho_books_contact_not_vendor",
@@ -33,6 +42,11 @@ export const ZOHO_BOOKS_REJECTIONS = {
   remainderDiffers: "zoho_books_remainder_differs",
   /** The payment no longer holds enough unapplied to pay the invoice (applied elsewhere by hand). */
   remainderUnavailable: "zoho_books_remainder_unavailable",
+  /**
+   * A credit note Books holds with a refund other than ours (made by hand, another amount or
+   * reference): it is never topped up, a person decides.
+   */
+  creditNoteRefundDiffers: "zoho_books_credit_note_refund_differs",
   /** A payment Books holds under our reference differs from ours (invoice, amount, currency, date). */
   paymentMismatch: "zoho_books_payment_mismatch",
   /**

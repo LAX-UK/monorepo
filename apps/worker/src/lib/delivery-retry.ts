@@ -99,6 +99,20 @@ export function isCircuitOpenDeliveryError(err: unknown): boolean {
   return code === "circuit_open";
 }
 
+/**
+ * An error that says the event waits on something settling elsewhere (an accounting document
+ * being sent, its outcome not known yet), not that delivering it failed: tried again after its
+ * `retryAfterMs`, without using up one of the delivery's attempts, so the wait never dead-letters it.
+ */
+export function isWaitingDeliveryError(err: unknown): boolean {
+  return (
+    typeof err === "object" &&
+    err !== null &&
+    (err as { waiting?: unknown }).waiting === true &&
+    isRetryableDeliveryError(err)
+  );
+}
+
 /** Exponential backoff with full jitter (AWS-style). */
 export function computeDeliveryBackoffMs(
   attempt: number,

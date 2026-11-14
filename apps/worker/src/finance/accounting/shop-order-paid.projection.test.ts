@@ -80,6 +80,7 @@ describe("Shop order paid, projected", () => {
       replayed: 0,
       kept: 0,
       parked: 0,
+      cancelled: 0,
     });
     expect(orderPaid).toHaveBeenCalledWith(ORDER_ID);
     expect(

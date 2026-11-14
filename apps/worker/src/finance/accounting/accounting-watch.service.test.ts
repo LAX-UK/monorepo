@@ -31,6 +31,7 @@ function setUp(
   delayed: QueueAge = none,
   waiting: QueueAge = none,
   unsettled: QueueAge = none,
+  unrefunded: QueueAge = none,
 ) {
   const raised: [string, Record<string, unknown>][] = [];
   const alerts: AccountingAlertSink = {
@@ -40,14 +41,29 @@ function setUp(
   const delayedBidInvoices = vi.fn(async () => delayed);
   const waitingPayments = vi.fn(async () => waiting);
   const unsettledRemainders = vi.fn(async () => unsettled);
+  const unrefundedCreditNotes = vi.fn(async () => unrefunded);
   const watch = new AccountingWatch({
-    attention: { read, delayedBidInvoices, waitingPayments, unsettledRemainders },
+    attention: {
+      read,
+      delayedBidInvoices,
+      waitingPayments,
+      unsettledRemainders,
+      unrefundedCreditNotes,
+    },
     settings: switchWith(mode),
     senderModes: ["dry_run"],
     alerts,
     now: () => new Date(now),
   });
-  return { watch, raised, read, delayedBidInvoices, waitingPayments, unsettledRemainders };
+  return {
+    watch,
+    raised,
+    read,
+    delayedBidInvoices,
+    waitingPayments,
+    unsettledRemainders,
+    unrefundedCreditNotes,
+  };
 }
 
 describe("AccountingWatch", () => {
@@ -60,6 +76,7 @@ describe("AccountingWatch", () => {
       paymentWaiting: false,
       remainderDelayed: false,
       statusCheckMissed: false,
+      creditNoteRefundDelayed: false,
     });
     expect(raised).toEqual([]);
   });
@@ -114,6 +131,7 @@ describe("AccountingWatch", () => {
         delayedBidInvoices: vi.fn(async () => none),
         waitingPayments: vi.fn(async () => none),
         unsettledRemainders: vi.fn(async () => none),
+        unrefundedCreditNotes: vi.fn(async () => none),
       },
       settings: { read: async () => refuse("bad_mode", "broken") },
       senderModes: ["dry_run"],
@@ -221,6 +239,7 @@ describe("AccountingWatch", () => {
           delayedBidInvoices: async () => none,
           waitingPayments: async () => none,
           unsettledRemainders: async () => none,
+          unrefundedCreditNotes: async () => none,
         },
         settings: switchWith(mode),
         senderModes: ["dry_run"],
@@ -295,5 +314,28 @@ describe("AccountingWatch", () => {
       expect((await watch.check()).statusCheckMissed).toBe(false);
       expect(raised).toEqual([]);
     });
+  });
+
+  it("raises the refund alert for a refund's credit note issued six hours ago and not refunded in Books", async () => {
+    const since = new Date(Date.parse("2031-01-01T00:00:00Z"));
+    const { watch, raised, unrefundedCreditNotes } = setUp(
+      {},
+      "2031-01-01T12:00:00Z",
+      "dry_run",
+      none,
+      none,
+      none,
+      { count: 2, oldestSince: since },
+    );
+    const result = await watch.check();
+    expect(result.creditNoteRefundDelayed).toBe(true);
+    expect(unrefundedCreditNotes).toHaveBeenCalledWith(
+      ["dry_run"],
+      new Date("2031-01-01T06:00:00Z"),
+    );
+    expect(raised).toContainEqual([
+      "accounting_credit_note_refund_delayed",
+      expect.objectContaining({ documentType: "credit_note", count: 2 }),
+    ]);
   });
 });

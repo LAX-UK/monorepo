@@ -23,6 +23,8 @@ const NUMBER_PREFIX: Record<DocumentKind, string> = {
   payment: "PMT",
   bill: "BILL",
   contact: "CON",
+  expense: "EXP",
+  transfer: "TRF",
 };
 
 const reply = (status: number, body: unknown): TransportResponse => ({
@@ -83,10 +85,16 @@ export class SimulatedBooks implements ZohoTransport {
     const body: Json | null = request.body ? (JSON.parse(request.body) as Json) : null;
     switch (request.method) {
       case "GET":
+        if (kind === "credit_note" && id && action === "refunds") {
+          return this.creditNoteRefunds(org, id);
+        }
         return id ? this.detail(org, kind, id) : this.list(org, kind, url.searchParams);
       case "POST":
         if (kind === "invoice" && id && action === "credits") {
           return this.applyCredits(org, id, body ?? {});
+        }
+        if (kind === "credit_note" && id && action === "refunds") {
+          return this.refundCreditNote(org, id, body ?? {});
         }
         return id ? failure(404, 1002) : this.create(org, kind, body ?? {}, url.searchParams);
       case "PUT":
@@ -301,6 +309,51 @@ export class SimulatedBooks implements ZohoTransport {
     return reply(201, { code: 0, message: "credits applied" });
   }
 
+  /** The refunds recorded on a credit note (Books' `creditnote_refunds`). */
+  private creditNoteRefunds(org: ZohoOrgConfig, creditNoteId: string): TransportResponse {
+    const note = this.held(org, "credit_note").find((d) => d.id === creditNoteId);
+    if (!note) return failure(404, 1002, "does not exist");
+    return reply(200, {
+      code: 0,
+      message: "success",
+      creditnote_refunds: (note.record.refunds as Json[] | undefined) ?? [],
+    });
+  }
+
+  /**
+   * Books' refund of a credit note from an account: the credit note's balance falls by the amount;
+   * more than its balance is refused, and so is an account that is not a bank account.
+   */
+  private refundCreditNote(
+    org: ZohoOrgConfig,
+    creditNoteId: string,
+    body: Json,
+  ): TransportResponse {
+    const fault = this.faults.take();
+    if (fault === "rate_limited") return reply(429, { code: 45 });
+    const note = this.held(org, "credit_note").find((d) => d.id === creditNoteId);
+    if (!note) return failure(404, 1002, "does not exist");
+    if (body.from_account_id !== org.payments.depositAccountId) {
+      return failure(400, 1009, "account cannot be used for a refund");
+    }
+    const amount = pence(body.amount as number);
+    const refunds = (note.record.refunds as Json[] | undefined) ?? [];
+    const used = refunds.reduce((sum, r) => sum + pence(r.amount as number), 0);
+    if (!(amount > 0) || amount + used > pence(note.record.total as number)) {
+      return failure(400, 1005, "more than the credit note's balance");
+    }
+    refunds.push({
+      creditnote_refund_id: String(++this.counter),
+      amount: body.amount,
+      date: body.date,
+      reference_number: body.reference_number,
+      from_account_id: body.from_account_id,
+    });
+    note.record.refunds = refunds;
+    if (fault === "timeout_after_commit") throw new Error("ECONNRESET");
+    return reply(201, { code: 0, message: "refund recorded" });
+  }
+
   private referenceOf(org: ZohoOrgConfig, body: Json): string | null {
     const fields = body.custom_fields;
     if (!Array.isArray(fields)) return null;
@@ -334,6 +387,7 @@ export class SimulatedBooks implements ZohoTransport {
       if (type !== "customer" && type !== "vendor") return { error: failure(400, 1, "bad type") };
       return { fields: { contact_name: body.contact_name, contact_type: type } };
     }
+    if (kind === "expense" || kind === "transfer") return this.priceMovement(kind, body);
     const party = kind === "bill" ? body.vendor_id : body.customer_id;
     if (!this.exists(org, "contact", party))
       return { error: failure(400, 1003, "no such contact") };
@@ -369,6 +423,39 @@ export class SimulatedBooks implements ZohoTransport {
         sub_total: pounds(inclusive ? gross : net),
         tax_total: pounds(vat),
         total: pounds(gross),
+      },
+    };
+  }
+
+  /**
+   * An expense (Stripe's fee, paid through the clearing account) or a bank transfer (a payout,
+   * clearing to the bank): one amount, no contact, no tax. Books keeps the accounts, day and
+   * currency it was sent, and reads an expense's amount back as its `total`.
+   */
+  private priceMovement(
+    kind: "expense" | "transfer",
+    body: Json,
+  ): { fields: Json } | { error: TransportResponse } {
+    if (body.currency_code !== "GBP") return { error: failure(400, 1007, "currency required") };
+    const amount = pence(body.amount as number);
+    if (!(amount > 0)) return { error: failure(400, 1, "amount must be positive") };
+    const accounts =
+      kind === "expense"
+        ? ["account_id", "paid_through_account_id"]
+        : ["from_account_id", "to_account_id"];
+    if (!accounts.every((a) => typeof body[a] === "string")) {
+      return { error: failure(400, 1, "account missing") };
+    }
+    if (kind === "transfer" && body.transaction_type !== "transfer_fund") {
+      return { error: failure(400, 1, "not a transfer") };
+    }
+    const kept = Object.fromEntries(accounts.map((a) => [a, body[a]]));
+    return {
+      fields: {
+        ...kept,
+        ...(kind === "expense" ? { total: pounds(amount) } : { amount: pounds(amount) }),
+        date: body.date,
+        currency_code: body.currency_code,
       },
     };
   }

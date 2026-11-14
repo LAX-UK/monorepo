@@ -1,4 +1,5 @@
 import {
+  ACCOUNTING_BOOKS_STATUS_QUEUE_NAME,
   ACCOUNTING_RECONCILE_QUEUE_NAME,
   ACCOUNTING_WATCH_QUEUE_NAME,
   CLEANUP_DISPLAY_PAIRINGS_QUEUE_NAME,
@@ -40,7 +41,30 @@ export const FINANCE_CRON_QUEUE_REGISTRY = {
     consumer: "worker",
     criticality: "normal",
     pauseOrder: null,
-    heartbeatKey: "accounting-reconcile",
+    // Daily: a freshness heartbeat would be stale 23 hours a day. Its Sentry cron monitor is the
+    // missed-run alert.
+    heartbeatKey: null,
+    dlq: false,
+    showInUi: false,
+    allowUiRetries: false,
+    repeatable: true,
+    defaultJobOptions: {
+      attempts: 3,
+      backoff: { type: "exponential", delay: 5 * 60_000 },
+      removeOnComplete: 30,
+      removeOnFail: 50,
+    },
+    description: "Stripe fees and payouts to Zoho Books, then the daily reconciliation report",
+    enabledWhen: accountingBooksEnabled,
+  },
+  [ACCOUNTING_BOOKS_STATUS_QUEUE_NAME]: {
+    producers: ["worker"],
+    consumer: "worker",
+    criticality: "normal",
+    pauseOrder: null,
+    // Nightly: a freshness heartbeat would be stale most of the day. Its Sentry cron monitor and
+    // the accounting watch (`accounting_status_check_missed`) are the missed-run alerts.
+    heartbeatKey: null,
     dlq: false,
     showInUi: false,
     allowUiRetries: false,

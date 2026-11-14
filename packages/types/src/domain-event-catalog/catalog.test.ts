@@ -192,6 +192,11 @@ describe("DOMAIN_EVENT_REGISTRY", () => {
     expect(entry.piiClassification).toBe("none");
     expect(DOMAIN_EVENT_REGISTRY["payment.captured"].consumers).toContain("accounting");
     expect(DOMAIN_EVENT_REGISTRY["payment.refunded"].consumers).toContain("accounting");
+    // A refund taken back after its credit note was made is followed by the books too.
+    expect(DOMAIN_EVENT_REGISTRY["payment.refund_reversed"].consumers).toEqual(["accounting"]);
+    expect(DOMAIN_EVENT_REGISTRY["payment_group.refund_reversed"].consumers).toEqual([
+      "accounting",
+    ]);
     const payload = {
       invoiceId: "11111111-1111-4111-8111-111111111111",
       lotId: "22222222-2222-4222-8222-222222222222",

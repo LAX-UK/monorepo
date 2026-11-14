@@ -14,6 +14,7 @@ import {
   escalate,
   expectedTotals,
   expireLease,
+  hold,
   newRecord,
   ok,
   park,
@@ -114,6 +115,9 @@ export class InMemoryAccountingStore
   async read(): Promise<Result<SwitchConfig, never>> {
     return ok(this.config);
   }
+
+  /** One process, no concurrent registrations: nothing to wait for. */
+  async awaitCreditRegistrations(): Promise<void> {}
 
   async register(input: RegisterInput): Promise<Result<RegisterOutcome, "reference_in_use">> {
     const target = documentTarget(this.config[input.document.product]);
@@ -285,6 +289,8 @@ export class InMemoryAccountingStore
         return park(record, transition.reason);
       case "cancel":
         return cancel(record);
+      case "hold":
+        return hold(record, transition.reason);
     }
   }
 

@@ -86,6 +86,9 @@ function factsReader(over: Partial<IBidAccountingFactsReader> = {}): IBidAccount
     ),
     paymentGroupSettled: vi.fn(async () => ready(groupFacts())),
     deliveryGroupOf: vi.fn(async () => GROUP_ID),
+    deliveryRefunded: vi.fn(async () => ({ status: "skip", reason: "not_in_test" }) as const),
+    defaultedInvoice: vi.fn(async () => ({ status: "skip", reason: "not_in_test" }) as const),
+    voidedInvoice: vi.fn(async () => ({ status: "skip", reason: "not_in_test" }) as const),
     ...over,
   };
 }
@@ -165,6 +168,7 @@ describe("accounting projection", () => {
       replayed: 0,
       kept: 0,
       parked: 0,
+      cancelled: 0,
     });
     expect(store.documents().map((d) => [d.kind, d.target, d.sourceEventRef])).toEqual([
       ["contact", { provider: "books", mode: "dry_run" }, "domain_event:10"],
@@ -353,6 +357,7 @@ describe("accounting projection: payments", () => {
       replayed: 2,
       kept: 0,
       parked: 0,
+      cancelled: 0,
     });
     expect(facts.paymentGroupSettled).toHaveBeenCalledWith(GROUP_ID);
     const payment = store.documents().find((d) => d.kind === "payment");

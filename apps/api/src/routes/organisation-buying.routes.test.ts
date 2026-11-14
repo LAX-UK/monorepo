@@ -210,6 +210,7 @@ function mount(
               invoices: [
                 {
                   documentId: BOOKS_DOCUMENT,
+                  reference: `LAX-BID-INV-${invoiceId}`,
                   targetMode: "live" as const,
                   record: {
                     kind: "invoice",
@@ -223,6 +224,8 @@ function mount(
                   copy: { storageKey: "accounting/x/doc.pdf", rehearsal: false },
                 },
               ],
+              creditNotes: [],
+              paidWith: "card",
             }),
         },
         storage: { getObjectBytes: async () => STORED_PDF },
