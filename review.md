@@ -599,3 +599,22 @@ If #1366 merges first, #1372 renumbers its migration, rollback and journal entry
 All six fixes do what the table claims, and I checked each one in code and on a live database. The atomic release holds for Bid and Shop on real concurrent connections. The definer function is narrow. The rollbacks keep parked rows parked. Books stays dry run, and the Shop never reaches the Bid organisation.
 
 M1 to M3 are Low: defence in depth and missing tests, with no path to a wrong document in Books. They are worth a small follow-up commit, ideally before merge. M6 only matters for merge order.
+
+## Final small fixes
+
+Commit `67d86560` on `bk10-shop-invoices`, on top of `34b933fc`. `origin/main` (`f1ffc6e4`) still ends at 0382, so the merge was a no-op and no renumbering was needed (M6 still applies if #1372 merges first). Checked on a fresh Postgres 16 under `/var/tmp`, port 55432: `pnpm install --frozen-lockfile`, package build, `db:migrate`, worker probe seed and `db:roles`.
+
+| Item | Change | Test | Mutation |
+|---|---|---|---|
+| M1 | 0383 line-total pin: `bool_and(COALESCE(jsonb_typeof(l) = 'object' AND quantity/unitNetPence/vatPence are numbers, false))`. The sum keeps its own guard, because Postgres evaluates an aggregate even when the enclosing CASE is false. It is only used when every line passed, so no line is skipped. Bid behaviour is otherwise unchanged. | `api-app-role.contract.test.ts`: "an extra line missing its quantity" and "an extra line that is not an object", for both Bid and Shop. Both are refused (42501). | I restored the old non-total `bool_and` in the live trigger. The missing-quantity probe fails. With that probe removed, the non-object probe fails. Both mutants are killed. |
+| M2 | None (tests only). | Same file: "the totals removed" and "a total that is a string", for both Bid and Shop. Both are refused (42501). | I changed the live trigger's `ELSE false` to `ELSE true`. The totals-removed probe fails. With that probe removed, the string-total probe fails. Both mutants are killed. |
+| M3 | None (tests only). | `shop-invoice-books.integration.test.ts`: "does not list a delivery invoice whose order payment is issued only under another mode". The older invoice's payment is moved to `test_org`. With batch 1, the next invoice is listed, and the blocked one is not listed at all. | I dropped the `target_provider` / `target_mode` match from `PAYMENT_ISSUED` in the built persistence code. The new test fails. The following test also fails, because the mutant leaves state behind. The mutant is killed. |
+
+After each mutation I restored the code, and the suites passed again.
+
+**Runs (`--maxWorkers=2`):**
+- api_app, worker_app and shop_app role contracts: 76 passed.
+- worker `src/finance/accounting`: 13 files, 154 passed.
+- `biome check` and typecheck (`@auction/db`, `@auction/worker`): clean.
+
+All commits are authored by mahmoudamrspace.
