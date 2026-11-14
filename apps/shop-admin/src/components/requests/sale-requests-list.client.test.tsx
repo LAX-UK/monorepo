@@ -1,5 +1,7 @@
 // @vitest-environment jsdom
+import { expectBackCloses, expectQueuePanel } from "@/test/queue-panel";
 import type { AdminSaleAuthorityRequestList } from "@auction/shop-contracts";
+import { StaffTooltipProvider } from "@auction/staff-ui";
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import type * as React from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -68,7 +70,9 @@ const page: AdminSaleAuthorityRequestList = {
 
 function renderList(query: Record<string, string> = {}, canDecide = true) {
   render(
-    <SaleRequestsList state={saleRequestsList.parse(query)} page={page} canDecide={canDecide} />,
+    <StaffTooltipProvider>
+      <SaleRequestsList state={saleRequestsList.parse(query)} page={page} canDecide={canDecide} />
+    </StaffTooltipProvider>,
   );
 }
 
@@ -80,6 +84,7 @@ const choose = (text: string, name: RegExp) => {
 };
 
 beforeEach(() => {
+  window.history.replaceState(null, "", "/requests");
   decideSaleAuthorityRequest.mockReset();
   decideSaleAuthorityRequest.mockResolvedValue({ ok: true, data: { status: "ok" } });
 });
@@ -154,5 +159,51 @@ describe("the sale limit requests list", () => {
     const panel = await screen.findByRole("dialog", { name: /Night Garden/ });
     expect(within(panel).getByText("We need the signed agreement.")).toBeInTheDocument();
     expect(within(panel).getByText("For the autumn fair")).toBeInTheDocument();
+  });
+});
+
+describe("the sale limit requests queue", () => {
+  const vessel = {
+    link: "Vessel Study",
+    panel: /Vessel Study/,
+    id: "11111111-1111-4111-8111-111111111111",
+  };
+  const garden = {
+    link: "Night Garden",
+    panel: /Night Garden/,
+    id: "44444444-4444-4444-8444-444444444444",
+  };
+
+  it("opens a request in the URL, steps with J and K, and Esc returns to the row", async () => {
+    renderList();
+    await expectQueuePanel({
+      grid: "Sale limit requests",
+      path: "/requests",
+      param: "request",
+      first: vessel,
+      second: garden,
+      total: 2,
+    });
+  });
+
+  it("closes the panel on Back", async () => {
+    renderList();
+    await expectBackCloses({ grid: "Sale limit requests", path: "/requests", record: vessel });
+  });
+
+  it("asks before approving from the panel, and sends nothing until confirmed", async () => {
+    renderList({ request: vessel.id });
+    const panel = await screen.findByRole("dialog", { name: vessel.panel });
+    fireEvent.click(within(panel).getByRole("button", { name: "Approve" }));
+    expect(
+      await screen.findByRole("dialog", { name: "Approve Theo Marsh’s request?" }),
+    ).toBeInTheDocument();
+    expect(decideSaleAuthorityRequest).not.toHaveBeenCalled();
+  });
+
+  it("offers no decision in the panel to a role that cannot decide", async () => {
+    renderList({ request: vessel.id }, false);
+    const panel = await screen.findByRole("dialog", { name: vessel.panel });
+    expect(within(panel).queryByRole("button", { name: /Approve|Decline/ })).toBeNull();
   });
 });

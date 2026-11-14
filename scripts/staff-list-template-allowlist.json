@@ -174,40 +174,8 @@
       "reason": "Opens its page already through onRowOpen; moves to rowHref"
     },
     {
-      "page": "lax-admin:audit/page.tsx",
-      "reason": "Queue panel (pull request 6, LAX Admin queues)"
-    },
-    {
-      "page": "lax-admin:fulfilment/page.tsx",
-      "reason": "Queue panel (pull request 6, LAX Admin queues)"
-    },
-    {
-      "page": "lax-admin:holds/page.tsx",
-      "reason": "Queue panel (pull request 6, LAX Admin queues)"
-    },
-    {
       "page": "lax-admin:leads/page.tsx",
       "reason": "Opens its page already through onRowOpen; moves to rowHref"
-    },
-    {
-      "page": "lax-admin:original-sales/page.tsx",
-      "reason": "Queue panel (pull request 6, LAX Admin queues)"
-    },
-    {
-      "page": "lax-admin:payouts/page.tsx",
-      "reason": "Queue panel (pull request 6, LAX Admin queues)"
-    },
-    {
-      "page": "lax-admin:production/page.tsx",
-      "reason": "Queue panel (pull request 6, LAX Admin queues)"
-    },
-    {
-      "page": "lax-admin:requests/page.tsx",
-      "reason": "Queue panel (pull request 6, LAX Admin queues)"
-    },
-    {
-      "page": "lax-admin:third-party-sales/page.tsx",
-      "reason": "Queue panel (pull request 6, LAX Admin queues)"
     }
   ],
   "rowOpenNone": [

@@ -4,7 +4,8 @@ import {
   UNASSIGNED,
   useProductionTaskActions,
 } from "@/components/production/use-production-task-actions.client";
-import { filterChip, useWorkList } from "@/components/use-work-list.client";
+import { filterChip } from "@/components/use-work-list.client";
+import { useWorkQueue } from "@/components/use-work-queue.client";
 import { presentProductionStatus } from "@/server/domain/order-detail.vm";
 import { orderNumber } from "@/server/domain/order-list.vm";
 import {
@@ -36,11 +37,16 @@ import {
   StaffDate,
   formatStaffDateTime,
 } from "@auction/staff-ui";
-import { ArrowUpRight, PanelRight, ReceiptText } from "@auction/staff-ui/icons";
+import { PanelRight, ReceiptText } from "@auction/staff-ui/icons";
 import Link from "next/link";
 import { useMemo } from "react";
 
 type Task = AdminProductionTaskListItem;
+
+/** A production task's own page, which the panel's "Open full page" and a new tab open. */
+function productionTaskHref(taskId: string): string {
+  return `/production/${encodeURIComponent(taskId)}`;
+}
 
 /**
  * The production queue on the staff list template: a view per status with counts, a filter for
@@ -64,7 +70,7 @@ export function ProductionQueue({
   /** Frames due, shown under the page header: the other work production has in hand. */
   framing?: React.ReactNode;
 }) {
-  const list = useWorkList({
+  const list = useWorkQueue({
     list: productionList,
     state,
     page,
@@ -73,6 +79,8 @@ export function ProductionQueue({
       label: "Search production tasks",
       placeholder: "Search by artwork, order number or task ID",
     },
+    ids: page.items.map((row) => row.taskId),
+    queueNoun: "task",
   });
   const tasks = useProductionTaskActions({ assignees, currentSubject });
   const opened = page.items.find((task) => task.taskId === list.panel.openId) ?? null;
@@ -87,7 +95,7 @@ export function ProductionQueue({
         mobile: "title",
         cell: (row) => (
           <PrimaryCell
-            href={list.panelHref(row.taskId)}
+            href={productionTaskHref(row.taskId)}
             Link={list.panel.PanelLink}
             secondary={`Order ${orderNumber(row.orderId, row.orderReference)}`}
           >
@@ -123,7 +131,7 @@ export function ProductionQueue({
         cell: (row) => <StaffDate value={row.createdAt} withTime />,
       },
     ],
-    [list.panelHref, list.panel.PanelLink],
+    [list.panel.PanelLink],
   );
 
   const assigneeChip = filterChip(
@@ -194,7 +202,8 @@ export function ProductionQueue({
           getRowId: (row) => row.taskId,
           defaultDensity: "comfortable",
           ...list.sort,
-          onRowOpen: (row) => list.panel.show(row.taskId),
+          onRowOpen: (row) => list.panel.open(row.taskId),
+          rowHref: (row) => productionTaskHref(row.taskId),
           activeRowId: list.panel.openId,
           rowActions: {
             label: (row) => `Actions for ${productionTaskTitle(row)}`,
@@ -203,7 +212,7 @@ export function ProductionQueue({
                 id: "open",
                 label: "Open details",
                 icon: PanelRight,
-                onSelect: () => list.panel.show(row.taskId),
+                onSelect: () => list.panel.open(row.taskId),
               },
               ...tasks.actionsFor(row),
               {
@@ -221,22 +230,15 @@ export function ProductionQueue({
 
       <DetailPanel
         open={opened !== null}
-        onOpenChange={(open) => {
-          if (!open) list.panel.show(null);
-        }}
+        {...list.panel.queueProps}
+        onOpenChange={list.panel.onOpenChange}
         title={opened ? productionTaskTitle(opened) : "Production task"}
         status={
           opened ? (
             <MappedStatusBadge status={opened.status} present={presentProductionStatus} />
           ) : null
         }
-        headerActions={
-          opened ? (
-            <StaffButton asChild variant="ghost" size="sm" icon={<ArrowUpRight aria-hidden />}>
-              <Link href={`/production/${opened.taskId}`}>Open full page</Link>
-            </StaffButton>
-          ) : null
-        }
+        {...(opened ? { fullPage: { href: productionTaskHref(opened.taskId), Link } } : {})}
         overflow={
           opened && others.length > 0 ? (
             <OverflowMenu

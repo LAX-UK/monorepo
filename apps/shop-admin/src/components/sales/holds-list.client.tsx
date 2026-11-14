@@ -2,7 +2,8 @@
 
 import { NewHoldDialog } from "@/components/sales/new-hold-dialog.client";
 import { useAdminAction } from "@/components/use-admin-action.client";
-import { knownFacts, useWorkList } from "@/components/use-work-list.client";
+import { knownFacts } from "@/components/use-work-list.client";
+import { useWorkQueue } from "@/components/use-work-queue.client";
 import { releaseStockHold } from "@/server/application/admin-sales-actions.server";
 import { editionLabel } from "@/server/domain/lookup-options.vm";
 import { holdsList } from "@/server/domain/sales-lists.vm";
@@ -75,12 +76,14 @@ export function HoldsList({
   canHold: boolean;
   loadFailed?: boolean;
 }) {
-  const list = useWorkList({
+  const list = useWorkQueue({
     list: holdsList,
     state,
     page,
     noun: { one: "hold", other: "holds" },
     search: { label: "Search holds", placeholder: "Search by artwork or client" },
+    ids: page.items.map((row) => row.holdId),
+    queueNoun: "hold",
   });
   const [creating, setCreating] = useState(false);
   const [releasingId, setReleasingId] = useState<string | null>(null);
@@ -210,7 +213,8 @@ export function HoldsList({
           getRowId: (row) => row.holdId,
           defaultDensity: "comfortable",
           ...list.sort,
-          onRowOpen: (row) => list.panel.show(row.holdId),
+          onRowOpen: (row) => list.panel.open(row.holdId),
+          rowHref: (row) => list.panelHref(row.holdId),
           activeRowId: list.panel.openId,
           rowActions: {
             label: (row) => `Actions for the hold on ${editionLabel(row)}`,
@@ -220,7 +224,7 @@ export function HoldsList({
                   id: "open",
                   label: "Open details",
                   icon: PanelRight,
-                  onSelect: () => list.panel.show(row.holdId),
+                  onSelect: () => list.panel.open(row.holdId),
                 },
                 releaseAction(row),
               ].filter((action): action is OverflowAction => action !== null),
@@ -232,9 +236,8 @@ export function HoldsList({
 
       <DetailPanel
         open={opened !== null}
-        onOpenChange={(open) => {
-          if (!open) list.panel.show(null);
-        }}
+        {...list.panel.queueProps}
+        onOpenChange={list.panel.onOpenChange}
         title={opened ? editionLabel(opened) : "Stock hold"}
         status={
           opened ? <MappedStatusBadge status={opened.status} present={presentHoldStatus} /> : null
