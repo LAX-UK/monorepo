@@ -23,7 +23,7 @@ import {
   isSaleroomSessionLive,
 } from "@/lib/saleroom/public-session-status";
 import type { SaleroomRealtimePayload } from "@auction/types";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 type Options = {
   saleId: string;
@@ -59,6 +59,7 @@ export function useStaffSaleroomLive({
   session: StaffSaleroomSessionVM;
   liveFeed: SaleroomRealtimePayload[];
   activityLog: SaleroomActivityEntry[];
+  resyncFromServer: () => Promise<boolean>;
 } {
   // One adapter for the life of the component: a new one each render re-runs the effects below
   // and forgets that the socket had connected, so a reconnect would not re-read the session.
@@ -86,26 +87,28 @@ export function useStaffSaleroomLive({
     }
   }, [initial]);
 
+  // Re-reads the session from the API. The console calls it after every session control so its
+  // buttons follow what the server confirmed, not a realtime event that may never arrive.
+  const resyncFromServer = useCallback(async (): Promise<boolean> => {
+    const noticeId = saleroomHydrateNoticeId(saleId);
+    const snap = await fetchSaleroomStatus(saleId);
+    if (!snap) {
+      setConnectionStatus("disconnected");
+      noticeReporterRef.current?.reportNotice({
+        id: noticeId,
+        message: LIVE_CONNECTIVITY_COPY.saleroomHydrateFailed,
+      });
+      return false;
+    }
+    setSession(snap);
+    setConnectionStatus("connected");
+    setLastEventAt(new Date().toISOString());
+    noticeReporterRef.current?.clearNotice(noticeId);
+    return true;
+  }, [saleId]);
+
   useEffect(() => {
     let hadConnected = socketAdapter.isConnected();
-    const noticeId = saleroomHydrateNoticeId(saleId);
-
-    const hydrateFromServer = async (): Promise<boolean> => {
-      const snap = await fetchSaleroomStatus(saleId);
-      if (!snap) {
-        setConnectionStatus("disconnected");
-        noticeReporterRef.current?.reportNotice({
-          id: noticeId,
-          message: LIVE_CONNECTIVITY_COPY.saleroomHydrateFailed,
-        });
-        return false;
-      }
-      setSession(snap);
-      setConnectionStatus("connected");
-      setLastEventAt(new Date().toISOString());
-      noticeReporterRef.current?.clearNotice(noticeId);
-      return true;
-    };
 
     const onSaleroom = (raw: unknown) => {
       const event = raw as SaleroomRealtimePayload;
@@ -126,7 +129,7 @@ export function useStaffSaleroomLive({
       join();
       if (hadConnected) {
         setConnectionStatus("reconnecting");
-        void hydrateFromServer();
+        void resyncFromServer();
       } else {
         setConnectionStatus(socketAdapter.isConnected() ? "connected" : "reconnecting");
       }
@@ -148,7 +151,7 @@ export function useStaffSaleroomLive({
       socketAdapter.offDisconnect(onDisconnect);
       socketAdapter.leaveSaleroom(saleId);
     };
-  }, [liveFeedLimit, saleId, socketAdapter, trackLiveFeed]);
+  }, [liveFeedLimit, resyncFromServer, saleId, socketAdapter, trackLiveFeed]);
 
   const staffSession = useMemo(
     () => toStaffSessionVM(session, connectionStatus, lastEventAt),
@@ -160,5 +163,5 @@ export function useStaffSaleroomLive({
     [dbEvents, liveFeed, liveFeedLimit],
   );
 
-  return { session: staffSession, liveFeed, activityLog };
+  return { session: staffSession, liveFeed, activityLog, resyncFromServer };
 }
