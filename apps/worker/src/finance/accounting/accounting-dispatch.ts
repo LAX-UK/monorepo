@@ -5,9 +5,11 @@ import type {
   CreditNotePort,
   DestinationPort,
   DocumentLookupPort,
+  ExpensePort,
   InvoicePort,
   IssueOutcome,
   PaymentPort,
+  TransferPort,
   WriteFence,
 } from "@auction/accounting-domain";
 
@@ -20,6 +22,10 @@ export interface SenderPorts {
   readonly payments: PaymentPort;
   readonly creditNotes: CreditNotePort;
   readonly bills: BillPort;
+  /** Stripe's fees, paid from the Stripe clearing account. */
+  readonly expenses: ExpensePort;
+  /** Stripe payouts, from the Stripe clearing account to the bank. */
+  readonly transfers: TransferPort;
   readonly contacts: ContactPort;
   readonly lookup: DocumentLookupPort;
   /** Where the adapter would send each product's documents; checked before every call. */
@@ -41,6 +47,8 @@ const SENDERS: Senders = {
   credit_note: (ports, d, fence) => ports.creditNotes.issueCreditNote(d, fence),
   bill: (ports, d, fence) => ports.bills.issueBill(d, fence),
   contact: (ports, d, fence) => ports.contacts.upsertContact(d, fence),
+  expense: (ports, d, fence) => ports.expenses.recordExpense(d, fence),
+  transfer: (ports, d, fence) => ports.transfers.recordTransfer(d, fence),
 };
 
 /** Hand a document to the port for its kind; its writes go out only while `fence` allows. */

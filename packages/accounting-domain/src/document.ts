@@ -19,7 +19,15 @@ import { type PaidBuckets, type RefundSplit, planRefund } from "./refund.js";
 import { type Result, ok, refuse } from "./result.js";
 import { compareText } from "./text.js";
 
-export const DOCUMENT_KINDS = ["invoice", "payment", "credit_note", "bill", "contact"] as const;
+export const DOCUMENT_KINDS = [
+  "invoice",
+  "payment",
+  "credit_note",
+  "bill",
+  "contact",
+  "expense",
+  "transfer",
+] as const;
 export type DocumentKind = (typeof DOCUMENT_KINDS)[number];
 
 /** Which LAX product a document comes from. */
@@ -46,6 +54,8 @@ const KIND_PREFIX: Readonly<Record<DocumentKind, string>> = {
   credit_note: "CN",
   bill: "BILL",
   contact: "CON",
+  expense: "EXP",
+  transfer: "TRF",
 };
 
 /** Part of every reference, so the same source id in two products can never collide. */
@@ -198,7 +208,47 @@ export interface Payment extends Base<"payment"> {
   readonly unallocatedPence: Pence;
 }
 
-export type AccountingDocument = Contact | Invoice | CreditNote | Bill | Payment;
+/**
+ * Money LAX spent, paid straight out of one of its own accounts (no supplier contact, no VAT):
+ * today only the fees Stripe takes, paid from the Stripe clearing account. Books records it as an
+ * expense to the organisation's Stripe fees account, paid through the clearing account.
+ */
+export interface Expense extends Base<"expense"> {
+  /** What the money was spent on; the adapter maps each category to an account. */
+  readonly category: (typeof EXPENSE_CATEGORIES)[number];
+  /** The account it was paid from. */
+  readonly paidFrom: "stripe_clearing";
+  readonly currency: typeof CURRENCY;
+  readonly spentOn: string;
+  readonly amountPence: Pence;
+  /** What finance reads in Books: ids only (a Stripe balance transaction id), never a name. */
+  readonly description: string;
+}
+
+export const EXPENSE_CATEGORIES = ["stripe_fees"] as const;
+
+/**
+ * Money moved between two of LAX's own accounts: today only a Stripe payout, from the Stripe
+ * clearing account to the bank account it was paid into.
+ */
+export interface Transfer extends Base<"transfer"> {
+  readonly from: "stripe_clearing";
+  readonly to: "bank";
+  readonly currency: typeof CURRENCY;
+  readonly transferredOn: string;
+  readonly amountPence: Pence;
+  /** What finance reads in Books: ids only (a Stripe payout id), never a name. */
+  readonly description: string;
+}
+
+export type AccountingDocument =
+  | Contact
+  | Invoice
+  | CreditNote
+  | Bill
+  | Payment
+  | Expense
+  | Transfer;
 
 /** Which product a document is for, and the source row's id; the reference is derived from them. */
 interface Common {
@@ -687,6 +737,100 @@ export function buildPayment(
   });
 }
 
+/** What finance reads on an expense or transfer: printable ASCII, no line breaks, at most 100. */
+const DESCRIPTION = /^[\x20-\x7e]{1,100}$/;
+
+function checkMovement(input: {
+  readonly date: string;
+  readonly amountPence: Pence;
+  readonly description: string;
+}): Result<null, DocumentCode> {
+  const dates = checkDates(input.date);
+  if (!dates.ok) return dates;
+  if (!isPence(input.amountPence) || input.amountPence <= 0) {
+    return refuse("bad_amount", "an expense or transfer must be positive whole pence");
+  }
+  if (typeof input.description !== "string" || !DESCRIPTION.test(input.description)) {
+    return refuse("bad_name", "a description is 1-100 printable characters");
+  }
+  return ok(null);
+}
+
+/** Stripe's fees on one balance transaction, paid out of the Stripe clearing account. */
+export function buildExpense(
+  input: Common & {
+    readonly category: Expense["category"];
+    readonly spentOn: string;
+    readonly amountPence: Pence;
+    readonly description: string;
+  },
+): Result<Expense, DocumentCode> {
+  const b = base("expense", input);
+  if (!b.ok) return b;
+  if (!(EXPENSE_CATEGORIES as readonly string[]).includes(input.category)) {
+    return refuse("bad_line", "unknown expense category");
+  }
+  const checked = checkMovement({ ...input, date: input.spentOn });
+  if (!checked.ok) return checked;
+  return ok({
+    ...b.value,
+    category: input.category,
+    paidFrom: "stripe_clearing",
+    currency: CURRENCY,
+    spentOn: input.spentOn,
+    amountPence: input.amountPence,
+    description: input.description,
+  });
+}
+
+/** One Stripe payout: from the Stripe clearing account to the bank account. */
+export function buildTransfer(
+  input: Common & {
+    readonly transferredOn: string;
+    readonly amountPence: Pence;
+    readonly description: string;
+  },
+): Result<Transfer, DocumentCode> {
+  const b = base("transfer", input);
+  if (!b.ok) return b;
+  const checked = checkMovement({ ...input, date: input.transferredOn });
+  if (!checked.ok) return checked;
+  return ok({
+    ...b.value,
+    from: "stripe_clearing",
+    to: "bank",
+    currency: CURRENCY,
+    transferredOn: input.transferredOn,
+    amountPence: input.amountPence,
+    description: input.description,
+  });
+}
+
+/** A Stripe object id as Stripe writes it: a lower-case prefix, `_`, then letters and digits. */
+const STRIPE_ID = /^[a-z]{1,8}_[A-Za-z0-9]{1,48}$/;
+
+/**
+ * The source id of a document that comes from a Stripe object (a balance transaction, a payout).
+ * Stripe ids are case-sensitive and source ids are lower case, so each capital letter is written
+ * as `-` and the letter (`txn_1AbC` -> `txn_1-ab-c`). Stripe ids never hold `-`, so no two ids give
+ * the same source id; `stripeIdFromSourceId` reads it back.
+ */
+export function stripeSourceId(stripeId: string): Result<string, "bad_source_id"> {
+  if (typeof stripeId !== "string" || !STRIPE_ID.test(stripeId)) {
+    return refuse("bad_source_id", "not a Stripe object id");
+  }
+  const encoded = stripeId.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`);
+  return SOURCE_ID.test(encoded) ? ok(encoded) : refuse("bad_source_id", "Stripe id is too long");
+}
+
+/** The Stripe id behind a source id made by `stripeSourceId`, or null for any other text. */
+export function stripeIdFromSourceId(sourceId: string): string | null {
+  if (typeof sourceId !== "string" || !SOURCE_ID.test(sourceId)) return null;
+  if (/-(?![a-z])/.test(sourceId)) return null;
+  const decoded = sourceId.replace(/-([a-z])/g, (_, c: string) => c.toUpperCase());
+  return STRIPE_ID.test(decoded) ? decoded : null;
+}
+
 /**
  * The totals a provider must report back for this document. Priced documents use their own totals;
  * a payment is its amount with no VAT; a contact has no money, so all zero.
@@ -698,6 +842,8 @@ export function expectedTotals(document: AccountingDocument): Totals {
     case "bill":
       return document.totals;
     case "payment":
+    case "expense":
+    case "transfer":
       return { netPence: document.amountPence, vatPence: 0, grossPence: document.amountPence };
     case "contact":
       return { netPence: 0, vatPence: 0, grossPence: 0 };

@@ -55,6 +55,8 @@ function rehearsing(ports: SenderPorts, overrides: Partial<SenderPorts> = {}): S
     payments: ports.payments,
     creditNotes: ports.creditNotes,
     bills: ports.bills,
+    expenses: ports.expenses,
+    transfers: ports.transfers,
     contacts: ports.contacts,
     lookup: ports.lookup,
     destination: { destinationFor: () => ({ kind: "none" }) },

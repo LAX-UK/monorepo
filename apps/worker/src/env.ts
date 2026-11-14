@@ -284,6 +284,21 @@ export const envSchema = z
     XERO_PAYOUT_BILL_ACCOUNT_CODE: z.string().min(1).default("400"),
     XERO_PAYMENT_BANK_ACCOUNT_CODE: z.string().min(1).default("090"),
     STRIPE_SECRET_KEY: z.preprocess(emptyToUndefined, z.string().optional()),
+    /**
+     * Restricted, read-only Stripe keys for the daily Stripe fees and payouts job (Books, plan
+     * flow 25), comma separated, one per Stripe account (Bid's, the Shop's). Each needs read access
+     * to Balance, Balance transaction sources and Payouts and nothing else. Unset: the job reads
+     * no Stripe account (the report still runs, with clearing not reconciled).
+     */
+    STRIPE_BOOKS_READ_KEYS: z.preprocess(
+      emptyToUndefined,
+      z
+        .string()
+        .regex(/^rk_(test|live)_[A-Za-z0-9]+(,rk_(test|live)_[A-Za-z0-9]+)*$/, {
+          message: "restricted keys (rk_...) only, comma separated",
+        })
+        .optional(),
+    ),
     STRIPE_CARD_CHECKOUT_MAX: z.coerce.number().positive().default(10_000),
     STRIPE_MANUAL_REVIEW_MIN: z.coerce.number().positive().default(500_000),
     STRIPE_ABSOLUTE_MAX: z.coerce.number().positive().default(999_999.99),
