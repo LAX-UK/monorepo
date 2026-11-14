@@ -50,6 +50,9 @@ export type EnquiryErasureCounts = Omit<
   "ok"
 >;
 
+/** The reason recorded on an erasure the schedule runs again once a deal's hold has ended. */
+export const HELD_ERASURE_RERUN_REASON = "Run again after the private sale hold ended";
+
 /**
  * Bid admin's Data requests. Identity owns the requests and the rules; this service adds who is
  * acting and Bid's own audit trail. Opening a record and every action is audited with the staff
@@ -169,7 +172,34 @@ export class AdminDataRequestsService {
   ): Promise<DataRequestOutcome<EnquiryErasureCounts>> {
     const found = await this.deps.identity.record(reference, actorUserId);
     if (!found.ok) return found;
-    const { request, person, ownRequest } = found.value;
+    return this.eraseFor(found.value, body, actorUserId);
+  }
+
+  /**
+   * Runs a held erasure again for the staff member who asked for it, once its hold should have
+   * ended. The same rules apply as for staff: the request must still be in progress and the
+   * address is Identity's, typed for them as the confirmation.
+   */
+  async rerunHeldErasure(
+    reference: string,
+    actorUserId: string,
+  ): Promise<DataRequestOutcome<EnquiryErasureCounts>> {
+    const found = await this.deps.identity.record(reference, actorUserId);
+    if (!found.ok) return found;
+    const confirmation = found.value.person.email ?? "";
+    return this.eraseFor(
+      found.value,
+      { confirmation, reason: HELD_ERASURE_RERUN_REASON },
+      actorUserId,
+    );
+  }
+
+  private async eraseFor(
+    record: DataRequestRecord,
+    body: { confirmation: string; reason: string },
+    actorUserId: string,
+  ): Promise<DataRequestOutcome<EnquiryErasureCounts>> {
+    const { request, person, ownRequest } = record;
     if (ownRequest) return { ok: false, status: 403, error: "own_request" };
     const blocked = enquiryErasureBlock(request);
     if (blocked) return { ok: false, status: 409, error: "erasure_not_allowed" };

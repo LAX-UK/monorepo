@@ -1,6 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 import type { IIdentityDataRequestsClient } from "../../interfaces/identity-data-requests-client.js";
-import { AdminDataRequestsService } from "./admin-data-requests.service.js";
+import {
+  AdminDataRequestsService,
+  HELD_ERASURE_RERUN_REASON,
+} from "./admin-data-requests.service.js";
 import { DomainEventDataRequestAuditTrail } from "./data-request-audit-trail.js";
 
 const RECORD = { request: { reference: "DR-0007" } } as never;
@@ -294,6 +297,37 @@ describe("AdminDataRequestsService.eraseEnquiries", () => {
     expect(heldErasures.held).toHaveBeenCalledWith(
       expect.objectContaining({ plan: expect.objectContaining({ state: "needs_staff" }) }),
     );
+  });
+
+  it("re-runs a held erasure with Identity's address as the confirmation, for the staff member", async () => {
+    const { service, identity, enquiryErasure, heldErasures } = setup();
+    (identity.record as ReturnType<typeof vi.fn>).mockResolvedValueOnce(record());
+    enquiryErasure.eraseByEmail.mockResolvedValueOnce({
+      ok: true,
+      enquiries: 1,
+      notes: 0,
+      attachments: 0,
+      held: 0,
+    } as never);
+    const outcome = await service.rerunHeldErasure("DR-0007", "staff-1");
+    expect(outcome).toMatchObject({ ok: true, value: { held: 0 } });
+    expect(enquiryErasure.eraseByEmail).toHaveBeenCalledWith(
+      expect.objectContaining({
+        confirmation: "lena@north.com",
+        reason: HELD_ERASURE_RERUN_REASON,
+        actorUserId: "staff-1",
+        requestReference: "DR-0007",
+      }),
+    );
+    expect(heldErasures.cleared).toHaveBeenCalledWith("DR-0007");
+  });
+
+  it("does not re-run a held erasure once the request is no longer in progress", async () => {
+    const { service, identity, enquiryErasure } = setup();
+    const closed = { request: { reference: "DR-0007", kind: "manual", status: "closed" } };
+    (identity.record as ReturnType<typeof vi.fn>).mockResolvedValueOnce(record(closed));
+    expect(await service.rerunHeldErasure("DR-0007", "staff-1")).toMatchObject({ ok: false });
+    expect(enquiryErasure.eraseByEmail).not.toHaveBeenCalled();
   });
 
   it("clears the held record once an erasure holds nothing", async () => {

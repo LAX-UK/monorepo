@@ -56,3 +56,24 @@ export interface IHeldErasureLog {
   /** The requests staff must settle by hand, for the queue. */
   needingStaff(): Promise<HeldErasureFlag[]>;
 }
+
+/** A held erasure whose re-check is due, claimed by one run. */
+export type DueHeldErasure = {
+  reference: string;
+  /** Who asked for the erasure; `null` once their account is gone. */
+  requestedByUserId: string | null;
+  reason: HeldErasureReason;
+  heldUntil: Date | null;
+};
+
+/** The held erasures to re-run, for the schedule. */
+export interface IHeldErasureRecheckQueue {
+  /**
+   * Claims up to `limit` waiting requests whose re-check is due, for `leaseMs`. A request another
+   * run has claimed is skipped, so two runs at once never take the same one; a claim left by a run
+   * that died runs out and the request is taken again.
+   */
+  claimDue(now: Date, limit: number, leaseMs: number): Promise<DueHeldErasure[]>;
+  /** The re-run could not complete, so the request is shown to staff instead of re-run again. */
+  needsStaff(reference: string, reason: "still_held" | "cannot_run"): Promise<void>;
+}

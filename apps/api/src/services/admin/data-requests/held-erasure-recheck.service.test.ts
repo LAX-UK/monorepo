@@ -1,0 +1,88 @@
+import { describe, expect, it, vi } from "vitest";
+import type { DueHeldErasure } from "./data-request-held-erasures.js";
+import {
+  HELD_ERASURE_RECHECK_BATCH,
+  HELD_ERASURE_RECHECK_LEASE_MS,
+  HeldErasureRecheckService,
+} from "./held-erasure-recheck.service.js";
+
+const NOW = new Date("2031-03-02T00:00:00Z");
+const counts = (held: number) => ({
+  ok: true as const,
+  value: { enquiries: held === 0 ? 1 : 0, notes: 0, attachments: 0, held },
+});
+
+function setup(due: DueHeldErasure[]) {
+  const queue = {
+    claimDue: vi.fn(async (_now: Date, _limit: number, _lease: number) => due),
+    needsStaff: vi.fn(async (_reference: string, _reason: "still_held" | "cannot_run") => {}),
+  };
+  const erasures = { rerunHeldErasure: vi.fn(async (_ref: string, _actor: string) => counts(0)) };
+  const onNeedsStaff = vi.fn();
+  const service = new HeldErasureRecheckService({ queue, erasures, onNeedsStaff, now: () => NOW });
+  return { service, queue, erasures, onNeedsStaff };
+}
+
+const held = (over: Partial<DueHeldErasure> = {}): DueHeldErasure => ({
+  reference: "DR-0007",
+  requestedByUserId: "staff-1",
+  reason: "running",
+  heldUntil: new Date("2031-03-01T00:00:00Z"),
+  ...over,
+});
+
+describe("HeldErasureRecheckService", () => {
+  it("claims a batch of due requests and re-runs each for the staff member who asked", async () => {
+    const { service, queue, erasures, onNeedsStaff } = setup([held()]);
+    expect(await service.run()).toEqual({ released: 1, waiting: 0, needsStaff: 0 });
+    expect(queue.claimDue).toHaveBeenCalledWith(
+      NOW,
+      HELD_ERASURE_RECHECK_BATCH,
+      HELD_ERASURE_RECHECK_LEASE_MS,
+    );
+    expect(erasures.rerunHeldErasure).toHaveBeenCalledWith("DR-0007", "staff-1");
+    expect(queue.needsStaff).not.toHaveBeenCalled();
+    expect(onNeedsStaff).not.toHaveBeenCalled();
+  });
+
+  it("leaves a request behind a deal that is still open to wait for the next re-check", async () => {
+    const { service, queue, erasures } = setup([held({ reason: "open_deal", heldUntil: null })]);
+    erasures.rerunHeldErasure.mockResolvedValueOnce(counts(1));
+    expect(await service.run()).toEqual({ released: 0, waiting: 1, needsStaff: 0 });
+    expect(queue.needsStaff).not.toHaveBeenCalled();
+  });
+
+  it("hands staff a request still held after its hold should have ended, and says so once", async () => {
+    const { service, queue, erasures, onNeedsStaff } = setup([held()]);
+    erasures.rerunHeldErasure.mockResolvedValueOnce(counts(1));
+    expect(await service.run()).toEqual({ released: 0, waiting: 0, needsStaff: 1 });
+    expect(queue.needsStaff).toHaveBeenCalledWith("DR-0007", "still_held");
+    expect(onNeedsStaff).toHaveBeenCalledTimes(1);
+    expect(onNeedsStaff).toHaveBeenCalledWith("DR-0007", "still_held");
+  });
+
+  it("hands staff a request the re-run refuses, such as one closed meanwhile", async () => {
+    const { service, queue, erasures } = setup([held()]);
+    erasures.rerunHeldErasure.mockResolvedValueOnce({
+      ok: false,
+      status: 409,
+      error: "erasure_not_allowed",
+    } as never);
+    await service.run();
+    expect(queue.needsStaff).toHaveBeenCalledWith("DR-0007", "cannot_run");
+  });
+
+  it("does not re-run a request whose staff member's account is gone", async () => {
+    const { service, queue, erasures } = setup([held({ requestedByUserId: null })]);
+    await service.run();
+    expect(erasures.rerunHeldErasure).not.toHaveBeenCalled();
+    expect(queue.needsStaff).toHaveBeenCalledWith("DR-0007", "cannot_run");
+  });
+
+  it("leaves the claim to run out when Identity cannot be reached, so the next run tries again", async () => {
+    const { service, queue, erasures } = setup([held()]);
+    erasures.rerunHeldErasure.mockRejectedValueOnce(new Error("identity_unavailable"));
+    await expect(service.run()).rejects.toThrow("identity_unavailable");
+    expect(queue.needsStaff).not.toHaveBeenCalled();
+  });
+});

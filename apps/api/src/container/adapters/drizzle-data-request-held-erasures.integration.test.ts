@@ -63,4 +63,52 @@ describe.skipIf(!HAS_DB)("DrizzleHeldErasures (integration)", () => {
     await holds.cleared(`${PREFIX}01`);
     expect((await mine()).map((flag) => flag.reference)).toEqual([`${PREFIX}02`]);
   });
+
+  it("gives each due request to one of two runs at once, and again only after the claim runs out", async () => {
+    const due = new Date("2031-03-01T00:00:00Z");
+    const now = new Date("2031-03-02T00:00:00Z");
+    for (const n of ["11", "12", "13", "14"]) {
+      await holds.held({
+        reference: `${PREFIX}${n}`,
+        requestedByUserId: STAFF,
+        plan: waiting(due),
+      });
+    }
+    await holds.held({
+      reference: `${PREFIX}15`,
+      requestedByUserId: STAFF,
+      plan: waiting(new Date("2031-04-01T00:00:00Z")),
+    });
+    await holds.held({ reference: `${PREFIX}16`, requestedByUserId: STAFF, plan: noEnd });
+    const otherDb = createDb(process.env.DATABASE_URL as string);
+    const other = new DrizzleHeldErasures(otherDb);
+    const mine = (rows: { reference: string }[]) =>
+      rows.map((row) => row.reference).filter((ref) => ref.startsWith(PREFIX));
+    const [first, second] = await Promise.all([
+      holds.claimDue(now, 100, 60_000),
+      other.claimDue(now, 100, 60_000),
+    ]).finally(() => closeDb(otherDb));
+    const taken = [...mine(first), ...mine(second)].sort();
+    expect(taken).toEqual([`${PREFIX}11`, `${PREFIX}12`, `${PREFIX}13`, `${PREFIX}14`]);
+    expect(new Set(taken).size).toBe(taken.length);
+
+    expect(mine(await holds.claimDue(now, 100, 60_000))).toEqual([]);
+    const later = new Date(now.getTime() + 60_000);
+    expect(mine(await holds.claimDue(later, 100, 60_000)).sort()).toEqual(taken);
+  });
+
+  it("stops re-running a request handed to staff, and shows it in the queue", async () => {
+    const due = new Date("2031-03-01T00:00:00Z");
+    await holds.held({ reference: `${PREFIX}21`, requestedByUserId: STAFF, plan: waiting(due) });
+    await holds.needsStaff(`${PREFIX}21`, "still_held");
+    const now = new Date("2031-03-02T00:00:00Z");
+    expect((await holds.claimDue(now, 100, 60_000)).map((row) => row.reference)).not.toContain(
+      `${PREFIX}21`,
+    );
+    expect(await holds.needingStaff()).toContainEqual({
+      reference: `${PREFIX}21`,
+      reason: "still_held",
+      heldUntil: due.toISOString(),
+    });
+  });
 });
