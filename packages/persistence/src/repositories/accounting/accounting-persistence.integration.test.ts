@@ -857,6 +857,28 @@ describe.skipIf(!HAS_DB)("accounting persistence (integration)", { timeout: 60_0
       expect((await claim("inv"))?.id).toBe(invoiceRow.stored.id);
     });
 
+    it("parks a queued payment whose invoice was cancelled, and leaves one whose invoice is still on its way", async () => {
+      const cancelledInvoice = invoice("bid", newId());
+      const liveInvoice = invoice("bid", newId());
+      const stranded = await register(paymentFor([cancelledInvoice]));
+      const waiting = await register(paymentFor([liveInvoice]));
+      const dead = await register(cancelledInvoice);
+      await register(liveInvoice);
+      must(await repos.transitions.apply(dead.stored.id, { action: "cancel" }));
+      const request = { provider: PROVIDER, targetModes: ALL_MODES, limit: 10 };
+      expect(await repos.workQueue.parkStranded(request)).toBe(1);
+      expect(await byId(stranded.stored.id)).toMatchObject({ state: "needs_review", attempts: 0 });
+      expect(await byId(waiting.stored.id)).toMatchObject({ state: "pending" });
+      expect((await eventsOf(stranded.stored.id)).at(-1)).toBe("park:pending>needs_review");
+      const [row] = (
+        await owner.execute<{ needs_review_reason: string }>(
+          sql`select needs_review_reason from accounting_document where id = ${stranded.stored.id}`,
+        )
+      ).rows;
+      expect(row?.needs_review_reason).toBe("accounting_parked_invoice_cancelled");
+      expect(await repos.workQueue.parkStranded(request)).toBe(0);
+    });
+
     it("waits while its invoice failed, without holding up the documents behind it", async () => {
       const inv = invoice("bid", newId());
       const invoiceRow = await register(inv);
@@ -1434,6 +1456,31 @@ describe.skipIf(!HAS_DB)("accounting persistence (integration)", { timeout: 60_0
       const waiting = await staff.attention.read(["dry_run"]);
       expect(waiting.pending.count).toBeGreaterThan(0);
       expect((await staff.attention.read([])).pending).toEqual({ count: 0, oldestSince: null });
+    });
+
+    it("counts a payment waiting for its invoice as waiting, not as work the sender missed", async () => {
+      await drain();
+      const held = invoice("bid", newId());
+      nowMs = T0;
+      const payment = await register(paymentFor([held]));
+      // Its invoice failed: nobody sends the payment until it is in Books.
+      const failedInvoice = await register(held);
+      await owner.execute(sql`
+        update accounting_document set state = 'failed', attempts = 1, provider = 'books',
+               last_error_class = 'zoho_books_validation_invalid_request'
+         where id = ${failedInvoice.stored.id}`);
+      expect((await staff.attention.read(["dry_run"])).pending.count).toBe(0);
+      const later = new Date(T0 + 7 * 60 * 60_000);
+      const waiting = await staff.attention.waitingPayments(["dry_run"], later);
+      expect(waiting.count).toBeGreaterThanOrEqual(1);
+      expect(waiting.oldestSince).toBeInstanceOf(Date);
+      expect((await staff.attention.waitingPayments(["dry_run"], new Date(T0 - 1))).count).toBe(0);
+      const listed = await staff.browser.awaitedOf([
+        must(await staff.browser.findById(payment.stored.id)) as never,
+      ]);
+      expect(listed.get(payment.stored.id)).toEqual([
+        { reference: held.reference, state: "failed" },
+      ]);
     });
   });
 

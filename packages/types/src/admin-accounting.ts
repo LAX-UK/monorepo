@@ -77,6 +77,12 @@ export type AccountingParkReason = (typeof ACCOUNTING_PARK_REASONS)[number];
 /** One invoice a payment is applied to, and how much of the payment it takes. */
 export type AccountingAppliedTo = { reference: string; amountPence: number };
 
+/**
+ * A document a queued one waits for (a payment's invoice, an invoice's contact) and its state in
+ * the same books; null when nothing is registered under that reference there yet.
+ */
+export type AccountingWaitingFor = { reference: string; state: AccountingDocumentState | null };
+
 /** One document on the page. */
 export type AccountingQueueRow = {
   id: string;
@@ -89,6 +95,8 @@ export type AccountingQueueRow = {
   parked: AccountingParkReason | null;
   /** A payment's invoices and what it applies to each, to the penny; empty for other documents. */
   appliedTo: AccountingAppliedTo[];
+  /** For a queued document: what it still waits for before it can be sent; empty otherwise. */
+  waitingFor: AccountingWaitingFor[];
   product: AccountingProduct;
   organisation: AccountingOrganisation;
   state: AccountingDocumentState;

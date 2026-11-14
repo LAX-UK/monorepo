@@ -428,4 +428,30 @@ describe("AccountingQueueList: payments", () => {
     renderList({ tab: "needs_person", rows: parked, canAct: false });
     expect(screen.queryByRole("button", { name: "Release" })).toBeNull();
   });
+
+  it("names the invoice a waiting payment waits for and where it is, in the row and the details", async () => {
+    renderList({
+      tab: "waiting",
+      rows: toAccountingStaffRows([
+        accountingRow({
+          id: "doc-w",
+          reference: "LAX-BID-PAY-grp-0b6a7c1e",
+          documentType: "payment",
+          state: "pending",
+          attempts: 0,
+          problem: null,
+          problemCode: null,
+          canTryAgain: false,
+          appliedTo: [{ reference: "LAX-BID-INV-01hx3", amountPence: 15_000 }],
+          waitingFor: [{ reference: "LAX-BID-INV-01hx3", state: "failed" }],
+        }),
+      ]),
+    });
+    expect(screen.getAllByText("Waiting for LAX-BID-INV-01hx3 · Failed").length).toBeGreaterThan(0);
+    fireEvent.click(screen.getAllByText("LAX-BID-PAY-grp-0b6a7c1e")[0] as HTMLElement);
+    const sheet = await screen.findByRole("dialog");
+    const waiting = within(sheet).getByRole("region", { name: "Waiting for" });
+    expect(within(waiting).getByText("LAX-BID-INV-01hx3")).toBeTruthy();
+    expect(within(waiting).getByText("Failed")).toBeTruthy();
+  });
 });

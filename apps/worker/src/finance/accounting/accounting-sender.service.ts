@@ -56,9 +56,18 @@ export interface SenderTick {
   readonly lookedUp: number;
   readonly requeued: number;
   readonly escalated: number;
+  /** Queued payments parked because an invoice they pay was cancelled in Accounting. */
+  readonly parked: number;
 }
 
-const IDLE: SenderTick = { active: false, sent: 0, lookedUp: 0, requeued: 0, escalated: 0 };
+const IDLE: SenderTick = {
+  active: false,
+  sent: 0,
+  lookedUp: 0,
+  requeued: 0,
+  escalated: 0,
+  parked: 0,
+};
 
 /**
  * Sends queued accounting documents to Books, one lease at a time, and records every answer
@@ -86,6 +95,13 @@ export class AccountingSender {
   async tick(): Promise<SenderTick> {
     if (!(await this.isActive())) return IDLE;
     const settled = await this.settleDue();
+    // A payment whose invoice was cancelled in Accounting can never be sent: a person decides.
+    const parked = await this.deps.workQueue.parkStranded({
+      provider: "books",
+      targetModes: this.modes,
+      limit: this.batch,
+    });
+    if (parked > 0) this.deps.log.info({ parked }, "accounting_sender_parked_stranded");
     let sent = 0;
     while (sent < this.batch) {
       const token = this.deps.newLeaseToken();
@@ -103,7 +119,7 @@ export class AccountingSender {
       await this.send(claimed.value, token);
       sent += 1;
     }
-    return { active: true, sent, ...settled };
+    return { active: true, sent, parked, ...settled };
   }
 
   private async isActive(): Promise<boolean> {
@@ -234,7 +250,7 @@ export class AccountingSender {
     };
   }
 
-  private async settleDue(): Promise<Omit<SenderTick, "active" | "sent">> {
+  private async settleDue(): Promise<Omit<SenderTick, "active" | "sent" | "parked">> {
     const due = await this.deps.dueWork.listDue({
       provider: "books",
       targetModes: this.modes,

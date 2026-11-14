@@ -89,8 +89,14 @@ class FakeQueue implements IAccountingDocumentBrowser, IAccountingDocumentTransi
     };
   }
 
+  awaited = new Map<string, { reference: string; state: DocumentRecord["status"] | null }[]>();
+
   async findById(id: string) {
     return ok(this.document?.id === id ? this.document : null);
+  }
+
+  async awaitedOf() {
+    return this.awaited;
   }
 
   async apply(
@@ -384,6 +390,27 @@ describe("AccountingQueueService.list: payments", () => {
         { reference: invoice.reference, amountPence: 12_000 },
       ],
       canTryAgain: false,
+      canRelease: true,
+      waitingFor: [],
+    });
+  });
+
+  it("says which invoice a waiting payment waits for, and that invoice's state", async () => {
+    const waiting = { ...parkedPayment, record: { ...parkedPayment.record, status: "pending" } };
+    const { service, queue } = setUp(waiting as StoredAccountingDocument);
+    queue.awaited.set(waiting.id, [
+      { reference: invoice.reference, state: "failed" },
+      { reference: "LAX-BID-INV-dlv-q1", state: null },
+    ]);
+    const page = await service.list({ ...request, tab: "waiting" });
+    expect(page.rows[0]).toMatchObject({
+      state: "pending",
+      parked: null,
+      canRelease: false,
+      waitingFor: [
+        { reference: invoice.reference, state: "failed" },
+        { reference: "LAX-BID-INV-dlv-q1", state: null },
+      ],
     });
   });
 

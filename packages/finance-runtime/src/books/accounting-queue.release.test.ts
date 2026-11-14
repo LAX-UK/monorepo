@@ -86,6 +86,7 @@ function setUp(
         throw new Error("unused");
       },
       findById: async (id) => ok(byId.get(id) ?? null),
+      awaitedOf: async () => new Map(),
     },
     partFunded: { list: async () => [] },
     transitions: {

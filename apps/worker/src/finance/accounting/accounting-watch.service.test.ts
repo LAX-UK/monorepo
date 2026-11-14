@@ -6,7 +6,11 @@ import type {
 } from "@auction/persistence/interfaces";
 import { describe, expect, it, vi } from "vitest";
 import { ACCOUNTING_ALERTS, type AccountingAlertSink } from "./accounting-alerts.js";
-import { AccountingWatch, SENDER_MISSED_AFTER_MS } from "./accounting-watch.service.js";
+import {
+  AccountingWatch,
+  PAYMENT_WAITING_AFTER_MS,
+  SENDER_MISSED_AFTER_MS,
+} from "./accounting-watch.service.js";
 
 const books = (mode: "off" | "dry_run" | "test_org" | "live") =>
   ({ xero: "off", books: mode }) as const;
@@ -23,6 +27,7 @@ function setUp(
   now: string,
   mode: "off" | "dry_run" = "dry_run",
   delayed: QueueAge = none,
+  waiting: QueueAge = none,
 ) {
   const raised: [string, Record<string, unknown>][] = [];
   const alerts: AccountingAlertSink = {
@@ -30,14 +35,15 @@ function setUp(
   };
   const read = vi.fn(async () => ({ needsPerson: none, pending: none, ...attention }));
   const delayedBidInvoices = vi.fn(async () => delayed);
+  const waitingPayments = vi.fn(async () => waiting);
   const watch = new AccountingWatch({
-    attention: { read, delayedBidInvoices },
+    attention: { read, delayedBidInvoices, waitingPayments },
     settings: switchWith(mode),
     senderModes: ["dry_run"],
     alerts,
     now: () => new Date(now),
   });
-  return { watch, raised, read, delayedBidInvoices };
+  return { watch, raised, read, delayedBidInvoices, waitingPayments };
 }
 
 describe("AccountingWatch", () => {
@@ -47,6 +53,7 @@ describe("AccountingWatch", () => {
       needsPersonOverdue: false,
       senderMissed: false,
       bidInvoiceDelayed: false,
+      paymentWaiting: false,
     });
     expect(raised).toEqual([]);
   });
@@ -96,7 +103,11 @@ describe("AccountingWatch", () => {
 
     const read = vi.fn(async () => ({ needsPerson: none, pending: none }));
     const unreadable = new AccountingWatch({
-      attention: { read, delayedBidInvoices: vi.fn(async () => none) },
+      attention: {
+        read,
+        delayedBidInvoices: vi.fn(async () => none),
+        waitingPayments: vi.fn(async () => none),
+      },
       settings: { read: async () => refuse("bad_mode", "broken") },
       senderModes: ["dry_run"],
       alerts: { raise: vi.fn() },
@@ -127,6 +138,32 @@ describe("AccountingWatch", () => {
           oldestSince: oldest.toISOString(),
           modes: ["dry_run"],
           page: "/admin/finance/accounting",
+        },
+      ],
+    ]);
+  });
+
+  it("raises the delayed-accounting alert for payments still waiting for their invoice after six hours", async () => {
+    const now = new Date("2026-11-13T18:00:00Z");
+    const oldest = new Date(now.getTime() - PAYMENT_WAITING_AFTER_MS - 60_000);
+    const { watch, raised, waitingPayments } = setUp({}, now.toISOString(), "dry_run", none, {
+      count: 1,
+      oldestSince: oldest,
+    });
+    expect((await watch.check()).paymentWaiting).toBe(true);
+    expect(waitingPayments).toHaveBeenCalledWith(
+      ["dry_run"],
+      new Date(now.getTime() - PAYMENT_WAITING_AFTER_MS),
+    );
+    expect(raised).toEqual([
+      [
+        ACCOUNTING_ALERTS.bidInvoiceDelayed.message,
+        {
+          documentType: "payment",
+          count: 1,
+          oldestSince: oldest.toISOString(),
+          modes: ["dry_run"],
+          page: "/admin/finance/accounting?tab=waiting",
         },
       ],
     ]);

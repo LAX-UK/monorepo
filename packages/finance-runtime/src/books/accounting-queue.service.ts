@@ -13,6 +13,7 @@ import {
   resolveParked,
 } from "@auction/accounting-domain";
 import type {
+  AwaitedDocument,
   IAccountingDocumentBrowser,
   IAccountingDocumentLookup,
   IAccountingDocumentTransitions,
@@ -135,11 +136,15 @@ export class AccountingQueueService implements IAccountingQueueService {
     // Bid takes bank transfers; they belong to London Auction Xchange's books.
     const bid = request.organisation === null || request.organisation === "london_auction_xchange";
     const transfers = bid ? await this.deps.partFunded.list(PART_FUNDED_LIMIT) : [];
+    // What each queued document still waits for, so a waiting payment says which invoice it is.
+    const awaited = await this.deps.browser.awaitedOf(page.documents);
     return {
       tab: request.tab,
       organisation: request.organisation,
       reference: request.reference,
-      rows: page.documents.map((document) => this.toRow(document, request.canAct)),
+      rows: page.documents.map((document) =>
+        this.toRow(document, request.canAct, awaited.get(document.id) ?? []),
+      ),
       total: page.total,
       counts: { ...page.counts },
       issuedToday: page.issuedToday,
@@ -306,7 +311,11 @@ export class AccountingQueueService implements IAccountingQueueService {
     return { ok: true, value: result(document, "already_queued") };
   }
 
-  private toRow(document: StoredAccountingDocument, canAct: boolean): AccountingQueueRow {
+  private toRow(
+    document: StoredAccountingDocument,
+    canAct: boolean,
+    waitingFor: readonly AwaitedDocument[],
+  ): AccountingQueueRow {
     const { record } = document;
     const reason = reasonOf(record, document.lastErrorClass);
     const issued = issuedOf(record);
@@ -326,6 +335,7 @@ export class AccountingQueueService implements IAccountingQueueService {
               amountPence: a.amountPence,
             }))
           : [],
+      waitingFor: waitingFor.map((a) => ({ reference: a.reference, state: a.state })),
       product: document.product,
       organisation,
       state: record.status,

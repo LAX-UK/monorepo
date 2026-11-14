@@ -45,6 +45,7 @@ function browser(): IAccountingDocumentBrowser & { list: ReturnType<typeof vi.fn
       lastSent: null,
     })),
     findById: vi.fn(),
+    awaitedOf: vi.fn(async () => new Map()),
   };
 }
 

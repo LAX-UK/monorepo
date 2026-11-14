@@ -170,6 +170,18 @@ export interface IAccountingDocumentWorkQueue {
    * unknown), handed to someone else, or is about to run out.
    */
   holdsLease(documentId: string, leaseToken: string, minRemainingMs: number): Promise<boolean>;
+  /**
+   * Park, for a person, queued payments (aimed at `provider` in one of `targetModes`) applied to
+   * an invoice that was cancelled in the same books: they could never be sent, so they go to
+   * Needs a person (`invoice_cancelled`) instead of waiting for ever. Returns how many it parked.
+   */
+  parkStranded(request: StrandedRequest): Promise<number>;
+}
+
+export interface StrandedRequest {
+  readonly provider: AccountingProvider;
+  readonly targetModes: readonly TargetMode[];
+  readonly limit: number;
 }
 
 export interface DueWorkRequest {
@@ -292,6 +304,21 @@ export interface IPartFundedTransfersReader {
 export interface IAccountingDocumentBrowser {
   list(query: AccountingQueueQuery): Promise<AccountingQueuePage>;
   findById(id: string): Promise<Result<StoredAccountingDocument | null, StoredDocumentCode>>;
+  /**
+   * For each queued (`pending`) document, what it still waits for (`documentsAwaited`) that is not
+   * issued for its target, by document id: the LAX reference and that document's state, or null
+   * when nothing is registered under it there. Documents waiting for nothing are left out.
+   */
+  awaitedOf(
+    documents: readonly StoredAccountingDocument[],
+  ): Promise<ReadonlyMap<string, readonly AwaitedDocument[]>>;
+}
+
+/** A document another one waits for, and where it is. */
+export interface AwaitedDocument {
+  readonly reference: string;
+  /** Its state for the waiting document's target; null when it is not registered there. */
+  readonly state: DocumentRecord["status"] | null;
 }
 
 export interface QueueAge {
@@ -303,7 +330,10 @@ export interface QueueAge {
 export interface AccountingAttention {
   /** Documents a person must look at (the Needs a person tab). */
   readonly needsPerson: QueueAge;
-  /** Documents queued for Books and not yet claimed (`pending`), by target mode the sender serves. */
+  /**
+   * Documents queued for Books, claimable and not yet claimed (`pending`, nothing awaited), by
+   * target mode the sender serves. One waiting for another document is not the sender's to take.
+   */
   readonly pending: QueueAge;
 }
 
@@ -316,6 +346,12 @@ export interface IAccountingAttentionReader {
    * `oldestSince` is when the oldest was queued.
    */
   delayedBidInvoices(modes: readonly TargetMode[], queuedBefore: Date): Promise<QueueAge>;
+  /**
+   * Payments queued for Books in one of `modes` since before `queuedBefore` that still wait for
+   * an invoice (`documentsAwaited`): nobody sends them until that invoice is in Books.
+   * `oldestSince` is when the oldest was queued.
+   */
+  waitingPayments(modes: readonly TargetMode[], queuedBefore: Date): Promise<QueueAge>;
 }
 
 /** LAX's stored copy of the PDF for an issued document. */

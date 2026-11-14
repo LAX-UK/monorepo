@@ -9,6 +9,7 @@ export function accountingRow(overrides: Partial<AccountingQueueRow> = {}): Acco
     label: "Invoice · Bid",
     parked: null,
     appliedTo: [],
+    waitingFor: [],
     product: "bid",
     organisation: "london_auction_xchange",
     state: "failed",

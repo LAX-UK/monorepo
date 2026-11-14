@@ -13,8 +13,10 @@ export const ACCOUNTING_ALERTS = {
   /** A document has waited for a person (Needs a person) for more than one working day. */
   needsPersonOverdue: { message: "accounting_needs_person_overdue", level: "warning" },
   /**
-   * A buyer's Bid invoice has been "being prepared" for more than 30 minutes (queued for Books, not
-   * yet issued with LAX's copy stored). The buyer's card says the team has been told: this is it.
+   * Delayed accounting. A buyer's Bid invoice has been "being prepared" for more than 30 minutes
+   * (queued for Books, not yet issued with LAX's copy stored); the buyer's card says the team has
+   * been told: this is it. Also raised, with `documentType: "payment"`, for payments that have
+   * waited more than six hours for their invoice to reach Books.
    */
   bidInvoiceDelayed: { message: "accounting_bid_invoice_delayed", level: "warning" },
   /** Documents are queued for Books but the sender has not claimed any for too long. */

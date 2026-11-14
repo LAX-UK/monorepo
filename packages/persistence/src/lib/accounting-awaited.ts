@@ -43,3 +43,22 @@ export const AWAITED_ISSUED = sql`not exists (
         and awaited.state = 'issued'
    )
 )`;
+
+/**
+ * True when the row is a payment applied to an invoice that was cancelled in the same books (and
+ * none of that reference is issued there). It can never be sent: it is parked for a person
+ * (`invoice_cancelled`) instead of waiting for ever.
+ */
+export const AWAITED_INVOICE_CANCELLED = sql`exists (
+  select 1
+    from ${AWAITED} as needed
+   where needed.kind = 'invoice'
+     and exists (
+       select 1 from accounting_document as awaited
+        where ${SAME_BOOKS} and awaited.state = 'cancelled'
+     )
+     and not exists (
+       select 1 from accounting_document as awaited
+        where ${SAME_BOOKS} and awaited.state <> 'cancelled'
+     )
+)`;

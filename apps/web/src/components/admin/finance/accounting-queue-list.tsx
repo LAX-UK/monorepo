@@ -22,6 +22,7 @@ import {
   rowMetaParts,
   tryAgainCopy,
   tryAgainToast,
+  waitingForLine,
 } from "@/lib/admin/finance/accounting-queue.vm";
 import { notify } from "@/lib/ui/notify";
 import {
@@ -545,6 +546,11 @@ function ProblemCell({ row, issued }: { row: AccountingStaffRow; issued: boolean
     if (row.books.kind === "text")
       return <span className="text-staff-muted">{row.books.label}</span>;
     return <span className="text-staff-muted">Not in Books</span>;
+  }
+  // A queued document held by another names it and where it is: "Waiting for … · Failed".
+  const waiting = row.problem ? null : waitingForLine(row);
+  if (waiting) {
+    return <span className="line-clamp-2 whitespace-normal text-staff-muted">{waiting}</span>;
   }
   // A failed document with no stored reason still reads as an answer from Books, not a blank.
   if (!row.problem) {

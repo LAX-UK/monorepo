@@ -185,6 +185,11 @@ export type AccountingStaffRow = {
   parked: AccountingParkReason | null;
   /** A payment's invoices, each with what it takes ("£120.00"); empty for other documents. */
   appliedTo: { reference: string; amount: string }[];
+  /**
+   * What a queued document still waits for, each with where it is ("Failed", "Not queued yet"),
+   * so a waiting payment names the invoice holding it; empty otherwise.
+   */
+  waitingFor: { reference: string; state: string }[];
   /** For a payment: the order it is sent in. */
   note: string | null;
 };
@@ -215,12 +220,27 @@ export function toAccountingStaffRows(rows: readonly AccountingQueueRow[]): Acco
         reference: applied.reference,
         amount: formatStaffMoney(applied.amountPence, "GBP"),
       })),
+      waitingFor: row.waitingFor.map((awaited) => ({
+        reference: awaited.reference,
+        state: awaited.state === null ? NOT_QUEUED_LABEL : STATE_PRESENTATION[awaited.state].label,
+      })),
       note:
         row.documentType === "payment" && row.parked === null
           ? ACCOUNTING_PAYMENT_ORDER_TEXT
           : null,
     };
   });
+}
+
+/** Said of a document another waits for when nothing is registered under its reference yet. */
+export const NOT_QUEUED_LABEL = "Not queued yet";
+
+/** The row's one line about what holds a waiting document: "Waiting for LAX-BID-INV-1 · Failed". */
+export function waitingForLine(row: Pick<AccountingStaffRow, "waitingFor">): string | null {
+  const [first, ...rest] = row.waitingFor;
+  if (!first) return null;
+  const more = rest.length === 0 ? "" : ` and ${rest.length} more`;
+  return `Waiting for ${first.reference} · ${first.state}${more}`;
 }
 
 /** One bank transfer part received, as the panel lists it. */

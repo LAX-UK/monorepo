@@ -613,5 +613,38 @@ describe.skipIf(!HAS_DB)(
         attempts: 1,
       });
     });
+
+    it("F4: a payment whose invoice was cancelled in Accounting is parked for a person, not left waiting", async () => {
+      await aimBooks("test_org");
+      const buyer = await seedBuyer(owner);
+      const a = await wonAndRaised(owner, buyer, 10_000, 2_500);
+      const b = await wonAndRaised(owner, buyer, 8_000, 2_000);
+      const { groupId, event } = await settleGroup(buyer, [a, b]);
+      await projection().project(event);
+      // Staff cancel one of its invoices before it is sent.
+      const cancelled = await rowOf(ref("invoice", b.invoice.id), "test_org");
+      expect((await repos.transitions.apply(cancelled.id, { action: "cancel" })).ok).toBe(true);
+      const books = new InMemoryAccounting();
+      let parked = 0;
+      for (let i = 0; i < 3; i++) parked += (await sender("test_org", books).tick()).parked;
+      expect(parked).toBe(1);
+      const paymentRow = await rowOf(ref("payment", `grp-${groupId}`), "test_org");
+      expect(paymentRow).toMatchObject({
+        state: "needs_review",
+        attempts: 0,
+        needsReviewReason: "accounting_parked_invoice_cancelled",
+      });
+      expect((await historyOf(paymentRow.id)).at(-1)).toMatchObject({
+        action: "park",
+        fromState: "pending",
+        toState: "needs_review",
+      });
+      // It cannot be released while that invoice stays cancelled in Accounting.
+      expect(await release(staff(null).service, paymentRow.id)).toMatchObject({
+        ok: false,
+        refusal: "unresolved",
+        message: expect.stringMatching(/cancelled in Accounting/),
+      });
+    });
   },
 );

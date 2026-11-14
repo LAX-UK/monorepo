@@ -7,9 +7,10 @@ import type {
   ClaimRequest,
   IAccountingDocumentWorkQueue,
   StoredAccountingDocument,
+  StrandedRequest,
   TransitionCode,
 } from "../../interfaces/accounting.js";
-import { AWAITED_ISSUED } from "../../lib/accounting-awaited.js";
+import { AWAITED_INVOICE_CANCELLED, AWAITED_ISSUED } from "../../lib/accounting-awaited.js";
 import { applyLockedTransition, persistMove } from "../../lib/accounting-document-move.js";
 import { rowToRecord } from "../../lib/accounting-document-row.js";
 
@@ -57,6 +58,39 @@ export class DrizzleAccountingDocumentWorkQueue implements IAccountingDocumentWo
       )
       .limit(1);
     return row !== undefined;
+  }
+
+  async parkStranded(request: StrandedRequest): Promise<number> {
+    if (request.targetModes.length === 0 || request.limit <= 0) return 0;
+    const now = this.clock.now();
+    return this.db.transaction(async (tx) => {
+      const rows = await tx
+        .select()
+        .from(accountingDocument)
+        .where(
+          and(
+            eq(accountingDocument.state, "pending"),
+            eq(accountingDocument.kind, "payment"),
+            eq(accountingDocument.targetProvider, request.provider),
+            inArray(accountingDocument.targetMode, [...request.targetModes]),
+            AWAITED_INVOICE_CANCELLED,
+          ),
+        )
+        .orderBy(asc(accountingDocument.createdAt), asc(accountingDocument.id))
+        .limit(request.limit)
+        .for("update", { skipLocked: true });
+      let parked = 0;
+      for (const row of rows) {
+        const moved = await applyLockedTransition(
+          tx,
+          row,
+          { action: "park", reason: "invoice_cancelled" },
+          now,
+        );
+        if (moved.ok) parked += 1;
+      }
+      return parked;
+    });
   }
 
   /**

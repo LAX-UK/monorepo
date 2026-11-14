@@ -13,6 +13,15 @@ import { z } from "zod";
 
 const tab = z.enum(ACCOUNTING_QUEUE_TABS);
 const organisation = z.enum(ACCOUNTING_ORGANISATIONS);
+const documentState = z.enum([
+  "pending",
+  "sending",
+  "issued",
+  "unknown",
+  "needs_review",
+  "failed",
+  "cancelled",
+]);
 
 export const accountingQueueRowSchema: z.ZodType<AccountingQueueRow> = z.object({
   id: z.string(),
@@ -21,9 +30,10 @@ export const accountingQueueRowSchema: z.ZodType<AccountingQueueRow> = z.object(
   label: z.string(),
   parked: z.enum(ACCOUNTING_PARK_REASONS).nullable(),
   appliedTo: z.array(z.object({ reference: z.string(), amountPence: z.number().int() })),
+  waitingFor: z.array(z.object({ reference: z.string(), state: documentState.nullable() })),
   product: z.enum(ACCOUNTING_PRODUCTS),
   organisation,
-  state: z.enum(["pending", "sending", "issued", "unknown", "needs_review", "failed", "cancelled"]),
+  state: documentState,
   targetMode: z.enum(["dry_run", "test_org", "live"]).nullable(),
   grossPence: z.number().int(),
   attempts: z.number().int(),

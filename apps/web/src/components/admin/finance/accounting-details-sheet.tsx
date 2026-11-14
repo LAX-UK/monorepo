@@ -93,6 +93,17 @@ export function AccountingDetailsSheet({
               { label: "Updated", value: <StaffDate value={row.updatedAt} withTime /> },
             ]}
           />
+          {row.waitingFor.length > 0 ? (
+            <section aria-label="Waiting for" className="flex flex-col gap-2">
+              <h3 className="text-staff-sm font-medium text-staff-fg">Waiting for</h3>
+              <KeyValueList
+                items={row.waitingFor.map((awaited) => ({
+                  label: awaited.reference,
+                  value: awaited.state,
+                }))}
+              />
+            </section>
+          ) : null}
           {row.appliedTo.length > 0 ? (
             <section aria-label="Applied to" className="flex flex-col gap-2">
               <h3 className="text-staff-sm font-medium text-staff-fg">Applied to</h3>

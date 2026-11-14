@@ -38,6 +38,7 @@ import type {
   RegisterInput,
   RegisterOutcome,
   StoredAccountingDocument,
+  StrandedRequest,
   TransitionCode,
 } from "@auction/persistence/interfaces";
 
@@ -182,6 +183,28 @@ export class InMemoryAccountingStore
     row.stored = { ...row.stored, provider: request.provider };
     this.move(row, "start_sending", next.value, {});
     return ok(row.stored);
+  }
+
+  async parkStranded(request: StrandedRequest): Promise<number> {
+    let parked = 0;
+    for (const row of this.rows.values()) {
+      const { target, record, document } = row.stored;
+      if (parked >= request.limit || record.status !== "pending" || document.kind !== "payment") {
+        continue;
+      }
+      if (target === null || target.provider !== request.provider) continue;
+      if (!request.targetModes.includes(target.mode)) continue;
+      // As the work queue: an invoice it pays is cancelled for its target, and none of it is live.
+      const cancelled = document.allocations.some(
+        (a) => this.byReference(a.invoiceReference, target)?.record.status === "cancelled",
+      );
+      if (!cancelled) continue;
+      const next = park(record, "invoice_cancelled");
+      if (!next.ok) continue;
+      this.move(row, "park", next.value, { parked: "invoice_cancelled" });
+      parked += 1;
+    }
+    return parked;
   }
 
   async holdsLease(documentId: string, leaseToken: string, minRemainingMs: number) {
