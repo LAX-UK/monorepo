@@ -34,9 +34,9 @@ function buildFakeSocket() {
     connected: false,
     calls,
     on(event: string, fn: Listener) {
-      // The facade's own `connect` and `disconnect` handlers come first, before anything replayed;
+      // The facade's own `connect` handler comes first, before anything replayed;
       // they are not calls the page made, so they are kept out of `calls`.
-      const own = !ownHandlersSeen.has(event) && calls.length === 0 && ownRegistrations < 2;
+      const own = !ownHandlersSeen.has(event) && calls.length === 0 && ownRegistrations < 1;
       if (own) {
         ownRegistrations += 1;
         ownHandlersSeen.add(event);
