@@ -486,3 +486,7 @@ Batch totals on the fresh database:
 Biome is clean on the changed files, `lint:layers` passes, and typecheck is clean for api, shop-api, shop and worker. Books stays dry run, no VAT treatment is chosen, the Shop is booked only to London Art Exchange, and no deploy or environment file changed.
 
 **Open for the owner.** The two new lines of copy; the accountant's answer (`SHOP_OUTSIDE_UK_DELIVERY_BOOKING`); confirming Books' "apply credits" shape in the test organisation.
+
+## Final recheck — in progress
+
+Started 2026-11-14. Scope: commits 32e36cbc, bf94e6d2, fb03b9b7, c0a8d1b1, fb2de5dd, 34b933fc on bk10-shop-invoices.
