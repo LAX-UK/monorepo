@@ -11,11 +11,12 @@ import type {
   IAccountingSourceSettingReader,
   IStripeReconciliationStore,
   ParkedBalanceTransaction,
+  StripeAccountState,
 } from "@auction/persistence/interfaces";
 import type { Logger } from "pino";
 import { ACCOUNTING_ALERTS, type AccountingAlertSink } from "./accounting-alerts.js";
 import type { StripeBalanceReader } from "./stripe-balance-reader.js";
-import { londonDay } from "./stripe-books-sync.service.js";
+import { londonDay, startOfLondonDay } from "./stripe-books-sync.service.js";
 
 /** Where every report is kept: private document storage, under this prefix only. */
 export const RECONCILIATION_PREFIX = "accounting/reconciliation";
@@ -44,6 +45,16 @@ export interface ReconciliationClearing {
   readonly unexplainedPence: number | null;
 }
 
+/**
+ * A Stripe account the report could not rely on: no opening stated (never read), no balance read
+ * (no key for it, or the read failed), not read through the day (the read failed or stopped), or
+ * a key that reads an account no LAX row names.
+ */
+export interface AccountNotRead {
+  readonly stripeAccountId: string;
+  readonly reason: "no_opening" | "balance_not_read" | "not_read_through" | "not_registered";
+}
+
 /** One company's report for one day. Ids and amounts only: no names, no emails. */
 export interface ReconciliationReport {
   readonly version: 1;
@@ -52,6 +63,9 @@ export interface ReconciliationReport {
   readonly generatedAt: string;
   readonly rehearsal: boolean;
   readonly target: { readonly provider: "books"; readonly mode: string };
+  /** False when an account was not read (`accountsNotRead`): the figures miss its movements. */
+  readonly complete: boolean;
+  readonly accountsNotRead: readonly AccountNotRead[];
   /** LAX totals against Books totals, by document type, for the day. */
   readonly byType: readonly (DayKindTotals & { readonly differencePence: number })[];
   /** Balance transactions of the day that wait for a person, and why. */
@@ -74,6 +88,25 @@ export interface StripeReconciliationDeps {
   readonly log: Pick<Logger, "info" | "warn">;
 }
 
+/** The company's accounts the report cannot rely on for `day`, and why. */
+function notReadThrough(
+  accounts: readonly StripeAccountState[],
+  balances: ReadonlyMap<string, number>,
+  day: string,
+): AccountNotRead[] {
+  const dayEnd = startOfLondonDay(addCalendarKeyDays(day, 1));
+  return accounts.flatMap((a): AccountNotRead[] => {
+    const reason = !a.opening
+      ? "no_opening"
+      : !balances.has(a.stripeAccountId)
+        ? "balance_not_read"
+        : a.readThrough === null || a.readThrough < dayEnd
+          ? "not_read_through"
+          : null;
+    return reason ? [{ stripeAccountId: a.stripeAccountId, reason }] : [];
+  });
+}
+
 /** The previous London calendar day, `YYYY-MM-DD`. */
 export function previousLondonDay(now: Date): string {
   return addCalendarKeyDays(londonDay(now), -1);
@@ -84,8 +117,9 @@ export function previousLondonDay(now: Date): string {
  * totals against Books' by day and document type (payments, Stripe fees, payouts), the Stripe
  * clearing account in Books against Stripe's balance, and seller money held for transfers. Stored
  * as JSON in private document storage (never in the repository) and recorded. Any mismatch (a type
- * whose totals differ, a transaction parked for a person, clearing that does not agree) raises the
- * accounting alert `accounting_reconciliation_mismatch`, which Sentry routes to finance on-call.
+ * whose totals differ, a transaction parked for a person, an account not read, clearing that does
+ * not agree) raises the accounting alert `accounting_reconciliation_mismatch`, which Sentry routes
+ * to finance on-call.
  */
 export class StripeReconciliation {
   constructor(private readonly deps: StripeReconciliationDeps) {}
@@ -96,6 +130,15 @@ export class StripeReconciliation {
     const config = await this.deps.settings.read();
     if (!config.ok) throw new Error(`accounting_switch_unreadable:${config.refusal.code}`);
     const balances = await this.balancesByAccount();
+    const accountsOf = new Map<LegalEntity, readonly StripeAccountState[]>();
+    for (const entity of LEGAL_ENTITIES) {
+      accountsOf.set(entity, await this.deps.store.openings(entity));
+    }
+    const registered = new Set([...accountsOf.values()].flat().map((a) => a.stripeAccountId));
+    // A key for an account no LAX row names belongs to no company: every report shows it.
+    const unregistered = [...balances.keys()]
+      .filter((id) => !registered.has(id))
+      .map((stripeAccountId) => ({ stripeAccountId, reason: "not_registered" as const }));
     const reports: ReconciliationReport[] = [];
     for (const entity of LEGAL_ENTITIES) {
       const mode = PRODUCTS.filter((p) => legalEntityFor(p) === entity)
@@ -103,15 +146,22 @@ export class StripeReconciliation {
         .find((m) => m !== null);
       if (!mode) continue;
       const target = { provider: "books" as const, mode };
-      reports.push(await this.report(entity, day, target, balances));
+      const accounts = accountsOf.get(entity) ?? [];
+      const notRead = [...notReadThrough(accounts, balances, day), ...unregistered];
+      reports.push(await this.report(entity, day, target, balances, accounts, notRead));
     }
     return reports;
   }
 
+  /** Each key's account and balance; a key that cannot be read is left out (and so reported). */
   private async balancesByAccount(): Promise<Map<string, number>> {
     const out = new Map<string, number>();
     for (const reader of this.deps.readers) {
-      out.set(await reader.accountId(), await reader.balancePence());
+      try {
+        out.set(await reader.accountId(), await reader.balancePence());
+      } catch (error) {
+        this.deps.log.warn({ err: error }, "accounting_reconciliation_balance_unread");
+      }
     }
     return out;
   }
@@ -121,16 +171,19 @@ export class StripeReconciliation {
     day: string,
     target: { readonly provider: "books"; readonly mode: string },
     balances: ReadonlyMap<string, number>,
+    accounts: readonly StripeAccountState[],
+    accountsNotRead: readonly AccountNotRead[],
   ): Promise<ReconciliationReport> {
     const at = this.deps.now();
     const totals = await this.deps.store.dayTotals(entity, day, target);
     const byType = totals.map((t) => ({ ...t, differencePence: t.laxPence - t.booksPence }));
     const parked = await this.deps.store.parkedOn(entity, day);
-    const clearing = await this.clearing(entity, target, balances);
+    const clearing = await this.clearing(entity, target, balances, accounts);
     const heldTransferPence = await this.deps.store.heldTransferPence(entity);
     const mismatches =
       byType.filter((t) => t.differencePence !== 0 || t.laxCount !== t.booksCount).length +
       parked.length +
+      accountsNotRead.length +
       (clearing.unexplainedPence !== null && clearing.unexplainedPence !== 0 ? 1 : 0);
     const report: ReconciliationReport = {
       version: 1,
@@ -139,6 +192,8 @@ export class StripeReconciliation {
       generatedAt: at.toISOString(),
       rehearsal: target.mode !== "live",
       target,
+      complete: accountsNotRead.length === 0,
+      accountsNotRead,
       byType,
       parked,
       clearing,
@@ -162,8 +217,8 @@ export class StripeReconciliation {
     entity: LegalEntity,
     target: { readonly provider: "books"; readonly mode: string },
     balances: ReadonlyMap<string, number>,
+    accounts: readonly StripeAccountState[],
   ): Promise<ReconciliationClearing> {
-    const accounts = await this.deps.store.openings(entity);
     const opened = accounts.flatMap((a) => (a.opening ? [a.opening] : []));
     const reconcilable = accounts.length > 0 && opened.length === accounts.length;
     const since = reconcilable ? (opened.map((o) => o.on).sort()[0] ?? null) : null;

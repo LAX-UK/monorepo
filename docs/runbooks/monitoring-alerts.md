@@ -484,6 +484,11 @@ stored invoice copies, never the repository). Ids and amounts only, no names or 
   transaction rows, payments from the documents LAX registered) against what Books holds (issued
   documents for the target), with counts and those still on their way;
 - **parked**: the day's parked transactions;
+- **accounts not read** (`accountsNotRead`, and `complete: false`): a Stripe account whose figures
+  the report cannot rely on. `no_opening`: its row has no opening, so it is never read.
+  `balance_not_read`: no key in `STRIPE_BOOKS_READ_KEYS` reads it, or the balance read failed.
+  `not_read_through`: its read failed or stopped before the end of the day. `not_registered`: a key
+  reads an account no `accounting_stripe_account` row names (shown in every company's report);
 - **clearing**: the opening balance plus payments, less fees and payouts, as Books holds them,
   against Stripe's balance (available and pending, GBP) now; documents still on their way are
   shown as in flight, not as a difference. Not compared until every Stripe account of the company
@@ -491,8 +496,8 @@ stored invoice copies, never the repository). Ids and amounts only, no names or 
 - **held transfer funds**: Bid seller payouts scheduled or blocked, still in the Stripe balance.
   Not tracked for London Art Exchange yet.
 
-**Alert.** Any mismatch (a type whose totals or counts differ, a parked transaction, clearing that
-does not agree) raises `accounting_reconciliation_mismatch` (error) with the company, the day, the
+**Alert.** Any mismatch (a type whose totals or counts differ, a parked transaction, an account not
+read, clearing that does not agree) raises `accounting_reconciliation_mismatch` (error) with the company, the day, the
 count and the report's storage key. Open that report first. During the rehearsal clearing can
 differ for known reasons this flow does not book (refunds and dispute amounts: refunds are PR 9).
 

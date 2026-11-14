@@ -453,8 +453,12 @@ describe.skipIf(!HAS_DB)(
         differencePence: 0,
       });
       expect(shop?.parked).toEqual([]);
-      expect(shop?.mismatches).toBe(0);
-      expect(raised).toEqual([]);
+      // The other cases' accounts (and earlier runs') share the table and have no key here: each
+      // is reported not read. This case's own account was read through the day.
+      const others = shop?.accountsNotRead.length ?? 0;
+      expect(shop?.accountsNotRead.map((a) => a.stripeAccountId)).not.toContain(SHOP_ACCOUNT);
+      expect(shop?.mismatches).toBe(others);
+      raised.length = 0;
       // Stored under the private reconciliation prefix, as JSON with ids and amounts only, and
       // recorded.
       const [key, body, type] = putObject.mock.calls[0] as unknown as [string, Buffer, string];
@@ -464,7 +468,7 @@ describe.skipIf(!HAS_DB)(
       const stored = await owner.execute<{ storage_key: string; mismatches: number }>(sql`
       select storage_key, mismatches from accounting_reconciliation_report
        where legal_entity = 'london_art_exchange' and report_day = ${day}`);
-      expect(stored.rows[0]).toEqual({ storage_key: key, mismatches: 0 });
+      expect(stored.rows[0]).toEqual({ storage_key: key, mismatches: others });
 
       // A fee LAX booked that Books does not hold (its document lost, say) is a difference to the
       // penny, and the accounting alert is raised with the stored report's key.
@@ -476,12 +480,17 @@ describe.skipIf(!HAS_DB)(
               ${new Date(noon * 1000)}, ${day}, 'shop', 'booked', 77, now())`);
       const [after] = await report().run(day);
       expect(after?.byType.find((t) => t.kind === "expense")?.differencePence).toBe(77);
-      expect(after?.mismatches).toBe(1);
+      expect(after?.mismatches).toBe(others + 1);
       const secondKey = (putObject.mock.calls[1] as unknown as [string])[0];
       expect(raised).toEqual([
         {
           alert: ACCOUNTING_ALERTS.reconciliationMismatch,
-          fields: { legalEntity: "london_art_exchange", day, mismatches: 1, storageKey: secondKey },
+          fields: {
+            legalEntity: "london_art_exchange",
+            day,
+            mismatches: others + 1,
+            storageKey: secondKey,
+          },
         },
       ]);
     });

@@ -9,6 +9,7 @@ import type {
 import { describe, expect, it, vi } from "vitest";
 import { FakeStripeBalance } from "../../testing/fake-stripe-balance.js";
 import { ACCOUNTING_ALERTS } from "./accounting-alerts.js";
+import type { StripeBalanceReader } from "./stripe-balance-reader.js";
 import {
   StripeReconciliation,
   previousLondonDay,
@@ -16,6 +17,8 @@ import {
 } from "./stripe-reconciliation.service.js";
 
 const NOW = new Date("2031-11-14T05:30:00Z");
+/** Where this morning's read stopped: now less the settle time. */
+const READ_THROUGH = new Date("2031-11-14T05:20:00Z");
 const config: SwitchConfig = {
   bid: { xero: "live", books: "off" },
   shop: { xero: "off", books: "dry_run" },
@@ -60,7 +63,7 @@ function store(
         {
           stripeAccountId: "acct_1Shop",
           product: "shop",
-          readThrough: null,
+          readThrough: READ_THROUGH,
           opening: { balancePence: 1_000, on: "2031-11-01" },
         },
       ],
@@ -79,13 +82,17 @@ function store(
   return { s, saved };
 }
 
-function run(st: IStripeReconciliationStore, balance: number) {
+function run(
+  st: IStripeReconciliationStore,
+  balance: number,
+  readers: StripeBalanceReader[] = [new FakeStripeBalance("acct_1Shop", balance)],
+) {
   const raised: { alert: unknown; fields: unknown }[] = [];
   const putObject = vi.fn(async () => ({}));
   const service = new StripeReconciliation({
     store: st,
     settings: { read: async () => ok(config) } as never,
-    readers: [new FakeStripeBalance("acct_1Shop", balance)],
+    readers,
     storage: { putObject },
     alerts: { raise: (alert, fields) => void raised.push({ alert, fields }) },
     now: () => NOW,
@@ -166,7 +173,7 @@ describe("StripeReconciliation", () => {
     expect(raised).toHaveLength(1);
   });
 
-  it("does not compare clearing until every account of the company has its opening stated", async () => {
+  it("does not compare clearing until every account has its opening, and alerts that it was not read", async () => {
     const { s } = store({
       accounts: [
         { stripeAccountId: "acct_1Shop", product: "shop", readThrough: null, opening: null },
@@ -176,7 +183,47 @@ describe("StripeReconciliation", () => {
     const [report] = await service.run();
     expect(report?.clearing).toMatchObject({ reconcilable: false, unexplainedPence: null });
     expect(s.clearingSince).not.toHaveBeenCalled();
-    expect(raised).toEqual([]);
+    expect(report).toMatchObject({
+      complete: false,
+      accountsNotRead: [{ stripeAccountId: "acct_1Shop", reason: "no_opening" }],
+      mismatches: 1,
+    });
+    expect(raised).toHaveLength(1);
+  });
+
+  it("alerts when a registered account has no key, a key reads another account, or the read stopped", async () => {
+    const { s } = store({
+      accounts: [
+        {
+          stripeAccountId: "acct_1Shop",
+          product: "shop",
+          readThrough: READ_THROUGH,
+          opening: { balancePence: 0, on: "2031-11-01" },
+        },
+        {
+          stripeAccountId: "acct_2Shop",
+          product: "shop",
+          readThrough: new Date("2031-11-13T12:00:00Z"),
+          opening: { balancePence: 0, on: "2031-11-01" },
+        },
+      ],
+    });
+    const failing = new FakeStripeBalance("acct_3Gone");
+    failing.balancePence = async () => Promise.reject(new Error("api_key_expired"));
+    const { service, raised } = run(s, 0, [
+      new FakeStripeBalance("acct_2Shop", 0),
+      new FakeStripeBalance("acct_9Other", 0),
+      failing,
+    ]);
+    const [report] = await service.run();
+    expect(report?.accountsNotRead).toEqual([
+      { stripeAccountId: "acct_1Shop", reason: "balance_not_read" },
+      { stripeAccountId: "acct_2Shop", reason: "not_read_through" },
+      { stripeAccountId: "acct_9Other", reason: "not_registered" },
+    ]);
+    expect(report).toMatchObject({ complete: false, mismatches: 3 });
+    expect(report?.clearing.unexplainedPence).toBeNull();
+    expect(raised).toHaveLength(1);
   });
 
   it("stores ids and amounts only, under the private reconciliation prefix", async () => {
@@ -192,8 +239,10 @@ describe("StripeReconciliation", () => {
     const json = JSON.parse(body.toString("utf8"));
     expect(json).toMatchObject({ version: 1, rehearsal: true, heldTransferPence: 42 });
     expect(Object.keys(json).sort()).toEqual([
+      "accountsNotRead",
       "byType",
       "clearing",
+      "complete",
       "day",
       "generatedAt",
       "heldTransferPence",
