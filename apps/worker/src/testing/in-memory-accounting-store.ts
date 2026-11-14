@@ -15,6 +15,7 @@ import {
   expireLease,
   newRecord,
   ok,
+  parkedRecord,
   refuse,
   requeue,
   retryDelayMs,
@@ -132,7 +133,9 @@ export class InMemoryAccountingStore
       totals: expectedTotals(document),
       provider: null,
       target,
-      record: newRecord(document.kind, document.reference),
+      record: input.park
+        ? parkedRecord(document.kind, document.reference, input.park)
+        : newRecord(document.kind, document.reference),
       lastErrorClass: null,
       createdAt: new Date(this.nowMs + this.seq),
       updatedAt: new Date(this.nowMs),

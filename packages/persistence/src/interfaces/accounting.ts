@@ -11,9 +11,11 @@ import type {
   LifecycleCode,
   LookupOutcome,
   Mode,
+  ParkReason,
   Product,
   QueueTab,
   Result,
+  ShopOrderPaidFacts,
   Source,
   SwitchCode,
   SwitchConfig,
@@ -58,6 +60,11 @@ export interface RegisterInput {
   readonly document: AccountingDocument;
   /** The event or row that caused this document, e.g. a domain event id. */
   readonly sourceEventRef: string;
+  /**
+   * Store it parked (needs_review, never sent) for this reason instead of queueing it. Only a new
+   * document is parked; a replay keeps the state it was first stored in.
+   */
+  readonly park?: ParkReason;
 }
 
 export interface RegisterOutcome {
@@ -210,6 +217,42 @@ export interface IBidAccountingFactsReader {
   paymentRefunded(paymentId: string): Promise<FactsRead<BidRefundsFacts>>;
 }
 
+/**
+ * Reads what the Shop accounting flow needs from the stored order rows (the event carries ids
+ * only): the invoice number, every line's price and VAT as sold, the delivery as charged. Money
+ * comes back in whole pence, dates as London calendar days, ids lower case.
+ */
+export interface IShopAccountingFactsReader {
+  orderPaid(orderId: string): Promise<FactsRead<ShopOrderPaidFacts>>;
+}
+
+/** Who a Shop invoice email may go to: the order's owner now, while they can still be reached. */
+export interface ShopInvoiceRecipient {
+  readonly email: string;
+  readonly name: string | null;
+}
+
+/** What the Shop "Your invoice" email says, read from the order's own rows. */
+export interface ShopInvoiceEmailFacts {
+  readonly orderId: string;
+  /** "LAX-S-10482": what the buyer quotes for the order. */
+  readonly orderReference: string;
+  readonly totalPence: number;
+  readonly paidAt: Date;
+  /** The order was cancelled or refunded in full before its invoice email went. */
+  readonly cancelled: boolean;
+  /**
+   * The order's owner as it stands now (a guest, or the LAX account that claimed the order),
+   * or null when they cannot be reached: an erased guest, or an account that is disabled, being
+   * deleted or merged into another. Never someone the order belonged to before.
+   */
+  readonly recipient: ShopInvoiceRecipient | null;
+}
+
+export interface IShopInvoiceEmailFactsReader {
+  forOrder(orderId: string): Promise<ShopInvoiceEmailFacts | null>;
+}
+
 export interface AccountingQueueQuery {
   readonly tab: QueueTab;
   /** One company's books, or both when null. */
@@ -292,10 +335,15 @@ export interface UncopiedDocuments {
   readonly unreadable: readonly string[];
 }
 
-/** An issued Bid invoice whose stored copy is ready to email (never a rehearsal). */
+/** An issued Bid or Shop invoice whose stored copy is ready to email (never a rehearsal). */
 export interface InvoiceEmailDue {
   readonly documentId: string;
-  /** The Bid invoice the document was made from (its LAX reference's source id). */
+  /** Which product's invoice: each has its own facts, email and recipient rule. */
+  readonly product: "bid" | "shop";
+  /**
+   * What the document was made from (its LAX reference's source id): the Bid invoice, or the Shop
+   * order.
+   */
   readonly invoiceId: string;
   /** The provider's invoice number. */
   readonly number: string;
@@ -304,10 +352,10 @@ export interface InvoiceEmailDue {
 
 /**
  * Why an invoice's email was settled without sending it; each is final.
- * - `invoice_missing`: the Bid invoice the document names no longer exists.
+ * - `invoice_missing`: the Bid invoice or Shop order the document names no longer exists.
  * - `invoice_cancelled`: the invoice was cancelled before its email went.
  * - `no_recipient`: no current payer and no billing inbox to send it to.
- * - `unreadable_document`: the row does not read back as a numbered Bid invoice.
+ * - `unreadable_document`: the row does not read back as a numbered Bid or Shop invoice.
  */
 export type InvoiceEmailSkipReason =
   | "invoice_missing"
@@ -318,7 +366,7 @@ export type InvoiceEmailSkipReason =
 /** The copies whose email is due, and the due rows that could not be read (settled as skipped). */
 export interface InvoiceEmailDueList {
   readonly due: readonly InvoiceEmailDue[];
-  /** Document ids listed as due whose row does not read back as a numbered Bid invoice. */
+  /** Document ids listed as due whose row does not read back as a numbered Bid or Shop invoice. */
   readonly unreadable: readonly string[];
 }
 
@@ -327,12 +375,12 @@ export interface InvoiceEmailDueList {
  * and the "Your invoice" email settled once per copy (queued, or skipped for good).
  */
 export interface IAccountingDocumentCopies {
-  /** Issued Bid invoices aimed at one of `modes` that have no stored copy yet, newest first. */
+  /** Issued Bid and Shop invoices aimed at one of `modes` that have no stored copy yet, newest first. */
   listUncopied(modes: readonly TargetMode[], limit: number): Promise<UncopiedDocuments>;
   /** Records a copy; false when the document already has one (another worker was first). */
   record(copy: AccountingDocumentCopy): Promise<boolean>;
   /**
-   * Copies of Bid invoices Books issued live whose email is not settled yet, oldest first; never
+   * Copies of Bid and Shop invoices Books issued live whose email is not settled yet, oldest first; never
    * a rehearsal, never a test organisation's invoice.
    */
   listEmailDue(limit: number): Promise<InvoiceEmailDueList>;

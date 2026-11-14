@@ -314,6 +314,7 @@ export const WORKER_SHOP_INVOICE_READ_COLUMNS = [
     "shop_order",
     [
       "id",
+      "reference",
       "status",
       "invoice_number",
       "identity_subject_id",

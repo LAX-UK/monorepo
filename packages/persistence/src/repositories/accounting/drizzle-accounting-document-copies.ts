@@ -17,8 +17,13 @@ import { rowToStored } from "../../lib/accounting-document-row.js";
 const d = accountingDocument;
 const c = accountingDocumentCopy;
 
-/** Only Bid invoices get a stored copy and an email in this phase. */
-const BID_INVOICE = and(eq(d.product, "bid"), eq(d.kind, "invoice"), eq(d.targetProvider, "books"));
+/** Bid and Shop invoices get a stored copy and an email; lax.art's and other kinds do not yet. */
+const COPIED_PRODUCTS = ["bid", "shop"] as const;
+const INVOICE = and(
+  inArray(d.product, [...COPIED_PRODUCTS]),
+  eq(d.kind, "invoice"),
+  eq(d.targetProvider, "books"),
+);
 
 export class DrizzleAccountingDocumentCopies implements IAccountingDocumentCopies {
   constructor(
@@ -33,7 +38,7 @@ export class DrizzleAccountingDocumentCopies implements IAccountingDocumentCopie
       .from(d)
       .where(
         and(
-          BID_INVOICE,
+          INVOICE,
           eq(d.state, "issued"),
           inArray(d.targetMode, [...modes]),
           notExists(this.db.select({ one: sql`1` }).from(c).where(eq(c.documentId, d.id))),
@@ -76,13 +81,14 @@ export class DrizzleAccountingDocumentCopies implements IAccountingDocumentCopie
         documentId: c.documentId,
         storageKey: c.storageKey,
         reference: d.laxReference,
+        product: d.product,
         number: d.providerNumber,
       })
       .from(c)
       .innerJoin(d, eq(d.id, c.documentId))
       .where(
         and(
-          BID_INVOICE,
+          INVOICE,
           eq(d.state, "issued"),
           // A rehearsal is never emailed, and neither is a test organisation's invoice: only an
           // invoice Books issued live reaches a buyer.
@@ -98,10 +104,12 @@ export class DrizzleAccountingDocumentCopies implements IAccountingDocumentCopie
     const unreadable: string[] = [];
     for (const row of rows) {
       const parsed = parseLaxReference(row.reference);
+      const product = parsed.ok ? parsed.value.product : null;
       if (
         !parsed.ok ||
         row.number === null ||
-        parsed.value.product !== "bid" ||
+        (product !== "bid" && product !== "shop") ||
+        product !== row.product ||
         parsed.value.kind !== "invoice"
       ) {
         // Named, so the caller settles it and it never holds a place at the head of the list.
@@ -110,6 +118,7 @@ export class DrizzleAccountingDocumentCopies implements IAccountingDocumentCopie
       }
       due.push({
         documentId: row.documentId,
+        product,
         invoiceId: parsed.value.sourceId,
         number: row.number,
         storageKey: row.storageKey,
