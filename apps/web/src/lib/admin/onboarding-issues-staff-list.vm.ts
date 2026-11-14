@@ -48,6 +48,8 @@ export type OnboardingStaffRow = {
   title: string;
   /** Under the title: the KYC provider, or what the document is. */
   secondary: string | null;
+  /** The client's email, for the panel header; null when the item has none. */
+  email: string | null;
   status: StatusPresentation | null;
   /** When it started waiting: created, or uploaded for a document. */
   since: string;
@@ -171,12 +173,13 @@ export function toOnboardingStaffRow(
 ): OnboardingStaffRow | null {
   const base = (
     fields: Pick<OnboardingStaffRow, "title" | "since" | "href" | "hrefLabel"> &
-      Partial<Pick<OnboardingStaffRow, "secondary" | "status">>,
+      Partial<Pick<OnboardingStaffRow, "secondary" | "email" | "status">>,
   ): OnboardingStaffRow => ({
     id: row.id,
     tab,
     kind: ONBOARDING_KIND_LABELS[tab],
     secondary: null,
+    email: null,
     status: null,
     ageLabel: formatAdminRelativeTimeLabel(fields.since, now),
     urgency: adminIssueAgeUrgency(fields.since, now),
@@ -208,7 +211,8 @@ export function toOnboardingStaffRow(
     case "kyc":
       return "userId" in row && "provider" in row
         ? base({
-            title: onboardingKycLabel(row),
+            title: row.userName || row.userEmail || "Client",
+            email: row.userName ? (row.userEmail ?? null) : null,
             secondary: row.provider,
             status: staffStatus("kyc", row.status),
             since: row.createdAt,

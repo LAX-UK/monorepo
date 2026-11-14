@@ -13,7 +13,6 @@ import {
   StaffDate,
   StatusBadge,
 } from "@auction/staff-ui";
-import { ArrowUpRight } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 
@@ -66,16 +65,13 @@ export function ConditionReportQuickView({
             ]
           : []
       }
-      headerActions={
-        row ? (
-          <StaffButton asChild variant="ghost" size="sm" icon={<ArrowUpRight aria-hidden />}>
-            <Link href={row.lotHref}>Open lot</Link>
-          </StaffButton>
-        ) : null
-      }
       overflow={
-        others.length > 0 ? (
-          <OverflowMenu label="Request actions" actions={others} Link={Link} />
+        row ? (
+          <OverflowMenu
+            label="Request actions"
+            actions={[{ id: "lot", label: "Open lot", href: row.lotHref }, ...others]}
+            Link={Link}
+          />
         ) : null
       }
       summary={

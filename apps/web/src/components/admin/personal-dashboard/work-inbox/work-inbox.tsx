@@ -360,11 +360,7 @@ export function WorkInbox({
                 {primaryAction.label}
               </StaffButton>
             </>
-          ) : (
-            <StaffButton asChild variant="primary">
-              <Link href={open.href}>Open record</Link>
-            </StaffButton>
-          )
+          ) : null
         }
       >
         {null}

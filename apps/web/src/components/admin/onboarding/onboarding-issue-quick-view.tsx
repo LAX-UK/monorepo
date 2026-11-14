@@ -5,9 +5,7 @@ import {
   DetailPanel,
   type DetailPanelProps,
   Notice,
-  OverflowMenu,
   PanelSection,
-  StaffButton,
   StaffDate,
   StatusBadge,
 } from "@auction/staff-ui";
@@ -20,8 +18,8 @@ const URGENCY_BADGE = {
 
 /**
  * An item waiting on staff, beside the queue: what holds it up and who it waits on, the next
- * step, how long it has waited, and the record page that settles it ("Open full page" and the
- * footer). A work queue: its place ("3 of 120") and J and K to the next item without closing.
+ * step, how long it has waited, and the record page that settles it ("Open full page" in the
+ * header, the only route). A work queue: its place ("3 of 120") and J and K to the next item without closing.
  */
 export function OnboardingIssueQuickView({
   row,
@@ -63,7 +61,14 @@ export function OnboardingIssueQuickView({
             ]
           : []
       }
-      meta={row ? [{ label: "Waiting", value: row.ageLabel ?? "Date unknown" }] : []}
+      meta={
+        row
+          ? [
+              ...(row.email ? [{ label: "Email", value: row.email }] : []),
+              { label: "Waiting", value: row.ageLabel ?? "Date unknown" },
+            ]
+          : []
+      }
       status={
         row ? (
           <>
@@ -72,23 +77,6 @@ export function OnboardingIssueQuickView({
             ) : null}
             {urgency ? <StatusBadge tone={urgency.tone}>{urgency.label}</StatusBadge> : null}
           </>
-        ) : null
-      }
-      overflow={
-        row ? (
-          <OverflowMenu
-            size="icon-sm"
-            label={`More actions for ${row.title}`}
-            Link={Link}
-            actions={[{ id: "full-page", label: row.hrefLabel, href: row.href }]}
-          />
-        ) : null
-      }
-      footer={
-        row ? (
-          <StaffButton asChild variant="primary">
-            <Link href={row.href}>{row.hrefLabel}</Link>
-          </StaffButton>
         ) : null
       }
     >

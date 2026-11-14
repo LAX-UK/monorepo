@@ -26,6 +26,7 @@ function item(
     kind: "KYC session",
     title,
     secondary: "Stripe Identity",
+    email: `${id}@example.test`,
     status: { label: "Requires input", tone: "warning" },
     since,
     ageLabel: "3d ago",
@@ -93,6 +94,10 @@ describe("OnboardingIssuesStaffList queue panel", () => {
       "href",
       "/admin/clients/user_kyc_c",
     );
+    // One route only: the footer has no second "Open client" button.
+    expect(within(dialog).queryByRole("link", { name: "Open client" })).not.toBeInTheDocument();
+    expect(within(dialog).getAllByRole("link", { name: /open/i })).toHaveLength(1);
+    expect(within(dialog).getByText("kyc_c@example.test")).toBeVisible();
   });
 
   it("keeps the item in the URL, its place in the whole queue, and steps with J and K", () => {

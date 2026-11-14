@@ -111,10 +111,12 @@ describe("LotFulfilmentStaffList queue panel", () => {
     renderList();
     fireEvent.click(screen.getAllByText("Red Studio")[0] as HTMLElement);
     const dialog = queuePanel.get() as HTMLElement;
-    expect(within(dialog).getByRole("link", { name: "Open lot" })).toHaveAttribute(
+    expect(within(dialog).queryByRole("link", { name: "Open lot" })).not.toBeInTheDocument();
+    expect(queuePanel.openMenu().getByRole("menuitem", { name: "Open lot" })).toHaveAttribute(
       "href",
       "/admin/lots/lot_b",
     );
+    fireEvent.keyDown(document.activeElement as HTMLElement, { key: "Escape" });
     fireEvent.click(within(dialog).getByRole("button", { name: "Mark delivered" }));
     expect(screen.getAllByRole("dialog").length).toBeGreaterThan(1);
   });

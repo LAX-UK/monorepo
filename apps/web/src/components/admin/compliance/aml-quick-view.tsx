@@ -25,7 +25,6 @@ import {
   StatusBadge,
   Timeline,
 } from "@auction/staff-ui";
-import { ArrowUpRight } from "lucide-react";
 import Link from "next/link";
 
 function HitDetail({ hit }: { hit: AmlHitView }) {
@@ -75,7 +74,7 @@ function reviewBlocker(
 
 /**
  * A watchlist screening beside the list, in the record header pattern: the client and both
- * statuses, a meta line (screened, hits), "Open client" and the same `…` menu as the row.
+ * statuses, a meta line (screened, hits), the same `…` menu as the row.
  * The two stages of the maker-checker sit under Review, the next step in the footer; every
  * decision opens the row's confirm dialog.
  */
@@ -148,20 +147,13 @@ export function AmlQuickView({
           </>
         ) : null
       }
-      headerActions={
-        row ? (
-          <StaffButton asChild variant="ghost" size="sm" icon={<ArrowUpRight aria-hidden />}>
-            <Link href={clientHref}>Open client</Link>
-          </StaffButton>
-        ) : null
-      }
       overflow={
-        row && decisionActions.length > 0 ? (
+        row ? (
           <OverflowMenu
             size="icon-sm"
             label={`More actions for screening ${row.client}`}
             Link={Link}
-            actions={decisionActions}
+            actions={[{ id: "client", label: "Open client", href: clientHref }, ...decisionActions]}
           />
         ) : null
       }

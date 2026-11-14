@@ -28,7 +28,6 @@ import {
   TableSearch,
   formatStaffDateTime,
 } from "@auction/staff-ui";
-import { ArrowUpRight } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useMemo } from "react";
 
@@ -250,16 +249,13 @@ export function LotFulfilmentQuickView({
       title={row?.title ?? "Lot fulfilment"}
       description={row?.context ?? undefined}
       status={row ? <StatusBadge tone={row.status.tone}>{row.status.label}</StatusBadge> : null}
-      headerActions={
-        row ? (
-          <StaffButton asChild variant="ghost" size="sm" icon={<ArrowUpRight aria-hidden />}>
-            <Link href={row.lotHref}>Open lot</Link>
-          </StaffButton>
-        ) : null
-      }
       overflow={
-        row && others.length > 0 ? (
-          <OverflowMenu label={`More fulfilment actions for ${row.title}`} actions={others} />
+        row ? (
+          <OverflowMenu
+            label={`More fulfilment actions for ${row.title}`}
+            Link={Link}
+            actions={[{ id: "lot", label: "Open lot", href: row.lotHref }, ...others]}
+          />
         ) : null
       }
       notice={

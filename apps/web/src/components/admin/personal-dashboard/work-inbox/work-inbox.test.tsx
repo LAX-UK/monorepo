@@ -179,7 +179,7 @@ describe("work inbox queue panel", () => {
     await waitFor(() => expect(queuePanel.focusedRowText()).toContain("Second due"));
   });
 
-  it("offers the item's own work actions, and only Open record when it has none", () => {
+  it("offers the item's own work actions, and no second link to the record page when it has none", () => {
     showQueue();
     fireEvent.click(screen.getAllByText("First due")[0] as HTMLElement);
     expect(
@@ -188,6 +188,7 @@ describe("work inbox queue panel", () => {
     fireEvent.keyDown(queuePanel.get() as HTMLElement, { key: "j" });
     const panel = queuePanel.get() as HTMLElement;
     expect(within(panel).queryByRole("button", { name: "Mark handled" })).toBeNull();
-    expect(within(panel).getByRole("link", { name: "Open record" })).toBeVisible();
+    expect(within(panel).queryByRole("link", { name: "Open record" })).toBeNull();
+    expect(within(panel).getByRole("link", { name: "Open full page" })).toBeVisible();
   });
 });

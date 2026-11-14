@@ -47,7 +47,8 @@ describe("onboarding issues staff list view model", () => {
       href: "/admin/legal-entities/le_1?returnTo=%2Fadmin%2Fonboarding-issues%3Ftab%3Dkyc",
     });
     expect(toOnboardingStaffRow("kyc", kyc, undefined, NOW)).toMatchObject({
-      title: "Ada Lovelace · ada@example.test",
+      title: "Ada Lovelace",
+      email: "ada@example.test",
       secondary: "Stripe Identity",
       href: "/admin/clients/user_1",
       hrefLabel: "Open client",

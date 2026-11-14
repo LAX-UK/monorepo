@@ -53,6 +53,16 @@ for (const queue of [
       );
     });
 
+    test("the header never links to a different record: those sit in the … menu", async ({
+      page,
+    }) => {
+      await page.goto(queue.path);
+      const { panel } = await openFirstRow(page, queue.param);
+      await expect(panel.getByRole("link", { name: /^open (client|lot)$/i })).toHaveCount(0);
+      // Neither queue's record has its own page, so the slot stays empty.
+      await expect(panel.getByRole("link", { name: /^open full page$/i })).toHaveCount(0);
+    });
+
     test("J and K step through the queue, and Escape returns focus to the row", async ({
       page,
     }) => {

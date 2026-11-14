@@ -1,4 +1,4 @@
-import { screen, within } from "@testing-library/react";
+import { fireEvent, screen, within } from "@testing-library/react";
 
 /**
  * Reading a work queue's panel (`DetailPanel` with `queue`) in a list test: the panel, its title,
@@ -20,4 +20,12 @@ export const queuePanel = {
   /** The row that has focus, by its text. */
   focusedRowText: (): string | undefined =>
     document.activeElement?.closest("tr")?.textContent ?? undefined,
+  /** Opens the panel's `…` menu (the other records and actions) and returns it. */
+  openMenu: (): ReturnType<typeof within> => {
+    const trigger = within(screen.getByRole("dialog")).getByRole("button", {
+      name: /^(More|Request) .*actions/,
+    });
+    fireEvent.keyDown(trigger, { key: "Enter" });
+    return within(screen.getByRole("menu"));
+  },
 };

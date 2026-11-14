@@ -1,4 +1,5 @@
 import type { ManualReviewStaffRow } from "@/lib/admin/finance/payments-staff-list.vm";
+import { queuePanel } from "@/test/queue-panel";
 import { StaffTooltipProvider } from "@auction/staff-ui";
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -82,8 +83,12 @@ describe("ManualReviewStaffList links", () => {
     );
     fireEvent.click(screen.getAllByText("Golden Hour")[0] as HTMLElement);
     expect(
-      within(screen.getByRole("dialog")).getByRole("link", { name: "Open lot" }),
-    ).toHaveAttribute("href", "/admin/lots/lot_1");
+      within(screen.getByRole("dialog")).queryByRole("link", { name: "Open lot" }),
+    ).not.toBeInTheDocument();
+    expect(queuePanel.openMenu().getByRole("menuitem", { name: "Open lot" })).toHaveAttribute(
+      "href",
+      "/admin/lots/lot_1",
+    );
   });
 
   it("shows the winner as plain text and offers no lot link to a finance-only person", async () => {
@@ -91,9 +96,7 @@ describe("ManualReviewStaffList links", () => {
     expect(screen.getAllByText("ada@example.test").length).toBeGreaterThan(0);
     expect(screen.queryByRole("link", { name: "ada@example.test" })).not.toBeInTheDocument();
     fireEvent.click(screen.getAllByText("Golden Hour")[0] as HTMLElement);
-    expect(
-      within(screen.getByRole("dialog")).queryByRole("link", { name: "Open lot" }),
-    ).not.toBeInTheDocument();
+    expect(queuePanel.openMenu().queryByRole("menuitem", { name: "Open lot" })).toBeNull();
   });
 });
 

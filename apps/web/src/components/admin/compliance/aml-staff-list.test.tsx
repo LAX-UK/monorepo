@@ -1,4 +1,5 @@
 import type { AmlStaffRow } from "@/lib/admin/compliance/aml-staff-list.vm";
+import { queuePanel } from "@/test/queue-panel";
 import { StaffTooltipProvider } from "@auction/staff-ui";
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -86,7 +87,7 @@ describe("AmlStaffList queue panel", () => {
     window.history.replaceState(null, "", "/");
   });
 
-  it("links each screening to its own address and keeps Open client in the panel", () => {
+  it("links each screening to its own address and offers Open client from the panel menu, not the header", () => {
     renderList();
     expect(screen.getAllByRole("link", { name: "Grace Hopper" })[0]).toHaveAttribute(
       "href",
@@ -94,8 +95,15 @@ describe("AmlStaffList queue panel", () => {
     );
     fireEvent.click(screen.getAllByText("Grace Hopper")[0] as HTMLElement);
     expect(
-      within(panel() as HTMLElement).getByRole("link", { name: "Open client" }),
-    ).toHaveAttribute("href", "/admin/clients/user_scr_b");
+      within(panel() as HTMLElement).queryByRole("link", { name: "Open full page" }),
+    ).not.toBeInTheDocument();
+    expect(
+      within(panel() as HTMLElement).queryByRole("link", { name: "Open client" }),
+    ).not.toBeInTheDocument();
+    expect(queuePanel.openMenu().getByRole("menuitem", { name: "Open client" })).toHaveAttribute(
+      "href",
+      "/admin/clients/user_scr_b",
+    );
   });
 
   it("keeps the URL in step as it opens and as J and K move through the queue", () => {
