@@ -77,6 +77,14 @@ async function pageState(page: Page) {
         .filter((id, i, all) => all.indexOf(id) === i)
         .slice(0, 60),
       text: document.body.innerText.slice(0, 600),
+      // React marks the nodes it has hydrated; a header without the mark never came alive.
+      headerHydrated: (() => {
+        const header = document.querySelector("header[data-chrome-variant]");
+        return header ? Object.keys(header).some((key) => key.startsWith("__react")) : null;
+      })(),
+      headerButtons: [...document.querySelectorAll("header button, header a[aria-label]")]
+        .map((el) => el.getAttribute("aria-label") ?? el.textContent?.trim() ?? "")
+        .slice(0, 20),
     }))
     .catch((error: unknown) => ({ error: String(error) }));
   return {
@@ -308,16 +316,37 @@ test.describe("account switching on the production build @roles", () => {
     await page.waitForLoadState("networkidle");
     await page.setViewportSize({ width: 375, height: 800 });
     const seen: string[] = [];
-    page.on("response", (response) => {
-      const path = new URL(response.url()).pathname;
-      if (path === "/api/me/menu-context" || response.request().resourceType() === "document") {
-        seen.push(`${response.status()} ${path}`);
-      }
+    const startedAt = Date.now();
+    const open = new Map<object, string>();
+    const appRequest = (url: string) => {
+      const { origin: from, pathname } = new URL(url);
+      return from === origin && !/\.(woff2?|png|jpe?g|webp|svg|css)$/.test(pathname)
+        ? `${pathname}${url.includes("_rsc=") ? " (rsc)" : ""}`
+        : null;
+    };
+    page.on("request", (request) => {
+      const path = appRequest(request.url());
+      if (path) open.set(request, `${request.method()} ${path}`);
+    });
+    page.on("requestfinished", async (request) => {
+      const name = open.get(request);
+      open.delete(request);
+      const status = (await request.response().catch(() => null))?.status();
+      if (name) seen.push(`${Date.now() - startedAt}ms ${status} ${name}`);
+    });
+    page.on("requestfailed", (request) => {
+      const name = open.get(request);
+      open.delete(request);
+      if (name)
+        seen.push(`${Date.now() - startedAt}ms failed ${name} ${request.failure()?.errorText}`);
     });
     page.on("console", (message) => {
-      if (message.type() === "error") seen.push(`console: ${message.text().slice(0, 200)}`);
+      if (message.type() === "error" && !message.text().includes("WebSocket connection")) {
+        seen.push(`console: ${message.text().slice(0, 200)}`);
+      }
     });
     page.on("pageerror", (error) => seen.push(`pageerror: ${error.message.slice(0, 200)}`));
+    seen.push(`signed in on ${new URL(page.url()).pathname}`);
     await page.goto("/bids");
     await dismissCookieConsentIfVisible(page);
 
@@ -328,7 +357,9 @@ test.describe("account switching on the production build @roles", () => {
       .catch(async (error: unknown) => {
         const state = {
           ...(await pageState(page).catch((e: unknown) => ({ error: String(e) }))),
-          seen,
+          seen: seen.filter((line) => !line.includes("/_next/static/")),
+          staticChunks: seen.filter((line) => line.includes("/_next/static/")).length,
+          stillOpen: [...open.values()],
         };
         console.log(`[phone-account-button missing] ${JSON.stringify(state)}`);
         throw error;
