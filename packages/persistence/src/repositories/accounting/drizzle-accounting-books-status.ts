@@ -168,18 +168,21 @@ export class DrizzleAccountingBooksStatusStore implements IAccountingBooksStatus
   }
 
   async requestRecheck(
+    modes: readonly TargetMode[],
     legalEntity: LegalEntity,
     kind: StatusCheckedKind,
     providerId: string,
     at: Date,
     limit: number,
   ): Promise<readonly string[]> {
+    if (modes.length === 0 || limit <= 0) return [];
     const rows = await this.db
       .select({ id: d.id })
       .from(d)
       .where(
         and(
           ISSUED_BOOKS,
+          inArray(d.targetMode, [...modes]),
           eq(d.legalEntity, legalEntity),
           eq(d.kind, kind),
           eq(d.providerId, providerId),

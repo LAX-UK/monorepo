@@ -155,6 +155,7 @@ export class AccountingStatusCheck {
     const kind = KIND_OF_MODULE[notice.module];
     if (!entity || !kind) return "not_ours";
     const documentIds = await this.deps.store.requestRecheck(
+      Object.keys(this.deps.statusesByMode) as TargetMode[],
       entity,
       kind,
       notice.entityId,

@@ -62,6 +62,11 @@ export interface InMemoryAccountingOptions {
    * real answer is still open), matching `testOrgConfigs()`.
    */
   readonly orgs?: Readonly<Partial<Record<LegalEntity, { readonly vatRegistered: boolean }>>>;
+  /**
+   * Where the fake's Books ids start. Default 7000000000001. A test sharing a database with other
+   * suites passes its own, so its documents' Books ids are not also held by theirs.
+   */
+  readonly firstProviderId?: number;
 }
 
 interface Held {
@@ -98,8 +103,10 @@ export class InMemoryAccounting implements AccountingPorts {
   /** Remainders applied after the fact, by payment key: invoice key -> pence. */
   private readonly remainderApplied = new Map<string, Map<string, number>>();
   private readonly orgs: Readonly<Partial<Record<LegalEntity, { vatRegistered: boolean }>>>;
+  private readonly firstProviderId: number;
 
   constructor(options: InMemoryAccountingOptions = {}) {
+    this.firstProviderId = options.firstProviderId ?? 7_000_000_000_001;
     this.orgs = options.orgs ?? {
       london_art_exchange: { vatRegistered: false },
       london_auction_xchange: { vatRegistered: true },
@@ -376,7 +383,7 @@ export class InMemoryAccounting implements AccountingPorts {
         laxNumber !== undefined && !renumbered
           ? laxNumber
           : `${PREFIX[doc.kind]}-${String(seq).padStart(6, "0")}`,
-      providerId: String(7_000_000_000_000 + this.held.size + 1),
+      providerId: String(this.firstProviderId + this.held.size),
       pdfRef:
         doc.kind === "invoice" || doc.kind === "credit_note"
           ? `/${doc.kind === "invoice" ? "invoices" : "creditnotes"}/${7_000_000_000_000 + this.held.size + 1}`

@@ -88,7 +88,7 @@ class InMemoryStatusStore implements IAccountingBooksStatusStore {
     this.rechecks.delete(documentId);
     if (decision.changes.length > 0) this.changes.push({ documentId, decision });
   }
-  async requestRecheck(_e: unknown, kind: string, providerId: string) {
+  async requestRecheck(_m: unknown, _e: unknown, kind: string, providerId: string) {
     const docs = this.issued().filter(
       (d) =>
         d.kind === kind &&

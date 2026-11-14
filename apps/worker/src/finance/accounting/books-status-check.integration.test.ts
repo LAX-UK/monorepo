@@ -237,7 +237,10 @@ describe.skipIf(!HAS_DB)("Books nightly status check (integration)", { timeout: 
       settings: repos.settingReader,
       registry: repos.registry,
     }).project(event);
-    const books = new InMemoryAccounting();
+    // Books ids of its own: other suites' documents in this database hold the fake's default ones.
+    const books = new InMemoryAccounting({
+      firstProviderId: 8_000_000_000_000 + Math.floor(Math.random() * 1e9) * 10,
+    });
     let n = 0;
     await new AccountingSender({
       workQueue: repos.workQueue,

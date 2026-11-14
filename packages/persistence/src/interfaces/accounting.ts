@@ -688,11 +688,12 @@ export interface IAccountingBooksStatusStore {
     observedAt: Date,
   ): Promise<void>;
   /**
-   * A Books notice named this Books id: mark the issued Books documents of that kind holding it in
-   * those books to be read first (one, as Books ids are unique in an organisation; at most `limit`).
+   * A Books notice named this Books id: mark the issued Books documents (in these modes) of that
+   * kind holding it in those books to be read first (one, as Books ids are unique in an organisation; at most `limit`).
    * Returns their ids; none when LAX holds no such document.
    */
   requestRecheck(
+    modes: readonly TargetMode[],
     legalEntity: LegalEntity,
     kind: StatusCheckedKind,
     providerId: string,
