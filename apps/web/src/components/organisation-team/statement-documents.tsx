@@ -32,9 +32,10 @@ export function StatementDocuments({ rows }: { rows: readonly StatementDocumentR
               </StatusBadge>
             ) : null
           }
+          actionBeside
           action={
             row.unavailable ? null : (
-              <Button asChild variant="ghost" size="icon-md">
+              <Button asChild variant="ghost" size="icon-md" className="size-lax-control-lg">
                 <a href={row.href} download aria-label={`Download ${row.title}, ${row.period}`}>
                   <Download aria-hidden />
                 </a>

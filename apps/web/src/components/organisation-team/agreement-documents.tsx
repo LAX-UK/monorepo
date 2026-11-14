@@ -32,8 +32,9 @@ export function AgreementDocuments({ rows }: { rows: readonly AgreementDocumentR
               </StatusBadge>
             )
           }
+          actionBeside
           action={
-            <Button asChild variant="ghost" size="icon-md">
+            <Button asChild variant="ghost" size="icon-md" className="size-lax-control-lg">
               <a href={row.href} download aria-label={`Download ${row.title}`}>
                 <Download aria-hidden />
               </a>
