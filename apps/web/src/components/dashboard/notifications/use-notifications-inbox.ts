@@ -2,7 +2,7 @@
 
 import { NOTIFICATIONS_PAGE_SIZE } from "@/components/dashboard/notifications/notifications-inbox.constants";
 import { useUserNotifications } from "@/hooks/use-user-notifications";
-import { parseInboxNotification } from "@/lib/data/http/parse";
+import { parseInboxNotification } from "@/lib/data/http/parse/notifications.parse";
 import { type InboxQuery, inboxSearch } from "@/lib/notifications/inbox-query";
 import {
   deleteNotification,

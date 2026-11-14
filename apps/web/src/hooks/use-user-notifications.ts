@@ -1,6 +1,6 @@
 "use client";
 
-import { parseUserNotification } from "@/lib/data/http/parse";
+import { parseUserNotification } from "@/lib/data/http/parse/notifications.parse";
 import { getSocket } from "@/lib/socket";
 import type { UserNotification } from "@auction/types";
 import { useEffect, useRef } from "react";

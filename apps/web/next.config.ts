@@ -136,6 +136,10 @@ const nextConfig: NextConfig = {
       "@auction/staff-ui",
     ],
   },
+  webpack(config, { isServer, dev }) {
+    if (!isServer && !dev) addShellRoutesChunk(config);
+    return config;
+  },
   async redirects() {
     return [
       ...PRIVATE_SALES_REDIRECTS,
@@ -144,6 +148,30 @@ const nextConfig: NextConfig = {
     ];
   },
 };
+
+/**
+ * The route map and marketing chrome helpers are imported by the root layout, so every page
+ * already loads them. Below webpack's 20 KB split threshold they were otherwise copied into the
+ * root layout and again into several shared chunks a page loads alongside it (account pages
+ * carried three copies of `client-routes.ts`). One forced chunk ships them once.
+ */
+const SHELL_ROUTES_MODULE =
+  /[\\/](?:apps[\\/]web[\\/]src[\\/]lib[\\/](?:navigation[\\/]client-routes|marketing[\\/]chrome)\.ts|packages[\\/]branding[\\/]dist[\\/]marketing-chrome\.js)$/;
+
+function addShellRoutesChunk(config: { optimization?: { splitChunks?: unknown } }) {
+  const splitChunks = config.optimization?.splitChunks;
+  if (!splitChunks || typeof splitChunks !== "object") return;
+  const groups = (splitChunks as { cacheGroups?: Record<string, unknown> }).cacheGroups;
+  if (!groups) return;
+  groups.shellRoutes = {
+    test: (module: { nameForCondition?: () => string | null }) =>
+      SHELL_ROUTES_MODULE.test(module.nameForCondition?.() ?? ""),
+    name: "shell-routes",
+    chunks: "all",
+    priority: 20,
+    enforce: true,
+  };
+}
 
 // Skip Sentry webpack plugin locally when no DSN is configured.
 const hasSentry = Boolean(process.env.SENTRY_DSN_WEB || process.env.NEXT_PUBLIC_SENTRY_DSN_WEB);

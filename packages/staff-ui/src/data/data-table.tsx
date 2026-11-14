@@ -11,6 +11,8 @@ import { StaffCheckbox } from "../primitives/choice.js";
 import { useStaffShortcut } from "../shell/shortcuts.js";
 import { BulkActionBar, TableSelectionProvider } from "./bulk-action-bar.js";
 import { EmptyValue, isEmptyCellValue } from "./cells.js";
+import { rememberListReturn, takeListReturn } from "./list-return.js";
+import { findRowLink, isRowLink, openInNewTab, selectingTextIn, wantsNewTab } from "./row-link.js";
 import type {
   BulkSelectionScope,
   DataColumn,
@@ -27,6 +29,22 @@ export type DataTableProps<T> = {
   getRowId: (row: T) => string;
   /** Enter, or a click on the row outside its links and buttons, opens the row (e.g. a panel). */
   onRowOpen?: (row: T) => void;
+  /**
+   * The row is a link to its record. The title cell must render a real `<a>` to the same href
+   * (`PrimaryCell` with `href`, or any anchor marked `data-staff-row-link`): a click anywhere on
+   * the row follows it, Enter opens it, Cmd- or Ctrl-click, middle-click and Cmd+Enter open it in
+   * a new tab, and right-click on the title offers the browser's Copy link. Shift-click still
+   * selects a range. Back to the list restores the scroll and marks the row that was opened.
+   *
+   * With `onRowOpen` too (a work queue), a plain click and Enter open the panel instead, and the
+   * new-tab gestures still open this href, so a new tab never shows the list again.
+   */
+  rowHref?: (row: T) => string;
+  /**
+   * Client-side navigation (e.g. `router.push`), for a row whose title link cannot be found.
+   * Normally the row clicks its own title link, so the app's `Link` does the navigating.
+   */
+  navigate?: (href: string) => void;
   /** The row shown in an open panel, marked so it is easy to find again. */
   activeRowId?: string | null;
   density?: TableDensity;
@@ -88,6 +106,8 @@ export type DataTableProps<T> = {
 const INTERACTIVE = "a,button,input,select,textarea,label,[role=checkbox],[role=menuitem]";
 const SELECT_CELL = "[data-staff-select-cell]";
 const COUNT = new Intl.NumberFormat("en-GB");
+/** How long the row you came back to stays marked (the CSS fade matches it). */
+const RETURNED_HIGHLIGHT_MS = 2000;
 
 const hideBelowClass = {
   md: "hidden md:table-cell",
@@ -188,6 +208,8 @@ export function DataTable<T>({
   data,
   getRowId,
   onRowOpen,
+  rowHref,
+  navigate,
   activeRowId = null,
   density = "comfortable",
   defaultSort,
@@ -213,7 +235,8 @@ export function DataTable<T>({
   const [localSort, setLocalSort] = React.useState<SortState | null>(defaultSort ?? null);
   const sort = onSortChange ? (controlledSort ?? defaultSort ?? null) : localSort;
   const selectable = Boolean(selectedIds && onSelectedIdsChange);
-  const interactiveRows = Boolean(onRowOpen) || selectable;
+  const openable = Boolean(onRowOpen || rowHref);
+  const interactiveRows = openable || selectable;
   const [focusIndex, setFocusIndex] = React.useState(0);
   const rowRefs = React.useRef<Array<HTMLTableRowElement | null>>([]);
   const anchorIndex = React.useRef<number | null>(null);
@@ -350,11 +373,23 @@ export function DataTable<T>({
       : null,
   );
   useStaffShortcut(
-    keyboardRows && onRowOpen
+    keyboardRows && openable
       ? {
           id: "staff:list-open-row",
           keys: "enter",
           label: "Open the focused row",
+          group: "Lists",
+          passive: true,
+          handler: () => {},
+        }
+      : null,
+  );
+  useStaffShortcut(
+    keyboardRows && rowHref
+      ? {
+          id: "staff:list-open-row-new-tab",
+          keys: "mod+enter",
+          label: "Open the focused row in a new tab",
           group: "Lists",
           passive: true,
           handler: () => {},
@@ -374,8 +409,36 @@ export function DataTable<T>({
       : null,
   );
 
+  /** Follows the row's link: its own title link when it has one, so the app's router navigates. */
+  const followRow = (container: Element, id: string, href: string) => {
+    const link = findRowLink(container, href);
+    if (link) {
+      // The link's own click (below) remembers the row for Back.
+      link.click();
+      return;
+    }
+    rememberListReturn(id);
+    if (navigate) navigate(href);
+    else window.location.assign(href);
+  };
+
+  /** Opens the row: the panel for a work queue, else the record page. */
+  const openRow = (container: Element, row: T) => {
+    if (onRowOpen) {
+      onRowOpen(row);
+      return;
+    }
+    const href = rowHref?.(row);
+    if (href) followRow(container, getRowId(row), href);
+  };
+
   const onRowKeyDown = (event: React.KeyboardEvent<HTMLTableRowElement>, index: number, row: T) => {
     if (event.target !== event.currentTarget) return;
+    if (event.key === "Enter" && (event.metaKey || event.ctrlKey) && rowHref) {
+      event.preventDefault();
+      openInNewTab(rowHref(row));
+      return;
+    }
     if (event.metaKey || event.ctrlKey || event.altKey) return;
     switch (event.key) {
       case "ArrowDown":
@@ -397,9 +460,9 @@ export function DataTable<T>({
         focusRow(rows.length - 1);
         break;
       case "Enter":
-        if (onRowOpen) {
+        if (openable) {
           event.preventDefault();
-          onRowOpen(row);
+          openRow(event.currentTarget, row);
         }
         break;
       case " ":
@@ -419,12 +482,128 @@ export function DataTable<T>({
     }
   };
 
-  const onRowClick = (event: React.MouseEvent, index: number, row: T) => {
+  const onRowClick = (event: React.MouseEvent<HTMLElement>, index: number, row: T) => {
     const target = event.target as HTMLElement;
-    if (target.closest(SELECT_CELL) || target.closest(INTERACTIVE)) return;
+    if (target.closest(SELECT_CELL)) return;
+    const href = rowHref?.(row);
+    if (!href) {
+      if (target.closest(INTERACTIVE)) return;
+      setFocusIndex(index);
+      onRowOpen?.(row);
+      return;
+    }
+    const link = target.closest("a");
+    if (link && isRowLink(link, href)) {
+      onRowLinkClick(event, index, row);
+      return;
+    }
+    if (target.closest(INTERACTIVE) || selectingTextIn(event.currentTarget)) return;
     setFocusIndex(index);
-    onRowOpen?.(row);
+    if (wantsNewTab(event)) {
+      openInNewTab(href);
+    } else if (event.shiftKey) {
+      if (selectable) toggleRow(index, true);
+      else openInNewTab(href);
+    } else {
+      openRow(event.currentTarget, row);
+    }
   };
+
+  /** What a click on the row's own title link does instead of navigating, if anything. */
+  const rowLinkTakeover = (event: React.MouseEvent): "select" | "panel" | null => {
+    if (event.shiftKey && selectable) return "select";
+    if (onRowOpen && !wantsNewTab(event) && !event.shiftKey && !event.altKey) return "panel";
+    return null;
+  };
+
+  /**
+   * Runs before the title link's own handler (a router's `Link` navigates in it), so a queue's
+   * plain click opens the panel and Shift-click selects, without the link navigating first.
+   */
+  const onRowClickCapture = (event: React.MouseEvent<HTMLElement>, row: T) => {
+    const href = rowHref?.(row);
+    const link = (event.target as HTMLElement).closest("a");
+    if (!href || !link || !isRowLink(link, href)) return;
+    if (rowLinkTakeover(event)) event.preventDefault();
+  };
+
+  /** A click on the row's own title link: the browser's gestures stay the browser's. */
+  const onRowLinkClick = (event: React.MouseEvent, index: number, row: T) => {
+    const takeover = rowLinkTakeover(event);
+    if (takeover === "select") {
+      setFocusIndex(index);
+      toggleRow(index, true);
+      return;
+    }
+    if (takeover === "panel") {
+      setFocusIndex(index);
+      onRowOpen?.(row);
+      return;
+    }
+    // New tab, new window, download: the browser opens the record; the list stays as it is.
+    // (A router's Link has already prevented the default of a plain click; that is still a visit.)
+    if (wantsNewTab(event) || event.shiftKey || event.altKey) return;
+    setFocusIndex(index);
+    rememberListReturn(getRowId(row));
+  };
+
+  /** The middle button on the row (outside its links, which the browser handles) opens a tab. */
+  const onRowAuxClick = (event: React.MouseEvent<HTMLElement>, row: T) => {
+    const target = event.target as HTMLElement;
+    if (!rowHref || event.button !== 1 || target.closest(INTERACTIVE)) return;
+    event.preventDefault();
+    openInNewTab(rowHref(row));
+  };
+
+  const onRowMouseDown = (event: React.MouseEvent<HTMLElement>) => {
+    if (!rowHref || (event.target as HTMLElement).closest(INTERACTIVE)) return;
+    // Middle button: no autoscroll cursor. Shift: no text selected between the two rows.
+    if (event.button === 1 || (event.shiftKey && selectable)) event.preventDefault();
+  };
+
+  const rowLinkHandlers = (row: T) =>
+    rowHref
+      ? {
+          onClickCapture: (event: React.MouseEvent<HTMLElement>) => onRowClickCapture(event, row),
+          onAuxClick: (event: React.MouseEvent<HTMLElement>) => onRowAuxClick(event, row),
+          onMouseDown: onRowMouseDown,
+        }
+      : {};
+
+  // Back to this list: the scroll comes back and the row that was opened is focused and marked.
+  const cardRefs = React.useRef<Array<HTMLLIElement | null>>([]);
+  const [returnedId, setReturnedId] = React.useState<string | null>(null);
+  const returnChecked = React.useRef(false);
+  React.useLayoutEffect(() => {
+    if (!rowHref || returnChecked.current || loading) return;
+    returnChecked.current = true;
+    const entry = takeListReturn();
+    if (!entry) return;
+    // Instant: the page may scroll smoothly, and the list should simply be where it was.
+    const restoreScroll = () =>
+      window.scrollTo({ top: entry.scrollY, left: window.scrollX, behavior: "instant" });
+    restoreScroll();
+    // The router may settle its own scroll after the first paint; ours wins.
+    const frame = window.requestAnimationFrame?.(restoreScroll);
+    const index = ids.indexOf(entry.rowId);
+    if (index >= 0) {
+      setFocusIndex(index);
+      setReturnedId(entry.rowId);
+      const tableShown = wrapperRef.current !== null && wrapperRef.current.offsetParent !== null;
+      const target = tableShown
+        ? rowRefs.current[index]
+        : cardRefs.current[index]?.querySelector<HTMLElement>("a[href]");
+      target?.focus({ preventScroll: true });
+    }
+    return () => {
+      if (frame !== undefined) window.cancelAnimationFrame?.(frame);
+    };
+  }, [rowHref, loading, ids]);
+  React.useEffect(() => {
+    if (!returnedId) return;
+    const timer = window.setTimeout(() => setReturnedId(null), RETURNED_HIGHLIGHT_MS);
+    return () => window.clearTimeout(timer);
+  }, [returnedId]);
 
   /** The whole selection cell is the hit target: a near miss selects, it never opens the row. */
   const selectCellProps = (index: number) => ({
@@ -714,12 +893,14 @@ export function DataTable<T>({
                                     }
                                   : {})}
                                 onClick={(event) => onRowClick(event, index, row)}
+                                {...rowLinkHandlers(row)}
                                 data-state={selected ? "selected" : undefined}
                                 data-active={active || undefined}
+                                data-staff-returned={returnedId === id || undefined}
                                 className={cn(
                                   rowHeight,
                                   "staff-focus-inset border-b border-staff-line-subtle transition-colors duration-100 last:border-b-0",
-                                  onRowOpen && "cursor-pointer",
+                                  openable && "cursor-pointer",
                                   "hover:staff-overlay-hover",
                                   selected && "staff-overlay-selected hover:staff-overlay-selected",
                                   active &&
@@ -799,14 +980,18 @@ export function DataTable<T>({
                         const id = getRowId(row);
                         const selected = selectable && isSelected(id);
                         return (
-                          // biome-ignore lint/a11y/useKeyWithClickEvents: keyboard users open the row through its title link
                           <li
                             key={id}
+                            ref={(element) => {
+                              cardRefs.current[index] = element;
+                            }}
                             onClick={(event) => onRowClick(event, index, row)}
+                            {...rowLinkHandlers(row)}
+                            data-staff-returned={returnedId === id || undefined}
                             className={cn(
                               "flex min-h-11 items-start gap-1 py-3 pr-4 pl-1 transition-colors",
                               !selectable && "pl-4",
-                              onRowOpen && "cursor-pointer active:staff-overlay-pressed",
+                              openable && "cursor-pointer active:staff-overlay-pressed",
                               (selected || activeRowId === id) && "staff-overlay-selected",
                             )}
                           >

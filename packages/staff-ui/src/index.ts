@@ -281,6 +281,19 @@ export type { ActiveFilter, DataView, FilterOption } from "./data/toolbar.js";
 export { SavedViewsError, useSavedViews } from "./data/saved-views.js";
 export { savedViewsFailure } from "./data/saved-views-failures.js";
 export { sameViewQuery, viewQuery } from "./data/view-query.js";
+export {
+  LIST_QUERY_PARAM,
+  LIST_STATE_PARAMS,
+  decodeSort,
+  encodeSort,
+  listQueryFromRecord,
+  listStateHref,
+  listStateQuery,
+  parseListState,
+  recordHrefInList,
+  updateListState,
+} from "./data/list-state.js";
+export type { ListState, ListStateOptions } from "./data/list-state.js";
 export type {
   SavedView,
   SavedViewItem,
@@ -301,8 +314,10 @@ export type {
 } from "./data/types.js";
 
 // Panels
-export { DetailPanel, PanelSection } from "./panels/detail-panel.js";
+export { DetailPanel, OPEN_FULL_PAGE_LABEL, PanelSection } from "./panels/detail-panel.js";
 export type { DetailPanelProps, PanelMetaFact } from "./panels/detail-panel.js";
+export { useQueuePanel } from "./panels/queue-panel.js";
+export type { PanelQueue, QueuePanelOptions, QueuePanelState } from "./panels/queue-panel.js";
 export { ConfirmActionDialog, StaffDialog } from "./panels/staff-dialog.js";
 export type {
   ConfirmActionDialogProps,
@@ -324,7 +339,8 @@ export { initialsOf } from "./lib/initials.js";
 export { buildStaffProducts } from "./shell/staff-products.js";
 export { CommandPalette } from "./shell/command-palette.js";
 export { StaffBreadcrumbs } from "./shell/breadcrumbs.js";
-export { RecordPager } from "./shell/record-pager.js";
+export { RecordPager, recordPosition } from "./shell/record-pager.js";
+export type { RecordPosition } from "./shell/record-pager.js";
 export { useStaffShortcuts } from "./shell/shortcuts.js";
 export { MetaItem, PageHeader, STAFF_PAGE_TITLE_CLASS } from "./shell/page-header.js";
 export type { PageHeaderProps } from "./shell/page-header.js";
