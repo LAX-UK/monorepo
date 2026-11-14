@@ -37,14 +37,14 @@ entry alone, so it is not comparable with these numbers.
 
 The browser SDK only initialises, and the start-up code that comes with `Sentry.init` is only in the
 bundle, when a DSN is inlined at build time. CI builds without a real key, so the build job sets
-placeholder DSNs on the reserved `sentry.invalid` host for the three apps that have the SDK. The
+placeholder DSNs on the reserved `sentry.invalid` host for the apps that have the SDK and are audited. The
 placeholders send nothing, nothing is deployed from that build, and the measured bundle is the one
 production builds. Without them the Bid numbers are about 16 KB low.
 
 Apps marked `"requireSentry": true` in the config are refused (exit 2) when their main files hold no
 inlined DSN, so a build made without one cannot silently under-count. For a local build, either set
 the variable (`NEXT_PUBLIC_SENTRY_DSN_WEB`, `NEXT_PUBLIC_SENTRY_DSN_SHOP` or
-`NEXT_PUBLIC_SENTRY_DSN_ART`, for example to `https://local@sentry.invalid/1`) or pass
+`NEXT_PUBLIC_SENTRY_DSN_ART` or `NEXT_PUBLIC_SENTRY_DSN_ACCOUNT`, for example to `https://local@sentry.invalid/1`) or pass
 `--allow-no-sentry`. The Bid app build with the Sentry plugin needs more than Node's default heap:
 use `NODE_OPTIONS=--max-old-space-size=6144`.
 
