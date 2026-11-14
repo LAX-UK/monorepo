@@ -31,6 +31,13 @@ export const ACCOUNTING_ALERTS = {
    */
   shopRemainderDelayed: { message: "accounting_shop_remainder_delayed", level: "warning" },
   /**
+   * The daily reconciliation found a mismatch for a company: LAX and Books totals differ for a
+   * document type on the day, a Stripe balance transaction waits for a person, a Stripe account
+   * was not read, or the Stripe clearing account in Books does not agree with Stripe's balance. The fields name the company,
+   * the day and the stored report's key.
+   */
+  reconciliationMismatch: { message: "accounting_reconciliation_mismatch", level: "error" },
+  /**
    * Delayed accounting, Bid refunds: a refund's credit note was issued more than six hours ago and
    * its money is still not refunded from Stripe clearing in Books (no `refund_credit_note`).
    */
@@ -76,7 +83,10 @@ export const ACCOUNTING_CRON_MONITORS = {
   watch: "accounting-watch",
   /** The sender, which runs with the projectors; it checks in at most every 5 minutes. */
   sender: "accounting-sender",
-  /** The nightly Books reconciliation, when it is added; its job checks in under this key. */
+  /**
+   * The daily Stripe fees and payouts job and reconciliation report (05:30 Europe/London); a
+   * missed check-in means the books were not reconciled that day.
+   */
   reconcile: "accounting-reconcile",
 } as const;
 

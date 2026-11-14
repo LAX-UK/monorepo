@@ -5,6 +5,7 @@ import {
   type CreditNote,
   type CreditNoteRefund,
   type CreditNoteRefundOutcome,
+  type Expense,
   type Invoice,
   type IssueOutcome,
   type LookupOutcome,
@@ -13,6 +14,7 @@ import {
   type RemainderApplication,
   type RemainderOutcome,
   type Result,
+  type Transfer,
   expectedTotals,
 } from "@auction/accounting-domain";
 import type { AccountingPorts } from "./accounting-ports.js";
@@ -22,6 +24,7 @@ import { billBody } from "./mappers/bill.js";
 import { type ContactType, contactCreateBody } from "./mappers/contact.js";
 import { creditNoteBody } from "./mappers/credit-note.js";
 import { invoiceBody } from "./mappers/invoice.js";
+import { expenseBody, transferBody } from "./mappers/movement.js";
 import { paymentBody } from "./mappers/payment.js";
 import { penceToPounds } from "./money-format.js";
 import type { ZohoOrgConfig, ZohoOrgConfigs } from "./org-config.js";
@@ -117,6 +120,12 @@ export function createZohoBooksDryRunAdapter(deps: {
           [{ kind: "contact", reference: d.contactReference, contactType: "vendor" }],
           (org) => billBody(d, PLACEHOLDER_ID, org),
         ),
+    },
+    expenses: {
+      recordExpense: (d: Expense) => rehearse(d, [], (org) => expenseBody(d, org)),
+    },
+    transfers: {
+      recordTransfer: (d: Transfer) => rehearse(d, [], (org) => transferBody(d, org)),
     },
     contacts: { upsertContact: contact("customer") },
     vendors,

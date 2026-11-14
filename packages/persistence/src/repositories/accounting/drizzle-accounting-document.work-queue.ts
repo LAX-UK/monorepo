@@ -98,7 +98,7 @@ export class DrizzleAccountingDocumentWorkQueue implements IAccountingDocumentWo
 
   /**
    * One short transaction: lock the oldest document nobody else holds (SKIP LOCKED) that is pending
-   * or whose lease has run out. A lapsed one becomes unknown (the sender may or may not have
+   * or whose lease has run out (Stripe fees and payouts after all others). A lapsed one becomes unknown (the sender may or may not have
    * reached the provider), a pending one is leased to the caller.
    *
    * A pending document is handed only to the provider and mode it was created for (its recorded
@@ -149,7 +149,13 @@ export class DrizzleAccountingDocumentWorkQueue implements IAccountingDocumentWo
             ),
           ),
         )
-        .orderBy(asc(accountingDocument.createdAt), asc(accountingDocument.id))
+        // Stripe fees and payouts go after every other document waiting, so a day of them
+        // registered at once never spends the daily call budget before buyer-facing documents.
+        .orderBy(
+          asc(sql`${accountingDocument.kind} in ('expense', 'transfer')`),
+          asc(accountingDocument.createdAt),
+          asc(accountingDocument.id),
+        )
         .limit(1)
         .for("update", { skipLocked: true });
       if (!row) return { kind: "empty" };

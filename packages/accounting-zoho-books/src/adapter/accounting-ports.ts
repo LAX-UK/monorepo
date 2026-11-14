@@ -6,9 +6,11 @@ import type {
   DestinationPort,
   DocumentLookupPort,
   DocumentPdfPort,
+  ExpensePort,
   InvoicePort,
   PaymentPort,
   PaymentRemainderPort,
+  TransferPort,
 } from "@auction/accounting-domain";
 import type { VendorPort } from "./gateways.js";
 
@@ -22,6 +24,10 @@ export interface AccountingPorts {
   /** Refunds an issued credit note's money from Stripe clearing, once (a refund that went through). */
   readonly creditNoteRefunds: CreditNoteRefundPort;
   readonly bills: BillPort;
+  /** Stripe's fees, paid from the Stripe clearing account. */
+  readonly expenses: ExpensePort;
+  /** Stripe payouts, from the Stripe clearing account to the bank. */
+  readonly transfers: TransferPort;
   /** Customers. */
   readonly contacts: ContactPort;
   /** Vendors (payout recipients); a bill is only ever sent to one of these. */

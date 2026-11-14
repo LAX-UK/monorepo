@@ -5,6 +5,8 @@ import type {
   ContactPort,
   CreditNote,
   CreditNotePort,
+  Expense,
+  ExpensePort,
   Invoice,
   InvoicePort,
   IssueOutcome,
@@ -12,6 +14,8 @@ import type {
   PaymentPort,
   Product,
   Result,
+  Transfer,
+  TransferPort,
   WriteFence,
 } from "@auction/accounting-domain";
 import { toIssueFailure } from "../outcome.js";
@@ -27,6 +31,12 @@ import {
 } from "./mappers/contact.js";
 import { creditNoteBody } from "./mappers/credit-note.js";
 import { invoiceBody, invoiceQuery } from "./mappers/invoice.js";
+import {
+  type ExpenseBody,
+  type TransferBody,
+  expenseBody,
+  transferBody,
+} from "./mappers/movement.js";
 import { type PaymentBody, paymentBody } from "./mappers/payment.js";
 import { poundsToPence } from "./money-format.js";
 import type { ZohoOrgConfig, ZohoOrgConfigs } from "./org-config.js";
@@ -279,6 +289,77 @@ export class ZohoBillGateway implements BillPort {
       reference: bill.reference,
       ...(fence ? { fence } : {}),
       body: built.body,
+    });
+  }
+}
+
+/**
+ * An expense or transfer Books holds is ours only if it moves the same amount on the same day
+ * between the same accounts. Its amount alone is not enough.
+ */
+export function movementCheck(sent: ExpenseBody | TransferBody): ReadBackCheck {
+  const fields: readonly string[] =
+    "transaction_type" in sent
+      ? ["from_account_id", "to_account_id", "date", "currency_code"]
+      : ["account_id", "paid_through_account_id", "date", "currency_code"];
+  const amountField = "transaction_type" in sent ? "amount" : "total";
+  const ours = sent as unknown as Readonly<Record<string, unknown>>;
+  return (item) =>
+    fields.every((f) => item[f] === ours[f]) &&
+    poundsToPence(item[amountField]) === poundsToPence(sent.amount)
+      ? null
+      : ZOHO_BOOKS_REJECTIONS.movementMismatch;
+}
+
+/** The body an expense or transfer would be sent with to `org`, for a read-back. */
+export function movementReadBack(
+  document: Expense | Transfer,
+  org: ZohoOrgConfig,
+): { readonly check: ReadBackCheck } | { readonly stop: Stop } {
+  const built = mapped<ExpenseBody | TransferBody>(
+    document.kind === "expense" ? expenseBody(document, org) : transferBody(document, org),
+  );
+  return "stop" in built ? built : { check: movementCheck(built.body) };
+}
+
+/** Stripe's fees: an expense paid through the Stripe clearing account. No contact. */
+export class ZohoExpenseGateway implements ExpensePort {
+  constructor(private readonly deps: GatewayDeps) {}
+
+  async recordExpense(expense: Expense, fence?: WriteFence): Promise<IssueOutcome> {
+    const ready = await prepare(this.deps, expense, []);
+    if ("stop" in ready) return ready.stop;
+    const built = mapped(expenseBody(expense, ready.org));
+    if ("stop" in built) return built.stop;
+    return this.deps.writer.create({
+      org: ready.org,
+      product: expense.product,
+      kind: "expense",
+      reference: expense.reference,
+      ...(fence ? { fence } : {}),
+      body: built.body,
+      verify: movementCheck(built.body),
+    });
+  }
+}
+
+/** Stripe payouts: a transfer from the Stripe clearing account to the bank account. */
+export class ZohoTransferGateway implements TransferPort {
+  constructor(private readonly deps: GatewayDeps) {}
+
+  async recordTransfer(transfer: Transfer, fence?: WriteFence): Promise<IssueOutcome> {
+    const ready = await prepare(this.deps, transfer, []);
+    if ("stop" in ready) return ready.stop;
+    const built = mapped(transferBody(transfer, ready.org));
+    if ("stop" in built) return built.stop;
+    return this.deps.writer.create({
+      org: ready.org,
+      product: transfer.product,
+      kind: "transfer",
+      reference: transfer.reference,
+      ...(fence ? { fence } : {}),
+      body: built.body,
+      verify: movementCheck(built.body),
     });
   }
 }

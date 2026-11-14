@@ -21,3 +21,8 @@ export { DrizzleAccountingRemainders } from "./drizzle-accounting-remainders.js"
 export { DrizzleAccountingReleaseBasisReader } from "./drizzle-accounting-release-basis.reader.js";
 export { DrizzleAccountingCreditNoteRefunds } from "./drizzle-accounting-credit-note-refunds.js";
 export { DrizzleUnattributedRefundsReader } from "./drizzle-unattributed-refunds.reader.js";
+export {
+  DrizzleStripeBooksLedger,
+  DrizzleStripeReconciliationStore,
+  StripeLedgerRefusedError,
+} from "./drizzle-stripe-books.js";

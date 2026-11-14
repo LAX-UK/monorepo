@@ -2640,6 +2640,13 @@
       "when": 1811419200000,
       "tag": "0385_accounting_credit_note_refunds",
       "breakpoints": true
+    },
+    {
+      "idx": 378,
+      "version": "7",
+      "when": 1811505600000,
+      "tag": "0386_stripe_fees_payouts_books",
+      "breakpoints": true
     }
   ]
 }

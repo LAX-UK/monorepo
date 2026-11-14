@@ -1,4 +1,4 @@
-import { type DocumentKind, parseLaxReference } from "./document.js";
+import { DOCUMENT_KINDS, type DocumentKind, parseLaxReference } from "./document.js";
 import { type Totals, compareWithProviderTotals, isTotals } from "./money.js";
 import { type ParkReason, isParkedReason, parkReasonOf, parkedReasonCode } from "./parking.js";
 import type { IssueOutcome, IssuedDocument, LookupOutcome, ProviderDocument } from "./ports.js";
@@ -529,7 +529,7 @@ export function cancel(record: DocumentRecord): Result<DocumentRecord, Lifecycle
   return wrongState("cancel", record.status);
 }
 
-const KINDS: readonly string[] = ["invoice", "payment", "credit_note", "bill", "contact"];
+const KINDS: readonly string[] = DOCUMENT_KINDS;
 
 function str(value: unknown): value is string {
   return typeof value === "string" && value !== "";

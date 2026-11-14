@@ -15,6 +15,8 @@ import {
   WORKER_ACCOUNTING_READ_TABLES,
   WORKER_DENY_TABLES,
   WORKER_EMAIL_SUPPRESSION_UPDATE_COLUMNS,
+  WORKER_RECONCILIATION_REPORT_TABLES,
+  WORKER_RECONCILIATION_REPORT_UPDATE_COLUMNS,
   WORKER_REOFFER_READ_COLUMNS,
   WORKER_REOFFER_TABLES,
   WORKER_REOFFER_UPDATE_COLUMNS,
@@ -24,6 +26,11 @@ import {
   WORKER_SHOP_ORDER_READ_COLUMNS,
   WORKER_SHOP_PRINT_GROUP_READ_COLUMNS,
   WORKER_SOLD_ATTENTION_UPDATE_COLUMNS,
+  WORKER_STRIPE_ACCOUNT_READ_TABLES,
+  WORKER_STRIPE_ATTRIBUTION_READ_COLUMNS,
+  WORKER_STRIPE_BALANCE_TXN_TABLES,
+  WORKER_STRIPE_CURSOR_TABLES,
+  WORKER_STRIPE_CURSOR_UPDATE_COLUMNS,
   WORKER_ZOHO_BOOKS_INSERT_COLUMNS,
   WORKER_ZOHO_BOOKS_SELECT_COLUMNS,
   WORKER_ZOHO_BOOKS_UPDATE_COLUMNS,
@@ -432,6 +439,67 @@ describe.skipIf(!WORKER_URL)("worker_app role contract", { timeout: 60_000 }, ()
         `select has_function_privilege(current_user, 'public.payment_refund_backfill_from_payout_lines(uuid)', 'EXECUTE') as run`,
       );
       expect(result.rows[0]).toEqual({ run: true });
+    });
+  });
+
+  it("books Stripe fees and payouts least-privilege: reads accounts, appends balance rows, moves only the cursor and a day's report", async () => {
+    await withWorkerClient(async (client) => {
+      const privileges = ["SELECT", "INSERT", "UPDATE", "DELETE", "TRUNCATE"];
+      const accounts = await readTablePrivileges(
+        client,
+        WORKER_STRIPE_ACCOUNT_READ_TABLES,
+        privileges,
+      );
+      expectTablePrivileges(accounts, (row) => row.privilege === "SELECT");
+      const ledger = await readTablePrivileges(
+        client,
+        WORKER_STRIPE_BALANCE_TXN_TABLES,
+        privileges,
+      );
+      expectTablePrivileges(ledger, (row) => ["SELECT", "INSERT"].includes(row.privilege));
+      for (const [tables, columns] of [
+        [WORKER_STRIPE_CURSOR_TABLES, WORKER_STRIPE_CURSOR_UPDATE_COLUMNS],
+        [WORKER_RECONCILIATION_REPORT_TABLES, WORKER_RECONCILIATION_REPORT_UPDATE_COLUMNS],
+      ] as const) {
+        const whole = await readTablePrivileges(client, tables, privileges);
+        expectTablePrivileges(whole, (row) => ["SELECT", "INSERT"].includes(row.privilege));
+        for (const table of tables) {
+          const all = await client.query<{ column_name: string; allowed: boolean }>(
+            `select column_name,
+                    has_column_privilege(current_user, 'public.' || $1, column_name, 'UPDATE') as allowed
+               from information_schema.columns
+              where table_schema = 'public' and table_name = $1`,
+            [table],
+          );
+          const updatable = all.rows.filter((r) => r.allowed).map((r) => r.column_name);
+          expect(updatable.sort(), table).toEqual([...columns].sort());
+        }
+      }
+      // A Shop order's PaymentIntent stays unreadable: only the definer function answers which
+      // order holds one.
+      const fn = await client.query<{ allowed: boolean }>(
+        "select has_function_privilege(current_user, 'public.accounting_stripe_shop_order(text)', 'EXECUTE') as allowed",
+      );
+      expect(fn.rows[0]?.allowed).toBe(true);
+      const answer = await client.query<{ type: string; publicAllowed: boolean; column: boolean }>(
+        `select pg_typeof(accounting_stripe_shop_order('pi_contract_none'))::text as type,
+                has_function_privilege('public', 'public.accounting_stripe_shop_order(text)',
+                                       'EXECUTE') as "publicAllowed",
+                has_column_privilege(current_user, 'public.shop_order', 'stripe_payment_intent_id',
+                                     'SELECT') as column`,
+      );
+      // It answers with an order id (uuid), never the PaymentIntent; PUBLIC cannot call it.
+      expect(answer.rows[0]).toEqual({ type: "uuid", publicAllowed: false, column: false });
+      // Which company a charge belongs to: the stored ids only, never an amount or a buyer.
+      for (const [table, columns] of WORKER_STRIPE_ATTRIBUTION_READ_COLUMNS) {
+        for (const column of columns) {
+          const allowed = await client.query<{ allowed: boolean }>(
+            `select has_column_privilege(current_user, 'public.' || $1, $2, 'SELECT') as allowed`,
+            [table, column],
+          );
+          expect(allowed.rows[0]?.allowed, `${table}.${column}`).toBe(true);
+        }
+      }
     });
   });
 

@@ -5,12 +5,19 @@ import type { BooksAccountingEnv } from "./create-books-accounting-adapters.js";
 /** The Books web app (EU data centre, where LAX's organisations are). */
 const BOOKS_APP = "https://books.zoho.eu/app";
 
-const PATH: Readonly<Record<Parameters<BooksDocumentLink>[0]["documentType"], string>> = {
+/**
+ * The Books page of each kind. A bank transfer (a Stripe payout) has none confirmed yet: it opens
+ * under the account's banking view, whose path is to be confirmed in the test organisation, so it
+ * has no link until then.
+ */
+const PATH: Readonly<Record<Parameters<BooksDocumentLink>[0]["documentType"], string | null>> = {
   invoice: "invoices",
   payment: "paymentsreceived",
   credit_note: "creditnotes",
   bill: "bills",
   contact: "contacts",
+  expense: "expenses",
+  transfer: null,
 };
 
 const noLinks: BooksDocumentLink = () => null;
@@ -33,6 +40,7 @@ export function createBooksDocumentLinks(env: BooksAccountingEnv): BooksDocument
     const org = orgs[organisation];
     if (!org || targetMode === null || targetMode === "dry_run") return null;
     if (!/^[0-9]{1,32}$/.test(booksId)) return null;
-    return `${BOOKS_APP}/${org.organizationId}#/${PATH[documentType]}/${booksId}`;
+    const path = PATH[documentType];
+    return path === null ? null : `${BOOKS_APP}/${org.organizationId}#/${path}/${booksId}`;
   };
 }
