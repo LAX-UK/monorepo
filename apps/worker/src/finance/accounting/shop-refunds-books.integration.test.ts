@@ -353,20 +353,34 @@ describe.skipIf(!HAS_DB)("Shop refunds to Books (integration)", { timeout: 60_00
     expect(books.creditNoteRefundOf("shop", noteRef)).toBeNull();
   });
 
-  it("never refunds from clearing a note whose Shop refund no longer stands; holds it for a person", async () => {
-    const books = new InMemoryAccounting();
-    const { orderId, lines } = await paidAndSent(books);
-    const { refundId, event } = await refunded(orderId, lines[0]?.pence ?? 0, lines[0]?.id ?? null);
-    await projection().project(event);
-    await sendAll(books);
-    // The Shop never moves a refund back from succeeded; the step checks it anyway.
-    await owner.execute(sql`update shop_refund set status = 'failed' where id = ${refundId}`);
-    const tick = await refunder(books).tick();
-    expect(tick.refunded).toBe(0);
-    expect(await rowOf(`LAX-SHOP-CN-${refundId}`)).toMatchObject({
-      state: "needs_review",
-      needsReviewReason: "accounting_refund_reversed_after_credit",
-    });
-    expect(books.creditNoteRefundOf("shop", `LAX-SHOP-CN-${refundId}`)).toBeNull();
-  });
+  it.each([
+    ["failed", sql`status = 'failed'`],
+    [
+      "settled outside Stripe",
+      sql`settled_outside_at = now(), settled_outside_reference = 'manual-ref',
+          settled_outside_reason = 'card expired', settled_outside_by_subject_id = 'staff:integration'`,
+    ],
+  ])(
+    "never refunds from clearing a note whose Shop refund is now %s; holds it for a person",
+    async (_, change) => {
+      const books = new InMemoryAccounting();
+      const { orderId, lines } = await paidAndSent(books);
+      const { refundId, event } = await refunded(
+        orderId,
+        lines[0]?.pence ?? 0,
+        lines[0]?.id ?? null,
+      );
+      await projection().project(event);
+      await sendAll(books);
+      // The Shop never moves a refund back from succeeded through Stripe; the step checks it anyway.
+      await owner.execute(sql`update shop_refund set ${change} where id = ${refundId}`);
+      const tick = await refunder(books).tick();
+      expect(tick.refunded).toBe(0);
+      expect(await rowOf(`LAX-SHOP-CN-${refundId}`)).toMatchObject({
+        state: "needs_review",
+        needsReviewReason: "accounting_refund_reversed_after_credit",
+      });
+      expect(books.creditNoteRefundOf("shop", `LAX-SHOP-CN-${refundId}`)).toBeNull();
+    },
+  );
 });
