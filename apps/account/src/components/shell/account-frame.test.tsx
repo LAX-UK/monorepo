@@ -67,7 +67,7 @@ describe("AccountFrame signed in", () => {
 
   it("shows the product bar with Account as the current product", () => {
     expect(html).toContain('aria-label="LAX family"');
-    for (const label of ["lax.art", "lax.shop", "lax.bid", "LAX Account"]) {
+    for (const label of ["lax.art", "LAX Shop", "lax.bid", "LAX Account"]) {
       expect(html).toContain(label);
     }
     expect(html).toMatch(/aria-current="true"[^>]*>LAX Account</);
