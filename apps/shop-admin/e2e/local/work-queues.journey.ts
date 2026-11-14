@@ -126,3 +126,29 @@ test.describe("on a phone", () => {
     await expect(page).not.toHaveURL(/[?&]payout=/);
   });
 });
+
+test.describe("on a phone, no sideways scroll", () => {
+  test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
+
+  for (const queue of [
+    { name: "fulfilment", path: "/fulfilment?view=all", param: "fulfilment" },
+    { name: "production", path: "/production?view=all", param: "task" },
+  ]) {
+    test(`the ${queue.name} panel does not scroll the page sideways`, async ({ page }) => {
+      const scrolls = () =>
+        page.evaluate(
+          () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+        );
+      await page.goto(queue.path);
+      await expect(page.locator("main")).toBeVisible();
+      expect(await scrolls()).toBeLessThanOrEqual(1);
+      const link = page.locator(`a[href*='${queue.param}=']`).first();
+      test.skip((await link.count()) === 0, `No ${queue.name} rows on the stack`);
+      await link.click();
+      await expect(panel(page)).toBeVisible();
+      expect(await scrolls()).toBeLessThanOrEqual(1);
+      const inner = await panel(page).evaluate((el) => el.scrollWidth - el.clientWidth);
+      expect(inner).toBeLessThanOrEqual(1);
+    });
+  }
+});

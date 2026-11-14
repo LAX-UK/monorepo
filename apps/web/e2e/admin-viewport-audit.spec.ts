@@ -29,6 +29,23 @@ async function assertNoHorizontalOverflow(page: import("@playwright/test").Page)
   expect(wider, `${page.url()} scrolls sideways`).toEqual([]);
 }
 
+/** Bid admin work-queue panels: each opens from its first row, by the record link every row carries. */
+const QUEUE_PANELS = [
+  { name: "onboarding issues (KYC tab)", path: "/admin/onboarding-issues?tab=kyc", param: "item" },
+  { name: "AML screening", path: "/admin/compliance/aml", param: "screening" },
+  { name: "payments", path: "/admin/payments", param: "payment" },
+  {
+    name: "held payments / manual review",
+    path: "/admin/payments?manualReview=1",
+    param: "payment",
+  },
+  { name: "lot fulfilment", path: "/admin/lot-fulfilment", param: "lot" },
+  { name: "condition reports", path: "/admin/condition-reports", param: "request" },
+  { name: "invitations", path: "/admin/invitations", param: "invitation" },
+  { name: "audit", path: "/admin/audit", param: "event" },
+  { name: "payouts", path: "/admin/payouts", param: "payout" },
+] as const;
+
 test.describe("admin viewport audit @a11y", () => {
   test.describe.configure({ mode: "serial" });
   test.skip(!e2eEnabled || !hasStaffCredentials(), e2eSkipReason);
@@ -79,4 +96,23 @@ test.describe("admin viewport audit @a11y", () => {
     await expect(page.getByRole("dialog")).toBeVisible();
     await assertNoHorizontalOverflow(page);
   });
+
+  // A long, unbreakable value (email, reference) in a panel header must not widen the phone.
+  for (const queue of QUEUE_PANELS) {
+    test(`mobile ${queue.name} panel does not overflow horizontally`, async ({ page }) => {
+      await page.setViewportSize({ width: 390, height: 844 });
+      await page.goto(queue.path);
+      await page.locator("#main-content").waitFor({ state: "visible" });
+      await assertNoHorizontalOverflow(page);
+      const link = page.locator(`a[href*="${queue.param}="]`).first();
+      test.skip((await link.count()) === 0, `The seeded ${queue.name} queue is empty`);
+      await link.click();
+      const dialog = page.getByRole("dialog");
+      await expect(dialog).toBeVisible();
+      await expect(page).toHaveURL(new RegExp(`[?&]${queue.param}=`));
+      await assertNoHorizontalOverflow(page);
+      const overflow = await dialog.evaluate((el) => el.scrollWidth - el.clientWidth);
+      expect(overflow, `${queue.name} dialog scrolls sideways`).toBeLessThanOrEqual(1);
+    });
+  }
 });
