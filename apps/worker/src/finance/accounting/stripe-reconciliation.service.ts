@@ -1,0 +1,204 @@
+import {
+  LEGAL_ENTITIES,
+  type LegalEntity,
+  PRODUCTS,
+  booksTargetMode,
+  legalEntityFor,
+} from "@auction/accounting-domain";
+import type {
+  DayKindTotals,
+  IAccountingSourceSettingReader,
+  IStripeReconciliationStore,
+  ParkedBalanceTransaction,
+} from "@auction/persistence/interfaces";
+import type { Logger } from "pino";
+import { ACCOUNTING_ALERTS, type AccountingAlertSink } from "./accounting-alerts.js";
+import type { StripeBalanceReader } from "./stripe-balance-reader.js";
+import { londonDay } from "./stripe-books-sync.service.js";
+
+/** Where every report is kept: private document storage, under this prefix only. */
+export const RECONCILIATION_PREFIX = "accounting/reconciliation";
+
+/** The storage key of one company's report for one day, made at `at`. */
+export function reconciliationKey(entity: LegalEntity, day: string, at: Date): string {
+  const stamp = at.toISOString().replace(/[:.]/g, "-");
+  return `${RECONCILIATION_PREFIX}/${entity}/${day}/${stamp}.json`;
+}
+
+export interface ReconciliationClearing {
+  /** False when a Stripe account of the company has no opening balance stated: nothing compared. */
+  readonly reconcilable: boolean;
+  readonly openingPence: number;
+  readonly since: string | null;
+  readonly booksPaymentsPence: number;
+  readonly booksExpensesPence: number;
+  readonly booksTransfersPence: number;
+  /** Opening, plus payments, less expenses and transfers, as Books holds them. */
+  readonly booksClearingPence: number;
+  /** Stripe's balance (available and pending, GBP) for the company's accounts when read. */
+  readonly stripeBalancePence: number | null;
+  /** Registered for Books and not issued yet: in flight, so not counted as a difference. */
+  readonly inFlightPence: number;
+  /** Stripe less Books less what is in flight. Zero when they agree. */
+  readonly unexplainedPence: number | null;
+}
+
+/** One company's report for one day. Ids and amounts only: no names, no emails. */
+export interface ReconciliationReport {
+  readonly version: 1;
+  readonly legalEntity: LegalEntity;
+  readonly day: string;
+  readonly generatedAt: string;
+  readonly rehearsal: boolean;
+  readonly target: { readonly provider: "books"; readonly mode: string };
+  /** LAX totals against Books totals, by document type, for the day. */
+  readonly byType: readonly (DayKindTotals & { readonly differencePence: number })[];
+  /** Balance transactions of the day that wait for a person, and why. */
+  readonly parked: readonly ParkedBalanceTransaction[];
+  readonly clearing: ReconciliationClearing;
+  /** Seller money held in the Stripe balance for transfers not made yet; null when not tracked. */
+  readonly heldTransferPence: number | null;
+  readonly mismatches: number;
+}
+
+export interface StripeReconciliationDeps {
+  readonly store: IStripeReconciliationStore;
+  readonly settings: IAccountingSourceSettingReader;
+  readonly readers: readonly StripeBalanceReader[];
+  readonly storage: {
+    putObject(key: string, body: Buffer, contentType: string): Promise<unknown>;
+  };
+  readonly alerts: AccountingAlertSink;
+  readonly now: () => Date;
+  readonly log: Pick<Logger, "info" | "warn">;
+}
+
+/** The previous London calendar day, `YYYY-MM-DD`. */
+export function previousLondonDay(now: Date): string {
+  const today = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Europe/London",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(now);
+  const [y, m, d] = today.split("-").map(Number) as [number, number, number];
+  return new Date(Date.UTC(y, m - 1, d - 1)).toISOString().slice(0, 10);
+}
+
+/**
+ * The daily reconciliation report, one per company whose products are aimed at Books: LAX's
+ * totals against Books' by day and document type (payments, Stripe fees, payouts), the Stripe
+ * clearing account in Books against Stripe's balance, and seller money held for transfers. Stored
+ * as JSON in private document storage (never in the repository) and recorded. Any mismatch (a type
+ * whose totals differ, a transaction parked for a person, clearing that does not agree) raises the
+ * accounting alert `accounting_reconciliation_mismatch`, which Sentry routes to finance on-call.
+ */
+export class StripeReconciliation {
+  constructor(private readonly deps: StripeReconciliationDeps) {}
+
+  async run(
+    day: string = previousLondonDay(this.deps.now()),
+  ): Promise<readonly ReconciliationReport[]> {
+    const config = await this.deps.settings.read();
+    if (!config.ok) throw new Error(`accounting_switch_unreadable:${config.refusal.code}`);
+    const balances = await this.balancesByAccount();
+    const reports: ReconciliationReport[] = [];
+    for (const entity of LEGAL_ENTITIES) {
+      const mode = PRODUCTS.filter((p) => legalEntityFor(p) === entity)
+        .map((p) => booksTargetMode(config.value[p]))
+        .find((m) => m !== null);
+      if (!mode) continue;
+      const target = { provider: "books" as const, mode };
+      reports.push(await this.report(entity, day, target, balances));
+    }
+    return reports;
+  }
+
+  private async balancesByAccount(): Promise<Map<string, number>> {
+    const out = new Map<string, number>();
+    for (const reader of this.deps.readers) {
+      out.set(await reader.accountId(), await reader.balancePence());
+    }
+    return out;
+  }
+
+  private async report(
+    entity: LegalEntity,
+    day: string,
+    target: { readonly provider: "books"; readonly mode: string },
+    balances: ReadonlyMap<string, number>,
+  ): Promise<ReconciliationReport> {
+    const at = this.deps.now();
+    const totals = await this.deps.store.dayTotals(entity, day, target);
+    const byType = totals.map((t) => ({ ...t, differencePence: t.laxPence - t.booksPence }));
+    const parked = await this.deps.store.parkedOn(entity, day);
+    const clearing = await this.clearing(entity, target, balances);
+    const heldTransferPence = await this.deps.store.heldTransferPence(entity);
+    const mismatches =
+      byType.filter((t) => t.differencePence !== 0 || t.laxCount !== t.booksCount).length +
+      parked.length +
+      (clearing.unexplainedPence !== null && clearing.unexplainedPence !== 0 ? 1 : 0);
+    const report: ReconciliationReport = {
+      version: 1,
+      legalEntity: entity,
+      day,
+      generatedAt: at.toISOString(),
+      rehearsal: target.mode !== "live",
+      target,
+      byType,
+      parked,
+      clearing,
+      heldTransferPence,
+      mismatches,
+    };
+    const storageKey = reconciliationKey(entity, day, at);
+    await this.deps.storage.putObject(
+      storageKey,
+      Buffer.from(`${JSON.stringify(report, null, 2)}\n`, "utf8"),
+      "application/json",
+    );
+    await this.deps.store.saveReport({ entity, day, storageKey, mismatches, generatedAt: at });
+    const fields = { legalEntity: entity, day, mismatches, storageKey };
+    if (mismatches > 0) this.deps.alerts.raise(ACCOUNTING_ALERTS.reconciliationMismatch, fields);
+    this.deps.log.info(fields, "accounting_reconciliation_stored");
+    return report;
+  }
+
+  private async clearing(
+    entity: LegalEntity,
+    target: { readonly provider: "books"; readonly mode: string },
+    balances: ReadonlyMap<string, number>,
+  ): Promise<ReconciliationClearing> {
+    const accounts = await this.deps.store.openings(entity);
+    const opened = accounts.flatMap((a) => (a.opening ? [a.opening] : []));
+    const reconcilable = accounts.length > 0 && opened.length === accounts.length;
+    const since = reconcilable ? (opened.map((o) => o.on).sort()[0] ?? null) : null;
+    const openingPence = opened.reduce((sum, o) => sum + o.balancePence, 0);
+    const read = accounts.map((a) => balances.get(a.stripeAccountId));
+    const stripeBalancePence = read.every((b) => b !== undefined)
+      ? read.reduce<number>((sum, b) => sum + (b ?? 0), 0)
+      : null;
+    const moves = since
+      ? // Stripe's balance is read now, so Books is read through today too.
+        await this.deps.store.clearingSince(entity, since, londonDay(this.deps.now()), target)
+      : { paymentsPence: 0, expensesPence: 0, transfersPence: 0, notIssuedPence: 0 };
+    const booksClearingPence =
+      openingPence + moves.paymentsPence - moves.expensesPence - moves.transfersPence;
+    const unexplainedPence =
+      reconcilable && stripeBalancePence !== null
+        ? stripeBalancePence - booksClearingPence - moves.notIssuedPence
+        : null;
+    return {
+      reconcilable,
+      openingPence,
+      since,
+      booksPaymentsPence: moves.paymentsPence,
+      booksExpensesPence: moves.expensesPence,
+      booksTransfersPence: moves.transfersPence,
+      booksClearingPence,
+      stripeBalancePence,
+      inFlightPence: moves.notIssuedPence,
+      unexplainedPence,
+    };
+  }
+}

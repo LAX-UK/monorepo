@@ -22,6 +22,9 @@ export const accountingStripeAccount = pgTable(
   {
     stripeAccountId: text("stripe_account_id").primaryKey(),
     product: text("product").$type<"bid" | "shop" | "lax_art">().notNull(),
+    /** The Stripe balance (GBP, pence) at the start of `openingOn`, as Books clearing opened with it. */
+    openingBalancePence: bigint("opening_balance_pence", { mode: "number" }),
+    openingOn: date("opening_on", { mode: "string" }),
     createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).defaultNow().notNull(),
   },
   (table) => [

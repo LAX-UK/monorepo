@@ -6,7 +6,7 @@
 --    `LAX-<P>-TRF-<payout>`). Both carry no VAT. The kind, reference and totals CHECKs gain them;
 --    every other kind's rule is unchanged.
 -- 2. `accounting_stripe_account`: which product a Stripe account's own movements (payouts,
---    Stripe's own fees) belong to. Written by an engineer from the runbook, never by an
+--    Stripe's own fees) belong to, and the clearing balance it opened with. Written by an engineer from the runbook, never by an
 --    application role: the worker only reads it, so which company a payout belongs to is a stored
 --    LAX row, never guessed.
 -- 3. `accounting_stripe_cursor`: how far each account has been read. Moves forward only.
@@ -55,7 +55,13 @@ ALTER TABLE "accounting_document" ADD CONSTRAINT "accounting_document_totals_ck"
 CREATE TABLE IF NOT EXISTS "accounting_stripe_account" (
   "stripe_account_id" text PRIMARY KEY NOT NULL,
   "product" text NOT NULL,
+  "opening_balance_pence" bigint,
+  "opening_on" date,
   "created_at" timestamp with time zone DEFAULT now() NOT NULL,
+  -- The Stripe balance (GBP, pence) at the start of `opening_on` (London), as the Books clearing
+  -- account was opened with it; both or neither. Without it the report cannot reconcile clearing.
+  CONSTRAINT "accounting_stripe_account_opening_ck"
+    CHECK (("opening_balance_pence" IS NULL) = ("opening_on" IS NULL)),
   CONSTRAINT "accounting_stripe_account_id_ck"
     CHECK ("stripe_account_id" ~ '^acct_[A-Za-z0-9]{1,48}$'),
   CONSTRAINT "accounting_stripe_account_product_ck" CHECK ("product" IN ('bid', 'shop', 'lax_art'))

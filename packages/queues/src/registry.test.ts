@@ -67,6 +67,14 @@ describe("QUEUE_REGISTRY", () => {
     expect(listWorkerHeartbeatKeys(enabled)).toContain("worker:heartbeat:accounting-watch");
   });
 
+  it("reconciles Stripe fees and payouts daily only when Books is configured, with no heartbeat", () => {
+    const base = { appEnv: "production" as const, marketingEventsEnabled: false };
+    expect(listEnabledQueues(base).map((q) => q.name)).not.toContain("accounting-reconcile");
+    const enabled = { ...base, accountingBooksEnabled: true };
+    expect(listEnabledQueues(enabled).map((q) => q.name)).toContain("accounting-reconcile");
+    expect(listWorkerHeartbeatKeys(enabled)).not.toContain("worker:heartbeat:accounting-reconcile");
+  });
+
   it("dedupes ATG jobs per target", () => {
     const ids = [
       atgSyncJobId({ name: "atg.push-sale", data: { saleId: "s1" } }),
