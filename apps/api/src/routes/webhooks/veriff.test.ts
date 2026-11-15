@@ -162,7 +162,9 @@ describe("POST /webhooks/veriff/decision", () => {
 
   it("accepts vrf-hmac-signature when x-hmac-signature is absent", async () => {
     const repo = makeRepo();
-    const kycService = new VeriffKycService(baseEnv(), repo, null);
+    const kycService = new VeriffKycService(baseEnv(), repo, {
+      runInTransaction: (fn) => fn({} as never),
+    });
     const container = makeVeriffWebhookContainer({ kycService }).container;
     const app = createVeriffWebhookRoutes(container);
     const body = JSON.stringify({
@@ -185,7 +187,9 @@ describe("POST /webhooks/veriff/decision", () => {
 
   it("returns 400 for invalid webhook payload schema", async () => {
     const repo = makeRepo();
-    const kycService = new VeriffKycService(baseEnv(), repo, null);
+    const kycService = new VeriffKycService(baseEnv(), repo, {
+      runInTransaction: (fn) => fn({} as never),
+    });
     const container = makeVeriffWebhookContainer({ kycService }).container;
     const app = createVeriffWebhookRoutes(container);
     const body = JSON.stringify({ status: "success", verification: { noId: true } });
@@ -274,7 +278,9 @@ describe("POST /webhooks/veriff/decision", () => {
 describe("POST /webhooks/veriff/event", () => {
   it("accepts vrf-hmac-signature when x-hmac-signature is absent", async () => {
     const repo = makeRepo();
-    const kycService = new VeriffKycService(baseEnv(), repo, null);
+    const kycService = new VeriffKycService(baseEnv(), repo, {
+      runInTransaction: (fn) => fn({} as never),
+    });
     const container = makeVeriffWebhookContainer({ kycService }).container;
     const app = createVeriffWebhookRoutes(container);
     const body = JSON.stringify({ id: "session-1", action: "started" });

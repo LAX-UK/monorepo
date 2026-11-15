@@ -22,8 +22,7 @@ const notice = {
   providerAttemptId: "attempt-1",
 };
 
-function setup(options: { transactional?: boolean; applied?: object } = {}) {
-  const { transactional = true } = options;
+function setup(options: { applied?: object } = {}) {
   const order: string[] = [];
   const notices: IKycNoticeQueue = {
     queueOutcome: vi.fn(async () => {
@@ -43,15 +42,13 @@ function setup(options: { transactional?: boolean; applied?: object } = {}) {
   const deps = {
     veriffClient: { isConfigured: () => true },
     sharedSecret: "secret",
-    transactionRunner: transactional
-      ? {
-          runInTransaction: async (fn: (t: Database) => Promise<unknown>) => {
-            const result = await fn(tx);
-            order.push("committed");
-            return result;
-          },
-        }
-      : null,
+    transactionRunner: {
+      runInTransaction: async (fn: (t: Database) => Promise<unknown>) => {
+        const result = await fn(tx);
+        order.push("committed");
+        return result;
+      },
+    },
     sessionRepo: {
       findByProviderSessionId: async () => ({ id: "kyc-1", userId: "u1" }),
       getUserKycState: async () => ({ kycStatus: "pending" }),
@@ -154,25 +151,5 @@ describe("applying an identity decision", () => {
 
     expect(notices.queueResubmission).toHaveBeenCalledWith(tx, resubmission);
     expect(notices.queueOutcome).not.toHaveBeenCalled();
-  });
-
-  it("queues without a transaction only where there is no transaction runner", async () => {
-    const { service, notices } = setup({ transactional: false });
-
-    await service.handleDecisionWebhook(body, "sig", "client");
-
-    expect(notices.queueOutcome).toHaveBeenCalledWith(null, notice);
-  });
-
-  it("logs when notices are queued without a transaction", async () => {
-    const { service } = setup({ transactional: false });
-    const warned = vi.spyOn(console, "warn").mockImplementation(() => undefined);
-
-    await service.handleDecisionWebhook(body, "sig", "client");
-
-    expect(warned).toHaveBeenCalledWith(
-      JSON.stringify({ msg: "kyc_notice_queued_without_transaction" }),
-    );
-    warned.mockRestore();
   });
 });

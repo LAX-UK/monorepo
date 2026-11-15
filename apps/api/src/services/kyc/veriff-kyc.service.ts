@@ -24,7 +24,7 @@ export class VeriffKycService implements IKycService {
   constructor(
     env: Env,
     repo: IKycRepository,
-    transactionRunner: ITransactionRunner | null = null,
+    transactionRunner: ITransactionRunner,
     marketingEvents: IMarketingEventService | null = null,
     options: {
       veriffClient?: VeriffClient;

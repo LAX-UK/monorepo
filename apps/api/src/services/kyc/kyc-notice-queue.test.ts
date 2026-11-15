@@ -8,21 +8,20 @@ const ADDRESS = "ada@example.com";
 function setup(user: { email: string; name: string } | null = { email: ADDRESS, name: "Ada" }) {
   const findById = vi.fn(async () => user);
   const createMany = vi.fn(async () => []);
-  const enqueue = vi.fn(async () => ({ outboxId: "outbox-plain" }));
   const enqueueInTransaction = vi.fn(async () => ({ outboxId: "outbox-tx" }));
   const usersFor = vi.fn(() => ({ findById }) as never);
   const notificationsFor = vi.fn(() => ({ createMany }));
   const queue = new KycNoticeQueue({
     usersFor,
     notificationsFor,
-    email: { enqueue, enqueueInTransaction },
+    email: { enqueueInTransaction },
     factory: {
       createKycApproved: (userId) => ({ userId, type: "kyc_approved" }) as never,
       createKycDeclined: (userId) => ({ userId, type: "kyc_declined" }) as never,
     },
     webOrigin: "https://lax.bid/",
   });
-  return { queue, usersFor, notificationsFor, createMany, enqueue, enqueueInTransaction };
+  return { queue, usersFor, notificationsFor, createMany, enqueueInTransaction };
 }
 
 const approved = {
@@ -34,14 +33,12 @@ const approved = {
 
 describe("KycNoticeQueue", () => {
   it("queues the approval email and the in-app notice in the decision's transaction", async () => {
-    const { queue, usersFor, notificationsFor, createMany, enqueueInTransaction, enqueue } =
-      setup();
+    const { queue, usersFor, notificationsFor, createMany, enqueueInTransaction } = setup();
 
     await queue.queueOutcome(tx, approved);
 
     expect(usersFor).toHaveBeenCalledWith(tx);
     expect(notificationsFor).toHaveBeenCalledWith(tx);
-    expect(enqueue).not.toHaveBeenCalled();
     expect(enqueueInTransaction).toHaveBeenCalledWith(tx, {
       template: "kyc-approved",
       to: ADDRESS,
@@ -118,14 +115,5 @@ describe("KycNoticeQueue", () => {
     enqueueInTransaction.mockRejectedValueOnce(new Error("outbox unavailable"));
 
     await expect(queue.queueOutcome(tx, approved)).rejects.toThrow("outbox unavailable");
-  });
-
-  it("falls back to the plain queue only when there is no transaction", async () => {
-    const { queue, enqueue, enqueueInTransaction } = setup();
-
-    await queue.queueOutcome(null, approved);
-
-    expect(enqueue).toHaveBeenCalledTimes(1);
-    expect(enqueueInTransaction).not.toHaveBeenCalled();
   });
 });
