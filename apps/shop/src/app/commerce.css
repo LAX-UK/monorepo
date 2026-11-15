@@ -932,6 +932,11 @@ a.shop-checkout-steps__link:hover .shop-checkout-steps__label {
   flex: 1 1 12rem;
 }
 
+.shop-basket__line-year {
+  font-weight: 400;
+  color: var(--color-on-surface-variant);
+}
+
 .shop-basket__line-title {
   margin: 0;
   font-family: var(--font-headline, inherit);

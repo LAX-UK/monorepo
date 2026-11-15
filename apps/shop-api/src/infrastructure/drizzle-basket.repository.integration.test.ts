@@ -55,6 +55,38 @@ describe.skipIf(!hasShopIntegrationDb)("drizzle basket repository artwork upsert
     expect(basket.lines[0]?.editionLine).toBe("Limited edition of 24");
   });
 
+  it("reports the stamped price once the print price moves, and keeps it through a quantity change", async () => {
+    const db = createShopDb(shopPool);
+    const imported = await importTestArtwork(db, "basket-price-move", { printPricePence: 18_000 });
+    await grantLaxSaleAuthority(db, imported.artworkId, 4);
+    const repo = createDrizzleBasketRepository(db, { merchandiseEnabled: true });
+    const owner = {
+      kind: "anonymous" as const,
+      tokenHash: hashBasketToken(`guest-basket-price-${integrationSuffix("price")}`),
+    };
+
+    const added = await repo.addOrUpdateLine({ owner, artworkSlug: imported.slug, quantity: 1 });
+    expect(added.lines[0]?.unitPricePence).toBe(18_000);
+    expect(added.lines[0]?.livePricePence).toBe(18_000);
+
+    await ownerPool.query("UPDATE shop_artwork SET print_price_pence = 20000 WHERE id = $1", [
+      imported.artworkId,
+    ]);
+
+    const loaded = await repo.getBasket(owner);
+    expect(loaded?.lines[0]?.unitPricePence).toBe(18_000);
+    expect(loaded?.lines[0]?.livePricePence).toBe(20_000);
+
+    // A quantity change does not re-stamp, so the move is still flagged.
+    const changed = await repo.addOrUpdateLine({ owner, artworkSlug: imported.slug, quantity: 2 });
+    expect(changed.lines[0]?.unitPricePence).toBe(18_000);
+    expect(changed.lines[0]?.livePricePence).toBe(20_000);
+
+    // Re-adding at the same quantity takes today's price.
+    const readded = await repo.addOrUpdateLine({ owner, artworkSlug: imported.slug, quantity: 2 });
+    expect(readded.lines[0]?.unitPricePence).toBe(20_000);
+  });
+
   it("refuses more of one edition than an order may hold, whatever the stock", async () => {
     const db = createShopDb(shopPool);
     const imported = await importTestArtwork(db, "basket-limit");

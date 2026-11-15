@@ -78,6 +78,14 @@ describe("BasketLinesClient", () => {
     expect(screen.queryByRole("group", { name: /quantity/i })).toBeNull();
   });
 
+  it("says both prices on a line whose price moved", () => {
+    show([
+      { ...line, priceChanged: true, previousUnitPricePence: 12000, currentUnitPricePence: 14000 },
+    ]);
+    expect(screen.getByText("The price has changed")).toBeTruthy();
+    expect(screen.getByText("Was £120.00, now £140.00.")).toBeTruthy();
+  });
+
   it("leaves an available line undimmed", () => {
     const { container } = show([line]);
     expect(container.querySelector(".shop-basket__line--sold-out")).toBeNull();

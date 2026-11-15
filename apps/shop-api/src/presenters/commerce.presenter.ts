@@ -35,31 +35,38 @@ export function presentBasket(
     expiresAt: record.expiresAt.toISOString(),
     merchandiseSubtotalPence,
     ...(framingSubtotalPence > 0 ? { framingSubtotalPence } : {}),
-    lines: record.lines.map((line) => ({
-      lineId: line.lineId,
-      artworkSlug: line.artworkSlug,
-      artworkTitle: line.artworkTitle,
-      productVariantId: line.productVariantId,
-      productSlug: line.productSlug,
-      productTitle: line.productTitle,
-      variantSku: line.variantSku,
-      unitPricePence: line.unitPricePence,
-      quantity: line.quantity,
-      soldOut: line.sellableCount < 1,
-      priceChanged: line.livePricePence !== null && line.livePricePence !== line.unitPricePence,
-      outOfStock: line.quantity > line.sellableCount,
-      imageUrl: line.imageUrl,
-      artistName: line.artistName,
-      artistSlug: line.artistSlug,
-      editionSize: line.editionSize,
-      editionLine: line.editionLine,
-      orderLimit: line.artworkId ? options.editionOrderLimit : null,
-      maxQuantity: basketLineMaxQuantity({
+    lines: record.lines.map((line) => {
+      const priceChanged =
+        line.livePricePence !== null && line.livePricePence !== line.unitPricePence;
+      return {
+        lineId: line.lineId,
+        artworkSlug: line.artworkSlug,
+        artworkTitle: line.artworkTitle,
+        productVariantId: line.productVariantId,
+        productSlug: line.productSlug,
+        productTitle: line.productTitle,
+        variantSku: line.variantSku,
+        unitPricePence: line.unitPricePence,
+        quantity: line.quantity,
+        soldOut: line.sellableCount < 1,
+        priceChanged,
+        previousUnitPricePence: priceChanged ? line.unitPricePence : null,
+        currentUnitPricePence: priceChanged ? line.livePricePence : null,
+        editionYear: line.editionYear ?? null,
+        outOfStock: line.quantity > line.sellableCount,
+        imageUrl: line.imageUrl,
+        artistName: line.artistName,
+        artistSlug: line.artistSlug,
+        editionSize: line.editionSize,
+        editionLine: line.editionLine,
         orderLimit: line.artworkId ? options.editionOrderLimit : null,
-        sellableCount: line.sellableCount,
-      }),
-      ...(line.framing ? { framing: line.framing } : {}),
-    })),
+        maxQuantity: basketLineMaxQuantity({
+          orderLimit: line.artworkId ? options.editionOrderLimit : null,
+          sellableCount: line.sellableCount,
+        }),
+        ...(line.framing ? { framing: line.framing } : {}),
+      };
+    }),
   };
 }
 

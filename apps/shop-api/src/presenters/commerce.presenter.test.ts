@@ -40,6 +40,8 @@ describe("presentBasket", () => {
     const view = presentBasket(sampleBasket(), LIMIT);
     expect(view.merchandiseSubtotalPence).toBe(24000);
     expect(view.lines[0]?.priceChanged).toBe(false);
+    expect(view.lines[0]?.previousUnitPricePence).toBeNull();
+    expect(view.lines[0]?.editionYear).toBeNull();
     expect(view.lines[0]?.outOfStock).toBe(false);
   });
 
@@ -71,9 +73,18 @@ describe("presentBasket", () => {
       LIMIT,
     );
     expect(view.lines[0]?.priceChanged).toBe(true);
+    expect(view.lines[0]?.previousUnitPricePence).toBe(12000);
+    expect(view.lines[0]?.currentUnitPricePence).toBe(13000);
     expect(view.lines[0]?.outOfStock).toBe(true);
     expect(view.lines[0]?.soldOut).toBe(false);
     expect(view.lines[0]).not.toHaveProperty("sellableCount");
+  });
+
+  it("sends the edition year the record carries", () => {
+    const line = sampleBasket().lines[0];
+    if (!line) throw new Error("fixture");
+    const view = presentBasket(sampleBasket({ lines: [{ ...line, editionYear: 2024 }] }), LIMIT);
+    expect(view.lines[0]?.editionYear).toBe(2024);
   });
 
   it("caps an edition line at the per-order limit, lowered to what can be sold", () => {

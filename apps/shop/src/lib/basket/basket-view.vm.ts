@@ -33,6 +33,13 @@ export type BasketLineVm = {
    * 24 · Hand-signed"), or the SKU for merchandise; null when neither is known.
    */
   detail: string | null;
+  /**
+   * The year of the work, worded as the product page shows it after the title (", 2024"); null
+   * when unrecorded and for merchandise. Its own element, never part of `detail`.
+   */
+  yearSuffix: string | null;
+  /** "Was £180, now £200." when the live price differs from the one the line holds; else null. */
+  priceChangeText: string | null;
   imageUrl: string | null;
   imageAlt: string;
   unitPrice: string;
@@ -107,6 +114,11 @@ export function presentBasketLine(line: BasketLine): BasketLineVm {
         : line.variantSku
           ? `SKU ${line.variantSku}`
           : null,
+    yearSuffix: kind === "edition" && line.editionYear != null ? `, ${line.editionYear}` : null,
+    priceChangeText:
+      line.priceChanged && line.previousUnitPricePence != null && line.currentUnitPricePence != null
+        ? `Was ${formatGbpPence(line.previousUnitPricePence)}, now ${formatGbpPence(line.currentUnitPricePence)}.`
+        : null,
     imageUrl: line.imageUrl,
     imageAlt: artistName ? `${title} by ${artistName}` : title,
     unitPrice: formatGbpPence(line.unitPricePence),
