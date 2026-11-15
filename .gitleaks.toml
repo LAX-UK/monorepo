@@ -47,14 +47,6 @@ regexes = [
   '''sk_test_YOUR_KEY''',
   # Immutable public fallback commit captured as rollback evidence.
   '''c4df7fbb540304192b10f197df480c626c4e9b95''',
+  # Public FIDO AAGUIDs (1Password, Bitwarden, security keys) in passkey-names.ts; an earlier PR commit predates the inline marker.
+  '''(bada5566-a7aa-401f-bd96-45619a55120d|2fc0579f-8113-47ea-b116-bb5a8db9202a|f8a011f3-8c0a-4d15-8006-17111f9edc7d|d548826e-79b4-db40-a3d8-11116f7e8349|cb69481e-8ff7-4039-93ec-0a2729a154a8)''',
 ]
-
-# Public FIDO authenticator AAGUIDs (model identifiers published in the FIDO MDS and passkey
-# provider lists, not secrets). Scoped to the one file AND the exact `"<uuid>": "<provider>",`
-# shape, so the rule stays on everywhere else. Needed on top of the inline `gitleaks:allow`
-# because the PR scan also reads earlier commits that predate the inline marker.
-[[allowlists]]
-description = "Public passkey authenticator AAGUIDs"
-condition = "AND"
-paths = ['''packages/auth/src/passkey-names\.ts''']
-regexes = ['''"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}": "[a-z_]+",''']
