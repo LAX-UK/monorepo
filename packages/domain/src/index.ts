@@ -986,6 +986,8 @@ export {
   collectByClearedRange,
   collectByReminderFor,
   purchaseCollectBy,
+  awaitsCollection,
+  type CollectionWaitFacts,
   type PurchaseCollectBy,
   type PurchaseCollectByState,
   type CollectByReminder,

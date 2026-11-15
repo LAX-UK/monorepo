@@ -1,4 +1,5 @@
 import { type DateKey, addDaysToKey, londonDateKey } from "./collection-time.js";
+import type { FulfilmentFacts } from "./purchase-delivery-stage.js";
 
 /** How long a bought work waits at the gallery before the buyer is asked to collect it. */
 export type CollectByPolicy = {
@@ -104,4 +105,38 @@ export function purchaseCollectBy(
   if (today > date) return { date, state: "overdue" };
   const early = policy.freeStorageDays > policy.reminderLeadDays;
   return { date, state: today >= (early ? reminderDates[0] : date) ? "soon" : "upcoming" };
+}
+
+/** Fulfilment states in which a paid work is no longer waiting to be collected, or not yet. */
+const NOT_AWAITING_COLLECTION: ReadonlySet<FulfilmentFacts["status"]> = new Set([
+  "awaiting_payment",
+  "delivered",
+  "cancelled",
+  "in_transit",
+]);
+
+/** What decides whether a paid purchase still waits at its collection place to be collected. */
+export type CollectionWaitFacts = {
+  fulfilment: FulfilmentFacts | null;
+  /** The lot's sale was soft-deleted. */
+  saleDeleted: boolean;
+  /** The sale venue's collection place takes online bookings. */
+  bookingOpen: boolean;
+  /** The lot is in a live (active) collection booking. */
+  booked: boolean;
+};
+
+/**
+ * Whether a purchase whose payment has cleared still waits to be collected, so it carries the
+ * "please collect by" notice. The same exclusions as the reminder email's reader
+ * (`apps/worker/src/repositories/drizzle-collect-by.reader.ts`), which is tested against this:
+ * not handed over, cancelled, on its way or still unpaid; not going by courier; not in a deleted
+ * sale; at a place that takes online bookings; and not already booked. The invoice is not read:
+ * a refund that leaves the fulfilment open still leaves the work waiting, as the email does.
+ */
+export function awaitsCollection(facts: CollectionWaitFacts): boolean {
+  const { fulfilment } = facts;
+  if (!fulfilment || NOT_AWAITING_COLLECTION.has(fulfilment.status)) return false;
+  if (fulfilment.method === "shipping") return false;
+  return facts.bookingOpen && !facts.booked && !facts.saleDeleted;
 }

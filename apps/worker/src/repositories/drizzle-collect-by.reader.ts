@@ -63,6 +63,9 @@ export class DrizzleCollectByReader implements ICollectByReader {
           isNotNull(lot.buyerLegalEntityId),
           eq(lot.status, "ended"),
           isNull(lot.deletedAt),
+          // The exclusions from here to the booking check are the domain's `awaitsCollection`
+          // (with online booking above), which the purchase page's notice uses; the
+          // integration test checks the two agree case by case.
           isNull(sale.deletedAt),
           sql`${lotFulfilment.status} not in ('awaiting_payment', 'delivered', 'cancelled', 'in_transit')`,
           or(

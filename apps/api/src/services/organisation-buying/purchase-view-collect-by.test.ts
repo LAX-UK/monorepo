@@ -40,7 +40,14 @@ function row(over: Partial<AccountPurchaseFactsRow> = {}): AccountPurchaseFactsR
       collectedBy: null,
       collectedAt: null,
     },
-    storage: { clearedAt: CLEARED, freeStorageDays: null, bookingOpen: true, booked: false },
+    storage: {
+      clearedAt: CLEARED,
+      placeName: "Marylebone",
+      freeStorageDays: null,
+      bookingOpen: true,
+      booked: false,
+      saleDeleted: false,
+    },
     quote: null,
     ...over,
   };
@@ -50,27 +57,53 @@ const at = (iso: string) => purchaseView(row(), actor, new Date(iso)).delivery.c
 
 describe("the collect-by notice on a purchase", () => {
   it("names the day the reminder email names, upcoming then soon then overdue", () => {
-    expect(at("2026-11-20T12:00:00Z")).toEqual({ date: "2026-12-09", state: "upcoming" });
+    expect(at("2026-11-20T12:00:00Z")).toEqual({
+      date: "2026-12-09",
+      state: "upcoming",
+      placeName: "Marylebone",
+    });
     expect(at("2026-12-01T12:00:00Z")?.state).toBe("upcoming");
     expect(at("2026-12-02T12:00:00Z")?.state).toBe("soon");
     expect(at("2026-12-09T12:00:00Z")?.state).toBe("soon");
-    expect(at("2026-12-10T12:00:00Z")).toEqual({ date: "2026-12-09", state: "overdue" });
+    expect(at("2026-12-10T12:00:00Z")).toEqual({
+      date: "2026-12-09",
+      state: "overdue",
+      placeName: "Marylebone",
+    });
   });
 
   it("uses the place's own free period when it is set", () => {
     const view = purchaseView(
       row({
-        storage: { clearedAt: CLEARED, freeStorageDays: 14, bookingOpen: true, booked: false },
+        storage: {
+          clearedAt: CLEARED,
+          placeName: "Marylebone",
+          freeStorageDays: 14,
+          bookingOpen: true,
+          booked: false,
+          saleDeleted: false,
+        },
       }),
       actor,
       new Date("2026-11-20T12:00:00Z"),
     );
-    expect(view.delivery.collectBy).toEqual({ date: "2026-11-23", state: "soon" });
+    expect(view.delivery.collectBy).toEqual({
+      date: "2026-11-23",
+      state: "soon",
+      placeName: "Marylebone",
+    });
   });
 
   it("goes once the lot is booked", () => {
     const booked = row({
-      storage: { clearedAt: CLEARED, freeStorageDays: null, bookingOpen: true, booked: true },
+      storage: {
+        clearedAt: CLEARED,
+        placeName: "Marylebone",
+        freeStorageDays: null,
+        bookingOpen: true,
+        booked: true,
+        saleDeleted: false,
+      },
     });
     expect(
       purchaseView(booked, actor, new Date("2026-11-20T12:00:00Z")).delivery.collectBy,
@@ -107,9 +140,87 @@ describe("the collect-by notice on a purchase", () => {
   it("is absent where no online booking is open, or nothing has been paid", () => {
     const now = new Date("2026-11-20T12:00:00Z");
     const closed = row({
-      storage: { clearedAt: CLEARED, freeStorageDays: null, bookingOpen: false, booked: false },
+      storage: {
+        clearedAt: CLEARED,
+        placeName: "Marylebone",
+        freeStorageDays: null,
+        bookingOpen: false,
+        booked: false,
+        saleDeleted: false,
+      },
     });
     expect(purchaseView(closed, actor, now).delivery.collectBy).toBeNull();
     expect(purchaseView(row({ storage: null }), actor, now).delivery.collectBy).toBeNull();
+  });
+});
+
+describe("the collect-by notice follows the reminder email's exclusions", () => {
+  const now = new Date("2026-11-20T12:00:00Z");
+  const fulfilment = (
+    status: "released" | "ready_for_collection",
+    method: "collection" | "shipping" | null,
+  ) => ({
+    status,
+    method,
+    carrier: null,
+    trackingNumber: null,
+    collectedBy: null,
+    collectedAt: null,
+  });
+
+  it("is absent for a lot going by courier, even while it is ready for collection or quoted", () => {
+    const shipping = row({ fulfilment: fulfilment("ready_for_collection", "shipping") });
+    expect(purchaseView(shipping, actor, now).delivery.collectBy).toBeNull();
+    const quoted = row({
+      fulfilment: fulfilment("released", "shipping"),
+      quote: {
+        id: "q1",
+        lotId: "lot-1",
+        buyerLegalEntityId: BUYING_ACCOUNT,
+        status: "quoted",
+        destination: "London",
+        amount: "120.00",
+        currency: "GBP",
+        quoteNote: null,
+        requestedByUserId: "owner-1",
+        requestedAt: new Date("2026-11-10T10:00:00Z"),
+        quotedAt: new Date("2026-11-11T10:00:00Z"),
+        decidedByUserId: null,
+        decidedAt: null,
+      },
+    });
+    expect(purchaseView(quoted, actor, now).delivery.collectBy).toBeNull();
+  });
+
+  it("is absent for a lot in a soft-deleted sale", () => {
+    const deleted = row({
+      storage: {
+        clearedAt: CLEARED,
+        placeName: "Marylebone",
+        freeStorageDays: null,
+        bookingOpen: true,
+        booked: false,
+        saleDeleted: true,
+      },
+    });
+    expect(purchaseView(deleted, actor, now).delivery.collectBy).toBeNull();
+  });
+
+  it("stays while the work waits even if the invoice was refunded, as the email does", () => {
+    const refunded = row({
+      payment: {
+        id: "p1",
+        status: "refunded",
+        amount: "1250.00",
+        raisedAt: new Date("2026-11-02T10:00:00Z"),
+        dueAt: null,
+      },
+      fulfilment: fulfilment("ready_for_collection", "collection"),
+    });
+    expect(purchaseView(refunded, actor, now).delivery.collectBy).toEqual({
+      date: "2026-12-09",
+      state: "upcoming",
+      placeName: "Marylebone",
+    });
   });
 });

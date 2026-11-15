@@ -1,8 +1,7 @@
 import {
   DEFAULT_COLLECT_BY_POLICY,
   type EntityActor,
-  type PurchaseCollectBy,
-  type PurchaseDeliveryStage,
+  awaitsCollection,
   deliveryQuoteActionsFor,
   entityActorCan,
   londonDateKey,
@@ -153,32 +152,23 @@ function paymentRoleOf(row: AccountPurchaseFactsRow, actor: OrganisationMemberAc
   });
 }
 
-/** Delivery stages where a paid work still waits with us to be collected. */
-const WAITING_STAGES: ReadonlySet<PurchaseDeliveryStage> = new Set([
-  "choose",
-  "quote_requested",
-  "quote_ready",
-  "preparing",
-  "ready_to_collect",
-]);
-
 /**
  * The "please collect by" notice: the day the reminder email names, from the same domain rule and
- * the place's free storage period. None once the work is booked, collected or on its way, nor at a
- * place that takes no online booking (the reminder is not sent there either).
+ * the place's free storage period. Shown exactly while the email would go: the domain's
+ * `awaitsCollection` holds the exclusions the email's reader applies (booked, collected, on its
+ * way, going by courier, a deleted sale, a place that takes no online booking).
  */
 function collectByOf(
   row: AccountPurchaseFactsRow,
-  stage: PurchaseDeliveryStage,
   now: Date,
-): PurchaseCollectBy | null {
+): AccountPurchaseView["delivery"]["collectBy"] {
   const storage = row.storage;
-  if (!storage || !storage.bookingOpen || storage.booked) return null;
-  if (!WAITING_STAGES.has(stage)) return null;
-  return purchaseCollectBy(storage.clearedAt, londonDateKey(now), {
+  if (!storage || !awaitsCollection({ ...storage, fulfilment: row.fulfilment })) return null;
+  const notice = purchaseCollectBy(storage.clearedAt, londonDateKey(now), {
     ...DEFAULT_COLLECT_BY_POLICY,
     freeStorageDays: storage.freeStorageDays ?? DEFAULT_COLLECT_BY_POLICY.freeStorageDays,
   });
+  return { ...notice, placeName: storage.placeName };
 }
 
 /** A purchase row: the invoice and delivery stage worked out by the domain rules. */
@@ -213,7 +203,7 @@ export function purchaseView(
       collectedBy: row.fulfilment?.collectedBy ?? null,
       collectedAt: row.fulfilment?.collectedAt ?? null,
       quote: row.quote ? quoteView(row.quote, actor) : null,
-      collectBy: collectByOf(row, stage, now),
+      collectBy: collectByOf(row, now),
     },
   };
 }

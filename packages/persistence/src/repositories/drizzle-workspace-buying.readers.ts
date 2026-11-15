@@ -12,6 +12,7 @@ import {
   payment,
   sale,
   saleRegistration,
+  venue,
 } from "@auction/db/schema";
 import { and, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 import type {
@@ -180,6 +181,7 @@ export class DrizzleAccountPurchaseFactsReader implements IAccountPurchaseFactsR
           collectedBy: null,
           collectedAt: null,
         },
+        storage: null,
         quote: null,
       }));
   }
@@ -195,6 +197,7 @@ export class DrizzleAccountPurchaseFactsReader implements IAccountPurchaseFactsR
         saleId: lot.saleId,
         saleTitle: sale.title,
         venueId: sale.venueId,
+        saleDeletedAt: sale.deletedAt,
         hammerPrice: lot.currentPrice,
         buyerAccountKind: legalEntity.kind,
         winnerId: lot.winnerId,
@@ -268,8 +271,10 @@ export class DrizzleAccountPurchaseFactsReader implements IAccountPurchaseFactsR
               venueId: collectionPlace.venueId,
               onlineBookingEnabled: collectionPlace.onlineBookingEnabled,
               freeStorageDays: collectionPlace.freeStorageDays,
+              placeName: venue.name,
             })
             .from(collectionPlace)
+            .innerJoin(venue, eq(venue.id, collectionPlace.venueId))
             .where(inArray(collectionPlace.venueId, venueIds))
         : Promise.resolve([]),
       this.db
@@ -322,8 +327,9 @@ export class DrizzleAccountPurchaseFactsReader implements IAccountPurchaseFactsR
           : null,
         storage: storageOf(
           f?.paymentClearedAt ?? null,
-          placeByVenue.get(l.venueId ?? ""),
+          l.venueId ? placeByVenue.get(l.venueId) : undefined,
           bookedLots.has(l.lotId),
+          l.saleDeletedAt !== null,
         ),
         quote: q ? mapDeliveryQuoteRow(q) : null,
       };
@@ -334,15 +340,20 @@ export class DrizzleAccountPurchaseFactsReader implements IAccountPurchaseFactsR
 /** What the collect-by notice reads, or `null` when payment has not cleared or there is no place. */
 function storageOf(
   clearedAt: Date | null,
-  place: { onlineBookingEnabled: boolean; freeStorageDays: number | null } | undefined,
+  place:
+    | { onlineBookingEnabled: boolean; freeStorageDays: number | null; placeName: string }
+    | undefined,
   booked: boolean,
-): NonNullable<AccountPurchaseFactsRow["storage"]> | null {
+  saleDeleted: boolean,
+): AccountPurchaseFactsRow["storage"] {
   if (!clearedAt || !place) return null;
   return {
     clearedAt,
+    placeName: place.placeName,
     freeStorageDays: place.freeStorageDays,
     bookingOpen: place.onlineBookingEnabled,
     booked,
+    saleDeleted,
   };
 }
 

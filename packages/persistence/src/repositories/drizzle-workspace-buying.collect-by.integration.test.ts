@@ -22,6 +22,7 @@ describe.skipIf(!HAS_DB)("account purchase facts: collect-by storage (integratio
   const reader = new DrizzleAccountPurchaseFactsReader(db);
   const scope = { legalEntityId: buyerEntity, memberUserId: null, limit: 50, offset: 0 };
 
+  const extraSales: string[] = [];
   let lotNumber = 0;
   async function wonLot(over: { sale?: string; cleared?: Date | null } = {}): Promise<string> {
     const lotId = randomUUID();
@@ -73,6 +74,7 @@ describe.skipIf(!HAS_DB)("account purchase facts: collect-by storage (integratio
     );
     await db.execute(sql`delete from lot where seller_legal_entity_id = ${sellerEntity}`);
     await db.execute(sql`delete from sale where id in (${saleId}, ${bareSaleId})`);
+    for (const id of extraSales) await db.execute(sql`delete from sale where id = ${id}`);
     await db.execute(sql`delete from collection_place where venue_id = ${venueId}`);
     await db.execute(sql`delete from venue where id in (${venueId}, ${bareVenueId})`);
     await db.execute(sql`delete from legal_entity where id in (${buyerEntity}, ${sellerEntity})`);
@@ -82,10 +84,22 @@ describe.skipIf(!HAS_DB)("account purchase facts: collect-by storage (integratio
   it("reads the payment day, the place's free period and that booking is open", async () => {
     expect(await storageOf(await wonLot())).toEqual({
       clearedAt: cleared,
+      placeName: "Facts gallery",
       freeStorageDays: 14,
       bookingOpen: true,
       booked: false,
+      saleDeleted: false,
     });
+  });
+
+  it("says when the lot's sale was soft-deleted", async () => {
+    const deletedSaleId = randomUUID();
+    await db.execute(sql`
+      insert into sale (id, title, start_time, end_time, venue_id, created_by_legal_entity_id, deleted_at)
+      values (${deletedSaleId}, 'Deleted sale', now() - interval '30 days', now() - interval '20 days',
+         ${venueId}, ${sellerEntity}, now())`);
+    extraSales.push(deletedSaleId);
+    expect((await storageOf(await wonLot({ sale: deletedSaleId })))?.saleDeleted).toBe(true);
   });
 
   it("says the lot is booked while it is in a live booking, and not after the booking is released", async () => {

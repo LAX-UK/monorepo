@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { createDb } from "@auction/db";
 import { collectionPlace } from "@auction/db/schema";
+import { type CollectionWaitFacts, awaitsCollection } from "@auction/domain";
 import { inArray, sql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { DrizzleCollectByReader } from "./drizzle-collect-by.reader.js";
@@ -28,6 +29,8 @@ describe.skipIf(!HAS_DB)("collect-by reader (integration)", () => {
   const window = { today: "2031-03-10", defaultFreeStorageDays: 30, reminderLeadDays: 7 };
   const due = () => reader.storedLotsDue(window);
 
+  const extraSales: string[] = [];
+  const bookings: string[] = [];
   let lotNumber = 0;
   async function storedLot(
     over: {
@@ -35,17 +38,27 @@ describe.skipIf(!HAS_DB)("collect-by reader (integration)", () => {
       method?: string | null;
       sale?: string;
       deleted?: boolean;
+      saleDeleted?: boolean;
       cleared?: Date | null;
       buyerEntity?: string | null;
     } = {},
   ): Promise<string> {
     const lotId = randomUUID();
     lotNumber += 1;
+    let lotSale = over.sale ?? saleId;
+    if (over.saleDeleted) {
+      lotSale = randomUUID();
+      extraSales.push(lotSale);
+      await db.execute(sql`
+        insert into sale (id, title, start_time, end_time, venue_id, created_by_legal_entity_id, deleted_at)
+        values (${lotSale}, 'Deleted sale', now() - interval '30 days', now() - interval '20 days',
+           ${venueId}, ${sellerEntity}, now())`);
+    }
     const buyerId = over.buyerEntity === undefined ? buyerEntity : over.buyerEntity;
     await db.execute(sql`
       insert into lot (id, seller_legal_entity_id, sale_id, title, lot_number, auction_type,
          starting_price, current_price, start_time, end_time, status, winner_id, buyer_legal_entity_id)
-      values (${lotId}, ${sellerEntity}, ${over.sale ?? saleId}, ${`Collect-by lot ${lotNumber}`},
+      values (${lotId}, ${sellerEntity}, ${lotSale}, ${`Collect-by lot ${lotNumber}`},
          ${lotNumber}, 'english', 100, 100, now() - interval '40 days', now() - interval '20 days',
          'ended', ${buyer}, ${buyerId})`);
     if (over.deleted) await db.execute(sql`update lot set deleted_at = now() where id = ${lotId}`);
@@ -82,12 +95,17 @@ describe.skipIf(!HAS_DB)("collect-by reader (integration)", () => {
   });
 
   afterAll(async () => {
+    for (const id of bookings) {
+      await db.execute(sql`delete from collection_booking_lot where booking_id = ${id}`);
+      await db.execute(sql`delete from collection_booking where id = ${id}`);
+    }
     await db.execute(sql`
       delete from lot_fulfilment where lot_id in (select id from lot where seller_legal_entity_id = ${sellerEntity})`);
     await db.execute(sql`delete from lot where seller_legal_entity_id = ${sellerEntity}`);
     await db.execute(
       sql`delete from sale where id in (${saleId}, ${otherSaleId}, ${closedSaleId})`,
     );
+    for (const id of extraSales) await db.execute(sql`delete from sale where id = ${id}`);
     await db
       .delete(collectionPlace)
       .where(inArray(collectionPlace.venueId, [venueId, closedVenueId]));
@@ -240,5 +258,56 @@ describe.skipIf(!HAS_DB)("collect-by reader (integration)", () => {
     expect(ids).not.toContain(booked);
     await db.execute(sql`delete from collection_booking_lot where booking_id = ${bookingId}`);
     await db.execute(sql`delete from collection_booking where id = ${bookingId}`);
+  });
+
+  it("leaves out exactly the lots the purchase page's awaitsCollection says are not waiting", async () => {
+    type Case = Omit<CollectionWaitFacts, "fulfilment"> & {
+      status: NonNullable<CollectionWaitFacts["fulfilment"]>["status"];
+      method: NonNullable<CollectionWaitFacts["fulfilment"]>["method"];
+    };
+    const open = { saleDeleted: false, bookingOpen: true, booked: false };
+    const cases: Case[] = [
+      ...(
+        [
+          "awaiting_payment",
+          "awaiting_release",
+          "released",
+          "ready_for_collection",
+          "in_transit",
+          "delivered",
+          "cancelled",
+        ] as const
+      ).flatMap((status) =>
+        (["collection", "shipping", null] as const).map((method) => ({ ...open, status, method })),
+      ),
+      { ...open, status: "ready_for_collection", method: "collection", saleDeleted: true },
+      { ...open, status: "ready_for_collection", method: null, bookingOpen: false },
+      { ...open, status: "released", method: "collection", booked: true },
+    ];
+    const lots: { lotId: string; expected: boolean }[] = [];
+    for (const c of cases) {
+      const lotId = await storedLot({
+        status: c.status,
+        method: c.method,
+        saleDeleted: c.saleDeleted,
+        ...(c.bookingOpen ? {} : { sale: closedSaleId }),
+      });
+      if (c.booked) {
+        const bookingId = randomUUID();
+        await db.execute(sql`
+          insert into collection_booking (id, legal_entity_id, venue_id, slot_start, slot_end,
+             seat, status, collector_kind, collector_name, booked_by_user_id, idempotency_key, request_fingerprint)
+          values (${bookingId}, ${buyerEntity}, ${venueId}, '2031-03-11T10:00:00Z',
+             '2031-03-11T10:30:00Z', 1, 'booked', 'self', 'Buyer', ${buyer}, ${randomUUID()}, ${randomUUID()})`);
+        await db.execute(sql`
+          insert into collection_booking_lot (booking_id, lot_id, active) values (${bookingId}, ${lotId}, true)`);
+        bookings.push(bookingId);
+      }
+      const { status, method, ...rest } = c;
+      lots.push({ lotId, expected: awaitsCollection({ ...rest, fulfilment: { status, method } }) });
+    }
+    const ids = new Set((await due()).map((row) => row.lotId));
+    for (const { lotId, expected } of lots) expect(ids.has(lotId)).toBe(expected);
+    expect(lots.some((l) => l.expected)).toBe(true);
   });
 });
