@@ -119,19 +119,26 @@ export class PrivateSaleDealCommandService implements IPrivateSaleDealCommands {
       return { ok: false, error: "buyer_is_seller" };
     }
 
-    const written = await this.deps.deals.setParty(deal.id, deal.version, {
-      role: "buyer",
-      legalEntityId: buyer.legalEntityId,
-      actingUserId: buyer.actingUserId,
-    });
+    // The naming and its event commit together, so a party is never on record without its history.
+    const written = await this.deps.deals.setParty(
+      deal.id,
+      deal.version,
+      {
+        role: "buyer",
+        legalEntityId: buyer.legalEntityId,
+        actingUserId: buyer.actingUserId,
+      },
+      (tx) =>
+        this.publish(
+          viewer,
+          deal.id,
+          dealPartyNamedEvent(deal, { role: "buyer", actingUserId: buyer.actingUserId }),
+          this.deps.events.withTx(tx),
+        ),
+    );
     if (written.kind === "not_found") return { ok: false, error: "deal_not_found" };
     if (written.kind === "conflict") return this.staleOf(ref);
 
-    await this.publish(
-      viewer,
-      deal.id,
-      dealPartyNamedEvent(deal, { role: "buyer", actingUserId: buyer.actingUserId }),
-    );
     return { ok: true, record: await this.deps.records.recordOf(viewer, written.deal) };
   }
 
@@ -324,8 +331,9 @@ export class PrivateSaleDealCommandService implements IPrivateSaleDealCommands {
     viewer: DealStaffViewer,
     dealId: string,
     event: ReturnType<typeof dealPartyNamedEvent>,
+    sink: IDomainEventSink = this.deps.events,
   ): Promise<void> {
-    await this.deps.events.publish({
+    await sink.publish({
       aggregateType: PRIVATE_SALE_DEAL_EVENT_AGGREGATE,
       aggregateId: dealId,
       eventType: event.eventType,

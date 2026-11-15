@@ -1,7 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
 import type { ProjectorDbConnection } from "../interfaces/worker-db.types.js";
 import { anonymiseBidPersonalData } from "./anonymise-bid-personal-data.js";
-import { BID_ANONYMISATION_RULES, type BidAnonymisationRule } from "./bid-personal-data-policy.js";
+import {
+  BID_ANONYMISATION_RULES,
+  type BidAnonymisationRule,
+  assertEnquiryErasureBeforeEventScrub,
+} from "./bid-personal-data-policy.js";
 
 /** A select chain that answers the two scope lookups in order: aliases, then personal entities. */
 function scopeTx(aliases: string[], entities: string[]) {
@@ -103,5 +107,40 @@ describe("Bid anonymisation policy", () => {
       treatment: "scrub",
       fields: ["collector_name", "collector_email", "collector_company"],
     });
+  });
+});
+
+describe("anonymiseBidPersonalData ordering guard", () => {
+  it("refuses, before running anything, a domain event scrub placed before the enquiry rule", async () => {
+    const ran: string[] = [];
+    const track = (table: string) =>
+      rule(table, async () => {
+        ran.push(table);
+        return 1;
+      });
+    const rules = [track("domain_event"), track("marketing_enquiry")];
+    await expect(anonymiseBidPersonalData(scopeTx([], []), "user_1", rules)).rejects.toThrow(
+      /domain_event must run after the marketing_enquiry rule/,
+    );
+    expect(ran).toEqual([]);
+  });
+
+  it("refuses an event scrub when there is no enquiry rule at all", async () => {
+    const rules = [rule("domain_events", async () => 1)];
+    await expect(anonymiseBidPersonalData(scopeTx([], []), "user_1", rules)).rejects.toThrow(
+      /must run after/,
+    );
+  });
+
+  it("allows an event scrub after the enquiry rule", async () => {
+    const rules = [rule("marketing_enquiry", async () => 1), rule("domain_event", async () => 1)];
+    await expect(anonymiseBidPersonalData(scopeTx([], []), "user_1", rules)).resolves.toEqual({
+      marketing_enquiry: 1,
+      domain_event: 1,
+    });
+  });
+
+  it("keeps the shipped rule list valid", async () => {
+    expect(() => assertEnquiryErasureBeforeEventScrub(BID_ANONYMISATION_RULES)).not.toThrow();
   });
 });

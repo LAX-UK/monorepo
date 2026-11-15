@@ -2,7 +2,9 @@ import { randomUUID } from "node:crypto";
 import { type Database, createDb } from "@auction/db";
 import {
   bidUserProfile,
+  domainEvent,
   itemSubmission,
+  kycVerification,
   kycWatchlistScreening,
   legalEntity,
   marketingEnquiry,
@@ -308,6 +310,62 @@ describe.skipIf(!HAS_DB)("enquiry erasure (integration)", () => {
             target: bidUserProfile.userId,
             set: { amlHoldStatus: "hold", amlHoldAt: new Date() },
           });
+        await cancel(tx, dealId, false, new Date());
+        expect(await anonymiseEnquiries(tx, { kind: "email", email })).toMatchObject({
+          enquiries: 0,
+          held: 1,
+        });
+        expect(await message(tx, enquiryId)).toBe("A painting to sell");
+      });
+    });
+
+    it("holds it when an anti-money-laundering hold was cleared by review before the request", async () => {
+      await withDeal(async ({ tx, email, enquiryId, dealId, userId }) => {
+        // The hold is gone from the profile; only the decision on the screening remembers it.
+        await tx
+          .insert(bidUserProfile)
+          .values({ userId, amlHoldStatus: "none", createdAt: t, updatedAt: t })
+          .onConflictDoNothing();
+        await tx.insert(domainEvent).values({
+          aggregateType: "aml_screening",
+          aggregateId: randomUUID(),
+          eventType: "aml.screening_evaluated",
+          producer: "apps/api",
+          payload: { userId, outcome: "clear", reasons: "manual_cleared" },
+        });
+        await cancel(tx, dealId, false, new Date());
+        expect(await anonymiseEnquiries(tx, { kind: "email", email })).toMatchObject({
+          enquiries: 0,
+          held: 1,
+        });
+        expect(await message(tx, enquiryId)).toBe("A painting to sell");
+      });
+    });
+
+    const verification = (userId: string, code: string | null) => ({
+      userId,
+      providerSessionId: `session-${randomUUID()}`,
+      status: "canceled" as const,
+      decisionAt: new Date(),
+      decisionPayload: code === null ? null : { verification: { code } },
+    });
+
+    it("does not count an expired or abandoned identity session as a check", async () => {
+      await withDeal(async ({ tx, email, enquiryId, dealId, userId }) => {
+        await tx.insert(kycVerification).values([verification(userId, "9104")]);
+        await tx.insert(kycVerification).values([verification(userId, null)]);
+        await cancel(tx, dealId, false, new Date());
+        expect(await anonymiseEnquiries(tx, { kind: "email", email })).toMatchObject({
+          enquiries: 1,
+          held: 0,
+        });
+        expect(await message(tx, enquiryId)).toBe(ERASED_ENQUIRY.message);
+      });
+    });
+
+    it("counts a declined identity decision (9102) as a check", async () => {
+      await withDeal(async ({ tx, email, enquiryId, dealId, userId }) => {
+        await tx.insert(kycVerification).values([verification(userId, "9102")]);
         await cancel(tx, dealId, false, new Date());
         expect(await anonymiseEnquiries(tx, { kind: "email", email })).toMatchObject({
           enquiries: 0,

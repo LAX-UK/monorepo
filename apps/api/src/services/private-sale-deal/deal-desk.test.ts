@@ -84,7 +84,9 @@ function setup(options: Setup = {}) {
       _id: string,
       _v: number,
       party: { legalEntityId: string; actingUserId: string | null },
+      inTransaction?: (tx: never) => Promise<void>,
     ) => {
+      await inTransaction?.({} as never);
       deal = {
         ...deal,
         version: deal.version + 1,
@@ -467,11 +469,12 @@ describe("PrivateSaleDealDeskService nameBuyer", () => {
       buyerUserId: "u-new-buyer",
     });
     expect(result.ok).toBe(true);
-    expect(setParty).toHaveBeenCalledWith("deal-1", 4, {
-      role: "buyer",
-      legalEntityId: "le-new-buyer",
-      actingUserId: "u-new-buyer",
-    });
+    expect(setParty).toHaveBeenCalledWith(
+      "deal-1",
+      4,
+      { role: "buyer", legalEntityId: "le-new-buyer", actingUserId: "u-new-buyer" },
+      expect.any(Function),
+    );
     expect(events.events).toEqual([
       {
         eventType: "private_sale_deal.party_named",
@@ -483,6 +486,13 @@ describe("PrivateSaleDealDeskService nameBuyer", () => {
         },
       },
     ]);
+  });
+
+  it("records the naming inside the write, so a failed event keeps no party", async () => {
+    const { desk, setParty } = setup({ deal: stageDeal("proposed", { buyer: null }) });
+    await desk.nameBuyer(MANAGER, "PS-0001", { version: 4, buyerUserId: "u-new-buyer" });
+    // The event is handed to the repository as part of the write, never published after it.
+    expect(setParty.mock.calls[0]?.[3]).toBeTypeOf("function");
   });
 
   it("cannot name a buyer who is not a client, or who is not a member of the organisation", async () => {

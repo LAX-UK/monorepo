@@ -1,7 +1,9 @@
 import { randomUUID } from "node:crypto";
 import { type Database, createDb } from "@auction/db";
 import {
+  domainEvent,
   itemSubmission,
+  kycVerification,
   kycWatchlistScreening,
   legalEntity,
   marketingEnquiry,
@@ -182,6 +184,50 @@ describe.skipIf(!HAS_DB)("the deals a KYC retention subject is a party to (integ
       expect(await store.dealRecords(buyerId)).toMatchObject([
         { stage: "cancelled", hasComplianceCase: true },
       ]);
+    });
+  });
+
+  it("counts a declined identity decision for a deal, but not an expired or abandoned session", async () => {
+    await withDeal(async ({ tx, buyerId, dealId }) => {
+      await tx
+        .update(privateSaleDeal)
+        .set({
+          stage: "cancelled",
+          cancelReason: "Withdrawn",
+          cancelledAt: new Date(Date.now() + 3_600_000),
+        })
+        .where(eq(privateSaleDeal.id, dealId));
+      const store = new DrizzleKycRetentionPersonStore(tx, new DrizzlePartyDealRecordReader(tx));
+      const session = (code: string | null) => ({
+        userId: buyerId,
+        providerSessionId: `session-${randomUUID()}`,
+        status: "canceled" as const,
+        decisionAt: new Date(),
+        decisionPayload: code === null ? null : { verification: { code } },
+      });
+      await tx.insert(kycVerification).values([session("9104"), session(null)]);
+      expect(await store.dealRecords(buyerId)).toMatchObject([{ hasComplianceCase: false }]);
+      await tx.insert(kycVerification).values([session("9102")]);
+      expect(await store.dealRecords(buyerId)).toMatchObject([{ hasComplianceCase: true }]);
+    });
+  });
+
+  it("counts an anti-money-laundering hold that was cleared, from its decision", async () => {
+    await withDeal(async ({ tx, buyerId, dealId }) => {
+      await tx
+        .update(privateSaleDeal)
+        .set({ stage: "cancelled", cancelReason: "Withdrawn", cancelledAt: new Date() })
+        .where(eq(privateSaleDeal.id, dealId));
+      const store = new DrizzleKycRetentionPersonStore(tx, new DrizzlePartyDealRecordReader(tx));
+      expect(await store.dealRecords(buyerId)).toMatchObject([{ hasComplianceCase: false }]);
+      await tx.insert(domainEvent).values({
+        aggregateType: "aml_screening",
+        aggregateId: randomUUID(),
+        eventType: "aml.screening_evaluated",
+        producer: "apps/api",
+        payload: { userId: buyerId, outcome: "clear", reasons: "manual_cleared" },
+      });
+      expect(await store.dealRecords(buyerId)).toMatchObject([{ hasComplianceCase: true }]);
     });
   });
 

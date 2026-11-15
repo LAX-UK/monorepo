@@ -238,9 +238,10 @@ const AML_SCREENING_EVALUATED_EVENT = "aml.screening_evaluated";
  * When a compliance check was opened for each person: a watchlist screening, a source-of-funds
  * case, an anti-money-laundering hold (still in place, or since cleared and so read from the
  * screening decisions), or an identity verification that was declined. An expired or abandoned
- * session is not a check.
+ * session is not a check. The one definition of a check: the enquiry erasure and the party deal
+ * retention reader both read it, so they cannot disagree about when a deal had a compliance case.
  */
-async function checkTimesByUser(
+export async function checkTimesByUser(
   tx: Database,
   userIds: readonly string[],
 ): Promise<Map<string, Date[]>> {

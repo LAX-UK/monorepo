@@ -3,6 +3,7 @@ import { type PartyDealRecord, closedDealEndedAt } from "@auction/domain";
 import type { PrivateSaleDealStage } from "@auction/types";
 import { type SQL, sql } from "drizzle-orm";
 import type { IPartyDealRecordReader } from "../interfaces/party-deal-record.reader.js";
+import { checkTimesByUser } from "../lib/anonymise-enquiries.js";
 
 type DealRow = {
   reference: string;
@@ -34,17 +35,10 @@ export class DrizzlePartyDealRecordReader implements IPartyDealRecordReader {
       SELECT "deal_id" FROM "private_sale_deal_party_history" WHERE "acting_user_id" = ${userId}
     `);
     if (deals.length === 0) return [];
-    const evidence = await this.db.execute<{ at: Date | string }>(sql`
-      SELECT "created_at" AS at FROM "kyc_verification" WHERE "user_id" = ${userId}
-      UNION ALL
-      SELECT "created_at" AS at FROM "kyc_watchlist_screening" WHERE "user_id" = ${userId}
-      UNION ALL
-      SELECT "created_at" AS at FROM "source_of_funds" WHERE "user_id" = ${userId}
-    `);
-    return recordsFrom(
-      deals,
-      evidence.rows.map((row) => toDate(row.at)),
-    );
+    // The same checks the enquiry erasure counts: screenings, source of funds, holds (cleared
+    // ones too) and a declined identity check, but not an expired or abandoned session.
+    const evidence = (await checkTimesByUser(this.db, [userId])).get(userId) ?? [];
+    return recordsFrom(deals, evidence);
   }
 
   async forLegalEntity(legalEntityId: string): Promise<PartyDealRecord[]> {

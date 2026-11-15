@@ -292,3 +292,23 @@ export const BID_ANONYMISATION_RULES: readonly BidAnonymisationRule[] = [
   enquiryRule,
   alertSubscribersRule,
 ];
+
+/** Tables that hold the domain event log. Erasure counts a person's compliance checks from it. */
+const DOMAIN_EVENT_TABLES: readonly string[] = ["domain_event", "domain_events"];
+
+/**
+ * The enquiry rule decides whether an enquiry is kept by reading the person's decided screenings
+ * from the domain event log, so no rule that scrubs or deletes events may run before it. Checked
+ * before any rule runs, so a mis-ordered list fails closed and changes nothing.
+ */
+export function assertEnquiryErasureBeforeEventScrub(rules: readonly BidAnonymisationRule[]): void {
+  const enquiryAt = rules.findIndex((rule) => rule.table === enquiryRule.table);
+  rules.forEach((rule, at) => {
+    if (!DOMAIN_EVENT_TABLES.includes(rule.table)) return;
+    if (enquiryAt === -1 || at < enquiryAt) {
+      throw new Error(
+        `anonymisation rule for ${rule.table} must run after the ${enquiryRule.table} rule`,
+      );
+    }
+  });
+}

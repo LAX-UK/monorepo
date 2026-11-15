@@ -6,6 +6,7 @@ import {
   BID_ANONYMISATION_RULES,
   type BidAnonymisationRule,
   type BidAnonymisationScope,
+  assertEnquiryErasureBeforeEventScrub,
 } from "./bid-personal-data-policy.js";
 
 /** Rows changed per table. Tables with nothing to change are left out, so the audit stays short. */
@@ -45,6 +46,7 @@ export async function anonymiseBidPersonalData(
   rules: readonly BidAnonymisationRule[] = BID_ANONYMISATION_RULES,
   options: { privateSaleRecordRetentionYears?: number | undefined } = {},
 ): Promise<AnonymisationCounts> {
+  assertEnquiryErasureBeforeEventScrub(rules);
   const scope = {
     ...(await resolveBidAnonymisationScope(tx, subjectId)),
     privateSaleRecordRetentionYears: options.privateSaleRecordRetentionYears,
