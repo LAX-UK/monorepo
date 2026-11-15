@@ -15,15 +15,18 @@ import {
   isCatalogueField,
   nextStockCode,
   parseStockCode,
+  planGallerySale,
   printCodeForOriginal,
   reconcileZohoChange,
   registerFieldValue,
+  reopenGallerySale,
   sameImageSources,
   transitionOffer,
 } from "@auction/artwork-register-contracts";
 import { LONDON_TIME_ZONE, calendarYear } from "@auction/datetime";
 import type { Database } from "@auction/db";
 import {
+  artworkRegisterSoldAttention as attention,
   artworkRegisterConflict as conflict,
   domainEvent,
   artworkRegisterEvent as event,
@@ -49,6 +52,8 @@ import type {
   RecordCatalogueStatusConflictResult,
   RecordCatalogueStatusWrittenInput,
   RecordCatalogueStatusWrittenResult,
+  RecordGallerySaleInput,
+  RecordGallerySaleResult,
   RecordLaxArtDraftCreatedInput,
   RecordMoveConfirmedInput,
   RecordOfferConflictInput,
@@ -57,6 +62,8 @@ import type {
   RegisterConflict,
   RegisterEvent,
   RegisterEventType,
+  ReopenGallerySaleInput,
+  ReopenGallerySaleOutcome,
   ReplaceZohoImagesInput,
   ReplaceZohoImagesResult,
   ResolveConflictInput,
@@ -424,6 +431,181 @@ export class DrizzleArtworkRegisterRepository
       }
       return { ok: true, entry: toEntry(row) };
     });
+  }
+
+  async recordGallerySale(input: RecordGallerySaleInput): Promise<RecordGallerySaleResult> {
+    return this.db.transaction(async (tx) => {
+      const [locked] = await tx
+        .select()
+        .from(register)
+        .where(eq(register.id, input.registerId))
+        .for("update");
+      if (!locked) return { status: "not_found" };
+      // Decided again under the row lock, from what the register holds now, so two passes that
+      // both saw Zoho's Sold record it once.
+      const entry = toEntry(locked);
+      const plan = planGallerySale(entry);
+      if (plan.action !== "record") return { status: "unchanged", entry, plan };
+
+      const ref = { kind: "gallery_sale" as const, id: locked.zohoProductId };
+      const [row] = await tx
+        .update(register)
+        .set({
+          offerState: "sold",
+          offerRefKind: ref.kind,
+          offerRefId: ref.id,
+          updatedAt: input.now,
+          version: sql`${register.version} + 1`,
+        })
+        .where(and(eq(register.id, locked.id), eq(register.version, locked.version)))
+        .returning();
+      if (!row) return { status: "unchanged", entry, plan: { action: "none" } };
+
+      await this.record(tx, row.id, "gallery_sale_recorded", "zoho", input.now, {
+        from: entry.offer,
+        to: { state: "sold", ref },
+        zohoStatus: entry.catalogueStatus,
+        zohoModifiedAt: entry.zohoModifiedAt?.toISOString() ?? null,
+        ...(plan.laxArtListingId ? { laxArtListingId: plan.laxArtListingId } : {}),
+      });
+      if (plan.from === "lax_art") {
+        await this.reraiseOverriddenAttention(tx, entry, plan.laxArtListingId, input.now);
+      }
+      await this.publish(tx, row.id, "artwork_register.offer_changed", {
+        schemaVersion: 1,
+        registerId: row.id,
+        zohoProductId: row.zohoProductId,
+        stockCode: row.stockCode,
+        fromState: entry.offer.state,
+        toState: "sold",
+      });
+      return {
+        status: "recorded",
+        entry: toEntry(row),
+        from: plan.from,
+        laxArtListingId: plan.laxArtListingId,
+      };
+    });
+  }
+
+  /**
+   * Zoho says Sold again for a work staff earlier said was not sold ("It is not sold"). Zoho wins:
+   * the overridden item is closed as replaced and a fresh open one is raised in the same
+   * transaction as the sale, so staff see it in Needs decision and close it with Dealt with.
+   * Nothing happens when there is no overridden item, or an open one already exists.
+   */
+  private async reraiseOverriddenAttention(
+    tx: Tx,
+    entry: ArtworkRegisterEntry,
+    laxArtListingId: string | null,
+    now: Date,
+  ): Promise<void> {
+    const live = await tx
+      .select()
+      .from(attention)
+      .where(
+        and(eq(attention.registerId, entry.id), inArray(attention.status, ["open", "overridden"])),
+      )
+      .for("update");
+    if (live.some((item) => item.status === "open")) return;
+    const overridden = live.filter((item) => item.status === "overridden");
+    if (overridden.length === 0) return;
+    for (const item of overridden) {
+      await tx
+        .update(attention)
+        .set({ status: "resolved", resolution: "replaced", resolvedBy: "zoho", resolvedAt: now })
+        .where(and(eq(attention.id, item.id), eq(attention.status, "overridden")));
+      await this.record(tx, entry.id, "sold_while_live_resolved", "zoho", now, {
+        attentionId: item.id,
+        status: item.zohoStatus,
+        resolution: "replaced",
+      });
+    }
+    const markedAt = entry.zohoModifiedAt ?? now;
+    const [raised] = await tx
+      .insert(attention)
+      .values({
+        registerId: entry.id,
+        zohoProductId: entry.zohoProductId,
+        zohoStatus: "Sold",
+        place: "lax_art",
+        placeRefId: laxArtListingId,
+        markedAt,
+        raisedAt: now,
+      })
+      .onConflictDoNothing()
+      .returning({ id: attention.id });
+    if (!raised) return;
+    await this.record(tx, entry.id, "sold_while_live_raised", "zoho", now, {
+      attentionId: raised.id,
+      status: "Sold",
+      place: "lax_art",
+      placeRefId: laxArtListingId,
+      markedAt: markedAt.toISOString(),
+    });
+  }
+
+  async reopenGallerySale(input: ReopenGallerySaleInput): Promise<ReopenGallerySaleOutcome> {
+    return this.db.transaction(async (tx) => {
+      const [locked] = await tx
+        .select()
+        .from(register)
+        .where(eq(register.id, input.registerId))
+        .for("update");
+      if (!locked) return { ok: false, refusal: "not_found" };
+      if (input.expectedVersion !== undefined && locked.version !== input.expectedVersion) {
+        return { ok: false, refusal: "version_conflict" };
+      }
+      const entry = toEntry(locked);
+      const reopened = reopenGallerySale(entry, input.reason);
+      if (!reopened.ok) return reopened;
+
+      const [row] = await tx
+        .update(register)
+        .set({
+          offerState: reopened.state,
+          offerRefKind: null,
+          offerRefId: null,
+          updatedAt: input.now,
+          version: sql`${register.version} + 1`,
+        })
+        .where(and(eq(register.id, locked.id), eq(register.version, locked.version)))
+        .returning();
+      if (!row) return { ok: false, refusal: "version_conflict" };
+
+      await this.record(tx, row.id, "gallery_sale_reopened", input.actor, input.now, {
+        from: entry.offer,
+        to: { state: reopened.state, ref: null },
+        reason: reopened.reason,
+        zohoStatus: entry.catalogueStatus,
+      });
+      await this.publish(tx, row.id, "artwork_register.offer_changed", {
+        schemaVersion: 1,
+        registerId: row.id,
+        zohoProductId: row.zohoProductId,
+        stockCode: row.stockCode,
+        fromState: "sold",
+        toState: reopened.state,
+      });
+      return { ok: true, entry: toEntry(row), reason: reopened.reason };
+    });
+  }
+
+  async listGallerySaleCandidates(limit: number, afterId?: string): Promise<string[]> {
+    const rows = await this.db
+      .select({ id: register.id })
+      .from(register)
+      .where(
+        and(
+          eq(register.kind, "original"),
+          sql`lower(btrim(${register.catalogueStatus})) = 'sold'`,
+          inArray(register.offerState, ["held", "withdrawn", "lax_art"]),
+          afterId ? gt(register.id, afterId) : undefined,
+        ),
+      )
+      .orderBy(asc(register.id))
+      .limit(limit);
+    return rows.map((row) => row.id);
   }
 
   async resolveConflict(input: ResolveConflictInput): Promise<ResolveConflictResult> {

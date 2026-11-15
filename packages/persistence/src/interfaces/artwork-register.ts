@@ -1,6 +1,7 @@
 import type {
   ArtworkRegisterEntry,
   FieldConflict,
+  GallerySalePlan,
   MoveRecord,
   NewArtworkRegisterEntry,
   OfferRef,
@@ -8,6 +9,7 @@ import type {
   OfferTransitionRefusal,
   RegisterConflictField,
   RegisterField,
+  ReopenGallerySaleRefusal,
   StockCodeKind,
   StockCodeSeries,
   ZohoChange,
@@ -30,7 +32,9 @@ export type RegisterEventType =
   | "zoho_link_unlinked"
   | "sold_while_live_raised"
   | "sold_while_live_resolved"
-  | "sold_while_live_overridden";
+  | "sold_while_live_overridden"
+  | "gallery_sale_recorded"
+  | "gallery_sale_reopened";
 
 export type RegisterEvent = {
   id: string;
@@ -183,13 +187,64 @@ export type RecordCatalogueStatusConflictResult = {
   status: "not_found" | "unchanged" | "recorded";
 };
 
+export type RecordGallerySaleInput = { registerId: string; now: Date };
+
+export type RecordGallerySaleResult =
+  | { status: "not_found" }
+  /** Nothing to record (already sold, not Sold in Zoho, or a lot or private sale holds it). */
+  | { status: "unchanged"; entry: ArtworkRegisterEntry; plan: GallerySalePlan }
+  | {
+      status: "recorded";
+      entry: ArtworkRegisterEntry;
+      from: "held" | "withdrawn" | "lax_art";
+      /** The lax.art listing the artwork was on, which has to come off sale. */
+      laxArtListingId: string | null;
+    };
+
+export type ReopenGallerySaleInput = {
+  registerId: string;
+  reason: string;
+  /** `staff:<user id>` of the Administrator. */
+  actor: RegisterActor;
+  /** The version the caller read, when it read one. */
+  expectedVersion?: number;
+  now: Date;
+};
+
+export type ReopenGallerySaleOutcome =
+  | { ok: true; entry: ArtworkRegisterEntry; reason: string }
+  | { ok: false; refusal: ReopenGallerySaleRefusal | "not_found" | "version_conflict" };
+
+/**
+ * Sales made in the gallery, which Zoho reports by setting the Product's Status to Sold. Zoho wins:
+ * the register records them as sold with no person deciding. Only an Administrator takes one back.
+ */
+export interface IGallerySaleRegister {
+  /**
+   * Records a gallery sale when, under the row lock, Zoho's Sold still applies (`planGallerySale`).
+   * Leaves a history entry and publishes `artwork_register.offer_changed`. Safe to repeat.
+   */
+  recordGallerySale(input: RecordGallerySaleInput): Promise<RecordGallerySaleResult>;
+  /**
+   * Undoes a gallery sale recorded by mistake: the artwork returns to held. Refused unless it is a
+   * gallery sale and Zoho no longer says Sold. The reason is kept in the history.
+   */
+  reopenGallerySale(input: ReopenGallerySaleInput): Promise<ReopenGallerySaleOutcome>;
+  /**
+   * Originals Zoho shows as Sold that are held, withdrawn or on lax.art: sales not yet recorded,
+   * for the nightly check. By id; pass the last id to read the next page.
+   */
+  listGallerySaleCandidates(limit: number, afterId?: string): Promise<string[]>;
+}
+
 /**
  * Writes to the register. Every write that changes a record is optimistic (the version moves
  * on) and leaves an event. Bid and Shop reach the register only through this port.
  */
 export interface IArtworkRegisterRepository
   extends IArtworkRegisterReader,
-    IRegisterOfferConflicts {
+    IRegisterOfferConflicts,
+    IGallerySaleRegister {
   /** Adds a record, held and unlisted, and records that it was created. */
   create(
     entry: NewArtworkRegisterEntry,

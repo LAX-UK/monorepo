@@ -13,6 +13,8 @@ const ActionKindSchema = Type.Union([
   Type.Literal("withdraw_offer"),
   Type.Literal("open_in_zoho"),
   Type.Literal("not_sold"),
+  Type.Literal("open_lax_art"),
+  Type.Literal("dealt_with"),
 ]);
 
 export const AdminSoldAttentionItemSchema = Type.Object({
@@ -54,9 +56,15 @@ export const AdminSoldAttentionOverrideResultSchema = Type.Object({
   registerId: Type.String({ format: "uuid" }),
 });
 
+/** "Dealt with" needs no body: the item and the staff member are the record. */
+export const AdminSoldAttentionDealtWithResultSchema = AdminSoldAttentionOverrideResultSchema;
+
 export type AdminSoldAttentionItem = Static<typeof AdminSoldAttentionItemSchema>;
 export type AdminSoldAttentionList = Static<typeof AdminSoldAttentionListSchema>;
 export type AdminSoldAttentionOverrideBody = Static<typeof AdminSoldAttentionOverrideBodySchema>;
 export type AdminSoldAttentionOverrideResult = Static<
   typeof AdminSoldAttentionOverrideResultSchema
+>;
+export type AdminSoldAttentionDealtWithResult = Static<
+  typeof AdminSoldAttentionDealtWithResultSchema
 >;

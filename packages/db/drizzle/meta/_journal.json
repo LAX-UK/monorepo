@@ -2712,6 +2712,13 @@
       "breakpoints": true
     },
     {
+      "idx": 388,
+      "version": "7",
+      "when": 1812456000000,
+      "tag": "0396_zoho_gallery_sale",
+      "breakpoints": true
+    },
+    {
       "idx": 389,
       "version": "7",
       "when": 1812542400000,

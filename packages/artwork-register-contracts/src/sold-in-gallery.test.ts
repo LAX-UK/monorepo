@@ -2,10 +2,13 @@ import { describe, expect, it } from "vitest";
 import { OFFER_STATES, type OfferRef, type OfferState } from "./offer-state.js";
 import {
   REOPEN_REASON_MAX_LENGTH,
+  REOPEN_REFUSAL_MESSAGE,
   isReservedInZoho,
   isSoldInZoho,
+  planGallerySale,
   reconcileZohoStatus,
   recordGallerySale,
+  reopenGallerySale,
   reopenSold,
   soldWhere,
 } from "./sold-in-gallery.js";
@@ -204,6 +207,109 @@ describe("reconcileZohoStatus", () => {
       expect(reconcileZohoStatus(offer(reopened.state, reopened.ref), "Available")).toEqual({
         action: "none",
       });
+    }
+  });
+});
+
+describe("planGallerySale", () => {
+  const original = (
+    catalogueStatus: string | null,
+    state: OfferState,
+    ref: OfferRef | null = null,
+  ) => ({
+    kind: "original" as const,
+    catalogueStatus,
+    offer: offer(state, ref),
+  });
+
+  it("records the sale when Zoho says Sold on an artwork not offered", () => {
+    expect(planGallerySale(original("Sold", "held"))).toEqual({
+      action: "record",
+      from: "held",
+      laxArtListingId: null,
+    });
+    expect(planGallerySale(original(" sold ", "withdrawn"))).toEqual({
+      action: "record",
+      from: "withdrawn",
+      laxArtListingId: null,
+    });
+  });
+
+  it("records the sale and names the lax.art listing to take off sale", () => {
+    expect(planGallerySale(original("Sold", "lax_art", shop))).toEqual({
+      action: "record",
+      from: "lax_art",
+      laxArtListingId: "a",
+    });
+  });
+
+  it("waits for staff while a Bid lot or a private sale holds the artwork", () => {
+    expect(planGallerySale(original("Sold", "bid_sale", lot))).toEqual({
+      action: "wait_for_staff",
+      place: "bid_sale",
+    });
+    expect(planGallerySale(original("Sold", "private_sale", deal))).toEqual({
+      action: "wait_for_staff",
+      place: "private_sale",
+    });
+  });
+
+  it("does nothing once sold, however it was sold, so a repeat is a no-op", () => {
+    for (const ref of [gallery, shop, lot, deal, null]) {
+      expect(planGallerySale(original("Sold", "sold", ref))).toEqual({ action: "none" });
+    }
+  });
+
+  it("does nothing for any other Zoho status, or for a print", () => {
+    for (const status of ["Available", "Reserved", "In Auction", "Withdrawn", null]) {
+      expect(planGallerySale(original(status, "lax_art", shop))).toEqual({ action: "none" });
+    }
+    expect(
+      planGallerySale({ kind: "print", catalogueStatus: "Sold", offer: offer("held") }),
+    ).toEqual({ action: "none" });
+  });
+});
+
+describe("reopenGallerySale", () => {
+  it("reopens a gallery sale once Zoho no longer says Sold", () => {
+    expect(
+      reopenGallerySale({ catalogueStatus: "Available", offer: offer("sold", gallery) }, " Typo "),
+    ).toEqual({
+      ok: true,
+      from: "sold",
+      state: "held",
+      ref: null,
+      reason: "Typo",
+      wasSoldWhere: "gallery",
+    });
+  });
+
+  it("refuses while Zoho still says Sold, because Zoho wins", () => {
+    expect(
+      reopenGallerySale({ catalogueStatus: "Sold", offer: offer("sold", gallery) }, "Typo"),
+    ).toEqual({ ok: false, refusal: "zoho_still_sold" });
+  });
+
+  it("refuses a sale made through LAX or one that records no place", () => {
+    for (const ref of [shop, lot, deal, null]) {
+      expect(
+        reopenGallerySale({ catalogueStatus: "Available", offer: offer("sold", ref) }, "Typo"),
+      ).toEqual({ ok: false, refusal: "not_a_gallery_sale" });
+    }
+  });
+
+  it("keeps the reason checks and the not-sold refusal", () => {
+    expect(
+      reopenGallerySale({ catalogueStatus: "Available", offer: offer("held") }, "Typo"),
+    ).toEqual({ ok: false, refusal: "not_sold" });
+    expect(
+      reopenGallerySale({ catalogueStatus: "Available", offer: offer("sold", gallery) }, " "),
+    ).toEqual({ ok: false, refusal: "reason_required" });
+  });
+
+  it("has words for every refusal", () => {
+    for (const message of Object.values(REOPEN_REFUSAL_MESSAGE)) {
+      expect(message.length).toBeGreaterThan(0);
     }
   });
 });

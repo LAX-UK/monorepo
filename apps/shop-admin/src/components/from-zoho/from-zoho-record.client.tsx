@@ -2,6 +2,7 @@
 
 import { CatalogueChanges } from "@/components/from-zoho/catalogue-changes.client";
 import { ConflictCard } from "@/components/from-zoho/conflict-card.client";
+import { GallerySaleNotice } from "@/components/from-zoho/reopen-gallery-sale.client";
 import {
   useCanOfferAtAuction,
   useOfferAtAuction,
@@ -209,8 +210,9 @@ export function FromZohoRecord({
         editRequires="artwork_register.review"
         resource="this artwork"
         notice={
-          missing || heldByZoho ? (
+          missing || heldByZoho || detail.gallerySale ? (
             <div className="flex flex-col gap-3">
+              <GallerySaleNotice detail={detail} />
               {heldByZoho && availability.kind === "blocked" ? (
                 <Notice tone="warning" title="This artwork can't go on lax.art yet">
                   {availability.reason}

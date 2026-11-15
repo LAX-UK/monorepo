@@ -70,6 +70,11 @@ export const SHOP_STAFF_CAPABILITIES = [
    * one-place lock and moves stop protecting the artwork until it is linked again.
    */
   "artwork_register.unlink",
+  /**
+   * Reopening a sale made in the gallery that Zoho reported by mistake. Administrators only: the
+   * artwork becomes available to offer again, and the sale is Zoho's to record.
+   */
+  "artwork_register.reopen_sold",
 ] as const;
 
 export type ShopStaffCapability = (typeof SHOP_STAFF_CAPABILITIES)[number];

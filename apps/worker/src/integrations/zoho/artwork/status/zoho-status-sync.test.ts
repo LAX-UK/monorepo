@@ -433,3 +433,31 @@ describe("reportOf", () => {
     ]);
   });
 });
+
+describe("ZohoStatusSync: a sale made in the gallery is Zoho's", () => {
+  const gallerySold = () =>
+    entry({ offer: { state: "sold", ref: { kind: "gallery_sale", id: PRODUCT_ID } } });
+
+  it("never writes Sold back when staff changed Zoho's Status after a gallery sale", async () => {
+    const w = fakeWorld({
+      zohoStatus: "Available",
+      written: null,
+      source: { entry: gallerySold(), lastMove: null },
+    });
+    const [outcome] = await w.sync().sync([REGISTER_ID]);
+    expect(outcome).toMatchObject({ kind: "skipped", reason: "gallery_sale_owned_by_zoho" });
+    expect(w.products.write).not.toHaveBeenCalled();
+    expect(w.register.recordCatalogueStatusConflict).not.toHaveBeenCalled();
+    expect(w.world.zoho?.status).toBe("Available");
+  });
+
+  it("is in sync while Zoho still says Sold", async () => {
+    const w = fakeWorld({
+      zohoStatus: "Sold",
+      source: { entry: gallerySold(), lastMove: null },
+    });
+    const [outcome] = await w.sync().sync([REGISTER_ID]);
+    expect(outcome?.kind).toBe("in_sync");
+    expect(w.products.write).not.toHaveBeenCalled();
+  });
+});

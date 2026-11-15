@@ -13,6 +13,7 @@ import type { Logger } from "pino";
 import { type ProductAssessment, assessProduct } from "./assess-product.js";
 import type { CatalogueProduct } from "./catalogue-product.js";
 import { type ArtworkDecision, decideArtworkOutcome } from "./decide-outcome.js";
+import type { GallerySaleOutcome, GallerySaleRecorder } from "./gallery-sale.js";
 import type { ImageSyncReport } from "./images/zoho-image-sync.service.js";
 import type { SoldWhileLiveReconciler } from "./sold-while-live-monitor.js";
 import type { ZohoCatalogueReader } from "./zoho-catalogue-reader.js";
@@ -38,6 +39,11 @@ export type ZohoArtworkSyncDeps = {
    * live; absent where the check is not wired.
    */
   soldWhileLive?: SoldWhileLiveReconciler;
+  /**
+   * Records a Zoho Sold as a sale in the gallery (its own mode, from this sync's and the listing
+   * mode); absent where it is not wired.
+   */
+  gallerySales?: GallerySaleRecorder;
   log: Logger;
   now?: () => Date;
 };
@@ -142,6 +148,7 @@ export class ZohoArtworkSyncService {
     }
     const images = await this.recheckPictures(mode, startedAt);
     await this.sweepSoldWhileLive(mode);
+    await this.sweepGallerySales();
     const summary = await report.summarise(runId);
     log.info(
       { runId, mode, firstPass: since === null, read, summary, images },
@@ -204,13 +211,50 @@ export class ZohoArtworkSyncService {
       decision = await this.apply(assessment, decision);
       await this.checkSoldWhileLive(assessment.productId);
     }
+    const gallerySale = existing ? await this.checkGallerySale(mode, assessment) : null;
 
     const kind = existing?.kind ?? assessment.newEntry?.kind;
     const pictures =
       kind === "original" && decision.outcome !== "skipped"
         ? await this.checkPictures(mode, assessment.productId)
         : null;
-    return toOutcome(assessment, decision, pictures);
+    return toOutcome(assessment, decision, pictures, gallerySale);
+  }
+
+  /**
+   * Zoho's Sold on an artwork the register holds. Live, it reads the record again after the change
+   * was applied; in a dry run the register is unchanged, so Zoho's Status is taken from the read.
+   * A problem here never fails the Product: the nightly pass looks again.
+   */
+  private async checkGallerySale(
+    mode: ZohoArtworkSyncMode,
+    assessment: ProductAssessment,
+  ): Promise<GallerySaleOutcome | null> {
+    const { gallerySales, register, log } = this.deps;
+    if (!gallerySales) return null;
+    try {
+      const entry = await register.findByZohoProductId(assessment.productId);
+      if (!entry) return null;
+      const zohoStatus =
+        mode === "live"
+          ? entry.catalogueStatus
+          : (assessment.change?.fields.catalogueStatus ?? entry.catalogueStatus);
+      const outcome = await gallerySales.apply(entry, zohoStatus ?? null, this.now());
+      return outcome.action === "none" ? null : outcome;
+    } catch (error) {
+      log.warn({ err: error, productId: assessment.productId }, "zoho gallery sale check failed");
+      return null;
+    }
+  }
+
+  private async sweepGallerySales(): Promise<void> {
+    const { gallerySales, log } = this.deps;
+    if (!gallerySales) return;
+    try {
+      await gallerySales.sweep(this.now());
+    } catch (error) {
+      log.warn({ err: error }, "zoho gallery sale sweep failed");
+    }
   }
 
   /**
@@ -283,6 +327,7 @@ function toOutcome(
   assessment: ProductAssessment,
   decision: ArtworkDecision,
   pictures: ImageSyncReport | null,
+  gallerySale: GallerySaleOutcome | null = null,
 ): ZohoArtworkSyncOutcomeInput {
   const detail: Record<string, unknown> = {};
   if (assessment.gaps.length > 0) detail.gaps = assessment.gaps;
@@ -290,6 +335,7 @@ function toOutcome(
   if (Object.keys(decision.changes).length > 0) detail.changes = decision.changes;
   if (decision.conflicts.length > 0) detail.conflicts = decision.conflicts;
   if (pictures) detail.images = pictures;
+  if (gallerySale) detail.gallerySale = gallerySale;
   if (decision.outcome === "create" && assessment.newEntry) {
     const { title, stockCode, kind, artist, medium, dimensions, year, catalogueStatus } =
       assessment.newEntry;
