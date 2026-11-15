@@ -13,7 +13,9 @@ import type {
   ChargeableDeliveryQuote,
   ClaimPaymentGroupInput,
   ClaimPaymentGroupResult,
+  DeliveryPaidWithInvoice,
   IChargeableDeliveryReader,
+  IDeliveryPaidWithInvoiceReader,
   IPaySeveralInvoiceFlagsReader,
   IPaymentGroupRepository,
   LockedPaymentGroup,
@@ -505,6 +507,34 @@ export class DrizzleChargeableDeliveryReader implements IChargeableDeliveryReade
       )
       .orderBy(asc(deliveryQuote.decidedAt), asc(deliveryQuote.id));
     return rows.flatMap((r) => (r.amount === null ? [] : [{ ...r, amount: String(r.amount) }]));
+  }
+}
+
+/** Courier quotes paid inside a paid combined payment, for the staff fulfilment queue. */
+export class DrizzleDeliveryPaidWithInvoiceReader implements IDeliveryPaidWithInvoiceReader {
+  constructor(private readonly db: Database) {}
+
+  async findByLots(lotIds: readonly string[]): Promise<Map<string, DeliveryPaidWithInvoice[]>> {
+    const ids = [...new Set(lotIds)];
+    if (ids.length === 0) return new Map();
+    const rows = await this.db
+      .select({
+        lotId: paymentGroupDelivery.lotId,
+        paymentGroupId: paymentGroupDelivery.paymentGroupId,
+        deliveryQuoteId: paymentGroupDelivery.deliveryQuoteId,
+        amount: paymentGroupDelivery.amount,
+        refundedPence: paymentGroupDelivery.refundedPence,
+        paidAt: paymentGroup.settledAt,
+      })
+      .from(paymentGroupDelivery)
+      .innerJoin(paymentGroup, eq(paymentGroup.id, paymentGroupDelivery.paymentGroupId))
+      .where(and(inArray(paymentGroupDelivery.lotId, ids), eq(paymentGroup.status, "paid")))
+      .orderBy(asc(paymentGroupDelivery.createdAt), asc(paymentGroupDelivery.id));
+    const byLot = new Map<string, DeliveryPaidWithInvoice[]>();
+    for (const r of rows) {
+      byLot.set(r.lotId, [...(byLot.get(r.lotId) ?? []), { ...r, amount: String(r.amount) }]);
+    }
+    return byLot;
   }
 }
 

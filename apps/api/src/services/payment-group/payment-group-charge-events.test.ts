@@ -32,6 +32,7 @@ function setup(
   });
   const applyRefunded = vi.fn().mockResolvedValue(true);
   const publish = vi.fn().mockResolvedValue(undefined);
+  const recordTask = vi.fn().mockResolvedValue(undefined);
   let current = refunds;
   // What the group holds between events, as the delivery rows and the group row do.
   const heldDeliveries = (opts.deliveries ?? []).map((d) => ({ ...d, refundedPence: 0 }));
@@ -75,9 +76,11 @@ function setup(
     sellerRefundedCents: async (_tx, paymentId) => sellerLedger.get(paymentId) ?? 0,
     events: { withTx: () => ({ publish }) } as never,
     claims: { claim: vi.fn().mockResolvedValue(opts.claimed ?? true) },
+    unappliedMoney: { record: recordTask },
   });
   return {
     events,
+    recordTask,
     paymentRefunds,
     groups,
     sellerLedger,
@@ -483,5 +486,73 @@ describe("PaymentGroupChargeEvents.chargeRefunded", () => {
         "payment_group.refund_unattributed",
       ]);
     });
+
+    it("opens a finance task when an invoice is refunded, once per increase of its total", async () => {
+      const { events, recordTask, setRefunds } = setup(
+        [{ paymentId: "pay-a", amountPence: 4_000 }],
+        {
+          deliveries,
+        },
+      );
+      await events.chargeRefunded(event("evt_1"), charge);
+      expect(recordTask).toHaveBeenCalledTimes(1);
+      expect(recordTask.mock.calls[0]?.[1]).toMatchObject({
+        reason: "group_invoice_refunded_with_delivery",
+        paymentId: "pay-a",
+        paymentGroupId: "grp-1",
+        stripeChargeId: "ch_group",
+        invoiceRefundKey: "pay-a:4000",
+        amountCents: 4_000,
+      });
+      expect(recordTask.mock.calls[0]?.[2]).toBe("buyer-1");
+
+      // The same total seen again keys the same task (the recorder opens it once); a larger
+      // total is a new key.
+      await events.chargeRefunded(event("evt_2"), charge);
+      setRefunds([{ paymentId: "pay-a", amountPence: 6_000 }]);
+      await events.chargeRefunded(event("evt_3"), charge);
+      expect(recordTask.mock.calls.map((c) => c[1].invoiceRefundKey)).toEqual([
+        "pay-a:4000",
+        "pay-a:4000",
+        "pay-a:6000",
+      ]);
+    });
+
+    it("opens a finance task even when staff already recorded the invoice refund", async () => {
+      const paymentRefunds = new InMemoryPaymentRefunds();
+      await paymentRefunds.recordInTransaction(
+        {},
+        {
+          paymentId: "pay-b",
+          idempotencyKey: "re_staff",
+          amountPence: 5_000,
+          currency: "GBP",
+          source: "staff",
+        },
+      );
+      const { events, recordTask, addLine } = setup([{ paymentId: "pay-b", amountPence: 5_000 }], {
+        deliveries,
+        paymentRefunds,
+        sellerLedger: new Map([["pay-b", 5_000]]),
+      });
+      await events.chargeRefunded(event("evt_1"), charge);
+      expect(addLine).not.toHaveBeenCalled();
+      expect(recordTask.mock.calls.map((c) => c[1].invoiceRefundKey)).toEqual(["pay-b:5000"]);
+    });
+
+    it("opens no finance task for a courier refund alone", async () => {
+      const { events, recordTask } = setup(
+        [{ paymentId: null, deliveryQuoteId: "q-1", amountPence: 2_000 }],
+        { deliveries },
+      );
+      await events.chargeRefunded(event("evt_1"), charge);
+      expect(recordTask).not.toHaveBeenCalled();
+    });
+  });
+
+  it("opens no finance task for an invoice refund on a group without courier delivery", async () => {
+    const { events, recordTask } = setup([{ paymentId: "pay-a", amountPence: 4_000 }]);
+    await events.chargeRefunded(event("evt_1"), charge);
+    expect(recordTask).not.toHaveBeenCalled();
   });
 });

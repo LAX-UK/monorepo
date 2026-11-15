@@ -4,6 +4,7 @@ import { collectionBooking, collectionBookingLot, lot, lotFulfilment } from "@au
 import {
   DrizzleCollectionBookingRepository,
   DrizzleCollectionPlaceRepository,
+  DrizzleDeliveryPaidWithInvoiceReader,
   DrizzleLotFulfilmentRepository,
 } from "@auction/persistence";
 import { eq, inArray, sql } from "drizzle-orm";
@@ -117,7 +118,11 @@ describe.skipIf(!HAS_DB)("lot fulfilment queue: Collection read (integration)", 
       .where(eq(lotFulfilment.lotId, collected));
 
     const findLiveByLots = vi.fn((ids: readonly string[]) => bookings.findLiveByLots(ids));
-    const service = new AdminLotFulfilmentListQueryService(fulfilment, { findLiveByLots });
+    const service = new AdminLotFulfilmentListQueryService(
+      fulfilment,
+      { findLiveByLots },
+      new DrizzleDeliveryPaidWithInvoiceReader(db),
+    );
     const page = await service.getPage({ q: title, limit: 50, offset: 0 });
 
     expect(findLiveByLots).toHaveBeenCalledTimes(1);

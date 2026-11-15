@@ -3,6 +3,7 @@ import { createDb } from "@auction/db";
 import {
   bidInvoice,
   bidInvoiceLine,
+  deliveryQuote,
   disputeAllocation,
   disputeCase,
   domainEvent,
@@ -10,6 +11,7 @@ import {
   lot,
   payment,
   paymentGroup,
+  paymentGroupDelivery,
   paymentRefund,
   payout,
   payoutLine,
@@ -35,7 +37,7 @@ import {
 import { and, eq, inArray, like, sql } from "drizzle-orm";
 import { ok } from "neverthrow";
 import type Stripe from "stripe";
-import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { tryClaimProcessedStripeEvent } from "../../lib/stripe-processed-event.js";
 import { mockDomainEventSink } from "../../test/domain-event-sink-mock.js";
 import { FakeChargeRefunds } from "../../test/fake-charge-refunds.js";
@@ -60,6 +62,10 @@ import { GroupRefundRepairService } from "./group-refund-repair.service.js";
 import { OpenGroupCheckouts } from "./open-group-checkouts.js";
 import { PaymentGroupChargeEvents } from "./payment-group-charge-events.js";
 import { PaymentGroupCheckoutService } from "./payment-group-checkout.service.js";
+import {
+  DELIVERY_REFUND_REQUESTED_EVENT,
+  PaymentGroupDeliveryRefundService,
+} from "./payment-group-delivery-refund.service.js";
 import type {
   GroupChargeRefund,
   GroupCheckoutStatus,
@@ -156,6 +162,7 @@ describe.skipIf(!HAS_DB)("pay several: one payment for several invoices (integra
       new DrizzlePayoutRepository(tx).sumRefundLineCentsForPayment(paymentId),
     events,
     claims,
+    unappliedMoney: new UnappliedMoneyRecorder(new DrizzleUnappliedMoneyReader(db), events),
   });
   const disputeCases = new DrizzleDisputeCaseRepository(db);
   const disputePayments = new DrizzleDisputePaymentReader();
@@ -1217,6 +1224,247 @@ describe.skipIf(!HAS_DB)("pay several: one payment for several invoices (integra
     await webhooks.handleDisputeClosed(eventOf("charge.dispute.closed", won), won);
     expect(await disputeLinesPence(ids.a)).toBe(0);
     expect(await disputeLinesPence(ids.b)).toBe(0);
+  });
+
+  describe("courier delivery paid with the invoices: refunds", () => {
+    // Events written to the real table under strict contract checks, so the finance task's
+    // dedupe (one task per key) and the audit event are what production writes.
+    const realEvents = new DomainEventSink(
+      new DomainEventPublisher({ publishValidateMode: "enforce" }),
+      db,
+    );
+    const taskRecorder = new UnappliedMoneyRecorder(
+      new DrizzleUnappliedMoneyReader(db),
+      realEvents,
+    );
+    const deliveryChargeEvents = new PaymentGroupChargeEvents({
+      transactionRunner: runner,
+      groups,
+      gateway,
+      payments,
+      payoutAdjustments,
+      paymentRefunds,
+      sellerRefundedCents: (tx, paymentId) =>
+        new DrizzlePayoutRepository(tx).sumRefundLineCentsForPayment(paymentId),
+      events: realEvents,
+      claims,
+      unappliedMoney: taskRecorder,
+    });
+    const deliveryWebhooks = new StripePaymentWebhookService(
+      runner,
+      new DrizzlePaymentWebhookLookupReader(db),
+      payments,
+      payouts,
+      payoutAdjustments,
+      capture,
+      events,
+      disputes,
+      { settlement, chargeEvents: deliveryChargeEvents, groups, payments, gateway },
+    );
+    const createRefund = vi.fn(
+      async (input: { amount?: number; deliveryQuoteId?: string; paymentId?: string }) => {
+        const id = refundId();
+        // Stripe now lists the refund on the charge, with the metadata the gateway set.
+        chargeRefunds = [
+          ...chargeRefunds,
+          {
+            paymentId: input.paymentId ?? null,
+            deliveryQuoteId: input.deliveryQuoteId ?? null,
+            amountPence: input.amount ?? 0,
+          },
+        ];
+        return {
+          kind: "created" as const,
+          refundId: id,
+          status: "succeeded",
+          amountPence: input.amount ?? 0,
+        };
+      },
+    );
+    const deliveryRefunds = new PaymentGroupDeliveryRefundService({
+      transactionRunner: runner,
+      groups,
+      stripe: { isConfigured: () => true, createRefund },
+      chargeRefunds: {
+        listChargeRefunds: async (chargeId: string) =>
+          chargeRefunds.map((r, i) => ({
+            id: `re_listed_${i}`,
+            chargeId,
+            status: "succeeded",
+            paymentId: r.paymentId,
+            deliveryQuoteId: r.deliveryQuoteId ?? null,
+            amountPence: r.amountPence,
+          })),
+      },
+      events: realEvents,
+    });
+
+    const clearDelivery = async () => {
+      await db.delete(paymentGroupDelivery).where(inArray(paymentGroupDelivery.lotId, lotIds));
+      await db.delete(deliveryQuote).where(inArray(deliveryQuote.lotId, lotIds));
+    };
+    afterEach(clearDelivery);
+
+    /** Pays invoices a and b with lot 0's £180 courier quote in one charge. */
+    const paidWithCourier = async () => {
+      await clearDelivery();
+      const lotId = lotIds[0] as string;
+      const [quote] = await db
+        .insert(deliveryQuote)
+        .values({
+          lotId,
+          buyerLegalEntityId: orgId,
+          status: "accepted",
+          destination: "1 Example Street, London",
+          amount: "180.00",
+          decidedAt: new Date(),
+        })
+        .returning({ id: deliveryQuote.id });
+      const quoteId = (quote as { id: string }).id;
+      const started = await checkout.start({
+        payerUserId: payerId,
+        buyerLegalEntityId: orgId,
+        currency: "GBP",
+        total: "380.00",
+        rail: "card",
+        invoices: [ids.a, ids.b].map((paymentId) => ({ paymentId, lotId: "", amount: "100.00" })),
+        deliveries: [{ quoteId, lotId, amount: "180.00" }],
+      });
+      if (started.isErr()) throw new Error(`expected a checkout, got ${started.error}`);
+      const groupId = started.value.paymentGroupId;
+      const pi = succeeded(groupId, { amount: 38_000 });
+      await deliveryWebhooks.handlePaymentIntentSucceeded(
+        eventOf("payment_intent.succeeded", pi),
+        pi,
+      );
+      expect((await groups.findById(groupId))?.status).toBe("paid");
+      const charge = {
+        id: pi.latest_charge as string,
+        payment_intent: pi.id,
+        amount: 38_000,
+        currency: "gbp",
+        metadata: {},
+      } as unknown as Stripe.Charge;
+      return { groupId, quoteId, charge };
+    };
+
+    /** Every line in the seller's ledger for the two invoices, as (payment, kind, pence). */
+    const sellerLedger = async () =>
+      (
+        await db
+          .select({
+            paymentId: payoutLine.paymentId,
+            kind: payoutLine.kind,
+            amount: payoutLine.amount,
+          })
+          .from(payoutLine)
+          .where(inArray(payoutLine.paymentId, [ids.a, ids.b]))
+      )
+        .map((l) => `${l.paymentId}:${l.kind}:${l.amount}`)
+        .sort();
+    const tasksFor = (groupId: string) =>
+      db
+        .select({ payload: domainEvent.payload })
+        .from(domainEvent)
+        .where(
+          and(
+            eq(domainEvent.eventType, UNAPPLIED_MONEY_EVENT),
+            sql`${domainEvent.payload}->>'paymentGroupId' = ${groupId}`,
+          ),
+        );
+
+    it("a staff courier refund goes back against the quote and never touches the seller's ledger", async () => {
+      const { groupId, quoteId, charge } = await paidWithCourier();
+      const ledgerBefore = await sellerLedger();
+
+      const result = await deliveryRefunds.refundDelivery({
+        actorUserId: payerId,
+        role: "staff",
+        staffRoles: ["administrator"],
+        paymentGroupId: groupId,
+        deliveryQuoteId: quoteId,
+        reason: "Buyer collected the lot in person instead.",
+      });
+      expect(result.isOk()).toBe(true);
+      expect(createRefund).toHaveBeenLastCalledWith(
+        expect.objectContaining({ amount: 18_000, deliveryQuoteId: quoteId }),
+      );
+      expect(createRefund.mock.lastCall?.[0]).not.toHaveProperty("paymentId");
+
+      // Stripe's refund webhook arrives for the courier refund.
+      await deliveryWebhooks.handleChargeRefunded(eventOf("charge.refunded", charge), charge);
+
+      // The seller's ledger is exactly as it was: no clawback line for either invoice.
+      expect(await sellerLedger()).toEqual(ledgerBefore);
+      for (const id of [ids.a, ids.b]) {
+        expect(await payouts.sumRefundLineCentsForPayment(id)).toBe(0);
+        expect((await paymentRefunds.sumRefundedPence(id)).pence).toBe(0);
+        expect((await statusOf(id)).status).toBe("captured");
+      }
+      // The courier quote holds the refund, and the staff action is in the audit log.
+      const [held] = await db
+        .select({ pence: paymentGroupDelivery.refundedPence })
+        .from(paymentGroupDelivery)
+        .where(eq(paymentGroupDelivery.deliveryQuoteId, quoteId));
+      expect(held?.pence).toBe(18_000);
+      const audit = await db
+        .select({ actor: domainEvent.actorUserId, payload: domainEvent.payload })
+        .from(domainEvent)
+        .where(
+          and(
+            eq(domainEvent.aggregateId, groupId),
+            eq(domainEvent.eventType, DELIVERY_REFUND_REQUESTED_EVENT),
+          ),
+        );
+      expect(audit).toHaveLength(1);
+      expect(audit[0]?.actor).toBe(payerId);
+      expect(audit[0]?.payload).toMatchObject({ deliveryQuoteId: quoteId, amountCents: 18_000 });
+      // A courier refund alone opens no invoice task.
+      expect(await tasksFor(groupId)).toEqual([]);
+
+      // Nothing is left to refund: a second request is refused before Stripe is asked.
+      createRefund.mockClear();
+      const again = await deliveryRefunds.refundDelivery({
+        actorUserId: payerId,
+        role: "staff",
+        staffRoles: ["administrator"],
+        paymentGroupId: groupId,
+        deliveryQuoteId: quoteId,
+        reason: "Buyer collected the lot in person instead.",
+      });
+      expect(again.isErr()).toBe(true);
+      expect(createRefund).not.toHaveBeenCalled();
+    });
+
+    it("an invoice refund opens one finance task per increase, and the seller moves by the invoice only", async () => {
+      const { groupId, charge } = await paidWithCourier();
+
+      chargeRefunds = [{ paymentId: ids.a, amountPence: 2_500 }];
+      await deliveryWebhooks.handleChargeRefunded(eventOf("charge.refunded", charge), charge);
+      // The same refund reported again (another event) opens nothing new.
+      await deliveryWebhooks.handleChargeRefunded(eventOf("charge.refunded", charge), charge);
+      let tasks = await tasksFor(groupId);
+      expect(tasks).toHaveLength(1);
+      expect(tasks[0]?.payload).toMatchObject({
+        reason: "group_invoice_refunded_with_delivery",
+        paymentId: ids.a,
+        amountCents: 2_500,
+        dedupeKey: `group_invoice_refunded_with_delivery:${ids.a}:2500`,
+      });
+      expect(await payouts.sumRefundLineCentsForPayment(ids.a)).toBe(2_500);
+
+      chargeRefunds = [
+        { paymentId: ids.a, amountPence: 2_500 },
+        { paymentId: ids.a, amountPence: 1_000 },
+      ];
+      await deliveryWebhooks.handleChargeRefunded(eventOf("charge.refunded", charge), charge);
+      tasks = await tasksFor(groupId);
+      expect(tasks.map((t) => (t.payload as { amountCents: number }).amountCents).sort()).toEqual([
+        2_500, 3_500,
+      ]);
+      expect(await payouts.sumRefundLineCentsForPayment(ids.a)).toBe(3_500);
+      expect(await payouts.sumRefundLineCentsForPayment(ids.b)).toBe(0);
+    });
   });
 
   describe("a bank transfer that arrives in part", () => {

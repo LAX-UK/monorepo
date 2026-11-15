@@ -313,6 +313,7 @@ export {
 export { DrizzleAccessRequestRepository } from "./drizzle-access-request.repository.js";
 export {
   DrizzleChargeableDeliveryReader,
+  DrizzleDeliveryPaidWithInvoiceReader,
   DrizzlePaySeveralInvoiceFlagsReader,
   DrizzlePaymentGroupRepository,
 } from "./drizzle-payment-group.repository.js";

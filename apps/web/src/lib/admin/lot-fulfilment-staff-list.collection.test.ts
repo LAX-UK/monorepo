@@ -15,6 +15,7 @@ const base = {
   shippingCarrier: null,
   trackingNumber: null,
   collectionVisit: null,
+  courierPaidWithInvoice: [],
 };
 
 describe("the Collection column", () => {

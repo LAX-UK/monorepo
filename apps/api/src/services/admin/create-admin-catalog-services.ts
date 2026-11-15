@@ -2,6 +2,7 @@ import type {
   ICollectionBookingReader,
   IConditionReportRequestRepository,
   ICoverAnalysisReader,
+  IDeliveryPaidWithInvoiceReader,
   ILotFulfilmentRepository,
   ISaleCoverRepository,
 } from "@auction/persistence/interfaces";
@@ -44,6 +45,8 @@ export type CreateAdminCatalogServicesInput = {
   lotFulfilmentService: ILotFulfilmentService;
   lotFulfilmentRepository: ILotFulfilmentRepository;
   collectionBookings: Pick<ICollectionBookingReader, "findLiveByLots">;
+  /** Courier charges paid inside a combined payment, shown on the fulfilment queue. */
+  deliveriesPaidWithInvoice: IDeliveryPaidWithInvoiceReader;
   qrCodeService: QrCodeService;
   qrCodeAnalytics: QrCodeAnalyticsService;
   conditionReportService: IConditionReportService;
@@ -81,6 +84,7 @@ export function createAdminCatalogServices(
       input.lotFulfilmentService,
       input.lotFulfilmentRepository,
       input.collectionBookings,
+      input.deliveriesPaidWithInvoice,
     ),
     qrCodes: new AdminQrCodesApplicationService(input.qrCodeService, input.qrCodeAnalytics),
     conditionReports: new AdminConditionReportsApplicationService(

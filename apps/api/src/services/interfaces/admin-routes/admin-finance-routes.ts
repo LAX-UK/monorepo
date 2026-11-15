@@ -5,13 +5,24 @@ import type {
 import type { ListPaymentsAdminTableFilter } from "@auction/persistence/interfaces";
 import type { StaffRoles } from "@auction/types";
 import type { Result } from "neverthrow";
-import type { AuthzError } from "../../../lib/errors.js";
+import type { AuthzError, PaymentProviderError } from "../../../lib/errors.js";
 import type { AdminNavCounts } from "../../admin/admin-nav-counts.service.js";
+import type {
+  RefundDeliveryInput,
+  RefundDeliveryOutcome,
+} from "../../payment-group/payment-group-delivery-refund.service.js";
 import type { IAccountingQueueService } from "../accounting-queue.js";
 import type { AdminKpiPeriodDays, AdminKpiTrendBundle } from "../admin-kpi-trend.js";
 import type { IStripeConnectService } from "../stripe-connect.js";
 
 export interface IAdminPaymentsApplicationService {
+  /**
+   * Refunds the courier part of a combined payment on its own, attributed to the quote so no
+   * seller's payout is clawed back. Finance only; the reason is kept on the audit event.
+   */
+  refundGroupDelivery(
+    input: RefundDeliveryInput,
+  ): Promise<Result<RefundDeliveryOutcome, AuthzError | PaymentProviderError>>;
   /** Finance closes an unapplied-money task by hand, with a reason kept on the record. */
   markUnappliedMoneyHandled(
     adminUserId: string,
