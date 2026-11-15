@@ -1,5 +1,5 @@
 import type { ISaleRepository } from "@auction/persistence/interfaces";
-import type { Lot, Sale, StaffRoles, WithdrawnLotView } from "@auction/types";
+import type { Lot, PublicLotView, Sale, StaffRoles, WithdrawnLotView } from "@auction/types";
 import type {
   CreateNestedLotForSaleInput,
   CreateSaleInput as ValidatorCreateSale,
@@ -12,8 +12,11 @@ import type { UseSalePremiumOutcome } from "../sale/sale-lot-premium.js";
 import type { UpdateSaleBody } from "../sale/sale-update-draft.js";
 import type { SalePublishOptions } from "./sale-publish.js";
 
-/** A catalogue row for the public: a lot, or a withdrawn lot reduced to its identity. */
-export type PublicCatalogueLot = Lot | WithdrawnLotView;
+/**
+ * A catalogue row for a sale read: the lot as stored for staff; for everyone else its public view
+ * (no reserve amount) or, when withdrawn, the lot reduced to its identity.
+ */
+export type PublicCatalogueLot = Lot | PublicLotView | WithdrawnLotView;
 
 export interface ISaleReadService {
   getById(id: string): Promise<Sale | null>;
