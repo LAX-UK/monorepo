@@ -260,7 +260,8 @@ describe("CheckoutForm", () => {
   });
 
   it("keeps the order total in a sticky bar for phones", () => {
-    renderForm();
+    const { container } = renderForm();
+    expect(container.querySelector(".shop-checkout__layout--with-bar")).not.toBeNull();
     const bar = screen.getByTestId("marketing-sticky-action-bar");
     expect(bar.getAttribute("aria-label")).toBe("Order total");
     expect(bar.textContent).toContain("Total");
