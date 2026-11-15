@@ -144,6 +144,14 @@ jobs:
           name: e2e-blob-${{ matrix.mode }}-${{ matrix.shard }}
           path: apps/web/blob-report
           retention-days: 7
+      - name: Upload collection journey screens
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: collection-journey-screens-${{ matrix.mode }}-${{ matrix.shard }}
+          path: apps/web/test-results/collection-journeys
+          if-no-files-found: ignore
+          retention-days: 3
       - name: Upload session probe and process logs
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v4

@@ -23,7 +23,7 @@ export function staffDayText(day: string): string {
 
 /**
  * Takes a picture of the page as a step of a journey, attaches it to the report, and keeps a copy
- * in `test-results/collection-journeys`, which a run uploads whether the journey passed or not (a
+ * in `test-results/collection-journeys`, which the stabilization run uploads whether the journey passed or not (a
  * passed test's own output folder is cleared), so a reviewer can see each state without running
  * the stack.
  */
