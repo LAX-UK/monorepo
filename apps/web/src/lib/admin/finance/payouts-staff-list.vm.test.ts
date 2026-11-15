@@ -1,3 +1,4 @@
+import { poundsToPenceOrNull } from "@/lib/admin/seller-proceeds/pounds";
 import type { AdminPayoutListSummary } from "@/lib/data/http/admin-payouts.shared";
 import type { AdminPayoutRow } from "@/lib/data/http/admin.server";
 import { pinClock } from "@/test/pin-clock";
@@ -16,7 +17,6 @@ import {
   payoutsSortHref,
   payoutsSortState,
   payoutsViews,
-  poundsToPence,
   sortPayoutsStaffRows,
   toPayoutsStaffRows,
 } from "./payouts-staff-list.vm";
@@ -96,13 +96,13 @@ describe("payouts staff list view model", () => {
   });
 
   it.each(["1,2,0,0", "12.345", "--5", "", "-"])("reads %j as no amount", (text) => {
-    expect(poundsToPence(text)).toBeNull();
+    expect(poundsToPenceOrNull(text)).toBeNull();
   });
 
   it("reads signed pounds, with thousands commas, as pence", () => {
-    expect(poundsToPence("1,200.50")).toBe(120050);
-    expect(poundsToPence("-25")).toBe(-2500);
-    expect(poundsToPence("£5")).toBe(500);
+    expect(poundsToPenceOrNull("1,200.50")).toBe(120050);
+    expect(poundsToPenceOrNull("-25")).toBe(-2500);
+    expect(poundsToPenceOrNull("£5")).toBe(500);
   });
 
   it("turns rows into plain data with the seller's name and the steps open to the payout", () => {
