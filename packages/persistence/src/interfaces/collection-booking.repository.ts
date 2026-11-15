@@ -40,7 +40,9 @@ export interface ICollectionPlaceRepository {
    * `null` when the lot has no sale or venue, or the place has not been set up. Creates nothing.
    */
   /** The venue's name and address on one line, for the calendar file; `null` if it has none. */
-  findAddress(venueId: string): Promise<{ name: string; address: string } | null>;
+  findAddress(
+    venueId: string,
+  ): Promise<{ name: string; address: string; phone: string | null } | null>;
   findForLot(
     lotId: string,
   ): Promise<{ settings: CollectionPlaceSettings; hours: CollectionWeeklyHours[] } | null>;

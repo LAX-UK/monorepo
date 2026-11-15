@@ -1,4 +1,4 @@
-import type { DeliveryQuoteStatus, FulfilmentFacts } from "@auction/domain";
+import type { CollectByCalendar, DeliveryQuoteStatus, FulfilmentFacts } from "@auction/domain";
 import type { LegalEntityKind } from "@auction/types";
 
 /** A member named on a record: who registered, placed a bid or won a lot. */
@@ -110,6 +110,8 @@ export type AccountPurchaseFactsRow = {
     placeId: string;
     placeName: string;
     freeStorageDays: number | null;
+    /** The place's opening calendar, to move a closed "collect by" day to the next open day. */
+    calendar?: CollectByCalendar | undefined;
     bookingOpen: boolean;
     booked: boolean;
     saleDeleted: boolean;

@@ -114,6 +114,7 @@ export class CollectionVisitService implements ICollectionVisitService {
       venueId,
       onlineBookingEnabled: settings.onlineBookingEnabled,
       bookingEmail: settings.bookingEmail,
+      contactPhone: (await this.deps.places.findAddress(venueId))?.phone ?? null,
       visitMinutes: settings.visitMinutes,
       windowDays: settings.windowDays,
       noticeCutoffLocal: settings.noticeCutoffLocal,
@@ -168,6 +169,14 @@ export class CollectionVisitService implements ICollectionVisitService {
       Math.max(now.getTime(), ...visible.map((booking) => booking.slotStart.getTime())),
     );
 
+    const phones = new Map<string, string | null>();
+    const phoneOf = async (venueId: string) => {
+      if (!phones.has(venueId)) {
+        phones.set(venueId, (await this.deps.places.findAddress(venueId))?.phone ?? null);
+      }
+      return phones.get(venueId) ?? null;
+    };
+
     const views: CollectionVisitView[] = [];
     for (const booking of visible) {
       const live = booking.status === "booked" && booking.slotStart.getTime() > now.getTime();
@@ -181,6 +190,7 @@ export class CollectionVisitService implements ICollectionVisitService {
             : null,
           actions:
             snapshot && !actor.isImpersonation ? this.clientActions(booking, snapshot, now) : [],
+          contactPhone: await phoneOf(booking.venueId),
         }),
       );
     }
@@ -635,6 +645,7 @@ export class CollectionVisitService implements ICollectionVisitService {
         ? noticeDeadline(booking.slotStart, snapshot.settings, snapshot.calendar)
         : null,
       actions: live && !actor.isImpersonation ? this.clientActions(booking, snapshot, now) : [],
+      contactPhone: (await this.deps.places.findAddress(booking.venueId))?.phone ?? null,
     });
   }
 }

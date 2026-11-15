@@ -1,6 +1,7 @@
 import type { EmailEnqueueInput } from "@auction/email";
 import type { StoredLot } from "../interfaces/collect-by.reader.js";
 import { lotLine, lotSetStamp } from "./collect-by-notices.js";
+import { placeContact } from "./collection-contact.js";
 import type { NoticeRecipient } from "./collection-notices.js";
 
 /** The most lots the booking page takes in one link. */
@@ -68,6 +69,7 @@ export function canBookEmailsFor(
         lots: lots.map(lotLine),
         lotIds,
         bookUrl: `${config.webOrigin}/purchases/collect?lots=${lotIds.slice(0, MAX_LOTS_IN_LINK).join(",")}`,
+        ...placeContact(group.place),
       },
       to: person.email,
       userId: person.userId,
