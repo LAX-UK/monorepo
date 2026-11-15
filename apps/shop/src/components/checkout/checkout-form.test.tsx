@@ -258,4 +258,15 @@ describe("CheckoutForm", () => {
     expect(screen.getByRole("button", { name: "Continue to secure payment" })).toBeTruthy();
     expect(screen.queryByRole("combobox", { name: /^Country/ })).toBeNull();
   });
+
+  it("keeps the order total in a sticky bar for phones", () => {
+    renderForm();
+    const bar = screen.getByTestId("marketing-sticky-action-bar");
+    expect(bar.getAttribute("aria-label")).toBe("Order total");
+    expect(bar.textContent).toContain("Total");
+    expect(bar.textContent).toContain("£");
+    expect(screen.getByRole("link", { name: "Review and pay" }).getAttribute("href")).toBe(
+      "#checkout-summary-heading",
+    );
+  });
 });

@@ -32,6 +32,15 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
+/** The Shop's own shortcuts in the phone menu: the basket with its count, then orders. */
+export function buildShopPhoneShortcuts(basketCount: number) {
+  const count = Number.isFinite(basketCount) ? Math.max(0, Math.floor(basketCount)) : 0;
+  return [
+    { label: "Basket", href: "/basket", count },
+    { label: "Orders", href: "/orders" },
+  ];
+}
+
 /** Help links on the right of the LAX top bar, and in the phone menu. */
 export const SHOP_HELP_LINKS = [
   { label: "Delivery", href: "/delivery" },
@@ -197,6 +206,7 @@ export function ShopHeaderClient({
               isSectionActive={(section) => shopMegaMenuSectionActive(pathname, section)}
               isLinkCurrent={(href) => pathname === href || pathname.startsWith(`${href}/`)}
               helpLinks={SHOP_HELP_LINKS}
+              shortcuts={buildShopPhoneShortcuts(basketCount)}
               returnFocusRef={menuButtonRef}
               themeSlot={
                 <>

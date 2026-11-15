@@ -46,3 +46,13 @@ export function oneMoreEditionLabel(artistName: string): string {
 export function allEditionsLabel(artistName: string, count: number): string {
   return `All ${count} editions by ${artistName}`;
 }
+
+/** The state shown for an edition that has been removed or is no longer listed. */
+export const EDITION_UNLISTED_COPY = {
+  eyebrow: "Not listed",
+  title: "This edition is no longer listed",
+  description:
+    "It may have been removed or sold out of the catalogue. Here are some newer editions.",
+  moreTitle: "Other editions",
+  newEditionsLink: "New editions",
+} as const;

@@ -8,6 +8,7 @@ import {
 import { startGuestCheckout } from "@/app/actions/guest-checkout.actions";
 import {
   CheckoutOrderSummary,
+  CheckoutStickySummaryBar,
   CheckoutSummaryDisclosure,
 } from "@/components/checkout/checkout-order-summary";
 import { DeliveryQuoteSent } from "@/components/checkout/delivery-quote-sent";
@@ -612,6 +613,8 @@ export function CheckoutForm({
           </section>
         ) : null}
       </form>
+
+      <CheckoutStickySummaryBar basket={basket} fulfilment={details.choice} />
 
       <CheckoutOrderSummary
         basket={basket}

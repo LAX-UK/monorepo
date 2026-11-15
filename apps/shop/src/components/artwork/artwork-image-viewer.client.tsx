@@ -46,6 +46,21 @@ export function ArtworkImageViewer({
   const image = images[index] ?? images[0];
   const count = images.length;
 
+  // The viewer opens from state, not from a Radix trigger, so remember what had focus on open
+  // and give it back on close (the phone menu's pattern).
+  const opener = useRef<HTMLElement | null>(null);
+  const wasOpen = useRef(false);
+  if (open && !wasOpen.current && typeof document !== "undefined") {
+    opener.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+  }
+  wasOpen.current = open;
+  const returnFocus = (event: Event) => {
+    const target = opener.current;
+    if (!target?.isConnected || target === document.body) return;
+    event.preventDefault();
+    target.focus({ preventScroll: true });
+  };
+
   // A new image or a fresh open starts fitted.
   // biome-ignore lint/correctness/useExhaustiveDependencies: reset when the image or open state changes
   useEffect(() => {
@@ -109,6 +124,7 @@ export function ArtworkImageViewer({
         overlayClassName="shop-viewer__overlay"
         closeClassName="shop-viewer__close"
         aria-describedby={undefined}
+        onCloseAutoFocus={returnFocus}
         onKeyDown={(event) => {
           if (zoomed || count < 2) return;
           if (event.key === "ArrowRight") {

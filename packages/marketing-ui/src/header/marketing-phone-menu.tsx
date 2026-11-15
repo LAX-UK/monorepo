@@ -18,6 +18,9 @@ import type { MarketingMegaNavSection } from "./marketing-header-mega-nav.js";
 
 export type MarketingPhoneMenuHelpLink = { label: string; href: string };
 
+/** A product shortcut in the phone menu, such as Basket with its count. */
+export type MarketingPhoneMenuShortcut = { label: string; href: string; count?: number };
+
 export type MarketingPhoneMenuProps<TSection extends MarketingMegaNavSection> = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -31,6 +34,8 @@ export type MarketingPhoneMenuProps<TSection extends MarketingMegaNavSection> = 
   isSectionActive: (section: TSection) => boolean;
   isLinkCurrent?: (href: string) => boolean;
   helpLinks: readonly MarketingPhoneMenuHelpLink[];
+  /** Product shortcuts (Basket, Orders), listed after the main navigation and before help. */
+  shortcuts?: readonly MarketingPhoneMenuShortcut[];
   /** The Theme toggle; always the last item. */
   themeSlot: ReactNode;
   /** The menu button; focus returns here on close. Defaults to whatever had focus on open. */
@@ -42,7 +47,7 @@ const CONTENT_CLASS =
 
 /**
  * The phone menu: a drawer from the right. Order is fixed: lockup and Close, the LAX top bar row,
- * the main navigation, help links, and the Theme toggle last. There is no search and no account
+ * the main navigation, product shortcuts (Basket, Orders), help links, and the Theme toggle last. There is no search and no account
  * block (both have their own place in the top bar and the bottom bar). Focus is trapped inside
  * while it is open and returns to the menu button on close; the bottom bar hides and goes inert
  * because this is an open modal.
@@ -57,6 +62,7 @@ export function MarketingPhoneMenu<TSection extends MarketingMegaNavSection>({
   isSectionActive,
   isLinkCurrent,
   helpLinks,
+  shortcuts = [],
   themeSlot,
   returnFocusRef,
 }: MarketingPhoneMenuProps<TSection>) {
@@ -193,6 +199,34 @@ export function MarketingPhoneMenu<TSection extends MarketingMegaNavSection>({
                     </li>
                   );
                 })}
+              </ul>
+            </nav>
+          ) : null}
+
+          {shortcuts.length > 0 ? (
+            <nav aria-label="Shortcuts" className="border-t border-nav-border pt-4">
+              <ul className="m-0 flex list-none flex-col p-0">
+                {shortcuts.map((link) => (
+                  <li key={link.href}>
+                    <Link
+                      href={link.href}
+                      onClick={close}
+                      aria-current={isLinkCurrent?.(link.href) ? "page" : undefined}
+                      className={cn(
+                        "flex min-h-11 items-center justify-between gap-2 rounded-sm font-label text-base font-medium text-on-surface aria-[current=page]:font-semibold",
+                        FOCUS_RING,
+                      )}
+                    >
+                      <span>{link.label}</span>
+                      {link.count && link.count > 0 ? (
+                        <span className="font-label text-sm text-on-surface-variant">
+                          {link.count}
+                          <span className="sr-only"> in basket</span>
+                        </span>
+                      ) : null}
+                    </Link>
+                  </li>
+                ))}
               </ul>
             </nav>
           ) : null}
