@@ -148,6 +148,19 @@ describe("CopyButton", () => {
     );
   });
 
+  it.each([
+    ["ATG auction ID", "Copy ATG auction ID"],
+    ["SHA-256", "Copy SHA-256"],
+    ["Stripe transfer", "Copy Stripe transfer"],
+    ["Stripe requirement key", "Copy Stripe requirement key"],
+    ["Xero invoice", "Copy Xero invoice"],
+    ["Veriff session", "Copy Veriff session"],
+    ["Order ID", "Copy order ID"],
+  ])("names %s as %s", (label, name) => {
+    render(<CopyButton value="v" label={label} />);
+    expect(screen.getByRole("button", { name })).toBeInTheDocument();
+  });
+
   it("clears its timer on unmount", async () => {
     stubClipboard(vi.fn().mockResolvedValue(undefined));
     const { unmount } = render(<CopyButton value="ord_123" label="Order ID" />);
