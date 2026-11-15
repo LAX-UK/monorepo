@@ -182,7 +182,18 @@ const projectsWithSignOut = [
 export default defineConfig({
   testDir: "e2e",
   reporter: process.env.CI
-    ? [["blob", { outputDir: "blob-report" }]]
+    ? [
+        [
+          "blob",
+          {
+            outputDir: "blob-report",
+            // Unique per matrix mode/shard so merged artifact downloads never collide.
+            ...(process.env.E2E_BLOB_REPORT_NAME
+              ? { fileName: `report-${process.env.E2E_BLOB_REPORT_NAME}.zip` }
+              : {}),
+          },
+        ],
+      ]
     : [["list"], ["html", { open: "never" }]],
   snapshotPathTemplate: "{testDir}/__snapshots__/{testFilePath}/{arg}{ext}",
   fullyParallel: !process.env.CI,
