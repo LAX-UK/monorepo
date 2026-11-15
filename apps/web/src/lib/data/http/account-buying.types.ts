@@ -6,6 +6,7 @@ import type {
   PurchaseDeliveryStage,
   PurchaseInvoiceStatus,
   PurchasePaymentRole,
+  PurchaseStorageView,
 } from "@auction/domain";
 
 /** A member named on a record: who registered, placed a bid or won a lot. */
@@ -69,7 +70,14 @@ export type AccountPurchaseFacts = {
      * the venue it waits at (what a visit is booked at; names are not unique), `null` from an API
      * that predates it. `placeName` is where it waits, as the reminder email names it.
      */
-    collectBy: (PurchaseCollectBy & { placeId: string | null; placeName: string }) | null;
+    collectBy:
+      | (PurchaseCollectBy & {
+          placeId: string | null;
+          placeName: string;
+          /** The wording under the place's storage terms; `null` keeps today's wording. */
+          storage?: PurchaseStorageView | null | undefined;
+        })
+      | null;
   };
 };
 

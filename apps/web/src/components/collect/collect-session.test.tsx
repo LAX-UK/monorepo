@@ -94,6 +94,7 @@ const draw = (over: Partial<Parameters<typeof CollectSession>[0]> = {}) =>
       myName="Ada Lovelace"
       organisation={null}
       viewOnly={false}
+      storageLotIds={[]}
       nowIso="2026-11-09T10:00:00.000Z"
       contactEmail="info@thelax.art"
       {...over}
@@ -105,6 +106,21 @@ beforeEach(() => {
 });
 
 describe("the collection booking page", () => {
+  it("says storage is charged up to the visit day while a lot that owes storage is ticked", () => {
+    draw({ storageLotIds: [LOT_A] });
+    expect(screen.getByText("Storage to pay")).toBeInTheDocument();
+    expect(
+      screen.getByText("Charged up to your visit day. If you move the visit, we adjust it."),
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("checkbox", { name: /Coastal Notation/ }));
+    expect(screen.queryByText("Storage to pay")).toBeNull();
+  });
+
+  it("has no storage line when no lot owes storage", () => {
+    draw();
+    expect(screen.queryByText("Storage to pay")).toBeNull();
+  });
+
   it("ticks the lots that can be booked and says why the others cannot", () => {
     draw();
     expect(screen.getByRole("checkbox", { name: /Coastal Notation/ })).toBeChecked();

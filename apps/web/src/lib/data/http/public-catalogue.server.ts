@@ -213,20 +213,56 @@ export async function getPublicLotList(params: ListLotsParams): Promise<Lot[]> {
   return rows.map((lot) => atgDisplayListLot(lot));
 }
 
+/** The lot's public detail payload, shared by the catalogue-term reads below. */
+const readPublicLotDetail = cache(async function readPublicLotDetail(
+  lotId: string,
+): Promise<unknown> {
+  try {
+    const res = await publicFetch(`/lots/${encodeURIComponent(lotId)}`, [publicLotTag(lotId)]);
+    if (!res.ok) return null;
+    return ((await readJsonBody(res)) as { data?: unknown } | null)?.data ?? null;
+  } catch {
+    return null;
+  }
+});
+
 /**
  * The premium terms the lot charges (rate or bands), off the public lot read. These are catalogue
  * terms, not bid state: the bid figures on the same response (next bid, sold prices, the server
  * clock) are not read here. The lot page carries no live bid state (CO-7); the browser reads it.
  */
-export const getPublicLotPremiumTerms = cache(async function getPublicLotPremiumTerms(
-  lotId: string,
-): Promise<BuyersPremiumTerms | null> {
-  try {
-    const res = await publicFetch(`/lots/${encodeURIComponent(lotId)}`, [publicLotTag(lotId)]);
-    if (!res.ok) return null;
-    const body = await readJsonBody(res);
-    return parseLotBiddingView((body as { data?: unknown } | null)?.data).buyersPremium;
-  } catch {
-    return null;
-  }
-});
+export async function getPublicLotPremiumTerms(lotId: string): Promise<BuyersPremiumTerms | null> {
+  return parseLotBiddingView(await readPublicLotDetail(lotId)).buyersPremium;
+}
+
+/**
+ * The storage terms in force at the place the lot waits, as one buyer sentence (docs/design/
+ * storage-terms.md), off the same public lot read; `null` when the place has set none.
+ */
+export async function getPublicLotStorageTerms(lotId: string): Promise<string | null> {
+  const detail = await readPublicLotDetail(lotId);
+  const text = (detail as { storageTerms?: unknown } | null)?.storageTerms;
+  return typeof text === "string" && text.trim() !== "" ? text : null;
+}
+
+/** The terms in force today at each place that takes bookings, for the shipping page. */
+export type PlaceStorageTerms = { placeName: string; text: string };
+
+export const getPublicPlaceStorageTerms = cache(
+  async function getPublicPlaceStorageTerms(): Promise<PlaceStorageTerms[]> {
+    try {
+      const res = await publicFetch("/lots/storage-terms", ["public-storage-terms"]);
+      if (!res.ok) return [];
+      const body = (await readJsonBody(res)) as { data?: unknown } | null;
+      if (!Array.isArray(body?.data)) return [];
+      return body.data.flatMap((row: unknown) => {
+        const { placeName, text } = (row ?? {}) as Record<string, unknown>;
+        return typeof placeName === "string" && typeof text === "string"
+          ? [{ placeName, text }]
+          : [];
+      });
+    } catch {
+      return [];
+    }
+  },
+);

@@ -10,6 +10,7 @@ import { COLLECT_COPY } from "@/lib/collect/collect-copy";
 import { collectHref, parseCollectLink } from "@/lib/collect/collect-links";
 import { ACCOUNT_LOAD_ERROR } from "@/lib/dashboard/dashboard-copy";
 import { getServerDataContainer } from "@/lib/data/container.server";
+import { getServerAccountPurchaseFacts } from "@/lib/data/http/account-buying.server";
 import { CLIENT_ROUTES } from "@/lib/navigation/client-routes";
 import { GALLERY_CONTACT } from "@auction/branding";
 import { ButtonLink } from "@auction/ui/lax/button-link";
@@ -176,6 +177,19 @@ export default async function CollectRoute({ searchParams }: PageProps) {
     return <LoadError />;
   }
 
+  // Lots that owe storage today: the summary tells the buyer it is charged up to the visit day. A
+  // booked lot carries no collect-by notice, so a visit being changed has none.
+  const storageLotIds =
+    visit === null && scope.account.id !== null
+      ? ((await getServerAccountPurchaseFacts(scope.account.id as string).catch(() => null)) ?? [])
+          .filter(
+            (purchase) =>
+              lotIds.includes(purchase.lotId) &&
+              (purchase.delivery.collectBy?.storage?.amountPence ?? 0) > 0,
+          )
+          .map((purchase) => purchase.lotId)
+      : [];
+
   return (
     <Shell
       title={visit ? COLLECT_COPY.changeTitle : COLLECT_COPY.title}
@@ -189,6 +203,7 @@ export default async function CollectRoute({ searchParams }: PageProps) {
         viewOnly={viewOnly}
         nowIso={now.toISOString()}
         contactEmail={contactEmail}
+        storageLotIds={storageLotIds}
       />
     </Shell>
   );

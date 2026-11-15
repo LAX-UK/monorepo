@@ -1,6 +1,15 @@
 import type { AccountPurchaseFacts } from "@/lib/data/http/account-buying.types";
 import type { LotFulfilmentSnapshot } from "@/lib/data/http/payments.schema";
-import { type AccountHold, type HoldHolder, PURCHASE_LIST_LIMIT } from "@auction/domain";
+import {
+  type AccountHold,
+  DEFAULT_COLLECTION_RULES,
+  type HoldHolder,
+  PURCHASE_LIST_LIMIT,
+  type StorageTerms,
+  calculateStorageCharge,
+  createCollectionCalendar,
+  purchaseStorageView,
+} from "@auction/domain";
 import type { Lot, PortfolioRow } from "@auction/types";
 import { STANDARD_BUYER_PREMIUM_BANDS } from "@auction/validators";
 import { describe, expect, it } from "vitest";
@@ -683,7 +692,128 @@ describe("the collect-by notice on a purchase card", () => {
       state: "soon",
       placeId: "v1",
       placeName: "LAX Marylebone",
+      storage: null,
       bookHref: "/purchases/collect?lots=lot-11",
+    });
+  });
+
+  describe("under the place's storage terms", () => {
+    const terms: StorageTerms = {
+      freeDays: 14,
+      dayCount: "calendar",
+      standardDailyPence: 300,
+      largeDailyPence: 600,
+      handlingFeePence: 0,
+      effectiveFrom: "2026-10-01",
+    };
+    const calendar = createCollectionCalendar({
+      hours: [1, 2, 3, 4, 5].map((weekday) => ({
+        weekday,
+        opensLocal: "10:00",
+        closesLocal: "19:00",
+      })),
+      exceptions: [],
+      rules: DEFAULT_COLLECTION_RULES,
+    });
+    // Cleared Mon 2 Nov: collect by Mon 16 Nov. `asOf` is the day the buyer looks.
+    const storageCard = (
+      asOf: string,
+      over: { chargingOn?: boolean; extensionDays?: number; waived?: boolean } = {},
+    ) => {
+      const charge = calculateStorageCharge({
+        terms,
+        clearedOn: "2026-11-02",
+        extensionDays: over.extensionDays ?? 0,
+        waived: over.waived ?? false,
+        pausedRanges: [],
+        band: "standard",
+        asOf,
+        calendar,
+      });
+      const now = new Date(`${asOf}T12:00:00Z`);
+      const storage = purchaseStorageView(charge, terms, "standard", {
+        placeName: "LAX Gallery",
+        now,
+        chargingOn: over.chargingOn ?? true,
+      });
+      const legacy =
+        charge.state === "charging" || charge.state === "overdue"
+          ? "overdue"
+          : charge.state === "soon"
+            ? "soon"
+            : "upcoming";
+      return buildPurchasesVm(
+        sources({
+          now,
+          factsByLot: {
+            "lot-11": withCollectBy({
+              date: charge.collectBy,
+              state: legacy,
+              placeId: "v1",
+              placeName: "LAX Gallery",
+              storage,
+            }),
+          },
+        }),
+      ).cardsByTab["in-progress"].find((card) => card.lotId === "lot-11");
+    };
+
+    it("upcoming: the free period and the rate, with the plain badge", () => {
+      const card = storageCard("2026-11-03");
+      expect(card?.collectBy).toMatchObject({
+        title: "Please collect by Mon 16 Nov",
+        body: "Your work is paid for and waiting at LAX Gallery. Storage is free until then, and £3 a day after that, plus VAT where it applies.",
+      });
+      expect(card?.collection?.label).toBe("Collect by Mon 16 Nov");
+    });
+
+    it("soon: a warning badge and the rate after the day", () => {
+      const card = storageCard("2026-11-10");
+      expect(card?.collectBy?.body).toBe(
+        "Your work is paid for and waiting at LAX Gallery. Book a time to collect it soon: after Mon 16 Nov, storage is £3 a day.",
+      );
+      expect(card?.collection).toMatchObject({ tone: "warning", label: "Collect by Mon 16 Nov" });
+    });
+
+    it("charging: the running total in the notice and on the badge", () => {
+      const card = storageCard("2026-11-19");
+      expect(card?.collectBy).toMatchObject({
+        title: "Storage charges since Tue 17 Nov",
+        body: "£9.00 so far (3 days at £3 a day), plus VAT where it applies. Book a time to collect, and you will pay the storage up to that day when you book.",
+      });
+      expect(card?.collection).toMatchObject({
+        tone: "danger",
+        label: "Collect by Mon 16 Nov · Storage £9.00 so far",
+      });
+    });
+
+    it("charging off after the day: today's wording and no total", () => {
+      const card = storageCard("2026-11-19", { chargingOn: false });
+      expect(card?.collectBy).toMatchObject({
+        title: "Please collect by Mon 16 Nov",
+        body: "That day has passed, so storage charges may apply. Book a time to collect your work from LAX Gallery, or email us if you need longer.",
+      });
+      expect(card?.collection?.label).toBe("Collect by Mon 16 Nov");
+    });
+
+    it("charging off before the day still shows the free period and the rate", () => {
+      expect(storageCard("2026-11-03", { chargingOn: false })?.collectBy?.body).toContain(
+        "£3 a day after that",
+      );
+    });
+
+    it("extended: the new day, no charge", () => {
+      expect(storageCard("2026-11-12", { extensionDays: 7 })?.collectBy).toMatchObject({
+        title: "Free storage extended to Mon 23 Nov",
+        body: "We have held your work longer at no charge. Book a time to collect before then.",
+      });
+    });
+
+    it("waived: nothing to pay", () => {
+      expect(storageCard("2026-11-19", { waived: true })?.collectBy).toMatchObject({
+        title: "No storage to pay",
+        body: "We have waived the storage charges on this work. Book a time to collect.",
+      });
     });
   });
 

@@ -122,6 +122,7 @@ describe("PurchaseDetail's collect-by notice", () => {
     state,
     placeId: "v1",
     placeName: "LAX Marylebone",
+    storage: null,
     bookHref: "/purchases/collect?lots=l6",
   });
 
@@ -136,6 +137,67 @@ describe("PurchaseDetail's collect-by notice", () => {
       );
     },
   );
+
+  describe("under storage terms", () => {
+    const storageNotice = (
+      state: "upcoming" | "soon" | "overdue",
+      title: string,
+      body: string,
+      storageState: "upcoming" | "soon" | "charging" | "overdue" | "extended" | "waived",
+    ) => ({
+      ...collectBy(state),
+      title,
+      body,
+      storage: { badge: title, state: storageState },
+    });
+
+    it.each([
+      [
+        "upcoming",
+        "Please collect by Mon 16 Nov",
+        "Your work is paid for and waiting at LAX Gallery. Storage is free until then, and £3 a day after that, plus VAT where it applies.",
+        "upcoming",
+      ],
+      [
+        "soon",
+        "Please collect by Mon 16 Nov",
+        "Your work is paid for and waiting at LAX Gallery. Book a time to collect it soon: after Mon 16 Nov, storage is £3 a day.",
+        "soon",
+      ],
+      [
+        "overdue",
+        "Storage charges since Tue 17 Nov",
+        "£9.00 so far (3 days at £3 a day), plus VAT where it applies. Book a time to collect, and you will pay the storage up to that day when you book.",
+        "charging",
+      ],
+      [
+        "overdue",
+        "Please collect by Mon 16 Nov",
+        "That day has passed, so storage charges may apply. Book a time to collect your work from LAX Gallery, or email us if you need longer.",
+        "charging",
+      ],
+      [
+        "upcoming",
+        "Free storage extended to Mon 23 Nov",
+        "We have held your work longer at no charge. Book a time to collect before then.",
+        "extended",
+      ],
+      [
+        "upcoming",
+        "No storage to pay",
+        "We have waived the storage charges on this work. Book a time to collect.",
+        "waived",
+      ],
+    ] as const)("draws the %s notice: %s", (state, title, body, storageState) => {
+      renderAsVisitorIn(
+        null,
+        page(card({ collectBy: storageNotice(state, title, body, storageState) })),
+      );
+      expect(screen.getByText(title)).toBeInTheDocument();
+      expect(screen.getByText(body)).toBeInTheDocument();
+      expect(screen.getByRole("link", { name: "Book a collection time" })).toBeInTheDocument();
+    });
+  });
 
   it("links the storage policy, and the gallery's email once the day has passed", () => {
     const soon = renderAsVisitorIn(null, page(card({ collectBy: collectBy("soon") })));

@@ -46,6 +46,34 @@ describe("collectionBadge", () => {
     });
   });
 
+  it("wears the storage badge when the place's terms priced the lot", () => {
+    const charging = collectionBadge({
+      collectBy: {
+        day: "Mon 16 Nov",
+        state: "overdue",
+        storage: { badge: "Collect by Mon 16 Nov · Storage £9.00 so far", state: "charging" },
+      },
+      bookedStart: null,
+      now: NOW,
+    });
+    expect(charging).toMatchObject({
+      state: "overdue",
+      tone: "danger",
+      label: "Collect by Mon 16 Nov · Storage £9.00 so far",
+      title: "Collect by Mon 16 Nov · Storage £9.00 so far.",
+    });
+    const upcoming = collectionBadge({
+      collectBy: {
+        day: "Mon 16 Nov",
+        state: "upcoming",
+        storage: { badge: "Collect by Mon 16 Nov", state: "upcoming" },
+      },
+      bookedStart: null,
+      now: NOW,
+    });
+    expect(upcoming).toMatchObject({ tone: "neutral", label: "Collect by Mon 16 Nov" });
+  });
+
   it("has no badge when nothing waits and nothing is booked, or the start is unreadable", () => {
     expect(collectionBadge({ collectBy: null, bookedStart: null, now: NOW })).toBeNull();
     expect(collectionBadge({ collectBy: null, bookedStart: "nope", now: NOW })).toBeNull();

@@ -37,6 +37,7 @@ export function LotTemplate({
   factsLine,
   details,
   premiumTerms,
+  storageTerms,
   bidEntry,
   sale,
   initialWatching,
@@ -89,7 +90,11 @@ export function LotTemplate({
                   {supplementary ? <div className="mt-6 grid gap-4">{supplementary}</div> : null}
                 </div>
               </div>
-              <LotDetails details={details} premiumTerms={premiumTerms} />
+              <LotDetails
+                details={details}
+                premiumTerms={premiumTerms}
+                storageTerms={storageTerms}
+              />
               {footer}
             </LotAnnouncerProvider>
           </LotPageViewProvider>
