@@ -7,6 +7,7 @@ import { proactiveRefreshXeroTokens } from "../services/accounting/xero-auth-run
 import { HygieneCronService } from "../services/cron/hygiene-cron.service.js";
 import { SettlementCronService } from "../services/cron/settlement-cron.service.js";
 import { ZohoArtworkNoticeService } from "../services/zoho-artwork-notice.service.js";
+import { ZohoQcNoticeService } from "../services/zoho-qc-notice.service.js";
 import type { ContainerBiddingSaleroom } from "./create-bidding-saleroom.js";
 import type { ContainerCatalogServices } from "./create-catalog-services.js";
 import type { ContainerComplianceMedia } from "./create-compliance-media.js";
@@ -24,6 +25,7 @@ export type ContainerCronServices = {
   hygieneCronService: HygieneCronService;
   accountDeletionEligibilityService: AccountDeletionEligibilityService;
   zohoArtworkNoticeService: ZohoArtworkNoticeService;
+  zohoQcNoticeService: ZohoQcNoticeService;
 };
 
 export type CreateCronServicesInput = {
@@ -120,6 +122,12 @@ export function createCronServices(input: CreateCronServicesInput): ContainerCro
     infra.webhookEventsProducer,
   );
 
+  const zohoQcNoticeService = new ZohoQcNoticeService(
+    env.ZOHO_QC_WEBHOOK_SECRET,
+    repos.webhookEventRepository,
+    infra.webhookEventsProducer,
+  );
+
   return {
     settlementCronService,
     accountingReplayCronService,
@@ -128,5 +136,6 @@ export function createCronServices(input: CreateCronServicesInput): ContainerCro
     hygieneCronService,
     accountDeletionEligibilityService,
     zohoArtworkNoticeService,
+    zohoQcNoticeService,
   };
 }

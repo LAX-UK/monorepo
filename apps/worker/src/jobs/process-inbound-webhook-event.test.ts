@@ -1,5 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
-import { processInboundWebhookEvent } from "./process-inbound-webhook-event.js";
+import {
+  drainUnprocessedWebhookEvents,
+  processInboundWebhookEvent,
+} from "./process-inbound-webhook-event.js";
 
 describe("processInboundWebhookEvent", () => {
   it("no-ops when WEBHOOK_EVENTS_PROCESS is false", async () => {
@@ -116,6 +119,78 @@ describe("processInboundWebhookEvent", () => {
         ),
       ).rejects.toThrow("missing productId");
       expect(webhookEvents.markFailed).toHaveBeenCalled();
+    });
+  });
+
+  describe("Zoho quality check notices", () => {
+    const events = (routing: Record<string, unknown>) => ({
+      recoverStaleClaims: vi.fn(),
+      tryClaimForProcessing: vi.fn().mockResolvedValue({
+        claimed: true,
+        row: { source: "zoho_qc", eventKey: "zq-1", payload: { body: routing, routing } },
+      }),
+      markProcessed: vi.fn(),
+      markFailed: vi.fn(),
+    });
+    const base = {
+      env: { WEBHOOK_EVENTS_PROCESS: true } as never,
+      log: { debug: vi.fn(), info: vi.fn() } as never,
+    };
+    const routing = { module: "Framing_Jobs", recordId: "5001234567890", modifiedTime: "t" };
+
+    it("hands the record to the quality check processor", async () => {
+      const processZohoQcNotice = vi.fn().mockResolvedValue(undefined);
+      const webhookEvents = events(routing);
+      await processInboundWebhookEvent(
+        { ...base, webhookEvents: webhookEvents as never, processZohoQcNotice },
+        "zq-1",
+      );
+      expect(processZohoQcNotice).toHaveBeenCalledWith(routing);
+      expect(webhookEvents.markProcessed).toHaveBeenCalledWith("zq-1");
+    });
+
+    it("marks the notice failed and rethrows, so a record staff must look at reaches Failed jobs", async () => {
+      const processZohoQcNotice = vi
+        .fn()
+        .mockRejectedValue(new Error("zoho_qc_attention:unmatched"));
+      const webhookEvents = events(routing);
+      await expect(
+        processInboundWebhookEvent(
+          { ...base, webhookEvents: webhookEvents as never, processZohoQcNotice },
+          "zq-1",
+        ),
+      ).rejects.toThrow("zoho_qc_attention:unmatched");
+      expect(webhookEvents.markFailed).toHaveBeenCalled();
+    });
+
+    it("holds a notice back while the sync is off: not processed, its attempt given back", async () => {
+      const off = { ...events(routing), releaseClaim: vi.fn() };
+      await processInboundWebhookEvent({ ...base, webhookEvents: off as never }, "zq-1");
+      expect(off.markProcessed).not.toHaveBeenCalled();
+      expect(off.markFailed).not.toHaveBeenCalled();
+      expect(off.releaseClaim).toHaveBeenCalledWith("zq-1");
+    });
+
+    it("fails a notice naming no record", async () => {
+      const bad = events({ module: "Deals", recordId: "1" });
+      await expect(
+        processInboundWebhookEvent({ ...base, webhookEvents: bad as never }, "zq-1"),
+      ).rejects.toThrow("missing routing");
+    });
+
+    it("leaves quality check notices out of the drain while the sync is off, and includes them when on", async () => {
+      const listUnprocessedForDrain = vi.fn().mockResolvedValue([]);
+      const webhookEvents = { recoverStaleClaims: vi.fn(), listUnprocessedForDrain };
+      await drainUnprocessedWebhookEvents({ ...base, webhookEvents: webhookEvents as never });
+      expect(listUnprocessedForDrain).toHaveBeenLastCalledWith(25, {
+        excludeSources: ["zoho_qc"],
+      });
+      await drainUnprocessedWebhookEvents({
+        ...base,
+        webhookEvents: webhookEvents as never,
+        processZohoQcNotice: vi.fn(),
+      });
+      expect(listUnprocessedForDrain).toHaveBeenLastCalledWith(25, { excludeSources: [] });
     });
   });
 

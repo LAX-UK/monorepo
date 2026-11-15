@@ -36,6 +36,8 @@ export type UpdateProductionTaskInput = {
   /** Null unassigns; undefined leaves the assignee alone. Already checked to be eligible staff. */
   assigneeSubject?: string | null;
   actorSubjectId: string;
+  /** Extra facts for the audit row's after-state, such as the external record that caused the step. */
+  auditContext?: Record<string, string>;
   /** Asked once the row is locked and its version matched, so the answer cannot go stale. */
   canMove: (from: ProductionTaskStatus, to: ProductionTaskStatus) => boolean;
 };

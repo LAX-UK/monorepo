@@ -55,6 +55,7 @@ import { registerIdentityDeletionEligibilityRoutes } from "./routes/internal/ide
 import { registerIdentitySubjectExportRoutes } from "./routes/internal/identity-subject-export.routes.js";
 import { registerInventoryArtListingLookupRoutes } from "./routes/internal/inventory-art-listing-lookup.routes.js";
 import { registerInventoryArtListingRoutes } from "./routes/internal/inventory-art-listing.routes.js";
+import { registerInventoryQcReadyToPackRoutes } from "./routes/internal/inventory-qc-ready-to-pack.routes.js";
 import { registerAccountEmailAlertRoutes } from "./routes/v1/account-email-alerts.routes.js";
 import { registerArtistApplicationRoutes } from "./routes/v1/artist-application.routes.js";
 import { registerArtistRoutes } from "./routes/v1/artists.routes.js";
@@ -164,6 +165,7 @@ export function createShopApiApp(options: CreateShopApiAppOptions) {
   void registerIdentitySubjectExportRoutes(app, options.deps.identitySubjectExport);
   void registerInventoryArtListingRoutes(app, options.deps.inventory);
   void registerInventoryArtListingLookupRoutes(app, options.deps.inventory);
+  void registerInventoryQcReadyToPackRoutes(app, options.deps.inventory);
   void registerStripeWebhookRoutes(app, options.deps.stripeWebhook);
   if (options.deps.env.SHOP_PAYOUTS_ENABLED) {
     void registerStripeConnectWebhookRoutes(app, options.deps.stripeConnectWebhook);

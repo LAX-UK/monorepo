@@ -23,6 +23,7 @@ function app(
       inventory: {
         reopen: { reopen },
         lookup: { findByZohoProductIds: async () => [] },
+        qcReady: { markPassed: async () => "unmatched" as const },
         machine: { clientId: credentials.clientId, clientSecret: credentials.clientSecret },
       },
     }),

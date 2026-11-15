@@ -110,6 +110,7 @@ import { createZohoArtworkSyncRuntime } from "./create-zoho-artwork-sync.js";
 import { createZohoArtworkWriteback } from "./create-zoho-artwork-writeback.js";
 import { createZohoCampaignsSuppressionRuntime } from "./create-zoho-campaigns-suppression.js";
 import { createZohoFulfilmentMirror } from "./create-zoho-fulfilment-mirror.js";
+import { createZohoQcReady } from "./create-zoho-qc-ready.js";
 import { createZohoStatusNightly } from "./create-zoho-status-nightly.js";
 
 export type WorkerContainer = {
@@ -394,6 +395,7 @@ export function createWorkerContainer(): WorkerContainer {
   const zohoArtworkWriteback = createZohoArtworkWriteback({ env, db, log });
   const zohoArtworkListing = createZohoArtworkListing({ env, db, log });
   const zohoFulfilment = createZohoFulfilmentMirror({ env, db, log });
+  const zohoQcReady = createZohoQcReady({ env, log });
   const accounting = createAccountingRuntime({
     env,
     db,
@@ -410,6 +412,14 @@ export function createWorkerContainer(): WorkerContainer {
     log,
     webhookEvents: new DrizzleWebhookEventRepository(db),
     processZohoArtworkNotice: zohoArtworkSync.jobs.processNotice,
+    ...(zohoQcReady
+      ? {
+          processZohoQcNotice: async (notice) => {
+            const result = await zohoQcReady.process(notice);
+            log.info({ recordId: notice.recordId, result }, "zoho_qc_notice_processed");
+          },
+        }
+      : {}),
     ...(accounting
       ? {
           processZohoBooksNotice: async (notice) => {

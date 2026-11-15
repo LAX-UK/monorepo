@@ -19,5 +19,15 @@ export function createZohoWebhookRoutes(container: ContainerZohoWebhookRoutesSli
     return c.json(response.body, asHttpStatus(response.status));
   });
 
+  r.post("/qc", async (c) => {
+    const raw = await c.req.text();
+    const response = await container.zohoQcNoticeService.handle(
+      c.req.header(ZOHO_WEBHOOK_SECRET_HEADER),
+      raw,
+    );
+    if (response.body === null) return c.body(null, asHttpStatus(response.status));
+    return c.json(response.body, asHttpStatus(response.status));
+  });
+
   return r;
 }

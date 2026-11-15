@@ -22,8 +22,20 @@ export interface IWebhookEventRepository {
     leaseMs: number,
   ): Promise<{ claimed: boolean; row: WebhookEventDrainRow | null }>;
 
-  /** Unprocessed rows with no active lease, for defensive drain. */
-  listUnprocessedForDrain(limit: number): Promise<WebhookEventDrainRow[]>;
+  /**
+   * Unprocessed rows with no active lease, for defensive drain. `excludeSources` leaves those
+   * sources out, so rows a worker is deliberately holding back do not fill the batch.
+   */
+  listUnprocessedForDrain(
+    limit: number,
+    options?: { excludeSources?: readonly string[] },
+  ): Promise<WebhookEventDrainRow[]>;
+
+  /**
+   * Gives back a lease taken with `tryClaimForProcessing` without processing the row: the row
+   * stays unprocessed and the attempt is not counted, so holding a row back never uses it up.
+   */
+  releaseClaim(eventKey: string): Promise<void>;
 
   /** Release leases that expired without completion. */
   recoverStaleClaims(now?: Date): Promise<number>;
