@@ -1,5 +1,8 @@
 import type { IEmailService } from "@auction/email";
-import type { ICollectionLotFactsReader } from "@auction/persistence/interfaces";
+import type {
+  ICollectionLotFactsReader,
+  INotificationWriteRepository,
+} from "@auction/persistence/interfaces";
 import { COLLECTION_REMINDERS_QUEUE_NAME } from "@auction/queues";
 import { Queue, Worker } from "bullmq";
 import type { ICollectByReader } from "../interfaces/collect-by.reader.js";
@@ -20,6 +23,8 @@ export type CollectionWorkersOptions = {
   reader: ICollectionNoticeReader;
   collectByReader: ICollectByReader;
   lotFacts: ICollectionLotFactsReader;
+  /** The mute-aware in-app writer, for the inbox copy of the day-before reminder. */
+  notifications: INotificationWriteRepository;
 };
 
 /** Every 15 minutes: the sweep finds nothing until 09:00 London time, then sends each reminder once. */
@@ -46,6 +51,7 @@ export function registerCollectionWorkers(
           await runCollectionRemindersJob({
             reader: options.reader,
             emailService: options.emailService,
+            notifications: options.notifications,
             config: {
               organizer: {
                 email: env.COLLECTION_ORGANIZER_EMAIL,

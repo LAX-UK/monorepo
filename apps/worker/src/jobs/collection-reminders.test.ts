@@ -20,7 +20,7 @@ const visit: CollectionNoticeVisit = {
   collector: { kind: "self", name: "Maya Okafor", email: null },
   place: { name: "London Art Exchange", address: "156 New Cavendish Street" },
   lots: [{ title: "Lowland Storm", lotNumber: 12, active: true }],
-  account: { kind: "personal", name: "Maya Okafor" },
+  account: { id: "le-maya", kind: "personal", name: "Maya Okafor" },
   booker: { userId: "u1", email: "maya@example.com", firstName: "Maya", name: "Maya Okafor" },
   accountPeople: [],
 };
@@ -35,6 +35,7 @@ function setup(
   });
   const enqueue = vi.fn().mockResolvedValue({ outboxId: "o" });
   const dueReminders = vi.fn().mockResolvedValue(due);
+  const createMany = vi.fn().mockResolvedValue([]);
   const run = (now: string) =>
     runCollectionRemindersJob({
       reader: {
@@ -45,11 +46,12 @@ function setup(
         accountRecipients: vi.fn().mockResolvedValue([]),
       },
       emailService: { enqueue } as unknown as IEmailService,
+      notifications: { createMany },
       config: CONFIG,
       log,
       now: () => new Date(now),
     });
-  return { run, enqueue, dueReminders, existingOutboxKeys };
+  return { run, enqueue, dueReminders, existingOutboxKeys, createMany };
 }
 
 describe("the collection reminder sweep", () => {
@@ -101,7 +103,33 @@ describe("the collection reminder sweep", () => {
     const legacy = "collection-reminder:b-1:2026-11-10T14:00:00.000Z:maya@example.com";
     const s = setup([{ bookingId: "b-1" }], undefined, [legacy]);
     expect(await s.run("2026-11-09T09:15:00Z")).toEqual({ visits: 1, queued: 0 });
-    expect(s.existingOutboxKeys).toHaveBeenCalledWith([legacy]);
+    expect(s.existingOutboxKeys).toHaveBeenCalledWith([
+      legacy,
+      "collection-reminder:b-1:2026-11-10T14:00:00.000Z:u1",
+    ]);
     expect(s.enqueue).not.toHaveBeenCalled();
+    expect(s.createMany).not.toHaveBeenCalled();
+  });
+
+  it("puts the reminder in the buyer's inbox too, about the account the visit was booked for", async () => {
+    const s = setup([{ bookingId: "b-1" }]);
+    await s.run("2026-11-09T09:15:00Z");
+    expect(s.createMany).toHaveBeenCalledWith([
+      {
+        userId: "u1",
+        legalEntityId: "le-maya",
+        type: "collection_reminder",
+        title: "Your collection is tomorrow",
+        message: expect.stringContaining("Reference COL-4821."),
+      },
+    ]);
+  });
+
+  it("writes the inbox reminder once: a later sweep that finds the email already queued writes none", async () => {
+    const s = setup([{ bookingId: "b-1" }], undefined, [
+      "collection-reminder:b-1:2026-11-10T14:00:00.000Z:u1",
+    ]);
+    await s.run("2026-11-09T14:45:00Z");
+    expect(s.createMany).not.toHaveBeenCalled();
   });
 });

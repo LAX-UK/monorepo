@@ -21,7 +21,7 @@ const visit: CollectionNoticeVisit = {
   collector: { kind: "self", name: "Maya Okafor", email: null },
   place: { name: "London Art Exchange", address: "156 New Cavendish Street" },
   lots: [{ title: "Lowland Storm", lotNumber: 12, active: true }],
-  account: { kind: "personal", name: "Maya Okafor" },
+  account: { id: "le-maya", kind: "personal", name: "Maya Okafor" },
   booker: { userId: "u1", email: "maya@example.com", firstName: "Maya", name: "Maya Okafor" },
   accountPeople: [],
 };
@@ -32,7 +32,9 @@ function setup(rows: Row[], read: (id: string) => Promise<CollectionNoticeVisit 
   const enqueue = vi.fn().mockResolvedValue({ outboxId: "o" });
   const advanceCursor = vi.fn();
   const listAfterCursor = vi.fn().mockResolvedValue(rows);
+  const createMany = vi.fn().mockResolvedValue([]);
   const ctx = {
+    notificationWriteRepo: { createMany },
     projectorStateRepo: { getCursor: vi.fn().mockResolvedValue(5), advanceCursor },
     domainEventReader: { listAfterCursor },
     collectionNoticeReader: {
@@ -52,7 +54,7 @@ function setup(rows: Row[], read: (id: string) => Promise<CollectionNoticeVisit 
       },
       now: () => NOW,
     });
-  return { run, enqueue, advanceCursor, listAfterCursor };
+  return { run, enqueue, advanceCursor, listAfterCursor, createMany };
 }
 
 describe("collection booking emails from audit events", () => {
@@ -73,6 +75,53 @@ describe("collection booking emails from audit events", () => {
       "collection-missed",
     ]);
     expect(s.advanceCursor).toHaveBeenCalledWith("collection_booking_notify", 7);
+    // A hand-over and a missed visit have their emails only.
+    expect(s.createMany).not.toHaveBeenCalled();
+  });
+
+  it("puts a notice in the buyer's inbox for a booking made, changed and cancelled", async () => {
+    const s = setup(
+      [
+        { id: 6, eventType: "collection.booking.created", payload: { bookingId: "b-1" } },
+        {
+          id: 7,
+          eventType: "collection.booking.changed",
+          payload: { bookingId: "b-1", previousSlotStart: "2026-11-11T10:00:00Z" },
+        },
+        {
+          id: 8,
+          eventType: "collection.booking.cancelled",
+          payload: { bookingId: "b-1", cancelledVia: "client" },
+        },
+      ],
+      async () => visit,
+    );
+    await s.run();
+    const notices = s.createMany.mock.calls.map(([rows]) => rows);
+    expect(notices.map((rows) => rows.map((r: { type: string }) => r.type))).toEqual([
+      ["collection_booked"],
+      ["collection_changed"],
+      ["collection_cancelled"],
+    ]);
+    for (const rows of notices) {
+      expect(rows[0]).toMatchObject({ userId: "u1", legalEntityId: "le-maya" });
+    }
+    expect(s.advanceCursor).toHaveBeenCalledWith(COLLECTION_BOOKING_NOTIFY_PROJECTOR, 8);
+  });
+
+  it("tries the event again when its inbox notice could not be written, keeping the email's key", async () => {
+    const s = setup(
+      [{ id: 6, eventType: "collection.booking.created", payload: { bookingId: "b-1" } }],
+      async () => visit,
+    );
+    s.createMany.mockRejectedValueOnce(new Error("database unavailable"));
+    await s.run();
+    expect(s.advanceCursor).not.toHaveBeenCalled();
+    await s.run();
+    const keys = s.enqueue.mock.calls.map(([email]) => email.idempotencyKey);
+    expect(keys).toEqual(["collection-created:6:u1", "collection-created:6:u1"]);
+    expect(s.createMany).toHaveBeenCalledTimes(2);
+    expect(s.advanceCursor).toHaveBeenCalledWith(COLLECTION_BOOKING_NOTIFY_PROJECTOR, 6);
   });
 
   it("asks only for the collection booking events it emails, after its own cursor", async () => {

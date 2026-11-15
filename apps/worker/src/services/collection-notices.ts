@@ -39,7 +39,7 @@ export type CollectionNoticeVisit = {
     outcome?: "collected" | "left" | null;
   }[];
   /** The account the visit was booked for: an organisation, or a person's own. */
-  account: { kind: "organisation" | "personal"; name: string };
+  account: { id: string; kind: "organisation" | "personal"; name: string };
   /** Who booked it, when they still have an account. */
   booker: (NoticeRecipient & { name: string }) | null;
   /** The account's owners and admins: who hears when the booker cannot. */
@@ -87,7 +87,7 @@ const ID_RULE =
   "Bring photo ID in that name: a passport, driving licence or national identity card.";
 
 /** The gallery's reason for cancelling, as it reads in the sentence "{Reason}. We're sorry...". */
-const GALLERY_REASONS: Partial<Record<CollectionCancelReason, string>> = {
+export const GALLERY_REASONS: Partial<Record<CollectionCancelReason, string>> = {
   hours_changed: "our opening hours have changed",
   closure_added: "we're closed that day",
   opening_removed: "we're no longer open that day",
@@ -138,7 +138,7 @@ function calendarFor(
  * Who the buyer's email goes to: the person who booked; the account's owners and admins when the
  * desk booked it or the booker has gone.
  */
-function buyerRecipients(visit: CollectionNoticeVisit): NoticeRecipient[] {
+export function buyerRecipients(visit: CollectionNoticeVisit): NoticeRecipient[] {
   // A visit the desk booked is for the client, never for the staff member who typed it in.
   if (visit.bookedVia === "staff") return visit.accountPeople;
   return visit.booker ? [visit.booker] : visit.accountPeople;

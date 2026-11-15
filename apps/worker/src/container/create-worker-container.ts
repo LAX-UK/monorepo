@@ -482,6 +482,7 @@ export function createWorkerContainer(): WorkerContainer {
     emailService: emailWorkers.emailOutboxService,
     reader: repositories.collectionNoticeReader,
     collectByReader: repositories.collectByReader,
+    notifications: repositories.notificationWriteRepo,
     lotFacts: repositories.collectionLotFacts,
   });
   const reofferClock = createReofferClock({
