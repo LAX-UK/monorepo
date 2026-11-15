@@ -34,7 +34,6 @@ describe("the lot fulfilment queue's Collection read", () => {
       collectionVisit: {
         start: "2026-11-12T14:00:00.000Z",
         end: "2026-11-12T14:30:00.000Z",
-        reference: "COL-1042",
       },
     });
     expect(page.rows[1]).toMatchObject({ lotId: "lot-b", collectionVisit: null });

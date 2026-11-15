@@ -225,9 +225,41 @@ describe("the lists", () => {
         today="2026-11-13"
       />,
     );
-    expect(screen.getAllByText("Note").length).toBeGreaterThan(0);
+    const headers = document.querySelectorAll('[aria-hidden="true"] > span');
+    expect(Array.from(headers).map((el) => el.textContent)).toEqual([
+      "Buyer",
+      "Collector",
+      "Lots",
+      "Work",
+      "Booking",
+      "Note",
+      "",
+    ]);
     expect(screen.getByText("Client was delayed")).toBeTruthy();
     expect(screen.getByText("No note")).toBeTruthy();
+  });
+
+  it("lays the note out for a phone: prefix below lg, screen-reader only at lg, hidden when empty", () => {
+    render(
+      <DeskList
+        list={list("not_collected", [
+          deskBooking({ status: "not_collected", actions: ["rebook"], note: "Client was delayed" }),
+          deskBooking({ id: "b2", reference: "COL-1043", status: "not_collected", note: null }),
+        ])}
+        canChange
+        today="2026-11-13"
+      />,
+    );
+    const withNote = screen.getByText("Client was delayed").closest("p");
+    const prefix = withNote?.querySelector("span");
+    expect(prefix?.textContent).toBe("Note: ");
+    expect(prefix?.className).toContain("lg:sr-only");
+    expect(prefix?.className).not.toContain("hidden");
+    expect(withNote?.className).not.toMatch(/(^|\s)hidden(\s|$)/);
+    const empty = screen.getByText("No note");
+    expect(empty.className).toMatch(/(^|\s)hidden(\s|$)/);
+    expect(empty.className).toContain("lg:block");
+    expect(empty.querySelector("span")).toBeNull();
   });
 
   it("keeps the upcoming list without a Note column", () => {

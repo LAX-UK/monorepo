@@ -25,7 +25,6 @@ describe("the Collection column", () => {
         collectionVisit: {
           start: "2026-11-12T14:00:00.000Z",
           end: "2026-11-12T14:30:00.000Z",
-          reference: "COL-1042",
         },
       },
     ]);
@@ -33,9 +32,18 @@ describe("the Collection column", () => {
     expect(collectionLabel(row as never)).toBe("Thu 12 Nov, 14:00–14:30 GMT");
   });
 
-  it("says Not booked for a lot that is collected but has no visit", () => {
-    const [row] = toLotFulfilmentStaffRows([base]);
-    expect(collectionLabel(row as never)).toBe("Not booked");
+  it("says Not booked for a collection lot still waiting to be handed over", () => {
+    for (const status of ["released", "ready_for_collection"]) {
+      const [row] = toLotFulfilmentStaffRows([{ ...base, status }]);
+      expect(collectionLabel(row as never)).toBe("Not booked");
+    }
+  });
+
+  it("is blank for a lot that is collected, delivered or cancelled", () => {
+    for (const status of ["delivered", "cancelled", "awaiting_payment", "awaiting_release"]) {
+      const [row] = toLotFulfilmentStaffRows([{ ...base, status }]);
+      expect(collectionLabel(row as never)).toBeNull();
+    }
   });
 
   it("is blank for a lot that ships", () => {
@@ -43,8 +51,8 @@ describe("the Collection column", () => {
     expect(collectionLabel(row as never)).toBeNull();
   });
 
-  it("is Not booked while the method is not chosen yet", () => {
+  it("is blank while the method is not chosen yet", () => {
     const [row] = toLotFulfilmentStaffRows([{ ...base, fulfilmentMethod: null }]);
-    expect(collectionLabel(row as never)).toBe("Not booked");
+    expect(collectionLabel(row as never)).toBeNull();
   });
 });

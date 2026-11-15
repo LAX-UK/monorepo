@@ -8,7 +8,7 @@ import type {
 } from "@auction/persistence/interfaces";
 
 /** The collection visit a lot is booked into, as the queue shows it. */
-export type LotFulfilmentCollectionVisit = { start: string; end: string; reference: string };
+export type LotFulfilmentCollectionVisit = { start: string; end: string };
 
 export type AdminLotFulfilmentListRow = LotFulfilmentListRow & {
   /** The live visit holding the lot, or `null` when it is not booked for collection. */
@@ -66,7 +66,6 @@ export class AdminLotFulfilmentListQueryService {
           ? {
               start: booking.slotStart.toISOString(),
               end: booking.slotEnd.toISOString(),
-              reference: booking.reference,
             }
           : null,
       };

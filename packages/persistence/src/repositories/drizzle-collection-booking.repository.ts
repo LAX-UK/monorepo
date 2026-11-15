@@ -401,7 +401,7 @@ export class DrizzleCollectionBookingRepository
           ...changes,
           seat: candidate,
           overCapacity: candidate > input.placesPerSlot,
-          overCapacityReason: candidate > input.placesPerSlot ? input.overCapacityReason : null,
+          overCapacityReason: input.overCapacityReason,
         }));
         if (seat === null) throw new Abandon<ChangeOutcome>({ outcome: "slot_full" });
         const booking = await loadRecord(tx, input.bookingId);
@@ -764,7 +764,7 @@ async function claimNewSeat(
         bookedByUserId: input.bookedByUserId,
         bookedVia: input.bookedVia,
         overCapacity: beyond,
-        overCapacityReason: beyond ? input.overCapacityReason : null,
+        overCapacityReason: input.overCapacityReason,
         ...collectorColumns(input.collector),
         idempotencyKey: input.idempotencyKey,
         requestFingerprint: fingerprint,

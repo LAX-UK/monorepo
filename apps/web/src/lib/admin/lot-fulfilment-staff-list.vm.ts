@@ -41,12 +41,20 @@ export type LotFulfilmentStaffRow = {
   saleTitle: string | null;
 };
 
-/** What the Collection column says: the visit, "Not booked", or nothing for a lot that ships. */
+/** Statuses where a collection lot still waits to be handed over. */
+const AWAITING_HAND_OVER = new Set(["released", "ready_for_collection"]);
+
+/**
+ * What the Collection column says: the visit, or "Not booked" for a collection lot that still
+ * waits to be handed over. Blank for lots that ship, have no method yet, or are collected,
+ * delivered or cancelled.
+ */
 export function collectionLabel(
-  row: Pick<LotFulfilmentStaffRow, "collection" | "method">,
+  row: Pick<LotFulfilmentStaffRow, "collection" | "method" | "step">,
 ): string | null {
   if (row.collection) return row.collection;
-  return row.method === "Shipping" ? null : "Not booked";
+  if (row.method !== "Collection") return null;
+  return AWAITING_HAND_OVER.has(row.step) ? "Not booked" : null;
 }
 
 const METHOD_LABELS: Record<string, string> = {

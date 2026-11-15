@@ -125,7 +125,7 @@ export type NewCollectionBooking = {
   slotEnd: Date;
   /** Places at once in the slot; a booking within capacity takes the first free one up to this. */
   placesPerSlot: number;
-  /** Staff only: take a place beyond capacity, with the reason. */
+  /** Staff only: the reason staff gave for booking over capacity or inside the notice period. */
   overCapacityReason: string | null;
   lotIds: readonly string[];
   collector: CollectionCollectorInput;
