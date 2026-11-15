@@ -564,4 +564,12 @@ describe("a refused link", () => {
     const location = "https://account.test/account/security?error=EXPIRED_TOKEN";
     expect((await run(location)).headers.get("location")).toBe(location);
   });
+
+  it.each([
+    "https://account.test/account/security?state=abc123&error=access_denied&error_description=no",
+    "https://account.test/other/path?error=EXPIRED_TOKEN&state=xyz#frag",
+    "https://other.test/callback?error=some_unlisted_code&error_description=detail",
+  ])("returns a redirect away from the done page byte-for-byte unchanged: %s", async (location) => {
+    expect((await run(location)).headers.get("location")).toBe(location);
+  });
 });
