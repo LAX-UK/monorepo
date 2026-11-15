@@ -4,7 +4,7 @@ import {
   adminSaleroomCheckInCandidatesResultAction,
   adminSaleroomCheckInResultAction,
 } from "@/lib/actions/admin";
-import { poundsToPenceOrNull } from "@/lib/admin/seller-proceeds/pounds";
+import { CHECK_IN_LIMIT_ERROR, parseCheckInLimit } from "@/lib/admin/saleroom/check-in-limit";
 import type { AdminCheckInCandidate } from "@/lib/data/http/admin.server";
 import { saleroomCheckInErrorMessage } from "@/lib/saleroom/check-in-error-messages";
 import { notify } from "@/lib/ui/notify";
@@ -119,12 +119,12 @@ export function SaleroomCheckInPanel({
         return;
       }
     }
-    const limitText = bidLimit.trim();
-    const limitPence = limitText === "" ? null : poundsToPenceOrNull(limitText);
-    if (limitText !== "" && (limitPence === null || limitPence <= 0)) {
-      setSubmitError("Enter the bid limit in pounds, such as 5,000 or 2500.50.");
+    const limit = parseCheckInLimit(bidLimit);
+    if (!limit.ok) {
+      setSubmitError(CHECK_IN_LIMIT_ERROR);
       return;
     }
+    const limitPence = limit.pence;
     startTransition(async () => {
       const body: {
         saleId: string;

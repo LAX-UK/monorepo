@@ -6,6 +6,7 @@ describe("poundsToPenceOrNull", () => {
     expect(poundsToPenceOrNull("1250.5")).toBe(125050);
     expect(poundsToPenceOrNull("-20.00")).toBe(-2000);
     expect(poundsToPenceOrNull(" 88,000.10 ")).toBe(8800010);
+    expect(poundsToPenceOrNull(" -20.00 ")).toBe(-2000);
     expect(poundsToPenceOrNull("0.07")).toBe(7);
   });
 
