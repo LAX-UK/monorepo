@@ -111,6 +111,10 @@ export async function anonymiseEnquiries(
         eq(marketingEnquiryMessage.direction, "inbound"),
       ),
     );
+  // Quarantined mail that was suspected to belong to an erased enquiry goes with it.
+  await tx
+    .delete(enquiryInboundQuarantine)
+    .where(inArray(enquiryInboundQuarantine.suspectedEnquiryId, ids));
   if (target.kind === "email") {
     await tx
       .delete(enquiryInboundQuarantine)

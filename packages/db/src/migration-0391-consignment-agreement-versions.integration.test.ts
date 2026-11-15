@@ -5,6 +5,7 @@ import pg from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { runMigrationsPerTransaction } from "./migrate-runner.js";
 import { buildPgConnectionConfig } from "./ssl.js";
+import { laterRollbackSql } from "./testing/later-rollbacks.js";
 import { withTemporaryDatabase } from "./testing/temporary-database.js";
 
 const url = process.env.MIGRATION_TEST_DATABASE_URL;
@@ -221,16 +222,6 @@ describe.skipIf(!url)(
 
 const rollbackSql = () =>
   readFile(resolve(import.meta.dirname, "../drizzle/0391_rollback.sql"), "utf8");
-/** Migrations after 0391, rolled back first (newest first) as a real rollback of 0391 would be. */
-const laterRollbacksSql = async () =>
-  (
-    await Promise.all(
-      ["0394_rollback.sql", "0393_rollback.sql", "0392_rollback.sql"].map((name) =>
-        readFile(resolve(import.meta.dirname, "../drizzle", name), "utf8"),
-      ),
-    )
-  ).join("\n");
-
 describe.skipIf(!url)("migration 0391 rollback", { timeout: 120_000 }, () => {
   it("stops while a version is superseded, then rolls back and applies again", async () => {
     await withTemporaryDatabase(async (pool) => {
@@ -257,7 +248,7 @@ describe.skipIf(!url)("migration 0391 rollback", { timeout: 120_000 }, () => {
           [v1],
         );
         await db.query("commit");
-        await db.query(await laterRollbacksSql());
+        await db.query(laterRollbackSql("0391_consignment_agreement_versions"));
         await db.query(await rollbackSql());
         const columns = await pool.query(
           `select column_name from information_schema.columns

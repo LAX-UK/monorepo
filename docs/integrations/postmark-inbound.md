@@ -7,7 +7,7 @@ This is the setup the owner does in Postmark and DNS so that a sender's emailed 
 - With `ENQUIRY_INBOUND_REPLIES_ENABLED=true`, the enquiry acknowledgement email carries a per-thread `Reply-To`: `<mailbox>+<thread id>-<proof>@<inbound domain>`. The proof is an HMAC of the thread id under `ENQUIRY_REPLY_TOKEN_SECRET`, so the address cannot be guessed from an enquiry reference.
 - Postmark posts each received mail to `POST /webhooks/postmark/inbound`. This route is separate from the delivery-event route (`/webhooks/postmark`) and uses its own credentials.
 - A reply is filed on the thread only when its address (or, failing that, a quoted `In-Reply-To` / `References` message id) names the thread, the From address is the person who enquired, and it is neither an automatic reply nor an SPF failure. The thread is marked as awaiting a reply, a `marketing_enquiry.customer_replied` event is recorded, and the staff enquiry inbox is emailed.
-- Anything else goes to the `enquiry_inbound_quarantine` table for staff review, is never attached to a thread, and is purged after 30 days.
+- Anything else goes to the `enquiry_inbound_quarantine` table for staff review, is never attached to a thread, and carries a `purge_at` date 30 days out. The purge job that deletes expired rows is not built yet, so rows are kept until it lands; it must exist before the flag is turned on in production.
 - Only plain text is stored (HTML is stripped, 20,000 characters at most). Attachments are recorded as metadata only (name, type, size); the files are not downloaded or stored.
 - Replays are harmless: Postmark's `MessageID` is unique, so a redelivery changes nothing and sends no second notice.
 
