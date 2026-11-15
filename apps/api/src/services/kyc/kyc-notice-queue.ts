@@ -6,6 +6,7 @@ import type {
 } from "@auction/persistence/interfaces";
 import type { INotificationFactory } from "../interfaces/notification-factory.js";
 import type { KycOutcomeNotice, KycResubmissionNotice } from "./kyc-contracts.js";
+import { resubmissionGuidanceFor } from "./kyc-user-feedback.js";
 
 /**
  * Queues what a person is told about their identity check, in the transaction that applies the
@@ -76,7 +77,9 @@ export class KycNoticeQueue implements IKycNoticeQueue {
     const user = await this.deps.usersFor(tx).findById(userId);
     if (!user?.email) return;
 
-    const issueDetail = feedback.detail;
+    // Our own guidance for the reason code, never the provider's free-text reason: that text can
+    // quote what the person submitted, and both the outbox row and the notice outlive it.
+    const issueDetail = resubmissionGuidanceFor(feedback.reasonCode);
     await this.send(tx, {
       template: "kyc-resubmission-required",
       to: user.email,
@@ -96,7 +99,7 @@ export class KycNoticeQueue implements IKycNoticeQueue {
         // Identity checks are for the person, so the notice is personal.
         legalEntityId: null,
         title: feedback.headline,
-        message: issueDetail ?? "Please continue verification and resubmit the missing items.",
+        message: issueDetail,
       },
     ]);
   }

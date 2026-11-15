@@ -1,11 +1,5 @@
 import type { InvoiceDueDateExtender } from "@auction/finance-runtime";
 import type { IWatchlistScreeningReader } from "@auction/persistence/interfaces";
-import { MuteAwareNotificationWriter } from "@auction/persistence/lib";
-import {
-  DrizzleNotificationAccountMuteRepository,
-  DrizzleNotificationWriteRepository,
-  DrizzleUserRepository,
-} from "@auction/persistence/repositories";
 import type { Env } from "../env.js";
 import { VeriffScreeningProvider } from "../lib/veriff/veriff-screening-provider.js";
 import { VeriffWatchlistFetcher } from "../lib/veriff/veriff-watchlist-fetcher.js";
@@ -19,6 +13,7 @@ import type { ComplianceMarketingSlice } from "./create-compliance-marketing.js"
 import type { ContainerInfra } from "./create-infra.js";
 import type { ContainerPlatformServices } from "./create-platform-services.js";
 import type { ContainerRepositories } from "./create-repositories.js";
+import { notificationWriterFor, usersFor } from "./transaction-bound-stores.js";
 
 export type ContainerComplianceKycAml = {
   kycService: IKycService;
@@ -47,12 +42,8 @@ export function createComplianceKycAml(
   // What a person is told about their identity check is stored in the transaction that applies
   // the decision, so each store is bound to that transaction.
   const notices = new KycNoticeQueue({
-    usersFor: (tx) => new DrizzleUserRepository(tx),
-    notificationsFor: (tx) =>
-      new MuteAwareNotificationWriter(
-        new DrizzleNotificationWriteRepository(tx),
-        new DrizzleNotificationAccountMuteRepository(tx),
-      ),
+    usersFor,
+    notificationsFor: notificationWriterFor,
     email: emailOutbox,
     factory: platform.notificationFactory,
     webOrigin: env.WEB_ORIGIN,

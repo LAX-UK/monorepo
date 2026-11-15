@@ -40,6 +40,18 @@ function defaultIdempotencyKey(input: EmailEnqueueInput, resolution: RecipientRe
   return `${input.template}:${recipient}:${hashPayload(input.vars)}`;
 }
 
+/** How the recipient is stored, and the key that makes a repeat of this email the same row. */
+function prepare(input: EmailEnqueueInput): {
+  resolution: RecipientResolution;
+  idempotencyKey: string;
+} {
+  const resolution = input.recipientResolution ?? RECIPIENT_RESOLUTION[input.template];
+  return {
+    resolution,
+    idempotencyKey: input.idempotencyKey ?? defaultIdempotencyKey(input, resolution),
+  };
+}
+
 /**
  * When a recipient snapshot is cleared: 30 days after the message is queued. The daily
  * `purge-email-snapshots` job clears the snapshot and the message variables of every finished row
@@ -60,8 +72,7 @@ export class PostmarkEmailService implements IEmailService, ITransactionalEmailO
   async enqueue<T extends EmailEnqueueInput["template"]>(
     input: EmailEnqueueInput<T>,
   ): Promise<{ outboxId: string }> {
-    const resolution = input.recipientResolution ?? RECIPIENT_RESOLUTION[input.template];
-    const idempotencyKey = input.idempotencyKey ?? defaultIdempotencyKey(input, resolution);
+    const { resolution, idempotencyKey } = prepare(input);
     const existing = await this.findByIdempotencyKey(idempotencyKey);
     if (existing) {
       // A terminally-failed row (5 exhausted attempts) must not permanently block this
@@ -186,8 +197,7 @@ export class PostmarkEmailService implements IEmailService, ITransactionalEmailO
     tx: Database,
     input: EmailEnqueueInput<T>,
   ): Promise<{ outboxId: string }> {
-    const resolution = input.recipientResolution ?? RECIPIENT_RESOLUTION[input.template];
-    const idempotencyKey = input.idempotencyKey ?? defaultIdempotencyKey(input, resolution);
+    const { resolution, idempotencyKey } = prepare(input);
     const existing = await this.findByIdempotencyKey(idempotencyKey, tx);
     if (existing) return { outboxId: existing.id };
     const row = await this.insertOutboxRow(tx, input, idempotencyKey, resolution);

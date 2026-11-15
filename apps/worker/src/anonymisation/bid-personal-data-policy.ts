@@ -25,6 +25,7 @@ import type { ProjectorDbConnection } from "../interfaces/worker-db.types.js";
 import type { BidAnonymisationScope } from "./bid-anonymisation-scope.js";
 import { eraseCollectionBookings } from "./collection-booking-erasure.js";
 import { scrubMailQueue } from "./email-outbox-erasure.js";
+import { scrubIdentityCheckNotices } from "./notification-erasure.js";
 import { scrubNotificationOutbox } from "./notification-outbox-erasure.js";
 
 /**
@@ -197,6 +198,14 @@ const notificationOutboxRule: BidAnonymisationRule = {
   apply: (tx, scope) => scrubNotificationOutbox(tx, scope),
 };
 
+/** Identity-check notices keep their row but not the message, which may quote the provider. */
+const identityCheckNoticeRule: BidAnonymisationRule = {
+  table: "notification",
+  treatment: "scrub",
+  fields: ["message (identity-check notices)"],
+  apply: (tx, scope) => scrubIdentityCheckNotices(tx, scope),
+};
+
 export const BID_ANONYMISATION_RULES: readonly BidAnonymisationRule[] = [
   {
     table: "bid_user_profile",
@@ -291,6 +300,7 @@ export const BID_ANONYMISATION_RULES: readonly BidAnonymisationRule[] = [
   deleteBySubject(userUiPreference, "user_ui_preference", userUiPreference.userId),
   emailOutboxRule,
   notificationOutboxRule,
+  identityCheckNoticeRule,
   collectionBookingRule,
   enquiryRule,
   alertSubscribersRule,
