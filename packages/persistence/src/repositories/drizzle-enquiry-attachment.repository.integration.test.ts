@@ -101,6 +101,26 @@ describe.skipIf(!HAS_DB)("enquiry attachment claims (integration)", () => {
     });
   });
 
+  it("finds the stored file of an attachment only through the enquiry it belongs to", async () => {
+    await inRollback(async (tx) => {
+      const photo = await upload(tx, { enquiryDraftId: DRAFT }, "enquiry_image", "active");
+      const mine = await enquiry(tx);
+      const other = await enquiry(tx);
+      await new DrizzleEnquiryAttachmentRepository().claimInTransaction(tx, {
+        enquiryId: mine.id,
+        owner: { enquiryDraftId: DRAFT },
+        uploadIds: [photo],
+      });
+      const repo = new DrizzleMarketingEnquiryRepository(tx);
+      const [attachment] = (await repo.findByRef(mine.reference))?.attachments ?? [];
+      expect(await repo.findAttachmentFile(mine.id, attachment?.id as string)).toMatchObject({
+        key: expect.stringMatching(/^uploads\/test\//),
+        contentType: "image/jpeg",
+      });
+      expect(await repo.findAttachmentFile(other.id, attachment?.id as string)).toBeNull();
+    });
+  });
+
   it("attaches a signed-in sender's files and never another person's", async () => {
     await inRollback(async (tx) => {
       const mine = await upload(tx, { ownerUserId: SENDER }, "enquiry_image", "active");

@@ -34,16 +34,27 @@ function record(overrides: Partial<FailedJobRecord> = {}): FailedJobRecord {
 
 function setup(
   rows: FailedJobRecord[],
-  options: { actionsEnabled?: boolean; replayError?: Error } = {},
+  options: {
+    actionsEnabled?: boolean;
+    replayError?: Error;
+    groups?: { queue: string; jobName: string | null; errorLine: string; count: number }[];
+    groupsPartial?: boolean;
+    groupsSkipped?: boolean;
+    now?: Date;
+  } = {},
 ) {
   const byId = new Map(rows.map((row) => [row.id, row]));
   const reader: IFailedJobReviewReader = {
     search: vi.fn().mockResolvedValue({
       rows,
+      groups: options.groups ?? [],
+      groupsPartial: options.groupsPartial ?? false,
+      groupsSkipped: options.groupsSkipped ?? false,
       total: rows.length,
       counts: { needs_review: rows.length, retried: 0, discarded: 0 },
       queues: [{ queue: "email", count: rows.length }],
     }),
+    countNeedsReview: vi.fn().mockResolvedValue(rows.length),
     findForReview: vi.fn(async (id: string): Promise<FailedJobRecordWithPayload | null> => {
       const row = byId.get(id);
       return row
@@ -69,6 +80,7 @@ function setup(
     sources: [new BackgroundJobsSource({ reader, disposition, retrier: { replayFromDlq } })],
     audit,
     actionsEnabled: options.actionsEnabled ?? true,
+    ...(options.now ? { now: () => options.now as Date } : {}),
   });
   return { service, reader, disposition, replayFromDlq, audit };
 }
@@ -99,6 +111,89 @@ describe("AdminFailedJobsService.list", () => {
     expect(row?.errorSummary).toBe("Rejected for l•••••@n•••••.com");
     expect(list.queues.find((queue) => queue.id === "email")).toMatchObject({ count: 1 });
     expect(list.queues.length).toBeGreaterThan(1);
+  });
+
+  it("counts identical failures across every page, merging errors that summarise alike", async () => {
+    const { service } = setup([record()], {
+      groups: [
+        {
+          queue: "email",
+          jobName: "email:outbid-notice",
+          errorLine: "Rejected for lena@north.com",
+          count: 7,
+        },
+        {
+          queue: "email",
+          jobName: "email:outbid-notice",
+          errorLine: "Rejected for liam@north.com",
+          count: 5,
+        },
+        { queue: "email", jobName: "email:outbid-notice", errorLine: "Timed out", count: 90 },
+        {
+          queue: "lot-lifecycle",
+          jobName: "email:outbid-notice",
+          errorLine: "Rejected for lena@north.com",
+          count: 40,
+        },
+      ],
+    });
+    const list = await service.list(
+      { view: "needs_review", sort: "failed_desc", limit: 50, offset: 0 },
+      actor,
+    );
+    expect(list.rows[0]?.groupSize).toBe(12);
+  });
+
+  it("flags a row whose group was cut by the cap instead of showing an undercount", async () => {
+    const listOf = async (options: Parameters<typeof setup>[1]) => {
+      const { service } = setup([record()], options);
+      return service.list(
+        { view: "needs_review", sort: "failed_desc", limit: 50, offset: 0 },
+        actor,
+      );
+    };
+    const listed = {
+      queue: "email",
+      jobName: "email:outbid-notice",
+      errorLine: "Rejected for lena@north.com",
+      count: 9,
+    };
+    // Past the cap a group that is missing is a lower bound; one that was counted stays exact.
+    const missing = await listOf({ groupsPartial: true, groups: [] });
+    expect(missing.rows[0]).toMatchObject({ groupSize: 1, groupCapped: true });
+    const counted = await listOf({ groupsPartial: true, groups: [listed] });
+    expect(counted.rows[0]).toMatchObject({ groupSize: 9, groupCapped: false });
+    const whole = await listOf({ groups: [] });
+    expect(whole.rows[0]).toMatchObject({ groupSize: 1, groupCapped: false });
+  });
+
+  it("gives no cross-page count when counting was skipped for a large view", async () => {
+    const { service } = setup([record()], {
+      groupsPartial: true,
+      groupsSkipped: true,
+      groups: [
+        {
+          queue: "email",
+          jobName: "email:outbid-notice",
+          errorLine: "Rejected for lena@north.com",
+          count: 9,
+        },
+      ],
+    });
+    const list = await service.list(
+      { view: "needs_review", sort: "failed_desc", limit: 50, offset: 0 },
+      actor,
+    );
+    expect(list.rows[0]).toMatchObject({ groupSize: 1, groupCapped: true });
+  });
+
+  it("counts a failure alone when no group is reported for it", async () => {
+    const { service } = setup([record()]);
+    const list = await service.list(
+      { view: "needs_review", sort: "failed_desc", limit: 50, offset: 0 },
+      actor,
+    );
+    expect(list.rows[0]?.groupSize).toBe(1);
   });
 
   it("passes only the filters that are set", async () => {
@@ -288,6 +383,26 @@ describe("AdminFailedJobsService.discard and restore", () => {
     const result = await service.restore(["dlq:email:1"], actor);
     expect(result.results[0]).toEqual({ id: "dlq:email:1", ok: true });
     expect(audit.record).toHaveBeenCalledWith(expect.objectContaining({ kind: "restored" }));
+  });
+
+  it("restores a discard on the last day of its 90-day window", async () => {
+    const { service } = setup(
+      [record({ discardedAt: new Date("2026-08-01T09:00:00Z"), discardReason: "duplicate" })],
+      { now: new Date("2026-10-30T09:00:00Z") },
+    );
+    const result = await service.restore(["dlq:email:1"], actor);
+    expect(result.results[0]).toEqual({ id: "dlq:email:1", ok: true });
+  });
+
+  it("refuses a restore once the window has passed, since the payload is purged", async () => {
+    const { service, disposition, audit } = setup(
+      [record({ discardedAt: new Date("2026-08-01T09:00:00Z"), discardReason: "duplicate" })],
+      { now: new Date("2026-10-30T09:00:01Z") },
+    );
+    const result = await service.restore(["dlq:email:1"], actor);
+    expect(result.results[0]).toMatchObject({ ok: false, error: "restore_window_closed" });
+    expect(disposition.restore).not.toHaveBeenCalled();
+    expect(audit.record).not.toHaveBeenCalled();
   });
 
   it("only restores jobs that were discarded", async () => {

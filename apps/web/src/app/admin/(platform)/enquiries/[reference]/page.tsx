@@ -37,6 +37,7 @@ export default async function AdminEnquiryPage({ params }: Props) {
     <EnquiryView
       enquiry={page.enquiry}
       assignees={page.assignees}
+      history={page.history}
       viewerId={user.id}
       canWork={abilities.canWork}
       canConvert={userHasAccessTo(

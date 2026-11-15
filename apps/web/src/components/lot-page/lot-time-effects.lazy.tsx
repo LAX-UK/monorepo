@@ -3,10 +3,10 @@
 import dynamic from "next/dynamic";
 
 /**
- * The lot page's time effects (announcements and the result safety net) draw nothing, so they
- * load after the page is interactive rather than with its first scripts.
+ * The lot page's spoken time marks and its ask for a result draw nothing, so they load after the
+ * page is up and are not part of its first JavaScript.
  */
-export const LotTimeEffectsLazy = dynamic(
+export const LotTimeEffects = dynamic(
   () => import("./lot-time-effects").then((m) => m.LotTimeEffects),
   { ssr: false },
 );

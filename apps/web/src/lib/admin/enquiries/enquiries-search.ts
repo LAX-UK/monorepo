@@ -30,6 +30,10 @@ export type EnquiriesFilters = {
   status: EnquiryStatus | "";
   /** A staff id, or "unassigned". */
   assignee: string;
+  /** Typed search: name, email, reference, or the artist or title of the work. */
+  q: string;
+  /** Arrival order over the view's own; empty keeps the view's order. */
+  sort: EnquirySort | "";
   cursor: string;
   trail: string[];
 };
@@ -54,6 +58,9 @@ function parseTrail(raw: string): string[] {
   }
 }
 
+export const ENQUIRY_SORTS = ["newest", "oldest"] as const;
+export type EnquirySort = (typeof ENQUIRY_SORTS)[number];
+
 const SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
 /** `defaultView` is the view this person lands on: their own queue, or everything open. */
@@ -68,14 +75,18 @@ export function parseEnquiriesSearch(
     department: SLUG.test(department) ? department : "",
     status: oneOf(first(sp.status), STATUSES),
     assignee: first(sp.assignee).slice(0, 100),
+    q: first(sp.q).slice(0, 80),
+    sort: oneOf(first(sp.sort), ENQUIRY_SORTS),
     cursor: first(sp.cursor).slice(0, 300),
     trail: parseTrail(first(sp.trail)),
   };
 }
 
-/** Whether a filter narrows the list (the view tab alone does not). */
+/** Whether a filter or the search narrows the list (the view tab and the sort do not). */
 export function hasEnquiriesFilters(filters: EnquiriesFilters): boolean {
-  return Boolean(filters.kind || filters.department || filters.status || filters.assignee);
+  return Boolean(
+    filters.kind || filters.department || filters.status || filters.assignee || filters.q,
+  );
 }
 
 /** What `GET /admin/enquiries` takes for these filters. */
@@ -85,6 +96,8 @@ export function enquiriesApiQuery(filters: EnquiriesFilters, limit = 25): URLSea
   if (filters.department) query.set("department", filters.department);
   if (filters.status) query.set("status", filters.status);
   if (filters.assignee) query.set("assignee", filters.assignee);
+  if (filters.q) query.set("q", filters.q);
+  if (filters.sort) query.set("sort", filters.sort);
   if (filters.cursor) query.set("cursor", filters.cursor);
   return query;
 }
@@ -111,6 +124,7 @@ export function enquiryHref(reference: string): string {
 export type EnquiriesFilterChip = { id: string; label: string; clearHref: string };
 
 type ChipLabels = {
+  q?: (value: string) => string;
   kind: (value: string) => string;
   department: (value: string) => string;
   status: (value: string) => string;
@@ -125,8 +139,9 @@ export function buildEnquiriesChips(
   labels: ChipLabels,
 ): EnquiriesFilterChip[] {
   const entries: Array<
-    [keyof Pick<EnquiriesFilters, "kind" | "department" | "status" | "assignee">, string]
+    [keyof Pick<EnquiriesFilters, "kind" | "department" | "status" | "assignee" | "q">, string]
   > = [
+    ["q", "Search"],
     ["kind", "Kind"],
     ["department", "Department"],
     ["status", "Status"],
@@ -137,7 +152,7 @@ export function buildEnquiriesChips(
       ? [
           {
             id: key,
-            label: `${name}: ${labels[key](filters[key])}`,
+            label: `${name}: ${(labels[key] ?? ((v: string) => v))(filters[key])}`,
             clearHref: enquiriesHref(current, { [key]: null }, defaultView),
           },
         ]

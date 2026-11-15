@@ -210,6 +210,19 @@ describe("FailedJobsList: integrations", () => {
     );
   });
 
+  it("counts a group across every page, and says how many are on this one", () => {
+    const twin = { ...xeroDelivery, id: "delivery:43", groupSize: 37 };
+    renderList({
+      list: {
+        ...integrationsList,
+        rows: [{ ...xeroDelivery, groupSize: 37 }, twin],
+        total: 40,
+      },
+    });
+    expect(screen.getAllByText("37 identical failures, 2 on this page").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("×37").length).toBeGreaterThan(0);
+  });
+
   it("shows what the person's access fixes as a locked Source chip", () => {
     renderList({ list: { ...integrationsList, limitedTo: "Integrations · Xero" } });
     const chips = screen.getByRole("list", { name: "Applied filters" });

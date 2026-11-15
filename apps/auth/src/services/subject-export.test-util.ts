@@ -89,6 +89,12 @@ export class InMemorySubjectExportRepository implements SubjectExportRepository 
     return mine[0] ?? null;
   }
 
+  async listRequestsSince(subjectId: string, windowStart: Date): Promise<SubjectExportRow[]> {
+    return this.rows
+      .filter((row) => row.subjectId === subjectId && row.requestedAt > windowStart)
+      .sort((a, b) => b.requestedAt.getTime() - a.requestedAt.getTime());
+  }
+
   async findById(exportId: string): Promise<SubjectExportRow | null> {
     return this.rows.find((row) => row.id === exportId) ?? null;
   }

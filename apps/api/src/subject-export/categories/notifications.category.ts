@@ -5,13 +5,13 @@ import {
   notificationPreference,
   pushSubscription,
 } from "@auction/db/schema";
-import { and, asc, eq, notLike } from "drizzle-orm";
 import {
   type ExportSource,
   type SourceRow,
   SourcedExportCategory,
   inMemorySource,
-} from "../sourced-export-category.js";
+} from "@auction/identity-contracts/subject-export-readers";
+import { and, asc, eq, notLike } from "drizzle-orm";
 import type { SubjectExportDeps } from "../subject-export-deps.js";
 import { isoRequired } from "../subject-export-values.js";
 import { afterKey, countWhere } from "./keyset.js";

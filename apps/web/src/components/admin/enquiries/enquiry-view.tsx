@@ -13,6 +13,7 @@ import { enquiryTimeline } from "@/lib/admin/enquiries/enquiry-timeline";
 import { dealHref } from "@/lib/admin/private-sales/private-sales.vm";
 import type {
   EnquiryAssignee,
+  EnquiryHistoryEntry,
   EnquiryView as EnquiryRecord,
 } from "@/lib/data/http/admin-enquiries.schema";
 import { copyToClipboard } from "@/lib/ui/copy-to-clipboard";
@@ -45,6 +46,7 @@ import { useState } from "react";
 import { ConvertEnquiryDialog } from "../private-sales/convert-enquiry-dialog";
 import { AssignEnquiryDialog } from "./assign-enquiry-dialog";
 import { CloseEnquiryDialog } from "./close-enquiry-dialog";
+import { AttachmentsSection } from "./enquiry-attachments";
 import { EnquiryStatusBadge } from "./enquiry-cells";
 import {
   ClientSection,
@@ -59,6 +61,8 @@ const NextLink: StaffLinkComponent = Link;
 export type EnquiryViewProps = {
   enquiry: EnquiryRecord;
   assignees: EnquiryAssignee[];
+  /** Assignments and status changes from the audit trail; null when it could not be read. */
+  history: EnquiryHistoryEntry[] | null;
   viewerId: string;
   canWork: boolean;
   /** May turn a private sale enquiry into a deal. */
@@ -72,8 +76,9 @@ const MOVE_LABELS = {
   waiting_on_client: "Waiting on client",
 } as const;
 
-function dayLabel(iso: string): string {
-  return formatStaffDate(iso);
+/** "Thu 12 Nov", or "Thu 12 Nov 2027" in a year other than the page's own (the server's clock). */
+export function dayLabel(iso: string, now: Date): string {
+  return formatStaffDate(iso, now);
 }
 
 /**
@@ -85,6 +90,7 @@ function dayLabel(iso: string): string {
 export function EnquiryView({
   enquiry,
   assignees,
+  history,
   viewerId,
   canWork,
   canConvert = false,
@@ -105,7 +111,7 @@ export function EnquiryView({
     userId ? assignees.find((person) => person.id === userId)?.name : undefined;
   const assignee = nameOf(enquiry.assignedToUserId);
   const waiting = enquiryWaiting(enquiry, clock);
-  const events = enquiryTimeline(enquiry, nameOf);
+  const events = enquiryTimeline(enquiry, nameOf, history);
 
   async function moveTo(status: EnquiryStatus) {
     const result = await writes.patch({ status });
@@ -177,8 +183,8 @@ export function EnquiryView({
         tone="info"
         title={`Closed${enquiry.closeReason ? `: ${ENQUIRY_CLOSE_REASON_LABELS[enquiry.closeReason]}` : ""}`}
       >
-        {enquiry.handledAt ? `Closed on ${dayLabel(enquiry.handledAt)}. ` : ""}It can be reopened if
-        the client gets back in touch.
+        {enquiry.handledAt ? `Closed on ${dayLabel(enquiry.handledAt, clock)}. ` : ""}It can be
+        reopened if the client gets back in touch.
       </Notice>
     ) : enquiry.status === "converted" ? (
       <Notice tone="success" title="Converted to a deal">
@@ -192,7 +198,7 @@ export function EnquiryView({
         <StatusBadge tone="danger">Reply overdue</StatusBadge>
       ) : (
         <StatusBadge tone={waiting.tone === "warning" ? "warning" : "neutral"} shape="ring">
-          Reply by {dayLabel(enquiry.replyDueAt)}
+          Reply by {dayLabel(enquiry.replyDueAt, clock)}
         </StatusBadge>
       )
     ) : null;
@@ -250,6 +256,7 @@ export function EnquiryView({
       >
         <PrivateSaleSection enquiry={enquiry} />
         <MessageSection message={enquiry.message} />
+        <AttachmentsSection reference={enquiry.reference} attachments={enquiry.attachments} />
         <NotesSection
           notes={enquiry.notes}
           nameOf={nameOf}
@@ -260,8 +267,13 @@ export function EnquiryView({
         <Section
           id="history"
           title="History"
-          description="What this record holds. Assignments and status changes are in the Audit log."
+          description="When it arrived, each note, and every assignment and status change."
         >
+          {history === null ? (
+            <Notice tone="warning" title="Assignments and status changes couldn't be loaded">
+              The Audit log has them. Reload the page to try again.
+            </Notice>
+          ) : null}
           <Timeline label="Enquiry history" events={events} />
         </Section>
       </DetailPage>

@@ -49,6 +49,8 @@ export type PersonalDashboardProps = {
   inboxQueues?: readonly AttentionItem[];
   /** Data requests past or close to their legal due date; the card is left out when there are none. */
   dataRequestQueues?: readonly AttentionItem[];
+  /** Failed jobs waiting for review; the card is left out when there are none. */
+  failedJobsQueues?: readonly AttentionItem[];
   workAreas: readonly AdminWorkItemDomain[];
   area: WorkArea;
   assignment: WorkAssignment;
@@ -108,6 +110,10 @@ export function PersonalDashboard(props: PersonalDashboardProps) {
 
       {props.dataRequestQueues && props.dataRequestQueues.length > 0 ? (
         <AttentionList title="Data requests" items={props.dataRequestQueues} Link={NextLink} />
+      ) : null}
+
+      {props.failedJobsQueues && props.failedJobsQueues.length > 0 ? (
+        <AttentionList title="Failed jobs" items={props.failedJobsQueues} Link={NextLink} />
       ) : null}
 
       {show("my-queue") ? (

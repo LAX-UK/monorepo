@@ -245,4 +245,75 @@ describe.skipIf(!HAS_DB)("enquiry repositories (integration)", () => {
       ]);
     });
   });
+  it("searches name, email, reference and the artist or title, and counts statuses apart from the status filter", async () => {
+    await inRollback(async (tx) => {
+      const repo = new DrizzleMarketingEnquiryRepository(tx);
+      const work = (artist: string, title: string) => ({
+        artist,
+        title,
+        medium: null,
+        size: null,
+        locationTown: null,
+        locationCountry: null,
+        priceInMindMinor: null,
+        lookingFor: null,
+        budgetBand: null,
+        timing: null,
+        contactPreference: "email" as const,
+      });
+      const sell = await repo.createInTransaction(tx, {
+        ...base,
+        name: "Grace Hopper",
+        email: "grace@navy.example",
+        intent: "private_sale_sell",
+        topic: "selling",
+        privateSale: work("Bridget Riley", "Fall 100%"),
+      });
+      const press = await repo.createInTransaction(tx, {
+        ...base,
+        name: "Alan Turing",
+        intent: "general",
+        topic: "press",
+      });
+      await repo.updateInTransaction(tx, press.id, 1, { status: "in_progress" });
+      const scope = { viewerUserId: STAFF, readsGeneral: true, readsPrivateSale: true };
+      const find = async (search: string, extra = {}) =>
+        (await repo.list({ view: "all", scope, limit: 10, search, ...extra })).map((r) => r.id);
+
+      expect(await find("hopper")).toEqual([sell.id]);
+      expect(await find("NAVY.EXAMPLE")).toEqual([sell.id]);
+      expect(await find(sell.reference.toLowerCase())).toEqual([sell.id]);
+      expect(await find("riley")).toEqual([sell.id]);
+      expect(await find("fall 100%")).toEqual([sell.id]);
+      // `%` and `_` are typed text, not wildcards.
+      expect(await find("100%x")).toEqual([]);
+      expect(await find("_")).toEqual([]);
+      const noPrivate = { ...scope, readsPrivateSale: false };
+      expect(
+        await repo.list({ view: "all", scope: noPrivate, limit: 10, search: "riley" }),
+      ).toEqual([]);
+
+      const sorted = async (sort: "oldest" | "newest") =>
+        (await repo.list({ view: "all", scope, limit: 10, search: "example", sort })).map(
+          (r) => r.id,
+        );
+      // Created in one transaction they share a timestamp, so the id breaks the tie.
+      const ascending = [sell.id, press.id].sort();
+      expect(await sorted("oldest")).toEqual(ascending);
+      expect(await sorted("newest")).toEqual([...ascending].reverse());
+
+      const counts = await repo.countByStatus({ view: "all", scope, limit: 10, status: "closed" });
+      expect(counts).toMatchObject({ new: 1, in_progress: 1, closed: 0 });
+      const searched = await repo.countByStatus({
+        view: "all",
+        scope,
+        limit: 10,
+        search: "turing",
+      });
+      expect(searched).toMatchObject({ new: 0, in_progress: 1 });
+      expect(
+        await repo.countByStatus({ view: "all", scope: noPrivate, limit: 10, search: "riley" }),
+      ).toMatchObject({ new: 0, in_progress: 0 });
+    });
+  });
 });

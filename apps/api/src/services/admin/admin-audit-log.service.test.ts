@@ -32,6 +32,7 @@ function readerReturning(rows: AuditLogRecord[], total = rows.length) {
     searchAuditActors,
     listRedacted: vi.fn(),
     countForExport: vi.fn(),
+    actorNames: vi.fn(),
   } satisfies IAdminDomainEventReader;
   return { reader, searchAuditLog, searchAuditActors };
 }

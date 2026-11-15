@@ -35,7 +35,7 @@ const render = (
 
 describe("DataExportPanel", () => {
   it("A offers one request and the always-present full-copy link", () => {
-    const html = render({ kind: "ready_to_request" });
+    const html = render({ kind: "ready_to_request", limited: null });
     const text = textOf(html);
     expect(text).toContain("LAX Account");
     expect(text).toContain("Request your data");
@@ -123,9 +123,25 @@ describe("DataExportPanel", () => {
   });
 
   it("F says the copy is gone and offers a new one", () => {
-    const text = textOf(render({ kind: "expired", message: "Your last copy expired." }));
+    const text = textOf(
+      render({ kind: "expired", message: "Your last copy expired.", limited: null }),
+    );
     expect(text).toContain("Expired");
     expect(text).toContain("Request a new copy");
+  });
+
+  it("shows the date up front and no request button when at the limit", () => {
+    const limited =
+      "You've asked for the most copies we can prepare in 30 days. You can ask again from Fri 20 Nov 2026.";
+    for (const vm of [
+      { kind: "expired", message: "Your last copy expired.", limited },
+      { kind: "ready_to_request", limited },
+    ] as const) {
+      const text = textOf(render(vm));
+      expect(text).toContain("You can ask again from Fri 20 Nov 2026.");
+      expect(text).not.toContain("Request a new copy");
+      expect(text).not.toContain("Request your data");
+    }
   });
 
   it("offers a retry, and no request or download, when Identity cannot be asked", () => {
@@ -137,8 +153,8 @@ describe("DataExportPanel", () => {
 
   it("never uses an em dash", () => {
     for (const vm of [
-      { kind: "ready_to_request" },
-      { kind: "expired", message: "x" },
+      { kind: "ready_to_request", limited: null },
+      { kind: "expired", message: "x", limited: null },
       { kind: "unavailable" },
     ] as const) {
       expect(render(vm)).not.toContain("—");

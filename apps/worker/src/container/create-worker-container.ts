@@ -365,6 +365,7 @@ export function createWorkerContainer(): WorkerContainer {
     mediaAssetCleanupRepo: repositories.mediaAssetCleanupRepo,
     qrCodeScanPersister: repositories.qrCodeScanPersister,
     qrCodeScanPurgeRepo: repositories.qrCodeScanPurgeRepo,
+    failedJobPayloadPurge: repositories.failedJobPayloadPurge,
     marketingClickIdPurgeRepo: repositories.marketingClickIdPurgeRepo,
     marketingAttributionPurgeRepo: repositories.marketingAttributionPurgeRepo,
     notificationWriteRepo: repositories.notificationWriteRepo,

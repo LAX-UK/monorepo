@@ -95,7 +95,12 @@ export function createIssuerDataExportGateway(
         { token: actor.accessToken },
         subjectExportCurrentSchema,
       );
-      return result.status === "ok" ? { status: "ok", value: result.value.export } : result;
+      return result.status === "ok"
+        ? {
+            status: "ok",
+            value: { view: result.value.export, retryAfter: result.value.retryAfter },
+          }
+        : result;
     },
     request(actor, client) {
       return post(

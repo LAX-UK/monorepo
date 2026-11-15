@@ -37,7 +37,10 @@ afterEach(() => vi.restoreAllMocks());
 describe("createIssuerDataExportGateway", () => {
   it("reads the current request with the token only, in the body", async () => {
     const { fetchImpl, gateway } = setup(async () => Response.json({ export: VIEW }));
-    expect(await gateway.readCurrent(actor)).toEqual({ status: "ok", value: VIEW });
+    expect(await gateway.readCurrent(actor)).toEqual({
+      status: "ok",
+      value: { view: VIEW, retryAfter: null },
+    });
     const { url, init, body } = last(fetchImpl);
     expect(url).toBe("https://auth.internal/api/auth/lax/data-exports/current");
     expect(url).not.toContain("access-token");
@@ -49,7 +52,20 @@ describe("createIssuerDataExportGateway", () => {
 
   it("reads no request as null", async () => {
     const { gateway } = setup(async () => Response.json({ export: null }));
-    expect(await gateway.readCurrent(actor)).toEqual({ status: "ok", value: null });
+    expect(await gateway.readCurrent(actor)).toEqual({
+      status: "ok",
+      value: { view: null, retryAfter: null },
+    });
+  });
+
+  it("passes the rate-limit date through with the current request", async () => {
+    const { gateway } = setup(async () =>
+      Response.json({ export: VIEW, retryAfter: "2026-11-20T09:00:00.000Z" }),
+    );
+    expect(await gateway.readCurrent(actor)).toEqual({
+      status: "ok",
+      value: { view: VIEW, retryAfter: "2026-11-20T09:00:00.000Z" },
+    });
   });
 
   it("requests with the sign-in and forwards the person's ip and user agent", async () => {

@@ -1,4 +1,9 @@
 import { formatDeviceLabel, openProviderEmail } from "@auction/identity-contracts";
+import {
+  type ExportSource,
+  SourcedExportCategory,
+  inMemorySource,
+} from "@auction/identity-contracts/subject-export-readers";
 import type { IdentityDatabase } from "@auction/identity-db";
 import {
   account,
@@ -10,11 +15,6 @@ import {
 } from "@auction/identity-db/schema";
 import { and, asc, eq, inArray, isNotNull, ne, sql } from "drizzle-orm";
 import { deviceProductNames } from "../../../services/device-product-names.js";
-import {
-  type ExportSource,
-  SourcedExportCategory,
-  inMemorySource,
-} from "../../../subject-export/sourced-export-category.js";
 import { iso, isoRequired } from "../../../subject-export/values.js";
 import { afterKey, afterNumericKey, countWhere, numericKey } from "./keyset.js";
 

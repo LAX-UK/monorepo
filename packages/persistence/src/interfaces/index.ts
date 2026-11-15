@@ -78,9 +78,11 @@ export type {
   FailedJobRecordWithPayload,
   FailedJobReviewView,
   FailedJobSearch,
+  FailedJobSearchGroup,
   FailedJobSearchResult,
   IFailedJobDisposition,
   IFailedJobNeedsReviewGroups,
+  IFailedJobPayloadPurge,
   IFailedJobReviewReader,
 } from "./failed-job-review.js";
 
@@ -1130,7 +1132,9 @@ export type {
 } from "./workspace-buying.readers.js";
 export type {
   ClaimedEnquiryFiles,
+  EnquiryAttachmentFile,
   EnquiryAttachmentRecord,
+  EnquiryStatusCounts,
   EnquiryListFilter,
   IEnquiryAttachmentRepository,
   EnquiryListScope,

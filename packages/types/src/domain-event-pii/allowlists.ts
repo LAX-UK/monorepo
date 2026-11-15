@@ -505,6 +505,8 @@ export const EXCEPTION_PATHS: Record<string, Set<string>> = {
   ]),
   "marketing_enquiry.status_changed": new Set(["enquiryId", "intent", "from", "to", "closeReason"]),
   "marketing_enquiry.converted": new Set(["enquiryId", "intent", "from"]),
+  /** Which file of the enquiry staff opened: ids and its kind, never its name or contents. */
+  "marketing_enquiry.attachment_viewed": new Set(["enquiryId", "attachmentId", "kind"]),
   /** Row counts and the reason staff typed; the address that was erased is never recorded. */
   "marketing_enquiry.erased": new Set([
     "enquiries",

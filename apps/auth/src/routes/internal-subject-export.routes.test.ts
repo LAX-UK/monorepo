@@ -1,7 +1,7 @@
+import { InvalidSubjectExportCursorError } from "@auction/identity-contracts/subject-export-readers";
 import { describe, expect, it, vi } from "vitest";
 import type { SubjectExportProgressResult } from "../services/subject-export.service.js";
 import { UnknownSubjectExportCategoryError } from "../subject-export/subject-export-reader.service.js";
-import { InvalidSubjectExportCursorError } from "../subject-export/subject-export.types.js";
 import { createInternalIdentityRoutes } from "./internal-identity.routes.js";
 import { subjectExportTokenKey } from "./internal-subject-export.routes.js";
 

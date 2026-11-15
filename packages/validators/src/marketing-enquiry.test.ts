@@ -4,6 +4,7 @@ import {
   adminEnquiryListQuerySchema,
   adminEnquiryPatchSchema,
   adminEnquiryRoutingSchema,
+  enquiryAttachmentParamSchema,
   enquiryIntakeSchema,
   enquiryRefParamSchema,
 } from "./marketing-enquiry.js";
@@ -182,6 +183,26 @@ describe("staff enquiry schemas", () => {
     expect(adminEnquiryListQuerySchema.parse({})).toMatchObject({ view: "open", limit: 25 });
     expect(adminEnquiryListQuerySchema.safeParse({ limit: "500" }).success).toBe(false);
     expect(adminEnquiryListQuerySchema.safeParse({ view: "mine" }).success).toBe(false);
+  });
+
+  it("takes a trimmed search and an arrival order, and refuses an empty search or another order", () => {
+    expect(adminEnquiryListQuerySchema.parse({ q: "  riley ", sort: "oldest" })).toMatchObject({
+      q: "riley",
+      sort: "oldest",
+    });
+    expect(adminEnquiryListQuerySchema.safeParse({ q: "   " }).success).toBe(false);
+    expect(adminEnquiryListQuerySchema.safeParse({ q: "x".repeat(81) }).success).toBe(false);
+    expect(adminEnquiryListQuerySchema.safeParse({ sort: "name" }).success).toBe(false);
+  });
+
+  it("addresses an attachment by enquiry reference and file id", () => {
+    const id = "7c9e6679-7425-40de-944b-e07fc1f90ae7";
+    expect(
+      enquiryAttachmentParamSchema.safeParse({ ref: "E-1042", attachmentId: id }).success,
+    ).toBe(true);
+    expect(
+      enquiryAttachmentParamSchema.safeParse({ ref: "E-1042", attachmentId: "../x" }).success,
+    ).toBe(false);
   });
 
   it("needs a version and at least one change", () => {

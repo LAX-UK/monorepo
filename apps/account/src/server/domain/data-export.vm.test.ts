@@ -81,7 +81,42 @@ describe("buildDataExportPageVm", () => {
   it("offers a request when nothing has been requested (A)", () => {
     expect(buildDataExportPageVm({ status: "ok", view: null }, NOW)).toEqual({
       kind: "ready_to_request",
+      limited: null,
     });
+  });
+
+  it("shows the date up front when the person is at the limit and nothing is open", () => {
+    const retryAfter = "2026-11-20T09:00:00.000Z";
+    const expired = buildDataExportPageVm(
+      { status: "ok", view: view({ ...READY, status: "expired" }), retryAfter },
+      NOW,
+    );
+    expect(expired).toMatchObject({
+      kind: "expired",
+      limited: buildRateLimitedMessage(retryAfter),
+    });
+    expect(buildDataExportPageVm({ status: "ok", view: null, retryAfter }, NOW)).toMatchObject({
+      kind: "ready_to_request",
+      limited: buildRateLimitedMessage(retryAfter),
+    });
+  });
+
+  it("ignores a rate-limit date that has already passed", () => {
+    expect(
+      buildDataExportPageVm(
+        { status: "ok", view: null, retryAfter: "2026-11-01T00:00:00.000Z" },
+        NOW,
+      ),
+    ).toEqual({ kind: "ready_to_request", limited: null });
+  });
+
+  it("never offers a request while one is open, whatever retryAfter says", () => {
+    for (const status of ["requested", "collecting", "delayed"] as const) {
+      for (const retryAfter of [null, "2026-11-20T09:00:00.000Z"]) {
+        const vm = buildDataExportPageVm({ status: "ok", view: view({ status }), retryAfter }, NOW);
+        expect(["preparing", "delayed"]).toContain(vm.kind);
+      }
+    }
   });
 
   it("shows per-product progress while preparing, with every product listed (C)", () => {
@@ -209,6 +244,7 @@ describe("buildDataExportPageVm", () => {
       kind: "expired",
       message:
         "Your last copy, prepared on Mon 2 Nov 2026, expired on Mon 9 Nov 2026 and has been deleted.",
+      limited: null,
     });
     expect(
       buildDataExportPageVm(

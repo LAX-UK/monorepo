@@ -34,6 +34,7 @@ export type FailedJobActionError =
   | "job_discarded"
   | "repeat_not_confirmed"
   | "not_discarded"
+  | "restore_window_closed"
   | "retry_failed"
   | "rate_limit_exceeded"
   | "payload_not_available";
@@ -55,6 +56,8 @@ export type AdminFailedJobsDeps = {
   audit: IFailedJobAuditTrail;
   /** The operator's kill switch for retries and discards. */
   actionsEnabled: boolean;
+  /** The clock, for the restore window. */
+  now?: () => Date;
 };
 
 /**
@@ -199,6 +202,14 @@ export class AdminFailedJobsService {
     return this.eachTarget(ids, actor, async (target) => {
       if (target.state !== "discarded") {
         return { id: target.id, ok: false, error: "not_discarded" };
+      }
+      // After the window a background job's payload is purged, so a restored job could never be
+      // retried. Sources without a window (integrations) are never refused here.
+      if (
+        target.restorableUntil &&
+        (this.deps.now?.() ?? new Date()).toISOString() > target.restorableUntil
+      ) {
+        return { id: target.id, ok: false, error: "restore_window_closed" };
       }
       if (!(await target.restore())) return { id: target.id, ok: false, error: "not_discarded" };
       await this.deps.audit.record({

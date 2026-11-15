@@ -4,6 +4,7 @@ import { loadAdminFailedJobPage } from "@/lib/admin/failed-jobs/load-failed-job-
 import { requireAdminCapability } from "@/lib/auth/require-admin-capability";
 import { FAILED_JOBS_ANY_SOURCE_READ_ACCESS } from "@/lib/navigation/staff-nav-access";
 import { metadataForPrivate } from "@/lib/seo/metadata-factory";
+import type { UserRole } from "@auction/types";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
@@ -18,8 +19,14 @@ export default async function AdminFailedJobPage({ params }: Props) {
   const { id: raw } = await params;
   // The id carries colons (`delivery:41`), which the router can hand over still encoded.
   const id = decodeFailedJobId(raw);
-  await requireAdminCapability(FAILED_JOBS_ANY_SOURCE_READ_ACCESS, `/admin/failed-jobs/${id}`);
-  const page = await loadAdminFailedJobPage(id);
+  const user = await requireAdminCapability(
+    FAILED_JOBS_ANY_SOURCE_READ_ACCESS,
+    `/admin/failed-jobs/${id}`,
+  );
+  const page = await loadAdminFailedJobPage(id, {
+    role: user.role as UserRole,
+    staffRoles: user.staffRoles,
+  });
   if (!page) notFound();
-  return <FailedJobView job={page.job} canAct={page.canAct} />;
+  return <FailedJobView job={page.job} canAct={page.canAct} recordHrefs={page.recordHrefs} />;
 }

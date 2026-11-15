@@ -31,6 +31,8 @@ export type AdminNavCounts = {
   /** Settled private sales whose artwork the register does not show as sold, and the urgent ones among them (per person). */
   privateSalesAttention: number;
   privateSalesUrgent: number;
+  /** Background jobs waiting for review on Failed jobs (from the shared cache). */
+  failedJobsNeedsReview: number;
 };
 
 export const EMPTY_ADMIN_NAV_COUNTS: AdminNavCounts = {
@@ -60,4 +62,5 @@ export const EMPTY_ADMIN_NAV_COUNTS: AdminNavCounts = {
   dataRequestsOverdue: 0,
   privateSalesAttention: 0,
   privateSalesUrgent: 0,
+  failedJobsNeedsReview: 0,
 };

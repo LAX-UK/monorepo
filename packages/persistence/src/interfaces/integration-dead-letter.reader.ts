@@ -64,6 +64,18 @@ export type IntegrationSearch = {
 
 export type IntegrationSearchResult = {
   rows: IntegrationDeadLetterRecord[];
+  /** Identical failures counted across every page of the view, biggest first. */
+  groups: {
+    /** `delivery:xero`, `webhook:stripe`. */
+    queue: string;
+    eventType: string | null;
+    errorLine: string;
+    count: number;
+  }[];
+  /** True when `groups` is incomplete: the cap cut the tail, or the view was too large to count. */
+  groupsPartial: boolean;
+  /** True when no group counts were computed (the view was over the size limit). */
+  groupsSkipped: boolean;
   total: number;
   counts: Record<IntegrationView, number>;
   /** Rows per consumer or sender in the chosen view, under the other filters. */

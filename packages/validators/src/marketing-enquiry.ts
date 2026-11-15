@@ -156,6 +156,11 @@ export const enquiryRefParamSchema = z.object({
     ),
 });
 
+/** One attachment of an enquiry. */
+export const enquiryAttachmentParamSchema = enquiryRefParamSchema.extend({
+  attachmentId: z.string().uuid(),
+});
+
 /** The Enquiries list: a view, filters on top of it, and a cursor to continue. */
 export const adminEnquiryListQuerySchema = z.object({
   view: z.enum(ENQUIRY_VIEWS).default("open"),
@@ -163,6 +168,10 @@ export const adminEnquiryListQuerySchema = z.object({
   department: departmentSlugSchema.optional(),
   status: z.enum(ENQUIRY_STATUSES).optional(),
   assignee: z.string().trim().min(1).max(100).optional(),
+  /** Matches the sender's name or email, the reference, or the artist or title of the work. */
+  q: z.string().trim().min(1).max(80).optional(),
+  /** Overrides the view's own order: by when the enquiry arrived. */
+  sort: z.enum(["oldest", "newest"]).optional(),
   cursor: z.string().trim().min(1).max(300).optional(),
   limit: z.coerce.number().int().min(1).max(100).default(25),
 });

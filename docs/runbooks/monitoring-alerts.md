@@ -235,6 +235,10 @@ UPDATE lot_reoffer
    AND close_reason LIKE 'invoice_not_raised:%';
 ```
 
+## Failed jobs: restore window and payload purge
+
+A discarded failure can be restored for 90 days (`FAILED_JOB_RESOLVED_RETENTION_DAYS`); after that Restore is refused with `restore_window_closed`. The worker's daily `purge-failed-job-payloads` job clears `failed_jobs.payload_json` on retried and discarded jobs resolved more than 90 days ago, in batches of 500 (at most 200 batches a run). The record, error text and audit trail stay; jobs still in Needs review keep their payload. It needs no migration: `worker_app` already holds `UPDATE` on `failed_jobs`. The restore window applies to background jobs only, because only their payload is purged. Integration deliveries and webhooks keep their payload in their own tables, which this job does not touch, so a discard of theirs can be restored at any time and the page shows no restore deadline for them. Add `purge-failed-job-payloads` to `SENTRY_MONITOR_SLUGS` and create the cron monitor (daily, about 30 minutes margin); without the entry the job runs unmonitored.
+
 ## Failed jobs growing (`failed_jobs_growing`)
 
 Failures can pile up on Bid admin › Failed jobs for weeks without anyone looking, many of them the same failure over and over. The worker's `failed-jobs-watch` job reads the Failed jobs stores every day at 08:00 London and raises **one** alert (Sentry warning `failed_jobs_growing`, logged at `warn`) when, in Needs review:

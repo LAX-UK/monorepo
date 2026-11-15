@@ -2,6 +2,7 @@ import {
   SUBJECT_EXPORT_MANIFEST_SUBROUTE,
   SUBJECT_EXPORT_PAGE_SUBROUTE,
 } from "@auction/identity-contracts";
+import { InvalidSubjectExportCursorError } from "@auction/identity-contracts/subject-export-readers";
 import { Sentry } from "@auction/observability";
 import { Hono } from "hono";
 import { createMiddleware } from "hono/factory";
@@ -9,7 +10,6 @@ import type { ContainerInternalIdentitySubjectExportRoutesSlice } from "../conta
 import type { Env } from "../env.js";
 import { createSubjectExportMachineAuth } from "../middleware/subject-export-machine-auth.js";
 import { UnknownSubjectExportCategoryError } from "../subject-export/subject-export.service.js";
-import { InvalidSubjectExportCursorError } from "../subject-export/subject-export.types.js";
 
 /**
  * Answers Identity's "download my data" questions for LAX Bid: what is held about a person

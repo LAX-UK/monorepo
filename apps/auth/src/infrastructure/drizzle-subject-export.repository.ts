@@ -172,6 +172,20 @@ export class DrizzleSubjectExportRepository implements SubjectExportRepository {
     return row ? toSubjectExportRow(row) : null;
   }
 
+  async listRequestsSince(subjectId: string, windowStart: Date): Promise<SubjectExportRow[]> {
+    const rows = await this.db
+      .select()
+      .from(subjectDataExport)
+      .where(
+        and(
+          eq(subjectDataExport.subjectId, subjectId),
+          gt(subjectDataExport.requestedAt, windowStart),
+        ),
+      )
+      .orderBy(desc(subjectDataExport.requestedAt));
+    return rows.map(toSubjectExportRow);
+  }
+
   async findById(exportId: string): Promise<SubjectExportRow | null> {
     const [row] = await this.db
       .select()
