@@ -121,3 +121,50 @@ export const paymentGroupDelivery = pgTable(
     check("payment_group_delivery_refunded_pence_check", sql`${table.refundedPence} >= 0`),
   ],
 );
+
+/**
+ * A staff refund of a quote's courier charge, one row per request (migration 0393). Written with
+ * the staff reason under the group lock before Stripe is asked, so its amount counts against what
+ * is left of the courier charge while the request is in flight: two requests at the same time can
+ * never refund more than was charged between them. The Stripe refund's idempotency key and
+ * `metadata.deliveryRefundId` name the row.
+ *
+ * Status: `pending` (asked for, or Stripe is still processing it) → `succeeded`, or `failed` when
+ * Stripe made no refund or the refund failed or was cancelled, which frees the amount again.
+ */
+export const paymentGroupDeliveryRefund = pgTable(
+  "payment_group_delivery_refund",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    paymentGroupId: uuid("payment_group_id")
+      .notNull()
+      .references(() => paymentGroup.id, { onDelete: "restrict" }),
+    deliveryQuoteId: uuid("delivery_quote_id")
+      .notNull()
+      .references(() => deliveryQuote.id, { onDelete: "restrict" }),
+    amountPence: integer("amount_pence").notNull(),
+    status: text("status").notNull().default("pending"),
+    /** Why the courier charge goes back, as staff wrote it. */
+    staffReason: text("staff_reason").notNull(),
+    actorUserId: text("actor_user_id").notNull(),
+    stripeRefundId: text("stripe_refund_id"),
+    /** Stripe's own status for the refund, as last seen. */
+    stripeStatus: text("stripe_status"),
+    createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("payment_group_delivery_refund_quote_idx").on(
+      table.paymentGroupId,
+      table.deliveryQuoteId,
+    ),
+    uniqueIndex("payment_group_delivery_refund_stripe_uidx")
+      .on(table.stripeRefundId)
+      .where(sql`${table.stripeRefundId} IS NOT NULL`),
+    check("payment_group_delivery_refund_amount_check", sql`${table.amountPence} > 0`),
+    check(
+      "payment_group_delivery_refund_status_check",
+      sql`${table.status} IN ('pending', 'succeeded', 'failed')`,
+    ),
+  ],
+);

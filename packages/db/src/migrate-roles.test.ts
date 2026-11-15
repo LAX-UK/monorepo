@@ -13,6 +13,7 @@ import {
   API_ACCOUNTING_REQUEUE_COLUMNS,
   API_ACCOUNTING_REQUEUE_TABLES,
   API_ACCOUNTING_SETTING_TABLES,
+  API_DELIVERY_REFUND_TABLES,
   API_DENY_TABLES,
   API_PAYMENT_REFUND_TABLES,
   API_PAYMENT_TRANSFER_REFERENCE_TABLES,
@@ -900,6 +901,18 @@ describe("migrate-roles invariants", () => {
     expect([...API_DENY_TABLES]).not.toContain("payment_transfer_reference");
     expect([...WORKER_FULL_TABLES]).not.toContain("payment_transfer_reference");
     expect([...WORKER_READ_TABLES]).not.toContain("payment_transfer_reference");
+  });
+
+  it("lets the Bid API add and update courier refund requests but never delete them; the worker has none", async () => {
+    expect([...API_DELIVERY_REFUND_TABLES]).toEqual(["payment_group_delivery_refund"]);
+    expect([...API_DENY_TABLES]).not.toContain("payment_group_delivery_refund");
+    expect([...WORKER_DENY_TABLES]).toContain("payment_group_delivery_refund");
+    expect([...WORKER_READ_TABLES]).not.toContain("payment_group_delivery_refund");
+    expect([...WORKER_FULL_TABLES]).not.toContain("payment_group_delivery_refund");
+    const source = await readFile(join(__dirname, "migrate-roles.ts"), "utf8");
+    expect(source).toMatch(
+      /API_DELIVERY_REFUND_TABLES as readonly string\[\]\)\.includes\(tableName\)\) \{\s+await grantIfExists\(client, "api_app", tableName, "INSERT, SELECT, UPDATE"\);/,
+    );
   });
 
   it("keeps refund reversals append-only for the Bid API and away from every other role", () => {
