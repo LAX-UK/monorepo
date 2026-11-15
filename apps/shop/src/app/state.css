@@ -230,3 +230,33 @@
     opacity: 1;
   }
 }
+
+/* Checkout loading: panels reserve the height of the details page (form, then summary), so the
+   page replaces them without moving what sits below. Phones also keep the closed order-summary
+   bar, which the wider layout does not draw. */
+.shop-checkout-skeleton__disclosure {
+  height: 3rem;
+  border-radius: var(--radius-card);
+}
+
+.shop-checkout-skeleton__form {
+  min-height: 34rem;
+}
+
+.shop-checkout-skeleton__summary {
+  min-height: 18rem;
+}
+
+@media (min-width: 64rem) {
+  .shop-checkout-skeleton__disclosure {
+    display: none;
+  }
+
+  .shop-checkout-skeleton__form {
+    min-height: 30rem;
+  }
+
+  .shop-checkout-skeleton__summary {
+    min-height: 20rem;
+  }
+}
