@@ -87,7 +87,9 @@ describe.skipIf(!HAS_DB)("pay several: one payment for several invoices (integra
   const publish = vi.fn().mockResolvedValue(undefined);
   const events = mockDomainEventSink(publish);
   const receipt = { send: vi.fn().mockResolvedValue(undefined) };
-  let chargeRefunds: GroupChargeRefund[] = [];
+  /** A listed refund; courier ones also carry the request named in Stripe's metadata. */
+  type ListedRefund = GroupChargeRefund & { deliveryRefundId?: string | null };
+  let chargeRefunds: ListedRefund[] = [];
   const gateway: IPaymentGroupGateway & {
     createCheckout: ReturnType<typeof vi.fn>;
     checkoutStatus: ReturnType<typeof vi.fn<(sessionId: string) => Promise<GroupCheckoutStatus>>>;
@@ -1282,6 +1284,7 @@ describe.skipIf(!HAS_DB)("pay several: one payment for several invoices (integra
           {
             paymentId: input.paymentId ?? null,
             deliveryQuoteId: input.deliveryQuoteId ?? null,
+            deliveryRefundId: input.deliveryRefundId ?? null,
             amountPence: input.amount ?? 0,
           },
         ];
@@ -1313,6 +1316,7 @@ describe.skipIf(!HAS_DB)("pay several: one payment for several invoices (integra
             status: "succeeded",
             paymentId: r.paymentId,
             deliveryQuoteId: r.deliveryQuoteId ?? null,
+            deliveryRefundId: r.deliveryRefundId ?? null,
             amountPence: r.amountPence,
           }));
           await listed();
@@ -1595,6 +1599,58 @@ describe.skipIf(!HAS_DB)("pay several: one payment for several invoices (integra
       for (const a of audit) {
         expect(a.payload).toMatchObject({ staffReason: "Lot damaged; courier charge returned." });
       }
+    });
+
+    it("a request whose Stripe refund went through but whose outcome was never written is reconciled through metadata, not released", async () => {
+      const { groupId, quoteId } = await paidWithCourier();
+      // The process died after Stripe answered: the row is still `pending` with no Stripe id, and
+      // old enough that an unsent request would be released.
+      const [stuck] = await db
+        .insert(paymentGroupDeliveryRefund)
+        .values({
+          paymentGroupId: groupId,
+          deliveryQuoteId: quoteId,
+          amountPence: 5_000,
+          status: "pending",
+          staffReason: "Courier charge returned.",
+          actorUserId: payerId,
+          createdAt: new Date(Date.now() - 60 * 60 * 1000),
+        })
+        .returning({ id: paymentGroupDeliveryRefund.id });
+      const stuckId = (stuck as { id: string }).id;
+      chargeRefunds = [
+        {
+          paymentId: null,
+          deliveryQuoteId: quoteId,
+          deliveryRefundId: stuckId,
+          amountPence: 5_000,
+        },
+      ];
+      createRefund.mockClear();
+
+      const ask = (amountPence?: number) =>
+        deliveryRefunds.refundDelivery({
+          actorUserId: payerId,
+          role: "staff",
+          staffRoles: ["administrator"],
+          paymentGroupId: groupId,
+          deliveryQuoteId: quoteId,
+          reason: "Second part of the courier charge.",
+          amountPence,
+        });
+      // The £50 Stripe holds counts once: only £130 of the £180 is left, so £130.01 is refused.
+      expect((await ask(13_001)).isErr()).toBe(true);
+      expect(createRefund).not.toHaveBeenCalled();
+      expect((await ask(13_000)).isOk()).toBe(true);
+
+      const [row] = await db
+        .select({
+          status: paymentGroupDeliveryRefund.status,
+          stripeRefundId: paymentGroupDeliveryRefund.stripeRefundId,
+        })
+        .from(paymentGroupDeliveryRefund)
+        .where(eq(paymentGroupDeliveryRefund.id, stuckId));
+      expect(row).toEqual({ status: "succeeded", stripeRefundId: "re_listed_0" });
     });
 
     it("an invoice refund opens one finance task per increase, and the seller moves by the invoice only", async () => {
