@@ -1,4 +1,4 @@
-import type { Bid, Lot, Sale } from "@auction/types";
+import type { Bid, Lot, PublicLotView, Sale } from "@auction/types";
 import { describe, expect, it, vi } from "vitest";
 import type { DashboardQueryService } from "./dashboard-query.service.js";
 import type { ILotRepository, ISaleRepository } from "./interfaces/repositories.js";
@@ -190,7 +190,7 @@ describe("sealed lot price masking on dashboard reads", () => {
     );
   }
 
-  function figures(rows: { lot: Lot | null }[]) {
+  function figures(rows: { lot: Lot | PublicLotView | null }[]) {
     return Object.fromEntries(
       rows.map((r) => [
         r.lot?.id,

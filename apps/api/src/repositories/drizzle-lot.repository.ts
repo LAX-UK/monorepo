@@ -139,12 +139,18 @@ function publicParentSaleExists() {
   )`;
 }
 
-function catalogSalePageOrderBy(sort: SaleCatalogLotsSort) {
+/**
+ * The price a lot is ordered by: the price the public reads. An open sealed lot shows its starting
+ * price, so it sorts there too; ordering by the stored current price would rank its hidden bids.
+ */
+export const shownPriceOrder = sql`case when ${lot.status} = 'active' and ${lot.auctionType} = 'sealed' then ${lot.startingPrice} else ${lot.currentPrice} end`;
+
+export function catalogSalePageOrderBy(sort: SaleCatalogLotsSort) {
   switch (sort) {
     case "priceAsc":
-      return asc(lot.currentPrice);
+      return asc(shownPriceOrder);
     case "priceDesc":
-      return desc(lot.currentPrice);
+      return desc(shownPriceOrder);
     case "endingAsc":
       return asc(lot.endTime);
     default:
@@ -171,12 +177,12 @@ function catalogLotsBySaleWhere(
   return and(...conditions);
 }
 
-function listOrderBy(sort: ListLotsSort | undefined) {
+export function listOrderBy(sort: ListLotsSort | undefined) {
   switch (sort) {
     case "endingAsc":
       return asc(lot.endTime);
     case "hammerDesc":
-      return desc(lot.currentPrice);
+      return desc(shownPriceOrder);
     case "endedDesc":
       return desc(lot.endTime);
     default:
