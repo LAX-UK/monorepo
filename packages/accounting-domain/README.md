@@ -191,9 +191,9 @@ same facts always give the same documents, so a redelivered event is a replay.
 `whenReferenceHeld(kind)`: a contact already registered with other details is kept (its details are
 updated by a contact flow of its own); any other kind must match exactly.
 
-**Vendors.** The domain has no vendor port yet: no policy makes a bill in this phase. A bill must go
-to a vendor contact, so when payouts are projected the domain gains `VendorPort` (today only in the
-Books package, where the adapter keeps customers and vendors apart) and contact documents say which
+**Vendors.** `VendorPort` (`upsertVendor`) lives beside the other ports; the Books adapter
+implements it and keeps customers and vendors apart. No policy makes a bill in this phase, and a
+bill must go to a vendor contact, so when payouts are projected contact documents will say which
 party they are, so the sender can route them. Until then the sender sends customers only.
 
 ## Retries

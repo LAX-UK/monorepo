@@ -31,7 +31,7 @@ export { penceToPounds, poundsToPence } from "./money-format.js";
 export { booksLineVat } from "./mappers/common.js";
 export { contactReferenceValue, type ContactType } from "./mappers/contact.js";
 export { orgFor, type OrgChoice, type ZohoApi } from "./api.js";
-export type { VendorPort } from "./gateways.js";
+export type { VendorPort } from "@auction/accounting-domain";
 export { DRY_RUN, type ZohoWriteMode } from "./write-gate.js";
 export { parseBooksDestinationBinding } from "./destination-binding.js";
 export { BOOKS_ORGANISATIONS } from "./organisations.js";

@@ -16,6 +16,7 @@ import type {
   Result,
   Transfer,
   TransferPort,
+  VendorPort,
   WriteFence,
 } from "@auction/accounting-domain";
 import { toIssueFailure } from "../outcome.js";
@@ -362,11 +363,6 @@ export class ZohoTransferGateway implements TransferPort {
       verify: movementCheck(built.body),
     });
   }
-}
-
-/** Seller and artist payouts are billed to a vendor contact, kept apart from the customer one. */
-export interface VendorPort {
-  upsertVendor(contact: Contact, fence?: WriteFence): Promise<IssueOutcome>;
 }
 
 /** A contact is ours only as the type we keep it as: a customer is never a vendor, or the reverse. */
