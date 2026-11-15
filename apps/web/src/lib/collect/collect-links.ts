@@ -1,6 +1,7 @@
 import { CLIENT_ROUTES } from "@/lib/navigation/client-routes";
+import { MAX_LOTS_PER_COLLECTION } from "@auction/domain";
 
-const MAX_LOTS = 20;
+const MAX_LOTS = MAX_LOTS_PER_COLLECTION;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /** The booking page for these lots. */

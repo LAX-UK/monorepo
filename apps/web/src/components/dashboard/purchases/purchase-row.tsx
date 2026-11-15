@@ -41,7 +41,7 @@ export function PurchaseRow({
   selection: {
     selected: boolean;
     onSelectedChange: (selected: boolean) => void;
-    /** What the box is for: "Pay <title>" or "Collect <title>". */
+    /** What the box is for: "Pay <title>" or "Add <title> to a collection visit". */
     label: string;
   } | null;
 }) {
@@ -115,7 +115,9 @@ export function PurchaseRow({
               shape={card.collection.shape}
               title={card.collection.title}
             >
-              {card.collection.label}
+              {/* The label is what shows; the whole sentence is what assistive technology reads. */}
+              <span aria-hidden>{card.collection.label}</span>
+              <span className="sr-only">{card.collection.title}</span>
             </StatusBadge>
           ) : null}
         </span>

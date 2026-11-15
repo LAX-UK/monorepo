@@ -211,6 +211,10 @@ export function CollectSession(props: CollectSessionProps) {
                 <ButtonLink href={`mailto:${failure.bookingEmail ?? email}`} variant="secondary">
                   {COLLECT_COPY.off.email}
                 </ButtonLink>
+              ) : failure.kind === "too_many_visits" ? (
+                <ButtonLink href={`mailto:${email}`} variant="secondary">
+                  {COLLECT_COPY.off.email}
+                </ButtonLink>
               ) : undefined
             }
           >

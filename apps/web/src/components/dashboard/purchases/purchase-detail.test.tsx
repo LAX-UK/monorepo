@@ -120,6 +120,7 @@ describe("PurchaseDetail's collect-by notice", () => {
         ? "That day has passed, so storage charges may apply."
         : "Your work is paid for and waiting at LAX Marylebone.",
     state,
+    placeId: "v1",
     placeName: "LAX Marylebone",
     bookHref: "/purchases/collect?lots=l6",
   });

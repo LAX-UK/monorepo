@@ -60,7 +60,15 @@ describe("PurchaseRow's collection badge", () => {
   it.each([
     ["Booked Wed 18 Nov", { state: "booked", tone: "info", label: "Booked Wed 18 Nov" }],
     ["Collect by Mon 4 Jan 2027", {}],
-    ["Overdue", { state: "overdue", tone: "danger", label: "Overdue" }],
+    [
+      "Overdue since Wed 9 Dec",
+      {
+        state: "overdue",
+        tone: "danger",
+        label: "Overdue since Wed 9 Dec",
+        title: "Collection overdue since Wed 9 Dec. Storage charges may apply.",
+      },
+    ],
   ] as const)("draws %s next to the status", (text, over) => {
     render(
       <PurchaseRow
@@ -73,6 +81,26 @@ describe("PurchaseRow's collection badge", () => {
     expect(screen.getByText("Ready to collect")).toBeInTheDocument();
   });
 
+  it("keeps the overdue day on screen and gives the whole sentence as text, not only a title", () => {
+    const sentence = "Collection overdue since Wed 9 Dec. Storage charges may apply.";
+    render(
+      <PurchaseRow
+        card={card({
+          collection: badge({
+            state: "overdue",
+            tone: "danger",
+            label: "Overdue since Wed 9 Dec",
+            title: sentence,
+          }),
+        })}
+        selection={null}
+        selectColumn={false}
+      />,
+    );
+    expect(screen.getByText("Overdue since Wed 9 Dec")).toBeVisible();
+    expect(screen.getByText(sentence)).toHaveClass("sr-only");
+  });
+
   it("draws no collection badge when there is none", () => {
     render(<PurchaseRow card={card()} selection={null} selectColumn={false} />);
     expect(screen.queryByText(/Booked|Overdue|Collect by/)).toBeNull();
@@ -83,12 +111,16 @@ describe("PurchaseRow's collection badge", () => {
     render(
       <PurchaseRow
         card={card()}
-        selection={{ selected: false, onSelectedChange, label: "Collect Blue Abstract No. 3" }}
+        selection={{
+          selected: false,
+          onSelectedChange,
+          label: "Add Blue Abstract No. 3 to a collection visit",
+        }}
         selectColumn
       />,
     );
     expect(
-      screen.getByRole("checkbox", { name: "Collect Blue Abstract No. 3" }),
+      screen.getByRole("checkbox", { name: "Add Blue Abstract No. 3 to a collection visit" }),
     ).toBeInTheDocument();
   });
 });

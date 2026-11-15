@@ -106,6 +106,8 @@ export type PurchaseCardVm = {
     title: string;
     body: string;
     state: PurchaseCollectByState;
+    /** The venue the work waits at; `null` only from an API that predates it. */
+    placeId: string | null;
     placeName: string;
     bookHref: string;
   } | null;
@@ -415,6 +417,7 @@ function collectByOf(
     title: COLLECT_COPY.collectBy.title(day),
     body: COLLECT_COPY.collectBy[collectBy.state](collectBy.placeName),
     state: collectBy.state,
+    placeId: collectBy.placeId,
     placeName: collectBy.placeName,
     bookHref: `${CLIENT_ROUTES.collect}?lots=${encodeURIComponent(row.lot.id)}`,
   };

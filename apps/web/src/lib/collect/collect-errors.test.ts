@@ -76,7 +76,7 @@ describe("collectFailure", () => {
   it("says plainly that the account has the most collections it can hold", () => {
     expect(
       collectFailure(409, { error: "too_many_visits", message: "Server wording" }, null),
-    ).toEqual({ kind: "other", message: COLLECT_COPY.tooManyVisits });
+    ).toEqual({ kind: "too_many_visits", message: COLLECT_COPY.tooManyVisits });
   });
 
   it("says plainly that requests are coming too fast, whatever the body", () => {

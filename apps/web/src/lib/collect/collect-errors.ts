@@ -24,6 +24,8 @@ export type CollectFailure =
   | { kind: "forbidden"; message: string; viewOnly: boolean }
   | { kind: "rate_limited"; message: string }
   | { kind: "unavailable"; message: string }
+  /** The account holds the most live visits it can: cancel one, or email us. */
+  | { kind: "too_many_visits"; message: string }
   | { kind: "other"; message: string };
 
 const ISSUE_FIELDS: Record<string, string> = {
@@ -96,7 +98,7 @@ export function collectFailure(
         message: text(refusal, "Check who is collecting."),
       };
     case "too_many_visits":
-      return { kind: "other", message: COLLECT_COPY.tooManyVisits };
+      return { kind: "too_many_visits", message: COLLECT_COPY.tooManyVisits };
     case "online_booking_off":
       return {
         kind: "off",
