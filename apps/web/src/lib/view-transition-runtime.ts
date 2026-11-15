@@ -5,7 +5,8 @@
  * `<html data-view-transition="...">` while it runs. A transition started here is unmarked, which
  * the stylesheet times as the public page change (the lot image morph). A caller that needs other
  * timing marks its own kind from the transition it gets back (the admin router marks `"admin"`);
- * the theme toggle (`theme-toggle.tsx`) marks `"theme"` and does not import this module, so the
+ * the theme toggle marks `"theme"` through the shared `revealThemeFromToggle`
+ * (`@auction/marketing-ui/motion/theme-view-transition`) and does not import this module, so the
  * shared layout carries none of it.
  *
  * Marking order: a kind is set inside the update callback and cleared when that transition's

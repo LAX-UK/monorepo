@@ -1,10 +1,11 @@
 /*
- * View transitions, timed by kind from the LAX motion tokens (docs/design/motion.md). apps/web marks
- * a kind on `<html data-view-transition="...">` only while that transition runs: `theme` (the
- * theme toggle) and `admin` (the admin router). A page change started by the shared helper
- * (apps/web/src/lib/view-transition-runtime.ts) is unmarked: that is the public page change, the
- * lot image morph. No rule here matches at rest. Neither path starts a transition under reduced
- * motion; the rules at the end are the CSS backstop.
+ * View transitions, timed by kind from the LAX motion tokens (docs/design/motion.md). A kind is
+ * marked on `<html data-view-transition="...">` only while that transition runs: `theme` (the theme
+ * toggle of LAX Bid, LAX Shop and lax.art, all through the shared `revealThemeFromToggle` in
+ * ./motion/theme-view-transition.ts) and `admin` (the Bid admin router). A page change started by
+ * Bid's page-change helper (apps/web/src/lib/view-transition-runtime.ts) is unmarked: that is the
+ * public page change, the lot image morph. No rule here matches at rest. No path starts a
+ * transition under reduced motion; the rules at the end are the CSS backstop.
  */
 @supports (view-transition-name: root) {
   /* The transition layer is visual only: it must never swallow a click. */
