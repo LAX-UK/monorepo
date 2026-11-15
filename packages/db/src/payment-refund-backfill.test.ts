@@ -3,7 +3,9 @@ import {
   BACKFILL_ONE_PAYMENT_SQL,
   LOCK_NEXT_REFUND_PAYMENTS_SQL,
   type PaymentRefundBackfillConnection,
+  REPORT_REFUND_GAPS_SQL,
   backfillPaymentRefundsInIdOrder,
+  reportPaymentRefundGaps,
 } from "./payment-refund-backfill.js";
 
 type Call = { text: string; values?: unknown[] };
@@ -49,7 +51,7 @@ const summary = (calls: Call[]) =>
 describe("backfillPaymentRefundsInIdOrder", () => {
   it("locks payments in id order with one statement per batch", () => {
     expect(LOCK_NEXT_REFUND_PAYMENTS_SQL).toMatch(
-      /ORDER BY p\."id"\s+LIMIT \$2\s+FOR UPDATE OF p$/,
+      /ORDER BY p\."id"\s+LIMIT \$2\s+FOR NO KEY UPDATE OF p$/,
     );
     expect(LOCK_NEXT_REFUND_PAYMENTS_SQL).toContain('p."id" > $1::uuid');
     expect(BACKFILL_ONE_PAYMENT_SQL).toContain(
@@ -112,5 +114,33 @@ describe("backfillPaymentRefundsInIdOrder", () => {
         RangeError,
       );
     }
+  });
+});
+
+describe("reportPaymentRefundGaps", () => {
+  it("reads the per-payment difference in one statement, with no transaction or lock", async () => {
+    expect(REPORT_REFUND_GAPS_SQL).not.toMatch(/FOR (NO KEY )?UPDATE|FOR (KEY )?SHARE/);
+    const calls: Call[] = [];
+    const connection: PaymentRefundBackfillConnection = {
+      async query(text, values) {
+        calls.push({ text, values });
+        return {
+          rows: [
+            {
+              payment_id: "a",
+              line_pence: "10000",
+              recorded_pence: "4000",
+              difference_pence: "6000",
+            },
+            { payment_id: "b", line_pence: "500", recorded_pence: "800", difference_pence: "-300" },
+          ],
+        };
+      },
+    };
+    expect(await reportPaymentRefundGaps(connection)).toEqual([
+      { paymentId: "a", linePence: 10_000, recordedPence: 4_000, differencePence: 6_000 },
+      { paymentId: "b", linePence: 500, recordedPence: 800, differencePence: -300 },
+    ]);
+    expect(calls).toEqual([{ text: REPORT_REFUND_GAPS_SQL, values: undefined }]);
   });
 });
