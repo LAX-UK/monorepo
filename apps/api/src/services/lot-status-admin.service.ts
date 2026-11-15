@@ -14,6 +14,7 @@ import { findLotsMissingSellerConnect } from "../lib/seller-connect-readiness.js
 import type { ILotJobScheduler } from "./interfaces/job-scheduler.js";
 import type { ILotLifecycleRecorder } from "./interfaces/lot-lifecycle-recorder.js";
 import type { ILotStatusAdminService } from "./interfaces/lot-status-admin.js";
+import { type LotCloseNotifier, announceLotCloseChange } from "./lot/lot-close-change.js";
 
 export class LotStatusAdminService implements ILotStatusAdminService {
   constructor(
@@ -25,6 +26,8 @@ export class LotStatusAdminService implements ILotStatusAdminService {
     private readonly legalEntityRepository: ILegalEntityRepository | null = null,
     private readonly enforceIndividualConnectOnPublish = false,
     private readonly repoFactory: IRepositoryFactory | null = null,
+    private readonly closeNotifier: LotCloseNotifier | null = null,
+    private readonly now: () => Date = () => new Date(),
   ) {}
 
   private txRepos(tx: Database) {
@@ -172,6 +175,14 @@ export class LotStatusAdminService implements ILotStatusAdminService {
         unpublishReason: "manual",
       });
       if (scheduleResult.isErr()) return err(scheduleResult.error);
+    }
+    if (status === "ended") {
+      // Ended by staff: open pages count to now, not to the old close, then read the result.
+      await announceLotCloseChange(this.closeNotifier, {
+        before: l,
+        lot: updated,
+        closesAt: this.now(),
+      });
     }
     return ok(updated);
   }

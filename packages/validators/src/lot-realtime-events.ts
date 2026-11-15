@@ -44,10 +44,16 @@ export const lotRealtimeBidPlacedPublicSchema = z.object({
   reserveMet: z.boolean().optional(),
 });
 
+/**
+ * The lot's close moved: a late bid extended it, or staff changed it. One event for both, so every
+ * open page follows the close however it moved. `changedAt` is the publisher's clock just after the
+ * change was saved; a lot read that began later already has this close (see `asOf` on the lot read).
+ */
 export const lotRealtimeLotExtendedSchema = z.object({
   type: z.literal("lot_extended"),
   lotId: z.string(),
   newEndTime: z.string(),
+  changedAt: z.string().optional(),
 });
 
 export const lotRealtimeProxyCancelledSchema = z.object({
@@ -124,12 +130,14 @@ export function encodeBidPlacedPublicRedisMessage(input: EncodeBidPlacedPublicIn
 export function encodeLotExtendedRedisMessage(input: {
   lotId: string;
   newEndTime: string;
+  changedAt?: string;
 }): string {
   return JSON.stringify(
     lotRealtimeLotExtendedSchema.parse({
       type: "lot_extended",
       lotId: input.lotId,
       newEndTime: input.newEndTime,
+      ...(input.changedAt ? { changedAt: input.changedAt } : {}),
     }),
   );
 }

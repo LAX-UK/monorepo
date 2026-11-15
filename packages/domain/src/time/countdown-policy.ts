@@ -19,6 +19,19 @@ const MINUTE_MS = 60 * SECOND_MS;
 const HOUR_MS = 60 * MINUTE_MS;
 const DAY_MS = 24 * HOUR_MS;
 
+/**
+ * How long past zero a surface says "Closing…" before it says the result is being confirmed. The
+ * page asks the server for the result from 5 s, backing off, so by a minute it has asked four
+ * times: a result that has not come by now is not coming in a moment.
+ */
+export const CLOSING_CONFIRMING_AFTER_MS = 60 * SECOND_MS;
+
+/**
+ * How long past zero the page keeps asking for a result before it stops and offers a refresh
+ * instead. The live connection can still bring the result after this.
+ */
+export const CLOSING_STOP_ASKING_AFTER_MS = 10 * MINUTE_MS;
+
 /** Every place a countdown is shown. A new place is a new row in {@link COUNTDOWN_SURFACES}. */
 export type CountdownSurface = "lot" | "lotBar" | "card" | "chip" | "saleHero" | "cover";
 
@@ -99,8 +112,15 @@ export type CountdownDisplay =
   /** The surface keeps its own text until the count starts. */
   | { kind: "static"; nextChangeInMs: number }
   | CountingDisplay
-  /** Zero reached, result not yet confirmed. */
-  | { kind: "closing" }
+  /**
+   * Zero reached, result not yet confirmed. After {@link CLOSING_CONFIRMING_AFTER_MS} it is
+   * `confirming`: the surface stops saying "Closing…" and says the result is being confirmed. After
+   * {@link CLOSING_STOP_ASKING_AFTER_MS} it is `stalled`: the page has stopped asking and offers a
+   * refresh. The wake time is present only until then.
+   */
+  | { kind: "closing"; confirming: false; nextChangeInMs: number }
+  | { kind: "closing"; confirming: true; stalled: false; nextChangeInMs: number }
+  | { kind: "closing"; confirming: true; stalled: true }
   /** No usable time (not a number). */
   | { kind: "none" };
 
@@ -177,7 +197,24 @@ export function countdownDisplay(
   ctx: CountdownContext = {},
 ): CountdownDisplay {
   if (!Number.isFinite(msLeft)) return { kind: "none" };
-  if (msLeft <= 0) return { kind: "closing" };
+  if (msLeft <= 0) {
+    const overdueMs = -msLeft;
+    if (overdueMs >= CLOSING_STOP_ASKING_AFTER_MS) {
+      return { kind: "closing", confirming: true, stalled: true };
+    }
+    return overdueMs >= CLOSING_CONFIRMING_AFTER_MS
+      ? {
+          kind: "closing",
+          confirming: true,
+          stalled: false,
+          nextChangeInMs: CLOSING_STOP_ASKING_AFTER_MS - overdueMs,
+        }
+      : {
+          kind: "closing",
+          confirming: false,
+          nextChangeInMs: Math.max(1, CLOSING_CONFIRMING_AFTER_MS - overdueMs),
+        };
+  }
   const rule = ruleFor(surface, ctx);
   const total = wholeSecondsLeft(msLeft);
   const roundedMs = total * SECOND_MS;

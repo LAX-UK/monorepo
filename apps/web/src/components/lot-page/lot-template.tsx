@@ -7,7 +7,7 @@ import { LotMedia } from "@/components/lot-page/lot-media/lot-media";
 import { LotPageViewProvider } from "@/components/lot-page/lot-page-view-context";
 import { LotPriceBlock } from "@/components/lot-page/lot-price-block";
 import { LotSecondaryActions } from "@/components/lot-page/lot-secondary-actions";
-import { LotTimeEffects } from "@/components/lot-page/lot-time-effects";
+import { LotTimeEffects } from "@/components/lot-page/lot-time-effects.lazy";
 import type { LotTemplateData } from "@/lib/lot-page/lot-template-props";
 import { LaxDensityProvider } from "@auction/ui/lax/density";
 import { laxDensityAttributes } from "@auction/ui/lax/density-attributes";

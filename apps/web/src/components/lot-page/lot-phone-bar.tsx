@@ -3,6 +3,7 @@
 import { CookieDockSlot } from "@/components/marketing/consent/cookie-dock";
 import { useOutOfView } from "@/hooks/use-out-of-view";
 import { useReducedMotion } from "@/hooks/use-reduced-motion";
+import { closingBarFace } from "@/lib/lot-page/closing-face";
 import type { PhoneBarLine, PhoneBarSummary, PhoneBarTone } from "@/lib/lot-page/phone-bar";
 import { useCountdown } from "@/lib/time/use-clock";
 import type { CountdownContext, CountdownDisplay } from "@auction/domain";
@@ -53,7 +54,7 @@ function faceOf(line: PhoneBarLine, display: CountdownDisplay | null): LineFace 
       return { words: c.dateText, compact: c.dateText, tone: "calm" };
     case "closing":
       return c.kind === "closes"
-        ? { words: "Closing…", compact: "Closing…", tone: "final" }
+        ? closingBarFace(display.confirming)
         : { words: "Opening…", compact: "Opening…", tone: "calm" };
     case "counting":
       return c.kind === "closes"

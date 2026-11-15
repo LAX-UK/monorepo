@@ -1,3 +1,5 @@
+import { NEWSLETTER_SUBMIT_FAILED_MESSAGE } from "@/lib/newsletter/newsletter-failure";
+
 /** Closed set of client-normalised auth failure reasons (never show Better Auth raw `code` / stack strings in UI). */
 export const AUTH_ERROR_CODES = [
   "unknown",
@@ -82,7 +84,7 @@ export const AUTH_ERROR_MESSAGES: Record<AuthErrorCode, string> = {
   two_factor_backup_regenerate_failed:
     "We could not generate new backup codes. Check your password and try again.",
   two_factor_unexpected_response: "Something went wrong with two-factor setup. Please try again.",
-  newsletter_submit_failed: "We could not subscribe you right now. Please try again later.",
+  newsletter_submit_failed: NEWSLETTER_SUBMIT_FAILED_MESSAGE,
   session_required: "You need to be signed in to do that.",
   user_not_found: "We could not find that account.",
   email_change_same_email: "The new address must be different from your current email.",

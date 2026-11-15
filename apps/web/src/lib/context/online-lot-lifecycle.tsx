@@ -31,6 +31,13 @@ type Ctx = {
   extensionCount: number;
   /** A late bid moved the close: the new end time and how much it added. */
   applyExtension: (extension: { endTimeMs: number; addedMs: number | null }) => void;
+  /**
+   * The first live read found a lot that a late bid had already extended (a reload mid-extension):
+   * the close is the extended one and the lot counts as extended, with no event to wait for.
+   */
+  seedExtended: (endTimeMs: number) => void;
+  /** The lot was extended before this page loaded, so it reads "Extended" without an event. */
+  seededExtended: boolean;
   /** Authoritative end time after anti-snipe extend or reconnect hydrate. */
   liveEndTimeMs: number | null;
   setLiveEndTimeMs: (ms: number) => void;
@@ -62,6 +69,12 @@ export function OnlineLotLifecycleProvider({ lot, sale, children }: ProviderProp
   const [bidCardInView, setBidCardInView] = useState(true);
   const ownBidEchoGuardRef = useRef<OwnBidEchoGuard | null>(null);
 
+  const [seededExtended, setSeededExtended] = useState(false);
+  const seedExtended = useCallback((endTimeMs: number) => {
+    setLiveEndTimeMs(endTimeMs);
+    setSeededExtended(true);
+  }, []);
+
   const [extensionCount, setExtensionCount] = useState(0);
   const applyExtension = useCallback((extension: { endTimeMs: number; addedMs: number | null }) => {
     setLiveEndTimeMs(extension.endTimeMs);
@@ -86,6 +99,8 @@ export function OnlineLotLifecycleProvider({ lot, sale, children }: ProviderProp
       setExtendedDeltaMs,
       extensionCount,
       applyExtension,
+      seedExtended,
+      seededExtended,
       liveEndTimeMs,
       setLiveEndTimeMs,
       liveLotStatus,
@@ -103,6 +118,8 @@ export function OnlineLotLifecycleProvider({ lot, sale, children }: ProviderProp
       setExtendedDeltaMs,
       extensionCount,
       applyExtension,
+      seedExtended,
+      seededExtended,
       liveEndTimeMs,
       liveLotStatus,
       liveWinnerId,

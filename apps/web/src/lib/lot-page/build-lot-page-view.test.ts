@@ -285,6 +285,7 @@ describe("buildLotPageView bidder states", () => {
 
 describe("the time row counts", () => {
   const NOW = new Date("2026-11-09T12:00:00Z");
+  const NOW_FOR_CLOSING = new Date("2026-11-03T21:10:00Z");
   const base = {
     now: NOW,
     startsAt: "2026-11-08T18:00:00Z",
@@ -338,6 +339,50 @@ describe("the time row counts", () => {
     expect(row?.countdown).toMatchObject({ kind: "closes", extended: false });
     expect(view.badge.label).toBe("Closing");
     expect(view.action).toBe("bid_disabled");
+  });
+
+  it("a closing lot a minute past its close says the result is being confirmed, never a verdict", () => {
+    const endsAt = new Date(NOW_FOR_CLOSING.getTime() - 61_000).toISOString();
+    const view = buildLotPageView({
+      ...base,
+      lifecycle: "closing",
+      msLeft: 0,
+      now: NOW_FOR_CLOSING,
+      endsAt,
+    });
+    const row = view.rows.find((r) => r.countdown);
+    expect(row).toMatchObject({
+      label: "Ended",
+      value: "Confirming the result",
+      tone: "ended",
+      clock: false,
+    });
+    expect(row?.countdown).toMatchObject({ kind: "closes" });
+    const fresh = buildLotPageView({
+      ...base,
+      lifecycle: "closing",
+      msLeft: 0,
+      now: NOW_FOR_CLOSING,
+      endsAt: new Date(NOW_FOR_CLOSING.getTime() - 59_000).toISOString(),
+    });
+    expect(fresh.rows.find((r) => r.countdown)?.value).toBe("Closing…");
+    expect(row?.refresh).toBeUndefined();
+  });
+
+  it("ten minutes past its close, with no result, the row offers a refresh; at 60 s it does not", () => {
+    const at = (overdueMs: number) =>
+      buildLotPageView({
+        ...base,
+        lifecycle: "closing",
+        msLeft: 0,
+        now: NOW_FOR_CLOSING,
+        endsAt: new Date(NOW_FOR_CLOSING.getTime() - overdueMs).toISOString(),
+      }).rows.find((r) => r.countdown);
+    expect(at(10 * 60_000)).toMatchObject({ value: "Confirming the result", refresh: true });
+    expect(at(10 * 60_000 - 1)?.refresh).toBeUndefined();
+    // The boundary itself: exactly a minute past is confirming, a millisecond short is not.
+    expect(at(60_000)?.value).toBe("Confirming the result");
+    expect(at(59_999)?.value).toBe("Closing…");
   });
 
   it("a lot at the moment it opens reads Opening…", () => {

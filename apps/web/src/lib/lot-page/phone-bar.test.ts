@@ -132,3 +132,34 @@ describe("phone bar summary", () => {
     expect(summary({ lifecycle, msLeft: null })).toBeNull();
   });
 });
+
+describe("phone bar at and after the close", () => {
+  const at = (afterCloseMs: number) =>
+    buildPhoneBarSummary(
+      view({
+        lifecycle: "closing",
+        msLeft: 0,
+        endsAt: new Date(NOW.getTime() - afterCloseMs).toISOString(),
+      }),
+      NOW.getTime(),
+    )?.line;
+
+  it("says Closing… for the first minute and keeps counting to it", () => {
+    expect(at(30_000)).toMatchObject({ words: "Closing…", tone: "final", clock: true });
+    expect(at(30_000)?.countdown).toMatchObject({ kind: "closes" });
+  });
+
+  it("then says the result is being confirmed, with no verdict and no clock icon", () => {
+    expect(at(61_000)).toMatchObject({
+      words: "Ended · confirming the result",
+      compact: "Confirming result",
+      tone: "calm",
+      clock: false,
+    });
+  });
+
+  it("turns exactly a minute past the close, not a millisecond before", () => {
+    expect(at(59_999)?.words).toBe("Closing…");
+    expect(at(60_000)?.words).toBe("Ended · confirming the result");
+  });
+});

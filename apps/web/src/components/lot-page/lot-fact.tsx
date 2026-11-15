@@ -2,6 +2,11 @@ import type { LotInfoTone, LotRowMoment } from "@/lib/lot-page/lot-time-rows";
 import { cn } from "@auction/ui/lib/utils";
 import { OfficialTime } from "@auction/ui/time";
 import { Clock } from "lucide-react";
+import dynamic from "next/dynamic";
+
+const ClosingRefresh = dynamic(() => import("./closing-refresh").then((m) => m.ClosingRefresh), {
+  ssr: false,
+});
 
 /** The clock tightens from calm to soon to final; words change with the colour. */
 const TONE_CLASS: Readonly<Record<LotInfoTone, string>> = {
@@ -27,10 +32,22 @@ export type LotFactProps = {
   tinted?: boolean | undefined;
   /** The instant the second line quotes, so the visitor's own time can sit under it. */
   moment?: LotRowMoment | undefined;
+  /** Offers "Refresh to see the result" under the row, for a result the page stopped asking for. */
+  onRefresh?: (() => void) | undefined;
 };
 
 /** One fact: a label, its value and an optional second line. */
-export function LotFact({ label, value, sub, tone, clock, spoken, tinted, moment }: LotFactProps) {
+export function LotFact({
+  label,
+  value,
+  sub,
+  tone,
+  clock,
+  spoken,
+  tinted,
+  moment,
+  onRefresh,
+}: LotFactProps) {
   return (
     <div
       className={cn(
@@ -75,6 +92,11 @@ export function LotFact({ label, value, sub, tone, clock, spoken, tinted, moment
           ) : (
             sub
           )}
+        </dd>
+      ) : null}
+      {onRefresh ? (
+        <dd className="m-0 mt-1">
+          <ClosingRefresh onRefresh={onRefresh} />
         </dd>
       ) : null}
     </div>

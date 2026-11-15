@@ -6,6 +6,8 @@ describe("parseLotBiddingView", () => {
     expect(
       parseLotBiddingView({
         serverNow: "2026-11-03T20:00:00.000Z",
+        extendedUntil: "2026-11-03T21:08:00.000Z",
+        asOf: "2026-11-03T19:59:59.900Z",
         nextBidAmount: "7250.00",
         hammerPrice: "7000.00",
         soldForWithPremium: "8750.00",
@@ -13,6 +15,8 @@ describe("parseLotBiddingView", () => {
       }),
     ).toEqual({
       serverNow: "2026-11-03T20:00:00.000Z",
+      extendedUntil: "2026-11-03T21:08:00.000Z",
+      asOf: "2026-11-03T19:59:59.900Z",
       nextBidAmount: "7250.00",
       hammerPrice: "7000.00",
       soldForWithPremium: "8750.00",

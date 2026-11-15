@@ -1,11 +1,13 @@
 import { DEFAULT_ANTI_SNIPING_EXTENSION_MS } from "@auction/validators";
 
-/** A late bid moved the close. */
+/** The close moved: a late bid, or staff. */
 export type LotExtension = {
   /** The new end time, in epoch milliseconds. */
   endTimeMs: number;
   /** The server's clock when it made the event, when it said. */
   serverNowMs: number | null;
+  /** When the close was changed, when the publisher said. */
+  changedAtMs?: number | null;
 };
 
 function msOf(value: unknown): number | null {
@@ -23,7 +25,7 @@ export function parseLotExtension(payload: unknown): LotExtension | null {
   const o = payload as Record<string, unknown>;
   const endTimeMs = msOf(o.extendedUntil) ?? msOf(o.newEndTime);
   if (endTimeMs === null) return null;
-  return { endTimeMs, serverNowMs: msOf(o.serverNow) };
+  return { endTimeMs, serverNowMs: msOf(o.serverNow), changedAtMs: msOf(o.changedAt) };
 }
 
 /**

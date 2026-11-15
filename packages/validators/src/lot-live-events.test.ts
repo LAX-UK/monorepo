@@ -34,6 +34,30 @@ describe("lotLiveDeliveries", () => {
     ]);
   });
 
+  it("carries when the close was changed, so a lot read from before it cannot undo it", () => {
+    const message = parse(
+      JSON.parse(
+        encodeLotExtendedRedisMessage({
+          lotId: "lot-1",
+          newEndTime: "2026-11-03T19:50:00.000Z",
+          changedAt: "2026-11-03T19:40:00.000Z",
+        }),
+      ),
+    );
+    expect(lotLiveDeliveries(message, NOW)).toEqual([
+      {
+        audience: "lot",
+        event: "lot.extended",
+        payload: {
+          lotId: "lot-1",
+          extendedUntil: "2026-11-03T19:50:00.000Z",
+          serverNow: "2026-11-03T20:00:00.000Z",
+          changedAt: "2026-11-03T19:40:00.000Z",
+        },
+      },
+    ]);
+  });
+
   it("announces a sold lot with its hammer price and no winner", () => {
     const message = parse({
       type: "lot_ended",

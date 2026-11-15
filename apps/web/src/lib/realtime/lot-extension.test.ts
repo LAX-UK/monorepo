@@ -13,7 +13,19 @@ describe("parseLotExtension", () => {
     ).toEqual({
       endTimeMs: Date.parse("2026-11-09T18:42:30.000Z"),
       serverNowMs: Date.parse("2026-11-09T18:41:55.000Z"),
+      changedAtMs: null,
     });
+  });
+
+  it("reads when the close was changed, when the publisher said", () => {
+    expect(
+      parseLotExtension({
+        lotId: "l1",
+        extendedUntil: "2026-11-09T18:30:00.000Z",
+        serverNow: "2026-11-09T18:20:00.050Z",
+        changedAt: "2026-11-09T18:20:00.000Z",
+      })?.changedAtMs,
+    ).toBe(Date.parse("2026-11-09T18:20:00.000Z"));
   });
 
   it("reads the older event, which has no server clock", () => {
@@ -26,6 +38,7 @@ describe("parseLotExtension", () => {
     ).toEqual({
       endTimeMs: Date.parse("2026-11-09T18:42:30.000Z"),
       serverNowMs: null,
+      changedAtMs: null,
     });
   });
 

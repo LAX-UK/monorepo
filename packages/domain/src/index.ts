@@ -1299,6 +1299,8 @@ export {
   type StillToSendGroup,
 } from "./still-to-send.js";
 export {
+  CLOSING_CONFIRMING_AFTER_MS,
+  CLOSING_STOP_ASKING_AFTER_MS,
   COUNTDOWN_SURFACES,
   countdownDisplay,
   type CountdownContext,

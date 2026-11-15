@@ -165,6 +165,7 @@ export function createLotCatalogServices(
     lotLifecycleRecording,
     stripeConnectService,
     artistRegistryService,
+    notificationService,
   } = platform;
   const { lotLifecycleService } = lotLifecycle;
   const { mediaUrlResolver, catalogueMediaUrlResolver, mediaAssetEnricher, imageCleanupService } =
@@ -203,6 +204,7 @@ export function createLotCatalogServices(
     watchlist: watchlistRepo,
     jobScheduler: lotJobScheduler,
     lotNotifications: lotNotificationCoordinator,
+    lotCloseNotifier: notificationService,
     imageCleanup: imageCleanupService,
     legalEntityNotificationRecipients,
     legalEntityRepository,
@@ -340,6 +342,7 @@ export function createLotCatalogServices(
     legalEntityRepository,
     stripeConnectService.isConfigured(),
     repoFactory,
+    notificationService,
   );
   const saleStatusTransitionService = new SaleStatusTransitionService(
     saleRepo,

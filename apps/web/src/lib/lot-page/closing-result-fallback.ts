@@ -1,65 +1,100 @@
-/** The page asks for the result itself this long after the clock reaches zero. */
+import { CLOSING_STOP_ASKING_AFTER_MS } from "@auction/domain";
+
+/** The page first asks for the result itself this long after the clock reaches zero. */
 export const CLOSING_FIRST_FETCH_MS = 5_000;
-/** Then every this often for the first thirty seconds. */
-export const CLOSING_FETCH_EVERY_MS = 5_000;
-/** And, if the server still has not said, every this often after that. */
-export const CLOSING_SLOW_FETCH_EVERY_MS = 15_000;
-const CLOSING_FAST_WINDOW_MS = 30_000;
+/** Each later ask waits twice as long as the last, up to this. */
+export const CLOSING_FETCH_CAP_MS = 60_000;
+/** Each wait is moved by up to this share either way, so open tabs do not ask in step. */
+export const CLOSING_FETCH_JITTER = 0.2;
 
 /**
- * The delays, from the moment the lot reached zero, at which the page asks the server how the
- * lot ended: 5 s, then every 5 s up to 30 s, then every 15 s. `lot.closed` or the next snapshot
- * usually answers within a second, so these are only the safety net. Pure, for the test.
+ * The wait before ask `attempt` (0 first): 5 s, 10 s, 20 s, 40 s, then every 60 s, each within
+ * ±20%. `lot.closed` or the next snapshot usually answers within a second, so these are only the
+ * safety net. Pure, for the test.
  */
-export function closingFetchDelays(count: number): number[] {
-  const delays: number[] = [];
-  let at = CLOSING_FIRST_FETCH_MS;
-  while (delays.length < count) {
-    delays.push(at);
-    at += at < CLOSING_FAST_WINDOW_MS ? CLOSING_FETCH_EVERY_MS : CLOSING_SLOW_FETCH_EVERY_MS;
-  }
-  return delays;
+export function closingFetchDelay(attempt: number, random: () => number = Math.random): number {
+  const base = Math.min(CLOSING_FIRST_FETCH_MS * 2 ** attempt, CLOSING_FETCH_CAP_MS);
+  return Math.round(base * (1 + CLOSING_FETCH_JITTER * (2 * random() - 1)));
 }
 
-type Timers = {
+export type ClosingFetchEnv = {
   set(callback: () => void, ms: number): unknown;
   clear(handle: unknown): void;
+  /** The server-aligned clock, the one the countdown reads. */
+  nowMs(): number;
+  hidden(): boolean;
+  /** Calls back when the tab is shown again or the device comes back online. Returns the stop. */
+  onResume(callback: () => void): () => void;
+  random(): number;
 };
 
+function browserEnv(nowMs: () => number): ClosingFetchEnv {
+  return {
+    set: (cb, ms) => setTimeout(cb, ms),
+    clear: (handle) => clearTimeout(handle as ReturnType<typeof setTimeout>),
+    nowMs,
+    hidden: () => document.visibilityState === "hidden",
+    onResume: (cb) => {
+      const onVisible = () => {
+        if (document.visibilityState === "visible") cb();
+      };
+      document.addEventListener("visibilitychange", onVisible);
+      window.addEventListener("online", cb);
+      return () => {
+        document.removeEventListener("visibilitychange", onVisible);
+        window.removeEventListener("online", cb);
+      };
+    },
+    random: Math.random,
+  };
+}
+
 /**
- * Asks for the result on that schedule until stopped. Returns the stop. Each ask is one at a
- * time: a slow answer is waited for before the next is scheduled.
+ * Asks for the result, backing off, until stopped or until {@link CLOSING_STOP_ASKING_AFTER_MS}
+ * past `closedAtMs`, when the row offers a refresh instead. Nothing is asked while the tab is
+ * hidden; showing it again, or coming back online, starts again from the first wait. One ask at a
+ * time: a slow answer is waited for before the next is scheduled. Returns the stop.
  */
 export function startClosingFetches(
   fetchResult: () => Promise<unknown>,
-  timers: Timers = {
-    set: (cb, ms) => setTimeout(cb, ms),
-    clear: (handle) => clearTimeout(handle as ReturnType<typeof setTimeout>),
-  },
+  closedAtMs: number,
+  env: ClosingFetchEnv | (() => number),
 ): () => void {
+  const io = typeof env === "function" ? browserEnv(env) : env;
   let stopped = false;
+  let busy = false;
   let handle: unknown = null;
-  let elapsed = 0;
-  let next = CLOSING_FIRST_FETCH_MS;
+  let attempt = 0;
+  const due = () => !stopped && io.nowMs() - closedAtMs < CLOSING_STOP_ASKING_AFTER_MS;
   const schedule = () => {
-    handle = timers.set(async () => {
-      if (stopped) return;
-      elapsed = next;
-      try {
-        await fetchResult();
-      } catch {
-        // The page keeps saying "Closing…" and asks again.
-      }
-      if (stopped) return;
-      next =
-        elapsed +
-        (elapsed < CLOSING_FAST_WINDOW_MS ? CLOSING_FETCH_EVERY_MS : CLOSING_SLOW_FETCH_EVERY_MS);
-      schedule();
-    }, next - elapsed);
+    if (busy || handle !== null || !due() || io.hidden()) return;
+    handle = io.set(
+      async () => {
+        handle = null;
+        if (!due() || io.hidden()) return;
+        busy = true;
+        try {
+          await fetchResult();
+        } catch {
+          // The page keeps saying it is confirming, and asks again later.
+        }
+        busy = false;
+        attempt += 1;
+        schedule();
+      },
+      closingFetchDelay(attempt, io.random),
+    );
   };
+  const stopResume = io.onResume(() => {
+    attempt = 0;
+    if (handle !== null) io.clear(handle);
+    handle = null;
+    schedule();
+  });
   schedule();
   return () => {
     stopped = true;
-    if (handle !== null) timers.clear(handle);
+    stopResume();
+    if (handle !== null) io.clear(handle);
   };
 }
