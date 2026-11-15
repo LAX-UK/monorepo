@@ -17,10 +17,18 @@ const OWNER_URL = process.env.DATABASE_URL;
 const WORKER_URL = process.env.DATABASE_URL_WORKER;
 const HAS_DB = Boolean(OWNER_URL);
 
-/** Synthetic fixtures only. Each case gets its own month in the past, so runs never overlap. */
+/**
+ * Synthetic fixtures only. Each case gets a month of its own in the past, so cases never share
+ * rows: the months are consecutive from a random start (a random month per case collides now and
+ * then, and the orders and events a case leaves behind would count in the other case's window).
+ */
+const MONTHS = 40 * 12;
+const firstMonth = Math.floor(Math.random() * MONTHS);
+let windowsUsed = 0;
 function window() {
-  const year = 1950 + Math.floor(Math.random() * 40);
-  const month = Math.floor(Math.random() * 12);
+  const index = (firstMonth + windowsUsed++) % MONTHS;
+  const year = 1950 + Math.floor(index / 12);
+  const month = index % 12;
   const since = new Date(Date.UTC(year, month, 1));
   return {
     since,
