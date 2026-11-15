@@ -1,5 +1,6 @@
 import type { Bid, Lot, Sale } from "@auction/types";
 import { computeLotCheckoutPricing } from "../lib/lot-checkout-pricing.js";
+import { maskSealedLotPriceForViewer } from "../lib/lot-public-view.js";
 import { presentLotsImages } from "../lib/media-presenters.js";
 import type { DashboardQueryService } from "./dashboard-query.service.js";
 import type { MediaAssetEnricher } from "./media-asset-enricher.js";
@@ -15,6 +16,9 @@ export type UserWatchlistRow = WatchlistWithLot & { lot: Lot | null };
 
 type SaleLookup = { findByIds(ids: string[]): Promise<Sale[]> };
 
+/** Viewer identity used to hide sealed high bids from non-staff. */
+export type DashboardViewer = { role?: string | undefined; staffRole?: string | null | undefined };
+
 export class UserDashboardReadService {
   constructor(
     private readonly dashboardQuery: DashboardQueryService,
@@ -24,24 +28,26 @@ export class UserDashboardReadService {
     private readonly mediaAssetEnricher?: MediaAssetEnricher,
   ) {}
 
-  async listBidsForUser(userId: string): Promise<UserBidWithLot[]> {
+  async listBidsForUser(userId: string, viewer?: DashboardViewer): Promise<UserBidWithLot[]> {
     const rows = await this.dashboardQuery.listBidsWithLotsForBidder(userId);
-    return this.attachEnrichedLots(rows);
+    return this.attachEnrichedLots(rows, viewer);
   }
 
   async listWatchlistForUser(
     userId: string,
     options: WatchlistListOptions = {},
+    viewer?: DashboardViewer,
   ): Promise<UserWatchlistRow[]> {
     const rows = await this.watchlistService.listWithLots(userId, options);
-    return this.attachEnrichedLots(rows);
+    return this.attachEnrichedLots(rows, viewer);
   }
 
   private async attachEnrichedLots<T extends { lot: Lot | null }>(
     rows: T[],
+    viewer?: DashboardViewer,
   ): Promise<(T & { lot: Lot | null })[]> {
     const lots = rows.map((r) => r.lot).filter((l): l is Lot => Boolean(l));
-    const enriched = await this.enrichLots(lots);
+    const enriched = await this.enrichLots(lots, viewer);
     const byId = new Map(enriched.map((l) => [l.id, l]));
     return rows.map((row) => ({
       ...row,
@@ -49,10 +55,14 @@ export class UserDashboardReadService {
     }));
   }
 
-  private async enrichLots(lots: Lot[]): Promise<Lot[]> {
+  private async enrichLots(lots: Lot[], viewer?: DashboardViewer): Promise<Lot[]> {
     if (lots.length === 0) return lots;
     const presented = await presentLotsImages(this.mediaUrlResolver, lots, this.mediaAssetEnricher);
-    return this.withCheckoutPricing(presented);
+    // Mask before pricing so no checkout figure is derived from a hidden sealed high bid.
+    const masked = presented.map((lot) =>
+      maskSealedLotPriceForViewer(lot, viewer?.role, viewer?.staffRole),
+    );
+    return this.withCheckoutPricing(masked);
   }
 
   private async withCheckoutPricing(lots: Lot[]): Promise<Lot[]> {

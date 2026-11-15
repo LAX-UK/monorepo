@@ -5,6 +5,7 @@ import {
   resolvePublicSaleListFilter,
   viewerCanSeeNonPublicCatalog,
 } from "@auction/validators";
+import { maskSealedLotPriceForViewer } from "../lib/lot-public-view.js";
 import { mapLotToSummary } from "../lib/mappers.js";
 import { presentSalesWithLotsImages } from "../lib/media-presenters.js";
 import type { ISaleChannelReader } from "../repositories/interfaces/sale-channel.reader.js";
@@ -96,7 +97,9 @@ export class SaleListReadService implements ISaleListReadService {
         return {
           sale,
           lotCount: lotCounts.get(sale.id) ?? visibleLots.length,
-          previewLots: visibleLots.map(mapLotToSummary),
+          previewLots: visibleLots.map((lot) =>
+            mapLotToSummary(maskSealedLotPriceForViewer(lot, viewer?.role, viewer?.staffRole)),
+          ),
         };
       });
 

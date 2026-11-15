@@ -207,7 +207,10 @@ export function createUserRoutes(container: Container, authenticator: IAuthentic
 
   r.get("/me/bids", requireAuth, async (c) => {
     const userId = c.get("userId") as string;
-    const data = await container.userDashboardReadService.listBidsForUser(userId);
+    const data = await container.userDashboardReadService.listBidsForUser(userId, {
+      role: c.get("userRole"),
+      staffRole: c.get("userStaffRole"),
+    });
     return c.json({ data });
   });
 
@@ -257,11 +260,15 @@ export function createUserRoutes(container: Container, authenticator: IAuthentic
   r.get("/me/watchlist", requireAuth, zValidator("query", watchlistQuerySchema), async (c) => {
     const userId = c.get("userId") as string;
     const query = c.req.valid("query");
-    const data = await container.userDashboardReadService.listWatchlistForUser(userId, {
-      sort: query.sort,
-      ...(query.status ? { status: query.status } : {}),
-      ...(query.categoryIds ? { categoryIds: query.categoryIds } : {}),
-    });
+    const data = await container.userDashboardReadService.listWatchlistForUser(
+      userId,
+      {
+        sort: query.sort,
+        ...(query.status ? { status: query.status } : {}),
+        ...(query.categoryIds ? { categoryIds: query.categoryIds } : {}),
+      },
+      { role: c.get("userRole"), staffRole: c.get("userStaffRole") },
+    );
     return c.json({ data });
   });
 
