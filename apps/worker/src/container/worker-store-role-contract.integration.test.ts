@@ -61,6 +61,17 @@ import { DrizzleWebPublicCacheReader } from "../repositories/drizzle-web-public-
 import { DrizzleZohoCampaignsSuppressionRepository } from "../repositories/drizzle-zoho-campaigns-suppression.repository.js";
 import { ShopIdentityProjectionService } from "../services/shop-identity-projection.service.js";
 import type { WorkerDb } from "../workers/types.js";
+import {
+  PROBE_LOT_ID,
+  alertMatch,
+  issuedRegisterEntry,
+  lifecycleSnapshot,
+  outcomeKey,
+  registerActor,
+  sellerConsentAnswer,
+  soldAttention,
+  today,
+} from "./worker-role-contract.fixtures.js";
 import { NIL, runRolledBack } from "./worker-role-contract.test-helpers.js";
 
 const workerUrl = process.env.DATABASE_URL_WORKER;
@@ -210,27 +221,13 @@ function guessArgument(parameter: string, connection: WorkerDb): unknown {
   return NIL;
 }
 
-const today = new Date();
-const outcomeKey = { lotId: NIL, lotEndTime: today };
-
 /**
  * Arguments written by hand for calls the name-based guess cannot build (an object or a list of
  * objects). Without them these calls return before they reach a table, which proves nothing.
  * Keyed `Store.method`; each gets the transaction the call runs on.
  */
 const ARGUMENTS: Record<string, (tx: WorkerDb) => unknown[]> = {
-  "BidAlertMatchLedger.record": () => [
-    [
-      {
-        subscriberId: NIL,
-        topic: "bid.new_sales",
-        itemKey: `sale:${NIL}`,
-        groupKey: null,
-        snapshot: {},
-        matchedAt: today,
-      },
-    ],
-  ],
+  "BidAlertMatchLedger.record": () => [[alertMatch()]],
   "BidAlertDigestLedger.claim": () => [
     {
       subscriberId: NIL,
@@ -242,19 +239,7 @@ const ARGUMENTS: Record<string, (tx: WorkerDb) => unknown[]> = {
     },
   ],
   "BidAlertLotReader.matchingSearch": () => [{ q: "role contract", categoryId: null }, [NIL]],
-  "BidAlertMatchValidator.staleMatches": () => [
-    [
-      {
-        id: NIL,
-        subscriberId: NIL,
-        topic: "bid.new_sales",
-        itemKey: `sale:${NIL}`,
-        groupKey: null,
-        snapshot: {},
-        matchedAt: today,
-      },
-    ],
-  ],
+  "BidAlertMatchValidator.staleMatches": () => [[alertMatch()]],
   "BidAlertLotNoticeWriter.write": () => [
     {
       digestId: NIL,
@@ -312,6 +297,58 @@ const ARGUMENTS: Record<string, (tx: WorkerDb) => unknown[]> = {
   "DrizzleUnsoldLotFollowUpRepository.findForOutcome": () => [outcomeKey],
   "DrizzleUnsoldLotFollowUpRepository.completeByStaff": () => [outcomeKey, NIL, today],
   "DrizzleUnsoldLotFollowUpRepository.settleOnReturn": (tx) => [tx, outcomeKey, NIL, today],
+  "BidAlertTopicStore.setEmail": () => [NIL, "bid.new_sales", true, "staff", today],
+  "BidAlertTopicStore.listEmailRecipients": () => ["bid.new_sales", NIL, 1],
+  "BidAlertMatchLedger.pendingSubscribers": () => ["bid", NIL, 1],
+  "BidAlertAnnouncementStore.claimItem": () => [`sale:${NIL}`, true, today],
+  "DrizzleZohoListingSourceReader.pageOriginals": () => [NIL, 1],
+  "DrizzleArtworkRegisterRepository.listOpenConflicts": () => [1, { detectedAt: today, id: NIL }],
+  "DrizzleArtworkRegisterRepository.issue": () => [
+    "original",
+    issuedRegisterEntry(),
+    registerActor,
+    today,
+  ],
+  "DrizzleLotRepository.updateDutchCurrentPrice": () => [NIL, "1.00", today],
+  "DrizzleLotRepository.updateDutchCurrentPriceIfMatch": () => [NIL, "2.00", "1.00", today],
+  "DrizzleLotRepository.updateCurrentPrice": () => [NIL, "1.00"],
+  "DrizzleLotRepository.updateStatus": () => [NIL, "active"],
+  // Reads the lot before it writes, so it needs the lot the probe seed inserts.
+  "DrizzleLotRepository.updateMarketingDetails": () => [PROBE_LOT_ID, {}],
+  "DrizzleLotRepository.findPreviewLotsBySaleIds": () => [[NIL], 1],
+  "DrizzleSaleRepository.updateStatus": () => [NIL, "active"],
+  "DrizzlePaymentRepository.updateStatus": () => [NIL, "captured"],
+  "DrizzleSoldAttentionStore.replace": () => [{ id: NIL, now: today, raise: soldAttention() }],
+  "DrizzleSoldAttentionStore.listLive": () => [1, { raisedAt: today, id: NIL }],
+  "DrizzleSoldAttentionStore.isPaused": () => [{ registerId: NIL }],
+  "DrizzleLotLifecycleSnapshotRepository.upsertSnapshot": () => [lifecycleSnapshot()],
+  "DrizzleReofferSweepReader.acceptedWithoutInvoice": () => [
+    { reawardedBefore: today, retryMarkedBefore: today, limit: 1 },
+  ],
+  "DrizzleSellerConsentRepository.answer": (tx) => [tx, sellerConsentAnswer()],
+};
+
+/**
+ * Methods that run their statement and then refuse in code because the row is not there, so the
+ * statement ran and the grant is proven. Keyed `Store.method`, with the message they throw.
+ */
+const REFUSES_AFTER_STATEMENT: Record<string, RegExp> = {
+  "DrizzleSellerConsentRepository.answer": /offer changed/,
+};
+
+/**
+ * Private helpers that TypeScript hides but the prototype walk still lists. Each runs inside a
+ * public method that is probed itself, so it is covered there; with no arguments of its own to
+ * build, calling it directly would only fail before PostgreSQL.
+ */
+const PRIVATE_HELPERS: Record<string, readonly string[]> = {
+  BidAlertFollowerProvisioner: ["provision"],
+  DrizzleZohoListingSourceReader: ["lotsFor", "dealsFor"],
+  DrizzleArtworkRegisterRepository: ["findOne", "publishCatalogueChange"],
+  DrizzleSaleRepository: ["withCategoryIds"],
+  DrizzleItemSubmissionRepository: ["withCategoryIds"],
+  DrizzlePaymentRepository: ["listWithExternalRefs"],
+  DrizzleShopAccountingFactsReader: ["buyer"],
 };
 
 function publicMethods(store: object): Call[] {
@@ -389,22 +426,28 @@ describe.skipIf(!ownerUrl || !workerUrl)("worker stores as worker_app", () => {
   const calls = Object.entries(probed).flatMap(([name, Store]) =>
     publicMethods(new Store(db))
       .filter(({ method }) => !API_ONLY_METHODS[name]?.includes(method))
+      .filter(({ method }) => !PRIVATE_HELPERS[name]?.includes(method))
       .map(({ method }) => [name, method] as const),
   );
 
   it.each(calls)("%s.%s is not denied", async (name, method) => {
-    const outcome = await runRolledBack(db, async (tx) => {
-      const store = new (probed[name] as Store)(tx);
-      const { parameters } = publicMethods(store).find((call) => call.method === method) ?? {
-        parameters: [],
-      };
-      const args =
-        ARGUMENTS[`${name}.${method}`]?.(tx) ?? parameters.map((p) => guessArgument(p, tx));
-      const fn = (store as Record<string, (...args: unknown[]) => unknown>)[method];
-      return fn?.apply(store, args);
-    });
+    const refusal = REFUSES_AFTER_STATEMENT[`${name}.${method}`];
+    const outcome = await runRolledBack(
+      db,
+      async (tx) => {
+        const store = new (probed[name] as Store)(tx);
+        const { parameters } = publicMethods(store).find((call) => call.method === method) ?? {
+          parameters: [],
+        };
+        const args =
+          ARGUMENTS[`${name}.${method}`]?.(tx) ?? parameters.map((p) => guessArgument(p, tx));
+        const fn = (store as Record<string, (...args: unknown[]) => unknown>)[method];
+        return fn?.apply(store, args);
+      },
+      refusal,
+    );
     if (outcome.denied) throw new Error(`${name}.${method}: ${outcome.denied}`);
-    if (!outcome.reachedDatabase) unreached.push(`${name}.${method}`);
+    if (!outcome.reachedDatabase) unreached.push(`${name}.${method}: ${outcome.failure}`);
   });
 
   it("reports the calls that never reached PostgreSQL", () => {

@@ -7,6 +7,7 @@ import pino from "pino";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { WorkerDb } from "../workers/types.js";
 import { type WorkerRepositories, createWorkerRepositories } from "./create-worker-repositories.js";
+import { earlier, today } from "./worker-role-contract.fixtures.js";
 import { NIL, runRolledBack } from "./worker-role-contract.test-helpers.js";
 
 const ownerUrl = process.env.MIGRATION_TEST_DATABASE_URL;
@@ -26,8 +27,7 @@ const workerUrl = process.env.DATABASE_URL_WORKER;
 
 const PROBE_QR_CODE_ID = "00000000-0000-0000-0000-0000000000a1";
 const log = pino({ level: "silent" });
-const now = new Date();
-const earlier = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+const now = today;
 
 type Calls = Record<string, () => Promise<unknown>>;
 type Probes = { [K in keyof WorkerRepositories]: (repo: WorkerRepositories[K]) => Calls };
@@ -334,6 +334,7 @@ describe.skipIf(!ownerUrl || !workerUrl)("worker repositories as worker_app", ()
   );
 
   let owner: pg.Pool;
+  const unreached: string[] = [];
 
   beforeAll(async () => {
     // biome-ignore lint/style/noNonNullAssertion: gated by skipIf
@@ -363,12 +364,17 @@ describe.skipIf(!ownerUrl || !workerUrl)("worker repositories as worker_app", ()
   });
 
   it.each(calls)("%s.%s is not denied", async (name, method) => {
-    const { denied } = await runRolledBack(db, (tx) => {
+    const { denied, reachedDatabase } = await runRolledBack(db, (tx) => {
       const repos = createWorkerRepositories(tx, env);
       const probe = PROBES[name as keyof WorkerRepositories] as (repo: unknown) => Calls;
       const call = probe(repos[name as keyof WorkerRepositories])[method];
       return call ? call() : Promise.resolve();
     });
     if (denied) throw new Error(`${name}.${method}: ${denied}`);
+    if (!reachedDatabase) unreached.push(`${name}.${method}`);
+  });
+
+  it("reports the calls that never reached PostgreSQL", () => {
+    console.info(`not proven (${unreached.length} of ${calls.length}):\n${unreached.join("\n")}`);
   });
 });

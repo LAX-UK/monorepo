@@ -10,8 +10,10 @@ class RolledBack extends Error {}
 export type ProbeOutcome = {
   /** PostgreSQL's message when the call was denied, otherwise null. */
   denied: string | null;
-  /** True when PostgreSQL answered (rows or an error), false when the call failed before that. */
+  /** True when the statement got as far as PostgreSQL's privilege check, false when it failed before that. */
   reachedDatabase: boolean;
+  /** Why the call failed, when it did. */
+  failure: string | null;
 };
 
 function postgresCode(error: unknown): string | undefined {
@@ -20,6 +22,23 @@ function postgresCode(error: unknown): string | undefined {
     if (typeof code === "string" && /^[0-9A-Z]{5}$/.test(code)) return code;
   }
   return undefined;
+}
+
+/**
+ * Data-exception errors (class 22, e.g. an invalid uuid text) are raised while arguments are bound,
+ * before PostgreSQL checks privileges, so they prove nothing about grants.
+ */
+function reachedPrivilegeCheck(error: unknown): boolean {
+  const code = postgresCode(error);
+  return code !== undefined && !code.startsWith("22");
+}
+
+/** The innermost message of an error chain: for a failed query, PostgreSQL's own. */
+function describeFailure(error: unknown): string {
+  let innermost = error;
+  while (innermost instanceof Error && innermost.cause instanceof Error)
+    innermost = innermost.cause;
+  return innermost instanceof Error ? (innermost.message.split("\n")[0] ?? "") : String(innermost);
 }
 
 function deniedMessage(error: unknown): string | null {
@@ -38,17 +57,22 @@ function deniedMessage(error: unknown): string | null {
 export async function runRolledBack(
   db: WorkerDb,
   call: (tx: WorkerDb) => Promise<unknown>,
+  /** A message the call throws itself after its statement ran, which still proves the grant. */
+  refusalAfterStatement?: RegExp,
 ): Promise<ProbeOutcome> {
-  let outcome: ProbeOutcome = { denied: null, reachedDatabase: false };
+  let outcome: ProbeOutcome = { denied: null, reachedDatabase: false, failure: null };
   try {
     await db.transaction(async (tx) => {
       try {
         await call(tx as unknown as WorkerDb);
-        outcome = { denied: null, reachedDatabase: true };
+        outcome = { denied: null, reachedDatabase: true, failure: null };
       } catch (error) {
         outcome = {
           denied: deniedMessage(error),
-          reachedDatabase: postgresCode(error) !== undefined,
+          reachedDatabase:
+            reachedPrivilegeCheck(error) ||
+            (refusalAfterStatement?.test(describeFailure(error)) ?? false),
+          failure: describeFailure(error),
         };
       }
       throw new RolledBack();
