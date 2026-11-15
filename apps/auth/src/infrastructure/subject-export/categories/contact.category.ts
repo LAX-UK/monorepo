@@ -1,11 +1,11 @@
-import type { IdentityDatabase } from "@auction/identity-db";
-import { identityLifecycleOutbox, user } from "@auction/identity-db/schema";
-import { and, asc, eq, inArray, sql } from "drizzle-orm";
 import {
   type ExportSource,
   SourcedExportCategory,
   inMemorySource,
-} from "../../../subject-export/sourced-export-category.js";
+} from "@auction/identity-contracts/subject-export-readers";
+import type { IdentityDatabase } from "@auction/identity-db";
+import { identityLifecycleOutbox, user } from "@auction/identity-db/schema";
+import { and, asc, eq, inArray, sql } from "drizzle-orm";
 import { iso } from "../../../subject-export/values.js";
 
 type ContactRow = {

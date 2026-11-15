@@ -4,10 +4,10 @@ import {
   subjectExportManifestPath,
   subjectExportPagePath,
 } from "@auction/identity-contracts";
+import { InvalidSubjectExportCursorError } from "@auction/identity-contracts/subject-export-readers";
 import { Hono } from "hono";
 import { describe, expect, it, vi } from "vitest";
 import { UnknownSubjectExportCategoryError } from "../subject-export/subject-export.service.js";
-import { InvalidSubjectExportCursorError } from "../subject-export/subject-export.types.js";
 import { createInternalIdentityDeletionEligibilityRoutes } from "./internal-identity-deletion-eligibility.routes.js";
 import { createInternalIdentitySubjectExportRoutes } from "./internal-identity-subject-export.routes.js";
 

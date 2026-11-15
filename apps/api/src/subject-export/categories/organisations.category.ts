@@ -11,13 +11,13 @@ import {
   saleRegistration,
   userInvitation,
 } from "@auction/db/schema";
-import { and, asc, eq, isNotNull, or, sql } from "drizzle-orm";
-import { alias } from "drizzle-orm/pg-core";
 import {
   type ExportSource,
   type SourceRow,
   SourcedExportCategory,
-} from "../sourced-export-category.js";
+} from "@auction/identity-contracts/subject-export-readers";
+import { and, asc, eq, isNotNull, or, sql } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 import type { SubjectExportDeps } from "../subject-export-deps.js";
 import { iso, isoRequired, lotRef, money, saleRef } from "../subject-export-values.js";
 import { afterKey, countWhere } from "./keyset.js";

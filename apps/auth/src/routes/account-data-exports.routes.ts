@@ -15,7 +15,10 @@ import {
 import { type AccountCallerDeps, authenticateAccountCaller } from "./account-caller.js";
 
 export type AccountDataExportRouteDeps = Omit<AccountCallerDeps, "rateLimit"> & {
-  exports: Pick<SubjectExportService, "current" | "request" | "download" | "deleteCopy">;
+  exports: Pick<
+    SubjectExportService,
+    "current" | "retryAfter" | "request" | "download" | "deleteCopy"
+  >;
   /** Budget for reading the current request. */
   readRateLimit: AccountCallerDeps["rateLimit"];
   /** Tighter budget for requesting, downloading and deleting. */
@@ -62,7 +65,12 @@ export function createAccountDataExportRoutes(deps: AccountDataExportRouteDeps) 
   app.post(ACCOUNT_DATA_EXPORTS_CURRENT_PATH, async (c) => {
     const caller = await authenticateAccountCaller(c, reads);
     if (caller instanceof Response) return caller;
-    return guarded(c, async () => c.json({ export: await deps.exports.current(caller.subjectId) }));
+    return guarded(c, async () =>
+      c.json({
+        export: await deps.exports.current(caller.subjectId),
+        retryAfter: await deps.exports.retryAfter(caller.subjectId),
+      }),
+    );
   });
 
   app.post(ACCOUNT_DATA_EXPORTS_PATH, async (c) => {

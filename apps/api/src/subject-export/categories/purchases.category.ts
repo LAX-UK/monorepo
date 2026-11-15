@@ -6,8 +6,11 @@ import {
   payment,
   sale,
 } from "@auction/db/schema";
+import {
+  type ExportSource,
+  SourcedExportCategory,
+} from "@auction/identity-contracts/subject-export-readers";
 import { and, asc, eq, inArray, ne } from "drizzle-orm";
-import { type ExportSource, SourcedExportCategory } from "../sourced-export-category.js";
 import type { SubjectExportDeps } from "../subject-export-deps.js";
 import {
   iso,

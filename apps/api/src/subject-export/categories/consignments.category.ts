@@ -7,8 +7,11 @@ import {
   unsoldLotChoice,
 } from "@auction/db/schema";
 import type { SubjectExportFileRef } from "@auction/identity-contracts";
+import {
+  type ExportSource,
+  SourcedExportCategory,
+} from "@auction/identity-contracts/subject-export-readers";
 import { and, asc, count, eq, inArray, isNotNull } from "drizzle-orm";
-import { type ExportSource, SourcedExportCategory } from "../sourced-export-category.js";
 import type { SubjectExportDeps } from "../subject-export-deps.js";
 import { iso, isoRequired, money } from "../subject-export-values.js";
 import { afterKey, countWhere } from "./keyset.js";

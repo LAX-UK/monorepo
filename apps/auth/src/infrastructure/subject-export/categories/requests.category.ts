@@ -1,12 +1,12 @@
 import type { SubjectExportStatus } from "@auction/identity-contracts";
-import type { IdentityDatabase } from "@auction/identity-db";
-import { identityLifecycleOutbox, subjectDataExport } from "@auction/identity-db/schema";
-import { and, asc, eq, inArray } from "drizzle-orm";
 import {
   type ExportSource,
   SourcedExportCategory,
   inMemorySource,
-} from "../../../subject-export/sourced-export-category.js";
+} from "@auction/identity-contracts/subject-export-readers";
+import type { IdentityDatabase } from "@auction/identity-db";
+import { identityLifecycleOutbox, subjectDataExport } from "@auction/identity-db/schema";
+import { and, asc, eq, inArray } from "drizzle-orm";
 import { iso, isoRequired } from "../../../subject-export/values.js";
 import { afterKey, countWhere } from "./keyset.js";
 

@@ -7,13 +7,13 @@ import {
   SUBJECT_EXPORT_PURGE_PENDING_SUBROUTE,
   subjectExportProgressSchema,
 } from "@auction/identity-contracts";
+import { InvalidSubjectExportCursorError } from "@auction/identity-contracts/subject-export-readers";
 import type { Context, Hono } from "hono";
 import type { SubjectExportService } from "../services/subject-export.service.js";
 import {
   type SubjectExportReader,
   UnknownSubjectExportCategoryError,
 } from "../subject-export/subject-export-reader.service.js";
-import { InvalidSubjectExportCursorError } from "../subject-export/subject-export.types.js";
 
 /** The machine credential the worker uses for the export routes. It is not the lifecycle credential. */
 export type SubjectExportMachineDeps = {

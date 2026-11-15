@@ -195,6 +195,34 @@ describe("requesting a copy", () => {
     });
   });
 
+  it("tells the page when a new copy can be asked for, the same date a refused request gives", async () => {
+    const { service, repository } = setup();
+    expect(await service.retryAfter(SUBJECT)).toBeNull();
+    for (const daysAgo of [20, 15, 10, 5]) {
+      repository.seed({
+        subjectId: SUBJECT,
+        status: "expired",
+        requestedAt: new Date(NOW.getTime() - daysAgo * DAY),
+      });
+    }
+    const retryAfter = new Date(NOW.getTime() + 10 * DAY).toISOString();
+    expect(await service.retryAfter(SUBJECT)).toBe(retryAfter);
+    const refused = await service.request(SUBJECT, CONTEXT);
+    expect(refused).toMatchObject({ outcome: { retryAfter } });
+  });
+
+  it("gives no retry date while requests that failed on our side or left the window are all that remain", async () => {
+    const { service, repository } = setup();
+    for (const daysAgo of [40, 35, 3, 2]) {
+      repository.seed({
+        subjectId: SUBJECT,
+        status: daysAgo < 10 ? "failed" : "expired",
+        requestedAt: new Date(NOW.getTime() - daysAgo * DAY),
+      });
+    }
+    expect(await service.retryAfter(SUBJECT)).toBeNull();
+  });
+
   it("does not count requests older than the window or failed on our side", async () => {
     const { service, repository } = setup();
     repository.seed({

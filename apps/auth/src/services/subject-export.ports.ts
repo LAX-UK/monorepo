@@ -108,6 +108,8 @@ export interface SubjectExportRepository {
   /** The person's latest request, or null when there has never been one. */
   findLatest(subjectId: string): Promise<SubjectExportRow | null>;
   findById(exportId: string): Promise<SubjectExportRow | null>;
+  /** The person's requests made after `windowStart`, newest first. */
+  listRequestsSince(subjectId: string, windowStart: Date): Promise<SubjectExportRow[]>;
   /**
    * Locks the request, lets `decide` look at its current state and return a change (or null for
    * "nothing to do"), and applies the change with its audit rows. Returns the row after the

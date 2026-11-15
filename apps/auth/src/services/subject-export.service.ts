@@ -23,6 +23,7 @@ import {
   decideProgress,
   subjectExportObjectPrefix,
   toSubjectExportView,
+  windowRetryAfter,
 } from "./subject-export.state.js";
 
 const DAY_MS = 86_400_000;
@@ -80,6 +81,23 @@ export class SubjectExportService {
   async current(subjectId: string): Promise<SubjectExportView | null> {
     const row = await this.ports.repository.findLatest(subjectId);
     return row ? toSubjectExportView(row, this.now()) : null;
+  }
+
+  /**
+   * When the person may ask for a new copy, as an ISO date; null when they may now. Same rule and
+   * same date as the `rate_limited` answer to a request, so the page can show it before they ask.
+   */
+  async retryAfter(subjectId: string): Promise<string | null> {
+    const windowStart = new Date(
+      this.now().getTime() - SUBJECT_EXPORT_RATE_LIMIT_WINDOW_DAYS * DAY_MS,
+    );
+    const windowRequests = await this.ports.repository.listRequestsSince(subjectId, windowStart);
+    const date = windowRetryAfter({
+      windowRequests,
+      max: SUBJECT_EXPORT_MAX_REQUESTS_PER_WINDOW,
+      windowDays: SUBJECT_EXPORT_RATE_LIMIT_WINDOW_DAYS,
+    });
+    return date?.toISOString() ?? null;
   }
 
   /** Account's request: needs a sign-in from the last few minutes. */

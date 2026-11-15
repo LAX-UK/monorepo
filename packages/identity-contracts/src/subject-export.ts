@@ -865,9 +865,14 @@ export const subjectExportCreateOutcomeSchema = z.discriminatedUnion("outcome", 
   z.object({ outcome: z.literal("rate_limited"), retryAfter: subjectExportDateSchema }),
 ]);
 
-/** `GET /lax/data-exports/current`: the latest request, or null when there has never been one. */
+/**
+ * `POST /lax/data-exports/current`: the latest request, or null when there has never been one, and
+ * `retryAfter`, the date a new copy can be asked for (null when one can be asked for now). It is the
+ * same date a `rate_limited` answer carries.
+ */
 export const subjectExportCurrentSchema = z.object({
   export: subjectExportViewSchema.nullable(),
+  retryAfter: subjectExportDateSchema.nullable().default(null),
 });
 
 export const subjectExportDownloadRequestSchema = z.object({ id: z.string().min(1) });

@@ -1,11 +1,11 @@
-import type { IdentityDatabase } from "@auction/identity-db";
-import { user } from "@auction/identity-db/schema";
-import { eq } from "drizzle-orm";
 import {
   type ExportSource,
   SourcedExportCategory,
   inMemorySource,
-} from "../../../subject-export/sourced-export-category.js";
+} from "@auction/identity-contracts/subject-export-readers";
+import type { IdentityDatabase } from "@auction/identity-db";
+import { user } from "@auction/identity-db/schema";
+import { eq } from "drizzle-orm";
 import { iso, isoRequired } from "../../../subject-export/values.js";
 
 type ProfileRow = {
