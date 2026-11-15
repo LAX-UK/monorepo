@@ -3,6 +3,7 @@ import {
   PURGE_ALERT_RETENTION_QUEUE_NAME,
   PURGE_COLLECTION_HANDOVER_QUEUE_NAME,
   PURGE_EMAIL_SNAPSHOTS_QUEUE_NAME,
+  PURGE_ENQUIRY_INBOUND_QUARANTINE_QUEUE_NAME,
   PURGE_FAILED_JOB_PAYLOADS_QUEUE_NAME,
   PURGE_KYC_RETENTION_QUEUE_NAME,
   PURGE_QR_CODE_SCANS_QUEUE_NAME,
@@ -10,6 +11,11 @@ import {
 import { Queue, Worker } from "bullmq";
 import { purgeCollectionHandoverRecords } from "../jobs/purge-collection-handover-records.js";
 import { purgeEmailSnapshots } from "../jobs/purge-email-snapshots.js";
+import {
+  ENQUIRY_QUARANTINE_PURGE_PATTERN,
+  ENQUIRY_QUARANTINE_PURGE_TIME_ZONE,
+  purgeEnquiryInboundQuarantine,
+} from "../jobs/purge-enquiry-inbound-quarantine.js";
 import { purgeFailedJobPayloads } from "../jobs/purge-failed-job-payloads.js";
 import { purgeKycRetentionJob } from "../jobs/purge-kyc-retention.js";
 import { purgeQrCodeScans } from "../jobs/purge-qr-code-scans.js";
@@ -33,6 +39,7 @@ export function registerPurgeWorkers(
     bullConnection,
     queueOpts,
     qrCodeScanPurgeRepo,
+    enquiryQuarantinePurgeRepo,
     failedJobPayloadPurge,
     kycRetentionStores,
     alertRetentionStores,
@@ -72,6 +79,40 @@ export function registerPurgeWorkers(
     {
       jobId: "purge-qr-code-scans-daily",
       repeat: { every: 24 * 60 * 60 * 1000 },
+      removeOnComplete: 5,
+    },
+  );
+
+  // Quarantined inbound enquiry mail is kept 30 days (`purge_at`), reviewed or not.
+  const purgeEnquiryQuarantineQueue = new Queue(
+    PURGE_ENQUIRY_INBOUND_QUARANTINE_QUEUE_NAME,
+    queueOpts(PURGE_ENQUIRY_INBOUND_QUARANTINE_QUEUE_NAME),
+  );
+  const purgeEnquiryQuarantineWorker = new Worker(
+    PURGE_ENQUIRY_INBOUND_QUARANTINE_QUEUE_NAME,
+    async () => {
+      await withSentryCronMonitor(
+        "purge-enquiry-inbound-quarantine",
+        sentryMonitorSlugs,
+        async () => {
+          await purgeEnquiryInboundQuarantine({ repository: enquiryQuarantinePurgeRepo, log });
+        },
+      );
+    },
+    bullConnection,
+  );
+  purgeEnquiryQuarantineWorker.on("failed", (job, err) => {
+    reportWorkerJobFailure(PURGE_ENQUIRY_INBOUND_QUARANTINE_QUEUE_NAME, job, err);
+  });
+  void purgeEnquiryQuarantineQueue.add(
+    "purge",
+    {},
+    {
+      jobId: "purge-enquiry-inbound-quarantine-daily",
+      repeat: {
+        pattern: ENQUIRY_QUARANTINE_PURGE_PATTERN,
+        tz: ENQUIRY_QUARANTINE_PURGE_TIME_ZONE,
+      },
       removeOnComplete: 5,
     },
   );
@@ -231,6 +272,10 @@ export function registerPurgeWorkers(
       { worker: purgeEmailSnapshotsWorker, queue: PURGE_EMAIL_SNAPSHOTS_QUEUE_NAME },
       { worker: purgeCollectionHandoverWorker, queue: PURGE_COLLECTION_HANDOVER_QUEUE_NAME },
       { worker: purgeQrCodeScansWorker, queue: PURGE_QR_CODE_SCANS_QUEUE_NAME },
+      {
+        worker: purgeEnquiryQuarantineWorker,
+        queue: PURGE_ENQUIRY_INBOUND_QUARANTINE_QUEUE_NAME,
+      },
       { worker: purgeKycRetentionWorker, queue: PURGE_KYC_RETENTION_QUEUE_NAME },
       { worker: purgeAlertRetentionWorker, queue: PURGE_ALERT_RETENTION_QUEUE_NAME },
     ],
@@ -244,6 +289,8 @@ export function registerPurgeWorkers(
         purgeCollectionHandoverQueue,
         purgeQrCodeScansWorker,
         purgeQrCodeScansQueue,
+        purgeEnquiryQuarantineWorker,
+        purgeEnquiryQuarantineQueue,
         purgeKycRetentionWorker,
         purgeKycRetentionQueue,
         purgeAlertRetentionWorker,

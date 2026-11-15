@@ -1,4 +1,4 @@
-import type { ITransactionRunner } from "@auction/persistence/interfaces";
+import type { ITransactionRunner, InboundThreadMessage } from "@auction/persistence/interfaces";
 import { describe, expect, it, vi } from "vitest";
 import {
   InMemoryEnquiryNotes,
@@ -49,9 +49,12 @@ async function setup(seeds: Seed[] = []) {
   const listRedacted = vi.fn().mockResolvedValue([]);
   const actorNames = vi.fn().mockResolvedValue(new Map<string, string>());
   const createPresignedGet = vi.fn().mockResolvedValue({ url: "https://signed.example/f?sig=1" });
+  const replies = new Map<string, InboundThreadMessage[]>();
+  const listInbound = vi.fn(async (enquiryId: string) => replies.get(enquiryId) ?? []);
   const desk = new EnquiryDeskService({
     enquiries,
     notes,
+    replies: { listInbound },
     assignees: { isStaff: async (id) => staff.has(id), list: async () => [] },
     transactionRunner,
     events,
@@ -91,7 +94,17 @@ async function setup(seeds: Seed[] = []) {
       },
     );
   }
-  return { desk, enquiries, notes, publish, listRedacted, actorNames, createPresignedGet };
+  return {
+    desk,
+    enquiries,
+    notes,
+    publish,
+    listRedacted,
+    actorNames,
+    createPresignedGet,
+    replies,
+    listInbound,
+  };
 }
 
 const query = (overrides: Record<string, unknown> = {}) =>
@@ -193,6 +206,88 @@ describe("EnquiryDeskService detail", () => {
       nextStatuses: ["in_progress", "waiting_on_client", "closed"],
     });
     expect(await desk.detail(clientServices, "E-9999")).toBeNull();
+  });
+});
+
+describe("EnquiryDeskService email replies", () => {
+  const reply: InboundThreadMessage = {
+    id: "m-1",
+    receivedAt: new Date("2026-07-28T09:30:00.000Z"),
+    subject: "Re: Your enquiry E-1001",
+    body: "Thanks, Tuesday works.",
+    attachments: [{ name: "photo.jpg", contentType: "image/jpeg", sizeBytes: 2048 }],
+    matchedBy: "token",
+    spfResult: "pass",
+    dkimResult: "none",
+  };
+
+  it("shows the client's emailed replies on the record and the awaiting-reply mark on the list", async () => {
+    const { desk, enquiries, replies, listInbound } = await setup([{ intent: "press" }]);
+    const row = enquiries.rows[0];
+    if (!row) throw new Error("seed");
+    row.awaitingReplySince = reply.receivedAt;
+    replies.set(row.id, [reply]);
+
+    const view = await desk.detail(clientServices, "E-1001");
+    expect(view?.replies).toEqual([
+      {
+        id: "m-1",
+        receivedAt: "2026-07-28T09:30:00.000Z",
+        subject: "Re: Your enquiry E-1001",
+        body: "Thanks, Tuesday works.",
+        attachments: [{ name: "photo.jpg", contentType: "image/jpeg", sizeBytes: 2048 }],
+        matchedBy: "token",
+        spfResult: "pass",
+        dkimResult: "none",
+      },
+    ]);
+    expect(view?.awaitingReplySince).toBe("2026-07-28T09:30:00.000Z");
+    expect(listInbound).toHaveBeenCalledWith(row.id, 200);
+
+    const page = await desk.list(clientServices, query());
+    expect(page.items[0]?.awaitingReplySince).toBe("2026-07-28T09:30:00.000Z");
+  });
+
+  it("never reads the replies of an enquiry the viewer may not open", async () => {
+    const { desk, listInbound } = await setup([{ intent: "private_sale_sell" }]);
+    expect(await desk.detail(noPrivateAccess, "E-1001")).toBeNull();
+    expect(listInbound).not.toHaveBeenCalled();
+  });
+
+  it("stops waiting for a reply once staff move it to waiting on the client", async () => {
+    const { desk, enquiries } = await setup([{ intent: "press" }]);
+    const row = enquiries.rows[0];
+    if (!row) throw new Error("seed");
+    row.awaitingReplySince = reply.receivedAt;
+    const moved = await desk.update(clientServices, "cs-1", "E-1001", {
+      version: 1,
+      status: "waiting_on_client",
+    });
+    expect(moved).toMatchObject({ ok: true, enquiry: { awaitingReplySince: null } });
+  });
+
+  it("keeps waiting for a reply when staff only start work on it", async () => {
+    const { desk, enquiries } = await setup([{ intent: "press" }]);
+    const row = enquiries.rows[0];
+    if (!row) throw new Error("seed");
+    row.awaitingReplySince = reply.receivedAt;
+    const moved = await desk.update(clientServices, "cs-1", "E-1001", {
+      version: 1,
+      status: "in_progress",
+    });
+    expect(moved).toMatchObject({
+      ok: true,
+      enquiry: { awaitingReplySince: "2026-07-28T09:30:00.000Z" },
+    });
+  });
+
+  it("stops waiting for a reply when the enquiry is closed", async () => {
+    const { desk, enquiries } = await setup([{ intent: "press" }]);
+    const row = enquiries.rows[0];
+    if (!row) throw new Error("seed");
+    row.awaitingReplySince = reply.receivedAt;
+    const closed = await desk.markHandled(clientServices, row.id, "cs-1");
+    expect(closed).toMatchObject({ ok: true, enquiry: { awaitingReplySince: null } });
   });
 });
 

@@ -1,4 +1,10 @@
 import type { Database } from "@auction/db";
+import type {
+  InboundDkimResult,
+  InboundMatchMethod,
+  InboundQuarantineReason,
+  InboundSpfResult,
+} from "@auction/domain";
 
 /** What an emailed reply needs to know about the thread it may belong to. */
 export type InboundEnquiryTarget = {
@@ -14,19 +20,26 @@ export type InboundEnquiryTarget = {
 
 export type InboundAttachmentMetadata = { name: string; contentType: string; sizeBytes: number };
 
-export type NewInboundMessage = {
+/** What the receiving server recorded about the sender: SPF, and DKIM aligned with From. */
+export type InboundAuthenticationResult = {
+  spfResult: InboundSpfResult;
+  dkimResult: InboundDkimResult;
+};
+
+export type NewInboundMessage = InboundAuthenticationResult & {
   enquiryId: string;
   providerMessageId: string;
-  matchedBy: "token" | "in_reply_to";
+  /** `staff` when a person attached it from quarantine. */
+  matchedBy: InboundMatchMethod;
   fromEmailHash: string;
   subject: string;
   body: string;
   attachments: InboundAttachmentMetadata[];
 };
 
-export type NewQuarantinedMessage = {
+export type NewQuarantinedMessage = InboundAuthenticationResult & {
   providerMessageId: string;
-  reason: "unmatched" | "bad_token" | "sender_mismatch" | "spf_failed" | "auto_reply";
+  reason: InboundQuarantineReason;
   fromAddress: string;
   subject: string;
   body: string;

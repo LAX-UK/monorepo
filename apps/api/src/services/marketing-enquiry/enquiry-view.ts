@@ -1,6 +1,7 @@
 import { enquiryNextStatuses } from "@auction/domain";
 import type {
   EnquiryNoteRecord,
+  InboundThreadMessage,
   MarketingEnquiryDetailRecord,
   MarketingEnquiryRecord,
 } from "@auction/persistence/interfaces";
@@ -60,6 +61,7 @@ export function toListItem(record: MarketingEnquiryRecord): MarketingEnquiryList
     status: record.status,
     receivedAt: record.createdAt.toISOString(),
     replyDueAt: replyDueAt(record),
+    awaitingReplySince: record.awaitingReplySince?.toISOString() ?? null,
     version: record.version,
   };
 }
@@ -67,6 +69,7 @@ export function toListItem(record: MarketingEnquiryRecord): MarketingEnquiryList
 export function toView(
   record: MarketingEnquiryRecord | MarketingEnquiryDetailRecord,
   notes: EnquiryNoteRecord[] = [],
+  replies: InboundThreadMessage[] = [],
 ): MarketingEnquiryView {
   const detail = "privateSale" in record ? record : null;
   return {
@@ -100,5 +103,16 @@ export function toView(
       body: note.body,
       createdAt: note.createdAt.toISOString(),
     })),
+    replies: replies.map((reply) => ({
+      id: reply.id,
+      receivedAt: reply.receivedAt.toISOString(),
+      subject: reply.subject,
+      body: reply.body,
+      attachments: reply.attachments,
+      matchedBy: reply.matchedBy,
+      spfResult: reply.spfResult,
+      dkimResult: reply.dkimResult,
+    })),
+    awaitingReplySince: record.awaitingReplySince?.toISOString() ?? null,
   };
 }

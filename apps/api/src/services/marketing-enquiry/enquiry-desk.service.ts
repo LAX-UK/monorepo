@@ -1,6 +1,11 @@
-import { canViewEnquiry, enquiryTransitionRefusal } from "@auction/domain";
+import {
+  canViewEnquiry,
+  enquiryStatusAnswersClient,
+  enquiryTransitionRefusal,
+} from "@auction/domain";
 import type {
   IAdminDomainEventReader,
+  IEnquiryInboundThreadReader,
   IEnquiryNoteRepository,
   IMarketingEnquiryRepository,
   ITransactionRunner,
@@ -27,6 +32,8 @@ import { toListItem, toView } from "./enquiry-view.js";
 export type EnquiryDeskServiceDeps = {
   enquiries: IMarketingEnquiryRepository;
   notes: IEnquiryNoteRepository;
+  /** The client's emailed replies on each thread. */
+  replies: IEnquiryInboundThreadReader;
   assignees: IEnquiryAssigneeDirectory;
   transactionRunner: ITransactionRunner;
   events: IDomainEventSink;
@@ -49,6 +56,8 @@ const HISTORY_EVENT_TYPES = [
   "marketing_enquiry.converted",
 ] as const;
 const HISTORY_LIMIT = 200;
+/** The most emailed replies one record shows; a thread longer than this is unheard of. */
+export const ENQUIRY_REPLIES_LIMIT = 200;
 
 /**
  * Staff work on enquiries here. Who may see an enquiry is decided in this service, not in the
@@ -192,7 +201,16 @@ export class EnquiryDeskService implements IMarketingEnquiryDesk {
   async detail(viewer: EnquiryStaffViewer, ref: string): Promise<MarketingEnquiryView | null> {
     const record = await this.deps.enquiries.findByRef(ref);
     if (!record || !canViewEnquiry(record, viewer)) return null;
-    return toView(record, await this.deps.notes.listForEnquiry(record.id));
+    return this.viewOf(record);
+  }
+
+  /** The record with its notes and the client's emailed replies. */
+  private async viewOf(record: MarketingEnquiryRecord): Promise<MarketingEnquiryView> {
+    const [notes, replies] = await Promise.all([
+      this.deps.notes.listForEnquiry(record.id),
+      this.deps.replies.listInbound(record.id, ENQUIRY_REPLIES_LIMIT),
+    ]);
+    return toView(record, notes, replies);
   }
 
   async update(
@@ -238,7 +256,7 @@ export class EnquiryDeskService implements IMarketingEnquiryDesk {
         ...(current ? { currentVersion: current.version } : {}),
       };
     }
-    return { ok: true, enquiry: toView(updated, await this.deps.notes.listForEnquiry(updated.id)) };
+    return { ok: true, enquiry: await this.viewOf(updated) };
   }
 
   async markHandled(
@@ -268,7 +286,7 @@ export class EnquiryDeskService implements IMarketingEnquiryDesk {
       return record;
     });
     if (!updated) return { ok: false, error: "already_handled" };
-    return { ok: true, enquiry: toView(updated) };
+    return { ok: true, enquiry: await this.viewOf(updated) };
   }
 
   /** Why this change may not be made, or null. */
@@ -317,6 +335,10 @@ export class EnquiryDeskService implements IMarketingEnquiryDesk {
       change.closeReason = patch.status === "closed" ? (patch.closeReason ?? null) : null;
       change.closed =
         patch.status === "closed" ? { at: this.deps.now(), byUserId: actorUserId } : null;
+      // Moving to waiting on the client, closing or converting answers a waiting reply.
+      if (existing.awaitingReplySince && enquiryStatusAnswersClient(patch.status)) {
+        change.clearsAwaitingReply = true;
+      }
     }
     return change;
   }

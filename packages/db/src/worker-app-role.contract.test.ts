@@ -135,6 +135,17 @@ describe.skipIf(!WORKER_URL)("worker_app role contract", { timeout: 60_000 }, ()
     });
   });
 
+  it("reads and deletes held inbound enquiry mail for the purge, and never adds or changes any", async () => {
+    await withWorkerClient(async (client) => {
+      const rows = await readTablePrivileges(
+        client,
+        ["enquiry_inbound_quarantine"],
+        ["SELECT", "INSERT", "UPDATE", "DELETE", "TRUNCATE"],
+      );
+      expectTablePrivileges(rows, (row) => ["SELECT", "DELETE"].includes(row.privilege));
+    });
+  });
+
   it("adds to buyer refunds and reads them, never changing or removing one", async () => {
     await withWorkerClient(async (client) => {
       const rows = await readTablePrivileges(

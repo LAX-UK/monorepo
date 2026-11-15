@@ -16,6 +16,8 @@ import {
   API_COLLECTION_STORAGE_AUDIT_TABLES,
   API_DELIVERY_REFUND_TABLES,
   API_DENY_TABLES,
+  API_ENQUIRY_INBOUND_QUARANTINE_REVIEW_COLUMNS,
+  API_ENQUIRY_INBOUND_QUARANTINE_TABLES,
   API_PAYMENT_REFUND_TABLES,
   API_PAYMENT_TRANSFER_REFERENCE_TABLES,
   API_PRIVATE_SALE_ARTWORK_HISTORY_TABLES,
@@ -57,6 +59,7 @@ import {
   WORKER_DENY_TABLES,
   WORKER_DOMAIN_EVENT_DELIVERY_TABLES,
   WORKER_EMAIL_SUPPRESSION_UPDATE_COLUMNS,
+  WORKER_ENQUIRY_INBOUND_QUARANTINE_PURGE_TABLES,
   WORKER_EXPORT_CATEGORY_READ_TABLES,
   WORKER_FULL_TABLES,
   WORKER_INVOICE_RAISE_FULFILMENT_TABLES,
@@ -931,6 +934,21 @@ describe("migrate-roles invariants", () => {
     );
   });
 
+  it("lets the Bid API hold and review inbound enquiry mail but never delete or rewrite it", async () => {
+    expect([...API_ENQUIRY_INBOUND_QUARANTINE_TABLES]).toEqual(["enquiry_inbound_quarantine"]);
+    expect([...API_ENQUIRY_INBOUND_QUARANTINE_REVIEW_COLUMNS]).toEqual([
+      "status",
+      "reviewed_by_user_id",
+      "reviewed_at",
+    ]);
+    expect([...API_DENY_TABLES]).not.toContain("enquiry_inbound_quarantine");
+    expect([...API_READ_TABLES]).not.toContain("enquiry_inbound_quarantine");
+    const source = await readFile(join(__dirname, "migrate-roles.ts"), "utf8");
+    expect(source).toMatch(
+      /API_ENQUIRY_INBOUND_QUARANTINE_TABLES as readonly string\[\]\)\.includes\(tableName\)\) \{\s+await grantIfExists\(client, "api_app", tableName, "INSERT, SELECT"\);\s+await grantColumnUpdateIfExists\(\s+client,\s+"api_app",\s+tableName,\s+API_ENQUIRY_INBOUND_QUARANTINE_REVIEW_COLUMNS,\s+\);\s+continue;/,
+    );
+  });
+
   it("keeps refund reversals append-only for the Bid API and away from every other role", () => {
     expect([...API_REFUND_REVERSAL_TABLES]).toEqual(["stripe_refund_reversal"]);
     expect([...API_DENY_TABLES]).not.toContain("stripe_refund_reversal");
@@ -1106,6 +1124,7 @@ describe("worker purge repositories hold a DELETE grant", () => {
     ...WORKER_FULL_TABLES,
     ...WORKER_QR_CODE_SCAN_PURGE_DELETE_TABLES,
     ...WORKER_KYC_RETENTION_PURGE_TABLES,
+    ...WORKER_ENQUIRY_INBOUND_QUARANTINE_PURGE_TABLES,
   ]);
   const tableNameByIdentifier = new Map(
     Object.entries(schema)

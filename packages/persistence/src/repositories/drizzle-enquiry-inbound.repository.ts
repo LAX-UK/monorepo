@@ -70,6 +70,8 @@ export class DrizzleEnquiryInboundRepository implements IEnquiryInboundRepositor
         matchedBy: input.matchedBy,
         fromEmailHash: input.fromEmailHash,
         attachments: input.attachments,
+        spfResult: input.spfResult,
+        dkimResult: input.dkimResult,
       })
       .onConflictDoNothing()
       .returning({ id: marketingEnquiryMessage.id });
@@ -101,6 +103,8 @@ export class DrizzleEnquiryInboundRepository implements IEnquiryInboundRepositor
         body: input.body,
         attachments: input.attachments,
         suspectedEnquiryId: input.suspectedEnquiryId ?? null,
+        spfResult: input.spfResult,
+        dkimResult: input.dkimResult,
       })
       .onConflictDoNothing()
       .returning({ id: enquiryInboundQuarantine.id });

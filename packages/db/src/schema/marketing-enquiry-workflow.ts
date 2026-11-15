@@ -1,3 +1,9 @@
+import {
+  INBOUND_DKIM_RESULTS,
+  INBOUND_SPF_RESULTS,
+  type InboundDkimResult,
+  type InboundSpfResult,
+} from "@auction/domain";
 import { sql } from "drizzle-orm";
 import {
   check,
@@ -72,6 +78,9 @@ export const marketingEnquiryNote = pgTable(
 /** The metadata of one file that came with a reply. The file itself is not downloaded or stored. */
 export type InboundAttachmentMeta = { name: string; contentType: string; sizeBytes: number };
 
+const SPF_CHECK_LIST = sql.raw(INBOUND_SPF_RESULTS.map((v) => `'${v}'`).join(", "));
+const DKIM_CHECK_LIST = sql.raw(INBOUND_DKIM_RESULTS.map((v) => `'${v}'`).join(", "));
+
 /**
  * One message on an enquiry thread: a reply staff sent to the sender (queued through the email
  * outbox), or a reply the sender emailed back (`direction = 'inbound'`, received on the Postmark
@@ -99,6 +108,10 @@ export const marketingEnquiryMessage = pgTable(
       .notNull()
       .default(sql`'[]'::jsonb`)
       .$type<InboundAttachmentMeta[]>(),
+    /** Inbound only: the SPF result the receiving server recorded. */
+    spfResult: text("spf_result").$type<InboundSpfResult>(),
+    /** Inbound only: the DKIM result, `pass` only for a signature aligned with the From domain. */
+    dkimResult: text("dkim_result").$type<InboundDkimResult>(),
   },
   (table) => [
     foreignKey({
@@ -119,7 +132,15 @@ export const marketingEnquiryMessage = pgTable(
     ),
     check(
       "marketing_enquiry_message_inbound_check",
-      sql`${table.direction} = 'outbound' OR (${table.providerMessageId} IS NOT NULL AND ${table.matchedBy} IN ('token', 'in_reply_to') AND char_length(${table.body}) <= 20000 AND char_length(${table.subject}) <= 300 AND jsonb_typeof(${table.attachments}) = 'array')`,
+      sql`${table.direction} = 'outbound' OR (${table.providerMessageId} IS NOT NULL AND ${table.matchedBy} IN ('token', 'in_reply_to', 'staff') AND char_length(${table.body}) <= 20000 AND char_length(${table.subject}) <= 300 AND jsonb_typeof(${table.attachments}) = 'array')`,
+    ),
+    check(
+      "marketing_enquiry_message_spf_result_check",
+      sql`${table.spfResult} IS NULL OR ${table.spfResult} IN (${SPF_CHECK_LIST})`,
+    ),
+    check(
+      "marketing_enquiry_message_dkim_result_check",
+      sql`${table.dkimResult} IS NULL OR ${table.dkimResult} IN (${DKIM_CHECK_LIST})`,
     ),
   ],
 );
@@ -183,6 +204,8 @@ export const enquiryInboundQuarantine = pgTable(
     purgeAt: timestamp("purge_at", { mode: "date", withTimezone: true })
       .notNull()
       .default(sql`now() + interval '30 days'`),
+    spfResult: text("spf_result").$type<InboundSpfResult>(),
+    dkimResult: text("dkim_result").$type<InboundDkimResult>(),
   },
   (table) => [
     uniqueIndex("enquiry_inbound_quarantine_provider_uidx").on(table.providerMessageId),
@@ -192,7 +215,7 @@ export const enquiryInboundQuarantine = pgTable(
     index("enquiry_inbound_quarantine_purge_idx").on(table.purgeAt),
     check(
       "enquiry_inbound_quarantine_reason_check",
-      sql`${table.reason} IN ('unmatched', 'bad_token', 'sender_mismatch', 'spf_failed', 'auto_reply')`,
+      sql`${table.reason} IN ('unmatched', 'bad_token', 'sender_mismatch', 'spf_failed', 'auto_reply', 'unauthenticated')`,
     ),
     check(
       "enquiry_inbound_quarantine_status_check",
@@ -205,6 +228,14 @@ export const enquiryInboundQuarantine = pgTable(
     check(
       "enquiry_inbound_quarantine_size_check",
       sql`char_length(${table.body}) <= 20000 AND char_length(${table.subject}) <= 300 AND char_length(${table.fromAddress}) <= 320`,
+    ),
+    check(
+      "enquiry_inbound_quarantine_spf_result_check",
+      sql`${table.spfResult} IS NULL OR ${table.spfResult} IN (${SPF_CHECK_LIST})`,
+    ),
+    check(
+      "enquiry_inbound_quarantine_dkim_result_check",
+      sql`${table.dkimResult} IS NULL OR ${table.dkimResult} IN (${DKIM_CHECK_LIST})`,
     ),
   ],
 );

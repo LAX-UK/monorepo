@@ -48,3 +48,4 @@ export type { IMediaAssetCleanupRepository } from "./media-asset-cleanup.reposit
 export type { IMediaAssetProcessorRepository } from "./media-asset-processor.repository.js";
 export type { IMarketingClickIdPurgeRepository } from "./marketing-click-id-purge.repository.js";
 export type { IQrCodeScanPurgeRepository } from "./qr-code-scan-purge.repository.js";
+export type { IEnquiryQuarantinePurgeRepository } from "./enquiry-quarantine-purge.repository.js";

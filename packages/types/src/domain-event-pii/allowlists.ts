@@ -521,6 +521,18 @@ export const EXCEPTION_PATHS: Record<string, Set<string>> = {
   ]),
   /** Inbound mail held back from every thread: the quarantine row's id, the reason and a file count. */
   "marketing_enquiry.inbound_quarantined": new Set(["quarantineId", "reason", "attachmentCount"]),
+  /** Staff attached held mail to an enquiry: ids, whether it was the suspected one, a file count. */
+  "marketing_enquiry.inbound_attached": new Set([
+    "enquiryId",
+    "intent",
+    "quarantineId",
+    "messageId",
+    "reason",
+    "suspectedEnquiry",
+    "attachmentCount",
+  ]),
+  /** Staff discarded held mail: the quarantine row's id and the reason it was held. */
+  "marketing_enquiry.inbound_discarded": new Set(["quarantineId", "reason"]),
   /** Row counts and the reason staff typed; the address that was erased is never recorded. */
   "marketing_enquiry.erased": new Set([
     "enquiries",

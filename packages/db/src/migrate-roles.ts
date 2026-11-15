@@ -273,6 +273,18 @@ export const API_REFUND_REVERSAL_TABLES = ["stripe_refund_reversal"] as const;
  */
 export const API_DELIVERY_REFUND_TABLES = ["payment_group_delivery_refund"] as const;
 /**
+ * Inbound enquiry mail held for staff review (migrations 0397 and 0398). The Bid API adds held
+ * mail and reads it; staff review only changes its status and who reviewed it and when. It never
+ * deletes a row and never rewrites what was received: the worker's purge and erasure delete.
+ */
+export const API_ENQUIRY_INBOUND_QUARANTINE_TABLES = ["enquiry_inbound_quarantine"] as const;
+/** The only columns a staff review (attach or discard) changes on a held message. */
+export const API_ENQUIRY_INBOUND_QUARANTINE_REVIEW_COLUMNS = [
+  "status",
+  "reviewed_by_user_id",
+  "reviewed_at",
+] as const;
+/**
  * Accounting documents and their history (migration 0368). The Bid API reads them for the
  * Finance › Accounting page, and puts a refused document back in the queue when staff try it
  * again (the life cycle's requeue: state columns only, never what the document says), adding that
@@ -1623,6 +1635,16 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
           }
           if ((API_DELIVERY_REFUND_TABLES as readonly string[]).includes(tableName)) {
             await grantIfExists(client, "api_app", tableName, "INSERT, SELECT, UPDATE");
+            continue;
+          }
+          if ((API_ENQUIRY_INBOUND_QUARANTINE_TABLES as readonly string[]).includes(tableName)) {
+            await grantIfExists(client, "api_app", tableName, "INSERT, SELECT");
+            await grantColumnUpdateIfExists(
+              client,
+              "api_app",
+              tableName,
+              API_ENQUIRY_INBOUND_QUARANTINE_REVIEW_COLUMNS,
+            );
             continue;
           }
           await grantIfExists(client, "api_app", tableName, "ALL PRIVILEGES");

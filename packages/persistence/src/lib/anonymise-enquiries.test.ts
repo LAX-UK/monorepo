@@ -1,4 +1,6 @@
 import { ERASED_ENQUIRY } from "@auction/domain";
+import { type SQL, getTableName } from "drizzle-orm";
+import { PgDialect, type PgTable } from "drizzle-orm/pg-core";
 import { describe, expect, it, vi } from "vitest";
 import { anonymiseEnquiries } from "./anonymise-enquiries.js";
 
@@ -46,6 +48,9 @@ function fakeTx(input: {
     input.enquiries ?? [],
   ];
   const deleteResult = input.detached ?? [];
+  /** Every delete, as the table it targets and the SQL of its condition. */
+  const deletes: Array<{ table: string; sql: string; params: unknown[] }> = [];
+  const dialect = new PgDialect();
   const update = vi.fn(() => ({
     set: (values: Row) => {
       sets.push(values);
@@ -57,8 +62,14 @@ function fakeTx(input: {
       return chain;
     },
   }));
-  const del = vi.fn(() => ({
-    where: () => ({ returning: () => Promise.resolve(deleteResult) }),
+  const del = vi.fn((table: PgTable) => ({
+    where: (condition: SQL) => {
+      const query = dialect.sqlToQuery(condition);
+      deletes.push({ table: getTableName(table), sql: query.sql, params: query.params });
+      return Object.assign(Promise.resolve(deleteResult), {
+        returning: () => Promise.resolve(deleteResult),
+      });
+    },
   }));
   // Answered by call order: the enquiries, the deals, then (when there are deals) their parties,
   // the people named, settlements, then screenings, source-of-funds cases, holds, rejected
@@ -79,7 +90,7 @@ function fakeTx(input: {
   const select = vi.fn(() => ({
     from: () => ({ where: () => Promise.resolve(answers.shift() ?? []) }),
   }));
-  return { tx: { select, update, delete: del } as never, sets, update, del };
+  return { tx: { select, update, delete: del } as never, sets, update, del, deletes };
 }
 
 describe("anonymiseEnquiries", () => {
@@ -119,13 +130,33 @@ describe("anonymiseEnquiries", () => {
   });
 
   it("deletes quarantined mail suspected to belong to an erased enquiry, for an account target too", async () => {
-    const { tx, del } = fakeTx({
+    const { tx, deletes } = fakeTx({
       matched: [{ id: "e1", status: "new" }],
       enquiries: [{ id: "e1" }],
     });
     await anonymiseEnquiries(tx, { kind: "accounts", userIds: ["user_1"] });
-    // The file detach delete, then the quarantine delete by suspected enquiry id.
-    expect(del).toHaveBeenCalledTimes(2);
+    const quarantine = deletes.filter((d) => d.table === "enquiry_inbound_quarantine");
+    // Exactly one delete on the quarantine, by the erased enquiry's id; no address match for an
+    // account target (the account's address is not what the mail was sent from).
+    expect(quarantine).toHaveLength(1);
+    expect(quarantine[0]?.sql).toBe('"enquiry_inbound_quarantine"."suspected_enquiry_id" in ($1)');
+    expect(quarantine[0]?.params).toEqual(["e1"]);
+  });
+
+  it("deletes quarantined mail by suspected enquiry and by sender address for an email target", async () => {
+    const { tx, deletes } = fakeTx({
+      matched: [
+        { id: "e1", status: "new" },
+        { id: "e2", status: "in_progress" },
+      ],
+      enquiries: [{ id: "e1" }, { id: "e2" }],
+    });
+    await anonymiseEnquiries(tx, { kind: "email", email: "  Ada@Example.com " });
+    const quarantine = deletes.filter((d) => d.table === "enquiry_inbound_quarantine");
+    expect(quarantine.map((d) => [d.sql, d.params])).toEqual([
+      ['"enquiry_inbound_quarantine"."suspected_enquiry_id" in ($1, $2)', ["e1", "e2"]],
+      ['lower("enquiry_inbound_quarantine"."from_address") = $1', ["ada@example.com"]],
+    ]);
   });
 
   it("holds a converted enquiry: nothing is changed and it is counted", async () => {

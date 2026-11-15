@@ -25,6 +25,7 @@ import type { IAtgAdminService } from "../atg-admin-service.js";
 import type { IBuyerAgentAuthorisationService } from "../buyer-agent-authorisation-service.js";
 import type { ICollectionDeskService } from "../collection-desk-service.js";
 import type { ICollectionSettingsAdminService } from "../collection-settings-service.js";
+import type { IEnquiryQuarantineDesk } from "../enquiry-quarantine.js";
 import type { IIdempotencyStore } from "../idempotency-store.js";
 import type { IEnquiryRouting, IMarketingEnquiryDesk } from "../marketing-enquiry-service.js";
 import type { IOnsiteEventAdminService } from "../onsite-event-admin-service.js";
@@ -102,6 +103,8 @@ export type AdminSatelliteRouteServices = {
  */
 export type AdminEnquiryRouteServices = {
   marketingEnquiries: IMarketingEnquiryDesk;
+  /** Inbound mail held back from every thread, for staff to attach or discard. */
+  enquiryQuarantine: IEnquiryQuarantineDesk;
   enquiryRouting: IEnquiryRouting;
   purchaseProblems: IPurchaseProblemDesk;
   privateSaleDeals: IPrivateSaleDealDesk;

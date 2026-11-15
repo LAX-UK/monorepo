@@ -12,7 +12,9 @@ import {
   DrizzleEnquiryAttachmentRepository,
   DrizzleEnquiryErasureRepository,
   DrizzleEnquiryInboundRepository,
+  DrizzleEnquiryInboundThreadReader,
   DrizzleEnquiryNoteRepository,
+  DrizzleEnquiryQuarantineReviewRepository,
   DrizzleEnquiryRoutingRepository,
   DrizzleMarketingEnquiryRepository,
   DrizzleUserRepository,
@@ -20,6 +22,7 @@ import {
 import type { Env } from "../env.js";
 import { createBaseLogger } from "../lib/logger.js";
 import type { IDomainEventSink } from "../services/domain-event-sink.js";
+import type { IEnquiryQuarantineDesk } from "../services/interfaces/enquiry-quarantine.js";
 import type {
   IEnquiryRouting,
   IMarketingEnquiryDesk,
@@ -44,6 +47,7 @@ import {
   EnquiryInboundReplyService,
   noEnquiryReplyAlert,
 } from "../services/marketing-enquiry/enquiry-inbound-reply.service.js";
+import { EnquiryQuarantineService } from "../services/marketing-enquiry/enquiry-quarantine.service.js";
 import { EnquiryReplyAddresses } from "../services/marketing-enquiry/enquiry-reply-address.js";
 import { EnquiryRoutingService } from "../services/marketing-enquiry/enquiry-routing.service.js";
 import {
@@ -66,6 +70,7 @@ export type CreateMarketingEnquiryServicesInput = {
     | "ENQUIRY_INBOUND_REPLIES_ENABLED"
     | "ENQUIRY_REPLY_TO_ADDRESS"
     | "ENQUIRY_REPLY_TOKEN_SECRET"
+    | "ENQUIRY_INBOUND_AUTHSERV_ID"
   >;
   email: IEmailService;
   memberships: Pick<
@@ -111,6 +116,11 @@ export type MarketingEnquiryServices = {
   organisations: EnquirerOrganisationsService;
   /** Sender replies from the Postmark inbound webhook; null while replies by email are off. */
   inboundReplies: EnquiryInboundReplyService | null;
+  /**
+   * Staff review of held inbound mail. Present with the flag off too, so mail held while it was
+   * on can still be reviewed after it is turned off.
+   */
+  quarantine: IEnquiryQuarantineDesk;
 };
 
 /**
@@ -141,6 +151,7 @@ export function createMarketingEnquiryServices(
       })
     : null;
   const assignees = new UserRepositoryAssigneeDirectory(new DrizzleUserRepository(input.db));
+  const inboundRepository = new DrizzleEnquiryInboundRepository(input.db);
   const intake = new MarketingEnquiryService({
     enquiries,
     routing,
@@ -171,6 +182,7 @@ export function createMarketingEnquiryServices(
     desk: new EnquiryDeskService({
       enquiries,
       notes: new DrizzleEnquiryNoteRepository(input.db),
+      replies: new DrizzleEnquiryInboundThreadReader(input.db),
       assignees,
       transactionRunner: input.transactionRunner,
       events: input.events,
@@ -189,16 +201,25 @@ export function createMarketingEnquiryServices(
     organisations: new EnquirerOrganisationsService({ memberships: input.memberships }),
     inboundReplies: replyAddresses
       ? new EnquiryInboundReplyService({
-          repository: new DrizzleEnquiryInboundRepository(input.db),
+          repository: inboundRepository,
           addresses: replyAddresses,
           transactionRunner: input.transactionRunner,
           events: input.events,
           alert: alert ?? noEnquiryReplyAlert,
           now: () => new Date(),
+          authentication: { trustedAuthservId: input.env.ENQUIRY_INBOUND_AUTHSERV_ID },
           onAlertFailed: (enquiryId, error) =>
             log.error({ enquiryId, err: error }, "enquiry reply alert could not be queued"),
         })
       : null,
+    quarantine: new EnquiryQuarantineService({
+      quarantine: new DrizzleEnquiryQuarantineReviewRepository(input.db),
+      inbound: inboundRepository,
+      enquiries,
+      transactionRunner: input.transactionRunner,
+      events: input.events,
+      now: () => new Date(),
+    }),
     routing: new EnquiryRoutingService({
       routing,
       assignees,

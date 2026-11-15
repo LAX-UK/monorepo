@@ -31,6 +31,7 @@ function setup(
   options: {
     target?: InboundEnquiryTarget | null;
     outboundTarget?: InboundEnquiryTarget | null;
+    trustedAuthservId?: string;
   } = {},
 ) {
   const inbound = new Map<string, NewInboundMessage>();
@@ -74,6 +75,7 @@ function setup(
     events: events as never,
     alert: { notifyReply },
     now: () => new Date("2026-11-15T10:00:00Z"),
+    authentication: { trustedAuthservId: options.trustedAuthservId },
   });
   return { service, inbound, held, published, awaiting, notifyReply, repository };
 }
@@ -148,7 +150,10 @@ describe("EnquiryInboundReplyService", () => {
       mail({
         ToFull: [{ Email: "replies@inbound.example.test" }],
         OriginalRecipient: "replies@inbound.example.test",
-        Headers: [{ Name: "In-Reply-To", Value: "<AbC-123@mtasv.net>" }],
+        Headers: [
+          { Name: "Received-SPF", Value: "Pass (sender SPF authorized)" },
+          { Name: "In-Reply-To", Value: "<AbC-123@mtasv.net>" },
+        ],
       }),
     );
     expect(result.outcome).toBe("stored");
@@ -203,6 +208,76 @@ describe("EnquiryInboundReplyService", () => {
       }),
     );
     expect(result).toEqual({ outcome: "quarantined", reason: "spf_failed" });
+  });
+
+  it("records the authentication result on a stored reply", async () => {
+    const t = setup();
+    await t.service.handle(mail());
+    expect(t.inbound.get("pm-1")).toMatchObject({ spfResult: "pass", dkimResult: "none" });
+  });
+
+  it("holds mail with neither an SPF pass nor an aligned DKIM pass as unauthenticated, with its result", async () => {
+    const t = setup();
+    const result = await t.service.handle(
+      mail({ Headers: [{ Name: "Received-SPF", Value: "Neutral (no policy)" }] }),
+    );
+    expect(result).toEqual({ outcome: "quarantined", reason: "unauthenticated" });
+    expect(t.held.get("pm-1")).toMatchObject({
+      reason: "unauthenticated",
+      suspectedEnquiryId: ID,
+      spfResult: "neutral",
+      dkimResult: "none",
+    });
+    expect(t.inbound.size).toBe(0);
+  });
+
+  it("holds mail with no SPF header at all", async () => {
+    const t = setup();
+    const result = await t.service.handle(mail({ Headers: [] }));
+    expect(result).toEqual({ outcome: "quarantined", reason: "unauthenticated" });
+  });
+
+  it("files a reply whose SPF is neutral when a DKIM signature aligned with From passed", async () => {
+    const t = setup({ trustedAuthservId: "mx.receiver.test" });
+    const result = await t.service.handle(
+      mail({
+        Headers: [
+          {
+            Name: "Authentication-Results",
+            Value: "mx.receiver.test; dkim=pass header.d=example.test",
+          },
+          { Name: "Received-SPF", Value: "Neutral" },
+        ],
+      }),
+    );
+    expect(result.outcome).toBe("stored");
+    expect(t.inbound.get("pm-1")).toMatchObject({ spfResult: "neutral", dkimResult: "pass" });
+  });
+
+  it("does not believe a DKIM pass for another domain, or one from a server it does not trust", async () => {
+    const unaligned = setup({ trustedAuthservId: "mx.receiver.test" });
+    expect(
+      await unaligned.service.handle(
+        mail({
+          Headers: [
+            {
+              Name: "Authentication-Results",
+              Value: "mx.receiver.test; dkim=pass header.d=bulk.test",
+            },
+          ],
+        }),
+      ),
+    ).toEqual({ outcome: "quarantined", reason: "unauthenticated" });
+    const forged = setup({ trustedAuthservId: "mx.receiver.test" });
+    expect(
+      await forged.service.handle(
+        mail({
+          Headers: [
+            { Name: "Authentication-Results", Value: "evil.test; dkim=pass header.d=example.test" },
+          ],
+        }),
+      ),
+    ).toEqual({ outcome: "quarantined", reason: "unauthenticated" });
   });
 
   it("quarantines automatic replies", async () => {

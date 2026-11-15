@@ -51,6 +51,7 @@ export class InMemoryMarketingEnquiries implements IMarketingEnquiryRepository {
       createdAt: this.now(),
       handledAt: null,
       handledByUserId: null,
+      awaitingReplySince: null,
     };
     this.rows.push(record);
     this.privateSale.set(record.id, input.privateSale);
@@ -149,6 +150,7 @@ export class InMemoryMarketingEnquiries implements IMarketingEnquiryRepository {
       row.handledAt = change.closed?.at ?? null;
       row.handledByUserId = change.closed?.byUserId ?? null;
     }
+    if (change.clearsAwaitingReply) row.awaitingReplySince = null;
     row.version += 1;
     return row;
   }
@@ -159,6 +161,7 @@ export class InMemoryMarketingEnquiries implements IMarketingEnquiryRepository {
     row.status = "closed";
     row.handledAt = at;
     row.handledByUserId = userId;
+    row.awaitingReplySince = null;
     row.version += 1;
     return row;
   }

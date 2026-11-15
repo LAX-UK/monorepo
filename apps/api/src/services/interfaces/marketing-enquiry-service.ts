@@ -5,10 +5,14 @@ import type {
   EnquiryStatus,
   EnquiryTransitionRefusal,
   EnquiryViewer,
+  InboundDkimResult,
+  InboundMatchMethod,
+  InboundSpfResult,
 } from "@auction/domain";
 import type {
   EnquiryAttachmentRecord,
   EnquiryStatusCounts,
+  InboundAttachmentMetadata,
   PrivateSaleEnquiryDetail,
   UploadOwner,
 } from "@auction/persistence/interfaces";
@@ -25,6 +29,20 @@ export type EnquiryNoteView = {
   authorUserId: string | null;
   body: string;
   createdAt: string;
+};
+
+/** A reply the client emailed back, as staff read it on the thread. Plain text only. */
+export type EnquiryEmailReplyView = {
+  id: string;
+  receivedAt: string;
+  subject: string;
+  body: string;
+  /** Name, type and size of each file; the files themselves were not kept. */
+  attachments: InboundAttachmentMetadata[];
+  /** `staff` when a person attached it from quarantine. */
+  matchedBy: InboundMatchMethod;
+  spfResult: InboundSpfResult | null;
+  dkimResult: InboundDkimResult | null;
 };
 
 /** What staff read when they open an enquiry. */
@@ -58,6 +76,10 @@ export type MarketingEnquiryView = {
   privateSale: PrivateSaleEnquiryDetail | null;
   attachments: EnquiryAttachmentRecord[];
   notes: EnquiryNoteView[];
+  /** The client's emailed replies, oldest first. */
+  replies: EnquiryEmailReplyView[];
+  /** When the client replied and nobody has answered yet; null when nothing is waiting. */
+  awaitingReplySince: string | null;
 };
 
 /** A row in the Enquiries list. The email is masked; the record shows it in full. */
@@ -74,6 +96,8 @@ export type MarketingEnquiryListItem = {
   status: EnquiryStatus;
   receivedAt: string;
   replyDueAt: string;
+  /** When the client replied by email and nobody has answered yet. */
+  awaitingReplySince: string | null;
   version: number;
 };
 

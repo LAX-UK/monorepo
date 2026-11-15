@@ -500,6 +500,11 @@ const envSchema = z
     ENQUIRY_REPLY_TO_ADDRESS: z.preprocess(emptyToUndefined, z.string().email().optional()),
     /** Key for the per-thread reply token (an HMAC); 32 characters or more. */
     ENQUIRY_REPLY_TOKEN_SECRET: z.preprocess(emptyToUndefined, z.string().min(32).optional()),
+    /**
+     * The authserv-id of the receiving server's `Authentication-Results` header (RFC 8601), so a
+     * DKIM pass aligned with the sender can file a reply. Unset: only an SPF pass can.
+     */
+    ENQUIRY_INBOUND_AUTHSERV_ID: z.preprocess(emptyToUndefined, z.string().max(255).optional()),
     /** `user:password` Postmark sends as Basic Auth on the inbound webhook; separate from the delivery webhook's. */
     POSTMARK_INBOUND_WEBHOOK_BASIC_AUTH: z.preprocess(
       emptyToUndefined,
