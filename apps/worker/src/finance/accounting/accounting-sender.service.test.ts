@@ -81,9 +81,11 @@ function rehearsing(ports: SenderPorts): SenderPorts {
     payments: ports.payments,
     creditNotes: ports.creditNotes,
     bills: ports.bills,
+    billPayments: ports.billPayments,
     expenses: ports.expenses,
     transfers: ports.transfers,
     contacts: ports.contacts,
+    vendors: ports.vendors,
     lookup: ports.lookup,
     destination: { destinationFor: () => ({ kind: "none" }) },
   };

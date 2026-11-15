@@ -27,6 +27,7 @@ export const DOCUMENT_KINDS = [
   "contact",
   "expense",
   "transfer",
+  "bill_payment",
 ] as const;
 export type DocumentKind = (typeof DOCUMENT_KINDS)[number];
 
@@ -56,6 +57,7 @@ const KIND_PREFIX: Readonly<Record<DocumentKind, string>> = {
   contact: "CON",
   expense: "EXP",
   transfer: "TRF",
+  bill_payment: "BPAY",
 };
 
 /** Part of every reference, so the same source id in two products can never collide. */
@@ -193,6 +195,21 @@ export interface Bill extends Base<"bill"> {
   readonly totals: Totals;
 }
 
+/**
+ * LAX paying a bill it owes (a seller's or artist's payout), in full, from one of its own
+ * accounts: today only the Stripe clearing account, which a Stripe Connect transfer leaves. A
+ * payout paid any other way names no account in LAX, so its payment is never built as if it had.
+ */
+export interface BillPayment extends Base<"bill_payment"> {
+  /** The vendor contact the bill is to. */
+  readonly contactReference: string;
+  readonly billReference: string;
+  readonly currency: typeof CURRENCY;
+  readonly paidOn: string;
+  readonly amountPence: Pence;
+  readonly paidFrom: "stripe_clearing";
+}
+
 export interface PaymentAllocation {
   readonly invoiceReference: string;
   readonly amountPence: Pence;
@@ -248,7 +265,8 @@ export type AccountingDocument =
   | Bill
   | Payment
   | Expense
-  | Transfer;
+  | Transfer
+  | BillPayment;
 
 /** Which product a document is for, and the source row's id; the reference is derived from them. */
 interface Common {
@@ -429,6 +447,58 @@ export function buildBill(input: Common & Priced): Result<Bill, DocumentCode> {
     dueOn: input.dueOn,
     lines: parts.value.lines,
     totals: totalsOf(parts.value.lines),
+  });
+}
+
+/**
+ * A vendor contact's source id: `vendor-<id>`. Books keeps the people LAX pays (vendors) apart
+ * from the people it invoices (customers), and one legal entity or party may be both, so a vendor
+ * is its own contact in LAX too (`LAX-BID-CON-vendor-<id>`), never the customer contact re-used.
+ */
+export function vendorContactSourceId(id: string): string {
+  return `vendor-${String(id).toLowerCase()}`;
+}
+
+/** Whether a contact reference is a vendor's (made from `vendorContactSourceId`) or a customer's. */
+export function contactPartyOf(reference: string): "customer" | "vendor" {
+  const parsed = parseLaxReference(reference);
+  return parsed.ok && parsed.value.kind === "contact" && parsed.value.sourceId.startsWith("vendor-")
+    ? "vendor"
+    : "customer";
+}
+
+/**
+ * A bill paid in full from Stripe clearing. Its amount is the bill's whole total: the caller
+ * passes the bill, so a payment can never be for more or less than what it pays.
+ */
+export function buildBillPayment(input: {
+  readonly bill: Bill;
+  readonly paidOn: string;
+}): Result<BillPayment, DocumentCode> {
+  const { bill } = input;
+  const parsed = parseLaxReference(bill?.reference);
+  if (!parsed.ok || parsed.value.kind !== "bill" || parsed.value.product !== bill.product) {
+    return refuse("bad_reference", "a bill payment pays a bill of its own product");
+  }
+  const b = base("bill_payment", { product: bill.product, sourceId: parsed.value.sourceId });
+  if (!b.ok) return b;
+  const contact = checkRef(bill.contactReference, "contact", bill.product);
+  if (!contact.ok) return contact;
+  if (contactPartyOf(contact.value) !== "vendor") {
+    return refuse("bad_reference", "a bill is paid to a vendor contact");
+  }
+  const dates = checkDates(input.paidOn);
+  if (!dates.ok) return dates;
+  const amount = bill.totals?.grossPence;
+  if (!isPence(amount) || amount <= 0) return refuse("bad_amount", "a bill payment is positive");
+  return ok({
+    ...b.value,
+    contactReference: contact.value,
+    billReference: bill.reference,
+    currency: CURRENCY,
+    paidOn: input.paidOn,
+    amountPence: amount,
+    paidFrom: "stripe_clearing",
   });
 }
 
@@ -916,6 +986,7 @@ export function expectedTotals(document: AccountingDocument): Totals {
     case "payment":
     case "expense":
     case "transfer":
+    case "bill_payment":
       return { netPence: document.amountPence, vatPence: 0, grossPence: document.amountPence };
     case "contact":
       return { netPence: 0, vatPence: 0, grossPence: 0 };

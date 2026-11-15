@@ -9,6 +9,7 @@ import {
   ok,
   parkedRecord,
   projectBidPaymentGroupSettled,
+  projectBidPayoutPaid,
   projectShopOrderPaid,
   projectShopRefundSettled,
   refuse,
@@ -19,6 +20,7 @@ import type {
   StoredAccountingDocument,
   TransitionCode,
 } from "@auction/persistence/interfaces";
+import { ACCOUNTING_RELEASE_UNRESOLVED_TEXT } from "@auction/types";
 import { describe, expect, it } from "vitest";
 import { AccountingQueueService } from "./accounting-queue.service.js";
 
@@ -425,6 +427,54 @@ describe("AccountingQueueService.release, a Shop refund's credit note settled ou
     });
     expect(applied).toEqual([]);
     expect(audits).toEqual([]);
+  });
+});
+
+describe("AccountingQueueService.release, a payout's bill and payment", () => {
+  it("is never released by hand: it waits for the accountant's answer (or a named account)", async () => {
+    const projected = projectBidPayoutPaid({
+      payoutId: "7a7a7a7a-0000-4000-8000-000000000002",
+      seller: { id: "0b1c2d3e-0000-4000-8000-000000000001", name: "Seller (fixture)" },
+      createdOn: "2026-11-14",
+      grossPence: 100_000,
+      platformFeePence: 18_000,
+      stripeFeePence: 0,
+      netPence: 82_000,
+      sales: [
+        {
+          lotId: "11111111-0000-4000-8000-00000000000a",
+          paymentId: "22222222-0000-4000-8000-00000000000a",
+          hammerPence: 100_000,
+          commissionPence: 15_000,
+          commissionVatTreatment: "standard",
+          commissionVatPence: 3_000,
+          sellerNetPence: 82_000,
+        },
+      ],
+      otherLines: 0,
+      paid: { paidOn: "2026-11-20", throughStripe: false },
+    });
+    if (!projected.ok) throw new Error(projected.refusal.message);
+    for (const reason of [
+      "seller_payout_treatment",
+      "payout_lines_unmapped",
+      "payout_paid_outside_stripe",
+    ] as const) {
+      for (const document of projected.value.documents.filter((d) => d.kind !== "contact")) {
+        const parked = stored(
+          document as AccountingDocument,
+          parkedRecord(document.kind, document.reference, reason),
+        );
+        const { service, applied, audits } = setUp([parked]);
+        expect(await service.release(ask(parked))).toMatchObject({
+          ok: false,
+          refusal: "unresolved",
+          message: ACCOUNTING_RELEASE_UNRESOLVED_TEXT[reason],
+        });
+        expect(applied).toEqual([]);
+        expect(audits).toEqual([]);
+      }
+    }
   });
 });
 

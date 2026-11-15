@@ -9,12 +9,12 @@ stores records and calls providers live elsewhere and depend on this package, ne
 | Area | File | Rule |
 | --- | --- | --- |
 | Money | `money.ts` | Integer pence, GBP only. Per-line VAT rounded half-up. Totals are the exact sum of lines. |
-| Documents | `document.ts` | invoice, payment, credit_note, bill, contact, expense, transfer; deterministic LAX reference; legal entity per product. |
+| Documents | `document.ts` | invoice, payment, credit_note, bill, contact, expense, transfer, bill_payment; deterministic LAX reference; legal entity per product. |
 | Ports | `ports.ts` | One small interface per kind plus `DocumentLookupPort`. Provider-agnostic results. |
 | Life cycle | `lifecycle.ts` | Pure state machine with refusals; lease as data; lookup before retry. |
 | Payments | `allocation.ts` | One payment across invoices, oldest due first, never over-allocate; or stored allocations that equal the payment exactly. |
 | Parking | `parking.ts` | A document built and kept in "Needs a person", never sent, until the accountant or a person decides. |
-| Ordering | `dependencies.ts` | A payment waits until every invoice it is applied to is in the books. |
+| Ordering | `dependencies.ts` | A payment waits until every invoice it is applied to is in the books; a bill waits for its vendor contact, a bill payment for the vendor and its bill. |
 | Refunds | `refund.ts` | Goods/delivery split; never more than paid. |
 | Credit note refund | `credit-note-refund.ts` | A credit note that gives money back is refunded from Stripe clearing, once, for its whole gross. |
 | Source switch | `source-switch.ts` | One live source per product; refuses two. |
@@ -31,7 +31,7 @@ Time is always passed in (epoch ms for leases, `YYYY-MM-DD` for document dates);
 ## Rules
 
 **References.** `laxReference(product, kind, sourceId)` gives `LAX-<PRODUCT>-<KIND>-<id>`, e.g.
-`LAX-SHOP-INV-123`, `LAX-ART-INV-123`, `LAX-BID-BILL-123` (kinds `INV`, `PAY`, `CN`, `BILL`, `CON`, `EXP`, `TRF`; products
+`LAX-SHOP-INV-123`, `LAX-ART-INV-123`, `LAX-BID-BILL-123` (kinds `INV`, `PAY`, `CN`, `BILL`, `CON`, `EXP`, `TRF`, `BPAY`; products
 `BID`, `SHOP`, `ART`). It is injective over `(product, kind, sourceId)`, so Shop order 123 and lax.art
 order 123 never collide inside one Books organisation. Source ids are lower case (`[a-z0-9_-]`, at most 64):
 providers may search references case-insensitively, so `abc` and `ABC` must not be two documents. Builders
@@ -186,15 +186,24 @@ same facts always give the same documents, so a redelivered event is a replay.
 | `shop_refund_reversed` | nothing, a cancel, or a hold | A Shop refund Stripe reported failed after it succeeded (`shop.refund.reversed`): as `bid_payment_refund_reversed`, its credit notes never sent are cancelled and issued ones are held for a person (`refund_reversed_after_credit`, with the alert), never refunded from clearing. |
 | `shop_original_sale_paid` | contact, invoice, payment | Flow 22: an original sold directly in LAX Shop. Books issues its invoice (F17) in London Art Exchange under the Shop's own `LAX-INV-` number, taken from the counter Shop orders use when Stripe took the payment. One line, the stored sale price, with the VAT stored on the sale exactly as a Shop order line (`shopLine`). Issued, due and paid that day; the payment books the whole price into clearing, applied to the invoice in full. Same contact as the buyer's Shop orders. |
 | Stripe fees and payouts (flow 25, `decideStripeBalanceTransaction`; a daily job, not an event) | expense, transfer | One Stripe balance transaction at a time. Its fee (a charge's, a dispute's, an instant payout's, or one of Stripe's own fees) is an expense paid from Stripe clearing, `LAX-<P>-EXP-<balance transaction>`; a payout is a transfer from clearing to the bank, `LAX-<P>-TRF-<payout>`. Stripe ids keep their case through `stripeSourceId` (a capital is `-` and the letter; Stripe ids never hold `-`, so it is injective, and `stripeIdFromSourceId` reads it back). The company comes from the caller's `StripeAttribution`, made from stored LAX rows only: unattributable or conflicting, a fee given back, a reversed payout, or money not in pounds is parked for a person (`StripeParkReason`), never booked. The charge, refund or dispute amount itself is never booked here. |
-| others in `ACCOUNTING_FLOWS` | none yet | Placeholders that project nothing until their own change builds them. |
+| `bid_payout_settled` | vendor contact, bill | PR 12. A Bid seller payout made (`payout.settlement_created`, read from the stored `payout` and its lines): a bill `LAX-BID-BILL-<payout>` to the seller's vendor contact (`LAX-BID-CON-vendor-<legal entity>`) for what LAX owes, the payout's net to the penny. One line per lot sale paid from its seller-terms snapshot: the seller's net, stating the hammer, the agreement's commission and the VAT on it (the commission is netted: it stays inside the sale LAX already booked and makes no document of its own). The sales must add up to the payout's figures, or it is refused. A payout holding any other line (a refund or adjustment, a private sale, a sale with no snapshot) or a Stripe fee is billed as one line of its net, parked `payout_lines_unmapped`. Everything is parked `seller_payout_treatment` while `BID_SELLER_PAYOUT_BOOKING` is null (the accountant's answer); a payout owing nothing is not billed. |
+| `bid_payout_paid` | vendor contact, bill, bill payment | `payout.paid`: the contact and bill again (a replay; a payout whose figures changed since its bill was registered is refused for a person), then `LAX-BID-BPAY-<payout>`, the bill paid in full from Stripe clearing on the day it was paid. Parked with its bill, or `payout_paid_outside_stripe` when no Stripe transfer paid it (LAX holds no account it was paid from). |
+| `shop_artist_payout_paid` | vendor contact, bill, bill payment | `shop.payout.paid`, read from the `shop_payout_ledger` row: a bill `LAX-SHOP-BILL-<payout>` to the payee's vendor contact (`LAX-SHOP-CON-vendor-<party>`) for the row's net (the sale less LAX's commission), dated the day it was recorded, due the day it fell due, and its payment from Stripe clearing on the day it was paid. Parked `artist_payout_treatment` while `SHOP_ARTIST_PAYOUT_BOOKING` is null (principal or agent is the accountant's answer); the payment parked `payout_paid_outside_stripe` when staff marked it paid rather than a Connect transfer. LAX's own stock is not booked. |
 
 `whenReferenceHeld(kind)`: a contact already registered with other details is kept (its details are
 updated by a contact flow of its own); any other kind must match exactly.
 
 **Vendors.** `VendorPort` (`upsertVendor`) lives beside the other ports; the Books adapter
-implements it and keeps customers and vendors apart. No policy makes a bill in this phase, and a
-bill must go to a vendor contact, so when payouts are projected contact documents will say which
-party they are, so the sender can route them. Until then the sender sends customers only.
+implements it and keeps customers and vendors apart. A payee's contact is its own document,
+`LAX-<P>-CON-vendor-<id>` (`vendorContactSourceId`), never the customer contact re-used, and
+`contactPartyOf(reference)` says which party a contact is: the sender sends a vendor through
+`upsertVendor`, and the lookup reads it back as one. `buildBillPayment` pays a bill only to a vendor.
+
+**Payout bookings.** `PayoutBooking` (`owedTreatment`, `commission: "netted"`, `basis: "principal"`)
+is the accountant's answer, one constant per product, null until given. While null the bill and
+its payment are parked, with `outside_scope` lines only as a placeholder (never sent). Releasing a
+parked payout document by hand is refused (and api_app may not move one, 0393): the change that
+ships the answer rebuilds them.
 
 ## Retries
 

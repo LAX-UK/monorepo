@@ -2689,6 +2689,13 @@
       "when": 1812110400000,
       "tag": "0392_collection_notification_types",
       "breakpoints": true
+    },
+    {
+      "idx": 385,
+      "version": "7",
+      "when": 1812196800000,
+      "tag": "0393_books_payout_bills",
+      "breakpoints": true
     }
   ]
 }

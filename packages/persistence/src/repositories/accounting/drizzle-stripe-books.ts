@@ -20,6 +20,7 @@ import type {
   IStripeBooksLedger,
   IStripeReconciliationStore,
   ParkedBalanceTransaction,
+  PayoutKindTotals,
   StripeAccountState,
   StripeBalanceOutcome,
   StripeBalanceRow,
@@ -236,6 +237,7 @@ const DATE_FIELD = {
   payment: "receivedOn",
   expense: "spentOn",
   transfer: "transferredOn",
+  bill_payment: "paidOn",
 } as const;
 
 /** Balance transaction types whose amount the payments flow books into clearing. */
@@ -366,6 +368,7 @@ export class DrizzleStripeReconciliationStore implements IStripeReconciliationSt
     const dateOf = sql`${d.payload} ->> (case ${d.kind}
       when 'payment' then ${DATE_FIELD.payment}
       when 'expense' then ${DATE_FIELD.expense}
+      when 'bill_payment' then ${DATE_FIELD.bill_payment}
       else ${DATE_FIELD.transfer} end)`;
     const signed = sql`case ${d.kind} when 'payment' then ${d.grossPence} else -${d.grossPence} end`;
     const [row] = await this.db
@@ -373,6 +376,8 @@ export class DrizzleStripeReconciliationStore implements IStripeReconciliationSt
         payments: sql<string>`coalesce(sum(${d.grossPence}) filter (where ${d.kind} = 'payment' and ${d.state} = 'issued'), 0)`,
         expenses: sql<string>`coalesce(sum(${d.grossPence}) filter (where ${d.kind} = 'expense' and ${d.state} = 'issued'), 0)`,
         transfers: sql<string>`coalesce(sum(${d.grossPence}) filter (where ${d.kind} = 'transfer' and ${d.state} = 'issued'), 0)`,
+        billPayments: sql<string>`coalesce(sum(${d.grossPence}) filter (where ${d.kind} = 'bill_payment' and ${d.state} = 'issued'), 0)`,
+        billPaymentsNotIssued: sql<string>`coalesce(sum(${d.grossPence}) filter (where ${d.kind} = 'bill_payment' and ${d.state} in ('pending', 'sending', 'unknown')), 0)`,
         notIssued: sql<string>`coalesce(sum(${signed}) filter (where ${d.state} in ('pending', 'sending', 'unknown')), 0)`,
       })
       .from(d)
@@ -381,7 +386,7 @@ export class DrizzleStripeReconciliationStore implements IStripeReconciliationSt
           eq(d.legalEntity, entity),
           eq(d.targetProvider, target.provider),
           sql`${d.targetMode} = ${target.mode}`,
-          inArray(d.kind, ["payment", "expense", "transfer"]),
+          inArray(d.kind, ["payment", "expense", "transfer", "bill_payment"]),
           sql`${dateOf} >= ${since} and ${dateOf} <= ${through}`,
         ),
       );
@@ -389,6 +394,8 @@ export class DrizzleStripeReconciliationStore implements IStripeReconciliationSt
       paymentsPence: Number(row?.payments ?? 0),
       expensesPence: Number(row?.expenses ?? 0),
       transfersPence: Number(row?.transfers ?? 0),
+      billPaymentsPence: Number(row?.billPayments ?? 0),
+      billPaymentsNotIssuedPence: Number(row?.billPaymentsNotIssued ?? 0),
       notIssuedPence: Number(row?.notIssued ?? 0),
     };
   }
@@ -426,6 +433,85 @@ export class DrizzleStripeReconciliationStore implements IStripeReconciliationSt
         from payout where status in ('scheduled', 'transfer_blocked')
     `);
     return Number(result.rows[0]?.pence ?? 0);
+  }
+
+  async payoutTotals(
+    entity: LegalEntity,
+    day: string,
+    target: { readonly provider: "books"; readonly mode: string },
+  ): Promise<readonly PayoutKindTotals[]> {
+    // The ledger side: each payout of the day, its LAX reference and what it owes (pence). Bid's
+    // bill is dated the day the payout was made; a Shop payout is billed when it is paid.
+    const owed =
+      entity === "london_auction_xchange"
+        ? sql`
+          select 'bill'::text as kind, 'LAX-BID-BILL-' || lower(p.id::text) as reference,
+                 round(p.net_amount * 100)::bigint as pence
+            from payout p
+           where (p.created_at at time zone 'Europe/London')::date = ${day}::date
+             and p.net_amount > 0
+          union all
+          select 'bill_payment', 'LAX-BID-BPAY-' || lower(p.id::text),
+                 round(p.net_amount * 100)::bigint
+            from payout p
+           where p.status = 'paid'
+             and (p.processed_at at time zone 'Europe/London')::date = ${day}::date
+             and p.net_amount > 0`
+        : sql`
+          select k.kind, prefix.p || lower(l.id::text) as reference, l.net_pence::bigint as pence
+            from shop_payout_ledger l
+           cross join (values ('bill'), ('bill_payment')) as k(kind)
+           cross join lateral (select case k.kind when 'bill' then 'LAX-SHOP-BILL-'
+                                 else 'LAX-SHOP-BPAY-' end as p) as prefix
+           where l.status = 'paid' and l.payee_kind <> 'lax' and l.net_pence > 0
+             and (l.paid_at at time zone 'Europe/London')::date = ${day}::date`;
+    const product = entity === "london_auction_xchange" ? "bid" : "shop";
+    const result = await this.db.execute<{
+      kind: "bill" | "bill_payment";
+      lax_pence: string;
+      lax_count: string;
+      books_pence: string;
+      books_count: string;
+      not_issued_pence: string;
+      not_issued_count: string;
+      parked_pence: string;
+      parked_count: string;
+      unmatched_count: string;
+    }>(sql`
+      with owed as (${owed})
+      select k.kind,
+             coalesce(sum(o.pence), 0) as lax_pence,
+             count(o.reference) as lax_count,
+             coalesce(sum(d.gross_pence) filter (where d.state = 'issued'), 0) as books_pence,
+             count(d.id) filter (where d.state = 'issued') as books_count,
+             coalesce(sum(d.gross_pence) filter (where d.state in ('pending', 'sending', 'unknown')), 0)
+               as not_issued_pence,
+             count(d.id) filter (where d.state in ('pending', 'sending', 'unknown')) as not_issued_count,
+             coalesce(sum(d.gross_pence) filter (where d.state = 'needs_review'
+               and d.needs_review_reason like 'accounting_parked_%'), 0) as parked_pence,
+             count(d.id) filter (where d.state = 'needs_review'
+               and d.needs_review_reason like 'accounting_parked_%') as parked_count,
+             count(o.reference) filter (where d.id is null or d.gross_pence <> o.pence) as unmatched_count
+        from (values ('bill'), ('bill_payment')) as k(kind)
+        left join owed o on o.kind = k.kind
+        left join accounting_document d
+          on d.lax_reference = o.reference and d.kind = o.kind and d.product = ${product}
+         and d.target_provider = ${target.provider} and d.target_mode = ${target.mode}
+         and d.state <> 'cancelled'
+       group by k.kind
+       order by k.kind`);
+    return result.rows.map((r) => ({
+      kind: r.kind,
+      laxPence: Number(r.lax_pence),
+      laxCount: Number(r.lax_count),
+      booksPence: Number(r.books_pence),
+      booksCount: Number(r.books_count),
+      notIssuedPence: Number(r.not_issued_pence),
+      notIssuedCount: Number(r.not_issued_count),
+      parkedPence: Number(r.parked_pence),
+      parkedCount: Number(r.parked_count),
+      unmatchedCount: Number(r.unmatched_count),
+    }));
   }
 
   async saveReport(input: {

@@ -8,7 +8,8 @@ const BOOKS_APP = "https://books.zoho.eu/app";
 /**
  * The Books page of each kind. A bank transfer (a Stripe payout) has none confirmed yet: it opens
  * under the account's banking view, whose path is to be confirmed in the test organisation, so it
- * has no link until then.
+ * has no link until then. A payout's payment opens under "Payments made" (path to confirm in the
+ * test organisation, as the vendor payment's fields are).
  */
 const PATH: Readonly<Record<Parameters<BooksDocumentLink>[0]["documentType"], string | null>> = {
   invoice: "invoices",
@@ -18,6 +19,7 @@ const PATH: Readonly<Record<Parameters<BooksDocumentLink>[0]["documentType"], st
   contact: "contacts",
   expense: "expenses",
   transfer: null,
+  bill_payment: "paymentsmade",
 };
 
 const noLinks: BooksDocumentLink = () => null;

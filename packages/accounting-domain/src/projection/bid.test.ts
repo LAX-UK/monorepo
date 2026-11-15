@@ -126,13 +126,11 @@ describe("Bid invoice raised", () => {
 });
 
 describe("flows", () => {
-  it("every flow has a policy, and the ones not built project nothing", () => {
+  it("every flow has a policy, and every flow is built", () => {
     for (const flow of ACCOUNTING_FLOWS) {
       expect(typeof PROJECTION_POLICIES[flow]).toBe("function");
-      if ((BUILT_FLOWS as readonly string[]).includes(flow)) continue;
-      const policy = PROJECTION_POLICIES[flow] as (f: unknown) => unknown;
-      expect(policy({ notBuilt: true })).toEqual({ ok: true, value: { documents: [] } });
     }
+    expect([...BUILT_FLOWS].sort()).toEqual([...ACCOUNTING_FLOWS].sort());
   });
 
   it("only contacts keep a held reference with other details", () => {

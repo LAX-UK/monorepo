@@ -4,6 +4,7 @@ import type {
   BidInvoiceFacts,
   BidPaymentFacts,
   BidPaymentGroupFacts,
+  BidPayoutFacts,
   BidRefundsFacts,
   BooksStatusDecision,
   BooksStatusSnapshot,
@@ -21,6 +22,7 @@ import type {
   Product,
   QueueTab,
   Result,
+  ShopArtistPayoutFacts,
   ShopDeliveryFacts,
   ShopOrderPaidFacts,
   ShopOriginalSalePaidFacts,
@@ -455,6 +457,26 @@ export interface IShopAccountingFactsReader {
   ): Promise<
     FactsRead<{ readonly orderId: string; readonly reversedRefundIds: readonly string[] }>
   >;
+}
+
+/**
+ * Reads what the payout flows need from the stored rows (their events carry ids only): a Bid seller
+ * payout with its lot sales from their seller-terms snapshots, and a Shop artist payout from its
+ * ledger row. Money in whole pence, dates as London calendar days, ids lower case.
+ */
+export interface IPayoutAccountingFactsReader {
+  /**
+   * A Bid seller payout. `paid` is set only while the payout is `paid` (with the day it was paid,
+   * and whether a Stripe transfer paid it). Skips `payout_not_found`, and `payout_nothing_owed`
+   * for a payout whose net is zero or below (never billed).
+   */
+  bidPayout(payoutId: string): Promise<FactsRead<BidPayoutFacts>>;
+  /**
+   * A Shop artist payout that was paid. Skips `payout_not_found`, `payout_not_paid`,
+   * `payout_nothing_owed`, and `lax_own_stock` for a row paying LAX itself (nothing is owed to
+   * anyone).
+   */
+  shopArtistPayout(payoutId: string): Promise<FactsRead<ShopArtistPayoutFacts>>;
 }
 
 /** What flow 21 reads for one Shop refund; the books' credit notes are added by the projector. */
