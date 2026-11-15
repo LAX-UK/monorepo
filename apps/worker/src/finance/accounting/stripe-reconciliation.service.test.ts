@@ -165,6 +165,51 @@ describe("StripeReconciliation", () => {
     expect(raised).toEqual([]);
   });
 
+  it("still alerts when a seller transfer is known but a payout is missing from Books", async () => {
+    const { s } = store({ unbooked: [{ type: "transfer", pence: -8_000 }] });
+    // The transfer is explained; a 40.00 payout also left the balance and Books never booked it.
+    const { service, raised } = run(s, 1_000 + 10_000 - 165 - 8_000 - 4_000);
+    const [report] = await service.run();
+    expect(report?.clearing).toMatchObject({
+      knownUnbookedPence: -8_000,
+      unexplainedPence: -4_000,
+    });
+    expect(report?.mismatches).toBe(1);
+    expect(raised).toEqual([
+      {
+        alert: ACCOUNTING_ALERTS.reconciliationMismatch,
+        fields: expect.objectContaining({ legalEntity: "london_art_exchange", mismatches: 1 }),
+      },
+    ]);
+  });
+
+  it.each(["transfer", "refund", "adjustment"])(
+    "takes a documented %s movement out of clearing without an alert",
+    async (type) => {
+      const { s } = store({ unbooked: [{ type, pence: -500 }] });
+      const { service, raised } = run(s, 1_000 + 10_000 - 165 - 500);
+      const [report] = await service.run();
+      expect(report?.clearing).toMatchObject({ knownUnbookedPence: -500, unexplainedPence: 0 });
+      expect(raised).toEqual([]);
+    },
+  );
+
+  it.each(["payout", "stripe_fee", "network_cost", "anything_new"])(
+    "does not treat a %s movement as known unbooked: it is a difference and alerts",
+    async (type) => {
+      const { s } = store({ unbooked: [{ type, pence: -500 }] });
+      const { service, raised } = run(s, 1_000 + 10_000 - 165 - 500);
+      const [report] = await service.run();
+      expect(report?.clearing).toMatchObject({
+        knownUnbooked: [],
+        knownUnbookedPence: 0,
+        unexplainedPence: -500,
+      });
+      expect(report?.mismatches).toBe(1);
+      expect(raised).toHaveLength(1);
+    },
+  );
+
   it("shows a document still on its way to Books by type, without counting it as a mismatch", async () => {
     const { s } = store({
       totals: agreeing.map((t) =>

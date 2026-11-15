@@ -22,6 +22,18 @@ import { londonDay, startOfLondonDay } from "./stripe-books-sync.service.js";
 /** Where every report is kept: private document storage, under this prefix only. */
 export const RECONCILIATION_PREFIX = "accounting/reconciliation";
 
+/**
+ * The balance transaction types the runbook documents as moving the Stripe balance outside the
+ * clearing figure: Bid's seller transfers, refunds, and dispute amounts (Stripe books those as
+ * `adjustment`). Any other type that moved the balance is not known, so it stays in the clearing
+ * difference and raises the alert.
+ */
+export const KNOWN_UNBOOKED_TYPES: ReadonlySet<string> = new Set([
+  "transfer",
+  "refund",
+  "adjustment",
+]);
+
 /** The storage key of one company's report for one day, made at `at`. */
 export function reconciliationKey(entity: LegalEntity, day: string, at: Date): string {
   const stamp = at.toISOString().replace(/[:.]/g, "-");
@@ -247,7 +259,11 @@ export class StripeReconciliation {
       ? // Stripe's balance is read now, so Books is read through today too.
         await this.deps.store.clearingSince(entity, since, londonDay(this.deps.now()), target)
       : { paymentsPence: 0, expensesPence: 0, transfersPence: 0, notIssuedPence: 0 };
-    const knownUnbooked = since ? await this.deps.store.knownUnbooked(entity) : [];
+    const knownUnbooked = since
+      ? (await this.deps.store.knownUnbooked(entity)).filter((m) =>
+          KNOWN_UNBOOKED_TYPES.has(m.type),
+        )
+      : [];
     const knownUnbookedPence = knownUnbooked.reduce((sum, m) => sum + m.pence, 0);
     const booksClearingPence =
       openingPence + moves.paymentsPence - moves.expensesPence - moves.transfersPence;

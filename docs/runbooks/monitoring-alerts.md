@@ -851,7 +851,9 @@ stored invoice copies, never the repository). Ids and amounts only, no names or 
   against Stripe's balance (available and pending, GBP) now; documents still on their way are
   shown as in flight, not as a difference. Movements since the opening that the clearing figure
   does not take from Books (Bid's seller transfers, refunds, dispute amounts) are shown by type as
-  `knownUnbooked`, from the recorded balance transactions, and are not a difference either. Not compared until every Stripe
+  `knownUnbooked`, from the recorded balance transactions, and are not a difference either. Only the
+  documented types count (`transfer`, `refund`, and `adjustment` for dispute amounts); a movement of any
+  other type stays in the clearing difference and alerts. Not compared until every Stripe
   account of the company has its opening balance stated;
 - **held transfer funds**: Bid seller payouts scheduled or blocked, still in the Stripe balance.
   Not tracked for London Art Exchange yet.
