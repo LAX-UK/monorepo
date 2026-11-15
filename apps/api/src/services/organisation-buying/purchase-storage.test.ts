@@ -79,6 +79,8 @@ describe("the buyer's storage view of a purchase", () => {
       "That day has passed, so storage charges may apply. Book a time to collect your work from LAX Gallery, or email us if you need longer.",
     );
     expect(off?.storage.badge).toBe("Collect by Mon 16 Nov");
+    // Nothing is billed while charging is off, so nothing is due.
+    expect(off?.storage.amountPence).toBe(0);
   });
 
   it("still shows the rates before the day while charging is off", () => {

@@ -148,7 +148,7 @@ describe("PurchaseDetail's collect-by notice", () => {
       ...collectBy(state),
       title,
       body,
-      storage: { badge: title, state: storageState },
+      storage: { badge: title, state: storageState, amountPence: 0 },
     });
 
     it.each([

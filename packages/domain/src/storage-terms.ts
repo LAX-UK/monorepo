@@ -294,7 +294,7 @@ export type PurchaseStorageView = {
   notice: StorageNotice;
   /** The purchases list badge: the day, and the running total once it is owed. */
   badge: string;
-  /** What is due as of today, before VAT. */
+  /** What is due as of today, before VAT; 0 while charging is off, as nothing is billed. */
   amountPence: number;
 };
 
@@ -309,7 +309,7 @@ export function purchaseStorageView(
     state: charge.state,
     notice: formatStorageNotice(charge, terms, band, context),
     badge: formatStorageBadge(charge, context.now, context.chargingOn),
-    amountPence: charge.amountPence,
+    amountPence: context.chargingOn ? charge.amountPence : 0,
   };
 }
 

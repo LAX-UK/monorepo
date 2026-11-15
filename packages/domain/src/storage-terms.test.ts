@@ -498,5 +498,7 @@ describe("the purchase view", () => {
       chargingOn: false,
     });
     expect(view.badge).toBe("Collect by Mon 16 Nov");
+    // Nothing is billed while charging is off, so nothing is due.
+    expect(view.amountPence).toBe(0);
   });
 });

@@ -25,7 +25,7 @@ export function collectionBadge(input: {
     day: string;
     state: PurchaseCollectByState;
     /** The badge under the place's storage terms (day, and the total once owed); wins when present. */
-    storage?: { badge: string; state: StorageState } | null;
+    storage?: { badge: string; state: StorageState; amountPence: number } | null;
   } | null;
   /** The start (ISO) of the live visit the lot is booked into. */
   bookedStart: string | null;
@@ -48,12 +48,23 @@ export function collectionBadge(input: {
   if (!collectBy) return null;
   const { storage } = collectBy;
   if (collectBy.state === "overdue") {
+    // Charging off: nothing is billed, so today's "Overdue since" badge stays.
+    if (!storage || (storage.state === "charging" && storage.amountPence === 0)) {
+      return {
+        state: "overdue",
+        label: COLLECT_LIST_COPY.badge.overdue(collectBy.day),
+        tone: "danger",
+        shape: "dot",
+        title: COLLECT_LIST_COPY.badge.overdueSentence(collectBy.day),
+      };
+    }
     return {
       state: "overdue",
-      label: storage?.badge ?? COLLECT_LIST_COPY.badge.overdue(collectBy.day),
-      tone: "danger",
+      label: storage.badge,
+      // The running total is a debt (danger); a day past with nothing owed is only a warning.
+      tone: storage.amountPence > 0 ? "danger" : "warning",
       shape: "dot",
-      title: storage ? `${storage.badge}.` : COLLECT_LIST_COPY.badge.overdueSentence(collectBy.day),
+      title: `${storage.badge}.`,
     };
   }
   return {

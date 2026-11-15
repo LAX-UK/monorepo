@@ -793,7 +793,7 @@ describe("the collect-by notice on a purchase card", () => {
         title: "Please collect by Mon 16 Nov",
         body: "That day has passed, so storage charges may apply. Book a time to collect your work from LAX Gallery, or email us if you need longer.",
       });
-      expect(card?.collection?.label).toBe("Collect by Mon 16 Nov");
+      expect(card?.collection?.label).toBe("Overdue since Mon 16 Nov");
     });
 
     it("charging off before the day still shows the free period and the rate", () => {
