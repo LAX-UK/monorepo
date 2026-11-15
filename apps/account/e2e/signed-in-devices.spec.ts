@@ -226,9 +226,10 @@ test.describe("Signed-in devices @journey", () => {
 
       // In a small window: the page itself never navigates, and the device goes.
       await main.page.goto(SECURITY);
-      let navigations = 0;
-      main.page.on("framenavigated", (frame) => {
-        if (frame === main.page.mainFrame()) navigations++;
+      // A mark on this document: a reload or another page would lose it. Same-document history
+      // updates, which Next makes after a server action or a refresh, keep it.
+      await main.page.evaluate(() => {
+        (window as Window & { stayedOnPage?: boolean }).stayedOnPage = true;
       });
       const devices = devicesSection(main.page);
       await devices.getByRole("button", { name: /^Sign out Safari/ }).click();
@@ -243,7 +244,11 @@ test.describe("Signed-in devices @journey", () => {
       await popup.waitForEvent("close", { timeout: 60_000 });
       await expect(devices.getByText(/Safari .* is signed out\./)).toBeVisible();
       await expect(devices.getByRole("button", { name: /^Sign out Safari/ })).toHaveCount(0);
-      expect(navigations).toBe(0);
+      expect(
+        await main.page.evaluate(
+          () => (window as Window & { stayedOnPage?: boolean }).stayedOnPage === true,
+        ),
+      ).toBe(true);
 
       // Window blocked: a full-page sign-in, then the same dialog again for one more click.
       await blocked.page.addInitScript(() => {
