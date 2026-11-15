@@ -131,6 +131,7 @@ function service(over: World = {}) {
           wonAt: new Date(NOW.getTime() - 86_400_000),
           payment: null,
           fulfilment: null,
+          storage: null,
           quote: null,
         },
       ]

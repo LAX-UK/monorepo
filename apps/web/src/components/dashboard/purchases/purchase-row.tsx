@@ -96,6 +96,7 @@ export function PurchaseRow({
         card.saleTitle,
         card.wonBy ? `won by ${card.wonBy}` : null,
         card.badge.note,
+        card.collectBy?.short ?? null,
       ]}
       figures={[{ value: card.amount, label: card.amountLabel }]}
       aligned

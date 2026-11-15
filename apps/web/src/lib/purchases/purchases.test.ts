@@ -189,6 +189,7 @@ function facts(
       collectedBy: null,
       collectedAt: null,
       quote: null,
+      collectBy: null,
     },
     ...overrides,
   };
@@ -271,6 +272,7 @@ describe("buildPurchasesVm", () => {
                 collectedBy: null,
                 collectedAt: null,
                 quote: null,
+                collectBy: null,
               },
             },
           ),
@@ -356,6 +358,7 @@ describe("buildPurchasesVm", () => {
                 collectedBy: null,
                 collectedAt: null,
                 quote: null,
+                collectBy: null,
               },
             },
           ),
@@ -645,5 +648,68 @@ describe("a purchase inside a part-funded bank transfer", () => {
     });
     expect(card?.primaryAction).toBeNull();
     expect(card?.statusNote).toBe("Northbank Gallery's payment is being confirmed");
+  });
+});
+
+describe("the collect-by notice on a purchase card", () => {
+  const paid = { status: "paid" as const, dueAt: null, paymentId: "p11", totalDue: "8000.00" };
+  const withCollectBy = (collectBy: AccountPurchaseFacts["delivery"]["collectBy"]) =>
+    facts("lot-11", paid, {
+      delivery: {
+        stage: "ready_to_collect",
+        method: "collection",
+        carrier: null,
+        trackingNumber: null,
+        collectedBy: null,
+        collectedAt: null,
+        quote: null,
+        collectBy,
+      },
+    });
+  const cardWith = (collectBy: AccountPurchaseFacts["delivery"]["collectBy"]) =>
+    buildPurchasesVm(sources({ factsByLot: { "lot-11": withCollectBy(collectBy) } })).cardsByTab[
+      "in-progress"
+    ].find((card) => card.lotId === "lot-11");
+
+  it("shows the day the API names, in the house style, with the link the email uses", () => {
+    expect(
+      cardWith({ date: "2026-12-09", state: "soon", placeName: "LAX Marylebone" })?.collectBy,
+    ).toEqual({
+      day: "Wed 9 Dec",
+      short: "Collect by Wed 9 Dec",
+      title: "Please collect by Wed 9 Dec",
+      body: "Your work is paid for and waiting at LAX Marylebone. Book a time to collect it soon: after that day, storage charges may apply.",
+      state: "soon",
+      bookHref: "/purchases/collect?lots=lot-11",
+    });
+  });
+
+  it("names the year when the day falls in the next one, as the reminder email does", () => {
+    // Payment cleared 5 Dec 2026, read on 20 Dec: the email says "Mon 4 Jan 2027".
+    const card = buildPurchasesVm(
+      sources({
+        now: new Date("2026-12-20T12:00:00Z"),
+        factsByLot: {
+          "lot-11": withCollectBy({
+            date: "2027-01-04",
+            state: "upcoming",
+            placeName: "LAX Marylebone",
+          }),
+        },
+      }),
+    ).cardsByTab["in-progress"].find((c) => c.lotId === "lot-11");
+    expect(card?.collectBy?.day).toBe("Mon 4 Jan 2027");
+    expect(card?.collectBy?.short).toBe("Collect by Mon 4 Jan 2027");
+  });
+
+  it("names the place the work waits at, and once overdue says how to ask for longer", () => {
+    const body = cardWith({ date: "2026-10-30", state: "overdue", placeName: "LAX Marylebone" })
+      ?.collectBy?.body;
+    expect(body).toContain("from LAX Marylebone");
+    expect(body).toContain("email us if you need longer");
+  });
+
+  it("carries nothing when the API names no day, so a booked or collected lot shows none", () => {
+    expect(cardWith(null)?.collectBy).toBeNull();
   });
 });

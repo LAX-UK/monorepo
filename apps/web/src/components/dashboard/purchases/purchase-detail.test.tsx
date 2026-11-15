@@ -53,6 +53,7 @@ function card(over: Partial<PurchaseCardVm> = {}): PurchaseCardVm {
     primaryAction: null,
     invoiceHref: null,
     problemHref: null,
+    collectBy: null,
     ...over,
   };
 }
@@ -105,5 +106,71 @@ describe("PurchaseDetail's due line", () => {
     );
     expect(screen.getByText("Waiting for payment by Northbank Gallery")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /show details/i })).toBeNull();
+  });
+});
+
+describe("PurchaseDetail's collect-by notice", () => {
+  const collectBy = (state: "upcoming" | "soon" | "overdue") => ({
+    day: "Wed 9 Dec",
+    short: "Collect by Wed 9 Dec",
+    title: "Please collect by Wed 9 Dec",
+    body:
+      state === "overdue"
+        ? "That day has passed, so storage charges may apply."
+        : "Your work is paid for and waiting at LAX Marylebone.",
+    state,
+    bookHref: "/purchases/collect?lots=l6",
+  });
+
+  it.each(["upcoming", "soon", "overdue"] as const)(
+    "says please collect by the day when %s",
+    (state) => {
+      renderAsVisitorIn(null, page(card({ collectBy: collectBy(state) })));
+      expect(screen.getByText("Please collect by Wed 9 Dec")).toBeInTheDocument();
+      expect(screen.getByRole("link", { name: "Book a collection time" })).toHaveAttribute(
+        "href",
+        "/purchases/collect?lots=l6",
+      );
+    },
+  );
+
+  it("links the storage policy, and the gallery's email once the day has passed", () => {
+    const soon = renderAsVisitorIn(null, page(card({ collectBy: collectBy("soon") })));
+    expect(screen.getByRole("link", { name: "Storage policy" })).toHaveAttribute(
+      "href",
+      "/shipping#storage",
+    );
+    expect(screen.queryByRole("link", { name: /^Email / })).toBeNull();
+    soon.unmount();
+    renderAsVisitorIn(null, page(card({ collectBy: collectBy("overdue") })));
+    expect(screen.getByRole("link", { name: /^Email .+@/ }).getAttribute("href")).toMatch(
+      /^mailto:/,
+    );
+  });
+
+  it("says the day has passed once overdue, and not before", () => {
+    const overdue = renderAsVisitorIn(null, page(card({ collectBy: collectBy("overdue") })));
+    expect(screen.getByText(/That day has passed/)).toBeInTheDocument();
+    overdue.unmount();
+    renderAsVisitorIn(null, page(card({ collectBy: collectBy("soon") })));
+    expect(screen.queryByText(/That day has passed/)).toBeNull();
+  });
+
+  it("is calm while upcoming and a warning once soon or overdue", () => {
+    const tone = (state: "upcoming" | "soon" | "overdue") => {
+      const view = renderAsVisitorIn(null, page(card({ collectBy: collectBy(state) })));
+      const notice = screen.getByText("Please collect by Wed 9 Dec").closest("[role=status]");
+      const className = notice?.className ?? "";
+      view.unmount();
+      return className;
+    };
+    expect(tone("upcoming")).toContain("lax-info");
+    expect(tone("soon")).toContain("lax-warning");
+    expect(tone("overdue")).toContain("lax-warning");
+  });
+
+  it("shows nothing when the purchase is booked or collected", () => {
+    renderAsVisitorIn(null, page(card({ collectBy: null })));
+    expect(screen.queryByText(/Please collect by/)).toBeNull();
   });
 });

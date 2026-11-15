@@ -146,6 +146,20 @@ export const COLLECT_COPY = {
     upcoming: "Upcoming",
     past: "Past",
   },
+  collectBy: {
+    title: (day: string) => `Please collect by ${day}`,
+    short: (day: string) => `Collect by ${day}`,
+    upcoming: (place: string) =>
+      `Your work is paid for and waiting at ${place}. Book a time to collect it.`,
+    soon: (place: string) =>
+      `Your work is paid for and waiting at ${place}. Book a time to collect it soon: after that day, storage charges may apply.`,
+    overdue: (place: string) =>
+      `That day has passed, so storage charges may apply. Book a time to collect your work from ${place}, or email us if you need longer.`,
+    storagePolicy: "Storage policy",
+    storagePolicyHref: "/shipping#storage",
+    email: `Email ${GALLERY_CONTACT.email}`,
+    emailHref: `mailto:${GALLERY_CONTACT.email}?subject=${encodeURIComponent("Collecting my purchase")}`,
+  },
   badge: {
     book: "Book collection",
     notCollected: "Not collected",

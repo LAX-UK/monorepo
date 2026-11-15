@@ -39,6 +39,7 @@ function purchase(
     wonAt: new Date(NOW.getTime() - 2 * DAY),
     payment: null,
     fulfilment: null,
+    storage: null,
     quote: null,
     ...over,
   };

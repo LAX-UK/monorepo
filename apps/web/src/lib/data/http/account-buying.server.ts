@@ -84,6 +84,13 @@ const purchaseSchema = z.object({
     collectedBy: z.string().nullable(),
     collectedAt: zCoerceDate.nullable(),
     quote: quoteSchema.nullable(),
+    collectBy: z
+      .object({
+        date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+        state: z.enum(["upcoming", "soon", "overdue"]),
+        placeName: z.string(),
+      })
+      .nullable(),
   }),
 }) satisfies z.ZodType<AccountPurchaseFacts, z.ZodTypeDef, unknown>;
 

@@ -1,7 +1,11 @@
 import {
+  DEFAULT_COLLECT_BY_POLICY,
   type EntityActor,
+  awaitsCollection,
   deliveryQuoteActionsFor,
   entityActorCan,
+  londonDateKey,
+  purchaseCollectBy,
   purchaseDeliveryStage,
   purchaseInvoiceState,
   purchasePaymentRole,
@@ -148,6 +152,25 @@ function paymentRoleOf(row: AccountPurchaseFactsRow, actor: OrganisationMemberAc
   });
 }
 
+/**
+ * The "please collect by" notice: the day the reminder email names, from the same domain rule and
+ * the place's free storage period. Shown exactly while the email would go: the domain's
+ * `awaitsCollection` holds the exclusions the email's reader applies (booked, collected, on its
+ * way, going by courier, a deleted sale, a place that takes no online booking).
+ */
+function collectByOf(
+  row: AccountPurchaseFactsRow,
+  now: Date,
+): AccountPurchaseView["delivery"]["collectBy"] {
+  const storage = row.storage;
+  if (!storage || !awaitsCollection({ ...storage, fulfilment: row.fulfilment })) return null;
+  const notice = purchaseCollectBy(storage.clearedAt, londonDateKey(now), {
+    ...DEFAULT_COLLECT_BY_POLICY,
+    freeStorageDays: storage.freeStorageDays ?? DEFAULT_COLLECT_BY_POLICY.freeStorageDays,
+  });
+  return { ...notice, placeName: storage.placeName };
+}
+
 /** A purchase row: the invoice and delivery stage worked out by the domain rules. */
 export function purchaseView(
   row: AccountPurchaseFactsRow,
@@ -157,6 +180,11 @@ export function purchaseView(
   stillToSendPence: number | null = null,
 ): AccountPurchaseView {
   const invoice = invoiceOf(row, now, stillToSendPence);
+  const stage = purchaseDeliveryStage({
+    invoice: invoice.status,
+    fulfilment: row.fulfilment,
+    quote: row.quote?.status ?? null,
+  });
   return {
     lotId: row.lotId,
     lotTitle: row.lotTitle,
@@ -168,17 +196,14 @@ export function purchaseView(
     paymentRole: paymentRoleOf(row, actor),
     invoice,
     delivery: {
-      stage: purchaseDeliveryStage({
-        invoice: invoice.status,
-        fulfilment: row.fulfilment,
-        quote: row.quote?.status ?? null,
-      }),
+      stage,
       method: row.fulfilment?.method ?? null,
       carrier: row.fulfilment?.carrier ?? null,
       trackingNumber: row.fulfilment?.trackingNumber ?? null,
       collectedBy: row.fulfilment?.collectedBy ?? null,
       collectedAt: row.fulfilment?.collectedAt ?? null,
       quote: row.quote ? quoteView(row.quote, actor) : null,
+      collectBy: collectByOf(row, now),
     },
   };
 }

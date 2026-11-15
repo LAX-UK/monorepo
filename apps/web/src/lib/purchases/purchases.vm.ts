@@ -1,3 +1,4 @@
+import { COLLECT_COPY } from "@/lib/collect/collect-copy";
 import { dashboardSofRequirementsUrl } from "@/lib/dashboard/dashboard-copy";
 import type { AccountPurchaseFacts } from "@/lib/data/http/account-buying.types";
 import type { LotFulfilmentSnapshot } from "@/lib/data/http/payments.schema";
@@ -13,8 +14,10 @@ import {
   type AmountOwedEntry,
   type AmountsOwedSummary,
   PURCHASE_LIST_LIMIT,
+  type PurchaseCollectByState,
   type PurchasePaymentRole,
   addMoneyStrings,
+  formatCollectionDay,
   invoiceDueAt,
   summariseAmountsOwed,
 } from "@auction/domain";
@@ -91,6 +94,19 @@ export type PurchaseCardVm = {
   steps: PurchaseStepVm[] | null;
   /** The money lines; `detail` is how a line was worked out (the premium's rate or slices). */
   breakdown: { label: string; value: string; detail?: string }[];
+  /**
+   * "Please collect by", while the work waits to be collected and is not booked: the day is the
+   * one the reminder email names, read from the account's facts, never worked out here, and drawn
+   * as the email draws it. `short` is the row's line, `title` and `body` the purchase page's notice.
+   */
+  collectBy: {
+    day: string;
+    short: string;
+    title: string;
+    body: string;
+    state: PurchaseCollectByState;
+    bookHref: string;
+  } | null;
   primaryAction: { label: string; href: string } | null;
   invoiceHref: string | null;
   problemHref: string | null;
@@ -378,6 +394,25 @@ function cancelledDelivery(owed: AmountOwedEntry | null): PurchaseFacts["fulfilm
     : null;
 }
 
+/** The notice: its day ("Wed 9 Dec", with the year when it is not this one) and its words. */
+function collectByOf(
+  row: PortfolioRow,
+  facts: AccountPurchaseFacts | null,
+  now: Date,
+): PurchaseCardVm["collectBy"] {
+  const collectBy = facts?.delivery.collectBy;
+  if (!collectBy) return null;
+  const day = formatCollectionDay(new Date(`${collectBy.date}T12:00:00Z`), now);
+  return {
+    day,
+    short: COLLECT_COPY.collectBy.short(day),
+    title: COLLECT_COPY.collectBy.title(day),
+    body: COLLECT_COPY.collectBy[collectBy.state](collectBy.placeName),
+    state: collectBy.state,
+    bookHref: `${CLIENT_ROUTES.collect}?lots=${encodeURIComponent(row.lot.id)}`,
+  };
+}
+
 /** One purchase as its row and its page read it. */
 export function purchaseCard(row: PortfolioRow, sources: PurchaseSources): PurchaseCardVm {
   const { lot } = row;
@@ -423,6 +458,7 @@ export function purchaseCard(row: PortfolioRow, sources: PurchaseSources): Purch
     wonBy: sources.showWonBy ? (facts?.wonBy?.name ?? null) : null,
     state,
     badge: purchaseBadge(state, facts, informed),
+    collectBy: collectByOf(row, facts, sources.now ?? new Date()),
     statusLabel:
       informed && (state === "payment-due" || state === "in-review")
         ? "Awaiting payment"

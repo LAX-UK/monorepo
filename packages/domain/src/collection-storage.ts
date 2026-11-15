@@ -1,4 +1,5 @@
 import { type DateKey, addDaysToKey, londonDateKey } from "./collection-time.js";
+import type { FulfilmentFacts } from "./purchase-delivery-stage.js";
 
 /** How long a bought work waits at the gallery before the buyer is asked to collect it. */
 export type CollectByPolicy = {
@@ -77,4 +78,65 @@ export function collectByClearedRange(
       -(early ? policy.freeStorageDays - policy.reminderLeadDays : policy.freeStorageDays),
     ),
   };
+}
+
+/** Where a purchase waiting for collection stands against its "please collect by" day. */
+export type PurchaseCollectByState = "upcoming" | "soon" | "overdue";
+
+/** The "please collect by" notice a purchase carries while it waits to be collected. */
+export type PurchaseCollectBy = {
+  /** The "please collect by" day, a London day: the one the reminder email names. */
+  date: DateKey;
+  /** `soon` from the lead before the day through the day itself; `overdue` once it has passed. */
+  state: PurchaseCollectByState;
+};
+
+/**
+ * The notice a purchase shows on `today` (a London day), from the same day the reminder email
+ * names. The caller decides whether the purchase is waiting at a place that takes bookings and
+ * is not yet booked or collected; this only reads the day.
+ */
+export function purchaseCollectBy(
+  clearedAt: Date,
+  today: DateKey,
+  policy: CollectByPolicy = DEFAULT_COLLECT_BY_POLICY,
+): PurchaseCollectBy {
+  const { date, reminderDates } = collectBy(clearedAt, policy);
+  if (today > date) return { date, state: "overdue" };
+  const early = policy.freeStorageDays > policy.reminderLeadDays;
+  return { date, state: today >= (early ? reminderDates[0] : date) ? "soon" : "upcoming" };
+}
+
+/** Fulfilment states in which a paid work is no longer waiting to be collected, or not yet. */
+const NOT_AWAITING_COLLECTION: ReadonlySet<FulfilmentFacts["status"]> = new Set([
+  "awaiting_payment",
+  "delivered",
+  "cancelled",
+  "in_transit",
+]);
+
+/** What decides whether a paid purchase still waits at its collection place to be collected. */
+export type CollectionWaitFacts = {
+  fulfilment: FulfilmentFacts | null;
+  /** The lot's sale was soft-deleted. */
+  saleDeleted: boolean;
+  /** The sale venue's collection place takes online bookings. */
+  bookingOpen: boolean;
+  /** The lot is in a live (active) collection booking. */
+  booked: boolean;
+};
+
+/**
+ * Whether a purchase whose payment has cleared still waits to be collected, so it carries the
+ * "please collect by" notice. The same exclusions as the reminder email's reader
+ * (`apps/worker/src/repositories/drizzle-collect-by.reader.ts`), which is tested against this:
+ * not handed over, cancelled, on its way or still unpaid; not going by courier; not in a deleted
+ * sale; at a place that takes online bookings; and not already booked. The invoice is not read:
+ * a refund that leaves the fulfilment open still leaves the work waiting, as the email does.
+ */
+export function awaitsCollection(facts: CollectionWaitFacts): boolean {
+  const { fulfilment } = facts;
+  if (!fulfilment || NOT_AWAITING_COLLECTION.has(fulfilment.status)) return false;
+  if (fulfilment.method === "shipping") return false;
+  return facts.bookingOpen && !facts.booked && !facts.saleDeleted;
 }

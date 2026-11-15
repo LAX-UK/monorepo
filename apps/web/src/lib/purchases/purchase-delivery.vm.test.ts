@@ -26,6 +26,7 @@ function facts(
       collectedBy: null,
       collectedAt: null,
       quote: null,
+      collectBy: null,
     },
     ...overrides,
   };

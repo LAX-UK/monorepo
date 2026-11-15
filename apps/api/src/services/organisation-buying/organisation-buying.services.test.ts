@@ -7,6 +7,7 @@ import {
   InMemoryRegistrations,
   LOTS,
   NOW,
+  seedPurchases,
 } from "../../testing/in-memory-workspace-buying.js";
 import type { OrganisationMemberActor } from "../interfaces/organisation-membership-service.js";
 import { AccountPurchasesService } from "./account-purchases.service.js";
@@ -47,6 +48,46 @@ describe("AccountPurchasesService.list", () => {
       expect(byLot.get(LOTS.agentWin)?.wonBy?.name).toBe("Tom Whitfield");
       expect(byLot.get(LOTS.due)?.paymentRole).toBe("payer");
     }
+  });
+
+  it("names the please-collect-by day on a paid lot waiting at its collection place", async () => {
+    const rows = seedPurchases().map((row) =>
+      row.lotId === LOTS.paid
+        ? {
+            ...row,
+            fulfilment: {
+              status: "ready_for_collection" as const,
+              method: "collection" as const,
+              carrier: null,
+              trackingNumber: null,
+              collectedBy: null,
+              collectedAt: null,
+            },
+            // Cleared Tue 17 Nov with a 30-day free period: collect by Thu 17 Dec.
+            storage: {
+              clearedAt: new Date("2026-11-17T10:00:00Z"),
+              placeName: "LAX Marylebone",
+              freeStorageDays: null,
+              bookingOpen: true,
+              booked: false,
+              saleDeleted: false,
+            },
+          }
+        : row,
+    );
+    const page = (
+      await purchasesService(new InMemoryPurchaseFacts(rows)).list(actor("owner"), {
+        limit: 50,
+        offset: 0,
+      })
+    )._unsafeUnwrap();
+    const byLot = new Map(page.items.map((i) => [i.lotId, i]));
+    expect(byLot.get(LOTS.paid)?.delivery.collectBy).toEqual({
+      date: "2026-12-17",
+      state: "upcoming",
+      placeName: "LAX Marylebone",
+    });
+    expect(byLot.get(LOTS.due)?.delivery.collectBy).toBeNull();
   });
 
   it("gives a buyer agent their own wins only, told rather than paying", async () => {
