@@ -13,7 +13,6 @@ import { Popover, PopoverContent, PopoverTrigger } from "../components/ui/popove
 import { Select, SelectContent, SelectItem, SelectTrigger } from "../components/ui/select.js";
 import { Sheet, SheetContent, SheetTitle } from "../components/ui/sheet.js";
 import {
-  TOOLTIP_OPEN_DELAY_MS,
   Tooltip,
   TooltipContent,
   TooltipProvider,
@@ -84,10 +83,9 @@ describe("overlays carry the kit's motion marker and no dead classes", () => {
     expect(node.className).not.toContain("animate-none");
   });
 
-  it("tooltip: tip marker, and a 400ms default open delay", () => {
-    expect(TOOLTIP_OPEN_DELAY_MS).toBe(400);
+  it("tooltip: tip marker", () => {
     render(
-      <TooltipProvider>
+      <TooltipProvider delayDuration={400}>
         <Tooltip open>
           <TooltipTrigger>t</TooltipTrigger>
           <TooltipContent>hint</TooltipContent>
@@ -141,18 +139,6 @@ describe("overlays carry the kit's motion marker and no dead classes", () => {
     expect(document.querySelector('[data-lax-motion="scrim"]')).not.toBeNull();
   });
 
-  it("staff layers carry the staff density, so they fade at the staff timings", () => {
-    render(
-      <LaxDensityProvider density="staff">
-        <Popover open>
-          <PopoverTrigger>t</PopoverTrigger>
-          <PopoverContent>staff body</PopoverContent>
-        </Popover>
-      </LaxDensityProvider>,
-    );
-    expect(screen.getByText("staff body")).toHaveAttribute("data-lax-density", "staff");
-  });
-
   it("a layer outside any shell has no density attribute", () => {
     render(
       <Popover open>
@@ -165,17 +151,19 @@ describe("overlays carry the kit's motion marker and no dead classes", () => {
   });
 });
 
-describe("every portalled layer type carries the staff density inside a staff shell", () => {
+describe("every portalled layer type keeps its motion marker inside a staff shell", () => {
+  // The staff timings come from the page: the shell's `data-lax-density="staff"` scopes them in
+  // CSS (motion-resolved.test.ts resolves that in Chromium), so a plain layer needs no density of
+  // its own and the kit reads no density context for it.
   const staff = (node: React.ReactNode) => (
     <LaxDensityProvider density="staff">{node}</LaxDensityProvider>
   );
 
-  function expectStaff(selector: string) {
+  function expectPlainLayer(selector: string) {
     const nodes = [...document.querySelectorAll<HTMLElement>(selector)];
     expect(nodes.length, selector).toBeGreaterThan(0);
     for (const node of nodes) {
-      expect(node, selector).toHaveAttribute("data-lax-density", "staff");
-      // A plain kit layer is not LAX UI: the staff motion must not depend on `data-lax-ui`.
+      expect(node, selector).not.toHaveAttribute("data-lax-density");
       expect(node, selector).not.toHaveAttribute("data-lax-ui");
     }
   }
@@ -190,8 +178,8 @@ describe("every portalled layer type carries the staff density inside a staff sh
         </KitDialog>,
       ),
     );
-    expectStaff('[data-lax-motion="scrim"]');
-    expectStaff('[data-lax-motion="dialog"]');
+    expectPlainLayer('[data-lax-motion="scrim"]');
+    expectPlainLayer('[data-lax-motion="dialog"]');
   });
 
   it("sheet scrim and panel", () => {
@@ -204,8 +192,8 @@ describe("every portalled layer type carries the staff density inside a staff sh
         </Sheet>,
       ),
     );
-    expectStaff('[data-lax-motion="scrim"]');
-    expectStaff('[data-lax-motion="sheet"]');
+    expectPlainLayer('[data-lax-motion="scrim"]');
+    expectPlainLayer('[data-lax-motion="sheet"]');
   });
 
   it("popover, hover card, dropdown menu, select and tooltip", () => {
@@ -239,8 +227,8 @@ describe("every portalled layer type carries the staff density inside a staff sh
         </TooltipProvider>,
       ),
     );
-    expectStaff('[data-lax-motion="float"]');
-    expectStaff('[data-lax-motion="tip"]');
+    expectPlainLayer('[data-lax-motion="float"]');
+    expectPlainLayer('[data-lax-motion="tip"]');
     expect(document.querySelectorAll('[data-lax-motion="float"]').length).toBeGreaterThanOrEqual(4);
   });
 });

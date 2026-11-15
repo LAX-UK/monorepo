@@ -68,11 +68,13 @@ describe("overlay motion stylesheet", () => {
     expect(rule('[data-lax-motion="tip"]')).toContain("var(--lax-motion-fade)");
   });
 
-  it("makes staff layers fade only, with no movement keyframe", () => {
-    const staff = css.match(/\[data-lax-density="staff"\]\[data-lax-motion="float"\] \{[^}]*\}/);
+  it("makes layers on a staff page fade only, with no movement keyframe", () => {
+    const staff = css.match(
+      /:root:has\(\[data-lax-density="staff"\]\) \[data-lax-motion="float"\] \{[^}]*\}/,
+    );
     expect(staff?.[0]).toContain("lax-fade-in");
     expect(staff?.[0].split("{")[1]).not.toMatch(/float|rise|slide/);
-    const panels = css.match(/\[data-lax-density="staff"\]:is\([^)]*\) \{[^}]*\}/);
+    const panels = css.match(/:root:has\(\[data-lax-density="staff"\]\) :is\([^)]*\) \{[^}]*\}/);
     expect(panels?.[0]).toContain("lax-fade-in var(--lax-motion-panel)");
   });
 
@@ -86,7 +88,9 @@ describe("overlay motion stylesheet", () => {
     expect(css).toContain("--y: translateY(calc(var(--lift) * var(--lax-toast-rise) * -1))");
     expect(css).toContain("transform var(--lax-motion-enter) var(--lax-ease-out)");
     expect(css).toContain("transform var(--lax-motion-exit) var(--lax-ease-in)");
-    expect(css).toMatch(/\.lax-staff-layer \{\s*--lax-toast-rise: 0px/);
+    expect(css).toMatch(
+      /:root:has\(\[data-lax-density="staff"\]\) \[data-sonner-toaster\] \{\s*--lax-toast-rise: 0px/,
+    );
   });
 });
 

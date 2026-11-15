@@ -3,7 +3,6 @@
 import { HoverCard as HoverCardPrimitive } from "radix-ui";
 import type * as React from "react";
 
-import { useDensityAttribute } from "../../lax/density.js";
 import { cn } from "../../lib/utils.js";
 
 function HoverCard({ ...props }: React.ComponentProps<typeof HoverCardPrimitive.Root>) {
@@ -20,13 +19,11 @@ function HoverCardContent({
   sideOffset = 4,
   ...props
 }: React.ComponentProps<typeof HoverCardPrimitive.Content>) {
-  const density = useDensityAttribute();
   return (
     <HoverCardPrimitive.Portal data-slot="hover-card-portal">
       <HoverCardPrimitive.Content
         data-slot="hover-card-content"
         data-lax-motion="float"
-        {...density}
         align={align}
         sideOffset={sideOffset}
         className={cn(

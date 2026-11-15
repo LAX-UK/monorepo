@@ -3,7 +3,6 @@
 import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu";
 import { Check, ChevronRight, Circle } from "lucide-react";
 import * as React from "react";
-import { useDensityAttribute } from "../../lax/density.js";
 import { cn } from "../../lib/utils.js";
 import { InertOutside } from "./inert-outside.js";
 
@@ -38,48 +37,40 @@ DropdownMenuSubTrigger.displayName = DropdownMenuPrimitive.SubTrigger.displayNam
 const DropdownMenuSubContent = React.forwardRef<
   React.ElementRef<typeof DropdownMenuPrimitive.SubContent>,
   React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.SubContent>
->(({ className, ...props }, ref) => {
-  const density = useDensityAttribute();
-  return (
-    <DropdownMenuPrimitive.SubContent
-      ref={ref}
-      data-lax-motion="float"
-      {...density}
-      className={cn(
-        "z-[var(--z-floating,70)] min-w-[8rem] overflow-hidden rounded-md border border-outline-variant/20 bg-surface-container-lowest p-1 text-on-surface shadow-lg",
-        className,
-      )}
-      {...props}
-    />
-  );
-});
+>(({ className, ...props }, ref) => (
+  <DropdownMenuPrimitive.SubContent
+    ref={ref}
+    data-lax-motion="float"
+    className={cn(
+      "z-[var(--z-floating,70)] min-w-[8rem] overflow-hidden rounded-md border border-outline-variant/20 bg-surface-container-lowest p-1 text-on-surface shadow-lg",
+      className,
+    )}
+    {...props}
+  />
+));
 DropdownMenuSubContent.displayName = DropdownMenuPrimitive.SubContent.displayName;
 
 const DropdownMenuContent = React.forwardRef<
   React.ElementRef<typeof DropdownMenuPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Content>
->(({ className, sideOffset = 4, children, ...props }, ref) => {
-  const density = useDensityAttribute();
-  return (
-    <DropdownMenuPrimitive.Portal>
-      <DropdownMenuPrimitive.Content
-        ref={ref}
-        sideOffset={sideOffset}
-        data-lax-motion="float"
-        {...density}
-        data-lenis-prevent
-        className={cn(
-          "z-[var(--z-floating,70)] max-h-[var(--radix-dropdown-menu-content-available-height)] min-w-[8rem] overflow-y-auto overflow-x-hidden rounded-md border border-outline-variant/20 bg-surface-container-lowest p-1 text-on-surface shadow-md",
-          className,
-        )}
-        {...props}
-      >
-        {children}
-        <InertOutside />
-      </DropdownMenuPrimitive.Content>
-    </DropdownMenuPrimitive.Portal>
-  );
-});
+>(({ className, sideOffset = 4, children, ...props }, ref) => (
+  <DropdownMenuPrimitive.Portal>
+    <DropdownMenuPrimitive.Content
+      ref={ref}
+      sideOffset={sideOffset}
+      data-lax-motion="float"
+      data-lenis-prevent
+      className={cn(
+        "z-[var(--z-floating,70)] max-h-[var(--radix-dropdown-menu-content-available-height)] min-w-[8rem] overflow-y-auto overflow-x-hidden rounded-md border border-outline-variant/20 bg-surface-container-lowest p-1 text-on-surface shadow-md",
+        className,
+      )}
+      {...props}
+    >
+      {children}
+      <InertOutside />
+    </DropdownMenuPrimitive.Content>
+  </DropdownMenuPrimitive.Portal>
+));
 DropdownMenuContent.displayName = DropdownMenuPrimitive.Content.displayName;
 
 const DropdownMenuItem = React.forwardRef<

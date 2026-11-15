@@ -11,8 +11,11 @@
  * Radix keeps a closing layer mounted until its animation ends, so the exit keyframes below are
  * what delays the unmount; a layer with `--lax-anim-out: none` unmounts at once.
  *
- * Staff layers (`data-lax-density="staff"`) fade only. Reduced motion removes all movement: the
- * public products keep a fade of at most 150ms, the staff tools and LAX Account go instant.
+ * On a staff page (one the staff shell is on, so `data-lax-density="staff"` is in the document)
+ * every layer fades only, at the staff timings. The scope is CSS alone: the layers sit at the end
+ * of <body>, outside the shell, and need no attribute of their own. Reduced motion removes all
+ * movement: the public products keep a fade of at most 150ms, the staff tools and LAX Account go
+ * instant.
  */
 
 @keyframes lax-fade-in {
@@ -139,12 +142,12 @@
 }
 
 /* Staff tools: fade only, at the staff timings the tokens already carry. */
-[data-lax-density="staff"][data-lax-motion="float"] {
+:root:has([data-lax-density="staff"]) [data-lax-motion="float"] {
   --lax-anim-in: lax-fade-in var(--lax-motion-enter) var(--lax-ease-out);
   --lax-anim-out: lax-fade-out var(--lax-motion-exit) var(--lax-ease-in) forwards;
 }
 
-[data-lax-density="staff"]:is([data-lax-motion="dialog"], [data-lax-motion="sheet"]) {
+:root:has([data-lax-density="staff"]) :is([data-lax-motion="dialog"], [data-lax-motion="sheet"]) {
   --lax-anim-in: lax-fade-in var(--lax-motion-panel) var(--lax-ease-out);
   --lax-anim-out: lax-fade-out var(--lax-motion-panel-exit) var(--lax-ease-in) forwards;
 }
@@ -170,7 +173,7 @@
     --lax-anim-out: lax-fade-out var(--lax-motion-fade) linear forwards;
   }
 
-  :root:not([data-reduce-motion="force-allow"]) [data-lax-density="staff"][data-lax-motion],
+  :root:not([data-reduce-motion="force-allow"]):has([data-lax-density="staff"]) [data-lax-motion],
   :root:not([data-reduce-motion="force-allow"])[data-lax-product="account"] [data-lax-motion] {
     --lax-anim-in: none;
     --lax-anim-out: none;
@@ -182,7 +185,7 @@
   --lax-anim-out: lax-fade-out var(--lax-motion-fade) linear forwards;
 }
 
-:root[data-reduce-motion="force-reduce"] [data-lax-density="staff"][data-lax-motion],
+:root[data-reduce-motion="force-reduce"]:has([data-lax-density="staff"]) [data-lax-motion],
 :root[data-reduce-motion="force-reduce"][data-lax-product="account"] [data-lax-motion] {
   --lax-anim-in: none;
   --lax-anim-out: none;
@@ -191,15 +194,14 @@
 /*
  * Toasts (Sonner). Sonner moves a toast with `--y` and fades it with `opacity`; its own timings
  * are 400ms and it slides in from the full height of the toast. Here a toast rises
- * `--lax-toast-rise` (8px) and fades, 200ms in and 140ms out. Staff toasters (`.lax-staff-layer`)
- * rise nothing. The selectors repeat attributes to outrank the Sonner rules they replace, which are
+ * `--lax-toast-rise` (8px) and fades, 200ms in and 140ms out. Toasts on a staff page rise nothing. The selectors repeat attributes to outrank the Sonner rules they replace, which are
  * injected after this file.
  */
 [data-sonner-toaster] {
   --lax-toast-rise: 8px;
 }
 
-[data-sonner-toaster].lax-staff-layer {
+:root:has([data-lax-density="staff"]) [data-sonner-toaster] {
   --lax-toast-rise: 0px;
 }
 
@@ -238,8 +240,8 @@
     transition: opacity var(--lax-motion-fade) linear;
   }
 
-  :root:not([data-reduce-motion="force-allow"])
-    [data-sonner-toaster].lax-staff-layer
+  :root:not([data-reduce-motion="force-allow"]):has([data-lax-density="staff"])
+    [data-sonner-toaster]
     [data-sonner-toast][data-styled]:is(
       *,
       [data-removed="true"][data-front="true"][data-swipe-out="false"]
@@ -267,8 +269,8 @@
   transition: opacity var(--lax-motion-fade) linear;
 }
 
-:root[data-reduce-motion="force-reduce"]
-  [data-sonner-toaster].lax-staff-layer
+:root[data-reduce-motion="force-reduce"]:has([data-lax-density="staff"])
+  [data-sonner-toaster]
   [data-sonner-toast][data-styled]:is(
     *,
     [data-removed="true"][data-front="true"][data-swipe-out="false"]

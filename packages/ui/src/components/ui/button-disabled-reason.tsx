@@ -2,7 +2,6 @@
 
 import * as TooltipPrimitive from "@radix-ui/react-tooltip";
 import * as React from "react";
-import { TOOLTIP_OPEN_DELAY_MS } from "./tooltip.js";
 
 /** What a disabled-with-reason control receives in place of the native `disabled` attribute. */
 export type DisabledReasonControlProps = {
@@ -41,7 +40,7 @@ export function DisabledReason({ reason, describedBy, children }: DisabledReason
   });
 
   return (
-    <TooltipPrimitive.Provider delayDuration={TOOLTIP_OPEN_DELAY_MS}>
+    <TooltipPrimitive.Provider delayDuration={400}>
       <TooltipPrimitive.Root open={open} onOpenChange={setOpen}>
         <TooltipPrimitive.Trigger asChild>{control}</TooltipPrimitive.Trigger>
         <TooltipPrimitive.Portal>

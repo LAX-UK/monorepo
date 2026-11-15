@@ -30,16 +30,6 @@ export function useLaxDensity(): LaxDensity | undefined {
 }
 
 /**
- * The density attribute alone, for a portalled layer of the plain components (popover, select,
- * dialog) that is not LAX UI in other respects: staff layers take the staff motion (fade only,
- * staff timings) from it, and nothing else about the layer changes.
- */
-export function useDensityAttribute(): { "data-lax-density"?: LaxDensity } {
-  const density = useLaxDensity();
-  return density ? { "data-lax-density": density } : {};
-}
-
-/**
  * Props for a portalled layer (menu, tooltip, dialog, toast): it is LAX UI (font, icon stroke)
  * and keeps the density of the place it was opened from.
  */

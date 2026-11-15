@@ -123,7 +123,7 @@ export function ExportButton({
       <DropdownMenu modal={false}>
         <DropdownMenuTrigger asChild>
           {disabled && disabledReason ? (
-            <TooltipProvider>
+            <TooltipProvider delayDuration={400}>
               <Tooltip>
                 <TooltipTrigger asChild>
                   <span className="inline-flex">{trigger}</span>

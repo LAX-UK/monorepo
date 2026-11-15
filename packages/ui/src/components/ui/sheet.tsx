@@ -3,7 +3,6 @@
 import * as SheetPrimitive from "@radix-ui/react-dialog";
 import { X } from "lucide-react";
 import * as React from "react";
-import { useDensityAttribute } from "../../lax/density.js";
 import { cn } from "../../lib/utils.js";
 
 const Sheet = SheetPrimitive.Root;
@@ -14,18 +13,14 @@ const SheetPortal = SheetPrimitive.Portal;
 const SheetOverlay = React.forwardRef<
   React.ElementRef<typeof SheetPrimitive.Overlay>,
   React.ComponentPropsWithoutRef<typeof SheetPrimitive.Overlay>
->(({ className, ...props }, ref) => {
-  const density = useDensityAttribute();
-  return (
-    <SheetPrimitive.Overlay
-      data-lax-motion="scrim"
-      {...density}
-      className={cn("fixed inset-0 z-[var(--z-overlay,60)] bg-black/40", className)}
-      {...props}
-      ref={ref}
-    />
-  );
-});
+>(({ className, ...props }, ref) => (
+  <SheetPrimitive.Overlay
+    data-lax-motion="scrim"
+    className={cn("fixed inset-0 z-[var(--z-overlay,60)] bg-black/40", className)}
+    {...props}
+    ref={ref}
+  />
+));
 SheetOverlay.displayName = SheetPrimitive.Overlay.displayName;
 
 type SheetContentProps = React.ComponentPropsWithoutRef<typeof SheetPrimitive.Content> & {
@@ -47,7 +42,6 @@ const SheetContent = React.forwardRef<
   SheetContentProps
 >(({ side = "right", className, overlayClassName, children, ...props }, ref) => {
   const isBottom = side === "bottom";
-  const density = useDensityAttribute();
 
   return (
     <SheetPortal>
@@ -56,7 +50,6 @@ const SheetContent = React.forwardRef<
         ref={ref}
         data-lax-motion="sheet"
         data-side={side}
-        {...density}
         className={cn(
           "fixed z-[var(--z-overlay,60)] border-outline-variant/20 bg-surface-container-lowest shadow-lg",
           isBottom ? "gap-0 p-0" : "gap-4 p-6",

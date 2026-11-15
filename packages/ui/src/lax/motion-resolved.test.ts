@@ -30,15 +30,26 @@ const MODES: Mode[] = ["none", "os-reduce", "force-reduce", "force-allow-os-redu
 
 const isStaff = (who: Who) => who === "staff" || who === "staff-lax-ui";
 
+/**
+ * The shell a page renders. The staff shell puts `data-lax-density="staff"` on its root, which is
+ * the only thing that scopes the staff motion; the public and account shells are client density.
+ */
+function shell(who: Who): string {
+  return isStaff(who)
+    ? '<div data-staff-ui data-lax-density="staff" id="shell"></div>'
+    : '<div data-lax-density="client" id="shell"></div>';
+}
+
 function attributes(kind: Kind, who: Who, state: "open" | "closed", probe: string): string {
   const motion = kind === "dialog-side" ? "dialog" : kind;
-  const density = isStaff(who) ? ' data-lax-density="staff"' : "";
-  // A plain kit layer has no `data-lax-ui`; a LAX UI layer has it.
-  const laxUi = who === "staff-lax-ui" ? " data-lax-ui" : "";
+  // A plain kit layer carries nothing but its motion marker, wherever it opens: on a staff page
+  // the staff timings reach it through the page scope alone. A LAX UI layer also carries
+  // `data-lax-ui` and the density of the place it was opened from.
+  const laxUi = who === "staff-lax-ui" ? ' data-lax-density="staff" data-lax-ui' : "";
   const side = kind === "dialog-side" ? ' data-placement="side"' : "";
   const edge =
     kind === "sheet" ? ' data-side="right"' : kind === "float" ? ' data-side="bottom"' : "";
-  return `data-probe="${probe}" data-lax-motion="${motion}" data-state="${state}"${density}${laxUi}${side}${edge}`;
+  return `data-probe="${probe}" data-lax-motion="${motion}" data-state="${state}"${laxUi}${side}${edge}`;
 }
 
 function htmlAttributes(who: Who, mode: Mode): string {
@@ -115,7 +126,7 @@ describe("overlay animations resolved in Chromium", () => {
         ).join("");
         const page = await pageWith(browser, {
           css: CSS,
-          body: `<div data-staff-ui id="shell"></div>${body}`,
+          body: `${shell(who)}${body}`,
           htmlAttributes: htmlAttributes(who, mode),
           reducedMotion:
             mode === "os-reduce" || mode === "force-allow-os-reduce" ? "reduce" : "no-preference",
@@ -193,8 +204,8 @@ describe("toasts resolved in Chromium (with Sonner's own stylesheet)", () => {
       style="--index:${index};--toasts-before:${index};--z-index:${3 - index};--offset:${index * 60}px;--lift:-1;--lift-amount:calc(var(--lift) * var(--gap));--initial-height:52px;--front-toast-height:52px;--gap:14px">x</li>`;
   }
 
-  function toaster(inner: string, extra = ""): string {
-    return `<ol data-sonner-toaster data-y-position="bottom" data-x-position="right" ${extra} style="--front-toast-height:52px;--gap:14px">${inner}</ol>`;
+  function toaster(inner: string): string {
+    return `<ol data-sonner-toaster data-y-position="bottom" data-x-position="right" style="--front-toast-height:52px;--gap:14px">${inner}</ol>`;
   }
 
   /** transform of every probe, with transitions switched off so only the resting position shows. */
@@ -306,12 +317,13 @@ describe("toasts resolved in Chromium (with Sonner's own stylesheet)", () => {
   ];
   for (const c of cases) {
     it(`toast timings: ${c.who}, ${c.mode}`, async () => {
-      const extra = c.who === "staff" ? 'class="lax-staff-layer"' : "";
-      const body = toaster(
-        toast("shown", { front: true, expanded: false }, 0) +
-          toast("leaving", { front: true, expanded: false, removed: true }, 0),
-        extra,
-      );
+      // The staff toaster carries nothing of its own: the staff shell on the page scopes it.
+      const body =
+        shell(c.who) +
+        toaster(
+          toast("shown", { front: true, expanded: false }, 0) +
+            toast("leaving", { front: true, expanded: false, removed: true }, 0),
+        );
       const page = await pageWith(browser, {
         css: TOAST_CSS,
         body,

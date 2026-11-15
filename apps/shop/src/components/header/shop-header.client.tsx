@@ -119,7 +119,7 @@ export function ShopHeaderClient({
 
   return (
     <>
-      <TooltipProvider>
+      <TooltipProvider delayDuration={400}>
         <header
           ref={attachHeader}
           data-testid="shop-header"

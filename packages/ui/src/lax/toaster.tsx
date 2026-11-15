@@ -29,7 +29,6 @@ export function Toaster({
     <BaseToaster
       position="bottom-right"
       richColors={false}
-      {...(density === "staff" ? { className: "lax-staff-layer" } : {})}
       closeButton
       duration={TOAST_DURATION_MS}
       offset={24}

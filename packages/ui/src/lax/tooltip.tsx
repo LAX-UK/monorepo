@@ -16,7 +16,7 @@ import { tooltipClass } from "./styles.js";
  * stand-alone previews that render primitives without one wrap them in this.
  */
 export function TooltipProvider({ children }: { children: React.ReactNode }) {
-  return <TooltipRootProvider>{children}</TooltipRootProvider>;
+  return <TooltipRootProvider delayDuration={400}>{children}</TooltipRootProvider>;
 }
 
 /** A short label on hover or focus, for icon-only buttons. Never holds essential content. */
@@ -66,7 +66,7 @@ export function ReasonTooltip({
 }) {
   const layer = useLayerAttributes();
   return (
-    <TooltipRootProvider>
+    <TooltipRootProvider delayDuration={400}>
       <TooltipRoot>
         <TooltipTrigger asChild>{children}</TooltipTrigger>
         <TooltipContent

@@ -3,7 +3,6 @@
 import { Popover as PopoverPrimitive } from "radix-ui";
 import type * as React from "react";
 
-import { useDensityAttribute } from "../../lax/density.js";
 import { cn } from "../../lib/utils.js";
 import { InertOutside } from "./inert-outside.js";
 
@@ -22,13 +21,11 @@ function PopoverContent({
   children,
   ...props
 }: React.ComponentProps<typeof PopoverPrimitive.Content>) {
-  const density = useDensityAttribute();
   return (
     <PopoverPrimitive.Portal>
       <PopoverPrimitive.Content
         data-slot="popover-content"
         data-lax-motion="float"
-        {...density}
         data-lenis-prevent
         align={align}
         sideOffset={sideOffset}

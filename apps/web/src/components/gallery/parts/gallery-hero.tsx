@@ -81,7 +81,7 @@ export function GalleryHero({ setCarouselApi, className }: Props) {
   }
 
   return (
-    <TooltipProvider>
+    <TooltipProvider delayDuration={400}>
       <div className={cn("group relative min-h-0 flex-1 touch-pan-y", className)}>
         <Carousel
           opts={{ align: "start", containScroll: "trimSnaps", loop: true }}
@@ -129,7 +129,7 @@ function SingleHero({
   className?: string;
 }) {
   return (
-    <TooltipProvider>
+    <TooltipProvider delayDuration={400}>
       <div className={cn("group relative min-h-0 flex-1", className)}>
         <MediaImage
           src={image.src}
