@@ -2710,6 +2710,13 @@
       "when": 1812369600000,
       "tag": "0395_payment_group_delivery_refund",
       "breakpoints": true
+    },
+    {
+      "idx": 388,
+      "version": "7",
+      "when": 1812456000000,
+      "tag": "0396_zoho_gallery_sale",
+      "breakpoints": true
     }
   ]
 }

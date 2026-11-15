@@ -31,6 +31,7 @@ import { createAlertDigestTask } from "./scheduler/tasks/alert-digest.task.js";
 import { createAlertMatchingTask } from "./scheduler/tasks/alert-matching.task.js";
 import { createAlertRetentionTask } from "./scheduler/tasks/alert-retention.task.js";
 import { createConnectPayoutTransferTask } from "./scheduler/tasks/connect-payout-transfer.task.js";
+import { createGallerySaleListingsTask } from "./scheduler/tasks/gallery-sale-listings.task.js";
 import { createGuestOrderClaimTask } from "./scheduler/tasks/guest-order-claim.task.js";
 import { createIdentityMergeTask } from "./scheduler/tasks/identity-merge.task.js";
 import { createLinkedListingSyncTask } from "./scheduler/tasks/linked-listing-sync.task.js";
@@ -163,6 +164,9 @@ export function buildShopApiSchedulerTasks(input: {
                 input.log.warn({ key, reason }, "Zoho picture not registered yet"),
             })
         : undefined,
+    ),
+    createGallerySaleListingsTask(input.db, artCache, (error) =>
+      input.log.warn({ err: error }, "lax.art catalogue refresh failed after a gallery sale"),
     ),
     ...(input.env.SHOP_THIRD_PARTY_ENABLED
       ? [createStockHoldExpiryTask(input.db, input.env.DOMAIN_EVENT_PUBLISH_VALIDATE)]

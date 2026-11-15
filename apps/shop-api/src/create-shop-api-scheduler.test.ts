@@ -36,6 +36,7 @@ describe("createShopApiScheduler", () => {
     expect(names).toContain("alert-retention");
     expect(names).toContain("notify-me-dispatch");
     expect(names).toContain("linked-listing-sync");
+    expect(names).toContain("gallery-sale-listings");
     expect(names).not.toContain("payout-eligibility");
     expect(names).not.toContain("stock-hold-expiry");
     expect(names).not.toContain("connect-payout-transfer");

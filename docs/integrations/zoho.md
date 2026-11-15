@@ -160,6 +160,25 @@ where run_id = 'nightly:dry_run:2026-11-03' group by 1, 2 order by 3 desc;
 
 Roll out in this order: sandbox org with `dry_run`; review the first nightly report; then production with `dry_run`; switch to `live` only after the report is approved.
 
+## Sold in the gallery (inbound)
+
+Gallery staff mark an artwork sold by setting the Zoho Product's `Status` to `Sold`. Zoho is the source of truth: LAX records the artwork as **sold in the gallery** (register `offer_state = 'sold'`, reference `gallery_sale` naming the Product), with no person deciding. The rules are pure, in `packages/artwork-register-contracts/src/sold-in-gallery.ts` (`planGallerySale`, `reopenGallerySale`).
+
+| Where the artwork is | What LAX does |
+|----------------------|---------------|
+| Not offered or withdrawn | Records the sale. |
+| On lax.art | Raises the "Zoho says Sold" item first (payments for the artwork are held from that moment), then records the sale. LAX Shop takes every lax.art listing linked to the Product off sale (unpublished, not archived), audited as `system:shop-scheduler`. |
+| In a LAX Bid sale or a private sale | Records nothing yet. The existing "Zoho says Sold, but this artwork is still for sale" item asks staff to withdraw it there; the next pass (notice or nightly) then records the sale. |
+| Already sold, however | Nothing. A repeated notice or LAX's own write-back is a no-op. |
+
+**Open checkouts and invoices are held, never cancelled.** The hold is the existing money pause: while the item is open, lax.art checkout and the re-offer steps are refused and a payment that still arrives goes to finance instead of fulfilment. The pause is also on for as long as the register records the gallery sale (`sold` with ref `gallery_sale`), whatever became of the item, so no lax.art money path completes for a work Zoho says Sold; only Reopen lifts it. Once the sale is recorded the item reads "Sold in the gallery: check for an open checkout or invoice" and stays open (it no longer closes by itself) until staff cancel or refund what was open where it lives and press **Dealt with** (`artwork_register.review`, with a recent sign-in), which closes it as `staff_resolved`. If staff earlier said "It is not sold" and Zoho still says Sold, recording the sale closes that overridden item as `replaced` and raises a fresh open one in the same transaction: Zoho wins. Nothing in payments or refunds changed.
+
+**Reopen.** A sale reported by mistake is undone on the artwork's From Zoho record by an Administrator (`artwork_register.reopen_sold`, Administrator only, with a recent sign-in) with a reason. It is refused while Zoho still says Sold, because Zoho wins and the next pass would record it again: change the Status in Zoho first. The artwork returns to Not offered; nothing goes back on sale by itself. A sale made through LAX (lax.art, a Bid lot, a private sale) is never reopened here. While a gallery sale stands, the outbound Status write-back never writes `Sold` back over a different Status staff set in Zoho (`gallery_sale_owned_by_zoho`).
+
+**Mode.** It runs inside the inbound artwork sync and needs both `ZOHO_ARTWORK_SYNC_MODE` and `ZOHO_ARTWORK_LISTING_MODE`: both `live` records sales; otherwise, when neither is `off`, it is a dry run that logs `zoho_gallery_sale_dry_run` and puts `gallerySale: { action: "would_record" }` on the Product's outcome, and changes nothing (the register, the items and lax.art all stay as they are, since LAX Shop only acts on a recorded sale). The nightly pass also sweeps originals Zoho shows as Sold that are held, withdrawn or on lax.art (`zoho_gallery_sale_sweep_finished`).
+
+**Audit.** The register history gains `gallery_sale_recorded` (actor `zoho`) and `gallery_sale_reopened` (actor `staff:<id>`, with the reason); both publish `artwork_register.offer_changed`, so the listing and Status write-backs follow. Reopen and Dealt with also write LAX Admin audit rows. The scheduler's unpublish audit keeps the listing's previous `published_at`, so staff can restore it after a Reopen. Migration 0396 widens the event type and item resolution checks.
+
 ## Artwork state to Zoho Products (outbound)
 
 LAX writes the state it owns back to the Zoho Product, and nothing else (Zoho owns the catalogue). The `Status` follows where the artwork is shown, the "Where it is" place LAX Admin draws, not the raw register state:

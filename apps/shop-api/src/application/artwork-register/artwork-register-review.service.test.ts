@@ -1,4 +1,8 @@
-import { type ArtworkRegisterEntry, CATALOGUE_GAPS } from "@auction/artwork-register-contracts";
+import {
+  type ArtworkRegisterEntry,
+  CATALOGUE_GAPS,
+  REOPEN_REFUSAL_MESSAGE,
+} from "@auction/artwork-register-contracts";
 import { type AdminAuctionOfferAssessment, REGISTER_GAP_VALUES } from "@auction/shop-contracts";
 import { describe, expect, it, vi } from "vitest";
 import type {
@@ -11,6 +15,7 @@ import {
   type ArtworkRegisterReviewDeps,
   ArtworkRegisterReviewService,
   presentArtworkSummary,
+  presentGallerySale,
 } from "./artwork-register-review.service.js";
 
 const ID = "2f0b6d7e-0000-4000-8000-000000000001";
@@ -459,5 +464,23 @@ describe("ArtworkRegisterReviewService", () => {
 
   it("keeps the contract's gap list in step with the register's", () => {
     expect([...REGISTER_GAP_VALUES]).toEqual([...CATALOGUE_GAPS]);
+  });
+});
+
+describe("presentGallerySale: why Reopen waits, in the API's own words", () => {
+  const sold = { state: "sold", ref: { kind: "gallery_sale", id: "5001" } } as const;
+
+  it("gives the contract's refusal while Zoho still says Sold", () => {
+    expect(presentGallerySale(entry({ catalogueStatus: "Sold", offer: sold }))).toEqual({
+      reopen: "zoho_still_sold",
+      reopenWaitReason: REOPEN_REFUSAL_MESSAGE.zoho_still_sold,
+    });
+  });
+
+  it("gives no reason once Zoho no longer says Sold", () => {
+    expect(presentGallerySale(entry({ catalogueStatus: "Available", offer: sold }))).toEqual({
+      reopen: "allowed",
+      reopenWaitReason: null,
+    });
   });
 });

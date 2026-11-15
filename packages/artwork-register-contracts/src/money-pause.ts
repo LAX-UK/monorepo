@@ -16,7 +16,10 @@ export const MONEY_PAUSED_STAFF_MESSAGE =
 export const MONEY_PAUSE_ACTIONS = ["checkout", "reoffer_send", "reoffer_accept"] as const;
 export type MoneyPauseAction = (typeof MONEY_PAUSE_ACTIONS)[number];
 
-/** The one question the guard asks; the register answers it from the open items. */
+/**
+ * The one question the guard asks. The register answers it from the open items, and says paused
+ * for any work it records as sold in the gallery (Zoho said Sold), whatever became of its item.
+ */
 export interface MoneyPauseReader {
   isPaused(link: RegisterLink): Promise<boolean>;
 }

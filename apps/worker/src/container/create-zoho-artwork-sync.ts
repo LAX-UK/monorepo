@@ -7,6 +7,10 @@ import {
 } from "@auction/persistence/repositories";
 import type { Logger } from "pino";
 import type { WorkerEnv } from "../env.js";
+import {
+  GallerySaleRecorder,
+  gallerySaleModeFor,
+} from "../integrations/zoho/artwork/gallery-sale.js";
 import { CrmProductImageGateway } from "../integrations/zoho/artwork/images/crm-product-image-gateway.js";
 import { createUploadStorageImageStore } from "../integrations/zoho/artwork/images/upload-storage-image-store.js";
 import { ZohoImageSyncService } from "../integrations/zoho/artwork/images/zoho-image-sync.service.js";
@@ -41,6 +45,7 @@ export function createZohoArtworkSyncRuntime(deps: {
   const { env, db, log } = deps;
   const store = new DrizzleZohoArtworkSyncStore(db);
   const register = new DrizzleArtworkRegisterRepository(db);
+  const soldWhileLive = new SoldWhileLiveMonitor(new DrizzleSoldAttentionStore(db), register);
   const service = new ZohoArtworkSyncService({
     mode: env.ZOHO_ARTWORK_SYNC_MODE,
     reader: new CoqlZohoCatalogueReader(createZohoCoqlQuery(env)),
@@ -49,7 +54,13 @@ export function createZohoArtworkSyncRuntime(deps: {
     register,
     report: store,
     watermark: store,
-    soldWhileLive: new SoldWhileLiveMonitor(new DrizzleSoldAttentionStore(db), register),
+    soldWhileLive,
+    gallerySales: new GallerySaleRecorder({
+      mode: gallerySaleModeFor(env.ZOHO_ARTWORK_SYNC_MODE, env.ZOHO_ARTWORK_LISTING_MODE),
+      register,
+      soldWhileLive,
+      log,
+    }),
     log,
   });
   return {

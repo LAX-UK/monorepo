@@ -65,6 +65,8 @@ export const SOLD_WHILE_LIVE_ACTIONS = [
   "withdraw_offer",
   "open_in_zoho",
   "not_sold",
+  "open_lax_art",
+  "dealt_with",
 ] as const;
 export type SoldWhileLiveActionKind = (typeof SOLD_WHILE_LIVE_ACTIONS)[number];
 
@@ -74,6 +76,8 @@ export const SOLD_WHILE_LIVE_ACTION_LABELS: Record<SoldWhileLiveActionKind, stri
   withdraw_offer: "Withdraw the offer",
   open_in_zoho: "Open in Zoho",
   not_sold: "It is not sold",
+  open_lax_art: "Open the lax.art artwork",
+  dealt_with: "Dealt with",
 };
 
 const WITHDRAW_ACTION_FOR_PLACE: Record<SoldWhileLivePlace, SoldWhileLiveActionKind> = {
@@ -97,6 +101,11 @@ export type SoldWhileLiveCopyInput = {
   markedOn: string;
   /** The lot number, where the place is a Bid lot and it is known. */
   lotNumber?: number | null;
+  /**
+   * The register has since recorded the sale in the gallery (Zoho wins) and the artwork is off
+   * sale; the item stays so staff deal with any checkout or invoice still open for it.
+   */
+  soldInGallery?: boolean;
 };
 
 export type SoldWhileLiveCopy = {
@@ -123,6 +132,7 @@ function stillWhere(place: SoldWhileLivePlace, lotNumber: number | null | undefi
 
 /** The words staff read. The contract owns them so every screen says the same thing. */
 export function soldWhileLiveCopy(input: SoldWhileLiveCopyInput): SoldWhileLiveCopy {
+  if (input.soldInGallery) return soldInGalleryCopy(input);
   const kinds: SoldWhileLiveActionKind[] = [
     WITHDRAW_ACTION_FOR_PLACE[input.place],
     "open_in_zoho",
@@ -133,6 +143,31 @@ export function soldWhileLiveCopy(input: SoldWhileLiveCopyInput): SoldWhileLiveC
     title: `Zoho says ${input.status}, but this artwork is still for sale`,
     body: `${input.title} (${input.stockCode}) was marked ${input.status} in Zoho on ${input.markedOn}. It is still ${stillWhere(input.place, input.lotNumber)}. New payments and acceptances are paused until you decide.`,
     actions: kinds.map((kind) => ({ kind, label: SOLD_WHILE_LIVE_ACTION_LABELS[kind] })),
+  };
+}
+
+const GALLERY_SALE_ACTIONS: SoldWhileLiveActionKind[] = [
+  "open_lax_art",
+  "open_in_zoho",
+  "dealt_with",
+];
+
+/**
+ * The item once the gallery sale is recorded: the artwork is off sale, and payments and
+ * acceptances for it stay held for as long as the gallery sale stands (the money pause reads the
+ * register too). The item asks staff to deal with anything still open; nothing open is cancelled
+ * by itself.
+ */
+function soldInGalleryCopy(input: SoldWhileLiveCopyInput): SoldWhileLiveCopy {
+  const was = stillWhere(input.place, input.lotNumber);
+  return {
+    tone: "danger",
+    title: "Sold in the gallery: check for an open checkout or invoice",
+    body: `${input.title} (${input.stockCode}) was marked Sold in Zoho on ${input.markedOn} while it was ${was}. LAX has recorded it as sold in the gallery and taken it off sale. Any checkout or invoice still open for it is held, not cancelled: cancel or refund it where it lives, then mark this dealt with.`,
+    actions: GALLERY_SALE_ACTIONS.map((kind) => ({
+      kind,
+      label: SOLD_WHILE_LIVE_ACTION_LABELS[kind],
+    })),
   };
 }
 
@@ -166,10 +201,16 @@ export function decideSoldWhileLive(input: {
   statusNow: string | null | undefined;
   /** The register's offer state now, to tell an artwork that sold on LAX from one withdrawn. */
   offerState?: OfferState;
+  /**
+   * The register records the sale as made in the gallery. An item raised while the artwork was
+   * still for sale then stays as it is, holding payments, until staff mark it dealt with.
+   */
+  soldInGallery?: boolean;
 }): SoldWhileLiveDecision {
   const { item, situation } = input;
   if (!item) return situation ? { action: "raise", situation } : { action: "none" };
   if (!situation) {
+    if (input.soldInGallery) return { action: "none" };
     if (!soldWhileLiveStatusOf(input.statusNow)) {
       return { action: "resolve", resolution: "zoho_status_changed" };
     }

@@ -1,4 +1,8 @@
-import type { RegisterLink } from "@auction/artwork-register-contracts";
+import {
+  GALLERY_SALE_REF_KIND,
+  type RegisterLink,
+  soldWhere,
+} from "@auction/artwork-register-contracts";
 import type { Database } from "@auction/db";
 import {
   artworkRegisterSoldAttention as attention,
@@ -7,6 +11,7 @@ import {
 import { and, asc, count, desc, eq, gt, inArray, or, sql } from "drizzle-orm";
 import type {
   ISoldAttentionStore,
+  MarkDealtWithResult,
   OverrideSoldAttentionResult,
   RaiseSoldAttentionInput,
   ResolveSoldAttentionInput,
@@ -164,6 +169,46 @@ export class DrizzleSoldAttentionStore implements ISoldAttentionStore {
     });
   }
 
+  async markDealtWith(input: {
+    id: string;
+    actor: string;
+    now: Date;
+  }): Promise<MarkDealtWithResult> {
+    return this.db.transaction(async (tx) => {
+      const [found] = await tx
+        .select({ item: attention, entry: register })
+        .from(attention)
+        .innerJoin(register, eq(register.id, attention.registerId))
+        .where(eq(attention.id, input.id))
+        .for("update", { of: attention })
+        .limit(1);
+      if (!found) return { ok: false, reason: "not_found" };
+      if (found.item.status !== "open") return { ok: false, reason: "not_open" };
+      if (soldWhere(toEntry(found.entry).offer) !== "gallery") {
+        return { ok: false, reason: "not_sold_in_gallery" };
+      }
+      const [row] = await tx
+        .update(attention)
+        .set({
+          status: "resolved",
+          resolution: "staff_resolved",
+          resolvedBy: input.actor,
+          resolvedAt: input.now,
+        })
+        .where(and(eq(attention.id, input.id), eq(attention.status, "open")))
+        .returning();
+      if (!row) return { ok: false, reason: "not_open" };
+      await appendRegisterEvent(tx, {
+        registerId: row.registerId,
+        type: "sold_while_live_resolved",
+        actor: input.actor,
+        now: input.now,
+        payload: { attentionId: row.id, status: row.zohoStatus, resolution: "staff_resolved" },
+      });
+      return { ok: true, item: toRecord(row) };
+    });
+  }
+
   async listOpen(limit: number): Promise<SoldAttentionItem[]> {
     const rows = await this.db
       .select({ item: attention, entry: register })
@@ -202,16 +247,37 @@ export class DrizzleSoldAttentionStore implements ISoldAttentionStore {
       .limit(limit);
   }
 
+  /**
+   * Money is paused while an item is open, and always for a work the register records as sold in
+   * the gallery: Zoho says Sold, so no lax.art payment may complete for it, whatever staff later
+   * did with the item ("It is not sold" earlier, or "Dealt with").
+   */
   async isPaused(link: RegisterLink): Promise<boolean> {
-    const match =
+    const itemMatch =
       "registerId" in link
         ? eq(attention.registerId, link.registerId)
         : eq(attention.zohoProductId, link.zohoProductId);
-    const [row] = await this.db
+    const [open] = await this.db
       .select({ one: sql<number>`1` })
       .from(attention)
-      .where(and(match, eq(attention.status, "open")))
+      .where(and(itemMatch, eq(attention.status, "open")))
       .limit(1);
-    return row !== undefined;
+    if (open) return true;
+    const registerMatch =
+      "registerId" in link
+        ? eq(register.id, link.registerId)
+        : eq(register.zohoProductId, link.zohoProductId);
+    const [soldInGallery] = await this.db
+      .select({ one: sql<number>`1` })
+      .from(register)
+      .where(
+        and(
+          registerMatch,
+          eq(register.offerState, "sold"),
+          eq(register.offerRefKind, GALLERY_SALE_REF_KIND),
+        ),
+      )
+      .limit(1);
+    return soldInGallery !== undefined;
   }
 }

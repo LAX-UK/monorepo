@@ -1,5 +1,6 @@
 import {
   type ArtworkRegisterEntry,
+  soldWhere,
   zohoModuleOf,
   zohoStatusFor,
 } from "@auction/artwork-register-contracts";
@@ -33,7 +34,14 @@ export type StatusOutcome = Subject &
     | { kind: "conflict"; zohoStatus: string; wanted: string }
     /** Zoho changed after the facts were read, or between the read and the write: left for the next run. */
     | { kind: "stale" }
-    | { kind: "skipped"; reason: "register_entry_missing" | "print_group_not_a_product" }
+    | {
+        kind: "skipped";
+        reason:
+          | "register_entry_missing"
+          | "print_group_not_a_product"
+          /** A gallery sale is Zoho's: LAX never writes Sold back over a Status staff changed. */
+          | "gallery_sale_owned_by_zoho";
+      }
     | { kind: "failed"; code: string; retryable: boolean }
   );
 
@@ -205,6 +213,15 @@ export class ZohoStatusSync {
     }
 
     const wanted = wantedStatus(source, observedAt);
+    if (soldWhere(entry.offer) === "gallery" && state.status !== wanted) {
+      // Zoho said Sold and LAX recorded it; Zoho now says otherwise. Zoho wins: nothing is written,
+      // and an Administrator reopens the sale in LAX Admin if it was a mistake.
+      this.deps.log.info(
+        { registerId: entry.id, zohoStatus: state.status },
+        "zoho_status_gallery_sale_left_to_zoho",
+      );
+      return { ...who, kind: "skipped", reason: "gallery_sale_owned_by_zoho" };
+    }
     const decision = decideStatusWrite({
       wanted,
       zohoStatus: state.status,
