@@ -308,6 +308,62 @@ describe.skipIf(!HAS_DB)("accounting credit notes (integration)", { timeout: 60_
     ).not.toContain(money.id);
   });
 
+  it("two refunders racing on one credit note write one refund_credit_note row (BK-9F1)", async () => {
+    // Two worker processes (a pool each). The second keeps trying while the first settles, so an
+    // attempt of its starts before the first commits and reaches the row once it is free: the
+    // history re-read under the lock is what keeps it from refunding the note a second time.
+    // biome-ignore lint/style/noNonNullAssertion: gated by HAS_DB
+    const otherWorker = createDb(WORKER_URL || OWNER_URL!);
+    const rival = createAccountingRepositories(otherWorker, clock);
+    try {
+      const { contact, invoice } = invoiceWithContact();
+      await issue((await register(contact)).stored.id);
+      await issue((await register(invoice)).stored.id);
+      const notes: string[] = [];
+      for (let i = 0; i < 25; i += 1) {
+        const { refundId } = await refundRow(100);
+        const note = (await register(credit(invoice, 100, [], true, refundId))).stored;
+        await issue(note.id);
+        notes.push(note.id);
+      }
+      let steps = 0;
+      const step = async () => {
+        steps += 1;
+        return {
+          outcome: "refunded" as const,
+          amountPence: 100,
+          account: "stripe_clearing" as const,
+          rehearsal: true,
+        };
+      };
+      for (const id of notes) {
+        let done = false;
+        const first = repos.creditNoteRefunds.settleExclusively(id, step).finally(() => {
+          done = true;
+        });
+        // The second refunder has a few attempts in flight at once, each retried until the first is done.
+        const attempts = await Promise.all(
+          Array.from({ length: 4 }, async () => {
+            const outcomes: Array<Awaited<typeof first>> = [];
+            while (!done) outcomes.push(await rival.creditNoteRefunds.settleExclusively(id, step));
+            outcomes.push(await rival.creditNoteRefunds.settleExclusively(id, step));
+            return outcomes;
+          }),
+        );
+        expect([await first, ...attempts.flat()].filter((r) => r === "settled")).toHaveLength(1);
+      }
+      expect(steps).toBe(notes.length);
+      const history = await owner.execute<{ id: string; n: number }>(sql`
+        select document_id as id, count(*)::int as n from accounting_document_event
+         where document_id in ${notes} and action = 'refund_credit_note'
+         group by document_id`);
+      expect(history.rows).toHaveLength(notes.length);
+      expect(history.rows.every((r) => r.n === 1)).toBe(true);
+    } finally {
+      await closeDb(otherWorker);
+    }
+  });
+
   it("the refund step reads the refund itself again under the lock (review N1): one taken back, or one it cannot find, is held and never run", async () => {
     const { contact, invoice } = invoiceWithContact();
     await issue((await register(contact)).stored.id);
@@ -354,6 +410,39 @@ describe.skipIf(!HAS_DB)("accounting credit notes (integration)", { timeout: 60_
     );
     expect(listed).not.toContain(reversed.id);
     expect(await repos.creditNoteRefunds.settleExclusively(reversed.id, step)).toBe("skipped");
+    expect(steps).toBe(0);
+  });
+
+  it("a Bid credit note for a well-formed refund id with no payment_refund row is held and never refunded (BK-9F2)", async () => {
+    const { contact, invoice } = invoiceWithContact();
+    await issue((await register(contact)).stored.id);
+    await issue((await register(invoice)).stored.id);
+    // A refund id of the right shape that matches no refund: the refund cannot be told to stand.
+    const missing = (await register(credit(invoice, 1_500, [], true, randomUUID()))).stored;
+    await issue(missing.id);
+    let steps = 0;
+    const step = async () => {
+      steps += 1;
+      return {
+        outcome: "refunded" as const,
+        amountPence: 1_500,
+        account: "stripe_clearing" as const,
+        rehearsal: true,
+      };
+    };
+    expect(await repos.creditNoteRefunds.settleExclusively(missing.id, step)).toBe(
+      "refund_reversed",
+    );
+    expect(steps).toBe(0);
+    const rows = await owner.execute<{ state: string; reason: string | null; refunds: number }>(sql`
+      select d.state, d.needs_review_reason as reason,
+             (select count(*)::int from accounting_document_event e
+               where e.document_id = d.id and e.action = 'refund_credit_note') as refunds
+        from accounting_document d where d.id = ${missing.id}`);
+    expect(rows.rows).toEqual([
+      { state: "needs_review", reason: "accounting_refund_reversed_after_credit", refunds: 0 },
+    ]);
+    expect(await repos.creditNoteRefunds.settleExclusively(missing.id, step)).toBe("skipped");
     expect(steps).toBe(0);
   });
 
