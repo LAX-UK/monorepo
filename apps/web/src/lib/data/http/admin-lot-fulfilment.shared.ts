@@ -22,6 +22,21 @@ export type AdminLotFulfilmentListRow = {
   trackingNumber: string | null;
   /** The live collection visit holding the lot, or `null` when it is not booked. */
   collectionVisit: { start: string; end: string } | null;
+  /**
+   * Courier charges the buyer already paid inside a combined payment ("paid with invoice"), so
+   * the courier is not charged again by hand. Empty when there are none.
+   */
+  courierPaidWithInvoice: AdminLotFulfilmentCourierPaid[];
+};
+
+export type AdminLotFulfilmentCourierPaid = {
+  paymentGroupId: string;
+  deliveryQuoteId: string;
+  /** Pounds charged, as a decimal string. */
+  amount: string;
+  /** What has gone back to the buyer for it so far, in pence. */
+  refundedPence: number;
+  paidAt: string | null;
 };
 
 export type AdminLotFulfilmentListSummary = {
@@ -69,6 +84,17 @@ const rowSchema = z.object({
   shippingCarrier: z.union([z.null(), z.coerce.string()]),
   trackingNumber: z.union([z.null(), z.coerce.string()]),
   collectionVisit: z.object({ start: z.string(), end: z.string() }).nullable().default(null),
+  courierPaidWithInvoice: z
+    .array(
+      z.object({
+        paymentGroupId: z.string(),
+        deliveryQuoteId: z.string(),
+        amount: z.coerce.string(),
+        refundedPence: z.coerce.number().int().nonnegative(),
+        paidAt: z.string().nullable().default(null),
+      }),
+    )
+    .default([]),
 });
 
 const summarySchema = z.object({

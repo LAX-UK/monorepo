@@ -12,6 +12,7 @@ import type { IPayoutStatementApplicationService } from "../interfaces/finance-r
 import type { IPaymentAdminService } from "../interfaces/payment-service.js";
 import type { IPayoutAdminService, IPayoutSettlementService } from "../interfaces/payout.js";
 import type { IStripeConnectService } from "../interfaces/stripe-connect.js";
+import type { IPaymentGroupDeliveryRefunds } from "../payment-group/payment-group-delivery-refund.service.js";
 import type { IUnappliedMoneyHandling } from "../payment/unapplied-money-handling.service.js";
 import type { XeroOAuthService } from "../xero-oauth.service.js";
 import { AdminBlockedPayoutResolutionService } from "./admin-blocked-payout-resolution.service.js";
@@ -26,6 +27,7 @@ export type CreateAdminFinanceServicesInput = {
   accountingQueue: IAccountingQueueService;
   paymentService: IPaymentAdminService;
   unappliedMoneyHandling: IUnappliedMoneyHandling;
+  paymentGroupDeliveryRefunds: IPaymentGroupDeliveryRefunds;
   adminPaymentListQueryService: AdminPaymentListQueryService;
   stripeConnectService: IStripeConnectService;
   xeroOAuthService: XeroOAuthService | null;
@@ -60,6 +62,7 @@ export function createAdminFinanceServices(
       input.paymentService,
       input.adminPaymentListQueryService,
       input.unappliedMoneyHandling,
+      input.paymentGroupDeliveryRefunds,
     ),
     payouts: new AdminPayoutApplicationService(
       input.payoutService,

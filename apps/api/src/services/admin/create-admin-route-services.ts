@@ -7,6 +7,7 @@ import type { IBidRepository, ITransactionRunner } from "@auction/persistence/in
 import type { IConditionReportRequestRepository } from "@auction/persistence/interfaces";
 import type {
   ICollectionBookingReader,
+  IDeliveryPaidWithInvoiceReader,
   ILotFulfilmentRepository,
 } from "@auction/persistence/interfaces";
 import type { ICoverAnalysisReader, ISaleCoverRepository } from "@auction/persistence/interfaces";
@@ -76,6 +77,7 @@ import type { LotTransitionOrchestrator } from "../lot-transition-orchestrator.j
 import type { MediaAssetEnricher } from "../media-asset-enricher.js";
 import type { MediaUrlResolver } from "../media-url-resolver.js";
 import type { PaddleService } from "../paddle.service.js";
+import type { IPaymentGroupDeliveryRefunds } from "../payment-group/payment-group-delivery-refund.service.js";
 import type { IUnappliedMoneyHandling } from "../payment/unapplied-money-handling.service.js";
 import type { ProfileService } from "../profile.service.js";
 import type { QrCodeAnalyticsService } from "../qr-code-analytics.service.js";
@@ -144,6 +146,7 @@ export type CreateAdminRouteServicesInput = {
   itemSubmissionAdminApi: IItemSubmissionAdminApi;
   paymentService: IPaymentAdminService;
   unappliedMoneyHandling: IUnappliedMoneyHandling;
+  paymentGroupDeliveryRefunds: IPaymentGroupDeliveryRefunds;
   adminPaymentListQueryService: AdminPaymentListQueryService;
   lotService: ILotService;
   adminLotBrowseService: AdminLotBrowseService;
@@ -185,6 +188,7 @@ export type CreateAdminRouteServicesInput = {
   lotFulfilmentService: ILotFulfilmentService;
   lotFulfilmentRepository: ILotFulfilmentRepository;
   collectionBookings: Pick<ICollectionBookingReader, "findLiveByLots">;
+  deliveriesPaidWithInvoice: IDeliveryPaidWithInvoiceReader;
   bidService: BidService;
   saleroomOnBlockPolicy: SaleroomOnBlockPolicy;
   paddleService: PaddleService;
@@ -273,6 +277,7 @@ export function createAdminRouteServices(
     lotFulfilmentService: input.lotFulfilmentService,
     lotFulfilmentRepository: input.lotFulfilmentRepository,
     collectionBookings: input.collectionBookings,
+    deliveriesPaidWithInvoice: input.deliveriesPaidWithInvoice,
     qrCodeService: input.qrCodeService,
     qrCodeAnalytics: input.qrCodeAnalytics,
     conditionReportService: input.conditionReportService,
@@ -287,6 +292,7 @@ export function createAdminRouteServices(
     accountingQueue: input.accountingQueue,
     paymentService: input.paymentService,
     unappliedMoneyHandling: input.unappliedMoneyHandling,
+    paymentGroupDeliveryRefunds: input.paymentGroupDeliveryRefunds,
     adminPaymentListQueryService: input.adminPaymentListQueryService,
     stripeConnectService: input.stripeConnectService,
     xeroOAuthService: input.xeroOAuthService,

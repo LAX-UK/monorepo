@@ -13,6 +13,7 @@ import { eq, inArray } from "drizzle-orm";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import {
   DrizzleChargeableDeliveryReader,
+  DrizzleDeliveryPaidWithInvoiceReader,
   DrizzlePaySeveralInvoiceFlagsReader,
   DrizzlePaymentGroupRepository,
 } from "./drizzle-payment-group.repository.js";
@@ -26,6 +27,7 @@ describe.skipIf(!HAS_DB)("payment groups (integration)", () => {
   const groups = new DrizzlePaymentGroupRepository(db);
   const flags = new DrizzlePaySeveralInvoiceFlagsReader(db);
   const chargeable = new DrizzleChargeableDeliveryReader(db);
+  const paidWithInvoice = new DrizzleDeliveryPaidWithInvoiceReader(db);
   const payments = new DrizzlePaymentRepository(db);
 
   const payerId = `pg-payer-${randomUUID()}`;
@@ -554,6 +556,48 @@ describe.skipIf(!HAS_DB)("payment groups (integration)", () => {
       expect(await groups.claim(withDelivery([a], quote, lotIds[0] as string))).toEqual({
         kind: "conflict",
       });
+    });
+
+    it("marks a courier charge as paid with the invoice only once its payment is paid", async () => {
+      const [a] = paymentIds as [string];
+      const lotA = lotIds[0] as string;
+      const quote = await quoteFor(lotA);
+      const claimed = await groups.claim(withDelivery([a], quote, lotA));
+      if (claimed.kind !== "claimed") throw new Error("expected a claim");
+      const id = claimed.group.id;
+      // Open: the buyer has not paid yet, so nothing is marked.
+      expect(await paidWithInvoice.findByLots(lotIds)).toEqual(new Map());
+
+      const paidAt = new Date("2026-11-10T13:00:00Z");
+      await db.transaction(async (tx) => {
+        await groups.transitionInTransaction(tx, id, ["open"], "paid", { at: paidAt });
+        await groups.raiseDeliveryRefundedInTransaction(tx, id, quote, 5_000);
+      });
+      const marked = await paidWithInvoice.findByLots([...lotIds, randomUUID()]);
+      expect([...marked.keys()]).toEqual([lotA]);
+      expect(marked.get(lotA)).toEqual([
+        {
+          lotId: lotA,
+          paymentGroupId: id,
+          deliveryQuoteId: quote,
+          amount: "180.00",
+          refundedPence: 5_000,
+          paidAt,
+        },
+      ]);
+      expect(await paidWithInvoice.findByLots([])).toEqual(new Map());
+    });
+
+    it("does not mark a courier charge whose payment was let go", async () => {
+      const [a] = paymentIds as [string];
+      const quote = await quoteFor(lotIds[0] as string);
+      const claimed = await groups.claim(withDelivery([a], quote, lotIds[0] as string));
+      if (claimed.kind !== "claimed") throw new Error("expected a claim");
+      await db.transaction(async (tx) => {
+        await groups.transitionInTransaction(tx, claimed.group.id, ["open"], "cancelled");
+        await groups.releaseMembersInTransaction(tx, claimed.group.id);
+      });
+      expect(await paidWithInvoice.findByLots(lotIds)).toEqual(new Map());
     });
   });
 

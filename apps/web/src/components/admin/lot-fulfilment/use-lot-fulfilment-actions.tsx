@@ -7,8 +7,12 @@ import {
   adminLotFulfilmentReadyForCollectionResultAction,
   adminLotFulfilmentReleaseResultAction,
   adminLotFulfilmentShipResultAction,
+  adminRefundGroupDeliveryResultAction,
 } from "@/lib/actions/admin";
-import type { LotFulfilmentStaffRow } from "@/lib/admin/lot-fulfilment-staff-list.vm";
+import type {
+  LotFulfilmentCourierPaidView,
+  LotFulfilmentStaffRow,
+} from "@/lib/admin/lot-fulfilment-staff-list.vm";
 import type { ActionResult } from "@/lib/forms/form-result";
 import { notify } from "@/lib/ui/notify";
 import {
@@ -294,6 +298,45 @@ export function useLotFulfilmentActions() {
     [ask],
   );
 
+  /**
+   * Returns the courier charge the buyer paid inside a combined payment, on its own. The refund
+   * names the courier quote, so the seller's payout is not touched. Finance staff only, after a
+   * recent sign-in; the reason is kept in the audit log.
+   */
+  const refundCourier = useCallback(
+    (row: LotFulfilmentStaffRow, paid: LotFulfilmentCourierPaidView) =>
+      setForm({
+        row,
+        title: `Refund the courier charge for ${row.title}?`,
+        description: `The buyer paid for courier delivery with the invoice. Up to ${paid.remainingLabel} goes back to them. The invoice and the seller's payout are not changed.`,
+        confirmLabel: "Refund courier charge",
+        fields: [
+          {
+            name: "amount",
+            label: "Amount (£)",
+            description: `Leave blank to refund the rest of the courier charge (${paid.remainingLabel}).`,
+            optional: true,
+            maxLength: 12,
+          },
+          {
+            name: "reason",
+            label: "Reason",
+            description: "Kept in the audit log.",
+            missing: "Enter why the courier charge is being refunded.",
+            multiline: true,
+            maxLength: 500,
+          },
+        ],
+        run: (values) =>
+          adminRefundGroupDeliveryResultAction(paid.paymentGroupId, paid.deliveryQuoteId, {
+            reason: values.reason ?? "",
+            amount: values.amount ?? "",
+          }),
+        success: `Courier charge refund sent for ${row.title}`,
+      }),
+    [],
+  );
+
   /** The step a lot is waiting for, as the panel's primary action; null when none. */
   const nextStep = useCallback(
     (row: LotFulfilmentStaffRow): { label: string; run: () => void } | null => {
@@ -313,7 +356,7 @@ export function useLotFulfilmentActions() {
     [release, ship, delivered, collected],
   );
 
-  const actionsFor = useCallback(
+  const stepActionsFor = useCallback(
     (row: LotFulfilmentStaffRow): OverflowAction[] => {
       switch (row.step) {
         case "awaiting_payment":
@@ -347,6 +390,19 @@ export function useLotFulfilmentActions() {
     [release, ship, readyForCollection, delivered, collected],
   );
 
+  const actionsFor = useCallback(
+    (row: LotFulfilmentStaffRow): OverflowAction[] => [
+      ...stepActionsFor(row),
+      ...(row.courierPaid ?? []).map((paid) => ({
+        id: `refund-courier-${paid.deliveryQuoteId}`,
+        label: "Refund courier charge",
+        onSelect: () => refundCourier(row, paid),
+        ...(paid.remainingPence > 0 ? {} : { disabledReason: "Already refunded" }),
+      })),
+    ],
+    [stepActionsFor, refundCourier],
+  );
+
   const dialogs = (
     <>
       {confirm.dialog}
@@ -358,5 +414,15 @@ export function useLotFulfilmentActions() {
     </>
   );
 
-  return { actionsFor, nextStep, dialogs, release, ship, readyForCollection, delivered, collected };
+  return {
+    actionsFor,
+    nextStep,
+    dialogs,
+    release,
+    ship,
+    readyForCollection,
+    delivered,
+    collected,
+    refundCourier,
+  };
 }

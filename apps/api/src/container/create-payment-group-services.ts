@@ -10,6 +10,7 @@ import type {
 } from "@auction/persistence/interfaces";
 import {
   DrizzleBidInvoiceRepository,
+  DrizzlePaymentGroupDeliveryRefundRepository,
   DrizzlePaymentGroupRepository,
 } from "@auction/persistence/repositories";
 import type { Env } from "../env.js";
@@ -29,6 +30,10 @@ import {
   type IGroupInvoiceAccounting,
   PaymentGroupCheckoutService,
 } from "../services/payment-group/payment-group-checkout.service.js";
+import {
+  type IPaymentGroupDeliveryRefunds,
+  PaymentGroupDeliveryRefundService,
+} from "../services/payment-group/payment-group-delivery-refund.service.js";
 import type { IPaymentGroupGateway } from "../services/payment-group/payment-group-ports.js";
 import { PaymentGroupReceiptNotifier } from "../services/payment-group/payment-group-receipt.notifier.js";
 import {
@@ -41,7 +46,10 @@ import type { IUnappliedMoneyRecorder } from "../services/payment/unapplied-mone
 import { payoutRepoForTx } from "../services/payout/payout-helpers.js";
 import type { PaymentGroupWebhookDeps } from "../services/stripe-webhook/create-payment-webhook-handlers.js";
 import { PAYMENT_WEBHOOK_EVENT_SOURCE } from "../services/stripe-webhook/payment-webhook-types.js";
-import type { IChargeRefundsReader } from "../services/stripe/stripe-charge-refunds.js";
+import {
+  type IChargeRefundsReader,
+  StripeChargeRefunds,
+} from "../services/stripe/stripe-charge-refunds.js";
 import type { IStripePaymentGateway } from "../services/stripe/stripe-payment-gateway.js";
 import { StripePaymentGroupGateway } from "../services/stripe/stripe-payment-group.gateway.js";
 
@@ -49,6 +57,8 @@ export type PaymentGroupServices = {
   checkout: PaymentGroupCheckoutService;
   gateway: IPaymentGroupGateway;
   webhooks: PaymentGroupWebhookDeps;
+  /** Staff refunding a combined payment's courier charge on its own. */
+  deliveryRefunds: IPaymentGroupDeliveryRefunds;
 };
 
 export type CreatePaymentGroupServicesInput = {
@@ -159,10 +169,20 @@ export function createPaymentGroupServices(
       payoutRepoForTx(input.payouts, tx).sumRefundLineCentsForPayment(paymentId),
     events: input.events,
     claims,
+    unappliedMoney: input.unappliedMoney,
+  });
+  const deliveryRefunds = new PaymentGroupDeliveryRefundService({
+    transactionRunner: input.transactionRunner,
+    groups,
+    requests: new DrizzlePaymentGroupDeliveryRefundRepository(),
+    stripe: input.stripePayments,
+    chargeRefunds: input.chargeRefunds ?? new StripeChargeRefunds(input.stripeClientFactory),
+    events: input.events,
   });
   return {
     checkout,
     gateway,
+    deliveryRefunds,
     webhooks: { settlement, chargeEvents, groups, payments: input.payments, gateway },
   };
 }
