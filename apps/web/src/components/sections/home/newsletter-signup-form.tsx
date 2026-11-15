@@ -1,7 +1,7 @@
 "use client";
 
-import { AUTH_ERROR_MESSAGES } from "@/lib/auth/auth-error-code";
 import { lazyResolver, lazyResolverFailure } from "@/lib/forms/lazy-resolver";
+import { NEWSLETTER_SUBMIT_FAILED_MESSAGE } from "@/lib/newsletter/newsletter-failure";
 import { defaultNewsletterSubmitter } from "@/lib/newsletter/services/newsletter.client";
 import { useNewsletterSubmit } from "@/lib/newsletter/use-newsletter-submit";
 import { Button } from "@auction/ui/lax/button";
@@ -14,7 +14,7 @@ import { useForm } from "react-hook-form";
 
 const newsletterResolver = lazyResolver<NewsletterSubscribeInput>(
   () => import("./newsletter-signup-form.validation").then((m) => m.newsletterSignupResolver),
-  { failureMessage: AUTH_ERROR_MESSAGES.newsletter_submit_failed },
+  { failureMessage: NEWSLETTER_SUBMIT_FAILED_MESSAGE },
 );
 
 /** Email sign-up for the newsletter, in the home page's closing band. */
