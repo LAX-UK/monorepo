@@ -72,6 +72,7 @@ function setup(initial: PurchaseProblemDeskRecord = record(), staff = ["staff-2"
       }),
     }),
   };
+  const notices = { queueReported: vi.fn(), queueResolved: vi.fn().mockResolvedValue(undefined) };
   const service = new PurchaseProblemDeskService({
     problems,
     notes: noteRepo,
@@ -83,9 +84,10 @@ function setup(initial: PurchaseProblemDeskRecord = record(), staff = ["staff-2"
       runInTransaction: async (run: (tx: never) => unknown) => run({} as never),
     },
     events: events as never,
+    notices,
     now: () => NOW,
   } as never);
-  return { service, problems, notes, published };
+  return { service, problems, notes, published, notices };
 }
 
 describe("PurchaseProblemDeskService.list", () => {
@@ -112,6 +114,16 @@ describe("PurchaseProblemDeskService.list", () => {
       raisedAt: "2026-11-01T09:00:00.000Z",
     });
     expect(page.items[0]).not.toHaveProperty("message");
+  });
+});
+
+describe("PurchaseProblemDeskService.openCount", () => {
+  it("reads the status counts only: no rows, no sales", async () => {
+    const { service, problems } = setup();
+    expect(await service.openCount()).toBe(1);
+    expect(problems.counts).toHaveBeenCalledWith({});
+    expect(problems.list).not.toHaveBeenCalled();
+    expect(problems.salesWithReports).not.toHaveBeenCalled();
   });
 });
 
@@ -180,6 +192,29 @@ describe("PurchaseProblemDeskService.update", () => {
     ]);
     // The event never carries the note or the buyer's words.
     expect(JSON.stringify(published)).not.toContain("Refunded");
+  });
+
+  it("tells the buyer who reported it when the report is resolved, and not otherwise", async () => {
+    const { service, notices } = setup();
+    await service.update("staff-1", ID, { version: 3, status: "in_progress" });
+    expect(notices.queueResolved).not.toHaveBeenCalled();
+    await service.update("staff-1", ID, { version: 4, status: "resolved", note: "Refunded." });
+    expect(notices.queueResolved).toHaveBeenCalledTimes(1);
+    expect(notices.queueResolved).toHaveBeenCalledWith(expect.anything(), {
+      problemId: ID,
+      lotId: "lot-1",
+      lotTitle: "Pool study",
+      reportedByUserId: "u-buyer",
+    });
+    await service.update("staff-1", ID, { version: 5, note: "Buyer thanked us." });
+    expect(notices.queueResolved).toHaveBeenCalledTimes(1);
+  });
+
+  it("queues nothing when the resolve is refused", async () => {
+    const { service, notices } = setup();
+    await service.update("staff-1", ID, { version: 3, status: "resolved" });
+    await service.update("staff-1", ID, { version: 2, status: "resolved", note: "Done." });
+    expect(notices.queueResolved).not.toHaveBeenCalled();
   });
 
   it("refuses to resolve without a note", async () => {

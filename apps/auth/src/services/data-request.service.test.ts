@@ -42,10 +42,16 @@ function merged(overrides: Partial<MergedRequestRow> = {}): MergedRequestRow {
   };
 }
 
-function setup(rows: MergedRequestRow[] = [], current: ManualRequestRow | null = manualRow()) {
+function setup(
+  rows: MergedRequestRow[] = [],
+  current: ManualRequestRow | null = manualRow(),
+  total = rows.length,
+) {
   const list = vi.fn(async (_filter: unknown) => rows);
+  const count = vi.fn(async (_filter: unknown) => total);
   const reader: DataRequestReader = {
     list,
+    count,
     summary: vi.fn(async () => ({
       open: 3,
       dueSoon: 1,
@@ -99,6 +105,7 @@ function setup(rows: MergedRequestRow[] = [], current: ManualRequestRow | null =
     reader,
     writer,
     list,
+    count,
     applied,
   };
 }
@@ -121,6 +128,18 @@ describe("DataRequestService reads", () => {
     const { service, list } = setup([]);
     await service.list(QUERY);
     expect(list).toHaveBeenCalledWith(expect.objectContaining({ limit: 51, today: "2026-11-02" }));
+  });
+
+  it("reports how many requests the filters match, not how many the page holds", async () => {
+    const { service, count } = setup([merged()], manualRow(), 137);
+    const page = await service.list({ ...QUERY, status: "in_progress", cursor: undefined });
+    expect(page.total).toBe(137);
+    expect(page.items).toHaveLength(1);
+    expect(count).toHaveBeenCalledWith(
+      expect.objectContaining({ view: "open", status: "in_progress", today: "2026-11-02" }),
+    );
+    expect(count.mock.calls[0]?.[0]).not.toHaveProperty("limit");
+    expect(count.mock.calls[0]?.[0]).not.toHaveProperty("after");
   });
 
   it("returns a cursor for the next page only when there are more rows", async () => {

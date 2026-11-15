@@ -68,6 +68,8 @@ export const EMAIL_TEMPLATE_LABELS: Readonly<Record<TemplateName, string>> = {
   "payment-receipt": "Payment receipt",
   "payment-invoice": "Invoice",
   "bid-invoice-issued": "Your invoice (Books)",
+  "bid-purchase-problem-received": "Purchase problem received",
+  "bid-purchase-problem-resolved": "Purchase problem resolved",
   "payment-refund-notice": "Refund",
   "payment-manual-review-buyer-notice": "Payment under review",
   "payment-failed-notice": "Payment failed",

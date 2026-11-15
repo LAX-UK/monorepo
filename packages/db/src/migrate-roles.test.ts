@@ -679,6 +679,7 @@ describe("migrate-roles invariants", () => {
       "delivery_line1",
       "delivery_recipient_name",
       "unit_price_pence",
+      "assigned_to_subject_id",
       "storage_location",
     ]) {
       expect(read).not.toContain(personal);

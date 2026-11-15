@@ -11,6 +11,7 @@ function createApp(staffRoles: StaffRoles | undefined) {
     detail: vi.fn().mockResolvedValue({ id: ID, status: "open" }),
     update: vi.fn().mockResolvedValue({ ok: true, problem: { id: ID, status: "in_progress" } }),
     assignees: vi.fn().mockResolvedValue([{ id: "u1", name: "Sofia Okafor" }]),
+    openCount: vi.fn().mockResolvedValue(4),
   };
   const app = new Hono<{
     Variables: { userId?: string; userRole?: string; userStaffRoles?: StaffRoles | undefined };
@@ -148,6 +149,15 @@ describe("GET /purchase-problem-assignees", () => {
   });
 });
 
+describe("GET /purchase-problem-open-count", () => {
+  it("answers with the open number only, never the list", async () => {
+    const { app, purchaseProblems } = createApp(["client_services"]);
+    const res = await app.request("http://test/purchase-problem-open-count");
+    expect(await res.json()).toEqual({ data: { open: 4 } });
+    expect(purchaseProblems.list).not.toHaveBeenCalled();
+  });
+});
+
 describe("who may open the purchase problem routes", () => {
   it.each([
     ["finance"],
@@ -165,6 +175,7 @@ describe("who may open the purchase problem routes", () => {
       [`/purchase-problems/${ID}`, undefined],
       [`/purchase-problems/${ID}`, patch({ version: 1, note: "x" })],
       ["/purchase-problem-assignees", undefined],
+      ["/purchase-problem-open-count", undefined],
     ] as const) {
       expect((await app.request(`http://test${path}`, init)).status).toBe(403);
     }
@@ -172,5 +183,6 @@ describe("who may open the purchase problem routes", () => {
     expect(purchaseProblems.detail).not.toHaveBeenCalled();
     expect(purchaseProblems.update).not.toHaveBeenCalled();
     expect(purchaseProblems.assignees).not.toHaveBeenCalled();
+    expect(purchaseProblems.openCount).not.toHaveBeenCalled();
   });
 });

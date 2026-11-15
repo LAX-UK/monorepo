@@ -31,8 +31,8 @@ export function DataRequestWriteFailure({
         </StaffButton>
       }
     >
-      Someone else changed this request while you had it open. Reload to see their changes; what you
-      typed stays in the box.
+      {failure.editor ?? "Someone else"} changed this request while you had it open. Reload to see
+      their changes; what you typed stays in the box.
     </Notice>
   ) : (
     <Notice tone="danger" alert title={title} {...(className ? { className } : {})}>

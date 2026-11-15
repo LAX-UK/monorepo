@@ -10,7 +10,7 @@ import {
   isPrintSizeCode,
 } from "@auction/artwork-register-contracts";
 import type { CrmFieldValue } from "../../crm/crm-gateway.js";
-import type { DispatchFacts, PrintLineFacts, RunSales } from "./order-facts.js";
+import type { DispatchFacts, FramingFacts, PrintLineFacts, RunSales } from "./order-facts.js";
 
 /** Fields to write, keyed by Zoho API name. A lookup is `{ id }`. */
 export type ZohoFields = Record<string, CrmFieldValue>;
@@ -126,6 +126,61 @@ export function wantedPrintSku(
   };
 }
 
+/** The framing job's reference: the order, then the framing line it is the work for. */
+export function framingJobRef(orderReference: string, framing: FramingFacts): string {
+  return `${orderReference}/${framing.lineId}`;
+}
+
+const LABELS: Record<string, string> = {
+  black_wood: "black wood frame",
+  white_wood: "white wood frame",
+  natural_oak: "natural oak frame",
+  window_conservation: "conservation window mount",
+  float_conservation: "conservation float mount",
+  uv_acrylic: "UV acrylic glazing",
+  d_rings_cord: "D-rings and cord",
+};
+
+/** What the framer needs, in one line: the option, its parts, the lead time and the due date. */
+export function framingSpec(framing: FramingFacts): string {
+  const parts = [framing.frame, framing.mount, framing.glazing, framing.hanging].map(
+    (part) => LABELS[part] ?? part,
+  );
+  const lead =
+    framing.leadTimeMinDays === framing.leadTimeMaxDays
+      ? `${framing.leadTimeMinDays}`
+      : `${framing.leadTimeMinDays}-${framing.leadTimeMaxDays}`;
+  const due = framing.dueAt ? `; due ${framing.dueAt.toISOString().slice(0, 10)}` : "";
+  return `${framing.name}: ${parts.join(", ")}; lead time ${lead} working days${due}`;
+}
+
+/** Zoho's framing statuses in the order the work moves through them. */
+const FRAMING_RANK: Record<string, number> = {
+  Queued: 1,
+  "Awaiting Materials": 2,
+  "In Progress": 2,
+  Framed: 3,
+  "QC Pending": 4,
+  "Rework Required": 4,
+  "QC Passed": 5,
+  Complete: 6,
+  "Not Required": 7,
+};
+
+const FRAMING_STATUS: Record<NonNullable<FramingFacts["taskStatus"]>, string> = {
+  queued: "Queued",
+  framing: "In Progress",
+  framed: "Framed",
+  completed: "Complete",
+  cancelled: "Not Required",
+};
+
+/** The framing job's status in Zoho; a frame refunded or cancelled is no longer required. */
+export function framingStatusOf(framing: FramingFacts, printReleased: boolean): string {
+  if (framing.released || printReleased) return "Not Required";
+  return FRAMING_STATUS[framing.taskStatus ?? "queued"];
+}
+
 /** Zoho's dispatch statuses in the order a parcel moves through them. */
 const DISPATCH_RANK: Record<string, number> = {
   "Pack Prep": 1,
@@ -136,7 +191,7 @@ const DISPATCH_RANK: Record<string, number> = {
 };
 
 /** Each status picklist LAX moves forward, by the name a caller asks for it with. */
-const STATUS_RANKS = { dispatch: DISPATCH_RANK } as const;
+const STATUS_RANKS = { framing: FRAMING_RANK, dispatch: DISPATCH_RANK } as const;
 
 export type StatusRank = keyof typeof STATUS_RANKS;
 

@@ -5,6 +5,7 @@ import { readDataEnvelope, readJsonBody, safeReadData } from "@/lib/data/http/en
 import {
   purchaseProblemAssigneesSchema,
   purchaseProblemListPageSchema,
+  purchaseProblemOpenCountSchema,
   purchaseProblemViewSchema,
 } from "./admin-purchase-problems.schema";
 import type {
@@ -47,4 +48,15 @@ export async function getPurchaseProblemAssignees(): Promise<PurchaseProblemAssi
     purchaseProblemAssigneesSchema,
     "GET /admin/purchase-problem-assignees",
   ).assignees;
+}
+
+/** How many reports nobody has taken on yet: one number from a counts-only endpoint. */
+export async function getAdminPurchaseProblemOpenCount(): Promise<number> {
+  const res = await authedServerFetch("/admin/purchase-problem-open-count");
+  if (!res.ok) throw new Error(`Purchase problem count unavailable: ${res.status}`);
+  return readDataEnvelope(
+    await readJsonBody(res),
+    purchaseProblemOpenCountSchema,
+    "GET /admin/purchase-problem-open-count",
+  ).open;
 }

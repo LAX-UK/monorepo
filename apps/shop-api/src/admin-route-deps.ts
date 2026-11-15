@@ -68,6 +68,7 @@ import type { createMarkRefundSettledOutsideHandler } from "./infrastructure/han
 import type { createRecordPossessionHandler } from "./infrastructure/handlers/admin/record-possession.handler.js";
 import type { createRejectSaleAuthorityRequestHandler } from "./infrastructure/handlers/admin/reject-sale-authority-request.handler.js";
 import type { createRequestRefundHandler } from "./infrastructure/handlers/admin/request-refund.handler.js";
+import type { createRetryCheckoutCleanupHandler } from "./infrastructure/handlers/admin/retry-checkout-cleanup.handler.js";
 import type { createRetryRefundHandler } from "./infrastructure/handlers/admin/retry-refund.handler.js";
 import type { createUpdateFramingTaskHandler } from "./infrastructure/handlers/admin/update-framing-task.handler.js";
 import type { createUpdateFulfilmentHandler } from "./infrastructure/handlers/admin/update-fulfilment.handler.js";
@@ -135,6 +136,7 @@ export type AdminRoutesDeps = {
   cancelAfterPossession: ReturnType<typeof createCancelAfterPossessionHandler>;
   requestRefund: ReturnType<typeof createRequestRefundHandler>;
   retryRefund: ReturnType<typeof createRetryRefundHandler>;
+  retryCheckoutCleanup: ReturnType<typeof createRetryCheckoutCleanupHandler>;
   markRefundSettledOutside: ReturnType<typeof createMarkRefundSettledOutsideHandler>;
   advanceReturn: ReturnType<typeof createAdvanceReturnHandler>;
   markPayoutPaid: ReturnType<typeof createMarkPayoutPaidHandler>;

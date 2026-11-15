@@ -2,6 +2,7 @@ import { ShopCatalogueEmpty } from "@/components/catalogue/shop-catalogue-empty"
 import { ShopCatalogueHub } from "@/components/catalogue/shop-catalogue-hub";
 import { CategoryCard } from "@/components/home/cards/category-card";
 import { buildCatalogueCategoryCards } from "@/lib/catalogue/catalogue-category-card.vm";
+import { isOriginalWorksCategory } from "@/lib/original-works-redirect";
 import { fetchPublicCategories } from "@/lib/shop-api.server";
 import type { Metadata } from "next";
 
@@ -12,7 +13,9 @@ export const metadata: Metadata = {
 };
 
 export default async function CategoriesIndexPage() {
-  const { items } = await fetchPublicCategories({ limit: 50 });
+  const items = (await fetchPublicCategories({ limit: 50 })).items.filter(
+    (category) => !isOriginalWorksCategory(category),
+  );
   const cards = buildCatalogueCategoryCards(items);
 
   return (

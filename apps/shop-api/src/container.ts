@@ -192,6 +192,7 @@ import { createMarkRefundSettledOutsideHandler } from "./infrastructure/handlers
 import { createRecordPossessionHandler } from "./infrastructure/handlers/admin/record-possession.handler.js";
 import { createRejectSaleAuthorityRequestHandler } from "./infrastructure/handlers/admin/reject-sale-authority-request.handler.js";
 import { createRequestRefundHandler } from "./infrastructure/handlers/admin/request-refund.handler.js";
+import { createRetryCheckoutCleanupHandler } from "./infrastructure/handlers/admin/retry-checkout-cleanup.handler.js";
 import { createRetryRefundHandler } from "./infrastructure/handlers/admin/retry-refund.handler.js";
 import { createUpdateFramingTaskHandler } from "./infrastructure/handlers/admin/update-framing-task.handler.js";
 import { createUpdateFulfilmentHandler } from "./infrastructure/handlers/admin/update-fulfilment.handler.js";
@@ -448,6 +449,7 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
   const updateFramingTask = createUpdateFramingTaskHandler({ uow: shopUow });
   const requestRefund = createRequestRefundHandler({ uow: shopUow });
   const retryRefund = createRetryRefundHandler({ uow: shopUow });
+  const retryCheckoutCleanup = createRetryCheckoutCleanupHandler({ uow: shopUow });
   const markRefundSettledOutside = createMarkRefundSettledOutsideHandler({ uow: shopUow });
   const advanceReturn = createAdvanceReturnHandler({ uow: shopUow });
   const markPayoutPaid = createMarkPayoutPaidHandler({ uow: shopUow });
@@ -831,6 +833,7 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
         cancelAfterPossession,
         requestRefund,
         retryRefund,
+        retryCheckoutCleanup,
         markRefundSettledOutside,
         advanceReturn,
         markPayoutPaid,

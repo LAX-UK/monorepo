@@ -247,6 +247,7 @@ function mount(
             return this;
           },
         },
+        notices: { queueReported: async () => undefined, queueResolved: async () => undefined },
         now: () => NOW,
       }),
       collection: new CollectionBookingService({

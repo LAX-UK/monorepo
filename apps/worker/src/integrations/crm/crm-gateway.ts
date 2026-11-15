@@ -9,6 +9,7 @@ export type CrmModule =
   | "Print_Products"
   | "Edition_Ledgers"
   | "Print_SKUs"
+  | "Framing_Jobs"
   | "Dispatch_Fulfilments";
 
 /** A lookup value; `module` names the parent module of a Note. */

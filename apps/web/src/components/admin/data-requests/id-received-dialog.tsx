@@ -7,7 +7,7 @@ import { DateInput, Field, FormErrorSummary, StaffButton, StaffDialog } from "@a
 import { Clock } from "@auction/staff-ui/icons";
 import { useId, useRef, useState } from "react";
 import { DataRequestWriteFailure } from "./data-request-write-failure";
-import type { WriteFailure, WriteResult } from "./use-data-request-writes";
+import { type WriteFailure, type WriteResult, failureOf } from "./use-data-request-writes";
 
 type Props = {
   open: boolean;
@@ -61,7 +61,7 @@ export function IdReceivedDialog({
       onOpenChange(false);
       onDone(dataRequestDueOn(day));
     } else {
-      setFailure({ message: result.error, stale: result.errorCode === "stale_version" });
+      setFailure(failureOf(result));
     }
   }
 

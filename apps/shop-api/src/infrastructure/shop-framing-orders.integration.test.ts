@@ -468,6 +468,49 @@ describe.skipIf(!hasShopIntegrationDb)("framing in orders integration", () => {
       expect((await step("framed", started.version, "c")).status).toBe("framed");
     });
 
+    it("raises an event for each step, naming the order, so the Zoho mirror hears it", async () => {
+      const order = await paidFramedOrder("event");
+      const task = requireDefined(order.task, "task");
+      await startPrint(order);
+      const update = createUpdateFramingTaskHandler({ uow: uow() });
+      const started = await update({
+        taskId: task.id,
+        status: "framing",
+        expectedVersion: task.version,
+        actorSubjectId: actor,
+        idempotencyKey: `ev-a-${order.suffix}`,
+      });
+      await update({
+        taskId: task.id,
+        status: "framed",
+        expectedVersion: started.version,
+        actorSubjectId: actor,
+        idempotencyKey: `ev-b-${order.suffix}`,
+      });
+      const { rows } = await ownerPool.query<{ payload: Record<string, unknown> }>(
+        `select payload from domain_events
+          where aggregate_type = 'shop_framing_task' and aggregate_id = $1
+            and event_type = 'shop.framing.status_changed' order by occurred_at, id`,
+        [task.id],
+      );
+      expect(rows.map((r) => r.payload)).toEqual([
+        {
+          schemaVersion: 1,
+          taskId: task.id,
+          orderLineId: task.orderLineId,
+          orderId: order.orderId,
+          status: "framing",
+        },
+        {
+          schemaVersion: 1,
+          taskId: task.id,
+          orderLineId: task.orderLineId,
+          orderId: order.orderId,
+          status: "framed",
+        },
+      ]);
+    });
+
     it("refuses to start a frame before its print is in production", async () => {
       const order = await paidFramedOrder("print-first");
       const task = requireDefined(order.task, "task");

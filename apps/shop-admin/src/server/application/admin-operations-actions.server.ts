@@ -114,6 +114,15 @@ export async function retryOrderRefund(input: { refundId: string; idempotencyKey
   });
 }
 
+export async function retryCheckoutCleanup(input: { orderId: string; idempotencyKey?: string }) {
+  return forwardAdminJsonMutation<{ id: string; status: string }>({
+    bffPath: `orders/${encodeURIComponent(input.orderId)}/retry-checkout-cleanup`,
+    method: "POST",
+    jsonBody: {},
+    ...(input.idempotencyKey ? { idempotencyKey: input.idempotencyKey } : {}),
+  });
+}
+
 export async function settleRefundOutsideLax(input: {
   refundId: string;
   reason: string;

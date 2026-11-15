@@ -10,7 +10,7 @@ const ok = { ok: true, value: RECORD };
 
 function createApp(staffRoles: StaffRoles | undefined) {
   const dataRequests = {
-    list: vi.fn().mockResolvedValue({ items: [], nextCursor: null }),
+    list: vi.fn().mockResolvedValue({ items: [], nextCursor: null, total: 0 }),
     summary: vi.fn().mockResolvedValue({ open: 1 }),
     findAccount: vi.fn().mockResolvedValue({ subjectId: "user_1", name: "Lena", status: "active" }),
     record: vi.fn().mockResolvedValue(ok),
@@ -103,7 +103,7 @@ describe("data requests routes", () => {
     const res = await app.request("http://test/data-requests?view=overdue&product=bid");
     expect(res.status).toBe(200);
     expect(res.headers.get("cache-control")).toBe("no-store");
-    expect(await res.json()).toEqual({ data: { items: [], nextCursor: null } });
+    expect(await res.json()).toEqual({ data: { items: [], nextCursor: null, total: 0 } });
     expect(dataRequests.list).toHaveBeenCalledWith({
       view: "overdue",
       product: "bid",

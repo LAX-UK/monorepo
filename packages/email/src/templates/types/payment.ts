@@ -6,6 +6,8 @@ const names = [
   "payment-receipt",
   "payment-invoice",
   "bid-invoice-issued",
+  "bid-purchase-problem-received",
+  "bid-purchase-problem-resolved",
   "payment-refund-notice",
   "payment-manual-review-buyer-notice",
   "payment-failed-notice",
@@ -58,6 +60,33 @@ type PaymentTemplateVars = {
     /** LAX's stored copy, read from document storage at send time; nothing is stored twice. */
     storedAttachment: StoredEmailAttachment;
     purchaseUrl: string;
+  };
+  /**
+   * "We have your report": the buyer's copy of a problem they reported on a paid purchase. Sent
+   * once per report. It names the lot and the kind of problem, never what the buyer wrote.
+   */
+  "bid-purchase-problem-received": {
+    userName?: string | null;
+    /** What the buyer quotes: PP-1A2B3C4D. */
+    reference: string;
+    lotTitle: string;
+    /** The kind of problem, as the buyer chose it ("Damaged"). */
+    categoryLabel: string;
+    purchaseUrl: string;
+    /** Where the buyer writes to add something, quoting the reference. */
+    contactEmail: string;
+  };
+  /**
+   * "Your report is resolved": sent once when staff close a report. Staff notes are internal and
+   * never in it.
+   */
+  "bid-purchase-problem-resolved": {
+    userName?: string | null;
+    reference: string;
+    lotTitle: string;
+    purchaseUrl: string;
+    /** Where the buyer writes if the problem is not put right, quoting the reference. */
+    contactEmail: string;
   };
   /** notify seller entity members when a payment is refunded or dispute is lost. */
   "payment-refund-notice": {
@@ -168,6 +197,8 @@ export const paymentTemplates = {
     "payment-receipt": "live",
     "payment-invoice": "live",
     "bid-invoice-issued": "live",
+    "bid-purchase-problem-received": "live",
+    "bid-purchase-problem-resolved": "live",
     "payment-refund-notice": "live",
     "payment-manual-review-buyer-notice": "live",
     "payment-failed-notice": "live",

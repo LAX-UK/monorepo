@@ -14,7 +14,11 @@ import {
   shopStockHold,
   shopUserProfile,
 } from "@auction/db/schema";
-import { OPEN_EDITION_LOW_STOCK_AT, type OverviewKpiKey } from "@auction/shop-domain";
+import {
+  OPEN_EDITION_LOW_STOCK_AT,
+  type OverviewKpiKey,
+  isHeldOutOfCheckoutSweep,
+} from "@auction/shop-domain";
 import {
   type SQL,
   and,
@@ -72,6 +76,11 @@ function orderFilterConditions(input: AdminOrderListFilters): SQL[] {
   if (input.refund === "failed") {
     conditions.push(
       sql`exists (select 1 from ${shopRefund} where ${shopRefund.orderId} = ${shopOrder.id} and ${shopRefund.status} = 'failed')`,
+    );
+  }
+  if (input.checkout === "held") {
+    conditions.push(
+      and(eq(shopOrder.status, "pending_payment"), isNull(shopOrder.checkoutExpiresAt)) as SQL,
     );
   }
   if (input.createdFrom) {
@@ -218,6 +227,7 @@ export function createDrizzleAdminReadRepository(
             }),
             createdAt: order.createdAt.toISOString(),
             paidAt: order.paidAt?.toISOString() ?? null,
+            heldOutOfSweep: isHeldOutOfCheckoutSweep(order),
           }),
         );
         return {

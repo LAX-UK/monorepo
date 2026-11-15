@@ -272,6 +272,7 @@ const LABELS: Record<string, string> = {
   "shop.fulfilment.status_changed": "Fulfilment status changed",
   "shop.print.pack_confirmed": "Print pack confirmed",
   "shop.print.swapped": "Print swapped",
+  "shop.framing.status_changed": "Framing status changed",
   "shop.possession.recorded": "Possession recorded",
   "shop.refund.requested": "Refund requested",
   "shop.refund.completed": "Refund completed",

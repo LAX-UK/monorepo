@@ -41,6 +41,7 @@ export function createZohoFulfilmentMirror(deps: {
       zoho: new CrmZohoOrderRecords(gateway),
       fields: {
         orderRef: env.ZOHO_FULFILMENT_ORDER_REF_FIELD,
+        framingSpec: env.ZOHO_FULFILMENT_FRAMING_SPEC_FIELD,
         dispatchPrints: env.ZOHO_FULFILMENT_DISPATCH_PRINTS_FIELD,
       },
       mode,

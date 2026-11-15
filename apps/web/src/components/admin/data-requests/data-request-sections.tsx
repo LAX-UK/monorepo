@@ -31,7 +31,7 @@ import {
 import { Check, Eye, Pencil, RotateCcw, Undo2 } from "@auction/staff-ui/icons";
 import { useState } from "react";
 import { DataRequestWriteFailure } from "./data-request-write-failure";
-import type { WriteFailure, WriteResult } from "./use-data-request-writes";
+import { type WriteFailure, type WriteResult, failureOf } from "./use-data-request-writes";
 
 type StepState = DataRequestRecord["steps"][number]["state"];
 
@@ -180,7 +180,7 @@ export function NotesSection({
     const result = await save(draft.trim());
     setBusy(false);
     if (result.ok) setEditing(false);
-    else setFailure({ message: result.error, stale: result.errorCode === "stale_version" });
+    else setFailure(failureOf(result));
   }
 
   return (

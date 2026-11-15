@@ -594,17 +594,26 @@ describe("an order past the ceiling that cannot be settled", () => {
     const queueCheckoutOpsAlert = vi.fn(async () => undefined);
     const update = vi.fn(() => ({ set: vi.fn(() => ({ where: vi.fn(async () => []) })) }));
     const pendingOrder = [{ status: "pending_payment", sessionId: "cs_stuck" }];
+    // The count of staff retries already recorded for the order (none on a first failure).
+    const retriesSoFar = [{ retries: 0 }];
+    const txSelect = vi.fn(() => ({
+      from: vi.fn(() => ({ where: vi.fn(async () => retriesSoFar) })),
+    }));
     let transactions = 0;
     const db = {
       select: vi.fn(() => ({
         from: vi.fn(() => ({ where: vi.fn(() => ({ limit: vi.fn(async () => pendingOrder) })) })),
       })),
       // The first transaction is the settle, which fails; the second takes the order out.
-      transaction: vi.fn(async (fn: (tx: { update: typeof update }) => Promise<unknown>) => {
-        transactions += 1;
-        if (transactions === 1) throw new Error("finance store down");
-        return fn({ update });
-      }),
+      transaction: vi.fn(
+        async (
+          fn: (tx: { update: typeof update; select: typeof txSelect }) => Promise<unknown>,
+        ) => {
+          transactions += 1;
+          if (transactions === 1) throw new Error("finance store down");
+          return fn({ update, select: txSelect });
+        },
+      ),
     };
     const gateway = {
       retrievePaidCheckout: vi.fn(async () => Promise.reject(new Error("stripe down"))),

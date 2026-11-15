@@ -202,10 +202,12 @@ export const envSchema = z
      */
     ZOHO_FULFILMENT_MIRROR_MODE: z.enum(["off", "dry_run", "live"]).default("off"),
     /**
-     * API name of the text field (unique) the owners add to Dispatch_Fulfilments for the LAX order
-     * reference; the order mirror finds its records by it.
+     * API name of the text field (unique) the owners add to Framing_Jobs and Dispatch_Fulfilments
+     * for the LAX order reference; the order mirror finds its records by it.
      */
     ZOHO_FULFILMENT_ORDER_REF_FIELD: zohoApiName("LAX_Order_Ref"),
+    /** API name of the text field the owners add to Framing_Jobs for the framing details. */
+    ZOHO_FULFILMENT_FRAMING_SPEC_FIELD: zohoApiName("LAX_Framing_Spec"),
     /**
      * API name of the multi-line text field the owners add to Dispatch_Fulfilments for the prints
      * in the parcel: each one's SKU and edition label.

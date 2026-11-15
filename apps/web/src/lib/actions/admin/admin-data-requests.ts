@@ -1,6 +1,10 @@
 "use server";
 
-import { dataRequestErrorMessage } from "@/lib/admin/data-requests/data-request-errors";
+import { otherEditorName } from "@/lib/admin/data-requests/data-request-editor";
+import {
+  dataRequestErrorMessage,
+  isStaleDataRequest,
+} from "@/lib/admin/data-requests/data-request-errors";
 import { DATA_REQUESTS_PATH } from "@/lib/admin/data-requests/data-requests-search";
 import {
   type EnquiryErasureCounts,
@@ -11,8 +15,10 @@ import {
 import { denyUnlessAdminCapability } from "@/lib/auth/assert-admin-action-capability";
 import { isStaffStepUpResponse } from "@/lib/auth/step-up/staff-step-up.server";
 import { stepUpRequiredFailure } from "@/lib/auth/step-up/step-up-failure";
+import { getAdminDataRequest } from "@/lib/data/http/admin-data-requests.reader";
 import { authedServerFetch } from "@/lib/data/http/authed-server-fetch";
 import { readDataEnvelope, readJsonBody } from "@/lib/data/http/envelope";
+import { getServerSessionUser } from "@/lib/data/http/session.server";
 import { type ActionResult, actionFailure, actionSuccess } from "@/lib/forms/form-result";
 import { DATA_REQUESTS_MANAGE_ACCESS } from "@/lib/navigation/staff-nav-access";
 import { instrumentServerAction } from "@/lib/observability/instrument-server-action";
@@ -40,6 +46,19 @@ const foundAccountSchema = zod
 async function errorCodeOf(res: Response): Promise<string | undefined> {
   const body = (await res.json().catch(() => null)) as { error?: unknown } | null;
   return typeof body?.error === "string" ? body.error : undefined;
+}
+
+/**
+ * Who else changed the request under a stale edit; null when it cannot be read, nobody is named or
+ * the last change was the signed-in person's own. The only read the API offers is the record
+ * itself, so this opens it (and the API audits that view) on a failure path.
+ */
+async function lastEditorOf(reference: string): Promise<string | null> {
+  const [read, me] = await Promise.all([
+    getAdminDataRequest(reference),
+    getServerSessionUser().catch(() => null),
+  ]);
+  return read.ok ? otherEditorName(read.record.timeline, me?.name) : null;
 }
 
 /**
@@ -78,7 +97,14 @@ async function send(
     if (await isStaffStepUpResponse(res)) return stepUpRequiredFailure();
     if (!res.ok) {
       const code = await errorCodeOf(res);
-      return actionFailure(dataRequestErrorMessage(code, res.status), undefined, res.status, code);
+      const editor = isStaleDataRequest(code) && reference ? await lastEditorOf(reference) : null;
+      return actionFailure(
+        dataRequestErrorMessage(code, res.status),
+        undefined,
+        res.status,
+        code,
+        editor ? { editor } : undefined,
+      );
     }
     const record = readDataEnvelope(
       await readJsonBody(res),

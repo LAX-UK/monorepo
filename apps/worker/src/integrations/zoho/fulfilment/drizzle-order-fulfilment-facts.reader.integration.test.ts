@@ -164,6 +164,10 @@ describe.skipIf(!ownerUrl || !workerUrl)("order fulfilment facts reader as worke
       ],
     );
     await owner.query(
+      "insert into shop_framing_task (order_line_id, status, due_at) values ($1, 'framing', $2)",
+      [framingLineId, due],
+    );
+    await owner.query(
       `insert into shop_fulfilment (order_id, option, status, carrier, tracking_number)
        values ($1, 'uk_insured_delivery', 'in_transit', 'DPD', '15501234')`,
       [orderId],
@@ -184,6 +188,7 @@ describe.skipIf(!ownerUrl || !workerUrl)("order fulfilment facts reader as worke
       // triggers off for this transaction.
       await client.query("set local session_replication_role = replica");
       await client.query("delete from shop_fulfilment where order_id = $1", [orderId]);
+      await client.query("delete from shop_framing_task where order_line_id = $1", [framingLineId]);
       await client.query("delete from shop_order_line where id = $1", [framingLineId]);
       await client.query("delete from shop_order_line where order_id in ($1, $2)", [
         orderId,
@@ -206,7 +211,7 @@ describe.skipIf(!ownerUrl || !workerUrl)("order fulfilment facts reader as worke
     }
   });
 
-  it("reads the order's prints with their listing, the frame sold and the fulfilment", async () => {
+  it("reads the order's prints with their listing, frame and the fulfilment", async () => {
     // biome-ignore lint/style/noNonNullAssertion: gated by skipIf
     const reader = createDrizzleOrderFulfilmentFactsReader(createDb(workerUrl!));
     const facts = await reader.read(orderId);
@@ -234,7 +239,19 @@ describe.skipIf(!ownerUrl || !workerUrl)("order fulfilment facts reader as worke
       allocation: "original_buyer_entitlement",
       editionNumber: 1,
       printLabel: "1/25",
-      framing: { lineId: framingLineId, frame: "black_wood", released: false },
+      framing: {
+        lineId: framingLineId,
+        name: "Gallery black",
+        frame: "black_wood",
+        mount: "window_conservation",
+        glazing: "uv_acrylic",
+        hanging: "d_rings_cord",
+        leadTimeMinDays: 10,
+        leadTimeMaxDays: 15,
+        taskStatus: "framing",
+        dueAt: due,
+        released: false,
+      },
     });
     expect(facts?.prints.map((line) => [line.lineId, line.released, line.framing]).sort()).toEqual(
       [

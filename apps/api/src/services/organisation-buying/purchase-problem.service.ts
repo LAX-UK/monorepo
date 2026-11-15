@@ -14,6 +14,7 @@ import type {
   PurchaseProblemView,
 } from "../interfaces/organisation-buying-service.js";
 import type { OrganisationMemberActor } from "../interfaces/organisation-membership-service.js";
+import type { IPurchaseProblemNotices } from "../purchase-problems/purchase-problem-notices.js";
 import { buyingError, entityActorOf, purchaseView } from "./purchase-view.js";
 
 export type PurchaseProblemServiceDeps = {
@@ -21,6 +22,8 @@ export type PurchaseProblemServiceDeps = {
   problems: IPurchaseProblemRepository;
   transactionRunner: ITransactionRunner;
   events: IDomainEventSink;
+  /** Tells the buyer their report was received. */
+  notices: IPurchaseProblemNotices;
   now: () => Date;
 };
 
@@ -105,6 +108,13 @@ export class PurchaseProblemService implements IPurchaseProblemService {
           payload: { lotId, paymentId, category: input.category },
           actorUserId: actor.userId,
           actingLegalEntityId: actor.legalEntityId,
+        });
+        await this.deps.notices.queueReported(tx, {
+          problemId: opened.record.id,
+          lotId,
+          lotTitle: purchase.lotTitle,
+          reportedByUserId: actor.userId,
+          category: input.category,
         });
       }
       return opened;

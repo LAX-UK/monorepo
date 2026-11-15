@@ -6,7 +6,7 @@ import { refused } from "./zoho-print-modules.js";
 /** The Zoho modules the order mirror writes. */
 export type OrderModule = Extract<
   CrmModule,
-  "Print_Products" | "Edition_Ledgers" | "Print_SKUs" | "Dispatch_Fulfilments"
+  "Print_Products" | "Edition_Ledgers" | "Print_SKUs" | "Framing_Jobs" | "Dispatch_Fulfilments"
 >;
 
 /** The order mirror's records in Zoho. The mirror depends on this, not on Zoho. */

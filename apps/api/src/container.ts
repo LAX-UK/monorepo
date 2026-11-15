@@ -1,3 +1,4 @@
+import { SITE_CONTACT_EMAIL } from "@auction/branding";
 import { createDb } from "@auction/db";
 import { XeroTokenSealer } from "@auction/db/xero-token-sealing";
 import {
@@ -26,6 +27,7 @@ import {
   DrizzleStaffNoticeRecipientReader,
   DrizzleStaffRoleAssignmentReader,
   DrizzleStaffRoster,
+  DrizzleUserRepository,
   DrizzleWatchlistReminderRepository,
 } from "@auction/persistence/repositories";
 import { PartyDealRetentionHolds } from "./container/adapters/drizzle-data-request-deal-holds.js";
@@ -107,6 +109,7 @@ import { CollectionDeskService } from "./services/collection-desk/collection-des
 import { CollectionSettingsAdminService } from "./services/collection-settings/collection-settings.service.js";
 import { EnsurePersonalLegalEntityService } from "./services/legal-entity/ensure-personal-legal-entity.service.js";
 import { NotificationAccountMuteService } from "./services/notifications/notification-account-mute.service.js";
+import { EmailPurchaseProblemNotices } from "./services/purchase-problems/purchase-problem-notices.js";
 import { TwoFactorPolicyService } from "./services/security/two-factor-policy.service.js";
 import { SessionRevocationService } from "./services/session-revocation.service.js";
 import { StaffStepUpService } from "./services/staff-step-up.service.js";
@@ -447,6 +450,12 @@ export function createContainer(env: Env): Container {
   };
   const organisationMembership = createOrganisationMembershipServices({ db });
   const organisationHome = createOrganisationHomeServices({ db });
+  const purchaseProblemNotices = new EmailPurchaseProblemNotices({
+    usersFor: (tx) => new DrizzleUserRepository(tx),
+    email: infra.emailOutbox,
+    webOrigin: env.WEB_ORIGIN,
+    contactEmail: SITE_CONTACT_EMAIL,
+  });
   const organisationBuying = createOrganisationBuyingServices({
     db,
     log: createBaseLogger(env),
@@ -458,6 +467,7 @@ export function createContainer(env: Env): Container {
     onboarding: userMisc.accountOnboardingGate,
     transactionRunner: platform.transactionRunner,
     events: platform.domainEventSink,
+    purchaseProblemNotices,
     notificationDispatcher: platform.notificationDispatcher,
     notificationFactory: platform.notificationFactory,
     payments: {
@@ -865,6 +875,7 @@ export function createContainer(env: Env): Container {
         db,
         transactionRunner: platform.transactionRunner,
         events: platform.domainEventSink,
+        notices: purchaseProblemNotices,
       }),
       dataRequests: new AdminDataRequestsService({
         identity: new HttpIdentityDataRequestsClient({

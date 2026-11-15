@@ -29,6 +29,12 @@ export function attachAdminPurchaseProblemRoutes(
   platform.use("/purchase-problems", requirePurchaseProblems);
   platform.use("/purchase-problems/*", requirePurchaseProblems);
   platform.use("/purchase-problem-assignees", requirePurchaseProblems);
+  platform.use("/purchase-problem-open-count", requirePurchaseProblems);
+
+  /** GET /admin/purchase-problem-open-count — one number for the sidebar badge, no rows. */
+  platform.get("/purchase-problem-open-count", async (c) => {
+    return c.json({ data: { open: await container.admin.purchaseProblems.openCount() } });
+  });
 
   /** GET /admin/purchase-problems — one page of a status, with counts and filters. */
   platform.get(

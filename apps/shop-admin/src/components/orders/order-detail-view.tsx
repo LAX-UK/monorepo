@@ -1,5 +1,6 @@
 import { AdminBreadcrumbs } from "@/components/admin-breadcrumbs";
 import { FulfilmentSection } from "@/components/orders/fulfilment-section.client";
+import { HeldCheckoutNotice } from "@/components/orders/held-checkout-notice.client";
 import {
   FailedRefundActions,
   FramingTaskControl,
@@ -149,6 +150,8 @@ export function OrderDetailView({
             : ""}
         </Notice>
       ) : null}
+
+      {detail.heldOutOfSweep ? <HeldCheckoutNotice orderId={detail.orderId} /> : null}
 
       <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
         <div className="flex min-w-0 flex-col gap-6">

@@ -3,6 +3,7 @@ import {
   shopArtwork,
   shopEdition,
   shopEditionFraming,
+  shopFramingTask,
   shopFulfilment,
   shopOrder,
   shopOrderLine,
@@ -21,24 +22,39 @@ const EDITION_TYPE: Record<string, PrintLineFacts["editionType"]> = {
   open: "Open",
 };
 
-/** The frame sold, read from the line's snapshot; nothing else of it is read here. */
+const TASK_STATUSES = ["queued", "framing", "framed", "completed", "cancelled"] as const;
+
+const text = (value: unknown): string => (typeof value === "string" ? value : "");
+const days = (value: unknown): number => (typeof value === "number" ? value : 0);
+
+/** The option as sold, read from the line's snapshot; prices are not read. */
 function framingFrom(row: {
   lineId: string;
   snapshot: Record<string, unknown> | null;
   releasedAt: Date | null;
+  taskStatus: string | null;
+  dueAt: Date | null;
 }): FramingFacts {
-  const frame = row.snapshot?.frame;
+  const s = row.snapshot ?? {};
   return {
     lineId: row.lineId,
-    frame: typeof frame === "string" ? frame : "",
+    name: text(s.name),
+    frame: text(s.frame),
+    mount: text(s.mount),
+    glazing: text(s.glazing),
+    hanging: text(s.hanging),
+    leadTimeMinDays: days(s.leadTimeMinDays),
+    leadTimeMaxDays: days(s.leadTimeMaxDays),
+    taskStatus: TASK_STATUSES.find((status) => status === row.taskStatus) ?? null,
+    dueAt: row.dueAt,
     released: row.releasedAt !== null,
   };
 }
 
 /**
- * Reads an order's prints, the frame sold with each and the fulfilment from Shop's tables through
- * the column grants the worker holds for this and nothing else. No buyer, address or price column
- * is read, nor the price in the frame snapshot.
+ * Reads an order's prints, framing and fulfilment from Shop's tables through the column grants the
+ * worker holds for this and nothing else. No buyer, address or price column is read, nor the price
+ * in the frame snapshot, nor the framing task's assignee.
  */
 export function createDrizzleOrderFulfilmentFactsReader(db: Database): OrderFulfilmentFactsReader {
   const original = alias(shopArtwork, "original");
@@ -84,8 +100,11 @@ export function createDrizzleOrderFulfilmentFactsReader(db: Database): OrderFulf
           printLineId: shopOrderLine.framingForLineId,
           snapshot: shopOrderLine.framingSnapshot,
           releasedAt: shopOrderLine.releasedAt,
+          taskStatus: shopFramingTask.status,
+          dueAt: shopFramingTask.dueAt,
         })
         .from(shopOrderLine)
+        .leftJoin(shopFramingTask, eq(shopFramingTask.orderLineId, shopOrderLine.id))
         .where(and(eq(shopOrderLine.orderId, orderId), eq(shopOrderLine.kind, "framing")));
 
       const [fulfilment] = await db

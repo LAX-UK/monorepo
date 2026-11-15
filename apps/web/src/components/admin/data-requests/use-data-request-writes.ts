@@ -30,11 +30,19 @@ const SERVER_ACTIONS: DataRequestWriteActions = {
 
 export type WriteResult = ActionResult<DataRequestRecord>;
 
-/** A failed write as the page shows it: the sentence, and whether the record changed under the editor. */
-export type WriteFailure = { message: string; stale: boolean };
+/**
+ * A failed write as the page shows it: the sentence, and whether the record changed under the
+ * editor, with the name of the person who changed it when the server found one.
+ */
+export type WriteFailure = { message: string; stale: boolean; editor?: string };
 
 export function failureOf(result: Extract<WriteResult, { ok: false }>): WriteFailure {
-  return { message: result.error, stale: isStaleDataRequest(result.errorCode) };
+  const editor = result.meta?.editor;
+  return {
+    message: result.error,
+    stale: isStaleDataRequest(result.errorCode),
+    ...(typeof editor === "string" && editor ? { editor } : {}),
+  };
 }
 
 /**

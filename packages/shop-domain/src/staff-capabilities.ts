@@ -29,7 +29,8 @@ export const SHOP_STAFF_CAPABILITIES = [
   "enquiry.write",
   "order.read",
   /**
-   * Changing an order: today, quoting delivery outside the UK and turning a request down. Held by
+   * Changing an order: today, quoting delivery outside the UK, turning a request down and putting
+   * an order the checkout sweep gave up on back in it. Held by
    * the people who run orders (Administrators, operations and account managers); finance sees
    * orders and refunds them, but does not quote.
    */

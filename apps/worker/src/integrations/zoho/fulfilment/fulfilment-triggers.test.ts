@@ -32,6 +32,16 @@ describe("fulfilmentTriggerOf", () => {
     expect(reports.sort()).toEqual(["shop.order.paid", "shop.print.swapped"]);
   });
 
+  it("hears a framing task moving, so a finished frame is not left Queued in Zoho", () => {
+    expect(
+      fulfilmentTriggerOf({
+        eventType: "shop.framing.status_changed",
+        aggregateId: "task-1",
+        payload: { orderId: "ord-1", orderLineId: "line-1" },
+      }),
+    ).toEqual({ kind: "order", orderId: "ord-1", reportsProblems: false });
+  });
+
   it("ignores an order event whose payload names no order", () => {
     const eventType = "shop.fulfilment.dispatched";
     expect(fulfilmentTriggerOf({ eventType, aggregateId: "ful-1" })).toBeNull();
