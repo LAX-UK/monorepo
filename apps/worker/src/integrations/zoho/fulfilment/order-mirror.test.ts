@@ -9,7 +9,11 @@ import type { OrderModule, ZohoOrderRecords } from "./zoho-order-modules.js";
 
 const GROUP = "LAX-PRT-MP-GAC-26-0037";
 const SKU = `${GROUP}-A3-HAH-UNF-COL`;
-const FIELDS = { orderRef: "LAX_Order_Ref", dispatchPrints: "LAX_Prints" };
+const FIELDS = {
+  orderRef: "LAX_Order_Ref",
+  framingSpec: "LAX_Framing_Spec",
+  dispatchPrints: "LAX_Prints",
+};
 
 type Row = { id: string; module: OrderModule; fields: Record<string, unknown> };
 
@@ -189,16 +193,84 @@ describe("OrderMirror", () => {
     ]);
   });
 
-  it("puts the frame sold with the print in its SKU, unless the frame was refunded", async () => {
-    const framed = build({ facts: orderFacts({ prints: [printLine({ framing: framing() })] }) });
-    await framed.mirror.deliver("order-1");
-    expect(byModule(framed.saves, "Print_SKUs")[0]?.fields.Frame).toBe("FRB");
+  it("queues a framing job linked to the Print SKU, with the edition and the framing details", async () => {
+    const due = new Date("2026-12-01T00:00:00Z");
+    const m = build({
+      facts: orderFacts({ prints: [printLine({ framing: framing({ dueAt: due }) })] }),
+    });
+    await m.mirror.deliver("order-1");
+    const sku = byModule(m.saves, "Print_SKUs")[0];
+    expect(sku?.fields.Frame).toBe("FRB");
+    const skuId = m.rows.find((r) => r.module === "Print_SKUs")?.id;
+    expect(byModule(m.saves, "Framing_Jobs")).toEqual([
+      {
+        module: "Framing_Jobs",
+        id: null,
+        matchOn: "LAX_Order_Ref",
+        fields: {
+          LAX_Order_Ref: "LAX-S-10482/fl-1",
+          Linked_Print_SKU: { id: skuId },
+          Edition_Assigned: "ED 07/25",
+          Status: "Queued",
+          LAX_Framing_Spec: expect.stringContaining("lead time 10-15 working days; due 2026-12-01"),
+        },
+      },
+    ]);
+  });
 
-    const refunded = build({
+  it("moves the framing job on, but never back past where staff took it in Zoho", async () => {
+    const job = (Status: string): Row => ({
+      id: "fj-1",
+      module: "Framing_Jobs",
+      fields: { LAX_Order_Ref: "LAX-S-10482/fl-1", Status },
+    });
+    const framed = orderFacts({
+      prints: [printLine({ framing: framing({ taskStatus: "framed" }) })],
+    });
+
+    const forward = build({ facts: framed, rows: [...GROUP_ROWS, job("In Progress")] });
+    await forward.mirror.deliver("order-1");
+    expect(byModule(forward.saves, "Framing_Jobs")[0]).toMatchObject({
+      id: "fj-1",
+      fields: { Status: "Framed" },
+    });
+
+    const ahead = build({ facts: framed, rows: [...GROUP_ROWS, job("QC Passed")] });
+    await ahead.mirror.deliver("order-1");
+    expect(byModule(ahead.saves, "Framing_Jobs")[0]?.fields).not.toHaveProperty("Status");
+  });
+
+  it("marks a refunded print's framing job not required, and makes none that was never there", async () => {
+    const refunded = orderFacts({
+      prints: [printLine({ released: true, framing: framing({ taskStatus: "framing" }) })],
+    });
+    const existing = build({
+      facts: refunded,
+      rows: [
+        ...GROUP_ROWS,
+        {
+          id: "fj-1",
+          module: "Framing_Jobs",
+          fields: { LAX_Order_Ref: "LAX-S-10482/fl-1", Status: "In Progress" },
+        },
+      ],
+    });
+    await existing.mirror.deliver("order-1");
+    expect(
+      byModule(existing.saves, "Framing_Jobs").map(({ id, fields }) => ({ id, fields })),
+    ).toEqual([{ id: "fj-1", fields: { Status: "Not Required" } }]);
+
+    const none = build({ facts: refunded });
+    await none.mirror.deliver("order-1");
+    expect(byModule(none.saves, "Framing_Jobs")).toEqual([]);
+
+    // A refunded frame sold with a live print: its SKU is unframed and no job is made.
+    const frameOnly = build({
       facts: orderFacts({ prints: [printLine({ framing: framing({ released: true }) })] }),
     });
-    await refunded.mirror.deliver("order-1");
-    expect(byModule(refunded.saves, "Print_SKUs")[0]?.fields.Frame).toBe("UNF");
+    await frameOnly.mirror.deliver("order-1");
+    expect(byModule(frameOnly.saves, "Framing_Jobs")).toEqual([]);
+    expect(byModule(frameOnly.saves, "Print_SKUs")[0]?.fields.Frame).toBe("UNF");
   });
 
   it("recounts the ledger when a print is refunded, and writes nothing else for it", async () => {
@@ -328,6 +400,26 @@ describe("OrderMirror", () => {
     expect(none.saves).toEqual([]);
   });
 
+  it("still queues the framing job, unlinked, for a print that has no SKU in Zoho", async () => {
+    const framed = orderFacts({ prints: [printLine({ framing: framing() })] });
+    // An original outside the register: the print is left alone, its frame is not.
+    const outside = build({ register: null, facts: framed });
+    expect(await outside.mirror.deliver("order-1")).toMatchObject({ outcome: "success" });
+    expect(byModule(outside.saves, "Print_SKUs")).toEqual([]);
+    const [job] = byModule(outside.saves, "Framing_Jobs");
+    expect(job?.fields).toMatchObject({ LAX_Order_Ref: "LAX-S-10482/fl-1", Status: "Queued" });
+    expect(job?.fields).not.toHaveProperty("Linked_Print_SKU");
+
+    // A part that does not map: the order fails for staff to fix, and the frame is still there.
+    const unmapped = build({
+      facts: orderFacts({
+        prints: [printLine({ printPaper: "Somerset", framing: framing() })],
+      }),
+    });
+    expect(await unmapped.mirror.deliver("order-1")).toMatchObject({ outcome: "fatal" });
+    expect(byModule(unmapped.saves, "Framing_Jobs")).toHaveLength(1);
+  });
+
   it("mirrors the lines it can and fails the order on a SKU it cannot work out", async () => {
     const m = build({
       facts: orderFacts({
@@ -365,14 +457,22 @@ describe("OrderMirror", () => {
     const planned = m.log.info.mock.calls
       .filter(([, message]) => message === "order mirror would create, nothing written")
       .map(([detail]) => detail);
-    expect(planned.map((d) => d.module)).toEqual(["Print_SKUs", "Dispatch_Fulfilments"]);
+    expect(planned.map((d) => d.module)).toEqual([
+      "Print_SKUs",
+      "Framing_Jobs",
+      "Dispatch_Fulfilments",
+    ]);
     expect(planned[0]).toMatchObject({
       order: "LAX-S-10482",
       recordId: null,
       fields: { SKU: `${GROUP}-A3-HAH-FRB-COL` },
     });
     expect(planned[0]?.fields).not.toHaveProperty("Linked_Print_Product_Group");
-    expect(planned[1]?.fields).toEqual({
+    expect(planned[1]?.fields).toMatchObject({
+      LAX_Order_Ref: "LAX-S-10482/fl-1",
+      Status: "Queued",
+    });
+    expect(planned[2]?.fields).toEqual({
       LAX_Order_Ref: "LAX-S-10482",
       Status: "Ready",
       LAX_Prints: `${GROUP}-A3-HAH-FRB-COL ED 07/25`,
@@ -381,6 +481,32 @@ describe("OrderMirror", () => {
       { code: GROUP },
       "edition ledger to be mirrored with its group",
     );
+  });
+
+  it("in dry_run says the job's link to a SKU it would create is pending, not missing", async () => {
+    const planned = async (rows: Row[], register: ArtworkRegisterEntry | null = ORIGINAL) => {
+      const m = build({
+        mode: "dry_run",
+        rows,
+        register,
+        facts: orderFacts({ prints: [printLine({ framing: framing() })] }),
+      });
+      await m.mirror.deliver("order-1");
+      return m.log.info.mock.calls
+        .map(([detail]) => detail)
+        .find((detail) => detail?.module === "Framing_Jobs");
+    };
+    expect(await planned(GROUP_ROWS)).toMatchObject({ pendingFields: ["Linked_Print_SKU"] });
+    const withSku: Row = {
+      id: "sku-1",
+      module: "Print_SKUs",
+      fields: { SKU: `${GROUP}-A3-HAH-FRB-COL` },
+    };
+    const linked = await planned([...GROUP_ROWS, withSku]);
+    expect(linked).not.toHaveProperty("pendingFields");
+    expect(linked.fields).toMatchObject({ Linked_Print_SKU: { id: "sku-1" } });
+    // No SKU is coming for an unregistered original, so nothing is pending.
+    expect(await planned(GROUP_ROWS, null)).not.toHaveProperty("pendingFields");
   });
 
   it("in dry_run logs an update with the record's id", async () => {

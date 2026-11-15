@@ -4,6 +4,8 @@ import {
   dispatchStatusOf,
   editionAssigned,
   frameCodeOf,
+  framingSpec,
+  framingStatusOf,
   holdsUnrankedStatus,
   ledgerCounts,
   paperCodeOf,
@@ -143,6 +145,30 @@ describe("ledgerCounts", () => {
   });
 });
 
+describe("framing", () => {
+  it("describes the option, its parts, the lead time and the due date in one line", () => {
+    expect(framingSpec(framing({ dueAt: new Date("2026-12-01T12:00:00Z") }))).toBe(
+      "Gallery black: black wood frame, conservation window mount, UV acrylic glazing, D-rings and cord; lead time 10-15 working days; due 2026-12-01",
+    );
+    expect(framingSpec(framing({ leadTimeMinDays: 5, leadTimeMaxDays: 5, mount: "new" }))).toBe(
+      "Gallery black: black wood frame, new, UV acrylic glazing, D-rings and cord; lead time 5 working days",
+    );
+  });
+
+  it("maps the framing task to Zoho's status; a refunded frame is no longer required", () => {
+    expect(framingStatusOf(framing(), false)).toBe("Queued");
+    expect(framingStatusOf(framing({ taskStatus: "queued" }), false)).toBe("Queued");
+    expect(framingStatusOf(framing({ taskStatus: "framing" }), false)).toBe("In Progress");
+    expect(framingStatusOf(framing({ taskStatus: "framed" }), false)).toBe("Framed");
+    expect(framingStatusOf(framing({ taskStatus: "completed" }), false)).toBe("Complete");
+    expect(framingStatusOf(framing({ taskStatus: "cancelled" }), false)).toBe("Not Required");
+    expect(framingStatusOf(framing({ taskStatus: "framed", released: true }), false)).toBe(
+      "Not Required",
+    );
+    expect(framingStatusOf(framing({ taskStatus: "framed" }), true)).toBe("Not Required");
+  });
+});
+
 describe("dispatchStatusOf", () => {
   const at = (status: string, packed = false) =>
     dispatchStatusOf({ status, carrier: null, trackingNumber: null }, packed);
@@ -181,6 +207,31 @@ describe("planWrite", () => {
       L: { id: "pp-2" },
     });
     expect(planWrite({ A: "x" }, record({}))).toEqual({ A: "x" });
+  });
+
+  it("moves a framing status forward and never back", () => {
+    const rules = { status: { field: "Status", rank: "framing" as const } };
+    expect(planWrite({ Status: "Framed" }, record({ Status: "Queued" }), rules)).toEqual({
+      Status: "Framed",
+    });
+    // Staff moved the job on in Zoho; a late LAX step does not pull it back.
+    expect(planWrite({ Status: "Framed" }, record({ Status: "QC Passed" }), rules)).toBeNull();
+    expect(planWrite({ Status: "In Progress" }, record({ Status: "Framed" }), rules)).toBeNull();
+    expect(planWrite({ Status: "Framed" }, record({ Status: "Framed" }), rules)).toBeNull();
+    // Staff waiting on materials in Zoho is as far along as LAX's "in progress".
+    expect(
+      planWrite({ Status: "In Progress" }, record({ Status: "Awaiting Materials" }), rules),
+    ).toBeNull();
+    expect(planWrite({ Status: "Complete" }, record({ Status: "QC Passed" }), rules)).toEqual({
+      Status: "Complete",
+    });
+    expect(planWrite({ Status: "Not Required" }, record({ Status: "Complete" }), rules)).toEqual({
+      Status: "Not Required",
+    });
+    // An unset picklist is overwritten.
+    expect(planWrite({ Status: "Queued" }, record({ Status: "-None-" }), rules)).toEqual({
+      Status: "Queued",
+    });
   });
 
   it("moves a dispatch status forward and still updates the courier and tracking", () => {

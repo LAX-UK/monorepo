@@ -14,6 +14,9 @@ import {
   type ZohoRecordState,
   dispatchStatusOf,
   editionAssigned,
+  framingJobRef,
+  framingSpec,
+  framingStatusOf,
   holdsUnrankedStatus,
   ledgerCounts,
   parcelPrints,
@@ -26,13 +29,15 @@ import { ledgerMirrorKey } from "./plan-print-group.js";
 import type { OrderModule, ZohoOrderRecords } from "./zoho-order-modules.js";
 
 /**
- * The Zoho fields LAX writes its own references into. Dispatch_Fulfilments has no field that names
- * the LAX order or the prints in the parcel, so the owners add them and their API names are set
- * here.
+ * The Zoho fields LAX writes its own references into. Framing_Jobs and Dispatch_Fulfilments have
+ * no field that names the LAX order, and neither has one for the prints in the parcel or the
+ * framing details, so the owners add them and their API names are set here.
  */
 export type OrderMirrorFields = {
-  /** Holds the order reference on the records LAX creates (unique, text). */
+  /** Holds the order reference, or the order and framing line, on the records LAX creates. */
   orderRef: string;
+  /** Holds the framing option, its parts, the lead time and the due date. */
+  framingSpec: string;
   /** Holds the prints in the parcel on the order's dispatch: each one's SKU and edition label. */
   dispatchPrints: string;
 };
@@ -70,6 +75,9 @@ const LEDGER_COLUMNS = [
   "Assigned_To_LAX",
   "Print_Sold",
 ] as const;
+/** What mirroring a print line leaves for its frame's job to hang from. */
+type PrintOutcome = { problem: string | null; skuId: string | null; linkPending: boolean };
+
 const GROUP_COLUMNS = ["Print_Sold"] as const;
 
 /** Zoho does not hold a record the order's records hang from yet; a later try may find it. */
@@ -84,8 +92,8 @@ function notYetInZoho(what: string): CrmGatewayError {
 
 /**
  * Mirrors one order's print fulfilment to Zoho CRM, one way: each print's Print_SKUs record (one
- * per SKU, shared by every order of it), the group's sold counts, and the order's
- * Dispatch_Fulfilments record with the prints in the parcel. Staff do the work in LAX Admin; this
+ * per SKU, shared by every order of it), the group's sold counts, a Framing_Jobs record per
+ * frame sold, and the order's Dispatch_Fulfilments record with the prints in the parcel. Staff do the work in LAX Admin; this
  * only keeps Zoho complete for reporting.
  *
  * Every event for the order runs the same pass over LAX and Zoho as they are now and writes only
@@ -145,7 +153,8 @@ class OrderPass {
   /** The prints in the parcel, for the dispatch record. */
   private readonly parcel: { sku: string; edition: string | null }[] = [];
   private readonly ledgersDone = new Set<string>();
-  private readonly skusDone = new Set<string>();
+  /** The Print_SKUs record id of each SKU done in this pass; null in a dry run before it exists. */
+  private readonly skusDone = new Map<string, string | null>();
   private readonly groups = new Map<string, Promise<ZohoRecordState | null>>();
   private readonly codes = new Map<string, Promise<string | null | { problem: string }>>();
 
@@ -154,15 +163,28 @@ class OrderPass {
     private readonly facts: OrderFulfilmentFacts,
   ) {}
 
-  /** Mirrors one print line; answers why it cannot be, or null. */
+  /** Mirrors one print line and its frame; answers why the print cannot be, or null. */
   async mirrorLine(line: PrintLineFacts): Promise<string | null> {
+    const print = await this.mirrorPrint(line);
+    // The frame is its own job: it is written even when the print could not be mirrored.
+    if (line.framing) await this.mirrorFraming(line, line.framing, print);
+    return print.problem;
+  }
+
+  /** The print's SKU, and for a main run print its ledger. */
+  private async mirrorPrint(line: PrintLineFacts): Promise<PrintOutcome> {
+    const unmirrored = (problem: string | null): PrintOutcome => ({
+      problem,
+      skuId: null,
+      linkPending: false,
+    });
     const code = await this.groupCodeOf(line);
     if (code === null) {
       // Prints of an original outside the register have no group in Zoho to hang from.
       this.deps.log.info({ orderLineId: line.lineId }, "print not of a registered original");
-      return null;
+      return unmirrored(null);
     }
-    if (typeof code !== "string") return code.problem;
+    if (typeof code !== "string") return unmirrored(code.problem);
     const group = await this.groupOf(code);
 
     // The ledger counts the run as LAX holds it now, so a refunded print lowers it too.
@@ -172,22 +194,68 @@ class OrderPass {
     }
 
     // A refunded print's SKU record stays for the other orders of it, and it left in no parcel.
-    if (line.released) return null;
+    if (line.released) return unmirrored(null);
 
     const sku = printSkuOf(line, code);
-    if (!sku.ok) return sku.reason;
+    if (!sku.ok) return unmirrored(sku.reason);
     this.parcel.push({ sku: sku.value.sku, edition: editionAssigned(line) });
-    if (this.skusDone.has(sku.value.sku)) return null;
-    this.skusDone.add(sku.value.sku);
+    const done = this.skusDone.get(sku.value.sku);
+    if (done !== undefined) return { problem: null, skuId: done, linkPending: done === null };
 
     const printSku = await this.deps.zoho.find("Print_SKUs", "SKU", sku.value.sku, SKU_COLUMNS);
-    await this.apply(
+    const skuId = await this.apply(
       "Print_SKUs",
       printSku,
       wantedPrintSku(sku.value, line, group?.id ?? null),
       "SKU",
     );
-    return null;
+    this.skusDone.set(sku.value.sku, skuId);
+    // In dry_run a SKU that does not exist yet has no id, so the job's link is only pending.
+    return { problem: null, skuId, linkPending: skuId === null };
+  }
+
+  /**
+   * The frame's Framing_Jobs record. A job is linked to the print's SKU when there is one; a print
+   * whose SKU cannot be made (an original outside the register, a part that does not map) still
+   * gets its job, unlinked, so framing stays complete in Zoho.
+   */
+  private async mirrorFraming(
+    line: PrintLineFacts,
+    framing: NonNullable<PrintLineFacts["framing"]>,
+    print: PrintOutcome,
+  ): Promise<void> {
+    const { orderRef, framingSpec: specField } = this.deps.fields;
+    const ref = framingJobRef(this.facts.reference, framing);
+    const job = await this.deps.zoho.find("Framing_Jobs", orderRef, ref, [
+      orderRef,
+      "Status",
+      "Edition_Assigned",
+      "Linked_Print_SKU",
+      specField,
+    ]);
+    const rules: WriteRules = { status: { field: "Status", rank: "framing" } };
+    if (line.released || framing.released) {
+      // A job already in Zoho for a refunded print or frame is no longer required; none is made.
+      if (job) {
+        const status = framingStatusOf(framing, line.released);
+        await this.apply("Framing_Jobs", job, { Status: status }, orderRef, rules);
+      }
+      return;
+    }
+    await this.apply(
+      "Framing_Jobs",
+      job,
+      {
+        [orderRef]: ref,
+        Linked_Print_SKU: print.skuId ? { id: print.skuId } : null,
+        Edition_Assigned: editionAssigned(line),
+        Status: framingStatusOf(framing, false),
+        [specField]: framingSpec(framing),
+      },
+      orderRef,
+      rules,
+      print.linkPending ? ["Linked_Print_SKU"] : undefined,
+    );
   }
 
   async mirrorDispatch(): Promise<void> {
@@ -298,6 +366,7 @@ class OrderPass {
     wanted: ZohoFields,
     matchOn: string,
     rules: WriteRules = {},
+    pendingFields?: string[],
   ): Promise<string | null> {
     if (rules.status && holdsUnrankedStatus(current, rules.status)) {
       this.deps.log.warn(
@@ -314,7 +383,14 @@ class OrderPass {
     if (!write) return current?.id ?? null;
     if (this.deps.mode === "dry_run") {
       this.deps.log.info(
-        { order: this.facts.reference, module, recordId: current?.id ?? null, fields: write },
+        {
+          order: this.facts.reference,
+          module,
+          recordId: current?.id ?? null,
+          fields: write,
+          // Fields that need a record the pass would create first, so they have no value yet.
+          ...(pendingFields ? { pendingFields } : {}),
+        },
         current
           ? "order mirror would update, nothing written"
           : "order mirror would create, nothing written",

@@ -104,6 +104,18 @@ export function createUpdateFramingTaskHandler(deps: { uow: ShopUnitOfWorkFactor
             beforeJson: { status: from },
             afterJson: { status: command.status },
           });
+          await tx.events.append({
+            aggregateType: "shop_framing_task",
+            aggregateId: task.id,
+            eventType: "shop.framing.status_changed",
+            payload: {
+              schemaVersion: 1,
+              taskId: task.id,
+              orderLineId: task.orderLineId,
+              orderId: frame.orderId,
+              status: command.status,
+            },
+          });
           return {
             taskId: updated.id,
             orderLineId: updated.orderLineId,
@@ -143,7 +155,7 @@ async function assertPrintInProduction(
 async function lockFrameLine(
   db: ReturnType<typeof shopPhaseDbSession>,
   frameLineId: string,
-): Promise<{ unitPricePence: number; orderStatus: string }> {
+): Promise<{ orderId: string; unitPricePence: number; orderStatus: string }> {
   const [unlocked] = await db
     .select({ orderId: shopOrderLine.orderId })
     .from(shopOrderLine)
@@ -163,7 +175,11 @@ async function lockFrameLine(
     .for("update")
     .limit(1);
   if (!order || !line) throw notFound("Order line");
-  return { unitPricePence: line.unitPricePence, orderStatus: order.status };
+  return {
+    orderId: unlocked.orderId,
+    unitPricePence: line.unitPricePence,
+    orderStatus: order.status,
+  };
 }
 
 /** The order is paid and nothing has been refunded (or is waiting to be) on the frame's line. */

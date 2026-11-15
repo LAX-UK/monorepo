@@ -636,6 +636,7 @@ describe.skipIf(!WORKER_URL)("worker_app role contract", { timeout: 60_000 }, ()
         expectUniformTablePrivileges(whole, false);
       }
       for (const [table, column] of [
+        ["shop_framing_task", "assigned_to_subject_id"],
         ["shop_fulfilment", "storage_location"],
         ["shop_order_line", "pack_confirmed_by"],
       ] as const) {
