@@ -1,4 +1,8 @@
-import type { NewArtworkRegisterEntry } from "@auction/artwork-register-contracts";
+import {
+  ArtworkOfferLock,
+  type NewArtworkRegisterEntry,
+  type OfferPlaceRef,
+} from "@auction/artwork-register-contracts";
 import { createDb } from "@auction/db";
 import { sql } from "drizzle-orm";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
@@ -283,5 +287,141 @@ describe.skipIf(!url)("gallery sales in the register (Postgres)", { timeout: 30_
     const e = await entry(12, "Sold");
     await register.recordGallerySale({ registerId: e.id, now: T1 });
     expect(await attention.findLive(e.id)).toBeNull();
+  });
+
+  describe("a lax.art purchase racing Zoho's Sold notice (two connections)", () => {
+    /** Connections waiting on a lock in this database, other than this one. */
+    async function waitingOnLocks(): Promise<number> {
+      const rows = await db.execute<{ n: number }>(
+        sql`SELECT count(*)::int AS n FROM pg_stat_activity
+            WHERE datname = current_database() AND wait_event_type = 'Lock'
+              AND pid <> pg_backend_pid()`,
+      );
+      return rows.rows[0]?.n ?? 0;
+    }
+
+    async function untilWaiting(n: number): Promise<void> {
+      for (let i = 0; i < 200; i++) {
+        if ((await waitingOnLocks()) >= n) return;
+        await new Promise((resolve) => setTimeout(resolve, 25));
+      }
+      throw new Error(`expected ${n} connection(s) waiting on a lock`);
+    }
+
+    /** The Shop's sale: the original-sale writer records it in its own transaction. */
+    function purchase(
+      registerTx: (tx: never) => DrizzleArtworkRegisterRepository,
+      zohoProductId: string,
+      ref: OfferPlaceRef,
+      beforeCommit: () => Promise<void> = async () => {},
+    ) {
+      return db.transaction(async (tx) => {
+        const lock = new ArtworkOfferLock(registerTx(tx as never), () => T1);
+        const outcome = await lock.markSold({ zohoProductId }, ref, "system");
+        await beforeCommit();
+        return outcome;
+      });
+    }
+
+    async function soldEvents(registerId: string) {
+      const rows = await db.execute<{ to_state: string }>(
+        sql`SELECT payload->>'toState' AS to_state FROM domain_events
+            WHERE aggregate_id = ${registerId} AND event_type = 'artwork_register.offer_changed'
+              AND payload->>'toState' = 'sold'`,
+      );
+      return rows.rows.length;
+    }
+
+    it("the purchase commits first: the notice waits on the row, then records nothing", async () => {
+      const e = await onLaxArt(21, "Sold");
+      const ref: OfferPlaceRef = { kind: "shop_artwork", id: "shop-21" };
+      let release: () => void = () => {};
+      const gate = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      let held: () => void = () => {};
+      const holding = new Promise<void>((resolve) => {
+        held = resolve;
+      });
+      const bought = purchase(
+        (tx) => register.withExecutor(tx),
+        e.zohoProductId,
+        ref,
+        async () => {
+          held();
+          await gate;
+        },
+      );
+      await holding;
+
+      const notice = register.recordGallerySale({ registerId: e.id, now: T1 });
+      await untilWaiting(1);
+      release();
+
+      expect((await bought).status).toBe("moved");
+      expect((await notice).status).toBe("unchanged");
+      expect((await register.findById(e.id))?.offer).toEqual({ state: "sold", ref });
+      const types = (await register.listEvents(e.id, 20)).map((ev) => ev.type);
+      expect(types).not.toContain("gallery_sale_recorded");
+      expect(await soldEvents(e.id)).toBe(1);
+      // A sale made through LAX: its payment is applied normally.
+      expect(await attention.isPaused({ registerId: e.id })).toBe(false);
+    });
+
+    it("the notice commits first: the purchase reads again, is skipped, and money is paused", async () => {
+      const e = await onLaxArt(22, "Sold");
+      const ref: OfferPlaceRef = { kind: "shop_artwork", id: "shop-22" };
+
+      // A third connection holds the row so both writers queue behind it in a known order.
+      let release: () => void = () => {};
+      const gate = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      let held: () => void = () => {};
+      const holding = new Promise<void>((resolve) => {
+        held = resolve;
+      });
+      const blocker = db.transaction(async (tx) => {
+        await tx.execute(sql`SELECT id FROM artwork_register WHERE id = ${e.id} FOR UPDATE`);
+        held();
+        await gate;
+      });
+      await holding;
+
+      const notice = register.recordGallerySale({ registerId: e.id, now: T1 });
+      await untilWaiting(1);
+      const bought = purchase((tx) => register.withExecutor(tx), e.zohoProductId, ref);
+      await untilWaiting(2);
+      release();
+      await blocker;
+
+      expect((await notice).status).toBe("recorded");
+      expect(await bought).toMatchObject({ status: "skipped", reason: "sold" });
+      expect((await register.findById(e.id))?.offer).toEqual({
+        state: "sold",
+        ref: { kind: "gallery_sale", id: e.zohoProductId },
+      });
+      expect(await soldEvents(e.id)).toBe(1);
+      // Sold in the gallery: the late lax.art payment goes to finance, never to fulfilment.
+      expect(await attention.isPaused({ zohoProductId: e.zohoProductId })).toBe(true);
+    });
+
+    it("run at the same moment, exactly one sale is recorded and the pause matches the winner", async () => {
+      for (let n = 30; n < 36; n++) {
+        const e = await onLaxArt(n, "Sold");
+        const ref: OfferPlaceRef = { kind: "shop_artwork", id: `shop-${n}` };
+        const [bought, notice] = await Promise.all([
+          purchase((tx) => register.withExecutor(tx), e.zohoProductId, ref),
+          register.recordGallerySale({ registerId: e.id, now: T1 }),
+        ]);
+        const after = await register.findById(e.id);
+        expect(after?.offer.state).toBe("sold");
+        expect(await soldEvents(e.id)).toBe(1);
+        const galleryWon = after?.offer.ref?.kind === "gallery_sale";
+        expect(notice.status).toBe(galleryWon ? "recorded" : "unchanged");
+        expect(bought.status).toBe(galleryWon ? "skipped" : "moved");
+        expect(await attention.isPaused({ registerId: e.id })).toBe(galleryWon);
+      }
+    });
   });
 });
