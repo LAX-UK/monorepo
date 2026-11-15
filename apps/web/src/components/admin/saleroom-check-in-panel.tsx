@@ -4,6 +4,7 @@ import {
   adminSaleroomCheckInCandidatesResultAction,
   adminSaleroomCheckInResultAction,
 } from "@/lib/actions/admin";
+import { CHECK_IN_LIMIT_ERROR, parseCheckInLimit } from "@/lib/admin/saleroom/check-in-limit";
 import type { AdminCheckInCandidate } from "@/lib/data/http/admin.server";
 import { saleroomCheckInErrorMessage } from "@/lib/saleroom/check-in-error-messages";
 import { notify } from "@/lib/ui/notify";
@@ -118,6 +119,12 @@ export function SaleroomCheckInPanel({
         return;
       }
     }
+    const limit = parseCheckInLimit(bidLimit);
+    if (!limit.ok) {
+      setSubmitError(CHECK_IN_LIMIT_ERROR);
+      return;
+    }
+    const limitPence = limit.pence;
     startTransition(async () => {
       const body: {
         saleId: string;
@@ -132,10 +139,7 @@ export function SaleroomCheckInPanel({
         buyerLegalEntityId: entityId,
         assignPaddle,
       };
-      const limitN = Number.parseFloat(bidLimit);
-      if (bidLimit.trim() !== "" && Number.isFinite(limitN) && limitN > 0) {
-        body.bidLimit = limitN;
-      }
+      if (limitPence !== null) body.bidLimit = limitPence / 100;
       if (assignPaddle && paddleTrimmed !== "") {
         body.paddleNumber = Number.parseInt(paddleTrimmed, 10);
       }
