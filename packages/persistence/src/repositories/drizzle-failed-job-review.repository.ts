@@ -21,13 +21,17 @@ import type {
   FailedJobRecordWithPayload,
   FailedJobReviewView,
   FailedJobSearch,
+  FailedJobSearchGroup,
   FailedJobSearchResult,
   IFailedJobDisposition,
   IFailedJobNeedsReviewGroups,
   IFailedJobPayloadPurge,
   IFailedJobReviewReader,
 } from "../interfaces/failed-job-review.js";
-import { FAILED_JOB_SEARCH_GROUPS_MAX } from "../interfaces/failed-job-review.js";
+import {
+  FAILED_JOB_GROUPS_VIEW_MAX,
+  FAILED_JOB_SEARCH_GROUPS_MAX,
+} from "../interfaces/failed-job-review.js";
 import { firstErrorLine } from "../lib/first-error-line.js";
 import { containsPattern } from "../lib/like-pattern.js";
 import { INTEGRATION_DISPOSITION_QUEUE } from "./drizzle-integration-dead-letter.repository.js";
@@ -95,7 +99,14 @@ export class DrizzleFailedJobReviewRepository
     IFailedJobNeedsReviewGroups,
     IFailedJobPayloadPurge
 {
-  constructor(private readonly db: Database) {}
+  constructor(
+    private readonly db: Database,
+    /** The group cap and view-size limit; overridable so tests can reach them with a few rows. */
+    private readonly groupLimits = {
+      groupsMax: FAILED_JOB_SEARCH_GROUPS_MAX,
+      viewMax: FAILED_JOB_GROUPS_VIEW_MAX,
+    },
+  ) {}
 
   async search(input: FailedJobSearch): Promise<FailedJobSearchResult> {
     const filters = filterConditions(input);
@@ -104,7 +115,7 @@ export class DrizzleFailedJobReviewRepository
       input.sort === "failed_asc" ? asc(failedJobs.failedAt) : desc(failedJobs.failedAt);
 
     const errorLine = firstErrorLine(sql`${failedJobs.errorMessage}`);
-    const [rows, viewCounts, queueCounts, groups] = await Promise.all([
+    const [rows, viewCounts, queueCounts] = await Promise.all([
       this.db
         .select(LIST_COLUMNS)
         .from(failedJobs)
@@ -128,7 +139,18 @@ export class DrizzleFailedJobReviewRepository
         .where(and(VIEW_PREDICATES[input.view], ...filterConditions(input, { ignoreQueue: true })))
         .groupBy(failedJobs.originalQueue)
         .orderBy(asc(failedJobs.originalQueue)),
-      this.db
+    ]);
+
+    const counts = Object.fromEntries(viewCounts) as Record<FailedJobReviewView, number>;
+
+    // The group-by scans the whole view, so it only runs while the view is a sensible size.
+    const groupsSkipped = counts[input.view] > this.groupLimits.viewMax;
+    let groups: FailedJobSearchGroup[] = [];
+    let groupsPartial = groupsSkipped;
+    if (!groupsSkipped) {
+      // One row past the cap says whether the tail was cut. Ties break on the group key so the
+      // same groups survive the cut on every request.
+      const found = await this.db
         .select({
           queue: failedJobs.originalQueue,
           jobName: failedJobs.originalJobName,
@@ -138,12 +160,25 @@ export class DrizzleFailedJobReviewRepository
         .from(failedJobs)
         .where(inView)
         .groupBy(failedJobs.originalQueue, failedJobs.originalJobName, errorLine)
-        .orderBy(sql`count(*) desc`)
-        .limit(FAILED_JOB_SEARCH_GROUPS_MAX),
-    ]);
-
-    const counts = Object.fromEntries(viewCounts) as Record<FailedJobReviewView, number>;
-    return { rows, groups, total: counts[input.view], counts, queues: queueCounts };
+        .orderBy(
+          sql`count(*) desc`,
+          asc(failedJobs.originalQueue),
+          asc(failedJobs.originalJobName),
+          asc(errorLine),
+        )
+        .limit(this.groupLimits.groupsMax + 1);
+      groupsPartial = found.length > this.groupLimits.groupsMax;
+      groups = found.slice(0, this.groupLimits.groupsMax);
+    }
+    return {
+      rows,
+      groups,
+      groupsPartial,
+      groupsSkipped,
+      total: counts[input.view],
+      counts,
+      queues: queueCounts,
+    };
   }
 
   async countNeedsReview(): Promise<number> {
@@ -168,7 +203,7 @@ export class DrizzleFailedJobReviewRepository
           this.db
             .select({ id: failedJobs.id })
             .from(failedJobs)
-            .where(and(isNotNull(failedJobs.payloadJson), resolvedBefore))
+            .where(and(BACKGROUND_JOBS_ONLY, isNotNull(failedJobs.payloadJson), resolvedBefore))
             .limit(limit),
         ),
       )

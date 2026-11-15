@@ -48,10 +48,20 @@ export type FailedJobSearchGroup = {
 /** Most groups one search returns; the biggest come first, so a long tail is cut, not the head. */
 export const FAILED_JOB_SEARCH_GROUPS_MAX = 2000;
 
+/**
+ * Largest view (rows) the cross-page group count is computed for. Beyond it the group-by is
+ * skipped, so an outage with hundreds of thousands of failures cannot slow every list request.
+ */
+export const FAILED_JOB_GROUPS_VIEW_MAX = 50_000;
+
 export type FailedJobSearchResult = {
   rows: FailedJobRecord[];
   /** Identical failures counted across every page of the view, biggest first. */
   groups: FailedJobSearchGroup[];
+  /** True when `groups` is incomplete: the cap cut the tail, or the view was too large to count. */
+  groupsPartial: boolean;
+  /** True when no group counts were computed at all (the view was over the size limit). */
+  groupsSkipped: boolean;
   total: number;
   /** Rows in each view under the other filters, for the view tabs. */
   counts: Record<FailedJobReviewView, number>;
@@ -72,7 +82,8 @@ export interface IFailedJobReviewReader {
 export interface IFailedJobPayloadPurge {
   /**
    * Clears `payload_json` on retried or discarded jobs resolved before `cutoff`, at most `limit`
-   * rows; returns how many it cleared. Jobs still waiting for review keep their payload.
+   * rows; returns how many it cleared. Jobs still waiting for review keep their payload, and so
+   * do integration decision rows (their payload lives in the delivery's own table).
    */
   purgeResolvedPayloads(cutoff: Date, limit: number): Promise<number>;
 }

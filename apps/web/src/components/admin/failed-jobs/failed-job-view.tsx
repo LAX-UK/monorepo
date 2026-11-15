@@ -100,14 +100,15 @@ export function FailedJobView({
   const copy = FAILED_JOB_DETAIL_COPY[family];
 
   const restoreClosed =
-    job.discard !== null && new Date(job.discard.restorableUntil).getTime() < Date.now();
+    job.discard?.restorableUntil != null &&
+    new Date(job.discard.restorableUntil).getTime() < Date.now();
 
   const notice = job.discard ? (
     <Notice tone="info" title={copy.discardedTitle}>
       {job.discard.reasonLabel}
       {job.discard.note ? `: ${job.discard.note}` : ""}
       {job.discard.byName ? ` Discarded by ${job.discard.byName}.` : ""}{" "}
-      {restoreClosed ? (
+      {job.discard.restorableUntil === null ? null : restoreClosed ? (
         "The 90-day window to restore it has passed and its payload has been cleared."
       ) : (
         <>

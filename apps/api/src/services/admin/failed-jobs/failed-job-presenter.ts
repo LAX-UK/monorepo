@@ -56,6 +56,7 @@ export function toFailedJobSummary(
     sourceLabel: info.sourceLabel,
     errorSummary: summariseError(record.errorMessage),
     groupSize: 1,
+    groupCapped: false,
     attempts: record.attempts,
     firstFailedAt: record.firstFailedAt.toISOString(),
     lastFailedAt: record.failedAt.toISOString(),
@@ -119,22 +120,38 @@ export type FailureGroupCount = {
 const groupKey = (queue: string, jobLabel: string | null, errorSummary: string) =>
   [queue, jobLabel ?? "", errorSummary].join("\u0000");
 
+/** How complete the group counts of a search are. */
+export type FailureGroupCoverage = {
+  /** The cap cut the tail of the groups, or counting was skipped. */
+  partial: boolean;
+  /** No group counts were computed at all. */
+  skipped: boolean;
+};
+
 /**
  * Sets each row's `groupSize` to how many failures across every page read the same as it does.
  * Groups are matched the way the screen groups rows (job type, job and summarised error), so two
- * stored errors that summarise alike count together.
+ * stored errors that summarise alike count together. When the counts are partial, a row whose
+ * group is missing is marked `groupCapped` (its size is a lower bound, never shown as exact).
  */
 export function withGroupSizes(
   rows: readonly FailedJobSummary[],
   groups: readonly FailureGroupCount[],
+  coverage: FailureGroupCoverage = { partial: false, skipped: false },
 ): FailedJobSummary[] {
   const sizes = new Map<string, number>();
   for (const group of groups) {
     const key = groupKey(group.queue, group.jobLabel, summariseError(group.errorLine));
     sizes.set(key, (sizes.get(key) ?? 0) + group.count);
   }
-  return rows.map((row) => ({
-    ...row,
-    groupSize: Math.max(1, sizes.get(groupKey(row.queue, row.jobLabel, row.errorSummary)) ?? 1),
-  }));
+  return rows.map((row) => {
+    const size = coverage.skipped
+      ? undefined
+      : sizes.get(groupKey(row.queue, row.jobLabel, row.errorSummary));
+    return {
+      ...row,
+      groupSize: Math.max(1, size ?? 1),
+      groupCapped: size === undefined && coverage.partial,
+    };
+  });
 }

@@ -38,6 +38,8 @@ function setup(
     actionsEnabled?: boolean;
     replayError?: Error;
     groups?: { queue: string; jobName: string | null; errorLine: string; count: number }[];
+    groupsPartial?: boolean;
+    groupsSkipped?: boolean;
     now?: Date;
   } = {},
 ) {
@@ -46,6 +48,8 @@ function setup(
     search: vi.fn().mockResolvedValue({
       rows,
       groups: options.groups ?? [],
+      groupsPartial: options.groupsPartial ?? false,
+      groupsSkipped: options.groupsSkipped ?? false,
       total: rows.length,
       counts: { needs_review: rows.length, retried: 0, discarded: 0 },
       queues: [{ queue: "email", count: rows.length }],
@@ -138,6 +142,49 @@ describe("AdminFailedJobsService.list", () => {
       actor,
     );
     expect(list.rows[0]?.groupSize).toBe(12);
+  });
+
+  it("flags a row whose group was cut by the cap instead of showing an undercount", async () => {
+    const listOf = async (options: Parameters<typeof setup>[1]) => {
+      const { service } = setup([record()], options);
+      return service.list(
+        { view: "needs_review", sort: "failed_desc", limit: 50, offset: 0 },
+        actor,
+      );
+    };
+    const listed = {
+      queue: "email",
+      jobName: "email:outbid-notice",
+      errorLine: "Rejected for lena@north.com",
+      count: 9,
+    };
+    // Past the cap a group that is missing is a lower bound; one that was counted stays exact.
+    const missing = await listOf({ groupsPartial: true, groups: [] });
+    expect(missing.rows[0]).toMatchObject({ groupSize: 1, groupCapped: true });
+    const counted = await listOf({ groupsPartial: true, groups: [listed] });
+    expect(counted.rows[0]).toMatchObject({ groupSize: 9, groupCapped: false });
+    const whole = await listOf({ groups: [] });
+    expect(whole.rows[0]).toMatchObject({ groupSize: 1, groupCapped: false });
+  });
+
+  it("gives no cross-page count when counting was skipped for a large view", async () => {
+    const { service } = setup([record()], {
+      groupsPartial: true,
+      groupsSkipped: true,
+      groups: [
+        {
+          queue: "email",
+          jobName: "email:outbid-notice",
+          errorLine: "Rejected for lena@north.com",
+          count: 9,
+        },
+      ],
+    });
+    const list = await service.list(
+      { view: "needs_review", sort: "failed_desc", limit: 50, offset: 0 },
+      actor,
+    );
+    expect(list.rows[0]).toMatchObject({ groupSize: 1, groupCapped: true });
   });
 
   it("counts a failure alone when no group is reported for it", async () => {

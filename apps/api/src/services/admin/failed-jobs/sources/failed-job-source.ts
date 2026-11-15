@@ -53,8 +53,12 @@ export type ReviewTarget = {
   state: FailedJobState;
   /** Whether a retry is offered now, by state and kind; the operator's switch is checked here too. */
   retry: FailedJobRetryAvailability;
-  /** When it was discarded, if it was; a discard can be restored for a limited window. */
-  discardedAt: Date | null;
+  /**
+   * The last moment a discard can be restored, as an ISO time; null when there is no window.
+   * Only background jobs have one (their payload is purged after it); deliveries and webhooks
+   * keep their payload, so a discard of theirs can always be restored.
+   */
+  restorableUntil: string | null;
   /** A retry may repeat something a person sees. */
   mayRepeat: boolean;
   /** The id the audit trail records the decision under. */

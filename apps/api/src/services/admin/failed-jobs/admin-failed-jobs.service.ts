@@ -11,7 +11,6 @@ import {
   type FailedJobSourceFamily,
   type FailedJobSummary,
   type FailedJobView,
-  failedJobRestorableUntil,
   failedJobSourcesFor,
 } from "@auction/types";
 import type { AdminFailedJobsQuery } from "@auction/validators";
@@ -204,11 +203,11 @@ export class AdminFailedJobsService {
       if (target.state !== "discarded") {
         return { id: target.id, ok: false, error: "not_discarded" };
       }
-      // After the window its payload is purged, so a restored job could never be retried.
+      // After the window a background job's payload is purged, so a restored job could never be
+      // retried. Sources without a window (integrations) are never refused here.
       if (
-        target.discardedAt &&
-        (this.deps.now?.() ?? new Date()).toISOString() >
-          failedJobRestorableUntil(target.discardedAt)
+        target.restorableUntil &&
+        (this.deps.now?.() ?? new Date()).toISOString() > target.restorableUntil
       ) {
         return { id: target.id, ok: false, error: "restore_window_closed" };
       }

@@ -209,6 +209,11 @@ export type FailedJobSummary = {
    * across every page. At least 1.
    */
   groupSize: number;
+  /**
+   * True when `groupSize` is only a lower bound: the group was cut by the search's group cap, or
+   * the view was too large to count across pages. Show "×N+", never a smaller number as exact.
+   */
+  groupCapped: boolean;
   attempts: number;
   firstFailedAt: string;
   lastFailedAt: string;
@@ -248,8 +253,11 @@ export type FailedJobDetail = FailedJobSummary & {
     note: string | null;
     at: string;
     byName: string | null;
-    /** The last moment it can be restored; its payload is purged after this. */
-    restorableUntil: string;
+    /**
+     * The last moment it can be restored, after which its payload is purged. Only background jobs
+     * have a window; integration deliveries keep their payload, so this is null for them.
+     */
+    restorableUntil: string | null;
   } | null;
   history: FailedJobHistoryEvent[];
 };

@@ -11,7 +11,6 @@ import {
   type FailedJobRetryAvailability,
   type FailedJobState,
   type FailedJobSummary,
-  failedJobRestorableUntil,
   isFailedJobDiscardReason,
 } from "@auction/types";
 import { isIntegrationScreenId } from "../failed-job-id.js";
@@ -137,6 +136,7 @@ export class IntegrationDeliveriesSource implements FailedJobSourceAdapter {
           errorLine: group.errorLine,
           count: group.count,
         })),
+        { partial: result.groupsPartial, skipped: result.groupsSkipped },
       ),
       total: result.total,
       counts: result.counts,
@@ -183,7 +183,7 @@ export class IntegrationDeliveriesSource implements FailedJobSourceAdapter {
               note: record.discardNote,
               at: record.discardedAt.toISOString(),
               byName: discardedBy,
-              restorableUntil: failedJobRestorableUntil(record.discardedAt),
+              restorableUntil: null,
             }
           : null,
       history: events,
@@ -214,6 +214,7 @@ export class IntegrationDeliveriesSource implements FailedJobSourceAdapter {
       sourceLabel: `Integrations · ${endpoint.label}`,
       errorSummary: summariseError(record.errorMessage),
       groupSize: 1,
+      groupCapped: false,
       attempts: record.attempts,
       firstFailedAt: record.firstFailedAt.toISOString(),
       lastFailedAt: record.failedAt.toISOString(),
@@ -236,7 +237,8 @@ export class IntegrationDeliveriesSource implements FailedJobSourceAdapter {
       id: record.id,
       source: endpoint.scope,
       state: integrationState(record),
-      discardedAt: record.discardedAt,
+      // The delivery keeps its payload in its own table, which is never purged: no restore window.
+      restorableUntil: null,
       retry: retryAvailability(record, actionsEnabled),
       mayRepeat: endpoint.mayRepeat,
       auditId: record.id,

@@ -25,4 +25,20 @@ describe("purgeFailedJobPayloads", () => {
     });
     expect(result).toEqual({ cleared: 5, batches: 3 });
   });
+
+  it("stops at 200 batches and warns, leaving the rest to the next run", async () => {
+    const warn = vi.fn();
+    const purgeResolvedPayloads = vi.fn().mockResolvedValue(500);
+    const result = await purgeFailedJobPayloads({
+      purge: { purgeResolvedPayloads },
+      log: { info: vi.fn(), warn },
+      now,
+    });
+    expect(result).toEqual({ cleared: 200 * 500, batches: 200 });
+    expect(purgeResolvedPayloads).toHaveBeenCalledTimes(200);
+    expect(warn).toHaveBeenCalledWith(
+      { cleared: 100_000, batches: 200 },
+      expect.stringContaining("batch limit"),
+    );
+  });
 });

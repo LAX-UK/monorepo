@@ -11,6 +11,7 @@ export const emailJob: FailedJobSummary = {
   sourceLabel: "Background job · Email",
   errorSummary: "Mail provider rejected the message: inactive recipient l•••••@n•••••.com",
   groupSize: 1,
+  groupCapped: false,
   attempts: 5,
   firstFailedAt: "2026-11-01T07:12:00.000Z",
   lastFailedAt: "2026-11-01T07:44:00.000Z",
@@ -29,6 +30,7 @@ export const lotScheduleJob: FailedJobSummary = {
   sourceLabel: "Background job · Lot schedule",
   errorSummary: "Lock not acquired within 30 s (lot 14, Modern British & Irish Art)",
   groupSize: 1,
+  groupCapped: false,
   attempts: 3,
   firstFailedAt: "2026-10-31T19:00:00.000Z",
   lastFailedAt: "2026-10-31T19:01:00.000Z",
@@ -51,6 +53,7 @@ export const adEventJob: FailedJobSummary = {
   sourceLabel: "Background job · Ad platform events",
   errorSummary: "Access token expired",
   groupSize: 1,
+  groupCapped: false,
   attempts: 5,
   firstFailedAt: "2026-10-30T09:00:00.000Z",
   lastFailedAt: "2026-10-31T23:58:00.000Z",
@@ -69,6 +72,7 @@ export const statementJob: FailedJobSummary = {
   sourceLabel: "Background job · Payouts",
   errorSummary: "Query cancelled after 60 s",
   groupSize: 1,
+  groupCapped: false,
   attempts: 3,
   firstFailedAt: "2026-10-30T11:15:00.000Z",
   lastFailedAt: "2026-10-30T11:17:00.000Z",
@@ -87,6 +91,7 @@ export const xeroDelivery: FailedJobSummary = {
   sourceLabel: "Integrations · Xero",
   errorSummary: "Xero rejected the invoice: contact l•••••@n•••••.com is archived (HTTP 400)",
   groupSize: 1,
+  groupCapped: false,
   attempts: 6,
   firstFailedAt: "2026-11-01T07:12:00.000Z",
   lastFailedAt: "2026-11-01T07:44:00.000Z",
@@ -105,6 +110,7 @@ export const zohoDelivery: FailedJobSummary = {
   sourceLabel: "Integrations · Zoho CRM",
   errorSummary: "Zoho API rate limit reached (HTTP 429)",
   groupSize: 1,
+  groupCapped: false,
 };
 
 export const stripeWebhook: FailedJobSummary = {
@@ -117,6 +123,7 @@ export const stripeWebhook: FailedJobSummary = {
   sourceLabel: "Integrations · Stripe",
   errorSummary: "Handler timed out after 30 s",
   groupSize: 1,
+  groupCapped: false,
   mayRepeat: true,
 };
 

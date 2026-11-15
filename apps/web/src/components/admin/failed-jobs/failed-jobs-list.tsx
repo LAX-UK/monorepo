@@ -130,7 +130,11 @@ export function FailedJobsList(props: FailedJobsListProps) {
             {row.total > 1 ? (
               <span className="flex min-w-0 items-center">
                 <span className="truncate">{row.typeLabel}</span>
-                <GroupCount count={row.total} onPage={row.members.length} />
+                <GroupCount
+                  count={row.total}
+                  onPage={row.members.length}
+                  capped={row.totalCapped}
+                />
               </span>
             ) : (
               row.typeLabel

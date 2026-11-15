@@ -4,7 +4,7 @@ import type {
   IFailedJobReviewReader,
 } from "@auction/persistence/interfaces";
 import { failedJobNameLabel, failedJobTypeInfo, knownFailedJobQueues } from "@auction/queues";
-import type { FailedJobDetail } from "@auction/types";
+import { type FailedJobDetail, failedJobRestorableUntil } from "@auction/types";
 import type { IQueueMutator } from "../../../interfaces/queue-inspector.js";
 import { backgroundJobStoreId, isBackgroundJobScreenId } from "../failed-job-id.js";
 import {
@@ -76,6 +76,7 @@ export class BackgroundJobsSource implements FailedJobSourceAdapter {
           errorLine: group.errorLine,
           count: group.count,
         })),
+        { partial: result.groupsPartial, skipped: result.groupsSkipped },
       ),
       total: result.total,
       counts: result.counts,
@@ -118,7 +119,8 @@ export class BackgroundJobsSource implements FailedJobSourceAdapter {
       id: screenId,
       source: "background_jobs",
       state: failedJobState(record),
-      discardedAt: record.discardedAt,
+      // Only a background job's payload is purged, so only it has a restore window.
+      restorableUntil: record.discardedAt ? failedJobRestorableUntil(record.discardedAt) : null,
       retry: failedJobRetry(record, actionsEnabled),
       mayRepeat: failedJobTypeInfo(record.originalQueue).mayRepeat,
       auditId: record.id,

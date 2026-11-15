@@ -192,6 +192,26 @@ describe("FailedJobView", () => {
     expect(restore).not.toHaveBeenCalled();
   });
 
+  it("gives a discarded delivery no restore window or purge copy, even when long ago", () => {
+    renderJob({
+      ...xeroDeliveryDetail,
+      state: "discarded",
+      retry: { allowed: false, reason: "This job was discarded. Restore it to retry it." },
+      discard: {
+        reasonLabel: "Duplicate",
+        note: null,
+        at: "2025-01-01T09:00:00.000Z",
+        byName: null,
+        restorableUntil: null,
+      },
+    });
+    expect(screen.queryByText(/can be restored until/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/has been cleared|is cleared/)).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Restore" })).toBeEnabled();
+    fireEvent.click(screen.getByRole("button", { name: "Restore" }));
+    expect(restore).toHaveBeenCalled();
+  });
+
   it("says so when the payload was not kept", () => {
     renderJob({ ...emailJobDetail, payload: [], omittedPayloadFields: 0 });
     expect(screen.getByText(/The job's data can't be shown here/)).toBeInTheDocument();

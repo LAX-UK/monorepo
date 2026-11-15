@@ -9,6 +9,8 @@ export type FailedJobGroup = FailedJobSummary & {
    * members on this page. Decisions still apply to the members shown.
    */
   total: number;
+  /** True when `total` is only a lower bound (the group was cut by a cap, or counting was skipped). */
+  totalCapped: boolean;
 };
 
 /** Two failures are identical when the same kind of job or delivery failed with the same error. */
@@ -16,8 +18,10 @@ function groupKey(job: FailedJobSummary): string {
   return [job.source, job.queue, job.jobLabel ?? "", job.state, job.errorSummary].join("\u0000");
 }
 
-const totalOf = (members: readonly FailedJobSummary[]) =>
-  Math.max(members.length, ...members.map((member) => member.groupSize));
+const totalOf = (members: readonly FailedJobSummary[]) => ({
+  total: Math.max(members.length, ...members.map((member) => member.groupSize)),
+  totalCapped: members.some((member) => member.groupCapped),
+});
 
 /**
  * Folds identical failures on a page into one row each, in the order of their first appearance.
@@ -34,7 +38,7 @@ export function groupFailedJobs(rows: readonly FailedJobSummary[]): FailedJobGro
   }
   return [...groups.values()].map((members) => {
     const [first] = members as [FailedJobSummary, ...FailedJobSummary[]];
-    if (members.length === 1) return { ...first, members, total: totalOf(members) };
+    if (members.length === 1) return { ...first, members, ...totalOf(members) };
     const refused = members.find((member) => !member.retry.allowed);
     return {
       ...first,
@@ -54,7 +58,7 @@ export function groupFailedJobs(rows: readonly FailedJobSummary[]): FailedJobGro
           ? { allowed: true }
           : refused.retry,
       members,
-      total: totalOf(members),
+      ...totalOf(members),
     };
   });
 }

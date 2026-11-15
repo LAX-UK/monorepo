@@ -3,6 +3,7 @@ import { failedJobs, webhookEvent } from "@auction/db/schema";
 import { and, asc, eq, inArray, isNotNull, isNull, ne, sql } from "drizzle-orm";
 import type { SQL } from "drizzle-orm";
 import {
+  FAILED_JOB_GROUPS_VIEW_MAX,
   FAILED_JOB_SEARCH_GROUPS_MAX,
   type FailedJobNeedsReviewGroup,
   type IFailedJobNeedsReviewGroups,
@@ -161,7 +162,14 @@ export class DrizzleIntegrationDeadLetterRepository
     IWebhookRetryQueue,
     IFailedJobNeedsReviewGroups
 {
-  constructor(private readonly db: Database) {}
+  constructor(
+    private readonly db: Database,
+    /** The group cap and view-size limit; overridable so tests can reach them with a few rows. */
+    private readonly groupLimits = {
+      groupsMax: FAILED_JOB_SEARCH_GROUPS_MAX,
+      viewMax: FAILED_JOB_GROUPS_VIEW_MAX,
+    },
+  ) {}
 
   async listFailedWebhooks(input: { limit: number; offset: number }): Promise<FailedWebhookRow[]> {
     return this.db
@@ -197,7 +205,7 @@ export class DrizzleIntegrationDeadLetterRepository
         ? sql`i.failed_at ASC, i.id ASC`
         : sql`i.failed_at DESC, i.id ASC`;
 
-    const [rows, counts, queues, groups] = await Promise.all([
+    const [rows, counts, queues] = await Promise.all([
       this.db.execute(sql`${base} SELECT ${COLUMNS} ${joined}
         WHERE ${where(input.view, filters)} ORDER BY ${order}
         LIMIT ${input.limit} OFFSET ${input.offset}`),
@@ -209,24 +217,37 @@ export class DrizzleIntegrationDeadLetterRepository
       this.db.execute(sql`${base} SELECT i.kind, i.name, count(*)::int AS count ${joined}
         WHERE ${where(input.view, filterConditions(input, { ignoreQueue: true }))}
         GROUP BY i.kind, i.name ORDER BY i.kind, i.name`),
-      this.db.execute(sql`${base} SELECT i.kind || ':' || i.name AS queue, i.event_type AS "eventType",
-          ${firstErrorLine(sql`i.error_message`)} AS "errorLine", count(*)::int AS count ${joined}
-        WHERE ${where(input.view, filters)}
-        GROUP BY 1, 2, 3 ORDER BY count(*) DESC LIMIT ${FAILED_JOB_SEARCH_GROUPS_MAX}`),
     ]);
 
     const countRow = rowsOf(counts)[0] ?? {};
     const byView = Object.fromEntries(
       VIEWS.map((view) => [view, Number(countRow[view] ?? 0)]),
     ) as Record<IntegrationView, number>;
+
+    // The group-by scans the whole view, so it only runs while the view is a sensible size.
+    const groupsSkipped = byView[input.view] > this.groupLimits.viewMax;
+    let groupRows: Row[] = [];
+    if (!groupsSkipped) {
+      // One row past the cap says whether the tail was cut; ties break on the group key so the
+      // same groups survive the cut on every request.
+      const found =
+        await this.db.execute(sql`${base} SELECT i.kind || ':' || i.name AS queue, i.event_type AS "eventType",
+          ${firstErrorLine(sql`i.error_message`)} AS "errorLine", count(*)::int AS count ${joined}
+        WHERE ${where(input.view, filters)}
+        GROUP BY 1, 2, 3 ORDER BY count(*) DESC, 1 ASC, 2 ASC, 3 ASC
+        LIMIT ${this.groupLimits.groupsMax + 1}`);
+      groupRows = rowsOf(found);
+    }
     return {
       rows: rowsOf(rows).map(toRecord),
-      groups: rowsOf(groups).map((row) => ({
+      groups: groupRows.slice(0, this.groupLimits.groupsMax).map((row) => ({
         queue: String(row.queue),
         eventType: asStringOrNull(row.eventType),
         errorLine: String(row.errorLine ?? ""),
         count: Number(row.count),
       })),
+      groupsPartial: groupsSkipped || groupRows.length > this.groupLimits.groupsMax,
+      groupsSkipped,
       total: byView[input.view],
       counts: byView,
       queues: rowsOf(queues).map((row) => ({
