@@ -1,8 +1,9 @@
-import type {
-  BidPayoutFacts,
-  BidPayoutSaleFacts,
-  ShopArtistPayoutFacts,
-  ShopPayoutSource,
+import {
+  type BidPayoutFacts,
+  type BidPayoutSaleFacts,
+  type ShopArtistPayoutFacts,
+  type ShopPayoutSource,
+  vatForLine,
 } from "@auction/accounting-domain";
 import { LONDON_TIME_ZONE, dayKey } from "@auction/datetime";
 import type { Database } from "@auction/db";
@@ -26,6 +27,22 @@ const londonDay = (instant: Date) => dayKey(instant, LONDON_TIME_ZONE);
 const pence = (column: AnyPgColumn) => sql<string>`(${column} * 100)::bigint`;
 
 const VAT_TREATMENTS = new Set(["standard", "not_registered"]);
+
+/** The VAT on commission is what the rule makes of the commission at the snapshot's own rate. */
+function commissionVatAgrees(line: {
+  commissionPence: number | null;
+  commissionVatTreatment: string | null;
+  commissionVatBps: number | null;
+  commissionVatPence: number | null;
+}): boolean {
+  if (line.commissionPence === null || line.commissionVatBps === null) return false;
+  const charged = vatForLine(
+    line.commissionPence,
+    line.commissionVatTreatment === "standard" ? "standard" : "outside_scope",
+    line.commissionVatBps,
+  );
+  return charged.ok && charged.value === line.commissionVatPence;
+}
 
 /**
  * The stored rows behind the payout flows. Read-only. A Bid payout is read with every line it holds:
@@ -67,9 +84,13 @@ export class DrizzlePayoutAccountingFactsReader implements IPayoutAccountingFact
         amountPence: pence(payoutLine.amount),
         termsId: saleSellerTerms.id,
         lotId: saleSellerTerms.lotId,
+        sellerLegalEntityId: saleSellerTerms.sellerLegalEntityId,
+        basis: saleSellerTerms.basis,
+        agreementId: saleSellerTerms.agreementId,
         hammerPence: saleSellerTerms.hammerPence,
         commissionPence: saleSellerTerms.commissionPence,
         commissionVatTreatment: saleSellerTerms.commissionVatTreatment,
+        commissionVatBps: saleSellerTerms.commissionVatBps,
         commissionVatPence: saleSellerTerms.commissionVatPence,
         sellerNetPence: saleSellerTerms.sellerNetPence,
       })
@@ -90,7 +111,15 @@ export class DrizzlePayoutAccountingFactsReader implements IPayoutAccountingFact
         line.sellerNetPence !== null &&
         line.commissionVatTreatment !== null &&
         VAT_TREATMENTS.has(line.commissionVatTreatment) &&
-        Number(line.amountPence) === line.hammerPence;
+        Number(line.amountPence) === line.hammerPence &&
+        // The commission is the signed agreement's, on this seller's own sale, and its VAT is the
+        // rule's own figure for the stated rate: anything else is left for a person.
+        line.basis === "agreement" &&
+        line.agreementId !== null &&
+        line.sellerLegalEntityId !== null &&
+        String(line.sellerLegalEntityId).toLowerCase() ===
+          String(row.legalEntityId).toLowerCase() &&
+        commissionVatAgrees(line);
       if (!priced) {
         otherLines += 1;
         continue;

@@ -283,6 +283,49 @@ describe.skipIf(!HAS_DB)(
       ).toEqual(SALES.map((s) => [s.hammer, s.commission, s.vat, s.net]));
     });
 
+    describe("a snapshot line is itemised only when it checks out", () => {
+      const unmapped = async (change: (payoutId: string, sellerId: string) => Promise<void>) => {
+        const seed = await seedBidPayout(owner);
+        await change(seed.payoutId, seed.sellerId);
+        const read = await payoutFacts.bidPayout(seed.payoutId);
+        if (read.status !== "ready") throw new Error(read.reason);
+        // One sale line is left out of the itemisation, so the payout is parked for a person.
+        expect([read.facts.sales.length, read.facts.otherLines]).toEqual([SALES.length - 1, 1]);
+        return seed;
+      };
+      // The table's triggers refuse to change an agreement row, so a mismatch is set by hand as the
+      // owner, as a snapshot written by a faulty release would be. (A snapshot with another basis,
+      // or an agreement basis with no agreement, is already refused by the table's own CHECKs.)
+      const asFaulty = (statement: ReturnType<typeof sql>) =>
+        owner.transaction(async (tx) => {
+          await tx.execute(sql`set local session_replication_role = replica`);
+          await tx.execute(statement);
+        });
+      const firstTerms = (payoutId: string) => sql`(select seller_terms_id from payout_line
+        where payout_id = ${payoutId} and kind = 'sale' order by created_at, id limit 1)`;
+
+      it("another legal entity's snapshot is not itemised", async () => {
+        await unmapped(async (payoutId) => {
+          const other = (
+            await owner.execute<{ id: string }>(sql`insert into legal_entity
+              (kind, subkind, display_name, created_by_user_id)
+              select 'organisation', 'gallery', 'Other seller (fixture)', created_by_user_id
+                from legal_entity where id = (select legal_entity_id from payout where id = ${payoutId})
+              returning id`)
+          ).rows[0]?.id;
+          await asFaulty(sql`update sale_seller_terms set seller_legal_entity_id = ${other}
+            where id = ${firstTerms(payoutId)}`);
+        });
+      });
+
+      it("commission VAT that disagrees with its rate is not itemised", async () => {
+        await unmapped(async (payoutId) => {
+          await asFaulty(sql`update sale_seller_terms set commission_vat_bps = 1000
+            where id = ${firstTerms(payoutId)}`);
+        });
+      });
+    });
+
     it("parks the bill and its payment in dry run while the accountant has not answered; nothing is sent", async () => {
       await aim("bid", "dry_run");
       const seed = await seedBidPayout(owner);
