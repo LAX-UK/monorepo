@@ -1,4 +1,5 @@
 import { randomBytes } from "node:crypto";
+import { PENDING_LOGIN_MAX_AGE_SECONDS } from "@/lib/pending-login-cookie";
 import {
   ACCOUNT_STEP_UP_MAX_AGE_SECONDS,
   issuerJwksUrl,
@@ -11,6 +12,26 @@ import { createAccountTokenEndpoint } from "../infrastructure/account-token-endp
 import type { SessionStore, StaffSessionRecord } from "../ports/session-store";
 import { assertReauthSubject } from "./confirm-reauth-subject";
 import type { PendingAccountLogin } from "./start-account-login";
+
+/** Outlives the pending cookie (and the clock skew it allows), so a claim is never forgotten early. */
+const PENDING_LOGIN_RECORD_TTL_SECONDS = PENDING_LOGIN_MAX_AGE_SECONDS + 60;
+
+/** The sign-in was ended by a sign-out, or its callback already ran: no session may come of it. */
+export class PendingLoginEndedError extends Error {
+  constructor() {
+    super("Pending sign-in already used or ended by sign-out");
+    this.name = "PendingLoginEndedError";
+  }
+}
+
+/** Ends a sign-in still in flight when this browser signs out; see `completeAccountLogin`. */
+export async function endPendingAccountLogin(input: {
+  pending: Pick<PendingAccountLogin, "state">;
+  sessions: SessionStore;
+}): Promise<void> {
+  await input.sessions.revokePendingLogin(input.pending.state, PENDING_LOGIN_RECORD_TTL_SECONDS);
+}
+
 export async function completeAccountLogin(input: {
   config: LaxAccountConfig;
   pending: PendingAccountLogin;
@@ -20,6 +41,13 @@ export async function completeAccountLogin(input: {
 }): Promise<{ sessionId: string; returnTo: string; email: string | null; subject: string }> {
   if (!validateOAuthStateTimingSafe(input.pending.state, input.receivedState)) {
     throw new Error("Invalid OAuth state");
+  }
+  // One callback per sign-in, and none once this browser has signed out: the code is not even
+  // exchanged for a sign-in that a sign-out ended.
+  if (
+    !(await input.sessions.claimPendingLogin(input.pending.state, PENDING_LOGIN_RECORD_TTL_SECONDS))
+  ) {
+    throw new PendingLoginEndedError();
   }
   const redirectUri = `${input.config.publicOrigin}/api/auth/callback`;
   const tokenEndpoint = createAccountTokenEndpoint(input.config);
@@ -74,6 +102,11 @@ export async function completeAccountLogin(input: {
   };
   const sessionId = randomBytes(32).toString("base64url");
   await input.sessions.save(sessionId, record, input.config.sessionTtlSeconds);
+  // A sign-out that landed during the exchange wins: the session it could not see is ended here.
+  if (!(await input.sessions.settlePendingLogin(input.pending.state, sessionId))) {
+    await input.sessions.delete(sessionId);
+    throw new PendingLoginEndedError();
+  }
   return {
     sessionId,
     returnTo: input.pending.returnTo,

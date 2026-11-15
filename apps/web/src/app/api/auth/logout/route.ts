@@ -5,6 +5,7 @@ import { getBffRedis } from "@/lib/bff/redis.server";
 import { clearBidSessionCookie, readBidSessionId } from "@/lib/bff/session-cookie.server";
 import { BidBffSessionStore } from "@/lib/bff/session-store.server";
 import { ACTING_LEGAL_ENTITY_COOKIE } from "@/lib/legal-entity/client-acting-context";
+import { RESTORE_MARKER_COOKIE } from "@/lib/legal-entity/restore-loop";
 import { ACCOUNT_NOTICE_COOKIE } from "@/lib/navigation/account-notice";
 import { type NextRequest, NextResponse } from "next/server";
 
@@ -30,6 +31,9 @@ export async function POST(request: NextRequest) {
   // signing in restores the right account, so the choice no longer has to outlive the session.
   response.cookies.delete(ACTING_LEGAL_ENTITY_COOKIE);
   response.cookies.delete(ACCOUNT_NOTICE_COOKIE);
+  // A restore marker from this session would make the next sign-in's first restore read as one
+  // that did not take, showing the retry state instead of restoring.
+  response.cookies.delete(RESTORE_MARKER_COOKIE);
   markBidSilentSuppressed(response);
   response.headers.set("cache-control", "no-store");
   return response;

@@ -31,6 +31,21 @@ export type SessionStore = {
   claimBackchannelLogoutJti(jti: string, ttlSeconds: number): Promise<boolean>;
   /** Frees a claimed jti so the issuer can retry after a failed invalidation. */
   releaseBackchannelLogoutJti(jti: string): Promise<void>;
+  /**
+   * Takes the pending sign-in identified by its `state` for one callback. False when another
+   * callback already took it, or a sign-out ended it: the code must not be exchanged.
+   */
+  claimPendingLogin(state: string, ttlSeconds: number): Promise<boolean>;
+  /**
+   * Records the session a claimed sign-in created, so a sign-out that comes later still ends it.
+   * False when a sign-out ended the sign-in meanwhile: the caller deletes that session.
+   */
+  settlePendingLogin(state: string, sessionId: string): Promise<boolean>;
+  /**
+   * Ends a pending sign-in on sign-out: a callback that has not claimed it yet is refused, and a
+   * session it already created is deleted.
+   */
+  revokePendingLogin(state: string, ttlSeconds: number): Promise<void>;
   withRefreshLock<T>(sessionId: string, fn: () => Promise<T>): Promise<T>;
   /** Readiness probe for the backing store. */
   isReachable(): Promise<boolean>;

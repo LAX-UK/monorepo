@@ -1,6 +1,7 @@
 import { openPendingLogin } from "@/lib/pending-login-cookie";
 import { safeReturnTo } from "@/lib/safe-return-to";
 import { LAX_ACCOUNT_LOGIN_COOKIE, LAX_ACCOUNT_LOGIN_RETRY_COOKIE } from "@/lib/session-cookie";
+import { PendingLoginEndedError } from "@/server/application/complete-account-login";
 import { discardReplacedSession } from "@/server/application/discard-replaced-session";
 import { resolveAccountOAuthCallback } from "@/server/application/handle-account-oauth-callback";
 import { getLaxAccountContainer } from "@/server/container";
@@ -94,8 +95,13 @@ export async function GET(request: Request): Promise<Response> {
       });
     }
     return NextResponse.redirect(new URL(safeReturnTo(result.returnTo), publicOrigin));
-  } catch {
+  } catch (error) {
     clearLoginCookies();
+    // Signed out while this sign-in was in flight (or its callback already ran): the browser
+    // stays as it is, and the landing page is shown without an error.
+    if (error instanceof PendingLoginEndedError) {
+      return NextResponse.redirect(new URL("/", publicOrigin));
+    }
     return NextResponse.redirect(signInErrorRedirect(publicOrigin, "auth_failed"));
   }
 }

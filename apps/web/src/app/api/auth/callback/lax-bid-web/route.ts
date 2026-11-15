@@ -15,6 +15,7 @@ import {
   setBidSessionCookie,
 } from "@/lib/bff/session-cookie.server";
 import { BidBffSessionStore, type PendingBidSession } from "@/lib/bff/session-store.server";
+import { RESTORE_MARKER_COOKIE } from "@/lib/legal-entity/restore-loop";
 import { applySignInRestore } from "@/lib/legal-entity/sign-in-restore.server";
 import { classifyAuthorizationError, classifySilentCallback } from "@auction/identity-rp";
 import { type NextRequest, NextResponse } from "next/server";
@@ -173,6 +174,9 @@ export async function GET(request: NextRequest) {
       markBidSilentNotice(response);
     }
     setBidSessionCookie(response, authenticatedId, "authenticated");
+    // A new session starts with no restore behind it: a marker left from before would make its
+    // first restore read as one that did not take, and show the retry state instead of restoring.
+    response.cookies.delete(RESTORE_MARKER_COOKIE);
     // The first page opens in the person's account; if the API cannot say, the layout restores it.
     // Never let this fail the sign-in: the session is already authenticated.
     try {

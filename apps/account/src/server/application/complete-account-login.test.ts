@@ -1,7 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { LaxAccountConfig } from "../config";
+import { createMemorySessionStore } from "../infrastructure/memory-session-store";
 import type { SessionStore } from "../ports/session-store";
-import { completeAccountLogin } from "./complete-account-login";
+import {
+  PendingLoginEndedError,
+  completeAccountLogin,
+  endPendingAccountLogin,
+} from "./complete-account-login";
 import type { PendingAccountLogin } from "./start-account-login";
 
 const verifyIdentityToken = vi.fn();
@@ -30,7 +35,11 @@ const base: PendingAccountLogin = {
 };
 
 function sessions() {
-  return { save: vi.fn(async () => undefined) } as unknown as SessionStore & {
+  return {
+    save: vi.fn(async () => undefined),
+    claimPendingLogin: vi.fn(async () => true),
+    settlePendingLogin: vi.fn(async () => true),
+  } as unknown as SessionStore & {
     save: ReturnType<typeof vi.fn>;
   };
 }
@@ -114,5 +123,58 @@ describe("completeAccountLogin on a step-up", () => {
       sessions: store,
     });
     expect(store.save).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("completeAccountLogin after a sign-out", () => {
+  const complete = (store: SessionStore) =>
+    completeAccountLogin({
+      config,
+      pending: base,
+      receivedState: "state-1",
+      code: "code",
+      sessions: store,
+    });
+
+  it("does not exchange the code of a sign-in that a sign-out ended", async () => {
+    signedInAs("user-a");
+    const store = createMemorySessionStore();
+    await endPendingAccountLogin({ pending: base, sessions: store });
+
+    await expect(complete(store)).rejects.toBeInstanceOf(PendingLoginEndedError);
+    expect(requestToken).not.toHaveBeenCalled();
+  });
+
+  it("ends the session when the sign-out lands while the code is being exchanged", async () => {
+    signedInAs("user-a");
+    const store = createMemorySessionStore();
+    const save = vi.spyOn(store, "save");
+    requestToken.mockImplementationOnce(async () => {
+      await endPendingAccountLogin({ pending: base, sessions: store });
+      return { id_token: "id", refresh_token: "refresh", access_token: "a", expires_in: 300 };
+    });
+
+    await expect(complete(store)).rejects.toBeInstanceOf(PendingLoginEndedError);
+    const savedId = save.mock.calls[0]?.[0] as string;
+    expect(await store.get(savedId)).toBeNull();
+  });
+
+  it("ends the session a sign-in already created when the sign-out comes after it", async () => {
+    signedInAs("user-a");
+    const store = createMemorySessionStore();
+    const { sessionId } = await complete(store);
+    expect(await store.get(sessionId)).not.toBeNull();
+
+    await endPendingAccountLogin({ pending: base, sessions: store });
+    expect(await store.get(sessionId)).toBeNull();
+  });
+
+  it("accepts each sign-in's callback only once", async () => {
+    signedInAs("user-a");
+    const store = createMemorySessionStore();
+    await complete(store);
+
+    await expect(complete(store)).rejects.toBeInstanceOf(PendingLoginEndedError);
+    expect(requestToken).toHaveBeenCalledTimes(1);
   });
 });
