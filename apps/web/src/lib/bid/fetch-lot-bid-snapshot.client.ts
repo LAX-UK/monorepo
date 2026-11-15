@@ -14,6 +14,8 @@ export type LotBidSnapshot = Pick<Lot, "currentPrice" | "endTime" | "status" | "
   serverNow?: string | null;
   /** The close a late bid moved the lot to (ISO); absent while it keeps its scheduled end. */
   extendedUntil?: string | null;
+  /** The API's clock just before it read the lot (ISO): a close changed after it is newer. */
+  asOf?: string | null;
 };
 
 /**
@@ -55,6 +57,7 @@ export async function fetchLotBidSnapshot(lotId: string): Promise<LotBidSnapshot
     base.soldForWithPremium = bidding.soldForWithPremium;
     base.serverNow = bidding.serverNow;
     base.extendedUntil = bidding.extendedUntil;
+    base.asOf = bidding.asOf;
     return base;
   } catch {
     return null;

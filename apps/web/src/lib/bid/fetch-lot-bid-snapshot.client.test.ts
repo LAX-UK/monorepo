@@ -44,6 +44,7 @@ describe("fetchLotBidSnapshot", () => {
       soldForWithPremium: null,
       serverNow: null,
       extendedUntil: null,
+      asOf: null,
     });
     expect(get).toHaveBeenCalledWith({ param: { id: "lot-1" } });
   });
@@ -60,6 +61,7 @@ describe("fetchLotBidSnapshot", () => {
           soldForWithPremium: "6250.00",
           serverNow: "2026-11-20T18:00:05.000Z",
           extendedUntil: "2026-11-20T18:00:00.000Z",
+          asOf: "2026-11-20T18:00:04.990Z",
         },
       }),
     });
@@ -70,6 +72,7 @@ describe("fetchLotBidSnapshot", () => {
       soldForWithPremium: "6250.00",
       serverNow: "2026-11-20T18:00:05.000Z",
       extendedUntil: "2026-11-20T18:00:00.000Z",
+      asOf: "2026-11-20T18:00:04.990Z",
     });
   });
 
