@@ -60,22 +60,58 @@ on:
         description: lax.art storefront image SHA for ephemeral image deploys
         type: string
         required: false
-# Take turns with App deploy test (FIFO `queue` job), then hold the shared lock only for the
-# apply itself; a bare workflow-level group would let a newer run cancel this one while pending.
+# Wait for app-deploy-test.yml runs, then take the shared lock at job level.
+# A workflow-level group would let a newer push cancel this run while pending; the group-less
+# `wait` job has no concurrency group, so it cannot be evicted. Known gap: a push arriving while
+# `up` is pending behind another lock holder can still evict `up` (only one pending job per group).
 jobs:
-  queue:
+  wait:
     runs-on: ubuntu-latest
     permissions:
-      contents: read
       actions: read
     timeout-minutes: 130
     steps:
-      - uses: actions/checkout@v4
-      - uses: ./.github/actions/await-test-deploy-turn
-        with:
-          github-token: ${{ github.token }}
+      - name: Wait until no App deploy test run is queued or in progress
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          POLL_INTERVAL_SECONDS: "60"
+          TOTAL_TIMEOUT_SECONDS: "7200"
+        run: |
+          set -uo pipefail
+          deadline=$((SECONDS + TOTAL_TIMEOUT_SECONDS))
+          fails=0
+          while true; do
+            # One list call per poll; filter in jq. Most recent runs only (per_page=100).
+            if out="$(gh api "repos/${REPO}/actions/workflows/app-deploy-test.yml/runs?per_page=100" \
+                --jq '[.workflow_runs[] | select(.status != "completed")] | length' 2>&1)" \
+              && [[ "$out" =~ ^[0-9]+$ ]]; then
+              fails=0
+              if [ "$out" -eq 0 ]; then
+                echo "No App deploy test run is queued or in progress."
+                exit 0
+              fi
+              echo "Waiting: $out App deploy test run(s) queued or in progress."
+              delay="$POLL_INTERVAL_SECONDS"
+            else
+              fails=$((fails + 1))
+              echo "::warning::Run list failed (attempt $fails): ${out:0:200}"
+              if [ "$fails" -ge 10 ]; then
+                echo "::error::Giving up after $fails consecutive failed API calls"
+                exit 1
+              fi
+              # Transient 5xx / rate limit: exponential backoff, capped at 10 min.
+              delay=$((POLL_INTERVAL_SECONDS * (1 << (fails > 3 ? 3 : fails))))
+              [ "$delay" -gt 600 ] && delay=600
+            fi
+            if [ $((SECONDS + delay)) -ge "$deadline" ]; then
+              echo "::error::Timed out after ${TOTAL_TIMEOUT_SECONDS}s waiting for App deploy test runs to finish"
+              exit 1
+            fi
+            sleep "$delay"
+          done
   up:
-    needs: queue
+    needs: wait
     concurrency:
       group: app-deploy-test
       cancel-in-progress: false
