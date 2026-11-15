@@ -138,6 +138,11 @@ export { DrizzleCollectionDeskFulfilment } from "./drizzle-collection-desk-fulfi
 export { DrizzleCollectionDeskReader } from "./drizzle-collection-desk.reader.js";
 export { DrizzleCollectionLotFactsReader } from "./drizzle-collection-lot-facts.reader.js";
 export { DrizzleCollectionPlaceRepository } from "./drizzle-collection-place.repository.js";
+export {
+  collectByCalendarRange,
+  readCollectByCalendars,
+  type CollectByDayRange,
+} from "./drizzle-collect-by-calendars.js";
 export { DrizzleCollectionSettingsRepository } from "./drizzle-collection-settings.repository.js";
 export { DrizzlePayoutRepository } from "./drizzle-payout.repository.js";
 export { DrizzleSaleSellerTermsStore } from "./drizzle-sale-seller-terms.store.js";

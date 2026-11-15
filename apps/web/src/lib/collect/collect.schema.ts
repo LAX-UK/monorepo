@@ -38,6 +38,7 @@ export const collectionAvailabilitySchema = z.object({
   venueId: z.string(),
   onlineBookingEnabled: z.boolean(),
   bookingEmail: z.string().nullable(),
+  contactPhone: z.string().nullable(),
   visitMinutes: z.number().int().positive(),
   windowDays: z.number().int().positive(),
   noticeCutoffLocal: z.string(),
@@ -54,6 +55,7 @@ export const collectionVisitSchema = z.object({
   start: z.string(),
   end: z.string(),
   version: z.number().int().min(0),
+  contactPhone: z.string().nullable(),
   lots: z.array(
     z.object({
       lotId: z.string(),

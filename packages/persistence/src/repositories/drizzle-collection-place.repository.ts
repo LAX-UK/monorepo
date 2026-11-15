@@ -67,7 +67,9 @@ export class DrizzleCollectionPlaceRepository implements ICollectionPlaceReposit
     return row ? toSettings(row) : null;
   }
 
-  async findAddress(venueId: string): Promise<{ name: string; address: string } | null> {
+  async findAddress(
+    venueId: string,
+  ): Promise<{ name: string; address: string; phone: string | null } | null> {
     const [row] = await this.db
       .select({
         name: venue.name,
@@ -75,6 +77,7 @@ export class DrizzleCollectionPlaceRepository implements ICollectionPlaceReposit
         line2: venue.addressLine2,
         city: venue.city,
         postcode: venue.postcode,
+        phone: venue.contactPhone,
       })
       .from(venue)
       .where(eq(venue.id, venueId))
@@ -83,7 +86,7 @@ export class DrizzleCollectionPlaceRepository implements ICollectionPlaceReposit
     const address = [row.line1, row.line2, row.city, row.postcode]
       .filter((part): part is string => Boolean(part?.trim()))
       .join(", ");
-    return { name: row.name, address };
+    return { name: row.name, address, phone: row.phone?.trim() || null };
   }
 
   async findForLot(

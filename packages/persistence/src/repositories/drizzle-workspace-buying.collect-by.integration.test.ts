@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { createDb } from "@auction/db";
+import { DEFAULT_COLLECT_BY_POLICY, collectBy } from "@auction/domain";
 import { sql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { DrizzleAccountPurchaseFactsReader } from "./drizzle-workspace-buying.readers.js";
@@ -62,6 +63,10 @@ describe.skipIf(!HAS_DB)("account purchase facts: collect-by storage (integratio
     await db.execute(sql`
       insert into collection_place (venue_id, free_storage_days, online_booking_enabled)
       values (${venueId}, 14, true)`);
+    // Monday to Friday, 10:00 to 19:00.
+    await db.execute(sql`
+      insert into collection_weekly_hours (venue_id, weekday, opens_local, closes_local)
+      select ${venueId}, d, '10:00', '19:00' from generate_series(1, 5) as d`);
   });
 
   afterAll(async () => {
@@ -75,6 +80,8 @@ describe.skipIf(!HAS_DB)("account purchase facts: collect-by storage (integratio
     await db.execute(sql`delete from lot where seller_legal_entity_id = ${sellerEntity}`);
     await db.execute(sql`delete from sale where id in (${saleId}, ${bareSaleId})`);
     for (const id of extraSales) await db.execute(sql`delete from sale where id = ${id}`);
+    await db.execute(sql`delete from collection_exception where venue_id = ${venueId}`);
+    await db.execute(sql`delete from collection_weekly_hours where venue_id = ${venueId}`);
     await db.execute(sql`delete from collection_place where venue_id = ${venueId}`);
     await db.execute(sql`delete from venue where id in (${venueId}, ${bareVenueId})`);
     await db.execute(sql`delete from legal_entity where id in (${buyerEntity}, ${sellerEntity})`);
@@ -82,7 +89,7 @@ describe.skipIf(!HAS_DB)("account purchase facts: collect-by storage (integratio
   });
 
   it("reads the payment day, the place's free period and that booking is open", async () => {
-    expect(await storageOf(await wonLot())).toEqual({
+    expect(await storageOf(await wonLot())).toMatchObject({
       clearedAt: cleared,
       placeId: venueId,
       placeName: "Facts gallery",
@@ -91,6 +98,14 @@ describe.skipIf(!HAS_DB)("account purchase facts: collect-by storage (integratio
       booked: false,
       saleDeleted: false,
     });
+  });
+
+  it("carries the place's calendar, so a deadline on a closed day is the next open day", async () => {
+    const storage = await storageOf(await wonLot());
+    // Cleared Sat 1 Mar 2031 and 14 free days on is Sat 15 Mar; the place opens Monday to Friday.
+    const policy = { ...DEFAULT_COLLECT_BY_POLICY, freeStorageDays: 14 };
+    expect(collectBy(cleared, policy).date).toBe("2031-03-15");
+    expect(collectBy(cleared, policy, storage?.calendar).date).toBe("2031-03-17");
   });
 
   it("says when the lot's sale was soft-deleted", async () => {

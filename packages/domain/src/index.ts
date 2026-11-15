@@ -903,6 +903,8 @@ export {
 export {
   bankHolidayClosures,
   createCollectionCalendar,
+  nextOpenDay,
+  MAX_OPEN_DAY_LOOKAHEAD_DAYS,
   noticeDeadline,
   noticeWindow,
   workingDayBefore,
@@ -994,6 +996,7 @@ export {
   type CollectByReminderKind,
   collectBy,
   type CollectBy,
+  type CollectByCalendar,
   type CollectByPolicy,
 } from "./collection-storage.js";
 export {

@@ -100,8 +100,11 @@ export const COLLECT_COPY = {
       `Bring photo ID in the name of ${name}: a passport, driving licence or national identity card.`,
     idRuleCollector: (name: string) =>
       `${name} needs to bring photo ID: a passport, driving licence or national identity card.`,
-    afterCutoff: (email: string) =>
-      `To change it, email ${email} or call ${GALLERY_CONTACT.phone}.`,
+    /** The venue's phone when it has one; never a placeholder number. */
+    afterCutoff: (email: string, phone: string | null = null) =>
+      phone?.trim()
+        ? `To change it, email ${email} or call ${phone.trim()}.`
+        : `To change it, email ${email}.`,
     ready: "Ready to collect",
   },
   cancel: {

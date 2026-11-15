@@ -111,6 +111,7 @@ describe("you can book email", () => {
     lots: ["Lot 12 · Lowland Storm", "Lot 14 · Coastal Notation"],
     lotIds: ["a", "b"],
     bookUrl: "https://lax.bid/purchases/collect?lots=a,b",
+    contactEmail: "collections@lax.example",
   };
 
   it("says the lots can be booked now, where, and links to book them", async () => {
@@ -148,6 +149,7 @@ describe("collect by email", () => {
     bookUrl: "https://lax.bid/purchases/collect?lots=a,b",
     storagePolicyUrl: "https://lax.bid/shipping#storage",
     quoteUrl: "https://lax.bid/purchases",
+    contactEmail: "collections@lax.example",
   };
 
   it("asks them to collect by the day, says charges may apply, and links to book", async () => {
@@ -163,6 +165,21 @@ describe("collect by email", () => {
     expect(rendered.html).toContain("https://lax.bid/shipping#storage");
     expect(rendered.html).toContain("ask us for a courier quote");
     expect(`${rendered.subject} ${rendered.text}`).not.toMatch(PRICE);
+  });
+
+  it("gives the venue's phone with the email, and the email alone when it has none", async () => {
+    const withPhone = await renderEmail("collection-collect-by", {
+      ...base,
+      contactPhone: "+44 20 7946 0321",
+    });
+    expect(withPhone.text).toContain(
+      "Questions? Email collections@lax.example or call +44 20 7946 0321.",
+    );
+    for (const contactPhone of [null, "  "]) {
+      const without = await renderEmail("collection-collect-by", { ...base, contactPhone });
+      expect(without.text).toContain("Questions? Email collections@lax.example.");
+      expect(without.text).not.toMatch(/call\b/i);
+    }
   });
 
   it("lists each lot on a line of its own", async () => {

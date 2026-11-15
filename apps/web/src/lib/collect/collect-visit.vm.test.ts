@@ -12,6 +12,7 @@ function visit(overrides: Partial<CollectionVisitView> = {}): CollectionVisitVie
     start: "2026-11-12T14:00:00.000Z",
     end: "2026-11-12T14:30:00.000Z",
     version: 0,
+    contactPhone: null,
     lots: [{ lotId: "l1", title: "Blue Study", lotNumber: 4, active: true, outcome: null }],
     collector: { kind: "self", name: "Ada Lovelace", email: null, company: null },
     authorisedAt: null,
@@ -51,6 +52,17 @@ describe("visitCard", () => {
     const card = visitCard(visit({ actions: [], noticeDeadline: null }), ctx);
     expect(card.can.change).toBe(false);
     expect(card.afterCutoff).toContain("info@thelax.art");
+  });
+
+  it("names the venue's phone after the cut-off, and the email alone when it has none", () => {
+    const base = { actions: [], noticeDeadline: null };
+    const withPhone = visitCard(visit({ ...base, contactPhone: "+44 20 7946 0321" }), ctx);
+    expect(withPhone.afterCutoff).toBe(
+      "To change it, email info@thelax.art or call +44 20 7946 0321.",
+    );
+    const without = visitCard(visit({ ...base, contactPhone: null }), ctx);
+    expect(without.afterCutoff).toBe("To change it, email info@thelax.art.");
+    expect(without.afterCutoff).not.toMatch(/call|800 208/);
   });
 
   it("offers a new time after a missed visit, for the lots left behind", () => {

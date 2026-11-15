@@ -124,6 +124,8 @@ export class InMemoryCollectionPlaces
   };
   hours: CollectionWeeklyHours[] = [...DEFAULT_COLLECTION_WEEKLY_HOURS];
   exceptions: CollectionException[] = [];
+  /** The venue's phone, as its details hold it. */
+  phone: string | null = "+44 20 7946 0321";
 
   async find(venueId: string): Promise<CollectionPlaceSettings | null> {
     return venueId === COLLECTION_VENUE ? this.settings : null;
@@ -139,8 +141,12 @@ export class InMemoryCollectionPlaces
     return { settings: this.settings, hours: this.hours, exceptions: this.exceptions };
   }
 
-  async findAddress(): Promise<{ name: string; address: string }> {
-    return { name: "LAX gallery", address: "156 New Cavendish Street, London, W1W 6YW" };
+  async findAddress(): Promise<{ name: string; address: string; phone: string | null }> {
+    return {
+      name: "LAX gallery",
+      address: "156 New Cavendish Street, London, W1W 6YW",
+      phone: this.phone,
+    };
   }
 }
 

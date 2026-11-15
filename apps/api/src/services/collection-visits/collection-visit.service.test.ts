@@ -69,6 +69,27 @@ async function booked(s: ReturnType<typeof setup>, over: Partial<BookCollectionB
   return result._unsafeUnwrap().visit;
 }
 
+describe("the venue's phone", () => {
+  it("comes with the availability and the booked visit, from the venue's details", async () => {
+    const s = setup();
+    const availability = (
+      await s.service.availability(actor(), { lots: [COLLECTION_LOTS.one] })
+    )._unsafeUnwrap();
+    expect(availability.contactPhone).toBe("+44 20 7946 0321");
+    expect((await booked(s)).contactPhone).toBe("+44 20 7946 0321");
+  });
+
+  it("is null when the venue has none, so no number is shown", async () => {
+    const s = setup();
+    s.places.phone = null;
+    const availability = (
+      await s.service.availability(actor(), { lots: [COLLECTION_LOTS.one] })
+    )._unsafeUnwrap();
+    expect(availability.contactPhone).toBeNull();
+    expect((await booked(s)).contactPhone).toBeNull();
+  });
+});
+
 describe("availability, with the account's other lots", () => {
   it("lists the lots asked about first, then the account's other lots at that place that can be booked", async () => {
     const s = setup();

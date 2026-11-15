@@ -8,7 +8,13 @@ import {
   sale,
   venue,
 } from "@auction/db/schema";
-import { MAX_FREE_STORAGE_DAYS } from "@auction/domain";
+import {
+  MAX_FREE_STORAGE_DAYS,
+  MAX_OPEN_DAY_LOOKAHEAD_DAYS,
+  addDaysToKey,
+  londonDateKey,
+} from "@auction/domain";
+import { collectByCalendarRange, readCollectByCalendars } from "@auction/persistence/repositories";
 import {
   type SQL,
   and,
@@ -43,16 +49,41 @@ export class DrizzleCollectByReader implements ICollectByReader {
     // The London day payment cleared, between the free period ago and the free period less the
     // lead ago; with no early reminder (a free period no longer than the lead), the one day.
     const clearedOn = sql`(${lotFulfilment.paymentClearedAt} at time zone ${LONDON})::date`;
-    const first = sql`${window.today}::date - ${free}`;
+    // A deadline on a closed day moves to the next open day, so a deadline up to the look-ahead
+    // earlier can still be today's; the domain's exact test follows.
+    const first = sql`${window.today}::date - ${free} - ${MAX_OPEN_DAY_LOOKAHEAD_DAYS}::int`;
     const last = sql`${window.today}::date - (case when ${free} > ${window.reminderLeadDays}::int then ${free} - ${window.reminderLeadDays}::int else ${free} end)`;
-    return this.waitingLots([
+    const lots = await this.waitingLots([
       isNotNull(lotFulfilment.paymentClearedAt),
       // A range on the column itself, so the index can narrow the lots before the exact
-      // London-day test: from the start of the day the longest free period ago to the end of today.
-      sql`${lotFulfilment.paymentClearedAt} >= (${window.today}::date - ${MAX_FREE_STORAGE_DAYS}::int)::timestamp at time zone ${LONDON}`,
+      // London-day test: from the start of the day the longest free period (and the look-ahead)
+      // ago to the end of today.
+      sql`${lotFulfilment.paymentClearedAt} >= (${window.today}::date - ${MAX_FREE_STORAGE_DAYS + MAX_OPEN_DAY_LOOKAHEAD_DAYS}::int)::timestamp at time zone ${LONDON}`,
       sql`${lotFulfilment.paymentClearedAt} < (${window.today}::date + 1)::timestamp at time zone ${LONDON}`,
       sql`${clearedOn} between ${first} and ${last}`,
     ]);
+    return this.withCalendars(lots, window.defaultFreeStorageDays);
+  }
+
+  /** Gives each lot its place's opening calendar, read once per place. */
+  private async withCalendars(
+    lots: StoredLot[],
+    defaultFreeStorageDays: number,
+  ): Promise<StoredLot[]> {
+    const counted = new Map<string, string[]>();
+    for (const stored of lots) {
+      const free = stored.freeStorageDays ?? defaultFreeStorageDays;
+      const day = addDaysToKey(londonDateKey(stored.clearedAt), free);
+      counted.set(stored.venueId, [...(counted.get(stored.venueId) ?? []), day]);
+    }
+    const ranges = new Map(
+      [...counted].flatMap(([venueId, days]) => {
+        const range = collectByCalendarRange(days);
+        return range ? [[venueId, range] as const] : [];
+      }),
+    );
+    const calendars = await readCollectByCalendars(this.db, ranges);
+    return lots.map((stored) => ({ ...stored, calendar: calendars.get(stored.venueId) }));
   }
 
   async lotsClearedSince(since: Date): Promise<StoredLot[]> {
@@ -81,6 +112,8 @@ export class DrizzleCollectByReader implements ICollectByReader {
         line2: venue.addressLine2,
         city: venue.city,
         postcode: venue.postcode,
+        contactPhone: venue.contactPhone,
+        bookingEmail: collectionPlace.bookingEmail,
         freeStorageDays: collectionPlace.freeStorageDays,
       })
       .from(lotFulfilment)
@@ -132,6 +165,8 @@ export class DrizzleCollectByReader implements ICollectByReader {
                 address: [row.line1, row.line2, row.city, row.postcode]
                   .filter((part): part is string => Boolean(part?.trim()))
                   .join(", "),
+                bookingEmail: row.bookingEmail,
+                phone: row.contactPhone?.trim() || null,
               },
               freeStorageDays: row.freeStorageDays,
             },
