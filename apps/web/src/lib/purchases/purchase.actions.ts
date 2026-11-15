@@ -5,6 +5,7 @@ import { getServerDataContainer } from "@/lib/data/container.server";
 import { profileAddressRowSchema } from "@/lib/data/http/addresses.schema";
 import { authedServerFetch } from "@/lib/data/http/authed-fetch.server";
 import { readDataEnvelope, readJsonBody } from "@/lib/data/http/envelope";
+import { organisationAddressSchema } from "@/lib/data/http/organisation-team.server";
 import {
   type ActionResult,
   actionFailure,
@@ -19,7 +20,9 @@ import { z } from "zod";
 import {
   type DeliveryAddress,
   deliveryAddressFromBook,
+  deliveryAddressFromOrganisation,
   newDeliveryAddressBody,
+  newOrganisationAddressBody,
 } from "./delivery-addresses.vm";
 import { purchaseRequestAccountId } from "./purchase-account";
 import { type PurchaseProblemFormValues, purchaseProblemFormSchema } from "./purchase-problem";
@@ -68,37 +71,58 @@ export type SaveDeliveryAddressResult =
   | { ok: true; address: DeliveryAddress }
   | { ok: false; message: string };
 
+const SAVE_FAILED = "We couldn't save that address just now. Try again in a moment.";
+
 /**
- * Saves a new delivery address to the member's LAX Account address book, so it is offered again
- * on the next purchase, and hands it back for the picker.
+ * Saves a new delivery address and hands it back for the picker: to the organisation's addresses
+ * when `organisationId` is given (the API checks the member may add one), otherwise to the
+ * member's LAX Account address book, so it is offered again on the next purchase.
  */
 export async function saveDeliveryAddressAction(
   label: string,
   address: AddressValues,
+  organisationId: string | null = null,
 ): Promise<SaveDeliveryAddressResult> {
   return instrumentServerAction("saveDeliveryAddressAction", async () => {
     if (Object.keys(validateAddress(address)).length > 0) {
       return { ok: false, message: "Check the address and try again." } as const;
     }
-    const res = await authedServerFetch("/users/me/addresses", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(newDeliveryAddressBody(label, address)),
-    });
-    if (!res.ok) {
+    const forOrganisation = organisationId
+      ? z.string().uuid().safeParse(organisationId).data
+      : undefined;
+    if (organisationId && !forOrganisation) return { ok: false, message: SAVE_FAILED } as const;
+    const res = await authedServerFetch(
+      forOrganisation ? "/legal-entities/addresses" : "/users/me/addresses",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(forOrganisation ? { [X_LEGAL_ENTITY_ID_HEADER]: forOrganisation } : {}),
+        },
+        body: JSON.stringify(
+          forOrganisation
+            ? newOrganisationAddressBody(address)
+            : newDeliveryAddressBody(label, address),
+        ),
+      },
+    );
+    if (res.status === 403 && forOrganisation) {
       return {
         ok: false,
-        message: "We couldn't save that address just now. Try again in a moment.",
+        message: "Your role can't add addresses for this organisation.",
       } as const;
     }
+    if (!res.ok) return { ok: false, message: SAVE_FAILED } as const;
     try {
-      const row = readDataEnvelope(await readJsonBody(res), profileAddressRowSchema);
-      return { ok: true, address: deliveryAddressFromBook(row) } as const;
-    } catch {
+      const body = await readJsonBody(res);
       return {
-        ok: false,
-        message: "We couldn't save that address just now. Try again in a moment.",
+        ok: true,
+        address: forOrganisation
+          ? deliveryAddressFromOrganisation(readDataEnvelope(body, organisationAddressSchema))
+          : deliveryAddressFromBook(readDataEnvelope(body, profileAddressRowSchema)),
       } as const;
+    } catch {
+      return { ok: false, message: SAVE_FAILED } as const;
     }
   });
 }

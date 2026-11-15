@@ -65,6 +65,45 @@ describe("organisation team routes", () => {
     });
   });
 
+  it("lists the organisation's addresses, never cached", async () => {
+    const list = vi.fn(async () => ok({ addresses: [], canAdd: true }));
+    const res = await mount({ addresses: { list } }).request("/legal-entities/addresses");
+    expect(res.status).toBe(200);
+    expect(res.headers.get("Cache-Control")).toBe("no-store");
+    expect(list).toHaveBeenCalledWith(actor);
+  });
+
+  it("adds a delivery address from a validated body, and answers 403 for a read-only role", async () => {
+    const body = {
+      line1: " 1 Cork Street ",
+      line2: "",
+      city: "London",
+      region: null,
+      postalCode: "W1S 3LL",
+      country: "gb",
+    };
+    const add = vi.fn(async () => ok({ id: "a", kind: "delivery" }));
+    const post = (services: Record<string, unknown>, payload: unknown) =>
+      mount(services).request("/legal-entities/addresses", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+    const created = await post({ addresses: { add } }, body);
+    expect(created.status).toBe(201);
+    expect(add).toHaveBeenCalledWith(actor, {
+      line1: "1 Cork Street",
+      line2: null,
+      city: "London",
+      region: null,
+      postalCode: "W1S 3LL",
+      country: "GB",
+    });
+    expect((await post({ addresses: { add } }, { ...body, line1: "" })).status).toBe(400);
+    const refused = vi.fn(async () => err(FORBIDDEN));
+    expect((await post({ addresses: { add: refused } }, body)).status).toBe(403);
+  });
+
   it("refuses a bad body before the service", async () => {
     const update = vi.fn();
     const res = await mount({ invoiceDetails: { update } }).request(

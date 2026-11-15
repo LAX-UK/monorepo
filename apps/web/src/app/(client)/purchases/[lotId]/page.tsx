@@ -91,16 +91,17 @@ export default async function PurchaseDetailPage({ params, searchParams }: PageP
       ? await getServerCollectionOffer(organisation.id, lotId).catch(() => null)
       : null;
   // Only a payer choosing delivery picks an address, so only they need the list.
-  const addresses =
+  const { addresses, context: addressContext } =
     facts?.paymentRole === "payer" &&
     (facts.delivery.stage === "awaiting_payment" || facts.delivery.stage === "choose")
-      ? await loadDeliveryAddresses(organisation?.id ?? null)
-      : [];
+      ? await loadDeliveryAddresses(organisation)
+      : { addresses: [], context: null };
   const panel = facts
     ? deliveryPanel({
         facts,
         collection,
         addresses,
+        addressContext,
         payerTeam: organisation ? `${organisation.name}'s finance team` : "The account's payer",
       })
     : null;
