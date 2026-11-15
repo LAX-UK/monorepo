@@ -1,7 +1,11 @@
 import { createDb } from "@auction/db";
 import { sql } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
-import { NIL, runRolledBack } from "../container/worker-role-contract.test-helpers.js";
+import {
+  NIL,
+  countStatements,
+  runRolledBack,
+} from "../container/worker-role-contract.test-helpers.js";
 import type { WorkerDb } from "../workers/types.js";
 import { BID_ANONYMISATION_RULES } from "./bid-personal-data-policy.js";
 
@@ -18,6 +22,7 @@ const ownerUrl = process.env.MIGRATION_TEST_DATABASE_URL ?? process.env.DATABASE
 describe.skipIf(!workerUrl)("account erasure rules as worker_app", () => {
   // biome-ignore lint/style/noNonNullAssertion: gated above
   const db = createDb(workerUrl!) as unknown as WorkerDb;
+  countStatements(db);
   const scope = {
     subjectIds: [NIL],
     personalLegalEntityIds: [NIL],
@@ -29,6 +34,9 @@ describe.skipIf(!workerUrl)("account erasure rules as worker_app", () => {
     async (_table, rule) => {
       const outcome = await runRolledBack(db, (tx) => rule.apply(tx as never, scope));
       expect(outcome.denied).toBeNull();
+      expect(outcome.reachedDatabase, outcome.failure ?? "no statement reached PostgreSQL").toBe(
+        true,
+      );
     },
   );
 });

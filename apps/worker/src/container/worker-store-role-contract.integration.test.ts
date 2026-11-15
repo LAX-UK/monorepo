@@ -61,7 +61,25 @@ import { DrizzleWebPublicCacheReader } from "../repositories/drizzle-web-public-
 import { DrizzleZohoCampaignsSuppressionRepository } from "../repositories/drizzle-zoho-campaigns-suppression.repository.js";
 import { ShopIdentityProjectionService } from "../services/shop-identity-projection.service.js";
 import type { WorkerDb } from "../workers/types.js";
-import { NIL, runRolledBack } from "./worker-role-contract.test-helpers.js";
+import {
+  PROBE_LOT_ID,
+  PROBE_SHOP_GUEST_ORDER_ID,
+  PROBE_SHOP_ORIGINAL_SALE_ID,
+  PROBE_SHOP_USER_ORDER_ID,
+  PROBE_USER_ID,
+  alertMatch,
+  consent,
+  issuedRegisterEntry,
+  lifecycleSnapshot,
+  newRegisterEntry,
+  outcomeKey,
+  registerActor,
+  sellerConsentAnswer,
+  soldAttention,
+  stockCodeSeries,
+  today,
+} from "./worker-role-contract.fixtures.js";
+import { NIL, countStatements, runRolledBack } from "./worker-role-contract.test-helpers.js";
 
 const workerUrl = process.env.DATABASE_URL_WORKER;
 const ownerUrl = process.env.MIGRATION_TEST_DATABASE_URL;
@@ -210,27 +228,13 @@ function guessArgument(parameter: string, connection: WorkerDb): unknown {
   return NIL;
 }
 
-const today = new Date();
-const outcomeKey = { lotId: NIL, lotEndTime: today };
-
 /**
  * Arguments written by hand for calls the name-based guess cannot build (an object or a list of
  * objects). Without them these calls return before they reach a table, which proves nothing.
  * Keyed `Store.method`; each gets the transaction the call runs on.
  */
 const ARGUMENTS: Record<string, (tx: WorkerDb) => unknown[]> = {
-  "BidAlertMatchLedger.record": () => [
-    [
-      {
-        subscriberId: NIL,
-        topic: "bid.new_sales",
-        itemKey: `sale:${NIL}`,
-        groupKey: null,
-        snapshot: {},
-        matchedAt: today,
-      },
-    ],
-  ],
+  "BidAlertMatchLedger.record": () => [[alertMatch()]],
   "BidAlertDigestLedger.claim": () => [
     {
       subscriberId: NIL,
@@ -242,19 +246,7 @@ const ARGUMENTS: Record<string, (tx: WorkerDb) => unknown[]> = {
     },
   ],
   "BidAlertLotReader.matchingSearch": () => [{ q: "role contract", categoryId: null }, [NIL]],
-  "BidAlertMatchValidator.staleMatches": () => [
-    [
-      {
-        id: NIL,
-        subscriberId: NIL,
-        topic: "bid.new_sales",
-        itemKey: `sale:${NIL}`,
-        groupKey: null,
-        snapshot: {},
-        matchedAt: today,
-      },
-    ],
-  ],
+  "BidAlertMatchValidator.staleMatches": () => [[alertMatch()]],
   "BidAlertLotNoticeWriter.write": () => [
     {
       digestId: NIL,
@@ -312,6 +304,130 @@ const ARGUMENTS: Record<string, (tx: WorkerDb) => unknown[]> = {
   "DrizzleUnsoldLotFollowUpRepository.findForOutcome": () => [outcomeKey],
   "DrizzleUnsoldLotFollowUpRepository.completeByStaff": () => [outcomeKey, NIL, today],
   "DrizzleUnsoldLotFollowUpRepository.settleOnReturn": (tx) => [tx, outcomeKey, NIL, today],
+  "BidAlertTopicStore.setEmail": () => [NIL, "bid.new_sales", true, "staff", today],
+  "BidAlertTopicStore.listEmailRecipients": () => ["bid.new_sales", NIL, 1],
+  "BidAlertMatchLedger.pendingSubscribers": () => ["bid", NIL, 1],
+  "BidAlertAnnouncementStore.claimItem": () => [`sale:${NIL}`, true, today],
+  "DrizzleZohoListingSourceReader.pageOriginals": () => [NIL, 1],
+  "DrizzleArtworkRegisterRepository.listOpenConflicts": () => [1, { detectedAt: today, id: NIL }],
+  "DrizzleArtworkRegisterRepository.issue": () => [
+    "original",
+    issuedRegisterEntry(),
+    registerActor,
+    today,
+  ],
+  "DrizzleArtworkRegisterRepository.highestStockNumber": () => [stockCodeSeries],
+  "DrizzleArtworkRegisterRepository.create": () => [newRegisterEntry(), registerActor, today],
+  "BidAlertSubscriberStore.saveConfirmedForAccount": () => [
+    {
+      product: "bid",
+      email: "role-contract@lax.bid.local",
+      subjectId: PROBE_USER_ID,
+      now: today,
+      ...consent,
+    },
+  ],
+  "BidAlertSaleNoticeWriter.notifySubscribers": () => [
+    { saleId: NIL, title: "Role contract", message: "Role contract" },
+  ],
+  "ShopIdentityProjectionService.apply": () => [
+    "user.registered",
+    {
+      userId: PROBE_USER_ID,
+      email: "role-contract@lax.bid.local",
+      name: "Role contract",
+      source: "credential",
+    },
+  ],
+  "DrizzleSaleRepository.findWithStatuses": () => [["draft", "active"]],
+  "DrizzleUnappliedMoneyReader.existsForShopPayment": () => [
+    { paymentIntentId: "pi_role_contract", sessionId: "cs_role_contract" },
+  ],
+  "DrizzleUnappliedMoneyReader.wasEverUnapplied": () => [
+    { chargeId: "ch_role_contract", paymentIntentId: "pi_role_contract" },
+  ],
+  "DrizzlePaymentRepository.recordTransferReceivedInTransaction": (tx) => [
+    tx,
+    NIL,
+    100,
+    "pi_role_contract",
+  ],
+  // The seeded paid orders and original sale, so the reader goes on to read the buyer: a guest
+  // customer, a user profile, or (for an original) the party's account.
+  "DrizzleShopAccountingFactsReader.orderPaid": () => [PROBE_SHOP_GUEST_ORDER_ID],
+  "DrizzleShopAccountingFactsReader.forOrder": () => [PROBE_SHOP_USER_ORDER_ID],
+  "DrizzleShopAccountingFactsReader.originalSalePaid": () => [PROBE_SHOP_ORIGINAL_SALE_ID],
+  "DrizzleShopAccountingFactsReader.forOriginalSale": () => [PROBE_SHOP_ORIGINAL_SALE_ID],
+  "DrizzleLotRepository.updateDutchCurrentPrice": () => [NIL, "1.00", today],
+  "DrizzleLotRepository.updateDutchCurrentPriceIfMatch": () => [NIL, "2.00", "1.00", today],
+  "DrizzleLotRepository.updateCurrentPrice": () => [NIL, "1.00"],
+  "DrizzleLotRepository.updateStatus": () => [NIL, "active"],
+  // Reads the lot before it writes, so it needs the lot the probe seed inserts.
+  "DrizzleLotRepository.updateMarketingDetails": () => [PROBE_LOT_ID, {}],
+  "DrizzleLotRepository.findPreviewLotsBySaleIds": () => [[NIL], 1],
+  "DrizzleSaleRepository.updateStatus": () => [NIL, "active"],
+  "DrizzlePaymentRepository.updateStatus": () => [NIL, "captured"],
+  "DrizzleSoldAttentionStore.replace": () => [{ id: NIL, now: today, raise: soldAttention() }],
+  "DrizzleSoldAttentionStore.listLive": () => [1, { raisedAt: today, id: NIL }],
+  "DrizzleSoldAttentionStore.isPaused": () => [{ registerId: NIL }],
+  "DrizzleLotLifecycleSnapshotRepository.upsertSnapshot": () => [lifecycleSnapshot()],
+  "DrizzleReofferSweepReader.acceptedWithoutInvoice": () => [
+    { reawardedBefore: today, retryMarkedBefore: today, limit: 1 },
+  ],
+  "DrizzleSellerConsentRepository.answer": (tx) => [tx, sellerConsentAnswer()],
+};
+
+/**
+ * Methods that run their statement and then refuse in code because the row is not there, so the
+ * statement ran and the grant is proven. Keyed `Store.method`, with the message they throw.
+ */
+const REFUSES_AFTER_STATEMENT: Record<string, RegExp> = {
+  "DrizzleSellerConsentRepository.answer": /offer changed/,
+};
+
+/** A second set of arguments for a method with two paths to a table, keyed `Store.method`. */
+const VARIANTS: Record<string, Record<string, (tx: WorkerDb) => unknown[]>> = {
+  "DrizzleShopAccountingFactsReader.forOrder": {
+    "a guest's order": () => [PROBE_SHOP_GUEST_ORDER_ID],
+  },
+  // A print names its source original, which is looked up before the print is inserted.
+  "DrizzleArtworkRegisterRepository.create": {
+    "a print from an original": () => [
+      { ...newRegisterEntry(), kind: "print", sourceOriginalId: NIL },
+      registerActor,
+      today,
+    ],
+  },
+};
+
+/**
+ * Private helpers that TypeScript hides but the prototype walk still lists. Each runs inside a
+ * public method that is probed itself, so it is covered there; with no arguments of its own to
+ * build, calling it directly would only fail before PostgreSQL.
+ */
+const PRIVATE_HELPERS: Record<string, readonly string[]> = {
+  BidAlertFollowerProvisioner: ["provision"],
+  DrizzleZohoListingSourceReader: ["lotsFor", "dealsFor"],
+  DrizzleArtworkRegisterRepository: [
+    "findOne",
+    "publishCatalogueChange",
+    // Run by `create`, `issue` and `highestStockNumber`, which are probed with real entries.
+    "insertEntry",
+    "insertIssued",
+    "highestNumber",
+    "sourceOriginalIsValid",
+  ],
+  DrizzleSaleRepository: ["withCategoryIds"],
+  DrizzleItemSubmissionRepository: ["withCategoryIds"],
+  DrizzlePaymentRepository: ["listWithExternalRefs"],
+  // Run by `forOrder`, `orderPaid`, `forOriginalSale` and `originalSalePaid` on the seeded rows.
+  DrizzleShopAccountingFactsReader: ["buyer", "originalRecipient"],
+};
+
+/** Methods that only build another repository over a connection and send no statement of their own. */
+const BUILDS_REPOSITORY: Record<string, readonly string[]> = {
+  DrizzleArtworkRegisterRepository: ["withExecutor"],
+  DrizzleLotLifecycleSnapshotRepository: ["forConnection"],
 };
 
 function publicMethods(store: object): Call[] {
@@ -375,9 +491,51 @@ describe("stores built outside createWorkerRepositories", () => {
   });
 });
 
+/** True when `method` is on the class or one it extends (private ones included: they exist at runtime). */
+function hasMethod(Store: Store, method: string): boolean {
+  for (let proto = Store.prototype; proto && proto !== Object.prototype; ) {
+    if (typeof Object.getOwnPropertyDescriptor(proto, method)?.value === "function") return true;
+    proto = Object.getPrototypeOf(proto);
+  }
+  return false;
+}
+
+describe("the hand-kept probe lists", () => {
+  const known = { ...STORES, ...BUILT_BY_FACTORY };
+  const listed: [string, Record<string, readonly string[] | unknown>][] = [
+    ["API_ONLY_METHODS", API_ONLY_METHODS],
+    ["PRIVATE_HELPERS", PRIVATE_HELPERS],
+    ["BUILDS_REPOSITORY", BUILDS_REPOSITORY],
+  ];
+
+  it.each(listed)("%s names only stores and methods that exist", (_list, entries) => {
+    const missing = Object.entries(entries).flatMap(([name, methods]) =>
+      known[name]
+        ? (methods as readonly string[])
+            .filter((method) => !hasMethod(known[name] as Store, method))
+            .map((method) => `${name}.${method}`)
+        : [`${name} (no such store)`],
+    );
+    expect(missing).toEqual([]);
+  });
+
+  it.each([
+    ["ARGUMENTS", ARGUMENTS],
+    ["VARIANTS", VARIANTS],
+    ["REFUSES_AFTER_STATEMENT", REFUSES_AFTER_STATEMENT],
+  ] as const)("%s names only methods that exist", (_list, entries) => {
+    const missing = Object.keys(entries).filter((key) => {
+      const [name = "", method = ""] = key.split(".");
+      return !known[name] || !hasMethod(known[name] as Store, method);
+    });
+    expect(missing).toEqual([]);
+  });
+});
+
 describe.skipIf(!ownerUrl || !workerUrl)("worker stores as worker_app", () => {
   // biome-ignore lint/style/noNonNullAssertion: gated by skipIf
   const db = createDb(workerUrl!);
+  countStatements(db as unknown as WorkerDb);
   const unreached: string[] = [];
 
   it("applies the role grants", async () => {
@@ -389,25 +547,42 @@ describe.skipIf(!ownerUrl || !workerUrl)("worker stores as worker_app", () => {
   const calls = Object.entries(probed).flatMap(([name, Store]) =>
     publicMethods(new Store(db))
       .filter(({ method }) => !API_ONLY_METHODS[name]?.includes(method))
-      .map(({ method }) => [name, method] as const),
+      .filter(({ method }) => !PRIVATE_HELPERS[name]?.includes(method))
+      .filter(({ method }) => !BUILDS_REPOSITORY[name]?.includes(method))
+      .flatMap(({ method }) => [
+        [name, method, ""] as const,
+        ...Object.keys(VARIANTS[`${name}.${method}`] ?? {}).map(
+          (variant) => [name, method, ` (${variant})`] as const,
+        ),
+      ]),
   );
 
-  it.each(calls)("%s.%s is not denied", async (name, method) => {
-    const outcome = await runRolledBack(db, async (tx) => {
-      const store = new (probed[name] as Store)(tx);
-      const { parameters } = publicMethods(store).find((call) => call.method === method) ?? {
-        parameters: [],
-      };
-      const args =
-        ARGUMENTS[`${name}.${method}`]?.(tx) ?? parameters.map((p) => guessArgument(p, tx));
-      const fn = (store as Record<string, (...args: unknown[]) => unknown>)[method];
-      return fn?.apply(store, args);
-    });
-    if (outcome.denied) throw new Error(`${name}.${method}: ${outcome.denied}`);
-    if (!outcome.reachedDatabase) unreached.push(`${name}.${method}`);
+  it.each(calls)("%s.%s%s is not denied", async (name, method, variant) => {
+    const refusal = REFUSES_AFTER_STATEMENT[`${name}.${method}`];
+    const outcome = await runRolledBack(
+      db,
+      async (tx) => {
+        const store = new (probed[name] as Store)(tx);
+        const { parameters } = publicMethods(store).find((call) => call.method === method) ?? {
+          parameters: [],
+        };
+        const written = variant
+          ? VARIANTS[`${name}.${method}`]?.[variant.slice(2, -1)]
+          : ARGUMENTS[`${name}.${method}`];
+        const args = written?.(tx) ?? parameters.map((p) => guessArgument(p, tx));
+        const fn = (store as Record<string, (...args: unknown[]) => unknown>)[method];
+        return fn?.apply(store, args);
+      },
+      refusal,
+    );
+    const label = `${name}.${method}${variant}`;
+    if (outcome.denied) throw new Error(`${label}: ${outcome.denied}`);
+    if (!outcome.reachedDatabase)
+      unreached.push(`${label}: ${outcome.failure ?? `${outcome.statements} statements sent`}`);
   });
 
   it("reports the calls that never reached PostgreSQL", () => {
     console.info(`not proven (${unreached.length} of ${calls.length}):\n${unreached.join("\n")}`);
+    expect(unreached, "every probe must run a statement past the privilege check").toEqual([]);
   });
 });
