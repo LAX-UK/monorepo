@@ -29,7 +29,11 @@ const TRANSIENT_CONNECTION_CODES: ReadonlySet<string> = new Set([
   "UND_ERR_SOCKET",
 ]);
 
-/** True for connection reset/refused style failures (not timeouts), looking through `cause`. */
+/**
+ * True for connection reset/refused style failures (not timeouts), looking through `cause`.
+ * `classifyDeliveryError` is not reused: it also treats timeouts as retryable (a timeout here must
+ * stay a reported error) and does not walk undici's `cause` chain.
+ */
 export function isTransientConnectionError(err: unknown): boolean {
   for (let e: unknown = err, depth = 0; e && depth < 3; depth++) {
     const code = (e as { code?: unknown }).code;
@@ -64,7 +68,7 @@ export async function postInternalCronJob(opts: {
   gatewayRetry?: GatewayRetry;
   /**
    * Throw {@link TransientCronError} (logged as a warning, not an error) for gateway errors
-   * (502/503/504 after any retries) and connection reset/refused. For frequent ticks where the
+   * (502/504 after any retries; 503 stays the `cron_not_configured` skip) and connection reset/refused. For frequent ticks where the
    * next run is the retry.
    */
   transientAsWarning?: boolean;
@@ -110,7 +114,7 @@ export async function postInternalCronJob(opts: {
     await wait(retry.delayMs);
     res = await send();
   }
-  if (opts.transientAsWarning && [502, 503, 504].includes(res.status)) {
+  if (opts.transientAsWarning && GATEWAY_UNAVAILABLE_STATUSES.has(res.status)) {
     opts.log.warn({ url, status: res.status }, `${opts.path} gateway unavailable (transient)`);
     throw new TransientCronError(`${opts.path.replace(/\//g, "_")}_failed:${res.status}`);
   }
