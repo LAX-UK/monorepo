@@ -38,7 +38,12 @@ export function PurchaseRow({
   /** Some row of the list can be picked, so every row keeps the box's column. */
   selectColumn: boolean;
   /** Set while the member can pick this invoice to pay together with others. */
-  selection: { selected: boolean; onSelectedChange: (selected: boolean) => void } | null;
+  selection: {
+    selected: boolean;
+    onSelectedChange: (selected: boolean) => void;
+    /** What the box is for: "Pay <title>" or "Collect <title>". */
+    label: string;
+  } | null;
 }) {
   const step = purchaseRowStep(card);
   const router = useRouter();
@@ -78,7 +83,7 @@ export function PurchaseRow({
               <Checkbox
                 checked={selection.selected}
                 onCheckedChange={(checked) => selection.onSelectedChange(checked === true)}
-                aria-label={`Pay ${card.title}`}
+                aria-label={selection.label}
               />
             </span>
           ) : selectColumn ? (
@@ -96,14 +101,24 @@ export function PurchaseRow({
         card.saleTitle,
         card.wonBy ? `won by ${card.wonBy}` : null,
         card.badge.note,
-        card.collectBy?.short ?? null,
       ]}
       figures={[{ value: card.amount, label: card.amountLabel }]}
       aligned
       status={
-        <StatusBadge tone={card.badge.tone} shape={card.badge.shape}>
-          {card.badge.label}
-        </StatusBadge>
+        <span className="flex flex-wrap items-center justify-end gap-1.5">
+          <StatusBadge tone={card.badge.tone} shape={card.badge.shape}>
+            {card.badge.label}
+          </StatusBadge>
+          {card.collection ? (
+            <StatusBadge
+              tone={card.collection.tone}
+              shape={card.collection.shape}
+              title={card.collection.title}
+            >
+              {card.collection.label}
+            </StatusBadge>
+          ) : null}
+        </span>
       }
       action={
         step ? (
