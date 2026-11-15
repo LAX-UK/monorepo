@@ -1534,6 +1534,24 @@ export type {
   WithinSettingsTransaction,
   GuardSettingsTransaction,
 } from "./collection-settings.repository.js";
+export type {
+  AddStorageWaiverOutcome,
+  ChangeStorageTermsOutcome,
+  ICollectionStorageRepository,
+  ScheduleStorageTermsOutcome,
+  SetLotStorageOutcome,
+  SetStorageChargingOutcome,
+  StorageAuditAction,
+  StorageAuditRecord,
+  StorageChange,
+  StorageChargingSettings,
+  StorageCountMode,
+  StorageExtensionRecord,
+  StorageTermsRecord,
+  StorageTermsValues,
+  StorageVatTreatment,
+  StorageWaiverRecord,
+} from "./collection-storage.repository.js";
 export type { IPartyDealRecordReader } from "./party-deal-record.reader.js";
 
 export type * from "./accounting.js";

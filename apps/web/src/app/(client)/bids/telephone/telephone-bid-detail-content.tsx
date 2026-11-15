@@ -139,13 +139,11 @@ export function TelephoneBidDetailContent({ bookingId }: Props) {
         </div>
         <dl className="mt-6 grid gap-4 sm:grid-cols-2 font-body text-sm">
           <div>
-            <dt className="text-xs uppercase tracking-wider text-on-surface-variant">Phone</dt>
+            <dt className="text-xs text-on-surface-variant">Phone</dt>
             <dd className="mt-1 text-on-surface">{booking.phoneE164}</dd>
           </div>
           <div>
-            <dt className="text-xs uppercase tracking-wider text-on-surface-variant">
-              Authorised max
-            </dt>
+            <dt className="text-xs text-on-surface-variant">Authorised max</dt>
             <dd className="mt-1 text-on-surface">
               {booking.authorizedMax
                 ? formatMoney(booking.authorizedMax, PLATFORM_DEFAULT_CURRENCY)
@@ -154,9 +152,7 @@ export function TelephoneBidDetailContent({ bookingId }: Props) {
           </div>
           {booking.limitIncreaseRequestedAt ? (
             <div className="sm:col-span-2">
-              <dt className="text-xs uppercase tracking-wider text-on-surface-variant">
-                Limit increase pending
-              </dt>
+              <dt className="text-xs text-on-surface-variant">Limit increase pending</dt>
               <dd className="mt-1 text-on-surface">
                 {booking.limitIncreaseAmount
                   ? formatMoney(booking.limitIncreaseAmount, PLATFORM_DEFAULT_CURRENCY)
@@ -166,9 +162,7 @@ export function TelephoneBidDetailContent({ bookingId }: Props) {
           ) : null}
           {booking.buyerNotes ? (
             <div className="sm:col-span-2">
-              <dt className="text-xs uppercase tracking-wider text-on-surface-variant">
-                Your notes
-              </dt>
+              <dt className="text-xs text-on-surface-variant">Your notes</dt>
               <dd className="mt-1 text-on-surface">{booking.buyerNotes}</dd>
             </div>
           ) : null}

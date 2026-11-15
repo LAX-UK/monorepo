@@ -6,6 +6,7 @@ import { humanizeOrgConnectStepError } from "@/lib/connect/org-onboarding-connec
 import type { StripeConnectStatus } from "@/lib/data/http/stripe-connect.server";
 import { WIZARD_COPY } from "@/lib/forms/wizard-copy";
 import { orgOnboardingStepHref } from "@/lib/legal-entity/org-onboarding-resume";
+import type { LegalEntityMemberRole } from "@auction/types";
 import { Button } from "@auction/ui/components/button";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -18,7 +19,7 @@ type Props = {
   connectEnforced: boolean;
   status: StripeConnectStatus | null;
   syncDegraded?: boolean;
-  memberRole: string;
+  memberRole: LegalEntityMemberRole;
   entityStatus: string;
   isLaxManaged: boolean;
 };

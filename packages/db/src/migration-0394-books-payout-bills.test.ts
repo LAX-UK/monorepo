@@ -7,12 +7,12 @@ import { WORKER_SHOP_INVOICE_READ_COLUMNS } from "./migrate-roles.js";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const read = (name: string) => readFileSync(join(__dirname, "../drizzle", name), "utf8");
 const statements = (sql: string) => sql.replace(/^--.*$/gm, "");
-const migration = statements(read("0393_books_payout_bills.sql"));
-const rollback = statements(read("0393_rollback.sql"));
+const migration = statements(read("0394_books_payout_bills.sql"));
+const rollback = statements(read("0394_rollback.sql"));
 const journal = JSON.parse(read("meta/_journal.json")) as {
   entries: { idx: number; tag: string; when: number }[];
 };
-const TAG = "0393_books_payout_bills";
+const TAG = "0394_books_payout_bills";
 
 /** api_app's rule as a migration defines it; comments and the blank lines they leave do not count. */
 const fn = (sql: string) => {
@@ -23,7 +23,7 @@ const fn = (sql: string) => {
     .replace(/\n\s*\n/g, "\n");
 };
 
-describe("migration 0393 Books payout bills", () => {
+describe("migration 0394 Books payout bills", () => {
   it("is journalled right after 0392, in a journal that stays ordered", () => {
     const at = journal.entries.findIndex((e) => e.tag === TAG);
     const entry = journal.entries[at];

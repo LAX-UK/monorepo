@@ -147,3 +147,4 @@ export * from "./consignment-messages.js";
 export * from "./subject-data-export.js";
 export * from "./private-sale-deal.js";
 export * from "./collection-booking.js";
+export * from "./collection-storage.js";

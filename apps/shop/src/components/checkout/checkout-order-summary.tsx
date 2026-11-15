@@ -2,7 +2,9 @@
 
 import { OrderSummaryTotals } from "@/components/basket/basket-summary";
 import { CheckoutTermsNotice } from "@/components/checkout/checkout-terms-notice";
+import { CHECKOUT_BAR_COPY } from "@/content/checkout-copy";
 import { presentBasketLine, presentBasketSummary } from "@/lib/basket/basket-view.vm";
+import { MarketingStickyActionBar } from "@auction/marketing-ui";
 import type { BasketView, ShopFulfilmentOption } from "@auction/shop-contracts";
 import { formatGbpPence } from "@auction/shop-portal/vm";
 import { cn } from "@auction/ui";
@@ -99,6 +101,31 @@ export function CheckoutSummaryDisclosure({
         <OrderSummaryTotals summary={summary} />
       </div>
     </section>
+  );
+}
+
+/**
+ * Phones only: the order total stays in view while the form scrolls, with a way to the full
+ * summary and the pay button. From 1024px the side panel does this job and the bar is not drawn.
+ */
+export function CheckoutStickySummaryBar({
+  basket,
+  fulfilment,
+}: {
+  basket: BasketView;
+  fulfilment: ShopFulfilmentOption;
+}) {
+  const summary = presentBasketSummary(basket.lines, fulfilment);
+  return (
+    <MarketingStickyActionBar ariaLabel={CHECKOUT_BAR_COPY.label} className="shop-checkout-bar">
+      <p className="shop-checkout-bar__total">
+        <span className="shop-checkout-bar__label">{CHECKOUT_BAR_COPY.total}</span>{" "}
+        <span className="shop-checkout-bar__amount">{summary.total}</span>
+      </p>
+      <a href="#checkout-summary-heading" className="shop-inline-link shop-focus-ring">
+        {CHECKOUT_BAR_COPY.review}
+      </a>
+    </MarketingStickyActionBar>
   );
 }
 

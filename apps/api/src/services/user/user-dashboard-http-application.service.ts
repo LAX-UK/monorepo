@@ -7,6 +7,7 @@ import {
 import type { IRecordPeopleReader } from "@auction/persistence/interfaces";
 import type { Lot } from "@auction/types";
 import type { LotReadPort, SaleLookupPort } from "../../container/container-slices.js";
+import { maskLotForPublicView } from "../../lib/lot-public-view.js";
 import { lotsWithCheckoutPricing } from "../../lib/lots-with-checkout-pricing.js";
 import { presentLotsImages } from "../../lib/media-presenters.js";
 import { accountPurchaseLots, personalPurchaseLots } from "../amounts-owed/purchase-lot-queries.js";
@@ -20,7 +21,10 @@ import type {
   IUserDashboardHttpApplicationService,
 } from "../interfaces/user-routes/user-dashboard-http.js";
 import type { UserHttpJson } from "../interfaces/user-routes/user-route-http.js";
-import type { UserDashboardReadService } from "../user-dashboard-read.service.js";
+import type {
+  DashboardViewerAccess,
+  UserDashboardReadService,
+} from "../user-dashboard-read.service.js";
 
 /** A role that does not follow the account's buying records. */
 const NOT_YOURS: UserHttpJson = {
@@ -59,24 +63,34 @@ export class UserDashboardHttpApplicationService implements IUserDashboardHttpAp
     };
   }
 
-  async listBids(input: { userId: string }): Promise<UserHttpJson> {
-    const data = await this.deps.userDashboardReadService.listBidsForUser(input.userId);
+  async listBids(input: { userId: string; viewer?: DashboardViewerAccess }): Promise<UserHttpJson> {
+    const data = await this.deps.userDashboardReadService.listBidsForUser(
+      input.userId,
+      input.viewer,
+    );
     return { status: 200, body: { data } };
   }
 
-  async listPortfolio(input: { userId: string }): Promise<UserHttpJson> {
+  async listPortfolio(input: {
+    userId: string;
+    viewer?: DashboardViewerAccess;
+  }): Promise<UserHttpJson> {
     const userId = input.userId;
     const [lots, { data: payments }] = await Promise.all([
       this.deps.lotService.list(personalPurchaseLots(userId, PURCHASE_LIST_LIMIT)),
       this.deps.paymentBuyerService.listMyPaymentsForBuyerApi(userId, {}),
     ]);
-    return { status: 200, body: { data: await this.toPurchaseRows(lots, payments) } };
+    return {
+      status: 200,
+      body: { data: await this.toPurchaseRows(lots, payments, input.viewer) },
+    };
   }
 
   async listAccountBids(input: {
     userId: string;
     account: BuyingAccountActor;
     saleId?: string;
+    viewer?: DashboardViewerAccess;
   }): Promise<UserHttpJson> {
     const scope = accountBidScope(input.account);
     if (!scope) return NOT_YOURS;
@@ -84,6 +98,7 @@ export class UserDashboardHttpApplicationService implements IUserDashboardHttpAp
       input.account.legalEntityId,
       scope === "own" ? input.userId : null,
       input.saleId,
+      input.viewer,
     );
     const bidderIds = rows.flatMap((r) => (r.bid.bidderId ? [r.bid.bidderId] : []));
     const names = await this.deps.recordPeople.namesFor(bidderIds);
@@ -100,6 +115,7 @@ export class UserDashboardHttpApplicationService implements IUserDashboardHttpAp
   async listAccountPurchases(input: {
     userId: string;
     account: BuyingAccountActor;
+    viewer?: DashboardViewerAccess;
   }): Promise<UserHttpJson> {
     const scope = accountPurchaseScope(input.account);
     if (!scope) return NOT_YOURS;
@@ -110,7 +126,10 @@ export class UserDashboardHttpApplicationService implements IUserDashboardHttpAp
       ),
       this.deps.paymentBuyerService.listEntityPaymentsForBuyerApi(accountId, {}),
     ]);
-    return { status: 200, body: { data: await this.toPurchaseRows(lots, payments) } };
+    return {
+      status: 200,
+      body: { data: await this.toPurchaseRows(lots, payments, input.viewer) },
+    };
   }
 
   async listAmountsOwed(input: {
@@ -125,6 +144,7 @@ export class UserDashboardHttpApplicationService implements IUserDashboardHttpAp
   private async toPurchaseRows(
     lots: Lot[],
     payments: Awaited<ReturnType<IPaymentBuyerService["listMyPaymentsForBuyerApi"]>>["data"],
+    viewer: DashboardViewerAccess | undefined,
   ) {
     const byLot = decisivePaymentByLot(payments);
     const presentedLots = await presentLotsImages(
@@ -139,7 +159,11 @@ export class UserDashboardHttpApplicationService implements IUserDashboardHttpAp
     return pricedLots.map((lotRow) => {
       const p = byLot.get(lotRow.id);
       return {
-        lot: lotRow,
+        // No reserve amount for non-staff, the buyer included; staff read the lot as stored.
+        lot:
+          "reservePrice" in lotRow
+            ? maskLotForPublicView(lotRow, viewer?.role, viewer?.staffRoles)
+            : lotRow,
         payment: p
           ? {
               id: p.id,

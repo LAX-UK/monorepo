@@ -4,6 +4,7 @@ import { ConnectWorkspace } from "@/components/connect/connect-workspace";
 import { trackSellerConnectComplete } from "@/lib/analytics/sell-funnel";
 import type { KycStatusSummaryDto } from "@/lib/data/dto/dashboard-dtos";
 import type { StripeConnectStatus } from "@/lib/data/http/stripe-connect.server";
+import type { LegalEntityMemberRole } from "@auction/types";
 import { useCallback } from "react";
 
 type Props = {
@@ -11,7 +12,7 @@ type Props = {
   connectEnforced: boolean;
   status: StripeConnectStatus | null;
   legalEntityId?: string;
-  memberRole: string;
+  memberRole: LegalEntityMemberRole;
   entityStatus?: string;
   kycApproved?: boolean;
   kycSummary?: KycStatusSummaryDto | null;

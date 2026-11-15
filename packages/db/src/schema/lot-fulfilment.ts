@@ -1,6 +1,7 @@
 import { relations, sql } from "drizzle-orm";
 import { index, jsonb, pgEnum, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
 import { user } from "./auth.js";
+import { collectionStorageTerms } from "./collection-storage.js";
 import { lot } from "./lots.js";
 import { payment } from "./payments.js";
 
@@ -42,6 +43,10 @@ export const lotFulfilment = pgTable(
     addressSnapshot: jsonb("address_snapshot").$type<Record<string, unknown>>(),
     /** When the payment cleared, so "please collect by" counts from it. Null for lots cleared before this was recorded. */
     paymentClearedAt: timestamp("payment_cleared_at", { mode: "date", withTimezone: true }),
+    /** The storage terms the lot was sold under, set when its sale closes. Null: won before the first terms (30 days free, nothing charged). */
+    storageTermsId: uuid("storage_terms_id").references(() => collectionStorageTerms.id, {
+      onDelete: "restrict",
+    }),
     notes: text("notes"),
     updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),
     createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),
@@ -51,6 +56,9 @@ export const lotFulfilment = pgTable(
     index("lot_fulfilment_payment_cleared_at_idx")
       .on(table.paymentClearedAt)
       .where(sql`${table.paymentClearedAt} IS NOT NULL`),
+    index("lot_fulfilment_storage_terms_idx")
+      .on(table.storageTermsId)
+      .where(sql`${table.storageTermsId} IS NOT NULL`),
   ],
 );
 

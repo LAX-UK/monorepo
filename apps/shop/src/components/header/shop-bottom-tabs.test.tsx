@@ -1,6 +1,7 @@
 import { ShopBottomBar } from "@/components/header/shop-bottom-bar.client";
 /** @vitest-environment jsdom */
 import { buildShopBottomTabs, shopBottomBarHidden } from "@/components/header/shop-bottom-tabs";
+import { buildShopPhoneShortcuts } from "@/components/header/shop-header.client";
 import { isTabCurrent } from "@auction/marketing-ui";
 import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -139,5 +140,19 @@ describe("ShopBottomBar", () => {
     render(<ShopBottomBar {...props} pathname="/checkout" />);
     expect(screen.queryByTestId("marketing-bottom-tab-bar")).toBeNull();
     expect(document.documentElement.hasAttribute("data-lax-bottom-bar")).toBe(false);
+  });
+});
+
+describe("buildShopPhoneShortcuts", () => {
+  it("lists Basket with its count, then Orders", () => {
+    expect(buildShopPhoneShortcuts(3)).toEqual([
+      { label: "Basket", href: "/basket", count: 3, countLabel: "items" },
+      { label: "Orders", href: "/account/orders" },
+    ]);
+  });
+
+  it("never reports a negative or fractional count", () => {
+    expect(buildShopPhoneShortcuts(-2)[0]?.count).toBe(0);
+    expect(buildShopPhoneShortcuts(2.9)[0]?.count).toBe(2);
   });
 });

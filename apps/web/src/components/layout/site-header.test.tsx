@@ -110,12 +110,16 @@ beforeEach(() => {
 });
 
 describe("SiteHeader", () => {
-  it("uses the Bid lockup: mark and .BID tag on phones (28px), the full lockup from 1024px (40px)", () => {
+  it("uses the Bid lockup: bare mark below 400px, mark and .BID tag from 400px (28px), the full lockup from 1024px (40px)", () => {
     render(<SiteHeader familyLinks={FAMILY} />);
-    const lockups = screen.getAllByRole("img", { hidden: true, name: "LAX Bid" });
-    expect(lockups).toHaveLength(2);
-    const [phone, desktop] = lockups;
+    const lockups = screen.getAllByRole("img", { hidden: true, name: /LAX Bid|^LAX$/ });
+    expect(lockups).toHaveLength(3);
+    const [mark, phone, desktop] = lockups;
+    expect(mark?.getAttribute("class")).toContain("h-7");
+    expect(mark?.getAttribute("class")).toContain("min-[400px]:hidden");
     expect(phone?.getAttribute("class")).toContain("h-7");
+    expect(phone?.getAttribute("class")).toContain("hidden");
+    expect(phone?.getAttribute("class")).toContain("min-[400px]:block");
     expect(phone?.getAttribute("class")).toContain("lg:hidden");
     expect(desktop?.getAttribute("class")).toContain("h-10");
     expect(desktop?.getAttribute("class")).toContain("lg:block");

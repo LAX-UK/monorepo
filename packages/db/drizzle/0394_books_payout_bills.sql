@@ -52,7 +52,7 @@ BEGIN
   IF current_user <> 'api_app' THEN
     RETURN NEW;
   END IF;
-  -- Kept parked until the accountant's answer is set (0393): a seller's or artist's payout bill and
+  -- Kept parked until the accountant's answer is set (0394): a seller's or artist's payout bill and
   -- its payment wait for how a payout is booked, a payout the bill cannot itemise waits for a
   -- person, and a payout paid outside Stripe names no account it was paid from. Releasing any of
   -- them is the change that ships the answer, so api_app may not move them at all.

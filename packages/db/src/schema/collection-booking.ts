@@ -42,8 +42,10 @@ export const collectionPlace = pgTable(
     maxActiveVisits: smallint("max_active_visits").notNull().default(5),
     /** Days a bought work is stored free; null until the storage terms are set. */
     freeStorageDays: smallint("free_storage_days"),
-    /** What storage costs per lot per week once the free period is over, in pence; recorded only, never charged by this build. */
-    storageChargePence: integer("storage_charge_pence"),
+    /** Whether storage invoices are raised. Off by default; cannot be on until a VAT treatment is chosen. */
+    raiseStorageInvoices: boolean("raise_storage_invoices").notNull().default(false),
+    /** Null until Finance chooses one. */
+    storageVatTreatment: text("storage_vat_treatment"),
     bookingEmail: text("booking_email"),
     updatedByUserId: text("updated_by_user_id").references(() => user.id, {
       onDelete: "set null",
@@ -66,8 +68,12 @@ export const collectionPlace = pgTable(
       sql`${table.freeStorageDays} IS NULL OR ${table.freeStorageDays} BETWEEN 0 AND 365`,
     ),
     check(
-      "collection_place_storage_charge_check",
-      sql`${table.storageChargePence} IS NULL OR ${table.storageChargePence} BETWEEN 0 AND 1000000`,
+      "collection_place_storage_vat_check",
+      sql`${table.storageVatTreatment} IS NULL OR ${table.storageVatTreatment} IN ('standard_rated', 'zero_rated', 'exempt', 'outside_scope')`,
+    ),
+    check(
+      "collection_place_charging_needs_vat_check",
+      sql`NOT ${table.raiseStorageInvoices} OR ${table.storageVatTreatment} IS NOT NULL`,
     ),
   ],
 );

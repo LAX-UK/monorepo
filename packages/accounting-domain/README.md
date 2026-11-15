@@ -202,7 +202,7 @@ implements it and keeps customers and vendors apart. A payee's contact is its ow
 **Payout bookings.** `PayoutBooking` (`owedTreatment`, `commission: "netted"`, `basis: "principal"`)
 is the accountant's answer, one constant per product, null until given. While null the bill and
 its payment are parked, with `outside_scope` lines only as a placeholder (never sent). Releasing a
-parked payout document by hand is refused (and api_app may not move one, 0393): the change that
+parked payout document by hand is refused (and api_app may not move one, 0394): the change that
 ships the answer rebuilds them.
 
 ## Retries

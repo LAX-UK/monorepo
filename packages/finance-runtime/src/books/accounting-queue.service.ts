@@ -284,7 +284,7 @@ export class AccountingQueueService implements IAccountingQueueService {
     }
     // A payout's bill and payment are not rebuilt here: releasing one is the change that ships the
     // accountant's answer (or names the account it was paid from), so none is released by hand
-    // (the database refuses it too, 0393).
+    // (the database refuses it too, 0394).
     if (PAYOUT_PARK_REASONS.has(reason)) {
       return unresolved(ACCOUNTING_RELEASE_UNRESOLVED_TEXT[reason]);
     }

@@ -1,4 +1,5 @@
 import type { ArtistAlertCriteria } from "@auction/domain";
+import type { StaffRoles } from "@auction/types";
 import type {
   WatchlistQuery,
   artistWatchlistBodySchema,
@@ -16,7 +17,12 @@ type SavedSearchBody = z.infer<typeof savedSearchBodySchema>;
 export interface IUserWatchlistHttpApplicationService {
   listWatchlistIds(input: { userId: string }): Promise<UserHttpJson>;
 
-  listWatchlist(input: { userId: string; query: WatchlistQuery }): Promise<UserHttpJson>;
+  /** `viewer` decides whether lots carry staff-only figures (reserve); absent means non-staff. */
+  listWatchlist(input: {
+    userId: string;
+    query: WatchlistQuery;
+    viewer?: { role?: string | undefined; staffRoles?: StaffRoles | undefined };
+  }): Promise<UserHttpJson>;
 
   addWatchlistLot(input: {
     userId: string;
