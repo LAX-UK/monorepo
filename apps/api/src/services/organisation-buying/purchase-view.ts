@@ -1,7 +1,12 @@
 import {
+  DEFAULT_COLLECT_BY_POLICY,
   type EntityActor,
+  type PurchaseCollectBy,
+  type PurchaseDeliveryStage,
   deliveryQuoteActionsFor,
   entityActorCan,
+  londonDateKey,
+  purchaseCollectBy,
   purchaseDeliveryStage,
   purchaseInvoiceState,
   purchasePaymentRole,
@@ -148,6 +153,34 @@ function paymentRoleOf(row: AccountPurchaseFactsRow, actor: OrganisationMemberAc
   });
 }
 
+/** Delivery stages where a paid work still waits with us to be collected. */
+const WAITING_STAGES: ReadonlySet<PurchaseDeliveryStage> = new Set([
+  "choose",
+  "quote_requested",
+  "quote_ready",
+  "preparing",
+  "ready_to_collect",
+]);
+
+/**
+ * The "please collect by" notice: the day the reminder email names, from the same domain rule and
+ * the place's free storage period. None once the work is booked, collected or on its way, nor at a
+ * place that takes no online booking (the reminder is not sent there either).
+ */
+function collectByOf(
+  row: AccountPurchaseFactsRow,
+  stage: PurchaseDeliveryStage,
+  now: Date,
+): PurchaseCollectBy | null {
+  const storage = row.storage;
+  if (!storage || !storage.bookingOpen || storage.booked) return null;
+  if (!WAITING_STAGES.has(stage)) return null;
+  return purchaseCollectBy(storage.clearedAt, londonDateKey(now), {
+    ...DEFAULT_COLLECT_BY_POLICY,
+    freeStorageDays: storage.freeStorageDays ?? DEFAULT_COLLECT_BY_POLICY.freeStorageDays,
+  });
+}
+
 /** A purchase row: the invoice and delivery stage worked out by the domain rules. */
 export function purchaseView(
   row: AccountPurchaseFactsRow,
@@ -157,6 +190,11 @@ export function purchaseView(
   stillToSendPence: number | null = null,
 ): AccountPurchaseView {
   const invoice = invoiceOf(row, now, stillToSendPence);
+  const stage = purchaseDeliveryStage({
+    invoice: invoice.status,
+    fulfilment: row.fulfilment,
+    quote: row.quote?.status ?? null,
+  });
   return {
     lotId: row.lotId,
     lotTitle: row.lotTitle,
@@ -168,17 +206,14 @@ export function purchaseView(
     paymentRole: paymentRoleOf(row, actor),
     invoice,
     delivery: {
-      stage: purchaseDeliveryStage({
-        invoice: invoice.status,
-        fulfilment: row.fulfilment,
-        quote: row.quote?.status ?? null,
-      }),
+      stage,
       method: row.fulfilment?.method ?? null,
       carrier: row.fulfilment?.carrier ?? null,
       trackingNumber: row.fulfilment?.trackingNumber ?? null,
       collectedBy: row.fulfilment?.collectedBy ?? null,
       collectedAt: row.fulfilment?.collectedAt ?? null,
       quote: row.quote ? quoteView(row.quote, actor) : null,
+      collectBy: collectByOf(row, stage, now),
     },
   };
 }

@@ -3,6 +3,8 @@ import {
   bidIdentityDirectory,
   bidInvoice,
   buyerDefault,
+  collectionBookingLot,
+  collectionPlace,
   deliveryQuote,
   legalEntity,
   lot,
@@ -192,6 +194,7 @@ export class DrizzleAccountPurchaseFactsReader implements IAccountPurchaseFactsR
         lotNumber: lot.lotNumber,
         saleId: lot.saleId,
         saleTitle: sale.title,
+        venueId: sale.venueId,
         hammerPrice: lot.currentPrice,
         buyerAccountKind: legalEntity.kind,
         winnerId: lot.winnerId,
@@ -217,7 +220,8 @@ export class DrizzleAccountPurchaseFactsReader implements IAccountPurchaseFactsR
     if (lots.length === 0) return [];
     const lotIds = lots.map((l) => l.lotId);
 
-    const [payments, fulfilments, quotes] = await Promise.all([
+    const venueIds = [...new Set(lots.flatMap((l) => (l.venueId ? [l.venueId] : [])))];
+    const [payments, fulfilments, quotes, places, bookings] = await Promise.all([
       this.db
         .select({
           id: payment.id,
@@ -258,7 +262,25 @@ export class DrizzleAccountPurchaseFactsReader implements IAccountPurchaseFactsR
           sql`CASE WHEN ${deliveryQuote.status} = 'withdrawn' THEN 1 ELSE 0 END`,
           desc(deliveryQuote.requestedAt),
         ),
+      venueIds.length
+        ? this.db
+            .select({
+              venueId: collectionPlace.venueId,
+              onlineBookingEnabled: collectionPlace.onlineBookingEnabled,
+              freeStorageDays: collectionPlace.freeStorageDays,
+            })
+            .from(collectionPlace)
+            .where(inArray(collectionPlace.venueId, venueIds))
+        : Promise.resolve([]),
+      this.db
+        .select({ lotId: collectionBookingLot.lotId })
+        .from(collectionBookingLot)
+        .where(
+          and(inArray(collectionBookingLot.lotId, lotIds), eq(collectionBookingLot.active, true)),
+        ),
     ]);
+    const placeByVenue = new Map(places.map((p) => [p.venueId, p]));
+    const bookedLots = new Set(bookings.map((b) => b.lotId));
 
     const paymentByLot = firstByLot(payments);
     const fulfilmentByLot = new Map(fulfilments.map((f) => [f.lotId, f]));
@@ -298,10 +320,30 @@ export class DrizzleAccountPurchaseFactsReader implements IAccountPurchaseFactsR
               collectedAt: f.collectedAt,
             }
           : null,
+        storage: storageOf(
+          f?.paymentClearedAt ?? null,
+          placeByVenue.get(l.venueId ?? ""),
+          bookedLots.has(l.lotId),
+        ),
         quote: q ? mapDeliveryQuoteRow(q) : null,
       };
     });
   }
+}
+
+/** What the collect-by notice reads, or `null` when payment has not cleared or there is no place. */
+function storageOf(
+  clearedAt: Date | null,
+  place: { onlineBookingEnabled: boolean; freeStorageDays: number | null } | undefined,
+  booked: boolean,
+): NonNullable<AccountPurchaseFactsRow["storage"]> | null {
+  if (!clearedAt || !place) return null;
+  return {
+    clearedAt,
+    freeStorageDays: place.freeStorageDays,
+    bookingOpen: place.onlineBookingEnabled,
+    booked,
+  };
 }
 
 /** The first row per lot, in the order the query sorted them. */

@@ -78,3 +78,30 @@ export function collectByClearedRange(
     ),
   };
 }
+
+/** Where a purchase waiting for collection stands against its "please collect by" day. */
+export type PurchaseCollectByState = "upcoming" | "soon" | "overdue";
+
+/** The "please collect by" notice a purchase carries while it waits to be collected. */
+export type PurchaseCollectBy = {
+  /** The "please collect by" day, a London day: the one the reminder email names. */
+  date: DateKey;
+  /** `soon` from the lead before the day through the day itself; `overdue` once it has passed. */
+  state: PurchaseCollectByState;
+};
+
+/**
+ * The notice a purchase shows on `today` (a London day), from the same day the reminder email
+ * names. The caller decides whether the purchase is waiting at a place that takes bookings and
+ * is not yet booked or collected; this only reads the day.
+ */
+export function purchaseCollectBy(
+  clearedAt: Date,
+  today: DateKey,
+  policy: CollectByPolicy = DEFAULT_COLLECT_BY_POLICY,
+): PurchaseCollectBy {
+  const { date, reminderDates } = collectBy(clearedAt, policy);
+  if (today > date) return { date, state: "overdue" };
+  const early = policy.freeStorageDays > policy.reminderLeadDays;
+  return { date, state: today >= (early ? reminderDates[0] : date) ? "soon" : "upcoming" };
+}

@@ -1,4 +1,5 @@
 import { WorkspacePanel } from "@/components/dashboard/primitives/workspace-panel";
+import { COLLECT_COPY } from "@/lib/collect/collect-copy";
 import { dashboardCheckoutLotUrl } from "@/lib/dashboard/dashboard-copy";
 import type { DeliveryPanelVm } from "@/lib/purchases/purchase-delivery.vm";
 import type { PurchaseHandoverVm } from "@/lib/purchases/purchase-handover";
@@ -139,6 +140,19 @@ export function PurchaseDetail({
           }
         >
           {handover.detail}
+        </Notice>
+      ) : null}
+      {card.collectBy ? (
+        <Notice
+          tone={card.collectBy.state === "upcoming" ? "info" : "warning"}
+          title={COLLECT_COPY.collectBy.title(card.collectBy.day)}
+          actions={
+            <ButtonLink href={card.collectBy.bookHref} Link={Link} variant="secondary">
+              {COLLECT_COPY.entry.button}
+            </ButtonLink>
+          }
+        >
+          {COLLECT_COPY.collectBy[card.collectBy.state]}
         </Notice>
       ) : null}
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">

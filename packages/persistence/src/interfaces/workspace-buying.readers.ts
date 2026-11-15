@@ -98,6 +98,17 @@ export type AccountPurchaseFactsRow = {
         collectedAt: Date | null;
       })
     | null;
+  /**
+   * What the "please collect by" notice needs: when payment cleared, the place's free storage
+   * days, and whether the place takes online bookings and the lot is in a live booking. `null`
+   * when the lot has no fulfilment record or no collection place.
+   */
+  storage?: {
+    clearedAt: Date;
+    freeStorageDays: number | null;
+    bookingOpen: boolean;
+    booked: boolean;
+  } | null;
   /** The live quote, or the latest withdrawn one; `null` when none was asked for. */
   quote: DeliveryQuoteRow | null;
 };

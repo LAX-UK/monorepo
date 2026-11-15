@@ -6,13 +6,14 @@ import { CLIENT_ROUTES, organisationHref } from "@/lib/navigation/client-routes"
 import { payHref } from "@/lib/pay/pay-links";
 import { premiumLineParts } from "@/lib/pay/premium-line";
 import { lotPath } from "@/lib/seo/url";
-import { formatDate, formatDayMonthOnly } from "@auction/datetime";
+import { formatDate, formatDayMonthOnly, formatWeekdayDayMonth } from "@auction/datetime";
 import { LONDON_TIME_ZONE, formatWhen } from "@auction/datetime";
 import {
   type AmountOwedBlocker,
   type AmountOwedEntry,
   type AmountsOwedSummary,
   PURCHASE_LIST_LIMIT,
+  type PurchaseCollectByState,
   type PurchasePaymentRole,
   addMoneyStrings,
   invoiceDueAt,
@@ -91,6 +92,11 @@ export type PurchaseCardVm = {
   steps: PurchaseStepVm[] | null;
   /** The money lines; `detail` is how a line was worked out (the premium's rate or slices). */
   breakdown: { label: string; value: string; detail?: string }[];
+  /**
+   * "Please collect by", while the work waits to be collected and is not booked: the day is the
+   * one the reminder email names, read from the account's facts, never worked out here.
+   */
+  collectBy: { day: string; state: PurchaseCollectByState; bookHref: string } | null;
   primaryAction: { label: string; href: string } | null;
   invoiceHref: string | null;
   problemHref: string | null;
@@ -378,6 +384,21 @@ function cancelledDelivery(owed: AmountOwedEntry | null): PurchaseFacts["fulfilm
     : null;
 }
 
+/** The notice's day, "Thu 12 Nov", from the London day the API names. */
+function collectByOf(
+  row: PortfolioRow,
+  facts: AccountPurchaseFacts | null,
+): PurchaseCardVm["collectBy"] {
+  const collectBy = facts?.delivery.collectBy;
+  if (!collectBy) return null;
+  const noon = new Date(`${collectBy.date}T12:00:00Z`);
+  return {
+    day: formatWeekdayDayMonth(noon, LONDON_TIME_ZONE),
+    state: collectBy.state,
+    bookHref: `${CLIENT_ROUTES.collect}?lots=${encodeURIComponent(row.lot.id)}`,
+  };
+}
+
 /** One purchase as its row and its page read it. */
 export function purchaseCard(row: PortfolioRow, sources: PurchaseSources): PurchaseCardVm {
   const { lot } = row;
@@ -423,6 +444,7 @@ export function purchaseCard(row: PortfolioRow, sources: PurchaseSources): Purch
     wonBy: sources.showWonBy ? (facts?.wonBy?.name ?? null) : null,
     state,
     badge: purchaseBadge(state, facts, informed),
+    collectBy: collectByOf(row, facts),
     statusLabel:
       informed && (state === "payment-due" || state === "in-review")
         ? "Awaiting payment"

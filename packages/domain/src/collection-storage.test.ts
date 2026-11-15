@@ -5,6 +5,7 @@ import {
   collectBy,
   collectByClearedRange,
   collectByReminderFor,
+  purchaseCollectBy,
 } from "./collection-storage.js";
 
 describe("the please-collect-by day", () => {
@@ -98,5 +99,26 @@ describe("the clearance days a reminder today can be for", () => {
       const due = collectByReminderFor(new Date(`${clearedOn}T12:00:00Z`), today) !== null;
       expect(due, clearedOn).toBe(clearedOn >= from && clearedOn <= to);
     }
+  });
+});
+
+describe("the collect-by notice's state", () => {
+  // Cleared Mon 9 Nov: the deadline is Wed 9 Dec, the lead starts Wed 2 Dec.
+  const cleared = new Date("2026-11-09T10:00:00Z");
+
+  it("is upcoming until the lead, soon through the day itself, overdue after", () => {
+    expect(purchaseCollectBy(cleared, "2026-12-01")).toEqual({
+      date: "2026-12-09",
+      state: "upcoming",
+    });
+    expect(purchaseCollectBy(cleared, "2026-12-02").state).toBe("soon");
+    expect(purchaseCollectBy(cleared, "2026-12-09").state).toBe("soon");
+    expect(purchaseCollectBy(cleared, "2026-12-10").state).toBe("overdue");
+  });
+
+  it("is soon from the first day when the free period is no longer than the lead", () => {
+    const policy: CollectByPolicy = { freeStorageDays: 7, reminderLeadDays: 7 };
+    expect(purchaseCollectBy(cleared, "2026-11-10", policy).state).toBe("upcoming");
+    expect(purchaseCollectBy(cleared, "2026-11-16", policy).state).toBe("soon");
   });
 });

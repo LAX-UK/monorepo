@@ -2,6 +2,7 @@ import type {
   CollectionBookingOffer,
   DeliveryQuoteAction,
   DeliveryQuoteStatus,
+  PurchaseCollectBy,
   PurchaseDeliveryStage,
   PurchaseInvoiceStatus,
   PurchasePaymentRole,
@@ -63,6 +64,8 @@ export type AccountPurchaseFacts = {
     collectedBy: string | null;
     collectedAt: Date | null;
     quote: PurchaseQuoteView | null;
+    /** "Please collect by" while the work waits to be collected; the API works it out. */
+    collectBy: PurchaseCollectBy | null;
   };
 };
 

@@ -5,6 +5,7 @@ import type {
   DeliveryQuoteAction,
   PaySeveralSkipReason,
   PayTogetherDecision,
+  PurchaseCollectBy,
   PurchaseDeliveryStage,
   PurchaseInvoiceStatus,
   PurchasePaymentRole,
@@ -108,6 +109,8 @@ export type AccountPurchaseView = {
     collectedBy: string | null;
     collectedAt: Date | null;
     quote: PurchaseQuoteView | null;
+    /** "Please collect by", while the work waits to be collected and is not booked; else `null`. */
+    collectBy: PurchaseCollectBy | null;
   };
 };
 

@@ -146,6 +146,14 @@ export const COLLECT_COPY = {
     upcoming: "Upcoming",
     past: "Past",
   },
+  collectBy: {
+    title: (day: string) => `Please collect by ${day}`,
+    short: (day: string) => `Collect by ${day}`,
+    upcoming: "Your work is paid for and waiting at the gallery. Book a time to collect it.",
+    soon: "Your work is paid for and waiting at the gallery. Book a time to collect it soon.",
+    overdue:
+      "That day has passed. Book a time to collect your work, or email us if you need longer.",
+  },
   badge: {
     book: "Book collection",
     notCollected: "Not collected",
