@@ -49,7 +49,7 @@ export type PasskeyRequestPorts = {
 };
 
 /** The permission a passkey creation is running on, to give back if the creation fails. */
-export type Enrolment = { userId: string; sessionId: string; remainingMs: number };
+export type Enrolment = { userId: string; sessionId: string; expiresAtMs: number };
 
 export type PasskeyBefore =
   | { kind: "answer"; response: Response }
@@ -143,7 +143,7 @@ export function createPasskeyRequestPolicy(deps: {
       return {
         kind: "forward",
         request,
-        enrolment: { userId, sessionId, remainingMs: spent.remainingMs },
+        enrolment: { userId, sessionId, expiresAtMs: spent.expiresAtMs },
       };
     } catch (error) {
       deps.log.error({ ...describeError(error), path }, "auth_passkey_gate_failed");
@@ -210,8 +210,9 @@ export function createPasskeyRequestPolicy(deps: {
       }
       if (step !== "register_verify" || !enrolment || !deps.passkeys) return response;
       if (!response.ok) {
-        // Nothing was made: the permission goes back with the time it had left (never more), so
-        // the person can try again without a failed attempt stretching the original five minutes.
+        // Nothing was made: the permission goes back until the moment it would have ended (never
+        // later), so the person can try again without a failed attempt stretching the original
+        // five minutes.
         await settleSecurityEffect(
           deps.log,
           { path: input.path, effect: "passkey_permission_returned", userId: enrolment.userId },
@@ -219,7 +220,7 @@ export function createPasskeyRequestPolicy(deps: {
             deps.passkeys?.grants.giveBack(
               enrolment.sessionId,
               enrolment.userId,
-              enrolment.remainingMs,
+              enrolment.expiresAtMs,
             ) ?? Promise.resolve(),
         );
         return response;

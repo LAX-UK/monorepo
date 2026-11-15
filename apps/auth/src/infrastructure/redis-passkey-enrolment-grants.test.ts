@@ -1,11 +1,16 @@
 import { describe, expect, it } from "vitest";
-import { passkeyCreatedKey } from "../services/passkey-enrolment-grant.js";
-import { RedisPasskeyEnrolmentGrants } from "./redis-passkey-enrolment-grants.js";
+import {
+  PASSKEY_ENROLMENT_GRANT_TTL_MS,
+  passkeyCreatedKey,
+} from "../services/passkey-enrolment-grant.js";
+import { RedisPasskeyEnrolmentGrants, SPEND_SCRIPT } from "./redis-passkey-enrolment-grants.js";
+
+const START = 1_000_000;
 
 function fakeRedis() {
   const store = new Map<string, string>();
   const expiresAt = new Map<string, number>();
-  let now = 0;
+  let now = START;
   const live = (key: string) => {
     const at = expiresAt.get(key);
     if (at !== undefined && at <= now) {
@@ -27,17 +32,28 @@ function fakeRedis() {
       return "OK";
     },
     get: async (key: string) => live(key),
-    // Stands in for the spend script: value and remaining ms, then delete.
-    eval: async (_script: string, _n: number, key: string) => {
-      const value = live(key);
-      if (value === null) return false;
-      const pttl = (expiresAt.get(key) ?? now) - now;
-      store.delete(key);
-      expiresAt.delete(key);
-      return [value, pttl];
+    // Stands in for the two scripts (the real ones are covered against a real Redis).
+    eval: async (script: string, _n: number, key: string, ...args: string[]) => {
+      if (script === SPEND_SCRIPT) {
+        const value = live(key);
+        if (value === null) return false;
+        const end = expiresAt.get(key);
+        store.delete(key);
+        expiresAt.delete(key);
+        return [value, end ?? 0];
+      }
+      const [subject, deadline, max, floor] = args.map((arg, i) => (i === 0 ? arg : Number(arg)));
+      const remaining = Math.min((deadline as number) - now, max as number);
+      if (remaining < (floor as number) || live(key) !== null) return 0;
+      store.set(key, subject as string);
+      expiresAt.set(key, now + Math.floor(remaining));
+      return 1;
     },
   };
 }
+
+const issuedExpiry = (redis: ReturnType<typeof fakeRedis>) =>
+  redis.expiresAt.get([...redis.store.keys()][0] as string) as number;
 
 describe("the permission to make a passkey", () => {
   it("is single use", async () => {
@@ -48,42 +64,53 @@ describe("the permission to make a passkey", () => {
     expect(await grants.spend("sid-1", "u1")).toBeNull();
   });
 
-  it("reports what it had left when spent", async () => {
+  it("reports when it would have ended", async () => {
     const redis = fakeRedis();
     const grants = new RedisPasskeyEnrolmentGrants(redis);
     await grants.grant("sid-1", "u1");
     redis.advance(100_000);
-    expect(await grants.spend("sid-1", "u1")).toEqual({ remainingMs: 200_000 });
+    expect(await grants.spend("sid-1", "u1")).toEqual({
+      expiresAtMs: START + PASSKEY_ENROLMENT_GRANT_TTL_MS,
+    });
     expect(await grants.spend("sid-1", "u1")).toBeNull();
   });
 
-  it("is given back with the time it had left, never a fresh five minutes", async () => {
+  it("is given back until its original end, even after a slow attempt", async () => {
     const redis = fakeRedis();
     const grants = new RedisPasskeyEnrolmentGrants(redis);
     await grants.grant("sid-1", "u1");
-    const issuedExpiry = redis.expiresAt.get([...redis.store.keys()][0] as string) as number;
+    const issued = issuedExpiry(redis);
     redis.advance(100_000);
     const spent = await grants.spend("sid-1", "u1");
-    redis.advance(10_000);
-    await grants.giveBack("sid-1", "u1", spent?.remainingMs ?? 0);
-    const key = [...redis.store.keys()][0] as string;
-    // Never beyond the original expiry (the attempt's own duration is not credited back).
-    expect(redis.expiresAt.get(key) as number).toBeLessThanOrEqual(issuedExpiry + 10_000);
-    expect(redis.expiresAt.get(key) as number).toBeLessThanOrEqual(110_000 + 200_000);
+    redis.advance(10_000); // the attempt takes a while
+    await grants.giveBack("sid-1", "u1", spent?.expiresAtMs ?? 0);
+    expect(issuedExpiry(redis)).toBeLessThanOrEqual(issued);
+    expect(issuedExpiry(redis)).toBe(issued);
     expect(await grants.holds("sid-1", "u1")).toBe(true);
+  });
+
+  it("is not given back when the attempt used up what was left", async () => {
+    const redis = fakeRedis();
+    const grants = new RedisPasskeyEnrolmentGrants(redis);
+    await grants.grant("sid-1", "u1");
+    redis.advance(299_000);
+    const spent = await grants.spend("sid-1", "u1");
+    redis.advance(5_000);
+    await grants.giveBack("sid-1", "u1", spent?.expiresAtMs ?? 0);
+    expect(redis.store.size).toBe(0);
   });
 
   it("caps what is given back at the original five minutes", async () => {
     const redis = fakeRedis();
     const grants = new RedisPasskeyEnrolmentGrants(redis);
-    await grants.giveBack("sid-1", "u1", 10 * 60 * 1000);
-    expect(redis.expiresAt.get([...redis.store.keys()][0] as string)).toBe(300_000);
+    await grants.giveBack("sid-1", "u1", START + 10 * 60 * 1000);
+    expect(issuedExpiry(redis)).toBe(START + PASSKEY_ENROLMENT_GRANT_TTL_MS);
   });
 
-  it("is not given back when almost nothing is left", async () => {
+  it("is not given back when almost nothing is left or the end is unknown", async () => {
     const redis = fakeRedis();
     const grants = new RedisPasskeyEnrolmentGrants(redis);
-    await grants.giveBack("sid-1", "u1", 500);
+    await grants.giveBack("sid-1", "u1", START + 500);
     await grants.giveBack("sid-1", "u1", 0);
     await grants.giveBack("sid-1", "u1", Number.NaN);
     expect(redis.store.size).toBe(0);
@@ -94,21 +121,22 @@ describe("the permission to make a passkey", () => {
     const grants = new RedisPasskeyEnrolmentGrants(redis);
     await grants.grant("sid-1", "u1");
     redis.advance(250_000);
-    await grants.giveBack("sid-1", "u1", 290_000);
-    expect(redis.expiresAt.get([...redis.store.keys()][0] as string)).toBe(300_000);
+    await grants.giveBack("sid-1", "u1", START + 290_000);
+    expect(issuedExpiry(redis)).toBe(START + PASSKEY_ENROLMENT_GRANT_TTL_MS);
   });
 
-  it("does not outlive five minutes from issue across repeated failed attempts", async () => {
+  it("does not outlive five minutes from issue across repeated slow failed attempts", async () => {
     const redis = fakeRedis();
     const grants = new RedisPasskeyEnrolmentGrants(redis);
     await grants.grant("sid-1", "u1");
     for (let i = 0; i < 5; i += 1) {
-      redis.advance(30_000);
+      redis.advance(20_000);
       const spent = await grants.spend("sid-1", "u1");
       expect(spent).not.toBeNull();
-      await grants.giveBack("sid-1", "u1", spent?.remainingMs ?? 0);
+      redis.advance(10_000); // the attempt itself
+      await grants.giveBack("sid-1", "u1", spent?.expiresAtMs ?? 0);
+      expect(issuedExpiry(redis)).toBeLessThanOrEqual(START + PASSKEY_ENROLMENT_GRANT_TTL_MS);
     }
-    expect(redis.expiresAt.get([...redis.store.keys()][0] as string)).toBe(300_000);
     redis.advance(150_000);
     expect(await grants.holds("sid-1", "u1")).toBe(false);
   });

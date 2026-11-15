@@ -3,8 +3,14 @@ import { createHash } from "node:crypto";
 /** How long a person has, once their ticket is spent, to make the passkey. */
 export const PASSKEY_ENROLMENT_GRANT_TTL_SECONDS = 300;
 
-/** What a spent permission had left. */
-export type SpentGrant = { remainingMs: number };
+/** The same lifetime in milliseconds, for places that count in them. */
+export const PASSKEY_ENROLMENT_GRANT_TTL_MS = PASSKEY_ENROLMENT_GRANT_TTL_SECONDS * 1000;
+
+/**
+ * What a spent permission had left, as the moment it ends (epoch milliseconds on the store's own
+ * clock), so the time a failed attempt takes is counted against it. 0 when it had no end to go by.
+ */
+export type SpentGrant = { expiresAtMs: number };
 
 /** Below this much time left, a failed attempt gets no permission back. */
 export const PASSKEY_ENROLMENT_GIVE_BACK_FLOOR_MS = 1000;
@@ -23,15 +29,16 @@ export interface PasskeyEnrolmentGrants {
   holds(sessionId: string, subjectId: string): Promise<boolean>;
   /**
    * Uses the permission up once a passkey has been made; null when there was none. Otherwise
-   * says how long the permission had left, so a failed attempt can give back no more than that.
+   * says when the permission would have ended, so a failed attempt can give back no more than that.
    */
   spend(sessionId: string, subjectId: string): Promise<SpentGrant | null>;
   /**
-   * Gives a spent permission back after a failed attempt, for the time it had left and never
-   * longer: giving back cannot extend the five minutes from when it was first given. Does nothing
-   * when too little is left, or when the session already holds a permission again.
+   * Gives a spent permission back after a failed attempt, until the moment it would have ended and
+   * never longer, however long the attempt took: giving back cannot extend the five minutes from
+   * when it was first given. Does nothing when too little is left, or when the session already
+   * holds a permission again.
    */
-  giveBack(sessionId: string, subjectId: string, remainingMs: number): Promise<void>;
+  giveBack(sessionId: string, subjectId: string, expiresAtMs: number): Promise<void>;
   /** Remembers the passkey just made in this enrolment, the only one the naming step may rename. */
   noteCreated(sessionId: string, subjectId: string, passkeyId: string): Promise<void>;
   /** The passkey made in this enrolment, or null when none was (or it belongs to another person). */

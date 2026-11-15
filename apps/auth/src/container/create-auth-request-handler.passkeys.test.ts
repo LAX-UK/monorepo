@@ -41,7 +41,9 @@ function setup(options: Options = {}) {
   };
   const grants = {
     holds: vi.fn(async () => options.granted ?? true),
-    spend: vi.fn(async () => ((options.granted ?? true) ? { remainingMs: 120_000 } : null)),
+    spend: vi.fn(async () =>
+      (options.granted ?? true) ? { expiresAtMs: 1_700_000_120_000 } : null,
+    ),
     noteCreated: vi.fn(async () => undefined),
     giveBack: vi.fn(async () => undefined),
   };
@@ -177,7 +179,9 @@ describe("the permission is for one passkey", () => {
   it("is used up before the plugin runs, so two answers from one step-up cannot both pass", async () => {
     const { handler, auth, grants } = setup({ response: created });
     // The first answer takes it; the second finds it gone.
-    grants.spend.mockResolvedValueOnce({ remainingMs: 120_000 }).mockResolvedValueOnce(null);
+    grants.spend
+      .mockResolvedValueOnce({ expiresAtMs: 1_700_000_120_000 })
+      .mockResolvedValueOnce(null);
     expect((await handler(verifyRegistration({ response: {} }))).status).toBe(200);
     expect((await handler(verifyRegistration({ response: {} }))).status).toBe(403);
     expect(auth.handler).toHaveBeenCalledOnce();
@@ -190,7 +194,7 @@ describe("the permission is for one passkey", () => {
     const { handler, grants, onRegistered } = setup({ response: refused });
     const response = await handler(verifyRegistration({ response: {} }));
     expect(response.status).toBe(403);
-    expect(grants.giveBack).toHaveBeenCalledWith(SESSION, SUBJECT, 120_000);
+    expect(grants.giveBack).toHaveBeenCalledWith(SESSION, SUBJECT, 1_700_000_120_000);
     expect(onRegistered).not.toHaveBeenCalled();
   });
 
