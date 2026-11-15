@@ -73,6 +73,7 @@ import type { PaymentGroupCheckoutService } from "../services/payment-group/paym
 import type { IPaymentGroupGateway } from "../services/payment-group/payment-group-ports.js";
 import { StillToSendService } from "../services/payment-group/still-to-send.service.js";
 import type { IPaymentEligibilityGate } from "../services/payment/payment-eligibility.gate.js";
+import type { IPurchaseProblemNotices } from "../services/purchase-problems/purchase-problem-notices.js";
 
 /** The client workspace's buying modules for the acting account. */
 export type OrganisationBuyingServices = {
@@ -111,6 +112,8 @@ export type CreateOrganisationBuyingInput = {
   onboarding: { isComplete(userId: string): Promise<boolean> };
   transactionRunner: ITransactionRunner;
   events: IDomainEventSink;
+  /** Tells a buyer their purchase problem report was received. */
+  purchaseProblemNotices: IPurchaseProblemNotices;
   notificationDispatcher: Pick<NotificationDispatcher, "dispatch">;
   notificationFactory: Pick<INotificationFactory, "createDeliveryQuoteReady">;
   /** What paying several invoices at once needs from the payments side. */
@@ -221,6 +224,7 @@ export function createOrganisationBuyingServices(input: CreateOrganisationBuying
         problems: new DrizzlePurchaseProblemRepository(input.db),
         transactionRunner: input.transactionRunner,
         events: input.events,
+        notices: input.purchaseProblemNotices,
         now: () => new Date(),
       }),
       collection: new CollectionBookingService({

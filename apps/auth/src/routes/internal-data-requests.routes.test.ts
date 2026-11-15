@@ -20,7 +20,7 @@ const ok = async (): Promise<DataRequestResult<DataRequestRecord>> => ({ ok: tru
 function setup(options: { limit?: number | null; withRequests?: boolean } = {}) {
   const store = new Map<string, string>();
   const requests = {
-    list: vi.fn(async (_query: unknown) => ({ items: [], nextCursor: null })),
+    list: vi.fn(async (_query: unknown) => ({ items: [], nextCursor: null, total: 0 })),
     summary: vi.fn(async () => ({
       open: 1,
       dueSoon: 0,

@@ -217,6 +217,10 @@ describe.skipIf(!DATABASE_URL)("drizzle data requests", () => {
 
     const everything = await reader.list({ view: "all", sort: "due", today: TODAY, limit: 1000 });
     const firstPage = await reader.list({ view: "all", sort: "due", today: TODAY, limit: 2 });
+    // The total is every match, whatever the page size.
+    expect(await reader.count({ view: "all", sort: "due", today: TODAY })).toBe(everything.length);
+    expect((await service.list({ view: "all", sort: "due" })).total).toBe(everything.length);
+    expect(await reader.count({ view: "all", sort: "due", today: TODAY, q: "DR-0000" })).toBe(0);
     const last = firstPage[1];
     if (last) {
       const next = await reader.list({

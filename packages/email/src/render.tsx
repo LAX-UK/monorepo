@@ -68,6 +68,12 @@ import BidInvoiceIssuedEmail, {
   subject as bidInvoiceIssuedSubject,
 } from "./templates/bid-invoice-issued.js";
 import BidOutbidEmail, { subject as bidOutbidSubject } from "./templates/bid-outbid.js";
+import BidPurchaseProblemReceivedEmail, {
+  subject as bidPurchaseProblemReceivedSubject,
+} from "./templates/bid-purchase-problem-received.js";
+import BidPurchaseProblemResolvedEmail, {
+  subject as bidPurchaseProblemResolvedSubject,
+} from "./templates/bid-purchase-problem-resolved.js";
 import BiddingLimitChangedNoticeEmail, {
   subject as biddingLimitChangedNoticeSubject,
 } from "./templates/bidding-limit-changed-notice.js";
@@ -749,6 +755,14 @@ const renderers: { [T in TemplateName]: TemplateRenderer<T> } = {
   "sale-cancelled-notice": {
     subject: saleCancelledNoticeSubject,
     component: (vars) => <SaleCancelledNoticeEmail {...vars} />,
+  },
+  "bid-purchase-problem-received": {
+    subject: bidPurchaseProblemReceivedSubject,
+    component: (vars) => <BidPurchaseProblemReceivedEmail {...vars} />,
+  },
+  "bid-purchase-problem-resolved": {
+    subject: bidPurchaseProblemResolvedSubject,
+    component: (vars) => <BidPurchaseProblemResolvedEmail {...vars} />,
   },
   "bid-enquiry-received": {
     subject: bidEnquiryReceivedSubject,

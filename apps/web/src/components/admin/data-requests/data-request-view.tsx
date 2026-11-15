@@ -18,6 +18,7 @@ import {
 } from "@/lib/admin/data-requests/data-requests.vm";
 import { enquiryErasureState } from "@/lib/admin/data-requests/enquiry-erasure";
 import { erasureOutcome } from "@/lib/admin/data-requests/enquiry-erasure";
+import { sentCopyOf } from "@/lib/admin/data-requests/sent-copy";
 import type { DealHold } from "@/lib/data/http/admin-data-requests.reader";
 import { DATA_REQUESTS_MANAGE_ACCESS } from "@/lib/navigation/staff-nav-access";
 import { copyToClipboard } from "@/lib/ui/copy-to-clipboard";
@@ -458,6 +459,7 @@ export function DataRequestView({
             open={dialog === "close"}
             onOpenChange={(open) => setDialog(open ? "close" : null)}
             request={request}
+            sentCopy={sentCopyOf(record, new Date())}
             submit={writes.close}
             onReload={writes.reload}
             onDone={(outcome) =>

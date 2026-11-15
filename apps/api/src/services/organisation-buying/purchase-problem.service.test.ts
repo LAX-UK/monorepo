@@ -26,14 +26,16 @@ function setup() {
   const problems = new InMemoryPurchaseProblems();
   const publish = vi.fn().mockResolvedValue(undefined);
   const events = { publish, withTx: () => events } as unknown as IDomainEventSink;
+  const notices = { queueReported: vi.fn().mockResolvedValue(undefined), queueResolved: vi.fn() };
   const service = new PurchaseProblemService({
     purchases: new InMemoryPurchaseFacts(),
     problems,
     transactionRunner: { runInTransaction: (fn) => fn({} as never) },
     events,
+    notices,
     now: () => NOW,
   });
-  return { service, problems, publish };
+  return { service, problems, publish, notices };
 }
 
 const input = { category: "damaged", message: "The frame arrived cracked." } as const;
@@ -67,6 +69,27 @@ describe("PurchaseProblemService.report", () => {
       actorUserId: "finance-1",
       actingLegalEntityId: BUYING_ACCOUNT,
     });
+  });
+
+  it("queues the buyer's confirmation once, for the person who reported", async () => {
+    const { service, notices } = setup();
+    const { problem } = (await service.report(actor("finance"), LOTS.paid, input))._unsafeUnwrap();
+    expect(notices.queueReported).toHaveBeenCalledTimes(1);
+    expect(notices.queueReported).toHaveBeenCalledWith(expect.anything(), {
+      problemId: problem.id,
+      lotId: LOTS.paid,
+      lotTitle: expect.any(String),
+      reportedByUserId: "finance-1",
+      category: "damaged",
+    });
+    await service.report(actor("finance"), LOTS.paid, input);
+    expect(notices.queueReported).toHaveBeenCalledTimes(1);
+  });
+
+  it("queues nothing when the purchase is refused", async () => {
+    const { service, notices } = setup();
+    await service.report(actor("owner"), LOTS.due, input);
+    expect(notices.queueReported).not.toHaveBeenCalled();
   });
 
   it("keeps what the buyer wrote out of the event", async () => {

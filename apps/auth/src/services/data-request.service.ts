@@ -60,18 +60,22 @@ export class DataRequestService {
     const today = this.today();
     const { cursor, ...filter } = query;
     const after = cursor ? decodeCursor(query.sort, cursor) : undefined;
-    const rows = await this.ports.reader.list({
-      ...filter,
-      today,
-      limit: DATA_REQUESTS_PAGE_SIZE + 1,
-      ...(after ? { after } : {}),
-    });
+    const [rows, total] = await Promise.all([
+      this.ports.reader.list({
+        ...filter,
+        today,
+        limit: DATA_REQUESTS_PAGE_SIZE + 1,
+        ...(after ? { after } : {}),
+      }),
+      this.ports.reader.count({ ...filter, today }),
+    ]);
     const page = rows.slice(0, DATA_REQUESTS_PAGE_SIZE);
     const last = page[page.length - 1];
     return {
       items: page.map((row) => toRequestView(row, today)),
       nextCursor:
         rows.length > DATA_REQUESTS_PAGE_SIZE && last ? encodeCursor(query.sort, last) : null,
+      total,
     };
   }
 

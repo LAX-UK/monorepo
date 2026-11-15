@@ -58,3 +58,5 @@ export type PurchaseProblemAssignee = z.infer<typeof purchaseProblemAssigneeSche
 export const purchaseProblemAssigneesSchema = z.object({
   assignees: z.array(purchaseProblemAssigneeSchema),
 });
+
+export const purchaseProblemOpenCountSchema = z.object({ open: z.number().int().nonnegative() });

@@ -16,6 +16,7 @@ import { withDataRequestsNavCount } from "@/lib/admin/data-requests/data-request
 import { withEnquiriesNavCount } from "@/lib/admin/enquiries/enquiries-nav-count.server";
 import { loadStaffProducts } from "@/lib/admin/load-staff-products";
 import { withPrivateSalesNavCount } from "@/lib/admin/private-sales/private-sales-nav-count.server";
+import { withPurchaseProblemsNavCount } from "@/lib/admin/purchase-problems/purchase-problems-nav-count.server";
 import type { ActingContext } from "@/lib/auth/capabilities";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import {
@@ -110,6 +111,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
 
   navCounts = await withInboxNavCount(navCounts, userRole, staffRoles);
   navCounts = await withEnquiriesNavCount(navCounts, userRole, staffRoles);
+  navCounts = await withPurchaseProblemsNavCount(navCounts, userRole, staffRoles);
   navCounts = await withDataRequestsNavCount(navCounts, userRole, staffRoles);
   navCounts = await withPrivateSalesNavCount(navCounts, userRole, staffRoles);
 

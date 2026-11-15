@@ -62,7 +62,9 @@ describe("HttpIdentityDataRequestsClient", () => {
   });
 
   it("calls the internal list route with the filters", async () => {
-    const { client, fetchImpl } = setup(() => reply(200, { items: [], nextCursor: null }));
+    const { client, fetchImpl } = setup(() =>
+      reply(200, { items: [], nextCursor: null, total: 0 }),
+    );
     await client.list({ view: "overdue", sort: "due", q: "lena@north.com" });
     const [url, init] = fetchImpl.mock.calls[1] ?? [];
     expect(String(url)).toBe(

@@ -439,13 +439,15 @@ function buildStaffNavGroupSpecs(
         },
         {
           // Problems buyers report with a paid purchase. It sits beside Enquiries: both are
-          // client services answering a person, and the work item opens here.
+          // client services answering a person, and the work item opens here. The count is the
+          // reports nobody has taken on yet.
           id: "purchase-problems",
           href: "/admin/purchase-problems",
           label: "Purchase problems",
           icon: PackageX,
           match: exactOrNested("/admin/purchase-problems"),
           requirement: PURCHASE_PROBLEMS_ACCESS,
+          ...navBadge(navCounts.purchaseProblemsOpen, "warning"),
         },
         {
           id: "legal-entities",

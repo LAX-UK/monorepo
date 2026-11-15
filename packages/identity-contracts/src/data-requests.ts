@@ -203,6 +203,12 @@ export type ManualRequestView = z.infer<typeof manualRequestViewSchema>;
 export const dataRequestListSchema = z.object({
   items: z.array(dataRequestViewSchema),
   nextCursor: z.string().nullable(),
+  /**
+   * Every request the filters match, across all pages. Optional while Web and Auth deploy in
+   * either order: an Auth that has not shipped it yet answers without, and Web falls back to the
+   * page it holds. Make it required once both are live.
+   */
+  total: z.number().int().nonnegative().optional(),
 });
 export type DataRequestList = z.infer<typeof dataRequestListSchema>;
 

@@ -6,9 +6,10 @@ import {
   getAdminDataRequestSummary,
   getAdminDataRequests,
 } from "@/lib/data/http/admin-data-requests.reader";
-import type {
-  DataRequestList,
-  DataRequestSummary,
+import {
+  DATA_REQUESTS_PAGE_SIZE,
+  type DataRequestList,
+  type DataRequestSummary,
 } from "@auction/identity-contracts/data-requests";
 import {
   type DataRequestsFilters,
@@ -25,22 +26,39 @@ export type DataRequestsPagination = {
   nextHref: string | null;
 };
 
-export function pageSummary(page: number, shown: number, more: boolean): string {
-  const noun = shown === 1 ? "request" : "requests";
-  return page === 1 && !more ? `${shown} ${noun}` : `Page ${page} · ${shown} ${noun}`;
+/** "3 requests" on a single page, "51–100 of 137 requests" on any other. */
+export function pageSummary(
+  offset: number,
+  shown: number,
+  total: number | undefined,
+  hasMore = false,
+): string {
+  if (shown === 0) return "";
+  // An older Identity does not say how many match: describe the page without a total.
+  if (total === undefined) {
+    if (offset === 0 && !hasMore) return `${shown} ${shown === 1 ? "request" : "requests"}`;
+    return `${offset + 1}–${offset + shown} requests`;
+  }
+  if (offset === 0 && shown >= total) return `${total} ${total === 1 ? "request" : "requests"}`;
+  return `${offset + 1}–${offset + shown} of ${total} requests`;
 }
 
 /** Previous and next links for a cursor list: the pages before this one ride along in `trail`. */
 export function paginationFor(
   sp: DataRequestsSearch,
   filters: DataRequestsFilters,
-  list: Pick<DataRequestList, "items" | "nextCursor">,
+  list: Pick<DataRequestList, "items" | "nextCursor" | "total">,
 ): DataRequestsPagination | null {
   if (list.items.length === 0) return null;
   const earlier = filters.trail;
   const previous = earlier.length > 0 ? earlier[earlier.length - 1] : undefined;
   return {
-    summary: pageSummary(earlier.length + 1, list.items.length, list.nextCursor !== null),
+    summary: pageSummary(
+      earlier.length * DATA_REQUESTS_PAGE_SIZE,
+      list.items.length,
+      list.total,
+      list.nextCursor !== null,
+    ),
     prevHref:
       previous === undefined
         ? null

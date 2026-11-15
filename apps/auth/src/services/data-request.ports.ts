@@ -204,6 +204,8 @@ export type RecordSource = {
 /** Reads. A separate port from the writer, so a reader cannot change a request. */
 export interface DataRequestReader {
   list(filter: MergedListFilter): Promise<MergedRequestRow[]>;
+  /** How many requests the filter matches, from the first page to the last. */
+  count(filter: Omit<MergedListFilter, "limit" | "after">): Promise<number>;
   summary(today: string): Promise<DataRequestSummary>;
   /** Null when there is no such request; `ambiguous_reference` when a download reference matches two. */
   findRecord(reference: string): Promise<RecordSource | null | "ambiguous_reference">;
