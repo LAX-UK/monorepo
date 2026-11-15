@@ -1,9 +1,9 @@
 /*
- * View transitions. Each kind is selected by `<html data-view-transition="...">`, which the
- * transition helper (apps/web/src/lib/view-transition-runtime.ts) sets only while that transition
- * runs, so a rule here never leaks into another kind. Timing comes from the LAX motion tokens
- * (docs/design/motion.md). The helper does not start a transition under reduced motion; the
- * rules at the end are the CSS backstop.
+ * View transitions. Each kind is selected by `<html data-view-transition="...">`, which apps/web
+ * sets only while that transition runs (`theme-toggle.tsx` for the theme switch,
+ * `view-transition-runtime.ts` for page changes), so a rule here never leaks into another kind.
+ * Timing comes from the LAX motion tokens (docs/design/motion.md). Neither starts a transition
+ * under reduced motion; the rules at the end are the CSS backstop.
  */
 @supports (view-transition-name: root) {
   /* The transition layer is visual only: it must never swallow a click. */
@@ -49,12 +49,16 @@
     animation-timing-function: var(--lax-ease-out);
   }
 
-  /* Reduced motion backstop. The attribute-qualified selectors match the specificity of the kind
-     rules above (and come later), so they also cancel the theme wipe. */
+  /* Reduced motion backstop: the helpers already skip transitions under reduced motion, resolved as
+     `useReducedMotion` does. A `(*)` argument adds no specificity, so the `html` type selector
+     carries the weight: these selectors equal the theme wipe's `:root[...]::view-transition-new(root)`
+     above and come later, so they win.
+     The in-app switch wins both ways: `force-allow` keeps motion under the OS setting, and
+     `force-reduce` removes it without one. */
   @media (prefers-reduced-motion: reduce) {
-    :root[data-view-transition]::view-transition-group(*),
-    :root[data-view-transition]::view-transition-old(*),
-    :root[data-view-transition]::view-transition-new(*) {
+    html[data-view-transition]:not([data-reduce-motion="force-allow"])::view-transition-group(*),
+    html[data-view-transition]:not([data-reduce-motion="force-allow"])::view-transition-old(*),
+    html[data-view-transition]:not([data-reduce-motion="force-allow"])::view-transition-new(*) {
       animation: none;
     }
   }

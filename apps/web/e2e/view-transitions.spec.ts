@@ -118,4 +118,32 @@ test.describe("view transitions on Bid @optin", () => {
     await page.waitForURL(/\/lots\//);
     expect(await viewTransitions(page)).toEqual([]);
   });
+
+  test("the in-app reduce switch skips every transition, without the OS setting", async ({
+    page,
+  }) => {
+    // What the settings page stores; the pre-paint script mirrors it onto <html data-reduce-motion>.
+    await page.addInitScript(() => window.localStorage.setItem("lax.reduceMotion", "force-reduce"));
+    await observeViewTransitions(page);
+    await page.goto("/lots");
+    await page.waitForLoadState("networkidle");
+    await themeToggle(page).click();
+    const tile = page.locator('[data-lot-transition-root] a[href*="/lots/"]').first();
+    await tile.focus();
+    await page.keyboard.press("Enter");
+    await page.waitForURL(/\/lots\//);
+    expect(await viewTransitions(page)).toEqual([]);
+  });
+
+  test("the in-app allow switch keeps the theme wipe under the OS setting", async ({ page }) => {
+    await useReducedMotion(page);
+    await page.addInitScript(() => window.localStorage.setItem("lax.reduceMotion", "force-allow"));
+    await observeViewTransitions(page);
+    await page.goto("/");
+    await page.waitForLoadState("networkidle");
+    await themeToggle(page).click();
+    const records = await viewTransitions(page);
+    expect(records.map((r) => r.kind)).toEqual(["theme"]);
+    expect(records[0]?.animations.map((a) => a.name)).toContain("theme-reveal");
+  });
 });
