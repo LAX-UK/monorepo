@@ -252,6 +252,11 @@ export class CollectionDeskCommands {
     if (booking.status === "booked") {
       const moved = transitionBooking("change", this.support.context(booking, facts, now));
       if (!moved.ok) return err(transitionRefusal(moved.reason));
+      // The same lot rules as a new booking (paid, not collected or couriered, no check open),
+      // looked at again now: the lots are already in this booking, which is not a clash.
+      const liveLotIds = booking.lots.filter((l) => l.active).map((l) => l.lotId);
+      const eligible = await this.collectableRecords(liveLotIds, booking.legalEntityId, true);
+      if (eligible.isErr()) return err(eligible.error);
       const outcome = await this.deps.bookings.change(
         {
           bookingId,
@@ -390,7 +395,11 @@ export class CollectionDeskCommands {
    * The lots as booking records, after the rules every collection booking keeps: each belongs to
    * the account, is collected from one place, and is paid and cleared (no check open).
    */
-  private async collectableRecords(lotIds: readonly string[], legalEntityId: string) {
+  private async collectableRecords(
+    lotIds: readonly string[],
+    legalEntityId: string,
+    alreadyBooked = false,
+  ) {
     const found = await this.deps.facts.read(lotIds);
     const records = [];
     for (const lotId of lotIds) {
@@ -413,7 +422,9 @@ export class CollectionDeskCommands {
       return err(deskError("mixed_places"));
     }
     for (const record of records) {
-      const decision = collectionEligibility(record.facts);
+      const decision = collectionEligibility(
+        alreadyBooked ? { ...record.facts, activeBookingId: null } : record.facts,
+      );
       if (!decision.eligible) {
         return err(
           deskError("lot_not_collectable", { lotId: record.lotId, reason: decision.reason }),

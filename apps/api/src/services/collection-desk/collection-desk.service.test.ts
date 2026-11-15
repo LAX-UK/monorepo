@@ -604,6 +604,43 @@ describe("the day", () => {
   });
 });
 
+describe("changing a still-booked visit", () => {
+  it("looks at the lots again: a check opened since booking stops the move, changing nothing", async () => {
+    const s = setup();
+    const b = await booking(s);
+    const record = s.facts.records.find((r) => r.lotId === LOTS[0]);
+    if (record) record.facts = { ...record.facts, openChecks: ["source_of_funds"] };
+    const error = (
+      await s.service.rebook(STAFF, b.id, { version: b.icsSequence, slotStart: WEDNESDAY_10 })
+    )._unsafeUnwrapErr();
+    expect(error).toMatchObject({ code: "lot_not_collectable", lotId: LOTS[0] });
+    expect(s.bookings.bookings.find((x) => x.id === b.id)?.slotStart.toISOString()).toBe(
+      TUESDAY_10,
+    );
+  });
+
+  it("refuses a lot that is no longer paid, with the same error as booking", async () => {
+    const s = setup();
+    const b = await booking(s);
+    const record = s.facts.records.find((r) => r.lotId === LOTS[1]);
+    if (record) record.facts = { ...record.facts, paymentCleared: false };
+    const error = (
+      await s.service.rebook(STAFF, b.id, { version: b.icsSequence, slotStart: WEDNESDAY_10 })
+    )._unsafeUnwrapErr();
+    expect(error).toMatchObject({ code: "lot_not_collectable", lotId: LOTS[1] });
+  });
+
+  it("still moves a visit whose lots are fine", async () => {
+    const s = setup();
+    const b = await booking(s);
+    expect(
+      (
+        await s.service.rebook(STAFF, b.id, { version: b.icsSequence, slotStart: WEDNESDAY_10 })
+      ).isOk(),
+    ).toBe(true);
+  });
+});
+
 describe("rebooking a missed visit", () => {
   it("looks at the lots again: a check opened since the first booking stops it", async () => {
     const s = setup();
