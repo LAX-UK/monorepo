@@ -2,7 +2,11 @@ import { randomUUID } from "node:crypto";
 import type pg from "pg";
 import { describe, expect, it } from "vitest";
 import { runMigrationsPerTransaction } from "./migrate-runner.js";
-import { backfillPaymentRefundsInIdOrder } from "./payment-refund-backfill.js";
+import {
+  PaymentRefundBackfillLockTimeoutError,
+  backfillPaymentRefundsInIdOrder,
+  reportPaymentRefundGaps,
+} from "./payment-refund-backfill.js";
 import {
   migrationTestDatabaseUrl as migrationUrl,
   withTemporaryDatabase,
@@ -304,6 +308,107 @@ describe.skipIf(!migrationUrl)(
               source: "payout_topup",
             },
           ]);
+        }
+      });
+    });
+
+    it("times out cleanly on a payment lock held elsewhere: batch rolled back, cursor reported", async () => {
+      await withTemporaryDatabase(async (pool) => {
+        await runMigrationsPerTransaction(pool);
+        const [a, b, c] = (await seedPayments(pool, 3)) as [string, string, string];
+        const holder = await pool.connect();
+        const backfill = await pool.connect();
+        try {
+          // Batch size 2: batch 1 (A, B) commits; batch 2 (C) waits on the holder's lock.
+          await holder.query("begin");
+          await holder.query("select id from payment where id = $1 for update", [c]);
+          const error = await backfillPaymentRefundsInIdOrder(backfill, {
+            batchSize: 2,
+            lockTimeoutMs: 300,
+          }).catch((e) => e);
+          expect(error).toBeInstanceOf(PaymentRefundBackfillLockTimeoutError);
+          expect(error.batch).toBe(2);
+          expect(error.resumeAfter).toBe(b);
+          expect(error.completed).toEqual({ batches: 1, payments: 2, added: 2 });
+          expect(error.message).toContain(`--resume-after=${b}`);
+          // The connection is usable again: the failed batch was rolled back, not left open.
+          expect((await backfill.query("select txid_current_if_assigned() as t")).rows[0].t).toBe(
+            null,
+          );
+        } finally {
+          await holder.query("rollback");
+          holder.release();
+          backfill.release();
+        }
+        expect((await rowsOf(pool, a)).length).toBe(1);
+        expect((await rowsOf(pool, b)).length).toBe(1);
+        expect(await rowsOf(pool, c)).toEqual([]);
+
+        // Resuming from the cursor finishes the rest.
+        const again = await pool.connect();
+        try {
+          expect(
+            await backfillPaymentRefundsInIdOrder(again, { batchSize: 2, resumeAfter: b }),
+          ).toEqual({ batches: 1, payments: 1, added: 1 });
+        } finally {
+          again.release();
+        }
+        expect((await rowsOf(pool, c)).length).toBe(1);
+      });
+    });
+
+    it("writes nothing from a batch that times out part-way", async () => {
+      await withTemporaryDatabase(async (pool) => {
+        await runMigrationsPerTransaction(pool);
+        const [a, , c] = (await seedPayments(pool, 3)) as [string, string, string];
+        const holder = await pool.connect();
+        const backfill = await pool.connect();
+        try {
+          await holder.query("begin");
+          await holder.query("select id from payment where id = $1 for update", [c]);
+          const error = await backfillPaymentRefundsInIdOrder(backfill, {
+            batchSize: 3,
+            lockTimeoutMs: 300,
+          }).catch((e) => e);
+          expect(error).toBeInstanceOf(PaymentRefundBackfillLockTimeoutError);
+          expect(error.batch).toBe(1);
+          expect(error.resumeAfter).toBeNull();
+          expect(error.completed).toEqual({ batches: 0, payments: 0, added: 0 });
+        } finally {
+          await holder.query("rollback");
+          holder.release();
+          backfill.release();
+        }
+        const { rows } = await pool.query("select 1 from payment_refund");
+        expect(rows).toEqual([]);
+        expect(await rowsOf(pool, a)).toEqual([]);
+      });
+    });
+
+    it("dry run does not call a payment with an existing top-up key a top-up", async () => {
+      await withTemporaryDatabase(async (pool) => {
+        await runMigrationsPerTransaction(pool);
+        const [a, b] = (await seedPayments(pool, 2)) as [string, string];
+        // A payment whose top-up key exists although the recorded total is below the lines (a
+        // different currency row does not count), so the gap is positive yet --apply inserts nothing.
+        await pool.query(
+          `insert into payment_refund (payment_id, idempotency_key, amount_pence, currency, source)
+           values ($1, $2, 10000, 'EUR', 'payout_topup')`,
+          [b, `payout_ledger_topup:${b}:10000`],
+        );
+        const gaps = await reportPaymentRefundGaps(pool);
+        expect(
+          gaps.map((g) => [g.paymentId, g.differencePence, g.topupKeyExists, g.wouldTopUp]),
+        ).toEqual([
+          [a, 10_000, false, true],
+          [b, 10_000, true, false],
+        ]);
+        const client = await pool.connect();
+        try {
+          const result = await backfillPaymentRefundsInIdOrder(client);
+          expect(result.added).toBe(gaps.filter((g) => g.wouldTopUp).length);
+        } finally {
+          client.release();
         }
       });
     });

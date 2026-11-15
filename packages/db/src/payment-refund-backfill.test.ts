@@ -3,7 +3,9 @@ import {
   BACKFILL_ONE_PAYMENT_SQL,
   LOCK_NEXT_REFUND_PAYMENTS_SQL,
   type PaymentRefundBackfillConnection,
+  PaymentRefundBackfillLockTimeoutError,
   REPORT_REFUND_GAPS_SQL,
+  SET_BATCH_LOCK_TIMEOUT_SQL,
   backfillPaymentRefundsInIdOrder,
   reportPaymentRefundGaps,
 } from "./payment-refund-backfill.js";
@@ -13,7 +15,7 @@ type Call = { text: string; values?: unknown[] };
 /** A connection over sorted payment ids, as Postgres would return them for the lock query. */
 function fakeConnection(
   ids: readonly string[],
-  opts: { failOn?: string; added?: (id: string) => number } = {},
+  opts: { failOn?: string; code?: string; added?: (id: string) => number } = {},
 ) {
   const calls: Call[] = [];
   const connection: PaymentRefundBackfillConnection = {
@@ -30,7 +32,9 @@ function fakeConnection(
       }
       if (text === BACKFILL_ONE_PAYMENT_SQL) {
         const id = (values as [string])[0];
-        if (id === opts.failOn) throw new Error("boom");
+        if (id === opts.failOn) {
+          throw Object.assign(new Error("boom"), opts.code ? { code: opts.code } : {});
+        }
         return { rows: [{ added: opts.added?.(id) ?? 1 }] };
       }
       return { rows: [] };
@@ -45,7 +49,9 @@ const summary = (calls: Call[]) =>
       ? `lock after=${c.values?.[0]} limit=${c.values?.[1]}`
       : c.text === BACKFILL_ONE_PAYMENT_SQL
         ? `topup ${c.values?.[0]}`
-        : c.text,
+        : c.text === SET_BATCH_LOCK_TIMEOUT_SQL
+          ? `timeout ${c.values?.[0]}`
+          : c.text,
   );
 
 describe("backfillPaymentRefundsInIdOrder", () => {
@@ -68,16 +74,19 @@ describe("backfillPaymentRefundsInIdOrder", () => {
     });
     expect(summary(calls)).toEqual([
       "BEGIN",
+      "timeout 5000ms",
       "lock after=null limit=2",
       "topup a",
       "topup b",
       "COMMIT",
       "BEGIN",
+      "timeout 5000ms",
       "lock after=b limit=2",
       "topup c",
       "topup d",
       "COMMIT",
       "BEGIN",
+      "timeout 5000ms",
       "lock after=d limit=2",
       "topup e",
       "COMMIT",
@@ -89,7 +98,12 @@ describe("backfillPaymentRefundsInIdOrder", () => {
   it("stops after an empty batch when the last one was full", async () => {
     const { connection, calls } = fakeConnection(["a", "b"], { added: () => 0 });
     const result = await backfillPaymentRefundsInIdOrder(connection, { batchSize: 2 });
-    expect(summary(calls).slice(-3)).toEqual(["BEGIN", "lock after=b limit=2", "COMMIT"]);
+    expect(summary(calls).slice(-4)).toEqual([
+      "BEGIN",
+      "timeout 5000ms",
+      "lock after=b limit=2",
+      "COMMIT",
+    ]);
     expect(result).toEqual({ batches: 1, payments: 2, added: 0 });
   });
 
@@ -100,11 +114,36 @@ describe("backfillPaymentRefundsInIdOrder", () => {
     );
     expect(summary(calls)).toEqual([
       "BEGIN",
+      "timeout 5000ms",
       "lock after=null limit=5",
       "topup a",
       "topup b",
       "ROLLBACK",
     ]);
+  });
+
+  it("sets the lock timeout in each batch and reports a lock timeout with its cursor", async () => {
+    const { connection, calls } = fakeConnection(["a", "b", "c"], { failOn: "c", code: "55P03" });
+    const error = await backfillPaymentRefundsInIdOrder(connection, {
+      batchSize: 2,
+      lockTimeoutMs: 250,
+    }).catch((e) => e);
+    expect(error).toBeInstanceOf(PaymentRefundBackfillLockTimeoutError);
+    expect(error.batch).toBe(2);
+    expect(error.resumeAfter).toBe("b");
+    expect(error.completed).toEqual({ batches: 1, payments: 2, added: 2 });
+    expect(error.message).toContain("--resume-after=b");
+    expect(summary(calls).filter((c) => c.startsWith("timeout"))).toEqual([
+      "timeout 250ms",
+      "timeout 250ms",
+    ]);
+    expect(summary(calls).at(-1)).toBe("ROLLBACK");
+  });
+
+  it("starts after resumeAfter", async () => {
+    const { connection, calls } = fakeConnection(["a", "b", "c"]);
+    await backfillPaymentRefundsInIdOrder(connection, { resumeAfter: "a" });
+    expect(summary(calls)[2]).toBe("lock after=a limit=200");
   });
 
   it("refuses a batch size that is not a whole number above zero", async () => {
@@ -131,15 +170,51 @@ describe("reportPaymentRefundGaps", () => {
               line_pence: "10000",
               recorded_pence: "4000",
               difference_pence: "6000",
+              topup_key_exists: false,
             },
-            { payment_id: "b", line_pence: "500", recorded_pence: "800", difference_pence: "-300" },
+            {
+              payment_id: "b",
+              line_pence: "500",
+              recorded_pence: "800",
+              difference_pence: "-300",
+              topup_key_exists: false,
+            },
+            {
+              payment_id: "c",
+              line_pence: "900",
+              recorded_pence: "400",
+              difference_pence: "500",
+              topup_key_exists: true,
+            },
           ],
         };
       },
     };
     expect(await reportPaymentRefundGaps(connection)).toEqual([
-      { paymentId: "a", linePence: 10_000, recordedPence: 4_000, differencePence: 6_000 },
-      { paymentId: "b", linePence: 500, recordedPence: 800, differencePence: -300 },
+      {
+        paymentId: "a",
+        linePence: 10_000,
+        recordedPence: 4_000,
+        differencePence: 6_000,
+        topupKeyExists: false,
+        wouldTopUp: true,
+      },
+      {
+        paymentId: "b",
+        linePence: 500,
+        recordedPence: 800,
+        differencePence: -300,
+        topupKeyExists: false,
+        wouldTopUp: false,
+      },
+      {
+        paymentId: "c",
+        linePence: 900,
+        recordedPence: 400,
+        differencePence: 500,
+        topupKeyExists: true,
+        wouldTopUp: false,
+      },
     ]);
     expect(calls).toEqual([{ text: REPORT_REFUND_GAPS_SQL, values: undefined }]);
   });
