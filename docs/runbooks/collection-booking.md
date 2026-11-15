@@ -149,6 +149,12 @@ about tomorrow's visits from 09:00 London time. A visit booked or moved after th
 visit and its start, so any number of sweeps sends one. If reminders stop, check the queue's
 heartbeat (`collection-reminders`) before anything else.
 
+**Old reminder keys.** Reminders queued before the key format changed carry the buyer's address in
+their outbox key. The sweep no longer checks that format, so rewrite any left over: on test, then
+prod, run `DATABASE_URL_OWNER=... pnpm --filter @auction/db db:backfill-collection-reminder-keys`
+(a dry run that prints counts), then the same with `--apply`. It is batched, safe to re-run, skips
+erased rows and any row whose new key already exists.
+
 **Limits.** An account can book, change and cancel 20 times an hour in total (HTTP 429 with
 `Retry-After`), and hold at most the place's "visits an account can hold" at once (default 5; Bid
 admin, Collections, Hours and rules). If the counter (Redis) is unreachable the limit is skipped
