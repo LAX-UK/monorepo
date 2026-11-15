@@ -33,7 +33,9 @@ async function seedPayments(pool: pg.Pool, count: number): Promise<string[]> {
     [sellerId],
   );
   const ids = Array.from({ length: count }, () => randomUUID()).sort();
-  for (const id of ids) {
+  // Inserted in descending id order, so the heap order is not the id order: a lock query without
+  // its ORDER BY would visit (and lock) payments out of order.
+  for (const id of [...ids].reverse()) {
     const lotId = await one(
       `insert into lot (sale_id, title, auction_type, starting_price, current_price, start_time, end_time, seller_legal_entity_id)
        values ($1, 'Lot', 'english', 0, 0, now(), now() + interval '1 day', $2) returning id`,
@@ -88,18 +90,25 @@ async function growRefundLine(db: Pick<pg.Pool, "query">, paymentId: string, pou
   );
 }
 
+async function isWaitingOnLock(pool: pg.Pool, pid: number): Promise<boolean> {
+  const { rows } = await pool.query<{ waiting: boolean }>(
+    `select wait_event_type = 'Lock' as waiting from pg_stat_activity where pid = $1`,
+    [pid],
+  );
+  return rows[0]?.waiting === true;
+}
+
 async function waitUntilBlockedOnLock(pool: pg.Pool, pid: number): Promise<void> {
   const deadline = Date.now() + 15_000;
   while (Date.now() < deadline) {
-    const { rows } = await pool.query<{ waiting: boolean }>(
-      `select wait_event_type = 'Lock' as waiting from pg_stat_activity where pid = $1`,
-      [pid],
-    );
-    if (rows[0]?.waiting) return;
+    if (await isWaitingOnLock(pool, pid)) return;
     await new Promise((resolve) => setTimeout(resolve, 25));
   }
   throw new Error("The backfill never waited for the live refund's payment lock");
 }
+
+const backendPid = async (client: pg.PoolClient) =>
+  (await client.query<{ pid: number }>("select pg_backend_pid() as pid")).rows[0]?.pid as number;
 
 describe.skipIf(!migrationUrl)(
   "payment_refund global backfill in id order",
@@ -109,6 +118,7 @@ describe.skipIf(!migrationUrl)(
       await withTemporaryDatabase(async (pool) => {
         await runMigrationsPerTransaction(pool);
         const [a, b, c] = (await seedPayments(pool, 3)) as [string, string, string];
+        expect(await rowsOf(pool, a)).toEqual([]);
 
         const live = await pool.connect();
         const backfill = await pool.connect();
@@ -124,21 +134,16 @@ describe.skipIf(!migrationUrl)(
             [b],
           );
 
-          const pid = (await backfill.query<{ pid: number }>("select pg_backend_pid() as pid"))
-            .rows[0]?.pid as number;
-          const run = backfillPaymentRefundsInIdOrder(backfill, { batchSize: 1 });
+          // One batch spans A..C, so the run holds A while it waits for B. Only the ascending
+          // lock order keeps it off C until then; locking C first would deadlock with the live
+          // transaction's next step.
+          const pid = await backendPid(backfill);
+          const run = backfillPaymentRefundsInIdOrder(backfill, { batchSize: 3 });
           await waitUntilBlockedOnLock(pool, pid);
-          // A, before B in id order, was topped up and committed; C has not been touched.
-          expect(await rowsOf(pool, a)).toEqual([
-            {
-              idempotency_key: `payout_ledger_topup:${a}:10000`,
-              amount_pence: 10_000,
-              source: "payout_topup",
-            },
-          ]);
+          expect(await rowsOf(pool, a)).toEqual([]);
           expect(await rowsOf(pool, c)).toEqual([]);
 
-          // The same live transaction goes on to C (a higher id): the backfill holds nothing it needs.
+          // The same live transaction goes on to C (a higher id): the backfill has not locked it.
           await live.query("select id from payment where id = $1 for update", [c]);
           await live.query("select payment_refund_backfill_from_payout_lines($1::uuid)", [c]);
           await growRefundLine(live, c, "30.00");
@@ -149,12 +154,19 @@ describe.skipIf(!migrationUrl)(
           );
           await live.query("commit");
 
-          expect(await run).toEqual({ batches: 3, payments: 3, added: 1 });
+          expect(await run).toEqual({ batches: 1, payments: 3, added: 1 });
         } finally {
           live.release();
           backfill.release();
         }
 
+        expect(await rowsOf(pool, a)).toEqual([
+          {
+            idempotency_key: `payout_ledger_topup:${a}:10000`,
+            amount_pence: 10_000,
+            source: "payout_topup",
+          },
+        ]);
         expect(await rowsOf(pool, b)).toEqual([
           { idempotency_key: "evt_live_b", amount_pence: 5_000, source: "card_webhook" },
           {
@@ -190,6 +202,80 @@ describe.skipIf(!migrationUrl)(
           });
         } finally {
           again.release();
+        }
+      });
+    });
+
+    it("does not block a dispute's allocation insert, which key-shares payments out of id order", async () => {
+      await withTemporaryDatabase(async (pool) => {
+        await runMigrationsPerTransaction(pool);
+        const [a, b, c] = (await seedPayments(pool, 3)) as [string, string, string];
+        const sellerId = (
+          await pool.query<{ seller: string }>(
+            "select seller_legal_entity_id as seller from payment where id = $1",
+            [a],
+          )
+        ).rows[0]?.seller as string;
+
+        const dispute = await pool.connect();
+        const backfill = await pool.connect();
+        try {
+          // As insertAllocationsInTransaction does for lines in createdAt or staff order: the
+          // foreign key to payment takes FOR KEY SHARE on B, and later on A.
+          await dispute.query("begin");
+          const caseId = (
+            await dispute.query<{ id: string }>(
+              `insert into dispute_case (stripe_dispute_id, stripe_charge_id, amount_pence, currency, status,
+                 allocation_state, stripe_created_at, last_event_at)
+               values ($1, 'ch_group', 400, 'gbp', 'needs_response', 'allocated', now(), now())
+               returning id`,
+              [`dp_${randomUUID()}`],
+            )
+          ).rows[0]?.id as string;
+          const allocate = (paymentId: string) =>
+            dispute.query(
+              `insert into dispute_allocation (case_id, payment_id, seller_legal_entity_id, amount_pence,
+                 seller_share_pence, source)
+               values ($1, $2, $3, 200, 0, 'automatic')`,
+              [caseId, paymentId, sellerId],
+            );
+          await allocate(b);
+
+          // The run locks A..C in one batch. With FOR UPDATE it would hold A and wait for B's key
+          // share, and the dispute's next insert (A) would close the cycle: deadlock detected.
+          const pid = await backendPid(backfill);
+          let settled = false;
+          const run = backfillPaymentRefundsInIdOrder(backfill, { batchSize: 3 }).finally(() => {
+            settled = true;
+          });
+          while (!settled && !(await isWaitingOnLock(pool, pid))) {
+            await new Promise((resolve) => setTimeout(resolve, 25));
+          }
+          await allocate(a);
+          // The dispute then locks its payments in id order, as lockPaymentsInTransaction does.
+          await dispute.query(
+            "select id from payment where id = any($1::uuid[]) order by id for update",
+            [[a, b]],
+          );
+          await dispute.query("commit");
+          expect(await run).toEqual({ batches: 1, payments: 3, added: 3 });
+        } finally {
+          dispute.release();
+          backfill.release();
+        }
+
+        const { rows } = await pool.query<{ payment_id: string }>(
+          "select payment_id from dispute_allocation order by payment_id",
+        );
+        expect(rows.map((r) => r.payment_id)).toEqual([a, b]);
+        for (const id of [a, b, c]) {
+          expect(await rowsOf(pool, id)).toEqual([
+            {
+              idempotency_key: `payout_ledger_topup:${id}:10000`,
+              amount_pence: 10_000,
+              source: "payout_topup",
+            },
+          ]);
         }
       });
     });
