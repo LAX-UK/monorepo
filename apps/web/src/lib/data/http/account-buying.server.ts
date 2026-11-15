@@ -88,6 +88,7 @@ const purchaseSchema = z.object({
       .object({
         date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
         state: z.enum(["upcoming", "soon", "overdue"]),
+        placeName: z.string(),
       })
       .nullable(),
   }),

@@ -10,6 +10,7 @@ import { ButtonLink } from "@auction/ui/lax/button-link";
 import { Notice } from "@auction/ui/lax/notice";
 import { StatusBadge } from "@auction/ui/lax/status-badge";
 import { pageTitleClass } from "@auction/ui/lax/styles";
+import { TextLink } from "@auction/ui/lax/text-link";
 import { cn } from "@auction/ui/lib/utils";
 import { OfficialTime } from "@auction/ui/time";
 import Link from "next/link";
@@ -145,14 +146,24 @@ export function PurchaseDetail({
       {card.collectBy ? (
         <Notice
           tone={card.collectBy.state === "upcoming" ? "info" : "warning"}
-          title={COLLECT_COPY.collectBy.title(card.collectBy.day)}
+          title={card.collectBy.title}
           actions={
             <ButtonLink href={card.collectBy.bookHref} Link={Link} variant="secondary">
               {COLLECT_COPY.entry.button}
             </ButtonLink>
           }
         >
-          {COLLECT_COPY.collectBy[card.collectBy.state]}
+          <p>{card.collectBy.body}</p>
+          <p className="mt-1 flex flex-wrap gap-x-4 gap-y-1">
+            <TextLink href={COLLECT_COPY.collectBy.storagePolicyHref} Link={Link}>
+              {COLLECT_COPY.collectBy.storagePolicy}
+            </TextLink>
+            {card.collectBy.state === "overdue" ? (
+              <TextLink href={COLLECT_COPY.collectBy.emailHref}>
+                {COLLECT_COPY.collectBy.email}
+              </TextLink>
+            ) : null}
+          </p>
         </Notice>
       ) : null}
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">

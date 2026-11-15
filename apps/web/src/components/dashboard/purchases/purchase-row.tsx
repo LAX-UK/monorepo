@@ -2,7 +2,6 @@
 
 import { MediaImage } from "@/components/ui/media-image";
 import { RowStep } from "@/components/workspace/row-step";
-import { COLLECT_COPY } from "@/lib/collect/collect-copy";
 import { purchaseRowStep } from "@/lib/purchases/purchase-row-step";
 import type { PurchaseCardVm } from "@/lib/purchases/purchases.vm";
 import { notify } from "@/lib/ui/notify";
@@ -97,7 +96,7 @@ export function PurchaseRow({
         card.saleTitle,
         card.wonBy ? `won by ${card.wonBy}` : null,
         card.badge.note,
-        card.collectBy ? COLLECT_COPY.collectBy.short(card.collectBy.day) : null,
+        card.collectBy?.short ?? null,
       ]}
       figures={[{ value: card.amount, label: card.amountLabel }]}
       aligned

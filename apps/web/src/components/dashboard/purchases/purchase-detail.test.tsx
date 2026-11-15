@@ -112,6 +112,12 @@ describe("PurchaseDetail's due line", () => {
 describe("PurchaseDetail's collect-by notice", () => {
   const collectBy = (state: "upcoming" | "soon" | "overdue") => ({
     day: "Wed 9 Dec",
+    short: "Collect by Wed 9 Dec",
+    title: "Please collect by Wed 9 Dec",
+    body:
+      state === "overdue"
+        ? "That day has passed, so storage charges may apply."
+        : "Your work is paid for and waiting at LAX Marylebone.",
     state,
     bookHref: "/purchases/collect?lots=l6",
   });
@@ -127,6 +133,20 @@ describe("PurchaseDetail's collect-by notice", () => {
       );
     },
   );
+
+  it("links the storage policy, and the gallery's email once the day has passed", () => {
+    const soon = renderAsVisitorIn(null, page(card({ collectBy: collectBy("soon") })));
+    expect(screen.getByRole("link", { name: "Storage policy" })).toHaveAttribute(
+      "href",
+      "/shipping#storage",
+    );
+    expect(screen.queryByRole("link", { name: /^Email / })).toBeNull();
+    soon.unmount();
+    renderAsVisitorIn(null, page(card({ collectBy: collectBy("overdue") })));
+    expect(screen.getByRole("link", { name: /^Email .+@/ }).getAttribute("href")).toMatch(
+      /^mailto:/,
+    );
+  });
 
   it("says the day has passed once overdue, and not before", () => {
     const overdue = renderAsVisitorIn(null, page(card({ collectBy: collectBy("overdue") })));

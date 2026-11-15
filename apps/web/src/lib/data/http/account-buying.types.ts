@@ -64,8 +64,11 @@ export type AccountPurchaseFacts = {
     collectedBy: string | null;
     collectedAt: Date | null;
     quote: PurchaseQuoteView | null;
-    /** "Please collect by" while the work waits to be collected; the API works it out. */
-    collectBy: PurchaseCollectBy | null;
+    /**
+     * "Please collect by" while the work waits to be collected; the API works it out. `placeName`
+     * is where it waits, as the reminder email names it.
+     */
+    collectBy: (PurchaseCollectBy & { placeName: string }) | null;
   };
 };
 
