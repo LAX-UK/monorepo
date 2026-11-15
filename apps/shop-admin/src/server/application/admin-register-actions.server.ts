@@ -37,7 +37,7 @@ export async function markNotSold(input: {
   });
 }
 
-/** "Dealt with": closes the item for a work sold in the gallery, which ends the payment hold. */
+/** "Dealt with": closes the item for a work sold in the gallery. Needs a recent sign-in. */
 export async function markDealtWith(input: { attentionId: string; idempotencyKey?: string }) {
   return forwardAdminJsonMutation<AdminSoldAttentionDealtWithResult>({
     bffPath: `artwork-register/attention/${encodeURIComponent(input.attentionId)}/dealt-with`,

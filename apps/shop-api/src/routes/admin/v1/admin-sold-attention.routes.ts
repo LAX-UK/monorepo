@@ -16,6 +16,7 @@ import type { FastifyInstance } from "fastify";
 import type { SoldAttentionReviewService } from "../../../application/artwork-register/sold-attention-review.service.js";
 import { ShopApiError, notFound } from "../../../errors/shop-api-error.js";
 import {
+  requireRecentAuthentication,
   requireShopAdminSubject,
   requireShopStaffCapability,
 } from "../../../plugins/shop-admin-auth.js";
@@ -24,10 +25,12 @@ import {
  * Artworks Zoho says are Sold or Reserved that are still for sale. Reading needs
  * `artwork_register.read`; "It is not sold" and "Dealt with" need `artwork_register.review`.
  * Reopening a sale made in the gallery is for Administrators (`artwork_register.reopen_sold`).
+ * "Dealt with" and Reopen are staff resolutions of a sale, so both also need a recent sign-in.
  */
 export async function registerAdminSoldAttentionRoutes(
   app: FastifyInstance,
   service: SoldAttentionReviewService,
+  deps: { stepUpMaxAuthAgeSeconds: number },
 ) {
   app.get(
     "/artwork-register/attention",
@@ -110,6 +113,7 @@ export async function registerAdminSoldAttentionRoutes(
     },
     async (request) => {
       requireShopStaffCapability(request, "artwork_register.review");
+      requireRecentAuthentication(request, deps.stepUpMaxAuthAgeSeconds);
       const { attentionId } = request.params as { attentionId: string };
       const outcome = await service.dealtWith({
         attentionId,
@@ -154,6 +158,7 @@ export async function registerAdminSoldAttentionRoutes(
     },
     async (request) => {
       requireShopStaffCapability(request, "artwork_register.reopen_sold");
+      requireRecentAuthentication(request, deps.stepUpMaxAuthAgeSeconds);
       const { registerId } = request.params as { registerId: string };
       const body = request.body as AdminRegisterReopenBody;
       const outcome = await service.reopen({

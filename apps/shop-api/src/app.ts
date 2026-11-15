@@ -220,7 +220,9 @@ export function createShopApiApp(options: CreateShopApiAppOptions) {
         void registerAdminEnquiryRoutes(adminScope, options.deps.admin.enquiryInbox);
         void registerAdminGuestRoutes(adminScope, options.deps.admin);
         void registerAdminArtworkRegisterRoutes(adminScope, options.deps.admin.artworkRegister);
-        void registerAdminSoldAttentionRoutes(adminScope, options.deps.admin.soldAttention);
+        void registerAdminSoldAttentionRoutes(adminScope, options.deps.admin.soldAttention, {
+          stepUpMaxAuthAgeSeconds: options.deps.admin.stepUpMaxAuthAgeSeconds,
+        });
         void registerAdminZohoSyncHealthRoutes(adminScope, options.deps.admin.zohoSyncHealth);
         void registerAdminOfferOnLaxArtRoutes(adminScope, options.deps.admin);
         void registerAdminCatalogueChangeRoutes(adminScope, options.deps.admin);

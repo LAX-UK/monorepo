@@ -36,13 +36,17 @@ const reopened: Reopen = async (input) => ({
   reason: input.reason,
 });
 
-async function buildApp(role: ShopStaffRole, reopenGallerySale: Reopen = reopened) {
+async function buildApp(
+  role: ShopStaffRole,
+  reopenGallerySale: Reopen = reopened,
+  authTime = Math.floor(Date.now() / 1000),
+) {
   vi.mocked(verifyBearerToken).mockResolvedValue({
     subject: `${role}-subject`,
     payload: {
       scope: "shop.admin",
       acr: OIDC_ACR_SILVER,
-      auth_time: Math.floor(Date.now() / 1000),
+      auth_time: authTime,
     },
   } as never);
   const deps = createMinimalShopApiTestDeps({
@@ -124,4 +128,30 @@ describe("Dealt with", () => {
       await app.close();
     });
   }
+});
+
+describe("Dealt with and Reopen need a recent sign-in", () => {
+  const stale = Math.floor(Date.now() / 1000) - 60 * 60 * 24;
+
+  it("refuses Reopen with step_up_required after a stale sign-in", async () => {
+    const reopenSpy = vi.fn(reopened);
+    const app = await buildApp("shop_admin", reopenSpy, stale);
+    const response = await reopen(app);
+    expect(response.statusCode).toBe(403);
+    expect(response.json().code).toBe("shop.step_up_required");
+    expect(reopenSpy).not.toHaveBeenCalled();
+    await app.close();
+  });
+
+  it("refuses Dealt with with step_up_required after a stale sign-in", async () => {
+    const app = await buildApp("catalogue_editor", reopened, stale);
+    const response = await app.inject({
+      method: "POST",
+      url: `/admin/v1/artwork-register/attention/${ATTENTION_ID}/dealt-with`,
+      headers: auth,
+    });
+    expect(response.statusCode).toBe(403);
+    expect(response.json().code).toBe("shop.step_up_required");
+    await app.close();
+  });
 });
