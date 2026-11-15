@@ -3,7 +3,7 @@ import { StaffTooltipProvider } from "@auction/staff-ui";
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { EnquiriesList, type EnquiriesListProps } from "./enquiries-list";
-import { ASSIGNEES, listItem } from "./enquiry.fixture";
+import { ASSIGNEES, COUNTS, listItem } from "./enquiry.fixture";
 
 const push = vi.fn();
 
@@ -52,6 +52,7 @@ function renderList(patch: Partial<EnquiriesListProps> = {}) {
         }),
       ],
       nextCursor: null,
+      counts: COUNTS,
     },
     search: {},
     filters: parseEnquiriesSearch({}, abilities.defaultView),
@@ -142,12 +143,6 @@ describe("EnquiriesList: views and filters", () => {
     );
   });
 
-  it("has no search box or sort control, because the API offers neither", () => {
-    renderList();
-    expect(screen.queryByRole("searchbox")).toBeNull();
-    expect(screen.queryByRole("button", { name: /Sort/ })).toBeNull();
-  });
-
   it("shows a removable chip for each filter in force", () => {
     const search = { kind: "private_sale_sell" };
     renderList({
@@ -162,14 +157,18 @@ describe("EnquiriesList: views and filters", () => {
 
 describe("EnquiriesList: states", () => {
   it("says what the view is for when it is empty, and offers all enquiries from the landing view", () => {
-    renderList({ page: { items: [], nextCursor: null }, pagination: null });
+    renderList({ page: { items: [], nextCursor: null, counts: COUNTS }, pagination: null });
     expect(screen.getByText("Nothing assigned to you")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "View all enquiries" }));
     expect(push).toHaveBeenCalledWith("/admin/enquiries?view=all", { scroll: false });
   });
 
   it("says nothing matched when filters narrow the list to nothing", () => {
-    renderList({ page: { items: [], nextCursor: null }, pagination: null, filtered: true });
+    renderList({
+      page: { items: [], nextCursor: null, counts: COUNTS },
+      pagination: null,
+      filtered: true,
+    });
     expect(screen.getByText("No enquiries match")).toBeInTheDocument();
   });
 
@@ -195,5 +194,60 @@ describe("EnquiriesList: routing", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: "Routing" }));
     expect(await screen.findByRole("dialog", { name: "Enquiry routing" })).toBeInTheDocument();
+  });
+});
+
+describe("EnquiriesList: search, sort and counts", () => {
+  it("searches by typed text, keeping the view and returning to the first page", () => {
+    renderList({
+      search: { view: "all", cursor: "abc", q: "old" },
+      filters: parseEnquiriesSearch({ view: "all", cursor: "abc", q: "old" }, "open"),
+    });
+    const box = screen.getByRole("searchbox", { name: "Search enquiries" });
+    expect(box).toHaveValue("old");
+    fireEvent.change(box, { target: { value: "Riley" } });
+    fireEvent.submit(box.closest("form") as HTMLFormElement);
+    expect(push).toHaveBeenCalledWith("/admin/enquiries?view=all&q=Riley", { scroll: false });
+  });
+
+  it("orders by arrival over the view's own order, and says which order it is", async () => {
+    renderList({
+      filters: parseEnquiriesSearch({ sort: "oldest" }, "assigned_to_me"),
+      pagination: { summary: "3 enquiries", prevHref: null, nextHref: null },
+    });
+    expect(screen.getByText(/3 enquiries · Oldest first/)).toBeInTheDocument();
+    fireEvent.keyDown(screen.getByRole("button", { name: "Sort: Oldest first" }), { key: "Enter" });
+    fireEvent.click(await screen.findByRole("menuitemradio", { name: "Newest first" }));
+    expect(push).toHaveBeenCalledWith("/admin/enquiries?sort=newest", { scroll: false });
+  });
+
+  it("goes back to the view's own order without leaving a sort in the address", async () => {
+    renderList({
+      search: { sort: "oldest" },
+      filters: parseEnquiriesSearch({ sort: "oldest" }, "assigned_to_me"),
+    });
+    fireEvent.keyDown(screen.getByRole("button", { name: "Sort: Oldest first" }), { key: "Enter" });
+    fireEvent.click(await screen.findByRole("menuitemradio", { name: "View order" }));
+    expect(push).toHaveBeenLastCalledWith("/admin/enquiries", { scroll: false });
+  });
+
+  it("shows how many enquiries sit in each status in the filter", () => {
+    renderList();
+    fireEvent.click(screen.getByRole("button", { name: /Filter/ }));
+    const status = within(screen.getByRole("radiogroup", { name: "Status" }));
+    expect(status.getByText("Closed").closest("label")?.textContent).toContain("7");
+    expect(status.getByText("New").closest("label")?.textContent).toContain("4");
+  });
+
+  it("offers the search as a removable chip and counts it as a filter", () => {
+    renderList({
+      filtered: true,
+      page: { items: [], nextCursor: null, counts: COUNTS },
+      pagination: null,
+      chips: [{ id: "q", label: "Search: “riley”", clearHref: "/admin/enquiries" }],
+    });
+    expect(screen.getByText("No enquiries match")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /Remove.*riley/i }));
+    expect(push).toHaveBeenCalledWith("/admin/enquiries", { scroll: false });
   });
 });

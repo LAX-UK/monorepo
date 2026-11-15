@@ -6,7 +6,7 @@ import {
 } from "../../testing/in-memory-marketing-enquiries.js";
 import type { IDomainEventSink } from "../domain-event-sink.js";
 import type { EnquiryStaffViewer } from "../interfaces/marketing-enquiry-service.js";
-import { EnquiryDeskService } from "./enquiry-desk.service.js";
+import { ENQUIRY_ATTACHMENT_LINK_TTL_SEC, EnquiryDeskService } from "./enquiry-desk.service.js";
 
 const NOW = new Date("2026-07-27T12:00:00.000Z");
 
@@ -33,6 +33,8 @@ type Seed = {
   intent: "general" | "private_sale_sell" | "press";
   assignedToUserId?: string;
   departmentSlug?: string;
+  name?: string;
+  artist?: string;
 };
 
 async function setup(seeds: Seed[] = []) {
@@ -44,12 +46,16 @@ async function setup(seeds: Seed[] = []) {
     runInTransaction: (fn: (tx: unknown) => Promise<unknown>) => fn({}),
   } as unknown as ITransactionRunner;
   const staff = new Set(["cs-1", "spec-1", "tom"]);
+  const listRedacted = vi.fn().mockResolvedValue([]);
+  const createPresignedGet = vi.fn().mockResolvedValue({ url: "https://signed.example/f?sig=1" });
   const desk = new EnquiryDeskService({
     enquiries,
     notes,
     assignees: { isStaff: async (id) => staff.has(id), list: async () => [] },
     transactionRunner,
     events,
+    history: { listRedacted },
+    storage: { createPresignedGet },
     now: () => NOW,
   });
   for (const seed of seeds) {
@@ -58,16 +64,33 @@ async function setup(seeds: Seed[] = []) {
       {
         intent: seed.intent,
         topic: seed.intent === "private_sale_sell" ? "selling" : "press",
-        name: "Ada Lovelace",
+        name: seed.name ?? "Ada Lovelace",
         email: "ada@example.com",
         message: "A message that is long enough.",
         marketingOptIn: false,
+        ...(seed.artist
+          ? {
+              privateSale: {
+                artist: seed.artist,
+                title: null,
+                medium: null,
+                size: null,
+                locationTown: null,
+                locationCountry: null,
+                priceInMindMinor: null,
+                lookingFor: null,
+                budgetBand: null,
+                timing: null,
+                contactPreference: "email" as const,
+              },
+            }
+          : {}),
         ...(seed.assignedToUserId ? { assignedToUserId: seed.assignedToUserId } : {}),
         ...(seed.departmentSlug ? { departmentSlug: seed.departmentSlug } : {}),
       },
     );
   }
-  return { desk, enquiries, notes, publish };
+  return { desk, enquiries, notes, publish, listRedacted, createPresignedGet };
 }
 
 const query = (overrides: Record<string, unknown> = {}) =>
@@ -310,5 +333,167 @@ describe("EnquiryDeskService markHandled", () => {
       error: "already_handled",
     });
     expect(publish).not.toHaveBeenCalled();
+  });
+});
+
+describe("EnquiryDeskService list search, sort and counts", () => {
+  const seeds: Seed[] = [
+    { intent: "press", name: "Grace Hopper" },
+    { intent: "private_sale_sell", name: "Ada Lovelace", artist: "Bridget Riley" },
+    { intent: "press", name: "Alan Turing" },
+  ];
+
+  it("finds by name, reference, email and the artist of the work, ignoring case", async () => {
+    const { desk } = await setup(seeds);
+    const refs = async (q: string) =>
+      (await desk.list(clientServices, query({ view: "all", q }))).items.map((i) => i.reference);
+    expect(await refs("hopper")).toEqual(["E-1001"]);
+    expect(await refs("e-1003")).toEqual(["E-1003"]);
+    expect(await refs("riley")).toEqual(["E-1002"]);
+    expect(await refs("ada@")).toHaveLength(3);
+    expect(await refs("nobody")).toEqual([]);
+  });
+
+  it("does not let a search reach enquiries the viewer may not see", async () => {
+    const { desk } = await setup(seeds);
+    const page = await desk.list(noPrivateAccess, query({ view: "all", q: "riley" }));
+    expect(page.items).toEqual([]);
+    expect(page.counts.new).toBe(0);
+  });
+
+  it("sorts by arrival, newest or oldest, over the view's own order", async () => {
+    const { desk } = await setup(seeds);
+    const order = async (sort: "oldest" | "newest") =>
+      (await desk.list(clientServices, query({ view: "all", sort }))).items.map((i) => i.reference);
+    expect(await order("oldest")).toEqual([...(await order("newest"))].reverse());
+  });
+
+  it("counts every status under the view and filters, except the status filter", async () => {
+    const { desk } = await setup(seeds);
+    await desk.update(clientServices, "cs-1", "E-1001", { version: 1, status: "in_progress" });
+    const all = await desk.list(clientServices, query({ view: "all" }));
+    expect(all.counts).toEqual({
+      new: 2,
+      in_progress: 1,
+      waiting_on_client: 0,
+      converted: 0,
+      closed: 0,
+    });
+    const filtered = await desk.list(clientServices, query({ view: "all", status: "new" }));
+    expect(filtered.items).toHaveLength(2);
+    expect(filtered.counts.in_progress).toBe(1);
+    const searched = await desk.list(clientServices, query({ view: "all", q: "hopper" }));
+    expect(searched.counts).toMatchObject({ in_progress: 1, new: 0 });
+  });
+});
+
+describe("EnquiryDeskService attachment links", () => {
+  const attachment = {
+    id: "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+    uploadObjectId: "u-1",
+    kind: "image" as const,
+    position: 0,
+    key: "enquiries/private/photo.jpg",
+    contentType: "image/jpeg",
+  };
+
+  async function withAttachment() {
+    const ctx = await setup([{ intent: "private_sale_sell" }, { intent: "press" }]);
+    ctx.enquiries.attachments.set(ctx.enquiries.rows[0]?.id as string, [attachment]);
+    return ctx;
+  }
+
+  it("signs a short-lived link, never a public object URL, and records who opened it", async () => {
+    const { desk, createPresignedGet, publish } = await withAttachment();
+    const link = await desk.attachmentLink(specialist, "E-1001", attachment.id);
+    expect(link).toEqual({
+      url: "https://signed.example/f?sig=1",
+      kind: "image",
+      contentType: "image/jpeg",
+      expiresInSec: ENQUIRY_ATTACHMENT_LINK_TTL_SEC,
+    });
+    expect(ENQUIRY_ATTACHMENT_LINK_TTL_SEC).toBeLessThanOrEqual(120);
+    expect(createPresignedGet).toHaveBeenCalledWith(
+      expect.objectContaining({
+        key: attachment.key,
+        expiresInSec: ENQUIRY_ATTACHMENT_LINK_TTL_SEC,
+        signingDate: NOW,
+      }),
+    );
+    expect(publish).toHaveBeenCalledWith(
+      expect.objectContaining({
+        eventType: "marketing_enquiry.attachment_viewed",
+        actorUserId: "spec-1",
+        payload: expect.objectContaining({ attachmentId: attachment.id, kind: "image" }),
+      }),
+    );
+    expect(JSON.stringify(publish.mock.calls)).not.toContain(attachment.key);
+  });
+
+  it("answers as if there were no file to someone who may not open the enquiry", async () => {
+    const { desk, createPresignedGet, publish } = await withAttachment();
+    expect(await desk.attachmentLink(noPrivateAccess, "E-1001", attachment.id)).toBeNull();
+    expect(createPresignedGet).not.toHaveBeenCalled();
+    expect(publish).not.toHaveBeenCalled();
+  });
+
+  it("will not serve a file through another enquiry's reference", async () => {
+    const { desk, createPresignedGet } = await withAttachment();
+    expect(await desk.attachmentLink(clientServices, "E-1002", attachment.id)).toBeNull();
+    expect(await desk.attachmentLink(clientServices, "E-1001", "missing")).toBeNull();
+    expect(createPresignedGet).not.toHaveBeenCalled();
+  });
+});
+
+describe("EnquiryDeskService history", () => {
+  it("reads assignments and status changes from the audit trail, oldest first, and hides the enquiry from those who cannot open it", async () => {
+    const { desk, enquiries, listRedacted } = await setup([{ intent: "private_sale_sell" }]);
+    const id = enquiries.rows[0]?.id as string;
+    const at = (n: number) => new Date(`2026-07-2${n}T09:00:00.000Z`);
+    listRedacted.mockResolvedValue([
+      {
+        id: 1,
+        eventType: "marketing_enquiry.assigned",
+        actorUserId: "cs-1",
+        occurredAt: at(1),
+        payload: { assignedToUserId: "tom", previousAssignedToUserId: null },
+      },
+      {
+        id: 2,
+        eventType: "marketing_enquiry.status_changed",
+        actorUserId: "tom",
+        occurredAt: at(2),
+        payload: { from: "new", to: "closed", closeReason: "spam" },
+      },
+      { id: 3, eventType: "marketing_enquiry.attachment_viewed", occurredAt: at(3), payload: {} },
+    ]);
+    const entries = await desk.history(clientServices, "E-1001");
+    expect(listRedacted).toHaveBeenCalledWith(
+      expect.objectContaining({
+        aggregateType: "marketing_enquiry",
+        aggregateId: id,
+        includePii: false,
+      }),
+    );
+    expect(entries).toEqual([
+      {
+        id: "1",
+        at: at(1).toISOString(),
+        actorUserId: "cs-1",
+        kind: "assigned",
+        toUserId: "tom",
+        fromUserId: null,
+      },
+      {
+        id: "2",
+        at: at(2).toISOString(),
+        actorUserId: "tom",
+        kind: "status_changed",
+        from: "new",
+        to: "closed",
+        closeReason: "spam",
+      },
+    ]);
+    expect(await desk.history(noPrivateAccess, "E-1001")).toBeNull();
   });
 });

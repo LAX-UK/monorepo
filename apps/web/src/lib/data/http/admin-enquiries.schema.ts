@@ -29,9 +29,19 @@ export const enquiryListItemSchema = z.object({
 });
 export type EnquiryListItem = z.infer<typeof enquiryListItemSchema>;
 
+export const enquiryStatusCountsSchema = z.object(
+  Object.fromEntries(ENQUIRY_STATUSES.map((value) => [value, z.number()])) as Record<
+    (typeof ENQUIRY_STATUSES)[number],
+    z.ZodNumber
+  >,
+);
+export type EnquiryStatusCounts = z.infer<typeof enquiryStatusCountsSchema>;
+
 export const enquiryListPageSchema = z.object({
   items: z.array(enquiryListItemSchema),
   nextCursor: z.string().nullable(),
+  /** Per status, under the view and filters apart from the status filter. */
+  counts: enquiryStatusCountsSchema,
 });
 export type EnquiryListPage = z.infer<typeof enquiryListPageSchema>;
 
@@ -104,3 +114,34 @@ export const enquiryRuleSchema = z.object({
 });
 export type EnquiryRule = z.infer<typeof enquiryRuleSchema>;
 export const enquiryRoutingSchema = z.object({ rules: z.array(enquiryRuleSchema) });
+
+const historyBase = { id: z.string(), at: z.string(), actorUserId: z.string().nullable() };
+
+/** One assignment or status change from the audit trail. */
+export const enquiryHistoryEntrySchema = z.discriminatedUnion("kind", [
+  z.object({
+    ...historyBase,
+    kind: z.literal("assigned"),
+    toUserId: z.string().nullable(),
+    fromUserId: z.string().nullable(),
+  }),
+  z.object({
+    ...historyBase,
+    kind: z.literal("status_changed"),
+    from: z.string().nullable(),
+    to: z.string().nullable(),
+    closeReason: z.string().nullable(),
+  }),
+  z.object({ ...historyBase, kind: z.literal("converted"), from: z.string().nullable() }),
+]);
+export type EnquiryHistoryEntry = z.infer<typeof enquiryHistoryEntrySchema>;
+export const enquiryHistorySchema = z.object({ entries: z.array(enquiryHistoryEntrySchema) });
+
+/** A signed link to one attachment: good for about a minute. */
+export const enquiryAttachmentLinkSchema = z.object({
+  url: z.string().url(),
+  kind: z.enum(["image", "document"]),
+  contentType: z.string(),
+  expiresInSec: z.number(),
+});
+export type EnquiryAttachmentLink = z.infer<typeof enquiryAttachmentLinkSchema>;

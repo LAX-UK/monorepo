@@ -83,3 +83,78 @@ describe("enquiryTimeline", () => {
     expect(events[0]).toMatchObject({ title: "Converted to a deal", tone: "success" });
   });
 });
+
+describe("enquiryTimeline with the audit trail", () => {
+  const names: Record<string, string> = { tom: "Tom Reid", sofia: "Sofia Okafor" };
+  const nameOf = (id: string | null) => (id ? names[id] : undefined);
+  const entry = (patch: object) => ({
+    id: "1",
+    at: "2026-11-02T10:00:00.000Z",
+    actorUserId: "tom",
+    ...patch,
+  });
+
+  it("words assignments and status changes, newest first among the record's own events", () => {
+    const events = enquiryTimeline(base, nameOf, [
+      entry({ id: "1", kind: "assigned", toUserId: "sofia", fromUserId: "tom" }),
+      entry({
+        id: "2",
+        at: "2026-11-02T11:00:00.000Z",
+        kind: "assigned",
+        toUserId: null,
+        fromUserId: "sofia",
+      }),
+      entry({
+        id: "3",
+        at: "2026-11-02T12:00:00.000Z",
+        kind: "status_changed",
+        from: "new",
+        to: "waiting_on_client",
+        closeReason: null,
+      }),
+    ] as never);
+    expect(events.map((e) => e.title)).toEqual([
+      "Status changed to waiting on client",
+      "Unassigned",
+      "Assigned to Sofia Okafor",
+      "Received from a guest",
+    ]);
+    expect(events[2]).toMatchObject({ actor: "Tom Reid", detail: "Previously Tom Reid" });
+  });
+
+  it("names a close with its reason once, from the trail rather than the record", () => {
+    const closed = {
+      ...base,
+      status: "closed" as const,
+      closeReason: "spam" as const,
+      handledAt: "2026-11-02T12:00:00.000Z",
+    };
+    const trail = [
+      entry({
+        at: "2026-11-02T12:00:00.000Z",
+        kind: "status_changed",
+        from: "new",
+        to: "closed",
+        closeReason: "spam",
+      }),
+    ] as never;
+    expect(
+      enquiryTimeline(closed, nameOf, trail).filter((e) => e.title === "Closed: Spam"),
+    ).toHaveLength(1);
+    expect(
+      enquiryTimeline(closed, nameOf, null).filter((e) => e.title === "Closed: Spam"),
+    ).toHaveLength(1);
+  });
+
+  it("calls a person who has left a former staff member rather than leaving a gap", () => {
+    const [first] = enquiryTimeline(base, nameOf, [
+      entry({
+        at: "2026-11-02T10:00:00.000Z",
+        kind: "assigned",
+        toUserId: "gone",
+        fromUserId: null,
+      }),
+    ] as never);
+    expect(first?.title).toBe("Assigned to a former staff member");
+  });
+});

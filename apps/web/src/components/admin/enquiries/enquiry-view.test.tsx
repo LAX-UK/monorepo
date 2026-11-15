@@ -12,6 +12,7 @@ import {
 
 const refresh = vi.fn();
 const update = vi.fn();
+const attachmentLink = vi.fn();
 const notifySuccess = vi.fn();
 
 vi.mock("next/navigation", () => ({
@@ -21,6 +22,7 @@ vi.mock("next/navigation", () => ({
 }));
 vi.mock("@/lib/actions/admin/admin-enquiries", () => ({
   updateEnquiryAction: (...args: unknown[]) => update(...args),
+  enquiryAttachmentLinkAction: (...args: unknown[]) => attachmentLink(...args),
   saveEnquiryRoutingAction: vi.fn(),
 }));
 vi.mock("@/lib/actions/admin/admin-private-sales", () => ({
@@ -37,6 +39,7 @@ function renderView(props: Partial<EnquiryViewProps> = {}) {
       <EnquiryView
         enquiry={sellEnquiry}
         assignees={ASSIGNEES}
+        history={[]}
         viewerId="u-sofia"
         canWork
         now="2026-11-03T12:00:00.000Z"
@@ -274,5 +277,123 @@ describe("EnquiryView: turning a private sale enquiry into a deal", () => {
     expect(screen.queryByRole("button", { name: "Convert to deal" })).toBeNull();
     renderView({ enquiry: convertedEnquiry, canConvert: true });
     expect(screen.queryByRole("button", { name: "Convert to deal" })).toBeNull();
+  });
+});
+
+describe("EnquiryView: reply by date", () => {
+  const due = (replyDueAt: string) => ({ ...sellEnquiry, replyDueAt });
+
+  it("leaves the year off in the current year and shows it in any other", () => {
+    const { unmount } = renderView({
+      enquiry: due("2026-12-30T09:00:00.000Z"),
+      now: "2026-12-29T12:00:00.000Z",
+    });
+    expect(screen.getByText("Reply by Wed 30 Dec")).toBeInTheDocument();
+    unmount();
+    const { unmount: unmount2 } = renderView({
+      enquiry: due("2027-01-02T09:00:00.000Z"),
+      now: "2026-12-31T12:00:00.000Z",
+    });
+    expect(screen.getByText("Reply by Sat 2 Jan 2027")).toBeInTheDocument();
+    unmount2();
+    renderView({ enquiry: due("2027-01-02T09:00:00.000Z"), now: "2027-01-01T12:00:00.000Z" });
+    expect(screen.getByText("Reply by Sat 2 Jan")).toBeInTheDocument();
+  });
+});
+
+describe("EnquiryView: attachments", () => {
+  it("opens a file through a link signed when it is clicked, and never shows an address", async () => {
+    attachmentLink.mockResolvedValue({
+      ok: true,
+      data: {
+        url: "https://files.example/signed?sig=abc",
+        kind: "image",
+        contentType: "image/jpeg",
+        expiresInSec: 60,
+      },
+    });
+    const click = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+    renderView();
+    expect(document.body.innerHTML).not.toContain("files.example");
+    fireEvent.click(screen.getByRole("button", { name: "Open Photo" }));
+    await waitFor(() => expect(attachmentLink).toHaveBeenCalledWith("E-1042", "a1"));
+    await waitFor(() => expect(click).toHaveBeenCalledTimes(1));
+    const anchor = click.mock.contexts[0] as HTMLAnchorElement;
+    expect(anchor.href).toBe("https://files.example/signed?sig=abc");
+    expect(anchor.rel).toContain("noopener");
+    click.mockRestore();
+  });
+
+  it("says so when the file cannot be opened", async () => {
+    attachmentLink.mockResolvedValue({ ok: false, error: "This file is no longer available." });
+    const click = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+    renderView();
+    fireEvent.click(screen.getByRole("button", { name: "Open Document" }));
+    await waitFor(() => expect(attachmentLink).toHaveBeenCalledWith("E-1042", "a2"));
+    expect(click).not.toHaveBeenCalled();
+    click.mockRestore();
+  });
+
+  it("has no section when nothing was attached", () => {
+    renderView({ enquiry: buyEnquiry });
+    expect(screen.queryByRole("heading", { name: "Attachments" })).toBeNull();
+  });
+});
+
+describe("EnquiryView: history", () => {
+  const history = [
+    {
+      id: "1",
+      kind: "assigned" as const,
+      at: "2026-11-02T09:30:00.000Z",
+      actorUserId: "u-tom",
+      toUserId: "u-sofia",
+      fromUserId: null,
+    },
+    {
+      id: "2",
+      kind: "status_changed" as const,
+      at: "2026-11-02T10:00:00.000Z",
+      actorUserId: "u-sofia",
+      from: "new",
+      to: "in_progress",
+      closeReason: null,
+    },
+    {
+      id: "3",
+      kind: "status_changed" as const,
+      at: "2026-11-02T12:00:00.000Z",
+      actorUserId: "u-sofia",
+      from: "in_progress",
+      to: "closed",
+      closeReason: "spam",
+    },
+  ];
+
+  it("lists assignments and status changes with who made them, newest first, beside the notes", () => {
+    renderView({ history });
+    const list = within(screen.getByRole("list", { name: "Enquiry history" }));
+    const titles = list.getAllByRole("listitem").map((item) => item.textContent ?? "");
+    expect(titles[0]).toContain("Closed: Spam");
+    expect(titles[0]).toContain("Sofia Okafor");
+    expect(titles.some((t) => t.includes("Status changed to in progress"))).toBe(true);
+    expect(
+      titles.some((t) => t.includes("Assigned to Sofia Okafor") && t.includes("Tom Reid")),
+    ).toBe(true);
+    expect(titles.some((t) => t.includes("Note added"))).toBe(true);
+    expect(titles.filter((t) => t.includes("Closed")).length).toBe(1);
+  });
+
+  it("says the trail could not be loaded, and still shows what the record holds", () => {
+    renderView({ history: null });
+    expect(
+      screen.getByText("Assignments and status changes couldn't be loaded"),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/Received from a guest/)).toBeInTheDocument();
+  });
+
+  it("falls back to the record's own close when the trail is unavailable", () => {
+    renderView({ enquiry: closedEnquiry, history: null });
+    expect(screen.getAllByText("Closed: Not a fit").length).toBeGreaterThan(1);
   });
 });
