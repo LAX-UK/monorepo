@@ -130,6 +130,9 @@ export function createRedisSessionStore(input: {
       const claimed = await redis.set(pendingLoginKey(state), "claimed", "EX", ttlSeconds, "NX");
       return claimed === "OK";
     },
+    async isPendingLoginRevoked(state) {
+      return (await redis.get(pendingLoginKey(state))) === "revoked";
+    },
     async settlePendingLogin(state, sessionId) {
       const settled = await redis.eval(
         SETTLE_PENDING_LOGIN_SCRIPT,

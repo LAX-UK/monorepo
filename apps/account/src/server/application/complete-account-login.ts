@@ -18,9 +18,12 @@ const PENDING_LOGIN_RECORD_TTL_SECONDS = PENDING_LOGIN_MAX_AGE_SECONDS + 60;
 
 /** The sign-in was ended by a sign-out, or its callback already ran: no session may come of it. */
 export class PendingLoginEndedError extends Error {
-  constructor() {
+  /** True when a sign-out ended it; false when the callback was simply already taken. */
+  readonly signedOut: boolean;
+  constructor(signedOut: boolean) {
     super("Pending sign-in already used or ended by sign-out");
     this.name = "PendingLoginEndedError";
+    this.signedOut = signedOut;
   }
 }
 
@@ -47,7 +50,9 @@ export async function completeAccountLogin(input: {
   if (
     !(await input.sessions.claimPendingLogin(input.pending.state, PENDING_LOGIN_RECORD_TTL_SECONDS))
   ) {
-    throw new PendingLoginEndedError();
+    throw new PendingLoginEndedError(
+      await input.sessions.isPendingLoginRevoked(input.pending.state),
+    );
   }
   const redirectUri = `${input.config.publicOrigin}/api/auth/callback`;
   const tokenEndpoint = createAccountTokenEndpoint(input.config);
@@ -105,7 +110,7 @@ export async function completeAccountLogin(input: {
   // A sign-out that landed during the exchange wins: the session it could not see is ended here.
   if (!(await input.sessions.settlePendingLogin(input.pending.state, sessionId))) {
     await input.sessions.delete(sessionId);
-    throw new PendingLoginEndedError();
+    throw new PendingLoginEndedError(true);
   }
   return {
     sessionId,

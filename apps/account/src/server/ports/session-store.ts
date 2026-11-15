@@ -36,6 +36,8 @@ export type SessionStore = {
    * callback already took it, or a sign-out ended it: the code must not be exchanged.
    */
   claimPendingLogin(state: string, ttlSeconds: number): Promise<boolean>;
+  /** True when a sign-out ended the pending sign-in (as opposed to a callback having used it). */
+  isPendingLoginRevoked(state: string): Promise<boolean>;
   /**
    * Records the session a claimed sign-in created, so a sign-out that comes later still ends it.
    * False when a sign-out ended the sign-in meanwhile: the caller deletes that session.

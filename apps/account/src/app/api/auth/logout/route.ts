@@ -1,7 +1,7 @@
 import { openPendingLogin } from "@/lib/pending-login-cookie";
 import { LAX_ACCOUNT_LOGIN_COOKIE, LAX_ACCOUNT_LOGIN_RETRY_COOKIE } from "@/lib/session-cookie";
 import { endPendingAccountLogin } from "@/server/application/complete-account-login";
-import type { PendingAccountLogin } from "@/server/application/start-account-login";
+import { readPendingLogin } from "@/server/application/start-account-login";
 import { getLaxAccountContainer } from "@/server/container";
 import { buildEndSessionUrl } from "@auction/identity-rp";
 import { cookies } from "next/headers";
@@ -16,16 +16,12 @@ export async function POST(request: Request): Promise<Response> {
   const cookieStore = await cookies();
   // A sign-in still in flight (such as a "Confirm it's you" window) must not sign this browser
   // back in when its callback arrives after this: it is ended here, and its cookie cleared.
-  const pendingRaw = openPendingLogin(
-    cookieStore.get(loginCookie)?.value,
-    container.config.sessionEncryptionKey,
+  const pending = readPendingLogin(
+    openPendingLogin(cookieStore.get(loginCookie)?.value, container.config.sessionEncryptionKey),
   );
-  if (pendingRaw) {
+  if (pending) {
     try {
-      const pending = JSON.parse(pendingRaw) as Pick<PendingAccountLogin, "state">;
-      if (typeof pending.state === "string" && pending.state) {
-        await endPendingAccountLogin({ pending, sessions: container.sessions });
-      }
+      await endPendingAccountLogin({ pending, sessions: container.sessions });
     } catch (error) {
       // The cookie is still cleared below; without it the callback finds no sign-in to finish.
       console.error("account_logout_pending_login_end_failed", error);

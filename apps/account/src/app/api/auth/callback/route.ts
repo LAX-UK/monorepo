@@ -97,9 +97,10 @@ export async function GET(request: Request): Promise<Response> {
     return NextResponse.redirect(new URL(safeReturnTo(result.returnTo), publicOrigin));
   } catch (error) {
     clearLoginCookies();
-    // Signed out while this sign-in was in flight (or its callback already ran): the browser
-    // stays as it is, and the landing page is shown without an error.
-    if (error instanceof PendingLoginEndedError) {
+    // Signed out while this sign-in was in flight: the browser stays signed out, and the landing
+    // page is shown without an error. A callback that was merely already taken (a retry after a
+    // failed exchange) shows the normal sign-in error, unless this browser is signed in already.
+    if (error instanceof PendingLoginEndedError && (error.signedOut || replacedSessionId)) {
       return NextResponse.redirect(new URL("/", publicOrigin));
     }
     return NextResponse.redirect(signInErrorRedirect(publicOrigin, "auth_failed"));

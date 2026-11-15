@@ -19,6 +19,18 @@ export type PendingAccountLogin = {
   reauthSubject?: string;
 };
 
+/** Reads the opened pending-login cookie payload; null when it is missing or malformed. */
+export function readPendingLogin(raw: string | undefined): PendingAccountLogin | null {
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw) as Partial<PendingAccountLogin> | null;
+    if (!parsed || typeof parsed.state !== "string" || !parsed.state) return null;
+    return parsed as PendingAccountLogin;
+  } catch {
+    return null;
+  }
+}
+
 export function startAccountLogin(input: {
   config: LaxAccountConfig;
   returnTo: string;

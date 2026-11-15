@@ -141,7 +141,7 @@ describe("completeAccountLogin after a sign-out", () => {
     const store = createMemorySessionStore();
     await endPendingAccountLogin({ pending: base, sessions: store });
 
-    await expect(complete(store)).rejects.toBeInstanceOf(PendingLoginEndedError);
+    await expect(complete(store)).rejects.toMatchObject({ signedOut: true });
     expect(requestToken).not.toHaveBeenCalled();
   });
 
@@ -174,7 +174,10 @@ describe("completeAccountLogin after a sign-out", () => {
     const store = createMemorySessionStore();
     await complete(store);
 
-    await expect(complete(store)).rejects.toBeInstanceOf(PendingLoginEndedError);
+    await expect(complete(store)).rejects.toMatchObject({
+      name: "PendingLoginEndedError",
+      signedOut: false,
+    });
     expect(requestToken).toHaveBeenCalledTimes(1);
   });
 });
