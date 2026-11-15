@@ -66,6 +66,7 @@ describe("AccountPurchasesService.list", () => {
             // Cleared Tue 17 Nov with a 30-day free period: collect by Thu 17 Dec.
             storage: {
               clearedAt: new Date("2026-11-17T10:00:00Z"),
+              placeId: "venue-marylebone",
               placeName: "LAX Marylebone",
               freeStorageDays: null,
               bookingOpen: true,
@@ -85,6 +86,7 @@ describe("AccountPurchasesService.list", () => {
     expect(byLot.get(LOTS.paid)?.delivery.collectBy).toEqual({
       date: "2026-12-17",
       state: "upcoming",
+      placeId: "venue-marylebone",
       placeName: "LAX Marylebone",
     });
     expect(byLot.get(LOTS.due)?.delivery.collectBy).toBeNull();

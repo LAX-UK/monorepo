@@ -341,7 +341,12 @@ export class DrizzleAccountPurchaseFactsReader implements IAccountPurchaseFactsR
 function storageOf(
   clearedAt: Date | null,
   place:
-    | { onlineBookingEnabled: boolean; freeStorageDays: number | null; placeName: string }
+    | {
+        venueId: string;
+        onlineBookingEnabled: boolean;
+        freeStorageDays: number | null;
+        placeName: string;
+      }
     | undefined,
   booked: boolean,
   saleDeleted: boolean,
@@ -349,6 +354,7 @@ function storageOf(
   if (!clearedAt || !place) return null;
   return {
     clearedAt,
+    placeId: place.venueId,
     placeName: place.placeName,
     freeStorageDays: place.freeStorageDays,
     bookingOpen: place.onlineBookingEnabled,

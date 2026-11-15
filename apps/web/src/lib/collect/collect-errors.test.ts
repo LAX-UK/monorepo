@@ -72,4 +72,18 @@ describe("collectFailure", () => {
     expect(collectFailure(503, "<html>", null).kind).toBe("unavailable");
     expect(collectFailure(400, null, null).kind).toBe("other");
   });
+
+  it("says plainly that the account has the most collections it can hold", () => {
+    expect(
+      collectFailure(409, { error: "too_many_visits", message: "Server wording" }, null),
+    ).toEqual({ kind: "too_many_visits", message: COLLECT_COPY.tooManyVisits });
+  });
+
+  it("says plainly that requests are coming too fast, whatever the body", () => {
+    expect(collectFailure(429, { error: "rate_limited" }, null)).toEqual({
+      kind: "rate_limited",
+      message: COLLECT_COPY.rateLimited,
+    });
+    expect(collectFailure(429, "<html>", null)).toMatchObject({ kind: "rate_limited" });
+  });
 });

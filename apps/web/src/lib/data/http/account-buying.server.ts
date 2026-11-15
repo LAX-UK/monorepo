@@ -45,6 +45,17 @@ const quoteSchema = z.object({
   actions: z.array(z.enum(["request", "quote", "accept", "withdraw"])),
 }) satisfies z.ZodType<PurchaseQuoteView, z.ZodTypeDef, unknown>;
 
+/**
+ * The "please collect by" notice. `placeId` defaults to `null` so the web and the API can deploy
+ * in either order: an API that predates it sends only the name.
+ */
+export const collectBySchema = z.object({
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  state: z.enum(["upcoming", "soon", "overdue"]),
+  placeId: z.string().nullable().default(null),
+  placeName: z.string(),
+});
+
 const purchaseSchema = z.object({
   lotId: z.string(),
   wonBy: personSchema.nullable(),
@@ -84,13 +95,7 @@ const purchaseSchema = z.object({
     collectedBy: z.string().nullable(),
     collectedAt: zCoerceDate.nullable(),
     quote: quoteSchema.nullable(),
-    collectBy: z
-      .object({
-        date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-        state: z.enum(["upcoming", "soon", "overdue"]),
-        placeName: z.string(),
-      })
-      .nullable(),
+    collectBy: collectBySchema.nullable(),
   }),
 }) satisfies z.ZodType<AccountPurchaseFacts, z.ZodTypeDef, unknown>;
 

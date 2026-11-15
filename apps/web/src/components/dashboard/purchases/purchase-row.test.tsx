@@ -41,33 +41,86 @@ function card(over: Partial<PurchaseCardVm> = {}): PurchaseCardVm {
     invoiceHref: null,
     problemHref: null,
     collectBy: null,
+    collection: null,
     ...over,
   };
 }
 
-describe("PurchaseRow's collect-by line", () => {
-  it("shows the view model's short line while the work waits to be collected", () => {
+describe("PurchaseRow's collection badge", () => {
+  const badge = (over: Partial<NonNullable<PurchaseCardVm["collection"]>>) =>
+    ({
+      state: "upcoming",
+      label: "Collect by Mon 4 Jan 2027",
+      tone: "neutral",
+      shape: "ring",
+      title: "Please collect by Mon 4 Jan 2027",
+      ...over,
+    }) as NonNullable<PurchaseCardVm["collection"]>;
+
+  it.each([
+    ["Booked Wed 18 Nov", { state: "booked", tone: "info", label: "Booked Wed 18 Nov" }],
+    ["Collect by Mon 4 Jan 2027", {}],
+    [
+      "Overdue since Wed 9 Dec",
+      {
+        state: "overdue",
+        tone: "danger",
+        label: "Overdue since Wed 9 Dec",
+        title: "Collection overdue since Wed 9 Dec. Storage charges may apply.",
+      },
+    ],
+  ] as const)("draws %s next to the status", (text, over) => {
+    render(
+      <PurchaseRow
+        card={card({ collection: badge(over) })}
+        selection={null}
+        selectColumn={false}
+      />,
+    );
+    expect(screen.getByText(text)).toBeInTheDocument();
+    expect(screen.getByText("Ready to collect")).toBeInTheDocument();
+  });
+
+  it("keeps the overdue day on screen and gives the whole sentence as text, not only a title", () => {
+    const sentence = "Collection overdue since Wed 9 Dec. Storage charges may apply.";
     render(
       <PurchaseRow
         card={card({
-          collectBy: {
-            day: "Mon 4 Jan 2027",
-            short: "Collect by Mon 4 Jan 2027",
-            title: "Please collect by Mon 4 Jan 2027",
-            body: "Your work is paid for and waiting at LAX Marylebone.",
-            state: "upcoming",
-            bookHref: "/purchases/collect?lots=l6",
-          },
+          collection: badge({
+            state: "overdue",
+            tone: "danger",
+            label: "Overdue since Wed 9 Dec",
+            title: sentence,
+          }),
         })}
         selection={null}
         selectColumn={false}
       />,
     );
-    expect(screen.getByText("Collect by Mon 4 Jan 2027")).toBeInTheDocument();
+    expect(screen.getByText("Overdue since Wed 9 Dec")).toBeVisible();
+    expect(screen.getByText(sentence)).toHaveClass("sr-only");
   });
 
-  it("shows no collect-by line when there is none", () => {
+  it("draws no collection badge when there is none", () => {
     render(<PurchaseRow card={card()} selection={null} selectColumn={false} />);
-    expect(screen.queryByText(/Collect by/)).toBeNull();
+    expect(screen.queryByText(/Booked|Overdue|Collect by/)).toBeNull();
+  });
+
+  it("offers a collect box named for the lot", () => {
+    const onSelectedChange = vi.fn();
+    render(
+      <PurchaseRow
+        card={card()}
+        selection={{
+          selected: false,
+          onSelectedChange,
+          label: "Add Blue Abstract No. 3 to a collection visit",
+        }}
+        selectColumn
+      />,
+    );
+    expect(
+      screen.getByRole("checkbox", { name: "Add Blue Abstract No. 3 to a collection visit" }),
+    ).toBeInTheDocument();
   });
 });

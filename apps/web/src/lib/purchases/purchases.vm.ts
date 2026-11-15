@@ -24,6 +24,7 @@ import {
 import type { PortfolioRow } from "@auction/types";
 import { formatGbp } from "@auction/ui/lib/money";
 import { describeBuyerPremiumBreakdown } from "@auction/validators";
+import { type CollectionBadgeVm, collectionBadge } from "./purchase-collection";
 import { PURCHASE_STATE_LABEL } from "./purchase-labels";
 import { purchaseProblemHref } from "./purchase-problem";
 import {
@@ -105,8 +106,13 @@ export type PurchaseCardVm = {
     title: string;
     body: string;
     state: PurchaseCollectByState;
+    /** The venue the work waits at; `null` only from an API that predates it. */
+    placeId: string | null;
+    placeName: string;
     bookHref: string;
   } | null;
+  /** The row's collection badge: booked, collect by a day, or overdue; `null` when none applies. */
+  collection: CollectionBadgeVm | null;
   primaryAction: { label: string; href: string } | null;
   invoiceHref: string | null;
   problemHref: string | null;
@@ -175,6 +181,8 @@ export type PurchaseSources = {
   now?: Date;
   /** The account's invoice and delivery state per lot, when it could be read. */
   factsByLot?: Readonly<Record<string, AccountPurchaseFacts>>;
+  /** The start (ISO) of the live collection visit each lot is booked into, by lot. */
+  bookedStartByLot?: Readonly<Record<string, string>>;
   /** Several members win for the account, so rows name who won. */
   showWonBy?: boolean;
 };
@@ -409,6 +417,8 @@ function collectByOf(
     title: COLLECT_COPY.collectBy.title(day),
     body: COLLECT_COPY.collectBy[collectBy.state](collectBy.placeName),
     state: collectBy.state,
+    placeId: collectBy.placeId,
+    placeName: collectBy.placeName,
     bookHref: `${CLIENT_ROUTES.collect}?lots=${encodeURIComponent(row.lot.id)}`,
   };
 }
@@ -445,6 +455,7 @@ export function purchaseCard(row: PortfolioRow, sources: PurchaseSources): Purch
     !informed && state === "payment-due" && invoiced && totalMajor
       ? { totalDue: totalMajor, currency }
       : null;
+  const collectBy = collectByOf(row, facts, sources.now ?? new Date());
   return {
     tab: purchaseTab(state),
     lotId: lot.id,
@@ -458,7 +469,12 @@ export function purchaseCard(row: PortfolioRow, sources: PurchaseSources): Purch
     wonBy: sources.showWonBy ? (facts?.wonBy?.name ?? null) : null,
     state,
     badge: purchaseBadge(state, facts, informed),
-    collectBy: collectByOf(row, facts, sources.now ?? new Date()),
+    collectBy,
+    collection: collectionBadge({
+      collectBy,
+      bookedStart: sources.bookedStartByLot?.[lot.id] ?? null,
+      now: sources.now ?? new Date(),
+    }),
     statusLabel:
       informed && (state === "payment-due" || state === "in-review")
         ? "Awaiting payment"

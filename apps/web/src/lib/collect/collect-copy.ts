@@ -1,4 +1,5 @@
 import { GALLERY_CONTACT } from "@auction/branding";
+import { COLLECT_LIST_COPY } from "./collect-list-copy";
 
 /**
  * Every sentence on the collection booking pages, in one place, as the approved design words them.
@@ -161,9 +162,13 @@ export const COLLECT_COPY = {
     emailHref: `mailto:${GALLERY_CONTACT.email}?subject=${encodeURIComponent("Collecting my purchase")}`,
   },
   badge: {
+    ...COLLECT_LIST_COPY.badge,
     book: "Book collection",
     notCollected: "Not collected",
   },
+  bulk: COLLECT_LIST_COPY.bulk,
+  tooManyVisits:
+    "You already have the most collections we can hold for one account. Cancel one, or email us.",
   entry: {
     button: "Book a collection time",
     intro: `From our gallery at ${GALLERY_CONTACT.streetLine}, ${GALLERY_CONTACT.city} ${GALLERY_CONTACT.postcode}. Book a time online, Monday to Friday.`,

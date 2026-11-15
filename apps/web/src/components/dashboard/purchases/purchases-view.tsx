@@ -2,10 +2,12 @@
 
 import { ListEmpty, ListLoadError, ListNoResults } from "@/components/workspace/list-states";
 import { useListQuery } from "@/components/workspace/use-list-query";
+import { COLLECT_LIST_COPY } from "@/lib/collect/collect-list-copy";
 import { formatMoney } from "@/lib/format-currency";
 import { calendarSalesHref } from "@/lib/marketing/sales-calendar-params";
 import { CLIENT_ROUTES } from "@/lib/navigation/client-routes";
 import { payHref } from "@/lib/pay/pay-links";
+import { collectSelection } from "@/lib/purchases/purchase-collection";
 import type { PurchaseTab } from "@/lib/purchases/purchase-progress";
 import {
   PURCHASE_SORTS,
@@ -33,7 +35,7 @@ import { Notice } from "@auction/ui/lax/notice";
 import type { TabNavItem } from "@auction/ui/lax/tabs";
 import { X } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useState } from "react";
 import { PurchaseRow } from "./purchase-row";
 
 const EMPTY_VIEW: Record<
@@ -77,6 +79,9 @@ export function PurchasesView({
   const [filterOpen, setFilterOpen] = useState(false);
   const [draft, setDraft] = useState(query);
   const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
+  // What a pick let go of, said to assistive technology (the boxes and the bar show it).
+  const [unpicked, setUnpicked] = useState("");
+  const collectBarTextId = useId();
   useEffect(() => {
     if (filterOpen) setDraft(query);
   }, [filterOpen, query]);
@@ -127,13 +132,45 @@ export function PurchasesView({
     (sum, id) => addMoneyStrings(sum, cardsById.get(id)?.payable?.totalDue ?? "0"),
     "0.00",
   );
-  const toggle = (card: PurchaseCardVm, on: boolean) =>
-    setSelected((current) => {
-      const next = new Set(current);
-      if (on) next.add(card.lotId);
-      else next.delete(card.lotId);
-      return next;
-    });
+  const allCards = [...cardsById.values()];
+  const collect = collectSelection(allCards, selected);
+  // Paying and collecting are different errands: picking one kind lets go of the other, so the
+  // one bar below always has one action. Letting go is said aloud, as it unticks other rows.
+  const toggle = (card: PurchaseCardVm, on: boolean) => {
+    const kept = [...selected].filter(
+      (id) => !on || Boolean(cardsById.get(id)?.payable) === Boolean(card.payable),
+    );
+    const dropped = selected.size - kept.length;
+    const next = new Set(kept);
+    if (on) next.add(card.lotId);
+    else next.delete(card.lotId);
+    setSelected(next);
+    setUnpicked(
+      dropped === 0
+        ? ""
+        : card.payable
+          ? COLLECT_LIST_COPY.bulk.clearedCollect(dropped)
+          : COLLECT_LIST_COPY.bulk.clearedPay(dropped),
+    );
+  };
+  const clearSelection = () => {
+    setSelected(new Set());
+    setUnpicked("");
+  };
+  const selectionFor = (card: PurchaseCardVm) => {
+    const label = card.payable
+      ? `Pay ${card.title}`
+      : card.collectBy
+        ? COLLECT_LIST_COPY.bulk.pick(card.title)
+        : null;
+    return label
+      ? {
+          selected: selected.has(card.lotId),
+          onSelectedChange: (on: boolean) => toggle(card, on),
+          label,
+        }
+      : null;
+  };
   const empty = EMPTY_VIEW[query.view](organisation);
 
   return (
@@ -218,15 +255,8 @@ export function PurchasesView({
                 <PurchaseRow
                   key={card.lotId}
                   card={card}
-                  selectColumn={cards.some((each) => each.payable)}
-                  selection={
-                    card.payable
-                      ? {
-                          selected: selected.has(card.lotId),
-                          onSelectedChange: (on) => toggle(card, on),
-                        }
-                      : null
-                  }
+                  selectColumn={cards.some((each) => each.payable || each.collectBy)}
+                  selection={selectionFor(card)}
                 />
               ))}
             </RecordList>
@@ -245,6 +275,9 @@ export function PurchasesView({
           </p>
         ) : null}
       </div>
+      <output aria-live="polite" className="sr-only">
+        {unpicked}
+      </output>
       {picks.length > 0 ? (
         <section
           aria-label="Selected invoices"
@@ -255,18 +288,66 @@ export function PurchasesView({
               variant="ghost"
               size="icon-sm"
               aria-label="Clear selection"
-              onClick={() => setSelected(new Set())}
+              onClick={clearSelection}
             >
               <X aria-hidden />
             </Button>
-            <p className="text-lax-14 font-medium tabular-nums text-lax-fg">
+            <output
+              aria-live="polite"
+              className="block text-lax-14 font-medium tabular-nums text-lax-fg"
+            >
               {picks.length} selected · {formatMoney(picksTotal)}
-            </p>
+            </output>
           </div>
           <ButtonLink variant="primary" Link={Link} href={payHref(picks)}>
             Pay {picks.length === 1 ? "1 invoice" : `${picks.length} invoices`} ·{" "}
             {formatMoney(picksTotal)}
           </ButtonLink>
+        </section>
+      ) : null}
+      {collect.kind !== "none" ? (
+        <section
+          aria-label="Selected lots to collect"
+          className="sticky bottom-4 z-20 flex flex-col gap-3 rounded-lax-card border border-lax-line-strong bg-lax-surface p-3 shadow-lax-md sm:flex-row sm:items-center sm:justify-between max-lg:bottom-20"
+        >
+          <div className="flex min-w-0 items-center gap-2">
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              aria-label="Clear selection"
+              onClick={clearSelection}
+            >
+              <X aria-hidden />
+            </Button>
+            <output
+              id={collectBarTextId}
+              aria-live="polite"
+              className="block text-lax-14 font-medium text-lax-fg"
+            >
+              {collect.kind === "ready"
+                ? COLLECT_LIST_COPY.bulk.selected(collect.lotIds.length, collect.place)
+                : collect.kind === "mixed_places"
+                  ? COLLECT_LIST_COPY.bulk.mixed(collect.places)
+                  : COLLECT_LIST_COPY.bulk.tooMany}
+            </output>
+          </div>
+          {collect.kind === "ready" ? (
+            <ButtonLink variant="primary" Link={Link} href={collect.href}>
+              {COLLECT_LIST_COPY.bulk.button(collect.lotIds.length)}
+            </ButtonLink>
+          ) : (
+            // Unavailable but focusable (`aria-disabled`, not `disabled`), and pointing at the
+            // sentence that says why, so keyboard and screen reader users find the reason.
+            <Button
+              variant="primary"
+              aria-disabled
+              aria-describedby={collectBarTextId}
+              className="cursor-not-allowed"
+              onClick={(event) => event.preventDefault()}
+            >
+              {COLLECT_LIST_COPY.bulk.unavailable}
+            </Button>
+          )}
         </section>
       ) : null}
       {filterable ? (

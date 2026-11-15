@@ -168,7 +168,7 @@ function collectByOf(
     ...DEFAULT_COLLECT_BY_POLICY,
     freeStorageDays: storage.freeStorageDays ?? DEFAULT_COLLECT_BY_POLICY.freeStorageDays,
   });
-  return { ...notice, placeName: storage.placeName };
+  return { ...notice, placeId: storage.placeId, placeName: storage.placeName };
 }
 
 /** A purchase row: the invoice and delivery stage worked out by the domain rules. */

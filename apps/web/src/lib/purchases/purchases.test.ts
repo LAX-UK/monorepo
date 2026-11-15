@@ -673,13 +673,16 @@ describe("the collect-by notice on a purchase card", () => {
 
   it("shows the day the API names, in the house style, with the link the email uses", () => {
     expect(
-      cardWith({ date: "2026-12-09", state: "soon", placeName: "LAX Marylebone" })?.collectBy,
+      cardWith({ date: "2026-12-09", state: "soon", placeId: "v1", placeName: "LAX Marylebone" })
+        ?.collectBy,
     ).toEqual({
       day: "Wed 9 Dec",
       short: "Collect by Wed 9 Dec",
       title: "Please collect by Wed 9 Dec",
       body: "Your work is paid for and waiting at LAX Marylebone. Book a time to collect it soon: after that day, storage charges may apply.",
       state: "soon",
+      placeId: "v1",
+      placeName: "LAX Marylebone",
       bookHref: "/purchases/collect?lots=lot-11",
     });
   });
@@ -693,6 +696,7 @@ describe("the collect-by notice on a purchase card", () => {
           "lot-11": withCollectBy({
             date: "2027-01-04",
             state: "upcoming",
+            placeId: "v1",
             placeName: "LAX Marylebone",
           }),
         },
@@ -703,13 +707,35 @@ describe("the collect-by notice on a purchase card", () => {
   });
 
   it("names the place the work waits at, and once overdue says how to ask for longer", () => {
-    const body = cardWith({ date: "2026-10-30", state: "overdue", placeName: "LAX Marylebone" })
-      ?.collectBy?.body;
+    const body = cardWith({
+      date: "2026-10-30",
+      state: "overdue",
+      placeId: "v1",
+      placeName: "LAX Marylebone",
+    })?.collectBy?.body;
     expect(body).toContain("from LAX Marylebone");
     expect(body).toContain("email us if you need longer");
   });
 
   it("carries nothing when the API names no day, so a booked or collected lot shows none", () => {
     expect(cardWith(null)?.collectBy).toBeNull();
+  });
+
+  it("wears the badge the state calls for, and Booked when a live visit holds the lot", () => {
+    expect(
+      cardWith({ date: "2026-12-09", state: "soon", placeId: "v1", placeName: "P" })?.collection,
+    ).toMatchObject({ label: "Collect by Wed 9 Dec", tone: "warning" });
+    expect(
+      cardWith({ date: "2026-10-30", state: "overdue", placeId: "v1", placeName: "P" })?.collection,
+    ).toMatchObject({ label: "Overdue since Fri 30 Oct", tone: "danger" });
+    const booked = buildPurchasesVm(
+      sources({
+        now: new Date("2026-11-15T12:00:00Z"),
+        factsByLot: { "lot-11": withCollectBy(null) },
+        bookedStartByLot: { "lot-11": "2026-11-18T10:00:00Z" },
+      }),
+    ).cardsByTab["in-progress"].find((c) => c.lotId === "lot-11");
+    expect(booked?.collection).toMatchObject({ state: "booked", label: "Booked Wed 18 Nov" });
+    expect(cardWith(null)?.collection).toBeNull();
   });
 });
