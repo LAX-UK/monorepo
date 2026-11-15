@@ -1,6 +1,10 @@
 import type { ActivityEntry } from "@auction/domain";
-import type { InvoiceDetails } from "@auction/persistence/interfaces";
-import type { OrganisationActivityQuery, UpdateInvoiceDetailsInput } from "@auction/validators";
+import type { InvoiceDetails, OrganisationAddress } from "@auction/persistence/interfaces";
+import type {
+  AddOrganisationAddressInput,
+  OrganisationActivityQuery,
+  UpdateInvoiceDetailsInput,
+} from "@auction/validators";
 import type { Result } from "neverthrow";
 import type { OrganisationMemberActor } from "./organisation-membership-service.js";
 
@@ -20,6 +24,20 @@ export interface IInvoiceDetailsService {
     actor: OrganisationMemberActor,
     input: UpdateInvoiceDetailsInput,
   ): Promise<Result<InvoiceDetailsView, OrganisationTeamError>>;
+}
+
+/** The addresses a purchase can be delivered to for the organisation, and whether this member may add one. */
+export type OrganisationAddressesView = { addresses: OrganisationAddress[]; canAdd: boolean };
+
+/** The organisation's registered address and its delivery addresses, for the people who buy for it. */
+export interface IOrganisationAddressService {
+  list(
+    actor: OrganisationMemberActor,
+  ): Promise<Result<OrganisationAddressesView, OrganisationTeamError>>;
+  add(
+    actor: OrganisationMemberActor,
+    input: AddOrganisationAddressInput,
+  ): Promise<Result<OrganisationAddress, OrganisationTeamError>>;
 }
 
 /** An Activity line with the people in it named. */

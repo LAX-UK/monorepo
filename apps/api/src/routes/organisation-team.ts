@@ -1,5 +1,6 @@
 import { exportFilename } from "@auction/exports";
 import {
+  addOrganisationAddressSchema,
   organisationActivityQuerySchema,
   updateContactDetailsSchema,
   updateInvoiceDetailsSchema,
@@ -36,8 +37,15 @@ export function createOrganisationTeamRoutes(
     isSuspended: (id) => container.userSuspensionChecker.isSuspended(id),
   });
   const requireContext = container.requireLegalEntityContext;
-  const { invoiceDetails, activity, contactDetails, statements, payoutAccount, memberLastActive } =
-    container.organisationTeam;
+  const {
+    invoiceDetails,
+    addresses,
+    activity,
+    contactDetails,
+    statements,
+    payoutAccount,
+    memberLastActive,
+  } = container.organisationTeam;
   const r = new Hono<{ Variables: Variables }>();
 
   r.get("/contact-details", requireAuth, requireContext, async (c) => {
@@ -113,6 +121,31 @@ export function createOrganisationTeamRoutes(
       const result = await invoiceDetails.update(memberActor(ctx), c.req.valid("json"));
       return result.match(
         (data) => c.json({ data }),
+        (e) => c.json({ error: e.code, message: e.message }, e.status),
+      );
+    },
+  );
+
+  /** The registered address and delivery addresses a purchase can go to, for those who buy for the organisation. */
+  r.get("/addresses", requireAuth, requireContext, async (c) => {
+    const ctx = c.get("legalEntityContext") as LegalEntityContext;
+    const result = await addresses.list(memberActor(ctx));
+    return result.match(
+      (data) => c.json({ data }, 200, { "Cache-Control": "no-store" }),
+      (e) => c.json({ error: e.code, message: e.message }, e.status),
+    );
+  });
+
+  r.post(
+    "/addresses",
+    requireAuth,
+    requireContext,
+    zValidator("json", addOrganisationAddressSchema),
+    async (c) => {
+      const ctx = c.get("legalEntityContext") as LegalEntityContext;
+      const result = await addresses.add(memberActor(ctx), c.req.valid("json"));
+      return result.match(
+        (data) => c.json({ data }, 201),
         (e) => c.json({ error: e.code, message: e.message }, e.status),
       );
     },

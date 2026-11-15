@@ -41,10 +41,10 @@ import { type PurchaseBadge, purchaseBadge } from "./purchase-standing";
 export { PURCHASE_STATE_LABEL };
 
 const STEP_LABEL: Record<PurchaseStep, string> = {
-  won: "Won",
-  payment: "Payment",
-  delivery: "Delivery",
-  delivered: "Delivered",
+  won: "Won at auction",
+  payment: "Pay the invoice",
+  delivery: "Delivery or collection",
+  delivered: "Received",
 };
 
 export type PurchaseStepVm = {

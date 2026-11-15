@@ -8,7 +8,7 @@ import {
   userAddress,
 } from "@auction/db/schema";
 import { assertNotPayHoldStart } from "@auction/domain";
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, ne } from "drizzle-orm";
 import type { ILegalEntityConnectReader } from "../interfaces/legal-entity-connect.reader.js";
 import type { ILegalEntityConnectRepository } from "../interfaces/legal-entity-connect.repository.js";
 import { pickEntityAddress, pickUserAddress } from "../lib/legal-entity-connect.helpers.js";
@@ -84,7 +84,12 @@ export class DrizzleLegalEntityConnectRepository
           isDefault: legalEntityAddress.isDefault,
         })
         .from(legalEntityAddress)
-        .where(eq(legalEntityAddress.legalEntityId, legalEntityId)),
+        .where(
+          and(
+            eq(legalEntityAddress.legalEntityId, legalEntityId),
+            ne(legalEntityAddress.addressType, "delivery"),
+          ),
+        ),
       this.db
         .select({
           line1: userAddress.line1,

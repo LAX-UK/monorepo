@@ -26,6 +26,11 @@ const invoiceAddressSchema = z
   })
   .strict();
 
+/** `POST /legal-entities/addresses`: one delivery address for the organisation, complete. */
+export const addOrganisationAddressSchema = invoiceAddressSchema;
+
+export type AddOrganisationAddressInput = z.infer<typeof addOrganisationAddressSchema>;
+
 /**
  * `PUT /legal-entities/invoice-details`: the whole set, so a cleared field is cleared. An empty
  * string means "none".

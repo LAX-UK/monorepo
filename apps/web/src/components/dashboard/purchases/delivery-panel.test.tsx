@@ -1,3 +1,4 @@
+import type { AddressContext } from "@/lib/purchases/delivery-addresses.vm";
 import type { DeliveryPanelVm } from "@/lib/purchases/purchase-delivery.vm";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -23,12 +24,35 @@ const STORE = {
 };
 const HOME = { id: "a2", label: "Home", detail: "9 Elm Road, Bath, BA1 1AA, United Kingdom" };
 
-function panel(addresses: { id: string; label: string; detail: string }[]): DeliveryPanelVm {
-  return { kind: "choose", beforePayment: true, collection: null, addresses };
+const ORG = {
+  organisationId: "11111111-1111-4111-8111-111111111111",
+  organisationName: "Northbank Gallery",
+};
+
+function panel(
+  addresses: { id: string; label: string; detail: string }[],
+  addressContext: AddressContext | null = null,
+): DeliveryPanelVm {
+  return {
+    kind: "choose",
+    beforePayment: true,
+    collection: null,
+    addresses,
+    addressContext,
+  };
 }
 
-const renderPanel = (addresses: { id: string; label: string; detail: string }[]) =>
-  render(<DeliveryPanel lotId="lot-1" panel={panel(addresses)} shipperEmail="hello@lax.bid" />);
+const renderPanel = (
+  addresses: { id: string; label: string; detail: string }[],
+  addressContext: AddressContext | null = null,
+) =>
+  render(
+    <DeliveryPanel
+      lotId="lot-1"
+      panel={panel(addresses, addressContext)}
+      shipperEmail="hello@lax.bid"
+    />,
+  );
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -86,6 +110,7 @@ describe("delivery address picker", () => {
     expect(saveAddress).toHaveBeenCalledWith(
       "Studio",
       expect.objectContaining({ line1: "3 Quay Street", city: "Bristol", country: "GB" }),
+      null,
     );
   });
 
@@ -99,6 +124,50 @@ describe("delivery address picker", () => {
     expect(
       await screen.findByText("Your role doesn't arrange delivery for this account."),
     ).toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: /Gallery store/ })).toBeChecked();
+  });
+});
+
+describe("delivery address picker for an organisation", () => {
+  const open = () => fireEvent.click(screen.getByRole("button", { name: "Add an address" }));
+  const fill = () => {
+    fireEvent.change(screen.getByLabelText(/Address line 1/i), {
+      target: { value: "7 Dock Road" },
+    });
+    fireEvent.change(screen.getByLabelText(/Town or city/i), { target: { value: "Bristol" } });
+    fireEvent.change(screen.getByLabelText(/Postcode/i), { target: { value: "BS1 4XX" } });
+  };
+
+  it("adds the address to the organisation when the member may", async () => {
+    saveAddress.mockResolvedValue({
+      ok: true,
+      address: { id: "organisation-d1", label: "Delivery address", detail: "7 Dock Road, Bristol" },
+    });
+    renderPanel([STORE], { ...ORG, canAdd: true, loadFailed: false });
+    open();
+    expect(screen.getByText(/saved to Northbank Gallery's addresses/)).toBeInTheDocument();
+    expect(screen.queryByLabelText(/^Name/)).toBeNull();
+    fill();
+    fireEvent.click(screen.getByRole("button", { name: "Save address" }));
+    await waitFor(() =>
+      expect(saveAddress).toHaveBeenCalledWith(
+        "",
+        expect.objectContaining({ line1: "7 Dock Road" }),
+        ORG.organisationId,
+      ),
+    );
+    expect(await screen.findByRole("radio", { name: /Delivery address/ })).toBeChecked();
+  });
+
+  it("adds to the member's own book when the role cannot add for the organisation", () => {
+    renderPanel([STORE], { ...ORG, canAdd: false, loadFailed: false });
+    open();
+    expect(screen.getByText(/LAX Account address book/)).toBeInTheDocument();
+  });
+
+  it("says when the organisation's addresses could not be read, and still offers the member's", () => {
+    renderPanel([STORE], { ...ORG, canAdd: false, loadFailed: true });
+    expect(screen.getByText("We couldn't load Northbank Gallery's addresses")).toBeInTheDocument();
     expect(screen.getByRole("radio", { name: /Gallery store/ })).toBeChecked();
   });
 });

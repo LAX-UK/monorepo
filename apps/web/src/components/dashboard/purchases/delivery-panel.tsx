@@ -4,6 +4,7 @@ import { COLLECT_COPY } from "@/lib/collect/collect-copy";
 import { collectHref } from "@/lib/collect/collect-links";
 import { CLIENT_ROUTES } from "@/lib/navigation/client-routes";
 import {
+  type AddressContext,
   type DeliveryAddress,
   initialDeliveryAddressId,
 } from "@/lib/purchases/delivery-addresses.vm";
@@ -118,10 +119,12 @@ function CourierForm({
   lotId,
   intro,
   addresses,
+  addressContext,
 }: {
   lotId: string;
   intro: string | null;
   addresses: readonly DeliveryAddress[];
+  addressContext: AddressContext | null;
 }) {
   // The address asked for is kept with its text, so one just added is usable before the page
   // has been read again.
@@ -140,6 +143,7 @@ function CourierForm({
           value={chosen?.id ?? null}
           onValueChange={(_, address) => setChosen(address)}
           error={error}
+          context={addressContext}
           disabled={pending}
         />
       </div>
@@ -255,6 +259,7 @@ export function DeliveryPanel({
           <CourierForm
             lotId={lotId}
             addresses={panel.addresses}
+            addressContext={panel.addressContext}
             intro="You can ask for a courier quote before you pay, so you know the full cost. Collection and your own shipper open once the invoice is paid."
           />
         );
@@ -268,7 +273,12 @@ export function DeliveryPanel({
             options={CHOICES}
           />
           {choice === "courier" ? (
-            <CourierForm lotId={lotId} intro={null} addresses={panel.addresses} />
+            <CourierForm
+              lotId={lotId}
+              intro={null}
+              addresses={panel.addresses}
+              addressContext={panel.addressContext}
+            />
           ) : null}
           {choice === "shipper" ? (
             <div className="flex flex-col gap-3">
