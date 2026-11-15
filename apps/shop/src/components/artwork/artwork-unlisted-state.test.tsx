@@ -22,7 +22,7 @@ describe("ArtworkUnlistedState", () => {
   it("says the edition is no longer listed, offers other editions and a New editions link", () => {
     render(<ArtworkUnlistedState editions={[artworkSummary({ title: "Harbour light" })]} />);
     expect(
-      screen.getByRole("heading", { level: 1, name: "This edition is no longer listed" }),
+      screen.getByRole("heading", { level: 1, name: "We can't find this edition" }),
     ).toBeTruthy();
     expect(screen.getByRole("link", { name: "New editions" }).getAttribute("href")).toBe(
       "/artworks?sort=newest",
@@ -33,7 +33,7 @@ describe("ArtworkUnlistedState", () => {
 
   it("still says so, without the editions block, when none could be loaded", () => {
     render(<ArtworkUnlistedState editions={[]} />);
-    expect(screen.getByText("This edition is no longer listed")).toBeTruthy();
+    expect(screen.getByText("We can't find this edition")).toBeTruthy();
     expect(screen.queryByRole("heading", { name: "Other editions" })).toBeNull();
   });
 });

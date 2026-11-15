@@ -13,7 +13,11 @@ export function ArtworkUnlistedState({ editions }: { editions: readonly PublicAr
       motif="ticket"
       eyebrow={EDITION_UNLISTED_COPY.eyebrow}
       title={EDITION_UNLISTED_COPY.title}
-      description={EDITION_UNLISTED_COPY.description}
+      description={
+        editions.length > 0
+          ? EDITION_UNLISTED_COPY.descriptionWithEditions
+          : EDITION_UNLISTED_COPY.description
+      }
     >
       <Link href="/artworks?sort=newest" className={cn("shop-inline-link", FOCUS_RING)}>
         {EDITION_UNLISTED_COPY.newEditionsLink}
