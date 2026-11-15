@@ -74,6 +74,7 @@ import {
   WORKER_REOFFER_TABLES,
   WORKER_SELLER_TERMS_READ_COLUMNS,
   WORKER_SHOP_ENQUIRY_READ_COLUMNS,
+  WORKER_SHOP_ORDER_FULFILMENT_READ_COLUMNS,
   WORKER_SHOP_ORDER_READ_COLUMNS,
   WORKER_SHOP_PRINT_GROUP_READ_COLUMNS,
   WORKER_ZOHO_ARTWORK_SYNC_TABLES,
@@ -669,6 +670,24 @@ describe("migrate-roles invariants", () => {
     }
   });
 
+  it("lets the worker read the Shop columns the order mirror needs, no buyer or price column, and no whole Shop table", () => {
+    const columns = Object.fromEntries(WORKER_SHOP_ORDER_FULFILMENT_READ_COLUMNS);
+    expect([...columns.shop_order].sort()).toEqual(["id", "paid_at", "reference"]);
+    const read = Object.values(columns).flat();
+    for (const personal of [
+      "identity_subject_id",
+      "delivery_line1",
+      "delivery_recipient_name",
+      "unit_price_pence",
+      "storage_location",
+    ]) {
+      expect(read).not.toContain(personal);
+    }
+    for (const table of Object.keys(columns)) {
+      expect([...WORKER_DENY_TABLES]).toContain(table);
+    }
+  });
+
   it("lets the worker read the Shop order columns the Deal name needs, and no whole Shop table", () => {
     const columns = Object.fromEntries(WORKER_SHOP_ORDER_READ_COLUMNS);
     expect(Object.keys(columns).sort()).toEqual([
@@ -963,6 +982,7 @@ describe("migrate-roles invariants", () => {
         "accepted_at",
         "proposed_at",
         "commission_percent",
+        "superseded_at",
       ],
     });
     for (const table of [...SELLER_TERMS_INSERT_SELECT_TABLES, ...FINANCE_SETTING_READ_TABLES]) {

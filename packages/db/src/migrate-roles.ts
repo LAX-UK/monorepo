@@ -563,7 +563,16 @@ export const FINANCE_SETTING_READ_TABLES = ["bid_finance_setting"] as const;
 export const WORKER_SELLER_TERMS_READ_COLUMNS = [
   [
     "consignment_agreement",
-    ["id", "submission_id", "legal_entity_id", "accepted_at", "proposed_at", "commission_percent"],
+    [
+      "id",
+      "submission_id",
+      "legal_entity_id",
+      "accepted_at",
+      "proposed_at",
+      "commission_percent",
+      // The rule prices on the current version only.
+      "superseded_at",
+    ],
   ],
 ] as const;
 /** Shop Identity owns only its local Identity projection. */
@@ -1110,6 +1119,51 @@ export const WORKER_SHOP_PRINT_GROUP_READ_COLUMNS = [
     ],
   ],
   ["shop_edition", ["artwork_id", "allocation", "proof_number"]],
+] as const;
+
+/**
+ * The Zoho fulfilment mirror mirrors a paid order's prints and dispatch from these columns and no
+ * others: the order's reference and when it was paid, its print and framing lines (for the frame
+ * in the SKU), the edition and listing each print is of, and the fulfilment. No buyer or address
+ * column is read, nor the line's price column. `framing_snapshot` holds the frame option as sold,
+ * its price included (the invoice grant reads it already); the mirror takes only the frame from it
+ * and sends no price to Zoho. The tables stay denied to the worker as a whole; only a column-level
+ * SELECT is granted.
+ */
+export const WORKER_SHOP_ORDER_FULFILMENT_READ_COLUMNS = [
+  ["shop_order", ["id", "reference", "paid_at"]],
+  [
+    "shop_order_line",
+    [
+      "id",
+      "order_id",
+      "edition_id",
+      "kind",
+      "released_at",
+      "edition_number",
+      "print_label",
+      "pack_confirmed_at",
+      "framing_for_line_id",
+      "framing_snapshot",
+    ],
+  ],
+  ["shop_edition", ["id", "artwork_id", "allocation", "proof_number"]],
+  [
+    "shop_artwork",
+    [
+      "id",
+      "source_original_artwork_id",
+      "zoho_product_id",
+      "run_kind",
+      "run_size",
+      "main_run_artwork_id",
+      "print_size",
+      "print_paper",
+      "print_frame",
+    ],
+  ],
+  ["shop_edition_framing", ["artwork_id", "mode"]],
+  ["shop_fulfilment", ["order_id", "status", "carrier", "tracking_number"]],
 ] as const;
 
 /**
@@ -1902,6 +1956,9 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
           await grantColumnSelectIfExists(client, "worker_app", tableName, columns);
         }
         for (const [tableName, columns] of WORKER_SHOP_PRINT_GROUP_READ_COLUMNS) {
+          await grantColumnSelectIfExists(client, "worker_app", tableName, columns);
+        }
+        for (const [tableName, columns] of WORKER_SHOP_ORDER_FULFILMENT_READ_COLUMNS) {
           await grantColumnSelectIfExists(client, "worker_app", tableName, columns);
         }
 

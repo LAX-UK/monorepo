@@ -19,9 +19,10 @@ import { useLiveConnectivityNoticeReporterOptional } from "@/lib/connection/live
 import { useOnlineLotLifecycle } from "@/lib/context/online-lot-lifecycle";
 import {
   type LotBidHydrateData,
-  buildLotBidInitialHydrate,
   fetchLotBidHydrate,
+  isLiveLotBidHydrate,
   lotBidKeys,
+  pendingLotBidHydrate,
 } from "@/lib/data/queries/lot-bid";
 import { reconcileEnd } from "@/lib/lot-page/reconcile-end";
 import { useQueryCacheState } from "@/lib/query/use-query-cache-state";
@@ -40,6 +41,13 @@ import {
 } from "react";
 
 type LotBidHistoryContextValue = {
+  /**
+   * False until the first live (no-store) read lands. Until then nothing below is the lot's real
+   * state: the page draws placeholders, starts no clock and keeps bidding shut (CO-7).
+   */
+  live: boolean;
+  /** The lot's live status, close, winner and result, as last read or heard. */
+  snapshot: LotBidSnapshot;
   entries: BidHistoryEntry[];
   currentPrice: string;
   leadingBidderId: string | null;
@@ -57,10 +65,6 @@ const LotBidHistoryContext = createContext<LotBidHistoryContextValue | null>(nul
 
 type ProviderProps = {
   lotId: string;
-  initialHistory: BidHistoryEntry[];
-  /** The lot as the server loaded it (price, status, closing time, winner). */
-  initialSnapshot: LotBidSnapshot;
-  initialLeadingBidderId?: string | null;
   currentUserId?: string | null;
   children: ReactNode;
 };
@@ -69,6 +73,8 @@ function hydrateDataToContext(
   data: LotBidHydrateData,
 ): Omit<LotBidHistoryContextValue, "applyOwnBid" | "setEndedWinner" | "refreshFromServer"> {
   return {
+    live: isLiveLotBidHydrate(data),
+    snapshot: data.snapshot,
     entries: data.entries,
     currentPrice: data.snapshot.currentPrice,
     leadingBidderId: data.leadingBidderId,
@@ -76,30 +82,19 @@ function hydrateDataToContext(
   };
 }
 
-/** Single source of truth for lot bid history and live price on the marketing page. */
-export function LotBidHistoryProvider({
-  lotId,
-  initialHistory,
-  initialSnapshot,
-  initialLeadingBidderId = null,
-  currentUserId = null,
-  children,
-}: ProviderProps) {
+/**
+ * Single source of truth for lot bid history and live price on the marketing page. It takes no
+ * server state: the page is built from cached reads, so it starts from a placeholder and the
+ * first no-store read (then the socket) fills it.
+ */
+export function LotBidHistoryProvider({ lotId, currentUserId = null, children }: ProviderProps) {
   const queryClient = useQueryClient();
   const onlineLifecycle = useOnlineLotLifecycle();
   const noticeReporter = useLiveConnectivityNoticeReporterOptional();
   const localOwnBidRef = useRef<OwnBidEchoGuard | null>(null);
   const ownBidEchoGuardRef = onlineLifecycle?.ownBidEchoGuardRef ?? localOwnBidRef;
 
-  const initialHydrate = useMemo(
-    () =>
-      buildLotBidInitialHydrate({
-        initialSnapshot,
-        initialHistory,
-        initialLeadingBidderId,
-      }),
-    [initialSnapshot, initialHistory, initialLeadingBidderId],
-  );
+  const initialHydrate = useMemo(() => pendingLotBidHydrate(), []);
 
   const { refetch } = useLotBidHydrateQuery(lotId, {
     initialData: initialHydrate,
@@ -120,9 +115,15 @@ export function LotBidHistoryProvider({
    * snapshot that was in flight while an extension landed can never move it back, and a later
    * close that arrives only in a snapshot is an extension the page says so about.
    */
-  const appliedEndRef = useRef(new Date(initialHydrate.snapshot.endTime).getTime());
+  const appliedEndRef = useRef<number | null>(null);
   const noteEnd = useCallback(
     (endMs: number, status: LotBidSnapshot["status"]) => {
+      // The first close the page hears is the close, not an extension.
+      if (appliedEndRef.current === null) {
+        appliedEndRef.current = endMs;
+        onlineLifecycle?.setLiveEndTimeMs(endMs);
+        return;
+      }
       const result = reconcileEnd(appliedEndRef.current, endMs, status);
       appliedEndRef.current = result.endMs;
       if (result.extension) {
@@ -154,9 +155,12 @@ export function LotBidHistoryProvider({
     [onlineLifecycle, noteEnd],
   );
 
+  const live = isLiveLotBidHydrate(hydrateData);
   useEffect(() => {
+    // The placeholder is not the lot's state: nothing is applied from it.
+    if (!live) return;
     applyLifecycleFromSnapshot(hydrateData.snapshot);
-  }, [hydrateData.snapshot, applyLifecycleFromSnapshot]);
+  }, [live, hydrateData.snapshot, applyLifecycleFromSnapshot]);
 
   useEffect(() => {
     const onVisibilityChange = () => {
@@ -234,15 +238,17 @@ export function LotBidHistoryProvider({
       }
 
       // A snapshot taken before a late bid landed must not move the close back.
+      const applied = appliedEndRef.current;
       const later =
+        applied !== null &&
         hydrated.snapshot.status === "active" &&
-        appliedEndRef.current > new Date(hydrated.snapshot.endTime).getTime();
+        applied > new Date(hydrated.snapshot.endTime).getTime();
       queryClient.setQueryData(
         lotBidKeys.hydrate(lotId),
-        later
+        later && applied !== null
           ? {
               ...hydrated,
-              snapshot: { ...hydrated.snapshot, endTime: new Date(appliedEndRef.current) },
+              snapshot: { ...hydrated.snapshot, endTime: new Date(applied) },
             }
           : hydrated,
       );
@@ -304,7 +310,9 @@ export function LotBidHistoryProvider({
         browserClockSync().observeServerNow(extension.serverNowMs);
       }
       // A close that did not move later is one already applied (the event arrives under two names,
-      // back to back, so this reads the ref, not the last render).
+      // back to back, so this reads the ref, not the last render). Before the first live read the
+      // page has no close to extend; that read brings it.
+      if (appliedEndRef.current === null) return;
       if (!(extension.endTimeMs > appliedEndRef.current)) return;
       noteEnd(extension.endTimeMs, "active");
       patchHydrateCache((prev) => ({

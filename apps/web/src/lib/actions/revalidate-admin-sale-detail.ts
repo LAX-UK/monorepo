@@ -1,8 +1,11 @@
 import { revalidateCatalogueCache } from "@/lib/actions/revalidate-catalogue";
-import { revalidatePath } from "next/cache";
+import { publicSaleTag } from "@/lib/data/cache-tags";
+import { revalidatePath, revalidateTag } from "next/cache";
 
 export function revalidateAdminSaleDetail(saleId: string) {
   revalidateCatalogueCache();
+  // A staff edit of the sale or its lots has no domain event: drop the public sale page.
+  revalidateTag(publicSaleTag(saleId));
   revalidatePath("/admin/sales");
   revalidatePath(`/admin/sales/${saleId}`);
   revalidatePath(`/admin/sales/${saleId}/setup`);

@@ -11,7 +11,7 @@ import type {
   ICommissionVatSettingReader,
   ISellerTermsFacts,
 } from "@auction/domain";
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, isNull, sql } from "drizzle-orm";
 
 /** The key of the Bid company's setting for VAT on commission. */
 export const COMMISSION_VAT_SETTING_KEY = "commission_vat_treatment";
@@ -44,7 +44,14 @@ export class DrizzleSellerTermsFactsReader implements ISellerTermsFacts {
         commissionPercent: consignmentAgreement.commissionPercent,
       })
       .from(itemSubmission)
-      .innerJoin(consignmentAgreement, eq(consignmentAgreement.submissionId, itemSubmission.id))
+      .innerJoin(
+        consignmentAgreement,
+        and(
+          eq(consignmentAgreement.submissionId, itemSubmission.id),
+          // Sales are priced on the current version; an earlier one stays with what it priced.
+          isNull(consignmentAgreement.supersededAt),
+        ),
+      )
       .where(eq(itemSubmission.convertedLotId, lotId))
       // The seller's own agreement wins over another account's (item_submission.converted_lot_id
       // is not unique); then an accepted one; among several, the most recently accepted.

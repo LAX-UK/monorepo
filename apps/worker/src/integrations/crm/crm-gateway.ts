@@ -7,7 +7,9 @@ export type CrmModule =
   | "Notes"
   | "Tasks"
   | "Print_Products"
-  | "Edition_Ledgers";
+  | "Edition_Ledgers"
+  | "Print_SKUs"
+  | "Dispatch_Fulfilments";
 
 /** A lookup value; `module` names the parent module of a Note. */
 export type CrmLookupValue = { id: string; module?: { api_name: string } };

@@ -15,11 +15,12 @@ import {
   AdaptiveMediaFrame,
   AdaptiveMediaFrameContainer,
 } from "@/components/ui/adaptive-media-frame";
-import { PLATFORM_DEFAULT_CURRENCY, formatWholeMoney } from "@/lib/format-currency";
+import { useLotRailLive } from "@/lib/marketing/artwork/lot-rail-live.client";
 import { FOCUS_RING } from "@/lib/marketing/chrome";
 import { LOT_CARD_GRID_SLOTS } from "@/lib/media/overlay-slot-presets";
 import { useClockNow } from "@/lib/time/use-clock";
 import { Button } from "@auction/ui/lax/button";
+import { Skeleton } from "@auction/ui/lax/skeleton";
 import { TextLink } from "@auction/ui/lax/text-link";
 import { cn } from "@auction/ui/lib/utils";
 import Link from "next/link";
@@ -55,11 +56,13 @@ export function LotMoreFromRail({
   // `null` during SSR + first client render so the per-card "Closing: …" text
   // matches between server and client; updates every 30s after mount.
   const nowMs = useClockNow(30_000);
+  // CO-7: the rail's cards carry no bid state; price, label and close fill from a live read.
+  const live = useLotRailLive(rail);
   if (rail.cards.length === 0 || !rail.heading) {
     return null;
   }
   const isCompact = density === "compact";
-  const quickLookDeck = lotQuickLookRailDeck(rail.cards);
+  const quickLookDeck = lotQuickLookRailDeck(rail.cards, live);
 
   return (
     <section className="mt-20 w-full border-t border-border-hairline pt-16">
@@ -80,10 +83,12 @@ export function LotMoreFromRail({
       </div>
       <ul className="flex list-none gap-5 overflow-x-auto pb-3">
         {rail.cards.map((c, cardIndex) => {
+          const cardLive = live?.get(c.id) ?? null;
+          const endTime = cardLive?.endTime ?? null;
           const closing =
-            nowMs == null || c.endTime == null
+            nowMs == null || endTime == null
               ? null
-              : closingText(new Date(c.endTime).getTime() - nowMs, nowMs);
+              : closingText(new Date(endTime).getTime() - nowMs, nowMs);
           return (
             <li key={c.id} className="w-[200px] shrink-0 min-w-0">
               <div className="flex h-full flex-col gap-4">
@@ -112,7 +117,7 @@ export function LotMoreFromRail({
                           initialWatching={watchedLotIds.includes(c.id)}
                           isAuthenticated={isAuthenticated}
                           loginNextPath={c.href}
-                          vm={lotQuickLookFromRailCard(c)}
+                          vm={lotQuickLookFromRailCard(c, cardLive)}
                           quickLookOptions={{
                             deck: quickLookDeck,
                             deckIndex: cardIndex,
@@ -138,7 +143,7 @@ export function LotMoreFromRail({
                           />
                           <div className="pointer-events-auto absolute bottom-2 left-2 z-10">
                             <LotQuickLookTrigger
-                              vm={lotQuickLookFromRailCard(c)}
+                              vm={lotQuickLookFromRailCard(c, cardLive)}
                               layout="overlay"
                               surface="onImage"
                               options={{
@@ -169,11 +174,15 @@ export function LotMoreFromRail({
                     </Link>
                     <p className="text-xs text-on-surface-variant">
                       {c.artistName ? `${c.artistName} \u00B7 ` : null}
-                      <span className="text-on-surface">
-                        {c.resultPending
-                          ? "Ended"
-                          : formatWholeMoney(c.currentPrice, PLATFORM_DEFAULT_CURRENCY)}
-                      </span>
+                      {cardLive ? (
+                        <span className="text-on-surface">
+                          {cardLive.resultPending ? "Ended" : cardLive.currentBidValue}
+                        </span>
+                      ) : (
+                        <span data-testid="rail-price-pending" aria-busy="true">
+                          <Skeleton className="inline-block h-3 w-12 align-middle" />
+                        </span>
+                      )}
                     </p>
                   </div>
                 ) : (
@@ -199,16 +208,22 @@ export function LotMoreFromRail({
                         </p>
                       </div>
                     ) : null}
-                    <div>
-                      <p className="text-xs text-on-surface-variant">
-                        {c.resultPending ? "Result" : c.priceLabel}
-                      </p>
-                      <p className="text-sm font-semibold text-on-surface">
-                        {c.resultPending
-                          ? "Ended"
-                          : formatWholeMoney(c.currentPrice, PLATFORM_DEFAULT_CURRENCY)}
-                      </p>
-                    </div>
+                    {cardLive ? (
+                      <div>
+                        <p className="text-xs text-on-surface-variant">
+                          {cardLive.resultPending ? "Result" : cardLive.currentBidLabel}
+                        </p>
+                        <p className="text-sm font-semibold text-on-surface">
+                          {cardLive.resultPending ? "Ended" : cardLive.currentBidValue}
+                        </p>
+                      </div>
+                    ) : (
+                      // The price block's place, at its final size, until the live read lands.
+                      <div data-testid="rail-price-pending" aria-busy="true">
+                        <Skeleton className="h-4 w-16" />
+                        <Skeleton className="mt-1 h-5 w-20" />
+                      </div>
+                    )}
                     <p className="whitespace-nowrap text-sm text-on-surface-variant">
                       <span className="text-xs">Closing: </span>
                       <span className="font-semibold text-on-surface" suppressHydrationWarning>

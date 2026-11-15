@@ -83,6 +83,7 @@
     "jwks:snapshot": "tsx scripts/jwks-snapshot.ts",
     "jwks:restore": "tsx scripts/jwks-restore.ts",
     "jwks:rotate": "tsx scripts/rotate-jwks.ts",
+    "books:validate-org-config": "tsx scripts/validate-books-org-config.ts",
     "jwks:restore-active": "tsx scripts/restore-jwks-active.ts",
     "gen:apple-secret": "tsx scripts/generate-apple-client-secret.ts",
     "cost:check": "tsx scripts/check-do-bill.ts",

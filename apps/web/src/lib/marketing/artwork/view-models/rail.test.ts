@@ -43,4 +43,23 @@ describe("mapSiblingsToRailVM", () => {
     expect(rail.heading).toBe("More from this seller");
     expect(rail.cards).toHaveLength(1);
   });
+
+  it("carries no bid state from the cached read (CO-7)", () => {
+    const current = lot("current");
+    const sibling = lot("a", {
+      currentPrice: "4200.00",
+      endTime: new Date("2099-01-01T10:00:00.000Z"),
+      status: "active",
+      resultPending: true,
+    });
+
+    const rail = mapSiblingsToRailVM(current, SALE, [current, sibling], [], () => null);
+
+    const [card] = rail.cards;
+    expect(card?.saleId).toBe("sale-1");
+    for (const key of ["currentPrice", "priceLabel", "endTime", "status", "resultPending"]) {
+      expect(card).not.toHaveProperty(key);
+    }
+    expect(JSON.stringify(rail)).not.toMatch(/4200|2099|Current bid|Starting bid/);
+  });
 });

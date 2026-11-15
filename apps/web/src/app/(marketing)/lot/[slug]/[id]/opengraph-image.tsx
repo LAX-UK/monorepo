@@ -1,6 +1,6 @@
 import { SITE_NAME } from "@/lib/brand";
 import { OG_BRAND } from "@/lib/brand/og-colors";
-import { getServerLotById } from "@/lib/data/http/lots.server";
+import { getPublicLotById } from "@/lib/data/http/public-catalogue.server";
 import { lotEstimateLine } from "@/lib/lot-marketing-display";
 import { renderOgJpeg } from "@/lib/seo/og-image-response";
 
@@ -16,7 +16,7 @@ export async function generateImageMetadata({ params }: Props) {
   const { id } = await params;
   let alt = "Lot detail";
   try {
-    const lot = await getServerLotById(id);
+    const lot = await getPublicLotById(id);
     if (lot?.title) alt = lot.title;
   } catch {
     /* fall through */
@@ -30,7 +30,7 @@ export default async function Image({ params }: Props) {
   let estimate = "";
   let imageUrl: string | null = null;
   try {
-    const lot = await getServerLotById(id);
+    const lot = await getPublicLotById(id);
     if (lot) {
       title = lot.title;
       estimate = lotEstimateLine(lot) ?? "";

@@ -39,7 +39,7 @@ export class SignedDocumentInUseError extends Error {
   }
 }
 
-/** A second agreement for the consignment was inserted at the same time (its unique index). */
+/** A second current agreement for the consignment was written at once (its unique index). */
 export class AgreementAlreadyRecordedError extends Error {
   constructor() {
     super("agreement_already_recorded");
@@ -48,8 +48,10 @@ export class AgreementAlreadyRecordedError extends Error {
 }
 
 /**
- * Writes a recorded agreement: one per consignment, so recording over an existing one (unsigned,
- * without a commission, or being corrected) updates it in place and hands back what it was.
+ * Writes a recorded agreement as the consignment's current one and hands back what it replaced.
+ * Recording over a signed agreement (being corrected, or with no commission) adds its next version
+ * and supersedes it, so a sale priced on it keeps the version it was priced on; an unsigned
+ * proposal is completed in place.
  */
 export interface ISignedAgreementWriter {
   /**
@@ -59,7 +61,7 @@ export interface ISignedAgreementWriter {
   lockSettlement(legalEntityId: string): Promise<void>;
   /** Then the sale's payment row and its seller-terms row, as the run takes them. */
   lockSale(sale: { paymentId: string; sellerTermsId: string | null }): Promise<void>;
-  /** Then the consignment's agreement row, read as it stands under the lock. */
+  /** Then the consignment's current agreement row, read as it stands under the lock. */
   lockAgreement(submissionId: string): Promise<LockedAgreement | null>;
   /**
    * Claims the signed PDF for this consignment's agreement: its upload row is locked and refused

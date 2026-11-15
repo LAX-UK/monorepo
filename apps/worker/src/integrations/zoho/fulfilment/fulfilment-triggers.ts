@@ -2,8 +2,11 @@
 export type FulfilmentTrigger =
   /** A prints listing: its print group, ledger and register row. The id is the listing's artwork. */
   | { kind: "group"; artworkId: string }
-  /** An order's print lines. Not built yet; the mirror answers that it was skipped. */
-  | { kind: "order"; orderId: string };
+  /**
+   * An order's print lines, framing and dispatch. The id is the order's, from the payload.
+   * `reportsProblems` is true for the events that set which prints are on the order.
+   */
+  | { kind: "order"; orderId: string; reportsProblems: boolean };
 
 type TriggerKind = FulfilmentTrigger["kind"];
 
@@ -23,12 +26,34 @@ export const FULFILMENT_TRIGGER_KINDS: Readonly<Record<string, TriggerKind>> = {
   "shop.print.swapped": "order",
 };
 
-export type FulfilmentEvent = { eventType: string; aggregateId?: string };
+/**
+ * The order events that set which prints are on the order: payment (raised with every print's
+ * `shop.edition.sold`) and a swap. A print that cannot be mirrored fails these for staff; the
+ * pick, dispatch and refund steps after them log it instead of failing the same order again.
+ */
+export const ORDER_EVENTS_THAT_SET_PRINTS: ReadonlySet<string> = new Set([
+  "shop.order.paid",
+  "shop.print.swapped",
+]);
+
+export type FulfilmentEvent = { eventType: string; aggregateId?: string; payload?: unknown };
+
+/**
+ * The order an event is about. Order events are raised on the order, its lines and its fulfilment,
+ * so the aggregate is not always the order; every one of them carries `orderId` in its payload.
+ */
+function orderIdOf(payload: unknown): string | undefined {
+  if (typeof payload !== "object" || payload === null) return undefined;
+  const id = (payload as { orderId?: unknown }).orderId;
+  return typeof id === "string" ? id.trim() : undefined;
+}
 
 /** The work an event is about, or null when the mirror does not handle the event or lacks an id. */
 export function fulfilmentTriggerOf(event: FulfilmentEvent): FulfilmentTrigger | null {
   const kind = FULFILMENT_TRIGGER_KINDS[event.eventType];
-  const id = event.aggregateId?.trim();
-  if (!kind || !id) return null;
-  return kind === "group" ? { kind, artworkId: id } : { kind, orderId: id };
+  if (!kind) return null;
+  const id = kind === "group" ? event.aggregateId?.trim() : orderIdOf(event.payload);
+  if (!id) return null;
+  if (kind === "group") return { kind, artworkId: id };
+  return { kind, orderId: id, reportsProblems: ORDER_EVENTS_THAT_SET_PRINTS.has(event.eventType) };
 }

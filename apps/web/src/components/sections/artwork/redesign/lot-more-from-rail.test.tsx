@@ -3,7 +3,7 @@ import type {
   LotRelatedRailVM,
 } from "@/components/sections/artwork/artwork-view-models";
 import { render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { LotMoreFromRail } from "./lot-more-from-rail";
 
 vi.mock("@/lib/time/use-clock", () => ({
@@ -65,16 +65,28 @@ const rail: LotRelatedRailVM = {
       title: "Related Lot A",
       artistName: "Artist One",
       estimateLine: "$1,000 – $2,000",
-      currentPrice: "900.00",
-      priceLabel: "Current bid",
-      endTime: "2026-06-01T18:00:00.000Z",
-      status: "active",
+      saleId: "sale-1",
       sellerId: "seller-1",
     },
   ],
+  premiumSale: null,
 };
 
+const liveFields = {
+  currentBidLabel: "Current bid",
+  currentBidValue: "$900",
+  endTime: "2026-06-01T18:00:00.000Z",
+  status: "active",
+};
+
+const liveRead = vi.fn();
+vi.mock("@/lib/marketing/artwork/lot-rail-live.client", () => ({
+  useLotRailLive: () => liveRead(),
+}));
+
 describe("LotMoreFromRail", () => {
+  beforeEach(() => liveRead.mockReturnValue(new Map([["lot-a", liveFields]])));
+
   it("renders watchlist heart on compact cards", () => {
     render(
       <LotMoreFromRail rail={rail} isAuthenticated watchedLotIds={["lot-a"]} density="compact" />,
@@ -119,4 +131,29 @@ describe("LotMoreFromRail", () => {
 
     expect(screen.queryByRole("link", { name: /^bid$/i })).not.toBeInTheDocument();
   });
+
+  it.each(["rich", "compact"] as const)(
+    "draws placeholders, not a price, before the live read lands (%s)",
+    (density) => {
+      liveRead.mockReturnValue(null);
+      render(<LotMoreFromRail rail={rail} isAuthenticated watchedLotIds={[]} density={density} />);
+
+      expect(screen.getByTestId("rail-price-pending")).toBeInTheDocument();
+      expect(screen.queryByText("$900")).not.toBeInTheDocument();
+      expect(screen.queryByText("Current bid")).not.toBeInTheDocument();
+      // The estimate and the title are the page's own.
+      expect(screen.getByText("Related Lot A")).toBeInTheDocument();
+    },
+  );
+
+  it.each(["rich", "compact"] as const)(
+    "shows the live price once the read lands (%s)",
+    (density) => {
+      render(<LotMoreFromRail rail={rail} isAuthenticated watchedLotIds={[]} density={density} />);
+
+      expect(screen.queryByTestId("rail-price-pending")).not.toBeInTheDocument();
+      expect(screen.getByText("$900")).toBeInTheDocument();
+      if (density === "rich") expect(screen.getByText("Current bid")).toBeInTheDocument();
+    },
+  );
 });

@@ -1,4 +1,5 @@
 import "server-only";
+
 import { hasAuthSessionCookie } from "@/lib/auth/session-cookie";
 import { atgDisplayListLot } from "@/lib/catalog/atg-catalog-display";
 import { throwIfNotOk } from "@/lib/dashboard/dashboard-fetch-errors";
@@ -6,6 +7,7 @@ import type { ArchiveMetricsReader, ListLotsParams, LotReader } from "@/lib/data
 import { CATALOGUE_FETCH_POLICIES, catalogueFetch } from "@/lib/data/http/catalogue-fetch";
 import { readDataEnvelope, readJsonBody, readListEnvelope } from "@/lib/data/http/envelope";
 import { createServerHc, getServerApiBase, getServerHc } from "@/lib/data/http/hc-server";
+import { buildLotListQuery } from "@/lib/data/http/lot-list-query";
 import {
   archiveEndedSummarySchema,
   bidEnvelopeSchema,
@@ -22,27 +24,7 @@ import type { Bid, Lot, PublicLotView } from "@auction/types";
 import { cookies } from "next/headers";
 import { cache } from "react";
 
-export function buildLotListQuery(params: ListLotsParams): Record<string, string> {
-  const q: Record<string, string> = {
-    limit: String(params.limit ?? 20),
-    offset: String(params.offset ?? 0),
-  };
-  if (params.status) q.status = params.status;
-  if (params.statuses?.length) q.statuses = params.statuses.join(",");
-  if (params.categoryId) q.categoryId = params.categoryId;
-  if (params.sellerId) q.sellerId = params.sellerId;
-  if (params.winnerId) q.winnerId = params.winnerId;
-  if (params.saleId) q.saleId = params.saleId;
-  if (params.artistId) q.artistId = params.artistId;
-  if (params.endYear !== undefined) q.endYear = String(params.endYear);
-  if (params.sort) q.sort = params.sort;
-  if (params.q?.trim()) q.q = params.q.trim();
-  if (params.endingWithinHours !== undefined)
-    q.endingWithinHours = String(params.endingWithinHours);
-  if (params.needsPhotos) q.needsPhotos = "1";
-  if (params.resolveImages === false) q.resolveImages = "0";
-  return q;
-}
+export { buildLotListQuery } from "@/lib/data/http/lot-list-query";
 
 export type LotCountParams = {
   q?: string;

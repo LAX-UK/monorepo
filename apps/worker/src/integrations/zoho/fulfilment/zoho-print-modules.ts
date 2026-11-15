@@ -89,7 +89,7 @@ function ledgerFrom(row: Record<string, unknown>): ZohoPrintGroupState["ledger"]
 }
 
 /** Zoho refused the record: wrong data never succeeds on a retry; anything else may. */
-function refused(module: string, code: string | undefined, message: string | undefined) {
+export function refused(module: string, code: string | undefined, message: string | undefined) {
   const errorCode = code ?? "EMPTY_RESPONSE";
   const retryable = !NON_RETRYABLE_CODES.has(errorCode);
   return new CrmGatewayError({

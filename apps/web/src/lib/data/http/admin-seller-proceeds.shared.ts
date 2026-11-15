@@ -33,7 +33,9 @@ const agreementSchema = z.object({
   commissionPercent: z.string().nullable().optional(),
   /** The signed PDF staff recorded with it; opened through a short-lived link. */
   signedDocumentId: z.string().nullable().optional().default(null),
-  /** The sale was priced on this agreement before it was corrected. */
+  /** Which version of the consignment's agreement this is. */
+  version: z.number().int().positive().optional(),
+  /** The sale was priced on this version and a later version has superseded it. */
   pricedOnEarlierVersion: z.boolean().optional().default(false),
 });
 export type SellerAgreementRef = z.infer<typeof agreementSchema>;
@@ -149,6 +151,7 @@ const lineAgreementSchema = z.object({
   signedAt: isoDate.nullable(),
   source: z.enum(["online", "recorded"]),
   commissionPercent: z.string().nullable(),
+  version: z.number().int().positive().optional(),
   pricedOnEarlierVersion: z.boolean().optional().default(false),
 });
 

@@ -2,6 +2,7 @@ import { sql } from "drizzle-orm";
 import {
   type AnyPgColumn,
   index,
+  integer,
   numeric,
   pgTable,
   text,
@@ -15,13 +16,18 @@ import { legalEntity } from "./legal-entities.js";
 import { uploadObject } from "./upload-objects.js";
 
 /**
- * One consignment agreement per submission: the specialist's estimate and terms, proposed when
- * the work is accepted, and the seller's acceptance under a versioned set of seller conditions.
- * Acceptance records who accepted, when, and which version they read.
+ * One current consignment agreement per submission: the specialist's estimate and terms, proposed
+ * when the work is accepted, and the seller's acceptance under a versioned set of seller
+ * conditions. Acceptance records who accepted, when, and which version they read.
  *
  * `source` says where the agreement came from: `online` (made and accepted in the product) or
  * `recorded` (staff recorded a signed paper copy, with the signed file and the reason). A corrected
  * agreement names the one it replaces.
+ *
+ * A signed agreement is never edited in place: an edit adds the next `version` as a new row and
+ * marks the one it replaces superseded (`superseded_at`, `superseded_by`), which the database then
+ * keeps frozen. The current agreement is the row not superseded; a priced sale keeps pointing at
+ * the version, and its signed PDF, it was priced on.
  */
 export const consignmentAgreement = pgTable(
   "consignment_agreement",
@@ -63,13 +69,22 @@ export const consignmentAgreement = pgTable(
       (): AnyPgColumn => consignmentAgreement.id,
       { onDelete: "set null" },
     ),
+    version: integer("version").notNull().default(1),
+    supersededAt: timestamp("superseded_at", { mode: "date", withTimezone: true }),
+    supersededBy: uuid("superseded_by").references((): AnyPgColumn => consignmentAgreement.id),
     reminderDay3SentAt: timestamp("reminder_day3_sent_at", { mode: "date", withTimezone: true }),
     reminderDay7SentAt: timestamp("reminder_day7_sent_at", { mode: "date", withTimezone: true }),
     createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
-    uniqueIndex("consignment_agreement_submission_id_uidx").on(table.submissionId),
+    uniqueIndex("consignment_agreement_submission_id_uidx")
+      .on(table.submissionId)
+      .where(sql`${table.supersededAt} IS NULL`),
+    uniqueIndex("consignment_agreement_submission_version_uidx").on(
+      table.submissionId,
+      table.version,
+    ),
     index("consignment_agreement_legal_entity_id_idx").on(table.legalEntityId),
     index("consignment_agreement_awaiting_idx")
       .on(table.proposedAt)

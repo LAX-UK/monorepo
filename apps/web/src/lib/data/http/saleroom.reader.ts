@@ -1,11 +1,10 @@
 import "server-only";
 
-import { readDataEnvelope, readJsonBody, readListEnvelope } from "@/lib/data/http/envelope";
+import { readDataEnvelope, readJsonBody } from "@/lib/data/http/envelope";
 import { getServerApiBase } from "@/lib/data/http/hc-server";
 import {
   type GetRelatedSalesParams,
   type RelatedSale,
-  relatedSaleRowSchema,
   saleFollowStateSchema,
 } from "@/lib/data/http/saleroom.schema";
 import { cookies } from "next/headers";
@@ -36,21 +35,5 @@ export async function getServerSaleFollowState(id: string): Promise<{ isFollowin
   return readDataEnvelope(body, saleFollowStateSchema, `GET /sales/${id}/follow`);
 }
 
-/** Related sales with same category (excluding current). Cached for SEO + fewer round trips. */
-export async function getServerRelatedSales(params: GetRelatedSalesParams): Promise<RelatedSale[]> {
-  const limit = Math.min(Math.max(params.limit ?? 4, 1), 12);
-  const base = getServerApiBase();
-  const qs = new URLSearchParams({
-    limit: String(limit + 1),
-    offset: "0",
-    statuses: "scheduled,active",
-    sort: "startAsc",
-  });
-  if (params.categoryId) qs.set("categoryId", params.categoryId);
-  const url = `${base}/sales?${qs.toString()}`;
-  const res = await fetch(url, { next: { revalidate: 60 } });
-  if (!res.ok) return [];
-  const body = await readJsonBody(res);
-  const { rows } = readListEnvelope(body, relatedSaleRowSchema, "GET /sales?related");
-  return rows.filter((row) => row.sale.id !== params.id).slice(0, limit);
-}
+/** Related sales with same category (excluding current); the session-free read. */
+export { getPublicRelatedSales as getServerRelatedSales } from "@/lib/data/http/public-catalogue.server";

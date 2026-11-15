@@ -20,28 +20,40 @@ export type RowRateSource =
       reference: string;
       href: string;
       signedAt: string | null;
+      /** The agreement's version the sale was priced on, when known. */
+      version: number | null;
+      /** That version has since been superseded. */
       earlierVersion: boolean;
     }
-  | { kind: "recorded_by_staff"; reference: string; href: string; earlierVersion: boolean }
+  | {
+      kind: "recorded_by_staff";
+      reference: string;
+      href: string;
+      version: number | null;
+      earlierVersion: boolean;
+    }
   | null;
 
 export function rowRateSource(
   agreement:
     | (Pick<SellerAgreementRef, "reference" | "submissionId" | "signedAt" | "source"> & {
+        version?: number | undefined;
         pricedOnEarlierVersion?: boolean;
       })
     | null,
 ): RowRateSource {
   if (!agreement) return null;
   const href = agreementHref(agreement.submissionId);
+  const version = agreement.version ?? null;
   const earlierVersion = agreement.pricedOnEarlierVersion ?? false;
   return agreement.source === "recorded"
-    ? { kind: "recorded_by_staff", reference: agreement.reference, href, earlierVersion }
+    ? { kind: "recorded_by_staff", reference: agreement.reference, href, version, earlierVersion }
     : {
         kind: "agreement",
         reference: agreement.reference,
         href,
         signedAt: agreement.signedAt,
+        version,
         earlierVersion,
       };
 }

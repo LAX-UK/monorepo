@@ -7,7 +7,12 @@ import {
 import { metadataForNotFound, metadataForSale } from "@/lib/seo/metadata-factory";
 import type { Metadata } from "next";
 
-export const revalidate = 60;
+/*
+ * The HTML of this page is rendered per request (the root layout reads the visitor's session and
+ * the CSP nonce); only its session-free API reads are shared, in the Data Cache, under the sale's
+ * tag. Never add a route-level `revalidate`, full-route caching or a CDN rule for `/sales/*`: the
+ * same HTML carries the visitor's layout. `lib/cache/public-page-session-free.test.ts` holds this.
+ */
 
 type PageProps = {
   params: Promise<{ slug: string; id: string }>;

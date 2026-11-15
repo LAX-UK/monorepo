@@ -1,9 +1,5 @@
 import { useLotBidHydrateQuery } from "@/hooks/lot-bid/use-lot-bid-hydrate-query";
-import {
-  type LotBidHydrateData,
-  buildLotBidInitialHydrate,
-  lotBidKeys,
-} from "@/lib/data/queries/lot-bid";
+import { type LotBidHydrateData, lotBidKeys } from "@/lib/data/queries/lot-bid";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, renderHook } from "@testing-library/react";
 import type { ReactNode } from "react";
@@ -31,16 +27,17 @@ function createTestQueryClient() {
 }
 
 function initialHydrate(): LotBidHydrateData {
-  return buildLotBidInitialHydrate({
-    initialSnapshot: {
+  return {
+    snapshot: {
       currentPrice: "100.00",
       endTime: new Date("2026-07-01T20:00:00Z"),
       status: "active",
       winnerId: null,
     },
-    initialHistory: [],
-    initialLeadingBidderId: null,
-  });
+    entries: [],
+    leadingBidderId: null,
+    reserveMet: undefined,
+  };
 }
 
 function patchedHydrate(): LotBidHydrateData {
@@ -76,6 +73,9 @@ describe("useLotBidHydrateQuery — cache updates", () => {
     const queryKey = lotBidKeys.hydrate(LOT_ID);
     const initial = initialHydrate();
     const patched = patchedHydrate();
+    // The panel reads the live snapshot on mount (CO-7); here it says what the seed says.
+    mockFetchLotBidSnapshot.mockResolvedValue(initial.snapshot);
+    mockFetchLotBidHistory.mockResolvedValue([]);
 
     const { result } = renderHook(() => useLotBidHydrateQuery(LOT_ID, { initialData: initial }), {
       wrapper: ({ children }: { children: ReactNode }) => (

@@ -56,6 +56,7 @@ import {
   processUnsoldChoiceDeadline,
 } from "./unsold-choice-deadline.js";
 import { UNSOLD_FOLLOW_UP_PROJECTOR, processUnsoldFollowUp } from "./unsold-follow-up.js";
+import { WEB_PUBLIC_CACHE_PROJECTOR, processWebPublicCache } from "./web-public-cache.js";
 import { createXeroProjector } from "./xero-projector.js";
 import { createZohoArtworkListingProjector } from "./zoho-artwork-listing-projector.js";
 import { createZohoArtworkWritebackProjector } from "./zoho-artwork-writeback-projector.js";
@@ -351,6 +352,16 @@ export function createDefaultProjectorRegistry(): ProjectorRegistry {
     },
     createAccountingProjector(),
     createAccountingSender(),
+    {
+      name: WEB_PUBLIC_CACHE_PROJECTOR,
+      isEnabled(ctx) {
+        return ctx.webPublicCache != null;
+      },
+      async run(ctx) {
+        if (!ctx.webPublicCache) return;
+        await processWebPublicCache(ctx, ctx.webPublicCache);
+      },
+    },
   ];
 
   return new ProjectorRegistry(projectors);

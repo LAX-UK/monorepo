@@ -1,13 +1,17 @@
 import "server-only";
 
-import { fetchRegistryArtistById } from "@/lib/data/http/artist.server";
+import { publicLotTag } from "@/lib/data/cache-tags";
+import { fetchRegistryArtistById } from "@/lib/data/http/artist-profile-public";
 import { readJsonBody } from "@/lib/data/http/envelope";
-import { getServerHc } from "@/lib/data/http/hc-server";
 import { isIndexableObject } from "@/lib/data/http/object-guards";
-import { getServerSaleWithLots } from "@/lib/data/http/sales.server";
+import {
+  PUBLIC_PAGE_REVALIDATE_SECONDS,
+  getPublicSaleWithLots,
+} from "@/lib/data/http/public-catalogue.server";
+import { getServerApiBase } from "@/lib/data/http/server-api-base";
 import { artistLifespan } from "@/lib/lot-page/artist-lifespan";
 import { type WithdrawnLotPageLot, parseWithdrawnLot } from "@/lib/lot-page/withdrawn-lot";
-import { ensureCanonicalLotSlug } from "@/lib/marketing/load-lot-detail-page";
+import { ensureCanonicalLotSlug } from "@/lib/marketing/lot-canonical-slug";
 import { artistPath, salePath } from "@/lib/seo/url";
 import { cache } from "react";
 
@@ -23,11 +27,15 @@ type WithdrawnLotRead =
   | { kind: "missing" }
   | { kind: "failed"; error: unknown };
 
-/** One cached read of the lot row, keeping a definite 404 apart from a failed read. */
+/**
+ * One cached read of the lot row, keeping a definite 404 apart from a failed read. Session-free
+ * and tagged like the lot page's own read (the same request, so one fetch serves both, CO-7).
+ */
 const readWithdrawnLot = cache(async (lotId: string): Promise<WithdrawnLotRead> => {
   try {
-    const client = await getServerHc();
-    const res = await client.lots[":id"].$get({ param: { id: lotId } });
+    const res = await fetch(`${getServerApiBase()}/lots/${encodeURIComponent(lotId)}`, {
+      next: { revalidate: PUBLIC_PAGE_REVALIDATE_SECONDS, tags: [publicLotTag(lotId)] },
+    });
     if (res.status === 404) return { kind: "missing" };
     if (!res.ok) return { kind: "failed", error: new Error(`Failed to load lot: ${res.status}`) };
     const body = await readJsonBody(res);
@@ -71,7 +79,7 @@ export async function loadWithdrawnLotPage(input: {
   ensureCanonicalLotSlug(input.slug, lot, input.searchParams);
   const [artist, sale] = await Promise.all([
     lot.artistId ? fetchRegistryArtistById(lot.artistId).catch(() => null) : null,
-    lot.saleId ? getServerSaleWithLots(lot.saleId).catch(() => null) : null,
+    lot.saleId ? getPublicSaleWithLots(lot.saleId).catch(() => null) : null,
   ]);
   return {
     lot,

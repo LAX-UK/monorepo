@@ -1,6 +1,6 @@
 import "server-only";
 
-import { getServerApiBase } from "@/lib/data/http/hc-server";
+import { getServerApiBase } from "@/lib/data/http/server-api-base";
 import type { PublicSaleroomSessionStatus } from "@/lib/saleroom/public-session-status";
 
 export type { PublicSaleroomSessionStatus } from "@/lib/saleroom/public-session-status";

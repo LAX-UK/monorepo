@@ -1,7 +1,7 @@
 import type { BidHistoryEntry } from "@/components/sections/artwork/bid-history";
 import { mapBidToHistoryEntry } from "@/lib/bid/map-bid-to-history-entry";
 import { parseBidRow } from "@/lib/data/http/bid-row";
-import { browserApiBase, browserFetch, getBrowserHc } from "@/lib/data/http/hc-browser";
+import { browserApiBase, browserFetch, getBrowserHcLive } from "@/lib/data/http/hc-browser";
 
 export type LotBidHistoryRow = {
   id: string;
@@ -34,7 +34,8 @@ export async function fetchLotBidHistory(
   limit = 30,
 ): Promise<BidHistoryEntry[] | null> {
   try {
-    const res = await getBrowserHc().lots[":id"].bids.$get({
+    // No-store: a live read (CO-7).
+    const res = await getBrowserHcLive().lots[":id"].bids.$get({
       param: { id: lotId },
       query: { limit: String(limit) },
     });

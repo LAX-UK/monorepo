@@ -13,12 +13,11 @@ const journal = JSON.parse(read("meta/_journal.json")) as {
 const TAG = "0390_data_request_erasure_hold";
 
 describe("migration 0390 data request erasure holds", () => {
-  it("is journalled last, right after 0389, in a journal that stays ordered", () => {
+  it("is journalled right after 0389, in a journal that stays ordered", () => {
     const entry = journal.entries.find((e) => e.tag === TAG);
     const previous = journal.entries.find((e) => e.tag === "0389_shop_original_sale_books_invoice");
     expect(entry?.idx).toBe((previous?.idx ?? Number.NaN) + 1);
     expect(entry?.when).toBeGreaterThan(previous?.when ?? Number.POSITIVE_INFINITY);
-    expect(journal.entries.at(-1)?.tag).toBe(TAG);
   });
 
   it("creates the table under the lock timeout, with a waiting row always due at some time", () => {

@@ -11,15 +11,32 @@ describe("fulfilmentTriggerOf", () => {
     }
   });
 
-  it("is about the order for the order and fulfilment events", () => {
+  it("is about the order in the payload for the order and fulfilment events", () => {
     for (const eventType of Object.keys(FULFILMENT_TRIGGER_KINDS).filter(
       (type) => FULFILMENT_TRIGGER_KINDS[type] === "order",
     )) {
-      expect(fulfilmentTriggerOf({ eventType, aggregateId: "ord-1" })).toEqual({
-        kind: "order",
-        orderId: "ord-1",
-      });
+      // The aggregate may be a line or the fulfilment; the payload always names the order.
+      expect(
+        fulfilmentTriggerOf({ eventType, aggregateId: "line-1", payload: { orderId: "ord-1" } }),
+      ).toMatchObject({ kind: "order", orderId: "ord-1" });
     }
+  });
+
+  it("reports a print it cannot mirror only for the events that set the order's prints", () => {
+    const reports = Object.keys(FULFILMENT_TRIGGER_KINDS)
+      .filter((type) => FULFILMENT_TRIGGER_KINDS[type] === "order")
+      .filter((eventType) => {
+        const trigger = fulfilmentTriggerOf({ eventType, payload: { orderId: "ord-1" } });
+        return trigger?.kind === "order" && trigger.reportsProblems;
+      });
+    expect(reports.sort()).toEqual(["shop.order.paid", "shop.print.swapped"]);
+  });
+
+  it("ignores an order event whose payload names no order", () => {
+    const eventType = "shop.fulfilment.dispatched";
+    expect(fulfilmentTriggerOf({ eventType, aggregateId: "ful-1" })).toBeNull();
+    expect(fulfilmentTriggerOf({ eventType, payload: { orderId: 7 } })).toBeNull();
+    expect(fulfilmentTriggerOf({ eventType, payload: { orderId: " " } })).toBeNull();
   });
 
   it("ignores other events and events with no id", () => {
