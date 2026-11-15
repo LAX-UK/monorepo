@@ -1,6 +1,10 @@
 import type { ConnectGapState } from "@auction/connect";
 import { describe, expect, it } from "vitest";
-import { deriveConnectWorkspaceFlags } from "./connect-workspace-flags";
+import {
+  canManageConnect,
+  canOnboard,
+  deriveConnectWorkspaceFlags,
+} from "./connect-workspace-flags";
 
 const baseGap: Pick<ConnectGapState, "missing" | "canReceivePayouts" | "canPublish"> = {
   missing: [],
@@ -95,5 +99,34 @@ describe("deriveConnectWorkspaceFlags", () => {
       hasStripeAccount: true,
     });
     expect(flags.showPreparingPanel).toBe(false);
+  });
+});
+
+describe("Connect role checks", () => {
+  const roles = ["owner", "admin", "finance", "consignor", "viewer", "buyer_agent"] as const;
+
+  it("lets owners, admins and finance open the workspace", () => {
+    expect(roles.filter(canManageConnect)).toEqual(["owner", "admin", "finance"]);
+  });
+
+  it("lets owners and admins complete onboarding", () => {
+    expect(roles.filter(canOnboard)).toEqual(["owner", "admin"]);
+  });
+
+  it("gives finance the management view but never onboarding", () => {
+    const gap = { ...baseGap, stage: "requirements_due" as const, disabledReason: null };
+    for (const memberRole of roles) {
+      const flags = deriveConnectWorkspaceFlags({
+        memberRole,
+        gap,
+        stripeActionRequired: 0,
+        hasStripeAccount: true,
+      });
+      expect(flags.showRefreshAction).toBe(
+        memberRole !== "consignor" && memberRole !== "viewer" && memberRole !== "buyer_agent",
+      );
+      expect(flags.showManagement).toBe(memberRole === "finance");
+      expect(flags.canCompleteOnboarding).toBe(memberRole === "owner" || memberRole === "admin");
+    }
   });
 });

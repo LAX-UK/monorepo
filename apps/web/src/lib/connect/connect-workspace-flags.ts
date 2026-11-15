@@ -2,8 +2,21 @@ import { type ConnectGapState, isConnectOnboardingStage } from "@auction/connect
 import { entityRoleCan } from "@auction/domain";
 import type { LegalEntityMemberRole } from "@auction/types";
 
-function canOnboard(role: LegalEntityMemberRole): boolean {
+/** Finance members can operate Connect (refresh, manage) but cannot complete onboarding. */
+function isOperatorOnly(role: LegalEntityMemberRole): boolean {
+  return (
+    entityRoleCan(role, "entity.connect.operate") && !entityRoleCan(role, "entity.connect.manage")
+  );
+}
+
+/** Who may complete Connect onboarding. */
+export function canOnboard(role: LegalEntityMemberRole): boolean {
   return entityRoleCan(role, "entity.connect.manage");
+}
+
+/** Who may open the Connect workspace at all. */
+export function canManageConnect(role: LegalEntityMemberRole): boolean {
+  return entityRoleCan(role, "entity.connect.operate");
 }
 
 export function deriveConnectWorkspaceFlags(input: {
@@ -28,7 +41,7 @@ export function deriveConnectWorkspaceFlags(input: {
   const canCompleteOnboarding = canOnboard(memberRole);
   const showOnboarding = canCompleteOnboarding && isConnectOnboardingStage(gap.stage);
   const showFinanceManagement =
-    memberRole === "finance" &&
+    isOperatorOnly(memberRole) &&
     hasStripeAccount &&
     gap.stage !== "ready" &&
     gap.stage !== "restricted";
@@ -42,7 +55,8 @@ export function deriveConnectWorkspaceFlags(input: {
     !hasStripeAccount &&
     gap.stage !== "ready" &&
     gap.stage !== "managed_by_lax";
-  const showRefreshAction = canCompleteOnboarding || (memberRole === "finance" && hasStripeAccount);
+  const showRefreshAction =
+    canCompleteOnboarding || (isOperatorOnly(memberRole) && hasStripeAccount);
   const showPreparingPanel = canCompleteOnboarding && !hasStripeAccount;
   const showEmbeddedPanels = showOnboarding || showManagement;
   const showRestrictedPanel = hasStripeAccount && gap.stage === "restricted";

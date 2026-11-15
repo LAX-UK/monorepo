@@ -28,14 +28,17 @@ import {
   createStripeConnectAccountSessionAction,
 } from "@/lib/actions/stripe-connect.actions";
 import { connectGapReadOnlySummary, connectGapStageSummary } from "@/lib/connect/connect-gap-copy";
-import { deriveConnectWorkspaceFlags } from "@/lib/connect/connect-workspace-flags";
+import {
+  canManageConnect,
+  canOnboard,
+  deriveConnectWorkspaceFlags,
+} from "@/lib/connect/connect-workspace-flags";
 import { DASHBOARD_ROUTES } from "@/lib/dashboard/dashboard-copy";
 import type { KycStatusSummaryDto } from "@/lib/data/dto/dashboard-dtos";
 import type { StripeConnectStatus } from "@/lib/data/http/stripe-connect.server";
 import { normalizeKycReturnUrl } from "@/lib/kyc";
 import { dashboardIdentityOnboardingHref } from "@/lib/kyc/identity-onboarding";
 import { isActionableStripeDisabledReason, shouldSkipConnect } from "@auction/connect";
-import { entityRoleCan } from "@auction/domain";
 import type { LegalEntityMemberRole } from "@auction/types";
 import { Alert, AlertDescription } from "@auction/ui/components/alert";
 import { Surface } from "@auction/ui/components/surface";
@@ -64,21 +67,13 @@ type Props = {
   syncDegraded?: boolean;
 };
 
-function canManageConnect(role: LegalEntityMemberRole): boolean {
-  return entityRoleCan(role, "entity.connect.operate");
-}
-
-function canOnboardConnect(role: LegalEntityMemberRole): boolean {
-  return entityRoleCan(role, "entity.connect.manage");
-}
-
 function resolveConnectSessionSurface(input: {
   gapStage: string;
   memberRole: LegalEntityMemberRole;
   hasStripeAccount: boolean;
 }): StripeConnectSessionSurface {
   if (input.gapStage === "ready") return "management";
-  if (!canOnboardConnect(input.memberRole) && input.hasStripeAccount) return "management";
+  if (!canOnboard(input.memberRole) && input.hasStripeAccount) return "management";
   return "onboarding";
 }
 
