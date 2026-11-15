@@ -168,6 +168,63 @@ describe("Bid seller payout: the bill", () => {
     ).toMatchObject({ ok: false, refusal: { code: "bad_amount" } });
   });
 
+  describe("each sum check refuses on its own", () => {
+    const refusedWith = (facts: BidPayoutFacts, message: RegExp) => {
+      const result = bidPayoutSettledPolicy(BOOKING)(facts);
+      expect(result.ok).toBe(false);
+      if (result.ok) return;
+      expect(result.refusal.code).toBe("bad_facts");
+      expect(result.refusal.message).toMatch(message);
+    };
+    const [a, b] = bidFacts().sales;
+    if (!a || !b) throw new Error("fixture has two sales");
+
+    it("payout net is not gross less fees, on the itemised path", () => {
+      refusedWith(bidFacts({ netPence: 104_049 }), /net is not its gross less its fees/);
+    });
+
+    it("payout net is not gross less fees, on the non-itemised path (its only guard)", () => {
+      refusedWith(
+        bidFacts({ otherLines: 1, netPence: 104_049 }),
+        /net is not its gross less its fees/,
+      );
+    });
+
+    it("a sale's seller net is not its hammer less commission and VAT", () => {
+      refusedWith(
+        bidFacts({ sales: [{ ...a, sellerNetPence: 82_001 }, b] }),
+        /seller net is not its hammer/,
+      );
+    });
+
+    it("a wrong split on one sale is refused even when another sale offsets it", () => {
+      refusedWith(
+        bidFacts({
+          sales: [
+            { ...a, sellerNetPence: a.sellerNetPence + 1 },
+            { ...b, sellerNetPence: b.sellerNetPence - 1 },
+          ],
+        }),
+        /seller net is not its hammer/,
+      );
+    });
+
+    it("the sales' nets do not add up to the payout's net", () => {
+      refusedWith(
+        bidFacts({ sales: [a, { ...b, commissionPence: 2_505, sellerNetPence: 22_049 }] }),
+        /not its sales added up/,
+      );
+    });
+
+    it("the sales' hammers do not add up to the payout's gross while the nets agree", () => {
+      // Gross and fee both one penny higher: net is unchanged, so only the hammer total is wrong.
+      refusedWith(
+        bidFacts({ grossPence: 125_056, platformFeePence: 21_008 }),
+        /not its sales added up/,
+      );
+    });
+  });
+
   it("gives the same documents for the same facts (a replay)", () => {
     expect(ok(projectBidPayoutPaid(bidFacts()))).toEqual(ok(projectBidPayoutPaid(bidFacts())));
   });
