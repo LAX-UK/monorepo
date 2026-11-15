@@ -14,6 +14,7 @@
       "default": "./dist/cover/cover-fixtures.js"
     },
     "./marketing-ui.css": "./src/marketing-ui.css",
+    "./marketing-bottom-bar.css": "./src/bottom-bar/marketing-bottom-bar.css",
     "./marketing-header.css": "./src/marketing-header.css",
     "./marketing-sentence-case.css": "./src/marketing-sentence-case.css",
     "./account/index": {

@@ -14,8 +14,9 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@auction/ui/components/sheet";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AccountAvatar } from "./account-avatar";
+import { OPEN_ACCOUNT_MENU_EVENT } from "./account-menu-events";
 import { AccountNav } from "./account-nav.client";
 import type { AccountViewer } from "./account-viewer";
 import { SignOutForm } from "./sign-out-form";
@@ -35,6 +36,12 @@ export function AccountMenuSheet({
   products: LaxFamilyLinkVm[];
 }) {
   const [open, setOpen] = useState(false);
+  // The phone tab bar's More tab opens this same sheet.
+  useEffect(() => {
+    const show = () => setOpen(true);
+    window.addEventListener(OPEN_ACCOUNT_MENU_EVENT, show);
+    return () => window.removeEventListener(OPEN_ACCOUNT_MENU_EVENT, show);
+  }, []);
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>

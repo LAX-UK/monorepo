@@ -18,7 +18,9 @@ export type MarketingBottomTabBarProps = {
   /** The current path, from the router. */
   pathname: string;
   /** Opens the product's existing search dialog; used by the tab whose `action` is "search". */
-  onSearch: () => void;
+  onSearch?: () => void;
+  /** Opens the product's existing phone menu; used by the tab whose `action` is "menu". */
+  onMenu?: () => void;
   /** Colour of the current tab and its indicator (a CSS colour); defaults to the theme primary. */
   accent?: string;
   /** The same accent in dark mode. */
@@ -79,6 +81,7 @@ export function MarketingBottomTabBar({
   tabs,
   pathname,
   onSearch,
+  onMenu,
   accent,
   accentOnDark,
   hidden = false,
@@ -134,12 +137,16 @@ export function MarketingBottomTabBar({
           );
           return (
             <li key={tab.key}>
-              {tab.action === "search" ? (
+              {tab.action ? (
                 <button
                   type="button"
-                  onClick={onSearch}
+                  onClick={tab.action === "menu" ? onMenu : onSearch}
                   aria-haspopup="dialog"
-                  className={cn(TAB_BASE, FOCUS_RING)}
+                  className={cn(
+                    TAB_BASE,
+                    tab.action === "menu" && isTabCurrent(tab, pathname) && TAB_CURRENT,
+                    FOCUS_RING,
+                  )}
                 >
                   {inner}
                 </button>
