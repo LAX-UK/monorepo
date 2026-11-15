@@ -4,13 +4,16 @@ import {
   collectionBooking,
   collectionBookingLot,
   domainEvent,
+  itemSubmission,
   marketingEnquiry,
   marketingEnquiryAttachment,
   marketingEnquiryNote,
+  privateSaleDeal,
   privateSaleEnquiryDetail,
   uploadObject,
 } from "@auction/db/schema";
 import { ERASED_ENQUIRY } from "@auction/domain";
+import { DrizzlePrivateSaleDealRepository } from "@auction/persistence/repositories";
 import { eq, sql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { anonymiseBidPersonalData } from "./anonymise-bid-personal-data.js";
@@ -268,5 +271,156 @@ describe.skipIf(!ownerUrl || !workerUrl)("enquiry erasure as worker_app (integra
       if (!(e instanceof RolledBack)) throw e;
     }
     expect(error).toBeNull();
+  });
+});
+
+/**
+ * A converted private sale enquiry belongs to its deal and is held, not erased, while the deal's
+ * record must be kept (data requests: held enquiries; private sales: record retention). The deal
+ * history is append-only, so nothing here is committed: the owner seeds inside one transaction,
+ * switches to `worker_app` for the rule and the reads, and the transaction is rolled back.
+ */
+describe.skipIf(!ownerUrl || !workerUrl)("held enquiry erasure as worker_app (integration)", () => {
+  const run = randomUUID().slice(0, 8);
+  const subject = `enq-held-subject-${run}`;
+  // biome-ignore lint/style/noNonNullAssertion: gated above
+  const owner = createDb(ownerUrl!);
+  const rule = BID_ANONYMISATION_RULES.find((r) => r.table === "marketing_enquiry");
+
+  it("keeps an enquiry whose cancelled deal was agreed, and erases one whose deal never was", async () => {
+    if (!rule) throw new Error("No marketing_enquiry rule in the policy");
+    const cancelledAt = new Date(Date.now() - 30 * 86_400_000);
+    const now = new Date();
+    let counts: unknown;
+    let seen: Record<string, unknown> = {};
+    try {
+      await owner.transaction(async (tx) => {
+        const entityId = randomUUID();
+        await tx.execute(sql`
+          insert into "user" (id, name, email, email_verified, created_at, updated_at)
+          values (${subject}, 'Subject', ${`${subject}@integration.test`}, true, ${now}, ${now})`);
+        await tx.execute(sql`
+          insert into legal_entity (id, display_name, kind, subkind, created_by_user_id, status)
+          values (${entityId}, 'Held subject personal', 'individual', 'private_collector', ${subject}, 'approved')`);
+        const [submission] = await tx
+          .insert(itemSubmission)
+          .values({
+            legalEntityId: entityId,
+            title: "Held probe work",
+            status: "draft",
+            submittedByUserId: subject,
+          })
+          .returning({ id: itemSubmission.id });
+
+        const seedConverted = async (message: string, agreed: boolean) => {
+          const [enquiry] = await tx
+            .insert(marketingEnquiry)
+            .values({
+              intent: "private_sale_sell",
+              topic: "selling",
+              name: "Maya Okafor",
+              email: `${subject}@integration.test`,
+              phone: "+447700900123",
+              message,
+              status: "converted",
+              userId: subject,
+            })
+            .returning({ id: marketingEnquiry.id });
+          const enquiryId = (enquiry as { id: string }).id;
+          await tx
+            .insert(marketingEnquiryNote)
+            .values({ enquiryId, body: "Called Maya on her mobile" });
+          await tx.insert(privateSaleEnquiryDetail).values({
+            enquiryId,
+            locationTown: "Bath",
+            locationCountry: "GB",
+            lookingFor: "A valuation",
+          });
+          const deal = await new DrizzlePrivateSaleDealRepository(tx as never).create({
+            itemSubmissionId: (submission as { id: string }).id,
+            sourceEnquiryId: enquiryId,
+            ownerUserId: subject,
+            seller: { legalEntityId: entityId, actingUserId: subject },
+            buyerFeeBps: 0,
+            sellerCommissionBps: null,
+            actorUserId: subject,
+          });
+          // Cancelled; one had reached agreement on a price, the other had not.
+          await tx
+            .update(privateSaleDeal)
+            .set({
+              stage: "cancelled",
+              cancelReason: "Seller withdrew",
+              cancelledAt,
+              ...(agreed ? { agreedAt: cancelledAt, priceMinor: 100, agreedByUserId: null } : {}),
+            })
+            .where(eq(privateSaleDeal.id, deal.id));
+          return enquiryId;
+        };
+        const heldId = await seedConverted("Held: a painting to sell", true);
+        const releasedId = await seedConverted("Released: another painting", false);
+
+        await tx.execute(sql`set local role worker_app`);
+        counts = await rule.apply(tx as never, {
+          subjectIds: [subject],
+          personalLegalEntityIds: [],
+          pseudonym: "Deleted user 7F3A",
+        });
+        const read = async (id: string) => {
+          const [row] = await tx.select().from(marketingEnquiry).where(eq(marketingEnquiry.id, id));
+          const [note] = await tx
+            .select()
+            .from(marketingEnquiryNote)
+            .where(eq(marketingEnquiryNote.enquiryId, id));
+          const [detail] = await tx
+            .select()
+            .from(privateSaleEnquiryDetail)
+            .where(eq(privateSaleEnquiryDetail.enquiryId, id));
+          return { row, note, detail };
+        };
+        seen = { held: await read(heldId), released: await read(releasedId) };
+        throw new RolledBack();
+      });
+    } catch (error) {
+      if (!(error instanceof RolledBack)) throw error;
+    }
+
+    // One erased (with its note), one held and reported as held, and nothing detached.
+    expect(counts).toEqual({
+      marketing_enquiry: 1,
+      marketing_enquiry_note: 1,
+      marketing_enquiry_attachment: 0,
+      marketing_enquiry_held: 1,
+    });
+    const { held, released } = seen as Record<
+      "held" | "released",
+      { row: unknown; note: unknown; detail: unknown }
+    >;
+    expect(held.row).toMatchObject({
+      name: "Maya Okafor",
+      email: `${subject}@integration.test`,
+      phone: "+447700900123",
+      message: "Held: a painting to sell",
+      version: 1,
+    });
+    expect(held.note).toMatchObject({ body: "Called Maya on her mobile" });
+    expect(held.detail).toMatchObject({
+      locationTown: "Bath",
+      locationCountry: "GB",
+      lookingFor: "A valuation",
+    });
+    expect(released.row).toMatchObject({
+      name: ERASED_ENQUIRY.name,
+      email: ERASED_ENQUIRY.email,
+      phone: null,
+      message: ERASED_ENQUIRY.message,
+      version: 2,
+    });
+    expect(released.note).toMatchObject({ body: ERASED_ENQUIRY.note });
+    expect(released.detail).toMatchObject({
+      locationTown: null,
+      locationCountry: null,
+      lookingFor: null,
+    });
   });
 });
