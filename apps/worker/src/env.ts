@@ -30,6 +30,12 @@ const zohoApiName = (fallback: string) =>
     z.string().regex(/^[A-Za-z][A-Za-z0-9_]{0,99}$/, "must be a Zoho field API name"),
   );
 
+/**
+ * Default for COLLECTION_CAN_BOOK_EMAILS_FROM: a fixed date, never "now", so a restart does not
+ * move the cut-off.
+ */
+export const DEFAULT_COLLECTION_CAN_BOOK_EMAILS_FROM = "2026-11-16T00:00:00Z";
+
 export const envSchema = z
   .object({
     NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
@@ -371,6 +377,25 @@ export const envSchema = z
     COLLECTION_ORGANIZER_NAME: z.preprocess(
       emptyToUndefined,
       z.string().trim().min(1).max(100).default(LAX_PRODUCT_NAMES.bid),
+    ),
+    /**
+     * Purchases paid before this (ISO date or date-time) are never sent the "you can book" email,
+     * so the first sweep does not write to every buyer with a lot already in storage. Set it to
+     * the production deploy date.
+     */
+    COLLECTION_CAN_BOOK_EMAILS_FROM: z.preprocess(
+      emptyToUndefined,
+      z
+        .string()
+        .default(DEFAULT_COLLECTION_CAN_BOOK_EMAILS_FROM)
+        .transform((value, ctx) => {
+          const date = new Date(value);
+          if (Number.isNaN(date.getTime())) {
+            ctx.addIssue({ code: "custom", message: "must be an ISO date or date-time" });
+            return z.NEVER;
+          }
+          return date;
+        }),
     ),
     DISABLE_PAYOUT_SETTLEMENT: z
       .preprocess((val) => val === "true" || val === true, z.boolean())

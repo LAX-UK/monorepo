@@ -131,9 +131,10 @@ at a place that takes online bookings, nothing in the way (an identity, source-o
 check, a dispute, a refund) and not yet booked, collected or going by courier. It keeps the
 purchase page's promise "We'll email you as soon as you can book" whichever check was holding the
 lot. Which lots a person was told about is read from the email outbox, so a sweep sends nothing
-twice. Purchases whose payment cleared before `CAN_BOOK_EMAILS_FROM`
-(`apps/worker/src/jobs/collection-can-book.ts`, the release date) are never sent it, so the first
-sweep does not write to every buyer with a lot already in storage.
+twice. Purchases whose payment cleared before the worker's
+`COLLECTION_CAN_BOOK_EMAILS_FROM` (an ISO date or date-time; default `2026-11-16T00:00:00Z`) are
+never sent it. Set it to the production deploy date, so the first sweep does not email every buyer
+paid since the default. An invalid value stops the worker at start-up.
 
 **Named collectors.** The collector email names the organisation that authorised them and the
 member who booked ("Authorised by Northbank Ltd, booked by Jane Hart"), or just the person for a

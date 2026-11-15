@@ -116,7 +116,7 @@ describe("you can book email", () => {
   it("says the lots can be booked now, where, and links to book them", async () => {
     const rendered = await renderEmail("collection-can-book", base);
     expect(rendered.subject).toBe("You can book a time to collect your lots");
-    expect(rendered.text).toContain("Your lots are paid and nothing is in the way");
+    expect(rendered.text).toContain("Your lots are paid for and ready to collect");
     expect(rendered.text).toContain("London Art Exchange, 156 New Cavendish Street");
     expect(rendered.html).toContain("<li>Lot 12 · Lowland Storm</li>");
     expect(rendered.html).toContain("https://lax.bid/purchases/collect?lots=a,b");

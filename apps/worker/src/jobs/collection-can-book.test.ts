@@ -3,8 +3,9 @@ import type { IEmailService } from "@auction/email";
 import pino from "pino";
 import { describe, expect, it, vi } from "vitest";
 import type { StoredLot } from "../interfaces/collect-by.reader.js";
-import { CAN_BOOK_EMAILS_FROM, runCanBookJob } from "./collection-can-book.js";
+import { runCanBookJob } from "./collection-can-book.js";
 
+const CAN_BOOK_EMAILS_FROM = new Date("2026-11-16T00:00:00Z");
 const log = pino({ level: "silent" });
 const PLACE = { name: "London Art Exchange", address: "156 New Cavendish Street" };
 const stored = (over: Partial<StoredLot> = {}): StoredLot => ({
@@ -71,12 +72,23 @@ function setup(lots: StoredLot[], facts: Record<string, Partial<CollectionLotFac
       emailService: { enqueue } as unknown as IEmailService,
       webOrigin: "https://lax.bid",
       log,
+      from: CAN_BOOK_EMAILS_FROM,
       now: () => new Date(now),
     });
   return { run, enqueue, lotsClearedSince, remindedLotIds, accountRecipients, outbox };
 }
 
 describe("you can book emails", () => {
+  it("ignores payments cleared before the configured date", async () => {
+    const s = setup([
+      stored({ lotId: "l-old", clearedAt: new Date("2026-11-10T10:00:00Z") }),
+      stored({ lotId: "l-new", clearedAt: new Date("2026-11-20T10:00:00Z") }),
+    ]);
+    await s.run("2026-11-21T09:15:00Z");
+    expect(s.outbox.flatMap((row) => row.lotIds)).not.toContain("l-old");
+    expect(s.outbox.flatMap((row) => row.lotIds)).toContain("l-new");
+  });
+
   it("sends nothing before 09:00 London time", async () => {
     const s = setup([stored()]);
     expect(await s.run("2026-11-21T08:59:00Z")).toEqual({ groups: 0, queued: 0 });
