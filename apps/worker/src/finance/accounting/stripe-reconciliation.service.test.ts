@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { type SwitchConfig, ok } from "@auction/accounting-domain";
 import type {
   ClearingMovements,
@@ -12,10 +14,32 @@ import { FakeStripeBalance } from "../../testing/fake-stripe-balance.js";
 import { ACCOUNTING_ALERTS } from "./accounting-alerts.js";
 import type { StripeBalanceReader } from "./stripe-balance-reader.js";
 import {
+  KNOWN_UNBOOKED_TYPES,
   StripeReconciliation,
   previousLondonDay,
   reconciliationKey,
 } from "./stripe-reconciliation.service.js";
+
+const DOCUMENTED_UNBOOKED_TYPES = [
+  "transfer",
+  "transfer_cancel",
+  "transfer_refund",
+  "transfer_failure",
+  "refund",
+  "payment_refund",
+  "adjustment",
+];
+
+describe("KNOWN_UNBOOKED_TYPES", () => {
+  it("is exactly the types the runbook documents", () => {
+    expect([...KNOWN_UNBOOKED_TYPES].sort()).toEqual([...DOCUMENTED_UNBOOKED_TYPES].sort());
+    const runbook = readFileSync(
+      fileURLToPath(new URL("../../../../../docs/runbooks/monitoring-alerts.md", import.meta.url)),
+      "utf8",
+    );
+    for (const type of DOCUMENTED_UNBOOKED_TYPES) expect(runbook).toContain(`\`${type}\``);
+  });
+});
 
 const NOW = new Date("2031-11-14T05:30:00Z");
 /** Where this morning's read stopped: now less the settle time. */
@@ -183,7 +207,7 @@ describe("StripeReconciliation", () => {
     ]);
   });
 
-  it.each(["transfer", "refund", "adjustment"])(
+  it.each(DOCUMENTED_UNBOOKED_TYPES)(
     "takes a documented %s movement out of clearing without an alert",
     async (type) => {
       const { s } = store({ unbooked: [{ type, pence: -500 }] });

@@ -24,13 +24,19 @@ export const RECONCILIATION_PREFIX = "accounting/reconciliation";
 
 /**
  * The balance transaction types the runbook documents as moving the Stripe balance outside the
- * clearing figure: Bid's seller transfers, refunds, and dispute amounts (Stripe books those as
- * `adjustment`). Any other type that moved the balance is not known, so it stays in the clearing
+ * clearing figure: Bid's seller transfers and their reversals or failures (`transfer_cancel`,
+ * `transfer_refund`, `transfer_failure`), refunds (`refund`, and `payment_refund` for the bank
+ * transfer payments the checkout takes through Stripe's customer balance), and dispute amounts
+ * (Stripe books those as `adjustment`). Any other type that moved the balance is not known, so it stays in the clearing
  * difference and raises the alert.
  */
 export const KNOWN_UNBOOKED_TYPES: ReadonlySet<string> = new Set([
   "transfer",
+  "transfer_cancel",
+  "transfer_refund",
+  "transfer_failure",
   "refund",
+  "payment_refund",
   "adjustment",
 ]);
 
