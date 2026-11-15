@@ -327,7 +327,7 @@ export class InMemoryCollectionBookings
       bookedByUserId: input.bookedByUserId,
       bookedVia: input.bookedVia,
       overCapacity: over,
-      overCapacityReason: over ? input.overCapacityReason : null,
+      overCapacityReason: input.overCapacityReason,
       collector: {
         kind: input.collector.kind,
         name: input.collector.name,
@@ -383,7 +383,7 @@ export class InMemoryCollectionBookings
       slotEnd: input.slotEnd,
       seat,
       overCapacity: over || booking.overCapacity,
-      overCapacityReason: over ? input.overCapacityReason : booking.overCapacityReason,
+      overCapacityReason: input.overCapacityReason,
       collector: {
         kind: input.collector.kind,
         name: input.collector.name,
