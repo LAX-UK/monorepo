@@ -60,11 +60,25 @@ on:
         description: lax.art storefront image SHA for ephemeral image deploys
         type: string
         required: false
-concurrency:
-  group: app-deploy-test
-  cancel-in-progress: false
+# Take turns with App deploy test (FIFO `queue` job), then hold the shared lock only for the
+# apply itself; a bare workflow-level group would let a newer run cancel this one while pending.
 jobs:
+  queue:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
+    timeout-minutes: 130
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/await-test-deploy-turn
+        with:
+          github-token: ${{ github.token }}
   up:
+    needs: queue
+    concurrency:
+      group: app-deploy-test
+      cancel-in-progress: false
     runs-on: ubuntu-latest
     permissions:
       contents: read

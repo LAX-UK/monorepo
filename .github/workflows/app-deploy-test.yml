@@ -26,9 +26,10 @@ on:
 permissions:
   contents: read
   actions: read
-concurrency:
-  group: app-deploy-test
-  cancel-in-progress: false
+# No workflow-level concurrency group: a group keeps ONE pending run and cancels older pending
+# ones, so back-to-back main pushes and "Terraform test up" dispatches evicted each other. Runs
+# take turns in the `queue` job (FIFO) and only the mutating `deploy` job holds the shared lock,
+# with cancel-in-progress false so a deploy is never cancelled mid-way.
 jobs:
   ci-gate:
     runs-on: ubuntu-latest
@@ -110,9 +111,10 @@ jobs:
       components: ${{ needs.plan.outputs.build_components }}
     secrets: inherit
 
-  deploy:
+  queue:
     runs-on: ubuntu-latest
     needs: [ci-gate, plan, sentry-release, build-images]
+    timeout-minutes: 130
     if: >-
       ${{
         always() &&
@@ -121,6 +123,28 @@ jobs:
         needs.plan.outputs.deploy == 'true' &&
         needs.build-images.result != 'failure' &&
         needs.build-images.result != 'cancelled'
+      }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/await-test-deploy-turn
+        with:
+          github-token: ${{ github.token }}
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: [ci-gate, plan, sentry-release, build-images, queue]
+    concurrency:
+      group: app-deploy-test
+      cancel-in-progress: false
+    if: >-
+      ${{
+        always() &&
+        !cancelled() &&
+        needs.ci-gate.result == 'success' &&
+        needs.plan.outputs.deploy == 'true' &&
+        needs.build-images.result != 'failure' &&
+        needs.build-images.result != 'cancelled' &&
+        needs.queue.result == 'success'
       }}
     environment: test
     env:
