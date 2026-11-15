@@ -3,6 +3,12 @@ import { createHash } from "node:crypto";
 /** How long a person has, once their ticket is spent, to make the passkey. */
 export const PASSKEY_ENROLMENT_GRANT_TTL_SECONDS = 300;
 
+/** What a spent permission had left. */
+export type SpentGrant = { remainingMs: number };
+
+/** Below this much time left, a failed attempt gets no permission back. */
+export const PASSKEY_ENROLMENT_GIVE_BACK_FLOOR_MS = 1000;
+
 /**
  * Permission to make one passkey, given when the one-time hand-off for adding a passkey is spent
  * (a ticket, a recent sign-in, the browser in the very session the request was made from). It
@@ -15,8 +21,17 @@ export interface PasskeyEnrolmentGrants {
   grant(sessionId: string, subjectId: string): Promise<void>;
   /** Whether the session has permission now, without using it up (the options call and the verify call both ask). */
   holds(sessionId: string, subjectId: string): Promise<boolean>;
-  /** Uses the permission up once a passkey has been made; false when there was none. */
-  spend(sessionId: string, subjectId: string): Promise<boolean>;
+  /**
+   * Uses the permission up once a passkey has been made; null when there was none. Otherwise
+   * says how long the permission had left, so a failed attempt can give back no more than that.
+   */
+  spend(sessionId: string, subjectId: string): Promise<SpentGrant | null>;
+  /**
+   * Gives a spent permission back after a failed attempt, for the time it had left and never
+   * longer: giving back cannot extend the five minutes from when it was first given. Does nothing
+   * when too little is left, or when the session already holds a permission again.
+   */
+  giveBack(sessionId: string, subjectId: string, remainingMs: number): Promise<void>;
   /** Remembers the passkey just made in this enrolment, the only one the naming step may rename. */
   noteCreated(sessionId: string, subjectId: string, passkeyId: string): Promise<void>;
   /** The passkey made in this enrolment, or null when none was (or it belongs to another person). */
