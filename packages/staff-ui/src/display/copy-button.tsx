@@ -11,10 +11,14 @@ import { TruncatedText } from "./truncated-text.js";
 export const COPY_CONFIRMATION_MS = 1500;
 
 /**
- * Copies one reference in a click. A 24px ghost icon button that sits after the value; on success
- * the icon turns to a tick for 1.5s and a polite live region says "Order ID copied", so the result
- * is seen and heard. The button's name stays "Copy order ID" throughout, so the announcement is
- * not said twice. If the browser refuses, the icon turns to a red alert for the same 1.5s and the live region says so; the value stays selectable.
+ * Copies one reference in a click. A 24px ghost icon button that sits after the value; on
+ * success the icon turns to a tick for 1.5s and a polite live region says "Order ID copied", so
+ * the result is seen and heard. The button's name stays "Copy order ID" throughout, so the
+ * announcement is not said twice. If the browser refuses, the icon turns to a red alert for the
+ * same 1.5s and the live region says so; the value stays selectable.
+ *
+ * The live region stays mounted. A repeat press clears its text, then sets it on the next frame,
+ * so screen readers see a change in an existing region and announce it again.
  */
 export function CopyButton({
   value,
@@ -35,22 +39,30 @@ export function CopyButton({
     },
     [],
   );
-  // Changes on every press so a repeat copy inside the window is announced again.
-  const [presses, setPresses] = React.useState(0);
+  const [message, setMessage] = React.useState("");
+  const frame = React.useRef<number | null>(null);
+  React.useEffect(
+    () => () => {
+      if (frame.current !== null) cancelAnimationFrame(frame.current);
+    },
+    [],
+  );
   const settle = (next: "copied" | "failed") => {
+    const text =
+      next === "copied" ? COPY_BUTTON_COPY.copied(label) : COPY_BUTTON_COPY.failed(label);
     setStatus(next);
-    setPresses((count) => count + 1);
+    // Clear, then set on the next frame: the region changes even when the text is the same.
+    setMessage("");
+    if (frame.current !== null) cancelAnimationFrame(frame.current);
+    frame.current = requestAnimationFrame(() => setMessage(text));
     if (timer.current) clearTimeout(timer.current);
-    timer.current = setTimeout(() => setStatus("idle"), COPY_CONFIRMATION_MS);
+    timer.current = setTimeout(() => {
+      setStatus("idle");
+      setMessage("");
+    }, COPY_CONFIRMATION_MS);
   };
-  const message =
-    status === "copied"
-      ? COPY_BUTTON_COPY.copied(label)
-      : status === "failed"
-        ? COPY_BUTTON_COPY.failed(label)
-        : "";
   return (
-    <>
+    <span className="inline-flex shrink-0 items-center">
       <StaffButton
         variant="ghost"
         size="icon-xs"
@@ -78,10 +90,10 @@ export function CopyButton({
           <Copy aria-hidden />
         )}
       </StaffButton>
-      <output key={presses} aria-live="polite" className="sr-only">
+      <output aria-live="polite" className="sr-only">
         {message}
       </output>
-    </>
+    </span>
   );
 }
 

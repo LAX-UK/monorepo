@@ -1,4 +1,5 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@auction/ui/components/tooltip", () =>
@@ -13,6 +14,9 @@ function stubClipboard(writeText: ((text: string) => Promise<void>) | undefined)
     value: writeText ? { writeText } : undefined,
   });
 }
+
+/** Lets the live region's next-frame update run. */
+const nextFrame = () => act(() => vi.advanceTimersByTime(20));
 
 beforeEach(() => vi.useFakeTimers());
 afterEach(() => {
@@ -37,6 +41,7 @@ describe("CopyButton", () => {
     await act(async () => {
       fireEvent.click(button);
     });
+    await nextFrame();
     expect(writeText).toHaveBeenCalledWith("ord_123");
     expect(screen.getByRole("status")).toHaveTextContent("Order ID copied");
     expect(button.querySelector(".lucide-check")).not.toBeNull();
@@ -44,7 +49,7 @@ describe("CopyButton", () => {
     expect(button).toHaveAccessibleName("Copy order ID");
 
     act(() => {
-      vi.advanceTimersByTime(COPY_CONFIRMATION_MS - 1);
+      vi.advanceTimersByTime(COPY_CONFIRMATION_MS - 21);
     });
     expect(screen.getByRole("status")).toHaveTextContent("Order ID copied");
     act(() => {
@@ -61,6 +66,7 @@ describe("CopyButton", () => {
     await act(async () => {
       fireEvent.click(button);
     });
+    await nextFrame();
     expect(screen.getByRole("status")).toHaveTextContent("Could not copy order ID");
     expect(button.querySelector(".lucide-check")).toBeNull();
     // The failure is visible, not only announced: an alert icon in the danger colour.
@@ -77,25 +83,69 @@ describe("CopyButton", () => {
     expect(screen.getByRole("status")).toBeEmptyDOMElement();
   });
 
-  it("says so when there is no clipboard", () => {
+  it("says so when there is no clipboard", async () => {
     stubClipboard(undefined);
     render(<CopyButton value="ord_123" label="Order ID" />);
     fireEvent.click(screen.getByRole("button", { name: "Copy order ID" }));
+    await nextFrame();
     expect(screen.getByRole("status")).toHaveTextContent("Could not copy order ID");
   });
 
-  it("is reachable and operable from the keyboard", async () => {
+  it("is reachable and operable from the keyboard: Tab, Enter and Space", async () => {
     const writeText = vi.fn().mockResolvedValue(undefined);
+    // user-event waits on real timers between keystrokes.
+    vi.useRealTimers();
+    const user = userEvent.setup();
+    // setup() installs its own clipboard; put the spy back.
     stubClipboard(writeText);
     render(<CopyButton value="ord_123" label="Order ID" />);
     const button = screen.getByRole("button", { name: "Copy order ID" });
-    button.focus();
+    await user.tab();
     expect(button).toHaveFocus();
-    // A native button turns Enter and Space into a click; the user-event layer does the same.
+    await user.keyboard("{Enter}");
+    expect(writeText).toHaveBeenCalledTimes(1);
+    await user.keyboard(" ");
+    expect(writeText).toHaveBeenCalledTimes(2);
+  });
+
+  it("announces a repeat press inside the window: the same live region changes twice", async () => {
+    stubClipboard(vi.fn().mockResolvedValue(undefined));
+    render(<CopyButton value="ord_123" label="Order ID" />);
+    const region = screen.getByRole("status");
+    const button = screen.getByRole("button", { name: "Copy order ID" });
+    const texts: string[] = [];
+    const observer = new MutationObserver(() => texts.push(region.textContent ?? ""));
+    observer.observe(region, { childList: true, characterData: true, subtree: true });
+    const press = async () => {
+      await act(async () => {
+        fireEvent.click(button);
+      });
+      await nextFrame();
+      await Promise.resolve();
+    };
+    await press();
+    act(() => {
+      vi.advanceTimersByTime(500);
+    });
+    await press();
+    observer.disconnect();
+    // The region is the same element throughout, and its text went set, cleared, set again.
+    expect(screen.getByRole("status")).toBe(region);
+    expect(texts.filter((text) => text === "Order ID copied")).toHaveLength(2);
+    expect(texts).toContain("");
+  });
+
+  it("keeps a proper noun cased in the name and the failure message", async () => {
+    stubClipboard(vi.fn().mockRejectedValue(new Error("denied")));
+    render(<CopyButton value="acct_1" label="Stripe Connect account ID" />);
+    const button = screen.getByRole("button", { name: "Copy Stripe Connect account ID" });
     await act(async () => {
       fireEvent.click(button);
     });
-    expect(writeText).toHaveBeenCalledOnce();
+    await nextFrame();
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Could not copy Stripe Connect account ID",
+    );
   });
 
   it("clears its timer on unmount", async () => {
