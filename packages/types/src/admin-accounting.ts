@@ -40,6 +40,7 @@ export const ACCOUNTING_DOCUMENT_TYPES = [
   "contact",
   "expense",
   "transfer",
+  "bill_payment",
 ] as const;
 export type AccountingDocumentType = (typeof ACCOUNTING_DOCUMENT_TYPES)[number];
 
@@ -53,6 +54,8 @@ export const ACCOUNTING_DOCUMENT_TYPE_LABELS: Readonly<Record<AccountingDocument
   expense: "Stripe fees",
   /** A Stripe payout, booked as a transfer from Stripe clearing to the bank (flow 25). */
   transfer: "Stripe payout",
+  /** A seller's or artist's payout paid: their bill paid from Stripe clearing (PR 12). */
+  bill_payment: "Payout payment",
 };
 
 export const ACCOUNTING_PRODUCTS = ["bid", "shop", "lax_art"] as const;
@@ -84,6 +87,10 @@ export const ACCOUNTING_PARK_REASONS = [
   "buyer_default_treatment",
   "credited_invoice_cancelled",
   "refund_outside_stripe",
+  "seller_payout_treatment",
+  "artist_payout_treatment",
+  "payout_lines_unmapped",
+  "payout_paid_outside_stripe",
 ] as const;
 export type AccountingParkReason = (typeof ACCOUNTING_PARK_REASONS)[number];
 
@@ -212,6 +219,15 @@ export type AccountingReleaseRefusal = "not_found" | "not_allowed" | "unreadable
 const ACCOUNTING_PARKED_TEXT_OUTSIDE_STRIPE =
   "This refund was settled outside Stripe, and LAX does not hold the account it was paid from, so this credit note is not sent to Books. Do not cancel it (it keeps the invoice from being credited twice); ask engineering (see the runbook).";
 
+const ACCOUNTING_PARKED_TEXT_SELLER_PAYOUT =
+  "Waiting for the accountant: how a seller payout is booked. This bill (or its payment) stays out of Books until they confirm it; releasing it needs engineering.";
+const ACCOUNTING_PARKED_TEXT_ARTIST_PAYOUT =
+  "Waiting for the accountant: whether LAX sells an artist's work as principal or agent, and so how the payout is booked. This stays out of Books until they confirm it; releasing it needs engineering.";
+const ACCOUNTING_PARKED_TEXT_PAYOUT_UNMAPPED =
+  "This payout holds lines a bill cannot list (a refund, an adjustment, a private sale or a Stripe fee), so it is not sent to Books. Book it by hand (see the runbook); do not cancel it.";
+const ACCOUNTING_PARKED_TEXT_PAYOUT_OUTSIDE_STRIPE =
+  "This payout was marked paid outside Stripe, and LAX does not hold the account it was paid from, so this payment is not sent to Books. Do not cancel it; ask engineering (see the runbook).";
+
 /** What staff are told when a parked document cannot be released yet, by why it is parked. */
 export const ACCOUNTING_RELEASE_UNRESOLVED_TEXT: Readonly<Record<AccountingParkReason, string>> = {
   vat_on_delivery:
@@ -225,6 +241,10 @@ export const ACCOUNTING_RELEASE_UNRESOLVED_TEXT: Readonly<Record<AccountingParkR
   credited_invoice_cancelled:
     "The invoice this credits was cancelled in Accounting, so it cannot be sent to Books.",
   refund_outside_stripe: ACCOUNTING_PARKED_TEXT_OUTSIDE_STRIPE,
+  seller_payout_treatment: ACCOUNTING_PARKED_TEXT_SELLER_PAYOUT,
+  artist_payout_treatment: ACCOUNTING_PARKED_TEXT_ARTIST_PAYOUT,
+  payout_lines_unmapped: ACCOUNTING_PARKED_TEXT_PAYOUT_UNMAPPED,
+  payout_paid_outside_stripe: ACCOUNTING_PARKED_TEXT_PAYOUT_OUTSIDE_STRIPE,
 };
 
 /**
@@ -308,6 +328,13 @@ const CODE_TEXT: Readonly<Record<string, string>> = {
   accounting_parked_buyer_default_treatment: ACCOUNTING_PARKED_TEXT_DEFAULT,
   accounting_parked_credited_invoice_cancelled: ACCOUNTING_PARKED_TEXT_CREDITED_CANCELLED,
   accounting_parked_refund_outside_stripe: ACCOUNTING_PARKED_TEXT_OUTSIDE_STRIPE,
+  accounting_parked_seller_payout_treatment: ACCOUNTING_PARKED_TEXT_SELLER_PAYOUT,
+  accounting_parked_artist_payout_treatment: ACCOUNTING_PARKED_TEXT_ARTIST_PAYOUT,
+  accounting_parked_payout_lines_unmapped: ACCOUNTING_PARKED_TEXT_PAYOUT_UNMAPPED,
+  accounting_parked_payout_paid_outside_stripe: ACCOUNTING_PARKED_TEXT_PAYOUT_OUTSIDE_STRIPE,
+  zoho_books_bill_payment_mismatch:
+    "Books already holds a payout payment under this reference that differs from ours.",
+  zoho_books_bill_missing: "The bill this pays is not in Books yet.",
   accounting_refund_reversed_after_credit:
     "The refund this credit note is for failed after the credit note was issued in Books, so the buyer did not get the money. Nothing is reversed automatically: ask the accountant how to reverse it in Books, and check whether it was already refunded from Stripe clearing.",
   accounting_credit_note_refund_refused:
@@ -322,6 +349,10 @@ export const ACCOUNTING_PARKED_TEXT: Readonly<Record<AccountingParkReason, strin
   buyer_default_treatment: ACCOUNTING_PARKED_TEXT_DEFAULT,
   credited_invoice_cancelled: ACCOUNTING_PARKED_TEXT_CREDITED_CANCELLED,
   refund_outside_stripe: ACCOUNTING_PARKED_TEXT_OUTSIDE_STRIPE,
+  seller_payout_treatment: ACCOUNTING_PARKED_TEXT_SELLER_PAYOUT,
+  artist_payout_treatment: ACCOUNTING_PARKED_TEXT_ARTIST_PAYOUT,
+  payout_lines_unmapped: ACCOUNTING_PARKED_TEXT_PAYOUT_UNMAPPED,
+  payout_paid_outside_stripe: ACCOUNTING_PARKED_TEXT_PAYOUT_OUTSIDE_STRIPE,
 };
 
 /** The status a parked document shows instead of "Needs a person". */
@@ -332,6 +363,10 @@ export const ACCOUNTING_PARKED_STATUS: Readonly<Record<AccountingParkReason, str
   buyer_default_treatment: "Waiting for the accountant",
   credited_invoice_cancelled: "Needs a person",
   refund_outside_stripe: "Needs a person",
+  seller_payout_treatment: "Waiting for the accountant",
+  artist_payout_treatment: "Waiting for the accountant",
+  payout_lines_unmapped: "Needs a person",
+  payout_paid_outside_stripe: "Needs a person",
 };
 
 /** Said of every payment in the details: the order the sender keeps. */

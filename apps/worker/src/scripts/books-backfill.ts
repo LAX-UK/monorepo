@@ -8,6 +8,7 @@ import { createDb } from "@auction/db";
 import { createBooksAccountingAdapters } from "@auction/finance-runtime";
 import {
   DrizzleBidAccountingFactsReader,
+  DrizzlePayoutAccountingFactsReader,
   DrizzleShopAccountingFactsReader,
   createAccountingRepositories,
 } from "@auction/persistence/repositories";
@@ -29,6 +30,7 @@ async function main(): Promise<void> {
   const projection = new AccountingProjection({
     facts: new DrizzleBidAccountingFactsReader(db),
     shopFacts: new DrizzleShopAccountingFactsReader(db),
+    payoutFacts: new DrizzlePayoutAccountingFactsReader(db),
     settings: repos.settingReader,
     registry: repos.registry,
     books: { lookup: repos.lookup, creditNotes: repos.creditNotes, transitions: repos.transitions },

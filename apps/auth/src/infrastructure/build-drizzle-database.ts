@@ -20,6 +20,7 @@ import {
 } from "@auction/identity-db/schema";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { wrapPasskeyAddedAdapter } from "./passkey-added-adapter.js";
+import { wrapUserLegalAcceptanceAdapter } from "./user-legal-acceptance-adapter.js";
 
 export function buildDrizzleDatabase(
   db: IdentityDatabase,
@@ -28,27 +29,34 @@ export function buildDrizzleDatabase(
   events?: IdentityEventPublisher,
 ): ReturnType<typeof drizzleAdapter> {
   const consentStore = createDrizzleConsentStore(db);
-  const inner = drizzleAdapter(db, {
-    provider: "pg",
-    schema: {
-      user,
-      session,
-      account,
-      verification,
-      oauthApplication,
-      oauthAccessToken,
-      oauthConsent,
-      twoFactor: twoFactorTable,
-      passkey,
-    },
-  });
+  const adapterFor = (executor: IdentityDatabase) =>
+    drizzleAdapter(executor, {
+      provider: "pg",
+      schema: {
+        user,
+        session,
+        account,
+        verification,
+        oauthApplication,
+        oauthAccessToken,
+        oauthConsent,
+        twoFactor: twoFactorTable,
+        passkey,
+      },
+    });
+  const inner = adapterFor(db);
   type DrizzleAdapterOptions = Parameters<typeof inner>[0];
   // Each wrapper changes one model's inserts: consent goes through one atomic store, a passkey is
   // stored with its "added" event in one transaction, and the database's ten-passkey refusal is named.
   const withConsentUpsert = ((options: DrizzleAdapterOptions) => {
     const consent = wrapOAuthConsentUpsertAdapter(inner(options) as never, consentStore) as never;
     const stored = events ? wrapPasskeyAddedAdapter(consent, { db, events }) : consent;
-    return wrapPasskeyLimitAdapter(stored as never);
+    const limited = wrapPasskeyLimitAdapter(stored as never);
+    // A new user and the record of the Terms it accepted commit together or not at all.
+    return wrapUserLegalAcceptanceAdapter(limited as never, {
+      db,
+      adapterOn: (executor) => adapterFor(executor)(options) as never,
+    });
   }) as unknown as ReturnType<typeof drizzleAdapter>;
   if (!envelope) return withConsentUpsert;
   return ((options: DrizzleAdapterOptions) =>

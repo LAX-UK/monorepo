@@ -1,6 +1,7 @@
 import {
   type AccountingDocument,
   type Bill,
+  type BillPayment,
   type Contact,
   type CreditNote,
   type CreditNoteRefund,
@@ -21,6 +22,7 @@ import {
 } from "@auction/accounting-domain";
 import type { AccountingPorts } from "./accounting-ports.js";
 import { orgFor } from "./api.js";
+import { billPaymentBody } from "./mappers/bill-payment.js";
 import { billBody } from "./mappers/bill.js";
 import { type ContactType, contactCreateBody } from "./mappers/contact.js";
 import { creditNoteBody } from "./mappers/credit-note.js";
@@ -120,6 +122,17 @@ export function createZohoBooksDryRunAdapter(deps: {
           d,
           [{ kind: "contact", reference: d.contactReference, contactType: "vendor" }],
           (org) => billBody(d, PLACEHOLDER_ID, org),
+        ),
+    },
+    billPayments: {
+      recordBillPayment: (d: BillPayment) =>
+        rehearse(
+          d,
+          [
+            { kind: "contact", reference: d.contactReference, contactType: "vendor" },
+            { kind: "bill", reference: d.billReference },
+          ],
+          (org) => billPaymentBody(d, PLACEHOLDER_ID, PLACEHOLDER_ID, org),
         ),
     },
     expenses: {

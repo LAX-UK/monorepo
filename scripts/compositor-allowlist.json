@@ -1,0 +1,234 @@
+{
+  "entries": [
+    {
+      "file": "apps/art/src/components/artist-application/application-work-step.client.tsx",
+      "rule": "transition:width",
+      "count": 1
+    },
+    {
+      "file": "apps/event/public/event-page.css",
+      "rule": "keyframes:box-shadow",
+      "count": 1
+    },
+    {
+      "file": "apps/shop-admin/src/components/artworks/artwork-media-field.client.tsx",
+      "rule": "transition:width",
+      "count": 1
+    },
+    {
+      "file": "apps/web/src/app/(client)/compliance/source-of-funds/sof-compliance-client.tsx",
+      "rule": "transition-all",
+      "count": 1
+    },
+    {
+      "file": "apps/web/src/components/collect/collect-collector-panel.tsx",
+      "rule": "transition:box-shadow",
+      "count": 1
+    },
+    {
+      "file": "apps/web/src/components/collect/collect-day-picker.tsx",
+      "rule": "transition:box-shadow",
+      "count": 1
+    },
+    {
+      "file": "apps/web/src/components/collect/collect-time-picker.tsx",
+      "rule": "transition:box-shadow",
+      "count": 1
+    },
+    {
+      "file": "apps/web/src/components/dashboard/auction-interests-settings-form.tsx",
+      "rule": "transition:box-shadow",
+      "count": 1
+    },
+    {
+      "file": "apps/web/src/components/forms/catalog-media/catalog-media-card.tsx",
+      "rule": "transition:box-shadow",
+      "count": 1
+    },
+    {
+      "file": "apps/web/src/components/forms/phone-number-field.tsx",
+      "rule": "transition-all",
+      "count": 1
+    },
+    {
+      "file": "apps/web/src/components/gallery/parts/filmstrip.tsx",
+      "rule": "transition:box-shadow",
+      "count": 1
+    },
+    {
+      "file": "apps/web/src/components/marketing/countdown-fade-slot.tsx",
+      "rule": "transition:max-width",
+      "count": 1
+    },
+    {
+      "file": "apps/web/src/components/marketing/lot-quick-look/quick-look-dialog-sections.tsx",
+      "rule": "transition-all",
+      "count": 1
+    },
+    {
+      "file": "apps/web/src/components/marketing/marketing-load-more.tsx",
+      "rule": "transition:width",
+      "count": 1
+    },
+    {
+      "file": "apps/web/src/components/onboarding/buyer-interests-form.tsx",
+      "rule": "transition:box-shadow",
+      "count": 1
+    },
+    {
+      "file": "apps/web/src/components/onboarding/buyer-onboarding-shell.tsx",
+      "rule": "transition:box-shadow",
+      "count": 1
+    },
+    {
+      "file": "apps/web/src/components/private-sales/enquiry-upload-field.tsx",
+      "rule": "transition:width",
+      "count": 1
+    },
+    {
+      "file": "apps/web/src/components/sections/artwork/online/auction-session-header.tsx",
+      "rule": "transition:box-shadow",
+      "count": 1
+    },
+    {
+      "file": "apps/web/src/components/sections/artwork/onsite/onsite-participation-hub.tsx",
+      "rule": "transition-all",
+      "count": 4
+    },
+    {
+      "file": "apps/web/src/components/sections/saleroom/saleroom-lot-card.tsx",
+      "rule": "transition:box-shadow",
+      "count": 1
+    },
+    {
+      "file": "apps/web/src/components/workspace/workspace-search.tsx",
+      "rule": "transition:box-shadow",
+      "count": 1
+    },
+    {
+      "file": "apps/web/src/styles/tokens-motion.css",
+      "rule": "transition:box-shadow",
+      "count": 1
+    },
+    {
+      "file": "apps/web/src/styles/tokens-utilities.css",
+      "rule": "keyframes:box-shadow",
+      "count": 1
+    },
+    {
+      "file": "packages/auth/src/hosted-auth/styles.ts",
+      "rule": "transition:box-shadow",
+      "count": 1
+    },
+    {
+      "file": "packages/marketing-ui/src/hang/marketing-hang.tsx",
+      "rule": "transition:box-shadow",
+      "count": 1
+    },
+    {
+      "file": "packages/marketing-ui/src/header/use-header-chrome.ts",
+      "rule": "transition:backdrop-filter",
+      "count": 1
+    },
+    {
+      "file": "packages/marketing-ui/src/header/use-header-chrome.ts",
+      "rule": "transition:box-shadow",
+      "count": 1
+    },
+    {
+      "file": "packages/marketing-ui/src/marketing-horizontal-rail.tsx",
+      "rule": "transition:width",
+      "count": 1
+    },
+    {
+      "file": "packages/marketing-ui/src/marketing-list-toolbar.tsx",
+      "rule": "transition:box-shadow",
+      "count": 1
+    },
+    {
+      "file": "packages/staff-ui/src/display/checklist.tsx",
+      "rule": "transition:width",
+      "count": 1
+    },
+    {
+      "file": "packages/staff-ui/src/display/progress-bar.tsx",
+      "rule": "transition:width",
+      "count": 1
+    },
+    {
+      "file": "packages/staff-ui/src/forms/upload-queue.tsx",
+      "rule": "transition:width",
+      "count": 1
+    },
+    {
+      "file": "packages/staff-ui/src/shell/staff-shell.tsx",
+      "rule": "transition:width",
+      "count": 1
+    },
+    {
+      "file": "packages/ui/src/components/ui/accordion.tsx",
+      "rule": "transition-all",
+      "count": 1
+    },
+    {
+      "file": "packages/ui/src/components/ui/badge.tsx",
+      "rule": "transition:box-shadow",
+      "count": 1
+    },
+    {
+      "file": "packages/ui/src/components/ui/floating-label-input.tsx",
+      "rule": "transition-all",
+      "count": 1
+    },
+    {
+      "file": "packages/ui/src/components/ui/kpi-tile.tsx",
+      "rule": "transition:box-shadow",
+      "count": 1
+    },
+    {
+      "file": "packages/ui/src/components/ui/progress.tsx",
+      "rule": "transition-all",
+      "count": 1
+    },
+    {
+      "file": "packages/ui/src/components/ui/radio-group.tsx",
+      "rule": "transition:box-shadow",
+      "count": 1
+    },
+    {
+      "file": "packages/ui/src/components/ui/scroll-area.tsx",
+      "rule": "transition:box-shadow",
+      "count": 1
+    },
+    {
+      "file": "packages/ui/src/components/ui/tabs.tsx",
+      "rule": "transition-all",
+      "count": 1
+    },
+    {
+      "file": "packages/ui/src/components/ui/toggle.tsx",
+      "rule": "transition:box-shadow",
+      "count": 1
+    },
+    {
+      "file": "packages/ui/src/components/ui/wizard-progress.tsx",
+      "rule": "transition:width",
+      "count": 1
+    },
+    {
+      "file": "packages/ui/src/lax/button-variants.ts",
+      "rule": "transition:box-shadow",
+      "count": 1
+    },
+    {
+      "file": "packages/ui/src/lax/preset-cards.tsx",
+      "rule": "transition:box-shadow",
+      "count": 1
+    },
+    {
+      "file": "packages/ui/src/lax/styles.ts",
+      "rule": "transition:box-shadow",
+      "count": 1
+    }
+  ]
+}

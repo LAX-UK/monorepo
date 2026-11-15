@@ -267,6 +267,12 @@ export const API_PAYMENT_TRANSFER_REFERENCE_TABLES = ["payment_transfer_referenc
  */
 export const API_REFUND_REVERSAL_TABLES = ["stripe_refund_reversal"] as const;
 /**
+ * Staff courier refund requests on a combined payment (migration 0395): written before Stripe is
+ * asked and updated with Stripe's answer. api_app gets INSERT, SELECT and UPDATE, never DELETE (the
+ * rows are the finance record of each request); the worker has no access.
+ */
+export const API_DELIVERY_REFUND_TABLES = ["payment_group_delivery_refund"] as const;
+/**
  * Accounting documents and their history (migration 0368). The Bid API reads them for the
  * Finance › Accounting page, and puts a refused document back in the queue when staff try it
  * again (the life cycle's requeue: state columns only, never what the document says), adding that
@@ -504,6 +510,31 @@ export const WORKER_SHOP_INVOICE_READ_COLUMNS = [
     ],
   ],
   ["shop_party", ["id", "display_name", "identity_subject_id"]],
+  /**
+   * An artist payout, for its Books bill and payment (plan v2, PR 12): the figures, the days, the
+   * payee and whether a Stripe Connect transfer paid it. Never `paid_reference` (free text staff
+   * may write when they mark it paid) nor anything that writes.
+   */
+  [
+    "shop_payout_ledger",
+    [
+      "id",
+      "order_line_id",
+      "third_party_sale_id",
+      "original_sale_id",
+      "owner_party_id",
+      "gross_pence",
+      "deductions_pence",
+      "net_pence",
+      "payout_due_at",
+      "status",
+      "source",
+      "payee_kind",
+      "paid_at",
+      "paid_by_subject_id",
+      "created_at",
+    ],
+  ],
 ] as const;
 
 /**
@@ -663,6 +694,8 @@ export const WORKER_DENY_TABLES = [
   ...SHOP_SSF_RECEIVER_TABLES,
   ...SHOP_COMMERCE_TABLES,
   ...SHOP_COMMERCE_APPEND_ONLY_TABLES,
+  /** Staff courier refund requests are the API's alone (migration 0395). */
+  ...API_DELIVERY_REFUND_TABLES,
 ] as const;
 export const WORKER_READ_TABLES = [
   /** Identity lifecycle outbox relay reads pending rows before inserting into domain_events. */
@@ -1577,6 +1610,10 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
             (API_REFUND_REVERSAL_TABLES as readonly string[]).includes(tableName)
           ) {
             await grantIfExists(client, "api_app", tableName, "INSERT, SELECT");
+            continue;
+          }
+          if ((API_DELIVERY_REFUND_TABLES as readonly string[]).includes(tableName)) {
+            await grantIfExists(client, "api_app", tableName, "INSERT, SELECT, UPDATE");
             continue;
           }
           await grantIfExists(client, "api_app", tableName, "ALL PRIVILEGES");

@@ -258,3 +258,35 @@ Move the product's switch back one position (4 → 3, 3 → 2, 2 → 1) with the
 - The history import needs no rollback in rehearsal (it only queued documents for the dry run or
   test target). Documents already queued are never sent to another target: moving the switch on
   means running the import again for the new target.
+
+## Seller and artist payouts (plan v2, PR 12; rehearsal)
+
+A Bid seller payout becomes, when it is made (`payout.settlement_created`), a bill
+`LAX-BID-BILL-<payout>` to the seller's vendor contact `LAX-BID-CON-vendor-<legal entity>` for the
+payout's net (what LAX owes after the agreement's commission and the VAT on it), and, when it is
+paid (`payout.paid`), the bill's payment `LAX-BID-BPAY-<payout>` from Stripe clearing. A Shop
+artist payout becomes, when it is paid (`shop.payout.paid`), its vendor contact, bill and payment
+together (`LAX-SHOP-…`). Amounts are the payout ledger's own (the payout row's net; the Shop ledger
+row's net), to the penny. Nothing new is needed to rehearse them: they follow the product's switch.
+
+They are **parked** (Finance › Accounting, "Needs a person") until the accountant answers, never
+sent, and cannot be released by hand (the page refuses, and so does the database for api_app):
+
+| Parked as | Why | What to do |
+| --- | --- | --- |
+| `seller_payout_treatment` | How a Bid seller payout is booked is not answered (`BID_SELLER_PAYOUT_BOOKING`). | Nothing. The change that ships the answer rebuilds these. Do not cancel them. |
+| `artist_payout_treatment` | Principal or agent for Shop artists is not answered (`SHOP_ARTIST_PAYOUT_BOOKING`). | As above. |
+| `payout_lines_unmapped` | The payout holds a line a bill cannot list (a refund or adjustment charged back, a private sale, a sale with no seller-terms snapshot) or a Stripe fee. | Book it by hand in Books as the accountant directs, then cancel the LAX document with a note. |
+| `payout_paid_outside_stripe` | Staff marked the payout paid (no Stripe transfer), so LAX holds no account it left. | Record the payment by hand in Books from the account it left, then cancel the LAX document. |
+
+A `payout.paid` whose payout's figures changed after its bill was registered (a line added later) is
+refused for a person (Failed deliveries, `reference_in_use`): compare the payout with the bill, and
+book the difference by hand. The daily reconciliation report's `payouts` section lists, for the day,
+the payout ledger's net against the bills and payments registered for the target (issued, on their
+way, parked); a payout with no document, or a document for another amount, is a mismatch and raises
+`accounting_reconciliation_mismatch`. Payouts paid by Stripe transfer are taken out of the
+clearing figure's known `transfer` movements once their payments are booked
+(`transfersBookedAsPayoutPaymentsPence`), so they are counted once.
+
+Before Bid or Shop goes live on Books, legacy Xero payout bills (`XERO_PAYOUT_BILL_ACCOUNT_CODE`)
+must be stopped by `XERO_API_WRITES_DISABLED`, as for everything else, or a payout is billed twice.

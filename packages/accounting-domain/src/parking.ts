@@ -23,6 +23,29 @@ export const PARK_REASONS = [
    * back from is not named in LAX yet, so no refund is recorded and it is never sent.
    */
   "refund_outside_stripe",
+  /**
+   * A Bid seller payout's bill and its payment: how a seller payout is booked (the VAT treatment of
+   * what the seller is owed, and the commission netted in it) waits for the accountant
+   * (`BID_SELLER_PAYOUT_BOOKING`).
+   */
+  "seller_payout_treatment",
+  /**
+   * A Shop artist payout's bill and its payment: whether LAX sells an artist's work as principal or
+   * as agent, and so how the payout is booked, waits for the accountant
+   * (`SHOP_ARTIST_PAYOUT_BOOKING`).
+   */
+  "artist_payout_treatment",
+  /**
+   * A seller payout holding lines a bill cannot itemise (a refund or adjustment charged back, a
+   * private sale, a sale paid before seller-terms snapshots, a Stripe fee): booked whole by a
+   * person, never guessed.
+   */
+  "payout_lines_unmapped",
+  /**
+   * A payout's payment made outside Stripe (a bank transfer staff marked paid): LAX does not hold
+   * the account it was paid from, so no payment is recorded and it is never sent.
+   */
+  "payout_paid_outside_stripe",
 ] as const;
 export type ParkReason = (typeof PARK_REASONS)[number];
 

@@ -4,6 +4,7 @@ import { type ZohoApi, booksDestination } from "./api.js";
 import { ZohoCreditNoteRefundGateway } from "./credit-note-refund.js";
 import {
   ZohoBillGateway,
+  ZohoBillPaymentGateway,
   ZohoContactGateway,
   ZohoCreditNoteGateway,
   ZohoExpenseGateway,
@@ -69,6 +70,7 @@ export function createZohoBooksAdapter(deps: {
     creditNotes: new ZohoCreditNoteGateway(gateway),
     creditNoteRefunds: new ZohoCreditNoteRefundGateway(gateway, api),
     bills: new ZohoBillGateway(gateway),
+    billPayments: new ZohoBillPaymentGateway(gateway),
     expenses: new ZohoExpenseGateway(gateway),
     transfers: new ZohoTransferGateway(gateway),
     contacts: new ZohoContactGateway(gateway, api),

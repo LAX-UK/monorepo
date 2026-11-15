@@ -2698,6 +2698,20 @@
       "breakpoints": true
     },
     {
+      "idx": 386,
+      "version": "7",
+      "when": 1812283200000,
+      "tag": "0394_books_payout_bills",
+      "breakpoints": true
+    },
+    {
+      "idx": 387,
+      "version": "7",
+      "when": 1812369600000,
+      "tag": "0395_payment_group_delivery_refund",
+      "breakpoints": true
+    },
+    {
       "idx": 388,
       "version": "7",
       "when": 1812456000000,

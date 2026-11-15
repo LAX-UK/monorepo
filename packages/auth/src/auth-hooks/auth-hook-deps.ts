@@ -8,7 +8,6 @@ export type AuthHookDeps = {
     | "phoneNumberStore"
     | "email"
     | "securityNotices"
-    | "legalAcceptance"
     | "twoFactorPolicyStore"
     | "events"
   >;

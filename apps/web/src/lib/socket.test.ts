@@ -113,7 +113,7 @@ describe("getSocket", () => {
       expect(onReconnectAttempt).toHaveBeenCalledWith(2);
       expect(onConnectError).toHaveBeenCalledTimes(3);
       expect(fetchSpy).toHaveBeenCalledWith(chunkUrl, { method: "HEAD", cache: "no-store" });
-      expect(window.sessionStorage.getItem("lax:live-socket-chunk-reload-at")).not.toBeNull();
+      expect(window.sessionStorage.getItem("lax:stale-chunk-reload-at")).not.toBeNull();
       expect(io).not.toHaveBeenCalled();
       consoleError.mockRestore();
       vi.mocked(Math.random).mockRestore();

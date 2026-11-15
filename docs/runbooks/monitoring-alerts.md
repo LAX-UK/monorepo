@@ -880,9 +880,15 @@ stored invoice copies, never the repository). Ids and amounts only, no names or 
   account of the company has its opening balance stated;
 - **held transfer funds**: Bid seller payouts scheduled or blocked, still in the Stripe balance.
   Not tracked for London Art Exchange yet.
+- **payouts** (PR 12): the day's payouts from the payout ledger (Bid: made that day; Shop: paid
+  that day) against their bills, and the day's paid payouts against their bill payments: issued,
+  on their way, and parked (shown, not a difference). A payout with no document registered, or a
+  document for another amount than the ledger's net, is a mismatch. A payout paid by Stripe
+  transfer is counted once in clearing: its payment is in the Books figure, and the same amount is
+  taken out of the known `transfer` movements (`transfersBookedAsPayoutPaymentsPence`).
 
 **Alert.** Any mismatch (a type whose totals or counts differ, a parked transaction, an account not
-read, clearing that does not agree) raises `accounting_reconciliation_mismatch` (error) with the
+read, clearing that does not agree, a payout whose bill or payment is missing or differs) raises `accounting_reconciliation_mismatch` (error) with the
 company, the day, the count and the report's storage key. Open that report first. A clearing
 difference is what remains after the known unbooked movements, so it is a real one (a missed
 payout, a wrong fee). Bid refunds are refunded from clearing in Books by the credit note refund

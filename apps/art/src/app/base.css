@@ -184,11 +184,11 @@
   --section-spacing-tight: 3rem;
   --section-spacing-loose: 7.5rem;
   --art-page-gutter: 1rem;
-  --motion-duration-sm: 200ms;
+  --motion-duration-sm: var(--lax-motion-enter);
   --motion-duration-md: 320ms;
   --motion-duration-lg: 520ms;
   --motion-duration-xl: 900ms;
-  --motion-ease-emphasize: cubic-bezier(0.16, 1, 0.3, 1);
+  --motion-ease-emphasize: var(--lax-ease-emphasize);
   --motion-ease-decelerate: cubic-bezier(0, 0, 0, 1);
 }
 

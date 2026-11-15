@@ -1,9 +1,14 @@
 import type { ListPaymentsAdminTableFilter } from "@auction/persistence/interfaces";
 import type { StaffRoles } from "@auction/types";
 import type { Result } from "neverthrow";
-import type { AuthzError } from "../../lib/errors.js";
+import type { AuthzError, PaymentProviderError } from "../../lib/errors.js";
 import type { IAdminPaymentsApplicationService } from "../interfaces/admin-routes.js";
 import type { IPaymentAdminService } from "../interfaces/payment-service.js";
+import type {
+  IPaymentGroupDeliveryRefunds,
+  RefundDeliveryInput,
+  RefundDeliveryOutcome,
+} from "../payment-group/payment-group-delivery-refund.service.js";
 import type { IUnappliedMoneyHandling } from "../payment/unapplied-money-handling.service.js";
 import type { AdminPaymentListQueryService } from "./admin-payment-list-query.service.js";
 
@@ -12,7 +17,14 @@ export class AdminPaymentsApplicationService implements IAdminPaymentsApplicatio
     private readonly payments: IPaymentAdminService,
     private readonly paymentListQuery: AdminPaymentListQueryService,
     private readonly unappliedMoney: IUnappliedMoneyHandling,
+    private readonly deliveryRefunds: IPaymentGroupDeliveryRefunds,
   ) {}
+
+  refundGroupDelivery(
+    input: RefundDeliveryInput,
+  ): Promise<Result<RefundDeliveryOutcome, AuthzError | PaymentProviderError>> {
+    return this.deliveryRefunds.refundDelivery(input);
+  }
 
   markUnappliedMoneyHandled(
     adminUserId: string,

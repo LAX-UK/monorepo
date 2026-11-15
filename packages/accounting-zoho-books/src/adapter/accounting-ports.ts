@@ -1,4 +1,5 @@
 import type {
+  BillPaymentPort,
   BillPort,
   ContactPort,
   CreditNotePort,
@@ -25,6 +26,8 @@ export interface AccountingPorts {
   /** Refunds an issued credit note's money from Stripe clearing, once (a refund that went through). */
   readonly creditNoteRefunds: CreditNoteRefundPort;
   readonly bills: BillPort;
+  /** A payout paid: the payee's bill paid in full from Stripe clearing. */
+  readonly billPayments: BillPaymentPort;
   /** Stripe's fees, paid from the Stripe clearing account. */
   readonly expenses: ExpensePort;
   /** Stripe payouts, from the Stripe clearing account to the bank. */

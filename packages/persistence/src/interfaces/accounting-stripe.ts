@@ -108,8 +108,33 @@ export interface ClearingMovements {
   readonly paymentsPence: number;
   readonly expensesPence: number;
   readonly transfersPence: number;
+  /** Payouts' bills paid from clearing (a seller's or artist's Stripe Connect transfer), issued. */
+  readonly billPaymentsPence: number;
+  /** Of those, the ones registered and not issued yet (positive; also in `notIssuedPence`). */
+  readonly billPaymentsNotIssuedPence: number;
   /** Registered for Books, dated since opening, not yet issued: in flight, not a difference. */
   readonly notIssuedPence: number;
+}
+
+/**
+ * For one company and London day, a payout document kind against the payout ledger: LAX's figure
+ * (the payouts' net owed) and what is registered for `target` (issued, on its way, parked for a
+ * person). `bill`: Bid payouts made that day, Shop payouts paid that day; `bill_payment`: payouts
+ * paid that day. A payout with nothing owed is left out (it is never billed).
+ */
+export interface PayoutKindTotals {
+  readonly kind: "bill" | "bill_payment";
+  readonly laxPence: number;
+  readonly laxCount: number;
+  readonly booksPence: number;
+  readonly booksCount: number;
+  readonly notIssuedPence: number;
+  readonly notIssuedCount: number;
+  /** Stored parked (waiting for the accountant or a person): shown, never sent. */
+  readonly parkedPence: number;
+  readonly parkedCount: number;
+  /** Payouts of the day with no document registered for the target, or one for another amount. */
+  readonly unmatchedCount: number;
 }
 
 /** Money that moved in a Stripe balance outside the clearing figure, by balance transaction type. */
@@ -153,6 +178,12 @@ export interface IStripeReconciliationStore {
    * are scheduled or blocked), in pence. Null for a company whose held funds LAX does not track.
    */
   heldTransferPence(entity: LegalEntity): Promise<number | null>;
+  /** The day's payouts against their bills and bill payments registered for `target`. */
+  payoutTotals(
+    entity: LegalEntity,
+    day: string,
+    target: { readonly provider: "books"; readonly mode: string },
+  ): Promise<readonly PayoutKindTotals[]>;
   saveReport(input: {
     readonly entity: LegalEntity;
     readonly day: string;

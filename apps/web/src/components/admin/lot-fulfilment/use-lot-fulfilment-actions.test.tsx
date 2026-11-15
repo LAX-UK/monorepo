@@ -7,6 +7,7 @@ const refresh = vi.fn();
 const shipAction = vi.fn();
 const deliveredAction = vi.fn();
 const notifySuccess = vi.fn();
+const refundCourierAction = vi.fn();
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh }) }));
 vi.mock("@/lib/actions/admin", () => ({
@@ -15,6 +16,7 @@ vi.mock("@/lib/actions/admin", () => ({
   adminLotFulfilmentReleaseResultAction: vi.fn(),
   adminLotFulfilmentReadyForCollectionResultAction: vi.fn(),
   adminLotFulfilmentCollectedResultAction: vi.fn(),
+  adminRefundGroupDeliveryResultAction: (...args: unknown[]) => refundCourierAction(...args),
 }));
 vi.mock("@/lib/ui/notify", () => ({
   notify: { success: (title: string) => notifySuccess(title), error: vi.fn(), info: vi.fn() },
@@ -36,6 +38,17 @@ const row = (step: string): LotFulfilmentStaffRow => ({
   lotHref: "/admin/lots/0b7e4a52-8b3c-4e97-a4d6-2c9e7b1f5a08",
   saleHref: null,
   saleTitle: null,
+  courierPaid: [],
+});
+
+const GROUP_ID = "5d2f7c1a-9e3b-4f60-8a1d-3b7c9e2f4a61";
+const QUOTE_ID = "8c4e2a17-3f5b-4d9e-b1a6-7e2c9f3d5b80";
+const courier = (remainingPence: number) => ({
+  paymentGroupId: GROUP_ID,
+  deliveryQuoteId: QUOTE_ID,
+  label: "Paid with invoice · £180.00",
+  remainingPence,
+  remainingLabel: `£${(remainingPence / 100).toFixed(2)}`,
 });
 
 function Harness({ target }: { target: LotFulfilmentStaffRow }) {
@@ -63,7 +76,9 @@ function Harness({ target }: { target: LotFulfilmentStaffRow }) {
 
 describe("useLotFulfilmentActions", () => {
   beforeEach(() => {
-    for (const fn of [refresh, shipAction, deliveredAction, notifySuccess]) fn.mockReset();
+    for (const fn of [refresh, shipAction, deliveredAction, notifySuccess, refundCourierAction]) {
+      fn.mockReset();
+    }
   });
 
   it("offers only the step each lot is waiting for", () => {
@@ -114,5 +129,48 @@ describe("useLotFulfilmentActions", () => {
     fireEvent.click(confirm);
     await waitFor(() => expect(notifySuccess).toHaveBeenCalledWith("Blue Interior delivered"));
     expect(refresh).toHaveBeenCalled();
+  });
+
+  it("offers no courier refund when the courier was not paid with the invoice", () => {
+    render(<Harness target={row("released")} />);
+    expect(screen.queryByRole("button", { name: "Refund courier charge" })).toBeNull();
+  });
+
+  it("refunds a courier charge paid with the invoice, naming the group and the quote", async () => {
+    refundCourierAction.mockResolvedValue({ ok: true });
+    render(<Harness target={{ ...row("delivered"), courierPaid: [courier(18000)] }} />);
+    fireEvent.click(screen.getByRole("button", { name: "Refund courier charge" }));
+
+    const confirm = (await screen.findAllByRole("button", { name: "Refund courier charge" })).at(
+      -1,
+    );
+    if (!confirm) throw new Error("no confirm button");
+    fireEvent.click(confirm);
+    expect(
+      screen.getAllByText("Enter why the courier charge is being refunded.").length,
+    ).toBeGreaterThan(0);
+    expect(refundCourierAction).not.toHaveBeenCalled();
+
+    fireEvent.change(screen.getByLabelText("Reason"), {
+      target: { value: "Buyer collected the lot in person instead." },
+    });
+    fireEvent.click(confirm);
+    await waitFor(() =>
+      expect(refundCourierAction).toHaveBeenCalledWith(GROUP_ID, QUOTE_ID, {
+        reason: "Buyer collected the lot in person instead.",
+        amount: "",
+      }),
+    );
+    await waitFor(() =>
+      expect(notifySuccess).toHaveBeenCalledWith("Courier charge refund sent for Blue Interior"),
+    );
+  });
+
+  it("disables the courier refund once the courier charge has gone back", () => {
+    render(<Harness target={{ ...row("delivered"), courierPaid: [courier(0)] }} />);
+    expect(screen.getByRole("button", { name: "Refund courier charge" })).toHaveAttribute(
+      "title",
+      "Already refunded",
+    );
   });
 });

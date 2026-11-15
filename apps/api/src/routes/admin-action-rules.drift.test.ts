@@ -100,6 +100,14 @@ const ACTIONS: AdminAction[] = [
     expectedRoles: ["administrator", "finance"],
   },
   {
+    name: "refund a combined payment's courier charge",
+    rule: PAYMENT_MANUAL_REVIEW_WRITE_ACCESS,
+    method: "POST",
+    path: `/admin/payment-groups/${PAYMENT_ID}/deliveries/${PAYMENT_ID}/refund`,
+    body: { reason: "Buyer collected the lot in person instead." },
+    expectedRoles: ["administrator", "finance"],
+  },
+  {
     name: "allocate a dispute to invoices",
     rule: DISPUTE_ALLOCATION_WRITE_ACCESS,
     method: "POST",

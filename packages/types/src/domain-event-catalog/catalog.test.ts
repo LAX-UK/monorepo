@@ -284,6 +284,15 @@ describe("DOMAIN_EVENT_REGISTRY", () => {
     expect(Object.keys(parsed.data).sort()).toEqual(["orderId", "refundId", "schemaVersion"]);
   });
 
+  it("routes Bid seller payouts and paid Shop artist payouts to the accounting consumer", () => {
+    expect(DOMAIN_EVENT_REGISTRY["payout.settlement_created"].consumers).toEqual([
+      "xero",
+      "accounting",
+    ]);
+    expect(DOMAIN_EVENT_REGISTRY["payout.paid"].consumers).toEqual(["xero", "accounting"]);
+    expect(DOMAIN_EVENT_REGISTRY["shop.payout.paid"].consumers).toEqual(["accounting"]);
+  });
+
   it("routes a paid Shop original sale to the accounting consumer; references only", () => {
     const entry = DOMAIN_EVENT_REGISTRY["shop.accounting.original_sale_paid"];
     expect(entry.consumers).toEqual(["accounting"]);

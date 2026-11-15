@@ -1,10 +1,13 @@
 import {
   type Invoice,
   PRODUCTS,
+  buildBill,
+  buildBillPayment,
   buildContact,
   buildInvoice,
   buildPayment,
   expectedTotals,
+  vendorContactSourceId,
 } from "@auction/accounting-domain";
 import { describe, expect, it } from "vitest";
 import { ZohoBudgetExhaustedError, ZohoRateLimitedError, ZohoValidationError } from "../errors.js";
@@ -44,6 +47,58 @@ const invoice = (product: "bid" | "shop", treatment: "standard" | "margin_scheme
 
 describe("Books dry run", () => {
   const ports = createZohoBooksDryRunAdapter({ orgs: testOrgConfigs() });
+
+  it("rehearses a payout: the vendor, its bill and the bill's payment, sending nothing", async () => {
+    const vendor = unwrap(
+      buildContact({
+        product: "bid",
+        sourceId: vendorContactSourceId("s1"),
+        name: "Seller",
+        email: null,
+      }),
+    );
+    const bill = unwrap(
+      buildBill({
+        product: "bid",
+        sourceId: "payout-1",
+        contactReference: vendor.reference,
+        issuedOn: "2026-11-12",
+        dueOn: "2026-11-12",
+        lines: [
+          {
+            description: "Lot",
+            quantity: 1,
+            unitNetPence: 82_000,
+            treatment: "margin_scheme",
+            role: "goods",
+          },
+        ],
+      }),
+    );
+    const payment = unwrap(buildBillPayment({ bill, paidOn: "2026-11-20" }));
+    expect(await ports.vendors.upsertVendor(vendor)).toMatchObject({
+      status: "issued",
+      number: DRY_RUN_NUMBER,
+    });
+    expect(await ports.bills.issueBill(bill)).toMatchObject({
+      status: "issued",
+      totals: bill.totals,
+    });
+    expect(await ports.billPayments.recordBillPayment(payment)).toEqual({
+      status: "issued",
+      number: DRY_RUN_NUMBER,
+      providerId: dryRunProviderId(payment.reference),
+      pdfRef: null,
+      totals: { netPence: 82_000, vatPence: 0, grossPence: 82_000 },
+    });
+    // A payment naming another product's bill is refused before anything is built.
+    expect(
+      await ports.billPayments.recordBillPayment({
+        ...payment,
+        billReference: "LAX-SHOP-BILL-payout-1",
+      }),
+    ).toEqual({ status: "rejected", reason: R.entityMismatch });
+  });
 
   it("rehearses applying a payment's remainder, and refuses one naming another product", async () => {
     const application = {

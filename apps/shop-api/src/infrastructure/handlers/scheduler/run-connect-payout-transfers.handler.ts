@@ -1,13 +1,14 @@
 import type { Database } from "@auction/db";
 import { shopPayoutLedger } from "@auction/db/schema";
 import { isPayeeConnectReady } from "@auction/shop-domain";
+import { SHOP_CONNECT_TRANSFER_ACTOR } from "@auction/types";
 import { and, asc, eq, gt, isNull, ne } from "drizzle-orm";
 import type { ShopConnectGateway } from "../../../application/ports/shop-connect.gateway.js";
 import type { ShopUnitOfWork } from "../../../application/ports/shop-unit-of-work.js";
 import type { ShopPayeeConnectAccountRepository } from "../../drizzle-shop-payee-connect-account.repository.js";
 import { shopPhaseDbSession } from "../../drizzle-shop-transaction-effects.js";
 
-export const CONNECT_TRANSFER_ACTOR = "system:stripe-connect";
+export const CONNECT_TRANSFER_ACTOR = SHOP_CONNECT_TRANSFER_ACTOR;
 
 export type ConnectPayoutTransferRunResult = {
   transferred: number;

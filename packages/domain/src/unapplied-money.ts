@@ -83,6 +83,13 @@ export const UNAPPLIED_MONEY_REASONS = [
    * LAX was marked paid: finance checks the money arrived and records it in LAX, or corrects Books.
    */
   "books_payment_recorded_by_hand",
+  /**
+   * An invoice of a combined payment that also charged courier delivery was refunded. The
+   * courier charge is not refunded with it and the seller's payout moves only by the invoice:
+   * finance reconciles the two (refund the courier separately if it should go back, check Books).
+   * The amount is the invoice's refunded total so far; one task per increase of that total.
+   */
+  "group_invoice_refunded_with_delivery",
 ] as const;
 
 export type UnappliedMoneyReason = (typeof UNAPPLIED_MONEY_REASONS)[number];
@@ -146,6 +153,11 @@ export type UnappliedMoney = {
    * unresolved, then reported anyway: it may be LAX's own payment whose LAX record is unresolved.
    */
   booksPossiblyLaxOwn?: boolean | null;
+  /**
+   * An invoice refund on a combined payment with courier delivery: the invoice's payment and its
+   * refunded total in pence (`<paymentId>:<pence>`), so each increase is one task.
+   */
+  invoiceRefundKey?: string | null;
   amountCents: number;
   currency: string;
 };
@@ -172,6 +184,7 @@ export function possibleSourceText(
  */
 export function unappliedMoneyDedupeKey(money: UnappliedMoney): string {
   const reference =
+    money.invoiceRefundKey ??
     money.booksPaymentKey ??
     money.cashBalanceTransactionId ??
     money.stripePaymentIntentId ??
@@ -252,6 +265,10 @@ export function booksPossiblyLaxOwnText(
   return "Possibly LAX's own payment: a LAX payment on this invoice has been unresolved for more than 3 days. Check that unresolved LAX payment on the accounting attention list first; if this is it, resolve it there and close this task.";
 }
 
+/** What finance reads about an invoice refunded on a combined payment that also paid a courier. */
+export const GROUP_INVOICE_REFUNDED_WITH_DELIVERY_TEXT =
+  "An invoice on a combined payment that also paid for courier delivery was refunded. The courier charge was not refunded with it. Decide whether the courier charge should go back too (refund it from the lot's fulfilment), then check the invoice and the delivery in Books.";
+
 /** What the work inbox shows for an open task: its title and the line that says what to check. */
 export function unappliedMoneyWorkItemWording(
   money: Pick<
@@ -270,6 +287,12 @@ export function unappliedMoneyWorkItemWording(
     return {
       title: "Bank transfer applied to another invoice",
       hint: misappliedTransferText(money),
+    };
+  }
+  if (money.reason === "group_invoice_refunded_with_delivery") {
+    return {
+      title: "Invoice refunded on a payment that included courier delivery",
+      hint: GROUP_INVOICE_REFUNDED_WITH_DELIVERY_TEXT,
     };
   }
   return {

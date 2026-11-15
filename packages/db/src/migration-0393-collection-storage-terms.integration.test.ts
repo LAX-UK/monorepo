@@ -7,12 +7,14 @@ import {
   runMigrationsPerTransaction,
   runMigrationsPerTransactionThrough,
 } from "./migrate-runner.js";
+import { laterRollbackSql } from "./testing/later-rollbacks.js";
 import { withTemporaryDatabase } from "./testing/temporary-database.js";
 
 const url = process.env.MIGRATION_TEST_DATABASE_URL;
 /** The journal time of 0392, the migration before 0393. */
 const THROUGH_0392 = 1812110400000;
 
+/** The 0393 rollback itself; later migrations are rolled back first via laterRollbackSql(393). */
 const rollbackSql = () =>
   readFile(resolve(import.meta.dirname, "../drizzle/0393_rollback.sql"), "utf8");
 
@@ -92,6 +94,8 @@ describe.skipIf(!url)("migration 0393 collection storage terms", { timeout: 180_
       ).rejects.toThrow(/charging_needs_vat/);
 
       // Rolling back removes the new objects and the ledger row, and leaves the old data alone.
+      // Migrations after 0393 go first (newest first, from the journal), as a real rollback would.
+      await pool.query(laterRollbackSql(393));
       await pool.query(await rollbackSql());
       const tables = await pool.query(
         `select 1 from information_schema.tables where table_name like 'collection_storage_%'`,

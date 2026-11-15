@@ -1,6 +1,7 @@
 import { isDeepStrictEqual } from "node:util";
 import {
   type AccountingDocument,
+  type Bill,
   DOCUMENT_KINDS,
   type DocumentKind,
   type Expense,
@@ -9,6 +10,7 @@ import {
   PRODUCTS,
   type Product,
   type Result,
+  buildBillPayment,
   buildExpense,
   buildInclusiveLine,
   buildLine,
@@ -103,6 +105,7 @@ export function readDocumentPayload(
   }
   if (value.entity !== legalEntityFor(product)) return bad("wrong legal entity for the product");
   if (kind === "expense" || kind === "transfer") return readMovement(value, kind);
+  if (kind === "bill_payment") return readBillPayment(value);
   if (!text(value.contactReference) && kind !== "contact") return bad("missing contact");
 
   if (kind === "contact") {
@@ -170,6 +173,37 @@ export function readDocumentPayload(
   if (!sameTotals(value.totals, totalsOf(lines.value)))
     return bad("totals are not the sum of the lines");
   return ok(document);
+}
+
+/**
+ * A bill payment (a payout paid): rebuilt through the domain's builder from what is stored, and
+ * refused unless the rebuild is exactly the stored document. The builder pays a bill in full, so it
+ * is handed the least bill that names the same reference, contact, product and total.
+ */
+function readBillPayment(
+  value: Record<string, unknown>,
+): Result<AccountingDocument, "bad_document"> {
+  const product = value.product as Product;
+  const amount = value.amountPence;
+  if (!isPence(amount) || amount <= 0) return bad("a bill payment is positive whole pence");
+  const bill = {
+    kind: "bill",
+    product,
+    entity: legalEntityFor(product),
+    reference: value.billReference,
+    contactReference: value.contactReference,
+    totals: { netPence: amount, vatPence: 0, grossPence: amount },
+  } as unknown as Bill;
+  const parts = parseLaxReference(value.reference as string);
+  const billParts = parseLaxReference(value.billReference as string);
+  if (!parts.ok || !billParts.ok || parts.value.sourceId !== billParts.value.sourceId) {
+    return bad("a bill payment carries its bill's source id");
+  }
+  const rebuilt = buildBillPayment({ bill, paidOn: value.paidOn as string });
+  if (!rebuilt.ok) return bad(rebuilt.refusal.message);
+  if (!isDeepStrictEqual(rebuilt.value, value))
+    return bad("not the bill payment the domain builds");
+  return ok(rebuilt.value);
 }
 
 /**

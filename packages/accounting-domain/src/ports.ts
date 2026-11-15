@@ -1,6 +1,7 @@
 import type {
   AccountingDocument,
   Bill,
+  BillPayment,
   Contact,
   CreditNote,
   Expense,
@@ -76,6 +77,11 @@ export interface CreditNotePort {
 
 export interface BillPort {
   issueBill(bill: Bill, fence?: WriteFence): Promise<IssueOutcome>;
+}
+
+/** A seller's or artist's payout paid: their bill paid in full from the Stripe clearing account. */
+export interface BillPaymentPort {
+  recordBillPayment(payment: BillPayment, fence?: WriteFence): Promise<IssueOutcome>;
 }
 
 /** Stripe's fees, booked as an expense paid from the Stripe clearing account. */

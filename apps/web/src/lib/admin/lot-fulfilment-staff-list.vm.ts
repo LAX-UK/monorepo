@@ -4,9 +4,11 @@ import { visitWhen } from "@/lib/admin/collections/desk.vm";
 import { defineListSort } from "@/lib/admin/define-list-sort";
 import { staffStatus } from "@/lib/admin/staff-kit-status";
 import type {
+  AdminLotFulfilmentCourierPaid,
   AdminLotFulfilmentListRow,
   AdminLotFulfilmentListSummary,
 } from "@/lib/data/http/admin-lot-fulfilment.shared";
+import { formatMoney } from "@/lib/ui/format";
 import type { StatusPresentation } from "@auction/staff-ui";
 
 export type LotFulfilmentListSearch = Record<string, string | string[] | undefined>;
@@ -39,7 +41,48 @@ export type LotFulfilmentStaffRow = {
   lotHref: string;
   saleHref: string | null;
   saleTitle: string | null;
+  /**
+   * Courier charges the buyer already paid inside a combined payment. Shown as "Paid with
+   * invoice" so nobody takes the courier money again by hand; empty when there are none.
+   */
+  courierPaid: LotFulfilmentCourierPaidView[];
 };
+
+/** A courier charge paid with the invoice, as the queue shows it and a refund names it. */
+export type LotFulfilmentCourierPaidView = {
+  paymentGroupId: string;
+  deliveryQuoteId: string;
+  /** "Paid with invoice · £180.00", with what was refunded when any was. */
+  label: string;
+  /** What can still go back to the buyer, in pence; 0 once the courier charge is refunded. */
+  remainingPence: number;
+  /** "£180.00": the most a refund can return now. */
+  remainingLabel: string;
+};
+
+/** The marker's short text, for the Method column and the row badge. */
+export const COURIER_PAID_WITH_INVOICE = "Courier paid with invoice";
+
+export function toCourierPaidView(
+  paid: AdminLotFulfilmentCourierPaid,
+): LotFulfilmentCourierPaidView {
+  const chargedPence = Math.round(Number(paid.amount) * 100);
+  const remainingPence = Math.max(0, chargedPence - paid.refundedPence);
+  const charged = formatMoney(chargedPence / 100);
+  const refunded =
+    paid.refundedPence <= 0
+      ? ""
+      : remainingPence === 0
+        ? " · refunded"
+        : ` · ${formatMoney(paid.refundedPence / 100)} refunded`;
+  return {
+    paymentGroupId: paid.paymentGroupId,
+    deliveryQuoteId: paid.deliveryQuoteId,
+    label: `Paid with invoice · ${charged}${refunded}`,
+    remainingPence,
+    remainingLabel: formatMoney(remainingPence / 100),
+  };
+}
 
 /** Statuses where a collection lot still waits to be handed over. */
 const AWAITING_HAND_OVER = new Set(["released", "ready_for_collection"]);
@@ -81,6 +124,7 @@ export function toLotFulfilmentStaffRows(
     lotHref: `/admin/lots/${row.lotId}`,
     saleHref: row.saleId ? `/admin/sales/${row.saleId}` : null,
     saleTitle: row.saleTitle,
+    courierPaid: (row.courierPaidWithInvoice ?? []).map(toCourierPaidView),
   }));
 }
 

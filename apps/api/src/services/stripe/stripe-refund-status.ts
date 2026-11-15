@@ -48,6 +48,8 @@ export type ChargeRefund = {
   paymentId: string | null;
   /** The courier quote the refund names (`metadata.deliveryQuoteId`), when it names one. */
   deliveryQuoteId: string | null;
+  /** The staff courier refund request the refund carries out (`metadata.deliveryRefundId`). */
+  deliveryRefundId?: string | null;
 };
 
 export type ChargeRefundTotals = {

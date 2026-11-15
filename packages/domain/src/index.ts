@@ -1283,6 +1283,7 @@ export {
   UNAPPLIED_MONEY_REASONS,
   UNAPPLIED_MONEY_RESOLVED_EVENT,
   booksPossiblyLaxOwnText,
+  GROUP_INVOICE_REFUNDED_WITH_DELIVERY_TEXT,
   misappliedTransferText,
   possibleSourceText,
   unappliedMoneyAggregate,

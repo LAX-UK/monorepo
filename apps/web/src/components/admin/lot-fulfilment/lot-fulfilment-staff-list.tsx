@@ -4,6 +4,7 @@ import { useLotFulfilmentActions } from "@/components/admin/lot-fulfilment/use-l
 import { useStaffListNavigation } from "@/components/admin/staff/use-staff-list-navigation";
 import { useStaffQueue } from "@/components/admin/staff/use-staff-queue";
 import {
+  COURIER_PAID_WITH_INVOICE,
   FULFILMENT_VIEWS,
   type LotFulfilmentListSearch,
   type LotFulfilmentStaffRow,
@@ -107,10 +108,19 @@ export function LotFulfilmentStaffList(props: LotFulfilmentStaffListProps) {
       {
         id: "method",
         header: "Method",
-        width: "120px",
+        width: "200px",
         hideBelow: "md",
         mobile: "meta",
-        cell: (row) => row.method ?? null,
+        truncate: false,
+        cell: (row) =>
+          row.courierPaid.length > 0 ? (
+            <span className="flex flex-wrap items-center gap-1">
+              {row.method ? <span>{row.method}</span> : null}
+              <StatusBadge tone="info">{COURIER_PAID_WITH_INVOICE}</StatusBadge>
+            </span>
+          ) : (
+            (row.method ?? null)
+          ),
       },
       {
         id: "collection",
@@ -269,15 +279,31 @@ export function LotFulfilmentQuickView({
       }
       notice={
         row ? (
-          <Notice tone="info" title={row.status.label}>
-            {STEP_HINT[row.step]}
-          </Notice>
+          <>
+            <Notice tone="info" title={row.status.label}>
+              {STEP_HINT[row.step]}
+            </Notice>
+            {row.courierPaid.length > 0 ? (
+              <Notice tone="info" title={COURIER_PAID_WITH_INVOICE}>
+                The buyer paid for courier delivery with the invoice. Do not take a separate courier
+                payment. To give it back, use Refund courier charge.
+              </Notice>
+            ) : null}
+          </>
         ) : null
       }
       summary={
         row
           ? [
               { label: "Method", value: row.method ?? "Not chosen yet" },
+              ...(row.courierPaid.length > 0
+                ? [
+                    {
+                      label: "Courier",
+                      value: row.courierPaid.map((paid) => paid.label).join("; "),
+                    },
+                  ]
+                : []),
               { label: "Collection", value: collectionLabel(row) ?? "Not needed" },
               { label: "Carrier and tracking", value: row.shipping ?? "Not shipped" },
               {

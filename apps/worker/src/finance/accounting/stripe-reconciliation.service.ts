@@ -11,6 +11,7 @@ import type {
   IAccountingSourceSettingReader,
   IStripeReconciliationStore,
   ParkedBalanceTransaction,
+  PayoutKindTotals,
   StripeAccountState,
   UnbookedMovement,
 } from "@auction/persistence/interfaces";
@@ -54,7 +55,9 @@ export interface ReconciliationClearing {
   readonly booksPaymentsPence: number;
   readonly booksExpensesPence: number;
   readonly booksTransfersPence: number;
-  /** Opening, plus payments, less expenses and transfers, as Books holds them. */
+  /** Payouts' bills paid from clearing (sellers' and artists' Stripe Connect transfers), issued. */
+  readonly booksPayoutPaymentsPence: number;
+  /** Opening, plus payments, less expenses, transfers and payout payments, as Books holds them. */
   readonly booksClearingPence: number;
   /** Stripe's balance (available and pending, GBP) for the company's accounts when read. */
   readonly stripeBalancePence: number | null;
@@ -65,7 +68,13 @@ export interface ReconciliationClearing {
    * Books (seller transfers, refunds, dispute amounts), by type: known, so not a difference.
    */
   readonly knownUnbooked: readonly UnbookedMovement[];
+  /**
+   * The known movements, less the Stripe transfers that are booked in Books (or on their way) as
+   * payout payments: those left Stripe as a `transfer` and are in the Books figure already.
+   */
   readonly knownUnbookedPence: number;
+  /** Payout payments issued or on their way: the part of the `transfer` movements Books holds. */
+  readonly transfersBookedAsPayoutPaymentsPence: number;
   /** Stripe less Books less what is in flight less what is known unbooked. Zero when they agree. */
   readonly unexplainedPence: number | null;
 }
@@ -102,6 +111,12 @@ export interface ReconciliationReport {
   readonly clearing: ReconciliationClearing;
   /** Seller money held in the Stripe balance for transfers not made yet; null when not tracked. */
   readonly heldTransferPence: number | null;
+  /**
+   * The day's payouts (the payout ledger's net owed) against their bills and bill payments: issued,
+   * on their way, and parked for the accountant or a person (shown, not a difference).
+   * `differencePence` is LAX less Books less what is on its way less what is parked.
+   */
+  readonly payouts: readonly (PayoutKindTotals & { readonly differencePence: number })[];
   readonly mismatches: number;
 }
 
@@ -212,9 +227,19 @@ export class StripeReconciliation {
     const parked = await this.deps.store.parkedOn(entity, day);
     const clearing = await this.clearing(entity, target, balances, accounts);
     const heldTransferPence = await this.deps.store.heldTransferPence(entity);
+    const payouts = (await this.deps.store.payoutTotals(entity, day, target)).map((t) => ({
+      ...t,
+      differencePence: t.laxPence - t.booksPence - t.notIssuedPence - t.parkedPence,
+    }));
     const mismatches =
       byType.filter(
         (t) => t.differencePence !== 0 || t.laxCount !== t.booksCount + t.notIssuedCount,
+      ).length +
+      payouts.filter(
+        (t) =>
+          t.differencePence !== 0 ||
+          t.unmatchedCount !== 0 ||
+          t.laxCount !== t.booksCount + t.notIssuedCount + t.parkedCount,
       ).length +
       parked.length +
       accountsNotRead.length +
@@ -232,6 +257,7 @@ export class StripeReconciliation {
       parked,
       clearing,
       heldTransferPence,
+      payouts,
       mismatches,
     };
     const storageKey = reconciliationKey(entity, day, at);
@@ -264,15 +290,31 @@ export class StripeReconciliation {
     const moves = since
       ? // Stripe's balance is read now, so Books is read through today too.
         await this.deps.store.clearingSince(entity, since, londonDay(this.deps.now()), target)
-      : { paymentsPence: 0, expensesPence: 0, transfersPence: 0, notIssuedPence: 0 };
+      : {
+          paymentsPence: 0,
+          expensesPence: 0,
+          transfersPence: 0,
+          billPaymentsPence: 0,
+          billPaymentsNotIssuedPence: 0,
+          notIssuedPence: 0,
+        };
     const knownUnbooked = since
       ? (await this.deps.store.knownUnbooked(entity)).filter((m) =>
           KNOWN_UNBOOKED_TYPES.has(m.type),
         )
       : [];
-    const knownUnbookedPence = knownUnbooked.reduce((sum, m) => sum + m.pence, 0);
+    // A payout paid by a Stripe Connect transfer left the balance as a `transfer` (known unbooked)
+    // and is booked in Books as the payout's payment from clearing: counted once, in Books.
+    const transfersBookedAsPayoutPaymentsPence =
+      moves.billPaymentsPence + moves.billPaymentsNotIssuedPence;
+    const knownUnbookedPence =
+      knownUnbooked.reduce((sum, m) => sum + m.pence, 0) + transfersBookedAsPayoutPaymentsPence;
     const booksClearingPence =
-      openingPence + moves.paymentsPence - moves.expensesPence - moves.transfersPence;
+      openingPence +
+      moves.paymentsPence -
+      moves.expensesPence -
+      moves.transfersPence -
+      moves.billPaymentsPence;
     const unexplainedPence =
       reconcilable && stripeBalancePence !== null
         ? stripeBalancePence - booksClearingPence - moves.notIssuedPence - knownUnbookedPence
@@ -284,11 +326,13 @@ export class StripeReconciliation {
       booksPaymentsPence: moves.paymentsPence,
       booksExpensesPence: moves.expensesPence,
       booksTransfersPence: moves.transfersPence,
+      booksPayoutPaymentsPence: moves.billPaymentsPence,
       booksClearingPence,
       stripeBalancePence,
       inFlightPence: moves.notIssuedPence,
       knownUnbooked,
       knownUnbookedPence,
+      transfersBookedAsPayoutPaymentsPence,
       unexplainedPence,
     };
   }

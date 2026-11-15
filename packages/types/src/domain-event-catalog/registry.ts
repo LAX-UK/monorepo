@@ -270,6 +270,7 @@ export const ALL_LIVE_DOMAIN_EVENT_TYPES = [
   "payment.unapplied_money_received",
   "payment.unapplied_money_resolved",
   "payment_group.created",
+  "payment_group.delivery_refund_requested",
   "payment_group.delivery_refunded",
   "payment_group.dispute_needs_allocation",
   "payment_group.paid",
@@ -681,13 +682,21 @@ const REGISTRY_OVERRIDES: Partial<Record<LiveDomainEventType, RegistryOverride>>
     schema: paymentRefundedPayloadSchemaV1,
     consumers: ["accounting", "payment_refund_notify", "xero", "zoho"],
   },
+  /**
+   * A Bid seller payout paid (`bid_payout_paid`): the books read the payout's stored rows by the
+   * aggregate id and pay its bill from Stripe clearing (Zoho Books plan v2, PR 12).
+   */
   "payout.paid": {
     schema: payoutPaidPayloadSchemaV1,
-    consumers: ["xero"],
+    consumers: ["xero", "accounting"],
   },
+  /**
+   * A Bid seller payout made (`bid_payout_settled`): the books read the payout's stored rows by the
+   * aggregate id and bill what LAX owes the seller after commission.
+   */
   "payout.settlement_created": {
     schema: payoutSettlementCreatedPayloadSchemaV1,
-    consumers: ["xero"],
+    consumers: ["xero", "accounting"],
   },
   "payment.requires_manual_review": { consumers: ["notification_fanout"] },
   "payout.clawback_required": { consumers: ["notification_fanout"] },
@@ -1357,10 +1366,14 @@ const REGISTRY_OVERRIDES: Partial<Record<LiveDomainEventType, RegistryOverride>>
     idempotencyPolicy: "aggregate_event_unique",
     piiClassification: "contains_pii",
   },
+  /**
+   * A Shop artist payout paid (`shop_artist_payout_paid`): the books read the ledger row by the
+   * payout id (never the reference staff wrote) and book its bill and payment.
+   */
   "shop.payout.paid": {
     schema: shopPayoutPaidPayloadSchemaV1,
     producers: ["shop-api"],
-    consumers: [],
+    consumers: ["accounting"],
     idempotencyPolicy: "aggregate_event_unique",
     piiClassification: "contains_pii",
   },
