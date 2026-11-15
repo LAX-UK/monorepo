@@ -76,8 +76,11 @@ export function isValidPasskeyName(value: string): boolean {
   );
 }
 
-/** A passkey as the person sees it: named and dated. The key material never leaves the issuer. */
-/** Who keeps a passkey, from its authenticator; "unknown" when it is not a well-known one. */
+/**
+ * Who keeps a passkey, from its authenticator; "unknown" when it is not a well-known one. The enum
+ * is closed: ship a new provider in LAX Account before the issuer, or the account app fails to
+ * parse the whole response.
+ */
 export const PASSKEY_PROVIDERS = [
   "apple",
   "google",
@@ -91,6 +94,7 @@ export const PASSKEY_PROVIDERS = [
 
 export const passkeyProviderSchema = z.enum(PASSKEY_PROVIDERS);
 
+/** A passkey as the person sees it: named and dated. The key material never leaves the issuer. */
 export const accountPasskeySchema = z.object({
   id: z.string().min(1),
   name: z.string().min(1).max(PASSKEY_NAME_MAX_LENGTH),

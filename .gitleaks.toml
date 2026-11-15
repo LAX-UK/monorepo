@@ -48,3 +48,13 @@ regexes = [
   # Immutable public fallback commit captured as rollback evidence.
   '''c4df7fbb540304192b10f197df480c626c4e9b95''',
 ]
+
+# Public FIDO authenticator AAGUIDs (model identifiers published in the FIDO MDS and passkey
+# provider lists, not secrets). Scoped to the one file AND the exact `"<uuid>": "<provider>",`
+# shape, so the rule stays on everywhere else. Needed on top of the inline `gitleaks:allow`
+# because the PR scan also reads earlier commits that predate the inline marker.
+[[allowlists]]
+description = "Public passkey authenticator AAGUIDs"
+condition = "AND"
+paths = ['''packages/auth/src/passkey-names\.ts''']
+regexes = ['''"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}": "[a-z_]+",''']

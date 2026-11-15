@@ -18,18 +18,18 @@ export type PasskeyProviderId =
  * for) is "unknown".
  */
 const AUTHENTICATOR_PROVIDERS: Readonly<Record<string, Exclude<PasskeyProviderId, "unknown">>> = {
-  "fbfc3007-154e-4ecc-8c0b-6e020557d7bd": "apple",
-  "dd4ec289-e01d-41c9-bb89-70fa845d4bf2": "apple",
-  "ea9b8d66-4d01-1d21-3ce4-b6b48cb575d4": "google",
-  "08987058-cadc-4b81-b6e1-30de50dcbe96": "windows_hello",
-  "9ddd1817-af5a-4672-a2b9-3e3dd95000a9": "windows_hello",
-  "6028b017-b1d4-4c02-b4b3-afcdafc96bb2": "windows_hello",
-  "bada5566-a7aa-401f-bd96-45619a55120d": "onepassword",
-  "d548826e-79b4-db40-a3d8-11116f7e8349": "bitwarden",
-  "531126d6-e717-415c-9320-3d9aa6981239": "dashlane",
-  "2fc0579f-8113-47ea-b116-bb5a8db9202a": "security_key",
-  "f8a011f3-8c0a-4d15-8006-17111f9edc7d": "security_key",
-  "cb69481e-8ff7-4039-93ec-0a2729a154a8": "security_key",
+  "fbfc3007-154e-4ecc-8c0b-6e020557d7bd": "apple", // gitleaks:allow
+  "dd4ec289-e01d-41c9-bb89-70fa845d4bf2": "apple", // gitleaks:allow
+  "ea9b8d66-4d01-1d21-3ce4-b6b48cb575d4": "google", // gitleaks:allow
+  "08987058-cadc-4b81-b6e1-30de50dcbe96": "windows_hello", // gitleaks:allow
+  "9ddd1817-af5a-4672-a2b9-3e3dd95000a9": "windows_hello", // gitleaks:allow
+  "6028b017-b1d4-4c02-b4b3-afcdafc96bb2": "windows_hello", // gitleaks:allow
+  "bada5566-a7aa-401f-bd96-45619a55120d": "onepassword", // gitleaks:allow
+  "d548826e-79b4-db40-a3d8-11116f7e8349": "bitwarden", // gitleaks:allow
+  "531126d6-e717-415c-9320-3d9aa6981239": "dashlane", // gitleaks:allow
+  "2fc0579f-8113-47ea-b116-bb5a8db9202a": "security_key", // gitleaks:allow
+  "f8a011f3-8c0a-4d15-8006-17111f9edc7d": "security_key", // gitleaks:allow
+  "cb69481e-8ff7-4039-93ec-0a2729a154a8": "security_key", // gitleaks:allow
 };
 
 /** The words the person knows each provider by. */
