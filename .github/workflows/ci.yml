@@ -1032,6 +1032,15 @@ jobs:
           provenance: false
           cache-from: type=gha,scope=ci-${{ matrix.component }}
           cache-to: type=gha,mode=max,scope=ci-${{ matrix.component }}
+          load: ${{ matrix.component == 'web' }}
+          tags: ci-${{ matrix.component }}:smoke
+
+      # The web image's standalone output once shipped without sharp's musl addon and libvips, so OG
+      # JPEG cards silently fell back to PNG. Load sharp in the runtime image, as the server would.
+      - name: Check sharp loads in the web image
+        if: steps.docker_paths.outputs.docker == 'true' && matrix.component == 'web'
+        run: |
+          docker run --rm --entrypoint sh ci-web:smoke -c 'cd /app/apps/web && node -e "const s=require(\"sharp\");s({create:{width:2,height:2,channels:3,background:\"#fff\"}}).jpeg().toBuffer().then(b=>{if(!b.length)process.exit(1);console.log(\"sharp\",s.versions.sharp,\"ok\")})"'
 
   identity-acceptance-preflight:
     runs-on: ubuntu-latest

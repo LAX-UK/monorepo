@@ -23,6 +23,7 @@
  * the DB-backed session cookie TTL (`session.expiresIn` / `updateAge` below).
  */
 
+import { ACCOUNT_ACTION_DONE_PATH } from "@auction/identity-contracts";
 import { betterAuth } from "better-auth";
 import type { AuthHookDeps } from "./auth-hooks/auth-hook-deps.js";
 import { buildDatabaseHooks } from "./auth-hooks/database-hooks.js";
@@ -242,6 +243,9 @@ export function createAuth(env: AuthEnv): Auth {
     baseURL: issuer,
     basePath: "/api/auth",
     disabledPaths: [...DISABLED_AUTH_ENDPOINT_PATHS],
+    // A refused link or provider round trip ends on the issuer's own page, with the code only;
+    // without this the library shows its own page or a bare JSON error.
+    onAPIError: { errorURL: `${issuer}${ACCOUNT_ACTION_DONE_PATH}` },
     trustedOrigins: env.trustedOrigins,
     database: env.database,
     // Rate limiting is enforced once, at the issuer boundary, by the

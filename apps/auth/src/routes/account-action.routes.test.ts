@@ -210,6 +210,47 @@ describe("GET /account-action/done", () => {
   });
 });
 
+describe("GET /account-action/done with only an error", () => {
+  const get = (app: ReturnType<typeof setup>["app"], error: string) =>
+    app.request(`/account-action/done?error=${encodeURIComponent(error)}`);
+
+  it.each([
+    ["EXPIRED_TOKEN", "That link has expired"],
+    ["INVALID_TOKEN", "That link has expired"],
+    ["account_already_linked_to_different_user", "That account is already in use"],
+    ["access_denied", "Nothing was changed"],
+    ["state_mismatch", "We couldn&#39;t finish that"],
+  ])("explains %s in plain words, on a page and not as JSON", async (code, title) => {
+    const { app, actions } = setup();
+    const response = await get(app, code);
+    expect(response.status).toBe(400);
+    expect(response.headers.get("content-type")).toContain("text/html");
+    expect(response.headers.get("cache-control")).toBe("no-store");
+    expect(await response.text()).toContain(title);
+    expect(actions.isLinked).not.toHaveBeenCalled();
+  });
+
+  it("gives a code it does not know the general message and never shows what it said", async () => {
+    const { app } = setup();
+    const html = await (await get(app, "<script>alert(7)</script>")).text();
+    expect(html).toContain("We couldn&#39;t complete that");
+    expect(html).not.toContain("alert(7)");
+  });
+
+  it("does not treat a name on the Object prototype as a known code", async () => {
+    const { app } = setup();
+    const html = await (await get(app, "constructor")).text();
+    expect(html).toContain("We couldn&#39;t complete that");
+  });
+
+  it("still sends a visit with no error and no provider to Security", async () => {
+    const { app } = setup();
+    expect((await app.request("/account-action/done")).headers.get("location")).toBe(
+      back("provider_unavailable"),
+    );
+  });
+});
+
 describe("returnWordForProviderError", () => {
   it("maps nothing but the known errors, and everything else to unavailable", () => {
     expect(returnWordForProviderError(undefined)).toBe("provider_unavailable");

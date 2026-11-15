@@ -94,6 +94,8 @@ export {
   HOSTED_IMAGE_BASE_PATH,
   HOSTED_GALLERY_IMAGE,
   buildHostedErrorHtml,
+  buildHostedLinkErrorHtml,
+  knownLinkErrorCode,
   isBrowserNavigation,
   readHostedFaviconBytes,
   HOSTED_AUTH_FAVICON_BASE_PATH,

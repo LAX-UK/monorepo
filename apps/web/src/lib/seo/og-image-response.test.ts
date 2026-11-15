@@ -10,7 +10,9 @@ vi.mock("next/og", () => ({
   },
 }));
 
-// The web image's standalone output has no working sharp: importing it throws.
+// Simulates an image where sharp cannot load (importing it throws). The web image itself ships a
+// working sharp: scripts/docker/install-sharp-runtime.sh copies it into the standalone output and
+// the Docker build and CI's docker-images job load it, so this fallback is only a safety net.
 vi.mock("sharp", () => {
   throw new Error('Could not load the "sharp" module using the linuxmusl-x64 runtime');
 });
