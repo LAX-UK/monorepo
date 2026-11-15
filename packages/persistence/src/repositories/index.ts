@@ -287,6 +287,7 @@ export {
   DrizzleEnquiryNoteRepository,
   DrizzleEnquiryRoutingRepository,
 } from "./drizzle-enquiry-workflow.repositories.js";
+export { DrizzleEnquiryInboundRepository } from "./drizzle-enquiry-inbound.repository.js";
 export { DrizzleEnquiryErasureRepository } from "./drizzle-enquiry-erasure.repository.js";
 export { DrizzleAlertSubscriberErasureRepository } from "./drizzle-alert-subscriber-erasure.repository.js";
 export { DrizzleDeliveryQuoteRepository } from "./drizzle-delivery-quote.repository.js";

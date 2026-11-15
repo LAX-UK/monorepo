@@ -251,7 +251,9 @@ export const ALL_LIVE_DOMAIN_EVENT_TYPES = [
   "marketing_enquiry.assigned",
   "marketing_enquiry.converted",
   "marketing_enquiry.attachment_viewed",
+  "marketing_enquiry.customer_replied",
   "marketing_enquiry.erased",
+  "marketing_enquiry.inbound_quarantined",
   "marketing_enquiry.handled",
   "marketing_enquiry.received",
   "marketing_enquiry.status_changed",
@@ -976,6 +978,18 @@ const REGISTRY_OVERRIDES: Partial<Record<LiveDomainEventType, RegistryOverride>>
     piiClassification: "none",
   },
   "marketing_enquiry.attachment_viewed": {
+    producers: ["apps/api"],
+    consumers: [],
+    idempotencyPolicy: "none",
+    piiClassification: "none",
+  },
+  "marketing_enquiry.customer_replied": {
+    producers: ["apps/api"],
+    consumers: [],
+    idempotencyPolicy: "none",
+    piiClassification: "none",
+  },
+  "marketing_enquiry.inbound_quarantined": {
     producers: ["apps/api"],
     consumers: [],
     idempotencyPolicy: "none",

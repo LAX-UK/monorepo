@@ -57,6 +57,8 @@ export const marketingEnquiry = pgTable(
       onDelete: "set null",
     }),
     marketingOptIn: boolean("marketing_opt_in").notNull().default(false),
+    /** When the sender's latest emailed reply arrived and nobody has answered it yet. */
+    awaitingReplySince: timestamp("awaiting_reply_since", { mode: "date", withTimezone: true }),
     /** Incremented on every change; a write made against an older version is refused. */
     version: integer("version").notNull().default(1),
     createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),
@@ -72,6 +74,9 @@ export const marketingEnquiry = pgTable(
     index("marketing_enquiry_assignee_idx")
       .on(table.assignedToUserId, table.status)
       .where(sql`${table.assignedToUserId} IS NOT NULL`),
+    index("marketing_enquiry_awaiting_reply_idx")
+      .on(table.awaitingReplySince)
+      .where(sql`${table.awaitingReplySince} IS NOT NULL`),
     index("marketing_enquiry_intent_created_idx").on(table.intent, table.createdAt, table.id),
     check(
       "marketing_enquiry_status_check",

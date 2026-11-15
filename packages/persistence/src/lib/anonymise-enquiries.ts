@@ -2,10 +2,12 @@ import type { Database } from "@auction/db";
 import {
   bidUserProfile,
   domainEvent,
+  enquiryInboundQuarantine,
   kycVerification,
   kycWatchlistScreening,
   marketingEnquiry,
   marketingEnquiryAttachment,
+  marketingEnquiryMessage,
   marketingEnquiryNote,
   privateSaleDeal,
   privateSaleDealParty,
@@ -98,6 +100,24 @@ export async function anonymiseEnquiries(
       ),
     )
     .returning({ id: marketingEnquiryNote.id });
+
+  // What the sender emailed back is theirs too: the text goes, the metadata of their files goes.
+  await tx
+    .update(marketingEnquiryMessage)
+    .set({ subject: ERASED_ENQUIRY.note, body: ERASED_ENQUIRY.note, attachments: [] })
+    .where(
+      and(
+        inArray(marketingEnquiryMessage.enquiryId, ids),
+        eq(marketingEnquiryMessage.direction, "inbound"),
+      ),
+    );
+  if (target.kind === "email") {
+    await tx
+      .delete(enquiryInboundQuarantine)
+      .where(
+        sql`lower(${enquiryInboundQuarantine.fromAddress}) = ${target.email.trim().toLowerCase()}`,
+      );
+  }
 
   await tx
     .update(privateSaleEnquiryDetail)

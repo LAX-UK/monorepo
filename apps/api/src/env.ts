@@ -488,6 +488,23 @@ const envSchema = z
     OPS_SUPPORT_EMAIL: z.preprocess(emptyToUndefined, z.string().email().optional()),
     /** Staff inbox for contact form enquiries; unset means no alert email (the work inbox still lists them). */
     BID_ENQUIRY_NOTIFICATION_EMAIL: z.preprocess(emptyToUndefined, z.string().email().optional()),
+    /**
+     * Receives sender replies to enquiry emails through the Postmark inbound webhook. Off by
+     * default; needs the three variables below. See docs/integrations/postmark-inbound.md.
+     */
+    ENQUIRY_INBOUND_REPLIES_ENABLED: z.preprocess(
+      parseOptionalBooleanFlag,
+      z.boolean().default(false),
+    ),
+    /** The Postmark inbound address replies come to, e.g. `replies@<inbound domain>`; each thread's Reply-To adds a `+token`. */
+    ENQUIRY_REPLY_TO_ADDRESS: z.preprocess(emptyToUndefined, z.string().email().optional()),
+    /** Key for the per-thread reply token (an HMAC); 32 characters or more. */
+    ENQUIRY_REPLY_TOKEN_SECRET: z.preprocess(emptyToUndefined, z.string().min(32).optional()),
+    /** `user:password` Postmark sends as Basic Auth on the inbound webhook; separate from the delivery webhook's. */
+    POSTMARK_INBOUND_WEBHOOK_BASIC_AUTH: z.preprocess(
+      emptyToUndefined,
+      z.string().min(16).includes(":").optional(),
+    ),
     /** On-call / escalation inbox (required in production). */
     OPS_ONCALL_EMAIL: z.preprocess(emptyToUndefined, z.string().email().optional()),
     /** Server-side GTM tagging endpoint (e.g. https://gtm.lax.bid). Prod-only marketing events. */
@@ -511,6 +528,20 @@ const envSchema = z
         code: z.ZodIssueCode.custom,
         message: "POSTMARK_SERVER_TOKEN is required when EMAIL_PROVIDER=postmark",
       });
+    }
+    if (e.ENQUIRY_INBOUND_REPLIES_ENABLED) {
+      for (const key of [
+        "ENQUIRY_REPLY_TO_ADDRESS",
+        "ENQUIRY_REPLY_TOKEN_SECRET",
+        "POSTMARK_INBOUND_WEBHOOK_BASIC_AUTH",
+      ] as const) {
+        if (!e[key]) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: `${key} is required when ENQUIRY_INBOUND_REPLIES_ENABLED=true`,
+          });
+        }
+      }
     }
     if (e.NODE_ENV === "production" && !e.POSTMARK_WEBHOOK_BASIC_AUTH) {
       ctx.addIssue({

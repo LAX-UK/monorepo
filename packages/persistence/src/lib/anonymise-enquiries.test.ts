@@ -41,6 +41,7 @@ function fakeTx(input: {
   const updateResults: Row[][] = [
     ...(input.detached?.length ? [[]] : []), // upload expiry update returns nothing used
     input.notes ?? [],
+    [], // the sender's emailed replies
     [], // private sale detail
     input.enquiries ?? [],
   ];

@@ -840,6 +840,13 @@ export const WORKER_QR_CODE_SCAN_TABLES = ["qr_code_scan", "qr_code_scan_daily"]
  * retention. The daily roll-up keeps no personal data and is never deleted.
  */
 export const WORKER_QR_CODE_SCAN_PURGE_DELETE_TABLES = ["qr_code_scan"] as const;
+/**
+ * Inbound enquiry mail that could not be tied to a thread is held for review and purged 30 days
+ * after it arrived (`purge_at`). The worker reads and deletes expired rows; it never writes them.
+ */
+export const WORKER_ENQUIRY_INBOUND_QUARANTINE_PURGE_TABLES = [
+  "enquiry_inbound_quarantine",
+] as const;
 /** The unsold-choice projector stores each unsold outcome's choose-by date, once. */
 export const WORKER_UNSOLD_CHOICE_DEADLINE_TABLES = ["unsold_choice_deadline"] as const;
 /** The follow-up projector opens the staff work a confirmed unsold-lot choice leaves behind. */
@@ -1099,6 +1106,8 @@ export const WORKER_ANONYMISATION_SCRUB_COLUMNS = [
   /** The enquiry rule replaces the sender's details and removes what they wrote. */
   ["marketing_enquiry", ["name", "email", "phone", "message", "version"]],
   ["marketing_enquiry_note", ["body"]],
+  /** The sender's emailed replies: the rule removes their text and the metadata of their files. */
+  ["marketing_enquiry_message", ["subject", "body", "attachments"]],
   /** Older identity-check notices quote the provider's decline reason in the message. */
   ["notification", ["message"]],
   ["private_sale_enquiry_detail", ["location_town", "location_country", "looking_for"]],
@@ -1755,6 +1764,9 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
           await grantIfExists(client, "worker_app", tableName, "INSERT, SELECT, UPDATE");
         }
         for (const tableName of WORKER_QR_CODE_SCAN_PURGE_DELETE_TABLES) {
+          await grantIfExists(client, "worker_app", tableName, "SELECT, DELETE");
+        }
+        for (const tableName of WORKER_ENQUIRY_INBOUND_QUARANTINE_PURGE_TABLES) {
           await grantIfExists(client, "worker_app", tableName, "SELECT, DELETE");
         }
         for (const tableName of WORKER_BID_ALERT_TABLES) {
