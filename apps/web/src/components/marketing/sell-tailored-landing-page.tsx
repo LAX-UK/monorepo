@@ -1,11 +1,7 @@
 import { DepartmentEvidenceView } from "@/components/marketing/department/department-evidence-view";
 import { MarketingSection } from "@/components/marketing/marketing-section";
-import { SellClosingCta } from "@/components/marketing/sell/sell-closing-cta";
-import { SellFaq } from "@/components/marketing/sell/sell-faq";
-import { SellFees } from "@/components/marketing/sell/sell-fees";
 import { SellHero } from "@/components/marketing/sell/sell-hero";
-import { SellSpecialistsSection } from "@/components/marketing/sell/sell-specialists-section";
-import { SellSteps } from "@/components/marketing/sell/sell-steps";
+import { SellTemplateSections } from "@/components/marketing/sell/sell-template-sections";
 import { hasDepartmentEvidence } from "@/lib/departments/department-evidence";
 import type { DepartmentEvidence } from "@/lib/departments/department-evidence";
 import { loadDepartmentEvidence } from "@/lib/departments/load-department-evidence";
@@ -115,17 +111,13 @@ export function SellDepartmentView({
         </ul>
       </MarketingSection>
 
-      <SellSteps />
-      <SellFees />
-      <SellSpecialistsSection specialists={SELL_SPECIALISTS} />
-      <SellFaq items={SELL_FAQ_ITEMS} />
-      <section className={`${MARKETING_PAGE_SHELL} py-16 md:py-24`}>
-        <SellClosingCta
-          source={`${path}_submit`}
-          {...(categorySlug ? { categorySlug } : {})}
-          {...(contactType ? { contactType } : {})}
-        />
-      </section>
+      <SellTemplateSections
+        specialists={SELL_SPECIALISTS}
+        faqItems={SELL_FAQ_ITEMS}
+        closingSource={`${path}_submit`}
+        {...(categorySlug ? { categorySlug } : {})}
+        {...(contactType ? { contactType } : {})}
+      />
     </div>
   );
 }
