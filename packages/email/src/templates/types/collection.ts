@@ -9,6 +9,7 @@ const names = [
   "collection-collected",
   "collection-missed",
   "collection-collect-by",
+  "collection-can-book",
 ] as const;
 
 type CollectionTemplateName = (typeof names)[number];
@@ -142,6 +143,22 @@ type CollectionTemplateVars = {
     /** Where the buyer asks for a courier quote. */
     quoteUrl: string;
   };
+  /**
+   * The lots can be booked for collection now: paid, at a place that takes online bookings, and
+   * nothing in the way (a check, a dispute or a refund). Sent once per lot.
+   */
+  "collection-can-book": {
+    userName?: string | null;
+    placeName: string;
+    /** The gallery's address, one line. */
+    address: string;
+    /** One line per lot: "Lot 12 · Lowland Storm". */
+    lots: string[];
+    /** The lots' ids, so a later sweep can tell which lots an earlier email covered. Not shown. */
+    lotIds: string[];
+    /** The booking page for these lots. */
+    bookUrl: string;
+  };
 };
 
 export const collectionTemplates = {
@@ -157,6 +174,7 @@ export const collectionTemplates = {
     "collection-collected": "live",
     "collection-missed": "live",
     "collection-collect-by": "live",
+    "collection-can-book": "live",
   },
 } satisfies TemplateDomainSlice<CollectionTemplateName, CollectionTemplateVars>;
 

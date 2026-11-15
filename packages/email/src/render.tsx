@@ -84,6 +84,9 @@ import ChangeEmail, { subject as changeEmailSubject } from "./templates/change-e
 import CollectionBookedEmail, {
   subject as collectionBookedSubject,
 } from "./templates/collection-booked.js";
+import CollectionCanBookEmail, {
+  subject as collectionCanBookSubject,
+} from "./templates/collection-can-book.js";
 import CollectionCancelledEmail, {
   subject as collectionCancelledSubject,
 } from "./templates/collection-cancelled.js";
@@ -566,6 +569,10 @@ const renderers: { [T in TemplateName]: TemplateRenderer<T> } = {
   "collection-collect-by": {
     subject: collectionCollectBySubject,
     component: (vars) => <CollectionCollectByEmail {...vars} />,
+  },
+  "collection-can-book": {
+    subject: collectionCanBookSubject,
+    component: (vars) => <CollectionCanBookEmail {...vars} />,
   },
   "lot-fulfilment-update": {
     subject: lotFulfilmentUpdateSubject,
