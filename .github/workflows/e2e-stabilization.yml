@@ -137,6 +137,9 @@ jobs:
         run: pnpm --filter @auction/web test:e2e:stabilization --no-deps --shard=${{ matrix.shard }}/2
         env:
           PLAYWRIGHT_AUTH_PREPARED: "1"
+          # Distinct blob file names per mode and shard so the merged download does not
+          # overwrite the other mode's report-<hash>-<shard>.zip files.
+          E2E_BLOB_REPORT_NAME: ${{ matrix.mode }}-${{ matrix.shard }}
       - name: Upload blob report
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v4
