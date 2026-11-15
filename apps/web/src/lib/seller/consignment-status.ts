@@ -1,4 +1,4 @@
-import { NEEDS_CHANGES_LABEL } from "@/lib/presenters/status/catalog";
+import { NEEDS_CHANGES_LABEL } from "@/lib/presenters/status/labels";
 import type { ItemSubmissionStatus, LotStatus } from "@auction/types";
 import type { StatusBadgeShape, StatusBadgeTone } from "@auction/ui/lax/status-badge";
 

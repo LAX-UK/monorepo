@@ -1,5 +1,5 @@
 import { coerceToDate } from "@/lib/data/http/parse";
-import { NEEDS_CHANGES_LABEL } from "@/lib/presenters/status/catalog";
+import { NEEDS_CHANGES_LABEL } from "@/lib/presenters/status/labels";
 import { LONDON_TIME_ZONE, dayOffset, formatDate } from "@auction/datetime";
 import type { UserNotification } from "@auction/types";
 import {

@@ -113,6 +113,7 @@ describe("status wording", () => {
     const { submissionStatusLabel } = await import("@/lib/presenters/status/catalog");
     const { CONSIGNMENT_STATUS } = await import("@/lib/seller/consignment-status");
     const label = submissionStatusLabel.changes_requested;
+    expect(label).toBe("Needs changes");
     expect(notificationTypePresenter("submission_changes_requested").label).toBe(label);
     expect(CONSIGNMENT_STATUS.needs_changes.label).toBe(label);
   });

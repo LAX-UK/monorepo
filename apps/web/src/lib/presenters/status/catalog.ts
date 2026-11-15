@@ -1,6 +1,7 @@
 import type { ArtistStatus, ItemSubmissionStatus, LotStatus, SaleStatus } from "@auction/types";
 import type { StatusBadgeVariant } from "./core";
 import { badgeVariantFromRegistry } from "./core";
+import { NEEDS_CHANGES_LABEL } from "./labels";
 
 export const lotStatusLabel: Record<LotStatus, string> = {
   draft: "Draft",
@@ -26,8 +27,7 @@ export const artistStatusLabel: Record<ArtistStatus, string> = {
   merged_into: "Merged",
 };
 
-/** The one wording for work waiting on the seller to change something; import it, never retype it. */
-export const NEEDS_CHANGES_LABEL = "Needs changes";
+export { NEEDS_CHANGES_LABEL };
 
 export const submissionStatusLabel: Record<ItemSubmissionStatus, string> = {
   draft: "Draft",
