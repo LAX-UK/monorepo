@@ -27,7 +27,8 @@ export type NotifyPromiseMessages<T> = {
 /** Imperative toasts — single chokepoint for Sonner, loaded when the first toast is raised
  * (`toast-bridge.ts`), so none of them returns an id.
  * Do not import `sonner` elsewhere in `apps/web` (see `sonner-import.contract.test.ts`).
- * * TODO: optional Sentry breadcrumb on `error` for production diagnostics.
+ * `error` also leaves a Sentry breadcrumb carrying the notice `id` only (never its text); the
+ * Sentry wrapper is fetched lazily so public routes carry no extra JS.
  */
 export const notify = {
   success(title: string, opts?: NotifyOpts): void {
@@ -62,6 +63,9 @@ export const notify = {
   },
 
   error(title: string, opts?: NotifyOpts): void {
+    void import("@/lib/observability/notice-breadcrumb")
+      .then((mod) => mod.addErrorNoticeBreadcrumb(opts?.id))
+      .catch(() => undefined);
     runToast((toast) => {
       toast.error(title, {
         duration: opts?.duration ?? DEFAULT_ERROR_DURATION_MS,
