@@ -57,6 +57,4 @@ export type AuthPorts = {
   sms: import("./sms-sender.js").SmsSender | undefined;
   events: import("./identity-event-publisher.js").IdentityEventPublisher | undefined;
   securityNotices: import("./security-notice.js").SecurityNoticePublisher | undefined;
-  /** Records the Terms and Privacy notice accepted at sign-up; unset where nothing is kept. */
-  legalAcceptance?: import("./legal-acceptance-recorder.js").LegalAcceptanceRecorder | undefined;
 };
