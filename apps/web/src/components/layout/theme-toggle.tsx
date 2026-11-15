@@ -6,7 +6,6 @@ import { syncUiThemeFromClientAction } from "@/lib/actions/user-ui-preferences";
 import type { ChromeSurface } from "@/lib/layout/chrome-surface";
 import { type SiteHeaderTone, headerChromeIconClass } from "@/lib/layout/header-chrome-tone";
 import { applyThemeDom } from "@/lib/preferences/apply-theme-dom";
-import { withViewTransition } from "@/lib/view-transition-runtime";
 import { cn } from "@auction/ui/lib/utils";
 import { Moon, Sun } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -22,9 +21,22 @@ type ThemeToggleProps = {
   surface?: ChromeSurface;
 };
 
-/** uses the View Transitions API to perform a circular reveal from the
- * toggle's center when the theme switches. Falls back to instant toggle in
- * browsers without support, or when reduced-motion is preferred.
+/** The latest theme switch's marker; an older switch that ends late must leave the newer one's wipe alone. */
+let latestThemeTransition: object | undefined;
+
+/** Reduced motion as `useReducedMotion` resolves it: the in-app switch wins over the OS preference. */
+function themeMotionReduced(root: HTMLElement): boolean {
+  const override = root.dataset.reduceMotion;
+  if (override === "force-reduce") return true;
+  if (override === "force-allow") return false;
+  return matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
+
+/** Circular reveal from the toggle's centre when the theme switches (View Transitions API), marked
+ * `<html data-view-transition="theme">` so `marketing-header.css` plays the wipe for this switch
+ * only. Switches instantly without support or under reduced motion. Self-contained on purpose: it
+ * ships in every layout, so it shares no module with the page-change helper
+ * (`view-transition-runtime.ts`), which would otherwise be duplicated into the layout chunk.
  */
 export function ThemeToggle({
   headerTone = "on-light",
@@ -52,6 +64,15 @@ export function ThemeToggle({
       void syncUiThemeFromClientAction({ theme: mode });
     };
 
+    const root = document.documentElement;
+    const doc = document as Document & {
+      startViewTransition?: (update: () => void) => { finished: Promise<void> };
+    };
+    if (!doc.startViewTransition || themeMotionReduced(root)) {
+      apply();
+      return;
+    }
+
     const btn = buttonRef.current;
     const rect = btn?.getBoundingClientRect();
     const cx = rect ? rect.left + rect.width / 2 : window.innerWidth - 32;
@@ -60,18 +81,33 @@ export function ThemeToggle({
       Math.max(cx, window.innerWidth - cx),
       Math.max(cy, window.innerHeight - cy),
     );
-
-    const rootStyle = document.documentElement.style;
     const vars = {
       "--theme-toggle-x": cx,
       "--theme-toggle-y": cy,
       "--theme-toggle-radius": radius,
     };
-    for (const [name, px] of Object.entries(vars)) rootStyle.setProperty(name, `${px}px`);
+    for (const [name, px] of Object.entries(vars)) root.style.setProperty(name, `${px}px`);
 
-    withViewTransition("theme", apply, () => {
-      for (const name in vars) rootStyle.removeProperty(name);
-    });
+    const mine = {};
+    latestThemeTransition = mine;
+    root.dataset.viewTransition = "theme";
+    // Runs when this transition ends, also when a page change replaced it. Only a newer theme
+    // switch (which set fresh values) skips it; the marker stays when another kind owns it now.
+    const cleanup = () => {
+      if (mine !== latestThemeTransition) return;
+      if (root.dataset.viewTransition === "theme") delete root.dataset.viewTransition;
+      for (const name in vars) root.style.removeProperty(name);
+    };
+    try {
+      // `finished` rejects when the transition is aborted; the theme has been applied by then.
+      void doc
+        .startViewTransition(apply)
+        .finished.catch(() => undefined)
+        .finally(cleanup);
+    } catch {
+      apply();
+      cleanup();
+    }
   }, []);
 
   const label = isDark ? "Switch to light theme" : "Switch to dark theme";

@@ -25,6 +25,7 @@ describe("withViewTransition", () => {
   afterEach(() => {
     (document as Doc).startViewTransition = undefined;
     root.removeAttribute(VIEW_TRANSITION_ATTR);
+    delete root.dataset.reduceMotion;
     vi.unstubAllGlobals();
   });
 
@@ -44,14 +45,12 @@ describe("withViewTransition", () => {
   it("marks the root with its kind only while the transition runs", async () => {
     const { start, finish } = installTransition();
     const update = vi.fn();
-    const onFinished = vi.fn();
-    withViewTransition("lot", update, onFinished);
+    withViewTransition("lot", update);
     expect(start).toHaveBeenCalledOnce();
     expect(update).toHaveBeenCalledOnce();
     expect(root.getAttribute(VIEW_TRANSITION_ATTR)).toBe("lot");
     finish();
-    await vi.waitFor(() => expect(onFinished).toHaveBeenCalledOnce());
-    expect(root.hasAttribute(VIEW_TRANSITION_ATTR)).toBe(false);
+    await vi.waitFor(() => expect(root.hasAttribute(VIEW_TRANSITION_ATTR)).toBe(false));
   });
 
   it("swaps content without a transition under prefers-reduced-motion", () => {
@@ -64,53 +63,77 @@ describe("withViewTransition", () => {
     expect(root.hasAttribute(VIEW_TRANSITION_ATTR)).toBe(false);
   });
 
+  it("skips the transition under the in-app reduce switch, whatever the OS says", () => {
+    root.dataset.reduceMotion = "force-reduce";
+    const { start } = installTransition();
+    const update = vi.fn();
+    withViewTransition("lot", update);
+    expect(start).not.toHaveBeenCalled();
+    expect(update).toHaveBeenCalledOnce();
+    expect(root.hasAttribute(VIEW_TRANSITION_ATTR)).toBe(false);
+  });
+
+  it("keeps the transition under the in-app allow switch, as useReducedMotion does", () => {
+    stubMatchMedia(true);
+    root.dataset.reduceMotion = "force-allow";
+    const { start } = installTransition();
+    withViewTransition("lot", vi.fn());
+    expect(start).toHaveBeenCalledOnce();
+    expect(root.getAttribute(VIEW_TRANSITION_ATTR)).toBe("lot");
+  });
+
   it("keeps the marker of a newer transition when an older one of the same kind ends late", async () => {
     const finishers: Array<() => void> = [];
     (document as Doc).startViewTransition = vi.fn((update: () => void) => {
       update();
       return { finished: new Promise<void>((resolve) => finishers.push(resolve)) };
     });
-    const firstDone = vi.fn();
-    const secondDone = vi.fn();
-    withViewTransition("theme", vi.fn(), firstDone);
-    withViewTransition("theme", vi.fn(), secondDone);
+    withViewTransition("lot", vi.fn());
+    withViewTransition("lot", vi.fn());
     finishers[0]?.();
     await new Promise((resolve) => setTimeout(resolve, 0));
-    expect(root.getAttribute(VIEW_TRANSITION_ATTR)).toBe("theme");
-    expect(firstDone).not.toHaveBeenCalled();
+    expect(root.getAttribute(VIEW_TRANSITION_ATTR)).toBe("lot");
     finishers[1]?.();
-    await vi.waitFor(() => expect(secondDone).toHaveBeenCalledOnce());
-    expect(root.hasAttribute(VIEW_TRANSITION_ATTR)).toBe(false);
+    await vi.waitFor(() => expect(root.hasAttribute(VIEW_TRANSITION_ATTR)).toBe(false));
+  });
+
+  it("leaves the marker alone when a transition of another kind has taken over", async () => {
+    const { finish } = installTransition();
+    withViewTransition("lot", vi.fn());
+    // The theme toggle marks its own transition on the same root.
+    root.setAttribute(VIEW_TRANSITION_ATTR, "theme");
+    finish();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(root.getAttribute(VIEW_TRANSITION_ATTR)).toBe("theme");
   });
 
   it("styles a second transition of the same kind started after the first ended", async () => {
-    const { start, finish } = installTransition();
+    const { finish } = installTransition();
     withViewTransition("lot", vi.fn());
     finish();
     await vi.waitFor(() => expect(root.hasAttribute(VIEW_TRANSITION_ATTR)).toBe(false));
-    installTransition();
+    const { start } = installTransition();
     withViewTransition("lot", vi.fn());
     expect(start).toHaveBeenCalledOnce();
     expect(root.getAttribute(VIEW_TRANSITION_ATTR)).toBe("lot");
   });
 
-  it("finishes when the transition is aborted", async () => {
+  it("clears the marker when the transition is aborted", async () => {
     (document as Doc).startViewTransition = vi.fn((update: () => void) => {
       update();
       return { finished: Promise.reject(new Error("aborted")) };
     });
-    const onFinished = vi.fn();
-    withViewTransition("admin", vi.fn(), onFinished);
-    await vi.waitFor(() => expect(onFinished).toHaveBeenCalledOnce());
-    expect(root.hasAttribute(VIEW_TRANSITION_ATTR)).toBe(false);
+    const update = vi.fn();
+    withViewTransition("admin", update);
+    expect(update).toHaveBeenCalledOnce();
+    await vi.waitFor(() => expect(root.hasAttribute(VIEW_TRANSITION_ATTR)).toBe(false));
   });
 
-  it("updates and finishes when the browser has no support", () => {
+  it("updates without a marker when the browser has no support", () => {
     const update = vi.fn();
-    const onFinished = vi.fn();
-    withViewTransition("theme", update, onFinished);
+    withViewTransition("lot", update);
     expect(update).toHaveBeenCalledOnce();
-    expect(onFinished).toHaveBeenCalledOnce();
+    expect(root.hasAttribute(VIEW_TRANSITION_ATTR)).toBe(false);
   });
 });
 
@@ -164,15 +187,5 @@ describe("view transition CSS", () => {
   it("keeps the transition layer from taking clicks", () => {
     const layer = rules.find((r) => selectors(r).includes("::view-transition"));
     expect(layer && decl(layer, "pointer-events")).toBe("none");
-  });
-
-  it("cancels the theme wipe under reduced motion with a selector that outranks it", () => {
-    const reduce = rules.filter(
-      (r) =>
-        decl(r, "animation") === "none" &&
-        selectors(r).some((s) => s.includes("[data-view-transition]::view-transition-new(*)")),
-    );
-    // One in the media query, one for the in-app switch; both qualified by the attribute.
-    expect(reduce.length).toBeGreaterThanOrEqual(2);
   });
 });
