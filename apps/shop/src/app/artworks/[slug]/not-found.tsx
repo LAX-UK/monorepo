@@ -1,12 +1,12 @@
-import { ArtworkDetailState } from "@/components/artwork/artwork-detail-state";
+import { ArtworkUnlistedState } from "@/components/artwork/artwork-unlisted-state";
+import { fetchPublicArtworks } from "@/lib/shop-api.server";
 
-export default function ArtworkNotFound() {
-  return (
-    <ArtworkDetailState
-      motif="ticket"
-      eyebrow="Not found"
-      title="Artwork not found"
-      description="This work may have moved or is no longer shown in the public catalogue."
-    />
+const OTHER_EDITIONS = 4;
+
+/** Still a 404; the page offers the newest editions instead of a dead end. */
+export default async function ArtworkNotFound() {
+  const list = await fetchPublicArtworks({ limit: OTHER_EDITIONS, sort: "newest" }).catch(
+    () => null,
   );
+  return <ArtworkUnlistedState editions={list?.items ?? []} />;
 }
