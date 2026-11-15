@@ -356,19 +356,22 @@ describe.skipIf(!HAS_DB)(
 
     it("the history reader resumes a backfill window after the cursor, one event at a time", async () => {
       const w = window();
+      // The window is a random month, and other cases (and files) leave `order_paid` events in
+      // theirs, so this case reads an event type of its own: nothing else can share its window.
+      const eventType = `test.history_reader_cursor.${randomUUID()}`;
       const ids: number[] = [];
       for (const day of [3, 4]) {
         const at = w.paidAt(day).toISOString();
         const row = await owner.execute<{ id: string }>(sql`
           insert into domain_events (aggregate_type, aggregate_id, event_type, payload, schema_version, producer, occurred_at)
-          values ('shop_order', ${randomUUID()}, 'shop.accounting.order_paid', '{}'::jsonb, 1, 'shop-api', ${at}::timestamptz)
+          values ('shop_order', ${randomUUID()}, ${eventType}, '{}'::jsonb, 1, 'shop-api', ${at}::timestamptz)
           returning id`);
         ids.push(Number(row.rows[0]?.id));
       }
       const reader = new DrizzleBooksHistoryReader(worker);
       const page = (afterId: number | null) =>
         reader.eventsInWindow({
-          eventTypes: ["shop.accounting.order_paid"],
+          eventTypes: [eventType],
           from: w.since,
           to: w.before,
           afterId,
