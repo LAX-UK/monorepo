@@ -1,3 +1,4 @@
+import { canManagePurchaseDocuments } from "@/lib/organisation-team/role-capability-checks";
 import "server-only";
 import type { AccountScope } from "@/lib/account-scope/account-scope";
 import { paymentRoleFor } from "@/lib/buying/account-buying-figures";
@@ -100,7 +101,7 @@ export async function loadPurchaseSources(): Promise<PurchaseSources | null> {
       ? {
           id: organisation.id,
           name: organisation.name,
-          canManage: organisation.actor.role === "owner" || organisation.actor.role === "admin",
+          canManage: canManagePurchaseDocuments(organisation.actor.role),
         }
       : null,
     // Invoice and delivery state degrade to what the payment says when they cannot be read.

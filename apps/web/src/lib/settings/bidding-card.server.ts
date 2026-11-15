@@ -1,3 +1,4 @@
+import { countsAsBiddingManager } from "@/lib/organisation-team/role-capability-checks";
 import "server-only";
 
 import { getServerDataContainer } from "@/lib/data/container.server";
@@ -57,7 +58,7 @@ export async function loadBiddingOrganisation(
   ]);
   let biddersCount: number | null = null;
   if (members?.ok) {
-    const managers = members.data.filter((m) => m.role === "owner" || m.role === "admin").length;
+    const managers = members.data.filter((m) => countsAsBiddingManager(m.role)).length;
     const agents = overview
       ? new Set(
           whoCanBidView({ overview, limits, now: new Date() }).rows.map((r) => r.agent.userId),
