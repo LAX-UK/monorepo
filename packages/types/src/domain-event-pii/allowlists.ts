@@ -230,12 +230,8 @@ export const EXCEPTION_PATHS: Record<string, Set<string>> = {
   "payment_group.settled": new Set(["paymentIds", "deliveryQuoteIds"]),
   /** Why the group's checkout ended (cancelled, expired, failed); operational codes only. */
   "payment_group.released": new Set(["reason"]),
-  /** A staff refund of a combined payment's courier charge: Stripe's status and the staff reason. */
-  "payment_group.delivery_refund_requested": new Set([
-    "stripeRefundId",
-    "refundStatus",
-    "staffReason",
-  ]),
+  /** A staff request to refund a combined payment's courier charge, with the staff reason. */
+  "payment_group.delivery_refund_requested": new Set(["staffReason"]),
   /** The repair took failed refunds back from a courier quote's or the unattributed figure. */
   "payment_group.refund_reversed": new Set(["via"]),
   /** Why money received for a group was not applied (an operational code). */

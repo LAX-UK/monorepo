@@ -12,6 +12,7 @@ import {
   payment,
   paymentGroup,
   paymentGroupDelivery,
+  paymentGroupDeliveryRefund,
   paymentRefund,
   payout,
   payoutLine,
@@ -25,6 +26,7 @@ import {
   DrizzleBidInvoiceRepository,
   DrizzleDisputeCaseRepository,
   DrizzleDisputePaymentReader,
+  DrizzlePaymentGroupDeliveryRefundRepository,
   DrizzlePaymentGroupRepository,
   DrizzlePaymentRefundRepository,
   DrizzlePaymentRepository,
@@ -1261,8 +1263,18 @@ describe.skipIf(!HAS_DB)("pay several: one payment for several invoices (integra
       disputes,
       { settlement, chargeEvents: deliveryChargeEvents, groups, payments, gateway },
     );
+    /** What Stripe holds for the courier refunds made here: id, amount and the request named. */
+    let courierRefunds: { id: string; amountPence: number; deliveryRefundId: string | null }[] = [];
+    /** Lets a test hold Stripe's answer back, so two requests are in flight at once. */
+    let stripeAnswers: Promise<void> = Promise.resolve();
     const createRefund = vi.fn(
-      async (input: { amount?: number; deliveryQuoteId?: string; paymentId?: string }) => {
+      async (input: {
+        amount?: number;
+        deliveryQuoteId?: string;
+        deliveryRefundId?: string;
+        paymentId?: string;
+      }) => {
+        await stripeAnswers;
         const id = refundId();
         // Stripe now lists the refund on the charge, with the metadata the gateway set.
         chargeRefunds = [
@@ -1273,6 +1285,10 @@ describe.skipIf(!HAS_DB)("pay several: one payment for several invoices (integra
             amountPence: input.amount ?? 0,
           },
         ];
+        courierRefunds = [
+          ...courierRefunds,
+          { id, amountPence: input.amount ?? 0, deliveryRefundId: input.deliveryRefundId ?? null },
+        ];
         return {
           kind: "created" as const,
           refundId: id,
@@ -1281,25 +1297,46 @@ describe.skipIf(!HAS_DB)("pay several: one payment for several invoices (integra
         };
       },
     );
+    /** Lets a test hold every request at Stripe's refund list until all of them have read it. */
+    let listed: () => Promise<void> = async () => {};
+    const deliveryRefundRequests = new DrizzlePaymentGroupDeliveryRefundRepository();
     const deliveryRefunds = new PaymentGroupDeliveryRefundService({
       transactionRunner: runner,
       groups,
+      requests: deliveryRefundRequests,
       stripe: { isConfigured: () => true, createRefund },
       chargeRefunds: {
-        listChargeRefunds: async (chargeId: string) =>
-          chargeRefunds.map((r, i) => ({
+        listChargeRefunds: async (chargeId: string) => {
+          const snapshot = chargeRefunds.map((r, i) => ({
             id: `re_listed_${i}`,
             chargeId,
             status: "succeeded",
             paymentId: r.paymentId,
             deliveryQuoteId: r.deliveryQuoteId ?? null,
             amountPence: r.amountPence,
-          })),
+          }));
+          await listed();
+          return snapshot;
+        },
       },
       events: realEvents,
     });
 
     const clearDelivery = async () => {
+      courierRefunds = [];
+      stripeAnswers = Promise.resolve();
+      listed = async () => {};
+      const quoteIds = (
+        await db
+          .select({ id: deliveryQuote.id })
+          .from(deliveryQuote)
+          .where(inArray(deliveryQuote.lotId, lotIds))
+      ).map((q) => q.id);
+      if (quoteIds.length) {
+        await db
+          .delete(paymentGroupDeliveryRefund)
+          .where(inArray(paymentGroupDeliveryRefund.deliveryQuoteId, quoteIds));
+      }
       await db.delete(paymentGroupDelivery).where(inArray(paymentGroupDelivery.lotId, lotIds));
       await db.delete(deliveryQuote).where(inArray(deliveryQuote.lotId, lotIds));
     };
@@ -1434,6 +1471,130 @@ describe.skipIf(!HAS_DB)("pay several: one payment for several invoices (integra
       });
       expect(again.isErr()).toBe(true);
       expect(createRefund).not.toHaveBeenCalled();
+    });
+
+    it("two staff refunds of different amounts at the same time never refund more than the courier charge", async () => {
+      const { groupId, quoteId } = await paidWithCourier();
+      // Both requests read Stripe's (empty) refund list before either reserves anything, and
+      // Stripe answers neither until both have been decided: the worst interleaving.
+      let arrived = 0;
+      let allListed: () => void = () => {};
+      const bothListed = new Promise<void>((resolve) => {
+        allListed = resolve;
+      });
+      listed = async () => {
+        arrived += 1;
+        if (arrived === 2) allListed();
+        await bothListed;
+      };
+      let answer: () => void = () => {};
+      stripeAnswers = new Promise<void>((resolve) => {
+        answer = resolve;
+      });
+      createRefund.mockClear();
+
+      const ask = (actorUserId: string, amountPence?: number) =>
+        deliveryRefunds.refundDelivery({
+          actorUserId,
+          role: "staff",
+          staffRoles: ["administrator"],
+          paymentGroupId: groupId,
+          deliveryQuoteId: quoteId,
+          reason: "Courier could not collect; refunded by finance.",
+          ...(amountPence !== undefined ? { amountPence } : {}),
+        });
+      const results = Promise.all([ask(payerId), ask(payerId, 5_000)]);
+      // Let both requests reach the lock (or Stripe) before Stripe answers.
+      await vi.waitFor(async () => {
+        const rows = await db
+          .select({ id: paymentGroupDeliveryRefund.id })
+          .from(paymentGroupDeliveryRefund)
+          .where(eq(paymentGroupDeliveryRefund.deliveryQuoteId, quoteId));
+        expect(rows.length).toBeGreaterThan(0);
+      });
+      await new Promise((resolve) => setTimeout(resolve, 200));
+      answer();
+      const [rest, part] = await results;
+
+      // Stripe was asked for no more than the courier charge between the two.
+      const asked = createRefund.mock.calls.reduce((sum, [call]) => sum + (call.amount ?? 0), 0);
+      expect(asked).toBeLessThanOrEqual(18_000);
+      expect(courierRefunds.reduce((sum, r) => sum + r.amountPence, 0)).toBeLessThanOrEqual(18_000);
+      // One of them went through; the other went through only if it fitted in what was left.
+      expect([rest.isOk(), part.isOk()]).toContain(true);
+      const requests = await db
+        .select({
+          amountPence: paymentGroupDeliveryRefund.amountPence,
+          status: paymentGroupDeliveryRefund.status,
+          staffReason: paymentGroupDeliveryRefund.staffReason,
+          stripeRefundId: paymentGroupDeliveryRefund.stripeRefundId,
+        })
+        .from(paymentGroupDeliveryRefund)
+        .where(eq(paymentGroupDeliveryRefund.deliveryQuoteId, quoteId));
+      expect(requests.reduce((sum, r) => sum + r.amountPence, 0)).toBeLessThanOrEqual(18_000);
+      for (const r of requests) {
+        expect(r.status).toBe("succeeded");
+        expect(r.staffReason).toBe("Courier could not collect; refunded by finance.");
+        expect(courierRefunds.map((c) => c.id)).toContain(r.stripeRefundId);
+      }
+      // Each Stripe refund names its own request, so each has its own idempotency key.
+      expect(new Set(courierRefunds.map((c) => c.deliveryRefundId)).size).toBe(
+        courierRefunds.length,
+      );
+    });
+
+    it("a refund Stripe fails frees its amount, and the reason is kept; a new request goes through", async () => {
+      const { groupId, quoteId } = await paidWithCourier();
+      createRefund.mockImplementationOnce(async (input) => ({
+        kind: "created" as const,
+        refundId: refundId(),
+        status: "failed",
+        amountPence: input.amount ?? 0,
+      }));
+      const ask = () =>
+        deliveryRefunds.refundDelivery({
+          actorUserId: payerId,
+          role: "staff",
+          staffRoles: ["administrator"],
+          paymentGroupId: groupId,
+          deliveryQuoteId: quoteId,
+          reason: "Lot damaged; courier charge returned.",
+        });
+      const failed = await ask();
+      expect(failed.isErr()).toBe(true);
+      expect(failed._unsafeUnwrapErr().message).toContain("you can send the refund again");
+      const retried = await ask();
+      expect(retried.isOk()).toBe(true);
+
+      const requests = await db
+        .select({
+          id: paymentGroupDeliveryRefund.id,
+          status: paymentGroupDeliveryRefund.status,
+          amountPence: paymentGroupDeliveryRefund.amountPence,
+        })
+        .from(paymentGroupDeliveryRefund)
+        .where(eq(paymentGroupDeliveryRefund.deliveryQuoteId, quoteId))
+        .orderBy(paymentGroupDeliveryRefund.createdAt);
+      expect(requests.map((r) => [r.status, r.amountPence])).toEqual([
+        ["failed", 18_000],
+        ["succeeded", 18_000],
+      ]);
+      const calls = createRefund.mock.calls.slice(-2).map(([call]) => call.deliveryRefundId);
+      expect(calls).toEqual(requests.map((r) => r.id));
+      // Both requests are in the audit log with the staff reason, the failed one included.
+      const audit = await db
+        .select({ payload: domainEvent.payload })
+        .from(domainEvent)
+        .where(
+          and(
+            eq(domainEvent.aggregateId, groupId),
+            eq(domainEvent.eventType, DELIVERY_REFUND_REQUESTED_EVENT),
+          ),
+        );
+      expect(audit).toHaveLength(2);
+      for (const a of audit) {
+        expect(a.payload).toMatchObject({ staffReason: "Lot damaged; courier charge returned." });
+      }
     });
 
     it("an invoice refund opens one finance task per increase, and the seller moves by the invoice only", async () => {

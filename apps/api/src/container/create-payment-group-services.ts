@@ -10,6 +10,7 @@ import type {
 } from "@auction/persistence/interfaces";
 import {
   DrizzleBidInvoiceRepository,
+  DrizzlePaymentGroupDeliveryRefundRepository,
   DrizzlePaymentGroupRepository,
 } from "@auction/persistence/repositories";
 import type { Env } from "../env.js";
@@ -173,6 +174,7 @@ export function createPaymentGroupServices(
   const deliveryRefunds = new PaymentGroupDeliveryRefundService({
     transactionRunner: input.transactionRunner,
     groups,
+    requests: new DrizzlePaymentGroupDeliveryRefundRepository(),
     stripe: input.stripePayments,
     chargeRefunds: input.chargeRefunds ?? new StripeChargeRefunds(input.stripeClientFactory),
     events: input.events,
