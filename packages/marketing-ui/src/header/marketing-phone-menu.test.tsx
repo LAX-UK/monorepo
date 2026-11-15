@@ -38,9 +38,10 @@ function Harness({
         {...(withShortcuts
           ? {
               shortcuts: [
-                { label: "Basket", href: "/basket", count: 3 },
+                { label: "Basket", href: "/basket", count: 3, countLabel: "items" },
                 { label: "Orders", href: "/orders" },
               ],
+              shortcutsLabel: "Quick links",
             }
           : {})}
         themeSlot={<button type="button">Theme</button>}
@@ -125,15 +126,17 @@ describe("MarketingPhoneMenu", () => {
 
   it("lists shortcuts with a basket count after the main navigation", () => {
     render(<Harness withShortcuts />);
-    const nav = screen.getByRole("navigation", { name: "Shortcuts" });
-    const basket = within(nav).getByRole("link", { name: /Basket/ });
+    const nav = screen.getByRole("navigation", { name: "Quick links" });
+    const basket = within(nav).getByRole("link", { name: "Basket 3 items" });
     expect(basket.getAttribute("href")).toBe("/basket");
     expect(basket.textContent).toContain("3");
+    expect(nav.textContent).not.toContain("in basket");
     expect(within(nav).getByRole("link", { name: "Orders" }).getAttribute("href")).toBe("/orders");
   });
 
   it("draws no shortcuts block when none are given", () => {
     render(<Harness />);
+    expect(screen.queryByRole("navigation", { name: "Quick links" })).toBeNull();
     expect(screen.queryByRole("navigation", { name: "Shortcuts" })).toBeNull();
   });
 });

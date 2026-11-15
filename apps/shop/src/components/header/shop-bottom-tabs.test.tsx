@@ -146,8 +146,8 @@ describe("ShopBottomBar", () => {
 describe("buildShopPhoneShortcuts", () => {
   it("lists Basket with its count, then Orders", () => {
     expect(buildShopPhoneShortcuts(3)).toEqual([
-      { label: "Basket", href: "/basket", count: 3 },
-      { label: "Orders", href: "/orders" },
+      { label: "Basket", href: "/basket", count: 3, countLabel: "items" },
+      { label: "Orders", href: "/account/orders" },
     ]);
   });
 

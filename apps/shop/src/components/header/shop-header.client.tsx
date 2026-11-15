@@ -9,6 +9,7 @@ import { ShopHeaderSearch } from "@/components/header/shop-header-search.client"
 import { shopMegaMenuSectionActive } from "@/components/header/shop-mega-menu-active";
 import { ShopMegaMenu } from "@/components/header/shop-mega-menu.client";
 import { ShopThemeToggle } from "@/components/header/shop-theme-toggle";
+import { SHOP_PHONE_MENU_COPY } from "@/content/header-copy";
 import { shopStorefrontLoginHref } from "@/lib/shop-viewer-state";
 import { FOCUS_RING, MARKETING_PAGE_GUTTER_X } from "@auction/branding";
 import type { AccountChromeState, LaxFamilyLinkVm } from "@auction/lax-ecosystem";
@@ -36,8 +37,13 @@ import { useEffect, useRef, useState } from "react";
 export function buildShopPhoneShortcuts(basketCount: number) {
   const count = Number.isFinite(basketCount) ? Math.max(0, Math.floor(basketCount)) : 0;
   return [
-    { label: "Basket", href: "/basket", count },
-    { label: "Orders", href: "/orders" },
+    {
+      label: SHOP_PHONE_MENU_COPY.basket,
+      href: "/basket",
+      count,
+      countLabel: SHOP_PHONE_MENU_COPY.basketCountLabel,
+    },
+    { label: SHOP_PHONE_MENU_COPY.orders, href: "/account/orders" },
   ];
 }
 
@@ -207,6 +213,7 @@ export function ShopHeaderClient({
               isLinkCurrent={(href) => pathname === href || pathname.startsWith(`${href}/`)}
               helpLinks={SHOP_HELP_LINKS}
               shortcuts={buildShopPhoneShortcuts(basketCount)}
+              shortcutsLabel={SHOP_PHONE_MENU_COPY.shortcutsLabel}
               returnFocusRef={menuButtonRef}
               themeSlot={
                 <>
