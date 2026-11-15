@@ -45,7 +45,7 @@ describe("sign-in Terms statement under Google and Apple", () => {
     const signUp = buildHostedSignUpHtml(
       hostedAuthViewFromSearch("client_id=lax-shop-web", capabilities),
     );
-    expect(signUp).toContain('<p class="auth-fineprint">By creating an account');
+    expect(signUp).toContain('<p class="auth-fineprint">By creating a LAX Account');
   });
 
   it("is not shown when there are no Google or Apple buttons", () => {

@@ -1,5 +1,6 @@
 import { contextLine, oneAccountSection } from "../chrome.js";
 import { HOSTED_COPY } from "../copy.js";
+import { escapeHostedHtml } from "../escape.js";
 import {
   buildHostedAuthHtml,
   continuationAnchor,
@@ -33,7 +34,7 @@ function phoneAndSignUp(view: HostedAuthView): string {
   if (view.flow.audience === "staff") {
     return `<p class="links-secondary staff-access-note">Access is limited to LAX staff accounts. Ask a Shop administrator if you need access.</p>`;
   }
-  const signUp = `<p class="links-secondary">Don't have an account? ${continuationAnchor("Sign up", "/sign-up", view.flow)}</p>`;
+  const signUp = `<p class="links-secondary">${escapeHostedHtml(HOSTED_COPY.accountLinks.noAccount)} ${continuationAnchor("Sign up", "/sign-up", view.flow)}</p>`;
   return `<div class="links links--stacked" data-login-chrome="footer">${signUp}</div>
     ${oneAccountSection(`?v=${HOSTED_AUTH_ASSET_VERSION}`)}`;
 }

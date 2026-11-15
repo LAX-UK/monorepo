@@ -23,6 +23,8 @@ import { isSafeHostedReturnPath } from "./safe-return-url.js";
 /** The visible text of rendered markup, for copy split across elements. */
 const textOf = (html: string) => html.replace(/<[^>]+>/g, "");
 
+const bidAuthorize =
+  "response_type=code&client_id=lax-bid-web&redirect_uri=http%3A%2F%2Flocalhost%3A3000%2Fapi%2Fauth%2Fcallback%2Flax-bid-web&state=s&code_challenge=c&code_challenge_method=S256";
 const shopSearch =
   "response_type=code&client_id=lax-shop-web&redirect_uri=http://localhost:3010/auth/callback&scope=openid&state=abc&nonce=def&code_challenge=challenge&code_challenge_method=S256";
 
@@ -470,7 +472,7 @@ describe("sign-up agreement and links", () => {
   ])("links the Terms and Privacy notice of the company behind %s", (search, terms, privacy) => {
     const html = buildHostedSignUpHtml(hostedAuthViewFromSearch(search, shopCapabilities));
     expect(textOf(html)).toContain(
-      "By creating an account you agree to the Terms and Privacy notice.",
+      "By creating a LAX Account you agree to the Terms and Privacy notice.",
     );
     expect(html).toContain(`<a class="text-link" href="${terms}">Terms</a>`);
     expect(html).toContain(`<a class="text-link" href="${privacy}">Privacy notice</a>`);
@@ -487,15 +489,34 @@ describe("sign-up agreement and links", () => {
 
   it("words selling as sending work to LAX Bid specialists", () => {
     const sell = buildHostedSignUpHtml(
-      hostedAuthViewFromSearch("client_id=lax-bid-web&hosted_context=sell", shopCapabilities),
+      hostedAuthViewFromSearch(`${bidAuthorize}&hosted_context=sell`, shopCapabilities),
     );
     expect(textOf(sell)).toContain("to send your work to LAX Bid specialists");
+    const bid = buildHostedSignUpHtml(hostedAuthViewFromSearch(bidAuthorize, shopCapabilities));
+    expect(textOf(bid)).toContain("to bid at LAX Bid");
+    expect(textOf(bid)).not.toContain("send your work");
+  });
+
+  it.each([
+    [
+      "an unregistered return address",
+      "client_id=lax-bid-web&hosted_context=sell&redirect_uri=https://evil.test/cb",
+    ],
+    ["no authorize request", "client_id=lax-bid-web&hosted_context=sell"],
+    ["another product", `${shopSearch}&hosted_context=sell`],
+    ["free text", `${bidAuthorize}&hosted_context=send+it+to+me`],
+  ])("keeps the sell line off for %s", (_name, search) => {
+    for (const build of [buildHostedSignUpHtml, buildHostedLoginHtml]) {
+      expect(textOf(build(hostedAuthViewFromSearch(search, shopCapabilities)))).not.toContain(
+        "send your work",
+      );
+    }
   });
 
   it("offers Sign in with the verb as the link, mirroring sign-in's Sign up", () => {
     const html = buildHostedSignUpHtml(hostedAuthViewFromSearch(shopSearch, shopCapabilities));
     expect(html).toContain(
-      'Already have an account? <a class="text-link" href="/login?client_id=lax-shop-web">Sign in</a>',
+      'Already have a LAX Account? <a class="text-link" href="/login?client_id=lax-shop-web">Sign in</a>',
     );
   });
 });
@@ -549,7 +570,7 @@ describe("Shop Admin hosted login", () => {
     expect(html).not.toContain("Continue with Google");
     expect(html).not.toContain("Email me a sign-in link instead");
     expect(html).not.toContain("Sign in with phone number");
-    expect(html).not.toContain("Don't have an account?");
+    expect(html).not.toContain("Don't have a LAX Account?");
     expect(html).toContain("<title>Sign in to LAX Account</title>");
   });
 });
