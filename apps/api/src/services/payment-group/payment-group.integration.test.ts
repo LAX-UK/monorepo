@@ -1628,7 +1628,7 @@ describe.skipIf(!HAS_DB)("pay several: one payment for several invoices (integra
       ];
       createRefund.mockClear();
 
-      const ask = (amountPence?: number) =>
+      const ask = (amountPence: number) =>
         deliveryRefunds.refundDelivery({
           actorUserId: payerId,
           role: "staff",

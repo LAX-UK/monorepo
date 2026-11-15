@@ -4,6 +4,7 @@ import { collectionPlace } from "@auction/db/schema";
 import { type CollectionWaitFacts, awaitsCollection } from "@auction/domain";
 import { inArray, sql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { collectByGroups } from "../services/collect-by-notices.js";
 import { DrizzleCollectByReader } from "./drizzle-collect-by.reader.js";
 
 const HAS_DB = Boolean(process.env.DATABASE_URL);
@@ -28,6 +29,9 @@ describe.skipIf(!HAS_DB)("collect-by reader (integration)", () => {
   // ago) to 3 Mar (a week less): the lot cleared 1 Mar is in range, one cleared 1 Jan is not.
   const window = { today: "2031-03-10", defaultFreeStorageDays: 30, reminderLeadDays: 7 };
   const due = () => reader.storedLotsDue(window);
+  /** The lots a reminder is due for in the window: the reader's candidates, kept by the domain rule. */
+  const remindedToday = async (when = window) =>
+    collectByGroups(await reader.storedLotsDue(when), when.today).flatMap((group) => group.lots);
 
   const extraSales: string[] = [];
   const bookings: string[] = [];
@@ -92,6 +96,13 @@ describe.skipIf(!HAS_DB)("collect-by reader (integration)", () => {
     await db.execute(sql`
       insert into collection_place (venue_id, free_storage_days, online_booking_enabled)
       values (${venueId}, 14, true), (${closedVenueId}, 14, false)`);
+    await db.execute(
+      sql`update venue set contact_phone = '+44 20 7946 0321' where id = ${venueId}`,
+    );
+    // Monday to Friday, 10:00 to 19:00.
+    await db.execute(sql`
+      insert into collection_weekly_hours (venue_id, weekday, opens_local, closes_local)
+      select ${venueId}, d, '10:00', '19:00' from generate_series(1, 5) as d`);
   });
 
   afterAll(async () => {
@@ -106,6 +117,8 @@ describe.skipIf(!HAS_DB)("collect-by reader (integration)", () => {
       sql`delete from sale where id in (${saleId}, ${otherSaleId}, ${closedSaleId})`,
     );
     for (const id of extraSales) await db.execute(sql`delete from sale where id = ${id}`);
+    await db.execute(sql`delete from collection_exception where venue_id = ${venueId}`);
+    await db.execute(sql`delete from collection_weekly_hours where venue_id = ${venueId}`);
     await db
       .delete(collectionPlace)
       .where(inArray(collectionPlace.venueId, [venueId, closedVenueId]));
@@ -125,8 +138,34 @@ describe.skipIf(!HAS_DB)("collect-by reader (integration)", () => {
       winnerId: buyer,
       clearedAt,
       freeStorageDays: 14,
-      place: { name: "Collect-by gallery", address: "156 New Cavendish Street, London, W1W 6YW" },
+      place: {
+        name: "Collect-by gallery",
+        address: "156 New Cavendish Street, London, W1W 6YW",
+        phone: "+44 20 7946 0321",
+      },
     });
+  });
+
+  it("gives each lot its place's calendar, so a deadline on a closed day is the next open day", async () => {
+    // Cleared Sat 1 Mar 2031 + 14 days is Sat 15 Mar: the place is shut, so the deadline is Mon 17 Mar.
+    const lotId = await storedLot({ cleared: new Date("2031-03-01T10:00:00Z") });
+    const day = { today: "2031-03-17", defaultFreeStorageDays: 30, reminderLeadDays: 7 };
+    const groups = collectByGroups(await reader.storedLotsDue(day), day.today);
+    const group = groups.find((g) => g.lots.some((lot) => lot.lotId === lotId));
+    expect(group).toMatchObject({ kind: "day", collectBy: "2031-03-17" });
+    // The Saturday itself is no longer the day: nothing is due then.
+    const saturday = { ...day, today: "2031-03-15" };
+    const early = collectByGroups(await reader.storedLotsDue(saturday), saturday.today);
+    expect(early.find((g) => g.lots.some((lot) => lot.lotId === lotId))?.kind).toBe("lead");
+  });
+
+  it("reads no phone for a venue that has none", async () => {
+    await db.execute(sql`update venue set contact_phone = '  ' where id = ${venueId}`);
+    const found = (await due()).find((row) => row.venueId === venueId);
+    await db.execute(
+      sql`update venue set contact_phone = '+44 20 7946 0321' where id = ${venueId}`,
+    );
+    expect(found?.place.phone).toBeNull();
   });
 
   it("leaves out what is handed over, cancelled, on its way, going by courier, or not paid yet", async () => {
@@ -147,7 +186,7 @@ describe.skipIf(!HAS_DB)("collect-by reader (integration)", () => {
     const elsewhere = await storedLot({ sale: otherSaleId });
     const noOnlineBooking = await storedLot({ sale: closedSaleId });
     const deleted = await storedLot({ deleted: true });
-    const ids = (await due()).map((row) => row.lotId);
+    const ids = (await remindedToday()).map((row) => row.lotId);
     expect(ids).not.toContain(old);
     expect(ids).not.toContain(undated);
     expect(ids).not.toContain(elsewhere);
@@ -158,7 +197,7 @@ describe.skipIf(!HAS_DB)("collect-by reader (integration)", () => {
   it("leaves out a lot that cleared too late for a reminder yet, or took longer than its free period", async () => {
     const tooRecent = await storedLot({ cleared: new Date("2031-03-08T10:00:00Z") });
     const expired = await storedLot({ cleared: new Date("2031-02-20T10:00:00Z") });
-    const ids = (await due()).map((row) => row.lotId);
+    const ids = (await remindedToday()).map((row) => row.lotId);
     expect(ids).not.toContain(tooRecent);
     expect(ids).not.toContain(expired);
   });

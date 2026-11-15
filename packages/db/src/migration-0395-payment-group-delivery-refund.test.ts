@@ -5,19 +5,20 @@ import { describe, expect, it } from "vitest";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const read = (name: string) => readFileSync(join(__dirname, "../drizzle", name), "utf8");
-const TAG = "0393_payment_group_delivery_refund";
+const TAG = "0395_payment_group_delivery_refund";
 const migration = read(`${TAG}.sql`);
-const rollback = read("0393_rollback.sql");
+const rollback = read("0395_rollback.sql");
 const journal = JSON.parse(read("meta/_journal.json")) as {
   entries: { idx: number; tag: string; when: number }[];
 };
 
-describe("migration 0393 courier refund requests", () => {
-  it("is journalled right after 0392, in a journal that stays ordered", () => {
-    const entry = journal.entries.find((e) => e.tag === TAG);
-    const previous = journal.entries.find((e) => e.tag === "0392_collection_notification_types");
-    expect(entry?.idx).toBe((previous?.idx ?? Number.NaN) + 1);
-    expect(entry?.when).toBeGreaterThan(previous?.when ?? Number.POSITIVE_INFINITY);
+describe("migration 0395 courier refund requests", () => {
+  it("is journalled after the migration before it, in a journal that stays ordered", () => {
+    const at = journal.entries.findIndex((e) => e.tag === TAG);
+    const previous = journal.entries[at - 1];
+    expect(at).toBeGreaterThan(0);
+    expect(journal.entries[at]?.idx).toBeGreaterThan(previous?.idx ?? Number.POSITIVE_INFINITY);
+    expect(journal.entries[at]?.when).toBeGreaterThan(previous?.when ?? Number.POSITIVE_INFINITY);
   });
 
   it("only adds the table, under a lock timeout, with a positive amount and the three statuses", () => {

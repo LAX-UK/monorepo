@@ -1,6 +1,6 @@
 import type { Database } from "@auction/db";
 import { lot, lotFulfilment, sale } from "@auction/db/schema";
-import { and, asc, count, desc, eq, getTableColumns, ilike, inArray, or } from "drizzle-orm";
+import { and, asc, count, desc, eq, getTableColumns, ilike, inArray, or, sql } from "drizzle-orm";
 import type {
   AdminLotFulfilmentBaseFilter,
   AdminLotFulfilmentListFilter,
@@ -81,6 +81,18 @@ export class DrizzleLotFulfilmentRepository implements ILotFulfilmentRepository 
   async insert(input: InsertLotFulfilmentInput) {
     await this.db.insert(lotFulfilment).values({
       lotId: input.lotId,
+      // The terms in force on the London day the lot's sale closed, so a lot paid after the sale
+      // closed is covered too. Null when no terms had started: such lots keep the legacy period.
+      storageTermsId: sql`(
+        select t.id
+        from lot l
+        join sale s on s.id = l.sale_id
+        join collection_storage_terms t on t.venue_id = s.venue_id
+        where l.id = ${input.lotId}
+          and t.cancelled_at is null
+          and t.effective_from <= (s.end_time at time zone 'Europe/London')::date
+        order by t.effective_from desc
+        limit 1)`,
       paymentId: input.paymentId,
       status: input.status,
       ...(input.paymentClearedAt ? { paymentClearedAt: input.paymentClearedAt } : {}),

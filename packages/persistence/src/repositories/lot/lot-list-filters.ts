@@ -115,10 +115,10 @@ const lotNumberOrder = sql`coalesce(${lot.lotNumber}, 999999)`;
 
 /**
  * The price a lot is ordered by: the price the public reads. An ended lot whose result is still
- * open shows its starting price, so it sorts there too; ordering by the real price would place it
- * where the price no one may see puts it.
+ * open, and an open sealed lot, show their starting price, so they sort there too; ordering by the
+ * real price would place them where the price no one may see puts them.
  */
-const shownPriceOrder = sql`case when ${lot.status} = 'ended' and ${lotResultPendingSql()} then ${lot.startingPrice} else ${lot.currentPrice} end`;
+export const shownPriceOrder = sql`case when ${lot.status} = 'active' and ${lot.auctionType} = 'sealed' then ${lot.startingPrice} when ${lot.status} = 'ended' and ${lotResultPendingSql()} then ${lot.startingPrice} else ${lot.currentPrice} end`;
 
 /**
  * The order of a sale's catalogue page. On every sort but lot order a withdrawn (cancelled) lot is

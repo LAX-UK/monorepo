@@ -5,6 +5,7 @@ import {
   ensureStripeConnectAccountAction,
   syncStripeConnectAction,
 } from "@/lib/actions/stripe-connect.actions";
+import { canOnboard } from "@/lib/connect/connect-workspace-flags";
 import type { StripeConnectStatus } from "@/lib/data/http/stripe-connect.server";
 import {
   getConnectGapState,
@@ -13,13 +14,9 @@ import {
   shouldSkipConnect,
 } from "@auction/connect";
 import type { ConnectGapState } from "@auction/connect";
-import type { StripeConnectRequirementError } from "@auction/types";
+import type { LegalEntityMemberRole, StripeConnectRequirementError } from "@auction/types";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
-
-function canOnboard(role: string): boolean {
-  return role === "owner" || role === "admin";
-}
 
 function mergeStatusFromSync(
   prev: StripeConnectStatus | null,
@@ -46,7 +43,7 @@ function mergeStatusFromSync(
 type Input = {
   status: StripeConnectStatus | null;
   legalEntityId?: string | undefined;
-  memberRole: string;
+  memberRole: LegalEntityMemberRole;
   entityStatus: string;
   isLaxManaged: boolean;
   kycApproved: boolean;

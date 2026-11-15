@@ -350,6 +350,11 @@ export class PaymentGroupDeliveryRefundService implements IPaymentGroupDeliveryR
   /**
    * Records Stripe's answer on the request. A failure here is not the caller's: the refund's
    * metadata names the request, so the next request for the quote matches it from Stripe's list.
+   *
+   * This runs outside the payment group's lock on purpose. Stripe has already answered and the
+   * row is only this request's own, so the write cannot let another request refund more: while
+   * the row is pending or unrecorded the amount stays counted as held (the cap errs on the side
+   * of holding it longer), and it is only freed once the outcome says Stripe did not refund it.
    */
   private async recordOutcome(
     id: string,

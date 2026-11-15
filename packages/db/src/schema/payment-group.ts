@@ -123,7 +123,7 @@ export const paymentGroupDelivery = pgTable(
 );
 
 /**
- * A staff refund of a quote's courier charge, one row per request (migration 0393). Written with
+ * A staff refund of a quote's courier charge, one row per request (migration 0395). Written with
  * the staff reason under the group lock before Stripe is asked, so its amount counts against what
  * is left of the courier charge while the request is in flight: two requests at the same time can
  * never refund more than was charged between them. The Stripe refund's idempotency key and

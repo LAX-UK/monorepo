@@ -13,6 +13,7 @@ import {
   API_ACCOUNTING_REQUEUE_COLUMNS,
   API_ACCOUNTING_REQUEUE_TABLES,
   API_ACCOUNTING_SETTING_TABLES,
+  API_COLLECTION_STORAGE_AUDIT_TABLES,
   API_DELIVERY_REFUND_TABLES,
   API_DENY_TABLES,
   API_PAYMENT_REFUND_TABLES,
@@ -466,6 +467,21 @@ describe("migrate-roles invariants", () => {
       expect([...API_DENY_TABLES]).not.toContain(table);
       expect([...API_READ_TABLES]).not.toContain(table);
     }
+  });
+
+  it("lets the worker read storage terms, extensions and waivers, and never the audit", () => {
+    for (const table of [
+      "collection_storage_terms",
+      "collection_storage_extension",
+      "collection_storage_waiver",
+    ]) {
+      expect([...WORKER_READ_TABLES]).toContain(table);
+      expect([...WORKER_FULL_TABLES]).not.toContain(table);
+      expect([...API_DENY_TABLES]).not.toContain(table);
+    }
+    expect([...API_COLLECTION_STORAGE_AUDIT_TABLES]).toEqual(["collection_storage_audit"]);
+    expect([...WORKER_READ_TABLES]).not.toContain("collection_storage_audit");
+    expect([...WORKER_FULL_TABLES]).not.toContain("collection_storage_audit");
   });
 
   it("lets the worker change only the columns erasure needs on a booking and its lots", async () => {

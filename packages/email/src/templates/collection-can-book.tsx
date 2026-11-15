@@ -4,6 +4,7 @@ import { FactCard } from "../components/FactCard.js";
 import { Layout } from "../components/Layout.js";
 import { TextBlock } from "../components/TextBlock.js";
 import type { TemplateVarsByName } from "../types.js";
+import { collectionContactLine } from "./collection-contact.js";
 
 type Vars = TemplateVarsByName["collection-can-book"];
 
@@ -25,6 +26,8 @@ export default function CollectionCanBookEmail({
   address,
   lots,
   bookUrl,
+  contactEmail,
+  contactPhone,
 }: Vars) {
   const one = lots.length === 1;
   return (
@@ -45,6 +48,7 @@ export default function CollectionCanBookEmail({
         ))}
       </ul>
       <Button href={bookUrl}>Book a collection time</Button>
+      <TextBlock>{collectionContactLine(contactEmail, contactPhone)}</TextBlock>
     </Layout>
   );
 }

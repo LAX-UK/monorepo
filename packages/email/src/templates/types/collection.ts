@@ -142,6 +142,10 @@ type CollectionTemplateVars = {
     storagePolicyUrl: string;
     /** Where the buyer asks for a courier quote. */
     quoteUrl: string;
+    /** The place's collections email. */
+    contactEmail: string;
+    /** The place's phone, from its venue details; none when the venue has not set one. */
+    contactPhone?: string | null;
   };
   /**
    * The lots can be booked for collection now: paid, at a place that takes online bookings, and
@@ -158,6 +162,10 @@ type CollectionTemplateVars = {
     lotIds: string[];
     /** The booking page for these lots. */
     bookUrl: string;
+    /** The place's collections email. */
+    contactEmail: string;
+    /** The place's phone, from its venue details; none when the venue has not set one. */
+    contactPhone?: string | null;
   };
 };
 

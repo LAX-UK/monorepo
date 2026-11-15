@@ -1,3 +1,5 @@
+import type { CollectByCalendar } from "@auction/domain";
+
 /** A purchased lot still waiting at a place that is set up for collection. */
 export type StoredLot = {
   lotId: string;
@@ -11,9 +13,18 @@ export type StoredLot = {
   lotNumber: number | null;
   /** When its payment cleared; "please collect by" counts from here. */
   clearedAt: Date;
-  place: { name: string; address: string };
+  place: {
+    name: string;
+    address: string;
+    /** The place's collections email, when it has its own; the gallery's otherwise. */
+    bookingEmail?: string | null;
+    /** The venue's phone from its details; null when none is set. Never a placeholder. */
+    phone?: string | null;
+  };
   /** The place's free storage period in days; null until the storage terms are set. */
   freeStorageDays: number | null;
+  /** The place's opening calendar: a deadline on a closed day moves to the next open one. */
+  calendar?: CollectByCalendar | undefined;
 };
 
 /** The emails about waiting lots that name the lots they cover (in `vars.lotIds`). */

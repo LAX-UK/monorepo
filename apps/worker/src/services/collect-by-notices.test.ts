@@ -1,3 +1,4 @@
+import { createCollectionCalendar } from "@auction/domain";
 import { describe, expect, it } from "vitest";
 import type { StoredLot } from "../interfaces/collect-by.reader.js";
 import {
@@ -92,6 +93,62 @@ describe("which lots are reminded today", () => {
       kind: "day",
       collectBy: "2026-07-09",
     });
+  });
+});
+
+describe("a deadline on a day the place is closed", () => {
+  const weekdays = [1, 2, 3, 4, 5].map((weekday) => ({
+    weekday,
+    opensLocal: "10:00",
+    closesLocal: "19:00",
+  }));
+  const calendar = createCollectionCalendar({
+    hours: weekdays,
+    exceptions: [],
+    rules: { closeOnSaleDays: false },
+  });
+  // Cleared 12 Nov: 30 days on is Saturday 12 Dec, so the deadline is Monday 14 Dec.
+  const cleared = new Date("2026-11-12T10:00:00Z");
+
+  it("is reminded on the next open day, with the same date in the email", () => {
+    const stored = lot({ clearedAt: cleared, calendar });
+    expect(collectByGroups([stored], "2026-12-12")[0]).toMatchObject({
+      kind: "lead",
+      collectBy: "2026-12-14",
+    });
+    const [group] = collectByGroups([stored], "2026-12-14");
+    expect(group).toMatchObject({ kind: "day", collectBy: "2026-12-14" });
+    const [email] = collectByEmailsFor(group as CollectByGroup, [maya], config);
+    expect(email?.vars).toMatchObject({ collectByLabel: "Mon 14 Dec" });
+  });
+
+  it("is not reminded on the closed day itself as the day", () => {
+    expect(collectByGroups([lot({ clearedAt: cleared, calendar })], "2026-12-15")).toEqual([]);
+  });
+});
+
+describe("how the email says to reach the place", () => {
+  const groupWith = (place: StoredLot["place"]) =>
+    collectByGroups([lot({ place })], "2026-12-02")[0] as CollectByGroup;
+
+  it("gives the venue's phone with its collections email", () => {
+    const [email] = collectByEmailsFor(
+      groupWith({ ...PLACE, phone: " +44 20 7946 0321 ", bookingEmail: "collections@lax.example" }),
+      [maya],
+      config,
+    );
+    expect(email?.vars).toMatchObject({
+      contactEmail: "collections@lax.example",
+      contactPhone: "+44 20 7946 0321",
+    });
+  });
+
+  it("gives the email alone when the venue has no phone, never a placeholder", () => {
+    for (const phone of [null, "  "]) {
+      const [email] = collectByEmailsFor(groupWith({ ...PLACE, phone }), [maya], config);
+      expect(email?.vars).toMatchObject({ contactEmail: "info@thelax.art", contactPhone: null });
+      expect(JSON.stringify(email)).not.toContain("800 208");
+    }
   });
 });
 

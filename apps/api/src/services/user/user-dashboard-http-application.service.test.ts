@@ -24,7 +24,7 @@ describe("listAccountBids", () => {
       account: { legalEntityId: ACCOUNT, role: "owner" },
       saleId: "sale-1",
     });
-    expect(listBidsForBuyerAccount).toHaveBeenCalledWith(ACCOUNT, null, "sale-1");
+    expect(listBidsForBuyerAccount).toHaveBeenCalledWith(ACCOUNT, null, "sale-1", undefined);
     expect(res.body).toMatchObject({
       data: [
         { placedBy: { userId: "agent-1", name: "Tom Whitfield" } },
@@ -39,7 +39,7 @@ describe("listAccountBids", () => {
       userId: "agent-1",
       account: { legalEntityId: ACCOUNT, role: "buyer_agent" },
     });
-    expect(listBidsForBuyerAccount).toHaveBeenCalledWith(ACCOUNT, "agent-1", undefined);
+    expect(listBidsForBuyerAccount).toHaveBeenCalledWith(ACCOUNT, "agent-1", undefined, undefined);
     const refused = await service.listAccountBids({
       userId: "fin-1",
       account: { legalEntityId: ACCOUNT, role: "finance" },

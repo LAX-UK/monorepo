@@ -36,7 +36,7 @@ export type DeliveryRefundRequestOutcome = {
 };
 
 /**
- * Staff courier refund requests (migration 0393). The caller holds the payment group's lock
+ * Staff courier refund requests (migration 0395). The caller holds the payment group's lock
  * (`IPaymentGroupRepository.lockInTransaction`) while it reads the requests and writes a new one,
  * so what is left of a courier charge is worked out and reserved in one step.
  */

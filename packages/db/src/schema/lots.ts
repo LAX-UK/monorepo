@@ -64,6 +64,8 @@ export const lot = pgTable(
     dimensions: text("dimensions"),
     images: text("images").array().notNull().default([]),
     /** The photograph shows the work in its frame, so its size is the framed size. */
+    /** Staff mark works with any side over 150 cm, frame or crate included: the large storage band. */
+    storageLarge: boolean("storage_large").notNull().default(false),
     photoIncludesFrame: boolean("photo_includes_frame").notNull().default(false),
     /** Framed size in centimetres, when the work is sold framed. */
     framedWidthCm: numeric("framed_width_cm", { precision: 7, scale: 1 }),

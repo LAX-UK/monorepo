@@ -76,7 +76,10 @@ describe("GET /users/me/account/bids", () => {
     const { get, listBidsForBuyerAccount } = mount(role);
     const res = await get("bids");
     expect(res.status).toBe(200);
-    expect(listBidsForBuyerAccount).toHaveBeenCalledWith(ORG, bidder, undefined);
+    expect(listBidsForBuyerAccount).toHaveBeenCalledWith(ORG, bidder, undefined, {
+      role: "client",
+      staffRoles: undefined,
+    });
   });
 
   it.each(["finance", "consignor", "viewer"] as const)("refuses %s", async (role) => {

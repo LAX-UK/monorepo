@@ -15,8 +15,6 @@ export type CollectionPlaceSettings = CollectionRules & {
   onlineBookingEnabled: boolean;
   /** Days a bought work is stored free; `null` until the storage terms are set. */
   freeStorageDays: number | null;
-  /** Pence per lot per week after the free period; recorded for Finance, never charged automatically. */
-  storageChargePence: number | null;
   bookingEmail: string | null;
   updatedAt: Date;
 };
@@ -42,7 +40,9 @@ export interface ICollectionPlaceRepository {
    * `null` when the lot has no sale or venue, or the place has not been set up. Creates nothing.
    */
   /** The venue's name and address on one line, for the calendar file; `null` if it has none. */
-  findAddress(venueId: string): Promise<{ name: string; address: string } | null>;
+  findAddress(
+    venueId: string,
+  ): Promise<{ name: string; address: string; phone: string | null } | null>;
   findForLot(
     lotId: string,
   ): Promise<{ settings: CollectionPlaceSettings; hours: CollectionWeeklyHours[] } | null>;

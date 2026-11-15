@@ -28,13 +28,18 @@ import {
   createStripeConnectAccountSessionAction,
 } from "@/lib/actions/stripe-connect.actions";
 import { connectGapReadOnlySummary, connectGapStageSummary } from "@/lib/connect/connect-gap-copy";
-import { deriveConnectWorkspaceFlags } from "@/lib/connect/connect-workspace-flags";
+import {
+  canManageConnect,
+  canOnboard,
+  deriveConnectWorkspaceFlags,
+} from "@/lib/connect/connect-workspace-flags";
 import { DASHBOARD_ROUTES } from "@/lib/dashboard/dashboard-copy";
 import type { KycStatusSummaryDto } from "@/lib/data/dto/dashboard-dtos";
 import type { StripeConnectStatus } from "@/lib/data/http/stripe-connect.server";
 import { normalizeKycReturnUrl } from "@/lib/kyc";
 import { dashboardIdentityOnboardingHref } from "@/lib/kyc/identity-onboarding";
 import { isActionableStripeDisabledReason, shouldSkipConnect } from "@auction/connect";
+import type { LegalEntityMemberRole } from "@auction/types";
 import { Alert, AlertDescription } from "@auction/ui/components/alert";
 import { Surface } from "@auction/ui/components/surface";
 import { Button } from "@auction/ui/lax/button";
@@ -45,7 +50,7 @@ type Props = {
   connectEnforced: boolean;
   status: StripeConnectStatus | null;
   legalEntityId?: string;
-  memberRole: string;
+  memberRole: LegalEntityMemberRole;
   entityStatus?: string;
   /** Individual sellers only — gate Connect until Veriff approved. */
   kycApproved?: boolean;
@@ -62,21 +67,13 @@ type Props = {
   syncDegraded?: boolean;
 };
 
-function canManageConnect(role: string): boolean {
-  return role === "owner" || role === "admin" || role === "finance";
-}
-
-function canOnboardConnect(role: string): boolean {
-  return role === "owner" || role === "admin";
-}
-
 function resolveConnectSessionSurface(input: {
   gapStage: string;
-  memberRole: string;
+  memberRole: LegalEntityMemberRole;
   hasStripeAccount: boolean;
 }): StripeConnectSessionSurface {
   if (input.gapStage === "ready") return "management";
-  if (!canOnboardConnect(input.memberRole) && input.hasStripeAccount) return "management";
+  if (!canOnboard(input.memberRole) && input.hasStripeAccount) return "management";
   return "onboarding";
 }
 

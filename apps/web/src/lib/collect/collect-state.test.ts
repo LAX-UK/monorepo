@@ -14,6 +14,7 @@ function availability(overrides: Partial<CollectionAvailability> = {}): Collecti
     venueId: "v",
     onlineBookingEnabled: true,
     bookingEmail: null,
+    contactPhone: null,
     visitMinutes: 30,
     windowDays: 28,
     noticeCutoffLocal: "16:00",

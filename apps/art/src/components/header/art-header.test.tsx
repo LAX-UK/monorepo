@@ -100,6 +100,13 @@ describe("ArtHeaderClient", () => {
     expect(html).toContain(">.ART<");
   });
 
+  it("drops the .ART tag below 400px so the phone header keeps only the mark", () => {
+    const html = render(GUEST);
+    const tag = html.match(/<span[^>]*art-lockup__tag[^>]*>/)?.[0] ?? "";
+    expect(tag).toContain("hidden");
+    expect(tag).toContain("min-[400px]:block");
+  });
+
   it("carries a menu button that only shows below 1024px", () => {
     const html = render(GUEST);
     const button = html.match(/<button[^>]*aria-label="Open menu"[^>]*>/)?.[0] ?? "";

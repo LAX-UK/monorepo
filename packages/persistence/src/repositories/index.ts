@@ -139,6 +139,7 @@ export { DrizzleCollectionDeskReader } from "./drizzle-collection-desk.reader.js
 export { DrizzleCollectionLotFactsReader } from "./drizzle-collection-lot-facts.reader.js";
 export { DrizzleCollectionPlaceRepository } from "./drizzle-collection-place.repository.js";
 export { DrizzleCollectionSettingsRepository } from "./drizzle-collection-settings.repository.js";
+export { DrizzleCollectionStorageRepository } from "./drizzle-collection-storage.repository.js";
 export { DrizzlePayoutRepository } from "./drizzle-payout.repository.js";
 export { DrizzleSaleSellerTermsStore } from "./drizzle-sale-seller-terms.store.js";
 export {
