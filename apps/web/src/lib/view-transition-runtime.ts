@@ -47,10 +47,7 @@ export function withViewTransition(kind: ViewTransitionKind, update: () => void)
   };
   try {
     // `finished` rejects when a duplicate view-transition-name aborts it; the update has run.
-    void doc
-      .startViewTransition(update)
-      .finished.catch(() => undefined)
-      .finally(done);
+    void doc.startViewTransition(update).finished.then(done, done);
   } catch {
     update();
     done();

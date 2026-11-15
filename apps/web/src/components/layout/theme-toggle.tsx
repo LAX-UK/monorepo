@@ -8,7 +8,7 @@ import { type SiteHeaderTone, headerChromeIconClass } from "@/lib/layout/header-
 import { applyThemeDom } from "@/lib/preferences/apply-theme-dom";
 import { cn } from "@auction/ui/lib/utils";
 import { Moon, Sun } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { type MouseEvent, useCallback, useEffect, useState } from "react";
 
 function readDomDark(): boolean {
   return document.documentElement.classList.contains("dark");
@@ -45,7 +45,6 @@ export function ThemeToggle({
 }: ThemeToggleProps) {
   const surface = surfaceProp ?? variant ?? "marketing";
   const [isDark, setIsDark] = useState(false);
-  const buttonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     setIsDark(readDomDark());
@@ -55,7 +54,7 @@ export function ThemeToggle({
     return () => obs.disconnect();
   }, []);
 
-  const toggle = useCallback(() => {
+  const toggle = useCallback((event: MouseEvent<HTMLButtonElement>) => {
     const next = !readDomDark();
     const mode = next ? "dark" : "light";
     const apply = () => {
@@ -73,10 +72,10 @@ export function ThemeToggle({
       return;
     }
 
-    const btn = buttonRef.current;
-    const rect = btn?.getBoundingClientRect();
-    const cx = rect ? rect.left + rect.width / 2 : window.innerWidth - 32;
-    const cy = rect ? rect.top + rect.height / 2 : 32;
+    // The wipe grows from the pressed button's centre (a keyboard press clicks the same button).
+    const rect = event.currentTarget.getBoundingClientRect();
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
     const radius = Math.hypot(
       Math.max(cx, window.innerWidth - cx),
       Math.max(cy, window.innerHeight - cy),
@@ -100,10 +99,7 @@ export function ThemeToggle({
     };
     try {
       // `finished` rejects when the transition is aborted; the theme has been applied by then.
-      void doc
-        .startViewTransition(apply)
-        .finished.catch(() => undefined)
-        .finally(cleanup);
+      void doc.startViewTransition(apply).finished.then(cleanup, cleanup);
     } catch {
       apply();
       cleanup();
@@ -120,7 +116,6 @@ export function ThemeToggle({
   if (surface === "shell") {
     return (
       <ShellChromeIconButton
-        ref={buttonRef}
         label={label}
         onClick={toggle}
         aria-pressed={isDark}
@@ -133,13 +128,7 @@ export function ThemeToggle({
   }
 
   return (
-    <ChromeIconButton
-      ref={buttonRef}
-      label={label}
-      onClick={toggle}
-      aria-pressed={isDark}
-      className={className}
-    >
+    <ChromeIconButton label={label} onClick={toggle} aria-pressed={isDark} className={className}>
       {icon}
     </ChromeIconButton>
   );
