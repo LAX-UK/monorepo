@@ -1,3 +1,4 @@
+import { CHUNK_LOAD_RECOVERY_SNIPPET } from "@/lib/csp/chunk-load-recovery-snippet.client";
 import { THEME_INIT_SNIPPET } from "@/lib/csp/theme-init-snippet";
 import { VIEWER_ZONE_INIT_SNIPPET } from "@/lib/csp/viewer-zone-init-snippet";
 
@@ -5,4 +6,5 @@ import { VIEWER_ZONE_INIT_SNIPPET } from "@/lib/csp/viewer-zone-init-snippet";
 export const INLINE_HEAD_SCRIPTS: readonly string[] = [
   THEME_INIT_SNIPPET,
   VIEWER_ZONE_INIT_SNIPPET,
+  CHUNK_LOAD_RECOVERY_SNIPPET,
 ];

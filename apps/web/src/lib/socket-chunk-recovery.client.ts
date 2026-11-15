@@ -14,7 +14,10 @@
 
 /** Failed fetches in a row before the file is checked: about 5 s with the retry backoff. */
 export const STALE_CHUNK_FAILURES = 3;
-export const STALE_CHUNK_RELOAD_KEY = "lax:live-socket-chunk-reload-at";
+/** Shared by every stale-build reload path (this one and the site-wide inline snippet). */
+export const STALE_CHUNK_RELOAD_KEY = "lax:stale-chunk-reload-at";
+/** The key's earlier name, still honoured for one release so a recent reload is not forgotten. */
+export const STALE_CHUNK_LEGACY_RELOAD_KEY = "lax:live-socket-chunk-reload-at";
 export const STALE_CHUNK_RELOAD_GUARD_MS = 10 * 60_000;
 
 type StorageLike = Pick<Storage, "getItem" | "setItem">;
@@ -66,7 +69,10 @@ function claimReload(deps: StaleChunkRecoveryDeps): boolean {
   try {
     const storage = deps.storage();
     if (!storage) return false;
-    const last = Number(storage.getItem(STALE_CHUNK_RELOAD_KEY));
+    const last = Math.max(
+      Number(storage.getItem(STALE_CHUNK_RELOAD_KEY)) || 0,
+      Number(storage.getItem(STALE_CHUNK_LEGACY_RELOAD_KEY)) || 0,
+    );
     if (Number.isFinite(last) && last > 0 && deps.now() - last < STALE_CHUNK_RELOAD_GUARD_MS) {
       return false;
     }
