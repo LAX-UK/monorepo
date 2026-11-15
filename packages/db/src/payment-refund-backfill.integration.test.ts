@@ -1,0 +1,225 @@
+import { randomUUID } from "node:crypto";
+import type pg from "pg";
+import { describe, expect, it } from "vitest";
+import { runMigrationsPerTransaction } from "./migrate-runner.js";
+import { backfillPaymentRefundsInIdOrder } from "./payment-refund-backfill.js";
+import {
+  migrationTestDatabaseUrl as migrationUrl,
+  withTemporaryDatabase,
+} from "./testing/temporary-database.js";
+
+async function seedPayments(pool: pg.Pool, count: number): Promise<string[]> {
+  const one = async (text: string, values: unknown[] = []) =>
+    (await pool.query<{ id: string }>(text, values)).rows[0]?.id as string;
+  const userId = `refund-backfill-${randomUUID()}`;
+  await pool.query(
+    `insert into "user" (id, name, email, created_at, updated_at)
+     values ($1, 'Seller', $2, now(), now())`,
+    [userId, `${userId}@example.test`],
+  );
+  const sellerId = await one(
+    `insert into legal_entity (kind, subkind, display_name, created_by_user_id)
+     values ('organisation', 'gallery', 'Seller gallery', $1) returning id`,
+    [userId],
+  );
+  const buyerId = await one(
+    `insert into legal_entity (kind, subkind, display_name, created_by_user_id)
+     values ('individual', 'private_collector', 'Buyer', $1) returning id`,
+    [userId],
+  );
+  const saleId = await one(
+    `insert into sale (title, start_time, end_time, created_by_legal_entity_id)
+     values ('Sale', now(), now() + interval '1 day', $1) returning id`,
+    [sellerId],
+  );
+  const ids = Array.from({ length: count }, () => randomUUID()).sort();
+  for (const id of ids) {
+    const lotId = await one(
+      `insert into lot (sale_id, title, auction_type, starting_price, current_price, start_time, end_time, seller_legal_entity_id)
+       values ($1, 'Lot', 'english', 0, 0, now(), now() + interval '1 day', $2) returning id`,
+      [saleId, sellerId],
+    );
+    await pool.query(
+      `insert into payment (id, lot_id, buyer_id, buyer_legal_entity_id, seller_legal_entity_id, amount, platform_fee)
+       values ($1, $2, $3, $4, $5, 1000, 180)`,
+      [id, lotId, userId, buyerId, sellerId],
+    );
+  }
+  const payoutId = await one(
+    `insert into payout (legal_entity_id, period_start, period_end, gross_amount, platform_fee, stripe_fee, net_amount)
+     values ($1, now() - interval '1 day', now(), 0, 0, 0, 0) returning id`,
+    [sellerId],
+  );
+  // Refunds the previous release made: a payout line each and no payment_refund row yet.
+  for (const id of ids) {
+    await refundLine(pool, payoutId, id, "-100.00");
+  }
+  return ids;
+}
+
+async function refundLine(
+  db: Pick<pg.Pool, "query">,
+  payoutId: string,
+  paymentId: string,
+  amount: string,
+): Promise<void> {
+  await db.query(
+    `insert into payout_line (payout_id, payment_id, amount, kind, source_event_id)
+     values ($1, $2, $3, 'refund', $4)`,
+    [payoutId, paymentId, amount, `evt_${randomUUID()}`],
+  );
+}
+
+const rowsOf = async (pool: pg.Pool, paymentId: string) =>
+  (
+    await pool.query<{ idempotency_key: string; amount_pence: number; source: string }>(
+      `select idempotency_key, amount_pence, source from payment_refund
+        where payment_id = $1 order by source, idempotency_key`,
+      [paymentId],
+    )
+  ).rows;
+
+/** A live refund grows the payment's refund line in place (one per payout, payment and kind). */
+async function growRefundLine(db: Pick<pg.Pool, "query">, paymentId: string, pounds: string) {
+  await db.query(
+    `update payout_line set amount = amount - $2::numeric, source_event_id = $3
+      where payment_id = $1 and kind = 'refund'`,
+    [paymentId, pounds, `evt_${randomUUID()}`],
+  );
+}
+
+async function waitUntilBlockedOnLock(pool: pg.Pool, pid: number): Promise<void> {
+  const deadline = Date.now() + 15_000;
+  while (Date.now() < deadline) {
+    const { rows } = await pool.query<{ waiting: boolean }>(
+      `select wait_event_type = 'Lock' as waiting from pg_stat_activity where pid = $1`,
+      [pid],
+    );
+    if (rows[0]?.waiting) return;
+    await new Promise((resolve) => setTimeout(resolve, 25));
+  }
+  throw new Error("The backfill never waited for the live refund's payment lock");
+}
+
+describe.skipIf(!migrationUrl)(
+  "payment_refund global backfill in id order",
+  { timeout: 120_000 },
+  () => {
+    it("runs beside a live refund on overlapping payments without deadlock or a lost refund", async () => {
+      await withTemporaryDatabase(async (pool) => {
+        await runMigrationsPerTransaction(pool);
+        const [a, b, c] = (await seedPayments(pool, 3)) as [string, string, string];
+
+        const live = await pool.connect();
+        const backfill = await pool.connect();
+        try {
+          // A live refund of B: the payment's lock, the per-payment top-up, then its own record.
+          await live.query("begin");
+          await live.query("select id from payment where id = $1 for update", [b]);
+          await live.query("select payment_refund_backfill_from_payout_lines($1::uuid)", [b]);
+          await growRefundLine(live, b, "50.00");
+          await live.query(
+            `insert into payment_refund (payment_id, idempotency_key, amount_pence, currency, source)
+           values ($1, 'evt_live_b', 5000, 'GBP', 'card_webhook')`,
+            [b],
+          );
+
+          const pid = (await backfill.query<{ pid: number }>("select pg_backend_pid() as pid"))
+            .rows[0]?.pid as number;
+          const run = backfillPaymentRefundsInIdOrder(backfill, { batchSize: 1 });
+          await waitUntilBlockedOnLock(pool, pid);
+          // A, before B in id order, was topped up and committed; C has not been touched.
+          expect(await rowsOf(pool, a)).toEqual([
+            {
+              idempotency_key: `payout_ledger_topup:${a}:10000`,
+              amount_pence: 10_000,
+              source: "payout_topup",
+            },
+          ]);
+          expect(await rowsOf(pool, c)).toEqual([]);
+
+          // The same live transaction goes on to C (a higher id): the backfill holds nothing it needs.
+          await live.query("select id from payment where id = $1 for update", [c]);
+          await live.query("select payment_refund_backfill_from_payout_lines($1::uuid)", [c]);
+          await growRefundLine(live, c, "30.00");
+          await live.query(
+            `insert into payment_refund (payment_id, idempotency_key, amount_pence, currency, source)
+           values ($1, 'evt_live_c', 3000, 'GBP', 'card_webhook')`,
+            [c],
+          );
+          await live.query("commit");
+
+          expect(await run).toEqual({ batches: 3, payments: 3, added: 1 });
+        } finally {
+          live.release();
+          backfill.release();
+        }
+
+        expect(await rowsOf(pool, b)).toEqual([
+          { idempotency_key: "evt_live_b", amount_pence: 5_000, source: "card_webhook" },
+          {
+            idempotency_key: `payout_ledger_topup:${b}:10000`,
+            amount_pence: 10_000,
+            source: "payout_topup",
+          },
+        ]);
+        expect(await rowsOf(pool, c)).toEqual([
+          { idempotency_key: "evt_live_c", amount_pence: 3_000, source: "card_webhook" },
+          {
+            idempotency_key: `payout_ledger_topup:${c}:10000`,
+            amount_pence: 10_000,
+            source: "payout_topup",
+          },
+        ]);
+        // Every payment's record now equals its refund lines, and a re-run adds nothing.
+        const { rows: gaps } = await pool.query(
+          `select l.payment_id
+           from payout_line l
+          where l.kind = 'refund'
+          group by l.payment_id
+         having sum(round(-l.amount * 100)) <>
+                (select coalesce(sum(r.amount_pence), 0) from payment_refund r where r.payment_id = l.payment_id)`,
+        );
+        expect(gaps).toEqual([]);
+        const again = await pool.connect();
+        try {
+          expect(await backfillPaymentRefundsInIdOrder(again, { batchSize: 2 })).toEqual({
+            batches: 2,
+            payments: 3,
+            added: 0,
+          });
+        } finally {
+          again.release();
+        }
+      });
+    });
+
+    it("covers every payment with refund lines across batches, once", async () => {
+      await withTemporaryDatabase(async (pool) => {
+        await runMigrationsPerTransaction(pool);
+        const ids = await seedPayments(pool, 5);
+        const client = await pool.connect();
+        try {
+          const seen: string[] = [];
+          const result = await backfillPaymentRefundsInIdOrder(client, {
+            batchSize: 2,
+            onBatch: (batch) => seen.push(...batch.paymentIds),
+          });
+          expect(seen).toEqual(ids);
+          expect(result).toEqual({ batches: 3, payments: 5, added: 5 });
+        } finally {
+          client.release();
+        }
+        for (const id of ids) {
+          expect(await rowsOf(pool, id)).toEqual([
+            {
+              idempotency_key: `payout_ledger_topup:${id}:10000`,
+              amount_pence: 10_000,
+              source: "payout_topup",
+            },
+          ]);
+        }
+      });
+    });
+  },
+);
