@@ -28,7 +28,7 @@ describe("migration 0394 Books payout bills", () => {
     const at = journal.entries.findIndex((e) => e.tag === TAG);
     const entry = journal.entries[at];
     const previous = journal.entries[at - 1];
-    expect(previous?.tag).toBe("0392_collection_notification_types");
+    expect(previous?.tag).toBe("0393_collection_storage_terms");
     expect(entry?.idx).toBe((previous?.idx ?? Number.NaN) + 1);
     expect(entry?.when).toBeGreaterThan(previous?.when ?? Number.POSITIVE_INFINITY);
     expect(new Set(journal.entries.map((e) => e.idx)).size).toBe(journal.entries.length);
