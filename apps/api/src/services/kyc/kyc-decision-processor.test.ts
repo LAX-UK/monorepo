@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 import { type KycDecisionApplyInput, KycDecisionProcessor } from "./kyc-decision-processor.js";
 
+const CONN = { marker: "tx" } as never;
+
 const EMPTY_FIELDS = {
   verifiedFirstName: null,
   verifiedLastName: null,
@@ -75,7 +77,7 @@ const DECLINED = input({
 
 describe("KycDecisionProcessor outcome notice", () => {
   it("asks to tell the person when their check is approved", async () => {
-    const result = await processor().apply(input({}), null);
+    const result = await processor().apply(input({}), CONN);
     expect(result.outcomeNotify).toEqual({
       userId: "u1",
       outcome: "approved",
@@ -85,7 +87,7 @@ describe("KycDecisionProcessor outcome notice", () => {
   });
 
   it("asks to tell the person when their check is declined", async () => {
-    const result = await processor().apply(DECLINED, null);
+    const result = await processor().apply(DECLINED, CONN);
     expect(result.outcomeNotify).toMatchObject({ userId: "u1", outcome: "declined" });
   });
 
@@ -96,7 +98,7 @@ describe("KycDecisionProcessor outcome notice", () => {
     ]) {
       const result = await processor().apply(
         input({ verificationStatus: "requires_input", userKycUpdate, isApproved: false }),
-        null,
+        CONN,
       );
       expect(result.outcomeNotify).toBeUndefined();
     }
@@ -104,18 +106,17 @@ describe("KycDecisionProcessor outcome notice", () => {
 
   it("says nothing when the person is already verified", async () => {
     const approved = processor({ userKycStatus: "approved" });
-    expect((await approved.apply(input({}), null)).outcomeNotify).toBeUndefined();
-    expect((await approved.apply(DECLINED, null)).outcomeNotify).toBeUndefined();
+    expect((await approved.apply(input({}), CONN)).outcomeNotify).toBeUndefined();
+    expect((await approved.apply(DECLINED, CONN)).outcomeNotify).toBeUndefined();
   });
 
   it("says nothing for an older session that is no longer the person's current check", async () => {
-    const result = await processor({ currentSession: "sess-2" }).apply(input({}), null);
+    const result = await processor({ currentSession: "sess-2" }).apply(input({}), CONN);
     expect(result.outcomeNotify).toBeUndefined();
   });
 });
 
 describe("KycDecisionProcessor invoice terms", () => {
-  const CONN = { marker: "tx" } as never;
   const terms = () => ({ extendOpenInvoices: vi.fn().mockResolvedValue(1) });
 
   it("moves the due dates of a personal buyer's unpaid invoices when their identity is verified", async () => {

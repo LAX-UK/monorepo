@@ -39,8 +39,8 @@ describe.skipIf(!HAS_DB)("the same webhook delivered twice at once (integration)
   const base = transactionRunnerFromDb(handlerDb);
   // What people are told is stored by the handler's own role, in the delivery's transaction.
   const notices = new KycNoticeQueue({
-    usersFor: (tx) => new DrizzleUserRepository(tx ?? handlerDb),
-    notificationsFor: (tx) => new DrizzleNotificationWriteRepository(tx ?? handlerDb),
+    usersFor: (tx) => new DrizzleUserRepository(tx),
+    notificationsFor: (tx) => new DrizzleNotificationWriteRepository(tx),
     email: new PostmarkEmailService(handlerDb, { add: async () => undefined }),
     factory: new NotificationFactory(),
     webOrigin: "https://lax.bid",

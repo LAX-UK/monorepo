@@ -58,19 +58,13 @@ export class KycDecisionProcessor {
     private readonly invoiceTerms: Pick<InvoiceDueDateExtender, "extendOpenInvoices"> | null = null,
   ) {}
 
-  async apply(
-    input: KycDecisionApplyInput,
-    conn: Database | null,
-  ): Promise<KycDecisionApplyResult> {
-    const existing = await this.repo.findByProviderSessionId(
-      input.providerSessionId,
-      conn ?? undefined,
-    );
+  async apply(input: KycDecisionApplyInput, tx: Database): Promise<KycDecisionApplyResult> {
+    const existing = await this.repo.findByProviderSessionId(input.providerSessionId, tx);
     if (!existing) {
       return { verification: null, appliedUserKycUpdate: false, shouldProgressIndividuals: false };
     }
 
-    const userState = await this.repo.getUserKycState(existing.userId, conn ?? undefined);
+    const userState = await this.repo.getUserKycState(existing.userId, tx);
     const userAlreadyApproved = userState?.kycStatus === "approved";
     const verificationTerminal = TERMINAL_VERIFICATION_STATUSES.has(existing.status);
     const skipVerificationDowngrade = verificationTerminal && !input.isApproved;
@@ -78,7 +72,7 @@ export class KycDecisionProcessor {
 
     let updated = existing;
     if (!skipVerificationDowngrade) {
-      const existingPayload = await this.repo.getDecisionPayload(existing.id, conn ?? undefined);
+      const existingPayload = await this.repo.getDecisionPayload(existing.id, tx);
       updated = await this.repo.update(
         existing.id,
         {
@@ -104,11 +98,11 @@ export class KycDecisionProcessor {
           decisionRiskScore: input.verifiedFields.decisionRiskScore,
           decisionIpCountry: input.verifiedFields.decisionIpCountry,
         },
-        conn ?? undefined,
+        tx,
       );
     }
 
-    const webhookState = await this.repo.getUserKycWebhookState(existing.userId, conn ?? undefined);
+    const webhookState = await this.repo.getUserKycWebhookState(existing.userId, tx);
     const isCurrentSession =
       Boolean(webhookState) && webhookState?.currentKycSessionId === existing.providerSessionId;
 
@@ -122,7 +116,7 @@ export class KycDecisionProcessor {
 
     if (isCurrentSession) {
       if (setStatus !== null && !skipUserDowngrade) {
-        if (input.isApproved && conn && this.marketingEvents && !userAlreadyApproved) {
+        if (input.isApproved && this.marketingEvents && !userAlreadyApproved) {
           marketingEventToEnqueue = {
             name: "CompleteRegistration",
             eventId: `kyc_approved_${existing.userId}`,
@@ -132,15 +126,10 @@ export class KycDecisionProcessor {
             consent: buildMarketingEventConsent(false, false, "legitimate_interest"),
             customData: { kycStatus: "approved" },
           };
-          await this.repo.setUserKycStatus(existing.userId, setStatus, verifiedAt, conn);
-          await this.marketingEvents.stage(marketingEventToEnqueue, conn);
+          await this.repo.setUserKycStatus(existing.userId, setStatus, verifiedAt, tx);
+          await this.marketingEvents.stage(marketingEventToEnqueue, tx);
         } else if (!userAlreadyApproved) {
-          await this.repo.setUserKycStatus(
-            existing.userId,
-            setStatus,
-            verifiedAt,
-            conn ?? undefined,
-          );
+          await this.repo.setUserKycStatus(existing.userId, setStatus, verifiedAt, tx);
         }
         if (setStatus === "approved" && !userAlreadyApproved) {
           // A personal buyer was held until now: their invoices' terms run from the release,
@@ -154,13 +143,13 @@ export class KycDecisionProcessor {
               holdStartedAt: holdStartAt(userState?.identityHeldSince),
             },
             new Date(),
-            conn ?? undefined,
+            tx,
           );
         }
         appliedUserKycUpdate = true;
       }
       if (incrementRetry && !userAlreadyApproved) {
-        await this.repo.incrementUserKycRetryCount(existing.userId, conn ?? undefined);
+        await this.repo.incrementUserKycRetryCount(existing.userId, tx);
         appliedUserKycUpdate = true;
       }
       shouldProgressIndividuals = input.isApproved && !userAlreadyApproved;
@@ -179,7 +168,7 @@ export class KycDecisionProcessor {
         !userAlreadyApproved
       ) {
         const mergedPayload = mergeKycDecisionPayload(
-          await this.repo.getDecisionPayload(existing.id, conn ?? undefined),
+          await this.repo.getDecisionPayload(existing.id, tx),
           input.decisionPayload,
         );
         resubmissionNotify = {

@@ -1,6 +1,6 @@
 import { createHmac } from "node:crypto";
-import type { IKycRepository } from "@auction/persistence/interfaces";
-import { describe, expect, it, vi } from "vitest";
+import type { IKycRepository, ITransactionRunner } from "@auction/persistence/interfaces";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Env } from "../../env.js";
 import { tryClaimProcessedWebhookEvent } from "../../lib/processed-webhook-event.js";
 import { transactionRunnerFromDb } from "../../test/transaction-runner-from-db.js";
@@ -15,6 +15,18 @@ vi.mock("../../lib/processed-webhook-event.js", () => ({
 }));
 
 const API_KEY = "test-api-key";
+
+const TX = { name: "decision-transaction" } as never;
+
+/** Runs the unit of work against a fixed in-memory transaction handle. */
+function inMemoryRunner(): ITransactionRunner {
+  return { runInTransaction: (fn) => fn(TX) };
+}
+
+beforeEach(() => {
+  vi.mocked(tryClaimProcessedWebhookEvent).mockReset();
+  vi.mocked(tryClaimProcessedWebhookEvent).mockResolvedValue({ claimed: true });
+});
 
 function baseEnv(overrides: Partial<Env> = {}): Env {
   return {
@@ -66,12 +78,16 @@ const sampleVerification = {
 
 describe("VeriffKycService.isConfigured", () => {
   it("returns false without VERIFF_API_KEY", () => {
-    const svc = new VeriffKycService(baseEnv(), makeRepo({}));
+    const svc = new VeriffKycService(baseEnv(), makeRepo({}), inMemoryRunner());
     expect(svc.isConfigured()).toBe(false);
   });
 
   it("returns false with API key but no shared secret", () => {
-    const svc = new VeriffKycService(baseEnv({ VERIFF_API_KEY: API_KEY }), makeRepo({}));
+    const svc = new VeriffKycService(
+      baseEnv({ VERIFF_API_KEY: API_KEY }),
+      makeRepo({}),
+      inMemoryRunner(),
+    );
     expect(svc.isConfigured()).toBe(false);
   });
 
@@ -79,6 +95,7 @@ describe("VeriffKycService.isConfigured", () => {
     const svc = new VeriffKycService(
       baseEnv({ VERIFF_API_KEY: API_KEY, VERIFF_SHARED_SECRET: "secret" }),
       makeRepo({}),
+      inMemoryRunner(),
     );
     expect(svc.isConfigured()).toBe(true);
   });
@@ -133,6 +150,7 @@ describe("VeriffKycService.handleDecisionWebhook", () => {
     const svc = new VeriffKycService(
       baseEnv({ VERIFF_API_KEY: API_KEY, VERIFF_SHARED_SECRET: secret }),
       makeRepo({}),
+      inMemoryRunner(),
     );
     await expect(svc.handleDecisionWebhook("{}", "bad", API_KEY)).rejects.toThrow();
   });
@@ -141,6 +159,7 @@ describe("VeriffKycService.handleDecisionWebhook", () => {
     const svc = new VeriffKycService(
       baseEnv({ VERIFF_API_KEY: API_KEY, VERIFF_SHARED_SECRET: secret }),
       makeRepo({}),
+      inMemoryRunner(),
     );
     const body = JSON.stringify({
       status: "success",
@@ -163,7 +182,7 @@ describe("VeriffKycService.handleDecisionWebhook", () => {
     const svc = new VeriffKycService(
       baseEnv({ VERIFF_API_KEY: API_KEY, VERIFF_SHARED_SECRET: secret }),
       repo,
-      null,
+      inMemoryRunner(),
     );
     const body = JSON.stringify({
       status: "success",
@@ -177,12 +196,7 @@ describe("VeriffKycService.handleDecisionWebhook", () => {
     });
     const result = await svc.handleDecisionWebhook(body, sign(body), API_KEY);
     expect(result.shouldProgressIndividuals).toBe(true);
-    expect(repo.setUserKycStatus).toHaveBeenCalledWith(
-      "user-1",
-      "approved",
-      expect.any(Date),
-      undefined,
-    );
+    expect(repo.setUserKycStatus).toHaveBeenCalledWith("user-1", "approved", expect.any(Date), TX);
   });
 
   it("does not claim idempotency for unknown session", async () => {
@@ -213,6 +227,7 @@ describe("VeriffKycService.handleDecisionWebhook", () => {
     const svc = new VeriffKycService(
       baseEnv({ VERIFF_API_KEY: API_KEY, VERIFF_SHARED_SECRET: secret }),
       makeRepo({}),
+      inMemoryRunner(),
     );
     const body = JSON.stringify({ status: "success", verification: { noId: true } });
     await expect(svc.handleDecisionWebhook(body, sign(body), API_KEY)).rejects.toBeInstanceOf(
@@ -283,7 +298,7 @@ describe("VeriffKycService.handleEventWebhook", () => {
     const svc = new VeriffKycService(
       baseEnv({ VERIFF_API_KEY: API_KEY, VERIFF_SHARED_SECRET: secret }),
       repo,
-      null,
+      inMemoryRunner(),
     );
     const body = JSON.stringify({ id: "session-1", action: "submitted" });
     await svc.handleEventWebhook(body, sign(body), API_KEY);
@@ -305,7 +320,7 @@ describe("VeriffKycService.handleEventWebhook", () => {
     const svc = new VeriffKycService(
       baseEnv({ VERIFF_API_KEY: API_KEY, VERIFF_SHARED_SECRET: secret }),
       repo,
-      null,
+      inMemoryRunner(),
     );
     const body = JSON.stringify({ id: "session-1", action: "started" });
     await svc.handleEventWebhook(body, sign(body), API_KEY);
@@ -323,7 +338,7 @@ describe("VeriffKycService.getStatus", () => {
         decisionPayload: { sessionUrl: "https://magic.veriff.me/v/continue" },
       }),
     });
-    const svc = new VeriffKycService(baseEnv(), repo);
+    const svc = new VeriffKycService(baseEnv(), repo, inMemoryRunner());
     const summary = await svc.getStatus("user-1");
     expect(summary.status).toBe("pending");
     expect(summary.latestSessionStatus).toBe("created");
@@ -339,7 +354,7 @@ describe("VeriffKycService.getStatus", () => {
         decisionPayload: null,
       }),
     });
-    const svc = new VeriffKycService(baseEnv(), repo);
+    const svc = new VeriffKycService(baseEnv(), repo, inMemoryRunner());
     const summary = await svc.getStatus("user-1");
     expect(summary.status).toBe("unverified");
     expect(summary.feedback.action).toBe("continue");
@@ -353,7 +368,7 @@ describe("VeriffKycService.getStatus", () => {
         decisionPayload: null,
       }),
     });
-    const svc = new VeriffKycService(baseEnv(), repo);
+    const svc = new VeriffKycService(baseEnv(), repo, inMemoryRunner());
     const summary = await svc.getStatus("user-1");
     expect(summary.feedback.action).toBe("wait");
     expect(summary.feedback.headline).toBe("In review");
@@ -388,7 +403,7 @@ describe("VeriffKycService.createSession", () => {
         kycVerifiedAt: new Date(),
       }),
     });
-    const svc = new VeriffKycService(envWithOrigin(), repo);
+    const svc = new VeriffKycService(envWithOrigin(), repo, inMemoryRunner());
     await expect(svc.createSession("user-1", "https://example.com/cb")).rejects.toBeInstanceOf(
       KycAlreadyApprovedError,
     );
@@ -411,7 +426,7 @@ describe("VeriffKycService.createSession", () => {
         },
       }),
     });
-    const svc = new VeriffKycService(envWithOrigin(), repo, null, null, {
+    const svc = new VeriffKycService(envWithOrigin(), repo, inMemoryRunner(), null, {
       veriffClient: veriffClient as never,
     });
     const result = await svc.createSession("user-1", `${webOrigin}/verify-identity`);
@@ -439,7 +454,7 @@ describe("VeriffKycService.createSession", () => {
       createWithCurrentSession: vi.fn().mockResolvedValue(created),
       update: vi.fn().mockResolvedValue(created),
     });
-    const svc = new VeriffKycService(envWithOrigin(), repo, null, null, {
+    const svc = new VeriffKycService(envWithOrigin(), repo, inMemoryRunner(), null, {
       veriffClient: veriffClient as never,
     });
     const result = await svc.createSession("user-1", `${webOrigin}/verify-identity`);
@@ -471,7 +486,7 @@ describe("VeriffKycService.createSession", () => {
         },
       }),
     });
-    const svc = new VeriffKycService(envWithOrigin(), repo, null, null, {
+    const svc = new VeriffKycService(envWithOrigin(), repo, inMemoryRunner(), null, {
       veriffClient: veriffClient as never,
     });
     const result = await svc.createSession("user-1", `${webOrigin}/verify-identity`);
@@ -502,7 +517,7 @@ describe("VeriffKycService.createSession", () => {
         decisionPayload: mergedPayload,
       }),
     });
-    const svc = new VeriffKycService(envWithOrigin(), repo, null, null, {
+    const svc = new VeriffKycService(envWithOrigin(), repo, inMemoryRunner(), null, {
       veriffClient: veriffClient as never,
     });
     const result = await svc.createSession("user-1", `${webOrigin}/verify-identity`);
@@ -526,7 +541,7 @@ describe("KycDecisionProcessor", () => {
     const processor = new KycDecisionProcessor(repo);
     const result = await processor.apply(
       mapVeriffDecisionToApplyInput({ id: "session-1", status: "approved" }, {}),
-      null,
+      TX,
     );
     expect(result.appliedUserKycUpdate).toBe(false);
     expect(repo.setUserKycStatus).not.toHaveBeenCalled();
@@ -557,7 +572,7 @@ describe("KycDecisionProcessor", () => {
         },
         {},
       ),
-      null,
+      TX,
     );
     expect(result.appliedUserKycUpdate).toBe(true);
     expect(result.resubmissionNotify).toMatchObject({
@@ -588,7 +603,7 @@ describe("KycDecisionProcessor", () => {
     const processor = new KycDecisionProcessor(repo);
     const result = await processor.apply(
       mapVeriffDecisionToApplyInput({ id: "session-1", status: "declined", reasonCode: 105 }, {}),
-      null,
+      TX,
     );
     expect(repo.setUserKycStatus).not.toHaveBeenCalled();
     expect(repo.update).not.toHaveBeenCalled();
