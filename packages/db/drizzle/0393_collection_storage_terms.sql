@@ -15,7 +15,9 @@
 -- Data move: a place that has a free_storage_days value gets a first terms version from it
 -- (capped at 90 days, the new limit), at a rate of 0 with the large band off, starting on the
 -- London day this runs. free_storage_days stays, as running services still read it; the terms
--- replace it in a later release. The unused weekly charge (storage_charge_pence) is dropped.
+-- replace it in a later release. The unused weekly charge (storage_charge_pence) is no longer read
+-- or written by the code, but the column stays: the release still running during the pre-deploy
+-- migration selects it. A later expand/contract migration drops it.
 SET LOCAL lock_timeout = '5s';
 --> statement-breakpoint
 CREATE TABLE IF NOT EXISTS "collection_storage_terms" (
@@ -122,7 +124,7 @@ CREATE TABLE IF NOT EXISTS "collection_storage_audit" (
   CONSTRAINT "collection_storage_audit_action_check" CHECK ("action" IN (
     'terms_scheduled', 'terms_edited', 'terms_cancelled',
     'charging_switched', 'vat_treatment_set',
-    'large_flag_set', 'extension_granted', 'waiver_granted'
+    'large_flag_set', 'extension_granted', 'waiver_granted', 'terms_migrated'
   )),
   CONSTRAINT "collection_storage_audit_venue_id_venue_id_fk"
     FOREIGN KEY ("venue_id") REFERENCES "public"."venue"("id") ON DELETE restrict,
@@ -138,16 +140,25 @@ CREATE INDEX IF NOT EXISTS "collection_storage_audit_venue_idx"
 CREATE INDEX IF NOT EXISTS "collection_storage_audit_lot_idx"
   ON "collection_storage_audit" ("lot_id", "created_at" DESC) WHERE "lot_id" IS NOT NULL;
 --> statement-breakpoint
--- The data move. Re-running adds nothing for a place that already has a version.
-INSERT INTO "collection_storage_terms"
-  ("venue_id", "free_days", "standard_daily_pence", "effective_from", "reason")
-SELECT p."venue_id", LEAST(p."free_storage_days", 90), 0,
-       (now() AT TIME ZONE 'Europe/London')::date,
-       'Moved from the free storage days setting in Hours and rules'
-FROM "collection_place" p
-WHERE p."free_storage_days" IS NOT NULL
-  AND NOT EXISTS (SELECT 1 FROM "collection_storage_terms" t WHERE t."venue_id" = p."venue_id");
---> statement-breakpoint
-ALTER TABLE "collection_place" DROP CONSTRAINT IF EXISTS "collection_place_storage_charge_check";
---> statement-breakpoint
-ALTER TABLE "collection_place" DROP COLUMN IF EXISTS "storage_charge_pence";
+-- The data move. Re-running adds nothing for a place that already has a version. Each first
+-- version gets a terms_migrated audit row so History is not empty. A place whose old value was
+-- over 90 days is capped; the audit row records the original value.
+WITH moved AS (
+  INSERT INTO "collection_storage_terms"
+    ("venue_id", "free_days", "standard_daily_pence", "effective_from", "reason")
+  SELECT p."venue_id", LEAST(p."free_storage_days", 90), 0,
+         (now() AT TIME ZONE 'Europe/London')::date,
+         'Moved from the free storage days setting in Hours and rules'
+  FROM "collection_place" p
+  WHERE p."free_storage_days" IS NOT NULL
+    AND NOT EXISTS (SELECT 1 FROM "collection_storage_terms" t WHERE t."venue_id" = p."venue_id")
+  RETURNING "id", "venue_id", "free_days", "effective_from", "reason"
+)
+INSERT INTO "collection_storage_audit" ("venue_id", "action", "before", "after", "reason")
+SELECT m."venue_id", 'terms_migrated',
+       jsonb_build_object('freeStorageDays', p."free_storage_days"),
+       jsonb_build_object('termsId', m."id", 'freeDays', m."free_days",
+                          'effectiveFrom', m."effective_from"::text),
+       m."reason"
+FROM moved m
+JOIN "collection_place" p ON p."venue_id" = m."venue_id";

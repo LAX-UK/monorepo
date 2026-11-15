@@ -5,6 +5,7 @@ import { eq, sql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { StorageTermsValues } from "../interfaces/collection-storage.repository.js";
 import { DrizzleCollectionStorageRepository } from "./drizzle-collection-storage.repository.js";
+import { DrizzleLotFulfilmentRepository } from "./drizzle-lot-fulfilment.repository.js";
 
 const HAS_DB = Boolean(process.env.DATABASE_URL);
 
@@ -87,7 +88,7 @@ describe.skipIf(!HAS_DB)("collection storage (integration)", () => {
   });
 
   it("schedules terms and audits who, when, and why", async () => {
-    const outcome = await storage.scheduleTerms(venueId, TERMS, next());
+    const outcome = await storage.scheduleTerms(venueId, TERMS, TODAY, next());
     expect(outcome.outcome).toBe("scheduled");
     const audit = await storage.listAudit(venueId, 10);
     expect(audit).toEqual([
@@ -103,16 +104,18 @@ describe.skipIf(!HAS_DB)("collection storage (integration)", () => {
   });
 
   it("refuses a second live version with the same start date, but allows it once cancelled", async () => {
-    expect(await storage.scheduleTerms(venueId, TERMS, next())).toEqual({ outcome: "date_taken" });
+    expect(await storage.scheduleTerms(venueId, TERMS, TODAY, next())).toEqual({
+      outcome: "date_taken",
+    });
     const [first] = await storage.listTerms(venueId);
     const cancelled = await storage.cancelScheduledTerms(first?.id ?? "", TODAY, "Mistake", next());
     expect(cancelled.outcome).toBe("saved");
     expect(await storage.listTerms(venueId)).toEqual([]);
-    expect((await storage.scheduleTerms(venueId, TERMS, next())).outcome).toBe("scheduled");
+    expect((await storage.scheduleTerms(venueId, TERMS, TODAY, next())).outcome).toBe("scheduled");
   });
 
   it("says when the place is unknown", async () => {
-    expect(await storage.scheduleTerms(randomUUID(), TERMS, next())).toEqual({
+    expect(await storage.scheduleTerms(randomUUID(), TERMS, TODAY, next())).toEqual({
       outcome: "venue_not_found",
     });
   });
@@ -153,6 +156,7 @@ describe.skipIf(!HAS_DB)("collection storage (integration)", () => {
     await storage.scheduleTerms(
       venueId,
       { ...TERMS, effectiveFrom: "2031-06-01", freeDays: 7 },
+      TODAY,
       next(),
     );
     expect(await storage.findTermsInForce(venueId, "2031-03-10")).toBeNull();
@@ -167,6 +171,7 @@ describe.skipIf(!HAS_DB)("collection storage (integration)", () => {
       storage.scheduleTerms(
         venueId,
         { ...TERMS, effectiveFrom: "2031-07-01", freeDays: 91 },
+        TODAY,
         next(),
       ),
     ).rejects.toThrow();
@@ -174,6 +179,7 @@ describe.skipIf(!HAS_DB)("collection storage (integration)", () => {
       storage.scheduleTerms(
         venueId,
         { ...TERMS, effectiveFrom: "2031-07-01", reason: "  " },
+        TODAY,
         next(),
       ),
     ).rejects.toThrow();
@@ -233,7 +239,7 @@ describe.skipIf(!HAS_DB)("collection storage (integration)", () => {
   });
 
   it("marks a work large and back, auditing each change against its place", async () => {
-    expect(await storage.setLotLarge(lotId, true, next())).toEqual({
+    expect(await storage.setLotLarge(lotId, true, "Frame is 160 cm", next())).toEqual({
       outcome: "saved",
       record: { lotId, large: true },
     });
@@ -241,7 +247,7 @@ describe.skipIf(!HAS_DB)("collection storage (integration)", () => {
       .execute<{ storage_large: boolean }>(sql`select storage_large from lot where id = ${lotId}`)
       .then((r) => r.rows);
     expect(row?.storage_large).toBe(true);
-    await storage.setLotLarge(lotId, false, next());
+    await storage.setLotLarge(lotId, false, null, next());
     const [latest] = await storage.listAudit(venueId, 1);
     expect(latest).toMatchObject({
       action: "large_flag_set",
@@ -249,23 +255,70 @@ describe.skipIf(!HAS_DB)("collection storage (integration)", () => {
       before: { large: true },
       after: { large: false },
     });
-    expect(await storage.setLotLarge(orphanLotId, true, next())).toEqual({
+    expect(await storage.setLotLarge(orphanLotId, true, null, next())).toEqual({
       outcome: "lot_not_found",
     });
   });
 
-  it("records extensions of 1 to 30 days with a reason, as many as staff give", async () => {
+  it("records extensions of 1 to 30 days with a reason, and writes an audit row for each", async () => {
     const first = await storage.addExtension(lotId, 7, "Collector abroad", next());
     expect(first.outcome).toBe("saved");
-    await storage.addExtension(lotId, 30, "Still abroad", next());
-    expect((await storage.listExtensions(lotId)).map((e) => e.days)).toEqual([7, 30]);
-    await expect(storage.addExtension(lotId, 31, "Too long", next())).rejects.toThrow();
+    const [audit] = await storage.listAudit(venueId, 1);
+    expect(audit).toMatchObject({
+      action: "extension_granted",
+      lotId,
+      after: { days: 7 },
+      reason: "Collector abroad",
+    });
+    expect((await storage.listExtensions(lotId)).map((e) => e.days)).toEqual([7]);
+    expect(await storage.addExtension(lotId, 31, "Too long", next())).toMatchObject({
+      outcome: "cap_reached",
+    });
+    await expect(
+      db.execute(sql`
+        insert into collection_storage_extension (lot_id, days, reason)
+        values (${lotId}, 31, 'Too long for the database too')`),
+    ).rejects.toThrow();
     await expect(storage.addExtension(lotId, 0, "None", next())).rejects.toThrow();
     await expect(storage.addExtension(lotId, 5, " ", next())).rejects.toThrow();
-    expect((await storage.listExtensions(lotId)).length).toBe(2);
     expect(await storage.addExtension(orphanLotId, 5, "x", next())).toEqual({
       outcome: "lot_not_found",
     });
+  });
+
+  it("caps a lot's extensions at 30 days in total, not per grant", async () => {
+    // 7 days are already given: 23 remain.
+    expect(await storage.addExtension(lotId, 24, "One too many", next())).toEqual({
+      outcome: "cap_reached",
+      daysRemaining: 23,
+    });
+    expect((await storage.addExtension(lotId, 23, "Up to the cap", next())).outcome).toBe("saved");
+    expect(await storage.addExtension(lotId, 1, "Past the cap", next())).toEqual({
+      outcome: "cap_reached",
+      daysRemaining: 0,
+    });
+    expect((await storage.listExtensions(lotId)).map((e) => e.days)).toEqual([7, 23]);
+  });
+
+  it("cannot pass the cap with grants made at the same time", async () => {
+    const racedLot = randomUUID();
+    await db.execute(sql`
+      insert into lot (id, seller_legal_entity_id, sale_id, title, auction_type, starting_price,
+         current_price, start_time, end_time, status)
+      values (${racedLot}, ${entityId}, ${saleId}, 'Collection storage IT raced lot', 'english', 100, 100,
+         now() - interval '30 days', now() - interval '20 days', 'ended')`);
+    try {
+      const results = await Promise.all(
+        [1, 2, 3, 4].map((n) => storage.addExtension(racedLot, 20, `Grant ${n}`, next())),
+      );
+      expect(results.filter((r) => r.outcome === "saved")).toHaveLength(1);
+      expect(results.filter((r) => r.outcome === "cap_reached")).toHaveLength(3);
+      expect((await storage.listExtensions(racedLot)).reduce((sum, e) => sum + e.days, 0)).toBe(20);
+    } finally {
+      await db.execute(sql`delete from collection_storage_audit where lot_id = ${racedLot}`);
+      await db.execute(sql`delete from collection_storage_extension where lot_id = ${racedLot}`);
+      await db.execute(sql`delete from lot where id = ${racedLot}`);
+    }
   });
 
   it("waives a lot once, with a reason, and audits it", async () => {
@@ -292,6 +345,110 @@ describe.skipIf(!HAS_DB)("collection storage (integration)", () => {
     expect(await read()).toBe(before?.id);
     expect(await storage.recordTermsForSale(saleId, "2031-07-01")).toBe(0);
     expect(await read()).toBe(before?.id);
+  });
+
+  it("starts terms from tomorrow onward, when scheduling and when editing", async () => {
+    const before = (await storage.listTerms(venueId)).length;
+    for (const effectiveFrom of [TODAY, "2031-03-01"]) {
+      expect(
+        await storage.scheduleTerms(venueId, { ...TERMS, effectiveFrom }, TODAY, next()),
+      ).toEqual({ outcome: "start_not_in_future" });
+    }
+    expect(await storage.listTerms(venueId)).toHaveLength(before);
+    const scheduled = (await storage.listTerms(venueId)).find(
+      (t) => t.effectiveFrom === "2031-06-01",
+    );
+    for (const effectiveFrom of [TODAY, "2031-03-01"]) {
+      expect(
+        await storage.editScheduledTerms(
+          scheduled?.id ?? "",
+          { ...TERMS, effectiveFrom },
+          TODAY,
+          next(),
+        ),
+      ).toEqual({ outcome: "start_not_in_future" });
+    }
+    expect((await storage.findTerms(scheduled?.id ?? ""))?.effectiveFrom).toBe("2031-06-01");
+    expect(
+      (
+        await storage.scheduleTerms(
+          venueId,
+          { ...TERMS, effectiveFrom: "2031-03-11" },
+          TODAY,
+          next(),
+        )
+      ).outcome,
+    ).toBe("date_taken");
+  });
+
+  it("ignores a cancelled version when finding terms in force, and will not edit it", async () => {
+    const future = await storage.scheduleTerms(
+      venueId,
+      { ...TERMS, effectiveFrom: "2031-09-01", freeDays: 3 },
+      TODAY,
+      next(),
+    );
+    const id = future.outcome === "scheduled" ? future.terms.id : "";
+    expect((await storage.findTermsInForce(venueId, "2031-09-02"))?.freeDays).toBe(3);
+    expect(
+      (await storage.cancelScheduledTerms(id, TODAY, "Changed our mind", next())).outcome,
+    ).toBe("saved");
+    expect((await storage.findTermsInForce(venueId, "2031-09-02"))?.freeDays).toBe(7);
+    expect((await storage.editScheduledTerms(id, TERMS, TODAY, next())).outcome).toBe(
+      "not_scheduled",
+    );
+    expect((await storage.cancelScheduledTerms(id, TODAY, "Again", next())).outcome).toBe(
+      "not_scheduled",
+    );
+  });
+
+  it("writes nothing when a switch, VAT treatment or large mark does not change", async () => {
+    const count = async () => (await storage.listAudit(venueId, 1000)).length;
+    const before = await count();
+    expect((await storage.setRaiseInvoices(venueId, true, "Again", next())).outcome).toBe("saved");
+    expect(
+      (await storage.setVatTreatment(venueId, "standard_rated", "Again", next())).outcome,
+    ).toBe("saved");
+    expect((await storage.setLotLarge(lotId, false, null, next())).outcome).toBe("saved");
+    expect(await count()).toBe(before);
+  });
+
+  it("records the terms on a lot whose fulfilment is created after its sale closed", async () => {
+    const lateSale = randomUUID();
+    const lateLot = randomUUID();
+    await db.execute(sql`
+      insert into sale (id, title, start_time, end_time, venue_id, delivery_mode, status, created_by_legal_entity_id)
+      values (${lateSale}, 'Collection storage IT late sale', '2031-03-30T09:00:00Z', '2031-04-01T16:00:00Z',
+         ${venueId}, 'onsite', 'ended', ${entityId})`);
+    await db.execute(sql`
+      insert into lot (id, seller_legal_entity_id, sale_id, title, auction_type, starting_price,
+         current_price, start_time, end_time, status)
+      values (${lateLot}, ${entityId}, ${lateSale}, 'Collection storage IT late lot', 'english', 100, 100,
+         now() - interval '30 days', now() - interval '20 days', 'ended')`);
+    try {
+      expect(await storage.recordTermsForSale(lateSale, "2031-04-01")).toBe(0);
+      const paymentId = randomUUID();
+      await db.execute(sql`
+        insert into payment (id, lot_id, buyer_id, buyer_legal_entity_id, seller_legal_entity_id,
+           amount, platform_fee, status)
+        values (${paymentId}, ${lateLot}, ${staffId}, ${entityId}, ${entityId}, 100, 0, 'captured'::payment_status)`);
+      await new DrizzleLotFulfilmentRepository(db).insert({
+        lotId: lateLot,
+        paymentId,
+        status: "awaiting_release",
+      });
+      const [row] = (
+        await db.execute<{ effective_from: string }>(sql`
+          select t.effective_from::text from lot_fulfilment lf
+          join collection_storage_terms t on t.id = lf.storage_terms_id where lf.lot_id = ${lateLot}`)
+      ).rows;
+      expect(row?.effective_from).toBe("2031-03-11");
+    } finally {
+      await db.execute(sql`delete from lot_fulfilment where lot_id = ${lateLot}`);
+      await db.execute(sql`delete from payment where lot_id = ${lateLot}`);
+      await db.execute(sql`delete from lot where id = ${lateLot}`);
+      await db.execute(sql`delete from sale where id = ${lateSale}`);
+    }
   });
 
   it("lists the audit newest first and limited", async () => {

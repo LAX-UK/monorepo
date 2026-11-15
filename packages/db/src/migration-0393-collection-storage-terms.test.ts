@@ -20,7 +20,7 @@ describe("migration 0393 collection storage terms", () => {
     expect(entry?.when).toBe((previous?.when ?? 0) + 24 * 60 * 60 * 1000);
   });
 
-  it("creates the five new tables and the new columns, with a short lock timeout", () => {
+  it("creates the four new tables and the new columns, with a short lock timeout", () => {
     expect(migration).toMatch(/SET LOCAL lock_timeout = '5s'/);
     for (const table of [
       "collection_storage_terms",
@@ -41,14 +41,14 @@ describe("migration 0393 collection storage terms", () => {
     );
   });
 
-  it("moves free_storage_days across without dropping it, and drops the weekly charge", () => {
+  it("moves free_storage_days across and drops no column the running release reads", () => {
     expect(migration).toMatch(/WHERE p\."free_storage_days" IS NOT NULL/);
-    expect(migration).not.toMatch(/DROP COLUMN IF EXISTS "free_storage_days"/);
-    expect(migration).toMatch(/DROP COLUMN IF EXISTS "storage_charge_pence"/);
+    expect(migration).not.toMatch(/DROP COLUMN/);
+    expect(migration).toMatch(/'terms_migrated'/);
   });
 
-  it("rolls back by dropping what it added, restoring the weekly charge and the ledger row", () => {
-    expect(rollback).toMatch(/ADD COLUMN IF NOT EXISTS "storage_charge_pence" integer/);
+  it("rolls back by dropping what it added and the ledger row", () => {
+    expect(rollback).not.toMatch(/storage_charge_pence"/);
     for (const table of [
       "collection_storage_audit",
       "collection_storage_waiver",

@@ -119,6 +119,7 @@ export const COLLECTION_STORAGE_AUDIT_ACTIONS = [
   "large_flag_set",
   "extension_granted",
   "waiver_granted",
+  "terms_migrated",
 ] as const;
 
 /** Every storage change: who, when, before, after and why. Append only. */

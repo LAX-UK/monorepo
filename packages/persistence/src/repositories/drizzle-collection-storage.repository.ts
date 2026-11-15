@@ -10,7 +10,9 @@ import {
   venue,
 } from "@auction/db/schema";
 import { and, asc, desc, eq, isNull, lte, sql } from "drizzle-orm";
+import { MAX_STORAGE_EXTENSION_DAYS_PER_LOT } from "../interfaces/collection-storage.repository.js";
 import type {
+  AddStorageExtensionOutcome,
   AddStorageWaiverOutcome,
   ChangeStorageTermsOutcome,
   ICollectionStorageRepository,
@@ -142,8 +144,10 @@ export class DrizzleCollectionStorageRepository implements ICollectionStorageRep
   async scheduleTerms(
     venueId: string,
     values: StorageTermsValues,
+    today: string,
     change: StorageChange,
   ): Promise<ScheduleStorageTermsOutcome> {
+    if (values.effectiveFrom <= today) return { outcome: "start_not_in_future" };
     const [known] = await this.db
       .select({ id: venue.id })
       .from(venue)
@@ -179,6 +183,7 @@ export class DrizzleCollectionStorageRepository implements ICollectionStorageRep
     change: StorageChange,
   ): Promise<ChangeStorageTermsOutcome> {
     return this.changeScheduled(termsId, today, async (tx, current) => {
+      if (values.effectiveFrom <= today) return { outcome: "start_not_in_future" };
       if (
         values.effectiveFrom !== current.effectiveFrom &&
         (await this.startIsTaken(tx, current.venueId, values.effectiveFrom))
@@ -244,6 +249,7 @@ export class DrizzleCollectionStorageRepository implements ICollectionStorageRep
     change: StorageChange,
   ): Promise<SetStorageChargingOutcome> {
     return this.changeCharging(venueId, async (tx, current) => {
+      if (current.vatTreatment === vatTreatment) return { outcome: "saved", settings: current };
       const [row] = await tx
         .update(collectionPlace)
         .set({
@@ -276,6 +282,7 @@ export class DrizzleCollectionStorageRepository implements ICollectionStorageRep
       if (raiseInvoices && current.vatTreatment === null) {
         return { outcome: "vat_treatment_required" };
       }
+      if (current.raiseInvoices === raiseInvoices) return { outcome: "saved", settings: current };
       const [row] = await tx
         .update(collectionPlace)
         .set({
@@ -301,11 +308,13 @@ export class DrizzleCollectionStorageRepository implements ICollectionStorageRep
   async setLotLarge(
     lotId: string,
     large: boolean,
+    reason: string | null,
     change: StorageChange,
   ): Promise<SetLotStorageOutcome<{ lotId: string; large: boolean }>> {
     return this.db.transaction(async (tx) => {
       const found = await this.lotVenue(tx, lotId);
       if (!found) return { outcome: "lot_not_found" as const };
+      if (found.large === large) return { outcome: "saved" as const, record: { lotId, large } };
       await tx.update(lot).set({ storageLarge: large }).where(eq(lot.id, lotId));
       await this.audit(tx, {
         venueId: found.venueId,
@@ -314,7 +323,7 @@ export class DrizzleCollectionStorageRepository implements ICollectionStorageRep
         change,
         before: { large: found.large },
         after: { large },
-        reason: null,
+        reason,
       });
       return { outcome: "saved" as const, record: { lotId, large } };
     });
@@ -325,10 +334,17 @@ export class DrizzleCollectionStorageRepository implements ICollectionStorageRep
     days: number,
     reason: string,
     change: StorageChange,
-  ): Promise<SetLotStorageOutcome<StorageExtensionRecord>> {
-    return this.db.transaction(async (tx) => {
+  ): Promise<AddStorageExtensionOutcome> {
+    return this.db.transaction(async (tx): Promise<AddStorageExtensionOutcome> => {
+      // lotVenue locks the lot row, so concurrent grants for one lot are serialised here.
       const found = await this.lotVenue(tx, lotId);
-      if (!found) return { outcome: "lot_not_found" as const };
+      if (!found) return { outcome: "lot_not_found" };
+      const [given] = await tx
+        .select({ total: sql<number>`coalesce(sum(${collectionStorageExtension.days}), 0)::int` })
+        .from(collectionStorageExtension)
+        .where(eq(collectionStorageExtension.lotId, lotId));
+      const daysRemaining = Math.max(0, MAX_STORAGE_EXTENSION_DAYS_PER_LOT - (given?.total ?? 0));
+      if (days > daysRemaining) return { outcome: "cap_reached", daysRemaining };
       const [row] = await tx
         .insert(collectionStorageExtension)
         .values({ lotId, days, reason, createdByUserId: change.actorUserId, createdAt: change.at })
@@ -343,7 +359,7 @@ export class DrizzleCollectionStorageRepository implements ICollectionStorageRep
         after: { days },
         reason,
       });
-      return { outcome: "saved" as const, record: toExtension(row) };
+      return { outcome: "saved", record: toExtension(row) };
     });
   }
 
