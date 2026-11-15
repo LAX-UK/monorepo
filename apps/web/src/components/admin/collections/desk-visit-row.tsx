@@ -9,7 +9,7 @@ import {
 } from "@/lib/admin/collections/desk.vm";
 import { RecordThumbnail, StaffButton, StatusBadge } from "@auction/staff-ui";
 import type { DeskBookingView } from "@auction/types";
-import { ROW_COLUMNS } from "./desk-row-columns";
+import { NOTE_COLUMNS, ROW_COLUMNS } from "./desk-row-columns";
 
 export type DeskRowHandlers = {
   onHandOver: (booking: DeskBookingView) => void;
@@ -19,17 +19,18 @@ export type DeskRowHandlers = {
 };
 
 /** Column headings for a wide screen; on a phone the rows stack and need none. */
-export function DeskColumnHeaders() {
+export function DeskColumnHeaders({ showNote = false }: { showNote?: boolean }) {
   return (
     <div
       aria-hidden="true"
-      className={`hidden gap-6 px-4 pb-2 text-staff-xs font-medium text-staff-muted lg:grid ${ROW_COLUMNS}`}
+      className={`hidden gap-6 px-4 pb-2 text-staff-xs font-medium text-staff-muted lg:grid ${showNote ? NOTE_COLUMNS : ROW_COLUMNS}`}
     >
       <span>Buyer</span>
       <span>Collector</span>
       <span>Lots</span>
       <span>Work</span>
       <span>Booking</span>
+      {showNote ? <span>Note</span> : null}
       <span />
     </div>
   );
@@ -56,12 +57,15 @@ export function DeskVisitRow({
   canChange,
   handlers,
   showTime = false,
+  showNote = false,
 }: {
   booking: DeskBookingView;
   canChange: boolean;
   handlers: DeskRowHandlers;
   /** Draw the time in the row, for lists that are not grouped by time. */
   showTime?: boolean;
+  /** Add a Note column: the reason staff gave when they booked the visit, if any. */
+  showNote?: boolean;
 }) {
   const badge = BOOKING_BADGES[booking.status];
   const lots = booking.lots.filter((lot) => lot.active || lot.outcome !== null);
@@ -72,7 +76,7 @@ export function DeskVisitRow({
 
   return (
     <li
-      className={`grid gap-3 py-4 first:pt-0 last:pb-0 lg:items-center lg:gap-6 ${ROW_COLUMNS}`}
+      className={`grid gap-3 py-4 first:pt-0 last:pb-0 lg:items-center lg:gap-6 ${showNote ? NOTE_COLUMNS : ROW_COLUMNS}`}
       data-booking={booking.reference}
     >
       <div className="min-w-0">
@@ -124,6 +128,15 @@ export function DeskVisitRow({
       <div>
         <StatusBadge tone={badge.tone}>{badge.label}</StatusBadge>
       </div>
+
+      {showNote ? (
+        <p
+          className={`min-w-0 text-staff-xs text-staff-muted lg:text-staff-sm ${booking.note ? "" : "hidden lg:block"}`}
+        >
+          {booking.note ? <span className="font-medium lg:sr-only">Note: </span> : null}
+          {booking.note ?? "No note"}
+        </p>
+      ) : null}
 
       <div className="flex flex-wrap gap-2">
         {can("hand_over") ? (

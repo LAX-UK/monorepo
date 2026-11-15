@@ -1,4 +1,5 @@
 import type {
+  ICollectionBookingReader,
   IConditionReportRequestRepository,
   ICoverAnalysisReader,
   ILotFulfilmentRepository,
@@ -42,6 +43,7 @@ export type CreateAdminCatalogServicesInput = {
   saleRegistrationService: ISaleRegistrationService;
   lotFulfilmentService: ILotFulfilmentService;
   lotFulfilmentRepository: ILotFulfilmentRepository;
+  collectionBookings: Pick<ICollectionBookingReader, "findLiveByLots">;
   qrCodeService: QrCodeService;
   qrCodeAnalytics: QrCodeAnalyticsService;
   conditionReportService: IConditionReportService;
@@ -78,6 +80,7 @@ export function createAdminCatalogServices(
     lotFulfilment: new AdminLotFulfilmentApplicationService(
       input.lotFulfilmentService,
       input.lotFulfilmentRepository,
+      input.collectionBookings,
     ),
     qrCodes: new AdminQrCodesApplicationService(input.qrCodeService, input.qrCodeAnalytics),
     conditionReports: new AdminConditionReportsApplicationService(

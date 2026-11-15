@@ -202,6 +202,39 @@ describe.skipIf(!HAS_DB)("collection booking (integration)", () => {
       });
     });
 
+    it("keeps the reason staff gave when the place is within capacity (notice period)", async () => {
+      const slot = freshSlot();
+      const within = booked(
+        await bookings.book(
+          request({
+            ...slot,
+            placesPerSlot: 3,
+            bookedVia: "staff",
+            bookedByUserId: staffId,
+            overCapacityReason: "Inside the notice period; client is travelling",
+          }),
+        ),
+      );
+      expect(within).toMatchObject({
+        seat: 1,
+        overCapacity: false,
+        overCapacityReason: "Inside the notice period; client is travelling",
+      });
+      const target = freshSlot();
+      const changed = await bookings.change({
+        ...staleInput(within),
+        ...target,
+        placesPerSlot: 3,
+        overCapacityReason: "Moved inside the notice period",
+      });
+      expect(changed.outcome).toBe("changed");
+      if (changed.outcome !== "changed") return;
+      expect(changed.booking).toMatchObject({
+        overCapacity: false,
+        overCapacityReason: "Moved inside the notice period",
+      });
+    });
+
     it("gives a cancelled booking's place to the next person", async () => {
       const slot = freshSlot();
       const a = booked(await bookings.book(request({ ...slot, placesPerSlot: 1 })));

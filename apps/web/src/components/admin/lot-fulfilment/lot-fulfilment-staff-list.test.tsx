@@ -33,6 +33,7 @@ function lot(id: string, title: string, step: string): LotFulfilmentStaffRow {
     status: { label: step, tone: "info" },
     method: "Shipping",
     shipping: null,
+    collection: null,
     updatedAt: "2026-10-24T09:30:00.000Z",
     lotHref: `/admin/lots/${id}`,
     saleHref: null,
@@ -119,5 +120,24 @@ describe("LotFulfilmentStaffList queue panel", () => {
     fireEvent.keyDown(document.activeElement as HTMLElement, { key: "Escape" });
     fireEvent.click(within(dialog).getByRole("button", { name: "Mark delivered" }));
     expect(screen.getAllByRole("dialog").length).toBeGreaterThan(1);
+  });
+});
+
+describe("LotFulfilmentStaffList collection column", () => {
+  it("shows the booked visit, Not booked, and nothing for a lot that ships", () => {
+    renderList({
+      rows: [
+        {
+          ...lot("lot_a", "Blue Interior", "released"),
+          method: "Collection",
+          collection: "Thu 12 Nov, 14:00–14:30 GMT",
+        },
+        { ...lot("lot_b", "Red Studio", "released"), method: "Collection" },
+        lot("lot_c", "Green Field", "released"),
+      ],
+    });
+    expect(screen.getByRole("columnheader", { name: /Collection/ })).toBeTruthy();
+    expect(screen.getByText("Thu 12 Nov, 14:00–14:30 GMT")).toBeTruthy();
+    expect(screen.getAllByText("Not booked")).toHaveLength(1);
   });
 });

@@ -39,6 +39,7 @@ export const deskBookingSchema = z.object({
   buyer: z.object({ id: z.string(), name: z.string() }),
   bookedVia: z.enum(["client", "staff"]),
   overCapacity: z.boolean(),
+  note: z.string().nullable(),
   collector: z.object({
     kind: z.enum(["self", "member", "third_party"]),
     name: z.string(),

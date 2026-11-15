@@ -31,6 +31,7 @@ const row = (step: string): LotFulfilmentStaffRow => ({
   status: { label: step, tone: "info" },
   method: "Shipping",
   shipping: null,
+  collection: null,
   updatedAt: "2026-10-24T09:30:00.000Z",
   lotHref: "/admin/lots/0b7e4a52-8b3c-4e97-a4d6-2c9e7b1f5a08",
   saleHref: null,

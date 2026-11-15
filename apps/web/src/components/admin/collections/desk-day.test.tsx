@@ -214,6 +214,59 @@ describe("the lists", () => {
     expect(screen.getByRole("button", { name: "Rebook" })).toBeTruthy();
   });
 
+  it("shows the staff note on a missed visit, and says when there is none", () => {
+    render(
+      <DeskList
+        list={list("not_collected", [
+          deskBooking({ status: "not_collected", actions: ["rebook"], note: "Client was delayed" }),
+          deskBooking({ id: "b2", reference: "COL-1043", status: "not_collected", note: null }),
+        ])}
+        canChange
+        today="2026-11-13"
+      />,
+    );
+    const headers = document.querySelectorAll('[aria-hidden="true"] > span');
+    expect(Array.from(headers).map((el) => el.textContent)).toEqual([
+      "Buyer",
+      "Collector",
+      "Lots",
+      "Work",
+      "Booking",
+      "Note",
+      "",
+    ]);
+    expect(screen.getByText("Client was delayed")).toBeTruthy();
+    expect(screen.getByText("No note")).toBeTruthy();
+  });
+
+  it("lays the note out for a phone: prefix below lg, screen-reader only at lg, hidden when empty", () => {
+    render(
+      <DeskList
+        list={list("not_collected", [
+          deskBooking({ status: "not_collected", actions: ["rebook"], note: "Client was delayed" }),
+          deskBooking({ id: "b2", reference: "COL-1043", status: "not_collected", note: null }),
+        ])}
+        canChange
+        today="2026-11-13"
+      />,
+    );
+    const withNote = screen.getByText("Client was delayed").closest("p");
+    const prefix = withNote?.querySelector("span");
+    expect(prefix?.textContent).toBe("Note: ");
+    expect(prefix?.className).toContain("lg:sr-only");
+    expect(prefix?.className).not.toContain("hidden");
+    expect(withNote?.className).not.toMatch(/(^|\s)hidden(\s|$)/);
+    const empty = screen.getByText("No note");
+    expect(empty.className).toMatch(/(^|\s)hidden(\s|$)/);
+    expect(empty.className).toContain("lg:block");
+    expect(empty.querySelector("span")).toBeNull();
+  });
+
+  it("keeps the upcoming list without a Note column", () => {
+    render(<DeskList list={list("upcoming")} canChange today="2026-11-09" />);
+    expect(screen.queryByText("Note")).toBeNull();
+  });
+
   it("says when more missed visits wait than are shown", () => {
     render(
       <DeskList list={deskList("not_collected", { more: true })} canChange today="2026-11-13" />,

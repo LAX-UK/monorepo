@@ -1,5 +1,6 @@
 import { buildListHref } from "@/lib/admin/admin-list-params";
 import { LOT_FULFILMENT_LIST_PATH } from "@/lib/admin/build-lot-fulfilment-list-page-model";
+import { visitWhen } from "@/lib/admin/collections/desk.vm";
 import { defineListSort } from "@/lib/admin/define-list-sort";
 import { staffStatus } from "@/lib/admin/staff-kit-status";
 import type {
@@ -32,11 +33,29 @@ export type LotFulfilmentStaffRow = {
   method: string | null;
   /** "Royal Mail · AB123456789GB". */
   shipping: string | null;
+  /** "Thu 12 Nov, 14:00–14:30 GMT" for the booked visit; `null` when there is none. */
+  collection: string | null;
   updatedAt: string;
   lotHref: string;
   saleHref: string | null;
   saleTitle: string | null;
 };
+
+/** Statuses where a collection lot still waits to be handed over. */
+const AWAITING_HAND_OVER = new Set(["released", "ready_for_collection"]);
+
+/**
+ * What the Collection column says: the visit, or "Not booked" for a collection lot that still
+ * waits to be handed over. Blank for lots that ship, have no method yet, or are collected,
+ * delivered or cancelled.
+ */
+export function collectionLabel(
+  row: Pick<LotFulfilmentStaffRow, "collection" | "method" | "step">,
+): string | null {
+  if (row.collection) return row.collection;
+  if (row.method !== "Collection") return null;
+  return AWAITING_HAND_OVER.has(row.step) ? "Not booked" : null;
+}
 
 const METHOD_LABELS: Record<string, string> = {
   collection: "Collection",
@@ -57,6 +76,7 @@ export function toLotFulfilmentStaffRows(
     status: staffStatus("fulfilment", row.status),
     method: row.fulfilmentMethod ? (METHOD_LABELS[row.fulfilmentMethod] ?? null) : null,
     shipping: [row.shippingCarrier, row.trackingNumber].filter(Boolean).join(" · ") || null,
+    collection: row.collectionVisit ? visitWhen(row.collectionVisit) : null,
     updatedAt: row.updatedAt,
     lotHref: `/admin/lots/${row.lotId}`,
     saleHref: row.saleId ? `/admin/sales/${row.saleId}` : null,

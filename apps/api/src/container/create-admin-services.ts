@@ -236,6 +236,7 @@ export function createAdminServices(input: CreateAdminServicesInput): ContainerA
     saleExpectedGuestsReader: repos.saleExpectedGuestsReader,
     lotFulfilmentService,
     lotFulfilmentRepository,
+    collectionBookings: new DrizzleCollectionBookingRepository(db),
     bidService,
     saleroomOnBlockPolicy,
     paddleService: catalog.paddleService,

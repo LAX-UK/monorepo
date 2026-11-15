@@ -155,6 +155,7 @@ export class DeskSupport {
         buyer: { id: booking.legalEntityId, name: names.get(booking.legalEntityId) ?? "Account" },
         bookedVia: booking.bookedVia,
         overCapacity: booking.overCapacity,
+        note: booking.overCapacityReason,
         collector: {
           kind: booking.collector.kind,
           name: booking.collector.name,
