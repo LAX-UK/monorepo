@@ -6,7 +6,7 @@ import { syncUiThemeFromClientAction } from "@/lib/actions/user-ui-preferences";
 import type { ChromeSurface } from "@/lib/layout/chrome-surface";
 import { type SiteHeaderTone, headerChromeIconClass } from "@/lib/layout/header-chrome-tone";
 import { applyThemeDom } from "@/lib/preferences/apply-theme-dom";
-import { canPlayViewTransition, withViewTransition } from "@/lib/view-transition-runtime";
+import { withViewTransition } from "@/lib/view-transition-runtime";
 import { cn } from "@auction/ui/lib/utils";
 import { Moon, Sun } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -52,11 +52,6 @@ export function ThemeToggle({
       void syncUiThemeFromClientAction({ theme: mode });
     };
 
-    if (!canPlayViewTransition()) {
-      apply();
-      return;
-    }
-
     const btn = buttonRef.current;
     const rect = btn?.getBoundingClientRect();
     const cx = rect ? rect.left + rect.width / 2 : window.innerWidth - 32;
@@ -67,14 +62,15 @@ export function ThemeToggle({
     );
 
     const rootStyle = document.documentElement.style;
-    rootStyle.setProperty("--theme-toggle-x", `${cx}px`);
-    rootStyle.setProperty("--theme-toggle-y", `${cy}px`);
-    rootStyle.setProperty("--theme-toggle-radius", `${radius}px`);
+    const vars = {
+      "--theme-toggle-x": cx,
+      "--theme-toggle-y": cy,
+      "--theme-toggle-radius": radius,
+    };
+    for (const [name, px] of Object.entries(vars)) rootStyle.setProperty(name, `${px}px`);
 
     withViewTransition("theme", apply, () => {
-      rootStyle.removeProperty("--theme-toggle-x");
-      rootStyle.removeProperty("--theme-toggle-y");
-      rootStyle.removeProperty("--theme-toggle-radius");
+      for (const name in vars) rootStyle.removeProperty(name);
     });
   }, []);
 

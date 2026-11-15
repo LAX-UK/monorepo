@@ -30,7 +30,8 @@
     animation: theme-reveal var(--motion-duration-xl, 900ms) var(--motion-ease-emphasize) forwards;
   }
 
-  /* Lot image morph: the clicked tile's image grows into the detail hero. */
+  /* Lot image morph: the clicked tile's image grows into the detail hero. The `(*)` selectors also
+     time the root cross-fade of the rest of the page, so the whole page change moves as one. */
   :root[data-view-transition="lot"]::view-transition-group(*),
   :root[data-view-transition="lot"]::view-transition-old(*),
   :root[data-view-transition="lot"]::view-transition-new(*) {
@@ -48,17 +49,19 @@
     animation-timing-function: var(--lax-ease-out);
   }
 
+  /* Reduced motion backstop. The attribute-qualified selectors match the specificity of the kind
+     rules above (and come later), so they also cancel the theme wipe. */
   @media (prefers-reduced-motion: reduce) {
-    ::view-transition-group(*),
-    ::view-transition-old(*),
-    ::view-transition-new(*) {
+    :root[data-view-transition]::view-transition-group(*),
+    :root[data-view-transition]::view-transition-old(*),
+    :root[data-view-transition]::view-transition-new(*) {
       animation: none;
     }
   }
 
-  html[data-reduce-motion="force-reduce"]::view-transition-group(*),
-  html[data-reduce-motion="force-reduce"]::view-transition-old(*),
-  html[data-reduce-motion="force-reduce"]::view-transition-new(*) {
+  html[data-reduce-motion="force-reduce"][data-view-transition]::view-transition-group(*),
+  html[data-reduce-motion="force-reduce"][data-view-transition]::view-transition-old(*),
+  html[data-reduce-motion="force-reduce"][data-view-transition]::view-transition-new(*) {
     animation: none;
   }
 }
