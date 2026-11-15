@@ -121,6 +121,9 @@ jobs:
       - name: Seller commission (one calculator)
         run: pnpm lint:seller-commission
 
+      - name: Compositor-only motion
+        run: pnpm lint:compositor
+
       - name: Route JavaScript budget rule
         run: pnpm lint:route-js-budget
 
