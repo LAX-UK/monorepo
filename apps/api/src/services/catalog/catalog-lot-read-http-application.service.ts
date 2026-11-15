@@ -24,6 +24,7 @@ import { lotsWithSaleTimeZone, withSaleTimeZone } from "../../lib/lot-sale-time-
 import { lotsWithCheckoutPricing } from "../../lib/lots-with-checkout-pricing.js";
 import { mapLotToStaffListRow, mapLotToSummary } from "../../lib/mappers.js";
 import { presentLotImages } from "../../lib/media-presenters.js";
+import { listPlaceStorageTerms, storageTermsTextForVenue } from "../../lib/public-storage-terms.js";
 import { buildConnectRequiredByLotId } from "../../lib/seller-connect-readiness.js";
 import {
   checkoutPricingFromInvoicedSale,
@@ -251,6 +252,9 @@ export class CatalogLotReadHttpApplicationService implements ICatalogLotReadHttp
     const sold = (await invoicedSalePricesOf(this.invoicedSalePrices, [masked])).get(masked.id);
     const checkoutPricing = sold ? checkoutPricingFromInvoicedSale(live, sold) : live;
     const visible = withSaleTimeZone({ ...masked, checkoutPricing }, sale);
+    const storageTerms = sale?.venueId
+      ? await storageTermsTextForVenue(this.db, sale.venueId, this.now())
+      : null;
     const bidding = buildLotDetailBiddingView({
       lot: visible,
       sale,
@@ -265,10 +269,15 @@ export class CatalogLotReadHttpApplicationService implements ICatalogLotReadHttp
         data: {
           ...visible,
           ...bidding,
+          storageTerms,
           ...(deleteEligibility ? { deleteEligibility } : {}),
         },
       },
     };
+  }
+
+  async listStorageTerms(): Promise<CatalogHttpJson> {
+    return { status: 200, body: { data: await listPlaceStorageTerms(this.db, this.now()) } };
   }
 
   async getWatchCount(input: { lotId: string }): Promise<CatalogHttpJson> {

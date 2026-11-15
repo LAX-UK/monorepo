@@ -22,6 +22,7 @@ import {
   PAYMENT_ELIGIBILITY_HOLD,
   PAYMENT_ELIGIBILITY_REFUSAL,
 } from "../payment/payment-eligibility.gate.js";
+import { purchaseStorageOf } from "./purchase-storage.js";
 
 const STATUS: Record<OrganisationBuyingErrorCode, OrganisationBuyingError["status"]> = {
   insufficient_entity_role: 403,
@@ -164,13 +165,16 @@ function collectByOf(
 ): AccountPurchaseView["delivery"]["collectBy"] {
   const storage = row.storage;
   if (!storage || !awaitsCollection({ ...storage, fulfilment: row.fulfilment })) return null;
+  const place = { placeId: storage.placeId, placeName: storage.placeName };
+  const priced = purchaseStorageOf(storage, now);
+  if (priced) return { ...priced, ...place };
   const notice = purchaseCollectBy(
     storage.clearedAt,
     londonDateKey(now),
     collectByPolicyFor(storage.freeStorageDays),
     storage.calendar,
   );
-  return { ...notice, placeId: storage.placeId, placeName: storage.placeName };
+  return { ...notice, ...place, storage: null };
 }
 
 /** A purchase row: the invoice and delivery stage worked out by the domain rules. */

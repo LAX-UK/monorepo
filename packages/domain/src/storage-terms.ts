@@ -287,6 +287,32 @@ export function formatStorageBadge(charge: StorageCharge, now: Date, chargingOn:
     : day;
 }
 
+/** Everything a buyer surface says about one lot's storage, from the one formatter. */
+export type PurchaseStorageView = {
+  state: StorageState;
+  /** The notice on the purchase page. */
+  notice: StorageNotice;
+  /** The purchases list badge: the day, and the running total once it is owed. */
+  badge: string;
+  /** What is due as of today, before VAT. */
+  amountPence: number;
+};
+
+/** The notice and the badge for one lot, so the list and the page cannot disagree. */
+export function purchaseStorageView(
+  charge: StorageCharge,
+  terms: StorageTerms,
+  band: StorageBand,
+  context: StorageNoticeContext,
+): PurchaseStorageView {
+  return {
+    state: charge.state,
+    notice: formatStorageNotice(charge, terms, band, context),
+    badge: formatStorageBadge(charge, context.now, context.chargingOn),
+    amountPence: charge.amountPence,
+  };
+}
+
 export type StorageInvoiceLine = {
   lotNumber: number;
   /** First and last charged day. */

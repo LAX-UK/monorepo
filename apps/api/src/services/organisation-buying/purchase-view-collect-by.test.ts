@@ -65,6 +65,7 @@ describe("the collect-by notice on a purchase", () => {
       state: "upcoming",
       placeId: PLACE_ID,
       placeName: "Marylebone",
+      storage: null,
     });
     expect(at("2026-12-01T12:00:00Z")?.state).toBe("upcoming");
     expect(at("2026-12-02T12:00:00Z")?.state).toBe("soon");
@@ -74,6 +75,7 @@ describe("the collect-by notice on a purchase", () => {
       state: "overdue",
       placeId: PLACE_ID,
       placeName: "Marylebone",
+      storage: null,
     });
   });
 
@@ -98,6 +100,7 @@ describe("the collect-by notice on a purchase", () => {
       state: "soon",
       placeId: PLACE_ID,
       placeName: "Marylebone",
+      storage: null,
     });
   });
 
@@ -232,6 +235,7 @@ describe("the collect-by notice follows the reminder email's exclusions", () => 
       state: "upcoming",
       placeId: PLACE_ID,
       placeName: "Marylebone",
+      storage: null,
     });
   });
 });
