@@ -44,8 +44,25 @@ test.describe("lax.art journeys", () => {
     await expect(page.getByRole("heading", { level: 1, name })).toBeVisible();
     await expect(page.getByTestId("art-artwork-price")).toBeVisible();
     // The FAQs are pills, one answer open at a time, and the phone page has one options path.
-    await expect(page.getByRole("radiogroup", { name: "FAQs" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Contact a specialist" })).toHaveCount(0);
+    const pills = page.getByRole("group", { name: "FAQs" });
+    await expect(pills).toBeVisible();
+    const answers = page.getByTestId("marketing-faq-answer");
+    if ((await answers.count()) > 1) {
+      await expect(answers.nth(0)).toBeVisible();
+      await pills.getByRole("radio").first().focus();
+      await page.keyboard.press("ArrowRight");
+      await expect(answers.nth(1)).toBeVisible();
+      await expect(answers.nth(0)).toBeHidden();
+    }
+    if (testInfo.project.name === "chromium-mobile") {
+      // Phones: the price follows the title, ahead of the specification rows, and the options
+      // sheet offers no second specialist path.
+      const priceBox = await page.getByTestId("art-artwork-price").boundingBox();
+      const specBox = await page.locator("main dl").first().boundingBox();
+      expect(priceBox && specBox && priceBox.y < specBox.y).toBe(true);
+      await page.getByRole("button", { name: "More options" }).click();
+      await expect(page.getByRole("button", { name: "Contact a specialist" })).toHaveCount(0);
+    }
   });
 
   test("search finds a listed work and reports misses", async ({ page }) => {

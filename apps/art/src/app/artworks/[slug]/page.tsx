@@ -155,9 +155,11 @@ export default async function ArtworkDetailPage({ params, searchParams }: Artwor
               <ArtArtworkConversations vm={vm} />
             </div>
 
-            <div className="max-md:order-5">
-              <ArtShopEditions editions={vm.shopEditions} />
-            </div>
+            {vm.shopEditions.length > 0 ? (
+              <div className="max-md:order-5">
+                <ArtShopEditions editions={vm.shopEditions} />
+              </div>
+            ) : null}
           </section>
 
           <div className="flex min-w-0 flex-col gap-12 lg:col-start-1 lg:row-start-2 lg:max-w-[37.5rem]">

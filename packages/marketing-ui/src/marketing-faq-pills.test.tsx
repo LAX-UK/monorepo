@@ -13,10 +13,21 @@ const ITEMS = [
 ];
 
 describe("MarketingFaqPills", () => {
+  it("keeps the answers outside the group of pills", () => {
+    render(<MarketingFaqPills items={ITEMS} />);
+    const group = screen.getByRole("group", { name: "FAQs" });
+    for (const answer of screen.getAllByTestId("marketing-faq-answer")) {
+      expect(group).not.toContainElement(answer);
+    }
+    expect(group.querySelectorAll("input[type=radio]")).toHaveLength(2);
+  });
+
   it("labels the section and offers each question as a keyboard-operable radio pill", () => {
     render(<MarketingFaqPills items={ITEMS} />);
     expect(screen.getByRole("heading", { name: "FAQs", level: 2 })).toBeInTheDocument();
-    expect(screen.getByRole("radiogroup", { name: "FAQs" })).toBeInTheDocument();
+    expect(screen.getByRole("group", { name: "FAQs" })).toBeInTheDocument();
+    expect(screen.queryByRole("radiogroup")).not.toBeInTheDocument();
+    expect(screen.queryByRole("region")).not.toBeInTheDocument();
     const radios = screen.getAllByRole("radio");
     expect(radios).toHaveLength(2);
     expect(radios[0]).toBeChecked();
