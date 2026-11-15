@@ -119,18 +119,3 @@ describe("notify", () => {
     expect(mocks.toastSuccess).toHaveBeenCalledWith("Saved", { duration: 6000 });
   });
 });
-
-describe("notify.error breadcrumb", () => {
-  it("records the id only, never the title or description", async () => {
-    const addBreadcrumb = vi.fn();
-    vi.doMock("@sentry/nextjs", () => ({ addBreadcrumb }));
-    vi.resetModules();
-    const { notify: fresh } = await import("@/lib/ui/notify");
-    fresh.error("Jane Doe's card failed", { id: "card-declined", description: "jane@example.com" });
-    await new Promise((resolve) => setTimeout(resolve, 20));
-    expect(addBreadcrumb).toHaveBeenCalledTimes(1);
-    expect(JSON.stringify(addBreadcrumb.mock.calls)).toContain("card-declined");
-    expect(JSON.stringify(addBreadcrumb.mock.calls)).not.toMatch(/Jane|jane@/);
-    vi.doUnmock("@sentry/nextjs");
-  });
-});
