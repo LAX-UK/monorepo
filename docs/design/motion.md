@@ -37,9 +37,9 @@ Distances: card lift 1px, menu 4px, dialog 8px, press scale 0.98, image zoom 1.0
 - Page change now (MO4, MO7): no new whole-page animation on Next 15. Limit the light/dark circle wipe (900ms, `packages/marketing-ui/src/marketing-header.css`) to the theme switch only, so the Bid lot-image morph (360ms) and the admin cross-fade (staff timing) look as intended. Transition layer gets `pointer-events: none`; skip transitions under reduced motion.
 - Page change later (MO5): React `<ViewTransition>` after a Next 16.3+ upgrade only; ships only with zero route JS growth. MO6: no cross-document view transitions.
 - Menus, dropdowns, popovers, select, hover card: fade + scale from 0.97, 4px from trigger, enter 200 / exit 140. Staff fade only 150/100. Reduced: fade only 120ms. Radix Select unmounts at once on close (it has no presence layer), so Select animates on entry only; its exit is instant.
-- Tooltips: 400ms open delay (`TOOLTIP_OPEN_DELAY_MS` in `packages/ui/src/components/ui/tooltip.tsx`, a delay rather than a duration, so not a token), 120ms fade, instant between tooltips.
-- Dialogs: scrim fades; panel rises 8px from 0.98, 260 in / 180 out, emphasize ease. Staff fade 200/150. Reduced: fade 150ms.
-- Sheets/drawers/phone menu: slide from edge 260/180 (keep vaul drag on phone bottom sheet). Staff 200/150. Reduced: fade only.
+- Tooltips: 400ms open delay (`delayDuration={400}` on every `TooltipProvider`, written in place: a delay rather than a duration, so not a token, and a shared constant module would be copied into every chunk that renders a button), 120ms fade, instant between tooltips.
+- Dialogs: scrim fades; panel rises 8px from 0.98, 260 in / 180 out, emphasize ease. Staff fade 200/150. Reduced: fade 120ms (`--lax-motion-fade`, within the ≤150ms ceiling).
+- Sheets/drawers/phone menu: slide from edge 260/180 (keep vaul drag on phone bottom sheet). Staff 200/150. Reduced: fade only, 120ms (`--lax-motion-fade`, within the ≤150ms ceiling).
 - Toasts (Sonner): rise 8px + fade, 200 in / 140 out, via Sonner CSS variables. Only the front toast's own exit is changed; toasts behind it and swiped toasts keep Sonner's positions.
 - Tabs: content fades 150ms; underline moves instantly.
 - Lists/tables: no animation on load/sort/filter. MO11: remove admin table row stagger; keep the returned-row tint.
@@ -49,7 +49,7 @@ Distances: card lift 1px, menu 4px, dialog 8px, press scale 0.98, image zoom 1.0
 - Live dot / countdown: unchanged; countdown digits never animate.
 
 ## Implementation (MO8)
-Write ~10 small keyframes in the shared kit (`packages/ui`) driven by the components' existing `data-state` open/closed attributes, using the tokens. Remove the dead `animate-in`/`fade-in`/`zoom-in-95` classes (tw-animate-css is not installed and will not be). Use `@starting-style` + `transition-behavior: allow-discrete` where elements enter from `display:none`.
+Write ~10 small keyframes in the shared kit (`packages/ui`) driven by the components' existing `data-state` open/closed attributes, using the tokens. Remove the dead `animate-in`/`fade-in`/`zoom-in-95` classes (tw-animate-css is not installed and will not be). Use `@starting-style` + `transition-behavior: allow-discrete` where elements enter from `display:none`. Menus, dialogs, sheets, tooltips and toasts render at the end of `<body>`, outside the staff shell, so they take the staff timings from a page scope in CSS, `:root:has([data-lax-density="staff"])`, which the staff shell sets once; no overlay reads the density in JavaScript, and the overlay motion adds no route JavaScript.
 
 ## Reduced motion (MO13)
 Under `prefers-reduced-motion: reduce` or Bid's in-app motion switch: public products keep fades ≤150ms and remove all movement, zoom and loops; staff tools and LAX Account go fully instant. Bid's `force-allow` keeps motion on over the OS setting. Lenis follows today's rule unchanged.
