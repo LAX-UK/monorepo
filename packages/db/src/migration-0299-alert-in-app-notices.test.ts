@@ -21,6 +21,10 @@ const LATER_TYPES = [
   "reoffer_offer",
   "reoffer_offer_reminder",
   "reoffer_offer_closed",
+  "collection_booked",
+  "collection_changed",
+  "collection_cancelled",
+  "collection_reminder",
 ];
 const TYPES_AT_0299 = NOTIFICATION_TYPES.filter((t) => !LATER_TYPES.includes(t));
 
