@@ -64,10 +64,11 @@ describe("migration 0393 Books payout bills", () => {
     );
   });
 
-  it("rolls back: cancels unsent bill payments, restores 0386's checks NOT VALID, keeps the refusal", () => {
-    expect(rollback).toMatch(
-      /WHERE "kind" = 'bill_payment' AND "state" IN \('pending', 'failed'\)/,
-    );
+  it("rolls back: cancels unsent bill payments, payout bills and vendor contacts, restores 0386's checks NOT VALID, keeps the refusal", () => {
+    const cancelled =
+      /WHERE "state" IN \('pending', 'failed'\)\s+AND \("kind" IN \('bill_payment', 'bill'\)\s+OR \("kind" = 'contact' AND "lax_reference" LIKE 'LAX-%-CON-vendor-%'\)\)/g;
+    // Once for the history rows and once for the state change.
+    expect(rollback.match(cancelled)).toHaveLength(2);
     expect(rollback).not.toMatch(/CREATE|DROP TABLE|DROP FUNCTION/);
     expect(rollback.match(/NOT VALID/g)).toHaveLength(3);
     expect(rollback).not.toContain("BPAY");
