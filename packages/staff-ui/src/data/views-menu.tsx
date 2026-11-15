@@ -182,9 +182,10 @@ export function ViewsMenu({
           size="sm"
           variant="ghost"
           icon={<Bookmark aria-hidden />}
-          className="shrink-0 text-staff-muted data-[state=open]:text-staff-fg"
+          className="shrink-0 text-staff-muted data-[state=open]:text-staff-fg max-sm:gap-0 max-sm:px-2"
         >
-          Views
+          {/* On a phone the label hides so the view tabs keep their room; the name stays. */}
+          <span className="max-sm:sr-only">Views</span>
           <ChevronDown aria-hidden className="-mr-1 size-3.5" />
         </StaffButton>
       </PopoverTrigger>
