@@ -6,6 +6,7 @@ import { syncUiThemeFromClientAction } from "@/lib/actions/user-ui-preferences";
 import type { ChromeSurface } from "@/lib/layout/chrome-surface";
 import { type SiteHeaderTone, headerChromeIconClass } from "@/lib/layout/header-chrome-tone";
 import { applyThemeDom } from "@/lib/preferences/apply-theme-dom";
+import { canPlayViewTransition, withViewTransition } from "@/lib/view-transition-runtime";
 import { cn } from "@auction/ui/lib/utils";
 import { Moon, Sun } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -51,13 +52,7 @@ export function ThemeToggle({
       void syncUiThemeFromClientAction({ theme: mode });
     };
 
-    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const supportsViewTransitions =
-      typeof document !== "undefined" &&
-      typeof (document as Document & { startViewTransition?: unknown }).startViewTransition ===
-        "function";
-
-    if (reduced || !supportsViewTransitions) {
+    if (!canPlayViewTransition()) {
       apply();
       return;
     }
@@ -71,31 +66,16 @@ export function ThemeToggle({
       Math.max(cy, window.innerHeight - cy),
     );
 
-    document.documentElement.style.setProperty("--theme-toggle-x", `${cx}px`);
-    document.documentElement.style.setProperty("--theme-toggle-y", `${cy}px`);
-    document.documentElement.style.setProperty("--theme-toggle-radius", `${radius}px`);
+    const rootStyle = document.documentElement.style;
+    rootStyle.setProperty("--theme-toggle-x", `${cx}px`);
+    rootStyle.setProperty("--theme-toggle-y", `${cy}px`);
+    rootStyle.setProperty("--theme-toggle-radius", `${radius}px`);
 
-    const cleanup = () => {
-      document.documentElement.style.removeProperty("--theme-toggle-x");
-      document.documentElement.style.removeProperty("--theme-toggle-y");
-      document.documentElement.style.removeProperty("--theme-toggle-radius");
-    };
-
-    try {
-      const transition = (
-        document as Document & {
-          startViewTransition: (cb: () => void) => { finished: Promise<void> };
-        }
-      ).startViewTransition(() => {
-        apply();
-      });
-      void transition.finished.finally(cleanup).catch(() => {
-        /* Duplicate view-transition-name or aborted transition — theme already applied */
-      });
-    } catch {
-      apply();
-      cleanup();
-    }
+    withViewTransition("theme", apply, () => {
+      rootStyle.removeProperty("--theme-toggle-x");
+      rootStyle.removeProperty("--theme-toggle-y");
+      rootStyle.removeProperty("--theme-toggle-radius");
+    });
   }, []);
 
   const label = isDark ? "Switch to light theme" : "Switch to dark theme";

@@ -1,17 +1,65 @@
-/* F8 — Theme toggle circular reveal via View Transitions API. */
+/*
+ * View transitions. Each kind is selected by `<html data-view-transition="...">`, which the
+ * transition helper (apps/web/src/lib/view-transition-runtime.ts) sets only while that transition
+ * runs, so a rule here never leaks into another kind. Timing comes from the LAX motion tokens
+ * (docs/design/motion.md). The helper does not start a transition under reduced motion; the
+ * rules at the end are the CSS backstop.
+ */
 @supports (view-transition-name: root) {
-  ::view-transition-old(root),
-  ::view-transition-new(root) {
+  /* The transition layer is visual only: it must never swallow a click. */
+  ::view-transition,
+  ::view-transition-group(*),
+  ::view-transition-image-pair(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    pointer-events: none;
+  }
+
+  /* Theme switch (F8): circular reveal from the toggle. */
+  :root[data-view-transition="theme"]::view-transition-old(root),
+  :root[data-view-transition="theme"]::view-transition-new(root) {
     animation: none;
     mix-blend-mode: normal;
   }
 
-  ::view-transition-old(root) {
+  :root[data-view-transition="theme"]::view-transition-old(root) {
     z-index: 1;
   }
-  ::view-transition-new(root) {
+  :root[data-view-transition="theme"]::view-transition-new(root) {
     z-index: 2;
     animation: theme-reveal var(--motion-duration-xl, 900ms) var(--motion-ease-emphasize) forwards;
+  }
+
+  /* Lot image morph: the clicked tile's image grows into the detail hero. */
+  :root[data-view-transition="lot"]::view-transition-group(*),
+  :root[data-view-transition="lot"]::view-transition-old(*),
+  :root[data-view-transition="lot"]::view-transition-new(*) {
+    animation-duration: var(--lax-motion-morph);
+    animation-timing-function: var(--lax-ease-emphasize);
+  }
+
+  /* Admin navigation: page cross-fade at the staff timing (out quicker than in). */
+  :root[data-view-transition="admin"]::view-transition-old(root) {
+    animation-duration: var(--lax-motion-page-out);
+    animation-timing-function: var(--lax-ease-in);
+  }
+  :root[data-view-transition="admin"]::view-transition-new(root) {
+    animation-duration: var(--lax-motion-page-in);
+    animation-timing-function: var(--lax-ease-out);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    ::view-transition-group(*),
+    ::view-transition-old(*),
+    ::view-transition-new(*) {
+      animation: none;
+    }
+  }
+
+  html[data-reduce-motion="force-reduce"]::view-transition-group(*),
+  html[data-reduce-motion="force-reduce"]::view-transition-old(*),
+  html[data-reduce-motion="force-reduce"]::view-transition-new(*) {
+    animation: none;
   }
 }
 

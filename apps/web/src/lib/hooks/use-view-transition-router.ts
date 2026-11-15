@@ -12,14 +12,14 @@ export function useViewTransitionRouter() {
 
   const push = useCallback(
     (href: string, options?: NavigateOptions) => {
-      withViewTransition(() => router.push(href, options));
+      withViewTransition("admin", () => router.push(href, options));
     },
     [router],
   );
 
   const replace = useCallback(
     (href: string, options?: NavigateOptions) => {
-      withViewTransition(() => router.replace(href, options));
+      withViewTransition("admin", () => router.replace(href, options));
     },
     [router],
   );
