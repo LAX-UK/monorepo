@@ -18,7 +18,7 @@ const TEXT_STEP: Record<LaxDensity, string> = { staff: "text-lax-13", client: "t
  * prop. `mobileOffset` lifts it above a phone's bottom tab bar.
  */
 export function Toaster({
-  density = "staff",
+  density = "client",
   mobileOffset,
 }: {
   density?: LaxDensity;

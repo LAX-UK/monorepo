@@ -1,10 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  MOTION_CSS,
-  reducedMotionProblems,
-  stripComments,
-  withoutReducedMotionRule,
-} from "../test/motion-css.js";
+import { MOTION_CSS, stripComments } from "../test/motion-css.js";
 
 const css = stripComments(MOTION_CSS);
 
@@ -95,24 +90,5 @@ describe("overlay motion stylesheet", () => {
   });
 });
 
-describe("reduced motion", () => {
-  it("is fade only for public layers and instant for staff and LAX Account", () => {
-    expect(reducedMotionProblems(MOTION_CSS)).toEqual([]);
-  });
-
-  it("is caught when the reduced-motion rule is removed (mutation check)", () => {
-    const mutated = withoutReducedMotionRule(MOTION_CSS);
-    expect(mutated).not.toBe(MOTION_CSS);
-    expect(reducedMotionProblems(mutated)).not.toEqual([]);
-  });
-
-  it("is caught when only the staff rule is removed", () => {
-    const mutated = MOTION_CSS.replace(
-      /:root \[data-lax-density="staff"\]\[data-lax-motion\],/,
-      "",
-    );
-    expect(reducedMotionProblems(mutated)).toContain(
-      "staff layers are not instant under reduced motion",
-    );
-  });
-});
+// Reduced motion, staff timings and the toast rules are checked on what Chromium resolves, in
+// motion-resolved.test.ts, not on the stylesheet's text.

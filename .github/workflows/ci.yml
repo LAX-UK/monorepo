@@ -330,9 +330,14 @@ jobs:
       - name: Verify executable migration rollback pairs
         run: node scripts/ci/verify-migration-pairs.mjs
 
+      - name: Install Chromium for the overlay motion tests (packages/ui)
+        run: pnpm --filter @auction/ui exec playwright install --with-deps chromium
+
       - name: Test affected packages (excluding web, api and shop-api)
         # One package at a time: shared auction_ci Postgres (migrations, role grants, shop integration).
         # shop-api runs sharded in its own job below (same suite, own database per shard).
+        env:
+          LAX_REQUIRE_CHROMIUM: "1"
         run: pnpm turbo run test --affected --filter=!@auction/web --filter=!@auction/api --filter=!@auction/shop-api --summarize --concurrency=1
 
       - name: Runtime ownership smoke gates

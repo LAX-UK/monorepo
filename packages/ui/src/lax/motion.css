@@ -72,8 +72,8 @@
 
 /* What each kind runs. `--lax-anim-in` / `--lax-anim-out` are whole `animation` values. */
 [data-lax-motion="float"] {
-  --lax-anim-in: lax-float-in var(--lax-motion-enter) var(--lax-ease-out) both;
-  --lax-anim-out: lax-float-out var(--lax-motion-exit) var(--lax-ease-in) both;
+  --lax-anim-in: lax-float-in var(--lax-motion-enter) var(--lax-ease-out);
+  --lax-anim-out: lax-float-out var(--lax-motion-exit) var(--lax-ease-in) forwards;
   transform-origin: var(--radix-popper-transform-origin);
 }
 
@@ -94,32 +94,32 @@
 }
 
 [data-lax-motion="tip"] {
-  --lax-anim-in: lax-fade-in var(--lax-motion-fade) var(--lax-ease-out) both;
-  --lax-anim-out: lax-fade-out var(--lax-motion-fade) var(--lax-ease-in) both;
+  --lax-anim-in: lax-fade-in var(--lax-motion-fade) var(--lax-ease-out);
+  --lax-anim-out: lax-fade-out var(--lax-motion-fade) var(--lax-ease-in) forwards;
 }
 
 [data-lax-motion="scrim"] {
-  --lax-anim-in: lax-fade-in var(--lax-motion-panel) var(--lax-ease-out) both;
-  --lax-anim-out: lax-fade-out var(--lax-motion-panel-exit) var(--lax-ease-in) both;
+  --lax-anim-in: lax-fade-in var(--lax-motion-panel) var(--lax-ease-out);
+  --lax-anim-out: lax-fade-out var(--lax-motion-panel-exit) var(--lax-ease-in) forwards;
 }
 
 [data-lax-motion="dialog"] {
-  --lax-anim-in: lax-rise-in var(--lax-motion-panel) var(--lax-ease-emphasize) both;
-  --lax-anim-out: lax-rise-out var(--lax-motion-panel-exit) var(--lax-ease-in) both;
+  --lax-anim-in: lax-rise-in var(--lax-motion-panel) var(--lax-ease-emphasize);
+  --lax-anim-out: lax-rise-out var(--lax-motion-panel-exit) var(--lax-ease-in) forwards;
 }
 
 /* The workspace dialog's side placement is a panel from the right edge on wide screens. */
 @media (min-width: 768px) {
   [data-lax-motion="dialog"][data-placement="side"] {
     --lax-slide-x: 100%;
-    --lax-anim-in: lax-slide-in var(--lax-motion-panel) var(--lax-ease-emphasize) both;
-    --lax-anim-out: lax-slide-out var(--lax-motion-panel-exit) var(--lax-ease-in) both;
+    --lax-anim-in: lax-slide-in var(--lax-motion-panel) var(--lax-ease-emphasize);
+    --lax-anim-out: lax-slide-out var(--lax-motion-panel-exit) var(--lax-ease-in) forwards;
   }
 }
 
 [data-lax-motion="sheet"] {
-  --lax-anim-in: lax-slide-in var(--lax-motion-panel) var(--lax-ease-emphasize) both;
-  --lax-anim-out: lax-slide-out var(--lax-motion-panel-exit) var(--lax-ease-in) both;
+  --lax-anim-in: lax-slide-in var(--lax-motion-panel) var(--lax-ease-emphasize);
+  --lax-anim-out: lax-slide-out var(--lax-motion-panel-exit) var(--lax-ease-in) forwards;
 }
 
 [data-lax-motion="sheet"][data-side="left"] {
@@ -140,13 +140,13 @@
 
 /* Staff tools: fade only, at the staff timings the tokens already carry. */
 [data-lax-density="staff"][data-lax-motion="float"] {
-  --lax-anim-in: lax-fade-in var(--lax-motion-enter) var(--lax-ease-out) both;
-  --lax-anim-out: lax-fade-out var(--lax-motion-exit) var(--lax-ease-in) both;
+  --lax-anim-in: lax-fade-in var(--lax-motion-enter) var(--lax-ease-out);
+  --lax-anim-out: lax-fade-out var(--lax-motion-exit) var(--lax-ease-in) forwards;
 }
 
 [data-lax-density="staff"]:is([data-lax-motion="dialog"], [data-lax-motion="sheet"]) {
-  --lax-anim-in: lax-fade-in var(--lax-motion-panel) var(--lax-ease-out) both;
-  --lax-anim-out: lax-fade-out var(--lax-motion-panel-exit) var(--lax-ease-in) both;
+  --lax-anim-in: lax-fade-in var(--lax-motion-panel) var(--lax-ease-out);
+  --lax-anim-out: lax-fade-out var(--lax-motion-panel-exit) var(--lax-ease-in) forwards;
 }
 
 /* Run them. A tooltip that opens straight after another one (`instant-open`) does not animate. */
@@ -160,44 +160,26 @@
 
 /*
  * Reduced motion. The same rules apply for the OS setting and for Bid's in-app switch
- * (`html[data-reduce-motion="force-reduce"]`), so each is written twice, side by side.
+ * (`html[data-reduce-motion="force-reduce"]`), so each is written twice, side by side; the
+ * parsed-stylesheet test resolves both copies. Bid's `force-allow` keeps motion on even when the
+ * OS asks for less, as `use-reduced-motion.ts` does.
  */
 @media (prefers-reduced-motion: reduce) {
-  :root [data-lax-motion] {
-    --lax-anim-in: lax-fade-in var(--lax-motion-fade) linear both;
-    --lax-anim-out: lax-fade-out var(--lax-motion-fade) linear both;
+  :root:not([data-reduce-motion="force-allow"]) [data-lax-motion] {
+    --lax-anim-in: lax-fade-in var(--lax-motion-fade) linear;
+    --lax-anim-out: lax-fade-out var(--lax-motion-fade) linear forwards;
   }
 
-  :root
-    [data-lax-motion]:is(
-      [data-lax-motion="dialog"],
-      [data-lax-motion="sheet"],
-      [data-lax-motion="scrim"]
-    ) {
-    --lax-anim-in: lax-fade-in var(--lax-motion-hover) linear both;
-    --lax-anim-out: lax-fade-out var(--lax-motion-hover) linear both;
-  }
-
-  :root [data-lax-density="staff"][data-lax-motion],
-  :root[data-lax-product="account"] [data-lax-motion] {
+  :root:not([data-reduce-motion="force-allow"]) [data-lax-density="staff"][data-lax-motion],
+  :root:not([data-reduce-motion="force-allow"])[data-lax-product="account"] [data-lax-motion] {
     --lax-anim-in: none;
     --lax-anim-out: none;
   }
 }
 
 :root[data-reduce-motion="force-reduce"] [data-lax-motion] {
-  --lax-anim-in: lax-fade-in var(--lax-motion-fade) linear both;
-  --lax-anim-out: lax-fade-out var(--lax-motion-fade) linear both;
-}
-
-:root[data-reduce-motion="force-reduce"]
-  [data-lax-motion]:is(
-    [data-lax-motion="dialog"],
-    [data-lax-motion="sheet"],
-    [data-lax-motion="scrim"]
-  ) {
-  --lax-anim-in: lax-fade-in var(--lax-motion-hover) linear both;
-  --lax-anim-out: lax-fade-out var(--lax-motion-hover) linear both;
+  --lax-anim-in: lax-fade-in var(--lax-motion-fade) linear;
+  --lax-anim-out: lax-fade-out var(--lax-motion-fade) linear forwards;
 }
 
 :root[data-reduce-motion="force-reduce"] [data-lax-density="staff"][data-lax-motion],
@@ -210,7 +192,7 @@
  * Toasts (Sonner). Sonner moves a toast with `--y` and fades it with `opacity`; its own timings
  * are 400ms and it slides in from the full height of the toast. Here a toast rises
  * `--lax-toast-rise` (8px) and fades, 200ms in and 140ms out. Staff toasters (`.lax-staff-layer`)
- * rise nothing. The selectors repeat attributes to outrank Sonner's own state rules, which are
+ * rise nothing. The selectors repeat attributes to outrank the Sonner rules they replace, which are
  * injected after this file.
  */
 [data-sonner-toaster] {
@@ -231,25 +213,43 @@
   opacity: 0;
 }
 
+/* A toast that goes away on its own: only the front one is moved here (Sonner's rule for it,
+   `data-front="true"` with `data-swipe-out="false"`, lifts it by its full height). A toast behind
+   the front one, and one swiped away, keep Sonner's own position and timing. */
 [data-sonner-toaster]
-  [data-sonner-toast][data-styled][data-removed="true"][data-mounted][data-swipe-out] {
+  [data-sonner-toast][data-styled][data-removed="true"][data-front="true"][data-swipe-out="false"] {
   --y: translateY(calc(var(--lift) * var(--lax-toast-rise) * -1));
-  opacity: 0;
   transition: transform var(--lax-motion-exit) var(--lax-ease-in), opacity var(--lax-motion-exit)
     var(--lax-ease-in);
 }
 
+/* The `:is()` gives these the weight of the front toast's exit rule above, so they win over it. */
 @media (prefers-reduced-motion: reduce) {
-  [data-sonner-toaster] {
+  :root:not([data-reduce-motion="force-allow"]) [data-sonner-toaster] {
     --lax-toast-rise: 0px;
   }
 
-  [data-sonner-toaster] [data-sonner-toast][data-styled] {
+  :root:not([data-reduce-motion="force-allow"])
+    [data-sonner-toaster]
+    [data-sonner-toast][data-styled]:is(
+      *,
+      [data-removed="true"][data-front="true"][data-swipe-out="false"]
+    ) {
     transition: opacity var(--lax-motion-fade) linear;
   }
 
-  [data-sonner-toaster].lax-staff-layer [data-sonner-toast][data-styled],
-  :root[data-lax-product="account"] [data-sonner-toaster] [data-sonner-toast][data-styled] {
+  :root:not([data-reduce-motion="force-allow"])
+    [data-sonner-toaster].lax-staff-layer
+    [data-sonner-toast][data-styled]:is(
+      *,
+      [data-removed="true"][data-front="true"][data-swipe-out="false"]
+    ),
+  :root:not([data-reduce-motion="force-allow"])[data-lax-product="account"]
+    [data-sonner-toaster]
+    [data-sonner-toast][data-styled]:is(
+      *,
+      [data-removed="true"][data-front="true"][data-swipe-out="false"]
+    ) {
     transition: none;
   }
 }
@@ -258,15 +258,26 @@
   --lax-toast-rise: 0px;
 }
 
-:root[data-reduce-motion="force-reduce"] [data-sonner-toaster] [data-sonner-toast][data-styled] {
+:root[data-reduce-motion="force-reduce"]
+  [data-sonner-toaster]
+  [data-sonner-toast][data-styled]:is(
+    *,
+    [data-removed="true"][data-front="true"][data-swipe-out="false"]
+  ) {
   transition: opacity var(--lax-motion-fade) linear;
 }
 
 :root[data-reduce-motion="force-reduce"]
   [data-sonner-toaster].lax-staff-layer
-  [data-sonner-toast][data-styled],
+  [data-sonner-toast][data-styled]:is(
+    *,
+    [data-removed="true"][data-front="true"][data-swipe-out="false"]
+  ),
 :root[data-reduce-motion="force-reduce"][data-lax-product="account"]
   [data-sonner-toaster]
-  [data-sonner-toast][data-styled] {
+  [data-sonner-toast][data-styled]:is(
+    *,
+    [data-removed="true"][data-front="true"][data-swipe-out="false"]
+  ) {
   transition: none;
 }

@@ -225,10 +225,11 @@
 
 /* Staff motion: quicker than the public timings and without a press beat (docs/design/motion.md).
    The tokens are defined in lax-system.css; only the durations differ here, the easings are shared.
-   Menus, tooltips and dialogs render in a portal, outside the shell, so a staff layer
-   (`data-lax-density="staff"`, set by the kit) and the staff toaster take the same values. */
+   Menus, tooltips, dialogs and their scrims render in a portal, outside the shell. The kit puts
+   `data-lax-density="staff"` on every one of them (plain components and LAX UI alike), so that
+   attribute alone, with or without `data-lax-ui`, takes the staff values, as does the staff toaster. */
 [data-staff-ui],
-[data-lax-ui][data-lax-density="staff"],
+[data-lax-density="staff"],
 .lax-staff-layer {
   --lax-motion-press: 0ms;
   --lax-motion-hover: 100ms;

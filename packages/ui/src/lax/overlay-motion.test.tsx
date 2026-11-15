@@ -1,4 +1,5 @@
 import { fireEvent, render, screen } from "@testing-library/react";
+import type * as React from "react";
 import { describe, expect, it } from "vitest";
 import { DialogContent, DialogTitle, Dialog as KitDialog } from "../components/ui/dialog.js";
 import {
@@ -161,5 +162,85 @@ describe("overlays carry the kit's motion marker and no dead classes", () => {
     );
     expect(screen.getByText("plain body")).not.toHaveAttribute("data-lax-density");
     fireEvent.keyDown(document.body, { key: "Escape" });
+  });
+});
+
+describe("every portalled layer type carries the staff density inside a staff shell", () => {
+  const staff = (node: React.ReactNode) => (
+    <LaxDensityProvider density="staff">{node}</LaxDensityProvider>
+  );
+
+  function expectStaff(selector: string) {
+    const nodes = [...document.querySelectorAll<HTMLElement>(selector)];
+    expect(nodes.length, selector).toBeGreaterThan(0);
+    for (const node of nodes) {
+      expect(node, selector).toHaveAttribute("data-lax-density", "staff");
+      // A plain kit layer is not LAX UI: the staff motion must not depend on `data-lax-ui`.
+      expect(node, selector).not.toHaveAttribute("data-lax-ui");
+    }
+  }
+
+  it("dialog scrim and panel", () => {
+    render(
+      staff(
+        <KitDialog open>
+          <DialogContent>
+            <DialogTitle>Title</DialogTitle>
+          </DialogContent>
+        </KitDialog>,
+      ),
+    );
+    expectStaff('[data-lax-motion="scrim"]');
+    expectStaff('[data-lax-motion="dialog"]');
+  });
+
+  it("sheet scrim and panel", () => {
+    render(
+      staff(
+        <Sheet open>
+          <SheetContent side="right">
+            <SheetTitle>Title</SheetTitle>
+          </SheetContent>
+        </Sheet>,
+      ),
+    );
+    expectStaff('[data-lax-motion="scrim"]');
+    expectStaff('[data-lax-motion="sheet"]');
+  });
+
+  it("popover, hover card, dropdown menu, select and tooltip", () => {
+    render(
+      staff(
+        <TooltipProvider>
+          <Popover open>
+            <PopoverTrigger>p</PopoverTrigger>
+            <PopoverContent>popover</PopoverContent>
+          </Popover>
+          <HoverCard open>
+            <HoverCardTrigger>h</HoverCardTrigger>
+            <HoverCardContent>card</HoverCardContent>
+          </HoverCard>
+          <DropdownMenu open>
+            <DropdownMenuTrigger>d</DropdownMenuTrigger>
+            <DropdownMenuContent>
+              <DropdownMenuItem>one</DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <Select open value="a">
+            <SelectTrigger>s</SelectTrigger>
+            <SelectContent>
+              <SelectItem value="a">A</SelectItem>
+            </SelectContent>
+          </Select>
+          <Tooltip open>
+            <TooltipTrigger>t</TooltipTrigger>
+            <TooltipContent>hint</TooltipContent>
+          </Tooltip>
+        </TooltipProvider>,
+      ),
+    );
+    expectStaff('[data-lax-motion="float"]');
+    expectStaff('[data-lax-motion="tip"]');
+    expect(document.querySelectorAll('[data-lax-motion="float"]').length).toBeGreaterThanOrEqual(4);
   });
 });
