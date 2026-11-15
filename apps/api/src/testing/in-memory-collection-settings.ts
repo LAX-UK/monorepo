@@ -41,7 +41,6 @@ export class InMemoryCollectionSettings
     venueId: SETTINGS_VENUE,
     onlineBookingEnabled: false,
     freeStorageDays: null,
-    storageChargePence: null,
     bookingEmail: null,
     updatedAt: new Date("2026-11-01T09:00:00Z"),
   };
@@ -106,7 +105,6 @@ export class InMemoryCollectionSettings
     check("undo_hand_over_minutes", before.undoHandOverMinutes, input.rules.undoHandOverMinutes);
     check("max_active_visits", before.maxActiveVisits, input.rules.maxActiveVisits);
     check("free_storage_days", before.freeStorageDays, input.freeStorageDays);
-    check("storage_charge", before.storageChargePence, input.storageChargePence);
     check("booking_email", before.bookingEmail, input.bookingEmail);
     const week = normaliseWeeklyHours(input.hours);
     if (JSON.stringify(week) !== JSON.stringify(normaliseWeeklyHours(this.hours))) {
@@ -117,7 +115,6 @@ export class InMemoryCollectionSettings
       venueId: input.venueId,
       onlineBookingEnabled: input.onlineBookingEnabled,
       freeStorageDays: input.freeStorageDays,
-      storageChargePence: input.storageChargePence,
       bookingEmail: input.bookingEmail,
       updatedAt: input.at,
     };

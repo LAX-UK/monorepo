@@ -39,7 +39,6 @@ const SAVE = {
   undoHandOverMinutes: 15,
   maxActiveVisits: 5,
   freeStorageDays: null,
-  storageChargePence: null,
   bookingEmail: null,
   hours: [{ weekday: 1, opensLocal: "10:00", closesLocal: "19:00" }],
 };
@@ -84,7 +83,6 @@ describe("collection settings actions", () => {
             undoHandOverMinutes: 15,
             maxActiveVisits: 5,
             freeStorageDays: null,
-            storageChargePence: null,
             hours: [],
             exceptions: [],
             nextSaleDay: null,

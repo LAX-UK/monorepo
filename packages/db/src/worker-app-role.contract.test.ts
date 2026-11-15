@@ -1083,6 +1083,27 @@ describe.skipIf(!WORKER_URL)("worker_app role contract", { timeout: 60_000 }, ()
       }
     });
   });
+
+  it("reads storage terms, extensions and waivers, and never the storage audit", async () => {
+    const readable = [
+      "collection_storage_terms",
+      "collection_storage_extension",
+      "collection_storage_waiver",
+    ];
+    await withWorkerClient(async (client) => {
+      for (const table of [...readable, "collection_storage_audit"]) {
+        for (const privilege of ["SELECT", "INSERT", "UPDATE", "DELETE"]) {
+          const result = await client.query<{ allowed: boolean }>(
+            "select has_table_privilege(current_user, 'public.' || $1, $2) as allowed",
+            [table, privilege],
+          );
+          expect(result.rows[0]?.allowed, `${table} ${privilege}`).toBe(
+            readable.includes(table) && privilege === "SELECT",
+          );
+        }
+      }
+    });
+  });
 });
 
 describe("worker_app role contract (static cutover gate)", () => {
