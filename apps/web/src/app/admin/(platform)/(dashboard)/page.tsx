@@ -85,6 +85,7 @@ export default async function AdminHomePage({
       workInbox={dashboard.workInbox}
       inboxQueues={dashboard.inboxQueues}
       dataRequestQueues={dashboard.dataRequestQueues}
+      failedJobsQueues={dashboard.failedJobsQueues}
       workAreas={workAreas}
       area={area === "all" || workAreas.includes(area) ? area : "all"}
       assignment={assignment}

@@ -25,6 +25,7 @@ import type { buildRoleKpisSlice } from "@/lib/admin/dashboard/role-kpis.slice";
 import type { buildSaleReadinessSlice } from "@/lib/admin/dashboard/sale-readiness.slice";
 import type { buildWorkInboxSlice } from "@/lib/admin/dashboard/work-inbox.slice";
 import { dataRequestsDashboardQueues } from "@/lib/admin/data-requests/data-requests-queue";
+import { failedJobsDashboardQueues } from "@/lib/admin/failed-jobs/failed-jobs-queue";
 import type { OnsiteSalesRadarRow } from "@/lib/admin/saleroom/map-operations-snapshot-to-radar-row";
 import type { AdminHomeKpiTrends } from "@/lib/data/http/admin-kpi-trends.server";
 import type { AdminTodayMetricsPayload } from "@/lib/data/http/admin.server";
@@ -33,6 +34,7 @@ import {
   CONSIGNMENT_INBOX_READ_ACCESS,
   CONSIGNMENT_INBOX_REPLY_ACCESS,
   DATA_REQUESTS_MANAGE_ACCESS,
+  FAILED_JOBS_READ_ACCESS,
   FINANCE_ACCESS,
   type StaffRoles,
   type UserRole,
@@ -60,6 +62,8 @@ export type AdminDashboardPageModel = {
   inboxQueues: AttentionItem[];
   /** Data requests past, or close to, their legal due date; for people who answer them. */
   dataRequestQueues: AttentionItem[];
+  /** Failed jobs waiting for review, for people who may read them. */
+  failedJobsQueues: AttentionItem[];
   saleReadiness: ReturnType<typeof buildSaleReadinessSlice>;
   liveOperations: ReturnType<typeof buildLiveOperationsSlice>;
   roleKpis: ReturnType<typeof buildRoleKpisSlice>;
@@ -141,6 +145,10 @@ export async function loadAdminDashboardPage(
     payoutsBlocked: financeIssues?.blockedPayoutCount ?? 0,
   });
 
+  const failedJobsQueues = ctx.can(FAILED_JOBS_READ_ACCESS)
+    ? failedJobsDashboardQueues(metricsSlice.navCounts.failedJobsNeedsReview ?? 0)
+    : [];
+
   const onsiteRadarRows = live.onsiteRadarRows;
   const activeSaleroomSessions = onsiteRadarRows.filter((row) => row.isLiveSession).length;
   const primaryAction = resolvePrimaryActionForProfile(profile, (requirement) =>
@@ -157,6 +165,7 @@ export async function loadAdminDashboardPage(
     workInbox: workInbox.slice,
     inboxQueues,
     dataRequestQueues,
+    failedJobsQueues,
     saleReadiness: saleReadiness.slice,
     liveOperations: live.slice,
     roleKpis: roleKpis.slice,

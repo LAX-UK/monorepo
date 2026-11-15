@@ -168,6 +168,18 @@ export function isFailedJobDiscardReason(value: string): value is FailedJobDisca
   return (FAILED_JOB_DISCARD_REASONS as readonly string[]).includes(value);
 }
 
+/**
+ * How long a resolved (retried or discarded) failure keeps its stored payload. A discard can be
+ * restored within this window; after it the payload is purged and the failure stays closed.
+ */
+export const FAILED_JOB_RESOLVED_RETENTION_DAYS = 90;
+
+/** The last moment a discard made at `discardedAt` can be restored, as an ISO time. */
+export function failedJobRestorableUntil(discardedAt: Date | string): string {
+  const at = typeof discardedAt === "string" ? new Date(discardedAt) : discardedAt;
+  return new Date(at.getTime() + FAILED_JOB_RESOLVED_RETENTION_DAYS * 86_400_000).toISOString();
+}
+
 export const FAILED_JOB_NOTE_MAX = 500;
 export const FAILED_JOB_BATCH_MAX = 50;
 
@@ -192,6 +204,16 @@ export type FailedJobSummary = {
   sourceLabel: string;
   /** One line, with emails, tokens and long identifiers removed. */
   errorSummary: string;
+  /**
+   * How many failures in the whole filtered view read the same (same job type, job and error),
+   * across every page. At least 1.
+   */
+  groupSize: number;
+  /**
+   * True when `groupSize` is only a lower bound: the group was cut by the search's group cap, or
+   * the view was too large to count across pages. Show "×N+", never a smaller number as exact.
+   */
+  groupCapped: boolean;
   attempts: number;
   firstFailedAt: string;
   lastFailedAt: string;
@@ -226,7 +248,17 @@ export type FailedJobDetail = FailedJobSummary & {
   payload: FailedJobPayloadEntry[];
   /** Fields left out of the masked view. */
   omittedPayloadFields: number;
-  discard: { reasonLabel: string; note: string | null; at: string; byName: string | null } | null;
+  discard: {
+    reasonLabel: string;
+    note: string | null;
+    at: string;
+    byName: string | null;
+    /**
+     * The last moment it can be restored, after which its payload is purged. Only background jobs
+     * have a window; integration deliveries keep their payload, so this is null for them.
+     */
+    restorableUntil: string | null;
+  } | null;
   history: FailedJobHistoryEvent[];
 };
 

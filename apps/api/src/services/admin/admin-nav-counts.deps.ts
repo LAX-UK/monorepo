@@ -1,6 +1,7 @@
 import { londonDateOf, londonMidnight } from "@auction/domain";
 import type {
   ICollectionBookingReader,
+  IFailedJobReviewReader,
   ILotFulfilmentRepository,
 } from "@auction/persistence/interfaces";
 import type { ISaleroomLiveSessionCounter } from "@auction/persistence/interfaces";
@@ -26,6 +27,8 @@ export type CreateAdminNavCountsDepsInput = {
   sourceOfFundsService: SourceOfFundsService;
   telephoneBidBookingService: ITelephoneBidBookingQueryService;
   collectionBookings: Pick<ICollectionBookingReader, "countBookedInRange">;
+  /** One count of the jobs waiting for review, no rows. */
+  failedJobs: Pick<IFailedJobReviewReader, "countNeedsReview">;
   now: () => Date;
 };
 
@@ -104,6 +107,7 @@ export function createAdminNavCountsDeps(input: CreateAdminNavCountsDepsInput): 
     getSourceOfFundsPending: () => input.sourceOfFundsService.countPending(),
     getTelephoneBookingsPending: () => input.telephoneBidBookingService.countGlobalPending(),
     getLegalEntityStripeRequirements: () => authority.getStripeRequirementsCount(),
+    getFailedJobsNeedsReview: () => input.failedJobs.countNeedsReview(),
   };
 }
 

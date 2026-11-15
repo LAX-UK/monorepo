@@ -53,6 +53,9 @@ function setup(records: IntegrationDeadLetterRecord[], options: { claim?: boolea
   const search = vi.fn(async () => ({
     rows: records,
     total: records.length,
+    groups: [],
+    groupsPartial: false,
+    groupsSkipped: false,
     counts: { needs_review: records.length, retried: 0, discarded: 0 },
     queues: [{ kind: "delivery" as const, name: "xero", count: records.length }],
   }));
@@ -91,10 +94,14 @@ function setup(records: IntegrationDeadLetterRecord[], options: { claim?: boolea
     reader: {
       search: vi.fn(async () => ({
         rows: [],
+        groups: [],
+        groupsPartial: false,
+        groupsSkipped: false,
         total: 0,
         counts: { needs_review: 0, retried: 0, discarded: 0 },
         queues: [],
       })),
+      countNeedsReview: vi.fn().mockResolvedValue(0),
       findForReview: vi.fn().mockResolvedValue(null),
       findManyForReview: vi.fn().mockResolvedValue([]),
     },
@@ -325,6 +332,18 @@ describe("discarding and restoring integrations", () => {
     const result = await service.restore(["delivery:41"], administrator);
     expect(result.results[0]).toEqual({ id: "delivery:41", ok: true });
     expect(audit.record).toHaveBeenCalledWith(expect.objectContaining({ kind: "restored" }));
+  });
+
+  it("restores a delivery discarded more than 90 days ago: its payload is never purged", async () => {
+    const longAgo = new Date(Date.now() - 400 * 86_400_000);
+    const { service, audit } = setup([
+      record({ discardedAt: longAgo, discardReason: "duplicate" }),
+    ]);
+    const result = await service.restore(["delivery:41"], administrator);
+    expect(result.results[0]).toEqual({ id: "delivery:41", ok: true });
+    expect(audit.record).toHaveBeenCalledWith(expect.objectContaining({ kind: "restored" }));
+    const detail = await service.detail("delivery:41", administrator);
+    expect(detail?.discard).toMatchObject({ restorableUntil: null });
   });
 
   it("mixes sources in one decision and reports each job on its own", async () => {

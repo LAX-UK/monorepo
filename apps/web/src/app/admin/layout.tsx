@@ -14,6 +14,7 @@ import { buildStaffHeaderAttentionItems } from "@/lib/admin/build-staff-header-a
 import { withInboxNavCount } from "@/lib/admin/consignment-inbox/inbox-nav-count.server";
 import { withDataRequestsNavCount } from "@/lib/admin/data-requests/data-requests-nav-count.server";
 import { withEnquiriesNavCount } from "@/lib/admin/enquiries/enquiries-nav-count.server";
+import { withFailedJobsNavCount } from "@/lib/admin/failed-jobs/failed-jobs-nav-count";
 import { loadStaffProducts } from "@/lib/admin/load-staff-products";
 import { withPrivateSalesNavCount } from "@/lib/admin/private-sales/private-sales-nav-count.server";
 import { withPurchaseProblemsNavCount } from "@/lib/admin/purchase-problems/purchase-problems-nav-count.server";
@@ -114,6 +115,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
   navCounts = await withPurchaseProblemsNavCount(navCounts, userRole, staffRoles);
   navCounts = await withDataRequestsNavCount(navCounts, userRole, staffRoles);
   navCounts = await withPrivateSalesNavCount(navCounts, userRole, staffRoles);
+  navCounts = withFailedJobsNavCount(navCounts, userRole, staffRoles);
 
   const role = sessionUserToShellRole(user);
 

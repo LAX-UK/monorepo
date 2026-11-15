@@ -18,6 +18,8 @@ export type AdminNavCounts = {
   sourceOfFundsPending: number;
   telephoneBookingsPending: number;
   legalEntityStripeRequirementsCount: number;
+  /** Background jobs that ran out of attempts and wait for review on Failed jobs. */
+  failedJobsNeedsReview: number;
 };
 
 export type AdminNavCountsDeps = {
@@ -39,9 +41,10 @@ export type AdminNavCountsDeps = {
   getSourceOfFundsPending: () => Promise<number>;
   getTelephoneBookingsPending: () => Promise<number>;
   getLegalEntityStripeRequirements: () => Promise<number>;
+  getFailedJobsNeedsReview: () => Promise<number>;
 };
 
-const NAV_COUNTS_CACHE_KEY = "admin:nav-counts:v2";
+const NAV_COUNTS_CACHE_KEY = "admin:nav-counts:v3";
 
 /**
  * Nav badge counts for the admin sidebar.
@@ -125,6 +128,7 @@ export class AdminNavCountsService {
       sourceOfFundsPending,
       telephoneBookingsPending,
       legalEntityStripeRequirementsCount,
+      failedJobsNeedsReview,
     ] = await Promise.all([
       wrapWithLogging("submissionsPending", this.deps.getSubmissionsPending),
       wrapWithLogging("artistsPending", this.deps.getArtistsPending),
@@ -147,6 +151,7 @@ export class AdminNavCountsService {
         "legalEntityStripeRequirementsCount",
         this.deps.getLegalEntityStripeRequirements,
       ),
+      wrapWithLogging("failedJobsNeedsReview", this.deps.getFailedJobsNeedsReview),
     ]);
 
     return {
@@ -168,6 +173,7 @@ export class AdminNavCountsService {
       sourceOfFundsPending,
       telephoneBookingsPending,
       legalEntityStripeRequirementsCount,
+      failedJobsNeedsReview,
     };
   }
 }
