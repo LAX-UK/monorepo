@@ -84,6 +84,16 @@ export const KIND_SPECS: Readonly<Record<DocumentKind, KindSpec>> = {
     readTotals: paymentTotals,
     hasPdf: false,
   },
+  // A vendor payment (a payout paid). Field names to confirm in the test organisation.
+  bill_payment: {
+    path: "/vendorpayments",
+    listKey: "vendorpayments",
+    itemKey: "vendorpayment",
+    idField: "payment_id",
+    numberField: "payment_number",
+    readTotals: paymentTotals,
+    hasPdf: false,
+  },
   bill: {
     path: "/bills",
     listKey: "bills",

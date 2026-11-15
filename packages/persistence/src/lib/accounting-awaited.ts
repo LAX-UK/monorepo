@@ -6,8 +6,9 @@ import { sql } from "drizzle-orm";
  * LAX reference of each document it waits for. A payment waits for its contact
  * (`payload.contactReference`) and every invoice it is applied to
  * (`payload.allocations[].invoiceReference`); a credit note waits for its contact and the invoice
- * it credits (`payload.invoiceReference`); an invoice waits for its contact; anything else waits
- * for nothing. Shared by every product (Bid and Shop claim through it alike).
+ * it credits (`payload.invoiceReference`); an invoice or a bill waits for its contact; a bill
+ * payment waits for its (vendor) contact and the bill it pays (`payload.billReference`); anything
+ * else waits for nothing. Shared by every product (Bid and Shop claim through it alike).
  */
 const AWAITED = sql`(
   select 'invoice'::text as kind, allocation ->> 'invoiceReference' as reference
@@ -20,8 +21,11 @@ const AWAITED = sql`(
   select 'invoice'::text, ${accountingDocument.payload} ->> 'invoiceReference'
    where ${accountingDocument.kind} = 'credit_note'
   union all
+  select 'bill'::text, ${accountingDocument.payload} ->> 'billReference'
+   where ${accountingDocument.kind} = 'bill_payment'
+  union all
   select 'contact'::text, ${accountingDocument.payload} ->> 'contactReference'
-   where ${accountingDocument.kind} in ('invoice', 'credit_note', 'payment')
+   where ${accountingDocument.kind} in ('invoice', 'credit_note', 'payment', 'bill', 'bill_payment')
 )`;
 
 /** An awaited document in the same books: product, legal entity, target provider and mode. */

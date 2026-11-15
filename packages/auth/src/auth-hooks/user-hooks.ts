@@ -1,6 +1,5 @@
-import { APIError, getOAuthState } from "better-auth/api";
+import { APIError } from "better-auth/api";
 import type { AuthHookDeps } from "./auth-hook-deps.js";
-import { signUpLegalAcceptance } from "./legal-acceptance.js";
 import { socialFlow } from "./social-flow.js";
 
 export function buildUserDatabaseHooks(deps: AuthHookDeps) {
@@ -15,25 +14,15 @@ export function buildUserDatabaseHooks(deps: AuthHookDeps) {
         // The account row made next in this request is this person's first, not a link.
         socialFlow(context).newUser = true;
       },
-      after: async (
-        authUser: {
-          id: string;
-          email: string;
-          name: string;
-          emailVerified: boolean;
-        },
-        context?: { path?: string | undefined; body?: unknown } | null,
-      ) => {
-        // Written with the account: when it cannot be recorded the sign-up fails, so no account
-        // exists without the record of what its owner was shown.
-        if (deps.ports.legalAcceptance) {
-          const acceptance = signUpLegalAcceptance(
-            authUser.id,
-            context,
-            await getOAuthState().catch(() => null),
-          );
-          if (acceptance) await deps.ports.legalAcceptance.recordSignUp(acceptance);
-        }
+      after: async (authUser: {
+        id: string;
+        email: string;
+        name: string;
+        emailVerified: boolean;
+      }) => {
+        // The record of what the person was shown is written in the same transaction as the user
+        // row, by the database adapter (`wrapUserLegalAcceptanceAdapter` in apps/auth), so there
+        // is nothing to record here and an account never exists without it.
         if (deps.onUserCreated) {
           await deps.onUserCreated({
             id: authUser.id,

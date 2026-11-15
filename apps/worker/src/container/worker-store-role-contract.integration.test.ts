@@ -35,6 +35,7 @@ import {
   DrizzleLotRepository,
   DrizzleNotificationOutboxRepository,
   DrizzlePaymentRepository,
+  DrizzlePayoutAccountingFactsReader,
   DrizzleRecipientZoneReader,
   DrizzleRegisterLotIntegrityReader,
   DrizzleReofferInvoiceMarker,
@@ -62,9 +63,11 @@ import { DrizzleZohoCampaignsSuppressionRepository } from "../repositories/drizz
 import { ShopIdentityProjectionService } from "../services/shop-identity-projection.service.js";
 import type { WorkerDb } from "../workers/types.js";
 import {
+  PROBE_BID_PAYOUT_ID,
   PROBE_LOT_ID,
   PROBE_SHOP_GUEST_ORDER_ID,
   PROBE_SHOP_ORIGINAL_SALE_ID,
+  PROBE_SHOP_PAYOUT_LEDGER_ID,
   PROBE_SHOP_USER_ORDER_ID,
   PROBE_USER_ID,
   alertMatch,
@@ -144,6 +147,7 @@ const STORES: Record<string, Store> = {
   DrizzleExportLegalEntityReader,
   DrizzleBidAccountingFactsReader,
   DrizzleShopAccountingFactsReader,
+  DrizzlePayoutAccountingFactsReader,
   DrizzleUnappliedMoneyReader,
   DrizzleProjectorCursorStart,
   DrizzleFailedJobReviewRepository,
@@ -358,6 +362,9 @@ const ARGUMENTS: Record<string, (tx: WorkerDb) => unknown[]> = {
   "DrizzleShopAccountingFactsReader.forOrder": () => [PROBE_SHOP_USER_ORDER_ID],
   "DrizzleShopAccountingFactsReader.originalSalePaid": () => [PROBE_SHOP_ORIGINAL_SALE_ID],
   "DrizzleShopAccountingFactsReader.forOriginalSale": () => [PROBE_SHOP_ORIGINAL_SALE_ID],
+  // The seeded payouts, so the reads reach the lines, seller terms and payee tables.
+  "DrizzlePayoutAccountingFactsReader.bidPayout": () => [PROBE_BID_PAYOUT_ID],
+  "DrizzlePayoutAccountingFactsReader.shopArtistPayout": () => [PROBE_SHOP_PAYOUT_LEDGER_ID],
   "DrizzleLotRepository.updateDutchCurrentPrice": () => [NIL, "1.00", today],
   "DrizzleLotRepository.updateDutchCurrentPriceIfMatch": () => [NIL, "2.00", "1.00", today],
   "DrizzleLotRepository.updateCurrentPrice": () => [NIL, "1.00"],

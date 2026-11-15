@@ -6,6 +6,7 @@ import type {
   DayKindTotals,
   IStripeReconciliationStore,
   ParkedBalanceTransaction,
+  PayoutKindTotals,
   StripeAccountState,
   UnbookedMovement,
 } from "@auction/persistence/interfaces";
@@ -88,6 +89,7 @@ function store(
     clearing: ClearingMovements;
     unbooked: UnbookedMovement[];
     held: number | null;
+    payouts: PayoutKindTotals[];
   }> = {},
 ) {
   const saved: unknown[] = [];
@@ -109,11 +111,14 @@ function store(
           paymentsPence: 10_000,
           expensesPence: 165,
           transfersPence: 0,
+          billPaymentsPence: 0,
+          billPaymentsNotIssuedPence: 0,
           notIssuedPence: 0,
         },
     ),
     knownUnbooked: async () => over.unbooked ?? [],
     heldTransferPence: async () => (over.held === undefined ? null : over.held),
+    payoutTotals: async () => over.payouts ?? [],
     saveReport: async (input) => void saved.push(input),
   };
   return { s, saved };
@@ -137,6 +142,96 @@ function run(
   });
   return { service, raised, putObject };
 }
+
+/** One payout kind's totals for the day; everything agrees unless a test says otherwise. */
+const payoutRow = (over: Partial<PayoutKindTotals> = {}): PayoutKindTotals => ({
+  kind: "bill",
+  laxPence: 0,
+  laxCount: 0,
+  booksPence: 0,
+  booksCount: 0,
+  notIssuedPence: 0,
+  notIssuedCount: 0,
+  parkedPence: 0,
+  parkedCount: 0,
+  unmatchedCount: 0,
+  ...over,
+});
+
+describe("StripeReconciliation: payouts against the payout ledger", () => {
+  it("is quiet when each payout's bill and payment are issued, on their way or parked to the penny", async () => {
+    const { s } = store({
+      payouts: [
+        payoutRow({
+          laxPence: 104_048,
+          laxCount: 2,
+          booksPence: 82_000,
+          booksCount: 1,
+          parkedPence: 22_048,
+          parkedCount: 1,
+        }),
+        payoutRow({
+          kind: "bill_payment",
+          laxPence: 82_000,
+          laxCount: 1,
+          notIssuedPence: 82_000,
+          notIssuedCount: 1,
+        }),
+      ],
+    });
+    const { service, raised } = run(s, 1_000 + 10_000 - 165);
+    const [report] = await service.run();
+    expect(report?.payouts.map((p) => [p.kind, p.differencePence])).toEqual([
+      ["bill", 0],
+      ["bill_payment", 0],
+    ]);
+    expect(report?.mismatches).toBe(0);
+    expect(raised).toEqual([]);
+  });
+
+  it("alerts on a payout with no bill, or a bill for another amount than the ledger owes", async () => {
+    for (const row of [
+      payoutRow({ laxPence: 104_048, laxCount: 1, unmatchedCount: 1 }),
+      payoutRow({
+        laxPence: 104_048,
+        laxCount: 1,
+        booksPence: 104_047,
+        booksCount: 1,
+        unmatchedCount: 1,
+      }),
+    ]) {
+      const { s } = store({ payouts: [row] });
+      const { service, raised } = run(s, 1_000 + 10_000 - 165);
+      const [report] = await service.run();
+      expect(report?.mismatches).toBe(1);
+      expect(raised).toHaveLength(1);
+    }
+  });
+
+  it("counts a payout paid by Stripe transfer once: booked as its payment, not also as a known transfer", async () => {
+    // The seller's 820.00 left Stripe as a transfer and is booked as the payout's payment.
+    const { s } = store({
+      clearing: {
+        paymentsPence: 100_000,
+        expensesPence: 0,
+        transfersPence: 0,
+        billPaymentsPence: 82_000,
+        billPaymentsNotIssuedPence: 0,
+        notIssuedPence: 0,
+      },
+      unbooked: [{ type: "transfer", pence: -82_000 }],
+    });
+    const { service, raised } = run(s, 1_000 + 100_000 - 82_000);
+    const [report] = await service.run();
+    expect(report?.clearing).toMatchObject({
+      booksPayoutPaymentsPence: 82_000,
+      transfersBookedAsPayoutPaymentsPence: 82_000,
+      knownUnbookedPence: 0,
+      unexplainedPence: 0,
+    });
+    expect(raised).toEqual([]);
+  });
+});
 
 describe("StripeReconciliation", () => {
   it("reports yesterday, only for companies aimed at Books, and stays quiet when everything agrees", async () => {
@@ -167,6 +262,8 @@ describe("StripeReconciliation", () => {
         paymentsPence: 10_000,
         expensesPence: 0,
         transfersPence: 0,
+        billPaymentsPence: 0,
+        billPaymentsNotIssuedPence: 0,
         notIssuedPence: -165,
       },
     });
@@ -363,6 +460,7 @@ describe("StripeReconciliation", () => {
       "legalEntity",
       "mismatches",
       "parked",
+      "payouts",
       "rehearsal",
       "target",
       "version",

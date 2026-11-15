@@ -9,6 +9,7 @@ import { MarketingClickIdsSync } from "@/components/analytics/marketing-click-id
 import { SilentSignInNotice } from "@/components/auth/silent-sign-in-notice.client";
 import { AccountZonePreference } from "@/components/layout/account-zone-preference";
 import { BottomChromeSync } from "@/components/layout/bottom-chrome-sync";
+import { ChunkLoadRecoveryInit } from "@/components/layout/chunk-load-recovery-init";
 import { SessionThemeSync } from "@/components/layout/session-theme-sync";
 import {
   SignedInAccountSwitchGreeting,
@@ -119,6 +120,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
       <head>
         <ThemeInit />
         <ViewerZoneInit />
+        <ChunkLoadRecoveryInit />
         {isAnalyticsEnabled() ? <ConsentInit snapshot={consentSnapshot} nonce={nonce} /> : null}
       </head>
       <body>

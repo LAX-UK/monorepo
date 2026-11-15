@@ -49,6 +49,8 @@ export const ZOHO_BOOKS_REJECTIONS = {
   creditNoteRefundDiffers: "zoho_books_credit_note_refund_differs",
   /** A payment Books holds under our reference differs from ours (invoice, amount, currency, date). */
   paymentMismatch: "zoho_books_payment_mismatch",
+  /** A vendor payment Books holds under our reference differs from ours (bill, amount, account, date). */
+  billPaymentMismatch: "zoho_books_bill_payment_mismatch",
   /**
    * Books holds a document under our reference, but what it should be checked against could not
    * be worked out (one of its dependencies is missing, or the request could not be built), so it

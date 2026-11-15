@@ -1,5 +1,7 @@
 import type {
   Bill,
+  BillPayment,
+  BillPaymentPort,
   BillPort,
   Contact,
   ContactPort,
@@ -23,6 +25,7 @@ import { toIssueFailure } from "../outcome.js";
 import { type ZohoApi, orgFor } from "./api.js";
 import { KIND_SPECS, asRecord, readProviderDocument } from "./kinds.js";
 import type { BooksRecord, ZohoDocumentLookup } from "./lookup.js";
+import { type BillPaymentBody, billPaymentBody } from "./mappers/bill-payment.js";
 import { billBody } from "./mappers/bill.js";
 import {
   type ContactType,
@@ -290,6 +293,76 @@ export class ZohoBillGateway implements BillPort {
       reference: bill.reference,
       ...(fence ? { fence } : {}),
       body: built.body,
+    });
+  }
+}
+
+/**
+ * The vendor payment Books holds is ours only if it pays the same bill the same amount, from the
+ * same account, on the same date, to the same vendor. Its total alone is not enough.
+ */
+export function billPaymentMatches(sent: BillPaymentBody, item: BooksRecord): boolean {
+  if (item.vendor_id !== sent.vendor_id || item.date !== sent.date) return false;
+  if (item.currency_code !== sent.currency_code) return false;
+  if (item.paid_through_account_id !== sent.paid_through_account_id) return false;
+  if (poundsToPence(item.amount) !== poundsToPence(sent.amount)) return false;
+  if (!Array.isArray(item.bills)) return false;
+  const applied = new Map<string, number>();
+  for (const raw of item.bills) {
+    const row = asRecord(raw);
+    const id = row?.bill_id;
+    const amount = poundsToPence(row?.amount_applied);
+    if (typeof id !== "string" || amount === null) return false;
+    if (amount === 0) continue;
+    applied.set(id, (applied.get(id) ?? 0) + amount);
+  }
+  if (applied.size !== sent.bills.length) return false;
+  return sent.bills.every((b) => applied.get(b.bill_id) === poundsToPence(b.amount_applied));
+}
+
+function billPaymentDependencies(payment: BillPayment): readonly Dependency[] {
+  return [
+    { kind: "contact", reference: payment.contactReference, contactType: "vendor" },
+    { kind: "bill", reference: payment.billReference },
+  ];
+}
+
+function billPaymentCheck(sent: BillPaymentBody): ReadBackCheck {
+  return (item) =>
+    billPaymentMatches(sent, item) ? null : ZOHO_BOOKS_REJECTIONS.billPaymentMismatch;
+}
+
+/** A bill payment is read back field by field against the body we would send to `org`. */
+export async function billPaymentReadBack(
+  lookup: ZohoDocumentLookup,
+  payment: BillPayment,
+  org: ZohoOrgConfig,
+): Promise<ReadBack> {
+  const resolved = await resolveAll(lookup, org, payment.product, billPaymentDependencies(payment));
+  if ("stop" in resolved) return resolved;
+  const [vendorId, billId] = resolved.ids as [string, string];
+  const built = mapped(billPaymentBody(payment, vendorId, billId, org));
+  return "stop" in built ? built : { check: billPaymentCheck(built.body) };
+}
+
+/** A seller's or artist's payout paid: the vendor payment of their bill, from Stripe clearing. */
+export class ZohoBillPaymentGateway implements BillPaymentPort {
+  constructor(private readonly deps: GatewayDeps) {}
+
+  async recordBillPayment(payment: BillPayment, fence?: WriteFence): Promise<IssueOutcome> {
+    const ready = await prepare(this.deps, payment, billPaymentDependencies(payment));
+    if ("stop" in ready) return ready.stop;
+    const [vendorId, billId] = ready.ids as [string, string];
+    const built = mapped(billPaymentBody(payment, vendorId, billId, ready.org));
+    if ("stop" in built) return built.stop;
+    return this.deps.writer.create({
+      org: ready.org,
+      product: payment.product,
+      kind: "bill_payment",
+      reference: payment.reference,
+      ...(fence ? { fence } : {}),
+      body: built.body,
+      verify: billPaymentCheck(built.body),
     });
   }
 }

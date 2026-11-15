@@ -22,7 +22,6 @@ import {
   DrizzleKnownDeviceStore,
   retireRevokedBrowserMarkers,
 } from "../infrastructure/drizzle-known-device.store.js";
-import { DrizzleLegalAcceptanceRecorder } from "../infrastructure/drizzle-legal-acceptance.recorder.js";
 import { createPasskeyUsageRecorder } from "../infrastructure/drizzle-passkey-usage.js";
 import { DrizzleSessionExpiryClamp } from "../infrastructure/drizzle-session-expiry-clamp.js";
 import { HibpRangeBreachedPasswordChecker } from "../infrastructure/hibp-range-breached-password-checker.js";
@@ -161,7 +160,6 @@ export function createAuthIssuer(options: {
     sms: options.phoneVerification,
     events: options.identityEventPublisher,
     securityNotices: options.securityNotices,
-    legalAcceptance: new DrizzleLegalAcceptanceRecorder(options.db),
   };
   return createAuth({
     database: buildDrizzleDatabase(options.db, envelope, options.identityEventPublisher),

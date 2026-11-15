@@ -125,3 +125,10 @@ export type SellerTermsFigures = {
   vatPence: number;
   netPence: number;
 };
+
+/**
+ * Who a Shop payout is recorded as paid by when a Stripe Connect transfer paid it (from the Shop's
+ * Stripe balance), as opposed to staff marking it paid. The books read it to know the payout left
+ * Stripe clearing; one constant so the Shop and the books can never disagree on it.
+ */
+export const SHOP_CONNECT_TRANSFER_ACTOR = "system:stripe-connect";

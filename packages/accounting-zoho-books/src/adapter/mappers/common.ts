@@ -19,7 +19,11 @@ export type MapCode =
   | "mixed_basis"
   | "unresolved_invoice"
   | "stripe_accounts_missing"
-  | "reference_too_long";
+  | "reference_too_long"
+  /** A bill payment from an account Books has no mapping for (only Stripe clearing is mapped). */
+  | "unmapped_account"
+  /** A bill payment whose bill has no Books id. */
+  | "unresolved_bill";
 
 export type TaxConfig = Pick<ZohoOrgConfig, "taxIds" | "vatRegistered">;
 

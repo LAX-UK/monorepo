@@ -22,6 +22,11 @@ const PROBE_SHOP_GUEST_ID = "00000000-0000-4000-8000-000000000014";
 const PROBE_SHOP_GUEST_ORDER_ID = "00000000-0000-4000-8000-000000000015";
 const PROBE_SHOP_USER_ORDER_ID = "00000000-0000-4000-8000-000000000016";
 const PROBE_SHOP_ORIGINAL_SALE_ID = "00000000-0000-4000-8000-000000000017";
+// The payouts the payout accounting facts reader follows: a Bid payout with one line, and the
+// Shop artist's ledger row for the original sale above.
+const PROBE_BID_PAYOUT_ID = "00000000-0000-4000-8000-000000000018";
+const PROBE_BID_PAYOUT_LINE_ID = "00000000-0000-4000-8000-000000000019";
+const PROBE_SHOP_PAYOUT_LEDGER_ID = "00000000-0000-4000-8000-00000000001a";
 
 async function main() {
   const url = process.env.DATABASE_URL;
@@ -148,6 +153,25 @@ async function main() {
       recorded_by_subject_id, invoice_issuer, invoice_number, paid_at)
     VALUES (${PROBE_SHOP_ORIGINAL_SALE_ID}, ${PROBE_SHOP_ARTWORK_ID}, ${PROBE_SHOP_BUYER_PARTY_ID},
             'paid', 100, ${PROBE_USER_ID}, 'books', 'LAX-INV-999001', now())
+    ON CONFLICT DO NOTHING`);
+
+  // A Bid payout with a manual adjustment line, so the reader reaches the line and seller-terms join.
+  await db.execute(sql`
+    INSERT INTO payout (id, legal_entity_id, period_start, period_end, gross_amount, platform_fee,
+      stripe_fee, net_amount, status)
+    VALUES (${PROBE_BID_PAYOUT_ID}, ${PROBE_LE_ID}, now() - interval '2 days', now() - interval '1 day',
+            100.00, 0, 0, 100.00, 'scheduled')
+    ON CONFLICT DO NOTHING`);
+  await db.execute(sql`
+    INSERT INTO payout_line (id, payout_id, amount, kind, created_by_user_id, note)
+    VALUES (${PROBE_BID_PAYOUT_LINE_ID}, ${PROBE_BID_PAYOUT_ID}, 100.00, 'adjustment',
+            ${PROBE_USER_ID}, 'worker role contract probe')
+    ON CONFLICT DO NOTHING`);
+  await db.execute(sql`
+    INSERT INTO shop_payout_ledger (id, original_sale_id, owner_party_id, gross_pence, net_pence,
+      payout_due_at, source)
+    VALUES (${PROBE_SHOP_PAYOUT_LEDGER_ID}, ${PROBE_SHOP_ORIGINAL_SALE_ID},
+            ${PROBE_SHOP_ARTIST_PARTY_ID}, 100, 100, now(), 'original_sale')
     ON CONFLICT DO NOTHING`);
 
   console.log("worker role contract probes seeded");

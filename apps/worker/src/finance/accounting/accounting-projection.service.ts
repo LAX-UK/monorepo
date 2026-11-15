@@ -18,6 +18,7 @@ import type {
   IAccountingDocumentTransitions,
   IAccountingSourceSettingReader,
   IBidAccountingFactsReader,
+  IPayoutAccountingFactsReader,
   IShopAccountingFactsReader,
 } from "@auction/persistence/interfaces";
 import { ACCOUNTING_ALERTS, type AccountingAlertSink } from "./accounting-alerts.js";
@@ -126,6 +127,8 @@ export interface AccountingProjectionDeps {
   readonly facts: IBidAccountingFactsReader;
   /** The Shop's order facts; absent where the Shop flow is not wired (it then skips, never guesses). */
   readonly shopFacts?: IShopAccountingFactsReader;
+  /** Seller and artist payouts; absent where the payout flows are not wired (they then skip). */
+  readonly payoutFacts?: IPayoutAccountingFactsReader;
   readonly settings: IAccountingSourceSettingReader;
   readonly registry: IAccountingDocumentRegistry;
   /**
@@ -332,6 +335,7 @@ export class AccountingProjection {
       {
         bid: this.deps.facts,
         shop: this.deps.shopFacts ?? NO_SHOP_FACTS,
+        ...(this.deps.payoutFacts ? { payouts: this.deps.payoutFacts } : {}),
         ...(books ? { books } : {}),
       },
       event,

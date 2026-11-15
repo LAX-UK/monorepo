@@ -510,6 +510,31 @@ export const WORKER_SHOP_INVOICE_READ_COLUMNS = [
     ],
   ],
   ["shop_party", ["id", "display_name", "identity_subject_id"]],
+  /**
+   * An artist payout, for its Books bill and payment (plan v2, PR 12): the figures, the days, the
+   * payee and whether a Stripe Connect transfer paid it. Never `paid_reference` (free text staff
+   * may write when they mark it paid) nor anything that writes.
+   */
+  [
+    "shop_payout_ledger",
+    [
+      "id",
+      "order_line_id",
+      "third_party_sale_id",
+      "original_sale_id",
+      "owner_party_id",
+      "gross_pence",
+      "deductions_pence",
+      "net_pence",
+      "payout_due_at",
+      "status",
+      "source",
+      "payee_kind",
+      "paid_at",
+      "paid_by_subject_id",
+      "created_at",
+    ],
+  ],
 ] as const;
 
 /**

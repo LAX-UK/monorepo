@@ -14,6 +14,7 @@ const url = process.env.MIGRATION_TEST_DATABASE_URL;
 /** The journal time of 0392, the migration before 0393. */
 const THROUGH_0392 = 1812110400000;
 
+/** The 0393 rollback itself; later migrations are rolled back first via laterRollbackSql(393). */
 const rollbackSql = () =>
   readFile(resolve(import.meta.dirname, "../drizzle/0393_rollback.sql"), "utf8");
 

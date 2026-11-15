@@ -1,16 +1,22 @@
 import {
+  BID_SELLER_PAYOUT_BOOKING,
   type BuiltFlow,
   type CreditNote,
   type CreditStanding,
   type DefaultedInvoiceInBooks,
   type FlowFacts,
   PROJECTION_POLICIES,
+  type PayoutBooking,
   type Product,
   type Projection,
   type ProjectionCode,
   type ProjectionPolicy,
   type Result,
+  SHOP_ARTIST_PAYOUT_BOOKING,
+  bidPayoutPaidPolicy,
+  bidPayoutSettledPolicy,
   laxReference,
+  shopArtistPayoutPaidPolicy,
   shopCreditBuiltAfter,
   shopDeliveryCreditSourceId,
   shopOutsideUkDeliverySourceId,
@@ -19,6 +25,7 @@ import type {
   CreditBasis,
   FactsRead,
   IBidAccountingFactsReader,
+  IPayoutAccountingFactsReader,
   IShopAccountingFactsReader,
 } from "@auction/persistence/interfaces";
 import {
@@ -28,6 +35,7 @@ import {
   paymentGroupSettledPayloadSchemaV1,
   shopAccountingOrderPaidPayloadSchemaV1,
   shopAccountingOriginalSalePaidPayloadSchemaV1,
+  shopPayoutPaidPayloadSchemaV1,
   shopRefundCompletedPayloadSchemaV1,
   shopRefundReversedPayloadSchemaV1,
 } from "@auction/types";
@@ -78,6 +86,8 @@ export interface BooksView {
 export interface AccountingFactsReaders {
   readonly bid: IBidAccountingFactsReader;
   readonly shop: IShopAccountingFactsReader;
+  /** Seller and artist payouts; absent where the payout flows are not wired (they then skip). */
+  readonly payouts?: IPayoutAccountingFactsReader;
   /** The books the product's documents go to now; absent where the projection gives none. */
   readonly books?: BooksView;
 }
@@ -170,8 +180,10 @@ function route<F extends BuiltFlow>(
   flow: F,
   read: (facts: AccountingFactsReaders, event: AccountingEvent) => Promise<RouteRead<FlowFacts[F]>>,
   basisOf?: (facts: FlowFacts[F], projection: Projection) => CreditBasis,
+  /** The flow's policy; its policy in force (`PROJECTION_POLICIES`) unless a caller passes one. */
+  override?: ProjectionPolicy<FlowFacts[F]>,
 ): AccountingEventRoute {
-  const policy = PROJECTION_POLICIES[flow] as ProjectionPolicy<FlowFacts[F]>;
+  const policy = override ?? (PROJECTION_POLICIES[flow] as ProjectionPolicy<FlowFacts[F]>);
   return {
     product,
     flow,
@@ -236,6 +248,69 @@ async function readDeliveryRefund(
       refundedPence: read.facts.refundedPence,
       priorCreditPence: creditOf(priorCredits),
     },
+  };
+}
+
+/**
+ * The payout flows' routes under the given bookings (the accountant's answers). The routes in force
+ * use `BID_SELLER_PAYOUT_BOOKING` and `SHOP_ARTIST_PAYOUT_BOOKING` (null: parked until answered);
+ * a test may pass answers to rehearse the path that sends.
+ */
+export function payoutEventRoutes(bookings: {
+  readonly bid: PayoutBooking | null;
+  readonly shop: PayoutBooking | null;
+}): Readonly<Record<string, AccountingEventRoute>> {
+  return {
+    // A Bid seller payout made: the bill for what LAX owes the seller after the agreement's
+    // commission, to the seller's vendor contact. The aggregate is the payout; its stored rows are
+    // read (the event's figures are never booked from).
+    "payout.settlement_created": route(
+      "bid",
+      "bid_payout_settled",
+      (facts, event) => {
+        if (!facts.payouts) {
+          return Promise.resolve({ status: "skip", reason: "payout_facts_not_wired" });
+        }
+        return facts.payouts.bidPayout(event.aggregateId);
+      },
+      undefined,
+      bidPayoutSettledPolicy(bookings.bid),
+    ),
+    // A Bid seller payout paid: its contact and bill again (a replay), then the bill paid in full
+    // from Stripe clearing. A payout no longer paid when read (reversed since) books nothing.
+    "payout.paid": route(
+      "bid",
+      "bid_payout_paid",
+      async (facts, event) => {
+        if (!facts.payouts) return { status: "skip", reason: "payout_facts_not_wired" };
+        const read = await facts.payouts.bidPayout(event.aggregateId);
+        if (read.status === "ready" && read.facts.paid === null) {
+          return { status: "skip", reason: "payout_not_paid" };
+        }
+        return read;
+      },
+      undefined,
+      bidPayoutPaidPolicy(bookings.bid),
+    ),
+    // A Shop artist payout paid: the payee's vendor contact, the bill and its payment, from the
+    // ledger row (never the reference staff wrote).
+    "shop.payout.paid": route(
+      "shop",
+      "shop_artist_payout_paid",
+      async (facts, event) => {
+        const payload = shopPayoutPaidPayloadSchemaV1.safeParse(event.payload);
+        if (
+          !payload.success ||
+          payload.data.payoutId.toLowerCase() !== event.aggregateId.toLowerCase()
+        ) {
+          throw new AccountingEventPayloadError(event.eventType);
+        }
+        if (!facts.payouts) return { status: "skip", reason: "payout_facts_not_wired" };
+        return facts.payouts.shopArtistPayout(payload.data.payoutId);
+      },
+      undefined,
+      shopArtistPayoutPaidPolicy(bookings.shop),
+    ),
   };
 }
 
@@ -488,6 +563,7 @@ export const ACCOUNTING_EVENT_ROUTES: Readonly<Record<string, AccountingEventRou
     }
     return { status: "ready", facts: { reversed } };
   }),
+  ...payoutEventRoutes({ bid: BID_SELLER_PAYOUT_BOOKING, shop: SHOP_ARTIST_PAYOUT_BOOKING }),
   // An original sold directly in the Shop, paid: its Books invoice and the payment (flow 22).
   "shop.accounting.original_sale_paid": route(
     "shop",

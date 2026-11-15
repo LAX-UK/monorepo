@@ -25,6 +25,7 @@ const NUMBER_PREFIX: Record<DocumentKind, string> = {
   contact: "CON",
   expense: "EXP",
   transfer: "TRF",
+  bill_payment: "VPMT",
 };
 
 const reply = (status: number, body: unknown): TransportResponse => ({
@@ -49,7 +50,7 @@ const halfUp = (numerator: number, denominator: number) =>
  * It is at least as strict as Books is expected to be (to confirm in the test organisation): a
  * tax id must be one of the receiving organisation's own (an organisation that is not VAT
  * registered has none), every priced document and payment names its currency, an invoice, credit
- * note or payment goes to a customer contact and a bill to a vendor contact.
+ * note or payment goes to a customer contact, and a bill or vendor payment to a vendor contact.
  */
 export class SimulatedBooks implements ZohoTransport {
   readonly faults = new FaultQueue();
@@ -388,14 +389,16 @@ export class SimulatedBooks implements ZohoTransport {
       return { fields: { contact_name: body.contact_name, contact_type: type } };
     }
     if (kind === "expense" || kind === "transfer") return this.priceMovement(kind, body);
-    const party = kind === "bill" ? body.vendor_id : body.customer_id;
+    const toVendor = kind === "bill" || kind === "bill_payment";
+    const party = toVendor ? body.vendor_id : body.customer_id;
     if (!this.exists(org, "contact", party))
       return { error: failure(400, 1003, "no such contact") };
-    if (!this.contactOfType(org, party, kind === "bill" ? "vendor" : "customer")) {
+    if (!this.contactOfType(org, party, toVendor ? "vendor" : "customer")) {
       return { error: failure(400, 1006, "contact is not of the right type") };
     }
     if (body.currency_code !== "GBP") return { error: failure(400, 1007, "currency required") };
     if (kind === "payment") return this.pricePayment(org, body);
+    if (kind === "bill_payment") return this.priceBillPayment(org, body);
     if (kind === "credit_note" && !this.exists(org, "invoice", query.get("invoice_id"))) {
       return { error: failure(400, 1004, "no such invoice") };
     }
@@ -456,6 +459,36 @@ export class SimulatedBooks implements ZohoTransport {
         ...(kind === "expense" ? { total: pounds(amount) } : { amount: pounds(amount) }),
         date: body.date,
         currency_code: body.currency_code,
+      },
+    };
+  }
+
+  /** A vendor payment: every bill it names must exist, and it applies no more than it pays. */
+  private priceBillPayment(
+    org: ZohoOrgConfig,
+    body: Json,
+  ): { fields: Json } | { error: TransportResponse } {
+    const amount = pence(body.amount as number);
+    if (!(amount > 0) || typeof body.paid_through_account_id !== "string") {
+      return { error: failure(400, 1, "amount and paid-through account required") };
+    }
+    let applied = 0;
+    const bills: Json[] = [];
+    for (const raw of (body.bills ?? []) as Json[]) {
+      if (!this.exists(org, "bill", raw.bill_id))
+        return { error: failure(400, 1004, "no such bill") };
+      applied += pence(raw.amount_applied as number);
+      bills.push({ bill_id: raw.bill_id, amount_applied: raw.amount_applied });
+    }
+    if (applied > amount) return { error: failure(400, 1005, "applied more than the amount") };
+    return {
+      fields: {
+        amount: pounds(amount),
+        vendor_id: body.vendor_id,
+        date: body.date,
+        currency_code: body.currency_code,
+        paid_through_account_id: body.paid_through_account_id,
+        bills,
       },
     };
   }

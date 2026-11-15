@@ -15,6 +15,9 @@ export const PROBE_USER_ID = "worker-role-contract-probe-user";
 export const PROBE_SHOP_GUEST_ORDER_ID = "00000000-0000-4000-8000-000000000015";
 export const PROBE_SHOP_USER_ORDER_ID = "00000000-0000-4000-8000-000000000016";
 export const PROBE_SHOP_ORIGINAL_SALE_ID = "00000000-0000-4000-8000-000000000017";
+/** The payouts the same script inserts for the payout accounting facts reader. */
+export const PROBE_BID_PAYOUT_ID = "00000000-0000-4000-8000-000000000018";
+export const PROBE_SHOP_PAYOUT_LEDGER_ID = "00000000-0000-4000-8000-00000000001a";
 
 export const today = new Date();
 export const earlier = new Date(today.getTime() - 24 * 60 * 60 * 1000);

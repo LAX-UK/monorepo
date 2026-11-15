@@ -2,6 +2,8 @@ import {
   type AccountingDocument,
   type AmountBasis,
   type Bill,
+  type BillPayment,
+  type BillPaymentPort,
   type BillPort,
   type Contact,
   type ContactPort,
@@ -36,6 +38,7 @@ import {
   type StatusReadOutcome,
   type TransferPort,
   type WriteFence,
+  contactPartyOf,
   expectedTotals,
   legalEntityFor,
   parseLaxReference,
@@ -62,6 +65,7 @@ const PREFIX: Record<DocumentKind, string> = {
   contact: "CON",
   expense: "EXP",
   transfer: "TRF",
+  bill_payment: "VPMT",
 };
 
 export interface InMemoryAccountingOptions {
@@ -260,6 +264,20 @@ export class InMemoryAccounting implements AccountingPorts {
     issueBill: (d: Bill, fence?: WriteFence) =>
       this.issue(d, [["contact", d.contactReference, "vendor"]], "tax_exclusive", undefined, fence),
   };
+  /** A payout paid: the vendor's bill, paid in full from Stripe clearing. */
+  readonly billPayments: BillPaymentPort = {
+    recordBillPayment: (d: BillPayment, fence?: WriteFence) =>
+      this.issue(
+        d,
+        [
+          ["contact", d.contactReference, "vendor"],
+          ["bill", d.billReference],
+        ],
+        undefined,
+        undefined,
+        fence,
+      ),
+  };
   /** Stripe's fees: no contact, no lines; one amount on one day, from the clearing account. */
   readonly expenses: ExpensePort = {
     recordExpense: (d, fence?: WriteFence) => this.issue(d, [], undefined, undefined, fence),
@@ -298,7 +316,7 @@ export class InMemoryAccounting implements AccountingPorts {
       if (fault === "lookup_unavailable")
         return { status: "unavailable", reason: "fake_unreadable" };
       if (fault === "lookup_ambiguous") return { status: "ambiguous", count: 2 };
-      const found = this.held.get(this.key(entity, kind, reference, "customer"));
+      const found = this.held.get(this.key(entity, kind, reference, contactPartyOf(reference)));
       if (!found) return { status: "not_found" };
       return this.differs(found, document)
         ? { status: "differs", reason: found.differsReason ?? R.paymentMismatch, ...found.doc }
@@ -512,6 +530,8 @@ function fingerprintOf(document: AccountingDocument): string {
       return `${document.amountPence}:${document.spentOn}`;
     case "transfer":
       return `${document.amountPence}:${document.transferredOn}`;
+    case "bill_payment":
+      return `${document.billReference}=${document.amountPence}:${document.paidOn}:${document.paidFrom}`;
     default:
       return "";
   }

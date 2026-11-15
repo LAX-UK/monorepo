@@ -1,12 +1,14 @@
-import type {
-  AccountingDocument,
-  DocumentKind,
-  DocumentLookupPort,
-  LookupOutcome,
+import {
+  type AccountingDocument,
+  type DocumentKind,
+  type DocumentLookupPort,
+  type LookupOutcome,
+  contactPartyOf,
 } from "@auction/accounting-domain";
 import { orgFor } from "./api.js";
 import {
   type ReadBack,
+  billPaymentReadBack,
   contactTypeCheck,
   invoiceNumberCheck,
   movementReadBack,
@@ -26,8 +28,9 @@ type ReadBackFor = (
 const TOTALS_ONLY: ReadBackFor = () => Promise.resolve({ check: null });
 
 /**
- * The check each kind is read back with: the same one its send makes. One row per kind. Contacts
- * the sender sends are customers (a vendor contact arrives with the payouts flow).
+ * The check each kind is read back with: the same one its send makes. One row per kind. A contact
+ * is read back as the party its reference names: a vendor (`LAX-<P>-CON-vendor-…`, a payee) or a
+ * customer.
  */
 const READ_BACKS: Readonly<Record<DocumentKind, ReadBackFor>> = {
   // An invoice LAX numbered must still carry that number; one Books numbers is read by totals.
@@ -41,7 +44,12 @@ const READ_BACKS: Readonly<Record<DocumentKind, ReadBackFor>> = {
     document.kind === "payment"
       ? paymentReadBack(lookup, document, org)
       : Promise.resolve({ stop: { status: "rejected", reason: "zoho_books_bad_reference" } }),
-  contact: () => Promise.resolve({ check: contactTypeCheck("customer") }),
+  bill_payment: (lookup, document, org) =>
+    document.kind === "bill_payment"
+      ? billPaymentReadBack(lookup, document, org)
+      : Promise.resolve({ stop: { status: "rejected", reason: "zoho_books_bad_reference" } }),
+  contact: (_lookup, document) =>
+    Promise.resolve({ check: contactTypeCheck(contactPartyOf(document.reference)) }),
   expense: (_lookup, document, org) => Promise.resolve(movementOf(document, org)),
   transfer: (_lookup, document, org) => Promise.resolve(movementOf(document, org)),
 };
@@ -70,7 +78,8 @@ export class ZohoReadBackLookup implements DocumentLookupPort {
     const choice = orgFor(this.orgs, document);
     if (!choice.ok) return { status: "unavailable", reason: choice.reason };
     const { product, kind, reference } = document;
-    const stored = kind === "contact" ? contactReferenceValue(reference, "customer") : reference;
+    const stored =
+      kind === "contact" ? contactReferenceValue(reference, contactPartyOf(reference)) : reference;
     const found = await this.lookup.findIn(choice.org, product, kind, reference, stored);
     if (found.outcome.status !== "found") return found.outcome;
     const { status: _found, ...held } = found.outcome;
