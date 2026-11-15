@@ -88,7 +88,7 @@ export interface DayKindTotals {
   /** What Books holds: documents issued for the target (pence from Books' own totals, count). */
   readonly booksPence: number;
   readonly booksCount: number;
-  /** Documents registered but not issued yet (queued, sending, waiting for a person). */
+  /** Documents registered but not issued yet and still on their way (pending, sending, unknown). */
   readonly notIssuedCount: number;
   readonly notIssuedPence: number;
 }

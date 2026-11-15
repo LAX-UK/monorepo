@@ -430,6 +430,89 @@ describe.skipIf(!HAS_DB)(
       expect(await documentsFor(`LAX-SHOP-EXP-${id("txn", 8_001).toLowerCase()}`)).toHaveLength(0);
     });
 
+    it("parks a row whose own id, type and currency break the ledger's CHECKs, with a row that is valid", async () => {
+      const SHOP_ACCOUNT = await account("shop");
+      const bad = {
+        stripeAccountId: SHOP_ACCOUNT,
+        id: `not-a-txn-${RUN}`,
+        type: "Weird-Type",
+        currency: "GBP",
+        amountPence: 500,
+        feePence: 5,
+        createdAt: new Date(NOON * 1000),
+        createdOn: DAY,
+        sourceId: "bad source!",
+        payoutId: "po_ok",
+      };
+      const decided = { outcome: "nothing", product: null } as const;
+      // Without a valid fallback this throws the same CHECK violation that caused the park.
+      expect(await repos.stripeLedger.record(bad, decided)).toBe("parked_instead");
+      const [row] = await ledgerRows(SHOP_ACCOUNT);
+      expect(row).toMatchObject({
+        outcome: "parked",
+        parkReason: "unrecognised",
+        type: "unrecognised",
+        currency: "xxx",
+        sourceId: null,
+        payoutId: null,
+        amountPence: 500,
+        feePence: 5,
+      });
+      expect(row?.balanceTransactionId).toMatch(/^txn_[A-Za-z0-9]{1,48}$/);
+      // Read again, it finds the same row and decides nothing new.
+      expect(await repos.stripeLedger.record(bad, decided)).toBe("already_recorded");
+    });
+
+    it("nets only documents still on their way as not issued; needs_review and failed are not", async () => {
+      const day = new Date(Date.UTC(2041, 0, 3 + DAY_OFFSET)).toISOString().slice(0, 10);
+      const noon = startOfLondonDay(day).getTime() / 1000 + 12 * 3600;
+      const runAt = new Date(startOfLondonDay(day).getTime() + 29.5 * 3_600_000);
+      const SHOP_ACCOUNT = await account("shop");
+      const stripe = new FakeStripeBalance(SHOP_ACCOUNT, 0);
+      // Five fees of 1.01 .. 1.05, one per state below.
+      for (let n = 1; n <= 5; n += 1) stripe.add(charge(9_400 + n, 100 + n, noon + n));
+      await new StripeBooksSync({
+        ledger: repos.stripeLedger,
+        settings: repos.settingReader,
+        readers: [stripe],
+        now: () => runAt,
+        log,
+      }).run();
+      const docs = await documentsFor(`LAX-SHOP-EXP-${id("txn", 9400)}`.slice(0, -2));
+      expect(docs.map((d) => d.grossPence)).toEqual([101, 102, 103, 104, 105]);
+      const reference = (n: number) => docs[n]?.laxReference as string;
+      // pending stays as registered; the rest are moved the way the sender would leave them.
+      await owner.execute(sql`
+      update accounting_document set state = 'sending', provider = 'books', attempts = 1, lease_token = 'lease-test',
+             lease_expires_at = now() + interval '1 hour' where lax_reference = ${reference(1)}`);
+      await owner.execute(sql`
+      update accounting_document set state = 'unknown', provider = 'books', attempts = 1, settles_at = now() + interval '1 hour'
+       where lax_reference = ${reference(2)}`);
+      await owner.execute(sql`
+      update accounting_document set state = 'needs_review', review_lookup = 'clear',
+             needs_review_reason = 'accounting_parked_test'
+       where lax_reference = ${reference(3)}`);
+      await owner.execute(sql`
+      update accounting_document set state = 'failed', provider = 'books', attempts = 1,
+             last_error_class = 'test' where lax_reference = ${reference(4)}`);
+
+      const [totals] = (
+        await repos.reconciliation.dayTotals("london_art_exchange", day, {
+          provider: "books",
+          mode: "dry_run",
+        })
+      ).filter((t) => t.kind === "expense");
+      // Registered counts all five; only pending (1.01), sending (1.02) and unknown (1.03) are
+      // on their way.
+      expect(totals).toMatchObject({ laxCount: 5, laxPence: 515, booksCount: 0 });
+      expect(totals).toMatchObject({ notIssuedCount: 3, notIssuedPence: 101 + 102 + 103 });
+      const moves = await repos.reconciliation.clearingSince("london_art_exchange", day, day, {
+        provider: "books",
+        mode: "dry_run",
+      });
+      expect(moves.notIssuedPence).toBe(-(101 + 102 + 103));
+    });
+
     it("sends the documents through the dry-run sender, then reports the day privately and alerts on a mismatch", async () => {
       // A day of its own, so the cases above (whose queued documents each case cancels) stay out.
       const day = NEXT_DAY;

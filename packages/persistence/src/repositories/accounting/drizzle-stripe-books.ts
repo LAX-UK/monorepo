@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import {
   type LegalEntity,
   PRODUCTS,
@@ -142,7 +143,7 @@ export class DrizzleStripeBooksLedger implements IStripeBooksLedger {
       // its own and with no documents, so one odd transaction never holds the account's cursor.
       if (!(error instanceof StripeLedgerRefusedError) && !isPgCheckViolation(error)) throw error;
       const parked = { outcome: "parked", product: null, reason: "unrecognised" } as const;
-      const result = await this.recordOnce({ ...row, payoutId: null }, parked);
+      const result = await this.recordOnce(parkableRow(row), parked);
       return result === "recorded" ? "parked_instead" : result;
     }
   }
@@ -210,6 +211,26 @@ export class DrizzleStripeBooksLedger implements IStripeBooksLedger {
   }
 }
 
+/**
+ * The row written when a transaction is parked as unrecognised. The park may have been caused by
+ * the id, type or currency failing the ledger's CHECKs, so every checked column is replaced by a
+ * value that passes them (valid by construction): the id by a digest of the original (stable, so a
+ * re-read finds the same row), the type and currency by placeholders, the source and payout by
+ * nothing. Amounts and dates are kept.
+ */
+export function parkableRow(row: StripeBalanceRow): StripeBalanceRow {
+  return {
+    ...row,
+    id: /^txn_[A-Za-z0-9]{1,48}$/.test(row.id)
+      ? row.id
+      : `txn_${createHash("sha256").update(row.id).digest("hex").slice(0, 48)}`,
+    type: /^[a-z_]{1,64}$/.test(row.type) ? row.type : "unrecognised",
+    currency: /^[a-z]{3}$/.test(row.currency) ? row.currency : "xxx",
+    sourceId: null,
+    payoutId: null,
+  };
+}
+
 /** The day each kind is booked on, from the stored document. */
 const DATE_FIELD = {
   payment: "receivedOn",
@@ -237,8 +258,8 @@ export class DrizzleStripeReconciliationStore implements IStripeReconciliationSt
         registeredCount: sql<string>`count(*) filter (where ${d.state} <> 'cancelled')`,
         issuedPence: sql<string>`coalesce(sum(${d.grossPence}) filter (where ${d.state} = 'issued'), 0)`,
         issuedCount: sql<string>`count(*) filter (where ${d.state} = 'issued')`,
-        notIssuedCount: sql<string>`count(*) filter (where ${d.state} not in ('issued', 'cancelled'))`,
-        notIssuedPence: sql<string>`coalesce(sum(${d.grossPence}) filter (where ${d.state} not in ('issued', 'cancelled')), 0)`,
+        notIssuedCount: sql<string>`count(*) filter (where ${d.state} in ('pending', 'sending', 'unknown'))`,
+        notIssuedPence: sql<string>`coalesce(sum(${d.grossPence}) filter (where ${d.state} in ('pending', 'sending', 'unknown')), 0)`,
       })
       .from(d)
       .where(
@@ -352,7 +373,7 @@ export class DrizzleStripeReconciliationStore implements IStripeReconciliationSt
         payments: sql<string>`coalesce(sum(${d.grossPence}) filter (where ${d.kind} = 'payment' and ${d.state} = 'issued'), 0)`,
         expenses: sql<string>`coalesce(sum(${d.grossPence}) filter (where ${d.kind} = 'expense' and ${d.state} = 'issued'), 0)`,
         transfers: sql<string>`coalesce(sum(${d.grossPence}) filter (where ${d.kind} = 'transfer' and ${d.state} = 'issued'), 0)`,
-        notIssued: sql<string>`coalesce(sum(${signed}) filter (where ${d.state} not in ('issued', 'cancelled')), 0)`,
+        notIssued: sql<string>`coalesce(sum(${signed}) filter (where ${d.state} in ('pending', 'sending', 'unknown')), 0)`,
       })
       .from(d)
       .where(
