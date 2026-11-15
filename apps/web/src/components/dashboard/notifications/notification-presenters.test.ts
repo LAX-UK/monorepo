@@ -107,3 +107,13 @@ describe("groupByDateBand", () => {
     ]);
   });
 });
+
+describe("status wording", () => {
+  it("takes the needs-changes label from the status catalog, with the consignment badge", async () => {
+    const { submissionStatusLabel } = await import("@/lib/presenters/status/catalog");
+    const { CONSIGNMENT_STATUS } = await import("@/lib/seller/consignment-status");
+    const label = submissionStatusLabel.changes_requested;
+    expect(notificationTypePresenter("submission_changes_requested").label).toBe(label);
+    expect(CONSIGNMENT_STATUS.needs_changes.label).toBe(label);
+  });
+});

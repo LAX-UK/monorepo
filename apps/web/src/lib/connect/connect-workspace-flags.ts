@@ -1,11 +1,13 @@
 import { type ConnectGapState, isConnectOnboardingStage } from "@auction/connect";
+import { entityRoleCan } from "@auction/domain";
+import type { LegalEntityMemberRole } from "@auction/types";
 
-function canOnboard(role: string): boolean {
-  return role === "owner" || role === "admin";
+function canOnboard(role: LegalEntityMemberRole): boolean {
+  return entityRoleCan(role, "entity.connect.manage");
 }
 
 export function deriveConnectWorkspaceFlags(input: {
-  memberRole: string;
+  memberRole: LegalEntityMemberRole;
   gap: ConnectGapState;
   stripeActionRequired: number;
   hasStripeAccount?: boolean;

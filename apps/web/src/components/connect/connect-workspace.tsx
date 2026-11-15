@@ -35,6 +35,8 @@ import type { StripeConnectStatus } from "@/lib/data/http/stripe-connect.server"
 import { normalizeKycReturnUrl } from "@/lib/kyc";
 import { dashboardIdentityOnboardingHref } from "@/lib/kyc/identity-onboarding";
 import { isActionableStripeDisabledReason, shouldSkipConnect } from "@auction/connect";
+import { entityRoleCan } from "@auction/domain";
+import type { LegalEntityMemberRole } from "@auction/types";
 import { Alert, AlertDescription } from "@auction/ui/components/alert";
 import { Surface } from "@auction/ui/components/surface";
 import { Button } from "@auction/ui/lax/button";
@@ -45,7 +47,7 @@ type Props = {
   connectEnforced: boolean;
   status: StripeConnectStatus | null;
   legalEntityId?: string;
-  memberRole: string;
+  memberRole: LegalEntityMemberRole;
   entityStatus?: string;
   /** Individual sellers only — gate Connect until Veriff approved. */
   kycApproved?: boolean;
@@ -62,17 +64,17 @@ type Props = {
   syncDegraded?: boolean;
 };
 
-function canManageConnect(role: string): boolean {
-  return role === "owner" || role === "admin" || role === "finance";
+function canManageConnect(role: LegalEntityMemberRole): boolean {
+  return entityRoleCan(role, "entity.connect.operate");
 }
 
-function canOnboardConnect(role: string): boolean {
-  return role === "owner" || role === "admin";
+function canOnboardConnect(role: LegalEntityMemberRole): boolean {
+  return entityRoleCan(role, "entity.connect.manage");
 }
 
 function resolveConnectSessionSurface(input: {
   gapStage: string;
-  memberRole: string;
+  memberRole: LegalEntityMemberRole;
   hasStripeAccount: boolean;
 }): StripeConnectSessionSurface {
   if (input.gapStage === "ready") return "management";

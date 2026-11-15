@@ -1,4 +1,5 @@
 import { coerceToDate } from "@/lib/data/http/parse";
+import { NEEDS_CHANGES_LABEL } from "@/lib/presenters/status/catalog";
 import { LONDON_TIME_ZONE, dayOffset, formatDate } from "@auction/datetime";
 import type { UserNotification } from "@auction/types";
 import {
@@ -120,7 +121,7 @@ export function notificationTypePresenter(type: string): NotificationPresentatio
     return { label: "Consignment reminder", Icon: Clock, tone: "info" };
   }
   if (type === "submission_changes_requested") {
-    return { label: "Needs changes", Icon: FileText, tone: "warn" };
+    return { label: NEEDS_CHANGES_LABEL, Icon: FileText, tone: "warn" };
   }
   if (type === "consignment_agreement_reminder") {
     return { label: "Agreement waiting", Icon: FileText, tone: "warn" };

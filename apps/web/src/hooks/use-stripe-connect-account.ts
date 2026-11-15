@@ -13,12 +13,13 @@ import {
   shouldSkipConnect,
 } from "@auction/connect";
 import type { ConnectGapState } from "@auction/connect";
-import type { StripeConnectRequirementError } from "@auction/types";
+import { entityRoleCan } from "@auction/domain";
+import type { LegalEntityMemberRole, StripeConnectRequirementError } from "@auction/types";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
 
-function canOnboard(role: string): boolean {
-  return role === "owner" || role === "admin";
+function canOnboard(role: LegalEntityMemberRole): boolean {
+  return entityRoleCan(role, "entity.connect.manage");
 }
 
 function mergeStatusFromSync(
@@ -46,7 +47,7 @@ function mergeStatusFromSync(
 type Input = {
   status: StripeConnectStatus | null;
   legalEntityId?: string | undefined;
-  memberRole: string;
+  memberRole: LegalEntityMemberRole;
   entityStatus: string;
   isLaxManaged: boolean;
   kycApproved: boolean;

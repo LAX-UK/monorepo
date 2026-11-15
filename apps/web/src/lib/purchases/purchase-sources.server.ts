@@ -7,7 +7,7 @@ import { getServerAccountPurchaseFacts } from "@/lib/data/http/account-buying.se
 import type { LotFulfilmentSnapshot, MyPaymentRow } from "@/lib/data/http/payments.schema";
 import { getServerEntityPayments } from "@/lib/data/http/payments.server";
 import { resolveSaleTitles } from "@/lib/data/sale-titles.server";
-import { accountPurchaseScope } from "@auction/domain";
+import { accountPurchaseScope, entityRoleCan } from "@auction/domain";
 import type { PurchasePaymentRole } from "@auction/domain";
 import { purchaseInvoiceHref } from "./purchase-invoice";
 import type { PurchaseSources } from "./purchases.vm";
@@ -100,7 +100,7 @@ export async function loadPurchaseSources(): Promise<PurchaseSources | null> {
       ? {
           id: organisation.id,
           name: organisation.name,
-          canManage: organisation.actor.role === "owner" || organisation.actor.role === "admin",
+          canManage: entityRoleCan(organisation.actor.role, "entity.documents.manage"),
         }
       : null,
     // Invoice and delivery state degrade to what the payment says when they cannot be read.

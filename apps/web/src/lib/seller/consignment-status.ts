@@ -1,3 +1,4 @@
+import { NEEDS_CHANGES_LABEL } from "@/lib/presenters/status/catalog";
 import type { ItemSubmissionStatus, LotStatus } from "@auction/types";
 import type { StatusBadgeShape, StatusBadgeTone } from "@auction/ui/lax/status-badge";
 
@@ -43,7 +44,7 @@ export const CONSIGNMENT_STAGE_LABEL: Record<ConsignmentOpenStage, string> = Obj
 ) as Record<ConsignmentOpenStage, string>;
 
 /** The badge that rides on the In review stage when the specialist is waiting on the seller. */
-export const NEEDS_CHANGES_LABEL = "Needs changes";
+export { NEEDS_CHANGES_LABEL };
 
 export type ConsignmentStatusPresentation = {
   label: string;

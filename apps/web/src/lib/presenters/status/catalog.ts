@@ -26,11 +26,14 @@ export const artistStatusLabel: Record<ArtistStatus, string> = {
   merged_into: "Merged",
 };
 
+/** The one wording for work waiting on the seller to change something; import it, never retype it. */
+export const NEEDS_CHANGES_LABEL = "Needs changes";
+
 export const submissionStatusLabel: Record<ItemSubmissionStatus, string> = {
   draft: "Draft",
   submitted: "Submitted",
   under_review: "Under review",
-  changes_requested: "Needs changes",
+  changes_requested: NEEDS_CHANGES_LABEL,
   approved: "Approved",
   rejected: "Rejected",
   withdrawn: "Withdrawn",

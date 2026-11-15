@@ -11,7 +11,7 @@ import {
   loadTeamScope,
 } from "@/lib/organisation-team/team-data.server";
 import { whoCanBidView } from "@/lib/organisation-team/who-can-bid.vm";
-import { entityActorCan } from "@auction/domain";
+import { entityActorCan, entityRoleCan } from "@auction/domain";
 import {
   type BiddingOrganisation,
   type PersonalLimit,
@@ -57,7 +57,9 @@ export async function loadBiddingOrganisation(
   ]);
   let biddersCount: number | null = null;
   if (members?.ok) {
-    const managers = members.data.filter((m) => m.role === "owner" || m.role === "admin").length;
+    const managers = members.data.filter((m) =>
+      entityRoleCan(m.role, "entity.members.manage"),
+    ).length;
     const agents = overview
       ? new Set(
           whoCanBidView({ overview, limits, now: new Date() }).rows.map((r) => r.agent.userId),
