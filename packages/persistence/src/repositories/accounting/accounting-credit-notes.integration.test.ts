@@ -308,58 +308,114 @@ describe.skipIf(!HAS_DB)("accounting credit notes (integration)", { timeout: 60_
     ).not.toContain(money.id);
   });
 
-  it("two refunders racing on one credit note write one refund_credit_note row (BK-9F1)", async () => {
-    // Two worker processes (a pool each). The second keeps trying while the first settles, so an
-    // attempt of its starts before the first commits and reaches the row once it is free: the
-    // history re-read under the lock is what keeps it from refunding the note a second time.
+  it("a refunder whose lock query's snapshot predates another's commit, and whose lock follows it, reads the history again and does not refund twice (BK-9F1)", async () => {
+    // The interleaving the history re-read is there for, driven step by step rather than hoped
+    // for. The first refunder holds the credit note inside its step. The rival's lock query (the
+    // repository's own SQL, on its own pool) is run as a cursor: DECLARE takes the statement's
+    // snapshot then, before the first commits, and FETCH takes the row lock only after the first
+    // has committed (Postgres locks a FOR UPDATE cursor's rows when they are fetched). So the
+    // lock query returns the note as unsettled, and only the re-read can tell the rival it is not.
+    const { contact, invoice } = invoiceWithContact();
+    await issue((await register(contact)).stored.id);
+    await issue((await register(invoice)).stored.id);
+    const { refundId } = await refundRow(100);
+    const note = (await register(credit(invoice, 100, [], true, refundId))).stored;
+    await issue(note.id);
+
+    const signal = () => {
+      let resolve!: () => void;
+      const promise = new Promise<void>((r) => {
+        resolve = r;
+      });
+      return { promise, resolve };
+    };
+    // A step that never comes fails the test with its name rather than hanging it.
+    const within = async (what: string, p: Promise<void>) => {
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      try {
+        await Promise.race([
+          p,
+          new Promise<never>((_, reject) => {
+            timer = setTimeout(() => reject(new Error(`timed out waiting for ${what}`)), 10_000);
+          }),
+        ]);
+      } finally {
+        clearTimeout(timer);
+      }
+    };
+    const firstHolds = signal();
+    const rivalSnapshot = signal();
+    const firstCommitted = signal();
+    let lockedByRival: number | null = null;
+
+    type QueryConfig = { text: string; values?: unknown[]; rowMode?: string; types?: unknown };
+    type QueryClient = { query: (...args: unknown[]) => Promise<{ rows: unknown[] }> };
     // biome-ignore lint/style/noNonNullAssertion: gated by HAS_DB
     const otherWorker = createDb(WORKER_URL || OWNER_URL!);
+    const pool = (
+      otherWorker as unknown as {
+        $client: { on: (event: "connect", listener: (client: QueryClient) => void) => void };
+      }
+    ).$client;
+    // The rival's first lock query runs as the cursor described above; every other query passes through.
+    pool.on("connect", (client) => {
+      const query = client.query.bind(client);
+      client.query = (...args: unknown[]) => {
+        const [config, values] = args as [QueryConfig | string, unknown[] | undefined];
+        const text = typeof config === "string" ? config : config.text;
+        if (lockedByRival !== null || !/for update skip locked/i.test(text)) return query(...args);
+        lockedByRival = 0;
+        return (async () => {
+          const shape = typeof config === "string" ? {} : config;
+          await query({
+            text: `declare bk9f1_lock cursor for ${text}`,
+            values: values ?? shape.values,
+          });
+          rivalSnapshot.resolve();
+          await within("the first refunder to commit", firstCommitted.promise);
+          const fetched = await query({
+            text: "fetch all from bk9f1_lock",
+            ...(shape.rowMode ? { rowMode: shape.rowMode } : {}),
+            ...(shape.types ? { types: shape.types } : {}),
+          });
+          await query("close bk9f1_lock");
+          lockedByRival = fetched.rows.length;
+          return fetched;
+        })();
+      };
+    });
     const rival = createAccountingRepositories(otherWorker, clock);
     try {
-      const { contact, invoice } = invoiceWithContact();
-      await issue((await register(contact)).stored.id);
-      await issue((await register(invoice)).stored.id);
-      const notes: string[] = [];
-      for (let i = 0; i < 25; i += 1) {
-        const { refundId } = await refundRow(100);
-        const note = (await register(credit(invoice, 100, [], true, refundId))).stored;
-        await issue(note.id);
-        notes.push(note.id);
-      }
       let steps = 0;
-      const step = async () => {
-        steps += 1;
-        return {
-          outcome: "refunded" as const,
-          amountPence: 100,
-          account: "stripe_clearing" as const,
-          rehearsal: true,
-        };
+      const record = {
+        outcome: "refunded" as const,
+        amountPence: 100,
+        account: "stripe_clearing" as const,
+        rehearsal: true,
       };
-      for (const id of notes) {
-        let done = false;
-        const first = repos.creditNoteRefunds.settleExclusively(id, step).finally(() => {
-          done = true;
-        });
-        // The second refunder has a few attempts in flight at once, each retried until the first is done.
-        const attempts = await Promise.all(
-          Array.from({ length: 4 }, async () => {
-            const outcomes: Array<Awaited<typeof first>> = [];
-            while (!done) outcomes.push(await rival.creditNoteRefunds.settleExclusively(id, step));
-            outcomes.push(await rival.creditNoteRefunds.settleExclusively(id, step));
-            return outcomes;
-          }),
-        );
-        expect([await first, ...attempts.flat()].filter((r) => r === "settled")).toHaveLength(1);
-      }
-      expect(steps).toBe(notes.length);
-      const history = await owner.execute<{ id: string; n: number }>(sql`
-        select document_id as id, count(*)::int as n from accounting_document_event
-         where document_id in ${notes} and action = 'refund_credit_note'
-         group by document_id`);
-      expect(history.rows).toHaveLength(notes.length);
-      expect(history.rows.every((r) => r.n === 1)).toBe(true);
+      const first = repos.creditNoteRefunds.settleExclusively(note.id, async () => {
+        steps += 1;
+        firstHolds.resolve();
+        await within("the rival's lock query snapshot", rivalSnapshot.promise);
+        return record;
+      });
+      await within("the first refunder to hold the note", firstHolds.promise);
+      const second = rival.creditNoteRefunds.settleExclusively(note.id, async () => {
+        steps += 1;
+        return record;
+      });
+      expect(await first).toBe("settled");
+      firstCommitted.resolve();
+      expect(await second).toBe("skipped");
+      // The window was reached: the rival's lock query did return the note, and locked it.
+      expect(lockedByRival).toBe(1);
+      expect(steps).toBe(1);
+      const history = await owner.execute<{ n: number }>(sql`
+        select count(*)::int as n from accounting_document_event
+         where document_id = ${note.id} and action = 'refund_credit_note'`);
+      expect(history.rows[0]?.n).toBe(1);
     } finally {
+      firstCommitted.resolve();
       await closeDb(otherWorker);
     }
   });
