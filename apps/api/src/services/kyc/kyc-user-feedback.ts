@@ -59,6 +59,20 @@ const RESUBMISSION_GUIDANCE: Record<number, string> = {
   635: "Include both your face and identity document photos.",
 };
 
+const GENERIC_RESUBMISSION_GUIDANCE =
+  "Use good lighting, keep the document flat, and follow the on-screen prompts.";
+
+/**
+ * Our own wording for what to fix, chosen by reason code. Unlike the provider's free-text reason,
+ * it holds nothing about the person, so it is safe to store in emails and notifications.
+ */
+export function resubmissionGuidanceFor(reasonCode: number | null): string {
+  return (
+    (reasonCode != null ? RESUBMISSION_GUIDANCE[reasonCode] : undefined) ??
+    GENERIC_RESUBMISSION_GUIDANCE
+  );
+}
+
 /** Veriff resubmission limit — same session URL must not be reused. */
 export const VERIFF_RESUBMISSION_LIMIT_REASON_CODE = 539;
 
@@ -83,10 +97,7 @@ function guidanceForReason(reason: string | null, reasonCode: number | null): st
 
 function resubmitDetail(reason: string | null, reasonCode: number | null): string {
   const issue = guidanceForReason(reason, reasonCode);
-  const guidance =
-    reasonCode != null && RESUBMISSION_GUIDANCE[reasonCode]
-      ? RESUBMISSION_GUIDANCE[reasonCode]
-      : "Use good lighting, keep the document flat, and follow the on-screen prompts.";
+  const guidance = resubmissionGuidanceFor(reasonCode);
   if (issue && issue !== guidance) {
     return `${issue} ${guidance}`;
   }

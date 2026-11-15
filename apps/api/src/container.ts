@@ -28,7 +28,6 @@ import {
   DrizzleStaffNoticeRecipientReader,
   DrizzleStaffRoleAssignmentReader,
   DrizzleStaffRoster,
-  DrizzleUserRepository,
   DrizzleWatchlistReminderRepository,
 } from "@auction/persistence/repositories";
 import { PartyDealRetentionHolds } from "./container/adapters/drizzle-data-request-deal-holds.js";
@@ -77,6 +76,7 @@ import { createSubmissionRouteServices } from "./container/create-submission-rou
 import { createUserMiscServices } from "./container/create-user-misc-services.js";
 import { createUserNotificationComposition } from "./container/create-user-notification-composition.js";
 import { createUserRouteServices } from "./container/create-user-route-services.js";
+import { usersFor } from "./container/transaction-bound-stores.js";
 import type { Env } from "./env.js";
 import { DrizzlePendingDeletionReader } from "./infrastructure/drizzle-pending-deletion.reader.js";
 import { DrizzleSubjectUsageReader } from "./infrastructure/drizzle-subject-usage.reader.js";
@@ -452,7 +452,7 @@ export function createContainer(env: Env): Container {
   const organisationMembership = createOrganisationMembershipServices({ db });
   const organisationHome = createOrganisationHomeServices({ db });
   const purchaseProblemNotices = new EmailPurchaseProblemNotices({
-    usersFor: (tx) => new DrizzleUserRepository(tx),
+    usersFor,
     email: infra.emailOutbox,
     webOrigin: env.WEB_ORIGIN,
     contactEmail: SITE_CONTACT_EMAIL,

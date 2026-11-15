@@ -73,7 +73,7 @@ describe("KycNoticeQueue", () => {
       providerAttemptId: "attempt-1",
       feedback: {
         headline: "More information needed",
-        detail: "Retake selfie",
+        detail: "Provider reason quoting Ada Lovelace, passport 123",
         action: "continue",
         reasonCode: 202,
         decisionStatus: "resubmission_requested",
@@ -88,7 +88,7 @@ describe("KycNoticeQueue", () => {
         idempotencyKey: "kyc-resubmission-required:u1:session-1:attempt-1",
         vars: {
           userName: "Ada",
-          issueDetail: "Retake selfie",
+          issueDetail: "Make sure your face is fully visible and well lit in the selfie.",
           verifyUrl: "https://lax.bid/verify-identity",
         },
       }),
@@ -97,8 +97,31 @@ describe("KycNoticeQueue", () => {
       expect.objectContaining({
         type: "kyc_resubmission_required",
         title: "More information needed",
+        message: "Make sure your face is fully visible and well lit in the selfie.",
       }),
     ]);
+  });
+
+  it("never stores the provider's decline reason in the email or the notice", async () => {
+    const { queue, enqueueInTransaction, createMany } = setup();
+
+    await queue.queueResubmission(tx, {
+      userId: "u1",
+      providerSessionId: "session-1",
+      providerAttemptId: null,
+      feedback: {
+        headline: "More information needed",
+        detail: "Name on document does not match Ada Lovelace",
+        action: "continue",
+        reasonCode: null,
+        decisionStatus: "resubmission_requested",
+        needsResubmit: true,
+      },
+    });
+
+    const stored = JSON.stringify([enqueueInTransaction.mock.calls, createMany.mock.calls]);
+    expect(stored).not.toContain("Lovelace");
+    expect(stored).toContain("Use good lighting, keep the document flat");
   });
 
   it("queues nothing for a person with no address", async () => {

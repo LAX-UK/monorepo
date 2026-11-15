@@ -1063,6 +1063,8 @@ export const WORKER_ANONYMISATION_SCRUB_COLUMNS = [
   /** The enquiry rule replaces the sender's details and removes what they wrote. */
   ["marketing_enquiry", ["name", "email", "phone", "message", "version"]],
   ["marketing_enquiry_note", ["body"]],
+  /** Older identity-check notices quote the provider's decline reason in the message. */
+  ["notification", ["message"]],
   ["private_sale_enquiry_detail", ["location_town", "location_country", "looking_for"]],
 ] as const;
 
