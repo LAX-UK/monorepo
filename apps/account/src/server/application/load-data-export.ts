@@ -7,5 +7,7 @@ export async function loadDataExport(): Promise<DataExportRead> {
   const actor = await loadActor();
   if (typeof actor === "string") return { status: "unavailable" };
   const result = await getLaxAccountContainer().dataExports.readCurrent(actor);
-  return result.status === "ok" ? { status: "ok", view: result.value } : { status: "unavailable" };
+  return result.status === "ok"
+    ? { status: "ok", view: result.value.view, retryAfter: result.value.retryAfter }
+    : { status: "unavailable" };
 }

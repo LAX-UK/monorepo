@@ -1,11 +1,11 @@
 import { category, marketingAttribution, userCategoryInterest } from "@auction/db/schema";
-import type { MarketingAttributionSnapshot } from "@auction/types";
-import { and, asc, eq } from "drizzle-orm";
 import {
   type ExportSource,
   SourcedExportCategory,
   inMemorySource,
-} from "../sourced-export-category.js";
+} from "@auction/identity-contracts/subject-export-readers";
+import type { MarketingAttributionSnapshot } from "@auction/types";
+import { and, asc, eq } from "drizzle-orm";
 import type { SubjectExportDeps } from "../subject-export-deps.js";
 import { isoRequired } from "../subject-export-values.js";
 import { afterKey, countWhere } from "./keyset.js";

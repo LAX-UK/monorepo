@@ -92,7 +92,7 @@ function productProgress(view: SubjectExportView): DataExportProductVm[] {
  */
 export type DataExportPageVm =
   | { kind: "unavailable" }
-  | { kind: "ready_to_request" }
+  | { kind: "ready_to_request"; limited: string | null }
   | {
       kind: "preparing";
       requestedAt: string;
@@ -112,11 +112,21 @@ export type DataExportPageVm =
       downloads: string;
     }
   | { kind: "delayed"; dueOn: string; email: string | null; products: DataExportProductVm[] }
-  | { kind: "expired"; message: string };
+  | { kind: "expired"; message: string; limited: string | null };
 
+/**
+ * `retryAfter` is the rate-limit date only: null is "not rate-limited", and says nothing about an
+ * open request, which `view` carries. The page never offers a new request while one is open.
+ */
 export type DataExportRead =
-  | { status: "ok"; view: SubjectExportView | null }
+  | { status: "ok"; view: SubjectExportView | null; retryAfter?: string | null }
   | { status: "unavailable" };
+
+/** The rate-limit message while the date is still ahead; null once it has passed or when absent. */
+function limitedMessage(retryAfter: string | null | undefined, now: Date): string | null {
+  if (!retryAfter || new Date(retryAfter) <= now) return null;
+  return buildRateLimitedMessage(retryAfter);
+}
 
 export function buildDataExportPageVm(
   read: DataExportRead,
@@ -125,7 +135,8 @@ export function buildDataExportPageVm(
 ): DataExportPageVm {
   if (read.status === "unavailable") return { kind: "unavailable" };
   const view = read.view;
-  if (!view) return { kind: "ready_to_request" };
+  const limited = limitedMessage(read.retryAfter, now);
+  if (!view) return { kind: "ready_to_request", limited };
   const status = effectiveStatus(view, now);
   switch (status) {
     case "requested":
@@ -175,6 +186,7 @@ export function buildDataExportPageVm(
         return {
           kind: "expired",
           message: `You deleted your last copy on ${formatDate(view.deletedAt)}. It has been removed.`,
+          limited,
         };
       }
       return {
@@ -182,12 +194,13 @@ export function buildDataExportPageVm(
         message: view.expiresAt
           ? `Your last copy${preparedOn} expired on ${formatDate(view.expiresAt)} and has been deleted.`
           : "Your last copy has expired and has been deleted.",
+        limited,
       };
     }
   }
 }
 
-/** What the page says after Identity answers that four copies were asked for in 30 days. */
+/** What the page says when four copies were asked for in 30 days, as Identity answers a request and as it reports on the page. */
 export function buildRateLimitedMessage(retryAfter: string): string {
   return `You've asked for the most copies we can prepare in 30 days. You can ask again from ${formatDate(retryAfter)}.`;
 }

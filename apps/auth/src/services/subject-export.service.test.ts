@@ -196,6 +196,60 @@ describe("requesting a copy", () => {
     });
   });
 
+  it("tells the page when a new copy can be asked for, the same date a refused request gives", async () => {
+    const { service, repository } = setup();
+    expect(await service.retryAfter(SUBJECT)).toBeNull();
+    for (const daysAgo of [20, 15, 10, 5]) {
+      repository.seed({
+        subjectId: SUBJECT,
+        status: "expired",
+        requestedAt: new Date(NOW.getTime() - daysAgo * DAY),
+      });
+    }
+    const retryAfter = new Date(NOW.getTime() + 10 * DAY).toISOString();
+    expect(await service.retryAfter(SUBJECT)).toBe(retryAfter);
+    const refused = await service.request(SUBJECT, CONTEXT);
+    expect(refused).toMatchObject({ outcome: { retryAfter } });
+  });
+
+  it("gives no retry date for an open request: null means not rate-limited, the open request is in current", async () => {
+    const { service, repository } = setup();
+    repository.seed({ subjectId: SUBJECT, status: "collecting", requestedAt: NOW });
+    expect(await service.retryAfter(SUBJECT)).toBeNull();
+    expect(await service.current(SUBJECT)).toMatchObject({ status: "collecting" });
+    expect(await service.request(SUBJECT, CONTEXT)).toMatchObject({
+      outcome: { outcome: "already_open" },
+    });
+  });
+
+  it("dates the retry from the request at index max - 1 when more than max count", async () => {
+    const { service, repository } = setup();
+    // Five count against a limit of four, newest first: 2, 4, 6, 8, 10 days ago. The place frees
+    // when the fourth newest (8 days ago) leaves the window, in 22 days, not the oldest's (20).
+    for (const daysAgo of [2, 4, 6, 8, 10]) {
+      repository.seed({
+        subjectId: SUBJECT,
+        status: "expired",
+        requestedAt: new Date(NOW.getTime() - daysAgo * DAY),
+      });
+    }
+    expect(await service.retryAfter(SUBJECT)).toBe(
+      new Date(NOW.getTime() + 22 * DAY).toISOString(),
+    );
+  });
+
+  it("gives no retry date while requests that failed on our side or left the window are all that remain", async () => {
+    const { service, repository } = setup();
+    for (const daysAgo of [40, 35, 3, 2]) {
+      repository.seed({
+        subjectId: SUBJECT,
+        status: daysAgo < 10 ? "failed" : "expired",
+        requestedAt: new Date(NOW.getTime() - daysAgo * DAY),
+      });
+    }
+    expect(await service.retryAfter(SUBJECT)).toBeNull();
+  });
+
   it("does not count requests older than the window or failed on our side", async () => {
     const { service, repository } = setup();
     repository.seed({

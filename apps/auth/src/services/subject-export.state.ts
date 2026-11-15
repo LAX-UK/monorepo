@@ -69,14 +69,25 @@ export function decideCreate(input: {
   if (open && input.open.length >= SUBJECT_EXPORT_MAX_OPEN_REQUESTS) {
     return { kind: "already_open", row: open };
   }
-  const counted = input.windowRequests.filter((row) => row.status !== "failed");
-  if (counted.length >= input.max) {
-    // The window frees a place when the oldest request that still counts leaves it.
-    const oldest = counted[input.max - 1] ?? counted[counted.length - 1];
-    const leaves = (oldest?.requestedAt.getTime() ?? 0) + input.windowDays * DAY_MS;
-    return { kind: "rate_limited", retryAfter: new Date(leaves) };
-  }
+  const retryAfter = windowRetryAfter(input);
+  if (retryAfter) return { kind: "rate_limited", retryAfter };
   return { kind: "create" };
+}
+
+/**
+ * When the person may ask for a new copy, or null when they may now. A request that failed on our
+ * side does not count. `windowRequests` is newest first and holds only requests inside the window.
+ */
+export function windowRetryAfter(input: {
+  windowRequests: SubjectExportRow[];
+  max: number;
+  windowDays: number;
+}): Date | null {
+  const counted = input.windowRequests.filter((row) => row.status !== "failed");
+  if (counted.length < input.max) return null;
+  // The window frees a place when the oldest request that still counts leaves it.
+  const oldest = counted[input.max - 1] ?? counted[counted.length - 1];
+  return new Date((oldest?.requestedAt.getTime() ?? 0) + input.windowDays * DAY_MS);
 }
 
 /** The key a worker may report: under the request's own prefix, so one request cannot name another's file. */
