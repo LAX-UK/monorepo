@@ -175,10 +175,12 @@ export function OrderList({
         mobile: "badge",
         truncate: false,
         cell: (row) => (
-          <span className="flex flex-wrap items-center gap-1">
+          <span className="flex flex-col items-start gap-1">
             <MappedStatusBadge status={row.status} present={presentOrderStatus} />
             {row.heldOutOfSweep ? (
-              <StatusBadge tone="warning">{HELD_ORDERS_LABEL}</StatusBadge>
+              <StatusBadge tone="warning" title={HELD_ORDERS_LABEL}>
+                Held
+              </StatusBadge>
             ) : null}
           </span>
         ),

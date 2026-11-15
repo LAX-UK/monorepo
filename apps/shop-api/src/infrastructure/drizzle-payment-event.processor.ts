@@ -1,5 +1,6 @@
 import type { Database } from "@auction/db";
 import {
+  shopAdminAudit,
   shopArtwork,
   shopEdition,
   shopFramingTask,
@@ -19,7 +20,7 @@ import {
   orderVatBreakdown,
   parseFramingOrderSnapshot,
 } from "@auction/shop-domain";
-import { and, eq, inArray, isNotNull, isNull, sql } from "drizzle-orm";
+import { and, count, eq, inArray, isNotNull, isNull, sql } from "drizzle-orm";
 import type { CheckoutMoneyPause } from "../application/artwork-register/checkout-money-pause.js";
 import { describeReceiptEdition } from "../application/order-line-edition.js";
 import { printThenFrame } from "../application/order-line-order.js";
@@ -360,7 +361,10 @@ export type DeferOrSettleOutcome =
 export const SHOP_CHECKOUT_SETTLE_FAILED = "shop_checkout_settle_failed";
 
 /**
- * Takes an order out of the sweep when settling it failed, and tells ops once. Its hold is cleared
+ * Takes an order out of the sweep when settling it failed, and tells ops once per attempt: the
+ * first failure uses the plain key, and each time staff put the order back in the sweep (a
+ * `retry_checkout_cleanup` audit row) and it fails again, the key carries that count, so ops hear
+ * about the second failure too while a repeat of the same failure still queues one alert. Its hold is cleared
  * (the sweep only reads orders with one), so a settle that keeps failing can never jam the batch;
  * the order is left as it is, with its prints reserved, for engineering to deal with.
  */
@@ -385,8 +389,20 @@ async function takeOrderOutOfSweep(
       .update(shopOrder)
       .set({ checkoutExpiresAt: null, updatedAt: new Date() })
       .where(and(eq(shopOrder.id, orderId), eq(shopOrder.status, "pending_payment")));
+    const [{ retries = 0 } = {}] = await tx
+      .select({ retries: count() })
+      .from(shopAdminAudit)
+      .where(
+        and(
+          eq(shopAdminAudit.action, "retry_checkout_cleanup"),
+          eq(shopAdminAudit.targetId, orderId),
+        ),
+      );
     await queueCheckoutOpsAlertInTx(tx as Database, options, {
-      idempotencyKey: `checkout-settle-failed:${orderId}`,
+      idempotencyKey:
+        retries > 0
+          ? `checkout-settle-failed:${orderId}:retry-${retries}`
+          : `checkout-settle-failed:${orderId}`,
       alertKind: "Shop checkout could not be settled",
       orderId,
       detail: `Order ${orderId} is past the longest hold and could not be settled (${reason}). Check the payment in Stripe and tell engineering; the order is held out of the clean-up so its prints stay reserved.`,

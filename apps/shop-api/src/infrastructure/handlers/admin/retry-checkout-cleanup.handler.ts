@@ -19,8 +19,8 @@ export type RetryCheckoutCleanupResult = { orderId: string; status: "pending_pay
 /**
  * Puts an order the checkout sweep gave up on back in the sweep. Its hold is set to now, so the
  * next sweep settles it as it would any order: asks Stripe, then applies, closes or expires it.
- * Nothing is released here, so an order that still cannot be settled is taken out again, with the
- * same alert to ops, and its prints stay reserved. Refused for any order the sweep still has.
+ * Nothing is released here, so an order that still cannot be settled is taken out again, with a
+ * new alert to ops for that attempt (see takeOrderOutOfSweep), and its prints stay reserved. Refused for any order the sweep still has.
  */
 export function createRetryCheckoutCleanupHandler(deps: {
   uow: ShopUnitOfWorkFactory;

@@ -587,6 +587,67 @@ describe.skipIf(!hasShopIntegrationDb)(
       await reapStaleShopCheckouts(db, new Date(Date.now() + 1_000), { paymentGateway: gateway });
       expect((await order(created.orderId)).status).toBe("expired");
       expect((await holder()).reservedByOrderId).toBeNull();
+
+      // Settled orders can carry no hold too; only a pending one is "held out of clean-up".
+      await db
+        .update(shopOrder)
+        .set({ checkoutExpiresAt: null })
+        .where(eq(shopOrder.id, created.orderId));
+      expect((await order(created.orderId)).checkoutExpiresAt).toBeNull();
+      expect(
+        (await reader.listOrders({ checkout: "held" })).items.map((i) => i.orderId),
+      ).not.toContain(created.orderId);
+      expect((await reader.getOrderDetail(created.orderId)).heldOutOfSweep).toBe(false);
+    });
+
+    it("tells ops again when a retried order still cannot be settled, once per attempt", async () => {
+      const { db, checkout, order } = await setup("ceiling-held-retry-alert");
+      const created = await checkout("buyer");
+      await db
+        .update(shopOrder)
+        .set({
+          createdAt: new Date(Date.now() - 22 * 24 * 60 * 60_000),
+          checkoutExpiresAt: new Date("2000-01-01T00:00:00Z"),
+        })
+        .where(eq(shopOrder.id, created.orderId));
+      const unreadable: PaymentCheckoutGateway = {
+        ...gateway,
+        async expireHostedCheckout() {
+          throw new Error("stripe unavailable");
+        },
+        async retrievePaidCheckout() {
+          throw new Error("stripe unavailable");
+        },
+      };
+      const queueCheckoutOpsAlert = vi.fn(
+        async (_tx: unknown, _input: { idempotencyKey: string }) => undefined,
+      );
+      const options = {
+        paymentGateway: unreadable,
+        opsAlertEmail: "ops@example.test",
+        notifications: { queueCheckoutOpsAlert } as never,
+      };
+      const keys = () => queueCheckoutOpsAlert.mock.calls.map(([, input]) => input.idempotencyKey);
+      await reapStaleShopCheckouts(db, new Date(), options);
+      expect(keys()).toEqual([`checkout-settle-failed:${created.orderId}`]);
+
+      const retry = createRetryCheckoutCleanupHandler({
+        uow: createDrizzleShopUnitOfWork(db, "off"),
+      });
+      await retry({
+        orderId: created.orderId,
+        actorSubjectId: "ops-subject",
+        idempotencyKey: `retry-alert-1-${created.orderId}`,
+      });
+      await reapStaleShopCheckouts(db, new Date(Date.now() + 1_000), options);
+      expect((await order(created.orderId)).checkoutExpiresAt).toBeNull();
+      expect(keys()).toEqual([
+        `checkout-settle-failed:${created.orderId}`,
+        `checkout-settle-failed:${created.orderId}:retry-1`,
+      ]);
+      // Held out again: a further sweep leaves it alone and sends nothing more.
+      await reapStaleShopCheckouts(db, new Date(Date.now() + 2_000), options);
+      expect(keys()).toHaveLength(2);
     });
 
     it("refuses to put back an order the sweep still has, or one that does not exist", async () => {

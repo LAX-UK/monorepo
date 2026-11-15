@@ -307,6 +307,7 @@ export async function registerAdminOperationsRoutes(app: FastifyInstance, deps: 
     },
     async (request) => {
       requireShopStaffCapability(request, "order.write");
+      requireRecentAuthentication(request, deps.stepUpMaxAuthAgeSeconds);
       const subject = requireShopAdminSubject(request);
       const { orderId } = request.params as { orderId: string };
       const idempotencyKey = requireIdempotencyKey(request);
