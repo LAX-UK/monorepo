@@ -39,6 +39,9 @@ export function createMemorySessionStore(): SessionStore {
       pendingLogins.set(state, CLAIMED);
       return true;
     },
+    async isPendingLoginRevoked(state) {
+      return pendingLogins.get(state) === REVOKED;
+    },
     async settlePendingLogin(state, sessionId) {
       if (pendingLogins.get(state) !== CLAIMED) return false;
       pendingLogins.set(state, `${SETTLED}${sessionId}`);

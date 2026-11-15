@@ -1,5 +1,5 @@
 import { classifyAuthorizationError, validateOAuthStateTimingSafe } from "@auction/identity-rp";
-import type { PendingAccountLogin } from "./start-account-login";
+import { type PendingAccountLogin, readPendingLogin } from "./start-account-login";
 
 export type AccountOAuthCallbackQuery = {
   code: string | null;
@@ -39,12 +39,8 @@ export function resolveAccountOAuthCallback(
     const mapped =
       classifyAuthorizationError({ error: oauthError, errorDescription }) ?? "auth_failed";
     if (pendingCtx.pendingRaw && state) {
-      try {
-        const pending = JSON.parse(pendingCtx.pendingRaw) as PendingAccountLogin;
-        if (!validateOAuthStateTimingSafe(pending.state, state)) {
-          return { kind: "invalid_state" };
-        }
-      } catch {
+      const pending = readPendingLogin(pendingCtx.pendingRaw);
+      if (!pending || !validateOAuthStateTimingSafe(pending.state, state)) {
         return { kind: "invalid_state" };
       }
     }
@@ -62,10 +58,8 @@ export function resolveAccountOAuthCallback(
     return { kind: "missing_pending" };
   }
 
-  let pending: PendingAccountLogin;
-  try {
-    pending = JSON.parse(pendingCtx.pendingRaw) as PendingAccountLogin;
-  } catch {
+  const pending = readPendingLogin(pendingCtx.pendingRaw);
+  if (!pending) {
     return {
       kind: "login_error",
       reason: "auth_failed",

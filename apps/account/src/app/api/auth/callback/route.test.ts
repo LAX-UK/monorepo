@@ -98,12 +98,36 @@ describe("GET /api/auth/callback pending-login cookie", () => {
   it("leaves the browser signed out when a sign-out ended this sign-in", async () => {
     const { PendingLoginEndedError } = await import("@/server/application/complete-account-login");
     cookieValues.set(NAME, sealPendingLogin(pending, KEY));
-    completeAccountLogin.mockRejectedValueOnce(new PendingLoginEndedError());
+    completeAccountLogin.mockRejectedValueOnce(new PendingLoginEndedError(true));
     const response = await callback();
     expect(response.headers.get("location")).toBe("https://account.test/");
     expect(cookieSet).not.toHaveBeenCalledWith(
       "__Host-lax-account-session",
       expect.any(String),
+      expect.anything(),
+    );
+    clearedWithSameAttributes();
+  });
+
+  it("shows the sign-in error when the callback was only already taken, not signed out", async () => {
+    const { PendingLoginEndedError } = await import("@/server/application/complete-account-login");
+    cookieValues.set(NAME, sealPendingLogin(pending, KEY));
+    completeAccountLogin.mockRejectedValueOnce(new PendingLoginEndedError(false));
+    const response = await callback();
+    expect(response.headers.get("location")).toBe("https://account.test/?error=auth_failed");
+    clearedWithSameAttributes();
+  });
+
+  it("lands quietly, without an error, when a retried callback finds this browser signed in", async () => {
+    const { PendingLoginEndedError } = await import("@/server/application/complete-account-login");
+    cookieValues.set(NAME, sealPendingLogin(pending, KEY));
+    cookieValues.set("__Host-lax-account-session", "existing-session");
+    completeAccountLogin.mockRejectedValueOnce(new PendingLoginEndedError(false));
+    const response = await callback();
+    expect(response.headers.get("location")).toBe("https://account.test/");
+    expect(cookieSet).not.toHaveBeenCalledWith(
+      "__Host-lax-account-session",
+      expect.anything(),
       expect.anything(),
     );
     clearedWithSameAttributes();

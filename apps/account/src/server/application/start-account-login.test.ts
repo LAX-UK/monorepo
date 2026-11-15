@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { LaxAccountConfig } from "../config";
-import { startAccountLogin } from "./start-account-login";
+import { readPendingLogin, startAccountLogin } from "./start-account-login";
 
 const config = {
   publicOrigin: "https://account.test",
@@ -44,5 +44,34 @@ describe("startAccountLogin", () => {
       reauth: { subject: "user-a" },
     });
     expect(without.authorizeUrl.searchParams.has("reauth_reason")).toBe(false);
+  });
+});
+
+describe("readPendingLogin", () => {
+  it("reads a payload that names a state", () => {
+    expect(readPendingLogin(JSON.stringify({ state: "s", nonce: "n" }))).toMatchObject({
+      state: "s",
+    });
+  });
+
+  it.each([
+    ["undefined", undefined],
+    ["empty text", ""],
+    ["invalid JSON", "{"],
+    ["null", "null"],
+    ["an array", "[]"],
+    ["a string", '"s"'],
+    ["a missing state", "{}"],
+    ["an empty state", '{"state":""}'],
+    ["a non-string state", '{"state":1}'],
+  ])("returns null for %s", (_name, raw) => {
+    expect(readPendingLogin(raw)).toBeNull();
+  });
+
+  it("keeps a __proto__ key as plain data without polluting anything", () => {
+    const read = readPendingLogin('{"state":"s","__proto__":{"polluted":true}}');
+    expect(read?.state).toBe("s");
+    expect(({} as Record<string, unknown>).polluted).toBeUndefined();
+    expect(Object.hasOwn(read as object, "__proto__")).toBe(true);
   });
 });
