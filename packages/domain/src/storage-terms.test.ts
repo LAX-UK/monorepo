@@ -238,8 +238,28 @@ describe("the state", () => {
 
   it("is extended while an extension is running, and charging once it has passed", () => {
     expect(charge({ extensionDays: 14, asOf: "2026-11-20" }).state).toBe("extended");
-    expect(charge({ extensionDays: 14, asOf: "2026-11-30" }).state).toBe("extended");
+    expect(charge({ extensionDays: 14, asOf: "2026-11-22" }).state).toBe("extended");
     expect(charge({ extensionDays: 14, asOf: "2026-12-01" }).state).toBe("charging");
+  });
+
+  it("an extension does not hide the soon warning: the lead runs from the extended date", () => {
+    // Collect by Mon 30 Nov with 14 extra days; the week before starts Mon 23 Nov.
+    expect(charge({ extensionDays: 14, asOf: "2026-11-23" }).state).toBe("soon");
+    expect(charge({ extensionDays: 14, asOf: "2026-11-30" }).state).toBe("soon");
+  });
+
+  it("is overdue, not charging, when nothing is owed past the day", () => {
+    const zero = { ...TERMS, standardDailyPence: 0, largeDailyPence: null };
+    expect(charge({ terms: zero, asOf: "2026-11-20" })).toMatchObject({
+      state: "overdue",
+      amountPence: 0,
+    });
+    // Every day since the collect-by day was held by LAX.
+    const held = charge({
+      pausedRanges: [{ from: "2026-11-17", to: "2026-11-30" }],
+      asOf: "2026-11-20",
+    });
+    expect(held).toMatchObject({ state: "overdue", chargeableDays: 0, amountPence: 0 });
   });
 
   it("is waived when waived, with nothing to pay, whatever else is true", () => {
@@ -350,14 +370,71 @@ describe("the running-total lines", () => {
     });
   });
 
-  it("charging off before the day reads as before (no rate promised)", () => {
+  it("charging off before the day still shows the free period and the rates (ST11)", () => {
     expect(notice({ asOf: "2026-11-02" }, false).body).toBe(
-      "Your work is paid for and waiting at LAX Gallery. Storage is free until then, and storage charges may apply after that.",
+      "Your work is paid for and waiting at LAX Gallery. Storage is free until then, and £3 a day after that, plus VAT where it applies.",
+    );
+    expect(notice({ asOf: "2026-11-10" }, false).body).toBe(
+      "Your work is paid for and waiting at LAX Gallery. Book a time to collect it soon: after Mon 16 Nov, storage is £3 a day.",
     );
   });
 
+  it("names the handling fee so the running total adds up", () => {
+    const fee = { ...TERMS, handlingFeePence: 500 };
+    const withFee = calculateStorageCharge(base({ terms: fee, asOf: "2026-11-19" }));
+    expect(formatStorageNotice(withFee, fee, "standard", ctx).body).toContain(
+      "£14.00 so far (3 days at £3 a day, and a £5 handling fee), plus VAT where it applies.",
+    );
+  });
+
+  it("mentions the handling fee before charges start", () => {
+    const fee = { ...TERMS, handlingFeePence: 500 };
+    const early = calculateStorageCharge(base({ terms: fee, asOf: "2026-11-02" }));
+    expect(formatStorageNotice(early, fee, "standard", ctx).body).toContain(
+      "A handling fee of £5 applies once when charges start.",
+    );
+  });
+
+  it("never says £0 a day at a zero rate, and never shows a £0.00 total", () => {
+    const zero = { ...TERMS, standardDailyPence: 0, largeDailyPence: null };
+    const upcoming = formatStorageNotice(
+      calculateStorageCharge(base({ terms: zero, asOf: "2026-11-02" })),
+      zero,
+      "standard",
+      ctx,
+    );
+    expect(upcoming.body).toBe(
+      "Your work is paid for and waiting at LAX Gallery. Storage is free until then.",
+    );
+    const soon = formatStorageNotice(
+      calculateStorageCharge(base({ terms: zero, asOf: "2026-11-10" })),
+      zero,
+      "standard",
+      ctx,
+    );
+    expect(soon.body).not.toContain("£0");
+    const passed = formatStorageNotice(
+      calculateStorageCharge(base({ terms: zero, asOf: "2026-11-20" })),
+      zero,
+      "standard",
+      ctx,
+    );
+    expect(passed.heading).toBe("Please collect by Mon 16 Nov");
+    expect(passed.body).toBe(
+      "That day has passed. Book a time to collect your work from LAX Gallery, or email us if you need longer.",
+    );
+    expect(
+      formatStorageBadge(
+        calculateStorageCharge(base({ terms: zero, asOf: "2026-11-20" })),
+        now,
+        true,
+      ),
+    ).toBe("Collect by Mon 16 Nov");
+    expect(formatStorageTerms(zero)).not.toContain("£0 a day");
+  });
+
   it("extended", () => {
-    expect(notice({ extensionDays: 7, asOf: "2026-11-18" })).toEqual({
+    expect(notice({ extensionDays: 7, asOf: "2026-11-12" })).toEqual({
       heading: "Free storage extended to Mon 23 Nov",
       body: "We have held your work longer at no charge. Book a time to collect before then.",
     });
