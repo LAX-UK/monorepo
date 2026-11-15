@@ -2,7 +2,7 @@ import { act, render, screen } from "@testing-library/react";
 import type { ComponentType } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { CLIENT_PART_RETRY_MS, clientPart } from "./client-part";
+import { CLIENT_PART_ATTEMPT_TIMEOUT_MS, CLIENT_PART_RETRY_MS, clientPart } from "./client-part";
 
 const Part = ({ label }: { label: string }) => <p>{label}</p>;
 type Load = () => Promise<ComponentType<{ label: string }>>;
@@ -36,7 +36,7 @@ describe("clientPart", () => {
     expect(load).toHaveBeenCalledTimes(1);
   });
 
-  it("tries again after a failed fetch instead of breaking the page", async () => {
+  it("tries again after a failed load instead of breaking the page", async () => {
     const load = vi
       .fn<Load>()
       .mockRejectedValueOnce(new Error("ChunkLoadError"))
@@ -81,7 +81,7 @@ describe("clientPart", () => {
     expect(container).toBeEmptyDOMElement();
   });
 
-  it("fetches once for every place it is drawn", async () => {
+  it("loades once for every place it is drawn", async () => {
     const load = vi.fn<Load>().mockResolvedValue(Part);
     const Lazy = clientPart(load);
     const first = render(<Lazy label="Bar" />);
@@ -104,5 +104,68 @@ describe("clientPart", () => {
       vi.advanceTimersByTime(60_000);
     });
     expect(load).toHaveBeenCalledTimes(1);
+  });
+
+  it("treats an attempt that never settles as failed and tries again", async () => {
+    const load = vi
+      .fn<Load>()
+      .mockImplementationOnce(() => new Promise(() => {}))
+      .mockResolvedValue(Part);
+    const Lazy = clientPart(load);
+    const { container } = render(<Lazy label="Your accounts" />);
+    await settle();
+    expect(container).toBeEmptyDOMElement();
+
+    await act(async () => {
+      vi.advanceTimersByTime(CLIENT_PART_ATTEMPT_TIMEOUT_MS);
+    });
+    expect(load).toHaveBeenCalledTimes(1);
+    await act(async () => {
+      vi.advanceTimersByTime(CLIENT_PART_RETRY_MS[0]);
+    });
+    expect(load).toHaveBeenCalledTimes(2);
+    expect(screen.getByText("Your accounts")).toBeInTheDocument();
+  });
+
+  it("gives up after every attempt times out", async () => {
+    const load = vi.fn<Load>(() => new Promise(() => {}));
+    const Lazy = clientPart(load);
+    const { container } = render(<Lazy label="Your accounts" />);
+    for (const delay of CLIENT_PART_RETRY_MS) {
+      await act(async () => {
+        vi.advanceTimersByTime(CLIENT_PART_ATTEMPT_TIMEOUT_MS + delay);
+      });
+    }
+    await act(async () => {
+      vi.advanceTimersByTime(CLIENT_PART_ATTEMPT_TIMEOUT_MS + 60_000);
+    });
+    expect(load).toHaveBeenCalledTimes(CLIENT_PART_RETRY_MS.length + 1);
+    expect(container).toBeEmptyDOMElement();
+  });
+
+  it("ignores a late result from an attempt that timed out", async () => {
+    const resolvers: Array<(part: ComponentType<{ label: string }>) => void> = [];
+    const load = vi.fn<Load>(
+      () =>
+        new Promise((r) => {
+          resolvers.push(r);
+        }),
+    );
+    const Lazy = clientPart(load);
+    const { container } = render(<Lazy label="Your accounts" />);
+    await act(async () => {
+      vi.advanceTimersByTime(CLIENT_PART_ATTEMPT_TIMEOUT_MS);
+    });
+    // The first attempt resolves late: it is ignored, the scheduled retry still runs.
+    resolvers[0]?.(Part);
+    await settle();
+    expect(container).toBeEmptyDOMElement();
+    await act(async () => {
+      vi.advanceTimersByTime(CLIENT_PART_RETRY_MS[0]);
+    });
+    expect(load).toHaveBeenCalledTimes(2);
+    resolvers[1]?.(Part);
+    await settle();
+    expect(screen.getByText("Your accounts")).toBeInTheDocument();
   });
 });
