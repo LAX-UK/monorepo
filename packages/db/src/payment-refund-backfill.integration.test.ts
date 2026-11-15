@@ -94,6 +94,9 @@ async function growRefundLine(db: Pick<pg.Pool, "query">, paymentId: string, pou
   );
 }
 
+const showLockTimeout = async (db: Pick<pg.Pool, "query">) =>
+  (await db.query<{ lock_timeout: string }>("show lock_timeout")).rows[0]?.lock_timeout;
+
 async function isWaitingOnLock(pool: pg.Pool, pid: number): Promise<boolean> {
   const { rows } = await pool.query<{ waiting: boolean }>(
     `select wait_event_type = 'Lock' as waiting from pg_stat_activity where pid = $1`,
@@ -289,6 +292,7 @@ describe.skipIf(!migrationUrl)(
         await runMigrationsPerTransaction(pool);
         const ids = await seedPayments(pool, 5);
         const client = await pool.connect();
+        const before = await showLockTimeout(client);
         try {
           const seen: string[] = [];
           const result = await backfillPaymentRefundsInIdOrder(client, {
@@ -297,6 +301,8 @@ describe.skipIf(!migrationUrl)(
           });
           expect(seen).toEqual(ids);
           expect(result).toEqual({ batches: 3, payments: 5, added: 5 });
+          // lock_timeout was set per transaction only: the connection's own setting is unchanged.
+          expect(await showLockTimeout(client)).toBe(before);
         } finally {
           client.release();
         }
@@ -318,6 +324,7 @@ describe.skipIf(!migrationUrl)(
         const [a, b, c] = (await seedPayments(pool, 3)) as [string, string, string];
         const holder = await pool.connect();
         const backfill = await pool.connect();
+        const before = await showLockTimeout(backfill);
         try {
           // Batch size 2: batch 1 (A, B) commits; batch 2 (C) waits on the holder's lock.
           await holder.query("begin");
@@ -330,6 +337,7 @@ describe.skipIf(!migrationUrl)(
           expect(error.batch).toBe(2);
           expect(error.resumeAfter).toBe(b);
           expect(error.completed).toEqual({ batches: 1, payments: 2, added: 2 });
+          expect(await showLockTimeout(backfill)).toBe(before);
           expect(error.message).toContain(`--resume-after=${b}`);
           // The connection is usable again: the failed batch was rolled back, not left open.
           expect((await backfill.query("select txid_current_if_assigned() as t")).rows[0].t).toBe(
@@ -357,12 +365,13 @@ describe.skipIf(!migrationUrl)(
       });
     });
 
-    it("writes nothing from a batch that times out part-way", async () => {
+    it("writes nothing when the batch times out in its lock query (before any per-payment call)", async () => {
       await withTemporaryDatabase(async (pool) => {
         await runMigrationsPerTransaction(pool);
         const [a, , c] = (await seedPayments(pool, 3)) as [string, string, string];
         const holder = await pool.connect();
         const backfill = await pool.connect();
+        const before = await showLockTimeout(backfill);
         try {
           await holder.query("begin");
           await holder.query("select id from payment where id = $1 for update", [c]);
@@ -374,6 +383,7 @@ describe.skipIf(!migrationUrl)(
           expect(error.batch).toBe(1);
           expect(error.resumeAfter).toBeNull();
           expect(error.completed).toEqual({ batches: 0, payments: 0, added: 0 });
+          expect(await showLockTimeout(backfill)).toBe(before);
         } finally {
           await holder.query("rollback");
           holder.release();
@@ -382,6 +392,55 @@ describe.skipIf(!migrationUrl)(
         const { rows } = await pool.query("select 1 from payment_refund");
         expect(rows).toEqual([]);
         expect(await rowsOf(pool, a)).toEqual([]);
+      });
+    });
+
+    it("rolls back per-payment inserts already made when a later step in the same batch times out", async () => {
+      await withTemporaryDatabase(async (pool) => {
+        await runMigrationsPerTransaction(pool);
+        const [a, b] = (await seedPayments(pool, 2)) as [string, string];
+        const holder = await pool.connect();
+        const backfill = await pool.connect();
+        const before = await showLockTimeout(backfill);
+        try {
+          // The holder has an uncommitted row under the key the function will insert for B. The lock
+          // query passes (the holder takes no payment lock beyond a key share), A is topped up, and
+          // the function's insert for B then waits on the holder's unique-index entry until
+          // lock_timeout fires: a timeout after one per-payment call in the same batch.
+          await holder.query("begin");
+          await holder.query(
+            `insert into payment_refund (payment_id, idempotency_key, amount_pence, currency, source)
+             values ($1, $2, 10000, 'GBP', 'payout_topup')`,
+            [b, `payout_ledger_topup:${b}:10000`],
+          );
+          const error = await backfillPaymentRefundsInIdOrder(backfill, {
+            batchSize: 2,
+            lockTimeoutMs: 300,
+          }).catch((e) => e);
+          expect(error).toBeInstanceOf(PaymentRefundBackfillLockTimeoutError);
+          expect(error.batch).toBe(1);
+          expect(error.resumeAfter).toBeNull();
+          expect(await showLockTimeout(backfill)).toBe(before);
+        } finally {
+          await holder.query("rollback");
+          holder.release();
+          backfill.release();
+        }
+        // A's top-up was made inside the batch transaction and rolled back with it.
+        expect(await rowsOf(pool, a)).toEqual([]);
+        expect(await rowsOf(pool, b)).toEqual([]);
+      });
+    });
+
+    it("dry run honours resumeAfter: only ids after the cursor", async () => {
+      await withTemporaryDatabase(async (pool) => {
+        await runMigrationsPerTransaction(pool);
+        const [a, b, c] = (await seedPayments(pool, 3)) as [string, string, string];
+        expect((await reportPaymentRefundGaps(pool)).map((g) => g.paymentId)).toEqual([a, b, c]);
+        expect(
+          (await reportPaymentRefundGaps(pool, { resumeAfter: a })).map((g) => g.paymentId),
+        ).toEqual([b, c]);
+        expect(await reportPaymentRefundGaps(pool, { resumeAfter: c })).toEqual([]);
       });
     });
 

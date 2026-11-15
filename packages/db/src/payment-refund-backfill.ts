@@ -132,6 +132,7 @@ FROM (
   GROUP BY l."payment_id"
 ) t
 WHERE t."line_pence" <> t."recorded_pence"
+  AND ($1::uuid IS NULL OR t."payment_id" > $1::uuid)
 ORDER BY t."payment_id"`;
 
 export type PaymentRefundGap = {
@@ -148,8 +149,9 @@ export type PaymentRefundGap = {
 /** The dry run: what {@link backfillPaymentRefundsInIdOrder} would top up, read without locks. */
 export async function reportPaymentRefundGaps(
   connection: PaymentRefundBackfillConnection,
+  options: { resumeAfter?: string | null } = {},
 ): Promise<PaymentRefundGap[]> {
-  const { rows } = await connection.query(REPORT_REFUND_GAPS_SQL);
+  const { rows } = await connection.query(REPORT_REFUND_GAPS_SQL, [options.resumeAfter ?? null]);
   return rows.map((row) => {
     const r = row as Record<string, unknown>;
     const differencePence = Number(r.difference_pence);

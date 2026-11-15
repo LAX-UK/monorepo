@@ -9,7 +9,9 @@
  *   DATABASE_URL=... pnpm db:backfill-payment-refund --apply [--batch-size=200] [--lock-timeout=5s]
  *     [--resume-after=<payment id>]
  *
- * The dry run lists, per payment whose refund payout lines differ from its payment_refund rows,
+ * Every flag is validated before connecting (bad input exits non-zero, nothing is opened).
+ * The dry run covers every payment (or those after --resume-after when given) and ignores
+ * --batch-size and --lock-timeout; it lists, per payment whose refund payout lines differ from its payment_refund rows,
  * line_pence - recorded_pence; only a positive difference is topped up by --apply. Before writing,
  * --apply prints the target host and database name (never the credentials).
  *
@@ -30,19 +32,7 @@ import {
   reportPaymentRefundGaps,
 } from "../payment-refund-backfill.js";
 import { buildPgConnectionConfig } from "../ssl.js";
-
-/** `500ms`, `5s`, `1m` or a bare number of milliseconds. */
-export function parseDuration(text: string): number {
-  const match = /^(\d+)(ms|s|m)?$/.exec(text.trim());
-  if (!match) throw new Error(`Not a duration: ${text} (use 500ms, 5s, 1m or milliseconds)`);
-  const unit = match[2] ?? "ms";
-  return Number(match[1]) * (unit === "m" ? 60_000 : unit === "s" ? 1000 : 1);
-}
-
-function flagValue(name: string): string | undefined {
-  const prefix = `--${name}=`;
-  return process.argv.find((arg) => arg.startsWith(prefix))?.slice(prefix.length);
-}
+import { parseBackfillArgs } from "./backfill-payment-refund-args.js";
 
 /** Host and database name of the target, from the server itself; no user or password. */
 async function describeTarget(client: pg.Client): Promise<string> {
@@ -57,22 +47,19 @@ async function describeTarget(client: pg.Client): Promise<string> {
 async function main(): Promise<void> {
   const url = process.env.DATABASE_URL;
   if (!url) throw new Error("Set DATABASE_URL.");
-  const apply = process.argv.includes("--apply");
-  const batchFlag = flagValue("batch-size");
-  const batchSize = batchFlag ? Number(batchFlag) : DEFAULT_PAYMENT_REFUND_BACKFILL_BATCH_SIZE;
-  const timeoutFlag = flagValue("lock-timeout");
-  const lockTimeoutMs = timeoutFlag
-    ? parseDuration(timeoutFlag)
-    : DEFAULT_PAYMENT_REFUND_BACKFILL_LOCK_TIMEOUT_MS;
-  const resumeAfter = flagValue("resume-after") ?? null;
+  const { apply, batchSize, lockTimeoutMs, resumeAfter } = parseBackfillArgs(process.argv.slice(2));
+  resumeBatchSize = batchSize;
+  resumeLockTimeoutMs = lockTimeoutMs;
 
   const client = new pg.Client(buildPgConnectionConfig(url));
   await client.connect();
   try {
     const target = await describeTarget(client);
     if (!apply) {
-      console.log(`Dry run against ${target}: reading only, no locks taken, nothing written.`);
-      const gaps = await reportPaymentRefundGaps(client);
+      console.log(
+        `Dry run against ${target}: reading only, no locks taken, nothing written. It covers every payment${resumeAfter ? ` after ${resumeAfter} (--resume-after)` : ""}; --batch-size and --lock-timeout only affect --apply.`,
+      );
+      const gaps = await reportPaymentRefundGaps(client, { resumeAfter });
       let wouldAddPayments = 0;
       let wouldAddPence = 0;
       for (const gap of gaps) {
@@ -113,11 +100,14 @@ async function main(): Promise<void> {
   }
 }
 
+let resumeBatchSize = DEFAULT_PAYMENT_REFUND_BACKFILL_BATCH_SIZE;
+let resumeLockTimeoutMs = DEFAULT_PAYMENT_REFUND_BACKFILL_LOCK_TIMEOUT_MS;
+
 main().catch((error) => {
   console.error(error instanceof Error ? error.message : error);
   if (error instanceof PaymentRefundBackfillLockTimeoutError) {
     console.error(
-      `Resume: DATABASE_URL=... pnpm --filter @auction/db db:backfill-payment-refund -- --apply${error.resumeAfter ? ` --resume-after=${error.resumeAfter}` : ""}`,
+      `Resume: DATABASE_URL=... pnpm --filter @auction/db db:backfill-payment-refund -- --apply --batch-size=${resumeBatchSize} --lock-timeout=${resumeLockTimeoutMs}ms${error.resumeAfter ? ` --resume-after=${error.resumeAfter}` : ""}`,
     );
   }
   process.exit(1);

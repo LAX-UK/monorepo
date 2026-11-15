@@ -216,6 +216,6 @@ describe("reportPaymentRefundGaps", () => {
         wouldTopUp: false,
       },
     ]);
-    expect(calls).toEqual([{ text: REPORT_REFUND_GAPS_SQL, values: undefined }]);
+    expect(calls).toEqual([{ text: REPORT_REFUND_GAPS_SQL, values: [null] }]);
   });
 });
