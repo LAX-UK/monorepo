@@ -1,4 +1,5 @@
 import type { LotInfoTone, LotRowMoment } from "@/lib/lot-page/lot-time-rows";
+import { Button } from "@auction/ui/lax/button";
 import { cn } from "@auction/ui/lib/utils";
 import { OfficialTime } from "@auction/ui/time";
 import { Clock } from "lucide-react";
@@ -91,13 +92,15 @@ export function LotFact({
       ) : null}
       {onRefresh ? (
         <dd className="m-0 mt-1">
-          <button
+          <Button
             type="button"
+            variant="ghost"
+            size="sm"
             onClick={onRefresh}
-            className="lax-focus rounded-sm text-lax-13 leading-5 font-medium text-lax-fg underline decoration-lax-line-strong underline-offset-4 hover:decoration-current"
+            className="-ml-3 text-lax-13 font-medium underline decoration-lax-line-strong underline-offset-4 hover:decoration-current"
           >
             Refresh to see the result
-          </button>
+          </Button>
         </dd>
       ) : null}
     </div>
