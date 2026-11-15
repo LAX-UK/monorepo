@@ -27,7 +27,7 @@ import {
  * Nothing is charged: "storage charges may apply" is wording, not logic.
  */
 export async function runCollectByRemindersJob(options: {
-  reader: ICollectByReader;
+  reader: Pick<ICollectByReader, "storedLotsDue" | "remindedLotIds">;
   notices: Pick<ICollectionNoticeReader, "accountRecipients">;
   facts: ICollectionLotFactsReader;
   emailService: IEmailService;

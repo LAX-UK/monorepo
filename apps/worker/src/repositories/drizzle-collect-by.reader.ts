@@ -9,8 +9,24 @@ import {
   venue,
 } from "@auction/db/schema";
 import { MAX_FREE_STORAGE_DAYS } from "@auction/domain";
-import { and, asc, eq, isNotNull, isNull, like, notExists, or, sql } from "drizzle-orm";
-import type { ICollectByReader, StoredLot } from "../interfaces/collect-by.reader.js";
+import {
+  type SQL,
+  and,
+  asc,
+  eq,
+  gte,
+  isNotNull,
+  isNull,
+  like,
+  notExists,
+  or,
+  sql,
+} from "drizzle-orm";
+import type {
+  CollectionLotEmailTemplate,
+  ICollectByReader,
+  StoredLot,
+} from "../interfaces/collect-by.reader.js";
 
 const LONDON = "Europe/London";
 
@@ -29,6 +45,28 @@ export class DrizzleCollectByReader implements ICollectByReader {
     const clearedOn = sql`(${lotFulfilment.paymentClearedAt} at time zone ${LONDON})::date`;
     const first = sql`${window.today}::date - ${free}`;
     const last = sql`${window.today}::date - (case when ${free} > ${window.reminderLeadDays}::int then ${free} - ${window.reminderLeadDays}::int else ${free} end)`;
+    return this.waitingLots([
+      isNotNull(lotFulfilment.paymentClearedAt),
+      // A range on the column itself, so the index can narrow the lots before the exact
+      // London-day test: from the start of the day the longest free period ago to the end of today.
+      sql`${lotFulfilment.paymentClearedAt} >= (${window.today}::date - ${MAX_FREE_STORAGE_DAYS}::int)::timestamp at time zone ${LONDON}`,
+      sql`${lotFulfilment.paymentClearedAt} < (${window.today}::date + 1)::timestamp at time zone ${LONDON}`,
+      sql`${clearedOn} between ${first} and ${last}`,
+    ]);
+  }
+
+  async lotsClearedSince(since: Date): Promise<StoredLot[]> {
+    return this.waitingLots([
+      isNotNull(lotFulfilment.paymentClearedAt),
+      gte(lotFulfilment.paymentClearedAt, since),
+    ]);
+  }
+
+  /**
+   * Purchased lots still waiting at a place that takes online bookings, narrowed by `when`: not
+   * handed over, ended or on their way by courier, nor in a live booking.
+   */
+  private async waitingLots(when: SQL[]): Promise<StoredLot[]> {
     const rows = await this.db
       .select({
         lotId: lot.id,
@@ -52,14 +90,9 @@ export class DrizzleCollectByReader implements ICollectByReader {
       .innerJoin(venue, eq(venue.id, sale.venueId))
       .where(
         and(
-          // Places that take no online booking have nothing to book, so no reminder to book.
+          // Places that take no online booking have nothing to book, so no email to book.
           eq(collectionPlace.onlineBookingEnabled, true),
-          isNotNull(lotFulfilment.paymentClearedAt),
-          // A range on the column itself, so the index can narrow the lots before the exact
-          // London-day test: from the start of the day the longest free period ago to the end of today.
-          sql`${lotFulfilment.paymentClearedAt} >= (${window.today}::date - ${MAX_FREE_STORAGE_DAYS}::int)::timestamp at time zone ${LONDON}`,
-          sql`${lotFulfilment.paymentClearedAt} < (${window.today}::date + 1)::timestamp at time zone ${LONDON}`,
-          sql`${clearedOn} between ${first} and ${last}`,
+          ...when,
           isNotNull(lot.buyerLegalEntityId),
           eq(lot.status, "ended"),
           isNull(lot.deletedAt),
@@ -111,6 +144,7 @@ export class DrizzleCollectByReader implements ICollectByReader {
     keyPrefix: string;
     userId: string;
     today: string;
+    template?: CollectionLotEmailTemplate;
   }): Promise<Set<string>> {
     // The prefix is built from ids and a fixed word, never typed text, but `%` and `_` would still
     // be wildcards, so they are escaped. The person and the template narrow the rows to the
@@ -122,7 +156,7 @@ export class DrizzleCollectByReader implements ICollectByReader {
       .where(
         and(
           eq(emailOutbox.userId, query.userId),
-          eq(emailOutbox.template, "collection-collect-by"),
+          eq(emailOutbox.template, query.template ?? "collection-collect-by"),
           like(emailOutbox.idempotencyKey, pattern),
           // A failed row is tried again on a later day: only today's counts as covering its lots.
           or(

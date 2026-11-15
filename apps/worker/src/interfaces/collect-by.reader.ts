@@ -16,7 +16,10 @@ export type StoredLot = {
   freeStorageDays: number | null;
 };
 
-/** What the storage reminders read. */
+/** The emails about waiting lots that name the lots they cover (in `vars.lotIds`). */
+export type CollectionLotEmailTemplate = "collection-collect-by" | "collection-can-book";
+
+/** What the storage reminders and the "you can book" emails read. */
 export interface ICollectByReader {
   /**
    * Lots a reminder can be due for on `today` (a London day), at places that take online bookings:
@@ -31,10 +34,22 @@ export interface ICollectByReader {
     reminderLeadDays: number;
   }): Promise<StoredLot[]>;
   /**
-   * The ids of the lots an earlier reminder to this person already covered: those named in their
-   * outbox rows whose idempotency key starts with `keyPrefix`. A failed row counts as covered only
+   * Lots still waiting at places that take online bookings (as `storedLotsDue`, without the
+   * deadline window) whose payment cleared at or after `since`: those the buyer may be told they
+   * can book.
+   */
+  lotsClearedSince(since: Date): Promise<StoredLot[]>;
+  /**
+   * The ids of the lots an earlier email of `template` (the storage reminder unless given) to this
+   * person already covered: those named in their outbox rows whose idempotency key starts with
+   * `keyPrefix`. A failed row counts as covered only
    * when it was made today (a London day), so a failed email is tried again once a day, not on
    * every sweep; a queued, sent or suppressed one always counts.
    */
-  remindedLotIds(query: { keyPrefix: string; userId: string; today: string }): Promise<Set<string>>;
+  remindedLotIds(query: {
+    keyPrefix: string;
+    userId: string;
+    today: string;
+    template?: CollectionLotEmailTemplate;
+  }): Promise<Set<string>>;
 }

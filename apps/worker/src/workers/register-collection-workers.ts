@@ -7,6 +7,7 @@ import { COLLECTION_REMINDERS_QUEUE_NAME } from "@auction/queues";
 import { Queue, Worker } from "bullmq";
 import type { ICollectByReader } from "../interfaces/collect-by.reader.js";
 import type { ICollectionNoticeReader } from "../interfaces/collection-notice.reader.js";
+import { runCanBookJob } from "../jobs/collection-can-book.js";
 import { runCollectByRemindersJob } from "../jobs/collection-collect-by-reminders.js";
 import { runCollectionRemindersJob } from "../jobs/collection-reminders.js";
 import { withSentryCronMonitor } from "../lib/sentry-cron.js";
@@ -31,8 +32,9 @@ export type CollectionWorkersOptions = {
 const SWEEP_EVERY_MS = 15 * 60 * 1000;
 
 /**
- * The collection reminder sweep: the day-before visit reminders, then the storage reminders for
- * the "please collect by" day. The booking emails themselves go out from the projector.
+ * The collection reminder sweep: the day-before visit reminders, the storage reminders for the
+ * "please collect by" day, then "you can book" for lots that have become bookable. The booking
+ * emails themselves go out from the projector.
  */
 export function registerCollectionWorkers(
   deps: WorkerBootstrapDeps,
@@ -45,7 +47,7 @@ export function registerCollectionWorkers(
     COLLECTION_REMINDERS_QUEUE_NAME,
     async () => {
       await withSentryCronMonitor(COLLECTION_REMINDERS_QUEUE_NAME, sentryMonitorSlugs, async () => {
-        // Two sweeps in one job: a failure of one is reported and must not skip the other.
+        // Three sweeps in one job: a failure of one is reported and must not skip the others.
         const failures: unknown[] = [];
         try {
           await runCollectionRemindersJob({
@@ -76,6 +78,19 @@ export function registerCollectionWorkers(
           });
         } catch (err) {
           log.error({ err }, "collection_collect_by_sweep_failed");
+          failures.push(err);
+        }
+        try {
+          await runCanBookJob({
+            reader: options.collectByReader,
+            notices: options.reader,
+            facts: options.lotFacts,
+            emailService: options.emailService,
+            webOrigin: env.WEB_ORIGIN,
+            log,
+          });
+        } catch (err) {
+          log.error({ err }, "collection_can_book_sweep_failed");
           failures.push(err);
         }
         // Report to Sentry and the queue by failing the job, after both have run.
