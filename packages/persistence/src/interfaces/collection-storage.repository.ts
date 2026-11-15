@@ -1,5 +1,7 @@
-/** How the days of a free period are counted. */
-export type StorageCountMode = "calendar" | "working";
+import type { StorageCountMode } from "@auction/domain";
+
+/** How the days of a free period are counted: the domain's type, so there is one name for it. */
+export type { StorageCountMode };
 
 /** How storage charges are treated for VAT; `null` on the place until Finance chooses one. */
 export type StorageVatTreatment = "standard_rated" | "zero_rated" | "exempt" | "outside_scope";
@@ -74,6 +76,8 @@ export type StorageAuditRecord = {
   lotId: string | null;
   action: StorageAuditAction;
   actorUserId: string | null;
+  /** The staff member's name from the identity directory; `null` when unknown or removed. */
+  actorName: string | null;
   before: Record<string, unknown> | null;
   after: Record<string, unknown> | null;
   reason: string | null;

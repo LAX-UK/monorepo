@@ -46,7 +46,11 @@ export const saveCollectionSettingsBodySchema = z
     closeOnSaleDays: z.boolean(),
     undoHandOverMinutes: z.number().int(),
     maxActiveVisits: z.number().int(),
-    freeStorageDays: z.number().int().min(0).max(MAX_FREE_STORAGE_DAYS).nullable(),
+    /**
+     * Free storage moved to the Storage tab (versioned storage terms). A web release that still
+     * sends it is accepted and the value ignored.
+     */
+    freeStorageDays: z.number().int().min(0).max(MAX_FREE_STORAGE_DAYS).nullable().optional(),
     /** The weekly charge was dropped; a web release that still sends it is accepted and the value ignored. */
     storageChargePence: z.number().nullable().optional(),
     bookingEmail: z.string().trim().email().max(254).nullable(),

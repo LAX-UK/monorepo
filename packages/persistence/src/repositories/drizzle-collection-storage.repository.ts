@@ -1,5 +1,6 @@
 import type { Database } from "@auction/db";
 import {
+  bidIdentityDirectory,
   collectionPlace,
   collectionStorageAudit,
   collectionStorageExtension,
@@ -72,12 +73,13 @@ const toWaiver = (row: WaiverRow): StorageWaiverRecord => ({
   createdAt: row.createdAt,
 });
 
-const toAudit = (row: AuditRow): StorageAuditRecord => ({
+const toAudit = (row: AuditRow, actorName: string | null = null): StorageAuditRecord => ({
   id: row.id,
   venueId: row.venueId,
   lotId: row.lotId,
   action: row.action as StorageAuditAction,
   actorUserId: row.actorUserId,
+  actorName,
   before: row.before,
   after: row.after,
   reason: row.reason,
@@ -430,12 +432,16 @@ export class DrizzleCollectionStorageRepository implements ICollectionStorageRep
 
   async listAudit(venueId: string, limit: number): Promise<StorageAuditRecord[]> {
     const rows = await this.db
-      .select()
+      .select({ audit: collectionStorageAudit, actorName: bidIdentityDirectory.name })
       .from(collectionStorageAudit)
+      .leftJoin(
+        bidIdentityDirectory,
+        eq(bidIdentityDirectory.subjectId, collectionStorageAudit.actorUserId),
+      )
       .where(eq(collectionStorageAudit.venueId, venueId))
-      .orderBy(desc(collectionStorageAudit.createdAt))
+      .orderBy(desc(collectionStorageAudit.createdAt), desc(collectionStorageAudit.id))
       .limit(limit);
-    return rows.map(toAudit);
+    return rows.map((row) => toAudit(row.audit, row.actorName));
   }
 
   /** Runs `apply` on a version that has not started, under the place lock. */

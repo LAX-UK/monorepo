@@ -26,6 +26,7 @@ export type DangerousActionCategory =
   | "personal_data_export"
   | "goods_release"
   | "collection_settings"
+  | "collection_storage"
   | "collection_handover";
 
 export type DangerousStaffAction = {
@@ -176,6 +177,31 @@ export const DANGEROUS_STAFF_ACTIONS: readonly DangerousStaffAction[] = [
     "collection.exception.remove",
     "POST",
     "/admin/collections/:venueId/exceptions/:exceptionId/remove",
+  ),
+  // Storage terms and the charging switch: they set what buyers are charged (ST10)
+  a(
+    "collection_storage",
+    "collection.storage.schedule",
+    "POST",
+    "/admin/collections/:venueId/storage/terms",
+  ),
+  a(
+    "collection_storage",
+    "collection.storage.edit",
+    "PUT",
+    "/admin/collections/:venueId/storage/terms/:termsId",
+  ),
+  a(
+    "collection_storage",
+    "collection.storage.cancel",
+    "POST",
+    "/admin/collections/:venueId/storage/terms/:termsId/cancel",
+  ),
+  a(
+    "collection_storage",
+    "collection.storage.charging",
+    "PUT",
+    "/admin/collections/:venueId/storage/charging",
   ),
   // Handing works over at the desk, undoing it, and marking a visit missed
   a(

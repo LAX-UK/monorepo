@@ -17,7 +17,7 @@ import {
   ARTISTS_ACCESS,
   AUDIT_DOMAIN_EVENTS_ACCESS,
   CATEGORIES_READ_ACCESS,
-  COLLECTIONS_READ_ACCESS,
+  COLLECTIONS_PAGE_ACCESS,
   CONDITION_REPORTS_READ_ACCESS,
   CONSIGNMENT_INBOX_READ_ACCESS,
   DATA_REQUESTS_MANAGE_ACCESS,
@@ -272,7 +272,7 @@ function buildStaffNavGroupSpecs(
           label: "Collections",
           icon: CalendarClock,
           match: (pathname) => pathname.startsWith("/admin/collections"),
-          requirement: COLLECTIONS_READ_ACCESS,
+          requirement: COLLECTIONS_PAGE_ACCESS,
           ...navBadge(navCounts.collectionsToHandOver, "warning"),
         },
         {

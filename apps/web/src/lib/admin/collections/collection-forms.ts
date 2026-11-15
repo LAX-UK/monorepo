@@ -3,7 +3,6 @@ import {
   type CollectionRulesIssue,
   type ExceptionIssueCode,
   type HoursIssue,
-  MAX_FREE_STORAGE_DAYS,
   collectionRulesIssues,
   exceptionDraftIssues,
   weeklyHoursIssues,
@@ -32,8 +31,6 @@ export type SettingsDraft = {
   closeOnSaleDays: boolean;
   undoHandOverMinutes: string;
   maxActiveVisits: string;
-  /** Empty: the default of 30 days applies until the storage terms are set. */
-  freeStorageDays: string;
   bookingEmail: string;
   hours: HoursRangeDraft[];
 };
@@ -52,7 +49,6 @@ export function draftFromSettings(settings: StaffCollectionSettings): SettingsDr
     closeOnSaleDays: settings.closeOnSaleDays,
     undoHandOverMinutes: String(settings.undoHandOverMinutes),
     maxActiveVisits: String(settings.maxActiveVisits),
-    freeStorageDays: settings.freeStorageDays === null ? "" : String(settings.freeStorageDays),
     bookingEmail: settings.bookingEmail ?? "",
     // Keys are stable between server and browser; only rows added in the browser take a counter.
     hours: settings.hours.map((range, index) => ({ key: `saved-${index}`, ...range })),
@@ -64,7 +60,6 @@ const whole = (text: string): number =>
 
 /** The body of a save; null where a number was not entered, so the form can say which. */
 export function bodyFromDraft(draft: SettingsDraft, version: string) {
-  const storage = draft.freeStorageDays.trim();
   return {
     version,
     onlineBookingEnabled: draft.onlineBookingEnabled,
@@ -76,7 +71,6 @@ export function bodyFromDraft(draft: SettingsDraft, version: string) {
     closeOnSaleDays: draft.closeOnSaleDays,
     undoHandOverMinutes: whole(draft.undoHandOverMinutes),
     maxActiveVisits: whole(draft.maxActiveVisits),
-    freeStorageDays: storage === "" ? null : whole(storage),
     bookingEmail: draft.bookingEmail.trim() === "" ? null : draft.bookingEmail.trim(),
     hours: draft.hours.map(({ weekday, opensLocal, closesLocal }) => ({
       weekday,
@@ -87,14 +81,13 @@ export function bodyFromDraft(draft: SettingsDraft, version: string) {
 }
 
 export type SettingsErrors = {
-  rules: Partial<Record<CollectionRulesIssue | "free_storage_days" | "booking_email", string>>;
+  rules: Partial<Record<CollectionRulesIssue | "booking_email", string>>;
   /** Issues by range key, so each row can say what is wrong with it. */
   hours: Record<string, HoursIssue["code"]>;
   count: number;
 };
 
 const FIELD_MESSAGES = {
-  free_storage_days: `Enter a whole number of days up to ${MAX_FREE_STORAGE_DAYS}, or leave it empty.`,
   booking_email: "Enter an email address, or leave it empty.",
 } as const;
 
@@ -113,13 +106,6 @@ export function validateSettingsDraft(draft: SettingsDraft): SettingsErrors {
     maxActiveVisits: body.maxActiveVisits,
   })) {
     out.rules[issue] = RULE_ISSUE_MESSAGES[issue];
-  }
-  const storage = body.freeStorageDays;
-  if (
-    storage !== null &&
-    !(Number.isInteger(storage) && storage >= 0 && storage <= MAX_FREE_STORAGE_DAYS)
-  ) {
-    out.rules.free_storage_days = FIELD_MESSAGES.free_storage_days;
   }
   if (body.bookingEmail !== null && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(body.bookingEmail)) {
     out.rules.booking_email = FIELD_MESSAGES.booking_email;

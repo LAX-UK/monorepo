@@ -1,6 +1,6 @@
 "use client";
 
-import { formatPenceAsPounds, parsePoundsToPence } from "@auction/ui";
+import { type ParsedPence, formatPenceAsPounds, parsePoundsToPence } from "@auction/ui";
 import { TextInput, type TextInputProps } from "@auction/ui/lax";
 import * as React from "react";
 
@@ -10,7 +10,11 @@ export type MoneyInputProps = Omit<
 > & {
   /** Whole pence, or null when empty or not yet a valid amount. */
   value: number | null;
-  onValueChange: (pence: number | null) => void;
+  /**
+   * Called on each edit with the pence, and the parse result, which tells an empty field from one
+   * that does not read as an amount (an optional amount left empty is not an error).
+   */
+  onValueChange: (pence: number | null, parsed: ParsedPence) => void;
 };
 
 /**
@@ -44,7 +48,7 @@ export const MoneyInput = React.forwardRef<HTMLInputElement, MoneyInputProps>(
           const parsed = parsePoundsToPence(next);
           const pence = parsed.ok ? parsed.pence : null;
           lastEmitted.current = pence;
-          onValueChange(pence);
+          onValueChange(pence, parsed);
         }}
         onBlur={(event) => {
           const parsed = parsePoundsToPence(text);

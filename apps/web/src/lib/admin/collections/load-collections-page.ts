@@ -1,6 +1,7 @@
 import "server-only";
 
 import { getDeskDay, getDeskList } from "@/lib/data/http/admin-collection-desk.reader";
+import { getCollectionStorage } from "@/lib/data/http/admin-collection-storage.reader";
 import {
   getCollectionSettings,
   getCollectionVenues,
@@ -10,8 +11,15 @@ import type {
   DeskListView,
   StaffCollectionSettings,
   StaffCollectionVenue,
+  StaffStorageSettings,
 } from "@auction/types";
-import { type CollectionTab, DESK_TABS, parseCollectionTab } from "./collections.vm";
+import {
+  type CollectionTab,
+  type CollectionsAccess,
+  DESK_TABS,
+  parseCollectionTab,
+} from "./collections.vm";
+import { STORAGE_COPY } from "./storage-copy";
 
 /** What the desk tabs show: the day, or a list of visits, and how many missed visits wait. */
 export type DeskModel = {
@@ -25,11 +33,21 @@ export type DeskModel = {
   error: string | null;
 };
 
+/** What the Storage tab shows: the place's terms, or the sentence to show when they did not load. */
+export type StorageModel = {
+  settings: StaffStorageSettings | null;
+  error: string | null;
+};
+
 export type CollectionsPageModel = {
   tab: CollectionTab;
   venues: StaffCollectionVenue[];
+  /** The place being looked at; null when there is none to collect from. */
+  venueId: string | null;
+  /** Its hours, rules and closures; null for someone who sees only Storage. */
   settings: StaffCollectionSettings | null;
   desk: DeskModel | null;
+  storage: StorageModel | null;
   /** The sentence to show when the page could not load; null when it did. */
   loadError: string | null;
 };
@@ -57,6 +75,14 @@ async function loadDesk(tab: CollectionTab, venueId: string, date: string): Prom
   }
 }
 
+async function loadStorage(venueId: string): Promise<StorageModel> {
+  try {
+    return { settings: await getCollectionStorage(venueId), error: null };
+  } catch {
+    return { settings: null, error: STORAGE_COPY.loadError.body };
+  }
+}
+
 /**
  * The places, and the one being looked at (`?venue=`, else the first) with its settings, and for
  * the desk tabs the day or list of visits (`?date=` is a London day, else today).
@@ -64,26 +90,29 @@ async function loadDesk(tab: CollectionTab, venueId: string, date: string): Prom
 export async function loadCollectionsPage(
   search: Record<string, string | string[] | undefined>,
   today: string,
+  access: CollectionsAccess = { settings: true, storage: true },
 ): Promise<CollectionsPageModel> {
-  const tab = parseCollectionTab(search.tab);
+  const tab = parseCollectionTab(search.tab, access);
   const asked = first(search.date);
   const date = asked && DAY.test(asked) ? asked : today;
   try {
     const venues = await getCollectionVenues();
     const wanted = first(search.venue);
     const venue = venues.find((v) => v.venueId === wanted) ?? venues[0];
-    const settings = venue ? await getCollectionSettings(venue.venueId) : null;
+    const venueId = venue?.venueId ?? null;
+    const settings = venueId && access.settings ? await getCollectionSettings(venueId) : null;
     const desk =
-      venue && settings && DESK_TABS.includes(tab)
-        ? await loadDesk(tab, venue.venueId, date)
-        : null;
-    return { tab, venues, settings, desk, loadError: null };
+      venueId && settings && DESK_TABS.includes(tab) ? await loadDesk(tab, venueId, date) : null;
+    const storage = venueId && tab === "storage" ? await loadStorage(venueId) : null;
+    return { tab, venues, venueId, settings, desk, storage, loadError: null };
   } catch {
     return {
       tab,
       venues: [],
+      venueId: null,
       settings: null,
       desk: null,
+      storage: null,
       loadError: "We couldn't load the collection settings. Try again in a moment.",
     };
   }

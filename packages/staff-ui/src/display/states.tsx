@@ -136,7 +136,7 @@ export function ViewOnlyBadge({ role }: { role?: string }) {
   return (
     <span
       {...(role ? { title: `Your role: ${role}` } : {})}
-      className="inline-flex h-6 items-center gap-1.5 rounded-staff-xs border border-staff-line px-2 text-staff-xs font-medium text-staff-muted"
+      className="inline-flex h-6 shrink-0 items-center whitespace-nowrap gap-1.5 rounded-staff-xs border border-staff-line px-2 text-staff-xs font-medium text-staff-muted"
     >
       <Eye aria-hidden className="size-3.5" strokeWidth={1.75} />
       View only

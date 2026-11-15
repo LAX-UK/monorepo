@@ -16,8 +16,11 @@ export const DEFAULT_COLLECT_BY_POLICY: CollectByPolicy = {
 };
 
 /**
- * The policy for a place: its own free storage period, or the 30 days of a place with no storage
- * terms. Nothing is charged under it; "storage charges may apply" is wording only.
+ * Today's "please collect by" policy for a place: the place's `free_storage_days` when it has one,
+ * else 30 days. Nothing is charged under it; "storage charges may apply" is wording only. The
+ * buyer surfaces keep reading this until they move to the versioned terms (storage terms PR 4).
+ * The rule for a lot sold before its place had any terms is not this one: it is
+ * `LEGACY_STORAGE_TERMS` (30 calendar days free, nothing charged) through `calculateStorageCharge`.
  */
 export function collectByPolicyFor(freeStorageDays: number | null): CollectByPolicy {
   return {

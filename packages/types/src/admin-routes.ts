@@ -1,7 +1,7 @@
 import {
   ACCOUNTING_QUEUE_READ_ACCESS,
   AML_REVIEW_ACCESS,
-  COLLECTIONS_READ_ACCESS,
+  COLLECTIONS_PAGE_ACCESS,
   CONDITION_REPORTS_READ_ACCESS,
   ENQUIRIES_ACCESS,
   FINANCE_ACCESS,
@@ -100,7 +100,7 @@ export const ADMIN_ROUTE_TABLE = [
     area: "platform",
     requirement: LEGAL_ENTITY_BROWSE_ACCESS,
   },
-  { pattern: "/admin/collections", area: "platform", requirement: COLLECTIONS_READ_ACCESS },
+  { pattern: "/admin/collections", area: "shared", requirement: COLLECTIONS_PAGE_ACCESS },
   { pattern: "/admin/lot-fulfilment", area: "platform", requirement: LOT_FULFILMENT_ACCESS },
   { pattern: "/admin/lots", area: "platform", requirement: LOTS_READ_ACCESS },
   { pattern: "/admin/lots/[id]", area: "platform", requirement: LOTS_READ_ACCESS },

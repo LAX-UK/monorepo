@@ -45,6 +45,9 @@ describe.skipIf(!HAS_DB)("collection storage (integration)", () => {
       insert into "user" (id, name, email, email_verified, created_at, updated_at)
       values (${staffId}, 'Staff', ${`${staffId}@integration.test`}, true, ${now}, ${now})`);
     await db.execute(sql`
+      insert into bid_identity_directory (subject_id, email, name, email_verified, identity_created_at)
+      values (${staffId}, ${`${staffId}@integration.test`}, 'Storage Finance', true, ${now})`);
+    await db.execute(sql`
       insert into legal_entity (id, display_name, kind, subkind, created_by_user_id, status)
       values (${entityId}, 'Collection storage IT', 'individual', 'private_collector', ${staffId}, 'approved')`);
     await db.execute(sql`
@@ -84,6 +87,7 @@ describe.skipIf(!HAS_DB)("collection storage (integration)", () => {
       await db.execute(sql`delete from venue where id = ${id}`);
     }
     await db.execute(sql`delete from legal_entity where id = ${entityId}`);
+    await db.execute(sql`delete from bid_identity_directory where subject_id = ${staffId}`);
     await db.execute(sql`delete from "user" where id = ${staffId}`);
   });
 
@@ -95,6 +99,7 @@ describe.skipIf(!HAS_DB)("collection storage (integration)", () => {
       expect.objectContaining({
         action: "terms_scheduled",
         actorUserId: staffId,
+        actorName: "Storage Finance",
         createdAt: expect.any(Date),
         before: null,
         after: expect.objectContaining({ freeDays: 14, standardDailyPence: 300 }),

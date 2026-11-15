@@ -3,6 +3,16 @@ import { describe, expect, it } from "vitest";
 import { FormPage, FormPageSkeleton } from "./form-page.js";
 
 describe("FormPage", () => {
+  it("shows a status badge beside the title", () => {
+    render(
+      <FormPage title="Collections" status={<span>Charging off</span>}>
+        <form aria-label="Storage" />
+      </FormPage>,
+    );
+    const heading = screen.getByRole("heading", { level: 1, name: "Collections" });
+    expect(heading.parentElement?.textContent).toContain("Charging off");
+  });
+
   it("orders the title, tabs, notice and form", () => {
     render(
       <FormPage
