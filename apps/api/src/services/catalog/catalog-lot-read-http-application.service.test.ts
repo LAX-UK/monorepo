@@ -1,4 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
+
+const storageText = vi.fn();
+const placeTerms = vi.fn();
+vi.mock("../../lib/public-storage-terms.js", () => ({
+  storageTermsTextForVenue: (...a: unknown[]) => storageText(...a),
+  listPlaceStorageTerms: (...a: unknown[]) => placeTerms(...a),
+}));
+
 import { withPublicLotResults } from "../../lib/public-lot-result.js";
 import { createCatalogLotReadHttpFixture } from "../../testing/catalog-lot-read-http-fixture.js";
 import { CachedCatalogueListService } from "../cached-catalogue-list.service.js";
@@ -228,6 +236,73 @@ describe("CatalogLotReadHttpApplicationService", () => {
       const data = (res.body as { data: Record<string, unknown> }).data;
       expect(data).toMatchObject({ winnerId: "next-bidder-user", currentPrice: "88000.00" });
       expect(data).not.toHaveProperty("resultPending");
+    });
+  });
+});
+
+describe("storage terms on the public lot read", () => {
+  const SENTENCE = "Storage is free for 14 days after your payment clears.";
+  const lot = {
+    id: "lot-1",
+    saleId: "s1",
+    lotNumber: 3,
+    title: "Harbour lights",
+    description: null,
+    medium: "Oil",
+    dimensions: null,
+    images: [],
+    categoryId: "c1",
+    auctionType: "english",
+    status: "active",
+    startingPrice: "100.00",
+    reservePrice: null,
+    currentPrice: "100.00",
+    buyerPremiumRate: "0.25",
+    minBidIncrement: "10.00",
+    winnerId: null,
+    startTime: new Date("2026-10-01T10:00:00Z"),
+    endTime: new Date("2026-12-31T10:00:00Z"),
+    marketingDetails: {},
+  };
+  const read = (venueId: string | null) =>
+    createCatalogLotReadHttpFixture({
+      lotService: { listLotsForPublicApi: vi.fn(), getById: vi.fn().mockResolvedValue(lot) },
+      saleService: {
+        getByIdForPublicCatalog: vi
+          .fn()
+          .mockResolvedValue({ id: "s1", status: "active", venueId, buyerPremiumTiers: null }),
+      } as never,
+      cachedCatalogueListService: new CachedCatalogueListService(createMemoryCache(), 60),
+      now: () => new Date("2026-11-01T12:00:00Z"),
+    });
+  const detail = async (venueId: string | null) =>
+    (await read(venueId).getLotDetail({ lotId: "lot-1", viewer: {} })).body as {
+      data: { storageTerms: string | null };
+    };
+
+  it("carries the sentence for the place the sale is held at", async () => {
+    storageText.mockResolvedValue(SENTENCE);
+    expect((await detail("venue-1")).data.storageTerms).toBe(SENTENCE);
+    expect(storageText).toHaveBeenCalledWith(expect.anything(), "venue-1", expect.any(Date));
+  });
+
+  it("carries none when the sale has no venue or the place has set none", async () => {
+    storageText.mockResolvedValue(null);
+    expect((await detail(null)).data.storageTerms).toBeNull();
+    expect((await detail("venue-1")).data.storageTerms).toBeNull();
+  });
+
+  it("serves the lot without it when the terms cannot be read", async () => {
+    storageText.mockRejectedValue(new Error("db down"));
+    expect((await detail("venue-1")).data.storageTerms).toBeNull();
+  });
+
+  it("lists the terms of each place for the shipping page", async () => {
+    placeTerms.mockResolvedValue([{ placeName: "LAX Gallery", text: SENTENCE }]);
+    const res = await read("venue-1").listStorageTerms();
+    expect(res).toEqual({
+      status: 200,
+      body: { data: [{ placeName: "LAX Gallery", text: SENTENCE }] },
     });
   });
 });

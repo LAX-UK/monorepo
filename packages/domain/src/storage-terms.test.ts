@@ -12,6 +12,7 @@ import {
   formatStorageInvoiceLine,
   formatStorageNotice,
   formatStorageTerms,
+  purchaseStorageView,
   storageClearedOn,
 } from "./storage-terms.js";
 
@@ -472,5 +473,30 @@ describe("the running-total lines", () => {
     expect(formatStorageDeskLine(900)).toBe(
       "Storage of £9.00 is due on this lot. Take payment or waive it before hand-over.",
     );
+  });
+});
+
+describe("the purchase view", () => {
+  const now = new Date("2026-11-19T12:00:00Z");
+  const ctx = { placeName: "LAX Gallery", now, chargingOn: true };
+
+  it("gives the notice and the badge from the one formatter, so list and page agree", () => {
+    const due = charge({ asOf: "2026-11-19" });
+    const view = purchaseStorageView(due, TERMS, "standard", ctx);
+    expect(view).toEqual({
+      state: "charging",
+      notice: formatStorageNotice(due, TERMS, "standard", ctx),
+      badge: formatStorageBadge(due, now, true),
+      amountPence: 900,
+    });
+    expect(view.badge).toBe("Collect by Mon 16 Nov · Storage £9.00 so far");
+  });
+
+  it("shows no total on the badge while charging is off", () => {
+    const view = purchaseStorageView(charge({ asOf: "2026-11-19" }), TERMS, "standard", {
+      ...ctx,
+      chargingOn: false,
+    });
+    expect(view.badge).toBe("Collect by Mon 16 Nov");
   });
 });
