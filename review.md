@@ -1,88 +1,84 @@
 Verdict: FIX FIRST
 
-# Review: PR #1475 `motion-bid-page-changes` (motion system PR 2 of 8)
+# Final recheck: PR #1475 `motion-bid-page-changes` (motion system PR 2 of 8)
 
-Reviewed head `b988b87a` against `docs/design/motion.md` on `origin/main`. The PR branch was not changed.
+This recheck covers head `56570d1e` (the fixer commit on top of `b988b87a`). The head was unchanged from 21:42 UTC until the review was written, and the PR branch was not changed. The spec is `docs/design/motion.md` (line 36 and MO13/MO14). The first review is in this file's history (`a8e6d1ad`).
 
-The approach is right: the transition kind goes on `<html>` and the CSS keys off it. The design spec is met: in real Chromium the theme wipe is the same as on main, the lot morph runs at 360 ms with the emphasize ease, the admin cross-fade runs at 100/150 ms, and the transition layer has `pointer-events: none`. Two things block it. Three things block it:
-
-- Route JS grows by 0.1 to 0.6 KB gzip on every apps/web route group.
-- When two transitions of the same kind overlap, the second loses its styling, so a quick second toggle drops the wipe.
-- The browser test doesn't prove the scoping it claims to prove, and its paint timing uses a single sample.
+The fixer resolved most of the first review. The race guard, browser-level e2e proof, median timing, postcss-based CSS tests and dead-branch removal are all in, and every mutation I re-ran fails the unit tests. One blocker remains: route JS still grows on every apps/web marketing route group. The fixer's isolated minify-and-gzip measurement doesn't show this, but CI's real build does.
 
 ## Findings
 
-1. **BLOCKING: route JS grows on every apps/web route group.** `apps/web/src/lib/view-transition-runtime.ts:1-70`, `apps/web/src/components/layout/theme-toggle.tsx`
-   MO14 allows no route JS growth and doesn't let motion PRs use the 1 KB noise allowance. The CI `build` job's `check:route-js-budget` table for this head (job 132958454541), compared with the merge-base build on main (job 132947086554), gzip largest / frame:
-   | group | main | PR |
-   |---|---|---|
-   | account | 549.6 / 448.2 KB | 550.2 / 448.7 KB |
-   | checkout | 475.8 / 445.9 KB | 476.4 / 446.3 KB |
-   | listing | 470.8 / 344.2 KB | 471.0 / 344.3 KB |
-   | lot | 481.4 / 349.6 KB | 481.5 / 349.8 KB |
-   | public (Home) | 402.0 / 344.2 KB | 402.2 / 344.3 KB |
-   | sale | 485.3 / 346.1 KB | 485.5 / 346.2 KB |
-   The job passes because these sizes are under the budgets and ratchets, but the growth breaks the motion rule. Possible causes:
-   - The helper gained `canPlayViewTransition`, the in-app override read, the attribute set/clear and an unreachable branch.
-   - The theme toggle still calls `canPlayViewTransition()` before the helper checks it again.
-   - The test-only `VIEW_TRANSITION_ATTR` export.
-   Trim until the frame is back at or below main, for example by dropping the dead branch (finding 10) and the duplicate check. Then re-run the table. The race fix in finding 2 has to fit in the same budget.
+1. **BLOCKING: route JS still grows (MO14: zero growth, no 1 KB noise allowance).** `apps/web/src/components/layout/theme-toggle.tsx:9,72`, `apps/web/src/lib/view-transition-runtime.ts:1-53`
+   PR CI ran the `build` job (132968737308) on `pull/1475/merge`, which is main `2504b5e2`, not the merge-base. Main's own build of `2504b5e2` only built apps/shop, so it can't serve as a baseline. The clean apps/web baseline at `2504b5e2` comes from PR #1461's build (132966911342, merge onto `2504b5e2`), because that PR touches no file in apps/web. The `check:route-js-budget` table, gzip largest / frame / duplicates:
+   | group | main `2504b5e2` (via #1461) | this PR | delta |
+   |---|---|---|---|
+   | public (Home) | 402.0 / 344.2 | 402.1 / 344.3 | +0.1 |
+   | listing | 470.8 / 344.2, dup 121 (32.0 KB) | 470.9 / 344.3, dup **122** (32.1 KB) | +0.1, +1 duplicated module |
+   | lot | 481.4 / 349.6 | 481.5 / 349.7 | +0.1 |
+   | sale | 485.3 / 346.1 | 485.4 / 346.2 | +0.1 |
+   | account | 549.9 / 448.5 | 549.9 / 448.6 | frame +0.1 |
+   | checkout | 476.2 / 446.2 | 476.3 / 446.2 | +0.1 |
+   The tracked routes (Home, Sales list, Sale, Lot, About, Terms) are all up by +0.1 to +0.2 KB. This isn't noise. The public frame is exactly 344.2 KB in all four other builds I checked: the merge-base, #1474, #1461 and #1473.
+   Likely cause: the theme toggle now imports the shared helper, so the helper sits in the layout frame and still sits in the lot-link page chunk. That's one new duplicated module (listing dup 121 → 122). The fixer's "1606 B vs 1611 B" compared the files on their own and can't see chunk placement or duplication.
+   Fix options: keep the theme toggle self-contained (set and clear `data-view-transition="theme"` inline, as main did for its own transition code), or otherwise make the helper exist in one chunk only. Then compare the CI table against a clean main baseline. The budget check passes only because these sizes are under the budgets and ratchets. It does not prove zero growth.
 
-2. **BLOCKING: a second transition of the same kind loses its styling.** `apps/web/src/lib/view-transition-runtime.ts:51-65`
-   `done()` removes `data-view-transition` when the attribute still equals `kind`. If a second transition of the same kind starts before the first ends (a double tap on the theme toggle, or two quick lot clicks), the browser skips the first one. Its `finished` then resolves *after* the second call has set the attribute again, and the first call's `done()` removes it while the second transition runs.
-   Checked in Chromium (Playwright, the PR's CSS, the same set/clear logic): toggle twice 50 ms apart and, 100 ms into the second transition, the attribute is `null`. The root then plays the UA default 250 ms `plus-lighter` cross-fade, not `theme-reveal`. On main the second toggle still wiped, so the theme switch no longer looks exactly as before in this case.
-   Fix: give each call its own token, for example a module-level counter (`const id = ++generation; … if (id === generation) root.removeAttribute(…)`), and add a unit test with two overlapping same-kind calls. The theme toggle's `--theme-toggle-*` cleanup (`theme-toggle.tsx`, the `onFinished` callback) has the same overlap. It was already there before this PR, but the same guard fixes it.
+2. **Non-blocking: the OS reduced-motion CSS backstop still does not cancel the theme wipe. The claim in the PR text and the code comment is wrong.** `packages/marketing-ui/src/marketing-header.css:52-59`, `apps/web/src/lib/view-transition-runtime.test.ts:169-177`
+   A `(*)` argument gives a view-transition pseudo-element zero specificity, while `(root)` counts like a type selector. So `:root[data-view-transition]::view-transition-new(*)` is (0,2,0) and loses to `:root[data-view-transition="theme"]::view-transition-new(root)` at (0,2,1).
+   Checked in Chromium (Playwright, this head's CSS, `reducedMotion: "reduce"`): a started theme transition still runs `::view-transition-new(root):theme-reveal:900` and takes about 930 ms. Lot and admin are cancelled. The `force-reduce` rule does work: the `html` type selector brings it to (0,2,1), and it comes later in the file. Theme, lot and admin all finish in about 30 ms with no animations.
+   Users don't see this today, because the JS gate at `view-transition-runtime.ts:35` doesn't start transitions under OS reduce. But the unit test only checks the selector text and passes for the wrong reason. Fix: name `(root)` in the reduce rules, or add a type selector (`html:root[...]`), and assert the outcome in a browser rather than the selector text.
 
-3. **BLOCKING: the e2e test doesn't prove that the theme toggle wipes and lot navigation doesn't.** `apps/web/e2e/view-transitions.spec.ts:15-29, 42, 70, 83`
-   `recordTransitions` only records the `data-view-transition` value at the moment `startViewTransition` is called. It never looks at what the browser animates. Mutation check: with `marketing-header.css` reverted to main (global wipe on every transition), all three e2e tests still pass, because the runtime still sets the attribute. The CSS unit tests do catch the revert (3 of 8 fail), but the browser test doesn't prove the behaviour.
-   Fix: after `transition.ready`, read `document.getAnimations()` and filter on `effect.pseudoElement`. Assert that `::view-transition-new(root)` runs `theme-reveal` for the theme toggle. For a lot click, assert that no animation is `theme-reveal` and that the morph groups run at 360 ms. A scratch Chromium harness shows these values are observable: theme gives `new(root):theme-reveal:900`; lot gives `group(lot-image):…:360` and no `theme-reveal`; admin gives `old(root):100`, `new(root):150`.
+3. **Non-blocking: under the in-app switch, a transition now starts and is then cancelled, rather than being skipped.** `apps/web/src/lib/view-transition-runtime.ts:29,35`, `packages/marketing-ui/src/marketing-header.css:62-66`
+   The JS no longer reads `lax.reduceMotion`, so under `force-reduce` the browser still snapshots and starts a transition, and CSS cancels every animation (verified: about 30 ms, no animations). The result is visually instant, and it's better than main, where the wipe played under `force-reduce`. But motion.md line 36 says to skip transitions, and the summary table at the top of the PR body still says "no view transition starts" for the in-app switch. The "Changes after review" section does say it supersedes that. `force-allow` no longer overrides OS reduce for transitions, which differs from `useReducedMotion`. That matches main. The e2e has no in-app-switch case (first-review finding 11, partly open).
 
-4. **BLOCKING: the interaction-to-paint check uses one sample and times the press, not the page change.** `apps/web/e2e/view-transitions.spec.ts:57-67`
-   `runs: 1` goes against the helper's own contract (`MOTION_BUDGETS.interactionToPaintMs`: "assert on the median of several presses … never a single sample"), so a single slow frame can fail it. It also measures `pointerdown` to the next frame. Navigation only starts on `mouse.up`, so the transition's first frame (MO14: "page change paint within 200ms") is never timed.
-   Fix: take the median of 5 presses, each released off the tile so no click happens, then click once to navigate. Time that page change from the input `timeStamp` to the transition's `ready` (first transition frame).
+4. **Non-blocking: a transition superseded by one of a different kind never runs its own cleanup.** `apps/web/src/lib/view-transition-runtime.ts:30-34`, `apps/web/src/components/layout/theme-toggle.tsx:72-74`
+   `done()` returns early for any older transition. So a theme toggle followed within 900 ms by a lot or admin navigation leaves `--theme-toggle-x/y/radius` on `<html style>`. The newer transition's `onFinished` is a different callback. Nothing visible at rest, because only the `theme-reveal` keyframes read these properties. But the doc comment ("leaves the cleanup to the newer one") is only true for same-kind overlaps. Run the older callback when the kinds differ, or document the leak.
 
-5. **Non-blocking: the CSS reduced-motion fallback doesn't cover the theme wipe.** `packages/marketing-ui/src/marketing-header.css:51-62`
-   `::view-transition-new(*)` and `html[data-reduce-motion="force-reduce"]::view-transition-new(*)` have lower specificity than `:root[data-view-transition="theme"]::view-transition-new(root)`. In Chromium with `reducedMotion: "reduce"`, a started theme transition still runs `theme-reveal` for 900 ms (lot and admin are cancelled correctly). JS stops this in practice, but the file comment and the PR text both say the CSS fallback cancels the animations. Raise the specificity, for example `:root[data-view-transition]::view-transition-*(…)`, and add a unit assertion.
+5. **Non-blocking (carried over): the package depends on the app's attribute name.** `packages/staff-ui/src/theme.css:230-231`, `packages/marketing-ui/src/marketing-header.css`
+   First-review finding 7 was deliberately not done, and the PR says so. It's fine to leave it for a later motion PR.
 
-6. **Non-blocking: the CSS fallback ignores `force-allow`.** `packages/marketing-ui/src/marketing-header.css:51`
-   The runtime lets `force-allow` override the OS setting (and the unit test "lets the in-app switch re-allow motion" relies on this). The `@media (prefers-reduced-motion: reduce)` block then sets `animation: none` anyway. With OS reduce plus `force-allow`, the transition starts and snapshots, then swaps instantly. Scope the media rule with `:root:not([data-reduce-motion="force-allow"])` so CSS and JS agree.
+## First-review findings: status
 
-7. **Non-blocking (SOLID / dependency direction): a package depends on an app's attribute name.** `packages/staff-ui/src/theme.css:229-231`, `packages/marketing-ui/src/marketing-header.css:1-62`
-   `VIEW_TRANSITION_ATTR` and the kinds are defined in `apps/web`. Two shared packages hard-code `data-view-transition="admin"` and `"lot"`. Admin transition timing also lives in a file named `marketing-header.css`. Consider one shared home in a package for the attribute name, kinds and transition CSS (for example a `view-transitions.css` in `packages/ui` or `branding`), with `apps/web` importing the constant from it. This would also remove the `../../../../packages/...` path the unit test reads.
-
-8. **Non-blocking: the CSS unit tests are regex-based and loose.** `apps/web/src/lib/view-transition-runtime.test.ts:98-102`
-   Adding `:root[data-view-transition="lot"]::view-transition-new(root)` to the selector list of the wipe rule would still pass, because the block contains the `theme` selector. Parse the file with the CSS parser already used by `scripts/compositor-rule.mjs` and assert that *every* selector of the `theme-reveal` rule is scoped to `theme`.
-
-9. **Non-blocking: the lot rule also re-times the root cross-fade.** `packages/marketing-ui/src/marketing-header.css:34-39`
-   `:root[data-view-transition="lot"]::view-transition-group(*)` (and old/new `(*)`) also covers `root`, so the rest of the page cross-fades at 360 ms with the emphasize ease. The spec names only the image morph. This is probably intended, but it should be stated in the comment or limited to the image's transition name.
-
-10. **Non-blocking: dead branch.** `apps/web/src/lib/view-transition-runtime.ts:59-63`
-   `if (!transition)` can't be reached, because `canPlayViewTransition()` has already confirmed `startViewTransition` is a function. Call it directly, with no `?.`, and drop the branch.
-
-11. **Non-blocking: reduced-motion e2e coverage is thin.** `apps/web/e2e/view-transitions.spec.ts:74-84`
-    Only the theme toggle is tested under OS reduced motion. Add a lot navigation under OS reduce and a run with the in-app switch (`localStorage["lax.reduceMotion"]="force-reduce"`), both expecting `[]`. The spec is also `@optin`, so it isn't part of the PR gate (same as the existing motion smoke). The PR says so, but the proof only counts once someone runs it.
+| # | Finding | Status |
+|---|---|---|
+| 1 | Route JS growth (blocking) | **Not fixed.** Smaller, but still +0.1 KB on every marketing group and one more duplicated module (finding 1 above) |
+| 2 | Same-kind overlap loses styling (blocking) | Fixed. Latest-token guard at `view-transition-runtime.ts:31`; removing it fails the new overlap test |
+| 3 | e2e doesn't prove scoping (blocking) | Fixed. `observeViewTransitions` reads `document.getAnimations()` pseudo-element animations: theme-reveal on the toggle, none on a lot navigation, 360 ms groups. Second-toggle case added |
+| 4 | Single-sample timing of the press (blocking) | Fixed. `medianInputToTransitionReady`: median of 5, input `timeStamp` to transition `ready` |
+| 5 | Reduce backstop specificity | **Not effective** for OS reduce (finding 2 above); works for `force-reduce` |
+| 6 | `force-allow` vs CSS | Moot. JS no longer honours `force-allow`; JS and CSS now agree |
+| 7 | Shared home for the attribute and CSS | Deferred (finding 5 above) |
+| 8 | Regex CSS tests | Fixed. postcss parse; every wipe selector is scoped to `theme` |
+| 9 | Lot rule re-times the root cross-fade | Fixed. Stated in the comment |
+| 10 | Dead branch | Fixed |
+| 11 | Thin reduced-motion e2e | Partly fixed. Lot under OS reduce added; no in-app-switch case; the spec is still `@optin` and has not been run against an app |
 
 ## Verified OK
 
-- Theme wipe is unchanged on the theme switch. In Chromium, `::view-transition-new(root)` runs `theme-reveal` for 900 ms with `--motion-ease-emphasize` (the same rule as main), and old/new have `mix-blend-mode: normal`. Lot, admin and no-kind transitions no longer run it.
-- Lot morph: `var(--lax-motion-morph)` (360 ms) with `var(--lax-ease-emphasize)`. Admin cross-fade: `var(--lax-motion-page-out/in)` = 100/150 ms through the staff scope. No literal durations or easings were added.
-- `::view-transition` computes `pointer-events: none` (`auto` on main).
-- The runtime skips the transition under `prefers-reduced-motion`, under `force-reduce`, and when `startViewTransition` is missing (instant swap, `onFinished` still runs). The `@supports (view-transition-name: root)` guard is still there.
-- No new dependencies. No new client module: the theme toggle now uses the shared helper. But route JS still grows a little (finding 1). Lenis isn't in the diff. No budget, baseline or allowlist file was touched. Nothing changes at rest (rules only apply while a transition runs; the staff tokens on `:root` only apply while the attribute is set).
-- Mutation checks: reverting the CSS to main fails 3 of 8 unit tests. Hard-coding the kind to `"theme"` in the runtime fails 1 unit test. The e2e test doesn't catch either (finding 3).
-- No `Co-Authored-By`, `Claude-Session` or generated-by lines in the commit message or the PR body.
+- **Spec behaviour, in Chromium** (this head's CSS plus the tokens):
+  - Theme: `::view-transition-new(root)` runs `theme-reveal` for 900 ms.
+  - Lot: every group/old/new runs at 360 ms (`--lax-motion-morph`, `--lax-ease-emphasize`), with no `theme-reveal`.
+  - Admin: old(root) 100 ms and new(root) 150 ms (staff `--lax-motion-page-out/in` via `:root[data-view-transition="admin"]`). Other named groups keep the UA's 250 ms, as on main.
+  - `pointer-events: none` is on the transition layer.
+- **Tokens only.** No literal durations or easings were added. The `900ms` fallback in `var(--motion-duration-xl, 900ms)` was already on main.
+- **No change at rest.** Every rule needs `data-view-transition`, which is only set while a transition runs. Focus, aria and the toggle's label are unchanged. Lenis isn't in the diff. No budget, baseline, ratchet or allowlist file was touched.
+- **Mutation checks, re-run by me:**
+  - Remove the latest-token guard: 1 test fails.
+  - Revert `marketing-header.css` to main: 5 fail.
+  - Hard-code the kind to `"theme"`: 2 fail.
+  - `pointer-events: auto`: 1 fails.
+  - Drop the OS-reduce JS check: 1 fails.
+  - Drop the `force-reduce` CSS block: 1 fails.
+- **No attribution lines.** There are no `Co-Authored-By`, `Claude-Session` or generated-by lines in either commit message (`b988b87a`, `56570d1e`) or in the PR title or body.
 
-## Checks run (local, head b988b87a)
+## Checks run (local, head 56570d1e)
 
 - `corepack enable; pnpm install --frozen-lockfile; pnpm -r --filter './packages/**' build`: ok.
-- apps/web vitest (view-transition runtime, view-transitions, lot pending, site header, phone menu, user menu, `components/marketing`, `--maxWorkers=2`): 40 files, 225 passed, 10 skipped.
-- packages/staff-ui 632 passed; packages/branding 350 passed; packages/marketing-ui 693 passed.
-- `tsc --noEmit` (apps/web): one error, `Cannot find module '@auction/api/app'` in `src/lib/data/http/rpc-app.ts`. That file isn't touched by this PR, and the error comes from the api app not being built locally.
-- biome on changed files: clean. `lint:client-copy` 21/0, `lint:compositor` 15/0, `lint:ui-guardrails`, `lint:web-guardrails`, `lint:bid-public-kit`, `lint:client-boundary`, `lint:e2e-tags`, `lint:e2e-portfolio`, `lint:test-mocks`: all pass.
-- `scripts/check-route-js-budget.mjs`: no production build locally, so it audited nothing (a full `next build` of apps/web was not run, as instructed). The CI `build` job runs `check:route-js-budget` on a real build (see below).
-- Opt-in Playwright spec: not run (no running app). The behaviour was checked instead with a standalone Chromium harness that loads the PR's CSS and `lax-system.css`.
+- apps/web vitest (`src/lib/view-transition-runtime.test.ts`, `src/components/layout`, `src/components/marketing`, `--maxWorkers=2`): 89 files, 506 passed, 10 skipped.
+- `tsc --noEmit` (apps/web): only the unrelated `Cannot find module '@auction/api/app'` in `src/lib/data/http/rpc-app.ts`, because the api app isn't built locally.
+- biome on the 10 changed files: clean. `lint:client-copy`, `lint:compositor`, `lint:ui-guardrails`, `lint:web-guardrails`, `lint:client-boundary`, `lint:e2e-tags`, `lint:test-mocks`, `lint:bid-public-kit`, `lint:e2e-portfolio`: all pass.
+- `scripts/check-route-js-budget.mjs`: not run locally. There's no production build, and a full `next build` of apps/web was not run, as instructed. Its CI output was read instead (finding 1).
+- Opt-in Playwright spec: not run (no running app). The behaviour was checked in a standalone Chromium harness.
 
-## CI (`gh pr checks` via REST check-runs)
+## CI (REST check-runs on 56570d1e)
 
-All 37 check-runs on `b988b87a` have finished: 36 success, 1 skipped (`shop-v1-phase-smoke`, a matrix placeholder), 0 failing. `static-checks` (biome, compositor lint, route-js lint) and `build` (`check:route-js-budget`) pass. As finding 1 explains, a passing budget check does not mean zero growth.
-
+At the time of writing: 35 success, 1 skipped (`shop-v1-phase-smoke`, a matrix placeholder), and 1 still running (`browser-gates`). None failed. `static-checks` and `build` (including `check:route-js-budget`) pass. A passing budget check does not mean zero growth (finding 1).
