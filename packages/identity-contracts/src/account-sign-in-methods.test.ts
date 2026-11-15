@@ -96,11 +96,26 @@ describe("account sign-in methods contract", () => {
       "kind",
       "lastUsedAt",
       "name",
+      "provider",
       "synced",
     ]);
+    expect(parsed.provider).toBe("unknown");
     expect(accountPasskeySchema.safeParse({ ...parsed, name: "" }).success).toBe(false);
     expect(accountPasskeySchema.safeParse({ ...parsed, name: "x".repeat(61) }).success).toBe(false);
     expect(accountPasskeySchema.safeParse({ ...parsed, kind: "phone" }).success).toBe(false);
+  });
+
+  it("takes a known provider and refuses one it does not list", () => {
+    const base = {
+      id: "pk-1",
+      name: "Key",
+      synced: true,
+      kind: "platform",
+      createdAt: "2026-10-01T09:00:00Z",
+      lastUsedAt: null,
+    };
+    expect(accountPasskeySchema.parse({ ...base, provider: "apple" }).provider).toBe("apple");
+    expect(accountPasskeySchema.safeParse({ ...base, provider: "acme" }).success).toBe(false);
   });
 
   it("allows ten passkeys", () => {

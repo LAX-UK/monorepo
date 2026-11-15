@@ -280,6 +280,7 @@ describe("after a passkey is made", () => {
         name: "iCloud Keychain",
         synced: true,
         kind: "platform",
+        provider: "unknown",
         createdAt: "2026-11-10T09:00:00.000Z",
         lastUsedAt: null,
       },

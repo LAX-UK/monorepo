@@ -1,4 +1,4 @@
-import type { AccountSignInMethodsResponse } from "@auction/identity-contracts";
+import type { AccountPasskey, AccountSignInMethodsResponse } from "@auction/identity-contracts";
 import { describe, expect, it } from "vitest";
 import {
   ONLY_METHOD_REASON,
@@ -27,6 +27,7 @@ const passkey = {
   name: "iCloud Keychain",
   synced: true,
   kind: "platform",
+  provider: "unknown",
   createdAt: "2026-11-03T09:00:00.000Z",
   lastUsedAt: null,
 } as const;
@@ -342,6 +343,7 @@ describe("passkey rows", () => {
     name: "YubiKey 5",
     synced: false,
     kind: "security_key",
+    provider: "unknown",
     createdAt: "2026-10-21T09:00:00.000Z",
     lastUsedAt: "2026-11-02T09:00:00.000Z",
   } as const;
@@ -407,6 +409,28 @@ describe("passkey rows", () => {
     const device = { ...passkey, synced: false, lastUsedAt: null };
     const [item] = passkeysRow(ok(true, [], { ...on, passkeys: [device] })).items;
     expect(item).toMatchObject({ hint: "This device only", lastUsed: "Not used yet" });
+  });
+
+  it("says who keeps a passkey when its provider is known, and falls back when it is not", () => {
+    const hints = (passkeys: AccountPasskey[]) =>
+      passkeysRow(ok(true, [], { ...on, passkeys })).items.map((item) => item.hint);
+    expect(
+      hints([
+        { ...keychain, provider: "apple" },
+        { ...keychain, id: "b", provider: "google" },
+        { ...keychain, id: "c", provider: "onepassword" },
+        { ...keychain, id: "d", provider: "windows_hello", synced: false },
+        { ...yubikey, provider: "security_key" },
+        { ...keychain, id: "f", provider: "unknown" },
+      ]),
+    ).toEqual([
+      "Saved in iCloud Keychain",
+      "Saved in Google Password Manager",
+      "Saved in 1Password",
+      "Saved in Windows Hello",
+      "Security key",
+      "Synced to your other devices",
+    ]);
   });
 
   it("blocks Remove on the only way in, with the reason, and on no other", () => {

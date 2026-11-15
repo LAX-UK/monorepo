@@ -188,6 +188,7 @@ describe("createIssuerAccountIdentityGateway", () => {
         name: "Studio iMac",
         synced: true,
         kind: "platform",
+        provider: "unknown",
         createdAt: "2026-11-03T10:00:00.000Z",
         lastUsedAt: null,
       };

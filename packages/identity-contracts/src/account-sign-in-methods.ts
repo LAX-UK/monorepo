@@ -76,6 +76,24 @@ export function isValidPasskeyName(value: string): boolean {
   );
 }
 
+/**
+ * Who keeps a passkey, from its authenticator; "unknown" when it is not a well-known one. The enum
+ * is closed: ship a new provider in LAX Account before the issuer, or the account app fails to
+ * parse the whole response.
+ */
+export const PASSKEY_PROVIDERS = [
+  "apple",
+  "google",
+  "windows_hello",
+  "security_key",
+  "onepassword",
+  "bitwarden",
+  "dashlane",
+  "unknown",
+] as const;
+
+export const passkeyProviderSchema = z.enum(PASSKEY_PROVIDERS);
+
 /** A passkey as the person sees it: named and dated. The key material never leaves the issuer. */
 export const accountPasskeySchema = z.object({
   id: z.string().min(1),
@@ -84,6 +102,8 @@ export const accountPasskeySchema = z.object({
   synced: z.boolean(),
   /** Built into the device, or a separate security key. */
   kind: z.enum(["platform", "security_key"]),
+  /** Who keeps it, from the authenticator. An older issuer leaves it out: unknown. */
+  provider: passkeyProviderSchema.default("unknown"),
   createdAt: z.string().datetime({ offset: true }),
   lastUsedAt: z.string().datetime({ offset: true }).nullable(),
 });

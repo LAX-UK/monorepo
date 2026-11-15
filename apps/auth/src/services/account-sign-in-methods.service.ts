@@ -1,4 +1,4 @@
-import type { SecurityNoticePublisher } from "@auction/auth";
+import { type SecurityNoticePublisher, passkeyProviderFromAaguid } from "@auction/auth";
 import {
   type AccountPasskey,
   type AccountSignInMethodError,
@@ -57,6 +57,7 @@ export function presentPasskey(row: PasskeyRow): AccountPasskey {
     name: (row.name?.trim() || UNNAMED_PASSKEY).slice(0, PASSKEY_NAME_MAX_LENGTH),
     synced: row.deviceType === "multiDevice" && row.backedUp,
     kind: separateKey ? "security_key" : "platform",
+    provider: passkeyProviderFromAaguid(row.aaguid),
     createdAt: row.createdAt.toISOString(),
     lastUsedAt: row.lastUsedAt ? row.lastUsedAt.toISOString() : null,
   };

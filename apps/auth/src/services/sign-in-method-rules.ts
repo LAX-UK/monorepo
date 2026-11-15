@@ -22,6 +22,8 @@ export type PasskeyRow = {
   deviceType: "singleDevice" | "multiDevice";
   backedUp: boolean;
   transports: string | null;
+  /** The authenticator's AAGUID as stored at registration; null when none was reported. */
+  aaguid?: string | null;
   createdAt: Date;
   lastUsedAt: Date | null;
 };
