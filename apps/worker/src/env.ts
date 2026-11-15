@@ -200,6 +200,11 @@ export const envSchema = z
      */
     ZOHO_FULFILMENT_ORDER_REF_FIELD: zohoApiName("LAX_Order_Ref"),
     /**
+     * API name of the multi-line text field the owners add to Dispatch_Fulfilments for the prints
+     * in the parcel: each one's SKU and edition label.
+     */
+    ZOHO_FULFILMENT_DISPATCH_PRINTS_FIELD: zohoApiName("LAX_Prints"),
+    /**
      * Unsubscribes and hard bounces from Zoho Campaigns into LAX's own suppression list. `off`
      * does nothing and never calls Zoho; `dry_run` reads Zoho and logs what it would record;
      * `live` records it. Read-only towards Zoho in every mode.

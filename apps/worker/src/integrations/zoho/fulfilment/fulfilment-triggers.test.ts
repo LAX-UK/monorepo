@@ -18,8 +18,18 @@ describe("fulfilmentTriggerOf", () => {
       // The aggregate may be a line or the fulfilment; the payload always names the order.
       expect(
         fulfilmentTriggerOf({ eventType, aggregateId: "line-1", payload: { orderId: "ord-1" } }),
-      ).toEqual({ kind: "order", orderId: "ord-1" });
+      ).toMatchObject({ kind: "order", orderId: "ord-1" });
     }
+  });
+
+  it("reports a print it cannot mirror only for the events that set the order's prints", () => {
+    const reports = Object.keys(FULFILMENT_TRIGGER_KINDS)
+      .filter((type) => FULFILMENT_TRIGGER_KINDS[type] === "order")
+      .filter((eventType) => {
+        const trigger = fulfilmentTriggerOf({ eventType, payload: { orderId: "ord-1" } });
+        return trigger?.kind === "order" && trigger.reportsProblems;
+      });
+    expect(reports.sort()).toEqual(["shop.order.paid", "shop.print.swapped"]);
   });
 
   it("ignores an order event whose payload names no order", () => {

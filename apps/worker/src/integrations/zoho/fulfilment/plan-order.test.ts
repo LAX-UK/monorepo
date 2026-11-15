@@ -2,8 +2,12 @@ import { describe, expect, it } from "vitest";
 import { framing, printLine } from "./order-facts.fixture.js";
 import {
   dispatchStatusOf,
+  editionAssigned,
   frameCodeOf,
+  holdsUnrankedStatus,
+  ledgerCounts,
   paperCodeOf,
+  parcelPrints,
   planWrite,
   printSkuOf,
   sizeCodeOf,
@@ -99,6 +103,46 @@ describe("printSkuOf", () => {
   });
 });
 
+describe("editionAssigned", () => {
+  it("labels a numbered print with its number over the run", () => {
+    expect(editionAssigned(printLine())).toBe("ED 07/25");
+  });
+
+  it("falls back to the label at payment for open editions, proofs and runs past 99", () => {
+    expect(editionAssigned(printLine({ editionType: "Open", printLabel: "OE-0021" }))).toBe(
+      "OE-0021",
+    );
+    expect(editionAssigned(printLine({ editionNumber: null, printLabel: "AP 2/3" }))).toBe(
+      "AP 2/3",
+    );
+    expect(editionAssigned(printLine({ runSize: 150, printLabel: "7/150" }))).toBe("7/150");
+    expect(editionAssigned(printLine({ editionNumber: null, printLabel: " " }))).toBeNull();
+  });
+});
+
+describe("parcelPrints", () => {
+  it("lists each print's SKU with its edition, and nothing when there is no print", () => {
+    expect(
+      parcelPrints([
+        { sku: "S-1", edition: "ED 07/25" },
+        { sku: "S-2", edition: null },
+      ]),
+    ).toBe("S-1 ED 07/25; S-2");
+    expect(parcelPrints([])).toBeNull();
+  });
+});
+
+describe("ledgerCounts", () => {
+  it("counts the run's sold prints by holder and in all", () => {
+    expect(ledgerCounts({ collector: 3, artist: 1, lax: 2 })).toEqual({
+      Assigned_To_Client: 3,
+      Assigned_To_Artist: 1,
+      Assigned_To_LAX: 2,
+      Print_Sold: 6,
+    });
+  });
+});
+
 describe("dispatchStatusOf", () => {
   const at = (status: string, packed = false) =>
     dispatchStatusOf({ status, carrier: null, trackingNumber: null }, packed);
@@ -140,7 +184,7 @@ describe("planWrite", () => {
   });
 
   it("moves a dispatch status forward and still updates the courier and tracking", () => {
-    const rank = { field: "Status", rank: "dispatch" as const };
+    const rank = { status: { field: "Status", rank: "dispatch" as const } };
     expect(
       planWrite(
         { Status: "Dispatched", Courier: "DPD", Tracking_Number: "123" },
@@ -152,5 +196,42 @@ describe("planWrite", () => {
       Status: "Delivered",
     });
     expect(planWrite({ Status: "Ready" }, record({ Status: "Dispatched" }), rank)).toBeNull();
+  });
+
+  it("leaves a status Zoho holds that LAX does not rank, and fills one never set", () => {
+    const status = { field: "Status", rank: "dispatch" as const };
+    expect(
+      planWrite({ Status: "Pack Prep" }, record({ Status: "QC Passed" }), { status }),
+    ).toBeNull();
+    expect(
+      planWrite({ Status: "Delivered" }, record({ Status: "On Hold" }), { status }),
+    ).toBeNull();
+    for (const unset of [null, "", "-None-"]) {
+      expect(planWrite({ Status: "Pack Prep" }, record({ Status: unset }), { status })).toEqual({
+        Status: "Pack Prep",
+      });
+    }
+    expect(holdsUnrankedStatus(record({ Status: "QC Passed" }), status)).toBe(true);
+    expect(holdsUnrankedStatus(record({ Status: "Ready" }), status)).toBe(false);
+    expect(holdsUnrankedStatus(record({ Status: "-None-" }), status)).toBe(false);
+    expect(holdsUnrankedStatus(null, status)).toBe(false);
+  });
+
+  it("clears a field LAX owns once LAX holds no value for it, and only that field", () => {
+    const clears = ["Tracking_Number"];
+    expect(
+      planWrite(
+        { Tracking_Number: null, Courier: null },
+        record({ Tracking_Number: "1", Courier: "DPD" }),
+        {
+          clears,
+        },
+      ),
+    ).toEqual({ Tracking_Number: null });
+    expect(
+      planWrite({ Tracking_Number: null }, record({ Tracking_Number: "" }), { clears }),
+    ).toBeNull();
+    // A new record has nothing to clear.
+    expect(planWrite({ A: "x", Tracking_Number: null }, null, { clears })).toEqual({ A: "x" });
   });
 });

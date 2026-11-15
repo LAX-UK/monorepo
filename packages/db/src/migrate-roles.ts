@@ -1115,8 +1115,10 @@ export const WORKER_SHOP_PRINT_GROUP_READ_COLUMNS = [
 /**
  * The Zoho fulfilment mirror mirrors a paid order's prints and dispatch from these columns and no
  * others: the order's reference and when it was paid, its print and framing lines (for the frame
- * in the SKU), the edition and listing each print is of, and the fulfilment. No buyer, address or
- * price column is read. The tables stay denied to the worker as a whole; only a column-level
+ * in the SKU), the edition and listing each print is of, and the fulfilment. No buyer or address
+ * column is read, nor the line's price column. `framing_snapshot` holds the frame option as sold,
+ * its price included (the invoice grant reads it already); the mirror takes only the frame from it
+ * and sends no price to Zoho. The tables stay denied to the worker as a whole; only a column-level
  * SELECT is granted.
  */
 export const WORKER_SHOP_ORDER_FULFILMENT_READ_COLUMNS = [
@@ -1144,7 +1146,6 @@ export const WORKER_SHOP_ORDER_FULFILMENT_READ_COLUMNS = [
       "source_original_artwork_id",
       "zoho_product_id",
       "run_kind",
-      "run_role",
       "run_size",
       "main_run_artwork_id",
       "print_size",

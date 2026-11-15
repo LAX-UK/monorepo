@@ -4,6 +4,7 @@ import {
   type PrintPaperCode,
   type PrintSizeCode,
   buildPrintSku,
+  formatEditionLabel,
   isPrintFrameCode,
   isPrintPaperCode,
   isPrintSizeCode,
@@ -88,6 +89,26 @@ export function printSkuOf(line: PrintLineFacts, groupCode: string): SkuResult {
   return { ok: true, value: { sku, size, paper, frame, allocation } };
 }
 
+/** The edition label on the print, "ED 07/25" for a numbered print, else its label at payment. */
+export function editionAssigned(line: PrintLineFacts): string | null {
+  if (line.editionType === "Numbered" && line.editionNumber !== null && line.runSize !== null) {
+    const label = formatEditionLabel(line.editionNumber, line.runSize);
+    if (label) return label;
+  }
+  return line.printLabel?.trim() || null;
+}
+
+/**
+ * What left in the parcel, one entry per print: its SKU and the edition it carries, such as
+ * "LAX-PRT-…-A3-HAH-UNF-COL ED 07/25". Null when the order has no print to list.
+ */
+export function parcelPrints(
+  prints: readonly { sku: string; edition: string | null }[],
+): string | null {
+  const entries = prints.map(({ sku, edition }) => (edition ? `${sku} ${edition}` : sku));
+  return entries.length > 0 ? entries.join("; ") : null;
+}
+
 export function wantedPrintSku(
   sku: PrintSku,
   line: PrintLineFacts,
@@ -114,6 +135,36 @@ const DISPATCH_RANK: Record<string, number> = {
   Delivered: 5,
 };
 
+/** Each status picklist LAX moves forward, by the name a caller asks for it with. */
+const STATUS_RANKS = { dispatch: DISPATCH_RANK } as const;
+
+export type StatusRank = keyof typeof STATUS_RANKS;
+
+/** A status field LAX only moves forward, ranked by one of the picklists above. */
+export type ForwardOnlyStatus = { field: string; rank: StatusRank };
+
+/** A field Zoho holds no value in; an unset picklist reads back as "-None-". */
+const isUnset = (value: unknown): boolean =>
+  value === null || value === undefined || String(value).trim() === "" || value === "-None-";
+
+/**
+ * True when Zoho holds a status LAX does not rank, such as one staff added to the picklist. LAX
+ * leaves such a status alone, since it cannot tell whether moving it would be forward or back.
+ */
+export function holdsUnrankedStatus(
+  current: ZohoRecordState | null,
+  status: ForwardOnlyStatus,
+): boolean {
+  const held = current?.fields[status.field];
+  return !isUnset(held) && STATUS_RANKS[status.rank][String(held)] === undefined;
+}
+
+function heldRank(current: ZohoRecordState, status: ForwardOnlyStatus): number {
+  const held = current.fields[status.field];
+  if (isUnset(held)) return 0;
+  return STATUS_RANKS[status.rank][String(held)] ?? Number.POSITIVE_INFINITY;
+}
+
 /**
  * The dispatch status in Zoho, or null while there is nothing to dispatch: before any print is
  * picked, for an order kept in LAX storage, and for a cancelled fulfilment.
@@ -139,11 +190,17 @@ export function dispatchStatusOf(
   }
 }
 
+/** The main run's prints sold, paid and not released, whoever held them. */
+export function printsSold(sales: RunSales): number {
+  return sales.collector + sales.artist + sales.lax;
+}
+
 export function ledgerCounts(sales: RunSales): ZohoFields {
   return {
     Assigned_To_Client: sales.collector,
     Assigned_To_Artist: sales.artist,
     Assigned_To_LAX: sales.lax,
+    Print_Sold: printsSold(sales),
   };
 }
 
@@ -154,24 +211,37 @@ const sameValue = (wanted: CrmFieldValue, current: unknown): boolean => {
   return String(value) === String(current);
 };
 
+/** How a write treats the fields that are not plain values. */
+export type WriteRules = {
+  /** A status only ever moved forward. */
+  status?: ForwardOnlyStatus;
+  /** Fields LAX owns outright: when LAX has no value, the value Zoho holds is cleared. */
+  clears?: readonly string[];
+};
+
 /**
  * The fields to write so Zoho holds what LAX wants, or null when it already does. A field LAX has
- * no value for is left alone. A status is only ever moved forward: when Zoho's status is as far
- * along as LAX's or further (staff may move it on in Zoho), it is not written back.
+ * no value for is left alone, unless the rules say LAX owns it, when Zoho's value is cleared. A
+ * status is only ever moved forward: when Zoho's status is as far along as LAX's or further (staff
+ * may move it on in Zoho), or is one LAX does not rank, it is not written back.
  */
 export function planWrite(
   wanted: ZohoFields,
   current: ZohoRecordState | null,
-  status?: { field: string; rank: "dispatch" },
+  rules: WriteRules = {},
 ): ZohoFields | null {
+  const { status, clears = [] } = rules;
   const changed: ZohoFields = {};
   for (const [key, value] of Object.entries(wanted)) {
-    if (value === null) continue;
+    if (value === null) {
+      if (current && clears.includes(key) && !isUnset(current.fields[key])) changed[key] = null;
+      continue;
+    }
     if (!current || !sameValue(value, current.fields[key])) changed[key] = value;
   }
   if (status && current && status.field in changed) {
-    const held = DISPATCH_RANK[String(current.fields[status.field])] ?? 0;
-    if (held >= (DISPATCH_RANK[String(changed[status.field])] ?? 0)) delete changed[status.field];
+    const wantedRank = STATUS_RANKS[status.rank][String(changed[status.field])] ?? 0;
+    if (heldRank(current, status) >= wantedRank) delete changed[status.field];
   }
   return Object.keys(changed).length > 0 ? changed : null;
 }

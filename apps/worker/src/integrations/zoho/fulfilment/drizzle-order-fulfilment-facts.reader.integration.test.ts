@@ -29,6 +29,9 @@ describe.skipIf(!ownerUrl || !workerUrl)("order fulfilment facts reader as worke
   const otherLineId = randomUUID();
   const proofEditionId = randomUUID();
   const proofLineId = randomUUID();
+  const proofListingId = randomUUID();
+  const proofListingEditionId = randomUUID();
+  const proofListingLineId = randomUUID();
   const due = new Date("2026-12-01T09:00:00.000Z");
   let owner: pg.Pool;
   let reference = "";
@@ -40,12 +43,18 @@ describe.skipIf(!ownerUrl || !workerUrl)("order fulfilment facts reader as worke
        values ($1, $2, 'uk_insured_delivery', 1000, 0, 1000, $3, $4::shop_order_status, $5)`,
       [id, `subject-${tag}`, `order-${id}`, paid ? "paid" : "pending_payment", paid ? due : null],
     );
-  const goods = (id: string, inOrder: string, edition: string, number: number) =>
+  const goods = (
+    id: string,
+    inOrder: string,
+    edition: string,
+    number: number,
+    listing = printsId,
+  ) =>
     owner.query(
       `insert into shop_order_line (id, order_id, edition_id, artwork_id, unit_price_pence,
          edition_number, print_label)
        values ($1, $2, $3, $4, 1000, $5, $6)`,
-      [id, inOrder, edition, printsId, number, `${number}/25`],
+      [id, inOrder, edition, listing, number, `${number}/25`],
     );
 
   beforeAll(async () => {
@@ -88,6 +97,27 @@ describe.skipIf(!ownerUrl || !workerUrl)("order fulfilment facts reader as worke
        values ($1, $2, 'lax', 5, 1)`,
       [proofEditionId, printsId],
     );
+    // The artist's proofs listed on their own, linked to the main run: not part of its ledger.
+    await owner.query(
+      `insert into shop_artwork (id, slug, title, artist_id, eligible_for_edition_allocation, import_key,
+         source_original_artwork_id, run_kind, run_role, run_size, alloc_buyer, alloc_artist,
+         alloc_lax, main_run_artwork_id, proof_type, print_size, print_paper)
+       values ($1, $2, 'Harbour at dusk (AP)', $3, true, $4, $5, 'limited', 'proof', 1, 0, 0, 1,
+         $6, 'ap', 'A3', 'Hahnemühle Photo Rag')`,
+      [
+        proofListingId,
+        `harbour-ap-${tag}`,
+        artistId,
+        `order-facts:${tag}:ap`,
+        originalId,
+        printsId,
+      ],
+    );
+    await owner.query(
+      `insert into shop_edition (id, artwork_id, allocation, edition_number, stock_ref)
+       values ($1, $2, 'lax', 1, 1)`,
+      [proofListingEditionId, proofListingId],
+    );
     await owner.query(
       `insert into shop_framing_option (id, code, name, frame, mount, glazing, hanging,
          lead_time_min_days, lead_time_max_days)
@@ -103,6 +133,7 @@ describe.skipIf(!ownerUrl || !workerUrl)("order fulfilment facts reader as worke
     await goods(releasedLineId, orderId, editionIds[2] as string, 3);
     await goods(otherLineId, otherOrderId, editionIds[3] as string, 4);
     await goods(proofLineId, orderId, proofEditionId, 5);
+    await goods(proofListingLineId, orderId, proofListingEditionId, 1, proofListingId);
     await owner.query("update shop_order_line set released_at = now() where id = $1", [
       releasedLineId,
     ]);
@@ -160,7 +191,11 @@ describe.skipIf(!ownerUrl || !workerUrl)("order fulfilment facts reader as worke
       ]);
       await client.query("delete from shop_order where id in ($1, $2)", [orderId, otherOrderId]);
       await client.query("delete from shop_framing_option where id = $1", [optionId]);
-      await client.query("delete from shop_edition where artwork_id = $1", [printsId]);
+      await client.query("delete from shop_edition where artwork_id in ($1, $2)", [
+        printsId,
+        proofListingId,
+      ]);
+      await client.query("delete from shop_artwork where id = $1", [proofListingId]);
       await client.query("delete from shop_artwork where id in ($1, $2)", [printsId, originalId]);
       await client.query("delete from shop_artist where id = $1", [artistId]);
       await client.query("delete from shop_party where id = $1", [partyId]);
@@ -207,8 +242,18 @@ describe.skipIf(!ownerUrl || !workerUrl)("order fulfilment facts reader as worke
         [releasedLineId, true, null],
         [proofLineId, false, null],
         [secondLineId, false, null],
+        [proofListingLineId, false, null],
       ].sort(),
     );
+    // Only the main run's own listing is counted on the group's ledger.
+    expect(
+      facts?.prints.filter((line) => line.isMainRun).map((line) => line.printsArtworkId),
+    ).toEqual([printsId, printsId, printsId, printsId]);
+    expect(facts?.prints.find((line) => line.lineId === proofListingLineId)).toMatchObject({
+      printsArtworkId: proofListingId,
+      isMainRun: false,
+      originalZohoProductId: `zp-${tag}`,
+    });
   });
 
   it("counts the run's prints sold on paid orders and not released, by who held them, without proofs", async () => {

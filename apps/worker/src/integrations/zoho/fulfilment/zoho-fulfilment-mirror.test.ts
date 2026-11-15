@@ -30,8 +30,12 @@ describe("ZohoFulfilmentMirror", () => {
         payload: { orderId: "o1" },
       }),
     ).toEqual({ outcome: "success", providerReference: "Order:LAX-S-1" });
-    expect(m.orders).toHaveBeenCalledWith("o1");
+    // A dispatch step does not change the prints, so a bad line is not failed again.
+    expect(m.orders).toHaveBeenCalledWith("o1", { reportProblems: false });
     expect(m.deliver).not.toHaveBeenCalled();
+
+    await m.mirror.deliver({ eventType: "shop.order.paid", payload: { orderId: "o2" } });
+    expect(m.orders).toHaveBeenLastCalledWith("o2", { reportProblems: true });
   });
 
   it("skips events it does not handle", async () => {

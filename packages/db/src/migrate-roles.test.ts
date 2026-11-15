@@ -670,7 +670,7 @@ describe("migrate-roles invariants", () => {
     }
   });
 
-  it("lets the worker read the Shop columns the order mirror needs, no buyer or price, and no whole Shop table", () => {
+  it("lets the worker read the Shop columns the order mirror needs, no buyer or price column, and no whole Shop table", () => {
     const columns = Object.fromEntries(WORKER_SHOP_ORDER_FULFILMENT_READ_COLUMNS);
     expect([...columns.shop_order].sort()).toEqual(["id", "paid_at", "reference"]);
     const read = Object.values(columns).flat();

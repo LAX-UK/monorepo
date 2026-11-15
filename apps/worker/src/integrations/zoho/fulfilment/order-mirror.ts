@@ -9,12 +9,17 @@ import type {
   PrintLineFacts,
 } from "./order-facts.js";
 import {
+  type WriteRules,
   type ZohoFields,
   type ZohoRecordState,
   dispatchStatusOf,
+  editionAssigned,
+  holdsUnrankedStatus,
   ledgerCounts,
+  parcelPrints,
   planWrite,
   printSkuOf,
+  printsSold,
   wantedPrintSku,
 } from "./plan-order.js";
 import { ledgerMirrorKey } from "./plan-print-group.js";
@@ -22,11 +27,14 @@ import type { OrderModule, ZohoOrderRecords } from "./zoho-order-modules.js";
 
 /**
  * The Zoho fields LAX writes its own references into. Dispatch_Fulfilments has no field that names
- * the LAX order, so the owners add one (unique, text) and its API name is set here.
+ * the LAX order or the prints in the parcel, so the owners add them and their API names are set
+ * here.
  */
 export type OrderMirrorFields = {
-  /** Holds the order reference on the records LAX creates. */
+  /** Holds the order reference on the records LAX creates (unique, text). */
   orderRef: string;
+  /** Holds the prints in the parcel on the order's dispatch: each one's SKU and edition label. */
+  dispatchPrints: string;
 };
 
 export type OrderMirrorDeps = {
@@ -38,6 +46,15 @@ export type OrderMirrorDeps = {
   log: Pick<Logger, "info" | "warn">;
 };
 
+export type OrderDeliveryOptions = {
+  /**
+   * False for an event that does not change which prints are on the order (a pick, a dispatch
+   * step): a line that cannot be mirrored was already failed for staff when the order was paid or
+   * the print swapped, so it is logged and the event is not failed a second time. Default true.
+   */
+  reportProblems?: boolean;
+};
+
 const SKU_COLUMNS = [
   "SKU",
   "Linked_Print_Product_Group",
@@ -47,7 +64,13 @@ const SKU_COLUMNS = [
   "Allocation_Bucket",
   "Edition_Type",
 ] as const;
-const LEDGER_COLUMNS = ["Assigned_To_Client", "Assigned_To_Artist", "Assigned_To_LAX"] as const;
+const LEDGER_COLUMNS = [
+  "Assigned_To_Client",
+  "Assigned_To_Artist",
+  "Assigned_To_LAX",
+  "Print_Sold",
+] as const;
+const GROUP_COLUMNS = ["Print_Sold"] as const;
 
 /** Zoho does not hold a record the order's records hang from yet; a later try may find it. */
 function notYetInZoho(what: string): CrmGatewayError {
@@ -61,8 +84,8 @@ function notYetInZoho(what: string): CrmGatewayError {
 
 /**
  * Mirrors one order's print fulfilment to Zoho CRM, one way: each print's Print_SKUs record (one
- * per SKU, shared by every order of it), the group ledger's sold counts, and the order's
- * Dispatch_Fulfilments record. Staff do the work in LAX Admin; this
+ * per SKU, shared by every order of it), the group's sold counts, and the order's
+ * Dispatch_Fulfilments record with the prints in the parcel. Staff do the work in LAX Admin; this
  * only keeps Zoho complete for reporting.
  *
  * Every event for the order runs the same pass over LAX and Zoho as they are now and writes only
@@ -72,7 +95,7 @@ function notYetInZoho(what: string): CrmGatewayError {
 export class OrderMirror {
   constructor(private readonly deps: OrderMirrorDeps) {}
 
-  async deliver(orderId: string): Promise<CrmSyncResult> {
+  async deliver(orderId: string, options: OrderDeliveryOptions = {}): Promise<CrmSyncResult> {
     const facts = await this.deps.facts.read(orderId);
     if (!facts) return { outcome: "skipped", reason: "order_not_found" };
     if (!facts.paid) return { outcome: "skipped", reason: "order_not_paid" };
@@ -80,14 +103,14 @@ export class OrderMirror {
 
     const pass = new OrderPass(this.deps, facts);
     const problems: string[] = [];
-    const ledgersDone = new Set<string>();
     for (const line of facts.prints) {
-      const problem = await pass.mirrorLine(line, ledgersDone);
+      const problem = await pass.mirrorLine(line);
       if (problem) problems.push(`${line.lineId}: ${problem}`);
     }
     await pass.mirrorDispatch();
 
-    if (problems.length > 0) {
+    const reportProblems = options.reportProblems ?? true;
+    if (problems.length > 0 && reportProblems) {
       // The other lines are mirrored; these need staff to put the listing right.
       return {
         outcome: "fatal",
@@ -99,16 +122,32 @@ export class OrderMirror {
         }),
       };
     }
+    if (problems.length > 0) {
+      this.deps.log.warn(
+        { order: facts.reference, problems },
+        "order mirror: prints still not mirrored, already failed for staff",
+      );
+    }
     if (this.deps.mode === "dry_run") return { outcome: "skipped", reason: "dry_run" };
-    return pass.wrote > 0
-      ? { outcome: "success", providerReference: `Order:${facts.reference}` }
-      : { outcome: "skipped", reason: "order_already_in_sync" };
+    if (pass.wrote > 0) {
+      return { outcome: "success", providerReference: `Order:${facts.reference}` };
+    }
+    return {
+      outcome: "skipped",
+      reason: problems.length > 0 ? "order_prints_not_mirrored" : "order_already_in_sync",
+    };
   }
 }
 
-/** One pass over one order; counts what it writes. */
+/** One pass over one order; counts what it writes and reads each Zoho record at most once. */
 class OrderPass {
   wrote = 0;
+  /** The prints in the parcel, for the dispatch record. */
+  private readonly parcel: { sku: string; edition: string | null }[] = [];
+  private readonly ledgersDone = new Set<string>();
+  private readonly skusDone = new Set<string>();
+  private readonly groups = new Map<string, Promise<ZohoRecordState | null>>();
+  private readonly codes = new Map<string, Promise<string | null | { problem: string }>>();
 
   constructor(
     private readonly deps: OrderMirrorDeps,
@@ -116,11 +155,7 @@ class OrderPass {
   ) {}
 
   /** Mirrors one print line; answers why it cannot be, or null. */
-  async mirrorLine(line: PrintLineFacts, ledgersDone: Set<string>): Promise<string | null> {
-    const { zoho } = this.deps;
-    // A refunded print is not mirrored: its SKU record stays for the other orders of it.
-    if (line.released) return null;
-
+  async mirrorLine(line: PrintLineFacts): Promise<string | null> {
     const code = await this.groupCodeOf(line);
     if (code === null) {
       // Prints of an original outside the register have no group in Zoho to hang from.
@@ -128,31 +163,43 @@ class OrderPass {
       return null;
     }
     if (typeof code !== "string") return code.problem;
-    const sku = printSkuOf(line, code);
-    if (!sku.ok) return sku.reason;
+    const group = await this.groupOf(code);
 
-    const group = await zoho.find("Print_Products", "Print_Group_ID", code, []);
-    if (!group && this.deps.mode === "live") throw notYetInZoho("print_group");
-    const printSku = await zoho.find("Print_SKUs", "SKU", sku.value.sku, SKU_COLUMNS);
-    await this.apply("Print_SKUs", printSku, wantedPrintSku(sku.value, line, group?.id ?? null));
-
-    if (line.isMainRun && !ledgersDone.has(code)) {
-      ledgersDone.add(code);
+    // The ledger counts the run as LAX holds it now, so a refunded print lowers it too.
+    if (line.isMainRun && !this.ledgersDone.has(code)) {
+      this.ledgersDone.add(code);
       await this.mirrorLedger(code, line.printsArtworkId);
     }
 
+    // A refunded print's SKU record stays for the other orders of it, and it left in no parcel.
+    if (line.released) return null;
+
+    const sku = printSkuOf(line, code);
+    if (!sku.ok) return sku.reason;
+    this.parcel.push({ sku: sku.value.sku, edition: editionAssigned(line) });
+    if (this.skusDone.has(sku.value.sku)) return null;
+    this.skusDone.add(sku.value.sku);
+
+    const printSku = await this.deps.zoho.find("Print_SKUs", "SKU", sku.value.sku, SKU_COLUMNS);
+    await this.apply(
+      "Print_SKUs",
+      printSku,
+      wantedPrintSku(sku.value, line, group?.id ?? null),
+      "SKU",
+    );
     return null;
   }
 
   async mirrorDispatch(): Promise<void> {
     const { fulfilment, anyPackConfirmed, reference } = this.facts;
     if (!fulfilment) return;
-    const ref = this.deps.fields.orderRef;
+    const { orderRef: ref, dispatchPrints } = this.deps.fields;
     const current = await this.deps.zoho.find("Dispatch_Fulfilments", ref, reference, [
       ref,
       "Status",
       "Courier",
       "Tracking_Number",
+      dispatchPrints,
     ]);
     const status = dispatchStatusOf(fulfilment, anyPackConfirmed);
     // Nothing is made in Zoho before there is a parcel to prepare.
@@ -165,11 +212,18 @@ class OrderPass {
         Status: status,
         Courier: fulfilment.carrier?.trim() || null,
         Tracking_Number: fulfilment.trackingNumber?.trim() || null,
+        [dispatchPrints]: parcelPrints(this.parcel),
       },
-      "dispatch",
+      ref,
+      {
+        status: { field: "Status", rank: "dispatch" },
+        // LAX Admin is where these are recorded; one blanked there is cleared in Zoho too.
+        clears: ["Courier", "Tracking_Number", dispatchPrints],
+      },
     );
   }
 
+  /** The run's sold counts on the group's ledger, and the total sold on the ledger and group. */
   private async mirrorLedger(code: string, printsArtworkId: string): Promise<void> {
     const ledger = await this.deps.zoho.find(
       "Edition_Ledgers",
@@ -184,13 +238,47 @@ class OrderPass {
       return;
     }
     const sales = await this.deps.facts.runSales(printsArtworkId);
-    await this.apply("Edition_Ledgers", ledger, ledgerCounts(sales));
+    await this.apply("Edition_Ledgers", ledger, ledgerCounts(sales), "LAX_Mirror_Key");
+    const group = await this.groupOf(code);
+    if (group) {
+      await this.apply(
+        "Print_Products",
+        group,
+        { Print_Sold: printsSold(sales) },
+        "Print_Group_ID",
+      );
+    }
+  }
+
+  /** The group's Print_Products record; in `live` its absence is retried. */
+  private groupOf(code: string): Promise<ZohoRecordState | null> {
+    let group = this.groups.get(code);
+    if (!group) {
+      group = this.deps.zoho
+        .find("Print_Products", "Print_Group_ID", code, GROUP_COLUMNS)
+        .then((found) => {
+          if (!found && this.deps.mode === "live") throw notYetInZoho("print_group");
+          return found;
+        });
+      this.groups.set(code, group);
+    }
+    return group;
   }
 
   /** The print's group code, null when its original is not registered, or why it cannot be. */
-  private async groupCodeOf(line: PrintLineFacts): Promise<string | null | { problem: string }> {
-    if (!line.originalZohoProductId) return null;
-    const original = await this.deps.register.findByZohoProductId(line.originalZohoProductId);
+  private groupCodeOf(line: PrintLineFacts): Promise<string | null | { problem: string }> {
+    const productId = line.originalZohoProductId;
+    if (!productId) return Promise.resolve(null);
+    let code = this.codes.get(productId);
+    if (!code) {
+      code = this.lookUpGroupCode(productId);
+      this.codes.set(productId, code);
+    }
+    return code;
+  }
+
+  private async lookUpGroupCode(productId: string): Promise<string | null | { problem: string }> {
+    const original = await this.deps.register.findByZohoProductId(productId);
     if (original?.kind !== "original") return null;
     try {
       return printCodeForOriginal(original.stockCode);
@@ -200,14 +288,29 @@ class OrderPass {
     }
   }
 
-  /** Writes what differs, or in `dry_run` logs it; answers the record's id, null if not made. */
+  /**
+   * Writes what differs, or in `dry_run` logs it; answers the record's id, null if not made. A new
+   * record is matched on `matchOn`, so one another delivery made meanwhile is updated, not doubled.
+   */
   private async apply(
     module: OrderModule,
     current: ZohoRecordState | null,
     wanted: ZohoFields,
-    rank?: "dispatch",
+    matchOn: string,
+    rules: WriteRules = {},
   ): Promise<string | null> {
-    const write = planWrite(wanted, current, rank ? { field: "Status", rank } : undefined);
+    if (rules.status && holdsUnrankedStatus(current, rules.status)) {
+      this.deps.log.warn(
+        {
+          order: this.facts.reference,
+          module,
+          recordId: current?.id ?? null,
+          status: current?.fields[rules.status.field],
+        },
+        "order mirror leaves a status it does not rank; add it to the rank table",
+      );
+    }
+    const write = planWrite(wanted, current, rules);
     if (!write) return current?.id ?? null;
     if (this.deps.mode === "dry_run") {
       this.deps.log.info(
@@ -218,7 +321,7 @@ class OrderPass {
       );
       return current?.id ?? null;
     }
-    const id = await this.deps.zoho.save(module, current?.id ?? null, write);
+    const id = await this.deps.zoho.save(module, current?.id ?? null, write, matchOn);
     this.wrote += 1;
     return id;
   }
