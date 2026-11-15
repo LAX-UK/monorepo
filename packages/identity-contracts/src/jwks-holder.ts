@@ -111,6 +111,8 @@ export function createJwksHolder(options: {
   let lastAttemptAt = Number.NEGATIVE_INFINITY;
   let lastFailureAt = Number.NEGATIVE_INFINITY;
   let inflight: Promise<void> | null = null;
+  // Keyed on lastFailureAt, a millisecond timestamp: a clock that does not advance between two
+  // failures would suppress the second report (production failures are a cooldown apart).
   let staleReportedFor = Number.NEGATIVE_INFINITY;
   const totals: JwksHolderCounters = { fetchFailures: 0, staleServes: 0 };
 

@@ -40,7 +40,7 @@ export function jwksEventTotals(): { fetch_failed: number; served_stale: number 
 
 new Counter({
   name: "auction_api_jwks_events_total",
-  help: "Signing key set fetch failures and requests answered from a key set that could not be refreshed",
+  help: "Signing key set fetch failures (fetch_failed) and answers served from a key set that could not be refreshed within the failure cooldown (served_stale); not every answer older than the cache TTL, and not the request whose own background refresh failed",
   labelNames: ["event"] as const,
   registers: [metricsRegistry],
   collect() {
