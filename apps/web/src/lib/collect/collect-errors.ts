@@ -95,6 +95,8 @@ export function collectFailure(
         })),
         message: text(refusal, "Check who is collecting."),
       };
+    case "too_many_visits":
+      return { kind: "other", message: COLLECT_COPY.tooManyVisits };
     case "online_booking_off":
       return {
         kind: "off",

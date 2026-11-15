@@ -27,6 +27,9 @@ vi.mock("@/lib/data/sale-titles.server", () => ({
   resolveSaleTitles: async () => ({}),
 }));
 
+const loadVisits = vi.fn();
+vi.mock("@/lib/collect/collect-api.server", () => ({ loadVisits: () => loadVisits() }));
+
 import { loadPurchaseSources } from "./purchase-sources.server";
 
 function actingAs(account: ScopedAccount) {
@@ -40,6 +43,7 @@ describe("loadPurchaseSources invoices", () => {
     scope.mockReset();
     listMine.mockReset().mockResolvedValue([{ lotId: "own-lot" }]);
     getServerEntityPayments.mockReset().mockResolvedValue([payment]);
+    loadVisits.mockReset().mockResolvedValue({ ok: true, value: [] });
   });
 
   it("reads the person's own payments on their own account", async () => {
@@ -56,5 +60,42 @@ describe("loadPurchaseSources invoices", () => {
     expect(getServerEntityPayments).toHaveBeenCalledTimes(1);
     expect(listMine).not.toHaveBeenCalled();
     expect(Object.keys(sources?.invoiceByLot ?? {})).toEqual(["lot-1"]);
+  });
+});
+
+describe("loadPurchaseSources booked visits", () => {
+  const visit = (status: string, lots: { lotId: string; active: boolean }[]) => ({
+    id: "v1",
+    status,
+    start: "2026-11-18T10:00:00Z",
+    lots,
+  });
+
+  beforeEach(() => {
+    scope.mockReset();
+    listMine.mockReset().mockResolvedValue([]);
+    actingAs({ kind: "personal", id: "person-1" });
+  });
+
+  it("maps each active lot of a booked visit to its start", async () => {
+    loadVisits.mockReset().mockResolvedValue({
+      ok: true,
+      value: [
+        visit("booked", [
+          { lotId: "a", active: true },
+          { lotId: "b", active: false },
+        ]),
+        visit("cancelled", [{ lotId: "c", active: true }]),
+      ],
+    });
+    const sources = await loadPurchaseSources();
+    expect(sources?.bookedStartByLot).toEqual({ a: "2026-11-18T10:00:00Z" });
+  });
+
+  it("goes without booked days when the visits cannot be read", async () => {
+    loadVisits.mockReset().mockResolvedValue({ ok: false, failure: { kind: "unavailable" } });
+    expect((await loadPurchaseSources())?.bookedStartByLot).toEqual({});
+    loadVisits.mockReset().mockRejectedValue(new Error("down"));
+    expect((await loadPurchaseSources())?.bookedStartByLot).toEqual({});
   });
 });

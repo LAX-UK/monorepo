@@ -161,9 +161,22 @@ export const COLLECT_COPY = {
     emailHref: `mailto:${GALLERY_CONTACT.email}?subject=${encodeURIComponent("Collecting my purchase")}`,
   },
   badge: {
+    booked: (day: string) => `Booked ${day}`,
+    overdue: "Overdue",
     book: "Book collection",
     notCollected: "Not collected",
   },
+  bulk: {
+    button: (count: number) =>
+      `Book a collection time for ${count} ${count === 1 ? "lot" : "lots"}`,
+    selected: (count: number, place: string) =>
+      `${count} ${count === 1 ? "lot" : "lots"} at ${place}, in one visit`,
+    mixed: "These lots wait at different places. Pick lots from one place to book them together.",
+    tooMany: "A visit holds up to 20 lots. Pick fewer, or book in two visits.",
+    pick: (title: string) => `Collect ${title}`,
+  },
+  tooManyVisits:
+    "You already have the most collections we can hold for one account. Cancel one, or email us.",
   entry: {
     button: "Book a collection time",
     intro: `From our gallery at ${GALLERY_CONTACT.streetLine}, ${GALLERY_CONTACT.city} ${GALLERY_CONTACT.postcode}. Book a time online, Monday to Friday.`,

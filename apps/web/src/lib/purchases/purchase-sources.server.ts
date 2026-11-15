@@ -1,6 +1,7 @@
 import "server-only";
 import type { AccountScope } from "@/lib/account-scope/account-scope";
 import { paymentRoleFor } from "@/lib/buying/account-buying-figures";
+import { loadVisits } from "@/lib/collect/collect-api.server";
 import { getServerDataContainer } from "@/lib/data/container.server";
 import { getServerAccountPurchaseFacts } from "@/lib/data/http/account-buying.server";
 import type { LotFulfilmentSnapshot, MyPaymentRow } from "@/lib/data/http/payments.schema";
@@ -34,12 +35,14 @@ export async function loadPurchaseSources(): Promise<PurchaseSources | null> {
   const container = await getServerDataContainer();
   const scope = await container.buying.scope();
   const organisation = scope.account.kind === "organisation" ? scope.account : null;
-  const [rowsResult, owedResult, paymentsResult, factsResult] = await Promise.allSettled([
-    container.buying.purchases(),
-    container.buying.amountsOwed(),
-    invoicesFor(scope),
-    organisation ? getServerAccountPurchaseFacts(organisation.id) : Promise.resolve(null),
-  ]);
+  const [rowsResult, owedResult, paymentsResult, factsResult, visitsResult] =
+    await Promise.allSettled([
+      container.buying.purchases(),
+      container.buying.amountsOwed(),
+      invoicesFor(scope),
+      organisation ? getServerAccountPurchaseFacts(organisation.id) : Promise.resolve(null),
+      loadVisits(),
+    ]);
   // The won lots and what is owed on them are the page itself: without either, it says so
   // rather than showing a figure that could disagree with the rest of the site.
   if (rowsResult.status === "rejected" || owedResult.status === "rejected") return null;
@@ -74,8 +77,19 @@ export async function loadPurchaseSources(): Promise<PurchaseSources | null> {
     }
   }
 
+  // The badge "Booked <day>" comes from the live visits; when they cannot be read the row simply
+  // goes without it.
+  const bookedStartByLot: Record<string, string> = {};
+  if (visitsResult.status === "fulfilled" && visitsResult.value.ok) {
+    for (const visit of visitsResult.value.value) {
+      if (visit.status !== "booked") continue;
+      for (const lot of visit.lots) if (lot.active) bookedStartByLot[lot.lotId] = visit.start;
+    }
+  }
+
   return {
     rows,
+    bookedStartByLot,
     invoiceByLot,
     fulfilmentByLot,
     owedByLot,
