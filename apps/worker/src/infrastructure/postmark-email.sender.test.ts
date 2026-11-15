@@ -168,3 +168,41 @@ describe("PostmarkEmailSender calendar attachment", () => {
     expect(sendEmail.mock.calls.at(-1)?.[0].Attachments).toBeUndefined();
   });
 });
+
+describe("PostmarkEmailSender thread Reply-To", () => {
+  const sender = new PostmarkEmailSender({
+    serverToken: "t",
+    from: "bid@lax.example",
+    transactionalStream: "outbound",
+    broadcastStream: "broadcast",
+    replyTo: "support@lax.example",
+  });
+  const send = (vars: Record<string, unknown>) =>
+    sender.send({
+      outboxId: "o2",
+      template: "bid-enquiry-received",
+      to: "ada@example.com",
+      vars: {
+        reference: "E-1042",
+        kind: "general",
+        replyBy: "2026-11-17T10:00:00Z",
+        privacyUrl: "https://lax.bid/privacy",
+        contactEmail: "hello@lax.bid",
+        ...vars,
+      } as never,
+      stream: "transactional",
+      flaggedAddress: false,
+    });
+
+  it("uses the thread's reply address over the sender-wide one", async () => {
+    await send({ replyTo: "replies+abc-def@inbound.example.test" });
+    expect(sendEmail.mock.calls.at(-1)?.[0].ReplyTo).toBe("replies+abc-def@inbound.example.test");
+  });
+
+  it("keeps the sender-wide Reply-To when the thread has none or the value is not an address", async () => {
+    await send({});
+    expect(sendEmail.mock.calls.at(-1)?.[0].ReplyTo).toBe("support@lax.example");
+    await send({ replyTo: "x@y.test, attacker@z.test" });
+    expect(sendEmail.mock.calls.at(-1)?.[0].ReplyTo).toBe("support@lax.example");
+  });
+});

@@ -4,6 +4,7 @@ import {
   foreignKey,
   index,
   integer,
+  jsonb,
   pgTable,
   text,
   timestamp,
@@ -68,7 +69,14 @@ export const marketingEnquiryNote = pgTable(
   ],
 );
 
-/** A reply staff sent to the sender, queued through the email outbox. */
+/** The metadata of one file that came with a reply. The file itself is not downloaded or stored. */
+export type InboundAttachmentMeta = { name: string; contentType: string; sizeBytes: number };
+
+/**
+ * One message on an enquiry thread: a reply staff sent to the sender (queued through the email
+ * outbox), or a reply the sender emailed back (`direction = 'inbound'`, received on the Postmark
+ * inbound webhook, tied to the thread by its unguessable reply address or by In-Reply-To).
+ */
 export const marketingEnquiryMessage = pgTable(
   "marketing_enquiry_message",
   {
@@ -79,6 +87,18 @@ export const marketingEnquiryMessage = pgTable(
     body: text("body").notNull(),
     outboxId: uuid("outbox_id"),
     createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),
+    direction: text("direction").notNull().default("outbound"),
+    /** Inbound only: Postmark's MessageID, the idempotency key of the webhook. */
+    providerMessageId: text("provider_message_id"),
+    /** Inbound only: a hash of the From address, so the address itself is not kept twice. */
+    fromEmailHash: text("from_email_hash"),
+    /** Inbound only: how the reply was tied to the thread. */
+    matchedBy: text("matched_by"),
+    /** Inbound only: name, type and size of each file; the files are not stored. */
+    attachments: jsonb("attachments")
+      .notNull()
+      .default(sql`'[]'::jsonb`)
+      .$type<InboundAttachmentMeta[]>(),
   },
   (table) => [
     foreignKey({
@@ -87,6 +107,20 @@ export const marketingEnquiryMessage = pgTable(
       foreignColumns: [marketingEnquiry.id],
     }).onDelete("cascade"),
     index("marketing_enquiry_message_enquiry_idx").on(table.enquiryId, table.createdAt),
+    uniqueIndex("marketing_enquiry_message_provider_uidx")
+      .on(table.providerMessageId)
+      .where(sql`${table.providerMessageId} IS NOT NULL`),
+    index("marketing_enquiry_message_outbox_idx")
+      .on(table.outboxId)
+      .where(sql`${table.outboxId} IS NOT NULL`),
+    check(
+      "marketing_enquiry_message_direction_check",
+      sql`${table.direction} IN ('outbound', 'inbound')`,
+    ),
+    check(
+      "marketing_enquiry_message_inbound_check",
+      sql`${table.direction} = 'outbound' OR (${table.providerMessageId} IS NOT NULL AND ${table.matchedBy} IN ('token', 'in_reply_to') AND char_length(${table.body}) <= 20000 AND char_length(${table.subject}) <= 300 AND jsonb_typeof(${table.attachments}) = 'array')`,
+    ),
   ],
 );
 
@@ -114,5 +148,63 @@ export const enquiryRoutingRule = pgTable(
     uniqueIndex("enquiry_routing_rule_fallback_uidx")
       .on(sql`(true)`)
       .where(sql`${table.departmentSlug} IS NULL`),
+  ],
+);
+
+/**
+ * Inbound mail that could not be tied to an enquiry thread with confidence: no valid reply
+ * address, a sender who is not the enquirer, failed SPF, or an automatic reply. It is held here
+ * for staff review and never attached to a thread. Kept 30 days, then purged.
+ */
+export const enquiryInboundQuarantine = pgTable(
+  "enquiry_inbound_quarantine",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    /** Postmark's MessageID: a replayed delivery is the same row. */
+    providerMessageId: text("provider_message_id").notNull(),
+    reason: text("reason").notNull(),
+    fromAddress: text("from_address").notNull(),
+    subject: text("subject").notNull(),
+    body: text("body").notNull(),
+    attachments: jsonb("attachments")
+      .notNull()
+      .default(sql`'[]'::jsonb`)
+      .$type<InboundAttachmentMeta[]>(),
+    /** The enquiry the reply address named, when it named a real one (the reply was still held back). */
+    suspectedEnquiryId: uuid("suspected_enquiry_id"),
+    status: text("status").notNull().default("pending"),
+    reviewedByUserId: text("reviewed_by_user_id").references(() => user.id, {
+      onDelete: "set null",
+    }),
+    reviewedAt: timestamp("reviewed_at", { mode: "date", withTimezone: true }),
+    receivedAt: timestamp("received_at", { mode: "date", withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    purgeAt: timestamp("purge_at", { mode: "date", withTimezone: true })
+      .notNull()
+      .default(sql`now() + interval '30 days'`),
+  },
+  (table) => [
+    uniqueIndex("enquiry_inbound_quarantine_provider_uidx").on(table.providerMessageId),
+    index("enquiry_inbound_quarantine_pending_idx")
+      .on(table.receivedAt)
+      .where(sql`${table.status} = 'pending'`),
+    index("enquiry_inbound_quarantine_purge_idx").on(table.purgeAt),
+    check(
+      "enquiry_inbound_quarantine_reason_check",
+      sql`${table.reason} IN ('unmatched', 'bad_token', 'sender_mismatch', 'spf_failed', 'auto_reply')`,
+    ),
+    check(
+      "enquiry_inbound_quarantine_status_check",
+      sql`${table.status} IN ('pending', 'dismissed', 'linked')`,
+    ),
+    check(
+      "enquiry_inbound_quarantine_reviewed_check",
+      sql`(${table.status} = 'pending') = (${table.reviewedAt} IS NULL)`,
+    ),
+    check(
+      "enquiry_inbound_quarantine_size_check",
+      sql`char_length(${table.body}) <= 20000 AND char_length(${table.subject}) <= 300 AND char_length(${table.fromAddress}) <= 320`,
+    ),
   ],
 );

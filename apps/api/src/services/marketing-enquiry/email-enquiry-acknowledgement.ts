@@ -12,6 +12,8 @@ export type EmailEnquiryAcknowledgementDeps = {
   webOrigin: string;
   /** Where the sender writes to add something. */
   contactEmail: string;
+  /** Gives each thread its own Reply-To when replies by email are on; absent when they are off. */
+  replyAddressFor?: ((enquiryId: string) => string) | undefined;
 };
 
 /** Queues the sender's copy through the email outbox, once per enquiry. */
@@ -39,6 +41,7 @@ export class EmailEnquiryAcknowledgement implements IEnquiryAcknowledgement {
         replyBy: replyDueAt(enquiry),
         privacyUrl: `${origin}/privacy`,
         contactEmail: this.deps.contactEmail,
+        ...(this.deps.replyAddressFor ? { replyTo: this.deps.replyAddressFor(enquiry.id) } : {}),
       },
     });
   }

@@ -33,6 +33,8 @@ Opt-outable notifications (`outbid`, `lot_won`, `lot_ended_seller`) use HMAC tok
 
 Postmark posts to `/webhooks/postmark` using Basic Auth. Delivery events are stored in `email_event`; hard bounces and complaints also upsert `email_suppression` and set `user.email_status` to `bounced` or `complained`.
 
+Senders' replies to enquiry emails arrive on a separate route, `/webhooks/postmark/inbound`, with its own credentials and a flag that is off by default. See `docs/integrations/postmark-inbound.md`.
+
 ## Swap Triggers
 
 Investigate replacing Postmark if auth delivery p95 exceeds 30s for a week, hard bounce rate for legitimate mail exceeds 0.5%, production support is unanswered for more than 24h, or Postmaster Tools drops `mail.lax.bid` reputation below High.
