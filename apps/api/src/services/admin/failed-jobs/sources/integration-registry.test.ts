@@ -58,7 +58,7 @@ describe("Zoho artwork endpoints", () => {
     });
     expect(nameFilterFor("webhook", set("integrations.zoho"))).toEqual({
       mode: "in",
-      names: ["zoho_artwork"],
+      names: ["zoho_artwork", "zoho_qc"],
     });
   });
 });

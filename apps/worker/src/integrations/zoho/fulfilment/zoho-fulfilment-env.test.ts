@@ -73,3 +73,33 @@ describe("ZOHO_FULFILMENT_MIRROR_MODE", () => {
     expect(() => loadWorkerEnv()).toThrow("Invalid worker environment variables");
   });
 });
+
+describe("ZOHO_QC_READY_MODE", () => {
+  const SHOP = {
+    SHOP_API_INVENTORY_BASE_URL: "http://shop-api.internal",
+    INVENTORY_MACHINE_CLIENT_ID: "inventory",
+    INVENTORY_MACHINE_CLIENT_SECRET: "machine-secret-0123456789-abcdef", // gitleaks:allow
+    WEBHOOK_EVENTS_PROCESS: "true",
+  };
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.restoreAllMocks();
+  });
+
+  it("is off unless it is set, and needs nothing then", () => {
+    stubEnv({});
+    expect(loadWorkerEnv().ZOHO_QC_READY_MODE).toBe("off");
+  });
+
+  it("accepts dry_run once Zoho, LAX Shop and notice processing are set up", () => {
+    stubEnv({ ...SETTINGS, ...SHOP, ZOHO_QC_READY_MODE: "dry_run" });
+    expect(loadWorkerEnv().ZOHO_QC_READY_MODE).toBe("dry_run");
+  });
+
+  it("refuses a mode that is not off without LAX Shop's credential or notice processing", () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    stubEnv({ ...SETTINGS, ZOHO_QC_READY_MODE: "live" });
+    expect(() => loadWorkerEnv()).toThrow("Invalid worker environment variables");
+  });
+});

@@ -757,6 +757,7 @@ export function createContainer(env: Env): Container {
     marketingAttributionEnabled: complianceMedia.marketingAttributionEnabled,
     postmarkWebhookService: userMisc.postmarkWebhookService,
     zohoArtworkNoticeService: cron.zohoArtworkNoticeService,
+    zohoQcNoticeService: cron.zohoQcNoticeService,
     accountDeletionEligibilityService: cron.accountDeletionEligibilityService,
     subjectExportService: createBidSubjectExportService({
       db,

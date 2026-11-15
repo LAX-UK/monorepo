@@ -6,6 +6,7 @@ export * from "./inventory-peer-client.js";
 export * from "./lax-listing.js";
 export * from "./lock-messages.js";
 export * from "./offer-lock.js";
+export * from "./qc-ready-to-pack.js";
 export * from "./sold-in-gallery.js";
 export * from "./where-it-is.js";
 export * from "./offer-state.js";

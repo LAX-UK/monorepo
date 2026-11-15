@@ -146,6 +146,7 @@ import { createDrizzlePortalPortfolioRepository } from "./infrastructure/drizzle
 import { createDrizzlePortalSalesRepository } from "./infrastructure/drizzle-portal-sales.repository.js";
 import { createDrizzlePrintPartyStore } from "./infrastructure/drizzle-print-party.store.js";
 import { createDrizzleProductionTaskRepository } from "./infrastructure/drizzle-production-task.repository.js";
+import { createDrizzleQcReadyToPack } from "./infrastructure/drizzle-qc-ready-to-pack.js";
 import { createDrizzleRegisterOverviewReader } from "./infrastructure/drizzle-register-overview.js";
 import { createDrizzleSaleAuthorityWriter } from "./infrastructure/drizzle-sale-authority.writer.js";
 import { createDrizzleSavedViewRepository } from "./infrastructure/drizzle-saved-view.repository.js";
@@ -884,6 +885,7 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
       inventory: {
         reopen: reopenArtListing,
         lookup: createDrizzleArtListingLookup(db),
+        qcReady: createDrizzleQcReadyToPack(db, createDrizzleProductionTaskRepository(db)),
         machine: {
           clientId: env.INVENTORY_MACHINE_CLIENT_ID,
           clientSecret: env.INVENTORY_MACHINE_CLIENT_SECRET,

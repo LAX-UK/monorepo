@@ -109,6 +109,7 @@ export function createMinimalShopApiTestDeps(
         }),
       },
       lookup: { findByZohoProductIds: async () => [] },
+      qcReady: { markPassed: async () => "unmatched" as const },
       machine: { clientId: undefined, clientSecret: undefined },
     },
     identitySubjectExport: {

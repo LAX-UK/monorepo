@@ -119,6 +119,58 @@ describe("processInboundWebhookEvent", () => {
     });
   });
 
+  describe("Zoho quality check notices", () => {
+    const events = (routing: Record<string, unknown>) => ({
+      recoverStaleClaims: vi.fn(),
+      tryClaimForProcessing: vi.fn().mockResolvedValue({
+        claimed: true,
+        row: { source: "zoho_qc", eventKey: "zq-1", payload: { body: routing, routing } },
+      }),
+      markProcessed: vi.fn(),
+      markFailed: vi.fn(),
+    });
+    const base = {
+      env: { WEBHOOK_EVENTS_PROCESS: true } as never,
+      log: { debug: vi.fn(), info: vi.fn() } as never,
+    };
+    const routing = { module: "Framing_Jobs", recordId: "5001234567890", modifiedTime: "t" };
+
+    it("hands the record to the quality check processor", async () => {
+      const processZohoQcNotice = vi.fn().mockResolvedValue(undefined);
+      const webhookEvents = events(routing);
+      await processInboundWebhookEvent(
+        { ...base, webhookEvents: webhookEvents as never, processZohoQcNotice },
+        "zq-1",
+      );
+      expect(processZohoQcNotice).toHaveBeenCalledWith(routing);
+      expect(webhookEvents.markProcessed).toHaveBeenCalledWith("zq-1");
+    });
+
+    it("marks the notice failed and rethrows, so a record staff must look at reaches Failed jobs", async () => {
+      const processZohoQcNotice = vi
+        .fn()
+        .mockRejectedValue(new Error("zoho_qc_attention:unmatched"));
+      const webhookEvents = events(routing);
+      await expect(
+        processInboundWebhookEvent(
+          { ...base, webhookEvents: webhookEvents as never, processZohoQcNotice },
+          "zq-1",
+        ),
+      ).rejects.toThrow("zoho_qc_attention:unmatched");
+      expect(webhookEvents.markFailed).toHaveBeenCalled();
+    });
+
+    it("is processed with nothing done while the sync is off, and fails a notice naming no record", async () => {
+      const off = events(routing);
+      await processInboundWebhookEvent({ ...base, webhookEvents: off as never }, "zq-1");
+      expect(off.markProcessed).toHaveBeenCalledWith("zq-1");
+      const bad = events({ module: "Deals", recordId: "1" });
+      await expect(
+        processInboundWebhookEvent({ ...base, webhookEvents: bad as never }, "zq-1"),
+      ).rejects.toThrow("missing routing");
+    });
+  });
+
   describe("Zoho Books notices", () => {
     function booksEvents(routing: Record<string, unknown>) {
       return {
