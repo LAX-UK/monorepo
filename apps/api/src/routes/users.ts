@@ -28,6 +28,7 @@ import { and, eq, inArray, isNotNull, isNull } from "drizzle-orm";
 import { Hono } from "hono";
 import { z } from "zod";
 import type { Container } from "../container.js";
+import { maskLotForPublicView } from "../lib/lot-public-view.js";
 import { lotsWithCheckoutPricing } from "../lib/lots-with-checkout-pricing.js";
 import { buildEnrichedWebsiteUserEvent } from "../lib/marketing-attribution-context.js";
 import { presentLotsImages } from "../lib/media-presenters.js";
@@ -207,7 +208,10 @@ export function createUserRoutes(container: Container, authenticator: IAuthentic
 
   r.get("/me/bids", requireAuth, async (c) => {
     const userId = c.get("userId") as string;
-    const data = await container.userDashboardReadService.listBidsForUser(userId);
+    const data = await container.userDashboardReadService.listBidsForUser(userId, {
+      role: c.get("userRole"),
+      staffRole: c.get("userStaffRole"),
+    });
     return c.json({ data });
   });
 
@@ -234,7 +238,11 @@ export function createUserRoutes(container: Container, authenticator: IAuthentic
     const data = pricedLots.map((lotRow) => {
       const p = byLot.get(lotRow.id);
       return {
-        lot: lotRow,
+        // No reserve amount for non-staff, the buyer included; staff read the lot as stored.
+        lot:
+          "reservePrice" in lotRow
+            ? maskLotForPublicView(lotRow, c.get("userRole"), c.get("userStaffRole"))
+            : lotRow,
         payment: p
           ? {
               id: p.id,
@@ -257,11 +265,15 @@ export function createUserRoutes(container: Container, authenticator: IAuthentic
   r.get("/me/watchlist", requireAuth, zValidator("query", watchlistQuerySchema), async (c) => {
     const userId = c.get("userId") as string;
     const query = c.req.valid("query");
-    const data = await container.userDashboardReadService.listWatchlistForUser(userId, {
-      sort: query.sort,
-      ...(query.status ? { status: query.status } : {}),
-      ...(query.categoryIds ? { categoryIds: query.categoryIds } : {}),
-    });
+    const data = await container.userDashboardReadService.listWatchlistForUser(
+      userId,
+      {
+        sort: query.sort,
+        ...(query.status ? { status: query.status } : {}),
+        ...(query.categoryIds ? { categoryIds: query.categoryIds } : {}),
+      },
+      { role: c.get("userRole"), staffRole: c.get("userStaffRole") },
+    );
     return c.json({ data });
   });
 
