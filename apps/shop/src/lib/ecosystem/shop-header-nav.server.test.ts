@@ -35,6 +35,18 @@ describe("composeShopHeaderNav", () => {
     });
   });
 
+  it("leaves out the original works category, which redirects to lax.art", async () => {
+    const listArtists = vi.fn().mockResolvedValue({ items: [artist("emmett-king", 2)] });
+    const listCategories = vi.fn().mockResolvedValue({
+      items: [
+        { slug: "originals", label: "Original works", imageUrl: null, artworkCount: 4 },
+        { slug: "screenprints", label: "Screenprints", imageUrl: null, artworkCount: 2 },
+      ],
+    });
+    const nav = await composeShopHeaderNav({ listArtists, listCategories });
+    expect(nav?.categories).toEqual([{ label: "Screenprints", href: "/categories/screenprints" }]);
+  });
+
   it("returns null on failure or when the catalogue is slow", async () => {
     const failing = vi.fn().mockRejectedValue(new Error("down"));
     expect(
