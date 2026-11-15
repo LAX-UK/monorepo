@@ -637,6 +637,25 @@ export interface IAccountingAttentionReader {
    * the books (no `refund_credit_note` in their history).
    */
   unrefundedCreditNotes(modes: readonly TargetMode[], issuedBefore: Date): Promise<QueueAge>;
+  /**
+   * Refund reversals (`payment.refund_reversed`, `payment_group.refund_reversed`,
+   * `shop.refund.reversed`) whose accounting delivery is still waiting for a credit note to settle
+   * (`credit_in_flight`: being sent, or its outcome unknown) and was queued before `queuedBefore`.
+   * Such a delivery waits without using up attempts, so it is never dead-lettered: this is how it
+   * is found. Oldest first, at most `limit`.
+   */
+  stuckRefundReversals(queuedBefore: Date, limit: number): Promise<readonly StuckRefundReversal[]>;
+}
+
+/** A refund reversal's accounting delivery waiting for its credit note to settle. */
+export interface StuckRefundReversal {
+  readonly deliveryId: number;
+  readonly eventId: number;
+  readonly eventType: string;
+  /** When the delivery was queued: the reversal has waited since then. */
+  readonly waitingSince: Date;
+  /** The delivery's last (redacted) error, naming the credit note waited on. */
+  readonly lastError: string | null;
 }
 
 /** LAX's stored copy of the PDF for an issued document. */

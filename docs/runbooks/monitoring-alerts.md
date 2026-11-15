@@ -395,6 +395,24 @@ Books.
     event, the clearing-refund step reads the refund itself again before refunding (a
     `refund_reversal` row for that refund, or a courier total now below the credit note), and holds
     the credit note with this alert instead of refunding it.
+  - **`accounting_refund_reversal_stuck`** (warning). A reversal has waited more than six hours
+    (`REFUND_REVERSAL_STUCK_AFTER_MS`) for such a credit note: it never uses up attempts, so it is
+    never dead-lettered and would otherwise wait silently. The accounting watch (every 15 minutes)
+    raises it once per stuck delivery (`deliveryId`, `sourceEvent`, `waitingSince`, and
+    `lastError`, which names the credit note); a worker restart raises each one still stuck once
+    more. Open the credit note in Finance › Accounting: an **unknown** outcome is settled by the
+    Books lookup (check the note in Books and whether the sender is running); one **sending** for
+    hours means the sender is stuck (see `accounting_sender_missed`). Once the note settles the
+    reversal goes through on its own (cancelled, or held with the alert above); nothing to redrive.
+  - If the credit note is read as issued when the reversal is decided but is **missing** from the
+    books when it is held (`credit_missing`: it is no longer found under its reference in the books
+    the product goes to), the reversal does **not** wait: this is not a note being sent but one
+    that should be there. The delivery is retried with backoff, using up its attempts, and each
+    retry decides afresh (a note truly gone reads as absent and nothing is held). If it is still
+    missing after the usual 12 attempts it is **dead-lettered** on purpose, so a person looks at it
+    rather than it waiting forever: find the credit note by reference, fix what removed or moved
+    it, then redrive the delivery from the failed deliveries. Unlike `credit_in_flight`, this is
+    intended to dead-letter.
   - If the credit note was **already held** for another reason (Books refused its refund from
     clearing, its totals differ), it is held again with this reason and the alert. **Do not refund
     it by hand**: the buyer never got the money. Its history keeps the earlier reason

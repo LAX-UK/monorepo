@@ -43,7 +43,10 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } 
 import { holdAccountingTablesLock } from "../../testing/accounting-tables-lock.js";
 import { AccountingCreditNoteRefund } from "./accounting-credit-note-refund.service.js";
 import type { SenderPorts } from "./accounting-dispatch.js";
-import { AccountingProjection } from "./accounting-projection.service.js";
+import {
+  AccountingProjection,
+  AccountingProjectionNotYetError,
+} from "./accounting-projection.service.js";
 import { AccountingSender } from "./accounting-sender.service.js";
 
 const OWNER_URL = process.env.DATABASE_URL;
@@ -1144,6 +1147,44 @@ describe.skipIf(!HAS_DB)(
         const apiRepos = createAccountingRepositories(api, { now: () => new Date() });
         const attention = await apiRepos.attention.read([]);
         expect(attention.needsPerson.count).toBeGreaterThan(0);
+      });
+
+      it("BK-9F4: an issued credit note gone from the books when the reversal holds it is credit_missing: retried with attempts (never waiting), decided afresh", async () => {
+        const books = new InMemoryAccounting();
+        const { raised } = await paidAndSent(books);
+        const a = await refunded(raised.payment.id, 2_000);
+        await projection().project(await refundedEvent(raised.payment.id));
+        await sendAll("test_org", books);
+        const noteRef = ref("credit_note", a.id);
+        expect(await rowOf(noteRef, "test_org")).toMatchObject({ state: "issued" });
+        // The note is read as issued when the reversal is decided, and found nowhere when it is held.
+        let reads = 0;
+        const vanishing: typeof repos.lookup = {
+          ...repos.lookup,
+          findByReference: async (...args: Parameters<typeof repos.lookup.findByReference>) => {
+            reads += 1;
+            const found = await repos.lookup.findByReference(...args);
+            return reads === 1 || !found.ok ? found : { ok: true, value: null };
+          },
+        };
+        const racing = new AccountingProjection({
+          facts: new DrizzleBidAccountingFactsReader(worker),
+          settings: repos.settingReader,
+          registry: repos.registry,
+          books: {
+            lookup: vanishing,
+            creditNotes: repos.creditNotes,
+            transitions: repos.transitions,
+          },
+        });
+        const reversed = await reversalOf(raised.payment.id, a);
+        const missing = await racing.project(reversed).catch((error: unknown) => error);
+        expect(missing).toBeInstanceOf(AccountingProjectionNotYetError);
+        expect(missing).toMatchObject({ code: "credit_missing", retryable: true, waiting: false });
+        expect((missing as AccountingProjectionNotYetError).retryAfterMs).toBeUndefined();
+        // Nothing was moved; the next attempt reads the facts afresh and holds the issued note.
+        expect(await rowOf(noteRef, "test_org")).toMatchObject({ state: "issued" });
+        expect(await projection().project(reversed)).toMatchObject({ held: 1 });
       });
 
       it("F2: a projection that read a refund before it was taken back never registers its credit note", async () => {
