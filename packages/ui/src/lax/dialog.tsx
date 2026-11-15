@@ -39,14 +39,13 @@ export type DialogProps = {
   returnFocusFallback?: () => HTMLElement | null;
 };
 
-/** Phone first: a bottom sheet; from 768px a centred dialog or a right-hand sheet. */
+/** Phone first: a bottom sheet inset by the 16px gutter; from 768px a centred dialog or a right-hand sheet. */
 const PLACEMENT: Record<DialogPlacement, string> = {
   center: cn(
     "md:inset-x-auto md:top-1/2 md:bottom-auto md:left-1/2 md:max-h-[calc(100dvh-4rem)] md:w-[calc(100%-4rem)] md:-translate-x-1/2 md:-translate-y-1/2",
-    "md:rounded-lax-card md:border",
   ),
   side: cn(
-    "md:inset-y-0 md:right-0 md:left-auto md:top-0 md:max-h-none md:w-[400px] md:max-w-[calc(100%-2rem)] md:border-t-0 md:border-l",
+    "md:inset-y-0 md:right-0 md:left-auto md:top-0 md:max-h-none md:w-[400px] md:max-w-[calc(100%-2rem)] md:border-y-0 md:border-r-0",
     "md:rounded-none",
   ),
 };
@@ -54,8 +53,8 @@ const PLACEMENT: Record<DialogPlacement, string> = {
 /**
  * One dialog for the client workspace and the staff tools, as a focused task over the page. The
  * title and footer stay put while a tall body scrolls, so the actions are always in reach. On a
- * phone it rises from the bottom (grab handle, 16px top corners, safe-area padding); from 768px it
- * is a 12px-radius dialog, or a right-hand sheet for filters. Radix gives it the dialog role, a
+ * phone it rises from the bottom as a rounded card inset by the 16px gutter (grab handle, clear of
+ * the safe area); from 768px it is a 12px-radius dialog, or a right-hand sheet for filters. Radix gives it the dialog role, a
  * focus trap, Escape to close and focus back on the control that opened it.
  */
 export function Dialog({
@@ -94,9 +93,8 @@ export function Dialog({
               }
             : {})}
           className={cn(
-            "fixed inset-x-0 bottom-0 z-[var(--z-overlay,60)] flex max-h-[calc(100dvh-2rem)] w-full flex-col overflow-hidden",
-            "rounded-t-2xl border-t border-lax-line bg-lax-raised text-lax-fg shadow-lax-lg outline-none",
-            "pb-[env(safe-area-inset-bottom,0px)] md:pb-0",
+            "fixed inset-x-4 bottom-[max(1rem,env(safe-area-inset-bottom,0px))] z-[var(--z-overlay,60)] flex max-h-[calc(100dvh-2rem)] flex-col overflow-hidden",
+            "rounded-lax-card border border-lax-line bg-lax-raised text-lax-fg shadow-lax-lg outline-none",
             PLACEMENT[placement],
             placement === "center" && (wide ? "md:max-w-[640px]" : "md:max-w-[520px]"),
           )}

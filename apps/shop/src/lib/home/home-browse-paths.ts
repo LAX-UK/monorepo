@@ -1,4 +1,5 @@
 import { artworkCatalogueHref } from "@/lib/catalogue/artwork-catalogue-params";
+import { isOriginalWorksCategory } from "@/lib/original-works-redirect";
 import type { PublicArtworkFacetCounts, PublicArtworkSummary } from "@auction/shop-contracts";
 
 /*
@@ -83,14 +84,16 @@ export function choosePriceBand(
   );
 }
 
-/** Categories big enough to be a collection, largest first. */
+/** Categories big enough to be a collection, largest first; never the one that redirects to lax.art. */
 export function chooseCollectionCategories(
   facets: PublicArtworkFacetCounts | null,
   limit: number,
 ): PublicArtworkFacetCounts["categories"] {
   if (!facets || limit <= 0) return [];
   return facets.categories
-    .filter((category) => category.count >= MIN_COLLECTION_SIZE)
+    .filter(
+      (category) => category.count >= MIN_COLLECTION_SIZE && !isOriginalWorksCategory(category),
+    )
     .sort((a, b) => b.count - a.count)
     .slice(0, limit);
 }
