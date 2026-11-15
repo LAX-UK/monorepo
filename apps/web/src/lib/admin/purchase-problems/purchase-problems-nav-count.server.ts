@@ -1,8 +1,7 @@
 import "server-only";
 
-import { purchaseProblemsApiQuery } from "@/lib/admin/purchase-problems/purchase-problems-search";
 import type { AdminNavCounts } from "@/lib/data/http/admin-nav-counts.types";
-import { getAdminPurchaseProblems } from "@/lib/data/http/admin-purchase-problems.reader";
+import { getAdminPurchaseProblemOpenCount } from "@/lib/data/http/admin-purchase-problems.reader";
 import {
   PURCHASE_PROBLEMS_ACCESS,
   type StaffRoles,
@@ -12,7 +11,7 @@ import {
 
 /**
  * The sidebar's Purchase problems count: reports nobody has taken on yet. It comes from the Bid
- * API, not the shared nav cache, and only for people who may open the page. It is left out rather
+ * API's counts-only endpoint (one grouped count, no rows), not the shared nav cache, and only for people who may open the page. It is left out rather
  * than shown as zero when the API does not answer.
  */
 export async function withPurchaseProblemsNavCount(
@@ -23,8 +22,6 @@ export async function withPurchaseProblemsNavCount(
   if (!userHasAccessTo(role, staffRoles, PURCHASE_PROBLEMS_ACCESS)) {
     return { ...counts, purchaseProblemsOpen: 0 };
   }
-  const page = await getAdminPurchaseProblems(
-    purchaseProblemsApiQuery({ status: "open", q: "", saleId: "", assignee: "", page: 1 }, 1),
-  ).catch(() => null);
-  return { ...counts, purchaseProblemsOpen: page?.counts.open ?? 0 };
+  const open = await getAdminPurchaseProblemOpenCount().catch(() => null);
+  return { ...counts, purchaseProblemsOpen: open ?? 0 };
 }

@@ -117,6 +117,16 @@ describe("PurchaseProblemDeskService.list", () => {
   });
 });
 
+describe("PurchaseProblemDeskService.openCount", () => {
+  it("reads the status counts only: no rows, no sales", async () => {
+    const { service, problems } = setup();
+    expect(await service.openCount()).toBe(1);
+    expect(problems.counts).toHaveBeenCalledWith({});
+    expect(problems.list).not.toHaveBeenCalled();
+    expect(problems.salesWithReports).not.toHaveBeenCalled();
+  });
+});
+
 describe("PurchaseProblemDeskService.detail", () => {
   it("returns the report with the buyer's message, payment, notes and next statuses", async () => {
     const { service } = setup();

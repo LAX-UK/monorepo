@@ -66,6 +66,8 @@ export class EmailPurchaseProblemNotices implements IPurchaseProblemNotices {
       to: common.to,
       userId: common.userId,
       category: "transactional",
+      // One resolved email per problem for good. Today a resolved report cannot be reopened; if a
+      // reopen is ever added, put the resolution count in this key or the second resolve is dropped.
       idempotencyKey: `bid-purchase-problem-resolved:${notice.problemId}`,
       vars: common.vars,
     });

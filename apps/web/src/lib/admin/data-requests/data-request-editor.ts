@@ -12,3 +12,17 @@ export function lastEditorName(timeline: DataRequestRecord["timeline"]): string 
   }
   return null;
 }
+
+/**
+ * The name for a stale-edit notice: the last editor, unless that is the person reading it. A stale
+ * write from their own other tab is not "someone else changed it", so no one is named then.
+ */
+export function otherEditorName(
+  timeline: DataRequestRecord["timeline"],
+  currentUserName: string | null | undefined,
+): string | null {
+  const editor = lastEditorName(timeline);
+  if (!editor) return null;
+  const me = currentUserName?.trim().toLowerCase();
+  return me && editor.toLowerCase() === me ? null : editor;
+}

@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const fetchMock = vi.hoisted(() => vi.fn());
 const denyMock = vi.hoisted(() => vi.fn());
+const sessionMock = vi.hoisted(() => vi.fn());
 
 vi.mock("server-only", () => ({}));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
@@ -11,6 +12,9 @@ vi.mock("@/lib/observability/instrument-server-action", () => ({
 }));
 vi.mock("@/lib/auth/assert-admin-action-capability", () => ({
   denyUnlessAdminCapability: (...args: unknown[]) => denyMock(...args),
+}));
+vi.mock("@/lib/data/http/session.server", () => ({
+  getServerSessionUser: () => sessionMock(),
 }));
 vi.mock("@/lib/auth/step-up/staff-step-up.server", () => ({
   isStaffStepUpResponse: async () => false,
@@ -35,6 +39,19 @@ describe("a stale data request edit", () => {
   beforeEach(() => {
     fetchMock.mockReset();
     denyMock.mockReset().mockResolvedValue(null);
+    sessionMock.mockReset().mockResolvedValue({ name: "Alex Rowe" });
+  });
+
+  it("does not name the person themselves when their other tab made the last change", async () => {
+    sessionMock.mockResolvedValue({ name: "Daniel Price" });
+    fetchMock
+      .mockResolvedValueOnce(json({ error: "stale_version" }, 409))
+      .mockResolvedValueOnce(
+        json({ data: record([entry("Sofia Okafor"), entry("Daniel Price")]) }),
+      );
+    const result = await patchDataRequestAction("DR-0012", { version: 3, notes: "Called them." });
+    expect(result).toMatchObject({ ok: false, errorCode: "stale_version" });
+    expect(result).not.toHaveProperty("meta");
   });
 
   it("names the person who changed the request, read from its history", async () => {

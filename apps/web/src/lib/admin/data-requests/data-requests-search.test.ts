@@ -167,6 +167,16 @@ describe("cursor pagination", () => {
     expect(last?.nextHref).toBeNull();
   });
 
+  it("still describes the page when Identity does not say how many match yet", () => {
+    const one = paginationFor({}, parseDataRequestsSearch({}), { items, nextCursor: null });
+    expect(one?.summary).toBe("1 request");
+    const more = paginationFor({}, parseDataRequestsSearch({}), { items: fifty, nextCursor: "c1" });
+    expect(more?.summary).toBe("1–50 requests");
+    const sp = { cursor: "c1", trail: '[""]' };
+    const next = paginationFor(sp, parseDataRequestsSearch(sp), { items: fifty, nextCursor: null });
+    expect(next?.summary).toBe("51–100 requests");
+  });
+
   it("has nothing to page when the list is empty", () => {
     expect(
       paginationFor({}, parseDataRequestsSearch({}), { items: [], nextCursor: null, total: 0 }),

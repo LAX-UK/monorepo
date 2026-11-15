@@ -71,6 +71,8 @@ export interface IPurchaseProblemDesk {
     id: string,
     patch: AdminPurchaseProblemPatch,
   ): Promise<PurchaseProblemUpdateResult>;
+  /** Reports nobody has taken on yet, for the sidebar badge. Reads the counts only. */
+  openCount(): Promise<number>;
   /** The staff a report may be given to, by name. */
   assignees(): Promise<Array<{ id: string; name: string }>>;
 }

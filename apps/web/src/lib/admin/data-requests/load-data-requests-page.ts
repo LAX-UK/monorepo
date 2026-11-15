@@ -27,8 +27,18 @@ export type DataRequestsPagination = {
 };
 
 /** "3 requests" on a single page, "51–100 of 137 requests" on any other. */
-export function pageSummary(offset: number, shown: number, total: number): string {
+export function pageSummary(
+  offset: number,
+  shown: number,
+  total: number | undefined,
+  hasMore = false,
+): string {
   if (shown === 0) return "";
+  // An older Identity does not say how many match: describe the page without a total.
+  if (total === undefined) {
+    if (offset === 0 && !hasMore) return `${shown} ${shown === 1 ? "request" : "requests"}`;
+    return `${offset + 1}–${offset + shown} requests`;
+  }
   if (offset === 0 && shown >= total) return `${total} ${total === 1 ? "request" : "requests"}`;
   return `${offset + 1}–${offset + shown} of ${total} requests`;
 }
@@ -43,7 +53,12 @@ export function paginationFor(
   const earlier = filters.trail;
   const previous = earlier.length > 0 ? earlier[earlier.length - 1] : undefined;
   return {
-    summary: pageSummary(earlier.length * DATA_REQUESTS_PAGE_SIZE, list.items.length, list.total),
+    summary: pageSummary(
+      earlier.length * DATA_REQUESTS_PAGE_SIZE,
+      list.items.length,
+      list.total,
+      list.nextCursor !== null,
+    ),
     prevHref:
       previous === undefined
         ? null

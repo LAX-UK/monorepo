@@ -72,6 +72,10 @@ export class PurchaseProblemDeskService implements IPurchaseProblemDesk {
     return record ? toView(record, await this.deps.notes.listForProblem(id)) : null;
   }
 
+  async openCount(): Promise<number> {
+    return (await this.deps.problems.counts({})).open;
+  }
+
   assignees() {
     return this.deps.assignees.list();
   }

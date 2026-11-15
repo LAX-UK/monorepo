@@ -18,13 +18,14 @@ export type SentCopy = {
  */
 export function sentCopyOf(
   record: Pick<DataRequestRecord, "file" | "timeline">,
-  today: string,
+  now: Date,
 ): SentCopy | null {
   const { file } = record;
   if (!file) return null;
   const ready = [...record.timeline].reverse().find((entry) => entry.event === "data_export.ready");
   if (!ready) return null;
-  const live = file.expiresAt !== null && file.expiresAt.slice(0, 10) >= today;
+  // Full timestamps, not dates: on the last day the link stops working at the hour it expires.
+  const live = file.expiresAt !== null && new Date(file.expiresAt).getTime() > now.getTime();
   return {
     on: formatMoment(ready.at),
     how: "A secure download in LAX Account",

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { lastEditorName } from "./data-request-editor";
+import { lastEditorName, otherEditorName } from "./data-request-editor";
 
 const entry = (event: string, actorName: string | null) => ({
   at: "2026-11-02T10:00:00.000Z",
@@ -42,5 +42,18 @@ describe("lastEditorName", () => {
   it("is null when nobody is named", () => {
     expect(lastEditorName([entry("data_export.requested", null)])).toBeNull();
     expect(lastEditorName([])).toBeNull();
+  });
+});
+
+describe("otherEditorName", () => {
+  const timeline = [entry("data_request.notes_edited", "Sofia Okafor")];
+  it("names the last editor when it is someone else", () => {
+    expect(otherEditorName(timeline, "Daniel Price")).toBe("Sofia Okafor");
+  });
+  it("names no one when the last editor is the reader, however the name is cased", () => {
+    expect(otherEditorName(timeline, " sofia okafor ")).toBeNull();
+  });
+  it("still names the editor when the reader's own name is not known", () => {
+    expect(otherEditorName(timeline, undefined)).toBe("Sofia Okafor");
   });
 });

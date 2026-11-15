@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { manualRecord } from "./data-request.fixture";
 import { sentCopyOf } from "./sent-copy";
 
-const TODAY = "2026-11-02";
+const TODAY = new Date("2026-11-02T09:00:00.000Z");
 const file = {
   fileName: "copy.zip",
   sizeBytes: 1024,
@@ -38,6 +38,14 @@ describe("sentCopyOf", () => {
     expect(
       sentCopyOf({ file: expired, timeline: [ready("2026-10-03T13:05:00.000Z")] }, TODAY)?.until,
     ).toBeNull();
+  });
+
+  it("compares the hour on the day the link expires, not just the date", () => {
+    const record = { file, timeline: [ready("2026-10-03T13:05:00.000Z")] }; // expires 10 Nov 14:05
+    const at = (iso: string) => sentCopyOf(record, new Date(iso))?.until;
+    expect(at("2026-11-10T14:04:59.000Z")).toEqual(expect.stringContaining("10 Nov"));
+    expect(at("2026-11-10T14:05:00.000Z")).toBeNull();
+    expect(at("2026-11-10T18:00:00.000Z")).toBeNull();
   });
 
   it("is null without a built file or without the moment it was ready", () => {

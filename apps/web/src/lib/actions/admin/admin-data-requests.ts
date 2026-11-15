@@ -1,6 +1,6 @@
 "use server";
 
-import { lastEditorName } from "@/lib/admin/data-requests/data-request-editor";
+import { otherEditorName } from "@/lib/admin/data-requests/data-request-editor";
 import {
   dataRequestErrorMessage,
   isStaleDataRequest,
@@ -18,6 +18,7 @@ import { stepUpRequiredFailure } from "@/lib/auth/step-up/step-up-failure";
 import { getAdminDataRequest } from "@/lib/data/http/admin-data-requests.reader";
 import { authedServerFetch } from "@/lib/data/http/authed-server-fetch";
 import { readDataEnvelope, readJsonBody } from "@/lib/data/http/envelope";
+import { getServerSessionUser } from "@/lib/data/http/session.server";
 import { type ActionResult, actionFailure, actionSuccess } from "@/lib/forms/form-result";
 import { DATA_REQUESTS_MANAGE_ACCESS } from "@/lib/navigation/staff-nav-access";
 import { instrumentServerAction } from "@/lib/observability/instrument-server-action";
@@ -47,10 +48,17 @@ async function errorCodeOf(res: Response): Promise<string | undefined> {
   return typeof body?.error === "string" ? body.error : undefined;
 }
 
-/** Who changed the request under a stale edit; null when it cannot be read or nobody is named. */
+/**
+ * Who else changed the request under a stale edit; null when it cannot be read, nobody is named or
+ * the last change was the signed-in person's own. The only read the API offers is the record
+ * itself, so this opens it (and the API audits that view) on a failure path.
+ */
 async function lastEditorOf(reference: string): Promise<string | null> {
-  const read = await getAdminDataRequest(reference);
-  return read.ok ? lastEditorName(read.record.timeline) : null;
+  const [read, me] = await Promise.all([
+    getAdminDataRequest(reference),
+    getServerSessionUser().catch(() => null),
+  ]);
+  return read.ok ? otherEditorName(read.record.timeline, me?.name) : null;
 }
 
 /**

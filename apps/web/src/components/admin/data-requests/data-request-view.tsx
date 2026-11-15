@@ -459,7 +459,7 @@ export function DataRequestView({
             open={dialog === "close"}
             onOpenChange={(open) => setDialog(open ? "close" : null)}
             request={request}
-            sentCopy={sentCopyOf(record, today)}
+            sentCopy={sentCopyOf(record, new Date())}
             submit={writes.close}
             onReload={writes.reload}
             onDone={(outcome) =>
