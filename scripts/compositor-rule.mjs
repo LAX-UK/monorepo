@@ -1,3 +1,5 @@
+import postcss from "postcss";
+
 /**
  * The compositor-only motion rule (docs/design/motion.md, "Compositor only").
  *
@@ -5,15 +7,21 @@
  * `transition: all`, and never transitions or keyframes a property that makes the browser lay out
  * or repaint the page: width, height, top, left, margin, box-shadow, filter or backdrop-filter.
  *
- * `findCompositorViolations` reads one source file (CSS, or the class names and inline styles of
- * TS/TSX) and returns one finding per offence, each with a rule id:
+ * `findCompositorViolations` reads one source file: CSS is parsed with postcss, so a declaration
+ * is read whole even when its value wraps across lines; TS/TSX is scanned for class names and
+ * inline styles (`//` comments are ignored) and returns one finding per offence, each with a rule id:
  *   - `transition-all`          `transition: all`, `transition-property: all` or Tailwind `transition-all`
  *   - `transition:<property>`   a transition of a banned property (CSS, Tailwind `transition-[..]`,
  *                               or Tailwind `transition-shadow`)
+ *   - `transition-bare`        Tailwind's bare `transition` utility (animates box-shadow and filters)
  *   - `keyframes:<property>`    an `@keyframes` block that sets a banned property
  */
 
-/** Properties that must not be animated. Longhands are matched by prefix (margin-left, top, ...). */
+/**
+ * Properties that must not be animated. The `margin-*` longhands (including logical ones such as
+ * margin-inline-start) are banned by prefix, and a `-webkit-` prefix is ignored, so
+ * `-webkit-backdrop-filter` counts as `backdrop-filter`.
+ */
 export const BANNED_PROPERTIES = [
   "width",
   "min-width",
@@ -24,30 +32,44 @@ export const BANNED_PROPERTIES = [
   "top",
   "left",
   "margin",
-  "margin-top",
-  "margin-right",
-  "margin-bottom",
-  "margin-left",
-  "margin-inline",
-  "margin-block",
   "box-shadow",
   "filter",
   "backdrop-filter",
 ];
 
-const PROPERTY = BANNED_PROPERTIES.map((p) => p.replace(/-/g, "\\-")).join("|");
-/** A banned property as a whole identifier: `height` yes, `line-height`, `--height` or `heights` no. */
-const BANNED_WORD = new RegExp(`(?<![\\w-])(${PROPERTY})(?![\\w-])`, "g");
+const normalize = (name) => name.toLowerCase().replace(/^-webkit-/, "");
+const isBanned = (name) => {
+  const n = normalize(name);
+  return BANNED_PROPERTIES.includes(n) || n.startsWith("margin-");
+};
+
+const IDENT = /-?[a-zA-Z_][\w-]*/g;
 const ALL_WORD = /(?<![\w-])all(?![\w-])/;
 
-const TRANSITION_DECLARATION =
-  /(?<![\w-])(?:transition-property|transitionProperty|transition)["']?\s*:\s*([^;}\n]+)/g;
+/** Class-name utilities. Tailwind v4's bare `transition` also animates box-shadow and filters. */
 const TAILWIND_ARBITRARY = /(?<![\w-])transition-\[([^\]\s]+)\]/g;
 const TAILWIND_ALL = /(?<![\w-])transition-all(?![\w-])/g;
 const TAILWIND_SHADOW = /(?<![\w-])transition-shadow(?![\w-])/g;
 
-function stripComments(source) {
-  return source.replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\n]/g, " "));
+const TRANSITION_PROPERTY = /^(?:transition|transition-property)$/i;
+const JS_TRANSITION_KEY =
+  /(?<![\w-])["']?(transition|transitionProperty|transition-property)["']?\s*:/g;
+
+function blank(text) {
+  return text.replace(/[^\n]/g, " ");
+}
+
+/** Blanks `/* *\/` comments, keeping offsets and line numbers. */
+function stripBlockComments(source) {
+  return source.replace(/\/\*[\s\S]*?\*\//g, blank);
+}
+
+/** Blanks `// ...` comments in script files (not the `//` of a URL such as https://x). */
+function stripLineComments(source) {
+  return source.replace(
+    /(^|[^:\w"'`])\/\/[^\n]*/g,
+    (m, lead) => lead + blank(m.slice(lead.length)),
+  );
 }
 
 function lineOf(source, index) {
@@ -56,50 +78,152 @@ function lineOf(source, index) {
   return line;
 }
 
-/** Banned properties named in `text`, de-duplicated, in order of appearance. */
+/** Banned properties named in a value, de-duplicated, in order of appearance. */
 function bannedIn(text) {
-  return [...new Set([...text.matchAll(BANNED_WORD)].map((m) => m[1]))];
+  return [...new Set((text.match(IDENT) ?? []).filter(isBanned).map(normalize))];
 }
 
-/** The text of the `{ ... }` block that opens at or after `from`, and where it ends. */
-function readBlock(source, from) {
-  const open = source.indexOf("{", from);
-  if (open < 0) return null;
-  let depth = 0;
-  for (let i = open; i < source.length; i++) {
-    if (source[i] === "{") depth++;
-    else if (source[i] === "}" && --depth === 0) return { body: source.slice(open + 1, i), end: i };
-  }
-  return null;
-}
-
-/** @returns {{ line: number, rule: string }[]} */
-export function findCompositorViolations(rawSource) {
-  const source = stripComments(rawSource);
-  const found = [];
-  const add = (index, rule) => found.push({ line: lineOf(source, index), rule });
-
+function classRules(source, add) {
   for (const m of source.matchAll(TAILWIND_ALL)) add(m.index, "transition-all");
   for (const m of source.matchAll(TAILWIND_SHADOW)) add(m.index, "transition:box-shadow");
   for (const m of source.matchAll(TAILWIND_ARBITRARY)) {
-    if (ALL_WORD.test(m[1])) add(m.index, "transition-all");
-    for (const property of bannedIn(m[1].replace(/_/g, " ")))
-      add(m.index, `transition:${property}`);
+    const value = m[1].replace(/_/g, " ");
+    if (ALL_WORD.test(value)) add(m.index, "transition-all");
+    for (const property of bannedIn(value)) add(m.index, `transition:${property}`);
   }
-  for (const m of source.matchAll(TRANSITION_DECLARATION)) {
-    if (ALL_WORD.test(m[1])) add(m.index, "transition-all");
-    for (const property of bannedIn(m[1])) add(m.index, `transition:${property}`);
-  }
+}
 
-  for (const m of source.matchAll(/@keyframes\s+[\w-]+/g)) {
-    const block = readBlock(source, m.index + m[0].length);
-    if (!block) continue;
-    const declared = [...block.body.matchAll(new RegExp(`(?<![\\w-])(${PROPERTY})\\s*:`, "g"))].map(
-      (d) => d[1],
+function transitionValueRules(value, index, add) {
+  if (ALL_WORD.test(value)) add(index, "transition-all");
+  for (const property of bannedIn(value)) add(index, `transition:${property}`);
+}
+
+function inKeyframes(node) {
+  for (let p = node.parent; p; p = p.parent)
+    if (p.type === "atrule" && /keyframes$/i.test(p.name)) return true;
+  return false;
+}
+
+/** CSS: whole declarations from postcss, so values wrapped across lines are read in full. */
+function cssRules(source, add) {
+  let root;
+  try {
+    root = postcss.parse(source);
+  } catch {
+    return false;
+  }
+  const at = (node) => lineStart[node.source.start.line - 1] ?? 0;
+  const lineStart = [0];
+  for (let i = 0; i < source.length; i++) if (source.charCodeAt(i) === 10) lineStart.push(i + 1);
+  root.walkDecls((decl) => {
+    if (inKeyframes(decl)) return;
+    if (TRANSITION_PROPERTY.test(decl.prop)) transitionValueRules(decl.value, at(decl), add);
+  });
+  root.walkAtRules(/keyframes$/i, (rule) => {
+    const properties = new Set();
+    rule.walkDecls((decl) => {
+      if (isBanned(decl.prop)) properties.add(normalize(decl.prop));
+    });
+    for (const property of properties) add(at(rule), `keyframes:${property}`);
+  });
+  return true;
+}
+
+/** Reads the value of a script-side declaration: a string literal in full, else up to `;` or `}` (so CSS in a template literal can wrap). */
+function readScriptValue(source, from) {
+  let i = from;
+  while (/\s/.test(source[i] ?? "")) i++;
+  const quote = source[i];
+  if (quote === '"' || quote === "'" || quote === "`") {
+    let j = i + 1;
+    while (j < source.length && source[j] !== quote) j += source[j] === "\\" ? 2 : 1;
+    return source.slice(i + 1, j);
+  }
+  let depth = 0;
+  let j = i;
+  for (; j < source.length; j++) {
+    const c = source[j];
+    if (c === "(") depth++;
+    else if (c === ")") depth--;
+    else if (depth <= 0 && (c === ";" || c === "}")) break;
+  }
+  return source.slice(i, j);
+}
+
+const STRING_LITERAL = /(["'`])((?:\\.|(?!\1)[^\\])*)\1/g;
+const CLASS_TOKEN = /^[\w:[\]/.%&>*()#!,-]+$/;
+
+/**
+ * Tailwind's bare `transition` utility, in a string that reads as a class list (every token is
+ * class-shaped and another token has a `-` or `:`), so prose such as "a transition towards" is not
+ * mistaken for it.
+ */
+function bareTransitionRules(source, add) {
+  for (const m of source.matchAll(STRING_LITERAL)) {
+    const tokens = m[2]
+      .replace(/\$\{[^}]*\}/g, " ")
+      .split(/\s+/)
+      .filter(Boolean);
+    const bare = tokens.some((t) => t.split(":").pop() === "transition");
+    if (
+      bare &&
+      tokens.length > 1 &&
+      tokens.every((t) => CLASS_TOKEN.test(t)) &&
+      tokens.some((t) => /[-:]/.test(t) && t.split(":").pop() !== "transition")
+    )
+      add(m.index, "transition-bare");
+  }
+}
+
+/** TS/TSX/JS: class names, inline `transition` styles, and CSS inside template literals. */
+function scriptRules(source, add, jsx = true) {
+  classRules(source, add);
+  if (jsx) bareTransitionRules(source, add);
+  for (const m of source.matchAll(JS_TRANSITION_KEY)) {
+    transitionValueRules(readScriptValue(source, m.index + m[0].length), m.index, add);
+  }
+  for (const m of source.matchAll(/@keyframes\s+[\w-]+\s*\{/g)) {
+    const open = m.index + m[0].length - 1;
+    let depth = 0;
+    let end = open;
+    for (; end < source.length; end++) {
+      if (source[end] === "{") depth++;
+      else if (source[end] === "}" && --depth === 0) break;
+    }
+    const body = source.slice(open + 1, end);
+    const properties = new Set(
+      [...body.matchAll(/(?<![\w-])([\w-]+)\s*:/g)]
+        .map((d) => d[1])
+        .filter(isBanned)
+        .map(normalize),
     );
-    for (const property of new Set(declared)) add(m.index, `keyframes:${property}`);
+    for (const property of properties) add(m.index, `keyframes:${property}`);
   }
+}
 
+/**
+ * @param {string} rawSource
+ * @param {{ filename?: string }} [options] `.css` files are parsed as CSS; anything else is
+ *   read as TS/TSX. Without a filename the source is treated as CSS if it parses as CSS and
+ *   holds no JSX/JS markers, so snippets work in tests.
+ * @returns {{ line: number, rule: string }[]}
+ */
+export function findCompositorViolations(rawSource, options = {}) {
+  const isCss = options.filename ? /\.css$/i.test(options.filename) : options.kind !== "script";
+  const found = [];
+  if (isCss) {
+    const source = stripBlockComments(rawSource);
+    const add = (index, rule) => found.push({ line: lineOf(source, index), rule });
+    if (!cssRules(source, add)) throw new Error("compositor lint: the source is not valid CSS");
+    classRules(source, add); // @apply and utility class selectors
+  } else {
+    const source = stripLineComments(stripBlockComments(rawSource));
+    scriptRules(
+      source,
+      (index, rule) => found.push({ line: lineOf(source, index), rule }),
+      /\.[jt]sx$/i.test(options.filename ?? ""),
+    );
+  }
   return found.sort((a, b) => a.line - b.line || a.rule.localeCompare(b.rule));
 }
 
@@ -142,6 +266,8 @@ export function compareWithAllowlist(findingsByFile, allowlist) {
 }
 
 export function describe(rule) {
+  if (rule === "transition-bare")
+    return "uses Tailwind's bare transition (animates box-shadow and filters); use transition-colors, transition-opacity, transition-transform or transition-[...]";
   if (rule === "transition-all") return "uses transition-all; list the properties that change";
   const [kind, property] = rule.split(":");
   return kind === "transition"

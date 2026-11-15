@@ -1,4 +1,5 @@
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
+import { join, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
@@ -135,5 +136,37 @@ describe.each(Object.entries(PRODUCTS))("%s --motion-* tokens", (product, css) =
         throw new Error(`${product} ${name} copies ${value}; alias the --lax-* token instead`);
       }
     }
+  });
+});
+
+describe("declared once", () => {
+  const root = fileURLToPath(new URL("../../..", import.meta.url));
+  const SKIP = new Set(["node_modules", "dist", ".next", ".turbo", "coverage"]);
+  const allowed = new Set([
+    "packages/branding/public/lax-system.css",
+    "packages/staff-ui/src/theme.css",
+  ]);
+
+  function cssFiles(dir: string, out: string[] = []): string[] {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      if (SKIP.has(entry.name)) continue;
+      const full = join(dir, entry.name);
+      if (entry.isDirectory()) cssFiles(full, out);
+      else if (entry.name.endsWith(".css")) out.push(full);
+    }
+    return out;
+  }
+
+  it("declares --lax-motion-* and --lax-ease-* only in lax-system.css and the staff theme", () => {
+    const offenders: string[] = [];
+    for (const top of ["apps", "packages"]) {
+      for (const file of cssFiles(join(root, top))) {
+        const path = relative(root, file).split(sep).join("/");
+        if (allowed.has(path)) continue;
+        const text = readFileSync(file, "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
+        if (/(?<![\w-])--lax-(?:motion|ease)-[\w-]*\s*:/.test(text)) offenders.push(path);
+      }
+    }
+    expect(offenders).toEqual([]);
   });
 });

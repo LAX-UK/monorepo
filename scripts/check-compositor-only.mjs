@@ -34,7 +34,7 @@ export function scan(root = repoRoot) {
   const byFile = new Map();
   for (const top of COMPOSITOR_ROOTS) {
     for (const file of listFiles(join(root, top))) {
-      const findings = findCompositorViolations(readFileSync(file, "utf8"));
+      const findings = findCompositorViolations(readFileSync(file, "utf8"), { filename: file });
       if (findings.length > 0) byFile.set(relative(root, file).split(sep).join("/"), findings);
     }
   }
