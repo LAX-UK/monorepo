@@ -1,7 +1,7 @@
 import {
-  DEFAULT_COLLECT_BY_POLICY,
   type EntityActor,
   awaitsCollection,
+  collectByPolicyFor,
   deliveryQuoteActionsFor,
   entityActorCan,
   londonDateKey,
@@ -164,10 +164,11 @@ function collectByOf(
 ): AccountPurchaseView["delivery"]["collectBy"] {
   const storage = row.storage;
   if (!storage || !awaitsCollection({ ...storage, fulfilment: row.fulfilment })) return null;
-  const notice = purchaseCollectBy(storage.clearedAt, londonDateKey(now), {
-    ...DEFAULT_COLLECT_BY_POLICY,
-    freeStorageDays: storage.freeStorageDays ?? DEFAULT_COLLECT_BY_POLICY.freeStorageDays,
-  });
+  const notice = purchaseCollectBy(
+    storage.clearedAt,
+    londonDateKey(now),
+    collectByPolicyFor(storage.freeStorageDays),
+  );
   return { ...notice, placeId: storage.placeId, placeName: storage.placeName };
 }
 

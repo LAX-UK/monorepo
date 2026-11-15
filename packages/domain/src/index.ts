@@ -914,6 +914,7 @@ export {
   type CollectionWeeklyHours,
   type MinuteRange,
   type NoticeWindow,
+  nextOpenDay,
 } from "./collection-calendar.js";
 export {
   collectionSlots,
@@ -981,10 +982,34 @@ export {
   type HandOverRefusal,
 } from "./collection-handover.js";
 export {
+  LARGE_WORK_SIDE_CM,
+  calculateStorageCharge,
+  formatStorageBadge,
+  formatStorageDeskLine,
+  formatStorageInvoiceLine,
+  formatStorageNotice,
+  formatStorageTerms,
+  storageClearedOn,
+  storageDailyPence,
+  type StorageBand,
+  type StorageCalendar,
+  type StorageCharge,
+  type StorageChargeInput,
+  type StorageDayCount,
+  type StorageInvoiceLine,
+  type StorageNotice,
+  type StorageNoticeContext,
+  type StoragePause,
+  type StorageState,
+  type StorageTerms,
+} from "./storage-terms.js";
+export {
   DEFAULT_COLLECT_BY_POLICY,
   MAX_FREE_STORAGE_DAYS,
   collectByClearedRange,
+  collectByPolicyFor,
   collectByReminderFor,
+  type CollectByCalendar,
   purchaseCollectBy,
   awaitsCollection,
   type CollectionWaitFacts,

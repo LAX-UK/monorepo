@@ -1,10 +1,13 @@
 import { describe, expect, it } from "vitest";
+import { createCollectionCalendar } from "./collection-calendar.js";
+import { DEFAULT_COLLECTION_RULES } from "./collection-rules.js";
 import {
   type CollectByPolicy,
   DEFAULT_COLLECT_BY_POLICY,
   awaitsCollection,
   collectBy,
   collectByClearedRange,
+  collectByPolicyFor,
   collectByReminderFor,
   purchaseCollectBy,
 } from "./collection-storage.js";
@@ -156,5 +159,57 @@ describe("whether a paid purchase still waits to be collected", () => {
     expect(awaitsCollection({ ...waiting, bookingOpen: false })).toBe(false);
     expect(awaitsCollection({ ...waiting, booked: true })).toBe(false);
     expect(awaitsCollection({ ...waiting, fulfilment: null })).toBe(false);
+  });
+});
+
+describe("places without storage terms", () => {
+  it("keep 30 free days and the 7-day lead", () => {
+    expect(collectByPolicyFor(null)).toEqual(DEFAULT_COLLECT_BY_POLICY);
+    expect(collectByPolicyFor(14)).toEqual({ freeStorageDays: 14, reminderLeadDays: 7 });
+  });
+});
+
+describe("the collect-by day against the gallery's open days", () => {
+  const calendar = createCollectionCalendar({
+    hours: [1, 2, 3, 4, 5].map((weekday) => ({
+      weekday,
+      opensLocal: "10:00",
+      closesLocal: "19:00",
+    })),
+    exceptions: [],
+    rules: DEFAULT_COLLECTION_RULES,
+  });
+  // Cleared Mon 2 Nov: 30 days is Wed 2 Dec (open); cleared Fri 6 Nov: Sun 6 Dec, so Mon 7 Dec.
+  const cleared = new Date("2026-11-06T10:00:00Z");
+
+  it("does not move without a calendar", () => {
+    expect(collectBy(cleared).date).toBe("2026-12-06");
+  });
+
+  it("moves to the next open day, with its reminders following it", () => {
+    expect(collectBy(cleared, DEFAULT_COLLECT_BY_POLICY, calendar)).toEqual({
+      date: "2026-12-07",
+      reminderDates: ["2026-11-30", "2026-12-07"],
+    });
+  });
+
+  it("is due its reminder on the moved day, and the notice reads the moved day", () => {
+    expect(
+      collectByReminderFor(cleared, "2026-12-07", DEFAULT_COLLECT_BY_POLICY, calendar),
+    ).toEqual({ kind: "day", collectBy: "2026-12-07" });
+    expect(purchaseCollectBy(cleared, "2026-12-07", DEFAULT_COLLECT_BY_POLICY, calendar)).toEqual({
+      date: "2026-12-07",
+      state: "soon",
+    });
+    expect(
+      purchaseCollectBy(cleared, "2026-12-08", DEFAULT_COLLECT_BY_POLICY, calendar).state,
+    ).toBe("overdue");
+  });
+
+  it("widens the cleared range by the most the deadline can move", () => {
+    expect(collectByClearedRange("2026-12-07", DEFAULT_COLLECT_BY_POLICY, 3).from).toBe(
+      "2026-11-04",
+    );
+    expect(collectByClearedRange("2026-12-07").from).toBe("2026-11-07");
   });
 });

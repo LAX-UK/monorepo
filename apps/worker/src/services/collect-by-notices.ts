@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import {
   type CollectByReminderKind,
-  DEFAULT_COLLECT_BY_POLICY,
+  collectByPolicyFor,
   collectByReminderFor,
   formatCollectionDay,
   londonDateKey,
@@ -32,11 +32,11 @@ export type CollectByGroup = {
 export function collectByGroups(lots: readonly StoredLot[], today: string): CollectByGroup[] {
   const groups = new Map<string, CollectByGroup>();
   for (const stored of lots) {
-    const policy = {
-      ...DEFAULT_COLLECT_BY_POLICY,
-      freeStorageDays: stored.freeStorageDays ?? DEFAULT_COLLECT_BY_POLICY.freeStorageDays,
-    };
-    const due = collectByReminderFor(stored.clearedAt, today, policy);
+    const due = collectByReminderFor(
+      stored.clearedAt,
+      today,
+      collectByPolicyFor(stored.freeStorageDays),
+    );
     if (!due) continue;
     const key = [stored.legalEntityId, stored.venueId, due.kind, due.collectBy].join("|");
     const group = groups.get(key) ?? {

@@ -151,6 +151,23 @@ export function createCollectionCalendar(input: CollectionCalendarInput): Collec
   };
 }
 
+/** Furthest ahead the next open day is looked for, so a calendar closed for good cannot loop. */
+const MAX_LOOKAHEAD_DAYS = 366;
+
+/**
+ * The first day on or after `date` the place is open, X
+ * or none of the closures (weekend, bank holiday, staff closure, sale day). A day open only part of
+ * the day counts as open. If the calendar has no open day within a year, `date` itself.
+ */
+export function nextOpenDay(calendar: Pick<CollectionCalendar, "plan">, date: DateKey): DateKey {
+  let day = date;
+  for (let i = 0; i < MAX_LOOKAHEAD_DAYS; i++) {
+    if (calendar.plan(day).kind === "open") return day;
+    day = addDaysToKey(day, 1);
+  }
+  return date;
+}
+
 /** Furthest back a working-day count looks, so a calendar closed for months cannot loop. */
 const MAX_LOOKBACK_DAYS = 60;
 

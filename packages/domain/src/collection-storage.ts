@@ -1,3 +1,4 @@
+import { type CollectionCalendar, nextOpenDay } from "./collection-calendar.js";
 import { type DateKey, addDaysToKey, londonDateKey } from "./collection-time.js";
 import type { FulfilmentFacts } from "./purchase-delivery-stage.js";
 
@@ -14,6 +15,20 @@ export const DEFAULT_COLLECT_BY_POLICY: CollectByPolicy = {
   reminderLeadDays: 7,
 };
 
+/**
+ * The policy for a place: its own free storage period, or the 30 days of a place with no storage
+ * terms. Nothing is charged under it; "storage charges may apply" is wording only.
+ */
+export function collectByPolicyFor(freeStorageDays: number | null): CollectByPolicy {
+  return {
+    ...DEFAULT_COLLECT_BY_POLICY,
+    freeStorageDays: freeStorageDays ?? DEFAULT_COLLECT_BY_POLICY.freeStorageDays,
+  };
+}
+
+/** The days a place is open, which decide where a "please collect by" day on a closed day moves. */
+export type CollectByCalendar = Pick<CollectionCalendar, "plan">;
+
 export type CollectBy = {
   /** "Please collect by" day, in London. */
   date: DateKey;
@@ -21,12 +36,17 @@ export type CollectBy = {
   reminderDates: [DateKey, DateKey];
 };
 
-/** The "Please collect by" day: the London day payment cleared plus the free storage period. */
+/**
+ * The "Please collect by" day: the London day payment cleared plus the free storage period, moved
+ * to the next open day when it falls on a closed one. Without a calendar the day does not move.
+ */
 export function collectBy(
   clearedAt: Date,
   policy: CollectByPolicy = DEFAULT_COLLECT_BY_POLICY,
+  calendar?: CollectByCalendar,
 ): CollectBy {
-  const date = addDaysToKey(londonDateKey(clearedAt), policy.freeStorageDays);
+  const free = addDaysToKey(londonDateKey(clearedAt), policy.freeStorageDays);
+  const date = calendar ? nextOpenDay(calendar, free) : free;
   return { date, reminderDates: [addDaysToKey(date, -policy.reminderLeadDays), date] };
 }
 
@@ -54,8 +74,9 @@ export function collectByReminderFor(
   clearedAt: Date,
   today: DateKey,
   policy: CollectByPolicy = DEFAULT_COLLECT_BY_POLICY,
+  calendar?: CollectByCalendar,
 ): CollectByReminder | null {
-  const { date, reminderDates } = collectBy(clearedAt, policy);
+  const { date, reminderDates } = collectBy(clearedAt, policy, calendar);
   if (today === date) return { kind: "day", collectBy: date };
   const early = policy.freeStorageDays > policy.reminderLeadDays;
   if (early && today >= reminderDates[0] && today < date) return { kind: "lead", collectBy: date };
@@ -64,15 +85,18 @@ export function collectByReminderFor(
 
 /**
  * The London days payment must have cleared on for a purchase to be due a reminder on `today`,
- * first to last: from the free period ago to the free period less the lead ago.
+ * first to last: from the free period ago to the free period less the lead ago. A deadline that
+ * moves to an open day can be later than the free period, so a caller using a calendar passes the
+ * longest it can move (`slackDays`) and the range starts that much earlier.
  */
 export function collectByClearedRange(
   today: DateKey,
   policy: CollectByPolicy = DEFAULT_COLLECT_BY_POLICY,
+  slackDays = 0,
 ): { from: DateKey; to: DateKey } {
   const early = policy.freeStorageDays > policy.reminderLeadDays;
   return {
-    from: addDaysToKey(today, -policy.freeStorageDays),
+    from: addDaysToKey(today, -policy.freeStorageDays - slackDays),
     to: addDaysToKey(
       today,
       -(early ? policy.freeStorageDays - policy.reminderLeadDays : policy.freeStorageDays),
@@ -100,8 +124,9 @@ export function purchaseCollectBy(
   clearedAt: Date,
   today: DateKey,
   policy: CollectByPolicy = DEFAULT_COLLECT_BY_POLICY,
+  calendar?: CollectByCalendar,
 ): PurchaseCollectBy {
-  const { date, reminderDates } = collectBy(clearedAt, policy);
+  const { date, reminderDates } = collectBy(clearedAt, policy, calendar);
   if (today > date) return { date, state: "overdue" };
   const early = policy.freeStorageDays > policy.reminderLeadDays;
   return { date, state: today >= (early ? reminderDates[0] : date) ? "soon" : "upcoming" };
