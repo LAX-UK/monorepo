@@ -8,7 +8,15 @@ import {
 import { describe, expect, it, vi } from "vitest";
 
 type Listener = (event: unknown) => void;
-type Field = { tagName: string; type?: string; value?: string; defaultValue?: string };
+type Field = {
+  tagName: string;
+  type?: string;
+  value?: string;
+  defaultValue?: string;
+  checked?: boolean;
+  defaultChecked?: boolean;
+  options?: { selected: boolean; defaultSelected: boolean }[];
+};
 
 function run(
   input: {
@@ -72,11 +80,15 @@ function run(
   const fire = (name: string, event: unknown = {}) => {
     for (const fn of listeners[name] ?? []) fn(event);
   };
+  const show = () => {
+    doc.visibilityState = "visible";
+    for (const fn of docListeners.visibilitychange ?? []) fn({});
+  };
   const hide = () => {
     doc.visibilityState = "hidden";
     for (const fn of docListeners.visibilitychange ?? []) fn({});
   };
-  return { fire, hide, doc, reload, assign, fetchMock, store, settle };
+  return { fire, hide, show, doc, reload, assign, fetchMock, store, settle };
 }
 
 const link = (href: string, extra: Record<string, unknown> = {}) => ({
@@ -168,6 +180,102 @@ describe("site-wide chunk-load recovery", () => {
     doc.visibilityState = "visible";
     hide();
     expect(reload).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not reload when the tab becomes visible again", async () => {
+    const { fire, show, reload, settle } = run();
+    fire("error", scriptError());
+    await settle();
+    show();
+    expect(reload).not.toHaveBeenCalled();
+  });
+
+  it("does not reload over a checked box, a changed select, or a field edited by input", async () => {
+    const cases: Field[] = [
+      { tagName: "INPUT", type: "checkbox", checked: true, defaultChecked: false },
+      {
+        tagName: "SELECT",
+        options: [
+          { selected: false, defaultSelected: true },
+          { selected: true, defaultSelected: false },
+        ],
+      },
+    ];
+    for (const field of cases) {
+      const { fire, hide, reload, settle } = run({ fields: [field] });
+      fire("error", scriptError());
+      await settle();
+      hide();
+      expect(reload).not.toHaveBeenCalled();
+    }
+    // value equals defaultValue (a React controlled field) but an input event was seen
+    const { fire, hide, reload, settle } = run({
+      fields: [{ tagName: "INPUT", type: "text", value: "250", defaultValue: "250" }],
+    });
+    fire("input", { target: { tagName: "INPUT", type: "text" } });
+    fire("error", scriptError());
+    await settle();
+    hide();
+    expect(reload).not.toHaveBeenCalled();
+  });
+
+  it("ignores input events on non-editable targets, and a submit or reset clears the edit mark", async () => {
+    for (const clear of ["submit", "reset"]) {
+      const { fire, hide, show, reload, settle } = run();
+      fire("change", { target: { tagName: "INPUT", type: "text" } });
+      fire("error", scriptError());
+      await settle();
+      hide();
+      expect(reload).not.toHaveBeenCalled();
+      fire(clear);
+      show();
+      // the submit window still holds for 15 s; a reset leaves the page clean
+      hide();
+      expect(reload).toHaveBeenCalledTimes(clear === "reset" ? 1 : 0);
+    }
+    const { fire, hide, reload, settle } = run();
+    fire("input", { target: { tagName: "DIV" } });
+    fire("input", { target: { tagName: "INPUT", type: "hidden" } });
+    fire("error", scriptError());
+    await settle();
+    hide();
+    expect(reload).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not reload on pagehide, and recovers after pageshow or a cancelled beforeunload", async () => {
+    const a = run();
+    a.fire("error", scriptError());
+    await a.settle();
+    a.fire("pagehide");
+    a.hide();
+    expect(a.reload).not.toHaveBeenCalled();
+    a.fire("pageshow");
+    a.show();
+    a.hide();
+    expect(a.reload).toHaveBeenCalledTimes(1);
+
+    const b = run();
+    b.fire("error", scriptError());
+    await b.settle();
+    vi.useFakeTimers();
+    try {
+      b.fire("beforeunload");
+      b.hide();
+      expect(b.reload).not.toHaveBeenCalled();
+      vi.advanceTimersByTime(1100);
+      b.show();
+      b.hide();
+      expect(b.reload).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("checks the file once while a check is pending", async () => {
+    const { fire, fetchMock } = run();
+    fire("error", scriptError());
+    fire("error", scriptError());
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
   it("does not reload while the browser is already navigating away", async () => {
