@@ -87,13 +87,14 @@ export function registerCollectionWorkers(
             facts: options.lotFacts,
             emailService: options.emailService,
             webOrigin: env.WEB_ORIGIN,
+            from: env.COLLECTION_CAN_BOOK_EMAILS_FROM,
             log,
           });
         } catch (err) {
           log.error({ err }, "collection_can_book_sweep_failed");
           failures.push(err);
         }
-        // Report to Sentry and the queue by failing the job, after both have run.
+        // Report to Sentry and the queue by failing the job, after all three sweeps have run.
         if (failures.length > 0) throw failures[0];
         await heartbeat(COLLECTION_REMINDERS_QUEUE_NAME);
       });

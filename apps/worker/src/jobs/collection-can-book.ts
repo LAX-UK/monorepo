@@ -15,14 +15,6 @@ import { canBookEmailsFor, canBookGroups, canBookKeyPrefix } from "../services/c
 const DAY_MS = 24 * 60 * 60_000;
 
 /**
- * Purchases whose payment cleared before this are never sent the email: it starts with the
- * release, so the first sweep does not write to every buyer with a lot already in storage. A
- * purchase from before it is still offered on the purchases page, and still gets its storage
- * reminders.
- */
-export const CAN_BOOK_EMAILS_FROM = new Date("2026-11-16T00:00:00Z");
-
-/**
  * Tells buyers, once per lot, that they can book a time to collect: the payment has cleared and
  * nothing is in the way (a check, a dispute or a refund), at a place that takes online bookings.
  * This keeps the purchase page's promise "We'll email you as soon as you can book": whichever
@@ -39,18 +31,33 @@ export async function runCanBookJob(options: {
   webOrigin: string;
   log: pino.Logger;
   now?: () => Date;
-  /** The earliest payment the email is for; the release date unless a test sets another. */
-  from?: Date;
+  /**
+   * The earliest payment the email is for (COLLECTION_CAN_BOOK_EMAILS_FROM): purchases paid before
+   * it are never sent the email, so the first sweep does not write to every buyer with a lot
+   * already in storage. They are still offered booking on the purchases page, and still get their
+   * storage reminders.
+   */
+  from: Date;
 }): Promise<{ groups: number; queued: number }> {
-  const { reader, notices, facts, emailService, webOrigin, log, now = () => new Date() } = options;
+  const {
+    reader,
+    notices,
+    facts,
+    emailService,
+    webOrigin,
+    log,
+    from,
+    now = () => new Date(),
+  } = options;
   const at = now();
   if (!reminderWindow(at)) return { groups: 0, queued: 0 };
 
   const today = londonDateKey(at);
   const oldest = new Date(at.getTime() - MAX_FREE_STORAGE_DAYS * DAY_MS);
-  const from = options.from ?? CAN_BOOK_EMAILS_FROM;
   const groups = canBookGroups(
-    await reader.lotsClearedSince(from.getTime() > oldest.getTime() ? from : oldest),
+    (await reader.lotsClearedSince(from.getTime() > oldest.getTime() ? from : oldest)).filter(
+      (lot) => lot.clearedAt.getTime() >= from.getTime(),
+    ),
   );
   let queued = 0;
   for (const group of groups) {

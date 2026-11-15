@@ -36,7 +36,7 @@ export default function CollectionCanBookEmail({
     >
       <TextBlock>Hi {userName || "there"},</TextBlock>
       <TextBlock>
-        {`Your ${one ? "lot is" : "lots are"} paid and nothing is in the way. Book a time to collect ${one ? "it" : "them"} from ${placeName}, and tell us who is coming.`}
+        {`${one ? "Your lot is paid for and ready to collect." : "Your lots are paid for and ready to collect."} Book a time to collect ${one ? "it" : "them"} from ${placeName}, and tell us who is coming.`}
       </TextBlock>
       <FactCard rows={[{ label: "Where", value: `${placeName}, ${address}` }]} />
       <ul style={list}>

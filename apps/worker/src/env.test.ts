@@ -92,6 +92,34 @@ describe("worker collection calendar organizer", () => {
   });
 });
 
+describe("worker COLLECTION_CAN_BOOK_EMAILS_FROM", () => {
+  const parse = (value?: unknown) =>
+    envSchema.safeParse({
+      DATABASE_URL: "postgres://localhost/test",
+      ...(value === undefined ? {} : { COLLECTION_CAN_BOOK_EMAILS_FROM: value }),
+    });
+
+  it("parses an ISO date or date-time", () => {
+    const parsed = parse("2026-12-01");
+    expect(parsed.success && parsed.data.COLLECTION_CAN_BOOK_EMAILS_FROM.toISOString()).toBe(
+      "2026-12-01T00:00:00.000Z",
+    );
+  });
+
+  it("falls back to the fixed default when missing or blank", () => {
+    for (const value of [undefined, ""]) {
+      const parsed = parse(value);
+      expect(parsed.success && parsed.data.COLLECTION_CAN_BOOK_EMAILS_FROM.toISOString()).toBe(
+        "2026-11-16T00:00:00.000Z",
+      );
+    }
+  });
+
+  it("refuses a value that is not a date", () => {
+    expect(parse("next tuesday").success).toBe(false);
+  });
+});
+
 describe("worker XERO_TOKEN_DEK_KEY", () => {
   const issues = (env: Record<string, unknown>) => {
     const result = envSchema.safeParse({ DATABASE_URL: "postgres://localhost/test", ...env });
