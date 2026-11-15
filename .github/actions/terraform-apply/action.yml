@@ -117,7 +117,19 @@ runs:
               ' "$RUNNER_TEMP/${{ inputs.state-key }}-deployment-${deployment_id}.json" 2>/dev/null || echo "- (could not parse deployment JSON)"
             } >> "$GITHUB_STEP_SUMMARY"
           fi
-          for component in auth shop shop-identity shop-api api ws worker web; do
+          # Components come from the deployment's own spec, so new ones are covered automatically.
+          components="$(
+            jq -r '
+              (if type == "array" then .[0] else . end).spec // {}
+              | [(.services, .workers, .jobs, .static_sites, .functions)[]?.name // empty]
+              | unique | .[]
+            ' "$RUNNER_TEMP/${{ inputs.state-key }}-deployment-${deployment_id}.json" 2>/dev/null || true
+          )"
+          # Fall back to the historical list if the deployment spec could not be read.
+          if test -z "$components"; then
+            components="auth shop shop-identity shop-api api ws worker web"
+          fi
+          for component in $components; do
             for log_type in run run_restarted; do
               doctl apps logs "$APP_ID" "$component" --type "$log_type" --tail 200 \
                 --deployment "$deployment_id" \
