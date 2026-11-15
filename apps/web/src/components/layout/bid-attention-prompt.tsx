@@ -1,7 +1,7 @@
 "use client";
 
+import { clientPart } from "@/components/layout/client-part";
 import { whenSignedIn } from "@/components/layout/signed-in-only";
-import dynamic from "next/dynamic";
 
 /**
  * The header's urgent prompt for a signed-in client (see `BidAttentionPromptChip`). It draws
@@ -9,11 +9,9 @@ import dynamic from "next/dynamic";
  * visitors only.
  */
 export const BidAttentionPrompt = whenSignedIn(
-  dynamic(
-    () =>
-      import("@/components/layout/bid-attention-prompt-chip").then((mod) => ({
-        default: mod.BidAttentionPromptChip,
-      })),
-    { ssr: false },
+  clientPart(() =>
+    import("@/components/layout/bid-attention-prompt-chip").then(
+      (mod) => mod.BidAttentionPromptChip,
+    ),
   ),
 );
