@@ -60,7 +60,21 @@ function evidence(over: Partial<DepartmentEvidence> = {}): DepartmentEvidence {
   } as unknown as DepartmentEvidence;
 }
 
+const EXPECTED_CATEGORY: Record<string, string | undefined> = {
+  "/sell/estate": undefined,
+  "/sell/corporate": undefined,
+  "/sell/prints": "fine-prints",
+  "/sell/watches": "watches-clocks",
+  "/sell/motor-cars": "motor-cars",
+};
+
 describe("department pages", () => {
+  it("each real page passes the expected category (none for estate and corporate)", () => {
+    for (const d of DEPARTMENTS) {
+      expect(d.categorySlug, `${d.path} categorySlug`).toBe(EXPECTED_CATEGORY[d.path]);
+    }
+  });
+
   it("each real page passes its title, bullets and a way into the form", () => {
     expect(DEPARTMENTS.map((d) => d.path)).toEqual([
       "/sell/estate",
@@ -111,13 +125,13 @@ describe.each(DEPARTMENTS)("SellDepartmentView $path", (department) => {
 
   const withCategory = Boolean(department.categorySlug);
 
-  it("shows the next consignment deadline when the department has one", () => {
+  it.runIf(withCategory)("shows the next consignment deadline when the department has one", () => {
     render(<SellDepartmentView {...props} departmentNoun={noun} evidence={evidence()} />);
     expect(screen.getByText(`Consign ${noun} by 1 December`)).toBeTruthy();
     expect(screen.getByText(/Winter Sale is the next sale/)).toBeTruthy();
   });
 
-  it("shows no consignment notice when there is no upcoming deadline", () => {
+  it.runIf(withCategory)("shows no consignment notice when there is no upcoming deadline", () => {
     render(
       <SellDepartmentView
         {...props}
