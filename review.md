@@ -47,9 +47,9 @@ Branch `art-figma-parity-faq-price-hours` at `b7e1b509`, reviewed against `origi
    operation, which is otherwise only claimed.
 
 5. The "no specialist option" e2e check passes either way. apps/art/e2e/art-journeys.spec.ts:48
-   asserts there is no "Contact a specialist" button while the options sheet is closed. The sheet's
-   content is not mounted when it is closed, so this check passed before the change too, and it runs
-   on the desktop project. Open "More options" in the Pixel 7 project and assert the entry is
+   asserts there is no "Contact a specialist" button while the options sheet is closed. The sheet
+   (`BottomSheet` / `Sheet` dialogs) does not mount its content while closed, so this check would
+   have passed before the change too, and it also runs on the desktop project. Open "More options" in the Pixel 7 project and assert the entry is
    absent, or unit-test `ArtArtworkMobileGallery`'s options list.
 
 6. Nothing tests the phone price order. The `max-md:order-*` classes at
