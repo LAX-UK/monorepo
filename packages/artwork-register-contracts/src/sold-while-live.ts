@@ -154,8 +154,9 @@ const GALLERY_SALE_ACTIONS: SoldWhileLiveActionKind[] = [
 
 /**
  * The item once the gallery sale is recorded: the artwork is off sale, and payments and
- * acceptances for it stay held until staff have dealt with anything still open. Nothing open is
- * cancelled by itself.
+ * acceptances for it stay held for as long as the gallery sale stands (the money pause reads the
+ * register too). The item asks staff to deal with anything still open; nothing open is cancelled
+ * by itself.
  */
 function soldInGalleryCopy(input: SoldWhileLiveCopyInput): SoldWhileLiveCopy {
   const was = stillWhere(input.place, input.lotNumber);

@@ -26,6 +26,7 @@ import {
 import { LONDON_TIME_ZONE, calendarYear } from "@auction/datetime";
 import type { Database } from "@auction/db";
 import {
+  artworkRegisterSoldAttention as attention,
   artworkRegisterConflict as conflict,
   domainEvent,
   artworkRegisterEvent as event,
@@ -467,6 +468,9 @@ export class DrizzleArtworkRegisterRepository
         zohoModifiedAt: entry.zohoModifiedAt?.toISOString() ?? null,
         ...(plan.laxArtListingId ? { laxArtListingId: plan.laxArtListingId } : {}),
       });
+      if (plan.from === "lax_art") {
+        await this.reraiseOverriddenAttention(tx, entry, plan.laxArtListingId, input.now);
+      }
       await this.publish(tx, row.id, "artwork_register.offer_changed", {
         schemaVersion: 1,
         registerId: row.id,
@@ -481,6 +485,63 @@ export class DrizzleArtworkRegisterRepository
         from: plan.from,
         laxArtListingId: plan.laxArtListingId,
       };
+    });
+  }
+
+  /**
+   * Zoho says Sold again for a work staff earlier said was not sold ("It is not sold"). Zoho wins:
+   * the overridden item is closed as replaced and a fresh open one is raised in the same
+   * transaction as the sale, so staff see it in Needs decision and close it with Dealt with.
+   * Nothing happens when there is no overridden item, or an open one already exists.
+   */
+  private async reraiseOverriddenAttention(
+    tx: Tx,
+    entry: ArtworkRegisterEntry,
+    laxArtListingId: string | null,
+    now: Date,
+  ): Promise<void> {
+    const live = await tx
+      .select()
+      .from(attention)
+      .where(
+        and(eq(attention.registerId, entry.id), inArray(attention.status, ["open", "overridden"])),
+      )
+      .for("update");
+    if (live.some((item) => item.status === "open")) return;
+    const overridden = live.filter((item) => item.status === "overridden");
+    if (overridden.length === 0) return;
+    for (const item of overridden) {
+      await tx
+        .update(attention)
+        .set({ status: "resolved", resolution: "replaced", resolvedBy: "zoho", resolvedAt: now })
+        .where(and(eq(attention.id, item.id), eq(attention.status, "overridden")));
+      await this.record(tx, entry.id, "sold_while_live_resolved", "zoho", now, {
+        attentionId: item.id,
+        status: item.zohoStatus,
+        resolution: "replaced",
+      });
+    }
+    const markedAt = entry.zohoModifiedAt ?? now;
+    const [raised] = await tx
+      .insert(attention)
+      .values({
+        registerId: entry.id,
+        zohoProductId: entry.zohoProductId,
+        zohoStatus: "Sold",
+        place: "lax_art",
+        placeRefId: laxArtListingId,
+        markedAt,
+        raisedAt: now,
+      })
+      .onConflictDoNothing()
+      .returning({ id: attention.id });
+    if (!raised) return;
+    await this.record(tx, entry.id, "sold_while_live_raised", "zoho", now, {
+      attentionId: raised.id,
+      status: "Sold",
+      place: "lax_art",
+      placeRefId: laxArtListingId,
+      markedAt: markedAt.toISOString(),
     });
   }
 

@@ -81,8 +81,8 @@ export interface ISoldAttentionStore extends MoneyPauseReader {
   }): Promise<OverrideSoldAttentionResult>;
   /**
    * "Dealt with": staff have handled whatever was open for an artwork since recorded as sold in the
-   * gallery. Closes the item (`staff_resolved`), which ends the pause; refused unless the register
-   * shows the gallery sale, so it is never a way round "It is not sold".
+   * gallery. Closes the item (`staff_resolved`). Money stays paused while the register shows the
+   * gallery sale; refused unless it does, so it is never a way round "It is not sold".
    */
   markDealtWith(input: {
     id: string;

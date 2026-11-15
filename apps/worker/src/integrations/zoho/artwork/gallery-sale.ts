@@ -50,7 +50,9 @@ export type GallerySaleDeps = {
 /**
  * Zoho says Sold: LAX records the artwork as sold in the gallery (Zoho wins). Before the register
  * moves, the "Zoho says Sold" item is raised for an artwork still on lax.art, so payments for it
- * are held from that moment; it stays open after the move until staff mark it dealt with. The
+ * are held from that moment; once the sale is recorded the money pause also reads the register,
+ * so they stay held while the gallery sale stands. The item stays open until staff mark it dealt
+ * with. The
  * lax.art listing is taken off sale by LAX Shop, which reads the register. A Bid lot or private
  * sale is left to staff, who withdraw it there; the sale is recorded on the next pass after that.
  */

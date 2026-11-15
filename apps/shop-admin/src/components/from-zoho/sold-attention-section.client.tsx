@@ -58,7 +58,8 @@ function NotSoldDialog({
 
 /**
  * "Dealt with": for a work since recorded as sold in the gallery, staff have cancelled or refunded
- * whatever was still open for it where it lives. Payments for the work are held until then.
+ * whatever was still open for it where it lives. Payments for the work stay held while the gallery
+ * sale stands, whatever happens to this item.
  */
 function DealtWithDialog({
   item,
@@ -76,7 +77,7 @@ function DealtWithDialog({
           if (!open) onClose();
         }}
         title="Mark this dealt with"
-        description="Check that no checkout or invoice is still open for this artwork. Payments for it are held until you confirm. Nothing is cancelled or refunded for you."
+        description="Check that no checkout or invoice is still open for this artwork. Payments for it stay held while it is recorded as sold in the gallery. Nothing is cancelled or refunded for you."
         confirmLabel="Dealt with"
         loading={action.pending}
         onConfirm={async () => {

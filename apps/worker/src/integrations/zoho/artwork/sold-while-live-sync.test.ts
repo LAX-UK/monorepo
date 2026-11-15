@@ -41,8 +41,12 @@ function entry(
   };
 }
 
-/** Keeps items in memory with the same one-live-item-per-artwork-and-status rule as the table. */
+/**
+ * Keeps items in memory with the same one-live-item-per-artwork-and-status rule as the table. As
+ * the store does, money is also paused while the register records a gallery sale.
+ */
 class InMemoryAttention implements ISoldAttentionStore {
+  constructor(private readonly soldInGallery: () => boolean = () => false) {}
   items: SoldAttentionRecord[] = [];
   async findLive(registerId: string) {
     return this.items.find((i) => i.registerId === registerId && i.status !== "resolved") ?? null;
@@ -112,7 +116,7 @@ class InMemoryAttention implements ISoldAttentionStore {
       .slice(0, limit);
   }
   async isPaused() {
-    return this.items.some((i) => i.status === "open");
+    return this.items.some((i) => i.status === "open") || this.soldInGallery();
   }
 }
 
@@ -123,7 +127,9 @@ function setup(
   zohoProduct = PRODUCT,
 ) {
   let held = current;
-  const attention = new InMemoryAttention();
+  const attention = new InMemoryAttention(
+    () => held.offer.state === "sold" && held.offer.ref?.kind === "gallery_sale",
+  );
   const log = { info: vi.fn(), debug: vi.fn(), warn: vi.fn() };
   const register = {
     findByZohoProductId: vi.fn(async () => held),
@@ -366,12 +372,13 @@ describe("Zoho Sold recorded as a sale in the gallery", () => {
     expect(await t.attention.isPaused()).toBe(true);
   });
 
-  it("closes the item only when staff mark it dealt with", async () => {
+  it("closes the item only when staff mark it dealt with; money stays paused for the sale", async () => {
     const t = setup("live", entry("Sold", "lax_art"), "live");
     await t.notice("notice:1");
     const id = t.attention.items[0]?.id ?? "";
     await t.attention.markDealtWith({ id, actor: "staff:s1", now: NOW });
-    expect(await t.attention.isPaused()).toBe(false);
+    expect(t.attention.items[0]?.status).toBe("resolved");
+    expect(await t.attention.isPaused()).toBe(true);
     await t.nightly();
     expect(t.attention.items).toHaveLength(1);
   });
@@ -421,5 +428,50 @@ describe("Zoho Sold recorded as a sale in the gallery", () => {
     await t.notice("notice:1");
     await t.nightly();
     expect(t.register.recordGallerySale).not.toHaveBeenCalled();
+  });
+});
+
+describe("GallerySaleRecorder on its own", () => {
+  /** The recorder alone, as the nightly sweep and a notice without the per-Product check use it. */
+  function recorderFor(current: ArtworkRegisterEntry) {
+    const t = setup("live", current, "live");
+    const monitor = new SoldWhileLiveMonitor(t.attention, t.register as never);
+    const openAtRecord: boolean[] = [];
+    const record = t.register.recordGallerySale.getMockImplementation();
+    t.register.recordGallerySale.mockImplementation(async () => {
+      openAtRecord.push(t.attention.items.some((i) => i.status === "open"));
+      return (record as () => Promise<never>)();
+    });
+    const recorder = new GallerySaleRecorder({
+      mode: "live",
+      register: t.register as never,
+      soldWhileLive: monitor,
+      log: t.log as never,
+    });
+    return { t, recorder, openAtRecord };
+  }
+
+  it("raises the item for an artwork on lax.art before the sale is recorded (apply)", async () => {
+    const { t, recorder, openAtRecord } = recorderFor(entry("Sold", "lax_art"));
+    const outcome = await recorder.apply(t.current(), "Sold", NOW);
+    expect(outcome).toEqual({ action: "recorded", from: "lax_art", laxArtListingId: "shop-1" });
+    expect(openAtRecord).toEqual([true]);
+    expect(t.attention.items).toEqual([
+      expect.objectContaining({ place: "lax_art", placeRefId: "shop-1", status: "open" }),
+    ]);
+  });
+
+  it("raises the item before recording in the nightly sweep too", async () => {
+    const { t, recorder, openAtRecord } = recorderFor(entry("Sold", "lax_art"));
+    expect(await recorder.sweep(NOW)).toEqual({ checked: 1, recorded: 1, failed: 0 });
+    expect(openAtRecord).toEqual([true]);
+    expect(t.current().offer.state).toBe("sold");
+  });
+
+  it("raises nothing before recording an artwork that was not on lax.art", async () => {
+    const { t, recorder, openAtRecord } = recorderFor(entry("Sold", "held"));
+    await recorder.apply(t.current(), "Sold", NOW);
+    expect(openAtRecord).toEqual([false]);
+    expect(t.attention.items).toEqual([]);
   });
 });

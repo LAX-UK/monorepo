@@ -110,7 +110,8 @@ export class SoldAttentionReviewService {
 
   /**
    * "Dealt with": staff have handled any checkout or invoice still open for an artwork since
-   * recorded as sold in the gallery. Ends the hold on payments; kept in the artwork's history.
+   * recorded as sold in the gallery. Closes the item; payments stay held while the gallery sale
+   * stands. Kept in the artwork's history.
    */
   async dealtWith(input: {
     attentionId: string;

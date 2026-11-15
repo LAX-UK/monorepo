@@ -162,7 +162,7 @@ describe.skipIf(!url)("gallery sales in the register (Postgres)", { timeout: 30_
     ).toEqual({ ok: false, refusal: "not_a_gallery_sale" });
   });
 
-  it("holds payments until staff mark the item dealt with, and only for a gallery sale", async () => {
+  it("keeps payments held after Dealt with while the gallery sale stands; only Reopen lifts it", async () => {
     const e = await onLaxArt(8, "Sold");
     await attention.raise({
       registerId: e.id,
@@ -187,10 +187,101 @@ describe.skipIf(!url)("gallery sales in the register (Postgres)", { timeout: 30_
       ok: true,
       item: { status: "resolved", resolution: "staff_resolved", resolvedBy: "staff:s1" },
     });
-    expect(await attention.isPaused({ registerId: e.id })).toBe(false);
+    // The item is closed, but Zoho says Sold: no lax.art money path may complete for the work.
+    expect(await attention.isPaused({ registerId: e.id })).toBe(true);
+    expect(await attention.isPaused({ zohoProductId: e.zohoProductId })).toBe(true);
     expect(await attention.markDealtWith({ id: item.id, actor: "staff:s1", now: T2 })).toEqual({
       ok: false,
       reason: "not_open",
     });
+  });
+
+  it("pauses money for a gallery sale with no item, until an Administrator reopens it", async () => {
+    const e = await entry(9, "Sold");
+    await register.recordGallerySale({ registerId: e.id, now: T1 });
+    expect(await attention.isPaused({ registerId: e.id })).toBe(true);
+    await db.execute(
+      sql`UPDATE artwork_register SET catalogue_status = 'Available' WHERE id = ${e.id}`,
+    );
+    const reopened = await register.reopenGallerySale({
+      registerId: e.id,
+      reason: "Typed into the wrong record",
+      actor: "staff:admin",
+      now: T2,
+    });
+    expect(reopened.ok).toBe(true);
+    expect(await attention.isPaused({ registerId: e.id })).toBe(false);
+  });
+
+  it("does not pause money for a work sold through LAX", async () => {
+    const e = await onLaxArt(10, "Available");
+    await register.moveOffer({
+      registerId: e.id,
+      expectedVersion: e.version,
+      to: "sold",
+      ref: { kind: "shop_artwork", id: "shop-10" },
+      actor: "system",
+      now: T1,
+    });
+    expect(await attention.isPaused({ registerId: e.id })).toBe(false);
+  });
+
+  it("an earlier It is not sold does not survive Zoho's Sold: the sale reraises the item and money is paused", async () => {
+    const e = await onLaxArt(11, "Sold");
+    await attention.raise({
+      registerId: e.id,
+      zohoProductId: e.zohoProductId,
+      zohoStatus: "Sold",
+      place: "lax_art",
+      placeRefId: "shop-11",
+      markedAt: T0,
+      now: T0,
+    });
+    const raised = await attention.findLive(e.id);
+    if (!raised) throw new Error("no item");
+    const overridden = await attention.override({
+      id: raised.id,
+      reason: "Checked with the gallery: not sold",
+      actor: "staff:s1",
+      now: T0,
+    });
+    expect(overridden.ok).toBe(true);
+    expect(await attention.isPaused({ registerId: e.id })).toBe(false);
+
+    const recorded = await register.recordGallerySale({ registerId: e.id, now: T1 });
+    expect(recorded.status).toBe("recorded");
+    expect(await attention.isPaused({ registerId: e.id })).toBe(true);
+    expect(await attention.isPaused({ zohoProductId: e.zohoProductId })).toBe(true);
+
+    const live = await attention.findLive(e.id);
+    expect(live).toMatchObject({ status: "open", zohoStatus: "Sold", place: "lax_art" });
+    expect(live?.placeRefId).toBe("shop-11");
+    expect(live?.id).not.toBe(raised.id);
+    const old = await db.execute<{ status: string; resolution: string }>(
+      sql`SELECT status, resolution FROM artwork_register_sold_attention WHERE id = ${raised.id}`,
+    );
+    expect(old.rows[0]).toEqual({ status: "resolved", resolution: "replaced" });
+    const types = (await register.listEvents(e.id, 50)).map((ev) => ev.type);
+    expect(types).toEqual(
+      expect.arrayContaining([
+        "sold_while_live_overridden",
+        "gallery_sale_recorded",
+        "sold_while_live_resolved",
+        "sold_while_live_raised",
+      ]),
+    );
+
+    // Staff then close the fresh item; money stays paused while the gallery sale stands.
+    if (!live) throw new Error("no fresh item");
+    expect((await attention.markDealtWith({ id: live.id, actor: "staff:s1", now: T2 })).ok).toBe(
+      true,
+    );
+    expect(await attention.isPaused({ registerId: e.id })).toBe(true);
+  });
+
+  it("raises no item when the sale is recorded from held (nothing was on lax.art)", async () => {
+    const e = await entry(12, "Sold");
+    await register.recordGallerySale({ registerId: e.id, now: T1 });
+    expect(await attention.findLive(e.id)).toBeNull();
   });
 });
