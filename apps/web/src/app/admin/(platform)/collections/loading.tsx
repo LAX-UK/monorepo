@@ -1,11 +1,5 @@
-import { ListPageSkeleton } from "@auction/staff-ui";
+import { CollectionsLoadingSkeleton } from "@/components/admin/collections/collections-loading-skeleton";
 
 export default function CollectionsLoading() {
-  return (
-    <ListPageSkeleton
-      title="Collections"
-      description="Who is coming to collect, and when. Hand over after checking photo ID."
-      columns={["Buyer", "Collector", "Lots", "Work", "Booking"]}
-    />
-  );
+  return <CollectionsLoadingSkeleton />;
 }

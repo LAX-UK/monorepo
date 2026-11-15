@@ -99,7 +99,7 @@ export class CollectionDeskCommands {
     if (refusal === "no_lots") return err(deskError("no_lots"));
 
     // A hold can open after the booking was made: look again at the moment of hand-over.
-    const held = await this.holdOn(ticked);
+    const held = await this.holdOn(ticked, bookingId);
     if (held) return err(held);
 
     try {
@@ -255,7 +255,7 @@ export class CollectionDeskCommands {
       // The same lot rules as a new booking (paid, not collected or couriered, no check open),
       // looked at again now: the lots are already in this booking, which is not a clash.
       const liveLotIds = booking.lots.filter((l) => l.active).map((l) => l.lotId);
-      const eligible = await this.collectableRecords(liveLotIds, booking.legalEntityId, true);
+      const eligible = await this.collectableRecords(liveLotIds, booking.legalEntityId, bookingId);
       if (eligible.isErr()) return err(eligible.error);
       const outcome = await this.deps.bookings.change(
         {
@@ -265,7 +265,7 @@ export class CollectionDeskCommands {
           slotEnd,
           placesPerSlot: facts.settings.placesPerSlot,
           overCapacityReason: reason,
-          lotIds: booking.lots.filter((l) => l.active).map((l) => l.lotId),
+          lotIds: liveLotIds,
           collector: collectorOf(booking),
         },
         (tx, changed) =>
@@ -398,7 +398,7 @@ export class CollectionDeskCommands {
   private async collectableRecords(
     lotIds: readonly string[],
     legalEntityId: string,
-    alreadyBooked = false,
+    ownBookingId: string | null = null,
   ) {
     const found = await this.deps.facts.read(lotIds);
     const records = [];
@@ -423,7 +423,9 @@ export class CollectionDeskCommands {
     }
     for (const record of records) {
       const decision = collectionEligibility(
-        alreadyBooked ? { ...record.facts, activeBookingId: null } : record.facts,
+        ownBookingId !== null && record.facts.activeBookingId === ownBookingId
+          ? { ...record.facts, activeBookingId: null }
+          : record.facts,
       );
       if (!decision.eligible) {
         return err(
@@ -503,13 +505,17 @@ export class CollectionDeskCommands {
   }
 
   /** The reason a ticked lot cannot be handed over now: a check opened since it was booked. */
-  private async holdOn(lotIds: readonly string[]) {
+  private async holdOn(lotIds: readonly string[], ownBookingId: string) {
     const found = await this.deps.facts.read(lotIds);
     for (const lotId of lotIds) {
       const record = found.get(lotId);
       if (!record) return deskError("lot_not_found", { lotId });
-      // The lot is in this very booking, and is released: neither stands in the way.
-      const decision = collectionEligibility({ ...record.facts, activeBookingId: null });
+      // The lot is in this very booking, which is not a clash; a lot held by another stays one.
+      const decision = collectionEligibility(
+        record.facts.activeBookingId === ownBookingId
+          ? { ...record.facts, activeBookingId: null }
+          : record.facts,
+      );
       if (!decision.eligible) return deskError("hold_open", { lotId, reason: decision.reason });
     }
     return null;

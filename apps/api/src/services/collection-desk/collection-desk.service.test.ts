@@ -630,6 +630,34 @@ describe("changing a still-booked visit", () => {
     expect(error).toMatchObject({ code: "lot_not_collectable", lotId: LOTS[1] });
   });
 
+  it("still moves a visit whose lots carry its own booking id, as they do in production", async () => {
+    const s = setup();
+    const b = await booking(s);
+    for (const record of s.facts.records) {
+      record.facts = { ...record.facts, activeBookingId: b.id };
+    }
+    expect(
+      (
+        await s.service.rebook(STAFF, b.id, { version: b.icsSequence, slotStart: WEDNESDAY_10 })
+      ).isOk(),
+    ).toBe(true);
+  });
+
+  it("refuses a lot held by another booking", async () => {
+    const s = setup();
+    const b = await booking(s);
+    const record = s.facts.records.find((r) => r.lotId === LOTS[0]);
+    if (record) record.facts = { ...record.facts, activeBookingId: "another-booking" };
+    const error = (
+      await s.service.rebook(STAFF, b.id, { version: b.icsSequence, slotStart: WEDNESDAY_10 })
+    )._unsafeUnwrapErr();
+    expect(error).toMatchObject({
+      code: "lot_not_collectable",
+      lotId: LOTS[0],
+      reason: "already_booked",
+    });
+  });
+
   it("still moves a visit whose lots are fine", async () => {
     const s = setup();
     const b = await booking(s);
