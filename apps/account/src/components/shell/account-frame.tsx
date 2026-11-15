@@ -14,10 +14,12 @@ import {
   EssentialCookiesDialog,
   LaxFamilyBar,
   LaxLockup,
+  MarketingBottomBarSpace,
   MarketingFooter,
 } from "@auction/marketing-ui";
 import type { ReactNode } from "react";
 import { AccountAvatarMenu } from "./account-avatar-menu.client";
+import { AccountBottomTabBar } from "./account-bottom-tab-bar.client";
 import { AccountMenuSheet } from "./account-menu-sheet.client";
 import { AccountNav } from "./account-nav.client";
 import { AccountThemeToggle } from "./account-theme-toggle.client";
@@ -61,7 +63,7 @@ export type AccountFrameProps = {
 /**
  * The shell every page after sign-in wears, in the pattern of the other LAX products: the LAX top
  * bar, a compact lockup, a theme toggle and the avatar menu across the top, and the menu down the
- * left on desktop (a sheet opened from the header on a phone).
+ * left on desktop (a sheet opened from the header or the tab bar's More on a phone).
  */
 export function AccountFrame({
   viewer,
@@ -135,6 +137,9 @@ export function AccountFrame({
         columns={buildAccountFooterColumns(products, support)}
         copyright={accountCopyright()}
       />
+      {/* The one place content reserves the docked tab bar's height (--lax-bottom-bar-space). */}
+      <MarketingBottomBarSpace />
+      {showMenu ? <AccountBottomTabBar items={nav} /> : null}
       <EssentialCookiesDialog productName="LAX Account" />
     </div>
   );

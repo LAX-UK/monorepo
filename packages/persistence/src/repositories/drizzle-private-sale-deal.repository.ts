@@ -33,6 +33,7 @@ import type {
   PrivateSaleDealTermsPatch,
   PrivateSaleDealWriteResult,
 } from "../interfaces/private-sale-deal.repository.js";
+import type { DomainEventConnection } from "../lib/domain-event.types.js";
 
 type DealRow = typeof privateSaleDeal.$inferSelect;
 type DocumentRow = typeof privateSaleDealDocument.$inferSelect;
@@ -254,6 +255,7 @@ export class DrizzlePrivateSaleDealRepository
     dealId: string,
     expectedVersion: number,
     party: { role: PrivateSalePartyRole; legalEntityId: string; actingUserId: string | null },
+    inTransaction?: (tx: DomainEventConnection) => Promise<void>,
   ): Promise<PrivateSaleDealWriteResult> {
     return this.db.transaction(async (tx) => {
       if (!(await this.bumpVersion(tx, dealId, expectedVersion, {}))) {
@@ -276,6 +278,7 @@ export class DrizzlePrivateSaleDealRepository
           },
         });
       await recordNamings(tx, dealId, [party]);
+      await inTransaction?.(tx);
       return this.okOf(tx, dealId);
     });
   }

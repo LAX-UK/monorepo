@@ -59,6 +59,24 @@ afterEach(() => {
   document.documentElement.removeAttribute("data-lax-bottom-bar");
 });
 
+describe("MarketingBottomTabBar menu tab", () => {
+  const tabs: MarketingBottomTab[] = [
+    { key: "home", label: "Home", icon, href: "/", paths: ["/"] },
+    { key: "more", label: "More", icon, action: "menu", paths: ["/security"] },
+  ];
+
+  it("opens the product's menu and is current only when its paths match", () => {
+    const onMenu = vi.fn();
+    const { rerender } = render(<MarketingBottomTabBar tabs={tabs} pathname="/" onMenu={onMenu} />);
+    const more = screen.getByRole("button", { name: "More" });
+    fireEvent.click(more);
+    expect(onMenu).toHaveBeenCalledTimes(1);
+    expect(more).not.toHaveAttribute("aria-current");
+    rerender(<MarketingBottomTabBar tabs={tabs} pathname="/security" onMenu={onMenu} />);
+    expect(screen.getByRole("button", { name: "More" })).toHaveAttribute("aria-current", "true");
+  });
+});
+
 describe("MarketingBottomTabBar full-page tabs", () => {
   it("renders a plain anchor, with no client navigation, for a tab that starts a sign-in", () => {
     const tabs: MarketingBottomTab[] = [

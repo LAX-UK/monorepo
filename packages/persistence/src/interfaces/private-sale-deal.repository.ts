@@ -9,6 +9,7 @@ import type {
   PrivateSaleStageChange,
   PrivateSaleStageHistoryEntry,
 } from "@auction/types";
+import type { DomainEventConnection } from "../lib/domain-event.types.js";
 
 export type NewPrivateSaleDeal = {
   itemSubmissionId: string;
@@ -57,11 +58,16 @@ export interface IPrivateSaleDealReader {
 export interface IPrivateSaleDealWriter {
   /** Opens the deal as proposed and writes the first history row, in one transaction. */
   create(input: NewPrivateSaleDeal): Promise<PrivateSaleDealDetail>;
-  /** Names or replaces a party. Replacing the buyer starts their acceptance of the terms again. */
+  /**
+   * Names or replaces a party. Replacing the buyer starts their acceptance of the terms again.
+   * `inTransaction` runs in the same transaction once the party is written, so the domain event
+   * that records the naming commits with it or not at all; if it throws, nothing is kept.
+   */
   setParty(
     dealId: string,
     expectedVersion: number,
     party: { role: PrivateSalePartyRole; legalEntityId: string; actingUserId: string | null },
+    inTransaction?: (tx: DomainEventConnection) => Promise<void>,
   ): Promise<PrivateSaleDealWriteResult>;
   updateTerms(
     dealId: string,
