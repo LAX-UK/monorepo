@@ -10,6 +10,7 @@ import {
   type ActivityPageView,
   type ActivityQuery,
   type InvoiceDetailsView,
+  type OrganisationAddressesView,
   activityQueryString,
 } from "./organisation-team.types";
 
@@ -51,6 +52,22 @@ const invoiceDetailsSchema = z.object({
   updatedAt: z.string().nullable(),
   canEdit: z.boolean(),
 }) satisfies z.ZodType<InvoiceDetailsView>;
+
+export const organisationAddressSchema = z.object({
+  id: z.string(),
+  kind: z.enum(["registered", "delivery"]),
+  line1: z.string(),
+  line2: z.string().nullable(),
+  city: z.string(),
+  region: z.string().nullable(),
+  postalCode: z.string(),
+  country: z.string(),
+});
+
+const organisationAddressesSchema = z.object({
+  addresses: z.array(organisationAddressSchema),
+  canAdd: z.boolean(),
+}) satisfies z.ZodType<OrganisationAddressesView>;
 
 const detailValue = z.union([z.string(), z.number(), z.boolean(), z.null(), z.array(z.string())]);
 
@@ -114,6 +131,19 @@ export async function getServerInvoiceDetails(
   return readData(
     await get("/legal-entities/invoice-details", legalEntityId),
     invoiceDetailsSchema,
+  );
+}
+
+/**
+ * The registered address and delivery addresses a purchase can go to for the organisation; `null`
+ * when they cannot be read (a role that does not buy for it is refused).
+ */
+export async function getServerOrganisationAddresses(
+  legalEntityId: string,
+): Promise<OrganisationAddressesView | null> {
+  return readData(
+    await get("/legal-entities/addresses", legalEntityId),
+    organisationAddressesSchema,
   );
 }
 

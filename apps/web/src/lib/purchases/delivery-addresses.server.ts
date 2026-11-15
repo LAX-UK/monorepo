@@ -1,20 +1,43 @@
 import "server-only";
 
 import { getServerMyAddresses } from "@/lib/data/http/addresses.server";
-import { getServerInvoiceDetails } from "@/lib/data/http/organisation-team.server";
-import { type DeliveryAddress, deliveryAddresses } from "./delivery-addresses.vm";
+import {
+  getServerInvoiceDetails,
+  getServerOrganisationAddresses,
+} from "@/lib/data/http/organisation-team.server";
+import {
+  type AddressContext,
+  type DeliveryAddress,
+  deliveryAddresses,
+} from "./delivery-addresses.vm";
 
 /**
- * The addresses a payer can have a courier quote for: their saved delivery addresses and, for an
- * organisation, its invoice address. A read that fails leaves that source out; the picker still
- * lets the payer add an address.
+ * The addresses a payer can have a courier quote for: for an organisation, its registered and
+ * delivery addresses and its invoice address; always the member's saved delivery addresses. A
+ * read that fails leaves that source out (and the organisation's says so); the picker still lets
+ * the payer add an address.
  */
 export async function loadDeliveryAddresses(
-  organisationId: string | null,
-): Promise<DeliveryAddress[]> {
-  const [book, invoice] = await Promise.all([
+  organisation: { id: string; name: string } | null,
+): Promise<{ addresses: DeliveryAddress[]; context: AddressContext | null }> {
+  const [book, invoice, owned] = await Promise.all([
     getServerMyAddresses(),
-    organisationId ? getServerInvoiceDetails(organisationId).catch(() => null) : null,
+    organisation ? getServerInvoiceDetails(organisation.id).catch(() => null) : null,
+    organisation ? getServerOrganisationAddresses(organisation.id).catch(() => null) : null,
   ]);
-  return deliveryAddresses({ book, invoice: invoice?.address ?? null });
+  return {
+    addresses: deliveryAddresses({
+      book,
+      invoice: invoice?.address ?? null,
+      organisation: owned?.addresses ?? [],
+    }),
+    context: organisation
+      ? {
+          organisationId: organisation.id,
+          organisationName: organisation.name,
+          canAdd: owned?.canAdd ?? false,
+          loadFailed: owned === null,
+        }
+      : null,
+  };
 }

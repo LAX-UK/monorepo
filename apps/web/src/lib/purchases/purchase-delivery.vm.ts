@@ -4,7 +4,7 @@ import type {
 } from "@/lib/data/http/account-buying.types";
 import { formatMoney } from "@/lib/format-currency";
 import { LONDON_TIME_ZONE, formatDayMonthOnly } from "@auction/datetime";
-import type { DeliveryAddress } from "./delivery-addresses.vm";
+import type { AddressContext, DeliveryAddress } from "./delivery-addresses.vm";
 
 /** Where the work is collected from, and how a time is booked. */
 export type CollectionVm = {
@@ -26,6 +26,8 @@ export type DeliveryPanelVm =
       collection: CollectionVm | null;
       /** Where a courier quote can be asked for; empty until the payer adds an address. */
       addresses: readonly DeliveryAddress[];
+      /** Whose addresses they are when the buyer acts for an organisation; `null` for a person. */
+      addressContext: AddressContext | null;
     }
   | { kind: "quote-requested"; line: string; canWithdraw: boolean }
   | {
@@ -56,6 +58,7 @@ export function deliveryPanel(input: {
   /** Who pays, when this member does not: "Northbank Gallery's finance team". */
   payerTeam: string;
   addresses: readonly DeliveryAddress[];
+  addressContext?: AddressContext | null;
 }): DeliveryPanelVm {
   const { facts, payerTeam, addresses } = input;
   const payer = facts.paymentRole === "payer";
@@ -71,6 +74,7 @@ export function deliveryPanel(input: {
             beforePayment: delivery.stage === "awaiting_payment",
             collection,
             addresses,
+            addressContext: input.addressContext ?? null,
           }
         : { kind: "told", line: `${payerTeam} chooses how the work is delivered.` };
     case "quote_requested":

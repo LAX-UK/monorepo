@@ -1,7 +1,7 @@
 import type { Database } from "@auction/db";
 import { legalEntity, legalEntityAddress } from "@auction/db/schema";
 import type { LegalEntity } from "@auction/types";
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, inArray, ne } from "drizzle-orm";
 import type { DbTransaction } from "../interfaces/artist-delete.repository.js";
 import type { ILegalEntityReader } from "../interfaces/legal-entity.reader.js";
 import { legalEntityRowToDomain } from "../lib/legal-entity-row-mapper.js";
@@ -63,7 +63,12 @@ export class DrizzleLegalEntityReader implements ILegalEntityReader {
         isDefault: legalEntityAddress.isDefault,
       })
       .from(legalEntityAddress)
-      .where(eq(legalEntityAddress.legalEntityId, legalEntityId));
+      .where(
+        and(
+          eq(legalEntityAddress.legalEntityId, legalEntityId),
+          ne(legalEntityAddress.addressType, "delivery"),
+        ),
+      );
     if (rows.length === 0) return null;
     const sorted = [...rows].sort((a, b) => {
       const oa = typeOrder[a.addressType] ?? 99;
@@ -103,7 +108,12 @@ export class DrizzleLegalEntityReader implements ILegalEntityReader {
         isDefault: legalEntityAddress.isDefault,
       })
       .from(legalEntityAddress)
-      .where(eq(legalEntityAddress.legalEntityId, legalEntityId))
+      .where(
+        and(
+          eq(legalEntityAddress.legalEntityId, legalEntityId),
+          ne(legalEntityAddress.addressType, "delivery"),
+        ),
+      )
       .orderBy(desc(legalEntityAddress.isDefault), legalEntityAddress.createdAt)
       .limit(1);
     const r = rows[0];

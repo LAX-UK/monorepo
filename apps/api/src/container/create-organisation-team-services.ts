@@ -8,6 +8,7 @@ import {
   DrizzleContactDetailsRepository,
   DrizzleInvoiceDetailsRepository,
   DrizzleOrganisationActivityReader,
+  DrizzleOrganisationAddressRepository,
 } from "@auction/persistence/repositories";
 import type { IStripeClientFactory } from "../lib/stripe-client.js";
 import type { IDomainEventSink } from "../services/domain-event-sink.js";
@@ -21,11 +22,13 @@ import type {
 import type {
   IInvoiceDetailsService,
   IOrganisationActivityService,
+  IOrganisationAddressService,
 } from "../services/interfaces/organisation-team-service.js";
 import { ContactDetailsService } from "../services/organisation-team/contact-details.service.js";
 import { InvoiceDetailsService } from "../services/organisation-team/invoice-details.service.js";
 import { MemberLastActiveService } from "../services/organisation-team/member-last-active.service.js";
 import { OrganisationActivityService } from "../services/organisation-team/organisation-activity.service.js";
+import { OrganisationAddressService } from "../services/organisation-team/organisation-address.service.js";
 import { OrganisationStatementsService } from "../services/organisation-team/organisation-statements.service.js";
 import { PayoutAccountService } from "../services/organisation-team/payout-account.service.js";
 import { SamplePayoutBankAccountProvider } from "../services/organisation-team/sample-payout-bank-account.provider.js";
@@ -34,6 +37,7 @@ import { StripePayoutBankAccountProvider } from "../services/stripe/connect/stri
 /** Team and Profile reads and changes for the acting organisation (`container.organisationTeam`). */
 export type OrganisationTeamServices = {
   invoiceDetails: IInvoiceDetailsService;
+  addresses: IOrganisationAddressService;
   activity: IOrganisationActivityService;
   contactDetails: IContactDetailsService;
   statements: IOrganisationStatementsService;
@@ -59,6 +63,9 @@ export function createOrganisationTeamServices(input: {
     invoiceDetails: new InvoiceDetailsService({
       details: new DrizzleInvoiceDetailsRepository(input.db),
       events: input.events,
+    }),
+    addresses: new OrganisationAddressService({
+      addresses: new DrizzleOrganisationAddressRepository(input.db),
     }),
     activity: new OrganisationActivityService({
       activity: new DrizzleOrganisationActivityReader(input.db),

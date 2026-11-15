@@ -35,6 +35,8 @@ const EXPECTED: Record<EntityCapability, LegalEntityMemberRole[]> = {
   "entity.security.remind": ["owner", "admin"],
   "entity.contact.read": ["owner", "admin", "consignor", "finance", "buyer_agent", "viewer"],
   "entity.contact.manage": ["owner", "admin"],
+  "entity.delivery_addresses.read": ["owner", "admin", "finance", "buyer_agent"],
+  "entity.delivery_addresses.manage": ["owner", "admin", "finance", "buyer_agent"],
   "entity.members.last_active.read": ["owner", "admin"],
 };
 

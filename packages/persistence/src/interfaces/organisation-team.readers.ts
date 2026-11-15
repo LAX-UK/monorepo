@@ -18,6 +18,19 @@ export type InvoiceDetails = {
   updatedAt: Date | null;
 };
 
+/** Where an organisation's address came from: its registration, or added for deliveries. */
+export type OrganisationAddressKind = "registered" | "delivery";
+
+export type OrganisationAddress = InvoiceAddress & { id: string; kind: OrganisationAddressKind };
+
+/** The addresses a purchase can be delivered to for an organisation. */
+export interface IOrganisationAddressRepository {
+  /** The registered address (when it has one), then the delivery addresses, oldest first. */
+  list(legalEntityId: string): Promise<OrganisationAddress[]>;
+  /** Adds a delivery address and returns it. */
+  addDelivery(legalEntityId: string, address: InvoiceAddress): Promise<OrganisationAddress>;
+}
+
 export interface IInvoiceDetailsReader {
   /** The organisation's details, or `null` when none were ever saved. */
   find(legalEntityId: string): Promise<InvoiceDetails | null>;

@@ -44,10 +44,10 @@ function card(over: Partial<PurchaseCardVm> = {}): PurchaseCardVm {
     dueAt: 0,
     wonAt: 0,
     steps: [
-      { id: "won", label: "Won", date: "11 Nov", progress: "done" },
-      { id: "payment", label: "Payment", date: "Due 18 Nov", progress: "current" },
+      { id: "won", label: "Won at auction", date: "11 Nov", progress: "done" },
+      { id: "payment", label: "Pay the invoice", date: "Due 18 Nov", progress: "current" },
       { id: "delivery", label: "Delivery", date: null, progress: "upcoming" },
-      { id: "delivered", label: "Delivered", date: null, progress: "upcoming" },
+      { id: "delivered", label: "Received", date: null, progress: "upcoming" },
     ],
     breakdown: [],
     primaryAction: null,

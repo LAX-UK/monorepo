@@ -7,7 +7,11 @@ import {
   EMPTY_ADDRESS,
   validateAddress,
 } from "@/lib/address/address-fields";
-import { DEFAULT_ADDRESS_LABEL, type DeliveryAddress } from "@/lib/purchases/delivery-addresses.vm";
+import {
+  type AddressContext,
+  DEFAULT_ADDRESS_LABEL,
+  type DeliveryAddress,
+} from "@/lib/purchases/delivery-addresses.vm";
 import { saveDeliveryAddressAction } from "@/lib/purchases/purchase.actions";
 import { Button } from "@auction/ui/lax/button";
 import { Dialog, DialogClose } from "@auction/ui/lax/dialog";
@@ -16,13 +20,17 @@ import { Field } from "@auction/ui/lax/field";
 import { TextInput } from "@auction/ui/lax/input";
 import { Notice } from "@auction/ui/lax/notice";
 import { PresetCards } from "@auction/ui/lax/preset-cards";
+import { Skeleton } from "@auction/ui/lax/skeleton";
 import { Plus } from "lucide-react";
 import { useState, useTransition } from "react";
 
 function AddAddressDialog({
+  organisation,
   onSaved,
   onClose,
 }: {
+  /** The organisation the address is added to; `null` adds it to the member's address book. */
+  organisation: { id: string; name: string } | null;
   onSaved: (address: DeliveryAddress) => void;
   onClose: () => void;
 }) {
@@ -38,7 +46,7 @@ function AddAddressDialog({
     if (Object.keys(problems).length > 0) return;
     start(async () => {
       setError(null);
-      const result = await saveDeliveryAddressAction(label, address);
+      const result = await saveDeliveryAddressAction(label, address, organisation?.id ?? null);
       if (result.ok) onSaved(result.address);
       else setError(result.message);
     });
@@ -49,7 +57,11 @@ function AddAddressDialog({
       open
       onOpenChange={(next) => (next || pending ? undefined : onClose())}
       title="Add an address"
-      description="It is saved to your LAX Account address book, so you can pick it again next time."
+      description={
+        organisation
+          ? `It is saved to ${organisation.name}'s addresses, so every member who buys for it can pick it.`
+          : "It is saved to your LAX Account address book, so you can pick it again next time."
+      }
       footer={
         <>
           <DialogClose asChild>
@@ -62,18 +74,20 @@ function AddAddressDialog({
       }
     >
       <div className="flex flex-col gap-4">
-        <Field
-          label="Name"
-          description={`For example "Gallery store". Defaults to "${DEFAULT_ADDRESS_LABEL}".`}
-          optional
-        >
-          <TextInput
-            maxLength={80}
-            value={label}
-            onChange={(event) => setLabel(event.target.value)}
-            disabled={pending}
-          />
-        </Field>
+        {organisation ? null : (
+          <Field
+            label="Name"
+            description={`For example "Gallery store". Defaults to "${DEFAULT_ADDRESS_LABEL}".`}
+            optional
+          >
+            <TextInput
+              maxLength={80}
+              value={label}
+              onChange={(event) => setLabel(event.target.value)}
+              disabled={pending}
+            />
+          </Field>
+        )}
         <AddressFields
           values={address}
           onChange={(patch) => setAddress((current) => ({ ...current, ...patch }))}
@@ -87,15 +101,19 @@ function AddAddressDialog({
 }
 
 /**
- * Where to deliver: the payer's saved addresses (and the organisation's invoice address) as
- * cards to choose from, with "Add an address" in a dialog. With none saved yet it asks for the
- * first rather than showing an empty list. The choice is reported up as an id, or `null`.
+ * Where to deliver: the payer's saved addresses (and, for an organisation, its registered,
+ * delivery and invoice addresses) as cards to choose from, with "Add an address" in a dialog.
+ * With none yet it asks for the first rather than showing an empty list. The choice is reported
+ * up as an id, or `null`. An address is added to the organisation when the member may add one,
+ * otherwise to their own address book.
  */
 export function DeliveryAddressPicker({
   addresses,
   value,
   onValueChange,
   error,
+  context = null,
+  loading = false,
   disabled = false,
 }: {
   addresses: readonly DeliveryAddress[];
@@ -103,6 +121,10 @@ export function DeliveryAddressPicker({
   onValueChange: (id: string, address: DeliveryAddress) => void;
   /** Why the last request was refused, shown beneath the choice. */
   error: string | null;
+  /** Whose addresses these are when buying for an organisation. */
+  context?: AddressContext | null;
+  /** The addresses are still being read. */
+  loading?: boolean;
   disabled?: boolean;
 }) {
   const [added, setAdded] = useState<readonly DeliveryAddress[]>([]);
@@ -115,8 +137,33 @@ export function DeliveryAddressPicker({
     setAdding(false);
   };
 
+  const organisation = context?.canAdd
+    ? { id: context.organisationId, name: context.organisationName }
+    : null;
+
+  if (loading) {
+    return (
+      <div className="flex flex-col gap-3" aria-busy="true">
+        <output className="sr-only">Loading addresses</output>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Skeleton className="h-20 rounded-lax-card" />
+          <Skeleton className="h-20 rounded-lax-card" />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col gap-3">
+      {context?.loadFailed ? (
+        <Notice
+          tone="warning"
+          title={`We couldn't load ${context.organisationName}'s addresses`}
+          alert
+        >
+          Your own addresses are shown. Try again in a moment, or add an address.
+        </Notice>
+      ) : null}
       {all.length === 0 ? (
         <EmptyState
           size="compact"
@@ -157,7 +204,13 @@ export function DeliveryAddressPicker({
         </>
       )}
       {error ? <Notice tone="danger" alert title={error} /> : null}
-      {adding ? <AddAddressDialog onSaved={saved} onClose={() => setAdding(false)} /> : null}
+      {adding ? (
+        <AddAddressDialog
+          organisation={organisation}
+          onSaved={saved}
+          onClose={() => setAdding(false)}
+        />
+      ) : null}
     </div>
   );
 }

@@ -12,6 +12,15 @@ export type InvoiceAddressView = {
   country: string;
 };
 
+/** An address of the organisation: its registered address, or one added for deliveries. */
+export type OrganisationAddressView = InvoiceAddressView & {
+  id: string;
+  kind: "registered" | "delivery";
+};
+
+/** What a purchase can be delivered to for the organisation, and whether this member may add one. */
+export type OrganisationAddressesView = { addresses: OrganisationAddressView[]; canAdd: boolean };
+
 /** The organisation's invoice details, with whether this member may change them. */
 export type InvoiceDetailsView = {
   billingEmail: string | null;

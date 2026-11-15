@@ -300,6 +300,7 @@ export {
   DrizzleInvoiceDetailsRepository,
   DrizzleOrganisationActivityReader,
 } from "./drizzle-organisation-team.readers.js";
+export { DrizzleOrganisationAddressRepository } from "./drizzle-organisation-address.repository.js";
 export { DrizzleContactDetailsRepository } from "./drizzle-contact-details.repository.js";
 export { DrizzleUnsoldChoiceDeadlineStore } from "./drizzle-unsold-choice-deadline.store.js";
 export { DrizzleUnsoldLotFollowUpRepository } from "./drizzle-unsold-lot-follow-up.repository.js";
