@@ -16,34 +16,26 @@ function readDomDark(): boolean {
 
 type ThemeToggleProps = {
   headerTone?: SiteHeaderTone;
-  /** @deprecated Use `surface` instead. */
-  variant?: ChromeSurface;
   surface?: ChromeSurface;
 };
 
-/** The latest theme switch's marker; an older switch that ends late must leave the newer one's wipe alone. */
-let latestThemeTransition: object | undefined;
+type ViewTransitionDocument = Document & {
+  startViewTransition?: (update: () => void) => { finished: Promise<void> };
+};
 
-/** Reduced motion as `useReducedMotion` resolves it: the in-app switch wins over the OS preference. */
-function themeMotionReduced(root: HTMLElement): boolean {
-  const override = root.dataset.reduceMotion;
-  if (override === "force-reduce") return true;
-  if (override === "force-allow") return false;
-  return matchMedia("(prefers-reduced-motion: reduce)").matches;
-}
-
-/** Circular reveal from the toggle's centre when the theme switches (View Transitions API), marked
- * `<html data-view-transition="theme">` so `marketing-header.css` plays the wipe for this switch
- * only. Switches instantly without support or under reduced motion. Self-contained on purpose: it
- * ships in every layout, so it shares no module with the page-change helper
- * (`view-transition-runtime.ts`), which would otherwise be duplicated into the layout chunk.
+/** Circular reveal from the toggle's centre when the theme switches (View Transitions API).
+ *
+ * The transition is marked `<html data-view-transition="theme">` so `marketing-header.css` plays
+ * the wipe for this switch only, with the same marking order as the page-change helper
+ * (`view-transition-runtime.ts`): set inside the update callback, cleared when `finished`
+ * settles, so a superseded switch or page change has always cleaned up before the next marker is
+ * set. Switches instantly without support or under reduced motion, resolved as
+ * `useReducedMotion` does (the in-app switch wins over the OS preference).
+ *
+ * Self-contained on purpose: the toggle ships in every layout, and importing the helper put it in
+ * the layout chunk as well as the page chunks that navigate, growing route JS everywhere.
  */
-export function ThemeToggle({
-  headerTone = "on-light",
-  variant,
-  surface: surfaceProp,
-}: ThemeToggleProps) {
-  const surface = surfaceProp ?? variant ?? "marketing";
+export function ThemeToggle({ headerTone = "on-light", surface = "marketing" }: ThemeToggleProps) {
   const [isDark, setIsDark] = useState(false);
 
   useEffect(() => {
@@ -63,11 +55,14 @@ export function ThemeToggle({
       void syncUiThemeFromClientAction({ theme: mode });
     };
 
-    const root = document.documentElement;
-    const doc = document as Document & {
-      startViewTransition?: (update: () => void) => { finished: Promise<void> };
-    };
-    if (!doc.startViewTransition || themeMotionReduced(root)) {
+    const doc: ViewTransitionDocument = document;
+    const root = doc.documentElement;
+    const override = root.dataset.reduceMotion;
+    if (
+      !doc.startViewTransition ||
+      override === "force-reduce" ||
+      (override !== "force-allow" && matchMedia("(prefers-reduced-motion: reduce)").matches)
+    ) {
       apply();
       return;
     }
@@ -80,30 +75,20 @@ export function ThemeToggle({
       Math.max(cx, window.innerWidth - cx),
       Math.max(cy, window.innerHeight - cy),
     );
-    const vars = {
-      "--theme-toggle-x": cx,
-      "--theme-toggle-y": cy,
-      "--theme-toggle-radius": radius,
-    };
-    for (const [name, px] of Object.entries(vars)) root.style.setProperty(name, `${px}px`);
-
-    const mine = {};
-    latestThemeTransition = mine;
-    root.dataset.viewTransition = "theme";
-    // Runs when this transition ends, also when a page change replaced it. Only a newer theme
-    // switch (which set fresh values) skips it; the marker stays when another kind owns it now.
     const cleanup = () => {
-      if (mine !== latestThemeTransition) return;
-      if (root.dataset.viewTransition === "theme") delete root.dataset.viewTransition;
-      for (const name in vars) root.style.removeProperty(name);
+      delete root.dataset.viewTransition;
+      root.style.removeProperty("--theme-toggle-at");
+      root.style.removeProperty("--theme-toggle-radius");
     };
-    try {
-      // `finished` rejects when the transition is aborted; the theme has been applied by then.
-      void doc.startViewTransition(apply).finished.then(cleanup, cleanup);
-    } catch {
-      apply();
-      cleanup();
-    }
+    // `finished` rejects only if the update throws; clean up either way.
+    void doc
+      .startViewTransition(() => {
+        root.dataset.viewTransition = "theme";
+        root.style.setProperty("--theme-toggle-at", `${cx}px ${cy}px`);
+        root.style.setProperty("--theme-toggle-radius", `${radius}px`);
+        apply();
+      })
+      .finished.then(cleanup, cleanup);
   }, []);
 
   const label = isDark ? "Switch to light theme" : "Switch to dark theme";

@@ -279,7 +279,8 @@ export async function screenshotDiffRatio(page: Page, a: Buffer, b: Buffer): Pro
 
 /** What a started view transition animated, read when its first frame was ready. */
 export type ViewTransitionRecord = {
-  /** `data-view-transition` on the root when the transition started ("none" when unset). */
+  /** `data-view-transition` on the root when the transition's first frame was ready ("none" when
+   * unset: the public page change). The app marks a kind inside the update callback. */
   kind: string;
   /** The transition pseudo-element animations: `pseudo` as the browser names it, the CSS animation `name` and `duration` in ms. */
   animations: { pseudo: string; name: string; duration: number }[];
@@ -328,6 +329,7 @@ export async function observeViewTransitions(page: Page): Promise<void> {
       transition.ready.then(
         () => {
           record.readyAt = performance.now();
+          record.kind = document.documentElement.getAttribute("data-view-transition") ?? "none";
           record.animations = document
             .getAnimations()
             .map((animation) => {

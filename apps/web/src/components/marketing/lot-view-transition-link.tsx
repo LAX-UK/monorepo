@@ -41,7 +41,7 @@ export function LotViewTransitionLink({ lotId, href, onClick, ...rest }: Props) 
 
     e.preventDefault();
     const target = typeof href === "string" ? href : String(href);
-    withViewTransition("lot", () => {
+    withViewTransition(() => {
       router.push(target);
     });
   };

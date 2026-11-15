@@ -1,9 +1,10 @@
 /*
- * View transitions. Each kind is selected by `<html data-view-transition="...">`, which apps/web
- * sets only while that transition runs (`theme-toggle.tsx` for the theme switch,
- * `view-transition-runtime.ts` for page changes), so a rule here never leaks into another kind.
- * Timing comes from the LAX motion tokens (docs/design/motion.md). Neither starts a transition
- * under reduced motion; the rules at the end are the CSS backstop.
+ * View transitions, timed by kind from the LAX motion tokens (docs/design/motion.md). apps/web marks
+ * a kind on `<html data-view-transition="...">` only while that transition runs: `theme` (the
+ * theme toggle) and `admin` (the admin router). A page change started by the shared helper
+ * (apps/web/src/lib/view-transition-runtime.ts) is unmarked: that is the public page change, the
+ * lot image morph. No rule here matches at rest. Neither path starts a transition under reduced
+ * motion; the rules at the end are the CSS backstop.
  */
 @supports (view-transition-name: root) {
   /* The transition layer is visual only: it must never swallow a click. */
@@ -30,11 +31,12 @@
     animation: theme-reveal var(--motion-duration-xl, 900ms) var(--motion-ease-emphasize) forwards;
   }
 
-  /* Lot image morph: the clicked tile's image grows into the detail hero. The `(*)` selectors also
-     time the root cross-fade of the rest of the page, so the whole page change moves as one. */
-  :root[data-view-transition="lot"]::view-transition-group(*),
-  :root[data-view-transition="lot"]::view-transition-old(*),
-  :root[data-view-transition="lot"]::view-transition-new(*) {
+  /* Public page change (unmarked), the lot image morph: the clicked tile's image grows into the
+     detail hero. The `(*)` selectors also time the root cross-fade of the rest of the page, so the
+     whole page change moves as one. */
+  :root:not([data-view-transition])::view-transition-group(*),
+  :root:not([data-view-transition])::view-transition-old(*),
+  :root:not([data-view-transition])::view-transition-new(*) {
     animation-duration: var(--lax-motion-morph);
     animation-timing-function: var(--lax-ease-emphasize);
   }
@@ -49,35 +51,32 @@
     animation-timing-function: var(--lax-ease-out);
   }
 
-  /* Reduced motion backstop: the helpers already skip transitions under reduced motion, resolved as
-     `useReducedMotion` does. A `(*)` argument adds no specificity, so the `html` type selector
+  /* Reduced motion backstop for every kind, marked or not. Reduced motion is resolved as
+     `useReducedMotion` does: `force-allow` keeps motion under the OS setting, and `force-reduce`
+     removes it without one. A `(*)` argument adds no specificity, so the `html` type selector
      carries the weight: these selectors equal the theme wipe's `:root[...]::view-transition-new(root)`
-     above and come later, so they win.
-     The in-app switch wins both ways: `force-allow` keeps motion under the OS setting, and
-     `force-reduce` removes it without one. */
+     above and come later, so they win. */
   @media (prefers-reduced-motion: reduce) {
-    html[data-view-transition]:not([data-reduce-motion="force-allow"])::view-transition-group(*),
-    html[data-view-transition]:not([data-reduce-motion="force-allow"])::view-transition-old(*),
-    html[data-view-transition]:not([data-reduce-motion="force-allow"])::view-transition-new(*) {
+    html:root:not([data-reduce-motion="force-allow"])::view-transition-group(*),
+    html:root:not([data-reduce-motion="force-allow"])::view-transition-old(*),
+    html:root:not([data-reduce-motion="force-allow"])::view-transition-new(*) {
       animation: none;
     }
   }
 
-  html[data-reduce-motion="force-reduce"][data-view-transition]::view-transition-group(*),
-  html[data-reduce-motion="force-reduce"][data-view-transition]::view-transition-old(*),
-  html[data-reduce-motion="force-reduce"][data-view-transition]::view-transition-new(*) {
+  html:root[data-reduce-motion="force-reduce"]::view-transition-group(*),
+  html:root[data-reduce-motion="force-reduce"]::view-transition-old(*),
+  html:root[data-reduce-motion="force-reduce"]::view-transition-new(*) {
     animation: none;
   }
 }
 
 @keyframes theme-reveal {
   from {
-    clip-path: circle(0 at var(--theme-toggle-x, 100%) var(--theme-toggle-y, 0));
+    clip-path: circle(0 at var(--theme-toggle-at, 100% 0));
   }
   to {
-    clip-path: circle(
-      var(--theme-toggle-radius, 200vmax) at var(--theme-toggle-x, 100%) var(--theme-toggle-y, 0)
-    );
+    clip-path: circle(var(--theme-toggle-radius, 200vmax) at var(--theme-toggle-at, 100% 0));
   }
 }
 

@@ -32,11 +32,17 @@ const css = [
   read("packages/marketing-ui/src/marketing-header.css"),
 ].join("\n");
 
-type Outcome = { animations: { pseudo: string; name: string }[]; elapsedMs: number };
+type Outcome = {
+  animations: { pseudo: string; name: string; duration: number }[];
+  elapsedMs: number;
+};
+
+/** `undefined` is the unmarked public page change (the lot morph); the others mark their kind. */
+type Kind = "theme" | "admin" | undefined;
 
 async function runTransition(
   page: Page,
-  kind: "theme" | "lot" | "admin",
+  kind: Kind,
   reduceMotion?: "force-reduce" | "force-allow",
 ): Promise<Outcome> {
   await page.setContent(
@@ -46,8 +52,13 @@ async function runTransition(
     async ({ kind, reduceMotion }) => {
       const root = document.documentElement;
       if (reduceMotion) root.dataset.reduceMotion = reduceMotion;
-      root.dataset.viewTransition = kind;
+      // Marked inside the update, as the app does.
       const transition = document.startViewTransition(() => {
+        if (kind) root.dataset.viewTransition = kind;
+        if (kind === "theme") {
+          root.style.setProperty("--theme-toggle-at", "40px 30px");
+          root.style.setProperty("--theme-toggle-radius", "1000px");
+        }
         root.classList.toggle("dark");
       });
       await transition.ready;
@@ -59,12 +70,13 @@ async function runTransition(
         .map((a) => ({
           pseudo: (a.effect as KeyframeEffect | null)?.pseudoElement ?? "",
           name: (a as CSSAnimation).animationName ?? "",
+          duration: Number(a.effect?.getTiming().duration ?? 0),
         }))
         .filter((a) => a.pseudo.startsWith("::view-transition"));
       await transition.finished;
       return { animations, elapsedMs: performance.now() - readyAt };
     },
-    { kind, reduceMotion },
+    { kind: kind ?? null, reduceMotion },
   );
 }
 
@@ -75,15 +87,25 @@ test.describe("view transition CSS in the browser @optin", () => {
     expect(outcome.elapsedMs).toBeGreaterThan(500);
   });
 
-  for (const kind of ["theme", "lot", "admin"] as const) {
-    test(`OS reduced motion cancels the ${kind} transition`, async ({ page }) => {
+  test("an unmarked page change runs the morph timing and never the wipe", async ({ page }) => {
+    const outcome = await runTransition(page, undefined);
+    expect(outcome.animations.length).toBeGreaterThan(0);
+    expect(outcome.animations.map((a) => a.name)).not.toContain("theme-reveal");
+    // `--lax-motion-morph`
+    expect(outcome.animations.every((a) => a.duration === 360)).toBe(true);
+  });
+
+  for (const kind of ["theme", undefined, "admin"] as const) {
+    test(`OS reduced motion cancels the ${kind ?? "page change"} transition`, async ({ page }) => {
       await page.emulateMedia({ reducedMotion: "reduce" });
       const outcome = await runTransition(page, kind);
       expect(outcome.animations).toEqual([]);
       expect(outcome.elapsedMs).toBeLessThan(100);
     });
 
-    test(`the in-app reduce switch cancels the ${kind} transition`, async ({ page }) => {
+    test(`the in-app reduce switch cancels the ${kind ?? "page change"} transition`, async ({
+      page,
+    }) => {
       const outcome = await runTransition(page, kind, "force-reduce");
       expect(outcome.animations).toEqual([]);
       expect(outcome.elapsedMs).toBeLessThan(100);

@@ -1,139 +1,63 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
+import { installFakeViewTransitions, stubReducedMotionQuery } from "@/test/fake-view-transitions";
 import postcss from "postcss";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { withViewTransition } from "./view-transition-runtime";
 
-const VIEW_TRANSITION_ATTR = "data-view-transition";
-
-type Doc = { startViewTransition?: unknown };
-
-function stubMatchMedia(reduced: boolean) {
-  vi.stubGlobal(
-    "matchMedia",
-    vi.fn().mockReturnValue({ matches: reduced, addEventListener() {}, removeEventListener() {} }),
-  );
-}
-
 describe("withViewTransition", () => {
   const root = document.documentElement;
+  let fake: ReturnType<typeof installFakeViewTransitions>;
 
   beforeEach(() => {
-    stubMatchMedia(false);
+    stubReducedMotionQuery(false);
+    fake = installFakeViewTransitions();
   });
 
   afterEach(() => {
-    (document as Doc).startViewTransition = undefined;
-    root.removeAttribute(VIEW_TRANSITION_ATTR);
+    fake.uninstall();
     delete root.dataset.reduceMotion;
     vi.unstubAllGlobals();
   });
 
-  function installTransition() {
-    let finish: () => void = () => undefined;
-    const finished = new Promise<void>((resolve) => {
-      finish = resolve;
-    });
-    const start = vi.fn((update: () => void) => {
-      update();
-      return { finished };
-    });
-    (document as Doc).startViewTransition = start;
-    return { start, finish };
-  }
-
-  it("marks the root with its kind only while the transition runs", async () => {
-    const { start, finish } = installTransition();
+  it("runs the update inside an unmarked transition and returns it", async () => {
     const update = vi.fn();
-    withViewTransition("lot", update);
-    expect(start).toHaveBeenCalledOnce();
+    const transition = withViewTransition(update);
+    expect(fake.start).toHaveBeenCalledOnce();
+    expect(transition).toBeDefined();
+    await fake.flush();
     expect(update).toHaveBeenCalledOnce();
-    expect(root.getAttribute(VIEW_TRANSITION_ATTR)).toBe("lot");
-    finish();
-    await vi.waitFor(() => expect(root.hasAttribute(VIEW_TRANSITION_ATTR)).toBe(false));
+    expect(root.hasAttribute("data-view-transition")).toBe(false);
   });
 
   it("swaps content without a transition under prefers-reduced-motion", () => {
-    stubMatchMedia(true);
-    const { start } = installTransition();
+    stubReducedMotionQuery(true);
     const update = vi.fn();
-    withViewTransition("admin", update);
-    expect(start).not.toHaveBeenCalled();
+    expect(withViewTransition(update)).toBeUndefined();
+    expect(fake.start).not.toHaveBeenCalled();
     expect(update).toHaveBeenCalledOnce();
-    expect(root.hasAttribute(VIEW_TRANSITION_ATTR)).toBe(false);
   });
 
   it("skips the transition under the in-app reduce switch, whatever the OS says", () => {
     root.dataset.reduceMotion = "force-reduce";
-    const { start } = installTransition();
     const update = vi.fn();
-    withViewTransition("lot", update);
-    expect(start).not.toHaveBeenCalled();
+    expect(withViewTransition(update)).toBeUndefined();
+    expect(fake.start).not.toHaveBeenCalled();
     expect(update).toHaveBeenCalledOnce();
-    expect(root.hasAttribute(VIEW_TRANSITION_ATTR)).toBe(false);
   });
 
   it("keeps the transition under the in-app allow switch, as useReducedMotion does", () => {
-    stubMatchMedia(true);
+    stubReducedMotionQuery(true);
     root.dataset.reduceMotion = "force-allow";
-    const { start } = installTransition();
-    withViewTransition("lot", vi.fn());
-    expect(start).toHaveBeenCalledOnce();
-    expect(root.getAttribute(VIEW_TRANSITION_ATTR)).toBe("lot");
+    expect(withViewTransition(vi.fn())).toBeDefined();
+    expect(fake.start).toHaveBeenCalledOnce();
   });
 
-  it("keeps the marker of a newer transition when an older one of the same kind ends late", async () => {
-    const finishers: Array<() => void> = [];
-    (document as Doc).startViewTransition = vi.fn((update: () => void) => {
-      update();
-      return { finished: new Promise<void>((resolve) => finishers.push(resolve)) };
-    });
-    withViewTransition("lot", vi.fn());
-    withViewTransition("lot", vi.fn());
-    finishers[0]?.();
-    await new Promise((resolve) => setTimeout(resolve, 0));
-    expect(root.getAttribute(VIEW_TRANSITION_ATTR)).toBe("lot");
-    finishers[1]?.();
-    await vi.waitFor(() => expect(root.hasAttribute(VIEW_TRANSITION_ATTR)).toBe(false));
-  });
-
-  it("leaves the marker alone when a transition of another kind has taken over", async () => {
-    const { finish } = installTransition();
-    withViewTransition("lot", vi.fn());
-    // The theme toggle marks its own transition on the same root.
-    root.setAttribute(VIEW_TRANSITION_ATTR, "theme");
-    finish();
-    await new Promise((resolve) => setTimeout(resolve, 0));
-    expect(root.getAttribute(VIEW_TRANSITION_ATTR)).toBe("theme");
-  });
-
-  it("styles a second transition of the same kind started after the first ended", async () => {
-    const { finish } = installTransition();
-    withViewTransition("lot", vi.fn());
-    finish();
-    await vi.waitFor(() => expect(root.hasAttribute(VIEW_TRANSITION_ATTR)).toBe(false));
-    const { start } = installTransition();
-    withViewTransition("lot", vi.fn());
-    expect(start).toHaveBeenCalledOnce();
-    expect(root.getAttribute(VIEW_TRANSITION_ATTR)).toBe("lot");
-  });
-
-  it("clears the marker when the transition is aborted", async () => {
-    (document as Doc).startViewTransition = vi.fn((update: () => void) => {
-      update();
-      return { finished: Promise.reject(new Error("aborted")) };
-    });
+  it("updates plainly when the browser has no support", () => {
+    fake.uninstall();
     const update = vi.fn();
-    withViewTransition("admin", update);
+    expect(withViewTransition(update)).toBeUndefined();
     expect(update).toHaveBeenCalledOnce();
-    await vi.waitFor(() => expect(root.hasAttribute(VIEW_TRANSITION_ATTR)).toBe(false));
-  });
-
-  it("updates without a marker when the browser has no support", () => {
-    const update = vi.fn();
-    withViewTransition("lot", update);
-    expect(update).toHaveBeenCalledOnce();
-    expect(root.hasAttribute(VIEW_TRANSITION_ATTR)).toBe(false);
   });
 });
 
@@ -174,8 +98,10 @@ describe("view transition CSS", () => {
     }
   });
 
-  it("times the morph and the admin fade from the tokens", () => {
-    const lot = rules.filter((r) => selectors(r).some((s) => s.includes('="lot"]')));
+  it("times the unmarked page change (the morph) and the admin fade from the tokens", () => {
+    const lot = rules.filter((r) =>
+      selectors(r).some((s) => s.startsWith(":root:not([data-view-transition])::")),
+    );
     expect(lot.map((r) => decl(r, "animation-duration"))).toContain("var(--lax-motion-morph)");
     expect(lot.map((r) => decl(r, "animation-timing-function"))).toContain(
       "var(--lax-ease-emphasize)",

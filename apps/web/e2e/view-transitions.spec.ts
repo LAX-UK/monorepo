@@ -53,7 +53,9 @@ test.describe("view transitions on Bid @optin", () => {
     expect(last?.animations.map((a) => a.name)).toContain("theme-reveal");
   });
 
-  test("a lot navigation morphs the image and never plays the wipe", async ({ page }) => {
+  test("a lot navigation is an unmarked page change: it morphs the image and never plays the wipe", async ({
+    page,
+  }) => {
     await observeViewTransitions(page);
     await observeLayoutShift(page);
     await page.goto("/lots");
@@ -64,7 +66,7 @@ test.describe("view transitions on Bid @optin", () => {
     await page.keyboard.press("Enter");
     await page.waitForURL(/\/lots\//);
     const records = await viewTransitions(page);
-    expect(records.map((r) => r.kind)).toEqual(["lot"]);
+    expect(records.map((r) => r.kind)).toEqual(["none"]);
     const names = records[0]?.animations.map((a) => a.name) ?? [];
     expect(names).not.toContain("theme-reveal");
     const morph = records[0]?.animations.filter((a) =>

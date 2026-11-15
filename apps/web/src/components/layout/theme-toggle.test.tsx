@@ -1,6 +1,8 @@
 /** @vitest-environment jsdom */
+import { useViewTransitionRouter } from "@/lib/hooks/use-view-transition-router";
 import { withViewTransition } from "@/lib/view-transition-runtime";
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { installFakeViewTransitions, stubReducedMotionQuery } from "@/test/fake-view-transitions";
+import { act, fireEvent, render, renderHook, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ThemeToggle } from "./theme-toggle";
 
@@ -8,118 +10,135 @@ vi.mock("@/lib/actions/user-ui-preferences", () => ({
   syncUiThemeFromClientAction: vi.fn(async () => undefined),
 }));
 
-const VIEW_TRANSITION_ATTR = "data-view-transition";
-const TOGGLE_VARS = ["--theme-toggle-x", "--theme-toggle-y", "--theme-toggle-radius"];
+const router = vi.hoisted(() => ({ push: vi.fn(), replace: vi.fn() }));
+vi.mock("next/navigation", () => ({ useRouter: () => router }));
 
-type Doc = { startViewTransition?: unknown };
-
-function stubMatchMedia(reduced: boolean) {
-  vi.stubGlobal(
-    "matchMedia",
-    vi.fn((query: string) => ({
-      matches: query.includes("reduced-motion") ? reduced : false,
-      addEventListener() {},
-      removeEventListener() {},
-    })),
-  );
-}
-
-/** Each started transition runs its update at once and finishes when its finisher is called. */
-function installTransitions() {
-  const finishers: Array<() => void> = [];
-  const start = vi.fn((update: () => void) => {
-    update();
-    return { finished: new Promise<void>((resolve) => finishers.push(resolve)) };
-  });
-  (document as Doc).startViewTransition = start;
-  return { start, finishers };
-}
-
-const flush = () => act(() => new Promise((resolve) => setTimeout(resolve, 0)));
-const toggleVars = () =>
-  TOGGLE_VARS.map((name) => document.documentElement.style.getPropertyValue(name)).filter(Boolean);
+const TOGGLE_VARS = ["--theme-toggle-at", "--theme-toggle-radius"];
 
 describe("ThemeToggle view transition", () => {
   const root = document.documentElement;
+  let fake: ReturnType<typeof installFakeViewTransitions>;
+
+  const kind = () => root.getAttribute("data-view-transition");
+  const toggleVars = () => TOGGLE_VARS.filter((name) => root.style.getPropertyValue(name));
+  const press = () => fireEvent.click(screen.getByRole("button", { name: /Switch to/ }));
+  const flush = () => act(() => fake.flush());
 
   beforeEach(() => {
-    stubMatchMedia(false);
+    stubReducedMotionQuery(false);
+    fake = installFakeViewTransitions();
     root.classList.remove("dark");
   });
 
   afterEach(() => {
-    (document as Doc).startViewTransition = undefined;
-    root.removeAttribute(VIEW_TRANSITION_ATTR);
+    fake.uninstall();
+    root.removeAttribute("data-view-transition");
     root.removeAttribute("style");
     delete root.dataset.reduceMotion;
     vi.unstubAllGlobals();
   });
 
-  const press = () => fireEvent.click(screen.getByRole("button", { name: /Switch to/ }));
-
-  it("plays the wipe as a theme transition and cleans up when it ends", async () => {
-    const { start, finishers } = installTransitions();
+  it("marks the switch as a theme transition while it runs, then cleans up", async () => {
     render(<ThemeToggle />);
     press();
-    expect(start).toHaveBeenCalledOnce();
-    expect(root.classList.contains("dark")).toBe(true);
-    expect(root.getAttribute(VIEW_TRANSITION_ATTR)).toBe("theme");
-    expect(toggleVars()).toHaveLength(3);
-    finishers[0]?.();
+    expect(fake.start).toHaveBeenCalledOnce();
     await flush();
-    expect(root.hasAttribute(VIEW_TRANSITION_ATTR)).toBe(false);
+    expect(root.classList.contains("dark")).toBe(true);
+    expect(kind()).toBe("theme");
+    expect(toggleVars()).toEqual(TOGGLE_VARS);
+    fake.transitions[0]?.finish();
+    await flush();
+    expect(kind()).toBeNull();
+    expect(toggleVars()).toEqual([]);
+  });
+
+  it("cleans up when the update fails", async () => {
+    render(<ThemeToggle />);
+    press();
+    await flush();
+    fake.transitions[0]?.abort();
+    await flush();
+    expect(kind()).toBeNull();
     expect(toggleVars()).toEqual([]);
   });
 
   it("switches instantly under the in-app reduce switch, without starting a transition", () => {
     root.dataset.reduceMotion = "force-reduce";
-    const { start } = installTransitions();
     render(<ThemeToggle />);
     press();
-    expect(start).not.toHaveBeenCalled();
+    expect(fake.start).not.toHaveBeenCalled();
     expect(root.classList.contains("dark")).toBe(true);
-    expect(root.hasAttribute(VIEW_TRANSITION_ATTR)).toBe(false);
+    expect(kind()).toBeNull();
     expect(toggleVars()).toEqual([]);
   });
 
   it("switches instantly under the OS setting, unless the in-app switch allows motion", () => {
-    stubMatchMedia(true);
-    const { start } = installTransitions();
+    stubReducedMotionQuery(true);
     render(<ThemeToggle />);
     press();
-    expect(start).not.toHaveBeenCalled();
+    expect(fake.start).not.toHaveBeenCalled();
+    expect(root.classList.contains("dark")).toBe(true);
     root.dataset.reduceMotion = "force-allow";
     press();
-    expect(start).toHaveBeenCalledOnce();
-    expect(root.getAttribute(VIEW_TRANSITION_ATTR)).toBe("theme");
+    expect(fake.start).toHaveBeenCalledOnce();
   });
 
-  it("keeps a newer switch's wipe when an older switch ends late", async () => {
-    const { finishers } = installTransitions();
+  it("keeps a newer switch's wipe when it supersedes an older one", async () => {
     render(<ThemeToggle />);
     press();
     press();
-    finishers[0]?.();
     await flush();
-    expect(root.getAttribute(VIEW_TRANSITION_ATTR)).toBe("theme");
-    expect(toggleVars()).toHaveLength(3);
-    finishers[1]?.();
+    expect(kind()).toBe("theme");
+    expect(toggleVars()).toEqual(TOGGLE_VARS);
+    fake.transitions[1]?.finish();
     await flush();
-    expect(root.hasAttribute(VIEW_TRANSITION_ATTR)).toBe(false);
+    expect(kind()).toBeNull();
     expect(toggleVars()).toEqual([]);
   });
 
-  it("still cleans up when a page change replaces the wipe, and keeps the page change's marker", async () => {
-    const { finishers } = installTransitions();
+  it("cleans up a switch that a page change supersedes, leaving the page change unmarked", async () => {
     render(<ThemeToggle />);
     press();
-    withViewTransition("lot", () => undefined);
-    finishers[0]?.();
+    await flush();
+    withViewTransition(() => undefined);
     await flush();
     expect(toggleVars()).toEqual([]);
-    expect(root.getAttribute(VIEW_TRANSITION_ATTR)).toBe("lot");
-    finishers[1]?.();
+    expect(kind()).toBeNull();
+  });
+
+  it("cleans up a switch that an admin navigation supersedes, and marks the navigation", async () => {
+    render(<ThemeToggle />);
+    const { result } = renderHook(() => useViewTransitionRouter());
+    press();
     await flush();
-    expect(root.hasAttribute(VIEW_TRANSITION_ATTR)).toBe(false);
+    result.current.push("/admin/lots");
+    await flush();
+    expect(router.push).toHaveBeenCalledWith("/admin/lots", undefined);
+    expect(toggleVars()).toEqual([]);
+    expect(kind()).toBe("admin");
+    fake.transitions[1]?.finish();
+    await flush();
+    expect(kind()).toBeNull();
+  });
+
+  it("marks a theme switch that supersedes an admin navigation", async () => {
+    render(<ThemeToggle />);
+    const { result } = renderHook(() => useViewTransitionRouter());
+    result.current.replace("/admin/sales");
+    await flush();
+    expect(kind()).toBe("admin");
+    press();
+    await flush();
+    expect(kind()).toBe("theme");
+    expect(toggleVars()).toEqual(TOGGLE_VARS);
+  });
+
+  it("leaves no admin marker when reduced motion skips the navigation's transition", () => {
+    root.dataset.reduceMotion = "force-reduce";
+    const { result } = renderHook(() => useViewTransitionRouter());
+    result.current.push("/admin");
+    expect(fake.start).not.toHaveBeenCalled();
+    expect(router.push).toHaveBeenCalledWith("/admin", undefined);
+    expect(kind()).toBeNull();
   });
 });
