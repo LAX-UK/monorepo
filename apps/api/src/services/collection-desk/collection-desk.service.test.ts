@@ -424,6 +424,30 @@ describe("booking for a client", () => {
     });
   });
 
+  it("keeps a notice-period reason on a within-capacity visit, when booking and when changing", async () => {
+    const s = setup();
+    s.clock.now = new Date("2026-11-10T17:00:00Z"); // after 16:00 the day before Wednesday
+    const reason = "Phoned the desk";
+    const { booking: view } = (
+      await s.service.bookForClient(STAFF, body({ slotStart: WEDNESDAY_10, override: { reason } }))
+    )._unsafeUnwrap();
+    expect(view.overCapacity).toBe(false);
+    expect(view.note).toBe(reason);
+    expect((await s.bookings.findById(view.id))?.overCapacityReason).toBe(reason);
+
+    const changeReason = "Moved by phone";
+    const moved = (
+      await s.service.rebook(STAFF, view.id, {
+        version: view.version,
+        slotStart: "2026-11-11T10:30:00.000Z",
+        override: { reason: changeReason },
+      })
+    )._unsafeUnwrap();
+    expect(moved.overCapacity).toBe(false);
+    expect(moved.note).toBe(changeReason);
+    expect((await s.bookings.findById(view.id))?.overCapacityReason).toBe(changeReason);
+  });
+
   it("answers a repeat of the same request with the same booking", async () => {
     const s = setup();
     const request = body();
