@@ -268,3 +268,19 @@ describe("Better Auth's own link and unlink endpoints, through the real issuer",
     });
   }
 });
+
+describe("a refused provider round trip, through the real issuer", () => {
+  it("ends on the issuer's own page, in words, never as raw JSON or the library's own page", async () => {
+    const { app } = await realIssuer();
+    // A callback with no state of ours: the library refuses it through its error address.
+    const refused = await app.request(`${BASE}/api/auth/callback/google?code=abc&state=forged`);
+    expect(refused.status).toBe(302);
+    const target = new URL(refused.headers.get("location") ?? "");
+    expect(target.origin + target.pathname).toBe(`${BASE}/account-action/done`);
+    expect(target.searchParams.get("error")).toBe("state_mismatch");
+
+    const page = await app.request(target.pathname + target.search);
+    expect(page.headers.get("content-type")).toContain("text/html");
+    expect(await page.text()).toContain("We couldn&#39;t finish that");
+  });
+});

@@ -1,3 +1,4 @@
+import { buildHostedLinkErrorHtml, hostedAuthViewFromSearch } from "@auction/auth";
 import {
   ACCOUNT_ACTION_DONE_PATH,
   ACCOUNT_ACTION_PASSKEY_PATH,
@@ -9,6 +10,8 @@ import {
   socialSignInProviderSchema,
 } from "@auction/identity-contracts";
 import { type Context, Hono } from "hono";
+import { applyHostedAuthCspNonce } from "../lib/apply-hosted-auth-csp-nonce.js";
+import { HOSTED_AUTH_CSP_NONCE_KEY } from "../middleware/security-headers.js";
 import { isTicketSecret } from "../services/account-action-ticket.js";
 import type { AccountActionService } from "../services/account-action.service.js";
 
@@ -51,9 +54,10 @@ export function returnWordForProviderError(error: string | undefined): AccountSi
 /**
  * The issuer's browser pages for adding a way to sign in. `/account-action` spends the one-time
  * ticket and sends the browser to Google or Apple; `/account-action/done` is where the provider
- * round trip ends. Both answer only with a redirect: the first to the provider or back to LAX
- * Account, the second back to LAX Account's Security page with one fixed word. No page here ever
- * shows text taken from the request, a provider or an error.
+ * round trip ends. Both answer with a redirect: the first to the provider or back to LAX
+ * Account, the second back to LAX Account's Security page with one fixed word. The one page is
+ * for a refused link with no provider to go back to (`?error=<code>`): it shows fixed words for
+ * a code on a short list, and no text taken from the request, a provider or an error.
  */
 export function createAccountActionRoutes(deps: AccountActionRouteDeps) {
   const app = new Hono();
@@ -75,6 +79,12 @@ export function createAccountActionRoutes(deps: AccountActionRouteDeps) {
     c.header("Pragma", "no-cache");
     // The ticket rides in the address; it is spent on arrival, and nothing should carry it on.
     c.header("Referrer-Policy", "no-referrer");
+  }
+
+  function linkErrorPage(c: Context, code: string): Response {
+    const html = buildHostedLinkErrorHtml(code, hostedAuthViewFromSearch(""));
+    const nonce = c.get(HOSTED_AUTH_CSP_NONCE_KEY);
+    return c.html(typeof nonce === "string" ? applyHostedAuthCspNonce(html, nonce) : html, 400);
   }
 
   async function limited(c: Context): Promise<Response | null> {
@@ -117,7 +127,14 @@ export function createAccountActionRoutes(deps: AccountActionRouteDeps) {
     const refused = await limited(c);
     if (refused) return refused;
     const provider = socialSignInProviderSchema.safeParse(c.req.query("provider"));
-    if (!provider.success) return back(c, "provider_unavailable");
+    if (!provider.success) {
+      // A refused link with no provider to go back to (an expired email link, a sign-in the
+      // provider turned down) ends here, in words. Only the code is read, and only from a fixed
+      // list; anything else gets the general message.
+      const code = c.req.query("error");
+      if (code !== undefined) return linkErrorPage(c, code);
+      return back(c, "provider_unavailable");
+    }
     try {
       const browser = await deps.getSession(c.req.raw.headers);
       if (!browser) return back(c, "reauth_required", provider.data);
