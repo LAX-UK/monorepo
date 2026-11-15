@@ -15,8 +15,9 @@ export type GallerySaleListingsResult = { unpublished: number };
  * is cleared, nothing is archived or deleted, and the audit log says the scheduler did it and why.
  * The register is not touched: it already shows the sale, so the listing's own offer has ended.
  *
- * Open checkouts and invoices are not cancelled here. The worker raised the "Zoho says Sold" item
- * before it recorded the sale, which holds payments for the artwork until staff deal with it.
+ * Open checkouts and invoices are not cancelled here. Payments for the artwork are held for as
+ * long as the register records the gallery sale (the money pause reads it), and the "Zoho says
+ * Sold" item the worker raised tells staff what is still open.
  * Repeating a pass changes nothing.
  */
 export function createGallerySaleListingsRunner(
@@ -24,28 +25,33 @@ export function createGallerySaleListingsRunner(
 ): (now: Date) => Promise<GallerySaleListingsResult> {
   return async (now) =>
     db.transaction(async (tx) => {
+      // The candidates are locked and read first, so the audit can keep each listing's previous
+      // `published_at` (UPDATE ... RETURNING only sees the new, cleared value).
       const rows = await tx.execute<{
         id: string;
         zoho_product_id: string;
         register_id: string;
+        previous_published_at: Date | string;
       }>(sql`
+        WITH candidate AS (
+          SELECT listing.id, listing.published_at
+          FROM shop_artwork AS listing
+          JOIN artwork_register AS sold ON sold.zoho_product_id = listing.zoho_product_id
+          WHERE sold.offer_state = 'sold'
+            AND sold.offer_ref_kind = 'gallery_sale'
+            AND listing.published_at IS NOT NULL
+            AND listing.archived_at IS NULL
+          ORDER BY listing.id
+          LIMIT ${BATCH}
+          FOR UPDATE OF listing SKIP LOCKED
+        )
         UPDATE shop_artwork AS a
         SET published_at = NULL, updated_at = ${now}
-        FROM artwork_register AS r
-        WHERE a.id IN (
-            SELECT candidate.id
-            FROM shop_artwork AS candidate
-            JOIN artwork_register AS sold ON sold.zoho_product_id = candidate.zoho_product_id
-            WHERE sold.offer_state = 'sold'
-              AND sold.offer_ref_kind = 'gallery_sale'
-              AND candidate.published_at IS NOT NULL
-              AND candidate.archived_at IS NULL
-            ORDER BY candidate.id
-            LIMIT ${BATCH}
-            FOR UPDATE OF candidate SKIP LOCKED
-          )
+        FROM candidate, artwork_register AS r
+        WHERE a.id = candidate.id
           AND r.zoho_product_id = a.zoho_product_id
-        RETURNING a.id, a.zoho_product_id, r.id AS register_id
+        RETURNING a.id, a.zoho_product_id, r.id AS register_id,
+          candidate.published_at AS previous_published_at
       `);
       for (const row of rows.rows) {
         await insertShopAdminAudit(tx as unknown as Database, {
@@ -54,7 +60,12 @@ export function createGallerySaleListingsRunner(
           action: "unpublish_artwork",
           targetType: "shop_artwork",
           targetId: row.id,
-          beforeJson: { published: true, archived: false },
+          // Unpublishing is reversible: after a Reopen, staff can restore the original date.
+          beforeJson: {
+            published: true,
+            archived: false,
+            publishedAt: new Date(row.previous_published_at).toISOString(),
+          },
           afterJson: {
             published: false,
             archived: false,

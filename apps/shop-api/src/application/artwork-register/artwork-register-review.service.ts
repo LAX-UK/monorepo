@@ -1,5 +1,6 @@
 import {
   type ArtworkRegisterEntry,
+  REOPEN_REFUSAL_MESSAGE,
   WHERE_IT_IS_CHIPS,
   canAcceptZohoValue,
   catalogueGapsOf,
@@ -43,6 +44,15 @@ import type { StaffNameReader } from "../ports/staff-name.reader.js";
 import { DRAFT_PROBE, laxArtOfferBlockers } from "./lax-art-offer-blockers.js";
 import { presentRegisterEvent, staffIdsOf } from "./register-event.presenter.js";
 import { presentWhereItIs } from "./where-it-is.presenter.js";
+
+/** A gallery sale and whether Reopen waits for Zoho, in the words the API refuses it with. */
+export function presentGallerySale(
+  entry: ArtworkRegisterEntry,
+): AdminRegisterDetail["gallerySale"] {
+  return isSoldInZoho(entry.catalogueStatus)
+    ? { reopen: "zoho_still_sold", reopenWaitReason: REOPEN_REFUSAL_MESSAGE.zoho_still_sold }
+    : { reopen: "allowed", reopenWaitReason: null };
+}
 
 /** How much history one artwork's page shows. */
 const HISTORY_LIMIT = 100;
@@ -325,10 +335,7 @@ export class ArtworkRegisterReviewService {
       conflicts: conflicts.map(presentConflict),
       // Newest first, as the page reads it.
       events: events.map((event) => presentRegisterEvent(event, names)).reverse(),
-      gallerySale:
-        soldWhere(entry.offer) === "gallery"
-          ? { reopen: isSoldInZoho(entry.catalogueStatus) ? "zoho_still_sold" : "allowed" }
-          : null,
+      gallerySale: soldWhere(entry.offer) === "gallery" ? presentGallerySale(entry) : null,
     };
   }
 

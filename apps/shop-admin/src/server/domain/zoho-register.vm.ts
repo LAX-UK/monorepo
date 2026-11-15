@@ -501,7 +501,8 @@ function describeEvent(
         title: "Sold in the gallery, per Zoho",
         detail:
           payload.laxArtListingId !== undefined
-            ? "Zoho's Status became Sold. Taken off lax.art."
+            ? // Recorded when the sale is; LAX Shop unpublishes the listing on its next run.
+              "Zoho's Status became Sold. lax.art listing to be taken off sale."
             : "Zoho's Status became Sold.",
         tone: "info",
       };

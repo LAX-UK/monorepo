@@ -88,6 +88,10 @@ describe.skipIf(!hasShopIntegrationDb)(
     it("unpublishes a listing once the register records the gallery sale, once, with an audit row", async () => {
       const { db, register, entry, artworkId } = await linkedListing("Sold");
       const run = createGallerySaleListingsRunner(db);
+      const [before] = await db
+        .select({ publishedAt: shopArtwork.publishedAt })
+        .from(shopArtwork)
+        .where(eq(shopArtwork.id, artworkId));
 
       await run(NOW);
       expect(await published(db, artworkId)).toBe(true);
@@ -111,6 +115,12 @@ describe.skipIf(!hasShopIntegrationDb)(
       expect(audit).toHaveLength(1);
       expect(audit[0]?.actorSubjectId).toBe("system:shop-scheduler");
       expect(JSON.stringify(audit[0]?.afterJson)).toContain("sold_in_gallery");
+      // The previous date is kept, so staff can restore it after a Reopen.
+      const beforeJson = audit[0]?.beforeJson;
+      expect(typeof beforeJson === "string" ? JSON.parse(beforeJson) : beforeJson).toMatchObject({
+        published: true,
+        publishedAt: before?.publishedAt?.toISOString(),
+      });
     });
 
     it("leaves a listing alone while Zoho's Sold is not recorded (a dry run changes nothing)", async () => {
@@ -119,7 +129,7 @@ describe.skipIf(!hasShopIntegrationDb)(
       expect(await published(db, artworkId)).toBe(true);
     });
 
-    it("lets LAX Admin (as shop_app) mark the item dealt with and reopen, putting nothing back on sale", async () => {
+    it("lets LAX Admin (as shop_app) mark the item dealt with and reopen, putting nothing back on sale; money stays paused until the reopen", async () => {
       const { db, register, entry, artworkId } = await linkedListing("Sold");
       const owner = new DrizzleSoldAttentionStore(createDbFromPool(ownerPool));
       await owner.raise({
@@ -138,7 +148,9 @@ describe.skipIf(!hasShopIntegrationDb)(
       expect(
         (await asShop.markDealtWith({ id: item?.id ?? "", actor: "staff:s1", now: NOW })).ok,
       ).toBe(true);
-      expect(await asShop.isPaused({ registerId: entry.id })).toBe(false);
+      // Dealt with closes the item, but Zoho still says Sold: money stays paused for the work.
+      expect(await asShop.isPaused({ registerId: entry.id })).toBe(true);
+      expect(await asShop.isPaused({ zohoProductId: entry.zohoProductId })).toBe(true);
       await createGallerySaleListingsRunner(db)(NOW);
       await createDbFromPool(ownerPool).execute(
         sql`UPDATE artwork_register SET catalogue_status = 'Available' WHERE id = ${entry.id}`,
@@ -150,6 +162,7 @@ describe.skipIf(!hasShopIntegrationDb)(
         now: NOW,
       });
       expect(reopened.ok).toBe(true);
+      expect(await asShop.isPaused({ registerId: entry.id })).toBe(false);
       await createGallerySaleListingsRunner(db)(NOW);
       expect(await published(db, artworkId)).toBe(false);
     });

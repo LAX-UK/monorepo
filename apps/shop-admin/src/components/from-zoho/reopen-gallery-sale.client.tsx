@@ -15,10 +15,6 @@ import { useState } from "react";
 
 export const REOPEN_CAPABILITY = "artwork_register.reopen_sold";
 
-/** Why Reopen is not offered yet, in the words the API would refuse with. */
-export const REOPEN_WAIT_FOR_ZOHO =
-  "Zoho still says Sold, and Zoho wins. Change the Status in Zoho first, then reopen it here.";
-
 /**
  * Reopen a sale made in the gallery that Zoho reported by mistake. Administrators only. The
  * artwork goes back to Not offered and nothing is put on sale again by itself; the reason is kept
@@ -77,24 +73,25 @@ export function GallerySaleNotice({ detail }: { detail: AdminRegisterDetail }) {
   const canReopen = useStaffCan(REOPEN_CAPABILITY);
   const sale = detail.gallerySale;
   if (!sale) return null;
-  const waiting = sale.reopen === "zoho_still_sold";
+  // Why Reopen waits comes from shop-api, in the words it refuses Reopen with.
+  const waitReason = sale.reopen === "zoho_still_sold" ? sale.reopenWaitReason : null;
   return (
     <>
       <Notice tone="info" title="Sold in the gallery, per Zoho">
         <div className="flex flex-col gap-3">
           <p>
-            Zoho&apos;s Status is the record of this sale, so LAX shows the artwork as sold and has
-            taken it off sale. Any checkout or invoice still open for it is held until staff deal
-            with it in Needs decision.
+            Zoho&apos;s Status is the record of this sale, so LAX shows the artwork as sold and
+            takes it off sale. No lax.art payment for it can complete while it is recorded as sold
+            here; anything still open for it is listed in Needs decision.
           </p>
-          {canReopen && waiting ? <p>{REOPEN_WAIT_FOR_ZOHO}</p> : null}
+          {canReopen && waitReason ? <p>{waitReason}</p> : null}
           <Permitted requires={REOPEN_CAPABILITY}>
             <div>
               <StaffButton
                 variant="secondary"
                 icon={<RotateCcw aria-hidden />}
                 onClick={() => setReopening(true)}
-                {...(waiting ? { disabledReason: REOPEN_WAIT_FOR_ZOHO } : {})}
+                {...(waitReason ? { disabledReason: waitReason } : {})}
               >
                 Reopen sale…
               </StaffButton>

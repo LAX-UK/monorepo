@@ -327,13 +327,19 @@ describe("FromZohoRecord: sold in the gallery", () => {
       offerState: "sold",
       catalogueStatus: reopenState === "allowed" ? "Available" : "Sold",
       whereItIs: SOLD_IN_GALLERY,
-      gallerySale: { reopen: reopenState },
+      gallerySale: {
+        reopen: reopenState,
+        reopenWaitReason:
+          reopenState === "zoho_still_sold"
+            ? "Zoho still says Sold, and Zoho wins. Change the Status in Zoho first, then reopen it here."
+            : null,
+      },
     });
 
   it("says it is sold in the gallery and off sale, with no Reopen for a catalogue editor", () => {
     show(sold("allowed"));
     expect(screen.getByText("Sold in the gallery, per Zoho")).toBeInTheDocument();
-    expect(screen.getByText(/taken it off sale/)).toBeInTheDocument();
+    expect(screen.getByText(/takes it off sale/)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Reopen sale/ })).not.toBeInTheDocument();
   });
 

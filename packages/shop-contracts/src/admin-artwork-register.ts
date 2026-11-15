@@ -235,11 +235,13 @@ export const AdminRegisterDetailSchema = Type.Object({
   events: Type.Array(AdminRegisterEventSchema),
   /**
    * A sale made in the gallery (Zoho said Sold), and whether an Administrator may reopen it now:
-   * `zoho_still_sold` until the Status is changed in Zoho. Null for anything else.
+   * `zoho_still_sold` until the Status is changed in Zoho, with `reopenWaitReason` in the words
+   * the API refuses Reopen with (null when Reopen is allowed). Null for anything else.
    */
   gallerySale: Type.Union([
     Type.Object({
       reopen: Type.Union([Type.Literal("allowed"), Type.Literal("zoho_still_sold")]),
+      reopenWaitReason: Type.Union([Type.String(), Type.Null()]),
     }),
     Type.Null(),
   ]),
