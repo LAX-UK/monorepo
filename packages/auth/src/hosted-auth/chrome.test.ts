@@ -37,13 +37,20 @@ describe("hosted titles", () => {
 });
 
 describe("hosted_context", () => {
-  it("is read only when it says sell", () => {
-    expect(
-      parseHostedAuthFlow(new URLSearchParams("client_id=lax-bid-web&hosted_context=sell")).context,
-    ).toBe("sell");
-    expect(
-      parseHostedAuthFlow(new URLSearchParams("client_id=lax-bid-web&hosted_context=x")).context,
-    ).toBeNull();
+  const bid =
+    "response_type=code&client_id=lax-bid-web&redirect_uri=http%3A%2F%2Flocalhost%3A3000%2Fapi%2Fauth%2Fcallback%2Flax-bid-web&state=s&code_challenge=c&code_challenge_method=S256";
+  const read = (query: string) => parseHostedAuthFlow(new URLSearchParams(query)).context;
+
+  it("is read only when it says sell, for Bid's own authorize request", () => {
+    expect(read(`${bid}&hosted_context=sell`)).toBe("sell");
+    expect(read(`${bid}&hosted_context=x`)).toBeNull();
+  });
+
+  it("is ignored without a registered return address or for another client", () => {
+    const evil = bid.replace(/redirect_uri=[^&]*/, "redirect_uri=https%3A%2F%2Fevil.test%2Fcb");
+    expect(read("client_id=lax-bid-web&hosted_context=sell")).toBeNull();
+    expect(read(`${evil}&hosted_context=sell`)).toBeNull();
+    expect(read("client_id=lax-shop-web&hosted_context=sell")).toBeNull();
   });
 });
 

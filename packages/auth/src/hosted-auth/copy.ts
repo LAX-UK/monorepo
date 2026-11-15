@@ -35,8 +35,15 @@ export const HOSTED_COPY = {
   accountOperators:
     "LAX Account is provided by London Auction Xchange LTD and London Art Exchange Ltd.",
   footer: { privacy: "Privacy", help: "Help" },
+  /** Sign-in and sign-up cross-links and the create button, naming the service in words. */
+  accountLinks: {
+    noAccount: "Don't have a LAX Account?",
+    haveAccount: "Already have a LAX Account?",
+    create: "Create LAX Account",
+    creating: "Creating LAX Account…",
+  },
   signUpAgreement: {
-    lead: "By creating an account you agree to the",
+    lead: "By creating a LAX Account you agree to the",
     terms: "Terms",
     privacy: "Privacy notice",
   },

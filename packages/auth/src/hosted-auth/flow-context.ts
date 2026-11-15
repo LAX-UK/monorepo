@@ -177,12 +177,26 @@ export function parseHostedAuthFlow(
     loginPath: `/login?${productHintQuery}`,
     allowedRedirectOrigins,
     loginHint: parseLoginHint(searchParams.get("login_hint")),
-    context: parseHostedContext(searchParams.get(HOSTED_CONTEXT_QUERY)),
+    context: trustedHostedContext(clientId, canResume, searchParams.get(HOSTED_CONTEXT_QUERY)),
     reauth,
     reauthReason: reauth
       ? parseAccountStepUpReason(reauthRequest.get(ACCOUNT_STEP_UP_REASON_PARAM))
       : null,
   };
+}
+
+/**
+ * Selling is read only for a real Bid sign-in: the registered Bid client with an authorize request
+ * that can resume (a registered redirect URI, PKCE and state). Anything else, and any word other
+ * than the fixed one, leaves the page without a sell line.
+ */
+function trustedHostedContext(
+  clientId: RegisteredOidcClientId,
+  canResume: boolean,
+  value: string | null,
+): HostedContext | null {
+  if (!canResume || clientId !== REGISTERED_OIDC_CLIENT_IDS.LAX_BID_WEB) return null;
+  return parseHostedContext(value);
 }
 
 function requestsReauth(

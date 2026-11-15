@@ -1,6 +1,7 @@
 import { agreementLine } from "../agreement-line.js";
 import { contextLine, oneAccountSection } from "../chrome.js";
 import { HOSTED_COPY } from "../copy.js";
+import { escapeHostedHtml } from "../escape.js";
 import {
   buildHostedAuthHtml,
   continuationAnchor,
@@ -43,11 +44,11 @@ export function buildHostedSignUpHtml(view: HostedAuthView = hostedAuthViewFromS
         hint: newPasswordHint(),
       })}
       ${agreementLine(view, HOSTED_COPY.signUpAgreement)}
-      ${hostedButton({ label: "Create account", loadingLabel: "Creating account…" })}
+      ${hostedButton({ label: HOSTED_COPY.accountLinks.create, loadingLabel: HOSTED_COPY.accountLinks.creating })}
       ${turnstileHost()}
       ${statusRegions()}
     </form>
-    <div class="links links--stacked"><p class="links-secondary">Already have an account? ${continuationAnchor("Sign in", "/login", view.flow)}</p></div>
+    <div class="links links--stacked"><p class="links-secondary">${escapeHostedHtml(HOSTED_COPY.accountLinks.haveAccount)} ${continuationAnchor("Sign in", "/login", view.flow)}</p></div>
     ${oneAccountSection(`?v=${HOSTED_AUTH_ASSET_VERSION}`)}</div>`,
     scriptSrc: "/hosted-sign-up.js",
     ...(productBack ? { productBack } : {}),
