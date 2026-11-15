@@ -30,6 +30,12 @@
  *
  * Idempotent: the per-payment function adds a row only where the refund lines exceed the recorded
  * refunds, under a key that names the line total, so a re-run (or a run beside another) adds nothing.
+ *
+ * Each batch transaction sets `lock_timeout` (5s by default), so a live refund that holds a payment
+ * lock for long cannot keep the run waiting indefinitely. On a lock timeout (SQLSTATE 55P03) the
+ * batch is rolled back whole, nothing of it is written, and the run stops with a
+ * {@link PaymentRefundBackfillLockTimeoutError} that names the batch and the cursor to resume from.
+ * Batches before it are committed and stay; re-running from the start is also safe (idempotent).
  */
 
 /** One connection: the run opens and commits its own transactions on it. */
@@ -40,6 +46,10 @@ export type PaymentRefundBackfillConnection = {
 export type PaymentRefundBackfillOptions = {
   /** Payments locked and topped up per transaction. */
   batchSize?: number;
+  /** `lock_timeout` set inside each batch transaction, in milliseconds; 0 waits indefinitely. */
+  lockTimeoutMs?: number;
+  /** Payment id to resume after (the cursor a lock timeout reported); omit to start from the first. */
+  resumeAfter?: string | null;
   /** Called after each batch commits. */
   onBatch?: (batch: { paymentIds: readonly string[]; added: number }) => void;
 };
@@ -51,6 +61,35 @@ export type PaymentRefundBackfillResult = {
 };
 
 export const DEFAULT_PAYMENT_REFUND_BACKFILL_BATCH_SIZE = 200;
+export const DEFAULT_PAYMENT_REFUND_BACKFILL_LOCK_TIMEOUT_MS = 5000;
+
+/** Set per batch transaction; `set_config(..., true)` is SET LOCAL with a bindable value. */
+export const SET_BATCH_LOCK_TIMEOUT_SQL = "SELECT set_config('lock_timeout', $1, true)";
+
+const LOCK_NOT_AVAILABLE = "55P03";
+
+/** A batch waited longer than the lock timeout for a payment lock; the batch was rolled back. */
+export class PaymentRefundBackfillLockTimeoutError extends Error {
+  constructor(
+    /** 1-based number of the batch that timed out, counting from this run's start. */
+    readonly batch: number,
+    /** Last payment id of the committed batches; pass it as `resumeAfter` / --resume-after. Null: none yet. */
+    readonly resumeAfter: string | null,
+    /** What the committed batches before it did. */
+    readonly completed: PaymentRefundBackfillResult,
+    readonly lockTimeoutMs: number,
+  ) {
+    const resume =
+      resumeAfter === null
+        ? "Resume cursor: none, nothing was committed; re-run from the start."
+        : `Resume cursor: ${resumeAfter}; re-run with --resume-after=${resumeAfter} (or from the start: it is idempotent).`;
+    const done = `${completed.batches} earlier batch(es) (${completed.payments} payment(s), ${completed.added} row(s) added) are committed.`;
+    super(
+      `Lock timeout after ${lockTimeoutMs} ms in batch ${batch}: a payment lock is held elsewhere. The batch was rolled back and nothing of it was written; ${done} ${resume}`,
+    );
+    this.name = "PaymentRefundBackfillLockTimeoutError";
+  }
+}
 
 /**
  * The next batch of payments that have a refund payout line, after the given id, locked in id order.
@@ -74,7 +113,11 @@ FOR NO KEY UPDATE OF p`;
  * positive difference is topped up.
  */
 export const REPORT_REFUND_GAPS_SQL = `SELECT t."payment_id", t."line_pence", t."recorded_pence",
-  t."line_pence" - t."recorded_pence" AS "difference_pence"
+  t."line_pence" - t."recorded_pence" AS "difference_pence",
+  EXISTS (
+    SELECT 1 FROM "payment_refund" k
+    WHERE k."idempotency_key" = 'payout_ledger_topup:' || t."payment_id" || ':' || t."line_pence"
+  ) AS "topup_key_exists"
 FROM (
   SELECT
     l."payment_id",
@@ -89,6 +132,7 @@ FROM (
   GROUP BY l."payment_id"
 ) t
 WHERE t."line_pence" <> t."recorded_pence"
+  AND ($1::uuid IS NULL OR t."payment_id" > $1::uuid)
 ORDER BY t."payment_id"`;
 
 export type PaymentRefundGap = {
@@ -96,20 +140,29 @@ export type PaymentRefundGap = {
   linePence: number;
   recordedPence: number;
   differencePence: number;
+  /** A row under the top-up key exists already, so --apply writes nothing for this payment. */
+  topupKeyExists: boolean;
+  /** What --apply would insert for this payment: a positive difference with no row under the key. */
+  wouldTopUp: boolean;
 };
 
 /** The dry run: what {@link backfillPaymentRefundsInIdOrder} would top up, read without locks. */
 export async function reportPaymentRefundGaps(
   connection: PaymentRefundBackfillConnection,
+  options: { resumeAfter?: string | null } = {},
 ): Promise<PaymentRefundGap[]> {
-  const { rows } = await connection.query(REPORT_REFUND_GAPS_SQL);
+  const { rows } = await connection.query(REPORT_REFUND_GAPS_SQL, [options.resumeAfter ?? null]);
   return rows.map((row) => {
     const r = row as Record<string, unknown>;
+    const differencePence = Number(r.difference_pence);
+    const topupKeyExists = r.topup_key_exists === true;
     return {
       paymentId: String(r.payment_id),
       linePence: Number(r.line_pence),
       recordedPence: Number(r.recorded_pence),
-      differencePence: Number(r.difference_pence),
+      differencePence,
+      topupKeyExists,
+      wouldTopUp: differencePence > 0 && !topupKeyExists,
     };
   });
 }
@@ -132,13 +185,20 @@ export async function backfillPaymentRefundsInIdOrder(
   if (!Number.isSafeInteger(batchSize) || batchSize < 1) {
     throw new RangeError(`The batch size is a whole number above zero, got ${batchSize}`);
   }
+  const lockTimeoutMs = options.lockTimeoutMs ?? DEFAULT_PAYMENT_REFUND_BACKFILL_LOCK_TIMEOUT_MS;
+  if (!Number.isSafeInteger(lockTimeoutMs) || lockTimeoutMs < 0) {
+    throw new RangeError(
+      `The lock timeout is whole milliseconds, zero or more, got ${lockTimeoutMs}`,
+    );
+  }
   const result: PaymentRefundBackfillResult = { batches: 0, payments: 0, added: 0 };
-  let after: string | null = null;
+  let after: string | null = options.resumeAfter ?? null;
   for (;;) {
     await connection.query("BEGIN");
     let paymentIds: string[];
     let added = 0;
     try {
+      await connection.query(SET_BATCH_LOCK_TIMEOUT_SQL, [`${lockTimeoutMs}ms`]);
       const locked = await connection.query(LOCK_NEXT_REFUND_PAYMENTS_SQL, [after, batchSize]);
       paymentIds = locked.rows.map(idOf);
       for (const paymentId of paymentIds) {
@@ -148,6 +208,14 @@ export async function backfillPaymentRefundsInIdOrder(
       await connection.query("COMMIT");
     } catch (error) {
       await connection.query("ROLLBACK").catch(() => undefined);
+      if ((error as { code?: unknown } | null)?.code === LOCK_NOT_AVAILABLE) {
+        throw new PaymentRefundBackfillLockTimeoutError(
+          result.batches + 1,
+          after,
+          { ...result },
+          lockTimeoutMs,
+        );
+      }
       throw error;
     }
     if (paymentIds.length === 0) return result;

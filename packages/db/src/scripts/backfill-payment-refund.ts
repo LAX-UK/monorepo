@@ -6,21 +6,33 @@
  *
  * Usage from packages/db (a dry run is the default: it reads, takes no locks and writes nothing):
  *   DATABASE_URL=... pnpm db:backfill-payment-refund
- *   DATABASE_URL=... pnpm db:backfill-payment-refund --apply [--batch-size=200]
+ *   DATABASE_URL=... pnpm db:backfill-payment-refund --apply [--batch-size=200] [--lock-timeout=5s]
+ *     [--resume-after=<payment id>]
  *
- * The dry run lists, per payment whose refund payout lines differ from its payment_refund rows,
+ * Every flag is validated before connecting (bad input exits non-zero, nothing is opened).
+ * The dry run covers every payment (or those after --resume-after when given) and ignores
+ * --batch-size and --lock-timeout; it lists, per payment whose refund payout lines differ from its payment_refund rows,
  * line_pence - recorded_pence; only a positive difference is topped up by --apply. Before writing,
  * --apply prints the target host and database name (never the credentials).
+ *
+ * Each batch transaction sets lock_timeout (--lock-timeout, default 5s; accepts 500ms, 5s, 1m or a
+ * bare number of milliseconds; 0 waits indefinitely). If a live transaction holds a payment lock
+ * longer, the batch is rolled back with nothing written and this exits non-zero, printing the batch
+ * and the resume cursor. Run it again (it is idempotent) or pass --resume-after=<cursor> to skip the
+ * batches already committed.
  *
  * Safe to repeat: a payment whose record already covers its refund lines gets nothing.
  */
 import pg from "pg";
 import {
   DEFAULT_PAYMENT_REFUND_BACKFILL_BATCH_SIZE,
+  DEFAULT_PAYMENT_REFUND_BACKFILL_LOCK_TIMEOUT_MS,
+  PaymentRefundBackfillLockTimeoutError,
   backfillPaymentRefundsInIdOrder,
   reportPaymentRefundGaps,
 } from "../payment-refund-backfill.js";
 import { buildPgConnectionConfig } from "../ssl.js";
+import { parseBackfillArgs } from "./backfill-payment-refund-args.js";
 
 /** Host and database name of the target, from the server itself; no user or password. */
 async function describeTarget(client: pg.Client): Promise<string> {
@@ -35,26 +47,31 @@ async function describeTarget(client: pg.Client): Promise<string> {
 async function main(): Promise<void> {
   const url = process.env.DATABASE_URL;
   if (!url) throw new Error("Set DATABASE_URL.");
-  const apply = process.argv.includes("--apply");
-  const flag = process.argv.find((arg) => arg.startsWith("--batch-size="));
-  const batchSize = flag
-    ? Number(flag.slice("--batch-size=".length))
-    : DEFAULT_PAYMENT_REFUND_BACKFILL_BATCH_SIZE;
+  const { apply, batchSize, lockTimeoutMs, resumeAfter } = parseBackfillArgs(process.argv.slice(2));
+  resumeBatchSize = batchSize;
+  resumeLockTimeoutMs = lockTimeoutMs;
 
   const client = new pg.Client(buildPgConnectionConfig(url));
   await client.connect();
   try {
     const target = await describeTarget(client);
     if (!apply) {
-      console.log(`Dry run against ${target}: reading only, no locks taken, nothing written.`);
-      const gaps = await reportPaymentRefundGaps(client);
+      console.log(
+        `Dry run against ${target}: reading only, no locks taken, nothing written. It covers every payment${resumeAfter ? ` after ${resumeAfter} (--resume-after)` : ""}; --batch-size and --lock-timeout only affect --apply.`,
+      );
+      const gaps = await reportPaymentRefundGaps(client, { resumeAfter });
       let wouldAddPayments = 0;
       let wouldAddPence = 0;
       for (const gap of gaps) {
+        const verdict = gap.wouldTopUp
+          ? " (would top up)"
+          : gap.differencePence > 0 && gap.topupKeyExists
+            ? " (top-up row with this key exists already, --apply adds nothing)"
+            : " (left as is)";
         console.log(
-          `${gap.paymentId}: line_pence ${gap.linePence} - recorded_pence ${gap.recordedPence} = ${gap.differencePence}${gap.differencePence > 0 ? " (would top up)" : " (left as is)"}`,
+          `${gap.paymentId}: line_pence ${gap.linePence} - recorded_pence ${gap.recordedPence} = ${gap.differencePence}${verdict}`,
         );
-        if (gap.differencePence > 0) {
+        if (gap.wouldTopUp) {
           wouldAddPayments += 1;
           wouldAddPence += gap.differencePence;
         }
@@ -68,6 +85,8 @@ async function main(): Promise<void> {
     console.log(`Applying the payment_refund backfill to ${target}.`);
     const result = await backfillPaymentRefundsInIdOrder(client, {
       batchSize,
+      lockTimeoutMs,
+      resumeAfter,
       onBatch: ({ paymentIds, added }) =>
         console.log(
           `${paymentIds.length} payment(s) up to ${paymentIds.at(-1)}: ${added} row(s) added`,
@@ -81,7 +100,15 @@ async function main(): Promise<void> {
   }
 }
 
+let resumeBatchSize = DEFAULT_PAYMENT_REFUND_BACKFILL_BATCH_SIZE;
+let resumeLockTimeoutMs = DEFAULT_PAYMENT_REFUND_BACKFILL_LOCK_TIMEOUT_MS;
+
 main().catch((error) => {
   console.error(error instanceof Error ? error.message : error);
+  if (error instanceof PaymentRefundBackfillLockTimeoutError) {
+    console.error(
+      `Resume: DATABASE_URL=... pnpm --filter @auction/db db:backfill-payment-refund -- --apply --batch-size=${resumeBatchSize} --lock-timeout=${resumeLockTimeoutMs}ms${error.resumeAfter ? ` --resume-after=${error.resumeAfter}` : ""}`,
+    );
+  }
   process.exit(1);
 });
