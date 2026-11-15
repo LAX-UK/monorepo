@@ -52,6 +52,8 @@ export type DeskBookingView = {
   buyer: { id: string; name: string };
   bookedVia: "client" | "staff";
   overCapacity: boolean;
+  /** The reason staff gave for booking over capacity or inside the notice period; `null` if none. */
+  note: string | null;
   collector: {
     kind: "self" | "member" | "third_party";
     name: string;

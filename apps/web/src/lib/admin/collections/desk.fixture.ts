@@ -31,6 +31,7 @@ export function deskBooking(over: Partial<DeskBookingView> = {}): DeskBookingVie
     buyer: { id: "e1", name: "Hayes Collection" },
     bookedVia: "client",
     overCapacity: false,
+    note: null,
     collector: { kind: "self", name: "Charlotte Hayes", company: null },
     lots: [deskLot(), deskLot({ lotId: DESK_LOT_B, title: "Lowland Storm", lotNumber: 9 })],
     idCheckType: null,

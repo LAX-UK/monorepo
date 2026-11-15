@@ -57,7 +57,7 @@ export function DeskList({
           More are waiting. They appear here as these are followed up.
         </Notice>
       ) : null}
-      <DeskColumnHeaders />
+      <DeskColumnHeaders showNote={list.status === "not_collected"} />
       {[...days.entries()].map(([day, items]) => (
         <section
           key={day}
@@ -78,6 +78,7 @@ export function DeskList({
                 canChange={canChange}
                 handlers={handlers}
                 showTime
+                showNote={list.status === "not_collected"}
               />
             ))}
           </ul>

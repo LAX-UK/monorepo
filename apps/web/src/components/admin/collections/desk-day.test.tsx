@@ -214,6 +214,27 @@ describe("the lists", () => {
     expect(screen.getByRole("button", { name: "Rebook" })).toBeTruthy();
   });
 
+  it("shows the staff note on a missed visit, and says when there is none", () => {
+    render(
+      <DeskList
+        list={list("not_collected", [
+          deskBooking({ status: "not_collected", actions: ["rebook"], note: "Client was delayed" }),
+          deskBooking({ id: "b2", reference: "COL-1043", status: "not_collected", note: null }),
+        ])}
+        canChange
+        today="2026-11-13"
+      />,
+    );
+    expect(screen.getAllByText("Note").length).toBeGreaterThan(0);
+    expect(screen.getByText("Client was delayed")).toBeTruthy();
+    expect(screen.getByText("No note")).toBeTruthy();
+  });
+
+  it("keeps the upcoming list without a Note column", () => {
+    render(<DeskList list={list("upcoming")} canChange today="2026-11-09" />);
+    expect(screen.queryByText("Note")).toBeNull();
+  });
+
   it("says when more missed visits wait than are shown", () => {
     render(
       <DeskList list={deskList("not_collected", { more: true })} canChange today="2026-11-13" />,

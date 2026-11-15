@@ -356,6 +356,7 @@ describe("rebooking", () => {
       })
     )._unsafeUnwrap();
     expect(allowed.overCapacity).toBe(true);
+    expect(allowed.note).toBe("Client is flying out Thursday");
     const stored = await s.bookings.findById(b.id);
     expect(stored?.overCapacityReason).toBe("Client is flying out Thursday");
   });
