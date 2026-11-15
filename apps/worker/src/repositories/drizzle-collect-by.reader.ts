@@ -14,7 +14,7 @@ import {
   addDaysToKey,
   londonDateKey,
 } from "@auction/domain";
-import { collectByCalendarRange, readCollectByCalendars } from "@auction/persistence/repositories";
+import { collectByCalendarRange, readCollectByCalendars } from "@auction/persistence/lib";
 import {
   type SQL,
   and,

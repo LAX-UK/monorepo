@@ -355,6 +355,18 @@ describe("nextOpenDay", () => {
     expect(nextOpenDay(calendar, "2026-12-12")).toBe("2026-12-21");
   });
 
+  it("treats a part-day closure that covers every opening range as closed", () => {
+    // 10:00 to 19:00 entered as hours rather than as a whole day: nothing is left to open.
+    const covered = calendarOf([
+      { ...closure("2026-12-16", "staff"), opensLocal: "10:00", closesLocal: "19:00" },
+    ]);
+    expect(nextOpenDay(covered, "2026-12-16")).toBe("2026-12-17");
+    const partial = calendarOf([
+      { ...closure("2026-12-16", "staff"), opensLocal: "10:00", closesLocal: "12:00" },
+    ]);
+    expect(nextOpenDay(partial, "2026-12-16")).toBe("2026-12-16");
+  });
+
   it("returns the date unchanged when the place is never open", () => {
     const never = createCollectionCalendar({
       hours: [],

@@ -1,3 +1,4 @@
+import { GALLERY_CONTACT } from "@auction/branding";
 import { describe, expect, it } from "vitest";
 import { emailAttachments } from "./attachments.js";
 import { renderEmail } from "./render.js";
@@ -179,6 +180,18 @@ describe("collect by email", () => {
       const without = await renderEmail("collection-collect-by", { ...base, contactPhone });
       expect(without.text).toContain("Questions? Email collections@lax.example.");
       expect(without.text).not.toMatch(/call\b/i);
+    }
+  });
+
+  it("falls back to the gallery's email for a row queued before the address was a variable", async () => {
+    const { contactEmail: _omitted, ...queued } = base;
+    for (const contactEmail of [undefined, "  "]) {
+      const rendered = await renderEmail("collection-collect-by", {
+        ...queued,
+        contactEmail,
+      } as unknown as typeof base);
+      expect(rendered.text).toContain(`Questions? Email ${GALLERY_CONTACT.email}`);
+      expect(rendered.text).not.toContain("undefined");
     }
   });
 

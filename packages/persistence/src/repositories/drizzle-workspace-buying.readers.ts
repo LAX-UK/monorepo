@@ -18,7 +18,9 @@ import {
   type CollectByCalendar,
   DEFAULT_COLLECT_BY_POLICY,
   type DateKey,
+  type FulfilmentFacts,
   addDaysToKey,
+  awaitsCollection,
   londonDateKey,
 } from "@auction/domain";
 import { and, desc, eq, inArray, isNull, sql } from "drizzle-orm";
@@ -30,7 +32,7 @@ import type {
   IAccountRegistrationsReader,
   IRecordPeopleReader,
 } from "../interfaces/workspace-buying.readers.js";
-import { collectByCalendarRange, readCollectByCalendars } from "./drizzle-collect-by-calendars.js";
+import { collectByCalendarRange, readCollectByCalendars } from "../lib/collect-by-calendars.js";
 import { mapDeliveryQuoteRow } from "./drizzle-delivery-quote.repository.js";
 
 /** Sales the account is registered for, with who registered, newest sale first. */
@@ -294,7 +296,13 @@ export class DrizzleAccountPurchaseFactsReader implements IAccountPurchaseFactsR
     ]);
     const placeByVenue = new Map(places.map((p) => [p.venueId, p]));
     const bookedLots = new Set(bookings.map((b) => b.lotId));
-    const calendars = await collectByCalendarsFor(this.db, lots, fulfilments, placeByVenue);
+    const calendars = await collectByCalendarsFor(
+      this.db,
+      lots,
+      fulfilments,
+      placeByVenue,
+      bookedLots,
+    );
 
     const paymentByLot = firstByLot(payments);
     const fulfilmentByLot = new Map(fulfilments.map((f) => [f.lotId, f]));
@@ -350,19 +358,35 @@ export class DrizzleAccountPurchaseFactsReader implements IAccountPurchaseFactsR
 /** The opening calendar of each venue a lot waiting for collection is stored at. */
 async function collectByCalendarsFor(
   db: Database,
-  lots: readonly { lotId: string; venueId: string | null }[],
-  fulfilments: readonly { lotId: string; paymentClearedAt: Date | null }[],
+  lots: readonly { lotId: string; venueId: string | null; saleDeletedAt: Date | null }[],
+  fulfilments: readonly {
+    lotId: string;
+    paymentClearedAt: Date | null;
+    status: FulfilmentFacts["status"];
+    fulfilmentMethod: FulfilmentFacts["method"];
+  }[],
   placeByVenue: ReadonlyMap<
     string,
     { onlineBookingEnabled: boolean; freeStorageDays: number | null }
   >,
+  bookedLots: ReadonlySet<string>,
 ): Promise<Map<string, CollectByCalendar>> {
-  const clearedAt = new Map(fulfilments.map((f) => [f.lotId, f.paymentClearedAt]));
+  const fulfilmentByLot = new Map(fulfilments.map((f) => [f.lotId, f]));
   const counted = new Map<string, DateKey[]>();
   for (const l of lots) {
-    const cleared = clearedAt.get(l.lotId);
+    const f = fulfilmentByLot.get(l.lotId);
+    const cleared = f?.paymentClearedAt;
     const place = l.venueId ? placeByVenue.get(l.venueId) : undefined;
-    if (!cleared || !l.venueId || !place?.onlineBookingEnabled) continue;
+    if (!f || !cleared || !l.venueId || !place?.onlineBookingEnabled) continue;
+    // Only lots still waiting carry the notice, so a lot collected years ago does not stretch
+    // the range the calendar is read over.
+    const waiting = awaitsCollection({
+      fulfilment: { status: f.status, method: f.fulfilmentMethod },
+      saleDeleted: l.saleDeletedAt !== null,
+      bookingOpen: true,
+      booked: bookedLots.has(l.lotId),
+    });
+    if (!waiting) continue;
     const free = place.freeStorageDays ?? DEFAULT_COLLECT_BY_POLICY.freeStorageDays;
     counted.set(l.venueId, [
       ...(counted.get(l.venueId) ?? []),

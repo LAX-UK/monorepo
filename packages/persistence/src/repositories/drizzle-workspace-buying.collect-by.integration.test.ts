@@ -108,6 +108,20 @@ describe.skipIf(!HAS_DB)("account purchase facts: collect-by storage (integratio
     expect(collectBy(cleared, policy, storage?.calendar).date).toBe("2031-03-17");
   });
 
+  it("reads a closure that starts after the counted day, so the deadline moves past it", async () => {
+    // Counted day Sat 15 Mar 2031; staff are closed Mon 17 to Wed 19, so the deadline is Thu 20.
+    await db.execute(sql`
+      insert into collection_exception (venue_id, kind, starts_on, ends_on, source)
+      values (${venueId}, 'closure', '2031-03-17', '2031-03-19', 'staff')`);
+    try {
+      const storage = await storageOf(await wonLot());
+      const policy = { ...DEFAULT_COLLECT_BY_POLICY, freeStorageDays: 14 };
+      expect(collectBy(cleared, policy, storage?.calendar).date).toBe("2031-03-20");
+    } finally {
+      await db.execute(sql`delete from collection_exception where venue_id = ${venueId}`);
+    }
+  });
+
   it("says when the lot's sale was soft-deleted", async () => {
     const deletedSaleId = randomUUID();
     await db.execute(sql`
