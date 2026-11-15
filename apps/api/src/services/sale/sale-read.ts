@@ -1,5 +1,5 @@
 import type { ISaleRepository } from "@auction/persistence/interfaces";
-import type { Lot, Sale, StaffRoles, WithdrawnLotView } from "@auction/types";
+import type { Lot, PublicLotView, Sale, StaffRoles, WithdrawnLotView } from "@auction/types";
 import {
   isPublicCatalogLot,
   isPublicCatalogSale,
@@ -8,7 +8,7 @@ import {
   viewerCanSeeNonPublicCatalog,
 } from "@auction/validators";
 import { withInvoicedSalePrices } from "../../lib/invoiced-sale-prices.js";
-import { presentCatalogueRowForPublic } from "../../lib/lot-public-view.js";
+import { presentCatalogueRowForViewer } from "../../lib/lot-public-view.js";
 import {
   presentLotsImages,
   presentSaleAdminImages,
@@ -58,7 +58,11 @@ export async function getSaleDetailForPublicApi(
   viewerUserId: string | undefined,
   viewer?: { role?: string | undefined; staffRoles?: StaffRoles | undefined },
 ): Promise<{
-  data: { sale: Sale; lots: (Lot | WithdrawnLotView)[]; viewer: { isFollowing: boolean } };
+  data: {
+    sale: Sale;
+    lots: (Lot | PublicLotView | WithdrawnLotView)[];
+    viewer: { isFollowing: boolean };
+  };
 } | null> {
   const bundle = await getByIdWithLots(deps, saleId);
   if (!bundle) return null;
@@ -93,7 +97,7 @@ export async function getSaleDetailForPublicApi(
     ? priced
     : priced
         .filter((lot) => isPublicCatalogueLot(lot, saleWithPlatform))
-        .map(presentCatalogueRowForPublic);
+        .map((lot) => presentCatalogueRowForViewer(lot, viewer?.role, viewer?.staffRoles));
   return { data: { sale, lots: visibleLots, viewer: { isFollowing } } };
 }
 
@@ -188,7 +192,7 @@ export async function listSaleLotsPageForPublicApi(
   viewer?: { role?: string | undefined; staffRoles?: StaffRoles | undefined },
 ): Promise<{
   data: {
-    items: (Lot | WithdrawnLotView)[];
+    items: (Lot | PublicLotView | WithdrawnLotView)[];
     total: number;
     limit: number;
     offset: number;
@@ -226,7 +230,9 @@ export async function listSaleLotsPageForPublicApi(
   );
   return {
     data: {
-      items: canPreview ? priced : priced.map(presentCatalogueRowForPublic),
+      items: canPreview
+        ? priced
+        : priced.map((lot) => presentCatalogueRowForViewer(lot, viewer?.role, viewer?.staffRoles)),
       total: page.total,
       limit: opts.limit,
       offset: opts.offset,

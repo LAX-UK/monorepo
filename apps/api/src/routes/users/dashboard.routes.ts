@@ -29,7 +29,10 @@ export function attachUserDashboardRoutes(r: UserHono, deps: UserRouteDeps): voi
 
   r.get("/me/bids", requireAuth, async (c) => {
     const userId = c.get("userId") as string;
-    const response = await container.userRoutes.dashboardHttp.listBids({ userId });
+    const response = await container.userRoutes.dashboardHttp.listBids({
+      userId,
+      viewer: { role: c.get("userRole"), staffRoles: c.get("userStaffRoles") },
+    });
     return respondUserHttpJson(c, response);
   });
 
@@ -61,7 +64,10 @@ export function attachUserDashboardRoutes(r: UserHono, deps: UserRouteDeps): voi
 
   r.get("/me/portfolio", requireAuth, async (c) => {
     const userId = c.get("userId") as string;
-    const response = await container.userRoutes.dashboardHttp.listPortfolio({ userId });
+    const response = await container.userRoutes.dashboardHttp.listPortfolio({
+      userId,
+      viewer: { role: c.get("userRole"), staffRoles: c.get("userStaffRoles") },
+    });
     return respondUserHttpJson(c, response);
   });
 
@@ -85,6 +91,7 @@ export function attachUserDashboardRoutes(r: UserHono, deps: UserRouteDeps): voi
         userId,
         account,
         ...(saleId ? { saleId } : {}),
+        viewer: { role: c.get("userRole"), staffRoles: c.get("userStaffRoles") },
       });
       return respondUserHttpJson(c, response);
     },
@@ -97,6 +104,7 @@ export function attachUserDashboardRoutes(r: UserHono, deps: UserRouteDeps): voi
     const response = await container.userRoutes.dashboardHttp.listAccountPurchases({
       userId,
       account,
+      viewer: { role: c.get("userRole"), staffRoles: c.get("userStaffRoles") },
     });
     return respondUserHttpJson(c, response);
   });
