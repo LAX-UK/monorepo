@@ -308,6 +308,118 @@ describe.skipIf(!HAS_DB)("accounting credit notes (integration)", { timeout: 60_
     ).not.toContain(money.id);
   });
 
+  it("a refunder whose lock query's snapshot predates another's commit, and whose lock follows it, reads the history again and does not refund twice (BK-9F1)", async () => {
+    // The interleaving the history re-read is there for, driven step by step rather than hoped
+    // for. The first refunder holds the credit note inside its step. The rival's lock query (the
+    // repository's own SQL, on its own pool) is run as a cursor: DECLARE takes the statement's
+    // snapshot then, before the first commits, and FETCH takes the row lock only after the first
+    // has committed (Postgres locks a FOR UPDATE cursor's rows when they are fetched). So the
+    // lock query returns the note as unsettled, and only the re-read can tell the rival it is not.
+    const { contact, invoice } = invoiceWithContact();
+    await issue((await register(contact)).stored.id);
+    await issue((await register(invoice)).stored.id);
+    const { refundId } = await refundRow(100);
+    const note = (await register(credit(invoice, 100, [], true, refundId))).stored;
+    await issue(note.id);
+
+    const signal = () => {
+      let resolve!: () => void;
+      const promise = new Promise<void>((r) => {
+        resolve = r;
+      });
+      return { promise, resolve };
+    };
+    // A step that never comes fails the test with its name rather than hanging it.
+    const within = async (what: string, p: Promise<void>) => {
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      try {
+        await Promise.race([
+          p,
+          new Promise<never>((_, reject) => {
+            timer = setTimeout(() => reject(new Error(`timed out waiting for ${what}`)), 10_000);
+          }),
+        ]);
+      } finally {
+        clearTimeout(timer);
+      }
+    };
+    const firstHolds = signal();
+    const rivalSnapshot = signal();
+    const firstCommitted = signal();
+    let lockedByRival: number | null = null;
+
+    type QueryConfig = { text: string; values?: unknown[]; rowMode?: string; types?: unknown };
+    type QueryClient = { query: (...args: unknown[]) => Promise<{ rows: unknown[] }> };
+    // biome-ignore lint/style/noNonNullAssertion: gated by HAS_DB
+    const otherWorker = createDb(WORKER_URL || OWNER_URL!);
+    const pool = (
+      otherWorker as unknown as {
+        $client: { on: (event: "connect", listener: (client: QueryClient) => void) => void };
+      }
+    ).$client;
+    // The rival's first lock query runs as the cursor described above; every other query passes through.
+    pool.on("connect", (client) => {
+      const query = client.query.bind(client);
+      client.query = (...args: unknown[]) => {
+        const [config, values] = args as [QueryConfig | string, unknown[] | undefined];
+        const text = typeof config === "string" ? config : config.text;
+        if (lockedByRival !== null || !/for update skip locked/i.test(text)) return query(...args);
+        lockedByRival = 0;
+        return (async () => {
+          const shape = typeof config === "string" ? {} : config;
+          await query({
+            text: `declare bk9f1_lock cursor for ${text}`,
+            values: values ?? shape.values,
+          });
+          rivalSnapshot.resolve();
+          await within("the first refunder to commit", firstCommitted.promise);
+          const fetched = await query({
+            text: "fetch all from bk9f1_lock",
+            ...(shape.rowMode ? { rowMode: shape.rowMode } : {}),
+            ...(shape.types ? { types: shape.types } : {}),
+          });
+          await query("close bk9f1_lock");
+          lockedByRival = fetched.rows.length;
+          return fetched;
+        })();
+      };
+    });
+    const rival = createAccountingRepositories(otherWorker, clock);
+    try {
+      let steps = 0;
+      const record = {
+        outcome: "refunded" as const,
+        amountPence: 100,
+        account: "stripe_clearing" as const,
+        rehearsal: true,
+      };
+      const first = repos.creditNoteRefunds.settleExclusively(note.id, async () => {
+        steps += 1;
+        firstHolds.resolve();
+        await within("the rival's lock query snapshot", rivalSnapshot.promise);
+        return record;
+      });
+      await within("the first refunder to hold the note", firstHolds.promise);
+      const second = rival.creditNoteRefunds.settleExclusively(note.id, async () => {
+        steps += 1;
+        return record;
+      });
+      expect(await first).toBe("settled");
+      firstCommitted.resolve();
+      expect(await second).toBe("skipped");
+      // The window was reached: the rival's lock query did return the note, and locked it.
+      expect(lockedByRival).toBe(1);
+      expect(steps).toBe(1);
+      const history = await owner.execute<{ n: number }>(sql`
+        select count(*)::int as n from accounting_document_event
+         where document_id = ${note.id} and action = 'refund_credit_note'`);
+      expect(history.rows[0]?.n).toBe(1);
+    } finally {
+      firstCommitted.resolve();
+      await closeDb(otherWorker);
+    }
+  });
+
   it("the refund step reads the refund itself again under the lock (review N1): one taken back, or one it cannot find, is held and never run", async () => {
     const { contact, invoice } = invoiceWithContact();
     await issue((await register(contact)).stored.id);
@@ -354,6 +466,39 @@ describe.skipIf(!HAS_DB)("accounting credit notes (integration)", { timeout: 60_
     );
     expect(listed).not.toContain(reversed.id);
     expect(await repos.creditNoteRefunds.settleExclusively(reversed.id, step)).toBe("skipped");
+    expect(steps).toBe(0);
+  });
+
+  it("a Bid credit note for a well-formed refund id with no payment_refund row is held and never refunded (BK-9F2)", async () => {
+    const { contact, invoice } = invoiceWithContact();
+    await issue((await register(contact)).stored.id);
+    await issue((await register(invoice)).stored.id);
+    // A refund id of the right shape that matches no refund: the refund cannot be told to stand.
+    const missing = (await register(credit(invoice, 1_500, [], true, randomUUID()))).stored;
+    await issue(missing.id);
+    let steps = 0;
+    const step = async () => {
+      steps += 1;
+      return {
+        outcome: "refunded" as const,
+        amountPence: 1_500,
+        account: "stripe_clearing" as const,
+        rehearsal: true,
+      };
+    };
+    expect(await repos.creditNoteRefunds.settleExclusively(missing.id, step)).toBe(
+      "refund_reversed",
+    );
+    expect(steps).toBe(0);
+    const rows = await owner.execute<{ state: string; reason: string | null; refunds: number }>(sql`
+      select d.state, d.needs_review_reason as reason,
+             (select count(*)::int from accounting_document_event e
+               where e.document_id = d.id and e.action = 'refund_credit_note') as refunds
+        from accounting_document d where d.id = ${missing.id}`);
+    expect(rows.rows).toEqual([
+      { state: "needs_review", reason: "accounting_refund_reversed_after_credit", refunds: 0 },
+    ]);
+    expect(await repos.creditNoteRefunds.settleExclusively(missing.id, step)).toBe("skipped");
     expect(steps).toBe(0);
   });
 
