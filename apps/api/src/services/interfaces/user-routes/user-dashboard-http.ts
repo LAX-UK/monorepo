@@ -1,4 +1,5 @@
 import type { EntityActor } from "@auction/domain";
+import type { StaffRoles } from "@auction/types";
 import type { ListMyConditionReportRequestsQuery } from "@auction/validators";
 import type { UserHttpJson } from "./user-route-http.js";
 
@@ -8,9 +9,16 @@ export interface IUserDashboardHttpApplicationService {
     query: ListMyConditionReportRequestsQuery;
   }): Promise<UserHttpJson>;
 
-  listBids(input: { userId: string }): Promise<UserHttpJson>;
+  /** `viewer` decides whether lots carry staff-only figures (reserve); absent means non-staff. */
+  listBids(input: {
+    userId: string;
+    viewer?: { role?: string | undefined; staffRoles?: StaffRoles | undefined };
+  }): Promise<UserHttpJson>;
 
-  listPortfolio(input: { userId: string }): Promise<UserHttpJson>;
+  listPortfolio(input: {
+    userId: string;
+    viewer?: { role?: string | undefined; staffRoles?: StaffRoles | undefined };
+  }): Promise<UserHttpJson>;
 
   /**
    * Bids placed for the acting account, as far as the member's role follows them
@@ -21,6 +29,7 @@ export interface IUserDashboardHttpApplicationService {
     userId: string;
     account: BuyingAccountActor;
     saleId?: string;
+    viewer?: { role?: string | undefined; staffRoles?: StaffRoles | undefined };
   }): Promise<UserHttpJson>;
 
   /**
@@ -30,6 +39,7 @@ export interface IUserDashboardHttpApplicationService {
   listAccountPurchases(input: {
     userId: string;
     account: BuyingAccountActor;
+    viewer?: { role?: string | undefined; staffRoles?: StaffRoles | undefined };
   }): Promise<UserHttpJson>;
 
   /**

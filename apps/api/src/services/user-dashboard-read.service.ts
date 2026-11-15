@@ -3,8 +3,9 @@ import {
   type IPublicLotResultReader,
   bidInvoiceKey,
 } from "@auction/persistence/interfaces";
-import type { Bid, Lot, Sale } from "@auction/types";
+import type { Bid, Lot, PublicLotView, Sale, StaffRoles } from "@auction/types";
 import { computeLotCheckoutPricing } from "../lib/lot-checkout-pricing.js";
+import { maskLotForPublicView } from "../lib/lot-public-view.js";
 import { presentLotsImages } from "../lib/media-presenters.js";
 import { type LotViewer, presentLotsForViewer } from "../lib/public-lot-result.js";
 import {
@@ -20,11 +21,23 @@ import type {
   WatchlistWithLot,
 } from "./watchlist.service.js";
 
-export type UserBidWithLot = { bid: Bid; lot: Lot | null };
-export type UserWatchlistRow = WatchlistWithLot & { lot: Lot | null };
+/** A lot as the reader may see it: as stored for staff, the public view for everyone else. */
+export type DashboardLot = Lot | PublicLotView;
+export type UserBidWithLot = { bid: Bid; lot: DashboardLot | null };
+export type UserWatchlistRow = Omit<WatchlistWithLot, "lot"> & { lot: DashboardLot | null };
+
+/** The reader's role, which decides whether lots carry staff-only figures such as the reserve. */
+export type DashboardViewerAccess = {
+  role?: string | undefined;
+  staffRoles?: StaffRoles | undefined;
+};
 
 /** Who is looking: a person, and the buyer account they are looking at, if any. */
-type Viewer = { userId: string | null; accountId: string | null };
+type Viewer = {
+  userId: string | null;
+  accountId: string | null;
+  access?: DashboardViewerAccess | undefined;
+};
 
 type SaleLookup = { findByIds(ids: string[]): Promise<Sale[]> };
 
@@ -41,9 +54,9 @@ export class UserDashboardReadService {
     private readonly publicLotResults?: IPublicLotResultReader,
   ) {}
 
-  async listBidsForUser(userId: string): Promise<UserBidWithLot[]> {
+  async listBidsForUser(userId: string, access?: DashboardViewerAccess): Promise<UserBidWithLot[]> {
     const rows = await this.dashboardQuery.listBidsWithLotsForBidder(userId);
-    return this.attachEnrichedLots(rows, { userId, accountId: null }, bidAccounts(rows));
+    return this.attachEnrichedLots(rows, { userId, accountId: null, access }, bidAccounts(rows));
   }
 
   /** Bids placed for a buyer account, by everyone or (with `bidderId`) by one member. */
@@ -51,23 +64,27 @@ export class UserDashboardReadService {
     buyerLegalEntityId: string,
     bidderId: string | null,
     saleId?: string,
+    access?: DashboardViewerAccess,
   ): Promise<UserBidWithLot[]> {
     const rows = await this.dashboardQuery.listBidsWithLotsForBuyerAccount(
       buyerLegalEntityId,
       bidderId,
       saleId,
     );
-    return this.attachEnrichedLots(rows, { userId: bidderId, accountId: buyerLegalEntityId }, [
-      buyerLegalEntityId,
-    ]);
+    return this.attachEnrichedLots(
+      rows,
+      { userId: bidderId, accountId: buyerLegalEntityId, access },
+      [buyerLegalEntityId],
+    );
   }
 
   async listWatchlistForUser(
     userId: string,
     options: WatchlistListOptions = {},
+    access?: DashboardViewerAccess,
   ): Promise<UserWatchlistRow[]> {
     const rows = await this.watchlistService.listWithLots(userId, options);
-    return this.attachEnrichedLots(rows, { userId, accountId: null });
+    return this.attachEnrichedLots(rows, { userId, accountId: null, access });
   }
 
   /**
@@ -80,7 +97,7 @@ export class UserDashboardReadService {
     rows: T[],
     viewer: Viewer,
     buyerAccounts: readonly string[] = [],
-  ): Promise<(T & { lot: Lot | null })[]> {
+  ): Promise<(Omit<T, "lot"> & { lot: DashboardLot | null })[]> {
     const raw = rows.map((r) => r.lot).filter((l): l is Lot => Boolean(l));
     const lotViewer: LotViewer = { userId: viewer.userId, accountIds: new Set(buyerAccounts) };
     const lots = await presentLotsForViewer(this.publicLotResults, raw, lotViewer);
@@ -88,17 +105,20 @@ export class UserDashboardReadService {
     const byId = new Map(enriched.map((l) => [l.id, l]));
     return rows.map((row) => ({
       ...row,
-      lot: row.lot ? (byId.get(row.lot.id) ?? row.lot) : null,
+      lot: row.lot
+        ? (byId.get(row.lot.id) ??
+          maskLotForPublicView(row.lot, viewer.access?.role, viewer.access?.staffRoles))
+        : null,
     }));
   }
 
-  private async enrichLots(lots: Lot[], viewer: Viewer): Promise<Lot[]> {
+  private async enrichLots(lots: Lot[], viewer: Viewer): Promise<DashboardLot[]> {
     if (lots.length === 0) return lots;
     const presented = await presentLotsImages(this.mediaUrlResolver, lots, this.mediaAssetEnricher);
     return this.withCheckoutPricing(presented, viewer);
   }
 
-  private async withCheckoutPricing(lots: Lot[], viewer: Viewer): Promise<Lot[]> {
+  private async withCheckoutPricing(lots: Lot[], viewer: Viewer): Promise<DashboardLot[]> {
     const saleIds = [
       ...new Set(
         lots
@@ -111,14 +131,17 @@ export class UserDashboardReadService {
     const invoices = await this.invoicesFor(lots, viewer);
     return lots.map((lotRow) => {
       const sale = lotRow.saleId ? (saleById.get(lotRow.saleId) ?? null) : null;
+      // Mask first, then price: no reserve amount for non-staff, and an open sealed lot's real
+      // price must not leak through its checkout figures.
+      const shown = maskLotForPublicView(lotRow, viewer.access?.role, viewer.access?.staffRoles);
       // An open result has no price to show yet.
-      if (lotRow.resultPending) return lotRow;
-      const live = computeLotCheckoutPricing(lotRow, sale);
+      if (shown.resultPending) return shown;
+      const live = computeLotCheckoutPricing(shown, sale);
       const invoice = lotRow.buyerLegalEntityId
         ? invoices.get(bidInvoiceKey(lotRow.id, lotRow.buyerLegalEntityId))
         : undefined;
       return {
-        ...lotRow,
+        ...shown,
         checkoutPricing: invoice ? checkoutPricingFromInvoice(live, invoice) : live,
       };
     });
