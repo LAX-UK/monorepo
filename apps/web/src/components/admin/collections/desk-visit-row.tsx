@@ -9,6 +9,7 @@ import {
 } from "@/lib/admin/collections/desk.vm";
 import { RecordThumbnail, StaffButton, StatusBadge } from "@auction/staff-ui";
 import type { DeskBookingView } from "@auction/types";
+import { ROW_COLUMNS } from "./desk-row-columns";
 
 export type DeskRowHandlers = {
   onHandOver: (booking: DeskBookingView) => void;
@@ -16,10 +17,6 @@ export type DeskRowHandlers = {
   onRebook: (booking: DeskBookingView) => void;
   onUndo: (booking: DeskBookingView) => void;
 };
-
-/** The row's columns from a wide screen; the header above the rows uses the same ones. */
-const ROW_COLUMNS =
-  "lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1.1fr)_minmax(0,0.9fr)_minmax(0,0.8fr)_minmax(0,0.8fr)_19rem]";
 
 /** Column headings for a wide screen; on a phone the rows stack and need none. */
 export function DeskColumnHeaders() {

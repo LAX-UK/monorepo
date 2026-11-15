@@ -1,5 +1,5 @@
-import { FormPageSkeleton } from "@auction/staff-ui";
+import { CollectionsLoadingSkeleton } from "@/components/admin/collections/collections-loading-skeleton";
 
 export default function CollectionsLoading() {
-  return <FormPageSkeleton title="Collections" sections={3} />;
+  return <CollectionsLoadingSkeleton />;
 }
