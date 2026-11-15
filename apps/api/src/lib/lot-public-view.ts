@@ -73,6 +73,16 @@ export function maskLotForPublicView(
   return toPublicLotView(masked, realCurrentPrice);
 }
 
+/**
+ * The price a lot is sorted by in a public or bidder list: the price the public reads. An open
+ * sealed lot sorts by its starting price, so the order never ranks its hidden bids.
+ */
+export function publicSortPrice(
+  lot: Pick<Lot, "auctionType" | "status" | "currentPrice" | "startingPrice">,
+): string {
+  return isActiveSealedLot(lot) ? lot.startingPrice : lot.currentPrice;
+}
+
 /** Always returns a public view (for web SSR when viewer is not staff). */
 export function toPublicLotViewFromLot(lot: Lot): PublicLotView {
   const realCurrentPrice = lot.currentPrice;

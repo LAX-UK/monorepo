@@ -2,6 +2,7 @@ import type { Database } from "@auction/db";
 import {
   type CreateSaleInput,
   type Lot,
+  type PublicLotView,
   type Sale,
   type UserRole,
   type Venue,
@@ -35,7 +36,7 @@ import {
   rollbackFailedEmergencyLotAdd,
 } from "../lib/emergency-lot-add.js";
 import { AuthzError, LotError, missingCatalogueCapabilityError } from "../lib/errors.js";
-import { maskSealedLotPriceForViewer } from "../lib/lot-public-view.js";
+import { maskLotForPublicView } from "../lib/lot-public-view.js";
 import { assertLotPublishable } from "../lib/lot-publish-policy.js";
 import { lotTimingViolationForSale, resolveLotTimingForSale } from "../lib/lot-sale-timing.js";
 import {
@@ -397,7 +398,9 @@ export class SaleService {
     saleId: string,
     viewerUserId: string | undefined,
     viewer?: { role?: string | undefined; staffRole?: string | null | undefined },
-  ): Promise<{ data: { sale: Sale; lots: Lot[]; viewer: { isFollowing: boolean } } } | null> {
+  ): Promise<{
+    data: { sale: Sale; lots: (Lot | PublicLotView)[]; viewer: { isFollowing: boolean } };
+  } | null> {
     const bundle = await this.getByIdWithLots(saleId);
     if (!bundle) return null;
 
@@ -415,9 +418,11 @@ export class SaleService {
         presentLotsImages(this.mediaUrlResolver, rows, this.mediaAssetEnricher),
       ),
     ]);
-    const visibleLots = (
-      canPreview ? lots : lots.filter((lot) => isPublicCatalogLot(lot, saleWithPlatform))
-    ).map((lot) => maskSealedLotPriceForViewer(lot, viewer?.role, viewer?.staffRole));
+    const visibleLots = canPreview
+      ? lots
+      : lots
+          .filter((lot) => isPublicCatalogLot(lot, saleWithPlatform))
+          .map((lot) => maskLotForPublicView(lot, viewer?.role, viewer?.staffRole));
     return { data: { sale, lots: visibleLots, viewer: { isFollowing } } };
   }
 
@@ -465,7 +470,7 @@ export class SaleService {
     viewer?: { role?: string | undefined; staffRole?: string | null | undefined },
   ): Promise<{
     data: {
-      items: Lot[];
+      items: (Lot | PublicLotView)[];
       total: number;
       limit: number;
       offset: number;
@@ -497,9 +502,9 @@ export class SaleService {
     );
     return {
       data: {
-        items: items.map((lot) =>
-          maskSealedLotPriceForViewer(lot, viewer?.role, viewer?.staffRole),
-        ),
+        items: canPreview
+          ? items
+          : items.map((lot) => maskLotForPublicView(lot, viewer?.role, viewer?.staffRole)),
         total: page.total,
         limit: opts.limit,
         offset: opts.offset,

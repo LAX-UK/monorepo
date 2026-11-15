@@ -28,6 +28,7 @@ import { and, eq, inArray, isNotNull, isNull } from "drizzle-orm";
 import { Hono } from "hono";
 import { z } from "zod";
 import type { Container } from "../container.js";
+import { maskLotForPublicView } from "../lib/lot-public-view.js";
 import { lotsWithCheckoutPricing } from "../lib/lots-with-checkout-pricing.js";
 import { buildEnrichedWebsiteUserEvent } from "../lib/marketing-attribution-context.js";
 import { presentLotsImages } from "../lib/media-presenters.js";
@@ -237,7 +238,11 @@ export function createUserRoutes(container: Container, authenticator: IAuthentic
     const data = pricedLots.map((lotRow) => {
       const p = byLot.get(lotRow.id);
       return {
-        lot: lotRow,
+        // No reserve amount for non-staff, the buyer included; staff read the lot as stored.
+        lot:
+          "reservePrice" in lotRow
+            ? maskLotForPublicView(lotRow, c.get("userRole"), c.get("userStaffRole"))
+            : lotRow,
         payment: p
           ? {
               id: p.id,

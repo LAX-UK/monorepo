@@ -1,5 +1,6 @@
 import type { Database } from "@auction/db";
 import type { Lot } from "@auction/types";
+import { publicSortPrice } from "../lib/lot-public-view.js";
 import type { ILotRepository } from "./interfaces/repositories.js";
 import type { IWatchlistRepository, WatchlistRow } from "./interfaces/watchlist.js";
 
@@ -83,14 +84,15 @@ export class WatchlistService {
       return true;
     });
     const parsePrice = (value: string) => Number.parseFloat(value) || 0;
+    const price = (row: WatchlistWithLot) => parsePrice(row.lot ? publicSortPrice(row.lot) : "0");
     return filtered.sort((a, b) => {
       switch (options.sort ?? "addedDesc") {
         case "endingSoon":
           return (a.lot?.endTime.getTime() ?? 0) - (b.lot?.endTime.getTime() ?? 0);
         case "priceAsc":
-          return parsePrice(a.lot?.currentPrice ?? "0") - parsePrice(b.lot?.currentPrice ?? "0");
+          return price(a) - price(b);
         case "priceDesc":
-          return parsePrice(b.lot?.currentPrice ?? "0") - parsePrice(a.lot?.currentPrice ?? "0");
+          return price(b) - price(a);
         default:
           return b.createdAt.getTime() - a.createdAt.getTime();
       }
