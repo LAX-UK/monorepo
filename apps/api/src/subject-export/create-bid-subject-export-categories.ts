@@ -1,3 +1,4 @@
+import { SubjectExportRegistry } from "@auction/identity-contracts/subject-export-readers";
 import { BidderProfileCategory } from "./categories/bidder-profile.category.js";
 import { BidsCategory } from "./categories/bids.category.js";
 import { CollectionsCategory } from "./categories/collections.category.js";
@@ -13,7 +14,6 @@ import { RegistrationsCategory } from "./categories/registrations.category.js";
 import { VerificationCategory } from "./categories/verification.category.js";
 import { WatchlistAndAlertsCategory } from "./categories/watchlist-and-alerts.category.js";
 import type { SubjectExportDeps } from "./subject-export-deps.js";
-import { SubjectExportRegistry } from "./subject-export.registry.js";
 import { SubjectExportService } from "./subject-export.service.js";
 
 /** Every Bid category, in the order the download lists them. A new category is one line here. */

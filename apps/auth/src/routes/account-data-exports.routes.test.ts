@@ -23,6 +23,7 @@ function setup(
     .mockResolvedValue(overrides.introspection ?? { active: true, sub: SUBJECT });
   const exports = {
     current: vi.fn().mockResolvedValue(null),
+    retryAfter: vi.fn().mockResolvedValue(null),
     request: vi.fn().mockResolvedValue({
       ok: true,
       outcome: { outcome: "rate_limited", retryAfter: "2026-11-20T00:00:00.000Z" },
@@ -114,8 +115,16 @@ describe("account data export routes", () => {
     const { call, exports } = setup();
     const response = await call("/lax/data-exports/current", "token=t");
     expect(response.headers.get("cache-control")).toBe("no-store");
-    expect(await response.json()).toEqual({ export: null });
+    expect(await response.json()).toEqual({ export: null, retryAfter: null });
     expect(exports.current).toHaveBeenCalledWith(SUBJECT);
+  });
+
+  it("carries the date a new copy can be asked for", async () => {
+    const { call, exports } = setup();
+    exports.retryAfter.mockResolvedValueOnce("2026-11-20T00:00:00.000Z");
+    const response = await call("/lax/data-exports/current", "token=t");
+    expect(await response.json()).toEqual({ export: null, retryAfter: "2026-11-20T00:00:00.000Z" });
+    expect(exports.retryAfter).toHaveBeenCalledWith(SUBJECT);
   });
 
   it("passes the person's browser and address on, bounded, when asking for a copy", async () => {

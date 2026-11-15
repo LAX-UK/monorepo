@@ -5,7 +5,7 @@ import {
   subjectExportManifestSchema,
   subjectExportPageSchema,
 } from "@auction/identity-contracts";
-import type { SubjectExportRegistry } from "./subject-export.registry.js";
+import type { SubjectExportRegistry } from "@auction/identity-contracts/subject-export-readers";
 
 export class UnknownSubjectExportCategoryError extends Error {
   constructor(readonly categoryId: string) {

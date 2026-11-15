@@ -1,10 +1,10 @@
-import type { IdentityDatabase } from "@auction/identity-db";
-import { identityAddress } from "@auction/identity-db/schema";
-import { and, asc, eq } from "drizzle-orm";
 import {
   type ExportSource,
   SourcedExportCategory,
-} from "../../../subject-export/sourced-export-category.js";
+} from "@auction/identity-contracts/subject-export-readers";
+import type { IdentityDatabase } from "@auction/identity-db";
+import { identityAddress } from "@auction/identity-db/schema";
+import { and, asc, eq } from "drizzle-orm";
 import { isoRequired } from "../../../subject-export/values.js";
 import { afterKey, countWhere } from "./keyset.js";
 

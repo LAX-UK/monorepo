@@ -17,10 +17,17 @@ export type DataExportCallResult<T> =
   | { status: "gone" }
   | { status: "unavailable" };
 
+/**
+ * The latest request, and when a new copy can next be asked for. `retryAfter` is only the
+ * rate-limit date: null means "not rate-limited", not "can ask now", because an open request also
+ * stops a new one. The open request, if any, is `view`.
+ */
+export type DataExportCurrent = { view: SubjectExportView | null; retryAfter: string | null };
+
 /** The person's data download as LAX Identity runs it. Account only asks and shows. */
 export type DataExportGateway = {
-  /** The latest request, or null when there has never been one. */
-  readCurrent(actor: IdentityActor): Promise<DataExportCallResult<SubjectExportView | null>>;
+  /** The latest request (null when there has never been one) and the rate-limit date, if any. */
+  readCurrent(actor: IdentityActor): Promise<DataExportCallResult<DataExportCurrent>>;
   /** Needs a recent sign-in. "Already open" and "too many requests" are answers, not failures. */
   request(
     actor: IdentityActor,

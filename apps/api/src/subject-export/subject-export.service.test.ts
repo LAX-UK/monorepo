@@ -3,14 +3,14 @@ import {
   subjectExportManifestSchema,
   subjectExportPageSchema,
 } from "@auction/identity-contracts";
+import { SubjectExportRegistry } from "@auction/identity-contracts/subject-export-readers";
+import type { SubjectExportCategory } from "@auction/identity-contracts/subject-export-readers";
 import { describe, expect, it, vi } from "vitest";
 import { createBidSubjectExportRegistry } from "./create-bid-subject-export-categories.js";
-import { SubjectExportRegistry } from "./subject-export.registry.js";
 import {
   SubjectExportService,
   UnknownSubjectExportCategoryError,
 } from "./subject-export.service.js";
-import type { SubjectExportCategory } from "./subject-export.types.js";
 
 function fakeCategory(id: string, count = 2): SubjectExportCategory {
   return {

@@ -5,12 +5,12 @@ import {
   uploadObject,
 } from "@auction/db/schema";
 import type { SubjectExportFileRef } from "@auction/identity-contracts";
-import { and, asc, desc, eq, isNull } from "drizzle-orm";
 import {
   type ExportSource,
   SourcedExportCategory,
   inMemorySource,
-} from "../sourced-export-category.js";
+} from "@auction/identity-contracts/subject-export-readers";
+import { and, asc, desc, eq, isNull } from "drizzle-orm";
 import type { SubjectExportDeps } from "../subject-export-deps.js";
 import { iso, isoRequired } from "../subject-export-values.js";
 import { afterKey, countWhere } from "./keyset.js";

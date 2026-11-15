@@ -1,5 +1,5 @@
+import { SubjectExportRegistry } from "@auction/identity-contracts/subject-export-readers";
 import type { IdentityDatabase } from "@auction/identity-db";
-import { SubjectExportRegistry } from "../../subject-export/subject-export.registry.js";
 import { createDrizzleSessionClientsReader } from "../drizzle-session-clients.reader.js";
 import { AddressesExportCategory } from "./categories/addresses.category.js";
 import { ConsentsExportCategory } from "./categories/consents.category.js";

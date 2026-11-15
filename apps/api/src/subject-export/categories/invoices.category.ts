@@ -1,6 +1,9 @@
 import { lot, payment, paymentExternalRef } from "@auction/db/schema";
+import {
+  type ExportSource,
+  SourcedExportCategory,
+} from "@auction/identity-contracts/subject-export-readers";
 import { and, asc, eq } from "drizzle-orm";
-import { type ExportSource, SourcedExportCategory } from "../sourced-export-category.js";
 import type { SubjectExportDeps } from "../subject-export-deps.js";
 import { isoRequired, money } from "../subject-export-values.js";
 import { afterKey, countWhere } from "./keyset.js";

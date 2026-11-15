@@ -1,6 +1,9 @@
 import { collectionBooking, collectionBookingLot, lot } from "@auction/db/schema";
+import {
+  type ExportSource,
+  SourcedExportCategory,
+} from "@auction/identity-contracts/subject-export-readers";
 import { and, asc, eq, inArray, or } from "drizzle-orm";
-import { type ExportSource, SourcedExportCategory } from "../sourced-export-category.js";
 import type { SubjectExportDeps } from "../subject-export-deps.js";
 import { iso, isoRequired, lotRef } from "../subject-export-values.js";
 import { afterKey, countWhere } from "./keyset.js";

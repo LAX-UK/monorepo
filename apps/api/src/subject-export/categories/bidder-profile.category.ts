@@ -8,12 +8,12 @@ import {
   saleRegistration,
   userCategoryInterest,
 } from "@auction/db/schema";
-import { and, asc, eq, isNotNull, or } from "drizzle-orm";
 import {
   type ExportSource,
   SourcedExportCategory,
   inMemorySource,
-} from "../sourced-export-category.js";
+} from "@auction/identity-contracts/subject-export-readers";
+import { and, asc, eq, isNotNull, or } from "drizzle-orm";
 import type { SubjectExportDeps } from "../subject-export-deps.js";
 import { iso, isoRequired, saleRef } from "../subject-export-values.js";
 
