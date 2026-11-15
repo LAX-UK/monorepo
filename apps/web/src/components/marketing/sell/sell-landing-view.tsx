@@ -1,13 +1,9 @@
 import type { FaqItem } from "@/components/marketing/faq/faq-data";
-import { SellClosingCta, SellPrivateSalesNote } from "@/components/marketing/sell/sell-closing-cta";
+import { SellPrivateSalesNote } from "@/components/marketing/sell/sell-closing-cta";
 import { SellDepartmentGrid } from "@/components/marketing/sell/sell-department-grid";
-import { SellFaq } from "@/components/marketing/sell/sell-faq";
-import { SellFees } from "@/components/marketing/sell/sell-fees";
 import { SellHero } from "@/components/marketing/sell/sell-hero";
 import { SellRecentlySold } from "@/components/marketing/sell/sell-recently-sold";
-import { SellSpecialistsSection } from "@/components/marketing/sell/sell-specialists-section";
-import { SellSteps } from "@/components/marketing/sell/sell-steps";
-import { MARKETING_PAGE_SHELL } from "@/lib/marketing/chrome";
+import { SellTemplateSections } from "@/components/marketing/sell/sell-template-sections";
 import type { SellSpecialist } from "@/lib/marketing/sell-specialists";
 import type { LotMediaTreatmentIndex } from "@auction/domain";
 import type { Lot } from "@auction/types";
@@ -25,14 +21,13 @@ export function SellLandingView({ recentlySold, treatments, specialists, faqItem
     <div className="bg-page-bg pt-[calc(var(--header-height)+1.5rem)] dark:bg-background">
       <SellHero />
       <SellRecentlySold works={recentlySold} treatments={treatments} />
-      <SellSteps />
-      <SellDepartmentGrid />
-      <SellFees />
-      <SellSpecialistsSection specialists={specialists} />
-      <SellFaq items={faqItems} />
-      <section className={`${MARKETING_PAGE_SHELL} py-16 md:py-24`}>
-        <SellClosingCta source="sell_closing" footnote={<SellPrivateSalesNote />} />
-      </section>
+      <SellTemplateSections
+        specialists={specialists}
+        faqItems={faqItems}
+        closingSource="sell_closing"
+        closingFootnote={<SellPrivateSalesNote />}
+        afterSteps={<SellDepartmentGrid />}
+      />
     </div>
   );
 }

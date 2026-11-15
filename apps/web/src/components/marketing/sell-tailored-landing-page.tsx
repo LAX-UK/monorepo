@@ -1,16 +1,14 @@
 import { DepartmentEvidenceView } from "@/components/marketing/department/department-evidence-view";
-import {
-  MARKETING_HUB_BREADCRUMB_CLASS,
-  MarketingBreadcrumb,
-} from "@/components/marketing/marketing-breadcrumb";
-import { MarketingPageHero } from "@/components/marketing/marketing-page-hero";
 import { MarketingSection } from "@/components/marketing/marketing-section";
-import { SellClosingCta } from "@/components/marketing/sell/sell-closing-cta";
+import { SellHero } from "@/components/marketing/sell/sell-hero";
+import { SellTemplateSections } from "@/components/marketing/sell/sell-template-sections";
 import { hasDepartmentEvidence } from "@/lib/departments/department-evidence";
 import type { DepartmentEvidence } from "@/lib/departments/department-evidence";
 import { loadDepartmentEvidence } from "@/lib/departments/load-department-evidence";
 import { MARKETING_PAGE_SHELL } from "@/lib/marketing/chrome";
+import { SELL_FAQ_ITEMS } from "@/lib/marketing/sell-faq-items";
 import type { sellContactHref } from "@/lib/marketing/sell-intake";
+import { SELL_SPECIALISTS } from "@/lib/marketing/sell-specialists";
 import { metadataForStatic } from "@/lib/seo/metadata-factory";
 import { breadcrumbJsonLd, jsonLdScript } from "@/lib/seo/structured-data";
 import { departmentDisplayStyle } from "@auction/domain";
@@ -66,24 +64,16 @@ export function SellDepartmentView({
 }: ViewProps) {
   return (
     <div className="bg-page-bg pt-[calc(var(--header-height)+1.5rem)] dark:bg-background">
-      <section className={MARKETING_PAGE_SHELL}>
-        <MarketingPageHero
-          breadcrumb={
-            <MarketingBreadcrumb
-              items={[
-                { label: "Home", href: "/" },
-                { label: "Sell", href: "/sell" },
-                { label: breadcrumbLabel, current: true },
-              ]}
-              className={MARKETING_HUB_BREADCRUMB_CLASS}
-            />
-          }
-          title={title}
-          titleSize="lg"
-          description={lead}
-          className="mb-2 !max-w-[var(--container-inner,1376px)] !px-0 !py-0 md:mb-4 md:!py-2"
-        />
-        {evidence?.deadline && departmentNoun ? (
+      <SellHero
+        title={title}
+        lead={lead}
+        breadcrumbLabel={breadcrumbLabel}
+        source={`${path}_hero`}
+        {...(categorySlug ? { categorySlug } : {})}
+        {...(contactType ? { contactType } : {})}
+      />
+      {evidence?.deadline && departmentNoun ? (
+        <section className={MARKETING_PAGE_SHELL}>
           <Notice
             tone="info"
             title={`Consign ${departmentNoun} by ${evidence.deadline.date}`}
@@ -91,8 +81,8 @@ export function SellDepartmentView({
           >
             {evidence.deadline.saleTitle} is the next sale accepting {departmentNoun}.
           </Notice>
-        ) : null}
-      </section>
+        </section>
+      ) : null}
 
       {evidence && departmentNoun ? (
         <DepartmentEvidenceView
@@ -121,13 +111,13 @@ export function SellDepartmentView({
         </ul>
       </MarketingSection>
 
-      <section className={`${MARKETING_PAGE_SHELL} py-16 md:py-24`}>
-        <SellClosingCta
-          source={`${path}_submit`}
-          {...(categorySlug ? { categorySlug } : {})}
-          {...(contactType ? { contactType } : {})}
-        />
-      </section>
+      <SellTemplateSections
+        specialists={SELL_SPECIALISTS}
+        faqItems={SELL_FAQ_ITEMS}
+        closingSource={`${path}_submit`}
+        {...(categorySlug ? { categorySlug } : {})}
+        {...(contactType ? { contactType } : {})}
+      />
     </div>
   );
 }
