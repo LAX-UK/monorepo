@@ -5,8 +5,10 @@ import { ENQUIRIES_PATH } from "@/lib/admin/enquiries/enquiries.vm";
 import { enquiryErrorMessage } from "@/lib/admin/enquiries/enquiry-errors";
 import { denyUnlessAdminCapability } from "@/lib/auth/assert-admin-action-capability";
 import {
+  type EnquiryAttachmentLink,
   type EnquiryRule,
   type EnquiryView,
+  enquiryAttachmentLinkSchema,
   enquiryRoutingSchema,
   enquiryViewSchema,
 } from "@/lib/data/http/admin-enquiries.schema";
@@ -14,6 +16,7 @@ import { authedServerFetch } from "@/lib/data/http/authed-server-fetch";
 import { readDataEnvelope, readJsonBody } from "@/lib/data/http/envelope";
 import { type ActionResult, actionFailure, actionSuccess } from "@/lib/forms/form-result";
 import {
+  ENQUIRIES_ACCESS,
   ENQUIRY_ASSIGN_ACCESS,
   ENQUIRY_ROUTING_MANAGE_ACCESS,
 } from "@/lib/navigation/staff-nav-access";
@@ -21,6 +24,7 @@ import { instrumentServerAction } from "@/lib/observability/instrument-server-ac
 import {
   adminEnquiryPatchSchema,
   adminEnquiryRoutingSchema,
+  enquiryAttachmentParamSchema,
   enquiryRefParamSchema,
 } from "@auction/validators";
 import { revalidatePath } from "next/cache";
@@ -96,5 +100,37 @@ export async function saveEnquiryRoutingAction(
     );
     revalidatePath(ENQUIRIES_PATH);
     return actionSuccess(saved.rules);
+  });
+}
+
+/**
+ * A link to open one attachment: signed by the Bid API, good for about a minute and never stored.
+ * Needs the same capability as the enquiry, and the API checks it again for this enquiry.
+ */
+export async function enquiryAttachmentLinkAction(
+  ref: string,
+  attachmentId: string,
+): Promise<ActionResult<EnquiryAttachmentLink>> {
+  return instrumentServerAction("enquiryAttachmentLinkAction", async () => {
+    const denied = await denyUnlessAdminCapability(ENQUIRIES_ACCESS);
+    if (denied) return denied;
+    const param = enquiryAttachmentParamSchema.safeParse({ ref, attachmentId });
+    if (!param.success) return actionFailure("Check the file.", undefined, 400);
+    const res = await authedServerFetch(
+      `/admin/enquiries/${encodeURIComponent(param.data.ref)}/attachments/${param.data.attachmentId}/link`,
+      { cache: "no-store" },
+    ).catch(() => null);
+    if (!res) return actionFailure(enquiryErrorMessage(undefined, undefined), undefined, 503);
+    if (!res.ok) {
+      const code = await errorCodeOf(res);
+      return actionFailure(enquiryErrorMessage(code, res.status), undefined, res.status, code);
+    }
+    return actionSuccess(
+      readDataEnvelope(
+        await readJsonBody(res),
+        enquiryAttachmentLinkSchema,
+        "GET /admin/enquiries/:ref/attachments/:id/link",
+      ),
+    );
   });
 }

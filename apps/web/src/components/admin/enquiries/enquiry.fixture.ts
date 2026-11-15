@@ -9,6 +9,8 @@ export const ASSIGNEES: EnquiryAssignee[] = [
   { id: "u-tom", name: "Tom Reid" },
 ];
 
+export const COUNTS = { new: 4, in_progress: 2, waiting_on_client: 1, converted: 0, closed: 7 };
+
 /** A new private sale enquiry from a guest, with the work and its files. */
 export const sellEnquiry: EnquiryView = {
   id: "00000000-0000-4000-8000-000000001042",

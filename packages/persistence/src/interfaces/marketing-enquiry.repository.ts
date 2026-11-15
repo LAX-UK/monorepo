@@ -106,10 +106,20 @@ export type EnquiryListFilter = {
   status?: EnquiryStatus | undefined;
   /** A user id, or `unassigned`. */
   assignee?: string | undefined;
+  /** Text to find in the name, email, reference, or the artist or title of a private sale work. */
+  search?: string | undefined;
+  /** Overrides the view's order. */
+  sort?: "oldest" | "newest" | undefined;
   /** Continue after this enquiry, in the view's order. */
   afterId?: string | null | undefined;
   limit: number;
 };
+
+/** How many enquiries sit in each status, for the list's view and filters apart from the status. */
+export type EnquiryStatusCounts = Record<EnquiryStatus, number>;
+
+/** A stored attachment file, as far as serving it needs. */
+export type EnquiryAttachmentFile = { key: string; contentType: string };
 
 /** The files an enquiry arrived with, as the sender left them. */
 export type ClaimedEnquiryFiles = { images: number; documents: number };
@@ -136,6 +146,13 @@ export interface IMarketingEnquiryRepository {
   findByRef(ref: string): Promise<MarketingEnquiryDetailRecord | null>;
   /** One page of the list, limited to what the scope may see. Returns up to `limit + 1` rows. */
   list(filter: EnquiryListFilter): Promise<MarketingEnquiryRecord[]>;
+  /** Per-status counts for the same view, scope and filters, leaving the status filter and cursor out. */
+  countByStatus(filter: EnquiryListFilter): Promise<EnquiryStatusCounts>;
+  /** The stored file behind one attachment of an enquiry, or null when it is not that enquiry's. */
+  findAttachmentFile(
+    enquiryId: string,
+    attachmentId: string,
+  ): Promise<EnquiryAttachmentFile | null>;
   /**
    * Applies a change if the enquiry is still at `expectedVersion`, and bumps the version. Returns
    * the updated enquiry, or `null` when the version moved on (or the enquiry is gone).

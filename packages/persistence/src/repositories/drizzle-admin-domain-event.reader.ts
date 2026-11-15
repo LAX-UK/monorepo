@@ -1,7 +1,7 @@
 import type { Database } from "@auction/db";
 import { bidIdentityDirectory, bidUserProfile, domainEvent } from "@auction/db/schema";
 import { redactDomainEventPayload } from "@auction/types";
-import { and, asc, desc, eq, ilike, like, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, ilike, inArray, like, or, sql } from "drizzle-orm";
 import type { IAdminDomainEventReader } from "../interfaces/admin-domain-event.reader.js";
 import type {
   AuditActorRecord,
@@ -52,6 +52,8 @@ export class DrizzleAdminDomainEventReader implements IAdminDomainEventReader {
     eventTypePrefix?: string;
     aggregateType?: string;
     aggregateId?: string;
+    eventTypes?: readonly string[];
+    newestFirst?: boolean;
     includePii: boolean;
   }): Promise<RedactedDomainEventRow[]> {
     const offset = Math.max(0, input.offset ?? 0);
@@ -62,8 +64,18 @@ export class DrizzleAdminDomainEventReader implements IAdminDomainEventReader {
       const rows = await this.db
         .select(DOMAIN_EVENT_LIST_COLUMNS)
         .from(domainEvent)
-        .where(and(eq(domainEvent.aggregateType, aggType), eq(domainEvent.aggregateId, aggId)))
-        .orderBy(asc(domainEvent.occurredAt), asc(domainEvent.id))
+        .where(
+          and(
+            eq(domainEvent.aggregateType, aggType),
+            eq(domainEvent.aggregateId, aggId),
+            input.eventTypes ? inArray(domainEvent.eventType, [...input.eventTypes]) : undefined,
+          ),
+        )
+        .orderBy(
+          ...(input.newestFirst
+            ? [desc(domainEvent.occurredAt), desc(domainEvent.id)]
+            : [asc(domainEvent.occurredAt), asc(domainEvent.id)]),
+        )
         .offset(offset)
         .limit(input.limit);
       return redactRows(rows, input.includePii);
@@ -74,6 +86,16 @@ export class DrizzleAdminDomainEventReader implements IAdminDomainEventReader {
     }
     const rows = await q.orderBy(desc(domainEvent.id)).offset(offset).limit(input.limit);
     return redactRows(rows, input.includePii);
+  }
+
+  async actorNames(userIds: readonly string[]): Promise<Map<string, string>> {
+    const ids = [...new Set(userIds)];
+    if (ids.length === 0) return new Map();
+    const rows = await this.db
+      .select({ id: bidIdentityDirectory.subjectId, name: bidIdentityDirectory.name })
+      .from(bidIdentityDirectory)
+      .where(inArray(bidIdentityDirectory.subjectId, ids));
+    return new Map(rows.map((row) => [row.id, row.name]));
   }
 
   async countForExport(input: {

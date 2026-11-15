@@ -1,12 +1,16 @@
 import {
+  ENQUIRY_STATUSES,
   type EnquiryRoutingRule,
   OPEN_ENQUIRY_STATUSES,
   PRIVATE_SALE_ENQUIRY_INTENTS,
   enquiryViewCriteria,
 } from "@auction/domain";
 import type {
+  EnquiryAttachmentFile,
+  EnquiryAttachmentRecord,
   EnquiryListFilter,
   EnquiryNoteRecord,
+  EnquiryStatusCounts,
   IEnquiryNoteRepository,
   IEnquiryRoutingRepository,
   IMarketingEnquiryRepository,
@@ -20,6 +24,8 @@ import type {
 export class InMemoryMarketingEnquiries implements IMarketingEnquiryRepository {
   readonly rows: MarketingEnquiryRecord[] = [];
   readonly privateSale = new Map<string, NewMarketingEnquiry["privateSale"]>();
+  /** Attachments by enquiry id, with the file each one points at. */
+  readonly attachments = new Map<string, Array<EnquiryAttachmentRecord & EnquiryAttachmentFile>>();
 
   constructor(private readonly now: () => Date = () => new Date("2026-07-27T10:00:00.000Z")) {}
 
@@ -58,15 +64,47 @@ export class InMemoryMarketingEnquiries implements IMarketingEnquiryRepository {
   async findByRef(ref: string): Promise<MarketingEnquiryDetailRecord | null> {
     const row = this.rows.find((r) => r.id === ref || r.reference === ref);
     if (!row) return null;
-    return { ...row, privateSale: this.privateSale.get(row.id) ?? null, attachments: [] };
+    return {
+      ...row,
+      privateSale: this.privateSale.get(row.id) ?? null,
+      attachments: (this.attachments.get(row.id) ?? []).map(
+        ({ key: _k, contentType: _c, ...a }) => a,
+      ),
+    };
+  }
+
+  async findAttachmentFile(enquiryId: string, attachmentId: string) {
+    const found = this.attachments.get(enquiryId)?.find((a) => a.id === attachmentId);
+    return found ? { key: found.key, contentType: found.contentType } : null;
+  }
+
+  async countByStatus(filter: EnquiryListFilter): Promise<EnquiryStatusCounts> {
+    const { status: _s, afterId: _a, ...rest } = filter;
+    const counts = Object.fromEntries(ENQUIRY_STATUSES.map((s) => [s, 0])) as EnquiryStatusCounts;
+    for (const row of this.matching(rest)) counts[row.status] += 1;
+    return counts;
   }
 
   async list(filter: EnquiryListFilter) {
     const criteria = enquiryViewCriteria(filter.view);
+    const matches = this.matching(filter);
+    const oldestFirst = filter.sort ? filter.sort === "oldest" : criteria.order === "oldest_first";
+    const direction = oldestFirst ? 1 : -1;
+    const sorted = [...matches].sort(
+      (a, b) =>
+        direction * (a.createdAt.getTime() - b.createdAt.getTime() || a.id.localeCompare(b.id)),
+    );
+    const anchor = sorted.findIndex((r) => r.id === filter.afterId);
+    const rest = filter.afterId && anchor >= 0 ? sorted.slice(anchor + 1) : sorted;
+    return rest.slice(0, filter.limit + 1);
+  }
+
+  private matching(filter: EnquiryListFilter) {
+    const criteria = enquiryViewCriteria(filter.view);
     const { scope } = filter;
     const isPrivate = (r: MarketingEnquiryRecord) =>
       (PRIVATE_SALE_ENQUIRY_INTENTS as readonly string[]).includes(r.intent);
-    const matches = this.rows.filter((r) => {
+    return this.rows.filter((r) => {
       const visible = isPrivate(r)
         ? scope.readsPrivateSale
         : scope.readsGeneral || r.assignedToUserId === scope.viewerUserId;
@@ -86,16 +124,14 @@ export class InMemoryMarketingEnquiries implements IMarketingEnquiryRepository {
       ) {
         return false;
       }
+      if (filter.search) {
+        const needle = filter.search.toLowerCase();
+        const work = this.privateSale.get(r.id);
+        const haystack = [r.name, r.email, r.reference, work?.artist, work?.title];
+        if (!haystack.some((v) => v?.toLowerCase().includes(needle))) return false;
+      }
       return true;
     });
-    const direction = criteria.order === "oldest_first" ? 1 : -1;
-    const sorted = [...matches].sort(
-      (a, b) =>
-        direction * (a.createdAt.getTime() - b.createdAt.getTime() || a.id.localeCompare(b.id)),
-    );
-    const anchor = sorted.findIndex((r) => r.id === filter.afterId);
-    const rest = filter.afterId && anchor >= 0 ? sorted.slice(anchor + 1) : sorted;
-    return rest.slice(0, filter.limit + 1);
   }
 
   async updateInTransaction(

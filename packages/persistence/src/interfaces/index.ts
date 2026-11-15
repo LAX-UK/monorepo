@@ -1132,7 +1132,9 @@ export type {
 } from "./workspace-buying.readers.js";
 export type {
   ClaimedEnquiryFiles,
+  EnquiryAttachmentFile,
   EnquiryAttachmentRecord,
+  EnquiryStatusCounts,
   EnquiryListFilter,
   IEnquiryAttachmentRepository,
   EnquiryListScope,

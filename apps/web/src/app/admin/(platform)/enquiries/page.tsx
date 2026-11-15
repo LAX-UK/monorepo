@@ -35,6 +35,7 @@ export default async function AdminEnquiriesPage({
   const departmentLabel = (slug: string) =>
     routingRows([]).find((row) => row.slug === slug)?.label ?? humaniseSlug(slug);
   const chips = buildEnquiriesChips(model.filters, sp, abilities.defaultView, {
+    q: (value) => `“${value}”`,
     kind: (value) => ENQUIRY_KIND_LABELS[value as keyof typeof ENQUIRY_KIND_LABELS] ?? value,
     department: departmentLabel,
     status: (value) => ENQUIRY_STATUS_LABELS[value as keyof typeof ENQUIRY_STATUS_LABELS] ?? value,
