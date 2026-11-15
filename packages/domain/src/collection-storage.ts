@@ -15,6 +15,17 @@ export const DEFAULT_COLLECT_BY_POLICY: CollectByPolicy = {
   reminderLeadDays: 7,
 };
 
+/**
+ * The policy for a place: its own free storage period, or the 30 days of a place with no storage
+ * terms. Nothing is charged under it; "storage charges may apply" is wording only.
+ */
+export function collectByPolicyFor(freeStorageDays: number | null): CollectByPolicy {
+  return {
+    ...DEFAULT_COLLECT_BY_POLICY,
+    freeStorageDays: freeStorageDays ?? DEFAULT_COLLECT_BY_POLICY.freeStorageDays,
+  };
+}
+
 export type CollectBy = {
   /** "Please collect by" day, in London. */
   date: DateKey;

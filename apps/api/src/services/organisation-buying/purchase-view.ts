@@ -1,7 +1,7 @@
 import {
-  DEFAULT_COLLECT_BY_POLICY,
   type EntityActor,
   awaitsCollection,
+  collectByPolicyFor,
   deliveryQuoteActionsFor,
   entityActorCan,
   londonDateKey,
@@ -167,10 +167,7 @@ function collectByOf(
   const notice = purchaseCollectBy(
     storage.clearedAt,
     londonDateKey(now),
-    {
-      ...DEFAULT_COLLECT_BY_POLICY,
-      freeStorageDays: storage.freeStorageDays ?? DEFAULT_COLLECT_BY_POLICY.freeStorageDays,
-    },
+    collectByPolicyFor(storage.freeStorageDays),
     storage.calendar,
   );
   return { ...notice, placeId: storage.placeId, placeName: storage.placeName };

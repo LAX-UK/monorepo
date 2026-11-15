@@ -1,5 +1,5 @@
 import {
-  DEFAULT_COLLECT_BY_POLICY,
+  collectByPolicyFor,
   collectionEligibility,
   londonDateKey,
   reminderWindow,
@@ -40,11 +40,12 @@ export async function runCollectByRemindersJob(options: {
   if (!reminderWindow(at)) return { groups: 0, queued: 0 };
 
   const today = londonDateKey(at);
+  const noTerms = collectByPolicyFor(null);
   const groups = collectByGroups(
     await reader.storedLotsDue({
       today,
-      defaultFreeStorageDays: DEFAULT_COLLECT_BY_POLICY.freeStorageDays,
-      reminderLeadDays: DEFAULT_COLLECT_BY_POLICY.reminderLeadDays,
+      defaultFreeStorageDays: noTerms.freeStorageDays,
+      reminderLeadDays: noTerms.reminderLeadDays,
     }),
     today,
   );
