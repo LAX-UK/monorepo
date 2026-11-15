@@ -251,7 +251,7 @@ export function EditionFramingCard({
         </div>
       </FormSection>
       {readOnly ? null : (
-        <FormActions className="border-t border-staff-line-subtle pt-4">
+        <FormActions>
           <StaffButton
             type="button"
             variant="secondary"

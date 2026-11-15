@@ -172,6 +172,13 @@ describe("the edition Framing card", () => {
     });
   });
 
+  it("separates the actions from the fields with the section's one hairline, not a second rule", () => {
+    const form = renderCard();
+    const actions = within(form).getByRole("button", { name: "Saved" }).parentElement;
+    expect(actions?.className).not.toMatch(/\bborder-t\b/);
+    expect(actions?.parentElement?.className).not.toMatch(/\bborder-t\b/);
+  });
+
   it("keeps Save disabled until something changes, and Discard puts it back", () => {
     const form = renderCard();
     expect(within(form).getByRole("button", { name: "Saved" })).toBeDisabled();

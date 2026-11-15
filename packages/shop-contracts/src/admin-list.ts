@@ -41,6 +41,8 @@ export const AdminOrderListQuerySchema = Type.Object({
   status: Type.Optional(OrderStatusSchema),
   /** `failed` keeps only orders with a refund that could not be sent and needs a retry. */
   refund: Type.Optional(Type.Literal("failed")),
+  /** `held` keeps only orders taken out of the checkout sweep after it could not settle them. */
+  checkout: Type.Optional(Type.Literal("held")),
   createdFrom: Type.Optional(CalendarDateSchema),
   createdTo: Type.Optional(CalendarDateSchema),
   q: Type.Optional(Type.String({ maxLength: ADMIN_ORDER_SEARCH_MAX_LENGTH })),
@@ -62,6 +64,8 @@ export const AdminOrderListItemSchema = Type.Object({
   buyerIsGuest: Type.Optional(Type.Boolean()),
   createdAt: Type.String(),
   paidAt: Type.Union([Type.String(), Type.Null()]),
+  /** True for an order the checkout sweep could not settle and left for staff; absent from an older shop-api. */
+  heldOutOfSweep: Type.Optional(Type.Boolean()),
   /** "LAX-S-10482"; optional so the admin parses responses from an older shop-api. */
   reference: Type.Optional(Type.String()),
 });

@@ -1,5 +1,6 @@
 import {
   domainEvent,
+  shopAdminAudit,
   shopDeliveryQuote,
   shopEdition,
   shopOrder,
@@ -24,11 +25,14 @@ import {
   hasShopIntegrationDb,
   setupShopIntegrationPools,
 } from "../test-support/shop-integration-setup.js";
+import { createDrizzleAdminReadRepository } from "./drizzle-admin-read.repository.js";
 import { createDrizzleCommerceRepository } from "./drizzle-commerce.repository.js";
 import {
   completeShopCheckoutSession,
   expireShopCheckoutSession,
 } from "./drizzle-payment-event.processor.js";
+import { createDrizzleShopUnitOfWork } from "./drizzle-shop-transaction-effects.js";
+import { createRetryCheckoutCleanupHandler } from "./handlers/admin/retry-checkout-cleanup.handler.js";
 import { extendCheckoutHold } from "./shop-checkout-hold.js";
 import {
   SHOP_CHECKOUT_REAPER_EVENT_SOURCE,
@@ -520,6 +524,88 @@ describe.skipIf(!hasShopIntegrationDb)(
       // It is no longer in the sweep, so a second sweep does not touch it or alert again.
       await reapStaleShopCheckouts(db, new Date(), options);
       expect(queueCheckoutOpsAlert).toHaveBeenCalledTimes(1);
+    });
+
+    it("shows staff an order taken out of the sweep, and lets them put it back so the next sweep ends it", async () => {
+      const { db, checkout, order, holder } = await setup("ceiling-held-retry");
+      const created = await checkout("buyer");
+      await db
+        .update(shopOrder)
+        .set({
+          createdAt: new Date(Date.now() - 22 * 24 * 60 * 60_000),
+          checkoutExpiresAt: new Date("2000-01-01T00:00:00Z"),
+        })
+        .where(eq(shopOrder.id, created.orderId));
+      const unreadable: PaymentCheckoutGateway = {
+        ...gateway,
+        async expireHostedCheckout() {
+          throw new Error("stripe unavailable");
+        },
+        async retrievePaidCheckout() {
+          throw new Error("stripe unavailable");
+        },
+      };
+      // No finance store is wired, so closing the order with a task fails: the settle throws.
+      await reapStaleShopCheckouts(db, new Date(), { paymentGateway: unreadable });
+      expect((await order(created.orderId)).checkoutExpiresAt).toBeNull();
+
+      const reader = createDrizzleAdminReadRepository(db).orders;
+      const held = await reader.listOrders({ checkout: "held", q: created.orderId.slice(0, 8) });
+      expect(held.items.map((item) => [item.orderId, item.heldOutOfSweep])).toEqual([
+        [created.orderId, true],
+      ]);
+      expect((await reader.getOrderDetail(created.orderId)).heldOutOfSweep).toBe(true);
+
+      const retry = createRetryCheckoutCleanupHandler({
+        uow: createDrizzleShopUnitOfWork(db, "off"),
+      });
+      const key = `retry-cleanup-${created.orderId}`;
+      const command = {
+        orderId: created.orderId,
+        actorSubjectId: "ops-subject",
+        idempotencyKey: key,
+      };
+      expect(await retry(command)).toEqual({ orderId: created.orderId, status: "pending_payment" });
+      expect(await retry(command)).toEqual({ orderId: created.orderId, status: "pending_payment" });
+      const audits = await db
+        .select()
+        .from(shopAdminAudit)
+        .where(
+          and(
+            eq(shopAdminAudit.targetId, created.orderId),
+            eq(shopAdminAudit.action, "retry_checkout_cleanup"),
+          ),
+        );
+      expect(audits).toHaveLength(1);
+      expect(audits[0]).toMatchObject({ actorSubjectId: "ops-subject", capability: "order.write" });
+      expect((await reader.getOrderDetail(created.orderId)).heldOutOfSweep).toBe(false);
+      expect(
+        (await reader.listOrders({ checkout: "held", q: created.orderId.slice(0, 8) })).items,
+      ).toEqual([]);
+
+      // Back in the sweep: with Stripe answering, the next one ends the order and frees the print.
+      await reapStaleShopCheckouts(db, new Date(Date.now() + 1_000), { paymentGateway: gateway });
+      expect((await order(created.orderId)).status).toBe("expired");
+      expect((await holder()).reservedByOrderId).toBeNull();
+    });
+
+    it("refuses to put back an order the sweep still has, or one that does not exist", async () => {
+      const { db, checkout } = await setup("ceiling-held-refused");
+      const created = await checkout("buyer");
+      const retry = createRetryCheckoutCleanupHandler({
+        uow: createDrizzleShopUnitOfWork(db, "off"),
+      });
+      const base = { actorSubjectId: "ops-subject" };
+      await expect(
+        retry({ ...base, orderId: created.orderId, idempotencyKey: `refuse-${created.orderId}` }),
+      ).rejects.toMatchObject({ statusCode: 409 });
+      await expect(
+        retry({
+          ...base,
+          orderId: "00000000-0000-4000-8000-0000000000aa",
+          idempotencyKey: `missing-${created.orderId}`,
+        }),
+      ).rejects.toMatchObject({ statusCode: 404 });
     });
 
     describe("the same payment event delivered twice at once", () => {

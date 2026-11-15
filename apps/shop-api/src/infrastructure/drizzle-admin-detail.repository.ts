@@ -26,6 +26,7 @@ import type {
   AdminOrderDetail,
 } from "@auction/shop-contracts";
 import {
+  isHeldOutOfCheckoutSweep,
   parseFramingOrderSnapshot,
   parseFramingTaskStatus,
   printReadyForFraming,
@@ -470,6 +471,7 @@ export function createDrizzleAdminDetailReaders(db: Database) {
         stripeCheckoutSessionId: order.stripeCheckoutSessionId,
         stripePaymentIntentId: order.stripePaymentIntentId,
         paidAt: order.paidAt ? order.paidAt.toISOString() : null,
+        heldOutOfSweep: isHeldOutOfCheckoutSweep(order),
         createdAt: order.createdAt.toISOString(),
         lines: lines.map((row) => ({
           orderLineId: row.orderLineId,

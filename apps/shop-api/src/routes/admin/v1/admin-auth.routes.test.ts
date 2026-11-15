@@ -271,6 +271,16 @@ describe("admin auth and authz", () => {
     expect(noReference.statusCode).toBe(400);
   });
 
+  it("lets operations put a held order back in the checkout clean-up, and not finance", async () => {
+    const url = "/admin/v1/orders/00000000-0000-4000-8000-000000000013/retry-checkout-cleanup";
+    const operations = await postAs("ops-subject", url, {});
+    expect(operations.statusCode).toBe(200);
+    expect(operations.json()).toMatchObject({ status: "pending_payment" });
+    const finance = await postAs("finance-subject", url, {});
+    expect(finance.statusCode).toBe(403);
+    expect(finance.json()).toMatchObject({ code: SHOP_API_ERROR_CODES.FORBIDDEN });
+  });
+
   it("lets operations move a return and receive it, and not finance", async () => {
     const transit = await postAs("ops-subject", `/admin/v1/returns/${RETURN_ID}/in-transit`, {});
     expect(transit.statusCode).toBe(200);

@@ -35,6 +35,8 @@ export type AdminOrderListFilters = {
   status?: string;
   /** `failed`: only orders with a refund waiting for staff to retry. */
   refund?: "failed";
+  /** `held`: only orders the checkout sweep could not settle and took out of the sweep. */
+  checkout?: "held";
   /** Inclusive first calendar day (UK time) an order may have been created on. */
   createdFrom?: string;
   /** Inclusive last calendar day (UK time) an order may have been created on. */
@@ -61,6 +63,8 @@ export type AdminOrderListItem = {
   buyerIsGuest: boolean;
   createdAt: string;
   paidAt: string | null;
+  /** The checkout sweep could not settle it and took it out of the sweep. */
+  heldOutOfSweep: boolean;
 };
 
 /** A work list page with the per-status counts its views show (every filter but status). */

@@ -160,7 +160,7 @@ export function EditionRunCard({
         )}
       </FormSection>
       {editable ? (
-        <FormActions className="border-t border-staff-line-subtle pt-4">
+        <FormActions>
           {editing ? (
             <>
               <StaffButton

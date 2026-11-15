@@ -35,6 +35,8 @@ export type OrderListQuery = {
   status?: AdminOrderStatus;
   /** `failed`: only orders with a refund waiting for a retry. */
   refund?: "failed";
+  /** `held`: only orders the checkout sweep could not settle and took out of the sweep. */
+  checkout?: "held";
   /** Inclusive first and last day (UK time) an order was created on. */
   from?: string;
   to?: string;
@@ -55,6 +57,9 @@ function orderSortParam(value: string | undefined): string | undefined {
   const encoded = encodeSort(sort);
   return encoded === encodeSort(ORDER_DEFAULT_SORT) ? undefined : encoded;
 }
+
+/** What staff call an order the checkout sweep could not settle and took out of the sweep. */
+export const HELD_ORDERS_LABEL = "Held out of clean-up";
 
 export const ORDER_STATUS_LABELS: Record<AdminOrderStatus, string> = {
   pending_payment: "Awaiting payment",
@@ -89,6 +94,7 @@ export function parseOrderListQuery(params: RawSearchParams): OrderListQuery {
   const q = singleParam(params.q);
   const status = oneOf(singleParam(params.status), ADMIN_ORDER_STATUSES);
   const refund = singleParam(params.refund) === "failed" ? ("failed" as const) : undefined;
+  const checkout = singleParam(params.checkout) === "held" ? ("held" as const) : undefined;
   const from = calendarDayParam(singleParam(params.from));
   const to = calendarDayParam(singleParam(params.to));
   const sort = orderSortParam(singleParam(params.sort));
@@ -98,6 +104,7 @@ export function parseOrderListQuery(params: RawSearchParams): OrderListQuery {
     ...(q ? { q } : {}),
     ...(status ? { status } : {}),
     ...(refund ? { refund } : {}),
+    ...(checkout ? { checkout } : {}),
     ...(from ? { from } : {}),
     ...(to ? { to } : {}),
     ...(sort ? { sort } : {}),
@@ -108,7 +115,9 @@ export function parseOrderListQuery(params: RawSearchParams): OrderListQuery {
 
 /** True when any filter narrows the list; paging does not count. */
 export function hasActiveOrderFilters(query: OrderListQuery): boolean {
-  return Boolean(query.q || query.status || query.refund || query.from || query.to);
+  return Boolean(
+    query.q || query.status || query.refund || query.checkout || query.from || query.to,
+  );
 }
 
 /**
@@ -181,6 +190,7 @@ export function orderListApiQuery(query: OrderListQuery): Record<string, string>
     q: query.q,
     status: query.status,
     refund: query.refund,
+    checkout: query.checkout,
     createdFrom,
     createdTo,
     limit: query.limit,
@@ -247,10 +257,15 @@ const TEAM_ORDER_VIEWS: ReadonlyArray<{
  * edited; the dates follow `now`, so "this week" is always the last seven days.
  */
 export function orderTeamViews(now: Date): TeamView[] {
-  return TEAM_ORDER_VIEWS.map(({ id, label, status, preset }) => {
+  const views = TEAM_ORDER_VIEWS.map(({ id, label, status, preset }) => {
     const href = orderListHref({ status, ...createdPresetRange(preset, now) });
     return { id: `team-${id}`, label, href, query: href.split("?")[1] ?? "" };
   });
+  const held = orderListHref({ checkout: "held" });
+  return [
+    ...views,
+    { id: "team-held", label: HELD_ORDERS_LABEL, href: held, query: held.split("?")[1] ?? "" },
+  ];
 }
 
 /** "Tue 3 Mar – Mon 9 Mar" for a range chip; one day reads as that day. */

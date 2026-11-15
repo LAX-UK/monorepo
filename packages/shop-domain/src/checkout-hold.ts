@@ -79,3 +79,16 @@ export function planHoldDeferral(input: { began: Date; now: Date }): HoldDeferra
     ? { kind: "defer", endsAt: new Date(endsAt) }
     : { kind: "at_cap" };
 }
+
+/**
+ * Whether an order has been taken out of the checkout sweep. When settling an order past the
+ * ceiling fails, its hold is cleared (the sweep only reads orders with one) and it stays waiting
+ * for payment with its prints reserved, for staff to look at. A new checkout always has a hold, so
+ * a payment still pending without one is such an order.
+ */
+export function isHeldOutOfCheckoutSweep(order: {
+  status: string;
+  checkoutExpiresAt: Date | null;
+}): boolean {
+  return order.status === "pending_payment" && order.checkoutExpiresAt === null;
+}

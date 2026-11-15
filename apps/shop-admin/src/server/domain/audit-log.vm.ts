@@ -15,6 +15,7 @@ const ACTION_LABELS: Record<string, string> = {
   "refund.request": "Refund requested",
   full_refund_edition_reversal: "Edition returned after a full refund",
   retry_refund: "Refund sent again",
+  retry_checkout_cleanup: "Held order put back in the checkout clean-up",
   refund_settled_outside: "Refund marked as refunded outside LAX",
   cancel_after_possession: "Order cancelled after delivery",
   return_in_transit: "Return marked in transit",

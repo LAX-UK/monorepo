@@ -436,6 +436,8 @@ function describeActivity(entry: AdminOrderDetail["activity"][number]): {
         title: `Refund of ${money(detail.amountPence) ?? "an amount"} sent again`,
         tone: "info",
       };
+    case "retry_checkout_cleanup":
+      return { title: "Put back in the checkout clean-up", tone: "info" };
     case "update_fulfilment": {
       const status = text(detail.status);
       const tracking = text(detail.trackingNumber);
