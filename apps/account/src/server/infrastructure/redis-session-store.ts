@@ -2,6 +2,22 @@ import { createCipheriv, createDecipheriv, createHash, randomBytes } from "node:
 import Redis from "ioredis";
 import type { SessionStore, StaffSessionRecord } from "../ports/session-store";
 
+/** Marks a claimed sign-in settled only while it is still claimed (a sign-out may have ended it). */
+const SETTLE_PENDING_LOGIN_SCRIPT = `
+if redis.call('get', KEYS[1]) ~= 'claimed' then return 0 end
+redis.call('set', KEYS[1], ARGV[1], 'KEEPTTL')
+return 1
+`;
+
+/** Ends a pending sign-in whatever its stage and returns what it held before. */
+const REVOKE_PENDING_LOGIN_SCRIPT = `
+local previous = redis.call('get', KEYS[1])
+redis.call('set', KEYS[1], 'revoked', 'EX', ARGV[1])
+return previous
+`;
+
+const SETTLED_PREFIX = "session:";
+
 function deriveKey(raw: string): Buffer {
   return createHash("sha256").update(raw).digest();
 }
@@ -39,6 +55,7 @@ export function createRedisSessionStore(input: {
   const idxSidPrefix = "lax-account:idx:sid:";
   const idxSubPrefix = "lax-account:idx:sub:";
   const jtiPrefix = "lax-account:logout-jti:";
+  const pendingLoginPrefix = "lax-account:pending-login:";
   const cryptoKey = deriveKey(input.encryptionKey);
   const locks = new Map<string, Promise<unknown>>();
 
@@ -64,6 +81,11 @@ export function createRedisSessionStore(input: {
     const record = readRecord(await redis.get(sessionKey));
     await redis.del(sessionKey);
     if (record) await unindex(sessionId, record);
+  }
+
+  /** The state is a secret the browser holds; only its digest is stored. */
+  function pendingLoginKey(state: string): string {
+    return `${pendingLoginPrefix}${createHash("sha256").update(state).digest("base64url")}`;
   }
 
   return {
@@ -103,6 +125,30 @@ export function createRedisSessionStore(input: {
     },
     async releaseBackchannelLogoutJti(jti) {
       await redis.del(`${jtiPrefix}${jti}`);
+    },
+    async claimPendingLogin(state, ttlSeconds) {
+      const claimed = await redis.set(pendingLoginKey(state), "claimed", "EX", ttlSeconds, "NX");
+      return claimed === "OK";
+    },
+    async settlePendingLogin(state, sessionId) {
+      const settled = await redis.eval(
+        SETTLE_PENDING_LOGIN_SCRIPT,
+        1,
+        pendingLoginKey(state),
+        `${SETTLED_PREFIX}${sessionId}`,
+      );
+      return settled === 1;
+    },
+    async revokePendingLogin(state, ttlSeconds) {
+      const previous = await redis.eval(
+        REVOKE_PENDING_LOGIN_SCRIPT,
+        1,
+        pendingLoginKey(state),
+        String(ttlSeconds),
+      );
+      if (typeof previous === "string" && previous.startsWith(SETTLED_PREFIX)) {
+        await deleteSession(previous.slice(SETTLED_PREFIX.length));
+      }
     },
     async withRefreshLock(sessionId, fn) {
       const prior = locks.get(sessionId) ?? Promise.resolve();
