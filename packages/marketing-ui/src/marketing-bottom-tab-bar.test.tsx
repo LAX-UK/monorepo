@@ -71,9 +71,9 @@ describe("MarketingBottomTabBar menu tab", () => {
     const more = screen.getByRole("button", { name: "More" });
     fireEvent.click(more);
     expect(onMenu).toHaveBeenCalledTimes(1);
-    expect(more.className).not.toContain("after:absolute");
+    expect(more).not.toHaveAttribute("aria-current");
     rerender(<MarketingBottomTabBar tabs={tabs} pathname="/security" onMenu={onMenu} />);
-    expect(screen.getByRole("button", { name: "More" }).className).toContain("after:absolute");
+    expect(screen.getByRole("button", { name: "More" })).toHaveAttribute("aria-current", "true");
   });
 });
 

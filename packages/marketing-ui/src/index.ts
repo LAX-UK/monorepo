@@ -341,6 +341,7 @@ export {
 } from "./marketing-heart-toggle.js";
 export {
   BOTTOM_BAR_ABOVE_CLASS,
+  BOTTOM_BAR_TOAST_MOBILE_OFFSET,
   MarketingBottomBarSpace,
   MarketingBottomTabBar,
   type MarketingBottomTabBarProps,

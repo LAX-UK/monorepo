@@ -1,4 +1,5 @@
 import { laxFaviconMetadataIcons } from "@auction/branding";
+import { BOTTOM_BAR_TOAST_MOBILE_OFFSET } from "@auction/marketing-ui";
 import { Toaster } from "@auction/ui/lax";
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
@@ -43,7 +44,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           Skip to content
         </a>
         {children}
-        <Toaster density="client" />
+        <Toaster density="client" mobileOffset={BOTTOM_BAR_TOAST_MOBILE_OFFSET} />
       </body>
     </html>
   );

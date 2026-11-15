@@ -126,6 +126,7 @@ export function MarketingBottomTabBar({
       >
         {tabs.map((tab) => {
           const current = tab.href !== undefined && isTabCurrent(tab, pathname);
+          const menuCurrent = tab.action === "menu" && isTabCurrent(tab, pathname);
           const inner = (
             <>
               <span className="relative flex size-6 items-center justify-center [&>svg]:size-6">
@@ -142,11 +143,9 @@ export function MarketingBottomTabBar({
                   type="button"
                   onClick={tab.action === "menu" ? onMenu : onSearch}
                   aria-haspopup="dialog"
-                  className={cn(
-                    TAB_BASE,
-                    tab.action === "menu" && isTabCurrent(tab, pathname) && TAB_CURRENT,
-                    FOCUS_RING,
-                  )}
+                  // The menu is not a page, so its current state is `true`, not `page`.
+                  aria-current={menuCurrent ? "true" : undefined}
+                  className={cn(TAB_BASE, menuCurrent && TAB_CURRENT, FOCUS_RING)}
                 >
                   {inner}
                 </button>
@@ -191,6 +190,14 @@ export function MarketingBottomBarSpace() {
     />
   );
 }
+
+/**
+ * Where a phone toast sits so it clears the docked bar: the bar's reserved space plus 1rem. The one
+ * value for Bid, Shop, art and Account, passed as the toaster's `mobileOffset`.
+ */
+export const BOTTOM_BAR_TOAST_MOBILE_OFFSET = {
+  bottom: "calc(var(--lax-bottom-bar-space, 0px) + 1rem)",
+} as const;
 
 /** Raise a bottom-fixed element (cookie dock, toast stack) above the docked bar. */
 export const BOTTOM_BAR_ABOVE_CLASS = "bottom-[var(--lax-bottom-bar-space,0px)]";

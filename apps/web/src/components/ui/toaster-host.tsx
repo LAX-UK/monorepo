@@ -4,6 +4,7 @@ import { CLIENT_KIT_REVIEW_PATH } from "@/lib/kit/client-kit-review";
 import { isAdminPath } from "@/lib/navigation/admin-path";
 import { isClientAreaPath } from "@/lib/navigation/client-routes";
 import { registerToaster } from "@/lib/ui/toast-bridge";
+import { BOTTOM_BAR_TOAST_MOBILE_OFFSET } from "@auction/marketing-ui";
 import { Toaster as AuctionToaster } from "@auction/ui/components/sonner";
 import { Toaster as LaxToaster } from "@auction/ui/lax/toaster";
 import { usePathname } from "next/navigation";
@@ -43,10 +44,5 @@ export function ToasterHost() {
     return <LaxToaster density="client" />;
   }
   // A toast that sits at the bottom clears the docked tab bar.
-  return (
-    <AuctionToaster
-      theme={resolvedTheme}
-      mobileOffset={{ bottom: "calc(var(--lax-bottom-bar-space, 0px) + 1rem)" }}
-    />
-  );
+  return <AuctionToaster theme={resolvedTheme} mobileOffset={BOTTOM_BAR_TOAST_MOBILE_OFFSET} />;
 }

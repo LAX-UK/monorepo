@@ -1,5 +1,6 @@
 "use client";
 
+import type { ComponentProps } from "react";
 import { Toaster as BaseToaster } from "../components/ui/sonner.js";
 import { cn } from "../lib/utils.js";
 import type { LaxDensity } from "./density.js";
@@ -21,7 +22,7 @@ export function Toaster({
   mobileOffset,
 }: {
   density?: LaxDensity;
-  mobileOffset?: number | string;
+  mobileOffset?: ComponentProps<typeof BaseToaster>["mobileOffset"];
 }) {
   const text = TEXT_STEP[density];
   return (
