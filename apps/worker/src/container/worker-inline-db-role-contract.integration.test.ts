@@ -7,7 +7,7 @@ import { listCatalogueImageKeys } from "../lib/catalogue-image-keys.js";
 import { applyBidIdentityDirectoryEvent } from "../projectors/bid-identity-directory.js";
 import type { WorkerDb } from "../workers/types.js";
 import { today } from "./worker-role-contract.fixtures.js";
-import { NIL, runRolledBack } from "./worker-role-contract.test-helpers.js";
+import { NIL, countStatements, runRolledBack } from "./worker-role-contract.test-helpers.js";
 
 const ownerUrl = process.env.MIGRATION_TEST_DATABASE_URL;
 const workerUrl = process.env.DATABASE_URL_WORKER;
@@ -117,6 +117,7 @@ const DIRECTORY_EVENTS: Record<string, DomainEventProjectorRow[]> = {
 describe.skipIf(!ownerUrl || !workerUrl)("inline worker queries as worker_app", () => {
   // biome-ignore lint/style/noNonNullAssertion: gated by skipIf
   const db = createDb(workerUrl!) as unknown as WorkerDb;
+  countStatements(db);
 
   it("applies the role grants", async () => {
     // biome-ignore lint/style/noNonNullAssertion: gated by skipIf
@@ -140,6 +141,7 @@ describe.skipIf(!ownerUrl || !workerUrl)("inline worker queries as worker_app", 
       });
       if (outcome.denied) throw new Error(outcome.denied);
       expect(outcome.failure, "the call must complete, not stop before PostgreSQL").toBeNull();
+      expect(outcome.reachedDatabase, "the events must run a statement").toBe(true);
     },
   );
 
@@ -153,11 +155,13 @@ describe.skipIf(!ownerUrl || !workerUrl)("inline worker queries as worker_app", 
     );
     if (outcome.denied) throw new Error(outcome.denied);
     expect(outcome.failure).toBeNull();
+    expect(outcome.reachedDatabase, "the erasure must run a statement").toBe(true);
   });
 
   it.each([true, false])("catalogue image keys (force %s)", async (force) => {
     const outcome = await runRolledBack(db, (tx) => listCatalogueImageKeys(tx as never, { force }));
     if (outcome.denied) throw new Error(outcome.denied);
     expect(outcome.failure).toBeNull();
+    expect(outcome.reachedDatabase, "the listing must run a statement").toBe(true);
   });
 });

@@ -10,6 +10,12 @@ import { NIL } from "./worker-role-contract.test-helpers.js";
 /** The lot `seed-worker-role-contract-probes.ts` inserts, for calls that must find an existing row. */
 export const PROBE_LOT_ID = "00000000-0000-4000-8000-000000000002";
 
+/** The account and Shop rows `seed-worker-role-contract-probes.ts` inserts for the accounting facts reader. */
+export const PROBE_USER_ID = "worker-role-contract-probe-user";
+export const PROBE_SHOP_GUEST_ORDER_ID = "00000000-0000-4000-8000-000000000015";
+export const PROBE_SHOP_USER_ORDER_ID = "00000000-0000-4000-8000-000000000016";
+export const PROBE_SHOP_ORIGINAL_SALE_ID = "00000000-0000-4000-8000-000000000017";
+
 export const today = new Date();
 export const earlier = new Date(today.getTime() - 24 * 60 * 60 * 1000);
 
@@ -75,3 +81,18 @@ export function sellerConsentAnswer() {
     preferredNext: null,
   } as const;
 }
+
+/** A new register entry as `create` takes it: a stock code and kind of its own, and no source original. */
+export function newRegisterEntry() {
+  const { collectionCode: _collection, ...rest } = issuedRegisterEntry();
+  return {
+    ...rest,
+    stockCode: "LAX-ORI-RCT-RCT-26-0001",
+    kind: "original",
+    sourceOriginalId: null,
+  } as const;
+}
+
+export const stockCodeSeries = { kind: "original", artist: "RCT", second: "RCT" } as const;
+
+export const consent = { consentText: "Role contract", consentSource: "role-contract" } as const;

@@ -8,7 +8,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { WorkerDb } from "../workers/types.js";
 import { type WorkerRepositories, createWorkerRepositories } from "./create-worker-repositories.js";
 import { earlier, today } from "./worker-role-contract.fixtures.js";
-import { NIL, runRolledBack } from "./worker-role-contract.test-helpers.js";
+import { NIL, countStatements, runRolledBack } from "./worker-role-contract.test-helpers.js";
 
 const ownerUrl = process.env.MIGRATION_TEST_DATABASE_URL;
 const workerUrl = process.env.DATABASE_URL_WORKER;
@@ -181,8 +181,8 @@ const PROBES: Probes = {
   projectorStateRepo: (r) => ({
     ensureCursor: () => r.ensureCursor("probe"),
     getCursor: () => r.getCursor("probe"),
-    advanceCursor: () => r.advanceCursor("probe", 0),
-    advanceCursorLiteralName: () => r.advanceCursorLiteralName("probe", 0),
+    advanceCursor: () => r.advanceCursor("probe", 1),
+    advanceCursorLiteralName: () => r.advanceCursorLiteralName("probe", 1),
     recordError: () => r.recordError("probe", "probe"),
   }),
   domainEventReader: (r) => ({
@@ -324,6 +324,7 @@ describe.skipIf(!ownerUrl || !workerUrl)("worker repositories as worker_app", ()
   const env = { DOMAIN_EVENT_PUBLISH_VALIDATE: "off" } as const;
   const db = workerUrl ? createDb(workerUrl) : (undefined as never as WorkerDb);
   // Constructors run no queries, so a set built on the pool lists the methods to call.
+  if (workerUrl) countStatements(db);
   const wired = workerUrl ? createWorkerRepositories(db, env) : undefined;
   const calls = Object.entries(PROBES).flatMap(([name, probe]) =>
     wired
@@ -376,5 +377,6 @@ describe.skipIf(!ownerUrl || !workerUrl)("worker repositories as worker_app", ()
 
   it("reports the calls that never reached PostgreSQL", () => {
     console.info(`not proven (${unreached.length} of ${calls.length}):\n${unreached.join("\n")}`);
+    expect(unreached, "every probe must run a statement past the privilege check").toEqual([]);
   });
 });
