@@ -291,6 +291,25 @@ Both staff tools use one design system, [`packages/staff-ui`](../packages/staff-
 | `packages/branding` tests | Token drift vs `globals.css`; event `brand-tokens.css` alignment |
 | Playwright axe | Marketing smoke + admin a11y (WCAG 2a/2aa); Art `@a11y` axe on `#main-content` + viewport overflow audit (375/1024/1440) in `.github/workflows/art-e2e-pr.yml` |
 
+## Motion tokens and checks
+
+The approved motion system is [`docs/design/motion.md`](design/motion.md). Timings and easings are tokens, never literals in components.
+
+| Token | Public | Staff |
+|-------|--------|-------|
+| `--lax-motion-press` | 100ms | 0ms |
+| `--lax-motion-hover` | 150ms | 100ms |
+| `--lax-motion-enter` / `--lax-motion-exit` | 200ms / 140ms | 150ms / 100ms |
+| `--lax-motion-panel` / `--lax-motion-panel-exit` | 260ms / 180ms | 200ms / 150ms |
+| `--lax-motion-page-out` / `--lax-motion-page-in` | 140ms / 200ms | 100ms / 150ms |
+| `--lax-motion-morph`, `--lax-motion-media` | 360ms, 700ms | not used |
+| `--lax-ease-out`, `--lax-ease-in`, `--lax-ease-emphasize` | `cubic-bezier(0.2, 0, 0, 1)`, `(0.3, 0, 1, 1)`, `(0.16, 1, 0.3, 1)` | same |
+
+- Public values live once in [`packages/branding/public/lax-system.css`](../packages/branding/public/lax-system.css). Staff durations override them under `[data-staff-ui]` in [`packages/staff-ui/src/theme.css`](../packages/staff-ui/src/theme.css); the easings are shared.
+- Bid, Shop and lax.art keep their older `--motion-*` names as aliases where a shared token has the same value (`--motion-duration-sm`, `--motion-ease-standard`, `--motion-ease-emphasize`, `--motion-ease-accelerate`). `packages/branding/tests/lax-motion.test.ts` resolves every alias and fails if a product copy drifts from the shared value.
+- Animate `transform` and `opacity` only. `pnpm lint:compositor` fails on `transition: all` / `transition-all` and on transitions or keyframes of width, height, top, left, margin, box-shadow, filter or backdrop-filter. Existing offenders are listed in [`scripts/compositor-allowlist.json`](../scripts/compositor-allowlist.json); the list only shrinks, so a PR that fixes one lowers or removes its entry.
+- Motion PRs prove their change with the Playwright motion check, [`apps/web/e2e/helpers/motion-check.ts`](../apps/web/e2e/helpers/motion-check.ts): layout shift (`observeLayoutShift`, `layoutShiftScore`), interaction-to-paint at 4x CPU slowdown (`throttleCpu`, `measureInteractionToPaint`), reduced motion (`useReducedMotion`, `movingAnimations`) and JS-off versus JS-on resting screenshots (`restingScreenshotParity`). [`motion-check-smoke.spec.ts`](../apps/web/e2e/motion-check-smoke.spec.ts) shows each on Bid home; add a test for the new interaction next to it and run `pnpm --filter @auction/web test:e2e:motion`. Budgets are in `MOTION_BUDGETS` (layout shift 0.1, interaction 200 ms).
+
 ## Motion (`@auction/marketing-ui`)
 
 Shared scroll feel and reveal primitives for **Art**, **Shop**, and **Bid marketing** routes. Saleroom, live bidding, account, admin, and Bid `(task)` routes stay on native scrolling.
