@@ -76,6 +76,10 @@ export const NOTIFICATION_TYPES = [
   "reoffer_offer",
   "reoffer_offer_reminder",
   "reoffer_offer_closed",
+  "collection_booked",
+  "collection_changed",
+  "collection_cancelled",
+  "collection_reminder",
 ] as const;
 
 export type NotificationType = (typeof NOTIFICATION_TYPES)[number];
