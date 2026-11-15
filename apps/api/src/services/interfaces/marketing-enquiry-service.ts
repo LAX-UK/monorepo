@@ -8,6 +8,7 @@ import type {
 } from "@auction/domain";
 import type {
   EnquiryAttachmentRecord,
+  EnquiryStatusCounts,
   PrivateSaleEnquiryDetail,
   UploadOwner,
 } from "@auction/persistence/interfaces";
@@ -79,6 +80,38 @@ export type MarketingEnquiryListItem = {
 export type MarketingEnquiryListPage = {
   items: MarketingEnquiryListItem[];
   nextCursor: string | null;
+  /** How many enquiries sit in each status under the view and filters, apart from the status filter. */
+  counts: EnquiryStatusCounts;
+};
+
+type HistoryBase = {
+  id: string;
+  at: string;
+  actorUserId: string | null;
+  /** From the identity directory; null when the person is not in it. */
+  actorName: string | null;
+};
+
+/** One change to an enquiry, from the audit trail. Staff identifiers and codes only. */
+export type EnquiryHistoryEntry = HistoryBase &
+  (
+    | {
+        kind: "assigned";
+        toUserId: string | null;
+        fromUserId: string | null;
+        toName: string | null;
+        fromName: string | null;
+      }
+    | { kind: "status_changed"; from: string | null; to: string | null; closeReason: string | null }
+    | { kind: "converted"; from: string | null }
+  );
+
+/** A short-lived link to one attachment. */
+export type EnquiryAttachmentLink = {
+  url: string;
+  kind: "image" | "document";
+  contentType: string;
+  expiresInSec: number;
 };
 
 /** The person at the desk: who they are, what they may read, and whether they may hand work over. */
@@ -123,6 +156,14 @@ export interface IMarketingEnquiryDesk {
   list(viewer: EnquiryStaffViewer, query: AdminEnquiryListQuery): Promise<MarketingEnquiryListPage>;
   /** An enquiry by reference or id, or null when there is none or the viewer may not see it. */
   detail(viewer: EnquiryStaffViewer, ref: string): Promise<MarketingEnquiryView | null>;
+  /** Assignments and status changes, oldest first; null when there is no such enquiry to the viewer. */
+  history(viewer: EnquiryStaffViewer, ref: string): Promise<EnquiryHistoryEntry[] | null>;
+  /** A signed link to one attachment, under the rule for opening the enquiry; the view is audited. */
+  attachmentLink(
+    viewer: EnquiryStaffViewer,
+    ref: string,
+    attachmentId: string,
+  ): Promise<EnquiryAttachmentLink | null>;
   update(
     viewer: EnquiryStaffViewer,
     actorUserId: string,

@@ -4,12 +4,14 @@ import { authedServerFetch } from "@/lib/data/http/authed-server-fetch";
 import { readDataEnvelope, readJsonBody, safeReadData } from "@/lib/data/http/envelope";
 import {
   enquiryAssigneesSchema,
+  enquiryHistorySchema,
   enquiryListPageSchema,
   enquiryRoutingSchema,
   enquiryViewSchema,
 } from "./admin-enquiries.schema";
 import type {
   EnquiryAssignee,
+  EnquiryHistoryEntry,
   EnquiryListPage,
   EnquiryRule,
   EnquiryView,
@@ -53,4 +55,17 @@ export async function getEnquiryRouting(): Promise<EnquiryRule[]> {
     enquiryRoutingSchema,
     "GET /admin/enquiry-routing",
   ).rules;
+}
+
+/** The audit trail's assignments and status changes for one enquiry; null when it cannot be read. */
+export async function getEnquiryHistory(ref: string): Promise<EnquiryHistoryEntry[] | null> {
+  const res = await authedServerFetch(`/admin/enquiries/${encodeURIComponent(ref)}/history`).catch(
+    () => null,
+  );
+  if (!res?.ok) return null;
+  return readDataEnvelope(
+    await readJsonBody(res),
+    enquiryHistorySchema,
+    "GET /admin/enquiries/:ref/history",
+  ).entries;
 }

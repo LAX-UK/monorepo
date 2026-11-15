@@ -326,6 +326,7 @@ export function createAdminServices(input: CreateAdminServicesInput): ContainerA
       sourceOfFundsService,
       telephoneBidBookingService,
       collectionBookings: new DrizzleCollectionBookingRepository(db),
+      failedJobs: failedJobReviewRepository,
       now: () => new Date(),
     }),
     cache,

@@ -10,6 +10,13 @@ function createApp(staffRoles: StaffRoles | undefined) {
     list: vi.fn().mockResolvedValue({ items: [], nextCursor: null }),
     detail: vi.fn().mockResolvedValue({ id: ID, status: "new" }),
     update: vi.fn().mockResolvedValue({ ok: true, enquiry: { id: ID, status: "in_progress" } }),
+    history: vi.fn().mockResolvedValue([]),
+    attachmentLink: vi.fn().mockResolvedValue({
+      url: "https://signed.example/f",
+      kind: "image",
+      contentType: "image/jpeg",
+      expiresInSec: 60,
+    }),
     markHandled: vi.fn().mockResolvedValue({ ok: true, enquiry: { id: ID, status: "closed" } }),
   };
   const enquiryConversion = {
@@ -57,6 +64,59 @@ describe("who the desk is told is asking", () => {
     expect(marketingEnquiries.detail).toHaveBeenCalledWith(
       { userId: "staff-1", ...expected },
       "E-1042",
+    );
+  });
+});
+
+describe("GET /enquiries search and sort", () => {
+  it("passes the search and arrival order to the desk", async () => {
+    const { app, marketingEnquiries } = createApp(["client_services"]);
+    const res = await app.request("http://test/enquiries?q=%20riley%20&sort=oldest");
+    expect(res.status).toBe(200);
+    expect(marketingEnquiries.list).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ q: "riley", sort: "oldest" }),
+    );
+    expect((await app.request("http://test/enquiries?sort=name")).status).toBe(400);
+  });
+});
+
+describe("GET /enquiries/:ref/history and attachment links", () => {
+  const FILE = "7c9e6679-7425-40de-944b-e07fc1f90ae7";
+
+  it("reads the history as the signed-in person, and answers 404 when the desk has none to show", async () => {
+    const { app, marketingEnquiries } = createApp(["client_services"]);
+    const res = await app.request("http://test/enquiries/E-1042/history");
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ data: { entries: [] } });
+    expect(marketingEnquiries.history).toHaveBeenCalledWith(
+      expect.objectContaining({ userId: "staff-1" }),
+      "E-1042",
+    );
+    marketingEnquiries.history.mockResolvedValue(null);
+    expect((await app.request("http://test/enquiries/E-1042/history")).status).toBe(404);
+  });
+
+  it("hands out a signed link that must not be cached, for the viewer's own capabilities", async () => {
+    const { app, marketingEnquiries } = createApp(["specialist"]);
+    const res = await app.request(`http://test/enquiries/E-1042/attachments/${FILE}/link`);
+    expect(res.status).toBe(200);
+    expect(res.headers.get("cache-control")).toBe("no-store");
+    expect(marketingEnquiries.attachmentLink).toHaveBeenCalledWith(
+      expect.objectContaining({ userId: "staff-1", readsPrivateSale: true }),
+      "E-1042",
+      FILE,
+    );
+  });
+
+  it("answers 404 without a link when the desk finds no such file, and 400 for a malformed id", async () => {
+    const { app, marketingEnquiries } = createApp(["client_services"]);
+    marketingEnquiries.attachmentLink.mockResolvedValue(null);
+    const missing = await app.request(`http://test/enquiries/E-1042/attachments/${FILE}/link`);
+    expect(missing.status).toBe(404);
+    expect(await missing.json()).toEqual({ error: "attachment_not_found" });
+    expect((await app.request("http://test/enquiries/E-1042/attachments/nope/link")).status).toBe(
+      400,
     );
   });
 });

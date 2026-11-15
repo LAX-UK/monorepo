@@ -3,12 +3,15 @@ import {
   marketingEnquiry,
   marketingEnquiryAttachment,
   privateSaleEnquiryDetail,
+  uploadObject,
 } from "@auction/db/schema";
 import {
+  ENQUIRY_STATUSES,
   OPEN_ENQUIRY_STATUSES,
   PRIVATE_SALE_ENQUIRY_INTENTS,
   enquiryViewCriteria,
 } from "@auction/domain";
+import type { EnquiryStatus } from "@auction/domain";
 import {
   type SQL,
   and,
@@ -16,6 +19,7 @@ import {
   desc,
   eq,
   gt,
+  ilike,
   inArray,
   isNull,
   lt,
@@ -24,7 +28,9 @@ import {
   sql,
 } from "drizzle-orm";
 import type {
+  EnquiryAttachmentFile,
   EnquiryListFilter,
+  EnquiryStatusCounts,
   IMarketingEnquiryRepository,
   MarketingEnquiryChange,
   MarketingEnquiryDetailRecord,
@@ -33,6 +39,7 @@ import type {
   NewMarketingEnquiry,
   PrivateSaleEnquiryDetail,
 } from "../interfaces/marketing-enquiry.repository.js";
+import { containsPattern } from "../lib/like-pattern.js";
 
 const REFERENCE_PATTERN = /^E-\d{4,}$/;
 
@@ -112,12 +119,29 @@ function filterConditions(filter: EnquiryListFilter): SQL[] {
     conditions.push(eq(marketingEnquiry.departmentSlug, filter.departmentSlug));
   }
   if (filter.status) conditions.push(eq(marketingEnquiry.status, filter.status));
+  const search = filter.search?.trim();
+  if (search) {
+    const pattern = containsPattern(search);
+    conditions.push(
+      or(
+        ilike(marketingEnquiry.name, pattern),
+        ilike(marketingEnquiry.email, pattern),
+        ilike(marketingEnquiry.reference, pattern),
+        sql`exists (select 1 from ${privateSaleEnquiryDetail} where ${privateSaleEnquiryDetail.enquiryId} = ${marketingEnquiry.id} and (${privateSaleEnquiryDetail.artist} ilike ${pattern} or ${privateSaleEnquiryDetail.title} ilike ${pattern}))`,
+      ) as SQL,
+    );
+  }
   if (filter.assignee === "unassigned") {
     conditions.push(isNull(marketingEnquiry.assignedToUserId));
   } else if (filter.assignee) {
     conditions.push(eq(marketingEnquiry.assignedToUserId, filter.assignee));
   }
   return conditions;
+}
+
+function listOrder(filter: EnquiryListFilter): "oldest_first" | "newest_first" {
+  if (filter.sort) return filter.sort === "oldest" ? "oldest_first" : "newest_first";
+  return enquiryViewCriteria(filter.view).order;
 }
 
 export class DrizzleMarketingEnquiryRepository implements IMarketingEnquiryRepository {
@@ -189,7 +213,7 @@ export class DrizzleMarketingEnquiryRepository implements IMarketingEnquiryRepos
   }
 
   async list(filter: EnquiryListFilter): Promise<MarketingEnquiryRecord[]> {
-    const { order } = enquiryViewCriteria(filter.view);
+    const order = listOrder(filter);
     const conditions = [...viewConditions(filter), ...filterConditions(filter)];
     if (filter.afterId) {
       // Compared against the anchor row in SQL: a JS Date would drop the microseconds.
@@ -213,6 +237,41 @@ export class DrizzleMarketingEnquiryRepository implements IMarketingEnquiryRepos
       .orderBy(direction(marketingEnquiry.createdAt), direction(marketingEnquiry.id))
       .limit(filter.limit + 1);
     return rows.map(toRecord);
+  }
+
+  async countByStatus(filter: EnquiryListFilter): Promise<EnquiryStatusCounts> {
+    const { status: _status, afterId: _afterId, ...rest } = filter;
+    const rows = await this.db
+      .select({ status: marketingEnquiry.status, n: sql<number>`count(*)::int` })
+      .from(marketingEnquiry)
+      .where(and(...viewConditions(rest), ...filterConditions(rest)))
+      .groupBy(marketingEnquiry.status);
+    const counts = Object.fromEntries(ENQUIRY_STATUSES.map((s) => [s, 0])) as EnquiryStatusCounts;
+    for (const row of rows) counts[row.status as EnquiryStatus] = row.n;
+    return counts;
+  }
+
+  async findAttachmentFile(
+    enquiryId: string,
+    attachmentId: string,
+  ): Promise<EnquiryAttachmentFile | null> {
+    const [row] = await this.db
+      .select({
+        key: uploadObject.key,
+        contentType: sql<string>`coalesce(${uploadObject.actualContentType}, ${uploadObject.declaredContentType})`,
+      })
+      .from(marketingEnquiryAttachment)
+      .innerJoin(uploadObject, eq(uploadObject.id, marketingEnquiryAttachment.uploadObjectId))
+      .where(
+        and(
+          eq(marketingEnquiryAttachment.id, attachmentId),
+          eq(marketingEnquiryAttachment.enquiryId, enquiryId),
+        ),
+      )
+      .limit(1);
+    return row
+      ? { key: row.key, contentType: row.contentType ?? "application/octet-stream" }
+      : null;
   }
 
   async updateInTransaction(

@@ -1,5 +1,6 @@
 import { canViewEnquiry, enquiryTransitionRefusal } from "@auction/domain";
 import type {
+  IAdminDomainEventReader,
   IEnquiryNoteRepository,
   IMarketingEnquiryRepository,
   ITransactionRunner,
@@ -9,6 +10,8 @@ import type {
 import type { AdminEnquiryListQuery, AdminEnquiryPatch } from "@auction/validators";
 import type { IDomainEventSink } from "../domain-event-sink.js";
 import type {
+  EnquiryAttachmentLink,
+  EnquiryHistoryEntry,
   EnquiryStaffViewer,
   EnquiryUpdateResult,
   IMarketingEnquiryDesk,
@@ -16,6 +19,7 @@ import type {
   MarketingEnquiryListPage,
   MarketingEnquiryView,
 } from "../interfaces/marketing-enquiry-service.js";
+import type { IObjectStorage } from "../interfaces/object-storage.js";
 import type { IEnquiryAssigneeDirectory } from "./enquiry-assignee-directory.js";
 import { decodeEnquiryCursor, encodeEnquiryCursor } from "./enquiry-cursor.js";
 import { toListItem, toView } from "./enquiry-view.js";
@@ -26,10 +30,25 @@ export type EnquiryDeskServiceDeps = {
   assignees: IEnquiryAssigneeDirectory;
   transactionRunner: ITransactionRunner;
   events: IDomainEventSink;
+  /** The audit trail's reader, for one enquiry's own history. */
+  history: Pick<IAdminDomainEventReader, "listRedacted" | "actorNames">;
+  /** Private storage: attachments are only ever served by short-lived signed links. */
+  storage: Pick<IObjectStorage, "createPresignedGet">;
   now: () => Date;
 };
 
+/** A signed link is good for a minute: long enough to open the file, too short to pass around. */
+export const ENQUIRY_ATTACHMENT_LINK_TTL_SEC = 60;
+
 const ENQUIRY = "marketing_enquiry" as const;
+
+/** The only events the history shows; attachment views are audited but never listed. */
+const HISTORY_EVENT_TYPES = [
+  "marketing_enquiry.assigned",
+  "marketing_enquiry.status_changed",
+  "marketing_enquiry.converted",
+] as const;
+const HISTORY_LIMIT = 200;
 
 /**
  * Staff work on enquiries here. Who may see an enquiry is decided in this service, not in the
@@ -44,7 +63,7 @@ export class EnquiryDeskService implements IMarketingEnquiryDesk {
     viewer: EnquiryStaffViewer,
     query: AdminEnquiryListQuery,
   ): Promise<MarketingEnquiryListPage> {
-    const rows = await this.deps.enquiries.list({
+    const filter = {
       view: query.view,
       scope: {
         viewerUserId: viewer.userId,
@@ -55,14 +74,118 @@ export class EnquiryDeskService implements IMarketingEnquiryDesk {
       departmentSlug: query.department,
       status: query.status,
       assignee: query.assignee,
+      search: query.q,
+      sort: query.sort,
       afterId: query.cursor ? decodeEnquiryCursor(query.cursor) : null,
       limit: query.limit,
-    });
+    };
+    const [rows, counts] = await Promise.all([
+      this.deps.enquiries.list(filter),
+      this.deps.enquiries.countByStatus(filter),
+    ]);
     const page = rows.slice(0, query.limit);
     const last = page.at(-1);
     return {
       items: page.map(toListItem),
       nextCursor: rows.length > query.limit && last ? encodeEnquiryCursor(last) : null,
+      counts,
+    };
+  }
+
+  async history(viewer: EnquiryStaffViewer, ref: string): Promise<EnquiryHistoryEntry[] | null> {
+    const record = await this.deps.enquiries.findByRef(ref);
+    if (!record || !canViewEnquiry(record, viewer)) return null;
+    const events = await this.deps.history.listRedacted({
+      aggregateType: ENQUIRY,
+      aggregateId: record.id,
+      eventTypes: HISTORY_EVENT_TYPES,
+      // Newest first so a long-lived enquiry loses its oldest changes, never its latest ones.
+      newestFirst: true,
+      limit: HISTORY_LIMIT,
+      includePii: false,
+    });
+    events.reverse();
+    const names = await this.deps.history.actorNames(
+      events.flatMap((event) => {
+        const p = (event.payload ?? {}) as Record<string, unknown>;
+        return [event.actorUserId, p.assignedToUserId, p.previousAssignedToUserId].filter(
+          (id): id is string => typeof id === "string" && id.length > 0,
+        );
+      }),
+    );
+    const nameOf = (id: string | null) => (id ? (names.get(id) ?? null) : null);
+    return events.flatMap((event): EnquiryHistoryEntry[] => {
+      const payload = (event.payload ?? {}) as Record<string, unknown>;
+      const text = (key: string) => (typeof payload[key] === "string" ? payload[key] : null);
+      const at = event.occurredAt.toISOString();
+      const base = {
+        id: String(event.id),
+        at,
+        actorUserId: event.actorUserId,
+        actorName: nameOf(event.actorUserId),
+      };
+      switch (event.eventType) {
+        case "marketing_enquiry.assigned":
+          return [
+            {
+              ...base,
+              kind: "assigned",
+              toUserId: text("assignedToUserId"),
+              fromUserId: text("previousAssignedToUserId"),
+              toName: nameOf(text("assignedToUserId")),
+              fromName: nameOf(text("previousAssignedToUserId")),
+            },
+          ];
+        case "marketing_enquiry.status_changed":
+          return [
+            {
+              ...base,
+              kind: "status_changed",
+              from: text("from"),
+              to: text("to"),
+              closeReason: text("closeReason"),
+            },
+          ];
+        case "marketing_enquiry.converted":
+          return [{ ...base, kind: "converted", from: text("from") }];
+        default:
+          return [];
+      }
+    });
+  }
+
+  async attachmentLink(
+    viewer: EnquiryStaffViewer,
+    ref: string,
+    attachmentId: string,
+  ): Promise<EnquiryAttachmentLink | null> {
+    // The same rule as opening the enquiry: whoever may not see it cannot get its files.
+    const record = await this.deps.enquiries.findByRef(ref);
+    if (!record || !canViewEnquiry(record, viewer)) return null;
+    const attachment = record.attachments.find((a) => a.id === attachmentId);
+    const file = attachment
+      ? await this.deps.enquiries.findAttachmentFile(record.id, attachment.id)
+      : null;
+    if (!attachment || !file) return null;
+    const { url } = await this.deps.storage.createPresignedGet({
+      key: file.key,
+      expiresInSec: ENQUIRY_ATTACHMENT_LINK_TTL_SEC,
+      signingDate: this.deps.now(),
+      responseContentType: file.contentType,
+      responseContentDisposition: "inline",
+    });
+    await this.deps.events.publish({
+      aggregateType: ENQUIRY,
+      aggregateId: record.id,
+      eventType: "marketing_enquiry.attachment_viewed",
+      payload: { enquiryId: record.id, attachmentId: attachment.id, kind: attachment.kind },
+      actorUserId: viewer.userId,
+    });
+    return {
+      url,
+      kind: attachment.kind,
+      contentType: file.contentType,
+      expiresInSec: ENQUIRY_ATTACHMENT_LINK_TTL_SEC,
     };
   }
 

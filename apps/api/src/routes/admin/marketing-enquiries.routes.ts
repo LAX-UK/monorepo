@@ -11,6 +11,7 @@ import {
   adminEnquiryListQuerySchema,
   adminEnquiryPatchSchema,
   adminEnquiryRoutingSchema,
+  enquiryAttachmentParamSchema,
   enquiryRefParamSchema,
   marketingEnquiryIdParamSchema,
 } from "@auction/validators";
@@ -101,6 +102,33 @@ export function attachAdminMarketingEnquiryRoutes(
     if (!data) return c.json({ error: "enquiry_not_found" }, 404);
     return c.json({ data });
   });
+
+  /** GET /admin/enquiries/:ref/history — assignments and status changes from the audit trail. */
+  platform.get("/enquiries/:ref/history", zValidator("param", enquiryRefParamSchema), async (c) => {
+    const data = await container.admin.marketingEnquiries.history(
+      viewerOf(c),
+      c.req.valid("param").ref,
+    );
+    if (!data) return c.json({ error: "enquiry_not_found" }, 404);
+    return c.json({ data: { entries: data } });
+  });
+
+  /** GET /admin/enquiries/:ref/attachments/:attachmentId/link — a one-minute signed link; audited. */
+  platform.get(
+    "/enquiries/:ref/attachments/:attachmentId/link",
+    zValidator("param", enquiryAttachmentParamSchema),
+    async (c) => {
+      const { ref, attachmentId } = c.req.valid("param");
+      const data = await container.admin.marketingEnquiries.attachmentLink(
+        viewerOf(c),
+        ref,
+        attachmentId,
+      );
+      if (!data) return c.json({ error: "attachment_not_found" }, 404);
+      c.header("Cache-Control", "no-store");
+      return c.json({ data });
+    },
+  );
 
   /** PATCH /admin/enquiries/:ref — assign, change status, close with a reason, add a note. */
   platform.patch(

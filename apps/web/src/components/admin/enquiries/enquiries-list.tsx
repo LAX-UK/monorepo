@@ -35,8 +35,10 @@ import {
   ListPage,
   type OverflowAction,
   PrimaryCell,
+  SortMenu,
   StackedCell,
   StaffButton,
+  TableSearch,
 } from "@auction/staff-ui";
 import { Route } from "@auction/staff-ui/icons";
 import Link from "next/link";
@@ -64,16 +66,21 @@ const KIND_OPTIONS = Object.entries(ENQUIRY_KIND_LABELS).map(([value, label]) =>
   value,
   label,
 }));
-const STATUS_OPTIONS = Object.entries(ENQUIRY_STATUS_LABELS).map(([value, label]) => ({
-  value,
-  label,
-}));
+
+/** "view" is the view's own order; the other two order by arrival. */
+const SORT_OPTIONS = [
+  { value: "view", label: "View order" },
+  { value: "newest", label: "Newest first" },
+  { value: "oldest", label: "Oldest first" },
+] as const;
 
 /**
  * Every enquiry from the contact form and the private sales page on the staff list template.
  * It opens on the person's own queue (specialists) or on everything open, longest waiting first.
- * Emails are masked here; the record shows them in full. The order is the view's own, so there is
- * no sort control. Routing, for the people who may change it, opens from the header.
+ * Emails are masked here; the record shows them in full. The order is the view's own; arrival
+ * order can be chosen over it. Search finds the name, email, reference or artwork, and the status
+ * filter shows how many enquiries sit in each status. Routing, for the people who may change it,
+ * opens from the header.
  */
 export function EnquiriesList(props: EnquiriesListProps) {
   const { page, search, filters, abilities } = props;
@@ -177,6 +184,17 @@ export function EnquiriesList(props: EnquiriesListProps) {
     [],
   );
 
+  const statusOptions = Object.entries(ENQUIRY_STATUS_LABELS).map(([value, label]) => ({
+    value,
+    label,
+    ...(page ? { count: page.counts[value as keyof typeof page.counts] } : {}),
+  }));
+  const orderNote =
+    filters.sort === "newest"
+      ? "Newest first"
+      : filters.sort === "oldest"
+        ? "Oldest first"
+        : ENQUIRY_ORDER_NOTE[filters.view];
   const empty = ENQUIRY_EMPTY_COPY[filters.view];
   const assigneeOptions = [
     { value: "unassigned", label: "Unassigned" },
@@ -215,54 +233,71 @@ export function EnquiriesList(props: EnquiriesListProps) {
             Link={ListLink}
           />
         }
-        filters={
-          <FilterSheet
-            title="Filter enquiries"
-            sections={[
-              {
-                kind: "radio",
-                id: "kind",
-                label: "Kind",
-                value: filters.kind,
-                anyLabel: "Any kind",
-                options: KIND_OPTIONS,
-              },
-              {
-                kind: "radio",
-                id: "department",
-                label: "Department",
-                value: filters.department,
-                anyLabel: "Any department",
-                options: departmentOptions,
-              },
-              {
-                kind: "radio",
-                id: "status",
-                label: "Status",
-                value: filters.status,
-                anyLabel: "Any status",
-                options: STATUS_OPTIONS,
-              },
-              {
-                kind: "radio",
-                id: "assignee",
-                label: "Assignee",
-                value: filters.assignee,
-                anyLabel: "Anyone",
-                options: assigneeOptions,
-              },
-            ]}
-            onApply={(values) =>
-              navigate(
-                href({
-                  kind: (values.kind as string) || null,
-                  department: (values.department as string) || null,
-                  status: (values.status as string) || null,
-                  assignee: (values.assignee as string) || null,
-                }),
-              )
-            }
+        search={
+          <TableSearch
+            key={filters.q}
+            fullWidth
+            label="Search enquiries"
+            placeholder="Search name, email, reference or artwork"
+            value={filters.q}
+            onSearch={(q) => navigate(href({ q: q || null }))}
           />
+        }
+        filters={
+          <>
+            <SortMenu
+              value={filters.sort || "view"}
+              options={SORT_OPTIONS}
+              onChange={(next) => navigate(href({ sort: next === "view" ? null : next }))}
+            />
+            <FilterSheet
+              title="Filter enquiries"
+              sections={[
+                {
+                  kind: "radio",
+                  id: "kind",
+                  label: "Kind",
+                  value: filters.kind,
+                  anyLabel: "Any kind",
+                  options: KIND_OPTIONS,
+                },
+                {
+                  kind: "radio",
+                  id: "department",
+                  label: "Department",
+                  value: filters.department,
+                  anyLabel: "Any department",
+                  options: departmentOptions,
+                },
+                {
+                  kind: "radio",
+                  id: "status",
+                  label: "Status",
+                  value: filters.status,
+                  anyLabel: "Any status",
+                  options: statusOptions,
+                },
+                {
+                  kind: "radio",
+                  id: "assignee",
+                  label: "Assignee",
+                  value: filters.assignee,
+                  anyLabel: "Anyone",
+                  options: assigneeOptions,
+                },
+              ]}
+              onApply={(values) =>
+                navigate(
+                  href({
+                    kind: (values.kind as string) || null,
+                    department: (values.department as string) || null,
+                    status: (values.status as string) || null,
+                    assignee: (values.assignee as string) || null,
+                  }),
+                )
+              }
+            />
+          </>
         }
         activeFilters={props.chips.map((chip) => ({
           id: chip.id,
@@ -270,7 +305,7 @@ export function EnquiriesList(props: EnquiriesListProps) {
           onRemove: () => navigate(chip.clearHref),
         }))}
         onClearFilters={() =>
-          navigate(href({ kind: null, department: null, status: null, assignee: null }))
+          navigate(href({ q: null, kind: null, department: null, status: null, assignee: null }))
         }
         loading={pending}
         filtered={props.filtered}
@@ -316,7 +351,7 @@ export function EnquiriesList(props: EnquiriesListProps) {
           props.pagination
             ? {
                 ...props.pagination,
-                summary: `${props.pagination.summary} · ${ENQUIRY_ORDER_NOTE[filters.view]}`,
+                summary: `${props.pagination.summary} · ${orderNote}`,
               }
             : null
         }

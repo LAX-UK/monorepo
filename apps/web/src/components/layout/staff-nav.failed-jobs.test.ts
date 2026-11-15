@@ -1,3 +1,4 @@
+import { EMPTY_ADMIN_NAV_COUNTS } from "@/lib/data/http/admin-nav-counts.types";
 import type { UserStaffRole } from "@auction/types";
 import { describe, expect, it } from "vitest";
 import { getStaffNavGroups } from "./staff-nav";
@@ -45,5 +46,17 @@ describe("staff nav: Failed jobs", () => {
     );
     const labels = operations?.items.map((item) => item.label) ?? [];
     expect(labels.indexOf("Failed jobs")).toBe(labels.indexOf("Audit log") + 1);
+  });
+
+  it("carries the count of jobs waiting for review as a badge, and none at zero", () => {
+    const failedJobs = (count: number) =>
+      getStaffNavGroups("staff", 0, ["administrator"], 0, {
+        ...EMPTY_ADMIN_NAV_COUNTS,
+        failedJobsNeedsReview: count,
+      })
+        .flatMap((group) => group.items)
+        .find((entry) => entry.label === "Failed jobs");
+    expect(failedJobs(7)).toMatchObject({ badge: 7, badgeTone: "warning" });
+    expect(failedJobs(0)?.badge).toBeUndefined();
   });
 });

@@ -1,6 +1,6 @@
-import type { EnquiryView } from "@/lib/data/http/admin-enquiries.schema";
+import type { EnquiryHistoryEntry, EnquiryView } from "@/lib/data/http/admin-enquiries.schema";
 import type { TimelineEvent } from "@auction/staff-ui";
-import { ENQUIRY_CLOSE_REASON_LABELS } from "./enquiries.vm";
+import { ENQUIRY_CLOSE_REASON_LABELS, ENQUIRY_STATUS_LABELS } from "./enquiries.vm";
 
 function plural(count: number, one: string, many: string): string {
   return `${count} ${count === 1 ? one : many}`;
@@ -17,13 +17,59 @@ export function attachmentSummary(attachments: EnquiryView["attachments"]): stri
   return parts.length ? parts.join(" and ") : null;
 }
 
+function labelled<T extends string>(table: Record<T, string>, key: string | null): string | null {
+  return key !== null && key in table ? table[key as T] : null;
+}
+
+/** Said when the directory cannot name someone, rather than guessing they have left. */
+const NEUTRAL_STAFF_NAME = "Another staff member";
+
+/** One audit trail entry in words: who was handed the enquiry, or where its status went. */
+function historyEvent(
+  entry: EnquiryHistoryEntry,
+  nameOf: (userId: string | null) => string | undefined,
+): TimelineEvent {
+  const named = (userId: string | null, name: string | null) =>
+    userId ? (name ?? nameOf(userId) ?? NEUTRAL_STAFF_NAME) : null;
+  const actor = named(entry.actorUserId, entry.actorName);
+  const common = { id: `audit-${entry.id}`, at: entry.at, ...(actor ? { actor } : {}) };
+  if (entry.kind === "assigned") {
+    const mid = (name: string | null) =>
+      name === NEUTRAL_STAFF_NAME ? NEUTRAL_STAFF_NAME.toLowerCase() : name;
+    const to = mid(named(entry.toUserId, entry.toName));
+    const from = mid(named(entry.fromUserId, entry.fromName));
+    return {
+      ...common,
+      title: to ? `Assigned to ${to}` : "Unassigned",
+      ...(from ? { detail: `Previously ${from}` } : {}),
+    };
+  }
+  if (entry.kind === "converted") {
+    return { ...common, title: "Converted to a deal", tone: "success" };
+  }
+  const to = labelled(ENQUIRY_STATUS_LABELS, entry.to);
+  const reason = labelled(ENQUIRY_CLOSE_REASON_LABELS, entry.closeReason);
+  return {
+    ...common,
+    title:
+      entry.to === "closed"
+        ? `Closed${reason ? `: ${reason}` : ""}`
+        : `Status changed to ${(to ?? entry.to ?? "another status").toLowerCase()}`,
+    ...(labelled(ENQUIRY_STATUS_LABELS, entry.from)
+      ? { detail: `From ${labelled(ENQUIRY_STATUS_LABELS, entry.from)?.toLowerCase()}` }
+      : {}),
+  };
+}
+
 /**
- * The record's own history, newest first: when it arrived, each note, and how it ended. Who
- * assigned it and every status change are domain events and appear in the Audit log.
+ * The record's history, newest first: when it arrived, each note, and every assignment and status
+ * change from the audit trail. Without the trail (it could not be read) the record's own end
+ * stands in for the close or conversion.
  */
 export function enquiryTimeline(
   enquiry: EnquiryView,
   nameOf: (userId: string | null) => string | undefined,
+  history: readonly EnquiryHistoryEntry[] | null = null,
 ): TimelineEvent[] {
   const events: TimelineEvent[] = [
     {
@@ -44,7 +90,12 @@ export function enquiryTimeline(
       };
     }),
   ];
-  if (enquiry.handledAt && (enquiry.status === "closed" || enquiry.status === "converted")) {
+  if (history) events.push(...history.map((entry) => historyEvent(entry, nameOf)));
+  if (
+    !history &&
+    enquiry.handledAt &&
+    (enquiry.status === "closed" || enquiry.status === "converted")
+  ) {
     events.push({
       id: "ended",
       title:

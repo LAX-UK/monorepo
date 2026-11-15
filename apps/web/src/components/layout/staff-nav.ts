@@ -299,6 +299,7 @@ function buildStaffNavGroupSpecs(
           icon: ServerCrash,
           match: (pathname) => pathname.startsWith("/admin/failed-jobs"),
           requirement: FAILED_JOBS_ANY_SOURCE_READ_ACCESS,
+          ...navBadge(navCounts.failedJobsNeedsReview ?? 0, "warning"),
         },
       ],
     },

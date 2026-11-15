@@ -71,6 +71,47 @@ describe("filters", () => {
   });
 });
 
+describe("search and sort", () => {
+  it("read the typed text and an arrival order, and drop any other order", () => {
+    expect(parseEnquiriesSearch({ q: "  Riley ", sort: "oldest" }, "open")).toMatchObject({
+      q: "Riley",
+      sort: "oldest",
+    });
+    expect(parseEnquiriesSearch({ sort: "name" }, "open").sort).toBe("");
+    expect(parseEnquiriesSearch({ q: "x".repeat(200) }, "open").q).toHaveLength(80);
+  });
+
+  it("count the search as narrowing the list, and the sort as not", () => {
+    const none = parseEnquiriesSearch({}, "open");
+    expect(hasEnquiriesFilters({ ...none, q: "riley" })).toBe(true);
+    expect(hasEnquiriesFilters({ ...none, sort: "newest" })).toBe(false);
+  });
+
+  it("go to the API, and show as a chip that clears only the search", () => {
+    const filters = parseEnquiriesSearch({ q: "riley", sort: "newest", kind: "press" }, "open");
+    expect(Object.fromEntries(enquiriesApiQuery(filters))).toMatchObject({
+      q: "riley",
+      sort: "newest",
+      kind: "press",
+    });
+    const chips = buildEnquiriesChips(
+      filters,
+      { q: "riley", sort: "newest", kind: "press" },
+      "open",
+      {
+        q: (value) => `“${value}”`,
+        kind: (value) => value,
+        department: (value) => value,
+        status: (value) => value,
+        assignee: (value) => value,
+      },
+    );
+    const search = chips.find((chip) => chip.id === "q");
+    expect(search?.label).toBe("Search: “riley”");
+    expect(search?.clearHref).toBe("/admin/enquiries?sort=newest&kind=press");
+  });
+});
+
 describe("enquiriesHref", () => {
   it("leaves out the view a person lands on", () => {
     expect(enquiriesHref({}, { view: "open" }, "open")).toBe("/admin/enquiries");

@@ -3,12 +3,14 @@ import {
   PURGE_ALERT_RETENTION_QUEUE_NAME,
   PURGE_COLLECTION_HANDOVER_QUEUE_NAME,
   PURGE_EMAIL_SNAPSHOTS_QUEUE_NAME,
+  PURGE_FAILED_JOB_PAYLOADS_QUEUE_NAME,
   PURGE_KYC_RETENTION_QUEUE_NAME,
   PURGE_QR_CODE_SCANS_QUEUE_NAME,
 } from "@auction/queues";
 import { Queue, Worker } from "bullmq";
 import { purgeCollectionHandoverRecords } from "../jobs/purge-collection-handover-records.js";
 import { purgeEmailSnapshots } from "../jobs/purge-email-snapshots.js";
+import { purgeFailedJobPayloads } from "../jobs/purge-failed-job-payloads.js";
 import { purgeKycRetentionJob } from "../jobs/purge-kyc-retention.js";
 import { purgeQrCodeScans } from "../jobs/purge-qr-code-scans.js";
 import { withSentryCronMonitor } from "../lib/sentry-cron.js";
@@ -31,6 +33,7 @@ export function registerPurgeWorkers(
     bullConnection,
     queueOpts,
     qrCodeScanPurgeRepo,
+    failedJobPayloadPurge,
     kycRetentionStores,
     alertRetentionStores,
     uploadStorage,
@@ -195,8 +198,36 @@ export function registerPurgeWorkers(
     },
   );
 
+  // The stored payload of retried and discarded failed jobs, cleared after 90 days.
+  const purgeFailedJobPayloadsQueue = new Queue(
+    PURGE_FAILED_JOB_PAYLOADS_QUEUE_NAME,
+    queueOpts(PURGE_FAILED_JOB_PAYLOADS_QUEUE_NAME),
+  );
+  const purgeFailedJobPayloadsWorker = new Worker(
+    PURGE_FAILED_JOB_PAYLOADS_QUEUE_NAME,
+    async () => {
+      await withSentryCronMonitor("purge-failed-job-payloads", sentryMonitorSlugs, async () => {
+        await purgeFailedJobPayloads({ purge: failedJobPayloadPurge, log });
+      });
+    },
+    bullConnection,
+  );
+  purgeFailedJobPayloadsWorker.on("failed", (job, err) => {
+    reportWorkerJobFailure(PURGE_FAILED_JOB_PAYLOADS_QUEUE_NAME, job, err);
+  });
+  void purgeFailedJobPayloadsQueue.add(
+    "purge",
+    {},
+    {
+      jobId: "purge-failed-job-payloads-daily",
+      repeat: { every: 24 * 60 * 60 * 1000 },
+      removeOnComplete: 5,
+    },
+  );
+
   return {
     errorHandlers: [
+      { worker: purgeFailedJobPayloadsWorker, queue: PURGE_FAILED_JOB_PAYLOADS_QUEUE_NAME },
       { worker: purgeEmailSnapshotsWorker, queue: PURGE_EMAIL_SNAPSHOTS_QUEUE_NAME },
       { worker: purgeCollectionHandoverWorker, queue: PURGE_COLLECTION_HANDOVER_QUEUE_NAME },
       { worker: purgeQrCodeScansWorker, queue: PURGE_QR_CODE_SCANS_QUEUE_NAME },
@@ -205,6 +236,8 @@ export function registerPurgeWorkers(
     ],
     close: () =>
       closeAll([
+        purgeFailedJobPayloadsWorker,
+        purgeFailedJobPayloadsQueue,
         purgeEmailSnapshotsWorker,
         purgeEmailSnapshotsQueue,
         purgeCollectionHandoverWorker,

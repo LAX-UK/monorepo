@@ -91,6 +91,22 @@ describe.skipIf(!HAS_DB)("DrizzleIntegrationDeadLetterRepository (integration)",
     expect(found?.payload).toMatchObject({ paymentId: `pay-${tag}` });
   });
 
+  it("counts identical deliveries across every page of the view", async () => {
+    await deadLetter(`group-${tag}`);
+    await deadLetter(`group-${tag}`);
+    await deadLetter(`group-${tag}`);
+    const result = await repo.search(search({ q: `group-${tag}`, limit: 1 }));
+    expect(result.rows).toHaveLength(1);
+    expect(result.groups).toEqual([
+      {
+        queue: `delivery:group-${tag}`,
+        eventType: "payment.captured",
+        errorLine: "Xero rejected the invoice",
+        count: 3,
+      },
+    ]);
+  });
+
   it("limits what is read to the consumers the caller may see", async () => {
     const xero = await deadLetter(`xero-${tag}`);
     const zoho = await deadLetter(`zoho-${tag}`);

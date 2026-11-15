@@ -10,6 +10,7 @@ export const ENQUIRY_ERROR_COPY: Readonly<Record<string, string>> = {
   close_reason_not_applicable: "A reason applies only when closing.",
   close_reason_without_status: "A reason applies only when closing.",
   conversion_unavailable: "Only private sale enquiries can become a deal.",
+  attachment_not_found: "This file is no longer available, or you can't open it.",
   conversion_not_manual: "An enquiry becomes converted when it is turned into a deal.",
 };
 

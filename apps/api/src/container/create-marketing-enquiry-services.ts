@@ -3,6 +3,7 @@ import { SITE_CONTACT_EMAIL } from "@auction/branding";
 import type { Database } from "@auction/db";
 import type { IEmailService } from "@auction/email";
 import type {
+  IAdminDomainEventReader,
   ILegalEntityMembershipReader,
   ITransactionRunner,
 } from "@auction/persistence/interfaces";
@@ -23,6 +24,7 @@ import type {
   IMarketingEnquiryDesk,
   IMarketingEnquiryIntake,
 } from "../services/interfaces/marketing-enquiry-service.js";
+import type { IObjectStorage } from "../services/interfaces/object-storage.js";
 import { EmailEnquiryAcknowledgement } from "../services/marketing-enquiry/email-enquiry-acknowledgement.js";
 import { EmailMarketingEnquiryAlert } from "../services/marketing-enquiry/email-marketing-enquiry-alert.js";
 import { EnquirerAccountResolver } from "../services/marketing-enquiry/enquirer-account.resolver.js";
@@ -64,6 +66,10 @@ export type CreateMarketingEnquiryServicesInput = {
   transactionRunner: ITransactionRunner;
   events: IDomainEventSink;
   drafts: IEnquiryDraftTokens;
+  /** The audit trail's reader, for one enquiry's history. */
+  history: Pick<IAdminDomainEventReader, "listRedacted" | "actorNames">;
+  /** Private object storage, for signed attachment links. */
+  storage: Pick<IObjectStorage, "createPresignedGet">;
 };
 
 /**
@@ -146,6 +152,8 @@ export function createMarketingEnquiryServices(
       assignees,
       transactionRunner: input.transactionRunner,
       events: input.events,
+      history: input.history,
+      storage: input.storage,
       now: () => new Date(),
     }),
     erasure: new EnquiryErasureService({

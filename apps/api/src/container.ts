@@ -2,6 +2,7 @@ import { SITE_CONTACT_EMAIL } from "@auction/branding";
 import { createDb } from "@auction/db";
 import { XeroTokenSealer } from "@auction/db/xero-token-sealing";
 import {
+  DrizzleAdminDomainEventReader,
   DrizzleAdminSavedViewRepository,
   DrizzleBiddingExposureReader,
   DrizzleBuyerAgentAuthorisationRepository,
@@ -490,6 +491,8 @@ export function createContainer(env: Env): Container {
     transactionRunner: platform.transactionRunner,
     events: platform.domainEventSink,
     drafts: enquiryDrafts,
+    history: new DrizzleAdminDomainEventReader(db),
+    storage: infra.objectStorage,
   });
   const organisationNames = {
     nameOf: async (id: string) =>

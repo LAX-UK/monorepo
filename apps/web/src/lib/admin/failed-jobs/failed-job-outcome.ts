@@ -11,6 +11,8 @@ const REFUSAL_COPY: Readonly<Record<string, string>> = {
   job_discarded: "This job was discarded. Restore it first.",
   repeat_not_confirmed: "Tick the box to confirm a repeat is safe.",
   not_discarded: "This job isn't discarded.",
+  restore_window_closed:
+    "This was discarded more than 90 days ago, so its details have been cleared and it can no longer be restored.",
   rate_limit_exceeded: "Too many retries in a minute. Wait a moment, then try again.",
   payload_not_available: "The job's data was not kept, so it can't be run again.",
   retry_failed: "The job could not be queued again. Try again in a moment.",
