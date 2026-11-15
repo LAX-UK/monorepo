@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { type SwitchConfig, ok } from "@auction/accounting-domain";
 import type {
   ClearingMovements,
@@ -12,10 +14,32 @@ import { FakeStripeBalance } from "../../testing/fake-stripe-balance.js";
 import { ACCOUNTING_ALERTS } from "./accounting-alerts.js";
 import type { StripeBalanceReader } from "./stripe-balance-reader.js";
 import {
+  KNOWN_UNBOOKED_TYPES,
   StripeReconciliation,
   previousLondonDay,
   reconciliationKey,
 } from "./stripe-reconciliation.service.js";
+
+const DOCUMENTED_UNBOOKED_TYPES = [
+  "transfer",
+  "transfer_cancel",
+  "transfer_refund",
+  "transfer_failure",
+  "refund",
+  "payment_refund",
+  "adjustment",
+];
+
+describe("KNOWN_UNBOOKED_TYPES", () => {
+  it("is exactly the types the runbook documents", () => {
+    expect([...KNOWN_UNBOOKED_TYPES].sort()).toEqual([...DOCUMENTED_UNBOOKED_TYPES].sort());
+    const runbook = readFileSync(
+      fileURLToPath(new URL("../../../../../docs/runbooks/monitoring-alerts.md", import.meta.url)),
+      "utf8",
+    );
+    for (const type of DOCUMENTED_UNBOOKED_TYPES) expect(runbook).toContain(`\`${type}\``);
+  });
+});
 
 const NOW = new Date("2031-11-14T05:30:00Z");
 /** Where this morning's read stopped: now less the settle time. */
@@ -164,6 +188,51 @@ describe("StripeReconciliation", () => {
     });
     expect(raised).toEqual([]);
   });
+
+  it("still alerts when a seller transfer is known but a payout is missing from Books", async () => {
+    const { s } = store({ unbooked: [{ type: "transfer", pence: -8_000 }] });
+    // The transfer is explained; a 40.00 payout also left the balance and Books never booked it.
+    const { service, raised } = run(s, 1_000 + 10_000 - 165 - 8_000 - 4_000);
+    const [report] = await service.run();
+    expect(report?.clearing).toMatchObject({
+      knownUnbookedPence: -8_000,
+      unexplainedPence: -4_000,
+    });
+    expect(report?.mismatches).toBe(1);
+    expect(raised).toEqual([
+      {
+        alert: ACCOUNTING_ALERTS.reconciliationMismatch,
+        fields: expect.objectContaining({ legalEntity: "london_art_exchange", mismatches: 1 }),
+      },
+    ]);
+  });
+
+  it.each(DOCUMENTED_UNBOOKED_TYPES)(
+    "takes a documented %s movement out of clearing without an alert",
+    async (type) => {
+      const { s } = store({ unbooked: [{ type, pence: -500 }] });
+      const { service, raised } = run(s, 1_000 + 10_000 - 165 - 500);
+      const [report] = await service.run();
+      expect(report?.clearing).toMatchObject({ knownUnbookedPence: -500, unexplainedPence: 0 });
+      expect(raised).toEqual([]);
+    },
+  );
+
+  it.each(["payout", "stripe_fee", "network_cost", "anything_new"])(
+    "does not treat a %s movement as known unbooked: it is a difference and alerts",
+    async (type) => {
+      const { s } = store({ unbooked: [{ type, pence: -500 }] });
+      const { service, raised } = run(s, 1_000 + 10_000 - 165 - 500);
+      const [report] = await service.run();
+      expect(report?.clearing).toMatchObject({
+        knownUnbooked: [],
+        knownUnbookedPence: 0,
+        unexplainedPence: -500,
+      });
+      expect(report?.mismatches).toBe(1);
+      expect(raised).toHaveLength(1);
+    },
+  );
 
   it("shows a document still on its way to Books by type, without counting it as a mismatch", async () => {
     const { s } = store({

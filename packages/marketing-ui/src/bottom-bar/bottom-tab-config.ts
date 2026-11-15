@@ -22,8 +22,12 @@ type TabBase = {
 /** A tab that goes to a page. */
 export type MarketingBottomTabLink = TabBase & { href: string; action?: undefined };
 
-/** A tab that runs an action; `search` opens the product's existing search dialog. */
-export type MarketingBottomTabAction = TabBase & { action: "search"; href?: undefined };
+/**
+ * A tab that runs an action: `search` opens the product's existing search dialog, `menu` opens its
+ * existing phone menu. A `menu` tab is drawn as the current one when its `paths` match, for the
+ * pages that live inside that menu.
+ */
+export type MarketingBottomTabAction = TabBase & { action: "search" | "menu"; href?: undefined };
 
 export type MarketingBottomTab = MarketingBottomTabLink | MarketingBottomTabAction;
 

@@ -193,7 +193,7 @@ const SHELL_SESSION_MODULES = [
   /[\\/]apps[\\/]web[\\/]src[\\/]lib[\\/]preferences[\\/](?:apply-theme-dom|resolve-theme|theme-cookie)\.ts$/,
   /[\\/]apps[\\/]web[\\/]src[\\/]lib[\\/](?:layout[\\/]bottom-chrome|ui[\\/]idle-preload|ui[\\/]run-when-idle)\.ts$/,
   /[\\/]apps[\\/]web[\\/]src[\\/]components[\\/]layout[\\/]signed-in-only\.tsx$/,
-  /[\\/]packages[\\/]marketing-ui[\\/]dist[\\/](?:marketing-bottom-tab-bar|account-display-name|bottom-bar[\\/](?:bottom-slot|bottom-tab-config|use-bottom-bar-visibility))\.js$/,
+  /[\\/]packages[\\/]marketing-ui[\\/]dist[\\/](?:marketing-bottom-tab-bar|account-display-name|bottom-bar[\\/](?:bottom-slot|bottom-tab-config|bottom-toast-offset|use-bottom-bar-visibility))\.js$/,
   /[\\/]packages[\\/]ui[\\/]dist[\\/]components[\\/]ui[\\/](?:button|button-disabled-reason)\.js$/,
 ];
 
