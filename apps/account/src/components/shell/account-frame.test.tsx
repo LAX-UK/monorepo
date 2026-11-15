@@ -82,6 +82,14 @@ describe("AccountFrame signed in", () => {
     expect(html).toContain("Sign out");
   });
 
+  it("draws one phone tab bar: Home, Portfolio, Money and More, hidden from 768px", () => {
+    expect(html.split('data-testid="account-bottom-tab-bar"')).toHaveLength(2);
+    expect(html).toContain('aria-label="LAX Account shortcuts"');
+    expect(html).toMatch(/<button[^>]*aria-haspopup="dialog"[^>]*>.*?More<\/span>/);
+    expect(html).toContain("md:hidden");
+    expect(html).toContain('data-testid="bottom-bar-space"');
+  });
+
   it("has an Account navigation landmark with the seven destinations and the current one marked", () => {
     expect(html).toContain('<nav aria-label="Account"');
     for (const label of [
@@ -95,8 +103,9 @@ describe("AccountFrame signed in", () => {
     ]) {
       expect(html).toContain(label);
     }
-    // The path is the Money page, so Money alone is current (in the rail and in the sheet).
-    expect(html.split('href="/account/portfolio/money" aria-current="page"')).toHaveLength(3);
+    // The path is the Money page, so Money alone is current (in the rail, the sheet and the
+    // phone tab bar).
+    expect(html.split('href="/account/portfolio/money" aria-current="page"')).toHaveLength(4);
     expect(html).not.toContain('href="/account/portfolio" aria-current');
   });
 

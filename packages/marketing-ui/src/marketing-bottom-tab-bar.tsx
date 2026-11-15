@@ -18,7 +18,9 @@ export type MarketingBottomTabBarProps = {
   /** The current path, from the router. */
   pathname: string;
   /** Opens the product's existing search dialog; used by the tab whose `action` is "search". */
-  onSearch: () => void;
+  onSearch?: () => void;
+  /** Opens the product's existing phone menu; used by the tab whose `action` is "menu". */
+  onMenu?: () => void;
   /** Colour of the current tab and its indicator (a CSS colour); defaults to the theme primary. */
   accent?: string;
   /** The same accent in dark mode. */
@@ -79,6 +81,7 @@ export function MarketingBottomTabBar({
   tabs,
   pathname,
   onSearch,
+  onMenu,
   accent,
   accentOnDark,
   hidden = false,
@@ -123,6 +126,7 @@ export function MarketingBottomTabBar({
       >
         {tabs.map((tab) => {
           const current = tab.href !== undefined && isTabCurrent(tab, pathname);
+          const menuCurrent = tab.action === "menu" && isTabCurrent(tab, pathname);
           const inner = (
             <>
               <span className="relative flex size-6 items-center justify-center [&>svg]:size-6">
@@ -134,12 +138,14 @@ export function MarketingBottomTabBar({
           );
           return (
             <li key={tab.key}>
-              {tab.action === "search" ? (
+              {tab.action ? (
                 <button
                   type="button"
-                  onClick={onSearch}
+                  onClick={tab.action === "menu" ? onMenu : onSearch}
                   aria-haspopup="dialog"
-                  className={cn(TAB_BASE, FOCUS_RING)}
+                  // The menu is not a page, so its current state is `true`, not `page`.
+                  aria-current={menuCurrent ? "true" : undefined}
+                  className={cn(TAB_BASE, menuCurrent && TAB_CURRENT, FOCUS_RING)}
                 >
                   {inner}
                 </button>
@@ -184,6 +190,8 @@ export function MarketingBottomBarSpace() {
     />
   );
 }
+
+export { BOTTOM_BAR_TOAST_MOBILE_OFFSET } from "./bottom-bar/bottom-toast-offset";
 
 /** Raise a bottom-fixed element (cookie dock, toast stack) above the docked bar. */
 export const BOTTOM_BAR_ABOVE_CLASS = "bottom-[var(--lax-bottom-bar-space,0px)]";

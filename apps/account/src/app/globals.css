@@ -2,6 +2,8 @@
 @import "@auction/branding/brand-primitives.css" layer(base);
 @import "@auction/branding/lax-system.css" layer(base);
 @import "@auction/ui/lax-theme.css";
+/* Only the docked tab bar's space variable, not the rest of the marketing styles. */
+@import "@auction/marketing-ui/marketing-bottom-bar.css";
 
 @source "../../../../packages/ui/src/**/*.{ts,tsx}";
 @source "../../../../packages/marketing-ui/src/**/*.{ts,tsx}";
