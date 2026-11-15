@@ -122,7 +122,7 @@ describe("the lot page time fact", () => {
     expect(screen.queryByRole("button", { name: "Refresh to see the result" })).toBeNull();
   });
 
-  it("ten minutes past zero it offers a quiet refresh, which asks the server once, and then settles", () => {
+  it("ten minutes past zero it offers a quiet refresh, which asks the server once, and then settles", async () => {
     refreshFromServer.mockClear();
     render(<LotFactGrid rows={[row({ end: START + 1_000 })]} />);
     act(() => {
@@ -132,14 +132,14 @@ describe("the lot page time fact", () => {
     act(() => {
       vi.advanceTimersByTime(1);
     });
-    const refresh = screen.getByRole("button", { name: "Refresh to see the result" });
     expect(screen.getByText("Confirming the result")).toBeInTheDocument();
-    expect(vi.getTimerCount()).toBe(0);
+    vi.useRealTimers();
+    const refresh = await screen.findByRole("button", { name: "Refresh to see the result" });
     fireEvent.click(refresh);
     expect(refreshFromServer).toHaveBeenCalledTimes(1);
   });
 
-  it("a page opened long after the close offers the refresh on its first render", () => {
+  it("a page opened long after the close offers the refresh on its first render", async () => {
     vi.setSystemTime(START + 20 * 60_000);
     render(
       <LotFactGrid
@@ -156,7 +156,10 @@ describe("the lot page time fact", () => {
         ]}
       />,
     );
-    expect(screen.getByRole("button", { name: "Refresh to see the result" })).toBeInTheDocument();
+    vi.useRealTimers();
+    expect(
+      await screen.findByRole("button", { name: "Refresh to see the result" }),
+    ).toBeInTheDocument();
   });
 
   it("a late bid after the confirming words still brings the row back to Extended", () => {

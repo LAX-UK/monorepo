@@ -1,8 +1,12 @@
 import type { LotInfoTone, LotRowMoment } from "@/lib/lot-page/lot-time-rows";
-import { Button } from "@auction/ui/lax/button";
 import { cn } from "@auction/ui/lib/utils";
 import { OfficialTime } from "@auction/ui/time";
 import { Clock } from "lucide-react";
+import dynamic from "next/dynamic";
+
+const ClosingRefresh = dynamic(() => import("./closing-refresh").then((m) => m.ClosingRefresh), {
+  ssr: false,
+});
 
 /** The clock tightens from calm to soon to final; words change with the colour. */
 const TONE_CLASS: Readonly<Record<LotInfoTone, string>> = {
@@ -92,15 +96,7 @@ export function LotFact({
       ) : null}
       {onRefresh ? (
         <dd className="m-0 mt-1">
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={onRefresh}
-            className="-ml-3 text-lax-13 font-medium underline decoration-lax-line-strong underline-offset-4 hover:decoration-current"
-          >
-            Refresh to see the result
-          </Button>
+          <ClosingRefresh onRefresh={onRefresh} />
         </dd>
       ) : null}
     </div>
