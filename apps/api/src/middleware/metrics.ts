@@ -1,3 +1,4 @@
+import { sharedJwksCounters } from "@auction/identity-contracts";
 import { createMiddleware } from "hono/factory";
 import { Counter, Histogram, Registry, collectDefaultMetrics } from "prom-client";
 
@@ -25,6 +26,27 @@ const moneyPathEvents = new Counter({
   help: "Money-path events (payouts, Stripe webhooks, clawback signals)",
   labelNames: ["event"] as const,
   registers: [metricsRegistry],
+});
+
+/** Totals from the shared JWKS holders this process verifies tokens with, summed across issuers. */
+export function jwksEventTotals(): { fetch_failed: number; served_stale: number } {
+  const totals = { fetch_failed: 0, served_stale: 0 };
+  for (const counters of Object.values(sharedJwksCounters())) {
+    totals.fetch_failed += counters.fetchFailures;
+    totals.served_stale += counters.staleServes;
+  }
+  return totals;
+}
+
+new Counter({
+  name: "auction_api_jwks_events_total",
+  help: "Signing key set fetch failures and requests answered from a key set that could not be refreshed",
+  labelNames: ["event"] as const,
+  registers: [metricsRegistry],
+  collect() {
+    this.reset();
+    for (const [event, total] of Object.entries(jwksEventTotals())) this.inc({ event }, total);
+  },
 });
 
 export function recordMoneyPathEvent(event: string): void {
