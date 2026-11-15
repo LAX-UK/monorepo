@@ -128,6 +128,9 @@ const PROBES: Probes = {
   }),
   qrCodeScanPersister: (r) => ({ persist: () => r.persist({ qrCodeId: NIL }) }),
   qrCodeScanPurgeRepo: (r) => ({ purgeBefore: () => r.purgeBefore(earlier, 1) }),
+  failedJobPayloadPurge: (r) => ({
+    purgeResolvedPayloads: () => r.purgeResolvedPayloads(earlier, 1),
+  }),
   marketingClickIdPurgeRepo: (r) => ({ purgeStale: () => r.purgeStale(earlier) }),
   marketingAttributionPurgeRepo: (r) => ({ purgeStale: () => r.purgeStale(earlier) }),
   notificationWriteRepo: (r) => ({

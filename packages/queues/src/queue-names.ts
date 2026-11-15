@@ -21,6 +21,8 @@ export const PURGE_ALERT_RETENTION_QUEUE_NAME = "purge-alert-retention" as const
 export const PURGE_COLLECTION_HANDOVER_QUEUE_NAME = "purge-collection-handover" as const;
 /** Clears the recipient address and variables kept on sent mail once its 30 days are up. */
 export const PURGE_EMAIL_SNAPSHOTS_QUEUE_NAME = "purge-email-snapshots" as const;
+/** Clears the stored payload of retried and discarded failed jobs after 90 days. */
+export const PURGE_FAILED_JOB_PAYLOADS_QUEUE_NAME = "purge-failed-job-payloads" as const;
 export const WEBHOOK_EVENTS_QUEUE_NAME = "webhook-events" as const;
 export const GC_PENDING_UPLOADS_QUEUE_NAME = "gc-pending-uploads" as const;
 export const IMPERSONATION_SWEEPER_QUEUE_NAME = "impersonation-sweeper" as const;

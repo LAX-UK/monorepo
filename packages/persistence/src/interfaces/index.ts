@@ -78,9 +78,11 @@ export type {
   FailedJobRecordWithPayload,
   FailedJobReviewView,
   FailedJobSearch,
+  FailedJobSearchGroup,
   FailedJobSearchResult,
   IFailedJobDisposition,
   IFailedJobNeedsReviewGroups,
+  IFailedJobPayloadPurge,
   IFailedJobReviewReader,
 } from "./failed-job-review.js";
 

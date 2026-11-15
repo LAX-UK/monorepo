@@ -75,4 +75,20 @@ describe("groupFailedJobs", () => {
     const [group] = groupFailedJobs([xeroDelivery, again("delivery:43", { canAct: false })]);
     expect(group?.canAct).toBe(false);
   });
+
+  it("reports the group's size across every page, never fewer than the members shown", () => {
+    const [group] = groupFailedJobs([
+      again("delivery:43", { groupSize: 40 }),
+      again("delivery:44", { groupSize: 40 }),
+    ]);
+    expect(group).toMatchObject({ total: 40 });
+    expect(group?.members).toHaveLength(2);
+    const [small] = groupFailedJobs([again("delivery:45"), again("delivery:46")]);
+    expect(small?.total).toBe(2);
+  });
+
+  it("gives a lone failure its own size from the rest of the view", () => {
+    const [group] = groupFailedJobs([again("delivery:47", { groupSize: 9 })]);
+    expect(group).toMatchObject({ total: 9 });
+  });
 });

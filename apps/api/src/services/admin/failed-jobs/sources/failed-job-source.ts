@@ -53,6 +53,8 @@ export type ReviewTarget = {
   state: FailedJobState;
   /** Whether a retry is offered now, by state and kind; the operator's switch is checked here too. */
   retry: FailedJobRetryAvailability;
+  /** When it was discarded, if it was; a discard can be restored for a limited window. */
+  discardedAt: Date | null;
   /** A retry may repeat something a person sees. */
   mayRepeat: boolean;
   /** The id the audit trail records the decision under. */

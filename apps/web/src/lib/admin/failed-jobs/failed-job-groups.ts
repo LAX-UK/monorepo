@@ -4,12 +4,20 @@ import type { FailedJobSummary } from "@auction/types";
 export type FailedJobGroup = FailedJobSummary & {
   /** Every failure in the group, in the order the list gave them. The first stands for the row. */
   members: FailedJobSummary[];
+  /**
+   * Identical failures in the whole filtered view, across every page: never fewer than the
+   * members on this page. Decisions still apply to the members shown.
+   */
+  total: number;
 };
 
 /** Two failures are identical when the same kind of job or delivery failed with the same error. */
 function groupKey(job: FailedJobSummary): string {
   return [job.source, job.queue, job.jobLabel ?? "", job.state, job.errorSummary].join("\u0000");
 }
+
+const totalOf = (members: readonly FailedJobSummary[]) =>
+  Math.max(members.length, ...members.map((member) => member.groupSize));
 
 /**
  * Folds identical failures on a page into one row each, in the order of their first appearance.
@@ -26,7 +34,7 @@ export function groupFailedJobs(rows: readonly FailedJobSummary[]): FailedJobGro
   }
   return [...groups.values()].map((members) => {
     const [first] = members as [FailedJobSummary, ...FailedJobSummary[]];
-    if (members.length === 1) return { ...first, members };
+    if (members.length === 1) return { ...first, members, total: totalOf(members) };
     const refused = members.find((member) => !member.retry.allowed);
     return {
       ...first,
@@ -46,6 +54,7 @@ export function groupFailedJobs(rows: readonly FailedJobSummary[]): FailedJobGro
           ? { allowed: true }
           : refused.retry,
       members,
+      total: totalOf(members),
     };
   });
 }

@@ -127,10 +127,10 @@ export function FailedJobsList(props: FailedJobsListProps) {
             Link={Link}
             secondary={[row.sourceLabel, row.jobLabel].filter(Boolean).join(" · ")}
           >
-            {row.members.length > 1 ? (
+            {row.total > 1 ? (
               <span className="flex min-w-0 items-center">
                 <span className="truncate">{row.typeLabel}</span>
-                <GroupCount count={row.members.length} />
+                <GroupCount count={row.total} onPage={row.members.length} />
               </span>
             ) : (
               row.typeLabel

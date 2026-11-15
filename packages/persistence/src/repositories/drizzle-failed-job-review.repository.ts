@@ -1,6 +1,19 @@
 import type { Database } from "@auction/db";
 import { failedJobs } from "@auction/db/schema";
-import { type SQL, and, asc, desc, eq, inArray, isNotNull, isNull, ne, sql } from "drizzle-orm";
+import {
+  type SQL,
+  and,
+  asc,
+  desc,
+  eq,
+  inArray,
+  isNotNull,
+  isNull,
+  lt,
+  ne,
+  or,
+  sql,
+} from "drizzle-orm";
 import type {
   FailedJobFilter,
   FailedJobNeedsReviewGroup,
@@ -11,8 +24,10 @@ import type {
   FailedJobSearchResult,
   IFailedJobDisposition,
   IFailedJobNeedsReviewGroups,
+  IFailedJobPayloadPurge,
   IFailedJobReviewReader,
 } from "../interfaces/failed-job-review.js";
+import { FAILED_JOB_SEARCH_GROUPS_MAX } from "../interfaces/failed-job-review.js";
 import { firstErrorLine } from "../lib/first-error-line.js";
 import { containsPattern } from "../lib/like-pattern.js";
 import { INTEGRATION_DISPOSITION_QUEUE } from "./drizzle-integration-dead-letter.repository.js";
@@ -74,7 +89,11 @@ function filterConditions(input: FailedJobFilter, options: { ignoreQueue?: boole
 }
 
 export class DrizzleFailedJobReviewRepository
-  implements IFailedJobReviewReader, IFailedJobDisposition, IFailedJobNeedsReviewGroups
+  implements
+    IFailedJobReviewReader,
+    IFailedJobDisposition,
+    IFailedJobNeedsReviewGroups,
+    IFailedJobPayloadPurge
 {
   constructor(private readonly db: Database) {}
 
@@ -84,7 +103,8 @@ export class DrizzleFailedJobReviewRepository
     const order =
       input.sort === "failed_asc" ? asc(failedJobs.failedAt) : desc(failedJobs.failedAt);
 
-    const [rows, viewCounts, queueCounts] = await Promise.all([
+    const errorLine = firstErrorLine(sql`${failedJobs.errorMessage}`);
+    const [rows, viewCounts, queueCounts, groups] = await Promise.all([
       this.db
         .select(LIST_COLUMNS)
         .from(failedJobs)
@@ -108,10 +128,52 @@ export class DrizzleFailedJobReviewRepository
         .where(and(VIEW_PREDICATES[input.view], ...filterConditions(input, { ignoreQueue: true })))
         .groupBy(failedJobs.originalQueue)
         .orderBy(asc(failedJobs.originalQueue)),
+      this.db
+        .select({
+          queue: failedJobs.originalQueue,
+          jobName: failedJobs.originalJobName,
+          errorLine,
+          count: sql<number>`count(*)::int`,
+        })
+        .from(failedJobs)
+        .where(inView)
+        .groupBy(failedJobs.originalQueue, failedJobs.originalJobName, errorLine)
+        .orderBy(sql`count(*) desc`)
+        .limit(FAILED_JOB_SEARCH_GROUPS_MAX),
     ]);
 
     const counts = Object.fromEntries(viewCounts) as Record<FailedJobReviewView, number>;
-    return { rows, total: counts[input.view], counts, queues: queueCounts };
+    return { rows, groups, total: counts[input.view], counts, queues: queueCounts };
+  }
+
+  async countNeedsReview(): Promise<number> {
+    const [row] = await this.db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(failedJobs)
+      .where(VIEW_PREDICATES.needs_review);
+    return row?.count ?? 0;
+  }
+
+  async purgeResolvedPayloads(cutoff: Date, limit: number): Promise<number> {
+    const resolvedBefore = or(
+      lt(failedJobs.discardedAt, cutoff),
+      and(isNull(failedJobs.discardedAt), lt(failedJobs.replayedAt, cutoff)),
+    );
+    const cleared = await this.db
+      .update(failedJobs)
+      .set({ payloadJson: null })
+      .where(
+        inArray(
+          failedJobs.id,
+          this.db
+            .select({ id: failedJobs.id })
+            .from(failedJobs)
+            .where(and(isNotNull(failedJobs.payloadJson), resolvedBefore))
+            .limit(limit),
+        ),
+      )
+      .returning({ id: failedJobs.id });
+    return cleared.length;
   }
 
   async needsReviewGroups(since: Date): Promise<FailedJobNeedsReviewGroup[]> {

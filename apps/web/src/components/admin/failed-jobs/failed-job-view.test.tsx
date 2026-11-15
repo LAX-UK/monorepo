@@ -20,10 +20,14 @@ vi.mock("@/lib/actions/admin/admin-failed-jobs", () => ({
 }));
 vi.mock("@/lib/ui/notify", () => ({ notify: { success: vi.fn(), error: vi.fn() } }));
 
-function renderJob(job: FailedJobDetail = emailJobDetail, canAct = true) {
+function renderJob(
+  job: FailedJobDetail = emailJobDetail,
+  canAct = true,
+  recordHrefs: (string | null)[] = [],
+) {
   return render(
     <StaffTooltipProvider>
-      <FailedJobView job={job} canAct={canAct} />
+      <FailedJobView job={job} canAct={canAct} recordHrefs={recordHrefs} />
     </StaffTooltipProvider>,
   );
 }
@@ -63,6 +67,7 @@ describe("FailedJobView: an integration delivery", () => {
         note: null,
         at: "2026-11-01T09:00:00.000Z",
         byName: null,
+        restorableUntil: "2027-01-30T09:00:00.000Z",
       },
     });
     expect(screen.getByText("This delivery was discarded")).toBeInTheDocument();
@@ -125,6 +130,7 @@ describe("FailedJobView", () => {
         note: "Address bounced.",
         at: "2026-11-01T09:00:00.000Z",
         byName: "Sam Okoye",
+        restorableUntil: "2027-01-30T09:00:00.000Z",
       },
       history: [
         {
@@ -145,6 +151,45 @@ describe("FailedJobView", () => {
     expect(within(history).getByText(/Sam Okoye/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Restore" }));
     expect(restore).toHaveBeenCalledWith({ ids: [emailJobDetail.id] });
+  });
+
+  it("links a payload record to its admin page where there is one", () => {
+    const lot = emailJobDetail.payload.findIndex((entry) => entry.label === "Lot ID");
+    const hrefs = emailJobDetail.payload.map((_, index) =>
+      index === lot ? "/admin/lots/lot-14" : null,
+    );
+    renderJob(emailJobDetail, true, hrefs);
+    expect(screen.getByRole("link", { name: "lot-14" })).toHaveAttribute(
+      "href",
+      "/admin/lots/lot-14",
+    );
+    expect(screen.getAllByRole("link", { name: /lot-14/ })).toHaveLength(1);
+  });
+
+  it("says until when a discard can be restored, then closes the window", () => {
+    const discarded = {
+      ...emailJobDetail,
+      state: "discarded" as const,
+      retry: { allowed: false as const, reason: "Restore it to retry it." },
+      discard: {
+        reasonLabel: "Duplicate",
+        note: null,
+        at: "2026-11-01T09:00:00.000Z",
+        byName: null,
+        restorableUntil: "2099-01-30T09:00:00.000Z",
+      },
+    };
+    const { unmount } = renderJob(discarded);
+    expect(screen.getByText(/can be restored until/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Restore" })).toBeEnabled();
+    unmount();
+    renderJob({
+      ...discarded,
+      discard: { ...discarded.discard, restorableUntil: "2026-01-30T09:00:00.000Z" },
+    });
+    expect(screen.getByText(/90-day window to restore it has passed/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Restore" }));
+    expect(restore).not.toHaveBeenCalled();
   });
 
   it("says so when the payload was not kept", () => {

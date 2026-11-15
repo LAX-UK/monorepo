@@ -2,9 +2,10 @@ import type { Database } from "@auction/db";
 import { failedJobs, webhookEvent } from "@auction/db/schema";
 import { and, asc, eq, inArray, isNotNull, isNull, ne, sql } from "drizzle-orm";
 import type { SQL } from "drizzle-orm";
-import type {
-  FailedJobNeedsReviewGroup,
-  IFailedJobNeedsReviewGroups,
+import {
+  FAILED_JOB_SEARCH_GROUPS_MAX,
+  type FailedJobNeedsReviewGroup,
+  type IFailedJobNeedsReviewGroups,
 } from "../interfaces/failed-job-review.js";
 import type {
   FailedWebhookRow,
@@ -196,7 +197,7 @@ export class DrizzleIntegrationDeadLetterRepository
         ? sql`i.failed_at ASC, i.id ASC`
         : sql`i.failed_at DESC, i.id ASC`;
 
-    const [rows, counts, queues] = await Promise.all([
+    const [rows, counts, queues, groups] = await Promise.all([
       this.db.execute(sql`${base} SELECT ${COLUMNS} ${joined}
         WHERE ${where(input.view, filters)} ORDER BY ${order}
         LIMIT ${input.limit} OFFSET ${input.offset}`),
@@ -208,6 +209,10 @@ export class DrizzleIntegrationDeadLetterRepository
       this.db.execute(sql`${base} SELECT i.kind, i.name, count(*)::int AS count ${joined}
         WHERE ${where(input.view, filterConditions(input, { ignoreQueue: true }))}
         GROUP BY i.kind, i.name ORDER BY i.kind, i.name`),
+      this.db.execute(sql`${base} SELECT i.kind || ':' || i.name AS queue, i.event_type AS "eventType",
+          ${firstErrorLine(sql`i.error_message`)} AS "errorLine", count(*)::int AS count ${joined}
+        WHERE ${where(input.view, filters)}
+        GROUP BY 1, 2, 3 ORDER BY count(*) DESC LIMIT ${FAILED_JOB_SEARCH_GROUPS_MAX}`),
     ]);
 
     const countRow = rowsOf(counts)[0] ?? {};
@@ -216,6 +221,12 @@ export class DrizzleIntegrationDeadLetterRepository
     ) as Record<IntegrationView, number>;
     return {
       rows: rowsOf(rows).map(toRecord),
+      groups: rowsOf(groups).map((row) => ({
+        queue: String(row.queue),
+        eventType: asStringOrNull(row.eventType),
+        errorLine: String(row.errorLine ?? ""),
+        count: Number(row.count),
+      })),
       total: byView[input.view],
       counts: byView,
       queues: rowsOf(queues).map((row) => ({

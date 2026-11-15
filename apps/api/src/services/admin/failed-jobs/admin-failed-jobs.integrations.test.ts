@@ -53,6 +53,7 @@ function setup(records: IntegrationDeadLetterRecord[], options: { claim?: boolea
   const search = vi.fn(async () => ({
     rows: records,
     total: records.length,
+    groups: [],
     counts: { needs_review: records.length, retried: 0, discarded: 0 },
     queues: [{ kind: "delivery" as const, name: "xero", count: records.length }],
   }));
@@ -91,10 +92,12 @@ function setup(records: IntegrationDeadLetterRecord[], options: { claim?: boolea
     reader: {
       search: vi.fn(async () => ({
         rows: [],
+        groups: [],
         total: 0,
         counts: { needs_review: 0, retried: 0, discarded: 0 },
         queues: [],
       })),
+      countNeedsReview: vi.fn().mockResolvedValue(0),
       findForReview: vi.fn().mockResolvedValue(null),
       findManyForReview: vi.fn().mockResolvedValue([]),
     },

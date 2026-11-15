@@ -24,6 +24,7 @@ export const failedJobSummarySchema: z.ZodType<FailedJobSummary> = z.object({
   jobLabel: z.string().nullable(),
   sourceLabel: z.string(),
   errorSummary: z.string(),
+  groupSize: z.number().int().min(1),
   attempts: z.number(),
   firstFailedAt: z.string(),
   lastFailedAt: z.string(),
@@ -62,6 +63,7 @@ export const failedJobDetailSchema: z.ZodType<FailedJobDetail> = failedJobSummar
         note: z.string().nullable(),
         at: z.string(),
         byName: z.string().nullable(),
+        restorableUntil: z.string(),
       })
       .nullable(),
     history: z.array(

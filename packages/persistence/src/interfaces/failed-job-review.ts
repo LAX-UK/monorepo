@@ -36,8 +36,22 @@ export type FailedJobSearch = FailedJobFilter & {
   offset: number;
 };
 
+/** Failures in the chosen view and filters that read the same, however many pages they span. */
+export type FailedJobSearchGroup = {
+  queue: string;
+  jobName: string | null;
+  /** The first non-empty line of the stored error, unscrubbed: scrub it before it is shown. */
+  errorLine: string;
+  count: number;
+};
+
+/** Most groups one search returns; the biggest come first, so a long tail is cut, not the head. */
+export const FAILED_JOB_SEARCH_GROUPS_MAX = 2000;
+
 export type FailedJobSearchResult = {
   rows: FailedJobRecord[];
+  /** Identical failures counted across every page of the view, biggest first. */
+  groups: FailedJobSearchGroup[];
   total: number;
   /** Rows in each view under the other filters, for the view tabs. */
   counts: Record<FailedJobReviewView, number>;
@@ -50,6 +64,17 @@ export interface IFailedJobReviewReader {
   search(input: FailedJobSearch): Promise<FailedJobSearchResult>;
   findForReview(id: string): Promise<FailedJobRecordWithPayload | null>;
   findManyForReview(ids: readonly string[]): Promise<FailedJobRecord[]>;
+  /** Background jobs waiting for review: one count, no rows. */
+  countNeedsReview(): Promise<number>;
+}
+
+/** Clears the stored payload of failures that were resolved before a cutoff. */
+export interface IFailedJobPayloadPurge {
+  /**
+   * Clears `payload_json` on retried or discarded jobs resolved before `cutoff`, at most `limit`
+   * rows; returns how many it cleared. Jobs still waiting for review keep their payload.
+   */
+  purgeResolvedPayloads(cutoff: Date, limit: number): Promise<number>;
 }
 
 /** Records the decision to set a failed job aside, or to take that back. */

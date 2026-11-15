@@ -7,6 +7,7 @@ import {
   PURGE_ALERT_RETENTION_QUEUE_NAME,
   PURGE_COLLECTION_HANDOVER_QUEUE_NAME,
   PURGE_EMAIL_SNAPSHOTS_QUEUE_NAME,
+  PURGE_FAILED_JOB_PAYLOADS_QUEUE_NAME,
   PURGE_KYC_RETENTION_QUEUE_NAME,
   PURGE_QR_CODE_SCANS_QUEUE_NAME,
 } from "../queue-names.js";
@@ -120,6 +121,24 @@ export const MAINTENANCE_QUEUE_REGISTRY = {
       removeOnFail: 50,
     },
     description: "Daily clearing of recipient addresses kept on finished mail after 30 days",
+  },
+  [PURGE_FAILED_JOB_PAYLOADS_QUEUE_NAME]: {
+    producers: ["worker"],
+    consumer: "worker",
+    criticality: "background",
+    pauseOrder: null,
+    heartbeatKey: null,
+    dlq: false,
+    showInUi: true,
+    allowUiRetries: false,
+    repeatable: true,
+    defaultJobOptions: {
+      attempts: 3,
+      backoff: { type: "exponential", delay: 60_000 },
+      removeOnComplete: 10,
+      removeOnFail: 50,
+    },
+    description: "Daily clearing of stored payloads on failed jobs resolved over 90 days ago",
   },
   [GC_PENDING_UPLOADS_QUEUE_NAME]: {
     producers: ["worker"],

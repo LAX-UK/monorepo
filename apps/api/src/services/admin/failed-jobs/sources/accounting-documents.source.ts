@@ -121,6 +121,7 @@ export class AccountingDocumentsSource implements FailedJobSourceAdapter {
       jobLabel: document.reference,
       sourceLabel: "Integrations · Zoho Books",
       errorSummary: accountingProblemText(reasonOf(document)),
+      groupSize: 1,
       attempts: document.record.attempts,
       firstFailedAt: firstFailedAt(document),
       lastFailedAt: lastFailedAt(document),

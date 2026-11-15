@@ -14,6 +14,7 @@ import {
   type FailedJobRetryAvailability,
   type FailedJobState,
   type FailedJobSummary,
+  failedJobRestorableUntil,
   isFailedJobDiscardReason,
 } from "@auction/types";
 import { backgroundJobScreenId } from "./failed-job-id.js";
@@ -54,6 +55,7 @@ export function toFailedJobSummary(
     jobLabel: failedJobNameLabel(record.originalQueue, record.originalJobName),
     sourceLabel: info.sourceLabel,
     errorSummary: summariseError(record.errorMessage),
+    groupSize: 1,
     attempts: record.attempts,
     firstFailedAt: record.firstFailedAt.toISOString(),
     lastFailedAt: record.failedAt.toISOString(),
@@ -99,8 +101,40 @@ export function toFailedJobDetail(
             note: record.discardNote,
             at: record.discardedAt.toISOString(),
             byName: discardedBy,
+            restorableUntil: failedJobRestorableUntil(record.discardedAt),
           }
         : null,
     history,
   };
+}
+
+/** Failures that read the same, as the store counts them (error line not yet summarised). */
+export type FailureGroupCount = {
+  queue: string;
+  jobLabel: string | null;
+  errorLine: string;
+  count: number;
+};
+
+const groupKey = (queue: string, jobLabel: string | null, errorSummary: string) =>
+  [queue, jobLabel ?? "", errorSummary].join("\u0000");
+
+/**
+ * Sets each row's `groupSize` to how many failures across every page read the same as it does.
+ * Groups are matched the way the screen groups rows (job type, job and summarised error), so two
+ * stored errors that summarise alike count together.
+ */
+export function withGroupSizes(
+  rows: readonly FailedJobSummary[],
+  groups: readonly FailureGroupCount[],
+): FailedJobSummary[] {
+  const sizes = new Map<string, number>();
+  for (const group of groups) {
+    const key = groupKey(group.queue, group.jobLabel, summariseError(group.errorLine));
+    sizes.set(key, (sizes.get(key) ?? 0) + group.count);
+  }
+  return rows.map((row) => ({
+    ...row,
+    groupSize: Math.max(1, sizes.get(groupKey(row.queue, row.jobLabel, row.errorSummary)) ?? 1),
+  }));
 }

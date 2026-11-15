@@ -82,7 +82,16 @@ function ErrorBlock({ message }: { message: string }) {
  * header for people who may act; everyone else sees the same page marked view only. A retry the
  * job's type or an operator's switch blocks is explained at the top, not just greyed out.
  */
-export function FailedJobView({ job, canAct }: { job: FailedJobDetail; canAct: boolean }) {
+export function FailedJobView({
+  job,
+  canAct,
+  recordHrefs = [],
+}: {
+  job: FailedJobDetail;
+  canAct: boolean;
+  /** The admin page of each payload record, aligned to the payload; null where there is none. */
+  recordHrefs?: readonly (string | null)[];
+}) {
   const actions = useFailedJobActions();
   const badge = FAILED_JOB_STATE_BADGE[job.state];
   const needsReview = job.state === "needs_review";
@@ -90,11 +99,22 @@ export function FailedJobView({ job, canAct }: { job: FailedJobDetail; canAct: b
   const family = failedJobSourceFamily(job.source);
   const copy = FAILED_JOB_DETAIL_COPY[family];
 
+  const restoreClosed =
+    job.discard !== null && new Date(job.discard.restorableUntil).getTime() < Date.now();
+
   const notice = job.discard ? (
     <Notice tone="info" title={copy.discardedTitle}>
       {job.discard.reasonLabel}
       {job.discard.note ? `: ${job.discard.note}` : ""}
-      {job.discard.byName ? ` Discarded by ${job.discard.byName}.` : ""}
+      {job.discard.byName ? ` Discarded by ${job.discard.byName}.` : ""}{" "}
+      {restoreClosed ? (
+        "The 90-day window to restore it has passed and its payload has been cleared."
+      ) : (
+        <>
+          It can be restored until <StaffDate value={job.discard.restorableUntil} />, after which
+          its payload is cleared.
+        </>
+      )}
     </Notice>
   ) : retryBlocked && job.retry.allowed === false ? (
     <Notice tone="warning" title="Retry isn't available">
@@ -159,6 +179,9 @@ export function FailedJobView({ job, canAct }: { job: FailedJobDetail; canAct: b
                   icon={<Undo2 aria-hidden />}
                   loading={actions.busy}
                   onClick={() => actions.restore([job.id])}
+                  {...(restoreClosed
+                    ? { disabledReason: "Discarded more than 90 days ago; its payload is cleared." }
+                    : {})}
                 >
                   Restore
                 </StaffButton>
@@ -225,9 +248,16 @@ export function FailedJobView({ job, canAct }: { job: FailedJobDetail; canAct: b
         >
           {job.payload.length > 0 ? (
             <KeyValueList
-              items={job.payload.map((entry) => ({
+              items={job.payload.map((entry, index) => ({
                 label: entry.label,
-                value: entry.masked ? (
+                value: recordHrefs[index] ? (
+                  <Link
+                    href={recordHrefs[index] as string}
+                    className="text-staff-fg underline decoration-staff-line-strong underline-offset-2 hover:decoration-staff-fg"
+                  >
+                    {entry.value}
+                  </Link>
+                ) : entry.masked ? (
                   <span className="inline-flex items-center gap-1.5">
                     {entry.value}
                     <Lock aria-label="Masked" className="size-3 text-staff-subtle" />

@@ -3,7 +3,7 @@ import type {
   IFailedJobDisposition,
   IFailedJobReviewReader,
 } from "@auction/persistence/interfaces";
-import { failedJobTypeInfo, knownFailedJobQueues } from "@auction/queues";
+import { failedJobNameLabel, failedJobTypeInfo, knownFailedJobQueues } from "@auction/queues";
 import type { FailedJobDetail } from "@auction/types";
 import type { IQueueMutator } from "../../../interfaces/queue-inspector.js";
 import { backgroundJobStoreId, isBackgroundJobScreenId } from "../failed-job-id.js";
@@ -12,6 +12,7 @@ import {
   failedJobState,
   toFailedJobDetail,
   toFailedJobSummary,
+  withGroupSizes,
 } from "../failed-job-presenter.js";
 import type {
   FailedJobSourceAdapter,
@@ -67,7 +68,15 @@ export class BackgroundJobsSource implements FailedJobSourceAdapter {
     ]);
     return {
       readable: true,
-      rows: result.rows.map((record) => toFailedJobSummary(record, context)),
+      rows: withGroupSizes(
+        result.rows.map((record) => toFailedJobSummary(record, context)),
+        result.groups.map((group) => ({
+          queue: group.queue,
+          jobLabel: failedJobNameLabel(group.queue, group.jobName),
+          errorLine: group.errorLine,
+          count: group.count,
+        })),
+      ),
       total: result.total,
       counts: result.counts,
       queues: [...queueIds].map((id) => ({
@@ -109,6 +118,7 @@ export class BackgroundJobsSource implements FailedJobSourceAdapter {
       id: screenId,
       source: "background_jobs",
       state: failedJobState(record),
+      discardedAt: record.discardedAt,
       retry: failedJobRetry(record, actionsEnabled),
       mayRepeat: failedJobTypeInfo(record.originalQueue).mayRepeat,
       auditId: record.id,

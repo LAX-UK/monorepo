@@ -64,6 +64,14 @@ export type IntegrationSearch = {
 
 export type IntegrationSearchResult = {
   rows: IntegrationDeadLetterRecord[];
+  /** Identical failures counted across every page of the view, biggest first. */
+  groups: {
+    /** `delivery:xero`, `webhook:stripe`. */
+    queue: string;
+    eventType: string | null;
+    errorLine: string;
+    count: number;
+  }[];
   total: number;
   counts: Record<IntegrationView, number>;
   /** Rows per consumer or sender in the chosen view, under the other filters. */
