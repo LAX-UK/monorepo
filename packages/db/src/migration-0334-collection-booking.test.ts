@@ -98,12 +98,14 @@ describe("migration 0334 collection booking", () => {
   });
 
   it("is mirrored by the Drizzle tables, column for column", () => {
-    // Later migrations add columns to the place: the per-account visit cap and the storage charge.
+    // Later migrations add columns to the place: the per-account visit cap, and the charging
+    // switch and VAT treatment for storage terms.
     expect(columnNames(collectionPlace)).toEqual(
       [
         ...declaredColumns(migration, "collection_place"),
         "max_active_visits",
-        "storage_charge_pence",
+        "raise_storage_invoices",
+        "storage_vat_treatment",
       ].sort(),
     );
     expect(columnNames(collectionWeeklyHours)).toEqual(

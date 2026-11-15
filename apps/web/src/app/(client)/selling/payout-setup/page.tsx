@@ -20,6 +20,7 @@ import { resolveSellerWorkspaceContext } from "@/lib/legal-entity/seller-acting-
 import { organisationHref } from "@/lib/navigation/client-routes";
 import { payoutSetupSteps } from "@/lib/presenters/payout-setup-steps";
 import { EmailLink } from "@auction/marketing-ui/email-text";
+import type { LegalEntityMemberRole } from "@auction/types";
 import { redirect } from "next/navigation";
 
 export default async function SellerPayoutSetupPage() {
@@ -44,7 +45,7 @@ export default async function SellerPayoutSetupPage() {
   let connectFailure: StripeConnectLoadError | null = null;
   let syncDegraded = false;
   let isLaxManaged = false;
-  let memberRole = "owner";
+  let memberRole: LegalEntityMemberRole = "owner";
   let entityStatus = "connect_pending";
 
   if (sellerEntityId) {

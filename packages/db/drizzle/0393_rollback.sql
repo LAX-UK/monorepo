@@ -1,28 +1,27 @@
--- Rollback for 0393_zoho_gallery_sale. Roll the release back first: the previous release records
--- no gallery sales and closes no item as staff_resolved. History is append-only, so the new event
--- rows are kept and the event type CHECK is restored NOT VALID (existing rows are not re-checked,
--- new ones are). Items closed as staff_resolved are relabelled 'withdrawn' (the artwork left sale)
--- so the previous resolution CHECK holds. Also removes this migration's ledger row so a later
--- deploy reapplies it.
+-- Rollback for 0393_collection_storage_terms. Roll the release back first: nothing may still read
+-- or write the new tables or columns. Storage terms, extensions, waivers, the audit rows, the
+-- large-work marks and the terms each lot was sold under are deleted with them. The weekly charge
+-- column (storage_charge_pence) was never touched. free_storage_days was left in place, so the free
+-- period still applies. Also removes this migration's ledger row so a later deploy reapplies it.
 BEGIN;
 
-ALTER TABLE "artwork_register_event" DROP CONSTRAINT IF EXISTS "artwork_register_event_type_check";
-ALTER TABLE "artwork_register_event" ADD CONSTRAINT "artwork_register_event_type_check" CHECK (
-  "type" IN (
-    'created', 'offer_moved', 'zoho_change_applied', 'conflict_recorded', 'conflict_resolved',
-    'zoho_writeback_recorded', 'move_confirmed', 'lax_art_draft_created',
-    'zoho_link_linked', 'zoho_link_unlinked',
-    'sold_while_live_raised', 'sold_while_live_resolved', 'sold_while_live_overridden'
-  )
-) NOT VALID;
+SET LOCAL lock_timeout = '5s';
 
-UPDATE "artwork_register_sold_attention" SET "resolution" = 'withdrawn'
-  WHERE "resolution" = 'staff_resolved';
-ALTER TABLE "artwork_register_sold_attention"
-  DROP CONSTRAINT IF EXISTS "artwork_register_sold_attention_resolution_check";
-ALTER TABLE "artwork_register_sold_attention" ADD CONSTRAINT "artwork_register_sold_attention_resolution_check"
-  CHECK ("resolution" IS NULL OR "resolution" IN
-    ('zoho_status_changed', 'withdrawn', 'sold_in_lax', 'replaced', 'staff_override'));
+DROP TABLE IF EXISTS "collection_storage_audit";
+DROP TABLE IF EXISTS "collection_storage_waiver";
+DROP TABLE IF EXISTS "collection_storage_extension";
+
+DROP INDEX IF EXISTS "lot_fulfilment_storage_terms_idx";
+ALTER TABLE "lot_fulfilment" DROP CONSTRAINT IF EXISTS "lot_fulfilment_storage_terms_id_fk";
+ALTER TABLE "lot_fulfilment" DROP COLUMN IF EXISTS "storage_terms_id";
+ALTER TABLE "lot" DROP COLUMN IF EXISTS "storage_large";
+
+ALTER TABLE "collection_place" DROP CONSTRAINT IF EXISTS "collection_place_charging_needs_vat_check";
+ALTER TABLE "collection_place" DROP CONSTRAINT IF EXISTS "collection_place_storage_vat_check";
+ALTER TABLE "collection_place" DROP COLUMN IF EXISTS "storage_vat_treatment";
+ALTER TABLE "collection_place" DROP COLUMN IF EXISTS "raise_storage_invoices";
+
+DROP TABLE IF EXISTS "collection_storage_terms";
 
 DELETE FROM drizzle.__drizzle_migrations WHERE created_at = 1812196800000;
 

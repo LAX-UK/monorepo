@@ -29,6 +29,7 @@ function availability(over: Partial<CollectionAvailability> = {}): CollectionAva
     venueId: "v",
     onlineBookingEnabled: true,
     bookingEmail: "info@thelax.art",
+    contactPhone: null,
     visitMinutes: 30,
     windowDays: 28,
     noticeCutoffLocal: "16:00",
@@ -65,6 +66,7 @@ function availability(over: Partial<CollectionAvailability> = {}): CollectionAva
 }
 
 const visit: CollectionVisitView = {
+  contactPhone: null,
   id: "7a1b4c5e-7f0e-4c8e-9a54-2b7f3c1a9e09",
   reference: "COL-1042",
   status: "booked",

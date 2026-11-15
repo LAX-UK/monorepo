@@ -1,7 +1,8 @@
+import { removeBasketLine } from "@/app/actions/basket.actions";
 /** @vitest-environment jsdom */
 import { BasketLinesClient } from "@/components/basket/basket-lines.client";
 import type { BasketLine } from "@auction/shop-contracts";
-import { cleanup, render, screen, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn(), push: vi.fn() }) }));
@@ -101,5 +102,15 @@ describe("BasketLinesClient", () => {
   it("shows the empty state when nothing is left", () => {
     show([]);
     expect(screen.getByText("Your basket is empty")).toBeTruthy();
+  });
+
+  it("announces a removed line in a polite live region", async () => {
+    vi.mocked(removeBasketLine).mockResolvedValue({ ok: true } as never);
+    const { container } = show([line]);
+    fireEvent.click(screen.getByRole("button", { name: "Remove Warm Basket" }));
+    await waitFor(() => {
+      const region = container.querySelector('p.sr-only[aria-live="polite"]');
+      expect(region?.textContent).toBe("Warm Basket removed from your basket.");
+    });
   });
 });

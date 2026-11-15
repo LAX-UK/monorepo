@@ -65,7 +65,11 @@ export function attachUserWatchlistRoutes(r: UserHono, deps: UserRouteDeps): voi
   r.get("/me/watchlist", requireAuth, zValidator("query", watchlistQuerySchema), async (c) => {
     const userId = c.get("userId") as string;
     const query = c.req.valid("query");
-    const response = await container.userRoutes.watchlistHttp.listWatchlist({ userId, query });
+    const response = await container.userRoutes.watchlistHttp.listWatchlist({
+      userId,
+      query,
+      viewer: { role: c.get("userRole"), staffRoles: c.get("userStaffRoles") },
+    });
     return respondUserHttpJson(c, response);
   });
 

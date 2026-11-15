@@ -4,6 +4,7 @@ import {
   type CollectionWeeklyHours,
   bankHolidayClosures,
   createCollectionCalendar,
+  nextOpenDay,
   noticeDeadline,
   noticeWindow,
   workingDayBefore,
@@ -330,5 +331,48 @@ describe("the notice window at the boundary", () => {
       noticeWindow(at(now), summer, DEFAULT_COLLECTION_RULES, calendarOf()).open;
     expect(inWindow("2026-06-15T15:00:00Z")).toBe(true);
     expect(inWindow("2026-06-15T15:00:00.001Z")).toBe(false);
+  });
+});
+
+describe("nextOpenDay", () => {
+  it("keeps a day the place is open", () => {
+    expect(nextOpenDay(calendarOf(), "2026-12-09")).toBe("2026-12-09"); // Wednesday
+  });
+
+  it("moves a weekend day to the following Monday", () => {
+    expect(nextOpenDay(calendarOf(), "2026-12-12")).toBe("2026-12-14"); // Saturday
+    expect(nextOpenDay(calendarOf(), "2026-12-13")).toBe("2026-12-14"); // Sunday
+  });
+
+  it("moves a bank holiday to the next open day", () => {
+    // Christmas Day 2026 is a Friday, Boxing Day (substitute) is Monday 28 Dec.
+    expect(nextOpenDay(calendarOf(UK_2026), "2026-12-25")).toBe("2026-12-29");
+  });
+
+  it("moves a closure spanning several days past its last day", () => {
+    const calendar = calendarOf([closure("2026-12-14", "staff", "2026-12-18")]);
+    expect(nextOpenDay(calendar, "2026-12-15")).toBe("2026-12-21");
+    expect(nextOpenDay(calendar, "2026-12-12")).toBe("2026-12-21");
+  });
+
+  it("treats a part-day closure that covers every opening range as closed", () => {
+    // 10:00 to 19:00 entered as hours rather than as a whole day: nothing is left to open.
+    const covered = calendarOf([
+      { ...closure("2026-12-16", "staff"), opensLocal: "10:00", closesLocal: "19:00" },
+    ]);
+    expect(nextOpenDay(covered, "2026-12-16")).toBe("2026-12-17");
+    const partial = calendarOf([
+      { ...closure("2026-12-16", "staff"), opensLocal: "10:00", closesLocal: "12:00" },
+    ]);
+    expect(nextOpenDay(partial, "2026-12-16")).toBe("2026-12-16");
+  });
+
+  it("returns the date unchanged when the place is never open", () => {
+    const never = createCollectionCalendar({
+      hours: [],
+      exceptions: [],
+      rules: DEFAULT_COLLECTION_RULES,
+    });
+    expect(nextOpenDay(never, "2026-12-12")).toBe("2026-12-12");
   });
 });

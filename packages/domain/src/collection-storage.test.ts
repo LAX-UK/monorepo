@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import { bankHolidayClosures, createCollectionCalendar } from "./collection-calendar.js";
+import { DEFAULT_COLLECTION_RULES } from "./collection-rules.js";
 import {
   type CollectByPolicy,
   DEFAULT_COLLECT_BY_POLICY,
@@ -156,5 +158,65 @@ describe("whether a paid purchase still waits to be collected", () => {
     expect(awaitsCollection({ ...waiting, bookingOpen: false })).toBe(false);
     expect(awaitsCollection({ ...waiting, booked: true })).toBe(false);
     expect(awaitsCollection({ ...waiting, fulfilment: null })).toBe(false);
+  });
+});
+
+describe("the please-collect-by day on an open day", () => {
+  const hours = [1, 2, 3, 4, 5].map((weekday) => ({
+    weekday,
+    opensLocal: "10:00",
+    closesLocal: "19:00",
+  }));
+  const calendarWith = (exceptions: Parameters<typeof createCollectionCalendar>[0]["exceptions"]) =>
+    createCollectionCalendar({ hours, exceptions, rules: DEFAULT_COLLECTION_RULES });
+  const closure = (startsOn: string, endsOn: string) => ({
+    kind: "closure" as const,
+    startsOn,
+    endsOn,
+    opensLocal: null,
+    closesLocal: null,
+    source: "staff" as const,
+  });
+  const clearedOn = (iso: string) => new Date(`${iso}T10:00:00Z`);
+
+  it("keeps a day the place is open", () => {
+    // 9 Nov + 30 = Wed 9 Dec.
+    expect(collectBy(clearedOn("2026-11-09"), undefined, calendarWith([])).date).toBe("2026-12-09");
+  });
+
+  it("moves a weekend to Monday, with the reminders following it", () => {
+    // 12 Nov + 30 = Sat 12 Dec.
+    expect(collectBy(clearedOn("2026-11-12"), undefined, calendarWith([]))).toEqual({
+      date: "2026-12-14",
+      reminderDates: ["2026-12-07", "2026-12-14"],
+    });
+  });
+
+  it("moves a bank holiday to the next open day", () => {
+    // 25 Nov + 30 = Fri 25 Dec; Boxing Day Monday 28 Dec is the substitute holiday.
+    const calendar = calendarWith(bankHolidayClosures([2026]));
+    expect(collectBy(clearedOn("2026-11-25"), undefined, calendar).date).toBe("2026-12-29");
+  });
+
+  it("moves a closure spanning several days past its end", () => {
+    const calendar = calendarWith([closure("2026-12-08", "2026-12-11")]);
+    expect(collectBy(clearedOn("2026-11-09"), undefined, calendar).date).toBe("2026-12-14");
+  });
+
+  it("is the same day for the reminder, the purchase notice and the date itself", () => {
+    const calendar = calendarWith([]);
+    const cleared = clearedOn("2026-11-12");
+    expect(collectByReminderFor(cleared, "2026-12-14", undefined, calendar)).toEqual({
+      kind: "day",
+      collectBy: "2026-12-14",
+    });
+    expect(collectByReminderFor(cleared, "2026-12-12", undefined, calendar)).toEqual({
+      kind: "lead",
+      collectBy: "2026-12-14",
+    });
+    expect(purchaseCollectBy(cleared, "2026-12-13", undefined, calendar)).toEqual({
+      date: "2026-12-14",
+      state: "soon",
+    });
   });
 });

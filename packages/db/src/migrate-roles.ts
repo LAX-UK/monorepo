@@ -249,6 +249,13 @@ export const API_PRIVATE_SALE_ARTWORK_HISTORY_TABLES = [
 ] as const;
 
 /**
+ * Each change to a place's storage terms, charging switch and VAT treatment, and to a lot's large
+ * mark, extension and waiver. Append-only, so api_app gets INSERT and SELECT only; no other role
+ * has access.
+ */
+export const API_COLLECTION_STORAGE_AUDIT_TABLES = ["collection_storage_audit"] as const;
+
+/**
  * The reference each bank-transfer payment shows its sender, kept for after the provider stops
  * showing it. Append-only, so api_app gets INSERT and SELECT only; no other role touches it.
  */
@@ -705,6 +712,10 @@ export const WORKER_READ_TABLES = [
   "collection_exception",
   "collection_booking",
   "collection_booking_lot",
+  /** The storage reminder sweep reads the terms a lot was sold under and what staff gave it. */
+  "collection_storage_terms",
+  "collection_storage_extension",
+  "collection_storage_waiver",
   /**
    * The books (Zoho Books) read a settled "Pay several" payment: its stored total, currency and
    * day, and the courier quotes charged with the lots. Read only; the API settles groups.
@@ -1560,6 +1571,7 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
             continue;
           }
           if (
+            (API_COLLECTION_STORAGE_AUDIT_TABLES as readonly string[]).includes(tableName) ||
             (API_PAYMENT_REFUND_TABLES as readonly string[]).includes(tableName) ||
             (API_PAYMENT_TRANSFER_REFERENCE_TABLES as readonly string[]).includes(tableName) ||
             (API_REFUND_REVERSAL_TABLES as readonly string[]).includes(tableName)

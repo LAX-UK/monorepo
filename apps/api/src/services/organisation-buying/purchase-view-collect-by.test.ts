@@ -1,3 +1,4 @@
+import { bankHolidayClosures, createCollectionCalendar } from "@auction/domain";
 import type { AccountPurchaseFactsRow } from "@auction/persistence/interfaces";
 import { describe, expect, it } from "vitest";
 import { BUYING_ACCOUNT } from "../../testing/in-memory-workspace-buying.js";
@@ -232,5 +233,49 @@ describe("the collect-by notice follows the reminder email's exclusions", () => 
       placeId: PLACE_ID,
       placeName: "Marylebone",
     });
+  });
+});
+
+describe("the collect-by notice on a day the place is closed", () => {
+  const calendar = createCollectionCalendar({
+    hours: [1, 2, 3, 4, 5].map((weekday) => ({
+      weekday,
+      opensLocal: "10:00",
+      closesLocal: "19:00",
+    })),
+    exceptions: bankHolidayClosures([2026]),
+    rules: { closeOnSaleDays: false },
+  });
+  const withCalendar = (clearedAt: Date, now: string) =>
+    purchaseView(
+      row({
+        storage: {
+          clearedAt,
+          placeId: PLACE_ID,
+          placeName: "Marylebone",
+          freeStorageDays: null,
+          calendar,
+          bookingOpen: true,
+          booked: false,
+          saleDeleted: false,
+        },
+      }),
+      actor,
+      new Date(now),
+    ).delivery.collectBy;
+
+  it("moves a weekend deadline to Monday", () => {
+    // Cleared Thu 12 Nov: 30 days on is Sat 12 Dec.
+    expect(withCalendar(new Date("2026-11-12T10:00:00Z"), "2026-11-20T12:00:00Z")?.date).toBe(
+      "2026-12-14",
+    );
+  });
+
+  it("moves a bank holiday deadline to the next open day, and is overdue only after it", () => {
+    // Cleared Wed 25 Nov: 30 days on is Fri 25 Dec; Boxing Day's Monday is also a holiday.
+    const cleared = new Date("2026-11-25T10:00:00Z");
+    expect(withCalendar(cleared, "2026-12-01T12:00:00Z")?.date).toBe("2026-12-29");
+    expect(withCalendar(cleared, "2026-12-28T12:00:00Z")?.state).toBe("soon");
+    expect(withCalendar(cleared, "2026-12-30T12:00:00Z")?.state).toBe("overdue");
   });
 });

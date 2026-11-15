@@ -288,7 +288,6 @@ describe("CollectionBookingService", () => {
               undoHandOverMinutes: 10,
               maxActiveVisits: 5,
               freeStorageDays: null,
-              storageChargePence: null,
               bookingEmail: over.bookingEmail ?? null,
               updatedAt: NOW,
             },

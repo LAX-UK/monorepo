@@ -11,7 +11,7 @@ import {
 } from "@auction/marketing-ui";
 import { Button } from "@auction/ui/components/button";
 import { Dialog, DialogContent, DialogTitle } from "@auction/ui/components/dialog";
-import { type PointerEvent, useEffect, useRef, useState } from "react";
+import { type PointerEvent, useEffect, useLayoutEffect, useRef, useState } from "react";
 
 const SWIPE_THRESHOLD_PX = 48;
 
@@ -45,6 +45,20 @@ export function ArtworkImageViewer({
   const swipe = useRef<{ x: number; y: number } | null>(null);
   const image = images[index] ?? images[0];
   const count = images.length;
+
+  // The viewer opens from state, not from a Radix trigger, so remember what had focus on open
+  // and give it back on close (the phone menu's pattern).
+  const opener = useRef<HTMLElement | null>(null);
+  useLayoutEffect(() => {
+    if (!open) return;
+    opener.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+  }, [open]);
+  const returnFocus = (event: Event) => {
+    const target = opener.current;
+    if (!target?.isConnected || target === document.body) return;
+    event.preventDefault();
+    target.focus({ preventScroll: true });
+  };
 
   // A new image or a fresh open starts fitted.
   // biome-ignore lint/correctness/useExhaustiveDependencies: reset when the image or open state changes
@@ -109,6 +123,7 @@ export function ArtworkImageViewer({
         overlayClassName="shop-viewer__overlay"
         closeClassName="shop-viewer__close"
         aria-describedby={undefined}
+        onCloseAutoFocus={returnFocus}
         onKeyDown={(event) => {
           if (zoomed || count < 2) return;
           if (event.key === "ArrowRight") {

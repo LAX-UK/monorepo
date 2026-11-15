@@ -149,7 +149,7 @@ export default async function CollectRoute({ searchParams }: PageProps) {
             title={visit ? COLLECT_COPY.tooLate.change : "We couldn't find that booking"}
             description={
               visit
-                ? COLLECT_COPY.booked.afterCutoff(contactEmail)
+                ? COLLECT_COPY.booked.afterCutoff(contactEmail, visit.contactPhone)
                 : "It may have been cancelled or already changed. Your collections are listed here."
             }
             actions={

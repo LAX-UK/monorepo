@@ -372,6 +372,7 @@ export {
   MarketingPhoneMenu,
   type MarketingPhoneMenuHelpLink,
   type MarketingPhoneMenuProps,
+  type MarketingPhoneMenuShortcut,
 } from "./header/marketing-phone-menu.js";
 export {
   MarketingAccountSheet,

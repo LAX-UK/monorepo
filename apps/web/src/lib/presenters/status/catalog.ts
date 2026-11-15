@@ -1,6 +1,7 @@
 import type { ArtistStatus, ItemSubmissionStatus, LotStatus, SaleStatus } from "@auction/types";
 import type { StatusBadgeVariant } from "./core";
 import { badgeVariantFromRegistry } from "./core";
+import { NEEDS_CHANGES_LABEL } from "./labels";
 
 export const lotStatusLabel: Record<LotStatus, string> = {
   draft: "Draft",
@@ -26,11 +27,13 @@ export const artistStatusLabel: Record<ArtistStatus, string> = {
   merged_into: "Merged",
 };
 
+export { NEEDS_CHANGES_LABEL };
+
 export const submissionStatusLabel: Record<ItemSubmissionStatus, string> = {
   draft: "Draft",
   submitted: "Submitted",
   under_review: "Under review",
-  changes_requested: "Needs changes",
+  changes_requested: NEEDS_CHANGES_LABEL,
   approved: "Approved",
   rejected: "Rejected",
   withdrawn: "Withdrawn",

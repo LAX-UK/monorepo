@@ -1,3 +1,4 @@
+import { type CollectionCalendar, nextOpenDay } from "./collection-calendar.js";
 import { type DateKey, addDaysToKey, londonDateKey } from "./collection-time.js";
 import type { FulfilmentFacts } from "./purchase-delivery-stage.js";
 
@@ -21,12 +22,21 @@ export type CollectBy = {
   reminderDates: [DateKey, DateKey];
 };
 
-/** The "Please collect by" day: the London day payment cleared plus the free storage period. */
+/** The place's opening calendar, when known; `collectBy` then moves a closed day to an open one. */
+export type CollectByCalendar = Pick<CollectionCalendar, "plan">;
+
+/**
+ * The "Please collect by" day: the London day payment cleared plus the free storage period. When
+ * the place's calendar is given and it is closed that day (weekend, bank holiday, closure), the
+ * next open day. Every notice reads the date from here, so they all show the same one.
+ */
 export function collectBy(
   clearedAt: Date,
   policy: CollectByPolicy = DEFAULT_COLLECT_BY_POLICY,
+  calendar?: CollectByCalendar,
 ): CollectBy {
-  const date = addDaysToKey(londonDateKey(clearedAt), policy.freeStorageDays);
+  const counted = addDaysToKey(londonDateKey(clearedAt), policy.freeStorageDays);
+  const date = calendar ? nextOpenDay(calendar, counted) : counted;
   return { date, reminderDates: [addDaysToKey(date, -policy.reminderLeadDays), date] };
 }
 
@@ -54,8 +64,9 @@ export function collectByReminderFor(
   clearedAt: Date,
   today: DateKey,
   policy: CollectByPolicy = DEFAULT_COLLECT_BY_POLICY,
+  calendar?: CollectByCalendar,
 ): CollectByReminder | null {
-  const { date, reminderDates } = collectBy(clearedAt, policy);
+  const { date, reminderDates } = collectBy(clearedAt, policy, calendar);
   if (today === date) return { kind: "day", collectBy: date };
   const early = policy.freeStorageDays > policy.reminderLeadDays;
   if (early && today >= reminderDates[0] && today < date) return { kind: "lead", collectBy: date };
@@ -100,8 +111,9 @@ export function purchaseCollectBy(
   clearedAt: Date,
   today: DateKey,
   policy: CollectByPolicy = DEFAULT_COLLECT_BY_POLICY,
+  calendar?: CollectByCalendar,
 ): PurchaseCollectBy {
-  const { date, reminderDates } = collectBy(clearedAt, policy);
+  const { date, reminderDates } = collectBy(clearedAt, policy, calendar);
   if (today > date) return { date, state: "overdue" };
   const early = policy.freeStorageDays > policy.reminderLeadDays;
   return { date, state: today >= (early ? reminderDates[0] : date) ? "soon" : "upcoming" };

@@ -77,6 +77,8 @@ export function createDrizzleCheckoutRepository(
     merchandiseEnabled?: boolean;
     /** SHOP_FRAMING_ENABLED: while off, a framed basket is refused at checkout. */
     framingEnabled?: boolean;
+    /** Copies of one edition an order may hold; null or absent leaves only the stock. */
+    editionOrderLimit?: number | null;
     /**
      * Whether delivery outside the UK may be paid for. Off until the accountant confirms how VAT
      * applies to exports: with it off, no outside-UK order opens a payment, however it was made.
@@ -246,7 +248,11 @@ export function createDrizzleCheckoutRepository(
       } = await loadCheckoutBasket(
         db,
         { basketId: input.basketId, ownedBy: (owner) => ownsBasket(owner, input) },
-        { merchandiseEnabled, framingEnabled },
+        {
+          merchandiseEnabled,
+          framingEnabled,
+          editionOrderLimit: options.editionOrderLimit ?? null,
+        },
       );
       if (options.moneyPause) {
         await assertCheckoutNotPaused(

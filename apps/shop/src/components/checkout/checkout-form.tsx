@@ -8,6 +8,7 @@ import {
 import { startGuestCheckout } from "@/app/actions/guest-checkout.actions";
 import {
   CheckoutOrderSummary,
+  CheckoutStickySummaryBar,
   CheckoutSummaryDisclosure,
 } from "@/components/checkout/checkout-order-summary";
 import { DeliveryQuoteSent } from "@/components/checkout/delivery-quote-sent";
@@ -297,7 +298,7 @@ export function CheckoutForm({
   }
 
   return (
-    <div className="shop-checkout__layout">
+    <div className="shop-checkout__layout shop-checkout__layout--with-bar">
       <CheckoutSummaryDisclosure basket={basket} fulfilment={details.choice} />
       <form id={FORM_ID} className="shop-checkout__form" noValidate onSubmit={onSubmit}>
         <MarketingFormErrorSummary errors={summaryErrors} focusKey={failedSubmits} />
@@ -612,6 +613,8 @@ export function CheckoutForm({
           </section>
         ) : null}
       </form>
+
+      <CheckoutStickySummaryBar basket={basket} fulfilment={details.choice} />
 
       <CheckoutOrderSummary
         basket={basket}

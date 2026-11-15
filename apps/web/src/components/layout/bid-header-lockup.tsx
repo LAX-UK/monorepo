@@ -23,7 +23,9 @@ export function BidHeaderLockup({ onNavigate }: { onNavigate?: () => void }) {
       {...(onNavigate ? { onClick: onNavigate } : {})}
     >
       {/* h-7 is LOCKUP_HEIGHTS.phoneMark (28px) and h-10 is LOCKUP_HEIGHTS.desktopBid (40px). */}
-      <LaxLockup kind="bid-compact" className="block h-7 w-auto lg:hidden" />
+      {/* Below 400px the bare mark leaves room for the attention chip; the tag returns from 400px. */}
+      <LaxLockup kind="mark" className="block h-7 w-auto min-[400px]:hidden" />
+      <LaxLockup kind="bid-compact" className="hidden h-7 w-auto min-[400px]:block lg:hidden" />
       <LaxLockup kind="bid" className="hidden h-10 w-auto lg:block" />
     </Link>
   );
