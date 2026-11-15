@@ -37,7 +37,7 @@ export type PasskeyCounterReader = {
 };
 
 export type PasskeyRequestPorts = {
-  grants: Pick<PasskeyEnrolmentGrants, "holds" | "spend" | "grant" | "noteCreated">;
+  grants: Pick<PasskeyEnrolmentGrants, "holds" | "spend" | "giveBack" | "noteCreated">;
   /** Runs once a passkey has been made: the one security email. The audit event is already stored. */
   onRegistered(input: {
     userId: string;
@@ -49,7 +49,7 @@ export type PasskeyRequestPorts = {
 };
 
 /** The permission a passkey creation is running on, to give back if the creation fails. */
-export type Enrolment = { userId: string; sessionId: string };
+export type Enrolment = { userId: string; sessionId: string; expiresAtMs: number };
 
 export type PasskeyBefore =
   | { kind: "answer"; response: Response }
@@ -138,8 +138,13 @@ export function createPasskeyRequestPolicy(deps: {
         };
       }
       // Used up atomically: of two answers made with one step-up, only one gets through.
-      if (!(await passkeys.grants.spend(sessionId, userId))) return notAllowed;
-      return { kind: "forward", request, enrolment: { userId, sessionId } };
+      const spent = await passkeys.grants.spend(sessionId, userId);
+      if (!spent) return notAllowed;
+      return {
+        kind: "forward",
+        request,
+        enrolment: { userId, sessionId, expiresAtMs: spent.expiresAtMs },
+      };
     } catch (error) {
       deps.log.error({ ...describeError(error), path }, "auth_passkey_gate_failed");
       return { kind: "answer", response: unavailable() };
@@ -205,12 +210,18 @@ export function createPasskeyRequestPolicy(deps: {
       }
       if (step !== "register_verify" || !enrolment || !deps.passkeys) return response;
       if (!response.ok) {
-        // Nothing was made: the permission goes back, so the person can try again.
+        // Nothing was made: the permission goes back until the moment it would have ended (never
+        // later), so the person can try again without a failed attempt stretching the original
+        // five minutes.
         await settleSecurityEffect(
           deps.log,
           { path: input.path, effect: "passkey_permission_returned", userId: enrolment.userId },
           () =>
-            deps.passkeys?.grants.grant(enrolment.sessionId, enrolment.userId) ?? Promise.resolve(),
+            deps.passkeys?.grants.giveBack(
+              enrolment.sessionId,
+              enrolment.userId,
+              enrolment.expiresAtMs,
+            ) ?? Promise.resolve(),
         );
         return response;
       }
