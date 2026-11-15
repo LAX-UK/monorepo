@@ -4,6 +4,7 @@ import { FactCard } from "../components/FactCard.js";
 import { Layout } from "../components/Layout.js";
 import { TextBlock } from "../components/TextBlock.js";
 import type { TemplateVarsByName } from "../types.js";
+import { collectionContactLine } from "./collection-contact.js";
 
 type Vars = TemplateVarsByName["collection-collect-by"];
 
@@ -29,6 +30,8 @@ export default function CollectionCollectByEmail({
   address,
   lots,
   bookUrl,
+  contactEmail,
+  contactPhone,
   storagePolicyUrl,
   quoteUrl,
 }: Vars) {
@@ -69,6 +72,7 @@ export default function CollectionCollectByEmail({
         </a>{" "}
         instead.
       </TextBlock>
+      <TextBlock>{collectionContactLine(contactEmail, contactPhone)}</TextBlock>
     </Layout>
   );
 }

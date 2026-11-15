@@ -331,26 +331,6 @@ export function HoursRulesForm({ settings, canChange }: Props) {
             />
           </Field>
           <Field
-            label="Storage charge"
-            description="Per lot, per week. For Finance only"
-            id={field("storage_charge")}
-            error={shown.rules.storage_charge}
-            optional
-            disabled={locked}
-          >
-            <TextInput
-              inputMode="decimal"
-              leading={
-                <span aria-hidden="true" className="pl-3 text-staff-sm text-staff-muted">
-                  £
-                </span>
-              }
-              value={draft.storageChargePounds}
-              maxLength={7}
-              onChange={(event) => set("storageChargePounds", event.target.value)}
-            />
-          </Field>
-          <Field
             label="Hand-over can be undone for"
             description="Minutes after it is recorded"
             id={field("undo_hand_over_minutes")}

@@ -43,7 +43,6 @@ function saveBody(
     undoHandOverMinutes: s.undoHandOverMinutes,
     maxActiveVisits: s.maxActiveVisits,
     freeStorageDays: s.freeStorageDays,
-    storageChargePence: s.storageChargePence,
     bookingEmail: s.bookingEmail,
     hours: store.hours.map((h) => ({ ...h })),
     ...over,
@@ -154,35 +153,15 @@ describe("saving", () => {
     expect(JSON.stringify(events.events[0]?.payload)).not.toContain("collections@lax.example");
   });
 
-  it("records a storage charge as a change, and keeps it for the next read", async () => {
+  it("records a free storage change", async () => {
     const { service, store, events } = setup();
     const saved = await service.save(
       STAFF,
       SETTINGS_VENUE,
-      saveBody(store, { freeStorageDays: 30, storageChargePence: 2500 }),
+      saveBody(store, { freeStorageDays: 30 }),
     );
     expect(saved.isOk()).toBe(true);
-    expect(events.events[0]?.payload).toMatchObject({
-      changed: ["free_storage_days", "storage_charge"],
-    });
-    expect(store.settings.storageChargePence).toBe(2500);
-  });
-
-  it("leaves the storage charge as it is when the save does not carry one", async () => {
-    const { service, store } = setup();
-    await service.save(STAFF, SETTINGS_VENUE, saveBody(store, { storageChargePence: 2500 }));
-    const { storageChargePence: _left, ...older } = saveBody(store, { visitMinutes: 45 });
-    const saved = await service.save(STAFF, SETTINGS_VENUE, older as never);
-    expect(saved.isOk()).toBe(true);
-    expect(store.settings.storageChargePence).toBe(2500);
-    expect(store.settings.visitMinutes).toBe(45);
-  });
-
-  it("clears the storage charge when the save sends none", async () => {
-    const { service, store } = setup();
-    await service.save(STAFF, SETTINGS_VENUE, saveBody(store, { storageChargePence: 2500 }));
-    await service.save(STAFF, SETTINGS_VENUE, saveBody(store, { storageChargePence: null }));
-    expect(store.settings.storageChargePence).toBeNull();
+    expect(events.events[0]?.payload).toMatchObject({ changed: ["free_storage_days"] });
   });
 
   it("changes nothing and records a save that changes nothing as no change", async () => {

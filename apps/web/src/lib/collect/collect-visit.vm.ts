@@ -120,7 +120,7 @@ export function visitCard(
       !canCancel &&
       visit.actions.length === 0 &&
       visit.noticeDeadline === null
-        ? COLLECT_COPY.booked.afterCutoff(context.contactEmail)
+        ? COLLECT_COPY.booked.afterCutoff(context.contactEmail, visit.contactPhone)
         : null,
     can: { change: canChange, cancel: canCancel, calendar: upcoming },
     changeHref: changeCollectionHref(visit.id),

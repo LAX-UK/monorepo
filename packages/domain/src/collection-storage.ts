@@ -26,9 +26,6 @@ export function collectByPolicyFor(freeStorageDays: number | null): CollectByPol
   };
 }
 
-/** The days a place is open, which decide where a "please collect by" day on a closed day moves. */
-export type CollectByCalendar = Pick<CollectionCalendar, "plan">;
-
 export type CollectBy = {
   /** "Please collect by" day, in London. */
   date: DateKey;
@@ -36,17 +33,21 @@ export type CollectBy = {
   reminderDates: [DateKey, DateKey];
 };
 
+/** The place's opening calendar, when known; `collectBy` then moves a closed day to an open one. */
+export type CollectByCalendar = Pick<CollectionCalendar, "plan">;
+
 /**
- * The "Please collect by" day: the London day payment cleared plus the free storage period, moved
- * to the next open day when it falls on a closed one. Without a calendar the day does not move.
+ * The "Please collect by" day: the London day payment cleared plus the free storage period. When
+ * the place's calendar is given and it is closed that day (weekend, bank holiday, closure), the
+ * next open day. Every notice reads the date from here, so they all show the same one.
  */
 export function collectBy(
   clearedAt: Date,
   policy: CollectByPolicy = DEFAULT_COLLECT_BY_POLICY,
   calendar?: CollectByCalendar,
 ): CollectBy {
-  const free = addDaysToKey(londonDateKey(clearedAt), policy.freeStorageDays);
-  const date = calendar ? nextOpenDay(calendar, free) : free;
+  const counted = addDaysToKey(londonDateKey(clearedAt), policy.freeStorageDays);
+  const date = calendar ? nextOpenDay(calendar, counted) : counted;
   return { date, reminderDates: [addDaysToKey(date, -policy.reminderLeadDays), date] };
 }
 
@@ -85,18 +86,15 @@ export function collectByReminderFor(
 
 /**
  * The London days payment must have cleared on for a purchase to be due a reminder on `today`,
- * first to last: from the free period ago to the free period less the lead ago. A deadline that
- * moves to an open day can be later than the free period, so a caller using a calendar passes the
- * longest it can move (`slackDays`) and the range starts that much earlier.
+ * first to last: from the free period ago to the free period less the lead ago.
  */
 export function collectByClearedRange(
   today: DateKey,
   policy: CollectByPolicy = DEFAULT_COLLECT_BY_POLICY,
-  slackDays = 0,
 ): { from: DateKey; to: DateKey } {
   const early = policy.freeStorageDays > policy.reminderLeadDays;
   return {
-    from: addDaysToKey(today, -policy.freeStorageDays - slackDays),
+    from: addDaysToKey(today, -policy.freeStorageDays),
     to: addDaysToKey(
       today,
       -(early ? policy.freeStorageDays - policy.reminderLeadDays : policy.freeStorageDays),

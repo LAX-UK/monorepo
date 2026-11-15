@@ -63,6 +63,8 @@ export function createDrizzleDeliveryQuoteOrderStore(
     vatPolicy?: import("@auction/shop-domain").VatPolicy | null;
     merchandiseEnabled?: boolean;
     framingEnabled?: boolean;
+    /** Copies of one edition an order may hold; null or absent leaves only the stock. */
+    editionOrderLimit?: number | null;
     notifications: Pick<ShopNotificationPublisher, "queueDeliveryQuoteRequested">;
     /** Open guest holds on one artwork above which staff are alerted; the domain's by default. */
     guestHoldAlertThreshold?: number;
@@ -191,7 +193,11 @@ export function createDrizzleDeliveryQuoteOrderStore(
       const basket = await loadCheckoutBasket(
         db,
         { basketId: input.basketId, ownedBy: (owner) => ownsBasket(owner, input) },
-        { merchandiseEnabled, framingEnabled },
+        {
+          merchandiseEnabled,
+          framingEnabled,
+          editionOrderLimit: options.editionOrderLimit ?? null,
+        },
       );
 
       const [open] = await db

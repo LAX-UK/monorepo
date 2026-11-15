@@ -1,9 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  bankHolidayClosures,
-  createCollectionCalendar,
-  nextOpenDay,
-} from "./collection-calendar.js";
+import { bankHolidayClosures, createCollectionCalendar } from "./collection-calendar.js";
 import type { CollectionException, CollectionWeeklyHours } from "./collection-calendar.js";
 import { DEFAULT_COLLECTION_RULES } from "./collection-rules.js";
 import {
@@ -61,32 +57,6 @@ const base = (over: Partial<StorageChargeInput> = {}): StorageChargeInput => ({
 
 const charge = (over: Partial<StorageChargeInput> = {}): StorageCharge =>
   calculateStorageCharge(base(over));
-
-describe("the next open day", () => {
-  it("is the day itself when the gallery is open", () => {
-    expect(nextOpenDay(calendarOf(), "2026-11-16")).toBe("2026-11-16");
-  });
-
-  it("skips a weekend", () => {
-    expect(nextOpenDay(calendarOf(), "2026-11-14")).toBe("2026-11-16");
-  });
-
-  it("skips a closure and the weekend after it", () => {
-    expect(nextOpenDay(calendarOf([closure("2026-11-13")]), "2026-11-13")).toBe("2026-11-16");
-  });
-
-  it("skips bank holidays, Christmas to the new year included", () => {
-    const calendar = calendarOf(bankHolidayClosures([2026, 2027]));
-    // Fri 25 Dec and Mon 28 Dec are bank holidays; Sat 26, Sun 27.
-    expect(nextOpenDay(calendar, "2026-12-25")).toBe("2026-12-29");
-  });
-
-  it("gives up after a year with no open day, returning the day it was given", () => {
-    expect(nextOpenDay(calendarOf([closure("2026-01-01", "2028-01-01")]), "2026-06-01")).toBe(
-      "2026-06-01",
-    );
-  });
-});
 
 describe("the collect-by day", () => {
   it("is the cleared day plus the free days, counted in calendar days", () => {

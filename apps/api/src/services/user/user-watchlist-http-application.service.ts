@@ -11,7 +11,10 @@ import type { IMarketingEventService } from "../interfaces/marketing-event-servi
 import type { UserHttpJson } from "../interfaces/user-routes/user-route-http.js";
 import type { IUserWatchlistHttpApplicationService } from "../interfaces/user-routes/user-watchlist-http.js";
 import type { SavedSearchService } from "../saved-search.service.js";
-import type { UserDashboardReadService } from "../user-dashboard-read.service.js";
+import type {
+  DashboardViewerAccess,
+  UserDashboardReadService,
+} from "../user-dashboard-read.service.js";
 import type { WatchlistService } from "../watchlist.service.js";
 
 type SavedSearchBody = z.infer<typeof savedSearchBodySchema>;
@@ -35,12 +38,20 @@ export class UserWatchlistHttpApplicationService implements IUserWatchlistHttpAp
     return { status: 200, body: { data: { lotIds } } };
   }
 
-  async listWatchlist(input: { userId: string; query: WatchlistQuery }): Promise<UserHttpJson> {
-    const data = await this.deps.userDashboardReadService.listWatchlistForUser(input.userId, {
-      sort: input.query.sort as never,
-      ...(input.query.status ? { status: input.query.status as never } : {}),
-      ...(input.query.categoryIds ? { categoryIds: input.query.categoryIds } : {}),
-    });
+  async listWatchlist(input: {
+    userId: string;
+    query: WatchlistQuery;
+    viewer?: DashboardViewerAccess;
+  }): Promise<UserHttpJson> {
+    const data = await this.deps.userDashboardReadService.listWatchlistForUser(
+      input.userId,
+      {
+        sort: input.query.sort as never,
+        ...(input.query.status ? { status: input.query.status as never } : {}),
+        ...(input.query.categoryIds ? { categoryIds: input.query.categoryIds } : {}),
+      },
+      input.viewer,
+    );
     return { status: 200, body: { data } };
   }
 

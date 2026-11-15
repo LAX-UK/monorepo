@@ -9,6 +9,7 @@ import { ShopHeaderSearch } from "@/components/header/shop-header-search.client"
 import { shopMegaMenuSectionActive } from "@/components/header/shop-mega-menu-active";
 import { ShopMegaMenu } from "@/components/header/shop-mega-menu.client";
 import { ShopThemeToggle } from "@/components/header/shop-theme-toggle";
+import { SHOP_PHONE_MENU_COPY } from "@/content/header-copy";
 import { shopStorefrontLoginHref } from "@/lib/shop-viewer-state";
 import { FOCUS_RING, MARKETING_PAGE_GUTTER_X } from "@auction/branding";
 import type { AccountChromeState, LaxFamilyLinkVm } from "@auction/lax-ecosystem";
@@ -31,6 +32,20 @@ import { TooltipProvider } from "@auction/ui/components/tooltip";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+
+/** The Shop's own shortcuts in the phone menu: the basket with its count, then orders. */
+export function buildShopPhoneShortcuts(basketCount: number) {
+  const count = Number.isFinite(basketCount) ? Math.max(0, Math.floor(basketCount)) : 0;
+  return [
+    {
+      label: SHOP_PHONE_MENU_COPY.basket,
+      href: "/basket",
+      count,
+      countLabel: SHOP_PHONE_MENU_COPY.basketCountLabel,
+    },
+    { label: SHOP_PHONE_MENU_COPY.orders, href: "/account/orders" },
+  ];
+}
 
 /** Help links on the right of the LAX top bar, and in the phone menu. */
 export const SHOP_HELP_LINKS = [
@@ -197,6 +212,8 @@ export function ShopHeaderClient({
               isSectionActive={(section) => shopMegaMenuSectionActive(pathname, section)}
               isLinkCurrent={(href) => pathname === href || pathname.startsWith(`${href}/`)}
               helpLinks={SHOP_HELP_LINKS}
+              shortcuts={buildShopPhoneShortcuts(basketCount)}
+              shortcutsLabel={SHOP_PHONE_MENU_COPY.shortcutsLabel}
               returnFocusRef={menuButtonRef}
               themeSlot={
                 <>

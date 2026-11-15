@@ -14,6 +14,15 @@ import {
   saleRegistration,
   venue,
 } from "@auction/db/schema";
+import {
+  type CollectByCalendar,
+  DEFAULT_COLLECT_BY_POLICY,
+  type DateKey,
+  type FulfilmentFacts,
+  addDaysToKey,
+  awaitsCollection,
+  londonDateKey,
+} from "@auction/domain";
 import { and, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 import type {
   AccountPurchaseFactsRow,
@@ -23,6 +32,7 @@ import type {
   IAccountRegistrationsReader,
   IRecordPeopleReader,
 } from "../interfaces/workspace-buying.readers.js";
+import { collectByCalendarRange, readCollectByCalendars } from "../lib/collect-by-calendars.js";
 import { mapDeliveryQuoteRow } from "./drizzle-delivery-quote.repository.js";
 
 /** Sales the account is registered for, with who registered, newest sale first. */
@@ -286,6 +296,13 @@ export class DrizzleAccountPurchaseFactsReader implements IAccountPurchaseFactsR
     ]);
     const placeByVenue = new Map(places.map((p) => [p.venueId, p]));
     const bookedLots = new Set(bookings.map((b) => b.lotId));
+    const calendars = await collectByCalendarsFor(
+      this.db,
+      lots,
+      fulfilments,
+      placeByVenue,
+      bookedLots,
+    );
 
     const paymentByLot = firstByLot(payments);
     const fulfilmentByLot = new Map(fulfilments.map((f) => [f.lotId, f]));
@@ -328,6 +345,7 @@ export class DrizzleAccountPurchaseFactsReader implements IAccountPurchaseFactsR
         storage: storageOf(
           f?.paymentClearedAt ?? null,
           l.venueId ? placeByVenue.get(l.venueId) : undefined,
+          l.venueId ? calendars.get(l.venueId) : undefined,
           bookedLots.has(l.lotId),
           l.saleDeletedAt !== null,
         ),
@@ -335,6 +353,53 @@ export class DrizzleAccountPurchaseFactsReader implements IAccountPurchaseFactsR
       };
     });
   }
+}
+
+/** The opening calendar of each venue a lot waiting for collection is stored at. */
+async function collectByCalendarsFor(
+  db: Database,
+  lots: readonly { lotId: string; venueId: string | null; saleDeletedAt: Date | null }[],
+  fulfilments: readonly {
+    lotId: string;
+    paymentClearedAt: Date | null;
+    status: FulfilmentFacts["status"];
+    fulfilmentMethod: FulfilmentFacts["method"];
+  }[],
+  placeByVenue: ReadonlyMap<
+    string,
+    { onlineBookingEnabled: boolean; freeStorageDays: number | null }
+  >,
+  bookedLots: ReadonlySet<string>,
+): Promise<Map<string, CollectByCalendar>> {
+  const fulfilmentByLot = new Map(fulfilments.map((f) => [f.lotId, f]));
+  const counted = new Map<string, DateKey[]>();
+  for (const l of lots) {
+    const f = fulfilmentByLot.get(l.lotId);
+    const cleared = f?.paymentClearedAt;
+    const place = l.venueId ? placeByVenue.get(l.venueId) : undefined;
+    if (!f || !cleared || !l.venueId || !place?.onlineBookingEnabled) continue;
+    // Only lots still waiting carry the notice, so a lot collected years ago does not stretch
+    // the range the calendar is read over.
+    const waiting = awaitsCollection({
+      fulfilment: { status: f.status, method: f.fulfilmentMethod },
+      saleDeleted: l.saleDeletedAt !== null,
+      bookingOpen: true,
+      booked: bookedLots.has(l.lotId),
+    });
+    if (!waiting) continue;
+    const free = place.freeStorageDays ?? DEFAULT_COLLECT_BY_POLICY.freeStorageDays;
+    counted.set(l.venueId, [
+      ...(counted.get(l.venueId) ?? []),
+      addDaysToKey(londonDateKey(cleared), free),
+    ]);
+  }
+  const ranges = new Map(
+    [...counted].flatMap(([venueId, days]) => {
+      const range = collectByCalendarRange(days);
+      return range ? [[venueId, range] as const] : [];
+    }),
+  );
+  return readCollectByCalendars(db, ranges);
 }
 
 /** What the collect-by notice reads, or `null` when payment has not cleared or there is no place. */
@@ -348,6 +413,7 @@ function storageOf(
         placeName: string;
       }
     | undefined,
+  calendar: CollectByCalendar | undefined,
   booked: boolean,
   saleDeleted: boolean,
 ): AccountPurchaseFactsRow["storage"] {
@@ -357,6 +423,7 @@ function storageOf(
     placeId: place.venueId,
     placeName: place.placeName,
     freeStorageDays: place.freeStorageDays,
+    calendar,
     bookingOpen: place.onlineBookingEnabled,
     booked,
     saleDeleted,

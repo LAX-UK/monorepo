@@ -26,6 +26,7 @@ import {
   cloneElement,
   isValidElement,
   useCallback,
+  useEffect,
   useRef,
 } from "react";
 import { useSplitOverlayOpenLg } from "./hooks/use-split-overlay-open.js";
@@ -212,15 +213,24 @@ export function SplitFilterSheet({
   className,
 }: SplitFilterSheetProps) {
   const catalogue = variant === "catalogue";
-  const triggerRef = useRef<HTMLElement | null>(null);
+  // The trigger is drawn once per layout (phone and desktop); only the visible one can take focus.
+  const mobileTriggerRef = useRef<HTMLElement | null>(null);
+  const desktopTriggerRef = useRef<HTMLElement | null>(null);
+  const focusTrigger = useCallback(() => {
+    const candidates = [mobileTriggerRef.current, desktopTriggerRef.current];
+    const target =
+      candidates.find((el) => el?.isConnected && el.getClientRects().length > 0) ??
+      mobileTriggerRef.current;
+    target?.focus({ preventScroll: true });
+  }, []);
   const handleOpenChange = useCallback(
     (next: boolean) => {
       if (!next) {
-        requestAnimationFrame(() => triggerRef.current?.focus());
+        requestAnimationFrame(focusTrigger);
       }
       onOpenChange?.(next);
     },
-    [onOpenChange],
+    [onOpenChange, focusTrigger],
   );
 
   const resolvedDescription =
@@ -239,18 +249,45 @@ export function SplitFilterSheet({
     />
   );
 
+  // Vaul does not move focus into the sheet or give it back; do both, as the phone menu does.
+  const sheetRef = useRef<HTMLDivElement | null>(null);
+  const focusSheet = useCallback((event: Event) => {
+    event.preventDefault();
+    sheetRef.current?.focus({ preventScroll: true });
+  }, []);
+  // A controlled sheet can be closed by its own Apply button, which skips the open-change path.
+  const wasOpen = useRef(false);
+  useEffect(() => {
+    if (wasOpen.current && !open) {
+      requestAnimationFrame(focusTrigger);
+    }
+    wasOpen.current = Boolean(open);
+  }, [open, focusTrigger]);
+  const returnFocus = useCallback(
+    (event: Event) => {
+      event.preventDefault();
+      focusTrigger();
+    },
+    [focusTrigger],
+  );
+
   const { mobile, desktop } = useSplitOverlayOpenLg(open, handleOpenChange);
-  const wrappedTrigger = trigger ? attachTriggerRef(trigger, triggerRef) : null;
+  const mobileTrigger = trigger ? attachTriggerRef(trigger, mobileTriggerRef) : null;
+  const desktopTrigger = trigger ? attachTriggerRef(trigger, desktopTriggerRef) : null;
 
   return (
     <>
       <BottomSheet {...mobile}>
-        {wrappedTrigger ? (
+        {mobileTrigger ? (
           <BottomSheetTrigger asChild className="lg:hidden">
-            {wrappedTrigger}
+            {mobileTrigger}
           </BottomSheetTrigger>
         ) : null}
         <BottomSheetContent
+          ref={sheetRef}
+          tabIndex={-1}
+          onOpenAutoFocus={focusSheet}
+          onCloseAutoFocus={returnFocus}
           footer={
             catalogue ? (
               <CatalogueMobileFooter
@@ -304,9 +341,9 @@ export function SplitFilterSheet({
       </BottomSheet>
 
       <Sheet {...desktop}>
-        {wrappedTrigger ? (
+        {desktopTrigger ? (
           <SheetTrigger asChild className="hidden lg:inline-flex">
-            {wrappedTrigger}
+            {desktopTrigger}
           </SheetTrigger>
         ) : null}
         <SheetContent

@@ -34,8 +34,6 @@ export type SettingsDraft = {
   maxActiveVisits: string;
   /** Empty: the default of 30 days applies until the storage terms are set. */
   freeStorageDays: string;
-  /** Pounds per lot per week after the free period, such as "25" or "12.50"; empty if none is set. */
-  storageChargePounds: string;
   bookingEmail: string;
   hours: HoursRangeDraft[];
 };
@@ -55,29 +53,10 @@ export function draftFromSettings(settings: StaffCollectionSettings): SettingsDr
     undoHandOverMinutes: String(settings.undoHandOverMinutes),
     maxActiveVisits: String(settings.maxActiveVisits),
     freeStorageDays: settings.freeStorageDays === null ? "" : String(settings.freeStorageDays),
-    storageChargePounds: poundsFromPence(settings.storageChargePence),
     bookingEmail: settings.bookingEmail ?? "",
     // Keys are stable between server and browser; only rows added in the browser take a counter.
     hours: settings.hours.map((range, index) => ({ key: `saved-${index}`, ...range })),
   };
-}
-
-/** Pence as pounds for the form: 2500 is "25", 1250 is "12.50". */
-export function poundsFromPence(pence: number | null): string {
-  if (pence === null) return "";
-  const pounds = Math.floor(pence / 100);
-  const rest = pence % 100;
-  return rest === 0 ? String(pounds) : `${pounds}.${String(rest).padStart(2, "0")}`;
-}
-
-/** Pounds as pence: null when empty, NaN when it is not an amount with up to two decimals. */
-export function penceFromPounds(text: string): number | null {
-  // "£25" is as good as "25".
-  const value = text.trim().replace(/^£\s*/, "");
-  if (value === "") return null;
-  const match = /^(\d{1,4})(?:\.(\d{1,2}))?$/.exec(value);
-  if (!match) return Number.NaN;
-  return Number(match[1]) * 100 + Number((match[2] ?? "").padEnd(2, "0"));
 }
 
 const whole = (text: string): number =>
@@ -98,7 +77,6 @@ export function bodyFromDraft(draft: SettingsDraft, version: string) {
     undoHandOverMinutes: whole(draft.undoHandOverMinutes),
     maxActiveVisits: whole(draft.maxActiveVisits),
     freeStorageDays: storage === "" ? null : whole(storage),
-    storageChargePence: penceFromPounds(draft.storageChargePounds),
     bookingEmail: draft.bookingEmail.trim() === "" ? null : draft.bookingEmail.trim(),
     hours: draft.hours.map(({ weekday, opensLocal, closesLocal }) => ({
       weekday,
@@ -109,9 +87,7 @@ export function bodyFromDraft(draft: SettingsDraft, version: string) {
 }
 
 export type SettingsErrors = {
-  rules: Partial<
-    Record<CollectionRulesIssue | "free_storage_days" | "storage_charge" | "booking_email", string>
-  >;
+  rules: Partial<Record<CollectionRulesIssue | "free_storage_days" | "booking_email", string>>;
   /** Issues by range key, so each row can say what is wrong with it. */
   hours: Record<string, HoursIssue["code"]>;
   count: number;
@@ -119,7 +95,6 @@ export type SettingsErrors = {
 
 const FIELD_MESSAGES = {
   free_storage_days: `Enter a whole number of days up to ${MAX_FREE_STORAGE_DAYS}, or leave it empty.`,
-  storage_charge: "Enter an amount in pounds, such as 25 or 12.50, or leave it empty.",
   booking_email: "Enter an email address, or leave it empty.",
 } as const;
 
@@ -145,10 +120,6 @@ export function validateSettingsDraft(draft: SettingsDraft): SettingsErrors {
     !(Number.isInteger(storage) && storage >= 0 && storage <= MAX_FREE_STORAGE_DAYS)
   ) {
     out.rules.free_storage_days = FIELD_MESSAGES.free_storage_days;
-  }
-  const charge = body.storageChargePence;
-  if (charge !== null && !(Number.isInteger(charge) && charge >= 0 && charge <= 1_000_000)) {
-    out.rules.storage_charge = FIELD_MESSAGES.storage_charge;
   }
   if (body.bookingEmail !== null && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(body.bookingEmail)) {
     out.rules.booking_email = FIELD_MESSAGES.booking_email;

@@ -9,6 +9,8 @@ export type VisitViewContext = {
   /** The last moment to change or cancel online, or `null` when it is over or not known. */
   noticeDeadline: Date | null;
   actions: readonly CollectionVisitAction[];
+  /** The venue's phone, or `null` when it has none. */
+  contactPhone: string | null;
 };
 
 const iso = (date: Date | null): string | null => (date ? date.toISOString() : null);
@@ -28,6 +30,7 @@ export function toVisitView(
     start: booking.slotStart.toISOString(),
     end: booking.slotEnd.toISOString(),
     version: booking.icsSequence,
+    contactPhone: context.contactPhone,
     lots: booking.lots.map((lot) => ({
       lotId: lot.lotId,
       title: context.titles.get(lot.lotId)?.title ?? "Lot",

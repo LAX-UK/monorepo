@@ -168,6 +168,7 @@ function collectByOf(
     storage.clearedAt,
     londonDateKey(now),
     collectByPolicyFor(storage.freeStorageDays),
+    storage.calendar,
   );
   return { ...notice, placeId: storage.placeId, placeName: storage.placeName };
 }

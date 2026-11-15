@@ -8,6 +8,7 @@ import {
 } from "@auction/domain";
 import type { EmailEnqueueInput } from "@auction/email";
 import type { StoredLot } from "../interfaces/collect-by.reader.js";
+import { placeContact } from "./collection-contact.js";
 import type { NoticeRecipient } from "./collection-notices.js";
 
 /** The most lots the booking page takes in one link. */
@@ -36,6 +37,7 @@ export function collectByGroups(lots: readonly StoredLot[], today: string): Coll
       stored.clearedAt,
       today,
       collectByPolicyFor(stored.freeStorageDays),
+      stored.calendar,
     );
     if (!due) continue;
     const key = [stored.legalEntityId, stored.venueId, due.kind, due.collectBy].join("|");
@@ -122,6 +124,7 @@ export function collectByEmailsFor(
         bookUrl: `${config.webOrigin}/purchases/collect?lots=${lotIds.slice(0, MAX_LOTS_IN_LINK).join(",")}`,
         storagePolicyUrl: `${config.webOrigin}/shipping#storage`,
         quoteUrl: `${config.webOrigin}/purchases`,
+        ...placeContact(group.place),
       },
       to: person.email,
       userId: person.userId,

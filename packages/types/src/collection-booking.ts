@@ -35,6 +35,8 @@ export type CollectionAvailability = {
   /** False while staff have not switched online booking on for the place: show the email route. */
   onlineBookingEnabled: boolean;
   bookingEmail: string | null;
+  /** The venue's phone from its details; `null` when none is set. */
+  contactPhone: string | null;
   visitMinutes: number;
   windowDays: number;
   /** The cut-off on the working day before a visit, "16:00" London time. */
@@ -64,6 +66,8 @@ export type CollectionVisitView = {
   end: string;
   /** The booking as last read; send it back with a change or cancellation. */
   version: number;
+  /** The venue's phone from its details; `null` when none is set. */
+  contactPhone: string | null;
   lots: {
     lotId: string;
     title: string;

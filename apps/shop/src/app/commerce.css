@@ -1329,7 +1329,29 @@ a.shop-checkout-steps__link:hover .shop-checkout-steps__label {
   display: none;
 }
 
+/* The sticky total sits over the page bottom on phones, so the page keeps room for it. */
+.shop-checkout__layout--with-bar {
+  padding-bottom: 5rem;
+}
+
+.shop-checkout-bar.shop-checkout-bar {
+  justify-content: space-between;
+}
+
+.shop-checkout-bar__amount {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
 @media (min-width: 64rem) {
+  .shop-checkout__layout--with-bar {
+    padding-bottom: 0;
+  }
+
+  .shop-checkout-bar.shop-checkout-bar {
+    display: none;
+  }
+
   .shop-checkout-disclosure {
     display: none;
   }

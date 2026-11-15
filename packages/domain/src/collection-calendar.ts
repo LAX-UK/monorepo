@@ -151,18 +151,30 @@ export function createCollectionCalendar(input: CollectionCalendarInput): Collec
   };
 }
 
-/** Furthest ahead the next open day is looked for, so a calendar closed for good cannot loop. */
-const MAX_LOOKAHEAD_DAYS = 366;
+/** Furthest ahead the next open day is looked for, so a calendar closed for months cannot loop. */
+export const MAX_OPEN_DAY_LOOKAHEAD_DAYS = 60;
+
+/** Open at some hour: a part-day closure that covers every opening range leaves nothing to open. */
+function isOpenSomeHours(plan: CollectionDayPlan): boolean {
+  if (plan.kind !== "open") return false;
+  return plan.ranges.some(
+    (open) =>
+      !plan.closedRanges.some(
+        (closed) => closed.opens <= open.opens && closed.closes >= open.closes,
+      ),
+  );
+}
 
 /**
- * The first day on or after `date` the place is open, X
- * or none of the closures (weekend, bank holiday, staff closure, sale day). A day open only part of
- * the day counts as open. If the calendar has no open day within a year, `date` itself.
+ * `date` if the place is open that London day, else the next day it is. Weekends follow the weekly
+ * hours; bank holidays, staff closures (single days or runs of days) and sale-day closures are
+ * read from the calendar. When no day within the look-ahead is open (a place with no hours), the
+ * date is returned unchanged.
  */
 export function nextOpenDay(calendar: Pick<CollectionCalendar, "plan">, date: DateKey): DateKey {
   let day = date;
-  for (let i = 0; i < MAX_LOOKAHEAD_DAYS; i++) {
-    if (calendar.plan(day).kind === "open") return day;
+  for (let i = 0; i <= MAX_OPEN_DAY_LOOKAHEAD_DAYS; i++) {
+    if (isOpenSomeHours(calendar.plan(day))) return day;
     day = addDaysToKey(day, 1);
   }
   return date;
