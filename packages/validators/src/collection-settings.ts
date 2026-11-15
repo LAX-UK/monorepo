@@ -47,8 +47,8 @@ export const saveCollectionSettingsBodySchema = z
     undoHandOverMinutes: z.number().int(),
     maxActiveVisits: z.number().int(),
     freeStorageDays: z.number().int().min(0).max(MAX_FREE_STORAGE_DAYS).nullable(),
-    /** Absent means unchanged, so a web release that does not send it yet cannot be refused. */
-    storageChargePence: z.number().int().min(0).max(1_000_000).nullable().optional(),
+    /** The weekly charge was dropped; a web release that still sends it is accepted and the value ignored. */
+    storageChargePence: z.number().nullable().optional(),
     bookingEmail: z.string().trim().email().max(254).nullable(),
     hours: z
       .array(z.object({ weekday: z.number().int(), opensLocal: time, closesLocal: time }).strict())

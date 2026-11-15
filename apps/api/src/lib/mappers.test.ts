@@ -27,6 +27,7 @@ function lotRow(
     medium: null,
     dimensions: null,
     photoIncludesFrame: false,
+    storageLarge: false,
     framedWidthCm: null,
     framedHeightCm: null,
     images: [],

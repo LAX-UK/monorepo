@@ -44,8 +44,8 @@ describe("migration 0347 collection storage reminders", () => {
   });
 
   it("is mirrored by the Drizzle tables", () => {
-    expect(getTableColumns(collectionPlace).storageChargePence.name).toBe("storage_charge_pence");
-    expect(getTableColumns(collectionPlace).storageChargePence.notNull).toBe(false);
+    // The weekly charge was dropped again by 0393.
+    expect(Object.keys(getTableColumns(collectionPlace))).not.toContain("storageChargePence");
     expect(getTableColumns(lotFulfilment).paymentClearedAt.name).toBe("payment_cleared_at");
     expect(getTableColumns(lotFulfilment).paymentClearedAt.notNull).toBe(false);
   });

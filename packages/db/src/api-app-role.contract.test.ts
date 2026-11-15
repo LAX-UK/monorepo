@@ -920,6 +920,28 @@ describe.skipIf(!API_URL)("api_app role contract", { timeout: 60_000 }, () => {
     });
   });
 
+  it("appends the storage audit and reads it, never changing or removing a row", async () => {
+    await withApiClient(async (client) => {
+      const rows = await readTablePrivileges(
+        client,
+        ["collection_storage_audit"],
+        ["SELECT", "INSERT", "UPDATE", "DELETE", "TRUNCATE"],
+      );
+      expectTablePrivileges(rows, (row) => ["SELECT", "INSERT"].includes(row.privilege));
+    });
+  });
+
+  it("changes storage terms, extensions and waivers as ordinary rows", async () => {
+    await withApiClient(async (client) => {
+      const rows = await readTablePrivileges(
+        client,
+        ["collection_storage_terms", "collection_storage_extension", "collection_storage_waiver"],
+        ["SELECT", "INSERT", "UPDATE"],
+      );
+      expectTablePrivileges(rows, () => true);
+    });
+  });
+
   it("owns only the Bid SSF replay ledger", async () => {
     await withApiClient(async (client) => {
       for (const table of API_SSF_RECEIVER_TABLES) {
