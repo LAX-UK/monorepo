@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { type Browser, type Page, chromium } from "@playwright/test";
 
 /**
@@ -10,14 +11,16 @@ import { type Browser, type Page, chromium } from "@playwright/test";
  * animation name, its duration and the keyframes it plays. Nothing is matched against the CSS
  * text, so a changed rule changes the result.
  */
-const cwd = process.cwd();
 const require = createRequire(import.meta.url);
+/** A file by its path from this one, so the suite runs from any working directory. */
+const here = dirname(fileURLToPath(import.meta.url));
+const fromHere = (path: string) => resolve(here, path);
 
 export const LAX_SYSTEM_CSS = readFileSync(
-  resolve(cwd, "../branding/public/lax-system.css"),
+  fromHere("../../../branding/public/lax-system.css"),
   "utf8",
 );
-export const MOTION_SOURCE = readFileSync(resolve(cwd, "src/lax/motion.css"), "utf8");
+export const MOTION_SOURCE = readFileSync(fromHere("../lax/motion.css"), "utf8");
 export const SONNER_CSS = readFileSync(
   resolve(dirname(require.resolve("sonner")), "styles.css"),
   "utf8",
@@ -25,7 +28,7 @@ export const SONNER_CSS = readFileSync(
 
 /** The staff token block exactly as the staff theme writes it, selector list included. */
 export function staffTokenBlock(): string {
-  const theme = readFileSync(resolve(cwd, "../staff-ui/src/theme.css"), "utf8");
+  const theme = readFileSync(fromHere("../../../staff-ui/src/theme.css"), "utf8");
   const block = /[^{}]*\{[^{}]*--lax-motion-press:\s*0ms[^{}]*\}/.exec(theme);
   if (!block) throw new Error("staff motion token block not found in staff-ui theme.css");
   return block[0];
