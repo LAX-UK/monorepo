@@ -40,26 +40,20 @@ export function createComplianceKycAml(
   input: CreateComplianceKycAmlInput,
 ): ContainerComplianceKycAml {
   const { env, infra, repos, platform, marketing, invoiceTerms } = input;
-  const { emailService, emailOutbox } = infra;
-  const { kycRepository, userRepo, notificationWriteRepo, amlScreeningRepository, amlHoldStore } =
-    repos;
+  const { emailOutbox } = infra;
+  const { kycRepository, amlScreeningRepository, amlHoldStore } = repos;
   const { domainEventSink } = platform;
 
   // What a person is told about their identity check is stored in the transaction that applies
   // the decision, so each store is bound to that transaction.
   const notices = new KycNoticeQueue({
-    usersFor: (tx) => (tx ? new DrizzleUserRepository(tx) : userRepo),
+    usersFor: (tx) => new DrizzleUserRepository(tx),
     notificationsFor: (tx) =>
-      tx
-        ? new MuteAwareNotificationWriter(
-            new DrizzleNotificationWriteRepository(tx),
-            new DrizzleNotificationAccountMuteRepository(tx),
-          )
-        : notificationWriteRepo,
-    email: {
-      enqueue: (input) => emailService.enqueue(input),
-      enqueueInTransaction: (tx, input) => emailOutbox.enqueueInTransaction(tx, input),
-    },
+      new MuteAwareNotificationWriter(
+        new DrizzleNotificationWriteRepository(tx),
+        new DrizzleNotificationAccountMuteRepository(tx),
+      ),
+    email: emailOutbox,
     factory: platform.notificationFactory,
     webOrigin: env.WEB_ORIGIN,
   });

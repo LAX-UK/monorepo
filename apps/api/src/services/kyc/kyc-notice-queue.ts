@@ -14,15 +14,15 @@ import type { KycOutcomeNotice, KycResubmissionNotice } from "./kyc-contracts.js
  * decision that is delivered again is not applied again, so nobody is told twice.
  */
 export interface IKycNoticeQueue {
-  queueOutcome(tx: Database | null, notice: KycOutcomeNotice): Promise<void>;
-  queueResubmission(tx: Database | null, notice: KycResubmissionNotice): Promise<void>;
+  queueOutcome(tx: Database, notice: KycOutcomeNotice): Promise<void>;
+  queueResubmission(tx: Database, notice: KycResubmissionNotice): Promise<void>;
 }
 
 export type KycNoticeQueueDeps = {
-  /** The user and notification stores for one transaction; the plain stores where there is none. */
-  usersFor: (tx: Database | null) => Pick<IUserRepository, "findById">;
-  notificationsFor: (tx: Database | null) => INotificationWriteRepository;
-  email: IEmailService & ITransactionalEmailOutbox;
+  /** The user and notification stores bound to the decision's transaction. */
+  usersFor: (tx: Database) => Pick<IUserRepository, "findById">;
+  notificationsFor: (tx: Database) => INotificationWriteRepository;
+  email: ITransactionalEmailOutbox;
   factory: Pick<INotificationFactory, "createKycApproved" | "createKycDeclined">;
   webOrigin: string;
 };
@@ -35,7 +35,7 @@ function decisionKey(notice: { providerSessionId: string; providerAttemptId: str
 export class KycNoticeQueue implements IKycNoticeQueue {
   constructor(private readonly deps: KycNoticeQueueDeps) {}
 
-  async queueOutcome(tx: Database | null, notice: KycOutcomeNotice): Promise<void> {
+  async queueOutcome(tx: Database, notice: KycOutcomeNotice): Promise<void> {
     const { userId, outcome } = notice;
     const user = await this.deps.usersFor(tx).findById(userId);
     if (!user?.email) return;
@@ -71,7 +71,7 @@ export class KycNoticeQueue implements IKycNoticeQueue {
     await this.deps.notificationsFor(tx).createMany([this.deps.factory.createKycDeclined(userId)]);
   }
 
-  async queueResubmission(tx: Database | null, notice: KycResubmissionNotice): Promise<void> {
+  async queueResubmission(tx: Database, notice: KycResubmissionNotice): Promise<void> {
     const { userId, feedback } = notice;
     const user = await this.deps.usersFor(tx).findById(userId);
     if (!user?.email) return;
@@ -105,12 +105,8 @@ export class KycNoticeQueue implements IKycNoticeQueue {
     return this.deps.webOrigin.replace(/\/$/, "");
   }
 
-  /** In the decision's transaction when there is one; only without a transaction runner is it not. */
-  private async send(
-    tx: Database | null,
-    input: Parameters<IEmailService["enqueue"]>[0],
-  ): Promise<void> {
-    if (tx) await this.deps.email.enqueueInTransaction(tx, input);
-    else await this.deps.email.enqueue(input);
+  /** Always in the decision's transaction. */
+  private async send(tx: Database, input: Parameters<IEmailService["enqueue"]>[0]): Promise<void> {
+    await this.deps.email.enqueueInTransaction(tx, input);
   }
 }

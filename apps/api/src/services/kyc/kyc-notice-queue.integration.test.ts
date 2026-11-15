@@ -23,8 +23,8 @@ describe.skipIf(!HAS_DB)(
     const queueAdd = vi.fn(async () => undefined);
     const email = new PostmarkEmailService(db, { add: queueAdd });
     const notices = new KycNoticeQueue({
-      usersFor: (tx) => new DrizzleUserRepository(tx ?? db),
-      notificationsFor: (tx) => new DrizzleNotificationWriteRepository(tx ?? db),
+      usersFor: (tx) => new DrizzleUserRepository(tx),
+      notificationsFor: (tx) => new DrizzleNotificationWriteRepository(tx),
       email,
       factory: new NotificationFactory(),
       webOrigin: "https://lax.bid",

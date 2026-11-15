@@ -66,13 +66,6 @@ export class KycWebhookIngestService implements IKycWebhookIngestService {
 
     const eventId = `${verification.id}:${verification.attemptId ?? "none"}:decision`;
 
-    if (!this.deps.transactionRunner) {
-      return this.queueNotices(
-        null,
-        await this.applyDecision(verification, parsed as Record<string, unknown>, null),
-      );
-    }
-
     return this.deps.transactionRunner.runInTransaction(async (tx) => {
       const existing = await this.deps.sessionRepo.findByProviderSessionId(verification.id, tx);
       if (!existing) {
@@ -104,15 +97,12 @@ export class KycWebhookIngestService implements IKycWebhookIngestService {
    * here, so nobody is told twice. The notices are not part of what the caller gets back.
    */
   private async queueNotices(
-    tx: Database | null,
+    tx: Database,
     applied: KycDecisionApplyResult,
   ): Promise<KycWebhookHandleResult> {
     const { outcomeNotify, resubmissionNotify, ...result } = applied;
     const { notices } = this.deps;
     if (!notices || (!outcomeNotify && !resubmissionNotify)) return result;
-    if (!tx) {
-      console.warn(JSON.stringify({ msg: "kyc_notice_queued_without_transaction" }));
-    }
     try {
       if (outcomeNotify) await notices.queueOutcome(tx, outcomeNotify);
       if (resubmissionNotify) await notices.queueResubmission(tx, resubmissionNotify);
@@ -164,31 +154,19 @@ export class KycWebhookIngestService implements IKycWebhookIngestService {
 
     const eventId = `${parsed.id}:${parsed.action}:event`;
 
-    const applyEvent = async (conn: Database | null) => {
-      const existing = await this.deps.sessionRepo.findByProviderSessionId(
-        parsed.id,
-        conn ?? undefined,
-      );
+    const applyEvent = async (tx: Database) => {
+      const existing = await this.deps.sessionRepo.findByProviderSessionId(parsed.id, tx);
       if (!existing) return;
 
-      const webhookState = await this.deps.sessionRepo.getUserKycWebhookState(
-        existing.userId,
-        conn ?? undefined,
-      );
+      const webhookState = await this.deps.sessionRepo.getUserKycWebhookState(existing.userId, tx);
       if (webhookState?.currentKycSessionId !== existing.providerSessionId) return;
 
-      const userState = await this.deps.sessionRepo.getUserKycState(
-        existing.userId,
-        conn ?? undefined,
-      );
+      const userState = await this.deps.sessionRepo.getUserKycState(existing.userId, tx);
       const userAlreadyApproved = userState?.kycStatus === "approved";
       const verificationTerminal = TERMINAL_VERIFICATION_STATUSES.has(existing.status);
 
       if (verificationStatus && !verificationTerminal) {
-        const existingPayload = await this.deps.sessionRepo.getDecisionPayload(
-          existing.id,
-          conn ?? undefined,
-        );
+        const existingPayload = await this.deps.sessionRepo.getDecisionPayload(existing.id, tx);
         await this.deps.sessionRepo.update(
           existing.id,
           {
@@ -198,23 +176,13 @@ export class KycWebhookIngestService implements IKycWebhookIngestService {
               parsed as Record<string, unknown>,
             ),
           },
-          conn ?? undefined,
+          tx,
         );
       }
       if (userStatus && !userAlreadyApproved) {
-        await this.deps.sessionRepo.setUserKycStatus(
-          existing.userId,
-          userStatus,
-          null,
-          conn ?? undefined,
-        );
+        await this.deps.sessionRepo.setUserKycStatus(existing.userId, userStatus, null, tx);
       }
     };
-
-    if (!this.deps.transactionRunner) {
-      await applyEvent(null);
-      return;
-    }
 
     await this.deps.transactionRunner.runInTransaction(async (tx) => {
       const existing = await this.deps.sessionRepo.findByProviderSessionId(parsed.id, tx);
@@ -230,7 +198,7 @@ export class KycWebhookIngestService implements IKycWebhookIngestService {
   private async applyDecision(
     verification: NonNullable<ReturnType<typeof veriffDecisionWebhookSchema.parse>["verification"]>,
     payload: Record<string, unknown>,
-    conn: Database | null,
+    tx: Database,
   ): Promise<KycDecisionApplyResult> {
     const input = mapVeriffDecisionToApplyInput(
       {
@@ -248,6 +216,6 @@ export class KycWebhookIngestService implements IKycWebhookIngestService {
       },
       payload,
     );
-    return this.decisionProcessor.apply(input, conn);
+    return this.decisionProcessor.apply(input, tx);
   }
 }

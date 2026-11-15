@@ -13,7 +13,7 @@ import type { IKycNoticeQueue } from "./kyc-notice-queue.js";
 export type KycServiceDeps = {
   sessionRepo: IKycSessionRepository;
   repo: IKycRepository;
-  transactionRunner: ITransactionRunner | null;
+  transactionRunner: ITransactionRunner;
   veriffClient: VeriffClient;
   webhookVerifier: VeriffWebhookVerifier;
   decisionProcessor: KycDecisionProcessor;
@@ -28,7 +28,7 @@ export type KycServiceDeps = {
 export function createKycServiceDeps(input: {
   env: Env;
   repo: IKycRepository;
-  transactionRunner: ITransactionRunner | null;
+  transactionRunner: ITransactionRunner;
   marketingEvents: IMarketingEventService | null;
   invoiceTerms: Pick<InvoiceDueDateExtender, "extendOpenInvoices"> | null;
   veriffClient?: VeriffClient;
