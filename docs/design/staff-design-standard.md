@@ -1281,11 +1281,12 @@ on `:focus-visible` only.**
 
 **CRF-14. Motion is quick and functional, and reduced motion is respected.**
 
-| Interaction | Duration and easing |
+| Interaction | Token (staff value) |
 | --- | --- |
-| Hover and colour | 100–150ms ease-out |
-| Menus and popovers | 150ms enter, 100ms exit |
-| Panels and dialogs | 200ms enter with decelerate, 150ms exit |
+| Hover and colour | `--lax-motion-hover` (100ms), `--lax-ease-out` |
+| Menus and popovers | `--lax-motion-enter` (150ms), `--lax-motion-exit` (100ms) |
+| Panels and dialogs | `--lax-motion-panel` (200ms), `--lax-motion-panel-exit` (150ms), `--lax-ease-emphasize` |
+| Press | `--lax-motion-press` (0ms): colour only, no scale |
 
 - **Rule:**
   - Never animate layout in tables.
@@ -1295,8 +1296,11 @@ on `:focus-visible` only.**
 - **Why:** Atlassian says exits should be 50–100ms shorter than entrances. All-day tools should
   not perform.
 - **Check:** record a panel opening: about 200ms. With reduced motion turned on, nothing slides.
-- **Kit:** `PARTIAL`. Reduced motion and 150ms transitions exist. There are no `--duration-*`
-  or `--ease-*` tokens, so the timings sit in each component.
+- **Kit:** `PARTIAL`. The `--lax-motion-*` and `--lax-ease-*` tokens exist in
+  `lax-system.css`, with the staff durations under `[data-staff-ui]` in `staff-ui/src/theme.css`
+  (see `docs/design/motion.md`). Components still carry some literal timings until the motion PRs
+  move them onto the tokens. `pnpm lint:compositor` blocks `transition-all` and layout or paint
+  transitions in new code.
 - **Sources:** [atl-motion] [m3-motion]
 
 **CRF-15. Dark mode is a first-class theme.**
@@ -1633,8 +1637,8 @@ records how. **Open** items are still to build.
    to come. (TBL-5)
 4. **Done.** **Page size** (25, 50, 100) in the Display menu, read with `parseStaffPageSize`. (TBL-10)
 5. **Done.** **`CopyButton` / `CopyableId` exported** for headers, cells and menus. (PRD-4, PRD-K4)
-6. **Open.** **Motion tokens:** `--duration-staff-fast` 100, `-base` 150, `-panel` 200, and
-   `--ease-staff-out` / `-in`. (CRF-14)
+6. **Done.** **Motion tokens:** `--lax-motion-*` and `--lax-ease-*`, with the staff durations
+   under `[data-staff-ui]`. Components move onto them in the motion PRs. (CRF-14)
 7. **Open.** **Type.** Restrict `text-staff-2xs` to digits and `kbd`. Add a 14/22 `prose` style for
    reading text. (CRF-12)
 8. **Done.** **Filter-chip remove button** has a 24px target. (CRF-17)
