@@ -177,7 +177,7 @@ Gallery staff mark an artwork sold by setting the Zoho Product's `Status` to `So
 
 **Mode.** It runs inside the inbound artwork sync and needs both `ZOHO_ARTWORK_SYNC_MODE` and `ZOHO_ARTWORK_LISTING_MODE`: both `live` records sales; otherwise, when neither is `off`, it is a dry run that logs `zoho_gallery_sale_dry_run` and puts `gallerySale: { action: "would_record" }` on the Product's outcome, and changes nothing (the register, the items and lax.art all stay as they are, since LAX Shop only acts on a recorded sale). The nightly pass also sweeps originals Zoho shows as Sold that are held, withdrawn or on lax.art (`zoho_gallery_sale_sweep_finished`).
 
-**Audit.** The register history gains `gallery_sale_recorded` (actor `zoho`) and `gallery_sale_reopened` (actor `staff:<id>`, with the reason); both publish `artwork_register.offer_changed`, so the listing and Status write-backs follow. Reopen and Dealt with also write LAX Admin audit rows. The scheduler's unpublish audit keeps the listing's previous `published_at`, so staff can restore it after a Reopen. Migration 0393 widens the event type and item resolution checks.
+**Audit.** The register history gains `gallery_sale_recorded` (actor `zoho`) and `gallery_sale_reopened` (actor `staff:<id>`, with the reason); both publish `artwork_register.offer_changed`, so the listing and Status write-backs follow. Reopen and Dealt with also write LAX Admin audit rows. The scheduler's unpublish audit keeps the listing's previous `published_at`, so staff can restore it after a Reopen. Migration 0396 widens the event type and item resolution checks.
 
 ## Artwork state to Zoho Products (outbound)
 

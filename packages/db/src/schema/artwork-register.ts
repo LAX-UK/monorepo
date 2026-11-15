@@ -157,7 +157,7 @@ export const artworkRegisterConflict = pgTable(
  * saying it is not sold, kept (with the reason) so the sync does not raise it again; `resolved`
  * is over. Once the artwork is recorded as sold in the gallery, an item raised while it was on
  * lax.art stays open (money stays paused) until staff close it (`staff_resolved`). The
- * constraints are in migrations 0360 and 0393; they are repeated here where drizzle-kit needs them.
+ * constraints are in migrations 0360 and 0396; they are repeated here where drizzle-kit needs them.
  */
 export const artworkRegisterSoldAttention = pgTable(
   "artwork_register_sold_attention",
