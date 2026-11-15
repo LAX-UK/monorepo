@@ -1,5 +1,5 @@
 import { laxFaviconMetadataIcons } from "@auction/branding";
-import { BOTTOM_BAR_TOAST_MOBILE_OFFSET } from "@auction/marketing-ui";
+import { BOTTOM_BAR_TOAST_MOBILE_OFFSET } from "@auction/marketing-ui/bottom-bar/bottom-toast-offset";
 import { Toaster } from "@auction/ui/lax";
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";

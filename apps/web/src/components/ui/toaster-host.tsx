@@ -4,7 +4,7 @@ import { CLIENT_KIT_REVIEW_PATH } from "@/lib/kit/client-kit-review";
 import { isAdminPath } from "@/lib/navigation/admin-path";
 import { isClientAreaPath } from "@/lib/navigation/client-routes";
 import { registerToaster } from "@/lib/ui/toast-bridge";
-import { BOTTOM_BAR_TOAST_MOBILE_OFFSET } from "@auction/marketing-ui";
+import { BOTTOM_BAR_TOAST_MOBILE_OFFSET } from "@auction/marketing-ui/bottom-bar/bottom-toast-offset";
 import { Toaster as AuctionToaster } from "@auction/ui/components/sonner";
 import { Toaster as LaxToaster } from "@auction/ui/lax/toaster";
 import { usePathname } from "next/navigation";

@@ -33,6 +33,10 @@
       "types": "./dist/bottom-bar/bottom-slot.d.ts",
       "default": "./dist/bottom-bar/bottom-slot.js"
     },
+    "./bottom-bar/bottom-toast-offset": {
+      "types": "./dist/bottom-bar/bottom-toast-offset.d.ts",
+      "default": "./dist/bottom-bar/bottom-toast-offset.js"
+    },
     "./bottom-bar/bottom-tab-config": {
       "types": "./dist/bottom-bar/bottom-tab-config.d.ts",
       "default": "./dist/bottom-bar/bottom-tab-config.js"

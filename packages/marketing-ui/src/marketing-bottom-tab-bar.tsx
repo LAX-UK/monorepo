@@ -191,13 +191,7 @@ export function MarketingBottomBarSpace() {
   );
 }
 
-/**
- * Where a phone toast sits so it clears the docked bar: the bar's reserved space plus 1rem. The one
- * value for Bid, Shop, art and Account, passed as the toaster's `mobileOffset`.
- */
-export const BOTTOM_BAR_TOAST_MOBILE_OFFSET = {
-  bottom: "calc(var(--lax-bottom-bar-space, 0px) + 1rem)",
-} as const;
+export { BOTTOM_BAR_TOAST_MOBILE_OFFSET } from "./bottom-bar/bottom-toast-offset";
 
 /** Raise a bottom-fixed element (cookie dock, toast stack) above the docked bar. */
 export const BOTTOM_BAR_ABOVE_CLASS = "bottom-[var(--lax-bottom-bar-space,0px)]";
