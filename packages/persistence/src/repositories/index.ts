@@ -276,6 +276,7 @@ export { DrizzleUpcomingSaleWorksReader } from "./drizzle-upcoming-sale-works.re
 export { DrizzleSoldWorksReader } from "./drizzle-sold-works.reader.js";
 export { DrizzlePayoutsDueReader } from "./drizzle-payouts-due.reader.js";
 export { DrizzlePaymentGroupFactsReader } from "./drizzle-payment-group-facts.reader.js";
+export { DrizzlePaymentGroupDeliveryRefundRepository } from "./drizzle-payment-group-delivery-refund.repository.js";
 export {
   DrizzleAccountPurchaseFactsReader,
   DrizzleAccountRegistrationsReader,
@@ -315,6 +316,7 @@ export {
 export { DrizzleAccessRequestRepository } from "./drizzle-access-request.repository.js";
 export {
   DrizzleChargeableDeliveryReader,
+  DrizzleDeliveryPaidWithInvoiceReader,
   DrizzlePaySeveralInvoiceFlagsReader,
   DrizzlePaymentGroupRepository,
 } from "./drizzle-payment-group.repository.js";

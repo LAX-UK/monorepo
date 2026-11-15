@@ -138,6 +138,13 @@ export type {
 } from "./bid-portfolio.reader.js";
 export type { IPaymentGroupFactsReader } from "./payment-group-facts.reader.js";
 export type {
+  DeliveryRefundRequest,
+  DeliveryRefundRequestOutcome,
+  DeliveryRefundRequestStatus,
+  IPaymentGroupDeliveryRefundRepository,
+  NewDeliveryRefundRequest,
+} from "./payment-group-delivery-refund.repository.js";
+export type {
   AwaitingConsignmentAgreement,
   ConsignmentAgreementProposalRow,
   IConsignmentAgreementReader,
@@ -1293,7 +1300,9 @@ export type {
   ChargeableDeliveryQuote,
   ClaimPaymentGroupInput,
   ClaimPaymentGroupResult,
+  DeliveryPaidWithInvoice,
   IChargeableDeliveryReader,
+  IDeliveryPaidWithInvoiceReader,
   IPaySeveralInvoiceFlagsReader,
   IPaymentGroupRepository,
   LivePaymentGroupFacts,

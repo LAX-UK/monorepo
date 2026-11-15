@@ -172,6 +172,9 @@ export const adminLotFulfilmentDeliveredResultAction = _adminLotFulfilmentDelive
 import { adminLotFulfilmentCollectedResultAction as _adminLotFulfilmentCollectedResultAction } from "./admin/admin-lot-fulfilment";
 export const adminLotFulfilmentCollectedResultAction = _adminLotFulfilmentCollectedResultAction;
 
+import { adminRefundGroupDeliveryResultAction as _adminRefundGroupDeliveryResultAction } from "./admin/admin-group-delivery-refund";
+export const adminRefundGroupDeliveryResultAction = _adminRefundGroupDeliveryResultAction;
+
 import { adminSaleroomGoLiveAction as _adminSaleroomGoLiveAction } from "./admin/admin-saleroom";
 export const adminSaleroomGoLiveAction = _adminSaleroomGoLiveAction;
 

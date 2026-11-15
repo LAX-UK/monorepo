@@ -1,32 +1,30 @@
-import { existsSync, readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 
-const drizzleDir = resolve(import.meta.dirname, "../../drizzle");
-
-type JournalEntry = { idx: number; when: number; tag: string };
-
-function journalEntries(): JournalEntry[] {
-  const journal = JSON.parse(readFileSync(resolve(drizzleDir, "meta/_journal.json"), "utf8")) as {
-    entries: JournalEntry[];
-  };
-  return journal.entries;
-}
+const drizzleDir = join(dirname(fileURLToPath(import.meta.url)), "../../drizzle");
 
 /**
- * The rollback SQL of every migration applied after `tag`, newest first, read from the journal.
- * A rollback test for an older migration runs this first, because the migration runner refuses a
- * rollback while a later migration is still applied. Reading the journal means a new migration
- * needs no edit to older tests. Migrations without a `_rollback.sql` file are skipped.
+ * Rollback SQL of every migration numbered after `afterNumber`, newest first, as a real rollback
+ * would run them. The order comes from the journal, so a new or renumbered migration needs no
+ * edit in the tests that call this. Each rollback's own BEGIN/COMMIT is stripped so the SQL stays
+ * inside the caller's transaction. A migration without a rollback file is skipped.
  */
-export function laterRollbackSql(tag: string): string {
-  const entries = journalEntries();
-  const own = entries.find((entry) => entry.tag === tag);
-  if (!own) throw new Error(`Migration ${tag} is not in the journal`);
-  return entries
-    .filter((entry) => entry.when > own.when)
-    .sort((a, b) => b.when - a.when)
-    .map((entry) => `${entry.tag.split("_")[0]}_rollback.sql`)
-    .filter((name) => existsSync(resolve(drizzleDir, name)))
-    .map((name) => readFileSync(resolve(drizzleDir, name), "utf8"))
-    .join("\n");
+export function laterRollbackSql(afterNumber: number): string {
+  const journal = JSON.parse(readFileSync(join(drizzleDir, "meta/_journal.json"), "utf8")) as {
+    entries: { tag: string }[];
+  };
+  return journal.entries
+    .map((entry) => entry.tag.slice(0, 4))
+    .filter((number) => Number(number) > afterNumber)
+    .reverse()
+    .map((number) => {
+      try {
+        return readFileSync(join(drizzleDir, `${number}_rollback.sql`), "utf8");
+      } catch {
+        return "";
+      }
+    })
+    .join("\n")
+    .replaceAll(/^(BEGIN|COMMIT);$/gm, "");
 }

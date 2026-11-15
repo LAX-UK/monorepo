@@ -126,6 +126,8 @@ export type ContainerPaymentsServices = {
   /** "Pay several": one checkout for several invoices of an account. */
   paymentGroupCheckout: PaymentGroupServices["checkout"];
   paymentGroupGateway: PaymentGroupServices["gateway"];
+  /** Staff refunding a combined payment's courier charge on its own. */
+  paymentGroupDeliveryRefunds: PaymentGroupServices["deliveryRefunds"];
   privateSaleDeals: PrivateSaleDealServices;
   /** Allocates a dispute across the invoices it falls on, moving each seller's payout. */
   disputeAllocationService: DisputeAllocationService;
@@ -580,6 +582,7 @@ export function createPaymentsServices(
     adminMetricsService,
     paymentGroupCheckout: paymentGroups.checkout,
     paymentGroupGateway: paymentGroups.gateway,
+    paymentGroupDeliveryRefunds: paymentGroups.deliveryRefunds,
     privateSaleDeals,
     disputeAllocationService: createDisputeAllocationService({
       db,

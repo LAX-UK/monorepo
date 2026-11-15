@@ -19,6 +19,7 @@ vi.mock("@/lib/actions/admin", () => ({
   adminLotFulfilmentReleaseResultAction: vi.fn(),
   adminLotFulfilmentReadyForCollectionResultAction: vi.fn(),
   adminLotFulfilmentCollectedResultAction: vi.fn(),
+  adminRefundGroupDeliveryResultAction: vi.fn(),
 }));
 vi.mock("@/lib/auth/step-up/use-step-up-coordinator", () => ({
   redirectToHostedReauth: vi.fn(),
@@ -38,6 +39,7 @@ function lot(id: string, title: string, step: string): LotFulfilmentStaffRow {
     lotHref: `/admin/lots/${id}`,
     saleHref: null,
     saleTitle: null,
+    courierPaid: [],
   };
 }
 
@@ -86,6 +88,26 @@ describe("LotFulfilmentStaffList queue panel", () => {
     fireEvent.keyDown(queuePanel.get() as HTMLElement, { key: "k" });
     fireEvent.keyDown(queuePanel.get() as HTMLElement, { key: "k" });
     expect(queuePanel.title("Blue Interior")).toBeVisible();
+  });
+
+  it("marks a courier charge paid with the invoice on the row and in the panel", () => {
+    const paidRow = {
+      ...lot("lot_c", "Green Field", "released"),
+      courierPaid: [
+        {
+          paymentGroupId: "5d2f7c1a-9e3b-4f60-8a1d-3b7c9e2f4a61",
+          deliveryQuoteId: "8c4e2a17-3f5b-4d9e-b1a6-7e2c9f3d5b80",
+          label: "Paid with invoice · £180.00",
+          remainingPence: 18000,
+          remainingLabel: "£180.00",
+        },
+      ],
+    };
+    window.history.replaceState(null, "", "/admin/lot-fulfilment?lot=lot_c");
+    renderList({ rows: [rows[0] as LotFulfilmentStaffRow, paidRow], search: { lot: "lot_c" } });
+    expect(screen.getAllByText("Courier paid with invoice").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Paid with invoice · £180.00").length).toBeGreaterThan(0);
+    expect(screen.getByText(/Do not take a separate courier payment/)).toBeVisible();
   });
 
   it("reopens the lot from its address", () => {

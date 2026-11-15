@@ -112,6 +112,16 @@ export const adminRefundBuyerBodySchema = z.object({
 export type AdminRefundBuyerInput = z.infer<typeof adminRefundBuyerBodySchema>;
 
 /**
+ * A staff refund of a combined payment's courier charge on its own: why, and optionally how much
+ * (whole pence; the rest of the courier charge when left out).
+ */
+export const adminRefundGroupDeliveryBodySchema = adminRefundBuyerBodySchema.extend({
+  amountPence: z.number().int().positive().max(100_000_000).optional(),
+});
+
+export type AdminRefundGroupDeliveryInput = z.infer<typeof adminRefundGroupDeliveryBodySchema>;
+
+/**
  * Refunding a captured payment from the staff tools (`POST /payments/:id/refund`). The reason is
  * kept on the audit event; it is optional so seller-entity callers without one still work.
  */

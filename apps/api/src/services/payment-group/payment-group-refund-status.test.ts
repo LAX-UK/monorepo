@@ -99,6 +99,7 @@ function setup() {
         return true;
       }),
     },
+    unappliedMoney: { record: vi.fn().mockResolvedValue(undefined) },
   });
 
   const refund = (r: StripeRefund) => {

@@ -201,3 +201,26 @@ describe("unappliedMoneyWorkItemWording", () => {
     ).toBeNull();
   });
 });
+
+describe("an invoice refunded on a combined payment with courier delivery", () => {
+  const money: UnappliedMoney = {
+    ...base,
+    reason: "group_invoice_refunded_with_delivery",
+    paymentGroupId: "grp-1",
+    invoiceRefundKey: "pay-1:2500",
+    amountCents: 2500,
+  };
+
+  it("is one task per refunded total of the invoice, not one per charge", () => {
+    expect(unappliedMoneyDedupeKey(money)).toBe("group_invoice_refunded_with_delivery:pay-1:2500");
+    expect(unappliedMoneyDedupeKey({ ...money, invoiceRefundKey: "pay-1:4000" })).toBe(
+      "group_invoice_refunded_with_delivery:pay-1:4000",
+    );
+  });
+
+  it("tells finance the courier charge was not refunded with the invoice", () => {
+    const wording = unappliedMoneyWorkItemWording(money);
+    expect(wording.title).toBe("Invoice refunded on a payment that included courier delivery");
+    expect(wording.hint).toContain("The courier charge was not refunded with it.");
+  });
+});

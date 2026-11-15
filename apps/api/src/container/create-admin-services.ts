@@ -2,6 +2,7 @@ import type { Database } from "@auction/db";
 import {
   DrizzleAdminSubmissionsSummaryReader,
   DrizzleCollectionBookingRepository,
+  DrizzleDeliveryPaidWithInvoiceReader,
   DrizzleDomainEventDeliveryRepository,
   DrizzleEmailBlockRepository,
   DrizzleExportJobRepository,
@@ -196,6 +197,7 @@ export function createAdminServices(input: CreateAdminServicesInput): ContainerA
     itemSubmissionAdminApi,
     paymentService: paymentAdminService,
     unappliedMoneyHandling: payments.unappliedMoneyHandling,
+    paymentGroupDeliveryRefunds: payments.paymentGroupDeliveryRefunds,
     adminPaymentListQueryService,
     lotService,
     adminLotBrowseService,
@@ -237,6 +239,7 @@ export function createAdminServices(input: CreateAdminServicesInput): ContainerA
     lotFulfilmentService,
     lotFulfilmentRepository,
     collectionBookings: new DrizzleCollectionBookingRepository(db),
+    deliveriesPaidWithInvoice: new DrizzleDeliveryPaidWithInvoiceReader(db),
     bidService,
     saleroomOnBlockPolicy,
     paddleService: catalog.paddleService,

@@ -613,3 +613,67 @@ describe("impersonation start", () => {
     expect(impersonation.startImpersonation).not.toHaveBeenCalled();
   });
 });
+
+describe("refunding a combined payment's courier charge", () => {
+  const GROUP_ID = "5d2f7c1a-9e3b-4f60-8a1d-3b7c9e2f4a61";
+  const QUOTE_ID = "8c4e2a17-3f5b-4d9e-b1a6-7e2c9f3d5b80";
+  const path = `/admin/payment-groups/${GROUP_ID}/deliveries/${QUOTE_ID}/refund`;
+  const key = (value: string) => ({ "idempotency-key": value });
+
+  function fixture(session: Session, options: { recent?: boolean } = {}) {
+    const outcome = { stripeRefundId: "re_courier", status: "succeeded", amountPence: 18_000 };
+    const payments = {
+      refundGroupDelivery: vi
+        .fn()
+        .mockResolvedValue({ match: (onOk: (v: unknown) => unknown) => onOk(outcome) }),
+    };
+    const { app, platform, guards } = mount(session, options);
+    const container = { admin: { payments, manualReviewPayments: {} } } as never;
+    attachAdminPaymentsManualReviewRoutes(platform, container, guards);
+    return { app, payments };
+  }
+
+  it("refunds the courier charge for finance, naming the group, the quote and the reason", async () => {
+    const { app, payments } = fixture(staff(["finance"]));
+    const res = await app.request(
+      path,
+      json("POST", { reason: REASON, amountPence: 5_000 }, key("courier-key-0001")),
+    );
+    expect(res.status).toBe(200);
+    expect(payments.refundGroupDelivery).toHaveBeenCalledWith({
+      actorUserId: ACTOR_ID,
+      role: "staff",
+      staffRoles: normalizeStaffRoles(["finance"]),
+      paymentGroupId: GROUP_ID,
+      deliveryQuoteId: QUOTE_ID,
+      amountPence: 5_000,
+      reason: REASON,
+    });
+  });
+
+  it("asks for a fresh sign-in first", async () => {
+    const { app, payments } = fixture(staff(["finance"]), { recent: false });
+    const res = await app.request(path, json("POST", { reason: REASON }, key("courier-key-0002")));
+    expect(res.status).toBe(403);
+    expect(await res.json()).toEqual(STEP_UP);
+    expect(payments.refundGroupDelivery).not.toHaveBeenCalled();
+  });
+
+  it("refuses staff without finance write, a missing key and a missing reason", async () => {
+    const sales = fixture(staff(normalizeStaffRoles(["sales_manager"])), { recent: false });
+    const refused = await sales.app.request(
+      path,
+      json("POST", { reason: REASON }, key("courier-key-0003")),
+    );
+    expect(refused.status).toBe(403);
+    expect(await refused.json()).not.toEqual(STEP_UP);
+
+    const { app, payments } = fixture(staff(["finance"]));
+    const noKey = await app.request(path, json("POST", { reason: REASON }));
+    const noReason = await app.request(path, json("POST", {}, key("courier-key-0004")));
+    expect(noKey.status).toBe(400);
+    expect(noReason.status).toBe(400);
+    expect(sales.payments.refundGroupDelivery).not.toHaveBeenCalled();
+    expect(payments.refundGroupDelivery).not.toHaveBeenCalled();
+  });
+});

@@ -2,6 +2,7 @@ import type {
   AdminLotFulfilmentListSort,
   AdminLotFulfilmentListSummary,
   ICollectionBookingReader,
+  IDeliveryPaidWithInvoiceReader,
   ILotFulfilmentRepository,
   LotFulfilmentListRow,
   LotFulfilmentRow,
@@ -10,9 +11,26 @@ import type {
 /** The collection visit a lot is booked into, as the queue shows it. */
 export type LotFulfilmentCollectionVisit = { start: string; end: string };
 
+/**
+ * A courier charge the buyer already paid inside a combined payment ("paid with invoice"), so
+ * staff do not take it again by hand. Refunds of it name the group and the quote.
+ */
+export type LotFulfilmentCourierPaid = {
+  paymentGroupId: string;
+  deliveryQuoteId: string;
+  /** Pounds charged, as a decimal string. */
+  amount: string;
+  /** What has gone back to the buyer for it so far, in pence. */
+  refundedPence: number;
+  /** ISO timestamp of when the combined payment was paid, when known. */
+  paidAt: string | null;
+};
+
 export type AdminLotFulfilmentListRow = LotFulfilmentListRow & {
   /** The live visit holding the lot, or `null` when it is not booked for collection. */
   collectionVisit: LotFulfilmentCollectionVisit | null;
+  /** Courier charges paid with the invoice; empty when none was. */
+  courierPaidWithInvoice: LotFulfilmentCourierPaid[];
 };
 
 export type AdminLotFulfilmentListPage = {
@@ -36,6 +54,7 @@ export class AdminLotFulfilmentListQueryService {
   constructor(
     private readonly fulfilment: ILotFulfilmentRepository,
     private readonly bookings: Pick<ICollectionBookingReader, "findLiveByLots">,
+    private readonly paidDeliveries: Pick<IDeliveryPaidWithInvoiceReader, "findByLots">,
   ) {}
 
   async getPage(filter: AdminLotFulfilmentListQueryFilter): Promise<AdminLotFulfilmentListPage> {
@@ -56,8 +75,12 @@ export class AdminLotFulfilmentListQueryService {
       this.fulfilment.countMatching(listFilter),
       this.fulfilment.summarizeForAdmin(baseFilter),
     ]);
-    // One read for the page's lots, not one per row.
-    const live = await this.bookings.findLiveByLots(rowsResult.items.map((row) => row.lotId));
+    // One read each for the page's lots, not one per row.
+    const lotIds = rowsResult.items.map((row) => row.lotId);
+    const [live, paid] = await Promise.all([
+      this.bookings.findLiveByLots(lotIds),
+      this.paidDeliveries.findByLots(lotIds),
+    ]);
     const rows = rowsResult.items.map((row) => {
       const booking = live.get(row.lotId);
       return {
@@ -68,6 +91,13 @@ export class AdminLotFulfilmentListQueryService {
               end: booking.slotEnd.toISOString(),
             }
           : null,
+        courierPaidWithInvoice: (paid.get(row.lotId) ?? []).map((d) => ({
+          paymentGroupId: d.paymentGroupId,
+          deliveryQuoteId: d.deliveryQuoteId,
+          amount: d.amount,
+          refundedPence: d.refundedPence,
+          paidAt: d.paidAt ? d.paidAt.toISOString() : null,
+        })),
       };
     });
     return {

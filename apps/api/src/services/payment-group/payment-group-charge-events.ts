@@ -11,6 +11,7 @@ import { gbpAmountToPence } from "../../lib/decimal-money.js";
 import { recordMoneyPathEvent } from "../../middleware/metrics.js";
 import type { IDomainEventSink } from "../domain-event-sink.js";
 import type { IPayoutAdjustmentService } from "../interfaces/payout-adjustment.js";
+import type { IUnappliedMoneyRecorder } from "../payment/unapplied-money.recorder.js";
 import type { PaymentWebhookResult } from "../stripe-webhook/payment-webhook-types.js";
 import type { IPaymentGroupGateway } from "./payment-group-ports.js";
 import type { IProviderEventClaim } from "./payment-group-settlement.service.js";
@@ -36,6 +37,11 @@ export type PaymentGroupChargeEventsDeps = {
   sellerRefundedCents: (tx: Database, paymentId: string) => Promise<number>;
   events: IDomainEventSink;
   claims: IProviderEventClaim;
+  /**
+   * The finance task opened when an invoice of a group that also charged courier delivery is
+   * refunded, so staff reconcile the courier charge with it.
+   */
+  unappliedMoney: Pick<IUnappliedMoneyRecorder, "record">;
 };
 
 const DUPLICATE: PaymentWebhookResult = {
@@ -188,6 +194,31 @@ export class PaymentGroupChargeEvents {
           actorUserId: null,
           actingLegalEntityId: member.sellerLegalEntityId,
         });
+      }
+      // On a group that also charged courier delivery, an invoice refund leaves the courier charge
+      // where it was: finance gets a task to reconcile the two. Measured on Stripe's own total for
+      // the invoice, whichever way the refund was made (staff, dashboard, this webhook), and keyed
+      // by that total, so each increase opens one task and a replayed event opens none.
+      if (locked.deliveries.length > 0) {
+        for (const member of members) {
+          const refundedPence = attribution.refundedPenceByPayment.get(member.paymentId) ?? 0;
+          if (refundedPence <= 0) continue;
+          await this.deps.unappliedMoney.record(
+            tx,
+            {
+              reason: "group_invoice_refunded_with_delivery",
+              paymentId: member.paymentId,
+              paymentGroupId: group.id,
+              stripePaymentIntentId: charge.paymentIntentId,
+              stripeChargeId: charge.id,
+              stripeCustomerId: null,
+              invoiceRefundKey: `${member.paymentId}:${refundedPence}`,
+              amountCents: refundedPence,
+              currency: charge.currency,
+            },
+            group.buyerLegalEntityId,
+          );
+        }
       }
       // A refund of the courier charge belongs to the delivery quote: it moves no invoice and
       // charges nothing back from a seller. The group keeps what it already announced for each
