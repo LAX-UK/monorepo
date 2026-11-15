@@ -1,5 +1,6 @@
 import type { SaleLotsPage, SaleShell } from "@/lib/data/http/sales.server";
-import type { SaleroomSecondaryData } from "@/lib/marketing/saleroom-page-data.service";
+import { SIGNED_OUT_SALE_VIEWER, buildSaleViewerVM } from "@/lib/marketing/sale-viewer";
+import type { SaleroomPublicSecondaryData } from "@/lib/marketing/saleroom-page-data.service";
 import { buildSaleroomPageVM } from "@/lib/marketing/saleroom-page.vm";
 import type { Lot, Sale } from "@auction/types";
 import { describe, expect, it } from "vitest";
@@ -82,14 +83,7 @@ const lotsPage: SaleLotsPage = {
   sort: "lot",
 };
 
-const secondary: SaleroomSecondaryData = {
-  follow: { isFollowing: false },
-  relatedSales: [],
-  kycSummary: null,
-  kycUnavailable: false,
-  watchedLotIds: new Set<string>(),
-  telephoneBooking: null,
-};
+const secondary: SaleroomPublicSecondaryData = { relatedSales: [] };
 
 describe("buildSaleroomPageVM", () => {
   it("builds without throwing for minimal sale shell", () => {
@@ -109,10 +103,7 @@ describe("buildSaleroomPageVM", () => {
         urlView: "grid",
       },
       layoutView: "grid",
-      session: null,
-      actingMemberships: null,
-      orgModuleEnabled: false,
-      mySaleRegs: [],
+      viewer: SIGNED_OUT_SALE_VIEWER,
       registeredBidderCount: null,
       initialSaleroomStatus: { status: "none", currentLotId: null },
       categoryLabel: null,
@@ -126,24 +117,21 @@ describe("buildSaleroomPageVM", () => {
     expect(vm.lotVMs[0]?.title).toBe("Untitled Study");
   });
 
+  it("is the signed-out page whatever the session: nothing personal is in the cached render", () => {
+    const vm = build({});
+    expect(vm.viewer).toBe(SIGNED_OUT_SALE_VIEWER);
+    expect(vm.isAuthenticated).toBe(false);
+    expect(vm.initialFollowing).toBe(false);
+    expect(vm.myRegistrations).toEqual([]);
+    expect(vm.telephoneBooking).toBeNull();
+    expect(vm.lotVMs.every((lot) => !lot.viewerIsWatching && !lot.viewerOwnsLot)).toBe(true);
+  });
+
   it("does not offer a paused organisation for registration, and tells its buyer agent why", () => {
-    const vm = buildSaleroomPageVM({
-      shell,
-      lotsPage,
-      filteredLots: [baseLot],
-      secondary,
-      query: {
-        pageRaw: undefined,
-        catalogSearch: "",
-        catalogSort: "lot",
-        statusFilter: null,
-        isCatalogLoadAll: false,
-        pageNum: 1,
-        layoutViewRaw: "grid",
-        urlView: "grid",
-      },
-      layoutView: "grid",
+    const vm = buildSaleViewerVM({
       session: null,
+      isFollowing: false,
+      watchedLotIds: [],
       actingMemberships: [
         {
           id: "le-h",
@@ -154,13 +142,11 @@ describe("buildSaleroomPageVM", () => {
         { id: "le-n", displayName: "Northbank Gallery", role: "buyer_agent", status: "approved" },
         { id: "le-c", displayName: "Crowley Fine Art", role: "viewer", status: "under_review" },
       ],
-      orgModuleEnabled: true,
       mySaleRegs: [],
-      registeredBidderCount: null,
-      initialSaleroomStatus: { status: "none", currentLotId: null },
-      categoryLabel: null,
-      categoryLabels: [],
-      now: new Date("2026-01-15T12:00:00Z"),
+      kycSummary: null,
+      kycUnavailable: false,
+      orgModuleEnabled: true,
+      telephoneBooking: null,
     });
 
     expect(vm.buyerEntities.map((entity) => entity.id)).toEqual(["le-n"]);
@@ -210,10 +196,7 @@ function build(input: {
     secondary,
     query,
     layoutView: "grid",
-    session: null,
-    actingMemberships: null,
-    orgModuleEnabled: false,
-    mySaleRegs: [],
+    viewer: SIGNED_OUT_SALE_VIEWER,
     registeredBidderCount: null,
     initialSaleroomStatus: { status: "none", currentLotId: null },
     categoryLabel: null,
@@ -364,5 +347,18 @@ describe("sale hero", () => {
     const onsite = build({ sale: { deliveryMode: "onsite", locationCity: "Cheltenham" } }).heroVM;
     expect([onsite.formatLabel, onsite.placeLabel]).toEqual(["In-person", "Cheltenham"]);
     expect(onsite.dateLine).not.toContain("Cheltenham");
+  });
+});
+
+describe("catalogue cards carry no bid state (CO-7)", () => {
+  it("draws every card pending and names the pages the browser reads live", () => {
+    const vm = build({ lots: manyLots(3) });
+    for (const card of vm.lotVMs) {
+      expect(card.pending).toBe(true);
+      expect(card.currentBidValue).toBe("");
+      expect(card.cardLine.value).toBeNull();
+      expect(card.endTime).toBeNull();
+    }
+    expect(vm.catalogueLiveReads).toEqual([{ limit: 40, offset: 0, sort: "lot" }]);
   });
 });

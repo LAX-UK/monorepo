@@ -15,7 +15,7 @@ import {
   saleSellerTerms,
 } from "@auction/db/schema";
 import { type SellerTermsHeldReason, consignmentReference } from "@auction/domain";
-import { and, desc, eq, inArray, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 import type {
   IStaffLotSellerProceedsReader,
   IStaffSaleLabelsReader,
@@ -27,7 +27,6 @@ import type {
   StaffSellerTermsFacts,
   StaffSellerTermsSource,
 } from "../interfaces/staff-seller-proceeds.reader.js";
-import { pricedOnEarlierVersion } from "./agreement-version.js";
 import { DrizzleCommissionVatSettingReader } from "./drizzle-seller-terms-facts.reader.js";
 
 /** The audit event that records an ATG sale settled with its seller outside LAX. */
@@ -69,8 +68,15 @@ const AGREEMENT_COLUMNS = {
   commissionPercent: consignmentAgreement.commissionPercent,
   source: consignmentAgreement.source,
   signedDocumentId: consignmentAgreement.signedDocumentId,
-  updatedAt: consignmentAgreement.updatedAt,
+  version: consignmentAgreement.version,
+  supersededAt: consignmentAgreement.supersededAt,
 } as const;
+
+/** Joins a consignment to its current agreement: the version not superseded. */
+const CURRENT_AGREEMENT = and(
+  eq(consignmentAgreement.submissionId, itemSubmission.id),
+  isNull(consignmentAgreement.supersededAt),
+);
 
 type AgreementRow = {
   id: string;
@@ -81,32 +87,27 @@ type AgreementRow = {
   commissionPercent: string | null;
   source: string;
   signedDocumentId: string | null;
-  updatedAt: Date;
+  version: number;
+  supersededAt: Date | null;
 };
 
-/** The agreement as staff refer to it; `priced` is the snapshot when the sale was priced on it. */
-function agreementFacts(
-  row: AgreementRow,
-  priced: {
-    agreementId: string | null;
-    commissionBps: number | null;
-    computedAt: Date;
-  } | null = null,
-): StaffAgreementFacts {
-  const commissionPercent = row.commissionPercent === null ? null : String(row.commissionPercent);
+/**
+ * The agreement as staff refer to it, at its version. `pricedOnId` is the agreement the live sale
+ * was priced on: when that is this version and it has been superseded since, the sale keeps this
+ * version's figures and staff are told so.
+ */
+function agreementFacts(row: AgreementRow, pricedOnId: string | null = null): StaffAgreementFacts {
   return {
     id: row.id,
     submissionId: row.submissionId,
     reference: consignmentReference(row.referenceNumber),
     legalEntityId: row.legalEntityId,
     signedAt: row.acceptedAt ?? null,
-    commissionPercent,
+    commissionPercent: row.commissionPercent === null ? null : String(row.commissionPercent),
     source: row.source === "recorded" ? "recorded" : "online",
     signedDocumentId: row.signedDocumentId ?? null,
-    pricedOnEarlierVersion:
-      priced !== null &&
-      priced.agreementId === row.id &&
-      pricedOnEarlierVersion(priced, { commissionPercent, updatedAt: row.updatedAt }),
+    version: row.version,
+    pricedOnEarlierVersion: pricedOnId === row.id && row.supersededAt !== null,
   };
 }
 
@@ -145,20 +146,13 @@ export class DrizzleStaffLotSellerProceedsReader
     ]);
     const snapshotAgreementId = sale?.agreementId ?? null;
     const terms = sale?.facts.terms ?? null;
-    const priced =
-      terms && terms.basis === "agreement"
-        ? {
-            agreementId: snapshotAgreementId,
-            commissionBps: terms.commissionBps,
-            computedAt: terms.computedAt,
-          }
-        : null;
-    // The agreement the sale was priced on, flagged when the row has changed since.
+    const pricedOnId = terms && terms.basis === "agreement" ? snapshotAgreementId : null;
+    // The version the sale was priced on, flagged when a later version has superseded it.
     const row =
       snapshotAgreementId && snapshotAgreementId !== submission.agreement?.id
         ? await this.agreementRowById(snapshotAgreementId)
         : submission.agreementRow;
-    const agreement = row ? agreementFacts(row, priced) : null;
+    const agreement = row ? agreementFacts(row, pricedOnId) : null;
 
     return {
       lotId: lotRow.lotId,
@@ -190,7 +184,7 @@ export class DrizzleStaffLotSellerProceedsReader
           agreement: AGREEMENT_COLUMNS,
         })
         .from(itemSubmission)
-        .innerJoin(consignmentAgreement, eq(consignmentAgreement.submissionId, itemSubmission.id))
+        .innerJoin(consignmentAgreement, CURRENT_AGREEMENT)
         .innerJoin(lot, eq(lot.id, itemSubmission.convertedLotId))
         .where(inArray(itemSubmission.convertedLotId, ids))
         .orderBy(
@@ -348,7 +342,7 @@ export class DrizzleStaffLotSellerProceedsReader
     const [row] = await this.db
       .select({ submissionId: itemSubmission.id, agreement: AGREEMENT_COLUMNS })
       .from(itemSubmission)
-      .leftJoin(consignmentAgreement, eq(consignmentAgreement.submissionId, itemSubmission.id))
+      .leftJoin(consignmentAgreement, CURRENT_AGREEMENT)
       .where(eq(itemSubmission.convertedLotId, lotId))
       // The seller's own submission first, as the seller-terms rule reads it.
       .orderBy(

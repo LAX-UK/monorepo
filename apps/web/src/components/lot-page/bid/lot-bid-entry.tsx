@@ -49,6 +49,7 @@ import {
   lotLifecycleCopy,
 } from "@auction/domain";
 import type { Lot, PublicLotView } from "@auction/types";
+import { Button } from "@auction/ui/lax/button";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useMemo, useRef, useState } from "react";
 
@@ -114,8 +115,28 @@ function OpenBidFromLink({
  * stop them with a reason, and the one dialog where bidding happens. Everything it says comes
  * from the domain; it wires the live lot, the ports and the page's announcements to it.
  */
-export function LotBidEntry({ auction: lot, artistName, gate, buyersPremium }: LotBidEntryProps) {
+export function LotBidEntry(props: LotBidEntryProps) {
+  const { live } = useLotPageViewContext();
+  // Shut until the first live read lands: the page is built from cached reads, so it does not
+  // know the price, the state or the close yet (CO-7).
+  if (!live) return <LotBidEntryPending />;
+  return <LotBidEntryLive {...props} />;
+}
+
+/** The bid button's place, at its final size, disabled until the lot's live state is read. */
+export function LotBidEntryPending() {
+  return (
+    <div id="lot-bid-entry" tabIndex={-1} className="scroll-mt-28 outline-none">
+      <Button variant="primary" size="lg" className="w-full" disabled aria-busy="true">
+        Loading the latest bid
+      </Button>
+    </div>
+  );
+}
+
+function LotBidEntryLive({ auction: lot, artistName, gate, buyersPremium }: LotBidEntryProps) {
   const { view, currentPrice, nextBid, viewer, nowMs } = useLotPageViewContext();
+  const { snapshot } = useLotBidHistory();
   const { bidWriter, absenteeBidWriter } = useLotPorts();
   const { applyOwnBid } = useLotBidHistory();
   const { biddingAllowed } = useLiveConnection();
@@ -213,7 +234,7 @@ export function LotBidEntry({ auction: lot, artistName, gate, buyersPremium }: L
       <BidGate
         user={gate.sessionUser}
         lot={lot}
-        lotStatus={lot.status}
+        lotStatus={snapshot.status}
         loginNextPath={gate.loginNextPath}
         isOwnLot={gate.isOwnLot}
         actingLegalEntityId={gate.actingLegalEntityId}

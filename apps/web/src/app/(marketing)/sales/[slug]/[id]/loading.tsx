@@ -2,13 +2,13 @@ import { MarketingCatalogToolbarSkeleton } from "@/components/marketing/marketin
 import { MarketingDetailShell } from "@/components/marketing/marketing-detail-shell";
 import { MarketingListSkeleton } from "@/components/marketing/marketing-list-skeleton";
 import { MARKETING_PAGE_SHELL, SALE_ANCHOR_STICKY_CLASS } from "@/lib/marketing/chrome";
-import { readSkeletonView } from "@/lib/preferences/skeleton-view.server";
 import { cn } from "@auction/ui/lib/utils";
 
 const pulse = "animate-pulse rounded bg-surface-container-high";
 
-export default async function SaleroomCatalogLoading() {
-  const view = await readSkeletonView("sales-lot", "grid");
+/** Session-free like the page it stands in for (CO-7): the default grid, not a saved preference. */
+export default function SaleroomCatalogLoading() {
+  const view = "grid" as const;
 
   return (
     <MarketingDetailShell

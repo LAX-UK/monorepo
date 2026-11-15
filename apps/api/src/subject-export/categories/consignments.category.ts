@@ -165,7 +165,9 @@ export class ConsignmentsCategory extends SourcedExportCategory {
                 isNotNull(consignmentAgreement.acceptedAt),
               ),
             )
-            .orderBy(asc(consignmentAgreement.acceptedAt));
+            // By version, not signing date: a correction may state an earlier date, and the last
+            // one is the current version, which the estimate and reserve are read from.
+            .orderBy(asc(consignmentAgreement.submissionId), asc(consignmentAgreement.version));
           const lots =
             lotIds.length === 0
               ? []

@@ -5,6 +5,7 @@ import { lotEstimateLine } from "@/lib/lot-marketing-display";
 import { lotPriceDisplay } from "@/lib/lot-price-display";
 import type { CatalogLinkParams } from "@/lib/marketing/catalog-links";
 import { lotCatalogHref } from "@/lib/marketing/catalog-links";
+import type { LiveCardFields } from "@/lib/marketing/saleroom/card-live-state";
 import type { CatalogLotVM } from "@auction/types";
 import { normalizeAuctionTime } from "@auction/validators";
 import type { LotQuickLookVM } from "./types";
@@ -39,8 +40,12 @@ export function lotQuickLookFromLotCardVM(item: LotCardVM): LotQuickLookVM {
   };
 }
 
-export function lotQuickLookFromRailCard(card: LotRailCardVM): LotQuickLookVM {
-  const endTime = normalizeAuctionTime(card.endTime);
+/** The rail card's quick look. Bid state comes from the live read; until it lands there is none. */
+export function lotQuickLookFromRailCard(
+  card: LotRailCardVM,
+  live?: LiveCardFields | null,
+): LotQuickLookVM {
+  const endTime = normalizeAuctionTime(live?.endTime);
   return {
     id: card.id,
     href: card.href,
@@ -48,11 +53,12 @@ export function lotQuickLookFromRailCard(card: LotRailCardVM): LotQuickLookVM {
     subtitle: card.artistName ?? "",
     imageUrl: card.imageUrl,
     imageAlt: card.title,
-    status: card.status,
+    status: live?.status ?? "scheduled",
     ...(endTime ? { endTime } : {}),
     lotLabel: card.lotNumber != null ? `Lot ${card.lotNumber}` : null,
-    currentBidLabel: card.priceLabel,
-    currentBidValue: card.currentPrice,
+    ...(live
+      ? { currentBidLabel: live.currentBidLabel, currentBidValue: live.currentBidValue }
+      : {}),
     ...(card.estimateLine ? { estimateLabel: "Estimate", estimateValue: card.estimateLine } : {}),
   };
 }
@@ -104,6 +110,9 @@ export function lotQuickLookFromSaleLotCard(lot: SaleLotCardVM): LotQuickLookVM 
   };
 }
 
-export function lotQuickLookRailDeck(cards: LotRailCardVM[]): LotQuickLookVM[] {
-  return cards.map(lotQuickLookFromRailCard);
+export function lotQuickLookRailDeck(
+  cards: LotRailCardVM[],
+  live?: ReadonlyMap<string, LiveCardFields> | null,
+): LotQuickLookVM[] {
+  return cards.map((card) => lotQuickLookFromRailCard(card, live?.get(card.id)));
 }

@@ -597,6 +597,32 @@ row is this migration's), then migrate: 0386 and 0388 both apply (0388 replaces 
 the same body). The buyer's Shop order page does not
 show credit notes yet.
 
+## Shop originals invoiced in Books (flow 22)
+
+**What happens.** Staff issue an original's invoice in Shop Admin › Sales. Only while the Shop is
+aimed at Books **live** does Books invoice it: no Stripe Invoice is made; Stripe makes a single-use
+Payment Link for the stored price, and Shop Admin shows it ("Nothing was emailed. Send … this
+payment link …"). Send the buyer that link. Once they pay, the sale takes the next `LAX-INV-` number
+from the Shop's counter, and the worker books the contact, the invoice and the payment, and emails
+the invoice to the address staff confirmed in the dialog (not to the buyer's LAX account, which
+they may not have). In dry run, in the test organisation and with Books off, the buyer gets the
+Stripe Invoice, emailed by Stripe, exactly as before: a rehearsal never changes what a buyer gets.
+
+- **A second payment** for an original already paid (another Checkout Session of its link) is
+  never applied: finance gets an unapplied-money task and alert (`shop_original_paid_twice`).
+  Refund the second payment in Stripe.
+- **`accounting_original_invoice_unsent`** (worker error log). An original's Books invoice had
+  nobody to go to (a sale issued before the recipient was stored, whose buyer has no reachable
+  account). Download the invoice from Finance › Accounting and send it to the buyer by hand.
+- **`shop_original_money_returned`** (Shop API log, and an ops alert email "Shop original refunded
+  or disputed (not credited in Books)"). A refund, failed refund or dispute of an original paid
+  through its link. Refunds of originals are not built yet: Books keeps the invoice and the payment,
+  and nothing credits them. Make the credit note (and its refund from Stripe clearing) by hand in
+  Books, against the original's invoice, and note it on the sale.
+- **Rollback** of the migration keeps every column and its data (issuer, link, number, payment,
+  recipient) and removes only the numbering trigger and the attribution function. Roll the release
+  back first; apply the migration again with the release that knows it.
+
 ## Books notices and the nightly status check (Zoho Books, rehearsal)
 
 Books is still in rehearsal (dry run, or the test organisation only). Nothing below changes
@@ -620,6 +646,27 @@ and records what Books says (below). Every answer has no body and `Cache-Control
   24 hours old, or more than 5 minutes ahead of our clock, is refused with a bare 400 and nothing is
   stored. A body over 16 KiB is refused with 413 before it is read. A notice for another
   organisation, or for a document LAX did not issue, changes nothing.
+
+### Setting the Books values on the test environment
+
+Terraform passes both values to the test API and worker; production does not read them (its
+variables default to empty, so nothing changes there).
+
+| What | GitHub secret (test environment) | Terraform variable | App setting |
+| --- | --- | --- | --- |
+| Organisation settings (JSON) | `ZOHO_BOOKS_ORG_CONFIG_TEST` | `zoho_books_org_config` | `ZOHO_BOOKS_ORG_CONFIG` (api, worker) |
+| Notice secret (32+ characters) | `ZOHO_BOOKS_NOTICE_SECRET_TEST` | `zoho_books_notice_secret` | `ZOHO_BOOKS_NOTICE_SECRET` (api) |
+
+Both are sensitive and default to empty. Empty means accounting does not run and the notice route
+refuses every notice, so applying with the secrets unset changes nothing.
+
+1. **Validate the JSON before storing it.** An invalid value stops the worker at start-up, so run
+   `pnpm books:validate-org-config < candidate.json` (or `ZOHO_BOOKS_ORG_CONFIG='…' pnpm
+   books:validate-org-config`). It applies the same checks as the worker and prints only the
+   entities found. It needs the workspace built once (`pnpm turbo run build --filter=@auction/finance-runtime...`).
+2. Save the values as the secrets above on the `test` GitHub environment.
+3. Run a **terraform apply on test** (the apply-test workflow). The secrets only take effect on the
+   app after that apply; the plan and drift jobs read them for test only.
 
 ### Notice signature refused (`zoho_books.notice_signature_failed`)
 

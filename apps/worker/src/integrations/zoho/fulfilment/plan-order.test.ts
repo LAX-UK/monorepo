@@ -6,7 +6,10 @@ import {
   frameCodeOf,
   framingSpec,
   framingStatusOf,
+  holdsUnrankedStatus,
+  ledgerCounts,
   paperCodeOf,
+  parcelPrints,
   planWrite,
   printSkuOf,
   sizeCodeOf,
@@ -119,6 +122,29 @@ describe("editionAssigned", () => {
   });
 });
 
+describe("parcelPrints", () => {
+  it("lists each print's SKU with its edition, and nothing when there is no print", () => {
+    expect(
+      parcelPrints([
+        { sku: "S-1", edition: "ED 07/25" },
+        { sku: "S-2", edition: null },
+      ]),
+    ).toBe("S-1 ED 07/25; S-2");
+    expect(parcelPrints([])).toBeNull();
+  });
+});
+
+describe("ledgerCounts", () => {
+  it("counts the run's sold prints by holder and in all", () => {
+    expect(ledgerCounts({ collector: 3, artist: 1, lax: 2 })).toEqual({
+      Assigned_To_Client: 3,
+      Assigned_To_Artist: 1,
+      Assigned_To_LAX: 2,
+      Print_Sold: 6,
+    });
+  });
+});
+
 describe("framing", () => {
   it("describes the option, its parts, the lead time and the due date in one line", () => {
     expect(framingSpec(framing({ dueAt: new Date("2026-12-01T12:00:00Z") }))).toBe(
@@ -184,32 +210,32 @@ describe("planWrite", () => {
   });
 
   it("moves a framing status forward and never back", () => {
-    const rank = { field: "Status", rank: "framing" as const };
-    expect(planWrite({ Status: "Framed" }, record({ Status: "Queued" }), rank)).toEqual({
+    const rules = { status: { field: "Status", rank: "framing" as const } };
+    expect(planWrite({ Status: "Framed" }, record({ Status: "Queued" }), rules)).toEqual({
       Status: "Framed",
     });
     // Staff moved the job on in Zoho; a late LAX step does not pull it back.
-    expect(planWrite({ Status: "Framed" }, record({ Status: "QC Passed" }), rank)).toBeNull();
-    expect(planWrite({ Status: "In Progress" }, record({ Status: "Framed" }), rank)).toBeNull();
-    expect(planWrite({ Status: "Framed" }, record({ Status: "Framed" }), rank)).toBeNull();
+    expect(planWrite({ Status: "Framed" }, record({ Status: "QC Passed" }), rules)).toBeNull();
+    expect(planWrite({ Status: "In Progress" }, record({ Status: "Framed" }), rules)).toBeNull();
+    expect(planWrite({ Status: "Framed" }, record({ Status: "Framed" }), rules)).toBeNull();
     // Staff waiting on materials in Zoho is as far along as LAX's "in progress".
     expect(
-      planWrite({ Status: "In Progress" }, record({ Status: "Awaiting Materials" }), rank),
+      planWrite({ Status: "In Progress" }, record({ Status: "Awaiting Materials" }), rules),
     ).toBeNull();
-    expect(planWrite({ Status: "Complete" }, record({ Status: "QC Passed" }), rank)).toEqual({
+    expect(planWrite({ Status: "Complete" }, record({ Status: "QC Passed" }), rules)).toEqual({
       Status: "Complete",
     });
-    expect(planWrite({ Status: "Not Required" }, record({ Status: "Complete" }), rank)).toEqual({
+    expect(planWrite({ Status: "Not Required" }, record({ Status: "Complete" }), rules)).toEqual({
       Status: "Not Required",
     });
-    // A status Zoho holds that LAX does not know is overwritten.
-    expect(planWrite({ Status: "Queued" }, record({ Status: "-None-" }), rank)).toEqual({
+    // An unset picklist is overwritten.
+    expect(planWrite({ Status: "Queued" }, record({ Status: "-None-" }), rules)).toEqual({
       Status: "Queued",
     });
   });
 
   it("moves a dispatch status forward and still updates the courier and tracking", () => {
-    const rank = { field: "Status", rank: "dispatch" as const };
+    const rank = { status: { field: "Status", rank: "dispatch" as const } };
     expect(
       planWrite(
         { Status: "Dispatched", Courier: "DPD", Tracking_Number: "123" },
@@ -221,5 +247,42 @@ describe("planWrite", () => {
       Status: "Delivered",
     });
     expect(planWrite({ Status: "Ready" }, record({ Status: "Dispatched" }), rank)).toBeNull();
+  });
+
+  it("leaves a status Zoho holds that LAX does not rank, and fills one never set", () => {
+    const status = { field: "Status", rank: "dispatch" as const };
+    expect(
+      planWrite({ Status: "Pack Prep" }, record({ Status: "QC Passed" }), { status }),
+    ).toBeNull();
+    expect(
+      planWrite({ Status: "Delivered" }, record({ Status: "On Hold" }), { status }),
+    ).toBeNull();
+    for (const unset of [null, "", "-None-"]) {
+      expect(planWrite({ Status: "Pack Prep" }, record({ Status: unset }), { status })).toEqual({
+        Status: "Pack Prep",
+      });
+    }
+    expect(holdsUnrankedStatus(record({ Status: "QC Passed" }), status)).toBe(true);
+    expect(holdsUnrankedStatus(record({ Status: "Ready" }), status)).toBe(false);
+    expect(holdsUnrankedStatus(record({ Status: "-None-" }), status)).toBe(false);
+    expect(holdsUnrankedStatus(null, status)).toBe(false);
+  });
+
+  it("clears a field LAX owns once LAX holds no value for it, and only that field", () => {
+    const clears = ["Tracking_Number"];
+    expect(
+      planWrite(
+        { Tracking_Number: null, Courier: null },
+        record({ Tracking_Number: "1", Courier: "DPD" }),
+        {
+          clears,
+        },
+      ),
+    ).toEqual({ Tracking_Number: null });
+    expect(
+      planWrite({ Tracking_Number: null }, record({ Tracking_Number: "" }), { clears }),
+    ).toBeNull();
+    // A new record has nothing to clear.
+    expect(planWrite({ A: "x", Tracking_Number: null }, null, { clears })).toEqual({ A: "x" });
   });
 });

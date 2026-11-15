@@ -2,8 +2,9 @@ import { ClerkSessionToolbar } from "@/features/saleroom/components/clerk-consol
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { close, refresh } = vi.hoisted(() => ({
+const { close, pause, refresh } = vi.hoisted(() => ({
   close: vi.fn(),
+  pause: vi.fn(),
   refresh: vi.fn(),
 }));
 
@@ -11,7 +12,7 @@ vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh, push: vi.fn() }
 vi.mock("@/lib/actions/admin", () => ({
   adminSaleroomCloseAction: close,
   adminSaleroomGoLiveAction: vi.fn(),
-  adminSaleroomPauseAction: vi.fn(),
+  adminSaleroomPauseAction: pause,
   adminSaleroomResumeAction: vi.fn(),
 }));
 vi.mock("@/lib/ui/notify", () => ({ notify: { success: vi.fn(), error: vi.fn() } }));
@@ -22,6 +23,7 @@ vi.mock("@/lib/auth/step-up/use-step-up-coordinator", () => ({
 describe("ClerkSessionToolbar", () => {
   beforeEach(() => {
     close.mockReset();
+    pause.mockReset();
     refresh.mockReset();
   });
 
@@ -57,5 +59,61 @@ describe("ClerkSessionToolbar", () => {
     rerender(<ClerkSessionToolbar saleId="sale-1" livePhase="paused" sessionStatus="paused" />);
     expect(screen.getByRole("button", { name: "Resume" })).toBeEnabled();
     expect(screen.queryByRole("button", { name: "Pause" })).not.toBeInTheDocument();
+  });
+
+  it("holds Pause until the server has been asked again, then follows what it says", async () => {
+    let finishPause: (value: { ok: true; data: undefined }) => void = () => {};
+    pause.mockReturnValue(
+      new Promise((resolve) => {
+        finishPause = resolve;
+      }),
+    );
+    let finishConfirm: () => void = () => {};
+    const confirmFromServer = vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          finishConfirm = resolve;
+        }),
+    );
+    render(
+      <ClerkSessionToolbar
+        saleId="sale-1"
+        livePhase="selling"
+        sessionStatus="live"
+        confirmFromServer={confirmFromServer}
+      />,
+    );
+    const controls = screen.getByRole("region", { name: "Session controls" });
+
+    fireEvent.click(within(controls).getByRole("button", { name: "Pause" }));
+    await waitFor(() => expect(pause).toHaveBeenCalledWith({ saleId: "sale-1" }));
+    expect(within(controls).getByRole("button", { name: /paus/i })).toBeDisabled();
+    expect(within(controls).getByRole("button", { name: "Close session" })).toBeDisabled();
+
+    // The server took the pause; the console has not yet heard what state the room is in.
+    finishPause({ ok: true, data: undefined });
+    await waitFor(() => expect(confirmFromServer).toHaveBeenCalledTimes(1));
+    expect(within(controls).getByRole("button", { name: /paus/i })).toBeDisabled();
+
+    finishConfirm();
+    await waitFor(() =>
+      expect(within(controls).getByRole("button", { name: "Close session" })).toBeEnabled(),
+    );
+  });
+
+  it("asks the server again when it refuses a control, so a stale Pause is not offered twice", async () => {
+    pause.mockResolvedValue({ ok: false, error: "Saleroom must be live to pause" });
+    const confirmFromServer = vi.fn().mockResolvedValue(true);
+    render(
+      <ClerkSessionToolbar
+        saleId="sale-1"
+        livePhase="selling"
+        sessionStatus="live"
+        confirmFromServer={confirmFromServer}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Pause" }));
+    await waitFor(() => expect(confirmFromServer).toHaveBeenCalledTimes(1));
   });
 });

@@ -7,12 +7,21 @@ const reads = vi.hoisted(() => ({
   withdrawn: vi.fn(),
   sale: vi.fn(),
   artist: vi.fn(),
+  staffLot: vi.fn(),
+  staffSale: vi.fn(),
+  staffReads: vi.fn(),
 }));
-vi.mock("@/lib/data/http/lots.server", () => ({ getServerLotById: reads.lot }));
+vi.mock("@/lib/data/http/public-catalogue.server", () => ({
+  getPublicLotById: reads.lot,
+  getPublicSaleShell: reads.sale,
+}));
+vi.mock("@/lib/marketing/staff-catalogue-preview.server", () => ({
+  staffPreviewLot: reads.staffLot,
+  staffPreviewSaleReads: reads.staffReads,
+}));
 vi.mock("@/lib/lot-page/load-withdrawn-lot.server", () => ({
   withdrawnLotPageExists: reads.withdrawn,
 }));
-vi.mock("@/lib/data/http/sales.server", () => ({ getServerSaleShell: reads.sale }));
 vi.mock("@/lib/data/http/artist.server", () => ({ registryArtistPageExists: reads.artist }));
 
 import {
@@ -30,6 +39,9 @@ beforeEach(() => {
   reads.withdrawn.mockReset().mockResolvedValue("missing");
   reads.sale.mockReset().mockResolvedValue(null);
   reads.artist.mockReset().mockResolvedValue("missing");
+  reads.staffLot.mockReset().mockResolvedValue(null);
+  reads.staffSale.mockReset().mockResolvedValue(null);
+  reads.staffReads.mockReset().mockResolvedValue(null);
 });
 
 /** A failure must surface as the original error, never as the 404 digest. */
@@ -67,6 +79,16 @@ describe("requireLotPage", () => {
     reads.withdrawn.mockResolvedValue("exists");
     await expect(requireLotPage("lot-1")).resolves.toBeUndefined();
   });
+
+  it("asks for the session only when the public read found nothing", async () => {
+    reads.lot.mockResolvedValue({ id: "lot-1" });
+    await requireLotPage("lot-1");
+    expect(reads.staffLot).not.toHaveBeenCalled();
+
+    reads.lot.mockResolvedValue(null);
+    reads.staffLot.mockResolvedValue({ id: "draft" });
+    await expect(requireLotPage("draft")).resolves.toBeUndefined();
+  });
 });
 
 describe("requireSalePage", () => {
@@ -79,9 +101,16 @@ describe("requireSalePage", () => {
     await expectOutage(requireSalePage("s1"));
   });
 
-  it("lets a sale through", async () => {
+  it("lets a sale through without reading the session", async () => {
     reads.sale.mockResolvedValue({ sale: { id: "s1" } });
     await expect(requireSalePage("s1")).resolves.toBeUndefined();
+    expect(reads.staffReads).not.toHaveBeenCalled();
+  });
+
+  it("lets staff preview a sale the public cannot see", async () => {
+    reads.staffReads.mockResolvedValue({ shell: reads.staffSale, lotsPage: vi.fn() });
+    reads.staffSale.mockResolvedValue({ sale: { id: "draft" } });
+    await expect(requireSalePage("draft")).resolves.toBeUndefined();
   });
 });
 

@@ -2,8 +2,11 @@
 export type FulfilmentTrigger =
   /** A prints listing: its print group, ledger and register row. The id is the listing's artwork. */
   | { kind: "group"; artworkId: string }
-  /** An order's print lines, framing and dispatch. The id is the order's, from the payload. */
-  | { kind: "order"; orderId: string };
+  /**
+   * An order's print lines, framing and dispatch. The id is the order's, from the payload.
+   * `reportsProblems` is true for the events that set which prints are on the order.
+   */
+  | { kind: "order"; orderId: string; reportsProblems: boolean };
 
 type TriggerKind = FulfilmentTrigger["kind"];
 
@@ -24,6 +27,16 @@ export const FULFILMENT_TRIGGER_KINDS: Readonly<Record<string, TriggerKind>> = {
   "shop.framing.status_changed": "order",
 };
 
+/**
+ * The order events that set which prints are on the order: payment (raised with every print's
+ * `shop.edition.sold`) and a swap. A print that cannot be mirrored fails these for staff; the
+ * pick, dispatch and refund steps after them log it instead of failing the same order again.
+ */
+export const ORDER_EVENTS_THAT_SET_PRINTS: ReadonlySet<string> = new Set([
+  "shop.order.paid",
+  "shop.print.swapped",
+]);
+
 export type FulfilmentEvent = { eventType: string; aggregateId?: string; payload?: unknown };
 
 /**
@@ -42,5 +55,6 @@ export function fulfilmentTriggerOf(event: FulfilmentEvent): FulfilmentTrigger |
   if (!kind) return null;
   const id = kind === "group" ? event.aggregateId?.trim() : orderIdOf(event.payload);
   if (!id) return null;
-  return kind === "group" ? { kind, artworkId: id } : { kind, orderId: id };
+  if (kind === "group") return { kind, artworkId: id };
+  return { kind, orderId: id, reportsProblems: ORDER_EVENTS_THAT_SET_PRINTS.has(event.eventType) };
 }

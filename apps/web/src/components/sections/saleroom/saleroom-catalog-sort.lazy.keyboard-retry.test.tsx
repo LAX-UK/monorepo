@@ -1,6 +1,6 @@
 import { LazySaleroomCatalogSort } from "@/components/sections/saleroom/saleroom-catalog-sort.lazy";
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { beforeAll, describe, expect, it, vi } from "vitest";
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
@@ -22,6 +22,11 @@ vi.mock("@/components/sections/saleroom/saleroom-catalog-sort", async () => {
       return actual.SaleroomCatalogSort;
     },
   };
+});
+
+beforeAll(() => {
+  // jsdom has no layout; Radix scrolls the chosen option into view when the list opens.
+  Element.prototype.scrollIntoView = vi.fn();
 });
 
 /** Waits until fetch number `n` has failed and the stand-in is shown again. */
@@ -52,9 +57,10 @@ describe("LazySaleroomCatalogSort when the sort could not be fetched (keyboard)"
       key: " ",
     });
 
-    const select = await screen.findByRole("combobox", { name: "Sort lots" });
+    // Space on the button also opens the list, so the page behind it is hidden from the tree.
+    const select = await screen.findByRole("combobox", { name: "Sort lots", hidden: true });
     expect(chunk.loads).toBe(4);
-    expect(select).toHaveFocus();
+    expect(select).toHaveAttribute("aria-expanded", "true");
     expect(screen.queryByRole("button", { name: /^Sort:/ })).not.toBeInTheDocument();
   });
 });

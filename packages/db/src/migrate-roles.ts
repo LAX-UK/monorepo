@@ -409,6 +409,9 @@ export const WORKER_STRIPE_ATTRIBUTION_READ_COLUMNS = [
 ] as const;
 export const ACCOUNTING_STRIPE_SHOP_ORDER_FUNCTION = "accounting_stripe_shop_order(text)";
 export const ACCOUNTING_STRIPE_SHOP_ORDER_ROLES = ["worker_app"] as const;
+/** The same question for an original sold directly in the Shop (migration 0389). */
+export const ACCOUNTING_STRIPE_SHOP_ORIGINAL_SALE_FUNCTION =
+  "accounting_stripe_shop_original_sale(text)";
 
 /**
  * What the accounting projection reads to book a paid Shop order (plan v2, flows 18-20), column by
@@ -475,6 +478,25 @@ export const WORKER_SHOP_INVOICE_READ_COLUMNS = [
       "updated_at",
     ],
   ],
+  /** An original sold directly in the Shop and invoiced by Books (migration 0389). */
+  [
+    "shop_original_sale",
+    [
+      "id",
+      "status",
+      "artwork_id",
+      "buyer_party_id",
+      "sale_price_pence",
+      "vat_treatment",
+      "vat_pence",
+      "invoice_issuer",
+      "invoice_number",
+      "paid_at",
+      "invoice_recipient_email",
+      "invoice_recipient_name",
+    ],
+  ],
+  ["shop_party", ["id", "display_name", "identity_subject_id"]],
 ] as const;
 
 /**
@@ -541,7 +563,16 @@ export const FINANCE_SETTING_READ_TABLES = ["bid_finance_setting"] as const;
 export const WORKER_SELLER_TERMS_READ_COLUMNS = [
   [
     "consignment_agreement",
-    ["id", "submission_id", "legal_entity_id", "accepted_at", "proposed_at", "commission_percent"],
+    [
+      "id",
+      "submission_id",
+      "legal_entity_id",
+      "accepted_at",
+      "proposed_at",
+      "commission_percent",
+      // The rule prices on the current version only.
+      "superseded_at",
+    ],
   ],
 ] as const;
 /** Shop Identity owns only its local Identity projection. */
@@ -1093,8 +1124,11 @@ export const WORKER_SHOP_PRINT_GROUP_READ_COLUMNS = [
 /**
  * The Zoho fulfilment mirror mirrors a paid order's prints, framing and dispatch from these columns
  * and no others: the order's reference and when it was paid, its print and framing lines, the
- * edition and listing each print is of, the framing task and the fulfilment. No buyer, address or
- * price column is read. The tables stay denied to the worker as a whole; only a column-level
+ * edition and listing each print is of, the framing task's status and due date (not its assignee)
+ * and the fulfilment. No buyer or address
+ * column is read, nor the line's price column. `framing_snapshot` holds the frame option as sold,
+ * its price included (the invoice grant reads it already); the mirror takes the option's names and lead
+ * time from it and sends no price to Zoho. The tables stay denied to the worker as a whole; only a column-level
  * SELECT is granted.
  */
 export const WORKER_SHOP_ORDER_FULFILMENT_READ_COLUMNS = [
@@ -1122,7 +1156,6 @@ export const WORKER_SHOP_ORDER_FULFILMENT_READ_COLUMNS = [
       "source_original_artwork_id",
       "zoho_product_id",
       "run_kind",
-      "run_role",
       "run_size",
       "main_run_artwork_id",
       "print_size",
@@ -1821,6 +1854,11 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
         }
         for (const role of ACCOUNTING_STRIPE_SHOP_ORDER_ROLES) {
           await grantExecuteIfFunctionExists(client, role, ACCOUNTING_STRIPE_SHOP_ORDER_FUNCTION);
+          await grantExecuteIfFunctionExists(
+            client,
+            role,
+            ACCOUNTING_STRIPE_SHOP_ORIGINAL_SALE_FUNCTION,
+          );
         }
         for (const role of ACCOUNTING_RELEASE_SHOP_ORDER_BASIS_ROLES) {
           await grantExecuteIfFunctionExists(

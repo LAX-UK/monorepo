@@ -34,6 +34,7 @@ export {
 export {
   ALL_LIVE_DOMAIN_EVENT_TYPES,
   DOMAIN_EVENT_REGISTRY,
+  WEB_PUBLIC_CACHE_EVENT_TYPES,
   type DomainEventCatalogType,
   type LiveDomainEventType,
 } from "./registry.js";
@@ -70,6 +71,7 @@ export { assertDomainEventConsumerContract } from "./consumer-guard.js";
 export { listDomainEventTypesForConsumer } from "./consumer-routing.js";
 export {
   shopAccountingOrderPaidPayloadSchemaV1,
+  shopAccountingOriginalSalePaidPayloadSchemaV1,
   shopOrderPaidPayloadSchemaV1,
   userPersonalDataAnonymisedPayloadSchemaV1,
   type UserPersonalDataAnonymisedPayloadV1,

@@ -1,11 +1,17 @@
 import { SaleroomCatalogLotsLive } from "@/components/sections/saleroom/saleroom-catalog-lots-live";
 import type { SaleLotCardVM } from "@/components/sections/saleroom/view-models";
+import { liveCardFields, pendingCardVM } from "@/lib/marketing/saleroom/card-live-state";
 import {
   replaceMarketingViewUrl,
   resetMarketingViewClientState,
 } from "@/lib/preferences/view-url-store";
 import { act, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+const liveCards = vi.hoisted(() => ({ current: null as Map<string, unknown> | null }));
+vi.mock("@/lib/marketing/saleroom/sale-catalogue-live.client", () => ({
+  useSaleCatalogueLive: () => liveCards.current,
+}));
 
 vi.mock("@/components/lot-card/lot-card-bidder-state", () => ({
   LotCardBidderState: () => null,
@@ -54,6 +60,7 @@ vi.mock("@/components/marketing/lot-quick-look/lot-quick-look-trigger", () => ({
 }));
 
 beforeEach(() => {
+  liveCards.current = null;
   resetMarketingViewClientState();
   window.history.replaceState({}, "", "/");
 
@@ -164,5 +171,54 @@ describe("SaleroomCatalogLotsLive view switching", () => {
     });
 
     expect(screen.getByTestId("watchlist-lot-1")).toHaveAttribute("data-layout", "inline");
+  });
+});
+
+/*
+ * CO-7: the cards come from a cached page with no bid state. Until the live read lands they show
+ * no price, status or close and no bid action; then the live fields fill them.
+ */
+describe("SaleroomCatalogLotsLive before and after the live read", () => {
+  const pending = pendingCardVM(lot);
+  const live = {
+    saleId: "sale-1",
+    reads: [{ limit: 40, offset: 0, sort: "lot" }],
+    premiumSale: { buyerPremiumRate: null, buyerPremiumTiers: null },
+  } as never;
+
+  it("draws placeholders, no status pill and no bid action while pending", () => {
+    const { container } = render(
+      <SaleroomCatalogLotsLive
+        view="grid"
+        rows={[{ kind: "lot", key: lot.id, lot: pending }]}
+        saleForLifecycle={hybridSaleForLifecycle}
+        isAuthenticated
+        canParticipate
+        live={live}
+      />,
+    );
+    expect(screen.getByTestId("lot-card-line-pending")).toBeInTheDocument();
+    expect(screen.queryByTestId("saleroom-lot-catalog-overlay")).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /bid/i })).not.toBeInTheDocument();
+    expect(container.textContent).not.toContain("£500");
+    expect(container.textContent).not.toContain("Current bid");
+  });
+
+  it("fills the card from the live read", () => {
+    liveCards.current = new Map([[lot.id, liveCardFields(lot)]]);
+    render(
+      <SaleroomCatalogLotsLive
+        view="grid"
+        rows={[{ kind: "lot", key: lot.id, lot: pending }]}
+        saleForLifecycle={hybridSaleForLifecycle}
+        isAuthenticated
+        canParticipate
+        live={live}
+      />,
+    );
+    expect(screen.queryByTestId("lot-card-line-pending")).not.toBeInTheDocument();
+    expect(screen.getByTestId("saleroom-lot-catalog-overlay")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /bid/i })).toBeInTheDocument();
+    expect(screen.getByTestId("lot-card-line").textContent).toContain("£500");
   });
 });

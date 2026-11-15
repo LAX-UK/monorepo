@@ -101,10 +101,31 @@ describe("delivery quote request", () => {
   it("carries the guest through to the order", async () => {
     const { service, createQuoteOrder } = build();
     const guest = { guestCustomerId: "guest-1", basketTokenHash: "hash" };
-    await service.request(input({ subject: "guest:guest-1", guest, fallbackEmail: "a@b.test" }));
+    await service.request(
+      input({ subject: "guest:guest-1", guest, fallbackEmail: "a@b.test", guestIpHash: "iphash" }),
+    );
     expect(createQuoteOrder).toHaveBeenCalledWith(
       expect.objectContaining({ guest, fallbackEmail: "a@b.test" }),
     );
+  });
+
+  it("refuses a guest's quote hold when the client IP is not known, holding nothing", async () => {
+    const { service, createQuoteOrder } = build(state(), { exportPaymentEnabled: false });
+    const guest = { guestCustomerId: "guest-1", basketTokenHash: "hash" };
+    const asked = [
+      input({ subject: "guest:guest-1", guest, guestIpHash: null }),
+      input({ subject: "guest:guest-1", guest }),
+    ];
+    for (const request of asked) {
+      await expect(service.request(request)).rejects.toMatchObject({ statusCode: 403 });
+    }
+    expect(createQuoteOrder).not.toHaveBeenCalled();
+  });
+
+  it("still lets a signed-in buyer ask with no client IP", async () => {
+    const { service, createQuoteOrder } = build();
+    await service.request(input({ guestIpHash: null }));
+    expect(createQuoteOrder).toHaveBeenCalledOnce();
   });
 
   it("goes straight to payment, with the rate, when the region has a fixed price", async () => {

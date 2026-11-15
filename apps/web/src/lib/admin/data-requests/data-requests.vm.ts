@@ -1,3 +1,4 @@
+import type { ErasureHoldFlag } from "@/lib/data/http/admin-data-requests.reader";
 import { LAX_PRODUCT_NAMES, legalEntityNamesFor } from "@auction/branding";
 import {
   DATA_REQUEST_CHANNELS,
@@ -327,6 +328,33 @@ export function dataRequestsAttention(
       ),
       href: links.dueSoon,
       actionLabel: "Show open",
+      tone: "warning",
+    },
+  ];
+}
+
+/**
+ * Requests whose erasure a private sale deal held with nothing to release it: a deal with no end
+ * date, or a re-run after the hold ended that still could not finish. One line, opening the
+ * oldest, so a hold never waits quietly.
+ */
+export function erasureHoldsAttention(
+  holds: readonly ErasureHoldFlag[],
+  hrefFor: (reference: string) => string,
+): AttentionStripItem[] {
+  const [first] = holds;
+  if (!first) return [];
+  return [
+    {
+      id: "erasure-held",
+      count: holds.length,
+      label: plural(
+        holds.length,
+        "erasure is held by a private sale and needs a person to settle it",
+        "erasures are held by a private sale and need a person to settle them",
+      ),
+      href: hrefFor(first.reference),
+      actionLabel: `Open ${first.reference}`,
       tone: "warning",
     },
   ];

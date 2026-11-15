@@ -17,6 +17,7 @@ import {
   lotCardMediaClasses,
   lotCardMediaFrame,
 } from "@auction/marketing-ui/lot-media/lot-card-media-frame";
+import { Skeleton } from "@auction/ui/lax/skeleton";
 import { cn } from "@auction/ui/lib/utils";
 import Link from "next/link";
 import { Fragment, type ReactNode } from "react";
@@ -36,6 +37,25 @@ type Props = {
 
 const DEFAULT_SIZES = "(max-width: 768px) 50vw, (max-width: 1024px) 50vw, 25vw";
 const ROW_IMAGE_SIZES = "96px";
+
+/**
+ * The price and clock line, or its place while the card waits for the live read (CO-7: the page
+ * carries no bid state, so a pending card has no price, status or close to show).
+ */
+function CardPriceLine({ lot }: { lot: SaleLotCardVM }) {
+  if (lot.pending) {
+    return (
+      <div
+        data-testid="lot-card-line-pending"
+        aria-busy="true"
+        className="flex min-h-5 items-center"
+      >
+        <Skeleton className="h-4 w-32" />
+      </div>
+    );
+  }
+  return <LotCardLine model={lot.cardLine} />;
+}
 
 export function SaleroomLotCard({
   lot,
@@ -79,12 +99,14 @@ export function SaleroomLotCard({
               </p>
             ) : null}
             {lot.isOnBlock ? <LotLifecycleStatusBadge badge={saleroomOnBlockBadge()} /> : null}
-            <SaleroomLotCatalogOverlay
-              lot={lot}
-              saleForLifecycle={saleForLifecycle}
-              layout="inline"
-              showTimer={false}
-            />
+            {lot.pending ? null : (
+              <SaleroomLotCatalogOverlay
+                lot={lot}
+                saleForLifecycle={saleForLifecycle}
+                layout="inline"
+                showTimer={false}
+              />
+            )}
           </div>
           <div className="flex flex-wrap items-start justify-between gap-2">
             <div className="min-w-0">
@@ -108,7 +130,7 @@ export function SaleroomLotCard({
 
           <div className="mt-auto flex flex-col gap-1">
             <LotEstimateLine value={lot.estimateValue} />
-            <LotCardLine model={lot.cardLine} />
+            <CardPriceLine lot={lot} />
             <LotCardBidderState lotId={lot.id} lotHref={lot.href} lotTitle={lot.title} />
           </div>
 
@@ -153,13 +175,15 @@ export function SaleroomLotCard({
               </span>
             </span>
           </AdaptiveMediaFrameContainer>
-          <SaleroomLotCatalogOverlay
-            lot={lot}
-            saleForLifecycle={saleForLifecycle}
-            layout="overlay"
-            useOverlayChrome
-            showTimer={false}
-          />
+          {lot.pending ? null : (
+            <SaleroomLotCatalogOverlay
+              lot={lot}
+              saleForLifecycle={saleForLifecycle}
+              layout="overlay"
+              useOverlayChrome
+              showTimer={false}
+            />
+          )}
         </Link>
         {cornerAction ? <Fragment key={`${lot.id}-corner-action`}>{cornerAction}</Fragment> : null}
       </div>
@@ -192,7 +216,7 @@ export function SaleroomLotCard({
 
         <div className="mt-auto flex flex-col gap-1.5">
           <LotEstimateLine value={lot.estimateValue} />
-          <LotCardLine model={lot.cardLine} />
+          <CardPriceLine lot={lot} />
           <LotCardBidderState lotId={lot.id} lotHref={lot.href} lotTitle={lot.title} />
           {actions ? <div className="mt-1 w-full min-w-0">{actions}</div> : null}
         </div>

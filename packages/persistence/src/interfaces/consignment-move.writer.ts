@@ -19,7 +19,10 @@ export type ConsignmentMoveRow = {
   movedAt: Date;
 };
 
-/** Moves a consignment, with its agreement, from one account to another in one transaction. */
+/**
+ * Moves a consignment, with its agreement, from one account to another in one transaction. A
+ * signed agreement moves as its next version; the version the seller signed is kept, superseded.
+ */
 export interface IConsignmentMoveWriter {
   /** `false` when the consignment is no longer in the source account or a movable status. */
   move(row: ConsignmentMoveRow): Promise<boolean>;

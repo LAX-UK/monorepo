@@ -27,6 +27,7 @@ function facts(signedDocumentId: string | null): StaffLotSellerProceedsFacts {
       commissionPercent: "12.00",
       source: "recorded",
       signedDocumentId,
+      version: 1,
       pricedOnEarlierVersion: false,
     },
     submissionId: "sub-1",

@@ -293,6 +293,19 @@ settings 498.9, notifications 502.0 and checkout 450.0. The ratchets were re-rec
 of the merged tree and each budget is the lower of `--suggest` and its previous value: public 448,
 listing 523, sale 556, lot 536, checkout 537, account 620 KB.
 
+Later (CO-7, cached public sale and lot pages) the same 20 KB threshold split shared modules again.
+Three more entries keep them in one copy:
+
+| What | Was | Now |
+| --- | --- | --- |
+| Session, consent, theme and bottom-bar modules the root and group layouts share (`auth-session-provider`, consent context, theme cookie, `marketing-bottom-tab-bar`, the button) | one shared chunk, just over 20 KB only while the lot page also used them all; when it stopped, they were copied into the root layout and the group layouts' chunk (about 6 KB on every public page) | in the `shell-routes` chunk (`SHELL_SESSION_MODULES`) |
+| The route error page (`app-route-error` and what it renders) | one chunk shared by the error boundaries only while the button sat in it | in the `shell-routes` chunk (`ROUTE_ERROR_MODULES`) |
+| A route handler that imports client components (`GET /api/lots/:id/me` reached the artwork accordion and the `@/lib/buyer-account` barrel) | a client entry of its own, which reshapes the shared chunks of every page | the `/me` route handlers import no `"use client"` module: the accordion builder is passed into the lot view model, `pendingRestore` lives in `lib/legal-entity/pending-restore.server.ts`, the container imports the readers directly |
+
+The forced entries share the one `shell-routes` chunk: each extra start-up file counts against
+webpack's initial request limit, and a separate chunk per entry left the sales list over its
+ratchet.
+
 ## Enforcement
 
 `enforce` is set per group. A route over budget in a group with `"enforce": true` is an error line

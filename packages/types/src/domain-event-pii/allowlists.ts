@@ -205,6 +205,7 @@ export const EXCEPTION_PATHS: Record<string, Set<string>> = {
     "privateSaleDealPaymentId",
     "shopOrderId",
     "shopOrderReference",
+    "shopOriginalSaleId",
     "shopCheckoutSessionId",
     "transferReference",
     "possibleGroup.id",

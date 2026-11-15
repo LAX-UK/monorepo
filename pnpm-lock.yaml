@@ -1164,6 +1164,9 @@ importers:
       '@auction/accounting-domain':
         specifier: workspace:*
         version: link:../../packages/accounting-domain
+      '@auction/accounting-zoho-books':
+        specifier: workspace:*
+        version: link:../../packages/accounting-zoho-books
       '@auction/alerts':
         specifier: workspace:*
         version: link:../../packages/alerts
@@ -1282,9 +1285,6 @@ importers:
         specifier: ^3.24.1
         version: 3.25.76
     devDependencies:
-      '@auction/accounting-zoho-books':
-        specifier: workspace:*
-        version: link:../../packages/accounting-zoho-books
       '@auction/config-ts':
         specifier: workspace:*
         version: link:../../packages/config-ts

@@ -23,7 +23,9 @@ export class ZohoFulfilmentMirror {
     try {
       return trigger.kind === "group"
         ? await this.deps.groups.deliver(trigger.artworkId)
-        : await this.deps.orders.deliver(trigger.orderId);
+        : await this.deps.orders.deliver(trigger.orderId, {
+            reportProblems: trigger.reportsProblems,
+          });
     } catch (err) {
       const { retryable, error } = crmErrorOutcome(err);
       return retryable ? { outcome: "retry", error } : { outcome: "fatal", error };

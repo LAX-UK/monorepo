@@ -59,6 +59,13 @@ type PendingOp =
       timer?: ReturnType<typeof setTimeout>;
     };
 
+/**
+ * Room joins and leaves are not counted or dropped by the cap in `record`: the socket they are
+ * replayed on keeps the rooms itself (`socket-rooms.ts`), so one dropped here would be a room the
+ * page never joins.
+ */
+const isRoomEvent = (event: string) => /^(join|leave)(User|Saleroom)$/.test(event);
+
 export type SocketConnectionModule = { createSocketConnection: () => Socket };
 
 const RECONNECT_DELAY_MS = 1000;
@@ -244,10 +251,9 @@ export function createLazySocket(
     }
     pending.push(op);
     if (op.kind !== "emit") return;
-    let emits = 0;
-    for (const other of pending) if (other.kind === "emit") emits += 1;
-    if (emits <= MAX_PENDING_EMITS) return;
-    const oldest = pending.findIndex((other) => other.kind === "emit");
+    const capped = (other: PendingOp) => other.kind === "emit" && !isRoomEvent(other.event);
+    if (pending.filter(capped).length <= MAX_PENDING_EMITS) return;
+    const oldest = pending.findIndex(capped);
     const [dropped] = pending.splice(oldest, 1);
     if (dropped?.kind === "emit" && dropped.timer !== undefined) {
       clearTimeout(dropped.timer);

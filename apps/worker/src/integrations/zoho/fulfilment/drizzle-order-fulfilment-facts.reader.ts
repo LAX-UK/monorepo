@@ -53,7 +53,8 @@ function framingFrom(row: {
 
 /**
  * Reads an order's prints, framing and fulfilment from Shop's tables through the column grants the
- * worker holds for this and nothing else. No buyer, address or price column is read.
+ * worker holds for this and nothing else. No buyer, address or price column is read, nor the price
+ * in the frame snapshot, nor the framing task's assignee.
  */
 export function createDrizzleOrderFulfilmentFactsReader(db: Database): OrderFulfilmentFactsReader {
   const original = alias(shopArtwork, "original");
@@ -77,7 +78,6 @@ export function createDrizzleOrderFulfilmentFactsReader(db: Database): OrderFulf
           allocation: shopEdition.allocation,
           printsArtworkId: shopArtwork.id,
           runKind: shopArtwork.runKind,
-          runRole: shopArtwork.runRole,
           runSize: shopArtwork.runSize,
           mainRunArtworkId: shopArtwork.mainRunArtworkId,
           printSize: shopArtwork.printSize,
@@ -129,10 +129,8 @@ export function createDrizzleOrderFulfilmentFactsReader(db: Database): OrderFulf
             lineId: line.lineId,
             released: line.releasedAt !== null,
             printsArtworkId: line.printsArtworkId,
-            isMainRun:
-              line.mainRunArtworkId === null &&
-              line.runRole !== "proof" &&
-              line.runRole !== "companion",
+            // A proof, companion or set-apart listing links its main run (shop_artwork_run_link_ck).
+            isMainRun: line.mainRunArtworkId === null,
             originalZohoProductId: line.originalZohoProductId ?? null,
             editionType: line.runKind ? (EDITION_TYPE[line.runKind] ?? null) : null,
             runSize: line.runSize,

@@ -63,6 +63,7 @@ const input = {
   marketingConsent: false,
   basketTokenHash: "token-hash",
   clientIp: "203.0.113.9",
+  visitorIp: "203.0.113.9" as string | null,
 };
 
 describe("a guest's delivery quote request", () => {
@@ -100,6 +101,20 @@ describe("a guest's delivery quote request", () => {
       }),
     );
     expect(JSON.stringify(request.mock.calls)).not.toContain('"clientIp"');
+  });
+
+  it("caps holds on the visitor's address, not on the one the limiter saw", async () => {
+    const { service, request } = setup();
+    await service.requestDeliveryQuote({ ...input, clientIp: "10.0.0.2" });
+    expect(request).toHaveBeenCalledWith(
+      expect.objectContaining({ guestIpHash: "hash(203.0.113.9)" }),
+    );
+  });
+
+  it("hands on no hash when the visitor's address is unknown", async () => {
+    const { service, request } = setup();
+    await service.requestDeliveryQuote({ ...input, clientIp: "10.0.0.2", visitorIp: null });
+    expect(request).toHaveBeenCalledWith(expect.objectContaining({ guestIpHash: null }));
   });
 
   it("gives the guest their order link once a request is held", async () => {

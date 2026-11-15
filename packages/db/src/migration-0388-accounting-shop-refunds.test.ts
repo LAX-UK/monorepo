@@ -23,14 +23,15 @@ const fn = (sql: string) => {
 };
 
 describe("migration 0388 accounting Shop refunds", () => {
-  it("is journalled last, right after 0387, in a journal that stays ordered", () => {
-    const entry = journal.entries.find((e) => e.tag === TAG);
-    const previous = journal.entries.at(-2);
+  it("is journalled right after 0387, in a journal that stays ordered", () => {
+    const at = journal.entries.findIndex((e) => e.tag === TAG);
+    const entry = journal.entries[at];
+    const previous = journal.entries[at - 1];
     expect(previous?.tag).toBe("0387_accounting_books_status");
     expect(entry?.idx).toBe((previous?.idx ?? Number.NaN) + 1);
     expect(entry?.when).toBeGreaterThan(previous?.when ?? Number.POSITIVE_INFINITY);
     expect(new Set(journal.entries.map((e) => e.idx)).size).toBe(journal.entries.length);
-    expect(journal.entries.at(-1)?.tag).toBe(TAG);
+    // Later migrations (0389, Shop originals invoiced in Books) follow it.
     const whens = journal.entries.map((e) => e.when);
     expect(new Set(whens).size).toBe(whens.length);
   });

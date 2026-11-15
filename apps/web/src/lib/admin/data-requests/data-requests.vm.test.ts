@@ -23,6 +23,7 @@ import {
   dataRequestsViewTabs,
   daysLeftText,
   dueCell,
+  erasureHoldsAttention,
   formatBytes,
   formatDay,
   isAnswered,
@@ -192,6 +193,26 @@ describe("list chrome", () => {
       tone: "danger",
       label: "request is past its legal due date",
     });
+  });
+
+  it("raises one line for erasures held with nothing to release them, opening the oldest", () => {
+    expect(erasureHoldsAttention([], (ref) => `/r/${ref}`)).toEqual([]);
+    const lines = erasureHoldsAttention(
+      [
+        { reference: "DR-0004", reason: "end_unknown", heldUntil: null },
+        { reference: "DR-0009", reason: "still_held", heldUntil: "2026-01-01T00:00:00.000Z" },
+      ],
+      (ref) => `/r/${ref}`,
+    );
+    expect(lines).toEqual([
+      expect.objectContaining({
+        id: "erasure-held",
+        count: 2,
+        href: "/r/DR-0004",
+        actionLabel: "Open DR-0004",
+        tone: "warning",
+      }),
+    ]);
   });
 
   it("states the answered-on-time figure in full, or says none are answered yet", () => {

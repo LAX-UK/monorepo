@@ -54,6 +54,7 @@ import {
 import { SaleEventSchemas } from "./sale-payload-schemas.js";
 import {
   shopAccountingOrderPaidPayloadSchemaV1,
+  shopAccountingOriginalSalePaidPayloadSchemaV1,
   shopArtworkCreatedPayloadSchemaV1,
   shopArtworkInterestRegisteredPayloadSchemaV1,
   shopArtworkUpdatedPayloadSchemaV1,
@@ -310,6 +311,7 @@ export const ALL_LIVE_DOMAIN_EVENT_TYPES = [
   "shop.editions.allocated",
   "shop.order.paid",
   "shop.accounting.order_paid",
+  "shop.accounting.original_sale_paid",
   "shop.guest_lead.recorded",
   "shop.guest_lead.claimed",
   "shop.guest_lead.erased",
@@ -1150,6 +1152,14 @@ const REGISTRY_OVERRIDES: Partial<Record<LiveDomainEventType, RegistryOverride>>
     idempotencyPolicy: "aggregate_event_unique",
     piiClassification: "none",
   },
+  /** An original sold directly in the Shop, paid, for the books; references only. */
+  "shop.accounting.original_sale_paid": {
+    schema: shopAccountingOriginalSalePaidPayloadSchemaV1,
+    producers: ["shop-api"],
+    consumers: ["accounting"],
+    idempotencyPolicy: "aggregate_event_unique",
+    piiClassification: "none",
+  },
   "shop.order.paid": {
     schema: shopOrderPaidPayloadSchemaV1,
     producers: ["shop-api"],
@@ -1422,10 +1432,52 @@ const REGISTRY_OVERRIDES: Partial<Record<LiveDomainEventType, RegistryOverride>>
   },
 };
 
+/**
+ * Events that change what the public sale and lot pages show. The worker's `web_public_cache`
+ * projector asks the web app to drop the cached reads of the lot or sale each one names
+ * (`@auction/domain` reads this list, so the two cannot drift). A lot can be created straight into
+ * a live sale (an emergency add), and a premium reset changes the terms its lots show.
+ */
+export const WEB_PUBLIC_CACHE_EVENT_TYPES = [
+  "lot.created",
+  "lot.published",
+  "lot.unpublished",
+  "lot.activated",
+  "lot.ended",
+  "lot.cancelled",
+  "lot.voided",
+  "lot.attached_to_sale",
+  "lot.detached_from_sale",
+  "lot.soft_deleted",
+  "lot.returned_to_inventory",
+  "lot.reawarded",
+  "sale.published",
+  "sale.unpublished",
+  "sale.cancelled",
+  "sale.rescheduled",
+  "sale.ended",
+  "sale.soft_deleted",
+  "sale.test_flag_changed",
+  "sale.lot_premiums_reset",
+] as const satisfies readonly LiveDomainEventType[];
+
+const WEB_PUBLIC_CACHE_EVENTS = new Set<string>(WEB_PUBLIC_CACHE_EVENT_TYPES);
+
+function withWebPublicCache(
+  eventType: LiveDomainEventType,
+  definition: DomainEventDefinition,
+): DomainEventDefinition {
+  if (!WEB_PUBLIC_CACHE_EVENTS.has(eventType)) return definition;
+  return { ...definition, consumers: [...definition.consumers, "web_public_cache"] };
+}
+
 export const DOMAIN_EVENT_REGISTRY: Record<LiveDomainEventType, DomainEventDefinition> =
   ALL_LIVE_DOMAIN_EVENT_TYPES.reduce(
     (acc, eventType) => {
-      acc[eventType] = defaultDefinition(REGISTRY_OVERRIDES[eventType]);
+      acc[eventType] = withWebPublicCache(
+        eventType,
+        defaultDefinition(REGISTRY_OVERRIDES[eventType]),
+      );
       return acc;
     },
     {} as Record<LiveDomainEventType, DomainEventDefinition>,

@@ -77,6 +77,11 @@ console.
       states instead of editorial content. Turn both on together, only after
       seeded content has been reviewed and `SHOP_EDITORIAL_PREVIEW_SECRET` is
       set (see [lax-art-editorial.md](./lax-art-editorial.md)).
+- [ ] Web still runs as **one instance**, `INTERNAL_API_URL` is set, and
+      `WEB_REVALIDATE_SECRET` matches on api, worker and web: the public sale and
+      lot page cache is purged per instance and must refetch from the API, not
+      the CDN (see [public-page-cache.md](./public-page-cache.md)). Do not scale
+      web out before the purge fan-out follow-up there is done.
 - [ ] Watch `/health/ready` for every component during the rolling restart.
 - [ ] Smoke test the changed path against `lax.bid`.
 - [ ] Confirm required production Identity/BFF/client secrets are bound under

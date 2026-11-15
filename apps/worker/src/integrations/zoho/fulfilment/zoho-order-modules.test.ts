@@ -5,11 +5,13 @@ const gateway = (rows: Record<string, unknown>[] = []) => {
   const queryCoql = vi.fn().mockResolvedValue({ rows, moreRecords: false });
   const createRecord = vi.fn().mockResolvedValue({ status: "success", recordId: "new-1" });
   const updateById = vi.fn().mockResolvedValue({ status: "success", recordId: "rec-1" });
+  const upsert = vi.fn().mockResolvedValue({ status: "success", recordId: "up-1" });
   return {
     queryCoql,
     createRecord,
     updateById,
-    records: new CrmZohoOrderRecords({ queryCoql, createRecord, updateById }),
+    upsert,
+    records: new CrmZohoOrderRecords({ queryCoql, createRecord, updateById, upsert }),
   };
 };
 
@@ -58,6 +60,28 @@ describe("CrmZohoOrderRecords", () => {
       recordId: "rec-1",
       fields: { Status: "Framed" },
     });
+  });
+
+  it("makes a new record by a keyed upsert, so a record another delivery just made is updated", async () => {
+    const g = gateway();
+    expect(await g.records.save("Print_SKUs", null, { SKU: "s", Size: "A3" }, "SKU")).toBe("up-1");
+    expect(g.upsert).toHaveBeenCalledWith({
+      module: "Print_SKUs",
+      fields: { SKU: "s", Size: "A3" },
+      duplicateCheckFields: ["SKU"],
+    });
+    expect(g.createRecord).not.toHaveBeenCalled();
+    // A record already found is updated by its id, never matched again.
+    await g.records.save("Print_SKUs", "sku-1", { Size: "A4" }, "SKU");
+    expect(g.updateById).toHaveBeenCalledWith({
+      module: "Print_SKUs",
+      recordId: "sku-1",
+      fields: { Size: "A4" },
+    });
+    expect(g.upsert).toHaveBeenCalledTimes(1);
+    await expect(
+      g.records.save("Dispatch_Fulfilments", null, { Status: "Ready" }, "Ref, Owner"),
+    ).rejects.toThrow("zoho_field_name_invalid");
   });
 
   it("keeps the id it updated when Zoho does not repeat it", async () => {

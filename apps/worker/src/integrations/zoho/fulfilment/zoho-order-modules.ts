@@ -18,8 +18,17 @@ export interface ZohoOrderRecords {
     key: string,
     columns: readonly string[],
   ): Promise<ZohoRecordState | null>;
-  /** Creates the record, or updates the one with this id; answers its id. */
-  save(module: OrderModule, id: string | null, fields: ZohoFields): Promise<string>;
+  /**
+   * Updates the record with this id; without an id, creates it, or updates the one whose
+   * `matchOn` field already holds the same value (another delivery may have made it since the
+   * find). Answers the record's id.
+   */
+  save(
+    module: OrderModule,
+    id: string | null,
+    fields: ZohoFields,
+    matchOn?: string,
+  ): Promise<string>;
 }
 
 const API_NAME = /^[A-Za-z][A-Za-z0-9_]{0,99}$/;
@@ -44,10 +53,15 @@ export function findQuery(
   return `select ${select} from ${module} where ${keyField} = '${escapeCoqlString(key)}' limit 1`;
 }
 
-/** COQL for the reads; creates and updates by id for the writes, through the shared Zoho stack. */
+/**
+ * COQL for the reads; updates by id, and keyed upserts for new records, through the shared Zoho
+ * stack. Two deliveries of one order may both find no record; the upsert lets the second update
+ * the record the first made instead of being refused as a duplicate.
+ */
 export class CrmZohoOrderRecords implements ZohoOrderRecords {
   constructor(
-    private readonly gateway: CrmCoqlQuery & Pick<CrmGateway, "createRecord" | "updateById">,
+    private readonly gateway: CrmCoqlQuery &
+      Pick<CrmGateway, "createRecord" | "updateById" | "upsert">,
   ) {}
 
   async find(
@@ -66,10 +80,20 @@ export class CrmZohoOrderRecords implements ZohoOrderRecords {
     };
   }
 
-  async save(module: OrderModule, id: string | null, fields: ZohoFields): Promise<string> {
+  async save(
+    module: OrderModule,
+    id: string | null,
+    fields: ZohoFields,
+    matchOn?: string,
+  ): Promise<string> {
+    if (matchOn !== undefined && !API_NAME.test(matchOn)) {
+      throw new Error(`zoho_field_name_invalid:${matchOn}`);
+    }
     const result = id
       ? await this.gateway.updateById({ module, recordId: id, fields })
-      : await this.gateway.createRecord({ module, fields });
+      : matchOn
+        ? await this.gateway.upsert({ module, fields, duplicateCheckFields: [matchOn] })
+        : await this.gateway.createRecord({ module, fields });
     if (result.status !== "success" || !(result.recordId || id)) {
       throw refused(module, result.code, result.message);
     }

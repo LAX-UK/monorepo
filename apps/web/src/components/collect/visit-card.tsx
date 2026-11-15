@@ -1,7 +1,7 @@
 "use client";
 
 import { COLLECT_COPY } from "@/lib/collect/collect-copy";
-import type { CollectFailure } from "@/lib/collect/collect-errors";
+import { type CollectFailure, collectFailure } from "@/lib/collect/collect-errors";
 import type { VisitCardVm } from "@/lib/collect/collect-visit.vm";
 import { cancelCollectionAction } from "@/lib/collect/collect.actions";
 import { Button } from "@auction/ui/lax/button";
@@ -47,21 +47,33 @@ export function VisitCard({
   const [confirming, setConfirming] = useState(false);
   const [pending, startTransition] = useTransition();
   const [failure, setFailure] = useState<CollectFailure | null>(null);
-  const status = STATUS[visit.status];
+  // The state the server answered the cancel with. The card shows it at once instead of waiting
+  // for the list to be read again: a refresh that is slow or dropped left the visit reading
+  // Booked, with its Cancel button, after the server had cancelled it.
+  const [answered, setAnswered] = useState<VisitCardVm["status"] | null>(null);
+  const shownStatus = answered ?? visit.status;
+  const status = STATUS[shownStatus];
+  const live = visit.live && shownStatus === "booked";
   const canAct = !readOnly;
 
   function cancel() {
     setFailure(null);
     startTransition(async () => {
-      const result = await cancelCollectionAction({ bookingId: visit.id, version });
-      if (result.ok) {
-        setConfirming(false);
-        router.refresh();
-      } else {
-        setConfirming(false);
-        setFailure(result.failure);
-        if (result.failure.kind === "changed") router.refresh();
+      let result: Awaited<ReturnType<typeof cancelCollectionAction>>;
+      try {
+        result = await cancelCollectionAction({ bookingId: visit.id, version });
+      } catch {
+        // The request itself failed (network, a new deployment): say so, and read the visit
+        // again in case the server did cancel it.
+        result = { ok: false, failure: collectFailure(503, null, null) };
       }
+      setConfirming(false);
+      if (result.ok) {
+        setAnswered(result.value.status);
+      } else {
+        setFailure(result.failure);
+      }
+      router.refresh();
     });
   }
 
@@ -120,7 +132,7 @@ export function VisitCard({
           </dd>
         </div>
       </dl>
-      {visit.live ? <p className="mt-2 text-lax-13 text-lax-muted">{visit.idRule}</p> : null}
+      {live ? <p className="mt-2 text-lax-13 text-lax-muted">{visit.idRule}</p> : null}
       {visit.bookedByAnother ? (
         <p className="mt-2 text-lax-13 text-lax-muted">
           Booked by another member of your organisation.
@@ -135,7 +147,7 @@ export function VisitCard({
 
       {failure ? <Notice tone="danger" alert title={failure.message} className="mt-4" /> : null}
 
-      {visit.live ? (
+      {live ? (
         <div className="mt-4 flex flex-col gap-3">
           {visit.deadline ? <p className="text-lax-13 text-lax-muted">{visit.deadline}</p> : null}
           {visit.afterCutoff ? (

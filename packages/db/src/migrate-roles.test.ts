@@ -670,7 +670,7 @@ describe("migrate-roles invariants", () => {
     }
   });
 
-  it("lets the worker read the Shop columns the order mirror needs, no buyer or price, and no whole Shop table", () => {
+  it("lets the worker read the Shop columns the order mirror needs, no buyer or price column, and no whole Shop table", () => {
     const columns = Object.fromEntries(WORKER_SHOP_ORDER_FULFILMENT_READ_COLUMNS);
     expect([...columns.shop_order].sort()).toEqual(["id", "paid_at", "reference"]);
     const read = Object.values(columns).flat();
@@ -983,6 +983,7 @@ describe("migrate-roles invariants", () => {
         "accepted_at",
         "proposed_at",
         "commission_percent",
+        "superseded_at",
       ],
     });
     for (const table of [...SELLER_TERMS_INSERT_SELECT_TABLES, ...FINANCE_SETTING_READ_TABLES]) {

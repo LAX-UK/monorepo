@@ -4,7 +4,7 @@ import type { MegaMenuSection } from "@/components/layout/header-nav-config";
 import type { ArtistProfile } from "@/lib/data/contracts";
 import { portraitForPublicArtist } from "@/lib/data/http/artist.server";
 import { CATALOGUE_FETCH_POLICIES, catalogueFetch } from "@/lib/data/http/catalogue-fetch";
-import { getServerApiBase } from "@/lib/data/http/hc-server";
+import { getServerApiBase } from "@/lib/data/http/server-api-base";
 import { getMarketingMegaMenuSections } from "@/lib/marketing/mega-menu-catalog";
 import { rewriteMegaMenuForGuest } from "@/lib/marketing/mega-menu-href-rewrite";
 import { applyNavActivity } from "@/lib/marketing/nav-activity";

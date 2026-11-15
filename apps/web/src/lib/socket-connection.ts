@@ -1,4 +1,5 @@
 import { resolveSocketHandshakeAuth } from "@/lib/socket-auth.client";
+import { keepRooms } from "@/lib/socket-rooms";
 import { type Socket, io } from "socket.io-client";
 
 /**
@@ -7,13 +8,15 @@ import { type Socket, io } from "socket.io-client";
  */
 export function createSocketConnection(): Socket {
   const url = process.env.NEXT_PUBLIC_WS_URL ?? "http://localhost:3002";
-  return io(url, {
-    // WebSocket-only: DO App Platform has no sticky sessions across ws replicas.
-    transports: ["websocket"],
-    // Authentication is the one-time BFF ticket below; never send browser cookies to WS.
-    withCredentials: false,
-    auth: (cb) => {
-      void resolveSocketHandshakeAuth().then(cb);
-    },
-  });
+  return keepRooms(
+    io(url, {
+      // WebSocket-only: DO App Platform has no sticky sessions across ws replicas.
+      transports: ["websocket"],
+      // Authentication is the one-time BFF ticket below; never send browser cookies to WS.
+      withCredentials: false,
+      auth: (cb) => {
+        void resolveSocketHandshakeAuth().then(cb);
+      },
+    }),
+  );
 }

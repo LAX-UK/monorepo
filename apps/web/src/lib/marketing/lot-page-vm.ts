@@ -1,14 +1,13 @@
 import { lotViewItemPriceMinor } from "@/lib/analytics/lot-view-item-price";
-import type { BidHistoryEntry } from "@/lib/bid/bid-history-entry";
 import { type BiddingAccount, resolveBiddingAccount } from "@/lib/bid/bidding-account";
 import { buildSaleRegistrationBidGate } from "@/lib/bid/build-sale-registration-bid-gate";
 import { splitBuyerMembershipsByState } from "@/lib/bid/buyer-entity-state";
 import { computeIsOwnLot } from "@/lib/bid/compute-is-own-lot";
-import { mapBidToHistoryEntry } from "@/lib/bid/map-bid-to-history-entry";
 import { resolveKycSurfaceFeedback } from "@/lib/bid/resolve-kyc-bid-gate";
 import { buildLotConditionReportViewModel } from "@/lib/condition-report/build-lot-condition-report-vm";
 import type { LotConditionReportViewModel } from "@/lib/condition-report/lot-condition-report-session-input";
 import { artistLifespan } from "@/lib/lot-page/artist-lifespan";
+import { withoutLiveBidState } from "@/lib/lot-page/catalogue-lot";
 import { classifyLotTimerState } from "@/lib/lot/classify-lot-timer-state";
 import { classifyLotLifecycle } from "@/lib/lot/lot-lifecycle";
 import {
@@ -18,7 +17,7 @@ import {
   mapSaleLotsToQueueVMs,
   mapSiblingsToRailVM,
 } from "@/lib/marketing/artwork/artwork-view-models";
-import { buildArtworkPageAccordionBlocks } from "@/lib/marketing/artwork/build-artwork-accordion-blocks";
+import type { buildArtworkPageAccordionBlocks } from "@/lib/marketing/artwork/build-artwork-accordion-blocks";
 import {
   catalogLotLinkParamsFromSearchParams,
   lotCatalogBackHref,
@@ -46,11 +45,6 @@ type LifecycleLotPick = Pick<
   "id" | "status" | "startTime" | "endTime" | "winnerId" | "currentPrice"
 > & { hasWinner?: boolean | undefined; resultPending?: boolean | undefined };
 
-function deriveLeadingBidderId(bids: LotPageShellData["initialBids"]): string | null {
-  const winning = bids.find((b) => b.isWinning);
-  return winning?.bidderId ?? winning?.placedByUserId ?? null;
-}
-
 export type LotPageViewModel = {
   serverNow: number;
   auction: LotPageShellData["auction"];
@@ -62,8 +56,6 @@ export type LotPageViewModel = {
   actingCtx: LotPageSecondaryData["actingCtx"];
   orgModuleEnabled: boolean;
   initialSaleroomStatus: LotPageSecondaryData["initialSaleroomStatus"];
-  initialHistory: BidHistoryEntry[];
-  initialLeadingBidderId: string | null;
   watching: boolean;
   watchedLotIds: string[];
   parentSale: { id: string; title: string; deliveryMode: Sale["deliveryMode"] } | null;
@@ -125,12 +117,18 @@ export function buildLotPageViewModel(input: {
   secondary: LotPageSecondaryData;
   searchParams: Record<string, string | string[] | undefined>;
   serverNow: number;
+  /**
+   * Builds the artwork accordion (`buildArtworkPageAccordionBlocks`). Passed in rather than
+   * imported: the blocks render client components, and `GET /api/lots/:id/me`, which builds this
+   * view model only for its personal fields, must not import them (a route handler that does gets
+   * a client entry of its own, which reshapes the shared chunks every public page loads).
+   */
+  marketingBlocksFor: typeof buildArtworkPageAccordionBlocks;
 }): LotPageViewModel {
-  const { shell, secondary, searchParams: sp, serverNow } = input;
+  const { shell, secondary, searchParams: sp, serverNow, marketingBlocksFor } = input;
   const {
     auction,
     session,
-    initialBids,
     seller,
     catalogArtist,
     relatedRaw,
@@ -159,9 +157,6 @@ export function buildLotPageViewModel(input: {
       }
     : null;
 
-  const initialHistory = initialBids.map(mapBidToHistoryEntry);
-  const initialLeadingBidderId = deriveLeadingBidderId(initialBids);
-
   const watching = watchlist.some((w) => w.lotId === auction.id);
   const watchedLotIds = watchlist.map((w) => w.lotId);
   const parentSale = saleBundle
@@ -187,7 +182,7 @@ export function buildLotPageViewModel(input: {
     ? artistPath({ id: catalogArtist.id, name: catalogArtist.displayName })
     : "";
   const summarySeed = mapLotToSummarySeed(auction, sellerName, sellerHref, seller?.image ?? null);
-  const marketingBlocks = buildArtworkPageAccordionBlocks({
+  const marketingBlocks = marketingBlocksFor({
     lot: auction,
     artist: artistForAccordion,
     documents: lotDocuments,
@@ -195,7 +190,13 @@ export function buildLotPageViewModel(input: {
   });
   const rail = mapSiblingsToRailVM(
     auction,
-    parentSale,
+    parentSale && saleBundle
+      ? {
+          ...parentSale,
+          buyerPremiumRate: saleBundle.sale.buyerPremiumRate,
+          buyerPremiumTiers: saleBundle.sale.buyerPremiumTiers,
+        }
+      : null,
     saleLots,
     relatedRaw,
     (l) => (catalogArtist && l.artistId === catalogArtist.id ? catalogArtist.displayName : null),
@@ -217,6 +218,7 @@ export function buildLotPageViewModel(input: {
   );
   const jsonLdText = jsonLdScript(
     lotProductJsonLd(auction, {
+      catalogueOnly: true,
       ...(artistForAccordion?.name ? { artistName: artistForAccordion.name } : {}),
       ...(sellerName ? { sellerName } : {}),
     }),
@@ -371,7 +373,8 @@ export function buildLotPageViewModel(input: {
       })) ?? [];
 
   const viewItemCurrency = auction.marketingDetails?.estimate?.currency ?? "GBP";
-  const viewItemPriceMinor = lotViewItemPriceMinor(auction);
+  // The opening price or the estimate: the page carries no live price (CO-7).
+  const viewItemPriceMinor = lotViewItemPriceMinor(withoutLiveBidState(auction));
 
   const breadcrumbItems = parentSale
     ? [
@@ -411,8 +414,6 @@ export function buildLotPageViewModel(input: {
     actingCtx,
     orgModuleEnabled,
     initialSaleroomStatus,
-    initialHistory,
-    initialLeadingBidderId,
     watching,
     watchedLotIds,
     parentSale,

@@ -73,7 +73,14 @@ describe.skipIf(!HAS_DB)("enquiry erasure (integration)", () => {
         });
 
         const first = await anonymiseEnquiries(tx as never, { kind: "email", email });
-        expect(first).toEqual({ enquiries: 1, notes: 1, attachments: 1, held: 1 });
+        // The converted enquiry has no deal, so nothing will end its hold: staff are told.
+        expect(first).toEqual({
+          enquiries: 1,
+          notes: 1,
+          attachments: 1,
+          held: 1,
+          hold: { until: null, withoutEnd: true },
+        });
 
         const [after] = await tx
           .select()
@@ -108,7 +115,13 @@ describe.skipIf(!HAS_DB)("enquiry erasure (integration)", () => {
 
         // Running it again changes nothing further and the held enquiry is still reported.
         const second = await anonymiseEnquiries(tx as never, { kind: "email", email });
-        expect(second).toEqual({ enquiries: 0, notes: 0, attachments: 0, held: 1 });
+        expect(second).toEqual({
+          enquiries: 0,
+          notes: 0,
+          attachments: 0,
+          held: 1,
+          hold: { until: null, withoutEnd: true },
+        });
         throw rollback;
       });
     } catch (error) {
@@ -246,6 +259,7 @@ describe.skipIf(!HAS_DB)("enquiry erasure (integration)", () => {
           notes: 0,
           attachments: 0,
           held: 1,
+          hold: { until: null, withoutEnd: false },
         });
         expect(await message(tx, enquiryId)).toBe("A painting to sell");
       });

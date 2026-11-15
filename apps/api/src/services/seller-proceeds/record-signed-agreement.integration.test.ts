@@ -19,7 +19,7 @@ import {
   DrizzleTransactionRunner,
   DrizzleUploadObjectReader,
 } from "@auction/persistence/repositories";
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 import { seedIdentityUserFixtures } from "../../testing/identity-user-fixtures.js";
 import { DomainEventSink } from "../domain-event-sink.js";
@@ -160,6 +160,23 @@ describe.skipIf(!HAS_DB)("recording a signed agreement (integration)", () => {
           })
           .returning({ id: uploadObject.id });
         if (!pdf) throw new Error("upload not stored");
+        const [correctedPdf] = await tx
+          .insert(uploadObject)
+          .values({
+            ownerUserId: staffId,
+            kind: "signed_consignment_agreement",
+            key: `uploads/test/consignment-agreements/${tag}-corrected.pdf`,
+            declaredContentType: "application/pdf",
+            declaredByteSize: 120_000,
+            actualContentType: "application/pdf",
+            actualByteSize: 120_000,
+            status: "active",
+            expiresAt: new Date(Date.now() + 86_400_000),
+          })
+          .returning({ id: uploadObject.id });
+        if (!correctedPdf) throw new Error("upload not stored");
+        // From here on every statement is checked against api_app's grants, as in production.
+        await tx.execute(sql`set local role api_app`);
 
         const runner = new DrizzleTransactionRunner(conn);
         const sink = new DomainEventSink(new DomainEventPublisher(), conn);
@@ -239,23 +256,70 @@ describe.skipIf(!HAS_DB)("recording a signed agreement (integration)", () => {
         expect(again).toBeInstanceOf(SellerProceedsError);
         expect((again as SellerProceedsError).code).toBe("agreement_on_record");
 
-        // An Administrator's correction updates the agreement, but a priced sale keeps its figures.
-        await service.record({
+        // An Administrator's correction is the agreement's next version: the priced sale keeps
+        // pointing at version 1, its figures and its signed PDF; version 2 is now current.
+        const correction = await service.record({
           ...command,
           commissionPercent: "15",
+          uploadObjectId: correctedPdf.id,
           replace: true,
           actor: { userId: staffId, isAdministrator: true },
         });
+        expect(correction.agreementId).not.toBe(agreement?.id);
         const [kept] = await tx
           .select()
           .from(saleSellerTerms)
           .where(eq(saleSellerTerms.id, held.id));
-        expect(kept?.commissionBps).toBe(1200);
-        const [corrected] = await tx
+        expect(kept).toMatchObject({ commissionBps: 1200, agreementId: agreement?.id });
+        const versions = await tx
           .select()
           .from(consignmentAgreement)
-          .where(eq(consignmentAgreement.submissionId, submissionId));
-        expect(corrected?.commissionPercent).toBe("15.00");
+          .where(eq(consignmentAgreement.submissionId, submissionId))
+          .orderBy(consignmentAgreement.version);
+        expect(versions).toHaveLength(2);
+        expect(versions[0]).toMatchObject({
+          id: agreement?.id,
+          version: 1,
+          commissionPercent: "12.00",
+          signedDocumentId: pdf.id,
+          supersededBy: correction.agreementId,
+        });
+        expect(versions[0]?.supersededAt).toBeInstanceOf(Date);
+        expect(versions[1]).toMatchObject({
+          id: correction.agreementId,
+          version: 2,
+          commissionPercent: "15.00",
+          signedDocumentId: correctedPdf.id,
+          replacesAgreementId: agreement?.id,
+          supersededAt: null,
+        });
+        // A further correction supersedes the current version, never the one already superseded.
+        const recorded = await service.record({
+          ...command,
+          commissionPercent: "18",
+          uploadObjectId: correctedPdf.id,
+          replace: true,
+          actor: { userId: staffId, isAdministrator: true },
+        });
+        const [second] = await tx
+          .select()
+          .from(consignmentAgreement)
+          .where(eq(consignmentAgreement.id, correction.agreementId));
+        expect(second?.supersededBy).toBe(recorded.agreementId);
+        const [third] = await tx
+          .select()
+          .from(consignmentAgreement)
+          .where(eq(consignmentAgreement.id, recorded.agreementId));
+        expect(third).toMatchObject({ version: 3, commissionPercent: "18.00", supersededAt: null });
+
+        // Staff see the version the sale was priced on, superseded, with its own PDF.
+        const after = await reader.forLot(lotId);
+        expect(after?.agreement).toMatchObject({
+          id: agreement?.id,
+          version: 1,
+          signedDocumentId: pdf.id,
+          pricedOnEarlierVersion: true,
+        });
 
         throw rollback;
       });

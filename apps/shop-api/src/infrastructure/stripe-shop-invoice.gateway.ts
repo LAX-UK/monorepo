@@ -4,12 +4,16 @@ import type {
   CreateOriginalSaleInvoiceInput,
   CreateOriginalSaleInvoiceResult,
   InvoiceGateway,
+  OriginalSalePaymentGateway,
 } from "../application/ports/invoice.gateway.js";
 import { ShopApiError } from "../errors/shop-api-error.js";
 
+/** The `app` metadata of an original's Payment Link, and of the Checkout Sessions it makes. */
+export const ORIGINAL_SALE_PAYMENT_APP = "shop_original";
+
 export function createStripeShopInvoiceGateway(options: {
   secretKey: string | undefined;
-}): InvoiceGateway {
+}): InvoiceGateway & OriginalSalePaymentGateway {
   const stripe = options.secretKey ? new Stripe(options.secretKey, { typescript: true }) : null;
 
   return {
@@ -59,6 +63,40 @@ export function createStripeShopInvoiceGateway(options: {
         stripeInvoiceId: finalized.id,
         hostedInvoiceUrl: finalized.hosted_invoice_url ?? null,
       };
+    },
+
+    async createOriginalSalePaymentLink(input) {
+      if (!stripe) {
+        throw new ShopApiError(
+          SHOP_API_ERROR_CODES.INTERNAL,
+          "Stripe is not configured for payments",
+          501,
+        );
+      }
+      const metadata = {
+        app: ORIGINAL_SALE_PAYMENT_APP,
+        shop_original_sale_id: input.originalSaleId,
+      };
+      const link = await stripe.paymentLinks.create(
+        {
+          line_items: [
+            {
+              price_data: {
+                currency: input.currency,
+                unit_amount: input.amountPence,
+                product_data: { name: input.description },
+              },
+              quantity: 1,
+            },
+          ],
+          // Paid once: a second payment for the same original is refused by Stripe.
+          restrictions: { completed_sessions: { limit: 1 } },
+          metadata,
+          payment_intent_data: { metadata },
+        },
+        { idempotencyKey: `shop-original-sale-payment-link:${input.originalSaleId}` },
+      );
+      return { paymentLinkId: link.id, url: link.url };
     },
   };
 }

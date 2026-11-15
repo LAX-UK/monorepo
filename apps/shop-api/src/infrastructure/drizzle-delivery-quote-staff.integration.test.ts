@@ -390,17 +390,20 @@ describe.skipIf(!hasShopIntegrationDb)("quoting and paying a delivery quote", ()
   });
 
   it("lets the hold pass on a sent quote: the quote ends as expired", async () => {
-    const { db, requested, send, quoteOf } = await setup("lapse");
-    const { quoteId } = await requested();
+    const { db, requested, send, quoteOf, orderOf } = await setup("lapse");
+    const { orderId, quoteId } = await requested();
     await send(quoteId);
     const [row] = await db
       .select({ holdUntil: shopDeliveryQuote.holdUntil })
       .from(shopDeliveryQuote)
       .where(eq(shopDeliveryQuote.id, quoteId));
-    await reapStaleShopCheckouts(
-      db,
-      new Date(requireDefined(row, "quote").holdUntil.getTime() + 120_000),
-    );
+    const sweepAt = new Date(requireDefined(row, "quote").holdUntil.getTime() + 120_000);
+    // The sweep takes the oldest stale orders first, a batch at a time, and other test files leave
+    // orders of their own behind: sweep until this order has been reached, not once.
+    for (let sweep = 0; sweep < 200; sweep++) {
+      if ((await orderOf(orderId)).status !== "pending_payment") break;
+      if ((await reapStaleShopCheckouts(db, sweepAt)) === 0) break;
+    }
     const quote = await quoteOf(quoteId);
     expect(quote.status).toBe("withdrawn");
     expect(quote.endReason).toBe("expired");

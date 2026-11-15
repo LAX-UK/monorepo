@@ -284,6 +284,28 @@ describe("DOMAIN_EVENT_REGISTRY", () => {
     expect(Object.keys(parsed.data).sort()).toEqual(["orderId", "refundId", "schemaVersion"]);
   });
 
+  it("routes a paid Shop original sale to the accounting consumer; references only", () => {
+    const entry = DOMAIN_EVENT_REGISTRY["shop.accounting.original_sale_paid"];
+    expect(entry.consumers).toEqual(["accounting"]);
+    expect(entry.producers).toEqual(["shop-api"]);
+    expect(entry.piiClassification).toBe("none");
+    const payload = {
+      schemaVersion: 1,
+      originalSaleId: "11111111-1111-4111-8111-111111111111",
+      paidAt: "2026-11-14T10:00:00.000Z",
+    };
+    expect(parseDomainEventPayload("shop.accounting.original_sale_paid", 1, payload)).toEqual({
+      ok: true,
+      data: payload,
+    });
+    const parsed = parseDomainEventPayload("shop.accounting.original_sale_paid", 1, {
+      ...payload,
+      salePricePence: 100,
+      email: "ada@example.test",
+    }) as { data: object };
+    expect(Object.keys(parsed.data).sort()).toEqual(["originalSaleId", "paidAt", "schemaVersion"]);
+  });
+
   it("routes a paid Shop order to the accounting consumer; references only", () => {
     const entry = DOMAIN_EVENT_REGISTRY["shop.accounting.order_paid"];
     expect(entry.consumers).toEqual(["accounting"]);

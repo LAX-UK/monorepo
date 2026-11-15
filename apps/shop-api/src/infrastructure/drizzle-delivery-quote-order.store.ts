@@ -1,15 +1,24 @@
 import { formatDate } from "@auction/datetime";
 import type { Database } from "@auction/db";
-import { shopBasket, shopDeliveryQuote, shopOrder } from "@auction/db/schema";
+import {
+  shopBasket,
+  shopDeliveryQuote,
+  shopEdition,
+  shopOrder,
+  shopOrderLine,
+} from "@auction/db/schema";
+import { Sentry } from "@auction/observability";
 import { SHOP_API_ERROR_CODES } from "@auction/shop-contracts";
 import {
   MAX_OPEN_QUOTE_REQUESTS_PER_BASKET_TOKEN,
   MAX_OPEN_QUOTE_REQUESTS_PER_BUYER,
   MAX_OPEN_QUOTE_REQUESTS_PER_GUEST_IP,
   addPence,
+  artworksOverGuestHoldAlert,
+  guestHoldLeavesAPrint,
   reservedUntilFromCheckoutExpiry,
 } from "@auction/shop-domain";
-import { and, count, eq, inArray } from "drizzle-orm";
+import { and, count, eq, inArray, isNotNull, sql } from "drizzle-orm";
 import type {
   CreateQuoteOrderInput,
   CreatedQuoteOrder,
@@ -24,10 +33,12 @@ import { expandBasketLines, loadCheckoutBasket } from "./shop-checkout-basket.js
 import { deliveryColumns } from "./shop-checkout-replay.js";
 import { checkoutDeliveryDetails } from "./shop-checkout-replay.js";
 import {
+  lockArtworksForReservation,
   reserveEditionsForCheckoutOrder,
   reserveProductVariantsForCheckoutOrder,
 } from "./shop-checkout-reservation.js";
 import { createShopDomainEventPublisher } from "./shop-domain-event-publisher.js";
+import { sellableEditionCondition } from "./shop-edition-availability.js";
 
 const regionNames = new Intl.DisplayNames(["en-GB"], { type: "region" });
 
@@ -53,11 +64,23 @@ export function createDrizzleDeliveryQuoteOrderStore(
     merchandiseEnabled?: boolean;
     framingEnabled?: boolean;
     notifications: Pick<ShopNotificationPublisher, "queueDeliveryQuoteRequested">;
+    /** Open guest holds on one artwork above which staff are alerted; the domain's by default. */
+    guestHoldAlertThreshold?: number;
+    /** Where that alert goes; Sentry by default. */
+    alertGuestHoldsCrowded?: (alert: { artworkId: string; orderReference: string }) => void;
   },
 ): DeliveryQuoteOrderStore {
   const merchandiseEnabled = options.merchandiseEnabled ?? false;
   const framingEnabled = options.framingEnabled ?? false;
   const domainEvents = createShopDomainEventPublisher(options.domainEventMode);
+  const alertGuestHoldsCrowded =
+    options.alertGuestHoldsCrowded ??
+    ((alert: { artworkId: string; orderReference: string }) =>
+      Sentry.captureMessage("shop_guest_quote_holds_crowded", {
+        level: "warning",
+        tags: { artworkId: alert.artworkId },
+        extra: { orderReference: alert.orderReference },
+      }));
 
   async function replayOf(idempotencyKey: string): Promise<CreatedQuoteOrder | null> {
     const [existing] = await db
@@ -85,22 +108,78 @@ export function createDrizzleDeliveryQuoteOrderStore(
       409,
     );
 
-  /** A guest has no account to hold to account, so open holds are also capped per browser and IP. */
+  /**
+   * A guest has no account to hold to account, so open holds are also capped per browser and IP.
+   * The counts are taken inside the order's transaction under advisory locks on the browser and
+   * the IP, so two requests at once queue for the count and cannot both pass the last free place.
+   */
   async function assertGuestHoldsWithinCaps(
+    tx: Database,
     basketTokenHash: string,
     ipHash: string | null,
   ): Promise<void> {
-    const [byToken] = await db
+    await tx.execute(
+      sql`select pg_advisory_xact_lock(hashtext(${`shop-quote-guest-token:${basketTokenHash}`}))`,
+    );
+    const [byToken] = await tx
       .select({ open: count() })
       .from(shopDeliveryQuote)
       .where(and(eq(shopDeliveryQuote.basketTokenHash, basketTokenHash), openQuote));
     if ((byToken?.open ?? 0) >= MAX_OPEN_QUOTE_REQUESTS_PER_BASKET_TOKEN) throw tooMany();
     if (!ipHash) return;
-    const [byIp] = await db
+    await tx.execute(
+      sql`select pg_advisory_xact_lock(hashtext(${`shop-quote-guest-ip:${ipHash}`}))`,
+    );
+    const [byIp] = await tx
       .select({ open: count() })
       .from(shopDeliveryQuote)
       .where(and(eq(shopDeliveryQuote.guestIpHash, ipHash), openQuote));
     if ((byIp?.open ?? 0) >= MAX_OPEN_QUOTE_REQUESTS_PER_GUEST_IP) throw tooMany();
+  }
+
+  /**
+   * Refuses a guest hold that would leave no print of an artwork on sale. The count is taken under
+   * the artwork's reservation lock, which every path that reserves a print takes, so it never
+   * misses a print another checkout has just reserved.
+   */
+  async function assertGuestLeavesAPrint(
+    tx: Database,
+    artworkIds: readonly string[],
+  ): Promise<void> {
+    for (const artworkId of artworkIds) {
+      const [left] = await tx
+        .select({ prints: count() })
+        .from(shopEdition)
+        .where(and(eq(shopEdition.artworkId, artworkId), sellableEditionCondition()));
+      if (!guestHoldLeavesAPrint(left?.prints ?? 0)) {
+        throw new ShopApiError(
+          SHOP_API_ERROR_CODES.OUT_OF_STOCK,
+          "This is the last print available. Sign in to ask for a delivery quote on it.",
+          409,
+        );
+      }
+    }
+  }
+
+  /** The artworks in this request that open guest holds now crowd past the alert threshold. */
+  async function crowdedArtworks(tx: Database, artworkIds: readonly string[]): Promise<string[]> {
+    const rows = await tx
+      .select({ artworkId: shopOrderLine.artworkId, open: count() })
+      .from(shopOrderLine)
+      .innerJoin(shopDeliveryQuote, eq(shopDeliveryQuote.orderId, shopOrderLine.orderId))
+      .where(
+        and(
+          inArray(shopOrderLine.artworkId, [...artworkIds]),
+          isNotNull(shopOrderLine.editionId),
+          isNotNull(shopDeliveryQuote.basketTokenHash),
+          openQuote,
+        ),
+      )
+      .groupBy(shopOrderLine.artworkId);
+    return artworksOverGuestHoldAlert(
+      rows.flatMap((row) => (row.artworkId ? [{ artworkId: row.artworkId, open: row.open }] : [])),
+      options.guestHoldAlertThreshold,
+    );
   }
 
   return {
@@ -133,10 +212,6 @@ export function createDrizzleDeliveryQuoteOrderStore(
         );
       }
 
-      if (input.guest) {
-        await assertGuestHoldsWithinCaps(input.guest.basketTokenHash, input.guestIpHash);
-      }
-
       const details = checkoutDeliveryDetails({
         fulfilment: "international_quotation",
         deliveryAddress: input.deliveryAddress,
@@ -144,9 +219,18 @@ export function createDrizzleDeliveryQuoteOrderStore(
       });
       const reservedUntil = reservedUntilFromCheckoutExpiry(input.holdUntil);
       const { editionLines, variantLines } = expandBasketLines(basket.lines);
+      const artworkIds = [...new Set(editionLines.map((line) => line.artworkId))];
 
       try {
-        return await db.transaction(async (tx) => {
+        const created = await db.transaction(async (tx) => {
+          if (input.guest) {
+            await assertGuestHoldsWithinCaps(
+              tx as Database,
+              input.guest.basketTokenHash,
+              input.guestIpHash,
+            );
+          }
+          await lockArtworksForReservation(tx as Database, artworkIds);
           const [order] = await tx
             .insert(shopOrder)
             .values({
@@ -183,6 +267,7 @@ export function createDrizzleDeliveryQuoteOrderStore(
             },
             domainEvents,
           );
+          if (input.guest) await assertGuestLeavesAPrint(tx as Database, artworkIds);
 
           await tx.insert(shopDeliveryQuote).values({
             orderId: order.id,
@@ -218,13 +303,21 @@ export function createDrizzleDeliveryQuoteOrderStore(
           });
 
           return {
-            orderId: order.id,
-            orderReference: order.reference,
-            holdUntil: input.holdUntil,
-            country: input.country,
-            regionId: input.regionId,
+            request: {
+              orderId: order.id,
+              orderReference: order.reference,
+              holdUntil: input.holdUntil,
+              country: input.country,
+              regionId: input.regionId,
+            },
+            crowded: input.guest ? await crowdedArtworks(tx as Database, artworkIds) : [],
           };
         });
+        // Raised after the commit, so a request that rolled back never alerts.
+        for (const artworkId of created.crowded) {
+          alertGuestHoldsCrowded({ artworkId, orderReference: created.request.orderReference });
+        }
+        return created.request;
       } catch (error) {
         if (isPgUniqueViolation(error)) {
           const constraint = pgUniqueViolationConstraint(error);

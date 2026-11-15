@@ -15,6 +15,7 @@ vi.mock("@/lib/data/http/hc-server", () => ({
   getServerApiBase: () => "http://api.test",
   getServerHc: async () => ({ lots: { ":id": { $get: net.lotGet } } }),
 }));
+vi.mock("@/lib/data/http/server-api-base", () => ({ getServerApiBase: () => "http://api.test" }));
 vi.mock("next/headers", () => ({ cookies: net.cookies }));
 // `cache()` memoises per request; each test is its own request.
 vi.mock("react", async (orig) => ({
@@ -82,6 +83,21 @@ describe("getServerSaleShell", () => {
 });
 
 describe("withdrawnLotPageExists", () => {
+  // The read is session-free and tagged (CO-7): a plain fetch, no cookies.
+  beforeEach(() => {
+    vi.stubGlobal("fetch", (url: string, init?: RequestInit) => net.lotGet(url, init));
+  });
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("reads the lot without the session, under the lot's tag", async () => {
+    net.lotGet.mockResolvedValue(res(404));
+    await withdrawnLotPageExists("l");
+    const [url, init] = net.lotGet.mock.calls[0] as [string, RequestInit & { next?: unknown }];
+    expect(url).toBe("http://api.test/lots/l");
+    expect(init.headers).toBeUndefined();
+    expect(init.next).toMatchObject({ tags: ["public-lot:l"] });
+    expect(net.cookies).not.toHaveBeenCalled();
+  });
   it("is missing for a 404", async () => {
     net.lotGet.mockResolvedValue(res(404));
     await expect(withdrawnLotPageExists("l")).resolves.toBe("missing");

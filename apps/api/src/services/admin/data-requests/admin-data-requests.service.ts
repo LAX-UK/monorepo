@@ -18,6 +18,7 @@ import {
 import type { DataRequestAuditAction, IDataRequestAuditTrail } from "./data-request-audit-trail.js";
 import type { DataRequestDealHold, IDataRequestDealHolds } from "./data-request-deal-holds.js";
 import type { IDataRequestErasureHistory } from "./data-request-erasure-history.js";
+import { type IHeldErasureLog, planHeldErasure } from "./data-request-held-erasures.js";
 
 type Body<T> = Omit<T, "actorSubjectId">;
 
@@ -38,6 +39,11 @@ export type AdminDataRequestsDeps = {
   erasureHistory: IDataRequestErasureHistory;
   /** The private sale deals that keep the person's records, for the record page. */
   dealHolds: IDataRequestDealHolds;
+  /** Erasures a deal held, kept to be re-run or shown to staff. */
+  heldErasures: IHeldErasureLog;
+  /** Told when an erasure is held with nothing to release it, so a person is asked at once. */
+  onNeedsStaff?: (reference: string, reason: "end_unknown") => void;
+  now?: () => Date;
 };
 
 /** What an erasure answers with: the counts the erasure service reports. */
@@ -45,6 +51,9 @@ export type EnquiryErasureCounts = Omit<
   Extract<Awaited<ReturnType<IEnquiryErasure["eraseByEmail"]>>, { ok: true }>,
   "ok"
 >;
+
+/** The reason recorded on an erasure the schedule runs again once a deal's hold has ended. */
+export const HELD_ERASURE_RERUN_REASON = "Run again after the private sale hold ended";
 
 /**
  * Bid admin's Data requests. Identity owns the requests and the rules; this service adds who is
@@ -62,6 +71,11 @@ export class AdminDataRequestsService {
 
   summary() {
     return this.deps.identity.summary();
+  }
+
+  /** Requests whose held erasure nothing will release by itself, for the queue. No contact details. */
+  erasureHoldsNeedingStaff() {
+    return this.deps.heldErasures.needingStaff();
   }
 
   /** Exact email only: never a partial match, so the dialog cannot be used to browse accounts. */
@@ -160,7 +174,37 @@ export class AdminDataRequestsService {
   ): Promise<DataRequestOutcome<EnquiryErasureCounts>> {
     const found = await this.deps.identity.record(reference, actorUserId);
     if (!found.ok) return found;
-    const { request, person, ownRequest } = found.value;
+    return this.eraseFor(found.value, body, actorUserId, false);
+  }
+
+  /**
+   * Runs a held erasure again for the staff member who asked for it, once its hold should have
+   * ended. The same rules apply as for staff: the request must still be in progress and the
+   * address is Identity's, typed for them as the confirmation. Its audit rows are marked
+   * `automated`: the schedule did it, on their earlier request.
+   */
+  async rerunHeldErasure(
+    reference: string,
+    actorUserId: string,
+  ): Promise<DataRequestOutcome<EnquiryErasureCounts>> {
+    const found = await this.deps.identity.record(reference, actorUserId);
+    if (!found.ok) return found;
+    const confirmation = found.value.person.email ?? "";
+    return this.eraseFor(
+      found.value,
+      { confirmation, reason: HELD_ERASURE_RERUN_REASON },
+      actorUserId,
+      true,
+    );
+  }
+
+  private async eraseFor(
+    record: DataRequestRecord,
+    body: { confirmation: string; reason: string },
+    actorUserId: string,
+    automated: boolean,
+  ): Promise<DataRequestOutcome<EnquiryErasureCounts>> {
+    const { request, person, ownRequest } = record;
     if (ownRequest) return { ok: false, status: 403, error: "own_request" };
     const blocked = enquiryErasureBlock(request);
     if (blocked) return { ok: false, status: 409, error: "erasure_not_allowed" };
@@ -171,7 +215,7 @@ export class AdminDataRequestsService {
       reason: body.reason,
     });
     if (!checked.ok) return { ok: false, status: 422, error: checked.error };
-    await this.audit("enquiry_erasure_requested", request.reference, actorUserId);
+    await this.audit("enquiry_erasure_requested", request.reference, actorUserId, automated);
     const outcome = await this.deps.enquiryErasure.eraseByEmail({
       email: person.email,
       confirmation: body.confirmation,
@@ -180,13 +224,43 @@ export class AdminDataRequestsService {
       requestReference: request.reference,
     });
     if (!outcome.ok) return { ok: false, status: 422, error: outcome.error };
-    await this.audit("enquiries_erased", request.reference, actorUserId);
+    await this.audit("enquiries_erased", request.reference, actorUserId, automated);
     const { ok: _ok, ...counts } = outcome;
+    await this.keepHold(request.reference, counts, actorUserId, automated);
     return { ok: true, value: counts };
   }
 
-  private audit(action: DataRequestAuditAction, reference: string, actorUserId: string) {
-    return this.deps.audit.record({ action, reference, actorUserId });
+  /**
+   * Keeps what a deal held, so the request is re-run when the hold ends or, with no end date,
+   * shown to staff instead of waiting quietly. An erasure that held nothing clears the record.
+   */
+  private async keepHold(
+    reference: string,
+    counts: EnquiryErasureCounts,
+    actorUserId: string,
+    automated: boolean,
+  ) {
+    if (counts.held === 0) return this.deps.heldErasures.cleared(reference);
+    const now = this.deps.now?.() ?? new Date();
+    const plan = planHeldErasure(counts.hold, now);
+    await this.deps.heldErasures.held({ reference, requestedByUserId: actorUserId, plan });
+    // A scheduled re-run is reported by the schedule, once, with the reason it ended on.
+    if (plan.state === "needs_staff" && !automated)
+      this.deps.onNeedsStaff?.(reference, plan.reason);
+  }
+
+  private audit(
+    action: DataRequestAuditAction,
+    reference: string,
+    actorUserId: string,
+    automated = false,
+  ) {
+    return this.deps.audit.record({
+      action,
+      reference,
+      actorUserId,
+      ...(automated ? { automated: true } : {}),
+    });
   }
 }
 

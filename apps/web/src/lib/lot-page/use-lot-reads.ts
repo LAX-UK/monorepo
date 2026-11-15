@@ -34,20 +34,22 @@ export function useLotViewer(input: {
   return query.data ?? input.initial ?? NO_LOT_VIEWER;
 }
 
-/** The anonymised bid history, read again whenever the lot moves. */
+/**
+ * The anonymised bid history, read live (never from the page, which is built from cached reads)
+ * and read again whenever the lot moves.
+ */
 export function useLotPublicHistory(input: {
   lotId: string;
   enabled: boolean;
   revision: string;
-  initial: PublicBidHistory | null;
 }): PublicBidHistory | null {
   const query = useQuery({
     queryKey: [...lotPageKeys.history(input.lotId), input.revision],
     queryFn: () => fetchPublicBidHistory(input.lotId, LOT_HISTORY_LIMIT),
     enabled: input.enabled,
-    // The server's reading holds the place until the first read lands, then the last one does.
-    placeholderData: (previous) => previous ?? input.initial ?? undefined,
+    // The last reading holds the place while the next one is in flight.
+    placeholderData: (previous) => previous,
     staleTime: 5_000,
   });
-  return query.data ?? input.initial ?? null;
+  return query.data ?? null;
 }
