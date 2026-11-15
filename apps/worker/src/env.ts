@@ -615,7 +615,7 @@ export const envSchema = z
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           message:
-            "WEBHOOK_EVENTS_PROCESS must be true when ZOHO_QC_READY_MODE is not off, so signed notices are processed",
+            "WEBHOOK_EVENTS_PROCESS must be true when ZOHO_QC_READY_MODE is not off, so the notices are processed",
           path: ["WEBHOOK_EVENTS_PROCESS"],
         });
       }
@@ -624,7 +624,7 @@ export const envSchema = z
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message:
-          "WEBHOOK_EVENTS_PROCESS must be true when ZOHO_ARTWORK_SYNC_MODE is not off, so signed notices are processed",
+          "WEBHOOK_EVENTS_PROCESS must be true when ZOHO_ARTWORK_SYNC_MODE is not off, so the notices are processed",
         path: ["WEBHOOK_EVENTS_PROCESS"],
       });
     }

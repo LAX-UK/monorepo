@@ -15,6 +15,12 @@ import type { Logger } from "pino";
 import type { WorkerEnv } from "../env.js";
 import type { WebhookEventStoredPayload } from "./webhook-event-payload.js";
 
+/**
+ * Thrown by a source handler that cannot act yet and must not consume the event: the row stays
+ * unprocessed, its attempt is given back, and the drain picks it up once the handler exists.
+ */
+class WebhookEventDeferred extends Error {}
+
 export type ProcessInboundWebhookDeps = {
   env: WorkerEnv;
   log: Logger;
@@ -137,8 +143,7 @@ async function dispatchZohoQcNotice(
     throw new Error("zoho qc notice missing routing");
   }
   if (!deps.processZohoQcNotice) {
-    deps.log.info({ recordId }, "zoho qc notice ignored: quality check sync is off");
-    return;
+    throw new WebhookEventDeferred("zoho qc sync is off");
   }
   await deps.processZohoQcNotice({
     module: module as ZohoQcModule,
@@ -200,6 +205,12 @@ export async function processInboundWebhookEvent(
     await dispatchWebhookRow(deps, row);
     await deps.webhookEvents.markProcessed(eventKey);
   } catch (err) {
+    if (err instanceof WebhookEventDeferred) {
+      // Held back, not consumed: it is processed when the source is switched on.
+      await deps.webhookEvents.releaseClaim(eventKey);
+      deps.log.info({ eventKey, reason: err.message }, "webhook event held back, not processed");
+      return;
+    }
     const message = err instanceof Error ? err.message : String(err);
     await deps.webhookEvents.markFailed(eventKey, message);
     throw err;
@@ -213,7 +224,9 @@ export async function drainUnprocessedWebhookEvents(
   if (!deps.env.WEBHOOK_EVENTS_PROCESS) return 0;
 
   await deps.webhookEvents.recoverStaleClaims();
-  const rows = await deps.webhookEvents.listUnprocessedForDrain(batchSize);
+  // While the quality check sync is off its notices wait in the table; they must not fill the batch.
+  const excludeSources = deps.processZohoQcNotice ? [] : [ZOHO_QC_WEBHOOK_SOURCE];
+  const rows = await deps.webhookEvents.listUnprocessedForDrain(batchSize, { excludeSources });
   let processed = 0;
   for (const row of rows) {
     await processInboundWebhookEvent(deps, row.eventKey);

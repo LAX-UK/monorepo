@@ -1,6 +1,6 @@
 import type { Database } from "@auction/db";
 import { webhookEvent } from "@auction/db/schema";
-import { and, eq, isNull, lt, or, sql } from "drizzle-orm";
+import { and, eq, isNull, lt, notInArray, or, sql } from "drizzle-orm";
 import type {
   IWebhookEventRepository,
   WebhookEventDrainRow,
@@ -63,7 +63,11 @@ export class DrizzleWebhookEventRepository implements IWebhookEventRepository {
     return { claimed: true, row: mapDrainRow(row) };
   }
 
-  async listUnprocessedForDrain(limit: number): Promise<WebhookEventDrainRow[]> {
+  async listUnprocessedForDrain(
+    limit: number,
+    options: { excludeSources?: readonly string[] } = {},
+  ): Promise<WebhookEventDrainRow[]> {
+    const excluded = options.excludeSources ?? [];
     const now = new Date();
     const rows = await this.db
       .select()
@@ -73,6 +77,7 @@ export class DrizzleWebhookEventRepository implements IWebhookEventRepository {
           isNull(webhookEvent.processedAt),
           lt(webhookEvent.attempts, DEFAULT_MAX_ATTEMPTS),
           or(isNull(webhookEvent.claimExpiresAt), lt(webhookEvent.claimExpiresAt, now)),
+          excluded.length > 0 ? notInArray(webhookEvent.source, [...excluded]) : undefined,
         ),
       )
       .orderBy(webhookEvent.receivedAt)
@@ -93,6 +98,16 @@ export class DrizzleWebhookEventRepository implements IWebhookEventRepository {
       )
       .returning({ id: webhookEvent.id });
     return updated.length;
+  }
+
+  async releaseClaim(eventKey: string): Promise<void> {
+    await this.db
+      .update(webhookEvent)
+      .set({
+        claimExpiresAt: null,
+        attempts: sql`greatest(${webhookEvent.attempts} - 1, 0)`,
+      })
+      .where(and(eq(webhookEvent.eventKey, eventKey), isNull(webhookEvent.processedAt)));
   }
 
   async markProcessed(eventKey: string): Promise<void> {

@@ -72,6 +72,47 @@ describe.skipIf(!hasShopIntegrationDb)("Zoho quality check moves a print on", ()
     expect(audit.map((row) => row.actorSubjectId)).toEqual([ZOHO_QC_ACTOR]);
   });
 
+  it("puts the Zoho job record in the audit row, so a move can be traced back to it", async () => {
+    const t = await seed("audit-record", "qc_pending");
+    await qc().markPassed({
+      orderReference: t.reference,
+      lineId: t.lineId,
+      zohoModule: "Framing_Jobs",
+      zohoRecordId: "1023341000017963001",
+    });
+    const audit = await db()
+      .select()
+      .from(shopAdminAudit)
+      .where(eq(shopAdminAudit.targetId, t.taskId));
+    expect(JSON.parse(String(audit[0]?.afterJson))).toMatchObject({
+      status: "qc_passed",
+      zohoModule: "Framing_Jobs",
+      zohoRecordId: "1023341000017963001",
+    });
+  });
+
+  it("refuses a cancelled or refunded order's print as not ready, but leaves a dispatched one alone", async () => {
+    for (const orderStatus of ["cancelled", "refunded", "expired"]) {
+      const t = await seed(`dead-${orderStatus}`, "qc_pending");
+      await ownerPool.query("update shop_order set status = $2 where id = $1", [
+        t.orderId,
+        orderStatus,
+      ]);
+      expect(await qc().markPassed({ orderReference: t.reference, lineId: t.lineId })).toBe(
+        "not_ready",
+      );
+      expect(await statusOf(t.taskId)).toBe("qc_pending");
+    }
+    const sent = await seed("dead-dispatched", "completed");
+    await ownerPool.query("update shop_order set status = 'refunded' where id = $1", [
+      sent.orderId,
+    ]);
+    expect(await qc().markPassed({ orderReference: sent.reference, lineId: sent.lineId })).toBe(
+      "already",
+    );
+    expect(await statusOf(sent.taskId)).toBe("completed");
+  });
+
   it("walks a printing task through the check, and a repeat changes nothing", async () => {
     const t = await seed("printing", "printing");
     const request = { orderReference: t.reference, lineId: t.lineId };

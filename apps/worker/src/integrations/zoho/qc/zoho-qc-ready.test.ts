@@ -73,6 +73,8 @@ describe("Zoho quality check to LAX print step", () => {
     expect(markPassed).toHaveBeenCalledExactlyOnceWith({
       orderReference: "LAX-S-10482",
       lineId: LINE,
+      zohoModule: notice.module,
+      zohoRecordId: notice.recordId,
     });
   });
 

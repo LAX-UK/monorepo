@@ -14,10 +14,13 @@ export type ZohoQcNoticeResponse = {
   body: { error?: string } | null;
 };
 
+/** How far ahead of the API's clock a notice's modified time may be (clock skew, not a future). */
+const MODIFIED_TIME_SKEW_MS = 5 * 60_000;
+
 /** Zoho record ids are long numbers sent as text. */
 const ZOHO_ID = /^\d{5,25}$/;
 
-function parseNotice(rawBody: string): ZohoQcNoticeRouting | null {
+function parseNotice(rawBody: string, now: Date): ZohoQcNoticeRouting | null {
   let json: unknown;
   try {
     json = JSON.parse(rawBody);
@@ -34,14 +37,19 @@ function parseNotice(rawBody: string): ZohoQcNoticeRouting | null {
   const routing: ZohoQcNoticeRouting = { module: module as ZohoQcModule, recordId: id.trim() };
   if (typeof record.modifiedTime === "string") {
     const when = new Date(record.modifiedTime);
-    if (!Number.isNaN(when.getTime())) routing.modifiedTime = when.toISOString();
+    if (!Number.isNaN(when.getTime())) {
+      // A time in the future would make the worker retry the notice until it gives up.
+      if (when.getTime() > now.getTime() + MODIFIED_TIME_SKEW_MS) return null;
+      routing.modifiedTime = when.toISOString();
+    }
   }
   return routing;
 }
 
 /**
- * Receives the notice a Zoho workflow sends when a job's quality check record changes. It proves
- * itself with a shared secret, is stored durably first, and is queued for the worker, which reads
+ * Receives the notice a Zoho workflow sends when a job's quality check record changes. It carries
+ * a shared secret (not a signature: a captured request could be replayed, which is harmless as the
+ * worker reads the record from Zoho), is stored durably first, and is queued for the worker, which reads
  * the record from Zoho. The reply says nothing about the record, so a notice that arrives twice,
  * or late, changes nothing.
  */
@@ -57,9 +65,15 @@ export class ZohoQcNoticeService {
     if (!this.secret) return { status: 503, body: { error: "Zoho notices are not configured" } };
     if (!sharedSecretMatches(providedSecret, this.secret)) return { status: 401, body: null };
 
-    const routing = parseNotice(rawBody);
+    const routing = parseNotice(rawBody, this.now());
     if (!routing) {
-      return { status: 400, body: { error: "Expected a JSON body with a module and recordId" } };
+      return {
+        status: 400,
+        body: {
+          error:
+            "Expected a JSON body with a module, a recordId and a modifiedTime that is not in the future",
+        },
+      };
     }
 
     const eventKey = zohoQcNoticeEventKey(routing, this.now());

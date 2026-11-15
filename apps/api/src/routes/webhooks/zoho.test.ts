@@ -82,7 +82,7 @@ describe("POST /webhooks/zoho/qc", () => {
   const body = JSON.stringify({
     module: "Framing_Jobs",
     recordId: "1023341000017963001",
-    modifiedTime: "2026-11-15T10:00:00+00:00",
+    modifiedTime: "2026-11-14T10:00:00+00:00",
   });
 
   it("stores and queues a notice that carries the secret, once for the same change", async () => {
@@ -101,7 +101,7 @@ describe("POST /webhooks/zoho/qc", () => {
           routing: {
             module: "Framing_Jobs",
             recordId: "1023341000017963001",
-            modifiedTime: "2026-11-15T10:00:00.000Z",
+            modifiedTime: "2026-11-14T10:00:00.000Z",
           },
         }),
       }),
@@ -115,6 +115,19 @@ describe("POST /webhooks/zoho/qc", () => {
     expect((await send({ "x-lax-webhook-secret": "x".repeat(40) }, body)).status).toBe(401);
     expect((await qcApp(null).send({ "x-lax-webhook-secret": SECRET }, body)).status).toBe(503);
     expect(webhookEvents.tryClaimEvent).not.toHaveBeenCalled();
+  });
+
+  it("refuses a modified time far in the future, but takes one within clock skew", async () => {
+    const { send, webhookEvents } = qcApp();
+    const at = (ms: number) =>
+      JSON.stringify({
+        module: "Framing_Jobs",
+        recordId: "1023341000017963001",
+        modifiedTime: new Date(Date.now() + ms).toISOString(),
+      });
+    expect((await send({ "x-lax-webhook-secret": SECRET }, at(24 * 3_600_000))).status).toBe(400);
+    expect(webhookEvents.tryClaimEvent).not.toHaveBeenCalled();
+    expect((await send({ "x-lax-webhook-secret": SECRET }, at(60_000))).status).toBe(202);
   });
 
   it("refuses a body naming an unknown module or no record id", async () => {

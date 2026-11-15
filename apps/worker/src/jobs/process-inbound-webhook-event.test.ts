@@ -1,5 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
-import { processInboundWebhookEvent } from "./process-inbound-webhook-event.js";
+import {
+  drainUnprocessedWebhookEvents,
+  processInboundWebhookEvent,
+} from "./process-inbound-webhook-event.js";
 
 describe("processInboundWebhookEvent", () => {
   it("no-ops when WEBHOOK_EVENTS_PROCESS is false", async () => {
@@ -160,14 +163,34 @@ describe("processInboundWebhookEvent", () => {
       expect(webhookEvents.markFailed).toHaveBeenCalled();
     });
 
-    it("is processed with nothing done while the sync is off, and fails a notice naming no record", async () => {
-      const off = events(routing);
+    it("holds a notice back while the sync is off: not processed, its attempt given back", async () => {
+      const off = { ...events(routing), releaseClaim: vi.fn() };
       await processInboundWebhookEvent({ ...base, webhookEvents: off as never }, "zq-1");
-      expect(off.markProcessed).toHaveBeenCalledWith("zq-1");
+      expect(off.markProcessed).not.toHaveBeenCalled();
+      expect(off.markFailed).not.toHaveBeenCalled();
+      expect(off.releaseClaim).toHaveBeenCalledWith("zq-1");
+    });
+
+    it("fails a notice naming no record", async () => {
       const bad = events({ module: "Deals", recordId: "1" });
       await expect(
         processInboundWebhookEvent({ ...base, webhookEvents: bad as never }, "zq-1"),
       ).rejects.toThrow("missing routing");
+    });
+
+    it("leaves quality check notices out of the drain while the sync is off, and includes them when on", async () => {
+      const listUnprocessedForDrain = vi.fn().mockResolvedValue([]);
+      const webhookEvents = { recoverStaleClaims: vi.fn(), listUnprocessedForDrain };
+      await drainUnprocessedWebhookEvents({ ...base, webhookEvents: webhookEvents as never });
+      expect(listUnprocessedForDrain).toHaveBeenLastCalledWith(25, {
+        excludeSources: ["zoho_qc"],
+      });
+      await drainUnprocessedWebhookEvents({
+        ...base,
+        webhookEvents: webhookEvents as never,
+        processZohoQcNotice: vi.fn(),
+      });
+      expect(listUnprocessedForDrain).toHaveBeenLastCalledWith(25, { excludeSources: [] });
     });
   });
 

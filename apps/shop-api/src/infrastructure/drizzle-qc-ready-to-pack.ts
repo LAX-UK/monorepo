@@ -10,6 +10,14 @@ import { ShopApiError } from "../errors/shop-api-error.js";
 /** The name the audit trail carries for a step Zoho's quality check made. */
 export const ZOHO_QC_ACTOR = "system:zoho-qc";
 
+/** Orders that are over: a print on one is never moved on by a Zoho notice. */
+const DEAD_ORDER: ReadonlySet<string> = new Set([
+  "cancelled",
+  "expired",
+  "payment_failed",
+  "refunded",
+]);
+
 /** The steps from where a task stands to quality check passed; absent where it cannot get there. */
 const PATH: Partial<Record<ShopProductionTaskStatus, readonly ShopProductionTaskStatus[]>> = {
   printing: ["qc_pending", "qc_passed"],
@@ -33,6 +41,7 @@ export function createDrizzleQcReadyToPack(
           reference: shopOrder.reference,
           printLineId: shopOrderLine.framingForLineId,
           lineId: shopOrderLine.id,
+          orderStatus: shopOrder.status,
         })
         .from(shopOrderLine)
         .innerJoin(shopOrder, eq(shopOrder.id, shopOrderLine.orderId))
@@ -40,6 +49,8 @@ export function createDrizzleQcReadyToPack(
         .limit(1);
       // The reference must match, so an id from another order is never acted on.
       if (!row || row.reference !== request.orderReference) return "unmatched";
+      // A cancelled or refunded order's print is not passed, whatever its task says; staff look.
+      const dead = DEAD_ORDER.has(row.orderStatus);
 
       const [task] = await db
         .select()
@@ -47,7 +58,10 @@ export function createDrizzleQcReadyToPack(
         .where(eq(shopProductionTask.orderLineId, row.printLineId ?? row.lineId))
         .limit(1);
       if (!task) return "unmatched";
+      // Already at or past the check (including dispatched: completed) stays "already", as that
+      // is the state the notice asks for; only a task still to move is refused for a dead order.
       if (task.status === "qc_passed" || task.status === "completed") return "already";
+      if (dead) return "not_ready";
       const steps = PATH[task.status];
       if (!steps) return "not_ready";
 
@@ -60,6 +74,10 @@ export function createDrizzleQcReadyToPack(
             expectedVersion: version,
             status: to,
             actorSubjectId: ZOHO_QC_ACTOR,
+            auditContext: {
+              ...(request.zohoModule ? { zohoModule: request.zohoModule } : {}),
+              ...(request.zohoRecordId ? { zohoRecordId: request.zohoRecordId } : {}),
+            },
             canMove: canTransitionProductionTask,
           });
         } catch (error) {

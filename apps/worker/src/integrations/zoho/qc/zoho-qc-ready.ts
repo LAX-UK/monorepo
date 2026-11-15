@@ -81,7 +81,12 @@ export class ZohoQcReady {
     const lineId = ref.slice(at + 1);
     if (at < 1 || !UUID.test(lineId))
       throw new ZohoQcAttentionError("order_ref_missing_or_invalid");
-    const request = { orderReference: ref.slice(0, at), lineId };
+    const request = {
+      orderReference: ref.slice(0, at),
+      lineId,
+      zohoModule: notice.module,
+      zohoRecordId: notice.recordId,
+    };
 
     if (mode === "dry_run") {
       log.info(

@@ -12,6 +12,9 @@ export const qcReadyToPackRequestSchema = z.object({
   orderReference: z.string().min(1).max(64),
   /** The order line the Zoho job is for: a print line, or the framing line sold with a print. */
   lineId: z.string().uuid(),
+  /** The Zoho job record that passed, so the audit row can be traced back to it. */
+  zohoModule: z.string().min(1).max(64).optional(),
+  zohoRecordId: z.string().min(1).max(32).optional(),
 });
 export type QcReadyToPackRequest = z.infer<typeof qcReadyToPackRequestSchema>;
 

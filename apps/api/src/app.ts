@@ -206,6 +206,7 @@ export function createApp(container: Container, env: Env, authenticator: IAuthen
   app.use("/webhooks/postmark/*", createRateLimitMiddleware(container.rateLimitStore));
   app.use("/webhooks/xero", createRateLimitMiddleware(container.rateLimitStore));
   app.use("/webhooks/xero/*", createRateLimitMiddleware(container.rateLimitStore));
+  app.use("/webhooks/zoho/qc", createRateLimitMiddleware(container.rateLimitStore));
   mountPendingDeletionGuard(
     app,
     createPendingDeletionGuard({ authenticator, reader: container.pendingDeletionReader }),

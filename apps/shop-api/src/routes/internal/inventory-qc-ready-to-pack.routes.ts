@@ -21,7 +21,7 @@ export async function registerInventoryQcReadyToPackRoutes(
     if (status === 503) {
       return reply.status(503).send({
         error: "not_configured",
-        message: "Moving artworks between products is not set up.",
+        message: "Moving a print on after a Zoho quality check is not set up.",
       });
     }
     if (status === 401) return reply.status(401).send({ error: "unauthorized" });
