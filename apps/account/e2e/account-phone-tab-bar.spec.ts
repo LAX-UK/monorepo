@@ -19,7 +19,7 @@ async function raiseToast(page: Page): Promise<void> {
   } else {
     await tokyo.check();
   }
-  await page.getByRole("button", { name: "Save" }).click();
+  await page.getByRole("button", { name: "Save", exact: true }).click();
 }
 
 // HC-PW2: the phone tab bar shows on a phone, is gone on desktop, More opens the existing menu

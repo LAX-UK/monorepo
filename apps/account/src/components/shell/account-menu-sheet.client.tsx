@@ -14,7 +14,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@auction/ui/components/sheet";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AccountAvatar } from "./account-avatar";
 import { OPEN_ACCOUNT_MENU_EVENT } from "./account-menu-events";
 import { AccountNav } from "./account-nav.client";
@@ -36,9 +36,16 @@ export function AccountMenuSheet({
   products: LaxFamilyLinkVm[];
 }) {
   const [open, setOpen] = useState(false);
+  // The tab bar's More button, when it opened the sheet: focus goes back to it on close, not to
+  // the header button (the bar is inert while the sheet is open, so Radix cannot restore it).
+  const openedFrom = useRef<HTMLElement | null>(null);
   // The phone tab bar's More tab opens this same sheet.
   useEffect(() => {
-    const show = () => setOpen(true);
+    const show = () => {
+      openedFrom.current =
+        document.activeElement instanceof HTMLElement ? document.activeElement : null;
+      setOpen(true);
+    };
     window.addEventListener(OPEN_ACCOUNT_MENU_EVENT, show);
     return () => window.removeEventListener(OPEN_ACCOUNT_MENU_EVENT, show);
   }, []);
@@ -52,6 +59,14 @@ export function AccountMenuSheet({
       <SheetContent
         side="left"
         className="flex w-[min(85vw,22rem)] flex-col gap-6 overflow-y-auto bg-surface"
+        onCloseAutoFocus={(event) => {
+          const target = openedFrom.current;
+          openedFrom.current = null;
+          if (!target?.isConnected) return;
+          event.preventDefault();
+          // The bar stops being inert on the next frame, after the sheet has gone.
+          requestAnimationFrame(() => target.focus());
+        }}
       >
         <div className="flex items-center gap-3 pr-10">
           <AccountAvatar viewer={viewer} className="size-11" textClassName="text-sm" />
