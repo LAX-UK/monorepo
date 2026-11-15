@@ -143,6 +143,8 @@ export {
   JWKS_FAILURE_COOLDOWN_MS,
   JWKS_MAX_STALE_MS,
   JWKS_MISS_REFETCH_INTERVAL_MS,
+  type JwksHolderCounters,
+  sharedJwksCounters,
 } from "./jwks-holder.js";
 export {
   AUTH_ROUTE_PATH,

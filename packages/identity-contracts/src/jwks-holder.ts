@@ -42,6 +42,24 @@ const defaultFailureReporter: JwksFetchFailureReporter = (failure) => {
   console.warn("jwks_fetch_failed", failure);
 };
 
+/**
+ * Told when a verifier answers from a key set it could not refresh, at most once per failed
+ * fetch, so a long outage logs once per cooldown instead of once per request.
+ */
+export type JwksStaleServeReporter = (stale: { url: string; ageMs: number }) => void;
+
+const defaultStaleReporter: JwksStaleServeReporter = (stale) => {
+  console.warn("jwks_serving_stale", stale);
+};
+
+/** Running totals for one holder, for metrics. */
+export type JwksHolderCounters = {
+  /** Key set fetches that failed. */
+  fetchFailures: number;
+  /** Requests answered from a set that is past its refresh interval and could not be refreshed. */
+  staleServes: number;
+};
+
 /** Resolves the key for a token header; assignable to the resolver `jwtVerify` takes. */
 export type ResolveKey = (header: Parameters<JWTVerifyGetKey>[0]) => ReturnType<JWTVerifyGetKey>;
 
@@ -57,6 +75,8 @@ export type JwksHolder = {
   fetchedAt(): number | null;
   /** Whether this holder has ever seen a key with this id published. */
   hasSeen(kid: string): boolean;
+  /** A snapshot of this holder's failure and stale-serve totals. */
+  counters(): JwksHolderCounters;
 };
 
 /**
@@ -83,6 +103,7 @@ export function createJwksHolder(options: {
   fetchImpl?: typeof fetch;
   now?: Clock;
   onFetchFailure?: JwksFetchFailureReporter;
+  onServeStale?: JwksStaleServeReporter;
 }): JwksHolder {
   const now = options.now ?? Date.now;
   const seen = new Set<string>();
@@ -90,6 +111,8 @@ export function createJwksHolder(options: {
   let lastAttemptAt = Number.NEGATIVE_INFINITY;
   let lastFailureAt = Number.NEGATIVE_INFINITY;
   let inflight: Promise<void> | null = null;
+  let staleReportedFor = Number.NEGATIVE_INFINITY;
+  const totals: JwksHolderCounters = { fetchFailures: 0, staleServes: 0 };
 
   const fetchKeys = async (): Promise<KeySet> => {
     const doFetch = options.fetchImpl ?? fetch;
@@ -121,6 +144,7 @@ export function createJwksHolder(options: {
       })
       .catch((error: unknown) => {
         lastFailureAt = now();
+        totals.fetchFailures++;
         try {
           (options.onFetchFailure ?? defaultFailureReporter)({
             url: options.url,
@@ -143,17 +167,34 @@ export function createJwksHolder(options: {
 
   const inFailureCooldown = () => now() - lastFailureAt < JWKS_FAILURE_COOLDOWN_MS;
 
+  /** Counts (and, once per failed fetch, reports) answering from a set that could not be refreshed. */
+  const noteStale = (set: KeySet) => {
+    totals.staleServes++;
+    if (staleReportedFor === lastFailureAt) return;
+    staleReportedFor = lastFailureAt;
+    try {
+      (options.onServeStale ?? defaultStaleReporter)({
+        url: options.url,
+        ageMs: now() - set.fetchedAt,
+      });
+    } catch {
+      // Reporting must never change what verification does.
+    }
+  };
+
   const ensureFresh = async (): Promise<KeySet> => {
     const set = usable();
     const age = set ? now() - set.fetchedAt : Number.POSITIVE_INFINITY;
     if (set && age >= DISCOVERY_CACHE_TTL_MS && age < JWKS_STALE_WHILE_REVALIDATE_MS) {
       // Stale while revalidate: answer from the set in hand and refresh behind the request.
       if (inflight || !inFailureCooldown()) void refetch();
+      else noteStale(set);
       return set;
     }
     if (age >= DISCOVERY_CACHE_TTL_MS && (inflight || !inFailureCooldown())) await refetch();
     const next = usable();
     if (!next) throw new JwksUnavailableError();
+    if (now() - next.fetchedAt >= DISCOVERY_CACHE_TTL_MS) noteStale(next);
     return next;
   };
 
@@ -178,6 +219,7 @@ export function createJwksHolder(options: {
     getKey,
     fetchedAt: () => current?.fetchedAt ?? null,
     hasSeen: (kid) => seen.has(kid),
+    counters: () => ({ ...totals }),
   };
 }
 
@@ -190,6 +232,11 @@ export function jwksHolderFor(url: string): JwksHolder {
   const created = createJwksHolder({ url });
   holders.set(url, created);
   return created;
+}
+
+/** Failure and stale-serve totals for every shared holder, keyed by key set URL, for metrics. */
+export function sharedJwksCounters(): Record<string, JwksHolderCounters> {
+  return Object.fromEntries([...holders].map(([url, holder]) => [url, holder.counters()]));
 }
 
 /** The key resolver every verifier passes to `jwtVerify`. */
