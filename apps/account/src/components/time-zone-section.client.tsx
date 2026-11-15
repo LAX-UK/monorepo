@@ -2,12 +2,13 @@
 
 import { Button, LoadingButton } from "@/components/account-button";
 import { CARD } from "@/components/account-ui";
+import { StepUpDialog } from "@/components/step-up-dialog.client";
+import { useStepUp } from "@/components/use-step-up.client";
 import {
   reportDeviceZoneAction,
   saveTimeZoneAction,
 } from "@/server/application/account-identity-actions.server";
 import type { TimeZoneActionResult } from "@/server/domain/account-action-result";
-import { buildReauthHref } from "@/server/domain/account-reauth";
 import {
   type TimeZonePreferenceVm,
   shouldReportDeviceZone,
@@ -72,22 +73,33 @@ export function TimeZoneSection({ initial, at, returnTo }: TimeZoneSectionProps)
     });
   }, [preference, device]);
 
+  const stepUp = useStepUp({ returnTo });
+  const { require: requireStepUp } = stepUp;
+
   const port = useMemo<ZonePreferencePort>(() => {
-    function accept(result: TimeZoneActionResult): void {
+    // Saving waits through "Confirm it's you" when it asks, and runs again once confirmed; Cancel
+    // leaves the zone as it was and the editor says it was not saved.
+    async function saveWith(call: () => Promise<TimeZoneActionResult>): Promise<void> {
+      const result = await call();
       if (result.status === "reauth_required") {
-        window.location.assign(buildReauthHref(returnTo));
-        throw new Error("time_zone_sign_in_required");
+        return new Promise<void>((resolve, reject) => {
+          requireStepUp({
+            reason: "change_time_zone",
+            retry: () => void saveWith(call).then(resolve, reject),
+            onCancel: () => reject(new Error("time_zone_sign_in_required")),
+          });
+        });
       }
       if (result.status === "error") throw new Error("time_zone_not_saved");
       setPreference(toTimeZonePreferenceVm(result));
       router.refresh();
     }
     return {
-      save: async (zone) => accept(await saveTimeZoneAction({ mode: "fixed", zone })),
-      followDevice: async () =>
-        accept(await saveTimeZoneAction({ mode: "automatic", zone: deviceTimeZone() })),
+      save: (zone) => saveWith(() => saveTimeZoneAction({ mode: "fixed", zone })),
+      followDevice: () =>
+        saveWith(() => saveTimeZoneAction({ mode: "automatic", zone: deviceTimeZone() })),
     };
-  }, [returnTo, router]);
+  }, [requireStepUp, router]);
 
   if (!preference) {
     return (
@@ -117,6 +129,7 @@ export function TimeZoneSection({ initial, at, returnTo }: TimeZoneSectionProps)
           onChange={() => setEditing(true)}
         />
       )}
+      <StepUpDialog stepUp={stepUp} />
     </div>
   );
 }

@@ -3,6 +3,8 @@
 import { Button } from "@/components/account-button";
 import { CARD, CARD_PADDING, CARD_TITLE } from "@/components/account-ui";
 import { ProductText } from "@/components/product-name";
+import { StepUpDialog } from "@/components/step-up-dialog.client";
+import { useStepUp } from "@/components/use-step-up.client";
 import {
   addAddressAction,
   deleteAddressAction,
@@ -17,12 +19,10 @@ import {
   canAddAddress,
   emptyAddressForm,
 } from "@/server/domain/account-addresses.vm";
-import { buildReauthHref } from "@/server/domain/account-reauth";
 import type {
   AccountAddress,
   AccountAddressDefaultKind,
 } from "@auction/identity-contracts/account";
-import { ConfirmDialog } from "@auction/ui/components/confirm-dialog";
 import { DotStatusPill } from "@auction/ui/components/dot-status-pill";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
@@ -41,7 +41,7 @@ type Notice = { kind: "error" | "success"; message: string };
 
 /**
  * The person's LAX-wide address book. Adding, editing and deleting need a recent sign-in; when
- * the issuer says it is too old the person is sent through a fresh one and returns here. Each
+ * the issuer says it is too old the person confirms it's them and the change runs again. Each
  * edit carries the version the person saw, so a change made elsewhere is reported instead of
  * silently overwritten.
  */
@@ -52,12 +52,16 @@ export function AddressBook({ addresses, defaultRecipient, returnTo }: AddressBo
   const [notice, setNotice] = useState<Notice | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const stepUp = useStepUp({ returnTo });
 
   function run(action: () => Promise<AccountActionResult>, onOk: () => void, onError?: () => void) {
     startTransition(async () => {
       const result = await action();
       if (result.status === "reauth_required") {
-        window.location.assign(buildReauthHref(returnTo));
+        stepUp.require({
+          reason: "change_addresses",
+          retry: () => run(action, onOk, onError),
+        });
         return;
       }
       if (result.status === "error") {
@@ -244,31 +248,34 @@ export function AddressBook({ addresses, defaultRecipient, returnTo }: AddressBo
         )
       ) : null}
 
-      <ConfirmDialog
-        open={deleting !== null}
-        onOpenChange={(open) => {
-          if (!open) setDeleting(null);
-        }}
-        title={deleting ? `Delete ${deleting.label}?` : "Delete address?"}
-        body={
-          <>
-            This removes the address from your LAX account. Orders and invoices that already used it
-            keep their own copy.
-            {deleting?.isDefaultShipping || deleting?.isDefaultBilling
-              ? " Your oldest remaining address becomes the default instead."
-              : ""}
-          </>
-        }
-        confirmLabel="Delete address"
-        loading={pending}
-        onConfirm={() => {
-          if (!deleting) return;
-          const target = deleting;
-          run(
-            () => deleteAddressAction(target.id, target.version),
-            () => setDeleting(null),
-            () => setDeleting(null),
-          );
+      <StepUpDialog
+        stepUp={stepUp}
+        action={{
+          open: deleting !== null,
+          onOpenChange: (open) => {
+            if (!open) setDeleting(null);
+          },
+          title: deleting ? `Delete ${deleting.label}?` : "Delete address?",
+          body: (
+            <>
+              This removes the address from your LAX account. Orders and invoices that already used
+              it keep their own copy.
+              {deleting?.isDefaultShipping || deleting?.isDefaultBilling
+                ? " Your oldest remaining address becomes the default instead."
+                : ""}
+            </>
+          ),
+          confirmLabel: "Delete address",
+          loading: pending,
+          onConfirm: () => {
+            if (!deleting) return;
+            const target = deleting;
+            run(
+              () => deleteAddressAction(target.id, target.version),
+              () => setDeleting(null),
+              () => setDeleting(null),
+            );
+          },
         }}
       />
     </div>

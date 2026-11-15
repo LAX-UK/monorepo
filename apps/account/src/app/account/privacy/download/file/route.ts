@@ -53,7 +53,7 @@ export async function POST(request: Request): Promise<Response> {
     case "reauth_required":
       if (resumed) return back("step_up_failed");
       return NextResponse.redirect(
-        new URL(buildReauthHref(dataExportReturnTo("download")), origin),
+        new URL(buildReauthHref(dataExportReturnTo("download"), "download_data_copy"), origin),
         303,
       );
     case "gone":

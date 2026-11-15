@@ -22,7 +22,23 @@ export const ACCOUNT_STEP_UP_MAX_AGE_SECONDS = 300;
 export const ACCOUNT_STEP_UP_REASONS = [
   "add_sign_in_method",
   "remove_sign_in_method",
+  "rename_passkey",
   "change_password",
+  "create_backup_codes",
+  "sign_out_devices",
+  "sign_out_other_devices",
+  "change_name",
+  "change_email",
+  "change_phone",
+  "change_time_zone",
+  "change_addresses",
+  "change_alerts",
+  "request_data_copy",
+  "download_data_copy",
+  "delete_data_copy",
+  "request_sale",
+  "withdraw_sale_request",
+  "delete_account",
 ] as const;
 export type AccountStepUpReason = (typeof ACCOUNT_STEP_UP_REASONS)[number];
 

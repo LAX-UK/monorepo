@@ -37,4 +37,32 @@ describe("ZOHO_FULFILMENT_MIRROR_MODE", () => {
     stubEnv({ ZOHO_FULFILMENT_MIRROR_MODE: "dry_run" });
     expect(() => loadWorkerEnv()).toThrow("Invalid worker environment variables");
   });
+
+  it("names the order mirror's reference field LAX_Order_Ref unless set", () => {
+    stubEnv({ ...SETTINGS, ZOHO_FULFILMENT_MIRROR_MODE: "dry_run" });
+    expect(loadWorkerEnv().ZOHO_FULFILMENT_ORDER_REF_FIELD).toBe("LAX_Order_Ref");
+    vi.unstubAllEnvs();
+    stubEnv({ ...SETTINGS, ZOHO_FULFILMENT_ORDER_REF_FIELD: "Order_Ref_LAX" });
+    expect(loadWorkerEnv().ZOHO_FULFILMENT_ORDER_REF_FIELD).toBe("Order_Ref_LAX");
+    vi.unstubAllEnvs();
+    stubEnv({ ...SETTINGS, ZOHO_FULFILMENT_ORDER_REF_FIELD: "" });
+    expect(loadWorkerEnv().ZOHO_FULFILMENT_ORDER_REF_FIELD).toBe("LAX_Order_Ref");
+  });
+
+  it("names the dispatch's prints field LAX_Prints unless set", () => {
+    stubEnv({ ...SETTINGS, ZOHO_FULFILMENT_MIRROR_MODE: "dry_run" });
+    expect(loadWorkerEnv().ZOHO_FULFILMENT_DISPATCH_PRINTS_FIELD).toBe("LAX_Prints");
+    vi.unstubAllEnvs();
+    stubEnv({ ...SETTINGS, ZOHO_FULFILMENT_DISPATCH_PRINTS_FIELD: "Prints_In_Parcel" });
+    expect(loadWorkerEnv().ZOHO_FULFILMENT_DISPATCH_PRINTS_FIELD).toBe("Prints_In_Parcel");
+  });
+
+  it("refuses a field name that is not a Zoho API name, since it goes into COQL", () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    stubEnv({ ZOHO_FULFILMENT_ORDER_REF_FIELD: "Ref = '' or 1" });
+    expect(() => loadWorkerEnv()).toThrow("Invalid worker environment variables");
+    vi.unstubAllEnvs();
+    stubEnv({ ZOHO_FULFILMENT_DISPATCH_PRINTS_FIELD: "Prints, Owner" });
+    expect(() => loadWorkerEnv()).toThrow("Invalid worker environment variables");
+  });
 });

@@ -1,8 +1,9 @@
 "use client";
 
+import { StepUpDialog } from "@/components/step-up-dialog.client";
+import { useStepUp } from "@/components/use-step-up.client";
 import { setAlertTopicAction } from "@/server/application/alert-preference-actions.server";
 import type { AlertSectionVm } from "@/server/domain/account-alerts.vm";
-import { buildReauthHref } from "@/server/domain/account-reauth";
 import type { AlertTopicId } from "@/server/ports/alert-preferences-gateway";
 import { cn } from "@auction/ui";
 import { TextLink, ToggleRow } from "@auction/ui/lax";
@@ -34,6 +35,7 @@ export function AlertPreferences({ sections, disabled, returnTo }: AlertPreferen
     ),
   );
   const [saved, setSaved] = useState(false);
+  const stepUp = useStepUp({ returnTo });
 
   function patch(topic: AlertTopicId, next: Partial<RowState>) {
     setRows((current) => {
@@ -53,7 +55,12 @@ export function AlertPreferences({ sections, disabled, returnTo }: AlertPreferen
         }) as const,
     );
     if (result.status === "reauth_required") {
-      window.location.assign(buildReauthHref(returnTo));
+      // The switch waits on "Confirm it's you"; Cancel puts it back as it was.
+      stepUp.require({
+        reason: "change_alerts",
+        retry: () => void change(topic, on),
+        onCancel: () => patch(topic, { on: !on, saving: false }),
+      });
       return;
     }
     if (result.status === "error") {
@@ -126,6 +133,7 @@ export function AlertPreferences({ sections, disabled, returnTo }: AlertPreferen
       >
         All changes saved
       </p>
+      <StepUpDialog stepUp={stepUp} />
     </>
   );
 }

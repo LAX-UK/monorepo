@@ -1,3 +1,4 @@
+import { createHmac } from "node:crypto";
 import { Hono } from "hono";
 import pino from "pino";
 import { describe, expect, it, vi } from "vitest";
@@ -20,6 +21,7 @@ function buildApp(
   const counter = { inc: vi.fn() };
   const auth = {
     handler: vi.fn(async () => Response.json({ handledBy: "issuer" })),
+    $context: Promise.resolve({ secret: "development-secret" }),
     api: {
       getJwks: vi.fn(async () => ({ keys: [{ kid: "kid-1" }] })),
       getSession: vi.fn(getSessionImpl ?? (async () => session)),
@@ -237,6 +239,31 @@ describe("auth HTTP app composition", () => {
     });
     expect(response.status).toBe(200);
     expect(await response.text()).toContain("Sign in");
+  });
+
+  it("reads Account's re-check from the provider's signed prompt cookie after its redirect", async () => {
+    const app = buildApp(null);
+    const kept = JSON.stringify({
+      response_type: "code",
+      client_id: "lax-account-web",
+      redirect_uri: "http://localhost:3040/api/auth/callback",
+      scope: "openid",
+      state: "account-state",
+      nonce: "n",
+      code_challenge: "c",
+      code_challenge_method: "S256",
+      prompt: "login",
+      reauth_reason: "sign_out_devices",
+    });
+    const signature = createHmac("sha256", "development-secret").update(kept).digest("base64");
+    const response = await app.request(
+      "https://auth.test/login?client_id=lax-account-web&code=provider-code&state=account-state",
+      { headers: { cookie: `oidc_login_prompt=${encodeURIComponent(`${kept}.${signature}`)}` } },
+    );
+    const html = await response.text();
+    expect(html).toContain("<h1>Confirm it&#39;s you</h1>");
+    expect(html).toContain("Before you sign out another device, we need you to sign in again.");
+    expect(html).not.toContain("Sign up");
   });
 
   it("asks which account to use when a live session meets a bare sign-in or sign-up visit", async () => {

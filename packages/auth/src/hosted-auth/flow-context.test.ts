@@ -143,3 +143,73 @@ describe("parseHostedAuthFlow", () => {
     expect(productHintHref("/forgot-password", flow)).not.toContain("state=");
   });
 });
+
+describe("parseHostedAuthFlow re-check kept by the OIDC provider", () => {
+  const accountAuthorize = {
+    response_type: "code",
+    client_id: "lax-account-web",
+    redirect_uri: "http://localhost:3040/api/auth/callback",
+    scope: "openid profile email",
+    state: "state-account",
+    nonce: "nonce-account",
+    code_challenge: "challenge",
+    code_challenge_method: "S256",
+    prompt: "login",
+    max_age: "300",
+    reauth_reason: "sign_out_devices",
+  };
+  // Where the provider sends a browser that already holds a session.
+  const loginPageRedirect = new URLSearchParams({
+    client_id: "lax-account-web",
+    code: "provider-code",
+    state: "state-account",
+  });
+
+  it("reads Account's re-check and reason from the provider's kept request", () => {
+    const flow = parseHostedAuthFlow(loginPageRedirect, new URLSearchParams(accountAuthorize));
+    expect(flow.reauth).toBe(true);
+    expect(flow.reauthReason).toBe("sign_out_devices");
+  });
+
+  it("is not a re-check from the redirect alone", () => {
+    const flow = parseHostedAuthFlow(loginPageRedirect);
+    expect(flow.reauth).toBe(false);
+    expect(flow.reauthReason).toBeNull();
+  });
+
+  it("ignores a kept request for another authorization", () => {
+    const otherState = new URLSearchParams({ ...accountAuthorize, state: "another-state" });
+    expect(parseHostedAuthFlow(loginPageRedirect, otherState).reauth).toBe(false);
+    const noState = new URLSearchParams({ client_id: "lax-account-web", code: "provider-code" });
+    expect(parseHostedAuthFlow(noState, new URLSearchParams(accountAuthorize)).reauth).toBe(false);
+  });
+
+  it("ignores a kept request for another product, or one that never asked for a sign-in", () => {
+    const shopRedirect = new URLSearchParams({ ...Object.fromEntries(loginPageRedirect) });
+    shopRedirect.set("client_id", "lax-shop-web");
+    const shopKept = new URLSearchParams({
+      ...shopAuthorize,
+      state: "state-account",
+      prompt: "login",
+    });
+    expect(parseHostedAuthFlow(shopRedirect, shopKept).reauth).toBe(false);
+    const { prompt: _prompt, ...withoutPrompt } = accountAuthorize;
+    expect(parseHostedAuthFlow(loginPageRedirect, new URLSearchParams(withoutPrompt)).reauth).toBe(
+      false,
+    );
+  });
+
+  it("ignores a kept request whose callback is not registered for Account", () => {
+    const tampered = new URLSearchParams({
+      ...accountAuthorize,
+      redirect_uri: "https://evil.example/api/auth/callback",
+    });
+    expect(parseHostedAuthFlow(loginPageRedirect, tampered).reauth).toBe(false);
+  });
+
+  it("keeps the reason from the URL when the URL itself is the re-check", () => {
+    const url = new URLSearchParams(accountAuthorize);
+    const kept = new URLSearchParams({ ...accountAuthorize, reauth_reason: "change_password" });
+    expect(parseHostedAuthFlow(url, kept).reauthReason).toBe("sign_out_devices");
+  });
+});

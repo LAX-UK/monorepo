@@ -2,6 +2,8 @@
 
 import { Button } from "@/components/account-button";
 import { NOTICE, NoticeTitle } from "@/components/account-ui";
+import { StepUpDialog } from "@/components/step-up-dialog.client";
+import { useStepUp } from "@/components/use-step-up.client";
 import { regenerateBackupCodesAction } from "@/server/application/account-identity-actions.server";
 import type { BackupCodesActionResult } from "@/server/domain/account-action-result";
 import {
@@ -10,9 +12,7 @@ import {
   REGENERATE_BACKUP_CODES_CONFIRM,
   formatBackupCodesFile,
 } from "@/server/domain/account-backup-codes.vm";
-import { buildReauthHref } from "@/server/domain/account-reauth";
 import { Alert, AlertDescription } from "@auction/ui/components/alert";
-import { ConfirmDialog } from "@auction/ui/components/confirm-dialog";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
@@ -36,6 +36,7 @@ export function BackupCodesPanel({ actionLabel, returnTo }: BackupCodesPanelProp
   const [error, setError] = useState<string | null>(null);
   const [issued, setIssued] = useState<Issued | null>(null);
   const [copyNotice, setCopyNotice] = useState<string | null>(null);
+  const stepUp = useStepUp({ returnTo });
 
   function closeConfirm() {
     if (busy) return;
@@ -53,7 +54,8 @@ export function BackupCodesPanel({ actionLabel, returnTo }: BackupCodesPanelProp
       result = { status: "error", message: "We couldn't do that just now. Please try again." };
     }
     if (result.status === "reauth_required") {
-      window.location.assign(buildReauthHref(returnTo));
+      setBusy(false);
+      stepUp.require({ reason: "create_backup_codes", retry: () => void regenerate() });
       return;
     }
     setBusy(false);
@@ -154,28 +156,33 @@ export function BackupCodesPanel({ actionLabel, returnTo }: BackupCodesPanelProp
           {actionLabel}
         </Button>
       </div>
-      {confirming ? (
-        <ConfirmDialog
-          open
-          onOpenChange={(open) => {
-            if (!open) closeConfirm();
-          }}
-          title={REGENERATE_BACKUP_CODES_CONFIRM.title}
-          body={
-            <>
-              <p>{REGENERATE_BACKUP_CODES_CONFIRM.body}</p>
-              {error ? (
-                <p role="alert" className="mt-3 text-error">
-                  {error}
-                </p>
-              ) : null}
-            </>
-          }
-          confirmLabel={REGENERATE_BACKUP_CODES_CONFIRM.confirmLabel}
-          loading={busy}
-          onConfirm={regenerate}
-        />
-      ) : null}
+      <StepUpDialog
+        stepUp={stepUp}
+        action={
+          confirming
+            ? {
+                open: true,
+                onOpenChange: (open) => {
+                  if (!open) closeConfirm();
+                },
+                title: REGENERATE_BACKUP_CODES_CONFIRM.title,
+                body: (
+                  <>
+                    <p>{REGENERATE_BACKUP_CODES_CONFIRM.body}</p>
+                    {error ? (
+                      <p role="alert" className="mt-3 text-error">
+                        {error}
+                      </p>
+                    ) : null}
+                  </>
+                ),
+                confirmLabel: REGENERATE_BACKUP_CODES_CONFIRM.confirmLabel,
+                loading: busy,
+                onConfirm: regenerate,
+              }
+            : null
+        }
+      />
     </div>
   );
 }

@@ -3,9 +3,12 @@ import { DrizzleArtworkRegisterRepository } from "@auction/persistence/repositor
 import type { Logger } from "pino";
 import type { WorkerEnv } from "../env.js";
 import { createZohoCrmGatewayWithCoql } from "../integrations/zoho/create-zoho-crm-gateway.js";
+import { createDrizzleOrderFulfilmentFactsReader } from "../integrations/zoho/fulfilment/drizzle-order-fulfilment-facts.reader.js";
 import { createDrizzlePrintGroupFactsReader } from "../integrations/zoho/fulfilment/drizzle-print-group-facts.reader.js";
+import { OrderMirror } from "../integrations/zoho/fulfilment/order-mirror.js";
 import { PrintGroupMirror } from "../integrations/zoho/fulfilment/print-group-mirror.js";
 import { ZohoFulfilmentMirror } from "../integrations/zoho/fulfilment/zoho-fulfilment-mirror.js";
+import { CrmZohoOrderRecords } from "../integrations/zoho/fulfilment/zoho-order-modules.js";
 import { CrmZohoPrintModules } from "../integrations/zoho/fulfilment/zoho-print-modules.js";
 
 /**
@@ -21,13 +24,26 @@ export function createZohoFulfilmentMirror(deps: {
   const { env, db, log } = deps;
   const mode = env.ZOHO_FULFILMENT_MIRROR_MODE;
   if (mode === "off") return undefined;
+  const gateway = createZohoCrmGatewayWithCoql(env);
+  const register = new DrizzleArtworkRegisterRepository(db);
   return new ZohoFulfilmentMirror({
     groups: new PrintGroupMirror({
       facts: createDrizzlePrintGroupFactsReader(db),
-      register: new DrizzleArtworkRegisterRepository(db),
-      zoho: new CrmZohoPrintModules(createZohoCrmGatewayWithCoql(env)),
+      register,
+      zoho: new CrmZohoPrintModules(gateway),
       mode,
       now: () => new Date(),
+      log,
+    }),
+    orders: new OrderMirror({
+      facts: createDrizzleOrderFulfilmentFactsReader(db),
+      register,
+      zoho: new CrmZohoOrderRecords(gateway),
+      fields: {
+        orderRef: env.ZOHO_FULFILMENT_ORDER_REF_FIELD,
+        dispatchPrints: env.ZOHO_FULFILMENT_DISPATCH_PRINTS_FIELD,
+      },
+      mode,
       log,
     }),
   });

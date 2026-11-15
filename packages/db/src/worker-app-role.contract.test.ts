@@ -28,6 +28,7 @@ import {
   WORKER_SELLER_TERMS_READ_COLUMNS,
   WORKER_SHOP_ENQUIRY_READ_COLUMNS,
   WORKER_SHOP_INVOICE_READ_COLUMNS,
+  WORKER_SHOP_ORDER_FULFILMENT_READ_COLUMNS,
   WORKER_SHOP_ORDER_READ_COLUMNS,
   WORKER_SHOP_PRINT_GROUP_READ_COLUMNS,
   WORKER_SOLD_ATTENTION_UPDATE_COLUMNS,
@@ -84,6 +85,7 @@ function grantedShopColumns(table: string): string[] {
         ...WORKER_SHOP_PRINT_GROUP_READ_COLUMNS,
         ...WORKER_SHOP_ORDER_READ_COLUMNS,
         ...WORKER_SHOP_INVOICE_READ_COLUMNS,
+        ...WORKER_SHOP_ORDER_FULFILMENT_READ_COLUMNS,
       ]
         .filter(([name]) => name === table)
         .flatMap(([, columns]) => [...columns]),
@@ -617,6 +619,32 @@ describe.skipIf(!WORKER_URL)("worker_app role contract", { timeout: 60_000 }, ()
         "select has_column_privilege(current_user, 'public.shop_guest_customer', 'phone', 'SELECT') as allowed",
       );
       expect(phone.rows[0]?.allowed).toBe(false);
+    });
+  });
+
+  it("reads the Shop columns the order fulfilment mirror needs, never the buyer, and writes no Shop table", async () => {
+    await withWorkerClient(async (client) => {
+      for (const [table, columns] of WORKER_SHOP_ORDER_FULFILMENT_READ_COLUMNS) {
+        for (const column of columns) {
+          const result = await client.query<{ allowed: boolean }>(
+            "select has_column_privilege(current_user, 'public.' || $1, $2, 'SELECT') as allowed",
+            [table, column],
+          );
+          expect(result.rows[0]?.allowed, `${table}.${column}`).toBe(true);
+        }
+        const whole = await readTablePrivileges(client, [table], ["INSERT", "UPDATE", "DELETE"]);
+        expectUniformTablePrivileges(whole, false);
+      }
+      for (const [table, column] of [
+        ["shop_fulfilment", "storage_location"],
+        ["shop_order_line", "pack_confirmed_by"],
+      ] as const) {
+        const result = await client.query<{ allowed: boolean }>(
+          "select has_column_privilege(current_user, 'public.' || $1, $2, 'SELECT') as allowed",
+          [table, column],
+        );
+        expect(result.rows[0]?.allowed, `${table}.${column}`).toBe(false);
+      }
     });
   });
 

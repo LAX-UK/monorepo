@@ -83,4 +83,15 @@ describe("next.config headers", () => {
       ]),
     );
   });
+
+  it("sends no opener policy that would cut the Confirm it's you window off from the page", async () => {
+    // The window reports back through window.opener. `same-origin` (on Account or the issuer)
+    // severs it, and the page would then say "Not confirmed yet" every time. If an opener policy
+    // is ever added, `same-origin-allow-popups` is the only value that keeps the window working.
+    const rules = (await nextConfig.headers?.()) ?? [];
+    for (const rule of rules) {
+      const coop = rule.headers.find((h) => h.key.toLowerCase() === "cross-origin-opener-policy");
+      expect([undefined, "same-origin-allow-popups"]).toContain(coop?.value);
+    }
+  });
 });

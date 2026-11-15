@@ -1,36 +1,43 @@
 "use client";
 
 import { Button } from "@/components/account-button";
+import { RESUME_QUERY, withoutResume } from "@/lib/step-up";
 import {
   signOutDeviceAction,
   signOutOtherDevicesAction,
 } from "@/server/application/account-identity-actions.server";
 import type { AccountActionResult } from "@/server/domain/account-action-result";
-import { buildReauthHref } from "@/server/domain/account-reauth";
 import {
   NO_OTHER_DEVICES,
+  SIGN_OUT_OTHERS_RESUME,
   type SessionRowVm,
   type SessionsVm,
   buildSignOutDeviceConfirm,
   buildSignOutOthersConfirm,
   buildSignedOutDeviceMessage,
   buildSignedOutOthersMessage,
+  parseDevicesResume,
   showMoreDevicesLabel,
+  signOutDeviceResume,
   splitOtherDevices,
 } from "@/server/domain/account-sessions.vm";
 import { cn } from "@auction/ui";
-import { ConfirmDialog } from "@auction/ui/components/confirm-dialog";
 import { useRouter } from "next/navigation";
 import { type Ref, useEffect, useRef, useState } from "react";
 import { ListCard, TAG } from "./account-ui";
 import { DeviceKindIcon } from "./device-kind-icon";
 import { ProductText } from "./product-name";
+import { StepUpDialog } from "./step-up-dialog.client";
+import { useStepUp } from "./use-step-up.client";
 
 type Target = { kind: "device"; row: SessionRowVm } | { kind: "others" };
 
 type SignedInDevicesListProps = {
   sessions: SessionsVm;
-  /** Where to come back to after a fresh sign-in, which signing a device out may require. */
+  /**
+   * Where a full-page fresh sign-in comes back to when the "Confirm it's you" window cannot open;
+   * the pending sign-out rides along in `resume`.
+   */
   returnTo: string;
 };
 
@@ -96,6 +103,21 @@ export function SignedInDevicesList({ sessions, returnTo }: SignedInDevicesListP
   const [expanded, setExpanded] = useState(false);
   const firstRevealed = useRef<HTMLLIElement>(null);
   const { shown, hidden } = splitOtherDevices(sessions.others);
+  const stepUp = useStepUp({ returnTo });
+
+  // Back from a full-page "Confirm it's you": reopen the same dialog (one more click, never an
+  // automatic sign-out), then drop `resume` so Back and refresh are ordinary.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: read once, on arrival
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (!params.has(RESUME_QUERY)) return;
+    const resumed = parseDevicesResume(params.get(RESUME_QUERY), sessions.others);
+    if (resumed) setTarget(resumed);
+    router.replace(
+      withoutResume(`${window.location.pathname}${window.location.search}${window.location.hash}`),
+      { scroll: false },
+    );
+  }, []);
 
   // The button that revealed the rest is gone, so focus goes to the first row it revealed.
   useEffect(() => {
@@ -111,6 +133,7 @@ export function SignedInDevicesList({ sessions, returnTo }: SignedInDevicesListP
 
   function close() {
     if (busy) return;
+    stepUp.cancel();
     setTarget(null);
     setError(null);
   }
@@ -128,7 +151,20 @@ export function SignedInDevicesList({ sessions, returnTo }: SignedInDevicesListP
       result = { status: "error", message: "We couldn't do that just now. Please try again." };
     }
     if (result.status === "reauth_required") {
-      window.location.assign(buildReauthHref(returnTo));
+      setBusy(false);
+      stepUp.require(
+        current.kind === "device"
+          ? {
+              reason: "sign_out_devices",
+              resume: signOutDeviceResume(current.row),
+              retry: () => void run(current),
+            }
+          : {
+              reason: "sign_out_other_devices",
+              resume: SIGN_OUT_OTHERS_RESUME,
+              retry: () => void run(current),
+            },
+      );
       return;
     }
     setBusy(false);
@@ -190,31 +226,36 @@ export function SignedInDevicesList({ sessions, returnTo }: SignedInDevicesListP
       <output aria-live="polite" className="block px-4 text-sm text-success empty:hidden">
         {notice}
       </output>
-      {confirm && target ? (
-        <ConfirmDialog
-          open
-          onOpenChange={(open) => {
-            if (!open) close();
-          }}
-          title={confirm.title}
-          body={
-            <>
-              <p>
-                <ProductText text={confirm.body} />
-              </p>
-              {error ? (
-                <p role="alert" className="mt-3 text-error">
-                  {error}
-                </p>
-              ) : null}
-            </>
-          }
-          confirmLabel={confirm.confirmLabel}
-          loadingLabel={confirm.loadingLabel}
-          loading={busy}
-          onConfirm={() => run(target)}
-        />
-      ) : null}
+      <StepUpDialog
+        stepUp={stepUp}
+        action={
+          confirm && target
+            ? {
+                open: true,
+                onOpenChange: (open) => {
+                  if (!open) close();
+                },
+                title: confirm.title,
+                body: (
+                  <>
+                    <p>
+                      <ProductText text={confirm.body} />
+                    </p>
+                    {error ? (
+                      <p role="alert" className="mt-3 text-error">
+                        {error}
+                      </p>
+                    ) : null}
+                  </>
+                ),
+                confirmLabel: confirm.confirmLabel,
+                loadingLabel: confirm.loadingLabel,
+                loading: busy,
+                onConfirm: () => run(target),
+              }
+            : null
+        }
+      />
     </div>
   );
 }

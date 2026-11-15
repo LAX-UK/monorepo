@@ -26,6 +26,7 @@ import {
 import type { Context, Hono } from "hono";
 import { applyHostedAuthCspNonce } from "../lib/apply-hosted-auth-csp-nonce.js";
 import { HOSTED_AUTH_CSP_NONCE_KEY } from "../middleware/security-headers.js";
+import type { OidcLoginPromptReader } from "../services/oidc-login-prompt.js";
 import type { TwoFactorRequirementReader } from "../services/two-factor-requirement.service.js";
 
 function hostedAuthHtml(c: Context, html: string): Response {
@@ -39,10 +40,33 @@ export type HostedAuthPageMountOptions = HostedAuthCapabilities & {
   readTwoFactorRequirement?: TwoFactorRequirementReader;
   /** What the signed-in person can confirm themselves with, for the "Confirm it's you" page. */
   readConfirmMethods?: (subjectId: string) => Promise<ConfirmMethods>;
+  /** The authorize request the OIDC provider kept in its signed cookie, verified. */
+  readLoginPrompt?: OidcLoginPromptReader;
 };
 
-function viewFromRequest(url: string, capabilities: HostedAuthCapabilities) {
-  return hostedAuthViewFromSearch(new URL(url).searchParams, capabilities);
+function viewFromRequest(
+  url: string,
+  capabilities: HostedAuthCapabilities,
+  loginPrompt: URLSearchParams | null = null,
+) {
+  return hostedAuthViewFromSearch(new URL(url).searchParams, capabilities, loginPrompt);
+}
+
+/**
+ * A fresh sign-in for a browser that holds a session reaches `/login` with only `client_id`,
+ * `code` and `state`, so whether Account asked for a re-check is read from the provider's own
+ * signed record of the request. Unreadable or unsigned, it counts as absent.
+ */
+async function loginPromptFor(
+  c: Context,
+  capabilities: HostedAuthPageMountOptions,
+): Promise<URLSearchParams | null> {
+  if (!capabilities.readLoginPrompt) return null;
+  try {
+    return await capabilities.readLoginPrompt(c.req.raw.headers);
+  } catch {
+    return null;
+  }
 }
 
 function isConfiguredRestartUrl(url: string): boolean {
@@ -111,20 +135,17 @@ async function accountChooserIfSignedIn(
  * still holds the person's issuer session, so the page can fix the email to that person and offer
  * only the ways their account has: that is what makes a passkey, which names no email of its own,
  * able to confirm them and nobody else. Without a session, or with no usable method, the ordinary
- * sign-in page is shown.
+ * sign-in page is shown, still titled "Confirm it's you" with the reason and without sign-up.
  */
 async function confirmItsYou(
   c: Context,
   capabilities: HostedAuthPageMountOptions,
+  loginPrompt: URLSearchParams | null,
 ): Promise<Response | null> {
-  const view = viewFromRequest(c.req.url, capabilities);
-  // With passkeys off, every step-up uses the ordinary sign-in page, exactly as before.
-  if (
-    !capabilities.passkeysEnabled ||
-    !view.flow.reauth ||
-    !capabilities.getSession ||
-    !capabilities.readConfirmMethods
-  ) {
+  const view = viewFromRequest(c.req.url, capabilities, loginPrompt);
+  // Passkeys on or off, a re-check fixes the email to the signed-in person; with passkeys off the
+  // page simply offers no passkey.
+  if (!view.flow.reauth || !capabilities.getSession || !capabilities.readConfirmMethods) {
     return null;
   }
   try {
@@ -216,12 +237,16 @@ export function mountHostedAuthPages(app: Hono, capabilities: HostedAuthPageMoun
     if (hostedSignUpRequested(url.searchParams)) {
       return c.redirect(`/sign-up${url.search}`, 302);
     }
-    const confirm = await confirmItsYou(c, capabilities);
+    const loginPrompt = await loginPromptFor(c, capabilities);
+    const confirm = await confirmItsYou(c, capabilities, loginPrompt);
     if (confirm) return confirm;
     const chooser = await accountChooserIfSignedIn(c, capabilities, "sign-in");
     if (chooser) return chooser;
     c.header("Cache-Control", "no-store");
-    return hostedAuthHtml(c, buildHostedLoginHtml(viewFromRequest(c.req.url, capabilities)));
+    return hostedAuthHtml(
+      c,
+      buildHostedLoginHtml(viewFromRequest(c.req.url, capabilities, loginPrompt)),
+    );
   });
   html("/sign-up", buildHostedSignUpHtml, "sign-up");
   html("/forgot-password", buildHostedForgotPasswordHtml);

@@ -124,7 +124,16 @@ function emptyFlow(): HostedAuthFlow {
   };
 }
 
-export function parseHostedAuthFlow(searchParams: URLSearchParams): HostedAuthFlow {
+/**
+ * `loginPrompt` is the authorize request the OIDC provider kept in its signed `oidc_login_prompt`
+ * cookie, already verified by the caller. When the browser holds a session, the provider sends it
+ * to the sign-in page with only `client_id`, `code` and `state`, so a fresh sign-in Account asked
+ * for is known only from that cookie. It counts only for the same client and `state` as this URL.
+ */
+export function parseHostedAuthFlow(
+  searchParams: URLSearchParams,
+  loginPrompt: URLSearchParams | null = null,
+): HostedAuthFlow {
   const rawClientId = searchParams.get("client_id");
   if (!rawClientId || !(rawClientId in REGISTERED_OIDC_CLIENTS)) {
     return emptyFlow();
@@ -155,10 +164,10 @@ export function parseHostedAuthFlow(searchParams: URLSearchParams): HostedAuthFl
 
   const continuationQuery = continuation.toString();
   const productHintQuery = `client_id=${encodeURIComponent(clientId)}`;
-  const reauth =
-    canResume &&
-    product === "account" &&
-    promptTokens(searchParams.get("prompt")).includes("login");
+  const reauthRequest = requestsReauth(searchParams, canResume, product)
+    ? searchParams
+    : promptedReauth(loginPrompt, clientId, searchParams.get("state"));
+  const reauth = reauthRequest !== null;
   return {
     clientId,
     product,
@@ -171,9 +180,30 @@ export function parseHostedAuthFlow(searchParams: URLSearchParams): HostedAuthFl
     context: parseHostedContext(searchParams.get(HOSTED_CONTEXT_QUERY)),
     reauth,
     reauthReason: reauth
-      ? parseAccountStepUpReason(searchParams.get(ACCOUNT_STEP_UP_REASON_PARAM))
+      ? parseAccountStepUpReason(reauthRequest.get(ACCOUNT_STEP_UP_REASON_PARAM))
       : null,
   };
+}
+
+function requestsReauth(
+  searchParams: URLSearchParams,
+  canResume: boolean,
+  product: HostedAuthProduct,
+): boolean {
+  return (
+    canResume && product === "account" && promptTokens(searchParams.get("prompt")).includes("login")
+  );
+}
+
+/** The provider's kept authorize request, when it is Account's own re-check for this redirect. */
+function promptedReauth(
+  loginPrompt: URLSearchParams | null,
+  clientId: RegisteredOidcClientId,
+  state: string | null,
+): URLSearchParams | null {
+  if (!loginPrompt || !state) return null;
+  if (loginPrompt.get("client_id") !== clientId || loginPrompt.get("state") !== state) return null;
+  return parseHostedAuthFlow(loginPrompt).reauth ? loginPrompt : null;
 }
 
 export function continuationHref(path: string, flow: HostedAuthFlow): string {

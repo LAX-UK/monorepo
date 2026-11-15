@@ -135,3 +135,29 @@ export function buildSignedOutDeviceMessage(row: Pick<SessionRowVm, "deviceLabel
 export function buildSignedOutOthersMessage(count: number): string {
   return count === 1 ? "Your other device is signed out." : "You're signed out everywhere else.";
 }
+
+/** The device-list action a full-page "Confirm it's you" came back for. */
+export type DevicesResume = { kind: "device"; row: SessionRowVm } | { kind: "others" };
+
+const SIGN_OUT_RESUME_PREFIX = "signout:";
+export const SIGN_OUT_OTHERS_RESUME = "signout-others";
+
+export function signOutDeviceResume(row: Pick<SessionRowVm, "id">): string {
+  return `${SIGN_OUT_RESUME_PREFIX}${row.id}`;
+}
+
+/**
+ * Reads `resume` strictly: only the two known actions, and only for a device that is still in the
+ * list (never this one). Anything else is ignored, and nothing runs without the person's click.
+ */
+export function parseDevicesResume(
+  raw: string | null | undefined,
+  others: readonly SessionRowVm[],
+): DevicesResume | null {
+  if (!raw) return null;
+  if (raw === SIGN_OUT_OTHERS_RESUME) return others.length > 0 ? { kind: "others" } : null;
+  if (!raw.startsWith(SIGN_OUT_RESUME_PREFIX)) return null;
+  const id = raw.slice(SIGN_OUT_RESUME_PREFIX.length);
+  const row = others.find((candidate) => candidate.id === id && !candidate.isCurrent);
+  return row ? { kind: "device", row } : null;
+}

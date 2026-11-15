@@ -134,7 +134,12 @@ describe("Add a passkey", () => {
     add.mockResolvedValue({ status: "reauth_required" });
     renderList([password, passkeys([])]);
     fireEvent.click(screen.getByRole("button", { name: "Add a passkey" }));
-    await waitFor(() => expect(assign).toHaveBeenCalled());
+    const confirm = await screen.findByRole("dialog", { name: "Confirm it's you" });
+    expect(confirm.textContent).toContain("before you add a way to sign in");
+    expect(assign).not.toHaveBeenCalled();
+    // The browser blocks the window, so Continue falls back to the full-page sign-in.
+    vi.spyOn(window, "open").mockReturnValue(null);
+    fireEvent.click(within(confirm).getByRole("button", { name: "Continue" }));
     expect(assign.mock.calls[0]?.[0]).toBe(
       "/api/auth/login?returnTo=%2Faccount%2Fsecurity&intent=reauth&reason=add_sign_in_method",
     );
@@ -261,7 +266,11 @@ describe("Remove a passkey", () => {
     remove.mockResolvedValue({ status: "reauth_required" });
     const dialog = open();
     fireEvent.click(within(dialog).getByRole("button", { name: "Remove passkey" }));
-    await waitFor(() => expect(assign).toHaveBeenCalled());
+    const confirm = await screen.findByRole("dialog", { name: "Confirm it's you" });
+    expect(confirm.textContent).toContain("before you remove a way to sign in");
+    // The browser blocks the window, so Continue falls back to the full-page sign-in.
+    vi.spyOn(window, "open").mockReturnValue(null);
+    fireEvent.click(within(confirm).getByRole("button", { name: "Continue" }));
     expect(assign.mock.calls[0]?.[0]).toBe(
       "/api/auth/login?returnTo=%2Faccount%2Fsecurity&intent=reauth&reason=remove_sign_in_method",
     );
