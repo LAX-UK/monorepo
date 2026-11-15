@@ -4,6 +4,7 @@ import type {
   ILegalEntityRepository,
 } from "@auction/persistence/interfaces";
 import { vi } from "vitest";
+import type { StorageTermsInForce } from "../lib/public-storage-terms.js";
 import type { CachedCatalogueListService } from "../services/cached-catalogue-list.service.js";
 import { CatalogLotReadHttpApplicationService } from "../services/catalog/catalog-lot-read-http-application.service.js";
 import type { ICatalogLotReadHttpApplicationService } from "../services/interfaces/catalog-routes/catalog-lot-read-http.js";
@@ -30,6 +31,7 @@ export type CatalogLotReadHttpFixtureInput = {
   objectStorage?: IObjectStorage;
   now?: () => Date;
   invoicedSalePrices?: IInvoicedSalePriceReader;
+  storageTerms?: StorageTermsInForce;
 };
 
 const defaultMediaUrlResolver: IMediaUrlResolver = {
@@ -68,5 +70,6 @@ export function createCatalogLotReadHttpFixture(
     (input.objectStorage ?? { getPublicUrl: vi.fn((k: string) => k) }) as IObjectStorage,
     input.now,
     input.invoicedSalePrices ?? null,
+    input.storageTerms ?? null,
   );
 }

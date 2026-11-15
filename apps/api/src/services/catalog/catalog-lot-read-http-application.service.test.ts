@@ -1,12 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
 
-const storageText = vi.fn();
-const placeTerms = vi.fn();
-vi.mock("../../lib/public-storage-terms.js", () => ({
-  storageTermsTextForVenue: (...a: unknown[]) => storageText(...a),
-  listPlaceStorageTerms: (...a: unknown[]) => placeTerms(...a),
-}));
-
 import { withPublicLotResults } from "../../lib/public-lot-result.js";
 import { createCatalogLotReadHttpFixture } from "../../testing/catalog-lot-read-http-fixture.js";
 import { CachedCatalogueListService } from "../cached-catalogue-list.service.js";
@@ -241,7 +234,6 @@ describe("CatalogLotReadHttpApplicationService", () => {
 });
 
 describe("storage terms on the public lot read", () => {
-  const SENTENCE = "Storage is free for 14 days after your payment clears.";
   const lot = {
     id: "lot-1",
     saleId: "s1",
@@ -264,8 +256,10 @@ describe("storage terms on the public lot read", () => {
     endTime: new Date("2026-12-31T10:00:00Z"),
     marketingDetails: {},
   };
+  const findTermsInForce = vi.fn();
   const read = (venueId: string | null) =>
     createCatalogLotReadHttpFixture({
+      storageTerms: { findTermsInForce },
       lotService: { listLotsForPublicApi: vi.fn(), getById: vi.fn().mockResolvedValue(lot) },
       saleService: {
         getByIdForPublicCatalog: vi
@@ -280,29 +274,31 @@ describe("storage terms on the public lot read", () => {
       data: { storageTerms: string | null };
     };
 
+  const RECORD = {
+    freeDays: 14,
+    countMode: "calendar",
+    standardDailyPence: 0,
+    largeDailyPence: null,
+    handlingFeePence: 0,
+    effectiveFrom: "2026-10-01",
+  };
+
   it("carries the sentence for the place the sale is held at", async () => {
-    storageText.mockResolvedValue(SENTENCE);
-    expect((await detail("venue-1")).data.storageTerms).toBe(SENTENCE);
-    expect(storageText).toHaveBeenCalledWith(expect.anything(), "venue-1", expect.any(Date));
+    findTermsInForce.mockResolvedValue(RECORD);
+    expect((await detail("venue-1")).data.storageTerms).toContain(
+      "Storage is free for 14 days after your payment clears.",
+    );
+    expect(findTermsInForce).toHaveBeenCalledWith("venue-1", "2026-11-01");
   });
 
   it("carries none when the sale has no venue or the place has set none", async () => {
-    storageText.mockResolvedValue(null);
+    findTermsInForce.mockResolvedValue(null);
     expect((await detail(null)).data.storageTerms).toBeNull();
     expect((await detail("venue-1")).data.storageTerms).toBeNull();
   });
 
   it("serves the lot without it when the terms cannot be read", async () => {
-    storageText.mockRejectedValue(new Error("db down"));
+    findTermsInForce.mockRejectedValue(new Error("db down"));
     expect((await detail("venue-1")).data.storageTerms).toBeNull();
-  });
-
-  it("lists the terms of each place for the shipping page", async () => {
-    placeTerms.mockResolvedValue([{ placeName: "LAX Gallery", text: SENTENCE }]);
-    const res = await read("venue-1").listStorageTerms();
-    expect(res).toEqual({
-      status: 200,
-      body: { data: [{ placeName: "LAX Gallery", text: SENTENCE }] },
-    });
   });
 });

@@ -1,9 +1,14 @@
 import type { Database } from "@auction/db";
 import { collectionPlace, venue } from "@auction/db/schema";
 import { type StorageTerms, formatStorageTerms, londonDateKey } from "@auction/domain";
-import type { StorageTermsRecord } from "@auction/persistence/interfaces";
-import { DrizzleCollectionStorageRepository } from "@auction/persistence/repositories";
+import type {
+  ICollectionStorageRepository,
+  StorageTermsRecord,
+} from "@auction/persistence/interfaces";
 import { asc, eq } from "drizzle-orm";
+
+/** What the public reads need of the stored terms: the version in force on a London day. */
+export type StorageTermsInForce = Pick<ICollectionStorageRepository, "findTermsInForce">;
 
 /** A collection place and the storage terms a buyer reads for it, in one sentence. */
 export type PlaceStorageTermsDto = { placeName: string; text: string };
@@ -22,20 +27,18 @@ export function storageTermsOfRecord(record: StorageTermsRecord): StorageTerms {
 
 /** What a buyer reads about the terms in force at one place today; `null` when none are set. */
 export async function storageTermsTextForVenue(
-  db: Database,
+  terms: StorageTermsInForce,
   venueId: string,
   now: Date,
 ): Promise<string | null> {
-  const record = await new DrizzleCollectionStorageRepository(db).findTermsInForce(
-    venueId,
-    londonDateKey(now),
-  );
+  const record = await terms.findTermsInForce(venueId, londonDateKey(now));
   return record ? formatStorageTerms(storageTermsOfRecord(record)) : null;
 }
 
 /** The terms in force today at every place that takes bookings, for the shipping page. */
 export async function listPlaceStorageTerms(
   db: Database,
+  terms: StorageTermsInForce,
   now: Date,
 ): Promise<PlaceStorageTermsDto[]> {
   const places = await db
@@ -45,7 +48,7 @@ export async function listPlaceStorageTerms(
     .where(eq(collectionPlace.onlineBookingEnabled, true))
     .orderBy(asc(venue.name));
   const texts = await Promise.all(
-    places.map((place) => storageTermsTextForVenue(db, place.venueId, now)),
+    places.map((place) => storageTermsTextForVenue(terms, place.venueId, now)),
   );
   return places.flatMap((place, i) => {
     const text = texts[i];
