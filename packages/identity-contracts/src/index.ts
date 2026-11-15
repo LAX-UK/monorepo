@@ -219,6 +219,8 @@ export {
   identityEventPayloadSchemasV1,
   subjectDataExportRequestedPayloadSchemaV1,
   userSignInMethodUnlinkedPayloadSchemaV1,
+  userSignInMethodAddedPayloadSchemaV1,
+  userSignInMethodRemovedPayloadSchemaV1,
   userDeletionCancelledPayloadSchemaV1,
   userDeletionHeldPayloadSchemaV1,
   userDeletionRequestedPayloadSchemaV1,

@@ -37,6 +37,23 @@ describe("SignInMethodFlash", () => {
     expect(document.activeElement).toBe(notice);
   });
 
+  it("announces Apple being added in the same way", () => {
+    show("apple_linked");
+    const notice = screen.getByRole("status");
+    expect(notice.textContent).toContain("Apple is linked");
+    expect(notice.textContent).toContain("You can now sign in with it.");
+    expect(document.activeElement).toBe(notice);
+  });
+
+  it("says nothing about a provider being added when the account does not have it", () => {
+    expect(
+      buildSignInMethodFlash("google_linked", undefined, { linked: ["apple"], passkeys: 0 }),
+    ).toBeNull();
+    expect(
+      buildSignInMethodFlash("apple_linked", undefined, { linked: [], passkeys: 1 }),
+    ).toBeNull();
+  });
+
   it("announces a problem as an alert, and takes focus", () => {
     show("already_linked_elsewhere");
     const notice = screen.getByRole("alert");

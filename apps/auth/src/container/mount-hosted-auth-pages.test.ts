@@ -327,3 +327,28 @@ describe("hosted Confirm it's you page (LAX Account asked for a fresh sign-in)",
     expect(html).not.toContain("Sign in to LAX Account</h1>");
   });
 });
+
+describe("/sign-in", () => {
+  it("redirects permanently to /login and keeps the query string", async () => {
+    const response = await appWithSession(null).request(
+      "/sign-in?client_id=lax-shop-web&state=a%20b",
+    );
+    expect(response.status).toBe(301);
+    expect(response.headers.get("location")).toBe("/login?client_id=lax-shop-web&state=a%20b");
+  });
+
+  it("redirects to a path on the same origin only, whatever the query holds", async () => {
+    const response = await appWithSession(null).request(
+      "https://evil.example/sign-in?redirect=https://evil.example&next=//evil.example",
+    );
+    const location = response.headers.get("location") ?? "";
+    expect(location.startsWith("/login")).toBe(true);
+    expect(new URL(location, "https://auth.lax.bid").origin).toBe("https://auth.lax.bid");
+  });
+
+  it("answers a bare /sign-in with a bare /login", async () => {
+    const response = await appWithSession(null).request("/sign-in");
+    expect(response.status).toBe(301);
+    expect(response.headers.get("location")).toBe("/login");
+  });
+});
