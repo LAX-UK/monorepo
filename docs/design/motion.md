@@ -18,6 +18,7 @@ Defined once in `packages/branding/public/lax-system.css`; staff values under th
 | `--lax-motion-press` | 100ms | 0ms | button/card press |
 | `--lax-motion-hover` | 150ms | 100ms | colour, underline, border, background on hover/focus |
 | `--lax-motion-enter` / `--lax-motion-exit` | 200ms / 140ms | 150ms / 100ms | menus, popovers, tooltips, toasts, tab content |
+| `--lax-motion-fade` | 120ms | 100ms | tooltips; the fade under reduced motion |
 | `--lax-motion-panel` / `--lax-motion-panel-exit` | 260ms / 180ms | 200ms / 150ms | dialogs, sheets, drawers, phone menu |
 | `--lax-motion-page` | 140 out / 200 in | 100 out / 150 in | page cross-fade (later, MO5) |
 | `--lax-motion-morph` | 360ms | n/a | artwork image card → page |

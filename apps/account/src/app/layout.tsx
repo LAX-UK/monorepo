@@ -27,6 +27,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     // The theme script sets the `dark` class before React hydrates, so the attribute differs.
     <html
       lang="en-GB"
+      data-lax-product="account"
       className={`${montserrat.variable} ${outfit.variable}`}
       suppressHydrationWarning
     >

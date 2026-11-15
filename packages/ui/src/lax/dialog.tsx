@@ -77,10 +77,12 @@ export function Dialog({
       <DialogPrimitive.Portal>
         <DialogPrimitive.Overlay
           {...layer}
+          data-lax-motion="scrim"
           className="fixed inset-0 z-[var(--z-overlay,60)] bg-lax-scrim"
         />
         <DialogPrimitive.Content
           {...layer}
+          data-lax-motion="dialog"
           onCloseAutoFocus={returnFocus}
           data-placement={placement}
           {...(initialFocusRef

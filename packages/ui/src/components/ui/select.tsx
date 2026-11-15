@@ -3,6 +3,7 @@
 import * as SelectPrimitive from "@radix-ui/react-select";
 import { Check, ChevronDown, ChevronUp } from "lucide-react";
 import * as React from "react";
+import { useDensityAttribute } from "../../lax/density.js";
 import { cn } from "../../lib/utils.js";
 import { type FieldVariant, fieldVariantClasses } from "./field-variant.js";
 import { InertOutside } from "./inert-outside.js";
@@ -68,35 +69,40 @@ SelectScrollDownButton.displayName = SelectPrimitive.ScrollDownButton.displayNam
 const SelectContent = React.forwardRef<
   React.ElementRef<typeof SelectPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof SelectPrimitive.Content>
->(({ className, children, position = "popper", ...props }, ref) => (
-  <SelectPrimitive.Portal>
-    <SelectPrimitive.Content
-      ref={ref}
-      className={cn(
-        "relative z-[var(--z-floating,70)] max-h-96 min-w-[8rem] overflow-hidden rounded-md border border-outline-variant/20 bg-surface-container-lowest text-on-surface shadow-md data-[state=open]:animate-none",
-        position === "popper" &&
-          "data-[side=bottom]:translate-y-1 data-[side=left]:-translate-x-1 data-[side=right]:translate-x-1 data-[side=top]:-translate-y-1",
-        className,
-      )}
-      position={position}
-      {...props}
-    >
-      <InertOutside />
-      <SelectScrollUpButton />
-      <SelectPrimitive.Viewport
-        data-lenis-prevent
+>(({ className, children, position = "popper", ...props }, ref) => {
+  const density = useDensityAttribute();
+  return (
+    <SelectPrimitive.Portal>
+      <SelectPrimitive.Content
+        ref={ref}
+        data-lax-motion="float"
+        {...density}
         className={cn(
-          "p-1",
+          "relative z-[var(--z-floating,70)] max-h-96 min-w-[8rem] overflow-hidden rounded-md border border-outline-variant/20 bg-surface-container-lowest text-on-surface shadow-md",
           position === "popper" &&
-            "h-[var(--radix-select-trigger-height)] w-full min-w-[var(--radix-select-trigger-width)]",
+            "data-[side=bottom]:translate-y-1 data-[side=left]:-translate-x-1 data-[side=right]:translate-x-1 data-[side=top]:-translate-y-1",
+          className,
         )}
+        position={position}
+        {...props}
       >
-        {children}
-      </SelectPrimitive.Viewport>
-      <SelectScrollDownButton />
-    </SelectPrimitive.Content>
-  </SelectPrimitive.Portal>
-));
+        <InertOutside />
+        <SelectScrollUpButton />
+        <SelectPrimitive.Viewport
+          data-lenis-prevent
+          className={cn(
+            "p-1",
+            position === "popper" &&
+              "h-[var(--radix-select-trigger-height)] w-full min-w-[var(--radix-select-trigger-width)]",
+          )}
+        >
+          {children}
+        </SelectPrimitive.Viewport>
+        <SelectScrollDownButton />
+      </SelectPrimitive.Content>
+    </SelectPrimitive.Portal>
+  );
+});
 SelectContent.displayName = SelectPrimitive.Content.displayName;
 
 const SelectLabel = React.forwardRef<

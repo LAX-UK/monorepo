@@ -3,6 +3,7 @@
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { X } from "lucide-react";
 import * as React from "react";
+import { useDensityAttribute } from "../../lax/density.js";
 import { cn } from "../../lib/utils.js";
 
 const Dialog = DialogPrimitive.Root;
@@ -13,13 +14,18 @@ const DialogClose = DialogPrimitive.Close;
 const DialogOverlay = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Overlay>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Overlay>
->(({ className, ...props }, ref) => (
-  <DialogPrimitive.Overlay
-    ref={ref}
-    className={cn("fixed inset-0 z-[var(--z-overlay,60)] bg-black/40", className)}
-    {...props}
-  />
-));
+>(({ className, ...props }, ref) => {
+  const density = useDensityAttribute();
+  return (
+    <DialogPrimitive.Overlay
+      ref={ref}
+      data-lax-motion="scrim"
+      {...density}
+      className={cn("fixed inset-0 z-[var(--z-overlay,60)] bg-black/40", className)}
+      {...props}
+    />
+  );
+});
 DialogOverlay.displayName = DialogPrimitive.Overlay.displayName;
 
 const DialogContent = React.forwardRef<
@@ -32,31 +38,36 @@ const DialogContent = React.forwardRef<
     /** Optional class names for the default close button. */
     closeClassName?: string;
   }
->(({ className, overlayClassName, overlayProps, closeClassName, children, ...props }, ref) => (
-  <DialogPortal>
-    <DialogOverlay className={overlayClassName} {...overlayProps} />
-    <DialogPrimitive.Content
-      ref={ref}
-      data-lenis-prevent
-      className={cn(
-        "fixed top-[50%] left-[50%] z-[var(--z-overlay,60)] grid w-[calc(100%-2rem)] max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border border-outline-variant/20 bg-surface-container-lowest p-6 shadow-lg duration-300 rounded-lg",
-        className,
-      )}
-      {...props}
-    >
-      {children}
-      <DialogPrimitive.Close
+>(({ className, overlayClassName, overlayProps, closeClassName, children, ...props }, ref) => {
+  const density = useDensityAttribute();
+  return (
+    <DialogPortal>
+      <DialogOverlay className={overlayClassName} {...overlayProps} />
+      <DialogPrimitive.Content
+        ref={ref}
+        data-lenis-prevent
+        data-lax-motion="dialog"
+        {...density}
         className={cn(
-          "absolute top-4 right-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:outline-none disabled:pointer-events-none",
-          closeClassName,
+          "fixed top-[50%] left-[50%] z-[var(--z-overlay,60)] grid w-[calc(100%-2rem)] max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border border-outline-variant/20 bg-surface-container-lowest p-6 shadow-lg rounded-lg",
+          className,
         )}
+        {...props}
       >
-        <X className="size-4" />
-        <span className="sr-only">Close</span>
-      </DialogPrimitive.Close>
-    </DialogPrimitive.Content>
-  </DialogPortal>
-));
+        {children}
+        <DialogPrimitive.Close
+          className={cn(
+            "absolute top-4 right-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:outline-none disabled:pointer-events-none",
+            closeClassName,
+          )}
+        >
+          <X className="size-4" />
+          <span className="sr-only">Close</span>
+        </DialogPrimitive.Close>
+      </DialogPrimitive.Content>
+    </DialogPortal>
+  );
+});
 DialogContent.displayName = DialogPrimitive.Content.displayName;
 
 const DialogHeader = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (

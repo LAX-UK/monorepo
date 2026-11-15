@@ -154,7 +154,7 @@ function WorkspaceFrame({
 export function WorkspaceShell(props: WorkspaceShellProps) {
   return (
     <LaxDensityProvider density="client">
-      <TooltipProvider delayDuration={300}>
+      <TooltipProvider>
         <ShellChromeProvider>
           <HotkeyProvider scope="page" renderHelp={renderHelp}>
             <WorkspaceFrame {...props} />
