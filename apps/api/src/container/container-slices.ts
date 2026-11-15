@@ -322,7 +322,7 @@ export type ContainerAdminSlice = Pick<ContainerAdminServices, "admin">;
 
 export type ContainerCronSlice = Pick<
   ContainerCronServices,
-  "accountDeletionEligibilityService" | "zohoArtworkNoticeService"
+  "accountDeletionEligibilityService" | "zohoArtworkNoticeService" | "zohoQcNoticeService"
 >;
 
 /** "Download my data" readers for LAX Bid. */
@@ -633,7 +633,10 @@ export type ContainerInternalIdentitySubjectExportRoutesSlice = Pick<
 export type ContainerPostmarkWebhookRoutesSlice = Pick<Container, "env" | "postmarkWebhookService">;
 
 /** Zoho workflow notices for artwork Products. */
-export type ContainerZohoWebhookRoutesSlice = Pick<Container, "zohoArtworkNoticeService">;
+export type ContainerZohoWebhookRoutesSlice = Pick<
+  Container,
+  "zohoArtworkNoticeService" | "zohoQcNoticeService"
+>;
 
 /** Aggregated third-party webhook routes (`routes/webhooks/index.ts`). */
 export type ContainerInboundWebhookRoutesSlice = ContainerPostmarkWebhookRoutesSlice &

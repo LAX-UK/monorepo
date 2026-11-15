@@ -6,11 +6,20 @@ import {
   ZOHO_ARTWORK_WEBHOOK_SOURCE,
   ZOHO_BOOKS_NOTICE_MODULES,
   ZOHO_BOOKS_WEBHOOK_SOURCE,
+  ZOHO_QC_MODULES,
+  ZOHO_QC_WEBHOOK_SOURCE,
   type ZohoBooksNoticeModule,
+  type ZohoQcModule,
 } from "@auction/queues";
 import type { Logger } from "pino";
 import type { WorkerEnv } from "../env.js";
 import type { WebhookEventStoredPayload } from "./webhook-event-payload.js";
+
+/**
+ * Thrown by a source handler that cannot act yet and must not consume the event: the row stays
+ * unprocessed, its attempt is given back, and the drain picks it up once the handler exists.
+ */
+class WebhookEventDeferred extends Error {}
 
 export type ProcessInboundWebhookDeps = {
   env: WorkerEnv;
@@ -23,6 +32,12 @@ export type ProcessInboundWebhookDeps = {
   }) => Promise<void>;
   /** Reads the Zoho Product a notice names and brings it into the artwork register. */
   processZohoArtworkNotice?: (input: { productId: string; eventKey: string }) => Promise<void>;
+  /** Reads the Zoho job record a quality check notice names and moves its LAX print on. */
+  processZohoQcNotice?: (input: {
+    module: ZohoQcModule;
+    recordId: string;
+    modifiedTime?: string;
+  }) => Promise<void>;
   /**
    * Reads again from Books the document a signed Books notice named (a hint only). Absent while
    * Books is not configured: such a notice is then marked processed with nothing read.
@@ -114,6 +129,29 @@ async function dispatchZohoBooksNotice(
   });
 }
 
+async function dispatchZohoQcNotice(
+  deps: ProcessInboundWebhookDeps,
+  _row: WebhookEventDrainRow,
+  stored: WebhookEventStoredPayload,
+): Promise<void> {
+  const { module, recordId, modifiedTime } = stored.routing as Record<string, unknown>;
+  if (
+    typeof recordId !== "string" ||
+    recordId === "" ||
+    !(ZOHO_QC_MODULES as readonly unknown[]).includes(module)
+  ) {
+    throw new Error("zoho qc notice missing routing");
+  }
+  if (!deps.processZohoQcNotice) {
+    throw new WebhookEventDeferred("zoho qc sync is off");
+  }
+  await deps.processZohoQcNotice({
+    module: module as ZohoQcModule,
+    recordId,
+    ...(typeof modifiedTime === "string" ? { modifiedTime } : {}),
+  });
+}
+
 type WebhookSourceHandler = (
   deps: ProcessInboundWebhookDeps,
   row: WebhookEventDrainRow,
@@ -125,6 +163,7 @@ const SOURCE_HANDLERS: Readonly<Record<string, WebhookSourceHandler>> = {
   xero: dispatchXeroInvoiceWebhook,
   [ZOHO_ARTWORK_WEBHOOK_SOURCE]: dispatchZohoArtworkNotice,
   [ZOHO_BOOKS_WEBHOOK_SOURCE]: dispatchZohoBooksNotice,
+  [ZOHO_QC_WEBHOOK_SOURCE]: dispatchZohoQcNotice,
 };
 
 async function dispatchWebhookRow(
@@ -166,6 +205,12 @@ export async function processInboundWebhookEvent(
     await dispatchWebhookRow(deps, row);
     await deps.webhookEvents.markProcessed(eventKey);
   } catch (err) {
+    if (err instanceof WebhookEventDeferred) {
+      // Held back, not consumed: it is processed when the source is switched on.
+      await deps.webhookEvents.releaseClaim(eventKey);
+      deps.log.info({ eventKey, reason: err.message }, "webhook event held back, not processed");
+      return;
+    }
     const message = err instanceof Error ? err.message : String(err);
     await deps.webhookEvents.markFailed(eventKey, message);
     throw err;
@@ -179,7 +224,9 @@ export async function drainUnprocessedWebhookEvents(
   if (!deps.env.WEBHOOK_EVENTS_PROCESS) return 0;
 
   await deps.webhookEvents.recoverStaleClaims();
-  const rows = await deps.webhookEvents.listUnprocessedForDrain(batchSize);
+  // While the quality check sync is off its notices wait in the table; they must not fill the batch.
+  const excludeSources = deps.processZohoQcNotice ? [] : [ZOHO_QC_WEBHOOK_SOURCE];
+  const rows = await deps.webhookEvents.listUnprocessedForDrain(batchSize, { excludeSources });
   let processed = 0;
   for (const row of rows) {
     await processInboundWebhookEvent(deps, row.eventKey);

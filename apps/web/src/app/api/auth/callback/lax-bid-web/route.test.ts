@@ -1,3 +1,4 @@
+import { RESTORE_MARKER_COOKIE } from "@/lib/legal-entity/restore-loop";
 import { NextRequest } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -111,6 +112,16 @@ describe("Bid BFF OIDC callback", () => {
       sessionId: "authenticated-session",
       request: expect.any(NextRequest),
     });
+  });
+
+  it("starts the new session without a restore marker left from before", async () => {
+    const response = await GET(request("state=expected-state&code=authorization-code"));
+
+    const marker = response.headers
+      .getSetCookie()
+      .find((c) => c.startsWith(`${RESTORE_MARKER_COOKIE}=`));
+    expect(marker, "restore marker is cleared").toBeDefined();
+    expect(marker).toMatch(/Max-Age=0|Expires=Thu, 01 Jan 1970/);
   });
 
   it("still signs the person in when the account restore throws", async () => {

@@ -72,6 +72,14 @@ export const WEBHOOK_ENDPOINTS: Readonly<Record<string, IntegrationEndpoint>> = 
       "Reads the Zoho Product again and applies it to the artwork register. Applying the same change twice changes nothing.",
     mayRepeat: false,
   },
+  zoho_qc: {
+    ...UNKNOWN_WEBHOOK,
+    scope: "integrations.zoho",
+    label: "Zoho quality checks",
+    retryEffect:
+      "Reads the Zoho record again and, if its quality check has passed, moves the print on in LAX Admin. A print already moved is left alone.",
+    mayRepeat: false,
+  },
   stripe: { ...UNKNOWN_WEBHOOK, label: "Stripe" },
   postmark: { ...UNKNOWN_WEBHOOK, label: "Postmark" },
 };

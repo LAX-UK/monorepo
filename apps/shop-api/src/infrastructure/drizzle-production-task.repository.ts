@@ -358,7 +358,11 @@ export function createDrizzleProductionTaskRepository(db: Database): ProductionT
           targetType: PRODUCTION_TASK_AUDIT_TARGET,
           targetId: input.id,
           beforeJson: { status: current.status, assigneeSubject: current.assignedToSubjectId },
-          afterJson: { status: nextStatus, assigneeSubject: nextAssignee },
+          afterJson: {
+            status: nextStatus,
+            assigneeSubject: nextAssignee,
+            ...(input.auditContext ?? {}),
+          },
         });
         return { status: "updated", version: updated.version, taskStatus: nextStatus };
       });

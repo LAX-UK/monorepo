@@ -209,6 +209,8 @@ const envSchema = z
      * Unset, the notice route answers 503 and nothing is stored.
      */
     ZOHO_ARTWORK_WEBHOOK_SECRET: z.preprocess(emptyToUndefined, z.string().min(32).optional()),
+    /** Shared secret of the Zoho workflow that posts quality check notices; unset, the route answers 503. */
+    ZOHO_QC_WEBHOOK_SECRET: z.preprocess(emptyToUndefined, z.string().min(32).optional()),
     /**
      * Zoho Books organisation settings (the worker's JSON). Read here only to link an issued
      * document to Books on Finance › Accounting; unset, the page shows Books numbers without links.

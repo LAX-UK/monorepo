@@ -39,4 +39,23 @@ describe("SessionStore contract (memory)", () => {
     expect(await store.get("browser-a")).toBeNull();
     expect(await store.get("browser-b")).toBeNull();
   });
+
+  it("claims a pending sign-in once, and a sign-out ends it at any stage", async () => {
+    const store = createMemorySessionStore();
+    expect(await store.claimPendingLogin("state-a", 600)).toBe(true);
+    expect(await store.claimPendingLogin("state-a", 600)).toBe(false);
+
+    await store.revokePendingLogin("state-b", 600);
+    expect(await store.claimPendingLogin("state-b", 600)).toBe(false);
+
+    expect(await store.claimPendingLogin("state-c", 600)).toBe(true);
+    await store.revokePendingLogin("state-c", 600);
+    expect(await store.settlePendingLogin("state-c", "sess-c")).toBe(false);
+
+    expect(await store.claimPendingLogin("state-d", 600)).toBe(true);
+    await store.save("sess-d", sampleRecord, 3600);
+    expect(await store.settlePendingLogin("state-d", "sess-d")).toBe(true);
+    await store.revokePendingLogin("state-d", 600);
+    expect(await store.get("sess-d")).toBeNull();
+  });
 });

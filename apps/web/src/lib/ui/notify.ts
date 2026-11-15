@@ -27,7 +27,9 @@ export type NotifyPromiseMessages<T> = {
 /** Imperative toasts — single chokepoint for Sonner, loaded when the first toast is raised
  * (`toast-bridge.ts`), so none of them returns an id.
  * Do not import `sonner` elsewhere in `apps/web` (see `sonner-import.contract.test.ts`).
- * * TODO: optional Sentry breadcrumb on `error` for production diagnostics.
+ * * No Sentry breadcrumb on `error`: any breadcrumb path (importing `@sentry/nextjs`, or registering
+ * `Sentry.addBreadcrumb` from `instrumentation-client.ts`) grows start-up JS on every route, which
+ * the route JS ratchet forbids. Revisit only if it can ship with zero start-up growth.
  */
 export const notify = {
   success(title: string, opts?: NotifyOpts): void {

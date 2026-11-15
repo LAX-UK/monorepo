@@ -202,6 +202,13 @@ export const envSchema = z
      */
     ZOHO_FULFILMENT_MIRROR_MODE: z.enum(["off", "dry_run", "live"]).default("off"),
     /**
+     * Zoho's quality check passing on a printing or framing job moves the LAX print to "quality
+     * check passed". `off` consumes notices and does nothing; `dry_run` reads Zoho and logs what it
+     * would move; `live` moves it. Off until the owners add the order-reference field to the Zoho
+     * job modules (ZOHO_FULFILMENT_ORDER_REF_FIELD). Reads Zoho only; never writes it.
+     */
+    ZOHO_QC_READY_MODE: z.enum(["off", "dry_run", "live"]).default("off"),
+    /**
      * API name of the text field (unique) the owners add to Framing_Jobs and Dispatch_Fulfilments
      * for the LAX order reference; the order mirror finds its records by it.
      */
@@ -587,11 +594,37 @@ export const envSchema = z
         });
       }
     }
+    if (e.ZOHO_QC_READY_MODE !== "off") {
+      const qcSettings = [
+        "ZOHO_CLIENT_ID",
+        "ZOHO_CLIENT_SECRET",
+        "ZOHO_REFRESH_TOKEN",
+        "SHOP_API_INVENTORY_BASE_URL",
+        "INVENTORY_MACHINE_CLIENT_ID",
+        "INVENTORY_MACHINE_CLIENT_SECRET",
+      ] as const;
+      const missing = qcSettings.filter((key) => !e[key]);
+      if (missing.length > 0) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `${missing.join(", ")} required when ZOHO_QC_READY_MODE is not off`,
+          path: ["ZOHO_QC_READY_MODE"],
+        });
+      }
+      if (!e.WEBHOOK_EVENTS_PROCESS) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message:
+            "WEBHOOK_EVENTS_PROCESS must be true when ZOHO_QC_READY_MODE is not off, so the notices are processed",
+          path: ["WEBHOOK_EVENTS_PROCESS"],
+        });
+      }
+    }
     if (e.ZOHO_ARTWORK_SYNC_MODE !== "off" && !e.WEBHOOK_EVENTS_PROCESS) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message:
-          "WEBHOOK_EVENTS_PROCESS must be true when ZOHO_ARTWORK_SYNC_MODE is not off, so signed notices are processed",
+          "WEBHOOK_EVENTS_PROCESS must be true when ZOHO_ARTWORK_SYNC_MODE is not off, so the notices are processed",
         path: ["WEBHOOK_EVENTS_PROCESS"],
       });
     }

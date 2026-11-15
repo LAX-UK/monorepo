@@ -92,6 +92,11 @@ export interface ContactPort {
   upsertContact(contact: Contact, fence?: WriteFence): Promise<IssueOutcome>;
 }
 
+/** Seller and artist payouts are billed to a vendor contact, kept apart from the customer one. */
+export interface VendorPort {
+  upsertVendor(contact: Contact, fence?: WriteFence): Promise<IssueOutcome>;
+}
+
 /**
  * Find a document by its LAX reference. After an unknown outcome this runs before any retry, and
  * only once the first request can no longer land (see `applyLookup`). The document's product says

@@ -1,4 +1,5 @@
 import { WorkspacePanel } from "@/components/dashboard/primitives/workspace-panel";
+import { MediaImage } from "@/components/ui/media-image";
 import { COLLECT_COPY } from "@/lib/collect/collect-copy";
 import { dashboardCheckoutLotUrl } from "@/lib/dashboard/dashboard-copy";
 import type { DeliveryPanelVm } from "@/lib/purchases/purchase-delivery.vm";
@@ -110,11 +111,28 @@ export function PurchaseDetail({
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-3">
         <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-          <div className="min-w-0">
-            <h1 className={pageTitleClass} data-page-title="">
-              {card.title}
-            </h1>
-            <p className="mt-1 text-lax-14 text-lax-muted">{subtitle}</p>
+          <div className="flex min-w-0 items-start gap-4">
+            {card.image ? (
+              // The work whole on a paper mat, never cropped to a square.
+              <span
+                aria-hidden
+                className="relative hidden size-20 shrink-0 overflow-hidden rounded-lax-card bg-lax-paper p-2 ring-1 ring-lax-line ring-inset sm:block"
+              >
+                <MediaImage
+                  src={card.image}
+                  alt=""
+                  sizes="80px"
+                  className="size-full"
+                  imgClassName="object-contain"
+                />
+              </span>
+            ) : null}
+            <div className="min-w-0">
+              <h1 className={pageTitleClass} data-page-title="">
+                {card.title}
+              </h1>
+              <p className="mt-1 text-lax-14 text-lax-muted">{subtitle}</p>
+            </div>
           </div>
           <div className="flex shrink-0 flex-wrap items-center gap-3">
             <StatusBadge tone={card.badge.tone} shape={card.badge.shape}>

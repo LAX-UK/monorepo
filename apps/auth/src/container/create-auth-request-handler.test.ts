@@ -532,3 +532,44 @@ describe("when a lookup fails before 2FA changes", () => {
     expect(captureAuthorizationSession).not.toHaveBeenCalled();
   });
 });
+
+describe("a refused link", () => {
+  const redirectTo = (location: string) => () =>
+    new Response(null, { status: 302, headers: { location } });
+  const done = "https://auth.test/account-action/done";
+  const run = async (location: string) => {
+    const { handler } = setup(undefined, { response: redirectTo(location) });
+    return handler(new Request("https://auth.test/api/auth/magic-link/verify?token=secret-token"));
+  };
+
+  it("reaches the done page with the code and nothing the library added", async () => {
+    const response = await run(
+      `${done}?error=EXPIRED_TOKEN&error_description=${encodeURIComponent("token secret-token for a@b.test")}`,
+    );
+    expect(response.status).toBe(302);
+    expect(response.headers.get("location")).toBe(`${done}?error=EXPIRED_TOKEN`);
+  });
+
+  it("keeps a code the page has no words for out of the address", async () => {
+    const response = await run(`${done}?error=${encodeURIComponent("<script>alert(1)</script>")}`);
+    expect(response.headers.get("location")).toBe(`${done}?error=unknown`);
+  });
+
+  it("leaves a link the issuer started, which names its provider, to the route that owns it", async () => {
+    const location = `${done}?provider=google&error=access_denied&error_description=no`;
+    expect((await run(location)).headers.get("location")).toBe(location);
+  });
+
+  it("leaves every other redirect alone", async () => {
+    const location = "https://account.test/account/security?error=EXPIRED_TOKEN";
+    expect((await run(location)).headers.get("location")).toBe(location);
+  });
+
+  it.each([
+    "https://account.test/account/security?state=abc123&error=access_denied&error_description=no",
+    "https://account.test/other/path?error=EXPIRED_TOKEN&state=xyz#frag",
+    "https://other.test/callback?error=some_unlisted_code&error_description=detail",
+  ])("returns a redirect away from the done page byte-for-byte unchanged: %s", async (location) => {
+    expect((await run(location)).headers.get("location")).toBe(location);
+  });
+});

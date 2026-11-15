@@ -5,6 +5,7 @@ import {
   deliveryAddresses,
   initialDeliveryAddressId,
   newDeliveryAddressBody,
+  newOrganisationAddressBody,
 } from "./delivery-addresses.vm";
 
 const row = (over: Partial<ProfileAddressRow>): ProfileAddressRow => ({
@@ -62,6 +63,64 @@ describe("deliveryAddresses", () => {
       invoice: INVOICE,
     });
     expect(list.map((a) => a.id)).toEqual(["a1"]);
+  });
+});
+
+describe("an organisation's addresses", () => {
+  const REGISTERED = {
+    id: "r1",
+    kind: "registered" as const,
+    line1: "1 Cork Street",
+    line2: null,
+    city: "London",
+    region: null,
+    postalCode: "W1S 3LL",
+    country: "GB",
+  };
+
+  it("lists the registered and delivery addresses before the member's own", () => {
+    const list = deliveryAddresses({
+      book: [row({ id: "a1" })],
+      invoice: null,
+      organisation: [
+        REGISTERED,
+        { ...REGISTERED, id: "d1", kind: "delivery", line1: "7 Dock Road" },
+      ],
+    });
+    expect(list.map((a) => [a.id, a.label])).toEqual([
+      ["organisation-r1", "Registered address"],
+      ["organisation-d1", DEFAULT_ADDRESS_LABEL],
+      ["a1", "Gallery store"],
+    ]);
+  });
+
+  it("lists the registered address once when the invoice address is the same", () => {
+    const list = deliveryAddresses({
+      book: [],
+      invoice: { ...REGISTERED, region: null },
+      organisation: [REGISTERED],
+    });
+    expect(list.map((a) => a.label)).toEqual(["Registered address"]);
+  });
+
+  it("asks the organisation to add an address without a name, trimmed, with a null for each blank", () => {
+    expect(
+      newOrganisationAddressBody({
+        line1: " 7 Dock Road ",
+        line2: " ",
+        city: "Bristol",
+        region: "",
+        postalCode: "BS1 4XX",
+        country: "gb",
+      }),
+    ).toEqual({
+      line1: "7 Dock Road",
+      line2: null,
+      city: "Bristol",
+      region: null,
+      postalCode: "BS1 4XX",
+      country: "GB",
+    });
   });
 });
 

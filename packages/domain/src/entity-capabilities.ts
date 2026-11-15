@@ -133,6 +133,19 @@ const ENTITY_CAPABILITY_RULES = {
   },
   /** Change the organisation's contact details; they are not checked, so they change in place. */
   "entity.contact.manage": { access: "write", roles: ["owner", "admin"] },
+  /**
+   * See the addresses a purchase can be delivered to for the organisation: its registered address
+   * and its delivery addresses. The people who buy for it (and pay) read them.
+   */
+  "entity.delivery_addresses.read": {
+    access: "read",
+    roles: ["owner", "admin", "finance", "buyer_agent"],
+  },
+  /** Add a delivery address to the organisation. Read-only roles cannot. */
+  "entity.delivery_addresses.manage": {
+    access: "write",
+    roles: ["owner", "admin", "finance", "buyer_agent"],
+  },
   /** See when each member was last active (the date only). */
   "entity.members.last_active.read": { access: "read", roles: ["owner", "admin"] },
 } as const satisfies Record<string, CapabilityRule>;

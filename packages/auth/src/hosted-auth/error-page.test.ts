@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { buildHostedErrorHtml, isBrowserNavigation } from "./error-page.js";
+import {
+  buildHostedErrorHtml,
+  buildHostedLinkErrorHtml,
+  isBrowserNavigation,
+  knownLinkErrorCode,
+} from "./error-page.js";
 import { hostedAuthViewFromSearch } from "./view.js";
 
 describe("isBrowserNavigation", () => {
@@ -46,5 +51,38 @@ describe("buildHostedErrorHtml", () => {
     [400, "We couldn&#39;t complete that"],
   ])("explains a %i in plain words", (status, title) => {
     expect(buildHostedErrorHtml(status, view)).toContain(title);
+  });
+});
+
+describe("buildHostedLinkErrorHtml", () => {
+  const view = hostedAuthViewFromSearch("client_id=lax-shop-web");
+
+  it.each([
+    ["EXPIRED_TOKEN", "That link has expired"],
+    ["payload_expired", "That link has expired"],
+    ["account_already_linked_to_different_user", "That account is already in use"],
+    ["user_cancelled_authorize", "Nothing was changed"],
+    ["email_doesn't_match", "That account doesn&#39;t match"],
+    ["new_user_signup_disabled", "We can&#39;t create an account that way"],
+    ["unable_to_link_account", "We couldn&#39;t finish that"],
+  ])("words %s for the person", (code, title) => {
+    const html = buildHostedLinkErrorHtml(code, view);
+    expect(html).toContain(title);
+    expect(html).toContain(`href="${view.config.restartUrl}"`);
+  });
+
+  it.each([undefined, null, "", "nope", "constructor", "__proto__", "<img src=x onerror=1>"])(
+    "falls back to the general message for %s, and echoes nothing",
+    (code) => {
+      const html = buildHostedLinkErrorHtml(code, view);
+      expect(html).toContain("We couldn&#39;t complete that");
+      expect(html).not.toContain("onerror");
+    },
+  );
+
+  it("knows only the codes on its list", () => {
+    expect(knownLinkErrorCode("INVALID_TOKEN")).toBe("INVALID_TOKEN");
+    expect(knownLinkErrorCode("toString")).toBeNull();
+    expect(knownLinkErrorCode(undefined)).toBeNull();
   });
 });

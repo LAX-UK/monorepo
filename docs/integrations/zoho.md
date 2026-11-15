@@ -128,7 +128,7 @@ Zoho CRM **Products** is the catalogue; the artwork register in LAX mirrors it. 
 
 Changes arrive two ways and are processed identically:
 
-1. **Signed notice.** A Zoho workflow rule posts to `POST /webhooks/zoho/artworks` when a Product is created or edited. The API checks the shared secret (`X-LAX-Webhook-Secret`, compared in constant time), stores the notice in `webhook_event` (source `zoho_artwork`, idempotent on Product id and modified time), queues it on the `webhook-events` queue and answers `202`. The worker then reads that Product from Zoho (COQL) and processes it.
+1. **Notice with a shared secret.** A Zoho workflow rule posts to `POST /webhooks/zoho/artworks` when a Product is created or edited. The API checks the shared secret (`X-LAX-Webhook-Secret`, compared in constant time), stores the notice in `webhook_event` (source `zoho_artwork`, idempotent on Product id and modified time), queues it on the `webhook-events` queue and answers `202`. The worker then reads that Product from Zoho (COQL) and processes it.
 2. **Nightly check** (02:30 Europe/London, same queue). Reads every Product with `Modified_Time` after the stored watermark. With no watermark it reads all Products: that first pass is the import report. The watermark only moves after a whole pass finishes, and is kept per mode, so switching `dry_run` to `live` starts a fresh full pass.
 
 | Variable | App | Purpose |
@@ -267,7 +267,7 @@ The SKU's parts come from the prints listing: the size when the sheet text start
 
 A frame is mirrored for its own sake: when its print has no SKU in Zoho (an original outside the register, or a part that does not map and fails the order for staff to fix), the job is still written, without `Linked_Print_SKU`. In `dry_run`, a job whose SKU does not exist yet is logged with `pendingFields: ["Linked_Print_SKU"]`, because the link needs the SKU's id.
 
-Statuses. Framing task: queued → Queued, framing → In Progress, framed → Framed, completed → Complete, cancelled (or the print or frame refunded) → Not Required; a job is never created only to say Not Required. Zoho's QC steps (QC Pending, QC Passed, Rework Required) are left to staff in Zoho; LAX only moves past them (Complete, Not Required). Fulfilment: a print picked while in production → Pack Prep, awaiting dispatch or ready for collection → Ready, in transit → Dispatched, delivered or collected → Delivered; nothing is made before a print is picked, nor for LAX storage or a cancelled fulfilment. In Transit is left to staff in Zoho; LAX only moves past it (Delivered). A status nobody has set (`-None-`) is filled in. The return path (Zoho QC Passed → LAX ready to pack) is a separate phase.
+Statuses. Framing task: queued → Queued, framing → In Progress, framed → Framed, completed → Complete, cancelled (or the print or frame refunded) → Not Required; a job is never created only to say Not Required. Zoho's QC steps (QC Pending, QC Passed, Rework Required) are left to staff in Zoho; LAX only moves past them (Complete, Not Required). Fulfilment: a print picked while in production → Pack Prep, awaiting dispatch or ready for collection → Ready, in transit → Dispatched, delivered or collected → Delivered; nothing is made before a print is picked, nor for LAX storage or a cancelled fulfilment. In Transit is left to staff in Zoho; LAX only moves past it (Delivered). A status nobody has set (`-None-`) is filled in. The return path is [Quality checks from Zoho](#quality-checks-from-zoho-inbound).
 
 **Retries.** The group's `Print_Products` record and its ledger come from the print group mirror; while they are missing in `live` the delivery retries with backoff, then dead-letters as "Zoho fulfilment" in Failed jobs: the same delivery runner, backoff, dead-letter ledger and metrics as the print group mirror. Zoho refusing a record for its data is not retried. Rate limit, circuit breaker and token handling are the shared CRM gateway's. In `dry_run` nothing is written; each create or update it would make is logged (`order mirror would create, nothing written` / `order mirror would update, nothing written`) with the module, record id and exact fields.
 
@@ -293,6 +293,34 @@ Also mark `Print_SKUs.SKU` unique (the mirror finds SKUs by it and upserts on it
 | `ZOHO_FULFILMENT_DISPATCH_PRINTS_FIELD` | worker | API name of the prints field above. Default `LAX_Prints`. |
 
 Roll out: add the fields in the sandbox; sandbox `dry_run` and read the logged writes for a few orders, including a refunded and a framed one; sandbox `live` (the org check refuses anything but `ZOHO_CRM_EXPECTED_ORG_TYPE`); production fields, `dry_run`, then `live` with the owner's go.
+
+## Quality checks from Zoho (inbound)
+
+This follows the approved Zoho CRM decisions of 11-04: leads are not auto-converted; fulfilment is owned in LAX Admin and mirrored to Zoho; printing and framing jobs stay in Zoho; and Zoho's **QC Passed** moves the LAX line to **ready to pack**. (ZO1-ZO24 cover offering artworks from Zoho and do not apply here.) In code and in LAX Admin the step is called "Quality check passed", the production task status `qc_passed`; that is the approved "ready to pack" (LAX has no separate ready-to-pack status).
+
+Printing and framing jobs stay owned in Zoho. When a Zoho job reaches `QC Passed`, LAX moves the print on the order line to **Quality check passed** (the production task status LAX Admin shows before packing); the order mirror then shows it in Zoho as it already does. LAX never writes the job's QC status.
+
+1. **Signed notice.** A Zoho workflow rule posts `{"module":"Framing_Jobs","recordId":"…","modifiedTime":"…"}` to `POST /webhooks/zoho/qc` with the shared secret in `X-LAX-Webhook-Secret` (`ZOHO_QC_WEBHOOK_SECRET`, api, 32+ characters; unset, the route answers `503` and stores nothing). The secret is a static header, not a signature: a captured request can be replayed, which only costs one Zoho read because the worker acts on the record, not the notice. A `modifiedTime` more than five minutes ahead of the API's clock is refused with `400`, and the route is rate limited per client address like the other inbound webhooks. The API stores it in `webhook_event` (source `zoho_qc`, idempotent on module, record id and modified time) and queues it, exactly as the artwork notice.
+2. **The worker reads the record**, not the notice, so the state acted on is always Zoho's latest. An older notice processed late sees the newer status and cannot undo it; a record older than the notice (Zoho lag) is retried; anything other than `QC Passed` does nothing.
+3. **The record names the line.** The job's order-reference field (`ZOHO_FULFILMENT_ORDER_REF_FIELD`, the same one the order mirror writes) holds `{order reference}/{line id}`: for a framing job the framing line, which resolves to the print it is sold with. The reference must match the line's order. Nothing is guessed.
+4. **LAX Shop makes the change** (`POST /internal/inventory/zoho-qc-passed`, inventory machine credential), through the same production task rules as LAX Admin: a task awaiting its check (or printing, which passes through it) becomes quality check passed, with an audit row by `system:zoho-qc` that carries the Zoho module and record id; one already there or further on is left alone, so a repeat changes nothing. A print whose frame is still open in LAX Admin is not passed.
+
+A cancelled, expired, failed-payment or refunded order's print is not moved (`not_ready`, so it reaches staff as below); a print whose task is already dispatched (`completed`) is accepted as already done and left alone.
+
+**One way.** LAX never moves back: if Zoho later goes QC Passed → Rework Required, the LAX task stays at quality check passed. This is deliberate; staff handle rework in Zoho and, if needed, in LAX Admin.
+
+A record Zoho no longer has, with no usable reference, matching no line or order, with no production task, a task that cannot pass yet (queued, failed, cancelled) or an open frame fails the notice: it is retried, then shows in Failed jobs as "Zoho quality checks" for staff. Replaying it after the cause is put right is safe.
+
+**No loop.** The path only reads Zoho. The order mirror's writes carry no workflow trigger (`ZOHO_CRM_UPSERT_TRIGGER`) and never write `QC Passed`, so LAX's own mirror write cannot raise a notice that moves anything.
+
+| Variable | App | Purpose |
+|----------|-----|---------|
+| `ZOHO_QC_READY_MODE` | worker | `off` (default) \| `dry_run` \| `live`. `off` calls neither Zoho nor LAX Shop and does not consume notices: they stay stored and unprocessed (the worker's drain skips them); `dry_run` reads Zoho and logs what it would move; `live` moves the print. Not `off` needs the Zoho OAuth values, `SHOP_API_INVENTORY_BASE_URL`, the inventory machine pair and `WEBHOOK_EVENTS_PROCESS=true`. |
+| `ZOHO_QC_WEBHOOK_SECRET` | api | Shared secret for the route above. |
+
+**Turning it on loses no notices.** Notices received while the mode is `off` wait in `webhook_event` and are processed, oldest first, once the mode is `dry_run` or `live` and the worker restarts. `dry_run` only logs, and it marks them processed, so to move prints from notices that arrived while off, switch from `off` straight to `live`; otherwise re-send from Zoho. Each notice is read against Zoho's current record, so old ones are safe.
+
+**Before turning it on** the owners add the order-reference field to `Framing_Jobs` (see Print orders to Zoho) and a workflow rule on `Framing_Jobs` (edited, `Status` changed) with a webhook to `/webhooks/zoho/qc`. Until then it stays `off`. Only `Framing_Jobs` is a quality check module today; a printing-job module joins by adding it to `ZOHO_QC_MODULES` once it exists in Zoho and carries the same reference.
 
 ## Sync health (LAX Admin)
 

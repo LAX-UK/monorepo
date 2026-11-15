@@ -4,7 +4,9 @@ import {
   stampMfaCompletedFromResponse,
   stampSocialAuthFromResponse,
 } from "@auction/auth";
+import { knownLinkErrorCode } from "@auction/auth";
 import type { createAuth } from "@auction/auth";
+import { ACCOUNT_ACTION_DONE_PATH } from "@auction/identity-contracts";
 import type {
   DurableSecurityEffects,
   SecurityEffectJob,
@@ -198,8 +200,41 @@ export function createAuthRequestHandler(options: {
       if (!identitySessionId) return createAuthorizationServerErrorResponse(response, request.url);
       await options.oidcSessions.captureAuthorizationSession(response, identitySessionId);
     }
-    return response;
+    return withLinkErrorCodeOnly(response, request.url);
   };
+}
+
+/**
+ * A refused link (an expired or spent email link, a provider that said no) is sent to the
+ * issuer's done page by the library's error address. The library also appends the provider's own
+ * description; the address that reaches the browser keeps only the code, and only one the page
+ * has words for, so no detail, token or text from a provider is carried on.
+ */
+function withLinkErrorCodeOnly(response: Response, requestUrl: string): Response {
+  if (response.status < 300 || response.status >= 400) return response;
+  const location = response.headers.get("location");
+  if (!location) return response;
+  let target: URL;
+  try {
+    target = new URL(location, requestUrl);
+  } catch {
+    return response;
+  }
+  if (target.pathname !== ACCOUNT_ACTION_DONE_PATH || !target.searchParams.has("error")) {
+    return response;
+  }
+  // A link the issuer started names its provider and is read by the route that owns it.
+  if (target.searchParams.has("provider")) return response;
+  const code = knownLinkErrorCode(target.searchParams.get("error"));
+  const clean = new URL(target.origin + target.pathname);
+  clean.searchParams.set("error", code ?? "unknown");
+  const headers = new Headers(response.headers);
+  headers.set("location", clean.toString());
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
 }
 
 export const TWO_FACTOR_REQUIRED_BY_POLICY = "TWO_FACTOR_REQUIRED_BY_POLICY";

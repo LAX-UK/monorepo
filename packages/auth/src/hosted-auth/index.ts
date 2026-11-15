@@ -10,7 +10,12 @@ export {
 } from "./brand.js";
 export { HOSTED_COPY } from "./copy.js";
 export { describeHostedScopes } from "./scopes.js";
-export { buildHostedErrorHtml, isBrowserNavigation } from "./error-page.js";
+export {
+  buildHostedErrorHtml,
+  buildHostedLinkErrorHtml,
+  isBrowserNavigation,
+  knownLinkErrorCode,
+} from "./error-page.js";
 export {
   parseHostedAuthFlow,
   continuationHref,
