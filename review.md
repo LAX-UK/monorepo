@@ -1,33 +1,59 @@
-Verdict: FIX FIRST
+Verdict: SHIP
 
-Recheck of PR #1454 after the fix commit 7776b1d2 ("Defer stale-build reload until the page is safe to leave"), against the first review (5c8497a8).
+# Final recheck: PR #1454 (deploy-skew-recovery)
 
-Checked locally at 7776b1d2: vitest for `src/lib/csp`, `socket-chunk-recovery`, `socket.test.ts` and `middleware` (`--maxWorkers=2`) pass, 59/59. biome is clean on the changed files. `tsc --noEmit` reports only unresolved workspace modules (`@auction/api/app`, `@auction/exports`) in files this PR does not touch, because those apps are not built here. CI on 7776b1d2 at review time: no failures; build-packages, static-checks, docker images, web vitest 1, 2, 4, 5, 7 and the api/shop-api suites passed; build (which runs the route JS budgets), browser-gates and web vitest 3, 6, 8 were still running.
+This recheck covers head `8602640e` ("Detect unsaved input in the stale-build recovery snippet from edit events"), measured against the previous recheck of `7776b1d2`.
 
-Status of the first review's findings:
-- Finding 1 (unconditional reload): mostly fixed, but one gap remains, see finding 1 below.
-- Finding 2 (comment): fixed. The comment now says Next recovers navigations by build id, the socket has its own recovery, and this snippet covers lazy chunks on the current page.
-- Finding 3 (guard, key name): fixed. The 10-minute guard is kept for both paths, the second-deploy case is documented, the key is renamed to `lax:stale-chunk-reload-at`, and the old key is still read (tested in both the snippet and `claimReload`). The guard cannot loop: a reload happens only after a claim, at most once per 10 minutes per tab, and only when the tab is hidden; the link path is a navigation started by a click, so it cannot repeat on its own.
-- Finding 7 (navigation race): fixed. A failure in a visible tab only marks the page stale, and `beforeunload`/`pagehide` stop any later reload, so a failed preload can no longer interrupt a navigation in progress.
-- The inline head script is still in `INLINE_HEAD_SCRIPTS` and hashed by middleware (`apps/web/src/middleware.ts:40`, asserted by the test at `chunk-load-recovery-snippet.client.test.ts:96`). No route JS changed apart from the renamed key strings in `socket-chunk-recovery.client.ts`. The inline script grows from about 1.3 KB to about 3 KB on every HTML response.
+## Status of the previous findings
 
-Mutation check: 25 single changes to the snippet were tried against `chunk-load-recovery-snippet.client.test.ts`. Killed (the tests fail): removing the `dirty()` call, the focus check, the dialog/busy check, the 15 s submit window, the text-value check, the `leaving` check in `reloadIfSafe`, the `beforeunload` listener, the claim, the 404/410 check, the offline check, the `/_next/static/` filter, the legacy key, and each click filter (stale, origin, same page, modifier keys, new tab, download); reloading at once instead of deferring is also killed. Survived: see findings 2 and 3.
+- **Finding 1 (BLOCKING, unsaved input in React-controlled fields): fixed.**
+  - **How it works now.** `dirty()` no longer depends on comparing `value` with `defaultValue`. Capture-phase `input`/`change` listeners on `window` record an edit for any editable field (`chunk-load-recovery-snippet.client.ts:47`). While an edit is recorded on the current path, the page counts as dirty. The mark is cleared on `submit`/`reset`.
+  - **Tests with real React.** `chunk-load-recovery-snippet.react.client.test.tsx` renders a React 19 controlled input in jsdom and shows that `value === defaultValue` after typing. It then shows that typing, moving focus away, marking the build stale and hiding the tab does not reload. A control test confirms the page does reload when nothing was typed.
+  - **Mutation check.** Each of these makes the suite fail:
+    - removing the `input` listener;
+    - removing the `change` listener;
+    - removing both;
+    - removing the edit check in `dirty()`;
+    - making `field()` always false;
+    - ignoring the path rule.
+- **Finding 2 (visibility gating untested): fixed.** Reloading on every `visibilitychange` is now caught by a test.
+- **Finding 3 (other guards untested): fixed.** Removing any one of these guards now fails a test:
+  - the checkbox/radio check;
+  - the `<select>` check;
+  - the `pagehide` listener;
+  - the in-flight `busy` flag.
+- **Finding 4 (`leaving` sticks): fixed.** It is cleared on `pageshow` and one second after `beforeunload`, and both changes are covered by tests.
+- **Finding 5 (dialog check too broad): fixed.** The check is narrowed to `[role="dialog"][data-state="open"]`, `[aria-modal="true"]` and `[aria-busy="true"]`. I checked against the real `@auction/ui/lax/dialog` (Radix) rendered open in jsdom: it matches the selector (`role="dialog"`, `data-state="open"`). So the bid dialog still blocks the hidden-tab reload.
+- **Finding 6 (link handler overriding anchors): documented** in the comment.
+- **Finding 7 (staging HEAD check): still open**, as the PR body says.
+
+## Invariants
+
+- **No reload while dirty or while a bid is being placed.** The page does not reload while:
+  - a field has focus;
+  - an edit is recorded;
+  - an open dialog is present (this covers the bid dialog) or `aria-busy` is set;
+  - a form was submitted in the last 15 seconds;
+  - a checked or selected value differs from its default.
+- **Reloads happen only in two cases:** on `visibilitychange` to hidden, or as a full navigation on the next same-origin link click. Never while the page is leaving.
+- **The 10-minute guard is intact.** The claim is still required (removing it fails 2 tests), the legacy key is still read, and the key is shared with the socket recovery.
+- **The inline script is still in the CSP.** It is in `INLINE_HEAD_SCRIPTS`, which middleware hashes (`apps/web/src/middleware.ts:40`), and the inline-head-scripts test covers it. It is rendered by a server component (`chunk-load-recovery-init.tsx`). The script is now 3,404 bytes on every HTML response.
+- **Route JS is unchanged.** The only client-module change is the key constants and the legacy-key read in `socket-chunk-recovery.client.ts`. CI `build`, which runs the route JS budgets, is green.
+- **No AI attribution.** None of the three commits or the PR text has a `Co-Authored-By`, `Claude-Session` or generated-by line.
+
+## Local results and CI
+
+- **Local results:**
+  - vitest for `src/lib/csp`, `socket-chunk-recovery` and `middleware` (`--maxWorkers=2`): 65/65 passed.
+  - biome is clean on the 9 changed files.
+  - `check-layers` passes.
+  - `tsc --noEmit` reports only the one existing unresolved `@auction/api/app` module error, in a file this PR does not touch.
+- **CI on `8602640e`:** every check passed, including `static-checks`, `build`, `browser-gates`, web vitest 1–8, the docker images and `ci-result`. The matrix and art/account browser gates were skipped.
 
 ## Findings
 
-1. **BLOCKING: unsaved input in React-controlled fields is not detected, so the page can still reload over it.** `apps/web/src/lib/csp/chunk-load-recovery-snippet.client.ts:35`, the `e.value!==e.defaultValue` test in `dirty()`. React keeps the `value` attribute, and so `defaultValue`, equal to the current value for controlled inputs. In jsdom with the repo's React 19, after typing "250" a controlled input reports `value` "250" and `defaultValue` "250"; an uncontrolled one reports "250" and "". So any field written as `value={...} onChange={...}` (including react-hook-form `Controller`/`useController` fields) always looks clean. Only the focus check protects it, and focus leaves the field as soon as the person clicks a button or empty space.
-   - Example: `apps/web/src/components/admin/saleroom-check-in-form.tsx:113` and `:134` (bid limit, paddle number) are controlled and are not in a dialog and have no `beforeunload` guard. Type a value, click outside the field, switch tab after a chunk 404: the page reloads and the input is gone. About 80 non-test components use `value={...}` on inputs. Fields registered with react-hook-form `register` are uncontrolled and are covered.
-   - The bid dialog is covered by the open `[role="dialog"]` check, so bidding itself is safe.
-   - Suggested fix: record edits instead of comparing values. For example, a capture-phase `input`/`change` listener on `window` that sets an `edited` flag when the target is a form field (or contentEditable), cleared on `submit`/`reset`, and have `dirty()` return true while it is set. Add a test where the field's `value` and `defaultValue` are equal but an `input` event was fired.
-
-2. **Non-blocking: the hidden-only condition on `visibilitychange` is not tested.** `chunk-load-recovery-snippet.client.ts:35`. Changing the listener to call `reloadIfSafe()` on every visibility change (so it also reloads the moment the person returns to the tab) leaves all tests green. Add a case that fires `visibilitychange` with the state `visible` and expects no reload.
-
-3. **Non-blocking: some other guards are untested.** Removing any one of these still passes the suite: the checkbox/radio `checked !== defaultChecked` test, the `<select>` option test, the `pagehide` listener, and the `busy` flag that skips a second HEAD while one is pending. One test each would pin them.
-
-4. **Non-blocking: `leaving` is never cleared.** `chunk-load-recovery-snippet.client.ts:35`. It is set on any `beforeunload`, including one the person cancels (the admin form wizard and submission wizard guards), and on `pagehide` before a page enters the back/forward cache. After that the stale page never reloads and links are no longer turned into full navigations. This fails safe (no unexpected reload), but recovery is lost for that page. Consider clearing it on `pageshow` and after a `beforeunload` whose event was cancelled.
-
-5. **Non-blocking: always-present `role="dialog"` elements block the hidden-tab reload.** The PWA install prompt (`apps/web/src/components/pwa/pwa-install-prompt.tsx:77`) is a non-modal `role="dialog"` banner. While it shows, `dirty()` is always true. The link path still works and the effect is safe, but the check could be narrowed to `[role="dialog"][data-state="open"],[aria-modal="true"]` (the form `marketing-prompt-orchestrator.tsx:45` already uses), plus `[aria-busy="true"]`.
-
-6. **Non-blocking: the capture-phase link handler overrides anchors with their own click handling.** `chunk-load-recovery-snippet.client.ts:35`. It runs before React and calls `stopImmediatePropagation`, so on a stale page `AccountSwitchLink`'s anchor (`apps/web/src/components/organisations/account-switch-link.tsx:40-43`) does a plain navigation to its `href` instead of running the switch action. Its comment says the anchor also works without scripts, so this degrades acceptably, but it applies to any anchor whose `onClick` calls `preventDefault`. Acceptable for a page whose code is already partly missing; worth a sentence in the comment.
-
-7. **Non-blocking: staging check still open.** As noted in the PR body, confirm on staging that the edge/CDN does not answer `HEAD` for a missing chunk with a cached 200 or an HTML fallback.
+1. **Non-blocking: any form submit clears every recorded edit.** At `apps/web/src/lib/csp/chunk-load-recovery-snippet.client.ts:47`, the `submit` listener clears the edit mark for the whole page, not only for the form that was submitted. Suppose a different form on the same page is submitted, for example a header search that stays on the page, or a newsletter sign-up. Once the 15-second window passes, unsaved typing in a controlled field elsewhere no longer counts as dirty. If the field has also lost focus, a hidden tab can then reload over that typing. Removing the clear-on-submit survives the suite, so nothing tests it. A fix: keep the mark per form, or clear it only when the submitted form contains the edited field.
+2. **Non-blocking: the open-dialog selector is not pinned by a test.** In the fake-window test (`chunk-load-recovery-snippet.client.test.ts:148`), `querySelector` returns an element for any selector. Removing `[role="dialog"][data-state="open"]` from the selector, or removing `[aria-busy="true"]`, still passes the suite. The bid dialog has no `aria-modal`, so it relies on the `data-state` part. Add a React test that renders the real dialog open and expects no reload.
+3. **Non-blocking: a slow navigation can reopen the reload window.** `leaving` is cleared one second after `beforeunload`, even when that navigation is still in progress. An example: a cross-origin link click, or a download, whose response takes more than a second. If the person switches tab in that time, a hidden-tab reload can replace the pending navigation. This is narrow, and it fails towards loading the current build. Consider clearing `leaving` only on `pageshow`, or once focus or visibility returns.
+4. **Non-blocking: the PR description's Summary is out of date.** It still says the page "reloads once" when a file is missing and the script is "about 1.2 KB". The script is now deferred and about 3.4 KB. The "Changes after review" sections are accurate.
+5. **Non-blocking, still open:** confirm on staging that the edge/CDN does not answer `HEAD` for a missing chunk with a cached 200 or an HTML fallback.
