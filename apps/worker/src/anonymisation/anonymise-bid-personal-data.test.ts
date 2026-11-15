@@ -1,7 +1,13 @@
+import { domainEvent } from "@auction/db/schema";
+import { getTableName } from "drizzle-orm";
 import { describe, expect, it, vi } from "vitest";
 import type { ProjectorDbConnection } from "../interfaces/worker-db.types.js";
 import { anonymiseBidPersonalData } from "./anonymise-bid-personal-data.js";
-import { BID_ANONYMISATION_RULES, type BidAnonymisationRule } from "./bid-personal-data-policy.js";
+import {
+  BID_ANONYMISATION_RULES,
+  type BidAnonymisationRule,
+  assertEnquiryErasureBeforeEventScrub,
+} from "./bid-personal-data-policy.js";
 
 /** A select chain that answers the two scope lookups in order: aliases, then personal entities. */
 function scopeTx(aliases: string[], entities: string[]) {
@@ -103,5 +109,57 @@ describe("Bid anonymisation policy", () => {
       treatment: "scrub",
       fields: ["collector_name", "collector_email", "collector_company"],
     });
+  });
+});
+
+describe("anonymiseBidPersonalData ordering guard", () => {
+  it("refuses, before running anything, a domain event scrub placed before the enquiry rule", async () => {
+    const ran: string[] = [];
+    const track = (table: string) =>
+      rule(table, async () => {
+        ran.push(table);
+        return 1;
+      });
+    const rules = [track("domain_events"), track("marketing_enquiry")];
+    await expect(anonymiseBidPersonalData(scopeTx([], []), "user_1", rules)).rejects.toThrow(
+      /domain_events must run after the marketing_enquiry rule/,
+    );
+    expect(ran).toEqual([]);
+  });
+
+  it("refuses an event scrub when there is no enquiry rule at all", async () => {
+    const rules = [rule("domain_events", async () => 1)];
+    await expect(anonymiseBidPersonalData(scopeTx([], []), "user_1", rules)).rejects.toThrow(
+      /must run after/,
+    );
+  });
+
+  it("allows an event scrub after the enquiry rule", async () => {
+    const rules = [rule("marketing_enquiry", async () => 1), rule("domain_events", async () => 1)];
+    await expect(anonymiseBidPersonalData(scopeTx([], []), "user_1", rules)).resolves.toEqual({
+      marketing_enquiry: 1,
+      domain_events: 1,
+    });
+  });
+
+  it("refuses a rule flagged as reading the event log under another name, ahead of the enquiry rule", async () => {
+    const related = { ...rule("event_archive", async () => 1), readsEventLog: true };
+    expect(() =>
+      assertEnquiryErasureBeforeEventScrub([related, rule("marketing_enquiry", async () => 1)]),
+    ).toThrow(/event_archive must run after/);
+    expect(() =>
+      assertEnquiryErasureBeforeEventScrub([rule("marketing_enquiry", async () => 1), related]),
+    ).not.toThrow();
+  });
+
+  it("recognises the event log by the schema's own table name", () => {
+    expect(getTableName(domainEvent)).toBe("domain_events");
+    expect(() =>
+      assertEnquiryErasureBeforeEventScrub([rule(getTableName(domainEvent), async () => 1)]),
+    ).toThrow(/must run after/);
+  });
+
+  it("keeps the shipped rule list valid", async () => {
+    expect(() => assertEnquiryErasureBeforeEventScrub(BID_ANONYMISATION_RULES)).not.toThrow();
   });
 });

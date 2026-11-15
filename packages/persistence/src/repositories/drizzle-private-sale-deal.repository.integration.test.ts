@@ -1,6 +1,7 @@
 import { type Database, createDb } from "@auction/db";
 import {
   artworkRegister,
+  domainEvent,
   itemSubmission,
   legalEntity,
   privateSaleDeal,
@@ -11,6 +12,7 @@ import {
 } from "@auction/db/schema";
 import { eq, sql } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
+import type { DomainEventConnection } from "../lib/domain-event.types.js";
 import { DrizzlePrivateSaleDealRepository } from "./drizzle-private-sale-deal.repository.js";
 
 const HAS_DB = Boolean(process.env.DATABASE_URL);
@@ -391,6 +393,61 @@ describe.skipIf(!HAS_DB)("private sale deals (integration)", () => {
           actingUserId: null,
         }),
       ).toEqual({ kind: "not_found" });
+    });
+  });
+
+  it("records the naming event in the same transaction as the party", async () => {
+    await inRollback(async (db, submissionId) => {
+      const repo = new DrizzlePrivateSaleDealRepository(db);
+      const deal = await repo.create(newDeal(submissionId));
+      const aggregateId = `psd-it-${deal.id}`;
+      const event = (tx: DomainEventConnection) =>
+        tx.insert(domainEvent).values({
+          aggregateType: "private_sale_deal",
+          aggregateId,
+          eventType: "private_sale_deal.party_named",
+          producer: "apps/api",
+          payload: { dealId: deal.id },
+        });
+      const party = {
+        role: "buyer" as const,
+        legalEntityId: buyerEntityId,
+        actingUserId: buyerUserId,
+      };
+      const events = async () =>
+        (await db.select().from(domainEvent).where(eq(domainEvent.aggregateId, aggregateId)))
+          .length;
+      const named = async () =>
+        (
+          await db
+            .select()
+            .from(privateSaleDealPartyHistory)
+            .where(eq(privateSaleDealPartyHistory.actingUserId, buyerUserId))
+        ).length;
+
+      // A failing event leaves no party, no history and no version bump.
+      await expect(
+        repo.setParty(deal.id, deal.version, party, async () => {
+          throw new Error("event_failed");
+        }),
+      ).rejects.toThrow("event_failed");
+      expect(await named()).toBe(0);
+      expect(await events()).toBe(0);
+      expect((await repo.findById(deal.id))?.version).toBe(deal.version);
+
+      // A successful write keeps the party and its event together.
+      const ok = await repo.setParty(deal.id, deal.version, party, async (tx) => {
+        await event(tx);
+      });
+      expect(ok.kind).toBe("ok");
+      expect(await named()).toBe(1);
+      expect(await events()).toBe(1);
+
+      // A stale write runs no event.
+      await repo.setParty(deal.id, deal.version, party, async (tx) => {
+        await event(tx);
+      });
+      expect(await events()).toBe(1);
     });
   });
 

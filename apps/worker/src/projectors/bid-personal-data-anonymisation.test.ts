@@ -113,6 +113,19 @@ describe("processBidPersonalDataAnonymisation", () => {
     expect(advanceCursor).not.toHaveBeenCalled();
   });
 
+  it("surfaces an ordering-guard failure through the error log and the recorded projector error", async () => {
+    const guard = "anonymisation rule for domain_events must run after the marketing_enquiry rule";
+    anonymise.mockRejectedValue(new Error(guard));
+    const { context, advanceCursor, recordError } = ctx([row(6)]);
+    await processBidPersonalDataAnonymisation(context);
+    expect(context.log.error).toHaveBeenCalledWith(
+      expect.objectContaining({ eventId: 6 }),
+      "bid_personal_data_anonymisation_failed",
+    );
+    expect(recordError).toHaveBeenCalledWith(BID_PERSONAL_DATA_ANONYMISATION_PROJECTOR, guard);
+    expect(advanceCursor).not.toHaveBeenCalled();
+  });
+
   it("does nothing when there are no deletions", async () => {
     const { context, advanceCursor, runInTransaction } = ctx([]);
     await processBidPersonalDataAnonymisation(context);
