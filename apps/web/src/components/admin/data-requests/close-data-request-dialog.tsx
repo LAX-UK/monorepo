@@ -8,6 +8,7 @@ import {
   validateClose,
 } from "@/lib/admin/data-requests/data-request-forms";
 import { ALL_OUTCOMES, OUTCOME_LABELS } from "@/lib/admin/data-requests/data-requests.vm";
+import type { SentCopy } from "@/lib/admin/data-requests/sent-copy";
 import type {
   DataRequestOutcome,
   ManualRequestView,
@@ -28,12 +29,14 @@ import {
 import { Check } from "@auction/staff-ui/icons";
 import { useId, useRef, useState } from "react";
 import { DataRequestWriteFailure } from "./data-request-write-failure";
-import type { WriteFailure, WriteResult } from "./use-data-request-writes";
+import { type WriteFailure, type WriteResult, failureOf } from "./use-data-request-writes";
 
 type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   request: Pick<ManualRequestView, "reference" | "status" | "due">;
+  /** The copy the request already has, so the person closing sees what went out and when. */
+  sentCopy?: SentCopy | null;
   submit: (body: Record<string, unknown>) => Promise<WriteResult>;
   onReload: () => void;
   onDone: (outcome: DataRequestOutcome) => void;
@@ -48,6 +51,7 @@ export function CloseDataRequestDialog({
   open,
   onOpenChange,
   request,
+  sentCopy = null,
   submit,
   onReload,
   onDone,
@@ -77,6 +81,7 @@ export function CloseDataRequestDialog({
   const noteRule = draft.outcome ? CLOSE_NOTE_FIELD[draft.outcome] : null;
   const lateDays = request.due.state === "overdue" ? Math.abs(request.due.daysLeft ?? 0) : 0;
   const refused = draft.outcome === "refused";
+  const sends = draft.outcome === "sent" || draft.outcome === "sent_partial";
 
   async function proceed() {
     setAttempted(true);
@@ -98,7 +103,7 @@ export function CloseDataRequestDialog({
       onOpenChange(false);
       onDone(outcome);
     } else {
-      setFailure({ message: result.error, stale: result.errorCode === "stale_version" });
+      setFailure(failureOf(result));
     }
   }
 
@@ -199,6 +204,15 @@ export function CloseDataRequestDialog({
             })}
           </StaffRadioGroup>
         </ChoiceFieldset>
+        {sends && sentCopy ? (
+          <Notice tone="info" title={`The copy was ready on ${sentCopy.on}`}>
+            {sentCopy.how}
+            {sentCopy.downloads > 0
+              ? `, downloaded ${sentCopy.downloads} ${sentCopy.downloads === 1 ? "time" : "times"}`
+              : ", not downloaded yet"}
+            {sentCopy.until ? `. The link works until ${sentCopy.until}.` : "."}
+          </Notice>
+        ) : null}
         {noteRule ? (
           <Field
             label={noteRule.label}

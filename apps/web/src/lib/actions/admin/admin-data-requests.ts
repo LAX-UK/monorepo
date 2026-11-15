@@ -1,6 +1,10 @@
 "use server";
 
-import { dataRequestErrorMessage } from "@/lib/admin/data-requests/data-request-errors";
+import { lastEditorName } from "@/lib/admin/data-requests/data-request-editor";
+import {
+  dataRequestErrorMessage,
+  isStaleDataRequest,
+} from "@/lib/admin/data-requests/data-request-errors";
 import { DATA_REQUESTS_PATH } from "@/lib/admin/data-requests/data-requests-search";
 import {
   type EnquiryErasureCounts,
@@ -11,6 +15,7 @@ import {
 import { denyUnlessAdminCapability } from "@/lib/auth/assert-admin-action-capability";
 import { isStaffStepUpResponse } from "@/lib/auth/step-up/staff-step-up.server";
 import { stepUpRequiredFailure } from "@/lib/auth/step-up/step-up-failure";
+import { getAdminDataRequest } from "@/lib/data/http/admin-data-requests.reader";
 import { authedServerFetch } from "@/lib/data/http/authed-server-fetch";
 import { readDataEnvelope, readJsonBody } from "@/lib/data/http/envelope";
 import { type ActionResult, actionFailure, actionSuccess } from "@/lib/forms/form-result";
@@ -40,6 +45,12 @@ const foundAccountSchema = zod
 async function errorCodeOf(res: Response): Promise<string | undefined> {
   const body = (await res.json().catch(() => null)) as { error?: unknown } | null;
   return typeof body?.error === "string" ? body.error : undefined;
+}
+
+/** Who changed the request under a stale edit; null when it cannot be read or nobody is named. */
+async function lastEditorOf(reference: string): Promise<string | null> {
+  const read = await getAdminDataRequest(reference);
+  return read.ok ? lastEditorName(read.record.timeline) : null;
 }
 
 /**
@@ -78,7 +89,14 @@ async function send(
     if (await isStaffStepUpResponse(res)) return stepUpRequiredFailure();
     if (!res.ok) {
       const code = await errorCodeOf(res);
-      return actionFailure(dataRequestErrorMessage(code, res.status), undefined, res.status, code);
+      const editor = isStaleDataRequest(code) && reference ? await lastEditorOf(reference) : null;
+      return actionFailure(
+        dataRequestErrorMessage(code, res.status),
+        undefined,
+        res.status,
+        code,
+        editor ? { editor } : undefined,
+      );
     }
     const record = readDataEnvelope(
       await readJsonBody(res),

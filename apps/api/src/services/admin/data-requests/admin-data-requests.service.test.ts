@@ -12,7 +12,7 @@ const NOW = new Date("2027-01-01T00:00:00Z");
 function setup(extra: { onNeedsStaff?: (reference: string, reason: "end_unknown") => void } = {}) {
   const calls: string[] = [];
   const identity = {
-    list: vi.fn(async () => ({ items: [], nextCursor: null })),
+    list: vi.fn(async () => ({ items: [], nextCursor: null, total: 0 })),
     summary: vi.fn(async () => ({}) as never),
     record: vi.fn(async () => {
       calls.push("identity");

@@ -28,7 +28,7 @@ vi.mock("@/lib/ui/notify", () => ({ notify: { success: vi.fn(), error: vi.fn() }
 
 function renderList(patch: Partial<DataRequestsListProps> = {}) {
   const props: DataRequestsListProps = {
-    list: { items: OPEN_ROWS, nextCursor: null },
+    list: { items: OPEN_ROWS, nextCursor: null, total: OPEN_ROWS.length },
     summary: SUMMARY,
     search: {},
     filters: parseDataRequestsSearch({}),
@@ -94,7 +94,7 @@ describe("DataRequestsList: rows", () => {
 
   it("names the closed outcome in the Closed view", () => {
     renderList({
-      list: { items: CLOSED_ROWS, nextCursor: null },
+      list: { items: CLOSED_ROWS, nextCursor: null, total: CLOSED_ROWS.length },
       filters: parseDataRequestsSearch({ view: "closed" }),
     });
     expect(screen.getAllByText("Closed · Copy sent").length).toBeGreaterThan(0);
@@ -184,7 +184,7 @@ describe("DataRequestsList: row menu", () => {
 
   it("offers nothing past Open and Copy on a closed request", () => {
     renderList({
-      list: { items: [closedOnTime], nextCursor: null },
+      list: { items: [closedOnTime], nextCursor: null, total: 1 },
       filters: parseDataRequestsSearch({ view: "closed" }),
     });
     const menu = openRowMenu(closedOnTime.reference);
@@ -192,7 +192,7 @@ describe("DataRequestsList: row menu", () => {
   });
 
   it("disables Extend for a request waiting for ID", () => {
-    renderList({ list: { items: [waitingManual], nextCursor: null } });
+    renderList({ list: { items: [waitingManual], nextCursor: null, total: 1 } });
     const extend = openRowMenu(waitingManual.reference).getByRole("menuitem", { name: /Extend…/ });
     expect(extend).toHaveAttribute("aria-disabled", "true");
   });
@@ -200,14 +200,14 @@ describe("DataRequestsList: row menu", () => {
 
 describe("DataRequestsList: states", () => {
   it("says nothing is open, and offers the Closed view", () => {
-    renderList({ list: { items: [], nextCursor: null }, pagination: null });
+    renderList({ list: { items: [], nextCursor: null, total: 0 }, pagination: null });
     expect(screen.getByText("No open data requests")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "View closed" })).toBeInTheDocument();
   });
 
   it("has its own empty message for each view", () => {
     renderList({
-      list: { items: [], nextCursor: null },
+      list: { items: [], nextCursor: null, total: 0 },
       filters: parseDataRequestsSearch({ view: "overdue" }),
       pagination: null,
     });
@@ -216,7 +216,7 @@ describe("DataRequestsList: states", () => {
 
   it("says nothing matches when a search finds no rows, with a way out", () => {
     renderList({
-      list: { items: [], nextCursor: null },
+      list: { items: [], nextCursor: null, total: 0 },
       filters: parseDataRequestsSearch({ q: "jane@example.com" }),
       filtered: true,
       pagination: null,

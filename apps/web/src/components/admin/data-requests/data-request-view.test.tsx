@@ -233,6 +233,47 @@ describe("DataRequestView: close", () => {
     );
   });
 
+  it("shows when and how the copy went out, once a sent outcome is chosen", () => {
+    const withCopy: DataRequestRecord = {
+      ...manualRecord,
+      file: {
+        fileName: "copy.zip",
+        sizeBytes: 2048,
+        sha256: null,
+        expiresAt: "2026-11-10T14:05:00.000Z",
+        downloadCount: 2,
+      },
+      timeline: [
+        {
+          at: "2026-10-03T13:05:00.000Z",
+          event: "data_export.ready",
+          actorName: null,
+          device: null,
+          detail: {},
+        },
+      ],
+    };
+    renderView(withCopy);
+    fireEvent.click(screen.getByRole("button", { name: "Close with outcome…" }));
+    const dialog = screen.getByRole("dialog");
+    expect(within(dialog).queryByText(/The copy was ready on/)).not.toBeInTheDocument();
+    fireEvent.click(within(dialog).getByRole("radio", { name: "Copy sent" }));
+    expect(within(dialog).getByText("The copy was ready on 3 Oct, 14:05")).toBeInTheDocument();
+    expect(
+      within(dialog).getByText(/A secure download in LAX Account, downloaded 2 times/),
+    ).toBeInTheDocument();
+    fireEvent.click(within(dialog).getByRole("radio", { name: "We hold nothing about them" }));
+    expect(within(dialog).queryByText(/The copy was ready on/)).not.toBeInTheDocument();
+  });
+
+  it("says nothing about a copy when none was built", () => {
+    renderView(manualRecord);
+    fireEvent.click(screen.getByRole("button", { name: "Close with outcome…" }));
+    const dialog = screen.getByRole("dialog");
+    fireEvent.click(within(dialog).getByRole("radio", { name: "Copy sent" }));
+    expect(within(dialog).queryByText(/The copy was ready on/)).not.toBeInTheDocument();
+  });
+
   it("checks on submit and lists what to fix, without losing input", async () => {
     renderView(manualRecord);
     fireEvent.click(screen.getByRole("button", { name: "Close with outcome…" }));

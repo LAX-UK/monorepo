@@ -110,3 +110,5 @@ Compliance and Administrator (permission `data_requests.manage`) see every reque
 - Manual requests are numbered `DR-0001` upwards; downloads are shown as `DL-` and the first six characters of their id. If two downloads ever share those six characters, the record answers `ambiguous_reference` and the request is found by its id in the database.
 - The 24-hour, 7-day and 21-day deadline alerts for downloads are also written to the request's audit trail (`data_export.deadline_alert`, with the tier and who is alerted).
 - Staff open a record: Bid's audit log gets `data_request.viewed` with the staff member and the reference only. Notes and contact details are never written to either audit trail.
+- The list's footer counts every request the filters match ("51–100 of 137 requests"); Identity returns it as `total` beside the page.
+- A stale edit names the person who last changed the request, read from the record's history, so it opens the record once more and audits `data_request.viewed` as any open does. The close dialog shows when the copy was ready and how it reached the person for a request that has a built download.

@@ -14,7 +14,7 @@ const FLAG = { reference: "DR-0004", reason: "end_unknown", heldUntil: null };
 
 describe("loadAdminDataRequestsPage held erasures", () => {
   beforeEach(() => {
-    reader.getAdminDataRequests.mockResolvedValue({ items: [], nextCursor: null });
+    reader.getAdminDataRequests.mockResolvedValue({ items: [], nextCursor: null, total: 0 });
     reader.getAdminDataRequestSummary.mockResolvedValue(null);
   });
 

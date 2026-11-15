@@ -1,16 +1,20 @@
-import { EMPTY_ADMIN_NAV_COUNTS } from "@/lib/data/http/admin-nav-counts.types";
+import {
+  type AdminNavCounts,
+  EMPTY_ADMIN_NAV_COUNTS,
+} from "@/lib/data/http/admin-nav-counts.types";
 import { PURCHASE_PROBLEMS_ACCESS, userHasAccessTo, userStaffRoles } from "@auction/types";
 import { describe, expect, it } from "vitest";
 import { getStaffNavGroups } from "./staff-nav";
 
-function people(role: "staff" | "client", staffRole: (typeof userStaffRoles)[number] | null) {
-  const groups = getStaffNavGroups(
-    role,
-    0,
-    staffRole ? [staffRole] : [],
-    0,
-    EMPTY_ADMIN_NAV_COUNTS,
-  );
+function people(
+  role: "staff" | "client",
+  staffRole: (typeof userStaffRoles)[number] | null,
+  counts: Partial<AdminNavCounts> = {},
+) {
+  const groups = getStaffNavGroups(role, 0, staffRole ? [staffRole] : [], 0, {
+    ...EMPTY_ADMIN_NAV_COUNTS,
+    ...counts,
+  });
   return groups.find((group) => group.id === "people");
 }
 
@@ -38,6 +42,17 @@ describe("staff nav: Purchase problems", () => {
     expect(labels.indexOf("Purchase problems")).toBe(labels.indexOf("Enquiries") + 1);
     expect(userHasAccessTo("staff", ["client_services"], PURCHASE_PROBLEMS_ACCESS)).toBe(true);
     expect(userHasAccessTo("staff", ["finance"], PURCHASE_PROBLEMS_ACCESS)).toBe(false);
+  });
+
+  it("shows no count when no report is waiting", () => {
+    expect(item(people("staff", "client_services"))?.badge).toBeUndefined();
+  });
+
+  it("counts the reports nobody has taken on", () => {
+    expect(item(people("staff", "client_services", { purchaseProblemsOpen: 3 }))).toMatchObject({
+      badge: 3,
+      badgeTone: "warning",
+    });
   });
 
   it("stays selected on a record", () => {

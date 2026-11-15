@@ -9,11 +9,13 @@ import type { IDomainEventSink } from "../services/domain-event-sink.js";
 import type { IPurchaseProblemDesk } from "../services/interfaces/purchase-problem-desk-service.js";
 import { UserRepositoryAssigneeDirectory } from "../services/marketing-enquiry/enquiry-assignee-directory.js";
 import { PurchaseProblemDeskService } from "../services/purchase-problems/purchase-problem-desk.service.js";
+import type { IPurchaseProblemNotices } from "../services/purchase-problems/purchase-problem-notices.js";
 
 export type CreatePurchaseProblemDeskInput = {
   db: Database;
   transactionRunner: ITransactionRunner;
   events: IDomainEventSink;
+  notices: IPurchaseProblemNotices;
 };
 
 /** The staff desk for purchase problems buyers report on a paid purchase. */
@@ -26,6 +28,7 @@ export function createPurchaseProblemDesk(
     assignees: new UserRepositoryAssigneeDirectory(new DrizzleUserRepository(input.db)),
     transactionRunner: input.transactionRunner,
     events: input.events,
+    notices: input.notices,
     now: () => new Date(),
   });
 }

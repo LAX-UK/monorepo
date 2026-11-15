@@ -33,7 +33,7 @@ import {
 import { CalendarPlus, Clock } from "@auction/staff-ui/icons";
 import { useId, useRef, useState } from "react";
 import { DataRequestWriteFailure } from "./data-request-write-failure";
-import type { WriteFailure, WriteResult } from "./use-data-request-writes";
+import { type WriteFailure, type WriteResult, failureOf } from "./use-data-request-writes";
 
 type Props = {
   open: boolean;
@@ -122,7 +122,7 @@ export function ExtendDataRequestDialog({
       onOpenChange(false);
       onDone(newDue);
     } else {
-      setFailure({ message: result.error, stale: result.errorCode === "stale_version" });
+      setFailure(failureOf(result));
     }
   }
 

@@ -9,7 +9,7 @@ import { StaffButton, StaffDialog } from "@auction/staff-ui";
 import { ArrowRight, Check, Plus } from "@auction/staff-ui/icons";
 import { useRef, useState } from "react";
 import { DataRequestWriteFailure } from "./data-request-write-failure";
-import type { WriteFailure, WriteResult } from "./use-data-request-writes";
+import { type WriteFailure, type WriteResult, failureOf } from "./use-data-request-writes";
 
 type Props = {
   open: boolean;
@@ -70,7 +70,7 @@ export function ContinueDataRequestDialog({
       onOpenChange(false);
       onDone(result.data.request.reference);
     } else if (!result.ok) {
-      setFailure({ message: result.error, stale: result.errorCode === "stale_version" });
+      setFailure(failureOf(result));
     }
   }
 

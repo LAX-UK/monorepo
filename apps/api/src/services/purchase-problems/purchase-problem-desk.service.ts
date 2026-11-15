@@ -16,6 +16,7 @@ import type {
   PurchaseProblemView,
 } from "../interfaces/purchase-problem-desk-service.js";
 import type { IEnquiryAssigneeDirectory } from "../marketing-enquiry/enquiry-assignee-directory.js";
+import type { IPurchaseProblemNotices } from "./purchase-problem-notices.js";
 import { toListItem, toView } from "./purchase-problem-view.js";
 
 export type PurchaseProblemDeskServiceDeps = {
@@ -24,6 +25,8 @@ export type PurchaseProblemDeskServiceDeps = {
   assignees: IEnquiryAssigneeDirectory;
   transactionRunner: ITransactionRunner;
   events: IDomainEventSink;
+  /** Tells the buyer their report is resolved. */
+  notices: IPurchaseProblemNotices;
   now: () => Date;
 };
 
@@ -98,6 +101,14 @@ export class PurchaseProblemDeskService implements IPurchaseProblemDesk {
         });
       }
       await this.publishChanges(this.deps.events.withTx(tx), existing, record, patch, actorUserId);
+      if (existing.status !== "resolved" && record.status === "resolved") {
+        await this.deps.notices.queueResolved(tx, {
+          problemId: record.id,
+          lotId: record.lot.id,
+          lotTitle: record.lot.title,
+          reportedByUserId: record.buyer.reportedByUserId,
+        });
+      }
       return record;
     });
     if (!updated) {

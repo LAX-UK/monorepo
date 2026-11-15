@@ -124,10 +124,11 @@ describe("chips", () => {
 
 describe("cursor pagination", () => {
   const items = [{ reference: "DR-0001" }] as never;
+  const fifty = Array.from({ length: 50 }, (_, i) => ({ reference: `DR-${i}` })) as never;
 
   it("has no links on a single page", () => {
     const filters = parseDataRequestsSearch({});
-    expect(paginationFor({}, filters, { items, nextCursor: null })).toEqual({
+    expect(paginationFor({}, filters, { items, nextCursor: null, total: 1 })).toEqual({
       summary: "1 request",
       prevHref: null,
       nextHref: null,
@@ -135,20 +136,40 @@ describe("cursor pagination", () => {
   });
 
   it("links forward with the page it came from, and back to it", () => {
-    const first = paginationFor({}, parseDataRequestsSearch({}), { items, nextCursor: "c1" });
+    const first = paginationFor({}, parseDataRequestsSearch({}), {
+      items: fifty,
+      nextCursor: "c1",
+      total: 137,
+    });
+    expect(first?.summary).toBe("1–50 of 137 requests");
     expect(first?.nextHref).toBe(
       `/admin/compliance/data-requests?cursor=c1&trail=${encodeURIComponent('[""]')}`,
     );
     const sp = { cursor: "c1", trail: '[""]' };
-    const second = paginationFor(sp, parseDataRequestsSearch(sp), { items, nextCursor: "c2" });
-    expect(second?.summary).toBe("Page 2 · 1 request");
+    const second = paginationFor(sp, parseDataRequestsSearch(sp), {
+      items: fifty,
+      nextCursor: "c2",
+      total: 137,
+    });
+    expect(second?.summary).toBe("51–100 of 137 requests");
     expect(second?.prevHref).toBe("/admin/compliance/data-requests");
     expect(second?.nextHref).toContain("cursor=c2");
   });
 
+  it("counts the last, short page against the total", () => {
+    const sp = { cursor: "c2", trail: '["","c1"]' };
+    const last = paginationFor(sp, parseDataRequestsSearch(sp), {
+      items: Array.from({ length: 37 }, (_, i) => ({ reference: `DR-${i}` })) as never,
+      nextCursor: null,
+      total: 137,
+    });
+    expect(last?.summary).toBe("101–137 of 137 requests");
+    expect(last?.nextHref).toBeNull();
+  });
+
   it("has nothing to page when the list is empty", () => {
     expect(
-      paginationFor({}, parseDataRequestsSearch({}), { items: [], nextCursor: null }),
+      paginationFor({}, parseDataRequestsSearch({}), { items: [], nextCursor: null, total: 0 }),
     ).toBeNull();
   });
 });

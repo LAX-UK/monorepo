@@ -85,7 +85,7 @@ const MERGED = sql`(
   LEFT JOIN "user" u ON u."id" = r."subject_id"
 ) merged`;
 
-function viewCondition(filter: MergedListFilter): SQL | null {
+function viewCondition(filter: Pick<MergedListFilter, "view" | "today">): SQL | null {
   switch (filter.view) {
     case "open":
       return sql`is_open`;
@@ -111,7 +111,7 @@ function searchCondition(q: string): SQL {
     : sql`reference = upper(${q})`;
 }
 
-function conditions(filter: MergedListFilter): SQL[] {
+function conditions(filter: Omit<MergedListFilter, "limit">): SQL[] {
   const all: Array<SQL | null> = [
     viewCondition(filter),
     filter.status ? sql`status = ${filter.status}` : null,
@@ -185,6 +185,15 @@ export class DrizzleDataRequestReader implements DataRequestReader {
       LIMIT ${filter.limit}
     `);
     return (result.rows as MergedDbRow[]).map(toMergedRow);
+  }
+
+  async count(filter: Omit<MergedListFilter, "limit" | "after">): Promise<number> {
+    const where = conditions(filter);
+    const result = await this.db.execute(sql`
+      SELECT count(*)::int AS total FROM ${MERGED}
+      ${where.length > 0 ? sql`WHERE ${sql.join(where, sql` AND `)}` : sql``}
+    `);
+    return Number((result.rows[0] as { total: unknown } | undefined)?.total ?? 0);
   }
 
   async summary(today: string): Promise<DataRequestSummary> {

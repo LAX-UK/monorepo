@@ -203,6 +203,8 @@ export type ManualRequestView = z.infer<typeof manualRequestViewSchema>;
 export const dataRequestListSchema = z.object({
   items: z.array(dataRequestViewSchema),
   nextCursor: z.string().nullable(),
+  /** Every request the filters match, across all pages. */
+  total: z.number().int().nonnegative(),
 });
 export type DataRequestList = z.infer<typeof dataRequestListSchema>;
 
