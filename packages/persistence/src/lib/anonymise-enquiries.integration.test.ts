@@ -363,6 +363,75 @@ describe.skipIf(!HAS_DB)("enquiry erasure (integration)", () => {
       });
     });
 
+    const setProfile = (
+      tx: Database,
+      userId: string,
+      values: Partial<typeof bidUserProfile.$inferInsert>,
+    ) =>
+      tx
+        .insert(bidUserProfile)
+        .values({ userId, createdAt: t, updatedAt: t, ...values })
+        .onConflictDoUpdate({ target: bidUserProfile.userId, set: values });
+
+    it("counts a rejected identity status on the profile as a check, with no verification row", async () => {
+      await withDeal(async ({ tx, email, enquiryId, dealId, userId }) => {
+        await setProfile(tx, userId, { kycStatus: "rejected" });
+        await cancel(tx, dealId, false, new Date());
+        expect(await anonymiseEnquiries(tx, { kind: "email", email })).toMatchObject({
+          enquiries: 0,
+          held: 1,
+        });
+        expect(await message(tx, enquiryId)).toBe("A painting to sell");
+      });
+    });
+
+    it.each(["unverified", "approved"] as const)(
+      "does not count a %s identity status on the profile as a check",
+      async (kycStatus) => {
+        await withDeal(async ({ tx, email, enquiryId, dealId, userId }) => {
+          await setProfile(tx, userId, { kycStatus });
+          await cancel(tx, dealId, false, new Date());
+          expect(await anonymiseEnquiries(tx, { kind: "email", email })).toMatchObject({
+            enquiries: 1,
+            held: 0,
+          });
+          expect(await message(tx, enquiryId)).toBe(ERASED_ENQUIRY.message);
+        });
+      },
+    );
+
+    it("counts a hold with no recorded time on a closed deal", async () => {
+      await withDeal(async ({ tx, email, enquiryId, dealId, userId }) => {
+        await setProfile(tx, userId, { amlHoldStatus: "blocked", amlHoldAt: null });
+        await cancel(tx, dealId, false, new Date(Date.now() - 1_000));
+        expect(await anonymiseEnquiries(tx, { kind: "email", email })).toMatchObject({
+          enquiries: 0,
+          held: 1,
+        });
+        expect(await message(tx, enquiryId)).toBe("A painting to sell");
+      });
+    });
+
+    it("dates a rejected profile by its verification, not by the profile's last edit", async () => {
+      await withDeal(async ({ tx, email, enquiryId, dealId, userId }) => {
+        // The decision was long before the enquiry; editing the profile since must not bring it in.
+        await tx.insert(kycVerification).values({
+          userId,
+          providerSessionId: `session-${randomUUID()}`,
+          status: "canceled",
+          decisionAt: new Date("2020-01-01T00:00:00Z"),
+          decisionPayload: { verification: { code: "9104" } },
+        });
+        await setProfile(tx, userId, { kycStatus: "rejected", updatedAt: new Date() });
+        await cancel(tx, dealId, false, new Date());
+        expect(await anonymiseEnquiries(tx, { kind: "email", email })).toMatchObject({
+          enquiries: 1,
+          held: 0,
+        });
+        expect(await message(tx, enquiryId)).toBe(ERASED_ENQUIRY.message);
+      });
+    });
+
     it("counts a declined identity decision (9102) as a check", async () => {
       await withDeal(async ({ tx, email, enquiryId, dealId, userId }) => {
         await tx.insert(kycVerification).values([verification(userId, "9102")]);

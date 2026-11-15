@@ -1,3 +1,5 @@
+import { domainEvent } from "@auction/db/schema";
+import { getTableName } from "drizzle-orm";
 import { describe, expect, it, vi } from "vitest";
 import type { ProjectorDbConnection } from "../interfaces/worker-db.types.js";
 import { anonymiseBidPersonalData } from "./anonymise-bid-personal-data.js";
@@ -118,9 +120,9 @@ describe("anonymiseBidPersonalData ordering guard", () => {
         ran.push(table);
         return 1;
       });
-    const rules = [track("domain_event"), track("marketing_enquiry")];
+    const rules = [track("domain_events"), track("marketing_enquiry")];
     await expect(anonymiseBidPersonalData(scopeTx([], []), "user_1", rules)).rejects.toThrow(
-      /domain_event must run after the marketing_enquiry rule/,
+      /domain_events must run after the marketing_enquiry rule/,
     );
     expect(ran).toEqual([]);
   });
@@ -133,11 +135,28 @@ describe("anonymiseBidPersonalData ordering guard", () => {
   });
 
   it("allows an event scrub after the enquiry rule", async () => {
-    const rules = [rule("marketing_enquiry", async () => 1), rule("domain_event", async () => 1)];
+    const rules = [rule("marketing_enquiry", async () => 1), rule("domain_events", async () => 1)];
     await expect(anonymiseBidPersonalData(scopeTx([], []), "user_1", rules)).resolves.toEqual({
       marketing_enquiry: 1,
-      domain_event: 1,
+      domain_events: 1,
     });
+  });
+
+  it("refuses a rule flagged as reading the event log under another name, ahead of the enquiry rule", async () => {
+    const related = { ...rule("event_archive", async () => 1), readsEventLog: true };
+    expect(() =>
+      assertEnquiryErasureBeforeEventScrub([related, rule("marketing_enquiry", async () => 1)]),
+    ).toThrow(/event_archive must run after/);
+    expect(() =>
+      assertEnquiryErasureBeforeEventScrub([rule("marketing_enquiry", async () => 1), related]),
+    ).not.toThrow();
+  });
+
+  it("recognises the event log by the schema's own table name", () => {
+    expect(getTableName(domainEvent)).toBe("domain_events");
+    expect(() =>
+      assertEnquiryErasureBeforeEventScrub([rule(getTableName(domainEvent), async () => 1)]),
+    ).toThrow(/must run after/);
   });
 
   it("keeps the shipped rule list valid", async () => {

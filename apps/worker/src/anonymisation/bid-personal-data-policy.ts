@@ -1,6 +1,7 @@
 import {
   artistWatchlist,
   bidUserProfile,
+  domainEvent,
   legalEntity,
   legalEntityAddress,
   legalEntityContactDetails,
@@ -18,7 +19,7 @@ import {
   watchlist,
 } from "@auction/db/schema";
 import { anonymiseEnquiries, eraseAlertSubscribers } from "@auction/persistence/lib";
-import { inArray } from "drizzle-orm";
+import { getTableName, inArray } from "drizzle-orm";
 import type { AnyPgColumn, PgTable } from "drizzle-orm/pg-core";
 import type { ProjectorDbConnection } from "../interfaces/worker-db.types.js";
 import type { BidAnonymisationScope } from "./bid-anonymisation-scope.js";
@@ -62,6 +63,8 @@ export type BidAnonymisationRule = {
   treatment: "delete" | "scrub";
   /** Fields changed by a scrub; empty for a delete. Documentation and test oracle. */
   fields: readonly string[];
+  /** Set on a rule that scrubs or deletes domain events under a table name other than the event log's own. */
+  readsEventLog?: boolean;
   /**
    * Returns the number of rows changed, or, when one rule touches several tables, the rows changed
    * per table name.
@@ -293,8 +296,13 @@ export const BID_ANONYMISATION_RULES: readonly BidAnonymisationRule[] = [
   alertSubscribersRule,
 ];
 
-/** Tables that hold the domain event log. Erasure counts a person's compliance checks from it. */
-const DOMAIN_EVENT_TABLES: readonly string[] = ["domain_event", "domain_events"];
+/** The domain event log's table name, taken from the schema. Erasure counts a person's compliance checks from it. */
+const DOMAIN_EVENT_TABLE = getTableName(domainEvent);
+
+/** Whether a rule changes the domain event log: it targets the log's table or says so with `readsEventLog`. */
+function touchesEventLog(rule: BidAnonymisationRule): boolean {
+  return rule.readsEventLog === true || rule.table === DOMAIN_EVENT_TABLE;
+}
 
 /**
  * The enquiry rule decides whether an enquiry is kept by reading the person's decided screenings
@@ -304,7 +312,7 @@ const DOMAIN_EVENT_TABLES: readonly string[] = ["domain_event", "domain_events"]
 export function assertEnquiryErasureBeforeEventScrub(rules: readonly BidAnonymisationRule[]): void {
   const enquiryAt = rules.findIndex((rule) => rule.table === enquiryRule.table);
   rules.forEach((rule, at) => {
-    if (!DOMAIN_EVENT_TABLES.includes(rule.table)) return;
+    if (!touchesEventLog(rule)) return;
     if (enquiryAt === -1 || at < enquiryAt) {
       throw new Error(
         `anonymisation rule for ${rule.table} must run after the ${enquiryRule.table} rule`,

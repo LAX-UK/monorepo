@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { type Database, createDb } from "@auction/db";
 import {
+  bidUserProfile,
   domainEvent,
   itemSubmission,
   kycVerification,
@@ -208,6 +209,27 @@ describe.skipIf(!HAS_DB)("the deals a KYC retention subject is a party to (integ
       await tx.insert(kycVerification).values([session("9104"), session(null)]);
       expect(await store.dealRecords(buyerId)).toMatchObject([{ hasComplianceCase: false }]);
       await tx.insert(kycVerification).values([session("9102")]);
+      expect(await store.dealRecords(buyerId)).toMatchObject([{ hasComplianceCase: true }]);
+    });
+  });
+
+  it("counts a rejected identity status on the profile, but not an unverified or approved one", async () => {
+    await withDeal(async ({ tx, buyerId, dealId }) => {
+      await tx
+        .update(privateSaleDeal)
+        .set({ stage: "cancelled", cancelReason: "Withdrawn", cancelledAt: new Date() })
+        .where(eq(privateSaleDeal.id, dealId));
+      const store = new DrizzleKycRetentionPersonStore(tx, new DrizzlePartyDealRecordReader(tx));
+      const setStatus = (kycStatus: "unverified" | "approved" | "rejected") =>
+        tx
+          .insert(bidUserProfile)
+          .values({ userId: buyerId, kycStatus, createdAt: new Date(), updatedAt: new Date() })
+          .onConflictDoUpdate({ target: bidUserProfile.userId, set: { kycStatus } });
+      for (const kycStatus of ["unverified", "approved"] as const) {
+        await setStatus(kycStatus);
+        expect(await store.dealRecords(buyerId)).toMatchObject([{ hasComplianceCase: false }]);
+      }
+      await setStatus("rejected");
       expect(await store.dealRecords(buyerId)).toMatchObject([{ hasComplianceCase: true }]);
     });
   });

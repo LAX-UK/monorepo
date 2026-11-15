@@ -61,10 +61,16 @@ type Setup = {
   artworkHistory?: object[];
 };
 
+const TX_SENTINEL = { sentinel: true } as never;
+
 function setup(options: Setup = {}) {
   let deal =
     options.deal ?? makeDeal({ stage: "offer", priceMinor: 4_800_000, vatTreatment: null });
   const events = recordingSink();
+  // What the desk publishes through: the base sink, whose `withTx` hands back a separate sink.
+  const scopedEvents = recordingSink();
+  const withTx = vi.fn((_tx: unknown) => scopedEvents);
+  const commandEvents = { publish: events.publish, withTx } as unknown as typeof events;
   const payments = options.payments ?? new InMemoryDealPayments();
   const policy = options.policy ?? CONFIGURED;
   const clearance = options.clearance ?? CLEAR;
@@ -86,7 +92,7 @@ function setup(options: Setup = {}) {
       party: { legalEntityId: string; actingUserId: string | null },
       inTransaction?: (tx: never) => Promise<void>,
     ) => {
-      await inTransaction?.({} as never);
+      await inTransaction?.(TX_SENTINEL);
       deal = {
         ...deal,
         version: deal.version + 1,
@@ -197,7 +203,7 @@ function setup(options: Setup = {}) {
           ? { legalEntityId: "le-new-buyer", actingUserId: "u-new-buyer" }
           : options.partyResolves,
     } as never,
-    events,
+    events: commandEvents,
     records: queries,
   });
   const real = new PrivateSaleDealDesk(
@@ -223,6 +229,8 @@ function setup(options: Setup = {}) {
     desk,
     real,
     events,
+    scopedEvents,
+    withTx,
     reversal,
     transfers,
     invoices,
@@ -463,7 +471,9 @@ describe("PrivateSaleDealDeskService updateTerms", () => {
 
 describe("PrivateSaleDealDeskService nameBuyer", () => {
   it("names the person acting for the buyer and records that a party was named, not who", async () => {
-    const { desk, setParty, events } = setup({ deal: stageDeal("proposed", { buyer: null }) });
+    const { desk, setParty, scopedEvents } = setup({
+      deal: stageDeal("proposed", { buyer: null }),
+    });
     const result = await desk.nameBuyer(MANAGER, "PS-0001", {
       version: 4,
       buyerUserId: "u-new-buyer",
@@ -475,7 +485,7 @@ describe("PrivateSaleDealDeskService nameBuyer", () => {
       { role: "buyer", legalEntityId: "le-new-buyer", actingUserId: "u-new-buyer" },
       expect.any(Function),
     );
-    expect(events.events).toEqual([
+    expect(scopedEvents.events).toEqual([
       {
         eventType: "private_sale_deal.party_named",
         payload: {
@@ -488,11 +498,28 @@ describe("PrivateSaleDealDeskService nameBuyer", () => {
     ]);
   });
 
-  it("records the naming inside the write, so a failed event keeps no party", async () => {
-    const { desk, setParty } = setup({ deal: stageDeal("proposed", { buyer: null }) });
+  it("publishes the naming on the sink scoped to the write's transaction, not the base sink", async () => {
+    const { desk, events, scopedEvents, withTx } = setup({
+      deal: stageDeal("proposed", { buyer: null }),
+    });
     await desk.nameBuyer(MANAGER, "PS-0001", { version: 4, buyerUserId: "u-new-buyer" });
-    // The event is handed to the repository as part of the write, never published after it.
-    expect(setParty.mock.calls[0]?.[3]).toBeTypeOf("function");
+    // The repository hands its transaction to the callback; the event must ride on that one.
+    expect(withTx).toHaveBeenCalledWith(TX_SENTINEL);
+    expect(scopedEvents.events.map((e) => e.eventType)).toEqual(["private_sale_deal.party_named"]);
+    expect(events.events).toEqual([]);
+  });
+
+  it("keeps no party when the event cannot be recorded in the write", async () => {
+    const { desk, scopedEvents, currentDeal } = setup({
+      deal: stageDeal("proposed", { buyer: null }),
+    });
+    scopedEvents.publish = async () => {
+      throw new Error("event write failed");
+    };
+    await expect(
+      desk.nameBuyer(MANAGER, "PS-0001", { version: 4, buyerUserId: "u-new-buyer" }),
+    ).rejects.toThrow("event write failed");
+    expect(currentDeal().buyer).toBeNull();
   });
 
   it("cannot name a buyer who is not a client, or who is not a member of the organisation", async () => {

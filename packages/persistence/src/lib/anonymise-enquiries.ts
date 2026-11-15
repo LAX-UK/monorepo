@@ -220,7 +220,7 @@ async function dealRecordsOf(
         updatedAt: deal.updatedAt,
       }),
       hasComplianceCase: [...(usersOf.get(deal.id) ?? [])].some((userId) =>
-        (checks.get(userId) ?? []).some((at) => at >= since),
+        (checks.get(userId) ?? []).some((at) => isCheckInWindow(at, since)),
       ),
     });
     records.set(deal.enquiryId, list);
@@ -234,6 +234,15 @@ const VERIFF_DECLINED_CODE = "9102";
 /** The event written each time an anti-money-laundering screening is decided, whether it cleared or blocked. */
 const AML_SCREENING_EVALUATED_EVENT = "aml.screening_evaluated";
 
+/** When a check was opened; null when no time was recorded, which counts as inside any window. */
+export type CheckTime = Date | null;
+
+/** Whether a check falls in a deal's window. A check with no time fails towards counting. */
+export function isCheckInWindow(at: CheckTime, since: Date, endedAt?: Date | null): boolean {
+  if (at === null) return true;
+  return at >= since && (endedAt == null || at <= endedAt);
+}
+
 /**
  * When a compliance check was opened for each person: a watchlist screening, a source-of-funds
  * case, an anti-money-laundering hold (still in place, or since cleared and so read from the
@@ -244,8 +253,8 @@ const AML_SCREENING_EVALUATED_EVENT = "aml.screening_evaluated";
 export async function checkTimesByUser(
   tx: Database,
   userIds: readonly string[],
-): Promise<Map<string, Date[]>> {
-  const times = new Map<string, Date[]>();
+): Promise<Map<string, CheckTime[]>> {
+  const times = new Map<string, CheckTime[]>();
   if (userIds.length === 0) return times;
   const ids = [...userIds];
   const [screenings, funds, holds, rejected, declined, decisions] = await Promise.all([
@@ -257,22 +266,24 @@ export async function checkTimesByUser(
       .select({ userId: sourceOfFunds.userId, at: sourceOfFunds.createdAt })
       .from(sourceOfFunds)
       .where(inArray(sourceOfFunds.userId, ids)),
-    // A hold with no recorded time counts from now, so it is never missed.
+    // A hold with no recorded time comes back as null, which counts as inside any window.
     tx
       .select({
         userId: bidUserProfile.userId,
-        at: sql<Date>`coalesce(${bidUserProfile.amlHoldAt}, now())`,
+        at: sql<Date | null>`${bidUserProfile.amlHoldAt}`,
       })
       .from(bidUserProfile)
       .where(and(inArray(bidUserProfile.userId, ids), ne(bidUserProfile.amlHoldStatus, "none"))),
     tx
       .select({
         userId: bidUserProfile.userId,
-        // When the identity check was decided, not when the profile was last touched.
-        at: sql<Date>`coalesce((
-          select max(${kycVerification.decisionAt}) from ${kycVerification}
+        // The earliest time the identity check is known by, never the profile's last edit. With no
+        // verification row there is no time, so it comes back null and counts as inside any window.
+        at: sql<Date | null>`(
+          select min(coalesce(${kycVerification.decisionAt}, ${kycVerification.createdAt}))
+          from ${kycVerification}
           where ${kycVerification.userId} = ${bidUserProfile.userId}
-        ), ${bidUserProfile.updatedAt})`,
+        )`,
       })
       .from(bidUserProfile)
       .where(and(inArray(bidUserProfile.userId, ids), eq(bidUserProfile.kycStatus, "rejected"))),
@@ -304,7 +315,10 @@ export async function checkTimesByUser(
       ),
   ]);
   for (const row of [...screenings, ...funds, ...holds, ...rejected, ...declined, ...decisions]) {
-    times.set(row.userId, [...(times.get(row.userId) ?? []), new Date(row.at)]);
+    times.set(row.userId, [
+      ...(times.get(row.userId) ?? []),
+      row.at === null ? null : new Date(row.at),
+    ]);
   }
   return times;
 }
