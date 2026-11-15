@@ -5,7 +5,10 @@ import type { IPayoutRepository } from "@auction/persistence/interfaces";
 import type { IUserInvitationRepository } from "@auction/persistence/interfaces";
 import type { IBidRepository, ITransactionRunner } from "@auction/persistence/interfaces";
 import type { IConditionReportRequestRepository } from "@auction/persistence/interfaces";
-import type { ILotFulfilmentRepository } from "@auction/persistence/interfaces";
+import type {
+  ICollectionBookingReader,
+  ILotFulfilmentRepository,
+} from "@auction/persistence/interfaces";
 import type { ICoverAnalysisReader, ISaleCoverRepository } from "@auction/persistence/interfaces";
 import type {
   IAdminDisputeCaseEnrichmentReader,
@@ -181,6 +184,7 @@ export type CreateAdminRouteServicesInput = {
   saleExpectedGuestsReader: ISaleExpectedGuestsReader;
   lotFulfilmentService: ILotFulfilmentService;
   lotFulfilmentRepository: ILotFulfilmentRepository;
+  collectionBookings: Pick<ICollectionBookingReader, "findLiveByLots">;
   bidService: BidService;
   saleroomOnBlockPolicy: SaleroomOnBlockPolicy;
   paddleService: PaddleService;
@@ -268,6 +272,7 @@ export function createAdminRouteServices(
     saleRegistrationService: input.saleRegistrationService,
     lotFulfilmentService: input.lotFulfilmentService,
     lotFulfilmentRepository: input.lotFulfilmentRepository,
+    collectionBookings: input.collectionBookings,
     qrCodeService: input.qrCodeService,
     qrCodeAnalytics: input.qrCodeAnalytics,
     conditionReportService: input.conditionReportService,

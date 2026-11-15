@@ -1,4 +1,7 @@
-import type { ILotFulfilmentRepository } from "@auction/persistence/interfaces";
+import type {
+  ICollectionBookingReader,
+  ILotFulfilmentRepository,
+} from "@auction/persistence/interfaces";
 import type { IAdminLotFulfilmentApplicationService } from "../interfaces/admin-routes.js";
 import type { ILotFulfilmentAdminService } from "../interfaces/lot-fulfilment-service.js";
 import type { AdminLotFulfilmentListPage } from "./admin-lot-fulfilment-list-query.service.js";
@@ -10,8 +13,12 @@ export class AdminLotFulfilmentApplicationService implements IAdminLotFulfilment
   constructor(
     private readonly fulfilment: ILotFulfilmentAdminService,
     fulfilmentRepository: ILotFulfilmentRepository,
+    collectionBookings: Pick<ICollectionBookingReader, "findLiveByLots">,
   ) {
-    this.listQuery = new AdminLotFulfilmentListQueryService(fulfilmentRepository);
+    this.listQuery = new AdminLotFulfilmentListQueryService(
+      fulfilmentRepository,
+      collectionBookings,
+    );
   }
 
   getPage(

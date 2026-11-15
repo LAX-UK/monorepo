@@ -20,6 +20,8 @@ export type AdminLotFulfilmentListRow = {
   fulfilmentMethod: string | null;
   shippingCarrier: string | null;
   trackingNumber: string | null;
+  /** The live collection visit holding the lot, or `null` when it is not booked. */
+  collectionVisit: { start: string; end: string; reference: string } | null;
 };
 
 export type AdminLotFulfilmentListSummary = {
@@ -66,6 +68,10 @@ const rowSchema = z.object({
   fulfilmentMethod: z.union([z.null(), z.coerce.string()]),
   shippingCarrier: z.union([z.null(), z.coerce.string()]),
   trackingNumber: z.union([z.null(), z.coerce.string()]),
+  collectionVisit: z
+    .object({ start: z.string(), end: z.string(), reference: z.string() })
+    .nullable()
+    .default(null),
 });
 
 const summarySchema = z.object({

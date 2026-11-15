@@ -7,6 +7,7 @@ import {
   FULFILMENT_VIEWS,
   type LotFulfilmentListSearch,
   type LotFulfilmentStaffRow,
+  collectionLabel,
   lotFulfilmentListHref,
   lotFulfilmentPanelHref,
   lotFulfilmentSort,
@@ -110,6 +111,14 @@ export function LotFulfilmentStaffList(props: LotFulfilmentStaffListProps) {
         hideBelow: "md",
         mobile: "meta",
         cell: (row) => row.method ?? null,
+      },
+      {
+        id: "collection",
+        header: "Collection",
+        width: "240px",
+        hideBelow: "lg",
+        mobile: "hidden",
+        cell: (row) => collectionLabel(row),
       },
       {
         id: "shipping",
@@ -269,6 +278,7 @@ export function LotFulfilmentQuickView({
         row
           ? [
               { label: "Method", value: row.method ?? "Not chosen yet" },
+              { label: "Collection", value: collectionLabel(row) ?? "Not needed" },
               { label: "Carrier and tracking", value: row.shipping ?? "Not shipped" },
               {
                 label: "Last change",

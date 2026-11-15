@@ -1,5 +1,6 @@
 import { buildListHref } from "@/lib/admin/admin-list-params";
 import { LOT_FULFILMENT_LIST_PATH } from "@/lib/admin/build-lot-fulfilment-list-page-model";
+import { visitWhen } from "@/lib/admin/collections/desk.vm";
 import { defineListSort } from "@/lib/admin/define-list-sort";
 import { staffStatus } from "@/lib/admin/staff-kit-status";
 import type {
@@ -32,11 +33,21 @@ export type LotFulfilmentStaffRow = {
   method: string | null;
   /** "Royal Mail · AB123456789GB". */
   shipping: string | null;
+  /** "Thu 12 Nov, 14:00–14:30 GMT" for the booked visit; `null` when there is none. */
+  collection: string | null;
   updatedAt: string;
   lotHref: string;
   saleHref: string | null;
   saleTitle: string | null;
 };
+
+/** What the Collection column says: the visit, "Not booked", or nothing for a lot that ships. */
+export function collectionLabel(
+  row: Pick<LotFulfilmentStaffRow, "collection" | "method">,
+): string | null {
+  if (row.collection) return row.collection;
+  return row.method === "Shipping" ? null : "Not booked";
+}
 
 const METHOD_LABELS: Record<string, string> = {
   collection: "Collection",
@@ -57,6 +68,7 @@ export function toLotFulfilmentStaffRows(
     status: staffStatus("fulfilment", row.status),
     method: row.fulfilmentMethod ? (METHOD_LABELS[row.fulfilmentMethod] ?? null) : null,
     shipping: [row.shippingCarrier, row.trackingNumber].filter(Boolean).join(" · ") || null,
+    collection: row.collectionVisit ? visitWhen(row.collectionVisit) : null,
     updatedAt: row.updatedAt,
     lotHref: `/admin/lots/${row.lotId}`,
     saleHref: row.saleId ? `/admin/sales/${row.saleId}` : null,
