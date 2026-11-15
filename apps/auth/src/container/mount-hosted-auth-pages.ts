@@ -194,6 +194,13 @@ export function mountHostedAuthPages(app: Hono, capabilities: HostedAuthPageMoun
     return c.redirect(`/login${url.search}`, 302);
   });
 
+  // The page lives at /login; /sign-in used to be a bare 404. The target is a fixed same-origin
+  // path, so only the query string is carried over and nothing in it can pick another host.
+  app.get("/sign-in", (c) => {
+    const url = new URL(c.req.url);
+    return c.redirect(`/login${url.search}`, 301);
+  });
+
   const html = (
     path: string,
     render: typeof buildHostedLoginHtml,
