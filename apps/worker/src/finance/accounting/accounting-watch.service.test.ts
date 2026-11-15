@@ -14,6 +14,7 @@ import {
   REMAINDER_UNSETTLED_AFTER_MS,
   SENDER_MISSED_AFTER_MS,
   STATUS_CHECK_MISSED_AFTER_MS,
+  STUCK_REVERSALS_READ_LIMIT,
 } from "./accounting-watch.service.js";
 
 const books = (mode: "off" | "dry_run" | "test_org" | "live") =>
@@ -255,8 +256,10 @@ describe("AccountingWatch", () => {
         () => stuck,
       );
       expect((await watch.check()).refundReversalsStuck).toEqual({ waiting: 1, raised: 1 });
+      // Literal, not the exported constant: pins the six-hour threshold itself.
+      expect(REFUND_REVERSAL_STUCK_AFTER_MS).toBe(6 * 60 * 60_000);
       expect(stuckRefundReversals).toHaveBeenCalledWith(
-        new Date(NOW.getTime() - REFUND_REVERSAL_STUCK_AFTER_MS),
+        new Date(NOW.getTime() - 6 * 60 * 60_000),
         expect.any(Number),
       );
       expect(raised).toEqual([
@@ -281,6 +284,38 @@ describe("AccountingWatch", () => {
         [ACCOUNTING_ALERTS.refundReversalStuck.message, 2],
       ]);
       expect(raised).toHaveLength(2);
+    });
+
+    it("keeps what it raised while a full page is read, even as the page's members change", async () => {
+      let stuck = Array.from({ length: STUCK_REVERSALS_READ_LIMIT }, (_, i) => reversal(i + 1));
+      const { watch, raised } = setUp(
+        {},
+        NOW.toISOString(),
+        "dry_run",
+        none,
+        none,
+        none,
+        none,
+        () => stuck,
+      );
+      expect((await watch.check()).refundReversalsStuck).toEqual({
+        waiting: STUCK_REVERSALS_READ_LIMIT,
+        raised: STUCK_REVERSALS_READ_LIMIT,
+      });
+      // Some settle and others move into the full page: only the new ones are raised, and the
+      // ones that left the page are not forgotten.
+      stuck = Array.from({ length: STUCK_REVERSALS_READ_LIMIT }, (_, i) => reversal(i + 11));
+      expect((await watch.check()).refundReversalsStuck).toEqual({
+        waiting: STUCK_REVERSALS_READ_LIMIT,
+        raised: 10,
+      });
+      // Back to a page holding the first ones: nothing is raised again.
+      stuck = Array.from({ length: STUCK_REVERSALS_READ_LIMIT }, (_, i) => reversal(i + 1));
+      expect((await watch.check()).refundReversalsStuck).toEqual({
+        waiting: STUCK_REVERSALS_READ_LIMIT,
+        raised: 0,
+      });
+      expect(raised).toHaveLength(STUCK_REVERSALS_READ_LIMIT + 10);
     });
 
     it("forgets a reversal once it settles", async () => {

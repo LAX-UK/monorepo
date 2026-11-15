@@ -395,8 +395,8 @@ Books.
     event, the clearing-refund step reads the refund itself again before refunding (a
     `refund_reversal` row for that refund, or a courier total now below the credit note), and holds
     the credit note with this alert instead of refunding it.
-  - **`accounting_refund_reversal_stuck`** (warning). A reversal has waited more than six hours
-    (`REFUND_REVERSAL_STUCK_AFTER_MS`) for such a credit note: it never uses up attempts, so it is
+  - **`accounting_refund_reversal_stuck`** (warning). A reversal queued more than six hours ago
+    (`REFUND_REVERSAL_STUCK_AFTER_MS`) is now waiting for such a credit note: it never uses up attempts, so it is
     never dead-lettered and would otherwise wait silently. The accounting watch (every 15 minutes)
     raises it once per stuck delivery (`deliveryId`, `sourceEvent`, `waitingSince`, and
     `lastError`, which names the credit note); a worker restart raises each one still stuck once

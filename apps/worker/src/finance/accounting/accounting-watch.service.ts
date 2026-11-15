@@ -206,14 +206,15 @@ export class AccountingWatch {
   }
 
   /**
-   * Raises each refund reversal that has waited too long for a credit note to settle, once per
-   * delivery: the next runs leave it alone while it still waits. One that settled is forgotten.
+   * Raises each refund reversal queued more than six hours ago and now waiting for a credit note to
+   * settle, once per delivery: the next runs leave it alone while it still waits. One that settled is forgotten.
    */
   private async stuckRefundReversals(now: Date): Promise<WatchResult["refundReversalsStuck"]> {
     const stuck = await this.deps.attention.stuckRefundReversals(
       new Date(now.getTime() - REFUND_REVERSAL_STUCK_AFTER_MS),
       STUCK_REVERSALS_READ_LIMIT,
     );
+    // Capped at the oldest STUCK_REVERSALS_READ_LIMIT: newer ones are raised only once some settle.
     // Oldest first, so a full page still holds every one raised before; only a short page shows
     // which have settled.
     if (stuck.length < STUCK_REVERSALS_READ_LIMIT) {
@@ -222,6 +223,7 @@ export class AccountingWatch {
     }
     let raised = 0;
     for (const reversal of stuck) {
+      // The set holds ids only: a lastError flip (credit_in_flight <-> credit_missing) is raised again.
       if (this.raisedReversals.has(reversal.deliveryId)) continue;
       this.raisedReversals.add(reversal.deliveryId);
       raised += 1;
