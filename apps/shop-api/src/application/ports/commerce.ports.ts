@@ -30,6 +30,8 @@ export type BasketLineRecord = {
   editionSize: number | null;
   /** The shared contract's wording for the print ("Limited edition of 24 · Hand-signed"); null for merchandise. */
   editionLine: string | null;
+  /** The year the artwork was made; null when unrecorded or for merchandise. */
+  editionYear?: number | null;
   /** The framing option chosen for this print, null for unframed. */
   framingOptionId?: string | null;
   /** That option as the shopper sees it, priced; null for unframed. */

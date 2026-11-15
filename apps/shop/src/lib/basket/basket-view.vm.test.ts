@@ -76,6 +76,22 @@ describe("presentBasketLine", () => {
     expect(vm.imageAlt).toBe("Warm Basket");
   });
 
+  it("adds the edition year to the detail line", () => {
+    expect(presentBasketLine({ ...edition, editionYear: 2024 }).detail).toBe(
+      "Limited edition of 24 · Hand-signed · 2024",
+    );
+  });
+
+  it("says what a changed price changed from, using the money formatter", () => {
+    expect(
+      presentBasketLine({ ...edition, priceChanged: true, previousUnitPricePence: 12000 })
+        .priceChangedFrom,
+    ).toBe("Price changed from £120.00");
+    // An older shop-api sends no previous price: the notice still shows, without the figure.
+    expect(presentBasketLine({ ...edition, priceChanged: true }).priceChangedFrom).toBeNull();
+    expect(presentBasketLine(edition).priceChangedFrom).toBeNull();
+  });
+
   it("words an open edition from the contract, with no size", () => {
     const vm = presentBasketLine({
       ...edition,

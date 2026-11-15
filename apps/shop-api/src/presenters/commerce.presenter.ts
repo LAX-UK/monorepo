@@ -47,6 +47,11 @@ export function presentBasket(
       quantity: line.quantity,
       soldOut: line.sellableCount < 1,
       priceChanged: line.livePricePence !== null && line.livePricePence !== line.unitPricePence,
+      previousUnitPricePence:
+        line.livePricePence !== null && line.livePricePence !== line.unitPricePence
+          ? line.unitPricePence
+          : null,
+      editionYear: line.editionYear ?? null,
       outOfStock: line.quantity > line.sellableCount,
       imageUrl: line.imageUrl,
       artistName: line.artistName,

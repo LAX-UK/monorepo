@@ -1,6 +1,11 @@
 import { Value } from "@sinclair/typebox/value";
 import { describe, expect, it } from "vitest";
-import { ORDER_STATUS_VALUES, OrderStatusSchema, OrderSummarySchema } from "./commerce-public.js";
+import {
+  BasketLineSchema,
+  ORDER_STATUS_VALUES,
+  OrderStatusSchema,
+  OrderSummarySchema,
+} from "./commerce-public.js";
 import { parseOrderSummary, parseSavedDeliveryAddressList } from "./parse-public.js";
 
 describe("OrderSummarySchema", () => {
@@ -160,5 +165,37 @@ describe("parseSavedDeliveryAddressList", () => {
     expect(() =>
       parseSavedDeliveryAddressList({ available: true, addresses: [{ ...saved, version: 1 }] }),
     ).toThrow();
+  });
+});
+
+describe("BasketLineSchema", () => {
+  const line = {
+    lineId: "550e8400-e29b-41d4-a716-846655440001",
+    artworkSlug: "warm-basket",
+    artworkTitle: "Warm Basket",
+    productVariantId: null,
+    productSlug: null,
+    productTitle: null,
+    variantSku: null,
+    unitPricePence: 12000,
+    quantity: 1,
+    soldOut: false,
+    priceChanged: true,
+    outOfStock: false,
+    imageUrl: null,
+  };
+
+  it("accepts a line from an older shop-api with no previous price or year", () => {
+    expect(Value.Check(BasketLineSchema, line)).toBe(true);
+  });
+
+  it("accepts the previous unit price and edition year, each null or a number", () => {
+    expect(
+      Value.Check(BasketLineSchema, { ...line, previousUnitPricePence: 11000, editionYear: 2024 }),
+    ).toBe(true);
+    expect(
+      Value.Check(BasketLineSchema, { ...line, previousUnitPricePence: null, editionYear: null }),
+    ).toBe(true);
+    expect(Value.Check(BasketLineSchema, { ...line, previousUnitPricePence: -1 })).toBe(false);
   });
 });

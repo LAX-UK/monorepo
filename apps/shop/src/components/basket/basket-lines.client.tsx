@@ -344,6 +344,7 @@ function BasketLineRow({
         ) : null}
         {line?.priceChanged ? (
           <ShopNotice tone="warning" title="The price has changed">
+            {vm.priceChangedFrom ? <p>{vm.priceChangedFrom}.</p> : null}
             <p>Update the basket to see the new price before checkout.</p>
             <ShopCommerceButton
               type="button"

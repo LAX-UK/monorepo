@@ -33,6 +33,8 @@ export type BasketLineVm = {
    * 24 · Hand-signed"), or the SKU for merchandise; null when neither is known.
    */
   detail: string | null;
+  /** "Price changed from £180" when the price moved since the item was added; else null. */
+  priceChangedFrom: string | null;
   imageUrl: string | null;
   imageAlt: string;
   unitPrice: string;
@@ -103,10 +105,14 @@ export function presentBasketLine(line: BasketLine): BasketLineVm {
     artistHref: line.artistSlug ? `/artists/${line.artistSlug}` : null,
     detail:
       kind === "edition"
-        ? (line.editionLine ?? null)
+        ? [line.editionLine, line.editionYear].filter((part) => part != null).join(" · ") || null
         : line.variantSku
           ? `SKU ${line.variantSku}`
           : null,
+    priceChangedFrom:
+      line.priceChanged && line.previousUnitPricePence != null
+        ? `Price changed from ${formatGbpPence(line.previousUnitPricePence)}`
+        : null,
     imageUrl: line.imageUrl,
     imageAlt: artistName ? `${title} by ${artistName}` : title,
     unitPrice: formatGbpPence(line.unitPricePence),
