@@ -77,6 +77,20 @@ export function isValidPasskeyName(value: string): boolean {
 }
 
 /** A passkey as the person sees it: named and dated. The key material never leaves the issuer. */
+/** Who keeps a passkey, from its authenticator; "unknown" when it is not a well-known one. */
+export const PASSKEY_PROVIDERS = [
+  "apple",
+  "google",
+  "windows_hello",
+  "security_key",
+  "onepassword",
+  "bitwarden",
+  "dashlane",
+  "unknown",
+] as const;
+
+export const passkeyProviderSchema = z.enum(PASSKEY_PROVIDERS);
+
 export const accountPasskeySchema = z.object({
   id: z.string().min(1),
   name: z.string().min(1).max(PASSKEY_NAME_MAX_LENGTH),
@@ -84,6 +98,8 @@ export const accountPasskeySchema = z.object({
   synced: z.boolean(),
   /** Built into the device, or a separate security key. */
   kind: z.enum(["platform", "security_key"]),
+  /** Who keeps it, from the authenticator. An older issuer leaves it out: unknown. */
+  provider: passkeyProviderSchema.default("unknown"),
   createdAt: z.string().datetime({ offset: true }),
   lastUsedAt: z.string().datetime({ offset: true }).nullable(),
 });

@@ -216,6 +216,7 @@ describe("AccountSignInMethodsService.read", () => {
         name: "Sarah's MacBook",
         synced: true,
         kind: "platform",
+        provider: "unknown",
         createdAt: "2026-10-02T09:00:00.000Z",
         lastUsedAt: "2026-11-01T09:00:00.000Z",
       },
@@ -226,6 +227,7 @@ describe("AccountSignInMethodsService.read", () => {
       "kind",
       "lastUsedAt",
       "name",
+      "provider",
       "synced",
     ]);
   });
@@ -250,6 +252,18 @@ describe("presentPasskey", () => {
     expect(presentPasskey({ ...base, deviceType: "multiDevice", backedUp: false }).synced).toBe(
       false,
     );
+  });
+
+  it("names who keeps the passkey from its AAGUID, and says unknown when it cannot", () => {
+    expect(
+      presentPasskey({ ...base, aaguid: "fbfc3007-154e-4ecc-8c0b-6e020557d7bd" }).provider,
+    ).toBe("apple");
+    expect(
+      presentPasskey({ ...base, aaguid: "bada5566-a7aa-401f-bd96-45619a55120d" }).provider,
+    ).toBe("onepassword");
+    expect(presentPasskey({ ...base, aaguid: "not-listed" }).provider).toBe("unknown");
+    expect(presentPasskey({ ...base, aaguid: null }).provider).toBe("unknown");
+    expect(presentPasskey(base).provider).toBe("unknown");
   });
 
   it("calls a passkey a security key when it can only be reached over USB, NFC or Bluetooth", () => {

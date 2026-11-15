@@ -19,7 +19,7 @@ export type PasskeyRemoveConfirmVm = {
 export type PasskeyItemVm = {
   id: string;
   name: string;
-  /** Where it is kept: "Synced to your other devices", "This device only", "This security key only". */
+  /** Where it is kept: "Saved in iCloud Keychain" and the like, else "Synced to your other devices", "This device only", "This security key only". */
   hint: string;
   /** "Tue 3 Nov 2026", in the one date style. */
   addedOn: string;
@@ -62,7 +62,20 @@ export function passkeyNameProblem(raw: string): string | null {
   return isValidPasskeyName(name) ? null : "Use a name without line breaks or hidden characters.";
 }
 
+const SAVED_IN: Readonly<Record<AccountPasskey["provider"], string | null>> = {
+  apple: "Saved in iCloud Keychain",
+  google: "Saved in Google Password Manager",
+  onepassword: "Saved in 1Password",
+  bitwarden: "Saved in Bitwarden",
+  dashlane: "Saved in Dashlane",
+  windows_hello: "Saved in Windows Hello",
+  security_key: "Security key",
+  unknown: null,
+};
+
 function keptWhere(passkey: AccountPasskey): string {
+  const saved = SAVED_IN[passkey.provider];
+  if (saved) return saved;
   if (passkey.synced) return "Synced to your other devices";
   return passkey.kind === "security_key" ? "This security key only" : "This device only";
 }

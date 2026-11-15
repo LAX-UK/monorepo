@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { SUGGESTED_PASSKEY_NAME_MAX_LENGTH, suggestPasskeyName } from "./passkey-names.js";
+import {
+  SUGGESTED_PASSKEY_NAME_MAX_LENGTH,
+  passkeyProviderFromAaguid,
+  suggestPasskeyName,
+} from "./passkey-names.js";
 
 const CHROME_MAC =
   "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36";
@@ -50,5 +54,27 @@ describe("suggestPasskeyName", () => {
     expect(suggestPasskeyName({ userAgent: CHROME_MAC }).length).toBeLessThanOrEqual(
       SUGGESTED_PASSKEY_NAME_MAX_LENGTH,
     );
+  });
+});
+
+describe("passkeyProviderFromAaguid", () => {
+  it.each([
+    ["fbfc3007-154e-4ecc-8c0b-6e020557d7bd", "apple"],
+    ["EA9B8D66-4D01-1D21-3CE4-B6B48CB575D4", "google"],
+    ["08987058-cadc-4b81-b6e1-30de50dcbe96", "windows_hello"],
+    ["bada5566-a7aa-401f-bd96-45619a55120d", "onepassword"],
+    ["d548826e-79b4-db40-a3d8-11116f7e8349", "bitwarden"],
+    ["531126d6-e717-415c-9320-3d9aa6981239", "dashlane"],
+    ["2fc0579f-8113-47ea-b116-bb5a8db9202a", "security_key"],
+  ])("maps %s to %s", (aaguid, provider) => {
+    expect(passkeyProviderFromAaguid(aaguid)).toBe(provider);
+  });
+
+  it("says unknown for an unlisted, empty, all-zero or missing AAGUID", () => {
+    expect(passkeyProviderFromAaguid("11111111-1111-4111-8111-111111111111")).toBe("unknown");
+    expect(passkeyProviderFromAaguid("")).toBe("unknown");
+    expect(passkeyProviderFromAaguid("00000000-0000-0000-0000-000000000000")).toBe("unknown");
+    expect(passkeyProviderFromAaguid(null)).toBe("unknown");
+    expect(passkeyProviderFromAaguid(undefined)).toBe("unknown");
   });
 });

@@ -118,7 +118,12 @@ export {
   PASSKEY_NOT_ALLOWED,
   PASSKEY_WRONG_PERSON,
 } from "./passkey-error-codes.js";
-export { SUGGESTED_PASSKEY_NAME_MAX_LENGTH, suggestPasskeyName } from "./passkey-names.js";
+export {
+  SUGGESTED_PASSKEY_NAME_MAX_LENGTH,
+  type PasskeyProviderId,
+  passkeyProviderFromAaguid,
+  suggestPasskeyName,
+} from "./passkey-names.js";
 export {
   PASSKEY_LIMIT_ERROR_CODE,
   isPasskeyLimitError,

@@ -50,6 +50,7 @@ export class DrizzleIdentityCredentialRepository implements IIdentityCredentialR
         deviceType: passkey.deviceType,
         backedUp: passkey.backedUp,
         transports: passkey.transports,
+        aaguid: passkey.aaguid,
         createdAt: passkey.createdAt,
         lastUsedAt: passkey.lastUsedAt,
       })
@@ -132,6 +133,7 @@ export class DrizzleIdentityCredentialRepository implements IIdentityCredentialR
         deviceType: passkey.deviceType,
         backedUp: passkey.backedUp,
         transports: passkey.transports,
+        aaguid: passkey.aaguid,
         createdAt: passkey.createdAt,
         lastUsedAt: passkey.lastUsedAt,
       });

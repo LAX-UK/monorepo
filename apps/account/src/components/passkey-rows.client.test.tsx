@@ -90,6 +90,16 @@ describe("Passkeys row", () => {
     expect(screen.queryByText("0")).toBeNull();
   });
 
+  it("shows who keeps a passkey when the provider is known", () => {
+    renderList([
+      password,
+      passkeys([{ ...item("pk-1", "Work laptop"), hint: "Saved in Google Password Manager" }]),
+    ]);
+    const row = document.querySelector('[data-passkey-id="pk-1"]');
+    expect(row?.textContent).toContain("Saved in Google Password Manager · Added Tue 3 Nov 2026");
+    expect(row?.textContent).not.toContain("Synced to your other devices");
+  });
+
   it("lists each passkey with its name, where it is kept, when it was added and last used", () => {
     renderList([password, passkeys([item("pk-1", "iCloud Keychain"), item("pk-2", "YubiKey 5")])]);
     const row = document.querySelector('[data-passkey-id="pk-1"]');

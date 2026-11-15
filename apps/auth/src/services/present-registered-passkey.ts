@@ -9,7 +9,7 @@ import { presentPasskey } from "./account-sign-in-methods.service.js";
 export function presentRegisteredPasskey(record: unknown): AccountPasskey | null {
   if (!record || typeof record !== "object") return null;
   const row = record as Record<string, unknown>;
-  const { id, name, deviceType, backedUp, transports, createdAt } = row;
+  const { id, name, deviceType, backedUp, transports, aaguid, createdAt } = row;
   if (typeof id !== "string" || id.length === 0) return null;
   if (deviceType !== "singleDevice" && deviceType !== "multiDevice") return null;
   const made = new Date(
@@ -21,6 +21,7 @@ export function presentRegisteredPasskey(record: unknown): AccountPasskey | null
     deviceType,
     backedUp: backedUp === true,
     transports: typeof transports === "string" ? transports : null,
+    aaguid: typeof aaguid === "string" ? aaguid : null,
     createdAt: Number.isNaN(made.getTime()) ? new Date() : made,
     lastUsedAt: null,
   });
