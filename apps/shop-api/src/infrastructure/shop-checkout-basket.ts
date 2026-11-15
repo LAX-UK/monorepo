@@ -36,7 +36,12 @@ export type CheckoutBasket = {
 export async function loadCheckoutBasket(
   db: Database,
   input: { basketId: string; ownedBy: (owner: BasketOwner) => boolean },
-  options: { merchandiseEnabled: boolean; framingEnabled: boolean },
+  options: {
+    merchandiseEnabled: boolean;
+    framingEnabled: boolean;
+    /** Copies of one edition an order may hold; null or absent leaves only the stock. */
+    editionOrderLimit?: number | null;
+  },
 ): Promise<CheckoutBasket> {
   const basket = await loadBasketRecord(db, input.basketId);
   if (!input.ownedBy(basket.owner)) {
@@ -54,6 +59,16 @@ export async function loadCheckoutBasket(
   }
   await assertBasketStock(db, input.basketId);
   const fresh = await loadBasketRecord(db, input.basketId);
+  // The limit is checked here too: a basket made before it was lowered, or merged from a guest
+  // basket, can hold more than an order may, and the add-to-basket check never sees it.
+  const orderLimit = options.editionOrderLimit ?? null;
+  if (orderLimit != null && fresh.lines.some((l) => l.artworkId && l.quantity > orderLimit)) {
+    throw new ShopApiError(
+      SHOP_API_ERROR_CODES.QUANTITY_LIMIT,
+      `Limit ${orderLimit} per order`,
+      409,
+    );
+  }
   // Framing is checked on the lines the order is built from and priced on, not on the first read.
   const artworkIds = fresh.lines.flatMap((line) => (line.artworkId ? [line.artworkId] : []));
   await assertFramingOrderable({

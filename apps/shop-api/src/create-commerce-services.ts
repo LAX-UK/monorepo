@@ -108,6 +108,7 @@ export function createCommerceServices(
     regions: { read: () => readDeliveryRegions(db) },
     orders: createDrizzleDeliveryQuoteOrderStore(db, {
       framingEnabled: env.SHOP_FRAMING_ENABLED,
+      editionOrderLimit: env.SHOP_EDITION_ORDER_LIMIT,
       domainEventMode,
       vatPolicy: loadShopVatPolicy(env),
       merchandiseEnabled: env.SHOP_MERCHANDISE_ENABLED,
