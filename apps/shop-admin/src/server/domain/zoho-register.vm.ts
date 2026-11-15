@@ -268,6 +268,7 @@ export function soldAttentionActionHref(
 ): { href: string; external: boolean } | null {
   switch (action) {
     case "unpublish_lax_art":
+    case "open_lax_art":
       return item.placeRefId ? { href: `/artworks/${item.placeRefId}`, external: false } : null;
     case "withdraw_lot":
     case "withdraw_offer": {
@@ -280,6 +281,7 @@ export function soldAttentionActionHref(
       return href ? { href, external: true } : null;
     }
     case "not_sold":
+    case "dealt_with":
       return null;
   }
 }
@@ -491,6 +493,21 @@ function describeEvent(
     case "zoho_link_unlinked":
       return {
         title: "Link to the lax.art artwork removed",
+        ...(typeof payload.reason === "string" ? { detail: `Reason: ${payload.reason}` } : {}),
+        tone: "warning",
+      };
+    case "gallery_sale_recorded":
+      return {
+        title: "Sold in the gallery, per Zoho",
+        detail:
+          payload.laxArtListingId !== undefined
+            ? "Zoho's Status became Sold. Taken off lax.art."
+            : "Zoho's Status became Sold.",
+        tone: "info",
+      };
+    case "gallery_sale_reopened":
+      return {
+        title: "Gallery sale reopened",
         ...(typeof payload.reason === "string" ? { detail: `Reason: ${payload.reason}` } : {}),
         tone: "warning",
       };

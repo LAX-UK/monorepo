@@ -24,8 +24,10 @@ vi.mock("@/server/application/admin-inventory-actions.server", () => ({
 vi.mock("@/server/application/admin-artwork-actions.server", () => ({
   searchArtistOptions: async () => [],
 }));
+const reopen = vi.fn();
 vi.mock("@/server/application/admin-register-actions.server", () => ({
   resolveRegisterConflict: vi.fn(),
+  reopenGallerySale: (...args: unknown[]) => reopen(...args),
 }));
 vi.mock("@auction/ui/components/dropdown-menu", async () =>
   (await import("@/test/radix-stubs")).dropdownMenuStub(),
@@ -74,6 +76,7 @@ function detail(patch: Partial<AdminRegisterDetail> = {}): AdminRegisterDetail {
     createdAt: "2026-11-02T02:10:00.000Z",
     conflicts: [],
     events: [],
+    gallerySale: null,
     ...patch,
   };
 }
@@ -307,5 +310,62 @@ describe("FromZohoRecord offer at auction", () => {
       "https://bid.example/admin",
     );
     expect(screen.getAllByRole("link", { name: "Open on lax.art" }).length).toBeGreaterThan(0);
+  });
+});
+
+describe("FromZohoRecord: sold in the gallery", () => {
+  const SOLD_IN_GALLERY = {
+    key: "sold",
+    chip: { label: "Sold", tone: "neutral", marker: "check" },
+    from: "In the gallery, per Zoho",
+    since: "2026-11-15T10:00:00.000Z",
+    bidLot: null,
+  } as const;
+  const ADMIN = [...EDITOR, "artwork_register.reopen_sold"];
+  const sold = (reopenState: "allowed" | "zoho_still_sold") =>
+    detail({
+      offerState: "sold",
+      catalogueStatus: reopenState === "allowed" ? "Available" : "Sold",
+      whereItIs: SOLD_IN_GALLERY,
+      gallerySale: { reopen: reopenState },
+    });
+
+  it("says it is sold in the gallery and off sale, with no Reopen for a catalogue editor", () => {
+    show(sold("allowed"));
+    expect(screen.getByText("Sold in the gallery, per Zoho")).toBeInTheDocument();
+    expect(screen.getByText(/taken it off sale/)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Reopen sale/ })).not.toBeInTheDocument();
+  });
+
+  it("lets an Administrator reopen once Zoho no longer says Sold, with a reason", async () => {
+    reopen.mockResolvedValue({ ok: true, data: { registerId: "x", offerState: "held" } });
+    show(sold("allowed"), ADMIN);
+    fireEvent.click(screen.getByRole("button", { name: /Reopen sale/ }));
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByText("Reopen this sale")).toBeInTheDocument();
+    fireEvent.change(within(dialog).getByRole("textbox"), {
+      target: { value: "Marked Sold on the wrong Product" },
+    });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Reopen sale" }));
+    await vi.waitFor(() =>
+      expect(reopen).toHaveBeenCalledWith(
+        expect.objectContaining({
+          registerId: "11111111-1111-4111-8111-111111111111",
+          reason: "Marked Sold on the wrong Product",
+        }),
+      ),
+    );
+  });
+
+  it("holds Reopen back while Zoho still says Sold, and says why", () => {
+    show(sold("zoho_still_sold"), ADMIN);
+    expect(screen.getAllByText(/Change the Status in Zoho first/).length).toBeGreaterThan(0);
+    const button = screen.getByRole("button", { name: /Reopen sale/ });
+    expect(button).toHaveAttribute("aria-disabled", "true");
+  });
+
+  it("shows nothing about a gallery sale for anything else", () => {
+    show(detail(), ADMIN);
+    expect(screen.queryByText("Sold in the gallery, per Zoho")).not.toBeInTheDocument();
   });
 });

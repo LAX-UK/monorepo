@@ -17,7 +17,7 @@ export type SoldAttentionRecord = {
   markedAt: Date;
   /** `open` pauses new money; `overridden` is "it is not sold", kept so it is not raised again. */
   status: "open" | "overridden" | "resolved";
-  resolution: SoldWhileLiveResolution | "replaced" | "staff_override" | null;
+  resolution: SoldWhileLiveResolution | "replaced" | "staff_override" | "staff_resolved" | null;
   resolvedBy: string | null;
   overrideReason: string | null;
   raisedAt: Date;
@@ -47,6 +47,10 @@ export type SoldAttentionLiveCursor = { raisedAt: Date; id: string };
 
 export type SoldAttentionLiveRef = { id: string; registerId: string; raisedAt: Date };
 
+export type MarkDealtWithResult =
+  | { ok: true; item: SoldAttentionRecord }
+  | { ok: false; reason: "not_found" | "not_open" | "not_sold_in_gallery" };
+
 export type OverrideSoldAttentionResult =
   | { ok: true; item: SoldAttentionRecord }
   | { ok: false; reason: "not_found" | "not_open" };
@@ -75,6 +79,17 @@ export interface ISoldAttentionStore extends MoneyPauseReader {
     actor: string;
     now: Date;
   }): Promise<OverrideSoldAttentionResult>;
+  /**
+   * "Dealt with": staff have handled whatever was open for an artwork since recorded as sold in the
+   * gallery. Closes the item (`staff_resolved`), which ends the pause; refused unless the register
+   * shows the gallery sale, so it is never a way round "It is not sold".
+   */
+  markDealtWith(input: {
+    id: string;
+    /** `staff:<user id>`. */
+    actor: string;
+    now: Date;
+  }): Promise<MarkDealtWithResult>;
   /** Open items, oldest first, with their artworks. */
   listOpen(limit: number): Promise<SoldAttentionItem[]>;
   countOpen(): Promise<number>;

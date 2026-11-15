@@ -104,6 +104,8 @@ export const artworkRegisterEvent = pgTable(
         | "sold_while_live_raised"
         | "sold_while_live_resolved"
         | "sold_while_live_overridden"
+        | "gallery_sale_recorded"
+        | "gallery_sale_reopened"
       >()
       .notNull(),
     /** `zoho`, `system`, or `staff:<user id>`. */
@@ -153,7 +155,9 @@ export const artworkRegisterConflict = pgTable(
  * Zoho says an artwork is Sold or Reserved while LAX still has it for sale: one "Needs attention"
  * item per artwork and status. `open` pauses new money for the artwork; `overridden` is staff
  * saying it is not sold, kept (with the reason) so the sync does not raise it again; `resolved`
- * is over. The constraints are in migration 0360; they are repeated here where drizzle-kit needs them.
+ * is over. Once the artwork is recorded as sold in the gallery, an item raised while it was on
+ * lax.art stays open (money stays paused) until staff close it (`staff_resolved`). The
+ * constraints are in migrations 0360 and 0393; they are repeated here where drizzle-kit needs them.
  */
 export const artworkRegisterSoldAttention = pgTable(
   "artwork_register_sold_attention",
@@ -171,7 +175,12 @@ export const artworkRegisterSoldAttention = pgTable(
     markedAt: timestamp("marked_at", { mode: "date", withTimezone: true }).notNull(),
     status: text("status").$type<"open" | "overridden" | "resolved">().notNull().default("open"),
     resolution: text("resolution").$type<
-      "zoho_status_changed" | "withdrawn" | "sold_in_lax" | "replaced" | "staff_override"
+      | "zoho_status_changed"
+      | "withdrawn"
+      | "sold_in_lax"
+      | "replaced"
+      | "staff_override"
+      | "staff_resolved"
     >(),
     resolvedBy: text("resolved_by"),
     overrideReason: text("override_reason"),

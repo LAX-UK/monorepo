@@ -611,7 +611,8 @@ export const SHOP_ARTWORK_REGISTER_READ_TABLES = [
 export const SHOP_ARTWORK_REGISTER_CONFLICT_TABLES = ["artwork_register_conflict"] as const;
 /**
  * "Zoho says Sold" items: LAX Admin reads them (the pause check, the Needs attention list) and
- * decides one ("It is not sold": UPDATE). The worker raises and closes them, so it also INSERTs.
+ * decides one ("It is not sold" or "Dealt with": UPDATE). The worker raises and closes them, so it
+ * also INSERTs.
  */
 export const SHOP_SOLD_ATTENTION_TABLES = ["artwork_register_sold_attention"] as const;
 export const WORKER_SOLD_ATTENTION_TABLES = ["artwork_register_sold_attention"] as const;

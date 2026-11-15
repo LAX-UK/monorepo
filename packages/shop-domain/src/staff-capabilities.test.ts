@@ -209,6 +209,11 @@ describe("the From Zoho queue", () => {
     expect(rolesGranting("artwork_register.unlink")).toEqual(["shop_admin"]);
   });
 
+  it("lets only the Administrator reopen a sale made in the gallery", () => {
+    expect(rolesGranting("artwork_register.reopen_sold")).toEqual(["shop_admin"]);
+    expect(can("catalogue_editor", "artwork_register.reopen_sold")).toBe(false);
+  });
+
   it("keeps Read-only to viewing", () => {
     expect(capabilitiesForRole("read_only")).toContain("artwork_register.read");
     expect(capabilitiesForRole("read_only")).not.toContain("artwork_register.review");

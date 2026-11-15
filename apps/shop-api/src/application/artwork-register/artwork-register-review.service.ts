@@ -4,6 +4,8 @@ import {
   canAcceptZohoValue,
   catalogueGapsOf,
   deriveWhereItIs,
+  isSoldInZoho,
+  soldWhere,
   zohoModuleOf,
 } from "@auction/artwork-register-contracts";
 import {
@@ -323,6 +325,10 @@ export class ArtworkRegisterReviewService {
       conflicts: conflicts.map(presentConflict),
       // Newest first, as the page reads it.
       events: events.map((event) => presentRegisterEvent(event, names)).reverse(),
+      gallerySale:
+        soldWhere(entry.offer) === "gallery"
+          ? { reopen: isSoldInZoho(entry.catalogueStatus) ? "zoho_still_sold" : "allowed" }
+          : null,
     };
   }
 

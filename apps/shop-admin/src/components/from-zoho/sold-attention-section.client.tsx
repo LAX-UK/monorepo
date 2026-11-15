@@ -1,7 +1,7 @@
 "use client";
 
 import { useAdminAction } from "@/components/use-admin-action.client";
-import { markNotSold } from "@/server/application/admin-register-actions.server";
+import { markDealtWith, markNotSold } from "@/server/application/admin-register-actions.server";
 import { soldAttentionActionHref } from "@/server/domain/zoho-register.vm";
 import type { AdminSoldAttentionItem } from "@auction/shop-contracts";
 import { ConfirmActionDialog, Notice, Permitted, StaffButton } from "@auction/staff-ui";
@@ -57,6 +57,44 @@ function NotSoldDialog({
 }
 
 /**
+ * "Dealt with": for a work since recorded as sold in the gallery, staff have cancelled or refunded
+ * whatever was still open for it where it lives. Payments for the work are held until then.
+ */
+function DealtWithDialog({
+  item,
+  onClose,
+}: {
+  item: AdminSoldAttentionItem;
+  onClose: () => void;
+}) {
+  const action = useAdminAction();
+  return (
+    <>
+      <ConfirmActionDialog
+        open
+        onOpenChange={(open) => {
+          if (!open) onClose();
+        }}
+        title="Mark this dealt with"
+        description="Check that no checkout or invoice is still open for this artwork. Payments for it are held until you confirm. Nothing is cancelled or refunded for you."
+        confirmLabel="Dealt with"
+        loading={action.pending}
+        onConfirm={async () => {
+          const ok = await action.run(
+            () => markDealtWith({ attentionId: item.id, idempotencyKey: action.idempotencyKey }),
+            "Marked dealt with",
+          );
+          if (ok) onClose();
+        }}
+      >
+        {action.error}
+      </ConfirmActionDialog>
+      {action.stepUpDialog}
+    </>
+  );
+}
+
+/**
  * Artworks Zoho says are Sold or Reserved that are still for sale. Nothing is withdrawn by
  * itself: each item names where the artwork is still for sale and offers the way out for that
  * place, Zoho's record, and "It is not sold" for people who may review.
@@ -71,6 +109,7 @@ export function SoldAttentionSection({
   zohoUrlTemplate: string | null;
 }) {
   const [deciding, setDeciding] = useState<AdminSoldAttentionItem | null>(null);
+  const [closing, setClosing] = useState<AdminSoldAttentionItem | null>(null);
   return (
     <div className="flex flex-col gap-3">
       {items.map((item) => (
@@ -79,6 +118,15 @@ export function SoldAttentionSection({
             <p>{item.body}</p>
             <div className="flex flex-wrap gap-2">
               {item.actions.map((entry) => {
+                if (entry.kind === "dealt_with") {
+                  return (
+                    <Permitted key={entry.kind} requires={REVIEW}>
+                      <StaffButton variant="secondary" onClick={() => setClosing(item)}>
+                        {entry.label}
+                      </StaffButton>
+                    </Permitted>
+                  );
+                }
                 if (entry.kind === "not_sold") {
                   return (
                     <Permitted key={entry.kind} requires={REVIEW}>
@@ -110,6 +158,7 @@ export function SoldAttentionSection({
         </Notice>
       ))}
       {deciding ? <NotSoldDialog item={deciding} onClose={() => setDeciding(null)} /> : null}
+      {closing ? <DealtWithDialog item={closing} onClose={() => setClosing(null)} /> : null}
     </div>
   );
 }

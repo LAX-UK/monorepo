@@ -1,4 +1,9 @@
 import {
+  AdminRegisterParamsSchema,
+  type AdminRegisterReopenBody,
+  AdminRegisterReopenBodySchema,
+  AdminRegisterReopenResultSchema,
+  AdminSoldAttentionDealtWithResultSchema,
   AdminSoldAttentionListSchema,
   type AdminSoldAttentionOverrideBody,
   AdminSoldAttentionOverrideBodySchema,
@@ -17,7 +22,8 @@ import {
 
 /**
  * Artworks Zoho says are Sold or Reserved that are still for sale. Reading needs
- * `artwork_register.read`; "It is not sold" needs `artwork_register.review`.
+ * `artwork_register.read`; "It is not sold" and "Dealt with" need `artwork_register.review`.
+ * Reopening a sale made in the gallery is for Administrators (`artwork_register.reopen_sold`).
  */
 export async function registerAdminSoldAttentionRoutes(
   app: FastifyInstance,
@@ -84,6 +90,97 @@ export async function registerAdminSoldAttentionRoutes(
             "Keep the reason to 500 characters or fewer.",
             400,
           );
+      }
+    },
+  );
+
+  app.post(
+    "/artwork-register/attention/:attentionId/dealt-with",
+    {
+      schema: {
+        tags: ["shop-admin"],
+        params: AdminSoldAttentionParamsSchema,
+        response: {
+          200: AdminSoldAttentionDealtWithResultSchema,
+          403: ShopApiErrorBodySchema,
+          404: ShopApiErrorBodySchema,
+          409: ShopApiErrorBodySchema,
+        },
+      },
+    },
+    async (request) => {
+      requireShopStaffCapability(request, "artwork_register.review");
+      const { attentionId } = request.params as { attentionId: string };
+      const outcome = await service.dealtWith({
+        attentionId,
+        actorSubjectId: requireShopAdminSubject(request),
+      });
+      switch (outcome.kind) {
+        case "dealt_with":
+          return outcome.result;
+        case "not_found":
+          throw notFound("Item");
+        case "not_open":
+          throw new ShopApiError(
+            SHOP_API_ERROR_CODES.CONFLICT,
+            "This has already been dealt with",
+            409,
+          );
+        case "not_sold_in_gallery":
+          throw new ShopApiError(
+            SHOP_API_ERROR_CODES.CONFLICT,
+            "This artwork is still for sale. Withdraw it, or use It is not sold.",
+            409,
+          );
+      }
+    },
+  );
+
+  app.post(
+    "/artwork-register/:registerId/reopen-sale",
+    {
+      schema: {
+        tags: ["shop-admin"],
+        params: AdminRegisterParamsSchema,
+        body: AdminRegisterReopenBodySchema,
+        response: {
+          200: AdminRegisterReopenResultSchema,
+          400: ShopApiErrorBodySchema,
+          403: ShopApiErrorBodySchema,
+          404: ShopApiErrorBodySchema,
+          409: ShopApiErrorBodySchema,
+        },
+      },
+    },
+    async (request) => {
+      requireShopStaffCapability(request, "artwork_register.reopen_sold");
+      const { registerId } = request.params as { registerId: string };
+      const body = request.body as AdminRegisterReopenBody;
+      const outcome = await service.reopen({
+        registerId,
+        reason: body.reason,
+        actorSubjectId: requireShopAdminSubject(request),
+      });
+      switch (outcome.kind) {
+        case "reopened":
+          return outcome.result;
+        case "not_found":
+          throw notFound("Artwork");
+        case "version_conflict":
+          throw new ShopApiError(
+            SHOP_API_ERROR_CODES.CONFLICT,
+            "This artwork changed a moment ago. Check it again.",
+            409,
+          );
+        case "refused": {
+          const validation =
+            outcome.refusal === "reason_required" || outcome.refusal === "reason_too_long";
+          throw new ShopApiError(
+            validation ? SHOP_API_ERROR_CODES.VALIDATION : SHOP_API_ERROR_CODES.CONFLICT,
+            outcome.message,
+            validation ? 400 : 409,
+          );
+        }
       }
     },
   );

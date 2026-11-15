@@ -113,3 +113,88 @@ export function reconcileZohoStatus(
   const tookBack = soldWhere(offer) === "gallery" && Boolean(zohoStatus?.trim());
   return tookBack ? { action: "needs_decision", kind: "zoho_took_sold_back" } : { action: "none" };
 }
+
+/**
+ * Where a gallery sale cannot be recorded straight away. A Bid lot and a private sale belong to
+ * the product that runs them: staff withdraw them there (the "Zoho says Sold, but this artwork is
+ * still for sale" item tells them to), and the sale is recorded once they have.
+ */
+export type GallerySaleWait = "bid_sale" | "private_sale";
+
+export type GallerySalePlan =
+  | { action: "none" }
+  /** Zoho says Sold and the artwork is not offered where LAX must ask first: record the sale. */
+  | {
+      action: "record";
+      from: "held" | "withdrawn" | "lax_art";
+      /** The lax.art listing to take off sale, when the artwork was on lax.art. */
+      laxArtListingId: string | null;
+    }
+  /** Zoho says Sold while a Bid lot or private sale holds the artwork: staff withdraw it first. */
+  | { action: "wait_for_staff"; place: GallerySaleWait };
+
+/**
+ * What a Zoho Sold means for one artwork. Zoho wins: an original Zoho shows as Sold is recorded as
+ * sold in the gallery, unless a Bid lot or a private sale still holds it, which only staff can
+ * close. Prints are sold in runs and are never governed. Already sold, however it was sold, is a
+ * no-op, so a repeated notice or LAX's own write-back changes nothing.
+ */
+export function planGallerySale(entry: {
+  kind: string;
+  catalogueStatus: string | null;
+  offer: RegisterOffer;
+}): GallerySalePlan {
+  if (entry.kind !== "original") return { action: "none" };
+  if (reconcileZohoStatus(entry.offer, entry.catalogueStatus).action !== "record_gallery_sale") {
+    return { action: "none" };
+  }
+  const { state, ref } = entry.offer;
+  if (state === "bid_sale" || state === "private_sale") {
+    return { action: "wait_for_staff", place: state };
+  }
+  if (state === "held" || state === "withdrawn" || state === "lax_art") {
+    const laxArtListingId = state === "lax_art" && ref?.kind === "shop_artwork" ? ref.id : null;
+    return { action: "record", from: state, laxArtListingId };
+  }
+  return { action: "none" };
+}
+
+/** Why Reopen is refused, beyond the reason checks in `reopenSold`. */
+export type ReopenGallerySaleRefusal =
+  | ReopenRefusal
+  /** Sold through LAX (lax.art, a Bid lot or a private sale): money moved, so it is not undone here. */
+  | "not_a_gallery_sale"
+  /** Zoho still says Sold, and Zoho wins: the Status is changed in Zoho first. */
+  | "zoho_still_sold";
+
+export type ReopenGallerySaleResult =
+  | Extract<ReopenResult, { ok: true }>
+  | { ok: false; refusal: ReopenGallerySaleRefusal };
+
+/**
+ * An Administrator undoes a gallery sale recorded by mistake. Only a gallery sale can be reopened
+ * this way, and only once Zoho no longer says Sold: otherwise the next sync would record it again,
+ * and Zoho is the source of truth. The artwork returns to held; nothing is offered by itself.
+ */
+export function reopenGallerySale(
+  entry: { catalogueStatus: string | null; offer: RegisterOffer },
+  reason: string,
+): ReopenGallerySaleResult {
+  const reopened = reopenSold(entry.offer, reason);
+  if (!reopened.ok) return reopened;
+  if (reopened.wasSoldWhere !== "gallery") return { ok: false, refusal: "not_a_gallery_sale" };
+  if (isSoldInZoho(entry.catalogueStatus)) return { ok: false, refusal: "zoho_still_sold" };
+  return reopened;
+}
+
+/** What staff read when Reopen is refused. The contract owns the words so every screen agrees. */
+export const REOPEN_REFUSAL_MESSAGE: Record<ReopenGallerySaleRefusal, string> = {
+  not_sold: "This artwork is not sold, so there is nothing to reopen.",
+  reason_required:
+    "Say why the sale is being reopened. The reason is kept in the artwork's history.",
+  reason_too_long: `Keep the reason to ${REOPEN_REASON_MAX_LENGTH} characters or fewer.`,
+  not_a_gallery_sale:
+    "This artwork was sold through LAX, so it cannot be reopened here. Speak to finance.",
+  zoho_still_sold:
+    "Zoho still says Sold, and Zoho wins. Change the Status in Zoho first, then reopen it here.",
+};

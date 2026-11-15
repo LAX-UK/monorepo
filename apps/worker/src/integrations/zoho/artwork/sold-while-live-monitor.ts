@@ -2,6 +2,7 @@ import {
   type ArtworkRegisterEntry,
   assessSoldWhileLive,
   decideSoldWhileLive,
+  soldWhere,
 } from "@auction/artwork-register-contracts";
 import type {
   IArtworkRegisterReader,
@@ -23,7 +24,8 @@ const SWEEP_LIMIT = 500;
 
 /**
  * Zoho is the source of truth for Sold and Reserved. When it says either on an artwork LAX still
- * has for sale, a staff item is raised and new money pauses; nothing is withdrawn by itself. When
+ * has for sale, a staff item is raised and new money pauses. A Sold on lax.art is then recorded as
+ * a gallery sale (`GallerySaleRecorder`), and the item stays open until staff mark it dealt with. When
  * Zoho goes back to Available (or the listing is withdrawn) the item closes by itself. The rules
  * are in the contract; this applies them to the store.
  */
@@ -40,6 +42,7 @@ export class SoldWhileLiveMonitor implements SoldWhileLiveReconciler {
       situation: assessSoldWhileLive(entry),
       statusNow: entry.catalogueStatus,
       offerState: entry.offer.state,
+      soldInGallery: soldWhere(entry.offer) === "gallery",
     });
     switch (decision.action) {
       case "none":

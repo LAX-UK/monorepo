@@ -233,7 +233,31 @@ export const AdminRegisterDetailSchema = Type.Object({
   createdAt: Type.String({ format: "date-time" }),
   conflicts: Type.Array(AdminRegisterConflictSchema),
   events: Type.Array(AdminRegisterEventSchema),
+  /**
+   * A sale made in the gallery (Zoho said Sold), and whether an Administrator may reopen it now:
+   * `zoho_still_sold` until the Status is changed in Zoho. Null for anything else.
+   */
+  gallerySale: Type.Union([
+    Type.Object({
+      reopen: Type.Union([Type.Literal("allowed"), Type.Literal("zoho_still_sold")]),
+    }),
+    Type.Null(),
+  ]),
 });
+
+export const ADMIN_REGISTER_REOPEN_REASON_MAX_LENGTH = 500;
+
+export const AdminRegisterReopenBodySchema = Type.Object({
+  reason: Type.String({ minLength: 1, maxLength: ADMIN_REGISTER_REOPEN_REASON_MAX_LENGTH }),
+});
+
+export const AdminRegisterReopenResultSchema = Type.Object({
+  registerId: Type.String({ format: "uuid" }),
+  offerState: Type.Literal("held"),
+});
+
+export type AdminRegisterReopenBody = Static<typeof AdminRegisterReopenBodySchema>;
+export type AdminRegisterReopenResult = Static<typeof AdminRegisterReopenResultSchema>;
 
 export const AdminRegisterConflictParamsSchema = Type.Object({
   conflictId: Type.String({ format: "uuid" }),

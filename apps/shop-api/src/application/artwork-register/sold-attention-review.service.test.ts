@@ -10,6 +10,7 @@ const entry = {
   id: "00000000-0000-4000-8000-000000000001",
   title: "Blue Door",
   stockCode: "LAX-ORI-PH-GAC-26-0001",
+  offer: { state: "lax_art", ref: { kind: "shop_artwork", id: "shop-1" } },
 } as ArtworkRegisterEntry;
 
 const record = (over: Partial<SoldAttentionRecord> = {}): SoldAttentionRecord => ({
@@ -28,9 +29,29 @@ function setup(rows: { item: SoldAttentionRecord; entry: ArtworkRegisterEntry }[
   const queue = {
     listOpen: vi.fn(async () => rows),
     override: vi.fn(async () => ({ ok: true as const, item: record() })),
+    markDealtWith: vi.fn(
+      async (): Promise<
+        | { ok: true; item: SoldAttentionRecord }
+        | { ok: false; reason: "not_found" | "not_open" | "not_sold_in_gallery" }
+      > => ({ ok: true, item: record() }),
+    ),
   };
   const lots = { numbersFor: vi.fn(async () => new Map([["lot-9", 12]])) };
-  return { queue, lots, service: new SoldAttentionReviewService({ queue, lots, now: () => NOW }) };
+  const sales = {
+    reopenGallerySale: vi.fn(async (input: { registerId: string; reason: string }) => ({
+      ok: true as const,
+      entry: { ...entry, offer: { state: "held" as const, ref: null } },
+      reason: input.reason,
+    })),
+  };
+  const audit = vi.fn(async () => undefined);
+  return {
+    queue,
+    lots,
+    sales,
+    audit,
+    service: new SoldAttentionReviewService({ queue, lots, sales, audit, now: () => NOW }),
+  };
 }
 
 describe("SoldAttentionReviewService.list", () => {
@@ -111,5 +132,92 @@ describe("SoldAttentionReviewService.override", () => {
     const { service, queue } = setup();
     queue.override.mockResolvedValueOnce({ ok: false, reason } as never);
     expect(await service.override(input("Not sold"))).toEqual({ kind: reason });
+  });
+});
+
+describe("SoldAttentionReviewService once the sale is recorded in the gallery", () => {
+  const sold = {
+    ...entry,
+    offer: { state: "sold", ref: { kind: "gallery_sale", id: "z-1" } },
+  } as ArtworkRegisterEntry;
+
+  it("says the work is off sale and payments are held, and offers Dealt with", async () => {
+    const { service } = setup([{ item: record(), entry: sold }]);
+    const { items } = await service.list();
+    expect(items[0]).toMatchObject({
+      title: "Sold in the gallery: check for an open checkout or invoice",
+      actions: [
+        { kind: "open_lax_art", label: "Open the lax.art artwork" },
+        { kind: "open_in_zoho", label: "Open in Zoho" },
+        { kind: "dealt_with", label: "Dealt with" },
+      ],
+    });
+    expect(items[0]?.body).toContain("held, not cancelled");
+  });
+
+  it("closes the item as dealt with under the staff member, and audits it", async () => {
+    const { service, queue, audit } = setup();
+    expect(await service.dealtWith({ attentionId: "a1", actorSubjectId: "s1" })).toEqual({
+      kind: "dealt_with",
+      result: { id: record().id, registerId: entry.id },
+    });
+    expect(queue.markDealtWith).toHaveBeenCalledWith({ id: "a1", actor: "staff:s1", now: NOW });
+    expect(audit).toHaveBeenCalledWith(
+      expect.objectContaining({ action: "sold_attention_dealt_with", actorSubjectId: "s1" }),
+    );
+  });
+
+  it("passes on a refusal and audits nothing", async () => {
+    const { service, queue, audit } = setup();
+    queue.markDealtWith.mockResolvedValueOnce({ ok: false, reason: "not_sold_in_gallery" });
+    expect(await service.dealtWith({ attentionId: "a1", actorSubjectId: "s1" })).toEqual({
+      kind: "not_sold_in_gallery",
+    });
+    expect(audit).not.toHaveBeenCalled();
+  });
+});
+
+describe("SoldAttentionReviewService.reopen", () => {
+  it("reopens under the Administrator's id and audits the reason", async () => {
+    const { service, sales, audit } = setup();
+    const outcome = await service.reopen({
+      registerId: entry.id,
+      reason: "Marked Sold on the wrong Product",
+      actorSubjectId: "admin-1",
+    });
+    expect(outcome).toEqual({
+      kind: "reopened",
+      result: { registerId: entry.id, offerState: "held" },
+    });
+    expect(sales.reopenGallerySale).toHaveBeenCalledWith({
+      registerId: entry.id,
+      reason: "Marked Sold on the wrong Product",
+      actor: "staff:admin-1",
+      now: NOW,
+    });
+    expect(audit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        capability: "artwork_register.reopen_sold",
+        action: "reopen_gallery_sale",
+        afterJson: { offerState: "held", reason: "Marked Sold on the wrong Product" },
+      }),
+    );
+  });
+
+  it("refuses while Zoho still says Sold, in the contract's words", async () => {
+    const { service, sales, audit } = setup();
+    sales.reopenGallerySale.mockResolvedValueOnce({
+      ok: false,
+      refusal: "zoho_still_sold",
+    } as never);
+    expect(
+      await service.reopen({ registerId: entry.id, reason: "x", actorSubjectId: "admin-1" }),
+    ).toEqual({
+      kind: "refused",
+      refusal: "zoho_still_sold",
+      message:
+        "Zoho still says Sold, and Zoho wins. Change the Status in Zoho first, then reopen it here.",
+    });
+    expect(audit).not.toHaveBeenCalled();
   });
 });

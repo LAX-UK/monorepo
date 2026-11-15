@@ -221,6 +221,7 @@ import { seedAcceptancePortalFixtures } from "./infrastructure/seed/acceptance-p
 import { seedShopFoundationCatalogue } from "./infrastructure/seed/catalogue-seed.js";
 import { seedShopStorefrontCuration } from "./infrastructure/seed/storefront-curation-seed.js";
 import { createSharpImageProbe } from "./infrastructure/sharp-image-probe.js";
+import { insertShopAdminAudit } from "./infrastructure/shop-admin-audit.js";
 import { loadShopCancellationPolicy } from "./infrastructure/shop-cancellation-policy.js";
 import { resolveShopDocumentStorageConfig } from "./infrastructure/shop-document-storage-config.js";
 import { createShopFeatureFlagsReader } from "./infrastructure/shop-feature-flags-env.js";
@@ -780,6 +781,8 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
         soldAttention: new SoldAttentionReviewService({
           queue: soldAttentionStore,
           lots: new DrizzleLotNumberReader(db),
+          sales: artworkRegisterRepository,
+          audit: (row) => insertShopAdminAudit(db, row),
         }),
         zohoSyncHealth: new ZohoSyncHealthService({
           health: zohoSyncHealth,

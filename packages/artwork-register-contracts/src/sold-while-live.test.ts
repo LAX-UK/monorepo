@@ -194,3 +194,40 @@ describe("checkOverrideReason", () => {
     });
   });
 });
+
+describe("once the sale is recorded in the gallery", () => {
+  const open = { status: "Sold" as const, state: "open" as const };
+
+  it("keeps the item open, so payments stay held, until staff deal with it", () => {
+    expect(
+      decideSoldWhileLive({
+        item: open,
+        situation: null,
+        statusNow: "Sold",
+        offerState: "sold",
+        soldInGallery: true,
+      }),
+    ).toEqual({ action: "none" });
+  });
+
+  it("still closes an item for a sale made through LAX", () => {
+    expect(
+      decideSoldWhileLive({ item: open, situation: null, statusNow: "Sold", offerState: "sold" }),
+    ).toEqual({ action: "resolve", resolution: "sold_in_lax" });
+  });
+
+  it("says the artwork is off sale, that open payments are held, and offers Dealt with", () => {
+    const copy = soldWhileLiveCopy({
+      status: "Sold",
+      place: "lax_art",
+      title: "Blue Door",
+      stockCode: "LAX-ORI-PH-GAC-26-0001",
+      markedOn: "2 November 2026",
+      soldInGallery: true,
+    });
+    expect(copy.title).toBe("Sold in the gallery: check for an open checkout or invoice");
+    expect(copy.body).toContain("while it was on lax.art");
+    expect(copy.body).toContain("held, not cancelled");
+    expect(copy.actions.map((a) => a.kind)).toEqual(["open_lax_art", "open_in_zoho", "dealt_with"]);
+  });
+});
