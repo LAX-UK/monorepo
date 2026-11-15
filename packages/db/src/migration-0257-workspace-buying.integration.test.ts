@@ -94,6 +94,8 @@ describe.skipIf(!migrationUrl)(
         [userId],
       );
       // Later migrations that depend on the quote table go first, as a real rollback would.
+      // 0393_rollback.sql opens and commits its own transaction; strip that to stay inside this test's.
+      await client.query(read("0393_rollback.sql").replace(/^(BEGIN|COMMIT);$/gm, ""));
       await client.query(read("0325_rollback.sql"));
       await client.query(read("0257_rollback.sql"));
 
