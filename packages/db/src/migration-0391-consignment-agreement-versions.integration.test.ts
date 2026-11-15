@@ -222,8 +222,13 @@ describe.skipIf(!url)(
 const rollbackSql = () =>
   readFile(resolve(import.meta.dirname, "../drizzle/0391_rollback.sql"), "utf8");
 /** Migrations after 0391, rolled back first (newest first) as a real rollback of 0391 would be. */
-const laterRollbacksSql = () =>
-  readFile(resolve(import.meta.dirname, "../drizzle/0392_rollback.sql"), "utf8");
+const laterRollbacksSql = async () => {
+  const files = ["0393_rollback.sql", "0392_rollback.sql"];
+  const sqls = await Promise.all(
+    files.map((file) => readFile(resolve(import.meta.dirname, "../drizzle", file), "utf8")),
+  );
+  return sqls;
+};
 
 describe.skipIf(!url)("migration 0391 rollback", { timeout: 120_000 }, () => {
   it("stops while a version is superseded, then rolls back and applies again", async () => {
@@ -251,7 +256,7 @@ describe.skipIf(!url)("migration 0391 rollback", { timeout: 120_000 }, () => {
           [v1],
         );
         await db.query("commit");
-        await db.query(await laterRollbacksSql());
+        for (const later of await laterRollbacksSql()) await db.query(later);
         await db.query(await rollbackSql());
         const columns = await pool.query(
           `select column_name from information_schema.columns
