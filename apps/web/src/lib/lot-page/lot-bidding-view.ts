@@ -10,6 +10,8 @@ import { type BuyerPremiumSource, isBuyerPremiumSource } from "@auction/types";
 export type LotBiddingView = {
   /** The server clock when the response was made (ISO), for the countdown's offset. */
   serverNow: string | null;
+  /** The close a late bid moved the lot to; `null` while it keeps its scheduled end. */
+  extendedUntil: string | null;
   nextBidAmount: string | null;
   hammerPrice: string | null;
   soldForWithPremium: string | null;
@@ -19,6 +21,7 @@ export type LotBiddingView = {
 
 export const EMPTY_LOT_BIDDING_VIEW: LotBiddingView = {
   serverNow: null,
+  extendedUntil: null,
   nextBidAmount: null,
   hammerPrice: null,
   soldForWithPremium: null,
@@ -59,6 +62,7 @@ export function parseLotBiddingView(raw: unknown): LotBiddingView {
   if (!isIndexableObject(raw)) return EMPTY_LOT_BIDDING_VIEW;
   return {
     serverNow: isoOrNull(raw.serverNow),
+    extendedUntil: isoOrNull(raw.extendedUntil),
     nextBidAmount: stringOrNull(raw.nextBidAmount),
     hammerPrice: stringOrNull(raw.hammerPrice),
     soldForWithPremium: stringOrNull(raw.soldForWithPremium),

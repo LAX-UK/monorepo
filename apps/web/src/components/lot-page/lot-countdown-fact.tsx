@@ -1,6 +1,7 @@
 "use client";
 
 import { useReducedMotion } from "@/hooks/use-reduced-motion";
+import { closingFace } from "@/lib/lot-page/closing-face";
 import type {
   LotInfoRow,
   LotInfoTone,
@@ -60,12 +61,7 @@ export function faceOf(
       };
     case "closing":
       return c.kind === "closes"
-        ? {
-            label: "Time left",
-            value: "Closing…",
-            sub: "The result follows in a moment",
-            tone: "final",
-          }
+        ? closingFace(display.confirming)
         : { label: "Opens", value: "Opening…", sub: c.sub, tone: "calm" };
     case "counting":
       return c.kind === "closes"

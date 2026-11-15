@@ -1,9 +1,11 @@
 import {
+  CLOSING_CONFIRMING_AFTER_MS,
   type LotLifecycleKind,
   TIME_LEFT_DATE_BEYOND_MS,
   type TimeLeftTone,
   countdownDisplay,
 } from "@auction/domain";
+import { closingFace } from "./closing-face";
 import { formatLotClock, formatLotDay, formatLotMoment } from "./lot-page-dates";
 
 /** How a fact row reads: the clock tightens from calm to soon to final; an ended lot is quiet. */
@@ -170,12 +172,13 @@ const closingNowRow: TimeRowBuilder = (ctx) => {
   // It keeps the countdown, aimed at the close that has passed: the same component carries the
   // row through Closing… and back to Extended if a late bid lands, so it can mark that bid.
   const countdown = closingCountdown(ctx, false);
+  // A page loaded long after the close draws the settled words at once, not "Closing…" first.
+  const closedAtMs = momentMs(ctx.endsAt);
+  const confirming =
+    closedAtMs !== null && ctx.now.getTime() - closedAtMs >= CLOSING_CONFIRMING_AFTER_MS;
   return {
-    label: "Time left",
-    value: "Closing…",
-    sub: "The result follows in a moment",
-    tone: "final",
-    clock: true,
+    ...closingFace(confirming),
+    clock: !confirming,
     ...(countdown ? { countdown } : {}),
   };
 };

@@ -1,7 +1,9 @@
 import { timerText } from "@/components/lot-timer/format";
 import type { LotPageView } from "@/lib/lot-page/build-lot-page-view";
+import { closingBarFace } from "@/lib/lot-page/closing-face";
 import { splitStateText } from "@/lib/lot-page/split-state-text";
 import {
+  CLOSING_CONFIRMING_AFTER_MS,
   type LotLifecycleKind,
   type LotPosition,
   type LotStatusTone,
@@ -86,7 +88,13 @@ const closing: LineBuilder = (view, nowMs) => {
 };
 
 /** Zero reached and the server has not said how the lot ended. */
-const closingNow: LineBuilder = () => ({ ...plain("Closing…", true), tone: "final" });
+const closingNow: LineBuilder = (view, nowMs) => {
+  const countdown = countdownOf(view);
+  const confirming =
+    countdown !== undefined && nowMs - countdown.targetMs >= CLOSING_CONFIRMING_AFTER_MS;
+  const face = closingBarFace(confirming);
+  return { ...face, clock: !confirming, ...(countdown ? { countdown } : {}) };
+};
 
 const opening: LineBuilder = (view, nowMs) => {
   if (view.msLeft === null) return null;

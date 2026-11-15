@@ -100,6 +100,33 @@ describe("the lot page time fact", () => {
     expect(screen.getByText("The result follows in a moment")).toBeInTheDocument();
   });
 
+  it("after a minute with no result it stops saying Closing… and says it is confirming, with no verdict", () => {
+    render(<LotFactGrid rows={[row({ end: START + 1_000 })]} />);
+    act(() => {
+      vi.advanceTimersByTime(1_000 + 59_000);
+    });
+    expect(screen.getByText("Closing…")).toBeInTheDocument();
+    act(() => {
+      vi.advanceTimersByTime(1_001);
+    });
+    expect(screen.queryByText("Closing…")).toBeNull();
+    expect(screen.getByText("Ended")).toBeInTheDocument();
+    expect(screen.getByText("Confirming the result")).toBeInTheDocument();
+    expect(screen.queryByText(/sold|no sale|unsold/i)).toBeNull();
+    // It settles: no timer is left running for it.
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it("a late bid after the confirming words still brings the row back to Extended", () => {
+    const { rerender } = render(<LotFactGrid rows={[row({ end: START + 1_000 })]} />);
+    act(() => {
+      vi.advanceTimersByTime(70_000);
+    });
+    expect(screen.getByText("Confirming the result")).toBeInTheDocument();
+    rerender(<LotFactGrid rows={[row({ extended: true, end: START + 100_000, extensions: 1 })]} />);
+    expect(screen.getByText("Extended")).toBeInTheDocument();
+  });
+
   it("an extended lot says Extended and what the late bid added", () => {
     render(
       <LotFactGrid

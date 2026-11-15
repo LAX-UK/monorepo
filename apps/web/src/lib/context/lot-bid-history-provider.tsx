@@ -24,7 +24,7 @@ import {
   lotBidKeys,
   pendingLotBidHydrate,
 } from "@/lib/data/queries/lot-bid";
-import { reconcileEnd } from "@/lib/lot-page/reconcile-end";
+import { readsAsExtended, reconcileEnd } from "@/lib/lot-page/reconcile-end";
 import { useQueryCacheState } from "@/lib/query/use-query-cache-state";
 import { parseLotExtension } from "@/lib/realtime/lot-extension";
 import { browserClockSync } from "@/lib/time/browser-clock-sync.client";
@@ -117,14 +117,23 @@ export function LotBidHistoryProvider({ lotId, currentUserId = null, children }:
    */
   const appliedEndRef = useRef<number | null>(null);
   const noteEnd = useCallback(
-    (endMs: number, status: LotBidSnapshot["status"]) => {
-      // The first close the page hears is the close, not an extension.
+    (
+      endMs: number,
+      status: LotBidSnapshot["status"],
+      opts: { source?: "snapshot" | "event"; extendedUntil?: string | null } = {},
+    ) => {
+      // The first close the page hears is the close, not an extension. A lot that a late bid had
+      // already extended before this page loaded still reads as extended, from the first render.
       if (appliedEndRef.current === null) {
         appliedEndRef.current = endMs;
-        onlineLifecycle?.setLiveEndTimeMs(endMs);
+        if (readsAsExtended(endMs, opts.extendedUntil, status)) {
+          onlineLifecycle?.seedExtended(endMs);
+        } else {
+          onlineLifecycle?.setLiveEndTimeMs(endMs);
+        }
         return;
       }
-      const result = reconcileEnd(appliedEndRef.current, endMs, status);
+      const result = reconcileEnd(appliedEndRef.current, endMs, status, opts.source);
       appliedEndRef.current = result.endMs;
       if (result.extension) {
         onlineLifecycle?.applyExtension({
@@ -140,7 +149,9 @@ export function LotBidHistoryProvider({ lotId, currentUserId = null, children }:
 
   const applyLifecycleFromSnapshot = useCallback(
     (snapshot: LotBidSnapshot) => {
-      noteEnd(new Date(snapshot.endTime).getTime(), snapshot.status);
+      noteEnd(new Date(snapshot.endTime).getTime(), snapshot.status, {
+        extendedUntil: snapshot.extendedUntil ?? null,
+      });
       if (snapshot.status === "ended") {
         // An ended lot carries its result: the winner comes with the status, so the header
         // never reads a sold lot as "No sale" before a realtime event names the winner.
@@ -309,12 +320,12 @@ export function LotBidHistoryProvider({ lotId, currentUserId = null, children }:
       if (extension.serverNowMs !== null) {
         browserClockSync().observeServerNow(extension.serverNowMs);
       }
-      // A close that did not move later is one already applied (the event arrives under two names,
-      // back to back, so this reads the ref, not the last render). Before the first live read the
-      // page has no close to extend; that read brings it.
+      // A close that did not move is one already applied (the event arrives under two names, back
+      // to back, so this reads the ref, not the last render). An earlier one is the staff moving the
+      // close forward. Before the first live read the page has no close to move; that read brings it.
       if (appliedEndRef.current === null) return;
-      if (!(extension.endTimeMs > appliedEndRef.current)) return;
-      noteEnd(extension.endTimeMs, "active");
+      if (extension.endTimeMs === appliedEndRef.current) return;
+      noteEnd(extension.endTimeMs, "active", { source: "event" });
       patchHydrateCache((prev) => ({
         ...prev,
         snapshot: { ...prev.snapshot, endTime: new Date(extension.endTimeMs) },

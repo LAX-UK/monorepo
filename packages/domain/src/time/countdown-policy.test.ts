@@ -5,7 +5,12 @@ import {
   timeLeftShowsSeconds,
   timeLeftView,
 } from "../lot-page/time-left.js";
-import { COUNTDOWN_SURFACES, type CountdownSurface, countdownDisplay } from "./countdown-policy.js";
+import {
+  CLOSING_CONFIRMING_AFTER_MS,
+  COUNTDOWN_SURFACES,
+  type CountdownSurface,
+  countdownDisplay,
+} from "./countdown-policy.js";
 
 const S = 1000;
 const M = 60 * S;
@@ -181,10 +186,29 @@ describe("countdownDisplay edges", () => {
   });
 
   it("zero and below is closing; not a number is none", () => {
-    expect(countdownDisplay("card", 0)).toEqual({ kind: "closing" });
-    expect(countdownDisplay("lot", -5 * S)).toEqual({ kind: "closing" });
+    expect(countdownDisplay("card", 0)).toMatchObject({ kind: "closing", confirming: false });
+    expect(countdownDisplay("lot", -5 * S)).toMatchObject({ kind: "closing", confirming: false });
     expect(countdownDisplay("card", Number.NaN)).toEqual({ kind: "none" });
     expect(countdownDisplay("card", Number.POSITIVE_INFINITY)).toEqual({ kind: "none" });
+  });
+
+  it("closing becomes confirming a minute past zero, waking exactly then and never again", () => {
+    expect(countdownDisplay("lot", 0)).toEqual({
+      kind: "closing",
+      confirming: false,
+      nextChangeInMs: CLOSING_CONFIRMING_AFTER_MS,
+    });
+    expect(countdownDisplay("lot", -(CLOSING_CONFIRMING_AFTER_MS - 1))).toEqual({
+      kind: "closing",
+      confirming: false,
+      nextChangeInMs: 1,
+    });
+    // At the limit it flips, and with nothing to wake for: no timer runs for a lot that is stuck.
+    expect(countdownDisplay("lot", -CLOSING_CONFIRMING_AFTER_MS)).toEqual({
+      kind: "closing",
+      confirming: true,
+    });
+    expect(countdownDisplay("lotBar", -10 * M)).toEqual({ kind: "closing", confirming: true });
   });
 
   it("spoken text is to the minute at every edge", () => {

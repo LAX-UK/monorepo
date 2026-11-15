@@ -86,6 +86,7 @@ export function useLotPageView(source: LotPageViewSource): LotPageLive {
   const endMs = online?.liveEndTimeMs ?? new Date(snapshot.endTime).getTime();
   const startMs = Date.parse(lot.startTime);
   const extendedByMs = online?.extendedByMs ?? null;
+  const seededExtended = online?.seededExtended ?? false;
   const onBlock = saleroom?.isLotOnBlock(lot.id) ?? false;
   const nowMs = useLotPageNow(snapshot.serverNow ?? null, [startMs, endMs]);
   const hasWinner = snapshot.hasWinner;
@@ -107,7 +108,7 @@ export function useLotPageView(source: LotPageViewSource): LotPageLive {
         sale,
         nowMs,
         {
-          recentlyExtended: Boolean(extendedByMs && extendedByMs > 0),
+          recentlyExtended: Boolean(extendedByMs && extendedByMs > 0) || seededExtended,
           confirmClose: true,
           saleroomSessionPaused: saleroom?.status === "paused",
           saleroomSessionActive: saleroom?.isSessionLive ?? false,
@@ -126,6 +127,7 @@ export function useLotPageView(source: LotPageViewSource): LotPageLive {
       sale,
       nowMs,
       extendedByMs,
+      seededExtended,
       saleroom?.status,
       saleroom?.isSessionLive,
       onBlock,
