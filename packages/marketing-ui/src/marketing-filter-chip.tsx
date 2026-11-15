@@ -35,7 +35,7 @@ export function MarketingFilterChip({
       className={cn(
         "marketing-filter-chip relative inline-flex min-h-11 shrink-0 snap-start items-center gap-2 whitespace-nowrap rounded-full border px-4 font-body text-sm font-medium text-on-surface transition-colors motion-reduce:transition-none disabled:cursor-not-allowed lg:pointer-fine:min-h-10",
         active
-          ? "border-[color:var(--color-product-accent,currentColor)] bg-[color:color-mix(in_srgb,var(--color-product-accent,currentColor)_8%,transparent)] hover:bg-[color:color-mix(in_srgb,var(--color-product-accent,currentColor)_14%,transparent)]"
+          ? "marketing-chip-active"
           : "border-input-border bg-transparent hover:border-on-surface-variant hover:bg-surface-container-low",
         FOCUS_RING,
         className,
