@@ -211,6 +211,32 @@ describe("requesting a copy", () => {
     expect(refused).toMatchObject({ outcome: { retryAfter } });
   });
 
+  it("gives no retry date for an open request: null means not rate-limited, the open request is in current", async () => {
+    const { service, repository } = setup();
+    repository.seed({ subjectId: SUBJECT, status: "collecting", requestedAt: NOW });
+    expect(await service.retryAfter(SUBJECT)).toBeNull();
+    expect(await service.current(SUBJECT)).toMatchObject({ status: "collecting" });
+    expect(await service.request(SUBJECT, CONTEXT)).toMatchObject({
+      outcome: { outcome: "already_open" },
+    });
+  });
+
+  it("dates the retry from the request at index max - 1 when more than max count", async () => {
+    const { service, repository } = setup();
+    // Five count against a limit of four, newest first: 2, 4, 6, 8, 10 days ago. The place frees
+    // when the fourth newest (8 days ago) leaves the window, in 22 days, not the oldest's (20).
+    for (const daysAgo of [2, 4, 6, 8, 10]) {
+      repository.seed({
+        subjectId: SUBJECT,
+        status: "expired",
+        requestedAt: new Date(NOW.getTime() - daysAgo * DAY),
+      });
+    }
+    expect(await service.retryAfter(SUBJECT)).toBe(
+      new Date(NOW.getTime() + 22 * DAY).toISOString(),
+    );
+  });
+
   it("gives no retry date while requests that failed on our side or left the window are all that remain", async () => {
     const { service, repository } = setup();
     for (const daysAgo of [40, 35, 3, 2]) {

@@ -186,7 +186,11 @@ export function DataExportPanel({
             </p>
           </section>
           <div className="flex flex-col gap-4">
-            <RequestDataExportButton resume={resume === "request"} />
+            {vm.limited ? (
+              <p className="text-sm text-on-surface-variant">{vm.limited}</p>
+            ) : (
+              <RequestDataExportButton resume={resume === "request"} />
+            )}
             {note}
           </div>
         </div>
@@ -289,7 +293,11 @@ export function DataExportPanel({
         <div className="flex flex-col gap-6">
           <StatusCard id="status-heading" title="Expired">
             <p className="text-sm text-on-surface-variant">{vm.message}</p>
-            <RequestDataExportButton label="Request a new copy" resume={resume === "request"} />
+            {vm.limited ? (
+              <p className="text-sm text-on-surface-variant">{vm.limited}</p>
+            ) : (
+              <RequestDataExportButton label="Request a new copy" resume={resume === "request"} />
+            )}
           </StatusCard>
           {note}
         </div>

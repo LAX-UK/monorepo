@@ -84,8 +84,9 @@ export class SubjectExportService {
   }
 
   /**
-   * When the person may ask for a new copy, as an ISO date; null when they may now. Same rule and
-   * same date as the `rate_limited` answer to a request, so the page can show it before they ask.
+   * When the rate limit lifts, as an ISO date; null when the person is not rate-limited. Null does
+   * not mean a new copy can be asked for: an open request (see `current`) stops one too. Same rule
+   * and same date as the `rate_limited` answer to a request, so the page can show it before they ask.
    */
   async retryAfter(subjectId: string): Promise<string | null> {
     const windowStart = new Date(

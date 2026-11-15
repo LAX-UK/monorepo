@@ -12,7 +12,7 @@ import {
  */
 
 /**
- * One category of a person's data in LAX Shop and lax.art. Each category is its own class, registered once
+ * One category of a person's data in one product (LAX Shop and lax.art, LAX Bid, or LAX Identity). Each category is its own class, registered once
  * (see {@link SubjectExportRegistry}), so adding a category is a new class, not an edit to a switch.
  */
 export interface SubjectExportCategory {
@@ -142,7 +142,7 @@ export abstract class SourcedExportCategory implements SubjectExportCategory {
   }
 }
 
-/** The categories LAX Shop and lax.art answer for, in the order the download lists them. */
+/** The categories one product (Shop, Bid or Identity) answers for, in the order the download lists them. */
 export class SubjectExportRegistry {
   private readonly byId = new Map<string, SubjectExportCategory>();
 

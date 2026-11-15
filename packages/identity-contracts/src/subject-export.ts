@@ -867,8 +867,9 @@ export const subjectExportCreateOutcomeSchema = z.discriminatedUnion("outcome", 
 
 /**
  * `POST /lax/data-exports/current`: the latest request, or null when there has never been one, and
- * `retryAfter`, the date a new copy can be asked for (null when one can be asked for now). It is the
- * same date a `rate_limited` answer carries.
+ * `retryAfter`, the date the rate limit lifts. It is the same date a `rate_limited` answer carries.
+ * `retryAfter: null` means "not rate-limited", not "can ask now": a request that is still open also
+ * stops a new one, and that open request is `export`.
  */
 export const subjectExportCurrentSchema = z.object({
   export: subjectExportViewSchema.nullable(),
