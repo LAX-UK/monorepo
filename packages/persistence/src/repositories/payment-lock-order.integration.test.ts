@@ -1,6 +1,14 @@
 import { randomUUID } from "node:crypto";
 import { type Database, createDb } from "@auction/db";
-import { legalEntity, lot, payment, paymentGroup, user } from "@auction/db/schema";
+import {
+  disputeAllocation,
+  disputeCase,
+  legalEntity,
+  lot,
+  payment,
+  paymentGroup,
+  user,
+} from "@auction/db/schema";
 import { eq, inArray, sql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { DrizzleDisputeCaseRepository } from "./drizzle-dispute-case.repository.js";
@@ -101,6 +109,8 @@ describe.skipIf(!HAS_DB)("payment lock order: group refund and dispute (integrat
   });
 
   afterAll(async () => {
+    await db.delete(disputeAllocation).where(inArray(disputeAllocation.paymentId, [low, high]));
+    await db.delete(disputeCase).where(eq(disputeCase.stripeChargeId, `ch_${groupId}`));
     await db.delete(payment).where(inArray(payment.lotId, lotIds));
     await db.delete(paymentGroup).where(eq(paymentGroup.buyerLegalEntityId, buyerId));
     await db.delete(lot).where(inArray(lot.id, lotIds));
@@ -163,5 +173,40 @@ describe.skipIf(!HAS_DB)("payment lock order: group refund and dispute (integrat
     // In payment id order, the dispute holds nothing while it waits for the lower invoice. In
     // the other order it would hold the higher one, which the group refund needs next: deadlock.
     expect(outcomes.map(sqlStateOf)).toEqual(["ok", "ok"]);
+  });
+
+  it("inserts a dispute's allocation lines in payment id order, whatever order they come in", async () => {
+    // Each line's foreign key key-shares its payment as the row goes in, before the dispute locks
+    // the payments in id order, so the insert keeps to that order too.
+    const lines = await db.transaction(async (tx) => {
+      const [record] = await tx
+        .insert(disputeCase)
+        .values({
+          stripeDisputeId: `dp_${randomUUID()}`,
+          stripeChargeId: `ch_${groupId}`,
+          amountPence: 400,
+          currency: "gbp",
+          status: "needs_response",
+          allocationState: "allocated",
+          stripeCreatedAt: new Date(),
+          lastEventAt: new Date(),
+        })
+        .returning({ id: disputeCase.id });
+      const line = (paymentId: string) => ({
+        paymentId,
+        sellerLegalEntityId: sellerId,
+        amountPence: 200,
+        sellerSharePence: 0,
+        clawback: "none" as const,
+        source: "staff" as const,
+        allocatedByUserId: payerId,
+      });
+      return disputes.insertAllocationsInTransaction(
+        tx as unknown as Database,
+        record?.id as string,
+        [line(high.toUpperCase()), line(low)],
+      );
+    });
+    expect(lines.map((l) => l.paymentId)).toEqual([low, high]);
   });
 });

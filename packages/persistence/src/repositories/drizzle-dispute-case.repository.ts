@@ -210,10 +210,15 @@ export class DrizzleDisputeCaseRepository
     lines: readonly NewDisputeAllocation[],
   ): Promise<DisputeAllocationRecord[]> {
     if (lines.length === 0) return [];
+    // In payment id order: each row's foreign key takes FOR KEY SHARE on its payment as it is
+    // inserted, before lockPaymentsInTransaction locks them, so keep to the order every payment
+    // lock is taken in. It is also the order listAllocationsInTransaction reads them back in.
+    const key = (line: NewDisputeAllocation) => line.paymentId.toLowerCase();
+    const ordered = [...lines].sort((x, y) => (key(x) < key(y) ? -1 : key(x) > key(y) ? 1 : 0));
     const rows = await tx
       .insert(disputeAllocation)
       .values(
-        lines.map((line) => ({
+        ordered.map((line) => ({
           caseId,
           paymentId: line.paymentId,
           sellerLegalEntityId: line.sellerLegalEntityId,
