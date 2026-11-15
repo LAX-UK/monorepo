@@ -84,6 +84,7 @@ describe.skipIf(!HAS_DB)("account purchase facts: collect-by storage (integratio
   it("reads the payment day, the place's free period and that booking is open", async () => {
     expect(await storageOf(await wonLot())).toEqual({
       clearedAt: cleared,
+      placeId: venueId,
       placeName: "Facts gallery",
       freeStorageDays: 14,
       bookingOpen: true,

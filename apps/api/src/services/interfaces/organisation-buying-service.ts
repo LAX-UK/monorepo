@@ -111,9 +111,10 @@ export type AccountPurchaseView = {
     quote: PurchaseQuoteView | null;
     /**
      * "Please collect by", while the work waits to be collected and is not booked; else `null`.
-     * `placeName` is where it waits, the venue the reminder email names.
+     * `placeId` is the venue it waits at (what a visit is booked at; names are not unique) and
+     * `placeName` is that venue's name, as the reminder email names it.
      */
-    collectBy: (PurchaseCollectBy & { placeName: string }) | null;
+    collectBy: (PurchaseCollectBy & { placeId: string; placeName: string }) | null;
   };
 };
 

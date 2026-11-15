@@ -13,6 +13,7 @@ const actor: OrganisationMemberActor = {
 
 // Payment cleared Mon 9 Nov 2026: free for 30 days, so collect by Wed 9 Dec.
 const CLEARED = new Date("2026-11-09T10:00:00Z");
+const PLACE_ID = "venue-marylebone";
 
 function row(over: Partial<AccountPurchaseFactsRow> = {}): AccountPurchaseFactsRow {
   return {
@@ -42,6 +43,7 @@ function row(over: Partial<AccountPurchaseFactsRow> = {}): AccountPurchaseFactsR
     },
     storage: {
       clearedAt: CLEARED,
+      placeId: PLACE_ID,
       placeName: "Marylebone",
       freeStorageDays: null,
       bookingOpen: true,
@@ -60,6 +62,7 @@ describe("the collect-by notice on a purchase", () => {
     expect(at("2026-11-20T12:00:00Z")).toEqual({
       date: "2026-12-09",
       state: "upcoming",
+      placeId: PLACE_ID,
       placeName: "Marylebone",
     });
     expect(at("2026-12-01T12:00:00Z")?.state).toBe("upcoming");
@@ -68,6 +71,7 @@ describe("the collect-by notice on a purchase", () => {
     expect(at("2026-12-10T12:00:00Z")).toEqual({
       date: "2026-12-09",
       state: "overdue",
+      placeId: PLACE_ID,
       placeName: "Marylebone",
     });
   });
@@ -77,6 +81,7 @@ describe("the collect-by notice on a purchase", () => {
       row({
         storage: {
           clearedAt: CLEARED,
+          placeId: PLACE_ID,
           placeName: "Marylebone",
           freeStorageDays: 14,
           bookingOpen: true,
@@ -90,6 +95,7 @@ describe("the collect-by notice on a purchase", () => {
     expect(view.delivery.collectBy).toEqual({
       date: "2026-11-23",
       state: "soon",
+      placeId: PLACE_ID,
       placeName: "Marylebone",
     });
   });
@@ -98,6 +104,7 @@ describe("the collect-by notice on a purchase", () => {
     const booked = row({
       storage: {
         clearedAt: CLEARED,
+        placeId: PLACE_ID,
         placeName: "Marylebone",
         freeStorageDays: null,
         bookingOpen: true,
@@ -142,6 +149,7 @@ describe("the collect-by notice on a purchase", () => {
     const closed = row({
       storage: {
         clearedAt: CLEARED,
+        placeId: PLACE_ID,
         placeName: "Marylebone",
         freeStorageDays: null,
         bookingOpen: false,
@@ -196,6 +204,7 @@ describe("the collect-by notice follows the reminder email's exclusions", () => 
     const deleted = row({
       storage: {
         clearedAt: CLEARED,
+        placeId: PLACE_ID,
         placeName: "Marylebone",
         freeStorageDays: null,
         bookingOpen: true,
@@ -220,6 +229,7 @@ describe("the collect-by notice follows the reminder email's exclusions", () => 
     expect(purchaseView(refunded, actor, now).delivery.collectBy).toEqual({
       date: "2026-12-09",
       state: "upcoming",
+      placeId: PLACE_ID,
       placeName: "Marylebone",
     });
   });

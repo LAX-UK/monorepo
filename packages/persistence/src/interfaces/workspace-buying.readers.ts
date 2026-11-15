@@ -99,14 +99,15 @@ export type AccountPurchaseFactsRow = {
       })
     | null;
   /**
-   * What the "please collect by" notice needs: when payment cleared, the place's name (its venue's,
-   * as the reminder email names it) and free storage
+   * What the "please collect by" notice needs: when payment cleared, the place's venue id (what a
+   * visit is booked at) and name (its venue's, as the reminder email names it) and free storage
    * days, whether the place takes online bookings, whether the lot is in a live booking, and
    * whether its sale was soft-deleted. `null` when payment has not cleared or there is no
    * collection place (and on a cancelled purchase).
    */
   storage: {
     clearedAt: Date;
+    placeId: string;
     placeName: string;
     freeStorageDays: number | null;
     bookingOpen: boolean;
