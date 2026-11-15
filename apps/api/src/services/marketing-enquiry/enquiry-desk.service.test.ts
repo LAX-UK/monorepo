@@ -47,6 +47,7 @@ async function setup(seeds: Seed[] = []) {
   } as unknown as ITransactionRunner;
   const staff = new Set(["cs-1", "spec-1", "tom"]);
   const listRedacted = vi.fn().mockResolvedValue([]);
+  const actorNames = vi.fn().mockResolvedValue(new Map<string, string>());
   const createPresignedGet = vi.fn().mockResolvedValue({ url: "https://signed.example/f?sig=1" });
   const desk = new EnquiryDeskService({
     enquiries,
@@ -54,7 +55,7 @@ async function setup(seeds: Seed[] = []) {
     assignees: { isStaff: async (id) => staff.has(id), list: async () => [] },
     transactionRunner,
     events,
-    history: { listRedacted },
+    history: { listRedacted, actorNames },
     storage: { createPresignedGet },
     now: () => NOW,
   });
@@ -90,7 +91,7 @@ async function setup(seeds: Seed[] = []) {
       },
     );
   }
-  return { desk, enquiries, notes, publish, listRedacted, createPresignedGet };
+  return { desk, enquiries, notes, publish, listRedacted, actorNames, createPresignedGet };
 }
 
 const query = (overrides: Record<string, unknown> = {}) =>
@@ -450,14 +451,8 @@ describe("EnquiryDeskService history", () => {
     const { desk, enquiries, listRedacted } = await setup([{ intent: "private_sale_sell" }]);
     const id = enquiries.rows[0]?.id as string;
     const at = (n: number) => new Date(`2026-07-2${n}T09:00:00.000Z`);
+    // The reader answers newest first; the history is oldest first.
     listRedacted.mockResolvedValue([
-      {
-        id: 1,
-        eventType: "marketing_enquiry.assigned",
-        actorUserId: "cs-1",
-        occurredAt: at(1),
-        payload: { assignedToUserId: "tom", previousAssignedToUserId: null },
-      },
       {
         id: 2,
         eventType: "marketing_enquiry.status_changed",
@@ -465,7 +460,13 @@ describe("EnquiryDeskService history", () => {
         occurredAt: at(2),
         payload: { from: "new", to: "closed", closeReason: "spam" },
       },
-      { id: 3, eventType: "marketing_enquiry.attachment_viewed", occurredAt: at(3), payload: {} },
+      {
+        id: 1,
+        eventType: "marketing_enquiry.assigned",
+        actorUserId: "cs-1",
+        occurredAt: at(1),
+        payload: { assignedToUserId: "tom", previousAssignedToUserId: null },
+      },
     ]);
     const entries = await desk.history(clientServices, "E-1001");
     expect(listRedacted).toHaveBeenCalledWith(
@@ -473,6 +474,12 @@ describe("EnquiryDeskService history", () => {
         aggregateType: "marketing_enquiry",
         aggregateId: id,
         includePii: false,
+        newestFirst: true,
+        eventTypes: [
+          "marketing_enquiry.assigned",
+          "marketing_enquiry.status_changed",
+          "marketing_enquiry.converted",
+        ],
       }),
     );
     expect(entries).toEqual([
@@ -480,14 +487,18 @@ describe("EnquiryDeskService history", () => {
         id: "1",
         at: at(1).toISOString(),
         actorUserId: "cs-1",
+        actorName: null,
         kind: "assigned",
         toUserId: "tom",
         fromUserId: null,
+        toName: null,
+        fromName: null,
       },
       {
         id: "2",
         at: at(2).toISOString(),
         actorUserId: "tom",
+        actorName: null,
         kind: "status_changed",
         from: "new",
         to: "closed",
@@ -495,5 +506,33 @@ describe("EnquiryDeskService history", () => {
       },
     ]);
     expect(await desk.history(noPrivateAccess, "E-1001")).toBeNull();
+  });
+  it("names the people involved from the identity directory, and leaves unknown ones null", async () => {
+    const { desk, listRedacted, actorNames } = await setup([{ intent: "private_sale_sell" }]);
+    listRedacted.mockResolvedValue([
+      {
+        id: 1,
+        eventType: "marketing_enquiry.assigned",
+        actorUserId: "cs-1",
+        occurredAt: new Date("2026-07-21T09:00:00.000Z"),
+        payload: { assignedToUserId: "tom", previousAssignedToUserId: "gone" },
+      },
+    ]);
+    actorNames.mockResolvedValue(
+      new Map([
+        ["cs-1", "Chloe Stone"],
+        ["tom", "Tom Reid"],
+      ]),
+    );
+    const entries = await desk.history(clientServices, "E-1001");
+    expect(actorNames).toHaveBeenCalledWith(expect.arrayContaining(["cs-1", "tom", "gone"]));
+    expect(entries).toEqual([
+      expect.objectContaining({
+        actorName: "Chloe Stone",
+        toName: "Tom Reid",
+        fromName: null,
+        fromUserId: "gone",
+      }),
+    ]);
   });
 });

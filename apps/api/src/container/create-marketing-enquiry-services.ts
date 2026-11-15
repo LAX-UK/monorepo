@@ -67,7 +67,7 @@ export type CreateMarketingEnquiryServicesInput = {
   events: IDomainEventSink;
   drafts: IEnquiryDraftTokens;
   /** The audit trail's reader, for one enquiry's history. */
-  history: Pick<IAdminDomainEventReader, "listRedacted">;
+  history: Pick<IAdminDomainEventReader, "listRedacted" | "actorNames">;
   /** Private object storage, for signed attachment links. */
   storage: Pick<IObjectStorage, "createPresignedGet">;
 };

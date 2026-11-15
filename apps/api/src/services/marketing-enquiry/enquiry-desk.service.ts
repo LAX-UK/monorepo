@@ -31,7 +31,7 @@ export type EnquiryDeskServiceDeps = {
   transactionRunner: ITransactionRunner;
   events: IDomainEventSink;
   /** The audit trail's reader, for one enquiry's own history. */
-  history: Pick<IAdminDomainEventReader, "listRedacted">;
+  history: Pick<IAdminDomainEventReader, "listRedacted" | "actorNames">;
   /** Private storage: attachments are only ever served by short-lived signed links. */
   storage: Pick<IObjectStorage, "createPresignedGet">;
   now: () => Date;
@@ -41,6 +41,14 @@ export type EnquiryDeskServiceDeps = {
 export const ENQUIRY_ATTACHMENT_LINK_TTL_SEC = 60;
 
 const ENQUIRY = "marketing_enquiry" as const;
+
+/** The only events the history shows; attachment views are audited but never listed. */
+const HISTORY_EVENT_TYPES = [
+  "marketing_enquiry.assigned",
+  "marketing_enquiry.status_changed",
+  "marketing_enquiry.converted",
+] as const;
+const HISTORY_LIMIT = 200;
 
 /**
  * Staff work on enquiries here. Who may see an enquiry is decided in this service, not in the
@@ -90,14 +98,32 @@ export class EnquiryDeskService implements IMarketingEnquiryDesk {
     const events = await this.deps.history.listRedacted({
       aggregateType: ENQUIRY,
       aggregateId: record.id,
-      limit: 200,
+      eventTypes: HISTORY_EVENT_TYPES,
+      // Newest first so a long-lived enquiry loses its oldest changes, never its latest ones.
+      newestFirst: true,
+      limit: HISTORY_LIMIT,
       includePii: false,
     });
+    events.reverse();
+    const names = await this.deps.history.actorNames(
+      events.flatMap((event) => {
+        const p = (event.payload ?? {}) as Record<string, unknown>;
+        return [event.actorUserId, p.assignedToUserId, p.previousAssignedToUserId].filter(
+          (id): id is string => typeof id === "string" && id.length > 0,
+        );
+      }),
+    );
+    const nameOf = (id: string | null) => (id ? (names.get(id) ?? null) : null);
     return events.flatMap((event): EnquiryHistoryEntry[] => {
       const payload = (event.payload ?? {}) as Record<string, unknown>;
       const text = (key: string) => (typeof payload[key] === "string" ? payload[key] : null);
       const at = event.occurredAt.toISOString();
-      const base = { id: String(event.id), at, actorUserId: event.actorUserId };
+      const base = {
+        id: String(event.id),
+        at,
+        actorUserId: event.actorUserId,
+        actorName: nameOf(event.actorUserId),
+      };
       switch (event.eventType) {
         case "marketing_enquiry.assigned":
           return [
@@ -106,6 +132,8 @@ export class EnquiryDeskService implements IMarketingEnquiryDesk {
               kind: "assigned",
               toUserId: text("assignedToUserId"),
               fromUserId: text("previousAssignedToUserId"),
+              toName: nameOf(text("assignedToUserId")),
+              fromName: nameOf(text("previousAssignedToUserId")),
             },
           ];
         case "marketing_enquiry.status_changed":

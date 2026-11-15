@@ -91,6 +91,9 @@ describe("enquiryTimeline with the audit trail", () => {
     id: "1",
     at: "2026-11-02T10:00:00.000Z",
     actorUserId: "tom",
+    actorName: null,
+    toName: null,
+    fromName: null,
     ...patch,
   });
 
@@ -146,15 +149,32 @@ describe("enquiryTimeline with the audit trail", () => {
     ).toHaveLength(1);
   });
 
-  it("calls a person who has left a former staff member rather than leaving a gap", () => {
+  it("uses the name the API resolved, even for someone outside the assignee list", () => {
+    const [first] = enquiryTimeline(base, nameOf, [
+      entry({
+        kind: "assigned",
+        actorUserId: "x1",
+        actorName: "Priya Shah",
+        toUserId: "x2",
+        toName: "Ben Lowe",
+        fromUserId: null,
+      }),
+    ] as never);
+    expect(first?.title).toBe("Assigned to Ben Lowe");
+    expect(first?.actor).toBe("Priya Shah");
+  });
+
+  it("words someone it cannot name neutrally rather than guessing they have left", () => {
     const [first] = enquiryTimeline(base, nameOf, [
       entry({
         at: "2026-11-02T10:00:00.000Z",
         kind: "assigned",
+        actorUserId: "gone2",
         toUserId: "gone",
         fromUserId: null,
       }),
     ] as never);
-    expect(first?.title).toBe("Assigned to a former staff member");
+    expect(first?.title).toBe("Assigned to another staff member");
+    expect(first?.actor).toBe("Another staff member");
   });
 });

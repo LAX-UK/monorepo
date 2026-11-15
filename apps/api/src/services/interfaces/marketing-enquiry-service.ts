@@ -84,12 +84,24 @@ export type MarketingEnquiryListPage = {
   counts: EnquiryStatusCounts;
 };
 
-type HistoryBase = { id: string; at: string; actorUserId: string | null };
+type HistoryBase = {
+  id: string;
+  at: string;
+  actorUserId: string | null;
+  /** From the identity directory; null when the person is not in it. */
+  actorName: string | null;
+};
 
 /** One change to an enquiry, from the audit trail. Staff identifiers and codes only. */
 export type EnquiryHistoryEntry = HistoryBase &
   (
-    | { kind: "assigned"; toUserId: string | null; fromUserId: string | null }
+    | {
+        kind: "assigned";
+        toUserId: string | null;
+        fromUserId: string | null;
+        toName: string | null;
+        fromName: string | null;
+      }
     | { kind: "status_changed"; from: string | null; to: string | null; closeReason: string | null }
     | { kind: "converted"; from: string | null }
   );

@@ -302,7 +302,13 @@ describe("EnquiryView: reply by date", () => {
 });
 
 describe("EnquiryView: attachments", () => {
-  it("opens a file through a link signed when it is clicked, and never shows an address", async () => {
+  function fakeTab() {
+    const tab = { opener: {} as unknown, close: vi.fn(), location: { href: "about:blank" } };
+    const open = vi.spyOn(window, "open").mockReturnValue(tab as unknown as Window);
+    return { tab, open };
+  }
+
+  it("opens a blank window in the click, then points it at a link signed after the click", async () => {
     attachmentLink.mockResolvedValue({
       ok: true,
       data: {
@@ -312,26 +318,37 @@ describe("EnquiryView: attachments", () => {
         expiresInSec: 60,
       },
     });
-    const click = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+    const { tab, open } = fakeTab();
     renderView();
     expect(document.body.innerHTML).not.toContain("files.example");
     fireEvent.click(screen.getByRole("button", { name: "Open Photo" }));
-    await waitFor(() => expect(attachmentLink).toHaveBeenCalledWith("E-1042", "a1"));
-    await waitFor(() => expect(click).toHaveBeenCalledTimes(1));
-    const anchor = click.mock.contexts[0] as HTMLAnchorElement;
-    expect(anchor.href).toBe("https://files.example/signed?sig=abc");
-    expect(anchor.rel).toContain("noopener");
-    click.mockRestore();
+    // Synchronously, before the server action has answered: what keeps Safari from blocking it.
+    expect(open).toHaveBeenCalledWith("about:blank", "_blank");
+    expect(attachmentLink).toHaveBeenCalledWith("E-1042", "a1");
+    expect(tab.location.href).toBe("about:blank");
+    await waitFor(() => expect(tab.location.href).toBe("https://files.example/signed?sig=abc"));
+    expect(tab.opener).toBeNull();
+    expect(tab.close).not.toHaveBeenCalled();
+    open.mockRestore();
   });
 
-  it("says so when the file cannot be opened", async () => {
+  it("closes the blank window and says so when the file cannot be opened", async () => {
     attachmentLink.mockResolvedValue({ ok: false, error: "This file is no longer available." });
-    const click = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+    const { tab, open } = fakeTab();
     renderView();
     fireEvent.click(screen.getByRole("button", { name: "Open Document" }));
-    await waitFor(() => expect(attachmentLink).toHaveBeenCalledWith("E-1042", "a2"));
-    expect(click).not.toHaveBeenCalled();
-    click.mockRestore();
+    await waitFor(() => expect(tab.close).toHaveBeenCalledTimes(1));
+    expect(tab.location.href).toBe("about:blank");
+    open.mockRestore();
+  });
+
+  it("closes the blank window when the request throws", async () => {
+    attachmentLink.mockRejectedValue(new Error("network"));
+    const { tab, open } = fakeTab();
+    renderView();
+    fireEvent.click(screen.getByRole("button", { name: "Open Document" }));
+    await waitFor(() => expect(tab.close).toHaveBeenCalledTimes(1));
+    open.mockRestore();
   });
 
   it("has no section when nothing was attached", () => {
@@ -347,14 +364,18 @@ describe("EnquiryView: history", () => {
       kind: "assigned" as const,
       at: "2026-11-02T09:30:00.000Z",
       actorUserId: "u-tom",
+      actorName: null,
       toUserId: "u-sofia",
       fromUserId: null,
+      toName: null,
+      fromName: null,
     },
     {
       id: "2",
       kind: "status_changed" as const,
       at: "2026-11-02T10:00:00.000Z",
       actorUserId: "u-sofia",
+      actorName: null,
       from: "new",
       to: "in_progress",
       closeReason: null,
@@ -364,6 +385,7 @@ describe("EnquiryView: history", () => {
       kind: "status_changed" as const,
       at: "2026-11-02T12:00:00.000Z",
       actorUserId: "u-sofia",
+      actorName: null,
       from: "in_progress",
       to: "closed",
       closeReason: "spam",

@@ -115,7 +115,12 @@ export const enquiryRuleSchema = z.object({
 export type EnquiryRule = z.infer<typeof enquiryRuleSchema>;
 export const enquiryRoutingSchema = z.object({ rules: z.array(enquiryRuleSchema) });
 
-const historyBase = { id: z.string(), at: z.string(), actorUserId: z.string().nullable() };
+const historyBase = {
+  id: z.string(),
+  at: z.string(),
+  actorUserId: z.string().nullable(),
+  actorName: z.string().nullable(),
+};
 
 /** One assignment or status change from the audit trail. */
 export const enquiryHistoryEntrySchema = z.discriminatedUnion("kind", [
@@ -124,6 +129,8 @@ export const enquiryHistoryEntrySchema = z.discriminatedUnion("kind", [
     kind: z.literal("assigned"),
     toUserId: z.string().nullable(),
     fromUserId: z.string().nullable(),
+    toName: z.string().nullable(),
+    fromName: z.string().nullable(),
   }),
   z.object({
     ...historyBase,

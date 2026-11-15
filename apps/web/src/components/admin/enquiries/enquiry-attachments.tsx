@@ -29,18 +29,27 @@ export function AttachmentsSection({
   if (attachments.length === 0) return null;
 
   async function open(attachment: Attachment) {
+    // Opened now, inside the click, so Safari does not treat it as a pop-up; pointed at the file
+    // once the server has signed the link. The "noopener" feature would make window.open return
+    // null, so the opener is cut by hand before the file loads.
+    const tab = window.open("about:blank", "_blank");
+    if (tab) tab.opener = null;
     setOpening(attachment.id);
-    const result = await enquiryAttachmentLinkAction(reference, attachment.id);
-    setOpening(null);
-    if (!result.ok || !result.data) {
-      notify.error(result.ok ? "This file couldn't be opened." : result.error);
-      return;
+    try {
+      const result = await enquiryAttachmentLinkAction(reference, attachment.id);
+      if (!result.ok || !result.data) {
+        tab?.close();
+        notify.error(result.ok ? "This file couldn't be opened." : result.error);
+        return;
+      }
+      if (tab) tab.location.href = result.data.url;
+      else window.location.assign(result.data.url);
+    } catch {
+      tab?.close();
+      notify.error("This file couldn't be opened.");
+    } finally {
+      setOpening(null);
     }
-    const link = document.createElement("a");
-    link.href = result.data.url;
-    link.target = "_blank";
-    link.rel = "noopener noreferrer";
-    link.click();
   }
 
   return (

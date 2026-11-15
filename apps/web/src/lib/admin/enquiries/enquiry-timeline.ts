@@ -21,16 +21,23 @@ function labelled<T extends string>(table: Record<T, string>, key: string | null
   return key !== null && key in table ? table[key as T] : null;
 }
 
+/** Said when the directory cannot name someone, rather than guessing they have left. */
+const NEUTRAL_STAFF_NAME = "Another staff member";
+
 /** One audit trail entry in words: who was handed the enquiry, or where its status went. */
 function historyEvent(
   entry: EnquiryHistoryEntry,
   nameOf: (userId: string | null) => string | undefined,
 ): TimelineEvent {
-  const actor = nameOf(entry.actorUserId);
+  const named = (userId: string | null, name: string | null) =>
+    userId ? (name ?? nameOf(userId) ?? NEUTRAL_STAFF_NAME) : null;
+  const actor = named(entry.actorUserId, entry.actorName);
   const common = { id: `audit-${entry.id}`, at: entry.at, ...(actor ? { actor } : {}) };
   if (entry.kind === "assigned") {
-    const to = entry.toUserId ? (nameOf(entry.toUserId) ?? "a former staff member") : null;
-    const from = entry.fromUserId ? (nameOf(entry.fromUserId) ?? "a former staff member") : null;
+    const mid = (name: string | null) =>
+      name === NEUTRAL_STAFF_NAME ? NEUTRAL_STAFF_NAME.toLowerCase() : name;
+    const to = mid(named(entry.toUserId, entry.toName));
+    const from = mid(named(entry.fromUserId, entry.fromName));
     return {
       ...common,
       title: to ? `Assigned to ${to}` : "Unassigned",
