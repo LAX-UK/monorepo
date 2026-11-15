@@ -11,7 +11,7 @@ import {
 } from "@auction/marketing-ui";
 import { Button } from "@auction/ui/components/button";
 import { Dialog, DialogContent, DialogTitle } from "@auction/ui/components/dialog";
-import { type PointerEvent, useEffect, useRef, useState } from "react";
+import { type PointerEvent, useEffect, useLayoutEffect, useRef, useState } from "react";
 
 const SWIPE_THRESHOLD_PX = 48;
 
@@ -49,11 +49,10 @@ export function ArtworkImageViewer({
   // The viewer opens from state, not from a Radix trigger, so remember what had focus on open
   // and give it back on close (the phone menu's pattern).
   const opener = useRef<HTMLElement | null>(null);
-  const wasOpen = useRef(false);
-  if (open && !wasOpen.current && typeof document !== "undefined") {
+  useLayoutEffect(() => {
+    if (!open) return;
     opener.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-  }
-  wasOpen.current = open;
+  }, [open]);
   const returnFocus = (event: Event) => {
     const target = opener.current;
     if (!target?.isConnected || target === document.body) return;
