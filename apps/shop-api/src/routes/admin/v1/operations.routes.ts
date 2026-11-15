@@ -292,6 +292,35 @@ export async function registerAdminOperationsRoutes(app: FastifyInstance, deps: 
   );
 
   app.post(
+    "/orders/:orderId/retry-checkout-cleanup",
+    {
+      schema: {
+        tags: ["shop-admin"],
+        params: Type.Object({ orderId: Type.String({ format: "uuid" }) }),
+        response: {
+          200: IdResponseSchema,
+          403: ShopApiErrorBodySchema,
+          404: ShopApiErrorBodySchema,
+          409: ShopApiErrorBodySchema,
+        },
+      },
+    },
+    async (request) => {
+      requireShopStaffCapability(request, "order.write");
+      requireRecentAuthentication(request, deps.stepUpMaxAuthAgeSeconds);
+      const subject = requireShopAdminSubject(request);
+      const { orderId } = request.params as { orderId: string };
+      const idempotencyKey = requireIdempotencyKey(request);
+      const result = await deps.retryCheckoutCleanup({
+        orderId,
+        actorSubjectId: subject,
+        idempotencyKey,
+      });
+      return { id: result.orderId, status: result.status };
+    },
+  );
+
+  app.post(
     "/refunds/settled-outside",
     {
       schema: {

@@ -271,6 +271,8 @@ export const AdminOrderDetailSchema = Type.Object({
   stripeCheckoutSessionId: Type.Union([Type.String(), Type.Null()]),
   stripePaymentIntentId: Type.Union([Type.String(), Type.Null()]),
   paidAt: Type.Union([Type.String(), Type.Null()]),
+  /** True for an order the checkout sweep could not settle and left for staff; absent from an older shop-api. */
+  heldOutOfSweep: Type.Optional(Type.Boolean()),
   createdAt: Type.String(),
   lines: Type.Array(AdminOrderLineDetailSchema),
   fulfilmentRecord: Type.Union([AdminOrderFulfilmentDetailSchema, Type.Null()]),

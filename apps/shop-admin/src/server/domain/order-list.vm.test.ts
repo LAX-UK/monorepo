@@ -88,6 +88,7 @@ describe("orderTeamViews", () => {
       ["Awaiting payment this week", "status=pending_payment&from=2026-03-04&to=2026-03-10"],
       ["Payment failed this month", "status=payment_failed&from=2026-02-09&to=2026-03-10"],
       ["Refunded this month", "status=refunded&from=2026-02-09&to=2026-03-10"],
+      ["Held out of clean-up", "checkout=held"],
     ]);
   });
 
@@ -143,6 +144,30 @@ describe("the failed refunds filter", () => {
 
   it("ignores any other value", () => {
     expect(parseOrderListQuery({ refund: "pending" })).toEqual({});
+  });
+});
+
+describe("the held out of clean-up filter", () => {
+  it("is read from the URL, counts as a filter and is sent to the API", () => {
+    const query = parseOrderListQuery({ checkout: "held" });
+    expect(query).toEqual({ checkout: "held" });
+    expect(hasActiveOrderFilters(query)).toBe(true);
+    expect(orderListApiQuery(query)).toEqual({ checkout: "held" });
+    expect(orderListHref({}, { checkout: "held" })).toBe("/orders?checkout=held");
+    expect(orderListHref(query, { checkout: null })).toBe("/orders");
+  });
+
+  it("ignores any other value", () => {
+    expect(parseOrderListQuery({ checkout: "all" })).toEqual({});
+  });
+
+  it("has a view everyone can open, linked with exactly its query", () => {
+    const view = orderTeamViews(new Date("2026-03-10T12:00:00Z")).find((v) => v.id === "team-held");
+    expect(view).toMatchObject({
+      label: "Held out of clean-up",
+      query: "checkout=held",
+      href: "/orders?checkout=held",
+    });
   });
 });
 

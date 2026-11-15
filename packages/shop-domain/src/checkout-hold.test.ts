@@ -5,6 +5,7 @@ import {
   MAX_ASYNC_PAYMENT_HOLD_MS,
   MAX_HOLD_EXTENSION_MS,
   STRIPE_SESSION_MIN_LIFETIME_MS,
+  isHeldOutOfCheckoutSweep,
   newCheckoutHoldEnd,
   planHoldDeferral,
   planSessionHold,
@@ -95,5 +96,25 @@ describe("planHoldDeferral", () => {
       kind: "defer",
       endsAt: new Date(NOW.getTime() + MAX_ASYNC_PAYMENT_HOLD_MS),
     });
+  });
+});
+
+describe("isHeldOutOfCheckoutSweep", () => {
+  it("is an order still awaiting payment that has no hold left to sweep", () => {
+    expect(isHeldOutOfCheckoutSweep({ status: "pending_payment", checkoutExpiresAt: null })).toBe(
+      true,
+    );
+  });
+
+  it("is not an order the sweep still has, whether its hold has run out or not", () => {
+    expect(isHeldOutOfCheckoutSweep({ status: "pending_payment", checkoutExpiresAt: NOW })).toBe(
+      false,
+    );
+  });
+
+  it("is not an order that is no longer awaiting payment", () => {
+    for (const status of ["paid", "expired", "payment_failed", "cancelled"]) {
+      expect(isHeldOutOfCheckoutSweep({ status, checkoutExpiresAt: null })).toBe(false);
+    }
   });
 });

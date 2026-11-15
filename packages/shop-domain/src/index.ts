@@ -483,6 +483,7 @@ export {
   SESSION_SAFETY_MARGIN_MS,
   STRIPE_SESSION_MIN_LIFETIME_MS,
   type SessionHoldPlan,
+  isHeldOutOfCheckoutSweep,
   newCheckoutHoldEnd,
   planHoldDeferral,
   planSessionHold,

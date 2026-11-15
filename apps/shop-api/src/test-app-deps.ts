@@ -708,6 +708,10 @@ export function createMinimalShopApiTestDeps(
         refundId: "00000000-0000-4000-8000-000000000012",
         status: "pending" as const,
       }),
+      retryCheckoutCleanup: async () => ({
+        orderId: "00000000-0000-4000-8000-000000000013",
+        status: "pending_payment" as const,
+      }),
       markRefundSettledOutside: async () => ({
         refundId: "00000000-0000-4000-8000-000000000012",
         status: "succeeded" as const,

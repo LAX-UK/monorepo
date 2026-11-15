@@ -29,6 +29,7 @@ export function parseOrderListQuery(query: AdminOrderListQuery): AdminOrderListI
   return {
     ...(query.status ? { status: query.status } : {}),
     ...(query.refund ? { refund: query.refund } : {}),
+    ...(query.checkout ? { checkout: query.checkout } : {}),
     ...(query.createdFrom ? { createdFrom: query.createdFrom } : {}),
     ...(query.createdTo ? { createdTo: query.createdTo } : {}),
     ...(q ? { q } : {}),

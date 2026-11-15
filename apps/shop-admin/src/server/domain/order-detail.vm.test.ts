@@ -403,6 +403,29 @@ describe("failed refunds", () => {
   });
 });
 
+describe("an order put back in the checkout clean-up", () => {
+  it("shows on the timeline", () => {
+    const events = buildOrderTimeline(
+      order({
+        activity: [
+          {
+            auditId: "a2",
+            action: "retry_checkout_cleanup",
+            targetType: "shop_order",
+            actorSubjectId: "s",
+            actorName: "Operations",
+            createdAt: "2026-10-16T00:00:00Z",
+            detail: {},
+          },
+        ],
+      }),
+    );
+    expect(events.find((event) => event.id === "a2")?.title).toBe(
+      "Put back in the checkout clean-up",
+    );
+  });
+});
+
 describe("a refund settled outside LAX", () => {
   const settled: AdminOrderDetail["refunds"][number] = {
     refundId: "c9",

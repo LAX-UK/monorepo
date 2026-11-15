@@ -6,6 +6,7 @@ import { presentOrderStatus } from "@/server/domain/order-detail.vm";
 import {
   ADMIN_ORDER_STATUSES,
   CREATED_PRESETS,
+  HELD_ORDERS_LABEL,
   ORDER_DEFAULT_SORT,
   ORDER_LIST_PATH,
   ORDER_STATUS_LABELS,
@@ -43,6 +44,7 @@ import {
   STAFF_DEFAULT_PAGE_SIZE,
   StaffButton,
   StaffDate,
+  StatusBadge,
   TableSearch,
   daysBefore,
   formatGbp,
@@ -172,7 +174,16 @@ export function OrderList({
         width: "148px",
         mobile: "badge",
         truncate: false,
-        cell: (row) => <MappedStatusBadge status={row.status} present={presentOrderStatus} />,
+        cell: (row) => (
+          <span className="flex flex-col items-start gap-1">
+            <MappedStatusBadge status={row.status} present={presentOrderStatus} />
+            {row.heldOutOfSweep ? (
+              <StatusBadge tone="warning" title={HELD_ORDERS_LABEL}>
+                Held
+              </StatusBadge>
+            ) : null}
+          </span>
+        ),
       },
       {
         id: "buyer",
@@ -235,6 +246,15 @@ export function OrderList({
             id: "refund",
             label: "Failed refunds",
             onRemove: () => navigate(orderListHref(query, { refund: null })),
+          },
+        ]
+      : []),
+    ...(query.checkout
+      ? [
+          {
+            id: "checkout",
+            label: HELD_ORDERS_LABEL,
+            onRemove: () => navigate(orderListHref(query, { checkout: null })),
           },
         ]
       : []),
