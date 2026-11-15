@@ -7,7 +7,9 @@
  * an agreement waiting for acceptance, a role change. Extend this table, not the callers.
  *
  * Covered by the policy as notice types are added: a bid refused for a limit is informational
- * and in-app only, so a mute may quiet it.
+ * and in-app only, so a mute may quiet it. The collection visit notices (booked, changed,
+ * cancelled, the day-before reminder) are informational like "ready for collection": each has its
+ * email, which a mute does not stop.
  */
 export const NOTIFICATION_ALWAYS_DELIVERED_TYPES = [
   // Money owed or received: payment due (the invoice) and won lots.

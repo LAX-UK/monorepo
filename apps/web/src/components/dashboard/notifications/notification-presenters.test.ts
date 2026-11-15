@@ -38,6 +38,20 @@ describe("notificationTypePresenter", () => {
     }
   });
 
+  it("labels the collection visit notices, with a cancellation as a warning", () => {
+    for (const type of ["collection_booked", "collection_changed"]) {
+      expect(notificationTypePresenter(type)).toMatchObject({ label: "Collection", tone: "info" });
+    }
+    expect(notificationTypePresenter("collection_reminder")).toMatchObject({
+      label: "Collection tomorrow",
+      tone: "info",
+    });
+    expect(notificationTypePresenter("collection_cancelled")).toMatchObject({
+      label: "Collection cancelled",
+      tone: "warn",
+    });
+  });
+
   it("labels the three delivery notices with their own icon and tone", () => {
     expect(notificationTypePresenter("lot_ready_for_collection")).toMatchObject({
       label: "Ready to collect",

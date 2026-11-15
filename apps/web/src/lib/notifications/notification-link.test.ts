@@ -126,24 +126,29 @@ describe("notificationHref", () => {
 });
 
 describe("notificationHref for delivery notices", () => {
-  it.each(["lot_ready_for_collection", "lot_shipped", "lot_delivered"])(
-    "opens purchases for %s",
-    (type) => {
-      expect(
-        notificationHref({
-          id: "n9",
-          userId: "u1",
-          type,
-          title: "Your lot",
-          message: "Body",
-          lotId: "lot-1",
-          submissionId: null,
-          read: false,
-          createdAt: new Date(),
-        }),
-      ).toBe("/purchases");
-    },
-  );
+  it.each([
+    "lot_ready_for_collection",
+    "lot_shipped",
+    "lot_delivered",
+    "collection_booked",
+    "collection_changed",
+    "collection_cancelled",
+    "collection_reminder",
+  ])("opens purchases for %s", (type) => {
+    expect(
+      notificationHref({
+        id: "n9",
+        userId: "u1",
+        type,
+        title: "Your lot",
+        message: "Body",
+        lotId: "lot-1",
+        submissionId: null,
+        read: false,
+        createdAt: new Date(),
+      }),
+    ).toBe("/purchases");
+  });
 
   it("opens an artist or search notice on its page, and ignores an address that leaves the site", () => {
     const base = {

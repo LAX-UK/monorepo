@@ -47,6 +47,13 @@ describe("notifications a mute never silences", () => {
     "lot_lost",
     "consignment_update",
     "lot_ended_seller",
+    // Collection visits, like the lot's own "ready for collection": the visit is the buyer's own
+    // plan, and each notice has its email.
+    "lot_ready_for_collection",
+    "collection_booked",
+    "collection_changed",
+    "collection_cancelled",
+    "collection_reminder",
   ])("lets a mute silence the informational %s", (type) => {
     expect(notificationIsMutable(type)).toBe(true);
     expect(notificationSilencedByMute({ type, legalEntityId: "org-1" }, new Set(["org-1"]))).toBe(
