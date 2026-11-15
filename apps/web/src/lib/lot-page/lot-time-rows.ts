@@ -1,5 +1,6 @@
 import {
   CLOSING_CONFIRMING_AFTER_MS,
+  CLOSING_STOP_ASKING_AFTER_MS,
   type LotLifecycleKind,
   TIME_LEFT_DATE_BEYOND_MS,
   type TimeLeftTone,
@@ -50,6 +51,8 @@ export type LotInfoRow = {
   countdown?: LotRowCountdown;
   /** Present when a bidder acts on the row's time, so it carries the visitor's time too. */
   moment?: LotRowMoment;
+  /** The page has stopped asking for the result: the row offers a refresh. */
+  refresh?: true;
 };
 
 export type TimeRowContext = {
@@ -174,10 +177,10 @@ const closingNowRow: TimeRowBuilder = (ctx) => {
   const countdown = closingCountdown(ctx, false);
   // A page loaded long after the close draws the settled words at once, not "Closing…" first.
   const closedAtMs = momentMs(ctx.endsAt);
-  const confirming =
-    closedAtMs !== null && ctx.now.getTime() - closedAtMs >= CLOSING_CONFIRMING_AFTER_MS;
+  const overdueMs = closedAtMs === null ? 0 : ctx.now.getTime() - closedAtMs;
+  const confirming = overdueMs >= CLOSING_CONFIRMING_AFTER_MS;
   return {
-    ...closingFace(confirming),
+    ...closingFace(confirming, overdueMs >= CLOSING_STOP_ASKING_AFTER_MS),
     clock: !confirming,
     ...(countdown ? { countdown } : {}),
   };

@@ -9,7 +9,7 @@ import {
   nextAnnouncementWake,
   nextTimeAnnouncements,
 } from "@/lib/lot-page/time-announcements";
-import { useClockTick } from "@auction/ui/clock";
+import { defaultClockStore, useClockTick } from "@auction/ui/clock";
 import { useEffect, useRef } from "react";
 
 /**
@@ -50,15 +50,22 @@ export function LotTimeEffects() {
   }, [live, nowMs, endMs, extensions, view.lifecycle, announce]);
 
   // Zero on a lot that is closing, or on one that should have opened: the page asks the server how
-  // things stand rather than guessing, until the live connection or a snapshot says.
+  // things stand rather than guessing, until the live connection or a snapshot says, backing off
+  // and for ten minutes at most; after that the time row offers a refresh.
   const closing =
     live &&
     (view.lifecycle === "closing" ||
       (view.lifecycle === "scheduled" && view.msLeft !== null && view.msLeft <= 0));
+  const zeroAtMs = view.rows.find((row) => row.countdown)?.countdown?.targetMs ?? null;
   useEffect(() => {
     if (!closing) return;
-    return startClosingFetches(() => refreshFromServer({ silent: true }));
-  }, [closing, refreshFromServer]);
+    const clock = defaultClockStore();
+    return startClosingFetches(
+      () => refreshFromServer({ silent: true }),
+      zeroAtMs ?? clock.now(),
+      () => clock.now(),
+    );
+  }, [closing, zeroAtMs, refreshFromServer]);
 
   return null;
 }

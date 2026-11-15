@@ -1,6 +1,7 @@
 "use client";
 
 import { useReducedMotion } from "@/hooks/use-reduced-motion";
+import { useLotBidHistoryOptional } from "@/lib/context/lot-bid-history-provider";
 import { closingFace } from "@/lib/lot-page/closing-face";
 import type {
   LotInfoRow,
@@ -34,6 +35,8 @@ type Face = {
   spoken?: string;
   /** Only while the second line is the official time: not for "The result follows in a moment". */
   moment?: LotRowMoment | undefined;
+  /** The page has stopped asking for the result: offer a refresh. */
+  refresh?: true | undefined;
 };
 
 /** What the row prints for the clock's answer; the server's own text until the clock runs. */
@@ -48,6 +51,7 @@ export function faceOf(
     sub: row.sub,
     tone: row.tone,
     moment: row.moment,
+    refresh: row.refresh,
   };
   if (!display) return fallback;
   switch (display.kind) {
@@ -61,7 +65,7 @@ export function faceOf(
       };
     case "closing":
       return c.kind === "closes"
-        ? closingFace(display.confirming)
+        ? closingFace(display.confirming, display.confirming && display.stalled)
         : { label: "Opens", value: "Opening…", sub: c.sub, tone: "calm" };
     case "counting":
       return c.kind === "closes"
@@ -126,6 +130,14 @@ export function LotCountdownFact({
     ctx: contextFor(countdown.extended, reduced),
   });
   const tinted = useExtensionTint(countdown.extensions, reduced);
-  const face = faceOf(row, countdown, display);
-  return <LotFact {...face} clock={row.clock} tinted={tinted} />;
+  const history = useLotBidHistoryOptional();
+  const { refresh, ...face } = faceOf(row, countdown, display);
+  return (
+    <LotFact
+      {...face}
+      clock={row.clock}
+      tinted={tinted}
+      onRefresh={refresh && history ? () => void history.refreshFromServer() : undefined}
+    />
+  );
 }

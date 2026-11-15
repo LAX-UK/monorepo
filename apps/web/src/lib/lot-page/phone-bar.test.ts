@@ -157,4 +157,9 @@ describe("phone bar at and after the close", () => {
       clock: false,
     });
   });
+
+  it("turns exactly a minute past the close, not a millisecond before", () => {
+    expect(at(59_999)?.words).toBe("Closing…");
+    expect(at(60_000)?.words).toBe("Ended · confirming the result");
+  });
 });

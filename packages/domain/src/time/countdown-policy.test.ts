@@ -7,6 +7,7 @@ import {
 } from "../lot-page/time-left.js";
 import {
   CLOSING_CONFIRMING_AFTER_MS,
+  CLOSING_STOP_ASKING_AFTER_MS,
   COUNTDOWN_SURFACES,
   type CountdownSurface,
   countdownDisplay,
@@ -192,7 +193,7 @@ describe("countdownDisplay edges", () => {
     expect(countdownDisplay("card", Number.POSITIVE_INFINITY)).toEqual({ kind: "none" });
   });
 
-  it("closing becomes confirming a minute past zero, waking exactly then and never again", () => {
+  it("closing becomes confirming a minute past zero, waking exactly then", () => {
     expect(countdownDisplay("lot", 0)).toEqual({
       kind: "closing",
       confirming: false,
@@ -203,12 +204,31 @@ describe("countdownDisplay edges", () => {
       confirming: false,
       nextChangeInMs: 1,
     });
-    // At the limit it flips, and with nothing to wake for: no timer runs for a lot that is stuck.
     expect(countdownDisplay("lot", -CLOSING_CONFIRMING_AFTER_MS)).toEqual({
       kind: "closing",
       confirming: true,
+      stalled: false,
+      nextChangeInMs: CLOSING_STOP_ASKING_AFTER_MS - CLOSING_CONFIRMING_AFTER_MS,
     });
-    expect(countdownDisplay("lotBar", -10 * M)).toEqual({ kind: "closing", confirming: true });
+  });
+
+  it("confirming becomes stalled ten minutes past zero, and then nothing wakes for a stuck lot", () => {
+    expect(countdownDisplay("lot", -(CLOSING_STOP_ASKING_AFTER_MS - 1))).toEqual({
+      kind: "closing",
+      confirming: true,
+      stalled: false,
+      nextChangeInMs: 1,
+    });
+    expect(countdownDisplay("lot", -CLOSING_STOP_ASKING_AFTER_MS)).toEqual({
+      kind: "closing",
+      confirming: true,
+      stalled: true,
+    });
+    expect(countdownDisplay("lotBar", -60 * M)).toEqual({
+      kind: "closing",
+      confirming: true,
+      stalled: true,
+    });
   });
 
   it("spoken text is to the minute at every edge", () => {

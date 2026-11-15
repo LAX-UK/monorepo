@@ -27,10 +27,22 @@ export type LotFactProps = {
   tinted?: boolean | undefined;
   /** The instant the second line quotes, so the visitor's own time can sit under it. */
   moment?: LotRowMoment | undefined;
+  /** Offers "Refresh to see the result" under the row, for a result the page stopped asking for. */
+  onRefresh?: (() => void) | undefined;
 };
 
 /** One fact: a label, its value and an optional second line. */
-export function LotFact({ label, value, sub, tone, clock, spoken, tinted, moment }: LotFactProps) {
+export function LotFact({
+  label,
+  value,
+  sub,
+  tone,
+  clock,
+  spoken,
+  tinted,
+  moment,
+  onRefresh,
+}: LotFactProps) {
   return (
     <div
       className={cn(
@@ -75,6 +87,17 @@ export function LotFact({ label, value, sub, tone, clock, spoken, tinted, moment
           ) : (
             sub
           )}
+        </dd>
+      ) : null}
+      {onRefresh ? (
+        <dd className="m-0 mt-1">
+          <button
+            type="button"
+            onClick={onRefresh}
+            className="lax-focus rounded-sm text-lax-13 leading-5 font-medium text-lax-fg underline decoration-lax-line-strong underline-offset-4 hover:decoration-current"
+          >
+            Refresh to see the result
+          </button>
         </dd>
       ) : null}
     </div>

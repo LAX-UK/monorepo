@@ -1,12 +1,16 @@
 import { LotFactGrid } from "@/components/lot-page/lot-fact-grid";
 import type { LotInfoRow } from "@/lib/lot-page/lot-time-rows";
 import { createClockSource, createClockStore, replaceDefaultClockStore } from "@auction/ui/clock";
-import { act, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { renderToString } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 let reduced = false;
 vi.mock("@/hooks/use-reduced-motion", () => ({ useReducedMotion: () => reduced }));
+const refreshFromServer = vi.fn(async () => ({ ok: true }));
+vi.mock("@/lib/context/lot-bid-history-provider", () => ({
+  useLotBidHistoryOptional: () => ({ refreshFromServer }),
+}));
 vi.mock("@/lib/time/browser-clock-sync.client", () => ({
   ensureServerClockSync: () => undefined,
   browserClockSync: () => ({
@@ -113,8 +117,46 @@ describe("the lot page time fact", () => {
     expect(screen.getByText("Ended")).toBeInTheDocument();
     expect(screen.getByText("Confirming the result")).toBeInTheDocument();
     expect(screen.queryByText(/sold|no sale|unsold/i)).toBeNull();
-    // It settles: no timer is left running for it.
+    // One wake is left, for when the page stops asking; no refresh is offered before then.
+    expect(vi.getTimerCount()).toBe(1);
+    expect(screen.queryByRole("button", { name: "Refresh to see the result" })).toBeNull();
+  });
+
+  it("ten minutes past zero it offers a quiet refresh, which asks the server once, and then settles", () => {
+    refreshFromServer.mockClear();
+    render(<LotFactGrid rows={[row({ end: START + 1_000 })]} />);
+    act(() => {
+      vi.advanceTimersByTime(1_000 + 10 * 60_000 - 1);
+    });
+    expect(screen.queryByRole("button", { name: "Refresh to see the result" })).toBeNull();
+    act(() => {
+      vi.advanceTimersByTime(1);
+    });
+    const refresh = screen.getByRole("button", { name: "Refresh to see the result" });
+    expect(screen.getByText("Confirming the result")).toBeInTheDocument();
     expect(vi.getTimerCount()).toBe(0);
+    fireEvent.click(refresh);
+    expect(refreshFromServer).toHaveBeenCalledTimes(1);
+  });
+
+  it("a page opened long after the close offers the refresh on its first render", () => {
+    vi.setSystemTime(START + 20 * 60_000);
+    render(
+      <LotFactGrid
+        rows={[
+          {
+            ...row({ end: START }),
+            label: "Ended",
+            value: "Confirming the result",
+            sub: "The result will appear here once it is confirmed",
+            tone: "ended",
+            clock: false,
+            refresh: true,
+          },
+        ]}
+      />,
+    );
+    expect(screen.getByRole("button", { name: "Refresh to see the result" })).toBeInTheDocument();
   });
 
   it("a late bid after the confirming words still brings the row back to Extended", () => {

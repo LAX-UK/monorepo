@@ -366,6 +366,23 @@ describe("the time row counts", () => {
       endsAt: new Date(NOW_FOR_CLOSING.getTime() - 59_000).toISOString(),
     });
     expect(fresh.rows.find((r) => r.countdown)?.value).toBe("Closing…");
+    expect(row?.refresh).toBeUndefined();
+  });
+
+  it("ten minutes past its close, with no result, the row offers a refresh; at 60 s it does not", () => {
+    const at = (overdueMs: number) =>
+      buildLotPageView({
+        ...base,
+        lifecycle: "closing",
+        msLeft: 0,
+        now: NOW_FOR_CLOSING,
+        endsAt: new Date(NOW_FOR_CLOSING.getTime() - overdueMs).toISOString(),
+      }).rows.find((r) => r.countdown);
+    expect(at(10 * 60_000)).toMatchObject({ value: "Confirming the result", refresh: true });
+    expect(at(10 * 60_000 - 1)?.refresh).toBeUndefined();
+    // The boundary itself: exactly a minute past is confirming, a millisecond short is not.
+    expect(at(60_000)?.value).toBe("Confirming the result");
+    expect(at(59_999)?.value).toBe("Closing…");
   });
 
   it("a lot at the moment it opens reads Opening…", () => {
