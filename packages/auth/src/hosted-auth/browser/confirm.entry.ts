@@ -50,21 +50,15 @@ if (form instanceof HTMLFormElement) {
   });
 }
 
-const notYou = asButton(document.getElementById("confirm-not-you"));
-notYou?.addEventListener("click", async () => {
-  auth.hideStatus();
-  auth.setBusy(notYou, true);
-  try {
-    const { response } = await auth.postJson("/api/auth/sign-out", {});
-    if (!response.ok) {
-      auth.showError(msg.SIGN_OUT_FAILED);
-      return;
-    }
-    // The session is gone, so the same address now shows the ordinary sign-in page.
-    window.location.reload();
-  } catch {
-    auth.showError(auth.GENERIC_NETWORK);
-  } finally {
-    auth.setBusy(notYou, false);
+// Cancel never switches person: in the "Confirm it's you" window it closes the window, so the
+// Account page behind it says "Not confirmed yet"; on a full page it goes back to Account.
+const cancel = asButton(document.getElementById("confirm-cancel"));
+cancel?.addEventListener("click", () => {
+  if (window.opener && !window.opener.closed) {
+    window.close();
+    return;
   }
+  const href = cancel.getAttribute("data-href");
+  if (href) window.location.assign(href);
+  else window.history.back();
 });

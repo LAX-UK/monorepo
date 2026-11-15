@@ -11,6 +11,7 @@ import {
   viewChrome,
 } from "../html.js";
 import { hostedLegalProduct } from "../legal-links.js";
+import { PASSKEY_COPY } from "../passkey-copy.js";
 import { HOSTED_AUTH_ASSET_VERSION } from "../policy.js";
 import { socialActions } from "../social-actions.js";
 import {
@@ -27,6 +28,8 @@ function emailAutocomplete(view: HostedAuthView): string {
 }
 
 function phoneAndSignUp(view: HostedAuthView): string {
+  // A re-check confirms the person already signed in: never offer a new account.
+  if (view.flow.reauth) return "";
   if (view.flow.audience === "staff") {
     return `<p class="links-secondary staff-access-note">Access is limited to LAX staff accounts. Ask a Shop administrator if you need access.</p>`;
   }
@@ -107,8 +110,30 @@ function combinedBody(view: HostedAuthView): string {
   </div>`;
 }
 
+/**
+ * LAX Account asked for a fresh sign-in, but the issuer could not fix the person (no session, or
+ * nothing to confirm with): the ordinary form, still titled "Confirm it's you" with the reason,
+ * and without sign-up. Account's callback still accepts only the person already signed in there.
+ */
+function reauthLead(view: HostedAuthView) {
+  const copy = PASSKEY_COPY.confirm;
+  return {
+    title: copy.title,
+    description: view.flow.reauthReason ? copy.leadByReason[view.flow.reauthReason] : copy.lead,
+    showDestination: false,
+  };
+}
+
 export function buildHostedLoginHtml(view: HostedAuthView = hostedAuthViewFromSearch("")): string {
   const productBack = resolveHostedProductBackLink(view);
+  if (view.flow.reauth) {
+    return buildHostedAuthHtml({
+      ...reauthLead(view),
+      ...viewChrome(view),
+      body: view.capabilities.emailFirst ? emailFirstBody(view) : combinedBody(view),
+      scriptSrc: "/hosted-login.js",
+    });
+  }
   // Staff sign-in names its tool in the lead; customers are told where they are heading.
   const lead =
     view.flow.audience === "staff"

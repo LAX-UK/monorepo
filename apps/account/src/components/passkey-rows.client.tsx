@@ -12,9 +12,7 @@ import {
   type PasskeysRowVm,
   passkeyNameProblem,
 } from "@/server/domain/account-passkeys.vm";
-import { buildReauthHref } from "@/server/domain/account-reauth";
 import { PASSKEY_NAME_INPUT_MAX_LENGTH } from "@auction/identity-contracts/account";
-import { ConfirmDialog } from "@auction/ui/components/confirm-dialog";
 import {
   Dialog,
   DialogContent,
@@ -33,6 +31,8 @@ import {
   SIGN_IN_METHOD_SUBROW,
   SignInMethodRowText,
 } from "./sign-in-method-row";
+import { StepUpDialog } from "./step-up-dialog.client";
+import { useStepUp } from "./use-step-up.client";
 
 const COULD_NOT = "We couldn't do that just now. Please try again.";
 
@@ -63,6 +63,7 @@ function RenamePasskeyDialog({
   const [name, setName] = useState(item.name);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const stepUp = useStepUp({ returnTo });
 
   async function submit() {
     const problem = passkeyNameProblem(name);
@@ -75,7 +76,8 @@ function RenamePasskeyDialog({
     const result = await attempt(() => renamePasskeyAction(item.id, name));
     if (result.status === "reauth_required") {
       // A rename needs no recent sign-in, but a sign-in that has ended has to start again.
-      window.location.assign(buildReauthHref(returnTo));
+      setBusy(false);
+      stepUp.require({ reason: "rename_passkey", retry: () => void submit() });
       return;
     }
     if (result.status === "error" && result.stale) {
@@ -148,6 +150,7 @@ function RenamePasskeyDialog({
             </LoadingButton>
           </DialogFooter>
         </form>
+        <StepUpDialog stepUp={stepUp} />
       </DialogContent>
     </Dialog>
   );
@@ -168,13 +171,15 @@ function RemovePasskeyDialog({
 }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const stepUp = useStepUp({ returnTo });
 
   async function remove() {
     setBusy(true);
     setError(null);
     const result = await attempt(() => removePasskeyAction(item.id));
     if (result.status === "reauth_required") {
-      window.location.assign(buildReauthHref(returnTo, "remove_sign_in_method"));
+      setBusy(false);
+      stepUp.require({ reason: "remove_sign_in_method", retry: () => void remove() });
       return;
     }
     if (result.status === "error" && result.stale) {
@@ -192,29 +197,32 @@ function RemovePasskeyDialog({
   }
 
   return (
-    <ConfirmDialog
-      open
-      onOpenChange={(open) => {
-        if (!open && !busy) onClose();
-      }}
-      title={item.confirm.title}
-      body={
-        <>
-          <p>
-            <ProductText text={item.confirm.body} />
-          </p>
-          <p className="mt-3">{item.confirm.note}</p>
-          {error ? (
-            <p role="alert" className="mt-3 text-error">
-              {error}
+    <StepUpDialog
+      stepUp={stepUp}
+      action={{
+        open: true,
+        onOpenChange: (open) => {
+          if (!open && !busy) onClose();
+        },
+        title: item.confirm.title,
+        body: (
+          <>
+            <p>
+              <ProductText text={item.confirm.body} />
             </p>
-          ) : null}
-        </>
-      }
-      confirmLabel={item.confirm.confirmLabel}
-      loading={busy}
-      loadingLabel="Removing…"
-      onConfirm={remove}
+            <p className="mt-3">{item.confirm.note}</p>
+            {error ? (
+              <p role="alert" className="mt-3 text-error">
+                {error}
+              </p>
+            ) : null}
+          </>
+        ),
+        confirmLabel: item.confirm.confirmLabel,
+        loading: busy,
+        loadingLabel: "Removing…",
+        onConfirm: remove,
+      }}
     />
   );
 }

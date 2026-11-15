@@ -88,4 +88,14 @@ describe("auth issuer security headers", () => {
     const api = await app.request("https://auth.example.com/api/thing");
     expect(api.headers.get("permissions-policy")).not.toContain("publickey-credentials");
   });
+
+  it("sends no opener policy, so LAX Account's Confirm it's you window keeps its opener", async () => {
+    // The hosted re-check runs in a window Account opened, and the window reports back through
+    // window.opener once it is back on Account. `same-origin` here would sever that link.
+    const app = new Hono();
+    app.use("*", createSecurityHeadersMiddleware());
+    app.get("/login", (c) => c.html("<!doctype html><title>x</title>"));
+    const response = await app.request("https://auth.example.com/login");
+    expect(response.headers.get("cross-origin-opener-policy")).toBeNull();
+  });
 });

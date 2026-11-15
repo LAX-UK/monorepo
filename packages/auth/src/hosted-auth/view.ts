@@ -73,8 +73,9 @@ export function buildHostedAuthPageConfig(
 export function createHostedAuthView(
   searchParams: URLSearchParams,
   capabilities: HostedAuthCapabilities,
+  loginPrompt: URLSearchParams | null = null,
 ): HostedAuthView {
-  const flow = parseHostedAuthFlow(searchParams);
+  const flow = parseHostedAuthFlow(searchParams, loginPrompt);
   return {
     flow,
     brand: selectHostedBrand(flow.clientId),
@@ -99,9 +100,11 @@ export const EMPTY_HOSTED_AUTH_CAPABILITIES: HostedAuthCapabilities = {
 export function hostedAuthViewFromSearch(
   search: string | URLSearchParams | undefined,
   capabilities: HostedAuthCapabilities = EMPTY_HOSTED_AUTH_CAPABILITIES,
+  /** The provider's verified `oidc_login_prompt` request; see `parseHostedAuthFlow`. */
+  loginPrompt: URLSearchParams | null = null,
 ): HostedAuthView {
   const params = search instanceof URLSearchParams ? search : new URLSearchParams(search ?? "");
-  return createHostedAuthView(params, capabilities);
+  return createHostedAuthView(params, capabilities, loginPrompt);
 }
 
 export type HostedProductBackLink = {

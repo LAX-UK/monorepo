@@ -3,8 +3,9 @@
 import { LoadingButton } from "@/components/account-button";
 import { FIELD } from "@/components/account-ui";
 import { ProductText } from "@/components/product-name";
+import { StepUpDialog } from "@/components/step-up-dialog.client";
+import { useStepUp } from "@/components/use-step-up.client";
 import { renameAccountAction } from "@/server/application/account-identity-actions.server";
-import { buildReauthHref } from "@/server/domain/account-reauth";
 import { Input } from "@auction/ui/components/input";
 import { Label } from "@auction/ui/components/label";
 import { useRouter } from "next/navigation";
@@ -25,7 +26,7 @@ type PersonalNameFormProps = {
 
 /**
  * Editable name (Personal details). Saving needs a recent sign-in; when the issuer says it is
- * too old the person is sent through a fresh one and returns to this page to save again.
+ * too old the person confirms it's them and the name is saved again.
  */
 export function PersonalNameForm({ initialName, maxLength, returnTo }: PersonalNameFormProps) {
   const inputId = useId();
@@ -33,6 +34,7 @@ export function PersonalNameForm({ initialName, maxLength, returnTo }: PersonalN
   const [value, setValue] = useState(initialName ?? "");
   const [state, setState] = useState<FormState>({ kind: "idle" });
   const [pending, startTransition] = useTransition();
+  const stepUp = useStepUp({ returnTo });
   const router = useRouter();
   const trimmed = value.trim();
   const unchanged = trimmed === (initialName ?? "");
@@ -45,7 +47,7 @@ export function PersonalNameForm({ initialName, maxLength, returnTo }: PersonalN
     startTransition(async () => {
       const result = await renameAccountAction(trimmed);
       if (result.status === "reauth_required") {
-        window.location.assign(buildReauthHref(returnTo));
+        stepUp.require({ reason: "change_name", retry: save });
         return;
       }
       if (result.status === "ok") {
@@ -59,52 +61,57 @@ export function PersonalNameForm({ initialName, maxLength, returnTo }: PersonalN
   }
 
   return (
-    <form
-      className="flex flex-col gap-4 rounded-2xl border border-border-hairline bg-surface p-4 sm:p-6"
-      onSubmit={(event) => {
-        event.preventDefault();
-        save();
-      }}
-      noValidate
-    >
-      <div className="space-y-1.5">
-        <Label htmlFor={inputId}>Name</Label>
-        <Input
-          className={FIELD}
-          id={inputId}
-          name="name"
-          autoComplete="name"
-          maxLength={maxLength}
-          value={value}
-          onChange={(event) => {
-            setValue(event.target.value);
-            if (state.kind !== "idle") setState({ kind: "idle" });
-          }}
-          aria-invalid={state.kind === "error" || undefined}
-          aria-describedby={state.kind === "idle" ? undefined : messageId}
-        />
-        <p className="text-xs text-on-surface-variant">
-          <ProductText text="Your name is shared with LAX Bid, LAX Shop and lax.art." />
-        </p>
-        <div id={messageId} aria-live="polite">
-          {state.kind === "error" ? (
-            <p role="alert" className="text-sm text-error">
-              {state.message}
-            </p>
-          ) : null}
-          {state.kind === "saved" ? <p className="text-sm text-success">{state.message}</p> : null}
-        </div>
-      </div>
-      <LoadingButton
-        type="submit"
-        variant="cta"
-        loading={pending}
-        loadingLabel="Saving…"
-        disabled={unchanged}
-        className="self-start"
+    <>
+      <form
+        className="flex flex-col gap-4 rounded-2xl border border-border-hairline bg-surface p-4 sm:p-6"
+        onSubmit={(event) => {
+          event.preventDefault();
+          save();
+        }}
+        noValidate
       >
-        Save name
-      </LoadingButton>
-    </form>
+        <div className="space-y-1.5">
+          <Label htmlFor={inputId}>Name</Label>
+          <Input
+            className={FIELD}
+            id={inputId}
+            name="name"
+            autoComplete="name"
+            maxLength={maxLength}
+            value={value}
+            onChange={(event) => {
+              setValue(event.target.value);
+              if (state.kind !== "idle") setState({ kind: "idle" });
+            }}
+            aria-invalid={state.kind === "error" || undefined}
+            aria-describedby={state.kind === "idle" ? undefined : messageId}
+          />
+          <p className="text-xs text-on-surface-variant">
+            <ProductText text="Your name is shared with LAX Bid, LAX Shop and lax.art." />
+          </p>
+          <div id={messageId} aria-live="polite">
+            {state.kind === "error" ? (
+              <p role="alert" className="text-sm text-error">
+                {state.message}
+              </p>
+            ) : null}
+            {state.kind === "saved" ? (
+              <p className="text-sm text-success">{state.message}</p>
+            ) : null}
+          </div>
+        </div>
+        <LoadingButton
+          type="submit"
+          variant="cta"
+          loading={pending}
+          loadingLabel="Saving…"
+          disabled={unchanged}
+          className="self-start"
+        >
+          Save name
+        </LoadingButton>
+      </form>
+      <StepUpDialog stepUp={stepUp} />
+    </>
   );
 }

@@ -8,6 +8,8 @@ import {
   buildSignOutOthersConfirm,
   buildSignedOutDeviceMessage,
   buildSignedOutOthersMessage,
+  parseDevicesResume,
+  signOutDeviceResume,
 } from "./account-sessions.vm";
 
 const NOW = new Date("2026-10-23T12:00:00.000Z");
@@ -192,5 +194,41 @@ describe("buildReauthHref", () => {
     expect(buildReauthHref("/account/security")).toBe(
       "/api/auth/login?returnTo=%2Faccount%2Fsecurity&intent=reauth",
     );
+  });
+});
+
+describe("parseDevicesResume", () => {
+  const vm = buildSessionsVm(
+    [session({ id: "s1", isCurrent: true }), session({ id: "s2" }), session({ id: "s3" })],
+    NOW,
+  );
+
+  it("reopens the dialog for a device still in the list, or for everywhere else", () => {
+    expect(parseDevicesResume(signOutDeviceResume({ id: "s2" }), vm.others)).toMatchObject({
+      kind: "device",
+      row: { id: "s2" },
+    });
+    expect(parseDevicesResume("signout-others", vm.others)).toEqual({ kind: "others" });
+  });
+
+  it("ignores anything else: unknown actions, gone devices, this device, nothing to sign out", () => {
+    for (const raw of [
+      null,
+      "",
+      "delete-account",
+      "signout:",
+      "signout:gone",
+      "signout:s1",
+      "SIGNOUT-OTHERS",
+    ]) {
+      expect(parseDevicesResume(raw, vm.others)).toBeNull();
+    }
+    expect(parseDevicesResume("signout-others", [])).toBeNull();
+  });
+
+  it("never reopens sign-out for a row marked as this device, even if it is among the others", () => {
+    const current = vm.current;
+    if (!current) throw new Error("expected a current row");
+    expect(parseDevicesResume(signOutDeviceResume(current), [...vm.others, current])).toBeNull();
   });
 });

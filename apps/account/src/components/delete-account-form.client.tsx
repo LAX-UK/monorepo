@@ -3,8 +3,9 @@
 import { LoadingButton } from "@/components/account-button";
 import { FIELD } from "@/components/account-ui";
 import { ProductText } from "@/components/product-name";
+import { StepUpDialog } from "@/components/step-up-dialog.client";
+import { useStepUp } from "@/components/use-step-up.client";
 import { requestAccountDeletionAction } from "@/server/application/account-identity-actions.server";
-import { buildReauthHref } from "@/server/domain/account-reauth";
 import { Input } from "@auction/ui/components/input";
 import { Label } from "@auction/ui/components/label";
 import { useRouter } from "next/navigation";
@@ -31,12 +32,13 @@ export function DeleteAccountForm({ phrase, consequences, returnTo }: DeleteAcco
   const [typed, setTyped] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const stepUp = useStepUp({ returnTo });
 
   function submit() {
     startTransition(async () => {
       const result = await requestAccountDeletionAction(typed);
       if (result.status === "reauth_required") {
-        window.location.assign(buildReauthHref(returnTo));
+        stepUp.require({ reason: "delete_account", retry: submit });
         return;
       }
       if (result.status === "error") {
@@ -50,58 +52,61 @@ export function DeleteAccountForm({ phrase, consequences, returnTo }: DeleteAcco
   }
 
   return (
-    <form
-      className="flex flex-col gap-4 rounded-2xl border border-border-hairline bg-surface p-4 sm:p-6"
-      noValidate
-      onSubmit={(event) => {
-        event.preventDefault();
-        if (typed === phrase) submit();
-      }}
-    >
-      <ul className="list-disc space-y-2 pl-5 text-sm text-on-surface">
-        {consequences.map((line) => (
-          <li key={line}>
-            <ProductText text={line} />
-          </li>
-        ))}
-      </ul>
-      <div className="space-y-1.5">
-        <Label htmlFor={inputId}>
-          Type <span className="font-semibold">{phrase}</span> to confirm
-        </Label>
-        <Input
-          className={FIELD}
-          id={inputId}
-          name="confirmation"
-          autoComplete="off"
-          autoCapitalize="characters"
-          spellCheck={false}
-          value={typed}
-          onChange={(event) => {
-            setTyped(event.target.value);
-            if (error) setError(null);
-          }}
-          aria-invalid={error ? true : undefined}
-          aria-describedby={error ? messageId : undefined}
-        />
-      </div>
-      <div id={messageId} aria-live="polite">
-        {error ? (
-          <p role="alert" className="text-sm text-error">
-            {error}
-          </p>
-        ) : null}
-      </div>
-      <LoadingButton
-        type="submit"
-        variant="destructive"
-        loading={pending}
-        loadingLabel="Deleting…"
-        disabled={typed !== phrase}
-        className="min-h-11"
+    <>
+      <form
+        className="flex flex-col gap-4 rounded-2xl border border-border-hairline bg-surface p-4 sm:p-6"
+        noValidate
+        onSubmit={(event) => {
+          event.preventDefault();
+          if (typed === phrase) submit();
+        }}
       >
-        Delete my account
-      </LoadingButton>
-    </form>
+        <ul className="list-disc space-y-2 pl-5 text-sm text-on-surface">
+          {consequences.map((line) => (
+            <li key={line}>
+              <ProductText text={line} />
+            </li>
+          ))}
+        </ul>
+        <div className="space-y-1.5">
+          <Label htmlFor={inputId}>
+            Type <span className="font-semibold">{phrase}</span> to confirm
+          </Label>
+          <Input
+            className={FIELD}
+            id={inputId}
+            name="confirmation"
+            autoComplete="off"
+            autoCapitalize="characters"
+            spellCheck={false}
+            value={typed}
+            onChange={(event) => {
+              setTyped(event.target.value);
+              if (error) setError(null);
+            }}
+            aria-invalid={error ? true : undefined}
+            aria-describedby={error ? messageId : undefined}
+          />
+        </div>
+        <div id={messageId} aria-live="polite">
+          {error ? (
+            <p role="alert" className="text-sm text-error">
+              {error}
+            </p>
+          ) : null}
+        </div>
+        <LoadingButton
+          type="submit"
+          variant="destructive"
+          loading={pending}
+          loadingLabel="Deleting…"
+          disabled={typed !== phrase}
+          className="min-h-11"
+        >
+          Delete my account
+        </LoadingButton>
+      </form>
+      <StepUpDialog stepUp={stepUp} />
+    </>
   );
 }

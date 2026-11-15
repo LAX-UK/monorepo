@@ -1,8 +1,9 @@
 "use client";
 
 import { Button, LoadingButton } from "@/components/account-button";
+import { StepUpDialog } from "@/components/step-up-dialog.client";
+import { useStepUp } from "@/components/use-step-up.client";
 import { deleteDataExportCopyAction } from "@/server/application/data-export-actions.server";
-import { buildReauthHref } from "@/server/domain/account-reauth";
 import { DATA_EXPORT_FILE_ROUTE, DATA_EXPORT_ROUTE } from "@/server/domain/data-export-routes";
 import { Input } from "@auction/ui/components/input";
 import { useRouter } from "next/navigation";
@@ -25,6 +26,7 @@ export function DataExportReadyActions({
   const started = useRef(false);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const stepUp = useStepUp({ returnTo: DATA_EXPORT_ROUTE });
 
   useEffect(() => {
     if (!resume || started.current) return;
@@ -42,7 +44,7 @@ export function DataExportReadyActions({
         return;
       }
       if (result.status === "reauth_required") {
-        window.location.assign(buildReauthHref(DATA_EXPORT_ROUTE));
+        stepUp.require({ reason: "delete_data_copy", retry: deleteCopy });
         return;
       }
       setError(result.message);
@@ -77,6 +79,7 @@ export function DataExportReadyActions({
           </p>
         ) : null}
       </div>
+      <StepUpDialog stepUp={stepUp} />
     </div>
   );
 }
