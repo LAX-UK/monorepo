@@ -2682,6 +2682,13 @@
       "when": 1812024000000,
       "tag": "0391_consignment_agreement_versions",
       "breakpoints": true
+    },
+    {
+      "idx": 384,
+      "version": "7",
+      "when": 1812110400000,
+      "tag": "0392_collection_notification_types",
+      "breakpoints": true
     }
   ]
 }

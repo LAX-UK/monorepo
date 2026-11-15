@@ -12,7 +12,16 @@ const TYPE_FILTER_GROUPS: Readonly<Record<string, readonly string[]>> = {
     "payout_problem",
     "payout_bank_changed",
   ],
-  fulfilment: ["lot_ready_for_collection", "lot_shipped", "lot_delivered", "delivery_quote_ready"],
+  fulfilment: [
+    "lot_ready_for_collection",
+    "lot_shipped",
+    "lot_delivered",
+    "delivery_quote_ready",
+    "collection_booked",
+    "collection_changed",
+    "collection_cancelled",
+    "collection_reminder",
+  ],
   closing_soon: ["lot_ending_soon", "watchlist_ending_soon"],
   watching: ["watchlist_starting", "watchlist_ending_soon", "watchlist_reminder"],
   consignments: [

@@ -244,6 +244,63 @@ describe.skipIf(!HAS_DB)("collect-by reader (integration)", () => {
     });
   });
 
+  describe("lots the buyer can be told they can book", () => {
+    const since = new Date("2031-02-15T00:00:00Z");
+
+    it("reads lots paid since the date, whatever their storage deadline, with the same exclusions", async () => {
+      const recent = await storedLot({ cleared: new Date("2031-03-08T10:00:00Z") });
+      const atStart = await storedLot({ cleared: since });
+      const before = await storedLot({ cleared: new Date("2031-02-14T23:59:00Z") });
+      const handedOver = await storedLot({
+        status: "delivered",
+        method: "collection",
+        cleared: new Date("2031-03-08T10:00:00Z"),
+      });
+      const noOnlineBooking = await storedLot({
+        sale: closedSaleId,
+        cleared: new Date("2031-03-08T10:00:00Z"),
+      });
+      const undated = await storedLot({ cleared: null });
+      const ids = (await reader.lotsClearedSince(since)).map((row) => row.lotId);
+      expect(ids).toContain(recent);
+      expect(ids).toContain(atStart);
+      for (const lotId of [before, handedOver, noOnlineBooking, undated]) {
+        expect(ids).not.toContain(lotId);
+      }
+      expect((await reader.lotsClearedSince(since)).find((r) => r.lotId === recent)).toMatchObject({
+        legalEntityId: buyerEntity,
+        venueId,
+        winnerId: buyer,
+        place: { name: "Collect-by gallery" },
+      });
+    });
+
+    it("counts only earlier emails of the template asked for", async () => {
+      const user = `col-can-${run}`;
+      const now = new Date();
+      await db.execute(sql`
+        insert into "user" (id, name, email, email_verified, created_at, updated_at)
+        values (${user}, 'C', ${`${user}@integration.test`}, true, ${now}, ${now})`);
+      const prefix = `collection-can-book:e:v:${user}:`;
+      for (const [suffix, template, lotId] of [
+        ["a", "collection-can-book", "l-a"],
+        ["b", "collection-collect-by", "l-b"],
+      ] as const) {
+        await db.execute(sql`
+          insert into email_outbox (idempotency_key, user_id, to_email_hash, template, vars, status, stream, category)
+          values (${`${prefix}${suffix}`}, ${user}, ${`hash-${user}-${suffix}`}, ${template},
+            ${JSON.stringify({ lotIds: [lotId] })}::jsonb, 'sent', 'transactional', 'transactional')`);
+      }
+      const query = { keyPrefix: prefix, userId: user, today: "2031-03-10" };
+      expect(await reader.remindedLotIds({ ...query, template: "collection-can-book" })).toEqual(
+        new Set(["l-a"]),
+      );
+      expect(await reader.remindedLotIds(query)).toEqual(new Set(["l-b"]));
+      await db.execute(sql`delete from email_outbox where user_id = ${user}`);
+      await db.execute(sql`delete from "user" where id = ${user}`);
+    });
+  });
+
   it("leaves out a lot already in a live booking", async () => {
     const booked = await storedLot();
     const bookingId = randomUUID();

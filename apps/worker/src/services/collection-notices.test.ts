@@ -34,7 +34,7 @@ function visit(over: Partial<CollectionNoticeVisit> = {}): CollectionNoticeVisit
       { title: "Lowland Storm", lotNumber: 12, active: true },
       { title: "Coastal Notation", lotNumber: 14, active: true },
     ],
-    account: { kind: "personal", name: "Maya Okafor" },
+    account: { id: "le-maya", kind: "personal", name: "Maya Okafor" },
     booker: maya,
     accountPeople: [owner],
     ...over,
@@ -127,7 +127,7 @@ describe("a booking made", () => {
     const emails = collectionEmailsFor(
       created,
       visit({
-        account: { kind: "organisation", name: "Northbank Ltd" },
+        account: { id: "le-northbank", kind: "organisation", name: "Northbank Ltd" },
         booker: { ...maya, name: "Jane Hart", firstName: "Jane" },
         collector: { kind: "third_party", name: "Sam Okoro", email: "sam@example.com" },
       }),
@@ -145,7 +145,7 @@ describe("a booking made", () => {
         noticeDeadline: null,
       },
       visit({
-        account: { kind: "organisation", name: "Northbank Ltd" },
+        account: { id: "le-northbank", kind: "organisation", name: "Northbank Ltd" },
         booker: null,
         collector: { kind: "third_party", name: "Sam Okoro", email: "sam@example.com" },
       }),

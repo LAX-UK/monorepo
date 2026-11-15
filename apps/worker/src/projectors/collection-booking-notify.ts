@@ -1,6 +1,7 @@
 import type { CollectionCancelReason, CollectionCancelledVia } from "@auction/domain";
 import type { IEmailService } from "@auction/email";
 import type pino from "pino";
+import { collectionInAppNoticesFor } from "../services/collection-in-app-notices.js";
 import {
   type CollectionChange,
   type CollectionNoticeConfig,
@@ -57,7 +58,8 @@ function changeOf(eventType: string, eventId: number, payload: Payload): Collect
 }
 
 /**
- * Sends the emails for collection bookings made, changed, cancelled, handed over and missed, from the audit events
+ * Sends the emails for collection bookings made, changed, cancelled, handed over and missed, and
+ * the inbox notices for the first three, from the audit events
  * written in the same transaction as the booking. So a booking and its email can never disagree:
  * if the booking is stored its event is, and the email follows, once. A cancellation by the
  * buyer, by staff (hours or a closure changed) or by Bid when the booker erased their account all
@@ -71,7 +73,8 @@ export async function processCollectionBookingNotify(options: {
   now?: () => Date;
 }): Promise<void> {
   const { ctx, log, emailService, config, now = () => new Date() } = options;
-  const { projectorStateRepo, domainEventReader, collectionNoticeReader } = ctx;
+  const { projectorStateRepo, domainEventReader, collectionNoticeReader, notificationWriteRepo } =
+    ctx;
   if (!collectionNoticeReader) return;
 
   const cursor = await projectorStateRepo.getCursor(COLLECTION_BOOKING_NOTIFY_PROJECTOR);
@@ -107,6 +110,10 @@ export async function processCollectionBookingNotify(options: {
           log,
           now: at,
         });
+        // The inbox notices follow the emails; a failure here retries the event, and the emails'
+        // keys keep that retry from sending any email twice.
+        const notices = collectionInAppNoticesFor(change, visit, at);
+        if (notices.length > 0) await notificationWriteRepo.createMany(notices);
       }
       maxId = row.id;
     } catch (err) {

@@ -109,7 +109,7 @@ describe.skipIf(!HAS_DB)("collection notice reader (integration)", () => {
         { title: "Lowland Storm", lotNumber: 12, active: false, outcome: null },
         { title: "Coastal Notation", lotNumber: 14, active: true, outcome: null },
       ],
-      account: { kind: "organisation", name: "Northbank Gallery" },
+      account: { id: entityId, kind: "organisation", name: "Northbank Gallery" },
       booker: { userId: booker, email: `${booker}@integration.test`, name: "Maya Okafor" },
     });
     expect(read?.accountPeople.map((p) => p.userId)).toEqual([owner]);

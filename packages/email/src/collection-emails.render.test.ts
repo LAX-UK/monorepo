@@ -103,6 +103,39 @@ describe("collection missed email", () => {
   });
 });
 
+describe("you can book email", () => {
+  const base = {
+    userName: "Maya",
+    placeName: "London Art Exchange",
+    address: "156 New Cavendish Street, London W1W 6YW",
+    lots: ["Lot 12 · Lowland Storm", "Lot 14 · Coastal Notation"],
+    lotIds: ["a", "b"],
+    bookUrl: "https://lax.bid/purchases/collect?lots=a,b",
+  };
+
+  it("says the lots can be booked now, where, and links to book them", async () => {
+    const rendered = await renderEmail("collection-can-book", base);
+    expect(rendered.subject).toBe("You can book a time to collect your lots");
+    expect(rendered.text).toContain("Your lots are paid and nothing is in the way");
+    expect(rendered.text).toContain("London Art Exchange, 156 New Cavendish Street");
+    expect(rendered.html).toContain("<li>Lot 12 · Lowland Storm</li>");
+    expect(rendered.html).toContain("https://lax.bid/purchases/collect?lots=a,b");
+    expect(rendered.html).not.toContain(">a<");
+    expect(`${rendered.subject} ${rendered.text}`).not.toMatch(PRICE);
+  });
+
+  it("speaks of one lot when there is one", async () => {
+    const rendered = await renderEmail("collection-can-book", {
+      ...base,
+      lots: ["Lot 12 · Lowland Storm"],
+      lotIds: ["a"],
+    });
+    expect(rendered.subject).toBe("You can book your collection");
+    expect(rendered.text).toContain("Your lot is paid");
+    expect(rendered.text).toContain("Book a time to collect it from London Art Exchange");
+  });
+});
+
 describe("collect by email", () => {
   const base = {
     userName: "Maya",
@@ -297,6 +330,7 @@ describe("collection emails are transactional", () => {
       "collection-collected",
       "collection-missed",
       "collection-collect-by",
+      "collection-can-book",
     ]) {
       expect(OPTIONAL_EMAIL_TEMPLATES).not.toContain(name);
     }

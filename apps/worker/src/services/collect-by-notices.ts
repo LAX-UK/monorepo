@@ -53,11 +53,11 @@ export function collectByGroups(lots: readonly StoredLot[], today: string): Coll
   return [...groups.values()];
 }
 
-const lotLine = (lot: { title: string; lotNumber: number | null }) =>
+export const lotLine = (lot: { title: string; lotNumber: number | null }) =>
   lot.lotNumber != null ? `Lot ${lot.lotNumber} · ${lot.title}` : lot.title;
 
 /** A short stamp of which lots an email is about, so lots that become eligible later get their own. */
-const lotSetStamp = (lots: readonly StoredLot[]): string =>
+export const lotSetStamp = (lots: readonly StoredLot[]): string =>
   createHash("sha256")
     .update(
       lots

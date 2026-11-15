@@ -67,6 +67,12 @@ The `collections` category lists the bookings a person made, authorised or is na
 with the collector details they typed in. It never includes another member's bookings, and a
 booking made by another member shows only that it was made by "another member", not who.
 
+### Hand-over
+
+The desk reads the lot's checks again when staff hand works over: an AML hold or a source-of-funds
+review opened on the buyer after the visit was booked refuses the hand-over (409 `hold_open`,
+naming the lot and the reason, as the booking path does) and changes nothing.
+
 ## Hours, closures and bank holidays
 
 Staff set a place's hours, rules and closures in Bid admin under Collections (the Fulfilment role
@@ -113,6 +119,21 @@ The calendar invites come from `COLLECTION_ORGANIZER_EMAIL` / `COLLECTION_ORGANI
 `collections@lax.bid`, "LAX Bid", the product's name). Both have safe defaults, so nothing has to be set
 for invites to work; changing them in an environment is an infrastructure change. Mail clients need
 an organizer to update or remove an entry, so keep it an address that exists.
+
+**In the app.** A booking made, changed or cancelled, and the day-before reminder, also put a
+notice in the inbox of the people the buyer's email goes to (`collection_booked`,
+`collection_changed`, `collection_cancelled`, `collection_reminder`; migration 0392 allows the
+types). They are informational: a member who muted the organisation does not see them, as with
+"ready for collection"; the emails still go. A named collector gets no inbox notice.
+
+**You can book.** The same 15-minute job emails buyers once per lot when a paid lot can be booked:
+at a place that takes online bookings, nothing in the way (an identity, source-of-funds or finance
+check, a dispute, a refund) and not yet booked, collected or going by courier. It keeps the
+purchase page's promise "We'll email you as soon as you can book" whichever check was holding the
+lot. Which lots a person was told about is read from the email outbox, so a sweep sends nothing
+twice. Purchases whose payment cleared before `CAN_BOOK_EMAILS_FROM`
+(`apps/worker/src/jobs/collection-can-book.ts`, the release date) are never sent it, so the first
+sweep does not write to every buyer with a lot already in storage.
 
 **Named collectors.** The collector email names the organisation that authorised them and the
 member who booked ("Authorised by Northbank Ltd, booked by Jane Hart"), or just the person for a

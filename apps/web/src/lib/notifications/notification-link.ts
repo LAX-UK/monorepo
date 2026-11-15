@@ -10,11 +10,18 @@ const STAFF_ACCESS_NOTIFICATION_TYPES = new Set([
   "staff_role_changed_admin",
 ]);
 
-/** A lot's delivery notices open the buyer's purchases, where its fulfilment is tracked. */
+/**
+ * A lot's delivery notices open the buyer's purchases, where its fulfilment is tracked; so do the
+ * collection visit notices, since the visit is changed or booked again from there.
+ */
 const FULFILMENT_NOTIFICATION_TYPES = new Set([
   "lot_ready_for_collection",
   "lot_shipped",
   "lot_delivered",
+  "collection_booked",
+  "collection_changed",
+  "collection_cancelled",
+  "collection_reminder",
 ]);
 
 /** Followed-artist and saved-search notices carry the page that lists the new lots. */

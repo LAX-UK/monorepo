@@ -84,6 +84,7 @@ export class DrizzleCollectionNoticeReader implements ICollectionNoticeReader {
         outcome: row.outcome === "collected" || row.outcome === "left" ? row.outcome : null,
       })),
       account: {
+        id: booking.legalEntityId,
         kind: account?.kind === "organisation" ? "organisation" : "personal",
         name: account?.displayName ?? "",
       },

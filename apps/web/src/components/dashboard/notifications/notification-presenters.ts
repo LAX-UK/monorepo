@@ -65,6 +65,15 @@ export function notificationTypePresenter(type: string): NotificationPresentatio
   if (type === "payment_due" || type.startsWith("payment")) {
     return { label: "Payment", Icon: CreditCard, tone: "info" };
   }
+  if (type === "collection_cancelled") {
+    return { label: "Collection cancelled", Icon: CalendarDays, tone: "warn" };
+  }
+  if (type === "collection_reminder") {
+    return { label: "Collection tomorrow", Icon: CalendarDays, tone: "info" };
+  }
+  if (type === "collection_booked" || type === "collection_changed") {
+    return { label: "Collection", Icon: CalendarDays, tone: "info" };
+  }
   if (type === "lot_ready_for_collection") {
     return { label: "Ready to collect", Icon: PackageCheck, tone: "info" };
   }
