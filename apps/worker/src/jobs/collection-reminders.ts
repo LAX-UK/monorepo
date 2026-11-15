@@ -8,7 +8,6 @@ import {
   type CollectionNoticeConfig,
   collectionEmailsFor,
 } from "../services/collection-notices.js";
-import { legacyCollectionReminderKey } from "../services/legacy-collection-reminder-key.js";
 
 /**
  * Emails the buyer the day before their collection, from 09:00 London time. It can run as often
@@ -38,16 +37,11 @@ export async function runCollectionRemindersJob(options: {
       const visit = await reader.visit(bookingId);
       if (!visit) continue;
       const emails = collectionEmailsFor({ kind: "reminder" }, visit, { ...config, now: at });
-      // Transition guard, see legacy-collection-reminder-key.ts (remove on or after 2026-11-13).
-      const alreadySent = await reader.existingOutboxKeys([
-        ...emails.map((email) => legacyCollectionReminderKey(bookingId, visit.slotStart, email.to)),
-        ...emails.flatMap((email) => (email.idempotencyKey ? [email.idempotencyKey] : [])),
-      ]);
+      const alreadySent = await reader.existingOutboxKeys(
+        emails.flatMap((email) => (email.idempotencyKey ? [email.idempotencyKey] : [])),
+      );
       const remindedNow = new Set<string>();
       for (const email of emails) {
-        if (alreadySent.has(legacyCollectionReminderKey(bookingId, visit.slotStart, email.to))) {
-          continue;
-        }
         const isNew = email.idempotencyKey !== undefined && !alreadySent.has(email.idempotencyKey);
         await emailService.enqueue(email);
         queued += 1;

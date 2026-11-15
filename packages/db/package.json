@@ -63,6 +63,7 @@
     "db:normalise-release-lineage": "tsx src/scripts/normalise-release-lineage.ts",
     "db:backfill-bid-milestone-events": "tsx src/scripts/backfill-bid-milestone-events.ts",
     "db:backfill-qr-code": "tsx src/scripts/backfill-qr-code.ts",
+    "db:backfill-collection-reminder-keys": "tsx src/scripts/backfill-collection-reminder-keys.ts",
     "db:seed:press-demo": "tsx scripts/seed-press-hub-demo.ts"
   },
   "dependencies": {

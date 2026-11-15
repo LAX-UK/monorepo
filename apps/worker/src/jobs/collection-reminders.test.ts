@@ -99,15 +99,20 @@ describe("the collection reminder sweep", () => {
     expect(await s.run("2026-11-09T09:15:00Z")).toEqual({ visits: 1, queued: 0 });
   });
 
-  it("never puts the address in the key, and skips a reminder already queued under the old address key", async () => {
-    const legacy = "collection-reminder:b-1:2026-11-10T14:00:00.000Z:maya@example.com";
-    const s = setup([{ bookingId: "b-1" }], undefined, [legacy]);
-    expect(await s.run("2026-11-09T09:15:00Z")).toEqual({ visits: 1, queued: 0 });
+  it("never puts the address in the key, and checks only the current key format", async () => {
+    const s = setup([{ bookingId: "b-1" }]);
+    await s.run("2026-11-09T09:15:00Z");
     expect(s.existingOutboxKeys).toHaveBeenCalledWith([
-      legacy,
       "collection-reminder:b-1:2026-11-10T14:00:00.000Z:u1",
     ]);
-    expect(s.enqueue).not.toHaveBeenCalled();
+    for (const [email] of s.enqueue.mock.calls) expect(email.idempotencyKey).not.toContain("@");
+  });
+
+  it("queues again, but writes no second inbox reminder, when only the current key exists", async () => {
+    const s = setup([{ bookingId: "b-1" }], undefined, [
+      "collection-reminder:b-1:2026-11-10T14:00:00.000Z:u1",
+    ]);
+    expect(await s.run("2026-11-09T09:15:00Z")).toEqual({ visits: 1, queued: 1 });
     expect(s.createMany).not.toHaveBeenCalled();
   });
 
