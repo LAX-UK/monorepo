@@ -1,9 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   DISCOVERY_CACHE_TTL_MS,
+  JWKS_FAILURE_COOLDOWN_MS,
   JWKS_MAX_STALE_MS,
   createJwksHolder,
   jwksHolderFor,
+  sharedJwksCounters,
 } from "./jwks-holder.js";
 
 const jwk = (kid: string) => ({ kty: "RSA", kid, alg: "RS256", use: "sig", n: "AQAB", e: "AQAB" });
@@ -122,5 +124,93 @@ describe("createJwksHolder", () => {
 
   it("shares one holder per URL", () => {
     expect(jwksHolderFor("https://auth.test/x")).toBe(jwksHolderFor("https://auth.test/x"));
+  });
+});
+
+describe("stale key set reporting", () => {
+  const reporting = () => {
+    const onServeStale = vi.fn();
+    const onFetchFailure = vi.fn();
+    const h = createJwksHolder({
+      url: "https://auth.test/jwks",
+      fetchImpl,
+      now: () => clock,
+      onServeStale,
+      onFetchFailure,
+    });
+    return { h, onServeStale, onFetchFailure };
+  };
+
+  it("counts and reports once when answering from a set it could not refresh", async () => {
+    const { h, onServeStale, onFetchFailure } = reporting();
+    await h.getKey({ alg: "RS256", kid: "a" });
+    healthy = false;
+    clock += 2 * DISCOVERY_CACHE_TTL_MS;
+    for (let i = 0; i < 3; i++) await h.getKey({ alg: "RS256", kid: "a" });
+    expect(fetchCalls).toBe(2);
+    expect(onFetchFailure).toHaveBeenCalledTimes(1);
+    expect(onServeStale).toHaveBeenCalledTimes(1);
+    expect(onServeStale).toHaveBeenCalledWith({
+      url: "https://auth.test/jwks",
+      ageMs: 2 * DISCOVERY_CACHE_TTL_MS,
+    });
+    expect(h.counters()).toEqual({ fetchFailures: 1, staleServes: 3 });
+  });
+
+  it("reports again after the next failed fetch", async () => {
+    const { h, onServeStale } = reporting();
+    await h.getKey({ alg: "RS256", kid: "a" });
+    healthy = false;
+    clock += 2 * DISCOVERY_CACHE_TTL_MS;
+    await h.getKey({ alg: "RS256", kid: "a" });
+    clock += JWKS_FAILURE_COOLDOWN_MS;
+    await h.getKey({ alg: "RS256", kid: "a" });
+    expect(fetchCalls).toBe(3);
+    expect(onServeStale).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not report a routine background refresh as stale", async () => {
+    const { h, onServeStale } = reporting();
+    await h.getKey({ alg: "RS256", kid: "a" });
+    clock += DISCOVERY_CACHE_TTL_MS + 1;
+    await h.getKey({ alg: "RS256", kid: "a" });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await h.getKey({ alg: "RS256", kid: "a" });
+    expect(onServeStale).not.toHaveBeenCalled();
+    expect(h.counters()).toEqual({ fetchFailures: 0, staleServes: 0 });
+  });
+
+  it("counts a failed background refresh and the stale answers inside its cooldown", async () => {
+    const { h, onServeStale } = reporting();
+    await h.getKey({ alg: "RS256", kid: "a" });
+    healthy = false;
+    clock += DISCOVERY_CACHE_TTL_MS + 1;
+    await h.getKey({ alg: "RS256", kid: "a" }); // served from the set, refresh fails behind it
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await h.getKey({ alg: "RS256", kid: "a" });
+    expect(h.counters()).toEqual({ fetchFailures: 1, staleServes: 1 });
+    expect(onServeStale).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps verifying when a reporter throws", async () => {
+    const h = createJwksHolder({
+      url: "https://auth.test/jwks",
+      fetchImpl,
+      now: () => clock,
+      onServeStale: () => {
+        throw new Error("sink down");
+      },
+      onFetchFailure: () => undefined,
+    });
+    await h.getKey({ alg: "RS256", kid: "a" });
+    healthy = false;
+    clock += 2 * DISCOVERY_CACHE_TTL_MS;
+    await expect(h.getKey({ alg: "RS256", kid: "a" })).resolves.toBeDefined();
+  });
+
+  it("exposes totals for every shared holder", () => {
+    const url = "https://auth.test/counted";
+    jwksHolderFor(url);
+    expect(sharedJwksCounters()[url]).toEqual({ fetchFailures: 0, staleServes: 0 });
   });
 });
