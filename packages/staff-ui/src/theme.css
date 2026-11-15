@@ -223,6 +223,19 @@
   }
 }
 
+/* Staff motion: quicker than the public timings and without a press beat (docs/design/motion.md).
+   The tokens are defined in lax-system.css; only the durations differ here, the easings are shared. */
+[data-staff-ui] {
+  --lax-motion-press: 0ms;
+  --lax-motion-hover: 100ms;
+  --lax-motion-enter: 150ms;
+  --lax-motion-exit: 100ms;
+  --lax-motion-panel: 200ms;
+  --lax-motion-panel-exit: 150ms;
+  --lax-motion-page-out: 100ms;
+  --lax-motion-page-in: 150ms;
+}
+
 [data-staff-returned] {
   animation: staff-row-returned 2s ease-out;
 }

@@ -139,6 +139,23 @@
      where an outside ring would be clipped). Never a box-shadow ring that overflow can clip. */
   --lax-focus-width: 2px;
   --lax-focus-offset: 2px;
+
+  /* Motion. One set of durations and easings for every LAX product (docs/design/motion.md).
+     These are the public values; the staff tools override the durations under [data-staff-ui]
+     (packages/staff-ui/src/theme.css). Animate transform and opacity only. */
+  --lax-motion-press: 100ms;
+  --lax-motion-hover: 150ms;
+  --lax-motion-enter: 200ms;
+  --lax-motion-exit: 140ms;
+  --lax-motion-panel: 260ms;
+  --lax-motion-panel-exit: 180ms;
+  --lax-motion-page-out: 140ms;
+  --lax-motion-page-in: 200ms;
+  --lax-motion-morph: 360ms;
+  --lax-motion-media: 700ms;
+  --lax-ease-out: cubic-bezier(0.2, 0, 0, 1);
+  --lax-ease-in: cubic-bezier(0.3, 0, 1, 1);
+  --lax-ease-emphasize: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 /*

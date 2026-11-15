@@ -151,7 +151,8 @@ describe("the LAX system scales match their documentation", () => {
 
 describe("every colour is one light and dark pair, declared once", () => {
   const colours = [...root].filter(
-    ([name]) => !/radius|control-(sm|md|lg)|text|shadow|focus-(width|offset)/.test(name),
+    ([name]) =>
+      !/radius|control-(sm|md|lg)|text|shadow|focus-(width|offset)|motion|ease/.test(name),
   );
 
   it("declares each colour as light-dark() or as an alias of another LAX token", () => {

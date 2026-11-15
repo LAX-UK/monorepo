@@ -246,16 +246,16 @@
      tuned in one place. New animations MUST use these tokens — never inline
      ms or cubic-bezier literals. */
   --motion-duration-xs: 120ms;
-  --motion-duration-sm: 200ms;
+  --motion-duration-sm: var(--lax-motion-enter);
   --motion-duration-md: 320ms;
   --motion-duration-lg: 520ms;
   --motion-duration-xl: 900ms;
   --motion-duration-2xl: 1600ms;
   --motion-duration-pulse: 1600ms;
-  --motion-ease-standard: cubic-bezier(0.2, 0, 0, 1);
-  --motion-ease-emphasize: cubic-bezier(0.16, 1, 0.3, 1);
+  --motion-ease-standard: var(--lax-ease-out);
+  --motion-ease-emphasize: var(--lax-ease-emphasize);
   --motion-ease-decelerate: cubic-bezier(0, 0, 0, 1);
-  --motion-ease-accelerate: cubic-bezier(0.3, 0, 1, 1);
+  --motion-ease-accelerate: var(--lax-ease-in);
   /* Section spacing rhythm (C2) — used by section root padding helpers. */
   --section-spacing: 5rem;
   --section-spacing-tight: 3rem;
