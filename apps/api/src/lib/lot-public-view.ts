@@ -34,6 +34,23 @@ function toPublicLotView(lot: Lot, reservePriceRef?: string): PublicLotView {
   };
 }
 
+function isActiveSealedLot(lot: Pick<Lot, "auctionType" | "status">): boolean {
+  return lot.auctionType === "sealed" && lot.status === "active";
+}
+
+/**
+ * Hide the sealed high bid (currentPrice) from non-staff viewers without otherwise changing the
+ * lot shape. Apply before deriving any figure (e.g. checkout pricing) from `currentPrice`.
+ */
+export function maskSealedLotPriceForViewer<T extends Lot>(
+  lot: T,
+  role: string | undefined,
+  staffRole?: string | null | undefined,
+): T {
+  if (!isActiveSealedLot(lot) || viewerCanSeeStaffLotPricing(role, staffRole)) return lot;
+  return { ...lot, currentPrice: lot.startingPrice };
+}
+
 /** Hide sealed high bids and reserve amounts from non-staff viewers. */
 export function maskLotForPublicView(
   lot: Lot,

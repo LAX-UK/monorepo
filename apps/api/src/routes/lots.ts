@@ -523,9 +523,11 @@ export function createLotRoutes(container: Container, authenticator: IAuthentica
     if (!canPreview && !isPublicCatalogLot(presented, sale)) {
       return c.json({ error: "Not found" }, 404);
     }
+    // Mask first so checkout figures are derived from the viewer-visible price only.
+    const masked = maskLotForPublicView(presented, role, staffRole);
     const withPricing = {
-      ...presented,
-      checkoutPricing: computeLotCheckoutPricing(presented, sale),
+      ...masked,
+      checkoutPricing: computeLotCheckoutPricing(masked, sale),
     };
     const viewerRole = normalizeUserRoleOrClient(role);
     const staff = normalizeUserStaffRole(staffRole ?? undefined);
@@ -534,7 +536,7 @@ export function createLotRoutes(container: Container, authenticator: IAuthentica
       : null;
     return c.json({
       data: {
-        ...maskLotForPublicView(withPricing, role, staffRole),
+        ...withPricing,
         ...(deleteEligibility ? { deleteEligibility } : {}),
       },
     });

@@ -35,6 +35,7 @@ import {
   rollbackFailedEmergencyLotAdd,
 } from "../lib/emergency-lot-add.js";
 import { AuthzError, LotError, missingCatalogueCapabilityError } from "../lib/errors.js";
+import { maskSealedLotPriceForViewer } from "../lib/lot-public-view.js";
 import { assertLotPublishable } from "../lib/lot-publish-policy.js";
 import { lotTimingViolationForSale, resolveLotTimingForSale } from "../lib/lot-sale-timing.js";
 import {
@@ -414,9 +415,9 @@ export class SaleService {
         presentLotsImages(this.mediaUrlResolver, rows, this.mediaAssetEnricher),
       ),
     ]);
-    const visibleLots = canPreview
-      ? lots
-      : lots.filter((lot) => isPublicCatalogLot(lot, saleWithPlatform));
+    const visibleLots = (
+      canPreview ? lots : lots.filter((lot) => isPublicCatalogLot(lot, saleWithPlatform))
+    ).map((lot) => maskSealedLotPriceForViewer(lot, viewer?.role, viewer?.staffRole));
     return { data: { sale, lots: visibleLots, viewer: { isFollowing } } };
   }
 
@@ -496,7 +497,9 @@ export class SaleService {
     );
     return {
       data: {
-        items,
+        items: items.map((lot) =>
+          maskSealedLotPriceForViewer(lot, viewer?.role, viewer?.staffRole),
+        ),
         total: page.total,
         limit: opts.limit,
         offset: opts.offset,
