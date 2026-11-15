@@ -21,7 +21,7 @@ import { MARKETING_PAGE_SHELL } from "@auction/branding";
 import {
   MarketingCertificateIcon,
   MarketingClockIcon,
-  MarketingFaqAccordion,
+  MarketingFaqPills,
   MarketingMapPinIcon,
   MarketingShareButton,
 } from "@auction/marketing-ui";
@@ -66,11 +66,9 @@ export default async function ArtworkDetailPage({ params, searchParams }: Artwor
       </div>
       <ArtArtworkMobileGallery
         images={vm.galleryImages}
-        slug={vm.slug}
         title={vm.title}
         shareUrl={shareUrl}
         categoryHref={vm.categoryHref}
-        specialistContact={vm.specialistContact}
       />
 
       <div className={cn(MARKETING_PAGE_SHELL, "pt-6 md:pt-0")}>
@@ -85,7 +83,7 @@ export default async function ArtworkDetailPage({ params, searchParams }: Artwor
             aria-label="Artwork summary"
             className="flex min-w-0 flex-col gap-6 lg:sticky lg:top-[calc(var(--header-offset,var(--header-height,4rem))+2rem)] lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:self-start"
           >
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-2 max-md:order-1">
               <div className="flex items-start justify-between gap-4">
                 <h1 className="min-w-0 break-words font-headline text-2xl font-normal leading-tight text-on-surface lg:text-[1.75rem]">
                   {vm.title}
@@ -109,7 +107,7 @@ export default async function ArtworkDetailPage({ params, searchParams }: Artwor
             </div>
 
             {vm.keySpecs.length > 0 || vm.certificateLine ? (
-              <div className="flex flex-col gap-5 border-t border-outline-variant/60 pt-6">
+              <div className="flex flex-col gap-5 border-t border-outline-variant/60 pt-6 max-md:order-3">
                 <ArtSpecList rows={vm.keySpecs} />
                 {vm.certificateLine ? (
                   <p
@@ -123,7 +121,9 @@ export default async function ArtworkDetailPage({ params, searchParams }: Artwor
               </div>
             ) : null}
 
-            <div className="flex flex-col gap-3 border-t border-outline-variant/60 pt-6">
+            {/* On phones the price follows the title, ahead of the specifications, so it is seen
+                without scrolling (Figma 468:7996). */}
+            <div className="flex flex-col gap-3 border-t border-outline-variant/60 pt-6 max-md:order-2">
               <p className="text-base font-medium text-on-surface" data-testid="art-artwork-price">
                 {vm.priceLabel}
               </p>
@@ -151,9 +151,13 @@ export default async function ArtworkDetailPage({ params, searchParams }: Artwor
               ) : null}
             </div>
 
-            <ArtArtworkConversations vm={vm} />
+            <div className="max-md:order-4">
+              <ArtArtworkConversations vm={vm} />
+            </div>
 
-            <ArtShopEditions editions={vm.shopEditions} />
+            <div className="max-md:order-5">
+              <ArtShopEditions editions={vm.shopEditions} />
+            </div>
           </section>
 
           <div className="flex min-w-0 flex-col gap-12 lg:col-start-1 lg:row-start-2 lg:max-w-[37.5rem]">
@@ -165,7 +169,7 @@ export default async function ArtworkDetailPage({ params, searchParams }: Artwor
             {vm.artist ? (
               <ArtArtworkArtistSummary artist={vm.artist} favoriteAuth={vm.favoriteAuth} />
             ) : null}
-            <MarketingFaqAccordion items={vm.faqs} />
+            <MarketingFaqPills items={vm.faqs} />
           </div>
         </div>
 

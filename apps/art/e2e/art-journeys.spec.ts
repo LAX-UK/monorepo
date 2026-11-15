@@ -43,6 +43,9 @@ test.describe("lax.art journeys", () => {
     await expect(page).toHaveURL(/\/artworks\/[^/?]+/);
     await expect(page.getByRole("heading", { level: 1, name })).toBeVisible();
     await expect(page.getByTestId("art-artwork-price")).toBeVisible();
+    // The FAQs are pills, one answer open at a time, and the phone page has one options path.
+    await expect(page.getByRole("radiogroup", { name: "FAQs" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Contact a specialist" })).toHaveCount(0);
   });
 
   test("search finds a listed work and reports misses", async ({ page }) => {
