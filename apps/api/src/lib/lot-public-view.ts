@@ -67,6 +67,33 @@ export function presentCatalogueRowForPublic<T extends Lot>(lot: T): T | Withdra
   return lot.status === "cancelled" ? toWithdrawnLotView(lot) : lot;
 }
 
+/**
+ * A catalogue row as a public or bidder read returns it. A withdrawn lot is reduced to its
+ * identity; every other lot goes through `maskLotForPublicView`, so a non-staff viewer never
+ * receives the reserve amount (only `hasReserve` / `reserveMet`) or an open sealed lot's real
+ * price. Staff with `auction.manage` / `catalogue.write` get the lot as stored.
+ */
+export function presentCatalogueRowForViewer(
+  lot: Lot,
+  role: string | undefined,
+  staffRoles?: StaffRoles | undefined,
+): Lot | PublicLotView | WithdrawnLotView {
+  if (lot.status === "cancelled") return toWithdrawnLotView(lot);
+  return maskLotForPublicView(lot, role, staffRoles);
+}
+
+/**
+ * The price a lot is sorted by in a public or bidder list: the price the public reads. An open
+ * sealed lot sorts by its starting price, so the order never ranks its hidden bids.
+ */
+export function publicSortPrice(
+  lot: Pick<Lot, "auctionType" | "status" | "currentPrice" | "startingPrice">,
+): string {
+  return lot.auctionType === "sealed" && lot.status === "active"
+    ? lot.startingPrice
+    : lot.currentPrice;
+}
+
 /** Always returns a public view (for web SSR when viewer is not staff). */
 export function toPublicLotViewFromLot(lot: Lot): PublicLotView {
   const realCurrentPrice = lot.currentPrice;

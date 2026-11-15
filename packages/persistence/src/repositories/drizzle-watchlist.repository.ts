@@ -6,6 +6,7 @@ import type {
   WatchlistListPageInput,
   WatchlistRow,
 } from "../interfaces/watchlist.repository.js";
+import { shownPriceOrder } from "./lot/lot-list-filters.js";
 
 export type {
   WatchlistListPageInput,
@@ -88,10 +89,11 @@ export class DrizzleWatchlistRepository implements IWatchlistRepository {
       switch (input.sort ?? "addedDesc") {
         case "endingSoon":
           return asc(lot.endTime);
+        // The price the public reads, so an open sealed lot sorts by its starting price.
         case "priceAsc":
-          return asc(lot.currentPrice);
+          return asc(shownPriceOrder);
         case "priceDesc":
-          return desc(lot.currentPrice);
+          return desc(shownPriceOrder);
         default:
           return desc(watchlist.createdAt);
       }
