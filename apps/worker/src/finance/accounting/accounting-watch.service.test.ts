@@ -3,15 +3,18 @@ import type {
   AccountingAttention,
   IAccountingSourceSettingReader,
   QueueAge,
+  StuckRefundReversal,
 } from "@auction/persistence/interfaces";
 import { describe, expect, it, vi } from "vitest";
 import { ACCOUNTING_ALERTS, type AccountingAlertSink } from "./accounting-alerts.js";
 import {
   AccountingWatch,
   PAYMENT_WAITING_AFTER_MS,
+  REFUND_REVERSAL_STUCK_AFTER_MS,
   REMAINDER_UNSETTLED_AFTER_MS,
   SENDER_MISSED_AFTER_MS,
   STATUS_CHECK_MISSED_AFTER_MS,
+  STUCK_REVERSALS_READ_LIMIT,
 } from "./accounting-watch.service.js";
 
 const books = (mode: "off" | "dry_run" | "test_org" | "live") =>
@@ -32,6 +35,7 @@ function setUp(
   waiting: QueueAge = none,
   unsettled: QueueAge = none,
   unrefunded: QueueAge = none,
+  stuck: () => readonly StuckRefundReversal[] = () => [],
 ) {
   const raised: [string, Record<string, unknown>][] = [];
   const alerts: AccountingAlertSink = {
@@ -42,6 +46,7 @@ function setUp(
   const waitingPayments = vi.fn(async () => waiting);
   const unsettledRemainders = vi.fn(async () => unsettled);
   const unrefundedCreditNotes = vi.fn(async () => unrefunded);
+  const stuckRefundReversals = vi.fn(async () => stuck());
   const watch = new AccountingWatch({
     attention: {
       read,
@@ -49,6 +54,7 @@ function setUp(
       waitingPayments,
       unsettledRemainders,
       unrefundedCreditNotes,
+      stuckRefundReversals,
     },
     settings: switchWith(mode),
     senderModes: ["dry_run"],
@@ -63,6 +69,7 @@ function setUp(
     waitingPayments,
     unsettledRemainders,
     unrefundedCreditNotes,
+    stuckRefundReversals,
   };
 }
 
@@ -77,6 +84,7 @@ describe("AccountingWatch", () => {
       remainderDelayed: false,
       statusCheckMissed: false,
       creditNoteRefundDelayed: false,
+      refundReversalsStuck: { waiting: 0, raised: 0 },
     });
     expect(raised).toEqual([]);
   });
@@ -132,6 +140,7 @@ describe("AccountingWatch", () => {
         waitingPayments: vi.fn(async () => none),
         unsettledRemainders: vi.fn(async () => none),
         unrefundedCreditNotes: vi.fn(async () => none),
+        stuckRefundReversals: vi.fn(async () => []),
       },
       settings: { read: async () => refuse("bad_mode", "broken") },
       senderModes: ["dry_run"],
@@ -224,6 +233,114 @@ describe("AccountingWatch", () => {
     ]);
   });
 
+  describe("refund reversals waiting on a credit note", () => {
+    const NOW = new Date("2026-11-14T12:00:00Z");
+    const reversal = (deliveryId: number): StuckRefundReversal => ({
+      deliveryId,
+      eventId: 1_000 + deliveryId,
+      eventType: "payment.refund_reversed",
+      waitingSince: new Date(NOW.getTime() - REFUND_REVERSAL_STUCK_AFTER_MS - 60_000),
+      lastError: "accounting_projection_not_yet:credit_in_flight:LAX-BID-CN-1",
+    });
+
+    it("asks for reversals queued more than six hours ago and raises each one once", async () => {
+      let stuck = [reversal(1)];
+      const { watch, raised, stuckRefundReversals } = setUp(
+        {},
+        NOW.toISOString(),
+        "dry_run",
+        none,
+        none,
+        none,
+        none,
+        () => stuck,
+      );
+      expect((await watch.check()).refundReversalsStuck).toEqual({ waiting: 1, raised: 1 });
+      // Literal, not the exported constant: pins the six-hour threshold itself.
+      expect(REFUND_REVERSAL_STUCK_AFTER_MS).toBe(6 * 60 * 60_000);
+      expect(stuckRefundReversals).toHaveBeenCalledWith(
+        new Date(NOW.getTime() - 6 * 60 * 60_000),
+        expect.any(Number),
+      );
+      expect(raised).toEqual([
+        [
+          ACCOUNTING_ALERTS.refundReversalStuck.message,
+          {
+            deliveryId: 1,
+            sourceEvent: "domain_event:1001",
+            eventType: "payment.refund_reversed",
+            waitingSince: stuck[0]?.waitingSince.toISOString(),
+            lastError: "accounting_projection_not_yet:credit_in_flight:LAX-BID-CN-1",
+            page: "/admin/finance/accounting",
+          },
+        ],
+      ]);
+      // Still waiting on the next runs: nothing raised again. A second one stuck: only it is raised.
+      expect((await watch.check()).refundReversalsStuck).toEqual({ waiting: 1, raised: 0 });
+      stuck = [reversal(1), reversal(2)];
+      expect((await watch.check()).refundReversalsStuck).toEqual({ waiting: 2, raised: 1 });
+      expect(raised.map(([message, details]) => [message, details.deliveryId])).toEqual([
+        [ACCOUNTING_ALERTS.refundReversalStuck.message, 1],
+        [ACCOUNTING_ALERTS.refundReversalStuck.message, 2],
+      ]);
+      expect(raised).toHaveLength(2);
+    });
+
+    it("keeps what it raised while a full page is read, even as the page's members change", async () => {
+      let stuck = Array.from({ length: STUCK_REVERSALS_READ_LIMIT }, (_, i) => reversal(i + 1));
+      const { watch, raised } = setUp(
+        {},
+        NOW.toISOString(),
+        "dry_run",
+        none,
+        none,
+        none,
+        none,
+        () => stuck,
+      );
+      expect((await watch.check()).refundReversalsStuck).toEqual({
+        waiting: STUCK_REVERSALS_READ_LIMIT,
+        raised: STUCK_REVERSALS_READ_LIMIT,
+      });
+      // Some settle and others move into the full page: only the new ones are raised, and the
+      // ones that left the page are not forgotten.
+      stuck = Array.from({ length: STUCK_REVERSALS_READ_LIMIT }, (_, i) => reversal(i + 11));
+      expect((await watch.check()).refundReversalsStuck).toEqual({
+        waiting: STUCK_REVERSALS_READ_LIMIT,
+        raised: 10,
+      });
+      // Back to a page holding the first ones: nothing is raised again.
+      stuck = Array.from({ length: STUCK_REVERSALS_READ_LIMIT }, (_, i) => reversal(i + 1));
+      expect((await watch.check()).refundReversalsStuck).toEqual({
+        waiting: STUCK_REVERSALS_READ_LIMIT,
+        raised: 0,
+      });
+      expect(raised).toHaveLength(STUCK_REVERSALS_READ_LIMIT + 10);
+    });
+
+    it("forgets a reversal once it settles", async () => {
+      let stuck = [reversal(1)];
+      const { watch, raised } = setUp(
+        {},
+        NOW.toISOString(),
+        "dry_run",
+        none,
+        none,
+        none,
+        none,
+        () => stuck,
+      );
+      await watch.check();
+      stuck = [];
+      expect((await watch.check()).refundReversalsStuck).toEqual({ waiting: 0, raised: 0 });
+      // Seen stuck again later (the same delivery waiting once more): raised again, once.
+      stuck = [reversal(1)];
+      await watch.check();
+      await watch.check();
+      expect(raised).toHaveLength(2);
+    });
+  });
+
   describe("the nightly Books status check", () => {
     const NOW = new Date("2026-11-14T12:00:00Z");
     const watchWith = (
@@ -240,6 +357,7 @@ describe("AccountingWatch", () => {
           waitingPayments: async () => none,
           unsettledRemainders: async () => none,
           unrefundedCreditNotes: async () => none,
+          stuckRefundReversals: async () => [],
         },
         settings: switchWith(mode),
         senderModes: ["dry_run"],

@@ -52,6 +52,14 @@ export const ACCOUNTING_ALERTS = {
     level: "error",
   },
   /**
+   * Refunds: a refund taken back was queued more than six hours ago and is now waiting for a
+   * credit note whose outcome is not known (being sent, or Books' answer lost: `credit_in_flight`).
+   * The reversal waits without using up delivery attempts, so it is never dead-lettered; this is
+   * how someone hears of it.
+   * Raised once per stuck delivery by the accounting watch.
+   */
+  refundReversalStuck: { message: "accounting_refund_reversal_stuck", level: "warning" },
+  /**
    * Bid refunds: Books refused to refund an issued credit note from Stripe clearing. The credit note
    * is held for a person ("Needs a person"); refund it by hand in Books (see the runbook).
    */

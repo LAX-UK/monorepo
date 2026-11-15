@@ -1,11 +1,17 @@
 import type { TargetMode } from "@auction/accounting-domain";
 import type { Database } from "@auction/db";
-import { accountingDocument, accountingDocumentCopy } from "@auction/db/schema";
-import { and, eq, inArray, lt, min, ne, not, notExists, or, sql } from "drizzle-orm";
+import {
+  accountingDocument,
+  accountingDocumentCopy,
+  domainEvent,
+  domainEventDelivery,
+} from "@auction/db/schema";
+import { and, asc, eq, inArray, like, lt, min, ne, not, notExists, or, sql } from "drizzle-orm";
 import type {
   AccountingAttention,
   IAccountingAttentionReader,
   QueueAge,
+  StuckRefundReversal,
 } from "../../interfaces/accounting.js";
 import { AWAITED_ISSUED } from "../../lib/accounting-awaited.js";
 import {
@@ -16,6 +22,17 @@ import { QUEUE_TAB_WHERE } from "../../lib/accounting-queue-tab.js";
 import { DELIVERY_INVOICE, ISSUED_AT, UNSETTLED } from "../../lib/accounting-remainder-due.js";
 
 const d = accountingDocument;
+
+/** The accounting projector's consumer name in the delivery ledger (`ACCOUNTING_PROJECTOR`). */
+const ACCOUNTING_CONSUMER = "accounting";
+/** The events that take a refund back, whose projection can wait on a credit note. */
+const REFUND_REVERSAL_EVENTS = [
+  "payment.refund_reversed",
+  "payment_group.refund_reversed",
+  "shop.refund.reversed",
+] as const;
+/** How a delivery waiting for a credit note to settle records its last error. */
+const CREDIT_IN_FLIGHT_ERROR = "accounting_projection_not_yet:credit_in_flight:%";
 
 export class DrizzleAccountingAttentionReader implements IAccountingAttentionReader {
   constructor(private readonly db: Database) {}
@@ -121,6 +138,34 @@ export class DrizzleAccountingAttentionReader implements IAccountingAttentionRea
       );
     const oldest = row?.oldest ?? null;
     return { count: row?.count ?? 0, oldestSince: oldest === null ? null : new Date(oldest) };
+  }
+
+  async stuckRefundReversals(
+    queuedBefore: Date,
+    limit: number,
+  ): Promise<readonly StuckRefundReversal[]> {
+    const rows = await this.db
+      .select({
+        deliveryId: domainEventDelivery.id,
+        eventId: domainEventDelivery.eventId,
+        eventType: domainEvent.eventType,
+        waitingSince: domainEventDelivery.createdAt,
+        lastError: domainEventDelivery.lastError,
+      })
+      .from(domainEventDelivery)
+      .innerJoin(domainEvent, eq(domainEvent.id, domainEventDelivery.eventId))
+      .where(
+        and(
+          eq(domainEventDelivery.consumer, ACCOUNTING_CONSUMER),
+          inArray(domainEventDelivery.status, ["pending", "processing", "retryable"]),
+          like(domainEventDelivery.lastError, CREDIT_IN_FLIGHT_ERROR),
+          inArray(domainEvent.eventType, [...REFUND_REVERSAL_EVENTS]),
+          lt(domainEventDelivery.createdAt, queuedBefore),
+        ),
+      )
+      .orderBy(asc(domainEventDelivery.createdAt), asc(domainEventDelivery.id))
+      .limit(limit);
+    return rows;
   }
 
   private async age(where: ReturnType<typeof and>): Promise<QueueAge> {

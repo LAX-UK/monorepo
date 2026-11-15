@@ -184,6 +184,46 @@ describe("runDomainEventDelivery: waiting for an accounting document to settle (
     expect((call?.nextRetryAt.getTime() ?? 0) - now.getTime()).toBeGreaterThanOrEqual(5 * 60_000);
   });
 
+  it("a reversal whose issued credit note is missing from the books (credit_missing) uses up attempts and is dead-lettered at the cap (BK-9F4)", async () => {
+    const missing = () => new AccountingProjectionNotYetError("credit_missing", "LAX-BID-CN-x");
+    expect(missing()).toMatchObject({ retryable: true, waiting: false });
+    expect(missing().retryAfterMs).toBeUndefined();
+
+    const before = mockRepo();
+    await runDomainEventDelivery({
+      delivery: deliveryRow({ attempts: 11 }),
+      repo: before,
+      leaseMs: 30_000,
+      maxAttempts: 12,
+      deliver: async () => {
+        throw missing();
+      },
+      now: new Date("2026-01-01T00:00:00Z"),
+    });
+    expect(before.deadLetter).not.toHaveBeenCalled();
+    expect(vi.mocked(before.scheduleRetry).mock.calls[0]?.[0]).toMatchObject({
+      undoAttemptIncrement: false,
+    });
+
+    const atCap = mockRepo();
+    await runDomainEventDelivery({
+      delivery: deliveryRow({ attempts: 12 }),
+      repo: atCap,
+      leaseMs: 30_000,
+      maxAttempts: 12,
+      deliver: async () => {
+        throw missing();
+      },
+      now: new Date("2026-01-01T00:00:00Z"),
+    });
+    expect(atCap.deadLetter).toHaveBeenCalledWith(
+      expect.objectContaining({
+        lastError: "accounting_projection_not_yet:credit_missing:LAX-BID-CN-x",
+      }),
+    );
+    expect(atCap.scheduleRetry).not.toHaveBeenCalled();
+  });
+
   it("any other not-yet still uses up attempts and is dead-lettered at the cap", async () => {
     const repo = mockRepo();
     await runDomainEventDelivery({

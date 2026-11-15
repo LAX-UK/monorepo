@@ -42,6 +42,16 @@ export const REMAINDER_UNSETTLED_AFTER_MS = 6 * 60 * 60_000;
  */
 export const STATUS_CHECK_MISSED_AFTER_MS = 26 * 60 * 60_000;
 
+/**
+ * How long a refund reversal may wait for a credit note whose outcome is not known (being sent, or
+ * Books' answer lost) before someone is told. It waits without using up delivery attempts, so it
+ * is never dead-lettered and would otherwise wait silently.
+ */
+export const REFUND_REVERSAL_STUCK_AFTER_MS = 6 * 60 * 60_000;
+
+/** At most this many stuck refund reversals are read per run (oldest first). */
+export const STUCK_REVERSALS_READ_LIMIT = 50;
+
 export interface AccountingWatchDeps {
   readonly attention: IAccountingAttentionReader;
   readonly settings: IAccountingSourceSettingReader;
@@ -71,6 +81,8 @@ export interface WatchResult {
   readonly remainderDelayed: boolean;
   readonly statusCheckMissed: boolean;
   readonly creditNoteRefundDelayed: boolean;
+  /** Refund reversals waiting past the threshold now, and how many were raised by this run. */
+  readonly refundReversalsStuck: { readonly waiting: number; readonly raised: number };
 }
 
 /**
@@ -80,9 +92,16 @@ export interface WatchResult {
  * prepared after 30 minutes, payments still waiting for their invoice after six hours, and Shop
  * delivery invoices issued six hours ago whose payment's rest is not applied yet, and refunds'
  * credit notes issued six hours ago whose money is not refunded in Books yet. Runs as a cron; each run raises at most one alert of each kind, with
- * the count and the oldest time.
+ * the count and the oldest time. Refund reversals waiting more than six hours for a credit note
+ * to settle are the exception: each is raised on its own, once.
  */
 export class AccountingWatch {
+  /**
+   * The stuck refund reversals already raised (by delivery), so each is raised once, not every
+   * run. Kept for the worker's life: a restart raises each one still stuck once more.
+   */
+  private readonly raisedReversals = new Set<number>();
+
   constructor(private readonly deps: AccountingWatchDeps) {}
 
   async check(): Promise<WatchResult> {
@@ -173,6 +192,7 @@ export class AccountingWatch {
         page: "/admin/finance/accounting?tab=issued",
       });
     }
+    const refundReversalsStuck = await this.stuckRefundReversals(now);
     return {
       needsPersonOverdue,
       senderMissed,
@@ -181,7 +201,42 @@ export class AccountingWatch {
       remainderDelayed,
       statusCheckMissed,
       creditNoteRefundDelayed,
+      refundReversalsStuck,
     };
+  }
+
+  /**
+   * Raises each refund reversal queued more than six hours ago and now waiting for a credit note to
+   * settle, once per delivery: the next runs leave it alone while it still waits. One that settled is forgotten.
+   */
+  private async stuckRefundReversals(now: Date): Promise<WatchResult["refundReversalsStuck"]> {
+    const stuck = await this.deps.attention.stuckRefundReversals(
+      new Date(now.getTime() - REFUND_REVERSAL_STUCK_AFTER_MS),
+      STUCK_REVERSALS_READ_LIMIT,
+    );
+    // Capped at the oldest STUCK_REVERSALS_READ_LIMIT: newer ones are raised only once some settle.
+    // Oldest first, so a full page still holds every one raised before; only a short page shows
+    // which have settled.
+    if (stuck.length < STUCK_REVERSALS_READ_LIMIT) {
+      const still = new Set(stuck.map((s) => s.deliveryId));
+      for (const id of this.raisedReversals) if (!still.has(id)) this.raisedReversals.delete(id);
+    }
+    let raised = 0;
+    for (const reversal of stuck) {
+      // The set holds ids only: a lastError flip (credit_in_flight <-> credit_missing) is raised again.
+      if (this.raisedReversals.has(reversal.deliveryId)) continue;
+      this.raisedReversals.add(reversal.deliveryId);
+      raised += 1;
+      this.deps.alerts.raise(ACCOUNTING_ALERTS.refundReversalStuck, {
+        deliveryId: reversal.deliveryId,
+        sourceEvent: `domain_event:${reversal.eventId}`,
+        eventType: reversal.eventType,
+        waitingSince: reversal.waitingSince.toISOString(),
+        lastError: reversal.lastError,
+        page: "/admin/finance/accounting",
+      });
+    }
+    return { waiting: stuck.length, raised };
   }
 
   /** Raised while Books is aimed at and no nightly status check has finished for too long. */
