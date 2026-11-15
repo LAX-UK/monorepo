@@ -130,6 +130,14 @@ function isOrganisation(value: string): value is AccountingQueueRow["organisatio
 
 const ALREADY_QUEUED = new Set<DocumentRecord["status"]>(["pending", "sending"]);
 
+/** Why a payout's bill or payment is parked: never released from this page (see `release`). */
+const PAYOUT_PARK_REASONS = new Set<string>([
+  "seller_payout_treatment",
+  "artist_payout_treatment",
+  "payout_lines_unmapped",
+  "payout_paid_outside_stripe",
+]);
+
 /** How many part-funded transfers the page lists at most. */
 const PART_FUNDED_LIMIT = 50;
 /** How many groups with unassigned refunds the page lists at most. */
@@ -272,6 +280,12 @@ export class AccountingQueueService implements IAccountingQueueService {
     // Naming the account a refund settled outside Stripe went back from is not built: such a
     // credit note is never released (the database refuses it too, 0388).
     if (reason === "refund_outside_stripe") {
+      return unresolved(ACCOUNTING_RELEASE_UNRESOLVED_TEXT[reason]);
+    }
+    // A payout's bill and payment are not rebuilt here: releasing one is the change that ships the
+    // accountant's answer (or names the account it was paid from), so none is released by hand
+    // (the database refuses it too, 0394).
+    if (PAYOUT_PARK_REASONS.has(reason)) {
       return unresolved(ACCOUNTING_RELEASE_UNRESOLVED_TEXT[reason]);
     }
     // A Shop credit note parked with its outside-UK delivery invoice waits for the accountant's

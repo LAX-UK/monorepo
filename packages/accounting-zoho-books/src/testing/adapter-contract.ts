@@ -7,6 +7,7 @@ import {
   type RemainderApplication,
   type Result,
   buildBill,
+  buildBillPayment,
   buildContact,
   buildCreditNoteFor,
   buildInclusiveInvoice,
@@ -17,6 +18,7 @@ import {
   isLockedPeriodReason,
   legalEntityFor,
   planCreditNoteRefund,
+  vendorContactSourceId,
 } from "@auction/accounting-domain";
 import type { AccountingPorts } from "../adapter/index.js";
 import { ZOHO_BOOKS_REJECTIONS as R } from "../adapter/rejections.js";
@@ -900,6 +902,42 @@ export function runAccountingContract(
           reason: "zoho_books_contact_missing",
         });
         await notIssued(s, doc);
+      });
+    });
+
+    describe("payouts: a vendor's bill paid from Stripe clearing", () => {
+      const vendorId = vendorContactSourceId("seller-1");
+      const payoutBill = (product: Product) =>
+        bill(product, "payout-1", [{ ...NO_VAT_GOODS, description: "Payout" }], vendorId);
+
+      it("pays the whole bill once, and finds it again by reference", async () => {
+        const s = await makeSubject();
+        issuedOf(await s.settle(s.ports.vendors.upsertVendor(contact(SHOP, vendorId))));
+        const doc = payoutBill(SHOP);
+        issuedOf(await s.settle(s.ports.bills.issueBill(doc)));
+        const payment = must(buildBillPayment({ bill: doc, paidOn: "2026-11-20" }));
+        const out = issuedOf(await s.settle(s.ports.billPayments.recordBillPayment(payment)));
+        expect(out.totals).toEqual({ netPence: 10_000, vatPence: 0, grossPence: 10_000 });
+        // Sent again (a replay): the same payment, never a second one.
+        const again = issuedOf(await s.settle(s.ports.billPayments.recordBillPayment(payment)));
+        expect(again.providerId).toBe(out.providerId);
+        const found = await s.settle(s.ports.lookup.findDocument(payment));
+        expect(found.status).toBe("found");
+        expect("providerId" in found ? found.providerId : null).toBe(out.providerId);
+        // The vendor contact is found as a vendor (its reference names it one).
+        const vendor = await s.settle(s.ports.lookup.findDocument(contact(SHOP, vendorId)));
+        expect(vendor.status).toBe("found");
+      });
+
+      it("refuses a payment whose bill is not in the books", async () => {
+        const s = await makeSubject();
+        issuedOf(await s.settle(s.ports.vendors.upsertVendor(contact(SHOP, vendorId))));
+        const payment = must(buildBillPayment({ bill: payoutBill(SHOP), paidOn: "2026-11-20" }));
+        expect(await s.settle(s.ports.billPayments.recordBillPayment(payment))).toEqual({
+          status: "rejected",
+          reason: "zoho_books_bill_missing",
+        });
+        await notIssued(s, payment);
       });
     });
 

@@ -13,8 +13,15 @@ const url = process.env.MIGRATION_TEST_DATABASE_URL;
 /** The journal time of 0392, the migration before 0393. */
 const THROUGH_0392 = 1812110400000;
 
-const rollbackSql = () =>
-  readFile(resolve(import.meta.dirname, "../drizzle/0393_rollback.sql"), "utf8");
+/** 0394 is rolled back first (newest first), as a real rollback of 0393 would be. */
+const rollbackSql = async () =>
+  (
+    await Promise.all(
+      ["0394_rollback.sql", "0393_rollback.sql"].map((name) =>
+        readFile(resolve(import.meta.dirname, "../drizzle", name), "utf8"),
+      ),
+    )
+  ).join("\n");
 
 async function seedPlace(
   pool: pg.Pool,

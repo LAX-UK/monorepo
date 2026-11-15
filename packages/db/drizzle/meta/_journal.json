@@ -2696,6 +2696,13 @@
       "when": 1812196800000,
       "tag": "0393_collection_storage_terms",
       "breakpoints": true
+    },
+    {
+      "idx": 386,
+      "version": "7",
+      "when": 1812283200000,
+      "tag": "0394_books_payout_bills",
+      "breakpoints": true
     }
   ]
 }

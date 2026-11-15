@@ -9,6 +9,7 @@ import {
 } from "@auction/finance-runtime";
 import {
   DrizzleBidAccountingFactsReader,
+  DrizzlePayoutAccountingFactsReader,
   DrizzleShopAccountingFactsReader,
   DrizzleTransactionRunner,
   DrizzleUnappliedMoneyReader,
@@ -117,6 +118,7 @@ export function createAccountingRuntime(deps: {
     projection: new AccountingProjection({
       facts: new DrizzleBidAccountingFactsReader(deps.db),
       shopFacts,
+      payoutFacts: new DrizzlePayoutAccountingFactsReader(deps.db),
       settings: repos.settingReader,
       registry: repos.registry,
       books: {

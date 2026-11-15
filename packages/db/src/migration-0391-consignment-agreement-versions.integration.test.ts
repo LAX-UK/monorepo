@@ -225,7 +225,7 @@ const rollbackSql = () =>
 const laterRollbacksSql = async () =>
   (
     await Promise.all(
-      ["0393_rollback.sql", "0392_rollback.sql"].map((name) =>
+      ["0394_rollback.sql", "0393_rollback.sql", "0392_rollback.sql"].map((name) =>
         readFile(resolve(import.meta.dirname, "../drizzle", name), "utf8"),
       ),
     )
