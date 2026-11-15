@@ -1,68 +1,76 @@
-Verdict: FIX FIRST
+Verdict: SHIP
 
-# Review of PR #1470: motion system 1/8 (tokens, compositor-only check, motion-check helper)
+# Final recheck of PR #1470: motion system 1/8 (tokens, compositor-only check, motion-check helper)
 
-Reviewed head `74e7246f` (branch `motion-tokens`) against `docs/design/motion.md` as shipped in the PR. The PR branch was not modified.
+Rechecked head `1f8fe4f8` (branch `motion-tokens`, unchanged since 19:56 UTC) against the first review of `74e7246f`, the PR body's "Changes after review" section and `docs/design/motion.md`. The PR branch was not modified.
 
-The token work is correct and leaves the products unchanged. The two blocking items are in the tooling that the seven later PRs will rely on. One is a lint false negative. The other is a bias in the timing measurement. Both are small fixes.
+Both blocking items from the first review are fixed and have mutation-tested coverage. The no-visible-change guarantee still holds. Attribution is clean. All remaining findings are non-blocking follow-ups.
+
+One condition on SHIP: three CI jobs were still running when this was written: `build` (which runs `check:route-js-budget`), `test` and `browser-gates`. All three must finish green before merge.
 
 ## Findings
 
-1. **BLOCKING: the compositor lint misses banned properties on the second and later lines of a wrapped `transition:` declaration.** `scripts/compositor-rule.mjs:44` captures the value with `([^;}\n]+)`, so it stops at the first newline. The repository already wraps long transitions this way (`packages/marketing-ui/src/marketing-header.css:40-42`), so this is the normal format, not an edge case. Mutation check: adding
-   ```css
-   .zz { transition:
-       opacity 1s,
-       box-shadow 1s; }
-   ```
-   to `marketing-header.css` still passes `pnpm lint:compositor`. Fix: capture `([^;}]+)`. Add a test in `scripts/compositor-rule.test.mjs` with a wrapped declaration whose banned property is on a later line. Check that the allowlist counts still match afterwards. A scan today found no wrapped offenders, so the counts should not change.
+None of these block merging.
 
-2. **BLOCKING: `measureInteractionToPaint` counts the Playwright round trip, which its doc comment says it excludes.** At `apps/web/e2e/helpers/motion-check.ts:71`, the comment says "Playwright's round trip is not counted". The clock starts at the input's `timeStamp`, but the end is stamped only after `await action()` resolves and a new `page.evaluate` reaches the page, plus two rAFs (`:92-99`). So the result includes protocol latency and an extra frame. That latency grows when the main thread is busy, which is exactly the 4x-throttled case. Measured on a trivial page at 4x throttle, 15 presses each:
-   - the helper's method gave about 30 ms (29–37);
-   - stamping inside the page (pointerdown → rAF → `setTimeout(0)`) gave about 15 ms (12–18).
+1. **Should fix: Tailwind's bare `transition` is caught only in `.jsx`/`.tsx` files.** `scripts/compositor-rule.mjs:224` enables `bareTransitionRules` only for `/\.[jt]sx$/`, and the CSS path (`:218`) does not look for it in `@apply`. So both of these pass `pnpm lint:compositor` (mutation-checked):
+   - `export const v = "rounded transition hover:shadow-lg";` in a `.ts` file, which is where `cva` variant maps usually live;
+   - `.zz { @apply transition hover:shadow-lg; }` in a `.css` file.
 
-   The smoke spec then compares the result to the hard budget with no margin (`motion-check-smoke.spec.ts:34`). Every later motion PR inherits this helper as its proof, so a biased, load-dependent number is a blocking flaw for criterion 4 ("deterministic, no thresholds without margin"). Fix: in the capture listener, record the paint stamp in the page (`requestAnimationFrame(() => setTimeout(stamp, 0))`, or `MessageChannel`), then read it afterwards. Optionally take the median of N presses. Then document the measure, or add a small stated margin.
+   Nothing in the repo uses either form today. Run the class-list check on `.ts` files too, and add the bare utility to the `@apply` path, with a test for each.
+2. **Should fix: `postcss` is an undeclared root dependency.** `scripts/compositor-rule.mjs:1` imports `postcss`, but the root `package.json` does not declare it. It resolves only because `.npmrc` sets `node-linker=hoisted` and `apps/web/package.json:101` depends on it. If the linker changes, or apps/web drops postcss, `lint:compositor` breaks in `static-checks`. Add `postcss` to the root `devDependencies`, matching apps/web's `^8.5.9` (the existing override covers the version).
+3. **Minor: the JSDoc of `findCompositorViolations` does not match the code.** `scripts/compositor-rule.mjs:207` says that without a filename the source "is treated as CSS if it parses as CSS and holds no JSX/JS markers". The code (`:212`) treats it as CSS unless `options.kind === "script"`, and `kind` is not in the documented options. Document `kind`, or drop it and correct the sentence.
+4. **Minor: the smoke spec still has no green run against a real Bid home.** The PR body says so too, and moves it to MO14's manual workflow. That is acceptable for PR 1.
 
-3. **Should fix: Tailwind's bare `transition` utility is not caught.** In Tailwind v4, `transition` transitions `box-shadow`, `filter` and `backdrop-filter` (among others). So `className="transition hover:shadow-lg"` animates box-shadow and still passes. Mutation-checked on `packages/ui/src/components/ui/pagination-footer.tsx`. Today nothing in `apps/` or `packages/` uses the bare utility, so banning it now (or requiring `transition-[…]`, `transition-colors`, `transition-opacity` or `transition-transform`) costs nothing and closes the gap.
+   I ran it 3 times against a local `apps/web` dev server with no API. Each run:
+   - "reduced motion leaves nothing moving" passed.
+   - Layout shift was 0.137 (> 0.1) and the JS-off/JS-on diff ratio was 0.69. Both are from my environment: with no API, the session lookup fails (`SessionLookupTransientError`) and the page renders "We couldn't confirm your session" with JS on.
 
-4. **Should fix: the banned-property match is exact, but the comment says prefix.** `scripts/compositor-rule.mjs:16` says "Longhands are matched by prefix", but `BANNED_WORD` (`:46`) needs an exact name. `margin-inline-start`, `margin-block-end` and `-webkit-backdrop-filter` all pass (mutation-checked). Either match by prefix for the `margin` family and allow an optional `-webkit-` before `backdrop-filter`, or correct the comment and list the longhands.
+   Because the layout-shift assertion comes first, the timing part of that test never ran. I checked the timing with a separate probe instead (see "What was verified").
 
-5. **Should fix: `restingScreenshotParity` is brittle as written** (`motion-check.ts:159-183`):
-   - It compares the two PNGs byte for byte (`motion-check-smoke.spec.ts:48`) right after `waitUntil: "load"`. Streamed Suspense content, countdowns, lazy images and late fonts can all make two healthy renders differ. Wait for `networkidle` and `document.fonts.ready`, freeze time (`page.clock`), and compare with a small pixel tolerance (for example `toMatchSnapshot`-style `maxDiffPixelRatio`) instead of `Buffer.equals`.
-   - The new contexts drop the project's `use` options (`baseURL`, `storageState`, `locale`, `colorScheme`, `extraHTTPHeaders`). Pass them through, or take a context-options argument.
-   - `new URL(path, undefined)` (`:165`) throws a raw `TypeError` for a relative path when the page has not navigated yet. Use the test's `baseURL`, or throw the same kind of guided error as `layoutShiftScore`.
-
-6. **Should fix: the smoke spec has not been shown to pass against Bid home, and nothing runs it.** The PR text says the helpers were exercised against a local page only. In this review I ran it 3 times against a local `apps/web` dev server with no API behind it. Each run: reduced-motion test passed; layout shift was 0.137 (> 0.1) and the JS-off/JS-on parity check failed, both because the skeleton was swapped for the error state. That is caused by my environment, so it is not evidence against the PR. But no one has a recorded green run against a real Bid home, and the spec is in no workflow, not even a manual one. Attach one passing run against the test environment, or add it to the planned MO14 manual workflow.
-
-7. **Minor: the drift test guards the three product files, not "declared once".** `packages/branding/tests/lax-motion.test.ts` checks `lax-system.css`, the staff theme, and Bid/Shop/lax.art aliases. A second `--lax-motion-enter: 250ms` declared anywhere else (for example a new `:root` rule in `apps/web/src/app/globals.css` or `marketing-header.css`) passes (mutation-checked). Today the tokens really are declared only in `lax-system.css:146-158` and `staff-ui/src/theme.css:229-236`. A repo-wide check that `--lax-(motion|ease)-*` is declared only in those two files would enforce it. Related, for the later PRs: `marketing-header.css:40-42` still carries literal fallbacks (`var(--motion-duration-sm, 200ms)`).
-
-8. **Minor: the docs should say the `--motion-*` aliases do not follow the staff overrides.** The aliases resolve at `:root`, so inside `[data-staff-ui]`, `--motion-duration-sm` stays 200ms while `--lax-motion-enter` is 150ms (confirmed with computed styles). That is right for "no visible change". But `docs/DESIGN_SYSTEM.md:309` should say that staff code must use `--lax-motion-*` directly, so nobody expects the old names to pick up staff timings.
-
-9. **Minor: `observeLayoutShift` sums every shift.** At `motion-check.ts:32,43` the comment says "as in CLS", but CLS is the largest session window. The sum is stricter, which is acceptable for a guard, but name it ("total layout shift") or document the difference.
-
-10. **Minor: line comments can trip the lint.** `stripComments` (`compositor-rule.mjs:49`) strips `/* */` only, so a `// … transition-all …` comment in TS/TSX counts as an offence (mutation-checked). Low impact, but it can confuse whoever lowers the allowlist later.
+   Keep the MO14 workflow item. It should record a green run before PR 2 relies on the spec.
+5. **Minor: the smoke spec passes only `baseURL` to `restingScreenshotParity`.** `apps/web/e2e/motion-check-smoke.spec.ts:49-51` uses `contextOptions: baseURL ? { baseURL } : {}`. The helper now accepts the project's options, but `storageState`, `locale`, `colorScheme` and `extraHTTPHeaders` are still dropped. Passing `test.info().project.use`, or the relevant fixtures, would make the example match what later PRs should copy.
+6. **Minor: one comment still says "Cumulative layout shift".** `apps/web/e2e/helpers/motion-check.ts:18` (`MOTION_BUDGETS.layoutShift`) uses the old name. Everywhere else now says total layout shift, which is what is measured. Rename it to match.
+7. **Minor (DRY): two near-identical repository walkers.** `scripts/check-compositor-only.mjs:18-30` (`SKIP_DIRS`, `listFiles`) and `packages/branding/tests/lax-motion.test.ts:144-158` (`SKIP`, `cssFiles`) each walk `apps/` and `packages/` with their own skip lists, and the lists already differ (`e2e`). Low cost today. A shared walker would stop the skip lists drifting further apart.
 
 ## What was verified
 
-- **(1) No visible change.** Passed.
-  - `lax-motion.test.ts` resolves every `--motion-*` alias in Bid, Shop and lax.art to its pre-PR value.
-  - Mutations to a product alias, a shared value, a staff value, or the wrong alias target each fail it.
-  - In a running Bid page (fresh `next dev`, main vs branch), the computed `:root` and `[data-staff-ui]` values of all eleven `--motion-*` tokens are identical. `--motion-ease-accelerate` is tree-shaken on both.
-  - Shop and lax.art declare theirs in plain `:root` and import `lax-system.css`, so the alias test covers them. Their pages were not rendered.
-  - Staff values match the spec table: press 0, hover 100, enter/exit 150/100, panel 200/150, page 100/150, easings shared.
-- **(2) Tokens declared once.** Passed, with gap 7 above. Tokens are in `lax-system.css` only, with staff durations in `staff-ui/src/theme.css`. No other declarations exist today.
-- **(3) Compositor check.** Partly passed; see findings 1, 3 and 4.
-  - New `transition: all`, `transition-all`, `transition-[height]`, inline `transition: "all 1s"`, `width`/`backdrop-filter` transitions and `box-shadow`/`filter` keyframes all fail it (mutation-checked).
-  - The allowlist has 46 entries covering 49 offences, including exactly the 11 `transition-all` the spec names. The repository matches it, and a stale or too-high count fails.
-  - Wired into CI `static-checks` (`.github/workflows/ci.yml`) and `ci:verify`.
-- **(4) Helper.** Documented and reusable in shape. See findings 2, 5, 6 and 9.
-- **(5) Lenis, route JS, budgets.** Passed. No Lenis, budget or baseline file is in the diff. The PR adds no route JavaScript (CSS, tests, scripts, docs and e2e only). `pnpm lint:route-js-budget` passes (44/44).
-- **(6) Docs.** Passed. `docs/DESIGN_SYSTEM.md` has a new motion section. `staff-design-standard.md` CRF-14 and open item 6 are updated.
-- **(7) Attribution.** Passed. Neither commit message nor the PR title or body has any co-author, session or generated-by lines.
-- **Local runs.**
-  - `@auction/branding` vitest: 349/349 passed.
+- **(1) Compositor lint parses whole declarations.** Passed.
+  - CSS is parsed with postcss and walked as declarations and `@keyframes` at-rules. TS/TSX values are read whole: a quoted or template-literal string in full, otherwise up to `;`/`}` while ignoring separators inside parentheses.
+  - The tests cover wrapped `transition`/`transition-property` values, shorthands with delay and `!important`, logical `margin-*` longhands, `-webkit-` prefixes, keyframes (including those nested in `@media` and those with a selector list), Tailwind `transition-all`, `transition-[...]`, `transition-shadow`, bare `transition`, `@apply`, and inline and template-literal styles.
+  - Mutation check: each of these ten mutations makes `node --test scripts/compositor-rule.test.mjs` fail: read only the first line of a CSS value; skip the keyframes walk; drop Tailwind `transition-all`; drop the `margin-` prefix match; drop `-webkit-` normalisation; drop the bare-`transition` rule; drop the `all` check; stop stripping `//` comments; stop a script value at a newline; stop a string value at a newline.
+  - Repository mutations in `packages/marketing-ui/src/marketing-header.css` and `packages/ui/src/components/ui/pagination-footer.tsx` each fail `pnpm lint:compositor`:
+    - the wrapped `transition: opacity 1s, box-shadow 1s` from the first review;
+    - `margin-inline-start 1s ease-in-out 0s`;
+    - keyframes with `-webkit-backdrop-filter`;
+    - `transition hover:shadow-lg`;
+    - `md:hover:transition-all`;
+    - a `cn(...)` call whose `transition-[height,opacity]` is on a second line.
+  - The allowlist file is byte-identical to the one in `74e7246f`: 46 entries, 49 offences, 11 of them `transition-all`. The "repository matches its allowlist" test passes, and that test fails on any stale, too-high or missing count. So the allowlist is exactly today's offenders.
+- **(2) `measureInteractionToPaint` measures inside the page.** Passed.
+  - The input is stamped from `event.timeStamp` in a capture listener. The paint is stamped from `requestAnimationFrame` → `setTimeout(0)` inside that listener. Both are read back only after the stamp exists, so no protocol round trip is counted. The doc comment (`motion-check.ts:69-80`) matches the code.
+  - `medianInteractionToPaint` takes the median of 5 presses. The 200 ms budget and its margin (about 10x a trivial page's roughly 15 ms at 4x) are documented in `MOTION_BUDGETS` and `docs/DESIGN_SYSTEM.md`.
+  - Probe at 4x CPU throttle on Bid home, 3 runs of 9 presses each: samples ranged from 5.5 to 28.3 ms, with medians of about 10, 11.8 and 12.8 ms. That is far below 200 ms and stable across runs.
+  - Smoke spec: 3 runs; see finding 4 for the environment-caused failures. The reduced-motion test passed in all 3 runs, and in 3 more targeted runs.
+- **(3) Still no visible change.** Passed.
+  - The token and alias diff in `lax-system.css`, `staff-ui/src/theme.css` and the Bid, Shop and lax.art CSS is the same as the first review, which confirmed the values with computed styles.
+  - `lax-motion.test.ts` resolves every `--motion-*` alias to its pre-PR value. The new "declared once" test also passes.
+  - Lenis: no Lenis file in the diff.
+  - Route JS: the PR changes no route JavaScript. Its app source changes are CSS only; everything else is tests, scripts, docs and e2e.
+  - No `route-js-budgets.json` or `route-js-baseline.json` change.
+  - `pnpm lint:route-js-budget` passes.
+  - Locally, `node scripts/check-route-js-budget.mjs` refuses to measure the dev `.next` (no Sentry DSN, exit 2), as designed. CI's `build` job runs `check:route-js-budget`; it was still running.
+- **(4) SOLID/clean.**
+  - The rule, the scanner and the allowlist comparison are separate modules. The helpers each answer one question. Budgets live once in `MOTION_BUDGETS`, and `RESTING_PARITY_MAX_DIFF_RATIO` is named.
+  - No duplicated literals in code beyond intentional test pins. The token values in the `DESIGN_SYSTEM.md` table are documentation.
+  - Minor items: findings 3, 6 and 7.
+- **(5) Attribution: passed (blocking check).**
+  - None of the three commits (`65a4967a`, `74e7246f`, `1f8fe4f8`) has `Co-Authored-By`, `Claude-Session` or generated-by lines in its message.
+  - Neither does the PR title or body.
+- **Local runs** (after `corepack enable`, `pnpm install --frozen-lockfile`, `pnpm -r --filter './packages/**' build`):
+  - `@auction/branding` vitest: 350/350 passed (`--maxWorkers=2`).
   - `@auction/staff-ui` vitest: 632/632 passed.
-  - `pnpm lint:compositor` passed (8/8 node tests).
-  - Biome clean.
-  - `lint:e2e-tags`, `lint:e2e-portfolio`, `lint:ui-guardrails` and `lint:web-guardrails` all ok.
-  - Branding and staff-ui typecheck clean. `apps/web` typecheck shows only the existing `@auction/api/app` module error.
-- **CI on `74e7246f`.** 37 check runs succeeded, including `static-checks`, all web vitest shards and `build-packages`. `test` and `browser-gates` were still running when this review was written.
+  - `pnpm lint:compositor`: passed, 15/15 node tests.
+  - `pnpm exec biome check .`: clean.
+  - `lint:route-js-budget`, `lint:e2e-tags`, `lint:e2e-portfolio`, `lint:ui-guardrails` and `lint:web-guardrails`: all passed.
+  - Typecheck: branding and staff-ui are clean. `apps/web`, which includes `e2e/`, shows only the pre-existing `@auction/api/app` module error.
+- **CI on `1f8fe4f8`** (REST check runs): 36 of 39 succeeded, including `static-checks` (which runs `lint:compositor`), `build-packages`, all 8 web vitest shards, `art-browser-gates`, `account-browser-gates` and the docker images. `build`, `test` and `browser-gates` were still in progress, with no failures so far.
