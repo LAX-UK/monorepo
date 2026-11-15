@@ -78,10 +78,12 @@ describe("BasketLinesClient", () => {
     expect(screen.queryByRole("group", { name: /quantity/i })).toBeNull();
   });
 
-  it("says what the price changed from on a line whose price moved", () => {
-    show([{ ...line, priceChanged: true, previousUnitPricePence: 12000 }]);
+  it("says both prices on a line whose price moved", () => {
+    show([
+      { ...line, priceChanged: true, previousUnitPricePence: 12000, currentUnitPricePence: 14000 },
+    ]);
     expect(screen.getByText("The price has changed")).toBeTruthy();
-    expect(screen.getByText("Price changed from £120.00.")).toBeTruthy();
+    expect(screen.getByText("Was £120.00, now £140.00.")).toBeTruthy();
   });
 
   it("leaves an available line undimmed", () => {

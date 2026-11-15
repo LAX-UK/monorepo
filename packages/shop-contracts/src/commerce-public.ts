@@ -79,11 +79,14 @@ export const BasketLineSchema = Type.Object(
     artistName: Type.Optional(Type.Union([Type.String({ minLength: 1 }), Type.Null()])),
     artistSlug: Type.Optional(Type.Union([Type.String({ minLength: 1 }), Type.Null()])),
     /**
-     * The unit price when the item was added, sent only while the live price differs from it, so
-     * the basket can say what it changed from. An older shop-api omits it.
+     * The unit price the line was stamped with (at the last add or quantity change), sent only
+     * while the live price differs from it, so the basket can say what it changed from. An older
+     * shop-api omits it.
      */
     previousUnitPricePence: Type.Optional(Type.Union([Type.Integer({ minimum: 0 }), Type.Null()])),
-    /** The year the print's artwork was made; null when unrecorded or for merchandise. */
+    /** The live unit price, sent with `previousUnitPricePence` while the two differ. */
+    currentUnitPricePence: Type.Optional(Type.Union([Type.Integer({ minimum: 0 }), Type.Null()])),
+    /** The year the print's artwork was made, as the product page shows it; null when unrecorded or for merchandise. */
     editionYear: Type.Optional(Type.Union([Type.Integer(), Type.Null()])),
     /** The size of a limited edition's run; null for merchandise, an open edition or a proof. */
     editionSize: Type.Optional(Type.Union([Type.Integer({ minimum: 1 }), Type.Null()])),

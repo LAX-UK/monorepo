@@ -275,6 +275,9 @@ function BasketLineRow({
               ) : (
                 vm.title
               )}
+              {vm.yearSuffix ? (
+                <span className="shop-basket__line-year">{vm.yearSuffix}</span>
+              ) : null}
             </h3>
             {vm.artistName ? (
               <p className="shop-basket__line-artist">
@@ -344,7 +347,7 @@ function BasketLineRow({
         ) : null}
         {line?.priceChanged ? (
           <ShopNotice tone="warning" title="The price has changed">
-            {vm.priceChangedFrom ? <p>{vm.priceChangedFrom}.</p> : null}
+            {vm.priceChangeText ? <p>{vm.priceChangeText}</p> : null}
             <p>Update the basket to see the new price before checkout.</p>
             <ShopCommerceButton
               type="button"

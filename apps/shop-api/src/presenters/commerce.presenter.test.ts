@@ -74,6 +74,7 @@ describe("presentBasket", () => {
     );
     expect(view.lines[0]?.priceChanged).toBe(true);
     expect(view.lines[0]?.previousUnitPricePence).toBe(12000);
+    expect(view.lines[0]?.currentUnitPricePence).toBe(13000);
     expect(view.lines[0]?.outOfStock).toBe(true);
     expect(view.lines[0]?.soldOut).toBe(false);
     expect(view.lines[0]).not.toHaveProperty("sellableCount");

@@ -76,20 +76,58 @@ describe("presentBasketLine", () => {
     expect(vm.imageAlt).toBe("Warm Basket");
   });
 
-  it("adds the edition year to the detail line", () => {
-    expect(presentBasketLine({ ...edition, editionYear: 2024 }).detail).toBe(
-      "Limited edition of 24 · Hand-signed · 2024",
-    );
+  it("keeps the edition year out of the shared edition line", () => {
+    const vm = presentBasketLine({ ...edition, editionYear: 2024 });
+    expect(vm.detail).toBe("Limited edition of 24 · Hand-signed");
+    expect(vm.yearSuffix).toBe(", 2024");
   });
 
-  it("says what a changed price changed from, using the money formatter", () => {
+  it("shows the year on its own when the edition line is absent, as the product page does", () => {
+    const vm = presentBasketLine({ ...edition, editionLine: null, editionYear: 2024 });
+    expect(vm.detail).toBeNull();
+    expect(vm.yearSuffix).toBe(", 2024");
+  });
+
+  it("shows no year when it is unrecorded, and none for merchandise", () => {
+    expect(presentBasketLine({ ...edition, editionYear: null }).yearSuffix).toBeNull();
     expect(
-      presentBasketLine({ ...edition, priceChanged: true, previousUnitPricePence: 12000 })
-        .priceChangedFrom,
-    ).toBe("Price changed from £120.00");
-    // An older shop-api sends no previous price: the notice still shows, without the figure.
-    expect(presentBasketLine({ ...edition, priceChanged: true }).priceChangedFrom).toBeNull();
-    expect(presentBasketLine(edition).priceChangedFrom).toBeNull();
+      presentBasketLine({ ...edition, editionLine: "Limited edition of 24" }).yearSuffix,
+    ).toBeNull();
+    expect(
+      presentBasketLine({
+        ...edition,
+        artworkSlug: null,
+        productVariantId: "00000000-0000-4000-8000-000000000009",
+        editionYear: 2024,
+      }).yearSuffix,
+    ).toBeNull();
+  });
+
+  it("says both prices when the price has risen, using the money formatter", () => {
+    expect(
+      presentBasketLine({
+        ...edition,
+        priceChanged: true,
+        previousUnitPricePence: 18000,
+        currentUnitPricePence: 20000,
+      }).priceChangeText,
+    ).toBe("Was £180.00, now £200.00.");
+  });
+
+  it("says both prices when the price has dropped", () => {
+    expect(
+      presentBasketLine({
+        ...edition,
+        priceChanged: true,
+        previousUnitPricePence: 20000,
+        currentUnitPricePence: 18000,
+      }).priceChangeText,
+    ).toBe("Was £200.00, now £180.00.");
+  });
+
+  it("says nothing about prices when unchanged, or when an older shop-api sends no figures", () => {
+    expect(presentBasketLine(edition).priceChangeText).toBeNull();
+    expect(presentBasketLine({ ...edition, priceChanged: true }).priceChangeText).toBeNull();
   });
 
   it("words an open edition from the contract, with no size", () => {

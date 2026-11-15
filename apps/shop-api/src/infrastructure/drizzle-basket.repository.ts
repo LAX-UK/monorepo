@@ -291,7 +291,7 @@ async function upsertArtworkLine(
         targetWhere: sql`${shopBasketLine.artworkId} IS NOT NULL`,
         set: {
           quantity: input.quantity,
-          unitPricePence,
+          unitPricePence: keepStampOnQuantityChange(unitPricePence),
           ...(input.framingEnabled ? { framingOptionId } : {}),
           // A choice made in this request is stamped at today's price; a kept one keeps its stamp.
           ...(input.framingEnabled && chosen !== undefined ? { framingPricePence: null } : {}),
@@ -366,8 +366,22 @@ async function upsertVariantLine(
       .onConflictDoUpdate({
         target: [shopBasketLine.basketId, shopBasketLine.productVariantId],
         targetWhere: sql`${shopBasketLine.productVariantId} IS NOT NULL`,
-        set: { quantity: input.quantity, unitPricePence, updatedAt: new Date() },
+        set: {
+          quantity: input.quantity,
+          unitPricePence: keepStampOnQuantityChange(unitPricePence),
+          updatedAt: new Date(),
+        },
       });
     return loadBasketRecord(tx as Database, basketId);
   });
+}
+
+/**
+ * The price a line is stamped with. A quantity change keeps the stamp, so a price that moved
+ * since the item was added is still flagged in the basket instead of being absorbed unseen
+ * (checkout never charges the stamp: it reprices to the live price and asks the shopper to
+ * confirm). A request that leaves the quantity as it was is a re-add, which takes today's price.
+ */
+function keepStampOnQuantityChange(livePricePence: number) {
+  return sql`CASE WHEN shop_basket_line.quantity = excluded.quantity THEN ${livePricePence}::integer ELSE shop_basket_line.unit_price_pence END`;
 }

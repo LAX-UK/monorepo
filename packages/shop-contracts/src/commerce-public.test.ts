@@ -191,7 +191,12 @@ describe("BasketLineSchema", () => {
 
   it("accepts the previous unit price and edition year, each null or a number", () => {
     expect(
-      Value.Check(BasketLineSchema, { ...line, previousUnitPricePence: 11000, editionYear: 2024 }),
+      Value.Check(BasketLineSchema, {
+        ...line,
+        previousUnitPricePence: 11000,
+        currentUnitPricePence: 12000,
+        editionYear: 2024,
+      }),
     ).toBe(true);
     expect(
       Value.Check(BasketLineSchema, { ...line, previousUnitPricePence: null, editionYear: null }),
