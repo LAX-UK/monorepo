@@ -37,7 +37,7 @@ Both blocking findings from the first review are fixed, and so are the three non
 
 7. Still open, not blocking (unchanged from the first review): `packages/accounting-domain/src/projection/payouts.ts:36,39`. Both payout bookings are null, so every payout bill and payment is parked. The accountant still has to say where LAX's output VAT on commission is booked under `commission: "netted"`. The PR body lists this as an accountant question.
 
-8. Not blocking: `apps/worker/src/finance/accounting/payout-bills-books.integration.test.ts`. One run out of eight had 1 failure in 13 tests. It ran while the `packages/db` suite was loading the same Postgres server. The other seven runs, and the run inside the full `src/finance` suite, passed 13/13. The failing run's output was not kept, so the case is unknown. Worth watching for flakiness in CI. CI's `test` job was still running when this was written.
+8. Not blocking: `apps/worker/src/finance/accounting/payout-bills-books.integration.test.ts`. One run out of eight had 1 failure in 13 tests. It ran while the `packages/db` suite was loading the same Postgres server. The other seven runs, and the run inside the full `src/finance` suite, passed 13/13. The failing run's output was not kept, so the case is unknown. Worth watching for flakiness. CI ran it green on this head.
 
 ## Still holds: no live posting
 
@@ -67,9 +67,8 @@ Environment: Postgres 16 under `/var/tmp`, port 55432, after `db:migrate`, the w
 
 PR checks on `e763cf7d`:
 
-- 36 passed, including `static-checks`, `worker-role-contract`, `build`, the api, web and shop-api vitest jobs, and `account-browser-gates`.
-- 1 skipped: `art-browser-gates`.
-- Still running when this was written: `test` and `browser-gates`.
+- All 40 finished: 39 passed and 1 skipped (`art-browser-gates`).
+- The passes include `static-checks`, `worker-role-contract`, `test`, `build`, `browser-gates`, `account-browser-gates`, the api, web and shop-api vitest jobs, and `ci-result`.
 
 Commit messages on the PR: none has a `Co-Authored-By` or "Generated with" line.
 
