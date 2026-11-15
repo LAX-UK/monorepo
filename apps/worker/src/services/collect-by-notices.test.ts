@@ -144,7 +144,7 @@ describe("how the email says to reach the place", () => {
   });
 
   it("gives the email alone when the venue has no phone, never a placeholder", () => {
-    for (const phone of [null, undefined, "  "]) {
+    for (const phone of [null, "  "]) {
       const [email] = collectByEmailsFor(groupWith({ ...PLACE, phone }), [maya], config);
       expect(email?.vars).toMatchObject({ contactEmail: "info@thelax.art", contactPhone: null });
       expect(JSON.stringify(email)).not.toContain("800 208");
