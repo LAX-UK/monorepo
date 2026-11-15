@@ -221,9 +221,25 @@ describe.skipIf(!url)(
 
 const rollbackSql = () =>
   readFile(resolve(import.meta.dirname, "../drizzle/0391_rollback.sql"), "utf8");
-/** Migrations after 0391, rolled back first (newest first) as a real rollback of 0391 would be. */
-const laterRollbacksSql = () =>
-  readFile(resolve(import.meta.dirname, "../drizzle/0392_rollback.sql"), "utf8");
+/**
+ * Migrations after 0391, rolled back first (newest first) as a real rollback of 0391 would be. Read
+ * from the journal, so a later migration (or a renumbering at merge time) is included by itself.
+ */
+const laterRollbacksSql = async () => {
+  const journal = JSON.parse(
+    await readFile(resolve(import.meta.dirname, "../drizzle/meta/_journal.json"), "utf8"),
+  ) as { entries: { tag: string }[] };
+  const numbers = [...new Set(journal.entries.map((entry) => entry.tag.slice(0, 4)))]
+    .filter((number) => number > "0391")
+    .sort()
+    .reverse();
+  const files = await Promise.all(
+    numbers.map((number) =>
+      readFile(resolve(import.meta.dirname, `../drizzle/${number}_rollback.sql`), "utf8"),
+    ),
+  );
+  return files.join("\n");
+};
 
 describe.skipIf(!url)("migration 0391 rollback", { timeout: 120_000 }, () => {
   it("stops while a version is superseded, then rolls back and applies again", async () => {

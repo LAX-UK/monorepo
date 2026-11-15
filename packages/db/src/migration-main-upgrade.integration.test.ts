@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import type pg from "pg";
@@ -23,7 +24,16 @@ const DIRECTORY_0159_FOLDER_MILLIS = 1788000035000;
 const WORKER_CUTOVER_0160_FOLDER_MILLIS = 1788000036000;
 const BEFORE_ADDRESS_BOOK_FOLDER_MILLIS = 1794643200000;
 const DECLINE_REASON_0232_FOLDER_MILLIS = 1795420800000;
-const FINAL_FOLDER_MILLIS = 1812110400000;
+/**
+ * The newest migration's folder timestamp, read from the journal so the head moves with each new
+ * migration (and with a renumbering at merge time) without editing this test.
+ */
+const FINAL_FOLDER_MILLIS = (() => {
+  const journal = JSON.parse(
+    readFileSync(resolve(import.meta.dirname, "../drizzle/meta/_journal.json"), "utf8"),
+  ) as { entries: { when: number }[] };
+  return Math.max(...journal.entries.map((entry) => entry.when));
+})();
 const ATG_SYNC_LINKS_FOLDER_MILLIS = 1788000007500;
 
 async function executeMigrationSql(pool: pg.Pool, fileName: string): Promise<void> {
