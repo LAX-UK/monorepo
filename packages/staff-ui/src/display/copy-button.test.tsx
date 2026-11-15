@@ -63,6 +63,18 @@ describe("CopyButton", () => {
     });
     expect(screen.getByRole("status")).toHaveTextContent("Could not copy order ID");
     expect(button.querySelector(".lucide-check")).toBeNull();
+    // The failure is visible, not only announced: an alert icon in the danger colour.
+    expect(button.querySelector(".lucide-circle-alert")).not.toBeNull();
+    expect(button.querySelector(".lucide-copy")).toBeNull();
+    expect(button).toHaveAttribute("data-copy-status", "failed");
+    expect(button.className).toContain("text-staff-danger");
+
+    act(() => {
+      vi.advanceTimersByTime(COPY_CONFIRMATION_MS);
+    });
+    expect(button.querySelector(".lucide-copy")).not.toBeNull();
+    expect(button.className).not.toContain("text-staff-danger");
+    expect(screen.getByRole("status")).toBeEmptyDOMElement();
   });
 
   it("says so when there is no clipboard", () => {

@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, Copy } from "lucide-react";
+import { Check, CircleAlert, Copy } from "lucide-react";
 import * as React from "react";
 import { cn } from "../lib/cn.js";
 import { StaffButton } from "../primitives/button.js";
@@ -14,7 +14,7 @@ export const COPY_CONFIRMATION_MS = 1500;
  * Copies one reference in a click. A 24px ghost icon button that sits after the value; on success
  * the icon turns to a tick for 1.5s and a polite live region says "Order ID copied", so the result
  * is seen and heard. The button's name stays "Copy order ID" throughout, so the announcement is
- * not said twice. If the browser refuses, the live region says so and the value stays selectable.
+ * not said twice. If the browser refuses, the icon turns to a red alert for the same 1.5s and the live region says so; the value stays selectable.
  */
 export function CopyButton({
   value,
@@ -35,8 +35,11 @@ export function CopyButton({
     },
     [],
   );
+  // Changes on every press so a repeat copy inside the window is announced again.
+  const [presses, setPresses] = React.useState(0);
   const settle = (next: "copied" | "failed") => {
     setStatus(next);
+    setPresses((count) => count + 1);
     if (timer.current) clearTimeout(timer.current);
     timer.current = setTimeout(() => setStatus("idle"), COPY_CONFIRMATION_MS);
   };
@@ -60,11 +63,22 @@ export function CopyButton({
             () => settle("failed"),
           );
         }}
-        className={cn("text-staff-subtle hover:text-staff-fg [&_svg]:size-3.5", className)}
+        data-copy-status={status}
+        className={cn(
+          "text-staff-subtle hover:text-staff-fg [&_svg]:size-3.5",
+          status === "failed" && "text-staff-danger hover:text-staff-danger",
+          className,
+        )}
       >
-        {status === "copied" ? <Check aria-hidden /> : <Copy aria-hidden />}
+        {status === "copied" ? (
+          <Check aria-hidden />
+        ) : status === "failed" ? (
+          <CircleAlert aria-hidden />
+        ) : (
+          <Copy aria-hidden />
+        )}
       </StaffButton>
-      <output aria-live="polite" className="sr-only">
+      <output key={presses} aria-live="polite" className="sr-only">
         {message}
       </output>
     </>
