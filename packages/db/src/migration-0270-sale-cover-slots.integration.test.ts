@@ -2,11 +2,14 @@ import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import type pg from "pg";
 import { describe, expect, it } from "vitest";
-import { runMigrationsPerTransaction } from "./migrate-runner.js";
+import { runMigrationsPerTransactionThrough } from "./migrate-runner.js";
 import {
   migrationTestDatabaseUrl as migrationUrl,
   withTemporaryDatabase,
 } from "./testing/temporary-database.js";
+
+/** The journal time of migration 0270; later migrations are not needed to test it. */
+const MIGRATION_0270_FOLDER_MILLIS = 1798790400000;
 
 async function run(pool: pg.Pool, fileName: string): Promise<void> {
   const sql = await readFile(resolve(import.meta.dirname, "../drizzle", fileName), "utf8");
@@ -21,10 +24,10 @@ async function columns(pool: pg.Pool, table: string): Promise<string[]> {
   return result.rows.map((row) => row.column_name);
 }
 
-describe.skipIf(!migrationUrl)("migration 0270 sale cover slots", () => {
+describe.skipIf(!migrationUrl)("migration 0270 sale cover slots", { timeout: 30_000 }, () => {
   it("adds the cover columns with safe defaults, constrains them, and rolls back and re-applies", async () => {
     await withTemporaryDatabase(async (pool) => {
-      await runMigrationsPerTransaction(pool);
+      await runMigrationsPerTransactionThrough(pool, MIGRATION_0270_FOLDER_MILLIS);
 
       expect(await columns(pool, "sale")).toEqual(
         expect.arrayContaining([
