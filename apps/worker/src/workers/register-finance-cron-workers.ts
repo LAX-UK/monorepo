@@ -12,7 +12,7 @@ import {
 } from "@auction/queues";
 import { Queue, Worker } from "bullmq";
 import { runCleanupDisplayPairingsJob } from "../jobs/cleanup-display-pairings.js";
-import { runLotLifecycleTickJob } from "../jobs/lot-lifecycle-tick.js";
+import { createLotLifecycleTickJob } from "../jobs/lot-lifecycle-tick.js";
 import {
   runEnsureLotInvoicesJob,
   runExpireStalePaymentsJob,
@@ -89,10 +89,11 @@ export function registerFinanceAndLifecycleCronWorkers(
     deps as WorkerBootstrapDeps & { lifecycleExecutor?: WorkerLifecycleExecutor }
   ).lifecycleExecutor;
   if (!opts?.skipLifecycleTick) {
+    const runLotLifecycleTick = createLotLifecycleTickJob();
     const lotLifecycleTickWorker = new Worker(
       LOT_LIFECYCLE_TICK_QUEUE_NAME,
       async () => {
-        await runLotLifecycleTickJob({
+        const result = await runLotLifecycleTick({
           env: deps.env,
           apiBaseUrl: env.API_INTERNAL_BASE_URL,
           cronSecret,
@@ -100,7 +101,8 @@ export function registerFinanceAndLifecycleCronWorkers(
           redis: deps.redis,
           ...(lifecycleExecutor ? { executor: lifecycleExecutor } : {}),
         });
-        await heartbeat(LOT_LIFECYCLE_TICK_QUEUE_NAME);
+        // A swallowed gateway blip is not a healthy tick: leave the heartbeat alone.
+        if (result === "ok") await heartbeat(LOT_LIFECYCLE_TICK_QUEUE_NAME);
       },
       bullConnection,
     );

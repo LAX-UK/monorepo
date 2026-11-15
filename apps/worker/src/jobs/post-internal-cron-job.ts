@@ -12,6 +12,37 @@ export const DEFAULT_GATEWAY_RETRY: GatewayRetry = { retries: 2, delayMs: 15_000
 
 const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
+/**
+ * The API could not be reached or answered with a gateway error (typically mid-deploy). Only
+ * thrown when the caller opts in with `transientAsWarning`; the caller owns the retry policy.
+ */
+export class TransientCronError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "TransientCronError";
+  }
+}
+
+const TRANSIENT_CONNECTION_CODES: ReadonlySet<string> = new Set([
+  "ECONNRESET",
+  "ECONNREFUSED",
+  "UND_ERR_SOCKET",
+]);
+
+/**
+ * True for connection reset/refused style failures (not timeouts), looking through `cause`.
+ * `classifyDeliveryError` is not reused: it also treats timeouts as retryable (a timeout here must
+ * stay a reported error) and does not walk undici's `cause` chain.
+ */
+export function isTransientConnectionError(err: unknown): boolean {
+  for (let e: unknown = err, depth = 0; e && depth < 3; depth++) {
+    const code = (e as { code?: unknown }).code;
+    if (typeof code === "string" && TRANSIENT_CONNECTION_CODES.has(code)) return true;
+    e = (e as { cause?: unknown }).cause;
+  }
+  return false;
+}
+
 export type PostInternalCronJobResult =
   | { ok: true; outcome: "completed" }
   | { ok: true; outcome: "deferred"; reason: "settlement_already_running" | "resource_locked" }
@@ -35,6 +66,12 @@ export async function postInternalCronJob(opts: {
    * run during a rollout. Omit for jobs that must not run twice.
    */
   gatewayRetry?: GatewayRetry;
+  /**
+   * Throw {@link TransientCronError} (logged as a warning, not an error) for gateway errors
+   * (502/504 after any retries; 503 stays the `cron_not_configured` skip) and connection reset/refused. For frequent ticks where the
+   * next run is the retry.
+   */
+  transientAsWarning?: boolean;
   /** Replaceable in tests. */
   wait?: (ms: number) => Promise<void>;
 }): Promise<PostInternalCronJobResult> {
@@ -56,6 +93,10 @@ export async function postInternalCronJob(opts: {
       });
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
+      if (opts.transientAsWarning && isTransientConnectionError(err)) {
+        opts.log.warn({ url, err: message }, `${opts.path} connection failed (transient)`);
+        throw new TransientCronError(`${opts.path.replace(/\//g, "_")}_failed:connection`);
+      }
       opts.log.error({ url, timeoutMs, err: message }, `${opts.path} request timed out or failed`);
       throw new Error(`${opts.path.replace(/\//g, "_")}_failed:timeout`);
     }
@@ -72,6 +113,10 @@ export async function postInternalCronJob(opts: {
     );
     await wait(retry.delayMs);
     res = await send();
+  }
+  if (opts.transientAsWarning && GATEWAY_UNAVAILABLE_STATUSES.has(res.status)) {
+    opts.log.warn({ url, status: res.status }, `${opts.path} gateway unavailable (transient)`);
+    throw new TransientCronError(`${opts.path.replace(/\//g, "_")}_failed:${res.status}`);
   }
   if (res.status === 503) {
     opts.log.warn({ url }, `${opts.path} skipped (API reports cron_not_configured)`);

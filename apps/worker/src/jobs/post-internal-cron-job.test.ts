@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { postInternalCronJob } from "./post-internal-cron-job.js";
+import { TransientCronError, postInternalCronJob } from "./post-internal-cron-job.js";
 
 describe("postInternalCronJob", () => {
   beforeEach(() => {
@@ -88,6 +88,88 @@ describe("postInternalCronJob", () => {
         postInternalCronJob(job({ gatewayRetry: { retries: 2, delayMs: 1 } })),
       ).rejects.toThrow("failed:500");
       expect(fetchMock).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe("transientAsWarning", () => {
+    const post = (extra: { transientAsWarning?: boolean }, log: unknown) =>
+      postInternalCronJob({
+        apiBaseUrl: "http://api.test",
+        cronSecret: "secret",
+        path: "lot-lifecycle-tick",
+        log: log as never,
+        ...extra,
+      });
+    const respond = (status: number, ok = false) =>
+      vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok, status, text: async () => "" }));
+
+    it("option off: 502 is still a plain error", async () => {
+      respond(502);
+      const log = { warn: vi.fn(), error: vi.fn() };
+      const err = await post({}, log).catch((e: unknown) => e);
+      expect(err).toBeInstanceOf(Error);
+      expect(err).not.toBeInstanceOf(TransientCronError);
+      expect((err as Error).message).toBe("lot-lifecycle-tick_failed:502");
+      expect(log.error).toHaveBeenCalled();
+    });
+
+    it("option off: a connection reset is still reported as an error", async () => {
+      const cause = Object.assign(new Error("x"), { code: "ECONNRESET" });
+      vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new TypeError("fetch failed", { cause })));
+      const log = { warn: vi.fn(), error: vi.fn() };
+      const err = await post({}, log).catch((e: unknown) => e);
+      expect(err).not.toBeInstanceOf(TransientCronError);
+      expect(log.error).toHaveBeenCalled();
+    });
+
+    it.each([502, 504])(
+      "option on: %i throws TransientCronError with a warning",
+      async (status) => {
+        respond(status);
+        const log = { warn: vi.fn(), error: vi.fn() };
+        await expect(post({ transientAsWarning: true }, log)).rejects.toBeInstanceOf(
+          TransientCronError,
+        );
+        expect(log.error).not.toHaveBeenCalled();
+      },
+    );
+
+    it("option on: 503 is still the cron_not_configured skip", async () => {
+      respond(503);
+      const log = { warn: vi.fn(), error: vi.fn() };
+      await expect(post({ transientAsWarning: true }, log)).resolves.toEqual({
+        ok: true,
+        outcome: "skipped",
+        reason: "cron_not_configured",
+      });
+    });
+
+    it("option on: 500 is still an error", async () => {
+      respond(500);
+      const log = { warn: vi.fn(), error: vi.fn() };
+      const err = await post({ transientAsWarning: true }, log).catch((e: unknown) => e);
+      expect(err).not.toBeInstanceOf(TransientCronError);
+      expect(log.error).toHaveBeenCalled();
+    });
+
+    it("a malformed 200 (no body to parse) still completes", async () => {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValue({
+          ok: true,
+          status: 200,
+          json: async () => {
+            throw new SyntaxError("bad json");
+          },
+          text: async () => "",
+        }),
+      );
+      const log = { warn: vi.fn(), error: vi.fn() };
+      await expect(post({ transientAsWarning: true }, log)).resolves.toEqual({
+        ok: true,
+        outcome: "completed",
+      });
+      expect(log.error).not.toHaveBeenCalled();
     });
   });
 });
