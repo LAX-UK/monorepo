@@ -47,6 +47,8 @@ export class RedisNotificationSender implements IBidNotificationSender, ILotNoti
       encodeLotExtendedRedisMessage({
         lotId: lot.id,
         newEndTime: newEndTime.toISOString(),
+        // Called once the change is saved: a lot read that starts after this already has it.
+        changedAt: new Date().toISOString(),
       }),
     );
   }

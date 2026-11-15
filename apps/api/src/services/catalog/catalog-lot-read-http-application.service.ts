@@ -212,6 +212,8 @@ export class CatalogLotReadHttpApplicationService implements ICatalogLotReadHttp
     lotId: string;
     viewer: CatalogViewerContext;
   }): Promise<CatalogHttpJson> {
+    // Before the read: any close change published earlier than this is in what is read next.
+    const asOf = this.now();
     const lot = await this.lotService.getById(input.lotId);
     if (!lot) {
       return { status: 404, body: { error: "Not found" } };
@@ -254,6 +256,7 @@ export class CatalogLotReadHttpApplicationService implements ICatalogLotReadHttp
       sale,
       checkoutTotal: checkoutPricing.totalMajor,
       now: this.now(),
+      asOf,
       invoicedPremium: sold ? invoicedBuyersPremiumTerms(sold) : null,
     });
     return {

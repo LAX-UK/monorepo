@@ -8,12 +8,14 @@ export const LOT_LIVE_EVENTS = {
   heartbeat: "heartbeat",
 } as const;
 
-/** The close moved later because of a late bid. */
+/** The close moved: later because of a late bid, or either way because staff changed it. */
 export type LotExtendedLiveEvent = {
   lotId: string;
   extendedUntil: string;
   /** The server clock when the event was made, so the countdown can correct for a skewed device. */
   serverNow: string;
+  /** When the close was changed, so a lot read from before the change cannot undo it. */
+  changedAt?: string;
 };
 
 /** How a lot ended, in what the room could see: no winner, no account. */
@@ -63,7 +65,12 @@ export function lotLiveDeliveries(message: LotRealtimeRedisMessage, now: Date): 
         {
           audience: "lot",
           event: LOT_LIVE_EVENTS.extended,
-          payload: { lotId: message.lotId, extendedUntil: message.newEndTime, serverNow },
+          payload: {
+            lotId: message.lotId,
+            extendedUntil: message.newEndTime,
+            serverNow,
+            ...(message.changedAt ? { changedAt: message.changedAt } : {}),
+          },
         },
       ];
     case "lot_ended":

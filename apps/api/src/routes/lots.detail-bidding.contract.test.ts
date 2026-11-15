@@ -112,6 +112,52 @@ describe("GET /lots/:id bidding facts", () => {
     });
   });
 
+  it("stamps the read with the clock taken before the lot was read, so a later close change is newer", async () => {
+    const app = new Hono();
+    const order: string[] = [];
+    let tick = 0;
+    const clock = () => {
+      order.push("clock");
+      tick += 1;
+      return new Date(NOW.getTime() + tick * 1000);
+    };
+    const lotReadHttp = createCatalogLotReadHttpFixture({
+      lotService: {
+        getById: vi.fn().mockImplementation(async () => {
+          order.push("read");
+          return lot();
+        }),
+        listLotsForPublicApi: vi.fn(),
+        countMatching: vi.fn(),
+        archiveEndedSummary: vi.fn(),
+      },
+      saleService: {
+        getByIdForPublicCatalog: vi.fn().mockResolvedValue(sale()),
+        findByIds: vi.fn().mockResolvedValue([]),
+      },
+      cachedCatalogueListService: {} as never,
+      now: clock,
+    });
+    const container = {
+      userSuspensionChecker: { isSuspended: vi.fn().mockResolvedValue(false) },
+      catalogRoutes: stubCatalogRouteServices({ lotReadHttp }),
+      redis: null,
+      env: {},
+      kycService: null,
+      bidding: stubBiddingRouteServices(),
+      requireSubmissionsLegalEntityContext: vi.fn(),
+    } as unknown as Container;
+    const authenticator: IAuthenticator = { getSessionUser: vi.fn().mockResolvedValue(null) };
+    app.route("/lots", createLotRoutes(container, authenticator, passThroughAccountOnboarding));
+    const res = await app.request(`http://t/lots/${lotId}`);
+    const body = (await res.json()) as { data: Record<string, unknown> };
+    expect(order.slice(0, 2)).toEqual(["clock", "read"]);
+    expect(body.data.asOf).toBe("2026-11-03T20:00:01.000Z");
+    expect(Date.parse(body.data.serverNow as string)).toBeGreaterThan(
+      Date.parse(body.data.asOf as string),
+    );
+  });
+
   it("returns the next bid and the next 20 valid amounts from the increment", async () => {
     const { body } = await getDetail(lot());
     expect(body.data.nextBidAmount).toBe("7250.00");

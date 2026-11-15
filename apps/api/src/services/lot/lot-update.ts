@@ -9,6 +9,7 @@ import { type Result, err, ok } from "neverthrow";
 import { canManageCatalogue } from "../../lib/catalogue-auth.js";
 import { type AuthzError, LotError, missingCatalogueCapabilityError } from "../../lib/errors.js";
 import { assertLotMovableOnAtg } from "../sale-channel-guards.js";
+import { announceLotCloseChange } from "./lot-close-change.js";
 import { recordLifecycle, txLot } from "./lot-mutation-context.js";
 import { mapLotUpdateDbError } from "./lot-number.js";
 import { prepareSaleAssignmentPatch } from "./lot-sale-membership.js";
@@ -142,6 +143,11 @@ export async function updateLot(
       await deps.jobScheduler.scheduleLot(lotId, nextStart, nextEnd);
     }
   }
+  await announceLotCloseChange(deps.lotCloseNotifier, {
+    before: a,
+    lot: updated,
+    closesAt: updated.endTime,
+  });
   return ok(updated);
 }
 

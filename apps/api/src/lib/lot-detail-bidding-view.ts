@@ -16,6 +16,11 @@ export type LotDetailBiddingView = {
   serverNow: string;
   /** The close a late bid moved the lot to, or `null` while it keeps its scheduled end. */
   extendedUntil: string | null;
+  /**
+   * The server clock just before the lot was read. A close change published before this moment
+   * (its `changedAt`) is already in this read, so a page can tell a moved close from a stale read.
+   */
+  asOf: string;
   /** The next valid bid; `null` once bidding can no longer happen. */
   nextBidAmount: string | null;
   /** The next valid amounts, lowest first: the choices for a maximum bid. */
@@ -42,6 +47,8 @@ export function buildLotDetailBiddingView(input: {
   sale: Pick<Sale, "buyerPremiumRate" | "buyerPremiumTiers"> | null;
   checkoutTotal: string;
   now: Date;
+  /** When the lot was read (taken before the read); defaults to `now`. */
+  asOf?: Date;
   /**
    * For a sold lot whose invoice is raised: the premium the invoice charged, so the words match
    * the invoiced figure. Left out, the premium comes from today's rules.
@@ -54,6 +61,7 @@ export function buildLotDetailBiddingView(input: {
   return {
     serverNow: input.now.toISOString(),
     extendedUntil: lot.extendedUntil ? new Date(lot.extendedUntil).toISOString() : null,
+    asOf: (input.asOf ?? input.now).toISOString(),
     nextBidAmount: biddable ? nextBidAmount(lot) : null,
     validBidAmounts: biddable ? validBidAmounts(lot) : [],
     buyersPremium:

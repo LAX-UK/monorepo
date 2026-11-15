@@ -32,6 +32,7 @@ import type { IMediaUrlResolver } from "./interfaces/media-url-resolver.js";
 import type { IQrCodeService } from "./interfaces/qr-code-service.js";
 import type { ITelephoneBidBookingSaleroomBridge } from "./interfaces/telephone-bid-booking-service.js";
 import type { LotTransitionOrchestrator } from "./lot-transition-orchestrator.js";
+import type { LotCloseNotifier } from "./lot/lot-close-change.js";
 import { createLot } from "./lot/lot-create.js";
 import { bulkPublishOrCancel, cancelLot, publishLot } from "./lot/lot-lifecycle.js";
 import {
@@ -58,6 +59,7 @@ export type LotServiceOptions = {
   watchlist: IWatchlistRepository;
   jobScheduler: ILotJobScheduler | null;
   lotNotifications: ILotNotificationCoordinator | null;
+  lotCloseNotifier?: LotCloseNotifier | null;
   imageCleanup?: IImageCleanup;
   legalEntityNotificationRecipients?: ILegalEntityNotificationRecipientReader | null;
   legalEntityRepository?: ILegalEntityRepository | null;
@@ -93,6 +95,7 @@ export class LotService implements ILotService {
       watchlist: opts.watchlist,
       jobScheduler: opts.jobScheduler,
       lotNotifications: opts.lotNotifications,
+      lotCloseNotifier: opts.lotCloseNotifier ?? null,
       imageCleanup: opts.imageCleanup,
       legalEntityNotificationRecipients: opts.legalEntityNotificationRecipients ?? null,
       legalEntityRepository: opts.legalEntityRepository ?? null,

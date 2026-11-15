@@ -22,6 +22,7 @@ import type { IMediaAssetEnricher } from "../interfaces/media-asset-enricher.js"
 import type { IMediaUrlResolver } from "../interfaces/media-url-resolver.js";
 import type { IQrCodeService } from "../interfaces/qr-code-service.js";
 import type { ITelephoneBidBookingSaleroomBridge } from "../interfaces/telephone-bid-booking-service.js";
+import type { LotCloseNotifier } from "./lot-close-change.js";
 
 import { LOT_CANCELLABLE_STATUSES } from "@auction/domain";
 
@@ -53,6 +54,8 @@ export type LotServiceDeps = {
   watchlist: IWatchlistRepository;
   jobScheduler: ILotJobScheduler | null;
   lotNotifications: ILotNotificationCoordinator | null;
+  /** Publishes a staff change to a lot's close to open pages; unset, nothing is published. */
+  lotCloseNotifier?: LotCloseNotifier | null | undefined;
   imageCleanup: IImageCleanup | undefined;
   legalEntityNotificationRecipients: ILegalEntityNotificationRecipientReader | null;
   legalEntityRepository: ILegalEntityRepository | null;
