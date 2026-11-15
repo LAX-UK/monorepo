@@ -78,10 +78,16 @@ function defineContract(name: string, makeStore: () => SessionStore, skip = fals
 
 defineContract("memory", createMemorySessionStore);
 
-const hasRedis = spawnSync("redis-server", ["--version"]).status === 0;
+const externalUrl = process.env.REDIS_URL?.trim() || "";
+const hasBinary = !externalUrl && spawnSync("redis-server", ["--version"]).status === 0;
+const hasRedis = Boolean(externalUrl) || hasBinary;
+// A shared REDIS_URL (CI) is used on a database of its own, and only the keys this run adds are
+// removed afterwards. A local server is started only when REDIS_URL is not set.
+const SHARED_DB = 14;
 let redisProc: ChildProcess | undefined;
 let redisUrl = "";
-const clients: SessionStore[] = [];
+let cleanup: Redis | undefined;
+let keysBefore = new Set<string>();
 
 function freePort(): Promise<number> {
   return new Promise((resolve, reject) => {
@@ -94,42 +100,80 @@ function freePort(): Promise<number> {
   });
 }
 
-// Runs the same contract against a real Redis when redis-server is installed; skipped otherwise.
+function withDatabase(url: string, db: number): string {
+  const parsed = new URL(url);
+  parsed.pathname = `/${db}`;
+  return parsed.toString();
+}
+
+async function allKeys(client: Redis): Promise<Set<string>> {
+  const found = new Set<string>();
+  let cursor = "0";
+  do {
+    const [next, batch] = await client.scan(cursor, "COUNT", 500);
+    for (const key of batch) found.add(key);
+    cursor = next;
+  } while (cursor !== "0");
+  return found;
+}
+
+// Runs the same contract against a real Redis: REDIS_URL when set, else a local redis-server when
+// installed; skipped only when neither is available.
 beforeAll(async () => {
   if (!hasRedis) return;
-  const port = await freePort();
-  redisProc = spawn("redis-server", ["--port", String(port), "--bind", "127.0.0.1", "--save", ""], {
-    stdio: "ignore",
-  });
-  redisUrl = `redis://127.0.0.1:${port}`;
-  const probe = new Redis(redisUrl, { lazyConnect: true, maxRetriesPerRequest: null });
-  probe.on("error", () => {});
-  for (let i = 0; i < 50; i++) {
+  if (externalUrl) {
+    redisUrl = withDatabase(externalUrl, SHARED_DB);
+  } else {
+    const port = await freePort();
+    redisProc = spawn(
+      "redis-server",
+      ["--port", String(port), "--bind", "127.0.0.1", "--save", ""],
+      { stdio: "ignore" },
+    );
+    redisUrl = `redis://127.0.0.1:${port}`;
+  }
+  let connected = false;
+  for (let i = 0; i < 50 && !connected; i++) {
+    const attempt = new Redis(redisUrl, {
+      lazyConnect: true,
+      maxRetriesPerRequest: null,
+      retryStrategy: () => null,
+    });
+    attempt.on("error", () => {});
     try {
-      await probe.connect();
-      break;
+      await attempt.connect();
+      cleanup = attempt;
+      connected = true;
     } catch {
+      attempt.disconnect();
       await new Promise((r) => setTimeout(r, 100));
     }
   }
-  probe.disconnect();
+  if (!connected) {
+    throw new Error(
+      `Redis contract: could not connect to ${externalUrl ? "REDIS_URL" : "the local redis-server"}`,
+    );
+  }
+  if (cleanup) keysBefore = await allKeys(cleanup);
 }, 20_000);
 
-afterAll(() => {
+afterAll(async () => {
+  if (cleanup?.status === "ready") {
+    const added = [...(await allKeys(cleanup))].filter((key) => !keysBefore.has(key));
+    if (added.length > 0) await cleanup.del(...added);
+  }
+  cleanup?.disconnect();
   redisProc?.kill();
 });
 
 let prefixCounter = 0;
 defineContract(
   "redis",
-  () => {
-    const store = createRedisSessionStore({
+  () =>
+    createRedisSessionStore({
       redisUrl,
       encryptionKey: "contract-test-key",
       keyPrefix: `contract-${process.pid}-${prefixCounter++}:`,
-    });
-    clients.push(store);
-    return store;
-  },
+    }),
   !hasRedis,
 );

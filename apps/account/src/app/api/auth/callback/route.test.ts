@@ -118,6 +118,21 @@ describe("GET /api/auth/callback pending-login cookie", () => {
     clearedWithSameAttributes();
   });
 
+  it("lands quietly, without an error, when a retried callback finds this browser signed in", async () => {
+    const { PendingLoginEndedError } = await import("@/server/application/complete-account-login");
+    cookieValues.set(NAME, sealPendingLogin(pending, KEY));
+    cookieValues.set("__Host-lax-account-session", "existing-session");
+    completeAccountLogin.mockRejectedValueOnce(new PendingLoginEndedError(false));
+    const response = await callback();
+    expect(response.headers.get("location")).toBe("https://account.test/");
+    expect(cookieSet).not.toHaveBeenCalledWith(
+      "__Host-lax-account-session",
+      expect.anything(),
+      expect.anything(),
+    );
+    clearedWithSameAttributes();
+  });
+
   it("ignores a value under the old unprefixed name", async () => {
     cookieValues.set("lax-account-login-pending", pending);
     expect(restarted(await callback())).toBe(true);

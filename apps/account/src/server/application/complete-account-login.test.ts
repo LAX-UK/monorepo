@@ -2,11 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { LaxAccountConfig } from "../config";
 import { createMemorySessionStore } from "../infrastructure/memory-session-store";
 import type { SessionStore } from "../ports/session-store";
-import {
-  PendingLoginEndedError,
-  completeAccountLogin,
-  endPendingAccountLogin,
-} from "./complete-account-login";
+import { completeAccountLogin, endPendingAccountLogin } from "./complete-account-login";
 import type { PendingAccountLogin } from "./start-account-login";
 
 const verifyIdentityToken = vi.fn();
@@ -154,7 +150,10 @@ describe("completeAccountLogin after a sign-out", () => {
       return { id_token: "id", refresh_token: "refresh", access_token: "a", expires_in: 300 };
     });
 
-    await expect(complete(store)).rejects.toBeInstanceOf(PendingLoginEndedError);
+    await expect(complete(store)).rejects.toMatchObject({
+      name: "PendingLoginEndedError",
+      signedOut: true,
+    });
     const savedId = save.mock.calls[0]?.[0] as string;
     expect(await store.get(savedId)).toBeNull();
   });
