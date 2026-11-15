@@ -40,7 +40,7 @@ import {
   legalEntityFor,
   parseLaxReference,
 } from "@auction/accounting-domain";
-import type { VendorPort } from "../adapter/gateways.js";
+import type { VendorPort } from "@auction/accounting-domain";
 import type { AccountingPorts } from "../adapter/index.js";
 import { booksLineVat } from "../adapter/mappers/common.js";
 import { type ContactType, contactReferenceValue } from "../adapter/mappers/contact.js";

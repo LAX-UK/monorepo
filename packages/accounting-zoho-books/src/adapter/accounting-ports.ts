@@ -13,7 +13,7 @@ import type {
   PaymentRemainderPort,
   TransferPort,
 } from "@auction/accounting-domain";
-import type { VendorPort } from "./gateways.js";
+import type { VendorPort } from "@auction/accounting-domain";
 
 /** One port per document kind. A caller takes only the ports it needs (interface segregation). */
 export interface AccountingPorts {
