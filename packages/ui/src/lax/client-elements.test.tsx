@@ -223,6 +223,22 @@ describe("Dialog", () => {
   });
 });
 
+describe("Dialog, on a phone", () => {
+  it("floats inside the 16px gutter with rounded corners, never edge to edge", () => {
+    render(
+      <Dialog open onOpenChange={() => {}} title="Rename">
+        <p>Body</p>
+      </Dialog>,
+    );
+    const classes = screen.getByRole("dialog", { name: "Rename" }).className.split(" ");
+    expect(classes).toContain("inset-x-4");
+    expect(classes).toContain("rounded-lax-card");
+    expect(classes).toContain("border");
+    expect(classes).not.toContain("inset-x-0");
+    expect(classes).not.toContain("rounded-t-2xl");
+  });
+});
+
 describe("Dialog, stacked footer", () => {
   it("stacks the buttons on a phone with the primary on top", () => {
     render(

@@ -1,3 +1,4 @@
+import { poundsToPenceOrNull } from "@/lib/admin/seller-proceeds/pounds";
 import type { ReofferStatus } from "@auction/domain";
 import type { StaffBuyerDefault } from "@auction/validators";
 import type { LotReofferBundle } from "./reoffer-bundle";
@@ -23,9 +24,7 @@ const DEFAULTED: BidStanding = { label: "Defaulted", tone: "danger" };
 type BidRef = { id: string; bidderId: string | null; amount: string };
 
 /** A pounds string ("88000.00") as whole pence, for comparing with the default's hammer. */
-function toPence(amount: string): number {
-  return Math.round(Number.parseFloat(amount) * 100);
-}
+const toPence = poundsToPenceOrNull;
 
 /**
  * The standing of each bid that an offer or the default changed, keyed by bid id; a bid not in

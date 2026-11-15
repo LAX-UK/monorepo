@@ -1,4 +1,5 @@
 import { buildListHref } from "@/lib/admin/admin-list-params";
+import { poundsToPenceOrNull } from "@/lib/admin/seller-proceeds/pounds";
 import { staffStatus } from "@/lib/admin/staff-kit-status";
 import type { AdminPayoutListSummary } from "@/lib/data/http/admin-payouts.shared";
 import type { AdminPayoutRow } from "@/lib/data/http/admin.server";
@@ -21,17 +22,9 @@ export const PAYOUTS_LIST_PATH = "/admin/payouts";
 
 export type PayoutsListSearch = Record<string, string | string[] | undefined>;
 
-/** Signed pence from the API's pounds string; null when it is not a plain amount. */
-export function poundsToPence(amount: string): number | null {
-  const negative = amount.startsWith("-");
-  const parsed = parsePoundsToPence(negative ? amount.slice(1) : amount);
-  if (!parsed.ok) return null;
-  return negative ? -parsed.pence : parsed.pence;
-}
-
 /** "£4,140.00" from the API's pounds string; the raw text when it is not a plain amount. */
 export function formatPayoutAmount(amount: string, currency = "GBP"): string {
-  const pence = poundsToPence(amount);
+  const pence = poundsToPenceOrNull(amount);
   return pence === null ? amount : formatStaffMoney(pence, currency);
 }
 
@@ -125,7 +118,7 @@ export function toPayoutsStaffRows(
       platformFee: formatPayoutAmount(row.platformFee, row.currency),
       stripeFee: formatPayoutAmount(row.stripeFee, row.currency),
       net: formatPayoutAmount(row.netAmount, row.currency),
-      netPence: poundsToPence(row.netAmount),
+      netPence: poundsToPenceOrNull(row.netAmount),
       status: row.status,
       statusPresentation: presentPayoutStatus(row.status),
       stripeTransferId: row.stripeTransferId,
@@ -312,7 +305,7 @@ export function payoutsAttention(
 /** The summary over the payouts that match the current view and filters. */
 export function payoutsMetrics(summary: AdminPayoutListSummary): Metric[] {
   const count = new Intl.NumberFormat("en-GB");
-  const netPence = poundsToPence(summary.totalNet) ?? 0;
+  const netPence = poundsToPenceOrNull(summary.totalNet) ?? 0;
   return [
     { id: "scheduled", label: "Scheduled", value: count.format(summary.scheduled) },
     { id: "in-transit", label: "In transit", value: count.format(summary.inTransit) },

@@ -370,7 +370,8 @@ test.describe("account switching on the production build @roles", () => {
       .catch(async (error: unknown) => {
         const state = {
           ...(await pageState(page).catch((e: unknown) => ({ error: String(e) }))),
-          seen: seen.filter((line) => !line.includes("/_next/static/")),
+          // Code requests are many, so only the ones that did not answer 200 are listed.
+          seen: seen.filter((line) => !line.includes("/_next/static/") || !/ms 200 /.test(line)),
           staticChunks: seen.filter((line) => line.includes("/_next/static/")).length,
           stillOpen: [...open.values()],
         };
