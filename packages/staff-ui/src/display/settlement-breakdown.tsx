@@ -27,7 +27,9 @@ export type SettlementRateSource =
       readonly reference: string;
       readonly signedAt: Date | string;
       readonly href: string;
-      /** The sale was priced on this agreement before it was corrected. */
+      /** The agreement's version the sale was priced on: 1, then one up per edit once signed. */
+      readonly version?: number;
+      /** That version has since been superseded by a later one. */
       readonly earlierVersion?: boolean;
     }
   | {
@@ -35,11 +37,43 @@ export type SettlementRateSource =
       /** The consignment's reference and where it opens, when known. */
       readonly reference?: string;
       readonly href?: string;
+      readonly version?: number;
       readonly earlierVersion?: boolean;
     };
 
-/** Said beside the reference when the sale was priced on the agreement before a correction. */
+/** Said beside the reference when the sale was priced on a version since superseded. */
 export const EARLIER_AGREEMENT_VERSION = "Priced on an earlier version of this agreement";
+
+/** The badge on an agreement version a later version has superseded. */
+export const SUPERSEDED_AGREEMENT = "Superseded";
+
+/**
+ * The link's words: the agreement itself. The link opens the consignment's agreement, which is the
+ * current version, so the label never names a version it would not show.
+ */
+export function agreementLabel(reference: string): string {
+  return `Agreement ${reference}`;
+}
+
+/**
+ * "v2", said beside the link rather than in it, and only when it tells staff something: the
+ * agreement has been versioned (version above 1) or this one has been superseded. A common
+ * agreement that was never corrected carries no suffix.
+ */
+export function agreementVersionTag(version?: number | null, superseded = false): string | null {
+  if (!version) return null;
+  return version > 1 || superseded ? `v${version}` : null;
+}
+
+/** A superseded version's state: the badge, then why the sale still reads its figures. */
+export function SupersededAgreement({ className }: { className?: string }) {
+  return (
+    <span className={cn("inline-flex flex-wrap items-center gap-x-1.5 gap-y-1", className)}>
+      <StatusBadge tone="warning">{SUPERSEDED_AGREEMENT}</StatusBadge>{" "}
+      <span className="text-staff-warning-fg">{EARLIER_AGREEMENT_VERSION}</span>
+    </span>
+  );
+}
 
 /** VAT on the commission: charged at a rate, or not charged because the company is not registered. */
 export type SettlementVat =
@@ -156,25 +190,30 @@ function deduction(pence: number | null | undefined, currency: string): React.Re
 
 function RateSourceLine({ source, Link }: { source: SettlementRateSource; Link?: LinkComponent }) {
   const earlier = source.earlierVersion ? (
-    <span className="text-staff-warning-fg"> · {EARLIER_AGREEMENT_VERSION}</span>
+    <>
+      {" "}
+      <SupersededAgreement className="align-middle" />
+    </>
   ) : null;
+  const tag = agreementVersionTag(source.version, source.earlierVersion);
+  const versionTag = tag ? ` ${tag}` : "";
   if (source.kind === "recorded_by_staff") {
     if (!source.reference || !source.href) return <span>Recorded by staff{earlier}</span>;
     return (
       <span>
         <TextLink href={source.href} {...(Link ? { Link } : {})}>
-          Agreement {source.reference}
-        </TextLink>{" "}
-        · recorded by staff{earlier}
+          {agreementLabel(source.reference)}
+        </TextLink>
+        {versionTag} · recorded by staff{earlier}
       </span>
     );
   }
   return (
     <span>
       <TextLink href={source.href} {...(Link ? { Link } : {})}>
-        Agreement {source.reference}
-      </TextLink>{" "}
-      · signed {formatStaffExportDate(source.signedAt)}
+        {agreementLabel(source.reference)}
+      </TextLink>
+      {versionTag} · signed {formatStaffExportDate(source.signedAt)}
       {earlier}
     </span>
   );

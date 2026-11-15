@@ -59,3 +59,20 @@ export function getBrowserHc(): RpcApp {
   }
   return browserClient;
 }
+
+let liveClient: RpcApp | null = null;
+
+/**
+ * The same client for live reads (the lot's price, status, close and bids): every request is
+ * `cache: "no-store"`, so the browser never answers one from its HTTP cache. These reads are what
+ * correct a page built from cached reads (CO-7).
+ */
+export function getBrowserHcLive(): RpcApp {
+  if (!liveClient) {
+    liveClient = hcAsRpcApp(base, {
+      fetch: (input: RequestInfo | URL, init?: RequestInit) =>
+        browserFetch(input, { ...init, cache: "no-store" }),
+    });
+  }
+  return liveClient;
+}

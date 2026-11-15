@@ -18,6 +18,7 @@ import { SOURCE_OF_FUNDS_REVIEW_RESOLUTION_PROJECTOR } from "./source-of-funds-r
 import { SOURCE_OF_FUNDS_REVIEW_PROJECTOR } from "./source-of-funds-review.js";
 import { UNSOLD_CHOICE_DEADLINE_PROJECTOR } from "./unsold-choice-deadline.js";
 import { UNSOLD_FOLLOW_UP_PROJECTOR } from "./unsold-follow-up.js";
+import { WEB_PUBLIC_CACHE_PROJECTOR } from "./web-public-cache.js";
 import { XERO_PROJECTOR } from "./xero-projector.js";
 import { ZOHO_ARTWORK_LISTING_PROJECTOR } from "./zoho-artwork-listing-projector.js";
 import { ZOHO_ARTWORK_WRITEBACK_PROJECTOR } from "./zoho-artwork-writeback-projector.js";
@@ -57,6 +58,7 @@ const EXPECTED_PROJECTOR_ORDER = [
   COLLECTION_BOOKING_NOTIFY_PROJECTOR,
   ACCOUNTING_PROJECTOR,
   ACCOUNTING_SENDER,
+  WEB_PUBLIC_CACHE_PROJECTOR,
 ] as const;
 
 function baseCtx(overrides: Partial<ProjectorRunContext> = {}): ProjectorRunContext {
@@ -194,6 +196,12 @@ describe("createDefaultProjectorRegistry", () => {
     const on = registry.listEnabledProjectorNames(baseCtx({ accounting: {} as never }));
     expect(on).toContain(ACCOUNTING_PROJECTOR);
     expect(on).toContain(ACCOUNTING_SENDER);
+  });
+
+  it("drops cached public pages only while the web revalidate settings are present", () => {
+    expect(registry.listEnabledProjectorNames(baseCtx())).not.toContain(WEB_PUBLIC_CACHE_PROJECTOR);
+    const on = registry.listEnabledProjectorNames(baseCtx({ webPublicCache: {} as never }));
+    expect(on).toContain(WEB_PUBLIC_CACHE_PROJECTOR);
   });
 
   it("skips email projectors when emailService or supportContactEmail is missing", () => {

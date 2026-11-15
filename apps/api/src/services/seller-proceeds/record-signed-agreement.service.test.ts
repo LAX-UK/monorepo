@@ -270,6 +270,7 @@ describe("RecordSignedAgreementService", () => {
         commissionPercent: "15.00",
         source: "online",
         signedDocumentId: null,
+        version: 1,
         pricedOnEarlierVersion: false,
       },
     });
@@ -323,6 +324,7 @@ describe("RecordSignedAgreementService", () => {
           commissionPercent: "15.00",
           source: "online",
           signedDocumentId: null,
+          version: 1,
           pricedOnEarlierVersion: false,
         },
       }),

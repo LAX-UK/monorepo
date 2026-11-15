@@ -1,6 +1,7 @@
 "use client";
 
 import { useLotPageViewContext } from "@/components/lot-page/lot-page-view-context";
+import { useLotPageViewerOptional } from "@/lib/lot-page/lot-page-viewer-context";
 import { useShareLink } from "@/lib/lot-page/use-share-link";
 import { useWatchlistToggle } from "@/lib/watchlist/use-watchlist-toggle";
 import { Button } from "@auction/ui/lax/button";
@@ -92,13 +93,15 @@ export function LotSecondaryActions({
   lotPath,
 }: Props) {
   const { sections } = useLotPageViewContext().view;
+  // The cached page is drawn signed out; the person looking comes from `/api/lots/:id/me`.
+  const viewer = useLotPageViewerOptional();
   if (!sections.watchShare) return null;
   return (
     <div className="mt-3 grid grid-cols-2 gap-2">
       <WatchButton
         lotId={lotId}
-        initialWatching={initialWatching}
-        signedIn={signedIn}
+        initialWatching={viewer ? viewer.watching : initialWatching}
+        signedIn={viewer ? viewer.isAuthenticated : signedIn}
         lotPath={lotPath}
       />
       <ShareButton url={shareUrl} title={title} />

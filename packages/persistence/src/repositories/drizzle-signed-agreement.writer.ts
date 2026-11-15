@@ -1,6 +1,6 @@
 import type { Database } from "@auction/db";
 import { consignmentAgreement, payment, saleSellerTerms, uploadObject } from "@auction/db/schema";
-import { and, eq, ne } from "drizzle-orm";
+import { and, eq, isNull, ne } from "drizzle-orm";
 import type { DbTransaction } from "../interfaces/artist-delete.repository.js";
 import {
   AgreementAlreadyRecordedError,
@@ -10,11 +10,16 @@ import {
   type RecordedAgreement,
   SignedDocumentInUseError,
 } from "../interfaces/signed-agreement.writer.js";
+import {
+  AgreementSupersededError,
+  onCurrentAgreement,
+  supersedeAgreement,
+} from "./agreement-version.js";
 import { settlementLockSql } from "./drizzle-payout.repository.js";
 
 const AGREEMENT_PER_SUBMISSION = "consignment_agreement_submission_id_uidx";
 
-/** True when the error is the unique index that keeps one agreement per consignment. */
+/** True when the error is the unique index that keeps one current agreement per consignment. */
 function isSecondAgreement(err: unknown): boolean {
   const e = err as {
     code?: unknown;
@@ -23,6 +28,14 @@ function isSecondAgreement(err: unknown): boolean {
   } | null;
   const pg = e?.code === "23505" ? e : e?.cause?.code === "23505" ? e.cause : null;
   return pg?.constraint === AGREEMENT_PER_SUBMISSION;
+}
+
+/** The consignment's current agreement: the version not superseded. */
+function current(submissionId: string) {
+  return and(
+    eq(consignmentAgreement.submissionId, submissionId),
+    isNull(consignmentAgreement.supersededAt),
+  );
 }
 
 /** Terms version of an agreement staff recorded from a signed paper copy. */
@@ -51,17 +64,19 @@ export class DrizzleSignedAgreementWriter implements ISignedAgreementWriter {
   }
 
   async lockAgreement(submissionId: string): Promise<LockedAgreement | null> {
-    const [row] = await this.db
-      .select({
-        id: consignmentAgreement.id,
-        legalEntityId: consignmentAgreement.legalEntityId,
-        commissionPercent: consignmentAgreement.commissionPercent,
-        acceptedAt: consignmentAgreement.acceptedAt,
-      })
-      .from(consignmentAgreement)
-      .where(eq(consignmentAgreement.submissionId, submissionId))
-      .for("update")
-      .limit(1);
+    const row = await onCurrentAgreement(this.db, submissionId, () =>
+      this.db
+        .select({
+          id: consignmentAgreement.id,
+          legalEntityId: consignmentAgreement.legalEntityId,
+          commissionPercent: consignmentAgreement.commissionPercent,
+          acceptedAt: consignmentAgreement.acceptedAt,
+        })
+        .from(consignmentAgreement)
+        .where(current(submissionId))
+        .for("update")
+        .limit(1),
+    );
     if (!row) return null;
     return {
       ...row,
@@ -92,25 +107,22 @@ export class DrizzleSignedAgreementWriter implements ISignedAgreementWriter {
     try {
       return await this.write(input);
     } catch (err) {
-      if (isSecondAgreement(err)) throw new AgreementAlreadyRecordedError();
+      if (isSecondAgreement(err) || err instanceof AgreementSupersededError)
+        throw new AgreementAlreadyRecordedError();
       throw err;
     }
   }
 
   private async write(input: RecordSignedAgreementInput): Promise<RecordedAgreement> {
-    const [previous] = await this.db
-      .select({
-        id: consignmentAgreement.id,
-        legalEntityId: consignmentAgreement.legalEntityId,
-        commissionPercent: consignmentAgreement.commissionPercent,
-        acceptedAt: consignmentAgreement.acceptedAt,
-        source: consignmentAgreement.source,
-        signedDocumentId: consignmentAgreement.signedDocumentId,
-      })
-      .from(consignmentAgreement)
-      .where(eq(consignmentAgreement.submissionId, input.submissionId))
-      .for("update")
-      .limit(1);
+    const previous = await onCurrentAgreement(this.db, input.submissionId, () =>
+      this.db
+        .select()
+        .from(consignmentAgreement)
+        .where(current(input.submissionId))
+        .for("update")
+        .limit(1),
+    );
+    const at = new Date();
     const values = {
       legalEntityId: input.legalEntityId,
       commissionPercent: input.commissionPercent,
@@ -120,26 +132,39 @@ export class DrizzleSignedAgreementWriter implements ISignedAgreementWriter {
       recordedByUserId: input.recordedByUserId,
       signedDocumentId: input.signedDocumentId,
       recordReason: input.reason,
-      updatedAt: new Date(),
     } as const;
     if (previous) {
+      const replaced = {
+        id: previous.id,
+        legalEntityId: previous.legalEntityId,
+        commissionPercent:
+          previous.commissionPercent === null ? null : String(previous.commissionPercent),
+        acceptedAt: previous.acceptedAt,
+        source: previous.source,
+        signedDocumentId: previous.signedDocumentId,
+      };
+      // A signed agreement is a record a sale may have been priced on: the correction is its next
+      // version. An unsigned proposal has priced nothing, so it is completed in place.
+      if (previous.acceptedAt !== null) {
+        const agreementId = await supersedeAgreement(
+          this.db,
+          previous,
+          { ...values, replacesAgreementId: previous.id },
+          at,
+        );
+        return { agreementId, replaced };
+      }
       await this.db
         .update(consignmentAgreement)
-        .set(values)
+        .set({ ...values, updatedAt: at })
         .where(eq(consignmentAgreement.id, previous.id));
-      return {
-        agreementId: previous.id,
-        replaced: {
-          ...previous,
-          commissionPercent:
-            previous.commissionPercent === null ? null : String(previous.commissionPercent),
-        },
-      };
+      return { agreementId: previous.id, replaced };
     }
     const [inserted] = await this.db
       .insert(consignmentAgreement)
       .values({
         ...values,
+        updatedAt: at,
         submissionId: input.submissionId,
         termsVersion: RECORDED_AGREEMENT_TERMS_VERSION,
         proposedAt: input.signedAt,

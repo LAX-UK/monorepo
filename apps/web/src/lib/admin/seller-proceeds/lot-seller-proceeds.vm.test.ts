@@ -172,6 +172,7 @@ describe("buildLotSellerProceeds", () => {
             signedAt: "2026-10-03T12:00:00.000Z",
             source: "recorded",
             signedDocumentId: null,
+            version: 2,
             pricedOnEarlierVersion: false,
           },
         }),
@@ -181,11 +182,12 @@ describe("buildLotSellerProceeds", () => {
       kind: "recorded_by_staff",
       reference: "C-1042",
       href: "/admin/inbox/s",
+      version: 2,
       earlierVersion: false,
     });
   });
 
-  it("takes the rate from the snapshot and says when the agreement was corrected since", () => {
+  it("takes the rate from the snapshot and names the superseded version it was priced on", () => {
     const model = breakdownOf(
       buildLotSellerProceeds(
         fixtureLotProceeds({
@@ -194,18 +196,21 @@ describe("buildLotSellerProceeds", () => {
             submissionId: "s",
             signedAt: "2026-10-03T12:00:00.000Z",
             source: "online",
-            commissionPercent: "15.00",
+            commissionPercent: "12.00",
             signedDocumentId: null,
+            version: 1,
             pricedOnEarlierVersion: true,
           },
         }),
       ),
     );
-    // The snapshot's 12% stands; the live row's 15% is never shown as the rate.
     expect(model.breakdown.commission?.rateBps).toBe(1200);
-    expect(model.breakdown.rateSource).toMatchObject({
+    expect(model.breakdown.rateSource).toEqual({
       kind: "agreement",
       reference: "C-1042",
+      signedAt: "2026-10-03T12:00:00.000Z",
+      href: "/admin/inbox/s",
+      version: 1,
       earlierVersion: true,
     });
   });

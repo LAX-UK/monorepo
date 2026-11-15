@@ -19,12 +19,15 @@ import { useEffect, useRef } from "react";
  * brought it. Draws nothing.
  */
 export function LotTimeEffects() {
-  const { view } = useLotPageViewContext();
+  const { live, view } = useLotPageViewContext();
   const announce = useAnnounce();
   const { refreshFromServer } = useLotBidHistory();
   const state = useRef(newTimeAnnouncementState());
 
-  const closes = view.rows.find((row) => row.countdown?.kind === "closes")?.countdown;
+  // No clock runs before the first live read: the close is not in the page (CO-7).
+  const closes = live
+    ? view.rows.find((row) => row.countdown?.kind === "closes")?.countdown
+    : undefined;
   const endMs = closes?.targetMs ?? null;
   const extensions = closes?.extensions ?? 0;
 
@@ -35,7 +38,7 @@ export function LotTimeEffects() {
   );
 
   useEffect(() => {
-    if (nowMs === null) return;
+    if (!live || nowMs === null) return;
     const said = nextTimeAnnouncements(state.current, {
       nowMs,
       endMs,
@@ -44,13 +47,14 @@ export function LotTimeEffects() {
       visible: typeof document === "undefined" || document.visibilityState === "visible",
     });
     for (const message of said) announce(message);
-  }, [nowMs, endMs, extensions, view.lifecycle, announce]);
+  }, [live, nowMs, endMs, extensions, view.lifecycle, announce]);
 
   // Zero on a lot that is closing, or on one that should have opened: the page asks the server how
   // things stand rather than guessing, until the live connection or a snapshot says.
   const closing =
-    view.lifecycle === "closing" ||
-    (view.lifecycle === "scheduled" && view.msLeft !== null && view.msLeft <= 0);
+    live &&
+    (view.lifecycle === "closing" ||
+      (view.lifecycle === "scheduled" && view.msLeft !== null && view.msLeft <= 0));
   useEffect(() => {
     if (!closing) return;
     return startClosingFetches(() => refreshFromServer({ silent: true }));

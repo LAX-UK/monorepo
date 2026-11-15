@@ -263,6 +263,7 @@ export class DrizzleNeedsYouFactsReader implements INeedsYouFactsReader {
           eq(itemSubmission.legalEntityId, input.legalEntityId),
           submissionSenderSql(input.visibleTo),
           inArray(itemSubmission.status, [...OPEN_CONSIGNMENT]),
+          isNull(consignmentAgreement.supersededAt),
           isNull(consignmentAgreement.acceptedAt),
           isNotNull(consignmentAgreement.estimateLow),
           isNotNull(consignmentAgreement.estimateHigh),

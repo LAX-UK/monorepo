@@ -6,7 +6,50 @@ import { LotFactGrid } from "@/components/lot-page/lot-fact-grid";
 import { useLotPageViewContext } from "@/components/lot-page/lot-page-view-context";
 import { LotStateLine } from "@/components/lot-page/lot-state-line";
 import type { LotPageView } from "@/lib/lot-page/build-lot-page-view";
+import { Skeleton } from "@auction/ui/lax/skeleton";
 import { cn } from "@auction/ui/lib/utils";
+
+/** One fact of the grid at its final size: the label, the value and its second line. */
+function PendingFact() {
+  return (
+    <div className="min-w-0">
+      <dt>
+        <Skeleton className="h-5 w-20" />
+      </dt>
+      <dd className="m-0 mt-0.5">
+        <Skeleton className="h-6 w-28" />
+      </dd>
+      <dd className="m-0">
+        <Skeleton className="h-5 w-24" />
+      </dd>
+    </div>
+  );
+}
+
+/**
+ * The price block before the first live read lands (CO-7): the page is built from cached reads,
+ * so it shows no price, no next bid, no state and no clock, only their places at their final
+ * size. The bid area is there, shut until the live read (`LotBidEntry` keeps it disabled).
+ */
+export function LotPriceBlockPending({ actions }: { actions: LotActionContext }) {
+  return (
+    <section
+      aria-label="Price and bidding"
+      aria-busy="true"
+      className="mt-6 rounded-lax-card border border-lax-line bg-lax-surface p-5"
+    >
+      <LotConnectionNotice className="mb-4 -mt-1" />
+      <Skeleton className="h-5 w-24" />
+      <Skeleton className="mt-0.5 h-9 w-40" />
+      <dl className="m-0 mt-4 grid grid-cols-2 gap-4 border-t border-lax-line-subtle pt-4">
+        <PendingFact />
+        <PendingFact />
+      </dl>
+      <div className="mt-4">{actions.bidEntry}</div>
+      <output className="sr-only">Loading the latest bid</output>
+    </section>
+  );
+}
 
 /**
  * The price and the one thing to do next, drawn entirely from the lot's view: the label and the
@@ -76,6 +119,7 @@ export function LotPriceBlockView({
 
 /** The price block of the lot in the page's live view. */
 export function LotPriceBlock({ actions }: { actions: LotActionContext }) {
-  const { view } = useLotPageViewContext();
+  const { live, view } = useLotPageViewContext();
+  if (!live) return <LotPriceBlockPending actions={actions} />;
   return <LotPriceBlockView view={view} actions={actions} />;
 }

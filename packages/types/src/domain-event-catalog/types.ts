@@ -40,6 +40,7 @@ export type DomainEventConsumer =
   | "payment_refund_notify"
   | "payout_transfer_failed_notify"
   | "lot_voided_anti_shilling"
+  | "web_public_cache"
   | "audit";
 
 export type PiiClassification = "none" | "operational" | "contains_pii";
