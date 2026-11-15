@@ -4,6 +4,7 @@ import type { IExportProviderDeps } from "@auction/exports/providers";
 import type { CoverImageAnalyser } from "@auction/image-processing";
 import type { IMarketingProfileReader } from "@auction/marketing-events";
 import type {
+  IFailedJobPayloadPurge,
   INotificationWriteRepository,
   IQrCodeScanPersister,
   IRepositoryFactory,
@@ -80,6 +81,7 @@ export type WorkerBootstrapDeps = {
   mediaAssetCleanupRepo: IMediaAssetCleanupRepository;
   qrCodeScanPersister: IQrCodeScanPersister;
   qrCodeScanPurgeRepo: IQrCodeScanPurgeRepository;
+  failedJobPayloadPurge: IFailedJobPayloadPurge;
   marketingClickIdPurgeRepo: IMarketingClickIdPurgeRepository;
   marketingAttributionPurgeRepo: IMarketingAttributionPurgeRepository;
   notificationWriteRepo: INotificationWriteRepository;

@@ -4,6 +4,7 @@ import type {
   ICollectionLotFactsReader,
   ICrmRecordLinkRepository,
   IDomainEventDeliveryRepository,
+  IFailedJobPayloadPurge,
   INotificationWriteRepository,
   IQrCodeScanPersister,
   IStaffRoleAssignmentReader,
@@ -27,7 +28,10 @@ import {
   DrizzleQrCodeScanPersister,
   DrizzleStaffRoleAssignmentReader,
 } from "@auction/persistence/repositories";
-import { DrizzlePartyDealRecordReader } from "@auction/persistence/repositories";
+import {
+  DrizzleFailedJobReviewRepository,
+  DrizzlePartyDealRecordReader,
+} from "@auction/persistence/repositories";
 import type { IAdminImpersonationNotifyReader } from "../interfaces/admin-impersonation-notify.reader.js";
 import type { IAdminReviewTaskProjectorRepository } from "../interfaces/admin-review-task-projector.repository.js";
 import type { IClearArtistBlocksRepository } from "../interfaces/clear-artist-blocks.repository.js";
@@ -136,6 +140,7 @@ export type WorkerRepositories = {
   mediaAssetCleanupRepo: IMediaAssetCleanupRepository;
   qrCodeScanPersister: IQrCodeScanPersister;
   qrCodeScanPurgeRepo: IQrCodeScanPurgeRepository;
+  failedJobPayloadPurge: IFailedJobPayloadPurge;
   marketingClickIdPurgeRepo: IMarketingClickIdPurgeRepository;
   marketingAttributionPurgeRepo: IMarketingAttributionPurgeRepository;
   notificationWriteRepo: INotificationWriteRepository;
@@ -201,6 +206,7 @@ export function createWorkerRepositories(
     mediaAssetCleanupRepo: new DrizzleMediaAssetCleanupRepository(db),
     qrCodeScanPersister: new DrizzleQrCodeScanPersister(db),
     qrCodeScanPurgeRepo: new DrizzleQrCodeScanPurgeRepository(db),
+    failedJobPayloadPurge: new DrizzleFailedJobReviewRepository(db),
     marketingClickIdPurgeRepo: new DrizzleMarketingClickIdPurgeRepository(db),
     marketingAttributionPurgeRepo: new DrizzleMarketingAttributionPurgeRepository(db),
     // Every in-app write skips notifications about an account the recipient has muted.

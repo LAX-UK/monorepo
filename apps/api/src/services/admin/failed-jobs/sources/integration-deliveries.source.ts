@@ -14,7 +14,7 @@ import {
   isFailedJobDiscardReason,
 } from "@auction/types";
 import { isIntegrationScreenId } from "../failed-job-id.js";
-import { discardReasonLabel } from "../failed-job-presenter.js";
+import { discardReasonLabel, withGroupSizes } from "../failed-job-presenter.js";
 import { maskIntegrationPayload } from "../integration-payload-mask.js";
 import type {
   FailedJobSourceAdapter,
@@ -128,7 +128,16 @@ export class IntegrationDeliveriesSource implements FailedJobSourceAdapter {
     ]);
     return {
       readable: true,
-      rows: result.rows.map((record) => this.summary(record, viewer, query.actionsEnabled)),
+      rows: withGroupSizes(
+        result.rows.map((record) => this.summary(record, viewer, query.actionsEnabled)),
+        result.groups.map((group) => ({
+          queue: group.queue,
+          jobLabel: group.eventType,
+          errorLine: group.errorLine,
+          count: group.count,
+        })),
+        { partial: result.groupsPartial, skipped: result.groupsSkipped },
+      ),
       total: result.total,
       counts: result.counts,
       queues: [...ids].map((id) => {
@@ -174,6 +183,7 @@ export class IntegrationDeliveriesSource implements FailedJobSourceAdapter {
               note: record.discardNote,
               at: record.discardedAt.toISOString(),
               byName: discardedBy,
+              restorableUntil: null,
             }
           : null,
       history: events,
@@ -203,6 +213,8 @@ export class IntegrationDeliveriesSource implements FailedJobSourceAdapter {
       jobLabel: record.eventType,
       sourceLabel: `Integrations · ${endpoint.label}`,
       errorSummary: summariseError(record.errorMessage),
+      groupSize: 1,
+      groupCapped: false,
       attempts: record.attempts,
       firstFailedAt: record.firstFailedAt.toISOString(),
       lastFailedAt: record.failedAt.toISOString(),
@@ -225,6 +237,8 @@ export class IntegrationDeliveriesSource implements FailedJobSourceAdapter {
       id: record.id,
       source: endpoint.scope,
       state: integrationState(record),
+      // The delivery keeps its payload in its own table, which is never purged: no restore window.
+      restorableUntil: null,
       retry: retryAvailability(record, actionsEnabled),
       mayRepeat: endpoint.mayRepeat,
       auditId: record.id,

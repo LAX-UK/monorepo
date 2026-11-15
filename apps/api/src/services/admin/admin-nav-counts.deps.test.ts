@@ -38,3 +38,14 @@ describe("the Collections count", () => {
     });
   });
 });
+
+describe("the Failed jobs count", () => {
+  it("is one count of the jobs waiting for review, not a list", async () => {
+    const countNeedsReview = vi.fn(async () => 6);
+    const deps = createAdminNavCountsDeps({
+      failedJobs: { countNeedsReview },
+    } as unknown as Parameters<typeof createAdminNavCountsDeps>[0]);
+    expect(await deps.getFailedJobsNeedsReview()).toBe(6);
+    expect(countNeedsReview).toHaveBeenCalledTimes(1);
+  });
+});

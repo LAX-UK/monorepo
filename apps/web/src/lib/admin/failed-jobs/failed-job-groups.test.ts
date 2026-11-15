@@ -28,6 +28,19 @@ describe("groupFailedJobs", () => {
     expect(groups[0]?.id).toBe("delivery:41");
   });
 
+  it("carries the cross-page total and whether it is only a lower bound", () => {
+    const [group] = groupFailedJobs([
+      { ...xeroDelivery, groupSize: 30 },
+      again("delivery:43", { groupSize: 30 }),
+    ]);
+    expect(group).toMatchObject({ total: 30, totalCapped: false });
+    const [capped] = groupFailedJobs([
+      { ...xeroDelivery, groupCapped: true },
+      again("delivery:43", { groupCapped: true }),
+    ]);
+    expect(capped).toMatchObject({ total: 2, totalCapped: true });
+  });
+
   it("spans the group's dates and takes its highest attempts", () => {
     const [group] = groupFailedJobs([
       xeroDelivery,
@@ -74,5 +87,21 @@ describe("groupFailedJobs", () => {
   it("lets a person act on the group only when they may act on every member", () => {
     const [group] = groupFailedJobs([xeroDelivery, again("delivery:43", { canAct: false })]);
     expect(group?.canAct).toBe(false);
+  });
+
+  it("reports the group's size across every page, never fewer than the members shown", () => {
+    const [group] = groupFailedJobs([
+      again("delivery:43", { groupSize: 40 }),
+      again("delivery:44", { groupSize: 40 }),
+    ]);
+    expect(group).toMatchObject({ total: 40 });
+    expect(group?.members).toHaveLength(2);
+    const [small] = groupFailedJobs([again("delivery:45"), again("delivery:46")]);
+    expect(small?.total).toBe(2);
+  });
+
+  it("gives a lone failure its own size from the rest of the view", () => {
+    const [group] = groupFailedJobs([again("delivery:47", { groupSize: 9 })]);
+    expect(group).toMatchObject({ total: 9 });
   });
 });
