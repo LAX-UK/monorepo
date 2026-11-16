@@ -1,72 +1,79 @@
-Verdict: FIX FIRST
+Verdict: SHIP
 
-# Recheck of PR #1481 after the fixes
+# Final recheck (round 3) of PR #1481
 
-Reviewed head `e8a3642a` (branch `followups/refund-flags-pdf-fonts-runbooks-books-fairness`, base `a54b584f`). The head had not changed for more than 30 minutes and every CI check on it had finished before this review started.
+Reviewed head `d882ec96` (branch `followups/refund-flags-pdf-fonts-runbooks-books-fairness`, base `a54b584f`). Three commits since the last recheck (`e8a3642a`):
 
-Findings 1 to 12 from the first review are all fixed. One new problem blocks the merge: this PR makes CI fail in a way it did not before (finding 1 below).
+- `65b7cb04` Identity boundary guard: read the git file listing into a 64 MiB buffer
+- `68f995a4` Collection booking runbook: name the counters the dry run prints
+- `d882ec96` Accounting work queue: skip the turn of an entity with nothing waiting
+
+All four findings from the last recheck are resolved, and nothing blocks the merge. Every CI check on the head had finished, and passed, before this review was written.
 
 ## What I ran
 
 - `corepack enable`, `pnpm install --frozen-lockfile` and `pnpm -r --filter './packages/**' build` all passed.
-- `turbo typecheck` for exports, persistence, db, marketing-ui and their dependencies: 17/17 passed. `biome check .`: clean.
+- `turbo typecheck` for persistence, exports, db and their dependencies: 25/25 passed. `biome check .`: clean (17,295 files).
+- `packages/persistence` accounting tests on a fresh Postgres 16 database (migrate + roles, `--maxWorkers=2`): 4 files, 81 passed, 6 skipped.
 - `packages/exports` vitest (`--maxWorkers=2`): 57/57 passed. `backfill-payment-refund-args.test.ts`: 13/13 passed.
-- The whole `packages/persistence` suite on a fresh Postgres 16.15 database (migrate + roles, `--maxWorkers=2`): 171 files, 1043 passed, 11 skipped, 0 failed. The accounting persistence file: 62 passed, 6 skipped.
-- CI on `e8a3642a` (REST check-runs):
-  - `test` passed.
-  - `identity-acceptance-preflight` and `browser-gates` failed, so `ci-result` failed.
-  - Everything else passed.
-- I ran the refund backfill commands through pnpm against a local database (details under finding 2 of the first review below).
-- `EXPLAIN (ANALYZE, BUFFERS)` on PG16, comparing the old claim with the new narrowed claim on a seeded backlog.
-- I rendered invoice PDFs from the built `dist` and rasterised them with `pdftoppm`.
-- I read each font file's copyright string with fontkit.
-- Commit messages, the PR title and the PR body contain no `Co-Authored-By`, `Claude-Session` or "Generated with" lines. That check is clean.
+- `node --test scripts/ci/verify-identity-boundary.test.mjs`: 5/5 passed. `node scripts/ci/verify-identity-boundary.mjs`: exit 0 with a 1,053,825-byte listing, the same size that overflowed last round.
+- `git merge-tree` of this head with `origin/enquiry-inbound-replies-part-b` (PR #1479): merges with no conflicts.
+- I ran the collection reminder key backfill dry run against the migrated database and the refund backfill commands through pnpm.
+- CI on `d882ec96` (REST check-runs): all four workflow runs for this head finished with success: CI (run 43792781921, which includes `test`, `build`, `static-checks`, `identity-acceptance-preflight`, `identity boundary conformance` and `ci-result`), Web PR browser gates (43792781914, which includes `browser-gates`), Art PR browser gates (43792781926) and Account PR browser gates (43792781922). Nothing failed.
+- Commit messages (all 12 commits since `a54b584f`), the PR title and the PR body contain no `Co-Authored-By`, `Claude-Session` or "Generated with/by" lines. That check is clean.
 
 ## Findings
 
 ### Blocking
 
-1. **BLOCKING (new): the added font files push the repository's file list past a 1 MiB buffer, which breaks the identity boundary probe and turns CI red.**
-   - Both `identity-acceptance-preflight` (check run 133039390278) and `browser-gates` (133039462286) stop at `Error: unable to enumerate repository files`, thrown at `scripts/ci/verify-identity-boundary.mjs:95`.
-   - `trackedText()` (`scripts/ci/verify-identity-boundary.mjs:89-95`) runs `git ls-files --cached --others --exclude-standard -z` through `spawnSync` with no `maxBuffer`. Node's default limit is 1,048,576 bytes.
-   - The list is 1,053,825 bytes on this head and 1,047,783 bytes on `main`. The 90 fallback font files push it over the limit. `spawnSync` then returns `error.code = ENOBUFS` with `status = null` (I reproduced this locally), so the probe throws.
-   - `ci-result` lists `identity-acceptance-preflight` in its `needs`, so it fails as well.
-   - Fix: pass a larger `maxBuffer` to that `spawnSync` (for example 64 MiB, as `scripts/ci/verify-terraform-plan-safe.mjs:11` does). Also report `result.error` in the thrown message, so the cause shows up in the log.
-   - Shortening the font file names would not be enough: `main` is only 793 bytes under the limit, so the next PR that adds files would hit the same failure.
+None.
 
-### Should fix (not blocking)
+### Minor / notes (none block the merge)
 
-2. **The PR body's Summary still describes the first version.** The "Changes after review" section is accurate, but the Summary contradicts it:
-   - It says the reminder backfill "is optional".
-   - It says fairness orders by "the entity served least recently (any of its documents `sending` or `issued` in the last hour)".
-   - It says mixed-script names are shrunk "without wrapping".
-   - It gives the fonts as "about 4.8 MB … ~100 slices".
+1. **The PR body's Testing section still describes the first version.** The Summary now matches the code, and so do "Changes after review" and "Changes after recheck". The Testing section, though, still says:
+   - `exports (42)`; the suite now has 57 tests.
+   - "counts today's issued documents… fails on `main` too … and is unrelated". It passes now, and the cause was this PR's fixtures, which were fixed in round 1.
 
-   If the PR is squash-merged, this Summary becomes the commit message. Update it to match the code: about 3.3 MB, 90 slices.
+   The fairness bullet in the Summary also does not mention the 5-second skip of an entity with nothing waiting; only "Changes after recheck" describes it.
 
-3. **The collection-booking runbook names a counter the dry run does not print.**
-   - `docs/runbooks/collection-booking.md:163-164` says to note the dry run's `rewritten` count and to expect "zero rewritten" from a second dry run.
-   - The dry run prints `would_rewrite=` (`packages/db/src/scripts/backfill-collection-reminder-keys.ts:105`). Only `--apply` prints `rewritten=`.
-   - Say `would_rewrite` for the dry run.
+   If the PR is squash-merged, the body becomes the commit message, so trim or update the Testing section first. This does not block the merge.
+2. **`emptyUntil` is not cleared when the skipped entity's work is claimed by the plain pick** (`packages/persistence/src/repositories/accounting/drizzle-accounting-document.work-queue.ts:232-241`).
+   - If a document for the skipped entity arrives during the pause, the queue can claim it through the plain pick, oldest first. The entity still stays out of the turn order until the 5 seconds (`EMPTY_TURN_MS`, `:27`) are up.
+   - This delays fairness by at most 5 seconds and never delays the work itself, which matches the docstring at `:49-55`. Nothing needs changing.
+3. **The new guard test checks the headroom, not the overflow message** (`scripts/ci/verify-identity-boundary.test.mjs:15-25`).
+   - The test checks that the listing is under a quarter of `GIT_LISTING_MAX_BUFFER`, which catches growth long before it overflows.
+   - The loud-failure path (`scripts/ci/verify-identity-boundary.mjs:99-103`) has no test. I checked it by hand: `spawnSync` with a small `maxBuffer` sets `status = null` and `error.message = "spawnSync git ENOBUFS"`. The new condition, `result.error || result.status !== 0`, catches that and puts the message in the thrown error.
+   - Good enough as it is.
 
-### Minor / notes
+## Last recheck's findings, rechecked
 
-4. **A claim can run two queries when the entity whose turn it is has nothing waiting.**
-   - Once an entity has been served, `preferredEntity` (`packages/persistence/src/repositories/accounting/drizzle-accounting-document.work-queue.ts:129-142`) keeps choosing the other entity, even while that entity has had nothing waiting for days. Every claim then runs the narrowed query, finds nothing, and runs the plain query.
-   - The extra query costs 1 ms at 2,100 pending, 2.7 ms at 10,100 and 43 ms at 50,000, against 740 ms for the plain query at 50,000. That is acceptable, but a short negative cache would remove it if it ever matters.
-   - Also: the narrowed query only sees the preferred entity's lapsed `sending` rows. A lapsed lease of the other entity is demoted to `unknown` one claim later than before. That is harmless.
+- **1 (BLOCKING). Fixed.**
+  - `trackedText()` now passes `maxBuffer: GIT_LISTING_MAX_BUFFER`, which is 64 MiB (`scripts/ci/verify-identity-boundary.mjs:89-97`).
+  - It throws when `result.error` is set or the status is non-zero, and the message includes `result.error.message` (`:98-103`). Before, an `ENOBUFS` failure surfaced only as a generic "unable to enumerate repository files".
+  - A test pins at least 4x headroom over the real listing (`verify-identity-boundary.test.mjs:15-25`).
+  - `scripts/ci/verify-identity-boundary.mjs` and its test file are byte-identical to the ones on `origin/enquiry-inbound-replies-part-b` (PR #1479): `git diff` between the two branches shows nothing under `scripts/ci/`. The two branches merge cleanly.
+  - `identity-acceptance-preflight` and `browser-gates`, the two checks that failed last round, now pass on CI.
+- **2. Fixed.** The Summary now matches the code:
+  - The reminder backfill must run before the deploy.
+  - Fairness uses an in-process record of whose turn it is.
+  - Mixed-script names get bidi layout, are shrunk down to 7 pt, and then wrap.
+  - The fonts are about 3.3 MB in 90 slices; on disk there are 90 `.woff` files and 3,309,071 bytes.
+  - The Testing section is still stale (minor finding 1).
+- **3. Fixed.**
+  - `docs/runbooks/collection-booking.md:163-165` now tells you to note `would_rewrite`, says `--apply` prints `rewritten=`, and expects `would_rewrite=0` from a second dry run.
+  - This matches `packages/db/src/scripts/backfill-collection-reminder-keys.ts:105`. Running the dry run printed: `dry run (nothing written; pass --apply): scanned=0 would_rewrite=0 skipped_existing=0 skipped_unparsable=0`.
+- **4. Fixed.**
+  - When the narrowed pick for the entity whose turn it is finds nothing, that entity is left out of the turn order for `EMPTY_TURN_MS` (5,000 ms; `drizzle-accounting-document.work-queue.ts:27, 55, 229-243`). Later claims in that window run the plain query only.
+  - The key is `provider/entity`, so Books and Xero do not affect each other.
+  - The time comes from the queue's injected clock.
+  - New test "leaves an entity with nothing waiting out of the turn order for a short while" (`accounting-persistence.integration.test.ts:534-547`). It passes.
+  - **The test fails without the fix.** I disabled the `emptyUntil.set` line locally and ran it again. It failed, because Shop's document was claimed before `bid[2]`. So the test proves the second query is skipped during the pause. It also proves the skipped entity gets its turn back afterwards and is not starved.
+  - The claim statements themselves are unchanged since the last recheck, so the `EXPLAIN` figures there still hold. The empty-turn cost (up to 43 ms at 50,000 pending) is now paid at most once every 5 s per entity, rather than on every claim.
+- **5, 6.** No change was needed, and none was made.
 
-5. **The fallback fonts make the API and worker Docker images bigger.** `fonts/fallback` holds 3,309,071 bytes (92 files: 90 `.woff`, the licence file and `manifest.json`). `apps/api/Dockerfile` and `apps/worker/Dockerfile` copy all of `packages/` into the image, so each image grows by about 3.3 MB. This is fine; noted only for the record.
+## Earlier fixes, still in place
 
-6. **Right-to-left names are left-aligned in the value column.** A name whose paragraph direction is RTL starts at x = 190 like every other value, and its wrapped lines are left-aligned too. The word order within each line is correct. This is consistent with the column layout and does not need changing.
-
-## First-review findings, rechecked
-
-- **1. Fixed.** CI `test` passes on the head.
-  - The fairness cases now run at `T0` with their own queue instance (`accounting-persistence.integration.test.ts:481-534`).
-  - The whole persistence suite passes on a fresh database.
-  - "counts today's issued documents…" passes.
-- **2. Fixed.** `collectFlags` skips a bare `--` (`packages/db/src/scripts/backfill-payment-refund-args.ts:44`). The resume line comes from `resumeCommand()` and `APPLY_COMMAND` (`:95-107`). I ran these through pnpm against a migrated local database:
+- **Refund CLI.** I ran these through pnpm against the migrated local database:
 
   | Command | Result |
   |---|---|
@@ -75,42 +82,8 @@ Findings 1 to 12 from the first review are all fixed. One new problem blocks the
   | A resume command, `… -- --apply --batch-size=200 --lock-timeout=5000ms --resume-after=<uuid>` | Applied, exit 0 |
   | A typo, `… -- --aply` | `Unknown argument "--aply"`, exit 1 |
 
-- **3 and 9. Fixed.** The `ORDER BY` subquery is gone. The queue remembers in memory which entity it served last, keyed by provider. The worker builds the queue once (`apps/worker/src/container/create-accounting-runtime.ts:68`), so that record lasts for the life of the process.
-
-  `EXPLAIN (ANALYZE, BUFFERS)` on PG16. I captured the exact statements from `log_statement` while the fairness test ran. The seeded backlog is Books `test_org` pending invoices, 80% Bid and 20% Shop, each waiting on an issued contact, plus issued history. All of it runs in a transaction that is rolled back. Figures are medians of 5 runs after one warm-up run:
-
-  | Pending / recent sends / history | Old claim (`main`; also the fallback) | Bid's turn | Shop's turn | Turn of an entity with nothing waiting (extra query, then the old one) |
-  |---|---|---|---|---|
-  | 2,100 / 150 / 20,000 | 15.2 ms | 12.1 ms | 3.6 ms | 1.0 ms + 11.2 ms |
-  | 10,100 / 150 / 50,000 | 97.1 ms | 93.2 ms | 16.8 ms | 2.7 ms + 94.9 ms |
-  | 50,000 / 2,000 / 100,000 | 786.6 ms | 755.7 ms | 109.0 ms | 42.6 ms + 740.5 ms |
-
-  The claim is no slower than on `main`. The worst case adds about 5%. The 50,000-row Bid figure is higher than the PR body's 294 ms, but it is still below the old query's time here.
-
-  Concurrency is unchanged: both queries keep `FOR UPDATE SKIP LOCKED` on the base-table row. Only this queue's own claims count as a turn, so activity elsewhere (Xero sends, copy-email bookkeeping) no longer affects the order.
-- **4. Fixed.** `packages/exports/fonts/fallback/OFL-noto-fallbacks.txt:1-8` carries one copyright line per family. I read each line back from the bundled files' name table (nameID 0) and they match exactly:
-  - Arabic: Copyright 2022 The Noto Project Authors.
-  - Hebrew: Copyright 2024 The Noto Project Authors.
-  - SC: (c) 2014-2021 Adobe, with Reserved Font Name 'Source'.
-- **5. Fixed.** There are 90 `.woff` files on disk, and `manifest.json` references all 90, so nothing unused remains. The total under `fonts/fallback` is 3,309,071 bytes, down from about 4.97 MB.
-- **6. Fixed.** I rendered and checked these names; each run is on one shared baseline:
-
-  | Name | Rendered as | Note |
-  |---|---|---|
-  | `Ahmed أحمد Ltd` | `Ahmed أحمد Ltd` | |
-  | `شركة 123` | `123 شركة` | Space kept |
-  | `David דוד Cohen & Co` | `David דוד Cohen & Co` | |
-  | `شركة ABC للتجارة` | Correct RTL order with the Latin run inside | |
-  | `김민수 Gallery` | Hangul blank | One `[pdf-fonts]` warning naming only the code points |
-- **7 and 8. Fixed.** The runbooks now match the code:
-  - The parked line is `drizzle-stripe-books.ts:490-493`.
-  - The sweep re-sends because it always calls `enqueue` (`apps/worker/src/jobs/collection-reminders.ts:39-46`).
-- **10 and 11. Fixed.**
-  - The `step()` docstring (`drizzle-accounting-document.work-queue.ts:155-160`) describes taking turns.
-  - The `fallback-fonts.ts:4-15` module doc says only SC is bundled for CJK, uses Simplified Chinese glyph forms, and calls the files @fontsource slices.
-- **12. Fixed.** I checked wrapping with three long names:
-  - Mixed Latin and Arabic, about 170 characters: 3 lines.
-  - Pure Arabic ending in digits: 2 lines.
-  - A 74-character CJK name: 3 lines, broken between characters.
-
-  Every line is laid out with bidi on its own. `pdftotext -bbox` puts the largest `xMax` at exactly 545.0, the right edge of the column. The next row starts below the last line. Names that fit are shrunk, down to 7 pt at most, rather than wrapped.
+  The args tests pass 13/13.
+- **Claim query performance.** The narrowed and plain claim statements are unchanged since `e8a3642a`. Both keep `FOR UPDATE SKIP LOCKED` and have no per-row subquery. The only addition is the in-memory skip described above.
+- **OFL notices.** `packages/exports/fonts/fallback/OFL-noto-fallbacks.txt:1-8` still opens with the three family copyright lines: Arabic 2022, Hebrew 2024, and SC (c) 2014-2021 Adobe with Reserved Font Name 'Source'.
+- **Fonts used.** All 90 `.woff` files are on disk, and the exports test that matches files to the manifest and checks every slice is reachable passes. `fonts/fallback` holds 3,309,071 bytes.
+- **Bidi.** `packages/exports` is unchanged since the last recheck, and its 57 tests pass, including the content-stream position tests: shared baseline, contiguous x positions, correct fonts, and nothing past the column edge.
