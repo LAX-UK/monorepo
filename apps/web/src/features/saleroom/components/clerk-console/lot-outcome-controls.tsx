@@ -1,7 +1,7 @@
 "use client";
 
 import { ConsoleSectionLabel } from "@/features/saleroom/components/clerk-console/console-panel";
-import { adminSaleroomHammerAction, adminSaleroomNoSaleAction } from "@/lib/actions/admin";
+import { clerkHammer, clerkNoSale } from "@/features/saleroom/lib/clerk-commands.client";
 import type { ActionResult } from "@/lib/forms/form-result";
 import { notify } from "@/lib/ui/notify";
 import { HoldButton, cn } from "@auction/staff-ui";
@@ -79,7 +79,7 @@ export function LotOutcomeControls({
           disabled={!canHammer}
           hint="Press and hold to sell the lot at the current bid. Release early to cancel."
           done="Lot hammered"
-          run={() => adminSaleroomHammerAction({ saleId })}
+          run={() => clerkHammer({ saleId })}
         >
           Hold to hammer
         </OutcomeHold>
@@ -88,7 +88,7 @@ export function LotOutcomeControls({
           disabled={!canHammer}
           hint="Press and hold to close the lot with no sale. Release early to cancel."
           done="Lot passed with no sale"
-          run={() => adminSaleroomNoSaleAction({ saleId })}
+          run={() => clerkNoSale({ saleId })}
         >
           Hold to pass
         </OutcomeHold>

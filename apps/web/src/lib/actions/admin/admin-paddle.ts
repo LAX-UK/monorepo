@@ -95,14 +95,6 @@ const paddleAssignForm = paddleRegistrationActionForm.extend({
   paddleNumber: z.coerce.number().int().min(100).optional(),
 });
 
-const paddlePlaceBidForm = z.object({
-  saleId: z.string().uuid(),
-  lotId: z.string().uuid(),
-  paddleNumber: z.coerce.number().int().min(100),
-  amount: z.coerce.number().finite().positive(),
-  maxAutoBidAmount: z.coerce.number().finite().positive().optional(),
-});
-
 export async function adminAssignPaddleResultAction(
   input: unknown,
 ): Promise<ActionResult<{ paddleNumber: number }>> {
@@ -150,31 +142,6 @@ export async function adminClearPaddleResultAction(
     if (!res.ok) {
       return actionFailure(
         readApiError(res.body, "Clear paddle failed"),
-        undefined,
-        res.status,
-        res.code,
-      );
-    }
-    return actionSuccess(res.data);
-  });
-}
-
-export async function adminPaddlePlaceBidResultAction(
-  input: unknown,
-): Promise<ActionResult<{ bidId: string }>> {
-  return instrumentServerAction("adminPaddlePlaceBidResultAction", async () => {
-    const denied = await denyUnlessAdminCapability(SALEROOM_ACCESS);
-    if (denied) return denied;
-
-    const parsed = paddlePlaceBidForm.safeParse(input);
-    if (!parsed.success) {
-      return actionFailure(firstZodErrorMessage(parsed.error));
-    }
-
-    const res = await getWriteContainer().adminPaddle.placeBid(parsed.data);
-    if (!res.ok) {
-      return actionFailure(
-        readApiError(res.body, "Paddle bid failed"),
         undefined,
         res.status,
         res.code,

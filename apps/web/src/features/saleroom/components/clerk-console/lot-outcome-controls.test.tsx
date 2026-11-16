@@ -1,11 +1,11 @@
 import { LotOutcomeControls } from "@/features/saleroom/components/clerk-console/lot-outcome-controls";
-import { adminSaleroomHammerAction, adminSaleroomNoSaleAction } from "@/lib/actions/admin";
+import { clerkHammer, clerkNoSale } from "@/features/saleroom/lib/clerk-commands.client";
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("@/lib/actions/admin", () => ({
-  adminSaleroomHammerAction: vi.fn(async () => ({ ok: true })),
-  adminSaleroomNoSaleAction: vi.fn(async () => ({ ok: true })),
+vi.mock("@/features/saleroom/lib/clerk-commands.client", () => ({
+  clerkHammer: vi.fn(async () => ({ ok: true })),
+  clerkNoSale: vi.fn(async () => ({ ok: true })),
 }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
 vi.mock("@/lib/ui/notify", () => ({ notify: { success: vi.fn(), error: vi.fn() } }));
@@ -42,12 +42,12 @@ describe("LotOutcomeControls", () => {
     act(() => vi.advanceTimersByTime(200));
     fireEvent.pointerUp(hammer);
     fireEvent.click(hammer);
-    expect(adminSaleroomHammerAction).not.toHaveBeenCalled();
+    expect(clerkHammer).not.toHaveBeenCalled();
 
     fireEvent.pointerDown(hammer, { button: 0 });
     act(() => vi.advanceTimersByTime(700));
-    expect(adminSaleroomHammerAction).toHaveBeenCalledTimes(1);
-    expect(adminSaleroomHammerAction).toHaveBeenCalledWith({ saleId: "sale-1" });
-    expect(adminSaleroomNoSaleAction).not.toHaveBeenCalled();
+    expect(clerkHammer).toHaveBeenCalledTimes(1);
+    expect(clerkHammer).toHaveBeenCalledWith({ saleId: "sale-1" });
+    expect(clerkNoSale).not.toHaveBeenCalled();
   });
 });

@@ -5,7 +5,7 @@ import { render, screen, within } from "@testing-library/react";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
-vi.mock("@/lib/actions/admin", () => ({ adminSaleroomAdvanceAction: vi.fn() }));
+vi.mock("@/features/saleroom/lib/clerk-commands.client", () => ({ clerkAdvance: vi.fn() }));
 vi.mock("@/lib/ui/notify", () => ({ notify: { success: vi.fn(), error: vi.fn() } }));
 
 const lot = (id: string, n: number, status: string, extra: Partial<Lot> = {}) =>

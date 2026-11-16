@@ -2,16 +2,16 @@
 
 import { bidIncrementOptions, validateBidAmount } from "@/features/saleroom/lib/bid-entry";
 import {
+  clerkPlacePaddleBid,
+  clerkPlaceTelephoneBid,
+} from "@/features/saleroom/lib/clerk-commands.client";
+import {
   type PaddleRegistrationValidator,
   type SaleroomRegisteredPaddle,
   createPaddleRegistrationValidator,
   createPaddleRosterLookup,
 } from "@/features/saleroom/lib/paddle-roster-validation";
 import type { ClerkBidEntryState } from "@/features/saleroom/types/staff-saleroom.vm";
-import {
-  adminPaddlePlaceBidResultAction,
-  adminTelephonePlaceBidResultAction,
-} from "@/lib/actions/admin";
 import type { AdminTelephoneBookingRow } from "@/lib/data/http/admin.server";
 import { notify } from "@/lib/ui/notify";
 import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
@@ -46,13 +46,13 @@ type Options<T extends SaleroomRegisteredPaddle = SaleroomRegisteredPaddle> = {
 };
 
 const defaultPlacePaddleBid: PlacePaddleBidFn = async (input) => {
-  const result = await adminPaddlePlaceBidResultAction(input);
+  const result = await clerkPlacePaddleBid(input);
   if (!result.ok) return { ok: false, error: result.error };
   return { ok: true };
 };
 
 const defaultPlaceTelephoneBid: PlaceTelephoneBidFn = async (input) => {
-  const result = await adminTelephonePlaceBidResultAction(input);
+  const result = await clerkPlaceTelephoneBid(input);
   if (!result.ok) return { ok: false, error: result.error };
   return { ok: true };
 };

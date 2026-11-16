@@ -175,48 +175,6 @@ export const adminLotFulfilmentCollectedResultAction = _adminLotFulfilmentCollec
 import { adminRefundGroupDeliveryResultAction as _adminRefundGroupDeliveryResultAction } from "./admin/admin-group-delivery-refund";
 export const adminRefundGroupDeliveryResultAction = _adminRefundGroupDeliveryResultAction;
 
-import { adminSaleroomGoLiveAction as _adminSaleroomGoLiveAction } from "./admin/admin-saleroom";
-export const adminSaleroomGoLiveAction = _adminSaleroomGoLiveAction;
-
-import { adminSaleroomPauseAction as _adminSaleroomPauseAction } from "./admin/admin-saleroom";
-export const adminSaleroomPauseAction = _adminSaleroomPauseAction;
-
-import { adminSaleroomResumeAction as _adminSaleroomResumeAction } from "./admin/admin-saleroom";
-export const adminSaleroomResumeAction = _adminSaleroomResumeAction;
-
-import { adminSaleroomAdvanceAction as _adminSaleroomAdvanceAction } from "./admin/admin-saleroom";
-export const adminSaleroomAdvanceAction = _adminSaleroomAdvanceAction;
-
-import { adminSaleroomHammerAction as _adminSaleroomHammerAction } from "./admin/admin-saleroom";
-export const adminSaleroomHammerAction = _adminSaleroomHammerAction;
-
-import { adminSaleroomNoSaleAction as _adminSaleroomNoSaleAction } from "./admin/admin-saleroom";
-export const adminSaleroomNoSaleAction = _adminSaleroomNoSaleAction;
-
-import { adminSaleroomCloseAction as _adminSaleroomCloseAction } from "./admin/admin-saleroom";
-export const adminSaleroomCloseAction = _adminSaleroomCloseAction;
-
-import { adminSaleroomDisplayApproveAction as _adminSaleroomDisplayApproveAction } from "./admin/admin-saleroom";
-export const adminSaleroomDisplayApproveAction = _adminSaleroomDisplayApproveAction;
-
-import { adminSaleroomDisplayOverlayAction as _adminSaleroomDisplayOverlayAction } from "./admin/admin-saleroom";
-export const adminSaleroomDisplayOverlayAction = _adminSaleroomDisplayOverlayAction;
-
-import { adminSaleroomDisplayClearOverlayAction as _adminSaleroomDisplayClearOverlayAction } from "./admin/admin-saleroom";
-export const adminSaleroomDisplayClearOverlayAction = _adminSaleroomDisplayClearOverlayAction;
-
-import { adminSaleroomDisplayRevokeAction as _adminSaleroomDisplayRevokeAction } from "./admin/admin-saleroom";
-export const adminSaleroomDisplayRevokeAction = _adminSaleroomDisplayRevokeAction;
-
-import { adminTelephoneBookingStartLineAction as _adminTelephoneBookingStartLineAction } from "./admin/admin-telephone";
-export const adminTelephoneBookingStartLineAction = _adminTelephoneBookingStartLineAction;
-
-import { adminTelephoneBookingCompleteLineAction as _adminTelephoneBookingCompleteLineAction } from "./admin/admin-telephone";
-export const adminTelephoneBookingCompleteLineAction = _adminTelephoneBookingCompleteLineAction;
-
-import { adminTelephonePlaceBidResultAction as _adminTelephonePlaceBidResultAction } from "./admin/admin-telephone";
-export const adminTelephonePlaceBidResultAction = _adminTelephonePlaceBidResultAction;
-
 import { adminSaleroomCheckInCandidatesResultAction as _adminSaleroomCheckInCandidatesResultAction } from "./admin/admin-paddle";
 export const adminSaleroomCheckInCandidatesResultAction =
   _adminSaleroomCheckInCandidatesResultAction;
@@ -229,6 +187,3 @@ export const adminAssignPaddleResultAction = _adminAssignPaddleResultAction;
 
 import { adminClearPaddleResultAction as _adminClearPaddleResultAction } from "./admin/admin-paddle";
 export const adminClearPaddleResultAction = _adminClearPaddleResultAction;
-
-import { adminPaddlePlaceBidResultAction as _adminPaddlePlaceBidResultAction } from "./admin/admin-paddle";
-export const adminPaddlePlaceBidResultAction = _adminPaddlePlaceBidResultAction;

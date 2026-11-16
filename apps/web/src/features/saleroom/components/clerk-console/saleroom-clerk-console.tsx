@@ -93,6 +93,13 @@ function ClerkConsoleInner({
     });
   }, [checkedInRefresh, refreshRoster, router, saleId]);
 
+  // The props are what the server rendered, which can be older than the room: after Try again on
+  // the error boundary, or a page restored from the browser's cache. Read the session again from
+  // the API on mount so the console never acts on a stale lot or status.
+  useEffect(() => {
+    void resyncFromServer();
+  }, [resyncFromServer]);
+
   useEffect(() => {
     if (!actionError) return;
     notify.error(actionError);

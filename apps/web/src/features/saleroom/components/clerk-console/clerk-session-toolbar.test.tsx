@@ -9,11 +9,11 @@ const { close, pause, refresh } = vi.hoisted(() => ({
 }));
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh, push: vi.fn() }) }));
-vi.mock("@/lib/actions/admin", () => ({
-  adminSaleroomCloseAction: close,
-  adminSaleroomGoLiveAction: vi.fn(),
-  adminSaleroomPauseAction: pause,
-  adminSaleroomResumeAction: vi.fn(),
+vi.mock("@/features/saleroom/lib/clerk-commands.client", () => ({
+  clerkClose: close,
+  clerkGoLive: vi.fn(),
+  clerkPause: pause,
+  clerkResume: vi.fn(),
 }));
 vi.mock("@/lib/ui/notify", () => ({ notify: { success: vi.fn(), error: vi.fn() } }));
 vi.mock("@/lib/auth/step-up/use-step-up-coordinator", () => ({

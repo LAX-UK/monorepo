@@ -5,6 +5,10 @@ import type { Lot } from "@auction/types";
 import { render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
+const { resyncFromServer } = vi.hoisted(() => ({
+  resyncFromServer: vi.fn(async () => true),
+}));
+
 vi.mock("@/features/saleroom/components/saleroom-live-shell", () => ({
   SaleroomLiveShell: ({
     children,
@@ -18,6 +22,7 @@ vi.mock("@/features/saleroom/components/saleroom-live-shell", () => ({
       };
       activityLog: unknown[];
       liveFeed: unknown[];
+      resyncFromServer: () => Promise<boolean>;
     }) => React.ReactNode;
     initial: { status: string; currentLotId: string | null };
   }) =>
@@ -29,6 +34,7 @@ vi.mock("@/features/saleroom/components/saleroom-live-shell", () => ({
       },
       activityLog: [],
       liveFeed: [],
+      resyncFromServer,
     }),
 }));
 
@@ -211,5 +217,32 @@ describe("SaleroomClerkConsole phase layout", () => {
     await waitFor(() => {
       expect(notify.error).toHaveBeenCalledWith("Saleroom must be live to advance lots");
     });
+  });
+
+  it("re-reads the room from the API when it mounts, so stale page props never stick", async () => {
+    resyncFromServer.mockClear();
+
+    const { unmount } = render(
+      <SaleroomClerkConsole
+        saleId="sale-1"
+        saleTitle="Evening sale"
+        initial={sessionSnapshot("live", "lot-1")}
+        lots={lots}
+      />,
+    );
+
+    await waitFor(() => expect(resyncFromServer).toHaveBeenCalledTimes(1));
+
+    // The error boundary's Try again remounts the console: it reads the room again.
+    unmount();
+    render(
+      <SaleroomClerkConsole
+        saleId="sale-1"
+        saleTitle="Evening sale"
+        initial={sessionSnapshot("live", "lot-1")}
+        lots={lots}
+      />,
+    );
+    await waitFor(() => expect(resyncFromServer).toHaveBeenCalledTimes(2));
   });
 });
