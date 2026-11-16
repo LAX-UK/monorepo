@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { MessageThread, type ThreadItem } from "./message-thread.js";
 
@@ -136,5 +136,91 @@ describe("MessageThread", () => {
     render(<MessageThread items={[]} label="Thread" empty={<p>No messages yet</p>} />);
     expect(screen.getByText("No messages yet")).toBeTruthy();
     expect(screen.queryByRole("log")).toBeNull();
+  });
+});
+
+describe("MessageThread messages from outside the product", () => {
+  const emailed: ThreadItem = {
+    type: "message",
+    id: "m9",
+    author: { name: "Sam Sender", initials: "SS", role: "Client", side: "client" },
+    time,
+    body: "Tuesday works.",
+    attachments: [],
+    channel: "via email",
+    files: [{ id: "f1", name: "photo.jpg", detail: "JPEG image · 2 KB", kind: "image" }],
+    filesNote: "The files themselves were not kept.",
+  };
+
+  it("says how the message arrived and lists named files without a link", () => {
+    render(<MessageThread items={[emailed]} label="Replies" />);
+    const log = screen.getByRole("log", { name: "Replies" });
+    expect(within(log).getByText("via email")).toBeTruthy();
+    const files = within(log).getByRole("list", { name: "Files named in this message" });
+    expect(within(files).getByText("photo.jpg")).toBeTruthy();
+    expect(within(log).getByText("The files themselves were not kept.")).toBeTruthy();
+    expect(within(log).queryByRole("link")).toBeNull();
+  });
+});
+
+describe("MessageThread inside a longer page", () => {
+  it("leaves out the floating jump control when asked", () => {
+    const observers: Array<(entries: Array<{ isIntersecting: boolean }>) => void> = [];
+    const original = globalThis.IntersectionObserver;
+    globalThis.IntersectionObserver = class {
+      constructor(callback: (entries: Array<{ isIntersecting: boolean }>) => void) {
+        observers.push(callback);
+      }
+      observe() {}
+      disconnect() {}
+    } as unknown as typeof IntersectionObserver;
+    try {
+      render(<MessageThread items={items} label="Embedded" jumpToLatest={false} />);
+      act(() => {
+        for (const notify of observers) notify([{ isIntersecting: false }]);
+      });
+      expect(screen.queryByRole("button", { name: "Jump to latest" })).toBeNull();
+    } finally {
+      globalThis.IntersectionObserver = original;
+    }
+  });
+
+  it("labels a message a person put on the thread, with a warning when its sender is not verified", () => {
+    render(
+      <MessageThread
+        label="Thread"
+        items={[
+          {
+            type: "message",
+            id: "held",
+            author: { name: "Sam Sender", initials: "SS", side: "client" },
+            channel: "via email",
+            time,
+            body: "Forwarding on behalf of Sam.",
+            attachments: [],
+            provenance: {
+              label: "Attached by staff · Sender not verified",
+              tone: "warning",
+              details: ["Held because: Different sender", "Reason given: Sam confirmed by phone"],
+            },
+          },
+          {
+            type: "message",
+            id: "plain",
+            author: { name: "Sam Sender", initials: "SS", side: "client" },
+            time,
+            body: "Thanks",
+            attachments: [],
+          },
+        ]}
+      />,
+    );
+    const label = screen.getByText("Attached by staff · Sender not verified");
+    expect(label.closest("[data-thread-provenance]")?.getAttribute("data-thread-provenance")).toBe(
+      "warning",
+    );
+    expect(screen.getByText("Held because: Different sender")).toBeTruthy();
+    expect(screen.getByText("Reason given: Sam confirmed by phone")).toBeTruthy();
+    expect(document.querySelectorAll("[data-thread-provenance]")).toHaveLength(1);
   });
 });

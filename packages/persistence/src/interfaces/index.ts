@@ -1159,10 +1159,21 @@ export type {
 export type {
   IEnquiryInboundRepository,
   InboundAttachmentMetadata,
+  InboundAuthenticationResult,
   InboundEnquiryTarget,
   NewInboundMessage,
   NewQuarantinedMessage,
 } from "./enquiry-inbound.repository.js";
+export type {
+  IEnquiryInboundThreadReader,
+  IEnquiryQuarantineReviewRepository,
+  InboundThreadMessage,
+  QuarantineListFilter,
+  QuarantineScope,
+  QuarantinedMessageRecord,
+  QuarantinedMessageSummary,
+  SuspectedEnquiry,
+} from "./enquiry-inbound-review.repository.js";
 export type {
   EnquiryErasureCounts,
   EnquiryErasureTarget,

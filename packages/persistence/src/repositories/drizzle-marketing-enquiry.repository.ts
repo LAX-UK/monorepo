@@ -65,6 +65,7 @@ function toRecord(row: typeof marketingEnquiry.$inferSelect): MarketingEnquiryRe
     createdAt: row.createdAt,
     handledAt: row.handledAt,
     handledByUserId: row.handledByUserId,
+    awaitingReplySince: row.awaitingReplySince,
   };
 }
 
@@ -294,6 +295,7 @@ export class DrizzleMarketingEnquiryRepository implements IMarketingEnquiryRepos
               handledByUserId: change.closed?.byUserId ?? null,
             }
           : {}),
+        ...(change.clearsAwaitingReply ? { awaitingReplySince: null } : {}),
         version: sql`${marketingEnquiry.version} + 1`,
       })
       .where(and(eq(marketingEnquiry.id, id), eq(marketingEnquiry.version, expectedVersion)))
@@ -313,6 +315,7 @@ export class DrizzleMarketingEnquiryRepository implements IMarketingEnquiryRepos
         status: "closed",
         handledAt: at,
         handledByUserId,
+        awaitingReplySince: null,
         version: sql`${marketingEnquiry.version} + 1`,
       })
       .where(

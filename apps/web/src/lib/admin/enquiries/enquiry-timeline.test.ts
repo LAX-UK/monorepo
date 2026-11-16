@@ -28,6 +28,8 @@ const base: EnquiryView = {
   privateSale: null,
   attachments: [],
   notes: [],
+  replies: [],
+  awaitingReplySince: null,
 };
 
 describe("attachmentSummary", () => {
@@ -176,5 +178,55 @@ describe("enquiryTimeline with the audit trail", () => {
     ] as never);
     expect(first?.title).toBe("Assigned to another staff member");
     expect(first?.actor).toBe("Another staff member");
+  });
+});
+
+describe("enquiryTimeline: replies by email", () => {
+  it("adds one entry per emailed reply, naming how it joined the thread", () => {
+    const events = enquiryTimeline(
+      {
+        ...base,
+        replies: [
+          {
+            id: "r1",
+            receivedAt: "2026-11-02T09:00:00.000Z",
+            subject: "Re",
+            body: "Thanks",
+            attachments: [],
+            matchedBy: "in_reply_to",
+            spfResult: "pass",
+            dkimResult: null,
+            heldReason: null,
+            reviewReason: null,
+            senderVerified: true,
+            fromOtherAddress: false,
+          },
+          {
+            id: "r2",
+            receivedAt: "2026-11-02T10:00:00.000Z",
+            subject: "Re",
+            body: "Forwarded",
+            attachments: [],
+            matchedBy: "staff",
+            spfResult: null,
+            dkimResult: null,
+            heldReason: "sender_mismatch",
+            reviewReason: "Confirmed by phone",
+            senderVerified: false,
+            fromOtherAddress: true,
+          },
+        ],
+      },
+      () => undefined,
+      [],
+    );
+    expect(events.slice(0, 2).map((event) => [event.title, event.detail])).toEqual([
+      [
+        "Held email attached to this enquiry",
+        "Attached by staff from held email · Sender not verified",
+      ],
+      ["Client replied by email", "Matched by the email it answers"],
+    ]);
+    expect(events.slice(0, 2).map((event) => event.tone)).toEqual(["warning", "info"]);
   });
 });

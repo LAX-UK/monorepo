@@ -5,6 +5,11 @@ import {
   ENQUIRY_INTENTS,
   ENQUIRY_STATUSES,
   ENQUIRY_TIMINGS,
+  INBOUND_DKIM_RESULTS,
+  INBOUND_MATCH_METHODS,
+  INBOUND_QUARANTINE_REASONS,
+  INBOUND_QUARANTINE_STATUSES,
+  INBOUND_SPF_RESULTS,
 } from "@auction/domain";
 import { z } from "zod";
 
@@ -25,6 +30,8 @@ export const enquiryListItemSchema = z.object({
   status,
   receivedAt: z.string(),
   replyDueAt: z.string(),
+  /** When the client replied by email and nobody has answered yet. */
+  awaitingReplySince: z.string().nullable(),
   version: z.number(),
 });
 export type EnquiryListItem = z.infer<typeof enquiryListItemSchema>;
@@ -68,6 +75,36 @@ export const enquiryNoteSchema = z.object({
 });
 export type EnquiryNote = z.infer<typeof enquiryNoteSchema>;
 
+/** Name, type and size of a file an email carried; the file itself was not kept. */
+export const inboundFileSchema = z.object({
+  name: z.string(),
+  contentType: z.string(),
+  sizeBytes: z.number(),
+});
+export type InboundFile = z.infer<typeof inboundFileSchema>;
+
+const spfResult = z.enum(INBOUND_SPF_RESULTS).nullable();
+const dkimResult = z.enum(INBOUND_DKIM_RESULTS).nullable();
+
+/** A reply the client emailed back. Plain text only. */
+export const enquiryEmailReplySchema = z.object({
+  id: z.string(),
+  receivedAt: z.string(),
+  subject: z.string(),
+  body: z.string(),
+  attachments: z.array(inboundFileSchema),
+  matchedBy: z.enum(INBOUND_MATCH_METHODS),
+  spfResult,
+  dkimResult,
+  /** Attached by staff only: why it was held, and the reason the person gave. */
+  heldReason: z.enum(INBOUND_QUARANTINE_REASONS).nullable(),
+  reviewReason: z.string().nullable(),
+  /** False when staff attached it and its sender is not verified as the client. */
+  senderVerified: z.boolean(),
+  fromOtherAddress: z.boolean(),
+});
+export type EnquiryEmailReply = z.infer<typeof enquiryEmailReplySchema>;
+
 export const enquiryViewSchema = z.object({
   id: z.string(),
   reference: z.string(),
@@ -101,6 +138,10 @@ export const enquiryViewSchema = z.object({
     }),
   ),
   notes: z.array(enquiryNoteSchema),
+  /** The client's emailed replies, oldest first. */
+  replies: z.array(enquiryEmailReplySchema),
+  /** When the client replied and nobody has answered yet. */
+  awaitingReplySince: z.string().nullable(),
 });
 export type EnquiryView = z.infer<typeof enquiryViewSchema>;
 
@@ -152,3 +193,40 @@ export const enquiryAttachmentLinkSchema = z.object({
   expiresInSec: z.number(),
 });
 export type EnquiryAttachmentLink = z.infer<typeof enquiryAttachmentLinkSchema>;
+
+/** Held inbound mail in the staff list. */
+export const quarantineListItemSchema = z.object({
+  id: z.string(),
+  reason: z.enum(INBOUND_QUARANTINE_REASONS),
+  status: z.enum(INBOUND_QUARANTINE_STATUSES),
+  fromAddress: z.string(),
+  subject: z.string(),
+  attachmentCount: z.number(),
+  suspectedEnquiry: z.object({ reference: z.string(), intent }).nullable(),
+  receivedAt: z.string(),
+  purgeAt: z.string(),
+  reviewedAt: z.string().nullable(),
+});
+export type QuarantineListItem = z.infer<typeof quarantineListItemSchema>;
+
+export const quarantineListPageSchema = z.object({
+  items: z.array(quarantineListItemSchema),
+  nextCursor: z.string().nullable(),
+  pendingCount: z.number(),
+});
+export type QuarantineListPage = z.infer<typeof quarantineListPageSchema>;
+
+/** One held mail in full: plain text and the metadata of its files. */
+export const quarantineMessageSchema = quarantineListItemSchema.extend({
+  body: z.string(),
+  attachments: z.array(inboundFileSchema),
+  spfResult,
+  dkimResult,
+});
+export type QuarantineMessage = z.infer<typeof quarantineMessageSchema>;
+
+export const quarantineAttachedSchema = z.object({
+  enquiryReference: z.string(),
+  messageId: z.string(),
+});
+export type QuarantineAttached = z.infer<typeof quarantineAttachedSchema>;
