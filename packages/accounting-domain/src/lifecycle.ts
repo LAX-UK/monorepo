@@ -15,6 +15,17 @@ export const STATUSES = [
 ] as const;
 export type Status = (typeof STATUSES)[number];
 
+/**
+ * The states of a document still on its way to the books. The reconciliation's "not issued" and
+ * "in flight" figures count exactly these; `needs_review` and `failed` are not in flight and show
+ * as a difference instead.
+ */
+export const IN_FLIGHT_STATES = [
+  "pending",
+  "sending",
+  "unknown",
+] as const satisfies readonly Status[];
+
 /** Who is allowed to send, and until when (epoch milliseconds). Plain data; the clock is the caller's. */
 export interface Lease {
   readonly token: string;

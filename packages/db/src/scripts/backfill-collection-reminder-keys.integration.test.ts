@@ -1,9 +1,11 @@
 import { sql } from "drizzle-orm";
-import { afterAll, beforeEach, describe, expect, it } from "vitest";
+import pg from "pg";
+import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { closeDb, createDb } from "../client.js";
 import { emailOutbox } from "../schema/email.js";
 import {
   backfillCollectionReminderKeys,
+  main,
   newReminderKey,
 } from "./backfill-collection-reminder-keys.js";
 
@@ -82,5 +84,79 @@ describe.skipIf(!DATABASE_URL)("collection reminder key backfill", () => {
     const counts = await backfillCollectionReminderKeys(db, { apply: true });
     expect(counts).toMatchObject({ scanned: 1, rewritten: 0, skippedExisting: 1 });
     expect(await keys()).toEqual(before);
+  });
+
+  it("walks several batches, and a dry run counts exactly what apply then does", async () => {
+    if (!db) return;
+    const olds = [1, 2, 3, 4, 5].map((n) => `collection-reminder:b-${n}:${SLOT}:p${n}@example.com`);
+    await db.insert(emailOutbox).values(olds.map((key) => row(key)));
+    const dry = await backfillCollectionReminderKeys(db, { apply: false, batchSize: 2 });
+    expect(dry).toEqual({ scanned: 5, rewritten: 5, skippedExisting: 0, skippedUnparsable: 0 });
+    expect(await keys()).toEqual([...olds].sort());
+    const applied = await backfillCollectionReminderKeys(db, { apply: true, batchSize: 2 });
+    expect(applied).toEqual(dry);
+    expect((await keys()).some((k) => k.includes("@"))).toBe(false);
+  });
+
+  it("counts old keys that map to one new key once, in the dry run as in apply", async () => {
+    if (!db) return;
+    // The same booking, slot and address in two cases: one hash, so one new key.
+    const a = `collection-reminder:b-9:${SLOT}:Maya@Example.com`;
+    const b = `collection-reminder:b-9:${SLOT}:maya@example.com`;
+    await db.insert(emailOutbox).values([row(a), row(b)]);
+    const dry = await backfillCollectionReminderKeys(db, { apply: false, batchSize: 1 });
+    expect(dry).toMatchObject({ scanned: 2, rewritten: 1, skippedExisting: 1 });
+    const applied = await backfillCollectionReminderKeys(db, { apply: true, batchSize: 1 });
+    expect(applied).toEqual(dry);
+    expect(await keys()).toHaveLength(2);
+    expect(new Set(await keys()).size).toBe(2);
+  });
+
+  it("is a dry run unless --apply is given", async () => {
+    if (!db || !DATABASE_URL) return;
+    const old = `collection-reminder:b-7:${SLOT}:dry@example.com`;
+    await db.insert(emailOutbox).values(row(old));
+    const log = vi.spyOn(console, "log").mockImplementation(() => undefined);
+    const saved = process.env.DATABASE_URL_OWNER;
+    process.env.DATABASE_URL_OWNER = DATABASE_URL;
+    try {
+      await main([]);
+      expect(await keys()).toEqual([old]);
+      expect(log.mock.calls.at(-1)?.[0]).toContain("dry run");
+      await main(["--apply"]);
+      expect(await keys()).not.toEqual([old]);
+    } finally {
+      log.mockRestore();
+      if (saved === undefined) process.env.DATABASE_URL_OWNER = undefined;
+      else process.env.DATABASE_URL_OWNER = saved;
+    }
+  });
+
+  it("takes no row lock on a dry run, and gives up on a locked row on apply", async () => {
+    if (!db || !DATABASE_URL) return;
+    const old = `collection-reminder:b-8:${SLOT}:busy@example.com`;
+    await db.insert(emailOutbox).values(row(old));
+    const holder = new pg.Client({ connectionString: DATABASE_URL });
+    await holder.connect();
+    try {
+      await holder.query("BEGIN");
+      await holder.query("SELECT 1 FROM email_outbox WHERE idempotency_key = $1 FOR UPDATE", [old]);
+      // No FOR UPDATE on a dry run: it reads past the held row at once.
+      const dry = await backfillCollectionReminderKeys(db, { apply: false, lockTimeoutMs: 200 });
+      expect(dry).toMatchObject({ scanned: 1, rewritten: 1 });
+      // Apply waits for the lock only as long as lock_timeout, then rolls the batch back.
+      const started = Date.now();
+      await expect(
+        backfillCollectionReminderKeys(db, { apply: true, lockTimeoutMs: 200 }),
+      ).rejects.toThrow();
+      expect(Date.now() - started).toBeLessThan(5000);
+      expect(await keys()).toEqual([old]);
+    } finally {
+      await holder.query("ROLLBACK");
+      await holder.end();
+    }
+    expect(await backfillCollectionReminderKeys(db, { apply: true })).toMatchObject({
+      rewritten: 1,
+    });
   });
 });
