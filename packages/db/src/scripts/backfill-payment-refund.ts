@@ -4,10 +4,11 @@
  * per-payment form of payment_refund_backfill_from_payout_lines (see ../payment-refund-backfill.ts).
  * Use this rather than the function's no-argument form on a live database.
  *
- * Usage from packages/db (a dry run is the default: it reads, takes no locks and writes nothing):
- *   DATABASE_URL=... pnpm db:backfill-payment-refund
- *   DATABASE_URL=... pnpm db:backfill-payment-refund --apply [--batch-size=200] [--lock-timeout=5s]
- *     [--resume-after=<payment id>]
+ * Usage from the repository root (a dry run is the default: it reads, takes no locks and writes
+ * nothing). The `--` before the flags is optional; pnpm passes it through and it is skipped:
+ *   DATABASE_URL=... pnpm --filter @auction/db db:backfill-payment-refund
+ *   DATABASE_URL=... pnpm --filter @auction/db db:backfill-payment-refund -- --apply
+ *     [--batch-size=200] [--lock-timeout=5s] [--resume-after=<payment id>]
  *
  * Every flag is validated before connecting (bad input exits non-zero, nothing is opened).
  * The dry run covers every payment (or those after --resume-after when given) and ignores
@@ -32,7 +33,7 @@ import {
   reportPaymentRefundGaps,
 } from "../payment-refund-backfill.js";
 import { buildPgConnectionConfig } from "../ssl.js";
-import { parseBackfillArgs } from "./backfill-payment-refund-args.js";
+import { parseBackfillArgs, resumeCommand } from "./backfill-payment-refund-args.js";
 
 /** Host and database name of the target, from the server itself; no user or password. */
 async function describeTarget(client: pg.Client): Promise<string> {
@@ -45,9 +46,9 @@ async function describeTarget(client: pg.Client): Promise<string> {
 }
 
 async function main(): Promise<void> {
+  const { apply, batchSize, lockTimeoutMs, resumeAfter } = parseBackfillArgs(process.argv.slice(2));
   const url = process.env.DATABASE_URL;
   if (!url) throw new Error("Set DATABASE_URL.");
-  const { apply, batchSize, lockTimeoutMs, resumeAfter } = parseBackfillArgs(process.argv.slice(2));
   resumeBatchSize = batchSize;
   resumeLockTimeoutMs = lockTimeoutMs;
 
@@ -107,7 +108,10 @@ main().catch((error) => {
   console.error(error instanceof Error ? error.message : error);
   if (error instanceof PaymentRefundBackfillLockTimeoutError) {
     console.error(
-      `Resume: DATABASE_URL=... pnpm --filter @auction/db db:backfill-payment-refund -- --apply --batch-size=${resumeBatchSize} --lock-timeout=${resumeLockTimeoutMs}ms${error.resumeAfter ? ` --resume-after=${error.resumeAfter}` : ""}`,
+      `Resume: DATABASE_URL=... ${resumeCommand(
+        { batchSize: resumeBatchSize, lockTimeoutMs: resumeLockTimeoutMs },
+        error.resumeAfter,
+      )}`,
     );
   }
   process.exit(1);

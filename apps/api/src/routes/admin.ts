@@ -27,7 +27,11 @@ import { attachAdminAtgRoutes } from "./admin/atg.routes.js";
 import { attachAdminAuditRoutes } from "./admin/audit.routes.js";
 import { attachAdminCatalogRoutes } from "./admin/catalog.routes.js";
 import { attachAdminCollectionDeskRoutes } from "./admin/collection-desk.routes.js";
-import { attachAdminCollectionSettingsRoutes } from "./admin/collection-settings.routes.js";
+import {
+  attachAdminCollectionPlacesRoutes,
+  attachAdminCollectionSettingsRoutes,
+} from "./admin/collection-settings.routes.js";
+import { attachAdminCollectionStorageRoutes } from "./admin/collection-storage.routes.js";
 import { attachAdminComplianceRoutes } from "./admin/compliance.routes.js";
 import { attachAdminConditionReportsRoutes } from "./admin/condition-reports.routes.js";
 import { attachAdminDataRequestsRoutes } from "./admin/data-requests.routes.js";
@@ -211,6 +215,11 @@ export function createAdminRoutes(
   // Private sale deals are worked by sales and finance alike, so like payments they mount here:
   // each route carries its own capability guard and the platform shell is not required.
   attachAdminPrivateSaleDealRoutes(finance, container, guards);
+
+  // Collections: Finance sets a place's storage terms on its Storage tab, so the list of places
+  // and the storage routes mount here; each route carries its own capability guard.
+  attachAdminCollectionPlacesRoutes(finance, container);
+  attachAdminCollectionStorageRoutes(finance, container);
 
   // Failed jobs is shared with finance, who handles the Xero deliveries; each route and the
   // service narrow it to the sources the person's roles cover.

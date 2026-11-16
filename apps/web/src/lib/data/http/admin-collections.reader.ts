@@ -46,7 +46,6 @@ export const collectionSettingsSchema: z.ZodType<StaffCollectionSettings> = z.ob
   closeOnSaleDays: z.boolean(),
   undoHandOverMinutes: z.number(),
   maxActiveVisits: z.number(),
-  freeStorageDays: z.number().nullable(),
   hours: z.array(
     z.object({ weekday: z.number(), opensLocal: z.string(), closesLocal: z.string() }),
   ),

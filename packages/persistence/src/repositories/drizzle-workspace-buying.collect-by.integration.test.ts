@@ -1,6 +1,13 @@
 import { randomUUID } from "node:crypto";
 import { createDb } from "@auction/db";
-import { DEFAULT_COLLECT_BY_POLICY, collectBy } from "@auction/domain";
+import {
+  DEFAULT_COLLECT_BY_POLICY,
+  assertStorageTerms,
+  calculateStorageCharge,
+  collectBy,
+  storageClearedOn,
+  storageTermsForLot,
+} from "@auction/domain";
 import { sql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { DrizzleAccountPurchaseFactsReader } from "./drizzle-workspace-buying.readers.js";
@@ -78,6 +85,7 @@ describe.skipIf(!HAS_DB)("account purchase facts: collect-by storage (integratio
       sql`delete from lot_fulfilment where lot_id in (select id from lot where seller_legal_entity_id = ${sellerEntity})`,
     );
     await db.execute(sql`delete from lot where seller_legal_entity_id = ${sellerEntity}`);
+    await db.execute(sql`delete from collection_storage_terms where venue_id = ${venueId}`);
     await db.execute(sql`delete from sale where id in (${saleId}, ${bareSaleId})`);
     for (const id of extraSales) await db.execute(sql`delete from sale where id = ${id}`);
     await db.execute(sql`delete from collection_exception where venue_id = ${venueId}`);
@@ -146,6 +154,59 @@ describe.skipIf(!HAS_DB)("account purchase facts: collect-by storage (integratio
     expect((await storageOf(lotId))?.booked).toBe(true);
     await db.execute(sql`update collection_booking_lot set active = false where lot_id = ${lotId}`);
     expect((await storageOf(lotId))?.booked).toBe(false);
+  });
+
+  /** Prices the lot as the buyer's purchases read does, as of a London day. */
+  const priceAsOf = (storage: Awaited<ReturnType<typeof storageOf>>, asOf: string) => {
+    if (!storage?.pricing || !storage.calendar) throw new Error("no pricing or calendar read");
+    return calculateStorageCharge({
+      terms: storageTermsForLot(storage.pricing.terms),
+      clearedOn: storageClearedOn(storage.clearedAt),
+      extensionDays: storage.pricing.extensionDays,
+      waived: storage.pricing.waived,
+      pausedRanges: [],
+      band: storage.pricing.large ? "large" : "standard",
+      asOf,
+      calendar: storage.calendar,
+    });
+  };
+
+  it("reads the terms a lot was sold under in the shape the storage rules accept", async () => {
+    const termsId = randomUUID();
+    await db.execute(sql`
+      insert into collection_storage_terms (id, venue_id, free_days, count_mode, standard_daily_pence,
+         large_daily_pence, handling_fee_pence, effective_from, reason)
+      values (${termsId}, ${venueId}, 10, 'working', 300, 600, 500, '2031-01-01', 'Integration')`);
+    const lotId = await wonLot();
+    await db.execute(
+      sql`update lot_fulfilment set storage_terms_id = ${termsId} where lot_id = ${lotId}`,
+    );
+    const storage = await storageOf(lotId);
+    expect(storage?.pricing?.terms).toEqual({
+      freeDays: 10,
+      countMode: "working",
+      standardDailyPence: 300,
+      largeDailyPence: 600,
+      handlingFeePence: 500,
+      effectiveFrom: "2031-01-01",
+    });
+    // biome-ignore lint/style/noNonNullAssertion: asserted just above
+    expect(() => assertStorageTerms(storage!.pricing!.terms!)).not.toThrow();
+    // Cleared Sat 1 Mar 2031: ten working days (Mon to Fri) run to Fri 14 Mar. Two days on, the
+    // total is two days at £3 and the £5 handling fee.
+    const charge = priceAsOf(storage, "2031-03-16");
+    expect(charge).toMatchObject({ collectBy: "2031-03-14", amountPence: 1100, state: "charging" });
+  });
+
+  it("prices a lot won before the first terms under the legacy terms, not the place's 14 days", async () => {
+    const storage = await storageOf(await wonLot());
+    expect(storage?.pricing?.terms).toBeNull();
+    // Cleared Sat 1 Mar 2031: 30 calendar days free run to Mon 31 Mar, and nothing is charged.
+    expect(priceAsOf(storage, "2031-03-20")).toMatchObject({
+      collectBy: "2031-03-31",
+      state: "upcoming",
+    });
+    expect(priceAsOf(storage, "2031-04-30")).toMatchObject({ amountPence: 0, state: "overdue" });
   });
 
   it("has none for a lot with no clearance day or at a venue with no collection place", async () => {

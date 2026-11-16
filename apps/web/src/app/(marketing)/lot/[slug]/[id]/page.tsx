@@ -280,6 +280,7 @@ export default async function ArtworkPage({ params, searchParams }: PageProps) {
                               artist,
                               documents: lotDocuments,
                               buyersPremium: templateReads.buyersPremium,
+                              storageTerms: templateReads.storageTerms,
                               viewer: null,
                               media: mediaTreatment,
                             })}

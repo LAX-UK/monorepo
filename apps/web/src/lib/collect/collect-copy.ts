@@ -77,6 +77,10 @@ export const COLLECT_COPY = {
     title: "No times left in the next 4 weeks",
     body: "Email us and we'll find a time that works, or come back later: times open up as people change their plans.",
   },
+  storage: {
+    label: "Storage to pay",
+    body: "Charged up to your visit day. If you move the visit, we adjust it.",
+  },
   confirm: {
     book: "Confirm booking",
     booking: "Booking…",

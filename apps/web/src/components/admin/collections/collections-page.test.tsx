@@ -1,5 +1,7 @@
 import { SETTINGS } from "@/lib/admin/collections/collections.fixture";
+import { COLLECTION_TABS } from "@/lib/admin/collections/collections.vm";
 import { deskDay, deskList } from "@/lib/admin/collections/desk.fixture";
+import { STORAGE } from "@/lib/admin/collections/storage.fixture";
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
@@ -17,6 +19,12 @@ vi.mock("@/lib/actions/admin/admin-collection-desk", () => ({
   loadDeskDayAction: vi.fn(),
   loadDeskClientLotsAction: vi.fn(),
 }));
+vi.mock("@/lib/actions/admin/admin-collection-storage", () => ({
+  scheduleStorageTermsAction: vi.fn(),
+  editStorageTermsAction: vi.fn(),
+  cancelStorageTermsAction: vi.fn(),
+  setStorageChargingAction: vi.fn(),
+}));
 vi.mock("@/lib/actions/admin/admin-lot-fulfilment", () => ({
   adminLotFulfilmentReleaseResultAction: vi.fn(),
 }));
@@ -25,6 +33,7 @@ vi.mock("@/lib/auth/step-up/staff-step-up.client", () => ({ handleStaffStepUp: (
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
 
 const { CollectionsPage } = await import("./collections-page");
+const { CollectionsLoadingSkeleton } = await import("./collections-loading-skeleton");
 
 const VENUE = {
   venueId: SETTINGS.venueId,
@@ -35,10 +44,13 @@ const VENUE = {
 
 const base = {
   tab: "hours" as const,
+  tabs: COLLECTION_TABS,
   venues: [VENUE],
+  venueId: SETTINGS.venueId,
   settings: SETTINGS,
   loadError: null,
   canChange: true,
+  canChangeStorage: false,
   today: "2026-11-09",
 };
 
@@ -95,6 +107,7 @@ describe("CollectionsPage", () => {
         {...base}
         settings={null}
         venues={[]}
+        venueId={null}
         loadError="We couldn't load the collection settings. Try again in a moment."
       />,
     );
@@ -105,11 +118,11 @@ describe("CollectionsPage", () => {
   });
 
   it("says there is no place when there are no venues", () => {
-    render(<CollectionsPage {...base} settings={null} venues={[]} />);
+    render(<CollectionsPage {...base} settings={null} venues={[]} venueId={null} />);
     expect(screen.getByText("No place to collect from")).toBeTruthy();
   });
 
-  it("opens on the Day tab with the five tabs, and the count of visits to follow up", () => {
+  it("opens on the Day tab with the six tabs, and the count of visits to follow up", () => {
     render(
       <CollectionsPage
         {...base}
@@ -120,12 +133,15 @@ describe("CollectionsPage", () => {
     const names = screen
       .getAllByRole("link")
       .map((link) => link.textContent)
-      .filter((text) => /Day|Upcoming|Not collected|Hours and rules|Closures/.test(text ?? ""));
+      .filter((text) =>
+        /Day|Upcoming|Not collected|Hours and rules|Storage|Closures/.test(text ?? ""),
+      );
     expect(names.map((n) => n?.replace(/\d+$/, ""))).toEqual([
       "Day",
       "Upcoming",
       "Not collected",
       "Hours and rules",
+      "Storage",
       "Closures",
     ]);
     expect(screen.getByRole("link", { name: /Not collected/ }).textContent).toContain("3");
@@ -193,5 +209,75 @@ describe("CollectionsPage", () => {
       />,
     );
     expect(screen.queryByText("Online booking is off")).toBeNull();
+  });
+});
+
+describe("CollectionsPage, Storage tab", () => {
+  const storageTab = {
+    ...base,
+    tab: "storage" as const,
+    storage: { settings: STORAGE, error: null },
+    canChangeStorage: true,
+  };
+
+  it("sits beside Hours and rules and says in the header whether charging is on", () => {
+    render(<CollectionsPage {...storageTab} />);
+    expect(screen.getByRole("link", { name: "Storage" }).getAttribute("aria-current")).toBe("page");
+    const heading = screen.getByRole("heading", { level: 1, name: "Collections" });
+    expect(heading.parentElement?.textContent).toContain("Charging off");
+    expect(screen.getByRole("region", { name: "In force" })).toBeTruthy();
+    expect(screen.queryByText("Online booking is off")).toBeNull();
+    expect(screen.queryByRole("form", { name: "Hours and rules" })).toBeNull();
+  });
+
+  it("shows Charging on when invoices are raised", () => {
+    render(
+      <CollectionsPage
+        {...storageTab}
+        storage={{
+          settings: { ...STORAGE, charging: { raiseInvoices: true, vatTreatment: "zero_rated" } },
+          error: null,
+        }}
+      />,
+    );
+    const heading = screen.getByRole("heading", { level: 1, name: "Collections" });
+    expect(heading.parentElement?.textContent).toContain("Charging on");
+  });
+
+  it("tells Fulfilment that only Finance and Admins can change the terms", () => {
+    render(<CollectionsPage {...storageTab} canChangeStorage={false} />);
+    expect(screen.getByText("View only")).toBeTruthy();
+    expect(screen.getByText("Only Finance and Admins can change storage terms.")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Schedule a change" })).toBeNull();
+  });
+
+  it("says the terms didn't load, with a way to try again", () => {
+    render(
+      <CollectionsPage
+        {...storageTab}
+        storage={{
+          settings: null,
+          error: "We couldn't load the storage terms. Try again in a moment.",
+        }}
+      />,
+    );
+    expect(screen.getByRole("alert").textContent).toContain("Storage terms didn't load");
+    expect(screen.getByRole("link", { name: "Try again" }).getAttribute("href")).toBe(
+      `/admin/collections?tab=storage&venue=${SETTINGS.venueId}`,
+    );
+  });
+
+  it("shows Finance the Storage tab only", () => {
+    render(<CollectionsPage {...storageTab} tabs={["storage"]} settings={null} />);
+    const tabs = screen.getByRole("navigation", { name: "Collections sections" });
+    expect(tabs.textContent).toBe("Storage");
+    expect(screen.getByRole("region", { name: "In force" })).toBeTruthy();
+  });
+
+  it("holds the Storage tab's shape while it loads", () => {
+    const { container } = render(<CollectionsLoadingSkeleton tab="storage" />);
+    expect(screen.getByRole("link", { name: "Storage" }).getAttribute("aria-current")).toBe("page");
+    expect(container.querySelector('[aria-busy="true"]')).toBeTruthy();
+    expect(screen.queryByText("Buyer")).toBeNull();
   });
 });

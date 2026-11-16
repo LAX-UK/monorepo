@@ -17,6 +17,7 @@ import {
   ARTISTS_ACCESS,
   AUDIT_DOMAIN_EVENTS_ACCESS,
   CATEGORIES_READ_ACCESS,
+  COLLECTIONS_PAGE_ACCESS,
   COLLECTIONS_READ_ACCESS,
   CONDITION_REPORTS_READ_ACCESS,
   CONSIGNMENT_INBOX_READ_ACCESS,
@@ -41,7 +42,12 @@ import {
   VENUES_READ_ACCESS,
 } from "@/lib/navigation/staff-nav-access";
 import type { NavBadgeTone } from "@/lib/shell/contracts";
-import type { CapabilityRequirement, StaffRoles, UserRole } from "@auction/types";
+import {
+  type CapabilityRequirement,
+  type StaffRoles,
+  type UserRole,
+  userHasAccessTo,
+} from "@auction/types";
 import {
   AlertTriangle,
   Banknote,
@@ -92,6 +98,11 @@ export type StaffNavItemSpec = {
   badgeTone?: NavBadgeTone;
   match?: (pathname: string) => boolean;
   requirement: CapabilityRequirement;
+  /**
+   * Who the badge is for, when the page is open to more people than the work it counts (Finance
+   * opens Collections for Storage but has no hand-over tabs). Others see the item without it.
+   */
+  badgeRequirement?: CapabilityRequirement;
 };
 
 function navBadge(
@@ -127,6 +138,19 @@ function filterNavItem(
   return canOpenAdminRoute(role, staffRoles, item.href, item.requirement);
 }
 
+/** The item as this person sees it: without a badge counting work they cannot act on. */
+function badgeFor(
+  role: UserRole,
+  staffRoles: StaffRoles | undefined,
+  item: StaffNavItemSpec,
+): StaffNavItemSpec {
+  if (!item.badgeRequirement || userHasAccessTo(role, staffRoles, item.badgeRequirement)) {
+    return item;
+  }
+  const { badge: _badge, badgeTone: _tone, ...rest } = item;
+  return rest;
+}
+
 function filterGroups(
   role: UserRole,
   staffRoles: StaffRoles | undefined,
@@ -135,7 +159,9 @@ function filterGroups(
   return groups
     .map((g) => ({
       ...g,
-      items: g.items.filter((item) => filterNavItem(role, staffRoles, item)),
+      items: g.items
+        .filter((item) => filterNavItem(role, staffRoles, item))
+        .map((item) => badgeFor(role, staffRoles, item)),
     }))
     .filter((g) => g.items.length > 0);
 }
@@ -272,7 +298,9 @@ function buildStaffNavGroupSpecs(
           label: "Collections",
           icon: CalendarClock,
           match: (pathname) => pathname.startsWith("/admin/collections"),
-          requirement: COLLECTIONS_READ_ACCESS,
+          requirement: COLLECTIONS_PAGE_ACCESS,
+          // Hand-overs are the desk tabs' work; Finance sees only the Storage tab.
+          badgeRequirement: COLLECTIONS_READ_ACCESS,
           ...navBadge(navCounts.collectionsToHandOver, "warning"),
         },
         {

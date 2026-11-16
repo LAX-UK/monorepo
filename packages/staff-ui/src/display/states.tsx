@@ -1,7 +1,9 @@
 import { LaxIllustration, type LaxIllustrationName } from "@auction/ui/components/lax-illustration";
+import { Skeleton } from "@auction/ui/lax";
 import { Eye } from "lucide-react";
 import type * as React from "react";
 import { cn } from "../lib/cn.js";
+import { KEY_VALUE_ROW } from "./key-value-row.js";
 
 type StateProps = {
   title: string;
@@ -136,7 +138,7 @@ export function ViewOnlyBadge({ role }: { role?: string }) {
   return (
     <span
       {...(role ? { title: `Your role: ${role}` } : {})}
-      className="inline-flex h-6 items-center gap-1.5 rounded-staff-xs border border-staff-line px-2 text-staff-xs font-medium text-staff-muted"
+      className="inline-flex h-6 shrink-0 items-center whitespace-nowrap gap-1.5 rounded-staff-xs border border-staff-line px-2 text-staff-xs font-medium text-staff-muted"
     >
       <Eye aria-hidden className="size-3.5" strokeWidth={1.75} />
       View only
@@ -145,12 +147,93 @@ export function ViewOnlyBadge({ role }: { role?: string }) {
 }
 
 /** A block placeholder with the exact geometry of what will load, so nothing shifts. */
-export { Skeleton } from "@auction/ui/lax";
+export { Skeleton };
 
 /**
  * A titled block on a record page: hairline card, 16px header row with an optional action, then
  * content. The default container for detail pages and panels.
  */
+/**
+ * A `Section` while it loads, drawn by the same header and rows so nothing moves when the content
+ * arrives: the title, the description and the header action only where the real card has them,
+ * then label-and-value rows (`facts`), table rows (`table`) or one switch or checkbox row with
+ * its text (`choice`). `rows` is a count, or for `facts` and `choice` the lines each row's text
+ * takes (a value that wraps to two lines is `2`).
+ */
+export function SectionSkeleton({
+  rows,
+  body = "facts",
+  description = false,
+  action = false,
+  className,
+}: {
+  rows: number | readonly number[];
+  body?: "facts" | "table" | "choice";
+  description?: boolean;
+  action?: boolean;
+  className?: string;
+}) {
+  const lines = typeof rows === "number" ? Array.from({ length: rows }, () => 1) : rows;
+  const text = (count: number) =>
+    Array.from({ length: count }, (_, line) => (
+      <Skeleton
+        // biome-ignore lint/suspicious/noArrayIndexKey: placeholder lines have no identity
+        key={line}
+        className={cn("h-3", line === count - 1 && count > 1 ? "w-2/3" : "w-full")}
+      />
+    ));
+  return (
+    <div
+      aria-hidden
+      className={cn("rounded-staff-lg border border-staff-line bg-staff-surface", className)}
+    >
+      <div className="flex min-h-12 items-center justify-between gap-3 border-b border-staff-line-subtle px-4 py-2.5">
+        <div className="flex flex-col gap-1.5">
+          <Skeleton className="h-4 w-24" />
+          {description ? <Skeleton className="h-3 w-32" /> : null}
+        </div>
+        {action ? <Skeleton className="h-control-sm w-32 rounded-staff-sm" /> : null}
+      </div>
+      {body === "facts" ? (
+        <div className="@container grid p-4">
+          {lines.map((count, index) => (
+            // biome-ignore lint/suspicious/noArrayIndexKey: placeholder rows have no identity
+            <div key={index} className={cn(KEY_VALUE_ROW, "items-start")}>
+              <Skeleton className="mt-1 h-3 w-24" />
+              <div className="flex flex-col gap-2 py-1">{text(count)}</div>
+            </div>
+          ))}
+        </div>
+      ) : body === "choice" ? (
+        <div className="flex gap-2.5 p-4 py-5.5">
+          <Skeleton className="h-5 w-8 shrink-0 rounded-full" />
+          <div className="flex max-w-prose flex-1 flex-col gap-2">
+            <Skeleton className="h-4 w-40" />
+            {text(lines.reduce((sum, count) => sum + count, 0))}
+          </div>
+        </div>
+      ) : (
+        <div className="flex flex-col">
+          <div className="flex h-9 items-center gap-6 border-b border-staff-line px-4">
+            <Skeleton className="h-3 w-16" />
+          </div>
+          {lines.map((_, index) => (
+            <div
+              // biome-ignore lint/suspicious/noArrayIndexKey: placeholder rows have no identity
+              key={index}
+              className="flex h-11 items-center gap-6 border-b border-staff-line-subtle px-4 last:border-b-0"
+            >
+              <Skeleton className="h-3 w-28" />
+              <Skeleton className="h-3 w-24" />
+              <Skeleton className="h-3 flex-1" />
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function Section({
   title,
   status,

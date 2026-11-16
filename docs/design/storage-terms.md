@@ -35,15 +35,16 @@ Built with the shared staff-ui kit and docs/design/staff-design-standard.md.
 **Storage tab (Finance/Admin):**
 - Status chip in the page header: "Charging off" / "Charging on".
 - Info banner while charging is off: "Charging is off. Buyers see the free period and the rates below, and the Not collected tab counts what would be due, but no storage invoice is raised. Finance can switch it on once the VAT treatment is confirmed."
-- "In force" card: Since {date}; Free storage ("14 days after payment clears, counted in calendar days. A date that falls on a closed day moves to the next open day."); Standard works £3.00 per lot a day; Large works £6.00 per lot a day · any side over 150 cm, marked on the lot; Handling fee None; Applies to "Lots won in sales that close on or after the start date". Action: "Schedule a change".
-- "Scheduled" card (when one exists): From {date}; before → after for each changed value; Reason. Actions: Edit, Cancel change (in-page confirm).
+- "In force" card: Since {date}; Free ("14 days after payment clears. A date that falls on a closed day moves to the next open day."); Counting "Calendar days"; Standard £3.00 per lot a day; Large £6.00 per lot a day · any side over 150 cm, marked on the lot; Handling None; Applies to "Lots won in sales that close on or after the start date". Action: "Schedule a change". While a change waits the action is blocked, and its reason is a line on the card ("A change is already scheduled. Edit or cancel it first."), not only a tooltip, since a phone has no hover.
+- "Scheduled" card (when one exists): From {date}; before → after for each value, under the same short labels as In force (Free, Counting, Standard, Large, Handling) with short values ("14 days", "Calendar days", "£3.00", "As standard", "None"), so every row stays on one line at 375; Reason. Actions: Edit, Cancel change (in-page confirm).
+- Cards that share a row at 1440 stretch to one bottom edge.
 - "Charging" card: "Raise storage invoices" switch with the explanation; disabled with the reason until a VAT treatment is chosen; turning it on asks for an in-page confirmation.
 - "History" table: When · Who · Change (plain sentence).
 
 **Schedule a change (side sheet):**
-- Sections: When it starts (Starts on date, from tomorrow; Reason, shown in history); Free storage (Free days 0–90; Count in: Calendar days (Recommended) / Working days); Daily charge after that (Standard £, Large £ with a toggle to turn off the large band, "Large means any side over 150 cm"); Handling fee (optional, once per lot when charges start).
-- Live preview "Buyers will read: Storage is free for 14 days after your payment clears. After that it is £3.50 a day for each work, or £7.00 for large works, plus VAT where it applies." built by the same buyer formatter.
-- 2+ fields: error summary at the top ("2 things to fix", links to fields) plus inline errors. Copy: "Choose a date from tomorrow" · "Enter a number of days from 0 to 90" · "Enter a daily rate, or turn off the large band" · "Enter an amount up to £500.00".
+- Sections: When it starts (Starts on date, from tomorrow and at most 2 years ahead; Reason, shown in History); Free storage (Free days 0–90, a field sized for two digits; Count in: Calendar days (Recommended) / Working days); Daily charge after that (Standard £, Large £ with a "Large band" toggle to turn it off, "Charge more for large works. Large means any side over 150 cm."); Handling fee (optional, once per lot when charges start). Money fields are sized for £500.00 and the date for its example (kit `max-w-staff-field-*`). A large band that is on charges at least £0.01: £0.00 is refused with "Enter a daily rate, or turn off the large band".
+- Live preview "Buyers will read: Storage is free for 14 days after your payment clears. After that it is £3.50 a day for each work, or £7.00 for works over 150 cm on any side, plus VAT where it applies." built by the same buyer formatter, so it is word for word the lot and shipping page sentence (the "over 150 cm on any side" form below, not "for large works"). It is spoken to screen readers once typing pauses, not on every keystroke.
+- 2+ fields: error summary at the top ("2 things to fix", links to fields) plus inline errors. One field: no summary; focus goes straight to that field and its inline error. This is a deliberate exception to the staff standard's FRM-4 (summary even for one error): the sheet is short and the field is in view. Copy: "Choose a date from tomorrow" · "Choose a date up to {latest day}" · "Enter a number of days from 0 to 90" · "Enter a daily rate, or turn off the large band" · "Enter an amount up to £500.00".
 - Buttons: Cancel / Schedule change. Saving state on the button, no double submit, unsaved-changes guard.
 
 **Other states:** No terms yet (empty state: "No storage terms set. Until you set them, buyers are asked to collect within 30 days and told charges may apply. Nothing is charged." + "Set storage terms"); Read-only for Fulfilment ("Only Finance and Admins can change storage terms."); loading skeleton; load error with retry; 375 px layout stacks cards.
@@ -51,6 +52,12 @@ Built with the shared staff-ui kit and docs/design/staff-design-standard.md.
 **Not collected tab:** per lot: "{n} days over", Collect by {date} · buyer, Storage so far £x, Band; actions "Extend free storage" (Fulfilment, up to 30 days, reason) and "Waive charges" (Finance, reason). Both logged; buyer page updates at once. 60-day flag for follow-up.
 
 **Lot page (staff):** "Large work" flag under Collection.
+
+## Until the buyer pages move (PR 3 ships before PR 4)
+The Storage tab (PR 3) saves versioned terms, but buyers do not see them yet: buyer pages still read `collection_place.free_storage_days` (`apps/api/src/services/organisation-buying/purchase-view.ts`, `packages/persistence/src/repositories/drizzle-workspace-buying.readers.ts`), and nothing yet records on a lot the terms in force when its sale closed.
+- Interim notice while charging is off: "No storage invoice is raised. Buyers don't see these terms yet: their pages keep today's collect-by date until they move to the storage terms in a coming release. Finance can switch charging on once the VAT treatment is confirmed."
+- PR 4 must: call `recordTermsForSale` when a sale closes; move the buyer reads above onto `storageTermsForLot` and `formatStorageTerms`; then restore the approved notice ("Buyers see the free period and the rates below, and the Not collected tab counts what would be due, but no storage invoice is raised. …"), once PR 5 has the Not collected tab counting what would be due.
+- After the web release without them is live: remove `freeStorageDays` and `storageChargePence` from the Hours and rules body (`packages/validators/src/collection-settings.ts`), which are accepted and ignored for one release so an older page can still save.
 
 ## Buyer copy
 - Purchase notice upcoming: "Please collect by {day} · Your work is paid for and waiting at {place}. Storage is free until then, and {rate} a day after that, plus VAT where it applies."
@@ -65,6 +72,22 @@ Built with the shared staff-ui kit and docs/design/staff-design-standard.md.
 - Hand-over desk: "Storage of {amount} is due on this lot. Take payment or waive it before hand-over."
 - Lot/shipping page: "Storage is free for 14 days after your payment clears. After that it is £3 a day for each work, or £6 for works over 150 cm on any side, plus VAT where it applies."
 - Email "Storage charges have started".
+
+Wording that is not in the approved list above, added so the formatter and this document agree (change it here and in `packages/domain/src/storage-terms.ts` together):
+- Handling fee, on the upcoming and soon notices when a fee is set: "A handling fee of {fee} applies once when charges start."
+- Handling fee, in the running total: "{amount} so far ({n} days at {rate}, and a {fee} handling fee), plus VAT where it applies." With no daily rate: "{amount} so far (a {fee} handling fee), plus VAT where it applies."
+- Lot/shipping sentence when only the large band is charged: "…it is {large rate} a day for works over 150 cm on any side, and nothing for others, plus VAT where it applies."
+- Lot/shipping sentence with no free days: "It is {rates}", or "Storage is charged from the day after your payment clears."
+- Lot/shipping sentence when no rate is set: "After that, storage charges may apply."
+- Lot page: the terms stated are those in force on the day the sale closes (ST9), and the shipping page carries its old general "storage charges may apply" sentence only while no place has terms.
+- A lot won before its place had terms (no `storage_terms_id`) is priced by the same rules under `LEGACY_STORAGE_TERMS` (`storageTermsForLot`): 30 calendar days free and nothing charged, whatever the place's old `free_storage_days`. Its notice reads "Storage is free until then." with no rate, and after the day "That day has passed. Book a time to collect your work from {place}, or email us if you need longer." with no total.
+- If a place has no opening calendar, or a stored version cannot be priced (the purchases read logs it), that lot alone keeps today's collect-by notice; the rest of the list is unaffected.
+- The lot and shipping pages describe the terms in force at a place; a place with no terms yet shows no storage sentence on the lot page.
+- List badge when the day has passed and nothing is owed (charging off, or a day count of zero): "Collect by {day}" with no total; a waived lot shows "No storage to pay" on its notice.
+
+## Not yet built (tracked)
+- ST5 pauses on the buyer's running total: only a shipping quote LAX still owes is applied (from the day it was asked to the day it was quoted). Open checks and disputes are not linked to a lot in the data the purchases read uses, so they do not pause the total yet. This must land before charging is switched on (PR 6), or a buyer in a dispute would see charges.
+- ST13 on the booking page: the "Storage to pay" line shows for a new booking only. A visit being changed has none; the charge must be re-priced when the visit moves (PR 6).
 
 ## Build (7 PRs)
 1. Domain rules: storage terms type, pure charge calculator (calendar/working days, pauses, bands, extension, waiver), next-open-day rule replacing DEFAULT_COLLECT_BY_POLICY reads. Unit tests first.

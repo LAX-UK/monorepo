@@ -9,6 +9,8 @@ export type FormPageProps = {
   title: React.ReactNode;
   /** One sentence: what the form is for, or what is locked. */
   description?: React.ReactNode;
+  /** A status badge beside the title, for a setting whose state is the point of the page. */
+  status?: React.ReactNode;
   /** TabNav when the record is edited in separate sections, each saved on its own. */
   tabs?: React.ReactNode;
   /** The one primary action of a page that is not a single form (e.g. "Book for a client"). */
@@ -28,6 +30,7 @@ export function FormPage({
   breadcrumbs,
   title,
   description,
+  status,
   tabs,
   primaryAction,
   notice,
@@ -39,6 +42,7 @@ export function FormPage({
         title={title}
         {...(breadcrumbs ? { breadcrumbs } : {})}
         {...(description ? { description } : {})}
+        {...(status ? { status } : {})}
         {...(tabs ? { tabs } : {})}
         {...(primaryAction ? { primaryAction } : {})}
       />

@@ -984,20 +984,33 @@ export {
 } from "./collection-handover.js";
 export {
   LARGE_WORK_SIDE_CM,
+  LEGACY_FREE_STORAGE_DAYS,
+  LEGACY_STORAGE_TERMS,
+  MAX_STORAGE_AMOUNT_PENCE,
+  MAX_STORAGE_FREE_DAYS,
+  MAX_STORAGE_TERMS_LEAD_YEARS,
+  STORAGE_COUNT_MODES,
+  latestStorageTermsStart,
+  assertStorageTerms,
   calculateStorageCharge,
+  isStoragePence,
+  storageTermsForLot,
+  storageTermsOf,
   formatStorageBadge,
   formatStorageDeskLine,
   formatStorageInvoiceLine,
   formatStorageNotice,
   formatStorageTerms,
+  purchaseStorageView,
   storageClearedOn,
   storageDailyPence,
   type StorageBand,
   type StorageCalendar,
   type StorageCharge,
   type StorageChargeInput,
-  type StorageDayCount,
+  type StorageCountMode,
   type StorageInvoiceLine,
+  type PurchaseStorageView,
   type StorageNotice,
   type StorageNoticeContext,
   type StoragePause,
@@ -1517,3 +1530,8 @@ export {
   type SellerTermsSnapshot,
 } from "./seller-terms.js";
 export * from "./public-page-cache.js";
+export { DEMO_SEED_EVENT_PRODUCER, isDemoSeedEvent } from "./demo-seed-events.js";
+export {
+  type CollectionCanonicalRequest,
+  collectionRequestCanonical,
+} from "./collection-request-canonical.js";

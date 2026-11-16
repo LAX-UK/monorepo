@@ -88,6 +88,7 @@ describe("AccountPurchasesService.list", () => {
       state: "upcoming",
       placeId: "venue-marylebone",
       placeName: "LAX Marylebone",
+      storage: null,
     });
     expect(byLot.get(LOTS.due)?.delivery.collectBy).toBeNull();
   });

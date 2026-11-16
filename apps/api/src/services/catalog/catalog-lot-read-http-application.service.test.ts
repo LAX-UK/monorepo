@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+
 import { withPublicLotResults } from "../../lib/public-lot-result.js";
 import { createCatalogLotReadHttpFixture } from "../../testing/catalog-lot-read-http-fixture.js";
 import { CachedCatalogueListService } from "../cached-catalogue-list.service.js";
@@ -229,5 +230,80 @@ describe("CatalogLotReadHttpApplicationService", () => {
       expect(data).toMatchObject({ winnerId: "next-bidder-user", currentPrice: "88000.00" });
       expect(data).not.toHaveProperty("resultPending");
     });
+  });
+});
+
+describe("storage terms on the public lot read", () => {
+  const lot = {
+    id: "lot-1",
+    saleId: "s1",
+    lotNumber: 3,
+    title: "Harbour lights",
+    description: null,
+    medium: "Oil",
+    dimensions: null,
+    images: [],
+    categoryId: "c1",
+    auctionType: "english",
+    status: "active",
+    startingPrice: "100.00",
+    reservePrice: null,
+    currentPrice: "100.00",
+    buyerPremiumRate: "0.25",
+    minBidIncrement: "10.00",
+    winnerId: null,
+    startTime: new Date("2026-10-01T10:00:00Z"),
+    endTime: new Date("2026-12-31T10:00:00Z"),
+    marketingDetails: {},
+  };
+  const findTermsInForce = vi.fn();
+  const read = (venueId: string | null) =>
+    createCatalogLotReadHttpFixture({
+      storageTerms: { findTermsInForce },
+      lotService: { listLotsForPublicApi: vi.fn(), getById: vi.fn().mockResolvedValue(lot) },
+      saleService: {
+        getByIdForPublicCatalog: vi.fn().mockResolvedValue({
+          id: "s1",
+          status: "active",
+          venueId,
+          buyerPremiumTiers: null,
+          endTime: new Date("2026-12-31T10:00:00Z"),
+        }),
+      } as never,
+      cachedCatalogueListService: new CachedCatalogueListService(createMemoryCache(), 60),
+      now: () => new Date("2026-11-01T12:00:00Z"),
+    });
+  const detail = async (venueId: string | null) =>
+    (await read(venueId).getLotDetail({ lotId: "lot-1", viewer: {} })).body as {
+      data: { storageTerms: string | null };
+    };
+
+  const RECORD = {
+    freeDays: 14,
+    countMode: "calendar",
+    standardDailyPence: 0,
+    largeDailyPence: null,
+    handlingFeePence: 0,
+    effectiveFrom: "2026-10-01",
+  };
+
+  it("carries the sentence for the place the sale is held at", async () => {
+    findTermsInForce.mockResolvedValue(RECORD);
+    expect((await detail("venue-1")).data.storageTerms).toContain(
+      "Storage is free for 14 days after your payment clears.",
+    );
+    // The lot is sold under the terms in force when its sale closes (ST9), not today's.
+    expect(findTermsInForce).toHaveBeenCalledWith("venue-1", "2026-12-31");
+  });
+
+  it("carries none when the sale has no venue or the place has set none", async () => {
+    findTermsInForce.mockResolvedValue(null);
+    expect((await detail(null)).data.storageTerms).toBeNull();
+    expect((await detail("venue-1")).data.storageTerms).toBeNull();
+  });
+
+  it("serves the lot without it when the terms cannot be read", async () => {
+    findTermsInForce.mockRejectedValue(new Error("db down"));
+    expect((await detail("venue-1")).data.storageTerms).toBeNull();
   });
 });
