@@ -2,7 +2,8 @@
 
 The full demo seed (GAP-31) writes invented people, sales, Shop orders and one item in each staff
 queue. It runs from the **Worker task (test)** workflow, task `demo-full`, and is safe to run again:
-every staff queue item is written once and never changed, so work staff do on it is kept.
+every staff queue item is written once and never changed, so work staff do on it is kept. A row
+that has been deleted is written again on the next run (staff cannot delete these rows in the app).
 
 ## Where it may run
 
@@ -29,6 +30,19 @@ values ('test', current_database(), '<your name>');
 
 Check it with `select * from demo_seed_target;`. For a local database use `'local'`.
 
+### How each environment gets its mark
+
+- **CI** (`account-e2e-pr.yml`, a throwaway database): the workflow runs
+  `pnpm --filter @auction/db db:seed:mark-demo-target local ci` after `db:migrate` and before
+  `db:seed:demo-full`. The script uses the owner address, applies the same production address checks
+  as the seeds, and leaves an existing mark alone. Any new workflow that runs a demo seed on a fresh
+  database must run it too; the guard itself is never relaxed.
+- **Local**: run the same command (or the SQL above with `'local'`).
+- **Test** (the shared test database, seeded by **Worker task (test)**): the mark is not added by
+  the workflow. The infrastructure owner applies migration 0398 with the test infra apply and then
+  marks the database once as above (`'test'`, owner address). Until then the `demo-full` task is
+  refused. The Shop seed reads the same mark (`shop_app` has SELECT only), so one mark covers both.
+
 If 0398 is rolled back the mark goes with it; insert it again after the migration is reapplied.
 
 ## What staff see after a run
@@ -49,3 +63,22 @@ If 0398 is rolled back the mark goes with it; insert it again after the migratio
 
 Events the seeds write carry the producer `demo-seed`; the notification fan-out and the collection
 notices skip them, so no one is emailed about demo data.
+
+## Items that go stale (clock-bound)
+
+Because each item is written once, three of them are fixed to the day of the first run and are not
+refilled by later runs:
+
+| Item | Shown for about |
+| --- | --- |
+| Collection booking (slot about 3 days after the first run) | 3 days, then it is no longer "Upcoming" |
+| Private sale offer (expires 5 days after the first run) | 5 days, then the offer has lapsed |
+| Data request (requested 24 days before, due a month after the first run) | about a week, then it is overdue |
+
+The other items have no date that passes. To show the three again, do not edit them in place. Either
+restore a fresh copy of the test database (then mark it, see above) and run the seed, or an operator
+deletes only seed-owned rows (ids with the prefixes `df93…` booking, `df97…`/`df98…` deal, `df9a…`
+export, and their `demo-seed` events) that staff have not worked on, then runs the seed again. Check
+each row is still in its seeded state first (booking `booked`, deal at `offer`, export open); a row
+staff have changed is theirs and is left alone. A separate refresh command is deliberately not
+provided: rewriting rows that staff may have touched is the risk the insert-once design avoids.

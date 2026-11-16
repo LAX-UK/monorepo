@@ -148,6 +148,8 @@ jobs:
           pnpm --filter @auction/db... build
           pnpm --filter @auction/db db:migrate
           pnpm --filter @auction/db db:seed:dev
+          # The demo seed refuses a database without the demo seed mark (0398); this throwaway CI database is marked as the owner.
+          pnpm --filter @auction/db db:seed:mark-demo-target local ci
           pnpm --filter @auction/db db:seed:demo-full
           pnpm --filter @auction/db db:seed:check-accounts
           DATABASE_URL_OWNER="$DATABASE_URL" pnpm --filter @auction/db db:roles
