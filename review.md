@@ -1,105 +1,124 @@
 Verdict: FIX FIRST
 
-# Review of PR #1477: Storage terms 3/7, Bid admin staff Storage tab
+# Final recheck of PR #1477: Storage terms 3/7, Bid admin staff Storage tab
 
-Head reviewed: `c66cc7ba` (`storage-terms-staff-tab`). Judged against `docs/design/storage-terms.md` (ST1–ST17, "Staff screens") and `docs/design/staff-design-standard.md`. Line numbers refer to the PR head.
+Head rechecked: `53a272f7` (`storage-terms-staff-tab`). The head did not change from at least 00:31 to 00:48 UTC (last commit 00:24). Judged against the first review (of `c66cc7ba`), the PR body's "Changes after review", `docs/design/storage-terms.md` and `docs/design/staff-design-standard.md`. Line numbers refer to `53a272f7`.
 
-One blocking correctness issue: two changes can be scheduled at the same time. Everything else is should-fix or polish. Security is sound: capability checks, step-up, Fulfilment read-only, validation at the edge, audit and the VAT rule are all enforced on the server. The copy matches the spec word for word.
+The code is ready: all 19 findings are fixed or recorded as deliberate. The concurrency guard is real, and I proved it against Postgres 16. The verdict is FIX FIRST for one process reason only: **the branch conflicts with `main`, so CI has not run on any commit made after the review.** Resolve the conflict, let CI go green, and this ships. Nothing else blocks.
 
 ## Findings
 
-1. **BLOCKING: "one change waits at a time" is not enforced under concurrency.**
-   - Where: `apps/api/src/services/collection-storage/collection-storage.service.ts:162-163` checks for a waiting change with `listTerms` *before* the transaction. Inside the transaction, `packages/persistence/src/repositories/drizzle-collection-storage.repository.ts:160-161` takes the place lock but re-checks only `startIsTaken`, which compares the same start date. The unique index is also per date only.
-   - What goes wrong: two Finance users submit changes for 1 Dec and 1 Jan at the same moment, or a second tab submits. Both are inserted. `splitTerms` (service :103) shows only `waiting[0]`, so the 1 Jan change is invisible on the tab, cannot be edited or cancelled there, and takes effect silently.
-   - Fix: re-check "no live version with `effective_from > today`" inside the locked transaction and return `change_already_scheduled`.
-   - Tests: the in-memory double (`apps/api/src/testing/in-memory-collection-storage.ts:117-118`) has the same gap. Add a repository integration test with two concurrent schedules.
+1. **BLOCKING (merge): the branch conflicts with `main`, and CI has not run on the fixes.**
+   - GitHub reports `mergeable_state: dirty`.
+   - The REST check-runs list is empty (0) for `53a272f7` and for every fixer commit (`e79c4aed`, `983c4a71`, `d6538728`, `43f7db7d`). The reviewed head `c66cc7ba` had 40.
+   - The PR's own claim of passing checks applies to the old head only.
+   - The conflict is one import block in `packages/staff-ui/src/display/key-value-list.tsx:3-9`. #1473 moved `CopyButton` into `./copy-button.js`, and this PR added `KEY_VALUE_ROW`.
+   - Resolution: keep main's `import { CopyButton } from "./copy-button.js"` and add `import { KEY_VALUE_ROW } from "./key-value-row.js"`. Drop the `StaffButton` import. Keep the PR's `cn(KEY_VALUE_ROW, "items-baseline")` row.
+   - I tried this locally: staff-ui `tsc` is clean, and all 641 staff-ui tests pass. The one file that fails to load is main's new `copy-button.test.tsx`, because `@testing-library/user-event` comes from main's lockfile and not this branch's. A real merge with a fresh install fixes that.
+   - Merge `main` (no force push needed), then read `ci-result` before merging.
 
-2. **Should-fix: History can lose place-level changes.** `service.ts:141` reads 200 audit rows (`STORAGE_HISTORY_LIMIT * 4`) and then drops per-lot rows in memory (`toHistoryView`, :83-94). Once extensions, waivers and large flags (PR 5) add more than 200 recent per-lot rows, the tab's History thins out or looks empty, although ST10 says every change is recorded. Filter `lot_id IS NULL` in SQL in `listAudit` (repository :433).
+2. **Should-fix (craft): uneven card bottoms at 1440.** `storage-panel.tsx:127` uses `grid items-start`, so cards in a row keep their own heights:
+   - In `01-charging-off-1440-*` and `11-charging-focus-1440-*`, Charging ends about 185px above In force and leaves a ragged gap before History.
+   - In `02-scheduled-1440-*` and `07-read-only-fulfilment-1440-*`, Scheduled ends about 15px short of In force.
 
-3. **Should-fix: the London-date test does not prove London time.** `collection-storage.service.test.ts:111-113` uses 2026-12-01T00:30Z, which is GMT, so the UTC and London dates are the same and a `toISOString().slice(0,10)` bug would still pass. Add a BST case, for example `now = 2026-07-01T23:30Z`: today is 2026-07-02 in London, so a start of 2026-07-02 must be refused. The code is correct (`londonDateKey`, service :118); only the test is missing.
+   Use `items-stretch` and let `Section` fill the height (`h-full`), so cards that share a row share a bottom edge. The orphan from finding 9 of the first review is gone: Charging now spans the full width when a change is scheduled.
 
-4. **Should-fix (tracking): what staff schedule does not reach buyers yet, but the banner says it does.**
-   - Buyer pages still read the frozen `collection_place.free_storage_days`: `apps/api/src/services/organisation-buying/purchase-view.ts:170` and `packages/persistence/src/repositories/drizzle-workspace-buying.readers.ts:283`.
-   - `recordTermsForSale` (repository :413) has no caller, so lots in sales that close after a scheduled start keep `storage_terms_id = null` and fall back to legacy terms.
-   - The spec's charging-off banner ("Buyers see the free period and the rates below") is therefore untrue until PR 4.
-   - Acceptable as PR 3 of 7, but it needs a tracked PR 4 item that wires `recordTermsForSale` into sale close and moves the buyer reads. Otherwise do not ship this PR to production ahead of PR 4.
+3. **Should-fix (craft, PRM-2 on a phone): the blocked "Schedule a change" gives its reason only in a tooltip.**
+   - `storage-cards.tsx:58` passes `disabledReason` to `StaffButton`, which shows the reason on hover or focus. The button is focusable, so it meets the letter of PRM-2.
+   - At 375 (`02-scheduled-375-*`) there is no hover, so a Finance user sees a grey button and no reason. The PR body records this as known.
+   - The same tab already draws the Charging reason as an inline `DisabledReason` line ("one reason style" in the last commit's title). Use the same line under the In force header when a change waits ("A change is already scheduled. Edit or cancel it first.").
 
-5. **Should-fix: a stale error banner after a successful retry.** `apps/web/src/components/admin/collections/storage/storage-panel.tsx:50-57, 65-69`: `failure` is cleared only by a sheet save (:84). A failed Cancel change or charging switch leaves the red "wasn't saved" notice on screen after a later success, alongside the success toast. Clear `failure` on every successful change, and add a test for the failure-then-success path.
+4. **Nit (craft): the Scheduled table still wraps at 375.** The PR body says the short labels stay on one line at 375. In `02-scheduled-375-*`, "Free storage" still breaks onto two lines, and so do both values ("14 calendar / days free"). Shorten the row to "Free" plus "14 calendar days", or let the label column take its content width.
 
-6. **Should-fix: Finance sees a hand-over badge they cannot act on.** `apps/web/src/components/layout/staff-nav.ts:276`: Collections is now shown to Finance (`COLLECTIONS_PAGE_ACCESS`) but still carries the global `collectionsToHandOver` warning count. Finance opens the page and finds only the Storage tab. Show the badge only to roles that have the hand-over tabs.
+5. **Nit (craft): field widths in the sheet.** Free days (0 to 90, at most 2 characters) and the three money inputs (up to £500.00) are full-width, about 450px at 1440 (`03-sheet-errors-1440-*`, `04-sheet-preview-1440-*`). A 2-digit field drawn as wide as the Reason textarea does not tell staff what it expects. Cap them at a content width, for example `max-w-40` for days and `max-w-56` for money. The standard has no field-width rule, so this is polish, not a breach.
 
-7. **Should-fix: the charging switch is blocked in a way that hides the reason.** `storage-cards.tsx:144-149` uses native `disabled`, so the switch cannot take focus and a keyboard or screen-reader user never reaches the reason. The staff standard's rule for blocked actions (PRM-2) asks for `aria-disabled`: the control stays focusable and announces why. The "no VAT treatment" reason is also run into the explanation text in the same muted grey (screenshot 01/02), so it does not read as the reason. Give it its own line, styled as the disabled reason the kit uses elsewhere.
+6. **Nit: labels differ between cards that sit side by side.** In force says "Standard works", "Large works" and "Handling fee". The Scheduled table beside it says "Standard", "Large" and "Handling" (`storage-copy.ts:58-63`). The short labels were chosen for 375; use the same short labels in the In force list, or the long ones in the table at `lg`.
 
-8. **Should-fix (craft): the Large rate field is half width.** `storage-terms-sheet.tsx:276-291`: only Large is wrapped in `FieldRow`, so at 1440 it renders at half the width of Standard and its hint wraps onto two lines ("Per lot per day, before VAT. / Up to £500.00."). See screenshot `04-sheet-preview-1440-*`. Standard and Large are a pair and should match.
+7. **Nit (kit): the `DateInput` fallback example is still a fixed past day.** `packages/staff-ui/src/forms/date-input.tsx:71` uses `min ?? "2026-10-24"`. The Storage sheet passes `min`, so this tab is fixed (the sheet reads "e.g. 17 Nov 2026"), but every other date field with no `min` still shows a day in the past. Use today, or no date, as the fallback. This can be a kit follow-up.
 
-9. **Should-fix (craft): Charging card left alone on its row.** `storage-panel.tsx:122` (`lg:grid-cols-2`) puts three cards in a two-column grid. Charging sits alone on the second row with an empty right half (`02-scheduled-1440-*`, `07-read-only-fulfilment-1440-*`), which looks unfinished. Either span Charging across both columns or stack In force / Scheduled above a full-width Charging card.
+8. **Nit (test strength): the concurrency test can miss a removed lock when run alone.** See "Blocking 1 re-verified" below. With the lock removed, the full integration file fails 5 times out of 5. Run alone with `-t "same moment"` on a cold pool, it passed 3 times out of 3, because the four calls happened to serialise. Before the `Promise.all`, warm the pool or open four connections, for example with a `select 1` on each, so the test does not depend on run order.
 
-10. **Should-fix: test gaps.**
-    - No test file for the server action `apps/web/src/lib/actions/admin/admin-collection-storage.ts` (capability denial, step-up mapping, refusal-to-error mapping).
-    - No `loadCollectionsPage` test for Finance (settings not fetched, storage load error).
-    - No test for switching charging on through the confirmation, or for a failed cancel or switch.
-    - No route test through the real `createAdminRoutes` mount order. `collection-storage.routes.test.ts:28-56` builds its own Hono app. I read the wiring and found no bypass.
-    - The `@journey` e2e (`apps/web/e2e/admin-collections-storage.spec.ts`) was not run by the author. It must pass in the stabilisation job before merge.
+9. **Known, carried over (not blocking):** in dark mode, the kit `ChangesTable` highlight (amber struck-through values on brown) still has weak contrast (`02-scheduled-1440-dark`). It is kit-wide; it needs a ticket.
 
-11. **Nit: the preview wording differs from the spec example.** `formatStorageTerms` (`packages/domain/src/storage-terms.ts` ~:247-271) renders "…or £7.00 for works over 150 cm on any side…". The Staff screens preview example says "for large works", while the spec's lot/shipping copy uses the "over 150 cm" form. Using the same formatter is correct; record which wording the spec intends. Also, `largeDailyPence: 0` with a standard rate renders "or £0.00 for works over 150 cm". Either refuse 0 for an enabled large band or word it as no surcharge.
+## The 19 findings of the first review
 
-12. **Nit: no upper bound on the start date.** `packages/validators/src/collection-storage.ts:18-24` accepts any future date. A typo such as 2062 creates a change that blocks all other scheduling until it is cancelled. Consider a cap of a few years.
+| # | Status | Evidence |
+|---|---|---|
+| 1 Blocking: one change at a time | **Fixed** | See below. Proven under concurrency on Postgres 16, and fails both mutations. |
+| 2 History filtered in SQL | Fixed | `listPlaceAudit` with `lot_id IS NULL` (`drizzle-collection-storage.repository.ts:441-446`). The service reads exactly 50. Integration test plus a service test with 250 newer per-lot rows. |
+| 3 London date in summer time | Fixed | Service test at `2026-07-01T23:30Z`: 2 Jul refused, 3 Jul accepted. |
+| 4 Buyer reach and banner | Fixed (tracked) | Interim notice in `storage-copy.ts`. `docs/design/storage-terms.md` "Until the buyer pages move" lists the PR 4 work: `recordTermsForSale` at sale close, the two buyer reads, and restoring the notice. |
+| 5 Stale error banner | Fixed | `saved()` clears `failure` (`storage-panel.tsx:43-46`). Tests cover a failed cancel, a failed switch, and failure then success. |
+| 6 Hand-over badge for Finance | Fixed | `badgeRequirement: COLLECTIONS_READ_ACCESS`, removed by `badgeFor` (`staff-nav.ts:105,147`). Has a test. |
+| 7 Blocked switch (PRM-2) | Fixed | `aria-disabled`, focusable, described by the reason, and a press does nothing (tested). Reason on its own line with a lock icon; the focus ring is visible (`11-charging-focus-*`). |
+| 8 Large field width | Fixed | `FieldRow` removed. Standard and Large are the same width, and the hint is on one line. |
+| 9 Charging card alone | Fixed | Charging spans the full width when a change is scheduled. Uneven heights remain: new finding 2. |
+| 10 Test gaps | Fixed | New tests for the server action, `loadCollectionsPage` for Finance, switching on through the confirmation, and the real `createAdminRoutes` mount. The `@journey` e2e is still not run and must pass in the stabilisation job. |
+| 11 Large £0 and preview wording | Fixed | `pence.min(1).nullable()` at the edge, the form error, and the spec preview updated to the buyer formatter's wording. |
+| 12 Start date cap | Fixed | `latestStorageTermsStart` (2 years, 29 Feb becomes 28 Feb). `start_too_late` 422 on schedule and edit. Form hint, error and calendar max. |
+| 13 Old fields | Fixed | TODO and removal recorded in the spec. |
+| 14 Copy | Fixed | "Shown in History.", "Large band", "Off", and the one-line reason. The spec is updated to match. |
+| 15 Preview re-announced | Fixed | `Notice quiet` (`role="note"`), plus an `<output>` that speaks after 800 ms. Tested with fake timers. |
+| 16 Skeleton | Fixed | Kit `SectionSkeleton` with `KEY_VALUE_ROW`, a chip placeholder, a header button only on In force, and table rows for History. `09-loading-1440` matches the loaded layout closely. |
+| 17 Table alignment | Fixed | "Starts on" row removed, the reason is a line under the table, and the History Change cell has padding. 375 wrapping only partly fixed: new finding 4. |
+| 18 Date placeholder | Fixed on this tab | The example comes from `min`. Kit fallback: new finding 7. |
+| 19 Summary for one error | Recorded | Deliberate exception to FRM-4 in the spec. |
 
-13. **Nit: the old field has no removal ticket.** `packages/validators/src/collection-settings.ts:49-53` keeps `freeStorageDays` (and `storageChargePence`) accepted and ignored "for one release" without a TODO or ticket. The schema is still `.strict()` and the value is never written, so this is safe; add a tracked removal.
+## Blocking 1 re-verified
 
-14. **Nit: copy consistency.**
-    - `storage-copy.ts:113` says "Shown in history." while :47 and :90 say "Shown in History.".
-    - The large-band error (:138, spec wording "turn off the large band") refers to a control labelled "Charge more for large works" (:123). Consider matching the label to the error.
-    - `storage-cards.tsx:160`: Fulfilment reads "Raise storage invoices: Charging off"; "Off" is enough.
+- **How it is enforced:** no migration was added. `scheduleTerms` (`drizzle-collection-storage.repository.ts:146-183`) runs in one transaction:
+  1. `lockCollectionPlace` takes `pg_advisory_xact_lock(hashtextextended('collection_place:<id>'))`.
+  2. It checks `startIsTaken`.
+  3. It checks `changeIsWaiting` (a live row with `effective_from > today`, :527-540).
+  4. It inserts the row and its audit row.
+- **Why it holds:** the default isolation is READ COMMITTED, and each statement after the lock takes a fresh snapshot. So a second transaction that waited on the lock sees the first one's committed row and refuses.
+- **No other way in:** `scheduleTerms` is the only insert into `collection_storage_terms`. The edit path also takes the place lock.
+- **One rule:** the service's unlocked pre-check was removed, so the rule lives in one place, and the in-memory double has the same rule.
+- **Test against real Postgres 16** (local, `db:migrate` + `db:roles`): `drizzle-collection-storage` 23 passed, `drizzle-collection-settings` 14 passed. The new test sends four schedules for one place at once: one is saved, three are refused, and one audit row is written.
+- **Mutation A** (the `changeIsWaiting` check disabled): the test fails.
+- **Mutation B** (the lock removed from `scheduleTerms`, check kept): the full file fails 5 times out of 5. With an added `pg_sleep(0.05)` between check and insert, the test sees 4 rows saved ("expected length 1 but got 4"). Run alone with `-t`, it passed 3 times out of 3 (finding 8).
+- I restored the file after each mutation; the working tree is clean.
 
-15. **Nit: the preview is re-announced on every keystroke.** `storage-terms-sheet.tsx:313` has `aria-live="polite"` on the preview, so a screen reader re-reads the whole buyer sentence on each keystroke in any money field. Debounce it or announce only on blur.
+## Security (re-checked on the new head)
 
-16. **Nit: skeleton fidelity.** `storage-skeleton.tsx:13,18`:
-    - Hand-built card markup with a raw `148px` grid value.
-    - Mixes the `@sm:` container variant with the `sm:` viewport variant.
-    - Draws a header-button placeholder on Charging and History, which have no button.
-    - Has no placeholder for the header chip, so the page shifts when the chip arrives (`09-loading-*`).
+- **Capability and step-up:** routes, middleware, the step-up registry and the server action are unchanged since `c66cc7ba`; only tests were added. The new `collection-storage.mount.test.ts` exercises the real `createAdminRoutes` order: the role matrix for read and schedule, step-up for Finance, and Finance can list places but not open Hours and rules.
+- **Fulfilment read-only:** the server action is still gated on `COLLECTION_STORAGE_ACCESS`. The UI hides "Schedule a change", Edit and Cancel, and shows "Raise storage invoices: Off" with the reason line (`07-read-only-fulfilment-*`).
+- **Edge validation:**
+  - `largeDailyPence` is 1 to 50,000 or null.
+  - The start-date cap needs the London "today", so it is checked in the service (`startProblem`, `collection-storage.service.ts:110-114`) on schedule and edit, and also in the repository for the lower bound.
+  - Refusals write no row and no audit (tested).
+- **Audit:** every write still writes its audit row in the same transaction. History now reads place-level rows only.
 
-17. **Nit: Scheduled and History table alignment** (`02-scheduled-1440-*`).
-    - The Reason row's value column does not line up with the table columns above it.
-    - "Starts on" is always highlighted as changed.
-    - At 375 px the labels wrap ("Standard / works", "Handling / fee").
-    - In History, the Change cell is top-aligned against the row border while When and Who are centred.
+## AI attribution
 
-18. **Nit: the date placeholder is in the past.** The kit `DateInput` shows "e.g. 24 Oct 2026" next to "From tomorrow" (`03-sheet-errors-*`).
+None. The six commit messages on the PR (author and committer `mahmoudamrspace`) and the PR title and body contain no Co-Authored-By, Claude-Session or generated-by lines.
 
-19. **Note: error summary for one error.** The standard (FRM-4) asks for a summary even with one error; the storage spec says 2+ and the PR follows the spec. Record it as a deliberate exception.
+## UI judgement (44 screenshots at `23e92986`, taken after the last code commit)
 
-## Checked and correct
+I looked at every state at 1440 and 375, in light and dark.
 
-- **Capability:** all four writes require Finance write or Administrator (`requireCollectionStorage`, `packages/types/src/admin-access.ts`). Reads add Fulfilment and read-only. The role matrix is tested, and refused calls write nothing.
-- **Step-up:** all four writes are in the step-up registry (`apps/api/src/middleware/dangerous-staff-actions.ts:182-205`); the read is not.
-- **Fulfilment read-only:** the web server action checks `COLLECTION_STORAGE_ACCESS` and hands step-up to `handleStaffStepUp`. The UI shows the read-only line and no enabled actions.
-- **Routes beside finance:** mounting beside the finance routes exposes only `GET /collections` (the place list) and the storage routes to Finance. Nothing else widens, and the old platform route was removed.
-- **Edge validation:** integer pence 0–50,000; free days 0–90; real dates; reason 1–500 characters, trimmed; `.strict()` bodies; no negative or fractional values. A null large band is handled consistently from the types through to the database.
-- **Start date:** from tomorrow in London time on the server (`londonDateKey`), re-checked on edit. The client minimum comes from the London `today`.
-- **Edit and cancel:** both lock the row, and versions that have started or been cancelled are refused with 409.
-- **Audit:** schedule, edit, cancel and the charging switch each write who, when, before, after and why in the same transaction. A switch request that changes nothing writes nothing.
-- **VAT rule:** charging on is refused under lock without a VAT treatment, and no route can set one yet.
-- **Domain:** `LEGACY_STORAGE_TERMS` is 30 calendar days free with nothing charged. `storageTermsForLot` falls back to it, `assertStorageTerms` and `isStoragePence` are used by the calculator, and money formatting refuses fractions. Version selection by sale-close date is inclusive.
-- **Sheet:** error summary at 2+ errors, with focus to the field when there is one; a ref guard plus the loading state stop a double submit. The unsaved-changes guard covers Cancel, close, navigation and beforeunload. Edit pre-fills, and the cancel-change and charging confirmations are in-page and ask for a reason.
-- **Copy:** all spec strings match exactly and live in `storage-copy.ts` (`lint:client-copy` passes). The buyer preview calls the domain `formatStorageTerms`. Only shared kit components are used.
-- **Hours and rules:** the free storage days field is removed cleanly from the types, validator, service, repository, form and tests. No migration is in this PR.
-- **Commit message and PR text:** no Co-Authored-By, Claude-Session or generated-by lines.
-- **Screenshots** (all states at 1440 and 375, light and dark): no overflow at 375, cards stack, and contrast in dark mode is fine.
+- **Holds up well:**
+  - The honest notice.
+  - The blocked switch, with its reason on its own line, a lock icon, higher-contrast text and a visible focus ring.
+  - The Scheduled card: a before → after table, a reason line, and Cancel change as a secondary button beside Edit.
+  - The History cells are now aligned.
+  - The sheet: the error summary links to fields, inline errors clear on fix (tested), and the preview reads word for word as buyers will see it.
+  - The skeleton is close to the loaded page, with a chip placeholder.
+  - No horizontal overflow at 375, and dark mode is clean apart from finding 9.
+- **Still short of "perfect":** findings 2 to 6. None of them blocks.
 
-## What I ran
+## What I ran (on `53a272f7`, after `pnpm install --frozen-lockfile` and the packages build)
 
-All of these were run on the PR head after `pnpm install --frozen-lockfile` and the packages build.
-
-- **Tests:**
-  - domain `storage-terms.test.ts`: 70 passed.
-  - validators `collection-storage`/`collection-settings`: 25 passed.
-  - staff-ui `money-input`/`form-page`: 7 passed.
-  - api routes, services and middleware for collection storage and settings: 263 passed.
-  - web `components/admin/collections`, `lib/admin/collections`, `lib/navigation`, `components/layout`, `lib/actions/admin`: 995 passed (`--maxWorkers=2`).
-- **Typecheck (`tsc --noEmit`):** clean for domain, validators, types, staff-ui, persistence and api. Web has 1 error, `rpc-app.ts` not finding `@auction/api/app`, because the API build output is missing in this environment; it is not related to this PR.
-- **Biome:** clean on the changed files.
-- **Static checks, all passing:** `lint:` client-copy, admin-capability-drift, layers, deps, web-guardrails, lib-admin-boundaries, staff-legacy-shell, web-barrel-imports, datetime, staff-route-composition, staff-list-template, z-schema-transform, e2e-tags, test-mocks, brand-name, legal-names, compositor, ui-guardrails, client-boundary, web-hop-links.
-- **CI:** the PR check runs all pass (`ci-result` success). One check, art-browser-gates, was skipped.
-- **Not run:** the new `@journey` e2e, which needs the full stack, and a full `next build` of apps/web (not run, as instructed).
+- **Tests (`--maxWorkers=2`), all passing:**
+  - domain `storage-terms`: 74.
+  - validators `collection-storage`/`collection-settings`: 26.
+  - staff-ui (full): 639.
+  - ui `notice`: 4.
+  - api `collection-storage`, `collection-settings` and `dangerous-staff`: 129, including the mount test.
+  - web `components/admin/collections`, `lib/admin`, `lib/navigation`, `components/layout`, `lib/actions/admin`, `hooks/use-settled-value`: 2721 in 391 files.
+  - persistence `drizzle-collection*` integration on Postgres 16: 92.
+- **Typecheck (`tsc --noEmit`):** clean for domain, validators, persistence, types, ui, staff-ui and api. Web has only the known `rpc-app.ts` error (`@auction/api/app`).
+- **Biome:** clean on the 89 changed files.
+- **Static checks, all 20 passing:** `lint:` client-copy, admin-capability-drift, layers, deps, web-guardrails, lib-admin-boundaries, staff-legacy-shell, web-barrel-imports, datetime, staff-route-composition, staff-list-template, z-schema-transform, e2e-tags, test-mocks, brand-name, legal-names, compositor, ui-guardrails, client-boundary, web-hop-links.
+- **CI:** no check runs exist for the head or any fixer commit (REST check-runs `total_count: 0`), because of finding 1.
+- **Not run:** the `@journey` e2e (needs the seeded full stack) and `next build`.
