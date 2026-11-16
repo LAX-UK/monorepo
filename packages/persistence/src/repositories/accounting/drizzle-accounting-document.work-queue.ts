@@ -14,6 +14,12 @@ import { AWAITED_INVOICE_CANCELLED, AWAITED_ISSUED } from "../../lib/accounting-
 import { applyLockedTransition, persistMove } from "../../lib/accounting-document-move.js";
 import { rowToRecord } from "../../lib/accounting-document-row.js";
 
+/**
+ * How far back "last served" looks when taking turns between legal entities. An entity with
+ * nothing served in this window counts as waiting longest, so an idle one is never held back.
+ */
+const FAIRNESS_WINDOW_MS = 60 * 60 * 1000;
+
 /** How many lapsed leases one call settles before it gives up looking for pending work. */
 const MAX_LAPSED_PER_CLAIM = 100;
 
@@ -151,8 +157,16 @@ export class DrizzleAccountingDocumentWorkQueue implements IAccountingDocumentWo
         )
         // Stripe fees and payouts go after every other document waiting, so a day of them
         // registered at once never spends the daily call budget before buyer-facing documents.
+        // Then the legal entity (Books account) served least recently goes first, so a backlog
+        // in one never starves the other; within an entity the oldest document goes first.
         .orderBy(
           asc(sql`${accountingDocument.kind} in ('expense', 'transfer')`),
+          sql`(
+            select max(served.updated_at) from accounting_document served
+            where served.legal_entity = ${accountingDocument.legalEntity}
+              and served.state in ('sending', 'issued')
+              and served.updated_at > ${new Date(now.getTime() - FAIRNESS_WINDOW_MS)}
+          ) asc nulls first`,
           asc(accountingDocument.createdAt),
           asc(accountingDocument.id),
         )

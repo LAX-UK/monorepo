@@ -447,6 +447,58 @@ describe.skipIf(!HAS_DB)("accounting persistence (integration)", { timeout: 60_0
       }
     });
 
+    /** Puts the documents a fairness case claimed out of the way of the cases after it. */
+    const retire = async () => {
+      await owner.execute(sql`
+        update accounting_document
+           set state = 'cancelled', lease_token = null, lease_expires_at = null,
+               updated_at = ${new Date(T0)}
+         where state = 'sending'`);
+    };
+
+    it("takes turns between legal entities, so a backlog in one does not starve the other", async () => {
+      await drain();
+      // A quiet day: earlier cases left nothing served inside the one-hour fairness window.
+      nowMs = T0 + 40 * 24 * 60 * 60_000;
+      await setModes("test_org");
+      const busy: string[] = [];
+      for (let i = 0; i < 4; i += 1) {
+        busy.push((await register(invoice("bid", newId()))).stored.id);
+        nowMs += 1000;
+      }
+      const quiet = (await register(invoice("shop", newId()))).stored.id;
+      nowMs += 1000;
+      const order: string[] = [];
+      for (let i = 0; i < 5; i += 1) {
+        const claimed = must(await claim("books"));
+        order.push(claimed?.id ?? "none");
+        nowMs += 1000;
+      }
+      // Both entities are served at once: the later Shop document is second, not fifth.
+      expect(order[0]).toBe(busy[0]);
+      expect(order[1]).toBe(quiet);
+      // The rest of the busy entity's documents then follow, oldest first.
+      expect(order.slice(2)).toEqual(busy.slice(1, 4));
+      expect(must(await claim("books"))).toBeNull();
+      await retire();
+    });
+
+    it("still serves one entity oldest first when the other has nothing waiting", async () => {
+      await drain();
+      // A quiet day: earlier cases left nothing served inside the one-hour fairness window.
+      nowMs = T0 + 40 * 24 * 60 * 60_000;
+      await setModes("test_org");
+      const ids: string[] = [];
+      for (let i = 0; i < 3; i += 1) {
+        ids.push((await register(invoice("bid", newId()))).stored.id);
+        nowMs += 1000;
+      }
+      const order: string[] = [];
+      for (let i = 0; i < 3; i += 1) order.push(must(await claim("books"))?.id ?? "none");
+      expect(order).toEqual(ids);
+      await retire();
+    });
+
     it("hands nothing to a provider whose mode for the product is off", async () => {
       await setModes("dry_run");
       await register(invoice("shop", newId()));
