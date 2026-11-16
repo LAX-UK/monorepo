@@ -1,8 +1,8 @@
 import { EnquiriesList } from "@/components/admin/enquiries/enquiries-list";
+import { departmentLabel, departmentNames } from "@/lib/admin/enquiries/department-label";
 import { buildEnquiriesChips } from "@/lib/admin/enquiries/enquiries-search";
 import { ENQUIRY_KIND_LABELS, ENQUIRY_STATUS_LABELS } from "@/lib/admin/enquiries/enquiries.vm";
 import { enquiryAbilities } from "@/lib/admin/enquiries/enquiry-access";
-import { departmentLabel, departmentNames } from "@/lib/admin/enquiries/department-label";
 import { loadAdminEnquiriesPage } from "@/lib/admin/enquiries/load-enquiries-page";
 import { requireAdminCapability } from "@/lib/auth/require-admin-capability";
 import { getEnquiryRouting } from "@/lib/data/http/admin-enquiries.reader";

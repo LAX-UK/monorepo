@@ -57,7 +57,10 @@ export function formatAmlCheckType(checkType: string | null | undefined): string
 }
 
 /** Every identity status the staff screens show, as an inline phrase ("Identity check in review"). */
-export const KYC_STATUS_PHRASES: Record<UserKycStatus | "submitted" | "under_review" | "expired", string> = {
+export const KYC_STATUS_PHRASES: Record<
+  UserKycStatus | "submitted" | "under_review" | "expired",
+  string
+> = {
   unverified: "not started",
   pending: "submitted",
   submitted: "submitted",

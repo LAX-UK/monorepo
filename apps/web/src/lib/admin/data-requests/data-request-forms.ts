@@ -10,12 +10,12 @@ import {
   extendedDueOn,
   isCalendarDate,
 } from "@auction/identity-contracts/data-requests";
-import type { FoundAccountStatus } from "@auction/types";
 import type {
   DATA_REQUEST_EXTENSION_REASONS,
   DATA_REQUEST_TOLD_VIA,
 } from "@auction/identity-contracts/data-requests";
 import { formatStaffNumber } from "@auction/staff-ui";
+import type { FoundAccountStatus } from "@auction/types";
 
 /**
  * The checks each dialog makes on submit, kept out of the components. Each returns one message
@@ -41,9 +41,7 @@ export const FOUND_ACCOUNT_STATUS_LABELS: Readonly<Record<FoundAccountStatus, st
 
 /** A found account's state as staff read it; a state the app does not know yet stays neutral. */
 export function foundAccountStatusLabel(status: string): string {
-  return (
-    FOUND_ACCOUNT_STATUS_LABELS[status as FoundAccountStatus] ?? "Account status unknown"
-  );
+  return FOUND_ACCOUNT_STATUS_LABELS[status as FoundAccountStatus] ?? "Account status unknown";
 }
 
 export type LogRequestDraft = {

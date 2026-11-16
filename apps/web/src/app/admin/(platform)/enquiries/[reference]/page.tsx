@@ -1,5 +1,5 @@
-import { departmentLabel } from "@/lib/admin/enquiries/department-label";
 import { EnquiryView } from "@/components/admin/enquiries/enquiry-view";
+import { departmentLabel } from "@/lib/admin/enquiries/department-label";
 import { enquiryHref } from "@/lib/admin/enquiries/enquiries-search";
 import { enquiryAbilities } from "@/lib/admin/enquiries/enquiry-access";
 import { loadAdminEnquiryPage } from "@/lib/admin/enquiries/load-enquiry-page";

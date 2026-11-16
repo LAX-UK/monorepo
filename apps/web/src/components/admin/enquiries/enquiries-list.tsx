@@ -179,7 +179,7 @@ export function EnquiriesList(props: EnquiriesListProps) {
         ),
       },
     ],
-    [nameOf, now],
+    [nameOf, now, departmentNames],
   );
 
   const actionsFor = useCallback(

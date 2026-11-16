@@ -140,7 +140,9 @@ function sentenceCase(code: string): string {
 
 export function historyEvents(detail: Pick<AdminArtistApplicationDetail, "events" | "artistName">) {
   return [...detail.events].reverse().map((event) => {
-    const presentation = (EVENT_PRESENTATION as Record<string, EventPresentation>)[event.action] ?? {
+    const presentation = (EVENT_PRESENTATION as Record<string, EventPresentation>)[
+      event.action
+    ] ?? {
       title: () => sentenceCase(event.action),
       tone: "neutral" as const,
     };

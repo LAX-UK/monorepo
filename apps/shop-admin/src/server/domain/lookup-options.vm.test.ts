@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+  EDITION_LISTING_LABELS,
   artworkOption,
   editionLabel,
-  EDITION_LISTING_LABELS,
   editionListingLabel,
   editionOption,
   ownedArtworkOptions,

@@ -5,9 +5,9 @@ import type {
   ExtendDataRequestInput,
   PatchDataRequestInput,
 } from "@auction/identity-contracts";
-import type { FoundAccountStatus } from "@auction/types";
 import type { DataRequestRecord } from "@auction/identity-contracts";
 import { enquiryErasureBlock } from "@auction/identity-contracts";
+import type { FoundAccountStatus } from "@auction/types";
 import type {
   DataRequestOutcome,
   IIdentityDataRequestsClient,

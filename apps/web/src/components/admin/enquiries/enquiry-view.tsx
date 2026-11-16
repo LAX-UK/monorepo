@@ -235,9 +235,7 @@ export function EnquiryView({
             <MetaItem label="Assigned to">
               {assignee ?? (enquiry.assignedToUserId ? "Former staff member" : "Nobody yet")}
             </MetaItem>
-            {departmentName ? (
-              <MetaItem label="Department">{departmentName}</MetaItem>
-            ) : null}
+            {departmentName ? <MetaItem label="Department">{departmentName}</MetaItem> : null}
           </>
         }
         access={actions.access}

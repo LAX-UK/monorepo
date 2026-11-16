@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { MANUAL_REVIEW_REASON_LABELS } from "./manual-review-reason.copy";
 import { manualReviewReasonLabel } from "./manual-review-presenter";
+import { MANUAL_REVIEW_REASON_LABELS } from "./manual-review-reason.copy";
 
 describe("manualReviewReasonLabel", () => {
   it.each(Object.entries(MANUAL_REVIEW_REASON_LABELS))("labels %s as %s", (reason, label) => {
@@ -13,9 +13,7 @@ describe("manualReviewReasonLabel", () => {
     expect(manualReviewReasonLabel("identity_verification_required")).toBe(
       "Identity verification required",
     );
-    expect(manualReviewReasonLabel("organisation_under_review")).toBe(
-      "Organisation under review",
-    );
+    expect(manualReviewReasonLabel("organisation_under_review")).toBe("Organisation under review");
   });
 
   it("falls back to sentence case for unknown reasons", () => {

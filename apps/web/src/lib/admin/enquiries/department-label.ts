@@ -17,7 +17,9 @@ export function departmentLabel(slug: string): string {
 }
 
 /** The names for every department a page shows, keyed by slug. */
-export function departmentNames(slugs: Iterable<string | null | undefined>): Record<string, string> {
+export function departmentNames(
+  slugs: Iterable<string | null | undefined>,
+): Record<string, string> {
   const names: Record<string, string> = {};
   for (const slug of slugs) if (slug) names[slug] = departmentLabel(slug);
   return names;
