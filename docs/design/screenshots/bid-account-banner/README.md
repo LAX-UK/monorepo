@@ -13,7 +13,7 @@ held by checks.
   registered" and offers no Register button.
 - `phone-strip-held`: the phone strip says "Payment on hold · See why"; the bottom bar offers View
   lots.
-- `phone-strip-documents`: "Payment on hold: documents needed" fits the strip at 375.
+- `phone-strip-documents`: "Payment on hold: send documents" fits the strip at 375.
 - `phone-strip-closed`, `header-chip-closed`: a rejected or archived organisation reads "Payments
   closed for this account".
 - `bottom-bar-*` (scrolled past the hero's actions): the bar offers exactly the hero's action.

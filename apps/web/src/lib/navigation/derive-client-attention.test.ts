@@ -109,13 +109,12 @@ describe("deriveClientAttention", () => {
       });
     expect(derive([inReview("a"), inReview("b")])).toMatchObject({
       paymentsDue: 2,
-      paymentsInReview: true,
+      paymentsHold: "review",
     });
     expect(derive([inReview("a"), owed("b")])).toMatchObject({
       paymentsDue: 2,
-      paymentsInReview: false,
     });
-    expect(derive([])).toMatchObject({ paymentsDue: 0, paymentsInReview: false });
+    expect(derive([])).toMatchObject({ paymentsDue: 0 });
   });
 
   it("says what holds the payment: documents win over a plain review, and nothing when released", () => {
@@ -129,10 +128,10 @@ describe("deriveClientAttention", () => {
       });
     const held = (lotId: string, blocker: "documents" | "review") =>
       owed(lotId, { state: "in-review", blocker });
-    expect(derive([held("a", "review")]).paymentsBlocker).toBe("review");
-    expect(derive([held("a", "review"), held("b", "documents")]).paymentsBlocker).toBe("documents");
-    expect(derive([held("a", "review"), owed("b")]).paymentsBlocker).toBeNull();
-    expect(derive([]).paymentsBlocker).toBeNull();
+    expect(derive([held("a", "review")]).paymentsHold).toBe("review");
+    expect(derive([held("a", "review"), held("b", "documents")]).paymentsHold).toBe("documents");
+    expect(derive([held("a", "review"), owed("b")]).paymentsHold).toBeUndefined();
+    expect(derive([]).paymentsHold).toBeUndefined();
   });
 
   it("carries a closed organisation through, only while everything owed is held", () => {
@@ -145,11 +144,11 @@ describe("deriveClientAttention", () => {
         unreadNotifications: [],
       });
     const refused = owed("a", { state: "in-review", blocker: "review", refused: true });
-    expect(derive([refused]).paymentsRefused).toBe(true);
-    expect(derive([owed("a", { state: "in-review", blocker: "review" })]).paymentsRefused).toBe(
-      false,
+    expect(derive([refused]).paymentsHold).toBe("closed");
+    expect(derive([owed("a", { state: "in-review", blocker: "review" })]).paymentsHold).toBe(
+      "review",
     );
-    expect(derive([refused, owed("b")]).paymentsRefused).toBe(false);
+    expect(derive([refused, owed("b")]).paymentsHold).toBeUndefined();
   });
 
   it("counts the purchases this person pays and unread notifications", () => {
@@ -168,9 +167,6 @@ describe("deriveClientAttention", () => {
     expect(attention).toEqual({
       outbidLots: [],
       paymentsDue: 2,
-      paymentsInReview: false,
-      paymentsBlocker: null,
-      paymentsRefused: false,
       stillToSend: { count: 0, pence: 0, lotIds: [] },
       unreadNotifications: 2,
       groups: [],
@@ -190,7 +186,6 @@ describe("deriveClientAttention", () => {
     });
     expect(attention).toMatchObject({
       paymentsDue: 0,
-      paymentsInReview: false,
       stillToSend: { count: 2, pence: 50_005, lotIds: ["a", "b"] },
     });
   });

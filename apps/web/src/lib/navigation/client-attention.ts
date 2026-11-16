@@ -15,19 +15,13 @@ export type ClientAttention = {
   outbidLots: readonly (string | null)[];
   /** Won lots still to pay for, whether or not they can be paid yet. */
   paymentsDue: number;
-  /** Something is owed and all of it waits on account checks, so nothing can be paid yet. */
-  paymentsInReview: boolean;
   /**
-   * Why that payment waits: `documents` when the person has to supply something, `review` when
-   * the checks are with us. `null` when nothing is held. It lets the prompt say what is open
-   * instead of a vague "Account in review".
+   * Set when something is owed and all of it is held, so nothing can be paid yet, and says why:
+   * `documents` when the person has to supply something, `review` when the checks are with us,
+   * `closed` when the organisation that owes is rejected or archived (no check is running; it
+   * cannot pay online at all). Absent when something can be paid, or nothing is owed.
    */
-  paymentsBlocker: "documents" | "review" | null;
-  /**
-   * The organisation that owes is rejected or archived: its purchases cannot be paid online at
-   * all, so no check is running and the prompt must not say one is.
-   */
-  paymentsRefused: boolean;
+  paymentsHold?: "documents" | "review" | "closed";
   /**
    * Lots inside a bank transfer that has delivered part of its payment: what is still to send
    * for them (whole pence) and which lots they are. They are owed, but not a payment to start.
@@ -45,9 +39,6 @@ export type ClientAttention = {
 export const NO_ATTENTION: ClientAttention = {
   outbidLots: [],
   paymentsDue: 0,
-  paymentsInReview: false,
-  paymentsBlocker: null,
-  paymentsRefused: false,
   stillToSend: { count: 0, pence: 0, lotIds: [] },
   unreadNotifications: 0,
   groups: [],
@@ -105,7 +96,8 @@ export type AttentionChip = {
 
 type ChipRule = {
   kind: AttentionChip["kind"];
-  applies: (attention: ClientAttention) => boolean;
+  /** Truthy when the rule applies. */
+  applies: (attention: ClientAttention) => unknown;
   chip: (attention: ClientAttention) => Omit<AttentionChip, "kind">;
 };
 
@@ -145,18 +137,6 @@ function stillToSendChip(attention: ClientAttention): Omit<AttentionChip, "kind"
     : toPurchases(label);
 }
 
-/**
- * One phrase for a held purchase across LAX: "Payment on hold" (Purchases, Pay and LAX Account
- * Home say the same). A closed organisation is not on hold, so it says what is true instead.
- */
-function paymentOnHoldLabel(attention: ClientAttention): string {
-  return attention.paymentsRefused
-    ? "Payments closed for this account"
-    : attention.paymentsBlocker === "documents"
-      ? "Payment on hold: documents needed"
-      : "Payment on hold";
-}
-
 /** In priority order: being outbid wins while a sale is live; the account's checks, then payment, wait a little longer. */
 const CHIP_RULES: readonly ChipRule[] = [
   {
@@ -169,8 +149,17 @@ const CHIP_RULES: readonly ChipRule[] = [
     // than asking for a payment that cannot be made. It is about purchases only: it never
     // speaks for a sale registration or identity check, which the sale page reports itself.
     kind: "payment-on-hold",
-    applies: (a) => a.paymentsDue > 0 && a.paymentsInReview,
-    chip: (a) => toPurchases(paymentOnHoldLabel(a)),
+    applies: (a) => a.paymentsDue > 0 && a.paymentsHold,
+    // One phrase for a held purchase across LAX, "Payment on hold" (Purchases, Pay and LAX Account
+    // Home say the same). A closed organisation is not on hold, so it says what is true instead.
+    chip: (a) =>
+      toPurchases(
+        a.paymentsHold === "closed"
+          ? "Payments closed for this account"
+          : a.paymentsHold === "documents"
+            ? "Payment on hold: send documents"
+            : "Payment on hold",
+      ),
   },
   {
     kind: "payment-due",
