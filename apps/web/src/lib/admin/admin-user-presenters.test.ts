@@ -1,13 +1,12 @@
 import { userEmailStatuses, userKycStatuses } from "@auction/types";
 import { describe, expect, it } from "vitest";
 import {
+  EMAIL_DELIVERABILITY_LABELS,
+  KYC_STATUS_PHRASES,
   formatAmlCheckType,
   formatEmailDeliverabilityStatus,
   formatSignupPersona,
   formatUserRole,
-  EMAIL_DELIVERABILITY_LABELS,
-  KYC_STATUS_PHRASES,
-  formatEmailDeliverabilityStatus,
   kycStatusPhrase,
 } from "./admin-user-presenters";
 
