@@ -1,155 +1,212 @@
-Verdict: FIX FIRST
+Verdict: SHIP
 
-# Review of PR #1493 "Filters: crawlable filter links and follow-ups"
+# Final recheck of PR #1493 "Filters: crawlable filter links and follow-ups"
 
-Head `f892ba74` on base `f1e70f47`. Checked against PR #997's description and the code on main, not
-against this PR's description. There are no `review-notes-pr997*` branches and no review comments
-on #997. `docs/design` has no filters design (only `staff-design-standard.md`, which covers staff
-tables). So for canonical and noindex rules I used the repo's own documented rule,
-`metadataForListing` in `apps/web/src/lib/seo/metadata-factory.ts:95-111`.
+Head `22462b8e`. Checked as the PR merged locally with current main `46c9bdac` (#1486, motion
+hover/press), which merges cleanly. #1486 does not touch the checkbox, radio, label or filter
+rows. Its only change in `packages/ui/src/components/ui/accordion.tsx` drops `transition-all` from
+the trigger. Earlier review: `096d52fd` on this branch (FIX FIRST, 4 blocking). All four blocking
+items are now fixed.
+
+Method: production `next build` of main and of the PR in two checkouts, both with CI's placeholder
+Sentry DSNs, served with `next start` against the same mock API. The mock has 4 upcoming sales
+(2 online, 2 in London), departments Paintings 3, Watches 1 and Prints 0, and sales in November (1)
+and December (3) 2026. I fetched the HTML with curl (no JS), took Playwright screenshots and
+accessibility snapshots, and ran the unit suites and mutations locally.
 
 ## Blocking
 
-1. **The sales calendar rail still leaves most filter values out of the server HTML.**
-   `SALES_FILTER_SIDEBAR_DEFAULT_OPEN` opens only `delivery`, `location` and `sort`
-   (`apps/web/src/lib/marketing/sales-filter-sidebar-catalog.ts:15-19`). `AccordionContent` wraps
-   Radix `AccordionPrimitive.Content` without `forceMount` (`packages/ui/src/components/ui/accordion.tsx:60-72`),
-   so the Department, Month and Year rows are not rendered until JavaScript opens those groups.
-   - Production build of this branch (`next start`, `/sales?tab=upcoming&view=list`, no JS, mock
-     API with four sales and three departments): the HTML has 4 `role="checkbox"` rows (Auction
-     type and Location) and 2 sort links. There are no `/sales?…category=`, `month=` or `year=`
-     links, and "Paintings", "December" and "January" do not appear in the rail.
-   - `renderToString(<SalesFilterSidebar …/>)` gives the same result: hrefs only for delivery,
-     location and sort.
-   - #997's goal and this PR's own title are "every filter value reachable and crawlable without
-     JavaScript". On `/sales` that holds for 3 of the 6 link groups.
-   - Fix: render the link groups' content closed but present, for example `forceMount` on
-     `AccordionContent` with `data-[state=closed]:hidden`, or render the rows outside the
-     collapsible region. Then make the test below cover it.
-
-2. **The guarding test passes when Department, Month or Year rows are not links (mutation check).**
-   The test is `apps/web/src/components/sections/sales/sales-filter-sidebar.test.tsx:80-94`. I
-   replaced the rows of one group with a non-link `<span role="checkbox">` and ran the file:
-
-   | Mutation | Result |
-   | --- | --- |
-   | Department rows not links | **5/5 pass** (survives) |
-   | Month rows not links | **5/5 pass** (survives) |
-   | Year rows not links | **5/5 pass** (survives) |
-   | Auction type rows not links | 5/5 fail (caught) |
-   | Location rows not links | 2 fail, including the SSR test (caught) |
-   | Sort rows not links | SSR test fails (caught) |
-
-   The SSR test only looks at rows that are in the HTML. Collapsed groups are absent, so the test
-   passes without checking them. It should assert the expected set, for example one link per
-   department, month and year option that has results, so it fails today and passes after fix 1.
-
-3. **Filtered `/sales` addresses become crawlable but stay indexable.** `/sales` uses the static
-   `salesBrowsePageMetadata` (`apps/web/src/app/(marketing)/sales/(index)/page.tsx:5`,
-   `apps/web/src/lib/marketing/sales-browse-page.seo.ts:8-13`): canonical `/sales` and index on
-   every query string. Before this PR the rail used `router.push`, so crawlers could not find these
-   addresses. Now they are plain hrefs: tab × auction type × location × department × month × year ×
-   sort × view. The repo's rule for faceted listings is `metadataForListing` with
-   `noIndex: <filtered>` (`metadata-factory.ts:95`; used by `/search` at
-   `apps/web/src/app/(marketing)/search/page.tsx:84` and by `/press`). Use the same rule for
-   `/sales` (`noindex, follow` when any filter or sort param is set), with a test, before these
-   links ship.
-
-4. **The PR says styling is unchanged and has no screenshots, but the sales rail changes visually.**
-   I built main (`f1e70f47`) and this branch, served both against the same mock API, and took
-   1440 and 375 screenshots in light and dark. The rail pixel diff is confined to the changed rows:
-   - **Sort radios restyled** in both themes and at both widths. On main the unselected border is
-     `border-input`, with a filled `dark:bg-input/30` circle in dark mode. The PR uses a
-     `border-primary` outline, no dark fill and a larger dot (`marketing-filter-link-row.tsx:26-27,86-91`
-     against `packages/ui/src/components/ui/radio-group.tsx:33-34`). The 375 diff is only these
-     two radios (x 24–39, y 875–922).
-   - **Zero-count rows** dim the whole row at `opacity-60`, where main dimmed the checkbox at
-     `opacity-50` and the label at `opacity-60`. The change is slight.
-   - **New loading/transition behaviour on the sales rail.** The link row's `RowBody`
-     (`marketing-filter-link-row.tsx:33-46`) dims the row (`opacity-60`, `transition-opacity`) and
-     sets `aria-busy` while the navigation is pending (`useLinkStatus`). The old
-     `MarketingFilterCheckboxRow` and `router.push` path had no pending state. The PR says "No
-     hover, press, transition or loading code touched". No code was touched, but adopting the row
-     brings this behaviour to `/sales`, which the review brief rules out for this PR.
-   - Either keep the rail's look and behaviour, or state the change and attach 1440/375
-     light/dark before-and-after screenshots for design sign-off. The radio change does bring the
-     rail in line with the artist directory and Shop sort rows. That may be the right outcome, but
-     it has to be stated and reviewed.
+None.
 
 ## Non-blocking
 
-- **The sort radios lose their radio semantics.** On main, sort was a Radix `RadioGroup`
-  (`role="radiogroup"`, `role="radio"`, `aria-checked`). Now it is plain links in
-  `<nav aria-label="Sort by date">` with `aria-current` on the chosen one
-  (`sales-filter-group-contents.tsx:142-154`, `marketing-filter-link-row.tsx:112,133`). The row
-  documents this as deliberate, and Shop and the directory already work this way. Still, the PR's
-  "radio semantics unchanged" is not accurate. It also adds a `navigation` landmark per sort group
-  (rail and sheet). Shop uses `<fieldset>` + `<legend>` (`artwork-catalogue-filter-body.tsx:92-93`),
-  which keeps the landmark list clean. Use the same here.
-- **The accessible names have a stray space**: "Online , 4" (the tests assert that string,
-  `sales-filter-sidebar.test.tsx:60`). #997 specifies "Paintings, 12". The cause is in the shared
-  row (`marketing-filter-link-row.tsx:94-103`). This predates the PR.
-- **The mobile sheet copy is wrong for these rows.** It says "Refine catalogue results. Changes
-  apply when you confirm." and has "Show N sales", but the rows navigate at once and close the sheet
-  (`sales-calendar-filter-sheet.tsx:61`). This predates the PR (`router.push` also applied at
-  once), but now that rows are links it is worth fixing the copy.
-- **`link2` duplicates `link`** (`sales-filter-group-contents.tsx:74` vs `:95`). Pass the same
-  `onClick` spread to both.
-- **The `/** @vitest-environment jsdom */` docblock moved below the imports**
-  (`apps/shop/src/components/catalogue/artwork-catalogue-filter-body.test.tsx:5`), likely from
-  import sorting. Vitest still honours it (the suite passes and `DOMParser` is available), but put
-  it back on line 1 to match the other test files.
-- **The Shop and sales SSR tests skip `aria-disabled` rows.** A regression that marks rows with
-  results as unavailable (`unavailable = !checked`) is caught in Shop only by the older tests, not
-  by the new SSR test. Asserting the expected count of links would catch it directly.
-- **Shop's "Available only" control is a `Switch` that calls `onNavigate`**
-  (`artwork-catalogue-filter-body.tsx:43-50`), not a link, so that filter is not reachable without
-  JavaScript. It is outside #997's scope, so this is only a note.
+- **Keyboard behaviour differs from main's Radix controls, as the PR says.** The focus ring now
+  covers the whole row (`FOCUS_RING` on the link,
+  `apps/web/src/components/sections/sales/sales-filter-link-row.tsx:57`), not just the 16px box.
+  Enter now follows a row's link. Each sort option is its own tab stop with no arrow-key movement,
+  where main had a roving `radiogroup`. This is what a link row does, and it matches the artist
+  directory and Shop. The PR body states it ("they read as links, not radios"). The resting look
+  is pixel-identical (see Verified).
+- **Collapsed groups now stay mounted, Price included.** `forceMount`
+  (`sales-filter-sidebar.tsx:88-89`) also keeps `SalesPriceSlider` mounted while Price is closed.
+  Two effects follow. Its Apply link
+  (`/sales?tab=upcoming&minPrice=0&maxPrice=50000&view=list`) is now in the server HTML. That
+  address is noindexed by the new metadata, so it does no harm. And a dragged-but-unapplied range
+  now survives closing and reopening Price, where on main it reset. Both are fine. Mentioned only
+  for completeness.
+- **Intermittent hydration error #418 on `/sales`. It predates this PR.** It came up in 1 of 32
+  production page loads on this PR (8 viewport/theme/filter combinations × 4) and in 1 of 32 on
+  main, on different combinations each time. It is not caused by this change. It may be worth a
+  separate ticket (likely a time-dependent string in the sale cards).
+- **PR body detail.** The mutation table says "Department rows not links: 2 tests fail". With my
+  mutant (a `span role="checkbox"` carrying the same accessible name) exactly 1 test fails: the SSR
+  test. The count depends on the mutant, and the mutation is caught either way.
 
 ## Verified
 
-- **What #997 left open.** #997's only "Follow-up" is "Move LAX Shop's pressed-button rail onto the
-  shared rows". It is done on main: `apps/shop/src/components/catalogue/artwork-catalogue-filter-body.tsx:91-125`
-  uses `MarketingFilterLinkRow` (checkbox rows with counts, radio links for sort). #997 does not list
-  saleroom toolbar-chip counts as open. It shipped counts in the lot-status sheet only, counted when
-  the page holds the whole catalogue (`apps/web/src/lib/marketing/load-saleroom-detail-page.ts:115-116`).
-  The PR correctly makes no saleroom change.
-- **The Shop rail renders real links in server HTML.** All of its groups are open by default
-  (`apps/shop/src/lib/catalogue/artwork-catalogue-filter-config.ts:15-20`), so the rows are in the
-  HTML. Mutations caught: facet rows not links (4 tests fail), sort rows not links (1 fails).
-- **LAX Bid artist directory (`MarketingFilterLinkGroups`) renders real links.** Mutations caught:
-  sort rows not links (2 fail, including the new SSR test). If the shared row never renders `<a>`,
-  5/6 marketing-ui tests, 5/7 Shop tests and 3/5 web tests fail.
-- **lax.art** drawer and toolbar use Draft-and-Apply option lists, as #997 designed ("counts update
-  after Apply"). They are not link rows, so no server-HTML link check applies. The art suite passes.
-- **Counts match results.** With the mock data (4 upcoming sales: 2 online, 2 in London; Paintings
-  3, Watches 1, Prints 0; November 1, December 3), the production page shows exactly these counts.
-  Zero-count options (Prints, empty months) are dimmed with no href and `aria-disabled`. An applied
-  option stays linked to its "off" address (unit test
-  `sales-filter-sidebar.test.tsx` "takes an applied option off…").
-- **Accessibility.** Checkbox rows keep `role="checkbox"` and `aria-checked`, answer Space
-  (`chooseWithSpace`), take a row-wide `FOCUS_RING`, and include the count in the accessible name.
-  Unavailable rows are not in the tab order (same as the disabled checkbox before). The rail's
-  result count is `aria-live="polite"` (`sales-filter-sidebar.tsx:65`).
-- **Route JS: no growth from this PR.**
-  - CI build table, PR run 43823476786, compared with main's latest CI build that has a table:
-    run 43819811178 on `f1e70f47`, the PR's exact base. Main's newer `8ed75236` (#1492, docs only)
-    built nothing; the budget step reported "no production build; skipped".
-  - Sales list: **442.9 → 439.1 KB** (page 105.6 → 101.8 KB). `/sales` First Load: 373 → 369 kB.
-  - The other ±0.1 KB differences (for example web account 545.3 → 545.4) are build noise. Two
-    main builds around a test-only change (#1491) differ on 53 web routes the same way.
-  - Local same-machine builds of base and PR, `check-route-js-budget.mjs --all`, 196 routes: 96
-    same, 99 smaller, 1 larger. The larger one is `/sell/private-sales` at +0.1 KB. I diffed its
-    chunks module by module: the only differences are the per-build random server-action IDs and
-    Sentry debug IDs (plus the module id derived from them). No module this PR changed is in that
-    route.
-- **Tests.**
-  - `apps/shop`: 703 passed.
-  - `apps/art`: 798 passed.
-  - `packages/marketing-ui`: 705 passed.
-  - `apps/web`: 9928 passed, 10 skipped (1523 files).
-  - CI: all 41 check runs on `f892ba74` succeeded, including build, browser-gates,
-    art-browser-gates and web vitest 1–8.
-- **Scope.** 6 files changed. No CSS or token edits, no dependency changes, and the
-  `@auction/marketing-ui/marketing-filter-link-row` export was added to `package.json`. No motion
-  files were edited, but see blocking item 4 for the behaviour the shared row brings.
+### 1. Every sales-rail value is a real `<a href>` in server HTML, collapsed groups included
+
+- Code: `AccordionContent forceMount hidden={!openSections.includes(g.value)}`
+  (`apps/web/src/components/sections/sales/sales-filter-sidebar.tsx:87-90`). Radix
+  `CollapsibleContentImpl` renders its children whenever `forceMount` is set, and spreads
+  `contentProps` after its own `hidden: !isOpen`
+  (`node_modules/@radix-ui/react-collapsible/dist/index.mjs:122-133`). So the PR's `hidden` prop
+  decides visibility, which is why it is needed.
+- **Production build of the PR, curl with no JS**, `/sales?tab=upcoming&view=list`. The rail holds
+  real anchors for every option with results:
+  - Auction type: `delivery=online` and `delivery=onsite`.
+  - Location: `location=online` and `location=london`.
+  - Sort: the default (no param) and `sort=createdDesc`.
+  - **Department: `categoryId=cat-1` ("Paintings, 3") and `categoryId=cat-2` ("Watches, 1").**
+  - **Month: `month=11` ("November, 1") and `month=12` ("December, 3").**
+  - **Year: `year=2026` ("2026, 4").**
+  - The only options without an address are those with 0 results: Prints and January–October,
+    each a `span role="checkbox" aria-disabled="true"`.
+  - The 4 closed groups (Price, Department, Month, Year) carry `hidden=""`.
+- **Main's production build, same request:** 2 `href="/sales?` in the whole page, and no
+  `categoryId`, `month` or `year` links.
+- **Hidden from the accessibility tree while collapsed.** Playwright `ariaSnapshot()` of the
+  "Filters" region on the PR build:
+  - With groups closed: Department, Month and Year appear only as their collapsed buttons, with no
+    rows.
+  - After opening them: every row, including "Prints, 0" `[disabled]`, the 12 months and
+    "2026, 4".
+  - The mobile sheet behaves the same.
+  - Unit test: `sales-filter-sidebar.test.tsx:109-116`.
+
+### 2. The SSR test fails for the reviewer's mutations (run here)
+
+The test is `apps/web/src/components/sections/sales/sales-filter-sidebar.test.tsx:80-107`. It
+asserts the exact name and href of every option with results, 13 rows with no address, and the
+two sort links. For each mutation I replaced that group's `FilterCheckbox` with a non-link
+`span role="checkbox"` carrying the same accessible name, or made the change shown:
+
+| Mutation | Result |
+| --- | --- |
+| Department rows not links | 1 fails (SSR test), caught |
+| Month rows not links | 1 fails, caught |
+| Year rows not links | 1 fails, caught |
+| Auction type rows not links | 4 fail, caught |
+| Location rows not links | 1 fails, caught |
+| `forceMount` removed | 2 fail, caught |
+| `hidden` removed | 1 fails (a11y test), caught |
+| `unavailable = !checked` in `SalesFilterLinkRow` | 2 fail, caught |
+| sort `fieldset` → `div` | 2 fail, caught |
+
+The tree was restored after each mutation (`git status` clean).
+
+### 3. Filtered `/sales` is `noindex, follow` with canonical `/sales` via `metadataForListing`, with a test
+
+- Code:
+  - `generateMetadata` is at `apps/web/src/app/(marketing)/sales/(index)/page.tsx:10-12`.
+  - `salesBrowsePageMetadata(sp)` passes `noIndex: hasFacetParam(sp)` to `metadataForListing`
+    (`apps/web/src/lib/marketing/sales-browse-page.seo.ts:9-41`).
+  - The param list (`categoryId`, `delivery`, `location`, `sort`, `month`, `year`, `minPrice`,
+    `maxPrice`) is every filter or sort param that `calendarSalesHrefFromState` writes
+    (`sales-calendar-params.ts:191-207`). `tab`, `view` and `page` are rightly left out.
+- Test: `apps/web/src/lib/marketing/sales-browse-page.seo.test.ts` has 10 tests: each param, the
+  unfiltered page, tab, view, page 2 and an empty param.
+- **Production build** (runtime `NEXT_PUBLIC_FORCE_INDEXING=visible`,
+  `NEXT_PUBLIC_SITE_URL=https://www.example.test`):
+  - `/sales?tab=upcoming&view=list` and `…&page=2`: `index, follow`, canonical `/sales`.
+  - `…&categoryId=cat-1`, `…&sort=createdDesc` and `…&month=12`: `noindex, follow`, canonical
+    `/sales`.
+  - Main serves `index, follow` for `…&categoryId=cat-1`. That is the gap the PR closes.
+- The unfiltered `/sales` `<head>` (28 meta/link/title tags) is byte-identical between main and
+  the PR.
+
+### 4. The sales rail looks and behaves as on main
+
+- **1440 rail**, with Department, Month and Year opened so every row style shows: light, dark,
+  light with filters applied (`&delivery=online&sort=createdDesc`) and dark applied. **0 pixels
+  differ in all four** (288×934 element screenshots, main vs PR). That covers the sort radios
+  (unselected and selected), checked and unchecked boxes, and zero-count dimming (box at 0.5,
+  label at 0.7, as main renders through the Label's `peer-disabled:opacity-70`;
+  `sales-filter-link-row.tsx:64,81`).
+- **375 sheet**, in all four cases:
+  - The header is pixel-identical.
+  - The description is now the one-line "Choosing an option shows its sales straight away." where
+    main had two lines, "Refine catalogue results. Changes apply when you confirm."
+  - Below it, with the 20px offset, rows and footer differ only by 847–960 pixels in a 12px band
+    at the bottom edge of the scroll viewport: one more row shows because of the shorter copy.
+  - The footer is pixel-identical.
+- **No new pending, `aria-busy` or transition.** `SalesFilterLinkRow` has none
+  (`sales-filter-link-row.tsx:44-124`). After hydration the page has 0 `[aria-busy]` elements,
+  and there is no `aria-busy` in the rail's server HTML. The `aria-busy` in the page HTML is the
+  existing route loading skeleton, also on main.
+- The classes are drawn from main's components: `CHECKBOX_BOX`, `RADIO_BOX` and `LABEL`
+  (`sales-filter-link-row.tsx:28-36`) against `packages/ui/src/components/ui/checkbox.tsx:14-15`,
+  `radio-group.tsx:33-34,43-46` and `marketing-filter-checkbox-row.tsx:39-52` on main.
+- No e2e spec targets the old sales radios or checkboxes (searched `apps/web/e2e`).
+
+### 5. Follow-ups from the first review
+
+- **Sort uses a fieldset with a legend, not a nav.** `<fieldset>` with
+  `<legend className="sr-only">Sort by date</legend>` (`sales-filter-group-contents.tsx:140-152`).
+  In the server HTML: 1 fieldset and 0 `<nav>` in the rail. The accessibility snapshot shows
+  `group "Sort by date"` with two links, `aria-current` on the chosen one
+  (`sales-filter-link-row.tsx:116`). Unit test: `sales-filter-sidebar.test.tsx:118-127`.
+- **Accessible names are one string.** They read "Paintings, 3", "Online, 2" and so on.
+  - Sales row: `sales-filter-link-row.tsx:56,103,117`.
+  - Shared row: `packages/marketing-ui/src/marketing-filter-link-row.tsx:109,119,134`, with the
+    `sr-only ", n"` span removed.
+  - The accessibility snapshot confirms it, and the marketing-ui and artist tests are updated.
+- **Mobile sheet copy** is fixed (`sales-calendar-filter-sheet.tsx:46`), as shown in the
+  screenshots.
+- **Dedupe:** `link2` is gone. One `link = { onClick: onLinkClick }` is spread on every row,
+  sort included (`sales-filter-group-contents.tsx:93,112,133,149,167,183,199`).
+- **Docblock:** `/** @vitest-environment jsdom */` is back on line 1 of
+  `apps/shop/src/components/catalogue/artwork-catalogue-filter-body.test.tsx`.
+- **Shop and sales link-count assertions:**
+  - Shop: `artwork-catalogue-filter-body.test.tsx:115-135`.
+  - marketing-ui: `marketing-filter-link-groups.test.tsx:105-141`.
+  - Sales: `sales-filter-sidebar.test.tsx:100-101`.
+  - Mutation `unavailable = !checked` in the shared `MarketingFilterLinkRow`: Shop 3 of 7 fail,
+    including the new SSR test; marketing-ui 3 of 6 fail, including the new SSR test. Caught
+    directly.
+
+### 6. Route JS: equal or lower, apart from per-build ID noise
+
+- **CI, PR run 43848259985** (`build` job, head `22462b8e` merged with main) against main's latest
+  build table, merge-queue run 43835866524 on `46c9bdac`:
+  - **Sales list 442.8 → 439.1 KB** (page 105.6 → 101.8 KB). `/sales` First Load is 369 kB.
+  - Home, Sale page, Terms, Shop product and public, and every lax.art group are equal.
+  - Several web and Shop groups show ±0.1 KB: web checkout, listing and lot +0.1; Shop account and
+    checkout +0.1; account frame +0.1 / page −0.1; About +0.1; privacy/download −0.1.
+- **Local, same machine, `check-route-js-budget.mjs --app apps/web --all`, 114 web routes**, PR
+  against main build 1:
+  - 64 the same, 39 smaller, 11 larger, each by exactly +0.1 KB: about, artist/[slug],
+    lot/[slug]/[id], sales/[slug]/[id], search, sell, unsubscribe, auth/post-login,
+    onboarding/organisation/step/connect (or invitations/accept/[token]), [...missing] and
+    `_not-found`.
+- **Why those +0.1 KB are noise:**
+  - Module by module, after normalising Sentry debug IDs, the differing chunks in these 11 routes
+    hold the same modules at the same lengths. The only real differences are the
+    `createServerReference("<id>")` IDs of `setConsentAction` and `syncUiThemeFromClientAction`,
+    plus the module IDs and chunk names derived from them.
+  - Those IDs are salted with Next's per-build random encryption key
+    (`next/dist/build/webpack-config.js:416`, `serverReferenceHashSalt: encryptionKey`; the key is
+    in `.next/cache/.rscinfo`). The three builds had three different keys.
+  - The PR does not touch either action or any module in those routes. The changed modules
+    (`sales-filter-*`, `marketing-filter-link-row`) appear only in `/sales` and the artist
+    directory. The directory routes are +11 raw bytes (the `onClick` prop and `aria-label`) at
+    ±1 gzip byte, and show as unchanged in the table.
+  - Raw bytes are equal or smaller on 564 of 594 manifest entries. The rest are ≤ +11 bytes.
+  - **A second clean build of main** (same commit, new key) differed from the first on 52 of 114
+    routes (51 larger by +0.1 KB), which shows the size of this noise. No budget or baseline file
+    is changed.
+
+### 7. Tests and CI
+
+- Local, PR merged with main `46c9bdac`, after `turbo run build --filter='./packages/*'`:
+
+  | Suite | Result |
+  | --- | --- |
+  | `apps/web` | 1528 files, 9996 passed, 10 skipped |
+  | `apps/shop` | 116 files, 708 passed |
+  | `apps/art` | 101 files, 799 passed |
+  | `packages/marketing-ui` | 111 files, 710 passed |
+
+- CI on `22462b8e`: all 41 check runs succeeded, including build, static-checks, web vitest 1–8,
+  browser-gates, art-browser-gates, account-browser-gates, ui-chromium and ci-result.
+- Production `next build` of web succeeds on the merged tree.
