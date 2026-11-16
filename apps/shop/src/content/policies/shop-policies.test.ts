@@ -1,5 +1,7 @@
 import { LAX_ART_POLICIES } from "@auction/marketing-ui";
+import { QUOTE_HOLD_WORKING_DAYS, QUOTE_PAYMENT_WINDOW_MS } from "@auction/shop-domain";
 import { describe, expect, it } from "vitest";
+import { quotePaymentWindowWords } from "./help";
 import {
   OUTSIDE_UK_HELP_HREF,
   SHOP_POLICY_DOCUMENTS,
@@ -86,10 +88,45 @@ describe("the help page's delivery outside the UK entry", () => {
     expect(section?.heading).toBe("Delivery outside the UK");
     expect(OUTSIDE_UK_HELP_HREF).toBe("/help#delivery-outside-uk");
     const text = shopPolicyTexts({ ...help, sections: section ? [section] : [] }).join("\n");
-    expect(text).toContain("Our gallery team quotes delivery outside the UK");
+    expect(text).toContain("our gallery team quotes delivery outside the UK");
     expect(text).toContain("within one working day");
-    expect(text).toContain("Pay for your print and its delivery together");
-    expect(text).toContain("up to three working days");
+    expect(text).toContain("pay for your print and its delivery together");
+  });
+
+  const sectionText = () => {
+    const help = build(null);
+    const section = help.sections.find((s) => s.id === "delivery-outside-uk");
+    return shopPolicyTexts({ ...help, sections: section ? [section] : [] }).join("\n");
+  };
+
+  it("has the buyer accept the quote, then pay within the payment window", () => {
+    const text = sectionText();
+    expect(text).toContain("Accept the quote from our email");
+    expect(text).toContain(`you have ${quotePaymentWindowWords(QUOTE_PAYMENT_WINDOW_MS)} to pay`);
+    expect(quotePaymentWindowWords(60 * 60 * 1000)).toBe("one hour");
+    expect(quotePaymentWindowWords(90 * 60 * 1000)).toBe("90 minutes");
+    expect(quotePaymentWindowWords(2 * 60 * 60 * 1000)).toBe("2 hours");
+    expect(text).not.toContain("from the link in our email");
+  });
+
+  it("sends buyers to the dates in their confirmation and quote email, not one hold for all", () => {
+    const text = sectionText();
+    expect(text).toContain("confirmation at checkout and our quote email show the exact date");
+    expect(text).toContain("shorter for guests");
+    expect(text).toContain(`${QUOTE_HOLD_WORKING_DAYS} working days`);
+    expect(text).not.toContain("up to three working days");
+  });
+
+  it("leads with the fixed-price case so it stays true when a region has a fixed price", () => {
+    const text = sectionText();
+    expect(text).toMatch(/(^|\n)Where we have not set a fixed price, our gallery team quotes/);
+    expect(text).toContain("Where a fixed price is set, you pay it with your order");
+  });
+
+  it("claims the invoice for guests and signed-in buyers alike, only once paid", () => {
+    expect(sectionText()).toContain(
+      "Once you have paid, your invoice is on your order page, whether you are signed in or checked out as a guest",
+    );
   });
 
   it("points the full terms at lax.bid/shipping as a plain link", () => {

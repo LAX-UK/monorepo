@@ -1,5 +1,6 @@
 import { GALLERY_CONTACT } from "@auction/branding";
 import { LAX_ART_POLICIES, type LegalPolicyDocument } from "@auction/marketing-ui";
+import { QUOTE_HOLD_WORKING_DAYS, QUOTE_PAYMENT_WINDOW_MS } from "@auction/shop-domain";
 import { SHOP_POLICY_PATHS, SHOP_POLICY_SOURCES } from "./shop-policy-status";
 
 /** Contact details for the help page; the phone and email are the gallery's, from the shared contact. */
@@ -9,6 +10,18 @@ export const SHOP_HELP_CONTACT = {
   phone: `Phone: ${GALLERY_CONTACT.phone}`,
   address: "156 New Cavendish St, London W1W 6YW",
 } as const;
+
+const plural = (count: number, unit: string) => `${count} ${unit}${count === 1 ? "" : "s"}`;
+
+/** "one hour" or "30 minutes", from the payment window the quote flow really applies. */
+export function quotePaymentWindowWords(ms: number = QUOTE_PAYMENT_WINDOW_MS): string {
+  const minutes = Math.round(ms / 60_000);
+  if (minutes % 60 === 0) {
+    const hours = minutes / 60;
+    return hours === 1 ? "one hour" : plural(hours, "hour");
+  }
+  return plural(minutes, "minute");
+}
 
 const label = (slug: keyof typeof SHOP_POLICY_SOURCES) =>
   LAX_ART_POLICIES[SHOP_POLICY_SOURCES[slug]].label;
@@ -56,20 +69,21 @@ export function buildShopHelpDocument(input: {
         blocks: [
           {
             type: "paragraph",
-            text: "Our gallery team quotes delivery outside the UK for each order. You ask for a quote at checkout instead of paying for delivery straight away.",
+            text: "Where we have not set a fixed price, our gallery team quotes delivery outside the UK for each order. You ask for a quote at checkout instead of paying for delivery straight away. Where a fixed price is set, you pay it with your order and there is no quote to wait for.",
           },
           {
             type: "list",
             items: [
               "Ask for a quote at checkout. Nothing is charged, and we hold your print while we work out the price.",
               "We email you the price within one working day. It covers packing, insured delivery and export paperwork.",
-              "Pay for your print and its delivery together, from the link in our email.",
-              "We send your print once payment has cleared. Your invoice is on your order page.",
+              "Accept the quote from our email.",
+              `Once you accept, you have ${quotePaymentWindowWords()} to pay for your print and its delivery together.`,
+              "We send your print once payment has cleared. Once you have paid, your invoice is on your order page, whether you are signed in or checked out as a guest.",
             ],
           },
           {
             type: "paragraph",
-            text: "We hold your print for up to three working days. If you have not paid by then, we release it and you can ask again. Import duties, taxes and customs charges in your country are yours to pay and are not in the quote.",
+            text: `Your confirmation at checkout and our quote email show the exact date your print is held until. The hold can be shorter for guests than for signed-in buyers, and once we send your quote we hold it for ${plural(QUOTE_HOLD_WORKING_DAYS, "working day")}. If you have not paid by the date shown, we release the print and you can ask again. Import duties, taxes and customs charges in your country are yours to pay and are not in the quote.`,
           },
           {
             type: "paragraph",
