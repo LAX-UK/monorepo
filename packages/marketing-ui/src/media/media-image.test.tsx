@@ -108,6 +108,36 @@ describe("MediaImage", () => {
     expect(screen.queryByAltText("Artwork")).not.toBeInTheDocument();
   });
 
+  it("never hides a first-screen picture: only the kit fade, which holds back lazy images", () => {
+    render(
+      <>
+        <MediaImage src="/first.jpg" alt="First" label="Cover" priority />
+        <MediaImage src="/near.jpg" alt="Near" label="Cover" loading="eager" />
+      </>,
+    );
+
+    for (const name of ["First", "Near"]) {
+      const image = screen.getByAltText(name);
+      // No utility hides it before it loads: the kit's `.lax-image-fade` (image-fade.css) only
+      // holds back an image with `loading="lazy"`, and these are priority and eager.
+      expect(image.className).not.toMatch(/(^|\s)opacity-0(\s|$)/);
+      expect(image.className).not.toContain("transition-opacity");
+      expect(image).toHaveClass("lax-image-fade");
+      expect(image).not.toHaveAttribute("loading", "lazy");
+    }
+  });
+
+  it("marks a picture drawn once it loads, which ends a lazy picture's wait", () => {
+    render(<MediaImage src="/below.jpg" alt="Below" label="Cover" loading="lazy" />);
+
+    const image = screen.getByAltText("Below");
+    expect(image).toHaveAttribute("loading", "lazy");
+    expect(image).toHaveClass("lax-image-fade");
+    expect(image).not.toHaveClass("opacity-100");
+    fireEvent.load(image);
+    expect(image).toHaveClass("opacity-100");
+  });
+
   it("hides loading placeholder after load", async () => {
     render(<MediaImage src="/artwork.jpg" alt="Artwork" label="Lot artwork" aspect={[4, 5]} />);
 

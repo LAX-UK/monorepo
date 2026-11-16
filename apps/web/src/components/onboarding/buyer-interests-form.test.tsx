@@ -70,7 +70,7 @@ describe("BuyerInterestsForm", () => {
       expect(label.className).not.toMatch(/translate-y|box-shadow|transition-\[|duration-\d/);
       const img = label.querySelector("img") as HTMLImageElement;
       // The kit zoom; MediaImage's own load fade stays on the image (the kit composes the two).
-      expect(img).toHaveClass("lax-card-zoom", "transition-opacity");
+      expect(img).toHaveClass("lax-card-zoom", "lax-image-fade");
       expect(img.className).not.toMatch(/scale-\[|duration-500/);
     }
   });

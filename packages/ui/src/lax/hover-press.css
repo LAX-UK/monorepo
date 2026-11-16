@@ -13,10 +13,11 @@
  * The lift and zoom use the individual `translate` and `scale` properties, so they never fight a
  * `transform` the card already has, and they run on the compositor.
  *
- * An image that fades in when it loads (a `transition-opacity` utility, as `MediaImage` has) keeps
- * that fade: the zoom's transition list adds `opacity` with the utility's own duration and easing
- * (Tailwind's `--tw-duration` / `--tw-ease`), so neither cancels the other. Under reduced motion
- * the zoom is off and the image's own transitions apply unchanged (`revert-layer`).
+ * An image that fades in when it loads keeps that fade: the kit's lazy-image fade (`.lax-image-fade`
+ * on a `loading="lazy"` image, as `MediaImage` draws one; image-fade.css) or a `transition-opacity`
+ * utility. The zoom's transition list adds `opacity` with the fade's own duration and easing (the
+ * kit tokens, or Tailwind's `--tw-duration` / `--tw-ease`), so neither cancels the other. Under
+ * reduced motion the zoom is off and the image's own transitions apply unchanged (`revert-layer`).
  *
  * Press. `lax-press` on a button scales it to 0.98 over `--lax-motion-press` while it is held,
  * and lets go at once. It is an animation, not a transition, so the button keeps its own colour
@@ -47,6 +48,11 @@
     transition: scale var(--lax-motion-media) var(--lax-ease-out), opacity
       var(--tw-duration, var(--default-transition-duration))
       var(--tw-ease, var(--default-transition-timing-function));
+  }
+
+  :is(.lax-card-zoom, .lax-card-media img).lax-image-fade[loading="lazy"] {
+    transition: scale var(--lax-motion-media) var(--lax-ease-out), opacity var(--lax-motion-enter)
+      var(--lax-ease-out);
   }
 
   .lax-card-lift:hover {

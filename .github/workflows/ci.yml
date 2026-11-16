@@ -347,7 +347,8 @@ jobs:
   ui-chromium:
     # The kit's motion suites (packages/ui/src/lax/motion-resolved.test.ts for overlays,
     # hover-press-resolved.test.ts for card hover, button press, the hang shadow layer and Shop's
-    # print lift, and skeleton-resolved.test.ts for the loading skeleton) read what Chromium
+    # print lift, skeleton-resolved.test.ts for the loading skeleton and image-fade-resolved.test.ts
+    # for the lazy-image load fade and first-screen images) read what Chromium
     # resolves from the real stylesheets. It runs here, on a runner Playwright's Chromium
     # supports (ubuntu-latest is 26.04, which it does not; the browser gates pin 24.04 too), and
     # only when @auction/ui or one of the stylesheets the suite loads has changed. In the `test`
@@ -411,7 +412,7 @@ jobs:
         if: steps.affected.outputs.run == 'true'
         env:
           LAX_REQUIRE_CHROMIUM: "1"
-        run: pnpm --filter @auction/ui exec vitest run src/lax/motion-resolved.test.ts src/lax/hover-press-resolved.test.ts src/lax/skeleton-resolved.test.ts --maxWorkers=2
+        run: pnpm --filter @auction/ui exec vitest run src/lax/motion-resolved.test.ts src/lax/hover-press-resolved.test.ts src/lax/skeleton-resolved.test.ts src/lax/image-fade-resolved.test.ts --maxWorkers=2
 
   identity-boundary:
     name: identity boundary conformance
