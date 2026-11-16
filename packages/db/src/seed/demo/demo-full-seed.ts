@@ -3,7 +3,7 @@
  * live online sale, finished sales, consignments, payouts), then adds the full catalogue: a timed
  * sale that is live now with lots in all twelve departments, a saleroom sale in a few days, three
  * more upcoming sales with large covers, a finished sale with a withdrawn lot and a held invoice,
- * department pictures, notifications and private sale enquiries.
+ * department pictures, notifications and private sale enquiries, and one item in every staff queue (see ./queues).
  *
  * Idempotent: fixed ids and `on conflict` writes; sales and lots refresh their dates so the live
  * sale is live again whenever it is run. Never deletes. Test and local databases only.
@@ -24,6 +24,7 @@ import {
   runDemoTopUp,
   writeCatalogue,
 } from "./demo-topup-seed.js";
+import { seedStaffQueues } from "./queues/index.js";
 
 const HOUR = 3_600_000;
 const DAY = 24 * HOUR;
@@ -40,6 +41,8 @@ export type DemoFullResult = {
   lots: number;
   bids: number;
   departments: number;
+  /** The staff queues that now have an item. */
+  queues: string[];
 };
 
 export async function runDemoFull(db: Db, now: number = Date.now()): Promise<DemoFullResult> {
@@ -111,6 +114,14 @@ export async function runDemoFull(db: Db, now: number = Date.now()): Promise<Dem
 
   await writeNotifications(db, now, people.ids, catalogue.lots);
   await writeEnquiries(db, now, people.ids);
+  const queues = await seedStaffQueues({
+    db,
+    now,
+    people: people.ids,
+    staff: { adminUserId: refreshed.userIds.admin },
+    laxStockId: base.laxStockId,
+    enquiryIds: { buy: ENQUIRY_ID(1), sell: ENQUIRY_ID(2) },
+  });
 
   return {
     topUp,
@@ -118,6 +129,7 @@ export async function runDemoFull(db: Db, now: number = Date.now()): Promise<Dem
     lots: catalogue.lots.length,
     bids: catalogue.bids.length,
     departments: DEPARTMENTS.length,
+    queues,
   };
 }
 
