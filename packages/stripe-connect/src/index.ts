@@ -30,3 +30,10 @@ export {
   connectTransferBlockMessage,
   decideConnectTransfer,
 } from "./connect-transfer-decision.js";
+export {
+  type StripeKeyIssue,
+  type StripeKeyKind,
+  type StripeKeyToCheck,
+  isStripeTestModeKey,
+  stripeTestModeKeyIssues,
+} from "./stripe-key-environment.js";

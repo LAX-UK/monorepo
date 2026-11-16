@@ -5,6 +5,7 @@ import { runMigrationsPerTransaction } from "../../../migrate-runner.js";
 import * as schema from "../../../schema/index.js";
 import { withTemporaryDatabase } from "../../../testing/temporary-database.js";
 import { runLegacyDemoSeed } from "../../dev/legacy-demo-seed.js";
+import { LOCAL_SEED_PASSWORD } from "../../shared/seed-target-guard.js";
 import { runDemoFull } from "../demo-full-seed.js";
 import { QUEUE_SEEDERS } from "./index.js";
 import { QUEUE_IDS } from "./queue-ids.js";
@@ -16,7 +17,7 @@ async function legacySeed(databaseUrl: string) {
   const previous = process.env.DATABASE_URL;
   process.env.DATABASE_URL = databaseUrl;
   try {
-    await runLegacyDemoSeed();
+    await runLegacyDemoSeed({ password: LOCAL_SEED_PASSWORD });
   } finally {
     if (previous === undefined) Reflect.deleteProperty(process.env, "DATABASE_URL");
     else process.env.DATABASE_URL = previous;

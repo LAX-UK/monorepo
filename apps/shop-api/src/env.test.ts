@@ -147,6 +147,43 @@ describe("loadShopApiEnv Connect platform", () => {
   });
 });
 
+describe("loadShopApiEnv Stripe on test", () => {
+  // Built from parts so no complete key-shaped string sits in the source.
+  const liveKey = (prefix: string) => `${prefix}_live_${"x".repeat(16)}`;
+  const testBase = (overrides: Record<string, string> = {}) =>
+    productionNodeBase({ APP_ENV: "test", ...overrides });
+
+  it("refuses a live secret key when APP_ENV=test", () => {
+    expect(() => loadShopApiEnv(testBase({ STRIPE_SECRET_KEY: liveKey("sk") }))).toThrow(
+      /STRIPE_SECRET_KEY in test must use a test key/,
+    );
+  });
+
+  it("refuses a live publishable key when APP_ENV=test", () => {
+    expect(() => loadShopApiEnv(testBase({ STRIPE_PUBLISHABLE_KEY: liveKey("pk") }))).toThrow(
+      /STRIPE_PUBLISHABLE_KEY in test must use a test key/,
+    );
+  });
+
+  it("refuses the live Connect platform when APP_ENV=test", () => {
+    expect(() => loadShopApiEnv(testBase({ STRIPE_SHOP_CONNECT_PLATFORM_KEY: "lax_art" }))).toThrow(
+      /STRIPE_SHOP_CONNECT_PLATFORM_KEY in test must be bid_sandbox/,
+    );
+  });
+
+  it("accepts test keys on the sandbox platform", () => {
+    expect(() => loadShopApiEnv(testBase({ STRIPE_PUBLISHABLE_KEY: "pk_test_key" }))).not.toThrow();
+  });
+
+  it("leaves production keys to the production checks", () => {
+    expect(() =>
+      loadShopApiEnv(
+        productionNodeBase({ APP_ENV: "production", STRIPE_SECRET_KEY: liveKey("sk") }),
+      ),
+    ).not.toThrow();
+  });
+});
+
 describe("loadShopApiEnv editorial", () => {
   it("requires a preview secret when editorial is enabled on a production build", () => {
     expect(() => loadShopApiEnv(productionNodeBase({ SHOP_EDITORIAL_ENABLED: "true" }))).toThrow(

@@ -7,7 +7,14 @@
  * Local only: refuses a non-local database or NODE_ENV=production. Never creates users; it fails
  * if a dev account is missing (run `pnpm --filter @auction/db db:seed:dev` first).
  */
-import { closeDb, createDb } from "@auction/db";
+import {
+  assertSeedEnvironment,
+  assertSeedTarget,
+  closeDb,
+  createDb,
+  isLocalSeedAddress,
+  seedTargetEnvFromProcess,
+} from "@auction/db";
 import type { ShopStaffRole } from "@auction/shop-domain";
 import pg from "pg";
 import { loadShopApiEnv } from "../env.js";
@@ -28,17 +35,14 @@ export const LOCAL_ADMIN_STAFF: ReadonlyArray<{ role: ShopStaffRole; email: stri
   { role: "broker", email: "gallery-admin@lax.bid" },
 ];
 
-const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1", "::1", "[::1]"]);
 const OPERATOR = "seed:local-admin-staff";
 
-function assertLocalTarget(urls: readonly string[]): void {
-  if (process.env.NODE_ENV === "production") {
-    throw new Error("Refusing to seed local staff: NODE_ENV is production");
-  }
+/** Both databases must be local; the Shop one must also carry the "local" demo seed mark. */
+function assertLocalAddresses(urls: readonly string[]): void {
   for (const url of urls) {
-    const host = new URL(url).hostname;
-    if (!LOCAL_HOSTS.has(host)) {
-      throw new Error(`Refusing to seed local staff: database host "${host}" is not local`);
+    assertSeedEnvironment(OPERATOR, { ...seedTargetEnvFromProcess(), databaseUrl: url });
+    if (!isLocalSeedAddress({ databaseUrl: url, appEnv: process.env.APP_ENV })) {
+      throw new Error(`[${OPERATOR}] refusing to seed: "${new URL(url).hostname}" is not local`);
     }
   }
 }
@@ -60,7 +64,7 @@ async function resolveSubjects(identityUrl: string): Promise<Map<string, string>
 const env = loadShopApiEnv();
 const identityUrl = process.env.DATABASE_URL_AUTH?.trim() || process.env.DATABASE_URL?.trim();
 if (!identityUrl) throw new Error("DATABASE_URL_AUTH or DATABASE_URL is required");
-assertLocalTarget([identityUrl, env.DATABASE_URL_SHOP]);
+assertLocalAddresses([identityUrl, env.DATABASE_URL_SHOP]);
 
 const subjects = await resolveSubjects(identityUrl);
 const missing = LOCAL_ADMIN_STAFF.filter((entry) => !subjects.has(entry.email));
@@ -72,6 +76,15 @@ if (missing.length > 0) {
 
 const db = createDb(env.DATABASE_URL_SHOP);
 try {
+  const target = await assertSeedTarget(db, OPERATOR, {
+    ...seedTargetEnvFromProcess(),
+    databaseUrl: env.DATABASE_URL_SHOP,
+  });
+  if (!target.hermetic) {
+    throw new Error(
+      `[${OPERATOR}] refusing to seed: the database is marked "${target.environment}"`,
+    );
+  }
   for (const { role, email } of LOCAL_ADMIN_STAFF) {
     await grantShopStaffRole(db, {
       subject: subjects.get(email) as string,

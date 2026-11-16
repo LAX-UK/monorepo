@@ -15,8 +15,21 @@ The seeds refuse a database unless both are true:
    that names this database. Production never has a row. A copy restored under another name is
    refused, because its row names the database it was written in.
 
-The Bid seed (`db:seed:demo-full`), the Shop seed (`seed:demo-full`) and the staff queue seeders
-check the mark before they write anything.
+Every seed that writes accounts, passwords or staff grants checks the mark before it writes
+anything, through one guard (`packages/db/src/seed/shared/seed-target-guard.ts`): the dev seed
+(`db:seed:dev`, also run by `terraform-test-up` on an empty test database), `db:seed:demo-full`,
+`db:seed:demo-topup`, `db:seed:check-accounts`, the Shop `seed:demo-full`,
+`seed:acceptance-portal`, `seed:acceptance-staff-operations` and `seed:local-admin-staff`, and the
+staff queue seeders. None of them has an override flag.
+
+### Seeded passwords and staff two-factor
+
+- **Local** (a loopback address, or a Compose service name, with no `APP_ENV=test`/`production`):
+  a database with no mark yet is marked `local` on its first seed, so `pnpm db:seed` stays one
+  command. Seeded sign-ins use the local password and the dev seed makes staff two-factor optional.
+- **Anything else** (including test): the seeds need the `SEED_ACCOUNT_PASSWORD` secret (at least 16
+  characters, not the local password) for every sign-in they create, and the dev seed leaves the
+  staff two-factor policy as it is. Only a local address may be marked `local`.
 
 ## Mark the test database (once)
 

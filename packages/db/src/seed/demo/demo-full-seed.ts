@@ -12,6 +12,7 @@
 import { eq, sql } from "drizzle-orm";
 import * as schema from "../../schema/index.js";
 import { assertDemoSeedDatabase } from "../shared/demo-seed-target.js";
+import { LOCAL_SEED_PASSWORD } from "../shared/seed-target-guard.js";
 import { type FullActors, buildFullCatalogue } from "./demo-full-catalogue.js";
 import { COVER_IMAGES, DEPARTMENTS, WORKS } from "./demo-full-works.js";
 import { demoImageUrl, departmentHeroSource } from "./demo-images.js";
@@ -47,12 +48,16 @@ export type DemoFullResult = {
   queues: string[];
 };
 
-export async function runDemoFull(db: Db, now: number = Date.now()): Promise<DemoFullResult> {
+export async function runDemoFull(
+  db: Db,
+  now: number = Date.now(),
+  password: string = LOCAL_SEED_PASSWORD,
+): Promise<DemoFullResult> {
   // The database itself must say it takes demo data (0398); the address checks come first, in the CLI.
   await assertDemoSeedDatabase(db, "demo-full");
-  const topUp = await runDemoTopUp(db, now);
+  const topUp = await runDemoTopUp(db, now, password);
 
-  const people = await ensurePeople(db, now);
+  const people = await ensurePeople(db, now, password);
   const base = await loadBase(db);
   await ensureNorthbankTeam(db, now, base, people.ids);
 

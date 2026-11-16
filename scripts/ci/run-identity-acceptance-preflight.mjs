@@ -117,8 +117,10 @@ async function main() {
   try {
     run("Build db closure", "pnpm", ["--filter", "@auction/db...", "build"]);
     run("Apply migrations through 0161", "pnpm", ["--filter", "@auction/db", "db:migrate"]);
+    // A throwaway local database: seeded as local, so it is marked "local" and gets the local fixtures.
     run("Seed dev fixtures", "pnpm", ["--filter", "@auction/db", "db:seed:dev"], {
       NODE_ENV: "test",
+      APP_ENV: "development",
     });
     run("Apply role grants", "pnpm", ["--filter", "@auction/db", "db:roles"]);
     run("Configure OIDC clients", "pnpm", ["--filter", "@auction/db", "db:configure-oidc-clients"]);

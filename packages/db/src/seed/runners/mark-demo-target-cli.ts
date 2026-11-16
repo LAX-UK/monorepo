@@ -8,9 +8,28 @@
  */
 import pg from "pg";
 import { buildPgConnectionConfig } from "../../ssl.js";
-import { assertDemoFullTarget } from "./demo-full-cli.js";
+import {
+  assertSeedEnvironment,
+  isLocalSeedAddress,
+  seedTargetEnvFromProcess,
+} from "../shared/seed-target-guard.js";
 
 export type MarkDemoTargetArgs = { environment: "test" | "local"; markedBy: string };
+
+/**
+ * "local" lets the seeds use the local password and relax staff two-factor, so only a local
+ * address may be marked "local". A test database is marked "test".
+ */
+export function assertMarkFitsAddress(
+  args: MarkDemoTargetArgs,
+  env: { databaseUrl: string | undefined; appEnv?: string | undefined },
+): void {
+  if (args.environment === "local" && !isLocalSeedAddress(env)) {
+    throw new Error(
+      '[mark-demo-target] only a local database (localhost or a Compose service, no APP_ENV=test) may be marked "local"; mark a test database "test"',
+    );
+  }
+}
 
 export function parseMarkDemoTargetArgs(argv: string[]): MarkDemoTargetArgs {
   const [environment = "local", markedBy = "ci"] = argv;
@@ -25,11 +44,9 @@ export function parseMarkDemoTargetArgs(argv: string[]): MarkDemoTargetArgs {
 
 async function main() {
   const args = parseMarkDemoTargetArgs(process.argv.slice(2));
-  const url = assertDemoFullTarget({
-    databaseUrl: process.env.DATABASE_URL,
-    nodeEnv: process.env.NODE_ENV,
-    appEnv: process.env.APP_ENV,
-  });
+  const env = seedTargetEnvFromProcess();
+  const url = assertSeedEnvironment("mark-demo-target", env);
+  assertMarkFitsAddress(args, env);
   const pool = new pg.Pool(buildPgConnectionConfig(url));
   try {
     const result = await pool.query(

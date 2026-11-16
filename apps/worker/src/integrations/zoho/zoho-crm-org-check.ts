@@ -1,29 +1,18 @@
 import type { WorkerEnv } from "../../env.js";
 import { getZohoCrmAccessToken } from "./oauth-token-refresh.js";
 import { ZohoCrmAuthError } from "./types.js";
+import { actsOnZohoCrm } from "./zoho-live-modes.js";
 
 /**
- * Anything that writes to Zoho: the CRM sync in canary/live, or the artwork writeback, the LAX
- * listing or the fulfilment mirror in live.
+ * Org check runs whenever something writes to Zoho (not for off or dry_run), and on test whenever
+ * live Zoho data is read in.
  */
-function writesToZoho(env: WorkerEnv): boolean {
-  const mode = env.ZOHO_CRM_SYNC_MODE;
-  return (
-    mode === "live" ||
-    mode === "canary" ||
-    env.ZOHO_ARTWORK_WRITEBACK_MODE === "live" ||
-    env.ZOHO_ARTWORK_LISTING_MODE === "live" ||
-    env.ZOHO_FULFILMENT_MIRROR_MODE === "live"
-  );
-}
-
-/** Org check runs whenever something writes to Zoho (not for off or dry_run). */
 export function shouldRunZohoCrmOrgCheck(env: WorkerEnv): boolean {
-  return writesToZoho(env) && Boolean(env.ZOHO_CRM_EXPECTED_ORG_TYPE);
+  return actsOnZohoCrm(env) && Boolean(env.ZOHO_CRM_EXPECTED_ORG_TYPE);
 }
 
 export function assertZohoCrmLiveRequiresExpectedOrg(env: WorkerEnv): void {
-  if (writesToZoho(env) && !env.ZOHO_CRM_EXPECTED_ORG_TYPE) {
+  if (actsOnZohoCrm(env) && !env.ZOHO_CRM_EXPECTED_ORG_TYPE) {
     throw new ZohoCrmAuthError("zoho_crm_expected_org_type_required_for_live");
   }
 }

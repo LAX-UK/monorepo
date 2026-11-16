@@ -317,3 +317,36 @@ describe("envSchema enquiry inbound replies", () => {
     expect(parsed.success).toBe(true);
   });
 });
+
+describe("API Stripe keys on a test stack", () => {
+  const stripeIssues = (env: Record<string, unknown>) => {
+    const result = envSchema.safeParse(productionEnvBase(env));
+    if (result.success) return [];
+    return result.error.issues
+      .filter((issue) => String(issue.path[0]).startsWith("STRIPE_"))
+      .map((issue) => issue.message);
+  };
+
+  it("refuses live keys when APP_ENV=test", () => {
+    expect(
+      stripeIssues({
+        APP_ENV: "test",
+        STRIPE_SECRET_KEY: "sk_live_key",
+        STRIPE_PUBLISHABLE_KEY: "pk_live_key",
+      }),
+    ).toEqual([
+      "STRIPE_SECRET_KEY in test must use a test key (sk_test_… or rk_test_…)",
+      "STRIPE_PUBLISHABLE_KEY in test must use a test key (pk_test_…)",
+    ]);
+  });
+
+  it("accepts test keys when APP_ENV=test", () => {
+    expect(
+      stripeIssues({
+        APP_ENV: "test",
+        STRIPE_SECRET_KEY: "sk_test_key",
+        STRIPE_PUBLISHABLE_KEY: "pk_test_key",
+      }),
+    ).toEqual([]);
+  });
+});

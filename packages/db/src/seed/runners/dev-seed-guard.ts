@@ -1,22 +1,21 @@
 import { sql } from "drizzle-orm";
 import type { Database } from "../../index.js";
 import { user } from "../../schema/index.js";
+import { isLocalSeedAddress } from "../shared/seed-target-guard.js";
 
-const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1"]);
-
+/** Anything but a local database: a remote host, or a test or production environment. */
 export function isRemoteOrProtectedSeedTarget(options: {
   databaseUrl: string;
   appEnv?: string;
 }): boolean {
-  const host = new URL(options.databaseUrl).hostname;
-  const isLocal = LOCAL_HOSTS.has(host) || host.endsWith(".local");
-  const appEnv = (options.appEnv ?? "").toLowerCase();
-  if (appEnv === "test" || appEnv === "production" || appEnv === "prod") {
-    return true;
-  }
-  return !isLocal;
+  return !isLocalSeedAddress(options);
 }
 
+/**
+ * The dev seed wipes the tables it loads. The demo seed mark has already been checked
+ * (`assertSeedTarget`), so this is a second check on top of it: a marked remote database is wiped
+ * only while it has no users, or when an operator sets SEED_ALLOW_DESTRUCTIVE=1 on purpose.
+ */
 export async function assertDevSeedMayRunDestructiveClear(
   db: Database,
   options: { databaseUrl: string; appEnv?: string },

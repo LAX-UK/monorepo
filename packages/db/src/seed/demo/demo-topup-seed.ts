@@ -21,6 +21,7 @@ import type { NodePgQueryResultHKT } from "drizzle-orm/node-postgres";
 import type { PgDatabase } from "drizzle-orm/pg-core";
 import * as schema from "../../schema/index.js";
 import { insertSeedInvoices, penceToPounds, priceHammer } from "../shared/seed-invoice.js";
+import { LOCAL_SEED_PASSWORD } from "../shared/seed-target-guard.js";
 import { SEED_BUYER_PREMIUM_TERMS } from "../shared/terms.js";
 import { DEMO_ARTIST_LIST } from "./demo-artists.js";
 import {
@@ -33,7 +34,6 @@ import {
   BASE_EMAILS,
   BASE_ENTITY_SLUGS,
   DEMO_IDS,
-  DEMO_PASSWORD,
   DEMO_PEOPLE,
   type DemoPerson,
 } from "./demo-topup-ids.js";
@@ -58,8 +58,16 @@ export type DemoTopUpResult = {
   catalogue: { sales: number; lots: number; bids: number; payments: number; submissions: number };
 };
 
-export async function runDemoTopUp(db: Db, now: number = Date.now()): Promise<DemoTopUpResult> {
-  const people = await ensurePeople(db, now);
+/**
+ * `password` is what the people it creates sign in with; the CLI picks it with the seed target
+ * guard (the local password on a local database only).
+ */
+export async function runDemoTopUp(
+  db: Db,
+  now: number = Date.now(),
+  password: string = LOCAL_SEED_PASSWORD,
+): Promise<DemoTopUpResult> {
+  const people = await ensurePeople(db, now, password);
   const base = await loadBase(db);
   const actors: DemoActors = {
     collectorUserId: people.ids.collector,
@@ -98,8 +106,8 @@ export function personalEntityOf(person: DemoPerson): string {
 
 export type PeopleIds = Record<keyof typeof DEMO_PEOPLE, string>;
 
-export async function ensurePeople(db: Db, now: number) {
-  const passwordHash = await hashPassword(DEMO_PASSWORD);
+export async function ensurePeople(db: Db, now: number, password: string = LOCAL_SEED_PASSWORD) {
+  const passwordHash = await hashPassword(password);
   const ids = {} as PeopleIds;
   const created: string[] = [];
   const existing: string[] = [];

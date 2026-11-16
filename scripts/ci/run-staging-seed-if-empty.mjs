@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 /**
- * Run the dev demo seed only when the staging database has no users yet.
+ * Run the dev demo seed only when the staging database has no users yet. The seed itself refuses a
+ * database without the demo seed mark (0398), needs SEED_ACCOUNT_PASSWORD for the sign-ins it
+ * creates, and leaves the staff two-factor policy alone on anything but a local database.
  */
 import { spawnSync } from "node:child_process";
 import pg from "pg";

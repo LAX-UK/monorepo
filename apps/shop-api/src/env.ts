@@ -2,6 +2,7 @@ import { DEV_ALERT_LINK_SECRET, isUsableAlertLinkSecret } from "@auction/alerts"
 import { legalEntityFor } from "@auction/branding";
 import { STAFF_STEP_UP_MAX_AGE_SECONDS } from "@auction/identity-contracts";
 import { parseFinancialYearEnd } from "@auction/shop-domain";
+import { stripeTestModeKeyIssues } from "@auction/stripe-connect";
 import { z } from "zod";
 
 type AppEnv = "production" | "test" | "development";
@@ -366,6 +367,24 @@ function assertStripeConfigured(env: ShopApiEnv): void {
   );
 }
 
+/**
+ * A test stack must never reach live Stripe: every key must be a test-mode key, and Connect must
+ * use the sandbox platform, never the live lax.art one (the same rule as the Bid API).
+ */
+function assertTestStackStripeIsSandbox(env: ShopApiEnv, appEnv: AppEnv): void {
+  const issues = stripeTestModeKeyIssues(appEnv, [
+    { name: "STRIPE_SECRET_KEY", kind: "secret", value: env.STRIPE_SECRET_KEY },
+    { name: "STRIPE_PUBLISHABLE_KEY", kind: "publishable", value: env.STRIPE_PUBLISHABLE_KEY },
+  ]);
+  if (appEnv === "test" && env.STRIPE_SHOP_CONNECT_PLATFORM_KEY !== "bid_sandbox") {
+    issues.push({
+      name: "STRIPE_SHOP_CONNECT_PLATFORM_KEY",
+      message: "STRIPE_SHOP_CONNECT_PLATFORM_KEY in test must be bid_sandbox",
+    });
+  }
+  if (issues.length > 0) throw new Error(issues.map((issue) => issue.message).join("; "));
+}
+
 export function loadShopApiEnv(source: NodeJS.ProcessEnv = process.env): ShopApiEnv {
   const normalized: NodeJS.ProcessEnv = { ...source };
   if (
@@ -383,6 +402,7 @@ export function loadShopApiEnv(source: NodeJS.ProcessEnv = process.env): ShopApi
   if (Boolean(parsed.data.ART_REVALIDATE_URL) !== Boolean(parsed.data.ART_REVALIDATE_SECRET)) {
     throw new Error("ART_REVALIDATE_URL and ART_REVALIDATE_SECRET must be set together");
   }
+  assertTestStackStripeIsSandbox(parsed.data, resolveAppEnv(normalized));
   if (parsed.data.NODE_ENV === "production") {
     if (!parsed.data.SHOP_API_BFF_TOKEN) {
       throw new Error("SHOP_API_BFF_TOKEN is required in production");
