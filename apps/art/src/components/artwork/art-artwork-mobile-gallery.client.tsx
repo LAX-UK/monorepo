@@ -1,16 +1,11 @@
 "use client";
 
-import { ArtGeneralEnquirySheet } from "@/components/enquiry/art-general-enquiry-sheet.client";
 import { ArtMediaImage } from "@/components/media/art-media-image";
-import type {
-  ArtworkGalleryImageVm,
-  ArtworkSpecialistContactVm,
-} from "@/lib/artwork/artwork-detail-page.composer";
+import type { ArtworkGalleryImageVm } from "@/lib/artwork/artwork-detail-page.composer";
 import { ART_MEDIA_LABELS } from "@/lib/media/art-media-labels";
 import {
   MarketingImageIcon,
   MarketingMoreIcon,
-  MarketingPhoneIcon,
   MarketingShareButton,
   MarketingShareIcon,
   MarketingSideSheet,
@@ -22,11 +17,9 @@ import { useRef, useState } from "react";
 
 export type ArtArtworkMobileGalleryProps = {
   images: ArtworkGalleryImageVm[];
-  slug: string;
   title: string;
   shareUrl: string;
   categoryHref: string | null;
-  specialistContact: ArtworkSpecialistContactVm;
 };
 
 const overlayButtonClass =
@@ -42,14 +35,11 @@ const optionRowClass =
  */
 export function ArtArtworkMobileGallery({
   images,
-  slug,
   title,
   shareUrl,
   categoryHref,
-  specialistContact,
 }: ArtArtworkMobileGalleryProps) {
   const [optionsOpen, setOptionsOpen] = useState(false);
-  const [specialistRequests, setSpecialistRequests] = useState(0);
   const optionsTriggerRef = useRef<HTMLButtonElement>(null);
 
   const optionsButton = (
@@ -156,40 +146,8 @@ export function ArtArtworkMobileGallery({
               </Button>
             </li>
           ) : null}
-          {specialistContact.kind === "ready" ? (
-            <li>
-              <Button
-                type="button"
-                variant="ghost"
-                className={optionRowClass}
-                onClick={() => {
-                  setOptionsOpen(false);
-                  setSpecialistRequests((count) => count + 1);
-                }}
-              >
-                <MarketingPhoneIcon />
-                Contact a specialist
-              </Button>
-            </li>
-          ) : null}
         </ul>
       </MarketingSideSheet>
-
-      {specialistContact.kind === "ready" && specialistRequests > 0 ? (
-        // The general enquiry sheet ships with its own trigger. Here it opens from the options
-        // sheet instead, so it mounts open (a new key per request) and its trigger stays hidden.
-        <div hidden>
-          <ArtGeneralEnquirySheet
-            key={specialistRequests}
-            autoOpen
-            defaultTopic="art_advisory"
-            contextSlug={slug}
-            contextLabel={title}
-            contact={specialistContact.contact}
-            viewerKind={specialistContact.viewerKind}
-          />
-        </div>
-      ) : null}
     </div>
   );
 }

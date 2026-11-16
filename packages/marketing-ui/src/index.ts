@@ -612,6 +612,10 @@ export {
   type MarketingFaqItem,
 } from "./marketing-faq-accordion.js";
 export {
+  MarketingFaqPills,
+  type MarketingFaqPillsProps,
+} from "./marketing-faq-pills.js";
+export {
   MarketingEnquiryConfirmation,
   type MarketingEnquiryConfirmationProps,
   type MarketingEnquiryStep,

@@ -3,6 +3,7 @@ import { cn } from "@auction/ui";
 import Link from "next/link";
 import { useId } from "react";
 import { MarketingDetailAccordion } from "./marketing-detail-accordion.js";
+import { MARKETING_FAQ_COPY } from "./marketing-faq.copy.js";
 import { MarketingArrowRightIcon } from "./marketing-icons.js";
 
 export type MarketingFaqItem = {
@@ -24,7 +25,7 @@ export type MarketingFaqAccordionProps = {
  * section heading as the detail tabs beside them. Renders nothing without questions.
  */
 export function MarketingFaqAccordion({
-  title = "FAQs",
+  title = MARKETING_FAQ_COPY.title,
   items,
   className,
 }: MarketingFaqAccordionProps) {

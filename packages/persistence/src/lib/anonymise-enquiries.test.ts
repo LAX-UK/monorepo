@@ -41,6 +41,7 @@ function fakeTx(input: {
   const updateResults: Row[][] = [
     ...(input.detached?.length ? [[]] : []), // upload expiry update returns nothing used
     input.notes ?? [],
+    [], // the sender's emailed replies
     [], // private sale detail
     input.enquiries ?? [],
   ];
@@ -112,8 +113,19 @@ describe("anonymiseEnquiries", () => {
     });
     const counts = await anonymiseEnquiries(tx, { kind: "accounts", userIds: ["user_1"] });
     expect(counts.attachments).toBe(2);
-    expect(del).toHaveBeenCalledTimes(1);
+    // The file detach and the quarantined mail suspected to belong to the enquiry.
+    expect(del).toHaveBeenCalledTimes(2);
     expect(sets.some((s) => "expiresAt" in s)).toBe(true);
+  });
+
+  it("deletes quarantined mail suspected to belong to an erased enquiry, for an account target too", async () => {
+    const { tx, del } = fakeTx({
+      matched: [{ id: "e1", status: "new" }],
+      enquiries: [{ id: "e1" }],
+    });
+    await anonymiseEnquiries(tx, { kind: "accounts", userIds: ["user_1"] });
+    // The file detach delete, then the quarantine delete by suspected enquiry id.
+    expect(del).toHaveBeenCalledTimes(2);
   });
 
   it("holds a converted enquiry: nothing is changed and it is counted", async () => {

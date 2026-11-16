@@ -1,7 +1,6 @@
 "use client";
 
 import { applyArtTheme } from "@/lib/theme/art-theme";
-import { revealArtThemeFromToggle } from "@/lib/theme/art-theme-transition";
 import {
   MarketingChromeIconButton,
   type MarketingHeaderTone,
@@ -9,6 +8,7 @@ import {
   MarketingSunIcon,
   headerChromeIconClass,
 } from "@auction/marketing-ui";
+import { revealThemeFromToggle } from "@auction/marketing-ui/motion/theme-view-transition";
 import { cn } from "@auction/ui";
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -20,9 +20,9 @@ type ArtThemeToggleProps = {
   headerTone?: MarketingHeaderTone;
 };
 
-/** uses the View Transitions API to perform a circular reveal from the
- * toggle's center when the theme switches. Falls back to instant toggle in
- * browsers without support, or when reduced-motion is preferred.
+/** The LAX theme switch: the shared circular reveal from the toggle's centre
+ * (`revealThemeFromToggle`, the same code as LAX Bid). Switches instantly without
+ * View Transitions support or under reduced motion.
  */
 export function ArtThemeToggle({ headerTone = "on-light" }: ArtThemeToggleProps) {
   const [isDark, setIsDark] = useState(false);
@@ -44,7 +44,7 @@ export function ArtThemeToggle({ headerTone = "on-light" }: ArtThemeToggleProps)
       setIsDark(next);
     };
 
-    revealArtThemeFromToggle(buttonRef.current, apply);
+    revealThemeFromToggle(buttonRef.current, apply);
   }, []);
 
   const label = isDark ? "Switch to light theme" : "Switch to dark theme";

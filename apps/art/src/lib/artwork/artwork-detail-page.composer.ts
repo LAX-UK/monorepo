@@ -71,7 +71,7 @@ export type ArtworkEnquiryVm =
       confirmation: EnquiryConfirmationVm;
     };
 
-/** "Contact a specialist" in the mobile options sheet opens the general enquiry form. */
+/** The specialist enquiry offered in the conversations block. */
 export type ArtworkSpecialistContactVm =
   | { kind: "ready"; contact: ArtEnquiryContact; viewerKind: "authenticated" | "guest" }
   | { kind: "unavailable" };

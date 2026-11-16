@@ -28,7 +28,6 @@ const INITIAL: ArtGeneralEnquiryState = { status: "idle" };
 const MESSAGE_MAX_LENGTH = 4000;
 
 type Props = {
-  autoOpen?: boolean;
   defaultTopic?: ArtGeneralEnquiryTopic;
   contextSlug?: string | null;
   contextLabel?: string | null;
@@ -47,7 +46,6 @@ type Props = {
 
 /** Figma 614:12257 (desktop panel), 533:9469 (mobile sheet), 616:12737 (sent). */
 export function ArtGeneralEnquirySheet({
-  autoOpen = false,
   defaultTopic = "general",
   contextSlug = null,
   contextLabel = null,
@@ -58,7 +56,7 @@ export function ArtGeneralEnquirySheet({
   viewerKind,
   renderTrigger,
 }: Props) {
-  const [open, setOpen] = useState(autoOpen);
+  const [open, setOpen] = useState(false);
   const [topic, setTopic] = useState<ArtGeneralEnquiryTopic>(defaultTopic);
   const action = useMemo(() => sendArtGeneralEnquiry.bind(null, contextSlug), [contextSlug]);
   const [state, formAction, pending] = useActionState(action, INITIAL);

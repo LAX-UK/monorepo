@@ -63,6 +63,7 @@ export {
   humanizeStatus,
 } from "@auction/ui/lax";
 export type { StatusPresentation } from "@auction/ui/lax";
+export { COPY_CONFIRMATION_MS, CopyButton, CopyableId } from "./display/copy-button.js";
 export { KeyValueList } from "./display/key-value-list.js";
 export {
   EARLIER_AGREEMENT_VERSION,

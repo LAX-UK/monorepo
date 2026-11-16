@@ -333,6 +333,10 @@
       "types": "./dist/motion/index.d.ts",
       "default": "./dist/motion/index.js"
     },
+    "./motion/theme-view-transition": {
+      "types": "./dist/motion/theme-view-transition.d.ts",
+      "default": "./dist/motion/theme-view-transition.js"
+    },
     "./split-filter-sheet": {
       "types": "./dist/split-filter-sheet.d.ts",
       "default": "./dist/split-filter-sheet.js"

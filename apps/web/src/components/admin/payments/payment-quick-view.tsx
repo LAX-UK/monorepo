@@ -6,6 +6,7 @@ import { xeroSyncStatusLabel } from "@/lib/admin/xero-sync-status-presenter";
 import { notify } from "@/lib/ui/notify";
 import {
   CellLink,
+  CopyableId,
   DetailPanel,
   type DetailPanelProps,
   KeyValueList,
@@ -96,13 +97,16 @@ export function PaymentQuickView({
                   <StatusBadge tone={row.fulfilment.tone}>{row.fulfilment.label}</StatusBadge>
                 ) : null,
               },
-              { label: "Payment ID", value: row.id, copyValue: row.id },
             ]
           : []
       }
       meta={
         row
           ? [
+              {
+                label: "Payment ID",
+                value: <CopyableId value={row.id} label="Payment ID" className="max-w-48" />,
+              },
               { label: "Buyer", value: row.buyer },
               { label: "Amount", value: row.amount },
               ...(row.createdAt

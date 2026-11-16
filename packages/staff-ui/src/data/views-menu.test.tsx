@@ -475,3 +475,21 @@ describe("saving a view", () => {
     expect(screen.getByRole("textbox", { name: "Name" })).toHaveValue("Paid");
   });
 });
+
+describe("DataViews toolbar layout", () => {
+  it("gives the tabs only the room the controls leave, and never shrinks the controls", () => {
+    const { container } = render(<Harness port={fakePort()} />);
+    const tabs = container.querySelector("[data-staff-views-tabs]");
+    const controls = container.querySelector("[data-staff-views-controls]");
+    expect(tabs).toHaveClass("min-w-0", "flex-1");
+    expect(controls).toHaveClass("shrink-0");
+    expect(tabs?.nextElementSibling).toBe(controls);
+    expect(tabs?.firstElementChild).toHaveClass("overflow-hidden");
+  });
+
+  it("keeps the Views control named when its label hides on a phone", () => {
+    render(<Harness port={fakePort()} />);
+    const button = screen.getByRole("button", { name: "Views" });
+    expect(within(button).getByText("Views")).toHaveClass("max-sm:sr-only");
+  });
+});

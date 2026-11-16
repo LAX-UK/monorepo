@@ -9,6 +9,8 @@ import type { Browser, CDPSession, Page } from "@playwright/test";
  *
  *  - `observeLayoutShift` / `layoutShiftScore`   did anything jump? (total layout shift, budget 0.1)
  *  - `measureInteractionToPaint`                 how long from a press to the next painted frame?
+ *  - `observeViewTransitions` / `viewTransitions`  which view transitions started, and what each one animates?
+ *  - `medianInputToTransitionReady`              how long from the input to the transition's first frame?
  *  - `useReducedMotion` / `movingAnimations`     does reduced motion remove all movement?
  *  - `restingScreenshotParity` / `screenshotDiffRatio`  is the page at rest the same with and without JS?
  */
@@ -273,4 +275,113 @@ export async function screenshotDiffRatio(page: Page, a: Buffer, b: Buffer): Pro
     },
     { left: a.toString("base64"), right: b.toString("base64") },
   );
+}
+
+/** What a started view transition animated, read when its first frame was ready. */
+export type ViewTransitionRecord = {
+  /** `data-view-transition` on the root when the transition's first frame was ready ("none" when
+   * unset: the public page change). The app marks a kind inside the update callback. */
+  kind: string;
+  /** The transition pseudo-element animations: `pseudo` as the browser names it, the CSS animation `name` and `duration` in ms. */
+  animations: { pseudo: string; name: string; duration: number }[];
+  /** `timeStamp` of the last key or pointer input before the transition started, if any. */
+  inputAt: number | null;
+  /** `performance.now()` when the transition's `ready` promise resolved (its first frame). */
+  readyAt: number | null;
+  /** True when the browser skipped the transition (`ready` rejected). */
+  skipped: boolean;
+};
+
+type TransitionWindow = Window & { __viewTransitions?: ViewTransitionRecord[] };
+
+/**
+ * Records every view transition the page starts from now on: its kind, the pseudo-element
+ * animations the browser actually runs once the transition is ready, and when its first frame was
+ * ready. Call it before `goto`; read the result with `viewTransitions`.
+ */
+export async function observeViewTransitions(page: Page): Promise<void> {
+  await page.addInitScript(() => {
+    const w = window as TransitionWindow;
+    const records: ViewTransitionRecord[] = [];
+    w.__viewTransitions = records;
+    let lastInput: number | null = null;
+    for (const type of ["keydown", "pointerdown", "pointerup"]) {
+      window.addEventListener(
+        type,
+        (event) => {
+          lastInput = event.timeStamp;
+        },
+        { capture: true },
+      );
+    }
+    const original = document.startViewTransition?.bind(document);
+    if (!original) return;
+    document.startViewTransition = ((update?: () => void) => {
+      const record: ViewTransitionRecord = {
+        kind: document.documentElement.getAttribute("data-view-transition") ?? "none",
+        animations: [],
+        inputAt: lastInput,
+        readyAt: null,
+        skipped: false,
+      };
+      records.push(record);
+      const transition = original(update);
+      transition.ready.then(
+        () => {
+          record.readyAt = performance.now();
+          record.kind = document.documentElement.getAttribute("data-view-transition") ?? "none";
+          record.animations = document
+            .getAnimations()
+            .map((animation) => {
+              const effect = animation.effect as KeyframeEffect | null;
+              const pseudo = effect?.pseudoElement ?? "";
+              const duration = Number(effect?.getTiming().duration ?? 0);
+              return { pseudo, name: (animation as CSSAnimation).animationName ?? "", duration };
+            })
+            .filter((a) => a.pseudo.startsWith("::view-transition"));
+        },
+        () => {
+          record.skipped = true;
+        },
+      );
+      return transition;
+    }) as typeof document.startViewTransition;
+  });
+}
+
+/** The transitions recorded so far, once each has either become ready or been skipped. */
+export async function viewTransitions(page: Page): Promise<ViewTransitionRecord[]> {
+  await page.waitForFunction(() => {
+    const records = (window as TransitionWindow).__viewTransitions;
+    return records?.every((r) => r.readyAt !== null || r.skipped) ?? false;
+  });
+  return page.evaluate(() => (window as TransitionWindow).__viewTransitions ?? []);
+}
+
+/**
+ * The median time, over `runs` page changes (default 5), from the input that starts a page change
+ * to the first frame of its view transition: the user-visible answer, not the press itself.
+ * `prepare` puts the page in its starting state before each run (load the list, focus the tile);
+ * `perform` is the input (a key press or click that navigates). Needs `observeViewTransitions`.
+ */
+export async function medianInputToTransitionReady(
+  page: Page,
+  options: { prepare: () => Promise<void>; perform: () => Promise<void>; runs?: number },
+): Promise<number> {
+  const runs = options.runs ?? 5;
+  const samples: number[] = [];
+  for (let i = 0; i < runs; i++) {
+    await options.prepare();
+    await page.evaluate(() => {
+      ((window as TransitionWindow).__viewTransitions ?? []).length = 0;
+    });
+    await options.perform();
+    const [record] = await viewTransitions(page);
+    if (!record || record.skipped || record.readyAt === null || record.inputAt === null) {
+      throw new Error("the input did not start a view transition that painted");
+    }
+    samples.push(record.readyAt - record.inputAt);
+  }
+  samples.sort((a, b) => a - b);
+  return samples[Math.floor(samples.length / 2)] as number;
 }
