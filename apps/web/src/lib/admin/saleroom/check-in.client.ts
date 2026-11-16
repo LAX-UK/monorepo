@@ -43,11 +43,12 @@ async function send<T>(
     },
   ).catch(() => null);
   const json = await res?.json().catch(() => null);
-  // Absent fields stay `undefined` rather than being spread out: fewer bytes, same reading.
+  // An absent code stays `undefined` rather than being spread out: fewer bytes, same reading.
+  // No caller reads the HTTP status, so it is not returned.
   return (
     res?.ok
       ? { ok: true, data: json?.data }
-      : { ok: false, error: json?.error ?? fallback, status: res?.status, errorCode: json?.code }
+      : { ok: false, error: json?.error ?? fallback, errorCode: json?.code }
   ) as ActionResult<T>;
 }
 

@@ -88,7 +88,6 @@ describe("door check-in commands", () => {
     ).resolves.toMatchObject({
       ok: false,
       error: "Paddle taken",
-      status: 409,
       errorCode: "paddle_taken",
     });
   });
@@ -115,6 +114,6 @@ describe("door check-in commands", () => {
 
     await expect(
       checkInBidder({ saleId: SALE, userId: "u", buyerLegalEntityId: ENTITY, assignPaddle: true }),
-    ).resolves.toMatchObject({ ok: false, error: "Check-in failed", status: 502 });
+    ).resolves.toMatchObject({ ok: false, error: "Check-in failed" });
   });
 });
