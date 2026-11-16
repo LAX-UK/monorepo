@@ -28,7 +28,7 @@ import pg from "pg";
 import {
   DEFAULT_PAYMENT_REFUND_BACKFILL_BATCH_SIZE,
   DEFAULT_PAYMENT_REFUND_BACKFILL_LOCK_TIMEOUT_MS,
-  PaymentRefundBackfillLockTimeoutError,
+  PaymentRefundBackfillError,
   backfillPaymentRefundsInIdOrder,
   reportPaymentRefundGaps,
 } from "../payment-refund-backfill.js";
@@ -106,7 +106,7 @@ let resumeLockTimeoutMs = DEFAULT_PAYMENT_REFUND_BACKFILL_LOCK_TIMEOUT_MS;
 
 main().catch((error) => {
   console.error(error instanceof Error ? error.message : error);
-  if (error instanceof PaymentRefundBackfillLockTimeoutError) {
+  if (error instanceof PaymentRefundBackfillError) {
     console.error(
       `Resume: DATABASE_URL=... ${resumeCommand(
         { batchSize: resumeBatchSize, lockTimeoutMs: resumeLockTimeoutMs },

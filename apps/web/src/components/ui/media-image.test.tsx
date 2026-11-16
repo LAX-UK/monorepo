@@ -35,7 +35,9 @@ describe("MediaImage", () => {
 
     expect(screen.getByLabelText("Lot artwork placeholder")).toHaveClass("lax-skeleton");
     const image = screen.getByAltText("Artwork");
-    expect(image).toHaveClass("opacity-0");
+    // The kit fade (packages/ui/src/lax/image-fade.css) holds back only a lazy image until it loads.
+    expect(image).toHaveClass("lax-image-fade");
+    expect(image).not.toHaveClass("opacity-100");
 
     fireEvent.load(image);
 

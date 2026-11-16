@@ -549,7 +549,7 @@ function reviewNow(
     const documentsAction = documentsActionFor(blocker);
     return {
       kind: "review",
-      title: "Your account is in review",
+      title: "Payment on hold",
       description: documentsAction
         ? "We need some documents before you can pay."
         : "You can pay once our checks are done.",

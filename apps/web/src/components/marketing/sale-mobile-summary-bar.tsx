@@ -8,6 +8,7 @@ import { AddSaleToCalendarButton } from "@/components/sections/artwork/onsite/on
 import { useSalePhoneBarVisible } from "@/hooks/use-sale-phone-bar-visible";
 import { useSaleroomLive } from "@/lib/context/saleroom-live-provider";
 import { saleAllowsWebBidding } from "@/lib/sale-mode";
+import type { SalePrimaryViewerAction } from "@/lib/sale/sale-primary-viewer-action";
 import { useActiveSaleCountdownEndIso } from "@/lib/sale/use-active-sale-countdown-end-iso";
 import {
   type SaleroomLotRef,
@@ -59,8 +60,13 @@ type Props = {
   locationLine?: string;
   /** Hybrid saleroom lot refs for on-block bottom bar CTA. */
   saleroomLotRefs?: readonly SaleroomLotRef[];
-  /** When false (staff viewers), suppress register/bid CTAs. Defaults to true. */
+  /** When false (staff viewers), suppress bid CTAs in the saleroom modes. Defaults to true. */
   canParticipate?: boolean;
+  /**
+   * The hero's primary action for this person (`salePrimaryViewerAction`), so the bar offers
+   * exactly what the hero did. Absent or null: nothing to ask, and the bar offers the lots.
+   */
+  primaryAction?: SalePrimaryViewerAction | null;
 };
 
 export function SaleMobileSummaryBar({
@@ -76,6 +82,7 @@ export function SaleMobileSummaryBar({
   locationLine = "",
   saleroomLotRefs = [],
   canParticipate = true,
+  primaryAction = null,
 }: Props) {
   const saleroomLive = useSaleroomLive();
   const heroActionsScrolledOut = useSalePhoneBarVisible();
@@ -168,11 +175,16 @@ export function SaleMobileSummaryBar({
       );
     }
 
-    const ctaHref = isUpcoming ? (canParticipate ? "/register" : "#catalog") : "#catalog";
-    const ctaLabel = isUpcoming ? (canParticipate ? "Register" : "View lots") : "View lots";
+    if (primaryAction) {
+      return (
+        <Button variant="primary" size="lg" asChild>
+          <a href={primaryAction.href}>{primaryAction.label}</a>
+        </Button>
+      );
+    }
     return (
       <Button variant="primary" size="lg" asChild>
-        <Link href={ctaHref}>{ctaLabel}</Link>
+        <Link href="#catalog">View lots</Link>
       </Button>
     );
   };

@@ -13,7 +13,7 @@ export type CollectionVm = {
   counts: CollectionCountVm[];
   /** Per-currency figures joined for display; null when nothing is owed or the total is unknown. */
   totalDue: string | null;
-  /** "Includes 1 waiting on identity checks.", or null when none is held. */
+  /** "Includes 1 on hold.", or null when none is held. */
   totalDueNote: string | null;
   paidSoFar: string | null;
   paidSoFarNote: string;
@@ -23,7 +23,7 @@ export const PAID_SO_FAR_NOTE =
   "What you've paid across LAX, in the currency you paid. Not a valuation.";
 
 function totalDueNote(inReview: number): string | null {
-  return inReview > 0 ? `Includes ${inReview} waiting on identity checks.` : null;
+  return inReview > 0 ? `Includes ${inReview} on hold.` : null;
 }
 
 /**

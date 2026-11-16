@@ -44,6 +44,23 @@ const renderPanel = (storage: StaffStorageSettings, canChange = true) =>
 const section = (name: string) => screen.getByRole("region", { name });
 
 describe("Storage tab, charging off", () => {
+  it("fills the Charging card with an off state, and drops it once charging is on", () => {
+    const { unmount } = renderPanel(STORAGE);
+    const card = section("Charging");
+    expect(
+      within(card).getByRole("heading", { name: "No storage invoices are being raised" }),
+    ).toBeTruthy();
+    expect(within(card).getByRole("switch")).toBeTruthy();
+    unmount();
+    renderPanel({
+      ...STORAGE,
+      charging: { ...STORAGE.charging, vatTreatment: "standard_rated", raiseInvoices: true },
+    });
+    expect(
+      within(section("Charging")).queryByText("No storage invoices are being raised"),
+    ).toBeNull();
+  });
+
   it("says charging is off, and does not claim buyers see the terms before they do", () => {
     renderPanel(STORAGE);
     const notice = screen.getByRole("status");

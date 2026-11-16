@@ -3,13 +3,17 @@
 import { SaleAnchorTabs } from "@/components/marketing/sale-anchor-tabs";
 import { SaleMobileSummaryBar } from "@/components/marketing/sale-mobile-summary-bar";
 import { SaleTelephoneBiddingSection } from "@/components/marketing/sale-telephone-bidding-section";
-import { useSaleViewer } from "@/components/sections/saleroom/sale-viewer-provider";
+import {
+  useSaleViewer,
+  useSaleViewerLoaded,
+} from "@/components/sections/saleroom/sale-viewer-provider";
 import { SaleroomCatalogLotsLive } from "@/components/sections/saleroom/saleroom-catalog-lots-live";
 import { SaleroomCataloguePreparing } from "@/components/sections/saleroom/saleroom-catalogue-preparing";
 import { SaleroomHeroActionRow } from "@/components/sections/saleroom/saleroom-hero-action-row";
 import type { SaleLotCardVM } from "@/components/sections/saleroom/view-models";
 import { buildSaleAnchorTabs } from "@/lib/marketing/sale-anchor-tab-list";
 import type { CatalogueRow } from "@/lib/marketing/saleroom/catalogue-rows";
+import { salePrimaryViewerAction } from "@/lib/sale/sale-primary-viewer-action";
 import {
   parseLayoutViewCookie,
   viewCookieName,
@@ -38,9 +42,11 @@ export function SaleroomHeroActionRowIsland({
   saleCurrency: string;
 }) {
   const viewer = useSaleViewer();
+  const loaded = useSaleViewerLoaded();
   return (
     <SaleroomHeroActionRow
       {...props}
+      viewerPending={!loaded}
       isAuthenticated={viewer.isAuthenticated}
       initialFollowing={viewer.isFollowing}
       registerToBid={{
@@ -53,22 +59,43 @@ export function SaleroomHeroActionRowIsland({
         orgModuleEnabled: viewer.orgModuleEnabled,
         saleCurrency,
       }}
-      hasApprovedRegistration={viewer.myRegistrations.some((r) => r.status === "approved")}
+      hasApprovedRegistration={viewer.hasApprovedRegistration}
     />
   );
 }
 
 export function SaleMobileSummaryBarIsland({
   atgReadOnly,
+  registerToBidSale,
+  saleHref,
   ...props
-}: Omit<ComponentProps<typeof SaleMobileSummaryBar>, "canParticipate"> & {
+}: Omit<ComponentProps<typeof SaleMobileSummaryBar>, "canParticipate" | "primaryAction"> & {
   atgReadOnly: boolean;
+  /** The sale takes web registrations now: the same flag the hero's island is given. */
+  registerToBidSale: boolean;
+  /** Where sign-up and identity checks bring the person back to. */
+  saleHref: string;
 }) {
   const viewer = useSaleViewer();
+  const loaded = useSaleViewerLoaded();
+  const canParticipate = viewer.canParticipateAsBuyer && !atgReadOnly;
+  // The hero's own decision, from the same presenter and the same viewer. Until `/me` answers the
+  // viewer is only the signed-out guess, so the bar offers the lots rather than flash a button
+  // that may be wrong for this person.
+  const primaryAction = loaded
+    ? salePrimaryViewerAction({
+        ...viewer,
+        status: props.status,
+        deliveryMode: props.deliveryMode ?? "online",
+        registrationOffered: registerToBidSale && canParticipate,
+        saleHref,
+      })
+    : null;
   return (
     <SaleMobileSummaryBar
       {...props}
-      canParticipate={viewer.canParticipateAsBuyer && !atgReadOnly}
+      canParticipate={canParticipate}
+      primaryAction={primaryAction}
     />
   );
 }

@@ -3,15 +3,19 @@
 import { SaleroomFollowToggle } from "@/components/sections/saleroom/saleroom-follow-toggle";
 import {
   RegisterHelperText,
+  RegisterOutlineLink,
   SaleroomRegisterToBid,
   registerToBidHeroCaption,
   registerToBidNeedsAgentFormBand,
 } from "@/components/sections/saleroom/saleroom-register-to-bid";
-import { buildHostedLoginStartHref } from "@/lib/auth/hosted-login-start-href";
 import type { KycUserFeedbackDto } from "@/lib/data/dto/dashboard-dtos";
 import { saleAllowsWebBidding } from "@/lib/sale-mode";
 import { saleLifecycleActions } from "@/lib/sale/sale-lifecycle-actions";
 import { SALE_HERO_ACTIONS_ID } from "@/lib/sale/sale-phone-bar-visibility";
+import {
+  type SalePrimaryViewerAction,
+  salePrimaryViewerAction,
+} from "@/lib/sale/sale-primary-viewer-action";
 import type { LegalEntityMemberRole, SaleDeliveryMode } from "@auction/types";
 import { Button } from "@auction/ui/lax/button";
 import Link from "next/link";
@@ -43,18 +47,23 @@ type Props = {
     registrationPaused?: readonly { id: string; title: string; line: string }[];
   };
   hasApprovedRegistration?: boolean;
+  /** `/me` has not answered: the primary action is only the signed-out guess, so it is held back. */
+  viewerPending?: boolean;
   /** Quiet utility (Share) that sits with the actions, after them. */
   utility?: ReactNode;
 };
 
+/** The sale's primary action for the person looking, as `salePrimaryViewerAction` decides it. */
 function SaleroomHeroPrimaryCta({
   hero,
-  isAuthenticated,
   deliveryMode,
+  action,
+  viewerPending = false,
 }: {
   hero: SaleHeroVM;
-  isAuthenticated: boolean;
   deliveryMode: SaleDeliveryMode;
+  action: SalePrimaryViewerAction | null;
+  viewerPending?: boolean;
 }) {
   if (!saleAllowsWebBidding(deliveryMode)) {
     if (hero.status === "scheduled" || hero.status === "draft") {
@@ -66,16 +75,23 @@ function SaleroomHeroPrimaryCta({
     }
     return null;
   }
-
-  if (isAuthenticated || !saleLifecycleActions(hero.status).register) {
-    return null;
+  if (!action) return null;
+  if (viewerPending) {
+    // Same size as the button it may become, so nothing moves when `/me` answers.
+    return (
+      <Button variant="primary" className="invisible shrink-0" disabled aria-hidden tabIndex={-1}>
+        {action.label}
+      </Button>
+    );
   }
-
-  return (
-    <Button variant="primary" className="shrink-0" asChild>
-      <a href={buildHostedLoginStartHref({ intent: "signup" })}>Register to bid</a>
-    </Button>
-  );
+  if (action.emphasis === "primary") {
+    return (
+      <Button variant="primary" className="shrink-0" asChild>
+        <a href={action.href}>{action.label}</a>
+      </Button>
+    );
+  }
+  return <RegisterOutlineLink href={action.href}>{action.label}</RegisterOutlineLink>;
 }
 
 /** Hero actions: one row, the primary first and Notify me after it, then any caption or register form. */
@@ -88,6 +104,7 @@ export function SaleroomHeroActionRow({
   initialFollowing,
   registerToBid,
   hasApprovedRegistration = false,
+  viewerPending = false,
   utility,
 }: Props) {
   const actions = saleLifecycleActions(hero.status);
@@ -104,29 +121,18 @@ export function SaleroomHeroActionRow({
 
   const caption = registerBase ? registerToBidHeroCaption(registerBase) : null;
   const showAgentForm = registerBase ? registerToBidNeedsAgentFormBand(registerBase) : false;
-  const primaryCta = (
-    <SaleroomHeroPrimaryCta
-      hero={hero}
-      isAuthenticated={isAuthenticated}
-      deliveryMode={deliveryMode}
-    />
-  );
-  const registerButton =
-    registerToBid?.show && actions.register && isAuthenticated ? (
-      <SaleroomRegisterToBid
-        saleId={saleId}
-        loginNextPath={saleHref}
-        isAuthenticated={isAuthenticated}
-        show={registerToBid.show}
-        buyerEntities={registerToBid.buyerEntities}
-        myRegistrations={registerToBid.myRegistrations}
-        kycApproved={registerToBid.kycApproved}
-        kycFeedback={registerToBid.kycFeedback ?? null}
-        orgModuleEnabled={registerToBid.orgModuleEnabled !== false}
-        saleCurrency={registerToBid.saleCurrency ?? "GBP"}
-        layout="button"
-      />
-    ) : null;
+  const primaryAction = salePrimaryViewerAction({
+    status: hero.status,
+    deliveryMode,
+    registrationOffered: registerToBid?.show === true,
+    hasApprovedRegistration,
+    saleHref,
+    isAuthenticated,
+    kycApproved: registerToBid?.kycApproved ?? false,
+    kycFeedback: registerToBid?.kycFeedback ?? null,
+    buyerEntities: registerToBid?.buyerEntities ?? [],
+    orgModuleEnabled: registerToBid?.orgModuleEnabled !== false,
+  });
 
   return (
     <div id={SALE_HERO_ACTIONS_ID} className="flex flex-col gap-4">
@@ -136,8 +142,12 @@ export function SaleroomHeroActionRow({
         </span>
       ) : null}
       <div className="flex flex-wrap items-center gap-3">
-        {primaryCta}
-        {registerButton}
+        <SaleroomHeroPrimaryCta
+          hero={hero}
+          deliveryMode={deliveryMode}
+          action={primaryAction}
+          viewerPending={viewerPending}
+        />
         {actions.follow ? (
           <SaleroomFollowToggle
             saleId={saleId}

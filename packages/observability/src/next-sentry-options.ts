@@ -7,6 +7,7 @@ import { createSharedSentryInitOptions } from "./sentry-init-options.js";
 import {
   scrubSentryEvent,
   shouldDropBrowserExtensionNoise,
+  shouldDropDenoRuntimeNoise,
   shouldDropThirdPartyClientNoise,
   shouldDropUnparsableScriptNoise,
 } from "./sentry-shared.js";
@@ -25,6 +26,7 @@ export function createNextSentryOptions(dsn: string) {
       const enriched = enrichSentryEventWithNextDigest(scrubbed, hint);
       if (shouldDropBrowserExtensionNoise(enriched)) return null;
       if (shouldDropThirdPartyClientNoise(enriched)) return null;
+      if (shouldDropDenoRuntimeNoise(enriched)) return null;
       if (shouldDropUnparsableScriptNoise(enriched)) return null;
       if (shouldDropUnactionableRedactedRscClientError(enriched)) return null;
       return enriched;

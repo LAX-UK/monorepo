@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import {
+  IN_FLIGHT_STATES,
   type LegalEntity,
   PRODUCTS,
   type Product,
@@ -260,8 +261,8 @@ export class DrizzleStripeReconciliationStore implements IStripeReconciliationSt
         registeredCount: sql<string>`count(*) filter (where ${d.state} <> 'cancelled')`,
         issuedPence: sql<string>`coalesce(sum(${d.grossPence}) filter (where ${d.state} = 'issued'), 0)`,
         issuedCount: sql<string>`count(*) filter (where ${d.state} = 'issued')`,
-        notIssuedCount: sql<string>`count(*) filter (where ${d.state} in ('pending', 'sending', 'unknown'))`,
-        notIssuedPence: sql<string>`coalesce(sum(${d.grossPence}) filter (where ${d.state} in ('pending', 'sending', 'unknown')), 0)`,
+        notIssuedCount: sql<string>`count(*) filter (where ${d.state} in ${IN_FLIGHT_STATES})`,
+        notIssuedPence: sql<string>`coalesce(sum(${d.grossPence}) filter (where ${d.state} in ${IN_FLIGHT_STATES}), 0)`,
       })
       .from(d)
       .where(
@@ -377,8 +378,8 @@ export class DrizzleStripeReconciliationStore implements IStripeReconciliationSt
         expenses: sql<string>`coalesce(sum(${d.grossPence}) filter (where ${d.kind} = 'expense' and ${d.state} = 'issued'), 0)`,
         transfers: sql<string>`coalesce(sum(${d.grossPence}) filter (where ${d.kind} = 'transfer' and ${d.state} = 'issued'), 0)`,
         billPayments: sql<string>`coalesce(sum(${d.grossPence}) filter (where ${d.kind} = 'bill_payment' and ${d.state} = 'issued'), 0)`,
-        billPaymentsNotIssued: sql<string>`coalesce(sum(${d.grossPence}) filter (where ${d.kind} = 'bill_payment' and ${d.state} in ('pending', 'sending', 'unknown')), 0)`,
-        notIssued: sql<string>`coalesce(sum(${signed}) filter (where ${d.state} in ('pending', 'sending', 'unknown')), 0)`,
+        billPaymentsNotIssued: sql<string>`coalesce(sum(${d.grossPence}) filter (where ${d.kind} = 'bill_payment' and ${d.state} in ${IN_FLIGHT_STATES}), 0)`,
+        notIssued: sql<string>`coalesce(sum(${signed}) filter (where ${d.state} in ${IN_FLIGHT_STATES}), 0)`,
       })
       .from(d)
       .where(
@@ -484,9 +485,9 @@ export class DrizzleStripeReconciliationStore implements IStripeReconciliationSt
              count(o.reference) as lax_count,
              coalesce(sum(d.gross_pence) filter (where d.state = 'issued'), 0) as books_pence,
              count(d.id) filter (where d.state = 'issued') as books_count,
-             coalesce(sum(d.gross_pence) filter (where d.state in ('pending', 'sending', 'unknown')), 0)
+             coalesce(sum(d.gross_pence) filter (where d.state in ${IN_FLIGHT_STATES}), 0)
                as not_issued_pence,
-             count(d.id) filter (where d.state in ('pending', 'sending', 'unknown')) as not_issued_count,
+             count(d.id) filter (where d.state in ${IN_FLIGHT_STATES}) as not_issued_count,
              coalesce(sum(d.gross_pence) filter (where d.state = 'needs_review'
                and d.needs_review_reason like 'accounting_parked_%'), 0) as parked_pence,
              count(d.id) filter (where d.state = 'needs_review'

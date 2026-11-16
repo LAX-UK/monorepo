@@ -34,7 +34,7 @@ const owedAmount = (row: AttentionRowVm): string | null =>
 
 const META_SUFFIX: Record<AttentionKind, (row: AttentionRowVm) => string | null> = {
   pay: owedAmount,
-  held: (row) => [owedAmount(row), "waiting on identity checks"].filter(Boolean).join(" · "),
+  held: (row) => [owedAmount(row), "payment on hold"].filter(Boolean).join(" · "),
   send: (row) => [owedAmount(row), "still to send"].filter(Boolean).join(" "),
   confirming: () => "payment being confirmed",
   track: () => "awaiting shipment",

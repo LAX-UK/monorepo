@@ -44,6 +44,11 @@ export type SaleViewerVM = {
   buyerEntities: SaleroomBuyerEntity[];
   registrationPaused: SaleroomRegistrationPaused[];
   myRegistrations: SaleroomMyRegistration[];
+  /**
+   * The person holds an approved registration for this sale. Decided here, once, so the hero's
+   * "You're registered" and the phone bar's action can never disagree about it.
+   */
+  hasApprovedRegistration: boolean;
   kycApproved: boolean;
   kycFeedback: KycUserFeedbackDto | null;
   orgModuleEnabled: boolean;
@@ -69,6 +74,13 @@ export type SaleViewerInput = {
   orgModuleEnabled: boolean;
   telephoneBooking: SaleTelephoneBookingVM | null;
 };
+
+/** Whether any of the person's registrations for the sale has been approved. */
+export function hasApprovedRegistration(
+  registrations: ReadonlyArray<Pick<SaleRegistrationMineRow, "status">>,
+): boolean {
+  return registrations.some((registration) => registration.status === "approved");
+}
 
 export function buildSaleViewerVM(input: SaleViewerInput): SaleViewerVM {
   const { session } = input;
@@ -104,6 +116,7 @@ export function buildSaleViewerVM(input: SaleViewerInput): SaleViewerVM {
       paddleNumber: r.paddleNumber,
       checkedInAt: r.checkedInAt,
     })),
+    hasApprovedRegistration: hasApprovedRegistration(input.mySaleRegs),
     kycApproved,
     kycFeedback: kycApproved
       ? null

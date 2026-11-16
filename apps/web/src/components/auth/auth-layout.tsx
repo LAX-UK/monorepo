@@ -1,4 +1,3 @@
-import { AuthContentReveal } from "@/components/auth/auth-content-reveal";
 import { LaxLogo } from "@/components/layout/lax-logo";
 import { Surface } from "@auction/ui/components/surface";
 import { DisplayHeading } from "@auction/ui/components/typography";
@@ -24,11 +23,9 @@ export function AuthLayout({
 }: AuthLayoutProps) {
   const isTask = chrome === "task";
 
-  const formBody = (
-    <div className="w-full">
-      <AuthContentReveal>{children}</AuthContentReveal>
-    </div>
-  );
+  // Drawn as the server sends it, with no entrance: sign-in content is never hidden on hydration
+  // and faded back in (docs/design/motion.md, MO15).
+  const formBody = <div className="w-full">{children}</div>;
 
   return (
     <div className="relative min-h-[calc(100vh-3.5rem)] overflow-hidden bg-page-bg pb-16 dark:bg-background">

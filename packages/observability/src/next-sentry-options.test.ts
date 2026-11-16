@@ -23,6 +23,22 @@ describe("createNextSentryOptions", () => {
     expect(options.beforeSend(noise)).toBeNull();
     expect(options.beforeSend(real)).not.toBeNull();
   });
+
+  it("drops Deno runtime errors through beforeSend", () => {
+    const deno = {
+      type: undefined,
+      exception: {
+        values: [
+          {
+            type: "TypeError",
+            value: "x.toLowerCase is not a function",
+            stacktrace: { frames: [{ filename: "ext:core/01_core.js" }] },
+          },
+        ],
+      },
+    } as ErrorEvent;
+    expect(options.beforeSend(deno)).toBeNull();
+  });
 });
 
 describe("createNextBrowserErrorOptions", () => {

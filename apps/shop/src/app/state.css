@@ -236,23 +236,8 @@
   height: 2.75rem;
 }
 
-/* Works arrive with a short fade. The mat already holds the work's place, so nothing moves. */
-@media (prefers-reduced-motion: no-preference) {
-  .marketing-work-mat img {
-    animation: shop-work-fade-in var(--motion-duration-md, 0.24s)
-      var(--motion-ease-decelerate, ease-out) both;
-  }
-}
-
-@keyframes shop-work-fade-in {
-  from {
-    opacity: 0;
-  }
-
-  to {
-    opacity: 1;
-  }
-}
+/* Works on the mat are not faded here (MO15): a first-screen work paints at once, and a work
+   below the fold (`loading="lazy"`) takes the kit's load fade (packages/ui/src/lax/image-fade.css). */
 
 /* Checkout loading: panels reserve the height of the details page (form, then summary), so the
    page replaces them without moving what sits below. Phones also keep the closed order-summary

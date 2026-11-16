@@ -1,5 +1,6 @@
 import { cn } from "@auction/ui";
 import { type ComponentType, type ReactNode, useId } from "react";
+import { EmailOff } from "./email-off.js";
 import {
   MarketingClockIcon,
   type MarketingIconProps,
@@ -41,11 +42,12 @@ function isNewTabHref(href: string): boolean {
 function DetailText({ detail }: { detail: MarketingGalleryTeamDetail }) {
   if (!detail.href) return <span>{detail.text}</span>;
   if (!isNewTabHref(detail.href)) {
-    return (
+    const link = (
       <a href={detail.href} className={DETAIL_LINK}>
         {detail.text}
       </a>
     );
+    return detail.href.startsWith("mailto:") ? <EmailOff>{link}</EmailOff> : link;
   }
   return (
     <a href={detail.href} target="_blank" rel="noopener noreferrer" className={DETAIL_LINK}>

@@ -222,7 +222,7 @@ describe("Home, the lists and the menu agree", () => {
     ]);
   });
 
-  it("says the account is in review, not that payment is due, while checks are open", () => {
+  it("says the payment is on hold, not that payment is due, while checks are open", () => {
     const sources = purchaseSources(
       organisation("finance"),
       PURCHASES,
@@ -236,8 +236,10 @@ describe("Home, the lists and the menu agree", () => {
       stillToSend: [],
       unreadNotifications: [],
     });
-    expect(attention).toMatchObject({ paymentsDue: 4, paymentsInReview: true });
-    expect(attentionChip(attention)).toMatchObject({ label: "Account in review" });
+    expect(attention).toMatchObject({ paymentsDue: 4, paymentsHold: "documents" });
+    expect(attentionChip(attention)).toMatchObject({
+      label: "Payment on hold: send documents",
+    });
     // Purchases agrees: one banner, one action, and no row repeats it.
     const vm = buildPurchasesVm(sources);
     expect(vm.payNow).toMatchObject({
