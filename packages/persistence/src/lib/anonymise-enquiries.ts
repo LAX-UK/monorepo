@@ -59,6 +59,10 @@ export async function anonymiseEnquiries(
   const condition = targetCondition(target);
   if (!condition) return { ...NONE };
 
+  // The enquiries are read under a row lock, before any held mail is touched: staff attaching
+  // held mail lock the enquiry first too (then the held row), so the two cannot deadlock, an
+  // attach that is under way finishes before this reads the thread, and one that starts after
+  // waits and then sees the enquiry erased.
   const matched = await tx
     .select({
       id: marketingEnquiry.id,
@@ -66,7 +70,26 @@ export async function anonymiseEnquiries(
       createdAt: marketingEnquiry.createdAt,
     })
     .from(marketingEnquiry)
-    .where(condition);
+    .where(condition)
+    .for("update");
+
+  // Held mail from the erased address goes before any early return: a person with no erasable
+  // enquiry (none matched, or every one is held from erasure) may still have mail waiting in
+  // quarantine, and it should not wait out its 30 days. The events staff wrote when reviewing
+  // that mail lose the reason they typed (it can name the sender) in the same transaction.
+  if (target.kind === "email") {
+    const fromAddress = await tx
+      .delete(enquiryInboundQuarantine)
+      .where(
+        sql`lower(${enquiryInboundQuarantine.fromAddress}) = ${target.email.trim().toLowerCase()}`,
+      )
+      .returning({ id: enquiryInboundQuarantine.id });
+    await scrubReviewReasonEvents(tx, {
+      enquiryIds: [],
+      quarantineIds: fromAddress.map((row) => row.id),
+    });
+  }
+
   const deals = await dealRecordsOf(
     tx,
     matched.filter((row) => row.status === "converted"),
@@ -104,7 +127,13 @@ export async function anonymiseEnquiries(
   // What the sender emailed back is theirs too: the text goes, the metadata of their files goes.
   await tx
     .update(marketingEnquiryMessage)
-    .set({ subject: ERASED_ENQUIRY.note, body: ERASED_ENQUIRY.note, attachments: [] })
+    // The reason staff gave for attaching held mail can name the sender too: it goes as well.
+    .set({
+      subject: ERASED_ENQUIRY.note,
+      body: ERASED_ENQUIRY.note,
+      attachments: [],
+      reviewReason: sql`CASE WHEN ${marketingEnquiryMessage.reviewReason} IS NULL THEN NULL ELSE ${ERASED_ENQUIRY.note} END`,
+    })
     .where(
       and(
         inArray(marketingEnquiryMessage.enquiryId, ids),
@@ -112,16 +141,14 @@ export async function anonymiseEnquiries(
       ),
     );
   // Quarantined mail that was suspected to belong to an erased enquiry goes with it.
-  await tx
+  const suspected = await tx
     .delete(enquiryInboundQuarantine)
-    .where(inArray(enquiryInboundQuarantine.suspectedEnquiryId, ids));
-  if (target.kind === "email") {
-    await tx
-      .delete(enquiryInboundQuarantine)
-      .where(
-        sql`lower(${enquiryInboundQuarantine.fromAddress}) = ${target.email.trim().toLowerCase()}`,
-      );
-  }
+    .where(inArray(enquiryInboundQuarantine.suspectedEnquiryId, ids))
+    .returning({ id: enquiryInboundQuarantine.id });
+  await scrubReviewReasonEvents(tx, {
+    enquiryIds: ids,
+    quarantineIds: suspected.map((row) => row.id),
+  });
 
   await tx
     .update(privateSaleEnquiryDetail)
@@ -345,6 +372,64 @@ export async function checkTimesByUser(
     ]);
   }
   return times;
+}
+
+/** Staff attached held mail to an enquiry; the payload names the enquiry and the held row. */
+const INBOUND_ATTACHED_EVENT = "marketing_enquiry.inbound_attached";
+/** Staff discarded held mail; the event's aggregate is the held row. */
+const INBOUND_DISCARDED_EVENT = "marketing_enquiry.inbound_discarded";
+
+/**
+ * Replaces the reason staff typed when attaching or discarding held mail, in the events that
+ * recorded it: attaches to the erased enquiries or of the erased held mail, and discards of the
+ * erased held mail. Only the `reviewReason` value changes; the event, its ids and codes stay, so
+ * the audit trail still shows who reviewed what and when. Rows already scrubbed are left alone.
+ *
+ * This is the one place the event log is rewritten: the payload holds free text a person typed
+ * about the sender, and erasure removes the same text from the message row.
+ */
+export async function scrubReviewReasonEvents(
+  tx: Database,
+  erased: { enquiryIds: readonly string[]; quarantineIds: readonly string[] },
+): Promise<number> {
+  const enquiryIds = [...erased.enquiryIds];
+  const quarantineIds = [...erased.quarantineIds];
+  if (enquiryIds.length === 0 && quarantineIds.length === 0) return 0;
+  const attached = and(
+    eq(domainEvent.eventType, INBOUND_ATTACHED_EVENT),
+    or(
+      enquiryIds.length
+        ? and(
+            eq(domainEvent.aggregateType, "marketing_enquiry"),
+            inArray(domainEvent.aggregateId, enquiryIds),
+          )
+        : undefined,
+      quarantineIds.length
+        ? inArray(sql<string>`${domainEvent.payload}->>'quarantineId'`, quarantineIds)
+        : undefined,
+    ),
+  );
+  const discarded = quarantineIds.length
+    ? and(
+        eq(domainEvent.eventType, INBOUND_DISCARDED_EVENT),
+        eq(domainEvent.aggregateType, "enquiry_inbound_quarantine"),
+        inArray(domainEvent.aggregateId, quarantineIds),
+      )
+    : undefined;
+  const scrubbed = await tx
+    .update(domainEvent)
+    .set({
+      payload: sql`jsonb_set(${domainEvent.payload}, '{reviewReason}', to_jsonb(${ERASED_ENQUIRY.note}::text))`,
+    })
+    .where(
+      and(
+        or(attached, discarded),
+        sql`jsonb_typeof(${domainEvent.payload}->'reviewReason') = 'string'`,
+        sql`${domainEvent.payload}->>'reviewReason' <> ${ERASED_ENQUIRY.note}`,
+      ),
+    )
+    .returning({ id: domainEvent.id });
+  return scrubbed.length;
 }
 
 /** Detaches the files from the enquiries and lets the unclaimed-file clean-up remove them. */

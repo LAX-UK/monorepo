@@ -8,6 +8,8 @@ import {
   enquiryListPageSchema,
   enquiryRoutingSchema,
   enquiryViewSchema,
+  quarantineListPageSchema,
+  quarantineMessageSchema,
 } from "./admin-enquiries.schema";
 import type {
   EnquiryAssignee,
@@ -15,6 +17,8 @@ import type {
   EnquiryListPage,
   EnquiryRule,
   EnquiryView,
+  QuarantineListPage,
+  QuarantineMessage,
 } from "./admin-enquiries.schema";
 
 /** One page of the Enquiries list; throws when the Bid API does not answer. */
@@ -68,4 +72,26 @@ export async function getEnquiryHistory(ref: string): Promise<EnquiryHistoryEntr
     enquiryHistorySchema,
     "GET /admin/enquiries/:ref/history",
   ).entries;
+}
+
+/** One page of held inbound mail; throws when the Bid API does not answer. */
+export async function getEnquiryQuarantine(query: URLSearchParams): Promise<QuarantineListPage> {
+  const res = await authedServerFetch(`/admin/enquiry-quarantine?${query.toString()}`);
+  if (res.status === 403) throw new Error("forbidden");
+  if (!res.ok) throw new Error(`Held email unavailable: ${res.status}`);
+  return readDataEnvelope(
+    await readJsonBody(res),
+    quarantineListPageSchema,
+    "GET /admin/enquiry-quarantine",
+  );
+}
+
+/** One held mail; null when there is none or the person may not see it. */
+export async function getQuarantinedMessage(id: string): Promise<QuarantineMessage | null> {
+  const res = await authedServerFetch(`/admin/enquiry-quarantine/${encodeURIComponent(id)}`);
+  return safeReadData(res, quarantineMessageSchema, {
+    context: "GET /admin/enquiry-quarantine/:id",
+    nullStatuses: [404, 400],
+    notOkMessage: (status) => (status === 403 ? "forbidden" : `Held email unavailable: ${status}`),
+  });
 }

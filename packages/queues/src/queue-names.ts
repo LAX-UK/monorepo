@@ -23,6 +23,9 @@ export const PURGE_COLLECTION_HANDOVER_QUEUE_NAME = "purge-collection-handover" 
 export const PURGE_EMAIL_SNAPSHOTS_QUEUE_NAME = "purge-email-snapshots" as const;
 /** Clears the stored payload of retried and discarded failed jobs after 90 days. */
 export const PURGE_FAILED_JOB_PAYLOADS_QUEUE_NAME = "purge-failed-job-payloads" as const;
+/** Deletes inbound enquiry mail held in quarantine once its `purge_at` (30 days) has passed. */
+export const PURGE_ENQUIRY_INBOUND_QUARANTINE_QUEUE_NAME =
+  "purge-enquiry-inbound-quarantine" as const;
 export const WEBHOOK_EVENTS_QUEUE_NAME = "webhook-events" as const;
 export const GC_PENDING_UPLOADS_QUEUE_NAME = "gc-pending-uploads" as const;
 export const IMPERSONATION_SWEEPER_QUEUE_NAME = "impersonation-sweeper" as const;

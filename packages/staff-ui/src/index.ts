@@ -98,6 +98,8 @@ export type { ChangesRow } from "./display/changes-table.js";
 export { WhereItIsChip, WhereItIsSection } from "./display/where-it-is.js";
 export type { WhereItIsChipSpec, WhereItIsSectionProps } from "./display/where-it-is.js";
 export { MessageThread } from "./display/message-thread.js";
+export { FileMetadataList } from "./display/file-metadata-list.js";
+export type { FileMetadataItem, FileMetadataListProps } from "./display/file-metadata-list.js";
 export type {
   MessageThreadProps,
   ThreadAttachment,

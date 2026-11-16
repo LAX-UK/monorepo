@@ -8,7 +8,7 @@ import {
   statusSentence,
 } from "@/lib/admin/enquiries/enquiries.vm";
 import { enquiryRecordActions } from "@/lib/admin/enquiries/enquiry-actions";
-import { departmentLabel } from "@/lib/admin/enquiries/enquiry-routing-rows";
+import { REPLIES_COPY } from "@/lib/admin/enquiries/enquiry-email-copy";
 import { enquiryTimeline } from "@/lib/admin/enquiries/enquiry-timeline";
 import { dealHref } from "@/lib/admin/private-sales/private-sales.vm";
 import type {
@@ -48,6 +48,7 @@ import { AssignEnquiryDialog } from "./assign-enquiry-dialog";
 import { CloseEnquiryDialog } from "./close-enquiry-dialog";
 import { AttachmentsSection } from "./enquiry-attachments";
 import { EnquiryStatusBadge } from "./enquiry-cells";
+import { AwaitingReplyBadge, EnquiryRepliesSection } from "./enquiry-replies-section";
 import {
   ClientSection,
   MessageSection,
@@ -64,6 +65,8 @@ export type EnquiryViewProps = {
   /** Assignments and status changes from the audit trail; null when it could not be read. */
   history: EnquiryHistoryEntry[] | null;
   viewerId: string;
+  /** The department's name, resolved on the server; null when the enquiry has none. */
+  departmentName: string | null;
   canWork: boolean;
   /** May turn a private sale enquiry into a deal. */
   canConvert?: boolean;
@@ -92,6 +95,7 @@ export function EnquiryView({
   assignees,
   history,
   viewerId,
+  departmentName,
   canWork,
   canConvert = false,
   now,
@@ -190,6 +194,10 @@ export function EnquiryView({
       <Notice tone="success" title="Converted to a deal">
         This enquiry now belongs to its deal.
       </Notice>
+    ) : enquiry.awaitingReplySince ? (
+      <Notice tone="warning" title={REPLIES_COPY.awaitingNoticeTitle}>
+        {REPLIES_COPY.awaitingNoticeBody}
+      </Notice>
     ) : undefined;
 
   const replyBadge =
@@ -216,6 +224,7 @@ export function EnquiryView({
         status={
           <>
             <EnquiryStatusBadge status={enquiry.status} />
+            <AwaitingReplyBadge since={enquiry.awaitingReplySince} now={clock} />
             {replyBadge}
           </>
         }
@@ -226,8 +235,8 @@ export function EnquiryView({
             <MetaItem label="Assigned to">
               {assignee ?? (enquiry.assignedToUserId ? "Former staff member" : "Nobody yet")}
             </MetaItem>
-            {enquiry.departmentSlug ? (
-              <MetaItem label="Department">{departmentLabel(enquiry.departmentSlug)}</MetaItem>
+            {departmentName ? (
+              <MetaItem label="Department">{departmentName}</MetaItem>
             ) : null}
           </>
         }
@@ -256,6 +265,7 @@ export function EnquiryView({
       >
         <PrivateSaleSection enquiry={enquiry} />
         <MessageSection message={enquiry.message} />
+        <EnquiryRepliesSection enquiry={enquiry} now={clock} />
         <AttachmentsSection reference={enquiry.reference} attachments={enquiry.attachments} />
         <NotesSection
           notes={enquiry.notes}

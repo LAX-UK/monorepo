@@ -30,6 +30,7 @@ function enquiry(over: Partial<MarketingEnquiryDetailRecord> = {}): MarketingEnq
     createdAt: new Date("2026-11-01T10:00:00Z"),
     handledAt: null,
     handledByUserId: null,
+    awaitingReplySince: null,
     privateSale: {
       artist: "J. Constable",
       title: "Harbour at dusk",

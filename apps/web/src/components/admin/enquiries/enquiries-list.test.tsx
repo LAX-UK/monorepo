@@ -59,6 +59,7 @@ function renderList(patch: Partial<EnquiriesListProps> = {}) {
     chips: [],
     assignees: ASSIGNEES,
     routing: null,
+    departmentNames: { paintings: "Paintings" },
     abilities,
     pagination: { summary: "3 enquiries", prevHref: null, nextHref: null },
     loadError: null,
@@ -249,5 +250,24 @@ describe("EnquiriesList: search, sort and counts", () => {
     expect(screen.getByText("No enquiries match")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /Remove.*riley/i }));
     expect(push).toHaveBeenCalledWith("/admin/enquiries", { scroll: false });
+  });
+});
+
+describe("EnquiriesList: replies by email", () => {
+  it("marks an enquiry whose client replied by email and opens held email from the header", () => {
+    renderList({
+      page: {
+        items: [
+          listItem({ awaitingReplySince: "2026-11-03T08:40:00.000Z", status: "in_progress" }),
+        ],
+        nextCursor: null,
+        counts: COUNTS,
+      },
+    });
+    expect(screen.getAllByText("Client replied").length).toBeGreaterThan(0);
+    expect(screen.getByRole("link", { name: "Held email" })).toHaveAttribute(
+      "href",
+      "/admin/enquiries/quarantine",
+    );
   });
 });

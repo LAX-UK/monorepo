@@ -5,10 +5,15 @@ import type {
   EnquiryStatus,
   EnquiryTransitionRefusal,
   EnquiryViewer,
+  InboundDkimResult,
+  InboundMatchMethod,
+  InboundQuarantineReason,
+  InboundSpfResult,
 } from "@auction/domain";
 import type {
   EnquiryAttachmentRecord,
   EnquiryStatusCounts,
+  InboundAttachmentMetadata,
   PrivateSaleEnquiryDetail,
   UploadOwner,
 } from "@auction/persistence/interfaces";
@@ -25,6 +30,31 @@ export type EnquiryNoteView = {
   authorUserId: string | null;
   body: string;
   createdAt: string;
+};
+
+/** A reply the client emailed back, as staff read it on the thread. Plain text only. */
+export type EnquiryEmailReplyView = {
+  id: string;
+  receivedAt: string;
+  subject: string;
+  body: string;
+  /** Name, type and size of each file; the files themselves were not kept. */
+  attachments: InboundAttachmentMetadata[];
+  /** `staff` when a person attached it from quarantine. */
+  matchedBy: InboundMatchMethod;
+  spfResult: InboundSpfResult | null;
+  dkimResult: InboundDkimResult | null;
+  /** Attached by staff only: why it was held before a person attached it. */
+  heldReason: InboundQuarantineReason | null;
+  /** Attached by staff only: the reason the person gave for attaching it. */
+  reviewReason: string | null;
+  /**
+   * Whether it is verified as coming from this enquiry's client: from the client's address, with
+   * aligned SPF or DKIM passing. Always true for a reply that joined the thread on its own.
+   */
+  senderVerified: boolean;
+  /** Attached by staff only: it came from an address other than the client's. */
+  fromOtherAddress: boolean;
 };
 
 /** What staff read when they open an enquiry. */
@@ -58,6 +88,10 @@ export type MarketingEnquiryView = {
   privateSale: PrivateSaleEnquiryDetail | null;
   attachments: EnquiryAttachmentRecord[];
   notes: EnquiryNoteView[];
+  /** The client's emailed replies, oldest first. */
+  replies: EnquiryEmailReplyView[];
+  /** When the client replied and nobody has answered yet; null when nothing is waiting. */
+  awaitingReplySince: string | null;
 };
 
 /** A row in the Enquiries list. The email is masked; the record shows it in full. */
@@ -74,6 +108,8 @@ export type MarketingEnquiryListItem = {
   status: EnquiryStatus;
   receivedAt: string;
   replyDueAt: string;
+  /** When the client replied by email and nobody has answered yet. */
+  awaitingReplySince: string | null;
   version: number;
 };
 

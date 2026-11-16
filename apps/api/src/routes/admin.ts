@@ -38,6 +38,7 @@ import { attachAdminDataRequestsRoutes } from "./admin/data-requests.routes.js";
 import { attachAdminDeliveryOpsRoutes } from "./admin/delivery-ops.routes.js";
 import { attachAdminDisputeDeskRoutes } from "./admin/dispute-desk.routes.js";
 import { attachAdminEmailRoutes } from "./admin/email.routes.js";
+import { attachAdminEnquiryQuarantineRoutes } from "./admin/enquiry-quarantine.routes.js";
 import { attachAdminFailedJobsRoutes } from "./admin/failed-jobs.routes.js";
 import { attachAdminFinanceRoutes } from "./admin/finance.routes.js";
 import { attachAdminImpersonationRoutes } from "./admin/impersonation.routes.js";
@@ -189,6 +190,7 @@ export function createAdminRoutes(
   attachAdminCollectionDeskRoutes(platform, container, guards);
 
   attachAdminMarketingEnquiryRoutes(platform, container);
+  attachAdminEnquiryQuarantineRoutes(platform, container);
 
   attachAdminPurchaseProblemRoutes(platform, container);
 
