@@ -382,9 +382,13 @@ Checked on 2026-11-16 with pairs of clean builds of one commit in the same direc
   Usually no measured route changes (the Bid block reads "client scripts differ" with 0 routes
   changed), but it can move every Bid route by a few bytes: on PR #1494, which changes no Bid
   client code, one CI run showed all 114 Bid routes 1 byte larger than the base, while the
-  self-check in the same run, and an uncached local pair of builds, showed 0 of 114. Until this
-  is fixed in Bid's webpack set-up, read a Bid block where every route moves by the same few bytes
-  as this variation, not as a change; Shop, lax.art, Account and Shop Admin have shown none.
+  self-check in the same run, and an uncached local pair of builds, showed 0 of 114.
+- **Account, rarely.** In one of four CI self-checks so far, two uncached builds of one commit
+  gave every Account route 2 bytes apart (all 20 routes, client scripts differ); the other three,
+  and the two local pairs above, gave 0 of 20 and byte-identical scripts. The cause is not found
+  yet. Shop, lax.art and Shop Admin have shown no variation.
+- Until these are fixed, read a Bid or Account block where **every** route moves by the same one
+  to a few bytes as this variation, not as a change. Rows that differ from route to route are real.
 - The same commit built in a git worktree at another path, with the same pins: Account 15 of 20
   routes changed (`/account/profile/page` +92 B, `/account/security/delete/page` +25 B, ...). This
   is why the base is built in the head's own checkout.
@@ -422,7 +426,9 @@ Checked on 2026-11-16 with pairs of clean builds of one commit in the same direc
    (`route-js-size-build-base.sh --force`, so nothing replays from a cache) and compares it with the
    first head build using `--require-unchanged`. Every app must read `0 of N routes changed`; any
    changed, new or removed route fails the job. "client scripts differ" alone is allowed, for the
-   Bid variation above (which can also, now and then, fail this check). This is the proof that the base route measures like for
+   Bid variation above. The Bid and Account variation can, now and then, fail this check (it did
+   once on PR #1494, Account 20 of 20 routes 2 bytes apart): re-run the job, and if it repeats,
+   the PR has made the build less deterministic. This is the proof that the base route measures like for
    like; it adds one uncached build (about 10 minutes) to those PRs only.
 
 ### Reading the table
@@ -430,14 +436,13 @@ Checked on 2026-11-16 with pairs of clean builds of one commit in the same direc
 - One block per app built on both sides: `N of M routes changed`, and whether the client scripts
   are byte-identical. A route that did not change has no row. Because both sides are built at the
   same path with the same pins, and the self-check holds that to 0 changed routes, **any number in
-  the Shop, lax.art, Account and Shop Admin blocks is a change made by the PR**, and so is any
-  Bid row that does not match the Bid variation above. There is no tolerance.
+  the Shop, lax.art and Shop Admin blocks is a change made by the PR**, and so is any Bid or
+  Account row that does not match the variation described above. There is no tolerance.
 - Columns are base and head KB (1024 bytes, two decimals), the delta in KB, and the delta in bytes.
   Rows are sorted by growth, largest first. `new` and `removed` mark routes on one side only.
 - "client scripts differ" with no changed rows means code changed outside the start-up sets (for
   example a chunk loaded on demand, or a staff admin page, which is not measured). For Bid it can
-  also be the build-to-build variation described above, which can also move every Bid route by
-  the same few bytes.
+  also be the build-to-build variation described above.
 - Apps built on one side only are listed and not compared.
 
 ### What fails
@@ -452,8 +457,8 @@ Checked on 2026-11-16 with pairs of clean builds of one commit in the same direc
   excluded. The path rule keeps the check on if a motion PR is renamed or loses its label. The step
   reads the PR's current title and labels, so after adding a label, re-run the `build` job. If the
   base cannot be built, such a PR fails too, since the proof is missing; re-run the job.
-  Because of the Bid variation above, such a PR can fail on Bid with every route a few bytes
-  larger and no change of its own there; re-run the job, and if it repeats, the growth is real.
+  Because of the Bid and Account variation above, such a PR can fail with every route of one of
+  those apps a few bytes larger and no change of its own there; re-run the job, and if it repeats, the growth is real.
 - **Every other PR**: the table only reports (a notice per grown or new route). Pass or fail is
   decided by the budget and ratchet rules above, unchanged. New routes are judged by their group's
   budget as before.
