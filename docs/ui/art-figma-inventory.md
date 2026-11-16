@@ -88,9 +88,9 @@ The Deltas column lists only what still differs from Figma. A "Built" row has no
 | --- | --- | --- | --- | --- |
 | Artwork page | `426:2581` | `/artworks/[slug]` | Partial | Built: breadcrumb (Artworks / type / title), spec table, certificate link, "Enquire to purchase", Share, About / Exhibition-history tabs, accordions, artist block with Follow and Read more, "More in this collection" rail. Missing: "View in room"; the "Private Sales" breadcrumb level (no data). |
 | Artwork page (scrolled) | `433:4845` | `/artworks/[slug]` | Built | Sticky info column on desktop. |
-| Mobile app | `468:7996` / `468:8877` | `/artworks/[slug]` | Partial | Swipe gallery, accordions, artist block, rail and a fixed Follow and Enquire bar are built. Not built: FAQ pills, vertical dot indicators. The price stays visible in the info column, unlike Figma. |
-| Menu / menu bottom sheet | `905:21131` / `905:21586` | `/artworks/[slug]` | Built | "More options" sheet: Share, More from this category, Contact a specialist (opens the general enquiry sheet with topic `art_advisory`). |
-| FAQ bottom sheet | `905:21656` | `/artworks/[slug]` | Missing | Needs a FAQ entity (see Follow-ups). |
+| Mobile app | `468:7996` / `468:8877` | `/artworks/[slug]` | Partial | Swipe gallery, accordions, artist block, rail, a fixed Follow and Enquire bar, FAQ pills (`MarketingFaqPills`, product-owned questions) and the price directly under the title are built (#1474). One enquiry control serves both layouts. Not built: vertical dot indicators (the dots run horizontally because the carousel swipes horizontally). |
+| Menu / menu bottom sheet | `905:21131` / `905:21586` | `/artworks/[slug]` | Built | "More options" sheet: Share and More from this category. The sheet has no second enquiry path; "Ask an advisor" below the enquiry control opens the general enquiry sheet with topic `art_advisory` (#1474). |
+| FAQ bottom sheet | `905:21656` | `/artworks/[slug]` | Missing | The answers open in place under the pills instead. A sheet needs a FAQ entity (see Follow-ups). |
 
 ### Enquiry (`614:12202`)
 
@@ -244,8 +244,9 @@ Every new or extended component in `@auction/marketing-ui` and `@auction/ui` fro
 | `MarketingFollowRow` | marketing-ui | Favourites, Follows tab | Bid artist watch |
 | `MarketingEnquiryListItem` | marketing-ui | Account enquiries | Shop account |
 | `MarketingSuccessState` (animated check) | marketing-ui | Enquiry sheets | Bid, Shop, Account |
+| `MarketingFaqPills` (native radio pills in a fieldset, answers in the server HTML, no client JavaScript; #1474) | marketing-ui | Artwork detail FAQs | Shop product page, Bid lot |
 | `MarketingSideSheet` `titleCase` option | marketing-ui | Enquiry sheets, artwork options sheet | Shop, Bid |
-| `MarketingStatusState` `search-remove` motif | marketing-ui | Search no results | Bid, Shop |
+| Kit `EmptyState` `search` drawing (`search-remove` resolves to it) | ui (lax) | Search no results | Bid, Shop |
 | New icons in `marketing-icons.tsx`: map pin, calendar, arrow (and clock, mail from #551) | marketing-ui | Facts, cards, artwork detail | — |
 
 ### `@auction/ui`
@@ -264,7 +265,7 @@ From the earlier gap list, not built:
 - `MarketingHorizontalRail` `peek`, mixed-size and `dots` controls.
 - `MarketingStickyActionBar`-style scroll-triggered Follow pill for the artist page.
 - `MarketingContactCard` and `MarketingStaticMap` (blocked on a map provider).
-- FAQ link, FAQ pill and FAQ sheet (blocked on a FAQ entity).
+- FAQ link and FAQ sheet (blocked on a FAQ entity). `MarketingFaqPills` is built (#1474).
 - Shared ecosystem cross-sell card (Art's home band is local).
 - Recently-viewed rail (promote the local `recently-viewed-rail` in `apps/web`).
 - `Button` mixed-case arrow link and a Figma-matched outline variant; `Avatar` monogram; `Badge` chip link; `Carousel` vertical dots and portrait aspect.
@@ -312,7 +313,7 @@ Everything below needs new data, a service, infrastructure or an owner decision.
 - `videoUrl` on story summaries so films render as films. #553
 - "View in room". #542
 - Private Sales level in the artwork breadcrumb (needs a flag and a route). #542
-- Help centre / FAQ entity (question, answer blocks, category, slug, search), a `/help/[slug]` route, artwork FAQ pills and sheet, and real targets for the how-to-buy step-card links. #542, #551
+- Help centre / FAQ entity (question, answer blocks, category, slug, search), a `/help/[slug]` route, the artwork FAQ sheet (the pills ship with product-owned questions, #1474), and real targets for the how-to-buy step-card links. #542, #551
 
 ### Exhibitions, venues and stories
 - Exhibition press kicker (publication name) and reveal-slide time of day. #554

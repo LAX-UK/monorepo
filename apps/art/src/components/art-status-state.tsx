@@ -1,18 +1,17 @@
 import { ArtAuthLink } from "@/components/art-auth-link";
 import { isArtAuthHref } from "@/lib/is-art-auth-href";
+import { MarketingStatusAction } from "@auction/marketing-ui";
+import { EmptyState } from "@auction/ui/lax/empty-state";
 import {
-  MarketingStatusAction,
-  MarketingStatusState,
-  type MarketingStatusStateAnnouncement,
-  type MarketingStatusStateLayout,
-  type MarketingStatusStateMotif,
-} from "@auction/marketing-ui";
+  type StatusIllustration,
+  resolveStatusIllustration,
+} from "@auction/ui/lax/status-illustration";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
 export type ArtStatusStateVariant = "empty" | "error";
 /** A drawing from the LAX illustration set; `gallery` is the empty frame. */
-export type ArtStatusStateIcon = MarketingStatusStateMotif;
+export type ArtStatusStateIcon = StatusIllustration;
 
 type ArtStatusStateProps = {
   variant: ArtStatusStateVariant;
@@ -20,23 +19,18 @@ type ArtStatusStateProps = {
   title: string;
   description: string;
   actions?: ReactNode;
+  /**
+   * The title's element. A page-layout state is the page's h1 unless this says otherwise: pass
+   * h2 when the page already has its h1 (for-artists/apply). Elsewhere the title is a quiet
+   * paragraph unless asked.
+   */
   titleAs?: "h1" | "h2" | "p";
-  /** `page` for full-route empties, `open` (default) for grids and sections; never boxed. */
-  layout?: Exclude<MarketingStatusStateLayout, "inline">;
-  announcement?: MarketingStatusStateAnnouncement;
+  /** `page` for full-route states, `open` (default) for grids and sections, `compact` for short lists. */
+  layout?: "open" | "page" | "compact";
+  /** Errors are announced politely, empties not at all, unless this says otherwise. */
+  announcement?: "none" | "polite" | "assertive";
   className?: string;
 };
-
-/** Errors keep the askew frame unless the state is about access or a missing page. */
-const ERROR_MOTIFS = new Set<MarketingStatusStateMotif>(["askew", "lock", "ticket"]);
-
-function resolveMotif(
-  variant: ArtStatusStateVariant,
-  icon: ArtStatusStateIcon | undefined,
-): MarketingStatusStateMotif {
-  if (variant === "error") return icon && ERROR_MOTIFS.has(icon) ? icon : "alert";
-  return icon ?? "gallery";
-}
 
 export function ArtStatusState({
   variant,
@@ -44,25 +38,33 @@ export function ArtStatusState({
   title,
   description,
   actions,
-  titleAs = "p",
+  titleAs,
   layout = "open",
   announcement,
   className,
 }: ArtStatusStateProps) {
-  return (
-    <MarketingStatusState
-      variant={variant}
-      layout={layout}
-      motif={resolveMotif(variant, icon)}
+  const isPage = layout === "page";
+  const headingLevel = titleAs ?? (isPage ? undefined : "p");
+  const live = announcement ?? (variant === "error" ? "polite" : "none");
+  const role = live === "none" ? undefined : LIVE_ROLES[live];
+  // The kit's error variant always announces itself assertively; lax.art errors are polite, so
+  // an error is drawn askew and the wrapper owns the live region.
+  const state = (
+    <EmptyState
+      layout={isPage ? "page" : "inline"}
+      size={layout === "compact" ? "compact" : "default"}
+      illustration={variant === "error" ? "askew" : resolveStatusIllustration(icon ?? "gallery")}
       title={title}
       description={description}
       actions={actions}
-      titleAs={titleAs}
-      announcement={announcement ?? (variant === "error" ? "polite" : "none")}
+      {...(headingLevel ? { headingLevel } : {})}
       {...(className ? { className } : {})}
     />
   );
+  return role ? <div role={role}>{state}</div> : state;
 }
+
+const LIVE_ROLES = { polite: "status", assertive: "alert" } as const;
 
 type ArtStatusStateLinkProps = {
   href: string;

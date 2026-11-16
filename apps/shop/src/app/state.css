@@ -1,17 +1,3 @@
-/* Basket and orders pages use page-scale titles inside the shared marketing status shell. */
-.shop-commerce-content.shop-basket > .marketing-status-state .marketing-status-state__title,
-.shop-basket__empty > .marketing-status-state .marketing-status-state__title,
-.shop-commerce-content.shop-orders > .marketing-status-state .marketing-status-state__title,
-.shop-basket > .marketing-status-state .marketing-status-state__title,
-.shop-basket__empty > .marketing-status-state .marketing-status-state__title,
-.shop-orders > .marketing-status-state .marketing-status-state__title {
-  font-size: clamp(1.375rem, 3vw, 1.875rem);
-}
-
-.shop-detail__state-media .marketing-status-state__art {
-  width: clamp(8rem, 20vw, 12rem);
-}
-
 /* Search form on the not-found page: a labelled field and a secondary button on one row. */
 .shop-search-form {
   display: flex;

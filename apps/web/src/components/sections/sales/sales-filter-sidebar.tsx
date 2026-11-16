@@ -79,7 +79,16 @@ export function SalesFilterSidebar({
             <AccordionTrigger className={MARKETING_FILTER_ACCORDION_TRIGGER}>
               {g.title}
             </AccordionTrigger>
-            <AccordionContent className={salesFilterAccordionContentClass[g.value]}>
+            {/*
+              Every group's options stay in the HTML (server and client) so each value is a
+              crawlable link even while its group is collapsed. A closed group is `hidden`, which
+              keeps it out of view and out of the accessibility tree, as Radix does when it unmounts.
+            */}
+            <AccordionContent
+              forceMount
+              hidden={!openSections.includes(g.value)}
+              className={salesFilterAccordionContentClass[g.value]}
+            >
               <SalesFilterGroupContents
                 group={g.value}
                 state={state}
