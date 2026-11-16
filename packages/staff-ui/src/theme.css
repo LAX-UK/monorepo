@@ -269,6 +269,12 @@
   animation: staff-row-returned 2s ease-out;
 }
 
+/* A tab's selected mark (underline, border, tint) switches at once on staff pages: no colour
+   transition on a tab trigger, whatever the button or trigger it is built on carries. */
+[data-staff-ui] [role="tab"] {
+  transition: none;
+}
+
 @media (prefers-reduced-motion: reduce) {
   /* No fade: the tint holds, then goes, for as long as the row stays marked. */
   [data-staff-ui] [data-staff-returned],

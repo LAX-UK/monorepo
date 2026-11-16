@@ -154,7 +154,12 @@
 
 /* Tab content: the panel that becomes active fades in. The tab's underline moves at once and the
    panel never lifts or slides, so staff and public share the one fade; it runs on the enter token
-   (staff 150ms) and goes instant for staff under reduced motion like every other layer. */
+   (staff 150ms) and goes instant for staff under reduced motion like every other layer.
+   A panel fades when it mounts with `data-state="active"`, so a hand-rolled panel keys itself on
+   the selected tab to fade on each switch (Bid admin's sale cover slots). A Radix `TabsContent`
+   that is already active when it first mounts gets an inline `animation-duration: 0s` from Radix
+   (its mount-animation guard), so with this marker it would stay still on page load and fade only
+   on a switch. */
 [data-lax-motion="tabpanel"] {
   --lax-anim-in: lax-fade-in var(--lax-motion-enter) var(--lax-ease-out);
 }
