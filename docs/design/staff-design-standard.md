@@ -1129,7 +1129,9 @@ invalid (for fields).**
 
 - **Rule:** the label is part of the hit target (`ChoiceRow`, 32px row).
 - **Check:** click the label to toggle. In tables, see TBL-15.
-- **Kit:** `MET` in forms (`ChoiceRow`) and in table cells (TBL-15).
+- **Kit:** `MET` in forms (`ChoiceRow`) and in table cells (TBL-15). `StaffCheckbox` and
+  `StaffRadio` draw a 16px box and answer a 24px square on their own (an unpainted layer 4px past
+  each edge), so a box without a label beside it still meets WCAG 2.5.8.
 - **Sources:** [wcag-target]
 
 ### Badges and status
