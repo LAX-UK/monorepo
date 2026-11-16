@@ -41,16 +41,8 @@ export function resolveHeroCountdownEnd(
   now = new Date(),
 ): string | null {
   if (hero.status === "active") {
-    return (
-      toSaleCountdownEndIso(
-        {
-          status: hero.status,
-          endTime: hero.endTime,
-          deliveryMode: hero.deliveryMode,
-        },
-        { now },
-      ) ?? null
-    );
+    // `hero` already has the fields the countdown reads; its status is narrowed to "active" here.
+    return toSaleCountdownEndIso(hero as typeof hero & { status: "active" }, { now }) ?? null;
   }
   if (hero.status === "scheduled") return hero.startTime;
   return null;
