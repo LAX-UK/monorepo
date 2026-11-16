@@ -39,6 +39,17 @@ export function scopesForProxyMethod(method: string): "bid.read" | "bid.write" {
   return UNSAFE_PROXY_METHODS.has(method.toUpperCase()) ? "bid.write" : "bid.read";
 }
 
+/**
+ * Read-only sale endpoints the API serves to anonymous visitors (saleroom status, lot page of a
+ * sale). A visitor without a signed-in session gets them unauthenticated instead of a 401.
+ */
+export function isPublicSaleReadPath(method: string, segments: readonly string[]): boolean {
+  if (method.toUpperCase() !== "GET" && method.toUpperCase() !== "HEAD") return false;
+  if (segments[0] !== "sales" || !segments[1]) return false;
+  if (segments.length === 3 && segments[2] === "lots") return true;
+  return segments.length === 4 && segments[2] === "saleroom" && segments[3] === "status";
+}
+
 export function isApprovedProxyPath(segments: readonly string[]): boolean {
   if (segments.length === 0 || !segments[0] || !APPROVED_ROOTS.has(segments[0])) return false;
   return segments.every(

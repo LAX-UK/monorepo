@@ -5,7 +5,6 @@ import {
   ENQUIRY_CLOSE_REASON_LABELS,
   ENQUIRY_KIND_LABELS,
   enquiryWaiting,
-  humaniseSlug,
   statusSentence,
 } from "@/lib/admin/enquiries/enquiries.vm";
 import { enquiryRecordActions } from "@/lib/admin/enquiries/enquiry-actions";
@@ -66,6 +65,8 @@ export type EnquiryViewProps = {
   /** Assignments and status changes from the audit trail; null when it could not be read. */
   history: EnquiryHistoryEntry[] | null;
   viewerId: string;
+  /** The department's name, resolved on the server; null when the enquiry has none. */
+  departmentName: string | null;
   canWork: boolean;
   /** May turn a private sale enquiry into a deal. */
   canConvert?: boolean;
@@ -94,6 +95,7 @@ export function EnquiryView({
   assignees,
   history,
   viewerId,
+  departmentName,
   canWork,
   canConvert = false,
   now,
@@ -233,9 +235,7 @@ export function EnquiryView({
             <MetaItem label="Assigned to">
               {assignee ?? (enquiry.assignedToUserId ? "Former staff member" : "Nobody yet")}
             </MetaItem>
-            {enquiry.departmentSlug ? (
-              <MetaItem label="Department">{humaniseSlug(enquiry.departmentSlug)}</MetaItem>
-            ) : null}
+            {departmentName ? <MetaItem label="Department">{departmentName}</MetaItem> : null}
           </>
         }
         access={actions.access}

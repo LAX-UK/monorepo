@@ -69,6 +69,34 @@ describe("Bid BFF proxy route", () => {
     expect(mocks.fetchBidApi).not.toHaveBeenCalled();
   });
 
+  it.each([
+    ["saleroom status", ["sales", "sale-1", "saleroom", "status"]],
+    ["sale lots", ["sales", "sale-1", "lots"]],
+  ])("serves %s to a signed-out visitor without a session", async (_name, path) => {
+    mocks.resourceToken.mockRejectedValueOnce(new mocks.BidBffSessionRequiredError());
+
+    const response = await GET(new NextRequest(`https://lax.bid/api/bff/${path.join("/")}`), {
+      params: Promise.resolve({ path }),
+    });
+
+    expect(response.status).toBe(200);
+    expect(mocks.fetchBidApi).toHaveBeenCalledTimes(1);
+    const init = mocks.fetchBidApi.mock.calls[0]?.[1] as RequestInit;
+    expect(new Headers(init.headers).has("authorization")).toBe(false);
+  });
+
+  it("still requires a session for other sale reads", async () => {
+    mocks.resourceToken.mockRejectedValueOnce(new mocks.BidBffSessionRequiredError());
+    const path = ["sales", "sale-1", "bidders"];
+
+    const response = await GET(new NextRequest(`https://lax.bid/api/bff/${path.join("/")}`), {
+      params: Promise.resolve({ path }),
+    });
+
+    expect(response.status).toBe(401);
+    expect(mocks.fetchBidApi).not.toHaveBeenCalled();
+  });
+
   it.each(["identity endpoint", "Redis", "refresh lock"])(
     "maps %s failures to 503",
     async (dependency) => {

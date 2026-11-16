@@ -6,6 +6,7 @@ import { Registry, collectDefaultMetrics } from "prom-client";
 import type { WorkerContainer } from "./container/create-worker-container.js";
 import { bindDeliveryMetrics } from "./lib/delivery-metrics.js";
 import { bindMoneyPathMetrics } from "./lib/money-path-metrics.js";
+import { bindNotificationOutboxWakeMetrics } from "./lib/notification-outbox-wake-metrics.js";
 import { bindReofferSweepMetrics } from "./lib/reoffer-sweep-metrics.js";
 
 export type HealthServerHandle = {
@@ -21,6 +22,7 @@ export function createMetricsRegistry(container: WorkerContainer): Registry {
   bindDeliveryMetrics(metrics);
   bindMoneyPathMetrics(metrics);
   bindReofferSweepMetrics(metrics);
+  bindNotificationOutboxWakeMetrics(metrics);
   return metrics;
 }
 

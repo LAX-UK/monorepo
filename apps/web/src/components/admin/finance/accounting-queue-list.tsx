@@ -25,6 +25,7 @@ import {
 } from "@/lib/admin/finance/accounting-queue.vm";
 import { notify } from "@/lib/ui/notify";
 import {
+  ChoiceRow,
   ConfirmActionDialog,
   type DataColumn,
   DataViews,
@@ -411,14 +412,17 @@ export function AccountingQueueList(props: AccountingQueueListProps) {
         onConfirm={submit}
       >
         {lockedConfirm ? (
-          <div className="flex items-start gap-2.5 text-staff-sm text-staff-fg">
-            <StaffCheckbox
-              id={acknowledgeId}
-              checked={acknowledged}
-              onCheckedChange={(next) => setAcknowledged(next === true)}
-            />
-            <label htmlFor={acknowledgeId}>{ACCOUNTING_LOCKED_PERIOD_ACKNOWLEDGEMENT}</label>
-          </div>
+          <ChoiceRow
+            htmlFor={acknowledgeId}
+            label={ACCOUNTING_LOCKED_PERIOD_ACKNOWLEDGEMENT}
+            control={
+              <StaffCheckbox
+                id={acknowledgeId}
+                checked={acknowledged}
+                onCheckedChange={(next) => setAcknowledged(next === true)}
+              />
+            }
+          />
         ) : null}
         {failure ? (
           <Notice
