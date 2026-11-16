@@ -118,6 +118,23 @@ describe("deriveClientAttention", () => {
     expect(derive([])).toMatchObject({ paymentsDue: 0, paymentsInReview: false });
   });
 
+  it("says what holds the payment: documents win over a plain review, and nothing when released", () => {
+    const derive = (amountsOwed: AmountOwedEntry[]) =>
+      deriveClientAttention({
+        userId: "user-1",
+        bids: [],
+        amountsOwed,
+        stillToSend: [],
+        unreadNotifications: [],
+      });
+    const held = (lotId: string, blocker: "documents" | "review") =>
+      owed(lotId, { state: "in-review", blocker });
+    expect(derive([held("a", "review")]).paymentsBlocker).toBe("review");
+    expect(derive([held("a", "review"), held("b", "documents")]).paymentsBlocker).toBe("documents");
+    expect(derive([held("a", "review"), owed("b")]).paymentsBlocker).toBeNull();
+    expect(derive([]).paymentsBlocker).toBeNull();
+  });
+
   it("counts the purchases this person pays and unread notifications", () => {
     const attention = deriveClientAttention({
       userId: "user-1",
@@ -135,6 +152,7 @@ describe("deriveClientAttention", () => {
       outbidLots: [],
       paymentsDue: 2,
       paymentsInReview: false,
+      paymentsBlocker: null,
       stillToSend: { count: 0, pence: 0, lotIds: [] },
       unreadNotifications: 2,
       groups: [],

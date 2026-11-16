@@ -237,7 +237,9 @@ describe("Home, the lists and the menu agree", () => {
       unreadNotifications: [],
     });
     expect(attention).toMatchObject({ paymentsDue: 4, paymentsInReview: true });
-    expect(attentionChip(attention)).toMatchObject({ label: "Account in review" });
+    expect(attentionChip(attention)).toMatchObject({
+      label: "Documents needed to pay",
+    });
     // Purchases agrees: one banner, one action, and no row repeats it.
     const vm = buildPurchasesVm(sources);
     expect(vm.payNow).toMatchObject({

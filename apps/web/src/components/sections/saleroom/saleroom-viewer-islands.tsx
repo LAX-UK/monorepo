@@ -61,7 +61,7 @@ export function SaleroomHeroActionRowIsland({
 export function SaleMobileSummaryBarIsland({
   atgReadOnly,
   ...props
-}: Omit<ComponentProps<typeof SaleMobileSummaryBar>, "canParticipate"> & {
+}: Omit<ComponentProps<typeof SaleMobileSummaryBar>, "canParticipate" | "registered"> & {
   atgReadOnly: boolean;
 }) {
   const viewer = useSaleViewer();
@@ -69,6 +69,7 @@ export function SaleMobileSummaryBarIsland({
     <SaleMobileSummaryBar
       {...props}
       canParticipate={viewer.canParticipateAsBuyer && !atgReadOnly}
+      registered={viewer.myRegistrations.some((r) => r.status === "approved")}
     />
   );
 }

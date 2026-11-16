@@ -40,6 +40,7 @@ export function deriveClientAttention(sources: ClientAttentionSources): ClientAt
     ),
     paymentsDue: owed.count,
     paymentsInReview: owed.inReview,
+    paymentsBlocker: owed.inReview ? owed.blocker : null,
     stillToSend: {
       count: sources.stillToSend.length,
       pence: sources.stillToSend.reduce((sum, entry) => sum + entry.pence, 0),

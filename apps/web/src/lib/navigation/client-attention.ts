@@ -18,6 +18,12 @@ export type ClientAttention = {
   /** Something is owed and all of it waits on account checks, so nothing can be paid yet. */
   paymentsInReview: boolean;
   /**
+   * Why that payment waits: `documents` when the person has to supply something, `review` when
+   * the checks are with us. `null` when nothing is held. It lets the prompt say what is open
+   * instead of a vague "Account in review".
+   */
+  paymentsBlocker: "documents" | "review" | null;
+  /**
    * Lots inside a bank transfer that has delivered part of its payment: what is still to send
    * for them (whole pence) and which lots they are. They are owed, but not a payment to start.
    */
@@ -35,6 +41,7 @@ export const NO_ATTENTION: ClientAttention = {
   outbidLots: [],
   paymentsDue: 0,
   paymentsInReview: false,
+  paymentsBlocker: null,
   stillToSend: { count: 0, pence: 0, lotIds: [] },
   unreadNotifications: 0,
   groups: [],
@@ -133,15 +140,22 @@ const CHIP_RULES: readonly ChipRule[] = [
     chip: outbidChip,
   },
   {
-    // While checks are open nothing can be paid, so the chip says where the account stands
-    // rather than asking for a payment that cannot be made.
+    // While checks are open nothing can be paid, so the chip says what is held and why rather
+    // than asking for a payment that cannot be made. It is about purchases only: it never
+    // speaks for a sale registration or identity check, which the sale page reports itself.
     kind: "account-in-review",
     applies: (a) => a.paymentsDue > 0 && a.paymentsInReview,
-    chip: () => ({
-      label: "Account in review",
-      href: CLIENT_ROUTES.purchases,
-      accessibleName: "Account in review. Go to Purchases",
-    }),
+    chip: (a) => {
+      const label =
+        a.paymentsBlocker === "documents"
+          ? "Documents needed to pay"
+          : "Payment on hold while checks finish";
+      return {
+        label,
+        href: CLIENT_ROUTES.purchases,
+        accessibleName: `${label}. Go to Purchases`,
+      };
+    },
   },
   {
     kind: "payment-due",

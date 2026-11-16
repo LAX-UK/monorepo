@@ -52,13 +52,37 @@ describe("attentionChip", () => {
     });
   });
 
-  it("says the account is in review, not that payment is due, while checks are open", () => {
+  it("says the payment is on hold, not that payment is due, while checks are open", () => {
     expect(attentionChip(attention({ paymentsDue: 3, paymentsInReview: true }))).toMatchObject({
       kind: "account-in-review",
-      label: "Account in review",
+      label: "Payment on hold while checks finish",
       href: "/purchases",
-      accessibleName: "Account in review. Go to Purchases",
+      accessibleName: "Payment on hold while checks finish. Go to Purchases",
     });
+  });
+
+  it("names the documents when they are what holds the payment", () => {
+    expect(
+      attentionChip(
+        attention({ paymentsDue: 1, paymentsInReview: true, paymentsBlocker: "documents" }),
+      )?.label,
+    ).toBe("Documents needed to pay");
+  });
+
+  // The prompt is about purchases only: nothing about sale registration or identity checks can
+  // raise it, so an approved, registered bidder with nothing owed never sees it.
+  it.each([
+    ["nothing owed", { paymentsDue: 0, paymentsInReview: false }],
+    ["nothing owed, stale in-review flag", { paymentsDue: 0, paymentsInReview: true }],
+  ])("shows no account prompt with %s", (_name, over) => {
+    expect(attentionChip(attention(over))).toBeNull();
+  });
+
+  it.each([
+    ["checks open", { paymentsDue: 1, paymentsInReview: true }, "account-in-review"],
+    ["payable now", { paymentsDue: 1, paymentsInReview: false }, "payment-due"],
+  ] as const)("with %s the prompt is %s", (_name, over, kind) => {
+    expect(attentionChip(attention(over))?.kind).toBe(kind);
   });
 
   it("still counts what is owed in the menu while the account is in review", () => {

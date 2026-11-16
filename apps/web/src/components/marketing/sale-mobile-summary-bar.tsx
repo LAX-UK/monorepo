@@ -61,6 +61,11 @@ type Props = {
   saleroomLotRefs?: readonly SaleroomLotRef[];
   /** When false (staff viewers), suppress register/bid CTAs. Defaults to true. */
   canParticipate?: boolean;
+  /**
+   * The viewer already holds an approved registration for this sale. Their bar then offers the
+   * lots, never "Register", which would send a registered bidder back to the start.
+   */
+  registered?: boolean;
 };
 
 export function SaleMobileSummaryBar({
@@ -76,6 +81,7 @@ export function SaleMobileSummaryBar({
   locationLine = "",
   saleroomLotRefs = [],
   canParticipate = true,
+  registered = false,
 }: Props) {
   const saleroomLive = useSaleroomLive();
   const heroActionsScrolledOut = useSalePhoneBarVisible();
@@ -168,8 +174,9 @@ export function SaleMobileSummaryBar({
       );
     }
 
-    const ctaHref = isUpcoming ? (canParticipate ? "/register" : "#catalog") : "#catalog";
-    const ctaLabel = isUpcoming ? (canParticipate ? "Register" : "View lots") : "View lots";
+    const offerRegister = isUpcoming && canParticipate && !registered;
+    const ctaHref = offerRegister ? "/register" : "#catalog";
+    const ctaLabel = offerRegister ? "Register" : "View lots";
     return (
       <Button variant="primary" size="lg" asChild>
         <Link href={ctaHref}>{ctaLabel}</Link>

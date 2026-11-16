@@ -124,6 +124,17 @@ describe("SaleMobileSummaryBar", () => {
     expect(screen.getByRole("link", { name: "View lots" })).toBeInTheDocument();
   });
 
+  it.each([
+    ["not registered", { registered: false }, "Register"],
+    ["registered (approved)", { registered: true }, "View lots"],
+  ])("on an upcoming sale a bidder who is %s sees %s", (_name, props, label) => {
+    renderBar({ status: "scheduled", ...props });
+    expect(screen.getByRole("link", { name: label })).toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: label === "Register" ? "View lots" : "Register" }),
+    ).toBeNull();
+  });
+
   it("offers Add to calendar for an upcoming onsite sale", () => {
     renderBar({
       status: "scheduled",
