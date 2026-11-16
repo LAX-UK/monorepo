@@ -26,7 +26,12 @@ const visit: CollectionNoticeVisit = {
   accountPeople: [],
 };
 
-type Row = { id: number; eventType: string; payload: Record<string, unknown> };
+type Row = {
+  id: number;
+  eventType: string;
+  payload: Record<string, unknown>;
+  producer?: string;
+};
 
 function setup(rows: Row[], read: (id: string) => Promise<CollectionNoticeVisit | null>) {
   const enqueue = vi.fn().mockResolvedValue({ outboxId: "o" });
@@ -77,6 +82,26 @@ describe("collection booking emails from audit events", () => {
     expect(s.advanceCursor).toHaveBeenCalledWith("collection_booking_notify", 7);
     // A hand-over and a missed visit have their emails only.
     expect(s.createMany).not.toHaveBeenCalled();
+  });
+
+  it("sends nothing for a booking the demo seed made, and moves past it", async () => {
+    const read = vi.fn(async () => visit);
+    const s = setup(
+      [
+        {
+          id: 6,
+          eventType: "collection.booking.created",
+          payload: { bookingId: "b-1" },
+          producer: "demo-seed",
+        },
+      ],
+      read,
+    );
+    await s.run();
+    expect(read).not.toHaveBeenCalled();
+    expect(s.enqueue).not.toHaveBeenCalled();
+    expect(s.createMany).not.toHaveBeenCalled();
+    expect(s.advanceCursor).toHaveBeenCalledWith(COLLECTION_BOOKING_NOTIFY_PROJECTOR, 6);
   });
 
   it("puts a notice in the buyer's inbox for a booking made, changed and cancelled", async () => {

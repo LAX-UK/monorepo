@@ -1517,3 +1517,8 @@ export {
   type SellerTermsSnapshot,
 } from "./seller-terms.js";
 export * from "./public-page-cache.js";
+export { DEMO_SEED_EVENT_PRODUCER, isDemoSeedEvent } from "./demo-seed-events.js";
+export {
+  type CollectionCanonicalRequest,
+  collectionRequestCanonical,
+} from "./collection-request-canonical.js";
