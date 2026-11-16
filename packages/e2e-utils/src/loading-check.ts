@@ -12,8 +12,10 @@ import type { Page, Route } from "@playwright/test";
  *  - `hiddenAtStart`  every skeleton block was still invisible when the loading screen appeared
  *  - `nonOpacity`     any skeleton animation that sets something other than opacity
  *
- * Shifts are counted in the page (PerformanceObserver `layout-shift`, input-caused shifts left
- * out), the same way `observeLayoutShift` in apps/web/e2e/helpers/motion-check.ts counts them.
+ * Shifts are counted in the page by `countLayoutShift` below (PerformanceObserver `layout-shift`,
+ * input-caused shifts left out). This package is test code only: the Bid, Shop and lax.art
+ * loading specs import it as `@auction/e2e-utils/loading-check`, and nothing in an app or the UI
+ * kit does.
  */
 export type LoadingCheck = {
   skeletonShift: number;
@@ -291,6 +293,10 @@ export function defineLoadingScreenTests(
           test
             .info()
             .annotations.push({ type: "loading-check", description: JSON.stringify(result) });
+          // One line per case in the CI log, so the measured shifts can be read without the report.
+          console.log(
+            `[loading-check] ${product} ${item.name} ${viewport.name} ${scheme}: swapShift=${result.swapShift.toFixed(4)} skeletonShift=${result.skeletonShift.toFixed(4)} blocks=${result.blocks}${item.swapNotAsserted ? " (swap not asserted)" : ""}`,
+          );
           expect(result.blocks, "skeleton blocks on the loading screen").toBeGreaterThan(0);
           expect(result.nonOpacity, "skeleton animations other than opacity").toEqual([]);
           expect(result.skeletonShift, "layout shift while the skeleton shows").toBe(0);

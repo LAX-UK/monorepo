@@ -37,6 +37,7 @@
   },
   "devDependencies": {
     "@auction/config-ts": "workspace:*",
+    "@auction/e2e-utils": "workspace:*",
     "@axe-core/playwright": "^4.10.1",
     "@playwright/test": "^1.55.0",
     "@tailwindcss/postcss": "^4.1.13",

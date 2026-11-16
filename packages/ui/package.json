@@ -31,7 +31,6 @@
       "default": "./dist/lax/helpers.js"
     },
     "./lax-theme.css": "./src/lax/theme.css",
-    "./e2e/loading-check": "./src/e2e/loading-check.ts",
     "./components/button": {
       "types": "./dist/components/ui/button.d.ts",
       "default": "./dist/components/ui/button.js"

@@ -1,4 +1,4 @@
-import { defineLoadingScreenTests } from "@auction/ui/e2e/loading-check";
+import { defineLoadingScreenTests } from "@auction/e2e-utils/loading-check";
 import { expect, test } from "@playwright/test";
 
 // lax.art's loading screens (docs/design/motion.md, MO12). Opt-in: needs lax.art running.

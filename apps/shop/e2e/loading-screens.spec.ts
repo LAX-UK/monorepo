@@ -1,4 +1,4 @@
-import { defineLoadingScreenTests } from "@auction/ui/e2e/loading-check";
+import { defineLoadingScreenTests } from "@auction/e2e-utils/loading-check";
 import { type Page, expect, test } from "@playwright/test";
 
 // Shop's loading screens (docs/design/motion.md, MO12), against the seeded catalogue
