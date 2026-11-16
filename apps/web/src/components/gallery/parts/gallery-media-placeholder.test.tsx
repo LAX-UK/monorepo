@@ -23,8 +23,8 @@ describe("GalleryMediaPlaceholder", () => {
     expect(container.firstElementChild).not.toHaveClass("dark:bg-surface-container-low");
   });
 
-  it("applies pulse when loading", () => {
+  it("draws the shared skeleton when loading", () => {
     const { container } = render(<GalleryMediaPlaceholder variant="inline" loading />);
-    expect(container.firstElementChild).toHaveClass("animate-pulse");
+    expect(container.firstElementChild).toHaveClass("lax-skeleton");
   });
 });

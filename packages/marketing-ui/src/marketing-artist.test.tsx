@@ -159,7 +159,7 @@ describe("MarketingFilterLinkGroups", () => {
     const { rerender } = render(
       <MarketingFilterLinkGroups groups={groups} clearHref="/artists" hasFilters />,
     );
-    expect(screen.getByRole("checkbox", { name: "Featured , 4" })).toHaveAttribute(
+    expect(screen.getByRole("checkbox", { name: "Featured, 4" })).toHaveAttribute(
       "aria-checked",
       "true",
     );

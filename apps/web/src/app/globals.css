@@ -250,8 +250,8 @@
   --motion-duration-md: 320ms;
   --motion-duration-lg: 520ms;
   --motion-duration-xl: 900ms;
-  --motion-duration-2xl: 1600ms;
-  --motion-duration-pulse: 1600ms;
+  --motion-duration-2xl: var(--lax-motion-pulse);
+  --motion-duration-pulse: var(--lax-motion-pulse);
   --motion-ease-standard: var(--lax-ease-out);
   --motion-ease-emphasize: var(--lax-ease-emphasize);
   --motion-ease-decelerate: cubic-bezier(0, 0, 0, 1);

@@ -5,6 +5,10 @@ import {
   dataRequestErrorMessage,
   isStaleDataRequest,
 } from "@/lib/admin/data-requests/data-request-errors";
+import {
+  type FoundAccount,
+  foundAccountStatusLabel,
+} from "@/lib/admin/data-requests/data-request-forms";
 import { DATA_REQUESTS_PATH } from "@/lib/admin/data-requests/data-requests-search";
 import {
   type EnquiryErasureCounts,
@@ -37,7 +41,7 @@ import { z as zod } from "zod";
 const API = "/admin/data-requests";
 
 /** A person's LAX account as the Log dialog shows it: found by their full email address. */
-export type FoundAccountResult = { subjectId: string; name: string; status: string };
+export type FoundAccountResult = FoundAccount;
 
 const foundAccountSchema = zod
   .object({ subjectId: zod.string(), name: zod.string(), status: zod.string() })
@@ -188,8 +192,13 @@ export async function findDataRequestAccountAction(
         res?.status ?? 503,
       );
     }
+    const account = readDataEnvelope(
+      await readJsonBody(res),
+      foundAccountSchema,
+      `GET ${API}/account`,
+    );
     return actionSuccess(
-      readDataEnvelope(await readJsonBody(res), foundAccountSchema, `GET ${API}/account`),
+      account ? { ...account, statusLabel: foundAccountStatusLabel(account.status) } : null,
     );
   });
 }

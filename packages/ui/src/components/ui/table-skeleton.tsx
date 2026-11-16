@@ -49,7 +49,7 @@ export function TableSkeleton({ rows = 8, columns = 5, className }: TableSkeleto
   const colKeys = COL_KEYS.slice(0, columns);
   const rowKeys = ROW_KEYS.slice(0, rows);
   return (
-    <div className={cn("animate-pulse rounded-md border border-outline-variant/20", className)}>
+    <div className={cn("lax-skeleton rounded-md border border-outline-variant/20", className)}>
       <Table>
         <TableHeader>
           <TableRow className="hover:bg-transparent">

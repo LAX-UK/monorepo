@@ -4,7 +4,7 @@ import { cn } from "@auction/ui";
 const ROWS = ["a", "b", "c", "d"] as const;
 
 function Bar({ className }: { className: string }) {
-  return <span className={cn("shop-skeleton__bar", className)} />;
+  return <span className={cn("lax-skeleton shop-skeleton__bar", className)} />;
 }
 
 /** Account page skeleton: header, then order rows (list) or items and summary (detail). */

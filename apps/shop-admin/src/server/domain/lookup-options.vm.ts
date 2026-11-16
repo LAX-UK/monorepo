@@ -1,7 +1,6 @@
 import type {
   AdminArtworkLookupItem,
   AdminClientDetail,
-  AdminEditionLookupItem,
   AdminPartyLookupItem,
 } from "@auction/shop-contracts";
 
@@ -18,15 +17,6 @@ export type LookupOption = {
   meta?: string;
 };
 
-export const EDITION_LISTING_LABELS: Record<string, string> = {
-  not_authorised: "Not authorised",
-  authorised: "Available",
-  reserved: "Reserved",
-  held: "Held",
-  sold: "Sold",
-  withdrawn: "Withdrawn",
-};
-
 const PARTY_KIND_LABELS: Record<string, string> = {
   person: "Person",
   gallery: "Gallery",
@@ -35,10 +25,6 @@ const PARTY_KIND_LABELS: Record<string, string> = {
   marketplace: "Marketplace",
   lax: "LAX",
 };
-
-export function editionListingLabel(status: string): string {
-  return EDITION_LISTING_LABELS[status] ?? status.replace(/_/g, " ");
-}
 
 export function partyKindLabel(kind: string): string {
   return PARTY_KIND_LABELS[kind] ?? kind;
@@ -61,15 +47,6 @@ export function artworkOption(item: AdminArtworkLookupItem): LookupOption {
 /** "Vessel Study, 7/24": the work and the print's label as the API words it. */
 export function editionLabel(item: { artworkTitle: string; printLabel: string }): string {
   return `${item.artworkTitle}, ${item.printLabel}`;
-}
-
-export function editionOption(item: AdminEditionLookupItem): LookupOption {
-  return {
-    id: item.editionId,
-    label: editionLabel(item),
-    description: item.artistName,
-    meta: editionListingLabel(item.listingStatus),
-  };
 }
 
 /**

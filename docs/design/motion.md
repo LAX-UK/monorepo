@@ -24,9 +24,12 @@ Defined once in `packages/branding/public/lax-system.css`; staff values under th
 | `--lax-motion-page` | 140 out / 200 in | 100 out / 150 in | page cross-fade (later, MO5) |
 | `--lax-motion-morph` | 360ms | n/a | artwork image card → page |
 | `--lax-motion-media` | 700ms | n/a | slow card image zoom |
+| `--lax-motion-skeleton-delay` | 150ms | same | how long a skeleton stays hidden (MO12) |
+| `--lax-motion-pulse` | 1600ms | same | one skeleton pulse (MO12) |
 | `--lax-ease-out` | cubic-bezier(0.2, 0, 0, 1) | same | arriving, hover |
 | `--lax-ease-in` | cubic-bezier(0.3, 0, 1, 1) | same | leaving |
 | `--lax-ease-emphasize` | cubic-bezier(0.16, 1, 0.3, 1) | same | dialogs, image morph |
+| `--lax-ease-pulse` | cubic-bezier(0.4, 0, 0.6, 1) | same | skeleton pulse |
 
 Distances: card lift 1px, menu 4px, dialog 8px, press scale 0.98, image zoom 1.02. Staff: no lift, no press scale, no zoom, no slide on menus.
 
@@ -45,7 +48,7 @@ Distances: card lift 1px, menu 4px, dialog 8px, press scale 0.98, image zoom 1.0
 - Tabs: content fades 150ms; underline moves instantly.
 - Lists/tables: no animation on load/sort/filter. MO11: remove admin table row stagger; keep the returned-row tint.
 - Images: hatched placeholder, then 200ms fade only for below-the-fold (`loading="lazy"`) images. First-screen images appear at once (no fade, protects LCP).
-- Skeletons (MO12): one shared skeleton shaped like its page; fades in only after 150ms; then opacity pulse every 1.6s (opacity only, no background-position shimmer). Static under reduced motion. Spinners only inside buttons, keeping the label. No page-level spinners.
+- Skeletons (MO12): one shared skeleton shaped like its page; fades in only after 150ms; then opacity pulse every 1.6s (opacity only, no background-position shimmer). Static under reduced motion. Spinners only inside buttons, keeping the label. No page-level spinners. Built as one class, `.lax-skeleton` (`packages/ui/src/lax/skeleton.css`), rendered by the kit `Skeleton` components and used directly by Shop's bars: hidden for `--lax-motion-skeleton-delay` (an animation with a backwards fill, so it takes no JavaScript), a `--lax-motion-fade` fade-in, then the pulse (opacity 1 → 0.55 → 1). Each loading screen lays the blocks out in the shape of its page. Under reduced motion the delay stays and the pulse goes; public products keep the fade-in, staff tools and LAX Account appear at once (Bid's global reduce rule makes it instant there too).
 - Scroll reveals, cover settle, count-up: unchanged.
 - Live dot / countdown: unchanged; countdown digits never animate.
 

@@ -233,6 +233,10 @@
       "types": "./dist/marketing-filter-checkbox-row.d.ts",
       "default": "./dist/marketing-filter-checkbox-row.js"
     },
+    "./marketing-filter-link-row": {
+      "types": "./dist/marketing-filter-link-row.d.ts",
+      "default": "./dist/marketing-filter-link-row.js"
+    },
     "./marketing-filter-link-groups": {
       "types": "./dist/marketing-filter-link-groups.d.ts",
       "default": "./dist/marketing-filter-link-groups.js"

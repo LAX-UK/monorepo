@@ -1,11 +1,7 @@
 "use server";
 
-import {
-  type LookupOption,
-  artworkOption,
-  editionOption,
-  partyOption,
-} from "@/server/domain/lookup-options.vm";
+import { editionOption } from "@/server/domain/edition-lookup-option.vm";
+import { type LookupOption, artworkOption, partyOption } from "@/server/domain/lookup-options.vm";
 import {
   ADMIN_LOOKUP_SEARCH_MAX_LENGTH,
   type AdminArtworkLookupItem,

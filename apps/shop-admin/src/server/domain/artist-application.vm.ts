@@ -12,6 +12,7 @@ import {
   availableArtistApplicationActions,
 } from "@auction/shop-domain";
 import type { ImageGalleryItem, StaffStatusTone } from "@auction/staff-ui";
+import { ARTIST_APPLICATION_EVENT_TITLES } from "./artist-application-events.copy";
 import { enquiryStaffName } from "./enquiry-inbox.vm";
 import { type RawSearchParams, singleParam } from "./list-url-state";
 import { type WorkListState, defineWorkList } from "./work-list.vm";
@@ -114,29 +115,39 @@ export function suggestArtistSlug(name: string | null): string {
 
 export const ARTIST_SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
+function titleFor(action: ArtistApplicationAction) {
+  return (event: AdminArtistApplicationEvent) =>
+    ARTIST_APPLICATION_EVENT_TITLES[action](
+      event.assignee ? enquiryStaffName(event.assignee) : null,
+    );
+}
+
 type EventPresentation = {
   title: (event: AdminArtistApplicationEvent) => string;
   tone: StaffStatusTone;
 };
 
-/** Each history event as a sentence, in one table. */
-const EVENT_PRESENTATION: Record<string, EventPresentation> = {
-  submit: { title: () => "Application sent", tone: "info" },
-  resubmit: { title: () => "The artist answered and sent it back", tone: "info" },
-  assign: {
-    title: (event) =>
-      event.assignee ? `Assigned to ${enquiryStaffName(event.assignee)}` : "Reviewer removed",
-    tone: "neutral",
-  },
-  request_info: { title: () => "Asked the artist for more information", tone: "warning" },
-  accept: { title: () => "Accepted", tone: "success" },
-  decline: { title: () => "Declined", tone: "neutral" },
+/** Each history event's title (from the copy file) and tone, in one table. */
+export const EVENT_PRESENTATION: Record<ArtistApplicationAction, EventPresentation> = {
+  submit: { title: titleFor("submit"), tone: "info" },
+  resubmit: { title: titleFor("resubmit"), tone: "info" },
+  assign: { title: titleFor("assign"), tone: "neutral" },
+  request_info: { title: titleFor("request_info"), tone: "warning" },
+  accept: { title: titleFor("accept"), tone: "success" },
+  decline: { title: titleFor("decline"), tone: "neutral" },
 };
+
+function sentenceCase(code: string): string {
+  const words = code.replace(/[_-]+/g, " ").trim().toLowerCase();
+  return words.charAt(0).toUpperCase() + words.slice(1);
+}
 
 export function historyEvents(detail: Pick<AdminArtistApplicationDetail, "events" | "artistName">) {
   return [...detail.events].reverse().map((event) => {
-    const presentation = EVENT_PRESENTATION[event.action] ?? {
-      title: () => event.action.replace(/_/g, " "),
+    const presentation = (EVENT_PRESENTATION as Record<string, EventPresentation>)[
+      event.action
+    ] ?? {
+      title: () => sentenceCase(event.action),
       tone: "neutral" as const,
     };
     return {

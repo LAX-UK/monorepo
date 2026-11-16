@@ -9,7 +9,7 @@ import {
 import { readSkeletonView } from "@/lib/preferences/skeleton-view.server";
 import { cn } from "@auction/ui/lib/utils";
 
-const pulse = "animate-pulse rounded bg-surface-container-high";
+const pulse = "lax-skeleton rounded bg-surface-container-high";
 
 export default async function SalesIndexLoading() {
   const view = await readSkeletonView("sales", "list");

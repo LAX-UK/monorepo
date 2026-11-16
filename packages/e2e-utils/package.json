@@ -1,0 +1,23 @@
+{
+  "name": "@auction/e2e-utils",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "sideEffects": false,
+  "description": "Playwright helpers shared by the apps' e2e specs. Test code only: no app or kit imports it.",
+  "exports": {
+    "./loading-check": "./src/loading-check.ts"
+  },
+  "scripts": {
+    "lint": "biome check .",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "peerDependencies": {
+    "@playwright/test": "^1.55.0"
+  },
+  "devDependencies": {
+    "@auction/config-ts": "workspace:*",
+    "@playwright/test": "1.55.1",
+    "typescript": "^5.7.3"
+  }
+}

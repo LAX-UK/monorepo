@@ -1,4 +1,5 @@
 import { render, screen } from "@testing-library/react";
+import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { MarketingFilterLinkGroups } from "./marketing-filter-link-groups.js";
 
@@ -33,7 +34,7 @@ describe("MarketingFilterLinkGroups", () => {
         ]}
       />,
     );
-    const row = screen.getByRole("checkbox", { name: "Brands , 4" });
+    const row = screen.getByRole("checkbox", { name: "Brands, 4" });
     expect(row.tagName).toBe("A");
     expect(row).toHaveAttribute("href", "/artists/kind/brands");
     expect(row).toHaveAttribute("aria-checked", "false");
@@ -51,7 +52,7 @@ describe("MarketingFilterLinkGroups", () => {
         ]}
       />,
     );
-    const row = screen.getByRole("checkbox", { name: "Brands , 4" });
+    const row = screen.getByRole("checkbox", { name: "Brands, 4" });
     expect(row).toHaveAttribute("aria-checked", "true");
     expect(row).toHaveAttribute("href", "/artists");
   });
@@ -71,13 +72,10 @@ describe("MarketingFilterLinkGroups", () => {
         ]}
       />,
     );
-    const empty = screen.getByRole("checkbox", { name: "Marques , 0" });
+    const empty = screen.getByRole("checkbox", { name: "Marques, 0" });
     expect(empty).not.toHaveAttribute("href");
     expect(empty).toHaveAttribute("aria-disabled", "true");
-    expect(screen.getByRole("checkbox", { name: "Brands , 0" })).toHaveAttribute(
-      "href",
-      "/artists",
-    );
+    expect(screen.getByRole("checkbox", { name: "Brands, 0" })).toHaveAttribute("href", "/artists");
   });
 
   it("shows a choice of one as a group of plain links, the chosen one marked current", () => {
@@ -102,5 +100,43 @@ describe("MarketingFilterLinkGroups", () => {
     const other = screen.getByRole("link", { name: "Most lots" });
     expect(other.tagName).toBe("A");
     expect(other).toHaveAttribute("href", "/artists?sort=popular");
+  });
+
+  it("puts a real <a href> in the server HTML for every option that has results", () => {
+    const html = renderToStaticMarkup(
+      <MarketingFilterLinkGroups
+        groups={[
+          {
+            id: "kind",
+            title: "Type",
+            links: [
+              { label: "Brands", href: "/artists/kind/brands", count: 4, active: false },
+              { label: "Estates", href: "/artists", count: 2, active: true },
+              { label: "Marques", href: "/artists/kind/marques", count: 0, active: false },
+            ],
+          },
+          {
+            id: "sort",
+            title: "Sort",
+            selection: "single",
+            links: [
+              { label: "A–Z", href: "/artists", active: true },
+              { label: "Most lots", href: "/artists?sort=popular", active: false },
+            ],
+          },
+        ]}
+      />,
+    );
+    const doc = new DOMParser().parseFromString(html, "text/html");
+    const hrefOf = (label: string) =>
+      [...doc.querySelectorAll("a")]
+        .find((a) => a.textContent?.startsWith(label))
+        ?.getAttribute("href");
+    expect(hrefOf("Brands")).toBe("/artists/kind/brands");
+    expect(hrefOf("Estates")).toBe("/artists");
+    expect(hrefOf("A–Z")).toBe("/artists");
+    expect(hrefOf("Most lots")).toBe("/artists?sort=popular");
+    // Only the option with no results is not a link.
+    expect(doc.querySelectorAll('[role="checkbox"]:not(a)')).toHaveLength(1);
   });
 });

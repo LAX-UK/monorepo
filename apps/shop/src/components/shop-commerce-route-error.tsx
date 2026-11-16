@@ -1,10 +1,7 @@
 "use client";
 
-import {
-  ShopStatusState,
-  ShopStatusStateAction,
-  ShopStatusStateLink,
-} from "@/components/shop-status-state";
+import { ShopRouteErrorState } from "@/components/shop-route-error-state";
+import { ShopStatusStateAction, ShopStatusStateLink } from "@/components/shop-status-state-actions";
 import { MarketingDetailShell } from "@auction/marketing-ui";
 
 type ShopCommerceRouteErrorProps = {
@@ -24,12 +21,9 @@ export function ShopCommerceRouteError({
 }: ShopCommerceRouteErrorProps) {
   return (
     <MarketingDetailShell shellClassName="shop-page shop-page--error">
-      <ShopStatusState
-        variant="error"
+      <ShopRouteErrorState
         title={title}
-        titleAs="h1"
         description={description}
-        className="shop-status-state--page"
         actions={
           <>
             <ShopStatusStateAction priority="primary" onClick={reset}>
