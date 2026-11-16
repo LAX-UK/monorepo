@@ -18,6 +18,7 @@ import type { SessionUser } from "@/lib/data/contracts";
 import type { SiteHeaderTone } from "@/lib/layout/header-chrome-tone";
 import { accountButtonView } from "@/lib/navigation/account-button.vm";
 import type { AccountMenuEntry } from "@/lib/navigation/account-menu-model";
+import { useChipWithoutEndedLots } from "@/lib/navigation/ended-lots";
 import type { LaxProductLinkVm } from "@auction/lax-ecosystem";
 import { MarketingAccountSheet } from "@auction/marketing-ui/header/marketing-account-sheet";
 import { MarketingAccountEntry } from "@auction/marketing-ui/marketing-account-entry";
@@ -140,7 +141,7 @@ export function SignedInAccount({
 
   // The dot says something waits: the chip's prompt (outbid, in review, payment due) or unread
   // notifications. It reads from the same facts as the tab bar's dots.
-  const { chip, attention: facts } = useBidAttention();
+  const { chip, attention: facts } = useChipWithoutEndedLots(useBidAttention());
   const attention = chip !== null || (facts?.unreadNotifications ?? 0) > 0;
   const displayName = user.name.trim() || user.email;
   // Someone with an organisation sees the account in use on the button; the menu's account list

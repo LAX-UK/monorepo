@@ -1,8 +1,8 @@
 "use client";
 
 import { useLotPorts } from "@/lib/context/lot-ports";
-import { markLotEnded } from "@/lib/navigation/ended-lots";
 import type { LotRealtimeCallbacks } from "@/lib/realtime/contracts";
+import { announceLotEnded } from "@/lib/realtime/lot-ended-signal";
 import type { BidUpdateEvent, LotEndedEvent } from "@auction/types";
 import {
   type ReactNode,
@@ -51,7 +51,9 @@ export function LotRealtimeProvider({
       onBidUpdate: (e: BidUpdateEvent) => fanOut((l) => l.onBidUpdate?.(e)),
       onLotExtended: (p: unknown) => fanOut((l) => l.onLotExtended?.(p)),
       onLotEnded: (p: LotEndedEvent) => {
-        markLotEnded(lotId);
+        // The socket is shared by the tab and `lotEnded` is not scoped to a room, so only this
+        // lot's own close is announced, by the id the event names.
+        if (p.lotId === lotId) announceLotEnded(p.lotId);
         fanOut((l) => l.onLotEnded?.(p));
       },
       onLotEvent: (p: unknown) => fanOut((l) => l.onLotEvent?.(p)),
