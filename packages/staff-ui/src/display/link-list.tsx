@@ -56,10 +56,7 @@ export function LinkList({
                 ) : null}
               </span>
               {item.count && item.count > 0 ? <Count value={item.count} /> : null}
-              <ChevronRight
-                aria-hidden
-                className="size-4 shrink-0 text-staff-subtle transition-transform group-hover:translate-x-0.5"
-              />
+              <ChevronRight aria-hidden className="size-4 shrink-0 text-staff-subtle" />
             </Link>
           </li>
         ))}

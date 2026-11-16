@@ -345,9 +345,10 @@ jobs:
       - name: Cutover readiness defaults
         run: node scripts/ci/verify-cutover-readiness.mjs
   ui-chromium:
-    # The kit's overlay motion suite (packages/ui/src/lax/motion-resolved.test.ts) reads what
-    # Chromium resolves from the real stylesheets. It runs here, on a runner Playwright's Chromium
-    # supports (ubuntu-latest is 26.04, which it does not; the browser gates pin 24.04 too), and
+    # The kit's motion suites (packages/ui/src/lax/motion-resolved.test.ts for overlays and
+    # hover-press-resolved.test.ts for card hover, button press, the hang shadow layer and Shop's
+    # print lift) read what Chromium resolves from the real stylesheets. It runs here, on a runner
+    # Playwright's Chromium supports (ubuntu-latest is 26.04, which it does not; the browser gates pin 24.04 too), and
     # only when @auction/ui or one of the stylesheets the suite loads has changed. In the `test`
     # job the suite finds no browser and skips; here LAX_REQUIRE_CHROMIUM makes that a failure.
     runs-on: ubuntu-24.04
@@ -383,7 +384,7 @@ jobs:
         run: |
           set -euo pipefail
           pnpm turbo run test --affected --filter=@auction/ui --dry-run=json > /tmp/affected.json
-          css_inputs=(packages/branding/public/lax-system.css packages/staff-ui/src/theme.css)
+          css_inputs=(packages/branding/public/lax-system.css packages/staff-ui/src/theme.css apps/shop/src/app/edition-card.css apps/shop/src/app/home.css packages/marketing-ui/src/marketing-ui.css)
           if jq -e '.tasks[] | select(.taskId == "@auction/ui#test")' /tmp/affected.json > /dev/null; then
             echo "run=true" >> "$GITHUB_OUTPUT"
           elif [[ "${{ github.event_name }}" != "push" ]] &&
@@ -405,11 +406,11 @@ jobs:
         if: steps.affected.outputs.run == 'true'
         run: pnpm --filter @auction/ui exec playwright install chromium --with-deps
 
-      - name: Overlay motion suite in Chromium
+      - name: Kit motion suites in Chromium
         if: steps.affected.outputs.run == 'true'
         env:
           LAX_REQUIRE_CHROMIUM: "1"
-        run: pnpm --filter @auction/ui exec vitest run src/lax/motion-resolved.test.ts --maxWorkers=2
+        run: pnpm --filter @auction/ui exec vitest run src/lax/motion-resolved.test.ts src/lax/hover-press-resolved.test.ts --maxWorkers=2
 
   identity-boundary:
     name: identity boundary conformance

@@ -36,6 +36,7 @@ const PUBLIC = {
   "--lax-motion-fade": "120ms",
   "--lax-motion-panel": "260ms",
   "--lax-motion-panel-exit": "180ms",
+  "--lax-motion-lift": "300ms",
   "--lax-motion-page-out": "140ms",
   "--lax-motion-page-in": "200ms",
   "--lax-motion-morph": "360ms",

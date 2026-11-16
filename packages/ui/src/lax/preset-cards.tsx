@@ -76,7 +76,7 @@ export function PresetCards<T extends string>({
               {...(detail ? { "aria-describedby": detailId } : {})}
               className={cn(
                 "group/preset relative flex min-h-24 flex-col items-start rounded-lax-card border bg-lax-surface py-4 pr-4 pl-12 text-left",
-                "border-lax-line-strong transition-[border-color,box-shadow] duration-150 ease-out",
+                "border-lax-line-strong transition-[border-color] duration-150 ease-out",
                 "hover:border-lax-control-edge lax-focus",
                 "data-[state=checked]:border-lax-ink data-[state=checked]:shadow-[inset_0_0_0_1px_var(--lax-ink)]",
                 "disabled:cursor-not-allowed disabled:border-lax-line disabled:hover:border-lax-line",

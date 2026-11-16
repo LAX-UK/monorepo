@@ -59,7 +59,7 @@ export function MarketingProductDoor({ door, sizes }: MarketingProductDoorProps)
       data-product={door.product}
       style={accentStyle}
       className={cn(
-        "group flex h-full w-full flex-col text-on-surface",
+        "lax-card group flex h-full w-full flex-col text-on-surface",
         // The lockup tag takes this door's product accent, never the host's.
         "[--color-product-accent:var(--door-accent)] dark:[--color-product-accent:var(--door-accent-dark)]",
         "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring",

@@ -57,7 +57,7 @@ export function MarketingOverlayCard({
 }: MarketingOverlayCardProps) {
   const Heading = headingLevel;
   return (
-    <article className="group relative" data-testid={testId}>
+    <article className="lax-card group relative" data-testid={testId}>
       <MarketingCardMedia className={cn("bg-surface-container", ASPECT_CLASS[aspect])}>
         {media}
         <div aria-hidden className={cn("absolute inset-0", SCRIM)} />
@@ -88,7 +88,7 @@ export function MarketingOverlayCard({
             <LinkComponent
               href={href}
               className={cn(
-                "rounded-sm underline-offset-[6px] after:absolute after:inset-0 group-hover:underline",
+                "lax-card-title rounded-sm underline-offset-[6px] after:absolute after:inset-0",
                 FOCUS_RING,
               )}
             >

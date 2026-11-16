@@ -16,38 +16,8 @@
       "count": 1
     },
     {
-      "file": "apps/web/src/app/(client)/compliance/source-of-funds/sof-compliance-client.tsx",
-      "rule": "transition-all",
-      "count": 1
-    },
-    {
-      "file": "apps/web/src/components/collect/collect-collector-panel.tsx",
-      "rule": "transition:box-shadow",
-      "count": 1
-    },
-    {
-      "file": "apps/web/src/components/collect/collect-day-picker.tsx",
-      "rule": "transition:box-shadow",
-      "count": 1
-    },
-    {
-      "file": "apps/web/src/components/collect/collect-time-picker.tsx",
-      "rule": "transition:box-shadow",
-      "count": 1
-    },
-    {
-      "file": "apps/web/src/components/dashboard/auction-interests-settings-form.tsx",
-      "rule": "transition:box-shadow",
-      "count": 1
-    },
-    {
       "file": "apps/web/src/components/forms/catalog-media/catalog-media-card.tsx",
       "rule": "transition:box-shadow",
-      "count": 1
-    },
-    {
-      "file": "apps/web/src/components/forms/phone-number-field.tsx",
-      "rule": "transition-all",
       "count": 1
     },
     {
@@ -61,18 +31,8 @@
       "count": 1
     },
     {
-      "file": "apps/web/src/components/marketing/lot-quick-look/quick-look-dialog-sections.tsx",
-      "rule": "transition-all",
-      "count": 1
-    },
-    {
       "file": "apps/web/src/components/marketing/marketing-load-more.tsx",
       "rule": "transition:width",
-      "count": 1
-    },
-    {
-      "file": "apps/web/src/components/onboarding/buyer-interests-form.tsx",
-      "rule": "transition:box-shadow",
       "count": 1
     },
     {
@@ -87,16 +47,6 @@
     },
     {
       "file": "apps/web/src/components/sections/artwork/online/auction-session-header.tsx",
-      "rule": "transition:box-shadow",
-      "count": 1
-    },
-    {
-      "file": "apps/web/src/components/sections/artwork/onsite/onsite-participation-hub.tsx",
-      "rule": "transition-all",
-      "count": 4
-    },
-    {
-      "file": "apps/web/src/components/sections/saleroom/saleroom-lot-card.tsx",
       "rule": "transition:box-shadow",
       "count": 1
     },
@@ -117,21 +67,6 @@
     },
     {
       "file": "packages/auth/src/hosted-auth/styles.ts",
-      "rule": "transition:box-shadow",
-      "count": 1
-    },
-    {
-      "file": "packages/marketing-ui/src/hang/marketing-hang.tsx",
-      "rule": "transition:box-shadow",
-      "count": 1
-    },
-    {
-      "file": "packages/marketing-ui/src/header/use-header-chrome.ts",
-      "rule": "transition:backdrop-filter",
-      "count": 1
-    },
-    {
-      "file": "packages/marketing-ui/src/header/use-header-chrome.ts",
       "rule": "transition:box-shadow",
       "count": 1
     },
@@ -166,28 +101,13 @@
       "count": 1
     },
     {
-      "file": "packages/ui/src/components/ui/accordion.tsx",
-      "rule": "transition-all",
-      "count": 1
-    },
-    {
       "file": "packages/ui/src/components/ui/badge.tsx",
       "rule": "transition:box-shadow",
       "count": 1
     },
     {
-      "file": "packages/ui/src/components/ui/floating-label-input.tsx",
-      "rule": "transition-all",
-      "count": 1
-    },
-    {
       "file": "packages/ui/src/components/ui/kpi-tile.tsx",
       "rule": "transition:box-shadow",
-      "count": 1
-    },
-    {
-      "file": "packages/ui/src/components/ui/progress.tsx",
-      "rule": "transition-all",
       "count": 1
     },
     {
@@ -201,11 +121,6 @@
       "count": 1
     },
     {
-      "file": "packages/ui/src/components/ui/tabs.tsx",
-      "rule": "transition-all",
-      "count": 1
-    },
-    {
       "file": "packages/ui/src/components/ui/toggle.tsx",
       "rule": "transition:box-shadow",
       "count": 1
@@ -213,21 +128,6 @@
     {
       "file": "packages/ui/src/components/ui/wizard-progress.tsx",
       "rule": "transition:width",
-      "count": 1
-    },
-    {
-      "file": "packages/ui/src/lax/button-variants.ts",
-      "rule": "transition:box-shadow",
-      "count": 1
-    },
-    {
-      "file": "packages/ui/src/lax/preset-cards.tsx",
-      "rule": "transition:box-shadow",
-      "count": 1
-    },
-    {
-      "file": "packages/ui/src/lax/styles.ts",
-      "rule": "transition:box-shadow",
       "count": 1
     }
   ]

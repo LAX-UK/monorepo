@@ -96,7 +96,7 @@ export function LotMoreFromRail({
                   <Link
                     href={c.href}
                     className={cn(
-                      "group relative block aspect-[4/5] w-full overflow-hidden rounded-sm bg-brand-900",
+                      "lax-card group relative block aspect-[4/5] w-full overflow-hidden rounded-sm bg-brand-900",
                       FOCUS_RING,
                     )}
                   >
@@ -107,7 +107,7 @@ export function LotMoreFromRail({
                         objectFit="cover"
                         label="Lot artwork"
                         className="size-full"
-                        imgClassName="size-full object-cover transition-transform duration-500 motion-safe:group-hover:scale-[1.02]"
+                        imgClassName="size-full object-cover lax-card-zoom"
                         sizes="200px"
                       />
                       {isCompact ? (

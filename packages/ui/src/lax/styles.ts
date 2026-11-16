@@ -28,7 +28,7 @@ export const readOnlyBox =
  */
 export const fieldBox = [
   "flex w-full min-w-0 items-center gap-2 rounded-lax-control border bg-lax-surface px-3",
-  "font-lax text-lax-fg transition-[border-color,box-shadow] duration-150 ease-out",
+  "font-lax text-lax-fg transition-[border-color] duration-150 ease-out",
   "border-lax-control-edge hover:border-lax-control-edge-hover",
   "has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-lax-focus",
   "has-[[aria-invalid=true]]:border-lax-danger",
