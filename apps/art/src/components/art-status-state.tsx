@@ -1,6 +1,6 @@
 import { ArtAuthLink } from "@/components/art-auth-link";
 import { isArtAuthHref } from "@/lib/is-art-auth-href";
-import { MarketingStatusAction } from "@auction/marketing-ui";
+import { EmailOff, MarketingStatusAction } from "@auction/marketing-ui";
 import { EmptyState } from "@auction/ui/lax/empty-state";
 import {
   type StatusIllustration,
