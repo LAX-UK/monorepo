@@ -37,6 +37,9 @@ export const NOTIFICATION_ALWAYS_DELIVERED_TYPES = [
   "staff_role_expired_admin",
   "staff_role_changed",
   "staff_role_changed_admin",
+  // A decision on a request to bid, and a change to the limit it bids under.
+  "sale_registration_decided",
+  "bidding_limit_changed",
   // A member's request for access, waiting for a decision, and the decision.
   "access_requested",
   "access_request_decided",

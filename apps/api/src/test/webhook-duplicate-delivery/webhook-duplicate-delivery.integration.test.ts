@@ -2,6 +2,7 @@ import { createDb } from "@auction/db";
 import { processedStripeEvents, processedWebhookEvents } from "@auction/db/schema";
 import { PostmarkEmailService } from "@auction/email";
 import {
+  DrizzleNotificationPreferenceRepository,
   DrizzleNotificationWriteRepository,
   DrizzleUserRepository,
 } from "@auction/persistence/repositories";
@@ -43,6 +44,7 @@ describe.skipIf(!HAS_DB)("the same webhook delivered twice at once (integration)
     notificationsFor: (tx) => new DrizzleNotificationWriteRepository(tx),
     email: new PostmarkEmailService(handlerDb, { add: async () => undefined }),
     factory: new NotificationFactory(),
+    preferences: new DrizzleNotificationPreferenceRepository(handlerDb),
     webOrigin: "https://lax.bid",
   });
   const eventIdFor = (handler: DeliveryCase, scenario: string) =>

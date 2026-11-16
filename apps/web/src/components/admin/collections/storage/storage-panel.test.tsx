@@ -48,7 +48,7 @@ describe("Storage tab, charging off", () => {
     renderPanel(STORAGE);
     const notice = screen.getByRole("status");
     expect(notice.textContent).toBe(
-      "Charging is offNo storage invoice is raised. Buyers don't see these terms yet: their pages keep today's collect-by date until they move to the storage terms in a coming release. Finance can switch charging on once the VAT treatment is confirmed.",
+      "Charging is offBuyers see the free period and the rates below, and the Not collected tab counts what would be due, but no storage invoice is raised. Finance can switch it on once the VAT treatment is confirmed.",
     );
   });
 

@@ -511,6 +511,8 @@ export function createWorkerContainer(): WorkerContainer {
     db,
     email: emailWorkers.emailOutboxService,
     log,
+    mediaBaseUrl: publicUploadBase ?? null,
+    storage: uploadStorage,
   });
   const alertWorkers = registerAlertWorkers(deps, bidAlerts);
   const accountingWorkers = registerAccountingWorkers(deps, accounting);

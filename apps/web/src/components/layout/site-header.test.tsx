@@ -261,6 +261,19 @@ describe("SiteHeader over the cover photograph", () => {
 
   beforeEach(() => scrollTo(0));
 
+  // The surface is timed by `.marketing-header-surface` (packages/marketing-ui, marketing-header.css),
+  // which fades only the background and border on the motion tokens and drops the transition under
+  // reduced motion. The class string carries no transition utility and no backdrop-filter (the blur
+  // switches at once; docs/design/motion.md, MO15). `supports-[backdrop-filter]:` is a feature query
+  // on the solid background, not a filter, so it is set aside before the check.
+  const expectStylesheetTimedSurface = (className: string) => {
+    expect(className.split(/\s+/)).toContain("marketing-header-surface");
+    expect(className).not.toContain("transition");
+    expect(className.replaceAll("supports-[backdrop-filter]:", "")).not.toContain(
+      "backdrop-filter",
+    );
+  };
+
   it("is solid until a cover photograph is on the page", () => {
     render(<SiteHeader familyLinks={FAMILY} />);
     const header = screen.getByRole("banner");
@@ -280,11 +293,12 @@ describe("SiteHeader over the cover photograph", () => {
     expect(header).toHaveAttribute("data-chrome-variant", "transparentUntilScroll");
     expect(header).toHaveAttribute("data-header-tone", "on-dark");
     expect(header.className).toContain("bg-transparent");
-    expect(header.className).toContain("motion-reduce:transition-none");
+    expectStylesheetTimedSurface(header.className);
 
     scrollTo(200);
     expect(header).toHaveAttribute("data-header-tone", "on-light");
     expect(header.className).not.toContain("bg-transparent");
+    expectStylesheetTimedSurface(header.className);
     expect(header).toHaveAttribute("data-at-top", "false");
 
     scrollTo(0);

@@ -1,9 +1,4 @@
-import {
-  collectByPolicyFor,
-  collectionEligibility,
-  londonDateKey,
-  reminderWindow,
-} from "@auction/domain";
+import { collectionEligibility, londonDateKey, reminderWindow } from "@auction/domain";
 import type { IEmailService } from "@auction/email";
 import { Sentry } from "@auction/observability";
 import type { ICollectionLotFactsReader } from "@auction/persistence/interfaces";
@@ -14,20 +9,27 @@ import {
   collectByEmailsFor,
   collectByGroups,
   collectByKeyPrefix,
+  collectByTemplateOf,
 } from "../services/collect-by-notices.js";
 
 /**
- * Emails buyers who have neither booked nor collected, from a week before the day they are asked
- * to collect by, and on it, from 09:00 London time. It can run as often as it likes: a person is
- * sent a reminder for a deadline only when it names a lot an earlier reminder to them for that
- * deadline did not, so booking one of three lots (what the email asks) sends nothing more, and a
- * lot that becomes eligible later still gets its reminder. Earlier reminders are read from the
- * outbox, failed ones included, so a failed one is not re-armed every sweep.
- * A lot with a check, a dispute or a refund open, or one already booked or collected, is left out.
- * Nothing is charged: "storage charges may apply" is wording, not logic.
+ * Emails buyers about storage on lots they have neither booked nor collected (ST15), from 09:00
+ * London time: a week before the day they are asked to collect by and on it (with the rate),
+ * "Storage charges have started" the day after, then a running total every 14 days. Each lot is
+ * priced under the terms it was sold under, with its extensions, waiver and the days LAX held it,
+ * through the rules the buyer's page reads. A waived lot gets nothing, and while its place raises no
+ * storage invoices the day after keeps the approved "storage charges may apply" wording and no
+ * running total goes.
+ *
+ * It can run as often as it likes: a person is sent a reminder only when it names a lot an earlier
+ * one to them for the same reminder (kind, collect-by day and run of 14 days) did not, so a retry
+ * sends nothing twice, booking one of three lots sends nothing more, and a lot that becomes eligible
+ * later still gets its reminder. Earlier reminders are read from the outbox, failed ones included,
+ * so a failed one is not re-armed every sweep. A lot with a check, a dispute or a refund open, or
+ * one already booked or collected, is left out. Nothing is sold or disposed of (ST16).
  */
 export async function runCollectByRemindersJob(options: {
-  reader: Pick<ICollectByReader, "storedLotsDue" | "remindedLotIds">;
+  reader: Pick<ICollectByReader, "storedLotsWaiting" | "remindedLotIds" | "withAccountLock">;
   notices: Pick<ICollectionNoticeReader, "accountRecipients">;
   facts: ICollectionLotFactsReader;
   emailService: IEmailService;
@@ -40,37 +42,48 @@ export async function runCollectByRemindersJob(options: {
   if (!reminderWindow(at)) return { groups: 0, queued: 0 };
 
   const today = londonDateKey(at);
-  const noTerms = collectByPolicyFor(null);
-  const groups = collectByGroups(
-    await reader.storedLotsDue({
-      today,
-      defaultFreeStorageDays: noTerms.freeStorageDays,
-      reminderLeadDays: noTerms.reminderLeadDays,
-    }),
-    today,
+  const groups = collectByGroups(await reader.storedLotsWaiting({ today }), today, (lot, err) =>
+    // One lot that cannot be priced keeps its buyer's page on today's notice; it must not stop the
+    // others being reminded, and must not be silent either.
+    log.warn(
+      { err, lotId: lot.lotId, venueId: lot.venueId },
+      "collection_collect_by_lot_not_priced",
+    ),
   );
   let queued = 0;
   for (const group of groups) {
     try {
-      const records = await facts.read(group.lots.map((lot) => lot.lotId));
-      const lots = group.lots.filter((lot) => {
-        const record = records.get(lot.lotId);
-        return record !== undefined && collectionEligibility(record.facts).eligible;
-      });
-      if (lots.length === 0) continue;
-      const winners = lots.flatMap((lot) => (lot.winnerId ? [lot.winnerId] : []));
-      const people = await notices.accountRecipients(group.legalEntityId, winners);
-      for (const email of collectByEmailsFor({ ...group, lots }, people, { webOrigin, now: at })) {
-        const userId = email.userId as string;
-        const reminded = await reader.remindedLotIds({
-          keyPrefix: collectByKeyPrefix(group, userId),
-          userId,
-          today,
+      // One sweep per account at a time: the check of the outbox and the queueing below are not
+      // atomic, and two sweeps that see different sets of lots would each send an email.
+      const locked = await reader.withAccountLock(group.legalEntityId, async () => {
+        let sent = 0;
+        const records = await facts.read(group.lots.map((lot) => lot.lotId));
+        const lots = group.lots.filter((lot) => {
+          const record = records.get(lot.lotId);
+          return record !== undefined && collectionEligibility(record.facts).eligible;
         });
-        if (email.vars.lotIds.every((id) => reminded.has(id))) continue;
-        await emailService.enqueue(email);
-        queued += 1;
-      }
+        if (lots.length === 0) return 0;
+        const winners = lots.flatMap((lot) => (lot.winnerId ? [lot.winnerId] : []));
+        const people = await notices.accountRecipients(group.legalEntityId, winners);
+        for (const email of collectByEmailsFor({ ...group, lots }, people, {
+          webOrigin,
+          now: at,
+        })) {
+          const userId = email.userId as string;
+          const reminded = await reader.remindedLotIds({
+            keyPrefix: collectByKeyPrefix(group, userId),
+            userId,
+            today,
+            template: collectByTemplateOf(group),
+          });
+          if (email.vars.lotIds.every((id) => reminded.has(id))) continue;
+          await emailService.enqueue(email);
+          sent += 1;
+        }
+        return sent;
+      });
+      if (locked.ran) queued += locked.value;
+      else log.info({ legalEntityId: group.legalEntityId }, "collection_collect_by_account_busy");
     } catch (err) {
       // One account that cannot be read must not stop the rest being reminded, and must not be
       // silent either: a missing grant fails every group the same way.

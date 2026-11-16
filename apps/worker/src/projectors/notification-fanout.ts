@@ -182,6 +182,7 @@ export async function processNotificationFanout(options: {
       if (row.eventType === "sale_registration.decided") {
         await fanoutSaleRegistrationDecided({
           notificationFanoutReader,
+          notificationWriteRepo: ctx.notificationWriteRepo,
           emailService,
           supportContactEmail,
           eventId: row.id,
@@ -192,6 +193,7 @@ export async function processNotificationFanout(options: {
       if (row.eventType === "sale_registration.bid_limit_changed") {
         await fanoutSaleRegistrationLimitChanged({
           notificationFanoutReader,
+          notificationWriteRepo: ctx.notificationWriteRepo,
           emailService,
           supportContactEmail,
           eventId: row.id,
@@ -201,6 +203,7 @@ export async function processNotificationFanout(options: {
       if (row.eventType === "legal_entity.bidding_limit_changed") {
         await fanoutOrganisationLimitChanged({
           notificationFanoutReader,
+          notificationWriteRepo: ctx.notificationWriteRepo,
           emailService,
           supportContactEmail,
           eventId: row.id,

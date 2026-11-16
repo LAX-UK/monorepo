@@ -1,3 +1,4 @@
+import { OVERDUE } from "@/lib/admin/collections/not-collected.fixture";
 import { STORAGE, STORAGE_VENUE } from "@/lib/admin/collections/storage.fixture";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -7,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   storage: vi.fn(),
   day: vi.fn(),
   list: vi.fn(),
+  overdue: vi.fn(),
 }));
 
 vi.mock("server-only", () => ({}));
@@ -16,6 +18,9 @@ vi.mock("@/lib/data/http/admin-collections.reader", () => ({
 }));
 vi.mock("@/lib/data/http/admin-collection-storage.reader", () => ({
   getCollectionStorage: mocks.storage,
+}));
+vi.mock("@/lib/data/http/admin-collection-overdue.reader", () => ({
+  getOverdueLots: mocks.overdue,
 }));
 vi.mock("@/lib/data/http/admin-collection-desk.reader", () => ({
   getDeskDay: mocks.day,
@@ -31,6 +36,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   mocks.venues.mockResolvedValue([{ venueId: STORAGE_VENUE, name: "LAX Gallery" }]);
   mocks.storage.mockResolvedValue(STORAGE);
+  mocks.overdue.mockResolvedValue(OVERDUE);
 });
 
 describe("loadCollectionsPage for Finance", () => {
@@ -48,6 +54,30 @@ describe("loadCollectionsPage for Finance", () => {
     expect(mocks.day).not.toHaveBeenCalled();
     expect(mocks.list).not.toHaveBeenCalled();
     expect(mocks.storage).toHaveBeenCalledWith(STORAGE_VENUE);
+    expect(mocks.overdue).not.toHaveBeenCalled();
+  });
+
+  it("reads only the lots past collect-by on Not collected, never the visits", async () => {
+    const page = await loadCollectionsPage({ tab: "not_collected" }, TODAY, FINANCE);
+    expect(page).toMatchObject({
+      tab: "not_collected",
+      settings: null,
+      desk: null,
+      storage: null,
+      overdue: { lots: OVERDUE, error: null },
+    });
+    expect(mocks.list).not.toHaveBeenCalled();
+    expect(mocks.overdue).toHaveBeenCalledWith(STORAGE_VENUE);
+  });
+
+  it("keeps the page and says the lots did not load, so the tab can retry", async () => {
+    mocks.overdue.mockRejectedValue(new Error("down"));
+    const page = await loadCollectionsPage({ tab: "not_collected" }, TODAY, FINANCE);
+    expect(page.loadError).toBeNull();
+    expect(page.overdue).toEqual({
+      lots: null,
+      error: "We couldn't load them. Try again in a moment.",
+    });
   });
 
   it("keeps the page and says the storage terms did not load, so the tab can retry", async () => {

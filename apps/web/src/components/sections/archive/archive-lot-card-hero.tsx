@@ -46,7 +46,7 @@ function ArchiveHeroCardInner({
   const a = row.auction;
   const result = archiveLotResult(a);
   return (
-    <article className="overflow-hidden rounded-xl border border-border-hairline bg-surface-container-lowest ring-1 ring-outline-variant/10 transition-transform duration-[var(--motion-duration-md)] motion-reduce:transition-none hover:-translate-y-px">
+    <article className="lax-card lax-card-lift overflow-hidden rounded-xl border border-border-hairline bg-surface-container-lowest ring-1 ring-outline-variant/10">
       <Link href={href} className={cn("group block rounded-xl", FOCUS_RING)}>
         <AdaptiveMediaFrameContainer className="relative aspect-[16/10] overflow-hidden bg-surface-container-low">
           <AdaptiveFrameImage
@@ -55,7 +55,7 @@ function ArchiveHeroCardInner({
             objectFit="cover"
             label="Lot artwork"
             className="absolute inset-0 size-full"
-            imgClassName="size-full object-cover transition-transform duration-700 motion-safe:group-hover:scale-[1.02] motion-reduce:group-hover:scale-100"
+            imgClassName="size-full object-cover lax-card-zoom"
             sizes="(max-width: 768px) 100vw, 42rem"
           />
           <HeroVerticalScrim />

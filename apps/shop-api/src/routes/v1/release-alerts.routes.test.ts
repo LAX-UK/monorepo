@@ -208,7 +208,11 @@ describe("release alert routes", () => {
       .mockResolvedValueOnce(false);
     const { app } = await buildApp(
       handlers({
-        previewUnsubscribe: vi.fn(async () => ({ maskedEmail: "g•••@example.com", active: true })),
+        previewUnsubscribe: vi.fn(async () => ({
+          maskedEmail: "g•••@example.com",
+          active: true,
+          topic: null,
+        })),
         unsubscribe,
       }),
     );
@@ -216,7 +220,7 @@ describe("release alert routes", () => {
       method: "GET",
       url: `/v1/release-alerts/unsubscribe?token=${TOKEN}`,
     });
-    expect(preview.json()).toEqual({ maskedEmail: "g•••@example.com", active: true });
+    expect(preview.json()).toEqual({ maskedEmail: "g•••@example.com", active: true, topic: null });
     expect(preview.headers["cache-control"]).toBe("no-store");
     const stop = () =>
       app.inject({
@@ -237,14 +241,18 @@ describe("release alert routes", () => {
       handlers({
         unsubscribe,
         confirm,
-        previewUnsubscribe: vi.fn(async () => ({ maskedEmail: "c•••@example.com", active: true })),
+        previewUnsubscribe: vi.fn(async () => ({
+          maskedEmail: "c•••@example.com",
+          active: true,
+          topic: null,
+        })),
       }),
     );
     const preview = await app.inject({
       method: "GET",
       url: `/v1/email-alerts/unsubscribe?token=${signed}`,
     });
-    expect(preview.json()).toEqual({ maskedEmail: "c•••@example.com", active: true });
+    expect(preview.json()).toEqual({ maskedEmail: "c•••@example.com", active: true, topic: null });
     const stop = await app.inject({
       method: "POST",
       url: "/v1/email-alerts/unsubscribe",

@@ -12,13 +12,16 @@ export const FOCUS_RING =
 export const FOCUS_WITHIN_RING =
   "focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-ring";
 
-/** Card lift + hover ring — shared interaction vocabulary for marketing link cards. */
+/**
+ * Card frame: the shared card hover of the kit (packages/ui/src/lax/hover-press.css, MO9). With a
+ * mouse the frame lifts 1px, `MARKETING_CARD_MEDIA_HOVER` images inside it zoom to 1.02 and a
+ * `lax-card-title` is underlined; the hover ring is a colour change, not motion.
+ */
 export const MARKETING_CARD_LIFT =
-  "motion-safe:transition-transform motion-safe:duration-300 motion-safe:ease-out motion-reduce:transition-none motion-safe:hover:-translate-y-px motion-safe:hover:ring-1 motion-safe:hover:ring-primary/20";
+  "lax-card lax-card-lift motion-safe:hover:ring-1 motion-safe:hover:ring-primary/20";
 
-/** Image scale on card hover. */
-export const MARKETING_CARD_MEDIA_HOVER =
-  "motion-safe:transition-transform motion-safe:duration-700 motion-safe:ease-out motion-safe:group-hover:scale-[1.02] motion-reduce:group-hover:scale-100";
+/** An image (or picture layer) inside a `MARKETING_CARD_LIFT` frame that zooms to 1.02 on hover. */
+export const MARKETING_CARD_MEDIA_HOVER = "lax-card-zoom";
 
 /** Inline text link inside prose / legal / content pages. Always underlined: WCAG 1.4.1 forbids colour-only links in text. */
 export const MARKETING_PROSE_LINK = `rounded-sm text-link underline decoration-1 underline-offset-4 hover:decoration-2 ${FOCUS_RING}`;

@@ -25,6 +25,10 @@ vi.mock("@/lib/actions/admin/admin-collection-storage", () => ({
   cancelStorageTermsAction: vi.fn(),
   setStorageChargingAction: vi.fn(),
 }));
+vi.mock("@/lib/actions/admin/admin-collection-overdue", () => ({
+  extendLotStorageAction: vi.fn(),
+  waiveLotStorageAction: vi.fn(),
+}));
 vi.mock("@/lib/actions/admin/admin-lot-fulfilment", () => ({
   adminLotFulfilmentReleaseResultAction: vi.fn(),
 }));
@@ -279,5 +283,81 @@ describe("CollectionsPage, Storage tab", () => {
     expect(screen.getByRole("link", { name: "Storage" }).getAttribute("aria-current")).toBe("page");
     expect(container.querySelector('[aria-busy="true"]')).toBeTruthy();
     expect(screen.queryByText("Buyer")).toBeNull();
+  });
+});
+
+describe("CollectionsPage › Not collected", () => {
+  it("shows the lots past collect-by above the missed visits", async () => {
+    const { OVERDUE } = await import("@/lib/admin/collections/not-collected.fixture");
+    render(
+      <CollectionsPage
+        {...base}
+        tab="not_collected"
+        desk={{
+          date: "2026-11-09",
+          day: null,
+          list: deskList("not_collected"),
+          missedCount: 1,
+          error: null,
+        }}
+        overdue={{ lots: OVERDUE, error: null }}
+      />,
+    );
+    expect(screen.getByRole("heading", { name: "Past collect-by" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Missed visits" })).toBeTruthy();
+    expect(screen.getByText("14 days over")).toBeTruthy();
+  });
+
+  it("shows Finance only the lots, with Waive and no visits", async () => {
+    const { OVERDUE } = await import("@/lib/admin/collections/not-collected.fixture");
+    render(
+      <CollectionsPage
+        {...base}
+        tab="not_collected"
+        tabs={["not_collected", "storage"]}
+        settings={null}
+        canChange={false}
+        canChangeStorage
+        overdue={{ lots: OVERDUE, error: null }}
+      />,
+    );
+    expect(screen.queryByRole("heading", { name: "Missed visits" })).toBeNull();
+    expect(screen.getAllByRole("button", { name: "Waive charges" }).length).toBeGreaterThan(0);
+    expect(screen.queryByRole("button", { name: "Extend free storage" })).toBeNull();
+    expect(screen.queryByText("View only")).toBeNull();
+  });
+
+  it("marks the tab view-only for someone who can neither extend nor waive", async () => {
+    const { OVERDUE } = await import("@/lib/admin/collections/not-collected.fixture");
+    render(
+      <CollectionsPage
+        {...base}
+        tab="not_collected"
+        canChange={false}
+        overdue={{ lots: OVERDUE, error: null }}
+      />,
+    );
+    expect(screen.getByText("View only")).toBeTruthy();
+    expect(screen.getByText(/Extending free storage is for Fulfilment/)).toBeTruthy();
+  });
+
+  it("says the lots didn't load, with a way to try again", () => {
+    render(
+      <CollectionsPage
+        {...base}
+        tab="not_collected"
+        settings={null}
+        overdue={{ lots: null, error: "We couldn't load them. Try again in a moment." }}
+      />,
+    );
+    expect(screen.getByText("The lots past collect-by didn't load")).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Try again" }).getAttribute("href")).toBe(
+      `/admin/collections?tab=not_collected&venue=${SETTINGS.venueId}`,
+    );
+  });
+
+  it("holds the lots' shape while the tab loads", () => {
+    render(<CollectionsLoadingSkeleton tab="not_collected" tabs={["not_collected", "storage"]} />);
+    expect(screen.getByRole("heading", { name: "Past collect-by" })).toBeTruthy();
   });
 });

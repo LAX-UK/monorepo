@@ -13,7 +13,7 @@ import { useMemo } from "react";
 import { RadioGrid, type RadioGridItem } from "./radio-grid";
 
 const CHOICE =
-  "flex min-h-14 flex-col items-center justify-center gap-0.5 rounded-lax-control border px-1 py-1.5 text-center transition-[border-color,box-shadow,background-color] duration-150 ease-out motion-reduce:transition-none lax-focus";
+  "flex min-h-14 flex-col items-center justify-center gap-0.5 rounded-lax-control border px-1 py-1.5 text-center transition-[border-color,background-color] duration-150 ease-out motion-reduce:transition-none lax-focus";
 
 /** A day's look: chosen is the 2px ink edge, a day with no time is quiet and says why in words. */
 function dayClass({ checked, disabled }: { checked: boolean; disabled: boolean }): string {

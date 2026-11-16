@@ -180,8 +180,16 @@ describe("headerChromeClassName", () => {
     expect(headerChromeClassName(false, true)).toContain("border-transparent shadow-none");
   });
 
-  it("opts out of the transition under reduced motion", () => {
-    expect(headerChromeClassName(true, false)).toContain("motion-reduce:transition-none");
-    expect(headerChromeClassName(false, false)).toContain("motion-reduce:transition-none");
+  it("is timed by the stylesheet, not utilities (marketing-header.css; resolved in Chromium by hover-press-resolved.test.ts)", () => {
+    for (const className of [
+      headerChromeClassName(true, false),
+      headerChromeClassName(false, false),
+      headerChromeClassName(false, true),
+    ]) {
+      expect(className.split(" ")).toContain("marketing-header-surface");
+      // No transition, duration or easing utility: the shadow and the backdrop blur are never
+      // animated (docs/design/motion.md, MO15), and the timing is the motion tokens.
+      expect(className).not.toMatch(/(?:^|\s)(?:motion-reduce:)?(?:transition|duration|ease)-/);
+    }
   });
 });

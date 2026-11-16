@@ -27,7 +27,7 @@ export function HomeDepartmentsSection({
               key={department.id}
               className="w-[38vw] max-w-44 shrink-0 snap-start md:w-auto md:max-w-none md:min-w-0"
             >
-              <article className="group relative flex min-w-0 flex-col">
+              <article className="lax-card group relative flex min-w-0 flex-col">
                 <MarketingCardMedia className="marketing-work-mat aspect-square">
                   <Link
                     href={department.href}
@@ -58,7 +58,10 @@ export function HomeDepartmentsSection({
                 <h3 className="m-0 mt-3 font-headline text-[15px] font-medium leading-[22px] text-on-surface md:text-base md:leading-6">
                   <Link
                     href={department.href}
-                    className={cn("rounded-sm underline-offset-4 hover:underline", FOCUS_RING)}
+                    className={cn(
+                      "lax-card-title rounded-sm underline-offset-4 hover:underline",
+                      FOCUS_RING,
+                    )}
                   >
                     {department.name}
                   </Link>

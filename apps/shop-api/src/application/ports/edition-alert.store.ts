@@ -37,6 +37,10 @@ export interface EditionAlertStore {
   }): Promise<EditionAlertCancelResult>;
   /** Null when the token matches no alert email. */
   previewUnsubscribe(token: string): Promise<EditionAlertUnsubscribePreviewModel | null>;
+  /** The person a token's email was sent to; null when it matches no alert email. */
+  ownerOfToken(
+    token: string,
+  ): Promise<{ email: string | null; identitySubjectId: string | null } | null>;
   /** Stops every waiting alert for the token's address and account. Null for an unknown token. */
   unsubscribe(token: string, now: Date): Promise<{ stopped: number } | null>;
 }

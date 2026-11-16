@@ -25,6 +25,10 @@ const FULFILMENT_NOTIFICATION_TYPES = new Set([
 ]);
 
 /** Followed-artist and saved-search notices carry the page that lists the new lots. */
+const REGISTRATION_NOTIFICATION_TYPES = new Set([
+  "sale_registration_decided",
+  "bidding_limit_changed",
+]);
 const ALERT_LOT_NOTIFICATION_TYPES = new Set(["artist_lots_listed", "search_lots_listed"]);
 
 /** The bidder's notices about an offer to buy a lot at their bid open that offer, not the lot. */
@@ -69,6 +73,8 @@ export function notificationHref(item: UserNotification): string | null {
   }
   if (item.submissionId) return `/selling/consignments/${item.submissionId}`;
   if (item.type === "sale_announced" && item.saleId) return `/sales/${item.saleId}`;
+  // A decision on a request to bid, or a change to its limit, opens the sale it is about.
+  if (REGISTRATION_NOTIFICATION_TYPES.has(item.type) && item.saleId) return `/sales/${item.saleId}`;
   if (ALERT_LOT_NOTIFICATION_TYPES.has(item.type) && isSitePath(item.linkPath)) {
     return item.linkPath;
   }

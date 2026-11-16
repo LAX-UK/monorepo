@@ -1,5 +1,6 @@
 import {
   EditionAlertCancelResponseSchema,
+  EditionAlertEngineLinkSchema,
   EditionAlertIdParamsSchema,
   EditionAlertListSchema,
   EditionAlertUnsubscribeBodySchema,
@@ -194,6 +195,31 @@ export async function registerEditionAlertRoutes(
       if (!preview) throw notFound("Alert");
       reply.header("cache-control", "no-store");
       return preview;
+    },
+  );
+
+  // Moves a link from an email sent before back in stock used the alert engine onto the engine's
+  // stop link. It reveals nothing but a signed token that is only useful with the old token, and
+  // it only reads: the Shop asks it on GET, which mail scanners open, so it creates no engine row.
+  app.get(
+    "/v1/alerts/unsubscribe/engine-link",
+    {
+      schema: {
+        tags: ["catalogue"],
+        querystring: EditionAlertUnsubscribeQuerySchema,
+        response: {
+          200: EditionAlertEngineLinkSchema,
+          400: ShopApiErrorBodySchema,
+          404: ShopApiErrorBodySchema,
+        },
+      },
+    },
+    async (request, reply) => {
+      const { token } = request.query as { token: string };
+      const engineToken = await deps.editionAlerts.engineStopToken(token);
+      if (!engineToken) throw notFound("Alert");
+      reply.header("cache-control", "no-store");
+      return { token: engineToken };
     },
   );
 

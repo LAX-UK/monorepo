@@ -5,7 +5,12 @@ import {
   DESK_TABS,
   collectionsHref,
 } from "@/lib/admin/collections/collections.vm";
-import type { DeskModel, StorageModel } from "@/lib/admin/collections/load-collections-page";
+import type {
+  DeskModel,
+  OverdueModel,
+  StorageModel,
+} from "@/lib/admin/collections/load-collections-page";
+import { NOT_COLLECTED_COPY } from "@/lib/admin/collections/not-collected-copy";
 import { STORAGE_COPY } from "@/lib/admin/collections/storage-copy";
 import {
   EmptyState,
@@ -25,6 +30,7 @@ import { DeskBookForClientButton } from "./desk-book-for-client-button";
 import { DeskDay } from "./desk-day";
 import { DeskList } from "./desk-list";
 import { HoursRulesForm } from "./hours-rules-form";
+import { OverdueLots } from "./overdue/overdue-lots";
 import { StoragePanel } from "./storage/storage-panel";
 
 type Props = {
@@ -36,6 +42,8 @@ type Props = {
   settings: StaffCollectionSettings | null;
   desk?: DeskModel | null;
   storage?: StorageModel | null;
+  /** The lots past their collect-by day, on the Not collected tab. */
+  overdue?: OverdueModel | null;
   loadError: string | null;
   /** Fulfilment and Administrators: the visits, hours and closures. */
   canChange: boolean;
@@ -68,12 +76,14 @@ export function CollectionsPage({
   settings,
   desk,
   storage,
+  overdue,
   loadError,
   canChange,
   canChangeStorage,
   today,
 }: Props) {
   const onStorage = tab === "storage";
+  const onNotCollected = tab === "not_collected";
   const storageSettings = onStorage ? (storage?.settings ?? null) : null;
   const tabNav = (
     <TabNav
@@ -113,7 +123,9 @@ export function CollectionsPage({
           }
         : {})}
       notice={
-        onStorage ? (
+        onNotCollected && !canChange && !canChangeStorage && overdue?.lots ? (
+          <ViewOnly>{NOT_COLLECTED_COPY.readOnly}</ViewOnly>
+        ) : onStorage ? (
           !canChangeStorage && storageSettings ? (
             <ViewOnly>{STORAGE_COPY.readOnly}</ViewOnly>
           ) : null
@@ -132,7 +144,7 @@ export function CollectionsPage({
             </StaffButtonLink>
           }
         />
-      ) : !venueId || (!onStorage && !settings) ? (
+      ) : !venueId || (!onStorage && !onNotCollected && !settings) ? (
         <EmptyState
           title="No place to collect from"
           description="Collections are set up for a venue. Add a venue first, then come back to set its hours."
@@ -167,6 +179,55 @@ export function CollectionsPage({
                 }
               />
             )
+          ) : onNotCollected ? (
+            <div className="flex flex-col gap-8">
+              {overdue?.lots ? (
+                <OverdueLots
+                  key={venueId}
+                  overdue={overdue.lots}
+                  canExtend={canChange}
+                  canWaive={canChangeStorage}
+                />
+              ) : (
+                <ErrorState
+                  title={NOT_COLLECTED_COPY.loadError.title}
+                  description={overdue?.error ?? NOT_COLLECTED_COPY.loadError.body}
+                  action={
+                    <StaffButtonLink
+                      href={collectionsHref("not_collected", venueId)}
+                      variant="secondary"
+                      Link={Link}
+                    >
+                      {NOT_COLLECTED_COPY.loadError.action}
+                    </StaffButtonLink>
+                  }
+                />
+              )}
+              {settings ? (
+                <section aria-labelledby="missed-visits" className="flex flex-col gap-3">
+                  <h2 id="missed-visits" className="text-staff-md font-semibold text-staff-fg">
+                    {NOT_COLLECTED_COPY.visitsTitle}
+                  </h2>
+                  {desk?.error ? (
+                    <ErrorState
+                      title="The visits didn't load"
+                      description={desk.error}
+                      action={
+                        <StaffButtonLink
+                          href={collectionsHref(tab, venueId)}
+                          variant="secondary"
+                          Link={Link}
+                        >
+                          Try again
+                        </StaffButtonLink>
+                      }
+                    />
+                  ) : desk?.list ? (
+                    <DeskList list={desk.list} canChange={canChange} today={today} />
+                  ) : null}
+                </section>
+              ) : null}
+            </div>
           ) : !settings ? null : DESK_TABS.includes(tab) ? (
             desk?.error ? (
               <ErrorState

@@ -46,7 +46,7 @@ export function MarketingFeatureCard({
   return (
     <article
       className={cn(
-        "group relative flex h-full overflow-hidden rounded-none",
+        "lax-card group relative flex h-full overflow-hidden rounded-none",
         MARKETING_SURFACE_TONE.feature.surface,
         split ? "flex-col md:flex-row" : "flex-col",
       )}

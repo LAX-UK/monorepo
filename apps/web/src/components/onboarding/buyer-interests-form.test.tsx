@@ -50,6 +50,31 @@ describe("BuyerInterestsForm", () => {
     expect(screen.getByRole("button", { name: "Continue" })).toHaveAttribute("type", "submit");
   });
 
+  it("uses the kit's card hover: an unchecked card lifts 1px and its picture zooms, all by the kit", () => {
+    const { container } = render(
+      <BuyerInterestsForm
+        next="/watching"
+        source="post_verify"
+        categoryIdBySlug={{ paintings: "category-art", "watches-clocks": "category-watches" }}
+        initialCategoryIds={["category-art"]}
+      />,
+    );
+    const art = screen.getByRole("checkbox", { name: "Art" }).closest("label") as HTMLElement;
+    const watches = screen
+      .getByRole("checkbox", { name: "Watches" })
+      .closest("label") as HTMLElement;
+    expect(art).toHaveClass("lax-card");
+    expect(art).not.toHaveClass("lax-card-lift");
+    expect(watches).toHaveClass("lax-card", "lax-card-lift");
+    for (const label of container.querySelectorAll("label.lax-card")) {
+      expect(label.className).not.toMatch(/translate-y|box-shadow|transition-\[|duration-\d/);
+      const img = label.querySelector("img") as HTMLImageElement;
+      // The kit zoom; MediaImage's own load fade stays on the image (the kit composes the two).
+      expect(img).toHaveClass("lax-card-zoom", "transition-opacity");
+      expect(img.className).not.toMatch(/scale-\[|duration-500/);
+    }
+  });
+
   it("submits selected category ids via hidden inputs", () => {
     const { container } = render(
       <BuyerInterestsForm

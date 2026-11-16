@@ -1,4 +1,5 @@
 import type { StorageCountMode } from "@auction/domain";
+import type { WaitingLotStorage } from "../lib/waiting-lot-storage.js";
 
 /** How the days of a free period are counted: the domain's type, so there is one name for it. */
 export type { StorageCountMode };
@@ -86,6 +87,28 @@ export type StorageAuditRecord = {
 
 /** Who changed what, and when: carried by every write. */
 export type StorageChange = { actorUserId: string; at: Date };
+
+/**
+ * What a per-lot decision changed, as the caller sees it (the collect-by day, the amount owed),
+ * added to the audit's own before and after. The audit always records the stored values itself.
+ */
+export type StorageAuditDetail = {
+  before?: Record<string, unknown>;
+  after?: Record<string, unknown>;
+};
+
+/** A lot paid for and still waiting at a place to be collected, for the Not collected tab. */
+export type WaitingLotAtPlace = {
+  lotId: string;
+  lotNumber: number | null;
+  title: string;
+  /** The buying account's display name. */
+  buyerName: string;
+  buyerLegalEntityId: string;
+  clearedAt: Date;
+  /** The terms, extensions, waiver, courier quote, charging switch and calendar that price it. */
+  storage: WaitingLotStorage;
+};
 
 export type ScheduleStorageTermsOutcome =
   | { outcome: "scheduled"; terms: StorageTermsRecord }
@@ -181,14 +204,24 @@ export interface ICollectionStorageRepository {
     reason: string | null,
     change: StorageChange,
   ): Promise<SetLotStorageOutcome<{ lotId: string; large: boolean }>>;
-  /** Adds free days to one lot. All of a lot's extensions together may not pass 30 days. */
+  /**
+   * Adds free days to one lot. All of a lot's extensions together may not pass 30 days. The audit
+   * records the days given before and after, with `detail` added.
+   */
   addExtension(
     lotId: string,
     days: number,
     reason: string,
     change: StorageChange,
+    detail?: StorageAuditDetail,
   ): Promise<AddStorageExtensionOutcome>;
-  addWaiver(lotId: string, reason: string, change: StorageChange): Promise<AddStorageWaiverOutcome>;
+  /** Waives one lot's charges. The audit records waived before and after, with `detail` added. */
+  addWaiver(
+    lotId: string,
+    reason: string,
+    change: StorageChange,
+    detail?: StorageAuditDetail,
+  ): Promise<AddStorageWaiverOutcome>;
   listExtensions(lotId: string): Promise<StorageExtensionRecord[]>;
   findWaiver(lotId: string): Promise<StorageWaiverRecord | null>;
 
@@ -199,6 +232,20 @@ export interface ICollectionStorageRepository {
    * they are inserted (see the lot fulfilment repository), so lots paid late are covered.
    */
   recordTermsForSale(saleId: string, closedOn: string): Promise<number>;
+
+  /**
+   * Lots paid for and still waiting at the place (not handed over, ended or on their way by
+   * courier, nor in a live booking), payment cleared earliest first, with what prices their
+   * storage. At most `limit`; `more` when there are others. With `lotId`, only that lot (empty
+   * when it is not waiting here), however many others are waiting.
+   */
+  waitingLotsAt(
+    venueId: string,
+    limit: number,
+    /** The London day the lots are priced on. */
+    today: string,
+    lotId?: string,
+  ): Promise<{ lots: WaitingLotAtPlace[]; more: boolean }>;
 
   /** The audit of a place, newest first. */
   listAudit(venueId: string, limit: number): Promise<StorageAuditRecord[]>;

@@ -9,6 +9,7 @@ const names = [
   "collection-collected",
   "collection-missed",
   "collection-collect-by",
+  "collection-storage-charges",
   "collection-can-book",
 ] as const;
 
@@ -136,12 +137,53 @@ type CollectionTemplateVars = {
     lots: string[];
     /** The lots' ids, so a later sweep can tell which lots an earlier reminder covered. Not shown. */
     lotIds: string[];
+    /**
+     * One per lot, in the order of `lots`: what it costs once free storage ends ("Free until
+     * Tue 8 Dec, then £3 a day, plus VAT where it applies."), or `null` when nothing is charged.
+     * Absent on reminders queued before the rates were added.
+     */
+    lotRates?: (string | null)[] | null;
+    /** Raise storage invoices is on. Absent (a row queued earlier) reads as off. */
+    chargingOn?: boolean;
     /** The booking page for these lots. */
     bookUrl: string;
     /** The storage section of the shipping page. */
     storagePolicyUrl: string;
     /** Where the buyer asks for a courier quote. */
     quoteUrl: string;
+    /** The place's collections email. */
+    contactEmail: string;
+    /** The place's phone, from its venue details; none when the venue has not set one. */
+    contactPhone?: string | null;
+  };
+  /**
+   * After the collect-by day, to a buyer who has neither booked nor collected (ST15): once the day
+   * after ("started"), then a running total every 14 days ("total"). While the place raises no
+   * storage invoices only the "started" email goes, in the approved "may apply" wording.
+   */
+  "collection-storage-charges": {
+    userName?: string | null;
+    kind: "started" | "total";
+    /** The place raises storage invoices. */
+    chargingOn: boolean;
+    /** The collect-by day that has passed, in the one date style: "Tue 8 Dec". */
+    collectByLabel: string;
+    placeName: string;
+    /** The gallery's address, one line. */
+    address: string;
+    /** One line per lot: "Lot 12 · Lowland Storm". */
+    lots: string[];
+    /**
+     * One per lot, in the order of `lots`: the running total from the domain formatter ("£42.00 so
+     * far (14 days at £3 a day), plus VAT where it applies."); `null` while charging is off.
+     */
+    lotTotals: (string | null)[];
+    /** The lots' ids, so a later sweep can tell which lots an earlier email covered. Not shown. */
+    lotIds: string[];
+    /** The booking page for these lots. */
+    bookUrl: string;
+    /** The storage section of the shipping page. */
+    storagePolicyUrl: string;
     /** The place's collections email. */
     contactEmail: string;
     /** The place's phone, from its venue details; none when the venue has not set one. */
@@ -182,6 +224,7 @@ export const collectionTemplates = {
     "collection-collected": "live",
     "collection-missed": "live",
     "collection-collect-by": "live",
+    "collection-storage-charges": "live",
     "collection-can-book": "live",
   },
 } satisfies TemplateDomainSlice<CollectionTemplateName, CollectionTemplateVars>;

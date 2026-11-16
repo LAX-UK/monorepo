@@ -176,10 +176,12 @@ export function AuctionInterestsSettingsForm({ categoryIdBySlug, initialCategory
             <label
               key={interest.key}
               htmlFor={controlId}
-              className={`group relative flex h-[190px] cursor-pointer flex-col overflow-hidden rounded-xl border bg-surface-container-lowest text-on-surface shadow-sm transition-[border-color,box-shadow,transform] duration-200 motion-reduce:transition-none sm:h-[clamp(170px,23vh,239px)] ${
+              // lax-card: the kit's card hover (packages/ui/src/lax/hover-press.css) lifts an
+              // unchecked card 1px; the border and shadow change at once.
+              className={`lax-card relative flex h-[190px] cursor-pointer flex-col overflow-hidden rounded-xl border bg-surface-container-lowest text-on-surface shadow-sm transition-colors duration-[var(--lax-motion-hover)] ease-[var(--lax-ease-out)] motion-reduce:transition-none sm:h-[clamp(170px,23vh,239px)] ${
                 checked
                   ? "border-primary shadow-md ring-2 ring-primary ring-offset-2"
-                  : "border-outline-variant/40 hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md"
+                  : "lax-card-lift border-outline-variant/40 hover:border-primary/40 hover:shadow-md"
               }`}
             >
               <Checkbox

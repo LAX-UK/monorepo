@@ -14,7 +14,7 @@ function SpotlightCard({ artist, solo }: { artist: ArtHubSpotlightVm; solo: bool
   return (
     <article
       className={cn(
-        "group relative flex flex-col gap-5",
+        "lax-card group relative flex flex-col gap-5",
         solo && artist.imageUrl && "md:grid md:grid-cols-2 md:items-center md:gap-12",
       )}
       data-testid="art-hub-spotlight-card"
@@ -46,7 +46,7 @@ function SpotlightCard({ artist, solo }: { artist: ArtHubSpotlightVm; solo: bool
         <h3 className="font-headline text-2xl font-medium leading-tight text-on-surface md:text-[2rem]">
           <Link
             href={artist.href}
-            className="art-focus-ring rounded-sm underline-offset-4 after:absolute after:inset-0 group-hover:underline"
+            className="lax-card-title art-focus-ring rounded-sm underline-offset-4 after:absolute after:inset-0"
           >
             {artist.name}
           </Link>

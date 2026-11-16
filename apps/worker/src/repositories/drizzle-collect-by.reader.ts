@@ -1,33 +1,7 @@
 import type { Database } from "@auction/db";
-import {
-  collectionBookingLot,
-  collectionPlace,
-  emailOutbox,
-  lot,
-  lotFulfilment,
-  sale,
-  venue,
-} from "@auction/db/schema";
-import {
-  MAX_FREE_STORAGE_DAYS,
-  MAX_OPEN_DAY_LOOKAHEAD_DAYS,
-  addDaysToKey,
-  londonDateKey,
-} from "@auction/domain";
-import { collectByCalendarRange, readCollectByCalendars } from "@auction/persistence/lib";
-import {
-  type SQL,
-  and,
-  asc,
-  eq,
-  gte,
-  isNotNull,
-  isNull,
-  like,
-  notExists,
-  or,
-  sql,
-} from "drizzle-orm";
+import { collectionPlace, emailOutbox, lot, lotFulfilment, sale, venue } from "@auction/db/schema";
+import { lotAwaitsCollectionSql, readWaitingLotStorage } from "@auction/persistence/lib";
+import { type SQL, and, asc, eq, gte, isNotNull, like, or, sql } from "drizzle-orm";
 import type {
   CollectionLotEmailTemplate,
   ICollectByReader,
@@ -40,64 +14,59 @@ const LONDON = "Europe/London";
 export class DrizzleCollectByReader implements ICollectByReader {
   constructor(private readonly db: Database) {}
 
-  async storedLotsDue(window: {
-    today: string;
-    defaultFreeStorageDays: number;
-    reminderLeadDays: number;
-  }): Promise<StoredLot[]> {
-    const free = sql`coalesce(${collectionPlace.freeStorageDays}, ${window.defaultFreeStorageDays}::int)`;
-    // The London day payment cleared, between the free period ago and the free period less the
-    // lead ago; with no early reminder (a free period no longer than the lead), the one day.
-    const clearedOn = sql`(${lotFulfilment.paymentClearedAt} at time zone ${LONDON})::date`;
-    // A deadline on a closed day moves to the next open day, so a deadline up to the look-ahead
-    // earlier can still be today's; the domain's exact test follows.
-    const first = sql`${window.today}::date - ${free} - ${MAX_OPEN_DAY_LOOKAHEAD_DAYS}::int`;
-    const last = sql`${window.today}::date - (case when ${free} > ${window.reminderLeadDays}::int then ${free} - ${window.reminderLeadDays}::int else ${free} end)`;
-    const lots = await this.waitingLots([
-      isNotNull(lotFulfilment.paymentClearedAt),
-      // A range on the column itself, so the index can narrow the lots before the exact
-      // London-day test: from the start of the day the longest free period (and the look-ahead)
-      // ago to the end of today.
-      sql`${lotFulfilment.paymentClearedAt} >= (${window.today}::date - ${MAX_FREE_STORAGE_DAYS + MAX_OPEN_DAY_LOOKAHEAD_DAYS}::int)::timestamp at time zone ${LONDON}`,
-      sql`${lotFulfilment.paymentClearedAt} < (${window.today}::date + 1)::timestamp at time zone ${LONDON}`,
-      sql`${clearedOn} between ${first} and ${last}`,
-    ]);
-    return this.withCalendars(lots, window.defaultFreeStorageDays);
+  async withAccountLock<T>(
+    legalEntityId: string,
+    work: () => Promise<T>,
+  ): Promise<{ ran: true; value: T } | { ran: false }> {
+    // The lock lives as long as this transaction, which only holds it: the work reads and queues
+    // on its own connections, and a crash frees the lock with the connection.
+    return this.db.transaction(async (tx) => {
+      const rows = await tx.execute<{ locked: boolean }>(
+        sql`select pg_try_advisory_xact_lock(hashtextextended(${`collect-by:${legalEntityId}`}, 0)) as locked`,
+      );
+      const first = (
+        Array.isArray(rows) ? rows : (rows as { rows: { locked: boolean }[] }).rows
+      )[0];
+      if (first?.locked !== true) return { ran: false as const };
+      return { ran: true as const, value: await work() };
+    });
   }
 
-  /** Gives each lot its place's opening calendar, read once per place. */
-  private async withCalendars(
-    lots: StoredLot[],
-    defaultFreeStorageDays: number,
-  ): Promise<StoredLot[]> {
-    const counted = new Map<string, string[]>();
-    for (const stored of lots) {
-      const free = stored.freeStorageDays ?? defaultFreeStorageDays;
-      const day = addDaysToKey(londonDateKey(stored.clearedAt), free);
-      counted.set(stored.venueId, [...(counted.get(stored.venueId) ?? []), day]);
-    }
-    const ranges = new Map(
-      [...counted].flatMap(([venueId, days]) => {
-        const range = collectByCalendarRange(days);
-        return range ? [[venueId, range] as const] : [];
-      }),
+  async storedLotsWaiting(query: { today: string }): Promise<StoredLot[]> {
+    const lots = await this.waitingLots([
+      isNotNull(lotFulfilment.paymentClearedAt),
+      sql`${lotFulfilment.paymentClearedAt} < (${query.today}::date + 1)::timestamp at time zone ${LONDON}`,
+    ]);
+    const storage = await readWaitingLotStorage(
+      this.db,
+      lots.map(({ stored, storageTermsId, large }) => ({
+        lotId: stored.lotId,
+        venueId: stored.venueId,
+        buyerLegalEntityId: stored.legalEntityId,
+        clearedAt: stored.clearedAt,
+        storageTermsId,
+        large,
+      })),
+      query.today,
     );
-    const calendars = await readCollectByCalendars(this.db, ranges);
-    return lots.map((stored) => ({ ...stored, calendar: calendars.get(stored.venueId) }));
+    return lots.map(({ stored }) => ({ ...stored, storage: storage.get(stored.lotId) }));
   }
 
   async lotsClearedSince(since: Date): Promise<StoredLot[]> {
-    return this.waitingLots([
+    const lots = await this.waitingLots([
       isNotNull(lotFulfilment.paymentClearedAt),
       gte(lotFulfilment.paymentClearedAt, since),
     ]);
+    return lots.map(({ stored }) => stored);
   }
 
   /**
    * Purchased lots still waiting at a place that takes online bookings, narrowed by `when`: not
    * handed over, ended or on their way by courier, nor in a live booking.
    */
-  private async waitingLots(when: SQL[]): Promise<StoredLot[]> {
+  private async waitingLots(
+    when: SQL[],
+  ): Promise<{ stored: StoredLot; storageTermsId: string | null; large: boolean }[]> {
     const rows = await this.db
       .select({
         lotId: lot.id,
@@ -114,7 +83,8 @@ export class DrizzleCollectByReader implements ICollectByReader {
         postcode: venue.postcode,
         contactPhone: venue.contactPhone,
         bookingEmail: collectionPlace.bookingEmail,
-        freeStorageDays: collectionPlace.freeStorageDays,
+        storageTermsId: lotFulfilment.storageTermsId,
+        large: lot.storageLarge,
       })
       .from(lotFulfilment)
       .innerJoin(lot, eq(lot.id, lotFulfilment.lotId))
@@ -128,24 +98,9 @@ export class DrizzleCollectByReader implements ICollectByReader {
           ...when,
           isNotNull(lot.buyerLegalEntityId),
           eq(lot.status, "ended"),
-          isNull(lot.deletedAt),
-          // The exclusions from here to the booking check are the domain's `awaitsCollection`
-          // (with online booking above), which the purchase page's notice uses; the
-          // integration test checks the two agree case by case.
-          isNull(sale.deletedAt),
-          sql`${lotFulfilment.status} not in ('awaiting_payment', 'delivered', 'cancelled', 'in_transit')`,
-          or(
-            sql`${lotFulfilment.fulfilmentMethod} is null`,
-            sql`${lotFulfilment.fulfilmentMethod} <> 'shipping'`,
-          ),
-          notExists(
-            this.db
-              .select({ one: collectionBookingLot.lotId })
-              .from(collectionBookingLot)
-              .where(
-                and(eq(collectionBookingLot.lotId, lot.id), eq(collectionBookingLot.active, true)),
-              ),
-          ),
+          // The domain's `awaitsCollection` (with online booking above), shared with the staff
+          // Not collected tab; the integration test checks it against the domain case by case.
+          lotAwaitsCollectionSql(this.db),
         ),
       )
       .orderBy(asc(lotFulfilment.paymentClearedAt), asc(lot.id));
@@ -153,22 +108,25 @@ export class DrizzleCollectByReader implements ICollectByReader {
       row.legalEntityId && row.clearedAt
         ? [
             {
-              lotId: row.lotId,
-              legalEntityId: row.legalEntityId,
-              venueId: row.venueId,
-              winnerId: row.winnerId,
-              title: row.title,
-              lotNumber: row.lotNumber,
-              clearedAt: row.clearedAt,
-              place: {
-                name: row.placeName,
-                address: [row.line1, row.line2, row.city, row.postcode]
-                  .filter((part): part is string => Boolean(part?.trim()))
-                  .join(", "),
-                bookingEmail: row.bookingEmail,
-                phone: row.contactPhone?.trim() || null,
+              storageTermsId: row.storageTermsId,
+              large: row.large,
+              stored: {
+                lotId: row.lotId,
+                legalEntityId: row.legalEntityId,
+                venueId: row.venueId,
+                winnerId: row.winnerId,
+                title: row.title,
+                lotNumber: row.lotNumber,
+                clearedAt: row.clearedAt,
+                place: {
+                  name: row.placeName,
+                  address: [row.line1, row.line2, row.city, row.postcode]
+                    .filter((part): part is string => Boolean(part?.trim()))
+                    .join(", "),
+                  bookingEmail: row.bookingEmail,
+                  phone: row.contactPhone?.trim() || null,
+                },
               },
-              freeStorageDays: row.freeStorageDays,
             },
           ]
         : [],

@@ -289,7 +289,9 @@ export function MarketingHang({
                     <span className="flex h-[var(--slot-m)] items-center sm:h-[var(--slot-d)]">
                       <span
                         className={cn(
-                          "relative block flex-none shadow-[var(--hang-art-shadow)] transition-shadow duration-150 group-hover:shadow-[var(--hang-art-shadow-hover)]",
+                          // marketing-hang-art: the hover shadow fades in as a layer of its own
+                          // (marketing-ui.css), so no shadow is animated (motion.md, MO15).
+                          "marketing-hang-art relative block flex-none shadow-[var(--hang-art-shadow)]",
                           work.sheetInset
                             ? "box-border ring-1 ring-[var(--color-work-mat-edge,transparent)] h-[var(--h-m)] w-[var(--w-m)] bg-surface p-[calc(var(--w-m)*var(--sheet-inset))] sm:h-[var(--h-d)] sm:w-[var(--w-d)] sm:p-[calc(var(--w-d)*var(--sheet-inset))]"
                             : "bg-surface-container-low",

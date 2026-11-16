@@ -82,7 +82,7 @@ export function MarketingArtistCard({
   return (
     <article
       className={cn(
-        "group relative flex min-w-0 flex-col",
+        "lax-card group relative flex min-w-0 flex-col",
         textOnly ? "h-auto" : "h-full",
         textOnly && "rounded-xl border border-border-hairline p-4",
         className,
@@ -137,7 +137,10 @@ export function MarketingArtistCard({
             >
               <Link
                 href={href}
-                className={cn("rounded-sm underline-offset-4 hover:underline", FOCUS_RING)}
+                className={cn(
+                  "lax-card-title rounded-sm underline-offset-4 hover:underline",
+                  FOCUS_RING,
+                )}
               >
                 {name}
               </Link>

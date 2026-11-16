@@ -18,10 +18,8 @@ import {
   type DateKey,
   type FulfilmentFacts,
   type StorageCalendar,
-  addDaysToKey,
   awaitsCollection,
   londonDateKey,
-  storageTermsForLot,
 } from "@auction/domain";
 import { and, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 import type {
@@ -34,6 +32,7 @@ import type {
 } from "../interfaces/workspace-buying.readers.js";
 import { collectByCalendarRange, readCollectByCalendars } from "../lib/collect-by-calendars.js";
 import { type LotStoragePricing, readLotStoragePricing } from "../lib/purchase-storage-pricing.js";
+import { storageCalendarReach } from "../lib/waiting-lot-storage.js";
 import { mapDeliveryQuoteRow } from "./drizzle-delivery-quote.repository.js";
 
 /** Sales the account is registered for, with who registered, newest sale first. */
@@ -407,12 +406,16 @@ async function collectByCalendarsFor(
     // and extensions reach further than calendar days, and charges are priced up to today, so the
     // calendar covers from the cleared day to twice the free period and the extension after it:
     // working days are counted, and closures read, on every day in between.
-    const reach = storageTermsForLot(sold?.terms ?? null).freeDays * 2 + (sold?.extensionDays ?? 0);
     const clearedOn = londonDateKey(cleared);
     counted.set(l.venueId, [
       ...(counted.get(l.venueId) ?? []),
       clearedOn,
-      addDaysToKey(clearedOn, reach),
+      storageCalendarReach(clearedOn, {
+        terms: sold?.terms ?? null,
+        large: false,
+        extensionDays: sold?.extensionDays ?? 0,
+        waived: false,
+      }),
     ]);
   }
   const ranges = new Map(

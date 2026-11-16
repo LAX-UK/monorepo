@@ -30,6 +30,7 @@ function handlers(overrides: Partial<EditionAlertHandlers> = {}): EditionAlertHa
     cancelForSubject: vi.fn(async () => "cancelled" as const),
     previewUnsubscribe: vi.fn(async () => null),
     unsubscribe: vi.fn(async () => null),
+    engineStopToken: vi.fn(async () => null),
     ...overrides,
   };
 }
@@ -245,6 +246,30 @@ describe("edition alert routes", () => {
     });
     expect(applied.json()).toEqual({ stopped: 2 });
     expect(unsubscribe).toHaveBeenCalledWith(TOKEN);
+    await app.close();
+  });
+
+  it("moves an old edition alert link onto the engine's stop token", async () => {
+    const engineStopToken = vi.fn(async () => `${"b".repeat(30)}.${"c".repeat(43)}`);
+    const { app } = await buildApp(handlers({ engineStopToken }));
+    const response = await app.inject({
+      method: "GET",
+      url: `/v1/alerts/unsubscribe/engine-link?token=${TOKEN}`,
+    });
+    expect(response.statusCode).toBe(200);
+    expect(response.headers["cache-control"]).toBe("no-store");
+    expect(response.json()).toEqual({ token: `${"b".repeat(30)}.${"c".repeat(43)}` });
+    expect(engineStopToken).toHaveBeenCalledWith(TOKEN);
+    await app.close();
+  });
+
+  it("answers 404 when an old link cannot be moved", async () => {
+    const { app } = await buildApp();
+    const response = await app.inject({
+      method: "GET",
+      url: `/v1/alerts/unsubscribe/engine-link?token=${TOKEN}`,
+    });
+    expect(response.statusCode).toBe(404);
     await app.close();
   });
 
