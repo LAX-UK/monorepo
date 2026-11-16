@@ -153,7 +153,11 @@ heartbeat (`collection-reminders`) before anything else.
 their outbox key. The sweep no longer checks that format, so rewrite any left over: on test, then
 prod, run `DATABASE_URL_OWNER=... pnpm --filter @auction/db db:backfill-collection-reminder-keys`
 (a dry run that prints counts), then the same with `--apply`. It is batched, safe to re-run, skips
-erased rows and any row whose new key already exists.
+erased rows and any row whose new key already exists. Only `--apply` is accepted: an unknown or
+repeated flag (for example `--aply`) stops the script with an error and a non-zero exit instead of
+running as a dry run. Each batch waits at most 5 seconds for a row lock held by live traffic; if it
+times out, that batch is rolled back with nothing written and the run exits with an error. Simply
+re-run `--apply`: rows already rewritten no longer match, so it carries on where it stopped.
 
 Run the backfill **before** deploying the sweep change; it is not optional. The sweep uses the new
 key format only to check which reminders have already gone, and it queues the reminder email for

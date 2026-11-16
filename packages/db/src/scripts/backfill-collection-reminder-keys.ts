@@ -18,6 +18,7 @@ import { createHash } from "node:crypto";
 import { pathToFileURL } from "node:url";
 import { sql } from "drizzle-orm";
 import { closeDb, createDb } from "../client.js";
+import { collectFlags } from "./backfill-cli-flags.js";
 
 type Db = ReturnType<typeof createDb>;
 
@@ -105,10 +106,15 @@ export async function backfillCollectionReminderKeys(
   return counts;
 }
 
+/** Only `--apply` is accepted; anything else (a typo, a repeat) throws rather than dry-running. */
+export function parseReminderBackfillArgs(argv: readonly string[]): { apply: boolean } {
+  return { apply: collectFlags(argv, []).apply };
+}
+
 export async function main(argv: readonly string[] = process.argv.slice(2)): Promise<void> {
+  const { apply } = parseReminderBackfillArgs(argv);
   const url = process.env.DATABASE_URL_OWNER ?? process.env.DATABASE_URL;
   if (!url) throw new Error("DATABASE_URL_OWNER required");
-  const apply = argv.includes("--apply");
   const db = createDb(url);
   try {
     const c = await backfillCollectionReminderKeys(db, { apply });
