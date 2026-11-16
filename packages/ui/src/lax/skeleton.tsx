@@ -1,9 +1,6 @@
 import { cn } from "../lib/utils.js";
 
-/**
- * A placeholder bar at the final size of what is loading; hidden from assistive technology. It is
- * the shared `.lax-skeleton` (skeleton.css): it appears after 150ms and pulses its opacity.
- */
+/** A placeholder bar at the final size of what is loading; hidden from assistive technology. */
 export function Skeleton({ className }: { className?: string }) {
   return (
     <span
