@@ -2,27 +2,52 @@ import { describe, expect, it } from "vitest";
 import {
   DEMO_ORIGINAL_BUYER_SUBJECT,
   DEMO_STATES_ACTOR,
-  assignStateOrders,
+  DISPATCHED_ORDER_KEY,
+  DemoShopStatesPreconditionError,
+  RETURNED_ORDER_KEY,
 } from "./demo-shop-states-seed.js";
 import { assignOrders } from "./demo-staff-queues-seed.js";
+import { NUMBERED_RUN_SLUGS, orderKey } from "./edition-orders-seed.js";
 
-describe("assignStateOrders", () => {
-  it("dispatches the third paid order and returns the fourth", () => {
-    expect(assignStateOrders(["a", "b", "c", "d"])).toEqual({ dispatched: "c", returned: "d" });
+describe("the orders the states use", () => {
+  const keys = NUMBERED_RUN_SLUGS.map(orderKey);
+
+  it("are demo orders the edition orders seed makes", () => {
+    expect(keys).toContain(DISPATCHED_ORDER_KEY);
+    expect(keys).toContain(RETURNED_ORDER_KEY);
+    expect(DISPATCHED_ORDER_KEY).not.toBe(RETURNED_ORDER_KEY);
   });
-  it("never shares an order with the refund or the dispute of the queues seed", () => {
-    for (const n of [0, 1, 2, 3, 4, 6]) {
-      const orders = Array.from({ length: n }, (_, i) => i);
-      const queues = assignOrders(orders);
-      const states = assignStateOrders(orders);
-      const used = [queues.refund, queues.dispute, states.dispatched, states.returned].filter(
-        (o) => o !== undefined,
-      );
-      expect(new Set(used).size).toBe(used.length);
+
+  it("never share an order with the refund or the dispute of the queues seed", () => {
+    // The queues seed picks by position among the paid demo orders sorted by key; whichever of
+    // them are still paid, it must never pick an order the states seed has named.
+    const sorted = [...keys].sort();
+    for (let drop = 0; drop <= sorted.length; drop++) {
+      const paid = sorted.filter((_, i) => i !== drop);
+      const { refund, dispute } = assignOrders(paid);
+      for (const used of [refund, dispute]) {
+        if (used === DISPATCHED_ORDER_KEY || used === RETURNED_ORDER_KEY) {
+          // Only once an earlier order is no longer paid can the position reach a named order;
+          // the states seed has dispatched it by then, which the queues seed leaves alone.
+          expect(drop).toBeLessThan(sorted.indexOf(used));
+        }
+      }
     }
+    const { refund, dispute } = assignOrders(sorted);
+    expect([refund, dispute]).not.toContain(DISPATCHED_ORDER_KEY);
+    expect([refund, dispute]).not.toContain(RETURNED_ORDER_KEY);
   });
-  it("has nothing to attach to without enough paid orders", () => {
-    expect(assignStateOrders(["a", "b"])).toEqual({ dispatched: undefined, returned: undefined });
+});
+
+describe("a missing precondition", () => {
+  it("names every missing state and says what to run", () => {
+    const error = new DemoShopStatesPreconditionError([
+      "dispatched order: a",
+      "reserved original: b",
+    ]);
+    expect(error.message).toContain("- dispatched order: a");
+    expect(error.message).toContain("- reserved original: b");
+    expect(error.message).toContain("seed:catalogue");
   });
 });
 

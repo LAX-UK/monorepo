@@ -3,7 +3,7 @@
  * story, exhibition and venue has a cover picture, and the seeded originals cover each sale
  * state (for sale, price on request, sold). Portraits are public-domain paintings mirrored to the media CDN; covers are the repo's own seed assets.
  *
- * Idempotent: it fills empty covers, refreshes stand-in portraits and sets fixed states, and never deletes. Test and
+ * Idempotent: it fills empty covers, refreshes stand-in portraits and sets fixed states (never on an original with a live or completed sale), and never deletes. Test and
  * local databases only.
  */
 import type { Database } from "@auction/db";
@@ -84,13 +84,18 @@ export async function seedDemoFull(db: Database): Promise<Record<string, number>
     counts[`covers:${table}`] = bareRows.rows.length;
   }
 
-  // Originals in each sale state.
+  // Originals in each sale state. An original with an open or finished sale (anything but
+  // cancelled) belongs to that sale now: resetting it would offer a sold original for sale again.
   for (const original of ORIGINAL_STATES) {
     const result = await db.execute(sql`
       update shop_artwork
       set sale_state = ${original.state}::shop_sale_state,
           print_price_pence = ${original.pricePence ?? null}
       where slug = ${original.slug} and sales_channel = 'art'
+        and not exists (
+          select 1 from shop_original_sale s
+          where s.artwork_id = shop_artwork.id and s.status <> 'cancelled'
+        )
     `);
     counts[`original:${original.slug}`] = result.rowCount ?? 0;
   }
