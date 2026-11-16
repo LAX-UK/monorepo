@@ -65,6 +65,7 @@ describe("the collect-by notice on a purchase", () => {
       state: "upcoming",
       placeId: PLACE_ID,
       placeName: "Marylebone",
+      storage: null,
     });
     expect(at("2026-12-01T12:00:00Z")?.state).toBe("upcoming");
     expect(at("2026-12-02T12:00:00Z")?.state).toBe("soon");
@@ -74,6 +75,7 @@ describe("the collect-by notice on a purchase", () => {
       state: "overdue",
       placeId: PLACE_ID,
       placeName: "Marylebone",
+      storage: null,
     });
   });
 
@@ -98,6 +100,7 @@ describe("the collect-by notice on a purchase", () => {
       state: "soon",
       placeId: PLACE_ID,
       placeName: "Marylebone",
+      storage: null,
     });
   });
 
@@ -232,6 +235,7 @@ describe("the collect-by notice follows the reminder email's exclusions", () => 
       state: "upcoming",
       placeId: PLACE_ID,
       placeName: "Marylebone",
+      storage: null,
     });
   });
 });
@@ -277,5 +281,83 @@ describe("the collect-by notice on a day the place is closed", () => {
     expect(withCalendar(cleared, "2026-12-01T12:00:00Z")?.date).toBe("2026-12-29");
     expect(withCalendar(cleared, "2026-12-28T12:00:00Z")?.state).toBe("soon");
     expect(withCalendar(cleared, "2026-12-30T12:00:00Z")?.state).toBe("overdue");
+  });
+
+  describe("read through the storage terms", () => {
+    const weekdays = createCollectionCalendar({
+      hours: [1, 2, 3, 4, 5].map((weekday) => ({
+        weekday,
+        opensLocal: "10:00",
+        closesLocal: "19:00",
+      })),
+      exceptions: [],
+      rules: { closeOnSaleDays: false },
+    });
+    const stored = (pricing: NonNullable<AccountPurchaseFactsRow["storage"]>["pricing"]) =>
+      row({
+        storage: {
+          clearedAt: CLEARED,
+          placeId: PLACE_ID,
+          placeName: "Marylebone",
+          freeStorageDays: 14,
+          calendar: weekdays,
+          pricing,
+          bookingOpen: true,
+          booked: false,
+          saleDeleted: false,
+        },
+      });
+
+    it("reads a purchase whose lot has terms: working days, the running total and the badge", () => {
+      const view = purchaseView(
+        stored({
+          terms: {
+            freeDays: 10,
+            countMode: "working",
+            standardDailyPence: 300,
+            largeDailyPence: null,
+            handlingFeePence: 0,
+            effectiveFrom: "2026-10-01",
+          },
+          large: false,
+          extensionDays: 0,
+          waived: false,
+          chargingOn: true,
+        }),
+        actor,
+        new Date("2026-11-25T12:00:00Z"),
+      );
+      // Cleared Mon 9 Nov: ten working days run to Mon 23 Nov; two days charged by Wed 25 Nov.
+      expect(view.delivery.collectBy).toMatchObject({
+        date: "2026-11-23",
+        state: "overdue",
+        placeName: "Marylebone",
+        storage: {
+          state: "charging",
+          amountPence: 600,
+          badge: "Collect by Mon 23 Nov · Storage £6.00 so far",
+        },
+      });
+    });
+
+    it("holds a lot won before the first terms 30 days free, not the place's 14, and charges nothing", () => {
+      const pricing = {
+        terms: null,
+        large: false,
+        extensionDays: 0,
+        waived: false,
+        chargingOn: true,
+      };
+      expect(
+        purchaseView(stored(pricing), actor, new Date("2026-11-20T12:00:00Z")).delivery.collectBy,
+      ).toMatchObject({ date: "2026-12-09", state: "upcoming", storage: { amountPence: 0 } });
+      expect(
+        purchaseView(stored(pricing), actor, new Date("2026-12-20T12:00:00Z")).delivery.collectBy,
+      ).toMatchObject({
+        date: "2026-12-09",
+        state: "overdue",
+        storage: { state: "overdue", amountPence: 0, badge: "Collect by Wed 9 Dec" },
+      });
+    });
   });
 });

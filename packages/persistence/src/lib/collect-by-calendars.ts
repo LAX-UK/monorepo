@@ -1,11 +1,11 @@
 import type { Database } from "@auction/db";
 import { collectionException, collectionPlace, collectionWeeklyHours } from "@auction/db/schema";
 import {
-  type CollectByCalendar,
   type CollectionException,
   type CollectionExceptionSource,
   type DateKey,
   MAX_OPEN_DAY_LOOKAHEAD_DAYS,
+  type StorageCalendar,
   addDaysToKey,
   bankHolidayClosures,
   createCollectionCalendar,
@@ -44,8 +44,8 @@ function yearsIn(range: CollectByDayRange): number[] {
 export async function readCollectByCalendars(
   db: Database,
   places: ReadonlyMap<string, CollectByDayRange>,
-): Promise<Map<string, CollectByCalendar>> {
-  const calendars = new Map<string, CollectByCalendar>();
+): Promise<Map<string, StorageCalendar>> {
+  const calendars = new Map<string, StorageCalendar>();
   for (const [venueId, range] of places) {
     const [place] = await db
       .select({ closeOnSaleDays: collectionPlace.closeOnSaleDays })

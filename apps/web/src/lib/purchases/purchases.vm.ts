@@ -16,6 +16,7 @@ import {
   PURCHASE_LIST_LIMIT,
   type PurchaseCollectByState,
   type PurchasePaymentRole,
+  type StorageState,
   addMoneyStrings,
   formatCollectionDay,
   invoiceDueAt,
@@ -106,6 +107,11 @@ export type PurchaseCardVm = {
     title: string;
     body: string;
     state: PurchaseCollectByState;
+    /**
+     * The list badge and the storage state under the place's storage terms, from the one buyer
+     * formatter; `null` for a lot without terms, which keeps `short`.
+     */
+    storage: { badge: string; state: StorageState; amountPence: number } | null;
     /** The venue the work waits at; `null` only from an API that predates it. */
     placeId: string | null;
     placeName: string;
@@ -411,12 +417,16 @@ function collectByOf(
   const collectBy = facts?.delivery.collectBy;
   if (!collectBy) return null;
   const day = formatCollectionDay(new Date(`${collectBy.date}T12:00:00Z`), now);
+  const storage = collectBy.storage ?? null;
   return {
     day,
     short: COLLECT_COPY.collectBy.short(day),
-    title: COLLECT_COPY.collectBy.title(day),
-    body: COLLECT_COPY.collectBy[collectBy.state](collectBy.placeName),
+    title: storage?.notice.heading ?? COLLECT_COPY.collectBy.title(day),
+    body: storage?.notice.body ?? COLLECT_COPY.collectBy[collectBy.state](collectBy.placeName),
     state: collectBy.state,
+    storage: storage
+      ? { badge: storage.badge, state: storage.state, amountPence: storage.amountPence }
+      : null,
     placeId: collectBy.placeId,
     placeName: collectBy.placeName,
     bookHref: `${CLIENT_ROUTES.collect}?lots=${encodeURIComponent(row.lot.id)}`,

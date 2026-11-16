@@ -1,4 +1,4 @@
-import { latestStorageTermsStart, londonDateKey } from "@auction/domain";
+import { latestStorageTermsStart, londonDateKey, storageTermsOf } from "@auction/domain";
 import type {
   ICollectionSettingsReader,
   ICollectionStorageRepository,
@@ -64,12 +64,7 @@ export type CollectionStorageDeps = {
 export function toTermsView(record: StorageTermsRecord): StaffStorageTerms {
   return {
     id: record.id,
-    effectiveFrom: record.effectiveFrom,
-    freeDays: record.freeDays,
-    countMode: record.countMode,
-    standardDailyPence: record.standardDailyPence,
-    largeDailyPence: record.largeDailyPence,
-    handlingFeePence: record.handlingFeePence,
+    ...storageTermsOf(record),
     reason: record.reason,
   };
 }

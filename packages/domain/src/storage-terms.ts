@@ -76,6 +76,22 @@ export const LEGACY_STORAGE_TERMS: Readonly<StorageTerms> = Object.freeze({
   effectiveFrom: "1970-01-01",
 });
 
+/**
+ * The terms the storage rules read, copied from any stored shape that carries them (a stored
+ * version, the terms a lot was sold under). The one place the fields are listed, so every reader
+ * keeps the same names as `StorageTerms`.
+ */
+export function storageTermsOf(source: StorageTerms): StorageTerms {
+  return {
+    freeDays: source.freeDays,
+    countMode: source.countMode,
+    standardDailyPence: source.standardDailyPence,
+    largeDailyPence: source.largeDailyPence,
+    handlingFeePence: source.handlingFeePence,
+    effectiveFrom: source.effectiveFrom,
+  };
+}
+
 /** The terms a lot is held under: the version recorded when its sale closed, else the legacy terms. */
 export function storageTermsForLot(recorded: StorageTerms | null): StorageTerms {
   return recorded ?? LEGACY_STORAGE_TERMS;
@@ -117,7 +133,7 @@ export function assertStorageTerms(terms: StorageTerms): void {
 export type StorageBand = "standard" | "large";
 
 /** Where a lot's storage stands. */
-export type StorageState = "upcoming" | "soon" | "charging" | "extended" | "waived";
+export type StorageState = "upcoming" | "soon" | "charging" | "overdue" | "extended" | "waived";
 
 /** A run of London days, inclusive, in which the clock stands still: LAX holds the work. */
 export type StoragePause = { from: DateKey; to: DateKey };
@@ -191,16 +207,18 @@ function collectByDay(input: StorageChargeInput): DateKey {
   return nextOpenDay(calendar, walkDays(freeThrough, extensionDays, notPaused));
 }
 
-function stateOf(input: StorageChargeInput, collectBy: DateKey): StorageState {
+function stateOf(input: StorageChargeInput, collectBy: DateKey, owedPence: number): StorageState {
   const { terms, extensionDays, asOf } = input;
   if (input.waived) return "waived";
-  if (asOf > collectBy) return "charging";
-  if (extensionDays > 0) return "extended";
+  // Past the day with nothing owed (every day held, or no rate): the day has passed, but there is
+  // no running total to show, so it is not "charging".
+  if (asOf > collectBy) return owedPence > 0 ? "charging" : "overdue";
+  // The lead is measured from the collect-by day, extension included, so an extension never hides
+  // the warning. A free period no longer than the lead has no early warning.
   const { reminderLeadDays } = DEFAULT_COLLECT_BY_POLICY;
-  const early = terms.freeDays > reminderLeadDays;
-  return asOf >= (early ? addDaysToKey(collectBy, -reminderLeadDays) : collectBy)
-    ? "soon"
-    : "upcoming";
+  const early = terms.freeDays + extensionDays > reminderLeadDays;
+  if (asOf >= (early ? addDaysToKey(collectBy, -reminderLeadDays) : collectBy)) return "soon";
+  return extensionDays > 0 ? "extended" : "upcoming";
 }
 
 /**
@@ -226,12 +244,13 @@ export function calculateStorageCharge(input: StorageChargeInput): StorageCharge
   const owed =
     chargeableDays * storageDailyPence(terms, input.band) +
     (chargeableDays > 0 ? terms.handlingFeePence : 0);
+  const amountPence = input.waived ? 0 : owed;
   return {
     collectBy,
     chargingFrom,
     chargeableDays,
-    amountPence: input.waived ? 0 : owed,
-    state: stateOf(input, collectBy),
+    amountPence,
+    state: stateOf(input, collectBy, amountPence),
   };
 }
 
@@ -267,11 +286,15 @@ export function formatStorageTerms(terms: StorageTerms): string {
       : `Storage is free for ${plural(freeDays, countMode === "working" ? "working day" : "day")} after your payment clears.`;
   const charged = standardDailyPence > 0 || (largeDailyPence ?? 0) > 0;
   const fixed = standardDailyPence % 100 !== 0 || (largeDailyPence ?? 0) % 100 !== 0;
-  const rates = `${money(standardDailyPence, fixed)} a day for each work${
-    largeDailyPence === null
-      ? ""
-      : `, or ${money(largeDailyPence, fixed)} for works over ${LARGE_WORK_SIDE_CM} cm on any side`
-  }, plus VAT where it applies.`;
+  const largeOnly = `${money(largeDailyPence ?? 0, fixed)} a day for works over ${LARGE_WORK_SIDE_CM} cm on any side, and nothing for others`;
+  const rates =
+    standardDailyPence === 0 && (largeDailyPence ?? 0) > 0
+      ? `${largeOnly}, plus VAT where it applies.`
+      : `${money(standardDailyPence, fixed)} a day for each work${
+          largeDailyPence === null
+            ? ""
+            : `, or ${money(largeDailyPence, fixed)} for works over ${LARGE_WORK_SIDE_CM} cm on any side`
+        }, plus VAT where it applies.`;
   const sentences = [
     free ?? (charged ? "Storage is charged from the day after your payment clears." : null),
     !charged
@@ -299,6 +322,11 @@ export type StorageNoticeContext = {
   chargingOn: boolean;
 };
 
+const handlingFeeSentence = (terms: StorageTerms): string =>
+  terms.handlingFeePence > 0
+    ? ` A handling fee of ${money(terms.handlingFeePence)} applies once when charges start.`
+    : "";
+
 /** The "Please collect by" notice for one state, with the running total once charging. */
 export function formatStorageNotice(
   charge: StorageCharge,
@@ -309,6 +337,8 @@ export function formatStorageNotice(
   const { placeName, now, chargingOn } = context;
   const collectBy = dayLabel(charge.collectBy, now);
   const rate = `${money(storageDailyPence(terms, band))} a day`;
+  const charged = storageDailyPence(terms, band) > 0;
+  const feeNote = handlingFeeSentence(terms);
   const waiting = `Your work is paid for and waiting at ${placeName}.`;
   const pleaseCollect = `Please collect by ${collectBy}`;
   switch (charge.state) {
@@ -322,27 +352,40 @@ export function formatStorageNotice(
         heading: `Free storage extended to ${collectBy}`,
         body: "We have held your work longer at no charge. Book a time to collect before then.",
       };
-    case "charging":
-      return chargingOn
-        ? {
-            heading: `Storage charges since ${dayLabel(charge.chargingFrom, now)}`,
-            body: `${money(charge.amountPence, true)} so far (${plural(charge.chargeableDays, "day")} at ${rate}), plus VAT where it applies. Book a time to collect, and you will pay the storage up to that day when you book.`,
-          }
-        : {
-            heading: pleaseCollect,
-            body: `That day has passed, so storage charges may apply. Book a time to collect your work from ${placeName}, or email us if you need longer.`,
-          };
+    case "charging": {
+      if (!chargingOn) return passedNotice(pleaseCollect, placeName, true);
+      const fee = terms.handlingFeePence;
+      const days = `${plural(charge.chargeableDays, "day")} at ${rate}`;
+      // With no daily rate the fee is all there is to make up, so no "£0 a day".
+      const makeUp = !charged
+        ? `a ${money(fee)} handling fee`
+        : `${days}${fee > 0 ? `, and a ${money(fee)} handling fee` : ""}`;
+      return {
+        heading: `Storage charges since ${dayLabel(charge.chargingFrom, now)}`,
+        body: `${money(charge.amountPence, true)} so far (${makeUp}), plus VAT where it applies. Book a time to collect, and you will pay the storage up to that day when you book.`,
+      };
+    }
+    case "overdue":
+      return passedNotice(pleaseCollect, placeName, false);
     case "soon":
       return {
         heading: pleaseCollect,
-        body: `${waiting} Book a time to collect it soon: after ${collectBy}, ${chargingOn ? `storage is ${rate}` : "storage charges may apply"}.`,
+        body: `${waiting} Book a time to collect it soon${charged ? `: after ${collectBy}, storage is ${rate}` : ""}.${feeNote}`,
       };
     case "upcoming":
       return {
         heading: pleaseCollect,
-        body: `${waiting} Storage is free until then, and ${chargingOn ? `${rate} after that, plus VAT where it applies` : "storage charges may apply after that"}.`,
+        body: `${waiting} Storage is free until then${charged ? `, and ${rate} after that, plus VAT where it applies` : ""}.${feeNote}`,
       };
   }
+}
+
+/** The day has passed. Today's wording keeps "may apply" only while charges could still run. */
+function passedNotice(heading: string, placeName: string, chargesMayApply: boolean): StorageNotice {
+  return {
+    heading,
+    body: `That day has passed${chargesMayApply ? ", so storage charges may apply" : ""}. Book a time to collect your work from ${placeName}, or email us if you need longer.`,
+  };
 }
 
 /** The short badge on a purchase list: the day, and the running total once charges are due. */
@@ -351,6 +394,32 @@ export function formatStorageBadge(charge: StorageCharge, now: Date, chargingOn:
   return chargingOn && charge.state === "charging" && charge.amountPence > 0
     ? `${day} · Storage ${money(charge.amountPence, true)} so far`
     : day;
+}
+
+/** Everything a buyer surface says about one lot's storage, from the one formatter. */
+export type PurchaseStorageView = {
+  state: StorageState;
+  /** The notice on the purchase page. */
+  notice: StorageNotice;
+  /** The purchases list badge: the day, and the running total once it is owed. */
+  badge: string;
+  /** What is due as of today, before VAT; 0 while charging is off, as nothing is billed. */
+  amountPence: number;
+};
+
+/** The notice and the badge for one lot, so the list and the page cannot disagree. */
+export function purchaseStorageView(
+  charge: StorageCharge,
+  terms: StorageTerms,
+  band: StorageBand,
+  context: StorageNoticeContext,
+): PurchaseStorageView {
+  return {
+    state: charge.state,
+    notice: formatStorageNotice(charge, terms, band, context),
+    badge: formatStorageBadge(charge, context.now, context.chargingOn),
+    amountPence: context.chargingOn ? charge.amountPence : 0,
+  };
 }
 
 export type StorageInvoiceLine = {

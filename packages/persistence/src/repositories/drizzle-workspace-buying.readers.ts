@@ -15,13 +15,13 @@ import {
   venue,
 } from "@auction/db/schema";
 import {
-  type CollectByCalendar,
-  DEFAULT_COLLECT_BY_POLICY,
   type DateKey,
   type FulfilmentFacts,
+  type StorageCalendar,
   addDaysToKey,
   awaitsCollection,
   londonDateKey,
+  storageTermsForLot,
 } from "@auction/domain";
 import { and, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 import type {
@@ -33,6 +33,7 @@ import type {
   IRecordPeopleReader,
 } from "../interfaces/workspace-buying.readers.js";
 import { collectByCalendarRange, readCollectByCalendars } from "../lib/collect-by-calendars.js";
+import { type LotStoragePricing, readLotStoragePricing } from "../lib/purchase-storage-pricing.js";
 import { mapDeliveryQuoteRow } from "./drizzle-delivery-quote.repository.js";
 
 /** Sales the account is registered for, with who registered, newest sale first. */
@@ -213,6 +214,7 @@ export class DrizzleAccountPurchaseFactsReader implements IAccountPurchaseFactsR
         winnerId: lot.winnerId,
         winnerName: bidIdentityDirectory.name,
         wonAt: lot.endTime,
+        storageLarge: lot.storageLarge,
       })
       .from(lot)
       .innerJoin(legalEntity, eq(legalEntity.id, lot.buyerLegalEntityId))
@@ -281,6 +283,7 @@ export class DrizzleAccountPurchaseFactsReader implements IAccountPurchaseFactsR
               venueId: collectionPlace.venueId,
               onlineBookingEnabled: collectionPlace.onlineBookingEnabled,
               freeStorageDays: collectionPlace.freeStorageDays,
+              raiseStorageInvoices: collectionPlace.raiseStorageInvoices,
               placeName: venue.name,
             })
             .from(collectionPlace)
@@ -296,12 +299,22 @@ export class DrizzleAccountPurchaseFactsReader implements IAccountPurchaseFactsR
     ]);
     const placeByVenue = new Map(places.map((p) => [p.venueId, p]));
     const bookedLots = new Set(bookings.map((b) => b.lotId));
+    const fulfilmentOf = new Map(fulfilments.map((f) => [f.lotId, f]));
+    const pricing = await readLotStoragePricing(
+      this.db,
+      lots.map((l) => ({
+        lotId: l.lotId,
+        storageTermsId: fulfilmentOf.get(l.lotId)?.storageTermsId ?? null,
+        large: l.storageLarge,
+      })),
+    );
     const calendars = await collectByCalendarsFor(
       this.db,
       lots,
       fulfilments,
       placeByVenue,
       bookedLots,
+      pricing,
     );
 
     const paymentByLot = firstByLot(payments);
@@ -348,6 +361,7 @@ export class DrizzleAccountPurchaseFactsReader implements IAccountPurchaseFactsR
           l.venueId ? calendars.get(l.venueId) : undefined,
           bookedLots.has(l.lotId),
           l.saleDeletedAt !== null,
+          pricing.get(l.lotId),
         ),
         quote: q ? mapDeliveryQuoteRow(q) : null,
       };
@@ -370,7 +384,8 @@ async function collectByCalendarsFor(
     { onlineBookingEnabled: boolean; freeStorageDays: number | null }
   >,
   bookedLots: ReadonlySet<string>,
-): Promise<Map<string, CollectByCalendar>> {
+  pricing: ReadonlyMap<string, LotStoragePricing>,
+): Promise<Map<string, StorageCalendar>> {
   const fulfilmentByLot = new Map(fulfilments.map((f) => [f.lotId, f]));
   const counted = new Map<string, DateKey[]>();
   for (const l of lots) {
@@ -387,10 +402,17 @@ async function collectByCalendarsFor(
       booked: bookedLots.has(l.lotId),
     });
     if (!waiting) continue;
-    const free = place.freeStorageDays ?? DEFAULT_COLLECT_BY_POLICY.freeStorageDays;
+    const sold = pricing.get(l.lotId);
+    // A lot with no recorded terms is held under the legacy terms (30 calendar days). Working days
+    // and extensions reach further than calendar days, and charges are priced up to today, so the
+    // calendar covers from the cleared day to twice the free period and the extension after it:
+    // working days are counted, and closures read, on every day in between.
+    const reach = storageTermsForLot(sold?.terms ?? null).freeDays * 2 + (sold?.extensionDays ?? 0);
+    const clearedOn = londonDateKey(cleared);
     counted.set(l.venueId, [
       ...(counted.get(l.venueId) ?? []),
-      addDaysToKey(londonDateKey(cleared), free),
+      clearedOn,
+      addDaysToKey(clearedOn, reach),
     ]);
   }
   const ranges = new Map(
@@ -410,12 +432,14 @@ function storageOf(
         venueId: string;
         onlineBookingEnabled: boolean;
         freeStorageDays: number | null;
+        raiseStorageInvoices: boolean;
         placeName: string;
       }
     | undefined,
-  calendar: CollectByCalendar | undefined,
+  calendar: StorageCalendar | undefined,
   booked: boolean,
   saleDeleted: boolean,
+  pricing: LotStoragePricing | undefined,
 ): AccountPurchaseFactsRow["storage"] {
   if (!clearedAt || !place) return null;
   return {
@@ -423,6 +447,13 @@ function storageOf(
     placeId: place.venueId,
     placeName: place.placeName,
     freeStorageDays: place.freeStorageDays,
+    pricing: {
+      terms: pricing?.terms ?? null,
+      large: pricing?.large ?? false,
+      extensionDays: pricing?.extensionDays ?? 0,
+      waived: pricing?.waived ?? false,
+      chargingOn: place.raiseStorageInvoices,
+    },
     calendar,
     bookingOpen: place.onlineBookingEnabled,
     booked,

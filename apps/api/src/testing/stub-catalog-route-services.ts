@@ -11,6 +11,7 @@ export function stubCatalogRouteServices(
       archiveCount: vi.fn(),
       countLots: vi.fn(),
       getLotDetail: vi.fn(),
+      listStorageTerms: vi.fn(),
       getWatchCount: vi.fn(),
       listLotDocuments: vi.fn(),
     },

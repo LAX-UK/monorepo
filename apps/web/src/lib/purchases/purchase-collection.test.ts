@@ -46,6 +46,66 @@ describe("collectionBadge", () => {
     });
   });
 
+  it("wears the storage badge when the place's terms priced the lot", () => {
+    const charging = collectionBadge({
+      collectBy: {
+        day: "Mon 16 Nov",
+        state: "overdue",
+        storage: {
+          badge: "Collect by Mon 16 Nov · Storage £9.00 so far",
+          state: "charging",
+          amountPence: 900,
+        },
+      },
+      bookedStart: null,
+      now: NOW,
+    });
+    expect(charging).toMatchObject({
+      state: "overdue",
+      tone: "danger",
+      label: "Collect by Mon 16 Nov · Storage £9.00 so far",
+      title: "Collect by Mon 16 Nov · Storage £9.00 so far.",
+    });
+    const upcoming = collectionBadge({
+      collectBy: {
+        day: "Mon 16 Nov",
+        state: "upcoming",
+        storage: { badge: "Collect by Mon 16 Nov", state: "upcoming", amountPence: 0 },
+      },
+      bookedStart: null,
+      now: NOW,
+    });
+    expect(upcoming).toMatchObject({ tone: "neutral", label: "Collect by Mon 16 Nov" });
+  });
+
+  it("keeps today's Overdue since badge while charging is off (nothing is billed)", () => {
+    expect(
+      collectionBadge({
+        collectBy: {
+          day: "Mon 16 Nov",
+          state: "overdue",
+          storage: { badge: "Collect by Mon 16 Nov", state: "charging", amountPence: 0 },
+        },
+        bookedStart: null,
+        now: NOW,
+      }),
+    ).toMatchObject({ label: "Overdue since Mon 16 Nov", tone: "danger" });
+  });
+
+  it("is a warning, not a debt, once the day has passed with nothing owed", () => {
+    expect(
+      collectionBadge({
+        collectBy: {
+          day: "Mon 16 Nov",
+          state: "overdue",
+          storage: { badge: "Collect by Mon 16 Nov", state: "overdue", amountPence: 0 },
+        },
+        bookedStart: null,
+        now: NOW,
+      }),
+    ).toMatchObject({ label: "Collect by Mon 16 Nov", tone: "warning" });
+  });
+
   it("has no badge when nothing waits and nothing is booked, or the start is unreadable", () => {
     expect(collectionBadge({ collectBy: null, bookedStart: null, now: NOW })).toBeNull();
     expect(collectionBadge({ collectBy: null, bookedStart: "nope", now: NOW })).toBeNull();
