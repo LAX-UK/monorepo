@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { createDb } from "@auction/db";
+import { closeDb, createDb } from "@auction/db";
 import { collectionPlace } from "@auction/db/schema";
 import { eq, sql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -38,6 +38,27 @@ describe.skipIf(!HAS_DB)("collection storage (integration)", () => {
   // biome-ignore lint/style/noNonNullAssertion: gated by HAS_DB
   const db = createDb(process.env.DATABASE_URL!);
   const storage = new DrizzleCollectionStorageRepository(db);
+
+  /**
+   * Waits until `count` transactions for the place are blocked: on the terms table (at their
+   * insert) or on the place's advisory lock. Fails after 10 seconds rather than hanging. It reads
+   * through its own pool: the four calls can take every connection of the shared one.
+   */
+  async function waitForWaiting(watcher: typeof db, count: number, placeId: string): Promise<void> {
+    const key = `collection_place:${placeId}`;
+    for (let tries = 0; tries < 400; tries += 1) {
+      const result = await watcher.execute(sql`
+        select count(*)::int as waiting from pg_locks
+        where not granted
+          and ((locktype = 'relation' and relation = 'collection_storage_terms'::regclass)
+            or (locktype = 'advisory'
+              and ((classid::bigint << 32) | objid::bigint) = hashtextextended(${key}, 0)))`);
+      const [row] = result.rows as { waiting: number }[];
+      if ((row?.waiting ?? 0) >= count) return;
+      await new Promise((resolve) => setTimeout(resolve, 25));
+    }
+    throw new Error(`Fewer than ${count} transactions reached the barrier`);
+  }
 
   beforeAll(async () => {
     const now = new Date();
@@ -462,11 +483,30 @@ describe.skipIf(!HAS_DB)("collection storage (integration)", () => {
       insert into venue (id, legal_entity_id, name, address_line1, city, postcode, country)
       values (${racedVenue}, ${entityId}, 'Collection storage IT raced place', '3 Test Street', 'London', 'W1W 6YW', 'GB')`);
     try {
-      const results = await Promise.all(
-        ["2031-12-01", "2032-01-01", "2032-02-01", "2032-03-01"].map((effectiveFrom) =>
-          storage.scheduleTerms(racedVenue, { ...TERMS, effectiveFrom }, TODAY, next()),
-        ),
-      );
+      // A barrier makes the four calls overlap on every run, whatever the pool's state or the
+      // order tests run in. A fifth transaction holds a SHARE lock on the terms table: reads go
+      // on, inserts wait. Every call that gets as far as its insert has made its checks and now
+      // waits there; any other call waits on the place lock. Once all four wait, the barrier
+      // lifts. With the place lock, one call is at its insert and three wait their turn, then
+      // see its row and refuse. Without it, all four have passed the check and all four insert.
+      // The barrier and the watcher have their own pool, so the four calls get a connection each.
+      // biome-ignore lint/style/noNonNullAssertion: gated by HAS_DB
+      const side = createDb(process.env.DATABASE_URL!);
+      let racing: Promise<Awaited<ReturnType<typeof storage.scheduleTerms>>[]> | undefined;
+      try {
+        await side.transaction(async (barrier) => {
+          await barrier.execute(sql`lock table collection_storage_terms in share mode`);
+          racing = Promise.all(
+            ["2031-12-01", "2032-01-01", "2032-02-01", "2032-03-01"].map((effectiveFrom) =>
+              storage.scheduleTerms(racedVenue, { ...TERMS, effectiveFrom }, TODAY, next()),
+            ),
+          );
+          await waitForWaiting(side, 4, racedVenue);
+        });
+      } finally {
+        await closeDb(side);
+      }
+      const results = await (racing ?? Promise.resolve([]));
       expect(results.filter((r) => r.outcome === "scheduled")).toHaveLength(1);
       expect(results.filter((r) => r.outcome === "change_already_scheduled")).toHaveLength(3);
       expect(await storage.listTerms(racedVenue)).toHaveLength(1);
