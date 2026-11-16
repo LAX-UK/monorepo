@@ -167,7 +167,19 @@ export default async function CollectRoute({ searchParams }: PageProps) {
     lotIds = link.ids;
   }
 
-  const availability = await loadAvailability(lotIds, visit?.id ?? null, visit === null);
+  // The purchase facts for the storage line are read alongside the availability, not after it. A
+  // booked lot carries no collect-by notice, so a visit being changed has none to read.
+  const accountId = scope.account.id;
+  const [availability, facts] = await Promise.all([
+    loadAvailability(lotIds, visit?.id ?? null, visit === null),
+    visit === null && accountId !== null
+      ? getServerAccountPurchaseFacts(accountId).catch((error: unknown) => {
+          // The page still books without the storage line; say why it is missing.
+          console.error("[collect] purchase facts failed", error);
+          return [];
+        })
+      : Promise.resolve([]),
+  ]);
   if (!availability.ok) {
     if (availability.failure.kind === "forbidden" || availability.failure.kind === "lot") {
       return (
@@ -177,18 +189,14 @@ export default async function CollectRoute({ searchParams }: PageProps) {
     return <LoadError />;
   }
 
-  // Lots that owe storage today: the summary tells the buyer it is charged up to the visit day. A
-  // booked lot carries no collect-by notice, so a visit being changed has none.
-  const storageLotIds =
-    visit === null && scope.account.id !== null
-      ? ((await getServerAccountPurchaseFacts(scope.account.id as string).catch(() => null)) ?? [])
-          .filter(
-            (purchase) =>
-              lotIds.includes(purchase.lotId) &&
-              (purchase.delivery.collectBy?.storage?.amountPence ?? 0) > 0,
-          )
-          .map((purchase) => purchase.lotId)
-      : [];
+  // Lots that owe storage today: the summary tells the buyer it is charged up to the visit day.
+  const storageLotIds = (facts ?? [])
+    .filter(
+      (purchase) =>
+        lotIds.includes(purchase.lotId) &&
+        (purchase.delivery.collectBy?.storage?.amountPence ?? 0) > 0,
+    )
+    .map((purchase) => purchase.lotId);
 
   return (
     <Shell

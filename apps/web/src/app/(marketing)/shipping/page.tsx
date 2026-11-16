@@ -225,11 +225,13 @@ export default async function ShippingPage() {
           Purchased lots should be collected or shipped within the timeframe stated by LAX Bid
           following payment.
         </p>
-        <p>
-          Where lots remain uncollected for an extended period, storage charges may apply. Any
-          applicable storage arrangements or charges will be communicated to the buyer in advance
-          where possible.
-        </p>
+        {storageTerms.length === 0 ? (
+          <p>
+            Where lots remain uncollected for an extended period, storage charges may apply. Any
+            applicable storage arrangements or charges will be communicated to the buyer in advance
+            where possible.
+          </p>
+        ) : null}
 
         <LegalH2 id="support" className="scroll-mt-28">
           Support

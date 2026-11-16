@@ -21,6 +21,8 @@ describe("the shipping page's storage section", () => {
     terms.mockResolvedValue([{ placeName: "LAX Gallery", text: SENTENCE }]);
     render(await ShippingPage());
     expect(screen.getByText(SENTENCE)).toBeInTheDocument();
+    // The old general sentence would contradict the terms above it.
+    expect(screen.queryByText(/storage charges may apply/)).toBeNull();
   });
 
   it("names each place when the terms differ", async () => {
