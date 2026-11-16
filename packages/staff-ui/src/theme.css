@@ -58,6 +58,14 @@
   --spacing-staff-table-header: 36px;
   --spacing-staff-bulk-bar-clearance: 72px;
 
+  /* Field widths. A field is as wide as what it takes, so its size tells staff what to type: a
+     count of up to three digits, an amount up to £9,999.99, a date with its calendar button. They
+     cap the width (`max-w-staff-field-<size>`), so a field still shrinks on a narrow screen.
+     Free text keeps the full width of its column. */
+  --container-staff-field-count: 96px;
+  --container-staff-field-money: 160px;
+  --container-staff-field-date: 208px;
+
   /* Elevation. Level 0 is flat with a hairline (page, cards, tables). xs lifts secondary buttons
      off the surface; md floats menus, popovers and the bulk-action bar; lg holds dialogs, sheets
      and the command palette. Dark mode deepens the shadow and relies on the hairline for edges. */
@@ -224,12 +232,21 @@
 }
 
 /* Staff motion: quicker than the public timings and without a press beat (docs/design/motion.md).
-   The tokens are defined in lax-system.css; only the durations differ here, the easings are shared. */
-[data-staff-ui] {
+   The tokens are defined in lax-system.css; only the durations differ here, the easings are shared.
+   Menus, tooltips, dialogs, their scrims and toasts render in a portal at the end of <body>,
+   outside the shell. The staff shell's `data-lax-density="staff"` on the page is the scope that
+   gives them the staff values, so no layer needs to carry the density itself. A page view
+   transition (admin navigation) is drawn on the root, outside the shell, so it opts into the same
+   values through `data-view-transition="admin"` (see apps/web view-transition-runtime). */
+[data-staff-ui],
+[data-lax-density="staff"],
+:root:has([data-lax-density="staff"]) :is([data-lax-motion], [data-sonner-toaster]),
+:root[data-view-transition="admin"] {
   --lax-motion-press: 0ms;
   --lax-motion-hover: 100ms;
   --lax-motion-enter: 150ms;
   --lax-motion-exit: 100ms;
+  --lax-motion-fade: 100ms;
   --lax-motion-panel: 200ms;
   --lax-motion-panel-exit: 150ms;
   --lax-motion-page-out: 100ms;

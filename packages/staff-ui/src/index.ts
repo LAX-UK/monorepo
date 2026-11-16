@@ -26,11 +26,14 @@ export { Kbd, ShortcutKeys, TextArea, TextInput } from "@auction/ui/lax";
 export type { TextAreaProps, TextInputProps } from "@auction/ui/lax";
 export {
   ChoiceRow,
+  DisabledReason,
   StaffCheckbox,
   StaffRadio,
   StaffRadioGroup,
   StaffSwitch,
+  choiceReasonId,
 } from "./primitives/choice.js";
+export type { StaffSwitchProps } from "./primitives/choice.js";
 export {
   StaffMenu,
   StaffMenuContent,
@@ -60,6 +63,7 @@ export {
   humanizeStatus,
 } from "@auction/ui/lax";
 export type { StatusPresentation } from "@auction/ui/lax";
+export { COPY_CONFIRMATION_MS, CopyButton, CopyableId } from "./display/copy-button.js";
 export { KeyValueList } from "./display/key-value-list.js";
 export {
   EARLIER_AGREEMENT_VERSION,
@@ -124,6 +128,7 @@ export {
   NoResultsState,
   NotFoundState,
   Section,
+  SectionSkeleton,
   Skeleton,
   ViewOnlyBadge,
 } from "./display/states.js";

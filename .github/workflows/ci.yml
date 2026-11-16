@@ -344,6 +344,73 @@ jobs:
 
       - name: Cutover readiness defaults
         run: node scripts/ci/verify-cutover-readiness.mjs
+  ui-chromium:
+    # The kit's overlay motion suite (packages/ui/src/lax/motion-resolved.test.ts) reads what
+    # Chromium resolves from the real stylesheets. It runs here, on a runner Playwright's Chromium
+    # supports (ubuntu-latest is 26.04, which it does not; the browser gates pin 24.04 too), and
+    # only when @auction/ui or one of the stylesheets the suite loads has changed. In the `test`
+    # job the suite finds no browser and skips; here LAX_REQUIRE_CHROMIUM makes that a failure.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Fetch base for turbo affected
+        if: github.event_name == 'pull_request' || github.event_name == 'merge_group'
+        run: |
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            git fetch origin main:main
+          else
+            git fetch origin "${{ github.event.merge_group.base_sha }}"
+          fi
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Detect whether the overlay motion suite is affected
+        id: affected
+        env:
+          BASE: ${{ github.event_name == 'merge_group' && github.event.merge_group.base_sha || 'main' }}
+        run: |
+          set -euo pipefail
+          pnpm turbo run test --affected --filter=@auction/ui --dry-run=json > /tmp/affected.json
+          css_inputs=(packages/branding/public/lax-system.css packages/staff-ui/src/theme.css)
+          if jq -e '.tasks[] | select(.taskId == "@auction/ui#test")' /tmp/affected.json > /dev/null; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          elif [[ "${{ github.event_name }}" != "push" ]] &&
+            [[ -n "$(git diff --name-only "$BASE"...HEAD -- "${css_inputs[@]}")" ]]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "@auction/ui and its stylesheet inputs not affected; skipping the Chromium suite."
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Cache Playwright browsers
+        if: steps.affected.outputs.run == 'true'
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-chromium-${{ hashFiles('pnpm-lock.yaml') }}
+
+      - name: Install pinned Chromium
+        if: steps.affected.outputs.run == 'true'
+        run: pnpm --filter @auction/ui exec playwright install chromium --with-deps
+
+      - name: Overlay motion suite in Chromium
+        if: steps.affected.outputs.run == 'true'
+        env:
+          LAX_REQUIRE_CHROMIUM: "1"
+        run: pnpm --filter @auction/ui exec vitest run src/lax/motion-resolved.test.ts --maxWorkers=2
+
   identity-boundary:
     name: identity boundary conformance
     needs: build-packages
@@ -1122,6 +1189,7 @@ jobs:
       - identity-portability
       - build-packages
       - test
+      - ui-chromium
       - identity-boundary
       - api-vitest
       - web-vitest

@@ -1,10 +1,10 @@
 "use client";
 
-import { Check, Copy } from "lucide-react";
-import * as React from "react";
+import type * as React from "react";
 import { EmptyValue, isEmptyCellValue } from "../data/cells.js";
 import { cn } from "../lib/cn.js";
-import { StaffButton } from "../primitives/button.js";
+import { CopyButton } from "./copy-button.js";
+import { KEY_VALUE_ROW } from "./key-value-row.js";
 import { TruncatedText } from "./truncated-text.js";
 
 export type KeyValueItem = {
@@ -41,10 +41,7 @@ export function KeyValueList({
       )}
     >
       {items.map((item) => (
-        <div
-          key={item.label}
-          className="grid min-h-control-sm grid-cols-1 items-baseline gap-0.5 border-b border-staff-line-subtle py-1.5 last:border-b-0 @sm:grid-cols-[148px_minmax(0,1fr)] @sm:gap-4"
-        >
+        <div key={item.label} className={cn(KEY_VALUE_ROW, "items-baseline")}>
           <dt className="text-staff-muted">{item.label}</dt>
           <dd
             className={cn(
@@ -68,25 +65,5 @@ export function KeyValueList({
         </div>
       ))}
     </dl>
-  );
-}
-
-function CopyButton({ value, label }: { value: string; label: string }) {
-  const [copied, setCopied] = React.useState(false);
-  return (
-    <StaffButton
-      variant="ghost"
-      size="icon-xs"
-      aria-label={copied ? `${label} copied` : `Copy ${label.toLowerCase()}`}
-      onClick={() => {
-        void navigator.clipboard?.writeText(value).then(() => {
-          setCopied(true);
-          window.setTimeout(() => setCopied(false), 1500);
-        });
-      }}
-      className="text-staff-subtle hover:text-staff-fg [&_svg]:size-3.5"
-    >
-      {copied ? <Check aria-hidden /> : <Copy aria-hidden />}
-    </StaffButton>
   );
 }

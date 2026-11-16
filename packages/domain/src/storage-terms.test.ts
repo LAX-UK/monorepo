@@ -3,17 +3,23 @@ import { bankHolidayClosures, createCollectionCalendar } from "./collection-cale
 import type { CollectionException, CollectionWeeklyHours } from "./collection-calendar.js";
 import { DEFAULT_COLLECTION_RULES } from "./collection-rules.js";
 import {
+  LEGACY_STORAGE_TERMS,
+  MAX_STORAGE_AMOUNT_PENCE,
   type StorageCharge,
   type StorageChargeInput,
   type StorageTerms,
+  assertStorageTerms,
   calculateStorageCharge,
   formatStorageBadge,
   formatStorageDeskLine,
   formatStorageInvoiceLine,
   formatStorageNotice,
   formatStorageTerms,
+  isStoragePence,
+  latestStorageTermsStart,
   purchaseStorageView,
   storageClearedOn,
+  storageTermsForLot,
 } from "./storage-terms.js";
 
 /** Monday to Friday, 10:00 to 19:00. */
@@ -37,7 +43,7 @@ const calendarOf = (exceptions: CollectionException[] = []) =>
 
 const TERMS: StorageTerms = {
   freeDays: 14,
-  dayCount: "calendar",
+  countMode: "calendar",
   standardDailyPence: 300,
   largeDailyPence: 600,
   handlingFeePence: 0,
@@ -77,7 +83,7 @@ describe("the collect-by day", () => {
 
   it("counts working days, skipping weekends, closures and bank holidays", () => {
     const calendar = calendarOf([closure("2026-11-10")]);
-    const terms = { ...TERMS, dayCount: "working" as const, freeDays: 5 };
+    const terms = { ...TERMS, countMode: "working" as const, freeDays: 5 };
     // Cleared Mon 2 Nov: working days Tue 3, Wed 4, Thu 5, Fri 6, (Mon 9) -> Mon 9 Nov is the 5th.
     expect(charge({ terms, calendar }).collectBy).toBe("2026-11-09");
     // With Tue 10 closed and 6 days: Mon 9 is the 5th, Tue 10 closed, Wed 11 the 6th.
@@ -86,7 +92,7 @@ describe("the collect-by day", () => {
 
   it("counts working days over a bank holiday", () => {
     const calendar = calendarOf(bankHolidayClosures([2026]));
-    const terms = { ...TERMS, dayCount: "working" as const, freeDays: 2 };
+    const terms = { ...TERMS, countMode: "working" as const, freeDays: 2 };
     // Cleared Thu 24 Dec: Fri 25 and Mon 28 are bank holidays, so Tue 29 and Wed 30.
     expect(charge({ terms, calendar, clearedOn: "2026-12-24" }).collectBy).toBe("2026-12-30");
   });
@@ -107,7 +113,7 @@ describe("the collect-by day", () => {
   });
 
   it("does not count a paused working day, nor a paused day that is a weekend", () => {
-    const terms = { ...TERMS, dayCount: "working" as const, freeDays: 3 };
+    const terms = { ...TERMS, countMode: "working" as const, freeDays: 3 };
     // Working days after Mon 2: Tue 3 (1st), Wed 4 and Thu 5 paused, Fri 6 (2nd), Mon 9 (3rd).
     const pausedRanges = [{ from: "2026-11-04", to: "2026-11-05" }];
     expect(charge({ terms, pausedRanges }).collectBy).toBe("2026-11-09");
@@ -301,7 +307,7 @@ describe("the terms sentence", () => {
   });
 
   it("says working days when they are counted", () => {
-    expect(formatStorageTerms({ ...TERMS, dayCount: "working", freeDays: 10 })).toContain(
+    expect(formatStorageTerms({ ...TERMS, countMode: "working", freeDays: 10 })).toContain(
       "free for 10 working days",
     );
   });
@@ -521,5 +527,106 @@ describe("the purchase view", () => {
     expect(view.badge).toBe("Collect by Mon 16 Nov");
     // Nothing is billed while charging is off, so nothing is due.
     expect(view.amountPence).toBe(0);
+  });
+});
+
+describe("lots won before the first terms (ST9)", () => {
+  it("are held under the legacy terms: 30 calendar days free, nothing charged", () => {
+    expect(storageTermsForLot(null)).toBe(LEGACY_STORAGE_TERMS);
+    expect(LEGACY_STORAGE_TERMS).toMatchObject({
+      freeDays: 30,
+      countMode: "calendar",
+      standardDailyPence: 0,
+      largeDailyPence: null,
+      handlingFeePence: 0,
+    });
+  });
+
+  it("keep the version recorded when their sale closed", () => {
+    expect(storageTermsForLot(TERMS)).toBe(TERMS);
+  });
+
+  it("go through the calculator: collect by 30 days after clearing, never anything due", () => {
+    const terms = storageTermsForLot(null);
+    expect(charge({ terms, asOf: "2026-11-20" })).toMatchObject({
+      collectBy: "2026-12-02",
+      amountPence: 0,
+    });
+    for (const band of ["standard", "large"] as const) {
+      expect(charge({ terms, band, asOf: "2027-03-01" }).amountPence).toBe(0);
+    }
+  });
+
+  it("move a collect-by day on a closed day to the next open day, like any terms", () => {
+    // 30 days after Wed 4 Nov is Fri 4 Dec; closed that day, so Mon 7 Dec.
+    const calendar = calendarOf([closure("2026-12-04")]);
+    expect(
+      charge({ terms: LEGACY_STORAGE_TERMS, clearedOn: "2026-11-04", calendar }).collectBy,
+    ).toBe("2026-12-07");
+  });
+
+  it("cannot be changed by mistake", () => {
+    expect(Object.isFrozen(LEGACY_STORAGE_TERMS)).toBe(true);
+  });
+});
+
+describe("pence and day guards", () => {
+  it("accept whole pence from 0 to £500.00 only", () => {
+    expect(isStoragePence(0)).toBe(true);
+    expect(isStoragePence(MAX_STORAGE_AMOUNT_PENCE)).toBe(true);
+    expect(isStoragePence(MAX_STORAGE_AMOUNT_PENCE + 1)).toBe(false);
+    expect(isStoragePence(-1)).toBe(false);
+    expect(isStoragePence(1.5)).toBe(false);
+    expect(isStoragePence(Number.NaN)).toBe(false);
+    expect(isStoragePence("300")).toBe(false);
+  });
+
+  it.each([
+    ["negative standard rate", { standardDailyPence: -1 }],
+    ["fractional standard rate", { standardDailyPence: 300.5 }],
+    ["negative large rate", { largeDailyPence: -600 }],
+    ["fractional handling fee", { handlingFeePence: 0.1 }],
+    ["rate over £500.00", { standardDailyPence: 50_001 }],
+    ["negative free days", { freeDays: -1 }],
+    ["fractional free days", { freeDays: 1.5 }],
+    ["free days over 90", { freeDays: 91 }],
+    ["unknown count", { countMode: "weekly" as never }],
+  ])("refuse terms with a %s", (_label, over) => {
+    const terms = { ...TERMS, ...over };
+    expect(() => assertStorageTerms(terms)).toThrow(RangeError);
+    expect(() => charge({ terms })).toThrow(RangeError);
+  });
+
+  it("refuse a negative or fractional extension", () => {
+    expect(() => charge({ extensionDays: -1 })).toThrow(RangeError);
+    expect(() => charge({ extensionDays: 0.5 })).toThrow(RangeError);
+  });
+
+  it("refuse to format a negative or fractional amount", () => {
+    expect(() => formatStorageDeskLine(-100)).toThrow(RangeError);
+    expect(() => formatStorageDeskLine(99.5)).toThrow(RangeError);
+  });
+
+  it("accept the full range of valid terms", () => {
+    expect(() =>
+      assertStorageTerms({
+        ...TERMS,
+        freeDays: 90,
+        standardDailyPence: MAX_STORAGE_AMOUNT_PENCE,
+        largeDailyPence: null,
+        handlingFeePence: MAX_STORAGE_AMOUNT_PENCE,
+      }),
+    ).not.toThrow();
+  });
+});
+
+describe("the latest start for a change", () => {
+  it.each([
+    ["2026-11-15", "2028-11-15"],
+    ["2026-01-31", "2028-01-31"],
+    ["2028-02-29", "2030-02-28"],
+    ["2026-12-31", "2028-12-31"],
+  ])("from %s is %s", (today, latest) => {
+    expect(latestStorageTermsStart(today)).toBe(latest);
   });
 });

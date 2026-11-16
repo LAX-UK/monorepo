@@ -9,6 +9,7 @@ import { LotQuickLookDialog } from "./lot-quick-look-dialog";
 import { lotQuickLookEnrichmentFromLot } from "./lot-quick-look-enrichment";
 import { LotQuickLookTrigger } from "./lot-quick-look-trigger";
 import { lotQuickLookFromLotCardVM, lotQuickLookRailDeck } from "./mappers";
+import { quickLookOverlayBlur } from "./quick-look-dialog-utils";
 import { type LotQuickLookVM, isLotQuickLookBiddable } from "./types";
 
 vi.mock("./fetch-lot-quick-look-enrichment.client", async (importOriginal) => {
@@ -279,13 +280,12 @@ describe("LotQuickLookTrigger", () => {
     expect(await screen.findByText("More from this sale")).toBeInTheDocument();
   });
 
-  it("applies panel motion classes when reduced motion is off", async () => {
+  it("carries no dead animation classes; its motion comes from the shared kit", async () => {
     const vm = lotQuickLookFromLotCardVM(lotCardVm);
     render(<QuickLookHarness vm={vm} />);
     fireEvent.click(screen.getByRole("button", { name: /quick look at blue horizon/i }));
     const dialog = await screen.findByRole("dialog");
-    expect(dialog.className).toMatch(/slide-in-from-bottom/);
-    expect(dialog.className).toMatch(/zoom-in-95/);
+    expect(dialog.className).not.toMatch(/animate-in|animate-out|zoom-in|slide-in|fade-in-0/);
   });
 
   it("navigates deck with arrow keys when lot has a single image", async () => {
@@ -397,15 +397,11 @@ describe("LotQuickLookDialog layout", () => {
 });
 
 describe("LotQuickLookDialog reduced motion", () => {
-  it("omits transform motion classes when reduced motion is preferred", async () => {
-    vi.mocked(useReducedMotion).mockReturnValue(true);
+  it("blurs the scrim behind the panel when motion is allowed", () => {
+    expect(quickLookOverlayBlur(false)).toBe("backdrop-blur-sm");
+  });
 
-    const vm = lotQuickLookFromLotCardVM(lotCardVm);
-    render(<QuickLookHarness vm={vm} />);
-    fireEvent.click(screen.getByRole("button", { name: /quick look at blue horizon/i }));
-    const dialog = await screen.findByRole("dialog");
-    expect(dialog.className).not.toMatch(/slide-in-from-bottom/);
-    expect(dialog.className).not.toMatch(/zoom-in-95/);
-    expect(dialog.className).toMatch(/duration-100/);
+  it("drops the scrim blur when reduced motion is preferred", () => {
+    expect(quickLookOverlayBlur(true)).toBe("");
   });
 });

@@ -147,6 +147,7 @@
   --lax-motion-hover: 150ms;
   --lax-motion-enter: 200ms;
   --lax-motion-exit: 140ms;
+  --lax-motion-fade: 120ms;
   --lax-motion-panel: 260ms;
   --lax-motion-panel-exit: 180ms;
   --lax-motion-page-out: 140ms;

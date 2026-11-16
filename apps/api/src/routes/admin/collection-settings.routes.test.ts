@@ -48,7 +48,6 @@ const SAVE = {
   closeOnSaleDays: true,
   undoHandOverMinutes: 15,
   maxActiveVisits: 5,
-  freeStorageDays: null,
   bookingEmail: null,
   hours: [{ weekday: 1, opensLocal: "10:00", closesLocal: "19:00" }],
 };
@@ -60,10 +59,8 @@ const CLOSURE = {
   closesLocal: null,
 };
 
-const reads: [string, string][] = [
-  ["GET", "/collections"],
-  ["GET", `/collections/${VENUE}`],
-];
+// The list of places is mounted on its own (collection-storage.routes.test.ts covers it).
+const reads: [string, string][] = [["GET", `/collections/${VENUE}`]];
 const writes: [string, string, unknown][] = [
   ["PUT", `/collections/${VENUE}`, SAVE],
   ["POST", `/collections/${VENUE}/exceptions`, CLOSURE],

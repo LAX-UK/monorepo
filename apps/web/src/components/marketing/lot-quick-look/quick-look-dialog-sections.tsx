@@ -119,7 +119,7 @@ function QuickLookImageStrip({
   return (
     <ul
       className={cn(
-        "flex list-none gap-2 overflow-x-auto px-3 pb-2 motion-safe:animate-in motion-safe:fade-in motion-safe:duration-300 motion-reduce:animate-none",
+        "flex list-none gap-2 overflow-x-auto px-3 pb-2",
         inDock ? "pt-2" : "mt-3 pb-1",
       )}
     >

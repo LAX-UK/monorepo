@@ -132,7 +132,6 @@ export class CollectionSettingsAdminService implements ICollectionSettingsAdminS
         rules,
         onlineBookingEnabled: body.onlineBookingEnabled,
         bookingEmail: body.bookingEmail,
-        freeStorageDays: body.freeStorageDays,
         hours: body.hours,
         updatedByUserId: actor.userId,
         at: this.deps.now(),
@@ -546,7 +545,6 @@ export function toSettingsView(record: StaffSettingsRecord): StaffCollectionSett
     closeOnSaleDays: settings.closeOnSaleDays,
     undoHandOverMinutes: settings.undoHandOverMinutes,
     maxActiveVisits: settings.maxActiveVisits,
-    freeStorageDays: settings.freeStorageDays,
     hours: record.hours.map((h) => ({ ...h })),
     exceptions: record.exceptions.map(toExceptionView),
     nextSaleDay: record.nextSaleDay

@@ -80,6 +80,7 @@ import type {
 import type { InventoryMoveServices } from "../services/inventory/inventory-move-services.js";
 import type { EnquirerOrganisationsService } from "../services/marketing-enquiry/enquirer-organisations.service.js";
 import type { IEnquiryDraftTokens } from "../services/marketing-enquiry/enquiry-draft-token.js";
+import type { EnquiryInboundReplyService } from "../services/marketing-enquiry/enquiry-inbound-reply.service.js";
 import type { IEnquirySubmission } from "../services/marketing-enquiry/enquiry-submission.service.js";
 import type { SessionRevocationService } from "../services/session-revocation.service.js";
 import type { SubjectExportService } from "../subject-export/subject-export.service.js";
@@ -570,6 +571,8 @@ export type ContainerMarketingEnquirySlice = {
   enquiryDraftTokens: IEnquiryDraftTokens;
   enquirySubmission: IEnquirySubmission;
   enquirerOrganisations: EnquirerOrganisationsService;
+  /** Sender replies from the Postmark inbound webhook; null while replies by email are off. */
+  enquiryInboundReplies: EnquiryInboundReplyService | null;
 };
 
 /** Public contact enquiry HTTP handler. */
@@ -632,6 +635,9 @@ export type ContainerInternalIdentitySubjectExportRoutesSlice = Pick<
 /** Postmark delivery webhook. */
 export type ContainerPostmarkWebhookRoutesSlice = Pick<Container, "env" | "postmarkWebhookService">;
 
+/** Postmark inbound webhook: senders' replies to enquiry emails. */
+export type ContainerPostmarkInboundRoutesSlice = Pick<Container, "env" | "enquiryInboundReplies">;
+
 /** Zoho workflow notices for artwork Products. */
 export type ContainerZohoWebhookRoutesSlice = Pick<
   Container,
@@ -640,6 +646,7 @@ export type ContainerZohoWebhookRoutesSlice = Pick<
 
 /** Aggregated third-party webhook routes (`routes/webhooks/index.ts`). */
 export type ContainerInboundWebhookRoutesSlice = ContainerPostmarkWebhookRoutesSlice &
+  ContainerPostmarkInboundRoutesSlice &
   ContainerZohoWebhookRoutesSlice;
 
 /** Venue CRUD (staff). */

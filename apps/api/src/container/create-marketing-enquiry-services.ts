@@ -11,6 +11,7 @@ import {
   DrizzleAlertSubscriberErasureRepository,
   DrizzleEnquiryAttachmentRepository,
   DrizzleEnquiryErasureRepository,
+  DrizzleEnquiryInboundRepository,
   DrizzleEnquiryNoteRepository,
   DrizzleEnquiryRoutingRepository,
   DrizzleMarketingEnquiryRepository,
@@ -39,6 +40,11 @@ import {
   EnquiryErasureService,
   type IEnquiryErasure,
 } from "../services/marketing-enquiry/enquiry-erasure.service.js";
+import {
+  EnquiryInboundReplyService,
+  noEnquiryReplyAlert,
+} from "../services/marketing-enquiry/enquiry-inbound-reply.service.js";
+import { EnquiryReplyAddresses } from "../services/marketing-enquiry/enquiry-reply-address.js";
 import { EnquiryRoutingService } from "../services/marketing-enquiry/enquiry-routing.service.js";
 import {
   EnquirySubmissionService,
@@ -57,6 +63,9 @@ export type CreateMarketingEnquiryServicesInput = {
     | "NODE_ENV"
     | "CHECK_IN_TOKEN_SECRET"
     | "PRIVATE_SALE_RECORD_RETENTION_YEARS"
+    | "ENQUIRY_INBOUND_REPLIES_ENABLED"
+    | "ENQUIRY_REPLY_TO_ADDRESS"
+    | "ENQUIRY_REPLY_TOKEN_SECRET"
   >;
   email: IEmailService;
   memberships: Pick<
@@ -100,6 +109,8 @@ export type MarketingEnquiryServices = {
   submission: IEnquirySubmission;
   /** The organisations the signed-in person may enquire for. */
   organisations: EnquirerOrganisationsService;
+  /** Sender replies from the Postmark inbound webhook; null while replies by email are off. */
+  inboundReplies: EnquiryInboundReplyService | null;
 };
 
 /**
@@ -113,6 +124,22 @@ export function createMarketingEnquiryServices(
   const log = createBaseLogger(input.env);
   const enquiries = new DrizzleMarketingEnquiryRepository(input.db);
   const routing = new DrizzleEnquiryRoutingRepository(input.db);
+  const replyAddresses =
+    input.env.ENQUIRY_INBOUND_REPLIES_ENABLED &&
+    input.env.ENQUIRY_REPLY_TO_ADDRESS &&
+    input.env.ENQUIRY_REPLY_TOKEN_SECRET
+      ? new EnquiryReplyAddresses({
+          baseAddress: input.env.ENQUIRY_REPLY_TO_ADDRESS,
+          secret: input.env.ENQUIRY_REPLY_TOKEN_SECRET,
+        })
+      : null;
+  const alert = inbox
+    ? new EmailMarketingEnquiryAlert({
+        email: input.email,
+        inbox,
+        webOrigin: input.env.WEB_ORIGIN,
+      })
+    : null;
   const assignees = new UserRepositoryAssigneeDirectory(new DrizzleUserRepository(input.db));
   const intake = new MarketingEnquiryService({
     enquiries,
@@ -124,16 +151,11 @@ export function createMarketingEnquiryServices(
       email: input.email,
       webOrigin: input.env.WEB_ORIGIN,
       contactEmail: SITE_CONTACT_EMAIL,
+      replyAddressFor: replyAddresses ? (id) => replyAddresses.addressFor(id) : undefined,
     }),
     onAcknowledgementFailed: (enquiryId, error) =>
       log.error({ enquiryId, err: error }, "enquiry acknowledgement could not be queued"),
-    alert: inbox
-      ? new EmailMarketingEnquiryAlert({
-          email: input.email,
-          inbox,
-          webOrigin: input.env.WEB_ORIGIN,
-        })
-      : noMarketingEnquiryAlert,
+    alert: alert ?? noMarketingEnquiryAlert,
     onAlertFailed: (enquiryId, error) =>
       log.error({ enquiryId, err: error }, "marketing enquiry alert could not be queued"),
   });
@@ -165,6 +187,18 @@ export function createMarketingEnquiryServices(
       events: input.events,
     }),
     organisations: new EnquirerOrganisationsService({ memberships: input.memberships }),
+    inboundReplies: replyAddresses
+      ? new EnquiryInboundReplyService({
+          repository: new DrizzleEnquiryInboundRepository(input.db),
+          addresses: replyAddresses,
+          transactionRunner: input.transactionRunner,
+          events: input.events,
+          alert: alert ?? noEnquiryReplyAlert,
+          now: () => new Date(),
+          onAlertFailed: (enquiryId, error) =>
+            log.error({ enquiryId, err: error }, "enquiry reply alert could not be queued"),
+        })
+      : null,
     routing: new EnquiryRoutingService({
       routing,
       assignees,

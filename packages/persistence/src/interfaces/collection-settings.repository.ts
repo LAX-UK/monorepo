@@ -69,7 +69,6 @@ export type SettingsField =
   | "close_on_sale_days"
   | "undo_hand_over_minutes"
   | "max_active_visits"
-  | "free_storage_days"
   | "booking_email"
   | "weekly_hours";
 
@@ -80,7 +79,6 @@ export type SaveCollectionSettings = {
   rules: CollectionRules;
   onlineBookingEnabled: boolean;
   bookingEmail: string | null;
-  freeStorageDays: number | null;
   hours: readonly CollectionWeeklyHours[];
   updatedByUserId: string;
   at: Date;

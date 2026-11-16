@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import {
   STAFF_CONTROL_BORDER_MIN_CONTRAST,
   STAFF_CONTROL_HEIGHT,
+  STAFF_FIELD_WIDTH,
   STAFF_LAYOUT,
   STAFF_RADIUS,
   STAFF_STATUS_TONES,
@@ -65,6 +66,10 @@ describe("staff tokens", () => {
 
   it.each(Object.entries(STAFF_CONTROL_HEIGHT))("control height %s matches", (step, spec) => {
     expect(token(`spacing-control-${step}`)).toBe(`${spec.px}px`);
+  });
+
+  it.each(Object.entries(STAFF_FIELD_WIDTH))("field width %s matches", (size, spec) => {
+    expect(token(`container-staff-field-${size}`)).toBe(`${spec.px}px`);
   });
 
   it.each(Object.entries(STAFF_STICKY_LAYERS))("sticky layer %s matches", (name, px) => {

@@ -11,7 +11,7 @@ import type { CellTruncation } from "../data/types.js";
 import { STAFF_LAYER, cn } from "../lib/cn.js";
 
 /** How long the pointer rests on shortened text before the full value appears. */
-export const STAFF_TRUNCATION_TOOLTIP_DELAY_MS = 500;
+export const STAFF_TRUNCATION_TOOLTIP_DELAY_MS = 400;
 
 /** Characters kept at the end of a middle-truncated string ("mahmo…@gmail.com"). */
 const MIDDLE_TAIL = 10;

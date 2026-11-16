@@ -204,6 +204,8 @@ const LABELS: Record<string, string> = {
   "marketing_enquiry.status_changed": "Enquiry status changed",
   "marketing_enquiry.converted": "Enquiry converted",
   "marketing_enquiry.attachment_viewed": "Enquiry attachment viewed",
+  "marketing_enquiry.customer_replied": "Enquiry reply received by email",
+  "marketing_enquiry.inbound_quarantined": "Inbound enquiry email held for review",
   "marketing_enquiry.erased": "Enquiries erased",
   "email.block_lifted": "Email block lifted",
   "enquiry_routing.changed": "Enquiry routing changed",

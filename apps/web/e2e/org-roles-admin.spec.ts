@@ -90,6 +90,8 @@ test.describe("organisation admin journey @roles", () => {
       }).toPass();
       await expect(page.getByRole("menuitem", { name: /^Transfer ownership/ })).toHaveCount(0);
       await page.keyboard.press("Escape");
+      // The closed menu stays mounted for its exit animation; wait for it to unmount.
+      await expect(page.getByRole("menu")).toHaveCount(0);
     });
 
     await test.step("reads the two-step policy", async () => {

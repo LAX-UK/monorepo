@@ -1157,6 +1157,13 @@ export type {
   PrivateSaleEnquiryDetail,
 } from "./marketing-enquiry.repository.js";
 export type {
+  IEnquiryInboundRepository,
+  InboundAttachmentMetadata,
+  InboundEnquiryTarget,
+  NewInboundMessage,
+  NewQuarantinedMessage,
+} from "./enquiry-inbound.repository.js";
+export type {
   EnquiryErasureCounts,
   EnquiryErasureTarget,
   IEnquiryErasureRepository,

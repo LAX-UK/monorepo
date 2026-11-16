@@ -24,8 +24,7 @@ import { QuickLookBody, QuickLookMetaPanel } from "./quick-look-dialog-sections"
 import {
   type DeckDirection,
   preloadQuickLookImage,
-  quickLookOverlayMotion,
-  quickLookPanelMotion,
+  quickLookOverlayBlur,
   resolveQuickLookImages,
 } from "./quick-look-dialog-utils";
 import { QuickLookFooter } from "./quick-look-footer";
@@ -222,7 +221,6 @@ export function LotQuickLookDialog() {
           overlayClassName="sm:hidden"
           className={cn(
             "flex max-h-[92dvh] flex-col gap-0 overflow-hidden border-outline-variant/25 bg-surface-container-lowest p-0 sm:hidden",
-            quickLookPanelMotion(reduceMotion),
           )}
         >
           <BottomSheetTitle className="sr-only">{vm.title}</BottomSheetTitle>
@@ -242,7 +240,7 @@ export function LotQuickLookDialog() {
           }}
           overlayClassName={cn(
             "hidden sm:block z-[var(--z-overlay,60)]",
-            quickLookOverlayMotion(reduceMotion),
+            quickLookOverlayBlur(reduceMotion),
           )}
           closeClassName="hidden sm:inline-flex"
           className={cn(
@@ -250,7 +248,6 @@ export function LotQuickLookDialog() {
             "z-[var(--z-overlay,60)]",
             "top-[50%] translate-x-[-50%] translate-y-[-50%]",
             "rounded-lg",
-            quickLookPanelMotion(reduceMotion),
           )}
         >
           <DialogTitle className="sr-only">{vm.title}</DialogTitle>

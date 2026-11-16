@@ -281,3 +281,39 @@ describe("api XERO_TOKEN_DEK_KEY", () => {
     expect(issues({})).toEqual([]);
   });
 });
+
+describe("envSchema enquiry inbound replies", () => {
+  it("is off by default and needs nothing else", () => {
+    const parsed = envSchema.safeParse(productionEnvBase());
+    expect(parsed.success).toBe(true);
+    if (parsed.success) expect(parsed.data.ENQUIRY_INBOUND_REPLIES_ENABLED).toBe(false);
+  });
+
+  it("refuses the flag without its address, token secret and webhook credentials", () => {
+    const parsed = envSchema.safeParse(
+      productionEnvBase({ ENQUIRY_INBOUND_REPLIES_ENABLED: "true" }),
+    );
+    expect(parsed.success).toBe(false);
+    if (parsed.success) return;
+    const messages = parsed.error.issues.map((i) => i.message).join(" ");
+    for (const key of [
+      "ENQUIRY_REPLY_TO_ADDRESS",
+      "ENQUIRY_REPLY_TOKEN_SECRET",
+      "POSTMARK_INBOUND_WEBHOOK_BASIC_AUTH",
+    ]) {
+      expect(messages).toContain(key);
+    }
+  });
+
+  it("accepts the flag with all three", () => {
+    const parsed = envSchema.safeParse(
+      productionEnvBase({
+        ENQUIRY_INBOUND_REPLIES_ENABLED: "true",
+        ENQUIRY_REPLY_TO_ADDRESS: "replies@inbound.example.com",
+        ENQUIRY_REPLY_TOKEN_SECRET: "t".repeat(40),
+        POSTMARK_INBOUND_WEBHOOK_BASIC_AUTH: "inbound-user:inbound-password-123",
+      }),
+    );
+    expect(parsed.success).toBe(true);
+  });
+});

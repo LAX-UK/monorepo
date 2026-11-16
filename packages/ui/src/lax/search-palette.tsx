@@ -123,10 +123,12 @@ export function SearchPalette({
       <DialogPrimitive.Portal>
         <DialogPrimitive.Overlay
           {...layer}
+          data-lax-motion="scrim"
           className="fixed inset-0 z-[var(--z-overlay,60)] bg-lax-scrim max-md:hidden"
         />
         <DialogPrimitive.Content
           {...layer}
+          data-lax-motion="dialog"
           onCloseAutoFocus={returnFocus}
           aria-label={placeholder}
           aria-describedby={undefined}

@@ -1,5 +1,5 @@
-import { expect, test } from "@playwright/test";
 import { artE2eEnabled, artE2eSkipReason } from "./helpers/art-e2e";
+import { expect, testWithoutSignOut as test } from "./helpers/test";
 
 const viewports = [
   { width: 375, height: 812 },

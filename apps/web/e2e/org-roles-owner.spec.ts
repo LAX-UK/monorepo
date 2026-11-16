@@ -113,6 +113,8 @@ test.describe("organisation owner journey @roles", () => {
         });
       }).toPass();
       await page.keyboard.press("Escape");
+      // The closed menu stays mounted for its exit animation; wait for it before opening another.
+      await expect(page.getByRole("menu")).toHaveCount(0);
     });
 
     await test.step("remove the member", async () => {

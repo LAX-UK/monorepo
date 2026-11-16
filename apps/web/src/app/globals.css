@@ -245,7 +245,7 @@
      Existing keyframes consume these so the brand "speed and feel" can be
      tuned in one place. New animations MUST use these tokens — never inline
      ms or cubic-bezier literals. */
-  --motion-duration-xs: 120ms;
+  --motion-duration-xs: var(--lax-motion-fade);
   --motion-duration-sm: var(--lax-motion-enter);
   --motion-duration-md: 320ms;
   --motion-duration-lg: 520ms;
