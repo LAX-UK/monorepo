@@ -54,6 +54,15 @@ export const domainEvent = pgTable(
     uniqueIndex("domain_events_unapplied_money_dedupe_key_uid")
       .on(sql`(${table.payload}->>'dedupeKey')`)
       .where(sql`${table.eventType} = 'payment.unapplied_money_received'`),
+    // One aggregate's events of one type, when the reader does not name the aggregate type (0398).
+    index("domain_events_event_type_aggregate_id_idx").on(table.eventType, table.aggregateId),
+    // existsForShopPayment's two keys, for the same event type as the dedupe index (0399).
+    index("domain_events_unapplied_money_session_idx")
+      .on(sql`(${table.payload}->>'shopCheckoutSessionId')`)
+      .where(sql`${table.eventType} = 'payment.unapplied_money_received'`),
+    index("domain_events_unapplied_money_intent_idx")
+      .on(sql`(${table.payload}->>'stripePaymentIntentId')`)
+      .where(sql`${table.eventType} = 'payment.unapplied_money_received'`),
   ],
 );
 
