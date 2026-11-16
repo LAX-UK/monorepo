@@ -55,6 +55,13 @@
   padding-bottom: 2rem;
 }
 
+/* Basket and confirmation: the checkout layout's grid (main column, then the 24rem summary on wide
+   screens), not the column the other skeletons stack in, where `align-items: start` from that
+   layout shrank both panels to nothing. */
+.shop-skeleton--commerce {
+  display: grid;
+}
+
 .shop-skeleton__bar {
   display: block;
   border-radius: var(--radius-control);
