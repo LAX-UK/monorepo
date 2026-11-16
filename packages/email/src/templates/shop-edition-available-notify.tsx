@@ -11,6 +11,7 @@ export default function ShopEditionAvailableNotifyEmail({
   artworkUrl,
   artistName,
   unsubscribeUrl,
+  manageUrl,
 }: TemplateVarsByName["shop-edition-available-notify"]) {
   const work = artistName ? `${artworkTitle} by ${artistName}` : artworkTitle;
   return (
@@ -21,8 +22,9 @@ export default function ShopEditionAvailableNotifyEmail({
       title={`${artworkTitle} is available again`}
       footerReason="You asked LAX Shop to email you once if an edition of this work became available again. This is that email; we will not write about it again."
       {...(unsubscribeUrl
-        ? { unsubscribeUrl, unsubscribeLabel: "Stop all edition alerts to this address" }
+        ? { unsubscribeUrl, unsubscribeLabel: "Stop back in stock alerts to this address" }
         : {})}
+      {...(manageUrl ? { manage: { href: manageUrl, label: "Manage your alerts" } } : {})}
     >
       <TextBlock>
         An edition of {work} can be bought again in LAX Shop. Editions are sold to whoever checks

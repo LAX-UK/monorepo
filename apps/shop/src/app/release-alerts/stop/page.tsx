@@ -3,15 +3,14 @@ import { ShopAccountShell } from "@/components/account/shop-account-shell";
 import { ShopCommerceButton } from "@/components/shop-commerce-button";
 import { ShopNotice } from "@/components/shop-notice";
 import { ShopStatusStateLink } from "@/components/shop-status-state";
-import { RELEASE_ALERTS_HREF } from "@/lib/release-alerts/release-alerts-anchor";
+import { type StopCopy, stopCopy } from "@/lib/release-alerts/stop-copy";
 import { shopPrivatePageTitle } from "@/lib/shop-private-page-metadata";
 import { previewReleaseAlertUnsubscribe } from "@/lib/shop-release-alerts.server";
 import { MarketingCheckIcon } from "@auction/marketing-ui";
 
-export const metadata = shopPrivatePageTitle("Stop release alerts");
+export const metadata = shopPrivatePageTitle("Stop alerts");
 
-const TITLE = "Stop release alerts";
-const BREADCRUMBS = [{ label: "Shop", href: "/" }, { label: TITLE }];
+const breadcrumbsFor = (copy: StopCopy) => [{ label: "Shop", href: "/" }, { label: copy.title }];
 
 type Props = {
   searchParams: Promise<{ token?: string | string[]; result?: string | string[] }>;
@@ -27,15 +26,16 @@ export default async function StopReleaseAlertsPage({ searchParams }: Props) {
   const token = first(params.token);
   const result = first(params.result);
   const preview = await previewReleaseAlertUnsubscribe(token);
+  const copy = stopCopy(preview.status === "ok" ? (preview.preview.topic ?? null) : null);
+  const TITLE = copy.title;
+  const BREADCRUMBS = breadcrumbsFor(copy);
 
   if (preview.status === "invalid") {
     return (
       <ShopAccountShell title={TITLE} breadcrumbs={BREADCRUMBS} showAccountSettings={false}>
         <div className="shop-unsubscribe">
           <p className="shop-unsubscribe__lead">This link is not valid</p>
-          <p className="shop-unsubscribe__body">
-            It may be incomplete. Open the link from the release alert email again.
-          </p>
+          <p className="shop-unsubscribe__body">{copy.invalidBody}</p>
           <div className="shop-unsubscribe__actions">
             <ShopStatusStateLink href="/artworks" priority="primary">
               Browse editions
@@ -60,6 +60,7 @@ export default async function StopReleaseAlertsPage({ searchParams }: Props) {
 
   const { maskedEmail, active } = preview.preview;
   const stopped = result === "stopped" || !active;
+  const done = copy.doneBody(maskedEmail);
 
   return (
     <ShopAccountShell title={TITLE} breadcrumbs={BREADCRUMBS} showAccountSettings={false}>
@@ -68,26 +69,24 @@ export default async function StopReleaseAlertsPage({ searchParams }: Props) {
           <div className="shop-unsubscribe__done">
             <MarketingCheckIcon className="shop-unsubscribe__done-icon" aria-hidden />
             <div>
-              <p className="shop-unsubscribe__lead">Release alerts stopped</p>
+              <p className="shop-unsubscribe__lead">{copy.doneLead}</p>
               <p className="shop-unsubscribe__body">
-                We will not send release alerts to {maskedEmail}. You can ask again from the{" "}
-                <a href={RELEASE_ALERTS_HREF} className="shop-inline-link shop-focus-ring">
-                  home page
+                {done.before}
+                <a href={done.linkHref} className="shop-inline-link shop-focus-ring">
+                  {done.linkLabel}
                 </a>
-                .
+                {done.after}
               </p>
             </div>
           </div>
         ) : (
           <form action={stopReleaseAlertsFromEmail} className="shop-unsubscribe__form">
             <input type="hidden" name="token" value={token} />
-            <p className="shop-unsubscribe__lead">Stop release alerts to {maskedEmail}?</p>
-            <p className="shop-unsubscribe__body">
-              You will no longer get an email when LAX Shop releases a new edition.
-            </p>
+            <p className="shop-unsubscribe__lead">{copy.confirmLead(maskedEmail)}</p>
+            <p className="shop-unsubscribe__body">{copy.confirmBody}</p>
             <div className="shop-unsubscribe__actions">
               <ShopCommerceButton type="submit" variant="cta" scale="standard">
-                Stop alerts
+                {copy.button}
               </ShopCommerceButton>
             </div>
           </form>

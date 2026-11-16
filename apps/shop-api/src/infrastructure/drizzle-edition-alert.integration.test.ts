@@ -11,11 +11,15 @@ import { and, eq } from "drizzle-orm";
 import pg from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createEditionAlertHandlers } from "../application/handlers/edition-alerts.handler.js";
+import { createTestBackInStockLinks } from "../test-support/back-in-stock-test-links.js";
 import { createPublishedArtworkImportWriter } from "../test-support/shop-fixtures.js";
+import { ShopAlertSubscriberStore } from "./alerts/shop-alert-subscriber.store.js";
+import { ShopAlertTopicStore } from "./alerts/shop-alert-topic.store.js";
 import { createDrizzleArtworkInterestRepository } from "./drizzle-artwork-interest.repository.js";
 import { createDrizzleEditionAlertStore } from "./drizzle-edition-alert.store.js";
 import { createDrizzleSaleAuthorityWriter } from "./drizzle-sale-authority.writer.js";
 import { createDrizzleShopNotificationPublisher } from "./drizzle-shop-notification.publisher.js";
+import { hashEditionAlertToken } from "./edition-alert-token.js";
 import { dispatchShopNotifyMeEmails } from "./shop-notify-me-dispatch.js";
 
 const ownerUrl = process.env.MIGRATION_TEST_DATABASE_URL;
@@ -41,11 +45,13 @@ describe.skipIf(!ownerUrl || !shopUrl)("drizzle edition alert store", () => {
   function setup() {
     const db = createDbFromPool(shopPool);
     const store = createDrizzleEditionAlertStore(db, { domainEventMode: "off" });
+    const { links, codec } = createTestBackInStockLinks(db);
     const alerts = createEditionAlertHandlers({
       artworks: createDrizzleArtworkInterestRepository(db),
       alerts: store,
+      links,
     });
-    return { db, store, alerts };
+    return { db, store, alerts, links, codec };
   }
 
   /** A published edition with nothing authorised for sale, which reads as sold out. */
@@ -224,7 +230,7 @@ describe.skipIf(!ownerUrl || !shopUrl)("drizzle edition alert store", () => {
   });
 
   it("emails restocked editions first, with a token that stops every waiting alert for the address", async () => {
-    const { db, alerts } = setup();
+    const { db, alerts, links, codec } = setup();
     const suffix = `${Date.now()}-d`;
     const email = `dispatch-${suffix}@example.com`;
     const back = await soldOutEdition(db, `${suffix}-back`);
@@ -243,6 +249,7 @@ describe.skipIf(!ownerUrl || !shopUrl)("drizzle edition alert store", () => {
     const notifications = createDrizzleShopNotificationPublisher();
     await dispatchShopNotifyMeEmails(db, {
       notifications,
+      links,
       storefrontOrigins: ORIGINS,
       now: new Date(),
     });
@@ -279,16 +286,155 @@ describe.skipIf(!ownerUrl || !shopUrl)("drizzle edition alert store", () => {
       expect(none).toEqual([]);
     }
 
+    // The email's stop link is the alert engine's, scoped to back in stock.
     const url = new URL((outbox[0]?.vars as { unsubscribeUrl: string }).unsubscribeUrl);
-    const token = url.searchParams.get("token") ?? "";
-    expect(await alerts.previewUnsubscribe(token)).toEqual({
+    expect(url.pathname).toBe("/release-alerts/unsubscribe");
+    const engineToken = url.searchParams.get("token") ?? "";
+    expect(codec.verify(engineToken, new Date())?.payload).toMatchObject({
+      kind: "stop",
+      product: "shop",
+      topic: "shop.back_in_stock",
+    });
+
+    // A link from an email sent before this moved still works, and moves onto the engine.
+    const oldToken = `${suffix.replace(/[^A-Za-z0-9_-]/g, "")}${"x".repeat(43)}`.slice(0, 43);
+    await db
+      .update(shopArtworkInterest)
+      .set({ unsubscribeTokenHash: hashEditionAlertToken(oldToken) })
+      .where(
+        eq(shopArtworkInterest.id, sentRows.find((r) => r.artworkId === back.artworkId)?.id ?? ""),
+      );
+    expect(await alerts.previewUnsubscribe(oldToken)).toEqual({
       maskedEmail: "d•••@example.com",
       artworkTitle: `Alert ${suffix}-back`,
       waitingCount: 1,
     });
-    expect(await alerts.unsubscribe(token)).toEqual({ stopped: 1 });
-    expect(await alerts.unsubscribe(token)).toEqual({ stopped: 0 });
+    const moved = await alerts.engineStopToken(oldToken);
+    expect(moved && codec.verify(moved, new Date())?.payload.topic).toBe("shop.back_in_stock");
+    expect(await alerts.unsubscribe(oldToken)).toEqual({ stopped: 1 });
+    expect(await alerts.unsubscribe(oldToken)).toEqual({ stopped: 0 });
     expect(await alerts.previewUnsubscribe("b".repeat(43))).toBeNull();
     expect(await alerts.unsubscribe("b".repeat(43))).toBeNull();
+    expect(await alerts.engineStopToken("b".repeat(43))).toBeNull();
+  });
+
+  /** The outbox rows of a person's back-in-stock emails, by request. */
+  async function sentFor(db: ReturnType<typeof createDbFromPool>, email: string) {
+    const rows = await db
+      .select({ id: shopArtworkInterest.id, cancelledAt: shopArtworkInterest.cancelledAt })
+      .from(shopArtworkInterest)
+      .where(
+        and(
+          eq(shopArtworkInterest.contactEmail, email),
+          eq(shopArtworkInterest.intent, "notify_me"),
+        ),
+      );
+    const sent: string[] = [];
+    for (const row of rows) {
+      const outbox = await db
+        .select({ key: emailOutbox.idempotencyKey })
+        .from(emailOutbox)
+        .where(eq(emailOutbox.idempotencyKey, `edition-available:${row.id}`));
+      if (outbox.length > 0) sent.push(row.id);
+    }
+    return { rows, sent };
+  }
+
+  it("sends a Notify me pressed after the person stopped Shop alerts, and not the one before", async () => {
+    const { db, alerts, links } = setup();
+    const suffix = `${Date.now()}-e`;
+    const email = `again-${suffix}@example.com`;
+    const before = await soldOutEdition(db, `${suffix}-before`);
+    const after = await soldOutEdition(db, `${suffix}-after`);
+    const askedAgain = await soldOutEdition(db, `${suffix}-asked-again`);
+    const ask = (slug: string) =>
+      alerts.register({ artworkSlug: slug, recipient: { kind: "guest", email } });
+    const pause = () => new Promise((resolve) => setTimeout(resolve, 20));
+
+    expect(await ask(before.slug)).toBe("registered");
+    expect(await ask(askedAgain.slug)).toBe("registered");
+    // An earlier back-in-stock email gave the address an engine row; then the person stopped
+    // every Shop alert (the all-alerts link in a release alert email).
+    const earlier = await links.linkFor({ email, subjectId: null, requestedAt: new Date() });
+    await pause();
+    await new ShopAlertSubscriberStore(db).stop(earlier.subscriberId, "link", new Date());
+    await pause();
+    // Pressing Notify me after the stop asks again: a new edition, and one already waiting.
+    expect(await ask(after.slug)).toBe("registered");
+    expect(await ask(askedAgain.slug)).toBe("already_subscribed");
+
+    for (const edition of [before, after, askedAgain]) await restock(db, edition.artworkId);
+    await dispatchShopNotifyMeEmails(db, {
+      notifications: createDrizzleShopNotificationPublisher(),
+      links,
+      storefrontOrigins: ORIGINS,
+      now: new Date(),
+    });
+
+    const rows = await db
+      .select({
+        id: shopArtworkInterest.id,
+        artworkId: shopArtworkInterest.artworkId,
+        cancelledAt: shopArtworkInterest.cancelledAt,
+      })
+      .from(shopArtworkInterest)
+      .where(eq(shopArtworkInterest.contactEmail, email));
+    const { sent } = await sentFor(db, email);
+    const sentArtworks = rows.filter((r) => sent.includes(r.id)).map((r) => r.artworkId);
+    expect(sentArtworks.sort()).toEqual([after.artworkId, askedAgain.artworkId].sort());
+    expect(rows.find((r) => r.artworkId === before.artworkId)?.cancelledAt).not.toBeNull();
+    // Asking for back in stock again does not start release alerts again.
+    expect((await new ShopAlertSubscriberStore(db).findByEmail("shop", email))?.status).toBe(
+      "stopped",
+    );
+  });
+
+  it("sends a waiting request the person asked for again after switching back in stock off", async () => {
+    const { db, alerts, links } = setup();
+    const suffix = `${Date.now()}-f`;
+    const email = `switch-${suffix}@example.com`;
+    const edition = await soldOutEdition(db, `${suffix}-switch`);
+    await alerts.register({ artworkSlug: edition.slug, recipient: { kind: "guest", email } });
+    const row = await links.linkFor({ email, subjectId: null, requestedAt: new Date() });
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    // Switched off in preferences: the waiting request is not closed by that switch.
+    await new ShopAlertTopicStore(db).setEmail(
+      row.subscriberId,
+      "shop.back_in_stock",
+      false,
+      "person",
+      new Date(),
+    );
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(
+      await alerts.register({ artworkSlug: edition.slug, recipient: { kind: "guest", email } }),
+    ).toBe("already_subscribed");
+
+    await restock(db, edition.artworkId);
+    await dispatchShopNotifyMeEmails(db, {
+      notifications: createDrizzleShopNotificationPublisher(),
+      links,
+      storefrontOrigins: ORIGINS,
+      now: new Date(),
+    });
+    expect((await sentFor(db, email)).sent).toHaveLength(1);
+  });
+
+  it("moves an old link onto the engine without creating anything for a person with no engine row", async () => {
+    const { db, alerts, store } = setup();
+    const suffix = `${Date.now()}-g`;
+    const email = `scanner-${suffix}@example.com`;
+    const edition = await soldOutEdition(db, `${suffix}-scanner`);
+    await alerts.register({ artworkSlug: edition.slug, recipient: { kind: "guest", email } });
+    const oldToken = `g${suffix.replace(/[^A-Za-z0-9_-]/g, "")}${"y".repeat(43)}`.slice(0, 43);
+    await db
+      .update(shopArtworkInterest)
+      .set({ unsubscribeTokenHash: hashEditionAlertToken(oldToken) })
+      .where(eq(shopArtworkInterest.contactEmail, email));
+
+    expect(await alerts.engineStopToken(oldToken)).toBeNull();
+    expect(await new ShopAlertSubscriberStore(db).findByEmail("shop", email)).toBeNull();
+    // The old confirm page still serves it, and nothing was stopped by looking.
+    expect((await store.previewUnsubscribe(oldToken))?.waitingCount).toBe(1);
   });
 });

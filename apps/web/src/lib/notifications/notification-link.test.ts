@@ -35,6 +35,14 @@ describe("notificationHref", () => {
     expect(notificationHref({ ...base, type: "kyc_approved" })).toBe("/sales");
     expect(notificationHref({ ...base, type: "kyc_declined" })).toBe("/verify-identity");
     expect(notificationHref({ ...base, type: "sale_cancelled" })).toBeNull();
+    expect(notificationHref({ ...base, type: "sale_registration_decided", saleId: "s1" })).toBe(
+      "/sales/s1",
+    );
+    expect(notificationHref({ ...base, type: "bidding_limit_changed", saleId: "s1" })).toBe(
+      "/sales/s1",
+    );
+    // An organisation's limit has no sale to open.
+    expect(notificationHref({ ...base, type: "bidding_limit_changed" })).toBeNull();
   });
 
   it("opens the bidder's offer, not the lot, from a notice about it", () => {

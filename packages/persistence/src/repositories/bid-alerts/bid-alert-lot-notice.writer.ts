@@ -1,6 +1,7 @@
+import type { AlertTopic, InAppTopicLookup } from "@auction/alerts";
 import type { Database } from "@auction/db";
 import { notification, notificationPreference } from "@auction/db/schema";
-import { sql } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import type {
   BidAlertLotNotice,
   IBidAlertLotNoticeWriter,
@@ -44,5 +45,25 @@ export class BidAlertLotNoticeWriter implements IBidAlertLotNoticeWriter {
       written += result.rowCount ?? 0;
     }
     return written;
+  }
+}
+
+/** The topics a signed-in person keeps on in the app: the app switches default to on. */
+export class BidAlertInAppTopics implements InAppTopicLookup {
+  constructor(private readonly db: Database) {}
+
+  async topicsOn(subjectId: string): Promise<readonly AlertTopic[]> {
+    const [row] = await this.db
+      .select({
+        artists: notificationPreference.artistAlertsInApp,
+        searches: notificationPreference.searchAlertsInApp,
+      })
+      .from(notificationPreference)
+      .where(eq(notificationPreference.userId, subjectId))
+      .limit(1);
+    const topics: AlertTopic[] = [];
+    if (row?.artists ?? true) topics.push("bid.artists");
+    if (row?.searches ?? true) topics.push("bid.searches");
+    return topics;
   }
 }
