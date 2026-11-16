@@ -1578,6 +1578,9 @@ export type {
   StorageTermsValues,
   StorageVatTreatment,
   StorageWaiverRecord,
+  StorageAuditDetail,
+  WaitingLotAtPlace,
+  AddStorageExtensionOutcome,
 } from "./collection-storage.repository.js";
 export type { IPartyDealRecordReader } from "./party-deal-record.reader.js";
 

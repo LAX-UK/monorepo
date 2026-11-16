@@ -354,15 +354,9 @@ export function formatStorageNotice(
       };
     case "charging": {
       if (!chargingOn) return passedNotice(pleaseCollect, placeName, true);
-      const fee = terms.handlingFeePence;
-      const days = `${plural(charge.chargeableDays, "day")} at ${rate}`;
-      // With no daily rate the fee is all there is to make up, so no "£0 a day".
-      const makeUp = !charged
-        ? `a ${money(fee)} handling fee`
-        : `${days}${fee > 0 ? `, and a ${money(fee)} handling fee` : ""}`;
       return {
-        heading: `Storage charges since ${dayLabel(charge.chargingFrom, now)}`,
-        body: `${money(charge.amountPence, true)} so far (${makeUp}), plus VAT where it applies. Book a time to collect, and you will pay the storage up to that day when you book.`,
+        heading: formatStorageChargingSince(charge, now),
+        body: `${formatStorageRunningTotal(charge, terms, band)} Book a time to collect, and you will pay the storage up to that day when you book.`,
       };
     }
     case "overdue":
@@ -378,6 +372,58 @@ export function formatStorageNotice(
         body: `${waiting} Storage is free until then${charged ? `, and ${rate} after that, plus VAT where it applies` : ""}.${feeNote}`,
       };
   }
+}
+
+/** "Storage charges since Tue 17 Nov": the heading of a running total. */
+export function formatStorageChargingSince(charge: StorageCharge, now: Date): string {
+  return `Storage charges since ${dayLabel(charge.chargingFrom, now)}`;
+}
+
+/**
+ * "£42.00 so far (14 days at £3 a day), plus VAT where it applies.": what is owed and what it is
+ * made of, with the handling fee when there is one. The purchase notice, the reminder emails and
+ * the staff Not collected tab all read it from here.
+ */
+export function formatStorageRunningTotal(
+  charge: StorageCharge,
+  terms: StorageTerms,
+  band: StorageBand,
+): string {
+  const daily = storageDailyPence(terms, band);
+  const fee = terms.handlingFeePence;
+  const days = `${plural(charge.chargeableDays, "day")} at ${money(daily)} a day`;
+  // With no daily rate the fee is all there is to make up, so no "£0 a day".
+  const makeUp =
+    daily === 0
+      ? `a ${money(fee)} handling fee`
+      : `${days}${fee > 0 ? `, and a ${money(fee)} handling fee` : ""}`;
+  return `${money(charge.amountPence, true)} so far (${makeUp}), plus VAT where it applies.`;
+}
+
+/**
+ * What one lot costs once its free storage ends, for a reminder before the day: "Free until
+ * Tue 8 Dec, then £3 a day, plus VAT where it applies." `null` when nothing is charged after the
+ * day (no rate for its band, or a lot held under the legacy terms) or the charges are waived.
+ */
+export function formatStorageRateAfter(
+  charge: StorageCharge,
+  terms: StorageTerms,
+  band: StorageBand,
+  now: Date,
+): string | null {
+  const daily = storageDailyPence(terms, band);
+  if (charge.state === "waived" || daily === 0) return null;
+  return `Free until ${dayLabel(charge.collectBy, now)}, then ${money(daily)} a day, plus VAT where it applies.${handlingFeeSentence(terms)}`;
+}
+
+/** A whole amount of pence as staff and buyers read it, always with pence: "£42.00". */
+export function formatStoragePence(pence: number): string {
+  return money(pence, true);
+}
+
+/** A band's daily rate as buyers read it: "£3 a day". */
+export function formatStorageDailyRate(terms: StorageTerms, band: StorageBand): string {
+  return `${money(storageDailyPence(terms, band))} a day`;
 }
 
 /** The day has passed. Today's wording keeps "may apply" only while charges could still run. */

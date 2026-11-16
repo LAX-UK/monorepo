@@ -203,6 +203,13 @@ export const DANGEROUS_STAFF_ACTIONS: readonly DangerousStaffAction[] = [
     "PUT",
     "/admin/collections/:venueId/storage/charging",
   ),
+  // Waiving one lot's storage charges gives up money that is owed (ST10)
+  a(
+    "collection_storage",
+    "collection.storage.waive",
+    "POST",
+    "/admin/collections/:venueId/storage/lots/:lotId/waiver",
+  ),
   // Handing works over at the desk, undoing it, and marking a visit missed
   a(
     "collection_handover",

@@ -28,10 +28,11 @@ describe.skipIf(!ownerUrl || !workerUrl)("collect-by reader as worker_app (integ
   // biome-ignore lint/style/noNonNullAssertion: gated above
   const worker = createDb(workerUrl!);
   const reader = new DrizzleCollectByReader(worker);
-  // The longest free period, counted from Sat 15 Mar 2031 back; staff are closed from the Monday
-  // to the Wednesday after, so the deadline is Thu 20 Mar.
-  const clearedAt = new Date("2030-03-15T12:00:00Z");
-  const window = { today: "2031-03-20", defaultFreeStorageDays: 30, reminderLeadDays: 7 };
+  // A lot won before the place had terms is held 30 days free (ST9): from Thu 13 Feb 2031 that is
+  // Sat 15 Mar; staff are closed from the Monday to the Wednesday after, so the deadline is Thu 20 Mar.
+  const clearedAt = new Date("2031-02-13T12:00:00Z");
+  const window = { today: "2031-03-20" };
+  const termsId = randomUUID();
   let lotId = "";
 
   beforeAll(async () => {
@@ -58,6 +59,13 @@ describe.skipIf(!ownerUrl || !workerUrl)("collect-by reader as worker_app (integ
     await owner.execute(sql`
       insert into collection_exception (venue_id, kind, starts_on, ends_on, source)
       values (${venueId}, 'closure', '2031-03-17', '2031-03-19', 'staff')`);
+    // Terms recorded when the sale closed, so the sweep reads `collection_storage_terms` (and the
+    // extension, waiver and quote tables with it) as `worker_app`. 30 days calendar, as the lot
+    // was held before the place had terms, keeps the deadline below unchanged.
+    await owner.execute(sql`
+      insert into collection_storage_terms (id, venue_id, free_days, count_mode, standard_daily_pence,
+         large_daily_pence, handling_fee_pence, effective_from, reason)
+      values (${termsId}, ${venueId}, 30, 'calendar', 300, 600, 0, '2031-01-01', 'Role terms')`);
     lotId = randomUUID();
     await owner.execute(sql`
       insert into lot (id, seller_legal_entity_id, sale_id, title, lot_number, auction_type,
@@ -65,31 +73,48 @@ describe.skipIf(!ownerUrl || !workerUrl)("collect-by reader as worker_app (integ
       values (${lotId}, ${sellerEntity}, ${saleId}, 'Role lot', 1, 'english', 100, 100,
          now() - interval '40 days', now() - interval '20 days', 'ended', ${buyer}, ${buyerEntity})`);
     await owner.execute(sql`
-      insert into lot_fulfilment (lot_id, status, payment_cleared_at)
-      values (${lotId}, 'awaiting_release'::lot_fulfilment_status, ${clearedAt})`);
+      insert into lot_fulfilment (lot_id, status, payment_cleared_at, storage_terms_id)
+      values (${lotId}, 'awaiting_release'::lot_fulfilment_status, ${clearedAt}, ${termsId})`);
   });
 
   afterAll(async () => {
-    await owner.execute(sql`delete from lot_fulfilment where lot_id = ${lotId}`);
-    await owner.execute(sql`delete from lot where id = ${lotId}`);
-    await owner.execute(sql`delete from sale where id = ${saleId}`);
-    await owner.execute(sql`delete from collection_exception where venue_id = ${venueId}`);
-    await owner.execute(sql`delete from collection_weekly_hours where venue_id = ${venueId}`);
-    await owner.execute(sql`delete from collection_place where venue_id = ${venueId}`);
-    await owner.execute(sql`delete from venue where id = ${venueId}`);
-    await owner.execute(
+    // Each step is tried on its own, so a setup that failed part-way does not hide its error
+    // behind a cleanup failure (or leave later rows behind).
+    const cleanup = [
+      sql`delete from lot_fulfilment where lot_id = ${lotId || randomUUID()}`,
+      sql`delete from lot where id = ${lotId || randomUUID()}`,
+      sql`delete from sale where id = ${saleId}`,
+      sql`delete from collection_storage_terms where id = ${termsId}`,
+      sql`delete from collection_exception where venue_id = ${venueId}`,
+      sql`delete from collection_weekly_hours where venue_id = ${venueId}`,
+      sql`delete from collection_place where venue_id = ${venueId}`,
+      sql`delete from venue where id = ${venueId}`,
       sql`delete from legal_entity where id in (${buyerEntity}, ${sellerEntity})`,
-    );
-    await owner.execute(sql`delete from "user" where id = ${buyer}`);
+      sql`delete from "user" where id = ${buyer}`,
+    ];
+    for (const statement of cleanup) {
+      try {
+        await owner.execute(statement);
+      } catch {
+        // Nothing to clean up, or already gone.
+      }
+    }
   });
 
   it("finds the lot and its deadline, which a closure after the counted day moves to Thursday", async () => {
-    const found = await reader.storedLotsDue(window);
+    const found = await reader.storedLotsWaiting(window);
     expect(found.map((row) => row.lotId)).toContain(lotId);
     const group = collectByGroups(found, window.today).find((g) =>
       g.lots.some((row) => row.lotId === lotId),
     );
     expect(group).toMatchObject({ kind: "day", collectBy: "2031-03-20" });
+  });
+
+  it("prices the lot under the terms recorded on it, reading the storage tables", async () => {
+    const found = await reader.storedLotsWaiting(window);
+    const row = found.find((r) => r.lotId === lotId);
+    expect(row?.storage?.pricing.terms).toMatchObject({ standardDailyPence: 300 });
+    expect(row?.storage?.calendar).toBeDefined();
   });
 
   it("reads without writing: no bank holidays are stored for the place", async () => {

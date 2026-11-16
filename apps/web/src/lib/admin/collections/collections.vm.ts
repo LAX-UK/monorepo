@@ -33,11 +33,18 @@ export const COLLECTION_TAB_LABELS: Record<CollectionTab, string> = {
 export type CollectionsAccess = { settings: boolean; storage: boolean };
 
 /**
- * The tabs a person sees, in order. Finance sees only Storage: the visits, hours and closures are
- * the Fulfilment team's (PRM-1, hide what the role can never use).
+ * The tabs a person sees, in order. Finance sees Not collected (the lots past their collect-by
+ * day, to waive charges) and Storage: the visits, hours and closures are the Fulfilment team's
+ * (PRM-1, hide what the role can never use).
  */
 export function collectionTabsFor(access: CollectionsAccess): CollectionTab[] {
-  return COLLECTION_TABS.filter((tab) => (tab === "storage" ? access.storage : access.settings));
+  return COLLECTION_TABS.filter((tab) =>
+    tab === "storage"
+      ? access.storage
+      : tab === "not_collected"
+        ? access.settings || access.storage
+        : access.settings,
+  );
 }
 
 /**
@@ -50,7 +57,11 @@ export function parseCollectionTab(
 ): CollectionTab {
   const wanted = Array.isArray(value) ? value[0] : value;
   const allowed = collectionTabsFor(access);
-  return allowed.find((tab) => tab === wanted) ?? allowed[0] ?? "day";
+  // Someone who sees no visits (Finance) opens on Storage, their own screen.
+  const first = access.settings
+    ? allowed[0]
+    : (allowed.find((tab) => tab === "storage") ?? allowed[0]);
+  return allowed.find((tab) => tab === wanted) ?? first ?? "day";
 }
 
 export function collectionsHref(

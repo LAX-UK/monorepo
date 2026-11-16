@@ -49,9 +49,15 @@ describe("collections view model", () => {
       "storage",
       "closures",
     ]);
-    // Finance: the storage terms only.
-    expect(collectionTabsFor({ settings: false, storage: true })).toEqual(["storage"]);
+    // Finance: the lots past collect-by (to waive charges) and the storage terms, opening on Storage.
+    expect(collectionTabsFor({ settings: false, storage: true })).toEqual([
+      "not_collected",
+      "storage",
+    ]);
     expect(parseCollectionTab(undefined, { settings: false, storage: true })).toBe("storage");
+    expect(parseCollectionTab("not_collected", { settings: false, storage: true })).toBe(
+      "not_collected",
+    );
     expect(parseCollectionTab("hours", { settings: false, storage: true })).toBe("storage");
     expect(parseCollectionTab("storage")).toBe("storage");
     expect(collectionsHref("storage", "v1")).toBe("/admin/collections?tab=storage&venue=v1");
