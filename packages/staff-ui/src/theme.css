@@ -224,8 +224,11 @@
 }
 
 /* Staff motion: quicker than the public timings and without a press beat (docs/design/motion.md).
-   The tokens are defined in lax-system.css; only the durations differ here, the easings are shared. */
-[data-staff-ui] {
+   The tokens are defined in lax-system.css; only the durations differ here, the easings are shared.
+   A page view transition (admin navigation) is drawn on the root, outside the shell, so it opts into
+   the same values through `data-view-transition="admin"` (see apps/web view-transition-runtime). */
+[data-staff-ui],
+:root[data-view-transition="admin"] {
   --lax-motion-press: 0ms;
   --lax-motion-hover: 100ms;
   --lax-motion-enter: 150ms;
