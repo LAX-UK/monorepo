@@ -30,6 +30,24 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - name: Install Chromium
         run: pnpm --filter @auction/web exec playwright install chromium --with-deps
+      - name: Wait for a healthy test deploy
+        # Waits for the test site to answer 200 (e.g. after a restart or deploy). A wait is never silent:
+        # it is written to the job summary as a warning with route, status and time.
+        run: |
+          deadline=$((SECONDS + 900))
+          for path in "/" "/search" "/sales?tab=live"; do
+            while true; do
+              status=$(curl -s -o /dev/null -m 30 -w '%{http_code}' "$PLAYWRIGHT_BASE_URL$path" || true)
+              echo "$path -> $status"
+              [ "$status" = "200" ] && break
+              echo "- :warning: $(date -u +%H:%M:%SZ) \`$path\` answered $status, waiting for the site to recover" >> "$GITHUB_STEP_SUMMARY"
+              if [ "$SECONDS" -ge "$deadline" ]; then
+                echo "::error::$PLAYWRIGHT_BASE_URL$path still answers $status after 15 minutes"
+                exit 1
+              fi
+              sleep 20
+            done
+          done
       - name: Run the public accessibility spec against test.lax.bid
         run: pnpm --filter @auction/web exec playwright test e2e/public-a11y.spec.ts --project=public-chromium --workers=1 --reporter=html
       - name: Upload the report
