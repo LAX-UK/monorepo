@@ -335,9 +335,27 @@ describe("API Stripe keys on a test stack", () => {
         STRIPE_PUBLISHABLE_KEY: "pk_live_key",
       }),
     ).toEqual([
-      "STRIPE_SECRET_KEY in test must use a test key (sk_test_… or rk_test_…)",
-      "STRIPE_PUBLISHABLE_KEY in test must use a test key (pk_test_…)",
+      "STRIPE_SECRET_KEY must use a test key (sk_test_… or rk_test_…) unless APP_ENV=production",
+      "STRIPE_PUBLISHABLE_KEY must use a test key (pk_test_…) unless APP_ENV=production",
     ]);
+  });
+
+  it("refuses live keys when APP_ENV is unset or development", () => {
+    for (const appEnv of [undefined, "development"]) {
+      expect(
+        stripeIssues({
+          // Undefined overrides the base's production, so the schema default applies.
+          APP_ENV: appEnv,
+          STRIPE_SECRET_KEY: "sk_live_key",
+        }),
+      ).toContain(
+        "STRIPE_SECRET_KEY must use a test key (sk_test_… or rk_test_…) unless APP_ENV=production",
+      );
+    }
+  });
+
+  it("accepts live keys only with APP_ENV=production", () => {
+    expect(stripeIssues({ APP_ENV: "production", STRIPE_SECRET_KEY: "sk_live_key" })).toEqual([]);
   });
 
   it("accepts test keys when APP_ENV=test", () => {

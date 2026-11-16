@@ -1,10 +1,7 @@
 import { createShopApiContainer } from "../container.js";
 import { loadShopApiEnv } from "../env.js";
-import {
-  SHOP_ACCEPTANCE_OWNED_ARTWORK_TITLE,
-  seedAcceptancePortalFixtures,
-} from "../infrastructure/seed/acceptance-portal-seed.js";
-import { assertAcceptanceSeedTarget } from "../infrastructure/seed/acceptance-seed-target.js";
+import { SHOP_ACCEPTANCE_OWNED_ARTWORK_TITLE } from "../infrastructure/seed/acceptance-portal-seed.js";
+import { seedAcceptancePortal } from "../infrastructure/seed/acceptance-seed-target.js";
 
 const env = loadShopApiEnv();
 
@@ -17,9 +14,9 @@ if (!identitySubjectId) {
 const container = createShopApiContainer(env);
 
 try {
-  await assertAcceptanceSeedTarget(container.db, "shop acceptance portal", env.DATABASE_URL_SHOP);
-  await seedAcceptancePortalFixtures(
+  await seedAcceptancePortal(
     container.db,
+    env.DATABASE_URL_SHOP,
     (command) => container.grantSaleAuthority(command),
     {
       identitySubjectId,

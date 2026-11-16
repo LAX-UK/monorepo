@@ -24,7 +24,7 @@ function rowsOf(result: unknown): Record<string, unknown>[] {
  */
 export function demoSeedRefusal(mark: DemoSeedTargetMark, currentDatabase: string): string | null {
   if (!mark) {
-    return `this database is not marked as a demo seed target (no demo_seed_target row). On a test or local database only, as the owner: ${MARK_DEMO_SEED_TARGET_SQL}`;
+    return `this database is not marked as a demo seed target (no demo_seed_target row). A local database: run \`pnpm db:seed\` (it marks a fresh local database first), or for an existing one \`pnpm --filter @auction/db db:seed:mark-demo-target local <your name> --existing-local-database\`. A test database, as the owner: ${MARK_DEMO_SEED_TARGET_SQL}`;
   }
   if (mark.environment !== "test" && mark.environment !== "local") {
     return `this database's demo seed mark names an unknown environment (${mark.environment})`;
@@ -62,16 +62,6 @@ export async function readDemoSeedTarget(db: Queryable): Promise<DemoSeedTargetS
       ? { environment: String(mark.environment), databaseName: String(mark.database_name) }
       : null,
   };
-}
-
-/**
- * Writes the "local" mark on this database unless it already has one; an existing mark is never
- * changed. Callers decide that the database is local first (see seed-target-guard.ts).
- */
-export async function markLocalDemoSeedTarget(db: Queryable, markedBy: string): Promise<void> {
-  await db.execute(
-    sql`insert into demo_seed_target (environment, database_name, marked_by) values ('local', current_database(), ${markedBy}) on conflict do nothing`,
-  );
 }
 
 /**

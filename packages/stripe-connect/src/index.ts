@@ -34,6 +34,7 @@ export {
   type StripeKeyIssue,
   type StripeKeyKind,
   type StripeKeyToCheck,
+  allowsLiveStripeKeys,
   isStripeTestModeKey,
   stripeTestModeKeyIssues,
 } from "./stripe-key-environment.js";

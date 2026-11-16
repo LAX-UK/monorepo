@@ -13,10 +13,21 @@ import { runDemoTopUp } from "../demo/demo-topup-seed.js";
 import {
   type SeedTargetEnv,
   assertSeedEnvironment,
-  assertSeedTarget,
-  seedAccountPassword,
   seedTargetEnvFromProcess,
+  withSeedTarget,
 } from "../shared/seed-target-guard.js";
+
+type Tx = Parameters<typeof runDemoTopUp>[0];
+
+/** Checks the target and the password, then runs the seed. Nothing is written on a refusal. */
+export function seedDemoTopUp(
+  tx: Tx,
+  env: SeedTargetEnv,
+  now: number,
+  seed: typeof runDemoTopUp = runDemoTopUp,
+): ReturnType<typeof runDemoTopUp> {
+  return withSeedTarget(tx, "demo-topup", env, (password) => seed(tx, now, password));
+}
 
 /** The production checks every seed shares (seed-target-guard.ts). */
 export function assertDemoTopUpTarget(env: SeedTargetEnv): string {
@@ -37,8 +48,7 @@ async function main() {
     let result: Awaited<ReturnType<typeof runDemoTopUp>> | undefined;
     await db
       .transaction(async (tx) => {
-        const target = await assertSeedTarget(tx, "demo-topup", env);
-        result = await runDemoTopUp(tx, Date.now(), seedAccountPassword(target, env, "demo-topup"));
+        result = await seedDemoTopUp(tx, env, Date.now());
         if (dryRun) tx.rollback();
       })
       .catch((error: unknown) => {

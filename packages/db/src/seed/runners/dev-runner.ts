@@ -5,44 +5,45 @@ import { seedDevTwoFactorPolicy } from "../dev/dev-two-factor-policy.js";
 import { seedE2eRolloutIdentities } from "../dev/e2e-rollout-identities.js";
 import { runLegacyDemoSeed } from "../dev/legacy-demo-seed.js";
 import {
-  type SeedTarget,
   type SeedTargetEnv,
   assertSeedEnvironment,
-  assertSeedTarget,
-  seedAccountPassword,
   seedTargetEnvFromProcess,
+  withSeedTarget,
 } from "../shared/seed-target-guard.js";
 
 const SEED = "dev seed";
 
-/** The dev seed's steps, injectable so the order and the refusals are tested without a database. */
+type Queryable = Parameters<typeof withSeedTarget>[0];
+
+/** The dev seed's writes, injectable so the guard, the order and the refusals are tested without a database. */
 export type DevSeedSteps = {
-  assertTarget(): Promise<SeedTarget>;
-  loadDemoData(password: string): Promise<void>;
+  loadDemoData(password: string, hermetic: boolean): Promise<void>;
   flagRolloutIdentities(): Promise<void>;
   relaxStaffTwoFactor(): Promise<void>;
   log(message: string): void;
 };
 
 /**
- * Checks the target before anything is written, then loads the demo data. Staff two-factor is
- * made optional only on a hermetic database; on any other target the policy is left as it is.
+ * Checks the target (the demo seed mark) and the password before anything is written, then loads
+ * the demo data. Staff two-factor is made optional only on a hermetic database; on any other
+ * target the policy is left as it is.
  */
 export async function runDevSeedSteps(
+  db: Queryable,
+  env: SeedTargetEnv,
   steps: DevSeedSteps,
-  env: Pick<SeedTargetEnv, "seedAccountPassword">,
 ): Promise<void> {
-  const target = await steps.assertTarget();
-  const password = seedAccountPassword(target, env, SEED);
-  await steps.loadDemoData(password);
-  await steps.flagRolloutIdentities();
-  if (target.hermetic) {
-    await steps.relaxStaffTwoFactor();
-  } else {
-    steps.log(
-      `[seed] staff two-factor policy left as it is: this is a ${target.environment} database, not a local one`,
-    );
-  }
+  await withSeedTarget(db, SEED, env, async (password, target) => {
+    await steps.loadDemoData(password, target.hermetic);
+    await steps.flagRolloutIdentities();
+    if (target.hermetic) {
+      await steps.relaxStaffTwoFactor();
+    } else {
+      steps.log(
+        `[seed] staff two-factor policy left as it is: this is a ${target.environment} database, not a hermetic local one`,
+      );
+    }
+  });
 }
 
 export async function runDevSeed(): Promise<void> {
@@ -50,17 +51,12 @@ export async function runDevSeed(): Promise<void> {
   const url = assertSeedEnvironment(SEED, env);
   const pool = new pg.Pool(buildPgPoolConfig(url));
   try {
-    const db = drizzle(pool);
-    await runDevSeedSteps(
-      {
-        assertTarget: () => assertSeedTarget(db, SEED, env),
-        loadDemoData: (password) => runLegacyDemoSeed({ password }),
-        flagRolloutIdentities: () => seedE2eRolloutIdentities(),
-        relaxStaffTwoFactor: () => seedDevTwoFactorPolicy(),
-        log: (message) => console.log(message),
-      },
-      env,
-    );
+    await runDevSeedSteps(drizzle(pool), env, {
+      loadDemoData: (password, hermetic) => runLegacyDemoSeed({ password, hermetic }),
+      flagRolloutIdentities: () => seedE2eRolloutIdentities(),
+      relaxStaffTwoFactor: () => seedDevTwoFactorPolicy(),
+      log: (message) => console.log(message),
+    });
   } finally {
     await pool.end();
   }

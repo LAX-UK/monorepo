@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { fakeSeedDatabase } from "../../testing/fake-seed-database.js";
 import {
   LOCAL_SEED_PASSWORD,
   assertSeedEnvironment,
@@ -6,34 +7,16 @@ import {
   isLocalSeedAddress,
   seedAccountPassword,
   seedTargetEnvFromProcess,
+  withSeedTarget,
 } from "./seed-target-guard.js";
 
 const LOCAL_URL = "postgresql://u:p@localhost:5432/auction_ci";
 const REMOTE_URL = "postgresql://u:p@db-test-lon1.example.com:25060/defaultdb";
 
-/** A fake database: current_database() is `name`; `mark` is the demo_seed_target row, if any. */
-function fakeDb(options: {
-  name: string;
-  hasTable?: boolean;
-  mark?: { environment: string; database_name: string } | null;
-}) {
-  let mark = options.mark ?? null;
-  const statements: string[] = [];
-  const db = {
-    execute: vi.fn(async (query: { queryChunks?: unknown[] }) => {
-      const text = JSON.stringify(query.queryChunks ?? query);
-      statements.push(text);
-      if (text.includes("to_regclass")) {
-        return { rows: [{ name: options.name, has_table: options.hasTable ?? true }] };
-      }
-      if (text.includes("insert into demo_seed_target")) {
-        mark ??= { environment: "local", database_name: options.name };
-        return { rows: [] };
-      }
-      return { rows: mark ? [mark] : [] };
-    }),
-  };
-  return { db, statements, inserted: () => statements.some((s) => s.includes("insert into")) };
+function fakeDb(options: Parameters<typeof fakeSeedDatabase>[0]) {
+  const fake = fakeSeedDatabase(options);
+  const db = { execute: vi.fn(fake.db.execute) };
+  return { db, inserted: () => fake.statements.some((s) => s.includes("insert into")) };
 }
 
 describe("assertSeedTarget", () => {
@@ -86,20 +69,52 @@ describe("assertSeedTarget", () => {
     });
   });
 
-  it("marks an unmarked loopback database local, so local seeding stays one command", async () => {
-    const { db, inserted } = fakeDb({ name: "auction_ci" });
+  it("never marks an unmarked loopback database: it could be a tunnel to a remote one", async () => {
+    for (const env of [
+      { databaseUrl: LOCAL_URL },
+      { databaseUrl: LOCAL_URL, appEnv: "development" },
+      { databaseUrl: "postgresql://u:p@127.0.0.1:15432/defaultdb" },
+      { databaseUrl: LOCAL_URL, appEnv: "test" },
+    ]) {
+      const { db, inserted } = fakeDb({ name: "auction_ci" });
+      await expect(assertSeedTarget(db, "dev seed", env)).rejects.toThrow(
+        /not marked as a demo seed target.*db:seed:mark-demo-target local/,
+      );
+      expect(inserted()).toBe(false);
+    }
+  });
+
+  it("takes a loopback database marked local for a hermetic one", async () => {
+    const { db, inserted } = fakeDb({
+      name: "auction_ci",
+      mark: { environment: "local", database_name: "auction_ci" },
+    });
     await expect(
       assertSeedTarget(db, "dev seed", { databaseUrl: LOCAL_URL, appEnv: "development" }),
     ).resolves.toEqual({ environment: "local", hermetic: true });
-    expect(inserted()).toBe(true);
+    expect(inserted()).toBe(false);
   });
 
-  it("does not mark a loopback database when APP_ENV=test", async () => {
-    const { db, inserted } = fakeDb({ name: "auction_ci" });
+  it("does not take a loopback database marked test for a hermetic one", async () => {
+    const { db } = fakeDb({
+      name: "defaultdb",
+      mark: { environment: "test", database_name: "defaultdb" },
+    });
     await expect(
-      assertSeedTarget(db, "dev seed", { databaseUrl: LOCAL_URL, appEnv: "test" }),
-    ).rejects.toThrow(/not marked/);
-    expect(inserted()).toBe(false);
+      assertSeedTarget(db, "dev seed", {
+        databaseUrl: "postgresql://u:p@localhost:15432/defaultdb",
+      }),
+    ).resolves.toEqual({ environment: "test", hermetic: false });
+  });
+
+  it("does not take a single-label host other than the Compose service names for local", async () => {
+    const { db } = fakeDb({
+      name: "defaultdb",
+      mark: { environment: "local", database_name: "defaultdb" },
+    });
+    await expect(
+      assertSeedTarget(db, "dev seed", { databaseUrl: "postgresql://u:p@dbhost/defaultdb" }),
+    ).resolves.toEqual({ environment: "local", hermetic: false });
   });
 
   it("refuses a database whose mark names another database (a restored copy)", async () => {
@@ -110,6 +125,32 @@ describe("assertSeedTarget", () => {
     await expect(
       assertSeedTarget(db, "demo-full", { databaseUrl: REMOTE_URL, appEnv: "test" }),
     ).rejects.toThrow(/restored copy/);
+  });
+});
+
+describe("withSeedTarget", () => {
+  it("writes nothing when the target or the password is refused", async () => {
+    const write = vi.fn(async () => "written");
+    await expect(
+      withSeedTarget(fakeDb({ name: "x" }).db, "s", { databaseUrl: LOCAL_URL }, write),
+    ).rejects.toThrow(/not marked/);
+    const test = fakeDb({ name: "x", mark: { environment: "test", database_name: "x" } }).db;
+    await expect(withSeedTarget(test, "s", { databaseUrl: REMOTE_URL }, write)).rejects.toThrow(
+      /SEED_ACCOUNT_PASSWORD is required/,
+    );
+    expect(write).not.toHaveBeenCalled();
+  });
+
+  it("passes the checked password and target to the write", async () => {
+    const local = fakeDb({ name: "x", mark: { environment: "local", database_name: "x" } }).db;
+    const write = vi.fn(async () => "written");
+    await expect(withSeedTarget(local, "s", { databaseUrl: LOCAL_URL }, write)).resolves.toBe(
+      "written",
+    );
+    expect(write).toHaveBeenCalledWith(LOCAL_SEED_PASSWORD, {
+      environment: "local",
+      hermetic: true,
+    });
   });
 });
 
@@ -149,6 +190,11 @@ describe("addresses", () => {
     expect(isLocalSeedAddress({ databaseUrl: "postgresql://u:p@postgres:5432/auction" })).toBe(
       true,
     );
+    expect(isLocalSeedAddress({ databaseUrl: "postgresql://u:p@db:5432/auction" })).toBe(true);
+    expect(isLocalSeedAddress({ databaseUrl: "postgresql://u:p@pgbouncer:6432/auction" })).toBe(
+      false,
+    );
+    expect(isLocalSeedAddress({ databaseUrl: "postgresql://u:p@dbhost/auction" })).toBe(false);
     expect(isLocalSeedAddress({ databaseUrl: LOCAL_URL, appEnv: "test" })).toBe(false);
     expect(isLocalSeedAddress({ databaseUrl: REMOTE_URL })).toBe(false);
     expect(isLocalSeedAddress({ databaseUrl: "postgres://u:p@10.0.0.5/x" })).toBe(false);

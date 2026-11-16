@@ -1,9 +1,4 @@
-import {
-  type DemoSeedTargetMark,
-  assertDemoSeedDatabase,
-  markLocalDemoSeedTarget,
-  readDemoSeedTarget,
-} from "./demo-seed-target.js";
+import { type DemoSeedTargetMark, assertDemoSeedDatabase } from "./demo-seed-target.js";
 
 /**
  * The one guard every seed that writes accounts, passwords or staff grants goes through, so a
@@ -11,14 +6,21 @@ import {
  * `demo_seed_target` mark, migration 0398):
  *
  * 1. `assertSeedEnvironment`: the environment and address must not look like production.
- * 2. `assertSeedTarget`: the database must carry the mark. A local database (loopback address, not
- *    a test or production environment) is marked "local" on its first seed, so local development
- *    stays one command; every other database is marked once by its owner (docs/runbooks/demo-seed.md).
- * 3. `seedAccountPassword`: only a local, hermetic database gets the well-known local password.
- *    Any other target needs the password from the `SEED_ACCOUNT_PASSWORD` secret.
+ * 2. `assertSeedTarget`: the database must carry the mark. A seed never writes the mark itself, and
+ *    an address is never enough on its own: a loopback address can be a tunnel or port-forward to a
+ *    remote database. Local databases are marked "local" by the local entry points
+ *    (`db:seed:local`, `db:seed:docker`) through `mark-demo-target`; every other database is marked
+ *    once by its owner (docs/runbooks/demo-seed.md). An unmarked database is refused.
+ * 3. `seedAccountPassword`: only a hermetic database (marked "local" and at a local address) gets
+ *    the local password. Any other target needs the password from the `SEED_ACCOUNT_PASSWORD`
+ *    secret. Seed functions never default to the local password: their callers pass the result
+ *    of this function.
  */
 
-/** The password seeded sign-ins share on a local or hermetic CI database. Never used elsewhere. */
+/**
+ * The password seeded sign-ins share on a hermetic database (a local or CI database marked
+ * "local"). Only `seedAccountPassword` hands it out; never pass it to a seed directly.
+ */
 export const LOCAL_SEED_PASSWORD = "Password123!";
 
 /** Environment variable that holds the seeded sign-in password for every non-local target. */
@@ -26,6 +28,8 @@ export const SEED_ACCOUNT_PASSWORD_ENV = "SEED_ACCOUNT_PASSWORD";
 
 const MIN_SEED_ACCOUNT_PASSWORD_LENGTH = 16;
 const LOOPBACK_HOSTS = new Set(["localhost", "127.0.0.1", "::1", "[::1]"]);
+/** The Docker Compose service names a local database runs under (docker-compose.yml). */
+const COMPOSE_DATABASE_HOSTS = new Set(["postgres", "db"]);
 const PRODUCTION_ENVS = new Set(["production", "prod"]);
 const DEPLOYED_APP_ENVS = new Set(["test", "production", "prod"]);
 
@@ -67,20 +71,15 @@ function isDeployedAppEnv(appEnv: string | undefined): boolean {
   return DEPLOYED_APP_ENVS.has((appEnv ?? "").trim().toLowerCase());
 }
 
-/** Loopback address and no deployed environment: a database on this machine. */
-export function isLoopbackSeedTarget(env: Pick<SeedTargetEnv, "databaseUrl" | "appEnv">): boolean {
-  if (!env.databaseUrl || isDeployedAppEnv(env.appEnv)) return false;
-  return LOOPBACK_HOSTS.has(hostOf(env.databaseUrl));
-}
-
 /**
- * Loopback, or a single-label host such as a Docker Compose service name (`postgres`), with no
- * deployed environment. Managed and remote databases always have a dotted name or an IP address.
+ * Loopback, or one of the Docker Compose database service names (`postgres`, `db`), with no
+ * deployed environment. This is only half of "local": a loopback address can be a tunnel to a
+ * remote database, so a database is hermetic only when it also carries the "local" mark.
  */
 export function isLocalSeedAddress(env: Pick<SeedTargetEnv, "databaseUrl" | "appEnv">): boolean {
   if (!env.databaseUrl || isDeployedAppEnv(env.appEnv)) return false;
   const host = hostOf(env.databaseUrl);
-  return LOOPBACK_HOSTS.has(host) || (!host.includes(".") && !host.includes(":"));
+  return LOOPBACK_HOSTS.has(host) || COMPOSE_DATABASE_HOSTS.has(host);
 }
 
 /**
@@ -105,7 +104,8 @@ type Queryable = Parameters<typeof assertDemoSeedDatabase>[0];
 
 /**
  * Refuses, before anything is written, any database that is production-like or has no demo seed
- * mark. A local database with no mark yet is marked "local" first. Returns what the target is.
+ * mark. It never writes the mark, whatever the address: an unmarked database is refused, and the
+ * error says how to mark a local one. Returns what the target is.
  */
 export async function assertSeedTarget(
   db: Queryable,
@@ -113,13 +113,6 @@ export async function assertSeedTarget(
   env: SeedTargetEnv,
 ): Promise<SeedTarget> {
   assertSeedEnvironment(seed, env);
-  if (isLoopbackSeedTarget(env)) {
-    const state = await readDemoSeedTarget(db);
-    if (state.hasTable && !state.mark) {
-      await markLocalDemoSeedTarget(db, seed);
-      console.log(`[${seed}] marked this local database as a demo seed target ("local")`);
-    }
-  }
   const mark = await assertDemoSeedDatabase(db, seed);
   return {
     environment: mark.environment,
@@ -150,4 +143,18 @@ export function seedAccountPassword(
     );
   }
   return supplied;
+}
+
+/**
+ * The shape every seed CLI that writes accounts, passwords or staff grants uses: check the target,
+ * pick the password, then write. Nothing runs when the target or the password is refused.
+ */
+export async function withSeedTarget<T>(
+  db: Queryable,
+  seed: string,
+  env: SeedTargetEnv,
+  write: (password: string, target: SeedTarget) => Promise<T>,
+): Promise<T> {
+  const target = await assertSeedTarget(db, seed, env);
+  return write(seedAccountPassword(target, env, seed), target);
 }

@@ -26,7 +26,9 @@ async function main() {
       return;
     }
     console.log("[seed] Database has no users; running demo seed.");
-    const seed = spawnSync("pnpm", ["db:seed"], {
+    // The dev seed itself, never `pnpm db:seed`: that is the local entry point, which marks the
+    // database "local" first.
+    const seed = spawnSync("pnpm", ["--filter", "@auction/db", "db:seed:dev"], {
       stdio: "inherit",
       env: process.env,
     });

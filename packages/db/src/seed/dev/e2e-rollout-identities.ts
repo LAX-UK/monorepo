@@ -3,13 +3,9 @@ import { drizzle } from "drizzle-orm/node-postgres";
 import pg from "pg";
 import * as schema from "../../schema/index.js";
 import { buildPgPoolConfig } from "../../ssl.js";
-import { LOCAL_SEED_PASSWORD } from "../shared/seed-target-guard.js";
 import { DEMO_SEED_NOW } from "./demo-seed-clock.js";
 
 const { Pool } = pg;
-
-/** The rollout identities sign in with the local seed password; hermetic CI only. */
-export const E2E_ROLLOUT_PASSWORD = LOCAL_SEED_PASSWORD;
 
 /** Legacy demo users — mutated in place so admin client visuals keep a stable directory. */
 export const E2E_ROLLOUT_IDS = {

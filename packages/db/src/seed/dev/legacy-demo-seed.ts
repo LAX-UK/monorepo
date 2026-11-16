@@ -497,7 +497,12 @@ async function clearAll(db: ReturnType<typeof drizzle<typeof schema>>) {
 }
 
 /** Run through `runDevSeed`, which checks the target and picks the password first. */
-export async function runLegacyDemoSeed(options: { password: string }) {
+export async function runLegacyDemoSeed(options: {
+  /** From `seedAccountPassword`. */
+  password: string;
+  /** From `assertSeedTarget`: only a hermetic database is cleared without the empty-database check. */
+  hermetic: boolean;
+}) {
   const url = process.env.DATABASE_URL;
   if (!url) {
     throw new Error("DATABASE_URL is required");
@@ -508,11 +513,7 @@ export async function runLegacyDemoSeed(options: { password: string }) {
     options: "-c lock_timeout=5s -c statement_timeout=120s",
   });
   const db = drizzle(pool, { schema });
-  const appEnv = process.env.APP_ENV;
-  await assertDevSeedMayRunDestructiveClear(db, {
-    databaseUrl: url,
-    ...(appEnv ? { appEnv } : {}),
-  });
+  await assertDevSeedMayRunDestructiveClear(db, { hermetic: options.hermetic });
   const now = DEMO_SEED_NOW.getTime();
   const day = 86_400_000;
   const hour = 3_600_000;

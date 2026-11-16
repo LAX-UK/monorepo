@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { isStripeTestModeKey, stripeTestModeKeyIssues } from "./stripe-key-environment.js";
+import {
+  allowsLiveStripeKeys,
+  isStripeTestModeKey,
+  stripeTestModeKeyIssues,
+} from "./stripe-key-environment.js";
 
 // Built from parts so no complete key-shaped string sits in the source.
 const live = (prefix: string) => `${prefix}_live_${"x".repeat(16)}`;
@@ -18,7 +22,7 @@ describe("stripeTestModeKeyIssues", () => {
       "STRIPE_BOOKS_READ_KEYS",
     ]);
     expect(issues[0]?.message).toBe(
-      "STRIPE_SECRET_KEY in test must use a test key (sk_test_… or rk_test_…)",
+      "STRIPE_SECRET_KEY must use a test key (sk_test_… or rk_test_…) unless APP_ENV=production",
     );
   });
 
@@ -49,14 +53,23 @@ describe("stripeTestModeKeyIssues", () => {
     ).toEqual([]);
   });
 
-  it("leaves other environments to their own checks", () => {
-    for (const appEnv of ["production", "development", undefined]) {
+  it("refuses a live key whenever APP_ENV is not exactly production (fails closed)", () => {
+    for (const appEnv of [undefined, "", "development", "Test", "staging", "prod", " production"]) {
       expect(
         stripeTestModeKeyIssues(appEnv, [
           { name: "STRIPE_SECRET_KEY", kind: "secret", value: live("sk") },
         ]),
-      ).toEqual([]);
+      ).toHaveLength(1);
     }
+  });
+
+  it("allows live keys only with APP_ENV=production", () => {
+    expect(allowsLiveStripeKeys("production")).toBe(true);
+    expect(
+      stripeTestModeKeyIssues("production", [
+        { name: "STRIPE_SECRET_KEY", kind: "secret", value: live("sk") },
+      ]),
+    ).toEqual([]);
   });
 });
 

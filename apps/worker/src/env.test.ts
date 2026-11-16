@@ -171,7 +171,21 @@ describe("worker on a test stack", () => {
   it("refuses a live Stripe secret key when APP_ENV=test", () => {
     expect(
       issuesFor("STRIPE_SECRET_KEY", { APP_ENV: "test", STRIPE_SECRET_KEY: liveKey("sk") }),
-    ).toEqual(["STRIPE_SECRET_KEY in test must use a test key (sk_test_… or rk_test_…)"]);
+    ).toEqual([
+      "STRIPE_SECRET_KEY must use a test key (sk_test_… or rk_test_…) unless APP_ENV=production",
+    ]);
+  });
+
+  it("refuses live Stripe keys when APP_ENV is unset (it defaults to development)", () => {
+    expect(issuesFor("STRIPE_SECRET_KEY", { STRIPE_SECRET_KEY: liveKey("sk") })).toHaveLength(1);
+    expect(
+      issuesFor("STRIPE_BOOKS_READ_KEYS", { STRIPE_BOOKS_READ_KEYS: liveKey("rk") }),
+    ).toHaveLength(1);
+  });
+
+  it("refuses an APP_ENV that is set but not production, test or development", () => {
+    expect(issuesFor("APP_ENV", { APP_ENV: "Test" })).toHaveLength(1);
+    expect(issuesFor("APP_ENV", { APP_ENV: "staging" })).toHaveLength(1);
   });
 
   it("refuses live Stripe read keys when APP_ENV=test", () => {
@@ -206,6 +220,22 @@ describe("worker on a test stack", () => {
     ).toEqual([]);
     expect(
       issuesFor("ZOHO_CRM_EXPECTED_ORG_TYPE", { APP_ENV: "test", ZOHO_CRM_SYNC_MODE: "dry_run" }),
+    ).toEqual([]);
+  });
+
+  it("requires a Zoho CRM sandbox org when APP_ENV is unset and a Zoho mode is live", () => {
+    expect(
+      issuesFor("ZOHO_CRM_EXPECTED_ORG_TYPE", { ZOHO_ARTWORK_SYNC_MODE: "live" }),
+    ).toHaveLength(1);
+    expect(issuesFor("ZOHO_CRM_EXPECTED_ORG_TYPE", { ZOHO_CRM_SYNC_MODE: "canary" })).toHaveLength(
+      1,
+    );
+    expect(
+      issuesFor("ZOHO_CRM_EXPECTED_ORG_TYPE", {
+        APP_ENV: "production",
+        ZOHO_CRM_SYNC_MODE: "live",
+        ZOHO_CRM_EXPECTED_ORG_TYPE: "production",
+      }),
     ).toEqual([]);
   });
 });

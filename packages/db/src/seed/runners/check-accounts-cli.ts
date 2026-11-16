@@ -11,13 +11,24 @@ import * as schema from "../../schema/index.js";
 import { buildPgConnectionConfig } from "../../ssl.js";
 import { runCheckAccountsSeed } from "../check/check-accounts-seed.js";
 import {
+  type SeedTargetEnv,
   assertSeedEnvironment,
-  assertSeedTarget,
-  seedAccountPassword,
   seedTargetEnvFromProcess,
+  withSeedTarget,
 } from "../shared/seed-target-guard.js";
 
 const SEED = "check-accounts";
+
+type Tx = Parameters<typeof runCheckAccountsSeed>[0];
+
+/** Checks the target and the password, then adds the check accounts. Nothing is written on a refusal. */
+export function seedCheckAccounts(
+  tx: Tx,
+  env: SeedTargetEnv,
+  seed: typeof runCheckAccountsSeed = runCheckAccountsSeed,
+): ReturnType<typeof runCheckAccountsSeed> {
+  return withSeedTarget(tx, SEED, env, (password) => seed(tx, password));
+}
 
 async function main() {
   const env = seedTargetEnvFromProcess();
@@ -28,10 +39,7 @@ async function main() {
   });
   try {
     const db = drizzle(pool, { schema });
-    const result = await db.transaction(async (tx) => {
-      const target = await assertSeedTarget(tx, SEED, env);
-      return runCheckAccountsSeed(tx, seedAccountPassword(target, env, SEED));
-    });
+    const result = await db.transaction((tx) => seedCheckAccounts(tx, env));
     console.log(`[check-accounts] created: ${result.created.join(", ") || "none"}`);
     console.log(`[check-accounts] already there: ${result.existing.join(", ") || "none"}`);
   } finally {
@@ -39,7 +47,12 @@ async function main() {
   }
 }
 
-main().catch((error) => {
-  console.error(error);
-  process.exit(1);
-});
+if (
+  process.argv[1]?.endsWith("check-accounts-cli.ts") ||
+  process.argv[1]?.endsWith("check-accounts-cli.js")
+) {
+  main().catch((error) => {
+    console.error(error);
+    process.exit(1);
+  });
+}

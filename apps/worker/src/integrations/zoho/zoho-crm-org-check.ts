@@ -4,7 +4,7 @@ import { ZohoCrmAuthError } from "./types.js";
 import { actsOnZohoCrm } from "./zoho-live-modes.js";
 
 /**
- * Org check runs whenever something writes to Zoho (not for off or dry_run), and on test whenever
+ * Org check runs whenever something writes to Zoho (not for off or dry_run), and outside production whenever
  * live Zoho data is read in.
  */
 export function shouldRunZohoCrmOrgCheck(env: WorkerEnv): boolean {

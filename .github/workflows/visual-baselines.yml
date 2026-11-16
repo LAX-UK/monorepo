@@ -73,7 +73,7 @@ jobs:
         run: |
           pnpm --filter @auction/db... build
           pnpm --filter @auction/db db:migrate
-          pnpm --filter @auction/db db:seed:dev
+          pnpm --filter @auction/db db:seed:local
           DATABASE_URL_OWNER="$DATABASE_URL" pnpm --filter @auction/db db:roles
           DATABASE_URL_AUTH="$DATABASE_URL" \
             OIDC_CLIENT_IDS=lax-bid-web \
@@ -200,7 +200,7 @@ jobs:
         run: |
           pnpm --filter @auction/db... build
           pnpm --filter @auction/db db:migrate
-          pnpm --filter @auction/db db:seed:dev
+          pnpm --filter @auction/db db:seed:local
           DATABASE_URL_OWNER="$DATABASE_URL" pnpm --filter @auction/db db:roles
           DATABASE_URL_AUTH="$DATABASE_URL" \
             OIDC_CLIENT_IDS=lax-shop-admin \

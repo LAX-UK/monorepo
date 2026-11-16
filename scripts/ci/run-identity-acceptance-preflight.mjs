@@ -117,8 +117,8 @@ async function main() {
   try {
     run("Build db closure", "pnpm", ["--filter", "@auction/db...", "build"]);
     run("Apply migrations through 0161", "pnpm", ["--filter", "@auction/db", "db:migrate"]);
-    // A throwaway local database: seeded as local, so it is marked "local" and gets the local fixtures.
-    run("Seed dev fixtures", "pnpm", ["--filter", "@auction/db", "db:seed:dev"], {
+    // A throwaway local database: db:seed:local marks it "local" first, so it gets the local fixtures.
+    run("Seed dev fixtures", "pnpm", ["--filter", "@auction/db", "db:seed:local"], {
       NODE_ENV: "test",
       APP_ENV: "development",
     });

@@ -24,14 +24,29 @@ export function writesToZohoCrm(env: ZohoModes): boolean {
 }
 
 /**
- * Whether the worker acts on what a Zoho CRM org holds. Writes always count. On a test stack the
- * live artwork sync and quality-check reads count too: they bring Zoho data into test, so they
- * must come from a sandbox org, the same way Zoho Books writes are tied to the org's environment.
+ * Whether the worker acts on what a Zoho CRM org holds. Writes always count. Outside production
+ * the live artwork sync and quality-check reads count too: they bring Zoho data into a test or
+ * local stack, so they must come from a sandbox org, the same way Zoho Books writes are tied to
+ * the org's environment.
  */
 export function actsOnZohoCrm(env: ZohoModes): boolean {
   if (writesToZohoCrm(env)) return true;
   return (
-    env.APP_ENV === "test" &&
+    !isProductionZohoStack(env) &&
     (env.ZOHO_ARTWORK_SYNC_MODE === "live" || env.ZOHO_QC_READY_MODE === "live")
   );
+}
+
+/**
+ * Only APP_ENV=production may act on a production Zoho CRM org. APP_ENV defaults to development
+ * when it is unset, so a deployed test host with APP_ENV unset or mis-set is treated as "not
+ * production" and needs the sandbox org: the rule fails closed.
+ */
+export function isProductionZohoStack(env: Pick<ZohoModes, "APP_ENV">): boolean {
+  return env.APP_ENV === "production";
+}
+
+/** Outside production, anything that acts on Zoho CRM must be pinned to a sandbox org. */
+export function zohoCrmNeedsSandboxOrg(env: ZohoModes): boolean {
+  return !isProductionZohoStack(env) && actsOnZohoCrm(env);
 }

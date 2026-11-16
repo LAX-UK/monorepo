@@ -9,7 +9,7 @@ import { parseAuthDekKey } from "@auction/identity-contracts";
 import { stripeTestModeKeyIssues } from "@auction/stripe-connect";
 import { parseOptionalBooleanFlag } from "@auction/validators";
 import { z } from "zod";
-import { actsOnZohoCrm } from "./integrations/zoho/zoho-live-modes.js";
+import { zohoCrmNeedsSandboxOrg } from "./integrations/zoho/zoho-live-modes.js";
 
 function parseFromByProduct(val: unknown): unknown {
   if (val === "" || val === null || val === undefined) return undefined;
@@ -551,12 +551,13 @@ export const envSchema = z
     ])) {
       ctx.addIssue({ code: z.ZodIssueCode.custom, message: issue.message, path: [issue.name] });
     }
-    // A test stack only acts on a Zoho CRM sandbox org; the org check then confirms it at start.
-    if (e.APP_ENV === "test" && actsOnZohoCrm(e) && e.ZOHO_CRM_EXPECTED_ORG_TYPE !== "sandbox") {
+    // Outside production (APP_ENV unset counts) the worker only acts on a Zoho CRM sandbox org;
+    // the org check then confirms it at start.
+    if (zohoCrmNeedsSandboxOrg(e) && e.ZOHO_CRM_EXPECTED_ORG_TYPE !== "sandbox") {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message:
-          "ZOHO_CRM_EXPECTED_ORG_TYPE must be sandbox in test when a Zoho mode is live or canary",
+          "ZOHO_CRM_EXPECTED_ORG_TYPE must be sandbox unless APP_ENV=production when a Zoho mode is live or canary",
         path: ["ZOHO_CRM_EXPECTED_ORG_TYPE"],
       });
     }
