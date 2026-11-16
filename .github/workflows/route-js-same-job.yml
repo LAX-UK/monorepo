@@ -1,0 +1,84 @@
+name: Route JS, main and head in one job (temporary)
+
+# Temporary evidence for PR #1485 (motion 5/8: loading); removed by the next commit on the branch.
+# Builds main and this PR's merge commit one after the other in the same job, at the same path,
+# with the per-build values pinned (Sentry release, server-action key), then prints both route JS
+# tables and every route whose size, frame, page or duplicates went up.
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/route-js-same-job.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  compare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      NODE_OPTIONS: --max-old-space-size=6144
+      NEXT_PUBLIC_SENTRY_DSN_WEB: https://budget@sentry.invalid/1
+      NEXT_PUBLIC_SENTRY_DSN_SHOP: https://budget@sentry.invalid/2
+      NEXT_PUBLIC_SENTRY_DSN_ART: https://budget@sentry.invalid/3
+      NEXT_PUBLIC_SENTRY_DSN_ACCOUNT: https://budget@sentry.invalid/4
+      SENTRY_RELEASE: route-js-same-job
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - name: One server-action key for both builds
+        run: echo "NEXT_SERVER_ACTIONS_ENCRYPTION_KEY=$(openssl rand -base64 32)" >> "$GITHUB_ENV"
+      - name: Remember the head
+        run: echo "HEAD_SHA=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
+      - name: Build main
+        run: |
+          git fetch origin main
+          git checkout --detach origin/main
+          git log -1 --format='main %H %s'
+          pnpm install --frozen-lockfile
+          pnpm turbo run build --force --env-mode=loose --filter=@auction/web --filter=@auction/shop --filter=@auction/art --filter=@auction/account
+          node scripts/check-route-js-budget.mjs --all > /tmp/route-js-main.txt
+      - name: Build head
+        run: |
+          rm -rf apps/*/.next
+          git checkout --detach "$HEAD_SHA"
+          git log -1 --format='head %H %s'
+          pnpm install --frozen-lockfile
+          pnpm turbo run build --force --env-mode=loose --filter=@auction/web --filter=@auction/shop --filter=@auction/art --filter=@auction/account
+          node scripts/check-route-js-budget.mjs --all > /tmp/route-js-head.txt
+      - name: Main table
+        run: cat /tmp/route-js-main.txt
+      - name: Head table
+        run: cat /tmp/route-js-head.txt
+      - name: Routes that went up
+        run: |
+          python3 - <<'EOF'
+          def rows(path):
+              out, on = {}, False
+              for line in open(path):
+                  if line.startswith("All routes"):
+                      on = True
+                      continue
+                  if on and line.startswith("apps/"):
+                      p = line.split()
+                      out[(p[0], p[-1])] = (float(p[2]), float(p[4]), float(p[6]), int(p[8]), p[9].strip("()"))
+              return out
+          main, head = rows("/tmp/route-js-main.txt"), rows("/tmp/route-js-head.txt")
+          up = []
+          for key, h in head.items():
+              m = main.get(key)
+              if m is None:
+                  up.append((key, "new route", h))
+              elif h[0] > m[0] or h[1] > m[1] or h[2] > m[2] or h[3] > m[3] or float(h[4][:-2] if h[4].endswith("KB") else h[4]) > float(m[4][:-2] if m[4].endswith("KB") else m[4]):
+                  up.append((key, m, h))
+          print(f"{len(head)} routes on head, {len(main)} on main; {len(up)} higher on size, frame, page or duplicates")
+          for item in up:
+              print(item)
+          EOF
