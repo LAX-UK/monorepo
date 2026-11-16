@@ -21,23 +21,31 @@ check the mark before they write anything.
 ## Mark the test database (once)
 
 After migration 0398 is applied on test, an operator connects with the **owner** address of the test
-database (never production) and runs:
+database (never production) and runs the same script CI uses:
+
+```sh
+DATABASE_URL=<test owner address> pnpm --filter @auction/db db:seed:mark-demo-target test <operator name>
+```
+
+The script applies the production address checks and leaves an existing mark alone. Check it with
+`select * from demo_seed_target;`. For a local database use `local` instead of `test`.
+
+Last resort only, if the script cannot be run: connect as the owner and insert the row by hand. This
+skips the address checks, so confirm the address is the test database first.
 
 ```sql
 insert into demo_seed_target (environment, database_name, marked_by)
-values ('test', current_database(), '<your name>');
+values ('test', current_database(), '<operator name>');
 ```
-
-Check it with `select * from demo_seed_target;`. For a local database use `'local'`.
 
 ### How each environment gets its mark
 
 - **CI** (`account-e2e-pr.yml`, a throwaway database): the workflow runs
-  `pnpm --filter @auction/db db:seed:mark-demo-target local ci` after `db:migrate` and before
+  `pnpm --filter @auction/db db:seed:mark-demo-target test ci` after `db:migrate` and before
   `db:seed:demo-full`. The script uses the owner address, applies the same production address checks
   as the seeds, and leaves an existing mark alone. Any new workflow that runs a demo seed on a fresh
   database must run it too; the guard itself is never relaxed.
-- **Local**: run the same command (or the SQL above with `'local'`).
+- **Local**: run the same command with `local`.
 - **Test** (the shared test database, seeded by **Worker task (test)**): the mark is not added by
   the workflow. The infrastructure owner applies migration 0398 with the test infra apply and then
   marks the database once as above (`'test'`, owner address). Until then the `demo-full` task is
@@ -58,8 +66,8 @@ If 0398 is rolled back the mark goes with it; insert it again after the migratio
 | Submissions, awaiting review; Work inbox | A complete consignment nobody has looked at |
 | Private sales, Active | A deal at the offer stage, converted from an enquiry |
 | LAX Admin: Fulfilment, "To fulfil" | The paid demo print orders |
-| LAX Admin: "Failed refunds", `/orders?refund=failed` | A goodwill part refund that cannot be sent (the demo orders have no Stripe payment) |
-| LAX Admin: Disputes | An open dispute on a demo print order |
+| LAX Admin: "Failed refunds", `/orders?refund=failed` | A goodwill part refund that cannot be sent (the demo orders have no Stripe payment, so a retry fails again without calling Stripe) |
+| LAX Admin: Disputes | An open dispute on a demo print order, a different order from the refund; it has no Stripe payment, so there is no "Open in Stripe" link |
 
 Events the seeds write carry the producer `demo-seed`; the notification fan-out and the collection
 notices skip them, so no one is emailed about demo data.
