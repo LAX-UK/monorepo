@@ -137,3 +137,61 @@ Rechecked on 2026-11-16 at head `a32f9e03` (6 commits on merge-base `8ed75236`; 
 2. Remove the "read uniform 1 to few byte moves as variation" and "re-run until it passes" guidance for motion and perf PRs. Restore "any number is a real change", or replace it with a fail-closed rule.
 3. Correct the CI time numbers in the docs and state the steady-state cost.
 4. Add an honest "Changes after review" section to the PR body. It should list what changed since `15ecc9f7`, the remaining variation, the failed self-check run, and correct the proof table claims.
+
+## Final recheck (round 3)
+
+Rechecked on 2026-11-16 at head `46c23a6b`. Two code commits since the last recheck: `2acab89e` (webpack tie order, a fail-closed self-check, and docs) and `46c23a6b` (Sentry debug ids derived from the chunk's code), plus the merge `7507c0dc`. This was a review only: nothing was pushed to the PR branch and no comments were posted.
+
+**Verdict: FIX FIRST, for the PR body only.** The code and docs are now ready to ship. Size builds are deterministic in CI and locally, CI on the head is green, the docs fail closed, and no rule was loosened. But the PR description still describes the state before round 3. It says the variation is "Not solved yet". It tells readers that "a block where every route moves by the same 1 or 2 bytes is that variation, not a change". It says CI is red and recommends finding the cause before merge. Its "Changes after review" section does not mention `2acab89e` or `46c23a6b`. A reviewer reading the body would get the opposite of the truth, and the body still carries the noise allowance the docs removed. Updating the body is the only fix needed. No code change and no new CI run.
+
+### Evidence
+
+- **Two builds of the same commit at the same path are byte-identical (local).**
+  - I ran the PR's own `route-js-size-build-base.sh --force` twice in this one checkout, at `46c23a6b`, for all five apps.
+  - Settings were the CI `build` job env: `ROUTE_JS_SIZE_BUILD=1`, the all-zero `NEXT_SERVER_ACTIONS_ENCRYPTION_KEY`, the `.invalid` DSNs and `NODE_OPTIONS`.
+  - Each build had a clean install and `Cached: 0 cached, 42 total`. The two builds had different `GITHUB_SHA` values, and turbo ran with `--concurrency=2`. The default concurrency ran out of memory on 4 vCPU/15 GB, as the docs warn.
+  - Build times: 16m30s and 16m14s.
+  - `route-js-size-compare.mjs --require-unchanged`, exit 0: **web 0/114, shop 0/39, art 0/43, account 0/20, shop-admin 0/51, client scripts byte-identical in every app**.
+  - `main` itself has no pins or plugin yet, so "build main twice" can only be shown at this head. Building `main` twice would only reproduce the known unpinned variation.
+- **Base and head are built at the same path.** `scripts/route-js-size-build-base.sh` checks the base out in `$GITHUB_WORKSPACE` and builds it there. The measuring scripts run from `$RUNNER_TEMP/route-js-tools`. In CI, the base, self-check and head all build under `/home/runner/work/monorepo/monorepo`. No worktree is left.
+- **CI on the head.** Run 43944637053 concluded **success**, and every job passed.
+  - The `build` job took 48m48s: Build 16m43s, base build 15m44s (the pre-pin base, uncached), self-check 15m46s (`0 cached, 42 total`).
+  - Base vs head: web 0/114, shop 0/39, art 0/43, account 0/20, shop-admin 0/51, all byte-identical, with no growth notices.
+  - Self-check: the same five blocks read 0 changed and byte-identical. "Self-check passed".
+  - The previous run 43929156339 (`2acab89e`) also passed, with exactly the same result.
+  - That makes two consecutive green runs with a clean self-check and a clean no-op table in every app, which was item 1 of "To ship" above. The earlier failures (Account −2 B, Bid −1 B, Shop −2 B) did not recur.
+- **The cause is found and fixed, not hidden.**
+  - `DeterministicSizeBuildPlugin` (`packages/observability/src/next-size-build.ts`, unit-tested) sorts `compilation.entries` and `compilation.modules` by name before webpack settles ties. It also replaces each Sentry debug id, at `PROCESS_ASSETS_STAGE_ADDITIONS + 1` and before minification, with a UUID of the same length and format derived from the chunk's code.
+  - It is added only to client production builds when `ROUTE_JS_SIZE_BUILD === "1"` (`addSizeBuildDeterminism`).
+  - The docs record its effect against Sentry's own ids: −10 to +37 B per route (mean +7). It applies to base and head alike. The budget step reads these builds, so the change is mostly stricter, only negligibly looser, and far inside the existing 1 KB `toleranceKb`, which is unchanged.
+- **The docs no longer advise re-running or reading moves as variation.**
+  - `docs/engineering/route-js-budgets.md` now says "**any number in the table is a real change made by the PR**, even one byte, and even when every route of an app moves by the same amount… There is no tolerance and no noise to allow for."
+  - It also says "Re-running until it passes is not a fix", and "Growth is never waved through as variation".
+  - The self-check now also fails when client scripts differ (`selfCheckFailures` counts `!identical` apps), and its message says the table is not trusted.
+  - The only remaining "re-run" advice is to re-run after adding a label, or once a missing base builds. Both are correct.
+  - Nit: "What CI does" step 3 still says the pre-pin base gets the head's `next.config.ts`, "whose only size-build change is the pin". The script now also copies the plugin module. Not blocking.
+- **CI time figures.**
+  - The docs' "CI cost" table matches the three runs it cites. Build: 16m39s, 13m14s, 15m22s. Base: 16m08s, 13m20s, 14m40s. Self-check: 16m29s, 13m28s, 14m44s. Job: 49m54s, 40m39s, 45m26s.
+  - It states the steady-state cost (a few minutes on a remote-cache hit, up to about 16 minutes on a miss, about 30 more minutes for a self-check PR) and that the hit rate still needs measuring.
+  - The latest run is slightly above the stated range (Build 16m43s, job 48m48s).
+  - The **PR body** is wrong. It says "a base or self-check build costs about 10 to 16 minutes". The measured range is 13m14s to 16m43s.
+- **No rule loosened, no allowance used.**
+  - `git diff` from the merge-base to `46c23a6b` does not touch `scripts/route-js-budgets.json`, `scripts/route-js-baseline.json` (`toleranceKb` is still 1), `check-route-js-budget.mjs`, `route-js-ratchet-rule.mjs` or `route-js-budget-rule.mjs`.
+  - The changed files are only the CI workflow, the five `next.config.ts` files, `turbo.json` (two env names), `package.json` (two test files added to `lint:route-js-budget`), `packages/observability` (the new plugin and its export), the `route-js-size-*` scripts and tests, and the docs.
+  - MO14 in `docs/design/motion.md` still says to never raise budgets or baselines and that motion PRs must not use the 1 KB allowance.
+- **The pinned key is not a secret leak.**
+  - `NEXT_SERVER_ACTIONS_ENCRYPTION_KEY: AAAA…A=` (32 zero bytes) appears only in the `build` job env of `.github/workflows/ci.yml:1009`. Besides that, it is only listed by name in `turbo.json`'s build env.
+  - A grep of the deploy workflows, `build-images*` and every `Dockerfile*` at `46c23a6b` finds neither `NEXT_SERVER_ACTIONS_ENCRYPTION_KEY` nor `ROUTE_JS_SIZE_BUILD`. Deploy images build inside Docker without them, so Next generates its own key there.
+  - Listing the variable in turbo's env only adds its hash to the task hash. It also keeps size builds from ever sharing cache entries with deploy builds.
+  - The docs now explain why the value is safe to make public, and that any workflow deploying a size build would need its own key.
+
+### Still to fix: the PR body (no code change)
+
+1. Rewrite the "Not solved yet — CI builds still vary" paragraph and the "Result against the goal" list. The variation is now fixed by `DeterministicSizeBuildPlugin`: the tie order in `2acab89e` and the debug ids in `46c23a6b`. Above all, delete "a block where every route moves by the same 1 or 2 bytes is that variation, not a change". The docs now say the opposite, correctly.
+2. Add the webpack tie order and the Sentry debug ids as rows to the "Sources of non-determinism" table, with the plugin as the pin.
+3. Update "CI results on this PR" with run 43929156339 (`2acab89e`) and run 43944637053 (`46c23a6b`): all five apps 0 of N and byte-identical in both the table and the self-check, with both runs green. Remove "The latest commit, `9f49058e`… still in progress".
+4. Update "Changes after review" and the "Quality review" checklist. Add the round-3 changes: the plugin, the fail-closed self-check that also requires byte-identical scripts, the removed variation and re-run advice, the key-safety note, and the measured CI cost table. Tick "CI is green".
+5. Replace "about 10 to 16 minutes" with the measured 13m14s to 16m43s per uncached build, about 41 to 50 minutes for the whole `build` job on a self-check PR. Point to the docs' steady-state section.
+6. Mention the −10 to +37 B (mean +7) one-time shift from the code-derived debug ids against Sentry's own ids, as the docs do.
+
+Once the body says this, the PR is ready to ship.
