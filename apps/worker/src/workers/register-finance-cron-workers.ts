@@ -3,7 +3,6 @@ import {
   ENSURE_LOT_INVOICES_QUEUE_NAME,
   EXPIRE_STALE_PAYMENTS_QUEUE_NAME,
   LOT_LIFECYCLE_TICK_QUEUE_NAME,
-  PROCESS_NOTIFICATION_OUTBOX_QUEUE_NAME,
   REFRESH_XERO_TOKENS_QUEUE_NAME,
   RETRY_REFUND_RECONCILES_QUEUE_NAME,
   RETRY_XERO_INVOICE_CREATION_QUEUE_NAME,
@@ -16,7 +15,6 @@ import { createLotLifecycleTickJob } from "../jobs/lot-lifecycle-tick.js";
 import {
   runEnsureLotInvoicesJob,
   runExpireStalePaymentsJob,
-  runProcessNotificationOutboxJob,
   runRefreshXeroTokensJob,
   runRetryRefundReconcilesJob,
   runRetryXeroInvoiceCreationJob,
@@ -25,6 +23,7 @@ import {
 } from "../jobs/payment-ops-cron.js";
 import { withSentryCronMonitor } from "../lib/sentry-cron.js";
 import type { WorkerLifecycleExecutor } from "../lifecycle/worker-lifecycle-executor.js";
+import { registerNotificationOutboxWorkers } from "./register-notification-outbox-workers.js";
 import type { WorkerBootstrapDeps, WorkerErrorHandlerEntry } from "./types.js";
 
 export type FinanceCronWorkersPartial = {
@@ -175,13 +174,11 @@ export function registerFinanceAndLifecycleCronWorkers(
     sentrySlug: REFRESH_XERO_TOKENS_QUEUE_NAME,
     run: () => runRefreshXeroTokensJob(paymentOpsJobOpts),
   });
-  registerPaymentOpsCron({
-    queueName: PROCESS_NOTIFICATION_OUTBOX_QUEUE_NAME,
-    jobName: PROCESS_NOTIFICATION_OUTBOX_QUEUE_NAME,
-    jobId: "process-notification-outbox-1m",
-    everyMs: 60 * 1000,
-    sentrySlug: PROCESS_NOTIFICATION_OUTBOX_QUEUE_NAME,
-    run: () => runProcessNotificationOutboxJob(paymentOpsJobOpts),
+  registerNotificationOutboxWorkers({
+    deps,
+    jobOpts: paymentOpsJobOpts,
+    errorHandlers,
+    closables,
   });
   registerPaymentOpsCron({
     queueName: ENSURE_LOT_INVOICES_QUEUE_NAME,

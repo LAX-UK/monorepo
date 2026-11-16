@@ -296,6 +296,16 @@ export const envSchema = z
     LIFECYCLE_EXECUTION_OWNER: z.enum(["api", "worker"]).default("api"),
     ABSENTEE_REPLAY_OWNER: z.enum(["api_rollback", "worker"]).default("api_rollback"),
     FINANCE_CRON_EXECUTION_OWNER: z.enum(["api_rollback", "worker"]).default("api_rollback"),
+    /**
+     * Drain the notification outbox as soon as a time-critical notice (outbid, won, lost, ending
+     * soon) commits, instead of only on the minute sweep. Set `false` to fall back to the sweep.
+     */
+    NOTIFICATION_OUTBOX_WAKE_ENABLED: z
+      .preprocess(
+        (v) => (v === undefined || v === "" ? true : v === "true" || v === true),
+        z.boolean(),
+      )
+      .default(true),
     FINANCE_CRON_API_ROLLBACK: z
       .preprocess((val) => val === "true" || val === true, z.boolean())
       .default(true),
