@@ -1,60 +1,74 @@
-import { and, eq, inArray } from "drizzle-orm";
+import { subjectExportDueAt } from "@auction/identity-contracts";
 import * as schema from "../../../schema/index.js";
 import type { QueueContext, QueueSeeder } from "./queue-context.js";
 import { QUEUE_IDS } from "./queue-ids.js";
 
-const DAY = 86_400_000;
-const OPEN_EXPORT_STATUSES = ["requested", "collecting", "delayed", "ready"];
+const HOUR = 3_600_000;
+const DAY = 24 * HOUR;
 
-/** The erasure request held for staff to decide. */
-export const DEMO_ERASURE_REFERENCE = "DR-DEMO-0001";
+/** The deadline alerts the export has already raised, by tier, as the maintenance job records them. */
+const ALERTS = [
+  { tier: 1, audience: "operations", afterMs: DAY },
+  { tier: 2, audience: "data_protection_contact", afterMs: 7 * DAY },
+  { tier: 3, audience: "on_call", afterMs: 21 * DAY },
+] as const;
 
-/** Compliance: a data export that is running late, and an erasure request waiting on staff. */
+/**
+ * Data requests (`/admin/compliance/data-requests`, Open): a "Download my data" request that is
+ * running late because the Bid part keeps failing, with its history (requested, delayed, and the
+ * three deadline alerts it raised on the way). Written once and never changed.
+ *
+ * It already carries the last alert tier, so the deadline job raises nothing for it on test; and it
+ * is not put on the export queue, so no worker picks it up and finishes it.
+ */
 export const dataRequestSeeder: QueueSeeder = {
   queue: "Data requests",
   async seed({ db, now, people }: QueueContext) {
     const subjectId = people.heldBuyer;
     const requestedAt = new Date(now - 24 * DAY);
-    const dueAt = new Date(now + 6 * DAY);
-    const [open] = await db
-      .select({ id: schema.subjectDataExport.id })
-      .from(schema.subjectDataExport)
-      .where(
-        and(
-          eq(schema.subjectDataExport.subjectId, subjectId),
-          inArray(schema.subjectDataExport.status, OPEN_EXPORT_STATUSES),
-        ),
-      )
-      .limit(1);
-    // A person has one open export at a time: another one (not this seed's) stands in for it.
-    if (!open || open.id === QUEUE_IDS.dataExport(1)) {
-      await db
-        .insert(schema.subjectDataExport)
-        .values({
-          id: QUEUE_IDS.dataExport(1),
-          subjectId,
-          status: "delayed",
-          productProgress: { account: "done", bid: "retrying", shop: "done" },
-          requestedAt,
-          dueAt,
-          lastErrorCode: "demo_slow_collection",
-        })
-        .onConflictDoUpdate({
-          target: schema.subjectDataExport.id,
-          set: { requestedAt, dueAt, updatedAt: new Date(now) },
-        });
-    }
-
-    await db
-      .insert(schema.dataRequestErasureHold)
+    const dueAt = subjectExportDueAt(requestedAt);
+    const exportId = QUEUE_IDS.dataExport(1);
+    const [created] = await db
+      .insert(schema.subjectDataExport)
       .values({
-        reference: DEMO_ERASURE_REFERENCE,
-        requestedByUserId: people.collector,
-        state: "needs_staff",
-        reason: "cannot_run",
-        createdAt: new Date(now - 4 * DAY),
-        updatedAt: new Date(now - 4 * DAY),
+        id: exportId,
+        subjectId,
+        status: "delayed",
+        productProgress: { account: "done", bid: "retrying", shop: "done" },
+        requestedAt,
+        dueAt,
+        lastErrorCode: "demo_slow_collection",
+        deadlineAlertTier: 3,
+        createdAt: requestedAt,
+        updatedAt: new Date(requestedAt.getTime() + 21 * DAY),
       })
-      .onConflictDoNothing();
+      // A person has one open export at a time: if they already have one, it stands in for this.
+      .onConflictDoNothing()
+      .returning({ id: schema.subjectDataExport.id });
+    if (!created) return;
+
+    await db.insert(schema.subjectDataExportAudit).values([
+      {
+        exportId,
+        subjectId,
+        event: "data_export.requested",
+        detail: { dueAt: dueAt.toISOString() },
+        occurredAt: requestedAt,
+      },
+      {
+        exportId,
+        subjectId,
+        event: "data_export.delayed",
+        detail: { product: "bid", errorCode: "demo_slow_collection" },
+        occurredAt: new Date(requestedAt.getTime() + 2 * HOUR),
+      },
+      ...ALERTS.map((alert) => ({
+        exportId,
+        subjectId,
+        event: "data_export.deadline_alert",
+        detail: { tier: alert.tier, audience: alert.audience },
+        occurredAt: new Date(requestedAt.getTime() + alert.afterMs),
+      })),
+    ]);
   },
 };

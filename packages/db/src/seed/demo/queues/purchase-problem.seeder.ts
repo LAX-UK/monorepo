@@ -2,16 +2,26 @@ import * as schema from "../../../schema/index.js";
 import { loadPaidPurchase } from "./paid-purchase.js";
 import type { QueueContext, QueueSeeder } from "./queue-context.js";
 import { QUEUE_ANCHORS, QUEUE_IDS } from "./queue-ids.js";
+import { writeSeedEvents } from "./seed-events.js";
 
 const DAY = 86_400_000;
 
-/** Work inbox, client services: a buyer says a paid lot has not arrived. */
+/**
+ * Purchase problems (`/admin/purchase-problems`, Open) and the work inbox: the buyer of a paid lot
+ * says it has not arrived. Written once, with the `purchase_problem.reported` event the report
+ * service publishes; what staff do with it afterwards is left alone.
+ */
 export const purchaseProblemSeeder: QueueSeeder = {
   queue: "Purchase problems",
-  async seed({ db, now, people }: QueueContext) {
+  async seed({ db, now }: QueueContext) {
     const purchase = await loadPaidPurchase(db, QUEUE_ANCHORS.paidLotInTransit);
+    if (!purchase.buyerUserId) {
+      throw new Error("[demo-queues] the paid lot for the purchase problem has no buyer");
+    }
     const problemId = QUEUE_IDS.purchaseProblem(1);
-    await db
+    const reportedAt = new Date(now - 2 * DAY);
+    const category = "not_received";
+    const [created] = await db
       .insert(schema.purchaseProblem)
       .values({
         id: problemId,
@@ -19,23 +29,26 @@ export const purchaseProblemSeeder: QueueSeeder = {
         buyerLegalEntityId: purchase.buyerEntityId,
         paymentId: purchase.paymentId,
         status: "open",
-        category: "not_received",
+        category,
         message:
           "The courier tracking has shown 'out for delivery' for four days and nothing has arrived. Could someone check with the carrier? (Demo data.)",
-        reportedByUserId: people.collector,
-        createdAt: new Date(now - 2 * DAY),
-        updatedAt: new Date(now - 2 * DAY),
+        reportedByUserId: purchase.buyerUserId,
+        createdAt: reportedAt,
+        updatedAt: reportedAt,
       })
-      .onConflictDoNothing();
-    await db
-      .insert(schema.purchaseProblemNote)
-      .values({
-        id: QUEUE_IDS.purchaseProblemNote(1),
-        purchaseProblemId: problemId,
-        authorUserId: people.clientServices,
-        body: "Asked the carrier for proof of delivery. Waiting for their reply (demo note).",
-        createdAt: new Date(now - DAY),
-      })
-      .onConflictDoNothing();
+      .onConflictDoNothing()
+      .returning({ id: schema.purchaseProblem.id });
+    if (!created) return;
+    await writeSeedEvents(db, [
+      {
+        aggregateType: "purchase_problem",
+        aggregateId: problemId,
+        eventType: "purchase_problem.reported",
+        payload: { lotId: purchase.lotId, paymentId: purchase.paymentId, category },
+        actorUserId: purchase.buyerUserId,
+        actingLegalEntityId: purchase.buyerEntityId,
+        occurredAt: reportedAt,
+      },
+    ]);
   },
 };

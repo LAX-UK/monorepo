@@ -7,15 +7,19 @@ export type QueueContext = {
   people: PeopleIds;
   /** Staff accounts that raise or review items. */
   staff: { adminUserId: string };
-  /** The house account that owns the demo collection point. */
+  /** The house account that owns the demo collection point and sells its lots. */
   laxStockId: string;
-  /** The two private sale enquiries the full demo seed writes (to buy, to sell). */
-  enquiryIds: { buy: string; sell: string };
+  /** Northbank Gallery, the demo's organisation buyer. */
+  northbankId: string;
+  /** Category ids by slug, for the works the seeders submit. */
+  categoryIdBySlug: ReadonlyMap<string, string>;
 };
 
 /**
- * One seeder fills one staff queue. Each is idempotent: fixed ids, `on conflict` writes, and rows
- * that depend on the clock are refreshed so they stay due, overdue or upcoming whenever it runs.
+ * One seeder fills one staff queue. Each writes only rows it owns, keyed on fixed ids, and only
+ * when they are absent: a row it created is never changed again, so what staff do to an item (and
+ * the item's own history) survives every later run. It writes what the real service writes beside
+ * the row (domain events, history, audit), with the demo seed's producer on its events.
  */
 export interface QueueSeeder {
   /** The staff queue or screen this seeder fills, for logs and tests. */

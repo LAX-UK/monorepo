@@ -1,133 +1,130 @@
-import { inArray } from "drizzle-orm";
+import { createHash } from "node:crypto";
+import {
+  COLLECTION_BOOKING_EVENT_AGGREGATE,
+  type CollectionSlot,
+  DEFAULT_COLLECTION_RULES,
+  DEFAULT_COLLECTION_WEEKLY_HOURS,
+  collectionBookingCreated,
+  collectionRequestCanonical,
+  collectionSlots,
+} from "@auction/domain";
 import * as schema from "../../../schema/index.js";
-import { DEMO_IDS } from "../demo-topup-ids.js";
-import { loadPaidPurchase } from "./paid-purchase.js";
+import { DEMO_PEOPLE } from "../demo-topup-ids.js";
+import { ensureCollectionSale } from "./collection-sale.js";
 import type { QueueContext, QueueSeeder } from "./queue-context.js";
-import { DEMO_FREE_STORAGE_DAYS, DEMO_VENUE, QUEUE_ANCHORS, QUEUE_IDS } from "./queue-ids.js";
+import { QUEUE_IDS } from "./queue-ids.js";
+import { writeSeedEvents } from "./seed-events.js";
 
-const HOUR = 3_600_000;
-const DAY = 24 * HOUR;
-const STORAGE_TERMS_START = "2026-01-01";
+const DAY = 86_400_000;
+const IDEMPOTENCY_KEY = "demo-queues-booking-0001";
 
-/** Starts of the visit: ten in the morning, UTC, a few days out. */
-export function bookingSlot(now: number, daysAhead: number): { start: Date; end: Date } {
-  const day = new Date(now + daysAhead * DAY);
-  const start = Date.UTC(day.getUTCFullYear(), day.getUTCMonth(), day.getUTCDate(), 10, 0);
-  return { start: new Date(start), end: new Date(start + 30 * 60_000) };
+/**
+ * The first time the demo collection point offers, at least `daysAhead` days out, by the same
+ * calendar the desk checks a staff booking against (the place's hours and rules, no closures).
+ */
+export function firstOfferedSlot(now: number, daysAhead: number): CollectionSlot {
+  const days = collectionSlots({
+    hours: DEFAULT_COLLECTION_WEEKLY_HOURS,
+    exceptions: [],
+    rules: DEFAULT_COLLECTION_RULES,
+    now: new Date(now),
+  });
+  const earliest = now + daysAhead * DAY;
+  for (const day of days) {
+    const slot = day.slots.find((s) => s.state === "open" && s.start.getTime() >= earliest);
+    if (slot) return slot;
+  }
+  throw new Error("[demo-queues] the demo collection point offers no visit in its window");
+}
+
+/** The digest a booking request is stored with, as the booking repository makes it. */
+export function bookingFingerprint(request: Parameters<typeof collectionRequestCanonical>[0]) {
+  return createHash("sha256").update(collectionRequestCanonical(request)).digest("hex");
 }
 
 /**
- * Fulfilment inbox: a collection point with a booked visit, and a paid lot nobody has collected
- * after its free storage days ran out (so the storage screen has an overdue lot to show).
+ * Collection desk (`/admin/collections`, the demo collection point, Upcoming tab) and the lot
+ * fulfilment list: a visit staff booked for the client, a few days ahead, to collect a lot that
+ * was paid and released. Written once, in a slot the place offers; a cancelled, moved or
+ * completed visit is left as staff left it.
  */
 export const collectionSeeder: QueueSeeder = {
-  queue: "Collection bookings and storage",
-  async seed({ db, now, people, staff, laxStockId }: QueueContext) {
-    const venueId = QUEUE_IDS.venue(1);
-    await db
-      .insert(schema.venue)
+  queue: "Collection desk and lot fulfilment",
+  async seed(context: QueueContext) {
+    const { db, now, people } = context;
+    const sale = await ensureCollectionSale(context);
+    const slot = firstOfferedSlot(now, 3);
+    const collector = {
+      kind: "self" as const,
+      name: `${DEMO_PEOPLE.collector.firstName} ${DEMO_PEOPLE.collector.lastName}`,
+      email: null,
+      company: null,
+      userId: null,
+      authorisedByUserId: null,
+    };
+    const request = {
+      legalEntityId: sale.bookingLot.buyerEntityId,
+      venueId: sale.venueId,
+      slotStart: slot.start,
+      lotIds: [sale.bookingLot.lotId],
+      collector,
+      bookedVia: "staff" as const,
+      bookedByUserId: people.fulfilment,
+      overCapacityReason: null,
+    };
+    const [created] = await db
+      .insert(schema.collectionBooking)
       .values({
-        id: venueId,
-        legalEntityId: laxStockId,
-        name: DEMO_VENUE.name,
-        slug: "demo-collection-point",
-        addressLine1: DEMO_VENUE.addressLine1,
-        city: DEMO_VENUE.city,
-        postcode: DEMO_VENUE.postcode,
-        country: DEMO_VENUE.country,
-        contactEmail: DEMO_VENUE.contactEmail,
+        id: QUEUE_IDS.booking(1),
+        legalEntityId: request.legalEntityId,
+        venueId: request.venueId,
+        slotStart: slot.start,
+        slotEnd: slot.end,
+        seat: 1,
+        status: "booked",
+        bookedByUserId: request.bookedByUserId,
+        bookedVia: "staff",
+        collectorKind: collector.kind,
+        collectorName: collector.name,
+        idempotencyKey: IDEMPOTENCY_KEY,
+        requestFingerprint: bookingFingerprint(request),
+        createdAt: new Date(now),
+        updatedAt: new Date(now),
       })
-      .onConflictDoNothing();
-    await db
-      .insert(schema.collectionPlace)
-      .values({
-        venueId,
-        onlineBookingEnabled: true,
-        freeStorageDays: DEMO_FREE_STORAGE_DAYS,
-        updatedByUserId: staff.adminUserId,
-      })
-      .onConflictDoNothing();
-    await db
-      .insert(schema.collectionStorageTerms)
-      .values({
-        id: QUEUE_IDS.storageTerms(1),
-        venueId,
-        freeDays: DEMO_FREE_STORAGE_DAYS,
-        standardDailyPence: 500,
-        handlingFeePence: 0,
-        effectiveFrom: STORAGE_TERMS_START,
-        reason: "Demo terms for the example collection point.",
-        createdByUserId: staff.adminUserId,
-      })
-      .onConflictDoNothing();
-    await db
-      .update(schema.sale)
-      .set({ venueId })
-      .where(
-        inArray(
-          schema.sale.id,
-          QUEUE_ANCHORS.collectionSales.map((n) => DEMO_IDS.sale(n)),
-        ),
-      );
+      // Any clash (this id, the key, or the seat already taken) leaves what is there alone.
+      .onConflictDoNothing()
+      .returning({
+        id: schema.collectionBooking.id,
+        reference: schema.collectionBooking.reference,
+      });
+    if (!created) return;
 
-    await seedStoredLot(db, now, people.fulfilment);
-    await seedBooking(db, now, venueId, people.fulfilment);
-  },
-};
-
-/** Paid 40 days ago, still at the venue, 26 days past its 14 free days. */
-async function seedStoredLot(db: QueueContext["db"], now: number, actor: string) {
-  const purchase = await loadPaidPurchase(db, QUEUE_ANCHORS.paidLotForCollection);
-  const clearedAt = new Date(now - 40 * DAY);
-  const values = {
-    lotId: purchase.lotId,
-    paymentId: purchase.paymentId,
-    status: "ready_for_collection" as const,
-    fulfilmentMethod: "collection" as const,
-    releaseApprovedByUserId: actor,
-    releaseApprovedAt: clearedAt,
-    paymentClearedAt: clearedAt,
-    storageTermsId: QUEUE_IDS.storageTerms(1),
-    notes: "Demo lot waiting past its free storage days.",
-  };
-  await db
-    .insert(schema.lotFulfilment)
-    .values(values)
-    .onConflictDoUpdate({
-      target: schema.lotFulfilment.lotId,
-      set: { ...values, updatedAt: new Date(now) },
-    });
-}
-
-/** A visit booked a few days ahead, for a different paid lot. */
-async function seedBooking(db: QueueContext["db"], now: number, venueId: string, actor: string) {
-  const purchase = await loadPaidPurchase(db, QUEUE_ANCHORS.paidLotForBooking);
-  const slot = bookingSlot(now, 3);
-  const bookingId = QUEUE_IDS.booking(1);
-  await db
-    .insert(schema.collectionBooking)
-    .values({
-      id: bookingId,
-      legalEntityId: purchase.buyerEntityId,
-      venueId,
+    await db
+      .insert(schema.collectionBookingLot)
+      .values({ bookingId: created.id, lotId: sale.bookingLot.lotId });
+    const event = collectionBookingCreated({
+      id: created.id,
+      reference: created.reference,
+      legalEntityId: request.legalEntityId,
+      venueId: request.venueId,
       slotStart: slot.start,
       slotEnd: slot.end,
-      seat: 1,
-      status: "booked",
-      bookedByUserId: actor,
       bookedVia: "staff",
-      collectorKind: "self",
-      collectorName: "Alex Example",
-      collectorEmail: "alex.example@example.com",
-      idempotencyKey: "demo-queues-booking-0001",
-      requestFingerprint: "demo-queues-booking-0001",
-    })
-    .onConflictDoUpdate({
-      target: schema.collectionBooking.id,
-      set: { slotStart: slot.start, slotEnd: slot.end, status: "booked", updatedAt: new Date(now) },
+      overCapacity: false,
+      collector: { kind: collector.kind },
+      icsSequence: 0,
+      lots: [{ lotId: sale.bookingLot.lotId, active: true }],
     });
-  await db
-    .insert(schema.collectionBookingLot)
-    .values({ bookingId, lotId: purchase.lotId })
-    .onConflictDoNothing();
-}
+    await writeSeedEvents(db, [
+      {
+        aggregateType: COLLECTION_BOOKING_EVENT_AGGREGATE,
+        aggregateId: created.id,
+        eventType: event.eventType,
+        payload: event.payload,
+        actorUserId: request.bookedByUserId,
+        actingLegalEntityId: request.legalEntityId,
+        occurredAt: new Date(now),
+      },
+    ]);
+  },
+};
