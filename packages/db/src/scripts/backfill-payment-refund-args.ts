@@ -2,6 +2,7 @@ import {
   DEFAULT_PAYMENT_REFUND_BACKFILL_BATCH_SIZE,
   DEFAULT_PAYMENT_REFUND_BACKFILL_LOCK_TIMEOUT_MS,
 } from "../payment-refund-backfill.js";
+import { collectFlags } from "./backfill-cli-flags.js";
 
 /** Postgres' maximum for lock_timeout, in milliseconds. */
 export const MAX_LOCK_TIMEOUT_MS = 2_147_483_647;
@@ -31,42 +32,13 @@ export type BackfillArgs = {
 
 const VALUE_FLAGS = ["batch-size", "lock-timeout", "resume-after"] as const;
 
-/**
- * Splits argv into the `--apply` switch and `--name=value` flags. Unknown or repeated
- * flags throw, so a typo can never silently fall back to a default. A bare `--` is skipped:
- * pnpm passes the separator in `pnpm --filter @auction/db db:backfill-payment-refund -- --apply`
- * through to the script, and that is the form the runbook and the resume line use.
- */
-function collectFlags(argv: readonly string[]): { apply: boolean; values: Map<string, string> } {
-  let apply = false;
-  const values = new Map<string, string>();
-  for (const arg of argv) {
-    if (arg === "--") continue;
-    if (arg === "--apply") {
-      if (apply) throw new Error("--apply was given more than once");
-      apply = true;
-      continue;
-    }
-    const match = /^--([a-z-]+)=(.*)$/s.exec(arg);
-    const name = match?.[1];
-    if (!match || name === undefined || !(VALUE_FLAGS as readonly string[]).includes(name)) {
-      throw new Error(
-        `Unknown argument "${arg}" (expected --apply, --batch-size=N, --lock-timeout=D, --resume-after=ID)`,
-      );
-    }
-    if (values.has(name)) throw new Error(`--${name} was given more than once`);
-    values.set(name, match[2] ?? "");
-  }
-  return { apply, values };
-}
-
 function flagValue(values: Map<string, string>, name: string): string | undefined {
   return values.get(name);
 }
 
 /** Validates every flag; throws with a clear message on the first bad one. Pure: no I/O. */
 export function parseBackfillArgs(argv: readonly string[]): BackfillArgs {
-  const { apply, values } = collectFlags(argv);
+  const { apply, values } = collectFlags(argv, VALUE_FLAGS);
 
   const batchFlag = flagValue(values, "batch-size");
   let batchSize = DEFAULT_PAYMENT_REFUND_BACKFILL_BATCH_SIZE;
