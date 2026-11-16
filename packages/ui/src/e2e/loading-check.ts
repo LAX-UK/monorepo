@@ -13,7 +13,7 @@ import type { Page, Route } from "@playwright/test";
  *  - `nonOpacity`     any skeleton animation that sets something other than opacity
  *
  * Shifts are counted in the page (PerformanceObserver `layout-shift`, input-caused shifts left
- * out), the same way `observeLayoutShift` in motion-check.ts counts them.
+ * out), the same way `observeLayoutShift` in apps/web/e2e/helpers/motion-check.ts counts them.
  */
 export type LoadingCheck = {
   skeletonShift: number;
@@ -221,6 +221,17 @@ export type LoadingScreenCase = {
   from: string;
   /** The route whose loading screen is checked. */
   to: string;
+  /**
+   * Puts the product in the state the page should be measured in before the check starts (for
+   * Shop's basket, a basket with an item in it, so the swap is measured against the full page).
+   */
+  prepare?: (page: Page) => Promise<void>;
+  /**
+   * Why this case's swap shift is reported but not held to the 0.1 budget: only for a shift the
+   * loading screen does not cause (say, a server redirect the framework follows with a blank frame).
+   * Every skeleton check still runs. Name the cause and where it is tracked.
+   */
+  swapNotAsserted?: string;
 };
 
 const VIEWPORTS = [
@@ -232,57 +243,64 @@ const VIEWPORTS = [
  * One test per loading screen, viewport (1440, 375) and colour scheme (light, dark): no layout
  * shift while the skeleton waits, fades in and pulses; the skeleton animates opacity only; the swap
  * to the page stays within the layout shift budget (0.1). With `LOADING_SCREENSHOTS=<dir>` it
- * also saves each loading screen at rest. Opt-in (`PLAYWRIGHT_LOADING_CHECK=1`): it needs the product running.
+ * also saves each loading screen at rest. Call it inside the spec's own tagged `test.describe`
+ * (the e2e tag check reads the spec file). Opt-in (`PLAYWRIGHT_LOADING_CHECK=1`): it needs the
+ * product running with seeded data.
  */
-export function describeLoadingScreens(
+export function defineLoadingScreenTests(
   test: typeof import("@playwright/test").test,
   expect: typeof import("@playwright/test").expect,
   product: string,
   cases: readonly LoadingScreenCase[],
 ): void {
-  test.describe(`${product} loading screens @optin`, () => {
-    test.skip(
-      process.env.PLAYWRIGHT_LOADING_CHECK !== "1",
-      "Set PLAYWRIGHT_LOADING_CHECK=1 and PLAYWRIGHT_BASE_URL with the product running.",
-    );
-    // Each case sets its own viewports, so a phone-emulating project would only repeat them.
-    test.skip(({ isMobile }) => isMobile, "Viewports are set per case.");
-    const shots = process.env.LOADING_SCREENSHOTS;
+  test.skip(
+    process.env.PLAYWRIGHT_LOADING_CHECK !== "1",
+    "Set PLAYWRIGHT_LOADING_CHECK=1 and PLAYWRIGHT_BASE_URL with the product running.",
+  );
+  // Each case sets its own viewports, so a phone-emulating project would only repeat them.
+  test.skip(({ isMobile }) => isMobile, "Viewports are set per case.");
+  const shots = process.env.LOADING_SCREENSHOTS;
 
-    for (const viewport of VIEWPORTS) {
-      for (const scheme of ["light", "dark"] as const) {
-        for (const item of cases) {
-          test(`${item.name} at ${viewport.name}, ${scheme}`, async ({ page }) => {
-            test.setTimeout(90_000);
-            await page.setViewportSize({ width: viewport.width, height: viewport.height });
-            // A fresh visitor whose system is set to this scheme: the product's own theme script
-            // and server render pick it up, as they would on a real first visit.
-            await page.emulateMedia({ colorScheme: scheme });
-            await countLayoutShift(page);
-            const result = await checkLoadingScreen(page, {
-              from: item.from,
-              to: item.to,
-              whileLoading: shots
-                ? async () => {
-                    await freezeSkeletons(page);
-                    await page.screenshot({
-                      path: `${shots}/${product}-${item.name}-${viewport.name}-${scheme}.png`,
-                    });
-                  }
-                : undefined,
-            });
+  for (const viewport of VIEWPORTS) {
+    for (const scheme of ["light", "dark"] as const) {
+      for (const item of cases) {
+        test(`${item.name} at ${viewport.name}, ${scheme}`, async ({ page }) => {
+          test.setTimeout(90_000);
+          await page.setViewportSize({ width: viewport.width, height: viewport.height });
+          // A fresh visitor whose system is set to this scheme: the product's own theme script
+          // and server render pick it up, as they would on a real first visit.
+          await page.emulateMedia({ colorScheme: scheme });
+          await countLayoutShift(page);
+          await item.prepare?.(page);
+          const result = await checkLoadingScreen(page, {
+            from: item.from,
+            to: item.to,
+            whileLoading: shots
+              ? async () => {
+                  await freezeSkeletons(page);
+                  await page.screenshot({
+                    path: `${shots}/${product}-${item.name}-${viewport.name}-${scheme}.png`,
+                  });
+                }
+              : undefined,
+          });
+          test
+            .info()
+            .annotations.push({ type: "loading-check", description: JSON.stringify(result) });
+          expect(result.blocks, "skeleton blocks on the loading screen").toBeGreaterThan(0);
+          expect(result.nonOpacity, "skeleton animations other than opacity").toEqual([]);
+          expect(result.skeletonShift, "layout shift while the skeleton shows").toBe(0);
+          if (item.swapNotAsserted) {
             test
               .info()
-              .annotations.push({ type: "loading-check", description: JSON.stringify(result) });
-            expect(result.blocks, "skeleton blocks on the loading screen").toBeGreaterThan(0);
-            expect(result.nonOpacity, "skeleton animations other than opacity").toEqual([]);
-            expect(result.skeletonShift, "layout shift while the skeleton shows").toBe(0);
+              .annotations.push({ type: "swap-not-asserted", description: item.swapNotAsserted });
+          } else {
             expect(result.swapShift, "layout shift when the page replaces it").toBeLessThanOrEqual(
               0.1,
             );
-          });
-        }
+          }
+        });
       }
     }
-  });
+  }
 }

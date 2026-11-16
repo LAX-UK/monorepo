@@ -66,7 +66,7 @@ export function MediaPlaceholder({
         shouldFill ? "absolute inset-0 h-full w-full" : "relative w-full",
         shape === "circle" && "rounded-full",
         normalizedMonogram && "[container-type:inline-size]",
-        loading && "animate-pulse",
+        loading && "lax-skeleton",
         SURFACE_CLASS[tone],
         className,
       )}

@@ -1,3 +1,7 @@
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { dirname, join, resolve } from "node:path";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import type { Browser, Page } from "@playwright/test";
 import { afterAll, it as baseIt, beforeAll, describe, expect } from "vitest";
 import {
@@ -60,6 +64,8 @@ type Played = {
   delay: number;
   iterations: number;
   properties: string[];
+  /** The timing function each keyframe interval plays (a CSS animation's `animation-timing-function`). */
+  easings: string[];
 };
 
 /** Every animation Chromium runs on the skeleton, with its resolved timing and keyframe properties. */
@@ -70,7 +76,9 @@ async function animations(page: Page): Promise<Played[]> {
       const effect = animation.effect as KeyframeEffect;
       const timing = effect.getComputedTiming();
       const properties = new Set<string>();
+      const easings = new Set<string>();
       for (const frame of effect.getKeyframes()) {
+        if (typeof frame.easing === "string") easings.add(frame.easing);
         for (const key of Object.keys(frame)) {
           if (!["offset", "computedOffset", "easing", "composite"].includes(key)) {
             properties.add(key);
@@ -83,6 +91,7 @@ async function animations(page: Page): Promise<Played[]> {
         delay: Number(timing.delay),
         iterations: Number(timing.iterations),
         properties: [...properties].sort(),
+        easings: [...easings].sort(),
       };
     });
   });
@@ -107,6 +116,17 @@ async function at(
       below: (document.getElementById("below") as HTMLElement).getBoundingClientRect().top,
     };
   }, ms);
+}
+
+/** A custom property as the page's root resolves it, normalised the way Chromium writes easings. */
+async function token(page: Page, name: string): Promise<string> {
+  return page.evaluate((property) => {
+    const probe = document.createElement("div");
+    probe.style.transitionTimingFunction = getComputedStyle(document.documentElement)
+      .getPropertyValue(property)
+      .trim();
+    return probe.style.transitionTimingFunction;
+  }, name);
 }
 
 /** `it`, skipped when this machine has no Chromium (CI requires one). */
@@ -164,6 +184,8 @@ describe("loading skeleton resolved in Chromium", () => {
               iterations: Number.POSITIVE_INFINITY,
               properties: ["opacity"],
             });
+            // The pulse's easing is the `--lax-ease-pulse` token as this page resolves it.
+            expect(pulse?.easings).toEqual([await token(page, "--lax-ease-pulse")]);
           }
           // Only opacity moves: no transform, no background-position shimmer, no size change.
           for (const animation of played) expect(animation.properties).toEqual(["opacity"]);
@@ -229,6 +251,52 @@ describe("loading skeleton resolved in Chromium", () => {
       expect(running.map((a) => a.name)).toEqual(["lax-skeleton-pulse"]);
     } finally {
       await page.close();
+    }
+  }, 30_000);
+
+  it("takes the pulse easing from --lax-ease-pulse, not a literal", async () => {
+    // A different value for the token must reach the pulse: a literal easing in skeleton.css
+    // (say `linear`) would ignore it.
+    const custom = "cubic-bezier(0.1, 0.2, 0.3, 0.9)";
+    const page = await pageWith(browser, {
+      css: `${CSS}\n:root { --lax-ease-pulse: ${custom}; }`,
+      body: body("public"),
+    });
+    try {
+      const pulse = (await animations(page)).find((a) => a.name === "lax-skeleton-pulse");
+      expect(pulse?.easings).toEqual([custom]);
+    } finally {
+      await page.close();
+    }
+  }, 30_000);
+
+  it("reaches every product through the kit's lax-theme.css", async () => {
+    // The products import `@auction/ui/lax-theme.css`, not skeleton.css. Load that export the way
+    // the browser follows it (its own `@import`s, unknown Tailwind at-rules dropped) and check the
+    // skeleton still plays: dropping `@import "./skeleton.css"` from theme.css fails here.
+    const packageDir = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
+    const pkg = JSON.parse(readFileSync(join(packageDir, "package.json"), "utf8")) as {
+      exports: Record<string, unknown>;
+    };
+    const themeExport = pkg.exports["./lax-theme.css"];
+    expect(typeof themeExport).toBe("string");
+    const themeUrl = pathToFileURL(resolve(packageDir, themeExport as string)).href;
+    const systemUrl = pathToFileURL(resolve(packageDir, "../branding/public/lax-system.css")).href;
+    const dir = mkdtempSync(join(tmpdir(), "lax-theme-"));
+    const file = join(dir, "index.html");
+    writeFileSync(
+      file,
+      `<!doctype html><html><head><link rel="stylesheet" href="${systemUrl}"><link rel="stylesheet" href="${themeUrl}"></head><body>${body("public")}</body></html>`,
+    );
+    const page = await browser.newPage();
+    try {
+      await page.emulateMedia({ reducedMotion: "no-preference" });
+      await page.goto(pathToFileURL(file).href);
+      const names = (await animations(page)).map((a) => a.name).sort();
+      expect(names).toEqual(["lax-skeleton-in", "lax-skeleton-pulse"]);
+    } finally {
+      await page.close();
+      rmSync(dir, { recursive: true, force: true });
     }
   }, 30_000);
 });

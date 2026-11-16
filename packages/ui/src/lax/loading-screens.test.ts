@@ -113,10 +113,24 @@ describe("the kit skeletons", () => {
     ["components/ui/skeleton.tsx"],
     ["lax/skeleton.tsx"],
     ["components/ui/table-skeleton.tsx"],
+    ["components/ui/media-placeholder.tsx"],
   ])("%s draws the shared .lax-skeleton and no loop of its own", (path) => {
     const text = code(resolve(dirname(fileURLToPath(import.meta.url)), "..", path));
     expect(text).toMatch(/(?<![\w-])lax-skeleton(?![\w-])/);
     for (const [pattern] of BANNED) expect(text).not.toMatch(pattern);
     expect(text).not.toMatch(/animate-\[/);
   });
+});
+
+describe("loading placeholders outside loading.tsx", () => {
+  // Loading states drawn inside a page rather than by a route's loading screen; they use the same
+  // skeleton. (Other hand-rolled placeholders are a follow-up, listed in motion PR 5.)
+  it.each([["apps/web/src/components/connect/connect-components-shell.tsx"]])(
+    "%s draws the shared .lax-skeleton and no loop of its own",
+    (path) => {
+      const text = code(join(root, path));
+      expect(text).toMatch(/(?<![\w-])lax-skeleton(?![\w-])/);
+      for (const [pattern] of BANNED) expect(text).not.toMatch(pattern);
+    },
+  );
 });
