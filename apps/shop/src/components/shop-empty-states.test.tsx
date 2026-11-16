@@ -21,7 +21,7 @@ describe("ShopStatusState is the shared EmptyState", () => {
     );
     expect(out).toContain('data-empty-state="frame"');
     expect(out).toContain("bg-lax-paper");
-    expect(out).toContain("text-lax-plate-ink");
+    expect(out).toContain("text-lax-plate");
     expect(out).toContain("Nothing here yet");
     expect(out).toContain("Come back soon.");
     expect(out).not.toContain("marketing-status-state__title");

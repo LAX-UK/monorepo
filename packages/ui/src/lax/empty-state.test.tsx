@@ -95,7 +95,7 @@ describe("EmptyState", () => {
 describe("EmptyState product options", () => {
   it("draws the plate in the plate ink, which a product may point at its accent", () => {
     const { container } = render(<EmptyState illustration="frame" title="t" description="d" />);
-    expect(container.querySelector("[aria-hidden]")?.className).toContain("text-lax-plate-ink");
+    expect(container.querySelector("[aria-hidden]")?.className).toContain("text-lax-plate");
   });
 
   it("renders a paragraph title when the page already has its headings", () => {

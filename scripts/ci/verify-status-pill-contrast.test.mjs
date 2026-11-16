@@ -165,7 +165,7 @@ describe("status pill contrast", () => {
 });
 
 // The empty-state drawing is a line graphic in the product accent on the kit's warm-paper plate
-// (`text-lax-plate-ink` on `bg-lax-paper`; Shop and lax.art set `--lax-plate-ink` to their
+// (`text-lax-plate` on `bg-lax-paper`; Shop and lax.art set `--lax-plate-ink` to their
 // accent), so it must reach 3:1 in both themes (WCAG 1.4.11).
 describe("empty-state accent drawing contrast on the paper plate", () => {
   const lum = ([r, g, b]) => 0.2126 * r + 0.7152 * g + 0.0722 * b;

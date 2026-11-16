@@ -12,7 +12,7 @@ describe("ArtStatusState is the shared EmptyState", () => {
     const out = html(<ArtStatusState variant="empty" title="No works" description="Check back." />);
     expect(out).toContain('data-empty-state="frame"');
     expect(out).toContain("bg-lax-paper");
-    expect(out).toContain("text-lax-plate-ink");
+    expect(out).toContain("text-lax-plate");
     expect(out).toContain("No works");
     expect(out).toContain("Check back.");
     expect(out).not.toContain("marketing-status-state__title");

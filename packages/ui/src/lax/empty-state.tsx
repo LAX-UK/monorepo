@@ -51,8 +51,9 @@ export type EmptyStateProps = {
  * it sits in is 672px wide and stacks below that. As a page (`layout="page"`) it is a 5/7 grid
  * with a 4:3 plate, for not found and route errors; it carries the page's h1 unless told otherwise.
  *
- * The drawing is in the foreground colour unless the product sets `--lax-plate-ink` (Shop and
- * lax.art set it to their accent, `--color-product-accent`; Bid sets nothing).
+ * The drawing (`text-lax-plate`) is in the foreground colour unless the product sets
+ * `--lax-plate-ink`: Shop and lax.art set it to their accent, `--color-product-accent`; Bid
+ * sets nothing.
  */
 export function EmptyState({
   illustration,
@@ -66,12 +67,12 @@ export function EmptyState({
   layout = "inline",
   size = "default",
   variant = "empty",
-  headingLevel,
+  headingLevel = layout === "page" ? "h1" : "h2",
   className,
 }: EmptyStateProps) {
   const isPage = layout === "page";
   const compact = size === "compact" && !isPage;
-  const Heading = headingLevel ?? (isPage ? "h1" : "h2");
+  const Heading = headingLevel;
   const drawing = variant === "error" ? "askew" : illustration;
 
   return (
@@ -94,7 +95,7 @@ export function EmptyState({
         <div
           aria-hidden
           className={cn(
-            "relative grid w-full place-items-center overflow-hidden rounded-lax-menu text-lax-plate-ink",
+            "relative grid w-full place-items-center overflow-hidden rounded-lax-menu text-lax-plate",
             !plate && "bg-lax-paper",
             isPage && "aspect-[4/3] @3xl:col-span-5",
             compact && "h-24 @xl:w-32",
