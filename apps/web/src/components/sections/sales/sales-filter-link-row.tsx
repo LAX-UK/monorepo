@@ -33,7 +33,7 @@ const RADIO_BOX =
   "flex aspect-square size-4 shrink-0 items-center justify-center rounded-full border border-input text-primary shadow-xs dark:bg-input/30";
 // The Label from `@auction/ui/components/label`, with the rail row's own classes on top.
 const LABEL =
-  "flex min-h-11 flex-1 items-center justify-between gap-2 py-2 font-body text-sm font-normal leading-none text-on-surface lg:min-h-9";
+  "flex min-h-11 flex-1 items-center justify-between gap-2 py-2 font-body text-sm font-normal text-on-surface lg:min-h-9";
 
 /** Space chooses a checkbox-role link, as it does a real checkbox, and does not scroll the page. */
 function chooseWithSpace(event: KeyboardEvent<HTMLAnchorElement>) {
@@ -77,7 +77,8 @@ export function SalesFilterLinkRow({
       <span
         className={cn(
           LABEL,
-          unavailable ? "cursor-not-allowed text-on-surface-variant opacity-60" : "cursor-pointer",
+          // On main the Label's `peer-disabled:opacity-70` won over `opacity-60`: 70 is what showed.
+          unavailable ? "cursor-not-allowed text-on-surface-variant opacity-70" : "cursor-pointer",
         )}
       >
         <span>{label}</span>
