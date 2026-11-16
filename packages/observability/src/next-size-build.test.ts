@@ -2,9 +2,11 @@ import { describe, expect, it } from "vitest";
 import {
   DeterministicSizeBuildPlugin,
   addSizeBuildDeterminism,
+  contentDebugId,
   isRouteJsSizeBuild,
   sortMapByKey,
   sortModulesByIdentifier,
+  uuidFromString,
 } from "./next-size-build.js";
 
 const SIZE = { ROUTE_JS_SIZE_BUILD: "1" } as NodeJS.ProcessEnv;
@@ -64,8 +66,14 @@ describe("DeterministicSizeBuildPlugin", () => {
     expect(new Set(results).size).toBe(1);
   });
 
-  it("sorts at seal (entries) and optimize (modules)", () => {
-    const taps: Record<string, () => void> = {};
+  it("sorts at seal (entries) and optimize (modules), and re-derives debug ids after Sentry's banner", () => {
+    const taps: Record<string, (assets?: Record<string, { source(): string }>) => void> = {};
+    let assetStage = 0;
+    const id = "0e2c0219-b93b-4aeb-a978-779c97b14ee3";
+    const files: Record<string, { source(): string }> = {
+      "static/chunks/1.js": { source: () => snippet(id, "let a=1;") },
+      "static/css/1.css": { source: () => `/* ${id} */` },
+    };
     const compilation = {
       entries: new Map<string, unknown>([
         ["z", 1],
@@ -83,9 +91,37 @@ describe("DeterministicSizeBuildPlugin", () => {
             taps.optimize = fn;
           },
         },
+        processAssets: {
+          tap: (options: { stage: number }, fn: (assets: Record<string, unknown>) => void) => {
+            assetStage = options.stage;
+            taps.assets = fn as (assets?: Record<string, { source(): string }>) => void;
+          },
+        },
+      },
+      getAsset: (name: string) => ({ source: files[name] as { source(): string } }),
+      updateAsset: (name: string, source: { source(): string }) => {
+        files[name] = source;
       },
     };
+    class FakeReplaceSource {
+      private edits: [number, number, string][] = [];
+      constructor(private readonly original: { source(): string }) {}
+      replace(start: number, end: number, text: string) {
+        this.edits.push([start, end, text]);
+      }
+      source() {
+        let code = this.original.source();
+        for (const [start, end, text] of [...this.edits].reverse()) {
+          code = code.slice(0, start) + text + code.slice(end + 1);
+        }
+        return code;
+      }
+    }
     new DeterministicSizeBuildPlugin().apply({
+      webpack: {
+        Compilation: { PROCESS_ASSETS_STAGE_ADDITIONS: -100 },
+        sources: { ReplaceSource: FakeReplaceSource },
+      },
       hooks: { compilation: { tap: (_, fn) => fn(compilation) } },
     });
     taps.seal?.();
@@ -93,5 +129,43 @@ describe("DeterministicSizeBuildPlugin", () => {
     expect([...compilation.modules].map((m) => m.identifier())).toEqual(["2", "1"]);
     taps.optimize?.();
     expect([...compilation.modules].map((m) => m.identifier())).toEqual(["1", "2"]);
+
+    expect(assetStage).toBe(-99);
+    taps.assets?.({ ...files });
+    const expected = snippet(uuidFromString(snippet("", "let a=1;")), "let a=1;");
+    expect(files["static/chunks/1.js"]?.source()).toBe(expected);
+    expect(files["static/css/1.css"]?.source()).toBe(`/* ${id} */`);
+  });
+});
+
+const snippet = (id: string, code: string) =>
+  `!function(){try{var e=window,n=(new e.Error).stack;n&&(e._sentryDebugIds=e._sentryDebugIds||{},e._sentryDebugIds[n]="${id}",e._sentryDebugIdIdentifier="sentry-dbid-${id}")}catch(e){}}();${code}`;
+
+describe("contentDebugId", () => {
+  it("derives the id from the code, so identical code gets one id whatever webpack hashed", () => {
+    const a = snippet("0e2c0219-b93b-4aeb-a978-779c97b14ee3", "let a=1;");
+    const b = snippet("a70ebdc8-bbd6-4bc9-ae01-5da46f18457a", "let a=1;");
+    const editA = contentDebugId(a);
+    const editB = contentDebugId(b);
+    expect(editA?.to).toBeDefined();
+    expect(editA?.to).toBe(editB?.to);
+    expect(editA?.positions).toHaveLength(2);
+    expect(editA?.to).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/,
+    );
+  });
+
+  it("gives different code a different id, and leaves scripts without one alone", () => {
+    const one = contentDebugId(snippet("0e2c0219-b93b-4aeb-a978-779c97b14ee3", "let a=1;"));
+    const two = contentDebugId(snippet("0e2c0219-b93b-4aeb-a978-779c97b14ee3", "let a=2;"));
+    expect(one?.to).not.toBe(two?.to);
+    expect(contentDebugId("let a=1;")).toBeNull();
+    const settled = snippet(one?.to ?? "", "let a=1;");
+    expect(contentDebugId(settled)).toBeNull();
+  });
+
+  it("makes ids in the Sentry plugin's format", () => {
+    expect(uuidFromString("x")).toHaveLength(36);
+    expect(uuidFromString("x")).toBe(uuidFromString("x"));
   });
 });

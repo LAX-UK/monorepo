@@ -349,11 +349,13 @@ builds pin them (the `build` job's `env`):
 | --- | --- | --- |
 | Server action ids | Next salts every server action id inlined in client chunks with the server actions encryption key, which it generates at random for each build when none is set. Different random ids compress differently, and a changed chunk changes its hash, which changes the webpack runtime that lists it. | `NEXT_SERVER_ACTIONS_ENCRYPTION_KEY`, a fixed all-zero placeholder (not a key anyone uses) |
 | Sentry release | The Sentry plugin inlines the release name in the client bundle and defaults it to the commit SHA (`GITHUB_SHA`, else `git rev-parse HEAD`), so a PR and its base always differ. | `ROUTE_JS_SIZE_BUILD=1`, which each app's `next.config.ts` turns into the fixed release name `route-js-size-build` |
-| Webpack tie order | Two webpack orders follow which asynchronous work finished first, not the code. Next adds the app router's client entries while it walks the server build, and deterministic module ids settle a hash collision by the order those entries were added: one Bid module was `62629` in one build and `29772` in the next, which moved `/(client)/purchases/pay` and Bid home by 5 to 10 bytes. The split-chunks step keeps the first of two equally good candidates in module build order, so a page could get either of two chunks with the same modules (six such pairs in Bid; `/(marketing)/sell/*` loads one). A changed chunk also gets a new Sentry debug id (derived from webpack's content hash) and file name, and the webpack runtime that lists it changes, so one tie could move every route of an app by 1 or 2 bytes. | `ROUTE_JS_SIZE_BUILD=1`, which each app's `next.config.ts` turns into `DeterministicSizeBuildPlugin` (`packages/observability/src/next-size-build.ts`, client builds only): it sorts the entries by name and the modules by identifier before webpack uses them, so every tie is settled the same way |
+| Webpack tie order | Two webpack orders follow which asynchronous work finished first, not the code. Next adds the app router's client entries while it walks the server build, and deterministic module ids settle a hash collision by the order those entries were added: one Bid module was `62629` in one build and `29772` in the next, which moved `/(client)/purchases/pay` and Bid home by 5 to 10 bytes. The split-chunks step keeps the first of two equally good candidates in module build order, so a page could get either of two chunks with the same modules (six such pairs in Bid; `/(marketing)/sell/*` loads one). | `ROUTE_JS_SIZE_BUILD=1`, which each app's `next.config.ts` turns into `DeterministicSizeBuildPlugin` (`packages/observability/src/next-size-build.ts`, client builds only): it sorts the entries by name and the modules by identifier before webpack uses them, so every tie is settled the same way |
+| Sentry debug ids | The Sentry plugin puts a debug id in every chunk and derives it from webpack's content hash, which hashes how the modules were built (sources, source maps, module graph data), not the code the chunk ends up with. That hash can change while the code does not: lax.art and Account chunks of about 410 KB came out identical except for the id. A new id changes how terser names variables (it counts characters across the whole chunk), the chunk's file name and the webpack runtime that lists it, so every route of an app moved by 1 or 2 bytes. | The same plugin replaces each debug id, right after the Sentry plugin adds it and before minifying, with one derived from the chunk's own code. It keeps the id's length and format, so sizes stay what visitors download; size builds have no Sentry token, so nothing is uploaded with it |
 
 Both variables are in the `build` task's `env` in `turbo.json`, so they reach `next build` and size
 builds never share a turbo cache entry with any other build. Deploy builds set neither: their
-release stays the commit SHA, Next generates their key as before, and the plugin is not added.
+release stays the commit SHA, Next generates their key as before, and the plugin is not added
+(their debug ids stay Sentry's own).
 
 The key is safe to pin because of where it is used. It only encrypts the closed-over variables of
 server actions and salts their ids, and only in the build that has it. These builds are never
@@ -380,10 +382,18 @@ Checked on 2026-11-16 with pairs of clean builds of one commit in the same direc
   now and then, in CI and locally: on PR #1494 the CI self-check found every route of Account,
   Bid or Shop shifted by 1 or 2 bytes in four of six runs, and `/(client)/purchases/pay` +10 B
   and Bid home +5 B in another. Two local Bid builds in a row had different client scripts too
-  (chunk `38409` and four staff pages; then two staff pages through the identical-chunk tie). The
-  webpack tie order above explains all of it.
-- With all three pins, **two uncached builds of all five apps gave byte-identical client scripts
-  in every app** (0 of N routes changed). The numbers are in the PR that added the plugin.
+  (chunk `38409` and four staff pages; then two staff pages through the identical-chunk tie). With
+  the tie order fixed, two concurrent builds of all five apps still differed once in Shop and
+  Account (every route +2 B) and once in lax.art (outside the start-up sets): chunks identical
+  except for the Sentry debug id, which is why the plugin also derives that from the code.
+- With the key, the release and the plugin, **two uncached, concurrent builds of all five apps
+  (turbo `--concurrency=2`, 15m35s and 16m23s on 4 vCPU) gave byte-identical client scripts in
+  every app**: 0 of 114, 39, 43, 20 and 51 routes changed. CI's self-check holds every later run
+  to the same.
+- Deriving the debug ids from the code moved routes by -10 to +37 bytes (mean +7) against
+  Sentry's own ids, once: the ids are other strings of the same length and compress a little
+  differently. Base and head both get it, so the table compares like for like, and the budget
+  and ratchet step reads the same builds as before with no rule changed.
 - The build id is random per build but only names the directory of `_buildManifest.js`; it is in
   no script, so the report's digest replaces it with a placeholder. Timestamps appear in no client
   script. The `next/font` CSS modules' source differs between builds, but the CSS files they
