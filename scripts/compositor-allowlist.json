@@ -31,11 +31,6 @@
       "count": 1
     },
     {
-      "file": "apps/web/src/components/dashboard/auction-interests-settings-form.tsx",
-      "rule": "transition:box-shadow",
-      "count": 1
-    },
-    {
       "file": "apps/web/src/components/forms/catalog-media/catalog-media-card.tsx",
       "rule": "transition:box-shadow",
       "count": 1
@@ -53,11 +48,6 @@
     {
       "file": "apps/web/src/components/marketing/marketing-load-more.tsx",
       "rule": "transition:width",
-      "count": 1
-    },
-    {
-      "file": "apps/web/src/components/onboarding/buyer-interests-form.tsx",
-      "rule": "transition:box-shadow",
       "count": 1
     },
     {
