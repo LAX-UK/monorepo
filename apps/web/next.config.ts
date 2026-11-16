@@ -2,6 +2,7 @@ import { createRequire } from "node:module";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { resolveSentryOrg } from "@auction/observability";
+import { addSizeBuildDeterminism } from "@auction/observability/next-size-build";
 import { withSentryConfig } from "@sentry/nextjs";
 import type { NextConfig } from "next";
 import { laxAccountOrigin } from "./src/lib/lax-account-url";
@@ -137,6 +138,8 @@ const nextConfig: NextConfig = {
     ],
   },
   webpack(config, { isServer, dev }) {
+    // CI size-measurement builds only: settles webpack ties in a fixed order (see the plugin).
+    addSizeBuildDeterminism(config, { isServer, dev });
     if (!isServer && !dev) {
       addShellRoutesChunk(config);
       addToShellRoutesChunk(config, "shellSession", SHELL_SESSION_MODULES);

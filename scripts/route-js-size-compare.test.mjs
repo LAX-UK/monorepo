@@ -248,7 +248,7 @@ test("main: a new route fails a motion PR and is a notice for others", () => {
   assert.equal(run(["--base", headPath, "--head", basePath], { PR_TITLE: "Card motion" }), 0);
 });
 
-test("main --require-unchanged: the self-check passes only when no route differs", () => {
+test("main --require-unchanged: the self-check passes only when the two builds are the same", () => {
   const dir = path.join(root, "self-check");
   mkdirSync(dir, { recursive: true });
   const a = path.join(dir, "a.json");
@@ -256,7 +256,7 @@ test("main --require-unchanged: the self-check passes only when no route differs
   const c = path.join(dir, "c.json");
   const d = path.join(dir, "d.json");
   writeFileSync(a, JSON.stringify(report({ "/a/page": r(1000) })));
-  // Same sizes, different digest (the known Bid admin split-chunk case): passes.
+  // Same sizes, different client scripts: the build is not deterministic, so it fails.
   writeFileSync(b, JSON.stringify(report({ "/a/page": r(1000) }, "other")));
   writeFileSync(c, JSON.stringify(report({ "/a/page": r(999) })));
   const onlyShop = report({ "/a/page": r(1000) });
@@ -270,10 +270,14 @@ test("main --require-unchanged: the self-check passes only when no route differs
       log: (line) => logs.push(line),
     });
   };
-  assert.equal(run(["--base", a, "--head", b]), 0);
+  assert.equal(run(["--base", a, "--head", a]), 0);
   assert.match(logs[0], /^### Self/);
-  assert.match(logs[0], /0 of 1 routes changed \(client scripts differ\)/);
+  assert.match(logs[0], /0 of 1 routes changed \(client scripts byte-identical\)/);
   assert.match(logs[0], /Self-check passed/);
+  assert.equal(run(["--base", a, "--head", b]), 1);
+  assert.match(logs[0], /0 of 1 routes changed \(client scripts differ\)/);
+  assert.match(logs[0], /Self-check failed.*not trusted/);
+  assert.match(logs.at(-1), /^error: apps\/web client scripts differ between two builds/);
   // Shrinking is a failure too: the two builds must be the same.
   assert.equal(run(["--base", a, "--head", c]), 1);
   assert.match(logs.at(-1), /^error: apps\/web \/a\/page differs between two builds/);

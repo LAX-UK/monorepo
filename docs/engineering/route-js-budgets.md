@@ -349,10 +349,18 @@ builds pin them (the `build` job's `env`):
 | --- | --- | --- |
 | Server action ids | Next salts every server action id inlined in client chunks with the server actions encryption key, which it generates at random for each build when none is set. Different random ids compress differently, and a changed chunk changes its hash, which changes the webpack runtime that lists it. | `NEXT_SERVER_ACTIONS_ENCRYPTION_KEY`, a fixed all-zero placeholder (not a key anyone uses) |
 | Sentry release | The Sentry plugin inlines the release name in the client bundle and defaults it to the commit SHA (`GITHUB_SHA`, else `git rev-parse HEAD`), so a PR and its base always differ. | `ROUTE_JS_SIZE_BUILD=1`, which each app's `next.config.ts` turns into the fixed release name `route-js-size-build` |
+| Webpack tie order | Two webpack orders follow which asynchronous work finished first, not the code. Next adds the app router's client entries while it walks the server build, and deterministic module ids settle a hash collision by the order those entries were added: one Bid module was `62629` in one build and `29772` in the next, which moved `/(client)/purchases/pay` and Bid home by 5 to 10 bytes. The split-chunks step keeps the first of two equally good candidates in module build order, so a page could get either of two chunks with the same modules (six such pairs in Bid; `/(marketing)/sell/*` loads one). A changed chunk also gets a new Sentry debug id (derived from webpack's content hash) and file name, and the webpack runtime that lists it changes, so one tie could move every route of an app by 1 or 2 bytes. | `ROUTE_JS_SIZE_BUILD=1`, which each app's `next.config.ts` turns into `DeterministicSizeBuildPlugin` (`packages/observability/src/next-size-build.ts`, client builds only): it sorts the entries by name and the modules by identifier before webpack uses them, so every tie is settled the same way |
 
 Both variables are in the `build` task's `env` in `turbo.json`, so they reach `next build` and size
 builds never share a turbo cache entry with any other build. Deploy builds set neither: their
-release stays the commit SHA and Next generates their key as before.
+release stays the commit SHA, Next generates their key as before, and the plugin is not added.
+
+The key is safe to pin because of where it is used. It only encrypts the closed-over variables of
+server actions and salts their ids, and only in the build that has it. These builds are never
+deployed or run: CI measures their `.next` output and throws it away, and a deploy image is built
+from scratch in Docker without the variable, so Next generates its own key there. The all-zero
+value is public on purpose (it is in this repository); it protects nothing and is used nowhere
+else. Any other workflow that started deploying a size build would have to set its own key.
 
 A third source is not an environment setting: the **checkout path**. Next 15 hashes each server
 action id from the action's key and its module's absolute path, the Sentry debug id
@@ -368,24 +376,18 @@ Checked on 2026-11-16 with pairs of clean builds of one commit in the same direc
 - Without the pins, and with the same environment for both builds (even the same `GITHUB_SHA`),
   every app moved: Bid 113 of 114 routes (from -0.30 to +0.16 KB), Shop 11 of
   39, lax.art 43 of 43, Account 19 of 20, Shop Admin 37 of 51.
-- With them, and with different `GITHUB_SHA` values (as a PR and its base have), **0 routes
-  changed in all five apps**, and the client scripts of Shop, lax.art,
-  Account and Shop Admin are byte-identical.
+- With the key and release pinned but without `DeterministicSizeBuildPlugin`, builds still moved
+  now and then, in CI and locally: on PR #1494 the CI self-check found every route of Account,
+  Bid or Shop shifted by 1 or 2 bytes in four of six runs, and `/(client)/purchases/pay` +10 B
+  and Bid home +5 B in another. Two local Bid builds in a row had different client scripts too
+  (chunk `38409` and four staff pages; then two staff pages through the identical-chunk tie). The
+  webpack tie order above explains all of it.
+- With all three pins, **two uncached builds of all five apps gave byte-identical client scripts
+  in every app** (0 of N routes changed). The numbers are in the PR that added the plugin.
 - The build id is random per build but only names the directory of `_buildManifest.js`; it is in
   no script, so the report's digest replaces it with a placeholder. Timestamps appear in no client
-  script, and chunk ids and file hashes are derived from content.
-- **CI builds are not fully deterministic yet.** On PR #1494 (which changes no client code), the
-  self-check built the same commit twice in CI and found, in some runs, every route of an app
-  moved by the same 1 or 2 bytes, with "client scripts differ": Account in three of five runs,
-  Bid in one, Shop in one; lax.art and Shop Admin never. Base-vs-head tables on that PR showed the
-  same kind of shift (Bid +1 B on all 114 routes, Account +2 B on all 20). Local builds did not
-  reproduce it: four uncached Account builds in a row, and uncached Bid and Account base/head pairs,
-  were byte-identical. One source is known in Bid: two staff admin pages can each get either of
-  two identical shared icon chunks, and Sentry derives each chunk's debug id from webpack's content
-  hash, so a changed hash changes the debug id and, through terser's naming, a byte or two of the
-  chunks every route loads. The rest of the CI cause is not found yet.
-- Until it is fixed, read a block where **every** route of an app moves by the same 1 or 2 bytes
-  as this variation, not as a change. Rows that differ from route to route are real.
+  script. The `next/font` CSS modules' source differs between builds, but the CSS files they
+  produce are byte-identical and they add no JavaScript.
 - The same commit built in a git worktree at another path, with the same pins: Account 15 of 20
   routes changed (`/account/profile/page` +92 B, `/account/security/delete/page` +25 B, ...). This
   is why the base is built in the head's own checkout.
@@ -421,26 +423,60 @@ Checked on 2026-11-16 with pairs of clean builds of one commit in the same direc
    `turbo.json`, the root `package.json`, `pnpm-lock.yaml`, `.nvmrc`, a `scripts/route-js-*` file
    or an app's `next.config`), the job builds the head a second time through the same base route
    (`route-js-size-build-base.sh --force`, so nothing replays from a cache) and compares it with the
-   first head build using `--require-unchanged`. Every app must read `0 of N routes changed`; any
-   changed, new or removed route fails the job. "client scripts differ" alone is allowed. Until
-   the CI variation above is fixed, this check fails on some runs (three of five on PR #1494): a
-   whole-app shift of the same 1 or 2 bytes is that variation; re-run the job, and if a PR keeps
-   failing with route-by-route differences, the PR has made the build less deterministic. A pass
-   shows the base route measures like for like. It adds one uncached build (about 10 to 15
-   minutes) to those PRs only.
+   first head build using `--require-unchanged`. Every app must read `0 of N routes changed`
+   with **client scripts byte-identical**; any changed, new or removed route, and any client
+   script that differs, fails the job. It fails closed: a failed self-check means the size build
+   is not deterministic, so that run's base-vs-head table is not trusted and the job stays red
+   until the cause is fixed. Re-running until it passes is not a fix. A pass shows the base route
+   measures like for like.
+
+### CI cost
+
+Measured on PR #1494 (`ubuntu-latest`, 4 vCPU), where every build was uncached because the PR
+changes the size-build settings and the base predates them:
+
+| Step | Measured | Before this table |
+| --- | --- | --- |
+| Build (the head, all five apps, uncached) | 13m14s to 16m39s | 10m51s |
+| Build the base for route JavaScript (uncached) | 13m20s to 16m08s | none |
+| Route JavaScript self-check (uncached) | 13m28s to 16m29s | none |
+| The whole `build` job | 40m39s to 49m54s | about 11 to 12 minutes |
+
+(Three runs, 43869364824, 43877647575 and 43900302509. The head build is slower than before only
+because this PR changes the size-build settings, so nothing replayed.)
+
+The steady state, once `main` has the pins, depends on the remote cache:
+
+- **Every PR that builds an app** builds its base. CI's size builds all run in the same workspace
+  path with the same settings, and turbo's task hash depends on content and the listed env, not
+  on the path or the commit SHA. The merge queue writes the remote cache (`remote:rw`), so a base
+  app that was built when its commit went through the queue replays: the base step then costs
+  two `pnpm install --prefer-offline` runs (about 5 to 15 seconds each in CI), the replay of the
+  apps' `.next` output, and the report. When an app misses (main moved by a commit the queue built
+  without that app, or an evicted entry), it is built: up to one uncached build of the affected
+  apps, 13 to 16 minutes for all five. The base report is then kept in the actions cache, so
+  re-runs and later pushes onto the same base skip the step.
+- **The self-check** runs only on PRs that change a size-build input (step 5) and always costs one
+  uncached build of every app the head built: 13 to 16.5 minutes for all five.
+- So a typical PR pays a few minutes for the base on a hit and up to about 16 minutes on a miss; a
+  PR that changes size-build inputs pays about 30 minutes more than before. The hit rate after
+  merge is not measured yet: no PR has had a base with the pins. Measure it on the first PRs
+  after merge from the "Build the base for route JavaScript" step time and turbo's `Cached:` line.
 
 ### Reading the table
 
 - One block per app built on both sides: `N of M routes changed`, and whether the client scripts
   are byte-identical. A route that did not change has no row. Because both sides are built at the
-  same path with the same pins, and the self-check holds that to 0 changed routes, **any row that
-  is not part of a whole-app shift of the same 1 or 2 bytes (the variation above) is a change made
-  by the PR**. There is no tolerance.
+  same path with the same pins, and the self-check holds two builds of one commit to
+  byte-identical client scripts, **any number in the table is a real change made by the PR**, even
+  one byte, and even when every route of an app moves by the same amount (a change to a chunk
+  every route loads does exactly that). There is no tolerance and no noise to allow for. If a
+  table ever shows a change the PR cannot have made, the build has stopped being deterministic:
+  that is a bug in the size build, the table is not trusted, and the PR is not passed on it.
 - Columns are base and head KB (1024 bytes, two decimals), the delta in KB, and the delta in bytes.
   Rows are sorted by growth, largest first. `new` and `removed` mark routes on one side only.
 - "client scripts differ" with no changed rows means code changed outside the start-up sets (for
-  example a chunk loaded on demand, or a staff admin page, which is not measured). It can also be
-  the build-to-build variation described above.
+  example a chunk loaded on demand, or a staff admin page, which is not measured).
 - Apps built on one side only are listed and not compared.
 
 ### What fails
@@ -454,13 +490,13 @@ Checked on 2026-11-16 with pairs of clean builds of one commit in the same direc
   `packages/ui/src/lax/motion.css` or `packages/marketing-ui/src/motion/`), tests and docs
   excluded. The path rule keeps the check on if a motion PR is renamed or loses its label. The step
   reads the PR's current title and labels, so after adding a label, re-run the `build` job. If the
-  base cannot be built, such a PR fails too, since the proof is missing; re-run the job.
-  Because of the CI variation above, such a PR can fail with every route of one app 1 or 2 bytes
-  larger and no change of its own there; re-run the job, and if it repeats, the growth is real.
+  base cannot be built, such a PR fails too, since the proof is missing; re-run the job once the
+  base builds. Growth is never waved through as variation: every grown byte fails such a PR.
 - **Every other PR**: the table only reports (a notice per grown or new route). Pass or fail is
   decided by the budget and ratchet rules above, unchanged. New routes are judged by their group's
   budget as before.
-- **The self-check** (step 5 above) fails the job when the head built twice differs on any route.
+- **The self-check** (step 5 above) fails the job when the head built twice differs on any route
+  or in any client script. Its table and the run's base-vs-head table are then not trusted.
 
 The table adds no allowance anywhere and changes no budget, ratchet, baseline or tolerance. The
 ratchet's `toleranceKb` still applies to the ratchet check as before.

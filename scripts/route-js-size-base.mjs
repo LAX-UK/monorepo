@@ -35,9 +35,10 @@ const ROOT = path.resolve(import.meta.dirname, "..");
 
 /**
  * Files a size build depends on beyond app source: the CI settings, turbo's task config, the
- * measuring scripts, each app's Next config, the toolchain and the dependency lockfile. A PR that
- * changes one of them also runs the self-check (the head built a second time through the base
- * route, which must change no route).
+ * measuring scripts, each app's Next config and the size-build plugin it adds
+ * (`packages/observability/src/next-size-build.ts`), the toolchain and the dependency lockfile. A
+ * PR that changes one of them also runs the self-check (the head built a second time through the
+ * base route, which must change no route).
  */
 export function touchesSizeBuild(file) {
   return (
@@ -46,6 +47,7 @@ export function touchesSizeBuild(file) {
     file === "package.json" ||
     file === "pnpm-lock.yaml" ||
     file === ".nvmrc" ||
+    file === "packages/observability/src/next-size-build.ts" ||
     /^scripts\/route-js-[^/]+$/.test(file) ||
     /^apps\/[^/]+\/next\.config\.[cm]?[jt]s$/.test(file)
   );

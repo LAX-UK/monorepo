@@ -993,10 +993,11 @@ jobs:
     # browser Sentry SDK only initialises, and only ships its start-up code, when a DSN is inlined
     # at build time: production images get the real DSNs, these builds get placeholders on a
     # reserved host so the route budgets measure what visitors download. ROUTE_JS_SIZE_BUILD pins
-    # the Sentry release name (see each app's next.config.ts) and the server actions key below is a
-    # fixed, all-zero placeholder: both otherwise change per commit or per build and move route
-    # sizes by a few hundred bytes. Nothing is deployed from these builds and nothing can reach
-    # that host; deploy builds keep their real release and a key Next generates.
+    # the Sentry release name and fixes webpack's tie order (see each app's next.config.ts and
+    # packages/observability/src/next-size-build.ts), and the server actions key below is a fixed,
+    # all-zero placeholder: these otherwise change per commit or per build and move route sizes.
+    # Nothing is deployed from these builds and nothing can reach that host; deploy builds keep
+    # their real release and a key Next generates (docs/engineering/route-js-budgets.md).
     env:
       # The Sentry build plugin makes the Bid app build need more than Node's default heap.
       NODE_OPTIONS: --max-old-space-size=6144
@@ -1148,7 +1149,8 @@ jobs:
       # Self-check of the table, for PRs that change what a size build depends on (this workflow,
       # turbo.json, the measuring scripts, an app's next.config, the toolchain or the lockfile):
       # builds the head a second time through the base route, without any cache, and requires
-      # "0 of N routes changed" in every app. It proves the base route measures like for like.
+      # "0 of N routes changed" and byte-identical client scripts in every app. It proves the base
+      # route measures like for like; when it fails, this run's table is not trusted (fail closed).
       - name: Route JavaScript self-check
         if: steps.route_js_base.outputs.self_check == 'true'
         env:

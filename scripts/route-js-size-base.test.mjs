@@ -47,6 +47,7 @@ test("the self-check runs when a PR changes what a size build depends on", () =>
     "scripts/route-js-size-build-base.sh",
     "apps/web/next.config.ts",
     "apps/shop-admin/next.config.mjs",
+    "packages/observability/src/next-size-build.ts",
   ]) {
     assert.equal(touchesSizeBuild(file), true, file);
   }
@@ -56,6 +57,7 @@ test("the self-check runs when a PR changes what a size build depends on", () =>
     "docs/engineering/route-js-budgets.md",
     "scripts/check-brand-name.mjs",
     ".github/workflows/web-pr.yml",
+    "packages/observability/src/next-size-build.test.ts",
   ]) {
     assert.equal(touchesSizeBuild(file), false, file);
   }

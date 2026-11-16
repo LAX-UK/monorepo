@@ -1,6 +1,7 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { resolveSentryOrg } from "@auction/observability";
+import { addSizeBuildDeterminism } from "@auction/observability/next-size-build";
 import { withSentryConfig } from "@sentry/nextjs";
 import type { NextConfig } from "next";
 
@@ -11,6 +12,11 @@ const nextConfig: NextConfig = {
   outputFileTracingRoot: workspaceRoot,
   poweredByHeader: false,
   reactStrictMode: true,
+  webpack(config, { isServer, dev }) {
+    // CI size-measurement builds only: settles webpack ties in a fixed order (see the plugin).
+    addSizeBuildDeterminism(config, { isServer, dev });
+    return config;
+  },
   transpilePackages: ["@auction/ui", "@auction/staff-ui"],
   async redirects() {
     // The inbox replaced the read-only list; keep bookmarks and emailed links working.

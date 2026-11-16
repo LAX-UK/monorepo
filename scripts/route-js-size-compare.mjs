@@ -20,10 +20,11 @@
  *   --changed-files     a file listing the paths the PR changes, one per line
  *   --heading           the table heading (default "Route JS: base vs head")
  *   --require-unchanged the CI self-check: both reports come from the same commit, so any changed,
- *                       new or removed route, or an app built on one side only, fails
+ *                       new or removed route, any app whose client scripts differ, or an app
+ *                       built on one side only, fails
  *
  * Exit codes: 0 reported, 1 a motion or performance PR grew a route (or, with
- * --require-unchanged, any route changed), 2 bad usage or reports.
+ * --require-unchanged, the two builds differ), 2 bad usage or reports.
  */
 import { appendFileSync, readFileSync } from "node:fs";
 import path from "node:path";
@@ -227,8 +228,8 @@ export function renderMarkdown(
   if (requireUnchanged) {
     lines.push(
       selfCheckFailures(result) === 0
-        ? "Self-check passed: the same commit built twice through the base route changed no route."
-        : "**Self-check failed:** the same commit built twice changed a route, so the base-vs-head table would show noise. Fix the build determinism before trusting the table.",
+        ? "Self-check passed: the same commit built twice through the base route changed no route, and every app's client scripts are byte-identical."
+        : '**Self-check failed:** the same commit built twice through the base route differs, so the size build is not deterministic. This run\'s base-vs-head table is not trusted and the job fails; fix the build determinism (docs/engineering/route-js-budgets.md, "Size builds are deterministic"). Re-running until it passes is not a fix.',
     );
     return lines.join("\n");
   }
@@ -251,9 +252,13 @@ export function renderMarkdown(
   return lines.join("\n");
 }
 
-/** What the self-check counts as a failure: any route that differs, or an app on one side only. */
+/**
+ * What the self-check counts as a failure: any route that differs, any app whose client scripts
+ * are not byte-identical, or an app on one side only. Two builds of one commit must be the same.
+ */
 export function selfCheckFailures(result) {
-  return result.changedCount + result.onlyBase.length + result.onlyHead.length;
+  const differing = result.apps.filter((app) => !app.identical).length;
+  return result.changedCount + differing + result.onlyBase.length + result.onlyHead.length;
 }
 
 export function main(argv, { env = process.env, log = console.log } = {}) {
@@ -291,6 +296,10 @@ export function main(argv, { env = process.env, log = console.log } = {}) {
           `error: ${app.app} ${row.route} differs between two builds of one commit (${row.baseBytes ?? "missing"} -> ${row.headBytes ?? "missing"} bytes)`,
         );
       }
+    }
+    for (const app of result.apps) {
+      if (!app.identical)
+        log(`error: ${app.app} client scripts differ between two builds of one commit`);
     }
     for (const app of [...result.onlyBase, ...result.onlyHead]) {
       log(`error: ${app} was built on one side only`);

@@ -1,6 +1,7 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { resolveSentryOrg } from "@auction/observability";
+import { addSizeBuildDeterminism } from "@auction/observability/next-size-build";
 import { withSentryConfig } from "@sentry/nextjs";
 import type { NextConfig } from "next";
 
@@ -24,6 +25,8 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   transpilePackages: ["@auction/ui", "@auction/marketing-ui", "@auction/shop-portal"],
   webpack(config, { isServer, dev }) {
+    // CI size-measurement builds only: settles webpack ties in a fixed order (see the plugin).
+    addSizeBuildDeterminism(config, { isServer, dev });
     if (!isServer && !dev) addEmptyStateChunk(config);
     return config;
   },

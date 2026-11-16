@@ -61,14 +61,17 @@ pnpm install --frozen-lockfile --prefer-offline
 
 flags=()
 if [[ $force == 1 ]]; then flags+=(--force); fi
-if [[ $sha != "$start_sha" ]] && ! grep -q '"ROUTE_JS_SIZE_BUILD"' turbo.json; then
+size_build_module=packages/observability/src/next-size-build.ts
+if [[ $sha != "$start_sha" ]] && { ! grep -q '"ROUTE_JS_SIZE_BUILD"' turbo.json || [[ ! -f $size_build_module ]]; }; then
   # A base from before deterministic size builds (only the runs of the PR that added them) has
-  # neither pin: its turbo.json does not let them through and its next.config.ts files cannot pin
-  # the Sentry release. Give that checkout, for this build only, the pins in its turbo.json build
-  # env and the start commit's next.config.ts files (whose only size-build change is the pin), and
-  # build without cache in turbo's strict env mode. (Building it with --env-mode=loose and the
-  # release pinned through SENTRY_RELEASE left Bid routes a few bytes apart from the head.) The
-  # checkout goes back to the start commit afterwards, which undoes both edits.
+  # none of the pins: its turbo.json does not let them through, its next.config.ts files cannot pin
+  # the Sentry release, and it has no DeterministicSizeBuildPlugin. Give that checkout, for this
+  # build only, the pins in its turbo.json build env, the start commit's next.config.ts files
+  # (whose only size-build changes are the release pin and the plugin) and the plugin's module with
+  # its package export, and build without cache in turbo's strict env mode. (Building it with
+  # --env-mode=loose and the release pinned through SENTRY_RELEASE left Bid routes a few bytes
+  # apart from the head.) The checkout goes back to the start commit afterwards, which undoes
+  # these edits.
   echo "::notice title=Route JS base::The base predates deterministic size builds; building it without cache, with the pins applied for this build"
   node -e '
     const fs = require("node:fs");
@@ -83,6 +86,17 @@ if [[ $sha != "$start_sha" ]] && ! grep -q '"ROUTE_JS_SIZE_BUILD"' turbo.json; t
       if git cat-file -e "$start_sha:$config" 2>/dev/null; then git checkout -q "$start_sha" -- "$config"; fi
     done
   done
+  git checkout -q "$start_sha" -- "$size_build_module"
+  node -e '
+    const fs = require("node:fs");
+    const file = "packages/observability/package.json";
+    const pkg = JSON.parse(fs.readFileSync(file, "utf8"));
+    pkg.exports["./next-size-build"] = {
+      types: "./dist/next-size-build.d.ts",
+      default: "./dist/next-size-build.js",
+    };
+    fs.writeFileSync(file, `${JSON.stringify(pkg, null, 2)}\n`);
+  '
   flags+=(--force)
 fi
 
