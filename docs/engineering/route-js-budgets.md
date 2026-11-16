@@ -383,10 +383,11 @@ Checked on 2026-11-16 with pairs of clean builds of one commit in the same direc
   changed), but it can move every Bid route by a few bytes: on PR #1494, which changes no Bid
   client code, one CI run showed all 114 Bid routes 1 byte larger than the base, while the
   self-check in the same run, and an uncached local pair of builds, showed 0 of 114.
-- **Account, rarely.** In one of four CI self-checks so far, two uncached builds of one commit
-  gave every Account route 2 bytes apart (all 20 routes, client scripts differ); the other three,
-  and the two local pairs above, gave 0 of 20 and byte-identical scripts. The cause is not found
-  yet. Shop, lax.art and Shop Admin have shown no variation.
+- **Account, in CI.** Account builds in CI flip between two states 2 bytes apart on every route
+  (all 20 routes, client scripts differ): in two of the four CI self-checks on PR #1494, and in one
+  of its base-vs-head tables. Four uncached local builds in a row, and the local pairs above, were
+  byte-identical, so it seems tied to CI (perhaps the parallel build load). The cause is not
+  found yet. Shop, lax.art and Shop Admin have shown no variation.
 - Until these are fixed, read a Bid or Account block where **every** route moves by the same one
   to a few bytes as this variation, not as a change. Rows that differ from route to route are real.
 - The same commit built in a git worktree at another path, with the same pins: Account 15 of 20
@@ -426,8 +427,8 @@ Checked on 2026-11-16 with pairs of clean builds of one commit in the same direc
    (`route-js-size-build-base.sh --force`, so nothing replays from a cache) and compares it with the
    first head build using `--require-unchanged`. Every app must read `0 of N routes changed`; any
    changed, new or removed route fails the job. "client scripts differ" alone is allowed, for the
-   Bid variation above. The Bid and Account variation can, now and then, fail this check (it did
-   once on PR #1494, Account 20 of 20 routes 2 bytes apart): re-run the job, and if it repeats,
+   Bid variation above. The Bid and Account variation can fail this check (it did
+   on two of the four runs of PR #1494, Account 20 of 20 routes 2 bytes apart): re-run the job, and if it repeats,
    the PR has made the build less deterministic. This is the proof that the base route measures like for
    like; it adds one uncached build (about 10 minutes) to those PRs only.
 
