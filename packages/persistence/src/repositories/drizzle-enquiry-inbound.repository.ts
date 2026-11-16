@@ -35,6 +35,16 @@ export class DrizzleEnquiryInboundRepository implements IEnquiryInboundRepositor
     return row ?? null;
   }
 
+  async lockTargetInTransaction(tx: Database, id: string): Promise<InboundEnquiryTarget | null> {
+    const [row] = await tx
+      .select(TARGET_COLUMNS)
+      .from(marketingEnquiry)
+      .where(eq(marketingEnquiry.id, id))
+      .limit(1)
+      .for("update");
+    return row ?? null;
+  }
+
   async findTargetByOutboundMessageIds(
     providerMessageIds: readonly string[],
   ): Promise<InboundEnquiryTarget | null> {
@@ -70,6 +80,10 @@ export class DrizzleEnquiryInboundRepository implements IEnquiryInboundRepositor
         matchedBy: input.matchedBy,
         fromEmailHash: input.fromEmailHash,
         attachments: input.attachments,
+        spfResult: input.spfResult,
+        dkimResult: input.dkimResult,
+        heldReason: input.heldReason ?? null,
+        reviewReason: input.reviewReason ?? null,
       })
       .onConflictDoNothing()
       .returning({ id: marketingEnquiryMessage.id });
@@ -101,6 +115,8 @@ export class DrizzleEnquiryInboundRepository implements IEnquiryInboundRepositor
         body: input.body,
         attachments: input.attachments,
         suspectedEnquiryId: input.suspectedEnquiryId ?? null,
+        spfResult: input.spfResult,
+        dkimResult: input.dkimResult,
       })
       .onConflictDoNothing()
       .returning({ id: enquiryInboundQuarantine.id });

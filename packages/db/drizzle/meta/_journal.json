@@ -2745,6 +2745,13 @@
       "when": 1812801600000,
       "tag": "0400_unapplied_money_shop_payment_idx",
       "breakpoints": true
+    },
+    {
+      "idx": 393,
+      "version": "7",
+      "when": 1812888000000,
+      "tag": "0401_enquiry_inbound_review",
+      "breakpoints": true
     }
   ]
 }

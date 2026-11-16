@@ -1,6 +1,8 @@
 import type { EnquiryHistoryEntry, EnquiryView } from "@/lib/data/http/admin-enquiries.schema";
 import type { TimelineEvent } from "@auction/staff-ui";
 import { ENQUIRY_CLOSE_REASON_LABELS, ENQUIRY_STATUS_LABELS } from "./enquiries.vm";
+import { REPLIES_COPY } from "./enquiry-email-copy";
+import { replyMatchDetail } from "./enquiry-replies";
 
 function plural(count: number, one: string, many: string): string {
   return `${count} ${count === 1 ? one : many}`;
@@ -62,8 +64,8 @@ function historyEvent(
 }
 
 /**
- * The record's history, newest first: when it arrived, each note, and every assignment and status
- * change from the audit trail. Without the trail (it could not be read) the record's own end
+ * The record's history, newest first: when it arrived, each note, each emailed reply from the
+ * client, and every assignment and status change from the audit trail. Without the trail (it could not be read) the record's own end
  * stands in for the close or conversion.
  */
 export function enquiryTimeline(
@@ -89,6 +91,16 @@ export function enquiryTimeline(
         ...(actor ? { actor } : {}),
       };
     }),
+    ...enquiry.replies.map(
+      (reply): TimelineEvent => ({
+        id: `reply-${reply.id}`,
+        title:
+          reply.matchedBy === "staff" ? REPLIES_COPY.timelineAttached : REPLIES_COPY.timelineEvent,
+        at: reply.receivedAt,
+        detail: replyMatchDetail(reply),
+        tone: reply.matchedBy === "staff" && !reply.senderVerified ? "warning" : "info",
+      }),
+    ),
   ];
   if (history) events.push(...history.map((entry) => historyEvent(entry, nameOf)));
   if (

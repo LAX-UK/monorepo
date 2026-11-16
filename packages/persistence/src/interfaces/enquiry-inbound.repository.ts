@@ -1,4 +1,10 @@
 import type { Database } from "@auction/db";
+import type {
+  InboundDkimResult,
+  InboundMatchMethod,
+  InboundQuarantineReason,
+  InboundSpfResult,
+} from "@auction/domain";
 
 /** What an emailed reply needs to know about the thread it may belong to. */
 export type InboundEnquiryTarget = {
@@ -14,19 +20,29 @@ export type InboundEnquiryTarget = {
 
 export type InboundAttachmentMetadata = { name: string; contentType: string; sizeBytes: number };
 
-export type NewInboundMessage = {
+/** What the receiving server recorded about the sender: SPF, and DKIM aligned with From. */
+export type InboundAuthenticationResult = {
+  spfResult: InboundSpfResult;
+  dkimResult: InboundDkimResult;
+};
+
+export type NewInboundMessage = InboundAuthenticationResult & {
   enquiryId: string;
   providerMessageId: string;
-  matchedBy: "token" | "in_reply_to";
+  /** `staff` when a person attached it from quarantine. */
+  matchedBy: InboundMatchMethod;
+  /** Attached by staff only: why it was held, and the reason the person gave for attaching it. */
+  heldReason?: InboundQuarantineReason | null;
+  reviewReason?: string | null;
   fromEmailHash: string;
   subject: string;
   body: string;
   attachments: InboundAttachmentMetadata[];
 };
 
-export type NewQuarantinedMessage = {
+export type NewQuarantinedMessage = InboundAuthenticationResult & {
   providerMessageId: string;
-  reason: "unmatched" | "bad_token" | "sender_mismatch" | "spf_failed" | "auto_reply";
+  reason: InboundQuarantineReason;
   fromAddress: string;
   subject: string;
   body: string;
@@ -44,6 +60,12 @@ export interface IEnquiryInboundRepository {
   findTargetByOutboundMessageIds(
     providerMessageIds: readonly string[],
   ): Promise<InboundEnquiryTarget | null>;
+  /**
+   * Reads the enquiry again inside the transaction and locks its row (FOR UPDATE) until the
+   * transaction ends, so an erasure cannot commit between this check and what the caller files on
+   * the thread. Erasure locks the same rows first, so a caller sees an erasure that has committed.
+   */
+  lockTargetInTransaction(tx: Database, id: string): Promise<InboundEnquiryTarget | null>;
   /** Stores the sender's reply; null when this provider message id is already stored (a replay). */
   insertInboundMessageInTransaction(
     tx: Database,

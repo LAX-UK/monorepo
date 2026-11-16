@@ -31,6 +31,7 @@ import {
   EMAIL_DELIVERY_READ_ACCESS,
   EMAIL_OBSERVABILITY_ACCESS,
   ENQUIRIES_ACCESS,
+  ENQUIRY_ASSIGN_ACCESS,
   ENQUIRY_ROUTING_MANAGE_ACCESS,
   FAILED_JOBS_ANY_SOURCE_ACT_ACCESS,
   FAILED_JOBS_ANY_SOURCE_READ_ACCESS,
@@ -151,6 +152,8 @@ export const requireEnquiries = createRequireAccess(ENQUIRIES_ACCESS);
 export const requirePurchaseProblems = createRequireAccess(PURCHASE_PROBLEMS_ACCESS);
 export const requirePrivateSaleDealsManage = createRequireAccess(PRIVATE_SALE_DEALS_MANAGE_ACCESS);
 export const requireEnquiryRoutingManage = createRequireAccess(ENQUIRY_ROUTING_MANAGE_ACCESS);
+/** Work enquiries: assign them, and attach or discard held inbound mail. */
+export const requireEnquiryWork = createRequireAccess(ENQUIRY_ASSIGN_ACCESS);
 export const requireDataRequestsManage = createRequireAccess(DATA_REQUESTS_MANAGE_ACCESS);
 export const requireCollectionsRead = createRequireAccess(COLLECTIONS_READ_ACCESS);
 /** The Collections page's list of places: everyone with a tab on it, Finance included. */

@@ -275,6 +275,21 @@ export const API_REFUND_REVERSAL_TABLES = ["stripe_refund_reversal"] as const;
  */
 export const API_DELIVERY_REFUND_TABLES = ["payment_group_delivery_refund"] as const;
 /**
+ * Inbound enquiry mail held for staff review (migrations 0397 and 0401). The Bid API adds held
+ * mail and reads it; staff review only changes its status and who reviewed it and when, so what
+ * was received is never rewritten. DELETE is held for one path only: staff-run enquiry erasure
+ * (Data requests › erase enquiries, `anonymiseEnquiries`) removes the held mail of the erased
+ * enquiries and of the erased address in the same transaction. Nothing else in the API deletes
+ * held mail; the worker's daily purge deletes it when it is due.
+ */
+export const API_ENQUIRY_INBOUND_QUARANTINE_TABLES = ["enquiry_inbound_quarantine"] as const;
+/** The only columns a staff review (attach or discard) changes on a held message. */
+export const API_ENQUIRY_INBOUND_QUARANTINE_REVIEW_COLUMNS = [
+  "status",
+  "reviewed_by_user_id",
+  "reviewed_at",
+] as const;
+/**
  * Accounting documents and their history (migration 0368). The Bid API reads them for the
  * Finance › Accounting page, and puts a refused document back in the queue when staff try it
  * again (the life cycle's requeue: state columns only, never what the document says), adding that
@@ -1119,8 +1134,11 @@ export const WORKER_ANONYMISATION_SCRUB_COLUMNS = [
   /** The enquiry rule replaces the sender's details and removes what they wrote. */
   ["marketing_enquiry", ["name", "email", "phone", "message", "version"]],
   ["marketing_enquiry_note", ["body"]],
-  /** The sender's emailed replies: the rule removes their text and the metadata of their files. */
-  ["marketing_enquiry_message", ["subject", "body", "attachments"]],
+  /**
+   * The sender's emailed replies: the rule removes their text and the metadata of their files,
+   * and the reason staff gave for attaching held mail (it can name the sender).
+   */
+  ["marketing_enquiry_message", ["subject", "body", "attachments", "review_reason"]],
   /** Older identity-check notices quote the provider's decline reason in the message. */
   ["notification", ["message"]],
   ["private_sale_enquiry_detail", ["location_town", "location_country", "looking_for"]],
@@ -1627,6 +1645,17 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
           }
           if ((API_DELIVERY_REFUND_TABLES as readonly string[]).includes(tableName)) {
             await grantIfExists(client, "api_app", tableName, "INSERT, SELECT, UPDATE");
+            continue;
+          }
+          if ((API_ENQUIRY_INBOUND_QUARANTINE_TABLES as readonly string[]).includes(tableName)) {
+            // DELETE is for staff-run enquiry erasure only; review changes the columns below.
+            await grantIfExists(client, "api_app", tableName, "INSERT, SELECT, DELETE");
+            await grantColumnUpdateIfExists(
+              client,
+              "api_app",
+              tableName,
+              API_ENQUIRY_INBOUND_QUARANTINE_REVIEW_COLUMNS,
+            );
             continue;
           }
           await grantIfExists(client, "api_app", tableName, "ALL PRIVILEGES");

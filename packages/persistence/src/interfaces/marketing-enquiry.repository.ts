@@ -37,6 +37,8 @@ export type MarketingEnquiryRecord = {
   /** When the enquiry was closed. */
   handledAt: Date | null;
   handledByUserId: string | null;
+  /** When the client emailed a reply nobody has answered yet; null when nothing is waiting. */
+  awaitingReplySince: Date | null;
 };
 
 /** The answers a private sale enquiry carries beyond the generic enquiry. */
@@ -89,6 +91,8 @@ export type MarketingEnquiryChange = {
   assignedToUserId?: string | null;
   /** Set with a close; cleared when a closed enquiry is reopened. */
   closed?: { at: Date; byUserId: string } | null;
+  /** The change answers the client, so the thread no longer waits for a reply. */
+  clearsAwaitingReply?: boolean;
 };
 
 /** What the viewer may see, resolved from their capabilities. */

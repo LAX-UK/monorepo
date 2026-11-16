@@ -942,6 +942,31 @@ describe.skipIf(!API_URL)("api_app role contract", { timeout: 60_000 }, () => {
     });
   });
 
+  it("holds inbound enquiry mail, reviews it by status only and deletes it on erasure, never rewriting it", async () => {
+    await withApiClient(async (client) => {
+      const rows = await readTablePrivileges(
+        client,
+        ["enquiry_inbound_quarantine"],
+        ["SELECT", "INSERT", "UPDATE", "DELETE", "TRUNCATE"],
+      );
+      // DELETE is the staff-run enquiry erasure path (anonymiseEnquiries); TRUNCATE and a
+      // table-wide UPDATE stay refused.
+      expectTablePrivileges(rows, (row) => ["SELECT", "INSERT", "DELETE"].includes(row.privilege));
+      const columns = await client.query<{ column_name: string; allowed: boolean }>(
+        `select column_name::text,
+                has_column_privilege(current_user, 'public.enquiry_inbound_quarantine', column_name, 'UPDATE') as allowed
+           from information_schema.columns
+          where table_schema = 'public' and table_name = 'enquiry_inbound_quarantine'`,
+      );
+      expect(
+        columns.rows
+          .filter((row) => row.allowed)
+          .map((row) => row.column_name)
+          .sort(),
+      ).toEqual(["reviewed_at", "reviewed_by_user_id", "status"]);
+    });
+  });
+
   it("owns only the Bid SSF replay ledger", async () => {
     await withApiClient(async (client) => {
       for (const table of API_SSF_RECEIVER_TABLES) {

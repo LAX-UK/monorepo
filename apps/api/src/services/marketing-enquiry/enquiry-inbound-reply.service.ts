@@ -1,3 +1,4 @@
+import { isInboundSenderAuthenticated } from "@auction/domain";
 import { emailHash } from "@auction/email";
 import type {
   IEnquiryInboundRepository,
@@ -9,6 +10,10 @@ import type {
 import { z } from "zod";
 import type { IDomainEventSink } from "../domain-event-sink.js";
 import type { EnquiryReplyAddresses } from "./enquiry-reply-address.js";
+import {
+  type InboundAuthenticationOptions,
+  inboundAuthentication,
+} from "./inbound-authentication.js";
 import {
   INBOUND_BODY_MAX_CHARS,
   INBOUND_FILENAME_MAX_CHARS,
@@ -83,6 +88,8 @@ export type EnquiryInboundReplyDeps = {
   events: IDomainEventSink;
   alert: IEnquiryReplyAlert;
   now: () => Date;
+  /** Which receiving server's `Authentication-Results` header to believe for DKIM. */
+  authentication?: InboundAuthenticationOptions;
   /** Called with ids and codes only, never an address or any text of the mail. */
   onAlertFailed?: (enquiryId: string, error: unknown) => void;
 };
@@ -109,18 +116,14 @@ function isAutomatic(payload: InboundPayload): boolean {
   );
 }
 
-/** Postmark records the sender policy check of the receiving server in Received-SPF. */
-function spfFailed(payload: InboundPayload): boolean {
-  const spf = header(payload, "Received-SPF")?.trim().toLowerCase();
-  return Boolean(spf && /^(fail|softfail)\b/.test(spf));
-}
-
 /**
  * Takes one mail from the Postmark inbound webhook and either adds it to the enquiry thread it
  * answers or holds it in quarantine. A reply joins a thread only when its address (or, failing
  * that, a message id it quotes) names the thread AND it comes from the person who enquired AND it
- * is not an automatic reply or an SPF failure. Anything else is held for staff and never attached.
- * Attachments are recorded as metadata (name, type, size); the files are not stored.
+ * is not an automatic reply AND its sender is authenticated: SPF passed, or a DKIM signature
+ * aligned with the From domain passed. Anything else is held for staff and never attached. The
+ * authentication result is kept on the row either way. Attachments are recorded as metadata
+ * (name, type, size); the files are not stored.
  */
 export class EnquiryInboundReplyService {
   constructor(private readonly deps: EnquiryInboundReplyDeps) {}
@@ -138,12 +141,19 @@ export class EnquiryInboundReplyService {
       INBOUND_BODY_MAX_CHARS,
     );
     const attachments = this.attachmentMetadata(payload);
+    const auth = inboundAuthentication(
+      payload.Headers ?? [],
+      fromAddress,
+      this.deps.authentication,
+    );
+    const authResult = { spfResult: auth.spf, dkimResult: auth.dkim };
     const held = {
       providerMessageId,
       fromAddress: fromAddress.slice(0, 320),
       subject,
       body,
       attachments,
+      ...authResult,
     };
 
     const recipients = [
@@ -175,7 +185,11 @@ export class EnquiryInboundReplyService {
 
     const suspect = { suspectedEnquiryId: target.id };
     if (isAutomatic(payload)) return this.quarantine({ ...held, ...suspect, reason: "auto_reply" });
-    if (spfFailed(payload)) return this.quarantine({ ...held, ...suspect, reason: "spf_failed" });
+    if (!isInboundSenderAuthenticated(auth)) {
+      const reason =
+        auth.spf === "fail" || auth.spf === "softfail" ? "spf_failed" : "unauthenticated";
+      return this.quarantine({ ...held, ...suspect, reason });
+    }
     if (!fromAddress || fromAddress !== target.email.trim().toLowerCase()) {
       return this.quarantine({ ...held, ...suspect, reason: "sender_mismatch" });
     }
@@ -189,6 +203,7 @@ export class EnquiryInboundReplyService {
         subject,
         body,
         attachments,
+        ...authResult,
       });
       if (!row) return null;
       await this.deps.repository.markAwaitingReplyInTransaction(tx, target.id, this.deps.now());

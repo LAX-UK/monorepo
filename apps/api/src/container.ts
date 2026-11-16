@@ -878,6 +878,7 @@ export function createContainer(env: Env): Container {
       buyerAgentAuthorisations,
       deliveryQuotes: organisationBuying.staffDeliveryQuotes,
       marketingEnquiries: marketingEnquiries.desk,
+      enquiryQuarantine: marketingEnquiries.quarantine,
       privateSaleDeals: payments.privateSaleDeals.desk,
       enquiryConversion: payments.privateSaleDeals.conversion,
       dealArtworks: createDealArtworkSearch({

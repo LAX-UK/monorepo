@@ -10,12 +10,14 @@ import {
   Lock,
   RotateCcw,
   RotateCw,
+  ShieldAlert,
   Upload,
   UserPlus,
 } from "lucide-react";
 import * as React from "react";
 import { cn } from "../lib/cn.js";
 import { StaffButton } from "../primitives/button.js";
+import { type FileMetadataItem, FileMetadataList } from "./file-metadata-list.js";
 
 /**
  * A conversation as staff read it: messages from both sides, staff-only notes, quiet one-line
@@ -58,6 +60,25 @@ export type ThreadMessage = {
   time: ThreadTime;
   body: string;
   attachments: readonly ThreadAttachment[];
+  /** How a client's message arrived when it was not written here: "via email". */
+  channel?: string | null;
+  /**
+   * Files the message named but that were not kept (only their name, type and size): listed
+   * without a link, with `filesNote` saying why.
+   */
+  files?: readonly FileMetadataItem[];
+  filesNote?: React.ReactNode;
+  /**
+   * How a message came to be on the thread when a person put it there rather than it arriving on
+   * its own, e.g. held email staff attached: a short label beside the author, `warning` when its
+   * sender is not verified, and optional lines under the message (why it was held, the reason
+   * given). Plain text only.
+   */
+  provenance?: {
+    label: string;
+    tone: "neutral" | "warning";
+    details?: readonly string[];
+  } | null;
   /** "Read by Northbank Gallery · 29 Oct, 17:02", under the last reply the client read. */
   receipt?: string | null;
   /** A reply on its way, or one that did not go. */
@@ -133,6 +154,27 @@ function MessageRow({ message }: { message: ThreadMessage }) {
           ) : null}
           <span className="font-semibold text-staff-fg">{message.author.name}</span>
           {message.author.role ? <span>· {message.author.role}</span> : null}
+          {message.channel ? (
+            <span className="inline-flex items-center rounded-staff-xs border border-staff-line px-1.5 text-staff-xs leading-5 font-medium text-staff-muted">
+              {message.channel}
+            </span>
+          ) : null}
+          {message.provenance ? (
+            <span
+              data-thread-provenance={message.provenance.tone}
+              className={cn(
+                "inline-flex items-center gap-1 rounded-staff-xs px-1.5 text-staff-xs leading-5 font-medium",
+                message.provenance.tone === "warning"
+                  ? "bg-staff-warning-bg text-staff-warning-fg"
+                  : "border border-staff-line text-staff-muted",
+              )}
+            >
+              {message.provenance.tone === "warning" ? (
+                <ShieldAlert aria-hidden className="size-3" strokeWidth={2} />
+              ) : null}
+              {message.provenance.label}
+            </span>
+          ) : null}
           {sending ? (
             <span className="inline-flex items-center gap-1">
               <LoaderCircle aria-hidden className="size-3.5 animate-spin" strokeWidth={1.75} />
@@ -176,7 +218,24 @@ function MessageRow({ message }: { message: ThreadMessage }) {
               ))}
             </ul>
           ) : null}
+          {message.files && message.files.length > 0 ? (
+            <FileMetadataList
+              files={message.files}
+              label="Files named in this message"
+              note={message.filesNote}
+              className={message.body || message.attachments.length > 0 ? "mt-2.5" : undefined}
+            />
+          ) : null}
         </div>
+        {message.provenance?.details && message.provenance.details.length > 0 ? (
+          <ul className="mt-1.5 flex max-w-[72ch] flex-col gap-0.5 text-staff-xs leading-5 text-staff-muted">
+            {message.provenance.details.map((line) => (
+              <li key={line} className="break-words">
+                {line}
+              </li>
+            ))}
+          </ul>
+        ) : null}
         {failed ? (
           <div role="alert" className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1">
             <p className="inline-flex items-center gap-1.5 text-staff-sm text-staff-danger">
@@ -251,6 +310,11 @@ export type MessageThreadProps = {
   earlier?: { count: number; onShow: () => void } | null;
   /** Shown when there is nothing yet. */
   empty?: React.ReactNode;
+  /**
+   * The floating "Jump to latest" control, for a thread that scrolls on its own (the default).
+   * Off for a short thread set inside a longer page, where it would float over other sections.
+   */
+  jumpToLatest?: boolean;
   className?: string;
 };
 
@@ -259,7 +323,14 @@ export type MessageThreadProps = {
  * message is out of view a "Jump to latest" control brings it back; the page never scrolls on
  * its own.
  */
-export function MessageThread({ items, label, earlier, empty, className }: MessageThreadProps) {
+export function MessageThread({
+  items,
+  label,
+  earlier,
+  empty,
+  jumpToLatest = true,
+  className,
+}: MessageThreadProps) {
   const end = React.useRef<HTMLDivElement>(null);
   const [endVisible, setEndVisible] = React.useState(true);
 
@@ -300,7 +371,7 @@ export function MessageThread({ items, label, earlier, empty, className }: Messa
         </ol>
       </div>
       <div ref={end} aria-hidden className="h-px" />
-      {!endVisible && items.length > 0 ? (
+      {jumpToLatest && !endVisible && items.length > 0 ? (
         <div className="pointer-events-none sticky bottom-3 flex justify-center">
           <StaffButton
             size="sm"

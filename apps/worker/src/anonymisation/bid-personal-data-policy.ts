@@ -116,6 +116,8 @@ const enquiryRule: BidAnonymisationRule = {
   table: "marketing_enquiry",
   treatment: "scrub",
   fields: ["name", "email", "phone", "message", "note_body", "location", "looking_for"],
+  /** Replaces the staff review reason in the held-mail attach and discard events. */
+  readsEventLog: true,
   async apply(tx, scope) {
     const counts = await anonymiseEnquiries(
       tx as never,
