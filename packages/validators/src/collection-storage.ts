@@ -1,5 +1,6 @@
 import {
   MAX_STORAGE_AMOUNT_PENCE,
+  MAX_STORAGE_EXTENSION_DAYS,
   MAX_STORAGE_FREE_DAYS,
   type StorageCountMode,
 } from "@auction/domain";
@@ -58,4 +59,22 @@ export type SetStorageChargingBody = z.infer<typeof setStorageChargingBodySchema
 export const storageTermsParamSchema = z.object({
   venueId: z.string().uuid(),
   termsId: z.string().uuid(),
+});
+
+/** Fulfilment adds free storage days to one lot, with the reason the buyer's history keeps. */
+export const extendLotStorageBodySchema = z
+  .object({
+    days: z.number().int().min(1).max(MAX_STORAGE_EXTENSION_DAYS),
+    reason: storageReasonSchema,
+  })
+  .strict();
+export type ExtendLotStorageBody = z.infer<typeof extendLotStorageBodySchema>;
+
+/** Finance waives one lot's storage charges, with the reason. */
+export const waiveLotStorageBodySchema = z.object({ reason: storageReasonSchema }).strict();
+export type WaiveLotStorageBody = z.infer<typeof waiveLotStorageBodySchema>;
+
+export const storageLotParamSchema = z.object({
+  venueId: z.string().uuid(),
+  lotId: z.string().uuid(),
 });

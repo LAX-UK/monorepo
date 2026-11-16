@@ -1001,6 +1001,11 @@ export {
   formatStorageInvoiceLine,
   formatStorageNotice,
   formatStorageTerms,
+  formatStorageChargingSince,
+  formatStorageDailyRate,
+  formatStoragePence,
+  formatStorageRateAfter,
+  formatStorageRunningTotal,
   purchaseStorageView,
   storageClearedOn,
   storageDailyPence,
@@ -1017,6 +1022,21 @@ export {
   type StorageState,
   type StorageTerms,
 } from "./storage-terms.js";
+export {
+  MAX_STORAGE_EXTENSION_DAYS,
+  STORAGE_FOLLOW_UP_DAYS,
+  STORAGE_TOTAL_EVERY_DAYS,
+  lotStorageCharge,
+  needsStorageFollowUp,
+  storageDaysOver,
+  storageQuotePauses,
+  storageReminderFor,
+  type LotStorageCharge,
+  type LotStorageFacts,
+  type StorageQuoteHold,
+  type StorageReminder,
+  type StorageReminderKind,
+} from "./storage-follow-up.js";
 export {
   DEFAULT_COLLECT_BY_POLICY,
   MAX_FREE_STORAGE_DAYS,

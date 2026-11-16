@@ -25,7 +25,10 @@ import type { IAtgAdminService } from "../atg-admin-service.js";
 import type { IBuyerAgentAuthorisationService } from "../buyer-agent-authorisation-service.js";
 import type { ICollectionDeskService } from "../collection-desk-service.js";
 import type { ICollectionSettingsAdminService } from "../collection-settings-service.js";
-import type { ICollectionStorageAdminService } from "../collection-storage-service.js";
+import type {
+  ICollectionStorageAdminService,
+  ICollectionStorageFollowUpService,
+} from "../collection-storage-service.js";
 import type { IIdempotencyStore } from "../idempotency-store.js";
 import type { IEnquiryRouting, IMarketingEnquiryDesk } from "../marketing-enquiry-service.js";
 import type { IOnsiteEventAdminService } from "../onsite-event-admin-service.js";
@@ -141,6 +144,8 @@ export type AdminIntegrationRouteServices = {
   collectionSettings: ICollectionSettingsAdminService;
   /** A place's storage terms and its "Raise storage invoices" switch. */
   collectionStorage: ICollectionStorageAdminService;
+  /** Lots left past their collect-by day: extend free storage, waive the charges. */
+  collectionStorageFollowUp: ICollectionStorageFollowUpService;
   /** The day's visits, hand-over, missed visits and booking for a client. */
   collectionDesk: ICollectionDeskService;
 };

@@ -293,7 +293,9 @@ describe.skipIf(!HAS_DB)("collection storage (integration)", () => {
     expect(audit).toMatchObject({
       action: "extension_granted",
       lotId,
-      after: { days: 7 },
+      actorUserId: staffId,
+      before: { extensionDays: 0 },
+      after: { days: 7, extensionDays: 7 },
       reason: "Collector abroad",
     });
     expect((await storage.listExtensions(lotId)).map((e) => e.days)).toEqual([7]);
@@ -354,8 +356,125 @@ describe.skipIf(!HAS_DB)("collection storage (integration)", () => {
     expect(await storage.addWaiver(lotId, "Again", next())).toEqual({ outcome: "already_waived" });
     expect(await storage.findWaiver(lotId)).toMatchObject({ lotId, reason: "Goodwill" });
     const [latest] = await storage.listAudit(venueId, 1);
-    expect(latest).toMatchObject({ action: "waiver_granted", lotId, reason: "Goodwill" });
+    expect(latest).toMatchObject({
+      action: "waiver_granted",
+      lotId,
+      actorUserId: staffId,
+      before: { waived: false },
+      after: { waived: true },
+      reason: "Goodwill",
+    });
     expect(await storage.addWaiver(orphanLotId, "x", next())).toEqual({ outcome: "lot_not_found" });
+  });
+
+  it("adds what the caller saw (the collect-by day, the amount) to the before and after", async () => {
+    const detailLot = randomUUID();
+    await db.execute(sql`
+      insert into lot (id, seller_legal_entity_id, sale_id, title, auction_type, starting_price,
+         current_price, start_time, end_time, status)
+      values (${detailLot}, ${entityId}, ${saleId}, 'Collection storage IT detail lot', 'english', 100, 100,
+         now() - interval '30 days', now() - interval '20 days', 'ended')`);
+    try {
+      await storage.addExtension(detailLot, 5, "Buyer travelling", next(), {
+        before: { collectBy: "2031-03-01" },
+        after: { collectBy: "2031-03-06" },
+      });
+      const [extended] = await storage.listAudit(venueId, 1);
+      expect(extended).toMatchObject({
+        before: { extensionDays: 0, collectBy: "2031-03-01" },
+        after: { extensionDays: 5, days: 5, collectBy: "2031-03-06" },
+      });
+      await storage.addWaiver(detailLot, "Damaged frame", next(), {
+        before: { amountPence: 4200 },
+        after: { amountPence: 0 },
+      });
+      const [waived] = await storage.listAudit(venueId, 1);
+      expect(waived).toMatchObject({
+        before: { waived: false, amountPence: 4200 },
+        after: { waived: true, amountPence: 0 },
+      });
+    } finally {
+      await db.execute(sql`delete from collection_storage_audit where lot_id = ${detailLot}`);
+      await db.execute(sql`delete from collection_storage_waiver where lot_id = ${detailLot}`);
+      await db.execute(sql`delete from collection_storage_extension where lot_id = ${detailLot}`);
+      await db.execute(sql`delete from lot where id = ${detailLot}`);
+    }
+  });
+
+  it("lists the lots waiting at a place with what prices their storage, oldest first", async () => {
+    const buyerId = randomUUID();
+    const [waitingOld, waitingNew, handedOver, booked, shipping] = [1, 2, 3, 4, 5].map(() =>
+      randomUUID(),
+    );
+    const all = [waitingOld, waitingNew, handedOver, booked, shipping] as string[];
+    const bookingId = randomUUID();
+    await db.execute(sql`
+      insert into legal_entity (id, display_name, kind, subkind, created_by_user_id, status)
+      values (${buyerId}, 'Waiting Buyer Ltd', 'individual', 'private_collector', ${staffId}, 'approved')`);
+    for (const [i, id] of all.entries()) {
+      await db.execute(sql`
+        insert into lot (id, seller_legal_entity_id, sale_id, title, auction_type, starting_price,
+           current_price, start_time, end_time, status, lot_number, buyer_legal_entity_id, storage_large)
+        values (${id}, ${entityId}, ${saleId}, ${`Waiting IT lot ${i}`}, 'english', 100, 100,
+           now() - interval '30 days', now() - interval '20 days', 'ended', ${100 + i}, ${buyerId}, ${i === 1})`);
+    }
+    await db.execute(sql`
+      insert into lot_fulfilment (lot_id, status, payment_cleared_at, fulfilment_method)
+      values (${waitingOld}, 'ready_for_collection', '2031-01-05T10:00:00Z', null),
+             (${waitingNew}, 'ready_for_collection', '2031-02-05T10:00:00Z', 'collection'),
+             (${handedOver}, 'delivered', '2031-01-05T10:00:00Z', 'collection'),
+             (${booked}, 'ready_for_collection', '2031-01-05T10:00:00Z', 'collection'),
+             (${shipping}, 'ready_for_collection', '2031-01-05T10:00:00Z', 'shipping')`);
+    await db.execute(sql`
+      insert into delivery_quote (lot_id, buyer_legal_entity_id, status, destination, requested_at)
+      values (${waitingNew}, ${buyerId}, 'requested', 'Somewhere', '2031-02-20T10:00:00Z')`);
+    await storage.addWaiver(waitingOld, "Goodwill", next());
+    await storage.addExtension(waitingNew, 4, "Travelling", next());
+    await db.execute(sql`
+      insert into collection_booking (id, reference, legal_entity_id, venue_id, slot_start, slot_end, seat,
+         collector_kind, collector_name, idempotency_key, request_fingerprint)
+      values (${bookingId}, ${`CB-${bookingId.slice(0, 8)}`}, ${buyerId}, ${venueId}, now() + interval '3 days',
+         now() + interval '3 days 30 minutes', 1, 'self', 'Buyer', ${`k-${bookingId}`}, 'f')`);
+    await db.execute(sql`
+      insert into collection_booking_lot (booking_id, lot_id, active) values (${bookingId}, ${booked}, true)`);
+    try {
+      const { lots, more } = await storage.waitingLotsAt(venueId, 10);
+      expect(more).toBe(false);
+      expect(lots.map((l) => l.lotId)).toEqual([waitingOld, waitingNew]);
+      expect(lots[0]).toMatchObject({
+        lotNumber: 100,
+        title: "Waiting IT lot 0",
+        buyerName: "Waiting Buyer Ltd",
+        buyerLegalEntityId: buyerId,
+        storage: {
+          pricing: { terms: null, large: false, extensionDays: 0, waived: true },
+          quote: null,
+        },
+      });
+      expect(lots[0]?.storage.calendar).toBeDefined();
+      expect(lots[1]).toMatchObject({
+        storage: {
+          pricing: { large: true, extensionDays: 4, waived: false },
+          quote: { status: "requested" },
+        },
+      });
+      const first = await storage.waitingLotsAt(venueId, 1);
+      expect(first.lots.map((l) => l.lotId)).toEqual([waitingOld]);
+      expect(first.more).toBe(true);
+      expect((await storage.waitingLotsAt(emptyVenueId, 10)).lots).toEqual([]);
+    } finally {
+      await db.execute(sql`delete from collection_booking_lot where booking_id = ${bookingId}`);
+      await db.execute(sql`delete from collection_booking where id = ${bookingId}`);
+      await db.execute(sql`delete from delivery_quote where buyer_legal_entity_id = ${buyerId}`);
+      for (const id of all) {
+        await db.execute(sql`delete from collection_storage_audit where lot_id = ${id}`);
+        await db.execute(sql`delete from collection_storage_waiver where lot_id = ${id}`);
+        await db.execute(sql`delete from collection_storage_extension where lot_id = ${id}`);
+        await db.execute(sql`delete from lot_fulfilment where lot_id = ${id}`);
+        await db.execute(sql`delete from lot where id = ${id}`);
+      }
+      await db.execute(sql`delete from legal_entity where id = ${buyerId}`);
+    }
   });
 
   it("records the terms in force when the sale closed on its bought lots, once", async () => {

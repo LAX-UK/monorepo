@@ -159,3 +159,10 @@ export {
   readCollectByCalendars,
   type CollectByDayRange,
 } from "./collect-by-calendars.js";
+export {
+  readWaitingLotStorage,
+  storageCalendarReach,
+  type WaitingLotRef,
+  type WaitingLotStorage,
+} from "./waiting-lot-storage.js";
+export type { LotStoragePricing } from "./purchase-storage-pricing.js";

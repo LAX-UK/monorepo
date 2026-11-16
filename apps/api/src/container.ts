@@ -109,6 +109,7 @@ import {
 import { MyBuyerAgentAuthorisationsService } from "./services/buyer-agents/my-buyer-agent-authorisations.service.js";
 import { CollectionDeskService } from "./services/collection-desk/collection-desk.service.js";
 import { CollectionSettingsAdminService } from "./services/collection-settings/collection-settings.service.js";
+import { CollectionStorageFollowUpService } from "./services/collection-storage/collection-storage-follow-up.service.js";
 import { CollectionStorageAdminService } from "./services/collection-storage/collection-storage.service.js";
 import { EnsurePersonalLegalEntityService } from "./services/legal-entity/ensure-personal-legal-entity.service.js";
 import { NotificationAccountMuteService } from "./services/notifications/notification-account-mute.service.js";
@@ -567,10 +568,18 @@ export function createContainer(env: Env): Container {
     now: () => new Date(),
   });
 
+  const collectionStorageRepository = new DrizzleCollectionStorageRepository(db);
   const collectionStorage = new CollectionStorageAdminService({
-    storage: new DrizzleCollectionStorageRepository(db),
+    storage: collectionStorageRepository,
     places: collectionSettingsRepository,
     now: () => new Date(),
+  });
+  const storageLog = createAppLogger(env);
+  const collectionStorageFollowUp = new CollectionStorageFollowUpService({
+    storage: collectionStorageRepository,
+    places: collectionSettingsRepository,
+    now: () => new Date(),
+    log: (message, detail) => storageLog.error(detail, message),
   });
 
   const collectionBookings = new DrizzleCollectionBookingRepository(db);
@@ -866,6 +875,7 @@ export function createContainer(env: Env): Container {
       inventoryMoves,
       collectionSettings,
       collectionStorage,
+      collectionStorageFollowUp,
       collectionDesk,
       staffTwoFactorPolicy: twoFactorPolicy,
       twoFactorReset,
