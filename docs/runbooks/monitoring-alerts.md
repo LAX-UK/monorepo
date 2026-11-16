@@ -866,6 +866,7 @@ volumes before the test organisation step.
 | `not_in_pounds` | Not GBP. | Books are kept in GBP only: ask the accountant. |
 | `bad_amounts` | Stripe reported amounts that cannot be (a payout into the balance). | Ask engineering. |
 | `unrecognised` | The ledger or the Books queue refused a value Stripe reported (an id of an unknown shape, a reference already holding another document). The log line `accounting_stripe_transaction_parked_instead` names it. | Ask engineering; book it by hand once understood. |
+| `was_cancelled` | Its document was cancelled by a rollback of migration 0386 and the migration was applied again: that document is never sent. | Book it by hand in Books (the cancelled document shows what it was). |
 
 For an `unrecognised` row whose id Stripe reported in an unexpected shape, the stored
 `balance_transaction_id` is a digest (`txn_` and 48 hex characters of a SHA-256 of the original), not
@@ -873,7 +874,6 @@ Stripe's id, and its type and currency may be placeholders (`unrecognised`, `xxx
 Stripe id is not stored in the database: it is the `id` field of the worker's
 `accounting_stripe_transaction_parked_instead` log line (with `stripeAccountId` and `type`), and
 Stripe itself holds the transaction.
-| `was_cancelled` | Its document was cancelled by a rollback of migration 0386 and the migration was applied again: that document is never sent. | Book it by hand in Books (the cancelled document shows what it was). |
 
 A parked transaction is never decided again by the job. Each one appears in that day's report.
 `outcome = 'not_aimed'` means Books was not aimed at the product when it was read: it is recorded
