@@ -80,6 +80,9 @@ Wording that is not in the approved list above, added so the formatter and this 
 - Lot/shipping sentence with no free days: "It is {rates}", or "Storage is charged from the day after your payment clears."
 - Lot/shipping sentence when no rate is set: "After that, storage charges may apply."
 - Lot page: the terms stated are those in force on the day the sale closes (ST9), and the shipping page carries its old general "storage charges may apply" sentence only while no place has terms.
+- A lot won before its place had terms (no `storage_terms_id`) is priced by the same rules under `LEGACY_STORAGE_TERMS` (`storageTermsForLot`): 30 calendar days free and nothing charged, whatever the place's old `free_storage_days`. Its notice reads "Storage is free until then." with no rate, and after the day "That day has passed. Book a time to collect your work from {place}, or email us if you need longer." with no total.
+- If a place has no opening calendar, or a stored version cannot be priced (the purchases read logs it), that lot alone keeps today's collect-by notice; the rest of the list is unaffected.
+- The lot and shipping pages describe the terms in force at a place; a place with no terms yet shows no storage sentence on the lot page.
 - List badge when the day has passed and nothing is owed (charging off, or a day count of zero): "Collect by {day}" with no total; a waived lot shows "No storage to pay" on its notice.
 
 ## Not yet built (tracked)

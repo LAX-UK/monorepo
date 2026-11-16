@@ -2,32 +2,24 @@ import {
   type PurchaseCollectBy,
   type PurchaseStorageView,
   type StoragePause,
-  type StorageTerms,
   calculateStorageCharge,
   londonDateKey,
   purchaseStorageView,
   storageClearedOn,
+  storageTermsForLot,
 } from "@auction/domain";
 import type { AccountPurchaseFactsRow } from "@auction/persistence/interfaces";
 
 type Storage = NonNullable<AccountPurchaseFactsRow["storage"]>;
 
-/**
- * The terms a lot was sold under, in the shape the storage rules read. `null` for a lot won before
- * the first terms, which keeps the legacy notice (the place's free days, nothing charged).
- */
-function termsOf(storage: Storage): StorageTerms | null {
-  const sold = storage.pricing?.terms;
-  if (!sold) return null;
-  return {
-    freeDays: sold.freeDays,
-    dayCount: sold.countMode,
-    standardDailyPence: sold.standardDailyPence,
-    largeDailyPence: sold.largeDailyPence,
-    handlingFeePence: sold.handlingFeePence,
-    effectiveFrom: sold.effectiveFrom,
-  };
-}
+/** What prices a lot that has no pricing read: no extension, no waiver, standard band, charging off. */
+const NO_PRICING = {
+  terms: null,
+  large: false,
+  extensionDays: 0,
+  waived: false,
+  chargingOn: false,
+};
 
 /**
  * The days LAX held the work for a shipping quote it still owed (ST5): from the day the buyer asked
@@ -50,41 +42,52 @@ export function quotePausesOf(
 }
 
 /**
- * The "please collect by" day, its legacy state and the buyer's wording for a lot sold under
- * storage terms, all from the one domain formatter. `null` when the lot has no terms (the caller
- * keeps the legacy notice) or its place has no opening calendar to count working days or move a closed
- * day with.
+ * The "please collect by" day, its legacy state and the buyer's wording for a lot, all from the one
+ * domain formatter. A lot sold before its place had terms is held under `LEGACY_STORAGE_TERMS`
+ * (30 calendar days free, nothing charged: ST9) through the same rules. `null` only when the
+ * lot's place has no opening calendar to count working days or move a closed day with, or its
+ * stored terms cannot be priced; the caller then keeps today's notice, so one bad row never fails
+ * the purchases list.
  */
 export function purchaseStorageOf(
   storage: Storage,
   now: Date,
   quote: AccountPurchaseFactsRow["quote"] = null,
 ): (PurchaseCollectBy & { storage: PurchaseStorageView }) | null {
-  const terms = termsOf(storage);
-  const pricing = storage.pricing;
-  if (!terms || !pricing || !storage.calendar) return null;
+  if (!storage.calendar) return null;
+  const pricing = storage.pricing ?? NO_PRICING;
+  const terms = storageTermsForLot(pricing.terms);
+  const band = pricing.large ? "large" : "standard";
   const today = londonDateKey(now);
-  const charge = calculateStorageCharge({
-    terms,
-    clearedOn: storageClearedOn(storage.clearedAt),
-    extensionDays: pricing.extensionDays,
-    waived: pricing.waived,
-    pausedRanges: quotePausesOf(quote, today),
-    band: pricing.large ? "large" : "standard",
-    asOf: today,
-    calendar: storage.calendar,
-  });
-  const view = purchaseStorageView(charge, terms, pricing.large ? "large" : "standard", {
-    placeName: storage.placeName,
-    now,
-    chargingOn: pricing.chargingOn,
-  });
-  // A waived lot past its day stays "upcoming" here: nothing is owed, so it keeps the neutral tone
-  // and its notice reads "No storage to pay".
-  const passed = charge.state === "charging" || charge.state === "overdue";
-  return {
-    date: charge.collectBy,
-    state: passed ? "overdue" : charge.state === "soon" ? "soon" : "upcoming",
-    storage: view,
-  };
+  try {
+    const charge = calculateStorageCharge({
+      terms,
+      clearedOn: storageClearedOn(storage.clearedAt),
+      extensionDays: pricing.extensionDays,
+      waived: pricing.waived,
+      pausedRanges: quotePausesOf(quote, today),
+      band,
+      asOf: today,
+      calendar: storage.calendar,
+    });
+    const view = purchaseStorageView(charge, terms, band, {
+      placeName: storage.placeName,
+      now,
+      chargingOn: pricing.chargingOn,
+    });
+    // A waived lot past its day stays "upcoming" here: nothing is owed, so it keeps the neutral
+    // tone and its notice reads "No storage to pay".
+    const passed = charge.state === "charging" || charge.state === "overdue";
+    return {
+      date: charge.collectBy,
+      state: passed ? "overdue" : charge.state === "soon" ? "soon" : "upcoming",
+      storage: view,
+    };
+  } catch (err) {
+    console.error("[purchaseStorageOf] storage terms could not be priced", {
+      placeId: storage.placeId,
+      err,
+    });
+    return null;
+  }
 }

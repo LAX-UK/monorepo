@@ -1,6 +1,6 @@
 import { DEFAULT_COLLECTION_RULES, createCollectionCalendar } from "@auction/domain";
 import type { AccountPurchaseFactsRow } from "@auction/persistence/interfaces";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { purchaseStorageOf } from "./purchase-storage.js";
 
 const calendar = createCollectionCalendar({
@@ -47,9 +47,60 @@ const at = (iso: string, pricing: Partial<Pricing> = {}) =>
   purchaseStorageOf(storage(pricing), new Date(iso));
 
 describe("the buyer's storage view of a purchase", () => {
-  it("is absent for a lot won before the first terms, which keeps the legacy notice", () => {
-    expect(at("2026-11-10T12:00:00Z", { terms: null })).toBeNull();
-    expect(purchaseStorageOf({ ...storage(), pricing: undefined }, new Date())).toBeNull();
+  describe("a lot won before its place had terms (ST9)", () => {
+    it("is held 30 calendar days free under the legacy terms, not the place's free days", () => {
+      const legacy = at("2026-11-10T12:00:00Z", { terms: null });
+      expect(legacy).toMatchObject({
+        date: "2026-12-02",
+        state: "upcoming",
+        storage: { state: "upcoming", amountPence: 0, badge: "Collect by Wed 2 Dec" },
+      });
+      expect(legacy?.storage.notice.body).toBe(
+        "Your work is paid for and waiting at LAX Gallery. Storage is free until then.",
+      );
+      // The place's own free days do not change it.
+      expect(
+        purchaseStorageOf(
+          { ...storage({ terms: null }), freeStorageDays: 14 },
+          new Date("2026-11-10T12:00:00Z"),
+        )?.date,
+      ).toBe("2026-12-02");
+    });
+
+    it("charges nothing after the day, even with charging on", () => {
+      const passed = at("2026-12-20T12:00:00Z", { terms: null, large: true });
+      expect(passed).toMatchObject({
+        date: "2026-12-02",
+        state: "overdue",
+        storage: { state: "overdue", amountPence: 0, badge: "Collect by Wed 2 Dec" },
+      });
+      expect(passed?.storage.notice.body).toBe(
+        "That day has passed. Book a time to collect your work from LAX Gallery, or email us if you need longer.",
+      );
+    });
+
+    it("reads the same when the pricing read is absent", () => {
+      expect(
+        purchaseStorageOf({ ...storage(), pricing: undefined }, new Date("2026-11-10T12:00:00Z")),
+      ).toMatchObject({ date: "2026-12-02", state: "upcoming", storage: { amountPence: 0 } });
+    });
+  });
+
+  it("is absent without the place's calendar, which keeps today's notice", () => {
+    expect(
+      purchaseStorageOf({ ...storage(), calendar: undefined }, new Date("2026-11-10T12:00:00Z")),
+    ).toBeNull();
+  });
+
+  it("is absent, and logged, for stored terms the rules cannot price", () => {
+    const logged = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const bad = storage();
+    if (bad.pricing?.terms) {
+      bad.pricing.terms = { ...bad.pricing.terms, countMode: "fortnightly" as "calendar" };
+    }
+    expect(purchaseStorageOf(bad, new Date("2026-11-10T12:00:00Z"))).toBeNull();
+    expect(logged).toHaveBeenCalledOnce();
+    logged.mockRestore();
   });
 
   it("upcoming, then soon, then charging with the running total", () => {

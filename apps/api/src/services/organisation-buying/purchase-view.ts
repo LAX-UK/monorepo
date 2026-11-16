@@ -168,6 +168,7 @@ function collectByOf(
   const place = { placeId: storage.placeId, placeName: storage.placeName };
   const priced = purchaseStorageOf(storage, now, row.quote);
   if (priced) return { ...priced, ...place };
+  // No opening calendar for the place, or stored terms the rules refused: today's notice.
   const notice = purchaseCollectBy(
     storage.clearedAt,
     londonDateKey(now),

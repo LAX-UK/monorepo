@@ -15,13 +15,13 @@ import {
   venue,
 } from "@auction/db/schema";
 import {
-  DEFAULT_COLLECT_BY_POLICY,
   type DateKey,
   type FulfilmentFacts,
   type StorageCalendar,
   addDaysToKey,
   awaitsCollection,
   londonDateKey,
+  storageTermsForLot,
 } from "@auction/domain";
 import { and, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 import type {
@@ -403,14 +403,16 @@ async function collectByCalendarsFor(
     });
     if (!waiting) continue;
     const sold = pricing.get(l.lotId);
-    // Working days and extensions reach further than the calendar days of the legacy rule, and
-    // charges are priced up to today, so the calendar covers twice the free period and the extension.
-    const reach = sold?.terms
-      ? sold.terms.freeDays * 2 + (sold.extensionDays ?? 0)
-      : (place.freeStorageDays ?? DEFAULT_COLLECT_BY_POLICY.freeStorageDays);
+    // A lot with no recorded terms is held under the legacy terms (30 calendar days). Working days
+    // and extensions reach further than calendar days, and charges are priced up to today, so the
+    // calendar covers from the cleared day to twice the free period and the extension after it:
+    // working days are counted, and closures read, on every day in between.
+    const reach = storageTermsForLot(sold?.terms ?? null).freeDays * 2 + (sold?.extensionDays ?? 0);
+    const clearedOn = londonDateKey(cleared);
     counted.set(l.venueId, [
       ...(counted.get(l.venueId) ?? []),
-      addDaysToKey(londonDateKey(cleared), reach),
+      clearedOn,
+      addDaysToKey(clearedOn, reach),
     ]);
   }
   const ranges = new Map(
