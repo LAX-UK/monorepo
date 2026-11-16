@@ -985,6 +985,29 @@ jobs:
   build:
     needs: build-packages
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+      # Reads the PR's current title and labels for the route JavaScript base-vs-head step.
+      pull-requests: read
+    # Size-measurement build settings, shared by this PR's build and its base build below. The
+    # browser Sentry SDK only initialises, and only ships its start-up code, when a DSN is inlined
+    # at build time: production images get the real DSNs, these builds get placeholders on a
+    # reserved host so the route budgets measure what visitors download. ROUTE_JS_SIZE_BUILD pins
+    # the Sentry release name and fixes webpack's tie order (see each app's next.config.ts and
+    # packages/observability/src/next-size-build.ts), and the server actions key below is a fixed,
+    # all-zero placeholder: these otherwise change per commit or per build and move route sizes.
+    # Nothing is deployed from these builds and nothing can reach that host; deploy builds keep
+    # their real release and a key Next generates (docs/engineering/route-js-budgets.md).
+    env:
+      # The Sentry build plugin makes the Bid app build need more than Node's default heap.
+      NODE_OPTIONS: --max-old-space-size=6144
+      NEXT_PUBLIC_SENTRY_DSN_WEB: https://budget@sentry.invalid/1
+      NEXT_PUBLIC_SENTRY_DSN_SHOP: https://budget@sentry.invalid/2
+      NEXT_PUBLIC_SENTRY_DSN_ART: https://budget@sentry.invalid/3
+      NEXT_PUBLIC_SENTRY_DSN_ACCOUNT: https://budget@sentry.invalid/4
+      ROUTE_JS_SIZE_BUILD: "1"
+      NEXT_SERVER_ACTIONS_ENCRYPTION_KEY: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
     steps:
       - uses: actions/checkout@v4
         with:
@@ -1018,25 +1041,129 @@ jobs:
       - name: Restore shared turbo build cache
         uses: ./.github/actions/restore-turbo-build-cache
 
-      # The browser Sentry SDK only initialises, and only ships its start-up code, when a DSN is
-      # inlined at build time. Production images get the real DSNs; this build gets placeholders on
-      # a reserved host so the route budgets below measure what visitors download. Nothing is
-      # deployed from this build and nothing can reach that host.
+      # Uses the size-measurement settings in the job's env (see above).
       - name: Build
         run: pnpm turbo run build --affected
-        env:
-          # The Sentry build plugin makes the Bid app build need more than Node's default heap.
-          NODE_OPTIONS: --max-old-space-size=6144
-          NEXT_PUBLIC_SENTRY_DSN_WEB: https://budget@sentry.invalid/1
-          NEXT_PUBLIC_SENTRY_DSN_SHOP: https://budget@sentry.invalid/2
-          NEXT_PUBLIC_SENTRY_DSN_ART: https://budget@sentry.invalid/3
-          NEXT_PUBLIC_SENTRY_DSN_ACCOUNT: https://budget@sentry.invalid/4
 
       # Reads the .next output the Build step just produced; it never rebuilds. Apps the affected
       # build skipped are reported and left out. Groups with `enforce: true` fail the job when a
       # route is over budget; the others warn.
       - name: Route JavaScript budgets
         run: pnpm check:route-js-budget
+
+      # Exact start-up JavaScript of every route this build produced, in bytes, for the base-vs-head
+      # table below (docs/engineering/route-js-budgets.md, "Base vs head").
+      - name: Route JavaScript size report
+        run: node scripts/route-js-size-report.mjs --label "$(git rev-parse --short=10 HEAD)" --out "$RUNNER_TEMP/route-js-head.json"
+
+      # The base is the main commit GitHub merged this PR onto for the run (the first parent of the
+      # test merge commit it checks out), so the table shows this PR's change and nothing else.
+      # Only apps this run built are compared, and only those that exist at the base
+      # (scripts/route-js-size-base.mjs, tested). The measuring scripts are copied out of the
+      # checkout first: the base build below checks other commits out in place.
+      - name: Route JavaScript base
+        id: route_js_base
+        if: github.event_name == 'pull_request'
+        run: |
+          if git rev-parse -q --verify HEAD^2 >/dev/null; then
+            base_sha=$(git rev-parse HEAD^1)
+          else
+            base_sha=$(git merge-base HEAD main)
+          fi
+          git diff --name-only "$base_sha" HEAD > "$RUNNER_TEMP/route-js-changed-files.txt"
+          mkdir -p "$RUNNER_TEMP/route-js-tools"
+          cp scripts/route-js-*.mjs scripts/route-js-*.sh scripts/route-js-budgets.json "$RUNNER_TEMP/route-js-tools/"
+          node scripts/route-js-size-base.mjs plan --head-report "$RUNNER_TEMP/route-js-head.json" --base "$base_sha" \
+            --changed-files "$RUNNER_TEMP/route-js-changed-files.txt"
+          echo "sha=$base_sha" >> "$GITHUB_OUTPUT"
+          echo "head_sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          echo "Route JS base: $base_sha"
+
+      # A base report is reused while the base commit, the apps, the measuring scripts and the
+      # size-build settings (this workflow's env, turbo.json) are the same: a re-run, or a push to
+      # this PR before main moves. v2: reports from v1 were built in a worktree at another path.
+      - name: Restore base route JavaScript report
+        id: route_js_base_cache
+        if: steps.route_js_base.outputs.apps != ''
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ runner.temp }}/route-js-base.json
+          key: route-js-size-v2-${{ steps.route_js_base.outputs.sha }}-${{ steps.route_js_base.outputs.key }}-${{ hashFiles('scripts/route-js-*', 'scripts/route-js-budgets.json', '.github/workflows/ci.yml', 'turbo.json') }}
+
+      # Builds the same apps at the base with the same size-build settings, in this same checkout
+      # path (scripts/route-js-size-build-base.sh): the head's report is already written, so the
+      # script checks the base out here with a clean install, builds and reports it, then checks
+      # the head back out. The path matters: Next derives server action ids from module paths, so
+      # a base built anywhere else differs from the head by tens of bytes per route. Workspace
+      # packages replay from this job's turbo cache, and apps from the remote cache when CI already
+      # built them (in this same workspace path).
+      - name: Build the base for route JavaScript
+        id: route_js_base_build
+        if: steps.route_js_base.outputs.apps != '' && steps.route_js_base_cache.outputs.cache-hit != 'true'
+        continue-on-error: true
+        env:
+          BASE_SHA: ${{ steps.route_js_base.outputs.sha }}
+          BASE_APPS: ${{ steps.route_js_base.outputs.apps }}
+          BASE_FILTERS: ${{ steps.route_js_base.outputs.filters }}
+        run: |
+          tools="$RUNNER_TEMP/route-js-tools"
+          bash "$tools/route-js-size-build-base.sh" --sha "$BASE_SHA" --apps "$BASE_APPS" --filters "$BASE_FILTERS" \
+            --tools "$tools" --out "$RUNNER_TEMP/route-js-base.json"
+
+      - name: Save base route JavaScript report
+        if: steps.route_js_base_build.outcome == 'success'
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ runner.temp }}/route-js-base.json
+          key: route-js-size-v2-${{ steps.route_js_base.outputs.sha }}-${{ steps.route_js_base.outputs.key }}-${{ hashFiles('scripts/route-js-*', 'scripts/route-js-budgets.json', '.github/workflows/ci.yml', 'turbo.json') }}
+
+      # Prints the per-route base-vs-head table in the job summary. It reports growth for every PR
+      # and fails only motion or performance work (a label or title word, or a changed motion
+      # source file) that grows any route or adds one: those promise no route JavaScript growth
+      # (docs/design/motion.md). The budget and ratchet step above is unchanged and still decides
+      # every other PR.
+      - name: Route JavaScript base vs head
+        if: steps.route_js_base.outputs.apps != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          EVENT_TITLE: ${{ github.event.pull_request.title }}
+          EVENT_LABELS: ${{ toJSON(github.event.pull_request.labels.*.name) }}
+        run: |
+          # The PR's current title and labels, so a label added after the push counts on a re-run.
+          if pr=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER" 2>/dev/null); then
+            PR_TITLE=$(jq -r '.title' <<<"$pr")
+            PR_LABELS=$(jq -c '[.labels[].name]' <<<"$pr")
+          else
+            PR_TITLE=$EVENT_TITLE
+            PR_LABELS=$EVENT_LABELS
+          fi
+          export PR_TITLE PR_LABELS
+          changed="$RUNNER_TEMP/route-js-changed-files.txt"
+          if [[ ! -f "$RUNNER_TEMP/route-js-base.json" ]]; then
+            node scripts/route-js-size-base.mjs missing-base --changed-files "$changed"
+            exit $?
+          fi
+          node scripts/route-js-size-compare.mjs --base "$RUNNER_TEMP/route-js-base.json" --head "$RUNNER_TEMP/route-js-head.json" \
+            --changed-files "$changed"
+
+      # Self-check of the table, for PRs that change what a size build depends on (this workflow,
+      # turbo.json, the measuring scripts, an app's next.config, the toolchain or the lockfile):
+      # builds the head a second time through the base route, without any cache, and requires
+      # "0 of N routes changed" and byte-identical client scripts in every app. It proves the base
+      # route measures like for like; when it fails, this run's table is not trusted (fail closed).
+      - name: Route JavaScript self-check
+        if: steps.route_js_base.outputs.self_check == 'true'
+        env:
+          HEAD_SHA: ${{ steps.route_js_base.outputs.head_sha }}
+          HEAD_APPS: ${{ steps.route_js_base.outputs.head_apps }}
+          HEAD_FILTERS: ${{ steps.route_js_base.outputs.head_filters }}
+        run: |
+          tools="$RUNNER_TEMP/route-js-tools"
+          bash "$tools/route-js-size-build-base.sh" --sha "$HEAD_SHA" --apps "$HEAD_APPS" --filters "$HEAD_FILTERS" \
+            --tools "$tools" --out "$RUNNER_TEMP/route-js-self.json" --force
+          node scripts/route-js-size-compare.mjs --base "$RUNNER_TEMP/route-js-self.json" --head "$RUNNER_TEMP/route-js-head.json" \
+            --require-unchanged --heading "Route JS: self-check (the head built again through the base route)"
 
   docker-images:
     runs-on: ubuntu-latest

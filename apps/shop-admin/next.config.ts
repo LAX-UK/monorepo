@@ -1,6 +1,7 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { resolveSentryOrg } from "@auction/observability";
+import { addSizeBuildDeterminism } from "@auction/observability/next-size-build";
 import { withSentryConfig } from "@sentry/nextjs";
 import type { NextConfig } from "next";
 
@@ -11,6 +12,11 @@ const nextConfig: NextConfig = {
   outputFileTracingRoot: workspaceRoot,
   poweredByHeader: false,
   reactStrictMode: true,
+  webpack(config, { isServer, dev }) {
+    // CI size-measurement builds only: settles webpack ties in a fixed order (see the plugin).
+    addSizeBuildDeterminism(config, { isServer, dev });
+    return config;
+  },
   transpilePackages: ["@auction/ui", "@auction/staff-ui"],
   async redirects() {
     // The inbox replaced the read-only list; keep bookmarks and emailed links working.
@@ -29,6 +35,10 @@ const sentryBuildOptions = {
   automaticVercelMonitors: false,
   // Strip the SDK's debug logging from every bundle; it only prints with `debug: true`.
   webpack: { treeshake: { removeDebugLogging: true } },
+  // CI size-measurement builds (ROUTE_JS_SIZE_BUILD=1, see docs/engineering/route-js-budgets.md)
+  // get one fixed release name instead of the commit SHA, so the release string inlined in the
+  // client bundle is the same for a PR and its base. Deploy builds never set the flag.
+  ...(process.env.ROUTE_JS_SIZE_BUILD === "1" ? { release: { name: "route-js-size-build" } } : {}),
   ...(process.env.SENTRY_AUTH_TOKEN ? { authToken: process.env.SENTRY_AUTH_TOKEN } : {}),
 };
 
