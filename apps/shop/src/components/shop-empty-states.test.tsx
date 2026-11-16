@@ -3,7 +3,6 @@ import { CatalogueEmpty, CatalogueNoMatch } from "@/components/catalogue/catalog
 import { ShopCatalogueEmpty } from "@/components/catalogue/shop-catalogue-empty";
 import { ShopCatalogueState } from "@/components/home/shop-empty-state";
 import { ShopStatusState, ShopStatusStateLink } from "@/components/shop-status-state";
-import { ticket } from "@auction/ui/lax/drawings";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 
@@ -167,7 +166,7 @@ describe("Shop empty states", () => {
   it("detail not-found state: eyebrow, h1 title and the ticket drawing", () => {
     const out = html(
       <ArtworkDetailState
-        drawing={{ name: "ticket", paths: ticket }}
+        illustration="ticket"
         eyebrow="Not found"
         title="Artist not found"
         description="This artist may have moved."
@@ -182,7 +181,7 @@ describe("Shop empty states", () => {
   it("detail state: the eyebrow sits right above the h1 and the actions under the description", () => {
     const out = html(
       <ArtworkDetailState
-        drawing={{ name: "ticket", paths: ticket }}
+        illustration="ticket"
         eyebrow="Not found"
         title="We can't find this edition"
         description="It may have been removed."

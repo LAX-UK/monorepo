@@ -52,8 +52,8 @@ const nextConfig: NextConfig = {
  * ships them once (the same fix as Bid's `shell-routes` chunk in apps/web/next.config.ts).
  */
 const EMPTY_STATE_MODULES = [
-  /[\\/]packages[\\/]ui[\\/](?:dist|src)[\\/]lax[\\/](?:empty-state|empty-state-base)\.(?:js|tsx)$/,
-  /[\\/]packages[\\/]ui[\\/](?:dist|src)[\\/]components[\\/]ui[\\/](?:lax-illustration|lax-drawings|lax-drawing-svg)\.(?:js|tsx?)$/,
+  /[\\/]packages[\\/]ui[\\/](?:dist|src)[\\/]lax[\\/]empty-state\.(?:js|tsx)$/,
+  /[\\/]packages[\\/]ui[\\/](?:dist|src)[\\/]components[\\/]ui[\\/]lax-illustration\.(?:js|tsx?)$/,
   /[\\/]packages[\\/]marketing-ui[\\/](?:dist|src)[\\/]marketing-status-state\.(?:js|tsx)$/,
   // What they import that every page already loads with its frame: `cn` and the focus ring.
   /[\\/]packages[\\/]ui[\\/](?:dist|src)[\\/]lib[\\/]utils\.(?:js|ts)$/,

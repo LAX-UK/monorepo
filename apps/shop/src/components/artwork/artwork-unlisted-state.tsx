@@ -4,14 +4,13 @@ import { EDITION_UNLISTED_COPY } from "@/content/artwork-edition-copy";
 import { FOCUS_RING } from "@auction/branding";
 import type { PublicArtworkSummary } from "@auction/shop-contracts";
 import { cn } from "@auction/ui";
-import { ticket } from "@auction/ui/lax/drawings";
 import Link from "next/link";
 
 /** A removed or unlisted edition: says so, and offers other editions and the newest ones. */
 export function ArtworkUnlistedState({ editions }: { editions: readonly PublicArtworkSummary[] }) {
   return (
     <ArtworkDetailState
-      drawing={{ name: "ticket", paths: ticket }}
+      illustration="ticket"
       eyebrow={EDITION_UNLISTED_COPY.eyebrow}
       title={EDITION_UNLISTED_COPY.title}
       description={

@@ -3,17 +3,16 @@
 import { MARKETING_PAGE_SHELL } from "@auction/branding";
 import { MarketingStatusAction } from "@auction/marketing-ui";
 import { cn } from "@auction/ui";
-import { askew } from "@auction/ui/lax/drawings";
-import { EmptyStateBase } from "@auction/ui/lax/empty-state-base";
+import { EmptyState } from "@auction/ui/lax/empty-state";
 
 export default function ArtRouteError({ reset }: { error: Error; reset: () => void }) {
   return (
     <div className={cn(MARKETING_PAGE_SHELL, "py-10")}>
-      <EmptyStateBase
+      <EmptyState
         accent
         variant="error"
         layout="page"
-        drawing={{ name: "askew", paths: askew }}
+        illustration="askew"
         title="Something went wrong"
         description="We could not load this page. Try again, or come back shortly."
         actions={

@@ -1,7 +1,5 @@
-import { cleanup as cleanupAll, render, screen } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { askew, ticket } from "../components/ui/lax-drawings.js";
-import { EmptyStateBase } from "./empty-state-base.js";
 import { EmptyState } from "./index.js";
 
 describe("EmptyState", () => {
@@ -125,38 +123,7 @@ describe("EmptyState product options", () => {
   });
 });
 
-describe("EmptyStateBase", () => {
-  it("draws the one drawing it is handed, and askew for the error variant", () => {
-    const { container, rerender } = render(
-      <EmptyStateBase
-        layout="page"
-        drawing={{ name: "ticket", paths: ticket }}
-        title="Not here"
-        description="d"
-      />,
-    );
-    expect(container.querySelector("[data-illustration='ticket']")).not.toBeNull();
-    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Not here");
-    rerender(
-      <EmptyStateBase
-        variant="error"
-        drawing={{ name: "ticket", paths: ticket }}
-        title="Failed"
-        description="d"
-      />,
-    );
-    expect(container.querySelector("[data-illustration='askew']")).not.toBeNull();
-  });
-
-  it("renders the same markup as EmptyState for the same drawing", () => {
-    const props = { title: "t", description: "d", layout: "page" as const, accent: true };
-    const a = render(<EmptyState illustration="askew" {...props} />).container.innerHTML;
-    cleanupAll();
-    const b = render(<EmptyStateBase drawing={{ name: "askew", paths: askew }} {...props} />)
-      .container.innerHTML;
-    expect(b).toBe(a);
-  });
-
+describe("EmptyState eyebrow", () => {
   it("shows an eyebrow right above the title, in the copy column", () => {
     const { container } = render(
       <EmptyState illustration="ticket" eyebrow="Not found" title="Gone" description="d" />,

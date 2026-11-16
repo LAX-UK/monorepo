@@ -1,6 +1,5 @@
 import type { LaxIllustrationName } from "@auction/ui/components/lax-illustration";
-import type { LaxDrawing } from "@auction/ui/lax/drawings";
-import { EmptyStateBase } from "@auction/ui/lax/empty-state-base";
+import { EmptyState } from "@auction/ui/lax/empty-state";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
@@ -8,12 +7,8 @@ type ArtworkDetailStateProps = {
   eyebrow: string;
   title: string;
   description: string;
-  /**
-   * The one LAX drawing the page shows, imported on its own from `@auction/ui/lax/drawings`
-   * (`ticket` for not found, `askew` for the error boundary) so a client boundary does not carry
-   * the whole set.
-   */
-  drawing: { name: LaxIllustrationName; paths: LaxDrawing };
+  /** The LAX drawing: `ticket` for not found, `askew` for the error boundary. */
+  illustration: LaxIllustrationName;
   /** What to do next (a retry, a link), in the copy column under the description. */
   actions?: ReactNode;
   /** Related content under the whole state, such as other editions. */
@@ -25,7 +20,7 @@ export function ArtworkDetailState({
   eyebrow,
   title,
   description,
-  drawing,
+  illustration,
   actions,
   children,
 }: ArtworkDetailStateProps) {
@@ -34,10 +29,10 @@ export function ArtworkDetailState({
       <Link href="/" className="shop-detail__back shop-focus-ring">
         ← Back to Collect
       </Link>
-      <EmptyStateBase
+      <EmptyState
         accent
         layout="page"
-        drawing={drawing}
+        illustration={illustration}
         eyebrow={eyebrow}
         title={title}
         description={description}
