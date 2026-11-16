@@ -29,16 +29,43 @@ export type BackfillArgs = {
   resumeAfter: string | null;
 };
 
-function flagValue(argv: readonly string[], name: string): string | undefined {
-  const prefix = `--${name}=`;
-  return argv.find((arg) => arg.startsWith(prefix))?.slice(prefix.length);
+const VALUE_FLAGS = ["batch-size", "lock-timeout", "resume-after"] as const;
+
+/**
+ * Splits argv into the `--apply` switch and `--name=value` flags. Unknown or repeated
+ * flags throw, so a typo can never silently fall back to a default.
+ */
+function collectFlags(argv: readonly string[]): { apply: boolean; values: Map<string, string> } {
+  let apply = false;
+  const values = new Map<string, string>();
+  for (const arg of argv) {
+    if (arg === "--apply") {
+      if (apply) throw new Error("--apply was given more than once");
+      apply = true;
+      continue;
+    }
+    const match = /^--([a-z-]+)=(.*)$/s.exec(arg);
+    const name = match?.[1];
+    if (!match || name === undefined || !(VALUE_FLAGS as readonly string[]).includes(name)) {
+      throw new Error(
+        `Unknown argument "${arg}" (expected --apply, --batch-size=N, --lock-timeout=D, --resume-after=ID)`,
+      );
+    }
+    if (values.has(name)) throw new Error(`--${name} was given more than once`);
+    values.set(name, match[2] ?? "");
+  }
+  return { apply, values };
+}
+
+function flagValue(values: Map<string, string>, name: string): string | undefined {
+  return values.get(name);
 }
 
 /** Validates every flag; throws with a clear message on the first bad one. Pure: no I/O. */
 export function parseBackfillArgs(argv: readonly string[]): BackfillArgs {
-  const apply = argv.includes("--apply");
+  const { apply, values } = collectFlags(argv);
 
-  const batchFlag = flagValue(argv, "batch-size");
+  const batchFlag = flagValue(values, "batch-size");
   let batchSize = DEFAULT_PAYMENT_REFUND_BACKFILL_BATCH_SIZE;
   if (batchFlag !== undefined) {
     batchSize = /^\d+$/.test(batchFlag) ? Number(batchFlag) : Number.NaN;
@@ -47,13 +74,13 @@ export function parseBackfillArgs(argv: readonly string[]): BackfillArgs {
     }
   }
 
-  const timeoutFlag = flagValue(argv, "lock-timeout");
+  const timeoutFlag = flagValue(values, "lock-timeout");
   const lockTimeoutMs =
     timeoutFlag !== undefined
       ? parseDuration(timeoutFlag)
       : DEFAULT_PAYMENT_REFUND_BACKFILL_LOCK_TIMEOUT_MS;
 
-  const resumeFlag = flagValue(argv, "resume-after");
+  const resumeFlag = flagValue(values, "resume-after");
   if (resumeFlag !== undefined && !UUID.test(resumeFlag)) {
     throw new Error(`--resume-after must be a payment id (uuid), got "${resumeFlag}"`);
   }

@@ -70,4 +70,30 @@ describe("parseBackfillArgs", () => {
   it("rejects a resume cursor that is not a uuid", () => {
     expect(() => parseBackfillArgs(["--resume-after=not-a-uuid"])).toThrow(/uuid/);
   });
+
+  it("rejects unknown flags and stray arguments", () => {
+    for (const arg of [
+      "--aply",
+      "--batchsize=5",
+      "--batch-size",
+      "--dry-run",
+      "apply",
+      "--apply=1",
+      "--verbose=1",
+      "5",
+    ]) {
+      expect(() => parseBackfillArgs([arg]), arg).toThrow(/Unknown argument/);
+    }
+  });
+
+  it("rejects repeated flags instead of letting the first win", () => {
+    expect(() => parseBackfillArgs(["--apply", "--apply"])).toThrow(/more than once/);
+    expect(() => parseBackfillArgs(["--batch-size=5", "--batch-size=6"])).toThrow(/more than once/);
+    expect(() => parseBackfillArgs(["--lock-timeout=1s", "--lock-timeout=2s"])).toThrow(
+      /more than once/,
+    );
+    expect(() => parseBackfillArgs([`--resume-after=${ID}`, `--resume-after=${ID}`])).toThrow(
+      /more than once/,
+    );
+  });
 });
