@@ -41,6 +41,7 @@ import {
   SHOP_ARTWORK_REGISTER_READ_TABLES,
   SHOP_COMMERCE_APPEND_ONLY_TABLES,
   SHOP_COMMERCE_TABLES,
+  SHOP_DEMO_SEED_TARGET_READ_TABLES,
   SHOP_SUBJECT_EXPORT_READ_TABLES,
   WORKER_ACCOUNTING_APPEND_ONLY_TABLES,
   WORKER_ACCOUNTING_COPY_TABLES,
@@ -793,6 +794,11 @@ describe("migrate-roles invariants", () => {
       expect([...SHOP_ARTWORK_REGISTER_EVENT_TABLES]).not.toContain(table);
     }
     expect([...WORKER_DENY_TABLES]).not.toContain("artwork_register");
+  });
+
+  it("keeps the demo seed mark owner-written: Shop reads it, the API has no access", () => {
+    expect([...SHOP_DEMO_SEED_TARGET_READ_TABLES]).toEqual(["demo_seed_target"]);
+    expect([...API_DENY_TABLES]).toContain("demo_seed_target");
   });
 
   it("lets Shop read the shared mail tables its data export needs, and nothing more", () => {

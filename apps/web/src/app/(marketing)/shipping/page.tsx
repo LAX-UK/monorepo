@@ -8,6 +8,7 @@ import {
   SITE_TELEPHONE_DISPLAY,
   SITE_TELEPHONE_HREF,
 } from "@/lib/brand";
+import { getPublicPlaceStorageTerms } from "@/lib/data/http/public-catalogue.server";
 import { MARKETING_PROSE_LINK } from "@/lib/marketing/chrome";
 import { policyHubPageJsonLd } from "@/lib/seo/jsonld";
 import { metadataForStatic } from "@/lib/seo/metadata-factory";
@@ -20,7 +21,8 @@ export const metadata: Metadata = metadataForStatic({
   path: "/shipping",
 });
 
-export default function ShippingPage() {
+export default async function ShippingPage() {
+  const storageTerms = await getPublicPlaceStorageTerms();
   return (
     <PolicyHubLayout>
       <script type="application/ld+json" suppressHydrationWarning>
@@ -209,15 +211,27 @@ export default function ShippingPage() {
         <LegalH2 id="storage" className="scroll-mt-28">
           Storage
         </LegalH2>
+        {storageTerms.length === 1 ? <p>{storageTerms[0]?.text}</p> : null}
+        {storageTerms.length > 1 ? (
+          <LegalUL>
+            {storageTerms.map((place) => (
+              <li key={place.placeName}>
+                <strong>{place.placeName}.</strong> {place.text}
+              </li>
+            ))}
+          </LegalUL>
+        ) : null}
         <p>
           Purchased lots should be collected or shipped within the timeframe stated by LAX Bid
           following payment.
         </p>
-        <p>
-          Where lots remain uncollected for an extended period, storage charges may apply. Any
-          applicable storage arrangements or charges will be communicated to the buyer in advance
-          where possible.
-        </p>
+        {storageTerms.length === 0 ? (
+          <p>
+            Where lots remain uncollected for an extended period, storage charges may apply. Any
+            applicable storage arrangements or charges will be communicated to the buyer in advance
+            where possible.
+          </p>
+        ) : null}
 
         <LegalH2 id="support" className="scroll-mt-28">
           Support

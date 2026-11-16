@@ -45,6 +45,10 @@ export function attachLotCatalogRoutes(r: LotHono, deps: LotReadRouteDeps): void
     return respondCatalogHttpJson(c, response);
   });
 
+  r.get("/storage-terms", async (c) =>
+    respondCatalogHttpJson(c, await lotReadHttp.listStorageTerms()),
+  );
+
   r.get("/count", deps.optionalAuth, zValidator("query", listLotsQuerySchema), async (c) => {
     const query = c.req.valid("query");
     const response = await lotReadHttp.countLots({ query, viewer: viewerFromContext(c) });

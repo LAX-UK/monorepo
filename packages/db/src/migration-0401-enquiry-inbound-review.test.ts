@@ -5,16 +5,16 @@ import { describe, expect, it } from "vitest";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const read = (name: string) => readFileSync(join(__dirname, "../drizzle", name), "utf8");
-const migration = read("0398_enquiry_inbound_review.sql");
-const rollback = read("0398_rollback.sql");
+const migration = read("0401_enquiry_inbound_review.sql");
+const rollback = read("0401_rollback.sql");
 const journal = JSON.parse(read("meta/_journal.json")) as {
   entries: { idx: number; tag: string; when: number }[];
 };
 
-describe("migration 0398 enquiry inbound review", () => {
-  it("is the journal's next entry after 0397, and its rollback removes its own ledger row", () => {
-    const entry = journal.entries.find((e) => e.tag === "0398_enquiry_inbound_review");
-    const previous = journal.entries.find((e) => e.tag === "0397_enquiry_inbound_replies");
+describe("migration 0401 enquiry inbound review", () => {
+  it("is the journal's next entry after 0400, and its rollback removes its own ledger row", () => {
+    const entry = journal.entries.find((e) => e.tag === "0401_enquiry_inbound_review");
+    const previous = journal.entries.find((e) => e.tag === "0400_unapplied_money_shop_payment_idx");
     expect(entry).toBeDefined();
     expect(entry?.idx).toBe((previous?.idx ?? 0) + 1);
     expect(entry?.when).toBeGreaterThan(previous?.when ?? Number.POSITIVE_INFINITY);

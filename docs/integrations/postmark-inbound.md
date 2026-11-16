@@ -52,7 +52,7 @@ The API refuses to start with the flag on and any of the last three missing. Sta
 
 ## Turning it on
 
-1. Run the migrations (`0397_enquiry_inbound_replies` and `0398_enquiry_inbound_review`, possibly renumbered at ship time) and the role grants (`db:roles`). Check the worker is running, so the daily quarantine purge runs.
+1. Run the migrations (`0397_enquiry_inbound_replies` and `0401_enquiry_inbound_review`) and the role grants (`db:roles`). Check the worker is running, so the daily quarantine purge runs.
 2. Add `purge-enquiry-inbound-quarantine` to `SENTRY_MONITOR_SLUGS` on the worker and create the Sentry cron monitor (daily 03:40 Europe/London, about 30 minutes margin); without the entry the purge runs unmonitored. See [Monitoring alerts](../runbooks/monitoring-alerts.md#held-enquiry-email-purge-purge-enquiry-inbound-quarantine).
 3. Set the three variables with the flag still `false`, deploy, then do the Postmark and DNS steps above. On the test message, check the `Received-SPF` header's `receiver=` is at `inbound.postmarkapp.com` (or set `ENQUIRY_INBOUND_SPF_RECEIVER`).
 4. Set the flag to `true`. New acknowledgement emails now carry the per-thread `Reply-To`. Emails already sent keep the old `Reply-To`.
@@ -60,7 +60,7 @@ The API refuses to start with the flag on and any of the last three missing. Sta
 
 ## Turning it off or rolling back
 
-Set `ENQUIRY_INBOUND_REPLIES_ENABLED=false`: the route returns 404 and new emails carry the usual `Reply-To`. Replies already stored stay. To remove the schema, run `packages/db/drizzle/0398_rollback.sql` and then `0397_rollback.sql` (roll the release back first).
+Set `ENQUIRY_INBOUND_REPLIES_ENABLED=false`: the route returns 404 and new emails carry the usual `Reply-To`. Replies already stored stay. To remove the schema, run `packages/db/drizzle/0401_rollback.sql` and then `0397_rollback.sql` (roll the release back first).
 
 ## Notes
 

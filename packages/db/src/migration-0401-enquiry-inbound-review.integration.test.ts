@@ -9,16 +9,16 @@ import { laterRollbackSql } from "./testing/later-rollbacks.js";
 import { withTemporaryDatabase } from "./testing/temporary-database.js";
 
 const url = process.env.MIGRATION_TEST_DATABASE_URL;
-/** The journal time of 0397, the migration before 0398. */
-const THROUGH_0397 = 1812542400000;
+/** The journal time of 0400, the migration before 0401. */
+const THROUGH_0400 = 1812801600000;
 
 const rollbackSql = () =>
-  readFile(resolve(import.meta.dirname, "../drizzle/0398_rollback.sql"), "utf8");
+  readFile(resolve(import.meta.dirname, "../drizzle/0401_rollback.sql"), "utf8");
 
-describe.skipIf(!url)("migration 0398 enquiry inbound review", { timeout: 180_000 }, () => {
+describe.skipIf(!url)("migration 0401 enquiry inbound review", { timeout: 180_000 }, () => {
   it("keeps held mail, lets staff attach it, rolls back to pending and applies again", async () => {
     await withTemporaryDatabase(async (pool) => {
-      await runMigrationsPerTransactionThrough(pool, THROUGH_0397);
+      await runMigrationsPerTransactionThrough(pool, THROUGH_0400);
       const enquiry = await pool.query<{ id: string }>(
         `insert into marketing_enquiry (topic, name, email, message)
          values ('buying', 'Sam Sender', 'sam@example.test', 'Hello') returning id`,
@@ -27,7 +27,7 @@ describe.skipIf(!url)("migration 0398 enquiry inbound review", { timeout: 180_00
       const held = await pool.query<{ id: string }>(
         `insert into enquiry_inbound_quarantine
            (provider_message_id, reason, from_address, subject, body, suspected_enquiry_id)
-         values ('pm-0398', 'sender_mismatch', 'colleague@example.test', 'Re', 'Text', $1)
+         values ('pm-0401', 'sender_mismatch', 'colleague@example.test', 'Re', 'Text', $1)
          returning id`,
         [enquiryId],
       );
@@ -61,7 +61,7 @@ describe.skipIf(!url)("migration 0398 enquiry inbound review", { timeout: 180_00
         `insert into marketing_enquiry_message
            (enquiry_id, direction, subject, body, provider_message_id, matched_by, spf_result,
             dkim_result, held_reason, review_reason)
-         values ($1, 'inbound', 'Re', 'Text', 'pm-0398', 'staff', 'pass_unaligned', 'none',
+         values ($1, 'inbound', 'Re', 'Text', 'pm-0401', 'staff', 'pass_unaligned', 'none',
                  'sender_mismatch', 'Client confirmed by phone it is their colleague')`,
         [enquiryId],
       );
@@ -88,7 +88,7 @@ describe.skipIf(!url)("migration 0398 enquiry inbound review", { timeout: 180_00
         [heldId],
       );
 
-      await pool.query(laterRollbackSql(398));
+      await pool.query(laterRollbackSql(401));
       await pool.query(await rollbackSql());
 
       const messages = await pool.query("select 1 from marketing_enquiry_message");

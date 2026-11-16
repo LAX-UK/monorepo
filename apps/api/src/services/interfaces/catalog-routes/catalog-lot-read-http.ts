@@ -24,6 +24,8 @@ export interface ICatalogLotReadHttpApplicationService {
 
   getLotDetail(input: { lotId: string; viewer: CatalogViewerContext }): Promise<CatalogHttpJson>;
 
+  /** The storage terms in force today at each place that takes bookings. */
+  listStorageTerms(): Promise<CatalogHttpJson>;
   getWatchCount(input: { lotId: string }): Promise<CatalogHttpJson>;
 
   listLotDocuments(input: { lotId: string }): Promise<CatalogHttpJson>;

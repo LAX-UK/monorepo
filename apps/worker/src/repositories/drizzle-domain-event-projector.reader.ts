@@ -43,6 +43,7 @@ export class DrizzleDomainEventProjectorReader implements IDomainEventProjectorR
         aggregateId: domainEvent.aggregateId,
         payload: domainEvent.payload,
         actorUserId: domainEvent.actorUserId,
+        producer: domainEvent.producer,
         occurredAt: domainEvent.occurredAt,
       })
       .from(domainEvent)

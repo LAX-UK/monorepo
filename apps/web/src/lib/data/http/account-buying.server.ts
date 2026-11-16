@@ -54,6 +54,16 @@ export const collectBySchema = z.object({
   state: z.enum(["upcoming", "soon", "overdue"]),
   placeId: z.string().nullable().default(null),
   placeName: z.string(),
+  /** The wording under the place's storage terms; `null` for a lot that has none, or an older API. */
+  storage: z
+    .object({
+      state: z.enum(["upcoming", "soon", "charging", "overdue", "extended", "waived"]),
+      notice: z.object({ heading: z.string(), body: z.string() }),
+      badge: z.string(),
+      amountPence: z.number(),
+    })
+    .nullable()
+    .default(null),
 });
 
 const purchaseSchema = z.object({

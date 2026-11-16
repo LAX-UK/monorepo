@@ -45,6 +45,8 @@ export type CollectSessionProps = {
   /** The server's clock as an ISO string, so server and client draw the same dates. */
   nowIso: string;
   contactEmail: string;
+  /** The lots among these that owe storage: the summary says so while one of them is ticked. */
+  storageLotIds: readonly string[];
 };
 
 function newKey(): string {
@@ -166,6 +168,7 @@ export function CollectSession(props: CollectSessionProps) {
       ? COLLECT_COPY.confirm.booking
       : COLLECT_COPY.confirm.book;
   const chosenLots = state.lotIds.length;
+  const owesStorage = state.lotIds.some((lotId) => props.storageLotIds.includes(lotId));
   const noTimes = state.availability.days.every((d) => d.state !== "open" || d.openSlots === 0);
   const lotsError = state.errors.find((e) => e.fieldId === COLLECT_FIELD_IDS.lots)?.message;
   const timeError = state.errors.find((e) => e.fieldId === COLLECT_FIELD_IDS.time)?.message;
@@ -295,6 +298,12 @@ export function CollectSession(props: CollectSessionProps) {
                     {chosenLots === 0 ? COLLECT_COPY.confirm.chooseLot : `${chosenLots} to collect`}
                   </dd>
                 </div>
+                {owesStorage ? (
+                  <div>
+                    <dt className="text-lax-13 text-lax-muted">{COLLECT_COPY.storage.label}</dt>
+                    <dd className="text-lax-fg">{COLLECT_COPY.storage.body}</dd>
+                  </div>
+                ) : null}
               </dl>
               <p className="mt-4 text-lax-13 text-lax-muted">{COLLECT_COPY.confirm.cutoff}</p>
               {visit ? (

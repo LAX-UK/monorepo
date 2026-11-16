@@ -4,6 +4,7 @@ import type {
   ILegalEntityRepository,
   IRepositoryFactory,
 } from "@auction/persistence/interfaces";
+import { DrizzleCollectionStorageRepository } from "@auction/persistence/repositories";
 import type { ArtistDeleteService } from "../services/artist-delete.service.js";
 import type { ArtistProfileService } from "../services/artist-profile.service.js";
 import type { CachedCatalogueListService } from "../services/cached-catalogue-list.service.js";
@@ -91,6 +92,7 @@ export function createCatalogRouteServices(
       input.objectStorage,
       undefined,
       input.invoicedSalePriceReader,
+      new DrizzleCollectionStorageRepository(input.db),
     ),
     saleReadHttp: new CatalogSaleReadHttpApplicationService(
       input.saleListReadService,
