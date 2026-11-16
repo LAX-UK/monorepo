@@ -95,7 +95,7 @@ export function MarketingCountdownPanel({
   const reactiveEndIso = useActiveSaleCountdownEndIso({
     status: status ?? "active",
     endTime: endTime ?? endIso,
-    ...(deliveryMode != null ? { deliveryMode } : {}),
+    deliveryMode,
     initialEndIso: endIso,
   });
 

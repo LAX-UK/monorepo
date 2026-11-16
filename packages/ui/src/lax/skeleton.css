@@ -1,0 +1,75 @@
+/*
+ * Loading skeletons for every LAX product (docs/design/motion.md, MO12).
+ *
+ * `.lax-skeleton` is the one skeleton: a placeholder block at the size of what is loading, laid
+ * out in the shape of its page by the loading screen that draws it. It is invisible for the first
+ * `--lax-motion-skeleton-delay` (150ms), so a fast load shows nothing; then it fades in over
+ * `--lax-motion-fade` and pulses its opacity once every `--lax-motion-pulse` (1.6s). Only opacity
+ * moves, so the pulse runs on the compositor and the block keeps its size throughout: nothing
+ * shifts when it appears or when the page replaces it. There is no background-position shimmer.
+ *
+ * Reduced motion (the OS setting, unless Bid's `force-allow` is on, and Bid's `force-reduce`):
+ * the delay stays and the skeleton is static. Public products keep the short fade-in; the staff
+ * tools and LAX Account appear at once, as their overlays do.
+ */
+
+@keyframes lax-skeleton-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes lax-skeleton-pulse {
+  50% {
+    opacity: 0.55;
+  }
+}
+
+.lax-skeleton {
+  animation: lax-skeleton-in var(--lax-motion-fade) var(--lax-ease-out)
+    var(--lax-motion-skeleton-delay) backwards, lax-skeleton-pulse var(--lax-motion-pulse)
+    var(--lax-ease-pulse) calc(var(--lax-motion-skeleton-delay) + var(--lax-motion-fade)) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root:not([data-reduce-motion="force-allow"]) .lax-skeleton {
+    animation: lax-skeleton-in var(--lax-motion-fade) linear var(--lax-motion-skeleton-delay)
+      backwards;
+  }
+
+  :root:not([data-reduce-motion="force-allow"]):has([data-lax-density="staff"]) .lax-skeleton,
+  :root:not([data-reduce-motion="force-allow"])[data-lax-product="account"] .lax-skeleton {
+    animation-duration: 0s;
+  }
+}
+
+:root[data-reduce-motion="force-reduce"] .lax-skeleton {
+  animation: lax-skeleton-in var(--lax-motion-fade) linear var(--lax-motion-skeleton-delay)
+    backwards;
+}
+
+:root[data-reduce-motion="force-reduce"]:has([data-lax-density="staff"]) .lax-skeleton,
+:root[data-reduce-motion="force-reduce"][data-lax-product="account"] .lax-skeleton {
+  animation-duration: 0s;
+}
+
+/*
+ * The shapes the kit's LAX skeletons draw, as classes rather than utility strings so the kit's
+ * client chunks stay as small as they were before the shared skeleton (motion PR 5): `.lax-bar` is
+ * the LAX `Skeleton` (a block on the neutral fill, badge radius) and `.lax-wave` the sparkline
+ * placeholder's box (its stroke is `currentColor`). In the components layer, so a utility class a
+ * caller passes (`rounded-full`, `bg-…`, `inline-block`) still wins.
+ */
+@layer components {
+  .lax-bar {
+    display: block;
+    border-radius: var(--lax-radius-badge);
+    background-color: var(--lax-neutral-bg);
+  }
+
+  .lax-wave {
+    display: block;
+    flex-shrink: 0;
+    color: var(--lax-neutral-bg);
+  }
+}

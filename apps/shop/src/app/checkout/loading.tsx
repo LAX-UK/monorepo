@@ -21,17 +21,17 @@ export default function CheckoutLoading() {
           aria-busy="true"
           aria-live="polite"
         >
-          <span className="shop-skeleton__bar shop-checkout-skeleton__disclosure" />
+          <span className="lax-skeleton shop-skeleton__bar shop-checkout-skeleton__disclosure" />
           <div className="shop-skeleton__commerce-panel shop-checkout-skeleton__form">
-            <span className="shop-skeleton__bar shop-skeleton__bar--title" />
-            <span className="shop-skeleton__bar shop-skeleton__bar--section" />
-            <span className="shop-skeleton__bar shop-skeleton__bar--section" />
-            <span className="shop-skeleton__bar shop-skeleton__bar--section" />
+            <span className="lax-skeleton shop-skeleton__bar shop-skeleton__bar--title" />
+            <span className="lax-skeleton shop-skeleton__bar shop-skeleton__bar--section" />
+            <span className="lax-skeleton shop-skeleton__bar shop-skeleton__bar--section" />
+            <span className="lax-skeleton shop-skeleton__bar shop-skeleton__bar--section" />
           </div>
           <div className="shop-skeleton__commerce-panel shop-checkout-skeleton__summary">
-            <span className="shop-skeleton__bar shop-skeleton__bar--section" />
-            <span className="shop-skeleton__bar shop-skeleton__bar--section" />
-            <span className="shop-skeleton__bar shop-skeleton__bar--action" />
+            <span className="lax-skeleton shop-skeleton__bar shop-skeleton__bar--section" />
+            <span className="lax-skeleton shop-skeleton__bar shop-skeleton__bar--section" />
+            <span className="lax-skeleton shop-skeleton__bar shop-skeleton__bar--action" />
           </div>
         </div>
       </ShopCommercePageShell>

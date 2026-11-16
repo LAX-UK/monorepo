@@ -14,10 +14,10 @@ export function MarketingRouteLoading() {
       aria-busy="true"
     >
       <div className="space-y-10">
-        <div className="aspect-[16/9] w-full rounded-lg bg-surface-container-high shimmer-sweep" />
+        <div className="lax-skeleton aspect-[16/9] w-full rounded-lg bg-surface-container-high" />
         <div className="space-y-3">
-          <div className="h-8 w-72 rounded bg-surface-container-high shimmer-sweep" />
-          <div className="h-4 w-full max-w-2xl rounded bg-surface-container-high shimmer-sweep" />
+          <div className="lax-skeleton h-8 w-72 rounded bg-surface-container-high" />
+          <div className="lax-skeleton h-4 w-full max-w-2xl rounded bg-surface-container-high" />
         </div>
         <MarketingListSkeleton view="grid" />
       </div>

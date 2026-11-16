@@ -6,13 +6,13 @@ export default function ArtistLoading() {
       aria-busy="true"
       aria-label="Loading artist"
       wayfinding={
-        <div className="animate-pulse space-y-3 pt-4 md:pt-6">
+        <div className="lax-skeleton space-y-3 pt-4 md:pt-6">
           <div className="h-4 w-40 rounded bg-surface-container-high" />
           <div className="h-3 w-56 rounded bg-surface-container-high" />
         </div>
       }
     >
-      <div className="animate-pulse space-y-10">
+      <div className="lax-skeleton space-y-10">
         <div className="grid grid-cols-1 gap-8 md:grid-cols-[5fr_7fr]">
           <div className="aspect-[4/5] w-full rounded bg-surface-container-high" />
           <div className="space-y-4">

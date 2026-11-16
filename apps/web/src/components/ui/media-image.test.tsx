@@ -33,7 +33,7 @@ describe("MediaImage", () => {
   it("shows a loading placeholder until the image loads", async () => {
     render(<MediaImage src="/artwork.jpg" alt="Artwork" label="Lot artwork" aspect={[4, 5]} />);
 
-    expect(screen.getByLabelText("Lot artwork placeholder")).toHaveClass("animate-pulse");
+    expect(screen.getByLabelText("Lot artwork placeholder")).toHaveClass("lax-skeleton");
     const image = screen.getByAltText("Artwork");
     expect(image).toHaveClass("opacity-0");
 

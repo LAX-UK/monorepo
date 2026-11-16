@@ -332,21 +332,21 @@ function BookForm({
               />
             </Field>
             <div className="flex flex-col gap-1.5">
-              <div className="flex items-start gap-3">
-                <StaffCheckbox
-                  id={F.authorised}
-                  checked={authorised}
-                  onCheckedChange={(on) => {
-                    setAuthorised(on === true);
-                    clear(F.authorised);
-                  }}
-                  className="mt-0.5"
-                />
-                <label htmlFor={F.authorised} className="text-staff-sm text-staff-fg">
-                  The client has authorised this person to collect. This is recorded with your name
-                  as their written authorisation.
-                </label>
-              </div>
+              <ChoiceRow
+                htmlFor={F.authorised}
+                label="The client has authorised this person to collect."
+                description="This is recorded with your name as their written authorisation."
+                control={
+                  <StaffCheckbox
+                    id={F.authorised}
+                    checked={authorised}
+                    onCheckedChange={(on) => {
+                      setAuthorised(on === true);
+                      clear(F.authorised);
+                    }}
+                  />
+                }
+              />
               {errorOf(F.authorised) ? <FieldError>{errorOf(F.authorised)}</FieldError> : null}
             </div>
           </>

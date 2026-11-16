@@ -16,6 +16,7 @@
  */
 
 @import "./motion.css";
+@import "./skeleton.css";
 @import "./hover-press.css";
 
 @theme {

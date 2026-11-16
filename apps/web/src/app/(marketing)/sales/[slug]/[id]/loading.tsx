@@ -4,7 +4,7 @@ import { MarketingListSkeleton } from "@/components/marketing/marketing-list-ske
 import { MARKETING_PAGE_SHELL, SALE_ANCHOR_STICKY_CLASS } from "@/lib/marketing/chrome";
 import { cn } from "@auction/ui/lib/utils";
 
-const pulse = "animate-pulse rounded bg-surface-container-high";
+const pulse = "lax-skeleton rounded bg-surface-container-high";
 
 /** Session-free like the page it stands in for (CO-7): the default grid, not a saved preference. */
 export default function SaleroomCatalogLoading() {

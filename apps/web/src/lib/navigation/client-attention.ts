@@ -13,6 +13,12 @@ export type ClientAttention = {
    * number ("14"); `null` for a lot not numbered yet.
    */
   outbidLots: readonly (string | null)[];
+  /**
+   * The lot id behind each entry of `outbidLots`, in the same order (`null` when the bid row has
+   * no lot). The header uses it to drop a lot the moment it closes. Optional so the shared frame,
+   * which only counts `outbidLots`, carries no default for it.
+   */
+  outbidLotIds?: readonly (string | null)[];
   /** Won lots still to pay for, whether or not they can be paid yet. */
   paymentsDue: number;
   /**
