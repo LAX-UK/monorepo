@@ -1,9 +1,13 @@
+/** Where a Shop refund came from: the `shop_refund_source` values, in schema order. */
+export const SHOP_REFUND_SOURCES = ["admin", "cancellation", "stripe_dashboard"] as const;
+export type ShopRefundSource = (typeof SHOP_REFUND_SOURCES)[number];
+
 export type RefundLineInput = {
   amountPence: number;
   status: "pending" | "succeeded" | "failed" | "cancelled";
   orderLineId: string | null;
   /** Where the refund came from; a `cancellation` marks its line as returned to LAX. */
-  source?: "admin" | "cancellation" | "stripe_dashboard";
+  source?: ShopRefundSource;
 };
 
 export type OrderLineAmount = {

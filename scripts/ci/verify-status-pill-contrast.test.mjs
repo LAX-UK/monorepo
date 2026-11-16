@@ -163,3 +163,30 @@ describe("status pill contrast", () => {
     }
   }
 });
+
+// The empty-state drawing is a line graphic in the product accent on the kit's warm-paper plate
+// (`text-lax-plate` on `bg-lax-paper`; Shop and lax.art set `--lax-plate-ink` to their
+// accent), so it must reach 3:1 in both themes (WCAG 1.4.11).
+describe("empty-state accent drawing contrast on the paper plate", () => {
+  const lum = ([r, g, b]) => 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  const FILES = {
+    "lax.art": "apps/art/src/app/base.css",
+    "LAX Shop": "apps/shop/src/app/base.css",
+  };
+  for (const productName of ["lax.art", "LAX Shop"]) {
+    // `--lax-plate-ink` is set in the product's plain `:root` block, not `@theme`.
+    const ink = declarations(read(FILES[productName]), /\n:root\s*\{/).get("--lax-plate-ink");
+    for (const theme of ["light", "dark"]) {
+      it(`${productName} ${theme}: the accent line reads at 3:1 on the paper plate`, () => {
+        assert.equal(ink, "var(--color-product-accent)");
+        const tokens = new Map([...PRODUCTS[productName][theme], ["--lax-plate-ink", ink]]);
+        const [hi, lo] = [
+          lum(resolve("var(--lax-plate-ink)", tokens)),
+          lum(resolve("var(--lax-paper)", tokens)),
+        ].sort((x, y) => y - x);
+        const ratio = (hi + 0.05) / (lo + 0.05);
+        assert.ok(ratio >= 3, `${ratio.toFixed(2)}:1`);
+      });
+    }
+  }
+});

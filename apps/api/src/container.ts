@@ -109,6 +109,7 @@ import {
 import { MyBuyerAgentAuthorisationsService } from "./services/buyer-agents/my-buyer-agent-authorisations.service.js";
 import { CollectionDeskService } from "./services/collection-desk/collection-desk.service.js";
 import { CollectionSettingsAdminService } from "./services/collection-settings/collection-settings.service.js";
+import { CollectionStorageFollowUpService } from "./services/collection-storage/collection-storage-follow-up.service.js";
 import { CollectionStorageAdminService } from "./services/collection-storage/collection-storage.service.js";
 import { EnsurePersonalLegalEntityService } from "./services/legal-entity/ensure-personal-legal-entity.service.js";
 import { NotificationAccountMuteService } from "./services/notifications/notification-account-mute.service.js";
@@ -546,6 +547,7 @@ export function createContainer(env: Env): Container {
     buyerAgentAuthorisations: buyerAgents.mine,
     log: createBaseLogger(env),
   });
+  const appLog = createAppLogger(env);
   const organisationTeam = createOrganisationTeamServices({
     db,
     events: platform.domainEventSink,
@@ -556,7 +558,7 @@ export function createContainer(env: Env): Container {
       env.APP_ENV === "development" && infra.stripeClientFactory.get() === null,
     members: repos.legalEntityMemberRepository,
     identity: identityIssuer,
-    log: createAppLogger(env),
+    log: appLog,
   });
 
   const collectionSettingsRepository = new DrizzleCollectionSettingsRepository(db);
@@ -567,10 +569,17 @@ export function createContainer(env: Env): Container {
     now: () => new Date(),
   });
 
+  const collectionStorageRepository = new DrizzleCollectionStorageRepository(db);
   const collectionStorage = new CollectionStorageAdminService({
-    storage: new DrizzleCollectionStorageRepository(db),
+    storage: collectionStorageRepository,
     places: collectionSettingsRepository,
     now: () => new Date(),
+  });
+  const collectionStorageFollowUp = new CollectionStorageFollowUpService({
+    storage: collectionStorageRepository,
+    places: collectionSettingsRepository,
+    now: () => new Date(),
+    log: (message, detail) => appLog.error(detail, message),
   });
 
   const collectionBookings = new DrizzleCollectionBookingRepository(db);
@@ -589,7 +598,7 @@ export function createContainer(env: Env): Container {
     repos.atgSaleSettingsWriter,
     infra.atgSyncQueue,
     env.ATG_WHITE_LABEL_BASE_URL ?? null,
-    createAppLogger(env),
+    appLog,
   );
 
   const inventoryMoves = createInventoryMoveServices({
@@ -866,6 +875,7 @@ export function createContainer(env: Env): Container {
       inventoryMoves,
       collectionSettings,
       collectionStorage,
+      collectionStorageFollowUp,
       collectionDesk,
       staffTwoFactorPolicy: twoFactorPolicy,
       twoFactorReset,

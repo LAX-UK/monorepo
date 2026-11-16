@@ -3,7 +3,7 @@ import { HomeCover } from "@/components/sections/home/home-cover";
 import { HomeHangSection } from "@/components/sections/home/home-hang/home-hang-section";
 import { HomeLiveNowSection } from "@/components/sections/home/home-hang/home-live-now-section";
 import { HomeSectionsView } from "@/components/sections/home/sections/home-sections-view";
-import { HomeSkeleton } from "@/components/sections/home/skeletons/home-skeleton";
+import { HOME_PAGE_FRAME, HomeSkeleton } from "@/components/sections/home/skeletons/home-skeleton";
 import { SITE_NAME, SITE_TAGLINE } from "@/lib/brand";
 import {
   COVER_ALERTS_PARAM,
@@ -107,7 +107,7 @@ export default async function HomePage({
   const alerts = firstString(sp[COVER_ALERTS_PARAM]);
 
   return (
-    <div className="bg-page-bg pt-[var(--header-height)]">
+    <div className={HOME_PAGE_FRAME}>
       <Suspense fallback={<HomeSkeleton />}>
         <MarketingHomeContent alerts={alerts} />
       </Suspense>

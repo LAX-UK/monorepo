@@ -15,7 +15,7 @@ type Props = {
   place?: string | null | undefined;
   /** Makes the format a button that explains how this kind of sale works. */
   withExplainer?: boolean;
-  explainerContext?: SaleFormatExplainerContext;
+  explainerContext?: SaleFormatExplainerContext | undefined;
   className?: string;
 };
 

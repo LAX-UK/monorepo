@@ -1,8 +1,10 @@
-import type { StaffStorageSettings } from "@auction/types";
+import type { StaffOverdueLots, StaffStorageSettings } from "@auction/types";
 import type {
   CancelStorageTermsBody,
+  ExtendLotStorageBody,
   SetStorageChargingBody,
   StorageTermsBody,
+  WaiveLotStorageBody,
 } from "@auction/validators";
 import type { CollectionStorageResult } from "../collection-storage/collection-storage.errors.js";
 
@@ -43,4 +45,27 @@ export interface ICollectionStorageAdminService {
     venueId: string,
     body: SetStorageChargingBody,
   ): Promise<CollectionStorageResult<StaffStorageSettings>>;
+}
+
+/**
+ * Lots left past their collect-by day at a place, for the Not collected tab, and the two per-lot
+ * decisions staff take on them: Fulfilment extends free storage, Finance waives the charges. Each
+ * answers with the list as it now stands, and is audited with who, when, before, after and why.
+ */
+export interface ICollectionStorageFollowUpService {
+  overdue(venueId: string): Promise<CollectionStorageResult<StaffOverdueLots>>;
+  /** Adds free days to one waiting lot; all of a lot's extensions together stop at 30 days. */
+  extend(
+    actor: CollectionStorageActor,
+    venueId: string,
+    lotId: string,
+    body: ExtendLotStorageBody,
+  ): Promise<CollectionStorageResult<StaffOverdueLots>>;
+  /** Waives one waiting lot's storage charges. */
+  waive(
+    actor: CollectionStorageActor,
+    venueId: string,
+    lotId: string,
+    body: WaiveLotStorageBody,
+  ): Promise<CollectionStorageResult<StaffOverdueLots>>;
 }

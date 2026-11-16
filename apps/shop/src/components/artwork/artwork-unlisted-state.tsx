@@ -10,7 +10,7 @@ import Link from "next/link";
 export function ArtworkUnlistedState({ editions }: { editions: readonly PublicArtworkSummary[] }) {
   return (
     <ArtworkDetailState
-      motif="ticket"
+      illustration="ticket"
       eyebrow={EDITION_UNLISTED_COPY.eyebrow}
       title={EDITION_UNLISTED_COPY.title}
       description={
@@ -18,10 +18,12 @@ export function ArtworkUnlistedState({ editions }: { editions: readonly PublicAr
           ? EDITION_UNLISTED_COPY.descriptionWithEditions
           : EDITION_UNLISTED_COPY.description
       }
+      actions={
+        <Link href="/artworks?sort=newest" className={cn("shop-inline-link", FOCUS_RING)}>
+          {EDITION_UNLISTED_COPY.newEditionsLink}
+        </Link>
+      }
     >
-      <Link href="/artworks?sort=newest" className={cn("shop-inline-link", FOCUS_RING)}>
-        {EDITION_UNLISTED_COPY.newEditionsLink}
-      </Link>
       {editions.length > 0 ? (
         <section aria-labelledby="unlisted-more-heading">
           <h2 id="unlisted-more-heading">{EDITION_UNLISTED_COPY.moreTitle}</h2>

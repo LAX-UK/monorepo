@@ -1,3 +1,4 @@
+import { statusLabel } from "@/lib/admin/legal-entity-list-presenter";
 import { connectGapStageLabel } from "@/lib/connect/connect-gap-copy";
 import { getConnectGapState, isSellerConnectReady } from "@auction/connect";
 import type { LegalEntity } from "@auction/types";
@@ -43,7 +44,7 @@ export function buildLegalEntityHealthVM(entity: LegalEntity): LegalEntityHealth
     blockers.unshift({
       key: "lifecycle_status",
       label: "Lifecycle status",
-      hint: `Entity is ${entity.status.replace(/_/g, " ")} — approval required before selling.`,
+      hint: `Status is ${statusLabel(entity.status)} — approval required before selling.`,
     });
   }
 

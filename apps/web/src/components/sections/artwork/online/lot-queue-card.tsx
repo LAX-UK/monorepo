@@ -32,7 +32,7 @@ export function LotQueueCard({ vm, variant, index = 0, className }: Props) {
           src={vm.imageUrl}
           alt=""
           label="Lot"
-          className="size-full transition-transform duration-500 motion-safe:group-hover:scale-105 motion-reduce:transition-none"
+          className="size-full lax-card-zoom"
           sizes="96px"
         />
       </div>
@@ -57,7 +57,7 @@ export function LotQueueCard({ vm, variant, index = 0, className }: Props) {
   return (
     <Link
       href={vm.href}
-      className="group block rounded-md outline-none ring-offset-2 transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-primary"
+      className="lax-card group block rounded-md outline-none ring-offset-2 transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-primary"
     >
       {body}
     </Link>

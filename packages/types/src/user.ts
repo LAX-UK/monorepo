@@ -45,3 +45,7 @@ export type AppUser = {
   createdAt: Date;
   updatedAt: Date;
 };
+
+/** The account states the staff account search returns, shared by the API that produces them and the screen that reads them. */
+export const foundAccountStatuses = ["active", "disabled"] as const;
+export type FoundAccountStatus = (typeof foundAccountStatuses)[number];

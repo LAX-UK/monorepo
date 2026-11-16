@@ -12,7 +12,7 @@ import { LotBidHistoryProvider } from "@/lib/context/lot-bid-history-provider";
 import { LotPortsProvider } from "@/lib/context/lot-ports";
 import type { LotPageViewer } from "@/lib/lot-page/lot-page-viewer";
 import { useLotPageViewerOptional } from "@/lib/lot-page/lot-page-viewer-context";
-import { type ComponentProps, type ReactNode, useEffect, useState } from "react";
+import type { ComponentProps, ReactNode } from "react";
 
 /*
  * The signed-in parts of the lot page (CO-7). Each takes what the cached, signed-out render knows
@@ -47,17 +47,10 @@ export function LotPageRestoreGate({
 /** Keeps the acting-account cookie in line with the account `/me` says this person acts as. */
 export function LotActingEntityReconcilerIsland() {
   const viewer = useViewer();
-  const [verbose, setVerbose] = useState(false);
-  useEffect(() => {
-    const debug = new URLSearchParams(window.location.search).get("acting_debug");
-    setVerbose(debug === "1" || debug === "true");
-  }, []);
   if (!viewer?.isAuthenticated || !viewer.actingLegalEntityId || viewer.actingNeedsRestore) {
     return null;
   }
-  return (
-    <ActingEntityCookieReconciler serverActingId={viewer.actingLegalEntityId} verbose={verbose} />
-  );
+  return <ActingEntityCookieReconciler serverActingId={viewer.actingLegalEntityId} />;
 }
 
 type PublicGate = Omit<

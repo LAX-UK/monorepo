@@ -21,7 +21,7 @@ export type AdminCollectionSettingsRoutesContainer = {
 };
 
 export type AdminCollectionStorageRoutesContainer = {
-  admin: Pick<AdminIntegrationRouteServices, "collectionStorage">;
+  admin: Pick<AdminIntegrationRouteServices, "collectionStorage" | "collectionStorageFollowUp">;
 };
 
 export type AdminCollectionDeskRoutesContainer = {

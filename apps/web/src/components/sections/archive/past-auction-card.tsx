@@ -33,14 +33,14 @@ export function PastAuctionCard({
     .filter(Boolean)
     .join(" · ");
   return (
-    <div className={`group ${gridOffsetClass}`}>
+    <div className={`lax-card group ${gridOffsetClass}`}>
       <Link href={href} prefetch={false} className={cn("block rounded-sm", FOCUS_RING)}>
         <div className="relative mb-4 aspect-[4/5] overflow-hidden bg-surface-container-low md:mb-8">
           <MediaImage
             src={img}
             alt={`${auction.title} — past auction lot`}
             label="Lot artwork"
-            imgClassName="transition-transform duration-700 ease-out motion-safe:group-hover:scale-[1.02] motion-reduce:group-hover:scale-100"
+            imgClassName="lax-card-zoom"
             sizes="(max-width: 768px) 50vw, (max-width: 1024px) 50vw, 33vw"
           />
         </div>

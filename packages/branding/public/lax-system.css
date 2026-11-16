@@ -150,13 +150,20 @@
   --lax-motion-fade: 120ms;
   --lax-motion-panel: 260ms;
   --lax-motion-panel-exit: 180ms;
+  /* The card frame's 1px hover lift (MO9). Staff cards do not lift, so it has no staff value. */
+  --lax-motion-lift: 300ms;
   --lax-motion-page-out: 140ms;
   --lax-motion-page-in: 200ms;
   --lax-motion-morph: 360ms;
   --lax-motion-media: 700ms;
+  /* Loading skeletons (MO12): hidden for the first 150ms, so a fast load shows nothing, then one
+     opacity pulse every 1.6s. Not overridden for staff: a loader is the same on every product. */
+  --lax-motion-skeleton-delay: 150ms;
+  --lax-motion-pulse: 1600ms;
   --lax-ease-out: cubic-bezier(0.2, 0, 0, 1);
   --lax-ease-in: cubic-bezier(0.3, 0, 1, 1);
   --lax-ease-emphasize: cubic-bezier(0.16, 1, 0.3, 1);
+  --lax-ease-pulse: cubic-bezier(0.4, 0, 0.6, 1);
 }
 
 /*

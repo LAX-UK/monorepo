@@ -17,7 +17,6 @@ const stored = (over: Partial<StoredLot> = {}): StoredLot => ({
   lotNumber: 12,
   clearedAt: new Date("2026-11-20T10:00:00Z"),
   place: PLACE,
-  freeStorageDays: null,
   ...over,
 });
 const FACTS_OK: CollectionLotFacts = {

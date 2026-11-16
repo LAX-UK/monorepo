@@ -42,11 +42,6 @@
   object-fit: contain;
 }
 
-.shop-detail__state-media {
-  align-items: center;
-  justify-content: center;
-}
-
 .shop-detail__media-title,
 .shop-detail__media-artist,
 .shop-detail__media-note {
@@ -77,17 +72,6 @@
   gap: 2rem;
 }
 
-.shop-detail--state .shop-detail__content {
-  align-self: center;
-}
-
-.shop-detail__state-copy {
-  margin: 0;
-  color: var(--color-on-surface-variant);
-  font-size: 1.125rem;
-  line-height: 1.6;
-}
-
 .shop-detail__heading h1 {
   margin: 0.25rem 0 0;
   font-size: clamp(2rem, 5vw, 3.5rem);
@@ -95,17 +79,10 @@
   line-height: 1.05;
 }
 
-.shop-detail__eyebrow,
 .shop-detail__artist,
 .shop-detail__section p,
 .shop-detail__notice p {
   margin: 0;
-}
-
-.shop-detail__eyebrow {
-  color: var(--color-on-surface-variant);
-  font-size: var(--shop-text-sm);
-  font-weight: 500;
 }
 
 .shop-detail__artist {

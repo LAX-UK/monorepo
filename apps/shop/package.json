@@ -36,6 +36,7 @@
   "devDependencies": {
     "@axe-core/playwright": "^4.10.1",
     "@auction/config-ts": "workspace:*",
+    "@auction/e2e-utils": "workspace:*",
     "@playwright/test": "^1.55.0",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.3.0",

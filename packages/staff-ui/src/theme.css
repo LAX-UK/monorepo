@@ -165,6 +165,18 @@
 
 /* The focus ring, interaction overlays and touch targets are the LAX system utilities
    (@auction/ui/lax-theme.css, imported before this file), under the names staff pages use. */
+/* A 16px choice box that answers a 24px square (WCAG 2.5.8): an unpainted layer 4px past each
+   edge takes the press. Kept in CSS so the rule costs no route JavaScript. */
+@utility staff-hit {
+  position: relative;
+  flex-shrink: 0;
+  &::before {
+    content: "";
+    position: absolute;
+    inset: -4px;
+  }
+}
+
 @utility staff-focus {
   @apply lax-focus;
 }

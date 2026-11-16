@@ -1,7 +1,9 @@
+import { foundAccountStatuses } from "@auction/types";
 import { describe, expect, it } from "vitest";
 import {
   emptyLogRequest,
   extensionChoices,
+  foundAccountStatusLabel,
   isLogRequestDirty,
   oldReceivedWarning,
   previewDueOn,
@@ -10,9 +12,10 @@ import {
   validateIdReceived,
   validateLogRequest,
 } from "./data-request-forms";
+import { FOUND_ACCOUNT_STATUS_LABELS } from "./data-request-forms.copy";
 
 const TODAY = "2026-11-02";
-const ACCOUNT = { subjectId: "u1", name: "Margaret Osei", status: "active" };
+const ACCOUNT = { subjectId: "u1", name: "Margaret Osei", status: "active", statusLabel: "Active" };
 
 describe("log a manual request", () => {
   it("is valid for a found account with the defaults", () => {
@@ -143,5 +146,18 @@ describe("ID received", () => {
     expect(validateIdReceived(null, limits)).toMatch(/Enter/);
     expect(validateIdReceived("2026-11-03", limits)).toMatch(/future/);
     expect(validateIdReceived("2026-10-29", limits)).toMatch(/before the request/);
+  });
+});
+
+describe("found account status labels", () => {
+  it.each(foundAccountStatuses)("labels %s in staff words", (status) => {
+    const label = FOUND_ACCOUNT_STATUS_LABELS[status];
+    expect(label, `no label for account status "${status}"`).toBeTruthy();
+    expect(label).not.toBe(status);
+    expect(foundAccountStatusLabel(status)).toBe(label);
+  });
+
+  it("never shows an unknown code as it is stored", () => {
+    expect(foundAccountStatusLabel("not_a_known_state")).toBe("Account status unknown");
   });
 });

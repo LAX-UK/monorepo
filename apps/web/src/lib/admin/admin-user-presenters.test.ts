@@ -1,3 +1,4 @@
+import { userEmailStatuses, userKycStatuses } from "@auction/types";
 import { describe, expect, it } from "vitest";
 import {
   formatAmlCheckType,
@@ -6,6 +7,7 @@ import {
   formatUserRole,
   kycStatusPhrase,
 } from "./admin-user-presenters";
+import { EMAIL_DELIVERABILITY_LABELS, KYC_STATUS_PHRASES } from "./admin-user.copy";
 
 describe("admin-user-presenters", () => {
   it("formats signup persona", () => {
@@ -37,4 +39,27 @@ describe("admin-user-presenters", () => {
     expect(kycStatusPhrase("under_review")).toBe("in review");
     expect(kycStatusPhrase("rejected")).toBe("rejected");
   });
+});
+
+describe("email deliverability labels", () => {
+  it.each(userEmailStatuses)("labels %s in words", (status) => {
+    expect(EMAIL_DELIVERABILITY_LABELS[status]).toMatch(/^[A-Z][a-z ]+$/);
+    expect(formatEmailDeliverabilityStatus(status)).toBe(EMAIL_DELIVERABILITY_LABELS[status]);
+  });
+
+  it("reads an unknown value in sentence case", () => {
+    expect(formatEmailDeliverabilityStatus("soft_bounce")).toBe("Soft bounce");
+    expect(formatEmailDeliverabilityStatus(null)).toBe("Unknown");
+  });
+});
+
+describe("kyc status phrases", () => {
+  it.each([...userKycStatuses, "submitted", "under_review", "expired"])(
+    "has a phrase for %s that is not the stored code",
+    (status) => {
+      expect(Object.keys(KYC_STATUS_PHRASES)).toContain(status);
+      expect(kycStatusPhrase(status)).not.toContain("_");
+      expect(kycStatusPhrase(status)).toBe(kycStatusPhrase(status).toLowerCase());
+    },
+  );
 });

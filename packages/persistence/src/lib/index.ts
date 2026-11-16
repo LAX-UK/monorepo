@@ -160,3 +160,23 @@ export {
   readCollectByCalendars,
   type CollectByDayRange,
 } from "./collect-by-calendars.js";
+export {
+  readWaitingLotStorage,
+  storageCalendarReach,
+  type WaitingLotRef,
+  type WaitingLotStorage,
+} from "./waiting-lot-storage.js";
+export { lotAwaitsCollectionSql } from "./lot-awaits-collection.js";
+export type { LotStoragePricing } from "./purchase-storage-pricing.js";
+export {
+  CRITICAL_NOTIFICATION_TYPES,
+  NOTIFICATION_OUTBOX_WAKE_CHANNEL,
+  isCriticalNotificationType,
+} from "./notification-outbox-wake.js";
+export {
+  NOTIFICATION_OUTBOX_CLAIM_GUARD_MS,
+  NOTIFICATION_OUTBOX_MAX_ATTEMPTS,
+  NOTIFICATION_OUTBOX_RETRY_BASE_MS,
+  NOTIFICATION_OUTBOX_RETRY_MAX_MS,
+  notificationOutboxRetryDelayMs,
+} from "./notification-outbox-claim.js";

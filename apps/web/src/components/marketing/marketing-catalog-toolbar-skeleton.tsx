@@ -11,7 +11,7 @@ type Props = {
   className?: string;
 };
 
-const pulse = "animate-pulse rounded bg-surface-container-high";
+const pulse = "lax-skeleton rounded bg-surface-container-high";
 
 /** Loading placeholder for sticky marketing catalogue toolbars (single-row mobile layout). */
 export function MarketingCatalogToolbarSkeleton({

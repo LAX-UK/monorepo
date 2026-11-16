@@ -17,7 +17,6 @@ import {
   ENQUIRY_VIEW_IDS,
   ENQUIRY_VIEW_LABELS,
   enquiryWaiting,
-  humaniseSlug,
 } from "@/lib/admin/enquiries/enquiries.vm";
 import type { EnquiryAbilities } from "@/lib/admin/enquiries/enquiry-access";
 import { QUARANTINE_COPY } from "@/lib/admin/enquiries/enquiry-email-copy";
@@ -62,6 +61,8 @@ export type EnquiriesListProps = {
   pagination: { summary: string; prevHref: string | null; nextHref: string | null } | null;
   loadError: string | null;
   filtered: boolean;
+  /** Department names by slug, resolved on the server. */
+  departmentNames: Record<string, string>;
   /** The server's clock, so waiting times match between server and browser. */
   now: string;
 };
@@ -87,7 +88,7 @@ const SORT_OPTIONS = [
  * opens from the header.
  */
 export function EnquiriesList(props: EnquiriesListProps) {
-  const { page, search, filters, abilities } = props;
+  const { page, search, filters, abilities, departmentNames } = props;
   const { pending, navigate, Link: ListLink } = useStaffListNavigation();
   const [routingOpen, setRoutingOpen] = useState(false);
   const now = useMemo(() => new Date(props.now), [props.now]);
@@ -141,7 +142,7 @@ export function EnquiriesList(props: EnquiriesListProps) {
         mobile: "meta",
         cell: (row) => (
           <StackedCell
-            secondary={row.departmentSlug ? humaniseDepartment(row.departmentSlug) : undefined}
+            secondary={row.departmentSlug ? departmentNames[row.departmentSlug] : undefined}
           >
             {row.topicLabel}
           </StackedCell>
@@ -178,7 +179,7 @@ export function EnquiriesList(props: EnquiriesListProps) {
         ),
       },
     ],
-    [nameOf, now],
+    [nameOf, now, departmentNames],
   );
 
   const actionsFor = useCallback(
@@ -383,8 +384,4 @@ export function EnquiriesList(props: EnquiriesListProps) {
       ) : null}
     </>
   );
-}
-
-function humaniseDepartment(slug: string): string {
-  return routingRows([]).find((row) => row.slug === slug)?.label ?? humaniseSlug(slug);
 }

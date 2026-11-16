@@ -22,7 +22,7 @@ export default function PressLoading() {
       hero={
         <div
           className={cn(
-            "animate-pulse space-y-4 border-b border-border-hairline py-8 md:py-12",
+            "lax-skeleton space-y-4 border-b border-border-hairline py-8 md:py-12",
             MARKETING_PAGE_SHELL,
           )}
         >
@@ -33,7 +33,7 @@ export default function PressLoading() {
         </div>
       }
     >
-      <div className="flex flex-col gap-12 animate-pulse">
+      <div className="flex flex-col gap-12 lax-skeleton">
         <div className="flex flex-col gap-6">
           <div className="space-y-2">
             <div className="h-8 w-48 rounded bg-surface-container-high" />

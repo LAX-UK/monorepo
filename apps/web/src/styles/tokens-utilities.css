@@ -1,31 +1,3 @@
-/* Shimmer (F5b) — generic skeleton shimmer used by per-section skeletons and
-   live-bid feedback. Consumes motion tokens so duration/easing live in @theme. */
-@keyframes shimmer-sweep {
-  from {
-    transform: translateX(-100%);
-  }
-  to {
-    transform: translateX(100%);
-  }
-}
-
-.shimmer-sweep {
-  position: relative;
-  overflow: hidden;
-}
-.shimmer-sweep::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    rgba(255, 255, 255, 0.08) 50%,
-    transparent 100%
-  );
-  animation: shimmer-sweep var(--motion-duration-xl) var(--motion-ease-standard) infinite;
-}
-
 /* Gold border pulse (F3b) — emitted on a card when a new bid lands. Caller
    toggles a data attribute or class for one cycle and removes after. */
 @keyframes accent-pulse {
@@ -100,7 +72,6 @@
   .wipe-in,
   .zoom-bg,
   .tick-in,
-  .shimmer-sweep::after,
   .accent-pulse,
   .gold-pulse,
   .outbid-shake,

@@ -73,7 +73,7 @@ describe("SaleCardMedia", () => {
         linkMode="area"
       />,
     );
-    const roots = container.querySelectorAll(".group\\/image");
+    const roots = container.querySelectorAll(".lax-card");
     expect(roots.length).toBe(1);
     expect(roots[0]).toHaveClass("aspect-[16/10]");
     expect(roots[0]).toHaveClass("shrink-0");

@@ -19,6 +19,8 @@ export type MarketingFilterLinkRowProps = {
   kind: "checkbox" | "radio";
   /** A closer row on large screens, for a rail; phones keep the touch size. */
   dense?: boolean;
+  /** Runs when the link is followed, e.g. to close the sheet the row is in. */
+  onClick?: () => void;
 };
 
 const box =
@@ -66,6 +68,7 @@ export function MarketingFilterLinkRow({
   checked,
   kind,
   dense = false,
+  onClick,
 }: MarketingFilterLinkRowProps) {
   const unavailable = !checked && count === 0;
   const rowClass = cn(
@@ -90,21 +93,20 @@ export function MarketingFilterLinkRow({
       <span className="flex flex-1 items-center justify-between gap-2">
         <span>{label}</span>
         {count !== undefined ? (
-          <>
-            <span
-              aria-hidden="true"
-              className="font-body text-xs tabular-nums text-on-surface-variant"
-            >
-              {count}
-            </span>
-            <span className="sr-only">, {count}</span>
-          </>
+          <span
+            aria-hidden="true"
+            className="font-body text-xs tabular-nums text-on-surface-variant"
+          >
+            {count}
+          </span>
         ) : null}
       </span>
     </>
   );
 
   const isCheckbox = kind === "checkbox";
+  // The count is part of the name ("Brands, 4"); one string, so no stray space before the comma.
+  const name = count !== undefined ? `${label}, ${count}` : undefined;
   // A checkbox row carries the checkbox role; a choice of one is a plain link (see above).
   const role = isCheckbox ? "checkbox" : undefined;
 
@@ -114,6 +116,7 @@ export function MarketingFilterLinkRow({
         role={role}
         aria-checked={isCheckbox ? false : undefined}
         aria-disabled="true"
+        aria-label={name}
         tabIndex={isCheckbox ? -1 : undefined}
         className={rowClass}
       >
@@ -128,6 +131,8 @@ export function MarketingFilterLinkRow({
       role={role}
       aria-checked={isCheckbox ? checked : undefined}
       aria-current={!isCheckbox && checked ? "true" : undefined}
+      aria-label={name}
+      {...(onClick ? { onClick } : {})}
       onKeyDown={isCheckbox ? chooseWithSpace : undefined}
       className={rowClass}
     >

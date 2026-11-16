@@ -21,6 +21,10 @@ export const LAX_SYSTEM_CSS = readFileSync(
   "utf8",
 );
 export const MOTION_SOURCE = readFileSync(fromHere("../lax/motion.css"), "utf8");
+/** The kit's loading skeleton stylesheet (`.lax-skeleton`). */
+export const SKELETON_SOURCE = readFileSync(fromHere("../lax/skeleton.css"), "utf8");
+/** The kit's card hover and button press (packages/ui/src/lax/hover-press.css). */
+export const HOVER_PRESS_SOURCE = readFileSync(fromHere("../lax/hover-press.css"), "utf8");
 export const SONNER_CSS = readFileSync(
   resolve(dirname(require.resolve("sonner")), "styles.css"),
   "utf8",
@@ -60,9 +64,14 @@ export async function pageWith(
     htmlAttributes?: string;
     reducedMotion?: ReducedMotionEmulation;
     width?: number;
+    /** A phone: touch, no hover, a coarse pointer (the media the card hover must ignore). */
+    touch?: boolean;
   },
 ): Promise<Page> {
-  const page = await browser.newPage({ viewport: { width: options.width ?? 1280, height: 800 } });
+  const page = await browser.newPage({
+    viewport: { width: options.width ?? 1280, height: 800 },
+    ...(options.touch ? { hasTouch: true, isMobile: true } : {}),
+  });
   await page.emulateMedia({ reducedMotion: options.reducedMotion ?? "no-preference" });
   await page.setContent(
     `<!doctype html><html ${options.htmlAttributes ?? ""}><head><style>${options.css}</style></head><body>${options.body}</body></html>`,

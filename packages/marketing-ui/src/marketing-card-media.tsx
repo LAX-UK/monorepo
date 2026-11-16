@@ -16,9 +16,8 @@ export function MarketingCardMedia({
     <div
       data-media-style={mediaStyle}
       className={cn(
-        "relative overflow-hidden",
-        "[&_img]:motion-safe:transition-transform [&_img]:motion-safe:duration-700 [&_img]:motion-safe:ease-out",
-        "motion-safe:group-hover:[&_img]:scale-[1.02] motion-reduce:group-hover:[&_img]:scale-100",
+        // Its images zoom when the `lax-card` frame around it is hovered (kit hover-press.css).
+        "lax-card-media relative overflow-hidden",
         className,
       )}
     >

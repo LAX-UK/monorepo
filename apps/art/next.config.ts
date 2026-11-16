@@ -23,6 +23,10 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   reactStrictMode: true,
   transpilePackages: ["@auction/ui", "@auction/marketing-ui", "@auction/shop-portal"],
+  webpack(config, { isServer, dev }) {
+    if (!isServer && !dev) addEmptyStateChunk(config);
+    return config;
+  },
   images: {
     // Uploads get a fresh UUID key and seed assets never change, so a cached optimisation stays valid.
     minimumCacheTTL: 60 * 60 * 24 * 30,
@@ -39,6 +43,37 @@ const nextConfig: NextConfig = {
     ];
   },
 };
+
+/**
+ * The shared kit empty state, its drawings and the status actions. The root layout already loads
+ * them (marketing-ui's alert-link page renders the kit state) and every route `error.tsx`
+ * renders them too. Each boundary is its own entry, and below webpack's 20 KB split threshold the
+ * modules were copied into the layout chunk and again into each boundary's chunk. One forced chunk
+ * ships them once (the same fix as Bid's `shell-routes` chunk in apps/web/next.config.ts).
+ */
+const EMPTY_STATE_MODULES = [
+  /[\\/]packages[\\/]ui[\\/](?:dist|src)[\\/]lax[\\/]empty-state\.(?:js|tsx)$/,
+  /[\\/]packages[\\/]ui[\\/](?:dist|src)[\\/]components[\\/]ui[\\/]lax-illustration\.(?:js|tsx?)$/,
+  /[\\/]packages[\\/]marketing-ui[\\/](?:dist|src)[\\/]marketing-status-state\.(?:js|tsx)$/,
+  // What they import that every page already loads with its frame: `cn` and the focus ring.
+  /[\\/]packages[\\/]ui[\\/](?:dist|src)[\\/]lib[\\/]utils\.(?:js|ts)$/,
+  /[\\/]packages[\\/]branding[\\/](?:dist|src)[\\/]marketing-chrome\.(?:js|ts)$/,
+];
+
+function addEmptyStateChunk(config: { optimization?: { splitChunks?: unknown } }) {
+  const splitChunks = config.optimization?.splitChunks;
+  if (!splitChunks || typeof splitChunks !== "object") return;
+  const groups = (splitChunks as { cacheGroups?: Record<string, unknown> }).cacheGroups;
+  if (!groups) return;
+  groups.laxEmptyState = {
+    test: (module: { nameForCondition?: () => string | null }) =>
+      EMPTY_STATE_MODULES.some((pattern) => pattern.test(module.nameForCondition?.() ?? "")),
+    name: "lax-empty-state",
+    chunks: "all",
+    priority: 20,
+    enforce: true,
+  };
+}
 
 const hasSentry = Boolean(process.env.NEXT_PUBLIC_SENTRY_DSN_ART);
 

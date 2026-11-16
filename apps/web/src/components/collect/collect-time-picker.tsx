@@ -13,7 +13,7 @@ const SKELETON_KEYS = ["a", "b", "c", "d", "e", "f", "g", "h"] as const;
 
 function timeClass({ checked, disabled }: { checked: boolean; disabled: boolean }): string {
   return cn(
-    "flex min-h-11 flex-col items-center justify-center rounded-lax-control border px-3 py-2 text-lax-14 tabular-nums transition-[border-color,box-shadow] duration-150 ease-out motion-reduce:transition-none lax-focus",
+    "flex min-h-11 flex-col items-center justify-center rounded-lax-control border px-3 py-2 text-lax-14 tabular-nums transition-[border-color] duration-150 ease-out motion-reduce:transition-none lax-focus",
     disabled
       ? "cursor-not-allowed border-lax-line bg-lax-sunken text-lax-muted"
       : "border-lax-line-strong bg-lax-surface text-lax-fg hover:border-lax-control-edge",

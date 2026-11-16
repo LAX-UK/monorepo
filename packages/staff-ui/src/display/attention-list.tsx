@@ -84,10 +84,7 @@ export function AttentionList({
                     <span className="shrink-0 text-staff-xs text-staff-muted">{item.oldest}</span>
                   ) : null}
                 </span>
-                <ChevronRight
-                  aria-hidden
-                  className="size-4 shrink-0 text-staff-subtle transition-transform group-hover:translate-x-0.5"
-                />
+                <ChevronRight aria-hidden className="size-4 shrink-0 text-staff-subtle" />
               </Link>
             </li>
           ))}

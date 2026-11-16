@@ -6,11 +6,13 @@ import {
   collectionStorageExtension,
   collectionStorageTerms,
   collectionStorageWaiver,
+  legalEntity,
   lot,
+  lotFulfilment,
   sale,
   venue,
 } from "@auction/db/schema";
-import { type SQL, and, asc, desc, eq, gt, isNull, lte, sql } from "drizzle-orm";
+import { type SQL, and, asc, desc, eq, gt, isNotNull, isNull, lte, sql } from "drizzle-orm";
 import { MAX_STORAGE_EXTENSION_DAYS_PER_LOT } from "../interfaces/collection-storage.repository.js";
 import type {
   AddStorageExtensionOutcome,
@@ -21,6 +23,7 @@ import type {
   SetLotStorageOutcome,
   SetStorageChargingOutcome,
   StorageAuditAction,
+  StorageAuditDetail,
   StorageAuditRecord,
   StorageChange,
   StorageChargingSettings,
@@ -30,7 +33,10 @@ import type {
   StorageTermsValues,
   StorageVatTreatment,
   StorageWaiverRecord,
+  WaitingLotAtPlace,
 } from "../interfaces/collection-storage.repository.js";
+import { lotAwaitsCollectionSql } from "../lib/lot-awaits-collection.js";
+import { readWaitingLotStorage } from "../lib/waiting-lot-storage.js";
 import { lockCollectionPlace } from "./collection-place-lock.js";
 import { ensureCollectionPlace } from "./drizzle-collection-place-setup.js";
 
@@ -340,6 +346,7 @@ export class DrizzleCollectionStorageRepository implements ICollectionStorageRep
     days: number,
     reason: string,
     change: StorageChange,
+    detail: StorageAuditDetail = {},
   ): Promise<AddStorageExtensionOutcome> {
     return this.db.transaction(async (tx): Promise<AddStorageExtensionOutcome> => {
       // lotVenue locks the lot row, so concurrent grants for one lot are serialised here.
@@ -349,7 +356,8 @@ export class DrizzleCollectionStorageRepository implements ICollectionStorageRep
         .select({ total: sql<number>`coalesce(sum(${collectionStorageExtension.days}), 0)::int` })
         .from(collectionStorageExtension)
         .where(eq(collectionStorageExtension.lotId, lotId));
-      const daysRemaining = Math.max(0, MAX_STORAGE_EXTENSION_DAYS_PER_LOT - (given?.total ?? 0));
+      const givenDays = given?.total ?? 0;
+      const daysRemaining = Math.max(0, MAX_STORAGE_EXTENSION_DAYS_PER_LOT - givenDays);
       if (days > daysRemaining) return { outcome: "cap_reached", daysRemaining };
       const [row] = await tx
         .insert(collectionStorageExtension)
@@ -361,8 +369,8 @@ export class DrizzleCollectionStorageRepository implements ICollectionStorageRep
         lotId,
         action: "extension_granted",
         change,
-        before: null,
-        after: { days },
+        before: { extensionDays: givenDays, ...detail.before },
+        after: { extensionDays: givenDays + days, days, ...detail.after },
         reason,
       });
       return { outcome: "saved", record: toExtension(row) };
@@ -373,6 +381,7 @@ export class DrizzleCollectionStorageRepository implements ICollectionStorageRep
     lotId: string,
     reason: string,
     change: StorageChange,
+    detail: StorageAuditDetail = {},
   ): Promise<AddStorageWaiverOutcome> {
     return this.db.transaction(async (tx): Promise<AddStorageWaiverOutcome> => {
       const found = await this.lotVenue(tx, lotId);
@@ -388,12 +397,77 @@ export class DrizzleCollectionStorageRepository implements ICollectionStorageRep
         lotId,
         action: "waiver_granted",
         change,
-        before: null,
-        after: { waived: true },
+        before: { waived: false, ...detail.before },
+        after: { waived: true, ...detail.after },
         reason,
       });
       return { outcome: "saved", record: toWaiver(row) };
     });
+  }
+
+  async waitingLotsAt(
+    venueId: string,
+    limit: number,
+    today: string,
+    lotId?: string,
+  ): Promise<{ lots: WaitingLotAtPlace[]; more: boolean }> {
+    const rows = await this.db
+      .select({
+        lotId: lot.id,
+        lotNumber: lot.lotNumber,
+        title: lot.title,
+        large: lot.storageLarge,
+        buyerLegalEntityId: lot.buyerLegalEntityId,
+        buyerName: legalEntity.displayName,
+        clearedAt: lotFulfilment.paymentClearedAt,
+        storageTermsId: lotFulfilment.storageTermsId,
+      })
+      .from(lotFulfilment)
+      .innerJoin(lot, eq(lot.id, lotFulfilment.lotId))
+      .innerJoin(sale, eq(sale.id, lot.saleId))
+      .innerJoin(legalEntity, eq(legalEntity.id, lot.buyerLegalEntityId))
+      .where(
+        and(
+          eq(sale.venueId, venueId),
+          isNotNull(lotFulfilment.paymentClearedAt),
+          eq(lot.status, "ended"),
+          lotAwaitsCollectionSql(this.db),
+          lotId ? eq(lot.id, lotId) : undefined,
+        ),
+      )
+      .orderBy(asc(lotFulfilment.paymentClearedAt), asc(lot.id))
+      .limit(limit + 1);
+    const waiting = rows
+      .slice(0, limit)
+      .flatMap((row) =>
+        row.clearedAt && row.buyerLegalEntityId
+          ? [{ ...row, clearedAt: row.clearedAt, buyerLegalEntityId: row.buyerLegalEntityId }]
+          : [],
+      );
+    const storage = await readWaitingLotStorage(
+      this.db,
+      waiting.map((row) => ({ ...row, venueId })),
+      today,
+    );
+    return {
+      more: rows.length > limit,
+      lots: waiting.flatMap((row) => {
+        const priced = storage.get(row.lotId);
+        return priced
+          ? [
+              {
+                lotId: row.lotId,
+                lotNumber: row.lotNumber,
+                title: row.title,
+                buyerName: row.buyerName,
+                buyerLegalEntityId: row.buyerLegalEntityId,
+                clearedAt: row.clearedAt,
+                storage: priced,
+              },
+            ]
+          : [];
+      }),
+    };
   }
 
   async listExtensions(lotId: string): Promise<StorageExtensionRecord[]> {

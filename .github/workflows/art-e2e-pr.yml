@@ -159,7 +159,10 @@ jobs:
           NODE_OPTIONS="--report-on-signal --report-signal=SIGUSR2 --report-directory=/tmp/art-e2e-logs" \
             pnpm --filter @auction/art start > /tmp/art-e2e-logs/art.log 2>&1 &
           npx --yes wait-on http://localhost:3003/health/live http://localhost:3051/health/ready http://localhost:3011/health/ready http://localhost:3050/health/live --timeout 120000
-      - name: Run Art journeys, a11y and viewport audit
+      - name: Run Art journeys, a11y, viewport audit and loading screens
+        env:
+          # The loading-screen check (e2e/loading-screens.spec.ts) is opt-in; this seeded stack runs it.
+          PLAYWRIGHT_LOADING_CHECK: "1"
         run: pnpm --filter @auction/art exec playwright test
       - name: Probe the stack after a failure
         if: ${{ failure() }}

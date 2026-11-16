@@ -94,7 +94,7 @@ export default async function BuyerRecommendationsPage({
           <article key={lot.id} className="flex min-w-0 flex-col gap-4">
             <Link
               href={lot.href}
-              className="group rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-secondary"
+              className="lax-card group rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-secondary"
             >
               <div className="relative aspect-[1.03] overflow-hidden bg-ink shadow-sm sm:h-[clamp(180px,30vh,300px)] sm:aspect-auto">
                 <MediaImage
@@ -103,7 +103,7 @@ export default async function BuyerRecommendationsPage({
                   label="Lot artwork"
                   sizes="(min-width: 1024px) 317px, (min-width: 640px) 31vw, 92vw"
                   className="h-full"
-                  imgClassName="transition-[opacity,transform] duration-500 motion-reduce:transition-none group-hover:scale-[1.025]"
+                  imgClassName="lax-card-zoom"
                   priority={index === 0}
                   tone="dark"
                 />

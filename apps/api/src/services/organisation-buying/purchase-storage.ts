@@ -2,11 +2,10 @@ import {
   type PurchaseCollectBy,
   type PurchaseStorageView,
   type StoragePause,
-  calculateStorageCharge,
   londonDateKey,
+  lotStorageCharge,
   purchaseStorageView,
-  storageClearedOn,
-  storageTermsForLot,
+  storageQuotePauses,
 } from "@auction/domain";
 import type { AccountPurchaseFactsRow } from "@auction/persistence/interfaces";
 
@@ -21,24 +20,12 @@ const NO_PRICING = {
   chargingOn: false,
 };
 
-/**
- * The days LAX held the work for a shipping quote it still owed (ST5): from the day the buyer asked
- * until the day it was quoted, or until `today` while it is still waiting. Open checks and disputes
- * also pause the clock, but neither is linked to a lot in the data read here yet: tracked in
- * docs/design/storage-terms.md ("Not yet built"), and it must land before charging is switched on.
- */
+/** The days LAX held the work for a shipping quote it still owed (ST5); see `storageQuotePauses`. */
 export function quotePausesOf(
   quote: AccountPurchaseFactsRow["quote"],
   today: string,
 ): StoragePause[] {
-  if (!quote) return [];
-  const from = londonDateKey(quote.requestedAt);
-  if (quote.status === "requested") return from <= today ? [{ from, to: today }] : [];
-  if ((quote.status === "quoted" || quote.status === "accepted") && quote.quotedAt) {
-    const to = londonDateKey(quote.quotedAt);
-    return from <= to ? [{ from, to }] : [];
-  }
-  return [];
+  return storageQuotePauses(quote, today);
 }
 
 /**
@@ -56,17 +43,12 @@ export function purchaseStorageOf(
 ): (PurchaseCollectBy & { storage: PurchaseStorageView }) | null {
   if (!storage.calendar) return null;
   const pricing = storage.pricing ?? NO_PRICING;
-  const terms = storageTermsForLot(pricing.terms);
-  const band = pricing.large ? "large" : "standard";
   const today = londonDateKey(now);
   try {
-    const charge = calculateStorageCharge({
-      terms,
-      clearedOn: storageClearedOn(storage.clearedAt),
-      extensionDays: pricing.extensionDays,
-      waived: pricing.waived,
+    const { charge, terms, band } = lotStorageCharge({
+      facts: pricing,
+      clearedAt: storage.clearedAt,
       pausedRanges: quotePausesOf(quote, today),
-      band,
       asOf: today,
       calendar: storage.calendar,
     });

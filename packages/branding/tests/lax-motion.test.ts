@@ -36,13 +36,17 @@ const PUBLIC = {
   "--lax-motion-fade": "120ms",
   "--lax-motion-panel": "260ms",
   "--lax-motion-panel-exit": "180ms",
+  "--lax-motion-lift": "300ms",
   "--lax-motion-page-out": "140ms",
   "--lax-motion-page-in": "200ms",
   "--lax-motion-morph": "360ms",
   "--lax-motion-media": "700ms",
+  "--lax-motion-skeleton-delay": "150ms",
+  "--lax-motion-pulse": "1600ms",
   "--lax-ease-out": "cubic-bezier(0.2, 0, 0, 1)",
   "--lax-ease-in": "cubic-bezier(0.3, 0, 1, 1)",
   "--lax-ease-emphasize": "cubic-bezier(0.16, 1, 0.3, 1)",
+  "--lax-ease-pulse": "cubic-bezier(0.4, 0, 0.6, 1)",
 } as const;
 
 const STAFF = {

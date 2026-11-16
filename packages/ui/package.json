@@ -571,6 +571,10 @@
       "types": "./dist/lax/styles.d.ts",
       "default": "./dist/lax/styles.js"
     },
+    "./lax/status-illustration": {
+      "types": "./dist/lax/status-illustration.d.ts",
+      "default": "./dist/lax/status-illustration.js"
+    },
     "./lax/switch": {
       "types": "./dist/lax/switch.d.ts",
       "default": "./dist/lax/switch.js"
