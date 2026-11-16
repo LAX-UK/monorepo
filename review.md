@@ -105,7 +105,7 @@ This review covers only the PR. The PR branch was not changed.
   - `packages/marketing-ui`: 702/702
   - `apps/shop`: 715/715, including the `checkout-return-origin` test the description called flaky
   - `apps/art`: 805/805
-  - `apps/web`: see the last line of this file.
+  - `apps/web`: 9888 passed, 10 skipped (1519 files)
 - **Coverage:** no `MarketingStatusState`, `MarketingStatusMotif` or `ShopStateMotif` is left in code.
   - Every Shop and lax.art empty and error state goes through `ShopStatusState`, `ArtStatusState` or `ArtworkDetailState`, and all three now render the kit `EmptyState`.
   - I found no hand-rolled empty state in `apps/shop/src` or `apps/art/src`. I grepped for `length === 0` branches, "No … yet/found" copy, and `empty` class names.
@@ -124,4 +124,4 @@ This review covers only the PR. The PR branch was not changed.
   - The PR's own before/after screenshots agree with what I rendered, apart from the issues noted above.
 - **No other restyling:** the only CSS removed is the status-state block in `marketing-ui.css`, apart from item 3 above, and Shop's `state.css` title overrides for that block.
 
-Web unit suite (`apps/web`, local): still running at the time of this commit; result to follow in a later commit. CI `web vitest (1-8/8)` all passed on run 43809697600.
+Web unit suite (`apps/web`, local, PR head): 1519 files passed, 9888 tests passed, 10 skipped.
