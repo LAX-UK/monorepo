@@ -299,4 +299,42 @@ describe("loading skeleton resolved in Chromium", () => {
       rmSync(dir, { recursive: true, force: true });
     }
   }, 30_000);
+
+  it("draws the LAX Skeleton bar and the sparkline wave, and lets a caller's utility win", async () => {
+    // `.lax-bar` and `.lax-wave` replace the utility strings the two kit skeletons used to carry
+    // (block, badge radius, the neutral fill or colour). They sit in Tailwind's components layer,
+    // so a utility a caller passes still wins, as it did when tailwind-merge dropped the default.
+    const page = await pageWith(browser, {
+      css: `@layer theme, base, components, utilities;\n${CSS}\n@layer utilities { .rounded-full { border-radius: 9999px; } .inline-block { display: inline-block; } }`,
+      body: `<span class="lax-skeleton lax-bar" id="bar"></span><span class="lax-skeleton lax-bar rounded-full inline-block" id="custom"></span><div style="display:flex"><svg class="lax-skeleton lax-wave" id="wave" width="80" height="24"></svg></div>`,
+    });
+    try {
+      const read = await page.evaluate(() => {
+        const style = (id: string) => getComputedStyle(document.getElementById(id) as Element);
+        const fill = document.createElement("span");
+        fill.style.color = "var(--lax-neutral-bg)";
+        document.body.append(fill);
+        const neutral = getComputedStyle(fill).color;
+        return {
+          neutral,
+          bar: {
+            display: style("bar").display,
+            radius: style("bar").borderTopLeftRadius,
+            fill: style("bar").backgroundColor,
+          },
+          custom: { display: style("custom").display, radius: style("custom").borderTopLeftRadius },
+          wave: {
+            display: style("wave").display,
+            shrink: style("wave").flexShrink,
+            color: style("wave").color,
+          },
+        };
+      });
+      expect(read.bar).toEqual({ display: "block", radius: "4px", fill: read.neutral });
+      expect(read.custom).toEqual({ display: "inline-block", radius: "9999px" });
+      expect(read.wave).toEqual({ display: "block", shrink: "0", color: read.neutral });
+    } finally {
+      await page.close();
+    }
+  }, 30_000);
 });
