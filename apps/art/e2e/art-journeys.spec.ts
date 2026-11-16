@@ -308,11 +308,49 @@ test.describe("lax.art journeys", () => {
     };
     await snapshot("before tap");
     page.on("load", () => log("load event"));
+    await page.evaluate(() => {
+      // biome-ignore lint/suspicious/noExplicitAny: diagnostic access to webpack internals
+      const w = self as any;
+      // biome-ignore lint/suspicious/noExplicitAny: diagnostic access to webpack internals
+      let req: any;
+      // biome-ignore lint/suspicious/noExplicitAny: diagnostic access to webpack internals
+      w.webpackChunk_N_E.push([
+        [Symbol("diag")],
+        {},
+        (r: any) => {
+          req = r;
+        },
+      ]);
+      for (const id of Object.keys(req.m)) {
+        if (!String(req.m[id]).includes("getCurrentAppRouterState:function")) continue;
+        w.__diagState = req(id).getCurrentAppRouterState;
+        break;
+      }
+    });
+    const routerState = () =>
+      page.evaluate(() => {
+        // biome-ignore lint/suspicious/noExplicitAny: diagnostic access to webpack internals
+        const w = self as any;
+        const st = w.__diagState?.();
+        return JSON.stringify({
+          router: st?.canonicalUrl ?? "no accessor",
+          pendingUrl: String(w.next?.__pendingUrl ?? ""),
+          location: location.pathname,
+          heading: document.querySelector("#followed-artists, [data-testid=art-followed-artists]")
+            ? "follows"
+            : "saves",
+        });
+      });
+    log("router before tap", await routerState());
     await follows.click();
     log("clicked");
     await snapshot("after tap");
-    await page.waitForTimeout(2_000);
-    await snapshot("2s after tap");
+    for (let i = 1; i <= 15; i++) {
+      await page.waitForTimeout(1_000);
+      log(`router ${i}s after tap`, await routerState());
+      if (page.url().endsWith("/follows")) break;
+    }
+    await snapshot("after polling");
     log("url", page.url());
     log(
       "resource timing",
