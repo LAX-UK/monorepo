@@ -19,6 +19,8 @@ export type MarketingFilterLinkRowProps = {
   kind: "checkbox" | "radio";
   /** A closer row on large screens, for a rail; phones keep the touch size. */
   dense?: boolean;
+  /** Runs when the link is followed, e.g. to close the sheet the row is in. */
+  onClick?: () => void;
 };
 
 const box =
@@ -66,6 +68,7 @@ export function MarketingFilterLinkRow({
   checked,
   kind,
   dense = false,
+  onClick,
 }: MarketingFilterLinkRowProps) {
   const unavailable = !checked && count === 0;
   const rowClass = cn(
@@ -128,6 +131,7 @@ export function MarketingFilterLinkRow({
       role={role}
       aria-checked={isCheckbox ? checked : undefined}
       aria-current={!isCheckbox && checked ? "true" : undefined}
+      {...(onClick ? { onClick } : {})}
       onKeyDown={isCheckbox ? chooseWithSpace : undefined}
       className={rowClass}
     >

@@ -1,8 +1,9 @@
-/** @vitest-environment jsdom */
 import { ArtworkCatalogueFilterBody } from "@/components/catalogue/artwork-catalogue-filter-body";
 import type { CatalogueFilterRailVm } from "@/lib/catalogue/catalogue-filter-groups";
 import type { CatalogueSortVm } from "@/lib/catalogue/catalogue-sort";
 import { cleanup, render, screen, within } from "@testing-library/react";
+/** @vitest-environment jsdom */
+import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("next/link", () => ({
@@ -109,5 +110,19 @@ describe("ArtworkCatalogueFilterBody", () => {
   it("leaves out the sort group where sort sits above the results", () => {
     renderRail();
     expect(screen.queryByRole("group", { name: "Sort" })).toBeNull();
+  });
+
+  it("renders every option with results as a real <a href> in the server HTML", () => {
+    const html = renderToStaticMarkup(
+      <ArtworkCatalogueFilterBody rail={rail} onNavigate={vi.fn()} />,
+    );
+    const doc = new DOMParser().parseFromString(html, "text/html");
+    const rows = [...doc.querySelectorAll('[role="checkbox"]')];
+    expect(rows.length).toBeGreaterThan(0);
+    for (const row of rows) {
+      if (row.getAttribute("aria-disabled") === "true") continue;
+      expect(row.tagName, row.textContent ?? "").toBe("A");
+      expect(row.getAttribute("href"), row.textContent ?? "").toMatch(/^\/artworks/);
+    }
   });
 });

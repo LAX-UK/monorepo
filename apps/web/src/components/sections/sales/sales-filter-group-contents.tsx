@@ -5,10 +5,7 @@ import type { SalesFacetCounts } from "@/lib/marketing/sales-calendar-facets";
 import type { CalendarSalesUrlState } from "@/lib/marketing/sales-calendar-params";
 import { calendarSalesHrefFromState } from "@/lib/marketing/sales-calendar-params";
 import type { SalesFilterSidebarGroupValue } from "@/lib/marketing/sales-filter-sidebar-catalog";
-import { MarketingFilterCheckboxRow } from "@auction/marketing-ui/marketing-filter-checkbox-row";
-import { MarketingFilterRadioRow } from "@auction/marketing-ui/marketing-filter-radio-row";
-import { RadioGroup } from "@auction/ui/components/radio-group";
-import { useRouter } from "next/navigation";
+import { MarketingFilterLinkRow } from "@auction/marketing-ui/marketing-filter-link-row";
 
 const MONTHS = [
   { n: 1, label: "January" },
@@ -42,9 +39,11 @@ const SORTS = [
   ["createdDesc", "Newly listed"],
 ] as const;
 
-/** A rail option as a checkbox: choosing it applies it, choosing it again takes it off. */
+/**
+ * A rail option as a checkbox that is a real link, so each value is reachable without JavaScript
+ * and in the server HTML: choosing it applies it, choosing it again takes it off.
+ */
 function FilterCheckbox({
-  id,
   label,
   count,
   active,
@@ -52,7 +51,6 @@ function FilterCheckbox({
   offHref,
   onLinkClick,
 }: {
-  id: string;
   label: string;
   count: number | undefined;
   active: boolean;
@@ -60,21 +58,20 @@ function FilterCheckbox({
   offHref: string;
   onLinkClick?: () => void;
 }) {
-  const router = useRouter();
   return (
-    <MarketingFilterCheckboxRow
-      id={id}
+    <MarketingFilterLinkRow
+      kind="checkbox"
       label={label}
       count={count}
       checked={active}
+      href={active ? offHref : onHref}
       dense
-      onCheckedChange={() => {
-        router.push(active ? offHref : onHref, { scroll: false });
-        onLinkClick?.();
-      }}
+      {...(onLinkClick ? { onClick: onLinkClick } : {})}
     />
   );
 }
+
+const link2 = (onLinkClick?: () => void) => (onLinkClick ? { onClick: onLinkClick } : {});
 
 /** AccordionContent `className` per group (layout scroll / spacing). */
 export const salesFilterAccordionContentClass: Record<SalesFilterSidebarGroupValue, string> = {
@@ -95,7 +92,6 @@ export function SalesFilterGroupContents({
   facets,
   onLinkClick,
 }: SalesFilterGroupContentsProps) {
-  const router = useRouter();
   const link = onLinkClick ? { onLinkClick } : {};
   const clear = { page: undefined } as const;
   switch (group) {
@@ -110,7 +106,6 @@ export function SalesFilterGroupContents({
           ).map(([mode, label, count]) => (
             <FilterCheckbox
               key={mode}
-              id={`sales-delivery-${mode}`}
               label={label}
               count={count}
               active={state.deliveryMode === mode}
@@ -132,7 +127,6 @@ export function SalesFilterGroupContents({
           ).map(([place, label, count]) => (
             <FilterCheckbox
               key={place}
-              id={`sales-location-${place}`}
               label={label}
               count={count}
               active={state.location === place}
@@ -145,29 +139,19 @@ export function SalesFilterGroupContents({
       );
     case "sort":
       return (
-        <RadioGroup
-          aria-label="Sort by date"
-          value={state.sort}
-          onValueChange={(sort) => {
-            router.push(
-              calendarSalesHrefFromState(state, { sort: sort as typeof state.sort, ...clear }),
-              { scroll: false },
-            );
-            onLinkClick?.();
-          }}
-          className="gap-0"
-        >
+        <nav aria-label="Sort by date" className="flex flex-col">
           {SORTS.map(([value, label]) => (
-            <MarketingFilterRadioRow
+            <MarketingFilterLinkRow
               key={value}
-              id={`sales-sort-${value}`}
-              value={value}
+              kind="radio"
               label={label}
               checked={state.sort === value}
+              href={calendarSalesHrefFromState(state, { sort: value, ...clear })}
               dense
+              {...link2(onLinkClick)}
             />
           ))}
-        </RadioGroup>
+        </nav>
       );
     case "price":
       return <SalesPriceSlider state={state} />;
@@ -177,7 +161,6 @@ export function SalesFilterGroupContents({
           {categories.map((c) => (
             <FilterCheckbox
               key={c.id}
-              id={`sales-department-${c.id}`}
               label={c.name}
               count={facets ? (facets.departments[c.id] ?? 0) : undefined}
               active={state.categoryId === c.id}
@@ -194,7 +177,6 @@ export function SalesFilterGroupContents({
           {MONTHS.map((m) => (
             <FilterCheckbox
               key={m.n}
-              id={`sales-month-${m.n}`}
               label={m.label}
               count={facets ? (facets.months[m.n] ?? 0) : undefined}
               active={state.month === m.n}
@@ -211,7 +193,6 @@ export function SalesFilterGroupContents({
           {years.map((y) => (
             <FilterCheckbox
               key={y}
-              id={`sales-year-${y}`}
               label={String(y)}
               count={facets ? (facets.years[y] ?? 0) : undefined}
               active={state.year === y}
