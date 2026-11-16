@@ -1,4 +1,8 @@
-import type { CollectionCancelReason, CollectionCancelledVia } from "@auction/domain";
+import {
+  type CollectionCancelReason,
+  type CollectionCancelledVia,
+  isDemoSeedEvent,
+} from "@auction/domain";
 import type { IEmailService } from "@auction/email";
 import type pino from "pino";
 import { collectionInAppNoticesFor } from "../services/collection-in-app-notices.js";
@@ -92,6 +96,12 @@ export async function processCollectionBookingNotify(options: {
 
   let maxId = cursor;
   for (const row of rows) {
+    // A booking the demo seed made: no email or inbox notice to its invented collector.
+    if (isDemoSeedEvent(row)) {
+      log.info({ eventId: row.id }, "collection_booking_notify_skipped_demo_seed");
+      maxId = row.id;
+      continue;
+    }
     const payload = row.payload as Payload;
     const change = changeOf(row.eventType, row.id, payload);
     if (!change || !payload.bookingId) {

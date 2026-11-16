@@ -54,6 +54,7 @@ async function main() {
     if (dryRun) console.log("[demo-full] dry run: rolled back");
     console.log(`[demo-full] created people: ${result.topUp.created.join(", ") || "none"}`);
     console.log(`[demo-full] top-up catalogue: ${JSON.stringify(result.topUp.catalogue)}`);
+    console.log(`[demo-full] staff queues filled: ${result.queues.join(", ")}`);
     console.log(
       `[demo-full] full catalogue: ${result.sales} sales, ${result.lots} lots, ${result.bids} bids, ${result.departments} departments`,
     );

@@ -6,6 +6,8 @@ export type DomainEventProjectorRow = {
   aggregateId: string;
   payload: unknown;
   actorUserId?: string | null;
+  /** Who wrote the event; `demo-seed` marks invented demo data (no notification follows). */
+  producer?: string;
   schemaVersion?: number;
   occurredAt?: Date;
 };

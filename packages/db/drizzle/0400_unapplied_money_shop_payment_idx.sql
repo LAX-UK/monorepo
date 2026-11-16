@@ -11,7 +11,7 @@
 -- wasEverUnapplied and listOpen's intent filter. Expressions match the reader's
 -- payload->>'key' exactly, or the planner will not use them.
 --
--- Building it: as 0398. The runner is transactional, so plain CREATE INDEX under a SHARE lock (reads
+-- Building it: as 0399. The runner is transactional, so plain CREATE INDEX under a SHARE lock (reads
 -- carry on, inserts into domain_events wait; never ACCESS EXCLUSIVE). The predicate keeps the
 -- indexes tiny, but the build still reads the whole table once: measured on PG 16 with 1M rows,
 -- under 0.1 s each. To build them with no write pause, run before deploying, outside a

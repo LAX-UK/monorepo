@@ -15,13 +15,13 @@ const journal = JSON.parse(read("meta/_journal.json")) as {
 
 const MIGRATIONS = [
   {
-    number: "0398",
-    tag: "0398_domain_events_event_type_aggregate_idx",
+    number: "0399",
+    tag: "0399_domain_events_event_type_aggregate_idx",
     indexes: ["domain_events_event_type_aggregate_id_idx"],
   },
   {
-    number: "0399",
-    tag: "0399_unapplied_money_shop_payment_idx",
+    number: "0400",
+    tag: "0400_unapplied_money_shop_payment_idx",
     indexes: [
       "domain_events_unapplied_money_session_idx",
       "domain_events_unapplied_money_intent_idx",
@@ -29,7 +29,7 @@ const MIGRATIONS = [
   },
 ] as const;
 
-describe("migrations 0398 and 0399 domain_events lookup indexes", () => {
+describe("migrations 0399 and 0400 domain_events lookup indexes", () => {
   it("are journalled after 0397, in order, with later times", () => {
     const base = journal.entries.find((e) => e.tag === "0397_enquiry_inbound_replies");
     const first = journal.entries.find((e) => e.tag === MIGRATIONS[0].tag);

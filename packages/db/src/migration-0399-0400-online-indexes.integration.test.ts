@@ -10,10 +10,10 @@ import { laterRollbackSql } from "./testing/later-rollbacks.js";
 import { withTemporaryDatabase } from "./testing/temporary-database.js";
 
 const url = process.env.MIGRATION_TEST_DATABASE_URL;
-/** The journal time of 0397, the migration before 0398. */
-const THROUGH_0397 = 1812542400000;
-const WHEN_0398 = 1812628800000;
+/** The journal time of 0398, the migration before 0399. */
+const THROUGH_0398 = 1812628800000;
 const WHEN_0399 = 1812715200000;
+const WHEN_0400 = 1812801600000;
 const EVENT = "payment.unapplied_money_received";
 const INDEXES = [
   "domain_events_event_type_aggregate_id_idx",
@@ -55,7 +55,7 @@ async function validIndexes(pool: pg.Pool): Promise<string[]> {
 async function ledger(pool: pg.Pool): Promise<number[]> {
   const { rows } = await pool.query<{ created_at: string }>(
     "select created_at from drizzle.__drizzle_migrations where created_at = any($1) order by 1",
-    [[WHEN_0398, WHEN_0399]],
+    [[WHEN_0399, WHEN_0400]],
   );
   return rows.map((r) => Number(r.created_at));
 }
@@ -86,27 +86,27 @@ async function planIndexes(pool: pg.Pool, query: string, params: unknown[]): Pro
 }
 
 async function rollBack(pool: pg.Pool): Promise<void> {
+  await pool.query(laterRollbackSql(400));
+  await pool.query(await drizzleFile("0400_rollback.sql"));
   await pool.query(laterRollbackSql(399));
   await pool.query(await drizzleFile("0399_rollback.sql"));
-  await pool.query(laterRollbackSql(398));
-  await pool.query(await drizzleFile("0398_rollback.sql"));
 }
 
 describe.skipIf(!url)(
-  "migrations 0398 and 0399 domain_events lookup indexes",
+  "migrations 0399 and 0400 domain_events lookup indexes",
   { timeout: 180_000 },
   () => {
     it("builds under a SHARE lock only, serves the lookups, leaves grants alone, rolls back and applies again", async () => {
       await withTemporaryDatabase(async (pool) => {
-        await runMigrationsPerTransactionThrough(pool, THROUGH_0397);
+        await runMigrationsPerTransactionThrough(pool, THROUGH_0398);
         await seed(pool);
         const grantsBefore = await grants(pool);
 
         // The lock each migration holds on domain_events while it builds: SHARE (writers wait,
         // readers carry on), never ACCESS EXCLUSIVE.
         for (const tag of [
-          "0398_domain_events_event_type_aggregate_idx",
-          "0399_unapplied_money_shop_payment_idx",
+          "0399_domain_events_event_type_aggregate_idx",
+          "0400_unapplied_money_shop_payment_idx",
         ]) {
           const client = await pool.connect();
           try {
@@ -129,7 +129,7 @@ describe.skipIf(!url)(
 
         await runMigrationsPerTransaction(pool);
         expect(await validIndexes(pool)).toEqual([...INDEXES].sort());
-        expect(await ledger(pool)).toEqual([WHEN_0398, WHEN_0399]);
+        expect(await ledger(pool)).toEqual([WHEN_0399, WHEN_0400]);
         expect(await grants(pool)).toEqual(grantsBefore);
 
         const byType = await planIndexes(
@@ -156,13 +156,13 @@ describe.skipIf(!url)(
 
         await runMigrationsPerTransaction(pool);
         expect(await validIndexes(pool)).toEqual([...INDEXES].sort());
-        expect(await ledger(pool)).toEqual([WHEN_0398, WHEN_0399]);
+        expect(await ledger(pool)).toEqual([WHEN_0399, WHEN_0400]);
       });
     });
 
     it("adopts indexes pre-built CONCURRENTLY and refuses an INVALID one from a failed build", async () => {
       await withTemporaryDatabase(async (pool) => {
-        await runMigrationsPerTransactionThrough(pool, THROUGH_0397);
+        await runMigrationsPerTransactionThrough(pool, THROUGH_0398);
         await seed(pool);
 
         // A failed concurrent build (here: a unique build over duplicate values) leaves an INVALID
@@ -181,8 +181,8 @@ describe.skipIf(!url)(
           `drop index concurrently if exists "domain_events_event_type_aggregate_id_idx"`,
         );
         for (const tag of [
-          "0398_domain_events_event_type_aggregate_idx",
-          "0399_unapplied_money_shop_payment_idx",
+          "0399_domain_events_event_type_aggregate_idx",
+          "0400_unapplied_money_shop_payment_idx",
         ]) {
           const header = (await drizzleFile(`${tag}.sql`)).split("\n");
           const statements: string[] = [];
@@ -200,7 +200,7 @@ describe.skipIf(!url)(
 
         await runMigrationsPerTransaction(pool);
         expect(await validIndexes(pool)).toEqual([...INDEXES].sort());
-        expect(await ledger(pool)).toEqual([WHEN_0398, WHEN_0399]);
+        expect(await ledger(pool)).toEqual([WHEN_0399, WHEN_0400]);
       });
     });
   },
