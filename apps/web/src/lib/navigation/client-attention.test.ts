@@ -94,9 +94,9 @@ describe("attentionChip", () => {
   });
 
   it.each([
-    ["checks open", { paymentsDue: 1, paymentsHold: "review" }, "payment-on-hold"],
-    ["payable now", { paymentsDue: 1 }, "payment-due"],
-  ] as const)("with %s the prompt is %s", (_name, over, kind) => {
+    ["checks open", "payment-on-hold", { paymentsDue: 1, paymentsHold: "review" }],
+    ["payable now", "payment-due", { paymentsDue: 1 }],
+  ] as const)("with %s the prompt is %s", (_name, kind, over) => {
     expect(attentionChip(attention(over))?.kind).toBe(kind);
   });
 
