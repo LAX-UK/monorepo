@@ -52,18 +52,57 @@ describe("attentionChip", () => {
     });
   });
 
-  it("says the account is in review, not that payment is due, while checks are open", () => {
-    expect(attentionChip(attention({ paymentsDue: 3, paymentsInReview: true }))).toMatchObject({
-      kind: "account-in-review",
-      label: "Account in review",
+  it("says the payment is on hold, not that payment is due, while checks are open", () => {
+    expect(attentionChip(attention({ paymentsDue: 3, paymentsHold: "review" }))).toMatchObject({
+      kind: "payment-on-hold",
+      label: "Payment on hold",
       href: "/purchases",
-      accessibleName: "Account in review. Go to Purchases",
+      accessibleName: "Payment on hold. Go to Purchases",
     });
+  });
+
+  it("names the documents when they are what holds the payment", () => {
+    expect(attentionChip(attention({ paymentsDue: 1, paymentsHold: "documents" }))?.label).toBe(
+      "Payment on hold: send documents",
+    );
+  });
+
+  // A rejected or archived organisation is not waiting on any check: say what is true.
+  it("says payments are closed, not on hold, when the organisation cannot pay at all", () => {
+    expect(
+      attentionChip(
+        attention({
+          paymentsDue: 2,
+          paymentsHold: "closed",
+        }),
+      ),
+    ).toMatchObject({
+      kind: "payment-on-hold",
+      label: "Payments closed for this account",
+      href: "/purchases",
+      accessibleName: "Payments closed for this account. Go to Purchases",
+    });
+  });
+
+  // The prompt is about purchases only: nothing about sale registration or identity checks can
+  // raise it, so an approved, registered bidder with nothing owed never sees it.
+  it.each([
+    ["nothing owed", { paymentsDue: 0 }],
+    ["nothing owed, stale in-review flag", { paymentsDue: 0, paymentsHold: "review" }],
+  ] as const)("shows no account prompt with %s", (_name, over) => {
+    expect(attentionChip(attention(over))).toBeNull();
+  });
+
+  it.each([
+    ["checks open", "payment-on-hold", { paymentsDue: 1, paymentsHold: "review" }],
+    ["payable now", "payment-due", { paymentsDue: 1 }],
+  ] as const)("with %s the prompt is %s", (_name, kind, over) => {
+    expect(attentionChip(attention(over))?.kind).toBe(kind);
   });
 
   it("still counts what is owed in the menu while the account is in review", () => {
     expect(
-      attentionCountFor("purchases", attention({ paymentsDue: 3, paymentsInReview: true })),
+      attentionCountFor("purchases", attention({ paymentsDue: 3, paymentsHold: "review" })),
     ).toMatchObject({ value: 3, label: "3 to pay" });
   });
 

@@ -13,6 +13,7 @@ import {
   type DataColumn,
   DataTable,
   DisabledReason,
+  EmptyState,
   KeyValueList,
   Section,
   StaffButton,
@@ -175,6 +176,14 @@ export function ChargingCard({
           <p className="max-w-prose text-staff-sm text-staff-muted">{C.charging.explanation}</p>
           {blockedReason ? <DisabledReason>{blockedReason}</DisabledReason> : null}
         </div>
+      )}
+      {charging.raiseInvoices ? null : (
+        <EmptyState
+          size="compact"
+          headingLevel="h3"
+          title={C.charging.offState.title}
+          description={C.charging.offState.body}
+        />
       )}
     </Section>
   );

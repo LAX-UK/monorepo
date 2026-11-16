@@ -30,8 +30,8 @@ export const LEFT_OUT_REASON_COPY: Record<PayPlanLeftOutReason, { one: string; m
     many: "are not ones your role pays",
   },
   held_for_review: {
-    one: "is in review and can be paid once we have checked it",
-    many: "are in review and can be paid once we have checked them",
+    one: "is on hold and can be paid once our checks are done",
+    many: "are on hold and can be paid once our checks are done",
   },
   being_paid: {
     one: "is already in another payment",

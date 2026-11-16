@@ -21,8 +21,13 @@ export type ClientAttention = {
   outbidLotIds?: readonly (string | null)[];
   /** Won lots still to pay for, whether or not they can be paid yet. */
   paymentsDue: number;
-  /** Something is owed and all of it waits on account checks, so nothing can be paid yet. */
-  paymentsInReview: boolean;
+  /**
+   * Set when something is owed and all of it is held, so nothing can be paid yet, and says why:
+   * `documents` when the person has to supply something, `review` when the checks are with us,
+   * `closed` when the organisation that owes is rejected or archived (no check is running; it
+   * cannot pay online at all). Absent when something can be paid, or nothing is owed.
+   */
+  paymentsHold?: "documents" | "review" | "closed";
   /**
    * Lots inside a bank transfer that has delivered part of its payment: what is still to send
    * for them (whole pence) and which lots they are. They are owed, but not a payment to start.
@@ -40,7 +45,6 @@ export type ClientAttention = {
 export const NO_ATTENTION: ClientAttention = {
   outbidLots: [],
   paymentsDue: 0,
-  paymentsInReview: false,
   stillToSend: { count: 0, pence: 0, lotIds: [] },
   unreadNotifications: 0,
   groups: [],
@@ -88,7 +92,7 @@ export function attentionCountFor(
 
 /** The header chip: one short, urgent prompt with a link to where it is resolved. */
 export type AttentionChip = {
-  kind: "outbid" | "payment-due" | "still-to-send" | "account-in-review";
+  kind: "outbid" | "payment-due" | "still-to-send" | "payment-on-hold";
   /** "Outbid on Harbour at Dawn", or "Outbid on 2 lots" when several are waiting. */
   label: string;
   href: string;
@@ -98,9 +102,17 @@ export type AttentionChip = {
 
 type ChipRule = {
   kind: AttentionChip["kind"];
-  applies: (attention: ClientAttention) => boolean;
+  /** Truthy when the rule applies. */
+  applies: (attention: ClientAttention) => unknown;
   chip: (attention: ClientAttention) => Omit<AttentionChip, "kind">;
 };
+
+/** A chip that says where it goes, so assistive technology hears "<label>. Go to <place>". */
+function chipTo(label: string, href: string, place: string): Omit<AttentionChip, "kind"> {
+  return { label, href, accessibleName: `${label}. Go to ${place}` };
+}
+
+const toPurchases = (label: string) => chipTo(label, CLIENT_ROUTES.purchases, "Purchases");
 
 /** Where the several outbid lots are resolved together. */
 const OUTBID_LIST_HREF = `${CLIENT_ROUTES.bids}?tab=active`;
@@ -113,12 +125,12 @@ function outbidChip(attention: ClientAttention): Omit<AttentionChip, "kind"> {
   const group = attention.groups.find((candidate) => candidate.kind === "outbid");
   const only = group?.items.length === 1 ? group.items[0] : undefined;
   const count = group?.count ?? attention.outbidLots.length;
-  if (only) {
-    const label = `Outbid on ${only.title}`;
-    return { label, href: only.url, accessibleName: `${label}. Go to the lot` };
-  }
-  const label = count === 1 ? "Outbid on 1 lot" : `Outbid on ${count} lots`;
-  return { label, href: OUTBID_LIST_HREF, accessibleName: `${label}. Go to My bids` };
+  if (only) return chipTo(`Outbid on ${only.title}`, only.url, "the lot");
+  return chipTo(
+    count === 1 ? "Outbid on 1 lot" : `Outbid on ${count} lots`,
+    OUTBID_LIST_HREF,
+    "My bids",
+  );
 }
 
 /** A transfer that has delivered part of a payment: one lot opens its transfer details, several open Purchases. */
@@ -127,8 +139,8 @@ function stillToSendChip(attention: ClientAttention): Omit<AttentionChip, "kind"
   const label = `${formatGbp(pence)} still to send`;
   const [only] = lotIds;
   return only !== undefined && lotIds.length === 1
-    ? { label, href: payHref([only]), accessibleName: `${label}. Go to the transfer details` }
-    : { label, href: CLIENT_ROUTES.purchases, accessibleName: `${label}. Go to Purchases` };
+    ? chipTo(label, payHref([only]), "the transfer details")
+    : toPurchases(label);
 }
 
 /** In priority order: being outbid wins while a sale is live; the account's checks, then payment, wait a little longer. */
@@ -139,24 +151,26 @@ const CHIP_RULES: readonly ChipRule[] = [
     chip: outbidChip,
   },
   {
-    // While checks are open nothing can be paid, so the chip says where the account stands
-    // rather than asking for a payment that cannot be made.
-    kind: "account-in-review",
-    applies: (a) => a.paymentsDue > 0 && a.paymentsInReview,
-    chip: () => ({
-      label: "Account in review",
-      href: CLIENT_ROUTES.purchases,
-      accessibleName: "Account in review. Go to Purchases",
-    }),
+    // While checks are open nothing can be paid, so the chip says what is held and why rather
+    // than asking for a payment that cannot be made. It is about purchases only: it never
+    // speaks for a sale registration or identity check, which the sale page reports itself.
+    kind: "payment-on-hold",
+    applies: (a) => a.paymentsDue > 0 && a.paymentsHold,
+    // One phrase for a held purchase across LAX, "Payment on hold" (Purchases, Pay and LAX Account
+    // Home say the same). A closed organisation is not on hold, so it says what is true instead.
+    chip: (a) =>
+      toPurchases(
+        a.paymentsHold === "closed"
+          ? "Payments closed for this account"
+          : a.paymentsHold === "documents"
+            ? "Payment on hold: send documents"
+            : "Payment on hold",
+      ),
   },
   {
     kind: "payment-due",
     applies: (a) => a.paymentsDue > 0,
-    chip: () => ({
-      label: "Payment due",
-      href: CLIENT_ROUTES.purchases,
-      accessibleName: "Payment due. Go to Purchases",
-    }),
+    chip: () => toPurchases("Payment due"),
   },
   {
     // Last, because a payment still to start is the more pressing ask.

@@ -3,6 +3,7 @@ import type { Browser, Page } from "@playwright/test";
 import { afterAll, it as baseIt, beforeAll, describe, expect } from "vitest";
 import {
   HOVER_PRESS_SOURCE,
+  IMAGE_FADE_SOURCE,
   LAX_SYSTEM_CSS,
   launch,
   pageWith,
@@ -218,50 +219,39 @@ describe("card hover with a mouse", () => {
 });
 
 /**
- * An image that fades in when it loads (MediaImage: `opacity-0 transition-opacity duration-300`,
- * `opacity-100` once loaded) and also zooms with the card. The utilities are Tailwind 4's own
- * output, in `@layer utilities` as every app builds them, so the kit's unlayered zoom rule meets
- * them exactly as it does in production.
+ * A below-the-fold image that fades in when it loads (MediaImage: the kit's `.lax-image-fade` on a
+ * `loading="lazy"` image, `opacity-100` once loaded) and also zooms with the card. The utility is
+ * Tailwind 4's own output, in `@layer utilities` as every app builds it, so the kit's fade (in
+ * `@layer components`) and its unlayered zoom rule meet it exactly as they do in production.
  */
 describe("card zoom keeps an image's own load fade", () => {
   const TAILWIND_UTILITIES = `
     @property --tw-duration { syntax: "*"; inherits: false; }
     @property --tw-ease { syntax: "*"; inherits: false; }
-    :root { --default-transition-duration: 150ms; --default-transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1); }
+    @layer components, utilities;
     @layer utilities {
-      .opacity-0 { opacity: 0%; }
       .opacity-100 { opacity: 100%; }
-      .transition-opacity {
-        transition-property: opacity;
-        transition-timing-function: var(--tw-ease, var(--default-transition-timing-function));
-        transition-duration: var(--tw-duration, var(--default-transition-duration));
-      }
-      .duration-300 { --tw-duration: 300ms; transition-duration: 300ms; }
-      @media (prefers-reduced-motion: reduce) {
-        .motion-reduce\\:transition-none { transition-property: none; }
-      }
     }`;
-  const FADE_CSS = `${CSS}\n${TAILWIND_UTILITIES}`;
-  const FADING = "opacity-0 transition-opacity duration-300 motion-reduce:transition-none";
+  const FADE_CSS = `${CSS}\n${TAILWIND_UTILITIES}\n${IMAGE_FADE_SOURCE}`;
   const fadeBody = (
     who: Who,
   ) => `<div ${who === "staff" ? 'data-staff-ui data-lax-density="staff"' : 'data-lax-density="client"'}>
     <a href="#card" class="lax-card" data-probe="card" style="display:block;width:320px;padding:8px">
       <div style="overflow:hidden;width:200px;height:120px">
-        <img data-probe="zoom-img" class="lax-card-zoom ${FADING}" src="${PIXEL}" alt="" width="200" height="120">
+        <img data-probe="zoom-img" class="lax-card-zoom lax-image-fade" loading="lazy" src="${PIXEL}" alt="" width="200" height="120">
       </div>
       <div class="lax-card-media" style="overflow:hidden;width:200px;height:120px">
-        <img data-probe="media-img" class="${FADING}" src="${PIXEL}" alt="" width="200" height="120">
+        <img data-probe="media-img" class="lax-image-fade" loading="lazy" src="${PIXEL}" alt="" width="200" height="120">
       </div>
     </a>
     <div data-probe="away" style="height:200px"></div>
   </div>`;
 
-  /** The image loads: MediaImage swaps `opacity-0` for `opacity-100`. */
+  /** The image loads: MediaImage adds `opacity-100`. */
   const load = (page: Page) =>
     page.evaluate(() => {
       for (const img of document.querySelectorAll("img")) {
-        img.classList.replace("opacity-0", "opacity-100");
+        img.classList.add("opacity-100");
       }
     });
 
@@ -287,12 +277,12 @@ describe("card zoom keeps an image's own load fade", () => {
     });
 
   for (const id of ["zoom-img", "media-img"] as const) {
-    it(`${id}: with a mouse, the load fade runs as the utility says, and the zoom still runs`, async () => {
+    it(`${id}: with a mouse, the load fade runs as the kit fade says, and the zoom still runs`, async () => {
       const page = await pageWith(browser, { css: FADE_CSS, body: fadeBody("public") });
       try {
         await load(page);
         expect(await running(page, id)).toEqual({
-          opacity: { duration: 300, easing: "cubic-bezier(0.4, 0, 0.2, 1)" },
+          opacity: { duration: 200, easing: "cubic-bezier(0.2, 0, 0, 1)" },
         });
         await finishAll(page);
 
@@ -333,7 +323,7 @@ describe("card zoom keeps an image's own load fade", () => {
     });
 
     for (const mode of ["os-reduce", "force-reduce"] as const) {
-      it(`${id}: under ${mode} the image keeps its own transitions (here none) and never zooms`, async () => {
+      it(`${id}: under ${mode} the image keeps its own short fade and never zooms`, async () => {
         const page = await pageWith(browser, {
           css: FADE_CSS,
           body: fadeBody("public"),
@@ -344,14 +334,12 @@ describe("card zoom keeps an image's own load fade", () => {
           await page.hover('[data-probe="card"]');
           await load(page);
           const now = await running(page, id);
-          // The OS setting turns MediaImage's own fade off (motion-reduce:transition-none);
-          // Bid's switch leaves it to the app (globals.css shortens every transition there).
+          // Reduced motion keeps a public product's fade at --lax-motion-fade (MO13), under the OS
+          // setting and Bid's switch alike (Bid's globals.css shortens every transition further).
           expect(now.scale).toBeUndefined();
-          if (mode === "os-reduce") expect(now).toEqual({});
-          else
-            expect(now).toEqual({
-              opacity: { duration: 300, easing: "cubic-bezier(0.4, 0, 0.2, 1)" },
-            });
+          expect(now).toEqual({
+            opacity: { duration: 120, easing: "cubic-bezier(0.2, 0, 0, 1)" },
+          });
           await finishAll(page);
           expect(await probe(page, id)).toMatchObject({ scale: "none" });
         } finally {
@@ -367,7 +355,7 @@ describe("card zoom keeps an image's own load fade", () => {
       await page.hover('[data-probe="card"]');
       await load(page);
       const now = await running(page, "zoom-img");
-      expect(now.opacity?.duration).toBe(300);
+      expect(now.opacity?.duration).toBe(150);
       await finishAll(page);
       expect(await probe(page, "zoom-img")).toMatchObject({ scale: "none" });
     } finally {

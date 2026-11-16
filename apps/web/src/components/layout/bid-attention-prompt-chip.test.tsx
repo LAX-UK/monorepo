@@ -35,7 +35,7 @@ describe("BidAttentionPromptChip", () => {
 
   it.each([
     ["outbid", "Outbid on Harbour at Dawn", "bg-danger-container"],
-    ["account-in-review", "Account in review", "bg-info-container"],
+    ["payment-on-hold", "Payment on hold", "bg-info-container"],
     ["payment-due", "Payment due", "bg-warning-container"],
   ] as const)("keeps the %s rule and tone from the chip", (kind, label, tone) => {
     state = chip(kind, label, "/x");
@@ -55,10 +55,10 @@ describe("BidAttentionPromptChip", () => {
   });
 
   it("reads the full sentence aloud", () => {
-    state = chip("account-in-review", "Account in review", "/purchases");
+    state = chip("payment-on-hold", "Payment on hold", "/purchases");
     render(<BidAttentionPromptChip placement="strip" />);
     // The strip and the chip are one prompt in two forms; CSS shows exactly one of them.
-    const links = screen.getAllByRole("link", { name: "Account in review. Go" });
+    const links = screen.getAllByRole("link", { name: "Payment on hold. Go" });
     expect(links).toHaveLength(2);
     expect(new Set(links.map((link) => link.getAttribute("href")))).toEqual(
       new Set(["/purchases"]),

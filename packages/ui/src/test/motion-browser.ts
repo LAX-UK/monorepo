@@ -25,6 +25,8 @@ export const MOTION_SOURCE = readFileSync(fromHere("../lax/motion.css"), "utf8")
 export const SKELETON_SOURCE = readFileSync(fromHere("../lax/skeleton.css"), "utf8");
 /** The kit's card hover and button press (packages/ui/src/lax/hover-press.css). */
 export const HOVER_PRESS_SOURCE = readFileSync(fromHere("../lax/hover-press.css"), "utf8");
+/** The kit's image load fade (packages/ui/src/lax/image-fade.css). */
+export const IMAGE_FADE_SOURCE = readFileSync(fromHere("../lax/image-fade.css"), "utf8");
 export const SONNER_CSS = readFileSync(
   resolve(dirname(require.resolve("sonner")), "styles.css"),
   "utf8",
