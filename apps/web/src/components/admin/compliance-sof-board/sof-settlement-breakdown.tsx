@@ -1,5 +1,6 @@
 "use client";
 
+import { staffStatus } from "@/lib/admin/staff-kit-status";
 import type { AdminSourceOfFundsDetail } from "@/lib/data/http/compliance.server";
 import { formatExposurePence } from "@/lib/data/view-models/admin-sof-table.vm";
 import { type StaffLinkComponent, TextLink } from "@auction/staff-ui";
@@ -11,10 +12,9 @@ type Props = {
   detail: AdminSourceOfFundsDetail;
 };
 
+/** The payment's status in the words every payment badge uses (one label source). */
 function paymentStatusLabel(status: string | undefined): string {
-  if (!status) return "—";
-  const text = status.replaceAll("_", " ");
-  return text.charAt(0).toUpperCase() + text.slice(1);
+  return status ? staffStatus("payment", status).label : "—";
 }
 
 const HEAD = "px-3 py-2 text-left text-staff-xs font-medium text-staff-muted";

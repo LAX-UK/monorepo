@@ -14,6 +14,7 @@ import { type PayoutsStaffRow, parseSignedPounds } from "@/lib/admin/finance/pay
 import { redirectToHostedReauth } from "@/lib/auth/step-up/use-step-up-coordinator";
 import { notify } from "@/lib/ui/notify";
 import {
+  ChoiceRow,
   ConfirmActionDialog,
   Field,
   KeyValueList,
@@ -436,18 +437,17 @@ export function usePayoutMoneyActions({
                 <PayoutFailureReason reason={pending.payout.failureReason} />
               </Notice>
             ) : null}
-            <div className="flex items-start gap-2 text-staff-fg text-sm">
-              <StaffCheckbox
-                id="release-blocked-confirmed"
-                checked={noLiveTransfer}
-                onCheckedChange={(next) => setNoLiveTransfer(next === true)}
-                className="mt-0.5"
-              />
-              <label htmlFor="release-blocked-confirmed">
-                I have checked in Stripe that no live transfer exists for this payout, by its payout
-                transfer group and by the seller's account.
-              </label>
-            </div>
+            <ChoiceRow
+              htmlFor="release-blocked-confirmed"
+              label="I have checked in Stripe that no live transfer exists for this payout, by its payout transfer group and by the seller's account."
+              control={
+                <StaffCheckbox
+                  id="release-blocked-confirmed"
+                  checked={noLiveTransfer}
+                  onCheckedChange={(next) => setNoLiveTransfer(next === true)}
+                />
+              }
+            />
           </>
         ) : null}
       </ConfirmActionDialog>

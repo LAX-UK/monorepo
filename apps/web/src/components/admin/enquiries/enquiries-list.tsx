@@ -17,10 +17,9 @@ import {
   ENQUIRY_VIEW_IDS,
   ENQUIRY_VIEW_LABELS,
   enquiryWaiting,
-  humaniseSlug,
 } from "@/lib/admin/enquiries/enquiries.vm";
 import type { EnquiryAbilities } from "@/lib/admin/enquiries/enquiry-access";
-import { routingRows } from "@/lib/admin/enquiries/enquiry-routing-rows";
+import { departmentLabel, routingRows } from "@/lib/admin/enquiries/enquiry-routing-rows";
 import type {
   EnquiryAssignee,
   EnquiryListItem,
@@ -137,7 +136,7 @@ export function EnquiriesList(props: EnquiriesListProps) {
         mobile: "meta",
         cell: (row) => (
           <StackedCell
-            secondary={row.departmentSlug ? humaniseDepartment(row.departmentSlug) : undefined}
+            secondary={row.departmentSlug ? departmentLabel(row.departmentSlug) : undefined}
           >
             {row.topicLabel}
           </StackedCell>
@@ -366,8 +365,4 @@ export function EnquiriesList(props: EnquiriesListProps) {
       ) : null}
     </>
   );
-}
-
-function humaniseDepartment(slug: string): string {
-  return routingRows([]).find((row) => row.slug === slug)?.label ?? humaniseSlug(slug);
 }

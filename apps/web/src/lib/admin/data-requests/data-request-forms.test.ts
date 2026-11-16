@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
+  FOUND_ACCOUNT_STATUSES,
+  FOUND_ACCOUNT_STATUS_LABELS,
   emptyLogRequest,
   extensionChoices,
+  foundAccountStatusLabel,
   isLogRequestDirty,
   oldReceivedWarning,
   previewDueOn,
@@ -143,5 +146,18 @@ describe("ID received", () => {
     expect(validateIdReceived(null, limits)).toMatch(/Enter/);
     expect(validateIdReceived("2026-11-03", limits)).toMatch(/future/);
     expect(validateIdReceived("2026-10-29", limits)).toMatch(/before the request/);
+  });
+});
+
+describe("found account status labels", () => {
+  it.each(FOUND_ACCOUNT_STATUSES)("labels %s in staff words", (status) => {
+    const label = FOUND_ACCOUNT_STATUS_LABELS[status];
+    expect(label, `no label for account status "${status}"`).toBeTruthy();
+    expect(label).not.toBe(status);
+    expect(foundAccountStatusLabel(status)).toBe(label);
+  });
+
+  it("never shows an unknown code as it is stored", () => {
+    expect(foundAccountStatusLabel("pending_purge")).toBe("Account status unknown");
   });
 });

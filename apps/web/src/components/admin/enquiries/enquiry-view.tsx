@@ -5,10 +5,10 @@ import {
   ENQUIRY_CLOSE_REASON_LABELS,
   ENQUIRY_KIND_LABELS,
   enquiryWaiting,
-  humaniseSlug,
   statusSentence,
 } from "@/lib/admin/enquiries/enquiries.vm";
 import { enquiryRecordActions } from "@/lib/admin/enquiries/enquiry-actions";
+import { departmentLabel } from "@/lib/admin/enquiries/enquiry-routing-rows";
 import { enquiryTimeline } from "@/lib/admin/enquiries/enquiry-timeline";
 import { dealHref } from "@/lib/admin/private-sales/private-sales.vm";
 import type {
@@ -227,7 +227,7 @@ export function EnquiryView({
               {assignee ?? (enquiry.assignedToUserId ? "Former staff member" : "Nobody yet")}
             </MetaItem>
             {enquiry.departmentSlug ? (
-              <MetaItem label="Department">{humaniseSlug(enquiry.departmentSlug)}</MetaItem>
+              <MetaItem label="Department">{departmentLabel(enquiry.departmentSlug)}</MetaItem>
             ) : null}
           </>
         }

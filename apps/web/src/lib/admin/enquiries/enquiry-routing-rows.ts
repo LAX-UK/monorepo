@@ -1,4 +1,5 @@
 import { visibleSellDepartmentGroups } from "@/lib/marketing/sell-departments";
+import { departmentBySlug } from "@auction/domain";
 import { humaniseSlug } from "./enquiries.vm";
 
 export type RoutingRule = { departmentSlug: string | null; assignedToUserId: string };
@@ -22,6 +23,18 @@ export function routingRows(rules: readonly RoutingRule[]): RoutingRow[] {
       : [],
   );
   return [...known, ...extra, { slug: null, label: FALLBACK_LABEL }];
+}
+
+/**
+ * A department as staff read it ("Watches & clocks"), never its slug: the name clients choose on
+ * the enquiry page, then the department list for one no longer offered, then the slug in words.
+ */
+export function departmentLabel(slug: string): string {
+  return (
+    routingRows([]).find((row) => row.slug === slug)?.label ??
+    departmentBySlug(slug)?.label ??
+    humaniseSlug(slug)
+  );
 }
 
 /** The draft the dialog edits: a staff id per row, "" for no one. */

@@ -352,7 +352,7 @@ describe("cancelling an item after possession", () => {
       "Marylebone at dusk, edition 12 · Cancelled after possession",
     );
     expect(refundRowContext(cancellation("pending", { source: "admin" }), undefined)).toContain(
-      "Whole order · Admin",
+      "Whole order · Refunded by staff",
     );
   });
 });

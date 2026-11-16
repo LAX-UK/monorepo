@@ -32,6 +32,23 @@ const OLD_RECEIVED_DAYS = 31;
 
 export type FoundAccount = { subjectId: string; name: string; status: string };
 
+/** The account states the account search returns, in the words staff read. */
+export const FOUND_ACCOUNT_STATUSES = ["active", "disabled"] as const;
+export const FOUND_ACCOUNT_STATUS_LABELS: Readonly<
+  Record<(typeof FOUND_ACCOUNT_STATUSES)[number], string>
+> = {
+  active: "Active",
+  disabled: "Disabled",
+};
+
+/** A found account's state as staff read it; a state the app does not know yet stays neutral. */
+export function foundAccountStatusLabel(status: string): string {
+  return (
+    FOUND_ACCOUNT_STATUS_LABELS[status as (typeof FOUND_ACCOUNT_STATUSES)[number]] ??
+    "Account status unknown"
+  );
+}
+
 export type LogRequestDraft = {
   personMode: "account" | "contact";
   account: FoundAccount | null;

@@ -69,6 +69,20 @@ describe("LogDataRequestDialog", () => {
     expect(within(dialog()).getByRole("button", { name: "Change person" })).toBeInTheDocument();
   });
 
+  it.each([
+    ["active", "Active"],
+    ["disabled", "Disabled"],
+  ])("shows the found account's %s state as %s, never the stored code", async (status, label) => {
+    findAccount.mockResolvedValue({
+      ok: true,
+      data: { subjectId: "u1", name: "Margaret Osei", status },
+    });
+    open();
+    await pickAccount();
+    expect(within(dialog()).getByText(new RegExp(` · ${label}$`))).toBeInTheDocument();
+    expect(within(dialog()).queryByText(new RegExp(` · ${status}$`))).toBeNull();
+  });
+
   it("says when no account has that email address", async () => {
     findAccount.mockResolvedValue({ ok: true, data: null });
     open();
