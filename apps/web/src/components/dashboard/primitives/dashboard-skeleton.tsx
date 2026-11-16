@@ -31,7 +31,7 @@ function PortfolioSkeleton() {
         {(["a", "b", "c"] as const).map((id) => (
           <div
             key={id}
-            className="h-28 animate-pulse rounded-xl border border-border-hairline bg-surface-container-lowest"
+            className="h-28 lax-skeleton rounded-xl border border-border-hairline bg-surface-container-lowest"
           />
         ))}
       </div>
@@ -40,15 +40,15 @@ function PortfolioSkeleton() {
         className="rounded-2xl border border-outline-variant/15 bg-surface-container-lowest/90 p-4 shadow-sm"
       >
         <div className="flex gap-2">
-          <div className="h-11 min-w-0 flex-1 animate-pulse rounded-md bg-surface-container-high/70" />
-          <div className="h-11 w-24 animate-pulse rounded-md bg-surface-container-high/70" />
+          <div className="h-11 min-w-0 flex-1 lax-skeleton rounded-md bg-surface-container-high/70" />
+          <div className="h-11 w-24 lax-skeleton rounded-md bg-surface-container-high/70" />
         </div>
       </div>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {(["one", "two", "three"] as const).map((id) => (
           <div
             key={id}
-            className="h-48 animate-pulse rounded-xl border border-border-hairline bg-surface-container-lowest"
+            className="h-48 lax-skeleton rounded-xl border border-border-hairline bg-surface-container-lowest"
           />
         ))}
       </div>
@@ -64,9 +64,9 @@ function ListWithToolbarSkeleton() {
         className="rounded-2xl border border-outline-variant/15 bg-surface-container-lowest/90 p-4 shadow-sm"
       >
         <div className="flex gap-2">
-          <div className="h-11 min-w-0 flex-1 animate-pulse rounded-md bg-surface-container-high/70" />
-          <div className="h-11 w-24 animate-pulse rounded-md bg-surface-container-high/70" />
-          <div className="h-11 w-24 animate-pulse rounded-md bg-surface-container-high/70" />
+          <div className="h-11 min-w-0 flex-1 lax-skeleton rounded-md bg-surface-container-high/70" />
+          <div className="h-11 w-24 lax-skeleton rounded-md bg-surface-container-high/70" />
+          <div className="h-11 w-24 lax-skeleton rounded-md bg-surface-container-high/70" />
         </div>
       </div>
       <div className="space-y-3">
@@ -74,7 +74,7 @@ function ListWithToolbarSkeleton() {
           <div
             key={rowId}
             data-testid="dashboard-skeleton-row"
-            className="h-20 animate-pulse rounded-xl border border-border-hairline bg-surface-container-lowest"
+            className="h-20 lax-skeleton rounded-xl border border-border-hairline bg-surface-container-lowest"
           />
         ))}
       </div>

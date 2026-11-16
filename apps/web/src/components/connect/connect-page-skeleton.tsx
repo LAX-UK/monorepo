@@ -6,7 +6,7 @@ export function ConnectPageSkeleton() {
   return (
     <DashboardPage className="space-y-5">
       <div
-        className="animate-pulse space-y-2"
+        className="lax-skeleton space-y-2"
         aria-hidden
         data-testid="connect-page-header-skeleton"
       >

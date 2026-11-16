@@ -21,6 +21,8 @@ export const LAX_SYSTEM_CSS = readFileSync(
   "utf8",
 );
 export const MOTION_SOURCE = readFileSync(fromHere("../lax/motion.css"), "utf8");
+/** The kit's loading skeleton stylesheet (`.lax-skeleton`). */
+export const SKELETON_SOURCE = readFileSync(fromHere("../lax/skeleton.css"), "utf8");
 export const SONNER_CSS = readFileSync(
   resolve(dirname(require.resolve("sonner")), "styles.css"),
   "utf8",

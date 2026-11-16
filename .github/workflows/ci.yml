@@ -345,7 +345,8 @@ jobs:
       - name: Cutover readiness defaults
         run: node scripts/ci/verify-cutover-readiness.mjs
   ui-chromium:
-    # The kit's overlay motion suite (packages/ui/src/lax/motion-resolved.test.ts) reads what
+    # The kit's overlay and skeleton motion suites (packages/ui/src/lax/motion-resolved.test.ts,
+    # skeleton-resolved.test.ts) read what
     # Chromium resolves from the real stylesheets. It runs here, on a runner Playwright's Chromium
     # supports (ubuntu-latest is 26.04, which it does not; the browser gates pin 24.04 too), and
     # only when @auction/ui or one of the stylesheets the suite loads has changed. In the `test`
@@ -405,11 +406,11 @@ jobs:
         if: steps.affected.outputs.run == 'true'
         run: pnpm --filter @auction/ui exec playwright install chromium --with-deps
 
-      - name: Overlay motion suite in Chromium
+      - name: Overlay and skeleton motion suites in Chromium
         if: steps.affected.outputs.run == 'true'
         env:
           LAX_REQUIRE_CHROMIUM: "1"
-        run: pnpm --filter @auction/ui exec vitest run src/lax/motion-resolved.test.ts --maxWorkers=2
+        run: pnpm --filter @auction/ui exec vitest run src/lax/motion-resolved.test.ts src/lax/skeleton-resolved.test.ts --maxWorkers=2
 
   identity-boundary:
     name: identity boundary conformance

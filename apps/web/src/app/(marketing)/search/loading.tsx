@@ -14,7 +14,7 @@ export default async function SearchLoading() {
       aria-label="Loading search"
       hero={
         <header className={cn(MARKETING_PAGE_INNER, "flex flex-col gap-4 pb-6 pt-0 md:pb-8")}>
-          <div className="animate-pulse space-y-3">
+          <div className="lax-skeleton space-y-3">
             <div className="h-10 w-48 rounded bg-surface-container-high" />
             <div className="h-4 w-full max-w-md rounded bg-surface-container-high" />
             <div className="h-3 w-32 rounded bg-surface-container-high" />
@@ -22,7 +22,7 @@ export default async function SearchLoading() {
         </header>
       }
       toolbar={
-        <div className="mb-6 hidden animate-pulse lg:block">
+        <div className="mb-6 hidden lax-skeleton lg:block">
           <div className="h-4 w-24 rounded bg-surface-container-high" />
           <div className="mt-2 h-11 rounded border-b-2 border-border-hairline bg-surface-container-high/50" />
         </div>
