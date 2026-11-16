@@ -5,6 +5,7 @@ import type {
   ExtendDataRequestInput,
   PatchDataRequestInput,
 } from "@auction/identity-contracts";
+import type { FoundAccountStatus } from "@auction/types";
 import type { DataRequestRecord } from "@auction/identity-contracts";
 import { enquiryErasureBlock } from "@auction/identity-contracts";
 import type {
@@ -23,7 +24,7 @@ import { type IHeldErasureLog, planHeldErasure } from "./data-request-held-erasu
 type Body<T> = Omit<T, "actorSubjectId">;
 
 /** A LAX account found by its full email address, for the Log dialog. */
-export type DataRequestAccount = { subjectId: string; name: string; status: string };
+export type DataRequestAccount = { subjectId: string; name: string; status: FoundAccountStatus };
 
 /** Finds the person a staff-logged request is about. Narrow on purpose: one exact email, one account. */
 export interface IDataRequestAccountFinder {

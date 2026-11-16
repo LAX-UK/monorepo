@@ -439,7 +439,8 @@ export function usePayoutMoneyActions({
             ) : null}
             <ChoiceRow
               htmlFor="release-blocked-confirmed"
-              label="I have checked in Stripe that no live transfer exists for this payout, by its payout transfer group and by the seller's account."
+              label="I have checked in Stripe that no live transfer exists."
+              description="Checked by this payout's transfer group and by the seller's account."
               control={
                 <StaffCheckbox
                   id="release-blocked-confirmed"

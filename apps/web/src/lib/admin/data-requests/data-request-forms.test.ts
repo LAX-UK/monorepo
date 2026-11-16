@@ -1,6 +1,6 @@
+import { foundAccountStatuses } from "@auction/types";
 import { describe, expect, it } from "vitest";
 import {
-  FOUND_ACCOUNT_STATUSES,
   FOUND_ACCOUNT_STATUS_LABELS,
   emptyLogRequest,
   extensionChoices,
@@ -150,7 +150,7 @@ describe("ID received", () => {
 });
 
 describe("found account status labels", () => {
-  it.each(FOUND_ACCOUNT_STATUSES)("labels %s in staff words", (status) => {
+  it.each(foundAccountStatuses)("labels %s in staff words", (status) => {
     const label = FOUND_ACCOUNT_STATUS_LABELS[status];
     expect(label, `no label for account status "${status}"`).toBeTruthy();
     expect(label).not.toBe(status);
@@ -158,6 +158,6 @@ describe("found account status labels", () => {
   });
 
   it("never shows an unknown code as it is stored", () => {
-    expect(foundAccountStatusLabel("pending_purge")).toBe("Account status unknown");
+    expect(foundAccountStatusLabel("not_a_known_state")).toBe("Account status unknown");
   });
 });

@@ -10,6 +10,7 @@ import {
   extendedDueOn,
   isCalendarDate,
 } from "@auction/identity-contracts/data-requests";
+import type { FoundAccountStatus } from "@auction/types";
 import type {
   DATA_REQUEST_EXTENSION_REASONS,
   DATA_REQUEST_TOLD_VIA,
@@ -33,10 +34,7 @@ const OLD_RECEIVED_DAYS = 31;
 export type FoundAccount = { subjectId: string; name: string; status: string };
 
 /** The account states the account search returns, in the words staff read. */
-export const FOUND_ACCOUNT_STATUSES = ["active", "disabled"] as const;
-export const FOUND_ACCOUNT_STATUS_LABELS: Readonly<
-  Record<(typeof FOUND_ACCOUNT_STATUSES)[number], string>
-> = {
+export const FOUND_ACCOUNT_STATUS_LABELS: Readonly<Record<FoundAccountStatus, string>> = {
   active: "Active",
   disabled: "Disabled",
 };
@@ -44,8 +42,7 @@ export const FOUND_ACCOUNT_STATUS_LABELS: Readonly<
 /** A found account's state as staff read it; a state the app does not know yet stays neutral. */
 export function foundAccountStatusLabel(status: string): string {
   return (
-    FOUND_ACCOUNT_STATUS_LABELS[status as (typeof FOUND_ACCOUNT_STATUSES)[number]] ??
-    "Account status unknown"
+    FOUND_ACCOUNT_STATUS_LABELS[status as FoundAccountStatus] ?? "Account status unknown"
   );
 }
 

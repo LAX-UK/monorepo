@@ -1,15 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { xeroSyncStatusLabel } from "./xero-sync-status-presenter";
+import { XERO_SYNC_STATUS_LABELS, xeroSyncStatusLabel } from "./xero-sync-status-presenter";
 
 describe("xeroSyncStatusLabel", () => {
-  it("maps known sync statuses", () => {
-    expect(xeroSyncStatusLabel("pending_sync")).toBe("Pending sync");
-    expect(xeroSyncStatusLabel("synced")).toBe("Synced");
-    expect(xeroSyncStatusLabel("error")).toBe("Sync error");
+  it.each(Object.entries(XERO_SYNC_STATUS_LABELS))("labels %s as %s", (status, label) => {
+    expect(xeroSyncStatusLabel(status)).toBe(label);
+    expect(label).toMatch(/^[A-Z]/);
+    expect(label).not.toContain("_");
   });
 
-  it("falls back for unknown values", () => {
-    expect(xeroSyncStatusLabel("custom_status")).toBe("custom status");
+  it("falls back to sentence case for unknown values", () => {
+    expect(xeroSyncStatusLabel("custom_status")).toBe("Custom status");
     expect(xeroSyncStatusLabel(null)).toBe("—");
   });
 });

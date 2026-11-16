@@ -1,18 +1,21 @@
 /** Human-readable labels for admin user detail fields. */
 
 export { formatSignupPersona } from "./format-signup-persona";
+import type { UserEmailStatus, UserKycStatus } from "@auction/types";
+
+/** Every email address status as staff read it. A new status fails to compile until it is here. */
+export const EMAIL_DELIVERABILITY_LABELS: Record<UserEmailStatus, string> = {
+  ok: "Delivering normally",
+  bounced: "Bounced",
+  complained: "Marked as spam",
+};
 
 export function formatEmailDeliverabilityStatus(status: string | null | undefined): string {
-  switch (status) {
-    case "ok":
-      return "Delivering normally";
-    case "bounced":
-      return "Bounced";
-    case "complained":
-      return "Marked as spam";
-    default:
-      return status ? status.replaceAll("_", " ") : "Unknown";
-  }
+  if (!status) return "Unknown";
+  const known = EMAIL_DELIVERABILITY_LABELS[status as UserEmailStatus];
+  if (known) return known;
+  const words = status.replaceAll("_", " ");
+  return words.charAt(0).toUpperCase() + words.slice(1);
 }
 
 export function formatUserRole(role: string): string {
@@ -53,21 +56,19 @@ export function formatAmlCheckType(checkType: string | null | undefined): string
   return amlCheckTypeLabel(checkType) ?? "—";
 }
 
+/** Every identity status the staff screens show, as an inline phrase ("Identity check in review"). */
+export const KYC_STATUS_PHRASES: Record<UserKycStatus | "submitted" | "under_review" | "expired", string> = {
+  unverified: "not started",
+  pending: "submitted",
+  submitted: "submitted",
+  under_review: "in review",
+  approved: "verified",
+  rejected: "rejected",
+  expired: "expired",
+};
+
 /** Lowercase phrase for inline sentences, e.g. "KYC rejected — follow up". */
 export function kycStatusPhrase(status: string): string {
-  switch (status) {
-    case "approved":
-      return "verified";
-    case "pending":
-    case "submitted":
-      return "submitted";
-    case "under_review":
-      return "in review";
-    case "rejected":
-      return "rejected";
-    case "expired":
-      return "expired";
-    default:
-      return status.replaceAll("_", " ");
-  }
+  const known = (KYC_STATUS_PHRASES as Record<string, string>)[status];
+  return known ?? status.replaceAll("_", " ").toLowerCase();
 }

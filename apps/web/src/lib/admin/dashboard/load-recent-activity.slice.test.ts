@@ -1,4 +1,4 @@
-import { staffStatus } from "@/lib/admin/staff-kit-status";
+import { LOT_STATUS, staffStatus } from "@/lib/admin/staff-kit-status";
 import { lotStatuses } from "@auction/types";
 import { describe, expect, it } from "vitest";
 import { mapRecentActivity } from "./load-recent-activity.slice";
@@ -28,6 +28,8 @@ describe("recent activity rows", () => {
   });
 
   it.each(lotStatuses)("never shows the stored code for %s", (status) => {
+    // staffStatus falls back to humanised text for an unknown value, so require a real entry.
+    expect(Object.keys(LOT_STATUS)).toContain(status);
     const [row] = mapRecentActivity([lot(status)]);
     const label = staffStatus("lot", status, { lot: { winnerId: null } }).label;
     expect(row?.meta.startsWith(`${label} · `)).toBe(true);

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   artworkOption,
   editionLabel,
+  EDITION_LISTING_LABELS,
   editionListingLabel,
   editionOption,
   ownedArtworkOptions,
@@ -59,7 +60,7 @@ describe("picker options read by name, never by id", () => {
 
   it("words every listing status", () => {
     expect(editionListingLabel("not_authorised")).toBe("Not authorised");
-    expect(editionListingLabel("something_new")).toBe("something new");
+    expect(editionListingLabel("something_new")).toBe("Something new");
   });
 });
 
@@ -88,5 +89,13 @@ describe("ownedArtworkOptions", () => {
 
   it("offers nothing for a client with no editions", () => {
     expect(ownedArtworkOptions([])).toEqual([]);
+  });
+});
+
+describe("edition listing labels", () => {
+  it.each(Object.entries(EDITION_LISTING_LABELS))("labels %s as %s", (status, label) => {
+    expect(editionListingLabel(status)).toBe(label);
+    expect(label).toMatch(/^[A-Z]/);
+    expect(label).not.toContain("_");
   });
 });

@@ -3,7 +3,7 @@ import type { StatusBadgeVariant } from "@/lib/presenters/status-presentation";
 import { resolveStatusPresentation } from "@/lib/presenters/status-presentation";
 import type { LotStatusContext, StatusDomain } from "@/lib/presenters/status/core";
 import { type StatusPresentation, humanizeStatus } from "@auction/staff-ui";
-import { type AtgSellingBadge, atgLotStateLabel } from "@auction/types";
+import { type AtgSellingBadge, type LotStatus, atgLotStateLabel } from "@auction/types";
 
 /**
  * Bid's status registries (lib/presenters/status) speak in badge variants; the staff kit speaks
@@ -23,6 +23,16 @@ type CatalogueDomain =
   | "onsiteEvent"
   | "saleroomSession";
 
+/** Every lot status, so a new one fails to compile until it has a staff label. */
+export const LOT_STATUS: Record<LotStatus, StatusPresentation> = {
+  draft: { label: "Draft", tone: "neutral" },
+  scheduled: { label: "Scheduled", tone: "info" },
+  active: { label: "Live", tone: "live", live: true },
+  ended: { label: "Ended", tone: "neutral" },
+  cancelled: { label: "Withdrawn", tone: "danger" },
+  voided: { label: "Voided", tone: "danger" },
+};
+
 /**
  * The catalogue families as staff read them. The shared registry gives drafts and scheduled
  * records the same tone; on a staff list a draft is not yet anything (neutral) and a scheduled
@@ -31,14 +41,7 @@ type CatalogueDomain =
  * closed outcome rather than a failure.
  */
 const CATALOGUE_STATUS: Record<CatalogueDomain, Record<string, StatusPresentation>> = {
-  lot: {
-    draft: { label: "Draft", tone: "neutral" },
-    scheduled: { label: "Scheduled", tone: "info" },
-    active: { label: "Live", tone: "live", live: true },
-    ended: { label: "Ended", tone: "neutral" },
-    cancelled: { label: "Withdrawn", tone: "danger" },
-    voided: { label: "Voided", tone: "danger" },
-  },
+  lot: LOT_STATUS,
   sale: {
     draft: { label: "Draft", tone: "neutral" },
     scheduled: { label: "Scheduled", tone: "info" },

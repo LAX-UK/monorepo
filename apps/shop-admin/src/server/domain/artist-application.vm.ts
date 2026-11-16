@@ -120,7 +120,7 @@ type EventPresentation = {
 };
 
 /** Each history event as a sentence, in one table. */
-const EVENT_PRESENTATION: Record<string, EventPresentation> = {
+export const EVENT_PRESENTATION: Record<ArtistApplicationAction, EventPresentation> = {
   submit: { title: () => "Application sent", tone: "info" },
   resubmit: { title: () => "The artist answered and sent it back", tone: "info" },
   assign: {
@@ -133,10 +133,15 @@ const EVENT_PRESENTATION: Record<string, EventPresentation> = {
   decline: { title: () => "Declined", tone: "neutral" },
 };
 
+function sentenceCase(code: string): string {
+  const words = code.replace(/[_-]+/g, " ").trim().toLowerCase();
+  return words.charAt(0).toUpperCase() + words.slice(1);
+}
+
 export function historyEvents(detail: Pick<AdminArtistApplicationDetail, "events" | "artistName">) {
   return [...detail.events].reverse().map((event) => {
-    const presentation = EVENT_PRESENTATION[event.action] ?? {
-      title: () => event.action.replace(/_/g, " "),
+    const presentation = (EVENT_PRESENTATION as Record<string, EventPresentation>)[event.action] ?? {
+      title: () => sentenceCase(event.action),
       tone: "neutral" as const,
     };
     return {

@@ -4,6 +4,7 @@ import type {
   AdminEditionLookupItem,
   AdminPartyLookupItem,
 } from "@auction/shop-contracts";
+import type { EditionListingStatus } from "@auction/shop-domain";
 
 /*
  * How the records staff pick in forms (a person, an artwork, an edition) read in a picker: the
@@ -18,7 +19,8 @@ export type LookupOption = {
   meta?: string;
 };
 
-export const EDITION_LISTING_LABELS: Record<string, string> = {
+/** Every listing status, so a new one fails to compile until it has a staff label. */
+export const EDITION_LISTING_LABELS: Record<EditionListingStatus, string> = {
   not_authorised: "Not authorised",
   authorised: "Available",
   reserved: "Reserved",
@@ -37,7 +39,10 @@ const PARTY_KIND_LABELS: Record<string, string> = {
 };
 
 export function editionListingLabel(status: string): string {
-  return EDITION_LISTING_LABELS[status] ?? status.replace(/_/g, " ");
+  const known = (EDITION_LISTING_LABELS as Record<string, string>)[status];
+  if (known) return known;
+  const words = status.replace(/_/g, " ");
+  return words.charAt(0).toUpperCase() + words.slice(1);
 }
 
 export function partyKindLabel(kind: string): string {
