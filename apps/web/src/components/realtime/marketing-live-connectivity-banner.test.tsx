@@ -16,11 +16,20 @@ vi.mock("@/lib/connection/use-live-connection-presentation", () => ({
 import { useBrowserOnline } from "@/lib/connection/use-browser-online";
 
 describe("MarketingLiveConnectivityBanner", () => {
-  it("renders a fixed-top banner when enabled and connectivity is degraded", () => {
+  it("renders a sticky-top banner when enabled and connectivity is degraded", () => {
     render(<MarketingLiveConnectivityBanner enabled />);
     expect(screen.getByTestId("marketing-live-connectivity-banner")).toHaveTextContent(
       "No connection — saleroom updates are paused.",
     );
+  });
+
+  it("takes up space in the flow (sticky, never fixed) and keeps status semantics", () => {
+    render(<MarketingLiveConnectivityBanner enabled />);
+    const banner = screen.getByTestId("marketing-live-connectivity-banner");
+    expect(banner.className).toContain("sticky");
+    expect(banner.className).not.toMatch(/(^|\s)(fixed|absolute)(\s|$)/);
+    expect(banner).toHaveAttribute("role", "status");
+    expect(banner).toHaveAttribute("aria-live", "polite");
   });
 
   it("renders nothing when disabled", () => {

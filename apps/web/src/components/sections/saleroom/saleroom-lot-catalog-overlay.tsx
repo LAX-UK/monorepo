@@ -34,7 +34,7 @@ const SALEROOM_PILL_SHELL =
 const SALEROOM_PILL_MUTED =
   "bg-brand-900/70 text-white/70 dark:border-transparent dark:bg-black/70 dark:text-white/70";
 const SALEROOM_PILL_LIVE =
-  "bg-brand-600/90 text-white dark:border-transparent dark:bg-brand-600/90 dark:text-white";
+  "bg-brand-900/85 text-white dark:border-transparent dark:bg-black/80 dark:text-white";
 
 function SaleroomLabelPill({
   label,

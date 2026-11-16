@@ -2,7 +2,7 @@ import { cn } from "@auction/ui/lib/utils";
 import { WifiOff } from "lucide-react";
 import type { ReactNode } from "react";
 
-export type ConnectivityBannerVariant = "fixed-top" | "inline";
+export type ConnectivityBannerVariant = "sticky-top" | "inline";
 export type ConnectivityBannerTone = "error" | "warning";
 
 type Props = {
@@ -35,9 +35,9 @@ export function ConnectivityBannerShell({
       aria-live="polite"
       data-testid={testId}
       className={cn(
-        variant === "fixed-top"
+        variant === "sticky-top"
           ? cn(
-              "fixed inset-x-0 top-[var(--header-offset,var(--header-height,0px))] z-[var(--z-banner,50)]",
+              "sticky inset-x-0 top-[var(--header-offset,var(--header-height,0px))] z-[var(--z-banner,50)] w-full",
               "border-b px-4 py-2 text-center font-body text-xs",
               isError
                 ? "border-error/30 bg-error/95 text-on-error"

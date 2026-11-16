@@ -21,7 +21,7 @@ export function LiveConnectivityNoticeBanner({ scope, testId }: Props) {
 
   return (
     <ConnectivityBannerShell
-      variant="fixed-top"
+      variant="sticky-top"
       tone="warning"
       testId={testId}
       message={notice.message}
