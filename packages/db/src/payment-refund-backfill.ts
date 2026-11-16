@@ -68,24 +68,49 @@ export const SET_BATCH_LOCK_TIMEOUT_SQL = "SELECT set_config('lock_timeout', $1,
 
 const LOCK_NOT_AVAILABLE = "55P03";
 
-/** A batch waited longer than the lock timeout for a payment lock; the batch was rolled back. */
-export class PaymentRefundBackfillLockTimeoutError extends Error {
+/** What a failed run leaves behind: where it stopped and how to continue. */
+function resumeNote(resumeAfter: string | null, completed: PaymentRefundBackfillResult): string {
+  const done = `${completed.batches} earlier batch(es) (${completed.payments} payment(s), ${completed.added} row(s) added) are committed.`;
+  const resume =
+    resumeAfter === null
+      ? "Resume cursor: none, nothing was committed; re-run from the start."
+      : `Resume cursor: ${resumeAfter}; re-run with --resume-after=${resumeAfter} (or from the start: it is idempotent).`;
+  return `${done} ${resume}`;
+}
+
+/**
+ * A batch failed and was rolled back with nothing of it written. Whatever the cause, the run
+ * reports where to continue: the last payment id the committed batches reached.
+ */
+export class PaymentRefundBackfillError extends Error {
   constructor(
-    /** 1-based number of the batch that timed out, counting from this run's start. */
+    message: string,
+    /** 1-based number of the batch that failed, counting from this run's start. */
     readonly batch: number,
     /** Last payment id of the committed batches; pass it as `resumeAfter` / --resume-after. Null: none yet. */
     readonly resumeAfter: string | null,
     /** What the committed batches before it did. */
     readonly completed: PaymentRefundBackfillResult,
+    options?: { cause?: unknown },
+  ) {
+    super(`${message} ${resumeNote(resumeAfter, completed)}`, options);
+    this.name = "PaymentRefundBackfillError";
+  }
+}
+
+/** A batch waited longer than the lock timeout for a payment lock; the batch was rolled back. */
+export class PaymentRefundBackfillLockTimeoutError extends PaymentRefundBackfillError {
+  constructor(
+    batch: number,
+    resumeAfter: string | null,
+    completed: PaymentRefundBackfillResult,
     readonly lockTimeoutMs: number,
   ) {
-    const resume =
-      resumeAfter === null
-        ? "Resume cursor: none, nothing was committed; re-run from the start."
-        : `Resume cursor: ${resumeAfter}; re-run with --resume-after=${resumeAfter} (or from the start: it is idempotent).`;
-    const done = `${completed.batches} earlier batch(es) (${completed.payments} payment(s), ${completed.added} row(s) added) are committed.`;
     super(
-      `Lock timeout after ${lockTimeoutMs} ms in batch ${batch}: a payment lock is held elsewhere. The batch was rolled back and nothing of it was written; ${done} ${resume}`,
+      `Lock timeout after ${lockTimeoutMs} ms in batch ${batch}: a payment lock is held elsewhere. The batch was rolled back and nothing of it was written;`,
+      batch,
+      resumeAfter,
+      completed,
     );
     this.name = "PaymentRefundBackfillLockTimeoutError";
   }
@@ -216,7 +241,14 @@ export async function backfillPaymentRefundsInIdOrder(
           lockTimeoutMs,
         );
       }
-      throw error;
+      const reason = error instanceof Error ? error.message : String(error);
+      throw new PaymentRefundBackfillError(
+        `Batch ${result.batches + 1} failed: ${reason}. It was rolled back and nothing of it was written;`,
+        result.batches + 1,
+        after,
+        { ...result },
+        { cause: error },
+      );
     }
     if (paymentIds.length === 0) return result;
     result.batches += 1;

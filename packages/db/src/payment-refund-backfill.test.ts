@@ -3,6 +3,7 @@ import {
   BACKFILL_ONE_PAYMENT_SQL,
   LOCK_NEXT_REFUND_PAYMENTS_SQL,
   type PaymentRefundBackfillConnection,
+  PaymentRefundBackfillError,
   PaymentRefundBackfillLockTimeoutError,
   REPORT_REFUND_GAPS_SQL,
   SET_BATCH_LOCK_TIMEOUT_SQL,
@@ -120,6 +121,32 @@ describe("backfillPaymentRefundsInIdOrder", () => {
       "topup b",
       "ROLLBACK",
     ]);
+  });
+
+  it("reports the resume cursor for any failure, not only a lock timeout", async () => {
+    const { connection } = fakeConnection(["a", "b", "c", "d"], { failOn: "c" });
+    const error = await backfillPaymentRefundsInIdOrder(connection, { batchSize: 2 }).catch(
+      (e: unknown) => e,
+    );
+    expect(error).toBeInstanceOf(PaymentRefundBackfillError);
+    expect(error).not.toBeInstanceOf(PaymentRefundBackfillLockTimeoutError);
+    const failure = error as PaymentRefundBackfillError;
+    expect(failure.batch).toBe(2);
+    expect(failure.resumeAfter).toBe("b");
+    expect(failure.completed).toEqual({ batches: 1, payments: 2, added: 2 });
+    expect(failure.message).toContain("boom");
+    expect(failure.message).toContain("--resume-after=b");
+    expect((failure.cause as Error).message).toBe("boom");
+  });
+
+  it("reports no cursor when the first batch fails", async () => {
+    const { connection } = fakeConnection(["a"], { failOn: "a" });
+    const error = (await backfillPaymentRefundsInIdOrder(connection).catch(
+      (e: unknown) => e,
+    )) as PaymentRefundBackfillError;
+    expect(error).toBeInstanceOf(PaymentRefundBackfillError);
+    expect(error.resumeAfter).toBeNull();
+    expect(error.message).toContain("nothing was committed");
   });
 
   it("sets the lock timeout in each batch and reports a lock timeout with its cursor", async () => {

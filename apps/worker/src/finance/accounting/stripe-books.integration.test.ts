@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { IN_FLIGHT_STATES } from "@auction/accounting-domain";
 import { createZohoBooksDryRunAdapter } from "@auction/accounting-zoho-books";
 import { testOrgConfigs } from "@auction/accounting-zoho-books/testing";
 import { closeDb, createDb } from "@auction/db";
@@ -502,15 +503,24 @@ describe.skipIf(!HAS_DB)(
           mode: "dry_run",
         })
       ).filter((t) => t.kind === "expense");
-      // Registered counts all five; only pending (1.01), sending (1.02) and unknown (1.03) are
-      // on their way.
+      // Registered counts all five; only the in-flight states are on their way.
+      const stateOf = ["pending", "sending", "unknown", "needs_review", "failed"] as const;
+      const inFlight = [101, 102, 103, 104, 105].filter((_, n) => {
+        const state = stateOf[n];
+        return state !== undefined && (IN_FLIGHT_STATES as readonly string[]).includes(state);
+      });
+      expect(inFlight).toEqual([101, 102, 103]);
+      const inFlightPence = inFlight.reduce((sum, pence) => sum + pence, 0);
       expect(totals).toMatchObject({ laxCount: 5, laxPence: 515, booksCount: 0 });
-      expect(totals).toMatchObject({ notIssuedCount: 3, notIssuedPence: 101 + 102 + 103 });
+      expect(totals).toMatchObject({
+        notIssuedCount: inFlight.length,
+        notIssuedPence: inFlightPence,
+      });
       const moves = await repos.reconciliation.clearingSince("london_art_exchange", day, day, {
         provider: "books",
         mode: "dry_run",
       });
-      expect(moves.notIssuedPence).toBe(-(101 + 102 + 103));
+      expect(moves.notIssuedPence).toBe(-inFlightPence);
     });
 
     it("sends the documents through the dry-run sender, then reports the day privately and alerts on a mismatch", async () => {

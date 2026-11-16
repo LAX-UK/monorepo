@@ -4,10 +4,13 @@
  * Old: collection-reminder:<bookingId>:<slotStart ISO>:<email address>
  * New: collection-reminder:<bookingId>:<slotStart ISO>:<account id, or sha256 of the address>
  *
- * Dry run by default: prints counts and writes nothing. Pass --apply to write. Safe to re-run:
- * a rewritten row no longer matches. Rows whose personal data was erased (account_erased, or a
- * key already replaced by `erased:<id>`) are never read or changed, and a row is skipped when the
- * new key already exists, so no two rows ever share a key.
+ * Dry run by default: prints counts, takes no row locks and writes nothing. Pass --apply to write.
+ * Safe to re-run: a rewritten row no longer matches. Rows whose personal data was erased
+ * (account_erased, or a key already replaced by `erased:<id>`) are never read or changed, and a row
+ * is skipped when the new key already exists, so no two rows ever share a key. The dry run counts
+ * exactly what --apply would: of several old keys that map to one new key, only the first counts.
+ * Each batch transaction sets lock_timeout, so a busy row stops the run (rolled back, nothing of
+ * that batch written) instead of waiting behind live traffic; re-run it.
  *
  *   DATABASE_URL_OWNER=... pnpm --filter @auction/db db:backfill-collection-reminder-keys [--apply]
  */
@@ -19,6 +22,8 @@ import { closeDb, createDb } from "../client.js";
 type Db = ReturnType<typeof createDb>;
 
 const ERASED_REASON = "account_erased";
+/** Longest one batch waits for a row lock held by live traffic. */
+export const LOCK_TIMEOUT_MS = 5000;
 const OLD_KEY = /^(collection-reminder:[^:]+:\d{4}-\d{2}-\d{2}T[^:]+:[^:]+:[^:]+Z):(.+@.+)$/;
 
 export type ReminderKeyBackfillCounts = {
@@ -40,7 +45,7 @@ export function newReminderKey(oldKey: string, userId: string | null): string | 
 
 export async function backfillCollectionReminderKeys(
   db: Pick<Db, "transaction">,
-  options: { apply: boolean; batchSize?: number },
+  options: { apply: boolean; batchSize?: number; lockTimeoutMs?: number },
 ): Promise<ReminderKeyBackfillCounts> {
   const batchSize = options.batchSize ?? 500;
   const counts: ReminderKeyBackfillCounts = {
@@ -49,16 +54,22 @@ export async function backfillCollectionReminderKeys(
     skippedExisting: 0,
     skippedUnparsable: 0,
   };
+  const lockTimeoutMs = options.lockTimeoutMs ?? LOCK_TIMEOUT_MS;
+  // A dry run writes nothing, so it must not hold a lock; keys it would write are remembered so a
+  // second old key that maps to the same new key is counted as skipped, as --apply would skip it.
+  const lock = options.apply ? sql`FOR UPDATE` : sql``;
+  const planned = new Set<string>();
   let after = "00000000-0000-0000-0000-000000000000";
   for (;;) {
     const done = await db.transaction(async (tx) => {
+      await tx.execute(sql`SELECT set_config('lock_timeout', ${`${lockTimeoutMs}ms`}, true)`);
       const { rows } = await tx.execute(sql`
         SELECT id, idempotency_key, user_id FROM email_outbox
         WHERE template = 'collection-reminder'
           AND idempotency_key LIKE 'collection-reminder:%@%'
           AND (last_error IS NULL OR last_error <> ${ERASED_REASON})
           AND id > ${after}::uuid
-        ORDER BY id LIMIT ${batchSize} FOR UPDATE`);
+        ORDER BY id LIMIT ${batchSize} ${lock}`);
       if (rows.length === 0) return true;
       for (const row of rows as { id: string; idempotency_key: string; user_id: string | null }[]) {
         after = row.id;
@@ -71,11 +82,12 @@ export async function backfillCollectionReminderKeys(
         const taken = await tx.execute(
           sql`SELECT 1 FROM email_outbox WHERE idempotency_key = ${next} LIMIT 1`,
         );
-        if (taken.rows.length > 0) {
+        if (taken.rows.length > 0 || planned.has(next)) {
           counts.skippedExisting += 1;
           continue;
         }
         if (!options.apply) {
+          planned.add(next);
           counts.rewritten += 1;
           continue;
         }

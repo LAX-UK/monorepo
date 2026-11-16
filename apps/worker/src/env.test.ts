@@ -75,6 +75,24 @@ describe("worker PRIVATE_SALE_RECORD_RETENTION_YEARS", () => {
   });
 });
 
+describe("worker COLLECTION_HANDOVER_RETENTION_YEARS", () => {
+  const years = (value: unknown) =>
+    envSchema.safeParse({
+      DATABASE_URL: "postgres://localhost/test",
+      COLLECTION_HANDOVER_RETENTION_YEARS: value,
+    });
+
+  it("refuses less than three years", () => {
+    for (const value of ["0", "1", "2"]) expect(years(value).success, value).toBe(false);
+  });
+
+  it("accepts three or more, and defaults to six", () => {
+    expect(years("3").success).toBe(true);
+    const parsed = years("");
+    expect(parsed.success && parsed.data.COLLECTION_HANDOVER_RETENTION_YEARS).toBe(6);
+  });
+});
+
 describe("worker collection calendar organizer", () => {
   const parse = (extra: Record<string, unknown> = {}) =>
     envSchema.safeParse({ DATABASE_URL: "postgres://localhost/test", ...extra });
