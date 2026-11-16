@@ -20,6 +20,8 @@ export function parseNotificationPreference(raw: unknown): NotificationPreferenc
     newSalesInApp: o.newSalesInApp !== false,
     artistAlertsInApp: o.artistAlertsInApp !== false,
     searchAlertsInApp: o.searchAlertsInApp !== false,
+    identityInApp: o.identityInApp !== false,
+    registrationInApp: o.registrationInApp !== false,
     outbidPush: Boolean(o.outbidPush),
     wonPush: Boolean(o.wonPush),
     endingSoonPush: Boolean(o.endingSoonPush),

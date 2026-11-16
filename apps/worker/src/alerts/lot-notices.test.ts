@@ -12,6 +12,7 @@ const item = (
   detail: null,
   moments: [],
   imageUrl: null,
+  imageAlt: null,
   path,
 });
 

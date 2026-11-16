@@ -93,9 +93,12 @@ type ShopTemplateVars = {
     artistName?: string;
     /**
      * Stops every waiting alert for the address without signing in. Absent on alerts queued
-     * before guest alerts existed.
+     * before guest alerts existed. Now the shared alert engine's stop link; emails queued before
+     * that carry the edition alert's own link, which still works.
      */
     unsubscribeUrl?: string;
+    /** Where an account holder manages their alerts; absent for a guest. */
+    manageUrl?: string;
   };
   /** Double opt-in: the link that turns a release alert request into a subscription. */
   "shop-release-alert-confirm": {

@@ -19,6 +19,7 @@ import { and, eq } from "drizzle-orm";
 import type pg from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { ShopApiError } from "../errors/shop-api-error.js";
+import { createTestBackInStockLinks } from "../test-support/back-in-stock-test-links.js";
 import {
   completeFixtureOrderPayment,
   createPendingPaymentOrderWithReservedEdition,
@@ -201,9 +202,11 @@ describe.skipIf(!hasShopIntegrationDb)("shop returns and stock integration", () 
         .returning({ id: shopArtworkInterest.id });
       const interestId = requireDefined(interest?.id, "interest");
       const notifications = createDrizzleShopNotificationPublisher();
+      const { links } = createTestBackInStockLinks(db);
       const dispatch = () =>
         dispatchShopNotifyMeEmails(db, {
           notifications,
+          links,
           storefrontOrigins: ORIGINS,
           now: new Date(),
         });

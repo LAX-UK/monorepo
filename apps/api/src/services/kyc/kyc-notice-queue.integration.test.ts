@@ -2,6 +2,7 @@ import { createDb } from "@auction/db";
 import { emailOutbox, notification } from "@auction/db/schema";
 import { PostmarkEmailService } from "@auction/email";
 import {
+  DrizzleNotificationPreferenceRepository,
   DrizzleNotificationWriteRepository,
   DrizzleUserRepository,
 } from "@auction/persistence/repositories";
@@ -27,6 +28,7 @@ describe.skipIf(!HAS_DB)(
       notificationsFor: (tx) => new DrizzleNotificationWriteRepository(tx),
       email,
       factory: new NotificationFactory(),
+      preferences: new DrizzleNotificationPreferenceRepository(db),
       webOrigin: "https://lax.bid",
     });
     const approved = {

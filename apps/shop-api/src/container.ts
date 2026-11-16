@@ -370,13 +370,6 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
   });
   const enquiryRateLimiter = createEnquiryRateLimiter(rateLimitCounter);
   const editionAlertRateLimiter = createEditionAlertRateLimiter(rateLimitCounter);
-  const editionAlerts = createEditionAlertHandlers({
-    artworks: artworkInterestWriter,
-    alerts: createDrizzleEditionAlertStore(db, {
-      resolveMediaUrl,
-      domainEventMode: env.DOMAIN_EVENT_PUBLISH_VALIDATE,
-    }),
-  });
   const releaseAlertRateLimiter = createReleaseAlertRateLimiter(rateLimitCounter);
   const shopAlerts = createShopAlertRuntime({
     db,
@@ -389,6 +382,14 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
     },
   });
   const releaseAlerts = shopAlerts.handlers;
+  const editionAlerts = createEditionAlertHandlers({
+    artworks: artworkInterestWriter,
+    alerts: createDrizzleEditionAlertStore(db, {
+      resolveMediaUrl,
+      domainEventMode: env.DOMAIN_EVENT_PUBLISH_VALIDATE,
+    }),
+    links: shopAlerts.backInStock,
+  });
   const internalBase = env.OIDC_INTERNAL_BASE_URL ?? env.OIDC_ISSUER_URL;
   const jwksUrl = issuerJwksUrl(internalBase);
   const staffReader = createDrizzleShopStaffMemberReader(db);

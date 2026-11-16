@@ -118,3 +118,10 @@ describe("status wording", () => {
     expect(CONSIGNMENT_STATUS.needs_changes.label).toBe(label);
   });
 });
+
+describe("registration notices", () => {
+  it("labels a decision on a request to bid and a limit change", () => {
+    expect(notificationTypePresenter("sale_registration_decided").label).toBe("Registration");
+    expect(notificationTypePresenter("bidding_limit_changed").label).toBe("Bidding limit");
+  });
+});

@@ -10,6 +10,7 @@ import {
   projectorState,
   sale,
 } from "@auction/db/schema";
+import { resolveCoverSlotSources } from "@auction/domain";
 import { and, eq, inArray, isNotNull, max, ne, sql } from "drizzle-orm";
 import type {
   AnnouncedSale,
@@ -20,6 +21,26 @@ import type {
 const SALE_PREFIX = "sale:";
 /** The sales a digest may still announce: not a draft again, cancelled, or already over. */
 const ANNOUNCEABLE = ["scheduled", "active"] as const;
+
+/**
+ * The picture an email shows for the sale: the default cover slot, else the next one staff set.
+ * A slot set by staff carries their alt text; the old array's pictures get the page's own line.
+ */
+export function coverOf(
+  title: string,
+  slots: Parameters<typeof resolveCoverSlotSources>[0],
+  legacy: readonly string[],
+): AnnouncedSale["cover"] {
+  const sources = resolveCoverSlotSources(slots, legacy);
+  for (const name of ["default", "wide", "phone"] as const) {
+    const source = sources[name];
+    if (!source) continue;
+    if (source.kind === "legacy") return { key: source.key, alt: `${title} — auction cover` };
+    const key = source.slot.fromLot?.imageKey ?? source.slot.key;
+    if (key) return { key, alt: source.slot.alt.trim() || `${title} — auction cover` };
+  }
+  return null;
+}
 
 /** Bid's own reads for the new-sale alert: the sale behind an item, and who is told in the app. */
 export class BidAlertSaleReader implements IBidAlertSaleReader {
@@ -36,11 +57,15 @@ export class BidAlertSaleReader implements IBidAlertSaleReader {
         status: sale.status,
         deliveryMode: sale.deliveryMode,
         isTest: sale.isTest,
+        coverSlots: sale.coverSlots,
+        coverImages: sale.coverImages,
       })
       .from(sale)
       .where(eq(sale.id, saleId))
       .limit(1);
-    return row ?? null;
+    if (!row) return null;
+    const { coverSlots, coverImages, ...rest } = row;
+    return { ...rest, cover: coverOf(row.title, coverSlots, coverImages) };
   }
 
   /** Confirmed subscribers with new-sale email on: the count shown beside the publish box. */

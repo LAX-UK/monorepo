@@ -17,6 +17,7 @@ import {
   BidAlertAnnouncementStore,
   BidAlertDigestLedger,
   BidAlertFollowerProvisioner,
+  BidAlertInAppTopics,
   BidAlertLotNoticeWriter,
   BidAlertLotReader,
   BidAlertLotStart,
@@ -35,6 +36,7 @@ import { AccountZoneLookup } from "../alerts/account-zone-lookup.js";
 import { BidDigestNotices } from "../alerts/bid-digest-notices.js";
 import { BidLotMatcher } from "../alerts/bid-lot-matcher.js";
 import { BidSaleAnnouncer } from "../alerts/bid-sale-announcer.js";
+import { type EmailCoverStorage, createEmailCoverUrls } from "../alerts/cover-image.js";
 import type { WorkerEnv } from "../env.js";
 import { BID_ALERT_MATCHING_PROJECTOR } from "../projectors/bid-alert-matching.js";
 import type { BidAlertMatching } from "../projectors/lib/bid-alert-matching.types.js";
@@ -62,6 +64,10 @@ export function createBidAlertRuntime(input: {
   db: Database;
   email: IEmailService;
   log: pino.Logger;
+  /** Where stored pictures are served from; null when storage has no public address. */
+  mediaBaseUrl?: string | null;
+  /** Upload storage, which holds the originals and the email copies of cover pictures. */
+  storage?: EmailCoverStorage;
 }): BidAlertRuntime {
   const { env, db, email, log } = input;
   const mode = env.ALERTS_SEND_MODE;
@@ -83,6 +89,15 @@ export function createBidAlertRuntime(input: {
     matches: record,
     notices: new BidAlertSaleNoticeWriter(db),
     sendNotices: mode === "on",
+    ...(input.storage
+      ? {
+          coverUrl: createEmailCoverUrls({
+            storage: input.storage,
+            mediaBaseUrl: input.mediaBaseUrl ?? null,
+            log,
+          }),
+        }
+      : {}),
   });
   const lotStart = new BidAlertLotStart(db);
   const lotMatcher = new BidLotMatcher({
@@ -118,6 +133,7 @@ export function createBidAlertRuntime(input: {
       digests,
       validator: new BidAlertMatchValidator(db),
       mailer: new OutboxAlertMailer({ email }),
+      inApp: new BidAlertInAppTopics(db),
       notices: new BidDigestNotices({ notices: new BidAlertLotNoticeWriter(db) }),
       codec,
       zones: new AccountZoneLookup(new DrizzleRecipientZoneReader(db)),
