@@ -204,3 +204,121 @@ Non-blocking observations:
 1. Bring `/admin/(platform)/sales/[id]/(detail)/registrations` back to `main`'s start-up JS or lower, or record an explicit waiver for about 197 B. Measure with `NEXT_SERVER_ACTIONS_ENCRYPTION_KEY` pinned.
 2. Give advance, bids, telephone lines and display commands the same unknown-outcome, refresh and resync handling as hammer and pass.
 3. Correct the PR body's route-JS and `@journey` statements, and run `E2E stabilization` on the branch.
+
+## Final recheck (round 2)
+
+Rechecked head `c55d8d28` on 2026-11-16. It merges `main` at `dd81f7f2` and adds the notify-mock fix. `main` is now `a811c33b`. This is a review only. The PR branch was not changed.
+
+**Verdict: FIX FIRST.** The unknown-outcome handling and the CI fix are done properly, and both are backed by mutation runs. The route-JS bar is still missed, and it is now missed by more than in the last round:
+- The registrations tab is **+320 B** against `main`. The PR body says it is −8 B.
+- The clerk console is **+482 B**.
+- 185 other routes are +2 to +9 B.
+
+The PR body's route-JS table does not reproduce.
+
+### Item by item
+
+**(1) Registrations start-up JS equal or lower than `main`, and no route higher: NOT MET.**
+- **Method:**
+  - `next build` of each commit in one worktree path, with `.next` removed before each build.
+  - Workspace packages built through turbo, and the CI placeholder Sentry DSNs set.
+  - `NEXT_SERVER_ACTIONS_ENCRYPTION_KEY` pinned to the same value for every build.
+  - Per page route, the gzip start-up set from `scripts/route-js-startup-set.mjs`, summed per file with the same default gzip as `check-route-js-budget.mjs`.
+- **Noise floor:** two pinned builds of `dd81f7f2` matched on 223 of 229 routes. The other 6 differed by at most 3 B; registrations differed by 2 B.
+- **Results:**
+
+  | Comparison | Lower | Same | Higher | Registrations | Clerk console |
+  |---|---:|---:|---:|---:|---:|
+  | Head `c55d8d28` vs its base `dd81f7f2` | 42 | 0 | 187 | 758,206 → 758,526 (**+320 B**) | 519,044 → 519,526 (**+482 B**) |
+  | Head merged into current `main` vs `main` `a811c33b` | 42 | 0 | 187 | 758,209 → 758,529 (**+320 B**) | 519,045 → 519,528 (**+483 B**) |
+
+  The other 185 higher routes are +2 to +9 B (most +5 to +8). The shared runtime grew: `webpack` +4 B, `84583` +3 B and `main-app` +2 B on every route. Each of those is above the noise floor. The lower routes are −6 to −28 B (head against base) and −16 to −36 B (merged), mostly through the page and record-tab error boundaries.
+- **Where the registrations bytes come from:**
+  - The registrations page chunk alone is +363 B gzip (19,131 → 19,494 B; raw 63,007 → 63,341 B).
+  - It now inlines the BFF check-in client: the `/api/bff/admin/sales/…/registrations/` fetch, its JSON handling and the fallback strings ("Could not search clients", a third "Check-in failed").
+  - That client replaces two `createServerReference` stubs (5 → 3 in the chunk).
+  - The two error-boundary chunks save 23 B and 26 B. That is not enough to offset the growth.
+- **Clerk console:** the page chunk is +648 B (29,945 → 30,593 B) and one shared chunk is −34 B. This matches the PR body's own explanation (recheck context, unknown-outcome helper, snapshot guard). The body asks for a waiver here.
+- **No budget, ratchet or allowance was changed.** `git diff dd81f7f2 c55d8d28` touches no `route-js-*` or budget file.
+- **The PR body's −8 B figure for registrations does not reproduce.** Neither does "228 lower, 0 identical, 1 higher". The cause of the difference is not known. The commits after the body's measured head `f9dce231` are a `main` merge and a test-only mock change, and the measured page chunk itself shows the growth.
+- **Fix:**
+  - Bring the registrations tab to `main`'s start-up JS or lower. For example, move the check-in client out of the page's start-up chunk: it is needed only on the first search or check-in. The body notes that a lazy chunk added +16 B to the runtime on every route, so that cost has to be measured too.
+  - Or get an explicit waiver for the registrations tab (about 320 B) and the clerk console (about 480 B). The brief says no route may be higher, so a waiver has to cover the +2 to +9 B shared-runtime growth on 185 routes as well.
+
+**(2) Unknown outcome on advance, bids, telephone lines and display: MET.**
+- `settleUnknownOutcome` (`features/saleroom/lib/clerk-room-recheck.ts`) does three things in order:
+  - Shows "Outcome unknown, checking the room…" as a loading toast.
+  - Awaits the console's recheck (`router.refresh()` plus `resyncFromServer`, provided through `ClerkRoomRecheckContext`).
+  - Then replaces the toast with the error.
+- **Where it applies:**
+  - `SaleroomPendingSubmit` uses it on every non-ok result. That covers advance (dock and runway), telephone line start and complete, display approve and revoke, overlays and the session controls. Outside the console the recheck falls back to `router.refresh()`.
+  - Paddle and telephone bids (`use-clerk-bid-entry.ts`) use it as well.
+  - Hammer and pass use it too. `lot_not_on_block` keeps its own message, followed by the recheck.
+- **Success and resending:**
+  - Success is shown only on `ok`.
+  - Nothing resends. Each command is a single `browserFetch` with no retry, and bids keep the API's deterministic idempotency keys.
+- **Suites on head:** the targeted web suites (`features/saleroom`, `saleroom-pending-form`, `saleroom-check-in-panel`) ran 35 files and 162 tests, all passed, with no unhandled errors.
+- **Mutation runs:** each mutation was applied, the suites run, then the change reverted. Every one makes the suites fail.
+
+  | Mutation | Failing tests |
+  |---|---:|
+  | No "Outcome unknown" message | 12 |
+  | No recheck | 12 |
+  | Error shown before the recheck | 12 |
+  | `SaleroomPendingSubmit` back to `main`'s plain `notify.error` | 9 |
+  | `SaleroomPendingSubmit` reports success on failure | 9 |
+  | `SaleroomPendingSubmit` resends once on failure | 9 |
+  | Bid entry back to a plain error | 2 |
+  | Paddle bid resends once on failure | 1 |
+  | Hammer/pass back to a plain error | 1 |
+
+**(3) PR body accuracy and the E2E stabilization run: PARTLY MET.**
+- **`@journey`:** accurate now. The body says the `@journey` tests run only in `E2E stabilization` (weekly cron and manual dispatch), not on PRs, and that the earlier wording was wrong.
+- **E2E run:** reported honestly, and it matches the Actions record for run 43909231185 on `f9dce231`:
+  - Attempt 1: `flags-off` 1 and 2 and `rollout` 2 passed.
+  - `rollout` 1 was cancelled at the 45-minute timeout in "Install pinned Chromium", before any test ran.
+  - Attempt 2 re-ran only that job, and it passed. That is one infrastructure re-run, with no test retried.
+  - `PLAYWRIGHT_E2E=1` is set in that workflow, so the `saleroom-clerk` journeys are not skipped by their `e2eEnabled` guard.
+  - Like the author, I could not confirm which shard ran them. The report artifacts could not be downloaded from here.
+  - The run predates the `dd81f7f2` merge and the mock fix. Neither changes app code on the clerk path.
+- **Route-JS paragraph:** still inaccurate. See item 1: registrations is +320 B, not −8 B, and 187 routes are higher, not 1.
+- **Test evidence:** stale. It names head `f9dce231` and says the full web vitest run on it passed with "0 failed". CI on `f9dce231` failed: web vitest shard 7/8 reported 1 unhandled error and exited 1. The body does not mention that failure or the `c55d8d28` fix.
+
+**(4) CI unhandled rejection `notify.loading is not a function`: FIXED AT ITS CAUSE.**
+- **Cause:**
+  - In CI run 43909239770 (on `f9dce231`), web vitest shard 7/8 failed: 1181 tests passed, but there was 1 unhandled rejection.
+  - The failing call is `settleUnknownOutcome` (`clerk-room-recheck.ts:24`), called from `saleroom-pending-form.tsx:57`, in `clerk-session-toolbar.test.tsx`.
+  - That test's `@/lib/ui/notify` mock had only `success` and `error`. The real `notify` has `loading` (`lib/ui/notify.ts:92`).
+- **Fix:**
+  - `c55d8d28` adds `loading` to the notify mock in the four console tests that now reach that path.
+  - Production code is untouched, and the real `notify.loading` exists.
+- **No suppression:**
+  - No `.skip`, `.todo`, `.fixme`, `dangerouslyIgnoreUnhandledErrors` or unhandled-rejection handler was added anywhere in the PR diff.
+  - No vitest config changed.
+  - The one `catch` in `settleUnknownOutcome` covers only the recheck, and the error is still shown after it.
+- **Other mocks:** two other saleroom tests still mock `notify` without `loading`: `use-clerk-bid-entry.test.ts` and `saleroom-check-in-panel.test.tsx`. Neither reaches a failed send, so neither can raise the rejection.
+- **CI on `c55d8d28` is green:**
+  - CI `ci-result`, `build` (with route budgets), all 8 web vitest shards, the api and shop-api shards, `static-checks` and `test`.
+  - Web PR browser gates and Account PR browser gates.
+  - Art browser gates skipped as not affected.
+
+**Hammer, pass and authorisation: unchanged since the last recheck.**
+- The PR's diff under `apps/api` and `packages` is byte-for-byte the same as at `c3de5b83`:
+  - Hammer and pass name the lot, with `409 lot_not_on_block` on a mismatch.
+  - `requireSaleroomOperate` is on every saleroom route, plus `requireSalesAccess` on check-in.
+  - The lot-snapshot route keeps its capability, its uuid param and its 404 for a lot outside the sale.
+- No BFF or proxy file changed.
+- Check-in still posts through the same-origin `/api/bff/...` with a plain `fetch`, so the BFF origin and same-origin checks apply.
+- Nothing resends, so double hammer or double bid stays impossible from the client.
+
+Non-blocking observation:
+- `SaleroomPendingSubmit` runs its command inside `startTransition(() => { void (async () => …)() })`, so `pending` drops before the request settles. The button can therefore be pressed again while a request is in flight, despite its doc comment.
+- This is the same on `main`, so it is not introduced here.
+- The affected commands are state-idempotent on the server.
+- Worth an `async` transition in a follow-up.
+
+### To ship
+1. Bring `/admin/(platform)/sales/[id]/(detail)/registrations` back to `main`'s start-up JS or lower. It is +320 B with the key pinned. Do the same for the clerk console (+482 B) and the +2 to +9 B shared-runtime growth on 185 other routes, or record an explicit waiver that covers them. Re-measure head against `main` in the same path with `NEXT_SERVER_ACTIONS_ENCRYPTION_KEY` pinned for both builds.
+2. Correct the PR body:
+   - Replace the route-JS table with figures that reproduce.
+   - Update the test evidence to the current head, and mention the CI unhandled rejection on `f9dce231` and its fix.
