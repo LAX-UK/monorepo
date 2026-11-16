@@ -48,12 +48,33 @@ async function scan(page: Page, route: string, variant: string) {
   }
 }
 
+/** test.lax.bid is redeployed many times a day, and a rollout can answer a 502/503/504 for a few
+ * seconds. Retry a navigation that answers one of those (or 429), logging each status, and fail
+ * with the status and route once the attempts are spent. Any other status fails at once. */
+const TRANSIENT_STATUSES = new Set([429, 502, 503, 504]);
+const NAVIGATION_ATTEMPTS = 4;
+
+async function navigate(page: Page, path: string) {
+  for (let attempt = 1; ; attempt++) {
+    const res = await page.goto(path, { waitUntil: "domcontentloaded" });
+    const status = res?.status();
+    if (status !== undefined && !TRANSIENT_STATUSES.has(status)) return res;
+    if (attempt >= NAVIGATION_ATTEMPTS) return res;
+    console.warn(
+      `[public-a11y] ${path} answered ${status ?? "no response"} (attempt ${attempt}/${NAVIGATION_ATTEMPTS}); retrying`,
+    );
+    await page.waitForTimeout(attempt * 5_000);
+  }
+}
+
 async function open(page: Page, route: PublicRoute) {
-  const res = await page.goto(route.path, { waitUntil: "domcontentloaded" });
+  const res = await navigate(page, route.path);
+  const status = res?.status();
   // An unknown address answers a real 404 on purpose. A lot, sale or artist that does not exist
   // streams its not-found page behind the loading shell, so its status is already 200.
-  if (route.name === "not-found") expect(res?.status(), route.path).toBe(404);
-  else if (!route.name.includes("not-found")) expect(res?.ok(), route.path).toBeTruthy();
+  if (route.name === "not-found") expect(status, `${route.path} answered ${status}`).toBe(404);
+  else if (!route.name.includes("not-found"))
+    expect(res?.ok(), `${route.path} answered ${status}, expected 2xx`).toBeTruthy();
   await settle(page);
 }
 
