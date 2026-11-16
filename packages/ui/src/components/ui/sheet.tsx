@@ -15,6 +15,7 @@ const SheetOverlay = React.forwardRef<
   React.ComponentPropsWithoutRef<typeof SheetPrimitive.Overlay>
 >(({ className, ...props }, ref) => (
   <SheetPrimitive.Overlay
+    data-lax-motion="scrim"
     className={cn("fixed inset-0 z-[var(--z-overlay,60)] bg-black/40", className)}
     {...props}
     ref={ref}
@@ -47,8 +48,10 @@ const SheetContent = React.forwardRef<
       <SheetOverlay className={overlayClassName} />
       <SheetPrimitive.Content
         ref={ref}
+        data-lax-motion="sheet"
+        data-side={side}
         className={cn(
-          "fixed z-[var(--z-overlay,60)] border-outline-variant/20 bg-surface-container-lowest shadow-lg transition-transform duration-300 ease-out",
+          "fixed z-[var(--z-overlay,60)] border-outline-variant/20 bg-surface-container-lowest shadow-lg",
           isBottom ? "gap-0 p-0" : "gap-4 p-6",
           sheetSideClasses[side],
           className,

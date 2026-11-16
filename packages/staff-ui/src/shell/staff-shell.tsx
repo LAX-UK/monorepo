@@ -118,7 +118,7 @@ export function StaffShell({
   );
 
   return (
-    <TooltipProvider delayDuration={300}>
+    <TooltipProvider delayDuration={400}>
       <LaxDensityProvider density="staff">
         <StaffShortcutsProvider helpShortcut={shortcutsHelp}>
           <div

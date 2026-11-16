@@ -35,7 +35,7 @@ export function RelativeTime({
   // Until the browser has a clock, render the exact time, so server and client agree.
   const relative = now ? formatStaffRelative(value, now) : exact;
   return (
-    <TooltipProvider delayDuration={300}>
+    <TooltipProvider delayDuration={400}>
       <Tooltip>
         <TooltipTrigger asChild>
           <time dateTime={value} className={cn("tabular-nums", className)}>

@@ -89,6 +89,8 @@ test.describe("admin dashboard inline action permissions @roles", () => {
       await expect(page.getByRole("menu")).toBeVisible();
       await expect(page.getByRole("menuitem", { name: forbidden })).toHaveCount(0);
       await page.keyboard.press("Escape");
+      // Wait for the exit animation to unmount the menu before opening the next row's.
+      await expect(page.getByRole("menu")).toHaveCount(0);
     }
     // Selecting a row must not bring capture or assign into the bulk bar either.
     const select = table.getByRole("checkbox").nth(1);

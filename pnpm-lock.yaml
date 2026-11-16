@@ -2466,6 +2466,9 @@ importers:
       '@auction/config-ts':
         specifier: workspace:*
         version: link:../config-ts
+      '@playwright/test':
+        specifier: 1.55.1
+        version: 1.55.1
       '@testing-library/jest-dom':
         specifier: ^6.6.3
         version: 6.9.1

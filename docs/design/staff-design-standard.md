@@ -501,7 +501,7 @@ for previous and next.**
 **TBL-14. Truncate with an ellipsis, and always make the full value available.**
 
 - **Rule:**
-  - A truncated cell shows the full value in a tooltip after 500ms, and the value stays in the
+  - A truncated cell shows the full value in a tooltip after 400ms, and the value stays in the
     accessible name.
   - Never truncate amounts, statuses or IDs. Size those columns to fit instead.
   - Titles may truncate. Emails truncate in the middle (`mahmo…@gmail.com`) only if a copy
@@ -510,7 +510,7 @@ for previous and next.**
 - **Check:** shrink to 1024px. No amount or ID shows "…". Hovering a truncated title reveals it.
 - **Kit:** `MET`. `DataColumn.truncate` is `"end"` by default, `"middle"` for emails and references, and
   `false` (the default for numeric columns) to never shorten. `TruncatedText` shows the full
-  value in a tooltip after 500ms when, and only when, the text is cut; the text stays in the DOM.
+  value in a tooltip after 400ms when, and only when, the text is cut; the text stays in the DOM.
 - **Sources:** [primer-dt] [carbon-dt]
 
 **TBL-15. Selection hit area covers the whole checkbox cell (44px × row height).**

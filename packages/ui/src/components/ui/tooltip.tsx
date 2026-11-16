@@ -18,6 +18,7 @@ const TooltipContent = React.forwardRef<
     <TooltipPrimitive.Content
       ref={ref}
       sideOffset={sideOffset}
+      data-lax-motion="tip"
       className={cn(
         "z-50 overflow-hidden rounded-md border border-outline-variant/20 bg-surface-container-highest px-3 py-1.5 text-xs text-on-surface shadow-md",
         className,

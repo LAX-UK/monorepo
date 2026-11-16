@@ -40,6 +40,7 @@ const DropdownMenuSubContent = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <DropdownMenuPrimitive.SubContent
     ref={ref}
+    data-lax-motion="float"
     className={cn(
       "z-[var(--z-floating,70)] min-w-[8rem] overflow-hidden rounded-md border border-outline-variant/20 bg-surface-container-lowest p-1 text-on-surface shadow-lg",
       className,
@@ -57,6 +58,7 @@ const DropdownMenuContent = React.forwardRef<
     <DropdownMenuPrimitive.Content
       ref={ref}
       sideOffset={sideOffset}
+      data-lax-motion="float"
       data-lenis-prevent
       className={cn(
         "z-[var(--z-floating,70)] max-h-[var(--radix-dropdown-menu-content-available-height)] min-w-[8rem] overflow-y-auto overflow-x-hidden rounded-md border border-outline-variant/20 bg-surface-container-lowest p-1 text-on-surface shadow-md",
