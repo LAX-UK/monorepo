@@ -1,4 +1,5 @@
 import type { AnchorHTMLAttributes, ReactNode } from "react";
+import { EmailOff } from "./email-off.js";
 
 /** A whole email address inside running text. */
 const EMAIL_IN_TEXT = /[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+/g;
@@ -42,11 +43,13 @@ export type EmailLinkProps = Omit<AnchorHTMLAttributes<HTMLAnchorElement>, "href
   query?: string;
 };
 
-/** A `mailto:` link that shows its address through `EmailAddressText`. */
+/** A `mailto:` link that shows its address through `EmailAddressText`, outside edge obfuscation. */
 export function EmailLink({ address, query = "", ...rest }: EmailLinkProps) {
   return (
-    <a href={`mailto:${address}${query}`} aria-label={address} {...rest}>
-      <EmailAddressText address={address} />
-    </a>
+    <EmailOff>
+      <a href={`mailto:${address}${query}`} aria-label={address} {...rest}>
+        <EmailAddressText address={address} />
+      </a>
+    </EmailOff>
   );
 }

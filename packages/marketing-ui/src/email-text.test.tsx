@@ -1,4 +1,5 @@
 import { render, screen } from "@testing-library/react";
+import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { EmailLink, TextWithEmails } from "./email-text.js";
 
@@ -38,5 +39,15 @@ describe("TextWithEmails", () => {
       </p>,
     );
     expect(container.innerHTML).toBe("<p>No address here.</p>");
+  });
+});
+
+describe("EmailLink edge obfuscation", () => {
+  it("serves a real mailto: link between the email_off markers", () => {
+    const html = renderToStaticMarkup(<EmailLink address="support@lax.bid" query="?subject=Hi" />);
+    expect(html).toMatch(
+      /<!--email_off--><\/span><a href="mailto:support@lax\.bid\?subject=Hi"[^>]*>.*<\/a><span hidden=""><!--\/email_off-->/,
+    );
+    expect(html).not.toContain("cdn-cgi");
   });
 });

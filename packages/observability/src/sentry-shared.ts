@@ -157,6 +157,26 @@ export function shouldDropThirdPartyClientNoise(event: ErrorEvent): boolean {
   return false;
 }
 
+/** Module specifiers of the Deno runtime's own code (`ext:core/01_core.js`, `ext:deno_web/...`). */
+const DENO_RUNTIME_FRAME = /^ext:(?:core|runtime|deno_[a-z0-9_]+)\//;
+
+function frameLocation(frame: { filename?: string; abs_path?: string }): string {
+  return frame.filename ?? frame.abs_path ?? "";
+}
+
+/**
+ * Drop errors thrown inside the Deno runtime itself: a headless crawler that executes our page
+ * under Deno reports `ext:core/*` frames. Only events whose innermost frame (the last one) is Deno
+ * runtime code and that have no frame from our own scripts (`/_next/`) match, so an error our code
+ * throws is never dropped.
+ */
+export function shouldDropDenoRuntimeNoise(event: ErrorEvent): boolean {
+  const frames = event.exception?.values?.[0]?.stacktrace?.frames ?? [];
+  const innermost = frames.at(-1);
+  if (!innermost || !DENO_RUNTIME_FRAME.test(frameLocation(innermost))) return false;
+  return !frames.some((frame) => /\/_next\//.test(frameLocation(frame)));
+}
+
 /**
  * The oldest major version of each browser the storefronts are built for. This is the floor of
  * Next.js's default build target (`next/dist/shared/lib/modern-browserslist-target`); the apps set
