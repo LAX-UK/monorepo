@@ -42,9 +42,11 @@ export function SaleroomHeroActionRowIsland({
   saleCurrency: string;
 }) {
   const viewer = useSaleViewer();
+  const loaded = useSaleViewerLoaded();
   return (
     <SaleroomHeroActionRow
       {...props}
+      viewerPending={!loaded}
       isAuthenticated={viewer.isAuthenticated}
       initialFollowing={viewer.isFollowing}
       registerToBid={{

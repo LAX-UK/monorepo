@@ -47,6 +47,8 @@ type Props = {
     registrationPaused?: readonly { id: string; title: string; line: string }[];
   };
   hasApprovedRegistration?: boolean;
+  /** `/me` has not answered: the primary action is only the signed-out guess, so it is held back. */
+  viewerPending?: boolean;
   /** Quiet utility (Share) that sits with the actions, after them. */
   utility?: ReactNode;
 };
@@ -56,10 +58,12 @@ function SaleroomHeroPrimaryCta({
   hero,
   deliveryMode,
   action,
+  viewerPending = false,
 }: {
   hero: SaleHeroVM;
   deliveryMode: SaleDeliveryMode;
   action: SalePrimaryViewerAction | null;
+  viewerPending?: boolean;
 }) {
   if (!saleAllowsWebBidding(deliveryMode)) {
     if (hero.status === "scheduled" || hero.status === "draft") {
@@ -72,6 +76,14 @@ function SaleroomHeroPrimaryCta({
     return null;
   }
   if (!action) return null;
+  if (viewerPending) {
+    // Same size as the button it may become, so nothing moves when `/me` answers.
+    return (
+      <Button variant="primary" className="invisible shrink-0" disabled aria-hidden tabIndex={-1}>
+        {action.label}
+      </Button>
+    );
+  }
   if (action.emphasis === "primary") {
     return (
       <Button variant="primary" className="shrink-0" asChild>
@@ -92,6 +104,7 @@ export function SaleroomHeroActionRow({
   initialFollowing,
   registerToBid,
   hasApprovedRegistration = false,
+  viewerPending = false,
   utility,
 }: Props) {
   const actions = saleLifecycleActions(hero.status);
@@ -129,7 +142,12 @@ export function SaleroomHeroActionRow({
         </span>
       ) : null}
       <div className="flex flex-wrap items-center gap-3">
-        <SaleroomHeroPrimaryCta hero={hero} deliveryMode={deliveryMode} action={primaryAction} />
+        <SaleroomHeroPrimaryCta
+          hero={hero}
+          deliveryMode={deliveryMode}
+          action={primaryAction}
+          viewerPending={viewerPending}
+        />
         {actions.follow ? (
           <SaleroomFollowToggle
             saleId={saleId}

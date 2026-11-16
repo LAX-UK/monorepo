@@ -237,11 +237,21 @@ describe("the phone bar offers exactly the hero's primary action", () => {
     expect(screen.getByText("You're registered")).toBeInTheDocument();
   });
 
-  it("offers the lots, not a guess, until the viewer has loaded", () => {
+  it("offers the lots in the bar and holds the hero's button, not a guess, until the viewer has loaded", () => {
     loaded = false;
     viewer = SIGNED_OUT_SALE_VIEWER;
     render(
       <>
+        <div data-testid="hero">
+          <SaleroomHeroActionRowIsland
+            hero={hero("scheduled")}
+            deliveryMode="online"
+            saleId="sale-1"
+            saleHref={SALE_HREF}
+            registerToBidSale
+            saleCurrency="GBP"
+          />
+        </div>
         <CookieDock />
         <SaleMobileSummaryBarIsland
           start={new Date("2026-11-18T10:00:00Z")}
@@ -256,5 +266,9 @@ describe("the phone bar offers exactly the hero's primary action", () => {
     );
     expect(screen.getByRole("link", { name: "View lots" })).toHaveAttribute("href", "#catalog");
     expect(screen.queryByRole("link", { name: "Register to bid" })).toBeNull();
+    // The hero holds its place but offers nothing to click until the viewer is known.
+    const heroBox = within(screen.getByTestId("hero"));
+    expect(heroBox.queryAllByRole("link")).toHaveLength(0);
+    expect(heroBox.queryByText("Register to bid")?.closest("button")).toBeDisabled();
   });
 });
