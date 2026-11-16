@@ -75,8 +75,11 @@ export const ReleaseAlertUnsubscribePreviewSchema = Type.Object(
     maskedEmail: Type.String({ minLength: 1 }),
     /** False once the alerts have already been stopped. */
     active: Type.Boolean(),
-    /** What the link stops: one topic, or null for every alert the address gets from this product. */
-    topic: Type.Union([Type.Literal("back_in_stock"), Type.Null()]),
+    /**
+     * What the link stops: one topic, or null for every alert the address gets from this product.
+     * Optional so a reader and a shop-api from either side of a deploy still agree; absent means null.
+     */
+    topic: Type.Optional(Type.Union([Type.Literal("back_in_stock"), Type.Null()])),
   },
   { additionalProperties: false },
 );

@@ -26,7 +26,7 @@ export default async function StopReleaseAlertsPage({ searchParams }: Props) {
   const token = first(params.token);
   const result = first(params.result);
   const preview = await previewReleaseAlertUnsubscribe(token);
-  const copy = stopCopy(preview.status === "ok" ? preview.preview.topic : null);
+  const copy = stopCopy(preview.status === "ok" ? (preview.preview.topic ?? null) : null);
   const TITLE = copy.title;
   const BREADCRUMBS = breadcrumbsFor(copy);
 
