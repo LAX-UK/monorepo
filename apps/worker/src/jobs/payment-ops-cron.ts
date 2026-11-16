@@ -82,3 +82,36 @@ export async function runEnsureLotInvoicesJob(opts: JobOpts): Promise<void> {
   // Creating a lot's invoice is idempotent, so a briefly unavailable API is asked again.
   await runFinanceCronPath("ensure-lot-invoices", opts, { gatewayRetry: DEFAULT_GATEWAY_RETRY });
 }
+
+/** The outbox drain claims this many rows per call (see LifecycleCronService). */
+const NOTIFICATION_OUTBOX_BATCH_SIZE = 50;
+/** One wake drains at most this many batches, then leaves the rest to the next wake or sweep. */
+export const NOTIFICATION_OUTBOX_WAKE_MAX_BATCHES = 10;
+
+function isFullOutboxBatch(result: unknown): boolean {
+  if (!result || typeof result !== "object") return false;
+  const { processed, failed } = result as { processed?: unknown; failed?: unknown };
+  if (typeof processed !== "number" || typeof failed !== "number") return false;
+  return processed + failed >= NOTIFICATION_OUTBOX_BATCH_SIZE;
+}
+
+/**
+ * Drain run on demand when a time-critical notification is committed. It goes through the same
+ * drain as the minute sweep, so claiming, retries and the dedupe key behave exactly the same.
+ * Where the worker drains locally it keeps going while batches come back full (a lot closing with
+ * many bidders), bounded so one wake cannot hold the queue. Through the API it drains one batch and
+ * does not retry on a gateway error: the follow-up wake and the minute sweep are the retry.
+ */
+export async function runProcessNotificationOutboxWakeJob(opts: JobOpts): Promise<void> {
+  const { env, handlers } = opts.financeCron;
+  const workerDrainsLocally =
+    env.FINANCE_CRON_EXECUTION_OWNER === "worker" && !env.FINANCE_CRON_API_ROLLBACK && handlers;
+  if (!workerDrainsLocally) {
+    await runFinanceCronPath("process-notification-outbox", opts);
+    return;
+  }
+  for (let batch = 0; batch < NOTIFICATION_OUTBOX_WAKE_MAX_BATCHES; batch++) {
+    const result = await handlers.processNotificationOutbox();
+    if (!isFullOutboxBatch(result)) return;
+  }
+}

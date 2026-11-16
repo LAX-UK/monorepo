@@ -7,6 +7,10 @@ import type {
   NotificationPayload,
   StageNotificationOutboxInput,
 } from "../interfaces/notification-outbox.repository.js";
+import {
+  NOTIFICATION_OUTBOX_WAKE_CHANNEL,
+  isCriticalNotificationType,
+} from "../lib/notification-outbox-wake.js";
 
 const STUCK_AFTER_MS = 1_000;
 /** Debounce: only claim rows at least this old so in-flight transactions have committed. */
@@ -64,6 +68,11 @@ export class DrizzleNotificationOutboxRepository implements INotificationOutboxR
       })
       .onConflictDoNothing({ target: notificationOutbox.idempotencyKey })
       .returning({ id: notificationOutbox.id });
+    if (inserted.length > 0 && isCriticalNotificationType(input.payload.type)) {
+      // Delivered by Postgres on commit only (and once per channel/payload per transaction), so
+      // the worker drains the row as soon as it is visible and never for a rolled-back stage.
+      await conn.execute(sql`SELECT pg_notify(${NOTIFICATION_OUTBOX_WAKE_CHANNEL}, '')`);
+    }
     return inserted.length > 0;
   }
 

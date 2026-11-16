@@ -62,7 +62,9 @@ When `CRON_INTERNAL_SECRET` is set, the worker registers:
 | `retry-xero-stripe-capture-sync` | 15 min | `POST /internal/jobs/retry-xero-stripe-capture-sync` |
 | `retry-refund-reconciles` | 15 min | `POST /internal/jobs/retry-refund-reconciles` |
 | `refresh-xero-tokens` | 6 h | `POST /internal/jobs/refresh-xero-tokens` |
-| `process-notification-outbox` | 1 min | `POST /internal/jobs/process-notification-outbox` |
+| `process-notification-outbox` | 1 min, plus on demand (below) | `POST /internal/jobs/process-notification-outbox` |
+
+Time-critical notices (outbid, bid refused at limit, won, lost, seller lot ended, ending soon) do not wait for the minute sweep. Staging one in `notification_outbox` sends `pg_notify('notification_outbox_critical')`, which Postgres delivers when the staging transaction commits. Each worker holds a `LISTEN` connection and, on a signal, queues an immediate drain and a follow-up 1.5 s later (after the outbox's 1 s claim guard) on the same `process-notification-outbox` queue, so delivery takes about 1.5 s. The queue runs one job at a time across all replicas (BullMQ global concurrency 1), so on-demand drains and the sweep never claim side by side and rows still go out in the order they were staged; a drain can deliver any pending row, routine ones included. Signals in the same 250 ms window share one job. A lost signal (listener reconnecting) only falls back to the minute sweep. `NOTIFICATION_OUTBOX_WAKE_ENABLED=false` on the worker turns the on-demand path off.
 
 Manual replay remains available via the same endpoints (see `docs/runbooks/xero-stripe-payment-setup.md`, `docs/runbooks/monitoring-alerts.md`).
 

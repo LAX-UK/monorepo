@@ -168,3 +168,8 @@ export {
 } from "./waiting-lot-storage.js";
 export { lotAwaitsCollectionSql } from "./lot-awaits-collection.js";
 export type { LotStoragePricing } from "./purchase-storage-pricing.js";
+export {
+  CRITICAL_NOTIFICATION_TYPES,
+  NOTIFICATION_OUTBOX_WAKE_CHANNEL,
+  isCriticalNotificationType,
+} from "./notification-outbox-wake.js";
