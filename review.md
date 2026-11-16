@@ -1,111 +1,93 @@
 Verdict: FIX FIRST
 
-# Final recheck (round 2) of PR #1476 (motion-overlays, motion system 3/8)
+# Final recheck (round 3) of PR #1476 (motion-overlays, motion system 3/8)
 
-This recheck covers head `ceb55a72`. The head had not changed for more than 30 minutes when the review started. I checked it against the previous recheck (head `e0451666`), the PR body's latest "Changes after review" section and `docs/design/motion.md`. CI built the merge commit `268546a2` (`ceb55a72` into main `a54b584f`). Blocking findings are marked **[BLOCKING]**.
+This recheck covers head `4c273a4c`, pushed at 00:06 UTC. The head had not changed for more than 25 minutes when this review was written, and every CI check for it had finished. I checked it against the round 2 recheck (head `ceb55a72`), the PR body's "Changes after review (round 2 recheck)" section and `docs/design/motion.md`.
+
+The code is ready. One documentation line contradicts the new tooltip delay, and that is the only thing left. Blocking findings are marked **[BLOCKING]**.
 
 ## Findings
 
-1. **[BLOCKING] The `browser-gates` e2e fails on every head of this PR, and the overlay exit animation is the cause.** `apps/web/e2e/org-roles-owner.spec.ts:120` fails with `strict mode violation: getByRole('menuitem', { name: /^Remove from/ }) resolved to 2 elements`. The failure is identical on check run 132998347176 (`ceb55a72`), 132968064586 (`e0451666`) and 132959940510 (`7172aab8`). The same gate passes on main `a54b584f` (132990971930) and on the merge base `67443083` (132946490980). The previous recheck missed this because the gate was still running at the time.
+1. **[BLOCKING, docs only] The staff design standard still says 500ms for truncation tooltips.**
+   - The code now opens truncation tooltips at 400ms: `packages/staff-ui/src/display/truncated-text.tsx:14` sets `STAFF_TRUNCATION_TOOLTIP_DELAY_MS = 400`, which `truncated-text.tsx:51` and `packages/staff-ui/src/data/data-table.tsx:672` use.
+   - TBL-14 in `docs/design/staff-design-standard.md` still says 500ms twice:
+     - `docs/design/staff-design-standard.md:504`: "A truncated cell shows the full value in a tooltip after 500ms".
+     - `docs/design/staff-design-standard.md:513`: "`TruncatedText` shows the full value in a tooltip after 500ms", under "Kit: `MET`".
 
-   **Mechanism.** At `:114`, the test presses Escape to close Maya Okafor's menu. That menu (`apps/web/src/components/legal-entity/members/member-row.tsx:70-80`) also contains "Remove from {organisation}…". Radix now keeps the closed menu mounted while `[data-lax-motion][data-state="closed"]` plays its 140ms exit (`packages/ui/src/lax/motion.css:160-162`). The test immediately opens the invitee's menu, so two menus, each with a "Remove from" item, are in the DOM and the accessibility tree at once.
+   With this PR merged, two specs give different delays for the same tooltip, and TBL-14's "MET" no longer describes the kit. The 400ms delay is the intended one: `motion.md:40` and the PR body both say every provider opens after 400ms.
 
-   **What users notice.** For the length of the exit, the closing menu stays exposed to assistive technology. It also still takes clicks, because nothing sets `pointer-events: none` on a closing layer.
+   **Fix:** change both lines to 400ms. Optionally, point them at `motion.md` so the delay is defined in one place. It is a two-line edit with no code or test impact.
 
-   **Fix.**
-   - Make the spec wait for the old menu to unmount, for example `await expect(page.getByRole("menu")).toHaveCount(0)` after the Escape at `:114`. Alternatively, scope the locator to the open menu.
-   - Consider adding `pointer-events: none` to `[data-lax-motion][data-state="closed"]`. It is compositor-safe and invisible at rest, and it stops clicks landing on a fading layer.
-   - Run `browser-gates` again and confirm it is green.
+2. **Minor, no action needed.** In the `toPass` retry loops of `apps/web/e2e/org-roles-admin.spec.ts:84-90` and `org-roles-owner.spec.ts:108-114`, Escape is followed at once by a click on the same row's "More for …" trigger. Because it is the same Radix menu instance reopening, no second menu is mounted, so the strict-mode clash from round 2 cannot recur there. I note it only because the reasoning is not obvious from the spec. It is fine as written.
 
-   Do not skip or quarantine the test.
+## Round 2 findings: status
 
-2. **[BLOCKING] Tooltips are not at 400ms everywhere, but the PR body and the spec now say they are.**
-   - `docs/design/motion.md:40` says "`delayDuration={400}` on every `TooltipProvider`".
-   - The PR body says "Tooltip providers all open after 400ms: each passes `delayDuration={400}`".
+1. **`browser-gates`: fixed. [was BLOCKING]**
+   - Check run 133009958046 on `4c273a4c` succeeded. The `@smoke|@roles` run shows "Running 69 tests", **62 passed, 7 skipped**, with no failures, retries or flaky tests. Main `a54b584f`'s own run (132990971930) has the same 62 passed / 7 skipped, with the same skip positions in the progress line, so no test was newly skipped.
+   - `packages/ui/src/lax/motion.css:160-164`: `[data-lax-motion][data-state="closed"]` now has `pointer-events: none`, so a closing layer takes no clicks during its exit. It is not an animated property, and `static-checks` (which includes `lint:compositor`) is green.
+   - `apps/web/e2e/org-roles-owner.spec.ts:116-117` waits for `getByRole("menu")` to reach count 0 after Escape, before the "remove the member" step opens the invitee's menu.
+   - The same wait was added in `org-roles-admin.spec.ts:93-94` and `admin-dashboard-roles.spec.ts:92-93`.
+   - I scanned every `press("Escape")` in `apps/*/e2e` that is followed within 12 lines by a menu, option or dialog lookup. The remaining cases are fine:
+     - Dialogs are already awaited to hidden or count 0: `admin-collections-desk.spec.ts:60`, `org-roles-chrome.spec.ts:84`, `art-journeys.spec.ts:306`.
+     - `toPass` loops reopen the same menu (finding 2).
+   - No `skip`, `fixme`, `only` or quarantine was added to any existing test. The only `skip` lines in the PR diff are the new opt-in motion specs gated on `PLAYWRIGHT_E2E`, and the Chromium-availability skip in `motion-resolved.test.ts`, as before.
+   - `motion.md:52` now states that a closing layer stays in the accessibility tree until it unmounts. That is accurate and acceptable for a 100–180ms window.
 
-   Three providers still use other delays:
-   - `packages/staff-ui/src/shell/staff-shell.tsx:121`: `<TooltipProvider delayDuration={300}>`. This provider wraps every staff page. `StaffTooltip` (the `@auction/ui/lax` `Tooltip`, which brings no provider of its own) and the raw kit tooltips in `packages/staff-ui/src/data/cells.tsx` therefore open at 300ms in Bid admin and LAX Admin.
-   - `packages/staff-ui/src/display/relative-time.tsx:38`: 300ms.
-   - `packages/staff-ui/src/display/truncated-text.tsx:14,51` and `packages/staff-ui/src/data/data-table.tsx:672`: `STAFF_TRUNCATION_TOOLTIP_DELAY_MS = 500`.
+2. **Tooltip delay: fixed in code. [was BLOCKING]** I grepped every `TooltipProvider`, `TooltipPrimitive.Provider`, `delayDuration` and `STAFF_TRUNCATION_TOOLTIP_DELAY_MS` in `apps/` and `packages/`. Every explicit delay is 400:
+   - `packages/staff-ui/src/shell/staff-shell.tsx:121`
+   - `packages/staff-ui/src/display/relative-time.tsx:38`
+   - `packages/staff-ui/src/display/truncated-text.tsx:14,51`
+   - `packages/staff-ui/src/data/data-table.tsx:672`
+   - `packages/ui/src/lax/tooltip.tsx:19,69`
+   - `packages/ui/src/components/ui/button-disabled-reason.tsx:43`
+   - `apps/shop/src/components/header/shop-header.client.tsx:122`
+   - apps/web: `workspace-shell.tsx:157`, `client-website-frame.tsx:48`, `export-button.tsx:126`, `gallery-hero.tsx:84,132`, `press-coverage-card-actions.tsx:38`
 
-   These values predate the PR. The previous wrapper's default never applied to them either, because they pass an explicit value. Set them to 400. If staff is meant to keep 300 and 500, the spec and the PR body must name those exceptions, and the brief for this work says 400ms everywhere.
+   The bare `<TooltipProvider>` uses outside tests all import the kit wrapper `@auction/ui/lax/tooltip`, which sets 400: `lot-template.tsx:59`, `withdrawn-lot-page.tsx:24` and `app/dev/kit/page.tsx:20`.
 
-3. The first "Changes after the first review" section of the PR body still says the Chromium suite "installs it in the `test` job". The "Tests" section and the latest "Changes after review" section are correct, so this is only a stale historical line. Update or strike it. Minor.
+   `motion.md:40` and the PR body match the code. The staff design standard does not (finding 1).
 
-4. **Minor.** On a staff page, every portalled layer now takes the staff timings, including those opened from a region drawn at client density. Today the only such region is the admin kit reference (`apps/web/src/components/admin/kit/sheet-frame.tsx:37-40`, `AtDensity density="client"`), where overlays in the "client" column now fade at staff timings. If the kit page is meant to show client motion, note the limitation in `motion.md:52`.
+3. **Stale PR-body line: fixed.** The first "Changes after the first review" section now says the Chromium suite runs in the dedicated `ui-chromium` job.
 
-## Previous recheck findings: status
+4. **Client-density limitation: fixed.** `docs/design/motion.md:52` names the page-level scope and the admin kit reference (`sheet-frame.tsx`) whose "client" column takes staff timings.
 
-1. **CI test job: fixed.**
-   - `ui-chromium` (`.github/workflows/ci.yml:347-412`) runs on `ubuntu-24.04` (runner image ubuntu24/20261111.127).
-   - It caches `~/.cache/ms-playwright`, installs Chromium only when the suite is affected, and runs `motion-resolved.test.ts` with `LAX_REQUIRE_CHROMIUM=1`: 32/32 passed in check run 132998113888.
-   - It runs only when turbo marks `@auction/ui#test` as affected or `lax-system.css` / the staff theme changed.
-   - `ci-result` needs it (`ci.yml:1192`) and fails on `failure` or `cancelled`.
-   - The `test` job is byte-identical to the merge base (the diff only adds the new job and the `ci-result` need). There, the suite skips (32 skipped), and the job passed.
+## Still holds from earlier rechecks
 
-2. **Route JS: fixed, no growth.** I compared CI `build` `check:route-js-budget` for this head (check run 132999164532) against main's own build of apps/web at `a54b584f` (132991501522):
+- **Route JS: no growth.** I compared CI `build` `check:route-js-budget` for this head (check run 133010415500, merge onto main `a54b584f`) against main's own build at `a54b584f` (132991501522):
 
-   | apps/web group | largest (main → PR) | frame | duplicate modules |
-   |---|---|---|---|
-   | account | 550.1 → 543.5 | 448.7 → 440.9 | 155 → 133 |
-   | checkout | 476.4 → 469.9 | 446.4 → 439.3 | 114 → 94 |
-   | listing | 470.8 → 462.2 | 344.2 → 337.3 | 121 → 90 |
-   | lot | 481.4 → 467.4 | 349.7 → 343.1 | 139 → 93 |
-   | public | 402.0 → 394.5 | 344.2 → 337.3 | 110 → 79 |
-   | sale | 485.4 → 478.9 | 346.1 → 341.4 | 144 → 121 |
+  | apps/web group | largest (main → PR) | frame | duplicate modules |
+  |---|---|---|---|
+  | account | 550.1 → 543.7 | 448.7 → 441.1 | 155 → 133 |
+  | checkout | 476.4 → 470.2 | 446.4 → 439.5 | 114 → 94 |
+  | listing | 470.8 → 462.2 | 344.2 → 337.3 | 121 → 90 |
+  | lot | 481.4 → 467.4 | 349.7 → 343.1 | 139 → 93 |
+  | public | 402.0 → 394.5 | 344.2 → 337.3 | 110 → 79 |
+  | sale | 485.4 → 478.9 | 346.1 → 341.4 | 144 → 121 |
 
-   Every tracked route fell. For example, Sales list went from 454.8 to 442.8 KB (frame 344.2 → 337.3, duplicates 102 → 67).
+  - Every tracked route fell: Home 402.0 → 394.5, Sales list 454.8 → 442.8, Sale 485.4 → 478.9, Lot 481.4 → 467.4, About 352.1 → 344.9, Terms 349.1 → 341.9.
+  - LAX Account `/account/profile` is 436.0 KB, against main's 436.1 KB. Its existing warn-mode overage is unchanged and not enforced.
+  - Shop and lax.art are 520.4–552.8 KB and 522.0–527.6 KB. The commit since round 2 changes only staff-ui delay literals, the `motion.css` stylesheet and e2e specs, none of which ship in those apps' JS. The round 2 comparison (equal or lower) therefore still applies.
+  - No budget, ratchet or baseline file changed. `scripts/route-js-budgets.json` and the baselines are untouched, and the only matching path in the diff is the prose in `docs/engineering/route-js-budgets.md`.
+- **Staff timings per layer.** `motion-resolved.test.ts` passes: scrim, dialog, side dialog and sheet at 200/150, float at 150/100, tip at 100, toast at 150/100 with no rise.
+- **Sonner.** The front-toast-only exit rule, fill modes and `force-allow` are unchanged.
+- **Reduced-motion suite and the `ui-chromium` job.** Check run 133009856193 on `ubuntu-24.04` with `LAX_REQUIRE_CHROMIUM=1` downloaded Chromium headless shell 140 and passed 32/32. `ci-result` succeeded.
+- **Tokens only, Lenis untouched, focus and ARIA unchanged** apart from the documented exit window.
+- **No AI attribution.** None of the 8 commits (`7172aab8` … `4c273a4c`), all authored by mahmoudamrspace, contains a Co-Authored-By, Claude-Session or generated-by line. Neither do the PR title and body.
 
-   Main's own build did not cover Shop, lax.art or LAX Account, so for those I used PR builds merged onto main (`b1817ecf`→`a54b584f`, `c66cc7ba`→`8f8da613`):
-   - Shop and lax.art: largest and frame are equal or lower in every group, and duplicate counts are equal.
-   - LAX Account: CI showed `/account/profile` at 436.2 KB against 436.1 KB, while every other route fell 0.1 KB. I built apps/account locally at main `a54b584f` and at `a54b584f` + this head, in the same environment with the CI placeholder DSNs. Every route of the PR build is at or below main: profile 436.3 → 436.0 KB, frame 405.2 → 405.0 KB, duplicates 6 → 6. The CI difference is build noise, not growth.
-
-   No budget, ratchet or baseline file changed, and the 1 KB tolerance is not used.
-
-   - **`KIT_PRIMITIVE_MODULES` (`apps/web/next.config.ts:144,215-227`).** All seven matched modules were already loaded at start-up by every apps/web route. I walked the root layout's static import graph: `app/layout.tsx` → `consent-shell` → `consent-bar` → `lax/button` → `lax/button-variants`, `lax/tooltip` → `components/ui/tooltip`, `lax/density`, `lax/styles`, `lib/utils`. The forced chunk therefore moves no code onto sign-in, error pages or any other apps/web route. In CI, the public frame (sign-in and error pages included) fell 344.2 → 337.3. The cache group is in apps/web only, so LAX Account, Shop and lax.art are untouched. It uses the same `shell-routes` mechanism as the two existing entries (one chunk, `enforce`, priority 20), so route-level splitting of page code is unchanged. The cache cost is that a change to these kit primitives now re-hashes `shell-routes`, the same class of churn as the button already in it. The comment and `docs/engineering/route-js-budgets.md:303` explain it.
-   - **`:root:has([data-lax-density="staff"])`.** Only the staff shell sets `data-lax-density="staff"` (`packages/staff-ui/src/shell/staff-shell.tsx:122-128`), plus the admin kit reference. No public, Account, Shop or lax.art page renders it, so staff timings cannot leak there. On a client-side navigation away from `/admin`, the shell unmounts and the scope drops.
-
-     Selector cost is acceptable:
-     - The subjects are `[data-lax-motion]` and `[data-sonner-toaster]`, so the rule is matched only on overlay layers.
-     - Chromium invalidates `:has()` on insertions or attribute changes involving `data-lax-density`, which happen on shell mount only.
-     - Browsers without `:has()` drop the rule and fall back to public timings, which is graceful.
-
-   - **Staff timings per layer type.** These are still correct, and the Chromium suite resolves each kind for a plain layer on a staff page: scrim, dialog, side dialog and sheet at 200/150, float at 150/100, tip at 100, toast at 150/100 with no rise.
-   - **Other recheck items.** The Sonner rule, fill modes (entry `none`, exit `forwards`) and `force-allow` are unchanged and still pass.
-   - **Mutations I re-ran myself** against `motion-resolved` + `motion` + `overlay-motion` (55 tests), restoring the file after each:
-     - Staff float rule back to `[data-lax-density="staff"][data-lax-motion="float"]`: 3 failed.
-     - Staff toast rise rule back to `.lax-staff-layer`: 1 failed.
-     - Staff token scope in `theme.css` replaced with `.lax-staff-layer`: 3 failed.
-
-     All were caught.
-
-3. **PR body Tests section: fixed.** It describes the Chromium suite and where it runs in CI. See finding 3 for one stale line in an older section.
-4. **Stylesheet paths: fixed.** `packages/ui/src/test/motion-browser.ts` and `motion-css.ts` resolve the files from `import.meta.url`.
-5. **Dialog and sheet reduced fade: fixed.** `docs/design/motion.md:41-42` says 120ms (`--lax-motion-fade`, within the ≤150ms ceiling).
-
-## Verified OK
-
-- **Tokens only.** No literal durations or easings, and only transform and opacity animate.
-- **Lenis is untouched.** There are no `lenis` changes apart from the existing `data-lenis-prevent` lines and the spec sentence.
-- **No visible change at rest.**
-- **Focus and ARIA are unchanged in code.** Against the merge base, the components differ only by `data-lax-motion`, `data-side` on the sheet, the removed dead classes and the tooltip delays. See finding 1 for the exit window.
-- **Commit messages and PR text are clean.** None of the 5 new commits (`0d6bdfb7`, `9e575e94`, `a19dde52`, `170ccc35`, `ceb55a72`), all authored by mahmoudamrspace, contains a Co-Authored-By, Claude-Session or generated-by line. Neither do the PR title and body.
-
-## Checks run locally
+## Checks run locally (head `4c273a4c`)
 
 - **Setup:** `corepack enable`, `pnpm install --frozen-lockfile`, `pnpm -r --filter './packages/**' build`: ok.
 - **Vitest (`--maxWorkers=2`):**
   - `@auction/ui`: 604/604, including `motion-resolved.test.ts` 32/32 in Chromium with `LAX_REQUIRE_CHROMIUM=1`.
   - `@auction/staff-ui`: 632/632.
-  - `@auction/branding`: 350/350.
-  - apps/web suites related to the changed files: 80/80.
-  - Shop header suites: 17/17.
-- **Typecheck:** ui, staff-ui, account and shop pass. `@auction/web` fails locally only on `Cannot find module '@auction/api/app'`, because apps/api was not built here. This is unrelated, and CI `static-checks` is green.
-- **Lints:** `biome ci` on the 40 changed files is clean, and `lint:client-copy` passes.
-- **Builds:** production builds of LAX Account at main and at main + this head, measured with `scripts/check-route-js-budget.mjs --all` (finding 2 status above).
+- **Typecheck:** `@auction/ui` and `@auction/staff-ui` pass. This commit touches no apps/web source, and CI `static-checks` covers the rest.
+- **Biome:** `biome ci` on the 46 files changed against the merge base is clean, the three e2e specs included.
+- **Seeded browser e2e:** not run locally, because it needs the seeded stack. CI `browser-gates` is the check (above).
 
-## CI (REST check-runs for `ceb55a72`)
+## CI (REST check-runs for `4c273a4c`)
 
-39 succeeded, including `test`, `build`, `ui-chromium`, `ci-result`, `account-browser-gates` and all vitest shards. 2 failed:
-- **`browser-gates`:** finding 1, caused by this PR.
-- **`art-browser-gates`:** `page.goto` timeouts in the lax.art specs. Main `a54b584f` fails the same way (check run 132990973653), so this one is not caused by this PR.
+All checks completed and succeeded:
+- All 35 jobs of the CI workflow, including `test`, `build`, `static-checks`, `ui-chromium`, all vitest shards and `ci-result`.
+- `browser-gates`, `account-browser-gates` and `art-browser-gates` (art also passed this time).
+
+None failed.
