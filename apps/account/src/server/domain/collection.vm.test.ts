@@ -46,7 +46,7 @@ describe("buildCollection", () => {
     ]);
   });
 
-  it("says how many invoices are waiting on identity checks", () => {
+  it("says how many invoices are on hold", () => {
     const owed = (id: string, state: "due" | "in_review") =>
       item({
         id,
@@ -59,13 +59,9 @@ describe("buildCollection", () => {
         },
       });
     const one = [owed("a", "in_review"), owed("b", "due")];
-    expect(buildCollection(buildPortfolioHeader(one), 2).totalDueNote).toBe(
-      "Includes 1 waiting on identity checks.",
-    );
+    expect(buildCollection(buildPortfolioHeader(one), 2).totalDueNote).toBe("Includes 1 on hold.");
     const two = [owed("a", "in_review"), owed("b", "in_review")];
-    expect(buildCollection(buildPortfolioHeader(two), 2).totalDueNote).toBe(
-      "Includes 2 waiting on identity checks.",
-    );
+    expect(buildCollection(buildPortfolioHeader(two), 2).totalDueNote).toBe("Includes 2 on hold.");
   });
 
   it("has no note when nothing is held, or nothing is owed", () => {

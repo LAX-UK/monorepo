@@ -116,12 +116,25 @@ describe("SaleMobileSummaryBar", () => {
     expect(action.className).toContain("bg-lax-ink");
   });
 
-  it("offers Register on an upcoming sale, and View lots to a member who only watches", () => {
-    const { unmount } = renderBar({ status: "scheduled" });
-    expect(screen.getByRole("link", { name: "Register" })).toHaveAttribute("href", "/register");
+  it("offers the primary action it is given, as its one primary button, and View lots without one", () => {
+    const { unmount } = renderBar({
+      status: "scheduled",
+      primaryAction: { label: "Register to bid", href: "#register-to-bid", emphasis: "secondary" },
+    });
+    const action = screen.getByRole("link", { name: "Register to bid" });
+    expect(action).toHaveAttribute("href", "#register-to-bid");
+    expect(action.className).toContain("bg-lax-ink");
+    expect(screen.queryByRole("link", { name: "View lots" })).toBeNull();
     unmount();
-    renderBar({ status: "scheduled", canParticipate: false });
-    expect(screen.getByRole("link", { name: "View lots" })).toBeInTheDocument();
+    renderBar({ status: "scheduled", primaryAction: null });
+    expect(screen.getByRole("link", { name: "View lots" })).toHaveAttribute("href", "#catalog");
+  });
+
+  it("never sends anyone to the create-account page", () => {
+    renderBar({ status: "scheduled" });
+    for (const link of screen.getAllByRole("link")) {
+      expect(link.getAttribute("href")).not.toBe("/register");
+    }
   });
 
   it("offers Add to calendar for an upcoming onsite sale", () => {

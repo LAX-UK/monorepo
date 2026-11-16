@@ -87,7 +87,7 @@ describe("buildNeedsYou", () => {
     ).lines;
     expect(line).toMatchObject({
       title: "Pay for Green Line",
-      meta: "LAX Bid · £2,375.00 · waiting on identity checks",
+      meta: "LAX Bid · £2,375.00 · payment on hold",
       action: { label: "Verify in LAX Bid", shortLabel: "Verify" },
     });
   });

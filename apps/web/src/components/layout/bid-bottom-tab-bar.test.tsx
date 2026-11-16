@@ -110,9 +110,9 @@ describe("BidBottomTabBar badges", () => {
 
   it.each([
     ["a payment due", { paymentsDue: 1 }],
-    ["an account in review", { paymentsDue: 1, paymentsInReview: true }],
+    ["a payment on hold", { paymentsDue: 1, paymentsHold: "review" }],
     ["unread notifications", { unreadNotifications: 3 }],
-  ])("puts a dot on Account for %s", (_name, patch) => {
+  ] as const)("puts a dot on Account for %s", (_name, patch) => {
     session = signedIn({ ...NO_ATTENTION, ...patch });
     render(<BidBottomTabBar />);
     expect(screen.getByTestId("tab-badge-Account")).toBeInTheDocument();

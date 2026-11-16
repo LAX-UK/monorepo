@@ -62,6 +62,8 @@ export function SaleroomDetailView({ vm, jsonLdText, explainerContext }: Saleroo
               sale={vm.sale}
               locationLine={vm.locationLine}
               atgReadOnly={vm.atgReadOnly}
+              registerToBidSale={vm.registerToBidSale}
+              saleHref={vm.basePath}
               {...(vm.liveLotsCount > 0 ? { liveLotsCount: vm.liveLotsCount } : {})}
               {...(vm.isSaleroomSale ? { saleroomLotRefs: vm.saleroomLotRefs } : {})}
             />

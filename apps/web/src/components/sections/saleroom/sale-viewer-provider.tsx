@@ -5,6 +5,8 @@ import type { SaleViewerVM } from "@/lib/marketing/sale-viewer";
 import { type ReactNode, createContext, useContext, useEffect, useState } from "react";
 
 const SaleViewerContext = createContext<SaleViewerVM | null>(null);
+/** The signed-out first render: only a guess until `/me` has answered (or failed). */
+const guesses = new WeakSet<SaleViewerVM>();
 
 /**
  * The person looking at a sale page (CO-7). The page is rendered once, signed out, for everyone;
@@ -22,16 +24,19 @@ export function SaleViewerProvider({
   signedOut: SaleViewerVM;
   children: ReactNode;
 }) {
+  guesses.add(signedOut);
   const [viewer, setViewer] = useState<SaleViewerVM>(signedOut);
 
   useEffect(() => {
     let cancelled = false;
     fetchSaleViewer(saleId)
       .then((next) => {
-        if (!cancelled && next) setViewer(next);
+        // A copy when `/me` cannot say: still signed out, but no longer a guess.
+        if (!cancelled) setViewer((guess) => next ?? { ...guess });
       })
       .catch(() => {
         // Stays signed out: the public page still works.
+        if (!cancelled) setViewer((guess) => ({ ...guess }));
       });
     return () => {
       cancelled = true;
@@ -45,4 +50,9 @@ export function useSaleViewer(): SaleViewerVM {
   const viewer = useContext(SaleViewerContext);
   if (!viewer) throw new Error("useSaleViewer must be used within SaleViewerProvider");
   return viewer;
+}
+
+/** Whether the viewer is the person's real answer from `/me`, not the signed-out first render. */
+export function useSaleViewerLoaded(): boolean {
+  return !guesses.has(useSaleViewer());
 }

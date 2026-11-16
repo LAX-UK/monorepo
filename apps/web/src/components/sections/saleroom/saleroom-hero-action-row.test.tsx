@@ -40,7 +40,7 @@ const hero = {
 } satisfies SaleHeroVM;
 
 describe("SaleroomHeroActionRow", () => {
-  it("shows a single register CTA for guests on online sales", () => {
+  it("shows a single register CTA for guests on online sales, bringing them back to the sale", () => {
     render(
       <SaleroomHeroActionRow
         hero={hero}
@@ -63,7 +63,7 @@ describe("SaleroomHeroActionRow", () => {
     expect(screen.getAllByRole("link", { name: /register to bid/i })).toHaveLength(1);
     expect(screen.getByRole("link", { name: /register to bid/i })).toHaveAttribute(
       "href",
-      "/api/auth/login?next=%2Fhome&intent=signup",
+      "/api/auth/login?next=%2Fsales%2Ftest%2Fsale-1&intent=signup",
     );
     expect(screen.queryByRole("link", { name: /browse lots/i })).not.toBeInTheDocument();
   });
@@ -120,6 +120,13 @@ describe("SaleroomHeroActionRow", () => {
         saleId="sale-1"
         saleHref="/sales/test/sale-1"
         initialFollowing={false}
+        registerToBid={{
+          show: true,
+          buyerEntities: [],
+          myRegistrations: [],
+          kycApproved: false,
+          saleCurrency: "GBP",
+        }}
         utility={<button type="button">Share</button>}
       />,
     );
