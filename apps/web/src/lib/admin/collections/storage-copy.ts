@@ -89,6 +89,11 @@ export const STORAGE_COPY = {
   charging: {
     title: "Charging",
     switchLabel: "Raise storage invoices",
+    /** Under the switch while charging is off, so the card is not left half empty. */
+    offState: {
+      title: "No storage invoices are being raised",
+      body: "Nothing is invoiced until the switch above is on.",
+    },
     /** What read-only staff see beside "Raise storage invoices". */
     value: { on: "On", off: "Off" },
     explanation:

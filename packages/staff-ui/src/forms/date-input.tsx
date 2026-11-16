@@ -64,6 +64,8 @@ export type DateInputProps = Omit<
   max?: string;
   /** Leaves out the calendar button, e.g. for dates of birth typed from a document. */
   noCalendar?: boolean;
+  /** The clock for the example in the empty field. Read once on mount when not given. */
+  now?: Date;
 };
 
 /**
@@ -87,10 +89,23 @@ export function dateInputExample(
  */
 export const DateInput = React.forwardRef<HTMLInputElement, DateInputProps>(
   (
-    { value, onValueChange, min, max, noCalendar = false, onBlur, placeholder, disabled, ...props },
+    {
+      value,
+      onValueChange,
+      min,
+      max,
+      noCalendar = false,
+      now,
+      onBlur,
+      placeholder,
+      disabled,
+      ...props
+    },
     ref,
   ) => {
     const field = useField();
+    // Read the clock once, so a re-render never changes the example and renders stay pure.
+    const [mountedAt] = React.useState(() => now ?? new Date());
     const [text, setText] = React.useState(() => (value ? formatStaffDay(value) : ""));
     const [open, setOpen] = React.useState(false);
     const lastEmitted = React.useRef<string | null>(value);
@@ -117,7 +132,7 @@ export const DateInput = React.forwardRef<HTMLInputElement, DateInputProps>(
         type="text"
         autoComplete="off"
         spellCheck={false}
-        placeholder={placeholder ?? dateInputExample(min, max)}
+        placeholder={placeholder ?? dateInputExample(min, max, now ?? mountedAt)}
         disabled={isDisabled}
         className="tabular-nums"
         value={text}
