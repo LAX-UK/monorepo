@@ -6,6 +6,8 @@ const REFUSALS = {
   terms_not_found: [404, "We couldn't find that change. Reload to see the current terms."],
   /** A change starts tomorrow at the earliest, in London. */
   start_not_in_future: [422, "Choose a date from tomorrow."],
+  /** A change starts within two years, so a mistyped year cannot hold up every other change. */
+  start_too_late: [422, "Choose a date within the next 2 years."],
   date_taken: [409, "Another change already starts on that day. Choose another date."],
   /** A place has one change waiting at a time, so staff edit it rather than stack another. */
   change_already_scheduled: [
@@ -39,7 +41,7 @@ export type CollectionStorageResult<T> = Result<T, CollectionStorageError>;
 
 export function storageError(code: CollectionStorageErrorCode): CollectionStorageError {
   const [status, message] = REFUSALS[code];
-  return code === "start_not_in_future" || code === "date_taken"
+  return code === "start_not_in_future" || code === "start_too_late" || code === "date_taken"
     ? { code, status, message, issues: [{ field: "effectiveFrom", message }] }
     : { code, status, message };
 }

@@ -118,6 +118,20 @@ describe("reading the Storage tab", () => {
     expect(tab.inForce?.effectiveFrom).toBe("2026-12-01");
     expect(tab.scheduled).toBeNull();
   });
+
+  it("uses the London day in summer time, when it is already tomorrow in London", async () => {
+    // 23:30 UTC on 1 Jul is 00:30 on 2 Jul in London (BST), so 2 Jul is today, not tomorrow.
+    const { service, storage } = setup(new Date("2026-07-01T23:30:00Z"));
+    expect((await value(service.get(VENUE))).today).toBe("2026-07-02");
+    expect(
+      await refusal(service.schedule(FINANCE, VENUE, { ...CHANGE, effectiveFrom: "2026-07-02" })),
+    ).toMatchObject({ code: "start_not_in_future" });
+    expect(storage.terms).toEqual([]);
+    const tab = await value(
+      service.schedule(FINANCE, VENUE, { ...CHANGE, effectiveFrom: "2026-07-03" }),
+    );
+    expect(tab.scheduled?.effectiveFrom).toBe("2026-07-03");
+  });
 });
 
 describe("splitTerms", () => {
@@ -199,6 +213,22 @@ describe("scheduling a change", () => {
     expect(tab.scheduled?.effectiveFrom).toBe("2026-11-16");
   });
 
+  it("refuses a start more than 2 years ahead, so a mistyped year cannot block changes", async () => {
+    const { service, storage } = setup();
+    expect(
+      await refusal(service.schedule(FINANCE, VENUE, { ...CHANGE, effectiveFrom: "2028-11-16" })),
+    ).toMatchObject({
+      code: "start_too_late",
+      status: 422,
+      issues: [{ field: "effectiveFrom" }],
+    });
+    expect(storage.terms).toEqual([]);
+    const tab = await value(
+      service.schedule(FINANCE, VENUE, { ...CHANGE, effectiveFrom: "2028-11-15" }),
+    );
+    expect(tab.scheduled?.effectiveFrom).toBe("2028-11-15");
+  });
+
   it("keeps one change waiting at a time", async () => {
     const { service, storage } = setup();
     storage.seed(VENUE, CHANGE);
@@ -218,6 +248,17 @@ describe("scheduling a change", () => {
 });
 
 describe("editing and cancelling the scheduled change", () => {
+  it("refuses an edit that moves the start more than 2 years ahead", async () => {
+    const { service, storage } = setup();
+    const next = storage.seed(VENUE, CHANGE);
+    expect(
+      await refusal(
+        service.edit(FINANCE, VENUE, next.id, { ...CHANGE, effectiveFrom: "2062-12-01" }),
+      ),
+    ).toMatchObject({ code: "start_too_late", status: 422 });
+    expect(storage.audit).toEqual([]);
+  });
+
   it("edits it and audits the values before and after", async () => {
     const { service, storage } = setup();
     storage.seed(VENUE, IN_FORCE);
@@ -369,5 +410,27 @@ describe("history", () => {
       });
     }
     expect((await value(service.get(VENUE))).history).toHaveLength(STORAGE_HISTORY_LIMIT);
+  });
+
+  it("keeps place changes in view however many per-lot rows are newer", async () => {
+    const { service, storage } = setup();
+    await value(service.schedule(FINANCE, VENUE, CHANGE));
+    for (let i = 0; i < STORAGE_HISTORY_LIMIT * 5; i++) {
+      storage.audit.push({
+        id: `lot-row-${i}`,
+        venueId: VENUE,
+        lotId: `lot-${i}`,
+        action: "extension_granted",
+        actorUserId: null,
+        actorName: null,
+        before: null,
+        after: { days: 1 },
+        reason: "Abroad",
+        createdAt: new Date(NOW.getTime() + (i + 1) * 60_000),
+      });
+    }
+    expect((await value(service.get(VENUE))).history.map((row) => row.action)).toEqual([
+      "terms_scheduled",
+    ]);
   });
 });

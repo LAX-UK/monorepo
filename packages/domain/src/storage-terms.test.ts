@@ -16,6 +16,7 @@ import {
   formatStorageNotice,
   formatStorageTerms,
   isStoragePence,
+  latestStorageTermsStart,
   storageClearedOn,
   storageTermsForLot,
 } from "./storage-terms.js";
@@ -490,5 +491,16 @@ describe("pence and day guards", () => {
         handlingFeePence: MAX_STORAGE_AMOUNT_PENCE,
       }),
     ).not.toThrow();
+  });
+});
+
+describe("the latest start for a change", () => {
+  it.each([
+    ["2026-11-15", "2028-11-15"],
+    ["2026-01-31", "2028-01-31"],
+    ["2028-02-29", "2030-02-28"],
+    ["2026-12-31", "2028-12-31"],
+  ])("from %s is %s", (today, latest) => {
+    expect(latestStorageTermsStart(today)).toBe(latest);
   });
 });

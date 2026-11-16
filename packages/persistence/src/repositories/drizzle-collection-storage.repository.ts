@@ -10,7 +10,7 @@ import {
   sale,
   venue,
 } from "@auction/db/schema";
-import { and, asc, desc, eq, isNull, lte, sql } from "drizzle-orm";
+import { type SQL, and, asc, desc, eq, gt, isNull, lte, sql } from "drizzle-orm";
 import { MAX_STORAGE_EXTENSION_DAYS_PER_LOT } from "../interfaces/collection-storage.repository.js";
 import type {
   AddStorageExtensionOutcome,
@@ -160,6 +160,10 @@ export class DrizzleCollectionStorageRepository implements ICollectionStorageRep
       await lockCollectionPlace(tx, venueId);
       if (await this.startIsTaken(tx, venueId, values.effectiveFrom)) {
         return { outcome: "date_taken" };
+      }
+      // Checked under the place lock, so two changes sent at the same moment cannot both wait.
+      if (await this.changeIsWaiting(tx, venueId, today)) {
+        return { outcome: "change_already_scheduled" };
       }
       const [row] = await tx
         .insert(collectionStorageTerms)
@@ -431,6 +435,17 @@ export class DrizzleCollectionStorageRepository implements ICollectionStorageRep
   }
 
   async listAudit(venueId: string, limit: number): Promise<StorageAuditRecord[]> {
+    return this.readAudit(eq(collectionStorageAudit.venueId, venueId), limit);
+  }
+
+  async listPlaceAudit(venueId: string, limit: number): Promise<StorageAuditRecord[]> {
+    return this.readAudit(
+      and(eq(collectionStorageAudit.venueId, venueId), isNull(collectionStorageAudit.lotId)),
+      limit,
+    );
+  }
+
+  private async readAudit(where: SQL | undefined, limit: number): Promise<StorageAuditRecord[]> {
     const rows = await this.db
       .select({ audit: collectionStorageAudit, actorName: bidIdentityDirectory.name })
       .from(collectionStorageAudit)
@@ -438,7 +453,7 @@ export class DrizzleCollectionStorageRepository implements ICollectionStorageRep
         bidIdentityDirectory,
         eq(bidIdentityDirectory.subjectId, collectionStorageAudit.actorUserId),
       )
-      .where(eq(collectionStorageAudit.venueId, venueId))
+      .where(where)
       .orderBy(desc(collectionStorageAudit.createdAt), desc(collectionStorageAudit.id))
       .limit(limit);
     return rows.map((row) => toAudit(row.audit, row.actorName));
@@ -506,6 +521,22 @@ export class DrizzleCollectionStorageRepository implements ICollectionStorageRep
       )
       .limit(1);
     return existing !== undefined;
+  }
+
+  /** Whether a live version of the place's terms has not started on `today`. */
+  private async changeIsWaiting(tx: Tx, venueId: string, today: string): Promise<boolean> {
+    const [waiting] = await tx
+      .select({ id: collectionStorageTerms.id })
+      .from(collectionStorageTerms)
+      .where(
+        and(
+          eq(collectionStorageTerms.venueId, venueId),
+          isNull(collectionStorageTerms.cancelledAt),
+          gt(collectionStorageTerms.effectiveFrom, today),
+        ),
+      )
+      .limit(1);
+    return waiting !== undefined;
   }
 
   /** The place a lot is collected from (its sale's venue) and whether it is marked large. */

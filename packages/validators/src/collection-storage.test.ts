@@ -40,6 +40,7 @@ describe("storage terms body", () => {
     ["a rate over £500.00", { standardDailyPence: 50_001 }],
     ["a large rate over £500.00", { largeDailyPence: 50_001 }],
     ["a negative large rate", { largeDailyPence: -700 }],
+    ["a large band of £0.00 (turn the band off instead)", { largeDailyPence: 0 }],
     ["a handling fee over £500.00", { handlingFeePence: 50_001 }],
     ["a fractional handling fee", { handlingFeePence: 0.5 }],
     ["negative free days", { freeDays: -1 }],

@@ -24,6 +24,21 @@ export const MAX_STORAGE_FREE_DAYS = 90;
 /** The most a daily rate or the handling fee may be, in pence: £500.00. */
 export const MAX_STORAGE_AMOUNT_PENCE = 50_000;
 
+/** How far ahead a change to the terms may start, in years: a mistyped year is refused. */
+export const MAX_STORAGE_TERMS_LEAD_YEARS = 2;
+
+/**
+ * The latest day a change scheduled on `today` may start: the same day
+ * `MAX_STORAGE_TERMS_LEAD_YEARS` on (29 Feb becomes 28 Feb). Days are `YYYY-MM-DD`.
+ */
+export function latestStorageTermsStart(today: string): string {
+  const [year, month, day] = today.split("-").map(Number) as [number, number, number];
+  const target = year + MAX_STORAGE_TERMS_LEAD_YEARS;
+  const lastOfMonth = new Date(Date.UTC(target, month, 0)).getUTCDate();
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${target}-${pad(month)}-${pad(Math.min(day, lastOfMonth))}`;
+}
+
 /** Free days a lot won before its place had any terms keeps (ST9). */
 export const LEGACY_FREE_STORAGE_DAYS = 30;
 

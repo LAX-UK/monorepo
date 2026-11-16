@@ -92,7 +92,9 @@ export type ScheduleStorageTermsOutcome =
   | { outcome: "venue_not_found" }
   /** Terms start from tomorrow onward: the start date is today or earlier. */
   | { outcome: "start_not_in_future" }
-  | { outcome: "date_taken" };
+  | { outcome: "date_taken" }
+  /** One change waits at a time: a live version already starts after `today`. */
+  | { outcome: "change_already_scheduled" };
 
 export type ChangeStorageTermsOutcome =
   | { outcome: "saved"; terms: StorageTermsRecord }
@@ -200,4 +202,6 @@ export interface ICollectionStorageRepository {
 
   /** The audit of a place, newest first. */
   listAudit(venueId: string, limit: number): Promise<StorageAuditRecord[]>;
+  /** The changes to the place as a whole (no per-lot rows), newest first. */
+  listPlaceAudit(venueId: string, limit: number): Promise<StorageAuditRecord[]>;
 }

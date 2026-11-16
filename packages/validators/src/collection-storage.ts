@@ -37,8 +37,11 @@ export const storageTermsBodySchema = z
     freeDays: z.number().int().min(0).max(MAX_STORAGE_FREE_DAYS),
     countMode: z.enum(COUNT_MODES),
     standardDailyPence: pence,
-    /** `null` turns the large band off: large works pay the standard rate. */
-    largeDailyPence: pence.nullable(),
+    /**
+     * `null` turns the large band off: large works pay the standard rate. A band that is on
+     * charges something; £0.00 would tell buyers "or £0.00 for works over 150 cm".
+     */
+    largeDailyPence: pence.min(1).nullable(),
     handlingFeePence: pence,
   })
   .strict();

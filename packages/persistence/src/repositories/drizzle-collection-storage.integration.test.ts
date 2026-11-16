@@ -161,7 +161,7 @@ describe.skipIf(!HAS_DB)("collection storage (integration)", () => {
     await storage.scheduleTerms(
       venueId,
       { ...TERMS, effectiveFrom: "2031-06-01", freeDays: 7 },
-      TODAY,
+      "2031-03-11",
       next(),
     );
     expect(await storage.findTermsInForce(venueId, "2031-03-10")).toBeNull();
@@ -176,7 +176,7 @@ describe.skipIf(!HAS_DB)("collection storage (integration)", () => {
       storage.scheduleTerms(
         venueId,
         { ...TERMS, effectiveFrom: "2031-07-01", freeDays: 91 },
-        TODAY,
+        "2031-06-01",
         next(),
       ),
     ).rejects.toThrow();
@@ -184,7 +184,7 @@ describe.skipIf(!HAS_DB)("collection storage (integration)", () => {
       storage.scheduleTerms(
         venueId,
         { ...TERMS, effectiveFrom: "2031-07-01", reason: "  " },
-        TODAY,
+        "2031-06-01",
         next(),
       ),
     ).rejects.toThrow();
@@ -390,7 +390,7 @@ describe.skipIf(!HAS_DB)("collection storage (integration)", () => {
     const future = await storage.scheduleTerms(
       venueId,
       { ...TERMS, effectiveFrom: "2031-09-01", freeDays: 3 },
-      TODAY,
+      "2031-06-01",
       next(),
     );
     const id = future.outcome === "scheduled" ? future.terms.id : "";
@@ -454,6 +454,50 @@ describe.skipIf(!HAS_DB)("collection storage (integration)", () => {
       await db.execute(sql`delete from lot where id = ${lateLot}`);
       await db.execute(sql`delete from sale where id = ${lateSale}`);
     }
+  });
+
+  it("keeps one change waiting at a time, even when two are sent at the same moment", async () => {
+    const racedVenue = randomUUID();
+    await db.execute(sql`
+      insert into venue (id, legal_entity_id, name, address_line1, city, postcode, country)
+      values (${racedVenue}, ${entityId}, 'Collection storage IT raced place', '3 Test Street', 'London', 'W1W 6YW', 'GB')`);
+    try {
+      const results = await Promise.all(
+        ["2031-12-01", "2032-01-01", "2032-02-01", "2032-03-01"].map((effectiveFrom) =>
+          storage.scheduleTerms(racedVenue, { ...TERMS, effectiveFrom }, TODAY, next()),
+        ),
+      );
+      expect(results.filter((r) => r.outcome === "scheduled")).toHaveLength(1);
+      expect(results.filter((r) => r.outcome === "change_already_scheduled")).toHaveLength(3);
+      expect(await storage.listTerms(racedVenue)).toHaveLength(1);
+      expect(await storage.listAudit(racedVenue, 10)).toHaveLength(1);
+      // Once it has started, the next change may wait.
+      expect(
+        (
+          await storage.scheduleTerms(
+            racedVenue,
+            { ...TERMS, effectiveFrom: "2032-06-01" },
+            "2032-05-01",
+            next(),
+          )
+        ).outcome,
+      ).toBe("scheduled");
+    } finally {
+      await db.execute(sql`delete from collection_storage_audit where venue_id = ${racedVenue}`);
+      await db.execute(sql`delete from collection_storage_terms where venue_id = ${racedVenue}`);
+      await db.execute(sql`delete from collection_place where venue_id = ${racedVenue}`);
+      await db.execute(sql`delete from venue where id = ${racedVenue}`);
+    }
+  });
+
+  it("lists the place's own changes without per-lot rows", async () => {
+    const all = await storage.listAudit(venueId, 1000);
+    expect(all.some((row) => row.lotId !== null)).toBe(true);
+    const place = await storage.listPlaceAudit(venueId, 1000);
+    expect(place.length).toBeGreaterThan(0);
+    expect(place.every((row) => row.lotId === null)).toBe(true);
+    expect(place).toEqual(all.filter((row) => row.lotId === null));
+    expect(await storage.listPlaceAudit(venueId, 1)).toHaveLength(1);
   });
 
   it("lists the audit newest first and limited", async () => {

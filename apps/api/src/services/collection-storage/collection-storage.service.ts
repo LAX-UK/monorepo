@@ -1,4 +1,4 @@
-import { londonDateKey } from "@auction/domain";
+import { latestStorageTermsStart, londonDateKey } from "@auction/domain";
 import type {
   ICollectionSettingsReader,
   ICollectionStorageRepository,
@@ -54,7 +54,7 @@ export type CollectionStorageDeps = {
     | "cancelScheduledTerms"
     | "findCharging"
     | "setRaiseInvoices"
-    | "listAudit"
+    | "listPlaceAudit"
   >;
   /** The places staff can set up, to tell an unknown place from one with no terms yet. */
   places: Pick<ICollectionSettingsReader, "venues">;
@@ -106,6 +106,13 @@ export function splitTerms(
 
 const refuse = (code: CollectionStorageErrorCode) => err(storageError(code));
 
+/** Why a start date cannot be used on `today`, or null: from tomorrow, within two years. */
+function startProblem(effectiveFrom: string, today: string): CollectionStorageErrorCode | null {
+  if (effectiveFrom <= today) return "start_not_in_future";
+  if (effectiveFrom > latestStorageTermsStart(today)) return "start_too_late";
+  return null;
+}
+
 /**
  * The Storage tab's reads and changes. The repository writes each change and its audit row in one
  * transaction (who, when, before, after, why); this decides what may change and answers with the
@@ -137,8 +144,7 @@ export class CollectionStorageAdminService implements ICollectionStorageAdminSer
     const [versions, charging, audit] = await Promise.all([
       this.deps.storage.listTerms(venueId),
       this.deps.storage.findCharging(venueId),
-      // Per-lot rows share the table; read enough to fill the History after leaving them out.
-      this.deps.storage.listAudit(venueId, STORAGE_HISTORY_LIMIT * 4),
+      this.deps.storage.listPlaceAudit(venueId, STORAGE_HISTORY_LIMIT),
     ]);
     const { inForce, scheduled } = splitTerms(versions, today);
     return {
@@ -158,9 +164,9 @@ export class CollectionStorageAdminService implements ICollectionStorageAdminSer
   ): Promise<CollectionStorageResult<StaffStorageSettings>> {
     if (!(await this.placeExists(venueId))) return refuse("venue_not_found");
     const today = this.today();
-    if (body.effectiveFrom <= today) return refuse("start_not_in_future");
-    const { scheduled } = splitTerms(await this.deps.storage.listTerms(venueId), today);
-    if (scheduled) return refuse("change_already_scheduled");
+    const problem = startProblem(body.effectiveFrom, today);
+    if (problem) return refuse(problem);
+    // The repository refuses a second waiting change under the place lock.
     const outcome = await this.deps.storage.scheduleTerms(venueId, body, today, this.change(actor));
     if (outcome.outcome !== "scheduled") return refuse(outcome.outcome);
     return ok(await this.read(venueId));
@@ -189,7 +195,8 @@ export class CollectionStorageAdminService implements ICollectionStorageAdminSer
     const today = this.today();
     const found = await this.scheduledVersion(venueId, termsId, today);
     if (found.isErr()) return err(found.error);
-    if (body.effectiveFrom <= today) return refuse("start_not_in_future");
+    const problem = startProblem(body.effectiveFrom, today);
+    if (problem) return refuse(problem);
     const outcome = await this.deps.storage.editScheduledTerms(
       termsId,
       body,

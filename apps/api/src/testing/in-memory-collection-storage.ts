@@ -20,7 +20,7 @@ type Port = Pick<
   | "cancelScheduledTerms"
   | "findCharging"
   | "setRaiseInvoices"
-  | "listAudit"
+  | "listPlaceAudit"
 >;
 
 const termsValues = (record: StorageTermsValues): Record<string, unknown> => ({
@@ -34,7 +34,8 @@ const termsValues = (record: StorageTermsValues): Record<string, unknown> => ({
 
 /**
  * Storage terms, the charging switch and the audit in memory, with the same rules as the
- * database repository: starts after `today`, one live version per start date, versions that have
+ * database repository: starts after `today`, one live version per start date, one change waiting
+ * at a time, versions that have
  * started are history, charging needs a VAT treatment, and every change writes an audit row.
  */
 export class InMemoryCollectionStorage implements Port {
@@ -116,6 +117,13 @@ export class InMemoryCollectionStorage implements Port {
   ): Promise<ScheduleStorageTermsOutcome> {
     if (values.effectiveFrom <= today) return { outcome: "start_not_in_future" };
     if (this.taken(venueId, values.effectiveFrom)) return { outcome: "date_taken" };
+    if (
+      this.terms.some(
+        (t) => t.venueId === venueId && t.cancelledAt === null && t.effectiveFrom > today,
+      )
+    ) {
+      return { outcome: "change_already_scheduled" };
+    }
     const record: StorageTermsRecord = {
       ...values,
       id: this.nextId("terms"),
@@ -196,9 +204,9 @@ export class InMemoryCollectionStorage implements Port {
     return { outcome: "saved", settings };
   }
 
-  async listAudit(venueId: string, limit: number): Promise<StorageAuditRecord[]> {
+  async listPlaceAudit(venueId: string, limit: number): Promise<StorageAuditRecord[]> {
     return this.audit
-      .filter((row) => row.venueId === venueId)
+      .filter((row) => row.venueId === venueId && row.lotId === null)
       .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
       .slice(0, limit);
   }
