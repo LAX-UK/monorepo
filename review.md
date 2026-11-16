@@ -136,3 +136,48 @@ File references below are on the PR head unless they say otherwise.
 
 - CI on head `e12105e6`: all 41 check runs succeeded, including `ci-result`, `build`, `ui-chromium` (now also running `image-fade-resolved`), `static-checks`, `browser-gates`, `art-browser-gates` and `account-browser-gates`.
 - The PR body follows the template, with Summary, Proof, Quality review, Test evidence and Follow-ups, and has no AI footer. Apart from the missing recordings, it is complete.
+
+## Final recheck
+
+- Head `9c931137` (two new commits since `e12105e6`: `50062f8c` and `9c931137`). Merge base with main is `121004fd`. Main has since moved to `dd81f7f2` (#1504, Shop help centre). That change does not touch these files.
+- I read the PR body as it is now, the CI check runs on `9c931137`, and the diff `e12105e6..9c931137`. I also extracted frames from each committed clip and looked at them.
+- Review only. The PR branch was not changed.
+
+### Item by item
+
+| # | Item | Status | Evidence |
+|---|---|---|---|
+| B1 | Short recordings committed and linked | **Done** | Five webm clips are in `docs/design/screenshots/motion-6/clips/`, and the README there describes them (`README.md:26-50`). See the table below for what each one shows. The PR's "Short recordings" section links each clip, and four of the links work. They are harness pages that use the branch's compiled lax.art CSS and the components' real class names, not the live routes. The PR body (Short recordings and Skipped gates) and the README both say so plainly. For MO14 "Looks" that is acceptable. |
+| N1 | lax.art hero entrance: lax.art-scoped token, at least as slow as 650ms, transform only, never hidden at rest; MO15 edit reverted | **Done** | `apps/art/src/app/base.css:142` defines `--art-hero-panel-duration: var(--motion-duration-xl)`, and `:195` sets `--motion-duration-xl: 900ms`. `:143-144` sets `--animate-art-hero-panel-in: art-hero-panel-in var(--art-hero-panel-duration) var(--motion-ease-emphasize) both`. So the entrance is now 900ms, 250ms slower than main's 650ms, which fits Q3. The new token is defined only in lax.art's `base.css`. The keyframes at `:163-170` go `transform: translateY(1rem)` → `translateY(0)`, with no opacity. The component uses it only behind `motion-safe:` (`art-home-hero.tsx:32`). `home-hero-motion.test.ts:31-46` checks the keyframes and the new token. In `docs/design/motion.md:64` (MO15), the clause "on lax.art's editorial reveal tokens `--motion-duration-lg` and `--motion-ease-emphasize`" is gone. The text now says only "transform only, from a visible start; the drift stays, Q3". The "done in PR 6" status notes stay; they follow the existing "done in PR 4" convention. One nit: the comment at `base.css:140` is 147 characters wide, but CI static checks passed. |
+| N2 | Route JS shows 0 higher with a pinned Sentry release; no budget changes | **Mostly done, but the PR body table is broken** | The PR now says both builds used `SENTRY_RELEASE=pinned-release-for-comparison`, with "0 routes higher on any route the budget checks". One entry is +136 B gzip: Bid `/admin/(shared)/collections`, put down to module-id renumbering, with the raw chunk 3 B smaller. That route is outside the budget: `scripts/route-js-budgets.json` sets `apps/web.ignore: ["^/admin", "^/dev/", "^/display/"]`. The PR discloses it openly. No file in the diff matches `budget`, `baseline`, `ratchet` or `allowlist` (checked with `git diff --name-only 121004fd..9c931137`). However, the main → head table in the PR body has lost its numbers. Every Largest, Frame and Page cell reads "KB → KB KB", so the "0 higher" table cannot be read. I could not rebuild four apps here to check the per-entry figures myself. |
+| N3 | Cover-picture comment | **Done** | `packages/marketing-ui/src/cover/cover-picture.tsx:16-17`: "(only non-first slides: slide 0 is eager, so it is never hidden, and the others are off screen, so their one-time blink is not seen)". The line at `:17` is also wider than 100 characters (nit). |
+| N4 | Basket thumbnails noted | **Done** | The PR body has a "Basket thumbnails (Shop)" bullet saying they appear at once on purpose and are lazy images without the fade. |
+| N5 | PR body links work | **Not fixed** | The four links under "Still screenshots" (lax.art first frame, Bid sign-in, Shop print) and two under "Short recordings" (hovered card, reduced motion) still put backticks inside the link target. They now use one to nine backticks, for example ``[before](```` https://…/bid-sign-in-1440-light.png) ````. GitHub renders these as literal text, not links. Even so, "Changes after review" says "the broken screenshot links are fixed in this description". The `tree/` link and the hero and grid clip links work. |
+| N6 / N7 | `MarketingHeroReveal` unused; event marquee | Left as noted, and listed as such in "Changes after review". That is fine. |
+| — | Tokens only, compositor only, Lenis untouched | **OK** | The only new duration is a token alias. The only changed property is `transform`. The added CSS has no literal ms, `cubic-bezier`, `transition-all` or `will-change`; the only matches are in test fixtures and in the comment. No Lenis file is in the diff. CI `static-checks` (`lint:compositor`) passed on `9c931137`. |
+| — | SEO parity | **OK** | Nothing new since the first review: the two new commits change CSS, a comment, a test, docs and binary clips only. |
+| — | CI green | **No** | On `9c931137`, 40 of 41 check runs succeeded, including `ci-result`, `build`, `ui-chromium`, `static-checks`, `browser-gates` and `account-browser-gates`. **`art-browser-gates` failed** (job 133425960042). The test `e2e/art-journeys.spec.ts:237`, "favourites tabs are signed-in routes" on `chromium-mobile`, failed three times out of three: it expected `/account/favourites/follows` but the URL stayed `/account/favourites`. The other 141 tests passed. The diff does not touch favourites or account tabs: its lax.art files are only `base.css` and the hero test. So this looks unrelated or flaky, but the required gate is red. Main's merge-group run of the same workflow (43907193850) passed. |
+| — | "Changes after review" honest | **Partly** | Most of it is accurate. Two lines are not. "the broken screenshot links are fixed in this description" is false (see N5). "Not re-run after this change: ... CI on the new head" is out of date: CI did run on `9c931137`, and one gate failed. |
+| — | No AI footer or trailers | **OK** | The PR body has no generated-by footer. The commits `f1d4aabe..9c931137` have no `Co-Authored-By` or `Claude` trailers. |
+
+### What the clips show
+
+I extracted frames at 4 fps with ffmpeg:
+
+| Clip | Length and size | What it shows |
+|---|---|---|
+| `art-home-hero-1440.webm` | 4.1 s, 1440×900 | The panel, h1, copy and CTA are drawn from the first painted frame and settle a few pixels up. The photo drift runs. |
+| `art-home-hero-375.webm` | 4.0 s, 374×812 | The same at phone width. The panel is visible from the first frame and then settles. |
+| `lazy-fade-grid-1440.webm` | 2.6 s | Hatched placeholders, then the pictures fade in, with the intermediate frames visible. |
+| `lazy-fade-in-hovered-card-1440.webm` | 2.7 s | Card 1 is hovered with its link underlined, and its picture fades in. The 1.04 zoom is too small to see in the extracted frames. |
+| `reduced-motion-hero-and-lazy-fade-1440.webm` | 3.8 s | The hero panel does not move, and the grid fades quickly. |
+
+### To ship
+
+1. Re-run `art-browser-gates` on `9c931137` and get it green. If it fails again, show that the same test also fails on main.
+2. Edit the PR body:
+   - Fix the six links that have backticks in their targets.
+   - Restore the numbers in the route-JS table.
+   - Correct the two out-of-date lines in "Changes after review".
+
+All of this is the PR description and a CI re-run. No code change is needed. Every code item from the review is resolved.
