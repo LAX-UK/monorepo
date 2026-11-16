@@ -18,6 +18,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import type { AccountingProvider } from "../../interfaces/accounting.js";
 import { holdAccountingTablesLock } from "../../testing/accounting-tables-lock.js";
 import { createAccountingRepositories } from "./create-accounting-repositories.js";
+import { DrizzleAccountingDocumentWorkQueue } from "./drizzle-accounting-document.work-queue.js";
 
 const OWNER_URL = process.env.DATABASE_URL;
 const WORKER_URL = process.env.DATABASE_URL_WORKER;
@@ -447,56 +448,113 @@ describe.skipIf(!HAS_DB)("accounting persistence (integration)", { timeout: 60_0
       }
     });
 
-    /** Puts the documents a fairness case claimed out of the way of the cases after it. */
-    const retire = async () => {
-      await owner.execute(sql`
-        update accounting_document
-           set state = 'cancelled', lease_token = null, lease_expires_at = null,
-               updated_at = ${new Date(T0)}
-         where state = 'sending'`);
-    };
+    describe("turns between legal entities", () => {
+      // Each case gets its own queue, so turns taken in earlier cases do not carry over. The clock
+      // stays at T0 like the rest of the file, and the beforeEach drain cancels whatever is left
+      // pending or sending, so nothing here is newer than the documents later cases read back.
+      const freshQueue = () => new DrizzleAccountingDocumentWorkQueue(worker, clock);
+      const claimAll = async (queue: DrizzleAccountingDocumentWorkQueue, count: number) => {
+        const order: string[] = [];
+        for (let i = 0; i < count; i += 1) {
+          const claimed = must(
+            await queue.claimNext({
+              provider: "books",
+              leaseToken: randomUUID(),
+              leaseMs: LEASE_MS,
+              targetModes: ALL_MODES,
+            }),
+          );
+          order.push(claimed?.id ?? "none");
+          nowMs += 1000;
+        }
+        return order;
+      };
+      const registerAll = async (products: readonly Product[]) => {
+        const ids: string[] = [];
+        for (const product of products) {
+          ids.push((await register(invoice(product, newId()))).stored.id);
+          nowMs += 1000;
+        }
+        return ids;
+      };
 
-    it("takes turns between legal entities, so a backlog in one does not starve the other", async () => {
-      await drain();
-      // A quiet day: earlier cases left nothing served inside the one-hour fairness window.
-      nowMs = T0 + 40 * 24 * 60 * 60_000;
-      await setModes("test_org");
-      const busy: string[] = [];
-      for (let i = 0; i < 4; i += 1) {
-        busy.push((await register(invoice("bid", newId()))).stored.id);
-        nowMs += 1000;
-      }
-      const quiet = (await register(invoice("shop", newId()))).stored.id;
-      nowMs += 1000;
-      const order: string[] = [];
-      for (let i = 0; i < 5; i += 1) {
-        const claimed = must(await claim("books"));
-        order.push(claimed?.id ?? "none");
-        nowMs += 1000;
-      }
-      // Both entities are served at once: the later Shop document is second, not fifth.
-      expect(order[0]).toBe(busy[0]);
-      expect(order[1]).toBe(quiet);
-      // The rest of the busy entity's documents then follow, oldest first.
-      expect(order.slice(2)).toEqual(busy.slice(1, 4));
-      expect(must(await claim("books"))).toBeNull();
-      await retire();
-    });
+      it("a backlog in one entity does not starve the other", async () => {
+        await setModes("test_org");
+        const busy = await registerAll(["bid", "bid", "bid", "bid"]);
+        const [quiet] = await registerAll(["shop"]);
+        const queue = freshQueue();
+        // Both entities are served at once: the later Shop document is second, not fifth, and
+        // the rest of the busy entity's documents then follow, oldest first.
+        expect(await claimAll(queue, 5)).toEqual([busy[0], quiet, busy[1], busy[2], busy[3]]);
+        expect(await claimAll(queue, 1)).toEqual(["none"]);
+      });
 
-    it("still serves one entity oldest first when the other has nothing waiting", async () => {
-      await drain();
-      // A quiet day: earlier cases left nothing served inside the one-hour fairness window.
-      nowMs = T0 + 40 * 24 * 60 * 60_000;
-      await setModes("test_org");
-      const ids: string[] = [];
-      for (let i = 0; i < 3; i += 1) {
-        ids.push((await register(invoice("bid", newId()))).stored.id);
-        nowMs += 1000;
-      }
-      const order: string[] = [];
-      for (let i = 0; i < 3; i += 1) order.push(must(await claim("books"))?.id ?? "none");
-      expect(order).toEqual(ids);
-      await retire();
+      it("alternates while both entities have work", async () => {
+        await setModes("test_org");
+        const bid = await registerAll(["bid", "bid", "bid"]);
+        const shop = await registerAll(["shop", "shop", "shop"]);
+        expect(await claimAll(freshQueue(), 6)).toEqual([
+          bid[0],
+          shop[0],
+          bid[1],
+          shop[1],
+          bid[2],
+          shop[2],
+        ]);
+      });
+
+      it("serves one entity oldest first when the other has nothing waiting", async () => {
+        await setModes("test_org");
+        const ids = await registerAll(["bid", "bid", "bid"]);
+        expect(await claimAll(freshQueue(), 3)).toEqual(ids);
+      });
+
+      it("an entity's turn never puts its Stripe fees ahead of the other's invoices", async () => {
+        await setModes("test_org");
+        const bid = await registerAll(["bid", "bid"]);
+        const fee = (
+          await register(
+            must(
+              buildExpense({
+                product: "shop",
+                sourceId: `txn_${newId()}`,
+                category: "stripe_fees",
+                spentOn: "2031-03-01",
+                amountPence: 150,
+                description: "Stripe fees",
+              }),
+            ),
+          )
+        ).stored.id;
+        // After Bid's first document it is Shop's turn, but Shop has only a fee waiting: Bid's
+        // invoice still goes first, and the fee last.
+        expect(await claimAll(freshQueue(), 3)).toEqual([bid[0], bid[1], fee]);
+      });
+
+      it("only its own claims count as a turn, not other activity on an entity", async () => {
+        await setModes("test_org");
+        const [shop0] = await registerAll(["shop"]);
+        const bid = await registerAll(["bid", "bid"]);
+        const [shop1] = await registerAll(["shop"]);
+        const queue = freshQueue();
+        expect(await claimAll(queue, 1)).toEqual([shop0]);
+        // Unrelated activity on Bid's entity: its issued rows (the contact fixtures) are touched
+        // now, as copy-email bookkeeping or a Xero send would. Bid is still next in turn.
+        const touched = await owner.execute<{ id: string }>(sql`
+          update accounting_document set updated_at = updated_at + interval '1 day'
+           where legal_entity = 'london_auction_xchange' and state = 'issued'
+             and updated_at > ${new Date(T0 - 2 * 24 * 60 * 60_000)}
+          returning id`);
+        try {
+          expect(touched.rows.length).toBeGreaterThan(0);
+          expect(await claimAll(queue, 3)).toEqual([bid[0], shop1, bid[1]]);
+        } finally {
+          const ids = touched.rows.map((row) => row.id);
+          await owner.execute(sql`
+            update accounting_document set updated_at = updated_at - interval '1 day'
+             where id in ${ids}`);
+        }
+      });
     });
 
     it("hands nothing to a provider whose mode for the product is off", async () => {
