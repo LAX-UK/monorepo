@@ -328,14 +328,20 @@ describe("renderEmail", () => {
       artworkTitle: "Reed Study",
       artistName: "Elias Moore",
       artworkUrl: "https://shop.lax.art/artworks/reed-study",
-      unsubscribeUrl: "https://shop.lax.art/alerts/unsubscribe?token=abc",
+      unsubscribeUrl: "https://shop.lax.art/release-alerts/unsubscribe?token=body.sig",
+      manageUrl: "https://account.lax.art/alerts",
     });
     expect(rendered.subject).toBe("Reed Study is available again");
     expect(rendered.text).toContain("An edition of Reed Study by Elias Moore can be bought again");
     expect(rendered.text).toContain("You asked LAX Shop to email you once");
     expect(rendered.text).not.toContain("relates to your order or your account");
-    expect(rendered.html).toContain("Stop all edition alerts to this address");
-    expect(rendered.html).toContain("https://shop.lax.art/alerts/unsubscribe?token=abc");
+    expect(rendered.html).toContain("Stop back in stock alerts to this address");
+    expect(rendered.html).toContain(
+      "https://shop.lax.art/release-alerts/unsubscribe?token=body.sig",
+    );
+    expect(rendered.html).toContain("Manage your alerts");
+    expect(rendered.html).toContain("https://account.lax.art/alerts");
+    expect(rendered.text).toContain("London Art Exchange");
     expect(rendered.html).not.toContain("Unsubscribe from this notification type");
   });
 
@@ -345,7 +351,8 @@ describe("renderEmail", () => {
       artworkUrl: "https://shop.lax.art/artworks/reed-study",
     });
     expect(rendered.text).toContain("An edition of Reed Study can be bought again");
-    expect(rendered.html).not.toContain("Stop all edition alerts");
+    expect(rendered.html).not.toContain("Stop back in stock alerts");
+    expect(rendered.html).not.toContain("Manage your alerts");
   });
 
   it("renders the release alert confirmation with its link and a stop link", async () => {

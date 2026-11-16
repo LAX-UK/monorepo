@@ -20,6 +20,7 @@ Defined once in `packages/branding/public/lax-system.css`; staff values under th
 | `--lax-motion-enter` / `--lax-motion-exit` | 200ms / 140ms | 150ms / 100ms | menus, popovers, tooltips, toasts, tab content |
 | `--lax-motion-fade` | 120ms | 100ms | tooltips; the fade under reduced motion |
 | `--lax-motion-panel` / `--lax-motion-panel-exit` | 260ms / 180ms | 200ms / 150ms | dialogs, sheets, drawers, phone menu |
+| `--lax-motion-lift` | 300ms | n/a | card frame lift (staff cards do not lift) |
 | `--lax-motion-page` | 140 out / 200 in | 100 out / 150 in | page cross-fade (later, MO5) |
 | `--lax-motion-morph` | 360ms | n/a | artwork image card → page |
 | `--lax-motion-media` | 700ms | n/a | slow card image zoom |
@@ -34,9 +35,9 @@ Distances: card lift 1px, menu 4px, dialog 8px, press scale 0.98, image zoom 1.0
 
 ## What moves
 - Links/text buttons: underline + colour, hover token, ease-out. Staff 100ms. Reduced: instant.
-- Buttons: hover colour; press darker + scale 0.98 for 100ms (public + Account, MO10). Staff colour only.
+- Buttons: hover colour; press darker + scale 0.98 for 100ms (public + Account, MO10). Staff colour only. The press is a 100ms `lax-press` animation held while the button is pressed (an animation, so each button keeps its own colour transitions) and lets go at once; text-shaped variants (link, tertiary, ctaLink, underline, chevron), disabled and `aria-disabled` buttons do not press.
 - Focus ring: never animated.
-- Cards (MO9): image zoom 1.02 over 700ms, frame lift 1px over 300ms, title underline, only under `@media (hover: hover) and (pointer: fine)`. Bid lot tile 1.05 and sale card 1.03 come down to 1.02. Shop's 4px print lift stays, timed with tokens. Staff: row tint only.
+- Cards (MO9): image zoom 1.02 over 700ms, frame lift 1px over 300ms, title underline, only under `@media (hover: hover) and (pointer: fine)`. Bid lot tile 1.05 and sale card 1.03 come down to 1.02. Shop's 4px print lift stays, timed with tokens. Staff: row tint only. Built as one set of kit classes in `packages/ui/src/lax/hover-press.css` (`lax-card`, `lax-card-lift`, `lax-card-zoom`, `lax-card-media`, `lax-card-title`) that drives every card: zoom over `--lax-motion-media`, lift over `--lax-motion-lift`. Lift and zoom use the individual `translate` and `scale` properties so they never fight a transform a card already has, and an image's own load fade keeps running alongside its zoom. The grid lot card, which zoomed both its media box and its image to about 1.04, now zooms once; the staff list rows' chevron nudge is removed.
 - Page change now (MO4, MO7): no new whole-page animation on Next 15. Limit the light/dark circle wipe (900ms, `packages/marketing-ui/src/marketing-header.css`) to the theme switch only, so the Bid lot-image morph (360ms) and the admin cross-fade (staff timing) look as intended. Transition layer gets `pointer-events: none`; skip transitions under reduced motion.
 - Page change later (MO5): React `<ViewTransition>` after a Next 16.3+ upgrade only; ships only with zero route JS growth. MO6: no cross-document view transitions.
 - Menus, dropdowns, popovers, select, hover card: fade + scale from 0.97, 4px from trigger, enter 200 / exit 140. Staff fade only 150/100. Reduced: fade only 120ms. Radix Select unmounts at once on close (it has no presence layer), so Select animates on entry only; its exit is instant.
@@ -60,7 +61,7 @@ Under `prefers-reduced-motion: reduce` or Bid's in-app motion switch: public pro
 Two existing rules sit above the kit's fades. Sonner's own `prefers-reduced-motion` rule makes toasts instant under the OS setting (`transition: none !important`), so a toast fade shows only under Bid's `force-reduce`. In Bid, `apps/web/src/app/globals.css` forces every animation and transition to 0.01ms under both reduce paths, so overlays there are effectively instant; Shop and lax.art show the kit's 120ms fade.
 
 ## Clean-ups (MO15)
-Fix the sign-in blink (layout hides server content then fades it back). Stop fading first-screen images on Shop. Start lax.art's home hero visible. Remove permanent `will-change` on reveals (only while running). Stop animating header `backdrop-filter`. Swap the hang's box-shadow hover for a fading pseudo-element layer. Replace all 11 `transition-all`.
+Fix the sign-in blink (layout hides server content then fades it back). Stop fading first-screen images on Shop. Start lax.art's home hero visible. Remove permanent `will-change` on reveals (only while running). Stop animating header `backdrop-filter` (the header surface, `marketing-header-surface` in `packages/marketing-ui/src/marketing-header.css`, fades only its background and border, on `--lax-motion-panel` and `--lax-ease-out`; its shadow and blur switch at once). Swap the hang's box-shadow hover for a fading pseudo-element layer (`marketing-hang-art` in `packages/marketing-ui/src/marketing-ui.css`: the hover shadow is an `::after` layer that fades in over `--lax-motion-hover` on top of the resting shadow, mouse only like the card hover, with alphas chosen so rest plus layer is as deep as the old hover shadow). Replace all 11 `transition-all` (done in PR 4 for the 10 left on main: explicit properties where a colour, opacity or scale changes; none where only layout changed, so the floating field labels and the source-of-funds upload bar now switch at once; the compositor allowlist holds no `transition-all` and a test keeps it so).
 
 ## Proof for every motion PR (MO14)
 - Route JS: no growth on any route (`scripts/check-route-js-budget.mjs`; never raise budgets/baselines; motion PRs must not use the 1 KB noise allowance).

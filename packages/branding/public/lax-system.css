@@ -150,6 +150,8 @@
   --lax-motion-fade: 120ms;
   --lax-motion-panel: 260ms;
   --lax-motion-panel-exit: 180ms;
+  /* The card frame's 1px hover lift (MO9). Staff cards do not lift, so it has no staff value. */
+  --lax-motion-lift: 300ms;
   --lax-motion-page-out: 140ms;
   --lax-motion-page-in: 200ms;
   --lax-motion-morph: 360ms;

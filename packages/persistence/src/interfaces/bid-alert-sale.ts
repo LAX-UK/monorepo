@@ -10,6 +10,8 @@ export type AnnouncedSale = {
   deliveryMode: "online" | "onsite" | "hybrid";
   /** A test sale is never announced. */
   isTest: boolean;
+  /** The storage key and alt text of the sale's cover picture; null when it has none. */
+  cover: { key: string; alt: string } | null;
 };
 
 export interface IBidAlertSaleReader {

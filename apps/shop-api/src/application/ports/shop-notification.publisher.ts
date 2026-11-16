@@ -100,8 +100,10 @@ export type ShopNotificationPublisher = {
       artworkTitle: string;
       artistName: string;
       artworkUrl: string;
-      /** Stops this address's alerts without signing in; also sent as List-Unsubscribe. */
+      /** The alert engine's stop link for this address; also sent as List-Unsubscribe. */
       unsubscribeUrl: string;
+      /** Where an account holder manages their alerts; absent for a guest. */
+      manageUrl?: string;
     },
   ): Promise<void>;
 

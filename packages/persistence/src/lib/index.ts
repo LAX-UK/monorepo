@@ -115,6 +115,7 @@ export {
   whatsappPreferenceKey,
 } from "./notification-preference-keys.js";
 export { MuteAwareNotificationWriter } from "./mute-aware-notification-writer.js";
+export { PreferenceAwareNotificationWriter } from "./preference-aware-notification-writer.js";
 
 export {
   EnsurePersonalLegalEntityService,
@@ -159,3 +160,11 @@ export {
   readCollectByCalendars,
   type CollectByDayRange,
 } from "./collect-by-calendars.js";
+export {
+  readWaitingLotStorage,
+  storageCalendarReach,
+  type WaitingLotRef,
+  type WaitingLotStorage,
+} from "./waiting-lot-storage.js";
+export { lotAwaitsCollectionSql } from "./lot-awaits-collection.js";
+export type { LotStoragePricing } from "./purchase-storage-pricing.js";

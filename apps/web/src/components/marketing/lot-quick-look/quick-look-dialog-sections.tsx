@@ -130,10 +130,10 @@ function QuickLookImageStrip({
             variant="ghost"
             onClick={() => onSelect(index)}
             className={cn(
-              "relative h-auto min-h-0 overflow-hidden border-2 p-0 in-data-[lax-density=client]:px-0 font-normal transition-all motion-safe:duration-200 focus-visible:border-inherit focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring focus-visible:ring-0 focus-visible:ring-offset-0",
+              "relative h-auto min-h-0 overflow-hidden border-2 p-0 in-data-[lax-density=client]:px-0 font-normal transition-[opacity,border-color] duration-[var(--lax-motion-hover)] ease-[var(--lax-ease-out)] focus-visible:border-inherit focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring focus-visible:ring-0 focus-visible:ring-offset-0",
               index === activeIndex
-                ? "scale-100 border-primary hover:bg-transparent"
-                : "scale-95 border-transparent opacity-70 hover:scale-100 hover:opacity-100 hover:bg-transparent",
+                ? "border-primary hover:bg-transparent"
+                : "border-transparent opacity-70 hover:opacity-100 hover:bg-transparent",
             )}
             aria-label={`Show image ${index + 1}`}
             aria-current={index === activeIndex ? "true" : undefined}

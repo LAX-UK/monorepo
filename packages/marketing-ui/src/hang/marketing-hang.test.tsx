@@ -124,6 +124,17 @@ describe("MarketingHang", () => {
     expect(container.querySelector("img")?.hasAttribute("srcset")).toBe(false);
   });
 
+  it("fades a hover shadow layer in rather than animating the shadow (MO15)", () => {
+    const { container } = render(<MarketingHang title="In this sale" works={makeWorks(2)} />);
+    for (const img of container.querySelectorAll("img")) {
+      const art = img.parentElement as HTMLElement;
+      // The resting shadow, plus the stylesheet's fading hover layer (marketing-ui.css).
+      expect(art).toHaveClass("marketing-hang-art", "relative", "shadow-[var(--hang-art-shadow)]");
+      expect(art.className).not.toMatch(/transition-shadow|group-hover:shadow|transition-all/);
+      expect(art.closest("a")).not.toBeNull();
+    }
+  });
+
   it("names no sizes for a work with no resized files", () => {
     const { container } = render(<MarketingHang title="In this sale" works={makeWorks(1)} />);
     expect(container.querySelector("img")?.hasAttribute("sizes")).toBe(false);

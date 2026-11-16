@@ -92,6 +92,7 @@ function groupsFor(message: DigestMessage, clock: RecipientClock): AlertDigestGr
             }
           : {}),
         ...(item.imageUrl ? { imageUrl: item.imageUrl } : {}),
+        ...(item.imageUrl && item.imageAlt ? { imageAlt: item.imageAlt } : {}),
         url: message.siteUrl(item.path),
       })),
     })),

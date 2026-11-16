@@ -1,4 +1,5 @@
 import type { EmailEnqueueInput, IEmailService, TemplateName } from "@auction/email";
+import type { CreateNotificationRow } from "@auction/persistence/interfaces";
 import { describe, expect, it } from "vitest";
 import type { INotificationFanoutReader } from "../../interfaces/notification-fanout.reader.js";
 import {
@@ -28,9 +29,22 @@ function harness(person: typeof SAM | null = SAM) {
       { email: "fin@example.com", userId: "fin", firstName: null },
     ],
   } as unknown as INotificationFanoutReader;
+  const notices: CreateNotificationRow[] = [];
+  const notificationWriteRepo = {
+    async createMany(rows: CreateNotificationRow[]) {
+      notices.push(...rows);
+      return [];
+    },
+  };
   return {
     sent,
-    deps: { emailService, notificationFanoutReader, supportContactEmail: "help@lax.bid" },
+    notices,
+    deps: {
+      emailService,
+      notificationFanoutReader,
+      notificationWriteRepo,
+      supportContactEmail: "help@lax.bid",
+    },
   };
 }
 
@@ -146,5 +160,119 @@ describe("fanoutOrganisationLimitChanged", () => {
       payload: { previous_limit: null, limit: "20000.00", changed_by: "member" },
     });
     expect(sent).toEqual([]);
+  });
+});
+
+describe("in-app notices beside the emails", () => {
+  it("writes an approved bidder's notice with the limit, personal to them", async () => {
+    const { notices, deps } = harness();
+    await fanoutSaleRegistrationDecided({
+      ...deps,
+      eventId: 7,
+      webOrigin: "https://lax.bid",
+      payload: { saleId: SALE_ID, userId: "sam", decision: "approved", bidLimit: "5000.00" },
+    });
+    expect(notices).toEqual([
+      {
+        userId: "sam",
+        type: "sale_registration_decided",
+        legalEntityId: null,
+        saleId: SALE_ID,
+        title: "You can bid in this sale",
+        message: '"Autumn Sale": approved, with a limit of £5,000.00.',
+        dedupeKey: "sale-registration-decision:7:sam",
+      },
+    ]);
+  });
+
+  it("writes a declined notice that points to the email for the reason, never the reason itself", async () => {
+    const { notices, deps } = harness();
+    await fanoutSaleRegistrationDecided({
+      ...deps,
+      eventId: 8,
+      webOrigin: "https://lax.bid",
+      payload: {
+        saleId: SALE_ID,
+        userId: "sam",
+        decision: "declined",
+        bidLimit: null,
+        reason: "Internal note about the buyer",
+      },
+    });
+    expect(notices[0]).toMatchObject({
+      type: "sale_registration_decided",
+      title: "Your request to bid was declined",
+    });
+    expect(JSON.stringify(notices)).not.toContain("Internal note");
+  });
+
+  it("writes a limit change for the sale, and for each member of an organisation", async () => {
+    const sale = harness();
+    await fanoutSaleRegistrationLimitChanged({
+      ...sale.deps,
+      eventId: 9,
+      payload: { saleId: SALE_ID, userId: "sam", previousLimit: "1000.00", limit: "2500.00" },
+    });
+    expect(sale.notices).toEqual([
+      expect.objectContaining({
+        userId: "sam",
+        type: "bidding_limit_changed",
+        legalEntityId: null,
+        saleId: SALE_ID,
+        message: "Autumn Sale: from £1,000.00 to £2,500.00. Bids already placed stand.",
+      }),
+    ]);
+    const entity = harness();
+    await fanoutOrganisationLimitChanged({
+      ...entity.deps,
+      eventId: 10,
+      legalEntityId: ENTITY_ID,
+      payload: { changed_by: "staff", previous_limit: "1000.00", limit: "2500.00" },
+    });
+    expect(entity.notices.map((n) => [n.userId, n.legalEntityId])).toEqual([
+      ["owner", ENTITY_ID],
+      ["fin", ENTITY_ID],
+    ]);
+  });
+
+  it("keys each notice like its email, so a retried event writes no second notice", async () => {
+    const sale = harness();
+    const payload = { saleId: SALE_ID, userId: "sam", previousLimit: "1000.00", limit: "2500.00" };
+    await fanoutSaleRegistrationLimitChanged({ ...sale.deps, eventId: 9, payload });
+    await fanoutSaleRegistrationLimitChanged({ ...sale.deps, eventId: 9, payload });
+    expect(sale.notices.map((n) => n.dedupeKey)).toEqual([
+      "bidding-limit-changed:9:sam",
+      "bidding-limit-changed:9:sam",
+    ]);
+    const entity = harness();
+    await fanoutOrganisationLimitChanged({
+      ...entity.deps,
+      eventId: 10,
+      legalEntityId: ENTITY_ID,
+      payload: { changed_by: "staff", previous_limit: "1000.00", limit: "2500.00" },
+    });
+    // One key per member: a retry after a failure part-way through re-notifies nobody.
+    expect(entity.notices.map((n) => n.dedupeKey)).toEqual([
+      "bidding-limit-changed:10:owner",
+      "bidding-limit-changed:10:fin",
+    ]);
+  });
+
+  it("writes none when the email is not sent, and none for a change a member made", async () => {
+    const none = harness(null);
+    await fanoutSaleRegistrationDecided({
+      ...none.deps,
+      eventId: 11,
+      webOrigin: "https://lax.bid",
+      payload: { saleId: SALE_ID, userId: "sam", decision: "approved", bidLimit: "5000.00" },
+    });
+    const member = harness();
+    await fanoutOrganisationLimitChanged({
+      ...member.deps,
+      eventId: 12,
+      legalEntityId: ENTITY_ID,
+      payload: { changed_by: "member", previous_limit: "1", limit: "2" },
+    });
+    expect([...none.notices, ...member.notices]).toEqual([]);
   });
 });

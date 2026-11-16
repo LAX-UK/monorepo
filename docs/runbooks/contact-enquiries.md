@@ -25,7 +25,9 @@ worked by client services.
    record's reference address, `/admin/enquiries/E-1042`.
 5. Staff work it from **Enquiries** in Bid admin (People): the list, then the record, where they
    assign it, change its status, add internal notes and close it with a reason. Client services
-   reply from their own mail until replies are sent from the record. Closing records
+   reply from their own mail until replies are sent from the record. With replies by email on
+   (docs/integrations/postmark-inbound.md), the client's emailed replies show on the record under
+   "Replies by email", and email that could not be matched safely waits under Held email. Closing records
    `marketing_enquiry.status_changed` with the reason and the person who did it in the audit log.
 
 ## Working an enquiry

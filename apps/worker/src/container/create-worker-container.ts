@@ -366,6 +366,7 @@ export function createWorkerContainer(): WorkerContainer {
     mediaAssetCleanupRepo: repositories.mediaAssetCleanupRepo,
     qrCodeScanPersister: repositories.qrCodeScanPersister,
     qrCodeScanPurgeRepo: repositories.qrCodeScanPurgeRepo,
+    enquiryQuarantinePurgeRepo: repositories.enquiryQuarantinePurgeRepo,
     failedJobPayloadPurge: repositories.failedJobPayloadPurge,
     marketingClickIdPurgeRepo: repositories.marketingClickIdPurgeRepo,
     marketingAttributionPurgeRepo: repositories.marketingAttributionPurgeRepo,
@@ -510,6 +511,8 @@ export function createWorkerContainer(): WorkerContainer {
     db,
     email: emailWorkers.emailOutboxService,
     log,
+    mediaBaseUrl: publicUploadBase ?? null,
+    storage: uploadStorage,
   });
   const alertWorkers = registerAlertWorkers(deps, bidAlerts);
   const accountingWorkers = registerAccountingWorkers(deps, accounting);

@@ -133,6 +133,22 @@
   }
 }
 
+/* The fixed header's surface (headerChromeClassName in header/use-header-chrome.ts): its background
+   and border fade between the transparent and solid states on the shared tokens, `--lax-motion-panel`
+   on `--lax-ease-out` (it was a literal 300ms ease-out). The shadow and the backdrop blur switch at
+   once: animating either repaints on every frame (docs/design/motion.md, MO15). Written here, not
+   as utilities, so the timing adds no bytes to the header's JavaScript. */
+.marketing-header-surface {
+  transition: background-color var(--lax-motion-panel) var(--lax-ease-out), border-color
+    var(--lax-motion-panel) var(--lax-ease-out);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .marketing-header-surface {
+    transition: none;
+  }
+}
+
 /* Marketing site header — light chrome over immersive home hero */
 [data-chrome-variant="transparentUntilScroll"][data-at-top="true"]::before {
   content: "";

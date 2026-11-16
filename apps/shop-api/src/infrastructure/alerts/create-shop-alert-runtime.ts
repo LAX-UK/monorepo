@@ -42,6 +42,9 @@ import type { StorefrontOrigins } from "../../domain/storefront-origins.js";
 import { hashLinkToken } from "../link-token.js";
 import { resolveShopUserEmail } from "../resolve-shop-user-email.js";
 import type { ShopDomainEventPublisherMode } from "../shop-domain-event-publisher.js";
+import { type BackInStockLinks, createBackInStockLinks } from "./back-in-stock-links.js";
+import { ShopBackInStockStopTimes } from "./back-in-stock-stop-times.js";
+import { createWaitingAlertCanceller } from "./back-in-stock-waiting.js";
 import { ShopAlertCatalogue } from "./shop-alert-catalogue.js";
 import { publishAlertConfirmed } from "./shop-alert-confirmed.js";
 import {
@@ -96,6 +99,8 @@ export type ShopAlertRuntime = {
   summary: ReleaseAlertSummaryReader;
   /** Turns announced works into matches. */
   matching: AlertMatchingService;
+  /** The engine's stop link for a back-in-stock email. */
+  backInStock: BackInStockLinks;
   /** One digest run per product: LAX Shop and lax.art. */
   digests: readonly DigestRun[];
 };
@@ -216,6 +221,7 @@ export function createShopAlertRuntime(input: {
       preferences,
       codec,
       legacy: subscribers,
+      waiting: createWaitingAlertCanceller(db, subscribers),
       hashLegacyToken: hashLinkToken,
       stopLegacy: async (id, now) => {
         await subscribers.stop(id, "link", now);
@@ -225,6 +231,14 @@ export function createShopAlertRuntime(input: {
     announcer: new ShopAlertPublishRecorder(),
     summary: new ReleaseAlertSummaryStore(db),
     matching: new AlertMatchingService({ queue: catalogue, artworks: catalogue, matchers, log }),
+    backInStock: createBackInStockLinks({
+      subscribers,
+      topics,
+      stopTimes: new ShopBackInStockStopTimes(db),
+      codec,
+      urls: urls.shop,
+      clock,
+    }),
     digests: [digestFor("shop"), digestFor("art")],
   };
 }

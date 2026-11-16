@@ -1,6 +1,7 @@
 import type { Database } from "@auction/db";
 import type { IEmailService, ITransactionalEmailOutbox } from "@auction/email";
 import type {
+  INotificationPreferenceReader,
   INotificationWriteRepository,
   IUserRepository,
 } from "@auction/persistence/interfaces";
@@ -25,6 +26,8 @@ export type KycNoticeQueueDeps = {
   notificationsFor: (tx: Database) => INotificationWriteRepository;
   email: ITransactionalEmailOutbox;
   factory: Pick<INotificationFactory, "createKycApproved" | "createKycDeclined">;
+  /** The person's Identity check app switch. The result's email is not optional. */
+  preferences: Pick<INotificationPreferenceReader, "isChannelEnabled">;
   webOrigin: string;
 };
 
@@ -43,6 +46,10 @@ export class KycNoticeQueue implements IKycNoticeQueue {
 
     const origin = this.origin();
     const idempotencyKey = `kyc-${outcome}:${userId}:${decisionKey(notice)}`;
+    const type = outcome === "approved" ? "kyc_approved" : "kyc_declined";
+    // The email is transactional and always sent: it is the record of the decision, and a decline
+    // carries the steps to try again and how to reach us. Only the app notice is the person's choice.
+    const appOn = await this.deps.preferences.isChannelEnabled(userId, type, "in_app");
     if (outcome === "approved") {
       await this.send(tx, {
         template: "kyc-approved",
@@ -52,9 +59,11 @@ export class KycNoticeQueue implements IKycNoticeQueue {
         vars: { userName: user.name, registerUrl: `${origin}/sales` },
         idempotencyKey,
       });
-      await this.deps
-        .notificationsFor(tx)
-        .createMany([this.deps.factory.createKycApproved(userId)]);
+      if (appOn) {
+        await this.deps
+          .notificationsFor(tx)
+          .createMany([this.deps.factory.createKycApproved(userId)]);
+      }
       return;
     }
     await this.send(tx, {
@@ -69,7 +78,11 @@ export class KycNoticeQueue implements IKycNoticeQueue {
       },
       idempotencyKey,
     });
-    await this.deps.notificationsFor(tx).createMany([this.deps.factory.createKycDeclined(userId)]);
+    if (appOn) {
+      await this.deps
+        .notificationsFor(tx)
+        .createMany([this.deps.factory.createKycDeclined(userId)]);
+    }
   }
 
   async queueResubmission(tx: Database, notice: KycResubmissionNotice): Promise<void> {

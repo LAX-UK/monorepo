@@ -111,10 +111,12 @@ export function BuyerInterestsForm({ next, source, categoryIdBySlug, initialCate
             <label
               key={interest.key}
               htmlFor={controlId}
-              className={`group relative flex h-[190px] cursor-pointer flex-col overflow-hidden rounded-xl border bg-surface-container-lowest shadow-sm transition-[border-color,box-shadow,transform] duration-200 motion-reduce:transition-none sm:h-[clamp(170px,23vh,239px)] ${
+              // lax-card: the kit's card hover (packages/ui/src/lax/hover-press.css) lifts an
+              // unchecked card 1px and zooms its picture; the border and shadow change at once.
+              className={`lax-card relative flex h-[190px] cursor-pointer flex-col overflow-hidden rounded-xl border bg-surface-container-lowest shadow-sm transition-colors duration-[var(--lax-motion-hover)] ease-[var(--lax-ease-out)] motion-reduce:transition-none sm:h-[clamp(170px,23vh,239px)] ${
                 checked
                   ? "border-primary shadow-md ring-2 ring-primary ring-offset-2 ring-offset-surface"
-                  : "border-shell-stroke hover:-translate-y-0.5 hover:border-outline hover:shadow-md"
+                  : "lax-card-lift border-shell-stroke hover:border-outline hover:shadow-md"
               }`}
             >
               <Checkbox
@@ -138,7 +140,7 @@ export function BuyerInterestsForm({ next, source, categoryIdBySlug, initialCate
                   label={interest.label}
                   sizes="(min-width: 1024px) 232px, (min-width: 640px) 46vw, 44vw"
                   className="h-full"
-                  imgClassName="transition-[opacity,transform] duration-500 motion-reduce:transition-none group-hover:scale-[1.025]"
+                  imgClassName="lax-card-zoom"
                   priority={index === 0}
                 />
               </div>

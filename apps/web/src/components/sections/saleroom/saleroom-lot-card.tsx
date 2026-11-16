@@ -70,7 +70,7 @@ export function SaleroomLotCard({
 
   if (isRow) {
     const rowImage = (
-      <article className="group flex w-full min-w-0 flex-row gap-4 py-4">
+      <article className="lax-card group flex w-full min-w-0 flex-row gap-4 py-4">
         <div className="relative size-24 shrink-0">
           <Link
             href={lot.href}
@@ -85,7 +85,7 @@ export function SaleroomLotCard({
                 objectFit="cover"
                 sizes={ROW_IMAGE_SIZES}
                 className="size-full"
-                imgClassName="size-full object-cover transition-transform duration-700 ease-out motion-safe:group-hover:scale-[1.02] motion-reduce:group-hover:scale-100"
+                imgClassName="size-full object-cover lax-card-zoom"
               />
             </AdaptiveMediaFrameContainer>
           </Link>
@@ -113,7 +113,7 @@ export function SaleroomLotCard({
               <Link
                 href={lot.href}
                 prefetch={false}
-                className="line-clamp-2 block text-base font-semibold leading-snug text-brand-900 underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring dark:text-on-surface"
+                className="lax-card-title line-clamp-2 block text-base font-semibold leading-snug text-brand-900 underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring dark:text-on-surface"
               >
                 {lot.title}
               </Link>
@@ -151,12 +151,12 @@ export function SaleroomLotCard({
   const media = lotCardMediaClasses(lot.displayStyle);
   const fit = lotCardMediaFrame(lot.displayStyle).fit;
   const tile = (
-    <article className="group flex h-full w-full min-w-0 flex-col gap-4 motion-safe:transition-transform motion-safe:duration-300 motion-safe:ease-out motion-safe:hover:-translate-y-0.5">
+    <article className="lax-card lax-card-lift group flex h-full w-full min-w-0 flex-col gap-4">
       <div className="relative w-full">
         <Link
           href={lot.href}
           className={cn(
-            "relative block w-full min-h-0 overflow-hidden rounded-lg transition-shadow motion-safe:group-hover:ring-1 motion-safe:group-hover:ring-primary/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
+            "relative block w-full min-h-0 overflow-hidden rounded-lg motion-safe:group-hover:ring-1 motion-safe:group-hover:ring-primary/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
             media.frame,
             lot.isOnBlock && saleroomOnBlockRingClass,
           )}
@@ -170,7 +170,7 @@ export function SaleroomLotCard({
                   alt={lot.imageAlt}
                   objectFit={fit}
                   sizes={sizes}
-                  imgClassName="transition-transform duration-700 ease-out motion-safe:group-hover:scale-[1.02] motion-reduce:group-hover:scale-100"
+                  imgClassName="lax-card-zoom"
                 />
               </span>
             </span>
@@ -203,7 +203,7 @@ export function SaleroomLotCard({
         <div>
           <Link
             href={lot.href}
-            className="line-clamp-2 text-sm font-semibold leading-snug text-brand-900 underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring md:text-lg md:leading-6 dark:text-on-surface"
+            className="lax-card-title line-clamp-2 text-sm font-semibold leading-snug text-brand-900 underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring md:text-lg md:leading-6 dark:text-on-surface"
           >
             {lot.title}
           </Link>

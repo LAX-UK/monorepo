@@ -132,7 +132,7 @@ export function ArtistBrowseCard({
         return (
           <li
             key={artist.id}
-            className="group relative list-none overflow-hidden rounded-xl border border-border-hairline bg-surface transition-[transform,border-color] duration-[var(--motion-duration-md)] motion-reduce:transition-none hover:-translate-y-px hover:border-link/40"
+            className="lax-card lax-card-lift group relative list-none overflow-hidden rounded-xl border border-border-hairline bg-surface hover:border-link/40"
           >
             <Link
               href={href}
@@ -145,7 +145,7 @@ export function ArtistBrowseCard({
                   alt={isBrand ? "" : altText}
                   label={isBrand ? artist.displayName : "Artist portrait"}
                   sizes="(max-width: 1024px) 100vw, 50vw"
-                  imgClassName="transition-transform duration-700 ease-out motion-safe:group-hover:scale-[1.02] motion-reduce:group-hover:scale-100"
+                  imgClassName="lax-card-zoom"
                 />
                 <div className="absolute left-3 top-3 flex flex-wrap gap-1">
                   {artist.featured ? <StatusBadge tone="info">Featured</StatusBadge> : null}

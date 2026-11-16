@@ -1,9 +1,12 @@
 import {
   cancelStorageTermsBodySchema,
   collectionVenueParamSchema,
+  extendLotStorageBodySchema,
   setStorageChargingBodySchema,
+  storageLotParamSchema,
   storageTermsBodySchema,
   storageTermsParamSchema,
+  waiveLotStorageBodySchema,
 } from "@auction/validators";
 import type { Context } from "hono";
 import { actorFromContext } from "../../lib/admin-actor-context.js";
@@ -12,6 +15,7 @@ import { zValidator } from "../../lib/z-validator.js";
 import {
   requireCollectionStorage,
   requireCollectionStorageRead,
+  requireOperationsFulfilment,
 } from "../../middleware/require-capability.js";
 import type { CollectionStorageResult } from "../../services/collection-storage/collection-storage.errors.js";
 import type { AdminCollectionStorageRoutesContainer } from "../../services/interfaces/admin-routes/admin-route-container-slices.js";
@@ -90,5 +94,40 @@ export function attachAdminCollectionStorageRoutes(
         c,
         await service.setCharging(actorOf(c), c.req.valid("param").venueId, c.req.valid("json")),
       ),
+  );
+
+  const followUp = container.admin.collectionStorageFollowUp;
+
+  // The Not collected tab: lots left past their collect-by day, longest over first, with what is
+  // owed so far. Everyone who sees the tab reads it; Finance waives from it.
+  app.get(
+    "/collections/:venueId/storage/overdue",
+    requireCollectionStorageRead,
+    zValidator("param", collectionVenueParamSchema),
+    async (c) => answer(c, await followUp.overdue(c.req.valid("param").venueId)),
+  );
+
+  // Fulfilment (and Administrators) give a lot more free storage, up to 30 days in all.
+  app.post(
+    "/collections/:venueId/storage/lots/:lotId/extension",
+    requireOperationsFulfilment,
+    zValidator("param", storageLotParamSchema),
+    zValidator("json", extendLotStorageBodySchema),
+    async (c) => {
+      const { venueId, lotId } = c.req.valid("param");
+      return answer(c, await followUp.extend(actorOf(c), venueId, lotId, c.req.valid("json")));
+    },
+  );
+
+  // Finance (and Administrators) waive a lot's charges, after a recent sign-in: it gives up money.
+  app.post(
+    "/collections/:venueId/storage/lots/:lotId/waiver",
+    requireCollectionStorage,
+    zValidator("param", storageLotParamSchema),
+    zValidator("json", waiveLotStorageBodySchema),
+    async (c) => {
+      const { venueId, lotId } = c.req.valid("param");
+      return answer(c, await followUp.waive(actorOf(c), venueId, lotId, c.req.valid("json")));
+    },
   );
 }

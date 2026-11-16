@@ -100,7 +100,7 @@ export function MarketingEditorialCard({
   const classes = textLed ? TEXT_LED_CLASS : LAYOUT_CLASS[layout];
   return (
     <article
-      className={cn("group relative", classes.card)}
+      className={cn("lax-card group relative", classes.card)}
       data-layout={layout}
       data-text-led={textLed ? "" : undefined}
       data-testid={testId}
@@ -138,7 +138,7 @@ export function MarketingEditorialCard({
                 <LinkComponent
                   href={href}
                   className={cn(
-                    "rounded-sm underline-offset-4 after:absolute after:inset-0 group-hover:underline",
+                    "lax-card-title rounded-sm underline-offset-4 after:absolute after:inset-0",
                     FOCUS_RING,
                   )}
                 >

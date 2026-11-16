@@ -21,7 +21,18 @@ export type SubscribeReleaseAlertsResult =
 
 export type AlertConfirmResult = "confirmed" | "expired" | "invalid";
 
-export type AlertStopPreview = { maskedEmail: string; active: boolean };
+/** What a stop link covers: one topic, or null for everything the address gets from the product. */
+export type AlertStopPreview = {
+  maskedEmail: string;
+  active: boolean;
+  topic: "back_in_stock" | null;
+};
+
+/** The back-in-stock requests still waiting for a subscriber's address and account. */
+export interface WaitingAlertCanceller {
+  cancelWaiting(subscriberId: string, now: Date): Promise<number>;
+  countWaiting(subscriberId: string): Promise<number>;
+}
 
 /** Finds the row an email sent before the alert engine pointed at, by the hash of its stop token. */
 export interface LegacyStopLookup {
@@ -37,6 +48,8 @@ export type ShopAlertHandlerDeps = {
   /** Stops a row by id; used for links from emails sent before the engine. */
   stopLegacy: (id: string, now: Date) => Promise<void>;
   legacy: LegacyStopLookup;
+  /** Closes the requests still waiting when someone stops back in stock. */
+  waiting: WaitingAlertCanceller;
   hashLegacyToken: (token: string) => string;
   now?: () => Date;
 };
@@ -121,16 +134,42 @@ export function createShopAlertHandlers(deps: ShopAlertHandlerDeps) {
       if (product) {
         const preview = await deps.stop.preview(token, product);
         if (preview.state === "invalid") return null;
-        return { maskedEmail: preview.maskedEmail, active: preview.state === "ready" };
+        const payload = deps.codec.verify(token, now())?.payload;
+        if (payload?.topic === "shop.back_in_stock") {
+          // Requests made after a stop are still sent, so the link stays useful while any wait.
+          const active =
+            (preview.state === "ready" && preview.topics.includes("shop.back_in_stock")) ||
+            (await deps.waiting.countWaiting(payload.subscriberId)) > 0;
+          return { maskedEmail: preview.maskedEmail, active, topic: "back_in_stock" };
+        }
+        return {
+          maskedEmail: preview.maskedEmail,
+          active: preview.state === "ready",
+          topic: null,
+        };
       }
       const row = await legacyRow(token);
-      return row ? { maskedEmail: maskEmail(row.email), active: row.status !== "stopped" } : null;
+      return row
+        ? { maskedEmail: maskEmail(row.email), active: row.status !== "stopped", topic: null }
+        : null;
     },
 
     /** False when the token matches nothing. Safe to repeat. */
     async unsubscribe(token: string): Promise<boolean> {
       const product = productOf(token);
       if (product) {
+        const payload = deps.codec.verify(token, now())?.payload;
+        // A back-in-stock link stops that topic and the requests waiting behind it; the
+        // person's release alerts, if they have them, carry on.
+        if (payload?.topic === "shop.back_in_stock") {
+          const outcome = await deps.stop.stop(token, product, {
+            scope: "topic",
+            topic: "shop.back_in_stock",
+          });
+          if (outcome === "invalid") return false;
+          await deps.waiting.cancelWaiting(payload.subscriberId, now());
+          return true;
+        }
         return (await deps.stop.stop(token, product, { scope: "all" })) !== "invalid";
       }
       const row = await legacyRow(token);

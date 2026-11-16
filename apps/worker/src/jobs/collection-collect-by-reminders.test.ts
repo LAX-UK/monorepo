@@ -3,22 +3,11 @@ import type { IEmailService } from "@auction/email";
 import pino from "pino";
 import { describe, expect, it, vi } from "vitest";
 import type { StoredLot } from "../interfaces/collect-by.reader.js";
+import { DEFAULT_TERMS, lotStorage, storedLot } from "../testing/stored-lot.fixture.js";
 import { runCollectByRemindersJob } from "./collection-collect-by-reminders.js";
 
 const log = pino({ level: "silent" });
-const PLACE = { name: "London Art Exchange", address: "156 New Cavendish Street" };
-const stored = (over: Partial<StoredLot> = {}): StoredLot => ({
-  lotId: "l-1",
-  legalEntityId: "e-1",
-  venueId: "v-1",
-  winnerId: "u-agent",
-  title: "Lowland Storm",
-  lotNumber: 12,
-  clearedAt: new Date("2026-11-09T10:00:00Z"),
-  place: PLACE,
-  freeStorageDays: null,
-  ...over,
-});
+const stored = storedLot;
 const FACTS_OK: CollectionLotFacts = {
   paymentCleared: true,
   openChecks: [],
@@ -34,25 +23,47 @@ const agent = { userId: "u-agent", email: "agent@example.com", firstName: "Alex"
 
 /** An outbox that remembers what was sent, so a later sweep sees it as the real one does. */
 function setup(lots: StoredLot[], facts: Record<string, Partial<CollectionLotFacts>> = {}) {
-  const outbox: { key: string; lotIds: string[] }[] = [];
+  const outbox: { key: string; template: string; lotIds: string[] }[] = [];
   const enqueue = vi.fn(
-    async (email: { idempotencyKey?: string; userId?: string; vars: { lotIds: string[] } }) => {
-      outbox.push({ key: email.idempotencyKey as string, lotIds: email.vars.lotIds });
+    async (email: {
+      template: string;
+      idempotencyKey?: string;
+      userId?: string;
+      vars: { lotIds: string[] } & Record<string, unknown>;
+    }) => {
+      // As the real outbox: a repeated key is not queued twice.
+      if (!outbox.some((row) => row.key === email.idempotencyKey)) {
+        outbox.push({
+          key: email.idempotencyKey as string,
+          template: email.template,
+          lotIds: email.vars.lotIds,
+        });
+      }
       return { outboxId: "o" };
     },
   );
-  const storedLotsDue = vi.fn().mockResolvedValue(lots);
+  const storedLotsWaiting = vi.fn().mockResolvedValue(lots);
   const remindedLotIds = vi.fn(
-    async (query: { keyPrefix: string; userId: string; today: string }) =>
+    async (query: { keyPrefix: string; userId: string; today: string; template?: string }) =>
       new Set(
-        outbox.filter((row) => row.key.startsWith(query.keyPrefix)).flatMap((row) => row.lotIds),
+        outbox
+          .filter(
+            (row) =>
+              row.key.startsWith(query.keyPrefix) &&
+              row.template === (query.template ?? "collection-collect-by"),
+          )
+          .flatMap((row) => row.lotIds),
       ),
   );
   const accountRecipients = vi.fn().mockResolvedValue([maya, { ...agent, wonOnly: true }]);
+  const lockHeld = { value: false };
+  const withAccountLock = vi.fn(async (_id: string, work: () => Promise<unknown>) =>
+    lockHeld.value ? { ran: false as const } : { ran: true as const, value: await work() },
+  );
   const run = (now: string, due: StoredLot[] = lots) => {
-    storedLotsDue.mockResolvedValue(due);
+    storedLotsWaiting.mockResolvedValue(due);
     return runCollectByRemindersJob({
-      reader: { storedLotsDue, remindedLotIds },
+      reader: { storedLotsWaiting, remindedLotIds, withAccountLock: withAccountLock as never },
       notices: { accountRecipients },
       facts: {
         lotIdsForBuyer: vi.fn(),
@@ -70,7 +81,17 @@ function setup(lots: StoredLot[], facts: Record<string, Partial<CollectionLotFac
       now: () => new Date(now),
     });
   };
-  return { run, enqueue, storedLotsDue, remindedLotIds, accountRecipients, outbox, facts };
+  return {
+    run,
+    lockHeld,
+    withAccountLock,
+    enqueue,
+    storedLotsWaiting,
+    remindedLotIds,
+    accountRecipients,
+    outbox,
+    facts,
+  };
 }
 
 describe("storage reminders", () => {
@@ -81,14 +102,21 @@ describe("storage reminders", () => {
     expect(s.enqueue.mock.calls[0]?.[0]).toMatchObject({ template: "collection-collect-by" });
   });
 
-  it("asks the reader for the London day and the default period, not the whole history", async () => {
+  it("works each account under its lock, and leaves one that another sweep holds", async () => {
     const s = setup([stored()]);
-    await s.run("2026-12-02T10:00:00Z");
-    expect(s.storedLotsDue).toHaveBeenCalledWith({
-      today: "2026-12-02",
-      defaultFreeStorageDays: 30,
-      reminderLeadDays: 7,
-    });
+    expect(await s.run("2026-12-02T10:00:00Z")).toEqual({ groups: 1, queued: 2 });
+    expect(s.withAccountLock).toHaveBeenCalledWith("e-1", expect.any(Function));
+    s.enqueue.mockClear();
+    s.lockHeld.value = true;
+    expect(await s.run("2026-12-03T10:00:00Z")).toEqual({ groups: 1, queued: 0 });
+    expect(s.enqueue).not.toHaveBeenCalled();
+    expect(s.remindedLotIds).toHaveBeenCalledTimes(2);
+  });
+
+  it("asks the reader for the lots waiting on the London day", async () => {
+    const s = setup([stored()]);
+    await s.run("2026-12-01T23:30:00Z");
+    expect(s.storedLotsWaiting).toHaveBeenCalledWith({ today: "2026-12-01" });
   });
 
   it("emails the account's people and the agent who won the lot", async () => {
@@ -115,6 +143,7 @@ describe("storage reminders", () => {
       keyPrefix: "collection-collect-by:lead:e-1:v-1:2026-12-09:u-maya:",
       userId: "u-maya",
       today: "2026-12-02",
+      template: "collection-collect-by",
     });
   });
 
@@ -183,11 +212,15 @@ describe("storage reminders", () => {
       .mockResolvedValue([maya]);
     const result = await runCollectByRemindersJob({
       reader: {
-        storedLotsDue: vi
+        storedLotsWaiting: vi
           .fn()
           .mockResolvedValue([stored(), stored({ lotId: "l-2", legalEntityId: "e-2" })]),
         remindedLotIds: vi.fn().mockResolvedValue(new Set()),
-      },
+        withAccountLock: async (_id: string, work: () => Promise<unknown>) => ({
+          ran: true as const,
+          value: await work(),
+        }),
+      } as never,
       notices: { accountRecipients },
       facts: {
         read: async (ids: readonly string[]) =>
@@ -199,5 +232,86 @@ describe("storage reminders", () => {
       now: () => new Date("2026-12-02T10:00:00Z"),
     });
     expect(result).toEqual({ groups: 2, queued: 1 });
+  });
+
+  describe("after the collect-by day, under the terms the lot was sold under", () => {
+    // Cleared Mon 9 Nov; 14 days free: collect by Mon 23 Nov, charges from Tue 24 Nov.
+    const charged = (over: Parameters<typeof lotStorage>[0] = {}) =>
+      stored({
+        storage: lotStorage({ ...over, pricing: { terms: DEFAULT_TERMS, ...over.pricing } }),
+      });
+    const sent = (s: ReturnType<typeof setup>) =>
+      s.enqueue.mock.calls.map(([email]) => [email.template, email.vars.kind ?? email.vars.when]);
+
+    it("sends 'Storage charges have started' once, however often the sweep or a retry runs", async () => {
+      const s = setup([charged()]);
+      expect(await s.run("2026-11-24T10:00:00Z")).toEqual({ groups: 1, queued: 2 });
+      expect(await s.run("2026-11-24T10:00:00Z")).toEqual({ groups: 1, queued: 0 });
+      expect(await s.run("2026-11-30T10:00:00Z")).toEqual({ groups: 1, queued: 0 });
+      expect(sent(s)).toEqual([
+        ["collection-storage-charges", "started"],
+        ["collection-storage-charges", "started"],
+      ]);
+      expect(s.remindedLotIds).toHaveBeenCalledWith(
+        expect.objectContaining({ template: "collection-storage-charges" }),
+      );
+    });
+
+    it("sends a running total every 14 days, each once", async () => {
+      const s = setup([charged()], {});
+      for (const day of ["2026-11-24", "2026-12-08", "2026-12-09", "2026-12-22", "2026-12-23"]) {
+        await s.run(`${day}T10:00:00Z`);
+      }
+      const maya = s.enqueue.mock.calls
+        .filter(([email]) => email.userId === "u-maya")
+        .map(([email]) => [email.vars.kind, email.vars.lotTotals]);
+      expect(maya).toEqual([
+        ["started", ["£3.00 so far (1 day at £3 a day), plus VAT where it applies."]],
+        ["total", ["£45.00 so far (15 days at £3 a day), plus VAT where it applies."]],
+        ["total", ["£87.00 so far (29 days at £3 a day), plus VAT where it applies."]],
+      ]);
+    });
+
+    it("while charging is off, says only that charges may apply, and sends no totals", async () => {
+      const s = setup([charged({ chargingOn: false })]);
+      await s.run("2026-11-24T10:00:00Z");
+      await s.run("2026-12-08T10:00:00Z");
+      expect(sent(s)).toEqual([
+        ["collection-storage-charges", "started"],
+        ["collection-storage-charges", "started"],
+      ]);
+      const vars = s.enqueue.mock.calls[0]?.[0].vars;
+      expect(vars).toMatchObject({ chargingOn: false, lotTotals: [null] });
+      expect(JSON.stringify(vars)).not.toContain("£");
+    });
+
+    it("sends nothing for a waived lot", async () => {
+      const s = setup([charged({ pricing: { waived: true } })]);
+      for (const day of ["2026-11-16", "2026-11-23", "2026-11-24", "2026-12-08"]) {
+        expect(await s.run(`${day}T10:00:00Z`)).toEqual({ groups: 0, queued: 0 });
+      }
+    });
+
+    it("follows an extension: the new day is reminded, and charges start after it", async () => {
+      const s = setup([charged({ pricing: { extensionDays: 7 } })]);
+      expect(await s.run("2026-11-24T10:00:00Z")).toMatchObject({ queued: 2 });
+      expect(s.enqueue.mock.calls[0]?.[0].vars).toMatchObject({
+        when: "lead",
+        collectByLabel: "Mon 30 Nov",
+      });
+      await s.run("2026-11-30T10:00:00Z");
+      await s.run("2026-12-01T10:00:00Z");
+      expect(sent(s).filter((_, i) => i % 2 === 0)).toEqual([
+        ["collection-collect-by", "lead"],
+        ["collection-collect-by", "day"],
+        ["collection-storage-charges", "started"],
+      ]);
+    });
+
+    it("skips a lot it cannot price and still reminds the rest", async () => {
+      const s = setup([charged({ calendar: undefined }), { ...charged(), lotId: "l-2" }]);
+      expect(await s.run("2026-11-24T10:00:00Z")).toEqual({ groups: 1, queued: 2 });
+      expect(s.enqueue.mock.calls[0]?.[0].vars.lotIds).toEqual(["l-2"]);
+    });
   });
 });

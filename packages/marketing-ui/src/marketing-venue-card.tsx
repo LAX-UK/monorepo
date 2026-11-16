@@ -68,7 +68,7 @@ export function MarketingVenueCard({
           </MarketingCardMedia>
         )}
         <div className={cn("flex flex-col gap-2", styles.text)}>
-          <Heading className="m-0 font-headline text-2xl font-medium leading-tight text-on-surface group-hover:underline sm:text-[1.75rem]">
+          <Heading className="m-0 font-headline text-2xl font-medium leading-tight text-on-surface lax-card-title sm:text-[1.75rem]">
             {name}
           </Heading>
           {lines.length > 0 ? (

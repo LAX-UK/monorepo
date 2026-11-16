@@ -41,6 +41,8 @@ const message = (enquiryId: string, providerMessageId: string) => ({
   subject: "Re: hi",
   body: "Thanks",
   attachments: [{ name: "a.jpg", contentType: "image/jpeg", sizeBytes: 10 }],
+  spfResult: "pass" as const,
+  dkimResult: "none" as const,
 });
 
 describe.skipIf(!HAS_DB)("DrizzleEnquiryInboundRepository", () => {
@@ -85,6 +87,8 @@ describe.skipIf(!HAS_DB)("DrizzleEnquiryInboundRepository", () => {
         subject: "s",
         body: "b",
         attachments: [],
+        spfResult: "pass" as const,
+        dkimResult: "pass_unaligned" as const,
       };
       expect((await repo.insertQuarantineInTransaction(tx, input))?.id).toBeTruthy();
       expect(await repo.insertQuarantineInTransaction(tx, input)).toBeNull();

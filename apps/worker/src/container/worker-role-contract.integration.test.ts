@@ -26,6 +26,18 @@ const workerUrl = process.env.DATABASE_URL_WORKER;
  */
 
 const PROBE_QR_CODE_ID = "00000000-0000-0000-0000-0000000000a1";
+/** A waiting lot sold under storage terms, so the collect-by reads run past their first query. */
+const PROBE_LOT = {
+  user: "role-contract-buyer",
+  buyerEntity: "00000000-0000-0000-0000-0000000000b1",
+  sellerEntity: "00000000-0000-0000-0000-0000000000b2",
+  venue: "00000000-0000-0000-0000-0000000000b3",
+  sale: "00000000-0000-0000-0000-0000000000b4",
+  terms: "00000000-0000-0000-0000-0000000000b5",
+  lot: "00000000-0000-0000-0000-0000000000b6",
+};
+/** After the probe lot's payment cleared, so it is returned: the reads then query its storage. */
+const SWEEP_DAY = "2100-01-01";
 const log = pino({ level: "silent" });
 const now = today;
 
@@ -128,6 +140,7 @@ const PROBES: Probes = {
   }),
   qrCodeScanPersister: (r) => ({ persist: () => r.persist({ qrCodeId: NIL }) }),
   qrCodeScanPurgeRepo: (r) => ({ purgeBefore: () => r.purgeBefore(earlier, 1) }),
+  enquiryQuarantinePurgeRepo: (r) => ({ purgeDue: () => r.purgeDue(earlier, 1) }),
   failedJobPayloadPurge: (r) => ({
     purgeResolvedPayloads: () => r.purgeResolvedPayloads(earlier, 1),
   }),
@@ -220,8 +233,8 @@ const PROBES: Probes = {
     accountRecipients: () => r.accountRecipients(NIL, [NIL]),
   }),
   collectByReader: (r) => ({
-    storedLotsDue: () =>
-      r.storedLotsDue({ today: "2000-01-01", defaultFreeStorageDays: 30, reminderLeadDays: 7 }),
+    withAccountLock: () => r.withAccountLock(NIL, async () => undefined),
+    storedLotsWaiting: () => r.storedLotsWaiting({ today: SWEEP_DAY }),
     lotsClearedSince: () => r.lotsClearedSince(now),
     remindedLotIds: () =>
       r.remindedLotIds({ keyPrefix: "probe:", userId: "probe", today: "2000-01-01" }),
@@ -324,6 +337,70 @@ const PROBES: Probes = {
   }),
 };
 
+/** Committed by the owner, so `worker_app` sees it; removed again after the run. */
+async function seedProbeLot(owner: pg.Pool): Promise<void> {
+  const p = PROBE_LOT;
+  await owner.query(
+    `insert into "user" (id, name, email, email_verified, created_at, updated_at)
+     values ($1, 'Buyer', $2, true, now(), now())`,
+    [p.user, `${p.user}@integration.test`],
+  );
+  await owner.query(
+    `insert into legal_entity (id, display_name, kind, subkind, created_by_user_id, status)
+     values ($1, 'Probe buyer', 'individual', 'private_collector', $3, 'approved'),
+            ($2, 'Probe seller', 'organisation', 'gallery', $3, 'approved')`,
+    [p.buyerEntity, p.sellerEntity, p.user],
+  );
+  await owner.query(
+    `insert into venue (id, legal_entity_id, name, address_line1, city, postcode, country)
+     values ($1, $2, 'Probe gallery', '1 Test Street', 'London', 'W1W 6YW', 'GB')`,
+    [p.venue, p.sellerEntity],
+  );
+  await owner.query(
+    `insert into sale (id, title, start_time, end_time, venue_id, created_by_legal_entity_id)
+     values ($1, 'Probe sale', now() - interval '30 days', now() - interval '20 days', $2, $3)`,
+    [p.sale, p.venue, p.sellerEntity],
+  );
+  await owner.query(
+    `insert into collection_place (venue_id, free_storage_days, online_booking_enabled)
+     values ($1, 14, true)`,
+    [p.venue],
+  );
+  await owner.query(
+    `insert into collection_storage_terms (id, venue_id, free_days, count_mode, standard_daily_pence,
+       large_daily_pence, handling_fee_pence, effective_from, reason)
+     values ($1, $2, 14, 'calendar', 300, 600, 0, '2031-01-01', 'Probe terms')`,
+    [p.terms, p.venue],
+  );
+  await owner.query(
+    `insert into lot (id, seller_legal_entity_id, sale_id, title, lot_number, auction_type,
+       starting_price, current_price, start_time, end_time, status, winner_id, buyer_legal_entity_id)
+     values ($1, $2, $3, 'Probe lot', 1, 'english', 100, 100,
+       now() - interval '40 days', now() - interval '20 days', 'ended', $4, $5)`,
+    [p.lot, p.sellerEntity, p.sale, p.user, p.buyerEntity],
+  );
+  await owner.query(
+    `insert into lot_fulfilment (lot_id, status, payment_cleared_at, storage_terms_id)
+     values ($1, 'awaiting_release'::lot_fulfilment_status, '2031-02-13T12:00:00Z', $2)`,
+    [p.lot, p.terms],
+  );
+}
+
+async function removeProbeLot(owner: pg.Pool): Promise<void> {
+  const p = PROBE_LOT;
+  await owner.query("delete from lot_fulfilment where lot_id = $1", [p.lot]);
+  await owner.query("delete from lot where id = $1", [p.lot]);
+  await owner.query("delete from collection_storage_terms where id = $1", [p.terms]);
+  await owner.query("delete from sale where id = $1", [p.sale]);
+  await owner.query("delete from collection_place where venue_id = $1", [p.venue]);
+  await owner.query("delete from venue where id = $1", [p.venue]);
+  await owner.query("delete from legal_entity where id in ($1, $2)", [
+    p.buyerEntity,
+    p.sellerEntity,
+  ]);
+  await owner.query(`delete from "user" where id = $1`, [p.user]);
+}
+
 describe.skipIf(!ownerUrl || !workerUrl)("worker repositories as worker_app", () => {
   const env = { DOMAIN_EVENT_PUBLISH_VALIDATE: "off" } as const;
   const db = workerUrl ? createDb(workerUrl) : (undefined as never as WorkerDb);
@@ -357,11 +434,25 @@ describe.skipIf(!ownerUrl || !workerUrl)("worker repositories as worker_app", ()
        values ($1, $1, now() - interval '10 years') on conflict do nothing`,
       [PROBE_QR_CODE_ID],
     );
+    await removeProbeLot(owner);
+    await seedProbeLot(owner);
   });
 
   afterAll(async () => {
+    await removeProbeLot(owner);
     await owner.query("delete from qr_code where id = $1", [PROBE_QR_CODE_ID]);
     await owner.end();
+  });
+
+  it("returns the probe lot, so the reads of its terms, extensions, waiver and quotes run", async () => {
+    // Read as `worker_app` (not rolled back: it only reads), so a missing grant on the storage
+    // tables fails here as `permission denied`.
+    const found = await createWorkerRepositories(db, env).collectByReader.storedLotsWaiting({
+      today: SWEEP_DAY,
+    });
+    const rows = found.filter((row) => row.lotId === PROBE_LOT.lot);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.storage).toBeDefined();
   });
 
   it("has a probe for every repository the worker wires, and none for one it does not", () => {

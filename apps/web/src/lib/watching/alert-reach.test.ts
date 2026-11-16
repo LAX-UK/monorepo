@@ -11,8 +11,13 @@ describe("watchingAlertReach", () => {
   it("reads email and app per topic", () => {
     expect(watchingAlertReach(engine, app)).toEqual({
       artists: { emailOn: true, appOn: true },
-      searches: { emailOn: false, appOn: false },
+      searches: { emailOn: false, appOn: true },
     });
+  });
+
+  it("keeps the app on when the email is off, and off when the topic is not subscribed", () => {
+    const none = { subscribed: {}, email: {} };
+    expect(watchingAlertReach(none, app)?.artists).toEqual({ emailOn: false, appOn: false });
   });
 
   it("turns the app off with its own switch", () => {
@@ -32,6 +37,7 @@ describe("labels", () => {
   it("names where an alert reaches the person", () => {
     expect(reachLabel({ emailOn: true, appOn: true })).toBe("email and app");
     expect(reachLabel({ emailOn: true, appOn: false })).toBe("email only");
+    expect(reachLabel({ emailOn: false, appOn: true })).toBe("app only");
     expect(reachLabel({ emailOn: false, appOn: false })).toBe("email off");
   });
 

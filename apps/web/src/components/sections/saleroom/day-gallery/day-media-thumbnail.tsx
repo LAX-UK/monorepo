@@ -56,7 +56,8 @@ export function DayMediaThumbnail({
       type="button"
       variant="ghost"
       className={cn(
-        "group relative h-auto w-full overflow-hidden bg-surface-container-low p-0 in-data-[lax-density=client]:px-0 hover:bg-surface-container-low",
+        // lax-card: the kit's card hover (packages/ui/src/lax/hover-press.css) zooms the photo.
+        "lax-card group relative h-auto w-full overflow-hidden bg-surface-container-low p-0 in-data-[lax-density=client]:px-0 hover:bg-surface-container-low",
         isSheet ? "" : "",
         FOCUS_RING,
       )}
@@ -85,11 +86,8 @@ export function DayMediaThumbnail({
             alt={item.alt ?? `${saleTitle} — auction day photo ${index + 1}`}
             label="Auction day photo"
             sizes={imageSizes}
-            className={cn(
-              "h-full w-full object-cover",
-              !isSheet &&
-                "transition-transform duration-500 ease-out motion-safe:group-hover:scale-[1.03] motion-reduce:group-hover:scale-100",
-            )}
+            // The photo's box zooms, so the image inside keeps its own load fade.
+            className={cn("h-full w-full object-cover", !isSheet && "lax-card-zoom")}
             {...(item.width ? { width: item.width } : {})}
             {...(item.height ? { height: item.height } : {})}
             {...(item.blurDataURL ? { blurDataURL: item.blurDataURL } : {})}

@@ -4,6 +4,7 @@ import {
   type EditionAlert,
   type EditionAlertUnsubscribePreview,
   isEditionAlertToken,
+  parseEditionAlertEngineLink,
   parseEditionAlertList,
   parseEditionAlertUnsubscribePreview,
   parseEditionAlertUnsubscribeResponse,
@@ -81,5 +82,27 @@ export async function listEditionAlerts(): Promise<EditionAlertListResult> {
     return { status: "ok", alerts: parseEditionAlertList(await response.json()).items };
   } catch {
     return { status: "failed" };
+  }
+}
+
+/**
+ * The alert engine's stop token that replaces an old edition alert link, or null when the old
+ * link matches nothing (or the lookup failed, in which case the old page still serves it).
+ */
+export async function engineStopTokenForEditionLink(token: string): Promise<string | null> {
+  if (!isEditionAlertToken(token)) return null;
+  try {
+    const response = await fetch(
+      shopApiServerUrl(`/v1/alerts/unsubscribe/engine-link?token=${encodeURIComponent(token)}`),
+      {
+        cache: "no-store",
+        headers: { accept: "application/json" },
+        signal: AbortSignal.timeout(TIMEOUT_MS),
+      },
+    );
+    if (!response.ok) return null;
+    return parseEditionAlertEngineLink(await response.json()).token;
+  } catch {
+    return null;
   }
 }

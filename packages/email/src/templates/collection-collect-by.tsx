@@ -1,65 +1,57 @@
-import { COLORS, FONT_STACK_BODY } from "@auction/branding";
+import { COLORS } from "@auction/branding";
 import { Button } from "../components/Button.js";
 import { FactCard } from "../components/FactCard.js";
 import { Layout } from "../components/Layout.js";
 import { TextBlock } from "../components/TextBlock.js";
+import { collectByReminderCopy } from "../storage-reminder-copy.js";
 import type { TemplateVarsByName } from "../types.js";
 import { collectionContactLine } from "./collection-contact.js";
+import { StorageLotList } from "./storage-lot-list.js";
 
 type Vars = TemplateVarsByName["collection-collect-by"];
 
-export const subject = ({ when, collectByLabel }: Vars) =>
-  when === "day" ? "Your free storage ends today" : `Please collect by ${collectByLabel}`;
+const copyOf = (vars: Vars) =>
+  collectByReminderCopy({
+    when: vars.when,
+    collectByLabel: vars.collectByLabel,
+    placeName: vars.placeName,
+    lotCount: vars.lots.length,
+    chargingOn: vars.chargingOn === true,
+    withRates: (vars.lotRates ?? []).some((rate) => Boolean(rate)),
+  });
 
-const list = {
-  color: COLORS.textPrimary,
-  fontFamily: FONT_STACK_BODY,
-  fontSize: "15px",
-  lineHeight: "24px",
-  margin: "0 0 14px",
-  paddingLeft: "20px",
-};
+export const subject = (vars: Vars) => copyOf(vars).subject;
 
 const link = { color: COLORS.textPrimary, textDecoration: "underline" };
 
-export default function CollectionCollectByEmail({
-  userName,
-  when,
-  collectByLabel,
-  placeName,
-  address,
-  lots,
-  bookUrl,
-  contactEmail,
-  contactPhone,
-  storagePolicyUrl,
-  quoteUrl,
-}: Vars) {
-  const today = when === "day";
+export default function CollectionCollectByEmail(vars: Vars) {
+  const {
+    userName,
+    collectByLabel,
+    placeName,
+    address,
+    lots,
+    lotRates,
+    bookUrl,
+    contactEmail,
+    contactPhone,
+    storagePolicyUrl,
+    quoteUrl,
+  } = vars;
+  const copy = copyOf(vars);
   return (
-    <Layout
-      category="auction"
-      eyebrow="Collection"
-      preview={today ? "Your free storage ends today." : `Please collect by ${collectByLabel}.`}
-      title={today ? "Your free storage ends today" : `Please collect by ${collectByLabel}`}
-    >
+    <Layout category="auction" eyebrow="Collection" preview={copy.preview} title={copy.title}>
       <TextBlock>Hi {userName || "there"},</TextBlock>
-      <TextBlock>
-        {today
-          ? `Today is the last day of free storage for your ${lots.length === 1 ? "lot" : "lots"} at ${placeName}. Book the next available time to come in. Storage charges may apply from tomorrow under our storage policy.`
-          : `Your ${lots.length === 1 ? "lot stays" : "lots stay"} with us at ${placeName}. Please collect by ${collectByLabel}. After that, storage charges may apply under our storage policy.`}
-      </TextBlock>
+      {copy.paragraphs.map((paragraph) => (
+        <TextBlock key={paragraph}>{paragraph}</TextBlock>
+      ))}
       <FactCard
         rows={[
           { label: "Please collect by", value: collectByLabel },
           { label: "Where", value: `${placeName}, ${address}` },
         ]}
       />
-      <ul style={list}>
-        {lots.map((lot) => (
-          <li key={lot}>{lot}</li>
-        ))}
-      </ul>
+      <StorageLotList lots={lots} notes={lotRates ?? []} />
       <Button href={bookUrl}>Book a collection time</Button>
       <TextBlock>
         Read the{" "}

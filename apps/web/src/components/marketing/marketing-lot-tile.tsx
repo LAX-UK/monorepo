@@ -48,14 +48,14 @@ export function MarketingLotTile({
       {...(adaptiveMedia.sizes ? { sizes: adaptiveMedia.sizes } : { sizes })}
       {...(adaptiveMedia.label ? { label: adaptiveMedia.label } : { label: "Lot artwork" })}
       className="h-full w-full"
-      imgClassName="h-full w-full transition-transform duration-700 ease-out motion-safe:group-hover:scale-105 motion-reduce:group-hover:scale-100"
+      imgClassName="h-full w-full lax-card-zoom"
     />
   ) : (
     <MediaImage
       src={imageUrl}
       alt={imageAlt}
       label="Lot artwork"
-      imgClassName="h-full w-full object-cover transition-transform duration-700 ease-out motion-safe:group-hover:scale-105 motion-reduce:group-hover:scale-100"
+      imgClassName="h-full w-full object-cover lax-card-zoom"
       sizes={sizes}
     />
   );
@@ -67,7 +67,7 @@ export function MarketingLotTile({
     >
       <AdaptiveMediaFrameContainer
         {...{ [LOT_TRANSITION_IMAGE_ATTR]: true }}
-        className="group relative flex h-[340px] w-full flex-col overflow-hidden bg-page-bg"
+        className="lax-card group relative flex h-[340px] w-full flex-col overflow-hidden bg-page-bg"
       >
         <LotViewTransitionLink
           key={`${lotId}-link`}

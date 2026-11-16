@@ -2,13 +2,16 @@ import { normalizeStaffRoles } from "@auction/types";
 import { Hono } from "hono";
 import { describe, expect, it, vi } from "vitest";
 import type { Container } from "../../container.js";
+import { CollectionStorageFollowUpService } from "../../services/collection-storage/collection-storage-follow-up.service.js";
 import { CollectionStorageAdminService } from "../../services/collection-storage/collection-storage.service.js";
 import type { IAuthenticator } from "../../services/interfaces/authenticator.js";
 import { InMemoryCollectionStorage } from "../../testing/in-memory-collection-storage.js";
+import { InMemoryStorageFollowUp, waitingLot } from "../../testing/in-memory-storage-follow-up.js";
 import { createAdminRoutes } from "../admin.js";
 
 const VENUE = "d0000000-0000-4000-8000-0000000000aa";
 const NOW = new Date("2026-11-15T12:00:00Z");
+const LOT = "e0000000-0000-4000-8000-000000000001";
 
 const CHANGE = {
   effectiveFrom: "2026-12-01",
@@ -27,6 +30,8 @@ const CHANGE = {
  */
 function build(staffRole: string, opts: { recent?: boolean } = {}) {
   const storage = new InMemoryCollectionStorage();
+  const followUp = new InMemoryStorageFollowUp();
+  followUp.lots.set(VENUE, [waitingLot({ lotId: LOT })]);
   const venues = vi
     .fn()
     .mockResolvedValue([
@@ -47,6 +52,11 @@ function build(staffRole: string, opts: { recent?: boolean } = {}) {
         places: { venues },
         now: () => NOW,
       }),
+      collectionStorageFollowUp: new CollectionStorageFollowUpService({
+        storage: followUp,
+        places: { venues },
+        now: () => NOW,
+      }),
     },
   } as unknown as Container;
   const authenticator: IAuthenticator = {
@@ -60,7 +70,7 @@ function build(staffRole: string, opts: { recent?: boolean } = {}) {
   };
   const app = new Hono();
   app.route("/admin", createAdminRoutes(container, authenticator));
-  return { app, storage, collectionSettings };
+  return { app, storage, followUp, collectionSettings };
 }
 
 const request = (app: Hono, method: string, path: string, body?: unknown) =>
@@ -97,6 +107,27 @@ describe("collection storage through the /admin mount", () => {
       expect(storage.terms).toHaveLength(want.schedule === 200 ? 1 : 0);
     });
   }
+
+  it("lets Finance reach the Not collected lots and waive, but not extend", async () => {
+    const { app, followUp } = build("finance");
+    expect((await request(app, "GET", `/collections/${VENUE}/storage/overdue`)).status).toBe(200);
+    const lot = `/collections/${VENUE}/storage/lots/${LOT}`;
+    expect((await request(app, "POST", `${lot}/extension`, { days: 3, reason: "x" })).status).toBe(
+      403,
+    );
+    expect((await request(app, "POST", `${lot}/waiver`, { reason: "Goodwill" })).status).toBe(200);
+    expect(followUp.audit.map((a) => a.action)).toEqual(["waiver_granted"]);
+  });
+
+  it("lets Fulfilment extend through the mount, but not waive", async () => {
+    const { app, followUp } = build("fulfilment");
+    const lot = `/collections/${VENUE}/storage/lots/${LOT}`;
+    expect((await request(app, "POST", `${lot}/waiver`, { reason: "Goodwill" })).status).toBe(403);
+    expect((await request(app, "POST", `${lot}/extension`, { days: 3, reason: "x" })).status).toBe(
+      200,
+    );
+    expect(followUp.audit.map((a) => a.action)).toEqual(["extension_granted"]);
+  });
 
   it("asks Finance for a recent sign-in before a change, and writes nothing", async () => {
     const { app, storage } = build("finance", { recent: false });

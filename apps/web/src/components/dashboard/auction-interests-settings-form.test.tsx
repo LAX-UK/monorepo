@@ -37,12 +37,31 @@ describe("AuctionInterestsSettingsForm", () => {
         initialCategoryIds={[]}
       />,
     );
-    const cards = container.querySelectorAll("label.group, div[aria-disabled='true']");
+    const cards = container.querySelectorAll("label.lax-card, div[aria-disabled='true']");
     expect(cards.length).toBeGreaterThan(0);
     for (const card of cards) {
       expect(card.className).toContain("bg-surface-container-lowest");
       expect(card.className).toContain("text-on-surface");
       expect(card.className).not.toMatch(/\bbg-white\b/);
+    }
+  });
+
+  it("uses the kit's card hover: an unchecked card lifts 1px, and nothing animates its shadow", () => {
+    const { container } = render(
+      <AuctionInterestsSettingsForm
+        categoryIdBySlug={{ paintings: "category-art", "watches-clocks": "category-watches" }}
+        initialCategoryIds={["category-art"]}
+      />,
+    );
+    const art = screen.getByRole("checkbox", { name: "Art" }).closest("label") as HTMLElement;
+    const watches = screen
+      .getByRole("checkbox", { name: "Watches" })
+      .closest("label") as HTMLElement;
+    expect(art).toHaveClass("lax-card");
+    expect(art).not.toHaveClass("lax-card-lift");
+    expect(watches).toHaveClass("lax-card", "lax-card-lift");
+    for (const label of container.querySelectorAll("label.lax-card")) {
+      expect(label.className).not.toMatch(/translate-y|box-shadow|transition-\[|duration-\d/);
     }
   });
 

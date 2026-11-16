@@ -122,7 +122,6 @@ export function LotCardGrid({
                   : { sizes: LOT_CARD_GRID_SIZES })}
                 {...(adaptiveMedia.label ? { label: adaptiveMedia.label } : {})}
                 className="h-full w-full"
-                imgClassName="transition-transform duration-700 ease-out motion-safe:group-hover:scale-[1.02] motion-reduce:group-hover:scale-100"
               />
             ) : (
               image
@@ -151,7 +150,7 @@ export function LotCardGrid({
           ) : null}
         </AdaptiveMediaFrameContainer>
         <div className="flex flex-1 flex-col p-3 md:p-5">
-          <div>{title}</div>
+          <div className="lax-card-title">{title}</div>
           {meta ? <div className="mt-auto">{meta}</div> : null}
         </div>
       </LotCardNavLink>
@@ -270,7 +269,7 @@ export function LotCardEditorialBold({
   const article = (
     <article
       className={cn(
-        "group relative block overflow-hidden rounded-xl border border-border-hairline bg-surface-container-lowest",
+        "lax-card group relative block overflow-hidden rounded-xl border border-border-hairline bg-surface-container-lowest",
         className,
       )}
     >
@@ -354,7 +353,7 @@ export function LotCardEditorialCalm({
   const article = (
     <article
       className={cn(
-        "group relative block overflow-hidden rounded-xl border border-border-hairline bg-surface-container-lowest",
+        "lax-card group relative block overflow-hidden rounded-xl border border-border-hairline bg-surface-container-lowest",
         className,
       )}
     >
