@@ -76,3 +76,64 @@ Summary: the pins work. Two clean builds of one commit at the **same path** prod
   - The new "Base vs head" section (`docs/engineering/route-js-budgets.md:335-420`) explains the sources, how to read the table and what fails.
   - `pnpm lint:route-js-budget` passes locally: 53 tests, 0 failures. That includes the 9 new tests in `scripts/route-js-size-compare.test.mjs`.
 - **CI on the PR.** Run 43839857505 is green, `build` included: the PR itself is not a motion PR, so the growth notices did not fail it. That green result does not show the comparison is correct (see blocking item 1).
+
+## Final recheck
+
+Rechecked on 2026-11-16 at head `a32f9e03` (6 commits on merge-base `8ed75236`; 4 new since the review above: `b8220428`, `7bdd3f04`, `9bc842c9`, `1ecf023e`, then the docs-only `a32f9e03`). This was a review only: nothing was pushed to the PR branch and no comments were posted.
+
+**Verdict: FIX FIRST.** The structural fix is right and works. The base is now built in the head's own checkout, and the latest CI base-vs-head table reads 0 changed routes in all five apps. But the new self-check, which is the PR's own proof of determinism, failed on the latest completed run: Account showed 20 of 20 routes 2 bytes apart across two builds of one commit, so CI is red. The PR's answer is a docs commit that tells reviewers to read uniform 1 to 2 byte moves in Bid and Account "as variation, not as a change" and to re-run until the check passes. That is a noise allowance in prose, on exactly the PRs (motion/perf, MO14 "no growth, even 1 byte") the gate exists for. The PR body also has no "Changes after review" section, and its proof table is now contradicted by its own docs.
+
+### Blocking items from the review above
+
+| Item | Status | Evidence |
+| --- | --- | --- |
+| 1. Base built at a different path | **Fixed** | `scripts/route-js-size-build-base.sh` checks the base out in `$GITHUB_WORKSPACE` (`git checkout --force --detach`, `git clean -ffdx -e .turbo/cache`, clean `pnpm install`). It builds and reports the base, then restores the head from an `EXIT` trap, even on failure. The measuring scripts run from a copy in `$RUNNER_TEMP/route-js-tools`. The cache key is now `v2` and includes `ci.yml` and `turbo.json`. |
+| 1. No-op table must read 0 B on every route | **Fixed in the latest run, not in the one before** | Run 43877647575 (job 133335935750, base `697f2d8d5e`, head `082f6362f6`): web 0/114, shop 0/39, art 0/43, account 0/20, shop-admin 0/51, with no growth notices. The earlier run 43869364824 (job 133307290744, base `6f49e6ed`) showed **all 114 Bid routes +1 byte**, with 114 `grew by 1 bytes` notices, while the other four apps were byte-identical. My own local reproduction (below) gave 0 B. |
+| 2. Determinism proof must cover the CI topology | **Not met** | The self-check is the right design (the head built a second time through the base route with `--force`, then `--require-unchanged`). It passed in run 43869364824 (all apps 0 of N) but **failed** in run 43877647575: `apps/account: 20 of 20 routes changed`, every route −2 bytes (for example `/account/profile/page 446354 -> 446352`), exit 1. Both sides were uncached (`Cached: 0 cached, 42 total`). Account was documented as byte-identical. The build is therefore not deterministic in CI, and the cause is unknown (`a32f9e03`: "The cause is not found yet"). |
+
+### My own checks
+
+- **No-op, local, Bid (CI topology).** In one checkout with the CI pins, I built `apps/web` at the head (`1ecf023e`), then built the base `8ed75236` through the PR's `route-js-size-build-base.sh` (the pre-pin path, uncached). Then I ran the compare with a motion title: **0 of 114 routes changed, client scripts byte-identical, exit 0.** Head build 8m44s, base build 9m39s on 4 vCPU.
+- **Mutation, local, Account.** I built `apps/account` at the head and reported it. I then added a client component with about 4.5 KB of incompressible data to `/account/security/page` only, rebuilt and reported again.
+  - The table shows exactly 1 of 20 routes changed: `/account/security/page` +5257 bytes (+5.13 KB).
+  - With title "Motion system 4/8: page transitions", the step **fails (exit 1)** and names the route: `error: apps/account /account/security/page grew by 5257 bytes (5.13 KB gzip) against the base`.
+  - With a non-motion title, it reports `::notice` and exits 0, leaving pass/fail to the budget step, as documented.
+  - The mutation was made in a scratch worktree only and was not pushed.
+- **No rule loosened in code.**
+  - `git diff 8ed75236 a32f9e03` is empty for `scripts/route-js-budgets.json`, `scripts/route-js-baseline.json`, `check-route-js-budget.mjs`, `route-js-ratchet-rule.mjs` and `route-js-budget-rule.mjs`.
+  - `toleranceKb` is still 1.
+  - The "Route JavaScript budgets" step is unchanged and runs before the base build.
+  - `node --test` of all 7 route-JS test files: 62 tests, 0 failures. That includes the new `route-js-size-base.test.mjs`.
+- **The rule was loosened in docs.** `docs/engineering/route-js-budgets.md` (from `1ecf023e` and `a32f9e03`) now says:
+  - "read a Bid or Account block where every route moves by the same one to a few bytes as this variation, not as a change";
+  - a motion PR failing that way should "re-run the job, and if it repeats, the growth is real".
+
+  This contradicts "There is no tolerance" a few lines below, and MO14's "no growth on any route, even 1 byte". A real 1 to 2 byte growth of a shared chunk moves every route by the same amount, so it looks exactly like the documented "variation" and can be waved through, or re-run until a lucky pass. The 1 KB allowance was not widened, but this is a new, unbounded, reviewer-judged allowance for Bid and Account. It must go: either make the builds deterministic, or make the gate deterministic about its own noise. For example, fail closed and report "self-check noisy, table not trusted" instead of advising re-runs.
+- **Workflow security.**
+  - No `${{ }}` of untrusted input in any new `run:`. The PR title and labels go through `env`, and the base step reads them back with `gh api` and `jq`.
+  - Permissions are unchanged (`contents: read`, `id-token: write`, `pull-requests: read`).
+  - No new secret. `TURBO_TOKEN` and the cache signature key were already workflow-level env before this PR.
+  - The actions cache entries are written from the PR ref only, so they cannot poison main.
+  - New actions `actions/cache/restore@v4` and `actions/cache/save@v4` use major tags, not SHAs. That matches this workflow's convention for GitHub-owned actions; only third-party `dorny/paths-filter` is SHA-pinned. Acceptable. Pin them to a SHA if the repo policy requires full pinning.
+  - The script runs `git clean -ffdx` and `checkout --force` in the workspace. That is fine in CI, because nothing after these steps in the `build` job uses `.next`. The docs warn local users to commit or stash first.
+- **CI time.** The `build` job took 50m (run 43869364824) and 40m40s (run 43877647575), against about 11 minutes for Build alone before this PR.
+  - Base build: 16m08s and 13m20s, uncached (`0 cached, 42 total`).
+  - Self-check: 16m29s and 13m28s.
+  - The docs say the self-check adds "about 10 minutes". CI shows 13 to 16.5, so update the number.
+  - The base cost on a remote-cache miss after merge, and how often a replay actually hits, are not measured or documented anywhere. Neither run on this PR replayed anything, because the base predates the pins.
+  - Roughly doubling the `build` job on a remote-cache miss is acceptable only if it is stated. Document the expected steady-state numbers, or measure them on the first post-merge PRs.
+- **CI status.**
+  - Run 43877647575 (head `1ecf023e`): `build` **failed** at the self-check.
+  - Run 43885016959 (head `a32f9e03`, docs-only) was still in progress at the time of this recheck. A pass there would be one more sample of a check now known to be flaky, not proof.
+- **PR body.**
+  - There is **no "Changes after review" section.**
+  - The body still claims "0 of 114 changed" and "client scripts byte-identical" for Account, and "No route changes" for the Bid limit.
+  - It does not mention the +1 B Bid run, the −2 B Account self-check failure or the re-run advice, all of which are now in the docs.
+  - The non-blocking items from the review above that were addressed should be listed there: cache key, new routes now count as growth, motion source paths, inline logic moved into tested `route-js-size-base.mjs`, missing-base handling.
+
+### To ship
+
+1. Find the Account (and Bid) build-to-build source, or make the gate not depend on it. Then show two consecutive green runs where the self-check reads 0 of N in **every** app and a no-op base-vs-head table reads 0 B on every route.
+2. Remove the "read uniform 1 to few byte moves as variation" and "re-run until it passes" guidance for motion and perf PRs. Restore "any number is a real change", or replace it with a fail-closed rule.
+3. Correct the CI time numbers in the docs and state the steady-state cost.
+4. Add an honest "Changes after review" section to the PR body. It should list what changed since `15ecc9f7`, the remaining variation, the failed self-check run, and correct the proof table claims.
