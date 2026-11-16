@@ -18,7 +18,7 @@ const COLLECTOR_CHOICES = [
 function choiceClass({ checked }: { checked: boolean; disabled: boolean }): string {
   return cn(
     "flex min-h-11 items-center justify-center rounded-lax-control border px-4 text-lax-14 lax-focus",
-    "transition-[border-color,box-shadow] duration-150 ease-out motion-reduce:transition-none",
+    "transition-[border-color] duration-150 ease-out motion-reduce:transition-none",
     checked
       ? "border-lax-ink font-medium shadow-[inset_0_0_0_1px_var(--lax-ink)]"
       : "border-lax-line-strong bg-lax-surface hover:border-lax-control-edge",

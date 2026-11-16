@@ -12,7 +12,7 @@ export const buttonVariants = cva(
   [
     "relative inline-flex shrink-0 select-none items-center justify-center gap-1.5 whitespace-nowrap",
     "rounded-lax-control font-lax text-lax-ui font-medium",
-    "transition-[background-color,border-color,color,box-shadow] duration-150 ease-out",
+    "transition-[background-color,border-color,color] duration-150 ease-out",
     // `lax-press`: scale 0.98 while held (hover-press.css), in LAX Account; staff pages change
     // colour only.
     "lax-focus lax-target lax-press",
