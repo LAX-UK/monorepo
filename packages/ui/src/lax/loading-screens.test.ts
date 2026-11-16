@@ -114,6 +114,7 @@ describe("the kit skeletons", () => {
     ["lax/skeleton.tsx"],
     ["components/ui/table-skeleton.tsx"],
     ["components/ui/media-placeholder.tsx"],
+    ["lax/sparkline.tsx"],
   ])("%s draws the shared .lax-skeleton and no loop of its own", (path) => {
     const text = code(resolve(dirname(fileURLToPath(import.meta.url)), "..", path));
     expect(text).toMatch(/(?<![\w-])lax-skeleton(?![\w-])/);

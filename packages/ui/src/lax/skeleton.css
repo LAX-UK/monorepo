@@ -52,3 +52,24 @@
 :root[data-reduce-motion="force-reduce"][data-lax-product="account"] .lax-skeleton {
   animation-duration: 0s;
 }
+
+/*
+ * The shapes the kit's LAX skeletons draw, as classes rather than utility strings so the kit's
+ * client chunks stay as small as they were before the shared skeleton (motion PR 5): `.lax-bar` is
+ * the LAX `Skeleton` (a block on the neutral fill, badge radius) and `.lax-wave` the sparkline
+ * placeholder's box (its stroke is `currentColor`). In the components layer, so a utility class a
+ * caller passes (`rounded-full`, `bg-…`, `inline-block`) still wins.
+ */
+@layer components {
+  .lax-bar {
+    display: block;
+    border-radius: var(--lax-radius-badge);
+    background-color: var(--lax-neutral-bg);
+  }
+
+  .lax-wave {
+    display: block;
+    flex-shrink: 0;
+    color: var(--lax-neutral-bg);
+  }
+}
