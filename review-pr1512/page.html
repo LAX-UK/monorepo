@@ -1,0 +1,19 @@
+<!doctype html><html><head><meta name=viewport content="width=device-width"><style>
+:root{--header-height:57px;--header-offset:57px}
+@media(min-width:1024px){:root{--header-height:109px;--header-offset:109px}}
+body{margin:0;font:14px sans-serif}
+header{position:fixed;top:0;left:0;right:0;height:var(--header-height);background:#111;color:#fff;z-index:40}
+.banner{position:var(--pos,sticky);left:0;right:0;top:var(--header-offset);z-index:50;padding:8px 16px;font-size:12px;text-align:center;background:rgba(234,179,8,.95);border-bottom:1px solid #a16207}
+.shell{padding-top:calc(var(--header-height) + 1rem)}
+.hero{height:300px;background:#ddd}
+.tabs{position:sticky;top:var(--header-offset);z-index:30;height:44px;background:#fff;border-bottom:1px solid #ccc;display:flex;gap:16px;align-items:center;padding:0 16px}
+.content{height:3000px;background:linear-gradient(#eef,#fee)}
+.staff{min-height:100dvh;background:#f4f4f5}.staffbar{position:sticky;top:0;height:52px;background:#333;color:#fff}
+</style></head><body>
+<main id=m></main>
+<script>
+const q=new URLSearchParams(location.search);const pos=q.get('pos');if(pos)document.documentElement.style.setProperty('--pos',pos);
+const ban='<div class=banner id=b role=status aria-live=polite>Reconnecting to the saleroom…</div>';
+if(q.get('page')==='staff'){document.body.innerHTML=ban+'<div class=staff><div class=staffbar id=sb>Staff top bar</div><div style="height:2000px" id=sc>admin content</div></div>';}
+else document.getElementById('m').outerHTML='<header>LAX header</header><main>'+ban+'<div class=shell id=s><div class=hero id=hero>Hero</div><nav class=tabs id=t>Overview · Catalogue · Results</nav><div class=content>catalogue</div></div></main>';
+</script></body></html>
