@@ -96,6 +96,12 @@ export const enquiryEmailReplySchema = z.object({
   matchedBy: z.enum(INBOUND_MATCH_METHODS),
   spfResult,
   dkimResult,
+  /** Attached by staff only: why it was held, and the reason the person gave. */
+  heldReason: z.enum(INBOUND_QUARANTINE_REASONS).nullable(),
+  reviewReason: z.string().nullable(),
+  /** False when staff attached it and its sender is not verified as the client. */
+  senderVerified: z.boolean(),
+  fromOtherAddress: z.boolean(),
 });
 export type EnquiryEmailReply = z.infer<typeof enquiryEmailReplySchema>;
 

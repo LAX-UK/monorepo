@@ -5,6 +5,7 @@ import {
   marketingEnquiryMessage,
   user,
 } from "@auction/db/schema";
+import { ERASED_ENQUIRY } from "@auction/domain";
 import { eq } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 import {
@@ -121,6 +122,22 @@ describe.skipIf(!HAS_DB)("DrizzleEnquiryQuarantineReviewRepository", () => {
     });
   });
 
+  it("reads mail naming an erased enquiry as unmatched", async () => {
+    await inRollback(async (tx) => {
+      const repo = new DrizzleEnquiryQuarantineReviewRepository(tx);
+      const enquiry = await newEnquiry(tx);
+      const id = await hold(tx, "rv-erased", enquiry.id);
+      await tx
+        .update(marketingEnquiry)
+        .set({ email: ERASED_ENQUIRY.email, name: ERASED_ENQUIRY.name })
+        .where(eq(marketingEnquiry.id, enquiry.id));
+      expect((await repo.findById(id, EVERYONE))?.suspectedEnquiry).toBeNull();
+      expect((await repo.lockInTransaction(tx, id))?.suspectedEnquiry).toBeNull();
+      const listed = await repo.list({ scope: EVERYONE, view: "pending", limit: 50 });
+      expect(listed.find((row) => row.id === id)?.suspectedEnquiry).toBeNull();
+    });
+  });
+
   it("records a review once and moves it to the reviewed view", async () => {
     await inRollback(async (tx) => {
       const repo = new DrizzleEnquiryQuarantineReviewRepository(tx);
@@ -164,6 +181,9 @@ describe.skipIf(!HAS_DB)("DrizzleEnquiryInboundThreadReader", () => {
           attachments: [],
           spfResult: "pass",
           dkimResult: "pass",
+          ...(matchedBy === "staff"
+            ? { heldReason: "sender_mismatch", reviewReason: "Confirmed by phone" }
+            : {}),
         });
         await tx
           .update(marketingEnquiryMessage)
@@ -171,9 +191,18 @@ describe.skipIf(!HAS_DB)("DrizzleEnquiryInboundThreadReader", () => {
           .where(eq(marketingEnquiryMessage.providerMessageId, providerMessageId));
       }
       const replies = await new DrizzleEnquiryInboundThreadReader(tx).listInbound(enquiry.id, 50);
-      expect(replies.map((reply) => [reply.body, reply.matchedBy, reply.spfResult])).toEqual([
-        ["th-1", "token", "pass"],
-        ["th-2", "staff", "pass"],
+      expect(
+        replies.map((reply) => [
+          reply.body,
+          reply.matchedBy,
+          reply.spfResult,
+          reply.heldReason,
+          reply.reviewReason,
+          reply.fromEmailHash,
+        ]),
+      ).toEqual([
+        ["th-1", "token", "pass", null, null, "h"],
+        ["th-2", "staff", "pass", "sender_mismatch", "Confirmed by phone", "h"],
       ]);
     });
   });

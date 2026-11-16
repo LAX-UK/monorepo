@@ -10,6 +10,7 @@ import {
   Lock,
   RotateCcw,
   RotateCw,
+  ShieldAlert,
   Upload,
   UserPlus,
 } from "lucide-react";
@@ -67,6 +68,17 @@ export type ThreadMessage = {
    */
   files?: readonly FileMetadataItem[];
   filesNote?: React.ReactNode;
+  /**
+   * How a message came to be on the thread when a person put it there rather than it arriving on
+   * its own, e.g. held email staff attached: a short label beside the author, `warning` when its
+   * sender is not verified, and optional lines under the message (why it was held, the reason
+   * given). Plain text only.
+   */
+  provenance?: {
+    label: string;
+    tone: "neutral" | "warning";
+    details?: readonly string[];
+  } | null;
   /** "Read by Northbank Gallery · 29 Oct, 17:02", under the last reply the client read. */
   receipt?: string | null;
   /** A reply on its way, or one that did not go. */
@@ -147,6 +159,22 @@ function MessageRow({ message }: { message: ThreadMessage }) {
               {message.channel}
             </span>
           ) : null}
+          {message.provenance ? (
+            <span
+              data-thread-provenance={message.provenance.tone}
+              className={cn(
+                "inline-flex items-center gap-1 rounded-staff-xs px-1.5 text-staff-xs leading-5 font-medium",
+                message.provenance.tone === "warning"
+                  ? "bg-staff-warning-bg text-staff-warning-fg"
+                  : "border border-staff-line text-staff-muted",
+              )}
+            >
+              {message.provenance.tone === "warning" ? (
+                <ShieldAlert aria-hidden className="size-3" strokeWidth={2} />
+              ) : null}
+              {message.provenance.label}
+            </span>
+          ) : null}
           {sending ? (
             <span className="inline-flex items-center gap-1">
               <LoaderCircle aria-hidden className="size-3.5 animate-spin" strokeWidth={1.75} />
@@ -199,6 +227,15 @@ function MessageRow({ message }: { message: ThreadMessage }) {
             />
           ) : null}
         </div>
+        {message.provenance?.details && message.provenance.details.length > 0 ? (
+          <ul className="mt-1.5 flex max-w-[72ch] flex-col gap-0.5 text-staff-xs leading-5 text-staff-muted">
+            {message.provenance.details.map((line) => (
+              <li key={line} className="break-words">
+                {line}
+              </li>
+            ))}
+          </ul>
+        ) : null}
         {failed ? (
           <div role="alert" className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1">
             <p className="inline-flex items-center gap-1.5 text-staff-sm text-staff-danger">

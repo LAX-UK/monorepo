@@ -7,6 +7,8 @@ import {
   ENQUIRY_STATUSES,
   ENQUIRY_TIMINGS,
   ENQUIRY_VIEWS,
+  QUARANTINE_REVIEW_REASON_MAX,
+  QUARANTINE_REVIEW_REASON_MIN,
   departmentBySlug,
 } from "@auction/domain";
 import { z } from "zod";
@@ -226,8 +228,19 @@ export const adminEnquiryQuarantineListQuerySchema = z.object({
 export type AdminEnquiryQuarantineListQuery = z.infer<typeof adminEnquiryQuarantineListQuerySchema>;
 
 /**
+ * Why staff attach or discard a held mail, in their own words; kept in the audit trail. Plain
+ * text on one line or a few, 3 to 500 characters.
+ */
+export const adminEnquiryQuarantineReviewReasonSchema = z
+  .string()
+  .trim()
+  .min(QUARANTINE_REVIEW_REASON_MIN)
+  .max(QUARANTINE_REVIEW_REASON_MAX);
+
+/**
  * Attach a held mail to one enquiry: the one its reply address named, or one staff pick by
- * reference. Exactly one enquiry per held mail.
+ * reference. Exactly one enquiry per held mail, with the reason for attaching it. A mail whose
+ * sender is not verified as the enquiry's client is attached only with `confirmSenderNotVerified`.
  */
 export const adminEnquiryQuarantineAttachSchema = z.object({
   enquiryReference: z
@@ -235,5 +248,13 @@ export const adminEnquiryQuarantineAttachSchema = z.object({
     .trim()
     .toUpperCase()
     .regex(/^E-\d{4,}$/),
+  reason: adminEnquiryQuarantineReviewReasonSchema,
+  confirmSenderNotVerified: z.boolean().default(false),
 });
 export type AdminEnquiryQuarantineAttach = z.infer<typeof adminEnquiryQuarantineAttachSchema>;
+
+/** Discard a held mail, with the reason for discarding it. */
+export const adminEnquiryQuarantineDiscardSchema = z.object({
+  reason: adminEnquiryQuarantineReviewReasonSchema,
+});
+export type AdminEnquiryQuarantineDiscard = z.infer<typeof adminEnquiryQuarantineDiscardSchema>;

@@ -1,4 +1,9 @@
 import type { QuarantineMessage } from "@/lib/data/http/admin-enquiries.schema";
+import {
+  QUARANTINE_REVIEW_REASON_MAX,
+  QUARANTINE_REVIEW_REASON_MIN,
+  isHeldMailSenderUnverified,
+} from "@auction/domain";
 import type { KeyValueItem } from "@auction/staff-ui";
 import { ENQUIRIES_PATH } from "./enquiries.vm";
 import {
@@ -67,6 +72,34 @@ export function attachTarget(
 ): string | null {
   if (choice === "suspect") return suspectReference;
   return normaliseEnquiryReference(typed);
+}
+
+/** A reason staff give for a review, trimmed; null when it is too short or too long. */
+export function reviewReasonOf(value: string): string | null {
+  const reason = value.trim();
+  return reason.length >= QUARANTINE_REVIEW_REASON_MIN &&
+    reason.length <= QUARANTINE_REVIEW_REASON_MAX
+    ? reason
+    : null;
+}
+
+/** What is wrong with a typed reason, in words; null when it is fine. */
+export function reviewReasonError(value: string): string | null {
+  const reason = value.trim();
+  if (reason.length > QUARANTINE_REVIEW_REASON_MAX) return QUARANTINE_COPY.attach.reasonTooLong;
+  if (reason.length < QUARANTINE_REVIEW_REASON_MIN) return QUARANTINE_COPY.attach.reasonInvalid;
+  return null;
+}
+
+/**
+ * Whether the held mail's own facts already say its sender is not verified, so the attach dialog
+ * asks for an explicit confirmation up front (the API may still ask for one when the mail is from
+ * an address other than the chosen enquiry's client).
+ */
+export function senderUnverified(
+  message: Pick<QuarantineMessage, "reason" | "spfResult" | "dkimResult">,
+): boolean {
+  return isHeldMailSenderUnverified(message);
 }
 
 /** The sentence for a refused review, from the Bid API's error code. */

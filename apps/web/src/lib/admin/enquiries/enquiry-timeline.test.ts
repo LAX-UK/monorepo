@@ -196,6 +196,10 @@ describe("enquiryTimeline: replies by email", () => {
             matchedBy: "in_reply_to",
             spfResult: "pass",
             dkimResult: null,
+            heldReason: null,
+            reviewReason: null,
+            senderVerified: true,
+            fromOtherAddress: false,
           },
           {
             id: "r2",
@@ -206,6 +210,10 @@ describe("enquiryTimeline: replies by email", () => {
             matchedBy: "staff",
             spfResult: null,
             dkimResult: null,
+            heldReason: "sender_mismatch",
+            reviewReason: "Confirmed by phone",
+            senderVerified: false,
+            fromOtherAddress: true,
           },
         ],
       },
@@ -213,8 +221,12 @@ describe("enquiryTimeline: replies by email", () => {
       [],
     );
     expect(events.slice(0, 2).map((event) => [event.title, event.detail])).toEqual([
-      ["Held email attached to this enquiry", "Attached by staff from held email"],
+      [
+        "Held email attached to this enquiry",
+        "Attached by staff from held email · Sender not verified",
+      ],
       ["Client replied by email", "Matched by the email it answers"],
     ]);
+    expect(events.slice(0, 2).map((event) => event.tone)).toEqual(["warning", "info"]);
   });
 });

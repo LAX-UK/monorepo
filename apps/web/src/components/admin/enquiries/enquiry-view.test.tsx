@@ -433,6 +433,26 @@ describe("EnquiryView: replies by email", () => {
     expect(within(log).queryByRole("link")).toBeNull();
   });
 
+  it("labels held email staff attached although its sender is not verified, unlike a normal reply", async () => {
+    const { repliedEnquiry, attachedUnverifiedReply, emailReply } = await import(
+      "./enquiry.fixture"
+    );
+    renderView({ enquiry: { ...repliedEnquiry, replies: [emailReply, attachedUnverifiedReply] } });
+    const section = screen.getByRole("region", { name: "Replies by email" });
+    const log = within(section).getByRole("log", { name: "Email replies from Daniel Price" });
+    expect(within(log).getAllByText("Attached by staff · Sender not verified")).toHaveLength(1);
+    expect(within(log).getByText("Held because: Different sender")).toBeInTheDocument();
+    expect(
+      within(log).getByText("Sent from an address other than the client's."),
+    ).toBeInTheDocument();
+    expect(
+      within(log).getByText("Reason given: Daniel confirmed by phone that his assistant sent it"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Attached by staff from held email · Sender not verified"),
+    ).toBeInTheDocument();
+  });
+
   it("says the client is waiting for an answer, in the header and a notice", async () => {
     const { repliedEnquiry } = await import("./enquiry.fixture");
     renderView({ enquiry: repliedEnquiry });

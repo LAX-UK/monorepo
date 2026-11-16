@@ -56,7 +56,9 @@ describe.skipIf(!OWNER_URL || !API_URL)("enquiry erasure as api_app (integration
       enquiryId: enquiry.id,
       direction: "inbound",
       providerMessageId: `erase-reply-${tag}`,
-      matchedBy: "token",
+      matchedBy: "staff",
+      heldReason: "sender_mismatch",
+      reviewReason: "Ada's assistant, confirmed by phone",
       fromEmailHash: "hash",
       subject: "Re: your enquiry",
       body: "My reply",
@@ -105,10 +107,19 @@ describe.skipIf(!OWNER_URL || !API_URL)("enquiry erasure as api_app (integration
       expect(erased).toEqual({ name: ERASED_ENQUIRY.name, email: ERASED_ENQUIRY.email });
 
       const [reply] = await owner
-        .select({ body: marketingEnquiryMessage.body })
+        .select({
+          body: marketingEnquiryMessage.body,
+          reviewReason: marketingEnquiryMessage.reviewReason,
+          heldReason: marketingEnquiryMessage.heldReason,
+        })
         .from(marketingEnquiryMessage)
         .where(eq(marketingEnquiryMessage.enquiryId, enquiryId));
-      expect(reply?.body).toBe(ERASED_ENQUIRY.note);
+      // The text and the reason staff typed (which can name the sender) go; the code stays.
+      expect(reply).toEqual({
+        body: ERASED_ENQUIRY.note,
+        reviewReason: ERASED_ENQUIRY.note,
+        heldReason: "sender_mismatch",
+      });
 
       const left = await owner
         .select({ id: enquiryInboundQuarantine.providerMessageId })

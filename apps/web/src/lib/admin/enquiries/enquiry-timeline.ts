@@ -1,7 +1,8 @@
 import type { EnquiryHistoryEntry, EnquiryView } from "@/lib/data/http/admin-enquiries.schema";
 import type { TimelineEvent } from "@auction/staff-ui";
 import { ENQUIRY_CLOSE_REASON_LABELS, ENQUIRY_STATUS_LABELS } from "./enquiries.vm";
-import { MATCHED_BY_LABELS, REPLIES_COPY } from "./enquiry-email-copy";
+import { REPLIES_COPY } from "./enquiry-email-copy";
+import { replyMatchDetail } from "./enquiry-replies";
 
 function plural(count: number, one: string, many: string): string {
   return `${count} ${count === 1 ? one : many}`;
@@ -96,8 +97,8 @@ export function enquiryTimeline(
         title:
           reply.matchedBy === "staff" ? REPLIES_COPY.timelineAttached : REPLIES_COPY.timelineEvent,
         at: reply.receivedAt,
-        detail: MATCHED_BY_LABELS[reply.matchedBy],
-        tone: "info",
+        detail: replyMatchDetail(reply),
+        tone: reply.matchedBy === "staff" && !reply.senderVerified ? "warning" : "info",
       }),
     ),
   ];

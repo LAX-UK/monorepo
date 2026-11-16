@@ -115,7 +115,13 @@ export async function anonymiseEnquiries(
   // What the sender emailed back is theirs too: the text goes, the metadata of their files goes.
   await tx
     .update(marketingEnquiryMessage)
-    .set({ subject: ERASED_ENQUIRY.note, body: ERASED_ENQUIRY.note, attachments: [] })
+    // The reason staff gave for attaching held mail can name the sender too: it goes as well.
+    .set({
+      subject: ERASED_ENQUIRY.note,
+      body: ERASED_ENQUIRY.note,
+      attachments: [],
+      reviewReason: sql`CASE WHEN ${marketingEnquiryMessage.reviewReason} IS NULL THEN NULL ELSE ${ERASED_ENQUIRY.note} END`,
+    })
     .where(
       and(
         inArray(marketingEnquiryMessage.enquiryId, ids),

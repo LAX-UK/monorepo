@@ -72,6 +72,8 @@ export class DrizzleEnquiryInboundRepository implements IEnquiryInboundRepositor
         attachments: input.attachments,
         spfResult: input.spfResult,
         dkimResult: input.dkimResult,
+        heldReason: input.heldReason ?? null,
+        reviewReason: input.reviewReason ?? null,
       })
       .onConflictDoNothing()
       .returning({ id: marketingEnquiryMessage.id });

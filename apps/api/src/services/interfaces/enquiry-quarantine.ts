@@ -8,6 +8,7 @@ import type {
 import type { InboundAttachmentMetadata } from "@auction/persistence/interfaces";
 import type {
   AdminEnquiryQuarantineAttach,
+  AdminEnquiryQuarantineDiscard,
   AdminEnquiryQuarantineListQuery,
 } from "@auction/validators";
 import type { EnquiryStaffViewer } from "./marketing-enquiry-service.js";
@@ -49,7 +50,11 @@ export type QuarantineReviewError =
   | "quarantine_not_found"
   | "review_forbidden"
   | "already_reviewed"
-  | "enquiry_not_found";
+  | "enquiry_not_found"
+  /** The target enquiry was erased at the sender's request: nothing new is filed on it. */
+  | "enquiry_erased"
+  /** The sender is not verified as the enquiry's client and the person did not confirm it. */
+  | "sender_confirmation_required";
 
 export type QuarantineAttachResult =
   | { ok: true; enquiryReference: string; messageId: string }
@@ -60,7 +65,8 @@ export type QuarantineDiscardResult = { ok: true } | { ok: false; error: Quarant
 /**
  * Staff review of inbound mail held back from every thread. Reading needs enquiry access (and
  * private sale access for mail suspected to belong to a private sale enquiry); attaching and
- * discarding need the right to work enquiries. Both reviews are audited with who did them.
+ * discarding need the right to work enquiries and a reason. Both reviews are audited with who
+ * did them and why.
  */
 export interface IEnquiryQuarantineDesk {
   list(
@@ -73,5 +79,9 @@ export interface IEnquiryQuarantineDesk {
     id: string,
     input: AdminEnquiryQuarantineAttach,
   ): Promise<QuarantineAttachResult>;
-  discard(viewer: EnquiryStaffViewer, id: string): Promise<QuarantineDiscardResult>;
+  discard(
+    viewer: EnquiryStaffViewer,
+    id: string,
+    input: AdminEnquiryQuarantineDiscard,
+  ): Promise<QuarantineDiscardResult>;
 }

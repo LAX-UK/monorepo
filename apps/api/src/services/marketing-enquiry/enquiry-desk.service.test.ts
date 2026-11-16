@@ -1,3 +1,4 @@
+import { emailHash } from "@auction/email";
 import type { ITransactionRunner, InboundThreadMessage } from "@auction/persistence/interfaces";
 import { describe, expect, it, vi } from "vitest";
 import {
@@ -219,6 +220,9 @@ describe("EnquiryDeskService email replies", () => {
     matchedBy: "token",
     spfResult: "pass",
     dkimResult: "none",
+    heldReason: null,
+    reviewReason: null,
+    fromEmailHash: "hash-of-the-client",
   };
 
   it("shows the client's emailed replies on the record and the awaiting-reply mark on the list", async () => {
@@ -239,6 +243,10 @@ describe("EnquiryDeskService email replies", () => {
         matchedBy: "token",
         spfResult: "pass",
         dkimResult: "none",
+        heldReason: null,
+        reviewReason: null,
+        senderVerified: true,
+        fromOtherAddress: false,
       },
     ]);
     expect(view?.awaitingReplySince).toBe("2026-07-28T09:30:00.000Z");
@@ -246,6 +254,39 @@ describe("EnquiryDeskService email replies", () => {
 
     const page = await desk.list(clientServices, query());
     expect(page.items[0]?.awaitingReplySince).toBe("2026-07-28T09:30:00.000Z");
+  });
+
+  it("says when staff attached held mail whose sender is not verified, and why it was held", async () => {
+    const { desk, enquiries, replies } = await setup([{ intent: "press" }]);
+    const row = enquiries.rows[0];
+    if (!row) throw new Error("seed");
+    const attached = (id: string, values: Partial<InboundThreadMessage>): InboundThreadMessage => ({
+      ...reply,
+      id,
+      matchedBy: "staff",
+      reviewReason: "Client confirmed it by phone",
+      ...values,
+    });
+    replies.set(row.id, [
+      attached("m-other", { heldReason: "sender_mismatch", fromEmailHash: emailHash("x@y.test") }),
+      attached("m-unauth", {
+        heldReason: "unauthenticated",
+        spfResult: "neutral",
+        fromEmailHash: emailHash(row.email.toUpperCase()),
+      }),
+      attached("m-ok", { heldReason: "unmatched", fromEmailHash: emailHash(row.email) }),
+    ]);
+    const view = await desk.detail(clientServices, "E-1001");
+    expect(
+      view?.replies.map((r) => [r.id, r.heldReason, r.senderVerified, r.fromOtherAddress]),
+    ).toEqual([
+      ["m-other", "sender_mismatch", false, true],
+      ["m-unauth", "unauthenticated", false, false],
+      ["m-ok", "unmatched", true, false],
+    ]);
+    expect(view?.replies[0]?.reviewReason).toBe("Client confirmed it by phone");
+    // The hash of the address never leaves the API.
+    expect(JSON.stringify(view)).not.toContain("fromEmailHash");
   });
 
   it("never reads the replies of an enquiry the viewer may not open", async () => {

@@ -5,7 +5,14 @@ import type {
   InboundFile,
 } from "@/lib/data/http/admin-enquiries.schema";
 import { type FileMetadataItem, type ThreadItem, initialsOf } from "@auction/staff-ui";
-import { MATCHED_BY_LABELS, REPLIES_COPY } from "./enquiry-email-copy";
+import {
+  AUTH_NOT_RECORDED,
+  DKIM_LABELS,
+  MATCHED_BY_LABELS,
+  QUARANTINE_REASON_COPY,
+  REPLIES_COPY,
+  SPF_LABELS,
+} from "./enquiry-email-copy";
 
 const TYPE_WORDS: Readonly<Record<string, string>> = {
   "application/pdf": "PDF",
@@ -41,6 +48,38 @@ export function inboundFileItems(
   }));
 }
 
+/**
+ * How a reply staff attached from held email reads on the thread: "Attached by staff", or a
+ * warning "Attached by staff · Sender not verified" with why it was held, whether it came from
+ * another address, the sender checks and the reason given. Null for a reply that joined on its own.
+ */
+export function attachedProvenance(
+  reply: EnquiryEmailReply,
+): { label: string; tone: "neutral" | "warning"; details: string[] } | null {
+  if (reply.matchedBy !== "staff") return null;
+  const details: string[] = [];
+  if (reply.heldReason) {
+    details.push(REPLIES_COPY.heldBecause(QUARANTINE_REASON_COPY[reply.heldReason].label));
+  }
+  if (!reply.senderVerified) {
+    if (reply.fromOtherAddress) details.push(REPLIES_COPY.otherAddress);
+    details.push(
+      REPLIES_COPY.senderChecks(
+        reply.spfResult
+          ? SPF_LABELS[reply.spfResult].toLowerCase()
+          : AUTH_NOT_RECORDED.toLowerCase(),
+        reply.dkimResult
+          ? DKIM_LABELS[reply.dkimResult].toLowerCase()
+          : AUTH_NOT_RECORDED.toLowerCase(),
+      ),
+    );
+  }
+  if (reply.reviewReason) details.push(REPLIES_COPY.reasonGiven(reply.reviewReason));
+  return reply.senderVerified
+    ? { label: REPLIES_COPY.attachedLabel, tone: "neutral", details }
+    : { label: REPLIES_COPY.attachedUnverifiedLabel, tone: "warning", details };
+}
+
 function replyItem(reply: EnquiryEmailReply, clientName: string, now: Date): ThreadItem {
   return {
     type: "message",
@@ -57,6 +96,7 @@ function replyItem(reply: EnquiryEmailReply, clientName: string, now: Date): Thr
     attachments: [],
     files: inboundFileItems(reply.attachments, reply.id),
     filesNote: REPLIES_COPY.filesNote,
+    provenance: attachedProvenance(reply),
   };
 }
 
@@ -68,7 +108,10 @@ export function replyThreadItems(enquiry: EnquiryView, now: Date): ThreadItem[] 
   return enquiry.replies.map((reply) => replyItem(reply, enquiry.name, now));
 }
 
-/** How the reply joined the thread, for its timeline entry. */
+/** How the reply joined the thread, for its timeline entry; says so when the sender is not verified. */
 export function replyMatchDetail(reply: EnquiryEmailReply): string {
+  if (reply.matchedBy === "staff" && !reply.senderVerified) {
+    return `${MATCHED_BY_LABELS.staff} · ${REPLIES_COPY.senderNotVerified}`;
+  }
   return MATCHED_BY_LABELS[reply.matchedBy];
 }

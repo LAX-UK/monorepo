@@ -19,6 +19,7 @@ import { ENQUIRY_ASSIGN_ACCESS } from "@/lib/navigation/staff-nav-access";
 import { instrumentServerAction } from "@/lib/observability/instrument-server-action";
 import {
   adminEnquiryQuarantineAttachSchema,
+  adminEnquiryQuarantineDiscardSchema,
   enquiryQuarantineParamSchema,
 } from "@auction/validators";
 import { revalidatePath } from "next/cache";
@@ -35,7 +36,8 @@ function refreshQuarantine(id: string): void {
 
 /**
  * Attaches one held email to one enquiry: the one its reply address named, or one the person
- * picked by reference. The Bid API checks the capability and the enquiry again, and audits it.
+ * picked by reference, with the reason given (and, for a sender that is not verified, the
+ * person's confirmation). The Bid API checks the capability and the enquiry again, and audits it.
  */
 export async function attachQuarantinedEmailAction(
   id: string,
@@ -47,7 +49,7 @@ export async function attachQuarantinedEmailAction(
     const param = enquiryQuarantineParamSchema.safeParse({ id });
     const body = adminEnquiryQuarantineAttachSchema.safeParse(input);
     if (!param.success || !body.success) {
-      return actionFailure(quarantineErrorMessage("enquiry_not_found", 400), undefined, 400);
+      return actionFailure(quarantineErrorMessage("invalid", 400), undefined, 400, "invalid");
     }
     const res = await authedServerFetch(`/admin/enquiry-quarantine/${param.data.id}/attach`, {
       method: "POST",
@@ -71,8 +73,14 @@ export async function attachQuarantinedEmailAction(
   });
 }
 
-/** Discards one held email: it stays off every enquiry until it is deleted. Audited by the API. */
-export async function discardQuarantinedEmailAction(id: string): Promise<ActionResult<null>> {
+/**
+ * Discards one held email, with the reason given: it stays off every enquiry until it is deleted.
+ * Audited by the API.
+ */
+export async function discardQuarantinedEmailAction(
+  id: string,
+  input: unknown,
+): Promise<ActionResult<null>> {
   return instrumentServerAction("discardQuarantinedEmailAction", async () => {
     const denied = await denyUnlessAdminCapability(ENQUIRY_ASSIGN_ACCESS);
     if (denied) return denied;
@@ -80,8 +88,14 @@ export async function discardQuarantinedEmailAction(id: string): Promise<ActionR
     if (!param.success) {
       return actionFailure(quarantineErrorMessage("quarantine_not_found", 400), undefined, 400);
     }
+    const body = adminEnquiryQuarantineDiscardSchema.safeParse(input);
+    if (!body.success) {
+      return actionFailure(quarantineErrorMessage("invalid", 400), undefined, 400, "invalid");
+    }
     const res = await authedServerFetch(`/admin/enquiry-quarantine/${param.data.id}/discard`, {
       method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body.data),
     }).catch(() => null);
     if (!res) return actionFailure(quarantineErrorMessage(undefined, undefined), undefined, 503);
     if (!res.ok) {

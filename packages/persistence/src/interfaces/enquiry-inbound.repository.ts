@@ -31,6 +31,9 @@ export type NewInboundMessage = InboundAuthenticationResult & {
   providerMessageId: string;
   /** `staff` when a person attached it from quarantine. */
   matchedBy: InboundMatchMethod;
+  /** Attached by staff only: why it was held, and the reason the person gave for attaching it. */
+  heldReason?: InboundQuarantineReason | null;
+  reviewReason?: string | null;
   fromEmailHash: string;
   subject: string;
   body: string;

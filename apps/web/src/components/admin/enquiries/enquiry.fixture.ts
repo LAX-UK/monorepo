@@ -74,6 +74,29 @@ export const emailReply: EnquiryView["replies"][number] = {
   matchedBy: "token",
   spfResult: "pass",
   dkimResult: "pass",
+  heldReason: null,
+  reviewReason: null,
+  senderVerified: true,
+  fromOtherAddress: false,
+};
+
+/**
+ * Held email staff attached although its sender is not verified: it came from another address
+ * (a colleague forwarding), with the reason the person gave.
+ */
+export const attachedUnverifiedReply: EnquiryView["replies"][number] = {
+  id: "r2",
+  receivedAt: "2026-11-04T09:15:00.000Z",
+  subject: "Fwd: Your enquiry E-1042",
+  body: "Forwarding on behalf of Daniel: the frame measurements are 62 x 48 cm.",
+  attachments: [],
+  matchedBy: "staff",
+  spfResult: "pass",
+  dkimResult: "none",
+  heldReason: "sender_mismatch",
+  reviewReason: "Daniel confirmed by phone that his assistant sent it",
+  senderVerified: false,
+  fromOtherAddress: true,
 };
 
 /** The same enquiry after the client replied by email: waiting for an answer. */

@@ -8,6 +8,7 @@ import {
   QUARANTINE_PATH,
   reasonCopy,
   senderCheckItems,
+  senderUnverified,
   subjectLine,
 } from "@/lib/admin/enquiries/quarantine.vm";
 import type { QuarantineMessage } from "@/lib/data/http/admin-enquiries.schema";
@@ -200,10 +201,16 @@ export function QuarantineMessageView({
             open={dialog === "attach"}
             onOpenChange={(next) => open(next ? "attach" : null)}
             suspectReference={message.suspectedEnquiry?.reference ?? null}
+            unverified={
+              senderUnverified(message)
+                ? { label: reason.label, description: reason.description }
+                : null
+            }
+            confirmationRequested={review.needsSenderConfirmation}
             busy={review.busy}
             failure={review.failure}
-            onAttach={async (reference) => {
-              const result = await review.attach(reference);
+            onAttach={async (input) => {
+              const result = await review.attach(input);
               if (result.ok && result.data) {
                 setDialog(null);
                 notify.success(QUARANTINE_COPY.attach.done(result.data.enquiryReference));
@@ -216,8 +223,8 @@ export function QuarantineMessageView({
             onOpenChange={(next) => open(next ? "discard" : null)}
             busy={review.busy}
             failure={review.failure}
-            onDiscard={async () => {
-              const result = await review.discard();
+            onDiscard={async (reason) => {
+              const result = await review.discard(reason);
               if (result.ok) {
                 setDialog(null);
                 notify.success(QUARANTINE_COPY.discard.done);

@@ -184,4 +184,43 @@ describe("MessageThread inside a longer page", () => {
       globalThis.IntersectionObserver = original;
     }
   });
+
+  it("labels a message a person put on the thread, with a warning when its sender is not verified", () => {
+    render(
+      <MessageThread
+        label="Thread"
+        items={[
+          {
+            type: "message",
+            id: "held",
+            author: { name: "Sam Sender", initials: "SS", side: "client" },
+            channel: "via email",
+            time,
+            body: "Forwarding on behalf of Sam.",
+            attachments: [],
+            provenance: {
+              label: "Attached by staff · Sender not verified",
+              tone: "warning",
+              details: ["Held because: Different sender", "Reason given: Sam confirmed by phone"],
+            },
+          },
+          {
+            type: "message",
+            id: "plain",
+            author: { name: "Sam Sender", initials: "SS", side: "client" },
+            time,
+            body: "Thanks",
+            attachments: [],
+          },
+        ]}
+      />,
+    );
+    const label = screen.getByText("Attached by staff · Sender not verified");
+    expect(label.closest("[data-thread-provenance]")?.getAttribute("data-thread-provenance")).toBe(
+      "warning",
+    );
+    expect(screen.getByText("Held because: Different sender")).toBeTruthy();
+    expect(screen.getByText("Reason given: Sam confirmed by phone")).toBeTruthy();
+    expect(document.querySelectorAll("[data-thread-provenance]")).toHaveLength(1);
+  });
 });

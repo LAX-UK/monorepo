@@ -1,4 +1,9 @@
-import { canViewEnquiry, quarantineReviewRefusal } from "@auction/domain";
+import {
+  ERASED_ENQUIRY,
+  canViewEnquiry,
+  isAttachedSenderVerified,
+  quarantineReviewRefusal,
+} from "@auction/domain";
 import { emailHash } from "@auction/email";
 import type {
   IEnquiryInboundRepository,
@@ -11,6 +16,7 @@ import type {
 } from "@auction/persistence/interfaces";
 import type {
   AdminEnquiryQuarantineAttach,
+  AdminEnquiryQuarantineDiscard,
   AdminEnquiryQuarantineListQuery,
 } from "@auction/validators";
 import type { IDomainEventSink } from "../domain-event-sink.js";
@@ -87,8 +93,10 @@ const QUARANTINE = "enquiry_inbound_quarantine" as const;
 /**
  * Staff review of held inbound mail. A held mail is attached to exactly one enquiry (the one its
  * reply address named, or one a person picks), or discarded; either happens once, under a row
- * lock, with an audited event naming who did it. Nothing here changes what was received, and
- * events carry ids and codes only.
+ * lock, with an audited event naming who did it and the reason they gave. A mail whose sender is
+ * not verified as the enquiry's client is attached only when the person confirms it, keeps why it
+ * was held on the thread, and is never filed on an erased enquiry. Nothing here changes what was
+ * received; events carry ids, codes and the reason staff typed.
  */
 export class EnquiryQuarantineService implements IEnquiryQuarantineDesk {
   constructor(private readonly deps: EnquiryQuarantineServiceDeps) {}
@@ -132,51 +140,76 @@ export class EnquiryQuarantineService implements IEnquiryQuarantineDesk {
     const target = await this.deps.enquiries.findByRef(input.enquiryReference);
     if (!target || !canViewEnquiry(target, viewer))
       return { ok: false, error: "enquiry_not_found" };
+    // An enquiry erased at the sender's request takes no new personal text.
+    if (target.email === ERASED_ENQUIRY.email) return { ok: false, error: "enquiry_erased" };
 
-    const result = await this.deps.transactionRunner.runInTransaction(async (tx) => {
-      const locked = await this.deps.quarantine.lockInTransaction(tx, id);
-      if (!locked || quarantineReviewRefusal(locked.status)) return null;
-      const message = await this.deps.inbound.insertInboundMessageInTransaction(tx, {
-        enquiryId: target.id,
-        providerMessageId: locked.providerMessageId,
-        matchedBy: "staff",
-        fromEmailHash: emailHash(locked.fromAddress),
-        subject: locked.subject,
-        body: locked.body,
-        attachments: locked.attachments,
-        spfResult: locked.spfResult ?? "none",
-        dkimResult: locked.dkimResult ?? "none",
-      });
-      if (!message) return null;
-      const at = this.deps.now();
-      await this.deps.inbound.markAwaitingReplyInTransaction(tx, target.id, at);
-      await this.deps.quarantine.markReviewedInTransaction(tx, id, {
-        status: "linked",
-        byUserId: viewer.userId,
-        at,
-      });
-      await this.deps.events.withTx(tx).publish({
-        aggregateType: "marketing_enquiry",
-        aggregateId: target.id,
-        eventType: "marketing_enquiry.inbound_attached",
-        payload: {
+    type Outcome =
+      | { ok: true; messageId: string }
+      | { ok: false; error: "already_reviewed" | "sender_confirmation_required" };
+    const result = await this.deps.transactionRunner.runInTransaction(
+      async (tx): Promise<Outcome> => {
+        const locked = await this.deps.quarantine.lockInTransaction(tx, id);
+        if (!locked || quarantineReviewRefusal(locked.status))
+          return { ok: false, error: "already_reviewed" };
+        const fromMatchesEnquirer =
+          locked.fromAddress.trim().toLowerCase() === target.email.trim().toLowerCase();
+        const senderVerified = isAttachedSenderVerified(locked, fromMatchesEnquirer);
+        // A sender who is not verified as this enquiry's client is attached only on purpose.
+        if (!senderVerified && !input.confirmSenderNotVerified) {
+          return { ok: false, error: "sender_confirmation_required" };
+        }
+        const message = await this.deps.inbound.insertInboundMessageInTransaction(tx, {
           enquiryId: target.id,
-          intent: target.intent,
-          quarantineId: id,
-          messageId: message.id,
-          reason: locked.reason,
-          suspectedEnquiry: locked.suspectedEnquiry?.id === target.id,
-          attachmentCount: locked.attachments.length,
-        },
-        actorUserId: viewer.userId,
-      });
-      return message;
-    });
-    if (!result) return { ok: false, error: "already_reviewed" };
-    return { ok: true, enquiryReference: target.reference, messageId: result.id };
+          providerMessageId: locked.providerMessageId,
+          matchedBy: "staff",
+          fromEmailHash: emailHash(locked.fromAddress),
+          subject: locked.subject,
+          body: locked.body,
+          attachments: locked.attachments,
+          spfResult: locked.spfResult ?? "none",
+          dkimResult: locked.dkimResult ?? "none",
+          heldReason: locked.reason,
+          reviewReason: input.reason,
+        });
+        if (!message) return { ok: false, error: "already_reviewed" };
+        const at = this.deps.now();
+        await this.deps.inbound.markAwaitingReplyInTransaction(tx, target.id, at);
+        await this.deps.quarantine.markReviewedInTransaction(tx, id, {
+          status: "linked",
+          byUserId: viewer.userId,
+          at,
+        });
+        await this.deps.events.withTx(tx).publish({
+          aggregateType: "marketing_enquiry",
+          aggregateId: target.id,
+          eventType: "marketing_enquiry.inbound_attached",
+          payload: {
+            enquiryId: target.id,
+            intent: target.intent,
+            quarantineId: id,
+            messageId: message.id,
+            reason: locked.reason,
+            suspectedEnquiry: locked.suspectedEnquiry?.id === target.id,
+            attachmentCount: locked.attachments.length,
+            spfResult: locked.spfResult,
+            dkimResult: locked.dkimResult,
+            senderVerified,
+            reviewReason: input.reason,
+          },
+          actorUserId: viewer.userId,
+        });
+        return { ok: true, messageId: message.id };
+      },
+    );
+    if (!result.ok) return result;
+    return { ok: true, enquiryReference: target.reference, messageId: result.messageId };
   }
 
-  async discard(viewer: EnquiryStaffViewer, id: string): Promise<QuarantineDiscardResult> {
+  async discard(
+    viewer: EnquiryStaffViewer,
+    id: string,
+    input: AdminEnquiryQuarantineDiscard,
+  ): Promise<QuarantineDiscardResult> {
     const held = await this.deps.quarantine.findById(id, scopeOf(viewer));
     if (!held) return { ok: false, error: "quarantine_not_found" };
     if (!viewer.canAssign) return { ok: false, error: "review_forbidden" };
@@ -193,7 +226,7 @@ export class EnquiryQuarantineService implements IEnquiryQuarantineDesk {
         aggregateType: QUARANTINE,
         aggregateId: id,
         eventType: "marketing_enquiry.inbound_discarded",
-        payload: { quarantineId: id, reason: locked.reason },
+        payload: { quarantineId: id, reason: locked.reason, reviewReason: input.reason },
         actorUserId: viewer.userId,
       });
       return true;

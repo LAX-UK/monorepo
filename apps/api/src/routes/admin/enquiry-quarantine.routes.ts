@@ -1,5 +1,6 @@
 import {
   adminEnquiryQuarantineAttachSchema,
+  adminEnquiryQuarantineDiscardSchema,
   adminEnquiryQuarantineListQuerySchema,
   enquiryQuarantineParamSchema,
 } from "@auction/validators";
@@ -15,6 +16,8 @@ const REVIEW_ERROR_STATUS = {
   review_forbidden: 403,
   already_reviewed: 409,
   enquiry_not_found: 422,
+  enquiry_erased: 422,
+  sender_confirmation_required: 422,
 } as const satisfies Record<QuarantineReviewError, 403 | 404 | 409 | 422>;
 
 /**
@@ -58,7 +61,7 @@ export function attachAdminEnquiryQuarantineRoutes(
     },
   );
 
-  /** POST /admin/enquiry-quarantine/:id/attach — file it on one enquiry; audited. */
+  /** POST /admin/enquiry-quarantine/:id/attach — file it on one enquiry, with a reason; audited. */
   platform.post(
     "/enquiry-quarantine/:id/attach",
     requireEnquiryWork,
@@ -77,15 +80,17 @@ export function attachAdminEnquiryQuarantineRoutes(
     },
   );
 
-  /** POST /admin/enquiry-quarantine/:id/discard — leave it off every thread; audited. */
+  /** POST /admin/enquiry-quarantine/:id/discard — leave it off every thread, with a reason; audited. */
   platform.post(
     "/enquiry-quarantine/:id/discard",
     requireEnquiryWork,
     zValidator("param", enquiryQuarantineParamSchema),
+    zValidator("json", adminEnquiryQuarantineDiscardSchema),
     async (c) => {
       const result = await container.admin.enquiryQuarantine.discard(
         enquiryViewerOf(c),
         c.req.valid("param").id,
+        c.req.valid("json"),
       );
       if (!result.ok) return c.json({ error: result.error }, REVIEW_ERROR_STATUS[result.error]);
       return c.json({ data: { ok: true } });

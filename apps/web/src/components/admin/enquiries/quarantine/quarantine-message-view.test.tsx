@@ -73,27 +73,98 @@ describe("QuarantineMessageView: reading", () => {
   });
 });
 
+const REASON = "Daniel confirmed by phone that his assistant sent it";
+
+async function openAttach() {
+  fireEvent.click(screen.getByRole("button", { name: "Attach to enquiry" }));
+  return screen.findByRole("dialog", { name: "Attach this email to an enquiry?" });
+}
+
+function giveReason(dialog: HTMLElement, value = REASON) {
+  fireEvent.change(within(dialog).getByLabelText(/Why are you attaching it\?/), {
+    target: { value },
+  });
+}
+
+const CONFIRM_LABEL =
+  /I have checked this email belongs on this enquiry even though its sender is not verified/;
+
 describe("QuarantineMessageView: attach", () => {
-  it("confirms, attaches to the suspected enquiry and opens it", async () => {
+  it("names why the sender is not verified, needs a reason and the confirmation, then attaches and opens it", async () => {
     renderView();
-    fireEvent.click(screen.getByRole("button", { name: "Attach to enquiry" }));
-    const dialog = await screen.findByRole("dialog", { name: "Attach this email to an enquiry?" });
+    const dialog = await openAttach();
     expect(within(dialog).getByText(/This can't be undone/)).toBeInTheDocument();
-    fireEvent.click(within(dialog).getByRole("button", { name: "Attach to E-1042" }));
+    expect(within(dialog).getByText("The sender is not verified")).toBeInTheDocument();
+    expect(within(dialog).getByText(/Held because: Different sender\./)).toBeInTheDocument();
+    const confirm = within(dialog).getByRole("button", { name: "Attach to E-1042" });
+    expect(confirm).toBeDisabled();
+    giveReason(dialog);
+    expect(confirm).toBeDisabled();
+    fireEvent.click(within(dialog).getByLabelText(CONFIRM_LABEL));
+    expect(confirm).toBeEnabled();
+    fireEvent.click(confirm);
     await waitFor(() =>
       expect(attach).toHaveBeenCalledWith(heldMessage().id, {
         enquiryReference: "E-1042",
+        reason: REASON,
+        confirmSenderNotVerified: true,
       }),
     );
     await waitFor(() => expect(push).toHaveBeenCalledWith("/admin/enquiries/E-1042"));
     expect(notifySuccess).toHaveBeenCalledWith("Email attached to E-1042");
   });
 
+  it("asks no confirmation for mail whose own checks passed, but still needs a reason", async () => {
+    renderView({ message: heldMessage({ reason: "auto_reply", dkimResult: "pass" }) });
+    const dialog = await openAttach();
+    expect(within(dialog).queryByText("The sender is not verified")).toBeNull();
+    expect(within(dialog).queryByLabelText(CONFIRM_LABEL)).toBeNull();
+    const confirm = within(dialog).getByRole("button", { name: "Attach to E-1042" });
+    giveReason(dialog, "  ");
+    expect(confirm).toBeDisabled();
+    giveReason(dialog);
+    fireEvent.click(confirm);
+    await waitFor(() =>
+      expect(attach).toHaveBeenCalledWith(heldMessage().id, {
+        enquiryReference: "E-1042",
+        reason: REASON,
+        confirmSenderNotVerified: false,
+      }),
+    );
+  });
+
+  it("asks for the confirmation when the API says the sender is not the chosen enquiry's client", async () => {
+    attach.mockResolvedValueOnce({
+      ok: false,
+      error: "This email is not from the enquiry's client address.",
+      errorCode: "sender_confirmation_required",
+    });
+    renderView({ message: heldMessage({ reason: "auto_reply", dkimResult: "pass" }) });
+    const dialog = await openAttach();
+    giveReason(dialog);
+    fireEvent.click(within(dialog).getByRole("button", { name: "Attach to E-1042" }));
+    expect(
+      await within(dialog).findByText("This email is not from the enquiry's client address."),
+    ).toBeInTheDocument();
+    const box = await within(dialog).findByLabelText(CONFIRM_LABEL);
+    expect(within(dialog).getByRole("button", { name: "Attach to E-1042" })).toBeDisabled();
+    fireEvent.click(box);
+    fireEvent.click(within(dialog).getByRole("button", { name: "Attach to E-1042" }));
+    await waitFor(() =>
+      expect(attach).toHaveBeenLastCalledWith(heldMessage().id, {
+        enquiryReference: "E-1042",
+        reason: REASON,
+        confirmSenderNotVerified: true,
+      }),
+    );
+  });
+
   it("attaches to another enquiry a person names, only once the reference is valid", async () => {
     renderView();
-    fireEvent.click(screen.getByRole("button", { name: "Attach to enquiry" }));
-    const dialog = await screen.findByRole("dialog");
+    const dialog = await openAttach();
     fireEvent.click(within(dialog).getByLabelText("Another enquiry"));
+    giveReason(dialog);
+    fireEvent.click(within(dialog).getByLabelText(CONFIRM_LABEL));
     const confirm = within(dialog).getByRole("button", { name: "Attach" });
     expect(confirm).toBeDisabled();
     fireEvent.change(within(dialog).getByLabelText(/Enquiry reference/), {
@@ -101,33 +172,51 @@ describe("QuarantineMessageView: attach", () => {
     });
     fireEvent.click(within(dialog).getByRole("button", { name: "Attach to E-2001" }));
     await waitFor(() =>
-      expect(attach).toHaveBeenCalledWith(heldMessage().id, { enquiryReference: "E-2001" }),
+      expect(attach).toHaveBeenCalledWith(heldMessage().id, {
+        enquiryReference: "E-2001",
+        reason: REASON,
+        confirmSenderNotVerified: true,
+      }),
     );
   });
 
   it("keeps the dialog open with the reason when it is refused", async () => {
     attach.mockResolvedValueOnce({
       ok: false,
-      error: "Someone has already attached or discarded this email.",
+      error: "That enquiry was erased at the client's request, so nothing new can be added to it.",
+      errorCode: "enquiry_erased",
     });
     renderView();
-    fireEvent.click(screen.getByRole("button", { name: "Attach to enquiry" }));
-    const dialog = await screen.findByRole("dialog");
+    const dialog = await openAttach();
+    giveReason(dialog);
+    fireEvent.click(within(dialog).getByLabelText(CONFIRM_LABEL));
     fireEvent.click(within(dialog).getByRole("button", { name: "Attach to E-1042" }));
+    expect(await within(dialog).findByText("That did not go through")).toBeInTheDocument();
     expect(
-      await within(dialog).findByText("Someone has already attached or discarded this email."),
+      within(dialog).getByText(
+        "That enquiry was erased at the client's request, so nothing new can be added to it.",
+      ),
     ).toBeInTheDocument();
     expect(push).not.toHaveBeenCalled();
   });
 });
 
 describe("QuarantineMessageView: discard", () => {
-  it("confirms with a danger button and discards", async () => {
+  it("confirms with a danger button and discards with the reason given", async () => {
     renderView();
     fireEvent.click(screen.getByRole("button", { name: "Discard" }));
     const dialog = await screen.findByRole("dialog", { name: "Discard this email?" });
-    fireEvent.click(within(dialog).getByRole("button", { name: "Discard email" }));
-    await waitFor(() => expect(discard).toHaveBeenCalledWith(heldMessage().id));
+    const confirm = within(dialog).getByRole("button", { name: "Discard email" });
+    expect(confirm).toBeDisabled();
+    fireEvent.change(within(dialog).getByLabelText(/Why are you discarding it\?/), {
+      target: { value: " Newsletter, not about the enquiry " },
+    });
+    fireEvent.click(confirm);
+    await waitFor(() =>
+      expect(discard).toHaveBeenCalledWith(heldMessage().id, {
+        reason: "Newsletter, not about the enquiry",
+      }),
+    );
     expect(notifySuccess).toHaveBeenCalledWith("Email discarded");
     expect(refresh).toHaveBeenCalled();
   });

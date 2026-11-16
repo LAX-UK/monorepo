@@ -1,4 +1,5 @@
-import { enquiryNextStatuses } from "@auction/domain";
+import { enquiryNextStatuses, isAttachedSenderVerified } from "@auction/domain";
+import { emailHash } from "@auction/email";
 import type {
   EnquiryNoteRecord,
   InboundThreadMessage,
@@ -7,6 +8,7 @@ import type {
 } from "@auction/persistence/interfaces";
 import { addBusinessDays } from "../admin/admin-work-item-sla.policy.js";
 import type {
+  EnquiryEmailReplyView,
   MarketingEnquiryListItem,
   MarketingEnquiryView,
 } from "../interfaces/marketing-enquiry-service.js";
@@ -66,6 +68,42 @@ export function toListItem(record: MarketingEnquiryRecord): MarketingEnquiryList
   };
 }
 
+/**
+ * One emailed reply as staff read it. A reply that joined the thread on its own was already
+ * matched to the client's address and authenticated; one staff attached from held mail says
+ * whether it came from the client's address and whether its sender checks passed.
+ */
+export function toReplyView(
+  reply: InboundThreadMessage,
+  enquirerEmail: string,
+): EnquiryEmailReplyView {
+  const attached = reply.matchedBy === "staff";
+  const fromOtherAddress = attached && reply.fromEmailHash !== emailHash(enquirerEmail);
+  return {
+    id: reply.id,
+    receivedAt: reply.receivedAt.toISOString(),
+    subject: reply.subject,
+    body: reply.body,
+    attachments: reply.attachments,
+    matchedBy: reply.matchedBy,
+    spfResult: reply.spfResult,
+    dkimResult: reply.dkimResult,
+    heldReason: attached ? reply.heldReason : null,
+    reviewReason: attached ? reply.reviewReason : null,
+    senderVerified:
+      !attached ||
+      isAttachedSenderVerified(
+        {
+          reason: reply.heldReason ?? "unmatched",
+          spfResult: reply.spfResult,
+          dkimResult: reply.dkimResult,
+        },
+        !fromOtherAddress,
+      ),
+    fromOtherAddress,
+  };
+}
+
 export function toView(
   record: MarketingEnquiryRecord | MarketingEnquiryDetailRecord,
   notes: EnquiryNoteRecord[] = [],
@@ -103,16 +141,7 @@ export function toView(
       body: note.body,
       createdAt: note.createdAt.toISOString(),
     })),
-    replies: replies.map((reply) => ({
-      id: reply.id,
-      receivedAt: reply.receivedAt.toISOString(),
-      subject: reply.subject,
-      body: reply.body,
-      attachments: reply.attachments,
-      matchedBy: reply.matchedBy,
-      spfResult: reply.spfResult,
-      dkimResult: reply.dkimResult,
-    })),
+    replies: replies.map((reply) => toReplyView(reply, record.email)),
     awaitingReplySince: record.awaitingReplySince?.toISOString() ?? null,
   };
 }

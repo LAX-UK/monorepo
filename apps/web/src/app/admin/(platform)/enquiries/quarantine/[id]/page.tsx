@@ -1,5 +1,6 @@
 import { QuarantineMessageView } from "@/components/admin/enquiries/quarantine/quarantine-message-view";
 import { enquiryAbilities } from "@/lib/admin/enquiries/enquiry-access";
+import { QUARANTINE_COPY } from "@/lib/admin/enquiries/enquiry-email-copy";
 import { loadQuarantineMessagePage } from "@/lib/admin/enquiries/load-quarantine-page";
 import { quarantineHref } from "@/lib/admin/enquiries/quarantine.vm";
 import { requireAdminCapability } from "@/lib/auth/require-admin-capability";
@@ -12,8 +13,8 @@ import { notFound } from "next/navigation";
 type Props = { params: Promise<{ id: string }> };
 
 export const metadata: Metadata = metadataForPrivate(
-  "Held email",
-  "One email held back from the enquiries: read it, then attach it to an enquiry or discard it.",
+  QUARANTINE_COPY.meta.recordTitle,
+  QUARANTINE_COPY.meta.recordDescription,
 );
 
 export default async function AdminEnquiryQuarantineMessagePage({ params }: Props) {
@@ -22,9 +23,7 @@ export default async function AdminEnquiryQuarantineMessagePage({ params }: Prop
   const page = await loadQuarantineMessagePage(id);
   if (page.kind === "not_found") notFound();
   if (page.kind !== "ready") {
-    throw new Error(
-      page.kind === "forbidden" ? "forbidden" : "Held email unavailable. Try again in a moment.",
-    );
+    throw new Error(page.kind === "forbidden" ? "forbidden" : QUARANTINE_COPY.meta.unavailable);
   }
   const abilities = enquiryAbilities({ role: user.role as UserRole, staffRoles: user.staffRoles });
   return (

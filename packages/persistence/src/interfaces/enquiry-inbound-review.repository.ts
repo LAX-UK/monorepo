@@ -21,6 +21,12 @@ export type InboundThreadMessage = {
   /** Null for a reply received before the result was recorded. */
   spfResult: InboundSpfResult | null;
   dkimResult: InboundDkimResult | null;
+  /** Attached by staff only: why the mail was held before a person attached it. */
+  heldReason: InboundQuarantineReason | null;
+  /** Attached by staff only: the reason the person gave for attaching it. */
+  reviewReason: string | null;
+  /** A hash of the From address (never the address), to compare with the enquirer's. */
+  fromEmailHash: string | null;
 };
 
 /** The emailed replies on one enquiry thread. */
@@ -29,7 +35,10 @@ export interface IEnquiryInboundThreadReader {
   listInbound(enquiryId: string, limit: number): Promise<InboundThreadMessage[]>;
 }
 
-/** The enquiry a held message's reply address named, if it named a real one. */
+/**
+ * The enquiry a held message's reply address named, if it named a real one that has not been
+ * erased (mail naming an erased enquiry reads as unmatched).
+ */
 export type SuspectedEnquiry = { id: string; reference: string; intent: EnquiryIntent };
 
 /** One held message in the staff list: enough to triage, not the text. */

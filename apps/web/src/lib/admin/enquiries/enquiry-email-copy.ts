@@ -28,6 +28,14 @@ export const REPLIES_COPY = {
     "Reply from your own email, then move the enquiry to Waiting on client or close it. That clears this notice.",
   timelineEvent: "Client replied by email",
   timelineAttached: "Held email attached to this enquiry",
+  /** Beside a reply staff attached from held email; the warning when its sender is not verified. */
+  attachedLabel: "Attached by staff",
+  attachedUnverifiedLabel: "Attached by staff · Sender not verified",
+  senderNotVerified: "Sender not verified",
+  heldBecause: (label: string) => `Held because: ${label}`,
+  otherAddress: "Sent from an address other than the client's.",
+  senderChecks: (spf: string, dkim: string) => `Sender checks: SPF ${spf}, DKIM ${dkim}.`,
+  reasonGiven: (reason: string) => `Reason given: ${reason}`,
 } as const;
 
 /** How an emailed reply was tied to the thread, as the record says it. */
@@ -39,6 +47,18 @@ export const MATCHED_BY_LABELS: Record<InboundMatchMethod, string> = {
 
 export const QUARANTINE_COPY = {
   title: "Held email",
+  /** The browser tab and search metadata of the held-email pages (never indexed). */
+  meta: {
+    listTitle: "Held email",
+    listDescription:
+      "Email sent to enquiry reply addresses that could not be matched safely, for staff to review.",
+    recordTitle: "Held email",
+    recordDescription:
+      "One email held back from the enquiries: read it, then attach it to an enquiry or discard it.",
+    unavailable: "Held email unavailable. Try again in a moment.",
+  },
+  /** Above a refused attach or discard in its dialog. */
+  failureTitle: "That did not go through",
   description:
     "Email sent to enquiry reply addresses that could not be matched safely. Nothing here reaches an enquiry until someone attaches it. Held email is deleted 30 days after it arrived.",
   listLabel: "Held email",
@@ -96,7 +116,18 @@ export const QUARANTINE_COPY = {
   attach: {
     title: "Attach this email to an enquiry?",
     description:
-      "It joins the enquiry's thread as a reply from the client and marks the enquiry as waiting for an answer. This can't be undone.",
+      "It joins the enquiry's thread as an emailed reply, labelled as attached by staff, and marks the enquiry as waiting for an answer. This can't be undone.",
+    unverifiedTitle: "The sender is not verified",
+    unverifiedBody: (reasonLabel: string, reasonDescription: string) =>
+      `Held because: ${reasonLabel}. ${reasonDescription} On the thread it will be labelled "Sender not verified".`,
+    unverifiedOtherAddress:
+      'It is not from the enquiry\'s client address, or its sender checks did not pass. On the thread it will be labelled "Sender not verified".',
+    confirmUnverified:
+      "I have checked this email belongs on this enquiry even though its sender is not verified",
+    reasonLabel: "Why are you attaching it?",
+    reasonHint: "Kept in the enquiry's history. For example: the client confirmed by phone.",
+    reasonInvalid: "Give a reason of at least 3 characters.",
+    reasonTooLong: "Keep the reason to 500 characters or fewer.",
     suspectLabel: (reference: string) => `${reference}, the enquiry its reply address named`,
     otherLabel: "Another enquiry",
     otherHint: "The reference the client quoted, such as E-1042.",
@@ -114,12 +145,19 @@ export const QUARANTINE_COPY = {
       "It stays off every enquiry and is deleted with the rest of held email 30 days after it arrived. This can't be undone.",
     confirm: "Discard email",
     done: "Email discarded",
+    reasonLabel: "Why are you discarding it?",
+    reasonHint: "Kept in the audit trail. For example: spam, or a newsletter.",
   },
   errors: {
     quarantine_not_found: "This email is no longer held, or you can't open it.",
     review_forbidden: "You can't attach or discard held email.",
     already_reviewed: "Someone has already attached or discarded this email.",
     enquiry_not_found: "No enquiry with that reference, or you can't open it.",
+    enquiry_erased:
+      "That enquiry was erased at the client's request, so nothing new can be added to it.",
+    sender_confirmation_required:
+      "This email is not from the enquiry's client address, or its sender checks did not pass. Tick the confirmation to attach it anyway.",
+    invalid: "Check the enquiry reference and the reason, then try again.",
     forbidden: "You don't have permission to review held email.",
     unavailable: "The Bid API didn't answer. Nothing was changed. Try again in a moment.",
   },
@@ -169,6 +207,7 @@ export const QUARANTINE_REASON_COPY: Record<
 
 export const SPF_LABELS: Record<InboundSpfResult, string> = {
   pass: "Passed",
+  pass_unaligned: "Passed for another domain",
   fail: "Failed",
   softfail: "Soft fail",
   neutral: "Neutral",

@@ -521,7 +521,11 @@ export const EXCEPTION_PATHS: Record<string, Set<string>> = {
   ]),
   /** Inbound mail held back from every thread: the quarantine row's id, the reason and a file count. */
   "marketing_enquiry.inbound_quarantined": new Set(["quarantineId", "reason", "attachmentCount"]),
-  /** Staff attached held mail to an enquiry: ids, whether it was the suspected one, a file count. */
+  /**
+   * Staff attached held mail to an enquiry: ids, whether it was the suspected one, a file count,
+   * the SPF and DKIM result codes, whether the sender was verified, and the reason staff typed.
+   * The sender's address is never recorded.
+   */
   "marketing_enquiry.inbound_attached": new Set([
     "enquiryId",
     "intent",
@@ -530,9 +534,13 @@ export const EXCEPTION_PATHS: Record<string, Set<string>> = {
     "reason",
     "suspectedEnquiry",
     "attachmentCount",
+    "spfResult",
+    "dkimResult",
+    "senderVerified",
+    "reviewReason",
   ]),
-  /** Staff discarded held mail: the quarantine row's id and the reason it was held. */
-  "marketing_enquiry.inbound_discarded": new Set(["quarantineId", "reason"]),
+  /** Staff discarded held mail: the row's id, why it was held, and the reason staff typed. */
+  "marketing_enquiry.inbound_discarded": new Set(["quarantineId", "reason", "reviewReason"]),
   /** Row counts and the reason staff typed; the address that was erased is never recorded. */
   "marketing_enquiry.erased": new Set([
     "enquiries",

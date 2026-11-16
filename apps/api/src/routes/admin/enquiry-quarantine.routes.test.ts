@@ -84,18 +84,28 @@ describe("POST /enquiry-quarantine/:id/attach", () => {
     const { app, enquiryQuarantine } = createApp(["client_services"]);
     const res = await app.request(
       `http://test/enquiry-quarantine/${ID}/attach`,
-      post({ enquiryReference: "e-1042" }),
+      post({ enquiryReference: "e-1042", reason: "  Client confirmed by phone  " }),
     );
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ data: { enquiryReference: "E-1042", messageId: "m-1" } });
     expect(enquiryQuarantine.attach).toHaveBeenCalledWith(expect.anything(), ID, {
       enquiryReference: "E-1042",
+      reason: "Client confirmed by phone",
+      confirmSenderNotVerified: false,
     });
   });
 
-  it("refuses a body that names no enquiry, or more than a reference", async () => {
+  it("refuses a body that names no enquiry or no reason, or more than a reference", async () => {
     const { app, enquiryQuarantine } = createApp(["client_services"]);
-    for (const body of [{}, { enquiryReference: "1042" }, { enquiryReference: ["E-1", "E-2"] }]) {
+    for (const body of [
+      {},
+      { enquiryReference: "1042", reason: "Client confirmed" },
+      { enquiryReference: ["E-1", "E-2"], reason: "Client confirmed" },
+      { enquiryReference: "E-1042" },
+      { enquiryReference: "E-1042", reason: "  " },
+      { enquiryReference: "E-1042", reason: "x".repeat(501) },
+      { enquiryReference: "E-1042", reason: "Client confirmed", confirmSenderNotVerified: "yes" },
+    ]) {
       expect(
         (await app.request(`http://test/enquiry-quarantine/${ID}/attach`, post(body))).status,
       ).toBe(400);
@@ -108,12 +118,14 @@ describe("POST /enquiry-quarantine/:id/attach", () => {
     ["review_forbidden", 403],
     ["already_reviewed", 409],
     ["enquiry_not_found", 422],
+    ["enquiry_erased", 422],
+    ["sender_confirmation_required", 422],
   ] as const)("maps %s to %i", async (error, status) => {
     const { app, enquiryQuarantine } = createApp(["client_services"]);
     enquiryQuarantine.attach.mockResolvedValueOnce({ ok: false, error });
     const res = await app.request(
       `http://test/enquiry-quarantine/${ID}/attach`,
-      post({ enquiryReference: "E-1042" }),
+      post({ enquiryReference: "E-1042", reason: "Client confirmed" }),
     );
     expect(res.status).toBe(status);
     expect(await res.json()).toEqual({ error });
@@ -121,14 +133,26 @@ describe("POST /enquiry-quarantine/:id/attach", () => {
 });
 
 describe("POST /enquiry-quarantine/:id/discard", () => {
-  it("discards, and a second discard is a conflict", async () => {
+  it("discards with the reason given, and a second discard is a conflict", async () => {
     const { app, enquiryQuarantine } = createApp(["specialist"]);
-    expect((await app.request(`http://test/enquiry-quarantine/${ID}/discard`, post())).status).toBe(
-      200,
-    );
+    const reason = { reason: "Newsletter, not about the enquiry" };
+    expect(
+      (await app.request(`http://test/enquiry-quarantine/${ID}/discard`, post(reason))).status,
+    ).toBe(200);
+    expect(enquiryQuarantine.discard).toHaveBeenCalledWith(expect.anything(), ID, reason);
     enquiryQuarantine.discard.mockResolvedValueOnce({ ok: false, error: "already_reviewed" });
-    expect((await app.request(`http://test/enquiry-quarantine/${ID}/discard`, post())).status).toBe(
-      409,
-    );
+    expect(
+      (await app.request(`http://test/enquiry-quarantine/${ID}/discard`, post(reason))).status,
+    ).toBe(409);
+  });
+
+  it("refuses a discard without a reason", async () => {
+    const { app, enquiryQuarantine } = createApp(["specialist"]);
+    for (const body of [undefined, {}, { reason: "" }]) {
+      expect(
+        (await app.request(`http://test/enquiry-quarantine/${ID}/discard`, post(body))).status,
+      ).toBe(400);
+    }
+    expect(enquiryQuarantine.discard).not.toHaveBeenCalled();
   });
 });

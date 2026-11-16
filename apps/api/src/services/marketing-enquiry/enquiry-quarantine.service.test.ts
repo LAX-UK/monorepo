@@ -1,3 +1,4 @@
+import { ERASED_ENQUIRY } from "@auction/domain";
 import type {
   IEnquiryQuarantineReviewRepository,
   ITransactionRunner,
@@ -16,6 +17,12 @@ import {
 
 const NOW = new Date("2026-11-15T12:00:00.000Z");
 const HELD_ID = "0b4f8c1e-6a0a-4a53-9a2a-1c9f8f0e9a11";
+/** A reason, and the explicit confirmation a sender that is not verified needs. */
+const CONFIRMED = {
+  reason: "Sam confirmed by phone that their colleague sent it",
+  confirmSenderNotVerified: true,
+};
+const DISCARD = { reason: "Marketing email, not about the enquiry" };
 
 const worker: EnquiryStaffViewer = {
   userId: "cs-1",
@@ -26,7 +33,12 @@ const worker: EnquiryStaffViewer = {
 const reader: EnquiryStaffViewer = { ...worker, userId: "viewer-1", canAssign: false };
 const generalOnly: EnquiryStaffViewer = { ...worker, userId: "cs-2", readsPrivateSale: false };
 
-async function setup(options: { status?: QuarantinedMessageRecord["status"] } = {}) {
+async function setup(
+  options: {
+    status?: QuarantinedMessageRecord["status"];
+    held?: Partial<QuarantinedMessageRecord>;
+  } = {},
+) {
   const enquiries = new InMemoryMarketingEnquiries(() => NOW);
   const general = await enquiries.createInTransaction(
     {},
@@ -67,6 +79,7 @@ async function setup(options: { status?: QuarantinedMessageRecord["status"] } = 
     spfResult: "pass",
     dkimResult: "none",
     reviewedByUserId: null,
+    ...options.held,
   };
   const markReviewedInTransaction = vi.fn(
     async (_tx: unknown, _id: string, review: { status: "linked" | "dismissed" }) => {
@@ -106,7 +119,17 @@ async function setup(options: { status?: QuarantinedMessageRecord["status"] } = 
     events,
     now: () => NOW,
   });
-  return { service, held, general, privateSale, inserted, inbound, published, quarantine };
+  return {
+    service,
+    held,
+    general,
+    privateSale,
+    inserted,
+    inbound,
+    published,
+    quarantine,
+    enquiries,
+  };
 }
 
 describe("EnquiryQuarantineService list and read", () => {
@@ -149,6 +172,7 @@ describe("EnquiryQuarantineService attach", () => {
     const t = await setup();
     const result = await t.service.attach(worker, HELD_ID, {
       enquiryReference: t.general.reference,
+      ...CONFIRMED,
     });
     expect(result).toEqual({ ok: true, enquiryReference: t.general.reference, messageId: "msg-1" });
     expect(t.inserted[0]).toMatchObject({
@@ -158,6 +182,8 @@ describe("EnquiryQuarantineService attach", () => {
       body: "Forwarding on behalf of Sam.",
       spfResult: "pass",
       dkimResult: "none",
+      heldReason: "sender_mismatch",
+      reviewReason: CONFIRMED.reason,
     });
     // The address is only ever stored as a hash on the thread.
     expect(JSON.stringify(t.inserted[0])).not.toContain("colleague@example.test");
@@ -179,6 +205,10 @@ describe("EnquiryQuarantineService attach", () => {
           reason: "sender_mismatch",
           suspectedEnquiry: true,
           attachmentCount: 1,
+          spfResult: "pass",
+          dkimResult: "none",
+          senderVerified: false,
+          reviewReason: CONFIRMED.reason,
         },
       }),
     ]);
@@ -188,6 +218,7 @@ describe("EnquiryQuarantineService attach", () => {
     const t = await setup();
     const result = await t.service.attach(worker, HELD_ID, {
       enquiryReference: t.privateSale.reference,
+      ...CONFIRMED,
     });
     expect(result).toMatchObject({ ok: true, enquiryReference: t.privateSale.reference });
     expect(t.published[0]?.payload).toMatchObject({ suspectedEnquiry: false });
@@ -197,6 +228,7 @@ describe("EnquiryQuarantineService attach", () => {
     const t = await setup();
     const result = await t.service.attach(generalOnly, HELD_ID, {
       enquiryReference: t.privateSale.reference,
+      ...CONFIRMED,
     });
     expect(result).toEqual({ ok: false, error: "enquiry_not_found" });
     expect(t.inserted).toHaveLength(0);
@@ -204,7 +236,9 @@ describe("EnquiryQuarantineService attach", () => {
 
   it("refuses an unknown enquiry reference", async () => {
     const t = await setup();
-    expect(await t.service.attach(worker, HELD_ID, { enquiryReference: "E-9999" })).toEqual({
+    expect(
+      await t.service.attach(worker, HELD_ID, { enquiryReference: "E-9999", ...CONFIRMED }),
+    ).toEqual({
       ok: false,
       error: "enquiry_not_found",
     });
@@ -214,6 +248,7 @@ describe("EnquiryQuarantineService attach", () => {
     const t = await setup();
     const result = await t.service.attach(reader, HELD_ID, {
       enquiryReference: t.general.reference,
+      ...CONFIRMED,
     });
     expect(result).toEqual({ ok: false, error: "review_forbidden" });
     expect(t.quarantine.lockInTransaction).not.toHaveBeenCalled();
@@ -222,9 +257,13 @@ describe("EnquiryQuarantineService attach", () => {
 
   it("attaches once: a second attach, or one on reviewed mail, is refused without an event", async () => {
     const t = await setup();
-    await t.service.attach(worker, HELD_ID, { enquiryReference: t.general.reference });
+    await t.service.attach(worker, HELD_ID, {
+      enquiryReference: t.general.reference,
+      ...CONFIRMED,
+    });
     const again = await t.service.attach(worker, HELD_ID, {
       enquiryReference: t.general.reference,
+      ...CONFIRMED,
     });
     expect(again).toEqual({ ok: false, error: "already_reviewed" });
     expect(t.inserted).toHaveLength(1);
@@ -235,23 +274,113 @@ describe("EnquiryQuarantineService attach", () => {
     const t = await setup();
     const blind = { ...worker, readsGeneral: false };
     expect(
-      await t.service.attach(blind, HELD_ID, { enquiryReference: t.general.reference }),
+      await t.service.attach(blind, HELD_ID, {
+        enquiryReference: t.general.reference,
+        ...CONFIRMED,
+      }),
     ).toEqual({ ok: false, error: "quarantine_not_found" });
   });
 });
 
-describe("EnquiryQuarantineService discard", () => {
-  it("discards once and audits who did it with ids and the reason only", async () => {
+describe("EnquiryQuarantineService attach: unverified senders and erased enquiries", () => {
+  it("refuses to attach mail from a sender that is not verified unless the person confirms it", async () => {
     const t = await setup();
-    expect(await t.service.discard(worker, HELD_ID)).toEqual({ ok: true });
+    const result = await t.service.attach(worker, HELD_ID, {
+      enquiryReference: t.general.reference,
+      reason: CONFIRMED.reason,
+      confirmSenderNotVerified: false,
+    });
+    expect(result).toEqual({ ok: false, error: "sender_confirmation_required" });
+    expect(t.inserted).toHaveLength(0);
+    expect(t.quarantine.markReviewedInTransaction).not.toHaveBeenCalled();
+    expect(t.published).toHaveLength(0);
+  });
+
+  it.each([
+    ["failed SPF", { reason: "spf_failed", spfResult: "fail" }],
+    ["no verified sender", { reason: "unauthenticated", spfResult: "neutral" }],
+    ["an SPF pass for another domain", { reason: "unmatched", spfResult: "pass_unaligned" }],
+    ["no recorded result", { reason: "unmatched", spfResult: null, dkimResult: null }],
+  ] as const)("needs the confirmation for %s, even from the client's address", async (_l, held) => {
+    const t = await setup({ held: { ...held, fromAddress: "sam@example.test" } });
+    const refused = await t.service.attach(worker, HELD_ID, {
+      enquiryReference: t.general.reference,
+      reason: CONFIRMED.reason,
+      confirmSenderNotVerified: false,
+    });
+    expect(refused).toEqual({ ok: false, error: "sender_confirmation_required" });
+    const confirmed = await t.service.attach(worker, HELD_ID, {
+      enquiryReference: t.general.reference,
+      ...CONFIRMED,
+    });
+    expect(confirmed).toMatchObject({ ok: true });
+    expect(t.published[0]?.payload).toMatchObject({ senderVerified: false });
+  });
+
+  it("attaches unmatched mail from the client's own verified address without the confirmation", async () => {
+    const t = await setup({
+      held: { reason: "unmatched", fromAddress: "Sam@Example.test", suspectedEnquiry: null },
+    });
+    const result = await t.service.attach(worker, HELD_ID, {
+      enquiryReference: t.general.reference,
+      reason: "Client quoted the reference in the subject",
+      confirmSenderNotVerified: false,
+    });
+    expect(result).toMatchObject({ ok: true });
+    expect(t.published[0]?.payload).toMatchObject({ senderVerified: true, reason: "unmatched" });
+  });
+
+  it("needs the confirmation for verified mail from an address other than the enquiry's client", async () => {
+    const t = await setup({ held: { reason: "unmatched", suspectedEnquiry: null } });
+    expect(
+      await t.service.attach(worker, HELD_ID, {
+        enquiryReference: t.general.reference,
+        reason: CONFIRMED.reason,
+        confirmSenderNotVerified: false,
+      }),
+    ).toEqual({ ok: false, error: "sender_confirmation_required" });
+  });
+
+  it("never files held mail on an enquiry that was erased", async () => {
+    const t = await setup();
+    const erased = await t.enquiries.createInTransaction(
+      {},
+      {
+        intent: "general",
+        topic: "buying",
+        name: ERASED_ENQUIRY.name,
+        email: ERASED_ENQUIRY.email,
+        message: ERASED_ENQUIRY.message,
+        marketingOptIn: false,
+      },
+    );
+    const result = await t.service.attach(worker, HELD_ID, {
+      enquiryReference: erased.reference,
+      ...CONFIRMED,
+    });
+    expect(result).toEqual({ ok: false, error: "enquiry_erased" });
+    expect(t.quarantine.lockInTransaction).not.toHaveBeenCalled();
+    expect(t.inserted).toHaveLength(0);
+    expect(t.published).toHaveLength(0);
+  });
+});
+
+describe("EnquiryQuarantineService discard", () => {
+  it("discards once and audits who did it, why it was held and the reason given", async () => {
+    const t = await setup();
+    expect(await t.service.discard(worker, HELD_ID, DISCARD)).toEqual({ ok: true });
     expect(t.published).toEqual([
       expect.objectContaining({
         eventType: "marketing_enquiry.inbound_discarded",
         actorUserId: "cs-1",
-        payload: { quarantineId: HELD_ID, reason: "sender_mismatch" },
+        payload: {
+          quarantineId: HELD_ID,
+          reason: "sender_mismatch",
+          reviewReason: DISCARD.reason,
+        },
       }),
     ]);
-    expect(await t.service.discard(worker, HELD_ID)).toEqual({
+    expect(await t.service.discard(worker, HELD_ID, DISCARD)).toEqual({
       ok: false,
       error: "already_reviewed",
     });
@@ -260,7 +389,7 @@ describe("EnquiryQuarantineService discard", () => {
 
   it("refuses people who may only read enquiries", async () => {
     const t = await setup();
-    expect(await t.service.discard(reader, HELD_ID)).toEqual({
+    expect(await t.service.discard(reader, HELD_ID, DISCARD)).toEqual({
       ok: false,
       error: "review_forbidden",
     });
@@ -268,7 +397,7 @@ describe("EnquiryQuarantineService discard", () => {
 
   it("refuses mail that was already attached", async () => {
     const t = await setup({ status: "linked" });
-    expect(await t.service.discard(worker, HELD_ID)).toEqual({
+    expect(await t.service.discard(worker, HELD_ID, DISCARD)).toEqual({
       ok: false,
       error: "already_reviewed",
     });

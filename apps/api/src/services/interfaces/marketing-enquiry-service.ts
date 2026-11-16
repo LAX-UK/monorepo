@@ -7,6 +7,7 @@ import type {
   EnquiryViewer,
   InboundDkimResult,
   InboundMatchMethod,
+  InboundQuarantineReason,
   InboundSpfResult,
 } from "@auction/domain";
 import type {
@@ -43,6 +44,17 @@ export type EnquiryEmailReplyView = {
   matchedBy: InboundMatchMethod;
   spfResult: InboundSpfResult | null;
   dkimResult: InboundDkimResult | null;
+  /** Attached by staff only: why it was held before a person attached it. */
+  heldReason: InboundQuarantineReason | null;
+  /** Attached by staff only: the reason the person gave for attaching it. */
+  reviewReason: string | null;
+  /**
+   * Whether it is verified as coming from this enquiry's client: from the client's address, with
+   * aligned SPF or DKIM passing. Always true for a reply that joined the thread on its own.
+   */
+  senderVerified: boolean;
+  /** Attached by staff only: it came from an address other than the client's. */
+  fromOtherAddress: boolean;
 };
 
 /** What staff read when they open an enquiry. */

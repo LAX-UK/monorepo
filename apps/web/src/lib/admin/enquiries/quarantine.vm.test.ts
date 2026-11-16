@@ -7,7 +7,10 @@ import {
   quarantineHref,
   quarantineListHref,
   quarantineViewOf,
+  reviewReasonError,
+  reviewReasonOf,
   senderCheckItems,
+  senderUnverified,
   subjectLine,
 } from "./quarantine.vm";
 
@@ -57,5 +60,28 @@ describe("words", () => {
     );
     expect(quarantineErrorMessage(undefined, 403)).toMatch(/permission/);
     expect(quarantineErrorMessage(undefined, undefined)).toMatch(/didn't answer/);
+    expect(quarantineErrorMessage("enquiry_erased", 422)).toMatch(/erased at the client's request/);
+    expect(quarantineErrorMessage("sender_confirmation_required", 422)).toMatch(/confirmation/);
+  });
+});
+
+describe("review reasons and unverified senders", () => {
+  it("accepts a trimmed reason of 3 to 500 characters and says what is wrong otherwise", () => {
+    expect(reviewReasonOf("  Spam  ")).toBe("Spam");
+    expect(reviewReasonOf(" ab ")).toBeNull();
+    expect(reviewReasonOf("x".repeat(501))).toBeNull();
+    expect(reviewReasonError("ab")).toBe("Give a reason of at least 3 characters.");
+    expect(reviewReasonError("x".repeat(501))).toBe("Keep the reason to 500 characters or fewer.");
+    expect(reviewReasonError("Spam")).toBeNull();
+  });
+
+  it("treats mail held for a sender reason, or without an aligned pass, as unverified", () => {
+    const passed = { reason: "unmatched", spfResult: "pass", dkimResult: null } as const;
+    expect(senderUnverified(passed)).toBe(false);
+    expect(senderUnverified({ ...passed, reason: "sender_mismatch" })).toBe(true);
+    expect(senderUnverified({ ...passed, reason: "bad_token" })).toBe(true);
+    expect(senderUnverified({ ...passed, spfResult: "pass_unaligned" })).toBe(true);
+    expect(senderUnverified({ ...passed, spfResult: null })).toBe(true);
+    expect(senderUnverified({ ...passed, spfResult: "neutral", dkimResult: "pass" })).toBe(false);
   });
 });

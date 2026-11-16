@@ -5,6 +5,7 @@ import {
   marketingEnquiryMessage,
 } from "@auction/db/schema";
 import {
+  ERASED_ENQUIRY,
   type EnquiryIntent,
   type InboundMatchMethod,
   type InboundQuarantineReason,
@@ -62,6 +63,7 @@ const SUMMARY_COLUMNS = {
   suspectId: suspect.id,
   suspectReference: suspect.reference,
   suspectIntent: suspect.intent,
+  suspectEmail: suspect.email,
 };
 
 const RECORD_COLUMNS = {
@@ -86,6 +88,7 @@ type SummaryRow = {
   suspectId: string | null;
   suspectReference: string | null;
   suspectIntent: string | null;
+  suspectEmail: string | null;
 };
 
 type RecordRow = SummaryRow & {
@@ -104,8 +107,12 @@ function toSummary(row: SummaryRow): QuarantinedMessageSummary {
     fromAddress: row.fromAddress,
     subject: row.subject,
     attachmentCount: row.attachments.length,
+    // An erased enquiry is not offered as a home for new mail: it reads as unmatched.
     suspectedEnquiry:
-      row.suspectId && row.suspectReference && row.suspectIntent
+      row.suspectId &&
+      row.suspectReference &&
+      row.suspectIntent &&
+      row.suspectEmail !== ERASED_ENQUIRY.email
         ? {
             id: row.suspectId,
             reference: row.suspectReference,
@@ -213,6 +220,9 @@ export class DrizzleEnquiryInboundThreadReader implements IEnquiryInboundThreadR
         matchedBy: m.matchedBy,
         spfResult: m.spfResult,
         dkimResult: m.dkimResult,
+        heldReason: m.heldReason,
+        reviewReason: m.reviewReason,
+        fromEmailHash: m.fromEmailHash,
       })
       .from(m)
       .where(and(eq(m.enquiryId, enquiryId), eq(m.direction, "inbound")))
