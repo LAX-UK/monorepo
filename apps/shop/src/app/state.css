@@ -201,6 +201,11 @@
 /* Basket: one line and the order summary, in the basket's own layout (`.shop-basket__layout`).
    Heights follow a real line (title, artist, edition, then the quantity control) and the summary
    (title, two rows, total, note, checkout button, note, links), so the swap moves nothing. */
+.shop-basket-skeleton__crumbs {
+  width: 7rem;
+  height: 1.5rem;
+}
+
 .shop-basket-skeleton__body {
   flex: 1;
   min-width: 0;
