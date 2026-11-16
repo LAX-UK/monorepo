@@ -106,14 +106,3 @@ describe("EmptyState product options", () => {
     expect(screen.queryByRole("heading")).toBeNull();
   });
 });
-
-describe("EmptyState eyebrow", () => {
-  it("shows an eyebrow right above the title, in the copy column", () => {
-    const { container } = render(
-      <EmptyState illustration="ticket" eyebrow="Not found" title="Gone" description="d" />,
-    );
-    const eyebrow = screen.getByText("Not found");
-    expect(eyebrow.nextElementSibling).toHaveTextContent("Gone");
-    expect(container.querySelector("[aria-hidden] p")).toBeNull();
-  });
-});

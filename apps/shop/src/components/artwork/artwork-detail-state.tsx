@@ -32,8 +32,19 @@ export function ArtworkDetailState({
       <EmptyState
         layout="page"
         illustration={illustration}
-        eyebrow={eyebrow}
-        title={title}
+        title={
+          <>
+            {/* The eyebrow repeats the title ("Not found" over "Artist not found"), so it is a
+                visual line directly above it in the copy column, hidden from assistive tech. */}
+            <span
+              aria-hidden
+              className="mb-2 block font-lax text-lax-13 font-medium text-lax-muted"
+            >
+              {eyebrow}
+            </span>
+            {title}
+          </>
+        }
         description={description}
         actions={actions}
       />

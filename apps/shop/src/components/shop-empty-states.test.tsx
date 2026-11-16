@@ -175,7 +175,9 @@ describe("Shop empty states", () => {
       />,
     );
     expect(out).toContain("Not found");
-    expect(out).toMatch(/<h1[^>]*>Artist not found<\/h1>/);
+    expect(out).toMatch(
+      /<h1[^>]*><span aria-hidden="true"[^>]*>Not found<\/span>Artist not found<\/h1>/,
+    );
     expect(out).toContain('data-empty-state="ticket"');
     expect(out).toContain('data-layout="page"');
   });
@@ -192,9 +194,10 @@ describe("Shop empty states", () => {
         <section data-testid="related" />
       </ArtworkDetailState>,
     );
-    // Eyebrow, then h1, then description, then the action, all in the copy column.
+    // The eyebrow is a visual line at the top of the h1 (hidden from assistive tech: it repeats the
+    // title), then the description, then the action, all in the copy column.
     expect(out).toMatch(
-      /<p[^>]*>Not found<\/p><h1[^>]*>We can&#x27;t find this edition<\/h1><p[^>]*>It may have been removed\.<\/p><div[^>]*><a href="\/artworks\?sort=newest">New editions<\/a><\/div>/,
+      /<h1[^>]*><span aria-hidden="true"[^>]*>Not found<\/span>We can&#x27;t find this edition<\/h1><p[^>]*>It may have been removed\.<\/p><div[^>]*><a href="\/artworks\?sort=newest">New editions<\/a><\/div>/,
     );
     // Related content comes after the whole state.
     expect(out.indexOf('data-testid="related"')).toBeGreaterThan(out.indexOf("New editions"));

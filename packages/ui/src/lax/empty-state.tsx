@@ -10,9 +10,8 @@ export type EmptyStateProps = {
    * The error variant always shows askew.
    */
   illustration: LaxIllustrationName;
-  title: string;
-  /** A short label above the title, in the copy column ("Not found", "Catalogue unavailable"). */
-  eyebrow?: React.ReactNode;
+  /** Usually a string; a product may put a visual-only eyebrow line inside it. */
+  title: React.ReactNode;
   /** A sentence that says what and why, then what to do. */
   description: React.ReactNode;
   /** One action when the person has one: the primary first, then at most one more. */
@@ -58,7 +57,6 @@ export type EmptyStateProps = {
 export function EmptyState({
   illustration,
   title,
-  eyebrow,
   description,
   actions,
   control,
@@ -115,7 +113,6 @@ export function EmptyState({
           )}
         </div>
         <div className={cn("min-w-0", isPage && "@3xl:col-span-7")}>
-          {eyebrow && <p className="mb-2 text-lax-13 text-lax-muted">{eyebrow}</p>}
           <Heading
             className={cn(
               "font-lax-display font-semibold text-balance text-lax-fg",
