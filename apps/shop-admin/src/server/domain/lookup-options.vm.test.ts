@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
+import { EDITION_LISTING_LABELS } from "./enum-labels.copy";
 import {
-  EDITION_LISTING_LABELS,
   artworkOption,
   editionLabel,
   editionListingLabel,
@@ -93,6 +93,12 @@ describe("ownedArtworkOptions", () => {
 });
 
 describe("edition listing labels", () => {
+  it("has a label for exactly the known listing statuses", () => {
+    expect(Object.keys(EDITION_LISTING_LABELS).sort()).toEqual(
+      ["authorised", "held", "not_authorised", "reserved", "sold", "withdrawn"].sort(),
+    );
+  });
+
   it.each(Object.entries(EDITION_LISTING_LABELS))("labels %s as %s", (status, label) => {
     expect(editionListingLabel(status)).toBe(label);
     expect(label).toMatch(/^[A-Z]/);

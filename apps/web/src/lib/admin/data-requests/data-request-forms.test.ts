@@ -1,7 +1,6 @@
 import { foundAccountStatuses } from "@auction/types";
 import { describe, expect, it } from "vitest";
 import {
-  FOUND_ACCOUNT_STATUS_LABELS,
   emptyLogRequest,
   extensionChoices,
   foundAccountStatusLabel,
@@ -13,6 +12,7 @@ import {
   validateIdReceived,
   validateLogRequest,
 } from "./data-request-forms";
+import { FOUND_ACCOUNT_STATUS_LABELS } from "./data-request-forms.copy";
 
 const TODAY = "2026-11-02";
 const ACCOUNT = { subjectId: "u1", name: "Margaret Osei", status: "active" };

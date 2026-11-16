@@ -16,6 +16,7 @@ import type {
 } from "@auction/identity-contracts/data-requests";
 import { formatStaffNumber } from "@auction/staff-ui";
 import type { FoundAccountStatus } from "@auction/types";
+import { FOUND_ACCOUNT_STATUS_LABELS } from "./data-request-forms.copy";
 
 /**
  * The checks each dialog makes on submit, kept out of the components. Each returns one message
@@ -32,12 +33,6 @@ const OLD_RECEIVED_DAYS = 31;
 // Log a manual request -----------------------------------------------------------------------
 
 export type FoundAccount = { subjectId: string; name: string; status: string };
-
-/** The account states the account search returns, in the words staff read. */
-export const FOUND_ACCOUNT_STATUS_LABELS: Readonly<Record<FoundAccountStatus, string>> = {
-  active: "Active",
-  disabled: "Disabled",
-};
 
 /** A found account's state as staff read it; a state the app does not know yet stays neutral. */
 export function foundAccountStatusLabel(status: string): string {

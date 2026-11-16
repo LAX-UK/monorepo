@@ -1,4 +1,5 @@
-import { LOT_STATUS, staffStatus } from "@/lib/admin/staff-kit-status";
+import { staffStatus } from "@/lib/admin/staff-kit-status";
+import { LOT_STATUS } from "@/lib/admin/staff-kit-status.copy";
 import { lotStatuses } from "@auction/types";
 import { describe, expect, it } from "vitest";
 import { mapRecentActivity } from "./load-recent-activity.slice";

@@ -1,9 +1,10 @@
+import { LOT_STATUS } from "@/lib/admin/staff-kit-status.copy";
 import { lotOutcome } from "@/lib/lot/lot-outcome";
 import type { StatusBadgeVariant } from "@/lib/presenters/status-presentation";
 import { resolveStatusPresentation } from "@/lib/presenters/status-presentation";
 import type { LotStatusContext, StatusDomain } from "@/lib/presenters/status/core";
 import { type StatusPresentation, humanizeStatus } from "@auction/staff-ui";
-import { type AtgSellingBadge, type LotStatus, atgLotStateLabel } from "@auction/types";
+import { type AtgSellingBadge, atgLotStateLabel } from "@auction/types";
 
 /**
  * Bid's status registries (lib/presenters/status) speak in badge variants; the staff kit speaks
@@ -22,16 +23,6 @@ type CatalogueDomain =
   | "conditionReport"
   | "onsiteEvent"
   | "saleroomSession";
-
-/** Every lot status, so a new one fails to compile until it has a staff label. */
-export const LOT_STATUS: Record<LotStatus, StatusPresentation> = {
-  draft: { label: "Draft", tone: "neutral" },
-  scheduled: { label: "Scheduled", tone: "info" },
-  active: { label: "Live", tone: "live", live: true },
-  ended: { label: "Ended", tone: "neutral" },
-  cancelled: { label: "Withdrawn", tone: "danger" },
-  voided: { label: "Voided", tone: "danger" },
-};
 
 /**
  * The catalogue families as staff read them. The shared registry gives drafts and scheduled

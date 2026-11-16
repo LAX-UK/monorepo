@@ -1,14 +1,13 @@
 import { userEmailStatuses, userKycStatuses } from "@auction/types";
 import { describe, expect, it } from "vitest";
 import {
-  EMAIL_DELIVERABILITY_LABELS,
-  KYC_STATUS_PHRASES,
   formatAmlCheckType,
   formatEmailDeliverabilityStatus,
   formatSignupPersona,
   formatUserRole,
   kycStatusPhrase,
 } from "./admin-user-presenters";
+import { EMAIL_DELIVERABILITY_LABELS, KYC_STATUS_PHRASES } from "./admin-user.copy";
 
 describe("admin-user-presenters", () => {
   it("formats signup persona", () => {

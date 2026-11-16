@@ -4,7 +4,7 @@ import type {
   AdminEditionLookupItem,
   AdminPartyLookupItem,
 } from "@auction/shop-contracts";
-import type { EditionListingStatus } from "@auction/shop-domain";
+import { EDITION_LISTING_LABELS } from "./enum-labels.copy";
 
 /*
  * How the records staff pick in forms (a person, an artwork, an edition) read in a picker: the
@@ -17,16 +17,6 @@ export type LookupOption = {
   label: string;
   description?: string;
   meta?: string;
-};
-
-/** Every listing status, so a new one fails to compile until it has a staff label. */
-export const EDITION_LISTING_LABELS: Record<EditionListingStatus, string> = {
-  not_authorised: "Not authorised",
-  authorised: "Available",
-  reserved: "Reserved",
-  held: "Held",
-  sold: "Sold",
-  withdrawn: "Withdrawn",
 };
 
 const PARTY_KIND_LABELS: Record<string, string> = {
