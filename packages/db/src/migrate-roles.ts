@@ -175,6 +175,8 @@ export const SHOP_COMMERCE_APPEND_ONLY_TABLES = [
 export const API_DENY_TABLES = [
   /** Sealed Zoho Books OAuth tokens: only the worker, the process that calls Books, may touch them. */
   "zoho_books_connection",
+  /** The demo seeds' database mark (0398): only the owner writes it; the Shop seed reads it. */
+  "demo_seed_target",
   /**
    * The nightly Books status check's record (migration 0387): written and read by the worker only.
    * The API's Books notice route stores a notice in webhook_event and nothing here.
@@ -631,6 +633,8 @@ export const SHOP_CRM_READ_TABLES = ["crm_record_link", "domain_event_delivery"]
  * "Download my data" for LAX Shop reads a person's suppression entry and newsletter sign-ups from
  * the shared mail tables. shop_app reads them and never writes: the worker and the Bid API own them.
  */
+/** The Shop demo seed checks the database's mark (0398) before it writes anything. */
+export const SHOP_DEMO_SEED_TARGET_READ_TABLES = ["demo_seed_target"] as const;
 export const SHOP_SUBJECT_EXPORT_READ_TABLES = [
   "email_suppression",
   "newsletter_signup_log",
@@ -1654,6 +1658,9 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
           await grantIfExists(client, "shop_app", tableName, "INSERT, SELECT");
         }
         for (const tableName of SHOP_CRM_READ_TABLES) {
+          await grantIfExists(client, "shop_app", tableName, "SELECT");
+        }
+        for (const tableName of SHOP_DEMO_SEED_TARGET_READ_TABLES) {
           await grantIfExists(client, "shop_app", tableName, "SELECT");
         }
         for (const tableName of SHOP_SUBJECT_EXPORT_READ_TABLES) {
