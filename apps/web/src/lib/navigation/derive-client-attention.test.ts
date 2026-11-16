@@ -135,6 +135,23 @@ describe("deriveClientAttention", () => {
     expect(derive([]).paymentsBlocker).toBeNull();
   });
 
+  it("carries a closed organisation through, only while everything owed is held", () => {
+    const derive = (amountsOwed: AmountOwedEntry[]) =>
+      deriveClientAttention({
+        userId: "user-1",
+        bids: [],
+        amountsOwed,
+        stillToSend: [],
+        unreadNotifications: [],
+      });
+    const refused = owed("a", { state: "in-review", blocker: "review", refused: true });
+    expect(derive([refused]).paymentsRefused).toBe(true);
+    expect(derive([owed("a", { state: "in-review", blocker: "review" })]).paymentsRefused).toBe(
+      false,
+    );
+    expect(derive([refused, owed("b")]).paymentsRefused).toBe(false);
+  });
+
   it("counts the purchases this person pays and unread notifications", () => {
     const attention = deriveClientAttention({
       userId: "user-1",
@@ -153,6 +170,7 @@ describe("deriveClientAttention", () => {
       paymentsDue: 2,
       paymentsInReview: false,
       paymentsBlocker: null,
+      paymentsRefused: false,
       stillToSend: { count: 0, pence: 0, lotIds: [] },
       unreadNotifications: 2,
       groups: [],

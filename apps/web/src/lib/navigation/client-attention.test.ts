@@ -54,10 +54,10 @@ describe("attentionChip", () => {
 
   it("says the payment is on hold, not that payment is due, while checks are open", () => {
     expect(attentionChip(attention({ paymentsDue: 3, paymentsInReview: true }))).toMatchObject({
-      kind: "account-in-review",
-      label: "Payment on hold while checks finish",
+      kind: "payment-on-hold",
+      label: "Payment on hold",
       href: "/purchases",
-      accessibleName: "Payment on hold while checks finish. Go to Purchases",
+      accessibleName: "Payment on hold. Go to Purchases",
     });
   });
 
@@ -66,7 +66,26 @@ describe("attentionChip", () => {
       attentionChip(
         attention({ paymentsDue: 1, paymentsInReview: true, paymentsBlocker: "documents" }),
       )?.label,
-    ).toBe("Documents needed to pay");
+    ).toBe("Payment on hold: documents needed");
+  });
+
+  // A rejected or archived organisation is not waiting on any check: say what is true.
+  it("says payments are closed, not on hold, when the organisation cannot pay at all", () => {
+    expect(
+      attentionChip(
+        attention({
+          paymentsDue: 2,
+          paymentsInReview: true,
+          paymentsBlocker: "review",
+          paymentsRefused: true,
+        }),
+      ),
+    ).toMatchObject({
+      kind: "payment-on-hold",
+      label: "Payments closed for this account",
+      href: "/purchases",
+      accessibleName: "Payments closed for this account. Go to Purchases",
+    });
   });
 
   // The prompt is about purchases only: nothing about sale registration or identity checks can
@@ -79,7 +98,7 @@ describe("attentionChip", () => {
   });
 
   it.each([
-    ["checks open", { paymentsDue: 1, paymentsInReview: true }, "account-in-review"],
+    ["checks open", { paymentsDue: 1, paymentsInReview: true }, "payment-on-hold"],
     ["payable now", { paymentsDue: 1, paymentsInReview: false }, "payment-due"],
   ] as const)("with %s the prompt is %s", (_name, over, kind) => {
     expect(attentionChip(attention(over))?.kind).toBe(kind);

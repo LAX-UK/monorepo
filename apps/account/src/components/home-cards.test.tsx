@@ -104,7 +104,7 @@ describe("CollectionCard", () => {
     expect(html).toContain(">In sale or consigned<");
   });
 
-  it("explains the money lines on Portfolio only, naming the invoices held for identity checks", () => {
+  it("explains the money lines on Portfolio only, naming the invoices on hold", () => {
     const held = item({
       id: "h",
       status: "awaiting_payment",
@@ -115,9 +115,9 @@ describe("CollectionCard", () => {
       paid: { lines: [{ kind: "price", amount: 100_000, currency: "GBP" }] },
     });
     const withNotes = textOf(render([held, pay("a"), paid], { showNotes: true }));
-    expect(withNotes).toContain("Includes 1 waiting on identity checks.");
+    expect(withNotes).toContain("Includes 1 on hold.");
     expect(withNotes).toContain("in the currency you paid. Not a valuation.");
-    expect(textOf(render([held, pay("a"), paid]))).not.toContain("waiting on identity checks");
+    expect(textOf(render([held, pay("a"), paid]))).not.toContain("on hold");
   });
 
   it("puts each money note in the same div as its term and figure, never in a nested wrapper", () => {

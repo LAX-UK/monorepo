@@ -7,6 +7,7 @@ import { buildHostedLoginStartHref } from "@/lib/auth/hosted-login-start-href";
 import type { KycUserFeedbackDto } from "@/lib/data/dto/dashboard-dtos";
 import { registerForSale } from "@/lib/data/http/sale-registration.client";
 import { contextualIdentityOnboardingHref } from "@/lib/kyc/identity-onboarding";
+import { registerToBidAction } from "@/lib/sale/sale-primary-viewer-action";
 import {
   BID_LIMIT_FIELD_LABEL,
   bidLimitFieldHelp,
@@ -112,7 +113,7 @@ export function RegisterHelperText({
   );
 }
 
-function RegisterOutlineLink({ href, children }: { href: string; children: ReactNode }) {
+export function RegisterOutlineLink({ href, children }: { href: string; children: ReactNode }) {
   const inFrame = useOverlayToneContext() != null;
   const overlayTone = useOverlayTone("contentBlock");
   const useFullPageNav = href.startsWith("/api/auth/login");
@@ -312,36 +313,17 @@ export function SaleroomRegisterToBid({
   }
 
   if (layout === "button") {
-    if (!isAuthenticated) {
-      return (
-        <RegisterOutlineLink
-          href={buildHostedLoginStartHref({ next: loginNextPath, intent: "signup" })}
-        >
-          Register to bid
-        </RegisterOutlineLink>
-      );
-    }
-
-    if (!kycApproved) {
-      const verifyHref = contextualIdentityOnboardingHref(loginNextPath, "registration");
-      const verifyLabel = kycFeedback
-        ? kycLinkActionLabel(kycFeedback, "long")
-        : "Verify identity to bid";
-      return <RegisterOutlineLink href={verifyHref}>{verifyLabel}</RegisterOutlineLink>;
-    }
-
-    if (buyerEntities.length === 0) {
-      if (!orgModuleEnabled) return null;
-      return (
-        <RegisterOutlineLink href="/onboarding/organisation">
-          Set up a buyer profile
-        </RegisterOutlineLink>
-      );
-    }
-
-    if (agentEntities.length === 0) return null;
-
-    return <RegisterOutlineLink href="#register-to-bid">Register to bid</RegisterOutlineLink>;
+    const action = registerToBidAction({
+      saleHref: loginNextPath,
+      isAuthenticated,
+      kycApproved,
+      kycFeedback,
+      buyerEntities,
+      orgModuleEnabled,
+    });
+    return action ? (
+      <RegisterOutlineLink href={action.href}>{action.label}</RegisterOutlineLink>
+    ) : null;
   }
 
   // layout === "default"

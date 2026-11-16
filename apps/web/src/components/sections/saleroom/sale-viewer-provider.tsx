@@ -5,6 +5,8 @@ import type { SaleViewerVM } from "@/lib/marketing/sale-viewer";
 import { type ReactNode, createContext, useContext, useEffect, useState } from "react";
 
 const SaleViewerContext = createContext<SaleViewerVM | null>(null);
+/** False until `/me` has answered (or failed): until then the viewer is only the signed-out guess. */
+const SaleViewerLoadedContext = createContext(false);
 
 /**
  * The person looking at a sale page (CO-7). The page is rendered once, signed out, for everyone;
@@ -23,26 +25,39 @@ export function SaleViewerProvider({
   children: ReactNode;
 }) {
   const [viewer, setViewer] = useState<SaleViewerVM>(signedOut);
+  const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
     fetchSaleViewer(saleId)
       .then((next) => {
-        if (!cancelled && next) setViewer(next);
+        if (cancelled) return;
+        if (next) setViewer(next);
+        setLoaded(true);
       })
       .catch(() => {
         // Stays signed out: the public page still works.
+        if (!cancelled) setLoaded(true);
       });
     return () => {
       cancelled = true;
     };
   }, [saleId]);
 
-  return <SaleViewerContext.Provider value={viewer}>{children}</SaleViewerContext.Provider>;
+  return (
+    <SaleViewerContext.Provider value={viewer}>
+      <SaleViewerLoadedContext.Provider value={loaded}>{children}</SaleViewerLoadedContext.Provider>
+    </SaleViewerContext.Provider>
+  );
 }
 
 export function useSaleViewer(): SaleViewerVM {
   const viewer = useContext(SaleViewerContext);
   if (!viewer) throw new Error("useSaleViewer must be used within SaleViewerProvider");
   return viewer;
+}
+
+/** Whether the viewer is the person's real answer from `/me`, not the signed-out first render. */
+export function useSaleViewerLoaded(): boolean {
+  return useContext(SaleViewerLoadedContext);
 }

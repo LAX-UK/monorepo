@@ -24,6 +24,11 @@ export type ClientAttention = {
    */
   paymentsBlocker: "documents" | "review" | null;
   /**
+   * The organisation that owes is rejected or archived: its purchases cannot be paid online at
+   * all, so no check is running and the prompt must not say one is.
+   */
+  paymentsRefused: boolean;
+  /**
    * Lots inside a bank transfer that has delivered part of its payment: what is still to send
    * for them (whole pence) and which lots they are. They are owed, but not a payment to start.
    */
@@ -42,6 +47,7 @@ export const NO_ATTENTION: ClientAttention = {
   paymentsDue: 0,
   paymentsInReview: false,
   paymentsBlocker: null,
+  paymentsRefused: false,
   stillToSend: { count: 0, pence: 0, lotIds: [] },
   unreadNotifications: 0,
   groups: [],
@@ -89,7 +95,7 @@ export function attentionCountFor(
 
 /** The header chip: one short, urgent prompt with a link to where it is resolved. */
 export type AttentionChip = {
-  kind: "outbid" | "payment-due" | "still-to-send" | "account-in-review";
+  kind: "outbid" | "payment-due" | "still-to-send" | "payment-on-hold";
   /** "Outbid on Harbour at Dawn", or "Outbid on 2 lots" when several are waiting. */
   label: string;
   href: string;
@@ -132,6 +138,17 @@ function stillToSendChip(attention: ClientAttention): Omit<AttentionChip, "kind"
     : { label, href: CLIENT_ROUTES.purchases, accessibleName: `${label}. Go to Purchases` };
 }
 
+/**
+ * One phrase for a held purchase across LAX: "Payment on hold" (Purchases, Pay and LAX Account
+ * Home say the same). A closed organisation is not on hold, so it says what is true instead.
+ */
+function paymentOnHoldLabel(attention: ClientAttention): string {
+  if (attention.paymentsRefused) return "Payments closed for this account";
+  return attention.paymentsBlocker === "documents"
+    ? "Payment on hold: documents needed"
+    : "Payment on hold";
+}
+
 /** In priority order: being outbid wins while a sale is live; the account's checks, then payment, wait a little longer. */
 const CHIP_RULES: readonly ChipRule[] = [
   {
@@ -143,13 +160,10 @@ const CHIP_RULES: readonly ChipRule[] = [
     // While checks are open nothing can be paid, so the chip says what is held and why rather
     // than asking for a payment that cannot be made. It is about purchases only: it never
     // speaks for a sale registration or identity check, which the sale page reports itself.
-    kind: "account-in-review",
+    kind: "payment-on-hold",
     applies: (a) => a.paymentsDue > 0 && a.paymentsInReview,
     chip: (a) => {
-      const label =
-        a.paymentsBlocker === "documents"
-          ? "Documents needed to pay"
-          : "Payment on hold while checks finish";
+      const label = paymentOnHoldLabel(a);
       return {
         label,
         href: CLIENT_ROUTES.purchases,

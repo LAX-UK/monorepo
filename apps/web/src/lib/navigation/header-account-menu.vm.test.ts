@@ -86,6 +86,7 @@ describe("buildHeaderAccountMenu", () => {
         paymentsDue: 1,
         paymentsInReview: false,
         paymentsBlocker: null,
+        paymentsRefused: false,
         stillToSend: { count: 0, pence: 0, lotIds: [] },
         unreadNotifications: 3,
         groups: [],
