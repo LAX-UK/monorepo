@@ -73,3 +73,130 @@ The diagnosis of the chip is right, and the two specific fixes do work: the chip
 - **Typecheck:** `tsc -p apps/web/tsconfig.json --noEmit` exits 0.
 - **Route JS was not measured here.** The change is one boolean prop and two string literals in already-loaded client modules, so a material increase is unlikely. Confirm it once `browser-gates` and the bundle budget finish, without raising any budget.
 - **No real personal data:** the fixtures and screenshots use "Spring sale", "Harbour at Dawn" and a mocked bidder.
+
+## Final recheck
+
+PR head `76a4eb10` (6 commits on main `14f44616`), rechecked on 16 Nov. This recheck did not change the PR branch.
+
+**Result: two of the six items are still not met, so the verdict stays FIX FIRST.**
+
+1. The hero still flashes the wrong button while the viewer loads.
+2. The PR body has no "Changes after review" section.
+
+Everything else from the first review is fixed and checked below. Both remaining fixes are small.
+
+### Still to fix
+
+1. **The hero still shows a wrong button before `/me` answers.**
+   - The bar is fixed. `SaleMobileSummaryBarIsland` passes `primaryAction = null` (View lots) until `useSaleViewerLoaded()` is true (`saleroom-viewer-islands.tsx`).
+   - The hero is not fixed. `SaleroomHeroActionRowIsland` never reads `useSaleViewerLoaded()`. It calls `salePrimaryViewerAction` with the signed-out first render, so the hero is visible at once and shows the primary "Register to bid" sign-up button. This happens for every signed-in visitor, including a registered one.
+   - When `/me` answers, the hero switches to "You're registered", the outline link, or nothing. This is the same flash the first review described ("The hero has the same problem with its 'You're registered' badge").
+   - Because of this, "neutral CTA until the viewer loads (no wrong-button flash)" is met for the bar only.
+   - Fix: gate the hero in the same way. Until the viewer has loaded, pass `null` as the action, or render a same-size neutral placeholder so the layout does not shift. Then add a row to the loading test so it asserts the hero as well as the bar.
+   - The PR body's "No guessing while loading" claim covers only the bar. It should say this, or the hero should be fixed.
+2. **The PR body has no "Changes after review" section.**
+   - The body is rewritten as one description, with sections What was wrong, Rule, Wording decision, Changes, Tests, Route JS, Screenshots and Follow-up. It does not list what changed in answer to the review.
+   - Add a short section that maps each review item to its fix commit:
+     - `9b936a24`: presenter
+     - `57e4b0f6`: captures
+     - `15afde6d` and `e5a31437`: route JS and the held field
+     - `76a4eb10`: test titles
+   - That section should also say plainly that the hero's loading flash is not addressed, unless it is fixed first.
+   - Also in the body: the before/after image links under Screenshots are broken Markdown. Each URL is wrapped in runs of backticks, as in ``[before](`` https://… ``)``, so the links do not resolve. Use plain `![…](…?raw=true)` links.
+   - The body has no AI or generated-by footer.
+
+### Checked on the current head
+
+**(1) CI is green, including Biome.**
+- All 38 check runs on `76a4eb10` have finished:
+  - success: `static-checks` (Biome), `ci-result`, `build`, web vitest 1–8, `browser-gates` (done 15:28 UTC), `account-browser-gates`, and the contract and docker jobs;
+  - skipped by path filter: `art-browser-gates` and `shop-v1-phase-smoke`.
+- Locally, `biome check .` printed "Checked 17487 files … No fixes applied" and exited 0.
+
+**(2) One presenter now decides the action, and the hero and bar both use it.** This item is met, apart from the hero's loading flash in "Still to fix" 1.
+- `lib/sale/sale-primary-viewer-action.ts` → `salePrimaryViewerAction`:
+  - It returns null when the sale is onsite, when its lifecycle has no register step, when it takes no web registrations or the viewer may not take part, or when the person is already registered.
+  - Otherwise it returns `registerToBidAction`.
+- `SaleroomHeroActionRow` renders the presenter's action. `SaleMobileSummaryBarIsland` calls the same function with the same viewer. `registrationOffered` is `registerToBidSale && canParticipateAsBuyer && !atgReadOnly`; ATG sales render the external panel instead of the hero.
+- The bar's old rule (`"/register"` / `"Register"`) is gone. Nothing in the touched code links to `/register`.
+- `saleroom-viewer-islands.test.tsx` renders both islands with one viewer and asserts that the hero equals the bar (label and href), or that the bar shows View lots when the hero offers nothing. It covers every row of the first review's table:
+
+  | State | Hero = bar |
+  |---|---|
+  | Signed out | sign-up with `next=%2Fsales%2Fspring-sale%2Fsale-1&intent=signup` |
+  | Identity check not started or in review | "Verify identity to bid" or "Verification in review" → identity onboarding with `next` and `source=registration` |
+  | No buyer profile | Set up a buyer profile |
+  | Private collector | none, and the bar shows View lots |
+  | Buyer agent, registration none, pending, rejected or withdrawn | Register to bid → `#register-to-bid` |
+  | Approved; approved with identity check lapsed | none |
+  | No web registration | none |
+  | Live: signed out, agent, registered | as for an upcoming sale |
+  | Staff | none |
+  | Ended, cancelled or voided | no register in the hero; the bar shows View results |
+
+  - Every row also asserts that the bar's href is not `/register`.
+  - The loading test asserts that the bar shows View lots and no "Register to bid" while `loaded=false`.
+  - Onsite is covered only in the presenter test ("asks nothing of an onsite sale"). It is not in the hero = bar test. The hero's "Plan your visit" and the bar's calendar or directions button both come from onsite branches that are outside the presenter. The first review already found these consistent, so this is a coverage nit, not a blocker.
+- One side effect is intended: a signed-out visitor no longer sees "Register to bid" on a sale that takes no web registrations. Before, the old signed-out hero button ignored `registerToBidSale`.
+
+**(3) "Has an approved registration" is computed once.**
+- `hasApprovedRegistration()` in `lib/marketing/sale-viewer.ts` sets `SaleViewerVM.hasApprovedRegistration` in `buildSaleViewerVM`.
+- The hero badge and the presenter both read that field. The `.some((r) => r.status === "approved")` copies in the islands are gone.
+- `sale-viewer.test.ts` covers none, pending, rejected or withdrawn, approved, and mixed registrations. A test also renders "You're registered" from the flag when `myRegistrations` is empty.
+
+**(4) The screenshots are real captures.**
+- There are 18 after-captures and 4 before-captures in `docs/design/screenshots/bid-account-banner/`:
+  - 375 px phone captures at 750×1624 (2×);
+  - 1440 px header captures at 2880×1800 (2×);
+  - each in light and dark.
+- Looked at directly:
+  - `header-chip-held-1440-dark` shows the real header with a "Payment on hold" chip, and the hero shows "You're registered" with no Register button.
+  - `phone-strip-documents-375-light` shows "Payment on hold: send documents" next to "See why ›" in the strip with no truncation, and the bar shows View lots.
+  - `bottom-bar-agent-not-registered-375-dark` shows the bar offering "Register to bid".
+- There is no watermark. The mock-ups added in `05e91fb4` (`after-*.png`, `before-{375,1440}-*.png`) are deleted; the PR adds none of them compared with main.
+- The data is mocked ("Spring sale", "Estuary, evening", "Alex Example", "Harbour Buying Ltd"). No real personal data.
+
+**(5) The refused case is honest, the kind is renamed, and one phrase is used for a held purchase.**
+- `ClientAttention.paymentsHold` (`documents | review | closed`) replaces `paymentsInReview` and `paymentsBlocker`. `closed` comes from `AmountsOwedSummary.refused`.
+- The chip says "Payment on hold", "Payment on hold: send documents", or "Payments closed for this account" for a rejected or archived organisation.
+- The kind is `payment-on-hold` in `client-attention.ts` and `bid-attention-prompt-chip.tsx`. `account-in-review`, `paymentsInReview` and `paymentsBlocker` no longer appear in `apps/web/src`, `apps/account/src` or `packages`.
+- The held-purchase phrase is now the same everywhere:
+  - Bid chip: "Payment on hold"
+  - Purchases banner title for a personal account: "Payment on hold" (`purchases.vm.ts:552`)
+  - Pay: "is on hold and can be paid once our checks are done"
+  - LAX Account Home: "£… · payment on hold"
+  - LAX Account collection note: "Includes N on hold."
+- The PR body's "Wording decision" table documents this.
+- "Identity checks" no longer describes an AML or source-of-funds hold. The remaining uses are admin KYC history, sell landing copy and code comments.
+- The organisation headings stay as they are on purpose ("`<Org>` is in review", "`<Org>` can't make payments", "Your own checks are in review"). This is stated in the PR body.
+- Nit: the doc comment at `purchases.vm.ts:539` still says "A person's own account is in review".
+
+**(6) The tests catch the change, and route JS is at or below main.**
+- Mutation checks: each change below was made on the PR head and then reverted.
+
+  | Mutation | Result |
+  |---|---|
+  | Bar ignores the presenter (`primaryAction={null}`) | 10 of 21 island tests fail |
+  | Loading gate removed | 1 fails (the loading test) |
+  | `hasApprovedRegistration` forced false | 2 of 6 `sale-viewer` tests fail |
+  | Main's `sale-mobile-summary-bar.tsx` | 17 of 33 fail (islands and bar suites) |
+  | Main's `client-attention.ts` and `derive-client-attention.ts` | 8 fail in `lib/navigation` |
+
+- Route JS: production builds of main `14f44616` and of the PR head, made in the same checkout with the same fixed `NEXT_SERVER_ACTIONS_ENCRYPTION_KEY`, measured with `scripts/check-route-js-budget.mjs --app apps/web --all --allow-no-sentry`. Sentry was off for both builds, so the comparison holds.
+  - Of the 114 routes, none grew, 12 shrank and 102 are equal.
+  - Sale page: 462.6 → 462.1 KB. Lot page: 452.0 → 451.4 KB.
+  - Shipping and Terms: 328.5 → 328.4 KB. Eight account routes: −0.1 KB each.
+  - No budget, baseline or ratchet file is touched: `route-js-budgets.json` and `route-js-baseline.json` are unchanged.
+
+**Local runs on `76a4eb10`:**
+- Touched web suites: 16 files, 280 of 280 pass.
+- Touched account suites: 3 files, 24 of 24 pass.
+- `tsc --noEmit` exits 0 for `apps/web` and for `apps/account`. The web typecheck needs `apps/api` built first for `@auction/api/app` types, which is a local setup step, not the PR.
+- `biome check .` exits 0.
+
+### To ship
+
+1. Gate the hero's primary action on `useSaleViewerLoaded()`, as the bar is, and test it.
+2. Add an honest "Changes after review" section to the PR body, and fix the screenshot links.
+
+After those two, this is SHIP. The follow-up from the first review still stands: before closing the 16 Nov incident, check the hold reason on that test account.
