@@ -65,11 +65,12 @@
   opacity: 0;
 }
 
+/* No will-change at rest (MO15): the browser gives a running transform animation its own
+   compositor layer for as long as it runs, and drops it after, so a revealed block holds no layer. */
 .reveal__inner {
   height: 100%;
   width: 100%;
   transform-origin: center;
-  will-change: transform;
 }
 
 .reveal[data-reveal-init="true"]:not([data-revealed="true"]) > .reveal__inner {

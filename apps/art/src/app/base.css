@@ -137,7 +137,10 @@
   --color-hero-panel-ink: #17150f;
   --color-hero-panel-body: var(--color-brand-obsidian);
   --color-hero-panel-cta: var(--color-hero-panel-ink);
-  --animate-art-hero-panel-in: art-hero-panel-in 650ms ease-out both;
+  /* lax.art's editorial reveal timing (Q3), and the panel is never hidden: it is drawn from the
+     server HTML and the first paint, and only settles up into place (MO15). */
+  --animate-art-hero-panel-in: art-hero-panel-in var(--motion-duration-lg)
+    var(--motion-ease-emphasize) both;
   --animate-art-hero-drift: art-hero-drift 18s ease-in-out infinite alternate;
   /* Figma page titles: 60px at 1440 (DM Sans SemiBold 60/1.2, set in Montserrat). */
   --text-display-lg: clamp(2rem, 4.2vw, 3.75rem);
@@ -154,14 +157,13 @@
   --font-label: var(--font-outfit), ui-sans-serif, system-ui, sans-serif;
   --font-supporting: var(--font-outfit), ui-sans-serif, system-ui, sans-serif;
 
-  /* Same motion as the Shop home hero (apps/shop/src/app/home.css). */
+  /* Transform only: the panel and its headline show from the first paint, so the hero is never
+     blank at rest and its text can be the page's largest paint. */
   @keyframes art-hero-panel-in {
     from {
-      opacity: 0;
       transform: translateY(1rem);
     }
     to {
-      opacity: 1;
       transform: translateY(0);
     }
   }

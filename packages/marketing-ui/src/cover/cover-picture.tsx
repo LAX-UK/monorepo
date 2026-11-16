@@ -5,15 +5,20 @@ import { type CSSProperties, type ReactNode, useCallback, useState } from "react
 import { COVER_WIDE_FROM_PX, planCoverBoxes } from "./cover-crop.js";
 import type { CoverPhotoMedia, CoverPlateMedia, CoverSrcSetFor } from "./cover-types.js";
 
-/** The fade from the blurred preview to the sharp picture. */
-const FADE_CLASS = "transition-opacity duration-[240ms] ease-out motion-reduce:transition-none";
+/**
+ * The fade from the blurred preview to the sharp picture: the kit class
+ * (packages/ui/src/lax/image-fade.css) holds back and fades in only a lazy picture, so the first
+ * screen's (eager) picture is never hidden. `opacity-100` marks a picture that is drawn.
+ */
+const FADE_CLASS = "lax-image-fade";
 
 type LoadPhase = "ssr" | "loading" | "loaded";
 
 /**
  * Tracks one image's load for the fade. The picture is drawn from the server's HTML as it is, so
- * the largest element is never held back. Only a picture still downloading when the page wakes
- * up is hidden and faded in over its preview; one that already finished is left alone, and one
+ * the largest element is never held back. Only a lazy picture still downloading when the page
+ * wakes up is hidden and faded in over its preview (the first screen's eager picture never is);
+ * one that already finished is left alone, and one
  * that finished broken is reported so the next source takes over.
  */
 function useImageLoad(onError: () => void) {
@@ -119,7 +124,7 @@ export function CoverPhoto({
           loading={priority ? "eager" : "lazy"}
           onLoad={onLoad}
           onError={fail}
-          className={cn(FRAME_CLASS, FADE_CLASS, hidden ? "opacity-0" : "opacity-100")}
+          className={cn(FRAME_CLASS, FADE_CLASS, !hidden && "opacity-100")}
         />
       </picture>
     </div>
@@ -193,7 +198,7 @@ export function CoverPlate({
               "block h-auto max-h-[270px] w-auto max-w-[min(290px,100%)] object-contain md:max-h-[470px] md:max-w-[min(600px,100%)]",
               "shadow-[0_2px_4px_rgba(0,0,0,0.28),0_28px_56px_-18px_rgba(0,0,0,0.6)]",
               FADE_CLASS,
-              hidden ? "opacity-0" : "opacity-100",
+              !hidden && "opacity-100",
             )}
           />
           {credit ? (

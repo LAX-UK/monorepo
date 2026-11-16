@@ -32,3 +32,10 @@ describe("a reveal that has not played yet", () => {
     expect(block).toMatch(/clip-path:\s*none/);
   });
 });
+
+describe("a reveal at rest", () => {
+  it("holds no will-change: the browser layers a running animation only while it runs (MO15)", () => {
+    const withoutComments = css.replace(/\/\*[\s\S]*?\*\//g, "");
+    expect(withoutComments).not.toMatch(/will-change/);
+  });
+});

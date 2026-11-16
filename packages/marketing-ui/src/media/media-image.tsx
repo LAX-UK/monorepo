@@ -135,8 +135,9 @@ export function MediaImage({
           onClick={onClick}
           className={cn(
             "object-cover",
-            !useBlurPlaceholder &&
-              "opacity-0 transition-opacity duration-300 motion-reduce:transition-none",
+            // Kit class (packages/ui/src/lax/image-fade.css): only a lazy image waits for its load
+            // and fades in; a first-screen image (priority or eager) paints at once.
+            !useBlurPlaceholder && "lax-image-fade",
             !useBlurPlaceholder && status === "loaded" && "opacity-100",
             onClick && "cursor-pointer",
             imgClassName,

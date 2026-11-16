@@ -1,0 +1,54 @@
+/*
+ * Image load fade for every LAX product (docs/design/motion.md, "Images" and MO15).
+ *
+ * `.lax-image-fade` marks an image drawn over its hatched placeholder until it loads; the
+ * component adds `opacity-100` once the image has loaded. Only a below-the-fold image
+ * (`loading="lazy"`) is held back and then fades in over `--lax-motion-enter` (200ms). A
+ * first-screen image (priority or eager, so no `loading="lazy"`) is never hidden: it paints as
+ * soon as it decodes, in the server HTML and on first paint, which protects LCP.
+ *
+ * Without JavaScript nothing marks an image loaded, so under `scripting: none` it is shown as it
+ * arrives: the page at rest looks the same with JavaScript off as on.
+ *
+ * Reduced motion (the OS setting, unless Bid's `force-allow` is on, and Bid's `force-reduce`):
+ * public products keep a `--lax-motion-fade` fade (within the 150ms ceiling); the staff tools and
+ * LAX Account show it at once. Opacity only, so the fade runs on the compositor and moves nothing.
+ *
+ * In the components layer, so the `opacity-100` utility the component adds on load wins.
+ */
+@layer components {
+  .lax-image-fade[loading="lazy"] {
+    opacity: 0;
+    transition: opacity var(--lax-motion-enter) var(--lax-ease-out);
+  }
+
+  @media (scripting: none) {
+    .lax-image-fade[loading="lazy"] {
+      opacity: 1;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    :root:not([data-reduce-motion="force-allow"]) .lax-image-fade[loading="lazy"] {
+      transition-duration: var(--lax-motion-fade);
+    }
+
+    :root:not([data-reduce-motion="force-allow"]):has([data-lax-density="staff"])
+      .lax-image-fade[loading="lazy"],
+    :root:not([data-reduce-motion="force-allow"])[data-lax-product="account"]
+      .lax-image-fade[loading="lazy"] {
+      transition-duration: 0s;
+    }
+  }
+
+  :root[data-reduce-motion="force-reduce"] .lax-image-fade[loading="lazy"] {
+    transition-duration: var(--lax-motion-fade);
+  }
+
+  :root[data-reduce-motion="force-reduce"]:has([data-lax-density="staff"])
+    .lax-image-fade[loading="lazy"],
+  :root[data-reduce-motion="force-reduce"][data-lax-product="account"]
+    .lax-image-fade[loading="lazy"] {
+    transition-duration: 0s;
+  }
+}
