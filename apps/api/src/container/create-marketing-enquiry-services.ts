@@ -71,6 +71,7 @@ export type CreateMarketingEnquiryServicesInput = {
     | "ENQUIRY_REPLY_TO_ADDRESS"
     | "ENQUIRY_REPLY_TOKEN_SECRET"
     | "ENQUIRY_INBOUND_AUTHSERV_ID"
+    | "ENQUIRY_INBOUND_SPF_RECEIVER"
   >;
   email: IEmailService;
   memberships: Pick<
@@ -207,7 +208,10 @@ export function createMarketingEnquiryServices(
           events: input.events,
           alert: alert ?? noEnquiryReplyAlert,
           now: () => new Date(),
-          authentication: { trustedAuthservId: input.env.ENQUIRY_INBOUND_AUTHSERV_ID },
+          authentication: {
+            trustedAuthservId: input.env.ENQUIRY_INBOUND_AUTHSERV_ID,
+            trustedSpfReceiver: input.env.ENQUIRY_INBOUND_SPF_RECEIVER,
+          },
           onAlertFailed: (enquiryId, error) =>
             log.error({ enquiryId, err: error }, "enquiry reply alert could not be queued"),
         })

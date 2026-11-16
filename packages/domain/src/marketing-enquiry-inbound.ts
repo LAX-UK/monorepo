@@ -25,9 +25,14 @@ export type InboundQuarantineReason = (typeof INBOUND_QUARANTINE_REASONS)[number
 export const INBOUND_QUARANTINE_STATUSES = ["pending", "dismissed", "linked"] as const;
 export type InboundQuarantineStatus = (typeof INBOUND_QUARANTINE_STATUSES)[number];
 
-/** The SPF result the receiving server recorded for a received mail (RFC 7208 results). */
+/**
+ * The SPF result the receiving server recorded for a received mail (RFC 7208 results). `pass`
+ * only when the domain SPF checked aligns with the From address; a pass for another domain is
+ * `pass_unaligned`, which does not authenticate the sender.
+ */
 export const INBOUND_SPF_RESULTS = [
   "pass",
+  "pass_unaligned",
   "fail",
   "softfail",
   "neutral",
@@ -48,7 +53,8 @@ export type InboundAuthentication = { spf: InboundSpfResult; dkim: InboundDkimRe
 
 /**
  * Whether the sender of a mail is authenticated well enough for it to join a thread on its own:
- * SPF passed, or a DKIM signature aligned with the From domain passed. Anything else is held for
+ * SPF passed for a domain aligned with the From domain, or a DKIM signature aligned with it
+ * passed. Anything else is held for
  * a person to look at.
  */
 export function isInboundSenderAuthenticated(auth: InboundAuthentication): boolean {
@@ -71,3 +77,48 @@ export function quarantineReviewRefusal(
 ): QuarantineReviewRefusal | null {
   return status === "pending" ? null : "already_reviewed";
 }
+
+/** Why a mail was held, when the reason itself means its sender could not be verified. */
+export const SENDER_UNVERIFIED_HELD_REASONS = [
+  "bad_token",
+  "sender_mismatch",
+  "spf_failed",
+  "unauthenticated",
+] as const satisfies readonly InboundQuarantineReason[];
+
+/** What is known about a held mail's sender before anyone picks an enquiry for it. */
+export type HeldMailSenderFacts = {
+  reason: InboundQuarantineReason;
+  spfResult: InboundSpfResult | null;
+  dkimResult: InboundDkimResult | null;
+};
+
+/**
+ * Whether a held mail's own facts already say its sender is not verified: it was held for a
+ * sender reason, or neither aligned SPF nor aligned DKIM passed (or no result was recorded).
+ */
+export function isHeldMailSenderUnverified(held: HeldMailSenderFacts): boolean {
+  return (
+    (SENDER_UNVERIFIED_HELD_REASONS as readonly string[]).includes(held.reason) ||
+    !isInboundSenderAuthenticated({
+      spf: held.spfResult ?? "none",
+      dkim: held.dkimResult ?? "none",
+    })
+  );
+}
+
+/**
+ * Whether a held mail staff attach to an enquiry is verified as coming from that enquiry's
+ * client: its own facts pass AND it came from the client's address. Anything else needs a person
+ * to confirm it on purpose, and shows as "sender not verified" on the thread.
+ */
+export function isAttachedSenderVerified(
+  held: HeldMailSenderFacts,
+  fromMatchesEnquirer: boolean,
+): boolean {
+  return fromMatchesEnquirer && !isHeldMailSenderUnverified(held);
+}
+
+/** The reason staff give for attaching or discarding held mail, kept in the audit trail. */
+export const QUARANTINE_REVIEW_REASON_MIN = 3;
+export const QUARANTINE_REVIEW_REASON_MAX = 500;

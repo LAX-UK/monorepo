@@ -80,6 +80,11 @@ function setup(
   return { service, inbound, held, published, awaiting, notifyReply, repository };
 }
 
+/** A `Received-SPF` value as Postmark writes it on inbound mail, for a given result. */
+function postmarkSpf(result: string, envelopeFrom = "sam@example.test"): string {
+  return `${result} identity=mailfrom; client-ip=192.0.2.10; helo=mail.example.test; envelope-from=${envelopeFrom}; receiver=4f1a+replies@inbound.postmarkapp.com`;
+}
+
 function mail(overrides: Record<string, unknown> = {}): InboundPayload {
   return inboundPayloadSchema.parse({
     MessageID: "pm-1",
@@ -90,7 +95,7 @@ function mail(overrides: Record<string, unknown> = {}): InboundPayload {
     Subject: "Re: Your enquiry E-1042",
     TextBody: "Thanks!\n\nOn Monday you wrote:\n> quoted",
     StrippedTextReply: "Thanks!",
-    Headers: [{ Name: "Received-SPF", Value: "Pass (sender SPF authorized)" }],
+    Headers: [{ Name: "Received-SPF", Value: postmarkSpf("Pass (sender SPF authorized)") }],
     Attachments: [
       { Name: "photo.jpg", ContentType: "image/jpeg", ContentLength: 1234, Content: "QUJD" },
     ],
@@ -151,7 +156,7 @@ describe("EnquiryInboundReplyService", () => {
         ToFull: [{ Email: "replies@inbound.example.test" }],
         OriginalRecipient: "replies@inbound.example.test",
         Headers: [
-          { Name: "Received-SPF", Value: "Pass (sender SPF authorized)" },
+          { Name: "Received-SPF", Value: postmarkSpf("Pass (sender SPF authorized)") },
           { Name: "In-Reply-To", Value: "<AbC-123@mtasv.net>" },
         ],
       }),
@@ -192,7 +197,11 @@ describe("EnquiryInboundReplyService", () => {
   it("quarantines a spoofed sender even with a valid address", async () => {
     const t = setup();
     const result = await t.service.handle(
-      mail({ From: "evil@attacker.test", FromFull: { Email: "evil@attacker.test" } }),
+      mail({
+        From: "evil@attacker.test",
+        FromFull: { Email: "evil@attacker.test" },
+        Headers: [{ Name: "Received-SPF", Value: postmarkSpf("Pass", "evil@attacker.test") }],
+      }),
     );
     expect(result).toEqual({ outcome: "quarantined", reason: "sender_mismatch" });
     expect(t.inbound.size).toBe(0);
@@ -204,7 +213,9 @@ describe("EnquiryInboundReplyService", () => {
     const t = setup();
     const result = await t.service.handle(
       mail({
-        Headers: [{ Name: "Received-SPF", Value: "Fail (domain does not designate sender)" }],
+        Headers: [
+          { Name: "Received-SPF", Value: postmarkSpf("Fail (domain does not designate sender)") },
+        ],
       }),
     );
     expect(result).toEqual({ outcome: "quarantined", reason: "spf_failed" });
@@ -219,7 +230,7 @@ describe("EnquiryInboundReplyService", () => {
   it("holds mail with neither an SPF pass nor an aligned DKIM pass as unauthenticated, with its result", async () => {
     const t = setup();
     const result = await t.service.handle(
-      mail({ Headers: [{ Name: "Received-SPF", Value: "Neutral (no policy)" }] }),
+      mail({ Headers: [{ Name: "Received-SPF", Value: postmarkSpf("Neutral (no policy)") }] }),
     );
     expect(result).toEqual({ outcome: "quarantined", reason: "unauthenticated" });
     expect(t.held.get("pm-1")).toMatchObject({
@@ -246,7 +257,7 @@ describe("EnquiryInboundReplyService", () => {
             Name: "Authentication-Results",
             Value: "mx.receiver.test; dkim=pass header.d=example.test",
           },
-          { Name: "Received-SPF", Value: "Neutral" },
+          { Name: "Received-SPF", Value: postmarkSpf("Neutral") },
         ],
       }),
     );
@@ -278,6 +289,33 @@ describe("EnquiryInboundReplyService", () => {
         }),
       ),
     ).toEqual({ outcome: "quarantined", reason: "unauthenticated" });
+  });
+
+  it("holds an SPF pass for a domain not aligned with the sender, and records it as unaligned", async () => {
+    const t = setup();
+    const result = await t.service.handle(
+      mail({
+        Headers: [{ Name: "Received-SPF", Value: postmarkSpf("Pass", "bounce@bulk-sender.test") }],
+      }),
+    );
+    expect(result).toEqual({ outcome: "quarantined", reason: "unauthenticated" });
+    expect(t.held.get("pm-1")).toMatchObject({ spfResult: "pass_unaligned" });
+  });
+
+  it("does not believe an SPF header the receiving server did not write", async () => {
+    const t = setup();
+    const result = await t.service.handle(
+      mail({
+        Headers: [
+          {
+            Name: "Received-SPF",
+            Value: "Pass identity=mailfrom; envelope-from=sam@example.test; receiver=mx.other.test",
+          },
+        ],
+      }),
+    );
+    expect(result).toEqual({ outcome: "quarantined", reason: "unauthenticated" });
+    expect(t.held.get("pm-1")).toMatchObject({ spfResult: "none" });
   });
 
   it("quarantines automatic replies", async () => {

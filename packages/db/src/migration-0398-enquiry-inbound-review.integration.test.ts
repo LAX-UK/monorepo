@@ -56,13 +56,32 @@ describe.skipIf(!url)("migration 0398 enquiry inbound review", { timeout: 180_00
         ),
       ).rejects.toThrow(/dkim_result_check/);
 
-      // A person attaches the held mail.
+      // A person attaches the held mail, with why it was held and the reason they gave.
       await pool.query(
         `insert into marketing_enquiry_message
-           (enquiry_id, direction, subject, body, provider_message_id, matched_by, spf_result, dkim_result)
-         values ($1, 'inbound', 'Re', 'Text', 'pm-0398', 'staff', 'pass', 'none')`,
+           (enquiry_id, direction, subject, body, provider_message_id, matched_by, spf_result,
+            dkim_result, held_reason, review_reason)
+         values ($1, 'inbound', 'Re', 'Text', 'pm-0398', 'staff', 'pass_unaligned', 'none',
+                 'sender_mismatch', 'Client confirmed by phone it is their colleague')`,
         [enquiryId],
       );
+      // A held reason or a review reason belongs only on a message staff attached.
+      await expect(
+        pool.query(
+          `insert into marketing_enquiry_message
+             (enquiry_id, direction, subject, body, provider_message_id, matched_by, held_reason)
+           values ($1, 'inbound', 'Re', 'Text', 'pm-token', 'token', 'unmatched')`,
+          [enquiryId],
+        ),
+      ).rejects.toThrow(/held_reason_check/);
+      await expect(
+        pool.query(
+          `insert into marketing_enquiry_message
+             (enquiry_id, direction, subject, body, provider_message_id, matched_by, review_reason)
+           values ($1, 'inbound', 'Re', 'Text', 'pm-long', 'staff', repeat('x', 501))`,
+          [enquiryId],
+        ),
+      ).rejects.toThrow(/review_reason_check/);
       await pool.query(
         `update enquiry_inbound_quarantine
             set status = 'linked', reviewed_at = now() where id = $1`,
@@ -84,7 +103,7 @@ describe.skipIf(!url)("migration 0398 enquiry inbound review", { timeout: 180_00
       const columns = await pool.query(
         `select 1 from information_schema.columns
           where table_name in ('enquiry_inbound_quarantine', 'marketing_enquiry_message')
-            and column_name in ('spf_result', 'dkim_result')`,
+            and column_name in ('spf_result', 'dkim_result', 'held_reason', 'review_reason')`,
       );
       expect(columns.rowCount).toBe(0);
       await expect(

@@ -15,23 +15,69 @@ export type InboundAuthenticationOptions = {
    * own mail, but not above the one the receiving server adds. Without it, DKIM counts as `none`.
    */
   trustedAuthservId?: string | undefined;
+  /**
+   * The domain of the `receiver=` the receiving server writes into its own `Received-SPF` header
+   * (Postmark writes `receiver=…@inbound.postmarkapp.com`). Only the topmost `Received-SPF` with
+   * that receiver is believed; any other, including one a sender wrote into their own mail,
+   * counts as no result. Defaults to Postmark's inbound domain.
+   */
+  trustedSpfReceiver?: string | undefined;
 };
+
+/** The receiver Postmark names in the `Received-SPF` header it adds to inbound mail. */
+export const POSTMARK_SPF_RECEIVER = "inbound.postmarkapp.com";
 
 function first(headers: readonly MailHeader[], name: string): string | undefined {
   const wanted = name.toLowerCase();
   return headers.find((h) => h.Name.toLowerCase() === wanted)?.Value;
 }
 
-/** The result word of the topmost `Received-SPF` header, which the receiving server adds. */
-export function spfResultOf(headers: readonly MailHeader[]): InboundSpfResult {
-  const word =
-    first(headers, "Received-SPF")
-      ?.trim()
-      .toLowerCase()
-      .split(/[\s(;]/, 1)[0] ?? "";
-  return (INBOUND_SPF_RESULTS as readonly string[]).includes(word)
-    ? (word as InboundSpfResult)
-    : "none";
+/** The `key=value` pairs after the result in a `Received-SPF` value (RFC 7208 §9.1). */
+function spfKeyValues(value: string): Map<string, string> {
+  const pairs = new Map<string, string>();
+  for (const match of value.matchAll(/(?:^|[\s;])([a-z-]+)\s*=\s*("[^"]*"|[^\s;]+)/gi)) {
+    const key = match[1]?.toLowerCase();
+    if (key && !pairs.has(key)) pairs.set(key, (match[2] ?? "").replace(/^"|"$/g, "").trim());
+  }
+  return pairs;
+}
+
+/** "abc+x@inbound.postmarkapp.com" or "mx.example.test" → its domain, lower case. */
+function receiverDomain(receiver: string): string {
+  return (receiver.includes("@") ? domainOfAddress(receiver) : receiver)
+    .trim()
+    .toLowerCase()
+    .replace(/\.$/, "");
+}
+
+/**
+ * The SPF result of the topmost `Received-SPF` header, believed only when the trusted receiving
+ * server wrote it (its `receiver=` is that server's domain), and counted as `pass` only when the
+ * domain SPF checked (`envelope-from`, or the HELO name when there is none) aligns with the From
+ * domain. A pass for another domain is `pass_unaligned`, which does not authenticate the sender.
+ */
+export function spfResultOf(
+  headers: readonly MailHeader[],
+  fromAddress = "",
+  options: InboundAuthenticationOptions = {},
+): InboundSpfResult {
+  const value = first(headers, "Received-SPF")?.trim();
+  if (!value) return "none";
+  const trusted = (options.trustedSpfReceiver ?? POSTMARK_SPF_RECEIVER)
+    .trim()
+    .toLowerCase()
+    .replace(/\.$/, "");
+  const pairs = spfKeyValues(value);
+  const receiver = receiverDomain(pairs.get("receiver") ?? "");
+  if (!trusted || !(receiver === trusted || receiver.endsWith(`.${trusted}`))) return "none";
+  const word = value.toLowerCase().split(/[\s(;]/, 1)[0] ?? "";
+  if (!(INBOUND_SPF_RESULTS as readonly string[]).includes(word)) return "none";
+  if (word !== "pass") return word as InboundSpfResult;
+  const envelopeFrom = pairs.get("envelope-from") ?? "";
+  const checkedDomain = envelopeFrom.includes("@")
+    ? domainOfAddress(envelopeFrom.replace(/^</, ""))
+    : (pairs.get("helo") ?? "").toLowerCase();
+  return domainsAlign(checkedDomain, domainOfAddress(fromAddress)) ? "pass" : "pass_unaligned";
 }
 
 /** "Sam <sam@mail.example.test>" → "mail.example.test". */
@@ -91,14 +137,14 @@ export function dkimResultOf(
   return verdicts.some((v) => v.result !== "none" && v.result !== "") ? "fail" : "none";
 }
 
-/** What the receiving server recorded about who sent a mail: its SPF result and aligned DKIM. */
+/** What the receiving server recorded about who sent a mail: aligned SPF and aligned DKIM. */
 export function inboundAuthentication(
   headers: readonly MailHeader[],
   fromAddress: string,
   options: InboundAuthenticationOptions = {},
 ): InboundAuthentication {
   return {
-    spf: spfResultOf(headers),
+    spf: spfResultOf(headers, fromAddress, options),
     dkim: dkimResultOf(headers, fromAddress, options),
   };
 }

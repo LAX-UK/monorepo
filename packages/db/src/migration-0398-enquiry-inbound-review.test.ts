@@ -27,9 +27,24 @@ describe("migration 0398 enquiry inbound review", () => {
     expect(migration).toContain("'pass', 'pass_unaligned', 'fail', 'none'");
   });
 
+  it("records an SPF pass for a domain not aligned with the sender as its own result", () => {
+    expect(migration.match(/'pass', 'pass_unaligned', 'fail', 'softfail'/g)).toHaveLength(2);
+  });
+
   it("lets staff attach held mail and holds unauthenticated mail", () => {
     expect(migration).toContain("'token', 'in_reply_to', 'staff'");
     expect(migration).toContain("'unauthenticated'");
+  });
+
+  it("keeps why attached mail was held and the reason staff gave, on staff-attached rows only", () => {
+    expect(migration).toContain('ADD COLUMN IF NOT EXISTS "held_reason" text');
+    expect(migration).toContain('ADD COLUMN IF NOT EXISTS "review_reason" text');
+    expect(migration).toMatch(/"held_reason" IS NULL OR \("matched_by" = 'staff'/);
+    expect(migration).toMatch(
+      /"review_reason" IS NULL OR \("matched_by" = 'staff'\s+AND char_length\("review_reason"\) <= 500\)/,
+    );
+    expect(rollback).toContain('DROP COLUMN IF EXISTS "held_reason"');
+    expect(rollback).toContain('DROP COLUMN IF EXISTS "review_reason"');
   });
 
   it("rolls back by taking staff-attached mail off threads and restoring the earlier checks", () => {

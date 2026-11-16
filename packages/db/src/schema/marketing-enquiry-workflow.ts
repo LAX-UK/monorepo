@@ -1,7 +1,9 @@
 import {
   INBOUND_DKIM_RESULTS,
+  INBOUND_QUARANTINE_REASONS,
   INBOUND_SPF_RESULTS,
   type InboundDkimResult,
+  type InboundQuarantineReason,
   type InboundSpfResult,
 } from "@auction/domain";
 import { sql } from "drizzle-orm";
@@ -79,6 +81,7 @@ export const marketingEnquiryNote = pgTable(
 export type InboundAttachmentMeta = { name: string; contentType: string; sizeBytes: number };
 
 const SPF_CHECK_LIST = sql.raw(INBOUND_SPF_RESULTS.map((v) => `'${v}'`).join(", "));
+const REASON_CHECK_LIST = sql.raw(INBOUND_QUARANTINE_REASONS.map((v) => `'${v}'`).join(", "));
 const DKIM_CHECK_LIST = sql.raw(INBOUND_DKIM_RESULTS.map((v) => `'${v}'`).join(", "));
 
 /**
@@ -112,6 +115,10 @@ export const marketingEnquiryMessage = pgTable(
     spfResult: text("spf_result").$type<InboundSpfResult>(),
     /** Inbound only: the DKIM result, `pass` only for a signature aligned with the From domain. */
     dkimResult: text("dkim_result").$type<InboundDkimResult>(),
+    /** Attached by staff only: why the mail was held before a person attached it. */
+    heldReason: text("held_reason").$type<InboundQuarantineReason>(),
+    /** Attached by staff only: the reason the person gave for attaching it (at most 500). */
+    reviewReason: text("review_reason"),
   },
   (table) => [
     foreignKey({
@@ -141,6 +148,14 @@ export const marketingEnquiryMessage = pgTable(
     check(
       "marketing_enquiry_message_dkim_result_check",
       sql`${table.dkimResult} IS NULL OR ${table.dkimResult} IN (${DKIM_CHECK_LIST})`,
+    ),
+    check(
+      "marketing_enquiry_message_held_reason_check",
+      sql`${table.heldReason} IS NULL OR (${table.matchedBy} = 'staff' AND ${table.heldReason} IN (${REASON_CHECK_LIST}))`,
+    ),
+    check(
+      "marketing_enquiry_message_review_reason_check",
+      sql`${table.reviewReason} IS NULL OR (${table.matchedBy} = 'staff' AND char_length(${table.reviewReason}) <= 500)`,
     ),
   ],
 );

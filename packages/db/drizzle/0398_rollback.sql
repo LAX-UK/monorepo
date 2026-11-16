@@ -2,7 +2,7 @@
 -- application release back first. Messages staff attached from quarantine leave their threads and
 -- their quarantine rows return to pending (the held copy still has the text). Mail held as
 -- 'unauthenticated' is relabelled 'spf_failed', the nearest earlier reason. The authentication
--- results are dropped. Removes this migration's ledger row so a later deploy reapplies it.
+-- results, and the held and review reasons of attached messages, are dropped. Removes this migration's ledger row so a later deploy reapplies it.
 BEGIN;
 
 SET LOCAL lock_timeout = '30s';
@@ -21,6 +21,8 @@ ALTER TABLE "enquiry_inbound_quarantine"
   DROP COLUMN IF EXISTS "dkim_result",
   DROP COLUMN IF EXISTS "spf_result";
 ALTER TABLE "marketing_enquiry_message"
+  DROP CONSTRAINT IF EXISTS "marketing_enquiry_message_review_reason_check",
+  DROP CONSTRAINT IF EXISTS "marketing_enquiry_message_held_reason_check",
   DROP CONSTRAINT IF EXISTS "marketing_enquiry_message_dkim_result_check",
   DROP CONSTRAINT IF EXISTS "marketing_enquiry_message_spf_result_check",
   DROP CONSTRAINT IF EXISTS "marketing_enquiry_message_inbound_check",
@@ -29,6 +31,8 @@ ALTER TABLE "marketing_enquiry_message"
       AND "matched_by" IN ('token', 'in_reply_to')
       AND char_length("body") <= 20000 AND char_length("subject") <= 300
       AND jsonb_typeof("attachments") = 'array')),
+  DROP COLUMN IF EXISTS "review_reason",
+  DROP COLUMN IF EXISTS "held_reason",
   DROP COLUMN IF EXISTS "dkim_result",
   DROP COLUMN IF EXISTS "spf_result";
 

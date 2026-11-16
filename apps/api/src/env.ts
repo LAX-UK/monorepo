@@ -505,6 +505,11 @@ const envSchema = z
      * DKIM pass aligned with the sender can file a reply. Unset: only an SPF pass can.
      */
     ENQUIRY_INBOUND_AUTHSERV_ID: z.preprocess(emptyToUndefined, z.string().max(255).optional()),
+    /**
+     * The domain of the `receiver=` in the `Received-SPF` header the receiving server adds; only
+     * that header's SPF result is believed. Unset: Postmark's inbound domain.
+     */
+    ENQUIRY_INBOUND_SPF_RECEIVER: z.preprocess(emptyToUndefined, z.string().max(255).optional()),
     /** `user:password` Postmark sends as Basic Auth on the inbound webhook; separate from the delivery webhook's. */
     POSTMARK_INBOUND_WEBHOOK_BASIC_AUTH: z.preprocess(
       emptyToUndefined,
