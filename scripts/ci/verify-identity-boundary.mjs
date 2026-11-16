@@ -90,9 +90,12 @@ function trackedText() {
   const result = spawnSync(
     "git",
     ["ls-files", "--cached", "--others", "--exclude-standard", "-z"],
-    { encoding: "utf8" },
+    // The path list is over Node's default 1 MiB buffer, which fails with ENOBUFS.
+    { encoding: "utf8", maxBuffer: 64 * 1024 * 1024 },
   );
-  if (result.status !== 0) throw new Error("unable to enumerate repository files");
+  if (result.status !== 0) {
+    throw new Error("unable to enumerate repository files", { cause: result.error });
+  }
   return result.stdout
     .split("\0")
     .filter(Boolean)
