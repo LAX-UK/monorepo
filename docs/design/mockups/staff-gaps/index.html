@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Staff gaps mockups</title>
+<!-- Illustrative only. The staff-ui kit components are the source of truth. All names are made up. -->
+<style>
+:root{--bg:#f7f7f6;--surface:#fff;--ink:#141414;--muted:#5c5c5c;--line:#e4e4e2;--ctl:#8a8a86;
+--succ:#1f7a43;--succ-bg:#e6f4ec;--info:#1d5fa8;--info-bg:#e7f0fb;--warn:#8a5a00;--warn-bg:#fdf1d8;
+--dang:#b3261e;--dang-bg:#fbe9e7;--neu:#55554f;--neu-bg:#efefec;--btn:#141414;--btn-ink:#fff}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#111;--surface:#1a1a1a;--ink:#f1f1ef;--muted:#a8a8a3;--line:#2c2c2a;--ctl:#77776f;
+--succ:#7fd6a0;--succ-bg:#173323;--info:#8fbdf2;--info-bg:#16283d;--warn:#f0c46a;--warn-bg:#352a12;--dang:#f29b93;--dang-bg:#3a1916;--neu:#c4c4be;--neu-bg:#262624;--btn:#f1f1ef;--btn-ink:#111}}
+:root[data-theme="dark"]{--bg:#111;--surface:#1a1a1a;--ink:#f1f1ef;--muted:#a8a8a3;--line:#2c2c2a;--ctl:#77776f;
+--succ:#7fd6a0;--succ-bg:#173323;--info:#8fbdf2;--info-bg:#16283d;--warn:#f0c46a;--warn-bg:#352a12;--dang:#f29b93;--dang-bg:#3a1916;--neu:#c4c4be;--neu-bg:#262624;--btn:#f1f1ef;--btn-ink:#111}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/20px system-ui,sans-serif}
+.wrap{display:grid;grid-template-columns:1fr 480px;min-height:100vh}
+main{padding:24px;min-width:0}
+h1{font-size:20px;line-height:28px;margin:0 0 4px}
+.sub{color:var(--muted);margin:0 0 16px}
+.tabs{display:flex;gap:20px;border-bottom:1px solid var(--line);margin-bottom:12px;overflow-x:auto}
+.tabs a{padding:8px 0;color:var(--muted);text-decoration:none;white-space:nowrap}
+.tabs a[aria-current]{color:var(--ink);box-shadow:inset 0 -2px var(--ink);font-weight:500}
+.cnt{display:inline-block;min-width:20px;padding:0 6px;margin-left:6px;border-radius:10px;background:var(--btn);color:var(--btn-ink);font-size:11px;line-height:18px;text-align:center}
+.bar{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+.input{flex:1;min-width:160px;height:32px;border:1px solid var(--ctl);border-radius:6px;padding:6px 10px;background:var(--surface);color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fbtn{height:32px;padding:6px 12px;border:1px solid var(--ctl);border-radius:6px;background:var(--surface);color:var(--ink);font:inherit}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:8px;overflow:hidden}
+table{width:100%;border-collapse:collapse}
+th,td{text-align:left;padding:0 10px;height:52px;border-bottom:1px solid var(--line);white-space:nowrap}
+th{font-weight:500;color:var(--muted);font-size:12px;height:36px}
+tr[aria-selected="true"] td{background:var(--neu-bg)}
+td.num{text-align:right;font-variant-numeric:tabular-nums}
+.lot{display:flex;align-items:center}.lot small{display:block;color:var(--muted);font-size:12px;line-height:16px}
+.thumb{width:28px;height:28px;border-radius:4px;background:repeating-linear-gradient(45deg,var(--line) 0 4px,transparent 4px 8px);display:inline-block;vertical-align:middle;margin-right:8px}
+.muted{color:var(--muted)}
+.b{display:inline-flex;white-space:nowrap;flex-shrink:0;align-items:center;gap:6px;height:20px;padding:0 8px;border-radius:4px;font-size:12px;font-weight:500}
+.b i{width:6px;height:6px;border-radius:50%;background:currentColor;display:inline-block}
+.b i.ring{background:transparent;border:1.5px solid currentColor}
+.b.succ{color:var(--succ);background:var(--succ-bg)}.b.info{color:var(--info);background:var(--info-bg)}
+.b.warn{color:var(--warn);background:var(--warn-bg)}.b.dang{color:var(--dang);background:var(--dang-bg)}.b.neu{color:var(--neu);background:var(--neu-bg)}
+aside{background:var(--surface);border-left:1px solid var(--line);padding:20px;display:flex;flex-direction:column;gap:16px}
+.ph{display:flex;justify-content:space-between;color:var(--muted);font-size:12px}
+.kv{display:grid;grid-template-columns:120px 1fr;gap:8px 12px;margin:0}
+.kv dt{color:var(--muted)}.kv dd{margin:0}
+h2{font-size:14px;margin:0 0 8px}
+.foot{margin-top:auto;display:flex;justify-content:flex-end;gap:8px;border-top:1px solid var(--line);padding-top:12px}
+.btn{height:32px;padding:6px 14px;border-radius:6px;border:1px solid var(--ctl);background:var(--surface);color:var(--ink);font:inherit}
+.btn.p{background:var(--btn);color:var(--btn-ink);border-color:var(--btn)}
+.zoho{display:flex;gap:8px;flex-wrap:wrap}
+.stack{display:none}
+@media (max-width:767px){
+ .wrap{grid-template-columns:1fr}
+ main{padding:16px}
+ .card table{display:none}
+ .stack{display:block}
+ .row{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;padding:10px 12px;border-bottom:1px solid var(--line);min-height:44px}
+ .row .t{font-weight:500}
+ aside{border-left:0;border-top:1px solid var(--line);padding:16px}
+ .kv{grid-template-columns:110px 1fr}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+<main>
+  <h1>Deliveries</h1>
+  <p class="sub">Won lots that buyers want delivered, from the price they asked for to their door.</p>
+  <nav class="tabs" aria-label="Views">
+    <a href="#" aria-current="page">Waiting for a price<span class="cnt" aria-label=", 3 waiting">3</span></a>
+    <a href="#">Quoted</a><a href="#">To dispatch</a><a href="#">On the way</a><a href="#">Delivered</a><a href="#">Closed</a>
+  </nav>
+  <div class="bar"><div class="input">Search lot, paddle, buyer or destination</div><button class="fbtn">Sale</button><button class="fbtn">Country</button></div>
+  <div class="card">
+    <table>
+      <thead><tr><th>Lot</th><th>Buyer</th><th>Destination</th><th>Status</th><th style="text-align:right">Price</th><th>Waiting</th><th aria-label="Actions"></th></tr></thead>
+      <tbody>
+        <tr aria-selected="true"><td><div class="lot"><span class="thumb"></span><div>Lot 42 · Harbour at dusk<small>Modern British · 12 Nov</small></div></div></td><td>Example Trading Ltd · 118</td><td>France, Lyon</td><td><span class="b warn"><i></i>Waiting for a price</span></td><td class="num muted">–</td><td>Asked 2 days ago</td><td>…</td></tr>
+        <tr><td><div class="lot"><span class="thumb"></span><div>Lot 7 · Still life, blue jug<small>Modern British · 12 Nov</small></div></div></td><td>A. Sample · 204</td><td>Ireland, Cork</td><td><span class="b warn"><i></i>Waiting for a price</span></td><td class="num muted">–</td><td>Asked 1 day ago</td><td>…</td></tr>
+        <tr><td><div class="lot"><span class="thumb"></span><div>Lot 113 · Untitled (grey)<small>Prints · 9 Nov</small></div></div></td><td>Demo Collection · 031</td><td>United Kingdom, York</td><td><span class="b warn"><i></i>Waiting for a price</span></td><td class="num muted">–</td><td>Asked 3 hours ago</td><td>…</td></tr>
+      </tbody>
+    </table>
+    <div class="stack">
+      <div class="row"><div><div class="t">Lot 42 · Harbour at dusk</div><div class="muted">Example Trading Ltd · France, Lyon</div></div><span class="b warn"><i></i>Waiting for a price</span></div>
+      <div class="row"><div><div class="t">Lot 7 · Still life, blue jug</div><div class="muted">A. Sample · Ireland, Cork</div></div><span class="b warn"><i></i>Waiting for a price</span></div>
+      <div class="row"><div><div class="t">Lot 113 · Untitled (grey)</div><div class="muted">Demo Collection · United Kingdom, York</div></div><span class="b warn"><i></i>Waiting for a price</span></div>
+    </div>
+  </div>
+
+  <h2 style="margin-top:24px">All delivery statuses (D2)</h2>
+  <div class="zoho">
+    <span class="b warn"><i></i>Waiting for a price</span><span class="b info"><i></i>Quote sent</span><span class="b info"><i></i>Booked, not dispatched</span>
+    <span class="b info"><i></i>On the way</span><span class="b succ">✓ Delivered</span><span class="b neu"><i class="ring"></i>Withdrawn by buyer</span><span class="b neu"><i class="ring"></i>Cancelled</span>
+  </div>
+  <h2 style="margin-top:20px">Zoho badge states (Z2)</h2>
+  <div class="zoho">
+    <span class="b succ">✓ Mirrored to Zoho</span><span class="b info"><i></i>Sending to Zoho</span><span class="b dang">! Not in Zoho</span><span class="b neu"><i class="ring"></i>Zoho dry run</span>
+  </div>
+  <h2 style="margin-top:20px">Release alert statuses (L2)</h2>
+  <div class="zoho">
+    <span class="b neu"><i class="ring"></i>Not announced</span><span class="b info"><i></i>Queued</span><span class="b info"><i></i>Sending</span><span class="b succ">✓ Sent</span><span class="b dang">! Not sent yet</span>
+  </div>
+</main>
+<aside aria-label="Lot 42 delivery">
+  <div class="ph"><span>1 of 3 · J / K</span><span>Open full page ↗</span></div>
+  <div><h1>Lot 42 · Harbour at dusk</h1><span class="b warn"><i></i>Waiting for a price</span></div>
+  <dl class="kv">
+    <dt>Buyer</dt><dd>Example Trading Ltd · 118</dd>
+    <dt>Asked</dt><dd>14 Nov 2026, 10:12</dd>
+    <dt>Destination</dt><dd>12 Rue Exemple, 69002 Lyon, France</dd>
+    <dt>Buyer's note</dt><dd>Ground floor, weekdays only.</dd>
+    <dt>Size</dt><dd>61 × 76 cm, framed</dd>
+    <dt>Paid</dt><dd>Yes, 13 Nov 2026</dd>
+    <dt>Storage</dt><dd>Paused while LAX owes this quote</dd>
+  </dl>
+  <div><h2>Activity</h2><p class="muted" style="margin:0">14 Nov, 10:12 · Buyer asked for a delivery price</p></div>
+  <div class="foot"><button class="btn">…</button><button class="btn p">Send quote</button></div>
+</aside>
+</div>
+</body>
+</html>
