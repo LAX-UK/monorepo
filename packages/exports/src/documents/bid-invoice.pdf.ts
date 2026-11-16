@@ -2,6 +2,7 @@ import { finished } from "node:stream/promises";
 import { legalEntityFor, productCopyrightLine } from "@auction/branding";
 import { LONDON_TIME_ZONE, formatDate, formatWeekday } from "@auction/datetime";
 import PDFDocument from "pdfkit";
+import { textWithFallback } from "./fallback-fonts.js";
 import { documentFonts } from "./fonts.js";
 
 /** One line of an invoice as it was raised, in whole pence. */
@@ -176,7 +177,8 @@ export async function renderBidInvoicePdf(input: BidInvoiceDocument): Promise<Bu
   for (const [label, value] of view.facts) {
     const y = doc.y;
     doc.font("Body").fillColor("#555555").text(label, 50, y, { width: 130 });
-    doc.font("Body").fillColor("#111111").text(value, 190, y, { width: 355 });
+    doc.fillColor("#111111");
+    textWithFallback(doc, "Body", value, 190, y, { width: 355 });
     doc.moveDown(0.4);
   }
 
