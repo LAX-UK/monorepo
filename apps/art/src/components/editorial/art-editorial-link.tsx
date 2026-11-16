@@ -1,3 +1,4 @@
+import { EmailOff } from "@auction/marketing-ui";
 import { isSafeEditorialHref } from "@auction/shop-contracts";
 import Link from "next/link";
 import type { ReactNode } from "react";
@@ -26,9 +27,11 @@ export function ArtEditorialLink({ href, className, children }: ArtEditorialLink
   }
   if (href.startsWith("mailto:")) {
     return (
-      <a href={href} className={className}>
-        {children}
-      </a>
+      <EmailOff>
+        <a href={href} className={className}>
+          {children}
+        </a>
+      </EmailOff>
     );
   }
   return (

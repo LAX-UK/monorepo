@@ -1,6 +1,6 @@
 import { ArtAuthLink } from "@/components/art-auth-link";
 import { isArtAuthHref } from "@/lib/is-art-auth-href";
-import { MarketingStatusAction } from "@auction/marketing-ui";
+import { EmailOff, MarketingStatusAction } from "@auction/marketing-ui";
 import { EmptyState } from "@auction/ui/lax/empty-state";
 import {
   type StatusIllustration,
@@ -77,6 +77,17 @@ export function ArtStatusStateLink({
   children,
   priority = "secondary",
 }: ArtStatusStateLinkProps) {
+  if (href.startsWith("mailto:")) {
+    return (
+      <EmailOff>
+        <MarketingStatusAction priority={priority} asChild>
+          <a href={href} className="art-focus-ring">
+            {children}
+          </a>
+        </MarketingStatusAction>
+      </EmailOff>
+    );
+  }
   return (
     <MarketingStatusAction priority={priority} asChild>
       {isArtAuthHref(href) ? (

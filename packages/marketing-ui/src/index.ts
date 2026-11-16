@@ -413,6 +413,7 @@ export {
   marketingArtistFactsLine,
 } from "./marketing-artist-facts.js";
 export { MarketingArtistHero, type MarketingArtistHeroProps } from "./marketing-artist-hero.js";
+export { EmailOff } from "./email-off.js";
 export {
   EmailAddressText,
   EmailLink,

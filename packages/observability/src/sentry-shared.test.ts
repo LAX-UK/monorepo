@@ -4,6 +4,7 @@ import {
   scrubSentryEvent,
   scrubSentryTransaction,
   shouldDropBrowserExtensionNoise,
+  shouldDropDenoRuntimeNoise,
   shouldDropInfrastructureNoise,
   shouldDropSentryEvent,
   shouldDropThirdPartyClientNoise,
@@ -373,5 +374,50 @@ describe("shouldDropUnparsableScriptNoise", () => {
       exception: { values: [{ type: "TypeError", value: "x is undefined" }] },
     });
     expect(shouldDropUnparsableScriptNoise(event)).toBe(false);
+  });
+});
+
+describe("shouldDropDenoRuntimeNoise", () => {
+  const withFrames = (type: string, value: string, filenames: string[]) =>
+    errorEvent({
+      exception: {
+        values: [
+          { type, value, stacktrace: { frames: filenames.map((filename) => ({ filename })) } },
+        ],
+      },
+    });
+
+  it("drops an error thrown inside the Deno runtime", () => {
+    const event = withFrames("TypeError", "undefined is not a function", [
+      "<anonymous>",
+      "ext:core/01_core.js",
+    ]);
+    expect(shouldDropDenoRuntimeNoise(event)).toBe(true);
+    expect(
+      shouldDropDenoRuntimeNoise(withFrames("TypeError", "x", ["ext:deno_web/02_timers.js"])),
+    ).toBe(true);
+  });
+
+  it("keeps an error whose innermost frame is our own code", () => {
+    const event = withFrames("TypeError", "x.toLowerCase is not a function", [
+      "ext:core/01_core.js",
+      "app:///_next/static/chunks/main-abc.js",
+    ]);
+    expect(shouldDropDenoRuntimeNoise(event)).toBe(false);
+  });
+
+  it("keeps an error with any frame from our scripts, even under a runtime frame", () => {
+    const event = withFrames("TypeError", "x", [
+      "app:///_next/static/chunks/main-abc.js",
+      "ext:core/01_core.js",
+    ]);
+    expect(shouldDropDenoRuntimeNoise(event)).toBe(false);
+  });
+
+  it("keeps events with no frames and ordinary page frames", () => {
+    expect(shouldDropDenoRuntimeNoise(errorEvent({}))).toBe(false);
+    expect(shouldDropDenoRuntimeNoise(withFrames("TypeError", "x", ["https://lax.bid/"]))).toBe(
+      false,
+    );
   });
 });

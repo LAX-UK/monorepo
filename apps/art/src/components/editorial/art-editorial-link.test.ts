@@ -24,4 +24,11 @@ describe("ArtEditorialLink", () => {
   it("renders unsafe links as plain text", () => {
     expect(render("javascript:alert(1)")).toBe("<span>The Art Newspaper</span>");
   });
+
+  it("serves a mailto link as a real mailto: inside the email_off markers", () => {
+    const html = render("mailto:info@lax.art");
+    expect(html).toContain('<a href="mailto:info@lax.art"');
+    expect(html.startsWith('<span hidden=""><!--email_off--></span>')).toBe(true);
+    expect(html.endsWith('<span hidden=""><!--/email_off--></span>')).toBe(true);
+  });
 });
