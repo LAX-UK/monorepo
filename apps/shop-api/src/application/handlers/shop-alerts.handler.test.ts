@@ -11,6 +11,7 @@ function setup() {
     await h.stores.stop(id, "link", now);
   });
   const cancelWaiting = vi.fn(async () => 0);
+  const countWaiting = vi.fn(async () => 0);
   const handlers = createShopAlertHandlers({
     subscribe: h.subscribe,
     confirm: new ConfirmService({
@@ -26,10 +27,10 @@ function setup() {
     legacy: { findByLegacyLinkHash: async (hash) => legacy.get(hash) ?? null },
     hashLegacyToken: (token) => `hash(${token})`,
     stopLegacy,
-    waiting: { cancelWaiting },
+    waiting: { cancelWaiting, countWaiting },
     now: () => h.now,
   });
-  return { h, handlers, legacy, stopLegacy, cancelWaiting };
+  return { h, handlers, legacy, stopLegacy, cancelWaiting, countWaiting };
 }
 
 const tokenOf = (url: string) => new URL(url).searchParams.get("t") ?? "";
@@ -198,6 +199,22 @@ describe("shop alert handlers", () => {
       expect(topics.find((t) => t.topic === "shop.back_in_stock")?.emailOn).toBe(false);
       expect(topics.find((t) => t.topic === "shop.releases")?.emailOn).toBe(true);
       expect((await h.stores.findById(row?.id ?? ""))?.status).toBe("confirmed");
+    });
+
+    it("names back in stock once it is off, and stays usable while a later request waits", async () => {
+      const { h, handlers, token, row, countWaiting } = await backInStockSubscriber();
+      await h.stores.stop(row?.id ?? "", "link", h.now);
+      expect(await handlers.previewUnsubscribe(token)).toEqual({
+        maskedEmail: "a•••@example.com",
+        active: false,
+        topic: "back_in_stock",
+      });
+      // The person pressed Notify me again after stopping: that request is still sent.
+      countWaiting.mockResolvedValueOnce(1);
+      expect(await handlers.previewUnsubscribe(token)).toMatchObject({
+        active: true,
+        topic: "back_in_stock",
+      });
     });
 
     it("rejects the same link for another product's subscriber", async () => {

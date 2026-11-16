@@ -199,7 +199,8 @@ export async function registerEditionAlertRoutes(
   );
 
   // Moves a link from an email sent before back in stock used the alert engine onto the engine's
-  // stop link. It reveals nothing but a signed token that is only useful with the old token.
+  // stop link. It reveals nothing but a signed token that is only useful with the old token, and
+  // it only reads: the Shop asks it on GET, which mail scanners open, so it creates no engine row.
   app.get(
     "/v1/alerts/unsubscribe/engine-link",
     {

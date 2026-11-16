@@ -116,7 +116,17 @@ export function createDrizzleEditionAlertStore(
           // an address, so a repeat request is a no-op.
           .onConflictDoNothing()
           .returning({ id: shopArtworkInterest.id });
-        if (inserted.length === 0) return "already_subscribed" as const;
+        if (inserted.length === 0) {
+          // A repeat press is asked again now: it counts against a stop made since the first.
+          const owned = ownedBy({ identitySubjectId, email });
+          if (owned) {
+            await tx
+              .update(shopArtworkInterest)
+              .set({ updatedAt: sql`now()` })
+              .where(and(waitingAlert, eq(shopArtworkInterest.artworkId, artworkId), owned));
+          }
+          return "already_subscribed" as const;
+        }
         // Account-keyed consumers (CRM deals) only follow signed-in interest.
         if (identitySubjectId) {
           await events.insertInTransaction(tx as Database, {

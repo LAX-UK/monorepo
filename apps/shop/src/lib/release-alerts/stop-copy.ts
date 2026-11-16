@@ -48,10 +48,10 @@ const BACK_IN_STOCK: StopCopy = {
   button: "Stop alerts",
   doneLead: "Back in stock alerts stopped",
   doneBody: (email) => ({
-    before: `We will not send back in stock alerts to ${email}. You can ask again from any sold-out edition. `,
-    linkLabel: "Browse editions",
+    before: `We will not send back in stock alerts to ${email}. You can ask again from `,
+    linkLabel: "any sold-out edition",
     linkHref: "/artworks",
-    after: "",
+    after: ".",
   }),
 };
 

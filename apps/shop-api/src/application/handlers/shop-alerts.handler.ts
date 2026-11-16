@@ -28,9 +28,10 @@ export type AlertStopPreview = {
   topic: "back_in_stock" | null;
 };
 
-/** Stops the back-in-stock requests still waiting for a subscriber's address and account. */
+/** The back-in-stock requests still waiting for a subscriber's address and account. */
 export interface WaitingAlertCanceller {
   cancelWaiting(subscriberId: string, now: Date): Promise<number>;
+  countWaiting(subscriberId: string): Promise<number>;
 }
 
 /** Finds the row an email sent before the alert engine pointed at, by the hash of its stop token. */
@@ -133,13 +134,18 @@ export function createShopAlertHandlers(deps: ShopAlertHandlerDeps) {
       if (product) {
         const preview = await deps.stop.preview(token, product);
         if (preview.state === "invalid") return null;
+        const payload = deps.codec.verify(token, now())?.payload;
+        if (payload?.topic === "shop.back_in_stock") {
+          // Requests made after a stop are still sent, so the link stays useful while any wait.
+          const active =
+            (preview.state === "ready" && preview.topics.includes("shop.back_in_stock")) ||
+            (await deps.waiting.countWaiting(payload.subscriberId)) > 0;
+          return { maskedEmail: preview.maskedEmail, active, topic: "back_in_stock" };
+        }
         return {
           maskedEmail: preview.maskedEmail,
           active: preview.state === "ready",
-          topic:
-            preview.state === "ready" && preview.fromTopic === "shop.back_in_stock"
-              ? "back_in_stock"
-              : null,
+          topic: null,
         };
       }
       const row = await legacyRow(token);

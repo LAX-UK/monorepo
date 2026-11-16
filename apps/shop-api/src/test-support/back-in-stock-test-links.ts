@@ -1,6 +1,7 @@
 import { AlertLinkCodec, keyringFrom } from "@auction/alerts";
 import type { Database } from "@auction/db";
 import { createBackInStockLinks } from "../infrastructure/alerts/back-in-stock-links.js";
+import { ShopBackInStockStopTimes } from "../infrastructure/alerts/back-in-stock-stop-times.js";
 import { ShopAlertSubscriberStore } from "../infrastructure/alerts/shop-alert-subscriber.store.js";
 import { ShopAlertTopicStore } from "../infrastructure/alerts/shop-alert-topic.store.js";
 import { shopAlertUrls } from "../infrastructure/alerts/shop-alert-urls.js";
@@ -17,6 +18,7 @@ export function createTestBackInStockLinks(db: Database, shopOrigin = "http://lo
   const links = createBackInStockLinks({
     subscribers: new ShopAlertSubscriberStore(db),
     topics: new ShopAlertTopicStore(db),
+    stopTimes: new ShopBackInStockStopTimes(db),
     codec,
     urls: shopAlertUrls(shopOrigin, "http://localhost:3010/alerts"),
     clock: { now: () => new Date() },

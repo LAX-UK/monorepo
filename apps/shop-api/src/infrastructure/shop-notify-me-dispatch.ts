@@ -40,6 +40,8 @@ export async function dispatchShopNotifyMeEmails(
       artworkTitle: shopArtwork.title,
       artistName: shopParty.displayName,
       salesChannel: shopArtwork.salesChannel,
+      // When the person last pressed Notify me for it: a repeat press moves this forward.
+      requestedAt: shopArtworkInterest.updatedAt,
     })
     .from(shopArtworkInterest)
     .innerJoin(shopArtwork, eq(shopArtworkInterest.artworkId, shopArtwork.id))
@@ -69,9 +71,14 @@ export async function dispatchShopNotifyMeEmails(
       : null;
     const to = accountEmail ?? row.contactEmail;
 
-    // The engine decides first: a person who stopped Shop alerts, or this topic, hears nothing.
+    // The engine decides first: a request made before the person stopped Shop alerts, or this
+    // topic, is closed unsent. One made after the stop is a fresh ask and is sent.
     const link = to
-      ? await input.links.linkFor({ email: to, subjectId: row.identitySubjectId })
+      ? await input.links.linkFor({
+          email: to,
+          subjectId: row.identitySubjectId,
+          requestedAt: row.requestedAt,
+        })
       : null;
 
     const sent = await db.transaction(async (tx) => {

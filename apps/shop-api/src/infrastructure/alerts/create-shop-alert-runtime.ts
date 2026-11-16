@@ -43,6 +43,7 @@ import { hashLinkToken } from "../link-token.js";
 import { resolveShopUserEmail } from "../resolve-shop-user-email.js";
 import type { ShopDomainEventPublisherMode } from "../shop-domain-event-publisher.js";
 import { type BackInStockLinks, createBackInStockLinks } from "./back-in-stock-links.js";
+import { ShopBackInStockStopTimes } from "./back-in-stock-stop-times.js";
 import { createWaitingAlertCanceller } from "./back-in-stock-waiting.js";
 import { ShopAlertCatalogue } from "./shop-alert-catalogue.js";
 import { publishAlertConfirmed } from "./shop-alert-confirmed.js";
@@ -233,6 +234,7 @@ export function createShopAlertRuntime(input: {
     backInStock: createBackInStockLinks({
       subscribers,
       topics,
+      stopTimes: new ShopBackInStockStopTimes(db),
       codec,
       urls: urls.shop,
       clock,
