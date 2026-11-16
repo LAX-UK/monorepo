@@ -126,7 +126,10 @@ async function readSkeleton(
   page: Page,
 ): Promise<{ blocks: number; hidden: boolean; nonOpacity: string[] }> {
   return page.evaluate(() => {
-    const blocks = Array.from(document.querySelectorAll<HTMLElement>(".lax-skeleton"));
+    // Only blocks that are drawn: one hidden at this width (`lg:hidden`) has no animation.
+    const blocks = Array.from(document.querySelectorAll<HTMLElement>(".lax-skeleton")).filter(
+      (block) => block.getClientRects().length > 0,
+    );
     const nonOpacity = new Set<string>();
     for (const block of blocks) {
       for (const animation of block.getAnimations()) {
