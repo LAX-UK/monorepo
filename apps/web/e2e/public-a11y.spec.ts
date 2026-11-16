@@ -49,10 +49,10 @@ async function scan(page: Page, route: string, variant: string) {
 }
 
 /** test.lax.bid is redeployed many times a day, and a rollout can answer a 502/503/504 for a few
- * seconds. Retry a navigation that answers one of those (or 429), logging each status, and fail
+ * seconds (the workflow also waits for a healthy deploy before the run starts). Retry a navigation that answers one of those (or 429), logging each status, and fail
  * with the status and route once the attempts are spent. Any other status fails at once. */
 const TRANSIENT_STATUSES = new Set([429, 502, 503, 504]);
-const NAVIGATION_ATTEMPTS = 4;
+const NAVIGATION_ATTEMPTS = 5;
 
 async function navigate(page: Page, path: string) {
   for (let attempt = 1; ; attempt++) {
@@ -63,7 +63,7 @@ async function navigate(page: Page, path: string) {
     console.warn(
       `[public-a11y] ${path} answered ${status ?? "no response"} (attempt ${attempt}/${NAVIGATION_ATTEMPTS}); retrying`,
     );
-    await page.waitForTimeout(attempt * 5_000);
+    await page.waitForTimeout(attempt * 10_000);
   }
 }
 
