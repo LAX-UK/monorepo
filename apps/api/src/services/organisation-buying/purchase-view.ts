@@ -166,7 +166,7 @@ function collectByOf(
   const storage = row.storage;
   if (!storage || !awaitsCollection({ ...storage, fulfilment: row.fulfilment })) return null;
   const place = { placeId: storage.placeId, placeName: storage.placeName };
-  const priced = purchaseStorageOf(storage, now);
+  const priced = purchaseStorageOf(storage, now, row.quote);
   if (priced) return { ...priced, ...place };
   const notice = purchaseCollectBy(
     storage.clearedAt,

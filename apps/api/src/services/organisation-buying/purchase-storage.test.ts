@@ -131,4 +131,56 @@ describe("the buyer's storage view of a purchase", () => {
     // Cleared Mon 2 Nov: five working days later is Mon 9 Nov.
     expect(working?.date).toBe("2026-11-09");
   });
+
+  it("uses the London day, not the UTC day, in summer time", () => {
+    // Cleared Mon 1 Jun 2026, so the last free day is Mon 15 Jun. At 23:30 UTC on the 15th it is
+    // already 00:30 on Tue 16 Jun in London (BST), so one charged day is owed. The UTC day would
+    // still read as the last free day.
+    const june = { ...storage(), clearedAt: new Date("2026-06-01T10:00:00Z") };
+    const result = purchaseStorageOf(june, new Date("2026-06-15T23:30:00Z"));
+    expect(result?.date).toBe("2026-06-15");
+    expect(result?.storage).toMatchObject({ state: "charging", amountPence: 300 });
+  });
+
+  it("a waived lot past its day reads as nothing to pay, in the neutral state", () => {
+    const waived = at("2026-11-25T12:00:00Z", { waived: true });
+    expect(waived).toMatchObject({
+      date: "2026-11-16",
+      state: "upcoming",
+      storage: { state: "waived", amountPence: 0, notice: { heading: "No storage to pay" } },
+    });
+  });
+
+  it("a shipping quote LAX still owes pauses the clock (ST5)", () => {
+    const quote = (over: Partial<NonNullable<AccountPurchaseFactsRow["quote"]>>) =>
+      ({
+        id: "q1",
+        lotId: "lot-1",
+        buyerLegalEntityId: "le-1",
+        status: "requested",
+        destination: "Paris",
+        amount: null,
+        currency: "GBP",
+        quoteNote: null,
+        requestedByUserId: null,
+        requestedAt: new Date("2026-11-10T12:00:00Z"),
+        quotedAt: null,
+        decidedByUserId: null,
+        decidedAt: null,
+        ...over,
+      }) as NonNullable<AccountPurchaseFactsRow["quote"]>;
+    const now = new Date("2026-11-19T12:00:00Z");
+    // Without the pause the lot would be charging (collect by Mon 16 Nov).
+    expect(purchaseStorageOf(storage(), now)?.storage.state).toBe("charging");
+    const held = purchaseStorageOf(storage(), now, quote({}));
+    expect(held?.storage).toMatchObject({ amountPence: 0 });
+    expect(held?.date).not.toBe("2026-11-16");
+    // Once quoted, only the days it waited are paused: asked Tue 10 Nov, quoted Thu 12 Nov.
+    const answered = purchaseStorageOf(
+      storage(),
+      now,
+      quote({ status: "quoted", quotedAt: new Date("2026-11-12T12:00:00Z") }),
+    );
+    expect(answered?.date).toBe("2026-11-19");
+  });
 });
