@@ -82,16 +82,11 @@ export function SaleMobileSummaryBarIsland({
   // that may be wrong for this person.
   const primaryAction = loaded
     ? salePrimaryViewerAction({
+        ...viewer,
         status: props.status,
         deliveryMode: props.deliveryMode ?? "online",
         registrationOffered: registerToBidSale && canParticipate,
-        hasApprovedRegistration: viewer.hasApprovedRegistration,
         saleHref,
-        isAuthenticated: viewer.isAuthenticated,
-        kycApproved: viewer.kycApproved,
-        kycFeedback: viewer.kycFeedback,
-        buyerEntities: viewer.buyerEntities,
-        orgModuleEnabled: viewer.orgModuleEnabled,
       })
     : null;
   return (

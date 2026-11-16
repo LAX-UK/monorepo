@@ -58,16 +58,15 @@ describe("registerToBidNeedsAgentFormBand", () => {
 });
 
 describe("SaleroomRegisterToBid", () => {
-  it("layout=button renders verify link without caption wrapper", () => {
+  it("renders the verify link from the shared register step", () => {
     render(
       <OverlayToneProvider
         value={{ tones: { contentBlock: DEFAULT_OVERLAY_TONE }, resolved: true }}
       >
-        <SaleroomRegisterToBid {...baseProps} layout="button" />
+        <SaleroomRegisterToBid {...baseProps} />
       </OverlayToneProvider>,
     );
 
-    expect(screen.queryByText(KYC_BID_BLOCKED_DESCRIPTION)).toBeNull();
     expect(screen.getByRole("link", { name: /verify to continue bidding/i })).toBeInTheDocument();
   });
 

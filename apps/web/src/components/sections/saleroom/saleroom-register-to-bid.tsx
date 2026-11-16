@@ -1,12 +1,9 @@
 "use client";
 
-import { kycLinkActionLabel } from "@/components/kyc/kyc-copy";
 import { useOverlayTone, useOverlayToneContext } from "@/components/ui/overlay-tone-context";
 import { OverlayToneText } from "@/components/ui/overlay-tone-text";
-import { buildHostedLoginStartHref } from "@/lib/auth/hosted-login-start-href";
 import type { KycUserFeedbackDto } from "@/lib/data/dto/dashboard-dtos";
 import { registerForSale } from "@/lib/data/http/sale-registration.client";
-import { contextualIdentityOnboardingHref } from "@/lib/kyc/identity-onboarding";
 import { registerToBidAction } from "@/lib/sale/sale-primary-viewer-action";
 import {
   BID_LIMIT_FIELD_LABEL,
@@ -31,7 +28,7 @@ import { type ReactNode, useMemo, useState } from "react";
 
 type Entity = { id: string; displayName: string; memberRole: LegalEntityMemberRole };
 
-export type SaleroomRegisterToBidLayout = "default" | "button" | "form";
+export type SaleroomRegisterToBidLayout = "default" | "form";
 
 type RegisterToBidBaseProps = {
   saleId: string;
@@ -312,53 +309,34 @@ export function SaleroomRegisterToBid({
     );
   }
 
-  if (layout === "button") {
-    const action = registerToBidAction({
-      saleHref: loginNextPath,
-      isAuthenticated,
-      kycApproved,
-      kycFeedback,
-      buyerEntities,
-      orgModuleEnabled,
-    });
-    return action ? (
-      <RegisterOutlineLink href={action.href}>{action.label}</RegisterOutlineLink>
-    ) : null;
-  }
+  // The hero shows the link itself (from `salePrimaryViewerAction`); this keeps the words that go
+  // with it where the sale page has no hero (the lot page's bid gate).
+  const action = registerToBidAction({
+    saleHref: loginNextPath,
+    isAuthenticated,
+    kycApproved,
+    kycFeedback,
+    buyerEntities,
+    orgModuleEnabled,
+  });
+  const link = action ? (
+    <RegisterOutlineLink href={action.href}>{action.label}</RegisterOutlineLink>
+  ) : null;
 
-  // layout === "default"
-  if (!isAuthenticated) {
-    return (
-      <RegisterOutlineLink
-        href={buildHostedLoginStartHref({ next: loginNextPath, intent: "signup" })}
-      >
-        Register to bid
-      </RegisterOutlineLink>
-    );
-  }
+  if (!isAuthenticated) return link;
 
   if (!kycApproved) {
-    const verifyHref = contextualIdentityOnboardingHref(loginNextPath, "registration");
-    const verifyLabel = kycFeedback
-      ? kycLinkActionLabel(kycFeedback, "long")
-      : "Verify identity to bid";
-
     return (
       <div className="flex min-w-0 max-w-md flex-col gap-2 sm:max-w-sm">
         {kycFeedback?.detail ? <RegisterHelperText>{kycFeedback.detail}</RegisterHelperText> : null}
-        <RegisterOutlineLink href={verifyHref}>{verifyLabel}</RegisterOutlineLink>
+        {link}
       </div>
     );
   }
 
   if (buyerEntities.length === 0) {
-    if (!orgModuleEnabled) {
-      return <RegisterHelperText>Organisation buyer profiles are coming soon.</RegisterHelperText>;
-    }
     return (
-      <RegisterOutlineLink href="/onboarding/organisation">
-        Set up a buyer profile
-      </RegisterOutlineLink>
+      link ?? <RegisterHelperText>Organisation buyer profiles are coming soon.</RegisterHelperText>
     );
   }
 

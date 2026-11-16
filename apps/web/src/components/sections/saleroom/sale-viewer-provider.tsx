@@ -5,8 +5,8 @@ import type { SaleViewerVM } from "@/lib/marketing/sale-viewer";
 import { type ReactNode, createContext, useContext, useEffect, useState } from "react";
 
 const SaleViewerContext = createContext<SaleViewerVM | null>(null);
-/** False until `/me` has answered (or failed): until then the viewer is only the signed-out guess. */
-const SaleViewerLoadedContext = createContext(false);
+/** The signed-out first render: only a guess until `/me` has answered (or failed). */
+const guesses = new WeakSet<SaleViewerVM>();
 
 /**
  * The person looking at a sale page (CO-7). The page is rendered once, signed out, for everyone;
@@ -24,31 +24,26 @@ export function SaleViewerProvider({
   signedOut: SaleViewerVM;
   children: ReactNode;
 }) {
+  guesses.add(signedOut);
   const [viewer, setViewer] = useState<SaleViewerVM>(signedOut);
-  const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
     fetchSaleViewer(saleId)
       .then((next) => {
-        if (cancelled) return;
-        if (next) setViewer(next);
-        setLoaded(true);
+        // A copy when `/me` cannot say: still signed out, but no longer a guess.
+        if (!cancelled) setViewer((guess) => next ?? { ...guess });
       })
       .catch(() => {
         // Stays signed out: the public page still works.
-        if (!cancelled) setLoaded(true);
+        if (!cancelled) setViewer((guess) => ({ ...guess }));
       });
     return () => {
       cancelled = true;
     };
   }, [saleId]);
 
-  return (
-    <SaleViewerContext.Provider value={viewer}>
-      <SaleViewerLoadedContext.Provider value={loaded}>{children}</SaleViewerLoadedContext.Provider>
-    </SaleViewerContext.Provider>
-  );
+  return <SaleViewerContext.Provider value={viewer}>{children}</SaleViewerContext.Provider>;
 }
 
 export function useSaleViewer(): SaleViewerVM {
@@ -59,5 +54,5 @@ export function useSaleViewer(): SaleViewerVM {
 
 /** Whether the viewer is the person's real answer from `/me`, not the signed-out first render. */
 export function useSaleViewerLoaded(): boolean {
-  return useContext(SaleViewerLoadedContext);
+  return !guesses.has(useSaleViewer());
 }

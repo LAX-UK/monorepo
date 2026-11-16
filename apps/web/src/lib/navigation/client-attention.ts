@@ -109,6 +109,13 @@ type ChipRule = {
   chip: (attention: ClientAttention) => Omit<AttentionChip, "kind">;
 };
 
+/** A chip that says where it goes, so assistive technology hears "<label>. Go to <place>". */
+function chipTo(label: string, href: string, place: string): Omit<AttentionChip, "kind"> {
+  return { label, href, accessibleName: `${label}. Go to ${place}` };
+}
+
+const toPurchases = (label: string) => chipTo(label, CLIENT_ROUTES.purchases, "Purchases");
+
 /** Where the several outbid lots are resolved together. */
 const OUTBID_LIST_HREF = `${CLIENT_ROUTES.bids}?tab=active`;
 
@@ -120,12 +127,12 @@ function outbidChip(attention: ClientAttention): Omit<AttentionChip, "kind"> {
   const group = attention.groups.find((candidate) => candidate.kind === "outbid");
   const only = group?.items.length === 1 ? group.items[0] : undefined;
   const count = group?.count ?? attention.outbidLots.length;
-  if (only) {
-    const label = `Outbid on ${only.title}`;
-    return { label, href: only.url, accessibleName: `${label}. Go to the lot` };
-  }
-  const label = count === 1 ? "Outbid on 1 lot" : `Outbid on ${count} lots`;
-  return { label, href: OUTBID_LIST_HREF, accessibleName: `${label}. Go to My bids` };
+  if (only) return chipTo(`Outbid on ${only.title}`, only.url, "the lot");
+  return chipTo(
+    count === 1 ? "Outbid on 1 lot" : `Outbid on ${count} lots`,
+    OUTBID_LIST_HREF,
+    "My bids",
+  );
 }
 
 /** A transfer that has delivered part of a payment: one lot opens its transfer details, several open Purchases. */
@@ -134,8 +141,8 @@ function stillToSendChip(attention: ClientAttention): Omit<AttentionChip, "kind"
   const label = `${formatGbp(pence)} still to send`;
   const [only] = lotIds;
   return only !== undefined && lotIds.length === 1
-    ? { label, href: payHref([only]), accessibleName: `${label}. Go to the transfer details` }
-    : { label, href: CLIENT_ROUTES.purchases, accessibleName: `${label}. Go to Purchases` };
+    ? chipTo(label, payHref([only]), "the transfer details")
+    : toPurchases(label);
 }
 
 /**
@@ -143,10 +150,11 @@ function stillToSendChip(attention: ClientAttention): Omit<AttentionChip, "kind"
  * Home say the same). A closed organisation is not on hold, so it says what is true instead.
  */
 function paymentOnHoldLabel(attention: ClientAttention): string {
-  if (attention.paymentsRefused) return "Payments closed for this account";
-  return attention.paymentsBlocker === "documents"
-    ? "Payment on hold: documents needed"
-    : "Payment on hold";
+  return attention.paymentsRefused
+    ? "Payments closed for this account"
+    : attention.paymentsBlocker === "documents"
+      ? "Payment on hold: documents needed"
+      : "Payment on hold";
 }
 
 /** In priority order: being outbid wins while a sale is live; the account's checks, then payment, wait a little longer. */
@@ -162,23 +170,12 @@ const CHIP_RULES: readonly ChipRule[] = [
     // speaks for a sale registration or identity check, which the sale page reports itself.
     kind: "payment-on-hold",
     applies: (a) => a.paymentsDue > 0 && a.paymentsInReview,
-    chip: (a) => {
-      const label = paymentOnHoldLabel(a);
-      return {
-        label,
-        href: CLIENT_ROUTES.purchases,
-        accessibleName: `${label}. Go to Purchases`,
-      };
-    },
+    chip: (a) => toPurchases(paymentOnHoldLabel(a)),
   },
   {
     kind: "payment-due",
     applies: (a) => a.paymentsDue > 0,
-    chip: () => ({
-      label: "Payment due",
-      href: CLIENT_ROUTES.purchases,
-      accessibleName: "Payment due. Go to Purchases",
-    }),
+    chip: () => toPurchases("Payment due"),
   },
   {
     // Last, because a payment still to start is the more pressing ask.
