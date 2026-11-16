@@ -201,7 +201,7 @@ export function QuickLookBody({
       )}
     >
       <div
-        className="relative min-h-0 w-full overflow-hidden h-[50dvh] max-h-[58dvh] sm:aspect-square sm:h-auto sm:max-h-[50vh] lg:min-h-[22rem] lg:h-auto lg:max-h-none"
+        className="relative min-h-0 w-full overflow-hidden h-[42dvh] max-h-[58dvh] sm:aspect-square sm:h-auto sm:max-h-[50vh] lg:min-h-[22rem] lg:h-auto lg:max-h-none"
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
       >
@@ -291,7 +291,7 @@ export function QuickLookMetaPanel({
       )}
     >
       <div className="quick-look-stagger flex flex-col gap-4">
-        <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap items-center justify-between gap-2 sm:pr-8">
           <p id={contextId} className="font-body text-xs font-medium text-on-surface-variant">
             {contextLabel}
           </p>

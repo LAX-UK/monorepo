@@ -232,7 +232,7 @@ export function LotQuickLookDialog() {
         <BottomSheetContent
           overlayClassName="sm:hidden"
           className={cn(
-            "flex max-h-[92dvh] flex-col gap-0 overflow-hidden border-outline-variant/25 bg-surface-container-lowest p-0 sm:hidden",
+            "flex max-h-[85dvh] flex-col gap-0 overflow-hidden border-outline-variant/25 bg-surface-container-lowest p-0 sm:hidden",
           )}
         >
           <BottomSheetTitle className="sr-only">{vm.title}</BottomSheetTitle>

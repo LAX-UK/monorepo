@@ -16,13 +16,14 @@ test.describe("lot quick look @smoke", () => {
 
     await page.emulateMedia({ reducedMotion: "reduce" });
     await page.goto(sale.path);
-    const saleUrl = page.url();
 
     const trigger = page.getByRole("button", { name: /^Quick look at / }).nth(1);
     await trigger.scrollIntoViewIfNeeded();
-    await page.mouse.wheel(0, 120);
+    // Park the list part-way down so a jump to the top (or anywhere else) would show.
+    await page.evaluate(() => window.scrollBy({ top: -80, behavior: "instant" }));
     await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
     const scrollBefore = await page.evaluate(() => window.scrollY);
+    const saleUrl = page.url();
 
     await trigger.click();
     const dialog = page.getByRole("dialog");
