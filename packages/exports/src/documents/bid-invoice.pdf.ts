@@ -177,8 +177,11 @@ export async function renderBidInvoicePdf(input: BidInvoiceDocument): Promise<Bu
   for (const [label, value] of view.facts) {
     const y = doc.y;
     doc.font("Body").fillColor("#555555").text(label, 50, y, { width: 130 });
+    const labelBottom = doc.y;
     doc.fillColor("#111111");
+    // The value may wrap onto several lines; the next row starts below whichever is taller.
     textWithFallback(doc, "Body", value, 190, y, { width: 355 });
+    doc.y = Math.max(doc.y, labelBottom);
     doc.moveDown(0.4);
   }
 

@@ -1,4 +1,13 @@
-Google Inc.
+Noto Sans Arabic (noto-sans-arabic-*.woff):
+Copyright 2022 The Noto Project Authors (https://github.com/notofonts/arabic)
+
+Noto Sans Hebrew (noto-sans-hebrew-*.woff):
+Copyright 2024 The Noto Project Authors (https://github.com/notofonts/hebrew)
+
+Noto Sans SC (noto-sans-sc-*.woff), from Source Han Sans:
+(c) 2014-2021 Adobe (http://www.adobe.com/), with Reserved Font Name 'Source'.
+
+These notices are the copyright strings (name table, nameID 0) of the bundled font files.
 
 This Font Software is licensed under the SIL Open Font License, Version 1.1.
 This license is copied below, and is also available with a FAQ at:
