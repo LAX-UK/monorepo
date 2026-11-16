@@ -1,7 +1,7 @@
 import type { LotCardVM } from "@/components/sections/home/home-view-models";
 import { useReducedMotion } from "@/hooks/use-reduced-motion";
 import type { Lot } from "@auction/types";
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { mergeLotQuickLookEnrichment } from "./fetch-lot-quick-look-enrichment.client";
 import { LotQuickLookProvider } from "./lot-quick-look-context";
@@ -11,6 +11,7 @@ import { LotQuickLookTrigger } from "./lot-quick-look-trigger";
 import { lotQuickLookFromLotCardVM, lotQuickLookRailDeck } from "./mappers";
 import { quickLookOverlayBlur } from "./quick-look-dialog-utils";
 import { type LotQuickLookVM, isLotQuickLookBiddable } from "./types";
+import { QUICK_LOOK_HISTORY_KEY } from "./use-quick-look-history";
 
 vi.mock("./fetch-lot-quick-look-enrichment.client", async (importOriginal) => {
   const actual = await importOriginal<typeof import("./fetch-lot-quick-look-enrichment.client")>();
@@ -403,5 +404,103 @@ describe("LotQuickLookDialog reduced motion", () => {
 
   it("drops the scrim blur when reduced motion is preferred", () => {
     expect(quickLookOverlayBlur(true)).toBe("");
+  });
+});
+
+describe("LotQuickLookDialog browser history", () => {
+  const twoLotDeck = (): LotQuickLookVM[] => [
+    { ...lotQuickLookFromLotCardVM(lotCardVm), id: "a", title: "Lot Alpha", images: [] },
+    { ...lotQuickLookFromLotCardVM(lotCardVm), id: "b", title: "Lot Beta", images: [] },
+  ];
+
+  function popState() {
+    return new Promise<void>((resolve) => {
+      window.addEventListener("popstate", () => resolve(), { once: true });
+    });
+  }
+
+  async function openDeck() {
+    const deck = twoLotDeck();
+    const first = deck[0];
+    if (!first) throw new Error("Expected a deck");
+    render(<QuickLookHarness vm={first} deck={deck} deckIndex={0} />);
+    fireEvent.click(screen.getByRole("button", { name: /quick look at lot alpha/i }));
+    await screen.findByRole("dialog");
+    return window.history.state?.[QUICK_LOOK_HISTORY_KEY] as number;
+  }
+
+  it("adds one history entry at the same address when it opens", async () => {
+    const lengthBefore = window.history.length;
+    const hrefBefore = window.location.href;
+    await openDeck();
+    expect(window.history.length).toBe(lengthBefore + 1);
+    expect(window.history.state?.[QUICK_LOOK_HISTORY_KEY]).toEqual(expect.any(Number));
+    expect(window.location.href).toBe(hrefBefore);
+    const back = popState();
+    fireEvent.click(screen.getByRole("button", { name: /back to results/i }));
+    await back;
+  });
+
+  it("adds no entries while stepping lot to lot", async () => {
+    await openDeck();
+    const lengthOpen = window.history.length;
+    const pushState = vi.spyOn(window.history, "pushState");
+    fireEvent.keyDown(window, { key: "ArrowRight" });
+    expect(visibleQuickLookHeading("Lot Beta")).toBeTruthy();
+    fireEvent.keyDown(window, { key: "ArrowLeft" });
+    expect(visibleQuickLookHeading("Lot Alpha")).toBeTruthy();
+    expect(pushState).not.toHaveBeenCalled();
+    expect(window.history.length).toBe(lengthOpen);
+    pushState.mockRestore();
+    const back = popState();
+    fireEvent.keyDown(screen.getByRole("dialog"), { key: "Escape" });
+    await back;
+  });
+
+  it("closes on the browser Back button and stays on the page", async () => {
+    const hrefBefore = window.location.href;
+    const entry = await openDeck();
+    const back = popState();
+    window.history.back();
+    await back;
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(window.location.href).toBe(hrefBefore);
+    expect(window.history.state?.[QUICK_LOOK_HISTORY_KEY]).not.toBe(entry);
+  });
+
+  it("removes its entry when closed with Escape or the close control", async () => {
+    const entry = await openDeck();
+    const back = vi.spyOn(window.history, "back");
+    const popped = popState();
+    fireEvent.keyDown(screen.getByRole("dialog"), { key: "Escape" });
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(back).toHaveBeenCalledTimes(1);
+    await popped;
+    expect(window.history.state?.[QUICK_LOOK_HISTORY_KEY]).not.toBe(entry);
+    back.mockRestore();
+  });
+
+  it("removes its entry when closed with Back to results", async () => {
+    const entry = await openDeck();
+    const popped = popState();
+    fireEvent.click(screen.getByRole("button", { name: /back to results/i }));
+    await popped;
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(window.history.state?.[QUICK_LOOK_HISTORY_KEY]).not.toBe(entry);
+  });
+
+  it("lets View lot take the quick look's entry instead of stepping back", async () => {
+    await openDeck();
+    const back = vi.spyOn(window.history, "back");
+    const viewLot = screen.getByRole("link", { name: /view lot/i });
+    viewLot.addEventListener("click", (event) => event.preventDefault(), { once: true });
+    fireEvent.click(viewLot);
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(back).not.toHaveBeenCalled();
+    back.mockRestore();
+    // Leave history clean for the next test.
+    const popped = popState();
+    window.history.back();
+    await popped;
   });
 });

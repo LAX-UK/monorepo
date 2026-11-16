@@ -262,6 +262,8 @@ type QuickLookMetaPanelProps = {
   deckIndex: number;
   deckLength: number;
   onClose: () => void;
+  /** The link through to the full lot page, shown in the panel's first row. */
+  headerAction?: ReactNode;
   onDeckPrev: () => void;
   onDeckNext: () => void;
 };
@@ -276,6 +278,7 @@ export function QuickLookMetaPanel({
   deckIndex,
   deckLength,
   onClose,
+  headerAction,
   onDeckPrev,
   onDeckNext,
 }: QuickLookMetaPanelProps) {
@@ -292,14 +295,17 @@ export function QuickLookMetaPanel({
           <p id={contextId} className="font-body text-xs font-medium text-on-surface-variant">
             {contextLabel}
           </p>
-          <Button
-            type="button"
-            variant="ghost"
-            className="h-auto min-h-0 rounded-none font-body font-normal text-link underline-offset-2 hover:bg-transparent hover:text-link hover:underline focus-visible:bg-transparent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-            onClick={onClose}
-          >
-            Back to results
-          </Button>
+          <div className="flex items-center gap-3">
+            <Button
+              type="button"
+              variant="ghost"
+              className="h-auto min-h-0 rounded-none font-body font-normal text-link underline-offset-2 hover:bg-transparent hover:text-link hover:underline focus-visible:bg-transparent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+              onClick={onClose}
+            >
+              Back to results
+            </Button>
+            {headerAction}
+          </div>
         </div>
 
         <QuickLookStatusBand vm={vm} statusId={statusId} />

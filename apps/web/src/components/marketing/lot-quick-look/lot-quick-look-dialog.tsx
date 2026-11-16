@@ -15,7 +15,7 @@ import {
   DialogTitle,
 } from "@auction/ui/components/dialog";
 import { cn } from "@auction/ui/lib/utils";
-import { useCallback, useEffect, useState } from "react";
+import { type MouseEvent, useCallback, useEffect, useState } from "react";
 import { emitQuickLookDeckNav } from "./lot-quick-look-analytics";
 import { useLotQuickLook } from "./lot-quick-look-context";
 import { LotQuickLookDeckNav } from "./lot-quick-look-deck-nav";
@@ -27,8 +27,9 @@ import {
   quickLookOverlayBlur,
   resolveQuickLookImages,
 } from "./quick-look-dialog-utils";
-import { QuickLookFooter } from "./quick-look-footer";
+import { QuickLookFooter, QuickLookViewLotLink } from "./quick-look-footer";
 import { useLotQuickLookEnrichment } from "./use-lot-quick-look-enrichment";
+import { useQuickLookHistory } from "./use-quick-look-history";
 
 export function LotQuickLookDialog() {
   const { session, open, closeQuickLook, setDeckIndex, returnFocusRef } = useLotQuickLook();
@@ -60,11 +61,21 @@ export function LotQuickLookDialog() {
   );
 
   const { mobile, desktop } = useSplitOverlayOpenSm(open, handleOpenChange);
+  const closeFromBack = useCallback(() => handleOpenChange(false), [handleOpenChange]);
+  const releaseHistoryForNavigation = useQuickLookHistory(open, closeFromBack);
 
-  const handleCtaNavigate = useCallback(() => {
-    setLightboxOpen(false);
-    closeQuickLook();
-  }, [closeQuickLook]);
+  const handleCtaNavigate = useCallback(
+    (event: MouseEvent<HTMLAnchorElement>) => {
+      // A plain click navigates in place, replacing the quick look's history entry; a click that
+      // opens a new tab leaves this page, so closing steps back over the entry as usual.
+      const navigatesHere =
+        event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey;
+      if (navigatesHere) releaseHistoryForNavigation();
+      setLightboxOpen(false);
+      closeQuickLook();
+    },
+    [closeQuickLook, releaseHistoryForNavigation],
+  );
 
   const handleCloseAutoFocus = useCallback(
     (event: Event) => {
@@ -196,6 +207,7 @@ export function LotQuickLookDialog() {
           deckIndex={deckIndex}
           deckLength={deckLength}
           onClose={() => handleOpenChange(false)}
+          headerAction={<QuickLookViewLotLink vm={vm} onCtaNavigate={handleCtaNavigate} />}
           onDeckPrev={goDeckPrev}
           onDeckNext={goDeckNext}
         />

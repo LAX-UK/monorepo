@@ -2,6 +2,7 @@ import { ShareButton } from "@/components/marketing/share-button";
 import { MarketingWatchlistHeart } from "@/components/marketing/watchlist-heart-button";
 import { ButtonLink } from "@auction/ui/lax/button-link";
 import Link from "next/link";
+import type { MouseEvent } from "react";
 import { emitQuickLookCta } from "./lot-quick-look-analytics";
 import type { LotQuickLookOpenOptions, LotQuickLookVM } from "./types";
 import { isLotQuickLookBiddable } from "./types";
@@ -9,7 +10,7 @@ import { isLotQuickLookBiddable } from "./types";
 type Props = {
   vm: LotQuickLookVM;
   options: LotQuickLookOpenOptions;
-  onCtaNavigate: () => void;
+  onCtaNavigate: (event: MouseEvent<HTMLAnchorElement>) => void;
 };
 
 export function QuickLookFooter({ vm, options, onCtaNavigate }: Props) {
@@ -35,34 +36,45 @@ export function QuickLookFooter({ vm, options, onCtaNavigate }: Props) {
         />
         <ShareButton url={shareUrl} title={vm.title} className="min-h-10" />
       </div>
-      <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
-        {showBid ? (
+      {showBid ? (
+        <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
           <ButtonLink
             Link={Link}
             variant="primary"
             className="w-full sm:w-auto"
             href={bidHref}
-            onClick={() => {
+            replace
+            onClick={(event) => {
               emitQuickLookCta(vm.id, "bid");
-              onCtaNavigate();
+              onCtaNavigate(event);
             }}
           >
             Bid
           </ButtonLink>
-        ) : null}
-        <ButtonLink
-          Link={Link}
-          variant={showBid ? "secondary" : "primary"}
-          className="w-full sm:w-auto"
-          href={vm.href}
-          onClick={() => {
-            emitQuickLookCta(vm.id, "view_lot");
-            onCtaNavigate();
-          }}
-        >
-          View lot
-        </ButtonLink>
-      </div>
+        </div>
+      ) : null}
     </div>
+  );
+}
+
+/**
+ * The way through to the full lot page, at the top of the quick look so it is in view without
+ * scrolling. Primary when there is no Bid to take that place.
+ */
+export function QuickLookViewLotLink({ vm, onCtaNavigate }: Pick<Props, "vm" | "onCtaNavigate">) {
+  return (
+    <ButtonLink
+      Link={Link}
+      variant={isLotQuickLookBiddable(vm.status) ? "secondary" : "primary"}
+      size="sm"
+      href={vm.href}
+      replace
+      onClick={(event) => {
+        emitQuickLookCta(vm.id, "view_lot");
+        onCtaNavigate(event);
+      }}
+    >
+      View lot
+    </ButtonLink>
   );
 }
