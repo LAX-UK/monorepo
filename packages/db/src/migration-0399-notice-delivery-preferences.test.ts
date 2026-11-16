@@ -6,9 +6,9 @@ import { NOTIFICATION_TYPES } from "./schema/notifications.js";
 
 const drizzleDir = join(dirname(fileURLToPath(import.meta.url)), "../drizzle");
 const read = (name: string) => readFileSync(join(drizzleDir, name), "utf8");
-const TAG = "0398_notice_delivery_preferences";
+const TAG = "0399_notice_delivery_preferences";
 const migration = read(`${TAG}.sql`);
-const rollback = read("0398_rollback.sql");
+const rollback = read("0399_rollback.sql");
 const previousList = read("0392_collection_notification_types.sql");
 const journal = JSON.parse(read("meta/_journal.json")) as {
   entries: { idx: number; tag: string; when: number }[];
@@ -23,10 +23,10 @@ function checkTypes(sql: string): string[] {
   return [...list.matchAll(/'([a-z_]+)'/g)].map((m) => m[1] as string);
 }
 
-describe("migration 0398 notice delivery preferences", () => {
-  it("is the next journal entry after 0397, in a journal that stays ordered", () => {
+describe("migration 0399 notice delivery preferences", () => {
+  it("is the next journal entry after 0398, in a journal that stays ordered", () => {
     const entry = journal.entries.find((e) => e.tag === TAG);
-    const previous = journal.entries.find((e) => e.tag === "0397_enquiry_inbound_replies");
+    const previous = journal.entries.find((e) => e.tag === "0398_demo_seed_target");
     expect(entry?.idx).toBe((previous?.idx ?? Number.NaN) + 1);
     expect(entry?.when).toBeGreaterThan(previous?.when ?? Number.POSITIVE_INFINITY);
     expect(journal.entries.at(-1)?.tag).toBe(TAG);

@@ -1,10 +1,10 @@
--- Rollback for 0398_notice_delivery_preferences. Roll the release back first: the previous release
+-- Rollback for 0399_notice_delivery_preferences. Roll the release back first: the previous release
 -- neither writes nor reads these notices or switches. Registration and limit notices already
 -- delivered are deleted, since the previous constraint does not allow their types; the emails for
 -- them are not affected. The two preference columns and notification.dedupe_key are dropped, and the constraint is restored
 -- to the 0392 list. The artist and saved-search app switches the forward step turned off for people
 -- whose email for that topic is off (or whose Bid alerts are stopped) go back on: the previous
--- release shows them locked off and reads them only once the email is on again, as before 0398.
+-- release shows them locked off and reads them only once the email is on again, as before 0399.
 -- Preference rows the forward step created hold only defaults then, and are kept. Also removes
 -- this migration's ledger row so a later deploy reapplies it.
 BEGIN;

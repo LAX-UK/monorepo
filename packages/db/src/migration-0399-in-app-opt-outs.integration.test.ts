@@ -8,8 +8,8 @@ import { buildPgConnectionConfig } from "./ssl.js";
 const url = process.env.MIGRATION_TEST_DATABASE_URL;
 const drizzleDir = join(dirname(fileURLToPath(import.meta.url)), "../drizzle");
 const read = (name: string) => readFileSync(join(drizzleDir, name), "utf8");
-const TAG = "0398_notice_delivery_preferences";
-const ROLLBACK = "0398_rollback.sql";
+const TAG = "0399_notice_delivery_preferences";
+const ROLLBACK = "0399_rollback.sql";
 const migration = read(`${TAG}.sql`)
   .replaceAll("--> statement-breakpoint", "")
   .replace("SET LOCAL lock_timeout = '30s';", "");
@@ -48,11 +48,11 @@ const NOTICE_RECIPIENTS = (topic: Topic, column: string) => `
  * as the previous release left them, applies the migration and checks the carried-over opt-outs.
  */
 describe.skipIf(!url)(
-  "migration 0398 carries email opt-outs over to the app",
+  "migration 0399 carries email opt-outs over to the app",
   { timeout: 60_000 },
   () => {
     let client: pg.Client;
-    const run = `m0398-${Date.now()}`;
+    const run = `m0399-${Date.now()}`;
     const id = (name: string) => `${run}-${name}`;
 
     const people: Person[] = [
