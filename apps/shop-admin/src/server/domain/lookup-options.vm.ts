@@ -1,10 +1,8 @@
 import type {
   AdminArtworkLookupItem,
   AdminClientDetail,
-  AdminEditionLookupItem,
   AdminPartyLookupItem,
 } from "@auction/shop-contracts";
-import { EDITION_LISTING_LABELS } from "./enum-labels.copy";
 
 /*
  * How the records staff pick in forms (a person, an artwork, an edition) read in a picker: the
@@ -28,13 +26,6 @@ const PARTY_KIND_LABELS: Record<string, string> = {
   lax: "LAX",
 };
 
-export function editionListingLabel(status: string): string {
-  const known = (EDITION_LISTING_LABELS as Record<string, string>)[status];
-  if (known) return known;
-  const words = status.replace(/_/g, " ");
-  return words.charAt(0).toUpperCase() + words.slice(1);
-}
-
 export function partyKindLabel(kind: string): string {
   return PARTY_KIND_LABELS[kind] ?? kind;
 }
@@ -56,15 +47,6 @@ export function artworkOption(item: AdminArtworkLookupItem): LookupOption {
 /** "Vessel Study, 7/24": the work and the print's label as the API words it. */
 export function editionLabel(item: { artworkTitle: string; printLabel: string }): string {
   return `${item.artworkTitle}, ${item.printLabel}`;
-}
-
-export function editionOption(item: AdminEditionLookupItem): LookupOption {
-  return {
-    id: item.editionId,
-    label: editionLabel(item),
-    description: item.artistName,
-    meta: editionListingLabel(item.listingStatus),
-  };
 }
 
 /**

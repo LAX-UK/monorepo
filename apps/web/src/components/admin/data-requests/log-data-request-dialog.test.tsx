@@ -36,7 +36,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   findAccount.mockResolvedValue({
     ok: true,
-    data: { subjectId: "u1", name: "Margaret Osei", status: "active" },
+    data: { subjectId: "u1", name: "Margaret Osei", status: "active", statusLabel: "Active" },
   });
   log.mockResolvedValue({
     ok: true,
@@ -75,7 +75,7 @@ describe("LogDataRequestDialog", () => {
   ])("shows the found account's %s state as %s, never the stored code", async (status, label) => {
     findAccount.mockResolvedValue({
       ok: true,
-      data: { subjectId: "u1", name: "Margaret Osei", status },
+      data: { subjectId: "u1", name: "Margaret Osei", status, statusLabel: label },
     });
     open();
     await pickAccount();

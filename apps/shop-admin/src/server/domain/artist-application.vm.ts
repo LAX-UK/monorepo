@@ -12,8 +12,8 @@ import {
   availableArtistApplicationActions,
 } from "@auction/shop-domain";
 import type { ImageGalleryItem, StaffStatusTone } from "@auction/staff-ui";
+import { ARTIST_APPLICATION_EVENT_TITLES } from "./artist-application-events.copy";
 import { enquiryStaffName } from "./enquiry-inbox.vm";
-import { ARTIST_APPLICATION_EVENT_TITLES } from "./enum-labels.copy";
 import { type RawSearchParams, singleParam } from "./list-url-state";
 import { type WorkListState, defineWorkList } from "./work-list.vm";
 

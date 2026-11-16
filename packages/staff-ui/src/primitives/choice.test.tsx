@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import {
@@ -61,13 +62,19 @@ describe("checkbox and radio hit area (CRF-6)", () => {
   // 4px past each edge, which makes the press target 24px square.
   const hitArea = (el: HTMLElement) => el.className.split(/\s+/);
 
+  it("defines the target in theme.css: 4px past each edge, never shrinking", () => {
+    const css = readFileSync(new URL("../theme.css", import.meta.url), "utf8");
+    const rule = css.slice(css.indexOf("@utility staff-hit"));
+    expect(rule).toContain("position: relative");
+    expect(rule).toContain("flex-shrink: 0");
+    expect(rule).toContain("inset: -4px");
+  });
+
   it("draws the checkbox at 16px and gives it a 24px target", () => {
     render(<StaffCheckbox aria-label="Select row" />);
     const classes = hitArea(screen.getByRole("checkbox", { name: "Select row" }));
     expect(classes).toContain("size-4");
-    expect(classes).toEqual(
-      expect.arrayContaining(["relative", "before:absolute", "before:-inset-1"]),
-    );
+    expect(classes).toEqual(expect.arrayContaining(["staff-hit"]));
   });
 
   it("gives the radio the same 24px target", () => {
@@ -78,14 +85,12 @@ describe("checkbox and radio hit area (CRF-6)", () => {
     );
     const classes = hitArea(screen.getByRole("radio", { name: "Damaged" }));
     expect(classes).toContain("size-4");
-    expect(classes).toEqual(
-      expect.arrayContaining(["relative", "before:absolute", "before:-inset-1"]),
-    );
+    expect(classes).toEqual(expect.arrayContaining(["staff-hit"]));
   });
 
   it("keeps the hit area when a page adds its own classes", () => {
     render(<StaffCheckbox aria-label="Acknowledge" className="mt-0.5" />);
     const classes = hitArea(screen.getByRole("checkbox", { name: "Acknowledge" }));
-    expect(classes).toEqual(expect.arrayContaining(["mt-0.5", "relative", "before:-inset-1"]));
+    expect(classes).toEqual(expect.arrayContaining(["mt-0.5", "staff-hit"]));
   });
 });

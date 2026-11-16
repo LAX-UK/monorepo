@@ -1,13 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { EDITION_LISTING_LABELS } from "./enum-labels.copy";
-import {
-  artworkOption,
-  editionLabel,
-  editionListingLabel,
-  editionOption,
-  ownedArtworkOptions,
-  partyOption,
-} from "./lookup-options.vm";
+import { EDITION_LISTING_LABELS } from "./edition-listing.copy";
+import { editionListingLabel, editionOption } from "./edition-lookup-option.vm";
+import { artworkOption, editionLabel, ownedArtworkOptions, partyOption } from "./lookup-options.vm";
 
 describe("picker options read by name, never by id", () => {
   it("shows a person by name with their email, which tells two of the same name apart", () => {

@@ -32,7 +32,8 @@ const OLD_RECEIVED_DAYS = 31;
 
 // Log a manual request -----------------------------------------------------------------------
 
-export type FoundAccount = { subjectId: string; name: string; status: string };
+/** A found account; `statusLabel` is resolved on the server so the dialog ships no label map. */
+export type FoundAccount = { subjectId: string; name: string; status: string; statusLabel: string };
 
 /** A found account's state as staff read it; a state the app does not know yet stays neutral. */
 export function foundAccountStatusLabel(status: string): string {

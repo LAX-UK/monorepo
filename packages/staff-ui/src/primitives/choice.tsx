@@ -18,12 +18,9 @@ import { cn } from "../lib/cn.js";
  * whose label wraps) is still easy to hit.
  */
 
-/** The 24px hit area around a 16px box: an unpainted layer 4px past each edge. */
-export const CHOICE_HIT_AREA = "relative before:absolute before:-inset-1";
-
 const boxBase = [
-  "size-4 shrink-0 border border-staff-control-border bg-staff-surface shadow-none",
-  CHOICE_HIT_AREA,
+  // `staff-hit` (theme.css) is the 24px press target; it also keeps the box from shrinking.
+  "size-4 staff-hit border border-staff-control-border bg-staff-surface shadow-none",
   "hover:border-staff-control-border-hover",
   // The wrapped primitive turns the outline off on focus; turn the staff ring back on explicitly.
   "focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-staff-focus",

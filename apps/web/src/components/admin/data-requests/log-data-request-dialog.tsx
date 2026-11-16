@@ -10,7 +10,6 @@ import {
   type LogRequestDraft,
   type LogRequestField,
   emptyLogRequest,
-  foundAccountStatusLabel,
   isLogRequestDirty,
   oldReceivedWarning,
   previewDueOn,
@@ -278,7 +277,7 @@ export function LogDataRequestDialog({ open, onOpenChange, today, api = SERVER_A
                   <span className="flex min-w-0 flex-1 flex-col text-staff-sm">
                     <span className="font-medium text-staff-fg">{draft.account.name}</span>
                     <span className="text-staff-muted">
-                      {email || "LAX account"} · {foundAccountStatusLabel(draft.account.status)}
+                      {email || "LAX account"} · {draft.account.statusLabel}
                     </span>
                   </span>
                   <StaffButton
