@@ -1,4 +1,4 @@
-import type { CollectByCalendar } from "@auction/domain";
+import type { WaitingLotStorage } from "@auction/persistence/lib";
 
 /** A purchased lot still waiting at a place that is set up for collection. */
 export type StoredLot = {
@@ -21,32 +21,33 @@ export type StoredLot = {
     /** The venue's phone from its details; null when none is set. Never a placeholder. */
     phone?: string | null;
   };
-  /** The place's free storage period in days; null until the storage terms are set. */
-  freeStorageDays: number | null;
-  /** The place's opening calendar: a deadline on a closed day moves to the next open one. */
-  calendar?: CollectByCalendar | undefined;
+  /**
+   * What prices its storage: the terms it was sold under, its band, extensions, waiver, the
+   * buyer's courier quote, the place's charging switch and opening calendar. Read for the storage
+   * reminders; `undefined` where a read does not need it (the "you can book" email).
+   */
+  storage?: WaitingLotStorage | undefined;
 };
 
 /** The emails about waiting lots that name the lots they cover (in `vars.lotIds`). */
-export type CollectionLotEmailTemplate = "collection-collect-by" | "collection-can-book";
+export type CollectionLotEmailTemplate =
+  | "collection-collect-by"
+  | "collection-storage-charges"
+  | "collection-can-book";
 
 /** What the storage reminders and the "you can book" emails read. */
 export interface ICollectByReader {
   /**
-   * Lots a reminder can be due for on `today` (a London day), at places that take online bookings:
-   * those whose payment cleared between the free period ago and the free period less the lead ago,
-   * and that are still with us (not handed over, ended or on their way by courier, nor in a live
-   * booking). The place's own free period decides the range; `defaultFreeStorageDays` stands in
-   * for one that is not set.
+   * Every lot still waiting at a place that takes online bookings (not handed over, ended or on its
+   * way by courier, nor in a live booking) whose payment cleared on or before `today` (a London
+   * day), with what prices its storage. The storage rules then decide which reminder, if any, each
+   * lot is due: the deadline depends on the terms it was sold under, its extensions and the days
+   * LAX held it, so it is not narrowed in SQL.
    */
-  storedLotsDue(window: {
-    today: string;
-    defaultFreeStorageDays: number;
-    reminderLeadDays: number;
-  }): Promise<StoredLot[]>;
+  storedLotsWaiting(query: { today: string }): Promise<StoredLot[]>;
   /**
-   * Lots still waiting at places that take online bookings (as `storedLotsDue`, without the
-   * deadline window) whose payment cleared at or after `since`: those the buyer may be told they
+   * Lots still waiting at places that take online bookings (as `storedLotsWaiting`, without
+   * what prices their storage) whose payment cleared at or after `since`: those the buyer may be told they
    * can book.
    */
   lotsClearedSince(since: Date): Promise<StoredLot[]>;

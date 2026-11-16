@@ -1,9 +1,4 @@
-import {
-  collectByPolicyFor,
-  collectionEligibility,
-  londonDateKey,
-  reminderWindow,
-} from "@auction/domain";
+import { collectionEligibility, londonDateKey, reminderWindow } from "@auction/domain";
 import type { IEmailService } from "@auction/email";
 import { Sentry } from "@auction/observability";
 import type { ICollectionLotFactsReader } from "@auction/persistence/interfaces";
@@ -14,20 +9,27 @@ import {
   collectByEmailsFor,
   collectByGroups,
   collectByKeyPrefix,
+  collectByTemplateOf,
 } from "../services/collect-by-notices.js";
 
 /**
- * Emails buyers who have neither booked nor collected, from a week before the day they are asked
- * to collect by, and on it, from 09:00 London time. It can run as often as it likes: a person is
- * sent a reminder for a deadline only when it names a lot an earlier reminder to them for that
- * deadline did not, so booking one of three lots (what the email asks) sends nothing more, and a
- * lot that becomes eligible later still gets its reminder. Earlier reminders are read from the
- * outbox, failed ones included, so a failed one is not re-armed every sweep.
- * A lot with a check, a dispute or a refund open, or one already booked or collected, is left out.
- * Nothing is charged: "storage charges may apply" is wording, not logic.
+ * Emails buyers about storage on lots they have neither booked nor collected (ST15), from 09:00
+ * London time: a week before the day they are asked to collect by and on it (with the rate),
+ * "Storage charges have started" the day after, then a running total every 14 days. Each lot is
+ * priced under the terms it was sold under, with its extensions, waiver and the days LAX held it,
+ * through the rules the buyer's page reads. A waived lot gets nothing, and while its place raises no
+ * storage invoices the day after keeps the approved "storage charges may apply" wording and no
+ * running total goes.
+ *
+ * It can run as often as it likes: a person is sent a reminder only when it names a lot an earlier
+ * one to them for the same reminder (kind, collect-by day and run of 14 days) did not, so a retry
+ * sends nothing twice, booking one of three lots sends nothing more, and a lot that becomes eligible
+ * later still gets its reminder. Earlier reminders are read from the outbox, failed ones included,
+ * so a failed one is not re-armed every sweep. A lot with a check, a dispute or a refund open, or
+ * one already booked or collected, is left out. Nothing is sold or disposed of (ST16).
  */
 export async function runCollectByRemindersJob(options: {
-  reader: Pick<ICollectByReader, "storedLotsDue" | "remindedLotIds">;
+  reader: Pick<ICollectByReader, "storedLotsWaiting" | "remindedLotIds">;
   notices: Pick<ICollectionNoticeReader, "accountRecipients">;
   facts: ICollectionLotFactsReader;
   emailService: IEmailService;
@@ -40,14 +42,13 @@ export async function runCollectByRemindersJob(options: {
   if (!reminderWindow(at)) return { groups: 0, queued: 0 };
 
   const today = londonDateKey(at);
-  const noTerms = collectByPolicyFor(null);
-  const groups = collectByGroups(
-    await reader.storedLotsDue({
-      today,
-      defaultFreeStorageDays: noTerms.freeStorageDays,
-      reminderLeadDays: noTerms.reminderLeadDays,
-    }),
-    today,
+  const groups = collectByGroups(await reader.storedLotsWaiting({ today }), today, (lot, err) =>
+    // One lot that cannot be priced keeps its buyer's page on today's notice; it must not stop the
+    // others being reminded, and must not be silent either.
+    log.warn(
+      { err, lotId: lot.lotId, venueId: lot.venueId },
+      "collection_collect_by_lot_not_priced",
+    ),
   );
   let queued = 0;
   for (const group of groups) {
@@ -66,6 +67,7 @@ export async function runCollectByRemindersJob(options: {
           keyPrefix: collectByKeyPrefix(group, userId),
           userId,
           today,
+          template: collectByTemplateOf(group),
         });
         if (email.vars.lotIds.every((id) => reminded.has(id))) continue;
         await emailService.enqueue(email);

@@ -220,8 +220,7 @@ const PROBES: Probes = {
     accountRecipients: () => r.accountRecipients(NIL, [NIL]),
   }),
   collectByReader: (r) => ({
-    storedLotsDue: () =>
-      r.storedLotsDue({ today: "2000-01-01", defaultFreeStorageDays: 30, reminderLeadDays: 7 }),
+    storedLotsWaiting: () => r.storedLotsWaiting({ today: "2000-01-01" }),
     lotsClearedSince: () => r.lotsClearedSince(now),
     remindedLotIds: () =>
       r.remindedLotIds({ keyPrefix: "probe:", userId: "probe", today: "2000-01-01" }),

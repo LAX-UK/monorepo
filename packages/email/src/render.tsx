@@ -108,6 +108,9 @@ import CollectionMissedEmail, {
 import CollectionReminderEmail, {
   subject as collectionReminderSubject,
 } from "./templates/collection-reminder.js";
+import CollectionStorageChargesEmail, {
+  subject as collectionStorageChargesSubject,
+} from "./templates/collection-storage-charges.js";
 import ConsignmentAgreementReminderEmail, {
   subject as consignmentAgreementReminderSubject,
 } from "./templates/consignment-agreement-reminder.js";
@@ -569,6 +572,10 @@ const renderers: { [T in TemplateName]: TemplateRenderer<T> } = {
   "collection-collect-by": {
     subject: collectionCollectBySubject,
     component: (vars) => <CollectionCollectByEmail {...vars} />,
+  },
+  "collection-storage-charges": {
+    subject: collectionStorageChargesSubject,
+    component: (vars) => <CollectionStorageChargesEmail {...vars} />,
   },
   "collection-can-book": {
     subject: collectionCanBookSubject,

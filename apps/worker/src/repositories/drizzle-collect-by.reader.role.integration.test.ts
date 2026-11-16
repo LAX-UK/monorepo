@@ -28,10 +28,10 @@ describe.skipIf(!ownerUrl || !workerUrl)("collect-by reader as worker_app (integ
   // biome-ignore lint/style/noNonNullAssertion: gated above
   const worker = createDb(workerUrl!);
   const reader = new DrizzleCollectByReader(worker);
-  // The longest free period, counted from Sat 15 Mar 2031 back; staff are closed from the Monday
-  // to the Wednesday after, so the deadline is Thu 20 Mar.
-  const clearedAt = new Date("2030-03-15T12:00:00Z");
-  const window = { today: "2031-03-20", defaultFreeStorageDays: 30, reminderLeadDays: 7 };
+  // A lot won before the place had terms is held 30 days free (ST9): from Thu 13 Feb 2031 that is
+  // Sat 15 Mar; staff are closed from the Monday to the Wednesday after, so the deadline is Thu 20 Mar.
+  const clearedAt = new Date("2031-02-13T12:00:00Z");
+  const window = { today: "2031-03-20" };
   let lotId = "";
 
   beforeAll(async () => {
@@ -84,7 +84,7 @@ describe.skipIf(!ownerUrl || !workerUrl)("collect-by reader as worker_app (integ
   });
 
   it("finds the lot and its deadline, which a closure after the counted day moves to Thursday", async () => {
-    const found = await reader.storedLotsDue(window);
+    const found = await reader.storedLotsWaiting(window);
     expect(found.map((row) => row.lotId)).toContain(lotId);
     const group = collectByGroups(found, window.today).find((g) =>
       g.lots.some((row) => row.lotId === lotId),

@@ -212,6 +212,115 @@ describe("collect by email", () => {
   });
 });
 
+describe("collect by email with the rates (storage terms)", () => {
+  const base = {
+    userName: "Maya",
+    when: "lead" as const,
+    collectByLabel: "Mon 23 Nov",
+    placeName: "London Art Exchange",
+    address: "156 New Cavendish Street, London W1W 6YW",
+    lots: ["Lot 12 · Lowland Storm", "Lot 14 · Coastal Notation"],
+    lotIds: ["a", "b"],
+    lotRates: [
+      "Free until Mon 23 Nov, then £3 a day, plus VAT where it applies.",
+      "Free until Mon 23 Nov, then £6 a day, plus VAT where it applies.",
+    ],
+    bookUrl: "https://lax.bid/purchases/collect?lots=a,b",
+    storagePolicyUrl: "https://lax.bid/shipping#storage",
+    quoteUrl: "https://lax.bid/purchases",
+    contactEmail: "collections@lax.example",
+  };
+
+  it("names each work's rate under it, and says storage is charged after the day", async () => {
+    const rendered = await renderEmail("collection-collect-by", base);
+    expect(rendered.text).toContain(
+      "After that, storage is charged at the daily rate shown below, under our storage policy.",
+    );
+    expect(rendered.text).toContain("Free until Mon 23 Nov, then £3 a day");
+    expect(rendered.text).toContain("Free until Mon 23 Nov, then £6 a day");
+    expect(rendered.text).not.toContain("may apply");
+  });
+
+  it("on the day, says storage is charged from tomorrow at the rate shown", async () => {
+    const rendered = await renderEmail("collection-collect-by", { ...base, when: "day" });
+    expect(rendered.text).toContain(
+      "From tomorrow, storage is charged at the daily rate shown below",
+    );
+  });
+
+  it("keeps the 'may apply' wording when no work is charged for", async () => {
+    const rendered = await renderEmail("collection-collect-by", {
+      ...base,
+      lotRates: [null, null],
+    });
+    expect(rendered.text).toContain("After that, storage charges may apply");
+    expect(rendered.text).not.toContain("£");
+  });
+});
+
+describe("storage charges email", () => {
+  const base = {
+    userName: "Maya",
+    kind: "started" as const,
+    chargingOn: true,
+    collectByLabel: "Mon 23 Nov",
+    placeName: "London Art Exchange",
+    address: "156 New Cavendish Street, London W1W 6YW",
+    lots: ["Lot 12 · Lowland Storm"],
+    lotTotals: ["£3.00 so far (1 day at £3 a day), plus VAT where it applies."],
+    lotIds: ["a"],
+    bookUrl: "https://lax.bid/purchases/collect?lots=a",
+    storagePolicyUrl: "https://lax.bid/shipping#storage",
+    contactEmail: "collections@lax.example",
+  };
+
+  it("says storage charges have started, with each work's running total", async () => {
+    const rendered = await renderEmail("collection-storage-charges", base);
+    expect(rendered.subject).toBe("Storage charges have started");
+    expect(rendered.html).toContain("Storage charges have started");
+    expect(rendered.text).toContain(
+      "Free storage for your lot at London Art Exchange ended on Mon 23 Nov, so storage charges have started.",
+    );
+    expect(rendered.text).toContain("£3.00 so far (1 day at £3 a day), plus VAT where it applies.");
+    expect(rendered.text).toContain("you will pay the storage up to that day when you book");
+    expect(rendered.html).toContain("https://lax.bid/purchases/collect?lots=a");
+  });
+
+  it("sends the running total under its own subject", async () => {
+    const rendered = await renderEmail("collection-storage-charges", {
+      ...base,
+      kind: "total",
+      lotTotals: ["£45.00 so far (15 days at £3 a day), plus VAT where it applies."],
+    });
+    expect(rendered.subject).toBe("Your storage charges so far");
+    expect(rendered.text).toContain("£45.00 so far (15 days at £3 a day)");
+  });
+
+  it("while charging is off, says only that charges may apply, with no figure", async () => {
+    const rendered = await renderEmail("collection-storage-charges", {
+      ...base,
+      chargingOn: false,
+      lotTotals: [null],
+    });
+    expect(rendered.subject).toBe("Your free storage has ended");
+    expect(rendered.text).toContain(
+      "That day has passed, so storage charges may apply. Book a time to collect your work from London Art Exchange, or email us if you need longer.",
+    );
+    expect(`${rendered.subject} ${rendered.text}`).not.toMatch(/£|have started|so far/);
+  });
+
+  it("never speaks of selling or disposing of a work", async () => {
+    for (const vars of [
+      base,
+      { ...base, kind: "total" as const },
+      { ...base, chargingOn: false },
+    ]) {
+      const rendered = await renderEmail("collection-storage-charges", vars);
+      expect(rendered.text).not.toMatch(/\b(sell|sold|dispos)/i);
+    }
+  });
+});
+
 describe("who the emails come from", () => {
   it("name LAX Bid's company in the footer, and the gallery only as the place of the visit", async () => {
     const rendered = await renderEmail("collection-booked", visit);
@@ -360,6 +469,7 @@ describe("collection emails are transactional", () => {
       "collection-collected",
       "collection-missed",
       "collection-collect-by",
+      "collection-storage-charges",
       "collection-can-book",
     ]) {
       expect(OPTIONAL_EMAIL_TEMPLATES).not.toContain(name);
