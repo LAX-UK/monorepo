@@ -43,6 +43,7 @@ export function SalesCalendarFilterSheet({
       open={open}
       onOpenChange={setOpen}
       title="Filters"
+      description="Choosing an option shows its sales straight away."
       trigger={<MarketingFilterTrigger activeCount={activeCount} />}
       applyLabel={resultCountLabel}
       onApply={close}
