@@ -19,19 +19,14 @@ export function resolveSaleroomHeroLiveTrailing(
     catalogLotRefs: SaleroomHeroLotRef[];
   },
 ): string {
-  const onBlockLot =
-    opts.liveSession?.currentLotId != null
-      ? opts.catalogLotRefs.find((l) => l.id === opts.liveSession?.currentLotId)
-      : null;
-
-  if (
-    opts.liveSession &&
-    isSaleroomSessionLive(opts.liveSession.status) &&
-    onBlockLot &&
-    opts.catalogLotRefs.length > 0
-  ) {
+  const { liveSession, catalogLotRefs } = opts;
+  // The lot on the block, while the floor is live (a paused floor names none).
+  const onBlockId =
+    liveSession && isSaleroomSessionLive(liveSession.status) ? liveSession.currentLotId : null;
+  const onBlockLot = onBlockId == null ? undefined : catalogLotRefs.find((l) => l.id === onBlockId);
+  if (onBlockLot) {
     const lotNum = onBlockLot.lotNumber != null ? `Lot ${onBlockLot.lotNumber}` : onBlockLot.title;
-    return `· ${lotNum} on the block · ${opts.catalogLotRefs.length} lots`;
+    return `· ${lotNum} on the block · ${catalogLotRefs.length} lots`;
   }
 
   if (hero.isLive && typeof hero.liveLotsCount === "number" && hero.liveLotsCount > 0) {
@@ -91,7 +86,7 @@ export const SALEROOM_HERO_LIVE_BADGE_LABEL = "Live now";
  */
 export function resolveSaleroomHeroBadge(
   status: SaleHeroVM["status"],
-  liveSession: PublicSaleroomSessionStatus | null,
+  liveSession: PublicSaleroomSessionStatus | null | undefined,
 ): { status: SaleHeroVM["status"]; label?: string } {
   if (status === "scheduled" && liveSession && isSaleroomSessionActive(liveSession.status)) {
     return { status: "active", label: SALEROOM_HERO_LIVE_BADGE_LABEL };

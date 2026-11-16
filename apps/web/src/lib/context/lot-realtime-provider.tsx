@@ -2,8 +2,7 @@
 
 import { useLotPorts } from "@/lib/context/lot-ports";
 import type { LotRealtimeCallbacks } from "@/lib/realtime/contracts";
-import { announceLotEnded } from "@/lib/realtime/lot-ended-signal";
-import type { BidUpdateEvent, LotEndedEvent } from "@auction/types";
+import type { LotEndedEvent } from "@auction/types";
 import {
   type ReactNode,
   createContext,
@@ -42,22 +41,31 @@ export function LotRealtimeProvider({
 
   useEffect(() => {
     if (!lotId) return;
-    const fanOut = (fn: (l: Listener) => void) => {
-      for (const l of listenersRef.current) {
-        fn(l);
-      }
-    };
+    // Each socket callback is relayed to every registered listener, in order.
+    const relay =
+      <K extends keyof Listener>(key: K) =>
+      (...args: Parameters<NonNullable<Listener[K]>>) => {
+        for (const listener of listenersRef.current) {
+          (listener[key] as ((...a: typeof args) => void) | undefined)?.(...args);
+        }
+      };
+    const onLotEnded = relay("onLotEnded");
     return realtime.subscribeToLot(lotId, {
-      onBidUpdate: (e: BidUpdateEvent) => fanOut((l) => l.onBidUpdate?.(e)),
-      onLotExtended: (p: unknown) => fanOut((l) => l.onLotExtended?.(p)),
+      onBidUpdate: relay("onBidUpdate"),
+      onLotExtended: relay("onLotExtended"),
       onLotEnded: (p: LotEndedEvent) => {
-        // The socket is shared by the tab and `lotEnded` is not scoped to a room, so only this
-        // lot's own close is announced, by the id the event names.
-        if (p.lotId === lotId) announceLotEnded(p.lotId);
-        fanOut((l) => l.onLotEnded?.(p));
+        // Tells the header's outbid prompt (`lib/navigation/ended-lots.ts`) at once. The socket is
+        // shared by the tab and `lotEnded` is not scoped to a room, so only this lot's own close is
+        // announced, by the id the event names. The name is `LOT_ENDED_SIGNAL`
+        // (`lib/realtime/lot-ended-signal.ts`), written out so the lot page loads no extra module;
+        // `lot-realtime-provider.test.tsx` fails if the two drift apart.
+        if (p.lotId === lotId) {
+          window.dispatchEvent(new CustomEvent("lax:lot-ended", { detail: p.lotId }));
+        }
+        onLotEnded(p);
       },
-      onLotEvent: (p: unknown) => fanOut((l) => l.onLotEvent?.(p)),
-      onReconnect: () => fanOut((l) => l.onReconnect?.()),
+      onLotEvent: relay("onLotEvent"),
+      onReconnect: relay("onReconnect"),
     });
   }, [lotId, realtime]);
 

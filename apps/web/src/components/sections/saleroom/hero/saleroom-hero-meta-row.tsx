@@ -28,7 +28,7 @@ const LIFECYCLE_STATUSES: ReadonlyArray<SaleHeroVM["status"]> = ["active", "sche
 export function SaleroomHeroMetaRow({
   hero,
   liveTrailing,
-  liveSession = null,
+  liveSession,
   deliveryMode,
   showOnlineBiddingGatedBadge = false,
   explainerContext,
