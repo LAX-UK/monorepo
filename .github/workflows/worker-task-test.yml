@@ -82,7 +82,9 @@ jobs:
         if: inputs.task == 'alerts-seed'
         run: pnpm --filter @auction/worker exec tsx src/scripts/seed-bid-alerts.ts
       # Full demo data for the owner meeting. Test only: each seed refuses a production host or
-      # environment, is idempotent (fixed ids, upserts) and moves the live sale's dates to now.
+      # environment and any database without the demo seed mark (0398, docs/runbooks/demo-seed.md),
+      # is idempotent (fixed ids) and moves the live sale's dates to now. Staff queue items are
+      # written once and never changed, so staff work on them survives a rerun.
       - name: Load masked test Shop database address
         if: inputs.task == 'demo-full'
         run: |

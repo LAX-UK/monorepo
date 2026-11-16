@@ -71,6 +71,7 @@ export function PurchaseRow({
     { type: "separator" },
     { type: "item", label: "Copy reference", onSelect: () => void copyReference(card) },
   ];
+  const collection = card.collection;
   return (
     <RecordRow
       aria-label={`${card.title}, ${card.badge.label}`}
@@ -105,21 +106,29 @@ export function PurchaseRow({
       figures={[{ value: card.amount, label: card.amountLabel }]}
       aligned
       status={
-        <span className="flex flex-wrap items-center justify-end gap-1.5">
+        <span className="flex min-w-0 max-w-[calc(100cqw-6.5rem)] flex-wrap @2xl:max-w-none items-center justify-end gap-1.5">
           <StatusBadge tone={card.badge.tone} shape={card.badge.shape}>
             {card.badge.label}
           </StatusBadge>
-          {card.collection ? (
-            <StatusBadge
-              tone={card.collection.tone}
-              shape={card.collection.shape}
-              title={card.collection.title}
-            >
-              {/* The label is what shows; the whole sentence is what assistive technology reads. */}
-              <span aria-hidden>{card.collection.label}</span>
-              <span className="sr-only">{card.collection.title}</span>
-            </StatusBadge>
-          ) : null}
+          {collection
+            ? // A badge never wraps its label (the kit keeps it whole), so a label with a running
+              // total ("Collect by Mon 16 Nov · Storage £9.00 so far") is drawn as one badge per
+              // part, and the badges wrap in the row instead of being cut off at 375px.
+              collection.label
+                .split(" · ")
+                .map((part, i) => (
+                  <StatusBadge
+                    key={part}
+                    tone={collection.tone}
+                    shape={collection.shape}
+                    title={i === 0 ? collection.title : undefined}
+                  >
+                    {/* The label is what shows; the whole sentence is what assistive technology reads. */}
+                    <span aria-hidden>{part}</span>
+                    {i === 0 ? <span className="sr-only">{collection.title}</span> : null}
+                  </StatusBadge>
+                ))
+            : null}
         </span>
       }
       action={

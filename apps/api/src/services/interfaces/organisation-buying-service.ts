@@ -11,6 +11,7 @@ import type {
   PurchasePaymentRole,
   PurchaseProblemCategory,
   PurchaseProblemStatus,
+  PurchaseStorageView,
 } from "@auction/domain";
 import type {
   AccountRegistrationRow,
@@ -114,7 +115,17 @@ export type AccountPurchaseView = {
      * `placeId` is the venue it waits at (what a visit is booked at; names are not unique) and
      * `placeName` is that venue's name, as the reminder email names it.
      */
-    collectBy: (PurchaseCollectBy & { placeId: string; placeName: string }) | null;
+    collectBy:
+      | (PurchaseCollectBy & {
+          placeId: string;
+          placeName: string;
+          /**
+           * What the buyer reads under the place's storage terms (notice, list badge, running
+           * total); `null` for a lot won before the first terms, which keeps today's wording.
+           */
+          storage: PurchaseStorageView | null;
+        })
+      | null;
   };
 };
 

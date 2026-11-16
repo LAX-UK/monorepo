@@ -62,6 +62,7 @@ function card(
           state: "upcoming",
           placeId,
           placeName: place,
+          storage: null,
           bookHref: `/purchases/collect?lots=${lotId}`,
         }
       : null,

@@ -1,5 +1,7 @@
-import type { CollectByCalendar, DeliveryQuoteStatus, FulfilmentFacts } from "@auction/domain";
+import type { StorageCalendar } from "@auction/domain";
+import type { DeliveryQuoteStatus, FulfilmentFacts } from "@auction/domain";
 import type { LegalEntityKind } from "@auction/types";
+import type { LotStoragePricing } from "../lib/purchase-storage-pricing.js";
 
 /** A member named on a record: who registered, placed a bid or won a lot. */
 export type RecordPerson = {
@@ -110,8 +112,14 @@ export type AccountPurchaseFactsRow = {
     placeId: string;
     placeName: string;
     freeStorageDays: number | null;
+    /**
+     * What prices the lot's storage under the terms it was sold under (docs/design/storage-terms.md),
+     * and whether the place raises storage invoices. `terms` is `null` for a lot won before the
+     * first terms: the place's free days and nothing charged. Absent reads the same.
+     */
+    pricing?: (LotStoragePricing & { chargingOn: boolean }) | undefined;
     /** The place's opening calendar, to move a closed "collect by" day to the next open day. */
-    calendar?: CollectByCalendar | undefined;
+    calendar?: StorageCalendar | undefined;
     bookingOpen: boolean;
     booked: boolean;
     saleDeleted: boolean;

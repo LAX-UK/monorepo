@@ -24,6 +24,11 @@ import { lotsWithSaleTimeZone, withSaleTimeZone } from "../../lib/lot-sale-time-
 import { lotsWithCheckoutPricing } from "../../lib/lots-with-checkout-pricing.js";
 import { mapLotToStaffListRow, mapLotToSummary } from "../../lib/mappers.js";
 import { presentLotImages } from "../../lib/media-presenters.js";
+import {
+  type StorageTermsInForce,
+  listPlaceStorageTerms,
+  storageTermsTextForVenue,
+} from "../../lib/public-storage-terms.js";
 import { buildConnectRequiredByLotId } from "../../lib/seller-connect-readiness.js";
 import {
   checkoutPricingFromInvoicedSale,
@@ -60,6 +65,8 @@ export class CatalogLotReadHttpApplicationService implements ICatalogLotReadHttp
     private readonly now: () => Date = () => new Date(),
     /** Sold lots show what their invoice charged; unset, they are priced under today's rules. */
     private readonly invoicedSalePrices: IInvoicedSalePriceReader | null = null,
+    /** The terms in force at a place; unset, lot pages and the places list carry none. */
+    private readonly storageTerms: StorageTermsInForce | null = null,
   ) {}
 
   async listLots(input: {
@@ -251,6 +258,7 @@ export class CatalogLotReadHttpApplicationService implements ICatalogLotReadHttp
     const sold = (await invoicedSalePricesOf(this.invoicedSalePrices, [masked])).get(masked.id);
     const checkoutPricing = sold ? checkoutPricingFromInvoicedSale(live, sold) : live;
     const visible = withSaleTimeZone({ ...masked, checkoutPricing }, sale);
+    const storageTerms = await this.storageTermsOf(sale?.venueId ?? null, sale?.endTime ?? null);
     const bidding = buildLotDetailBiddingView({
       lot: visible,
       sale,
@@ -265,8 +273,35 @@ export class CatalogLotReadHttpApplicationService implements ICatalogLotReadHttp
         data: {
           ...visible,
           ...bidding,
+          storageTerms,
           ...(deleteEligibility ? { deleteEligibility } : {}),
         },
+      },
+    };
+  }
+
+  /** The terms sentence for the place the lot waits at, as in force when its sale closes; a failed read leaves the page without it. */
+  private async storageTermsOf(
+    venueId: string | null,
+    closesAt: Date | null,
+  ): Promise<string | null> {
+    if (!venueId) return null;
+    try {
+      return this.storageTerms
+        ? await storageTermsTextForVenue(this.storageTerms, venueId, this.now(), closesAt)
+        : null;
+    } catch {
+      return null;
+    }
+  }
+
+  async listStorageTerms(): Promise<CatalogHttpJson> {
+    return {
+      status: 200,
+      body: {
+        data: this.storageTerms
+          ? await listPlaceStorageTerms(this.db, this.storageTerms, this.now())
+          : [],
       },
     };
   }

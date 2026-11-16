@@ -45,7 +45,25 @@ export async function handleStripeDisputeWebhook(
 ): Promise<StripeMoneyWebhookOutcome> {
   const order = await resolveShopOrderForPaymentIntent(db, input.paymentIntentId);
   if (!order) return "ignored";
+  return recordStripeDisputeForOrder(db, order, input, options);
+}
 
+/**
+ * Records a Stripe dispute on a Shop order already found: claims the event, keeps the dispute row,
+ * blocks or releases the artist's payout and writes the dispute event, in one transaction. The
+ * webhook finds the order by its payment intent first; the demo seed, whose orders were paid
+ * without Stripe, names its order directly so the same rows and event are written.
+ */
+export async function recordStripeDisputeForOrder(
+  db: Database,
+  order: { orderId: string },
+  input: Omit<StripeDisputeWebhookInput, "paymentIntentId"> & { paymentIntentId?: string },
+  options: {
+    domainEventMode: ShopDomainEventPublisherMode;
+    notifications?: ShopNotificationPublisher;
+    opsAlertEmail?: string | null;
+  },
+): Promise<StripeMoneyWebhookOutcome> {
   const events = createShopDomainEventPublisher(options.domainEventMode);
   return db.transaction(async (tx) => {
     const [claim] = await tx
@@ -166,9 +184,9 @@ export async function handleStripeDisputeWebhook(
         opsEmail,
         alertKind: "Shop Stripe dispute",
         orderId: order.orderId,
-        detail: `Dispute ${input.stripeDisputeId} on payment intent ${input.paymentIntentId}${
-          input.outcome === "lost" ? " (lost — clawback review)" : ""
-        }`,
+        detail: `Dispute ${input.stripeDisputeId}${
+          input.paymentIntentId ? ` on payment intent ${input.paymentIntentId}` : ""
+        }${input.outcome === "lost" ? " (lost — clawback review)" : ""}`,
       });
     }
 

@@ -1,15 +1,24 @@
 import "server-only";
 
-import { getPublicLotPremiumTerms } from "@/lib/data/http/public-catalogue.server";
+import {
+  getPublicLotPremiumTerms,
+  getPublicLotStorageTerms,
+} from "@/lib/data/http/public-catalogue.server";
 import type { BuyersPremiumTerms } from "@auction/domain";
 
 /**
- * What the lot template reads beyond the lot, as everyone sees it (CO-7): the premium terms only.
+ * What the lot template reads beyond the lot, as everyone sees it (CO-7): the premium terms and the
+ * storage terms only.
  * No bid state is read for the page (price, next bid, status, close, history, leader): the page
  * HTML is built from cached reads, so the browser reads those live and fills the placeholders.
  */
 export async function loadPublicLotTemplateReads(lotId: string): Promise<{
   buyersPremium: BuyersPremiumTerms | null;
+  storageTerms: string | null;
 }> {
-  return { buyersPremium: await getPublicLotPremiumTerms(lotId) };
+  const [buyersPremium, storageTerms] = await Promise.all([
+    getPublicLotPremiumTerms(lotId),
+    getPublicLotStorageTerms(lotId),
+  ]);
+  return { buyersPremium, storageTerms };
 }

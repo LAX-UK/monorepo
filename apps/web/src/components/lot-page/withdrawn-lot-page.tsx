@@ -59,6 +59,7 @@ export function WithdrawnLotPage({ data, now }: { data: WithdrawnLotPageData; no
             <LotDetails
               details={buildLotDetails({ description: lot.description, marketingDetails: {} })}
               premiumTerms={null}
+              storageTerms={null}
             />
           </LotPageViewStaticProvider>
         </div>

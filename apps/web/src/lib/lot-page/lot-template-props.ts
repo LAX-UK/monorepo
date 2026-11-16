@@ -31,6 +31,8 @@ export type LotTemplateData = {
   details: LotDetailsView;
   /** The premium the lot charges, in words ("15% up to £500,000, then 10% on the part above"); null when not for sale. */
   premiumTerms: string | null;
+  /** The storage terms at the place the work waits, in words; null when none are set or not for sale. */
+  storageTerms: string | null;
   sale: { href: string; label: string };
   initialWatching: boolean;
   /** How the lot's department presents its pictures. */
@@ -49,6 +51,8 @@ export type LotTemplateInput = {
   documents: Array<{ label: string; href: string }>;
   /** The premium terms the lot charges (catalogue terms, not bid state). */
   buyersPremium: BuyersPremiumTerms | null;
+  /** The storage terms in force where the work waits, as one sentence; null when none are set. */
+  storageTerms?: string | null;
   viewer: LotViewerView | null;
   /** Left out, the lot is shown as a wall work. */
   media?: LotMediaTreatment;
@@ -116,6 +120,7 @@ export function toLotTemplateData(input: LotTemplateInput): LotTemplateData {
     premiumTerms: NOT_FOR_SALE.has(auction.status)
       ? null
       : premiumTermsOf(auction, input.buyersPremium),
+    storageTerms: NOT_FOR_SALE.has(auction.status) ? null : (input.storageTerms ?? null),
     sale: input.parentSale
       ? { href: salePath(input.parentSale), label: "Back to the sale" }
       : { href: "/search", label: "Search lots" },
