@@ -1,4 +1,4 @@
-Verdict: FIX FIRST
+Verdict: SHIP
 
 Review of PR #1504 "Shop: help centre entry for delivery outside the UK" (head 12f4f6af, base main 697f2d8d). Review only; the PR branch was not changed.
 
@@ -31,3 +31,28 @@ Review of PR #1504 "Shop: help centre entry for delivery outside the UK" (head 1
 - Tests: new tests assert the new section, the link and the omitted-link case, and use `OUTSIDE_UK_HELP_HREF` and the `bidBaseUrl` input that do not exist on main, so they cannot pass without the change.
 - CI: `ci-result` and all 41 check runs completed success or skipped (art/account browser gates skipped) on the PR head.
 - PR body: no AI footer or session link. Commit messages (e367f6d2, 12f4f6af) carry no trailers.
+
+## Final recheck
+
+Head 470f77c6 (3 commits, base main 697f2d8d, mergeable clean). Review only; the PR branch was not changed. Evidence is on the current head.
+
+Blocking items from the first review:
+
+1. **Accept step and one-hour window: fixed.** `apps/shop/src/content/policies/help.ts:79-80` has "Accept the quote from our email." and "Once you accept, you have ${quotePaymentWindowWords()} to pay". `quotePaymentWindowWords` (`help.ts:17`) defaults to `QUOTE_PAYMENT_WINDOW_MS` (`packages/shop-domain/src/outside-uk-delivery.ts:82`, 60 minutes), so "one hour" is not hard-coded. Order is request (l.77), emailed price (l.78), accept, one-hour window, matches the Delivery page "once you accept it".
+2. **Hold length: fixed.** `help.ts:86` has no "up to three working days". It says the checkout confirmation and the quote email show the exact date, the hold can be shorter for guests, and after a quote is sent it is `plural(QUOTE_HOLD_WORKING_DAYS, ...)` (constant, `outside-uk-delivery.ts:16`). The date claim is true for both buyer types: `delivery-quote-sent.tsx:51-52` ("Your print is held until", from `holdUntil`) and both emails carry the date (`shop-delivery-quote-requested.tsx:26` `holdUntilOn`, `shop-delivery-quote-ready.tsx:37` `validUntilOn`). No number is typed in.
+3. **Fixed-price regions: fixed.** `help.ts:72` leads "Where we have not set a fixed price, our gallery team quotes..." and adds that a fixed-price region is paid with the order with no quote.
+4. **Design source: addressed.** The PR body names the owner-approved Shop print options plan (PO1-PO22, approved 9 Nov 2026), PO21 / row PO-9b, and says it is private planning notes, not in the repo. I cannot open it, so I take it from the PR body; that is now an honest citation, not a gap.
+
+Non-blocking items:
+
+- **Invoice sentence: fixed.** `help.ts:81` says that once paid the invoice is on the order page, signed in or guest. Guests have an order page and an invoice route: `apps/shop/src/app/orders/guest/invoice/route.ts` (calls `/commerce/guest-orders/current/invoice`, redirects to `GUEST_ORDER_PATH` when none).
+- **Screenshots: fixed.** All 8 PNGs are true viewport sizes, 1440x900 (4) and 375x812 (4), light and dark. I opened `help-1440-light`, `help-375-dark`, `delivery-glance-link-375-light` and `delivery-glance-link-1440-dark`: real renders, new section and link visible, no bottom nav or other element over text, nothing clipped. Header still shows "Sign-in unavailable" (local render without auth), which is only cosmetic.
+- **PR body "Changes after review": honest.** It lists each change, matches the diff and commit 470f77c6, and states why the Help release version/date was not bumped. No AI footer or session link in the body.
+- **Tests: each wording rule has its own test** in `shop-policies.test.ts`: accept step and `QUOTE_PAYMENT_WINDOW_MS` (and rejects "from the link in our email"); hold dates (rejects "up to three working days", needs the `QUOTE_HOLD_WORKING_DAYS` text); fixed-price lead (regex on the first sentence, plus the fixed-price clause); invoice sentence for guests and signed in. Each asserts text the old copy did not contain, so each fails without its rule. I did not run the suite; CI did (below).
+- **Route JS: not measured by me.** The client change is only `delivery-quote-sent.tsx` importing the leaf constant file `outside-uk-help-href.ts` and `next/link`; `index.ts` is not pulled into client code, and the last commit touches only server-built help content and tests. The PR's "equal to main" claim is plausible but is the author's measurement; the `build` and `shop-build` checks pass. Residual risk is small.
+- **CI: green.** `ci-result` success; all 41 check runs success or skipped (art-browser-gates and account-browser-gates skipped, as before), `browser-gates` and `build` success.
+- **No AI footer or trailers.** PR body has none; the three commit messages (e367f6d2, 12f4f6af, 470f77c6) have no Co-Authored-By, session link or generated-by lines.
+
+Minor, not blocking: "Accept the quote from our email" is loosely worded because the email links to the order page where the buyer accepts (`shop.ts` `orderUrl`); the Help text is not wrong. "Within one working day" is still a promise no timer enforces, consistent with existing copy.
+
+Verdict: SHIP.
