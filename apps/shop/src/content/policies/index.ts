@@ -21,7 +21,8 @@ export const SHOP_POLICY_DOCUMENTS: Readonly<Record<ShopSourcedPolicySlug, ShopP
   cookies: documentFor("cookies"),
 };
 
-export { OUTSIDE_UK_HELP_HREF, buildShopHelpDocument } from "./help";
+export { buildShopHelpDocument } from "./help";
+export { OUTSIDE_UK_HELP_HREF } from "./outside-uk-help-href";
 export { SHOP_HELP_RELEASE, SHOP_POLICY_PATHS, SHOP_POLICY_RELEASES, SHOP_POLICY_SOURCES };
 export type { ShopPolicySlug, ShopSourcedPolicySlug };
 export type { ShopPolicyBlock, ShopPolicyDocument, ShopPolicySection } from "./shop-policy.types";

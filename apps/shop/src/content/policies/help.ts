@@ -3,9 +3,6 @@ import { LAX_ART_POLICIES, type LegalPolicyDocument } from "@auction/marketing-u
 import { SHOP_POLICY_PATHS, SHOP_POLICY_SOURCES } from "./shop-policy-status";
 
 /** Contact details for the help page; the phone and email are the gallery's, from the shared contact. */
-/** Where the Help page explains delivery outside the UK; the quote steps and the delivery page link here. */
-export const OUTSIDE_UK_HELP_HREF = "/help#delivery-outside-uk";
-
 export const SHOP_HELP_CONTACT = {
   email: GALLERY_CONTACT.email.replace("@", "(@)"),
   emailHref: `mailto:${GALLERY_CONTACT.email}`,

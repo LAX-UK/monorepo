@@ -1,4 +1,4 @@
-import { OUTSIDE_UK_HELP_HREF } from "@/content/policies/help";
+import { OUTSIDE_UK_HELP_HREF } from "@/content/policies/outside-uk-help-href";
 import { type WorkingDayWindow, workingDaysLabel } from "@/lib/checkout/checkout-delivery";
 import { GALLERY_CONTACT } from "@auction/branding";
 import type { DeliveryRegionView, PublicDeliveryRegions } from "@auction/shop-contracts";
