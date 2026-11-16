@@ -7,6 +7,7 @@ import {
   awaitsCollection,
   collectBy,
   collectByClearedRange,
+  collectByPolicyFor,
   collectByReminderFor,
   purchaseCollectBy,
 } from "./collection-storage.js";
@@ -218,5 +219,12 @@ describe("the please-collect-by day on an open day", () => {
       date: "2026-12-14",
       state: "soon",
     });
+  });
+});
+
+describe("places without storage terms", () => {
+  it("keep 30 free days and the 7-day lead", () => {
+    expect(collectByPolicyFor(null)).toEqual(DEFAULT_COLLECT_BY_POLICY);
+    expect(collectByPolicyFor(14)).toEqual({ freeStorageDays: 14, reminderLeadDays: 7 });
   });
 });

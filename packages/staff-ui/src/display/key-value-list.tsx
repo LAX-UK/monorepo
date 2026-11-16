@@ -1,10 +1,9 @@
 "use client";
 
-import { Check, Copy } from "lucide-react";
-import * as React from "react";
+import type * as React from "react";
 import { EmptyValue, isEmptyCellValue } from "../data/cells.js";
 import { cn } from "../lib/cn.js";
-import { StaffButton } from "../primitives/button.js";
+import { CopyButton } from "./copy-button.js";
 import { TruncatedText } from "./truncated-text.js";
 
 export type KeyValueItem = {
@@ -68,25 +67,5 @@ export function KeyValueList({
         </div>
       ))}
     </dl>
-  );
-}
-
-function CopyButton({ value, label }: { value: string; label: string }) {
-  const [copied, setCopied] = React.useState(false);
-  return (
-    <StaffButton
-      variant="ghost"
-      size="icon-xs"
-      aria-label={copied ? `${label} copied` : `Copy ${label.toLowerCase()}`}
-      onClick={() => {
-        void navigator.clipboard?.writeText(value).then(() => {
-          setCopied(true);
-          window.setTimeout(() => setCopied(false), 1500);
-        });
-      }}
-      className="text-staff-subtle hover:text-staff-fg [&_svg]:size-3.5"
-    >
-      {copied ? <Check aria-hidden /> : <Copy aria-hidden />}
-    </StaffButton>
   );
 }

@@ -1,4 +1,5 @@
 import {
+  GROUP_INVOICE_REFUNDED_WITH_DELIVERY_TEXT,
   type UnappliedMoneyPayload,
   type UnappliedMoneyReason,
   booksPossiblyLaxOwnText,
@@ -52,6 +53,7 @@ const SITUATION: Record<UnappliedMoneyReason, string> = {
     "Zoho Books shows a payment against one of LAX's invoices that LAX did not send: someone recorded it in Books by hand (a gallery sale, a cheque). Nothing in LAX was marked paid. Check the money arrived, then record the payment in LAX, or correct Books if it was recorded by mistake.",
   private_sale_refund_after_payout:
     "Money went back to a private sale buyer after the seller's payout included the deal. The seller's payout may need adjusting.",
+  group_invoice_refunded_with_delivery: GROUP_INVOICE_REFUNDED_WITH_DELIVERY_TEXT,
 };
 
 /** What one alert says: the money, the situation and where to look. */

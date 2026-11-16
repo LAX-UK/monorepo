@@ -54,6 +54,12 @@ export const adminPaymentIdParamSchema = z.object({
   id: z.string().uuid(),
 });
 
+/** A courier quote charged in a combined ("Pay several") payment. */
+export const adminGroupDeliveryParamSchema = z.object({
+  groupId: z.string().uuid(),
+  quoteId: z.string().uuid(),
+});
+
 /** An unapplied-money task's key (its reason and the Stripe reference, joined by a colon). */
 export const unappliedMoneyKeyParamSchema = z.object({
   key: z

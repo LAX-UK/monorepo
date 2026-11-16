@@ -31,6 +31,13 @@ export type StripeRefundInput = {
    * part refunds of the same amount are two refunds, not one repeated.
    */
   sequence?: number;
+  /**
+   * The staff courier refund request this refund carries out (`payment_group_delivery_refund`),
+   * with `deliveryQuoteId`. It goes on the refund's metadata, and it alone makes the idempotency
+   * key: a retry of the same request is the same refund, and every new request (one after a
+   * failed or cancelled refund too) is a new one.
+   */
+  deliveryRefundId?: string;
 };
 
 export type StripeRefundGatewayResult =
@@ -134,11 +141,13 @@ export class StripePaymentGateway implements IStripePaymentGateway {
       throw new Error("StripePaymentGateway: refund called while not configured");
     }
     const step = input.sequence === undefined ? "" : `:${input.sequence}`;
-    const idempotencyKey = input.deliveryQuoteId
-      ? `refund:${input.chargeId}:delivery:${input.deliveryQuoteId}:${input.amount ?? "full"}${step}`
-      : input.paymentId
-        ? `refund:${input.chargeId}:${input.paymentId}:${input.amount ?? "full"}${step}`
-        : `refund:${input.chargeId}:${input.amount ?? "full"}${step}`;
+    const idempotencyKey = input.deliveryRefundId
+      ? `refund:${input.chargeId}:delivery-refund:${input.deliveryRefundId}`
+      : input.deliveryQuoteId
+        ? `refund:${input.chargeId}:delivery:${input.deliveryQuoteId}:${input.amount ?? "full"}${step}`
+        : input.paymentId
+          ? `refund:${input.chargeId}:${input.paymentId}:${input.amount ?? "full"}${step}`
+          : `refund:${input.chargeId}:${input.amount ?? "full"}${step}`;
     return executeWithStripeRetries(async () => {
       try {
         const params: Stripe.RefundCreateParams = {
@@ -149,7 +158,9 @@ export class StripePaymentGateway implements IStripePaymentGateway {
           params.amount = input.amount;
         }
         if (input.deliveryQuoteId) {
-          params.metadata = { deliveryQuoteId: input.deliveryQuoteId };
+          params.metadata = input.deliveryRefundId
+            ? { deliveryQuoteId: input.deliveryQuoteId, deliveryRefundId: input.deliveryRefundId }
+            : { deliveryQuoteId: input.deliveryQuoteId };
         } else if (input.paymentId) {
           params.metadata = { paymentId: input.paymentId };
         }

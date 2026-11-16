@@ -267,6 +267,12 @@ export const API_PAYMENT_TRANSFER_REFERENCE_TABLES = ["payment_transfer_referenc
  */
 export const API_REFUND_REVERSAL_TABLES = ["stripe_refund_reversal"] as const;
 /**
+ * Staff courier refund requests on a combined payment (migration 0395): written before Stripe is
+ * asked and updated with Stripe's answer. api_app gets INSERT, SELECT and UPDATE, never DELETE (the
+ * rows are the finance record of each request); the worker has no access.
+ */
+export const API_DELIVERY_REFUND_TABLES = ["payment_group_delivery_refund"] as const;
+/**
  * Accounting documents and their history (migration 0368). The Bid API reads them for the
  * Finance › Accounting page, and puts a refused document back in the queue when staff try it
  * again (the life cycle's requeue: state columns only, never what the document says), adding that
@@ -643,7 +649,8 @@ export const SHOP_ARTWORK_REGISTER_READ_TABLES = [
 export const SHOP_ARTWORK_REGISTER_CONFLICT_TABLES = ["artwork_register_conflict"] as const;
 /**
  * "Zoho says Sold" items: LAX Admin reads them (the pause check, the Needs attention list) and
- * decides one ("It is not sold": UPDATE). The worker raises and closes them, so it also INSERTs.
+ * decides one ("It is not sold" or "Dealt with": UPDATE). The worker raises and closes them, so it
+ * also INSERTs.
  */
 export const SHOP_SOLD_ATTENTION_TABLES = ["artwork_register_sold_attention"] as const;
 export const WORKER_SOLD_ATTENTION_TABLES = ["artwork_register_sold_attention"] as const;
@@ -687,6 +694,8 @@ export const WORKER_DENY_TABLES = [
   ...SHOP_SSF_RECEIVER_TABLES,
   ...SHOP_COMMERCE_TABLES,
   ...SHOP_COMMERCE_APPEND_ONLY_TABLES,
+  /** Staff courier refund requests are the API's alone (migration 0395). */
+  ...API_DELIVERY_REFUND_TABLES,
 ] as const;
 export const WORKER_READ_TABLES = [
   /** Identity lifecycle outbox relay reads pending rows before inserting into domain_events. */
@@ -840,6 +849,13 @@ export const WORKER_QR_CODE_SCAN_TABLES = ["qr_code_scan", "qr_code_scan_daily"]
  * retention. The daily roll-up keeps no personal data and is never deleted.
  */
 export const WORKER_QR_CODE_SCAN_PURGE_DELETE_TABLES = ["qr_code_scan"] as const;
+/**
+ * Inbound enquiry mail that could not be tied to a thread is held for review and purged 30 days
+ * after it arrived (`purge_at`). The worker reads and deletes expired rows; it never writes them.
+ */
+export const WORKER_ENQUIRY_INBOUND_QUARANTINE_PURGE_TABLES = [
+  "enquiry_inbound_quarantine",
+] as const;
 /** The unsold-choice projector stores each unsold outcome's choose-by date, once. */
 export const WORKER_UNSOLD_CHOICE_DEADLINE_TABLES = ["unsold_choice_deadline"] as const;
 /** The follow-up projector opens the staff work a confirmed unsold-lot choice leaves behind. */
@@ -1099,6 +1115,8 @@ export const WORKER_ANONYMISATION_SCRUB_COLUMNS = [
   /** The enquiry rule replaces the sender's details and removes what they wrote. */
   ["marketing_enquiry", ["name", "email", "phone", "message", "version"]],
   ["marketing_enquiry_note", ["body"]],
+  /** The sender's emailed replies: the rule removes their text and the metadata of their files. */
+  ["marketing_enquiry_message", ["subject", "body", "attachments"]],
   /** Older identity-check notices quote the provider's decline reason in the message. */
   ["notification", ["message"]],
   ["private_sale_enquiry_detail", ["location_town", "location_country", "looking_for"]],
@@ -1603,6 +1621,10 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
             await grantIfExists(client, "api_app", tableName, "INSERT, SELECT");
             continue;
           }
+          if ((API_DELIVERY_REFUND_TABLES as readonly string[]).includes(tableName)) {
+            await grantIfExists(client, "api_app", tableName, "INSERT, SELECT, UPDATE");
+            continue;
+          }
           await grantIfExists(client, "api_app", tableName, "ALL PRIVILEGES");
         }
         for (const tableName of WORKER_READ_TABLES) {
@@ -1755,6 +1777,9 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
           await grantIfExists(client, "worker_app", tableName, "INSERT, SELECT, UPDATE");
         }
         for (const tableName of WORKER_QR_CODE_SCAN_PURGE_DELETE_TABLES) {
+          await grantIfExists(client, "worker_app", tableName, "SELECT, DELETE");
+        }
+        for (const tableName of WORKER_ENQUIRY_INBOUND_QUARANTINE_PURGE_TABLES) {
           await grantIfExists(client, "worker_app", tableName, "SELECT, DELETE");
         }
         for (const tableName of WORKER_BID_ALERT_TABLES) {

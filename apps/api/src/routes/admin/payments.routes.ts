@@ -1,4 +1,8 @@
-import { adminPaymentsListQuerySchema, adminRefundBuyerBodySchema } from "@auction/validators";
+import {
+  adminPaymentsListQuerySchema,
+  adminRefundBuyerBodySchema,
+  adminRefundGroupDeliveryBodySchema,
+} from "@auction/validators";
 import { asHttpStatus } from "../../lib/http-status.js";
 import { zValidator } from "../../lib/z-validator.js";
 import {
@@ -6,7 +10,11 @@ import {
   requirePaymentManualReviewWrite,
 } from "../../middleware/require-capability.js";
 import type { AdminPaymentsRoutesContainer } from "../../services/interfaces/admin-routes/admin-route-container-slices.js";
-import { adminPaymentIdParamSchema, unappliedMoneyKeyParamSchema } from "./_schemas.js";
+import {
+  adminGroupDeliveryParamSchema,
+  adminPaymentIdParamSchema,
+  unappliedMoneyKeyParamSchema,
+} from "./_schemas.js";
 import type { AdminHono, AdminStaffMutationGuards } from "./_shared.js";
 
 export function attachAdminPaymentsListRoutes(
@@ -145,6 +153,34 @@ export function attachAdminPaymentsManualReviewRoutes(
       );
       return result.match(
         () => c.json({ ok: true }),
+        (error) => c.json({ error: error.message }, asHttpStatus(error.status)),
+      );
+    },
+  );
+
+  // Finance refunds the courier part of a combined payment on its own. The refund names the
+  // quote, so the refund webhook moves no invoice and claws nothing back from a seller.
+  finance.post(
+    "/payment-groups/:groupId/deliveries/:quoteId/refund",
+    requirePaymentManualReviewWrite,
+    guards.requireStepUp,
+    guards.idempotent("payments.refund-group-delivery"),
+    zValidator("param", adminGroupDeliveryParamSchema),
+    zValidator("json", adminRefundGroupDeliveryBodySchema),
+    async (c) => {
+      const { groupId, quoteId } = c.req.valid("param");
+      const { reason, amountPence } = c.req.valid("json");
+      const result = await container.admin.payments.refundGroupDelivery({
+        actorUserId: c.get("userId") as string,
+        role: c.get("userRole") ?? "client",
+        staffRoles: c.get("userStaffRoles"),
+        paymentGroupId: groupId,
+        deliveryQuoteId: quoteId,
+        ...(amountPence !== undefined ? { amountPence } : {}),
+        reason,
+      });
+      return result.match(
+        (data) => c.json({ data }),
         (error) => c.json({ error: error.message }, asHttpStatus(error.status)),
       );
     },

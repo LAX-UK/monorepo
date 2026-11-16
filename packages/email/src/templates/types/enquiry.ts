@@ -25,6 +25,8 @@ type EnquiryTemplateVars = {
     privacyUrl: string;
     /** Where the sender writes to add something, quoting the reference. */
     contactEmail: string;
+    /** This thread's reply address, when replies by email are on: the sender's answer is filed on the enquiry. */
+    replyTo?: string | undefined;
   };
 };
 

@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import pg from "pg";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { buildPgConnectionConfig } from "./ssl.js";
+import { laterRollbackSql } from "./testing/later-rollbacks.js";
 
 const migrationUrl = process.env.MIGRATION_TEST_DATABASE_URL;
 const drizzleDir = join(dirname(fileURLToPath(import.meta.url)), "../drizzle");
@@ -77,6 +78,8 @@ describe.skipIf(!migrationUrl)("migration 0261 payment groups", { timeout: 30_00
   it("rolls back to one charge per payment and drops the groups", async () => {
     await client.query(read("0261_payment_groups.sql"));
     // Later migrations that depend on the group table go first, as a real rollback would.
+    // Every later rollback, newest first, from the journal; each one's own BEGIN/COMMIT is stripped.
+    await client.query(laterRollbackSql(325));
     await client.query(read("0325_rollback.sql"));
     await client.query(read("0261_rollback.sql"));
     expect(await chargeIndexDefinition()).not.toContain("payment_group_id");

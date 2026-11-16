@@ -622,8 +622,9 @@ independent and heavy.**
 - **Why:** staff paste IDs into Stripe, email and Slack dozens of times a day.
 - **Check:** every ID on a record page has a copy button. Pressing it announces "Order ID
   copied".
-- **Kit:** `PARTIAL`. `KeyValueList.copyValue` exists. There is no standalone `CopyButton` or
-  `CopyableId` for headers and table cells.
+- **Kit:** `MET`. `CopyButton` (24px, ✓ for 1.5s, a polite live region saying "Order ID copied")
+  and `CopyableId` (a shortened reference with its button) are exported for headers, cells and
+  menus. `KeyValueList.copyValue` uses the same button.
 - **Sources:** [stripe-security] [vercel-geist]
 
 **PRD-5. The activity timeline is complete, newest first, and attributes every event.**
@@ -1521,7 +1522,7 @@ everyone's.**
   on a record, and with `⌘C` on a focused row.
 - **Check:** copy the same order ID four ways and paste it each time. The four results are
   identical.
-- **Kit:** `PARTIAL` (`KeyValueList` only).
+- **Kit:** `PARTIAL`. The copy button is in the kit (`CopyButton`); the row menu, ⌘K and ⌘C paths are still per app.
 - **Sources:** [stripe-security]
 
 ---
@@ -1635,7 +1636,7 @@ records how. **Open** items are still to build.
 3. **Open.** **Filter set completion.** `FilterSheet` holds checklist, single-select and date sections; an amount-range section is still
    to come. (TBL-5)
 4. **Done.** **Page size** (25, 50, 100) in the Display menu, read with `parseStaffPageSize`. (TBL-10)
-5. **Open.** **`CopyButton` / `CopyableId` exported** for headers, cells and menus. (PRD-4, PRD-K4)
+5. **Done.** **`CopyButton` / `CopyableId` exported** for headers, cells and menus. (PRD-4, PRD-K4)
 6. **Done.** **Motion tokens:** `--lax-motion-*` and `--lax-ease-*`, with the staff durations
    under `[data-staff-ui]`. Components move onto them in the motion PRs. (CRF-14)
 7. **Open.** **Type.** Restrict `text-staff-2xs` to digits and `kbd`. Add a 14/22 `prose` style for

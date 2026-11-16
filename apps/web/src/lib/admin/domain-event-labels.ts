@@ -181,6 +181,8 @@ const LABELS: Record<string, string> = {
   "payment_group.settled": "Payment for several invoices sent to the books",
   "payment_group.released": "Several invoices handed back to pay separately",
   "payment_group.settlement_refused": "Payment for several invoices needs reconciling",
+  "payment_group.delivery_refund_requested":
+    "Staff asked to refund the courier charge on a combined payment",
   "payment_group.delivery_refunded": "Courier charge on a combined payment refunded",
   "payment_group.refund_unattributed": "Refund on a combined payment needs an invoice",
   "payment_group.refund_reversed": "Failed refund taken back from a combined payment",
@@ -202,6 +204,8 @@ const LABELS: Record<string, string> = {
   "marketing_enquiry.status_changed": "Enquiry status changed",
   "marketing_enquiry.converted": "Enquiry converted",
   "marketing_enquiry.attachment_viewed": "Enquiry attachment viewed",
+  "marketing_enquiry.customer_replied": "Enquiry reply received by email",
+  "marketing_enquiry.inbound_quarantined": "Inbound enquiry email held for review",
   "marketing_enquiry.erased": "Enquiries erased",
   "email.block_lifted": "Email block lifted",
   "enquiry_routing.changed": "Enquiry routing changed",

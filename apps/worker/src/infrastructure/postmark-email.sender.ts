@@ -107,7 +107,13 @@ export class PostmarkEmailSender implements IEmailSender {
         ContentID: null,
       }));
     }
-    if (this.opts.replyTo) message.ReplyTo = this.opts.replyTo;
+    // A thread's own reply address (enquiry replies by email) wins over the sender-wide Reply-To.
+    const threadReplyTo = stringVar(payload.vars, "replyTo");
+    if (threadReplyTo && /^[^\s<>,;]+@[^\s<>,;]+$/.test(threadReplyTo)) {
+      message.ReplyTo = threadReplyTo;
+    } else if (this.opts.replyTo) {
+      message.ReplyTo = this.opts.replyTo;
+    }
     // The address a mail client POSTs to for one-click unsubscribe; by default the link in the body.
     const oneClickUrl = stringVar(payload.vars, "listUnsubscribeUrl") ?? unsubscribeUrl;
     if (oneClickUrl) {

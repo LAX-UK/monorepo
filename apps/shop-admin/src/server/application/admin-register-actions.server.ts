@@ -1,8 +1,10 @@
 "use server";
 
 import type {
+  AdminRegisterReopenResult,
   AdminRegisterResolveBody,
   AdminRegisterResolveResult,
+  AdminSoldAttentionDealtWithResult,
   AdminSoldAttentionOverrideResult,
 } from "@auction/shop-contracts";
 import { forwardAdminJsonMutation } from "./forward-admin-mutation";
@@ -29,6 +31,30 @@ export async function markNotSold(input: {
 }) {
   return forwardAdminJsonMutation<AdminSoldAttentionOverrideResult>({
     bffPath: `artwork-register/attention/${encodeURIComponent(input.attentionId)}/not-sold`,
+    method: "POST",
+    jsonBody: { reason: input.reason.trim() },
+    ...(input.idempotencyKey ? { idempotencyKey: input.idempotencyKey } : {}),
+  });
+}
+
+/** "Dealt with": closes the item for a work sold in the gallery. Needs a recent sign-in. */
+export async function markDealtWith(input: { attentionId: string; idempotencyKey?: string }) {
+  return forwardAdminJsonMutation<AdminSoldAttentionDealtWithResult>({
+    bffPath: `artwork-register/attention/${encodeURIComponent(input.attentionId)}/dealt-with`,
+    method: "POST",
+    jsonBody: {},
+    ...(input.idempotencyKey ? { idempotencyKey: input.idempotencyKey } : {}),
+  });
+}
+
+/** Reopen a sale made in the gallery. Administrators only; shop-api checks the capability. */
+export async function reopenGallerySale(input: {
+  registerId: string;
+  reason: string;
+  idempotencyKey?: string;
+}) {
+  return forwardAdminJsonMutation<AdminRegisterReopenResult>({
+    bffPath: `artwork-register/${encodeURIComponent(input.registerId)}/reopen-sale`,
     method: "POST",
     jsonBody: { reason: input.reason.trim() },
     ...(input.idempotencyKey ? { idempotencyKey: input.idempotencyKey } : {}),

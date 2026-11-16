@@ -25,6 +25,7 @@ describe("the lot fulfilment queue's Collection read", () => {
         summarizeForAdmin: vi.fn(async () => ({ total: 2 })),
       } as never,
       { findLiveByLots },
+      { findByLots: vi.fn(async () => new Map()) },
     );
     const page = await service.getPage({ limit: 50, offset: 0 });
     expect(findLiveByLots).toHaveBeenCalledTimes(1);

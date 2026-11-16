@@ -227,10 +227,13 @@
    The tokens are defined in lax-system.css; only the durations differ here, the easings are shared.
    Menus, tooltips, dialogs, their scrims and toasts render in a portal at the end of <body>,
    outside the shell. The staff shell's `data-lax-density="staff"` on the page is the scope that
-   gives them the staff values, so no layer needs to carry the density itself. */
+   gives them the staff values, so no layer needs to carry the density itself. A page view
+   transition (admin navigation) is drawn on the root, outside the shell, so it opts into the same
+   values through `data-view-transition="admin"` (see apps/web view-transition-runtime). */
 [data-staff-ui],
 [data-lax-density="staff"],
-:root:has([data-lax-density="staff"]) :is([data-lax-motion], [data-sonner-toaster]) {
+:root:has([data-lax-density="staff"]) :is([data-lax-motion], [data-sonner-toaster]),
+:root[data-view-transition="admin"] {
   --lax-motion-press: 0ms;
   --lax-motion-hover: 100ms;
   --lax-motion-enter: 150ms;

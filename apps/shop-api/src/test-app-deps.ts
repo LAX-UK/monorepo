@@ -315,6 +315,7 @@ export function createMinimalShopApiTestDeps(
         queue: {
           listOpen: async () => [],
           override: async () => ({ ok: false, reason: "not_found" }),
+          markDealtWith: async () => ({ ok: false, reason: "not_found" }),
         },
         lots: { numbersFor: async () => new Map() },
       }),

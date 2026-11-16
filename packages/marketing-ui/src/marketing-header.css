@@ -1,28 +1,83 @@
-/* F8 — Theme toggle circular reveal via View Transitions API. */
+/*
+ * View transitions, timed by kind from the LAX motion tokens (docs/design/motion.md). A kind is
+ * marked on `<html data-view-transition="...">` only while that transition runs: `theme` (the theme
+ * toggle of LAX Bid, LAX Shop and lax.art, all through the shared `revealThemeFromToggle` in
+ * ./motion/theme-view-transition.ts) and `admin` (the Bid admin router). A page change started by
+ * Bid's page-change helper (apps/web/src/lib/view-transition-runtime.ts) is unmarked: that is the
+ * public page change, the lot image morph. No rule here matches at rest. No path starts a
+ * transition under reduced motion; the rules at the end are the CSS backstop.
+ */
 @supports (view-transition-name: root) {
-  ::view-transition-old(root),
-  ::view-transition-new(root) {
+  /* The transition layer is visual only: it must never swallow a click. */
+  ::view-transition,
+  ::view-transition-group(*),
+  ::view-transition-image-pair(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    pointer-events: none;
+  }
+
+  /* Theme switch (F8): circular reveal from the toggle. */
+  :root[data-view-transition="theme"]::view-transition-old(root),
+  :root[data-view-transition="theme"]::view-transition-new(root) {
     animation: none;
     mix-blend-mode: normal;
   }
 
-  ::view-transition-old(root) {
+  :root[data-view-transition="theme"]::view-transition-old(root) {
     z-index: 1;
   }
-  ::view-transition-new(root) {
+  :root[data-view-transition="theme"]::view-transition-new(root) {
     z-index: 2;
     animation: theme-reveal var(--motion-duration-xl, 900ms) var(--motion-ease-emphasize) forwards;
+  }
+
+  /* Public page change (unmarked), the lot image morph: the clicked tile's image grows into the
+     detail hero. The `(*)` selectors also time the root cross-fade of the rest of the page, so the
+     whole page change moves as one. */
+  :root:not([data-view-transition])::view-transition-group(*),
+  :root:not([data-view-transition])::view-transition-old(*),
+  :root:not([data-view-transition])::view-transition-new(*) {
+    animation-duration: var(--lax-motion-morph);
+    animation-timing-function: var(--lax-ease-emphasize);
+  }
+
+  /* Admin navigation: page cross-fade at the staff timing (out quicker than in). */
+  :root[data-view-transition="admin"]::view-transition-old(root) {
+    animation-duration: var(--lax-motion-page-out);
+    animation-timing-function: var(--lax-ease-in);
+  }
+  :root[data-view-transition="admin"]::view-transition-new(root) {
+    animation-duration: var(--lax-motion-page-in);
+    animation-timing-function: var(--lax-ease-out);
+  }
+
+  /* Reduced motion backstop for every kind, marked or not. Reduced motion is resolved as
+     `useReducedMotion` does: `force-allow` keeps motion under the OS setting, and `force-reduce`
+     removes it without one. A `(*)` argument adds no specificity, so the `html` type selector
+     carries the weight: these selectors equal the theme wipe's `:root[...]::view-transition-new(root)`
+     above and come later, so they win. */
+  @media (prefers-reduced-motion: reduce) {
+    html:root:not([data-reduce-motion="force-allow"])::view-transition-group(*),
+    html:root:not([data-reduce-motion="force-allow"])::view-transition-old(*),
+    html:root:not([data-reduce-motion="force-allow"])::view-transition-new(*) {
+      animation: none;
+    }
+  }
+
+  html:root[data-reduce-motion="force-reduce"]::view-transition-group(*),
+  html:root[data-reduce-motion="force-reduce"]::view-transition-old(*),
+  html:root[data-reduce-motion="force-reduce"]::view-transition-new(*) {
+    animation: none;
   }
 }
 
 @keyframes theme-reveal {
   from {
-    clip-path: circle(0 at var(--theme-toggle-x, 100%) var(--theme-toggle-y, 0));
+    clip-path: circle(0 at var(--theme-toggle-at, 100% 0));
   }
   to {
-    clip-path: circle(
-      var(--theme-toggle-radius, 200vmax) at var(--theme-toggle-x, 100%) var(--theme-toggle-y, 0)
-    );
+    clip-path: circle(var(--theme-toggle-radius, 200vmax) at var(--theme-toggle-at, 100% 0));
   }
 }
 

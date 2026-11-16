@@ -218,6 +218,32 @@ export interface IChargeableDeliveryReader {
   ): Promise<ChargeableDeliveryQuote[]>;
 }
 
+/**
+ * A courier quote paid inside a combined payment that has been paid ("paid with invoice"), as
+ * staff see it beside the lot's fulfilment: the courier charge must not be taken from the buyer
+ * again by hand, and a courier refund names this group and quote.
+ */
+export type DeliveryPaidWithInvoice = {
+  lotId: string;
+  paymentGroupId: string;
+  deliveryQuoteId: string;
+  /** The pounds charged for the quote, as a decimal string. */
+  amount: string;
+  /** What the buyer has been refunded for it so far, in pence. */
+  refundedPence: number;
+  /** When the combined payment was paid. */
+  paidAt: Date | null;
+};
+
+export interface IDeliveryPaidWithInvoiceReader {
+  /**
+   * For each lot with a courier quote charged in a paid combined payment, those charges (oldest
+   * first), in one read. Lots with no such charge (none, or one in a payment that is still open or
+   * was let go) are absent.
+   */
+  findByLots(lotIds: readonly string[]): Promise<Map<string, DeliveryPaidWithInvoice[]>>;
+}
+
 /** Facts about invoices that decide whether they can join a "Pay several" payment. */
 export type PaySeveralInvoiceFlags = {
   /** The invoice waits for a finance review (the seller's account is closed). */

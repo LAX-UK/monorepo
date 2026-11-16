@@ -218,6 +218,8 @@ export const EXCEPTION_PATHS: Record<string, Set<string>> = {
     "booksPaymentDate",
     // Set when the payment was reported after a long hold: it may be LAX's own.
     "booksPossiblyLaxOwn",
+    // An invoice refund on a combined payment with courier delivery: payment id and pence.
+    "invoiceRefundKey",
   ]),
   /** How it was closed; a staff note is kept, as a refund's staff reason is. */
   "payment.unapplied_money_resolved": new Set(["dedupeKey", "stripeChargeId", "via", "note"]),
@@ -228,6 +230,8 @@ export const EXCEPTION_PATHS: Record<string, Set<string>> = {
   "payment_group.settled": new Set(["paymentIds", "deliveryQuoteIds"]),
   /** Why the group's checkout ended (cancelled, expired, failed); operational codes only. */
   "payment_group.released": new Set(["reason"]),
+  /** A staff request to refund a combined payment's courier charge, with the staff reason. */
+  "payment_group.delivery_refund_requested": new Set(["staffReason"]),
   /** The repair took failed refunds back from a courier quote's or the unattributed figure. */
   "payment_group.refund_reversed": new Set(["via"]),
   /** Why money received for a group was not applied (an operational code). */
@@ -507,6 +511,16 @@ export const EXCEPTION_PATHS: Record<string, Set<string>> = {
   "marketing_enquiry.converted": new Set(["enquiryId", "intent", "from"]),
   /** Which file of the enquiry staff opened: ids and its kind, never its name or contents. */
   "marketing_enquiry.attachment_viewed": new Set(["enquiryId", "attachmentId", "kind"]),
+  /** A reply the sender emailed: ids, how it was matched and a file count; never the text, address or file names. */
+  "marketing_enquiry.customer_replied": new Set([
+    "enquiryId",
+    "intent",
+    "messageId",
+    "matchedBy",
+    "attachmentCount",
+  ]),
+  /** Inbound mail held back from every thread: the quarantine row's id, the reason and a file count. */
+  "marketing_enquiry.inbound_quarantined": new Set(["quarantineId", "reason", "attachmentCount"]),
   /** Row counts and the reason staff typed; the address that was erased is never recorded. */
   "marketing_enquiry.erased": new Set([
     "enquiries",

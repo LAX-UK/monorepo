@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   type CollectionException,
   type CollectionWeeklyHours,
+  MAX_OPEN_DAY_LOOKAHEAD_DAYS,
   bankHolidayClosures,
   createCollectionCalendar,
   nextOpenDay,
@@ -10,6 +11,7 @@ import {
   workingDayBefore,
 } from "./collection-calendar.js";
 import { DEFAULT_COLLECTION_RULES } from "./collection-rules.js";
+import { addDaysToKey } from "./collection-time.js";
 
 const at = (iso: string) => new Date(iso);
 
@@ -365,6 +367,15 @@ describe("nextOpenDay", () => {
       { ...closure("2026-12-16", "staff"), opensLocal: "10:00", closesLocal: "12:00" },
     ]);
     expect(nextOpenDay(partial, "2026-12-16")).toBe("2026-12-16");
+  });
+
+  it("gives up after the look-ahead, returning the date it was given", () => {
+    const closedLong = calendarOf([closure("2026-06-01", "staff", "2026-12-31")]);
+    expect(nextOpenDay(closedLong, "2026-06-01")).toBe("2026-06-01");
+    // The last day the look-ahead reaches is still found.
+    const lastDay = addDaysToKey("2026-06-01", MAX_OPEN_DAY_LOOKAHEAD_DAYS);
+    const closedUntil = calendarOf([closure("2026-06-01", "staff", addDaysToKey(lastDay, -1))]);
+    expect(nextOpenDay(closedUntil, "2026-06-01")).toBe(lastDay);
   });
 
   it("returns the date unchanged when the place is never open", () => {

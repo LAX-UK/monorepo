@@ -54,6 +54,12 @@ export const DANGEROUS_STAFF_ACTIONS: readonly DangerousStaffAction[] = [
     "/admin/payments/:id/refund-blocked-capture",
   ),
   a("refund", "payment.refund", "POST", "/payments/:id/refund", "route"),
+  a(
+    "refund",
+    "payment-group.refund-delivery",
+    "POST",
+    "/admin/payment-groups/:groupId/deliveries/:quoteId/refund",
+  ),
   a("payout_release", "payment.capture", "POST", "/payments/:id/capture", "route"),
   a(
     "payout_release",

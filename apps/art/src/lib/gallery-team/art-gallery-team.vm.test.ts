@@ -83,4 +83,12 @@ describe("buildArtGalleryTeam", () => {
     expect(details[0]).toMatchObject({ kind: "phone", text: GALLERY_CONTACT.phone });
     expect(details[1]).toMatchObject({ kind: "email", text: GALLERY_CONTACT.email });
   });
+
+  it("takes the default opening hours from the gallery's published hours (Mon to Fri, 10:00 to 19:00)", () => {
+    const { details } = buildArtGalleryTeam({ context: "contact" });
+    expect(details.at(-1)).toEqual({
+      kind: "hours",
+      text: "Monday to Friday, 10:00 to 19:00. Closed at weekends.",
+    });
+  });
 });

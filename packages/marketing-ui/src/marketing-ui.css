@@ -1,6 +1,19 @@
 @import "./legal/legal.css";
 @import "./bottom-bar/marketing-bottom-bar.css";
 
+/* Chip treatment shared by MarketingFilterChip (applied) and MarketingFaqPills (chosen): the
+   product accent as the edge on a light tint of it. Product accent is set per app. */
+.marketing-chip-active,
+:checked + .marketing-chip-choice {
+  border-color: var(--color-product-accent, currentColor);
+  background-color: color-mix(in srgb, var(--color-product-accent, currentColor) 8%, transparent);
+}
+
+.marketing-chip-active:hover,
+:checked + .marketing-chip-choice:hover {
+  background-color: color-mix(in srgb, var(--color-product-accent, currentColor) 14%, transparent);
+}
+
 @keyframes revealWipeIn {
   from {
     clip-path: inset(0 100% 0 0);

@@ -63,10 +63,10 @@ describe("AdminUserProfilePanel", () => {
     renderPanel(user);
 
     expect(screen.getByText("user_1")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Copy user id" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Copy user ID" })).toBeInTheDocument();
     expect(screen.getByText("veriff-session-1")).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: "Copy current identity session id" }),
+      screen.getByRole("button", { name: "Copy current identity session ID" }),
     ).toBeInTheDocument();
   });
 

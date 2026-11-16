@@ -285,6 +285,9 @@ export {
   AdminRegisterConflictParamsSchema,
   AdminRegisterConflictSchema,
   AdminRegisterDetailSchema,
+  ADMIN_REGISTER_REOPEN_REASON_MAX_LENGTH,
+  AdminRegisterReopenBodySchema,
+  AdminRegisterReopenResultSchema,
   AdminRegisterEventSchema,
   AdminRegisterLastCheckSchema,
   AdminRegisterNewListSchema,
@@ -301,6 +304,8 @@ export {
   type AdminRegisterConflictItem,
   type AdminRegisterConflictList,
   type AdminRegisterDetail,
+  type AdminRegisterReopenBody,
+  type AdminRegisterReopenResult,
   type AdminRegisterEvent,
   type AdminRegisterGap,
   type AdminRegisterLastCheck,
@@ -1261,6 +1266,7 @@ export {
 } from "./delivery-quote-staff.js";
 export {
   ADMIN_SOLD_ATTENTION_REASON_MAX_LENGTH,
+  AdminSoldAttentionDealtWithResultSchema,
   AdminSoldAttentionItemSchema,
   AdminSoldAttentionListSchema,
   AdminSoldAttentionOverrideBodySchema,
@@ -1270,6 +1276,7 @@ export {
   type AdminSoldAttentionList,
   type AdminSoldAttentionOverrideBody,
   type AdminSoldAttentionOverrideResult,
+  type AdminSoldAttentionDealtWithResult,
 } from "./admin-sold-attention.js";
 export {
   AdminHomeCoverIssueSchema,

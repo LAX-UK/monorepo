@@ -20,6 +20,7 @@ export function chargeRefundOf(refund: Stripe.Refund): ChargeRefund {
     status: refund.status ?? "",
     paymentId: refund.metadata?.paymentId ?? null,
     deliveryQuoteId: refund.metadata?.deliveryQuoteId ?? null,
+    deliveryRefundId: refund.metadata?.deliveryRefundId ?? null,
   };
 }
 
