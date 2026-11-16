@@ -5,20 +5,15 @@ import { type CSSProperties, type ReactNode, useCallback, useState } from "react
 import { COVER_WIDE_FROM_PX, planCoverBoxes } from "./cover-crop.js";
 import type { CoverPhotoMedia, CoverPlateMedia, CoverSrcSetFor } from "./cover-types.js";
 
-/**
- * The fade from the blurred preview to the sharp picture: the kit class
- * (packages/ui/src/lax/image-fade.css) holds back and fades in only a lazy picture, so the first
- * screen's (eager) picture is never hidden. `opacity-100` marks a picture that is drawn.
- */
+/** The fade from the blurred preview to the sharp picture (kit, lazy pictures only). */
 const FADE_CLASS = "lax-image-fade";
 
 type LoadPhase = "ssr" | "loading" | "loaded";
 
 /**
  * Tracks one image's load for the fade. The picture is drawn from the server's HTML as it is, so
- * the largest element is never held back. Only a lazy picture still downloading when the page
- * wakes up is hidden and faded in over its preview (the first screen's eager picture never is);
- * one that already finished is left alone, and one
+ * the largest element is never held back. Only a picture still downloading when the page wakes
+ * up is hidden and faded in over its preview; one that already finished is left alone, and one
  * that finished broken is reported so the next source takes over.
  */
 function useImageLoad(onError: () => void) {
