@@ -49,6 +49,18 @@ describe("the storage terms a visitor reads", () => {
     expect(findTermsInForce).toHaveBeenCalledWith("v1", "2026-11-15");
   });
 
+  it("reads the terms in force when an open sale closes, not today's (ST9)", async () => {
+    findTermsInForce.mockResolvedValue(RECORD);
+    // A sale that has already closed falls back to today; a later close day is read in London time
+    // (23:30 UTC on 1 Jul 2027 is already 2 Jul in BST).
+    await storageTermsTextForVenue(terms, "v1", NOW, new Date("2026-06-30T23:30:00Z"));
+    expect(findTermsInForce).toHaveBeenLastCalledWith("v1", "2026-11-15");
+    await storageTermsTextForVenue(terms, "v1", NOW, new Date("2026-11-30T23:30:00Z"));
+    expect(findTermsInForce).toHaveBeenLastCalledWith("v1", "2026-11-30");
+    await storageTermsTextForVenue(terms, "v1", NOW, new Date("2027-07-01T23:30:00Z"));
+    expect(findTermsInForce).toHaveBeenLastCalledWith("v1", "2027-07-02");
+  });
+
   it("is null when the place has set none", async () => {
     findTermsInForce.mockResolvedValue(null);
     await expect(storageTermsTextForVenue(terms, "v1", NOW)).resolves.toBeNull();

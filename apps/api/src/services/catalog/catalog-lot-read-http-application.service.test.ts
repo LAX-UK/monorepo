@@ -262,9 +262,13 @@ describe("storage terms on the public lot read", () => {
       storageTerms: { findTermsInForce },
       lotService: { listLotsForPublicApi: vi.fn(), getById: vi.fn().mockResolvedValue(lot) },
       saleService: {
-        getByIdForPublicCatalog: vi
-          .fn()
-          .mockResolvedValue({ id: "s1", status: "active", venueId, buyerPremiumTiers: null }),
+        getByIdForPublicCatalog: vi.fn().mockResolvedValue({
+          id: "s1",
+          status: "active",
+          venueId,
+          buyerPremiumTiers: null,
+          endTime: new Date("2026-12-31T10:00:00Z"),
+        }),
       } as never,
       cachedCatalogueListService: new CachedCatalogueListService(createMemoryCache(), 60),
       now: () => new Date("2026-11-01T12:00:00Z"),
@@ -288,7 +292,8 @@ describe("storage terms on the public lot read", () => {
     expect((await detail("venue-1")).data.storageTerms).toContain(
       "Storage is free for 14 days after your payment clears.",
     );
-    expect(findTermsInForce).toHaveBeenCalledWith("venue-1", "2026-11-01");
+    // The lot is sold under the terms in force when its sale closes (ST9), not today's.
+    expect(findTermsInForce).toHaveBeenCalledWith("venue-1", "2026-12-31");
   });
 
   it("carries none when the sale has no venue or the place has set none", async () => {

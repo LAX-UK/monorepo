@@ -258,7 +258,7 @@ export class CatalogLotReadHttpApplicationService implements ICatalogLotReadHttp
     const sold = (await invoicedSalePricesOf(this.invoicedSalePrices, [masked])).get(masked.id);
     const checkoutPricing = sold ? checkoutPricingFromInvoicedSale(live, sold) : live;
     const visible = withSaleTimeZone({ ...masked, checkoutPricing }, sale);
-    const storageTerms = await this.storageTermsOf(sale?.venueId ?? null);
+    const storageTerms = await this.storageTermsOf(sale?.venueId ?? null, sale?.endTime ?? null);
     const bidding = buildLotDetailBiddingView({
       lot: visible,
       sale,
@@ -280,12 +280,15 @@ export class CatalogLotReadHttpApplicationService implements ICatalogLotReadHttp
     };
   }
 
-  /** The terms sentence for the place the lot waits at; a failed read leaves the page without it. */
-  private async storageTermsOf(venueId: string | null): Promise<string | null> {
+  /** The terms sentence for the place the lot waits at, as in force when its sale closes; a failed read leaves the page without it. */
+  private async storageTermsOf(
+    venueId: string | null,
+    closesAt: Date | null,
+  ): Promise<string | null> {
     if (!venueId) return null;
     try {
       return this.storageTerms
-        ? await storageTermsTextForVenue(this.storageTerms, venueId, this.now())
+        ? await storageTermsTextForVenue(this.storageTerms, venueId, this.now(), closesAt)
         : null;
     } catch {
       return null;

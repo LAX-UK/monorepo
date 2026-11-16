@@ -25,13 +25,19 @@ export function storageTermsOfRecord(record: StorageTermsRecord): StorageTerms {
   };
 }
 
-/** What a buyer reads about the terms in force at one place today; `null` when none are set. */
+/**
+ * What a buyer reads about the terms in force at one place; `null` when none are set. `closesAt` is
+ * when an open sale ends: a lot is sold under the terms in force on that London day (ST9), so a
+ * scheduled change that starts before then is the one the page states. Without it, today's.
+ */
 export async function storageTermsTextForVenue(
   terms: StorageTermsInForce,
   venueId: string,
   now: Date,
+  closesAt?: Date | null,
 ): Promise<string | null> {
-  const record = await terms.findTermsInForce(venueId, londonDateKey(now));
+  const day = londonDateKey(closesAt && closesAt > now ? closesAt : now);
+  const record = await terms.findTermsInForce(venueId, day);
   return record ? formatStorageTerms(storageTermsOfRecord(record)) : null;
 }
 
