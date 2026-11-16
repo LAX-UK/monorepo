@@ -733,6 +733,60 @@ describe("announcing and the daily digest", () => {
       expect(notices.written).toHaveLength(1);
     });
 
+    it("keeps a topic's matches for the app when its email is off, and sends no email", async () => {
+      const h = createEngineHarness();
+      const notices = new RecordingNotices();
+      await accountWithMatch(h);
+      const [row] = [...h.stores.subscribersById.values()];
+      await h.stores.setEmail(row?.id ?? "", "bid.new_sales", false, "person", h.now);
+      h.inAppTopics.set("u1", ["bid.new_sales"]);
+      const stats = await h.digestRun("bid", notices).run("on");
+      expect(stats).toMatchObject({ sent: 0, noticeOnly: 1 });
+      expect(h.mailer.digests).toHaveLength(0);
+      expect(notices.written).toHaveLength(1);
+    });
+
+    it("drops the match when the person turned off the email and the app", async () => {
+      const h = createEngineHarness();
+      const notices = new RecordingNotices();
+      await accountWithMatch(h);
+      const [row] = [...h.stores.subscribersById.values()];
+      await h.stores.setEmail(row?.id ?? "", "bid.new_sales", false, "person", h.now);
+      h.inAppTopics.set("other", ["bid.new_sales"]);
+      const stats = await h.digestRun("bid", notices).run("on");
+      expect(stats).toMatchObject({ sent: 0, noticeOnly: 0, empty: 1 });
+      expect(notices.written).toHaveLength(0);
+    });
+
+    it("reads the person's switches once per digest", async () => {
+      const h = createEngineHarness();
+      const notices = new RecordingNotices();
+      await accountWithMatch(h);
+      h.inAppTopics.set("u1", ["bid.new_sales"]);
+      await h.digestRun("bid", notices).run("on");
+      expect(h.mailer.digests).toHaveLength(1);
+      expect(notices.written).toHaveLength(1);
+      expect(h.inAppReads.count).toBe(1);
+    });
+
+    it("emails only the email topics while the app also tells another topic", async () => {
+      const h = createEngineHarness();
+      const notices = new RecordingNotices();
+      await accountWithMatch(h);
+      const [row] = [...h.stores.subscribersById.values()];
+      await h.stores.setEmail(row?.id ?? "", "bid.artists", false, "person", h.now);
+      await h.record.announce({
+        topic: "bid.artists",
+        itemKey: "lot:9",
+        snapshot: { ...snapshot, title: "A lot" },
+        announce: true,
+      });
+      h.inAppTopics.set("u1", ["bid.artists"]);
+      await h.digestRun("bid", notices).run("on");
+      expect(h.mailer.digests).toHaveLength(1);
+      expect(h.mailer.digests[0]?.vm.groups.map((g) => g.topic)).toEqual(["bid.new_sales"]);
+    });
+
     it("never holds back the email when the notice fails", async () => {
       const h = createEngineHarness();
       const notices = new RecordingNotices();

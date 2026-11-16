@@ -5,7 +5,13 @@ import { KycNoticeQueue } from "./kyc-notice-queue.js";
 const tx = { name: "decision-transaction" } as unknown as Database;
 const ADDRESS = "ada@example.com";
 
-function setup(user: { email: string; name: string } | null = { email: ADDRESS, name: "Ada" }) {
+function setup(
+  user: { email: string; name: string } | null = { email: ADDRESS, name: "Ada" },
+  off: { email?: boolean; app?: boolean } = {},
+) {
+  const isChannelEnabled = vi.fn(async (_userId: string, _type: string, channel: string) =>
+    channel === "email" ? !off.email : !off.app,
+  );
   const findById = vi.fn(async () => user);
   const createMany = vi.fn(async () => []);
   const enqueueInTransaction = vi.fn(async () => ({ outboxId: "outbox-tx" }));
@@ -19,9 +25,10 @@ function setup(user: { email: string; name: string } | null = { email: ADDRESS, 
       createKycApproved: (userId) => ({ userId, type: "kyc_approved" }) as never,
       createKycDeclined: (userId) => ({ userId, type: "kyc_declined" }) as never,
     },
+    preferences: { isChannelEnabled: isChannelEnabled as never },
     webOrigin: "https://lax.bid/",
   });
-  return { queue, usersFor, notificationsFor, createMany, enqueueInTransaction };
+  return { isChannelEnabled, queue, usersFor, notificationsFor, createMany, enqueueInTransaction };
 }
 
 const approved = {
@@ -30,6 +37,58 @@ const approved = {
   providerSessionId: "session-1",
   providerAttemptId: "attempt-1",
 };
+
+describe("KycNoticeQueue preferences", () => {
+  it("asks only for the app switch, by the notice's type", async () => {
+    const { queue, isChannelEnabled } = setup();
+    await queue.queueOutcome(tx, { ...approved, outcome: "declined" });
+    expect(isChannelEnabled).toHaveBeenCalledWith("u1", "kyc_declined", "in_app");
+    expect(isChannelEnabled).not.toHaveBeenCalledWith("u1", "kyc_declined", "email");
+  });
+
+  it.each(["approved", "declined"] as const)(
+    "always emails the %s result: it is transactional, whatever the switches say",
+    async (outcome) => {
+      const { queue, createMany, enqueueInTransaction } = setup(undefined, {
+        email: true,
+        app: true,
+      });
+      await queue.queueOutcome(tx, { ...approved, outcome });
+      expect(enqueueInTransaction).toHaveBeenCalledTimes(1);
+      expect(enqueueInTransaction).toHaveBeenCalledWith(
+        tx,
+        expect.objectContaining({ template: `kyc-${outcome}`, category: "transactional" }),
+      );
+      expect(createMany).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(["approved", "declined"] as const)(
+    "sends the email and the app notice for %s with the app switch on",
+    async (outcome) => {
+      const { queue, createMany, enqueueInTransaction } = setup();
+      await queue.queueOutcome(tx, { ...approved, outcome });
+      expect(enqueueInTransaction).toHaveBeenCalledTimes(1);
+      expect(createMany).toHaveBeenCalledTimes(1);
+    },
+  );
+
+  it("never gates the request to send documents again: it waits for the person to act", async () => {
+    const { queue, createMany, enqueueInTransaction, isChannelEnabled } = setup(undefined, {
+      email: true,
+      app: true,
+    });
+    await queue.queueResubmission(tx, {
+      userId: "u1",
+      providerSessionId: "session-1",
+      providerAttemptId: null,
+      feedback: { headline: "We need a clearer photo", reasonCode: "document_unreadable" },
+    } as never);
+    expect(isChannelEnabled).not.toHaveBeenCalled();
+    expect(enqueueInTransaction).toHaveBeenCalledTimes(1);
+    expect(createMany).toHaveBeenCalledTimes(1);
+  });
+});
 
 describe("KycNoticeQueue", () => {
   it("queues the approval email and the in-app notice in the decision's transaction", async () => {

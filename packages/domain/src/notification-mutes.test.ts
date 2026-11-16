@@ -29,6 +29,8 @@ describe("notifications a mute never silences", () => {
       "staff_role_expired_admin",
       "staff_role_changed",
       "staff_role_changed_admin",
+      "sale_registration_decided",
+      "bidding_limit_changed",
       "access_requested",
       "access_request_decided",
     ]);

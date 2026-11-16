@@ -14,6 +14,11 @@ export type CreateNotificationRow = {
    * means the person's own personal account. Required so every producer decides it.
    */
   legalEntityId: string | null;
+  /**
+   * Set when the same notice may be written twice (an event projector retrying): a second row with
+   * the key is skipped. Include the person, since one event can notify several people.
+   */
+  dedupeKey?: string | undefined;
   /** Ephemeral fields for email/push channels (not stored on `notification` rows). */
   meta?: NotificationPayload["meta"];
 };

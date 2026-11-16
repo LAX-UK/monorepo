@@ -133,6 +133,7 @@ export function buildShopApiSchedulerTasks(input: {
     createStaffAccessTask(input.db, opsAlertEmail),
     createNotifyMeDispatchTask(input.db, {
       notifications,
+      links: alerts.backInStock,
       storefrontOrigins: resolveStorefrontOrigins({
         shopStorefrontUrl: input.env.SHOP_STOREFRONT_URL,
         laxArtPublicUrl: input.env.LAX_ART_PUBLIC_URL,

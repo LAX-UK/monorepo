@@ -2,6 +2,7 @@ import "./contract-formats.js";
 import { type Static, Type } from "@sinclair/typebox";
 import { Value } from "@sinclair/typebox/value";
 import { ShopContractParseError } from "./parse-public.js";
+import { RELEASE_ALERT_TOKEN_PATTERN } from "./release-alerts-public.js";
 
 /**
  * Edition alerts: "email me if this edition is back". A guest gives an email address; a
@@ -64,11 +65,18 @@ export const EditionAlertUnsubscribePreviewSchema = Type.Object(
   { additionalProperties: false },
 );
 
+/** The alert engine's stop token that replaces an old edition alert link. */
+export const EditionAlertEngineLinkSchema = Type.Object(
+  { token: Type.String({ pattern: RELEASE_ALERT_TOKEN_PATTERN }) },
+  { additionalProperties: false },
+);
+
 export const EditionAlertUnsubscribeResponseSchema = Type.Object(
   { stopped: Type.Integer({ minimum: 0 }) },
   { additionalProperties: false },
 );
 
+export type EditionAlertEngineLink = Static<typeof EditionAlertEngineLinkSchema>;
 export type EditionAlert = Static<typeof EditionAlertSchema>;
 export type EditionAlertList = Static<typeof EditionAlertListSchema>;
 export type EditionAlertCancelResponse = Static<typeof EditionAlertCancelResponseSchema>;
@@ -107,6 +115,13 @@ export function parseEditionAlertUnsubscribeResponse(
 ): EditionAlertUnsubscribeResponse {
   if (!Value.Check(EditionAlertUnsubscribeResponseSchema, value)) {
     throw new ShopContractParseError("Invalid edition alert unsubscribe payload");
+  }
+  return value;
+}
+
+export function parseEditionAlertEngineLink(value: unknown): EditionAlertEngineLink {
+  if (!Value.Check(EditionAlertEngineLinkSchema, value)) {
+    throw new ShopContractParseError("Invalid edition alert engine link payload");
   }
   return value;
 }

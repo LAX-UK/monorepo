@@ -1,7 +1,7 @@
 import type { Database } from "@auction/db";
 import { notification } from "@auction/db/schema";
 import type { UserNotification } from "@auction/types";
-import type { InferSelectModel } from "drizzle-orm";
+import { type InferSelectModel, sql } from "drizzle-orm";
 import type {
   CreateNotificationRow,
   INotificationWriteRepository,
@@ -43,8 +43,14 @@ export class DrizzleNotificationWriteRepository implements INotificationWriteRep
           submissionId: r.submissionId ?? null,
           saleId: r.saleId ?? null,
           legalEntityId: r.legalEntityId,
+          dedupeKey: r.dedupeKey ?? null,
         })),
       )
+      // A notice already written under its key is skipped; rows without a key never conflict.
+      .onConflictDoNothing({
+        target: notification.dedupeKey,
+        where: sql`${notification.dedupeKey} IS NOT NULL`,
+      })
       .returning();
     return inserted.map(mapRow);
   }

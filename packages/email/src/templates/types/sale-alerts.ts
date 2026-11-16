@@ -15,6 +15,8 @@ export type AlertDigestItem = {
   /** Times that matter for the item ("Opens", "Closes"), each on the sale's clock and the recipient's. */
   moments?: { label: string; moment: EmailMoment }[];
   imageUrl?: string;
+  /** What the picture shows. With it the picture is a cover, full width; without, a small decorative thumbnail. */
+  imageAlt?: string;
   /** Absolute link to the item. */
   url: string;
 };

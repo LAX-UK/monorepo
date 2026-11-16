@@ -28,6 +28,19 @@ describe("lax.art email alert links", () => {
     );
   });
 
+  it("reads a preview that names what the link stops, and one from a shop-api without it", async () => {
+    respond(200, { maskedEmail: "c•••@example.com", active: true, topic: null });
+    expect(await previewAlertStop(TOKEN)).toEqual({
+      status: "ok",
+      preview: { maskedEmail: "c•••@example.com", active: true, topic: null },
+    });
+    respond(200, { maskedEmail: "c•••@example.com", active: false });
+    expect(await previewAlertStop(TOKEN)).toEqual({
+      status: "ok",
+      preview: { maskedEmail: "c•••@example.com", active: false },
+    });
+  });
+
   it("calls a malformed token invalid without asking the API", async () => {
     const fetchMock = respond(200);
     expect(await previewAlertStop("short")).toEqual({ status: "invalid" });

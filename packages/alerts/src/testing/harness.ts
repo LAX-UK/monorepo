@@ -4,6 +4,7 @@ import { PreferencesService } from "../application/preferences.service.js";
 import { RecordMatchService } from "../application/record-match.service.js";
 import { StopService } from "../application/stop.service.js";
 import { SubscribeService } from "../application/subscribe.service.js";
+import type { AlertTopic } from "../domain/products.js";
 import { AlertLinkCodec } from "../links/codec.js";
 import type {
   AlertMailer,
@@ -12,6 +13,7 @@ import type {
   DigestMessage,
   DigestNoticeInput,
   DigestNoticeWriter,
+  InAppTopicLookup,
   MatchValidator,
   SubscriptionConfirmedHook,
   VerifiedAddressLookup,
@@ -70,6 +72,16 @@ export function createEngineHarness(
   const accounts = new Map<string, { email: string; verified: boolean }>();
   const stale = new Map<string, string>();
   const addresses: VerifiedAddressLookup = { find: async (id) => accounts.get(id) ?? null };
+  /** The topics each account keeps on in the app, by subject; absent means none. */
+  const inAppTopics = new Map<string, AlertTopic[]>();
+  /** How many times the digest asked for a person's app switches. */
+  const inAppReads = { count: 0 };
+  const inApp: InAppTopicLookup = {
+    topicsOn: async (id) => {
+      inAppReads.count += 1;
+      return inAppTopics.get(id) ?? [];
+    },
+  };
   const validator: MatchValidator = {
     staleMatches: async (matches) =>
       new Map(
@@ -95,6 +107,8 @@ export function createEngineHarness(
     codec,
     accounts,
     stale,
+    inAppTopics,
+    inAppReads,
     subscribe,
     confirm: new ConfirmService({
       ...common,
@@ -128,6 +142,7 @@ export function createEngineHarness(
         urls: testUrls,
         clock,
         log,
+        ...(inAppTopics.size > 0 ? { inApp } : {}),
         ...(notices ? { notices } : {}),
       }),
     set now(value: Date) {

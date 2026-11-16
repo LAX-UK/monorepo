@@ -11,6 +11,7 @@ import {
 import { and, eq } from "drizzle-orm";
 import pg from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { createTestBackInStockLinks } from "../test-support/back-in-stock-test-links.js";
 import { createPublishedArtworkImportWriter } from "../test-support/shop-fixtures.js";
 import { expireShopCheckoutSession } from "./drizzle-payment-event.processor.js";
 import { createDrizzleSaleAuthorityWriter } from "./drizzle-sale-authority.writer.js";
@@ -174,13 +175,16 @@ describe.skipIf(!ownerUrl || !shopUrl)("shop scheduler integration", () => {
 
     const now = new Date();
     const storefrontOrigins = { shop: "http://localhost:3020", art: "http://localhost:3050" };
+    const { links } = createTestBackInStockLinks(db);
     await dispatchShopNotifyMeEmails(db, {
       notifications,
+      links,
       storefrontOrigins,
       now,
     });
     await dispatchShopNotifyMeEmails(db, {
       notifications,
+      links,
       storefrontOrigins,
       now,
     });
@@ -190,9 +194,10 @@ describe.skipIf(!ownerUrl || !shopUrl)("shop scheduler integration", () => {
       .from(shopArtworkInterest)
       .where(eq(shopArtworkInterest.id, interestRow.id));
     expect(after?.notifiedAt).not.toBeNull();
-    // The address written to is recorded, so the email's unsubscribe link covers it.
+    // The address written to is recorded, so a stop reaches every alert waiting for it. The email's
+    // stop link is the alert engine's, so the request keeps no link token of its own.
     expect(after?.contactEmail).toBe(`notify-${suffix}@example.com`);
-    expect(after?.unsubscribeTokenHash).toMatch(/^[0-9a-f]{64}$/);
+    expect(after?.unsubscribeTokenHash).toBeNull();
 
     const outbox = await db
       .select()
@@ -202,7 +207,7 @@ describe.skipIf(!ownerUrl || !shopUrl)("shop scheduler integration", () => {
     const vars = outbox[0]?.vars as Record<string, string>;
     expect(vars.artistName).toBe("Notify Artist");
     expect(vars.unsubscribeUrl).toMatch(
-      /^http:\/\/localhost:3020\/alerts\/unsubscribe\?token=[A-Za-z0-9_-]{43}$/,
+      /^http:\/\/localhost:3020\/release-alerts\/unsubscribe\?token=[A-Za-z0-9_-]+\.[A-Za-z0-9_-]{43}$/,
     );
   });
 });

@@ -115,6 +115,7 @@ export {
   whatsappPreferenceKey,
 } from "./notification-preference-keys.js";
 export { MuteAwareNotificationWriter } from "./mute-aware-notification-writer.js";
+export { PreferenceAwareNotificationWriter } from "./preference-aware-notification-writer.js";
 
 export {
   EnsurePersonalLegalEntityService,

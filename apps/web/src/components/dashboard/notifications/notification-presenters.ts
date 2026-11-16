@@ -96,6 +96,12 @@ export function notificationTypePresenter(type: string): NotificationPresentatio
   if (type === "kyc_declined") {
     return { label: "Identity", Icon: ShieldAlert, tone: "warn" };
   }
+  if (type === "sale_registration_decided") {
+    return { label: "Registration", Icon: Gavel, tone: "info" };
+  }
+  if (type === "bidding_limit_changed") {
+    return { label: "Bidding limit", Icon: Gavel, tone: "neutral" };
+  }
   if (type === "sale_cancelled") {
     return { label: "Sale cancelled", Icon: XCircle, tone: "neutral" };
   }

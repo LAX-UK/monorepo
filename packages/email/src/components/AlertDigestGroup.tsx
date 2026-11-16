@@ -25,7 +25,16 @@ export function AlertDigestGroup({
           {sub.criteria ? <Text style={criteria}>{sub.criteria}</Text> : null}
           {sub.items.map((item) => (
             <Section key={item.url} style={itemBox}>
-              {item.imageUrl ? (
+              {item.imageUrl && item.imageAlt ? (
+                <Link href={item.url} style={coverLink}>
+                  <Img
+                    alt={item.imageAlt}
+                    src={item.imageUrl}
+                    style={cover}
+                    width={COVER_WIDTH_PX}
+                  />
+                </Link>
+              ) : item.imageUrl ? (
                 <Img alt="" height={72} src={item.imageUrl} style={thumb} width={72} />
               ) : null}
               <Link href={item.url} style={itemTitle}>
@@ -53,6 +62,30 @@ export function AlertDigestGroup({
   );
 }
 
+/**
+ * The cover's width: the inside of the email's card (600, less its border and 32 padding each
+ * side), less the cover's own 1px border each side.
+ */
+const COVER_WIDTH_PX = 532;
+
+/**
+ * A cover is a link to the item, scales down on narrow screens, and sits on a paper-coloured
+ * block so a picture that fails to load, or is darkened by a mail app's dark mode, still reads as
+ * a framed picture with its alt text rather than a hole.
+ */
+const coverLink = { display: "block", margin: "0 0 10px", textDecoration: "none" };
+const cover = {
+  backgroundColor: COLORS.paper,
+  border: `1px solid ${COLORS.border}`,
+  borderRadius: "4px",
+  color: COLORS.textSecondary,
+  display: "block",
+  fontFamily: FONT_STACK_BODY,
+  fontSize: "13px",
+  height: "auto",
+  maxWidth: "100%",
+  width: `${COVER_WIDTH_PX}px`,
+};
 const wrap = { margin: "8px 0 20px" };
 const heading = {
   color: COLORS.ink,
