@@ -49,6 +49,8 @@ export const saveCollectionSettingsBodySchema = z
     /**
      * Free storage moved to the Storage tab (versioned storage terms). A web release that still
      * sends it is accepted and the value ignored.
+     * TODO(storage-terms PR 4): remove this and `storageChargePence` once the web release without
+     * them is live (docs/design/storage-terms.md, "Until the buyer pages move").
      */
     freeStorageDays: z.number().int().min(0).max(MAX_FREE_STORAGE_DAYS).nullable().optional(),
     /** The weekly charge was dropped; a web release that still sends it is accepted and the value ignored. */
