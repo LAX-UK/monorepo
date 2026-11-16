@@ -1,163 +1,162 @@
 Verdict: FIX FIRST
 
-# Review: PR #1490, "Staff tools: audit polish (labels, buttons, checkboxes)"
+# Final recheck: PR #1490, "Staff tools: audit polish (labels, buttons, checkboxes)"
 
-Reviewed head `d94605e4` (2 commits on base `5569ca0e`) against `docs/design/staff-design-standard.md`
-and current `main` (`aef61e26`). This was a review only. The PR branch was not changed.
-
-**Audit source.** The repository has no `STAFF-AUDIT` document and no `GAP-48` entry. I searched the
-working tree, all commit messages and every ref name. So I judged each finding against the
-standard's rules: CRF-2 (buttons), CRF-6 (choice controls), CRF-7 (status and enum labels), and the
-FRM, TBL and DSH rules. I did not rely on the PR description.
+Reviewed head `6bde5bd3` (5 commits, merge of `aef61e26` included) against the previous review on this
+branch and the PR body's "Changes after review". Current `main` is `8ed75236`; the PR merges into it
+cleanly (`git merge-tree`). This was a review only. The PR branch was not changed.
 
 ## Blocking
 
-1. **Route JS grows on several routes.** I compared the PR's CI `build` job (run 43813628166, job
-   133120804417) with main's latest CI build (merge-group run 43810475714, job 133111492899, at
-   `aef61e26`). The Next route tables show 47 rows that grow. These are the main ones:
-   - `/admin/payments`: size 32.7 → 33.6 kB, and First Load JS 501 → 502 kB.
-   - `/admin/purchase-problems`: 9.92 → 12.1 kB. `/admin/purchase-problems/[id]`: 9.81 → 11.5 kB.
-   - `/admin`: 23.9 → 24.0 kB. `/admin/lots`, `/admin/lots/[id]` and `/admin/invitations` each
-     grow by about 0.1 kB.
-   - Shop-admin: `/artworks` 8.63 → 8.70 kB, `/from-zoho` 14.9 → 15.0 kB, and about 12 smaller
-     rows.
-   - Route-JS budget table: web `account` 545.2 → 545.3 KB and web `checkout` 471.7 → 471.9 KB
-     (frame 441.0 → 441.1 KB). Art `public` 527.6 → 527.7 KB.
+1. **CI is red: `static-checks` fails on Biome, so `ci-result` fails.** Run 43825286489, job
+   133157565785, step "Biome root check": 13 errors, 3 warnings. Because that step failed, every later
+   step in the job was skipped, including "Route JavaScript budget rule", "Client copy (no system
+   terms)", "Staff UI guardrails", "Admin lib boundaries" and the other lints. They have not run on
+   this head. I reproduced it locally with `npx biome check .` (same 13 errors). Twelve are
+   formatting or import order and `biome check --write` fixes them:
+   - `apps/api/src/services/admin/data-requests/admin-data-requests.service.ts` (import order)
+   - `apps/shop-admin/src/server/domain/artist-application.vm.ts` (format)
+   - `apps/shop-admin/src/server/domain/lookup-options.vm.test.ts` (import order)
+   - `apps/web/src/app/admin/(platform)/enquiries/[reference]/page.tsx` and `.../enquiries/page.tsx`
+     (import order)
+   - `apps/web/src/components/admin/enquiries/enquiry-view.tsx` (format)
+   - `apps/web/src/lib/admin/admin-user-presenters.ts` (format; `KYC_STATUS_PHRASES` line 60 is too long)
+   - `apps/web/src/lib/admin/data-requests/data-request-forms.ts` (import order and format)
+   - `apps/web/src/lib/admin/enquiries/department-label.ts:20` (format)
+   - `apps/web/src/lib/admin/manual-review-presenter.test.ts` (import order and format)
 
-   Some of this is noise, because main now includes #1479. But growth remains when I compare against
-   the PR's own base build (run 43805181198, `5569ca0e`):
-   - `/admin/enquiries/[reference]`: 15.5 → 17.0 kB, First Load JS 339 → 340 kB.
-   - `/admin/payments`: 32.6 → 33.6 kB, First Load JS 501 → 502 kB.
-   - `/admin/submissions/[id]/decision`: 36.7 → 37.2 kB (First Load JS 386 → 387 kB).
-   - `/admin/invitations`: 359 → 360 kB First Load JS.
-   - `/admin/sales/[id]/atg`, `/admin/sales/[id]/setup` and `/admin/sales/new`: +1 kB First Load JS
-     each.
-   - Web `account` and `checkout` frame: 441.0 → 441.1 KB.
+   The thirteenth is a real code fault, not formatting:
+   `apps/web/src/components/admin/enquiries/enquiries-list.tsx:115`
+   (`lint/correctness/useExhaustiveDependencies`). The `columns` `useMemo` now reads the new
+   `departmentNames` prop (line 145), but its dependency list is still `[nameOf, now]` (line 182). In
+   practice `now` changes on each server render, so the stale closure is mostly masked today, but it
+   is a correctness bug and it fails the gate. Fix: add `departmentNames` to the list.
 
-   One cause is clear. `enquiry-view.tsx:11` and `enquiries-list.tsx` are client components, and they
-   now import `departmentLabel` (`enquiry-routing-rows.ts:32`). That function calls `routingRows` and
-   `visibleSellDepartmentGroups` (the marketing sell-department data) and `departmentBySlug`
-   (`@auction/domain`), so all of these now ship in the enquiry record's client bundle. Two fixes
-   would work:
-   - Resolve the department name on the server (in the page or the view model) and pass a string.
-   - Or give the client a small map with only the slugs and labels.
+   After fixing, the skipped lints (including the route-JS budget rule) must run and pass.
 
-   The other growth suggests chunk regrouping: `ChoiceRow` is now imported by more client modules.
-   Re-check the tables after rebasing on main. The rule is no growth on any route.
+2. **Route JS still grows on many routes against main's own CI builds.** Requirement: equal or lower
+   than main on every route. I parsed every Next route table in the PR's `build` job (run
+   43825286489, job 133158256062) and compared them with:
+   - main at the PR base `aef61e26` (merge-group run 43810475714, job 133111492899), a full build;
+   - main's latest build that rebuilt web and shop-admin, `f1e70f47` (run 43819811178, job
+     133140258965). Main's newest run, `8ed75236` (docs only), built nothing.
 
-2. **The recent-activity test does not fail on an unmapped lot status.**
-   `load-recent-activity.slice.test.ts` (the `it.each(lotStatuses)` case) compares the row with
-   `staffStatus("lot", status).label`. In `staff-kit-status.ts:33`, `CATALOGUE_STATUS` is typed
-   `Record<CatalogueDomain, Record<string, StatusPresentation>>`, and `staffStatus` falls back to
-   `humanizeStatus(status)` for an unknown key (`staff-kit-status.ts:106`). So a new value in
-   `lotStatuses` with no label would produce the same humanised text on both sides, and the test
-   would still pass. The `startsWith("${status} · ")` check only catches a lowercase single-word
-   code.
-   - Fix: type the lot map as `Record<LotStatus, StatusPresentation>`, or assert that every value of
-     `lotStatuses` is a key of the map.
+   Results (route Size or First Load JS higher on the PR):
+   - **apps/web vs `aef61e26`: 25 routes grow, 25 shrink.** Largest: `/admin/sales/[id]/cover`
+     37.3 → 37.6 kB, `/settings` 25.9 → 26.2 kB, `/admin/sales/[id]/lots` 95.0 → 95.2 kB,
+     `/admin/lots` 20.2 → 20.4 kB, `/selling/consignments/[id]` 22.6 → 22.8 kB,
+     `/admin/private-sales/[reference]` 25.2 → 25.3 kB, `/admin/lots/[id]` 14.4 → 14.5 kB,
+     `/admin/compliance/aml` 25.3 → 25.4 kB.
+   - **apps/web vs `f1e70f47`: 27 routes grow, 21 shrink.** Largest: `/admin/sales/[id]/lots`
+     94.7 → 95.2 kB (First Load 493 → 494 kB), `/admin/sales/[id]/atg` 22.5 → 22.8 kB (311 → 312 kB),
+     `/admin/collections` 42.3 → 42.5 kB (403 → 404 kB), `/admin/lots` 20.2 → 20.4 kB. The
+     enquiries list itself, `/admin/enquiries`, is 21.1 → 21.2 kB here (equal to `aef61e26`'s
+     21.2 kB, so it is unclear whether this is the PR's new `departmentNames` prop or noise).
+   - **apps/shop-admin: 11 routes grow vs `aef61e26`, 12 vs `f1e70f47`.** For example `/from-zoho`
+     14.9 → 15.0 kB, `/production/[id]` 8.41 → 8.46 kB, `/orders/[orderId]` 8.62 → 8.68 kB,
+     `/payouts` 504 → 505 kB First Load, `/artist-applications` 516 → 517 kB First Load.
+   - **Route-JS budget table vs `aef61e26`:** web `account` 545.2 → 545.0 KB and `checkout`
+     471.7 → 471.4 KB now shrink (good), but shop `checkout` 551.8 → 551.9, shop `public`
+     520.4 → 520.5, art `public` 527.6 → 527.7 KB, and the shop/art frames +0.1 KB.
 
-3. **Not every enum label on staff screens is mapped.** The PR says the audit covered every enum
-   that staff screens show. It did not. On Bid admin, Payments › Manual review, the reason column and
-   chips use `manualReviewReasonLabel` (`payments-staff-list.vm.ts:142`). That function handles six
-   of the eight `ManualReviewReason` values (`packages/types/src/payment.ts:38-49`). The other two
-   fall to `reason.replaceAll("_", " ")` (`manual-review-presenter.ts:20-21`):
-   - `identity_verification_required` shows as "identity verification required".
-   - `organisation_under_review` shows as "organisation under review".
+   What is fixed: the routes the previous review named no longer grow, against either main build.
+   `/admin/enquiries/[reference]` 21.7 kB / 348 kB (equal), `/admin/payments` 32.5 kB / 501 kB
+   (main 32.7 and 33.5 kB), `/admin/purchase-problems` 9.92 kB (equal), `/admin/purchase-problems/[id]`
+   9.79 kB (equal or lower), `/admin/invitations` 30.7 kB / 359 kB (main 30.9 kB / 360 kB),
+   `/admin/submissions/[id]/decision` 37.0 kB (main 37.2 and 37.1 kB).
+   `enquiry-view.tsx` no longer imports `departmentLabel`, `routingRows` or `departmentBySlug`
+   (department name now resolved in `app/admin/(platform)/enquiries/[reference]/page.tsx:43-45`).
+   No budget, ratchet, baseline or allowlist file is changed (`git diff --name-only aef61e26 HEAD`).
 
-   Both read as lowercase stored codes, which breaks CRF-7. The function also has no test over the
-   full value list.
-   - Fix: map both values in the copy or presenter file. Back the map with a `Record<ManualReviewReason, string>`
-     (or a value list in `@auction/types`) and add an `it.each` over all of them.
-   - Other fallbacks were not covered by a full-list test. They do not show a known unmapped value
-     today:
-     - `xeroSyncStatusLabel`;
-     - `formatEmailDeliverabilityStatus`;
-     - `kycStatusPhrase`;
-     - `EDITION_LISTING_LABELS` (shop-admin `lookup-options.vm.ts:40`);
-     - the artist-application timeline title `event.action.replace(/_/g, " ")`
-       (shop-admin `artist-application.vm.ts:139`), which shows lowercase action codes as titles.
+   What is not: the PR body itself says 46 web and 13 shop-admin routes still grow by 0.01-0.3 kB and
+   that build noise was "not separated from real growth". The CI tables confirm growth on several
+   staff routes the PR touches indirectly (lots, sales, collections, AML). A likely contributor is
+   `staff-kit-status.ts` (now exports `LOT_STATUS`) and the kit `choice.tsx` change, both used widely,
+   but nothing shows the remaining growth is noise. To close this: either show a same-commit rebuild
+   of main gives the same deltas (noise), or trim the cause, then re-compare after rebasing on current
+   `main`.
 
-     These should be checked in the same pass.
+3. **Not every label map is in a copy file.** The bar for this pass was mapped enums with full-list
+   tests and sentence-case labels in copy files. Mapping and tests are now done (see Verified), but
+   only two of the maps live in `.copy.ts` files:
+   - in copy files: `MANUAL_REVIEW_REASON_LABELS` (`apps/web/src/lib/admin/manual-review-reason.copy.ts:4`),
+     `REFUND_SOURCE_LABELS` (`apps/shop-admin/src/server/domain/enum-labels.copy.ts:10`);
+   - still in presenter or view-model code: `XERO_SYNC_STATUS_LABELS`
+     (`xero-sync-status-presenter.ts:4`), `EMAIL_DELIVERABILITY_LABELS` and `KYC_STATUS_PHRASES`
+     (`admin-user-presenters.ts:7,60`), `EDITION_LISTING_LABELS` (`lookup-options.vm.ts:23`),
+     `EVENT_PRESENTATION` titles (`artist-application.vm.ts:123`), `LOT_STATUS`
+     (`staff-kit-status.ts:27`) and `FOUND_ACCOUNT_STATUS_LABELS` (`data-request-forms.ts:37`).
+
+   The repo's engineering bar says "copy in copy files" (`docs/design/motion.md:90`). The previous
+   review allowed "copy or presenter file" for the manual-review labels, so this is a tightening;
+   it is a mechanical move.
 
 ## Non-blocking
 
-- **Merge conflicts with main.** Two files conflict, and both conflicts are import lines only, so
-  they are easy to resolve:
-  - `apps/web/src/components/admin/enquiries/enquiries-list.tsx`: main adds the `QUARANTINE_COPY`
-    and `QUARANTINE_PATH` imports, and the PR changes the `routingRows` import to
-    `departmentLabel, routingRows`. Keep both sides.
-  - `apps/web/src/components/admin/enquiries/enquiry-view.tsx`: main adds `REPLIES_COPY`, and the
-    PR adds `departmentLabel`. Keep both.
-
-  I checked the merged tree (`git merge-tree`). No `humaniseSlug` call is left in either file.
-- **The refund-source list is not tied to the database.** `SHOP_REFUND_SOURCES`
-  (`packages/shop-domain/src/refundable-balance.ts:2`) copies `shopRefundSourceEnum`
-  (`packages/db/src/schema/shop-commerce.ts:197`) by hand, and nothing checks the two against each
-  other. The PR body says so. `apps/shop-api` already depends on `@auction/db`, so a test there
-  could compare `shopRefundSourceEnum.enumValues` with `SHOP_REFUND_SOURCES`. That would close the
-  gap.
-- **The found-account status list is also a hand copy.** `FOUND_ACCOUNT_STATUSES`
-  (`data-request-forms.ts:36`) matches the only two values the API produces
-  (`apps/api/src/container.ts:917`), so it is correct today. A shared type would stop it drifting.
-  The test uses `"pending_purge"` as its "unknown" example. That value does not exist anywhere,
-  which is fine, but a neutral placeholder name would be clearer.
-- **Confirmation labels are heavier.** Moving the four confirmation rows onto `ChoiceRow` makes
-  their long sentences `font-medium` (`choice.tsx:199`). Before, they were regular weight (and
-  `text-sm` on payouts). This matches the kit and the standard's `ChoiceRow` rule, and the
-  screenshots confirm nothing else moved. But it is a visible weight change on long text. A
-  multi-sentence acknowledgement could use `label` for a short lead and `description` for the rest,
-  as the "Book for a client" dialog now does.
-- **Single responsibility.** `departmentLabel` lives in `enquiry-routing-rows.ts`, a module about
-  routing rules. A label helper belongs in the enquiries copy or view model (see blocking item 1).
-- **Labels stay in code.** `REFUND_SOURCE_LABELS` sits in a `.copy.ts` file, which is good.
-  `FOUND_ACCOUNT_STATUS_LABELS` sits in `data-request-forms.ts` (form logic), not in a copy file.
-- **The hit-area test checks classes, not size.** The CRF-6 test (`choice.test.tsx`) asserts on
-  class names. That is the right contract for jsdom, but it cannot catch a parent with
-  `overflow-hidden` clipping the `::before` layer. If a Playwright gate exists for staff kit pages,
-  one `elementFromPoint` check 3px outside a box would prove the target.
+- **Most "full-list" tests iterate the map, not the value list.** `manual-review-presenter.test.ts`,
+  `xero-sync-status-presenter.test.ts` and `lookup-options.vm.test.ts` use
+  `it.each(Object.entries(MAP))`, so they cannot fail on a value missing from the map. The guard for
+  those is the `Record<…>` type and `tsc` in CI, which works (`ManualReviewReason` and
+  `EditionListingStatus` are real unions). The lot, email, KYC, artist-application and refund tests do
+  iterate the value list. A value list for `ManualReviewReason` in `@auction/types` would make the
+  test independent of the compiler.
+- **`XeroSyncStatus` is a hand copy.** `xero-sync-status-presenter.ts:1` declares
+  `"pending_sync" | "synced" | "error"` locally. It matches `paymentExternalSyncStatusEnum`
+  (`packages/db/src/schema/xero-integration.ts:6`) today, but nothing ties them, the same drift class
+  the PR closed for refund sources with a shop-api test.
+- **KYC phrases stay lowercase by design** (inline phrase, e.g. "KYC rejected — follow up"), and an
+  unknown value falls back to the lowercased code with `_` replaced (`admin-user-presenters.ts:73`).
+  Fine for an inline phrase; noted because the other fallbacks were changed to sentence case.
+- **Screenshots are stale.** The PR body says so. I opened `after/payout-1440-dark`,
+  `after/payout-375-dark`, `after/enquiry-375-dark` and `after/order-375-light` from
+  `pr-screenshots/staff-audit-polish` (`3386d84f`). The payout dialog still shows the old long
+  label; the code now has a short label plus a description (`payout-money-actions.tsx:442-443`).
+  Retake at least the payout set (1440/375, light/dark).
+- **`enquiries-list.tsx` still imports `routingRows` on the client** (line 23, for the department
+  filter options at line 109). This predates the PR and the list route does not grow, but it is the
+  same data the PR moved off the record page.
 
 ## Verified
 
-- **CRF-6 kit fix.** The fix is in the shared kit, not copied per screen: `CHOICE_HIT_AREA`
-  (`relative before:absolute before:-inset-1`) is added once to `boxBase` in
-  `packages/staff-ui/src/primitives/choice.tsx`, and both `StaffCheckbox` and `StaffRadio` use it.
-  - The drawn box stays `size-4` (16px), and the target is 24px.
-  - I checked the underlying `@auction/ui` Checkbox and RadioGroupItem
-    (`packages/ui/src/components/ui/{checkbox,radio-group}.tsx`). Neither uses `::before`, and
-    `relative` on the root does not move the radio dot, which is positioned against the indicator.
-  - A page `className` merges without dropping the hit area (tested).
-  - The CRF-6 Kit line in the standard is updated to match.
-- **Confirmation rows.** The four hand-built confirmation rows (accounting locked period, payout
-  release, desk book-for-client, desk hand-over) now use the kit's `ChoiceRow`. The label is part of
-  the target through `htmlFor`, the `mt-0.5` nudges and the off-scale `text-sm` are gone, and
-  `aria-invalid` stays on the hand-over checkbox.
-- **Enum fixes I checked against code and tests.**
-  - Refund source (`refundSourceLabel`, with a full-list test).
-  - SoF payment status: `staffStatus("payment")`, with a test over `paymentStatuses` against the
-    `Record<PaymentStatus, string>` map.
-  - Legal-entity readiness hint: `statusLabel`, a `Record<LegalEntityStatus, string>`, tested over
-    `legalEntityStatuses`.
-  - Found-account status.
-  - Enquiry department: one `departmentLabel` replaces three copies, tested over `DEPARTMENTS`.
-- **Already-done claims hold on main.**
-  - CRF-2: no `uppercase` on any staff button. It appears only on the LAX Admin login wordmark
-    (`apps/shop-admin/src/app/login/page.tsx:43`) and in the unused `catalog-list-mobile-summary.tsx`.
-  - No Title Case button labels apart from proper nouns ("Reconnect Xero").
-  - The FRM, TBL and DSH items are marked `MET` in the standard.
-- **No restyling and no motion changes.** The diff adds no `transition`, `animate`, `duration`,
-  skeleton, hover or press changes. The only kit class added is the hit-area layer, so it does not
-  overlap #1485 or #1486.
-- **Screenshots.** I opened them from `pr-screenshots/staff-audit-polish`: 64 images, before and
-  after, 1440 and 375, light and dark.
-  - Payout release, desk hand-over and the order Refunds list render correctly.
-  - In dark mode, the unchecked box border and label stay readable on the dialog surface, and the
-    status badges keep their text.
-  - Nothing beyond the label weight changes between before and after.
-  - The images come from a Vite harness, not the full app, as the PR says.
-- **Tests I ran locally** on the PR head, after building the workspace packages:
-  - `packages/staff-ui`: 82 files, 665 tests passed.
-  - `apps/shop-admin`: 163 files, 1692 tests passed.
-  - `apps/web`, affected areas: 69 files, 753 tests passed. These were admin finance, payouts, collections, enquiries, data requests, the SoF board, `lib/admin/{dashboard,enquiries,data-requests,finance}`, legal-entity health and `app/admin`. I stopped a full local web run after about 115 of 1,521 files had passed, because it would have taken around two hours on this 4-core machine. All 8 web vitest shards in CI pass on the PR, and that is the evidence for the rest of the suite.
-- **CI on the PR.** All required jobs passed, including `build`, `test`, the 8 web vitest shards,
-  `shop-api` and smoke, and `ci-result`. `browser-gates` was still running when I reviewed, and the
-  `art` and `account` browser gates were skipped.
+- **Previous blocking 2 (lot status test): fixed.** `LOT_STATUS` is `Record<LotStatus,
+  StatusPresentation>` (`apps/web/src/lib/admin/staff-kit-status.ts:27`) and the
+  `it.each(lotStatuses)` case asserts `Object.keys(LOT_STATUS)` contains each status
+  (`load-recent-activity.slice.test.ts:31-38`). **Mutation check:** I added `"paused"` to
+  `lotStatuses` (`packages/types/src/lot.ts`), rebuilt `@auction/types`, and ran the test:
+  `never shows the stored code for paused` failed with `expected [ Array(6) ] to include 'paused'`;
+  `tsc` also failed at `staff-kit-status.ts(27,14)`. Reverted afterwards.
+- **Previous blocking 3 (enums): mapped and tested.**
+  - `identity_verification_required` → "Identity verification required",
+    `organisation_under_review` → "Organisation under review"
+    (`manual-review-reason.copy.ts:11-12`), with explicit tests.
+  - Xero sync, email deliverability (`Record<UserEmailStatus>`, tested over `userEmailStatuses`),
+    KYC (tested over `userKycStatuses` plus the three extra values), `EDITION_LISTING_LABELS`
+    (`Record<EditionListingStatus>`), artist-application actions (`Record<ArtistApplicationAction>`,
+    tested over `ARTIST_APPLICATION_ACTIONS`). Unknown values fall back to sentence case
+    (`manual-review-presenter.ts:11-12`, `xero-sync-status-presenter.ts:15-16`,
+    `lookup-options.vm.ts:42-45`, `artist-application.vm.ts:136-145`).
+  - All labels are sentence case and contain no `_` (asserted in the tests).
+- **Previous non-blocking items: done.**
+  - `apps/shop-api/src/domain/shop-refund-source.test.ts` compares `shopRefundSourceEnum.enumValues`
+    with `SHOP_REFUND_SOURCES`.
+  - `FoundAccountStatus` is shared in `packages/types/src/user.ts:50-51` and used by the API
+    (`admin-data-requests.service.ts`) and the screen.
+  - `departmentLabel` moved to `apps/web/src/lib/admin/enquiries/department-label.ts`, server only.
+  - The payout confirmation uses a short label plus a description.
+- **Merge:** `main` merged in with a normal merge commit (`44c46511`); no `humaniseSlug` left in the
+  enquiry components; merges cleanly into current `main` `8ed75236`.
+- **No regressions found** in the diff beyond item 1: the legal-entity hint, SoF status, found-account
+  status and refund labels are unchanged since the last review; the recent-activity badge still gets
+  `statusLabel: lot.status` and maps it as before.
+- **Local tests on `6bde5bd3`** (after building workspace packages):
+  - `packages/staff-ui`: 83 files, 672 tests passed.
+  - `apps/shop-admin`: 163 files, 1705 tests passed.
+  - `apps/shop-api`: 232 files passed, 88 skipped; 2626 tests passed, 539 skipped (the skips are the
+    database-backed suites, which need Postgres; CI's 4 shop-api shards run them and pass). This
+    includes the new `shop-refund-source.test.ts`.
+  - `apps/web`, `src/lib/admin`, `src/components/admin`, `src/app/admin` and `src/lib/presenters`:
+    456 files, 3369 tests passed. I did not run the full web suite locally, because it takes about two
+    hours on this machine. All 8 web vitest shards pass in CI on this head.
+- **CI on `6bde5bd3`:** all test jobs pass (`build`, `test`, web vitest 1-8/8, shop-api vitest 1-4/4,
+  api vitest 1-2/2, smoke jobs, contracts, `browser-gates`, `account-browser-gates`;
+  `art-browser-gates` skipped). `static-checks` fails (item 1), so `ci-result` fails.
