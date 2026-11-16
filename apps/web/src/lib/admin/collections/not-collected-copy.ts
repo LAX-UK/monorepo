@@ -11,10 +11,11 @@ export const NOT_COLLECTED_COPY = {
     title: "Past collect-by",
     description:
       "Works still here after their collect-by day, longest over first. Storage counts from the day after.",
-    count: (n: number) => `${n} ${n === 1 ? "lot" : "lots"} past collect-by`,
+    count: (n: number, atLeast = false) =>
+      `${atLeast ? "At least " : ""}${n} ${n === 1 ? "lot" : "lots"} past collect-by`,
     /** The title of the notice when the list is cut: the true total, then how many are shown. */
-    moreTitle: (total: number, shown: number) =>
-      `${total} lots past collect-by, showing the ${shown} longest over`,
+    moreTitle: (total: number, shown: number, atLeast = false) =>
+      `${atLeast ? "At least " : ""}${total} lots past collect-by, showing the ${shown} longest over`,
     more: "Showing the longest over. More lots are past their day; they appear as these are collected.",
   },
   visitsTitle: "Missed visits",

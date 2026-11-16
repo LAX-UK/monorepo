@@ -118,7 +118,7 @@ export class InMemoryStorageFollowUp implements Port {
     });
   }
 
-  async waitingLotsAt(venueId: string, limit: number, lotId?: string) {
+  async waitingLotsAt(venueId: string, limit: number, _today: string, lotId?: string) {
     const lots = (this.lots.get(venueId) ?? []).filter((l) => !lotId || l.lotId === lotId);
     return { lots: lots.slice(0, limit), more: lots.length > limit };
   }

@@ -408,6 +408,7 @@ export class DrizzleCollectionStorageRepository implements ICollectionStorageRep
   async waitingLotsAt(
     venueId: string,
     limit: number,
+    today: string,
     lotId?: string,
   ): Promise<{ lots: WaitingLotAtPlace[]; more: boolean }> {
     const rows = await this.db
@@ -446,6 +447,7 @@ export class DrizzleCollectionStorageRepository implements ICollectionStorageRep
     const storage = await readWaitingLotStorage(
       this.db,
       waiting.map((row) => ({ ...row, venueId })),
+      today,
     );
     return {
       more: rows.length > limit,

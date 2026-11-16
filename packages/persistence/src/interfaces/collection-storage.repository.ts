@@ -242,6 +242,8 @@ export interface ICollectionStorageRepository {
   waitingLotsAt(
     venueId: string,
     limit: number,
+    /** The London day the lots are priced on. */
+    today: string,
     lotId?: string,
   ): Promise<{ lots: WaitingLotAtPlace[]; more: boolean }>;
 

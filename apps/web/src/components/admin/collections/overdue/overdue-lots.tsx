@@ -83,14 +83,19 @@ export function OverdueLots({ overdue: initial, canExtend, canWaive }: Props) {
         <EmptyState size="compact" title={C.empty.title} description={C.empty.body} />
       ) : (
         <div className="flex flex-col gap-4">
-          <p className="text-staff-sm text-staff-muted">{C.section.count(rows.length)}</p>
+          <p className="text-staff-sm text-staff-muted">
+            {C.section.count(overdue.total, overdue.totalIsLowerBound)}
+          </p>
           {overdue.chargingOn ? null : (
             <Notice tone="info" title={C.chargingOff.title}>
               {C.chargingOff.body}
             </Notice>
           )}
           {overdue.more ? (
-            <Notice tone="info" title={C.section.moreTitle(overdue.total, rows.length)}>
+            <Notice
+              tone="info"
+              title={C.section.moreTitle(overdue.total, rows.length, overdue.totalIsLowerBound)}
+            >
               {C.section.more}
             </Notice>
           ) : null}

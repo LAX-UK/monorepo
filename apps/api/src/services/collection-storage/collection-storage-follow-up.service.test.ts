@@ -67,7 +67,7 @@ describe("a place with more waiting lots than the list reads", () => {
     const asked = vi.spyOn(storage, "waitingLotsAt");
     const waived = await service.waive(ACTOR, VENUE, OVER, { reason: "Agreed with the buyer" });
     expect(waived.isOk()).toBe(true);
-    expect(asked).toHaveBeenCalledWith(VENUE, expect.any(Number), OVER);
+    expect(asked).toHaveBeenCalledWith(VENUE, expect.any(Number), expect.any(String), OVER);
   });
 });
 

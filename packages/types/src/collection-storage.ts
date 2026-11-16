@@ -115,4 +115,6 @@ export type StaffOverdueLots = {
   more: boolean;
   /** How many lots are past their collect-by day in all, of which `lots` lists the longest over. */
   total: number;
+  /** The read limit cut the place's waiting lots, so `total` is a floor: there are at least that many. */
+  totalIsLowerBound: boolean;
 };

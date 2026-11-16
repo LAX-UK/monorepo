@@ -60,6 +60,8 @@ export function storageCalendarReach(
 export async function readWaitingLotStorage(
   db: Database,
   lots: readonly WaitingLotRef[],
+  /** The London day the paused days are counted up to. */
+  today: DateKey,
 ): Promise<Map<string, WaitingLotStorage>> {
   if (lots.length === 0) return new Map();
   const lotIds = lots.map((l) => l.lotId);
@@ -96,7 +98,6 @@ export async function readWaitingLotStorage(
     quoteOf.set(q.lotId, { status: q.status, requestedAt: q.requestedAt, quotedAt: q.quotedAt });
   }
   const none: LotStoragePricing = { terms: null, large: false, extensionDays: 0, waived: false };
-  const today = londonDateKey(new Date());
   const counted = new Map<string, DateKey[]>();
   for (const l of lots) {
     const clearedOn = londonDateKey(l.clearedAt);

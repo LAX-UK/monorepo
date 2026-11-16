@@ -11,6 +11,7 @@ export const overdueLotsSchema: z.ZodType<StaffOverdueLots> = z.object({
   chargingOn: z.boolean(),
   more: z.boolean(),
   total: z.number(),
+  totalIsLowerBound: z.boolean(),
   lots: z.array(
     z.object({
       lotId: z.string(),

@@ -438,7 +438,7 @@ describe.skipIf(!HAS_DB)("collection storage (integration)", () => {
     await db.execute(sql`
       insert into collection_booking_lot (booking_id, lot_id, active) values (${bookingId}, ${booked}, true)`);
     try {
-      const { lots, more } = await storage.waitingLotsAt(venueId, 10);
+      const { lots, more } = await storage.waitingLotsAt(venueId, 10, TODAY);
       expect(more).toBe(false);
       expect(lots.map((l) => l.lotId)).toEqual([waitingOld, waitingNew]);
       expect(lots[0]).toMatchObject({
@@ -458,10 +458,10 @@ describe.skipIf(!HAS_DB)("collection storage (integration)", () => {
           quote: { status: "requested" },
         },
       });
-      const first = await storage.waitingLotsAt(venueId, 1);
+      const first = await storage.waitingLotsAt(venueId, 1, TODAY);
       expect(first.lots.map((l) => l.lotId)).toEqual([waitingOld]);
       expect(first.more).toBe(true);
-      expect((await storage.waitingLotsAt(emptyVenueId, 10)).lots).toEqual([]);
+      expect((await storage.waitingLotsAt(emptyVenueId, 10, TODAY)).lots).toEqual([]);
     } finally {
       await db.execute(sql`delete from collection_booking_lot where booking_id = ${bookingId}`);
       await db.execute(sql`delete from collection_booking where id = ${bookingId}`);

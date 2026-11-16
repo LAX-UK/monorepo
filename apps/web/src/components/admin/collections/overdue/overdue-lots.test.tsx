@@ -190,6 +190,17 @@ describe("Extend free storage", () => {
 });
 
 describe("a list cut short", () => {
+  it("says at least when the read limit cut the count", () => {
+    render(
+      <OverdueLots
+        overdue={{ ...OVERDUE, more: true, total: 1000, totalIsLowerBound: true }}
+        canExtend
+        canWaive
+      />,
+    );
+    expect(screen.getAllByText(/At least 1000 lots past collect-by/).length).toBeGreaterThan(0);
+  });
+
   it("titles the notice with the true total, not the number shown", () => {
     render(<OverdueLots overdue={{ ...OVERDUE, more: true, total: 340 }} canExtend canWaive />);
     expect(screen.getByText("340 lots past collect-by, showing the 2 longest over")).toBeTruthy();

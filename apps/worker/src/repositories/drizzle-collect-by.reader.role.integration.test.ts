@@ -65,7 +65,7 @@ describe.skipIf(!ownerUrl || !workerUrl)("collect-by reader as worker_app (integ
     await owner.execute(sql`
       insert into collection_storage_terms (id, venue_id, free_days, count_mode, standard_daily_pence,
          large_daily_pence, handling_fee_pence, effective_from, reason)
-      values (${termsId}, ${venueId}, ${MAX_FREE_STORAGE_DAYS}, 'calendar', 300, 600, 0, '2031-01-01', 'Role terms')`);
+      values (${termsId}, ${venueId}, 30, 'calendar', 300, 600, 0, '2031-01-01', 'Role terms')`);
     lotId = randomUUID();
     await owner.execute(sql`
       insert into lot (id, seller_legal_entity_id, sale_id, title, lot_number, auction_type,
@@ -78,18 +78,27 @@ describe.skipIf(!ownerUrl || !workerUrl)("collect-by reader as worker_app (integ
   });
 
   afterAll(async () => {
-    await owner.execute(sql`delete from lot_fulfilment where lot_id = ${lotId}`);
-    await owner.execute(sql`delete from lot where id = ${lotId}`);
-    await owner.execute(sql`delete from sale where id = ${saleId}`);
-    await owner.execute(sql`delete from collection_storage_terms where id = ${termsId}`);
-    await owner.execute(sql`delete from collection_exception where venue_id = ${venueId}`);
-    await owner.execute(sql`delete from collection_weekly_hours where venue_id = ${venueId}`);
-    await owner.execute(sql`delete from collection_place where venue_id = ${venueId}`);
-    await owner.execute(sql`delete from venue where id = ${venueId}`);
-    await owner.execute(
+    // Each step is tried on its own, so a setup that failed part-way does not hide its error
+    // behind a cleanup failure (or leave later rows behind).
+    const cleanup = [
+      sql`delete from lot_fulfilment where lot_id = ${lotId || randomUUID()}`,
+      sql`delete from lot where id = ${lotId || randomUUID()}`,
+      sql`delete from sale where id = ${saleId}`,
+      sql`delete from collection_storage_terms where id = ${termsId}`,
+      sql`delete from collection_exception where venue_id = ${venueId}`,
+      sql`delete from collection_weekly_hours where venue_id = ${venueId}`,
+      sql`delete from collection_place where venue_id = ${venueId}`,
+      sql`delete from venue where id = ${venueId}`,
       sql`delete from legal_entity where id in (${buyerEntity}, ${sellerEntity})`,
-    );
-    await owner.execute(sql`delete from "user" where id = ${buyer}`);
+      sql`delete from "user" where id = ${buyer}`,
+    ];
+    for (const statement of cleanup) {
+      try {
+        await owner.execute(statement);
+      } catch {
+        // Nothing to clean up, or already gone.
+      }
+    }
   });
 
   it("finds the lot and its deadline, which a closure after the counted day moves to Thursday", async () => {

@@ -47,6 +47,7 @@ export class DrizzleCollectByReader implements ICollectByReader {
         storageTermsId,
         large,
       })),
+      query.today,
     );
     return lots.map(({ stored }) => ({ ...stored, storage: storage.get(stored.lotId) }));
   }

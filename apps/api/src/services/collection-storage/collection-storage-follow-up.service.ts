@@ -73,6 +73,7 @@ export class CollectionStorageFollowUpService implements ICollectionStorageFollo
     const { lots, more } = await this.deps.storage.waitingLotsAt(
       venueId,
       WAITING_LOTS_READ_LIMIT,
+      today,
       lotId,
     );
     const priced: Priced[] = [];
@@ -116,6 +117,7 @@ export class CollectionStorageFollowUpService implements ICollectionStorageFollo
       lots: over.slice(0, OVERDUE_LOTS_LIMIT),
       more: more || over.length > OVERDUE_LOTS_LIMIT,
       total: over.length,
+      totalIsLowerBound: more,
     };
   }
 
