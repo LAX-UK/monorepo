@@ -317,3 +317,57 @@ describe("Shop print lift", () => {
     });
   }
 });
+
+/**
+ * The hang's hover shadow (packages/marketing-ui, MO15): an `::after` layer with the hover shadow
+ * that fades in over `--lax-motion-hover`; the box-shadow itself is never transitioned.
+ */
+describe("hang hover shadow layer", () => {
+  const read = (path: string) => readFileSync(new URL(path, import.meta.url), "utf8");
+  const HANG_CSS = `${LAX_SYSTEM_CSS}\n${read("../../../marketing-ui/src/marketing-ui.css")}`;
+  const HANG_BODY = `
+    <a href="#w" data-probe="work" style="display:block;padding:40px;width:200px">
+      <span class="marketing-hang-art" data-probe="art" style="position:relative;display:block;width:100px;height:120px;box-shadow:var(--hang-art-shadow)"></span>
+    </a>
+    <div data-probe="away" style="height:200px"></div>`;
+
+  const layer = (page: Page) =>
+    page.evaluate(() => {
+      const art = document.querySelector('[data-probe="art"]') as HTMLElement;
+      const after = getComputedStyle(art, "::after");
+      const running = art.getAnimations({ subtree: true }).map((a) => ({
+        property: (a as CSSTransition).transitionProperty,
+        duration: Number(a.effect?.getTiming().duration ?? 0),
+      }));
+      for (const a of art.getAnimations({ subtree: true })) a.finish();
+      const settled = getComputedStyle(art, "::after");
+      return {
+        opacity: settled.opacity,
+        shadow: after.boxShadow !== "none",
+        transitionProperty: after.transitionProperty,
+        running,
+        artTransitionDuration: getComputedStyle(art).transitionDuration,
+      };
+    });
+
+  it("at rest the layer is there but transparent; on hover it fades in; leaving fades it out", async () => {
+    const page = await pageWith(browser, { css: HANG_CSS, body: HANG_BODY });
+    try {
+      expect(await layer(page)).toMatchObject({
+        opacity: "0",
+        shadow: true,
+        transitionProperty: "opacity",
+        running: [],
+      });
+      await page.hover('[data-probe="work"]');
+      const hovered = await layer(page);
+      expect(hovered.running).toEqual([{ property: "opacity", duration: 150 }]);
+      expect(hovered.opacity).toBe("1");
+      expect(hovered.artTransitionDuration).toBe("0s");
+      await page.hover('[data-probe="away"]');
+      expect((await layer(page)).opacity).toBe("0");
+    } finally {
+      await page.close();
+    }
+  });
+});

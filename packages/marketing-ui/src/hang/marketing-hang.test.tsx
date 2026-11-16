@@ -128,22 +128,10 @@ describe("MarketingHang", () => {
     const { container } = render(<MarketingHang title="In this sale" works={makeWorks(2)} />);
     for (const img of container.querySelectorAll("img")) {
       const art = img.parentElement as HTMLElement;
-      const classes = art.className.split(/\s+/);
-      // At rest: the resting shadow, and a hover layer that is there but fully transparent.
-      expect(classes).toEqual(
-        expect.arrayContaining([
-          "shadow-[var(--hang-art-shadow)]",
-          "after:absolute",
-          "after:inset-0",
-          "after:pointer-events-none",
-          "after:opacity-0",
-          "after:shadow-[var(--hang-art-shadow-hover)]",
-          "after:transition-opacity",
-          "after:duration-[var(--lax-motion-hover)]",
-          "group-hover:after:opacity-100",
-        ]),
-      );
+      // The resting shadow, plus the stylesheet's fading hover layer (marketing-ui.css).
+      expect(art).toHaveClass("marketing-hang-art", "relative", "shadow-[var(--hang-art-shadow)]");
       expect(art.className).not.toMatch(/transition-shadow|group-hover:shadow|transition-all/);
+      expect(art.closest("a")).not.toBeNull();
     }
   });
 

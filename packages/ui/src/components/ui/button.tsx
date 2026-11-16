@@ -7,6 +7,13 @@ import { cn } from "../../lib/utils.js";
 import { DisabledReason } from "./button-disabled-reason.js";
 
 /**
+ * Press and disabled states of the filled and outlined variants (FILLED_STATES, OUTLINED_STATES;
+ * text-shaped variants use TEXT_STATES and do not press).
+ *
+ * Press (docs/design/motion.md, MO10): `lax-press` scales the button to 0.98 while it is held, over
+ * the press token (kit CSS, packages/ui/src/lax/hover-press.css); staff pages, disabled buttons
+ * and reduced motion do not press.
+ *
  * Disabled states never fade. A disabled button is drawn in its own pair, distinct from every
  * enabled label at a glance in light and dark: a disabled label (`--color-disabled-fg`), on a
  * faint neutral fill for filled variants (`--color-disabled-bg`) or inside a faint edge for
@@ -15,19 +22,12 @@ import { DisabledReason } from "./button-disabled-reason.js";
  * label at 3:1 or more, the level WCAG asks of an inactive control. The pair applies to the
  * native `disabled` attribute and to `aria-disabled` alike, and wins over hover and pressed.
  */
-const DISABLED_FILLED =
-  "disabled:bg-[color:var(--color-disabled-bg,color-mix(in_srgb,var(--color-on-surface)_8%,var(--color-surface)))] disabled:text-[color:var(--color-disabled-fg,color-mix(in_srgb,var(--color-on-surface)_55%,var(--color-surface)))] disabled:shadow-none aria-disabled:bg-[color:var(--color-disabled-bg,color-mix(in_srgb,var(--color-on-surface)_8%,var(--color-surface)))] aria-disabled:text-[color:var(--color-disabled-fg,color-mix(in_srgb,var(--color-on-surface)_55%,var(--color-surface)))] aria-disabled:shadow-none";
-const DISABLED_OUTLINED =
-  "disabled:border-[color:var(--color-disabled-border,color-mix(in_srgb,var(--color-on-surface)_16%,var(--color-surface)))] disabled:bg-transparent disabled:text-[color:var(--color-disabled-fg,color-mix(in_srgb,var(--color-on-surface)_55%,var(--color-surface)))] disabled:shadow-none aria-disabled:border-[color:var(--color-disabled-border,color-mix(in_srgb,var(--color-on-surface)_16%,var(--color-surface)))] aria-disabled:bg-transparent aria-disabled:text-[color:var(--color-disabled-fg,color-mix(in_srgb,var(--color-on-surface)_55%,var(--color-surface)))] aria-disabled:shadow-none";
-const DISABLED_TEXT =
+const FILLED_STATES =
+  "lax-press disabled:bg-[color:var(--color-disabled-bg,color-mix(in_srgb,var(--color-on-surface)_8%,var(--color-surface)))] disabled:text-[color:var(--color-disabled-fg,color-mix(in_srgb,var(--color-on-surface)_55%,var(--color-surface)))] disabled:shadow-none aria-disabled:bg-[color:var(--color-disabled-bg,color-mix(in_srgb,var(--color-on-surface)_8%,var(--color-surface)))] aria-disabled:text-[color:var(--color-disabled-fg,color-mix(in_srgb,var(--color-on-surface)_55%,var(--color-surface)))] aria-disabled:shadow-none";
+const OUTLINED_STATES =
+  "lax-press disabled:border-[color:var(--color-disabled-border,color-mix(in_srgb,var(--color-on-surface)_16%,var(--color-surface)))] disabled:bg-transparent disabled:text-[color:var(--color-disabled-fg,color-mix(in_srgb,var(--color-on-surface)_55%,var(--color-surface)))] disabled:shadow-none aria-disabled:border-[color:var(--color-disabled-border,color-mix(in_srgb,var(--color-on-surface)_16%,var(--color-surface)))] aria-disabled:bg-transparent aria-disabled:text-[color:var(--color-disabled-fg,color-mix(in_srgb,var(--color-on-surface)_55%,var(--color-surface)))] aria-disabled:shadow-none";
+const TEXT_STATES =
   "disabled:border-transparent disabled:bg-transparent disabled:text-[color:var(--color-disabled-fg,color-mix(in_srgb,var(--color-on-surface)_55%,var(--color-surface)))] disabled:no-underline aria-disabled:border-transparent aria-disabled:bg-transparent aria-disabled:text-[color:var(--color-disabled-fg,color-mix(in_srgb,var(--color-on-surface)_55%,var(--color-surface)))] aria-disabled:no-underline";
-
-/**
- * Press (docs/design/motion.md, MO10): a button scales to 0.98 while held, over the press token.
- * Kit CSS (`lax-press`, packages/ui/src/lax/hover-press.css); text-shaped variants have none, and
- * staff pages and reduced motion turn it off there.
- */
-const PRESS = "lax-press";
 
 /**
  * The one primary button of every LAX product: a flat fill in the product's `--color-cta-bg` with
@@ -37,9 +37,8 @@ const PRESS = "lax-press";
  * step shows in light and dark alike. The focus ring is the product's `--color-ring`.
  */
 const PRIMARY_BUTTON = cn(
-  PRESS,
   "rounded-md bg-cta-bg text-cta-on shadow-none hover:bg-[var(--color-cta-bg-hover,color-mix(in_srgb,var(--color-cta-bg)_82%,var(--color-cta-on)))] active:bg-[var(--color-cta-bg-pressed,color-mix(in_srgb,var(--color-cta-bg)_70%,var(--color-cta-on)))] focus-visible:ring-ring",
-  DISABLED_FILLED,
+  FILLED_STATES,
 );
 
 /**
@@ -79,31 +78,26 @@ const buttonVariants = cva(
          * label colour, the same rule as the primary, on each variant's own surface.
          */
         default: cn(
-          PRESS,
           "bg-primary text-on-primary shadow hover:bg-[color-mix(in_srgb,var(--color-primary)_85%,var(--color-on-primary))] active:bg-[color-mix(in_srgb,var(--color-primary)_72%,var(--color-on-primary))]",
-          DISABLED_FILLED,
+          FILLED_STATES,
         ),
         /** The primary action (see `PRIMARY_BUTTON`). */
         primary: PRIMARY_BUTTON,
         destructive: cn(
-          PRESS,
           "bg-error text-on-error shadow-sm hover:bg-[color-mix(in_srgb,var(--color-error)_85%,var(--color-on-error))] active:bg-[color-mix(in_srgb,var(--color-error)_72%,var(--color-on-error))]",
-          DISABLED_FILLED,
+          FILLED_STATES,
         ),
         success: cn(
-          PRESS,
           "bg-success text-on-success shadow-sm hover:bg-[color-mix(in_srgb,var(--color-success)_85%,var(--color-on-success))] active:bg-[color-mix(in_srgb,var(--color-success)_72%,var(--color-on-success))]",
-          DISABLED_FILLED,
+          FILLED_STATES,
         ),
         outline: cn(
-          PRESS,
           "border border-outline-variant/25 bg-surface-container-lowest shadow-sm hover:bg-surface-container-low",
-          DISABLED_OUTLINED,
+          OUTLINED_STATES,
         ),
         secondary: cn(
-          PRESS,
           "bg-secondary-container text-on-secondary-container shadow-sm hover:bg-[color-mix(in_srgb,var(--color-secondary-container)_88%,var(--color-on-secondary-container))] active:bg-[color-mix(in_srgb,var(--color-secondary-container)_78%,var(--color-on-secondary-container))]",
-          DISABLED_FILLED,
+          FILLED_STATES,
         ),
         /**
          * The secondary action: a 1px edge, no fill and no shadow, so it sits on a page or a tinted
@@ -111,38 +105,36 @@ const buttonVariants = cva(
          * 3:1 field edge), falling back to the hairline. Hover and pressed tint the fill.
          */
         secondaryOutline: cn(
-          PRESS,
           "rounded-md border border-[color:var(--color-button-secondary-border,var(--color-border-hairline))] bg-transparent font-label font-semibold text-on-surface shadow-none hover:bg-surface-container-low active:bg-surface-container",
-          DISABLED_OUTLINED,
+          OUTLINED_STATES,
         ),
-        ghost: cn(PRESS, "hover:bg-surface-container-high hover:text-on-surface", DISABLED_TEXT),
-        link: cn("text-primary underline-offset-4 hover:underline", DISABLED_TEXT),
+        ghost: cn("lax-press hover:bg-surface-container-high hover:text-on-surface", TEXT_STATES),
+        link: cn("text-primary underline-offset-4 hover:underline", TEXT_STATES),
         /** Text link with underline-on-hover (legacy app tertiary). */
         tertiary: cn(
           "h-auto min-h-0 rounded-none border-b border-primary/0 bg-transparent p-0 px-0 py-2 font-label text-label font-semibold text-primary shadow-none hover:border-primary focus-visible:ring-accent-brand",
-          DISABLED_TEXT,
+          TEXT_STATES,
         ),
         ctaLink: cn(
           "h-auto min-h-0 rounded-none bg-transparent p-0 font-label text-xs font-semibold text-primary shadow-none hover:underline focus-visible:ring-accent-brand",
-          DISABLED_TEXT,
+          TEXT_STATES,
         ),
         /** Underlined label-caps text action with a 44px tap target (card “Enquire”, inline actions). */
         underline: cn(
           "rounded-none bg-transparent font-label text-xs font-semibold text-on-surface underline decoration-1 underline-offset-4 shadow-none hover:decoration-2",
-          DISABLED_TEXT,
+          TEXT_STATES,
         ),
         /** The same primary action under its earlier marketing name. */
         cta: PRIMARY_BUTTON,
         /** “Join live” style — border + label caps */
         liveJoin: cn(
-          PRESS,
           "rounded border border-brand-100 bg-transparent font-label text-base font-semibold text-brand-100 shadow-none hover:bg-white/5 dark:border-on-surface-variant dark:text-on-surface-variant",
-          DISABLED_OUTLINED,
+          OUTLINED_STATES,
         ),
         /** Text “View all” with chevron slot — pair with `asChild` + Link */
         chevron: cn(
           "h-auto min-h-[44px] rounded-none bg-transparent p-0 font-label text-base font-semibold text-brand-900 shadow-none hover:underline focus-visible:ring-accent-brand dark:text-on-surface",
-          DISABLED_TEXT,
+          TEXT_STATES,
         ),
       },
       size: BUTTON_SIZES,

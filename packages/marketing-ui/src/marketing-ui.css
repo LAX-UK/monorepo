@@ -282,6 +282,22 @@ html.lenis {
   --hang-art-shadow-hover: 0 2px 4px rgb(0 0 0 / 0.5), 0 22px 40px -10px rgb(0 0 0 / 0.8);
 }
 
+/* The hover shadow is a layer of its own over the resting one, faded in with opacity, so no
+   shadow is ever animated (docs/design/motion.md, MO15). At rest the layer is fully transparent. */
+.marketing-hang-art::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+  box-shadow: var(--hang-art-shadow-hover);
+  transition: opacity var(--lax-motion-hover) var(--lax-ease-out);
+}
+
+a:hover .marketing-hang-art::after {
+  opacity: 1;
+}
+
 .marketing-status-state {
   display: flex;
   flex-direction: column;
