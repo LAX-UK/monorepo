@@ -376,7 +376,9 @@ Checked on 2026-11-16 with pairs of clean builds of one commit in the same direc
   script, and chunk ids and file hashes are derived from content.
 - One difference is left in Bid: two staff admin page chunks
   (`admin/(platform)/sales/[id]/(detail)/registrations` and `.../telephone-bookings`) list a
-  different shared chunk between builds, a webpack split-chunk choice. The admin area is not
+  different shared chunk between builds, a webpack split-chunk choice. (The two shared chunks
+  hold the same icon modules and differ only in their Sentry debug id, so which one a page gets
+  is a tie.) The admin area is not
   measured, so no route changes; the Bid block then reads "client scripts differ" with 0 routes
   changed.
 - The same commit built in a git worktree at another path, with the same pins: Account 15 of 20
@@ -401,8 +403,14 @@ Checked on 2026-11-16 with pairs of clean builds of one commit in the same direc
    The base report is kept in the actions cache for re-runs and later pushes onto the same base;
    its key covers the base commit, the apps, the measuring scripts, `.github/workflows/ci.yml` and
    `turbo.json`, so a PR that changes a size-build setting never reuses an older base report.
-   A base from before the pins (no `ROUTE_JS_SIZE_BUILD` in its `turbo.json`) is built without
-   cache, with the job's env passed through and the release pinned through `SENTRY_RELEASE`.
+   A base from before the pins (no `ROUTE_JS_SIZE_BUILD` in its `turbo.json`; only the runs of
+   the PR that added them) gets, for that one build, the pins in its `turbo.json` build env and
+   the head's `next.config.ts` files, whose only size-build change is the pin, and is built
+   without cache in turbo's strict env mode. Checking the head back out undoes both edits.
+   The first version of this table instead built such a base with `--env-mode=loose` and the
+   release pinned through `SENTRY_RELEASE`; on this PR that left 2 Bid routes 3 and 7 bytes
+   apart from the head. With the pins applied as above, an uncached local build of that base and
+   of the head gave 0 of 114 Bid routes changed and byte-identical client scripts.
 4. `scripts/route-js-size-compare.mjs` prints the table.
 5. **Self-check.** When a PR changes what a size build depends on (`.github/workflows/ci.yml`,
    `turbo.json`, the root `package.json`, `pnpm-lock.yaml`, `.nvmrc`, a `scripts/route-js-*` file

@@ -61,13 +61,29 @@ pnpm install --frozen-lockfile --prefer-offline
 
 flags=()
 if [[ $force == 1 ]]; then flags+=(--force); fi
-if ! grep -q '"ROUTE_JS_SIZE_BUILD"' turbo.json; then
-  # A base from before deterministic size builds cannot pin its Sentry release through turbo or
-  # next.config.ts: build it without cache, let the job's env through, and pin the release name
-  # through the environment the Sentry plugin reads. Same name as ROUTE_JS_SIZE_BUILD sets.
-  echo "::notice title=Route JS base::The base predates deterministic size builds; building it without cache"
-  flags+=(--force --env-mode=loose)
-  export SENTRY_RELEASE=route-js-size-build
+if [[ $sha != "$start_sha" ]] && ! grep -q '"ROUTE_JS_SIZE_BUILD"' turbo.json; then
+  # A base from before deterministic size builds (only the runs of the PR that added them) has
+  # neither pin: its turbo.json does not let them through and its next.config.ts files cannot pin
+  # the Sentry release. Give that checkout, for this build only, the pins in its turbo.json build
+  # env and the start commit's next.config.ts files (whose only size-build change is the pin), and
+  # build without cache in turbo's strict env mode. (Building it with --env-mode=loose and the
+  # release pinned through SENTRY_RELEASE left Bid routes a few bytes apart from the head.) The
+  # checkout goes back to the start commit afterwards, which undoes both edits.
+  echo "::notice title=Route JS base::The base predates deterministic size builds; building it without cache, with the pins applied for this build"
+  node -e '
+    const fs = require("node:fs");
+    const config = JSON.parse(fs.readFileSync("turbo.json", "utf8"));
+    const env = new Set(config.tasks.build.env ?? []);
+    for (const name of ["NEXT_SERVER_ACTIONS_ENCRYPTION_KEY", "ROUTE_JS_SIZE_BUILD"]) env.add(name);
+    config.tasks.build.env = [...env];
+    fs.writeFileSync("turbo.json", `${JSON.stringify(config, null, 2)}\n`);
+  '
+  for app in $apps; do
+    for config in "$app"/next.config.*; do
+      if git cat-file -e "$start_sha:$config" 2>/dev/null; then git checkout -q "$start_sha" -- "$config"; fi
+    done
+  done
+  flags+=(--force)
 fi
 
 # shellcheck disable=SC2086 # filters is a list of flags
