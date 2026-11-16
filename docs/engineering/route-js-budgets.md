@@ -374,22 +374,18 @@ Checked on 2026-11-16 with pairs of clean builds of one commit in the same direc
 - The build id is random per build but only names the directory of `_buildManifest.js`; it is in
   no script, so the report's digest replaces it with a placeholder. Timestamps appear in no client
   script, and chunk ids and file hashes are derived from content.
-- **Bid is not fully deterministic yet.** Two staff admin page chunks
-  (`admin/(platform)/sales/[id]/(detail)/registrations` and `.../telephone-bookings`) can each get
-  either of two shared chunks that hold the same icon modules and differ only in their Sentry
-  debug id; which one goes where changes between builds. Bid builds of the same code also differ
-  in the Sentry debug ids of a few shared chunks, and terser's minified names follow those ids.
-  Usually no measured route changes (the Bid block reads "client scripts differ" with 0 routes
-  changed), but it can move every Bid route by a few bytes: on PR #1494, which changes no Bid
-  client code, one CI run showed all 114 Bid routes 1 byte larger than the base, while the
-  self-check in the same run, and an uncached local pair of builds, showed 0 of 114.
-- **Account, in CI.** Account builds in CI flip between two states 2 bytes apart on every route
-  (all 20 routes, client scripts differ): in two of the four CI self-checks on PR #1494, and in one
-  of its base-vs-head tables. Four uncached local builds in a row, and the local pairs above, were
-  byte-identical, so it seems tied to CI (perhaps the parallel build load). The cause is not
-  found yet. Shop, lax.art and Shop Admin have shown no variation.
-- Until these are fixed, read a Bid or Account block where **every** route moves by the same one
-  to a few bytes as this variation, not as a change. Rows that differ from route to route are real.
+- **CI builds are not fully deterministic yet.** On PR #1494 (which changes no client code), the
+  self-check built the same commit twice in CI and found, in some runs, every route of an app
+  moved by the same 1 or 2 bytes, with "client scripts differ": Account in three of five runs,
+  Bid in one, Shop in one; lax.art and Shop Admin never. Base-vs-head tables on that PR showed the
+  same kind of shift (Bid +1 B on all 114 routes, Account +2 B on all 20). Local builds did not
+  reproduce it: four uncached Account builds in a row, and uncached Bid and Account base/head pairs,
+  were byte-identical. One source is known in Bid: two staff admin pages can each get either of
+  two identical shared icon chunks, and Sentry derives each chunk's debug id from webpack's content
+  hash, so a changed hash changes the debug id and, through terser's naming, a byte or two of the
+  chunks every route loads. The rest of the CI cause is not found yet.
+- Until it is fixed, read a block where **every** route of an app moves by the same 1 or 2 bytes
+  as this variation, not as a change. Rows that differ from route to route are real.
 - The same commit built in a git worktree at another path, with the same pins: Account 15 of 20
   routes changed (`/account/profile/page` +92 B, `/account/security/delete/page` +25 B, ...). This
   is why the base is built in the head's own checkout.
@@ -426,24 +422,25 @@ Checked on 2026-11-16 with pairs of clean builds of one commit in the same direc
    or an app's `next.config`), the job builds the head a second time through the same base route
    (`route-js-size-build-base.sh --force`, so nothing replays from a cache) and compares it with the
    first head build using `--require-unchanged`. Every app must read `0 of N routes changed`; any
-   changed, new or removed route fails the job. "client scripts differ" alone is allowed, for the
-   Bid variation above. The Bid and Account variation can fail this check (it did
-   on two of the four runs of PR #1494, Account 20 of 20 routes 2 bytes apart): re-run the job, and if it repeats,
-   the PR has made the build less deterministic. This is the proof that the base route measures like for
-   like; it adds one uncached build (about 10 minutes) to those PRs only.
+   changed, new or removed route fails the job. "client scripts differ" alone is allowed. Until
+   the CI variation above is fixed, this check fails on some runs (three of five on PR #1494): a
+   whole-app shift of the same 1 or 2 bytes is that variation; re-run the job, and if a PR keeps
+   failing with route-by-route differences, the PR has made the build less deterministic. A pass
+   shows the base route measures like for like. It adds one uncached build (about 10 to 15
+   minutes) to those PRs only.
 
 ### Reading the table
 
 - One block per app built on both sides: `N of M routes changed`, and whether the client scripts
   are byte-identical. A route that did not change has no row. Because both sides are built at the
-  same path with the same pins, and the self-check holds that to 0 changed routes, **any number in
-  the Shop, lax.art and Shop Admin blocks is a change made by the PR**, and so is any Bid or
-  Account row that does not match the variation described above. There is no tolerance.
+  same path with the same pins, and the self-check holds that to 0 changed routes, **any row that
+  is not part of a whole-app shift of the same 1 or 2 bytes (the variation above) is a change made
+  by the PR**. There is no tolerance.
 - Columns are base and head KB (1024 bytes, two decimals), the delta in KB, and the delta in bytes.
   Rows are sorted by growth, largest first. `new` and `removed` mark routes on one side only.
 - "client scripts differ" with no changed rows means code changed outside the start-up sets (for
-  example a chunk loaded on demand, or a staff admin page, which is not measured). For Bid it can
-  also be the build-to-build variation described above.
+  example a chunk loaded on demand, or a staff admin page, which is not measured). It can also be
+  the build-to-build variation described above.
 - Apps built on one side only are listed and not compared.
 
 ### What fails
@@ -458,8 +455,8 @@ Checked on 2026-11-16 with pairs of clean builds of one commit in the same direc
   excluded. The path rule keeps the check on if a motion PR is renamed or loses its label. The step
   reads the PR's current title and labels, so after adding a label, re-run the `build` job. If the
   base cannot be built, such a PR fails too, since the proof is missing; re-run the job.
-  Because of the Bid and Account variation above, such a PR can fail with every route of one of
-  those apps a few bytes larger and no change of its own there; re-run the job, and if it repeats, the growth is real.
+  Because of the CI variation above, such a PR can fail with every route of one app 1 or 2 bytes
+  larger and no change of its own there; re-run the job, and if it repeats, the growth is real.
 - **Every other PR**: the table only reports (a notice per grown or new route). Pass or fail is
   decided by the budget and ratchet rules above, unchanged. New routes are judged by their group's
   budget as before.
