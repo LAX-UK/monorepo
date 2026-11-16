@@ -124,6 +124,29 @@ describe("MarketingHang", () => {
     expect(container.querySelector("img")?.hasAttribute("srcset")).toBe(false);
   });
 
+  it("fades a hover shadow layer in rather than animating the shadow (MO15)", () => {
+    const { container } = render(<MarketingHang title="In this sale" works={makeWorks(2)} />);
+    for (const img of container.querySelectorAll("img")) {
+      const art = img.parentElement as HTMLElement;
+      const classes = art.className.split(/\s+/);
+      // At rest: the resting shadow, and a hover layer that is there but fully transparent.
+      expect(classes).toEqual(
+        expect.arrayContaining([
+          "shadow-[var(--hang-art-shadow)]",
+          "after:absolute",
+          "after:inset-0",
+          "after:pointer-events-none",
+          "after:opacity-0",
+          "after:shadow-[var(--hang-art-shadow-hover)]",
+          "after:transition-opacity",
+          "after:duration-[var(--lax-motion-hover)]",
+          "group-hover:after:opacity-100",
+        ]),
+      );
+      expect(art.className).not.toMatch(/transition-shadow|group-hover:shadow|transition-all/);
+    }
+  });
+
   it("names no sizes for a work with no resized files", () => {
     const { container } = render(<MarketingHang title="In this sale" works={makeWorks(1)} />);
     expect(container.querySelector("img")?.hasAttribute("sizes")).toBe(false);

@@ -13,7 +13,7 @@ const DEFAULT_SIZES = "(max-width: 1024px) 100vw, 420px";
 
 const SALE_MEDIA_SLOTS = [...LOT_CARD_TIMER_SLOTS.filter((slot) => slot.name !== "topLeft")];
 
-const ROOT_SHELL = "group/image relative overflow-hidden bg-surface-container";
+const ROOT_SHELL = "lax-card relative overflow-hidden bg-surface-container";
 
 function layoutClass(layout: SaleCardMediaProps["layout"]) {
   return layout === "featured"
@@ -32,10 +32,8 @@ function MediaImageBlock({
   sizes: string;
   adaptive: boolean;
 }) {
-  const imgClassName = cn(
-    "size-full object-cover transition-transform duration-700 ease-out",
-    "motion-safe:group-hover/image:scale-[1.03] motion-reduce:group-hover/image:scale-100",
-  );
+  // Zooms to 1.02 when the card, or the image on its own, is hovered (kit hover-press.css).
+  const imgClassName = "size-full object-cover lax-card-zoom";
 
   if (adaptive) {
     return (

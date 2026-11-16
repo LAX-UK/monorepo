@@ -16,6 +16,7 @@
  */
 
 @import "./motion.css";
+@import "./hover-press.css";
 
 @theme {
   --font-lax: var(--font-outfit), var(--font-montserrat), ui-sans-serif, system-ui, sans-serif;

@@ -69,10 +69,7 @@ export function AttentionStrip({
                 </span>
                 <span className="inline-flex shrink-0 items-center gap-1 font-medium text-staff-fg">
                   {action}
-                  <ArrowRight
-                    aria-hidden
-                    className="size-3.5 text-staff-muted transition-transform group-hover:translate-x-0.5"
-                  />
+                  <ArrowRight aria-hidden className="size-3.5 text-staff-muted" />
                 </span>
               </Link>
             </li>

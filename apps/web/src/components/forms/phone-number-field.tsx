@@ -166,7 +166,7 @@ export function PhoneNumberField({
           <label
             htmlFor={numberId}
             className={cn(
-              "pointer-events-none absolute left-0 font-footer-links text-on-surface-variant transition-all duration-150",
+              "pointer-events-none absolute left-0 font-footer-links text-on-surface-variant",
               floatLabel
                 ? "top-0 text-xs leading-[18px] tracking-[0.16px]"
                 : "top-4 text-base leading-6 tracking-[0.5px]",

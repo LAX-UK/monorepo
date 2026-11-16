@@ -23,6 +23,13 @@ const DISABLED_TEXT =
   "disabled:border-transparent disabled:bg-transparent disabled:text-[color:var(--color-disabled-fg,color-mix(in_srgb,var(--color-on-surface)_55%,var(--color-surface)))] disabled:no-underline aria-disabled:border-transparent aria-disabled:bg-transparent aria-disabled:text-[color:var(--color-disabled-fg,color-mix(in_srgb,var(--color-on-surface)_55%,var(--color-surface)))] aria-disabled:no-underline";
 
 /**
+ * Press (docs/design/motion.md, MO10): a button scales to 0.98 while held, over the press token.
+ * Kit CSS (`lax-press`, packages/ui/src/lax/hover-press.css); text-shaped variants have none, and
+ * staff pages and reduced motion turn it off there.
+ */
+const PRESS = "lax-press";
+
+/**
  * The one primary button of every LAX product: a flat fill in the product's `--color-cta-bg` with
  * `--color-cta-on` text (ink on Bid, Shop and lax.art, teal on LAX Account). Hover and pressed
  * move the fill one and two steps through `--color-cta-bg-hover` and `--color-cta-bg-pressed`;
@@ -30,6 +37,7 @@ const DISABLED_TEXT =
  * step shows in light and dark alike. The focus ring is the product's `--color-ring`.
  */
 const PRIMARY_BUTTON = cn(
+  PRESS,
   "rounded-md bg-cta-bg text-cta-on shadow-none hover:bg-[var(--color-cta-bg-hover,color-mix(in_srgb,var(--color-cta-bg)_82%,var(--color-cta-on)))] active:bg-[var(--color-cta-bg-pressed,color-mix(in_srgb,var(--color-cta-bg)_70%,var(--color-cta-on)))] focus-visible:ring-ring",
   DISABLED_FILLED,
 );
@@ -71,24 +79,29 @@ const buttonVariants = cva(
          * label colour, the same rule as the primary, on each variant's own surface.
          */
         default: cn(
+          PRESS,
           "bg-primary text-on-primary shadow hover:bg-[color-mix(in_srgb,var(--color-primary)_85%,var(--color-on-primary))] active:bg-[color-mix(in_srgb,var(--color-primary)_72%,var(--color-on-primary))]",
           DISABLED_FILLED,
         ),
         /** The primary action (see `PRIMARY_BUTTON`). */
         primary: PRIMARY_BUTTON,
         destructive: cn(
+          PRESS,
           "bg-error text-on-error shadow-sm hover:bg-[color-mix(in_srgb,var(--color-error)_85%,var(--color-on-error))] active:bg-[color-mix(in_srgb,var(--color-error)_72%,var(--color-on-error))]",
           DISABLED_FILLED,
         ),
         success: cn(
+          PRESS,
           "bg-success text-on-success shadow-sm hover:bg-[color-mix(in_srgb,var(--color-success)_85%,var(--color-on-success))] active:bg-[color-mix(in_srgb,var(--color-success)_72%,var(--color-on-success))]",
           DISABLED_FILLED,
         ),
         outline: cn(
+          PRESS,
           "border border-outline-variant/25 bg-surface-container-lowest shadow-sm hover:bg-surface-container-low",
           DISABLED_OUTLINED,
         ),
         secondary: cn(
+          PRESS,
           "bg-secondary-container text-on-secondary-container shadow-sm hover:bg-[color-mix(in_srgb,var(--color-secondary-container)_88%,var(--color-on-secondary-container))] active:bg-[color-mix(in_srgb,var(--color-secondary-container)_78%,var(--color-on-secondary-container))]",
           DISABLED_FILLED,
         ),
@@ -98,10 +111,11 @@ const buttonVariants = cva(
          * 3:1 field edge), falling back to the hairline. Hover and pressed tint the fill.
          */
         secondaryOutline: cn(
+          PRESS,
           "rounded-md border border-[color:var(--color-button-secondary-border,var(--color-border-hairline))] bg-transparent font-label font-semibold text-on-surface shadow-none hover:bg-surface-container-low active:bg-surface-container",
           DISABLED_OUTLINED,
         ),
-        ghost: cn("hover:bg-surface-container-high hover:text-on-surface", DISABLED_TEXT),
+        ghost: cn(PRESS, "hover:bg-surface-container-high hover:text-on-surface", DISABLED_TEXT),
         link: cn("text-primary underline-offset-4 hover:underline", DISABLED_TEXT),
         /** Text link with underline-on-hover (legacy app tertiary). */
         tertiary: cn(
@@ -121,6 +135,7 @@ const buttonVariants = cva(
         cta: PRIMARY_BUTTON,
         /** “Join live” style — border + label caps */
         liveJoin: cn(
+          PRESS,
           "rounded border border-brand-100 bg-transparent font-label text-base font-semibold text-brand-100 shadow-none hover:bg-white/5 dark:border-on-surface-variant dark:text-on-surface-variant",
           DISABLED_OUTLINED,
         ),

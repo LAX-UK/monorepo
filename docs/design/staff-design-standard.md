@@ -1287,6 +1287,7 @@ on `:focus-visible` only.**
 | Menus and popovers | `--lax-motion-enter` (150ms), `--lax-motion-exit` (100ms) |
 | Panels and dialogs | `--lax-motion-panel` (200ms), `--lax-motion-panel-exit` (150ms), `--lax-ease-emphasize` |
 | Press | `--lax-motion-press` (0ms): colour only, no scale |
+| Rows and cards | tint only: no lift, zoom or nudge (the kit's card hover and press scale are off on staff pages) |
 
 - **Rule:**
   - Never animate layout in tables.

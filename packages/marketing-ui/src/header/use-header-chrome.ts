@@ -124,11 +124,12 @@ export function useHeaderChrome({
 /**
  * Surface classes for the fixed header. From 1024px it slides up with the page by the top bar's
  * height (scroll-linked, so there is no animation to reduce). The transition is dropped under reduced motion so the
- * header switches state without animating.
+ * header switches state without animating. The backdrop blur switches at once: animating
+ * `backdrop-filter` repaints everything under the header on every frame (docs/design/motion.md, MO15).
  */
 export function headerChromeClassName(isTransparent: boolean, megaOpen: boolean): string {
   return cn(
-    "fixed top-0 z-50 w-full border-b pt-[env(safe-area-inset-top,0px)] lg:translate-y-[calc(var(--lax-top-bar-shift,0px)*-1)] transition-[background-color,border-color,box-shadow,backdrop-filter] duration-300 ease-out motion-reduce:transition-none",
+    "fixed top-0 z-50 w-full border-b pt-[env(safe-area-inset-top,0px)] lg:translate-y-[calc(var(--lax-top-bar-shift,0px)*-1)] transition-[background-color,border-color,box-shadow] duration-300 ease-out motion-reduce:transition-none",
     isTransparent
       ? "border-transparent bg-transparent"
       : cn(

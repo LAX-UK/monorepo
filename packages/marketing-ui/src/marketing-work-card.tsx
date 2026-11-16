@@ -71,7 +71,7 @@ export function MarketingWorkCard({
   const styled = mediaStyle ? lotCardMediaClasses(mediaStyle) : null;
   return (
     <article
-      className={cn("group relative flex h-full min-w-0 flex-col", className)}
+      className={cn("lax-card group relative flex h-full min-w-0 flex-col", className)}
       data-testid={testId}
     >
       <MarketingCardMedia
@@ -108,7 +108,10 @@ export function MarketingWorkCard({
           <Title className="line-clamp-2 min-w-0 flex-1 font-headline text-base font-medium leading-6 text-on-surface">
             <Link
               href={href}
-              className={cn("rounded-sm underline-offset-4 hover:underline", FOCUS_RING)}
+              className={cn(
+                "lax-card-title rounded-sm underline-offset-4 hover:underline",
+                FOCUS_RING,
+              )}
             >
               {title}
             </Link>

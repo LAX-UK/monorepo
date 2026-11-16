@@ -176,3 +176,27 @@ test("the repository matches its allowlist", () => {
   );
   assert.deepEqual(compareWithAllowlist(scan(), entries), []);
 });
+
+test("no `transition: all` is left anywhere: the allowlist holds none (motion 4/8, MO15)", () => {
+  const { entries } = JSON.parse(
+    readFileSync(fileURLToPath(new URL("./compositor-allowlist.json", import.meta.url)), "utf8"),
+  );
+  assert.deepEqual(
+    entries.filter((e) => e.rule === "transition-all"),
+    [],
+  );
+  assert.equal([...scan().values()].flat().filter((f) => f.rule === "transition-all").length, 0);
+});
+
+test("the header's backdrop blur and the hang's hover shadow are no longer animated (MO15)", () => {
+  const { entries } = JSON.parse(
+    readFileSync(fileURLToPath(new URL("./compositor-allowlist.json", import.meta.url)), "utf8"),
+  );
+  const listed = (file) => entries.filter((e) => e.file === file).map((e) => e.rule);
+  assert.deepEqual(listed("packages/marketing-ui/src/hang/marketing-hang.tsx"), []);
+  assert.ok(
+    !listed("packages/marketing-ui/src/header/use-header-chrome.ts").includes(
+      "transition:backdrop-filter",
+    ),
+  );
+});

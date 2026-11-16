@@ -1,0 +1,98 @@
+/*
+ * Hover and press for the shared kit (docs/design/motion.md, MO9 and MO10).
+ *
+ * Card hover. A card marks its parts with classes, and this file is the only place that says what
+ * they do when the card is hovered with a mouse:
+ *   `lax-card`        the card frame; hovering it drives the parts below
+ *   `lax-card-lift`   the frame rises 1px (put it on the `lax-card` element)
+ *   `lax-card-zoom`   this element (an image or a picture layer) zooms to 1.02
+ *   `lax-card-media`  a clipping media box; every `img` inside it zooms to 1.02
+ *   `lax-card-title`  the title is underlined
+ * Only under `(hover: hover) and (pointer: fine)`: a touch never leaves a card stuck in its hover
+ * look. Nothing is hidden or shown by hover; at rest every part is exactly as without this file.
+ * The lift and zoom use the individual `translate` and `scale` properties, so they never fight a
+ * `transform` the card already has, and they run on the compositor.
+ *
+ * Press. `lax-press` on a button scales it to 0.98 over `--lax-motion-press` while it is held,
+ * and lets go at once. It is an animation, not a transition, so the button keeps its own colour
+ * transitions. Staff pages have no press scale (their buttons change colour only).
+ *
+ * Reduced motion (the OS setting or Bid's in-app switch, `force-allow` keeping motion on): no lift,
+ * zoom or press scale anywhere. The underline stays; it is a change of state, not movement.
+ */
+
+@keyframes lax-press {
+  to {
+    scale: 0.98;
+  }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .lax-card-lift {
+    transition: translate var(--lax-motion-panel) var(--lax-ease-out), border-color
+      var(--lax-motion-hover) var(--lax-ease-out), background-color var(--lax-motion-hover)
+      var(--lax-ease-out);
+  }
+
+  :is(.lax-card-zoom, .lax-card-media img) {
+    transition: scale var(--lax-motion-media) var(--lax-ease-out);
+  }
+
+  .lax-card-lift:hover {
+    translate: 0 -1px;
+  }
+
+  .lax-card:hover :is(.lax-card-zoom, .lax-card-media img) {
+    scale: 1.02;
+  }
+
+  .lax-card:hover .lax-card-title {
+    text-decoration-line: underline;
+  }
+}
+
+.lax-press:active:not(:disabled, [aria-disabled="true"], [data-loading]) {
+  animation: lax-press var(--lax-motion-press) var(--lax-ease-out) forwards;
+}
+
+/* Staff tools: rows and cards tint only, buttons change colour only. */
+:root:has([data-lax-density="staff"]) .lax-card-lift:hover {
+  translate: none;
+}
+
+:root:has([data-lax-density="staff"]) .lax-card:hover :is(.lax-card-zoom, .lax-card-media img) {
+  scale: none;
+}
+
+:root:has([data-lax-density="staff"]) .lax-press:active {
+  animation: none;
+}
+
+/* Reduced motion, written twice like motion.css: for the OS setting and for Bid's switch. */
+@media (prefers-reduced-motion: reduce) {
+  :root:not([data-reduce-motion="force-allow"]) .lax-card-lift:hover {
+    translate: none;
+  }
+
+  :root:not([data-reduce-motion="force-allow"])
+    .lax-card:hover
+    :is(.lax-card-zoom, .lax-card-media img) {
+    scale: none;
+  }
+
+  :root:not([data-reduce-motion="force-allow"]) .lax-press:active {
+    animation: none;
+  }
+}
+
+:root[data-reduce-motion="force-reduce"] .lax-card-lift:hover {
+  translate: none;
+}
+
+:root[data-reduce-motion="force-reduce"] .lax-card:hover :is(.lax-card-zoom, .lax-card-media img) {
+  scale: none;
+}
+
+:root[data-reduce-motion="force-reduce"] .lax-press:active {
+  animation: none;
+}

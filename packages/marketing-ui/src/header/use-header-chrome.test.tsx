@@ -184,4 +184,16 @@ describe("headerChromeClassName", () => {
     expect(headerChromeClassName(true, false)).toContain("motion-reduce:transition-none");
     expect(headerChromeClassName(false, false)).toContain("motion-reduce:transition-none");
   });
+
+  it("never animates the backdrop blur: it switches at once (docs/design/motion.md, MO15)", () => {
+    for (const className of [
+      headerChromeClassName(true, false),
+      headerChromeClassName(false, false),
+      headerChromeClassName(false, true),
+    ]) {
+      const transition = /(?:^|\s)transition-\[([^\]]+)\]/.exec(className)?.[1];
+      expect(transition?.split(",")).toEqual(["background-color", "border-color", "box-shadow"]);
+      expect(className).not.toMatch(/transition-all/);
+    }
+  });
 });

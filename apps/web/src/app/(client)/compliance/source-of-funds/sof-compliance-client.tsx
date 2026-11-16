@@ -271,7 +271,7 @@ export function SofComplianceClient({ initial }: Props) {
                           </p>
                           <div className="h-1.5 w-full overflow-hidden rounded-full bg-surface-container-high">
                             <div
-                              className="h-full bg-primary transition-all"
+                              className="h-full bg-primary"
                               style={{
                                 width: `${typeState.phase === "scanning" ? 100 : typeState.progress}%`,
                               }}
