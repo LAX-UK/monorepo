@@ -159,6 +159,8 @@
 
 [data-lax-motion][data-state="closed"] {
   animation: var(--lax-anim-out, none);
+  /* A closing layer is still mounted for its exit; it must not take clicks meanwhile. */
+  pointer-events: none;
 }
 
 /*
