@@ -7,6 +7,7 @@ import {
   type ClientAttention,
   attentionChip,
 } from "@/lib/navigation/client-attention";
+import { useEndedLotIds, withoutEndedLots } from "@/lib/navigation/ended-lots";
 import { useAccountMenuContext } from "@/lib/navigation/use-account-menu-context.client";
 import type { MarketingAccountEntryViewer } from "@auction/marketing-ui/marketing-account-entry";
 import { useMemo } from "react";
@@ -32,7 +33,12 @@ export function useBidAttention(): BidAttention {
   const { user, pending } = useAppSession();
   const isClient = user ? usesBidAsClient(user) : false;
   const context = useAccountMenuContext(user?.id ?? "", isClient);
-  const attention = isClient ? (context?.attention ?? null) : null;
+  const endedLotIds = useEndedLotIds();
+  const loaded = isClient ? (context?.attention ?? null) : null;
+  const attention = useMemo(
+    () => (loaded ? withoutEndedLots(loaded, endedLotIds) : null),
+    [loaded, endedLotIds],
+  );
   const chip = useMemo(() => (attention ? attentionChip(attention) : null), [attention]);
   const viewer = useMemo(
     () =>

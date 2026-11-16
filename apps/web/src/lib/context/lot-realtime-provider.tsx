@@ -1,6 +1,7 @@
 "use client";
 
 import { useLotPorts } from "@/lib/context/lot-ports";
+import { markLotEnded } from "@/lib/navigation/ended-lots";
 import type { LotRealtimeCallbacks } from "@/lib/realtime/contracts";
 import type { BidUpdateEvent, LotEndedEvent } from "@auction/types";
 import {
@@ -49,7 +50,10 @@ export function LotRealtimeProvider({
     return realtime.subscribeToLot(lotId, {
       onBidUpdate: (e: BidUpdateEvent) => fanOut((l) => l.onBidUpdate?.(e)),
       onLotExtended: (p: unknown) => fanOut((l) => l.onLotExtended?.(p)),
-      onLotEnded: (p: LotEndedEvent) => fanOut((l) => l.onLotEnded?.(p)),
+      onLotEnded: (p: LotEndedEvent) => {
+        markLotEnded(lotId);
+        fanOut((l) => l.onLotEnded?.(p));
+      },
       onLotEvent: (p: unknown) => fanOut((l) => l.onLotEvent?.(p)),
       onReconnect: () => fanOut((l) => l.onReconnect?.()),
     });

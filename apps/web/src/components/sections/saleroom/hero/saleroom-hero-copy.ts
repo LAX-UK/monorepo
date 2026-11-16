@@ -1,6 +1,9 @@
 import type { SaleHeroVM } from "@/components/sections/saleroom/view-models";
 import type { PublicSaleroomSessionStatus } from "@/lib/saleroom/public-session-status";
-import { isSaleroomSessionLive } from "@/lib/saleroom/public-session-status";
+import {
+  isSaleroomSessionActive,
+  isSaleroomSessionLive,
+} from "@/lib/saleroom/public-session-status";
 import { toSaleCountdownEndIso } from "@auction/validators";
 
 export type SaleroomHeroLotRef = {
@@ -77,4 +80,21 @@ export function buildSaleroomHeroStats(
     ]);
   }
   return stats;
+}
+
+export const SALEROOM_HERO_LIVE_BADGE_LABEL = "Live now";
+
+/**
+ * The hero's status badge. A sale whose saleroom is running is live whatever its scheduled start
+ * says, so the badge follows the same session status as the "Saleroom live" strip rather than the
+ * clock ("Opens Mon 16 Nov" while the floor is already open).
+ */
+export function resolveSaleroomHeroBadge(
+  status: SaleHeroVM["status"],
+  liveSession: PublicSaleroomSessionStatus | null,
+): { status: SaleHeroVM["status"]; label?: string } {
+  if (status === "scheduled" && liveSession && isSaleroomSessionActive(liveSession.status)) {
+    return { status: "active", label: SALEROOM_HERO_LIVE_BADGE_LABEL };
+  }
+  return { status };
 }

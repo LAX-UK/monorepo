@@ -25,14 +25,16 @@ const EMPTY_STATE: ClerkLotLiveBidState = {
   leaderLabel: null,
 };
 
-function resolveLeaderLabel(params: {
+const UNKNOWN_BIDDER_LABEL = "Online bidder";
+
+export function resolveLeaderLabel(params: {
   leaderUserId: string | null;
   placedVia: string | null;
   paddleRoster: readonly AdminPaddleRosterEntry[];
 }): string | null {
   const channel = formatBidChannelLabel(params.placedVia);
   if (!params.leaderUserId) {
-    return channel;
+    return channel ? `${channel} bidder` : null;
   }
   const rosterMatch = params.paddleRoster.find((entry) => entry.userId === params.leaderUserId);
   if (rosterMatch) {
@@ -40,8 +42,8 @@ function resolveLeaderLabel(params: {
     const name = rosterMatch.displayName?.trim();
     return name ? `${paddle} · ${name}` : paddle;
   }
-  const shortId = params.leaderUserId.slice(0, 8);
-  return channel ? `${channel} · ${shortId}` : shortId;
+  // Never surface a raw user id: without a paddle match the bidder is shown by channel only.
+  return channel ? `${channel} bidder` : UNKNOWN_BIDDER_LABEL;
 }
 
 /** Live bid summary for the clerk on-block panel (Socket.IO lot room). */

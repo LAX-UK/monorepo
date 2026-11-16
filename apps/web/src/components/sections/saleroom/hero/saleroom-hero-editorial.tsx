@@ -60,6 +60,7 @@ export function SaleroomHeroEditorial({
         <SaleroomHeroMetaRow
           hero={hero}
           liveTrailing={liveTrailing}
+          liveSession={liveSession}
           deliveryMode={deliveryMode}
           showOnlineBiddingGatedBadge={showOnlineBiddingGatedBadge}
           {...(explainerContext ? { explainerContext } : {})}
