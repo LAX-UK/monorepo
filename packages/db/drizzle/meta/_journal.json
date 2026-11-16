@@ -2759,6 +2759,13 @@
       "when": 1812974400000,
       "tag": "0402_notice_delivery_preferences",
       "breakpoints": true
+    },
+    {
+      "idx": 395,
+      "version": "7",
+      "when": 1813060800000,
+      "tag": "0403_notification_outbox_retry_backoff",
+      "breakpoints": true
     }
   ]
 }

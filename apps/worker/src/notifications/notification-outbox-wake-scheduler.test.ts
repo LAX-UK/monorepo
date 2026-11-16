@@ -1,8 +1,8 @@
+import { NOTIFICATION_OUTBOX_CLAIM_GUARD_MS } from "@auction/persistence/lib";
 import { describe, expect, it, vi } from "vitest";
 import {
   NOTIFICATION_OUTBOX_WAKE_JOB_NAME,
   NotificationOutboxWakeScheduler,
-  OUTBOX_CLAIM_GUARD_MS,
   WAKE_BUCKET_MS,
   WAKE_SETTLE_DELAY_MS,
 } from "./notification-outbox-wake-scheduler.js";
@@ -68,7 +68,9 @@ describe("NotificationOutboxWakeScheduler", () => {
   it("runs the follow-up after the claim guard for any wake that shares it", () => {
     // Two wakes share a follow-up job only when their follow-ups fall in the same bucket; the
     // follow-up runs at the earlier one's due time, which must still clear the later wake's guard.
-    expect(WAKE_SETTLE_DELAY_MS - WAKE_BUCKET_MS).toBeGreaterThan(OUTBOX_CLAIM_GUARD_MS);
+    expect(WAKE_SETTLE_DELAY_MS - WAKE_BUCKET_MS).toBeGreaterThan(
+      NOTIFICATION_OUTBOX_CLAIM_GUARD_MS,
+    );
   });
 
   it("reports an enqueue failure instead of throwing (the minute sweep still runs)", async () => {

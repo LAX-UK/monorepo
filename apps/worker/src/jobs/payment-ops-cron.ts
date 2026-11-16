@@ -88,30 +88,46 @@ const NOTIFICATION_OUTBOX_BATCH_SIZE = 50;
 /** One wake drains at most this many batches, then leaves the rest to the next wake or sweep. */
 export const NOTIFICATION_OUTBOX_WAKE_MAX_BATCHES = 10;
 
-function isFullOutboxBatch(result: unknown): boolean {
-  if (!result || typeof result !== "object") return false;
+type OutboxBatchResult = { processed: number; failed: number };
+
+function outboxBatchResult(result: unknown): OutboxBatchResult | null {
+  if (!result || typeof result !== "object") return null;
   const { processed, failed } = result as { processed?: unknown; failed?: unknown };
-  if (typeof processed !== "number" || typeof failed !== "number") return false;
-  return processed + failed >= NOTIFICATION_OUTBOX_BATCH_SIZE;
+  if (typeof processed !== "number" || typeof failed !== "number") return null;
+  return { processed, failed };
 }
+
+/** What one wake drain did, for the wake metric (`failed` counts rows whose send failed). */
+export type NotificationOutboxWakeSummary = { batches: number; processed: number; failed: number };
 
 /**
  * Drain run on demand when a time-critical notification is committed. It goes through the same
  * drain as the minute sweep, so claiming, retries and the dedupe key behave exactly the same.
- * Where the worker drains locally it keeps going while batches come back full (a lot closing with
- * many bidders), bounded so one wake cannot hold the queue. Through the API it drains one batch and
- * does not retry on a gateway error: the follow-up wake and the minute sweep are the retry.
+ * Where the worker drains locally it keeps going only while every row of a full batch was
+ * delivered (a lot closing with many bidders), bounded so one wake cannot hold the queue. A batch
+ * with any failed row ends the wake: the failure is likely shared (database, Redis), and the failed
+ * rows wait out their retry backoff in the claim rather than being tried again here.
+ * Through the API it drains one batch and does not retry on a gateway error: the follow-up wake
+ * and the minute sweep are the retry.
  */
-export async function runProcessNotificationOutboxWakeJob(opts: JobOpts): Promise<void> {
+export async function runProcessNotificationOutboxWakeJob(
+  opts: JobOpts,
+): Promise<NotificationOutboxWakeSummary | null> {
   const { env, handlers } = opts.financeCron;
   const workerDrainsLocally =
     env.FINANCE_CRON_EXECUTION_OWNER === "worker" && !env.FINANCE_CRON_API_ROLLBACK && handlers;
   if (!workerDrainsLocally) {
     await runFinanceCronPath("process-notification-outbox", opts);
-    return;
+    return null;
   }
+  const summary: NotificationOutboxWakeSummary = { batches: 0, processed: 0, failed: 0 };
   for (let batch = 0; batch < NOTIFICATION_OUTBOX_WAKE_MAX_BATCHES; batch++) {
-    const result = await handlers.processNotificationOutbox();
-    if (!isFullOutboxBatch(result)) return;
+    const result = outboxBatchResult(await handlers.processNotificationOutbox());
+    summary.batches += 1;
+    if (!result) break;
+    summary.processed += result.processed;
+    summary.failed += result.failed;
+    if (result.failed > 0 || result.processed !== NOTIFICATION_OUTBOX_BATCH_SIZE) break;
   }
+  return summary;
 }

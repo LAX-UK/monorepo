@@ -24,24 +24,42 @@ function detach(client: WakeListenerClient): void {
 
 const RECONNECT_MIN_MS = 1_000;
 const RECONNECT_MAX_MS = 30_000;
+/** How often the idle LISTEN connection is checked with a query. */
+export const LISTENER_HEALTH_CHECK_MS = 30_000;
+/** A health query that has not answered within this long counts as a dead connection. */
+export const LISTENER_HEALTH_TIMEOUT_MS = 10_000;
+
+class HealthCheckTimeout extends Error {
+  constructor() {
+    super("notification_outbox_wake_health_check_timeout");
+  }
+}
 
 /**
  * Holds one dedicated Postgres connection on `LISTEN notification_outbox_critical` and calls
  * `onWake` for every signal. The connection is reopened with backoff when it drops, and each
  * (re)connect also wakes once, because a signal sent while nobody listened is not replayed.
  * A lost signal only delays a notification to the next minute sweep; it never loses one.
+ *
+ * A half-open connection (a failover, or a NAT dropping an idle flow) raises no error and simply
+ * stops delivering signals, so the listener runs `SELECT 1` on it every
+ * {@link LISTENER_HEALTH_CHECK_MS}; a query that fails or does not answer within
+ * {@link LISTENER_HEALTH_TIMEOUT_MS} drops the connection and reconnects.
  */
 export class NotificationOutboxWakeListener {
   private client: WakeListenerClient | null = null;
   private stopped = false;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private failures = 0;
+  private healthTimer: ReturnType<typeof setInterval> | null = null;
 
   constructor(
     private readonly deps: {
       createClient: () => WakeListenerClient;
       onWake: () => void;
       log: Logger;
+      healthCheckMs?: number;
+      healthTimeoutMs?: number;
     },
   ) {}
 
@@ -54,6 +72,7 @@ export class NotificationOutboxWakeListener {
     this.stopped = true;
     if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
     this.reconnectTimer = null;
+    this.stopHealthCheck();
     const client = this.client;
     this.client = null;
     if (client) {
@@ -84,11 +103,41 @@ export class NotificationOutboxWakeListener {
       { channel: NOTIFICATION_OUTBOX_WAKE_CHANNEL },
       "notification_outbox_wake_listening",
     );
+    this.startHealthCheck(client);
     this.deps.onWake();
+  }
+
+  private startHealthCheck(client: WakeListenerClient): void {
+    this.stopHealthCheck();
+    const every = this.deps.healthCheckMs ?? LISTENER_HEALTH_CHECK_MS;
+    const timeoutMs = this.deps.healthTimeoutMs ?? LISTENER_HEALTH_TIMEOUT_MS;
+    let inFlight = false;
+    this.healthTimer = setInterval(() => {
+      if (inFlight || this.client !== client) return;
+      inFlight = true;
+      let timeout: ReturnType<typeof setTimeout> | undefined;
+      const timedOut = new Promise<never>((_, reject) => {
+        timeout = setTimeout(() => reject(new HealthCheckTimeout()), timeoutMs);
+        timeout.unref?.();
+      });
+      Promise.race([client.query("SELECT 1"), timedOut])
+        .catch((err: unknown) => this.handleDrop(client, err))
+        .finally(() => {
+          clearTimeout(timeout);
+          inFlight = false;
+        });
+    }, every);
+    this.healthTimer.unref?.();
+  }
+
+  private stopHealthCheck(): void {
+    if (this.healthTimer) clearInterval(this.healthTimer);
+    this.healthTimer = null;
   }
 
   private handleDrop(client: WakeListenerClient, err: unknown): void {
     if (this.client !== client) return;
+    this.stopHealthCheck();
     this.client = null;
     detach(client);
     void client.end().catch(() => {});

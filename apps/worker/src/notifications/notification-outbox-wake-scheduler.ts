@@ -1,21 +1,18 @@
+import { NOTIFICATION_OUTBOX_CLAIM_GUARD_MS } from "@auction/persistence/lib";
+
 /** Job name for on-demand drains on the notification outbox queue (the minute sweep keeps its own). */
 export const NOTIFICATION_OUTBOX_WAKE_JOB_NAME = "process-notification-outbox-wake";
-
-/**
- * The outbox only claims rows staged at least this long ago (see the repository's claim guard), so
- * a drain that runs the instant a row commits can find it not yet claimable.
- */
-export const OUTBOX_CLAIM_GUARD_MS = 1_000;
 
 /** Wakes within one bucket share a job, so a burst of commits costs one drain, not one each. */
 export const WAKE_BUCKET_MS = 250;
 
 /**
- * The follow-up drain runs once every row committed with the wake is past the claim guard: the
- * guard, plus the bucket width (two wakes can share a follow-up up to one bucket apart), rounded up
+ * The follow-up drain runs once every row committed with the wake is past the outbox claim guard
+ * ({@link NOTIFICATION_OUTBOX_CLAIM_GUARD_MS}: a drain that runs the instant a row commits can find
+ * it not yet claimable): the guard, plus the bucket width (two wakes can share a follow-up up to one bucket apart), rounded up
  * to whole buckets so wakes that share an immediate drain also share its follow-up.
  */
-export const WAKE_SETTLE_DELAY_MS = OUTBOX_CLAIM_GUARD_MS + 2 * WAKE_BUCKET_MS;
+export const WAKE_SETTLE_DELAY_MS = NOTIFICATION_OUTBOX_CLAIM_GUARD_MS + 2 * WAKE_BUCKET_MS;
 
 export type EnqueueWakeJob = (job: { jobId: string; delayMs: number }) => Promise<void>;
 

@@ -2,17 +2,24 @@ import { randomUUID } from "node:crypto";
 import { closeDb, createDb } from "@auction/db";
 import { notification, notificationOutbox, user } from "@auction/db/schema";
 import type { NotificationPayload } from "@auction/persistence/interfaces";
-import { NOTIFICATION_OUTBOX_WAKE_CHANNEL } from "@auction/persistence/lib";
+import {
+  NOTIFICATION_OUTBOX_MAX_ATTEMPTS,
+  NOTIFICATION_OUTBOX_WAKE_CHANNEL,
+  notificationOutboxRetryDelayMs,
+} from "@auction/persistence/lib";
 import {
   DrizzleNotificationOutboxRepository,
   DrizzleNotificationWriteRepository,
 } from "@auction/persistence/repositories";
-import { eq, inArray } from "drizzle-orm";
+import { PROCESS_NOTIFICATION_OUTBOX_QUEUE_NAME } from "@auction/queues";
+import { Queue } from "bullmq";
+import { and, eq, inArray } from "drizzle-orm";
 import { Redis } from "ioredis";
 import pg from "pg";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import type { WorkerEnv } from "../env.js";
 import { WorkerNotificationOutboxDrain } from "../finance/worker-notification-outbox-drain.js";
+import { runProcessNotificationOutboxWakeJob } from "../jobs/payment-ops-cron.js";
 import { registerNotificationOutboxWorkers } from "../workers/register-notification-outbox-workers.js";
 import type { WorkerBootstrapDeps } from "../workers/types.js";
 
@@ -21,6 +28,15 @@ const redisUrl = process.env.REDIS_URL;
 
 /** The bar the live sale needs: an outbid notice on screen within a few seconds of the bid. */
 const DELIVERY_BUDGET_MS = 3_000;
+/**
+ * The listener wakes once when it connects (a signal sent while nobody listened is not replayed),
+ * and that wake's follow-up drain runs about 1.5 s later. A row staged inside that window would be
+ * delivered by it with no signal at all, so the latency test waits this long after the listener is
+ * up: only the commit-time signal can then deliver the row inside the budget.
+ */
+const CONNECT_WAKE_QUIET_MS = 2_500;
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 function payload(type: string, title: string): NotificationPayload {
   return { type, title, message: `${title} (integration)`, legalEntityId: null };
@@ -42,6 +58,9 @@ describe.skipIf(!databaseUrl || !redisUrl)("critical notification wake (integrat
   const outbox = new DrizzleNotificationOutboxRepository(db);
   const closables: Array<{ close: () => Promise<void> }> = [];
   const log = { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() };
+  const prefix = `outbox-wake-${run}`;
+  const queue = new Queue(PROCESS_NOTIFICATION_OUTBOX_QUEUE_NAME, { connection: redis, prefix });
+  let listeningAt = 0;
 
   beforeAll(async () => {
     await db.insert(user).values({
@@ -76,7 +95,7 @@ describe.skipIf(!databaseUrl || !redisUrl)("critical notification wake (integrat
       deps: {
         env,
         log,
-        bullConnection: { connection: redis, prefix: `outbox-wake-${run}` },
+        bullConnection: { connection: redis, prefix },
         sentryMonitorSlugs: {},
         heartbeat: async () => {},
         reportWorkerJobFailure: () => {},
@@ -93,16 +112,20 @@ describe.skipIf(!databaseUrl || !redisUrl)("critical notification wake (integrat
         ),
       { timeout: 10_000 },
     );
+    listeningAt = Date.now();
   }, 20_000);
 
   afterAll(async () => {
     for (const c of closables.reverse()) await c.close().catch(() => {});
+    await queue.close();
     await db.delete(user).where(eq(user.id, userId));
     await redis.quit();
     await closeDb(db);
   });
 
-  it("delivers a committed outbid notice within seconds, once", async () => {
+  it("delivers a committed outbid notice within seconds, once, through the signal", async () => {
+    // Past the connect wake and its follow-up, so neither can deliver this row.
+    await sleep(Math.max(0, listeningAt + CONNECT_WAKE_QUIET_MS - Date.now()));
     const key = `outbid:lot-${run}:bid-${run}:${userId}`;
     const committedAt = await db.transaction(async (tx) => {
       await outbox.stage(
@@ -127,6 +150,17 @@ describe.skipIf(!databaseUrl || !redisUrl)("critical notification wake (integrat
     console.info(`outbid notice delivered ${latencyMs}ms after commit`);
     expect(latencyMs).toBeLessThan(DELIVERY_BUDGET_MS);
 
+    // Nor did the minute sweep: no sweep run started between the commit and the delivery, so the
+    // drain that delivered it was woken by the commit-time signal.
+    const sweeps = await queue.getJobs(["active", "completed", "failed"]);
+    const sweepsInWindow = sweeps.filter(
+      (j) =>
+        j.name === PROCESS_NOTIFICATION_OUTBOX_QUEUE_NAME &&
+        (j.processedOn ?? 0) >= committedAt &&
+        (j.processedOn ?? 0) <= (delivered?.createdAt.getTime() ?? 0),
+    );
+    expect(sweepsInWindow).toHaveLength(0);
+
     const [row] = await db
       .select({ state: notificationOutbox.state })
       .from(notificationOutbox)
@@ -134,7 +168,7 @@ describe.skipIf(!databaseUrl || !redisUrl)("critical notification wake (integrat
     expect(row?.state).toBe("sent");
 
     // The follow-up drain runs after this and must not write the notice again.
-    await new Promise((r) => setTimeout(r, 2_000));
+    await sleep(2_000);
     const after = await db
       .select({ id: notification.id })
       .from(notification)
@@ -255,4 +289,122 @@ describe.skipIf(!databaseUrl)("notification outbox commit signal (integration)",
     await settle();
     expect(signals).toHaveLength(0);
   });
+});
+
+/**
+ * A short outage while a live sale wakes the drain every few hundred milliseconds must not use up
+ * the outbox retry budget. Before the backoff, one wake re-claimed the same failing rows up to ten
+ * times and dead-lettered critical notices within a second; the budget used to span about ten
+ * minutes of minute sweeps. The clock is simulated (only `Date`), so ten minutes run in seconds.
+ */
+describe.skipIf(!databaseUrl || !redisUrl)("outbox retry backoff under wakes (integration)", () => {
+  const run = randomUUID().slice(0, 8);
+  const userId = `outbox-backoff-${run}`;
+  // biome-ignore lint/style/noNonNullAssertion: gated above
+  const db = createDb(databaseUrl!);
+  // biome-ignore lint/style/noNonNullAssertion: gated above
+  const redis = new Redis(redisUrl!, { maxRetriesPerRequest: null });
+  const outbox = new DrizzleNotificationOutboxRepository(db);
+  const ROWS = 60;
+  /** How often a wake drain runs in the simulation (wakes come in pairs every 250 ms live). */
+  const WAKE_EVERY_MS = 1_000;
+  /** The retry budget before this change: ten attempts at one per minute sweep. */
+  const OLD_BUDGET_WINDOW_MS = 10 * 60_000;
+
+  beforeAll(async () => {
+    await db.insert(user).values({
+      id: userId,
+      name: userId,
+      email: `${userId}@integration.test`,
+      emailVerified: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+    await db.insert(notificationOutbox).values(
+      Array.from({ length: ROWS }, (_, i) => ({
+        idempotencyKey: `outbid:backoff-${run}:${i}:${userId}`,
+        userId,
+        payload: payload("outbid", `Backoff ${run} ${i}`),
+        state: "pending",
+        createdAt: new Date(Date.now() - 60_000),
+      })),
+    );
+  });
+
+  afterAll(async () => {
+    vi.useRealTimers();
+    await db.delete(user).where(eq(user.id, userId));
+    await redis.quit();
+    await closeDb(db);
+  });
+
+  it("tries a failing row at most once per backoff step and dead-letters nothing within the old window", async () => {
+    const drain = new WorkerNotificationOutboxDrain({
+      outbox,
+      notificationWrite: {
+        createMany: async () => {
+          throw new Error("transient blip");
+        },
+      } as never,
+      redis,
+    });
+    const env = { FINANCE_CRON_EXECUTION_OWNER: "worker", FINANCE_CRON_API_ROLLBACK: false };
+    const opts = {
+      env,
+      cronSecret: "x".repeat(32),
+      log: { warn: vi.fn(), error: vi.fn(), info: vi.fn() },
+      financeCron: {
+        env,
+        log: {},
+        cronSecret: "x".repeat(32),
+        handlers: { processNotificationOutbox: () => drain.processBatch(50) },
+      },
+    } as never;
+
+    const start = Date.now();
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(start);
+    /** Per row: the simulated times at which its attempts count rose. */
+    const attemptsAt = new Map<string, number[]>();
+    const lastAttempts = new Map<string, number>();
+    let wakes = 0;
+    for (let t = 0; t <= OLD_BUDGET_WINDOW_MS; t += WAKE_EVERY_MS) {
+      vi.setSystemTime(start + t);
+      await runProcessNotificationOutboxWakeJob(opts);
+      wakes += 1;
+      const rows = await db
+        .select({ id: notificationOutbox.id, attempts: notificationOutbox.attempts })
+        .from(notificationOutbox)
+        .where(eq(notificationOutbox.userId, userId));
+      for (const row of rows) {
+        const before = lastAttempts.get(row.id) ?? 0;
+        // One wake tries a row at most once.
+        expect(row.attempts - before).toBeLessThanOrEqual(1);
+        if (row.attempts > before) attemptsAt.set(row.id, [...(attemptsAt.get(row.id) ?? []), t]);
+        lastAttempts.set(row.id, row.attempts);
+      }
+    }
+    vi.useRealTimers();
+
+    expect(wakes).toBeGreaterThan(500);
+    expect(attemptsAt.size).toBe(ROWS);
+    for (const times of attemptsAt.values()) {
+      // Each retry waited at least the backoff for the attempts made before it.
+      for (let i = 1; i < times.length; i++) {
+        expect((times[i] ?? 0) - (times[i - 1] ?? 0)).toBeGreaterThanOrEqual(
+          notificationOutboxRetryDelayMs(i),
+        );
+      }
+      // 15 s, 30 s, 1 min, 2 min, 4 min: six attempts fit in ten minutes, well short of ten.
+      expect(times.length).toBeLessThanOrEqual(6);
+    }
+
+    const terminal = await db
+      .select({ id: notificationOutbox.id })
+      .from(notificationOutbox)
+      .where(and(eq(notificationOutbox.userId, userId), eq(notificationOutbox.state, "failed")));
+    expect(terminal).toHaveLength(0);
+    const maxAttempts = Math.max(...lastAttempts.values());
+    expect(maxAttempts).toBeLessThan(NOTIFICATION_OUTBOX_MAX_ATTEMPTS);
+  }, 120_000);
 });

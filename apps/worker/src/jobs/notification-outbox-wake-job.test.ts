@@ -42,14 +42,32 @@ describe("runProcessNotificationOutboxWakeJob", () => {
     expect(drain).toHaveBeenCalledTimes(1);
   });
 
-  it("keeps draining while batches come back full, counting failures", async () => {
+  it("keeps draining while every row of a full batch was delivered", async () => {
+    const drain = vi
+      .fn()
+      .mockResolvedValueOnce(batch(50))
+      .mockResolvedValueOnce(batch(50))
+      .mockResolvedValueOnce(batch(3));
+    const summary = await runProcessNotificationOutboxWakeJob(opts("worker", drain));
+    expect(drain).toHaveBeenCalledTimes(3);
+    expect(summary).toEqual({ batches: 3, processed: 103, failed: 0 });
+  });
+
+  it("stops at the first batch with a failed row, so a shared failure is not tried again", async () => {
     const drain = vi
       .fn()
       .mockResolvedValueOnce(batch(50))
       .mockResolvedValueOnce(batch(45, 5))
-      .mockResolvedValueOnce(batch(3));
+      .mockResolvedValue(batch(50));
+    const summary = await runProcessNotificationOutboxWakeJob(opts("worker", drain));
+    expect(drain).toHaveBeenCalledTimes(2);
+    expect(summary).toEqual({ batches: 2, processed: 95, failed: 5 });
+  });
+
+  it("stops when a whole batch failed", async () => {
+    const drain = vi.fn().mockResolvedValue(batch(0, 50));
     await runProcessNotificationOutboxWakeJob(opts("worker", drain));
-    expect(drain).toHaveBeenCalledTimes(3);
+    expect(drain).toHaveBeenCalledTimes(1);
   });
 
   it("stops after the batch cap so one wake cannot hold the queue", async () => {
@@ -80,7 +98,7 @@ describe("runProcessNotificationOutboxWakeJob", () => {
   it("asks the API once on success", async () => {
     const fetchMock = vi.fn().mockResolvedValue(reply(200));
     vi.stubGlobal("fetch", fetchMock);
-    await runProcessNotificationOutboxWakeJob(opts("api_rollback"));
+    await expect(runProcessNotificationOutboxWakeJob(opts("api_rollback"))).resolves.toBeNull();
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 });

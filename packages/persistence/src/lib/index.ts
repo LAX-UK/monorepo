@@ -173,3 +173,10 @@ export {
   NOTIFICATION_OUTBOX_WAKE_CHANNEL,
   isCriticalNotificationType,
 } from "./notification-outbox-wake.js";
+export {
+  NOTIFICATION_OUTBOX_CLAIM_GUARD_MS,
+  NOTIFICATION_OUTBOX_MAX_ATTEMPTS,
+  NOTIFICATION_OUTBOX_RETRY_BASE_MS,
+  NOTIFICATION_OUTBOX_RETRY_MAX_MS,
+  notificationOutboxRetryDelayMs,
+} from "./notification-outbox-claim.js";

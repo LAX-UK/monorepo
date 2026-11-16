@@ -8,14 +8,19 @@ import type {
   StageNotificationOutboxInput,
 } from "../interfaces/notification-outbox.repository.js";
 import {
+  NOTIFICATION_OUTBOX_CLAIM_GUARD_MS,
+  NOTIFICATION_OUTBOX_MAX_ATTEMPTS,
+  NOTIFICATION_OUTBOX_RETRY_BASE_MS,
+  NOTIFICATION_OUTBOX_RETRY_MAX_MS,
+} from "../lib/notification-outbox-claim.js";
+import {
   NOTIFICATION_OUTBOX_WAKE_CHANNEL,
   isCriticalNotificationType,
 } from "../lib/notification-outbox-wake.js";
 
-const STUCK_AFTER_MS = 1_000;
-/** Debounce: only claim rows at least this old so in-flight transactions have committed. */
+/** A claim not acked or failed within this long (a drain that died) goes back to pending. */
 const CLAIMED_STALE_MS = 10 * 60_000;
-export const NOTIFICATION_OUTBOX_MAX_ATTEMPTS = 10;
+export { NOTIFICATION_OUTBOX_MAX_ATTEMPTS };
 
 type ClaimedRow = {
   id: string;
@@ -97,7 +102,9 @@ export class DrizzleNotificationOutboxRepository implements INotificationOutboxR
   }
 
   async claim(batchSize: number): Promise<NotificationOutboxRow[]> {
-    const stuckBefore = new Date(Date.now() - STUCK_AFTER_MS);
+    const now = Date.now();
+    // Debounce: only claim rows at least this old so in-flight transactions have committed.
+    const stuckBefore = new Date(now - NOTIFICATION_OUTBOX_CLAIM_GUARD_MS);
     await this.releaseStaleClaims();
 
     return this.db.transaction(async (tx) => {
@@ -107,6 +114,17 @@ export class DrizzleNotificationOutboxRepository implements INotificationOutboxR
         WHERE state = 'pending'
           AND created_at < ${stuckBefore}
           AND attempts < ${NOTIFICATION_OUTBOX_MAX_ATTEMPTS}
+          -- Retry backoff (notificationOutboxRetryDelayMs): a row that failed waits before it is
+          -- tried again, however often drains run, so a short outage cannot use up its attempts.
+          AND (
+            last_attempt_at IS NULL
+            OR last_attempt_at < ${new Date(now)}::timestamptz - make_interval(
+              secs => LEAST(
+                ${NOTIFICATION_OUTBOX_RETRY_MAX_MS}::double precision,
+                ${NOTIFICATION_OUTBOX_RETRY_BASE_MS}::double precision * power(2, GREATEST(attempts - 1, 0))
+              ) / 1000
+            )
+          )
         ORDER BY created_at
         LIMIT ${batchSize}
         FOR UPDATE SKIP LOCKED
@@ -153,6 +171,7 @@ export class DrizzleNotificationOutboxRepository implements INotificationOutboxR
         lastError: error.slice(0, 2000),
         claimedAt: null,
         attempts: nextAttempts,
+        lastAttemptAt: new Date(),
       })
       .where(eq(notificationOutbox.id, id));
   }
