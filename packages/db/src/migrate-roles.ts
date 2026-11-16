@@ -274,8 +274,11 @@ export const API_REFUND_REVERSAL_TABLES = ["stripe_refund_reversal"] as const;
 export const API_DELIVERY_REFUND_TABLES = ["payment_group_delivery_refund"] as const;
 /**
  * Inbound enquiry mail held for staff review (migrations 0397 and 0398). The Bid API adds held
- * mail and reads it; staff review only changes its status and who reviewed it and when. It never
- * deletes a row and never rewrites what was received: the worker's purge and erasure delete.
+ * mail and reads it; staff review only changes its status and who reviewed it and when, so what
+ * was received is never rewritten. DELETE is held for one path only: staff-run enquiry erasure
+ * (Data requests › erase enquiries, `anonymiseEnquiries`) removes the held mail of the erased
+ * enquiries and of the erased address in the same transaction. Nothing else in the API deletes
+ * held mail; the worker's daily purge deletes it when it is due.
  */
 export const API_ENQUIRY_INBOUND_QUARANTINE_TABLES = ["enquiry_inbound_quarantine"] as const;
 /** The only columns a staff review (attach or discard) changes on a held message. */
@@ -1638,7 +1641,8 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
             continue;
           }
           if ((API_ENQUIRY_INBOUND_QUARANTINE_TABLES as readonly string[]).includes(tableName)) {
-            await grantIfExists(client, "api_app", tableName, "INSERT, SELECT");
+            // DELETE is for staff-run enquiry erasure only; review changes the columns below.
+            await grantIfExists(client, "api_app", tableName, "INSERT, SELECT, DELETE");
             await grantColumnUpdateIfExists(
               client,
               "api_app",

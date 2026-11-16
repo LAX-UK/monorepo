@@ -154,9 +154,23 @@ describe("anonymiseEnquiries", () => {
     await anonymiseEnquiries(tx, { kind: "email", email: "  Ada@Example.com " });
     const quarantine = deletes.filter((d) => d.table === "enquiry_inbound_quarantine");
     expect(quarantine.map((d) => [d.sql, d.params])).toEqual([
-      ['"enquiry_inbound_quarantine"."suspected_enquiry_id" in ($1, $2)', ["e1", "e2"]],
       ['lower("enquiry_inbound_quarantine"."from_address") = $1', ["ada@example.com"]],
+      ['"enquiry_inbound_quarantine"."suspected_enquiry_id" in ($1, $2)', ["e1", "e2"]],
     ]);
+  });
+
+  it("deletes held mail from the erased address even when no enquiry can be erased", async () => {
+    const none = fakeTx({ matched: [] });
+    await anonymiseEnquiries(none.tx, { kind: "email", email: "ada@example.com" });
+    expect(
+      none.deletes
+        .filter((d) => d.table === "enquiry_inbound_quarantine")
+        .map((d) => [d.sql, d.params]),
+    ).toEqual([['lower("enquiry_inbound_quarantine"."from_address") = $1', ["ada@example.com"]]]);
+
+    const held = fakeTx({ matched: [{ id: "e1", status: "converted" }] });
+    await anonymiseEnquiries(held.tx, { kind: "email", email: "ada@example.com" });
+    expect(held.deletes.filter((d) => d.table === "enquiry_inbound_quarantine")).toHaveLength(1);
   });
 
   it("holds a converted enquiry: nothing is changed and it is counted", async () => {

@@ -218,10 +218,11 @@ async function refusedForPrivilege(query: Promise<unknown>): Promise<boolean> {
 
 /**
  * The review as `api_app`, the role the Bid API connects with: it may hold mail and change only
- * the review columns, and may neither delete held mail nor rewrite what was received.
+ * the review columns, never rewrite what was received. (It may delete held mail, for staff-run
+ * erasure; `anonymise-enquiries.api-app.integration.test.ts` covers that path.)
  */
 describe.skipIf(!HAS_DB || !API_URL)("enquiry quarantine review as api_app", () => {
-  it("holds and reviews mail, and is refused a delete or a rewrite", async () => {
+  it("holds and reviews mail, and is refused a rewrite of what was received", async () => {
     // biome-ignore lint/style/noNonNullAssertion: gated by skipIf
     const api = createDb(API_URL!);
     // biome-ignore lint/style/noNonNullAssertion: gated by skipIf
@@ -254,11 +255,6 @@ describe.skipIf(!HAS_DB || !API_URL)("enquiry quarantine review as api_app", () 
         });
       });
       expect((await repo.findById(created.id, EVERYONE))?.status).toBe("dismissed");
-      expect(
-        await refusedForPrivilege(
-          api.delete(enquiryInboundQuarantine).where(eq(enquiryInboundQuarantine.id, created.id)),
-        ),
-      ).toBe(true);
       expect(
         await refusedForPrivilege(
           api

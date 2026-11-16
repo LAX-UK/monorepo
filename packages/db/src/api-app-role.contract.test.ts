@@ -942,14 +942,16 @@ describe.skipIf(!API_URL)("api_app role contract", { timeout: 60_000 }, () => {
     });
   });
 
-  it("holds inbound enquiry mail and reviews it by status only, never deleting or rewriting it", async () => {
+  it("holds inbound enquiry mail, reviews it by status only and deletes it on erasure, never rewriting it", async () => {
     await withApiClient(async (client) => {
       const rows = await readTablePrivileges(
         client,
         ["enquiry_inbound_quarantine"],
         ["SELECT", "INSERT", "UPDATE", "DELETE", "TRUNCATE"],
       );
-      expectTablePrivileges(rows, (row) => ["SELECT", "INSERT"].includes(row.privilege));
+      // DELETE is the staff-run enquiry erasure path (anonymiseEnquiries); TRUNCATE and a
+      // table-wide UPDATE stay refused.
+      expectTablePrivileges(rows, (row) => ["SELECT", "INSERT", "DELETE"].includes(row.privilege));
       const columns = await client.query<{ column_name: string; allowed: boolean }>(
         `select column_name::text,
                 has_column_privilege(current_user, 'public.enquiry_inbound_quarantine', column_name, 'UPDATE') as allowed

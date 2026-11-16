@@ -934,7 +934,7 @@ describe("migrate-roles invariants", () => {
     );
   });
 
-  it("lets the Bid API hold and review inbound enquiry mail but never delete or rewrite it", async () => {
+  it("lets the Bid API hold, review and erase inbound enquiry mail but never rewrite it", async () => {
     expect([...API_ENQUIRY_INBOUND_QUARANTINE_TABLES]).toEqual(["enquiry_inbound_quarantine"]);
     expect([...API_ENQUIRY_INBOUND_QUARANTINE_REVIEW_COLUMNS]).toEqual([
       "status",
@@ -945,7 +945,7 @@ describe("migrate-roles invariants", () => {
     expect([...API_READ_TABLES]).not.toContain("enquiry_inbound_quarantine");
     const source = await readFile(join(__dirname, "migrate-roles.ts"), "utf8");
     expect(source).toMatch(
-      /API_ENQUIRY_INBOUND_QUARANTINE_TABLES as readonly string\[\]\)\.includes\(tableName\)\) \{\s+await grantIfExists\(client, "api_app", tableName, "INSERT, SELECT"\);\s+await grantColumnUpdateIfExists\(\s+client,\s+"api_app",\s+tableName,\s+API_ENQUIRY_INBOUND_QUARANTINE_REVIEW_COLUMNS,\s+\);\s+continue;/,
+      /API_ENQUIRY_INBOUND_QUARANTINE_TABLES as readonly string\[\]\)\.includes\(tableName\)\) \{\s+\/\/ DELETE is for staff-run enquiry erasure only[^\n]*\n\s+await grantIfExists\(client, "api_app", tableName, "INSERT, SELECT, DELETE"\);\s+await grantColumnUpdateIfExists\(\s+client,\s+"api_app",\s+tableName,\s+API_ENQUIRY_INBOUND_QUARANTINE_REVIEW_COLUMNS,\s+\);\s+continue;/,
     );
   });
 

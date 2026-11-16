@@ -59,6 +59,17 @@ export async function anonymiseEnquiries(
   const condition = targetCondition(target);
   if (!condition) return { ...NONE };
 
+  // Held mail from the erased address goes first, before any early return: a person with no
+  // erasable enquiry (none matched, or every one is held from erasure) may still have mail
+  // waiting in quarantine, and it should not wait out its 30 days.
+  if (target.kind === "email") {
+    await tx
+      .delete(enquiryInboundQuarantine)
+      .where(
+        sql`lower(${enquiryInboundQuarantine.fromAddress}) = ${target.email.trim().toLowerCase()}`,
+      );
+  }
+
   const matched = await tx
     .select({
       id: marketingEnquiry.id,
@@ -115,13 +126,6 @@ export async function anonymiseEnquiries(
   await tx
     .delete(enquiryInboundQuarantine)
     .where(inArray(enquiryInboundQuarantine.suspectedEnquiryId, ids));
-  if (target.kind === "email") {
-    await tx
-      .delete(enquiryInboundQuarantine)
-      .where(
-        sql`lower(${enquiryInboundQuarantine.fromAddress}) = ${target.email.trim().toLowerCase()}`,
-      );
-  }
 
   await tx
     .update(privateSaleEnquiryDetail)
