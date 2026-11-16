@@ -28,7 +28,7 @@ The fixes for findings 2 to 11 of the first review are in place. The merge itsel
    - **Legacy terms not used.** A lot with no recorded terms still returns `null` from `purchaseStorageOf` (`purchase-storage.ts:63-65`). It then falls back to `purchaseCollectBy` with `collectByPolicyFor(storage.freeStorageDays)` (`purchase-view.ts:170-176`): the place's own free days, not ST9's 30 calendar days. Main's own comment (`packages/domain/src/collection-storage.ts:20-23`) says such lots go through `LEGACY_STORAGE_TERMS` and `calculateStorageCharge`. Use `storageTermsForLot(recorded)` so legacy lots get 30 days free, nothing charged, from the same formatter. If the plan is to keep today's notice for legacy lots, say so in the design doc, because it contradicts ST9 for places whose `free_storage_days` is not 30.
    - The PR body says these would be done by "merging main once #1477 lands". The merge commit only resolved text conflicts.
 
-4. **Blocking: CI is red on `d7b2b84d`.** REST check-runs, polled until complete. The `test` job was still running at the end of the poll; every job that finished failed on the two TS2353 errors in finding 1:
+4. **Blocking: CI is red on `d7b2b84d`.** REST check-runs, polled until complete. Every check has finished. Every failed job failed on the two TS2353 errors in finding 1:
    - `static-checks`
    - `build`
    - `api vitest (2/2)`
@@ -37,7 +37,7 @@ The fixes for findings 2 to 11 of the first review are in place. The merge itsel
    - `browser-gates`
    - `account-browser-gates`
 
-   These passed: `api vitest (1/2)`, the shop-api shards, the docker images, `ui-chromium`, `build-packages`, the identity jobs and the role contracts. These were skipped by path filters: `art-browser-gates` and `shop-v1-phase-smoke`.
+   These passed: `test`, `api vitest (1/2)`, the shop-api shards, the docker images, `ui-chromium`, `build-packages`, the identity jobs and the role contracts. These were skipped by path filters: `art-browser-gates` and `shop-v1-phase-smoke`.
 
 5. **Non-blocking: route JS could not be checked.** The CI `build` job failed before `next build`, so there is no route table for this head. The first review's table (no change against main) still holds for the pre-merge code. Recheck it once the build is green.
 
