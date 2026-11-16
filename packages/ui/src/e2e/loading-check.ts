@@ -174,6 +174,10 @@ export async function checkLoadingScreen(
 
   await navigateInApp(page, options.to);
   await page.locator(".lax-skeleton").first().waitFor({ state: "attached" });
+  // A block of the loading screen itself: the swap is over when it has left the page. (The page
+  // can draw `.lax-skeleton` too, for an image that has not loaded, so "no skeleton left" is not
+  // the test.)
+  const screenBlock = await page.locator(".lax-skeleton").first().elementHandle();
   const first = await readSkeleton(page);
   // From here on every shift counts: the delay, the fade-in and more than one full pulse.
   await page.waitForTimeout(options.holdMs ?? 2_200);
@@ -183,7 +187,7 @@ export async function checkLoadingScreen(
 
   release();
   await page.waitForURL((url) => url.pathname === pathname);
-  await page.locator(".lax-skeleton").first().waitFor({ state: "detached", timeout: 30_000 });
+  await page.waitForFunction((block) => !block?.isConnected, screenBlock, { timeout: 30_000 });
   await page.waitForLoadState("networkidle");
   await page.waitForTimeout(options.settleMs ?? 1_000);
   const swapShift = await takeShift(page);
