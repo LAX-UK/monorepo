@@ -6,7 +6,7 @@ export default function ResultsLoading() {
       aria-busy="true"
       aria-label="Loading results"
       hero={
-        <div className="animate-pulse space-y-4">
+        <div className="lax-skeleton space-y-4">
           <div className="h-14 w-2/3 max-w-md rounded bg-surface-container-high" />
           <div className="h-4 w-48 rounded bg-surface-container-high" />
         </div>
@@ -18,7 +18,7 @@ export default function ResultsLoading() {
         {[0, 1, 2].map((key) => (
           <li
             key={key}
-            className="h-[22rem] animate-pulse rounded-lax-card border border-lax-line bg-surface-container-low md:h-40"
+            className="h-[22rem] lax-skeleton rounded-lax-card border border-lax-line bg-surface-container-low md:h-40"
           />
         ))}
       </ul>

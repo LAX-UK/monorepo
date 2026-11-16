@@ -9,7 +9,7 @@ import { Suspense } from "react";
 
 function ToolbarFallback() {
   return (
-    <div className="mb-8 h-14 animate-pulse rounded-md bg-surface-container-high" aria-hidden />
+    <div className="mb-8 h-14 lax-skeleton rounded-md bg-surface-container-high" aria-hidden />
   );
 }
 

@@ -21,6 +21,8 @@ export const LAX_SYSTEM_CSS = readFileSync(
   "utf8",
 );
 export const MOTION_SOURCE = readFileSync(fromHere("../lax/motion.css"), "utf8");
+/** The kit's loading skeleton stylesheet (`.lax-skeleton`). */
+export const SKELETON_SOURCE = readFileSync(fromHere("../lax/skeleton.css"), "utf8");
 /** The kit's card hover and button press (packages/ui/src/lax/hover-press.css). */
 export const HOVER_PRESS_SOURCE = readFileSync(fromHere("../lax/hover-press.css"), "utf8");
 export const SONNER_CSS = readFileSync(

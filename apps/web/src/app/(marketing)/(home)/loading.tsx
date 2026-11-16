@@ -1,1 +1,3 @@
-export { MarketingRouteLoading as default } from "@/components/marketing/marketing-route-loading";
+import { HomeLoading } from "@/components/sections/home/skeletons/home-skeleton";
+
+export default HomeLoading;
