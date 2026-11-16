@@ -26,7 +26,7 @@ export type KycNoticeQueueDeps = {
   notificationsFor: (tx: Database) => INotificationWriteRepository;
   email: ITransactionalEmailOutbox;
   factory: Pick<INotificationFactory, "createKycApproved" | "createKycDeclined">;
-  /** The person's Identity checks switches: the result is emailed and noticed only as they allow. */
+  /** The person's Identity check app switch. The result's email is not optional. */
   preferences: Pick<INotificationPreferenceReader, "isChannelEnabled">;
   webOrigin: string;
 };
@@ -47,22 +47,18 @@ export class KycNoticeQueue implements IKycNoticeQueue {
     const origin = this.origin();
     const idempotencyKey = `kyc-${outcome}:${userId}:${decisionKey(notice)}`;
     const type = outcome === "approved" ? "kyc_approved" : "kyc_declined";
-    // The two switches are the person's own: email and the app are chosen apart.
-    const [emailOn, appOn] = await Promise.all([
-      this.deps.preferences.isChannelEnabled(userId, type, "email"),
-      this.deps.preferences.isChannelEnabled(userId, type, "in_app"),
-    ]);
+    // The email is transactional and always sent: it is the record of the decision, and a decline
+    // carries the steps to try again and how to reach us. Only the app notice is the person's choice.
+    const appOn = await this.deps.preferences.isChannelEnabled(userId, type, "in_app");
     if (outcome === "approved") {
-      if (emailOn) {
-        await this.send(tx, {
-          template: "kyc-approved",
-          to: user.email,
-          userId,
-          category: "transactional",
-          vars: { userName: user.name, registerUrl: `${origin}/sales` },
-          idempotencyKey,
-        });
-      }
+      await this.send(tx, {
+        template: "kyc-approved",
+        to: user.email,
+        userId,
+        category: "transactional",
+        vars: { userName: user.name, registerUrl: `${origin}/sales` },
+        idempotencyKey,
+      });
       if (appOn) {
         await this.deps
           .notificationsFor(tx)
@@ -70,20 +66,18 @@ export class KycNoticeQueue implements IKycNoticeQueue {
       }
       return;
     }
-    if (emailOn) {
-      await this.send(tx, {
-        template: "kyc-declined",
-        to: user.email,
-        userId,
-        category: "transactional",
-        vars: {
-          userName: user.name,
-          retryUrl: `${origin}/verify-identity`,
-          contactUrl: `${origin}/contact`,
-        },
-        idempotencyKey,
-      });
-    }
+    await this.send(tx, {
+      template: "kyc-declined",
+      to: user.email,
+      userId,
+      category: "transactional",
+      vars: {
+        userName: user.name,
+        retryUrl: `${origin}/verify-identity`,
+        contactUrl: `${origin}/contact`,
+      },
+      idempotencyKey,
+    });
     if (appOn) {
       await this.deps
         .notificationsFor(tx)

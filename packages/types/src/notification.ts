@@ -60,8 +60,6 @@ export type NotificationPreference = {
   searchAlertsInApp: boolean;
   /** A notice in the app when an identity check is approved or declined. */
   identityInApp: boolean;
-  /** An email when an identity check is approved or declined. */
-  identityEmail: boolean;
   /** A notice in the app when staff decide a registration to bid or change its limit. */
   registrationInApp: boolean;
   outbidPush: boolean;

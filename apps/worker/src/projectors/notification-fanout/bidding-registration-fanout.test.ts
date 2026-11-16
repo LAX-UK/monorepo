@@ -180,6 +180,7 @@ describe("in-app notices beside the emails", () => {
         saleId: SALE_ID,
         title: "You can bid in this sale",
         message: '"Autumn Sale": approved, with a limit of £5,000.00.',
+        dedupeKey: "sale-registration-decision:7:sam",
       },
     ]);
   });
@@ -231,6 +232,29 @@ describe("in-app notices beside the emails", () => {
     expect(entity.notices.map((n) => [n.userId, n.legalEntityId])).toEqual([
       ["owner", ENTITY_ID],
       ["fin", ENTITY_ID],
+    ]);
+  });
+
+  it("keys each notice like its email, so a retried event writes no second notice", async () => {
+    const sale = harness();
+    const payload = { saleId: SALE_ID, userId: "sam", previousLimit: "1000.00", limit: "2500.00" };
+    await fanoutSaleRegistrationLimitChanged({ ...sale.deps, eventId: 9, payload });
+    await fanoutSaleRegistrationLimitChanged({ ...sale.deps, eventId: 9, payload });
+    expect(sale.notices.map((n) => n.dedupeKey)).toEqual([
+      "bidding-limit-changed:9:sam",
+      "bidding-limit-changed:9:sam",
+    ]);
+    const entity = harness();
+    await fanoutOrganisationLimitChanged({
+      ...entity.deps,
+      eventId: 10,
+      legalEntityId: ENTITY_ID,
+      payload: { changed_by: "staff", previous_limit: "1000.00", limit: "2500.00" },
+    });
+    // One key per member: a retry after a failure part-way through re-notifies nobody.
+    expect(entity.notices.map((n) => n.dedupeKey)).toEqual([
+      "bidding-limit-changed:10:owner",
+      "bidding-limit-changed:10:fin",
     ]);
   });
 

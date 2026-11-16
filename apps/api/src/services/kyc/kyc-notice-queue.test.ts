@@ -39,30 +39,37 @@ const approved = {
 };
 
 describe("KycNoticeQueue preferences", () => {
-  it("asks for the person's own switches by the notice's type", async () => {
+  it("asks only for the app switch, by the notice's type", async () => {
     const { queue, isChannelEnabled } = setup();
     await queue.queueOutcome(tx, { ...approved, outcome: "declined" });
-    expect(isChannelEnabled).toHaveBeenCalledWith("u1", "kyc_declined", "email");
     expect(isChannelEnabled).toHaveBeenCalledWith("u1", "kyc_declined", "in_app");
+    expect(isChannelEnabled).not.toHaveBeenCalledWith("u1", "kyc_declined", "email");
   });
 
   it.each(["approved", "declined"] as const)(
-    "sends only the app notice for %s when the email switch is off",
+    "always emails the %s result: it is transactional, whatever the switches say",
     async (outcome) => {
-      const { queue, createMany, enqueueInTransaction } = setup(undefined, { email: true });
+      const { queue, createMany, enqueueInTransaction } = setup(undefined, {
+        email: true,
+        app: true,
+      });
       await queue.queueOutcome(tx, { ...approved, outcome });
-      expect(enqueueInTransaction).not.toHaveBeenCalled();
-      expect(createMany).toHaveBeenCalledTimes(1);
+      expect(enqueueInTransaction).toHaveBeenCalledTimes(1);
+      expect(enqueueInTransaction).toHaveBeenCalledWith(
+        tx,
+        expect.objectContaining({ template: `kyc-${outcome}`, category: "transactional" }),
+      );
+      expect(createMany).not.toHaveBeenCalled();
     },
   );
 
   it.each(["approved", "declined"] as const)(
-    "sends only the email for %s when the app switch is off",
+    "sends the email and the app notice for %s with the app switch on",
     async (outcome) => {
-      const { queue, createMany, enqueueInTransaction } = setup(undefined, { app: true });
+      const { queue, createMany, enqueueInTransaction } = setup();
       await queue.queueOutcome(tx, { ...approved, outcome });
       expect(enqueueInTransaction).toHaveBeenCalledTimes(1);
-      expect(createMany).not.toHaveBeenCalled();
+      expect(createMany).toHaveBeenCalledTimes(1);
     },
   );
 

@@ -50,37 +50,43 @@ describe("AlertsSettings engine rows", () => {
 });
 
 describe("AlertsSettings identity and registration rows", () => {
-  it("shows Identity check with Email and App switches, both on by default", () => {
+  it("holds the Identity check email on, with the reason, and leaves the App switch changeable", () => {
     render(<AlertsSettings initial={prefs} initialEngine={engine} />);
-    expect(screen.getByRole("switch", { name: "Identity check by email" })).toHaveAttribute(
-      "aria-checked",
-      "true",
-    );
-    expect(screen.getByRole("switch", { name: "Identity check by app" })).toHaveAttribute(
-      "aria-checked",
-      "true",
-    );
+    const email = screen.getByRole("switch", { name: "Identity check by email" });
+    expect(email).toHaveAttribute("aria-checked", "true");
+    expect(email).toHaveAccessibleDescription(expect.stringContaining("Always emailed"));
+    const app = screen.getByRole("switch", { name: "Identity check by app" });
+    expect(app).toHaveAttribute("aria-checked", "true");
+    expect(app).not.toHaveAttribute("aria-disabled", "true");
   });
 
-  it("saves the email switch apart from the app switch", async () => {
+  it("does not save anything when the held email is pressed", async () => {
+    const save = vi.mocked(updateNotificationPreferencesFromValuesAction);
+    save.mockClear();
+    render(<AlertsSettings initial={prefs} initialEngine={engine} />);
+    fireEvent.click(screen.getByRole("switch", { name: "Identity check by email" }));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(save).not.toHaveBeenCalled();
+  });
+
+  it("saves the Identity check app switch", async () => {
     const save = vi.mocked(updateNotificationPreferencesFromValuesAction);
     save.mockResolvedValue({ ok: true } as never);
     render(<AlertsSettings initial={prefs} initialEngine={engine} />);
-    fireEvent.click(screen.getByRole("switch", { name: "Identity check by email" }));
+    fireEvent.click(screen.getByRole("switch", { name: "Identity check by app" }));
     await waitFor(() => expect(save).toHaveBeenCalled());
-    expect(save.mock.calls.at(-1)?.[0]).toMatchObject({
-      identityEmail: false,
-      identityInApp: true,
-    });
+    expect(save.mock.calls.at(-1)?.[0]).toMatchObject({ identityInApp: false });
   });
 
-  it("offers Registrations and limits by app alone: its email always goes", () => {
+  it("offers Registrations and limits by app, with its email held on", () => {
     render(<AlertsSettings initial={prefs} initialEngine={engine} />);
     expect(screen.getByRole("switch", { name: "Registrations and limits by app" })).toHaveAttribute(
       "aria-checked",
       "true",
     );
-    expect(screen.queryByRole("switch", { name: "Registrations and limits by email" })).toBeNull();
+    expect(
+      screen.getByRole("switch", { name: "Registrations and limits by email" }),
+    ).toHaveAccessibleDescription(expect.stringContaining("Always emailed"));
   });
 });
 

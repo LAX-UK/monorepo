@@ -20,7 +20,6 @@ export const notificationPreferencePatchSchema = z.object({
   artistAlertsInApp: z.boolean().optional(),
   searchAlertsInApp: z.boolean().optional(),
   identityInApp: z.boolean().optional(),
-  identityEmail: z.boolean().optional(),
   registrationInApp: z.boolean().optional(),
   outbidPush: z.boolean().optional(),
   wonPush: z.boolean().optional(),

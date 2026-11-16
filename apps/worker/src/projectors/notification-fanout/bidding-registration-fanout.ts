@@ -27,10 +27,13 @@ export function registrationDecidedNotice(input: {
   saleTitle: string;
   approved: boolean;
   bidLimit: string | null;
+  /** The same key as the email: a retried event writes no second notice. */
+  dedupeKey: string;
 }): CreateNotificationRow {
   return {
     userId: input.userId,
     type: "sale_registration_decided",
+    dedupeKey: input.dedupeKey,
     // A request to bid is the person's own, so the notice is personal.
     legalEntityId: null,
     saleId: input.saleId,
@@ -49,10 +52,13 @@ export function limitChangedNotice(input: {
   scopeName: string;
   previousLimit: string | null;
   newLimit: string | null;
+  /** The same key as the email: a retried event writes no second notice. */
+  dedupeKey: string;
 }): CreateNotificationRow {
   return {
     userId: input.userId,
     type: "bidding_limit_changed",
+    dedupeKey: input.dedupeKey,
     legalEntityId: input.legalEntityId,
     saleId: input.saleId ?? undefined,
     title: "Your bidding limit changed",
@@ -75,6 +81,7 @@ export async function fanoutSaleRegistrationDecided(
   ]);
   if (!person?.email || !saleTitle) return;
   const approved = payload.decision === "approved";
+  const idempotencyKey = `sale-registration-decision:${options.eventId}:${payload.userId}`;
   await options.emailService.enqueue({
     template: "sale-registration-decision-notice",
     to: person.email,
@@ -89,7 +96,7 @@ export async function fanoutSaleRegistrationDecided(
       supportContactEmail: options.supportContactEmail,
     },
     category: "transactional",
-    idempotencyKey: `sale-registration-decision:${options.eventId}:${payload.userId}`,
+    idempotencyKey,
   });
   await options.notificationWriteRepo.createMany([
     registrationDecidedNotice({
@@ -98,6 +105,7 @@ export async function fanoutSaleRegistrationDecided(
       saleTitle,
       approved,
       bidLimit: approved ? formatMoneyMajor(payload.bidLimit) : null,
+      dedupeKey: idempotencyKey,
     }),
   ]);
 }
@@ -113,6 +121,7 @@ export async function fanoutSaleRegistrationLimitChanged(
     notificationFanoutReader.getSaleTitle(payload.saleId),
   ]);
   if (!person?.email || !saleTitle) return;
+  const idempotencyKey = `bidding-limit-changed:${options.eventId}:${payload.userId}`;
   await options.emailService.enqueue({
     template: "bidding-limit-changed-notice",
     to: person.email,
@@ -126,7 +135,7 @@ export async function fanoutSaleRegistrationLimitChanged(
       supportContactEmail: options.supportContactEmail,
     },
     category: "transactional",
-    idempotencyKey: `bidding-limit-changed:${options.eventId}:${payload.userId}`,
+    idempotencyKey,
   });
   await options.notificationWriteRepo.createMany([
     limitChangedNotice({
@@ -136,6 +145,7 @@ export async function fanoutSaleRegistrationLimitChanged(
       scopeName: saleTitle,
       previousLimit: formatMoneyMajor(payload.previousLimit),
       newLimit: formatMoneyMajor(payload.limit),
+      dedupeKey: idempotencyKey,
     }),
   ]);
 }
@@ -154,6 +164,9 @@ export async function fanoutOrganisationLimitChanged(
     notificationFanoutReader.getEntityDisplayName(options.legalEntityId),
   ]);
   for (const recipient of recipients) {
+    // Keyed per member: a retry after member N failed re-sends neither email nor notice to the
+    // members before them.
+    const idempotencyKey = `bidding-limit-changed:${options.eventId}:${recipient.userId}`;
     await options.emailService.enqueue({
       template: "bidding-limit-changed-notice",
       to: recipient.email,
@@ -167,7 +180,7 @@ export async function fanoutOrganisationLimitChanged(
         supportContactEmail: options.supportContactEmail,
       },
       category: "transactional",
-      idempotencyKey: `bidding-limit-changed:${options.eventId}:${recipient.userId}`,
+      idempotencyKey,
     });
     await options.notificationWriteRepo.createMany([
       limitChangedNotice({
@@ -177,6 +190,7 @@ export async function fanoutOrganisationLimitChanged(
         scopeName: entityName,
         previousLimit: formatMoneyMajor(payload.previous_limit),
         newLimit: formatMoneyMajor(payload.limit),
+        dedupeKey: idempotencyKey,
       }),
     ]);
   }

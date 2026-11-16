@@ -7,6 +7,7 @@ import {
   withAlertCell,
   withAlertPreset,
 } from "./alert-matrix";
+import { ALWAYS_EMAILED_REASON } from "./alert-matrix-copy";
 
 const row = (id: string) => {
   const found = ALERT_ROWS.find((r) => r.id === id);
@@ -114,31 +115,36 @@ describe("alert matrix", () => {
     expect(alertCell(row("new-sales"), "email", DEFAULTS, null)).toEqual({ kind: "none" });
   });
 
-  it("has an Identity check row with its own Email and App switches, on by default", () => {
+  it("holds the Identity check email on (it is always sent) and gives it an App switch", () => {
     const identity = row("identity");
-    expect([identity.email, identity.app]).toEqual(["identityEmail", ["identityInApp"]]);
+    expect([identity.email, identity.app]).toEqual([null, ["identityInApp"]]);
     expect(alertCell(identity, "email", DEFAULTS)).toEqual({
       kind: "switch",
       checked: true,
-      lockedReason: null,
+      lockedReason: ALWAYS_EMAILED_REASON.identity,
     });
-    const next = withAlertCell(DEFAULTS, identity, "email", false);
-    expect(next.identityEmail).toBe(false);
-    expect(next.identityInApp).toBe(true);
-    expect(withAlertCell(DEFAULTS, identity, "app", false).identityEmail).toBe(true);
+    // Nothing to switch off by email; the app switch is the person's own.
+    expect(withAlertCell(DEFAULTS, identity, "email", false)).toEqual(DEFAULTS);
+    const next = withAlertCell(DEFAULTS, identity, "app", false);
+    expect(next.identityInApp).toBe(false);
+    expect(alertCell(identity, "email", next)).toMatchObject({ checked: true });
   });
 
-  it("gives Registrations and limits an App switch only: the email always goes", () => {
+  it("holds the Registrations and limits email on too, with an App switch", () => {
     const registrations = row("registrations");
-    expect(alertCell(registrations, "email", DEFAULTS)).toEqual({ kind: "none" });
+    expect(alertCell(registrations, "email", DEFAULTS)).toEqual({
+      kind: "switch",
+      checked: true,
+      lockedReason: ALWAYS_EMAILED_REASON.registrations,
+    });
     expect(alertCell(registrations, "app", DEFAULTS)).toMatchObject({ checked: true });
     expect(withAlertCell(DEFAULTS, registrations, "app", false).registrationInApp).toBe(false);
   });
 
-  it("keeps identity and registration switches through a style preset", () => {
-    const own = { ...DEFAULTS, identityEmail: false, registrationInApp: false };
+  it("keeps identity and registration app switches through a style preset", () => {
+    const own = { ...DEFAULTS, identityInApp: false, registrationInApp: false };
     const quiet = withAlertPreset(own, "quiet");
-    expect(quiet.identityEmail).toBe(false);
+    expect(quiet.identityInApp).toBe(false);
     expect(quiet.registrationInApp).toBe(false);
   });
 

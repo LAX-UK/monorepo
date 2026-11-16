@@ -7,6 +7,7 @@ import {
   LOCKED_NOTIFICATION_PREFERENCE_REASON,
   notificationPreferenceLocked,
 } from "@auction/domain";
+import { ALERT_ROW_COPY, ALWAYS_EMAILED_REASON } from "./alert-matrix-copy";
 
 /**
  * Bid settings' "Where alerts reach you": one row per alert, with an Email and an App column.
@@ -24,6 +25,11 @@ export type AlertRow = {
    * switch, not a notification preference, and its App switch only counts once subscribed.
    */
   engineTopic?: string;
+  /**
+   * The email records a decision about the person, so it is always sent: the Email column shows
+   * it on and held, with this reason, and there is nothing to switch.
+   */
+  emailAlways?: string;
 };
 
 /** What the alert engine holds for the signed-in client, per topic. */
@@ -39,94 +45,83 @@ export type EngineAlertState = {
 export const ALERT_ROWS: readonly AlertRow[] = [
   {
     id: "outbid",
-    label: "Outbid",
-    description: "When someone bids over you",
+    ...ALERT_ROW_COPY.outbid,
     email: "outbidEmail",
     app: ["outbidInApp", "outbidPush"],
   },
   {
     id: "closing",
-    label: "Lot closing soon",
-    description: "Before a lot you bid on or watch closes",
+    ...ALERT_ROW_COPY.closing,
     email: "endingSoonEmail",
     app: ["endingSoonInApp", "endingSoonPush"],
   },
   {
     id: "won",
-    label: "You won a lot",
-    description: "With the invoice and how to pay",
+    ...ALERT_ROW_COPY.won,
     email: "wonEmail",
     app: ["wonInApp", "wonPush"],
   },
   {
     id: "lost",
-    label: "A lot sold to someone else",
-    description: "When a lot you bid on closes without you",
+    ...ALERT_ROW_COPY.lost,
     email: "lostEmail",
     app: ["lostInApp"],
   },
   {
     id: "payments",
-    label: "Payments",
-    description: "Invoices, receipts and reminders to pay",
+    ...ALERT_ROW_COPY.payments,
     email: "paymentEmail",
     app: ["paymentInApp"],
   },
   {
     id: "consignments",
-    label: "Consignment updates",
-    description: "Review, agreement and sale steps",
+    ...ALERT_ROW_COPY.consignments,
     email: "submissionUpdatesEmail",
     app: ["submissionUpdatesPush"],
   },
   {
     id: "sale-ended",
-    label: "Your work's sale ended",
-    description: "When a lot you sell closes, sold or not",
+    ...ALERT_ROW_COPY["sale-ended"],
     email: "lotEndedSellerEmail",
     app: [],
   },
   {
     id: "watching",
-    label: "Lots you watch",
-    description: "When a watched lot opens or has news",
+    ...ALERT_ROW_COPY.watching,
     email: "watchlistEmail",
     app: ["watchlistInApp"],
   },
   {
     id: "identity",
-    label: "Identity check",
-    description: "When your identity check is approved or declined",
-    email: "identityEmail",
+    ...ALERT_ROW_COPY.identity,
+    email: null,
+    emailAlways: ALWAYS_EMAILED_REASON.identity,
     app: ["identityInApp"],
   },
   {
     id: "registrations",
-    label: "Registrations and limits",
-    description: "When you can bid in a sale, or staff change a limit",
+    ...ALERT_ROW_COPY.registrations,
     email: null,
+    emailAlways: ALWAYS_EMAILED_REASON.registrations,
     app: ["registrationInApp"],
   },
   {
     id: "new-sales",
-    label: "New sales",
-    description: "When LAX Bid announces a sale",
+    ...ALERT_ROW_COPY["new-sales"],
     email: null,
     app: ["newSalesInApp"],
     engineTopic: "bid.new_sales",
   },
   {
     id: "artists",
-    label: "Artists you follow",
-    description: "New lots that match each artist's alert",
+    ...ALERT_ROW_COPY.artists,
     email: null,
     app: ["artistAlertsInApp"],
     engineTopic: "bid.artists",
   },
   {
     id: "searches",
-    label: "Saved searches",
-    description: "New lots that match a search with email on",
+    ...ALERT_ROW_COPY.searches,
     email: null,
     app: ["searchAlertsInApp"],
     engineTopic: "bid.searches",
@@ -168,6 +163,9 @@ export function alertCell(
         engine.subscribed[row.engineTopic] === true && (field ? values[field] === true : true),
       lockedReason: null,
     };
+  }
+  if (channel === "email" && row.emailAlways) {
+    return { kind: "switch", checked: true, lockedReason: row.emailAlways };
   }
   const fields = channel === "email" ? (row.email ? [row.email] : []) : row.app;
   const [first] = fields;

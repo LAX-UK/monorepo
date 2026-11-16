@@ -54,7 +54,6 @@ const PREFERENCE_COLUMNS = [
   ["artistAlertsInApp", "followed artists", "in-app"],
   ["searchAlertsInApp", "saved searches", "in-app"],
   ["identityInApp", "identity checks", "in-app"],
-  ["identityEmail", "identity checks", "email"],
   ["registrationInApp", "registrations and limits", "in-app"],
   ["outbidPush", "outbid", "push"],
   ["wonPush", "won", "push"],
